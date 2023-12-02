@@ -1,0 +1,30 @@
+{
+  "name": "hysteria-orm",
+  "version": "1.0.0",
+  "main": "index.js",
+  "repository": "https://github.com/Frasan00/hysteria-orm.git",
+  "author": "Frasan00 <francesco.sangiovanni.7@gmail.com>",
+  "scripts": {
+    "format": "prettier --write '**/*.ts'",
+    "lint": "standard",
+    "lint:fix": "standard --fix",
+    "build": "tsc",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "ts-node src/index.ts",
+    "start": "tsc && node dist/index.js"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@adonisjs/eslint-config": "^1.2.0",
+    "@types/node": "^20.10.2",
+    "dotenv": "^16.3.1",
+    "prettier": "^3.1.0",
+    "standard": "^17.1.0",
+    "typescript": "^5.3.2"
+  },
+  "dependencies": {
+    "mysql2": "^3.6.5",
+    "pg": "^8.11.3",
+    "winston": "^3.11.0"
+  }
+}
