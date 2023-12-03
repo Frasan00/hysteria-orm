@@ -8,7 +8,7 @@ const selectTemplate = (table: string) => {
     selectDistinct: (...columns: string[]) =>
       `SELECT DISTINCT ${columns.join(", ")} FROM ${table} `,
     selectSum: (column: string) => `SELECT SUM(${column}) FROM ${table} `,
-    orderBy: (column: string[], order?: "ASC" | "DESC" | "") =>
+    orderBy: (column: string[], order?: "ASC" | "DESC") =>
       `\nORDER BY ${column.join(", ")} ${order}`,
     groupBy: (...columns: string[]) => `\nGROUP BY ${columns.join(", ")} `,
     limit: (limit: number) => `\nLIMIT ${limit} `,

@@ -6,6 +6,15 @@ services:
       context: .
     ports:
       - '3000:3000'
+    volumes:
+      - ./src:/app/src
+    environment:
+      MYSQL_ROOT_PASSWORD: admin
+      MYSQL_DATABASE: database
+      MYSQL_USERNAME: admin
+      MYSQL_PASSWORD: admin
+      MYSQL_HOST: db
+      MYSQL_PORT: 3306
     depends_on:
       - db
 

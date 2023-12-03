@@ -5,19 +5,24 @@
   "repository": "https://github.com/Frasan00/hysteria-orm.git",
   "author": "Frasan00 <francesco.sangiovanni.7@gmail.com>",
   "scripts": {
+    "watch": "tsc --watch",
     "format": "prettier --write '**/*.ts'",
     "lint": "standard",
     "lint:fix": "standard --fix",
     "build": "tsc",
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "ts-node src/index.ts",
-    "start": "tsc && node dist/index.js"
+    "start": "tsc && node dist/test/index.js",
+    "start:watch": "nodemon --exec ts-node src/index.ts"
   },
   "license": "MIT",
   "devDependencies": {
     "@adonisjs/eslint-config": "^1.2.0",
+    "@types/express": "^4.17.21",
     "@types/node": "^20.10.2",
     "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "nodemon": "^3.0.2",
     "prettier": "^3.1.0",
     "standard": "^17.1.0",
     "typescript": "^5.3.2"

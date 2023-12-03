@@ -1,11 +1,13 @@
 const whereTemplate = () => {
   return {
-    where: (column: string) => `\nWHERE ${column} = ? `,
-    andWhere: (column: string) => ` AND ${column} = ? `,
-    orWhere: (column: string) => ` OR ${column} = ? `,
-    whereNot: (column: string) => `\nWHERE ${column} != ? `,
-    andWhereNot: (column: string) => ` AND ${column} != ? `,
-    orWhereNot: (column: string) => ` OR ${column} != ? `,
+    where: (column: string, value: string) => `\nWHERE ${column} = ${value} `,
+    andWhere: (column: string, value: string) => ` AND ${column} = ${value} `,
+    orWhere: (column: string, value: string) => ` OR ${column} = ${value} `,
+    whereNot: (column: string, value: string) =>
+      `\nWHERE ${column} != ${value} `,
+    andWhereNot: (column: string, value: string) =>
+      ` AND ${column} != ${value} `,
+    orWhereNot: (column: string, value: string) => ` OR ${column} != ${value} `,
     whereNull: (column: string) => `\nWHERE ${column} IS NULL `,
     whereNotNull: (column: string) => `\nWHERE ${column} IS NOT NULL `,
     whereLike: (column: string, value: string) =>

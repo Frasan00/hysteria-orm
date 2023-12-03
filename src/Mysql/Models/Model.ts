@@ -3,14 +3,14 @@
  */
 
 interface ModelInput {
-  name?: string;
+  tableName?: string;
 }
 
 export abstract class Model {
-  public name: string;
+  public tableName: string;
 
-  constructor(name?: string) {
-    this.name = name || this.constructor.name;
+  protected constructor(tableName?: string) {
+    this.tableName = tableName || this.constructor.name;
   }
 
   public toJson(): string {

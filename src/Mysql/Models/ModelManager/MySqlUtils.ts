@@ -7,13 +7,11 @@ class MySqlUtils {
     model: new () => T,
   ): T {
     const modelInstance = new model();
+    const propertyNames = Object.getOwnPropertyNames(modelInstance);
 
-    for (const key in modelInstance) {
-      if (
-        Object.prototype.hasOwnProperty.call(modelInstance, key) &&
-        result.hasOwnProperty(key)
-      ) {
-        modelInstance[key] = result[key] as T[Extract<keyof T, string>];
+    for (const key of propertyNames) {
+      if (Object.prototype.hasOwnProperty.call(result, key)) {
+        modelInstance[key as keyof T] = result[key] as any;
       }
     }
 

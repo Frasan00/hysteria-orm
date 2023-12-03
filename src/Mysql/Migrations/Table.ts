@@ -1,4 +1,4 @@
-import {Column} from "./Columns/Column";
+import { Column } from "./Columns/Column";
 
 export abstract class Table {
   public tableName: string;

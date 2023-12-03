@@ -1,47 +1,53 @@
 import { FindType } from "./ModelManagerTypes";
 import selectTemplate from "../QueryTemplates/SELECT";
 import whereTemplate from "../QueryTemplates/WHERE.TS";
+import { Model } from "../Model";
+import insertTemplate from "../QueryTemplates/INSERT";
+import updateTemplate from "../QueryTemplates/UPDATE";
+import deleteTemplate from "../QueryTemplates/DELETE";
 
 class ModelManagerUtils {
   public parseSelectQueryInput(tableName: string, input: FindType): string {
     let query = "";
-    this.parseSelect(query, tableName, input);
-    this.parseWhere(query, input);
+    query += this.parseSelect(tableName, input);
+    query += this.parseWhere(input);
     // to do parse join after relations
-    this.parseQueryFooter(query, tableName, input);
+    query += this.parseQueryFooter(tableName, input);
 
     return query;
   }
 
-  private parseSelect(query: string, tableName: string, input: FindType): void {
+  private parseSelect(tableName: string, input: FindType): string {
     const select = selectTemplate(tableName);
-    query += input.select
-      ? (query += select.selectColumns(...input.select))
-      : (query += select.selectAll);
+    return input.select
+      ? select.selectColumns(...input.select)
+      : select.selectAll;
   }
 
-  private parseWhere(query: string, input: FindType): void {
+  private parseWhere(input: FindType): string {
     const where = whereTemplate();
     if (!input.where) {
-      return;
+      return "";
     }
 
-    for (let i = 0; i < input.where.length; i++) {
-      if (i === 0) {
-        query += where.where(input.where[i]);
+    let query = "";
+    const entries = Object.entries(input.where);
+    for (let index = 0; index < entries.length; index++) {
+      const [key, value] = entries[index];
+
+      if (index === 0) {
+        query += where.where(key, value);
         continue;
       }
-
-      query += where.andWhere(input.where[i]);
+      query += where.andWhere(key, value);
     }
+
+    return query;
   }
 
-  private parseQueryFooter(
-    query: string,
-    tableName: string,
-    input: FindType,
-  ): void {
+  private parseQueryFooter(tableName: string, input: FindType): string {
     const select = selectTemplate(tableName);
+    let query = "";
     if (input.offset) {
       query += select.offset(input.offset);
     }
@@ -51,15 +57,39 @@ class ModelManagerUtils {
     }
 
     if (input.orderBy) {
-      query += select.orderBy(input.orderBy);
+      query += select.orderBy([...input.orderBy.columns], input.orderBy.type);
     }
 
     if (input.limit) {
       query += select.limit(input.limit);
     }
+
+    return query;
   }
 
-  // TO DO parse INSERT UPDATE DELETE
+  public parseInsert<T extends Model>(model: T): string {
+    const keys = Object.keys(model);
+    const values = Object.values(model);
+    const insert = insertTemplate(model.tableName);
+
+    return insert.insert(keys, values);
+  }
+
+  public parseUpdate<T extends Model>(model: T): string {
+    const update = updateTemplate(model.tableName);
+    const keys = Object.keys(model);
+    const values = Object.values(model);
+    return update.update(keys, values);
+  }
+
+  public parseDelete<T extends Model>(
+    tableName: string,
+    column: string,
+    value: string | number | boolean,
+  ): string {
+    const del = deleteTemplate(tableName);
+    return del.delete(column, value.toString());
+  }
 }
 
 export default new ModelManagerUtils();

@@ -1,7 +1,7 @@
 const deleteTemplate = (tableName: string) => {
   return {
-    delete: (column: string) =>
-      `\nDELETE FROM ${tableName} WHERE ${column} = ? `,
+    delete: (column: string, value: string) =>
+      `\nDELETE FROM ${tableName} WHERE ${column} = ${value} `,
   };
 };
 
