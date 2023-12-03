@@ -8,6 +8,7 @@ import selectTemplate from "../QueryTemplates/SELECT";
 import ModelManagerQueryUtils from "./ModelManagerUtils";
 import logger from "../../../Logger";
 import MySqlUtils from "./MySqlUtils";
+import { Relation } from "../Relations/Relation";
 
 export class ModelManager<T extends Model> {
   protected logs: boolean;
@@ -38,7 +39,7 @@ export class ModelManager<T extends Model> {
       }
 
       const query = ModelManagerQueryUtils.parseSelectQueryInput(
-        this.tableName,
+        new this.model(),
         input,
       );
       this.log(query);
@@ -55,7 +56,7 @@ export class ModelManager<T extends Model> {
   public async findOne(input: FindOneType): Promise<T | null> {
     try {
       const query = ModelManagerQueryUtils.parseSelectQueryInput(
-        this.tableName,
+        new this.model(),
         input,
       );
       this.log(query);
@@ -81,26 +82,31 @@ export class ModelManager<T extends Model> {
     }
   }
 
-  public async save(model: T): Promise<T> {
+  public async save(model: T): Promise<T | null> {
     try {
-      const insertQuery = ModelManagerQueryUtils.parseInsert<T>(model);
+      const insertQuery = ModelManagerQueryUtils.parseInsert(model);
       this.log(insertQuery);
-      const [rows] =
-        await this.mysqlConnection.query<RowDataPacket[]>(insertQuery);
-      return MySqlUtils.convertSqlResultToModel(rows[0], this.model);
+      const [rows]: any =
+        await this.mysqlConnection.query(insertQuery);
+
+      return await this.findOneById(rows.insertId) || null;
     } catch (error) {
       this.queryError(error);
       throw new Error("Query failed " + error);
     }
   }
 
-  public async update(model: T): Promise<T> {
+  public async update(model: T): Promise<T | null> {
     try {
-      const updateQuery = ModelManagerQueryUtils.parseUpdate<T>(model);
+      const updateQuery = ModelManagerQueryUtils.parseUpdate(model);
       this.log(updateQuery);
       const [rows] =
         await this.mysqlConnection.query<RowDataPacket[]>(updateQuery);
-      return MySqlUtils.convertSqlResultToModel(rows[0], this.model);
+      if(!model.primaryKey){
+        return null
+      }
+
+      return await this.findOneById(model['primaryKey'])
     } catch (error) {
       this.queryError(error);
       throw new Error("Query failed " + error);
@@ -112,7 +118,7 @@ export class ModelManager<T extends Model> {
     value: string | number | boolean,
   ): Promise<T> {
     try {
-      const deleteQuery = ModelManagerQueryUtils.parseDelete<T>(
+      const deleteQuery = ModelManagerQueryUtils.parseDelete(
         this.tableName,
         column,
         value,

@@ -5,14 +5,19 @@ import { Model } from "../Model";
 import insertTemplate from "../QueryTemplates/INSERT";
 import updateTemplate from "../QueryTemplates/UPDATE";
 import deleteTemplate from "../QueryTemplates/DELETE";
+import { Relation, RelationType } from "../Relations/Relation";
+import joinTemplate from "../QueryTemplates/JOIN";
+import { HasOne } from "../Relations/HasOne";
+import { BelongsTo } from "../Relations/BelongsTo";
+import { HasMany } from "../Relations/HasMany";
 
-class ModelManagerUtils {
-  public parseSelectQueryInput(tableName: string, input: FindType): string {
+class ModelManagerUtils<T extends Model> {
+  public parseSelectQueryInput(model: T, input: FindType): string {
     let query = "";
-    query += this.parseSelect(tableName, input);
-    query += this.parseWhere(input);
-    // to do parse join after relations
-    query += this.parseQueryFooter(tableName, input);
+    query += this.parseSelect(model.tableName, input);
+    query += this.parseJoin(model, input);
+    query += this.parseWhere(model.tableName, input);
+    query += this.parseQueryFooter(model.tableName, input);
 
     return query;
   }
@@ -24,8 +29,54 @@ class ModelManagerUtils {
       : select.selectAll;
   }
 
-  private parseWhere(input: FindType): string {
-    const where = whereTemplate();
+  private parseJoin(model: T, input: FindType): string {
+    if (!input.relations || !model.primaryKey) {
+      return "";
+    }
+
+    const relations = this.extractRelationsFromModel(model, input);
+
+    if (relations.length === 0) {
+      return "";
+    }
+
+    let query = "";
+    const join = joinTemplate(model.tableName, model.primaryKey);
+    relations.forEach((relation) => {
+      if (relation instanceof BelongsTo) {
+        return (query += join.belongsToJoin(relation));
+      }
+
+      if (relation instanceof HasOne) {
+        return (query += join.hasOneJoin(relation));
+      }
+
+      if (relation instanceof HasMany) {
+        return (query += join.hasManyJoin(relation));
+      }
+    });
+
+    return query;
+  }
+
+  private extractRelationsFromModel(model: T, input: FindType): Relation[] {
+    if (!input.relations) {
+      return [];
+    }
+
+    // Checks all properties of the model for Relations given in the input
+    return Object.entries(model)
+      .filter(
+        ([key, value]) =>
+          Object.prototype.hasOwnProperty.call(model, key) &&
+          value instanceof Relation &&
+          input.relations?.includes(key),
+      )
+      .map(([key, _value]) => model[key as keyof T] as Relation);
+  }
+
+  private parseWhere(tableName: string, input: FindType): string {
+    const where = whereTemplate(tableName);
     if (!input.where) {
       return "";
     }
@@ -67,28 +118,46 @@ class ModelManagerUtils {
     return query;
   }
 
-  public parseInsert<T extends Model>(model: T): string {
-    const keys = Object.keys(model);
-    const values = Object.values(model);
+  public parseInsert(model: T): string {
+    const keys = this.filterRelationAndInfoColumns(model);
+    const values = keys.map((key) => {
+      return model[key as keyof T];
+    }) as string[];
     const insert = insertTemplate(model.tableName);
 
     return insert.insert(keys, values);
   }
 
-  public parseUpdate<T extends Model>(model: T): string {
+  public parseUpdate(model: T): string {
     const update = updateTemplate(model.tableName);
     const keys = Object.keys(model);
     const values = Object.values(model);
     return update.update(keys, values);
   }
 
-  public parseDelete<T extends Model>(
+  public parseDelete(
     tableName: string,
     column: string,
     value: string | number | boolean,
   ): string {
     const del = deleteTemplate(tableName);
     return del.delete(column, value.toString());
+  }
+
+  private filterRelationAndInfoColumns(model: T): string[] {
+    return Object.entries(model)
+      .filter(([key, value]) => {
+        if (value instanceof Relation) {
+          return false;
+        }
+
+        if (key === model.primaryKey && !value) {
+          return false;
+        }
+
+        return !(key === "tableName" || key === "primaryKey");
+      })
+      .map(([key, _value]) => key);
   }
 }
 

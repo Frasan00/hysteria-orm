@@ -1,5 +1,5 @@
-import { Model } from "../Mysql/Models/Model";
-import { ModelManager } from "../Mysql/Models/ModelManager/ModelManager";
+import { Model } from "./Mysql/Models/Model";
+import { ModelManager } from "./Mysql/Models/ModelManager/ModelManager";
 
 /*
  * Creates a datasource for the selected database type with the provided credentials

@@ -3,7 +3,7 @@ const updateTemplate = (table: string) => {
     update: (columns: string[], values: string[]) =>
       `UPDATE ${table} SET ${columns
         .map((column, index) => `${column} = ${values[index]}`)
-        .join(", ")} `,
+        .join(", ")}`,
   };
 };
 

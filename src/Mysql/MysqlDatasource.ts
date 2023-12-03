@@ -1,4 +1,4 @@
-import { Datasource, DatasourceInput } from "../Datasources/Datasource";
+import { Datasource, DatasourceInput } from "../Datasource";
 import mysql, { PoolConnection, Pool, createPool } from "mysql2/promise";
 import { Model } from "./Models/Model";
 import { ModelManager } from "./Models/ModelManager/ModelManager";

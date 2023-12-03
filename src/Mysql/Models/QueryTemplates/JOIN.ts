@@ -1,13 +1,15 @@
-const joinTemplate = (table: string) => {
+import { HasOne } from "../Relations/HasOne";
+import { BelongsTo } from "../Relations/BelongsTo";
+import { HasMany } from "../Relations/HasMany";
+
+const joinTemplate = (table: string, primaryKey: string) => {
   return {
-    innerJoin: (table: string) => `\nINNER JOIN ${table} `,
-    leftJoin: (table: string) => `\nLEFT JOIN ${table} `,
-    rightJoin: (table: string) => `\nRIGHT JOIN ${table} `,
-    joinOn: (column1: string, column2: string) =>
-      `\nON ${column1} = ${column2} `,
-    joinOnTable: (table: string, column1: string, column2: string) =>
-      `\nON ${table}.${column1} = ${table}.${column2} `,
+    belongsToJoin: (relation: BelongsTo) =>
+      `\nLEFT JOIN ${relation.relatedModel} ON ${table}.${primaryKey} = ${relation.relatedModel}.${relation.foreignKey} `,
+    hasOneJoin: (relation: HasOne) =>
+      `\nLEFT JOIN ${relation.relatedModel} ON ${table}.${primaryKey} = ${relation.relatedModel}.${relation.foreignKey} `,
+    hasManyJoin: (relation: HasMany) =>
+      `\nLEFT JOIN ${relation.relatedModel} ON ${table}.${primaryKey} = ${relation.relatedModel}.${relation.foreignKey} `,
   };
 };
-
 export default joinTemplate;
