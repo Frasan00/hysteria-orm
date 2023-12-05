@@ -270,7 +270,6 @@ export class ModelManager<T extends Model> {
       this.tableName,
       this.mysqlConnection,
       this.logs,
-      new this.model().primaryKey,
     );
   }
 
@@ -288,9 +287,9 @@ export class ModelManager<T extends Model> {
     await this.mysqlConnection.commit();
   }
 
-    /**
-     * @description Rollbacks a transaction
-     */
+  /**
+   * @description Rollbacks a transaction
+   */
   public async rollbackTransaction(): Promise<void> {
     await this.mysqlConnection.rollback();
   }
