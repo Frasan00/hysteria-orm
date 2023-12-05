@@ -4,7 +4,7 @@ import { Model } from "../Model";
 export class HasMany extends Relation {
   public type: RelationType = RelationType.hasMany;
 
-  constructor(relatedModel: string, foreignKey: string) {
-    super(relatedModel, foreignKey);
+  constructor(relatedModel: string) {
+    super(relatedModel);
   }
 }

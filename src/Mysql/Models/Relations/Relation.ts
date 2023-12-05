@@ -1,5 +1,3 @@
-import { Model } from "../Model";
-
 export enum RelationType {
   hasOne = "hasOne", // One to One without foreign key
   belongsTo = "belongsTo", // One to One with foreign key
@@ -13,9 +11,9 @@ export enum RelationType {
 export abstract class Relation {
   public abstract type: RelationType;
   public relatedModel: string;
-  public foreignKey: string;
+  public foreignKey?: string;
 
-  protected constructor(relatedModel: string, foreignKey: string) {
+  protected constructor(relatedModel: string, foreignKey?: string) {
     this.relatedModel = relatedModel;
     this.foreignKey = foreignKey;
   }
