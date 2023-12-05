@@ -1,4 +1,4 @@
-import { WhereOperatorType } from "../Models/QueryBuilder/QueryBuilderTypes";
+export type WhereOperatorType = "=" | "!=" | ">" | "<" | ">=" | "<=" | "LIKE";
 
 const whereTemplate = (tableName: string) => {
   return {

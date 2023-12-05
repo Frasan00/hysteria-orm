@@ -7,20 +7,18 @@ class MySqlUtils {
     result: RowDataPacket,
     model: new () => T,
   ): T {
-    const modelInstance = new model();
-    const propertyNames = Object.getOwnPropertyNames(modelInstance);
+    const modelInstance: T = new model();
+    const propertyNames: string[] = Object.getOwnPropertyNames(modelInstance);
 
     for (const key of propertyNames) {
-      // Checks if we the models property an instance of is a Relation
-      if (
+      const isSpecialKey =
         Object.prototype.hasOwnProperty.call(modelInstance, key) &&
-        modelInstance[key as keyof T] instanceof Relation
-      ) {
-        continue;
-      }
+        (modelInstance[key as keyof T] instanceof Relation ||
+          key === "primaryKey" ||
+          key === "tableName");
 
-      if (Object.prototype.hasOwnProperty.call(result, key)) {
-        modelInstance[key as keyof T] = result[key] as any;
+      if (!isSpecialKey && Object.prototype.hasOwnProperty.call(result, key)) {
+        modelInstance[key as keyof T] = result[key] as T[keyof T];
       }
     }
 

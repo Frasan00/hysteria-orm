@@ -6,7 +6,7 @@ import whereTemplate, {
   WhereTemplateType,
 } from "../../QueryTemplates/WHERE.TS";
 import joinTemplate, { JoinTemplateType } from "../../QueryTemplates/JOIN";
-import { WhereOperatorType } from "./QueryBuilderTypes";
+import { WhereOperatorType } from "../../QueryTemplates/WHERE.TS";
 import MySqlUtils from "../ModelManager/MySqlUtils";
 import { Model } from "../Model";
 

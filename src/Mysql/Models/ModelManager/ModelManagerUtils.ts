@@ -5,7 +5,7 @@ import { Model } from "../Model";
 import insertTemplate from "../../QueryTemplates/INSERT";
 import updateTemplate from "../../QueryTemplates/UPDATE";
 import deleteTemplate from "../../QueryTemplates/DELETE";
-import { Relation } from "../Relations/Relation";
+import { Relation, RelationType } from "../Relations/Relation";
 
 class ModelManagerUtils<T extends Model> {
   public parseSelectQueryInput(
@@ -80,10 +80,8 @@ class ModelManagerUtils<T extends Model> {
   }
 
   public parseInsert(model: T): string {
-    const keys = this.filterRelationAndInfoColumns(model);
-    const values = keys.map((key) => {
-      return model[key as keyof T];
-    }) as string[];
+    const keys = Object.keys(model);
+    const values = Object.values(model);
     const insert = insertTemplate(model.tableName);
 
     return insert.insert(keys, values);
@@ -101,24 +99,7 @@ class ModelManagerUtils<T extends Model> {
     column: string,
     value: string | number | boolean,
   ): string {
-    const del = deleteTemplate(tableName);
-    return del.delete(column, value.toString());
-  }
-
-  private filterRelationAndInfoColumns(model: T): string[] {
-    return Object.entries(model)
-      .filter(([key, value]) => {
-        if (value instanceof Relation) {
-          return false;
-        }
-
-        if (key === model.primaryKey && !value) {
-          return false;
-        }
-
-        return !(key === "tableName" || key === "primaryKey");
-      })
-      .map(([key, _value]) => key);
+    return deleteTemplate(tableName).delete(column, value.toString());
   }
 
   private isFindType(input: FindType | FindOneType): input is FindType {
@@ -129,6 +110,43 @@ class ModelManagerUtils<T extends Model> {
       instance.hasOwnProperty("orderBy") ||
       instance.hasOwnProperty("limit")
     );
+  }
+
+  // Returns the string representation of the query to retrieve the relation of the model with the specified relation
+  public getRelationQuery(model: T, relation: Relation): string {
+    if (!model.primaryKey) {
+      throw new Error("Model " + model.tableName + " has no primary key");
+    }
+
+    const relatedTableName = relation.relatedModel;
+    const primaryKeyName = model.primaryKey as keyof T;
+    const select = selectTemplate(relatedTableName);
+    const where = whereTemplate(relatedTableName);
+
+    let query = "";
+    switch (relation.type) {
+      case RelationType.belongsTo:
+        query =
+          select.selectAll +
+          where.where(
+            relation.foreignKey,
+            model[primaryKeyName] as string,
+            "=",
+          );
+        break;
+
+      case RelationType.hasOne:
+      case RelationType.hasMany:
+        query =
+          select.selectAll +
+          where.where(model.primaryKey, model[primaryKeyName] as string, "=");
+        break;
+
+      default:
+        throw new Error("Relation type not supported");
+    }
+
+    return query;
   }
 
   /*private _parseJoin(model: T, input: FindType | FindOneType): string {
