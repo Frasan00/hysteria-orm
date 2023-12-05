@@ -1,6 +1,6 @@
-import { HasOne } from "../Relations/HasOne";
-import { BelongsTo } from "../Relations/BelongsTo";
-import { HasMany } from "../Relations/HasMany";
+import { HasOne } from "../Models/Relations/HasOne";
+import { BelongsTo } from "../Models/Relations/BelongsTo";
+import { HasMany } from "../Models/Relations/HasMany";
 
 const joinTemplate = (table: string, primaryKey: string) => {
   return {
@@ -12,4 +12,14 @@ const joinTemplate = (table: string, primaryKey: string) => {
       `\nLEFT JOIN ${relation.relatedModel} ON ${table}.${primaryKey} = ${relation.relatedModel}.${relation.foreignKey} `,
   };
 };
+
+export type JoinTemplateType = (
+  table: string,
+  primaryKey: string,
+) => {
+  belongsToJoin: (relation: BelongsTo) => string;
+  hasOneJoin: (relation: HasOne) => string;
+  hasManyJoin: (relation: HasMany) => string;
+};
+
 export default joinTemplate;

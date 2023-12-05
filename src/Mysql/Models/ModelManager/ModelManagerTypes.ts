@@ -1,5 +1,3 @@
-import { transactionTemplate } from "../QueryTemplates/TRANSACTION";
-
 type WhereType = {
   [key: string]: any;
 };
@@ -13,7 +11,6 @@ type OrderByType = {
 export type FindOneType = {
   select?: string[];
   where?: WhereType;
-  relations?: string[];
 };
 
 export type FindType = FindOneType & {

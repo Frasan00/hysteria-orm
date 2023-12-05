@@ -1,81 +1,36 @@
-import { FindType } from "./ModelManagerTypes";
-import selectTemplate from "../QueryTemplates/SELECT";
-import whereTemplate from "../QueryTemplates/WHERE.TS";
+import { FindType, FindOneType } from "./ModelManagerTypes";
+import selectTemplate from "../../QueryTemplates/SELECT";
+import whereTemplate from "../../QueryTemplates/WHERE.TS";
 import { Model } from "../Model";
-import insertTemplate from "../QueryTemplates/INSERT";
-import updateTemplate from "../QueryTemplates/UPDATE";
-import deleteTemplate from "../QueryTemplates/DELETE";
-import { Relation, RelationType } from "../Relations/Relation";
-import joinTemplate from "../QueryTemplates/JOIN";
-import { HasOne } from "../Relations/HasOne";
-import { BelongsTo } from "../Relations/BelongsTo";
-import { HasMany } from "../Relations/HasMany";
+import insertTemplate from "../../QueryTemplates/INSERT";
+import updateTemplate from "../../QueryTemplates/UPDATE";
+import deleteTemplate from "../../QueryTemplates/DELETE";
+import { Relation } from "../Relations/Relation";
 
 class ModelManagerUtils<T extends Model> {
-  public parseSelectQueryInput(model: T, input: FindType): string {
+  public parseSelectQueryInput(
+    model: T,
+    input: FindType | FindOneType,
+  ): string {
     let query = "";
     query += this.parseSelect(model.tableName, input);
-    query += this.parseJoin(model, input);
     query += this.parseWhere(model.tableName, input);
     query += this.parseQueryFooter(model.tableName, input);
 
     return query;
   }
 
-  private parseSelect(tableName: string, input: FindType): string {
+  private parseSelect(
+    tableName: string,
+    input: FindType | FindOneType,
+  ): string {
     const select = selectTemplate(tableName);
     return input.select
       ? select.selectColumns(...input.select)
       : select.selectAll;
   }
 
-  private parseJoin(model: T, input: FindType): string {
-    if (!input.relations || !model.primaryKey) {
-      return "";
-    }
-
-    const relations = this.extractRelationsFromModel(model, input);
-
-    if (relations.length === 0) {
-      return "";
-    }
-
-    let query = "";
-    const join = joinTemplate(model.tableName, model.primaryKey);
-    relations.forEach((relation) => {
-      if (relation instanceof BelongsTo) {
-        return (query += join.belongsToJoin(relation));
-      }
-
-      if (relation instanceof HasOne) {
-        return (query += join.hasOneJoin(relation));
-      }
-
-      if (relation instanceof HasMany) {
-        return (query += join.hasManyJoin(relation));
-      }
-    });
-
-    return query;
-  }
-
-  private extractRelationsFromModel(model: T, input: FindType): Relation[] {
-    if (!input.relations) {
-      return [];
-    }
-
-    // Checks all properties of the model for Relations given in the input
-    return Object.entries(model)
-      .filter(
-        ([key, value]) =>
-          Object.prototype.hasOwnProperty.call(model, key) &&
-          value instanceof Relation &&
-          input.relations?.includes(key),
-      )
-      .map(([key, _value]) => model[key as keyof T] as Relation);
-  }
-
-  private parseWhere(tableName: string, input: FindType): string {
+  private parseWhere(tableName: string, input: FindType | FindOneType): string {
     const where = whereTemplate(tableName);
     if (!input.where) {
       return "";
@@ -95,8 +50,14 @@ class ModelManagerUtils<T extends Model> {
 
     return query;
   }
+  private parseQueryFooter(
+    tableName: string,
+    input: FindType | FindOneType,
+  ): string {
+    if (!this.isFindType(input)) {
+      return "";
+    }
 
-  private parseQueryFooter(tableName: string, input: FindType): string {
     const select = selectTemplate(tableName);
     let query = "";
     if (input.offset) {
@@ -159,6 +120,65 @@ class ModelManagerUtils<T extends Model> {
       })
       .map(([key, _value]) => key);
   }
+
+  private isFindType(input: FindType | FindOneType): input is FindType {
+    const instance = input as FindType;
+    return (
+      instance.hasOwnProperty("offset") ||
+      instance.hasOwnProperty("groupBy") ||
+      instance.hasOwnProperty("orderBy") ||
+      instance.hasOwnProperty("limit")
+    );
+  }
+
+  /*private _parseJoin(model: T, input: FindType | FindOneType): string {
+  if (!model.primaryKey) {
+    throw new Error('Model ' + model.tableName + ' has no primary key');
+  }
+
+  if(!input.relations){
+    return "";
+  }
+
+  const relations = this.extractRelationsFromModel(model, input);
+
+  if (relations.length === 0) {
+    return "";
+  }
+
+  let query = "";
+  const join = joinTemplate(model.tableName, model.primaryKey);
+  relations.forEach((relation) => {
+    if (relation instanceof BelongsTo) {
+      return (query += join.belongsToJoin(relation));
+    }
+
+    if (relation instanceof HasOne) {
+      return (query += join.hasOneJoin(relation));
+    }
+
+    if (relation instanceof HasMany) {
+      return (query += join.hasManyJoin(relation));
+    }
+  });
+
+  return query;
+}*/
+  /*private _extractRelationsFromModel(model: T, input: FindType | FindOneType): Relation[] {
+    if (!input.relations) {
+      return [];
+    }
+
+    // Checks all properties of the model for Relations given in the input
+    return Object.entries(model)
+      .filter(
+        ([key, value]) =>
+          Object.prototype.hasOwnProperty.call(model, key) &&
+          value instanceof Relation &&
+          input.relations?.includes(key),
+      )
+      .map(([key, _value]) => model[key as keyof T] as Relation);
+  }*/
 }
 
 export default new ModelManagerUtils();

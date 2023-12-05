@@ -29,4 +29,15 @@ const logger = winston.createLogger({
   transports: [consoleTransport, fileTransport],
 });
 
+export function log(query: string, logs: boolean) {
+  if (!logs) {
+    return;
+  }
+
+  logger.info("\n" + query);
+}
+export function queryError(error: any) {
+  logger.error("Query Failed ", error);
+}
+
 export default logger;
