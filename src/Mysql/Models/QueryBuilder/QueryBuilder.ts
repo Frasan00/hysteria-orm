@@ -5,12 +5,11 @@ import selectTemplate, {
 import whereTemplate, {
   WhereTemplateType,
 } from "../../QueryTemplates/WHERE.TS";
-import joinTemplate, { JoinTemplateType } from "../../QueryTemplates/JOIN";
 import { WhereOperatorType } from "../../QueryTemplates/WHERE.TS";
 import MySqlUtils from "../ModelManager/MySqlUtils";
 import { Model } from "../Model";
-import {Relation, RelationType} from "../Relations/Relation";
-import {log} from "../../../Logger";
+import { Relation, RelationType } from "../Relations/Relation";
+import { log } from "../../../Logger";
 import ModelManagerUtils from "../ModelManager/ModelManagerUtils";
 
 export class QueryBuilder<T extends Model> {
@@ -62,16 +61,21 @@ export class QueryBuilder<T extends Model> {
       query += this.whereQuery;
     }
 
-    const [rows] = await this.mysqlConnection.query<RowDataPacket[]>(query);
-    const model = MySqlUtils.convertSqlResultToModel(
-      rows[0],
-      this.model,
-    ) as T | null;
-    if (!model) {
-      return null;
+    log(query, this.logs);
+    try {
+      const [rows] = await this.mysqlConnection.query<RowDataPacket[]>(query);
+      const model = MySqlUtils.convertSqlResultToModel(
+        rows[0],
+        this.model,
+      ) as T | null;
+      if (!model) {
+        return null;
+      }
+      await this.addRelations(model, this.relations);
+      return model;
+    } catch (error) {
+      throw new Error("Query failed " + error);
     }
-    await this.addRelations(model, this.relations);
-    return model;
   }
 
   /**
@@ -86,17 +90,19 @@ export class QueryBuilder<T extends Model> {
 
     query += this.groupFooterQuery();
 
-    const [rows] = await this.mysqlConnection.query<RowDataPacket[]>(query);
-    const modelPromises =  rows.map(async (row) => {
-      const model = MySqlUtils.convertSqlResultToModel(
-        row,
-        this.model,
-      ) as T;
-      await this.addRelations(model, this.relations);
-      return model;
-    });
+    log(query, this.logs);
+    try {
+      const [rows] = await this.mysqlConnection.query<RowDataPacket[]>(query);
+      const modelPromises = rows.map(async (row) => {
+        const model = MySqlUtils.convertSqlResultToModel(row, this.model) as T;
+        await this.addRelations(model, this.relations);
+        return model;
+      });
 
-    return Promise.all(modelPromises);
+      return Promise.all(modelPromises);
+    } catch (error) {
+      throw new Error("Query failed " + error);
+    }
   }
 
   /**
@@ -537,11 +543,11 @@ export class QueryBuilder<T extends Model> {
     return this;
   }
 
-    /**
-     * @description Fills the returned model with the input relations.
-     * @param relations - The relations to fill the model with.
-     * @returns The QueryBuilder instance for chaining.
-     */
+  /**
+   * @description Fills the returned model with the input relations.
+   * @param relations - The relations to fill the model with.
+   * @returns The QueryBuilder instance for chaining.
+   */
   public withRelations(...relations: string[]) {
     this.relations = [...relations];
     return this;
@@ -556,21 +562,18 @@ export class QueryBuilder<T extends Model> {
       const relationInstance = model[relation as keyof T] as Relation;
       if (!relationInstance || !relationInstance.type) {
         throw new Error(
-            "Model " + model.tableName + " has no relation " + relation,
+          "Model " + model.tableName + " has no relation " + relation,
         );
       }
 
-      const query = ModelManagerUtils.getRelationQuery(
-          model,
-          relationInstance,
-      );
+      const query = ModelManagerUtils.getRelationQuery(model, relationInstance);
       switch (relationInstance.type) {
         case RelationType.belongsTo:
           const [rows] =
-              await this.mysqlConnection.query<RowDataPacket[]>(query);
+            await this.mysqlConnection.query<RowDataPacket[]>(query);
           const relatedModel: Model = MySqlUtils.convertSqlResultToModel(
-              rows[0],
-              this.model,
+            rows[0],
+            this.model,
           );
           return Object.assign(model, relatedModel);
 
@@ -578,9 +581,9 @@ export class QueryBuilder<T extends Model> {
         case RelationType.hasMany:
           log(query, this.logs);
           const [rows2] =
-              await this.mysqlConnection.query<RowDataPacket[]>(query);
+            await this.mysqlConnection.query<RowDataPacket[]>(query);
           const models: Model[] = rows2.map((row) =>
-              MySqlUtils.convertSqlResultToModel(row, this.model),
+            MySqlUtils.convertSqlResultToModel(row, this.model),
           );
           if (models.length === 1) {
             return Object.assign(model, models[0]);

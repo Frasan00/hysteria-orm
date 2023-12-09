@@ -6,6 +6,7 @@ import insertTemplate from "../../QueryTemplates/INSERT";
 import updateTemplate from "../../QueryTemplates/UPDATE";
 import deleteTemplate from "../../QueryTemplates/DELETE";
 import { Relation, RelationType } from "../Relations/Relation";
+import { BelongsTo } from "../Relations/BelongsTo";
 
 class ModelManagerUtils<T extends Model> {
   public parseSelectQueryInput(
@@ -126,10 +127,11 @@ class ModelManagerUtils<T extends Model> {
     let query = "";
     switch (relation.type) {
       case RelationType.belongsTo:
+        const belongsTo = relation as BelongsTo;
         query =
           select.selectAll +
           where.where(
-            relation.foreignKey,
+            belongsTo.foreignKey,
             model[primaryKeyName] as string,
             "=",
           );

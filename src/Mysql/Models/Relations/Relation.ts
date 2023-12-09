@@ -11,10 +11,8 @@ export enum RelationType {
 export abstract class Relation {
   public abstract type: RelationType;
   public relatedModel: string;
-  public foreignKey?: string;
 
-  protected constructor(relatedModel: string, foreignKey?: string) {
+  protected constructor(relatedModel: string) {
     this.relatedModel = relatedModel;
-    this.foreignKey = foreignKey;
   }
 }

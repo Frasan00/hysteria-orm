@@ -28,18 +28,11 @@ const mysqlConfig = {
     username: MYSQL_USERNAME,
     password: MYSQL_PASSWORD,
     database: MYSQL_DATABASE,
-    logs: true, // query-logs optional - default: false
+    logs: true, // query-logs, optional - default: false
 }
 
 const datasource = new MysqlDatasource(mysqlConfig)
-
-datasource.connect()
-    .then((_data) => {
-        console.log("connected to mysql")
-    })
-    .catch((error) => {
-        console.log(error)
-    })
+await datasource.connect()
 ```
 
 - Create a model
@@ -47,9 +40,9 @@ datasource.connect()
 ```typescript
 import { Model } from "hysteria-orm";
 export class User extends Model {
-    public id: number;
-    public name: string;
-    public email: string;
+    public id!: number;
+    public name!: string;
+    public email!: string;
     
     constructor() {
         super();
@@ -70,9 +63,9 @@ import { Model, HasOne } from "hysteria-orm";
 import { Profile } from "./Profile";
 
 export class User extends Model {
-    public id: number;
-    public name: string;
-    public email: string;
+    public id!: number;
+    public name!: string;
+    public email!: string;
     public profile: HasOne = new HasOne("Profile");
 
     constructor() {

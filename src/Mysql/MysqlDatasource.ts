@@ -5,11 +5,21 @@ import { ModelManager } from "./Models/ModelManager/ModelManager";
 import { MigrationController } from "./Migrations/MigrationController";
 import { Migration } from "./Migrations/Migration";
 
+/*
+ * Creates a datasource for the selected database type with the provided credentials
+ */
+
+type MigrationInput = {
+  migrationsPath?: string;
+};
+
 export class MysqlDatasource extends Datasource {
   protected pool!: Pool;
+  protected migrationsPath?: string;
 
-  constructor(input: DatasourceInput) {
+  constructor(input: DatasourceInput & MigrationInput) {
     super(input);
+    this.migrationsPath = input.migrationsPath;
   }
 
   public async connect(): Promise<void> {
@@ -41,6 +51,7 @@ export class MysqlDatasource extends Datasource {
   ): Promise<MigrationController> {
     return new MigrationController({
       mysqlConnection: this.pool,
+      migrationsPath: this.migrationsPath,
       logs: logs,
     });
   }

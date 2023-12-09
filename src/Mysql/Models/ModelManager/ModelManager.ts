@@ -234,21 +234,36 @@ export class ModelManager<T extends Model> {
             rows[0],
             this.model,
           );
-          return Object.assign(model, relatedModel);
+
+          model = {
+            ...model,
+            [relationColumn]: relatedModel,
+          };
+          return model;
 
         case RelationType.hasOne:
         case RelationType.hasMany:
           log(query, this.logs);
           const [rows2] =
             await this.mysqlConnection.query<RowDataPacket[]>(query);
-          const models: Model[] = rows2.map((row) =>
+          const relatedModels: Model[] = rows2.map((row) =>
             MySqlUtils.convertSqlResultToModel(row, this.model),
           );
-          if (models.length === 1) {
-            return Object.assign(model, models[0]);
+          console.log("Models: " + relatedModels[0].tableName);
+
+          if (relatedModels.length === 1) {
+            model = {
+              ...model,
+              [relationColumn]: relatedModels,
+            };
+            return model;
           }
 
-          return Object.assign(model, models);
+          model = {
+            ...model,
+            [relationColumn]: relatedModels,
+          };
+          return model;
 
         default:
           throw new Error("Relation type not supported");
