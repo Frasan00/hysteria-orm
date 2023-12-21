@@ -10,67 +10,58 @@ export const alterTable = (
     const columnLength = column.length;
     const columnType = column.type;
     const columnName = column.name;
+    const oldColumnName = column.oldName;
     const after = column.after;
-    const alterTable = `ALTER TABLE ${tableName}\n`;
+    let columnDefinition = "";
 
-    let columnString = "";
-
-    if(column.oldName) {
-        columnString += `${alterTable} RENAME COLUMN ${column.oldName} ${columnName} ${columnType}`;
+    if (oldColumnName) {
+      columnDefinition += `CHANGE COLUMN ${oldColumnName} ${columnName} ${columnType}`;
+    } else if (column.alter) {
+      columnDefinition += `MODIFY COLUMN ${columnName} ${columnType}`;
     } else {
-      if (column.alter) {
-        columnString += `${alterTable} MODIFY COLUMN ${column.oldName} ${columnName} ${columnType}`;
-      } else {
-        columnString += `${alterTable} ADD COLUMN ${columnName} ${columnType}`;
-      }
+      columnDefinition += `ADD COLUMN ${columnName} ${columnType}`;
     }
 
-    if (columnConfig) {
-      if (columnConfig.autoIncrement) {
-        columnString += `${alterTable} ALTER COLUMN ${column.name} MODIFY ${columnName} AUTO_INCREMENT\n`;
-      }
-
-      if (columnConfig.nullable) {
-        columnString += `${alterTable} ALTER COLUMN ${column.name} MODIFY ${columnName} NULL;\n`;
-      }
-
-      if (!columnConfig.nullable) {
-        columnString += `${alterTable} ALTER COLUMN ${column.name} MODIFY ${columnName} NOT NULL;\n`;
-      }
-
-      if (columnConfig.unsigned) {
-        columnString += `${alterTable} ALTER COLUMN ${column.name} MODIFY ${columnName} UNSIGNED;\n`;
-      }
-
-      if (columnConfig.primary) {
-        columnString += `${alterTable} ALTER COLUMN ${column.name} MODIFY ${columnName} PRIMARY KEY;\n`;
-      }
-
-      if (columnConfig.unique) {
-        columnString += `${alterTable} ALTER COLUMN ${column.name} MODIFY ${columnName} UNIQUE;\n`;
-      }
-
-      if (columnConfig.defaultValue) {
-        columnString += `${alterTable} ALTER COLUMN ${column.name} MODIFY ${columnName} DEFAULT ${columnConfig.defaultValue};\n`;
-      }
-
-      if (columnConfig.autoCreate) {
-        columnString += `${alterTable} ALTER COLUMN ${column.name} MODIFY ${columnName} ON UPDATE CURRENT_TIMESTAMP;\n`;
-      }
-
-      if (columnConfig.references) {
-        columnString += `${alterTable} ALTER COLUMN ${column.name} MODIFY ${columnName} REFERENCES ${columnConfig.references.table}(${columnConfig.references.column});\n`;
-      }
-
-      if (columnConfig.cascade) {
-        columnString += `${alterTable} ALTER COLUMN ${column.name} MODIFY ${columnName} ON DELETE CASCADE;\n`;
-      }
+    if (columnLength) {
+      columnDefinition += `(${columnLength})`;
     }
-
-    if (columnString) {
-      columnNames.push(columnString);
+    if (columnConfig.unsigned) {
+      columnDefinition += " UNSIGNED";
     }
+    if (columnConfig.nullable) {
+      columnDefinition += " NULL";
+    } else {
+      columnDefinition += " NOT NULL";
+    }
+    if (columnConfig.autoIncrement) {
+      columnDefinition += " AUTO_INCREMENT";
+    }
+    if (columnConfig.defaultValue) {
+      columnDefinition += ` DEFAULT '${columnConfig.defaultValue}'`;
+    }
+    if (columnConfig.references) {
+      columnDefinition += ` REFERENCES ${columnConfig.references.table}(${columnConfig.references.column})`;
+    }
+    if (columnConfig.cascade) {
+      columnDefinition += " ON DELETE CASCADE ON UPDATE CASCADE";
+    }
+    if (columnConfig.primary) {
+      columnDefinition += " PRIMARY KEY";
+    }
+    if (columnConfig.unique) {
+      columnDefinition += " UNIQUE";
+    }
+    if (columnConfig.autoCreate) {
+      columnDefinition += " AUTO_CREATE";
+    }
+    if (columnConfig.autoUpdate) {
+      columnDefinition += " AUTO_UPDATE";
+    }
+    if (after) {
+      columnDefinition += ` AFTER ${after}`;
+    }
+    columnNames.push(columnDefinition);
   });
 
-  return `${columnNames.join(`\n`)}`;
+  return `ALTER TABLE ${tableName} ${columnNames.join(",\n")};`;
 };

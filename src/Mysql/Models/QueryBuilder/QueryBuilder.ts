@@ -6,7 +6,6 @@ import whereTemplate, {
   WhereTemplateType,
 } from "../../QueryTemplates/WHERE.TS";
 import { WhereOperatorType } from "../../QueryTemplates/WHERE.TS";
-import MySqlUtils from "../ModelManager/MySqlUtils";
 import { Model } from "../Model";
 import { Relation, RelationType } from "../Relations/Relation";
 import { log } from "../../../Logger";
@@ -64,14 +63,10 @@ export class QueryBuilder<T extends Model> {
     log(query, this.logs);
     try {
       const [rows] = await this.mysqlConnection.query<RowDataPacket[]>(query);
-      const model = MySqlUtils.convertSqlResultToModel(
-        rows[0],
-        this.model,
-      ) as T | null;
+      const model = rows[0] as T;
       if (!model) {
         return null;
       }
-      await this.addRelations(model, this.relations);
       return model;
     } catch (error) {
       throw new Error("Query failed " + error);
@@ -93,13 +88,9 @@ export class QueryBuilder<T extends Model> {
     log(query, this.logs);
     try {
       const [rows] = await this.mysqlConnection.query<RowDataPacket[]>(query);
-      const modelPromises = rows.map(async (row) => {
-        const model = MySqlUtils.convertSqlResultToModel(row, this.model) as T;
-        await this.addRelations(model, this.relations);
-        return model;
+      return rows.map((row) => {
+        return row as T;
       });
-
-      return Promise.all(modelPromises);
     } catch (error) {
       throw new Error("Query failed " + error);
     }
@@ -112,6 +103,10 @@ export class QueryBuilder<T extends Model> {
   public select(...columns: string[]) {
     const select = selectTemplate(this.tableName);
     this.selectQuery = select.selectColumns(...columns);
+  }
+
+  public addRelations(relations: string[]) {
+    this.relations = relations;
   }
 
   /**
@@ -541,60 +536,6 @@ export class QueryBuilder<T extends Model> {
   public offset(offset: number) {
     this.offsetQuery = this.selectTemplate.offset(offset);
     return this;
-  }
-
-  /**
-   * @description Fills the returned model with the input relations.
-   * @param relations - The relations to fill the model with.
-   * @returns The QueryBuilder instance for chaining.
-   */
-  public withRelations(...relations: string[]) {
-    this.relations = [...relations];
-    return this;
-  }
-
-  protected async addRelations(model: T, relations: string[]): Promise<void> {
-    if (relations.length === 0) {
-      return;
-    }
-
-    relations.map(async (relation) => {
-      const relationInstance = model[relation as keyof T] as Relation;
-      if (!relationInstance || !relationInstance.type) {
-        throw new Error(
-          "Model " + model.tableName + " has no relation " + relation,
-        );
-      }
-
-      const query = ModelManagerUtils.getRelationQuery(model, relationInstance);
-      switch (relationInstance.type) {
-        case RelationType.belongsTo:
-          const [rows] =
-            await this.mysqlConnection.query<RowDataPacket[]>(query);
-          const relatedModel: Model = MySqlUtils.convertSqlResultToModel(
-            rows[0],
-            this.model,
-          );
-          return Object.assign(model, relatedModel);
-
-        case RelationType.hasOne:
-        case RelationType.hasMany:
-          log(query, this.logs);
-          const [rows2] =
-            await this.mysqlConnection.query<RowDataPacket[]>(query);
-          const models: Model[] = rows2.map((row) =>
-            MySqlUtils.convertSqlResultToModel(row, this.model),
-          );
-          if (models.length === 1) {
-            return Object.assign(model, models[0]);
-          }
-
-          return Object.assign(model, models);
-
-        default:
-          throw new Error("Relation type not supported");
-      }
-    });
   }
 
   protected groupFooterQuery(): string {

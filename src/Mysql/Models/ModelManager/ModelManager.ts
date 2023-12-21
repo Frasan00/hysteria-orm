@@ -7,9 +7,8 @@ import { Pool, RowDataPacket } from "mysql2/promise";
 import selectTemplate from "../../QueryTemplates/SELECT";
 import ModelManagerQueryUtils from "./ModelManagerUtils";
 import { log, queryError } from "../../../Logger";
-import MySqlUtils from "./MySqlUtils";
 import { QueryBuilder } from "../QueryBuilder/QueryBuilder";
-import { Relation, RelationType } from "../Relations/Relation";
+import ModelManagerUtils from "./ModelManagerUtils";
 
 export class ModelManager<T extends Model> {
   protected logs: boolean;
@@ -45,22 +44,32 @@ export class ModelManager<T extends Model> {
         const [rows] = await this.mysqlConnection.query<RowDataPacket[]>(
           select.selectAll,
         );
-        return (
-          rows.map((row) =>
-            MySqlUtils.convertSqlResultToModel(row, this.model),
-          ) || []
-        );
+        return rows.map((row) => row as T) || [];
       }
 
+      const model = new this.model();
       const query = ModelManagerQueryUtils.parseSelectQueryInput(
         new this.model(),
         input,
       );
       log(query, this.logs);
       const [rows] = await this.mysqlConnection.query<RowDataPacket[]>(query);
-      return rows.map((row) =>
-        MySqlUtils.convertSqlResultToModel(row, this.model),
-      );
+      return Promise.all(rows.map(async (row) => {
+        const modelData = rows[0] as T;
+
+        // merge model data into model
+        Object.assign(model, modelData);
+
+        // relations parsing on the queried model
+        await ModelManagerUtils.parseRelationInput(
+            model,
+            input,
+            this.mysqlConnection,
+            this.logs,
+        );
+
+        return model;
+      }));
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -74,14 +83,25 @@ export class ModelManager<T extends Model> {
    * @returns Promise resolving to a single model or null if not found.
    */
   public async findOne(input: FindOneType): Promise<T | null> {
+    const model = new this.model();
     try {
-      const query = ModelManagerQueryUtils.parseSelectQueryInput(
-        new this.model(),
-        input,
-      );
+      const query = ModelManagerQueryUtils.parseSelectQueryInput(model, input);
       log(query, this.logs);
       const [rows] = await this.mysqlConnection.query<RowDataPacket[]>(query);
-      return MySqlUtils.convertSqlResultToModel(rows[0], this.model);
+      const modelData = rows[0] as T;
+
+      // merge model data into model
+      Object.assign(model, modelData);
+
+      // relations parsing on the queried model
+      await ModelManagerUtils.parseRelationInput(
+        model,
+        input,
+        this.mysqlConnection,
+        this.logs,
+      );
+
+      return model;
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -101,7 +121,7 @@ export class ModelManager<T extends Model> {
       const query = select.selectById(stringedId);
       log(query, this.logs);
       const [rows] = await this.mysqlConnection.query<RowDataPacket[]>(query);
-      return MySqlUtils.convertSqlResultToModel(rows[0], this.model);
+      return rows[0] as T;
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -138,11 +158,11 @@ export class ModelManager<T extends Model> {
       log(updateQuery, this.logs);
       const [rows] =
         await this.mysqlConnection.query<RowDataPacket[]>(updateQuery);
-      if (!model.primaryKey) {
+      if (!model.metadata.primaryKey) {
         return null;
       }
 
-      return await this.findOneById(model["primaryKey"]);
+      return await this.findOneById(model.metadata["primaryKey"]);
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -169,7 +189,7 @@ export class ModelManager<T extends Model> {
       log(deleteQuery, this.logs);
       const [rows] =
         await this.mysqlConnection.query<RowDataPacket[]>(deleteQuery);
-      return MySqlUtils.convertSqlResultToModel(rows[0], this.model);
+      return rows[0] as T;
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -184,18 +204,18 @@ export class ModelManager<T extends Model> {
    */
   public async delete(model: T): Promise<T> {
     try {
-      if (!model.primaryKey) {
+      if (!model.metadata.primaryKey) {
         throw new Error(
           "Model " +
-            model.tableName +
+            model.metadata.tableName +
             " has no primary key to be deleted from, try deleteByColumn",
         );
       }
 
       const deleteQuery = ModelManagerQueryUtils.parseDelete(
         this.tableName,
-        model.primaryKey,
-        model["primaryKey"],
+        model.metadata.primaryKey,
+        model.metadata["primaryKey"],
       );
       log(deleteQuery, this.logs);
       await this.mysqlConnection.query<RowDataPacket[]>(deleteQuery);
@@ -203,74 +223,6 @@ export class ModelManager<T extends Model> {
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
-    }
-  }
-
-  /**
-   * @description Retrieves the relation for the input model with the specified relation and adds it to the model
-   * @param model - The model to add the relation to
-   * @param relationColumn - The relation to add to the model
-   * @returns Promise resolving to the relation of the input model with the specified relation
-   */
-  public async fillRelation(model: T, relationColumn: string): Promise<T> {
-    try {
-      if (!model.primaryKey) {
-        throw new Error("Model " + model.tableName + " has no primary key");
-      }
-
-      const relation = model[relationColumn as keyof T] as Relation;
-      if (!relation || !relation.type) {
-        throw new Error(
-          "Model " + model.tableName + " has no relation " + relationColumn,
-        );
-      }
-
-      const query = ModelManagerQueryUtils.getRelationQuery(model, relation);
-      switch (relation.type) {
-        case RelationType.belongsTo:
-          const [rows] =
-            await this.mysqlConnection.query<RowDataPacket[]>(query);
-          const relatedModel: Model = MySqlUtils.convertSqlResultToModel(
-            rows[0],
-            this.model,
-          );
-
-          model = {
-            ...model,
-            [relationColumn]: relatedModel,
-          };
-          return model;
-
-        case RelationType.hasOne:
-        case RelationType.hasMany:
-          log(query, this.logs);
-          const [rows2] =
-            await this.mysqlConnection.query<RowDataPacket[]>(query);
-          const relatedModels: Model[] = rows2.map((row) =>
-            MySqlUtils.convertSqlResultToModel(row, this.model),
-          );
-          console.log("Models: " + relatedModels[0].tableName);
-
-          if (relatedModels.length === 1) {
-            model = {
-              ...model,
-              [relationColumn]: relatedModels,
-            };
-            return model;
-          }
-
-          model = {
-            ...model,
-            [relationColumn]: relatedModels,
-          };
-          return model;
-
-        default:
-          throw new Error("Relation type not supported");
-      }
-    } catch (error: any) {
-      queryError("Relation retrieve failed");
-      throw new Error(error);
     }
   }
 

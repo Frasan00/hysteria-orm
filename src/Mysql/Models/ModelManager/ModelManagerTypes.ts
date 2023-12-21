@@ -10,6 +10,7 @@ type OrderByType = {
 // model manager only makes and where, for more complex queries use query builder
 export type FindOneType = {
   select?: string[];
+  relations?: string[];
   where?: WhereType;
 };
 

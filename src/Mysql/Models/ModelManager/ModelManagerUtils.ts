@@ -7,6 +7,10 @@ import updateTemplate from "../../QueryTemplates/UPDATE";
 import deleteTemplate from "../../QueryTemplates/DELETE";
 import { Relation, RelationType } from "../Relations/Relation";
 import { BelongsTo } from "../Relations/BelongsTo";
+import joinTemplate from "../../QueryTemplates/JOIN";
+import { log, queryError } from "../../../Logger";
+import relationTemplates from "../../QueryTemplates/RELATIONS";
+import { Pool, RowDataPacket } from "mysql2/promise";
 
 class ModelManagerUtils<T extends Model> {
   public parseSelectQueryInput(
@@ -14,9 +18,9 @@ class ModelManagerUtils<T extends Model> {
     input: FindType | FindOneType,
   ): string {
     let query = "";
-    query += this.parseSelect(model.tableName, input);
-    query += this.parseWhere(model.tableName, input);
-    query += this.parseQueryFooter(model.tableName, input);
+    query += this.parseSelect(model.metadata.tableName, input);
+    query += this.parseWhere(model.metadata.tableName, input);
+    query += this.parseQueryFooter(model.metadata.tableName, input);
 
     return query;
   }
@@ -83,13 +87,13 @@ class ModelManagerUtils<T extends Model> {
   public parseInsert(model: T): string {
     const keys = Object.keys(model);
     const values = Object.values(model);
-    const insert = insertTemplate(model.tableName);
+    const insert = insertTemplate(model.metadata.tableName);
 
     return insert.insert(keys, values);
   }
 
   public parseUpdate(model: T): string {
-    const update = updateTemplate(model.tableName);
+    const update = updateTemplate(model.metadata.tableName);
     const keys = Object.keys(model);
     const values = Object.values(model);
     return update.update(keys, values);
@@ -113,92 +117,95 @@ class ModelManagerUtils<T extends Model> {
     );
   }
 
-  // Returns the string representation of the query to retrieve the relation of the model with the specified relation
-  public getRelationQuery(model: T, relation: Relation): string {
-    if (!model.primaryKey) {
-      throw new Error("Model " + model.tableName + " has no primary key");
-    }
-
-    const relatedTableName = relation.relatedModel;
-    const primaryKeyName = model.primaryKey as keyof T;
-    const select = selectTemplate(relatedTableName);
-    const where = whereTemplate(relatedTableName);
-
-    let query = "";
-    switch (relation.type) {
-      case RelationType.belongsTo:
-        const belongsTo = relation as BelongsTo;
-        query =
-          select.selectAll +
-          where.where(
-            belongsTo.foreignKey,
-            model[primaryKeyName] as string,
-            "=",
-          );
-        break;
-
-      case RelationType.hasOne:
-      case RelationType.hasMany:
-        query =
-          select.selectAll +
-          where.where(model.primaryKey, model[primaryKeyName] as string, "=");
-        break;
-
-      default:
-        throw new Error("Relation type not supported");
-    }
-
-    return query;
-  }
-
   /*private _parseJoin(model: T, input: FindType | FindOneType): string {
-  if (!model.primaryKey) {
-    throw new Error('Model ' + model.tableName + ' has no primary key');
-  }
-
-  if(!input.relations){
-    return "";
-  }
-
-  const relations = this.extractRelationsFromModel(model, input);
-
-  if (relations.length === 0) {
-    return "";
-  }
-
-  let query = "";
-  const join = joinTemplate(model.tableName, model.primaryKey);
-  relations.forEach((relation) => {
-    if (relation instanceof BelongsTo) {
-      return (query += join.belongsToJoin(relation));
-    }
-
-    if (relation instanceof HasOne) {
-      return (query += join.hasOneJoin(relation));
-    }
-
-    if (relation instanceof HasMany) {
-      return (query += join.hasManyJoin(relation));
-    }
-  });
-
-  return query;
-}*/
-  /*private _extractRelationsFromModel(model: T, input: FindType | FindOneType): Relation[] {
     if (!input.relations) {
-      return [];
+      return "";
     }
 
-    // Checks all properties of the model for Relations given in the input
-    return Object.entries(model)
-      .filter(
-        ([key, value]) =>
-          Object.prototype.hasOwnProperty.call(model, key) &&
-          value instanceof Relation &&
-          input.relations?.includes(key),
-      )
-      .map(([key, _value]) => model[key as keyof T] as Relation);
+    const relations: string[] = input.relations.map((relationField) => {
+      const relation: Relation = this.getRelationFromModel(
+        model,
+        relationField,
+      );
+      const join = joinTemplate(model.metadata.tableName, relation.relatedModel);
+      switch (relation.type) {
+        case RelationType.belongsTo:
+          const belongsTo = relation as BelongsTo;
+          return join.belongsTo(belongsTo.foreignKey);
+
+        case RelationType.hasOne:
+          return join.hasOne();
+        case RelationType.hasMany:
+          return join.hasMany(model.metadata.primaryKey as string);
+
+        default:
+          throw new Error("Relation type not supported");
+      }
+    });
+
+    return relations.join("\n");
   }*/
+
+  private getRelationFromModel(model: T, relationField: string): Relation {
+    const relation = model[relationField as keyof T] as Relation;
+    if (!relation) {
+      throw new Error(
+        "Relation " + relationField + " not found in model " + model.metadata.tableName,
+      );
+    }
+
+    return relation;
+  }
+
+  // Parses and fills input relations directly into the model
+  public async parseRelationInput(
+    model: T,
+    input: FindOneType,
+    mysqlConnection: Pool,
+    logs: boolean,
+  ): Promise<void> {
+    if (!input.relations) {
+      return;
+    }
+
+    if (!model.metadata.primaryKey) {
+      throw new Error("Model does not have a primary key");
+    }
+
+    try {
+      const relationPromises = input.relations.map(
+        async (inputRelation: string) => {
+          const relation = this.getRelationFromModel(model, inputRelation);
+          const relationQuery = relationTemplates(model, relation);
+          console.log(relationQuery)
+
+          const [relatedModels] =
+            await mysqlConnection.query<RowDataPacket[]>(relationQuery);
+          if (relatedModels.length === 0) {
+            Object.assign(model, { [inputRelation as keyof T]: null });
+            log(relationQuery, logs);
+            return;
+          }
+
+          if (relatedModels.length === 1) {
+            Object.assign(model, {
+              [inputRelation as keyof T]: relatedModels[0],
+            });
+            log(relationQuery, logs);
+            return;
+          }
+
+          Object.assign(model, { [inputRelation as keyof T]: relatedModels });
+          log(relationQuery, logs);
+        },
+      );
+
+      await Promise.all(relationPromises);
+    } catch (error) {
+      queryError(error);
+      throw new Error("Failed to parse relations " + error);
+    }
+  }
 }
 
 export default new ModelManagerUtils();
