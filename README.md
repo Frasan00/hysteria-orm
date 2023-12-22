@@ -167,4 +167,52 @@ const users: User[] = await queryBuilder
     .many();
 ```
 
-- Migrations TO DO
+
+# Under Development
+- *Migrations* (advised raw queries since alter table is still under development and may not work as expected)
+
+#### You can use hysteria create:migration {migrationName} to create a migration file
+
+- Create a migration
+
+```typescript
+import {Migration} from "hysteria-orm";
+
+export default class extends Migration {
+    public up(): void {
+        this.useTable("User", "create")
+
+        this.table.column().bigInt("id").primary().autoIncrement().commit();
+        this.table.column().string("name").notNullable().commit();
+    }
+
+    public down(): void {
+        this.useTable("User", "drop")
+        this.table.drop();
+    }
+}
+```
+
+- Raw Migration
+
+```typescript
+import {MysqlDatasource} from "hysteria-orm";
+
+export default class extends Migration {
+    public up(): void {
+        this.useRawQuery('YOUR RAW QUERY HERE');
+    }
+
+    public down(): void {
+        this.useRawQuery('YOUR RAW QUERY HERE');
+    }
+}
+```
+
+- Run migrations
+
+```typescript
+await datasource.connect();
+const migrationController = await datasource.getMigrationController(true); // logs (optional) - default: false
+await migrationController.run();
+```

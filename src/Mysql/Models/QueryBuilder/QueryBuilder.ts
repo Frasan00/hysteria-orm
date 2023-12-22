@@ -53,7 +53,7 @@ export class QueryBuilder<T extends Model> {
    * @description Executes the query and retrieves the first result.
    * @returns A Promise resolving to the first result or null.
    */
-  public async first(): Promise<T | null> {
+  public async one(): Promise<T | null> {
     let query = this.selectQuery;
     if (this.whereQuery) {
       query += this.whereQuery;
