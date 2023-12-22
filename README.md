@@ -6,13 +6,12 @@
 
 ## Software Requirements
 
-- Node.js installed
-- Typescript
-- MySQL database
+- Node.js
+- Compatible Database (Mysql)
 
 ## Configuration Requirements
 
-- *IMPORTANT* must set "useDefineForClassFields": true, in tsconfig.json in order to work!
+- *IMPORTANT* must set "useDefineForClassFields": true, in tsconfig.json in order for the ORM to work!
 
 ### Code Examples
 
@@ -28,7 +27,7 @@ const mysqlConfig = {
     username: MYSQL_USERNAME,
     password: MYSQL_PASSWORD,
     database: MYSQL_DATABASE,
-    logs: true, // query-logs, optional - default: false
+    logs: true, // query-logs (optional) - default: false
 }
 
 const datasource = new MysqlDatasource(mysqlConfig)
@@ -45,13 +44,11 @@ export class User extends Model {
     public email!: string;
     
     constructor() {
-        super();
         /*
         * Table name and primary key are not required.
-        * If you don't set them, the ORM will use the class name for the table name.
+        * If you don't set the table name, the ORM will use the class name for the table name.
         */
-        this.tableName = "User";
-        this.primaryKey = "id";
+        super('User', 'id');
     }
 }
 ```
@@ -66,12 +63,10 @@ export class User extends Model {
     public id!: number;
     public name!: string;
     public email!: string;
-    public profile: HasOne = new HasOne("Profile");
+    public profile: HasOne | Profile = new HasOne("Profile");
 
     constructor() {
-        super();
-        this.tableName = "User";
-        this.primaryKey = "id";
+        super('User', 'id');
     }
 }
 ```
@@ -124,6 +119,7 @@ const users: User[] = await userManager.find();
 
 // Get with optional parameters
 const filteredUsers: User[] = await userManager.find({
+    relations: ["profile"],
     where: {
         name: "John Doe"
     },
@@ -146,22 +142,8 @@ const otherUser: User | null = await userManager.findOne({
 });
 ```
 
-- Fill relationships
-
-```typescript
-import {MysqlDatasource} from "hysteria-orm";
-import {mysqlConfig} from "path/to/mysqlConfig";
-import { User } from "./models/User";
-
-const datasource = new MysqlDatasource(mysqlConfig)
-const userManager = datasource.getModelManager(User);
-
-const user: User | null = await userManager.findOneById(1);
-// Adds and returns the given model with the given relationship filled
-const userWithFilledRelation = await userManager.fillRelation(user, "profile");
-```
-
 - Query Builder
+- It's used to create more complex queries that are not supported by the standard methods
 
 ```typescript
 import {MysqlDatasource} from "hysteria-orm";

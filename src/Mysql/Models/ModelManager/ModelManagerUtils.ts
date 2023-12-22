@@ -150,7 +150,10 @@ class ModelManagerUtils<T extends Model> {
     const relation = model[relationField as keyof T] as Relation;
     if (!relation) {
       throw new Error(
-        "Relation " + relationField + " not found in model " + model.metadata.tableName,
+        "Relation " +
+          relationField +
+          " not found in model " +
+          model.metadata.tableName,
       );
     }
 
@@ -177,7 +180,7 @@ class ModelManagerUtils<T extends Model> {
         async (inputRelation: string) => {
           const relation = this.getRelationFromModel(model, inputRelation);
           const relationQuery = relationTemplates(model, relation);
-          console.log(relationQuery)
+          console.log(relationQuery);
 
           const [relatedModels] =
             await mysqlConnection.query<RowDataPacket[]>(relationQuery);
@@ -199,6 +202,54 @@ class ModelManagerUtils<T extends Model> {
           log(relationQuery, logs);
         },
       );
+
+      await Promise.all(relationPromises);
+    } catch (error) {
+      queryError(error);
+      throw new Error("Failed to parse relations " + error);
+    }
+  }
+
+  // Parses and fills input relations directly into the model
+  public async parseQueryBuilderRelations(
+    model: T,
+    input: string[],
+    mysqlConnection: Pool,
+    logs: boolean,
+  ): Promise<void> {
+    if (input.length === 0) {
+      return;
+    }
+
+    if (!model.metadata.primaryKey) {
+      throw new Error("Model does not have a primary key");
+    }
+
+    try {
+      const relationPromises = input.map(async (inputRelation: string) => {
+        const relation = this.getRelationFromModel(model, inputRelation);
+        const relationQuery = relationTemplates(model, relation);
+        console.log(relationQuery);
+
+        const [relatedModels] =
+          await mysqlConnection.query<RowDataPacket[]>(relationQuery);
+        if (relatedModels.length === 0) {
+          Object.assign(model, { [inputRelation as keyof T]: null });
+          log(relationQuery, logs);
+          return;
+        }
+
+        if (relatedModels.length === 1) {
+          Object.assign(model, {
+            [inputRelation as keyof T]: relatedModels[0],
+          });
+          log(relationQuery, logs);
+          return;
+        }
+
+        Object.assign(model, { [inputRelation as keyof T]: relatedModels });
+        log(relationQuery, logs);
+      });
 
       await Promise.all(relationPromises);
     } catch (error) {

@@ -4,11 +4,8 @@
 import { Relation, RelationType } from "../Models/Relations/Relation";
 import { Model } from "../Models/Model";
 
-function relationTemplates<T extends Model>(
-  model: T,
-  relation: Relation,
-) {
-    const primaryKey = model.metadata.primaryKey as keyof T;
+function relationTemplates<T extends Model>(model: T, relation: Relation) {
+  const primaryKey = model.metadata.primaryKey as keyof T;
   switch (relation.type) {
     case RelationType.hasOne:
       return `SELECT * FROM ${relation.relatedModel} WHERE ${relation.relatedModel}.${relation.foreignKey} = ${model[primaryKey]} LIMIT 1;`;

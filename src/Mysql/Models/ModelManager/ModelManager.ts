@@ -54,22 +54,24 @@ export class ModelManager<T extends Model> {
       );
       log(query, this.logs);
       const [rows] = await this.mysqlConnection.query<RowDataPacket[]>(query);
-      return Promise.all(rows.map(async (row) => {
-        const modelData = rows[0] as T;
+      return Promise.all(
+        rows.map(async (row) => {
+          const modelData = rows[0] as T;
 
-        // merge model data into model
-        Object.assign(model, modelData);
+          // merge model data into model
+          Object.assign(model, modelData);
 
-        // relations parsing on the queried model
-        await ModelManagerUtils.parseRelationInput(
+          // relations parsing on the queried model
+          await ModelManagerUtils.parseRelationInput(
             model,
             input,
             this.mysqlConnection,
             this.logs,
-        );
+          );
 
-        return model;
-      }));
+          return model;
+        }),
+      );
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -244,20 +246,20 @@ export class ModelManager<T extends Model> {
    * @description Starts a transaction
    */
   public async startTransaction(): Promise<void> {
-    await this.mysqlConnection.beginTransaction();
+    return await this.mysqlConnection.beginTransaction();
   }
 
   /**
    * @description Commits a transaction
    */
   public async commitTransaction(): Promise<void> {
-    await this.mysqlConnection.commit();
+    return await this.mysqlConnection.commit();
   }
 
   /**
    * @description Rollbacks a transaction
    */
   public async rollbackTransaction(): Promise<void> {
-    await this.mysqlConnection.rollback();
+    return await this.mysqlConnection.rollback();
   }
 }

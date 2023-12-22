@@ -7,7 +7,6 @@ import whereTemplate, {
 } from "../../QueryTemplates/WHERE.TS";
 import { WhereOperatorType } from "../../QueryTemplates/WHERE.TS";
 import { Model } from "../Model";
-import { Relation, RelationType } from "../Relations/Relation";
 import { log } from "../../../Logger";
 import ModelManagerUtils from "../ModelManager/ModelManagerUtils";
 
@@ -61,13 +60,23 @@ export class QueryBuilder<T extends Model> {
     }
 
     log(query, this.logs);
+    const model = new this.model();
     try {
       const [rows] = await this.mysqlConnection.query<RowDataPacket[]>(query);
-      const model = rows[0] as T;
-      if (!model) {
-        return null;
-      }
-      return model;
+      const modelData = rows[0] as T;
+
+      // merge model data into model
+      Object.assign(model, modelData);
+
+      // relations parsing on the queried model
+      await ModelManagerUtils.parseQueryBuilderRelations(
+        model,
+        this.relations,
+        this.mysqlConnection,
+        this.logs,
+      );
+
+      return model as T;
     } catch (error) {
       throw new Error("Query failed " + error);
     }
@@ -86,11 +95,27 @@ export class QueryBuilder<T extends Model> {
     query += this.groupFooterQuery();
 
     log(query, this.logs);
+    const model = new this.model();
     try {
       const [rows] = await this.mysqlConnection.query<RowDataPacket[]>(query);
-      return rows.map((row) => {
-        return row as T;
-      });
+      return Promise.all(
+        rows.map(async (row) => {
+          const modelData = rows[0] as T;
+
+          // merge model data into model
+          Object.assign(model, modelData);
+
+          // relations parsing on the queried model
+          await ModelManagerUtils.parseQueryBuilderRelations(
+            model,
+            this.relations,
+            this.mysqlConnection,
+            this.logs,
+          );
+
+          return model as T;
+        }),
+      );
     } catch (error) {
       throw new Error("Query failed " + error);
     }
