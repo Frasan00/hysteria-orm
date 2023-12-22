@@ -1,14 +1,14 @@
 import { Pool, RowDataPacket } from "mysql2/promise";
 import selectTemplate, {
   SelectTemplateType,
-} from "../../QueryTemplates/SELECT";
-import whereTemplate, {
-  WhereTemplateType,
-} from "../../QueryTemplates/WHERE.TS";
-import { WhereOperatorType } from "../../QueryTemplates/WHERE.TS";
+} from "../../Templates/Query/SELECT";
 import { Model } from "../Model";
 import { log } from "../../../Logger";
 import ModelManagerUtils from "../ModelManager/ModelManagerUtils";
+import whereTemplate, {
+  WhereOperatorType,
+  WhereTemplateType,
+} from "../../Templates/Query/WHERE.TS";
 
 export class QueryBuilder<T extends Model> {
   protected selectQuery: string = "";
@@ -132,6 +132,7 @@ export class QueryBuilder<T extends Model> {
 
   public addRelations(relations: string[]) {
     this.relations = relations;
+    return this;
   }
 
   /**

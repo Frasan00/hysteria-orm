@@ -63,7 +63,7 @@ export class User extends Model {
     public id!: number;
     public name!: string;
     public email!: string;
-    public profile: HasOne | Profile = new HasOne("Profile");
+    public profile: Profile | HasOne = new HasOne("Profile");
 
     constructor() {
         super('User', 'id');

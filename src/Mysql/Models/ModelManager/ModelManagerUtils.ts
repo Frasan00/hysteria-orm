@@ -1,16 +1,14 @@
 import { FindType, FindOneType } from "./ModelManagerTypes";
-import selectTemplate from "../../QueryTemplates/SELECT";
-import whereTemplate from "../../QueryTemplates/WHERE.TS";
+import selectTemplate from "../../Templates/Query/SELECT";
 import { Model } from "../Model";
-import insertTemplate from "../../QueryTemplates/INSERT";
-import updateTemplate from "../../QueryTemplates/UPDATE";
-import deleteTemplate from "../../QueryTemplates/DELETE";
-import { Relation, RelationType } from "../Relations/Relation";
-import { BelongsTo } from "../Relations/BelongsTo";
-import joinTemplate from "../../QueryTemplates/JOIN";
+import insertTemplate from "../../Templates/Query/INSERT";
+import updateTemplate from "../../Templates/Query/UPDATE";
+import deleteTemplate from "../../Templates/Query/DELETE";
+import { Relation } from "../Relations/Relation";
 import { log, queryError } from "../../../Logger";
-import relationTemplates from "../../QueryTemplates/RELATIONS";
+import relationTemplates from "../../Templates/Query/RELATIONS";
 import { Pool, RowDataPacket } from "mysql2/promise";
+import whereTemplate from "../../Templates/Query/WHERE.TS";
 
 class ModelManagerUtils<T extends Model> {
   public parseSelectQueryInput(
@@ -225,11 +223,11 @@ class ModelManagerUtils<T extends Model> {
       throw new Error("Model does not have a primary key");
     }
 
+    let relationQuery: string = "";
     try {
       const relationPromises = input.map(async (inputRelation: string) => {
         const relation = this.getRelationFromModel(model, inputRelation);
-        const relationQuery = relationTemplates(model, relation);
-        console.log(relationQuery);
+        relationQuery = relationTemplates(model, relation);
 
         const [relatedModels] =
           await mysqlConnection.query<RowDataPacket[]>(relationQuery);
@@ -253,7 +251,7 @@ class ModelManagerUtils<T extends Model> {
 
       await Promise.all(relationPromises);
     } catch (error) {
-      queryError(error);
+      queryError("Query Error: " + relationQuery + error);
       throw new Error("Failed to parse relations " + error);
     }
   }

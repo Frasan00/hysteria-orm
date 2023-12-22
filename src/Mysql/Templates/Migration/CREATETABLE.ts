@@ -1,4 +1,4 @@
-import { Column } from "../Migrations/Columns/Column";
+import { Column } from "../../Migrations/Columns/Column";
 
 export const createTable = (tableName: string, columns: Column[]): string => {
   const columnNames: string[] = [];

@@ -1,4 +1,4 @@
-import { Table } from "../Migrations/Table";
+import { Table } from "../../Migrations/Table";
 
 export const dropTruncateTable = (table: Table) => {
   if (table.dropTable) {

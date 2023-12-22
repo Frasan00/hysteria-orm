@@ -1,5 +1,5 @@
-import { Column } from "../Migrations/Columns/Column";
-import { DropColumn } from "../Migrations/Columns/DropColumn";
+import { Column } from "../../Migrations/Columns/Column";
+import { DropColumn } from "../../Migrations/Columns/DropColumn";
 
 export const dropColumn = (tableName: string, dropColumn: DropColumn[]) => {
   const columnString = dropColumn.map((dropColumn: DropColumn) => {

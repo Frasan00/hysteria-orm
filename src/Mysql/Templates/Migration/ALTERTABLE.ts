@@ -1,4 +1,4 @@
-import { Column } from "../Migrations/Columns/Column";
+import { Column } from "../../Migrations/Columns/Column";
 
 export const alterTable = (
   tableName: string,

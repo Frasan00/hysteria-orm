@@ -1,8 +1,8 @@
 /**
  * @description Queries to retrieve model's relations from the related relation type
  */
-import { Relation, RelationType } from "../Models/Relations/Relation";
-import { Model } from "../Models/Model";
+import { Relation, RelationType } from "../../Models/Relations/Relation";
+import { Model } from "../../Models/Model";
 
 function relationTemplates<T extends Model>(model: T, relation: Relation) {
   const primaryKey = model.metadata.primaryKey as keyof T;
@@ -11,7 +11,9 @@ function relationTemplates<T extends Model>(model: T, relation: Relation) {
       return `SELECT * FROM ${relation.relatedModel} WHERE ${relation.relatedModel}.${relation.foreignKey} = ${model[primaryKey]} LIMIT 1;`;
 
     case RelationType.belongsTo:
-      return `SELECT * FROM ${relation.relatedModel} WHERE ${model.metadata.tableName}.${relation.foreignKey} = ${model[primaryKey]} LIMIT 1;`;
+      return `SELECT * FROM ${relation.relatedModel} WHERE ${
+        relation.relatedModel
+      }.id = ${model[relation.foreignKey as keyof T]};`;
 
     case RelationType.hasMany:
       return `SELECT * FROM ${relation.relatedModel} WHERE ${relation.relatedModel}.${relation.foreignKey} = ${model[primaryKey]};`;

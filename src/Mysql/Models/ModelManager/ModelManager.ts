@@ -4,7 +4,7 @@
 import { Model } from "../Model";
 import { FindOneType, FindType } from "./ModelManagerTypes";
 import { Pool, RowDataPacket } from "mysql2/promise";
-import selectTemplate from "../../QueryTemplates/SELECT";
+import selectTemplate from "../../Templates/Query/SELECT";
 import ModelManagerQueryUtils from "./ModelManagerUtils";
 import { log, queryError } from "../../../Logger";
 import { QueryBuilder } from "../QueryBuilder/QueryBuilder";

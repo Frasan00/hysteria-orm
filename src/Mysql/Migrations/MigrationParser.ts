@@ -2,10 +2,10 @@
  * MigrationParser converts a migration class into sql statements to run on the database
  */
 import { Migration } from "./Migration";
-import { createTable } from "../QueryTemplates/CREATETABLE";
-import { alterTable } from "../QueryTemplates/ALTERTABLE";
-import { dropColumn } from "../QueryTemplates/DROPCOLUMN";
-import { dropTruncateTable } from "../QueryTemplates/DROPTRUNCATETABLE";
+import { createTable } from "../Templates/Migration/CREATETABLE";
+import { alterTable } from "../Templates/Migration/ALTERTABLE";
+import { dropColumn } from "../Templates/Migration/DROPCOLUMN";
+import { dropTruncateTable } from "../Templates/Migration/DROPTRUNCATETABLE";
 
 class MigrationParser {
   public parseCreateTableMigration<T extends Migration>(migration: T): string {
