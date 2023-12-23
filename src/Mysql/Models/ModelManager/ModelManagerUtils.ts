@@ -7,7 +7,7 @@ import deleteTemplate from "../../Templates/Query/DELETE";
 import { Relation } from "../Relations/Relation";
 import { log, queryError } from "../../../Logger";
 import relationTemplates from "../../Templates/Query/RELATIONS";
-import { Pool, RowDataPacket } from "mysql2/promise";
+import { Pool, PoolConnection, RowDataPacket } from "mysql2/promise";
 import whereTemplate from "../../Templates/Query/WHERE.TS";
 
 class ModelManagerUtils<T extends Model> {
@@ -83,8 +83,9 @@ class ModelManagerUtils<T extends Model> {
   }
 
   public parseInsert(model: T): string {
-    const keys = Object.keys(model);
-    const values = Object.values(model);
+    const filteredModel = this.filterRelationsAndMetadata(model);
+    const keys = Object.keys(filteredModel);
+    const values = Object.values(filteredModel);
     const insert = insertTemplate(model.metadata.tableName);
 
     return insert.insert(keys, values);
@@ -92,9 +93,37 @@ class ModelManagerUtils<T extends Model> {
 
   public parseUpdate(model: T): string {
     const update = updateTemplate(model.metadata.tableName);
+    const filteredModel = this.filterRelationsAndMetadata(model);
+    const keys = Object.keys(filteredModel);
+    const values = Object.values(filteredModel);
+
+    const primaryKey = model.metadata.primaryKey as string;
+    const primaryKeyValue = model[primaryKey as keyof T];
+
+    return update.update(keys, values, primaryKey, primaryKeyValue as string);
+  }
+
+  private filterRelationsAndMetadata(model: T): T {
+    const filteredModel = {};
+
     const keys = Object.keys(model);
-    const values = Object.values(model);
-    return update.update(keys, values);
+    for (const key of keys) {
+      if (key === "metadata") {
+        continue;
+      }
+
+      if (
+        typeof model[key as keyof T] === "object" &&
+        (model[key as keyof T] !== null ||
+          !Array.isArray(model[key as keyof T]))
+      ) {
+        continue;
+      }
+
+      Object.assign(filteredModel, { [key]: model[key as keyof T] });
+    }
+
+    return filteredModel as T;
   }
 
   public parseDelete(

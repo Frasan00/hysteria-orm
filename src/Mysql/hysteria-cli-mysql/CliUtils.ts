@@ -1,5 +1,5 @@
 import { DatasourceInput } from "../../Datasource";
-import { Pool } from "mysql2/promise";
+import { Pool, PoolConnection } from "mysql2/promise";
 import { MigrationTableType } from "./Templates/MigrationTableType";
 import { createMigrationTableTemplate } from "./Templates/CreateMigrationTable";
 import { Migration } from "../Migrations/Migration";
@@ -19,7 +19,9 @@ class CliUtils {
     };
   }
 
-  public async getMigrationTable(mysql: Pool): Promise<MigrationTableType[]> {
+  public async getMigrationTable(
+    mysql: PoolConnection,
+  ): Promise<MigrationTableType[]> {
     // Create the migrations table if it doesn't exist
     await mysql.query(createMigrationTableTemplate);
     // Get the list of migrations from the table in the database
@@ -27,49 +29,55 @@ class CliUtils {
     return migrations as MigrationTableType[];
   }
 
-    public async getMigrations(): Promise<Migration[]> {
-        const migrationPath = this.findMigrationPath();
+  public async getMigrations(): Promise<Migration[]> {
+    const migrationPath = this.findMigrationPath() || "";
+    console.log("migrationPath", migrationPath);
 
-        if (!migrationPath) {
-            return [];
-        }
-
-        const migrationFiles = fs.readdirSync(migrationPath);
-
-        const migrations: Migration[] = [];
-
-        for (const file of migrationFiles) {
-            const migrationName = path.parse(file).name;
-            const migrationModulePath = path.join(migrationPath, file);
-
-            // Use require for dynamic loading of TypeScript files
-            const MigrationModule = require(migrationModulePath);
-
-            // Instantiate the migration class
-            const migration = new MigrationModule.default();
-            migration.migrationName = migrationName;
-
-            migrations.push(migration);
-        }
-
-        return migrations;
+    if (!migrationPath) {
+      return [];
     }
 
-    private findMigrationPath(): string | null {
-        const possiblePaths = [
-            path.join(process.cwd(), "/database/migrations"),
-            path.join(process.cwd(), "/src/database/migrations"),
-        ];
+    const migrationFiles: string[] = fs
+      .readdirSync("../../test/database/migrations/first-migration")
+      .filter((file) => {
+        return file.indexOf(".js") !== -1;
+      });
 
-        for (const pathToCheck of possiblePaths) {
-            if (fs.existsSync(pathToCheck)) {
-                return pathToCheck;
-            }
-        }
+    const migrations: Migration[] = [];
 
-        return null;
+    for (const file of migrationFiles) {
+      const migrationName = path.parse(file).name;
+      const migrationModulePath = path
+        .join(migrationPath, file)
+        .replace(/\\/g, "/")
+        .replace(".ts", "");
+
+      try {
+        const migrationModule = (await import(migrationModulePath)).default;
+        const migration = new migrationModule();
+        migration.migrationName = migrationName;
+        migrations.push(migration);
+      } catch (error) {
+        console.error(`Error importing migration ${file}:`, error);
+      }
     }
 
+    return migrations;
+  }
+
+  private findMigrationPath(): string | null {
+    const currDir = __dirname.split("/");
+
+    while (currDir.length > 0) {
+      const migrationPath = currDir.join("/") + "/database/migrations";
+      if (fs.existsSync(migrationPath)) {
+        return migrationPath;
+      }
+      currDir.pop();
+    }
+
+    return null;
+  }
 
   public getPendingMigrations(
     migrations: Migration[],

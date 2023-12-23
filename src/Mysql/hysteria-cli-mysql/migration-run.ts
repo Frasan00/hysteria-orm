@@ -14,7 +14,7 @@ export async function runMigrations(): Promise<void> {
   const migrationFolderPath =
     process.env.MIGRATION_PATH || "database/migrations";
   const config = CliUtils.getMysqlConfig();
-  const mysql = createPool({
+  const mysqlPool = createPool({
     host: config.host,
     port: config.port,
     user: config.username,
@@ -23,16 +23,21 @@ export async function runMigrations(): Promise<void> {
     waitForConnections: true,
   });
 
+  const mysql = await mysqlPool.getConnection();
+
   const migrationTable: MigrationTableType[] =
     await CliUtils.getMigrationTable(mysql);
   const migrations: Migration[] = await CliUtils.getMigrations();
+  return; // temp
   const pendingMigrations = CliUtils.getPendingMigrations(
     migrations,
     migrationTable,
   );
 
   // Parses and runs the migrations
-  const migrationManager: MigrationController = new MigrationController(mysql);
+  const migrationManager: MigrationController = new MigrationController(
+    mysqlPool,
+  );
 
   // If there are no pending migrations, print a message and exit
   if (pendingMigrations.length === 0) {
@@ -50,10 +55,9 @@ export async function runMigrations(): Promise<void> {
       await migrationManager.runMigration(migration);
 
       // Update the migrations table in the database
-      await mysql.query(
-        `INSERT INTO migrations (name, timestamp) VALUES (?, ?)`,
-        [migrationName, new Date().getTime()],
-      );
+      await mysql.query(`INSERT INTO migrations (name) VALUES (?)`, [
+        migrationName,
+      ]);
       console.log(`Migration completed: ${migrationName}`);
     } catch (error: any) {
       await mysql.rollback();
@@ -61,7 +65,7 @@ export async function runMigrations(): Promise<void> {
     }
   }
   await mysql.commit();
-  await mysql.end();
+  mysql.release();
   console.log("Migrations completed successfully.");
 }
 

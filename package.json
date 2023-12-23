@@ -1,7 +1,7 @@
 {
   "name": "hysteria-orm",
   "version": "1.0.0",
-    "description": "A simple ORM for Node.js",
+  "description": "A simple ORM for Node.js",
   "main": "index.js",
   "repository": "https://github.com/Frasan00/hysteria-orm.git",
   "author": "Frasan00 <francesco.sangiovanni.7@gmail.com>",
@@ -34,6 +34,7 @@
     "typescript": "^5.3.2"
   },
   "dependencies": {
+    "glob": "^10.3.10",
     "mysql2": "^3.6.5",
     "rollup": "^4.9.1",
     "webpack": "^5.89.0",

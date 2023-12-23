@@ -1,4 +1,4 @@
-import { Pool, RowDataPacket } from "mysql2/promise";
+import { Pool, PoolConnection, RowDataPacket } from "mysql2/promise";
 import selectTemplate, {
   SelectTemplateType,
 } from "../../Templates/Query/SELECT";

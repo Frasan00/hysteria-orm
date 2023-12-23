@@ -56,14 +56,17 @@ export class User extends Model {
 - Create a model with relationships
 
 ```typescript
-import { Model, HasOne } from "hysteria-orm";
-import { Profile } from "./Profile";
+import {Model, HasOne, HasMany} from "hysteria-orm";
+import {Profile} from "./Profile";
+import {Post} from "./Post";
 
 export class User extends Model {
     public id!: number;
     public name!: string;
     public email!: string;
-    public profile: Profile | HasOne = new HasOne("Profile");
+    // Relations take as params (TableName, foreignKey)
+    public profile: Profile | HasOne = new HasOne("Profile", "userId");
+    public posts: Post[] | HasMany = new HasMany("Post", "userId");
 
     constructor() {
         super('User', 'id');
@@ -91,7 +94,7 @@ try{
 
 // Update
     newUser.name = "John Doe Updated";
-    const updatedUser = await userManager.save(newUser);
+    const updatedUser = await userManager.update(newUser);
 
 // Delete
     await userManager.delete(updatedUser);
@@ -180,6 +183,7 @@ import {Migration} from "hysteria-orm";
 
 export default class extends Migration {
     public up(): void {
+        // useTable allows you to target a specific Table in your database in order to create, alter or drop
         this.useTable("User", "create")
 
         this.table.column().bigInt("id").primary().autoIncrement().commit();
@@ -196,7 +200,7 @@ export default class extends Migration {
 - Raw Migration
 
 ```typescript
-import {MysqlDatasource} from "hysteria-orm";
+import {Migration} from "hysteria-orm";
 
 export default class extends Migration {
     public up(): void {

@@ -3,7 +3,7 @@
  */
 import { Model } from "../Model";
 import { FindOneType, FindType } from "./ModelManagerTypes";
-import { Pool, RowDataPacket } from "mysql2/promise";
+import { Pool, PoolConnection, RowDataPacket } from "mysql2/promise";
 import selectTemplate from "../../Templates/Query/SELECT";
 import ModelManagerQueryUtils from "./ModelManagerUtils";
 import { log, queryError } from "../../../Logger";
@@ -12,7 +12,8 @@ import ModelManagerUtils from "./ModelManagerUtils";
 
 export class ModelManager<T extends Model> {
   protected logs: boolean;
-  protected mysqlConnection: Pool;
+  protected mysqlPool: Pool;
+  protected mysqlConnection!: PoolConnection;
   protected model: new () => T;
   public tableName: string;
 
@@ -27,7 +28,7 @@ export class ModelManager<T extends Model> {
     this.logs = logs;
     this.tableName = model.name;
     this.model = model;
-    this.mysqlConnection = mysqlConnection;
+    this.mysqlPool = mysqlConnection;
   }
 
   /**
@@ -41,7 +42,7 @@ export class ModelManager<T extends Model> {
       if (!input) {
         const select = selectTemplate(this.tableName);
         log(select.selectAll, this.logs);
-        const [rows] = await this.mysqlConnection.query<RowDataPacket[]>(
+        const [rows] = await this.mysqlPool.query<RowDataPacket[]>(
           select.selectAll,
         );
         return rows.map((row) => row as T) || [];
@@ -53,7 +54,7 @@ export class ModelManager<T extends Model> {
         input,
       );
       log(query, this.logs);
-      const [rows] = await this.mysqlConnection.query<RowDataPacket[]>(query);
+      const [rows] = await this.mysqlPool.query<RowDataPacket[]>(query);
       return Promise.all(
         rows.map(async (row) => {
           const modelData = rows[0] as T;
@@ -65,7 +66,7 @@ export class ModelManager<T extends Model> {
           await ModelManagerUtils.parseRelationInput(
             model,
             input,
-            this.mysqlConnection,
+            this.mysqlPool,
             this.logs,
           );
 
@@ -89,7 +90,7 @@ export class ModelManager<T extends Model> {
     try {
       const query = ModelManagerQueryUtils.parseSelectQueryInput(model, input);
       log(query, this.logs);
-      const [rows] = await this.mysqlConnection.query<RowDataPacket[]>(query);
+      const [rows] = await this.mysqlPool.query<RowDataPacket[]>(query);
       const modelData = rows[0] as T;
 
       // merge model data into model
@@ -99,7 +100,7 @@ export class ModelManager<T extends Model> {
       await ModelManagerUtils.parseRelationInput(
         model,
         input,
-        this.mysqlConnection,
+        this.mysqlPool,
         this.logs,
       );
 
@@ -122,7 +123,7 @@ export class ModelManager<T extends Model> {
       const stringedId = typeof id === "number" ? id.toString() : id;
       const query = select.selectById(stringedId);
       log(query, this.logs);
-      const [rows] = await this.mysqlConnection.query<RowDataPacket[]>(query);
+      const [rows] = await this.mysqlPool.query<RowDataPacket[]>(query);
       return rows[0] as T;
     } catch (error) {
       queryError(error);
@@ -140,7 +141,7 @@ export class ModelManager<T extends Model> {
     try {
       const insertQuery = ModelManagerQueryUtils.parseInsert(model);
       log(insertQuery, this.logs);
-      const [rows]: any = await this.mysqlConnection.query(insertQuery);
+      const [rows]: any = await this.mysqlPool.query(insertQuery);
 
       return (await this.findOneById(rows.insertId)) || null;
     } catch (error) {
@@ -158,8 +159,7 @@ export class ModelManager<T extends Model> {
     try {
       const updateQuery = ModelManagerQueryUtils.parseUpdate(model);
       log(updateQuery, this.logs);
-      const [rows] =
-        await this.mysqlConnection.query<RowDataPacket[]>(updateQuery);
+      const [rows] = await this.mysqlPool.query<RowDataPacket[]>(updateQuery);
       if (!model.metadata.primaryKey) {
         return null;
       }
@@ -189,8 +189,7 @@ export class ModelManager<T extends Model> {
         value,
       );
       log(deleteQuery, this.logs);
-      const [rows] =
-        await this.mysqlConnection.query<RowDataPacket[]>(deleteQuery);
+      const [rows] = await this.mysqlPool.query<RowDataPacket[]>(deleteQuery);
       return rows[0] as T;
     } catch (error) {
       queryError(error);
@@ -220,7 +219,7 @@ export class ModelManager<T extends Model> {
         model.metadata["primaryKey"],
       );
       log(deleteQuery, this.logs);
-      await this.mysqlConnection.query<RowDataPacket[]>(deleteQuery);
+      await this.mysqlPool.query<RowDataPacket[]>(deleteQuery);
       return model;
     } catch (error) {
       queryError(error);
@@ -237,7 +236,7 @@ export class ModelManager<T extends Model> {
     return new QueryBuilder<T>(
       this.model,
       this.tableName,
-      this.mysqlConnection,
+      this.mysqlPool,
       this.logs,
     );
   }
@@ -246,6 +245,7 @@ export class ModelManager<T extends Model> {
    * @description Starts a transaction
    */
   public async startTransaction(): Promise<void> {
+    this.mysqlConnection = await this.mysqlPool.getConnection();
     return await this.mysqlConnection.beginTransaction();
   }
 
@@ -253,13 +253,15 @@ export class ModelManager<T extends Model> {
    * @description Commits a transaction
    */
   public async commitTransaction(): Promise<void> {
-    return await this.mysqlConnection.commit();
+    await this.mysqlConnection.commit();
+    this.mysqlConnection.release();
   }
 
   /**
    * @description Rollbacks a transaction
    */
   public async rollbackTransaction(): Promise<void> {
-    return await this.mysqlConnection.rollback();
+    await this.mysqlConnection.rollback();
+    this.mysqlConnection.release();
   }
 }

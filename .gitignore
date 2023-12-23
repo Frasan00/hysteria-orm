@@ -141,3 +141,5 @@ stop.sh
 /src/test
 /migrations
 /database
+test-script.js
++.log
