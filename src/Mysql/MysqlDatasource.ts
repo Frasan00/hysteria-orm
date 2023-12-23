@@ -45,14 +45,4 @@ export class MysqlDatasource extends Datasource {
   public getModelManager<T extends Model>(model: new () => T): ModelManager<T> {
     return new ModelManager<T>(model, this.pool, this.logs);
   }
-
-  public async getMigrationController(
-    logs: boolean,
-  ): Promise<MigrationController> {
-    return new MigrationController({
-      mysqlConnection: this.pool,
-      migrationsPath: this.migrationsPath,
-      logs: logs,
-    });
-  }
 }

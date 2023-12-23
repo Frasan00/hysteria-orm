@@ -1,8 +1,10 @@
 import { Table } from "./Table";
+import path from "path";
 
 export type MigrationType = "create" | "alter" | "rawQuery" | "drop";
 
 export abstract class Migration {
+  public migrationName: string = path.basename(__filename);
   public tableName!: string;
   public migrationType!: MigrationType;
   public table!: Table;

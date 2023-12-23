@@ -1,6 +1,7 @@
 {
   "name": "hysteria-orm",
   "version": "1.0.0",
+    "description": "A simple ORM for Node.js",
   "main": "index.js",
   "repository": "https://github.com/Frasan00/hysteria-orm.git",
   "author": "Frasan00 <francesco.sangiovanni.7@gmail.com>",
@@ -15,7 +16,10 @@
     "start:watch": "nodemon --exec ts-node src/index.ts"
   },
   "bin": {
-    "hysteria create:migration": "./src/hysteria-cli/migration-create.js"
+    "hysteria create:migration": "./dist/Mysql/hysteria-cli-mysql/migration-create.js",
+    "hysteria run:migration": "./dist/Mysql/hysteria-cli-mysql/migration-run.js",
+    "hysteria rollback:migration": "./dist/Mysql/hysteria-cli-mysql/migration-rollback.js",
+    "hysteria fresh:migration": "./dist/Mysql/hysteria-cli-mysql/hysteria-cli-mysql/migration-fresh.js"
   },
   "license": "MIT",
   "devDependencies": {
@@ -31,6 +35,13 @@
   },
   "dependencies": {
     "mysql2": "^3.6.5",
+    "rollup": "^4.9.1",
+    "webpack": "^5.89.0",
     "winston": "^3.11.0"
-  }
+  },
+  "keywords": [
+    "orm",
+    "typescript",
+    "library"
+  ]
 }

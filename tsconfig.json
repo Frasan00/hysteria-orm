@@ -2,13 +2,15 @@
   "compilerOptions": {
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
+    "target": "es2017",
     "module": "commonjs",
     "outDir": "dist",
     "rootDir": "src",
     "skipLibCheck": true,
     "strict": true,
-    "target": "es6",
-    "useDefineForClassFields": true
+    "useDefineForClassFields": true,
+    "resolveJsonModule": true,
+    "moduleResolution": "node",
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules"]
