@@ -9,6 +9,7 @@ import ModelManagerQueryUtils from "./ModelManagerUtils";
 import { log, queryError } from "../../../Logger";
 import { QueryBuilder } from "../QueryBuilder/QueryBuilder";
 import ModelManagerUtils from "./ModelManagerUtils";
+import { Transaction } from "../../Transaction/Transaction";
 
 export class ModelManager<T extends Model> {
   protected logs: boolean;
@@ -135,9 +136,15 @@ export class ModelManager<T extends Model> {
    * Save a new model instance to the database.
    *
    * @param {Model} model - Model instance to be saved.
+   * @param {Transaction} trx - Transaction to be used on the save operation.
    * @returns Promise resolving to the saved model or null if saving fails.
    */
-  public async save(model: T): Promise<T | null> {
+  public async save(model: T, trx?: Transaction): Promise<T | null | void> {
+    if (trx) {
+      trx.addQuery(ModelManagerQueryUtils.parseInsert(model));
+      return;
+    }
+
     try {
       const insertQuery = ModelManagerQueryUtils.parseInsert(model);
       log(insertQuery, this.logs);
@@ -153,9 +160,15 @@ export class ModelManager<T extends Model> {
   /**
    * Update an existing model instance in the database.
    * @param {Model} model - Model instance to be updated.
+   * @param {Transaction} trx - Transaction to be used on the update operation.
    * @returns Promise resolving to the updated model or null if updating fails.
    */
-  public async update(model: T): Promise<T | null> {
+  public async update(model: T, trx?: Transaction): Promise<T | null | void> {
+    if (trx) {
+      trx.addQuery(ModelManagerQueryUtils.parseUpdate(model));
+      return;
+    }
+
     try {
       const updateQuery = ModelManagerQueryUtils.parseUpdate(model);
       log(updateQuery, this.logs);
@@ -176,12 +189,20 @@ export class ModelManager<T extends Model> {
    *
    * @param {string} column - Column to filter by.
    * @param {string | number | boolean} value - Value to filter by.
+   * @param {Transaction} trx - Transaction to be used on the delete operation.
    * @returns Promise resolving to the deleted model or null if deleting fails.
    */
   public async deleteByColumn(
     column: string,
     value: string | number | boolean,
-  ): Promise<T> {
+    trx?: Transaction,
+  ): Promise<T | void> {
+    if (trx) {
+      trx.addQuery(
+        ModelManagerQueryUtils.parseDelete(this.tableName, column, value),
+      );
+      return;
+    }
     try {
       const deleteQuery = ModelManagerQueryUtils.parseDelete(
         this.tableName,
@@ -201,9 +222,10 @@ export class ModelManager<T extends Model> {
    * @description Delete a record from the database from the given model.
    *
    * @param {Model} model - Model to delete.
+   * @param {Transaction} trx - Transaction to be used on the delete operation.
    * @returns Promise resolving to the deleted model or null if deleting fails.
    */
-  public async delete(model: T): Promise<T> {
+  public async delete(model: T, trx?: Transaction): Promise<T | void> {
     try {
       if (!model.metadata.primaryKey) {
         throw new Error(
@@ -212,12 +234,17 @@ export class ModelManager<T extends Model> {
             " has no primary key to be deleted from, try deleteByColumn",
         );
       }
-
       const deleteQuery = ModelManagerQueryUtils.parseDelete(
         this.tableName,
         model.metadata.primaryKey,
         model.metadata["primaryKey"],
       );
+
+      if (trx) {
+        trx.addQuery(deleteQuery);
+        return;
+      }
+
       log(deleteQuery, this.logs);
       await this.mysqlPool.query<RowDataPacket[]>(deleteQuery);
       return model;
@@ -225,6 +252,13 @@ export class ModelManager<T extends Model> {
       queryError(error);
       throw new Error("Query failed " + error);
     }
+  }
+
+  /**
+   * @description Creates a new transaction.
+   */
+  public createTransaction(): Transaction {
+    return new Transaction(this.mysqlPool, this.logs);
   }
 
   /**
@@ -239,29 +273,5 @@ export class ModelManager<T extends Model> {
       this.mysqlPool,
       this.logs,
     );
-  }
-
-  /**
-   * @description Starts a transaction
-   */
-  public async startTransaction(): Promise<void> {
-    this.mysqlConnection = await this.mysqlPool.getConnection();
-    return await this.mysqlConnection.beginTransaction();
-  }
-
-  /**
-   * @description Commits a transaction
-   */
-  public async commitTransaction(): Promise<void> {
-    await this.mysqlConnection.commit();
-    this.mysqlConnection.release();
-  }
-
-  /**
-   * @description Rollbacks a transaction
-   */
-  public async rollbackTransaction(): Promise<void> {
-    await this.mysqlConnection.rollback();
-    this.mysqlConnection.release();
   }
 }

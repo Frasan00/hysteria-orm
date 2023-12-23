@@ -84,25 +84,26 @@ import { User } from "./models/User";
 const datasource = new MysqlDatasource(mysqlConfig)
 const userManager = datasource.getModelManager(User);
 
-await userManager.startTransaction();
+const trx = userManager.createTransaction()
 // Create
 try{
+    await trx.start();
     const user = new User();
     user.name = "John Doe";
     user.email = "john@gmail.com";
-    const newUser: User = await userManager.save(user);
+    const newUser: User = await userManager.save(user, trx);
 
 // Update
     newUser.name = "John Doe Updated";
-    const updatedUser = await userManager.update(newUser);
+    const updatedUser = await userManager.update(newUser, trx);
 
 // Delete
-    await userManager.delete(updatedUser);
+    await userManager.delete(updatedUser, trx);
     await userManager.deleteByColumn("email", "john@gmail.com");
 
-    await userManager.commitTransaction();  
+    await trx.commit();
 } catch (error) {
-    await userManager.rollbackTransaction();
+    await trx.rollback();
     throw new Error(error);
 }
 ```

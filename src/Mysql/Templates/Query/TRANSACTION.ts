@@ -1,5 +1,3 @@
-export const transactionTemplate = {
-  begin: `START TRANSACTION \n`,
-  commit: `COMMIT \n`,
-  rollback: `ROLLBACK \n`,
-};
+export const BEGIN_TRANSACTION = "START TRANSACTION; \n";
+export const COMMIT_TRANSACTION = "COMMIT; \n";
+export const ROLLBACK_TRANSACTION = "ROLLBACK; \n";
