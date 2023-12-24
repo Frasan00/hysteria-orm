@@ -87,27 +87,25 @@ class CliUtils {
         if (migrationModule) {
           return migrationModule;
         }
-      } catch (_error) {
-
-      }
+      } catch (_error) {}
 
       try {
-        const testMigrationModule = await import(testMigrationModulePath.slice(0, -3));
+        const testMigrationModule = await import(
+          testMigrationModulePath.slice(0, -3)
+        );
         if (testMigrationModule) {
           return testMigrationModule;
         }
-      } catch (_error) {
-
-      }
+      } catch (_error) {}
 
       try {
-        const srcMigrationModule = await import(srcMigrationModulePath.slice(0, -3));
+        const srcMigrationModule = await import(
+          srcMigrationModulePath.slice(0, -3)
+        );
         if (srcMigrationModule) {
           return srcMigrationModule;
         }
-      } catch (_error) {
-
-      }
+      } catch (_error) {}
 
       migrationModulePath = "../" + migrationModulePath;
       testMigrationModulePath = "../" + testMigrationModulePath;

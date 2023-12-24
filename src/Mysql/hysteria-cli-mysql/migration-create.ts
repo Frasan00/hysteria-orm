@@ -3,12 +3,12 @@ import fs from "fs";
 import path from "path";
 import MigrationTemplates from "./Templates/MigrationTemplates";
 import dotenv from "dotenv";
+import commander from "commander";
 
 dotenv.config();
 
 export function createMigration(name: string): void {
-  const migrationFolderPath =
-    process.env.MIGRATION_PATH || "database/migrations";
+  const migrationFolderPath = "database/migrations";
   if (
     !fs.existsSync(migrationFolderPath) ||
     !fs.statSync(migrationFolderPath).isDirectory()
@@ -35,5 +35,13 @@ if (!process.argv[2]) {
   process.exit(1);
 }
 
-const migrationName = process.argv[2];
-createMigration(migrationName);
+commander.program.parse(process.argv);
+commander.program
+  .command("create")
+  .description(
+    "Creates a new migration file in the migrations folder (database/migrations).",
+  )
+  .action(() => {
+    const migrationName = process.argv[2];
+    createMigration(migrationName);
+  });

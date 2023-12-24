@@ -14,8 +14,8 @@ import { Transaction } from "../../Transaction/Transaction";
 export class ModelManager<T extends Model> {
   protected logs: boolean;
   protected mysqlPool: Pool;
-  protected mysqlConnection!: PoolConnection;
   protected model: new () => T;
+  protected modelInstance: T;
   public tableName: string;
 
   /**
@@ -29,6 +29,7 @@ export class ModelManager<T extends Model> {
     this.logs = logs;
     this.tableName = model.name;
     this.model = model;
+    this.modelInstance = new this.model();
     this.mysqlPool = mysqlConnection;
   }
 
@@ -139,18 +140,20 @@ export class ModelManager<T extends Model> {
    * @param {Transaction} trx - Transaction to be used on the save operation.
    * @returns Promise resolving to the saved model or null if saving fails.
    */
-  public async save(model: T, trx?: Transaction): Promise<T | null | void> {
+  public async save(model: T, trx?: Transaction): Promise<T | null> {
     if (trx) {
-      trx.addQuery(ModelManagerQueryUtils.parseInsert(model));
-      return;
+      return await trx.queryInsert<T>(
+        ModelManagerQueryUtils.parseInsert(model),
+        this.modelInstance.metadata,
+      );
     }
 
     try {
       const insertQuery = ModelManagerQueryUtils.parseInsert(model);
       log(insertQuery, this.logs);
-      const [rows]: any = await this.mysqlPool.query(insertQuery);
+      const [rows] = await this.mysqlPool.query<RowDataPacket[]>(insertQuery);
 
-      return (await this.findOneById(rows.insertId)) || null;
+      return (await this.findOneById(rows[0].insertId)) || null;
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -163,21 +166,21 @@ export class ModelManager<T extends Model> {
    * @param {Transaction} trx - Transaction to be used on the update operation.
    * @returns Promise resolving to the updated model or null if updating fails.
    */
-  public async update(model: T, trx?: Transaction): Promise<T | null | void> {
+  public async update(model: T, trx?: Transaction): Promise<number> {
     if (trx) {
-      trx.addQuery(ModelManagerQueryUtils.parseUpdate(model));
-      return;
+      const primaryKeyValue = model["metadata"]["primaryKey"];
+      return await trx.queryUpdate<T>(
+        ModelManagerQueryUtils.parseUpdate(model),
+      );
     }
 
     try {
       const updateQuery = ModelManagerQueryUtils.parseUpdate(model);
       log(updateQuery, this.logs);
-      const [rows] = await this.mysqlPool.query<RowDataPacket[]>(updateQuery);
-      if (!model.metadata.primaryKey) {
-        return null;
-      }
+      const [rows]: any =
+        await this.mysqlPool.query<RowDataPacket[]>(updateQuery);
 
-      return await this.findOneById(model.metadata["primaryKey"]);
+      return rows.affectedRows;
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -196,13 +199,13 @@ export class ModelManager<T extends Model> {
     column: string,
     value: string | number | boolean,
     trx?: Transaction,
-  ): Promise<T | void> {
+  ): Promise<number> {
     if (trx) {
-      trx.addQuery(
+      return await trx.queryDelete(
         ModelManagerQueryUtils.parseDelete(this.tableName, column, value),
       );
-      return;
     }
+
     try {
       const deleteQuery = ModelManagerQueryUtils.parseDelete(
         this.tableName,
@@ -210,8 +213,9 @@ export class ModelManager<T extends Model> {
         value,
       );
       log(deleteQuery, this.logs);
-      const [rows] = await this.mysqlPool.query<RowDataPacket[]>(deleteQuery);
-      return rows[0] as T;
+      const [rows]: any =
+        await this.mysqlPool.query<RowDataPacket[]>(deleteQuery);
+      return rows.affectedRows;
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -225,7 +229,7 @@ export class ModelManager<T extends Model> {
    * @param {Transaction} trx - Transaction to be used on the delete operation.
    * @returns Promise resolving to the deleted model or null if deleting fails.
    */
-  public async delete(model: T, trx?: Transaction): Promise<T | void> {
+  public async delete(model: T, trx?: Transaction): Promise<number> {
     try {
       if (!model.metadata.primaryKey) {
         throw new Error(
@@ -241,13 +245,13 @@ export class ModelManager<T extends Model> {
       );
 
       if (trx) {
-        trx.addQuery(deleteQuery);
-        return;
+        return await trx.queryDelete(deleteQuery);
       }
 
       log(deleteQuery, this.logs);
-      await this.mysqlPool.query<RowDataPacket[]>(deleteQuery);
-      return model;
+      const [rows]: any =
+        await this.mysqlPool.query<RowDataPacket[]>(deleteQuery);
+      return rows.affectedRows;
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -256,9 +260,10 @@ export class ModelManager<T extends Model> {
 
   /**
    * @description Creates a new transaction.
+   * @returns {Transaction} - Instance of Transaction.
    */
   public createTransaction(): Transaction {
-    return new Transaction(this.mysqlPool, this.logs);
+    return new Transaction(this.mysqlPool, this.tableName, this.logs);
   }
 
   /**

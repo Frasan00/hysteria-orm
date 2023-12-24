@@ -91,8 +91,8 @@ class ModelManagerUtils<T extends Model> {
     return insert.insert(keys, values);
   }
 
-  public parseUpdate(model: T): string {
-    const update = updateTemplate(model.metadata.tableName);
+  public parseUpdate(model: T, modelName?: string): string {
+    const update = updateTemplate(modelName || model.metadata.tableName);
     const filteredModel = this.filterRelationsAndMetadata(model);
     const keys = Object.keys(filteredModel);
     const values = Object.values(filteredModel);
