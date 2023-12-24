@@ -28,7 +28,6 @@ export async function runMigrations(): Promise<void> {
   const migrationTable: MigrationTableType[] =
     await CliUtils.getMigrationTable(mysql);
   const migrations: Migration[] = await CliUtils.getMigrations();
-  return; // temp
   const pendingMigrations = CliUtils.getPendingMigrations(
     migrations,
     migrationTable,

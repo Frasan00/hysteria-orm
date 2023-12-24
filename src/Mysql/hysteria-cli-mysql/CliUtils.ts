@@ -1,10 +1,11 @@
 import { DatasourceInput } from "../../Datasource";
-import { Pool, PoolConnection } from "mysql2/promise";
+import { PoolConnection } from "mysql2/promise";
 import { MigrationTableType } from "./Templates/MigrationTableType";
 import { createMigrationTableTemplate } from "./Templates/CreateMigrationTable";
 import { Migration } from "../Migrations/Migration";
 import fs from "fs";
 import path from "path";
+const userMigration = require("../../../test/database/migrations/01_user-migration");
 
 class CliUtils {
   public getMysqlConfig(): DatasourceInput {
@@ -30,53 +31,91 @@ class CliUtils {
   }
 
   public async getMigrations(): Promise<Migration[]> {
-    const migrationPath = this.findMigrationPath() || "";
-    console.log("migrationPath", migrationPath);
-
-    if (!migrationPath) {
-      return [];
-    }
-
-    const migrationFiles: string[] = fs
-      .readdirSync("../../test/database/migrations/first-migration")
-      .filter((file) => {
-        return file.indexOf(".js") !== -1;
-      });
+    const migrationNames = this.findMigrationNames();
 
     const migrations: Migration[] = [];
 
-    for (const file of migrationFiles) {
-      const migrationName = path.parse(file).name;
-      const migrationModulePath = path
-        .join(migrationPath, file)
-        .replace(/\\/g, "/")
-        .replace(".ts", "");
-
-      try {
-        const migrationModule = (await import(migrationModulePath)).default;
-        const migration = new migrationModule();
-        migration.migrationName = migrationName;
-        migrations.push(migration);
-      } catch (error) {
-        console.error(`Error importing migration ${file}:`, error);
-      }
+    for (const migrationName of migrationNames) {
+      const migrationModule = (await this.findMigrationModule(migrationName))
+        .default;
+      const migration: Migration = new migrationModule();
+      migration.migrationName = migrationName;
+      migrations.push(migration);
     }
 
     return migrations;
   }
 
-  private findMigrationPath(): string | null {
-    const currDir = __dirname.split("/");
+  private findMigrationNames(): string[] {
+    let migrationPath = "database/migrations";
+    let srcPath = "src/database/migrations";
+    let testPath = "test/database/migrations";
 
-    while (currDir.length > 0) {
-      const migrationPath = currDir.join("/") + "/database/migrations";
-      if (fs.existsSync(migrationPath)) {
-        return migrationPath;
+    let i = 0;
+    while (i < 10) {
+      if (
+        fs.existsSync(migrationPath) &&
+        fs.readdirSync(migrationPath).length > 0
+      ) {
+        return fs.readdirSync(migrationPath);
       }
-      currDir.pop();
+
+      if (fs.existsSync(srcPath) && fs.readdirSync(srcPath).length > 0) {
+        return fs.readdirSync(srcPath);
+      }
+
+      if (fs.existsSync(testPath) && fs.readdirSync(testPath).length > 0) {
+        return fs.readdirSync(testPath);
+      }
+
+      migrationPath = "../" + migrationPath;
+      srcPath = "../" + srcPath;
+      testPath = "../" + testPath;
+      i++;
     }
 
-    return null;
+    throw new Error("No migration files found");
+  }
+
+  private async findMigrationModule(migrationName: string) {
+    let migrationModulePath = "database/migrations/" + migrationName;
+    let testMigrationModulePath = "test/database/migrations/" + migrationName;
+    let srcMigrationModulePath = "src/database/migrations/" + migrationName;
+
+    let i = 0;
+    while (i < 8) {
+      try {
+        const migrationModule = await import(migrationModulePath.slice(0, -3));
+        if (migrationModule) {
+          return migrationModule;
+        }
+      } catch (_error) {
+
+      }
+
+      try {
+        const testMigrationModule = await import(testMigrationModulePath.slice(0, -3));
+        if (testMigrationModule) {
+          return testMigrationModule;
+        }
+      } catch (_error) {
+
+      }
+
+      try {
+        const srcMigrationModule = await import(srcMigrationModulePath.slice(0, -3));
+        if (srcMigrationModule) {
+          return srcMigrationModule;
+        }
+      } catch (_error) {
+
+      }
+
+      migrationModulePath = "../" + migrationModulePath;
+      testMigrationModulePath = "../" + testMigrationModulePath;
+      srcMigrationModulePath = "../" + srcMigrationModulePath;
+      i++;
+    }
   }
 
   public getPendingMigrations(

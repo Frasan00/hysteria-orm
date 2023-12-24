@@ -138,8 +138,8 @@ TODO
 run.sh
 stop.sh
 .eslintrc.js
-/src/test
+/test
 /migrations
 /database
-test-script.js
+test/test-script.js
 +.log
