@@ -4,8 +4,6 @@ import { MigrationTableType } from "./Templates/MigrationTableType";
 import { createMigrationTableTemplate } from "./Templates/CreateMigrationTable";
 import { Migration } from "../Migrations/Migration";
 import fs from "fs";
-import path from "path";
-const userMigration = require("../../../test/database/migrations/01_user-migration");
 
 class CliUtils {
   public getMysqlConfig(): DatasourceInput {
