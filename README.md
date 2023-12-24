@@ -174,10 +174,9 @@ const users: User[] = await queryBuilder
 
 # Under Development
 - *Migrations* (advised raw queries since alter table is still under development and may not work as expected)
+- Environment variables *MIGRATION_PATH* default: "database/migrations"
 
-#### You can use hysteria create:migration {migrationName} to create a migration file
-
-- Create a migration
+Create a migration (hysteria create:migration {migrationName})
 
 ```typescript
 import {Migration} from "hysteria-orm";
@@ -198,7 +197,7 @@ export default class extends Migration {
 }
 ```
 
-- Raw Migration
+Raw Migration
 
 ```typescript
 import {Migration} from "hysteria-orm";
@@ -214,10 +213,8 @@ export default class extends Migration {
 }
 ```
 
-- Run migrations
+- hysteria cli for Migrations
 
-```typescript
-await datasource.connect();
-const migrationController = await datasource.getMigrationController(true); // logs (optional) - default: false
-await migrationController.run();
-```
+1) hysteria create:migration {migrationName}
+2) hysteria run:migrations
+3) hysteria rollback:migrations

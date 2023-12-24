@@ -133,7 +133,6 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
-*.log
 TODO
 run.sh
 stop.sh
@@ -143,3 +142,5 @@ stop.sh
 /database
 test/test-script.js
 +.log
+*.js
+/**/*.js

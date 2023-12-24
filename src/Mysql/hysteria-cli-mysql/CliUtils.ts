@@ -1,9 +1,9 @@
 import { DatasourceInput } from "../../Datasource";
 import { PoolConnection } from "mysql2/promise";
 import { MigrationTableType } from "./Templates/MigrationTableType";
-import { createMigrationTableTemplate } from "./Templates/CreateMigrationTable";
 import { Migration } from "../Migrations/Migration";
 import fs from "fs";
+import MigrationTemplates from "./Templates/MigrationTemplates";
 
 class CliUtils {
   public getMysqlConfig(): DatasourceInput {
@@ -22,9 +22,9 @@ class CliUtils {
     mysql: PoolConnection,
   ): Promise<MigrationTableType[]> {
     // Create the migrations table if it doesn't exist
-    await mysql.query(createMigrationTableTemplate);
+    await mysql.query(MigrationTemplates.migrationTableTemplate());
     // Get the list of migrations from the table in the database
-    const [migrations] = await mysql.query("SELECT * FROM migrations");
+    const [migrations] = await mysql.query(MigrationTemplates.selectAllFromMigrationsTemplate());
     return migrations as MigrationTableType[];
   }
 
@@ -45,9 +45,7 @@ class CliUtils {
   }
 
   private findMigrationNames(): string[] {
-    let migrationPath = "database/migrations";
-    let srcPath = "src/database/migrations";
-    let testPath = "test/database/migrations";
+    let migrationPath = process.env.MIGRATION_PATH || "database/migrations";
 
     let i = 0;
     while (i < 10) {
@@ -58,17 +56,7 @@ class CliUtils {
         return fs.readdirSync(migrationPath);
       }
 
-      if (fs.existsSync(srcPath) && fs.readdirSync(srcPath).length > 0) {
-        return fs.readdirSync(srcPath);
-      }
-
-      if (fs.existsSync(testPath) && fs.readdirSync(testPath).length > 0) {
-        return fs.readdirSync(testPath);
-      }
-
       migrationPath = "../" + migrationPath;
-      srcPath = "../" + srcPath;
-      testPath = "../" + testPath;
       i++;
     }
 
@@ -76,9 +64,9 @@ class CliUtils {
   }
 
   private async findMigrationModule(migrationName: string) {
-    let migrationModulePath = "database/migrations/" + migrationName;
-    let testMigrationModulePath = "test/database/migrations/" + migrationName;
-    let srcMigrationModulePath = "src/database/migrations/" + migrationName;
+    let migrationModulePath =
+      process.env.MIGRATION_PATH + "/" + migrationName ||
+      "database/migrations/" + migrationName;
 
     let i = 0;
     while (i < 8) {
@@ -89,27 +77,7 @@ class CliUtils {
         }
       } catch (_error) {}
 
-      try {
-        const testMigrationModule = await import(
-          testMigrationModulePath.slice(0, -3)
-        );
-        if (testMigrationModule) {
-          return testMigrationModule;
-        }
-      } catch (_error) {}
-
-      try {
-        const srcMigrationModule = await import(
-          srcMigrationModulePath.slice(0, -3)
-        );
-        if (srcMigrationModule) {
-          return srcMigrationModule;
-        }
-      } catch (_error) {}
-
       migrationModulePath = "../" + migrationModulePath;
-      testMigrationModulePath = "../" + testMigrationModulePath;
-      srcMigrationModulePath = "../" + srcMigrationModulePath;
       i++;
     }
   }

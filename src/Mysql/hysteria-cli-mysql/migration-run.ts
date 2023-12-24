@@ -6,6 +6,7 @@ import { Migration } from "../Migrations/Migration";
 import dotenv from "dotenv";
 import { MigrationController } from "../Migrations/MigrationController";
 import { createPool } from "mysql2/promise";
+import MigrationTemplates from "./Templates/MigrationTemplates";
 
 dotenv.config();
 
@@ -54,9 +55,7 @@ export async function runMigrations(): Promise<void> {
       await migrationManager.runMigration(migration);
 
       // Update the migrations table in the database
-      await mysql.query(`INSERT INTO migrations (name) VALUES (?)`, [
-        migrationName,
-      ]);
+      await mysql.query(MigrationTemplates.addMigrationTemplate(), [migrationName]);
       console.log(`Migration completed: ${migrationName}`);
     } catch (error: any) {
       await mysql.rollback();
