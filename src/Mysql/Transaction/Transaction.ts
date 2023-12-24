@@ -12,9 +12,9 @@ export class Transaction {
   protected mysqlConnection!: PoolConnection;
   protected logs: boolean;
 
-  constructor(mysqlConnection: Pool, tableName: string, logs: boolean) {
+  constructor(mysql: Pool, tableName: string, logs: boolean) {
     this.logs = logs;
-    this.mysql = mysqlConnection;
+    this.mysql = mysql;
     this.tableName = tableName;
   }
 
