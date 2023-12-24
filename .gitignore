@@ -144,3 +144,4 @@ test/test-script.js
 +.log
 *.js
 /**/*.js
+/src/**/*.js
