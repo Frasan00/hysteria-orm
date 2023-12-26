@@ -2,11 +2,13 @@
 import path from "path";
 import CliUtils from "./CliUtils";
 import { MigrationTableType } from "./Templates/MigrationTableType";
-import { Migration } from "../Migrations/Migration";
+import { Migration } from "../Mysql/Migrations/Migration";
 import dotenv from "dotenv";
-import { MigrationController } from "../Migrations/MigrationController";
+import { MigrationController } from "../Mysql/Migrations/MigrationController";
 import { createPool } from "mysql2/promise";
 import MigrationTemplates from "./Templates/MigrationTemplates";
+import commander from "commander";
+import { createMigration } from "./migration-create";
 
 dotenv.config();
 
@@ -45,7 +47,7 @@ export async function runMigrations(): Promise<void> {
     process.exit(0);
   }
 
-  // Run each pending migration
+  // Run each pending database
   for (const migration of pendingMigrations) {
     const migrationName = migration.migrationName;
     const migrationFilePath = path.join(migrationFolderPath, migrationName);
@@ -55,7 +57,9 @@ export async function runMigrations(): Promise<void> {
       await migrationManager.runMigration(migration);
 
       // Update the migrations table in the database
-      await mysql.query(MigrationTemplates.addMigrationTemplate(), [migrationName]);
+      await mysql.query(MigrationTemplates.addMigrationTemplate(), [
+        migrationName,
+      ]);
       console.log(`Migration completed: ${migrationName}`);
     } catch (error: any) {
       await mysql.rollback();
@@ -67,14 +71,22 @@ export async function runMigrations(): Promise<void> {
   console.log("Migrations completed successfully.");
 }
 
-runMigrations()
-  .then((_data) => {
-    console.log("Migrations completed successfully.");
-    process.exit(0);
-  })
-  .catch((error) => {
-    console.error(
-      "Error: An error occurred while running migrations: " + error.message,
-    );
-    process.exit(1);
+commander.program.parse(process.argv);
+commander.program
+  .command("hysteria migration:run")
+  .description(
+    "Runs all the pending migrations in the migration folder (default: database/migrations).",
+  )
+  .action(async () => {
+    runMigrations()
+      .then((_data) => {
+        console.log("Migrations completed successfully.");
+        process.exit(0);
+      })
+      .catch((error) => {
+        console.error(
+          "Error: An error occurred while running migrations: " + error.message,
+        );
+        process.exit(1);
+      });
   });

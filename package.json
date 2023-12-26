@@ -16,8 +16,8 @@
     "start:watch": "nodemon --exec ts-node src/index.ts"
   },
   "bin": {
-    "hysteria create:migration": "./dist/Mysql/hysteria-cli-mysql/migration-create.js",
-    "hysteria run:migration": "./dist/Mysql/hysteria-cli-mysql/migration-run.js",
+    "hysteria create:migration": "./dist/src/hysteria-cli/migration-create.js",
+    "hysteria run:migration": "./dist/src/hysteria-cli/migration-run.js",
     "hysteria rollback:migration": "./dist/Mysql/hysteria-cli-mysql/migration-rollback.js",
     "hysteria fresh:migration": "./dist/Mysql/hysteria-cli-mysql/hysteria-cli-mysql/migration-fresh.js"
   },

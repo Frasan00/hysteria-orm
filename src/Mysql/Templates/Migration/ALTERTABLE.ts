@@ -1,10 +1,11 @@
 import { Column } from "../../Migrations/Columns/Column";
 
 export const alterTable = (
-  tableName: string,
-  alterColumns: Column[],
+    tableName: string,
+    alterColumns: Column[]
 ): string => {
-  const columnNames: string[] = [];
+  const alterStatements: string[] = [];
+
   alterColumns.forEach((column: Column) => {
     const columnConfig = column.config;
     const columnLength = column.length;
@@ -12,56 +13,54 @@ export const alterTable = (
     const columnName = column.name;
     const oldColumnName = column.oldName;
     const after = column.after;
+
     let columnDefinition = "";
 
-    if (oldColumnName) {
+    if (column.alter) {
       columnDefinition += `CHANGE COLUMN ${oldColumnName} ${columnName} ${columnType}`;
-    } else if (column.alter) {
-      columnDefinition += `MODIFY COLUMN ${columnName} ${columnType}`;
     } else {
-      columnDefinition += `ADD COLUMN ${columnName} ${columnType}`;
+      columnDefinition += `ADD COLUMN ${columnName} ${columnType}${getColumnLength(columnType, columnLength)}`;
     }
+    columnDefinition += generateColumnConfig(column);
 
-    if (columnLength) {
-      columnDefinition += `(${columnLength})`;
-    }
-    if (columnConfig.unsigned) {
-      columnDefinition += " UNSIGNED";
-    }
-    if (columnConfig.nullable) {
-      columnDefinition += " NULL";
-    } else {
-      columnDefinition += " NOT NULL";
-    }
-    if (columnConfig.autoIncrement) {
-      columnDefinition += " AUTO_INCREMENT";
-    }
-    if (columnConfig.defaultValue) {
-      columnDefinition += ` DEFAULT '${columnConfig.defaultValue}'`;
-    }
-    if (columnConfig.references) {
-      columnDefinition += ` REFERENCES ${columnConfig.references.table}(${columnConfig.references.column})`;
-    }
-    if (columnConfig.cascade) {
-      columnDefinition += " ON DELETE CASCADE ON UPDATE CASCADE";
-    }
-    if (columnConfig.primary) {
-      columnDefinition += " PRIMARY KEY";
-    }
-    if (columnConfig.unique) {
-      columnDefinition += " UNIQUE";
-    }
-    if (columnConfig.autoCreate) {
-      columnDefinition += " AUTO_CREATE";
-    }
-    if (columnConfig.autoUpdate) {
-      columnDefinition += " AUTO_UPDATE";
-    }
-    if (after) {
+    if (column.alter && after) {
       columnDefinition += ` AFTER ${after}`;
     }
-    columnNames.push(columnDefinition);
+
+    const alterStatement = `ALTER TABLE ${tableName} ${columnDefinition};`;
+    alterStatements.push(alterStatement);
   });
 
-  return `ALTER TABLE ${tableName} ${columnNames.join(",\n")};`;
+  return alterStatements.join("\n");
 };
+
+function generateColumnConfig(column: Column): string {
+  let configString = "";
+  configString += column.config.nullable ? " NULL" : " NOT NULL";
+  configString += column.config.unique ? " UNIQUE" : "";
+  configString += column.config.autoIncrement ? " AUTO_INCREMENT" : "";
+
+  if (column.config.primary) {
+    configString += " PRIMARY KEY";
+  }
+
+  if (column.config.defaultValue !== undefined) {
+    configString += ` DEFAULT ${column.config.defaultValue}`;
+  }
+
+  if (column.config.references) {
+    configString += ` REFERENCES ${column.config.references.table}(${column.config.references.column})`;
+    configString += column.config.cascade ? " ON DELETE CASCADE" : "";
+  }
+
+  return configString;
+}
+
+function getColumnLength(columnType: string, columnLength?: number): string {
+  if (columnLength !== undefined) {
+    if (columnType.toLowerCase() === "varchar") {
+      return `(${columnLength})`;
+    }
+  }
+  return "";
+}

@@ -1,7 +1,7 @@
-import { DatasourceInput } from "../../Datasource";
+import { DatasourceInput } from "../Datasource";
 import { PoolConnection } from "mysql2/promise";
 import { MigrationTableType } from "./Templates/MigrationTableType";
-import { Migration } from "../Migrations/Migration";
+import { Migration } from "../Mysql/Migrations/Migration";
 import fs from "fs";
 import MigrationTemplates from "./Templates/MigrationTemplates";
 
@@ -24,7 +24,9 @@ class CliUtils {
     // Create the migrations table if it doesn't exist
     await mysql.query(MigrationTemplates.migrationTableTemplate());
     // Get the list of migrations from the table in the database
-    const [migrations] = await mysql.query(MigrationTemplates.selectAllFromMigrationsTemplate());
+    const [migrations] = await mysql.query(
+      MigrationTemplates.selectAllFromMigrationsTemplate(),
+    );
     return migrations as MigrationTableType[];
   }
 
@@ -60,7 +62,7 @@ class CliUtils {
       i++;
     }
 
-    throw new Error("No migration files found");
+    throw new Error("No database files found");
   }
 
   private async findMigrationModule(migrationName: string) {

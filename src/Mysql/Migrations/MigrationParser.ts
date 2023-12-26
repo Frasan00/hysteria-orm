@@ -1,5 +1,5 @@
 /**
- * MigrationParser converts a migration class into sql statements to run on the database
+ * MigrationParser converts a database class into sql statements to run on the database
  */
 import { Migration } from "./Migration";
 import { createTable } from "../Templates/Migration/CREATETABLE";

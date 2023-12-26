@@ -14,7 +14,7 @@ export abstract class Migration {
   public abstract down(): void;
 
   /**
-   * @description Use this method to manage a table in your migration (create, alter, drop)
+   * @description Use this method to manage a table in your database (create, alter, drop)
    * @param tableName
    * @param migrationType
    */
@@ -25,7 +25,7 @@ export abstract class Migration {
   }
 
   /**
-   * @description Use this method to run a raw query in your migration
+   * @description Use this method to run a raw query in your database
    * @param query
    */
   public useRawQuery(query: string): void {

@@ -32,18 +32,34 @@ export class MigrationController {
   }
 
   private async upMigration(migration: Migration): Promise<void> {
-    logger.info("Running migration: " + migration.tableName);
+    logger.info("Running database: " + migration.tableName);
     migration.up();
     const statement = this.parseMigration(migration);
+    if (migration.migrationType === "alter") {
+      const statements = statement.split(";");
+      for (const statement of statements) {
+        log(statement, this.logs);
+        await this.mysqlConnection.query(statement);
+      }
+    }
+
     log(statement, this.logs);
     await this.mysqlConnection.query(statement);
     logger.info("Migration complete: " + migration.tableName);
   }
 
   private async downMigration(migration: Migration): Promise<void> {
-    logger.info("Rolling back migration: " + migration.tableName);
+    logger.info("Rolling back database: " + migration.tableName);
     migration.down();
     const statement = this.parseMigration(migration);
+    if (migration.migrationType === "alter") {
+      const statements = statement.split(";");
+      for (const statement of statements) {
+        log(statement, this.logs);
+        await this.mysqlConnection.query(statement);
+      }
+    }
+
     log(statement, this.logs);
     await this.mysqlConnection.query(statement);
     logger.info("Rollback complete: " + migration.tableName);

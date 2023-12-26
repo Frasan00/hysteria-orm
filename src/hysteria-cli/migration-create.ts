@@ -8,18 +8,9 @@ import commander from "commander";
 dotenv.config();
 
 export function createMigration(name: string): void {
-  const migrationFolderPath = "database/migrations";
-  if (
-    !fs.existsSync(migrationFolderPath) ||
-    !fs.statSync(migrationFolderPath).isDirectory()
-  ) {
-    console.error(
-      `Error: The migrations folder does not exist: '${migrationFolderPath}'.`,
-    );
-    process.exit(1);
-  }
+  const migrationFolderPath = getMigrationPath();
 
-  // Generate migration filename
+  // Generate database filename
   const timestamp = new Date().getTime();
   const migrationFileName = `${timestamp}_${name}.ts`;
   const migrationFilePath = path.join(migrationFolderPath, migrationFileName);
@@ -31,15 +22,32 @@ export function createMigration(name: string): void {
 }
 
 if (!process.argv[2]) {
-  console.error("Error: Please provide a name for the migration.");
+  console.error("Error: Please provide a name for the database.");
   process.exit(1);
+}
+
+function getMigrationPath(): string {
+  let migrationPath = process.env.MIGRATION_PATH || "database/migrations";
+
+  let i = 0;
+  while (i < 10) {
+    console.log(migrationPath);
+    if (fs.existsSync(migrationPath)) {
+      return migrationPath;
+    }
+
+    migrationPath = "../" + migrationPath;
+    i++;
+  }
+
+  throw new Error("No database folder found");
 }
 
 commander.program.parse(process.argv);
 commander.program
-  .command("create")
+  .command("hysteria migration:create")
   .description(
-    "Creates a new migration file in the migrations folder (database/migrations).",
+    "Creates a new migration file in the migrations folder (default: database/migrations).",
   )
   .action(() => {
     const migrationName = process.argv[2];

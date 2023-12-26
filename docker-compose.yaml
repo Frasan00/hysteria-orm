@@ -16,6 +16,7 @@ services:
       MYSQL_PASSWORD: admin
       MYSQL_HOST: db
       MYSQL_PORT: 3306
+      MIGRATION_PATH: test/database/migrations
     depends_on:
       - db
 
