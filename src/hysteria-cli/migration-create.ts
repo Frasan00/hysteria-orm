@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+
 import fs from "fs";
 import path from "path";
 import MigrationTemplates from "./Templates/MigrationTemplates";
@@ -22,7 +23,7 @@ export function createMigration(name: string): void {
 }
 
 if (!process.argv[2]) {
-  console.error("Error: Please provide a name for the database.");
+  console.error("Error: Please provide a name for the migration.");
   process.exit(1);
 }
 
@@ -43,13 +44,4 @@ function getMigrationPath(): string {
   throw new Error("No database folder found");
 }
 
-commander.program.parse(process.argv);
-commander.program
-  .command("hysteria migration:create")
-  .description(
-    "Creates a new migration file in the migrations folder (default: database/migrations).",
-  )
-  .action(() => {
-    const migrationName = process.argv[2];
-    createMigration(migrationName);
-  });
+createMigration(process.argv[2]);

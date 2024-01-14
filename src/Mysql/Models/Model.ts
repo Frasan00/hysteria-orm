@@ -15,4 +15,10 @@ export abstract class Model {
       primaryKey: primaryKey,
     };
   }
+
+  public setProps<T extends this>(data: Partial<T>): void {
+    for (const key in data) {
+      Object.assign(this, { [key]: data[key] });
+    }
+  }
 }

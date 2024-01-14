@@ -11,8 +11,8 @@ import MigrationTemplates from "./Templates/MigrationTemplates";
 
 dotenv.config();
 
-// Function to run pending migrations
-export async function runMigrations(): Promise<void> {
+// Function to rollback migrations
+export async function migrationRollBack(): Promise<void> {
   const migrationFolderPath =
     process.env.MIGRATION_PATH || "database/migrations";
   const config = CliUtils.getMysqlConfig();
@@ -30,47 +30,42 @@ export async function runMigrations(): Promise<void> {
   const migrationTable: MigrationTableType[] =
     await CliUtils.getMigrationTable(mysql);
   const migrations: Migration[] = await CliUtils.getMigrations();
-  const pendingMigrations = CliUtils.getPendingMigrations(
-    migrations,
-    migrationTable,
-  );
 
-  // Parses and runs the migrations
+  // Parses and rolls back the migrations
   const migrationManager: MigrationController = new MigrationController(
     mysqlPool,
   );
 
   // If there are no pending migrations, print a message and exit
-  if (pendingMigrations.length === 0) {
-    console.log("No pending migrations.");
+  if (migrations.length === 0) {
+    console.log("No migrations to rollback.");
     process.exit(0);
   }
 
   // Run each pending database
-  for (const migration of pendingMigrations) {
+  for (const migration of migrations) {
     const migrationName = migration.migrationName;
     const migrationFilePath = path.join(migrationFolderPath, migrationName);
     try {
       await mysql.beginTransaction();
-      console.log(`Running migration: ${migrationName} (${migrationFilePath})`);
-      await migrationManager.runMigration(migration);
+      console.log(
+        `Rolling back migration: ${migrationName} (${migrationFilePath})`,
+      );
+      await migrationManager.rollbackMigration(migration);
 
       // Update the migrations table in the database
-      await mysql.query(MigrationTemplates.addMigrationTemplate(), [
+      await mysql.query(MigrationTemplates.removeMigrationTemplate(), [
         migrationName,
       ]);
-      console.log(`Migration completed: ${migrationName}`);
-    } catch (error: any) {
+      await mysql.commit();
+    } catch (error) {
       await mysql.rollback();
-      throw new Error(error);
+      throw error;
     }
   }
-  await mysql.commit();
-  mysql.release();
-  console.log("Migrations completed successfully.");
 }
 
-runMigrations()
+migrationRollBack()
   .then(() => {
     process.exit(0);
   })

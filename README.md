@@ -215,6 +215,6 @@ export default class extends Migration {
 
 - hysteria cli for Migrations
 
-1) hysteria create:migration {migrationName}
-2) hysteria run:migrations
-3) hysteria rollback:migrations
+1) npm run | yarn create:migration {migrationName}
+2) npm run | yarn run:migrations
+3) npm run | yarn rollback:migrations

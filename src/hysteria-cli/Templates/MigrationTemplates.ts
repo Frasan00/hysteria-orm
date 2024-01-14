@@ -36,6 +36,12 @@ CREATE TABLE IF NOT EXISTS \`migrations\`(
 INSERT INTO migrations (name) VALUES (?);
 `;
   }
+
+  public removeMigrationTemplate(): string {
+    return `
+DELETE FROM migrations WHERE name = ?;
+`;
+  }
 }
 
 export default new MigrationTemplates();

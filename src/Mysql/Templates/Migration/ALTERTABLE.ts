@@ -1,8 +1,8 @@
 import { Column } from "../../Migrations/Columns/Column";
 
 export const alterTable = (
-    tableName: string,
-    alterColumns: Column[]
+  tableName: string,
+  alterColumns: Column[],
 ): string => {
   const alterStatements: string[] = [];
 
@@ -19,7 +19,10 @@ export const alterTable = (
     if (column.alter) {
       columnDefinition += `CHANGE COLUMN ${oldColumnName} ${columnName} ${columnType}`;
     } else {
-      columnDefinition += `ADD COLUMN ${columnName} ${columnType}${getColumnLength(columnType, columnLength)}`;
+      columnDefinition += `ADD COLUMN ${columnName} ${columnType}${getColumnLength(
+        columnType,
+        columnLength,
+      )}`;
     }
     columnDefinition += generateColumnConfig(column);
 

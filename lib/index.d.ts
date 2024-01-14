@@ -7,6 +7,7 @@ interface Metadata {
 declare abstract class Model {
     metadata: Metadata;
     protected constructor(tableName?: string, primaryKey?: string);
+    setProps<T extends this>(data: Partial<T>): void;
 }
 
 declare enum RelationType {

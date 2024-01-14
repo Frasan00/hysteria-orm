@@ -2,7 +2,7 @@
   "name": "hysteria-orm",
   "version": "1.0.0",
   "description": "A simple ORM for Node.js and MySQL",
-  "main": "lib/index.js",
+  "main": "./lib/index.js",
   "repository": "https://github.com/Frasan00/hysteria-orm.git",
   "author": "Frasan00 <francesco.sangiovanni.7@gmail.com>",
   "scripts": {
@@ -14,16 +14,14 @@
     "dev": "ts-node src/index.ts",
     "start": "tsc && node dist/test/index.js",
     "start:watch": "nodemon --exec ts-node src/index.ts",
-    "create:migration": "./dist/src/hysteria-cli/migration-create.js",
-    "run:migration": "./dist/src/hysteria-cli/migration-run.js",
-    "rollback:migration": "./dist/Mysql/hysteria-cli-mysql/migration-rollback.js",
-    "fresh:migration": "./dist/Mysql/hysteria-cli-mysql/hysteria-cli-mysql/migration-fresh.js"
+    "create:migration": "node ./lib/src/hysteria-cli/migration-create.js",
+    "run:migration": "node ./lib/src/hysteria-cli/migration-run.js",
+    "rollback:migration": "node ./lib/src/hysteria-cli/migration-rollback.js"
   },
   "bin": {
-    "hysteria create:migration": "./dist/src/hysteria-cli/migration-create.js",
-    "hysteria run:migration": "./dist/src/hysteria-cli/migration-run.js",
-    "hysteria rollback:migration": "./dist/Mysql/hysteria-cli-mysql/migration-rollback.js",
-    "hysteria fresh:migration": "./dist/Mysql/hysteria-cli-mysql/hysteria-cli-mysql/migration-fresh.js"
+    "create:migration": "./lib/src/hysteria-cli/migration-create.js",
+    "run:migration": "./lib/src/hysteria-cli/migration-run.js",
+    "rollback:migration": "./lib/src/hysteria-cli/migration-rollback.js"
   },
   "license": "MIT",
   "devDependencies": {
@@ -39,7 +37,6 @@
     "typescript": "^5.3.2"
   },
   "dependencies": {
-    "commander": "^11.1.0",
     "glob": "^10.3.10",
     "mysql2": "^3.6.5",
     "rollup": "^4.9.1",
