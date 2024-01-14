@@ -4,8 +4,7 @@ import { ModelManager } from "./Mysql/Models/ModelManager/ModelManager";
 /*
  * Creates a datasource for the selected database type with the provided credentials
  */
-
-type DatasourceType = "mysql" | "postgres";
+type DatasourceType = "mysql";
 
 export interface DatasourceInput {
   readonly type: DatasourceType;
