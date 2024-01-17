@@ -1,52 +1,29 @@
-import { Pool, PoolConnection, RowDataPacket } from "mysql2/promise";
-import selectTemplate, {
-  SelectTemplateType,
-} from "../../Templates/Query/SELECT";
-import { Model } from "../Model";
-import { log } from "../../../Logger";
-import ModelManagerUtils from "../ModelManager/ModelManagerUtils";
-import whereTemplate, {
-  WhereOperatorType,
-  WhereTemplateType,
-} from "../../Templates/Query/WHERE.TS";
+import { Pool, RowDataPacket } from "mysql2/promise";
+import selectTemplate from "../Templates/Query/SELECT";
+import { Model } from "../Models/Model";
+import { log } from "../../Logger";
+import ModelManagerUtils from "./MySqlModelManagerUtils";
+import whereTemplate, { WhereOperatorType } from "../Templates/Query/WHERE.TS";
+import { QueryBuilder } from "../QueryBuilder/QueryBuilder";
 
-export class QueryBuilder<T extends Model> {
-  protected selectQuery: string = "";
-  protected relations: string[] = [];
-  protected whereQuery: string = "";
-  protected groupByQuery: string = "";
-  protected orderByQuery: string = "";
-  protected limitQuery: string = "";
-  protected offsetQuery: string = "";
-
-  protected model: new () => Model;
-  protected tableName: string;
-  protected mysqlConnection: Pool;
-  protected logs: boolean;
-
-  protected selectTemplate: SelectTemplateType;
-  protected whereTemplate: WhereTemplateType;
+export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
+  protected mysqlPool: Pool;
 
   /**
-   * @description Constructs a QueryBuilder instance.
+   * @description Constructs a MysqlQueryBuilder instance.
    * @param model - The model class associated with the table.
    * @param tableName - The name of the table.
-   * @param mysqlConnection - The MySQL connection pool.
+   * @param mysqlPool - The MySQL connection pool.
    * @param logs - A boolean indicating whether to log queries.
    */
   public constructor(
-    model: new () => Model,
+    model: new () => T,
     tableName: string,
-    mysqlConnection: Pool,
+    mysqlPool: Pool,
     logs: boolean,
   ) {
-    this.model = model;
-    this.mysqlConnection = mysqlConnection;
-    this.logs = logs;
-    this.tableName = tableName;
-    this.selectQuery = selectTemplate(this.tableName).selectAll;
-    this.selectTemplate = selectTemplate(this.tableName);
-    this.whereTemplate = whereTemplate(this.tableName);
+    super(model, tableName, logs);
+    this.mysqlPool = mysqlPool;
   }
 
   /**
@@ -62,7 +39,7 @@ export class QueryBuilder<T extends Model> {
     log(query, this.logs);
     const model = new this.model();
     try {
-      const [rows] = await this.mysqlConnection.query<RowDataPacket[]>(query);
+      const [rows] = await this.mysqlPool.query<RowDataPacket[]>(query);
       const modelData = rows[0] as T;
 
       // merge model data into model
@@ -72,7 +49,7 @@ export class QueryBuilder<T extends Model> {
       await ModelManagerUtils.parseQueryBuilderRelations(
         model,
         this.relations,
-        this.mysqlConnection,
+        this.mysqlPool,
         this.logs,
       );
 
@@ -97,7 +74,7 @@ export class QueryBuilder<T extends Model> {
     log(query, this.logs);
     const model = new this.model();
     try {
-      const [rows] = await this.mysqlConnection.query<RowDataPacket[]>(query);
+      const [rows] = await this.mysqlPool.query<RowDataPacket[]>(query);
       return Promise.all(
         rows.map(async (row) => {
           const modelData = rows[0] as T;
@@ -109,7 +86,7 @@ export class QueryBuilder<T extends Model> {
           await ModelManagerUtils.parseQueryBuilderRelations(
             model,
             this.relations,
-            this.mysqlConnection,
+            this.mysqlPool,
             this.logs,
           );
 
@@ -128,6 +105,7 @@ export class QueryBuilder<T extends Model> {
   public select(...columns: string[]) {
     const select = selectTemplate(this.tableName);
     this.selectQuery = select.selectColumns(...columns);
+    return this;
   }
 
   public addRelations(relations: string[]) {
@@ -140,7 +118,7 @@ export class QueryBuilder<T extends Model> {
    * @param column - The column to filter.
    * @param operator - The comparison operator.
    * @param value - The value to compare against.
-   * @returns The QueryBuilder instance for chaining.
+   * @returns The MysqlQueryBuilder instance for chaining.
    */
   public where(
     column: string,
@@ -168,7 +146,7 @@ export class QueryBuilder<T extends Model> {
    * @param column - The column to filter.
    * @param operator - The comparison operator.
    * @param value - The value to compare against.
-   * @returns The QueryBuilder instance for chaining.
+   * @returns The MysqlQueryBuilder instance for chaining.
    */
   public andWhere(
     column: string,
@@ -196,7 +174,7 @@ export class QueryBuilder<T extends Model> {
    * @param column - The column to filter.
    * @param operator - The comparison operator.
    * @param value - The value to compare against.
-   * @returns The QueryBuilder instance for chaining.
+   * @returns The MysqlQueryBuilder instance for chaining.
    */
   public orWhere(
     column: string,
@@ -224,7 +202,7 @@ export class QueryBuilder<T extends Model> {
    * @param column - The column to filter.
    * @param min - The minimum value for the range.
    * @param max - The maximum value for the range.
-   * @returns The QueryBuilder instance for chaining.
+   * @returns The MysqlQueryBuilder instance for chaining.
    */
   public whereBetween(column: string, min: string, max: string): this {
     if (!this.whereQuery) {
@@ -244,7 +222,7 @@ export class QueryBuilder<T extends Model> {
    * @param column - The column to filter.
    * @param min - The minimum value for the range.
    * @param max - The maximum value for the range.
-   * @returns The QueryBuilder instance for chaining.
+   * @returns The MysqlQueryBuilder instance for chaining.
    */
   public andWhereBetween(column: string, min: string, max: string): this {
     if (!this.whereQuery) {
@@ -264,7 +242,7 @@ export class QueryBuilder<T extends Model> {
    * @param column - The column to filter.
    * @param min - The minimum value for the range.
    * @param max - The maximum value for the range.
-   * @returns The QueryBuilder instance for chaining.
+   * @returns The MysqlQueryBuilder instance for chaining.
    */
   public orWhereBetween(column: string, min: string, max: string): this {
     if (!this.whereQuery) {
@@ -284,7 +262,7 @@ export class QueryBuilder<T extends Model> {
    * @param column - The column to filter.
    * @param min - The minimum value for the range.
    * @param max - The maximum value for the range.
-   * @returns The QueryBuilder instance for chaining.
+   * @returns The MysqlQueryBuilder instance for chaining.
    */
   public whereNotBetween(column: string, min: string, max: string): this {
     if (!this.whereQuery) {
@@ -304,7 +282,7 @@ export class QueryBuilder<T extends Model> {
    * @param column - The column to filter.
    * @param min - The minimum value for the range.
    * @param max - The maximum value for the range.
-   * @returns The QueryBuilder instance for chaining.
+   * @returns The MysqlQueryBuilder instance for chaining.
    */
   public orWhereNotBetween(column: string, min: string, max: string): this {
     if (!this.whereQuery) {
@@ -323,7 +301,7 @@ export class QueryBuilder<T extends Model> {
    * @description Adds a WHERE IN condition to the query.
    * @param column - The column to filter.
    * @param values - An array of values to match against.
-   * @returns The QueryBuilder instance for chaining.
+   * @returns The MysqlQueryBuilder instance for chaining.
    */
   public whereIn(column: string, values: string[]): this {
     if (!this.whereQuery) {
@@ -338,7 +316,7 @@ export class QueryBuilder<T extends Model> {
    * @description Adds an AND WHERE IN condition to the query.
    * @param column - The column to filter.
    * @param values - An array of values to match against.
-   * @returns The QueryBuilder instance for chaining.
+   * @returns The MysqlQueryBuilder instance for chaining.
    */
   public andWhereIn(column: string, values: string[]): this {
     if (!this.whereQuery) {
@@ -353,7 +331,7 @@ export class QueryBuilder<T extends Model> {
    * @description Adds an OR WHERE IN condition to the query.
    * @param column - The column to filter.
    * @param values - An array of values to match against.
-   * @returns The QueryBuilder instance for chaining.
+   * @returns The MysqlQueryBuilder instance for chaining.
    */
   public orWhereIn(column: string, values: string[]): this {
     if (!this.whereQuery) {
@@ -368,7 +346,7 @@ export class QueryBuilder<T extends Model> {
    * @description Adds a WHERE NOT IN condition to the query.
    * @param column - The column to filter.
    * @param values - An array of values to exclude.
-   * @returns The QueryBuilder instance for chaining.
+   * @returns The MysqlQueryBuilder instance for chaining.
    */
   public whereNotIn(column: string, values: string[]): this {
     if (!this.whereQuery) {
@@ -383,7 +361,7 @@ export class QueryBuilder<T extends Model> {
    * @description Adds an OR WHERE NOT IN condition to the query.
    * @param column - The column to filter.
    * @param values - An array of values to exclude.
-   * @returns The QueryBuilder instance for chaining.
+   * @returns The MysqlQueryBuilder instance for chaining.
    */
   public orWhereNotIn(column: string, values: string[]): this {
     if (!this.whereQuery) {
@@ -400,7 +378,7 @@ export class QueryBuilder<T extends Model> {
   /**
    * @description Adds a WHERE NULL condition to the query.
    * @param column - The column to filter.
-   * @returns The QueryBuilder instance for chaining.
+   * @returns The MysqlQueryBuilder instance for chaining.
    */
   public whereNull(column: string): this {
     if (!this.whereQuery) {
@@ -414,7 +392,7 @@ export class QueryBuilder<T extends Model> {
   /**
    * @description Adds an AND WHERE NULL condition to the query.
    * @param column - The column to filter.
-   * @returns The QueryBuilder instance for chaining.
+   * @returns The MysqlQueryBuilder instance for chaining.
    */
   public andWhereNull(column: string): this {
     if (!this.whereQuery) {
@@ -428,7 +406,7 @@ export class QueryBuilder<T extends Model> {
   /**
    * @description Adds an OR WHERE NULL condition to the query.
    * @param column - The column to filter.
-   * @returns The QueryBuilder instance for chaining.
+   * @returns The MysqlQueryBuilder instance for chaining.
    */
   public orWhereNull(column: string): this {
     if (!this.whereQuery) {
@@ -442,7 +420,7 @@ export class QueryBuilder<T extends Model> {
   /**
    * @description Adds a WHERE NOT NULL condition to the query.
    * @param column - The column to filter.
-   * @returns The QueryBuilder instance for chaining.
+   * @returns The MysqlQueryBuilder instance for chaining.
    */
   public whereNotNull(column: string): this {
     if (!this.whereQuery) {
@@ -456,7 +434,7 @@ export class QueryBuilder<T extends Model> {
   /**
    * @description Adds an AND WHERE NOT NULL condition to the query.
    * @param column - The column to filter.
-   * @returns The QueryBuilder instance for chaining.
+   * @returns The MysqlQueryBuilder instance for chaining.
    */
   public andWhereNotNull(column: string): this {
     if (!this.whereQuery) {
@@ -470,7 +448,7 @@ export class QueryBuilder<T extends Model> {
   /**
    * @description Adds an OR WHERE NOT NULL condition to the query.
    * @param column - The column to filter.
-   * @returns The QueryBuilder instance for chaining.
+   * @returns The MysqlQueryBuilder instance for chaining.
    */
   public orWhereNotNull(column: string) {
     if (!this.whereQuery) {
@@ -484,7 +462,7 @@ export class QueryBuilder<T extends Model> {
   /**
    * @description Adds a raw WHERE condition to the query.
    * @param query - The raw SQL WHERE condition.
-   * @returns The QueryBuilder instance for chaining.
+   * @returns The MysqlQueryBuilder instance for chaining.
    */
   public rawWhere(query: string) {
     if (!this.whereQuery) {
@@ -498,7 +476,7 @@ export class QueryBuilder<T extends Model> {
   /**
    * @description Adds a raw AND WHERE condition to the query.
    * @param query - The raw SQL WHERE condition.
-   * @returns The QueryBuilder instance for chaining.
+   * @returns The MysqlQueryBuilder instance for chaining.
    */
   public rawAndWhere(query: string) {
     if (!this.whereQuery) {
@@ -512,7 +490,7 @@ export class QueryBuilder<T extends Model> {
   /**
    * @description Adds a raw OR WHERE condition to the query.
    * @param query - The raw SQL WHERE condition.
-   * @returns The QueryBuilder instance for chaining.
+   * @returns The MysqlQueryBuilder instance for chaining.
    */
   public rawOrWhere(query: string) {
     if (!this.whereQuery) {
@@ -526,7 +504,7 @@ export class QueryBuilder<T extends Model> {
   /**
    * @description Adds GROUP BY conditions to the query.
    * @param columns - The columns to group by.
-   * @returns The QueryBuilder instance for chaining.
+   * @returns The MysqlQueryBuilder instance for chaining.
    */
   public groupBy(...columns: string[]) {
     this.groupByQuery = this.selectTemplate.groupBy(...columns);
@@ -537,7 +515,7 @@ export class QueryBuilder<T extends Model> {
    * @description Adds ORDER BY conditions to the query.
    * @param column - The column to order by.
    * @param order - The order direction, either "ASC" or "DESC".
-   * @returns The QueryBuilder instance for chaining.
+   * @returns The MysqlQueryBuilder instance for chaining.
    */
   public orderBy(column: string[], order: "ASC" | "DESC") {
     this.orderByQuery = this.selectTemplate.orderBy(column, order);
@@ -547,7 +525,7 @@ export class QueryBuilder<T extends Model> {
   /**
    * @description Adds a LIMIT condition to the query.
    * @param limit - The maximum number of rows to return.
-   * @returns The QueryBuilder instance for chaining.
+   * @returns The MysqlQueryBuilder instance for chaining.
    */
   public limit(limit: number) {
     this.limitQuery = this.selectTemplate.limit(limit);
@@ -557,7 +535,7 @@ export class QueryBuilder<T extends Model> {
   /**
    * @description Adds an OFFSET condition to the query.
    * @param offset - The number of rows to skip.
-   * @returns The QueryBuilder instance for chaining.
+   * @returns The MysqlQueryBuilder instance for chaining.
    */
   public offset(offset: number) {
     this.offsetQuery = this.selectTemplate.offset(offset);

@@ -1,7 +1,7 @@
 import { DatasourceInput } from "../Datasource";
 import { PoolConnection } from "mysql2/promise";
 import { MigrationTableType } from "./Templates/MigrationTableType";
-import { Migration } from "../Mysql/Migrations/Migration";
+import { Migration } from "../Sql/Migrations/Migration";
 import fs from "fs";
 import MigrationTemplates from "./Templates/MigrationTemplates";
 

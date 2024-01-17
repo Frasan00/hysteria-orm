@@ -28,6 +28,7 @@
     "@adonisjs/eslint-config": "^1.2.0",
     "@types/express": "^4.17.21",
     "@types/node": "^20.10.2",
+    "@types/pg": "^8.10.9",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "nodemon": "^3.0.2",
@@ -39,6 +40,7 @@
   "dependencies": {
     "glob": "^10.3.10",
     "mysql2": "^3.6.5",
+    "pg": "^8.11.3",
     "rollup": "^4.9.1",
     "webpack": "^5.89.0",
     "winston": "^3.11.0"

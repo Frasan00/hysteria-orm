@@ -1,35 +1,32 @@
 /*
  * This class is used to make operations on models
  */
-import { Model } from "../Model";
-import { FindOneType, FindType } from "./ModelManagerTypes";
-import { Pool, PoolConnection, RowDataPacket } from "mysql2/promise";
-import selectTemplate from "../../Templates/Query/SELECT";
-import ModelManagerQueryUtils from "./ModelManagerUtils";
-import { log, queryError } from "../../../Logger";
-import { QueryBuilder } from "../QueryBuilder/QueryBuilder";
-import ModelManagerUtils from "./ModelManagerUtils";
-import { Transaction } from "../../Transaction/Transaction";
+import { Model } from "../Models/Model";
+import {
+  FindOneType,
+  FindType,
+} from "../Models/ModelManager/ModelManagerTypes";
+import mysql, { Pool, RowDataPacket } from "mysql2/promise";
+import selectTemplate from "../Templates/Query/SELECT";
+import ModelManagerQueryUtils from "./MySqlModelManagerUtils";
+import { log, queryError } from "../../Logger";
+import { MysqlQueryBuilder } from "./MysqlQueryBuilder";
+import MySqlModelManagerUtils from "./MySqlModelManagerUtils";
+import { MysqlTransaction } from "./MysqlTransaction";
+import { ModelManager } from "../Models/ModelManager/ModelManager";
 
-export class ModelManager<T extends Model> {
-  protected logs: boolean;
-  protected mysqlPool: Pool;
-  protected model: new () => T;
-  protected modelInstance: T;
-  public tableName: string;
+export class MysqlModelManager<T extends Model> extends ModelManager<T> {
+  protected mysqlPool: mysql.Pool;
 
   /**
-   * Constructor for ModelManager class.
+   * Constructor for MysqlModelManager class.
    *
    * @param {new () => T} model - Model constructor.
    * @param {Pool} mysqlConnection - MySQL connection pool.
    * @param {boolean} logs - Flag to enable or disable logging.
    */
-  constructor(model: new () => T, mysqlConnection: Pool, logs: boolean) {
-    this.logs = logs;
-    this.tableName = model.name;
-    this.model = model;
-    this.modelInstance = new this.model();
+  constructor(model: new () => T, mysqlConnection: mysql.Pool, logs: boolean) {
+    super(model, logs);
     this.mysqlPool = mysqlConnection;
   }
 
@@ -65,7 +62,7 @@ export class ModelManager<T extends Model> {
           Object.assign(model, modelData);
 
           // relations parsing on the queried model
-          await ModelManagerUtils.parseRelationInput(
+          await MySqlModelManagerUtils.parseRelationInput(
             model,
             input,
             this.mysqlPool,
@@ -99,7 +96,7 @@ export class ModelManager<T extends Model> {
       Object.assign(model, modelData);
 
       // relations parsing on the queried model
-      await ModelManagerUtils.parseRelationInput(
+      await MySqlModelManagerUtils.parseRelationInput(
         model,
         input,
         this.mysqlPool,
@@ -137,10 +134,10 @@ export class ModelManager<T extends Model> {
    * Save a new model instance to the database.
    *
    * @param {Model} model - Model instance to be saved.
-   * @param {Transaction} trx - Transaction to be used on the save operation.
+   * @param {MysqlTransaction} trx - MysqlTransaction to be used on the save operation.
    * @returns Promise resolving to the saved model or null if saving fails.
    */
-  public async save(model: T, trx?: Transaction): Promise<T | null> {
+  public async save(model: T, trx?: MysqlTransaction): Promise<T | null> {
     if (trx) {
       return await trx.queryInsert<T>(
         ModelManagerQueryUtils.parseInsert(model),
@@ -163,10 +160,10 @@ export class ModelManager<T extends Model> {
   /**
    * Update an existing model instance in the database.
    * @param {Model} model - Model instance to be updated.
-   * @param {Transaction} trx - Transaction to be used on the update operation.
+   * @param {MysqlTransaction} trx - MysqlTransaction to be used on the update operation.
    * @returns Promise resolving to the updated model or null if updating fails.
    */
-  public async update(model: T, trx?: Transaction): Promise<number> {
+  public async update(model: T, trx?: MysqlTransaction): Promise<number> {
     if (trx) {
       const primaryKeyValue = model["metadata"]["primaryKey"];
       return await trx.queryUpdate<T>(
@@ -192,13 +189,13 @@ export class ModelManager<T extends Model> {
    *
    * @param {string} column - Column to filter by.
    * @param {string | number | boolean} value - Value to filter by.
-   * @param {Transaction} trx - Transaction to be used on the delete operation.
+   * @param {MysqlTransaction} trx - MysqlTransaction to be used on the delete operation.
    * @returns Promise resolving to the deleted model or null if deleting fails.
    */
   public async deleteByColumn(
     column: string,
     value: string | number | boolean,
-    trx?: Transaction,
+    trx?: MysqlTransaction,
   ): Promise<number> {
     if (trx) {
       return await trx.queryDelete(
@@ -226,10 +223,10 @@ export class ModelManager<T extends Model> {
    * @description Delete a record from the database from the given model.
    *
    * @param {Model} model - Model to delete.
-   * @param {Transaction} trx - Transaction to be used on the delete operation.
+   * @param {MysqlTransaction} trx - MysqlTransaction to be used on the delete operation.
    * @returns Promise resolving to the deleted model or null if deleting fails.
    */
-  public async delete(model: T, trx?: Transaction): Promise<number> {
+  public async delete(model: T, trx?: MysqlTransaction): Promise<number> {
     try {
       if (!model.metadata.primaryKey) {
         throw new Error(
@@ -260,19 +257,19 @@ export class ModelManager<T extends Model> {
 
   /**
    * @description Creates a new transaction.
-   * @returns {Transaction} - Instance of Transaction.
+   * @returns {MysqlTransaction} - Instance of MysqlTransaction.
    */
-  public createTransaction(): Transaction {
-    return new Transaction(this.mysqlPool, this.tableName, this.logs);
+  public createTransaction(): MysqlTransaction {
+    return new MysqlTransaction(this.mysqlPool, this.tableName, this.logs);
   }
 
   /**
-   * Create and return a new instance of the QueryBuilder for building more complex SQL queries.
+   * Create and return a new instance of the MysqlQueryBuilder for building more complex SQL queries.
    *
-   * @returns {QueryBuilder<Model>} - Instance of QueryBuilder.
+   * @returns {MysqlQueryBuilder<Model>} - Instance of MysqlQueryBuilder.
    */
-  public queryBuilder(): QueryBuilder<T> {
-    return new QueryBuilder<T>(
+  public queryBuilder(): MysqlQueryBuilder<T> {
+    return new MysqlQueryBuilder<T>(
       this.model,
       this.tableName,
       this.mysqlPool,

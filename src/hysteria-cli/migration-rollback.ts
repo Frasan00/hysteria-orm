@@ -3,9 +3,9 @@
 import path from "path";
 import CliUtils from "./CliUtils";
 import { MigrationTableType } from "./Templates/MigrationTableType";
-import { Migration } from "../Mysql/Migrations/Migration";
+import { Migration } from "../Sql/Migrations/Migration";
 import dotenv from "dotenv";
-import { MigrationController } from "../Mysql/Migrations/MigrationController";
+import { MigrationController } from "../Sql/Migrations/MigrationController";
 import { createPool } from "mysql2/promise";
 import MigrationTemplates from "./Templates/MigrationTemplates";
 

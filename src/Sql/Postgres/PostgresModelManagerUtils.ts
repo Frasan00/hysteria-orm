@@ -1,16 +1,19 @@
-import { FindType, FindOneType } from "./ModelManagerTypes";
-import selectTemplate from "../../Templates/Query/SELECT";
-import { Model } from "../Model";
-import insertTemplate from "../../Templates/Query/INSERT";
-import updateTemplate from "../../Templates/Query/UPDATE";
-import deleteTemplate from "../../Templates/Query/DELETE";
-import { Relation } from "../Relations/Relation";
-import { log, queryError } from "../../../Logger";
-import relationTemplates from "../../Templates/Query/RELATIONS";
-import { Pool, PoolConnection, RowDataPacket } from "mysql2/promise";
-import whereTemplate from "../../Templates/Query/WHERE.TS";
+import {
+  FindType,
+  FindOneType,
+} from "../Models/ModelManager/ModelManagerTypes";
+import selectTemplate from "../Templates/Query/SELECT";
+import { Model } from "../Models/Model";
+import insertTemplate from "../Templates/Query/INSERT";
+import updateTemplate from "../Templates/Query/UPDATE";
+import deleteTemplate from "../Templates/Query/DELETE";
+import { Relation } from "../Models/Relations/Relation";
+import { log, queryError } from "../../Logger";
+import relationTemplates from "../Templates/Query/RELATIONS";
+import { Pool, QueryResult, QueryResultRow } from "pg";
+import whereTemplate from "../Templates/Query/WHERE.TS";
 
-class ModelManagerUtils<T extends Model> {
+class PostgresModelManagerUtils<T extends Model> {
   public parseSelectQueryInput(
     model: T,
     input: FindType | FindOneType,
@@ -53,6 +56,7 @@ class ModelManagerUtils<T extends Model> {
 
     return query;
   }
+
   private parseQueryFooter(
     tableName: string,
     input: FindType | FindOneType,
@@ -144,35 +148,6 @@ class ModelManagerUtils<T extends Model> {
     );
   }
 
-  /*private _parseJoin(model: T, input: FindType | FindOneType): string {
-    if (!input.relations) {
-      return "";
-    }
-
-    const relations: string[] = input.relations.map((relationField) => {
-      const relation: Relation = this.getRelationFromModel(
-        model,
-        relationField,
-      );
-      const join = joinTemplate(model.metadata.tableName, relation.relatedModel);
-      switch (relation.type) {
-        case RelationType.belongsTo:
-          const belongsTo = relation as BelongsTo;
-          return join.belongsTo(belongsTo.foreignKey);
-
-        case RelationType.hasOne:
-          return join.hasOne();
-        case RelationType.hasMany:
-          return join.hasMany(model.metadata.primaryKey as string);
-
-        default:
-          throw new Error("Relation type not supported");
-      }
-    });
-
-    return relations.join("\n");
-  }*/
-
   private getRelationFromModel(model: T, relationField: string): Relation {
     const relation = model[relationField as keyof T] as Relation;
     if (!relation) {
@@ -191,7 +166,7 @@ class ModelManagerUtils<T extends Model> {
   public async parseRelationInput(
     model: T,
     input: FindOneType,
-    mysqlConnection: Pool,
+    pgPool: Pool,
     logs: boolean,
   ): Promise<void> {
     if (!input.relations) {
@@ -209,23 +184,23 @@ class ModelManagerUtils<T extends Model> {
           const relationQuery = relationTemplates(model, relation);
           console.log(relationQuery);
 
-          const [relatedModels] =
-            await mysqlConnection.query<RowDataPacket[]>(relationQuery);
-          if (relatedModels.length === 0) {
+          const { rows }: QueryResult<QueryResultRow> =
+            await pgPool.query(relationQuery);
+          if (rows.length === 0) {
             Object.assign(model, { [inputRelation as keyof T]: null });
             log(relationQuery, logs);
             return;
           }
 
-          if (relatedModels.length === 1) {
+          if (rows.length === 1) {
             Object.assign(model, {
-              [inputRelation as keyof T]: relatedModels[0],
+              [inputRelation as keyof T]: rows[0],
             });
             log(relationQuery, logs);
             return;
           }
 
-          Object.assign(model, { [inputRelation as keyof T]: relatedModels });
+          Object.assign(model, { [inputRelation as keyof T]: rows });
           log(relationQuery, logs);
         },
       );
@@ -241,7 +216,7 @@ class ModelManagerUtils<T extends Model> {
   public async parseQueryBuilderRelations(
     model: T,
     input: string[],
-    mysqlConnection: Pool,
+    pgPool: Pool,
     logs: boolean,
   ): Promise<void> {
     if (input.length === 0) {
@@ -258,23 +233,23 @@ class ModelManagerUtils<T extends Model> {
         const relation = this.getRelationFromModel(model, inputRelation);
         relationQuery = relationTemplates(model, relation);
 
-        const [relatedModels] =
-          await mysqlConnection.query<RowDataPacket[]>(relationQuery);
-        if (relatedModels.length === 0) {
+        const { rows }: QueryResult<QueryResultRow> =
+          await pgPool.query(relationQuery);
+        if (rows.length === 0) {
           Object.assign(model, { [inputRelation as keyof T]: null });
           log(relationQuery, logs);
           return;
         }
 
-        if (relatedModels.length === 1) {
+        if (rows.length === 1) {
           Object.assign(model, {
-            [inputRelation as keyof T]: relatedModels[0],
+            [inputRelation as keyof T]: rows[0],
           });
           log(relationQuery, logs);
           return;
         }
 
-        Object.assign(model, { [inputRelation as keyof T]: relatedModels });
+        Object.assign(model, { [inputRelation as keyof T]: rows });
         log(relationQuery, logs);
       });
 
@@ -286,4 +261,4 @@ class ModelManagerUtils<T extends Model> {
   }
 }
 
-export default new ModelManagerUtils();
+export default new PostgresModelManagerUtils();

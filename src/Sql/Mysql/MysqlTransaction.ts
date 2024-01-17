@@ -6,7 +6,7 @@ import { log, queryError } from "../../Logger";
 import { Metadata, Model } from "../Models/Model";
 import selectTemplate from "../Templates/Query/SELECT";
 
-export class Transaction {
+export class MysqlTransaction {
   protected tableName: string;
   protected mysql: Pool;
   protected mysqlConnection!: PoolConnection;
@@ -24,7 +24,7 @@ export class Transaction {
     params?: any[],
   ): Promise<T> {
     if (!this.mysqlConnection) {
-      throw new Error("Transaction not started.");
+      throw new Error("MysqlTransaction not started.");
     }
 
     log(query, this.logs);
@@ -45,7 +45,7 @@ export class Transaction {
     params?: any[],
   ): Promise<number> {
     if (!this.mysqlConnection) {
-      throw new Error("Transaction not started.");
+      throw new Error("MysqlTransaction not started.");
     }
 
     log(query, this.logs);
@@ -58,7 +58,7 @@ export class Transaction {
 
   public async queryDelete(query: string, params?: any[]): Promise<number> {
     if (!this.mysqlConnection) {
-      throw new Error("Transaction not started.");
+      throw new Error("MysqlTransaction not started.");
     }
 
     log(query, this.logs);
@@ -89,7 +89,7 @@ export class Transaction {
    */
   async commit(): Promise<void> {
     if (!this.mysqlConnection) {
-      throw new Error("Transaction not started.");
+      throw new Error("MysqlTransaction not started.");
     }
 
     try {
