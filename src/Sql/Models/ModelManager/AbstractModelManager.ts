@@ -8,14 +8,14 @@ import { MysqlTransaction } from "../../Mysql/MysqlTransaction";
 import { PostgresTransaction } from "../../Postgres/PostgresTransaction";
 import { PostgresQueryBuilder } from "../../Postgres/PostgresQueryBuilder";
 
-export abstract class ModelManager<T extends Model> {
+export abstract class AbstractModelManager<T extends Model> {
   protected logs: boolean;
   protected model: new () => T;
   protected modelInstance: T;
   public tableName: string;
 
   /**
-   * Constructor for ModelManager class.
+   * Constructor for AbstractModelManager class.
    *
    * @param {new () => T} model - Model constructor.
    * @param {boolean} logs - Flag to enable or disable logging.

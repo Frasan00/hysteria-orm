@@ -1,6 +1,6 @@
 import { Model } from "../Models/Model";
 import { QueryBuilder } from "../QueryBuilder/QueryBuilder";
-import { Pool } from "pg";
+import {Pool, QueryResult} from "pg";
 import whereTemplate, { WhereOperatorType } from "../Templates/Query/WHERE.TS";
 import selectTemplate from "../Templates/Query/SELECT";
 import { log } from "../../Logger";
@@ -28,8 +28,8 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     log(query, this.logs);
     const model = new this.model();
     try {
-      const { rows } = await this.pgPool.query(query);
-      const modelData = rows[0] as T;
+      const { rows }: { rows: QueryResult<T>[] } = await this.pgPool.query(query);
+      const modelData = rows[0] as unknown as T;
 
       // merge model data into model
       Object.assign(model, modelData);
@@ -59,10 +59,10 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     log(query, this.logs);
     const model = new this.model();
     try {
-      const { rows } = await this.pgPool.query(query);
+      const { rows }: { rows: QueryResult<T>[] } = await this.pgPool.query(query);
       return Promise.all(
         rows.map(async (row) => {
-          const modelData = row as T;
+          const modelData = row as unknown as T;
 
           // merge model data into model
           Object.assign(model, modelData);
@@ -83,7 +83,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     }
   }
 
-  public select(columns: string): PostgresQueryBuilder<T> {
+  public select(...columns: string[]): PostgresQueryBuilder<T> {
     const select = selectTemplate(this.tableName);
     this.selectQuery = select.selectColumns(...columns);
     return this;

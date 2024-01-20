@@ -1,5 +1,5 @@
 import { Model } from "./Sql/Models/Model";
-import { ModelManager } from "./Sql/Models/ModelManager/ModelManager";
+import { AbstractModelManager } from "./Sql/Models/ModelManager/AbstractModelManager";
 
 /*
  * Creates a datasource for the selected database type with the provided credentials
@@ -36,5 +36,7 @@ export abstract class Datasource {
   }
 
   public abstract connect(): Promise<void>;
-  public abstract getModelManager(model: typeof Model): ModelManager<Model>;
+  public abstract getModelManager(
+    model: typeof Model,
+  ): AbstractModelManager<Model>;
 }

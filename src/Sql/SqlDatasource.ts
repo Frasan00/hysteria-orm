@@ -5,7 +5,7 @@ import { Model } from "./Models/Model";
 import { MysqlModelManager } from "./Mysql/MysqlModelManager";
 import { PostgresModelManager } from "./Postgres/PostgresModelManager";
 
-type ModelManagerType<T extends Model> =
+type ModelManager<T extends Model> =
   | MysqlModelManager<T>
   | PostgresModelManager<T>;
 
@@ -52,9 +52,7 @@ export class SqlDatasource extends Datasource {
    * @description Returns model manager for the provided model
    * @param model
    */
-  public getModelManager<T extends Model>(
-    model: new () => T,
-  ): ModelManagerType<T> {
+  public getModelManager<T extends Model>(model: new () => T): ModelManager<T> {
     switch (this.type) {
       case "mysql":
         return new MysqlModelManager<T>(

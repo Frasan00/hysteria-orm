@@ -1,36 +1,39 @@
 # Hysteria-orm
 
-- Hysteria ORM is a simple ORM for node.js built with typescript.
-- This ORM allows you to create models and use them to interact with your database.
-- For now, only MySQL is supported, but more databases will be supported in the future.
+- Hysteria is an ORM for javascript/typescript that allows you to create models and use them to interact with your database in a more direct and simple way.
+- For now it supports MySQL and Postgres.
 
 ## Software Requirements
 
-- Node.js
-- Compatible Database (Mysql)
+- Javascript Runtime environment (es. nodejs)
+- SQL library as dependency (es. mysql2, pg based on your Database)
 
 ## Configuration Requirements
 
-- *IMPORTANT* must set "useDefineForClassFields": true, in tsconfig.json in order for the ORM to work!
+- *IMPORTANT* if using typescript, must set *"useDefineForClassFields": true* in tsconfig.json in order for the ORM to work!
+
+## Envs
+- MIGRATION_PATH - default: database/migrations - value [path/to/migration/folder]
+- DATABASE_TYPE - default: mysql - value [mysql, postgres]
 
 ### Code Examples
 
 - Create a connection
 
 ```typescript
-import { MysqlDatasource } from "hysteria-orm";
+import { MysqlDatasource, DatasourceInput } from "hysteria-orm";
 
-const mysqlConfig = {
-    type: 'mysql',
-    host: MYSQL_HOST,
-    port: MYSQL_PORT,
-    username: MYSQL_USERNAME,
-    password: MYSQL_PASSWORD,
-    database: MYSQL_DATABASE,
+const mysqlConfig: DatasourceInput = {
+    type: 'mysql' | 'postgres',
+    host: HOST,
+    port: PORT,
+    username: USERNAME,
+    password: PASSWORD,
+    database: DATABASE,
     logs: true, // query-logs (optional) - default: false
 }
 
-const datasource = new MysqlDatasource(mysqlConfig)
+const datasource = new SqlDatasource(mysqlConfig)
 await datasource.connect()
 ```
 
@@ -45,8 +48,8 @@ export class User extends Model {
     
     constructor() {
         /*
-        * Table name and primary key are not required.
-        * If you don't set the table name, the ORM will use the class name for the table name.
+        * Table name and primary key are optional.
+        * If you don't set them, the table name will be the class name and the model won't have a primary key.
         */
         super('User', 'id');
     }
@@ -74,16 +77,12 @@ export class User extends Model {
 }
 ```
 
-- Create, Update and Delete (Optional transaction)
+- Create, Update and Delete (with transaction)
 
 ```typescript
-import {MysqlDatasource} from "hysteria-orm";
-import {mysqlConfig} from "path/to/mysqlConfig";
 import { User } from "./models/User";
 
-const datasource = new MysqlDatasource(mysqlConfig)
-const userManager = datasource.getModelManager(User);
-
+// Transaction is optional in all those methods
 const trx = userManager.createTransaction()
 // Create
 try{
@@ -108,7 +107,7 @@ try{
 }
 ```
 
-- Read (standard methods)
+- Read (standard methods used for simple queries)
 
 ```typescript
 import {MysqlDatasource} from "hysteria-orm";
@@ -134,7 +133,7 @@ const filteredUsers: User[] = await userManager.find({
     offset: 0
 });
 
-// Get by ID
+// Get by id requires the `id` property to exist on the model in order to work
 const user: User | null = await userManager.findOneById(5);
 
 // Get One
@@ -150,18 +149,15 @@ const otherUser: User | null = await userManager.findOne({
 - It's used to create more complex queries that are not supported by the standard methods
 
 ```typescript
-import {MysqlDatasource} from "hysteria-orm";
-import {mysqlConfig} from "path/to/mysqlConfig";
 import { User } from "./models/User";
-
-const datasource = new MysqlDatasource(mysqlConfig)
-const userManager = datasource.getModelManager(User);
 
 const queryBuilder = userManager.queryBuilder();
 const user: User | null = await queryBuilder
+    .select(['id'])
+    .addRelations(['post'])
     .where("name", "John Doe")
     .andWhere("email", "john@gmail.com")
-    .first();
+    .one();
 
 const users: User[] = await queryBuilder
     .where("name", "John Doe")
@@ -173,8 +169,8 @@ const users: User[] = await queryBuilder
 
 
 # Under Development
-- *Migrations* (advised raw queries since alter table is still under development and may not work as expected)
-- Environment variables *MIGRATION_PATH* default: "database/migrations"
+- *Migrations* (advised raw queries and create table only since `alter table` is still under development and may not work as expected)
+- Environment variable *MIGRATION_PATH*, default if not set: "database/migrations"
 
 Create a migration (hysteria create:migration {migrationName})
 

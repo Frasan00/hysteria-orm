@@ -145,3 +145,7 @@ test/test-script.js
 *.js
 /**/*.js
 /src/**/*.js
+docker-compose.yaml
+docker-compose.yml
+mysql
+postgres

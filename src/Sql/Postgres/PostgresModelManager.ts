@@ -13,12 +13,14 @@ import { log, queryError } from "../../Logger";
 import { MysqlQueryBuilder } from "../Mysql/MysqlQueryBuilder";
 import PostgresModelManagerUtils from "./PostgresModelManagerUtils";
 import { MysqlTransaction } from "../Mysql/MysqlTransaction";
-import { ModelManager } from "../Models/ModelManager/ModelManager";
+import { AbstractModelManager } from "../Models/ModelManager/AbstractModelManager";
 import { RowDataPacket } from "mysql2/promise";
 import { PostgresTransaction } from "./PostgresTransaction";
 import { PostgresQueryBuilder } from "./PostgresQueryBuilder";
 
-export class PostgresModelManager<T extends Model> extends ModelManager<T> {
+export class PostgresModelManager<
+  T extends Model,
+> extends AbstractModelManager<T> {
   protected pgPool: pg.Pool;
 
   /**
@@ -44,7 +46,7 @@ export class PostgresModelManager<T extends Model> extends ModelManager<T> {
       if (!input) {
         const select = selectTemplate(this.tableName);
         log(select.selectAll, this.logs);
-        const { rows }: QueryResult<RowDataPacket> = await this.pgPool.query(
+        const { rows }: QueryResult<T> = await this.pgPool.query(
           select.selectAll,
         );
         return rows.map((row) => row as T) || [];
@@ -56,7 +58,7 @@ export class PostgresModelManager<T extends Model> extends ModelManager<T> {
         input,
       );
       log(query, this.logs);
-      const { rows }: QueryResult<RowDataPacket> =
+      const { rows }: QueryResult<T> =
         await this.pgPool.query(query);
       return Promise.all(
         rows.map(async (row) => {
@@ -93,7 +95,7 @@ export class PostgresModelManager<T extends Model> extends ModelManager<T> {
     try {
       const query = ModelManagerQueryUtils.parseSelectQueryInput(model, input);
       log(query, this.logs);
-      const { rows }: QueryResult<RowDataPacket> =
+      const { rows }: QueryResult<T> =
         await this.pgPool.query(query);
       const modelData = rows[0] as T;
 
@@ -127,7 +129,7 @@ export class PostgresModelManager<T extends Model> extends ModelManager<T> {
       const stringedId = typeof id === "number" ? id.toString() : id;
       const query = select.selectById(stringedId);
       log(query, this.logs);
-      const { rows }: QueryResult<RowDataPacket> =
+      const { rows }: QueryResult<T> =
         await this.pgPool.query(query);
       return rows[0] as T;
     } catch (error) {
@@ -154,7 +156,7 @@ export class PostgresModelManager<T extends Model> extends ModelManager<T> {
     try {
       const insertQuery = ModelManagerQueryUtils.parseInsert(model);
       log(insertQuery, this.logs);
-      const { rows }: QueryResult<RowDataPacket> =
+      const { rows }: QueryResult =
         await this.pgPool.query(insertQuery);
 
       return (await this.findOneById(rows[0].id)) || null;

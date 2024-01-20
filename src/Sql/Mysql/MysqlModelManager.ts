@@ -13,9 +13,11 @@ import { log, queryError } from "../../Logger";
 import { MysqlQueryBuilder } from "./MysqlQueryBuilder";
 import MySqlModelManagerUtils from "./MySqlModelManagerUtils";
 import { MysqlTransaction } from "./MysqlTransaction";
-import { ModelManager } from "../Models/ModelManager/ModelManager";
+import { AbstractModelManager } from "../Models/ModelManager/AbstractModelManager";
 
-export class MysqlModelManager<T extends Model> extends ModelManager<T> {
+export class MysqlModelManager<
+  T extends Model,
+> extends AbstractModelManager<T> {
   protected mysqlPool: mysql.Pool;
 
   /**
