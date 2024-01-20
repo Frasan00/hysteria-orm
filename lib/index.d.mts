@@ -122,6 +122,10 @@ type PaginationMetadata = {
     hasMorePages: boolean;
     hasPages: boolean;
 };
+type PaginatedData<T> = {
+    paginationMetadata: PaginationMetadata;
+    data: T[];
+};
 
 declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     protected pgPool: Pool;
@@ -134,10 +138,7 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @param page
      * @param limit
      */
-    paginate(page: number, limit: number): Promise<{
-        paginationMetadata: PaginationMetadata;
-        data: T[];
-    }>;
+    paginate(page: number, limit: number): Promise<PaginatedData<T>>;
     select(...columns: string[]): PostgresQueryBuilder<T>;
     addRelations(relations: string[]): PostgresQueryBuilder<T>;
     where(column: string, operator: WhereOperatorType, value: string | number | boolean | Date): PostgresQueryBuilder<T>;
@@ -202,10 +203,7 @@ declare abstract class QueryBuilder<T extends Model> {
      * @description Executes the query and retrieves multiple results.
      * @returns A Promise resolving to an array of results.
      */
-    abstract paginate(page: number, limit: number): Promise<{
-        paginationMetadata: PaginationMetadata;
-        data: T[];
-    }>;
+    abstract paginate(page: number, limit: number): Promise<PaginatedData<T>>;
     /**
      * @description Columns are customizable with aliases. By default, without this function, all columns are selected
      * @param columns
@@ -423,10 +421,7 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @param page
      * @param limit
      */
-    paginate(page: number, limit: number): Promise<{
-        paginationMetadata: PaginationMetadata;
-        data: T[];
-    }>;
+    paginate(page: number, limit: number): Promise<PaginatedData<T>>;
     /**
      * @description Columns are customizable with aliases. By default, without this function, all columns are selected
      * @param columns
