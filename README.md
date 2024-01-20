@@ -6,7 +6,7 @@ Hysteria ORM is an Object-Relational Mapping (ORM) library for JavaScript and Ty
 
 - **Simple Model Creation:** Define models that reflect your database schema with ease.
 - **Automatic Case Conversion:** Automatically converts model properties to snake_case for the database and back to camelCase when retrieving data.
-- **Database Support:** Currently supports MySQL, with PostgreSQL support in development.
+- **Database Support:** Currently supports MySQL and PostgreSQL.
 
 ## Prerequisites
 
@@ -159,7 +159,7 @@ import { User } from "./models/User";
 
 const queryBuilder = userManager.queryBuilder();
 const user: User | null = await queryBuilder
-    .select(['id'])
+    .select(['id', 'name as superName'])
     .addRelations(['post'])
     .where("name", "John Doe")
     .andWhere("email", "john@gmail.com")
