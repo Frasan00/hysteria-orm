@@ -289,7 +289,7 @@ export class MysqlModelManager<
    *
    * @returns {MysqlQueryBuilder<Model>} - Instance of MysqlQueryBuilder.
    */
-  public queryBuilder(): MysqlQueryBuilder<T> {
+  public query(): MysqlQueryBuilder<T> {
     return new MysqlQueryBuilder<T>(
       this.model,
       this.tableName,

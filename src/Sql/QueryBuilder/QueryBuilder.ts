@@ -2,6 +2,7 @@ import { Pool } from "mysql2/promise";
 import selectTemplate, { SelectTemplateType } from "../Templates/Query/SELECT";
 import { Model } from "../Models/Model";
 import whereTemplate, {
+  BaseValues,
   WhereOperatorType,
   WhereTemplateType,
 } from "../Templates/Query/WHERE.TS";
@@ -9,8 +10,11 @@ import { MysqlQueryBuilder } from "../Mysql/MysqlQueryBuilder";
 import { PostgresQueryBuilder } from "../Postgres/PostgresQueryBuilder";
 import { PaginatedData, PaginationMetadata } from "../../CaseUtils";
 
+type QueryBuilders<T extends Model> = MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
+
 export abstract class QueryBuilder<T extends Model> {
   protected selectQuery: string = "";
+  protected joinQuery: string = "";
   protected relations: string[] = [];
   protected whereQuery: string = "";
   protected groupByQuery: string = "";
@@ -71,7 +75,32 @@ export abstract class QueryBuilder<T extends Model> {
    */
   public abstract select(
     ...columns: string[]
-  ): MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
+  ): QueryBuilders<T>;
+
+  /**
+   *
+   * @param table
+   * @param primaryColumn
+   * @param foreignColumn
+   */
+  public abstract join(
+    table: string,
+    primaryColumn: string,
+    foreignColumn: string,
+  ) : QueryBuilders<T>;
+
+  /**
+   *
+   * @param table
+   * @param primaryColumn
+   * @param foreignColumn
+   */
+  public abstract leftJoin(
+    table: string,
+    primaryColumn: string,
+    foreignColumn: string,
+  ): QueryBuilders<T>
+
 
   /**
    * @description Adds a relation to the query.
@@ -79,7 +108,7 @@ export abstract class QueryBuilder<T extends Model> {
    */
   public abstract addRelations(
     relations: string[],
-  ): MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
+  ): QueryBuilders<T>;
 
   /**
    * @description Adds a WHERE condition to the query.
@@ -91,8 +120,8 @@ export abstract class QueryBuilder<T extends Model> {
   public abstract where(
     column: string,
     operator: WhereOperatorType,
-    value: string | number | boolean | Date,
-  ): MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
+    value: BaseValues,
+  ): QueryBuilders<T>;
 
   /**
    * @description Adds an AND WHERE condition to the query.
@@ -104,8 +133,8 @@ export abstract class QueryBuilder<T extends Model> {
   public abstract andWhere(
     column: string,
     operator: WhereOperatorType,
-    value: string | number | boolean | Date,
-  ): MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
+    value: BaseValues,
+  ): QueryBuilders<T>;
 
   /**
    * @description Adds an OR WHERE condition to the query.
@@ -117,8 +146,8 @@ export abstract class QueryBuilder<T extends Model> {
   public abstract orWhere(
     column: string,
     operator: WhereOperatorType,
-    value: string | number | boolean | Date,
-  ): MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
+    value: BaseValues,
+  ): QueryBuilders<T>;
 
   /**
    * @description Adds a WHERE BETWEEN condition to the query.
@@ -129,9 +158,9 @@ export abstract class QueryBuilder<T extends Model> {
    */
   public abstract whereBetween(
     column: string,
-    min: string,
-    max: string,
-  ): MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
+    min: BaseValues,
+    max: BaseValues,
+  ): QueryBuilders<T>;
 
   /**
    * @description Adds an AND WHERE BETWEEN condition to the query.
@@ -142,9 +171,9 @@ export abstract class QueryBuilder<T extends Model> {
    */
   public abstract andWhereBetween(
     column: string,
-    min: string,
-    max: string,
-  ): MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
+    min: BaseValues,
+    max: BaseValues,
+  ): QueryBuilders<T>;
 
   /**
    * @description Adds an OR WHERE BETWEEN condition to the query.
@@ -155,9 +184,9 @@ export abstract class QueryBuilder<T extends Model> {
    */
   public abstract orWhereBetween(
     column: string,
-    min: string,
-    max: string,
-  ): MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
+    min: BaseValues,
+    max: BaseValues,
+  ): QueryBuilders<T>;
 
   /**
    * @description Adds a WHERE NOT BETWEEN condition to the query.
@@ -168,9 +197,9 @@ export abstract class QueryBuilder<T extends Model> {
    */
   public abstract whereNotBetween(
     column: string,
-    min: string,
-    max: string,
-  ): MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
+    min: BaseValues,
+    max: BaseValues,
+  ): QueryBuilders<T>;
 
   /**
    * @description Adds an OR WHERE NOT BETWEEN condition to the query.
@@ -181,9 +210,9 @@ export abstract class QueryBuilder<T extends Model> {
    */
   public abstract orWhereNotBetween(
     column: string,
-    min: string,
-    max: string,
-  ): MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
+    min: BaseValues,
+    max: BaseValues,
+  ): QueryBuilders<T>;
 
   /**
    * @description Adds a WHERE IN condition to the query.
@@ -193,8 +222,8 @@ export abstract class QueryBuilder<T extends Model> {
    */
   public abstract whereIn(
     column: string,
-    values: string[],
-  ): MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
+    values: BaseValues[],
+  ): QueryBuilders<T>;
 
   /**
    * @description Adds an AND WHERE IN condition to the query.
@@ -204,8 +233,8 @@ export abstract class QueryBuilder<T extends Model> {
    */
   public abstract andWhereIn(
     column: string,
-    values: string[],
-  ): MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
+    values: BaseValues[],
+  ): QueryBuilders<T>;
 
   /**
    * @description Adds an OR WHERE IN condition to the query.
@@ -215,8 +244,8 @@ export abstract class QueryBuilder<T extends Model> {
    */
   public abstract orWhereIn(
     column: string,
-    values: string[],
-  ): MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
+    values: BaseValues[],
+  ): QueryBuilders<T>;
 
   /**
    * @description Adds a WHERE NOT IN condition to the query.
@@ -226,8 +255,8 @@ export abstract class QueryBuilder<T extends Model> {
    */
   public abstract whereNotIn(
     column: string,
-    values: string[],
-  ): MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
+    values: BaseValues[],
+  ): QueryBuilders<T>;
 
   /**
    * @description Adds an OR WHERE NOT IN condition to the query.
@@ -237,8 +266,8 @@ export abstract class QueryBuilder<T extends Model> {
    */
   public abstract orWhereNotIn(
     column: string,
-    values: string[],
-  ): MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
+    values: BaseValues[],
+  ): QueryBuilders<T>;
 
   /**
    * @description Adds a WHERE NULL condition to the query.
@@ -247,7 +276,7 @@ export abstract class QueryBuilder<T extends Model> {
    */
   public abstract whereNull(
     column: string,
-  ): MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
+  ): QueryBuilders<T>;
 
   /**
    * @description Adds an AND WHERE NULL condition to the query.
@@ -256,7 +285,7 @@ export abstract class QueryBuilder<T extends Model> {
    */
   public abstract andWhereNull(
     column: string,
-  ): MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
+  ): QueryBuilders<T>;
 
   /**
    * @description Adds an OR WHERE NULL condition to the query.
@@ -265,7 +294,7 @@ export abstract class QueryBuilder<T extends Model> {
    */
   public abstract orWhereNull(
     column: string,
-  ): MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
+  ): QueryBuilders<T>;
 
   /**
    * @description Adds a WHERE NOT NULL condition to the query.
@@ -274,7 +303,7 @@ export abstract class QueryBuilder<T extends Model> {
    */
   public abstract whereNotNull(
     column: string,
-  ): MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
+  ): QueryBuilders<T>;
 
   /**
    * @description Adds an AND WHERE NOT NULL condition to the query.
@@ -283,7 +312,7 @@ export abstract class QueryBuilder<T extends Model> {
    */
   public abstract andWhereNotNull(
     column: string,
-  ): MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
+  ): QueryBuilders<T>;
 
   /**
    * @description Adds an OR WHERE NOT NULL condition to the query.
@@ -292,7 +321,7 @@ export abstract class QueryBuilder<T extends Model> {
    */
   public abstract orWhereNotNull(
     column: string,
-  ): MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
+  ): QueryBuilders<T>;
 
   /**
    * @description Adds a raw WHERE condition to the query.
@@ -301,7 +330,7 @@ export abstract class QueryBuilder<T extends Model> {
    */
   public abstract rawWhere(
     query: string,
-  ): MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
+  ): QueryBuilders<T>;
 
   /**
    * @description Adds a raw AND WHERE condition to the query.
@@ -310,7 +339,7 @@ export abstract class QueryBuilder<T extends Model> {
    */
   public abstract rawAndWhere(
     query: string,
-  ): MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
+  ): QueryBuilders<T>;
 
   /**
    * @description Adds a raw OR WHERE condition to the query.
@@ -319,7 +348,7 @@ export abstract class QueryBuilder<T extends Model> {
    */
   public abstract rawOrWhere(
     query: string,
-  ): MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
+  ): QueryBuilders<T>;
 
   /**
    * @description Adds GROUP BY conditions to the query.
@@ -327,8 +356,8 @@ export abstract class QueryBuilder<T extends Model> {
    * @returns The MysqlQueryBuilder instance for chaining.
    */
   public abstract groupBy(
-    ...columns: string[]
-  ): MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
+    ...columns: BaseValues[]
+  ): QueryBuilders<T>;
 
   /**
    * @description Adds ORDER BY conditions to the query.
@@ -337,9 +366,9 @@ export abstract class QueryBuilder<T extends Model> {
    * @returns The MysqlQueryBuilder instance for chaining.
    */
   public abstract orderBy(
-    column: string[],
+    column: BaseValues[],
     order: "ASC" | "DESC",
-  ): MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
+  ): QueryBuilders<T>;
 
   /**
    * @description Adds a LIMIT condition to the query.
@@ -348,7 +377,7 @@ export abstract class QueryBuilder<T extends Model> {
    */
   public abstract limit(
     limit: number,
-  ): MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
+  ): QueryBuilders<T>;
 
   /**
    * @description Adds an OFFSET condition to the query.
@@ -357,7 +386,7 @@ export abstract class QueryBuilder<T extends Model> {
    */
   public abstract offset(
     offset: number,
-  ): MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
+  ): QueryBuilders<T>;
 
   protected groupFooterQuery(): string {
     return (

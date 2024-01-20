@@ -303,7 +303,7 @@ export class PostgresModelManager<
    *
    * @returns {MysqlQueryBuilder<Model>} - Instance of MysqlQueryBuilder.
    */
-  public queryBuilder(): PostgresQueryBuilder<T> {
+  public query(): PostgresQueryBuilder<T> {
     return new PostgresQueryBuilder<T>(
       this.model,
       this.tableName,

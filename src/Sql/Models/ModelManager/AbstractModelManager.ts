@@ -50,7 +50,7 @@ export abstract class AbstractModelManager<T extends Model> {
 
   public abstract createTransaction(): MysqlTransaction | PostgresTransaction;
 
-  public abstract queryBuilder():
+  public abstract query():
     | MysqlQueryBuilder<T>
     | PostgresQueryBuilder<T>;
 }

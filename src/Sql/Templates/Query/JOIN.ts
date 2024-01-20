@@ -1,15 +1,12 @@
-const joinTemplate = (table: string, relationTable: string) => {
+const joinTemplate = (_table: string, relatedTable: string, primaryColumn: string, foreignColumn: string) => {
   return {
-    hasOne(): string {
-      return `\nLEFT JOIN ${relationTable} ON ${table}.id = ${relationTable}.${table}_id`;
+    innerJoin: () => {
+      return `\nINNER JOIN ${relatedTable} ON ${primaryColumn} = ${foreignColumn}`;
     },
-    belongsTo(foreignKey: string): string {
-      return `\nLEFT JOIN ${relationTable} ON ${table}.id = ${relationTable}.${foreignKey}`;
-    },
-    hasMany(foreignKey: string): string {
-      return `\nLEFT JOIN ${relationTable} ON ${table}.id = ${relationTable}.${foreignKey}`;
-    },
-  };
+    leftJoin: () => {
+      return `\nLEFT JOIN ${relatedTable} ON ${primaryColumn} = ${foreignColumn}`;
+    }
+  }
 };
 
 export default joinTemplate;

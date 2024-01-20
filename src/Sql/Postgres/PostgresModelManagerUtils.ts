@@ -217,7 +217,7 @@ class PostgresModelManagerUtils<T extends Model> {
   public async parseQueryBuilderRelations(
     model: T,
     input: string[],
-    pgConnection: pg.Pool, // Changed from mysqlConnection to pgConnection
+    pgConnection: pg.Pool,
     logs: boolean,
   ): Promise<void> {
     if (input.length === 0) {

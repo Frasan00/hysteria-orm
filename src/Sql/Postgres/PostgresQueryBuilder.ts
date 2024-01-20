@@ -1,15 +1,15 @@
 import { Model } from "../Models/Model";
 import { QueryBuilder } from "../QueryBuilder/QueryBuilder";
 import { Pool } from "pg";
-import whereTemplate, { WhereOperatorType } from "../Templates/Query/WHERE.TS";
+import whereTemplate, {BaseValues, WhereOperatorType} from "../Templates/Query/WHERE.TS";
 import selectTemplate from "../Templates/Query/SELECT";
 import { log } from "../../Logger";
 import {
   PaginatedData,
-  PaginationMetadata,
   parseDatabaseDataIntoModelResponse,
 } from "../../CaseUtils";
 import PostgresModelManagerUtils from "./PostgresModelManagerUtils";
+import joinTemplate from "../Templates/Query/JOIN";
 
 export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   protected pgPool: Pool;
@@ -35,7 +35,13 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   }
 
   public async one(): Promise<T | null> {
-    let query = this.selectQuery;
+    let query: string = '';
+    if(this.joinQuery && !this.selectQuery) {
+      const select = selectTemplate(this.tableName);
+      this.selectQuery = select.selectColumns(`${this.tableName}.*`);
+    }
+    query = this.selectQuery + this.joinQuery;
+
     if (this.whereQuery) {
       query += this.whereQuery;
     }
@@ -66,7 +72,13 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   }
 
   public async many(): Promise<T[]> {
-    let query = this.selectQuery;
+    let query: string = '';
+    if(this.joinQuery && !this.selectQuery) {
+      const select = selectTemplate(this.tableName);
+      this.selectQuery = select.selectColumns(`${this.tableName}.*`);
+    }
+    query = this.selectQuery + this.joinQuery;
+
     if (this.whereQuery) {
       query += this.whereQuery;
     }
@@ -123,6 +135,38 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
+  /**
+   *
+   * @param relationTable - The name of the related table.
+   * @param primaryColumn - The name of the primary column in the caller table.
+   * @param foreignColumn - The name of the foreign column in the related table.
+   */
+  public join(
+      relationTable: string,
+      primaryColumn: string,
+      foreignColumn: string,
+  ) : PostgresQueryBuilder<T> {
+    const join = joinTemplate(this.tableName, relationTable, primaryColumn, foreignColumn);
+    this.joinQuery += join.innerJoin();
+    return this;
+  }
+
+  /**
+   *
+   * @param relationTable - The name of the related table.
+   * @param primaryColumn - The name of the primary column in the caller table.
+   * @param foreignColumn - The name of the foreign column in the related table.
+   */
+  public leftJoin(
+      relationTable: string,
+      primaryColumn: string,
+      foreignColumn: string,
+  ): PostgresQueryBuilder<T> {
+    const join = joinTemplate(this.tableName, relationTable, primaryColumn, foreignColumn);
+    this.joinQuery += join.innerJoin();
+    return this;
+  }
+
   public addRelations(relations: string[]): PostgresQueryBuilder<T> {
     this.relations = relations;
     return this;
@@ -131,19 +175,19 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   public where(
     column: string,
     operator: WhereOperatorType,
-    value: string | number | boolean | Date,
+    value: BaseValues
   ): PostgresQueryBuilder<T> {
     if (this.whereQuery) {
       this.whereQuery += this.whereTemplate.andWhere(
         column,
-        value.toString(),
+        value,
         operator,
       );
       return this;
     }
     this.whereQuery = this.whereTemplate.where(
       column,
-      value.toString(),
+      value,
       operator,
     );
     return this;
@@ -152,19 +196,19 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   public andWhere(
     column: string,
     operator: WhereOperatorType,
-    value: string | number | boolean | Date,
+    value: BaseValues
   ): PostgresQueryBuilder<T> {
     if (!this.whereQuery) {
       this.whereQuery = this.whereTemplate.where(
         column,
-        value.toString(),
+        value,
         operator,
       );
       return this;
     }
     this.whereQuery += whereTemplate(this.tableName).andWhere(
       column,
-      value.toString(),
+      value,
       operator,
     );
     return this;
@@ -172,8 +216,8 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
   public andWhereBetween(
     column: string,
-    min: string,
-    max: string,
+    min: BaseValues,
+    max: BaseValues,
   ): PostgresQueryBuilder<T> {
     if (!this.whereQuery) {
       this.whereQuery = this.whereTemplate.whereBetween(column, min, max);
@@ -187,7 +231,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  public andWhereIn(column: string, values: string[]): PostgresQueryBuilder<T> {
+  public andWhereIn(column: string, values: BaseValues[]): PostgresQueryBuilder<T> {
     if (!this.whereQuery) {
       this.whereQuery = this.whereTemplate.whereIn(column, values);
       return this;
@@ -232,19 +276,19 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   public orWhere(
     column: string,
     operator: WhereOperatorType,
-    value: string | number | boolean | Date,
+    value: BaseValues
   ): PostgresQueryBuilder<T> {
     if (!this.whereQuery) {
       this.whereQuery = this.whereTemplate.where(
         column,
-        value.toString(),
+        value,
         operator,
       );
       return this;
     }
     this.whereQuery += whereTemplate(this.tableName).orWhere(
       column,
-      value.toString(),
+      value,
       operator,
     );
     return this;
@@ -252,8 +296,8 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
   public orWhereBetween(
     column: string,
-    min: string,
-    max: string,
+    min: BaseValues,
+    max: BaseValues,
   ): PostgresQueryBuilder<T> {
     if (!this.whereQuery) {
       this.whereQuery = this.whereTemplate.whereBetween(column, min, max);
@@ -267,7 +311,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  public orWhereIn(column: string, values: string[]): PostgresQueryBuilder<T> {
+  public orWhereIn(column: string, values: BaseValues[]): PostgresQueryBuilder<T> {
     if (!this.whereQuery) {
       this.whereQuery = this.whereTemplate.whereIn(column, values);
       return this;
@@ -278,8 +322,8 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
   public orWhereNotBetween(
     column: string,
-    min: string,
-    max: string,
+    min: BaseValues,
+    max: BaseValues,
   ): PostgresQueryBuilder<T> {
     if (!this.whereQuery) {
       this.whereQuery = this.whereTemplate.whereNotBetween(column, min, max);
@@ -295,7 +339,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
   public orWhereNotIn(
     column: string,
-    values: string[],
+    values: BaseValues[],
   ): PostgresQueryBuilder<T> {
     if (!this.whereQuery) {
       this.whereQuery = this.whereTemplate.whereNotIn(column, values);
@@ -363,8 +407,8 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
   public whereBetween(
     column: string,
-    min: string,
-    max: string,
+    min: BaseValues,
+    max: BaseValues,
   ): PostgresQueryBuilder<T> {
     if (!this.whereQuery) {
       this.whereQuery = this.whereTemplate.whereBetween(column, min, max);
@@ -378,7 +422,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  public whereIn(column: string, values: string[]): PostgresQueryBuilder<T> {
+  public whereIn(column: string, values: BaseValues[]): PostgresQueryBuilder<T> {
     if (!this.whereQuery) {
       this.whereQuery = this.whereTemplate.whereIn(column, values);
       return this;
@@ -389,8 +433,8 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
   public whereNotBetween(
     column: string,
-    min: string,
-    max: string,
+    min: BaseValues,
+    max: BaseValues,
   ): PostgresQueryBuilder<T> {
     if (!this.whereQuery) {
       this.whereQuery = this.whereTemplate.andWhereNotBetween(column, min, max);
@@ -404,7 +448,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  public whereNotIn(column: string, values: string[]): PostgresQueryBuilder<T> {
+  public whereNotIn(column: string, values: BaseValues[]): PostgresQueryBuilder<T> {
     if (!this.whereQuery) {
       this.whereQuery = this.whereTemplate.andWhereNotIn(column, values);
       return this;

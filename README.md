@@ -157,14 +157,14 @@ const otherUser: User | null = await userManager.findOne({
 ```typescript
 import { User } from "./models/User";
 
-const queryBuilder = userManager.queryBuilder();
-const user: User | null = await queryBuilder
+const query = userManager.query();
+const user: User | null = await query
     .addRelations(['post'])
     .where("name", "John Doe")
     .andWhere("email", "john@gmail.com")
     .one();
 
-const users: User[] = await queryBuilder
+const users: User[] = await query
     .where("name", "John Doe")
     .andWhere("email", "john@gmail.com")
     .orderBy("name", "ASC")
@@ -178,13 +178,25 @@ const users: User[] = await queryBuilder
 ```typescript
 import { User } from "./models/User";
 
-const queryBuilder = userManager.queryBuilder();
-const user: User | null = await queryBuilder
+const query = userManager.query();
+const user: User | null = await query
     .select(['id', 'name as superName'])
     .addRelations(['post'])
     .where("name", "John Doe")
     .andWhere("email", "john@gmail.com")
     .one();
+```
+
+### Join
+```typescript
+import { User } from "./models/User";
+
+const users = await userModelManager.query()
+    .select("users.*")
+    .leftJoin("posts", "users.id", "posts.user_id")
+    .where('users.id', '=', 1)
+    .orderBy(['users.id'], "ASC")
+    .many();
 ```
 
 ### Pagination
@@ -193,8 +205,8 @@ const user: User | null = await queryBuilder
 ```typescript
 import { User } from "./models/User";
 
-const queryBuilder = userManager.queryBuilder();
-const user: User | null = await queryBuilder
+const query = userManager.query();
+const user: User | null = await query
     .addRelations(['post'])
     .where("name", "John Doe")
     .andWhere("email", "john@gmail.com")
