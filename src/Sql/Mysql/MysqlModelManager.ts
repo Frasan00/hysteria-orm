@@ -133,7 +133,8 @@ export class MysqlModelManager<
       const query = select.selectById(stringedId);
       log(query, this.logs);
       const [rows] = await this.mysqlPool.query<RowDataPacket[]>(query);
-      return rows[0] as T;
+      const modelData = rows[0] as T;
+      return modelFromSnakeCaseToCamel(modelData) as T;
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -159,7 +160,7 @@ export class MysqlModelManager<
       const insertQuery = ModelManagerQueryUtils.parseInsert(model);
       log(insertQuery, this.logs);
       const [result]: any = await this.mysqlPool.query<RowDataPacket[]>(insertQuery);
-      return (await this.findOneById(result['insertId'])) || null;
+      return await this.findOneById(result['insertId']);
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -172,21 +173,22 @@ export class MysqlModelManager<
    * @param {MysqlTransaction} trx - MysqlTransaction to be used on the update operation.
    * @returns Promise resolving to the updated model or null if updating fails.
    */
-  public async update(model: T, trx?: MysqlTransaction): Promise<number> {
+  public async update(model: T, trx?: MysqlTransaction): Promise<T | null> {
+    const primaryKeyValue = this.modelInstance.metadata.primaryKey;
     if (trx) {
-      const primaryKeyValue = model["metadata"]["primaryKey"];
-      return await trx.queryUpdate<T>(
+      await trx.queryUpdate<T>(
         ModelManagerQueryUtils.parseUpdate(model),
       );
+
+      return await this.findOneById(model[primaryKeyValue as keyof T] as string | number);
     }
 
     try {
       const updateQuery = ModelManagerQueryUtils.parseUpdate(model);
       log(updateQuery, this.logs);
-      const [rows]: any =
-        await this.mysqlPool.query<RowDataPacket[]>(updateQuery);
+      await this.mysqlPool.query<RowDataPacket[]>(updateQuery);
 
-      return rows.affectedRows;
+      return await this.findOneById(model[primaryKeyValue as keyof T] as string | number);
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -199,7 +201,7 @@ export class MysqlModelManager<
    * @param {string} column - Column to filter by.
    * @param {string | number | boolean} value - Value to filter by.
    * @param {MysqlTransaction} trx - MysqlTransaction to be used on the delete operation.
-   * @returns Promise resolving to the deleted model or null if deleting fails.
+   * @returns Promise resolving to affected rows count
    */
   public async deleteByColumn(
     column: string,
@@ -235,7 +237,7 @@ export class MysqlModelManager<
    * @param {MysqlTransaction} trx - MysqlTransaction to be used on the delete operation.
    * @returns Promise resolving to the deleted model or null if deleting fails.
    */
-  public async delete(model: T, trx?: MysqlTransaction): Promise<number> {
+  public async delete(model: T, trx?: MysqlTransaction): Promise<T | null> {
     try {
       if (!model.metadata.primaryKey) {
         throw new Error(
@@ -251,13 +253,13 @@ export class MysqlModelManager<
       );
 
       if (trx) {
-        return await trx.queryDelete(deleteQuery);
+        await trx.queryDelete(deleteQuery);
+        return model;
       }
 
       log(deleteQuery, this.logs);
-      const [rows]: any =
-        await this.mysqlPool.query<RowDataPacket[]>(deleteQuery);
-      return rows.affectedRows;
+      await this.mysqlPool.query<RowDataPacket[]>(deleteQuery);
+      return model;
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);

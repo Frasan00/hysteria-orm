@@ -19,6 +19,10 @@ export type FindType = FindOneType & {
   groupBy?: string[];
   limit?: number;
   offset?: number;
+  paginate?: {
+    limit: number;
+    page: number;
+  };
 };
 
 export type TransactionType = {

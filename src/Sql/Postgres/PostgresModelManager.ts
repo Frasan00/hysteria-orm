@@ -6,17 +6,15 @@ import {
   FindOneType,
   FindType,
 } from "../Models/ModelManager/ModelManagerTypes";
-import pg, { Pool, QueryResult } from "pg";
+import pg, {  QueryResult } from "pg";
 import selectTemplate from "../Templates/Query/SELECT";
 import ModelManagerQueryUtils from "../Mysql/MySqlModelManagerUtils";
 import { log, queryError } from "../../Logger";
-import { MysqlQueryBuilder } from "../Mysql/MysqlQueryBuilder";
 import PostgresModelManagerUtils from "./PostgresModelManagerUtils";
-import { MysqlTransaction } from "../Mysql/MysqlTransaction";
 import { AbstractModelManager } from "../Models/ModelManager/AbstractModelManager";
-import { RowDataPacket } from "mysql2/promise";
 import { PostgresTransaction } from "./PostgresTransaction";
 import { PostgresQueryBuilder } from "./PostgresQueryBuilder";
+import {modelFromSnakeCaseToCamel} from "../../CaseUtils";
 
 export class PostgresModelManager<
   T extends Model,
@@ -46,37 +44,41 @@ export class PostgresModelManager<
       if (!input) {
         const select = selectTemplate(this.tableName);
         log(select.selectAll, this.logs);
-        const { rows }: QueryResult<T> = await this.pgPool.query(
-          select.selectAll,
-        );
-        return rows.map((row) => row as T) || [];
+        const { rows }: QueryResult<T> = await this.pgPool.query(select.selectAll);
+
+        const models = rows.map((row) => {
+          const model = row as T;
+          model.metadata = this.modelInstance.metadata;
+          return model;
+        }) || [];
+        return models.map((model) => modelFromSnakeCaseToCamel(model)) as T[] || [];
       }
 
-      const model = new this.model();
       const query = ModelManagerQueryUtils.parseSelectQueryInput(
-        new this.model(),
-        input,
+          new this.model(),
+          input,
       );
       log(query, this.logs);
-      const { rows }: QueryResult<T> =
-        await this.pgPool.query(query);
+
+      const { rows }: QueryResult<T> = await this.pgPool.query(query);
       return Promise.all(
-        rows.map(async (row) => {
-          const modelData = row as T;
+          rows.map(async (row) => {
+            const model = new this.model();
+            const modelData = row as T;
 
-          // merge model data into model
-          Object.assign(model, modelData);
+            // merge model data into model
+            Object.assign(model, modelData);
 
-          // relations parsing on the queried model
-          await PostgresModelManagerUtils.parseRelationInput(
-            model,
-            input,
-            this.pgPool,
-            this.logs,
-          );
+            // relations parsing on the queried model
+            await PostgresModelManagerUtils.parseRelationInput(
+                model,
+                input,
+                this.pgPool,
+                this.logs,
+            );
 
-          return model;
-        }),
+            return modelFromSnakeCaseToCamel(model) as T;
+          }),
       );
     } catch (error) {
       queryError(error);
@@ -95,22 +97,24 @@ export class PostgresModelManager<
     try {
       const query = ModelManagerQueryUtils.parseSelectQueryInput(model, input);
       log(query, this.logs);
-      const { rows }: QueryResult<T> =
-        await this.pgPool.query(query);
+
+      const { rows } = await this.pgPool.query(query);
       const modelData = rows[0] as T;
 
-      // merge model data into model
+      if (!modelData) {
+        return null;
+      }
+
       Object.assign(model, modelData);
 
-      // relations parsing on the queried model
       await PostgresModelManagerUtils.parseRelationInput(
-        model,
-        input,
-        this.pgPool,
-        this.logs,
+          model,
+          input,
+          this.pgPool,
+          this.logs,
       );
 
-      return model;
+      return modelFromSnakeCaseToCamel(model);
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -129,15 +133,20 @@ export class PostgresModelManager<
       const stringedId = typeof id === "number" ? id.toString() : id;
       const query = select.selectById(stringedId);
       log(query, this.logs);
-      const { rows }: QueryResult<T> =
-        await this.pgPool.query(query);
-      return rows[0] as T;
+
+      const { rows } = await this.pgPool.query(query);
+      const modelData = rows[0] as T;
+
+      if (!modelData) {
+        return null;
+      }
+
+      return modelFromSnakeCaseToCamel(modelData);
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
     }
   }
-
   /**
    * Save a new model instance to the database.
    *
@@ -145,21 +154,25 @@ export class PostgresModelManager<
    * @param {MysqlTransaction} trx - MysqlTransaction to be used on the save operation.
    * @returns Promise resolving to the saved model or null if saving fails.
    */
-  public async save(model: T, trx?: MysqlTransaction): Promise<T | null> {
+  public async save(model: T, trx?: PostgresTransaction): Promise<T | null> {
     if (trx) {
       return await trx.queryInsert<T>(
-        ModelManagerQueryUtils.parseInsert(model),
-        this.modelInstance.metadata,
+          ModelManagerQueryUtils.parseInsert(model),
+          this.modelInstance.metadata,
       );
     }
 
     try {
       const insertQuery = ModelManagerQueryUtils.parseInsert(model);
       log(insertQuery, this.logs);
-      const { rows }: QueryResult =
-        await this.pgPool.query(insertQuery);
+      const { rows } = await this.pgPool.query(insertQuery);
+      const insertedModel = rows[0] as T;
 
-      return (await this.findOneById(rows[0].id)) || null;
+      if (!insertedModel) {
+        return null;
+      }
+
+      return modelFromSnakeCaseToCamel(insertedModel);
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -169,26 +182,25 @@ export class PostgresModelManager<
   /**
    * Update an existing model instance in the database.
    * @param {Model} model - Model instance to be updated.
-   * @param {MysqlTransaction} trx - MysqlTransaction to be used on the update operation.
+   * @param {PostgresTransaction} trx - PostgresTransaction to be used on the update operation.
    * @returns Promise resolving to the updated model or null if updating fails.
    */
-  public async update(
-    model: T,
-    trx?: MysqlTransaction,
-  ): Promise<number | null> {
+  public async update(model: T, trx?: PostgresTransaction): Promise<T | null> {
+    const primaryKeyValue = this.modelInstance.metadata.primaryKey;
     if (trx) {
-      const primaryKeyValue = model["metadata"]["primaryKey"];
-      return await trx.queryUpdate<T>(
-        ModelManagerQueryUtils.parseUpdate(model),
+      await trx.queryUpdate<T>(
+          ModelManagerQueryUtils.parseUpdate(model),
       );
+
+      return await this.findOneById(model[primaryKeyValue as keyof T] as string | number);
     }
 
     try {
       const updateQuery = ModelManagerQueryUtils.parseUpdate(model);
       log(updateQuery, this.logs);
-      const { rowCount }: QueryResult = await this.pgPool.query(updateQuery);
+      await this.pgPool.query(updateQuery);
 
-      return rowCount;
+      return await this.findOneById(model[primaryKeyValue as keyof T] as string | number);
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -200,30 +212,29 @@ export class PostgresModelManager<
    *
    * @param {string} column - Column to filter by.
    * @param {string | number | boolean} value - Value to filter by.
-   * @param {MysqlTransaction} trx - MysqlTransaction to be used on the delete operation.
-   * @returns Promise resolving to the deleted model or null if deleting fails.
+   * @param {PostgresTransaction} trx - PostgresTransaction to be used on the delete operation.
+   * @returns Promise resolving to affected rows count
    */
   public async deleteByColumn(
-    column: string,
-    value: string | number | boolean,
-    trx?: MysqlTransaction,
-  ): Promise<number | null> {
+      column: string,
+      value: string | number | boolean,
+      trx?: PostgresTransaction,
+  ): Promise<number> {
     if (trx) {
       return await trx.queryDelete(
-        ModelManagerQueryUtils.parseDelete(this.tableName, column, value),
-      );
+          ModelManagerQueryUtils.parseDelete(this.tableName, column, value),
+      ) || 0;
     }
 
     try {
       const deleteQuery = ModelManagerQueryUtils.parseDelete(
-        this.tableName,
-        column,
-        value,
+          this.tableName,
+          column,
+          value,
       );
       log(deleteQuery, this.logs);
-      const { rowCount }: QueryResult = await this.pgPool.query(deleteQuery);
-
-      return rowCount;
+      const result = await this.pgPool.query(deleteQuery);
+      return result.rowCount || 0;
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -234,35 +245,32 @@ export class PostgresModelManager<
    * @description Delete a record from the database from the given model.
    *
    * @param {Model} model - Model to delete.
-   * @param {MysqlTransaction} trx - MysqlTransaction to be used on the delete operation.
+   * @param {PostgresTransaction} trx - PostgresTransaction to be used on the delete operation.
    * @returns Promise resolving to the deleted model or null if deleting fails.
    */
-  public async delete(
-    model: T,
-    trx?: MysqlTransaction,
-  ): Promise<number | null> {
+  public async delete(model: T, trx?: PostgresTransaction): Promise<T | null> {
     try {
       if (!model.metadata.primaryKey) {
         throw new Error(
-          "Model " +
+            "Model " +
             model.metadata.tableName +
             " has no primary key to be deleted from, try deleteByColumn",
         );
       }
       const deleteQuery = ModelManagerQueryUtils.parseDelete(
-        this.tableName,
-        model.metadata.primaryKey,
-        model.metadata["primaryKey"],
+          this.tableName,
+          model.metadata.primaryKey,
+          model[model.metadata.primaryKey as keyof T] as string,
       );
 
       if (trx) {
-        return await trx.queryDelete(deleteQuery);
+        await trx.queryDelete(deleteQuery);
+        return model;
       }
 
       log(deleteQuery, this.logs);
-      const { rowCount }: QueryResult = await this.pgPool.query(deleteQuery);
-
-      return rowCount;
+      await this.pgPool.query(deleteQuery);
+      return model;
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);

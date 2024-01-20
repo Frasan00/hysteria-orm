@@ -48,7 +48,7 @@ declare class BelongsTo extends Relation {
 }
 
 type WhereType = {
-  [key: string]: any;
+  [key: string]: string | number | boolean;
 };
 type OrderByType = {
   columns: string[];
@@ -64,42 +64,59 @@ type FindType = FindOneType & {
   groupBy?: string[];
   limit?: number;
   offset?: number;
+  paginate?: {
+    limit: number;
+    page: number;
+  };
 };
 
 type WhereOperatorType = "=" | "!=" | ">" | "<" | ">=" | "<=" | "LIKE";
+type BaseValues = string | number | boolean | Date;
 type WhereTemplateType = {
-  where: (column: string, value: string, operator: WhereOperatorType) => string;
+  where: (
+    column: string,
+    value: BaseValues,
+    operator: WhereOperatorType,
+  ) => string;
   andWhere: (
     column: string,
-    value: string,
+    value: BaseValues,
     operator: WhereOperatorType,
   ) => string;
   orWhere: (
     column: string,
-    value: string,
+    value: BaseValues,
     operator: WhereOperatorType,
   ) => string;
-  whereNot: (column: string, value: string) => string;
-  andWhereNot: (column: string, value: string) => string;
-  orWhereNot: (column: string, value: string) => string;
+  whereNot: (column: string, value: BaseValues) => string;
+  andWhereNot: (column: string, value: BaseValues) => string;
+  orWhereNot: (column: string, value: BaseValues) => string;
   whereNull: (column: string) => string;
   andWhereNull: (column: string) => string;
   orWhereNull: (column: string) => string;
   whereNotNull: (column: string) => string;
   andWhereNotNull: (column: string) => string;
   orWhereNotNull: (column: string) => string;
-  whereBetween: (column: string, min: string, max: string) => string;
-  andWhereBetween: (column: string, min: string, max: string) => string;
-  orWhereBetween: (column: string, min: string, max: string) => string;
-  whereNotBetween: (column: string, min: string, max: string) => string;
-  andWhereNotBetween: (column: string, min: string, max: string) => string;
-  orWhereNotBetween: (column: string, min: string, max: string) => string;
-  whereIn: (column: string, values: string[]) => string;
-  andWhereIn: (column: string, values: string[]) => string;
-  orWhereIn: (column: string, values: string[]) => string;
-  whereNotIn: (column: string, values: string[]) => string;
-  andWhereNotIn: (column: string, values: string[]) => string;
-  orWhereNotIn: (column: string, values: string[]) => string;
+  whereBetween: (column: string, min: BaseValues, max: BaseValues) => string;
+  andWhereBetween: (column: string, min: BaseValues, max: BaseValues) => string;
+  orWhereBetween: (column: string, min: BaseValues, max: BaseValues) => string;
+  whereNotBetween: (column: string, min: BaseValues, max: BaseValues) => string;
+  andWhereNotBetween: (
+    column: string,
+    min: BaseValues,
+    max: BaseValues,
+  ) => string;
+  orWhereNotBetween: (
+    column: string,
+    min: BaseValues,
+    max: BaseValues,
+  ) => string;
+  whereIn: (column: string, values: BaseValues[]) => string;
+  andWhereIn: (column: string, values: BaseValues[]) => string;
+  orWhereIn: (column: string, values: BaseValues[]) => string;
+  whereNotIn: (column: string, values: BaseValues[]) => string;
+  andWhereNotIn: (column: string, values: BaseValues[]) => string;
+  orWhereNotIn: (column: string, values: BaseValues[]) => string;
   rawWhere: (query: string) => string;
   rawAndWhere: (query: string) => string;
   rawOrWhere: (query: string) => string;
@@ -779,86 +796,28 @@ declare abstract class AbstractModelManager<T extends Model> {
   protected model: new () => T;
   protected modelInstance: T;
   tableName: string;
-  /**
-   * Constructor for AbstractModelManager class.
-   *
-   * @param {new () => T} model - Model constructor.
-   * @param {boolean} logs - Flag to enable or disable logging.
-   */
   protected constructor(model: new () => T, logs: boolean);
-  /**
-   * Find method to retrieve multiple records from the database based on the input conditions.
-   *
-   * @param {FindType} input - Optional query parameters for filtering, ordering, and pagination.
-   * @returns Promise resolving to an array of models.
-   */
   abstract find(input?: FindType): Promise<T[]>;
-  /**
-   * Find a single record from the database based on the input conditions.
-   *
-   * @param {FindOneType} input - Query parameters for filtering and selecting a single record.
-   * @returns Promise resolving to a single model or null if not found.
-   */
   abstract findOne(input: FindOneType): Promise<T | null>;
-  /**
-   * Find a single record by its ID from the database.
-   *
-   * @param {string | number} id - ID of the record to retrieve.
-   * @returns Promise resolving to a single model or null if not found.
-   */
   abstract findOneById(id: string | number): Promise<T | null>;
-  /**
-   * Save a new model instance to the database.
-   *
-   * @param {Model} model - Model instance to be saved.
-   * @param {MysqlTransaction} trx - MysqlTransaction to be used on the save operation.
-   * @returns Promise resolving to the saved model or null if saving fails.
-   */
-  abstract save(model: T, trx?: MysqlTransaction): Promise<T | null>;
-  /**
-   * Update an existing model instance in the database.
-   * @param {Model} model - Model instance to be updated.
-   * @param {MysqlTransaction} trx - MysqlTransaction to be used on the update operation.
-   * @returns Promise resolving to the updated model or null if updating fails.
-   */
+  abstract save(
+    model: T,
+    trx?: MysqlTransaction | PostgresTransaction,
+  ): Promise<T | null>;
   abstract update(
     model: T,
-    trx?: MysqlTransaction,
-  ): Promise<number> | Promise<number | null>;
-  /**
-   * @description Delete a record from the database from the given column and value.
-   *
-   * @param {string} column - Column to filter by.
-   * @param {string | number | boolean} value - Value to filter by.
-   * @param {MysqlTransaction} trx - MysqlTransaction to be used on the delete operation.
-   * @returns Promise resolving to the deleted model or null if deleting fails.
-   */
+    trx?: MysqlTransaction | PostgresTransaction,
+  ): Promise<T | null>;
   abstract deleteByColumn(
     column: string,
     value: string | number | boolean,
-    trx?: MysqlTransaction,
+    trx?: MysqlTransaction | PostgresTransaction,
   ): Promise<number> | Promise<number | null>;
-  /**
-   * @description Delete a record from the database from the given model.
-   *
-   * @param {Model} model - Model to delete.
-   * @param {MysqlTransaction} trx - MysqlTransaction to be used on the delete operation.
-   * @returns Promise resolving to the deleted model or null if deleting fails.
-   */
   abstract delete(
     model: T,
-    trx?: MysqlTransaction,
-  ): Promise<number> | Promise<number | null>;
-  /**
-   * @description Creates a new transaction.
-   * @returns {MysqlTransaction} - Instance of MysqlTransaction.
-   */
+    trx?: MysqlTransaction | PostgresTransaction,
+  ): Promise<T | null>;
   abstract createTransaction(): MysqlTransaction | PostgresTransaction;
-  /**
-   * Create and return a new instance of the MysqlQueryBuilder for building more complex SQL queries.
-   *
-   * @returns {MysqlQueryBuilder<Model>} - Instance of MysqlQueryBuilder.
-   */
   abstract queryBuilder(): MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
 }
 
@@ -932,14 +891,14 @@ declare class MysqlModelManager<
    * @param {MysqlTransaction} trx - MysqlTransaction to be used on the update operation.
    * @returns Promise resolving to the updated model or null if updating fails.
    */
-  update(model: T, trx?: MysqlTransaction): Promise<number>;
+  update(model: T, trx?: MysqlTransaction): Promise<T | null>;
   /**
    * @description Delete a record from the database from the given column and value.
    *
    * @param {string} column - Column to filter by.
    * @param {string | number | boolean} value - Value to filter by.
    * @param {MysqlTransaction} trx - MysqlTransaction to be used on the delete operation.
-   * @returns Promise resolving to the deleted model or null if deleting fails.
+   * @returns Promise resolving to affected rows count
    */
   deleteByColumn(
     column: string,
@@ -953,7 +912,7 @@ declare class MysqlModelManager<
    * @param {MysqlTransaction} trx - MysqlTransaction to be used on the delete operation.
    * @returns Promise resolving to the deleted model or null if deleting fails.
    */
-  delete(model: T, trx?: MysqlTransaction): Promise<number>;
+  delete(model: T, trx?: MysqlTransaction): Promise<T | null>;
   /**
    * @description Creates a new transaction.
    * @returns {MysqlTransaction} - Instance of MysqlTransaction.
@@ -1007,35 +966,35 @@ declare class PostgresModelManager<
    * @param {MysqlTransaction} trx - MysqlTransaction to be used on the save operation.
    * @returns Promise resolving to the saved model or null if saving fails.
    */
-  save(model: T, trx?: MysqlTransaction): Promise<T | null>;
+  save(model: T, trx?: PostgresTransaction): Promise<T | null>;
   /**
    * Update an existing model instance in the database.
    * @param {Model} model - Model instance to be updated.
-   * @param {MysqlTransaction} trx - MysqlTransaction to be used on the update operation.
+   * @param {PostgresTransaction} trx - PostgresTransaction to be used on the update operation.
    * @returns Promise resolving to the updated model or null if updating fails.
    */
-  update(model: T, trx?: MysqlTransaction): Promise<number | null>;
+  update(model: T, trx?: PostgresTransaction): Promise<T | null>;
   /**
    * @description Delete a record from the database from the given column and value.
    *
    * @param {string} column - Column to filter by.
    * @param {string | number | boolean} value - Value to filter by.
-   * @param {MysqlTransaction} trx - MysqlTransaction to be used on the delete operation.
-   * @returns Promise resolving to the deleted model or null if deleting fails.
+   * @param {PostgresTransaction} trx - PostgresTransaction to be used on the delete operation.
+   * @returns Promise resolving to affected rows count
    */
   deleteByColumn(
     column: string,
     value: string | number | boolean,
-    trx?: MysqlTransaction,
-  ): Promise<number | null>;
+    trx?: PostgresTransaction,
+  ): Promise<number>;
   /**
    * @description Delete a record from the database from the given model.
    *
    * @param {Model} model - Model to delete.
-   * @param {MysqlTransaction} trx - MysqlTransaction to be used on the delete operation.
+   * @param {PostgresTransaction} trx - PostgresTransaction to be used on the delete operation.
    * @returns Promise resolving to the deleted model or null if deleting fails.
    */
-  delete(model: T, trx?: MysqlTransaction): Promise<number | null>;
+  delete(model: T, trx?: PostgresTransaction): Promise<T | null>;
   /**
    * @description Creates a new transaction.
    * @returns {MysqlTransaction} - Instance of MysqlTransaction.

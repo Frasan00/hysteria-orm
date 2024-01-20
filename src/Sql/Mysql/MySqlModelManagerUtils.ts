@@ -12,6 +12,7 @@ import { log, queryError } from "../../Logger";
 import relationTemplates from "../Templates/Query/RELATIONS";
 import { Pool, RowDataPacket } from "mysql2/promise";
 import whereTemplate from "../Templates/Query/WHERE.TS";
+import pg from "pg";
 
 class MySqlModelManagerUtils<T extends Model> {
   public parseSelectQueryInput(

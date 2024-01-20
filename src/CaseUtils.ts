@@ -17,32 +17,39 @@ function fromSnakeToCamelCase(snake: any) {
   return snake.replace(/(_\w)/g, (x) => x[1].toUpperCase());
 }
 
-export function modelFromSnakeCaseToCamel<T extends Record<string, any>>(model?: T): T | null {
+export function modelFromSnakeCaseToCamel<T extends Record<string, any>>(
+  model?: T,
+): T | null {
   if (!model) {
     return null;
   }
 
   const camelCaseModel: Record<string, any> = {};
 
-  if ('metadata' in model) {
+  if ("metadata" in model) {
     camelCaseModel.metadata = model.metadata;
   }
-  if ('aliasColumns' in model) {
+  if ("aliasColumns" in model) {
     camelCaseModel.aliasColumns = model.aliasColumns;
   }
-  if ('setProps' in model) {
+  if ("setProps" in model) {
     camelCaseModel.setProps = model.setProps;
   }
 
   Object.keys(model).forEach((key) => {
-    if (key === 'metadata' || key === 'aliasColumns' || key === 'setProps') {
+    if (key === "metadata" || key === "aliasColumns" || key === "setProps") {
       return;
     }
 
     const originalValue = model[key];
     const camelCaseKey = fromSnakeToCamelCase(key);
 
-    if (originalValue && typeof originalValue === 'object' && !Array.isArray(originalValue) && !(originalValue instanceof Date)) {
+    if (
+      originalValue &&
+      typeof originalValue === "object" &&
+      !Array.isArray(originalValue) &&
+      !(originalValue instanceof Date)
+    ) {
       camelCaseModel[camelCaseKey] = modelFromSnakeCaseToCamel(originalValue);
     } else {
       camelCaseModel[camelCaseKey] = originalValue;

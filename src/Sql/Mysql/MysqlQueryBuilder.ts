@@ -58,7 +58,6 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
       this.mergeRetrievedDataIntoModel(model, modelData)
 
-      // relations parsing on the queried model
       await ModelManagerUtils.parseQueryBuilderRelations(
         model,
         this.relations,

@@ -12,6 +12,7 @@ import { log, queryError } from "../../Logger";
 import relationTemplates from "../Templates/Query/RELATIONS";
 import { Pool, QueryResult, QueryResultRow } from "pg";
 import whereTemplate from "../Templates/Query/WHERE.TS";
+import pg from "pg";
 
 class PostgresModelManagerUtils<T extends Model> {
   public parseSelectQueryInput(
@@ -214,10 +215,10 @@ class PostgresModelManagerUtils<T extends Model> {
 
   // Parses and fills input relations directly into the model
   public async parseQueryBuilderRelations(
-    model: T,
-    input: string[],
-    pgPool: Pool,
-    logs: boolean,
+      model: T,
+      input: string[],
+      pgConnection: pg.Pool, // Changed from mysqlConnection to pgConnection
+      logs: boolean,
   ): Promise<void> {
     if (input.length === 0) {
       return;
@@ -233,23 +234,19 @@ class PostgresModelManagerUtils<T extends Model> {
         const relation = this.getRelationFromModel(model, inputRelation);
         relationQuery = relationTemplates(model, relation);
 
-        const { rows }: QueryResult<QueryResultRow> =
-          await pgPool.query(relationQuery);
-        if (rows.length === 0) {
+        // Changed to use pgConnection.query instead of mysqlConnection.query
+        const result = await pgConnection.query(relationQuery);
+        const relatedModels = result.rows;
+
+        if (relatedModels.length === 0) {
           Object.assign(model, { [inputRelation as keyof T]: null });
-          log(relationQuery, logs);
-          return;
-        }
-
-        if (rows.length === 1) {
+        } else if (relatedModels.length === 1) {
           Object.assign(model, {
-            [inputRelation as keyof T]: rows[0],
+            [inputRelation as keyof T]: relatedModels[0],
           });
-          log(relationQuery, logs);
-          return;
+        } else {
+          Object.assign(model, { [inputRelation as keyof T]: relatedModels });
         }
-
-        Object.assign(model, { [inputRelation as keyof T]: rows });
         log(relationQuery, logs);
       });
 

@@ -1,9 +1,10 @@
 import { Model } from "../Models/Model";
 import { QueryBuilder } from "../QueryBuilder/QueryBuilder";
-import {Pool, QueryResult} from "pg";
+import {Pool} from "pg";
 import whereTemplate, { WhereOperatorType } from "../Templates/Query/WHERE.TS";
 import selectTemplate from "../Templates/Query/SELECT";
 import { log } from "../../Logger";
+import {modelFromSnakeCaseToCamel} from "../../CaseUtils";
 import PostgresModelManagerUtils from "./PostgresModelManagerUtils";
 
 export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
@@ -19,6 +20,19 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     this.pgPool = pgPool;
   }
 
+  private mergeRetrievedDataIntoModel(
+      model: T,
+      row: any,
+  ) {
+    Object.entries(row).forEach(([key, value]) => {
+      if (Object.hasOwnProperty.call(model, key)) {
+        Object.assign(model, { [key]: value });
+      } else {
+        model.aliasColumns[key] = value as string | number | boolean
+      }
+    })
+  }
+
   public async one(): Promise<T | null> {
     let query = this.selectQuery;
     if (this.whereQuery) {
@@ -26,23 +40,25 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     }
 
     log(query, this.logs);
-    const model = new this.model();
+    const model = new this.model() as T;
     try {
-      const { rows }: { rows: QueryResult<T>[] } = await this.pgPool.query(query);
-      const modelData = rows[0] as unknown as T;
+      const result = await this.pgPool.query(query);
+      const modelData = result.rows[0];
 
-      // merge model data into model
-      Object.assign(model, modelData);
+      if (modelData) {
+        this.mergeRetrievedDataIntoModel(model, modelData);
 
-      // relations parsing on the queried model
-      await PostgresModelManagerUtils.parseQueryBuilderRelations(
-        model,
-        this.relations,
-        this.pgPool,
-        this.logs,
-      );
+        await PostgresModelManagerUtils.parseQueryBuilderRelations(
+            model,
+            this.relations,
+            this.pgPool,
+            this.logs,
+        );
 
-      return model as T;
+        return modelFromSnakeCaseToCamel(model);
+      }
+
+      return null;
     } catch (error) {
       throw new Error("Query failed " + error);
     }
@@ -57,29 +73,30 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     query += this.groupFooterQuery();
 
     log(query, this.logs);
-    const model = new this.model();
+    const modelInstance = new this.model() as T;
     try {
-      const { rows }: { rows: QueryResult<T>[] } = await this.pgPool.query(query);
+      const result = await this.pgPool.query(query);
+      const rows = result.rows;
+
       return Promise.all(
-        rows.map(async (row) => {
-          const modelData = row as unknown as T;
+          rows.map(async (row) => {
+            const modelData = row as T;
 
-          // merge model data into model
-          Object.assign(model, modelData);
+            const rowModel = new this.model() as T;
+            this.mergeRetrievedDataIntoModel(rowModel, modelData);
 
-          // relations parsing on the queried model
-          await PostgresModelManagerUtils.parseQueryBuilderRelations(
-            model,
-            this.relations,
-            this.pgPool,
-            this.logs,
-          );
+            await PostgresModelManagerUtils.parseQueryBuilderRelations(
+                rowModel,
+                this.relations,
+                this.pgPool,
+                this.logs,
+            );
 
-          return model as T;
-        }),
+            return modelFromSnakeCaseToCamel(rowModel) as T;
+          }),
       );
-    } catch (error) {
-      throw new Error("Query failed " + error);
+    } catch (error: any) {
+      throw new Error("Query failed: " + error.message);
     }
   }
 
