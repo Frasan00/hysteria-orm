@@ -4,7 +4,7 @@
 import { Migration } from "./Migration";
 import { createTable } from "../Templates/Migration/CREATETABLE";
 import { alterTable } from "../Templates/Migration/ALTERTABLE";
-import { dropColumn } from "../Templates/Migration/DROPCOLUMN";
+import { dropColumnForce } from "../Templates/Migration/DROPCOLUMN";
 import { dropTruncateTable } from "../Templates/Migration/DROPTRUNCATETABLE";
 
 class MigrationParser {
@@ -17,7 +17,7 @@ class MigrationParser {
   }
 
   public parseDropColumnMigration<T extends Migration>(migration: T): string {
-    return dropColumn(migration.tableName, migration.table.columnsToDelete);
+    return dropColumnForce(migration.tableName);
   }
 
   public parseDropTruncateTableMigration<T extends Migration>(

@@ -5,6 +5,7 @@ import { log } from "../../Logger";
 import ModelManagerUtils from "./MySqlModelManagerUtils";
 import whereTemplate, { WhereOperatorType } from "../Templates/Query/WHERE.TS";
 import { QueryBuilder } from "../QueryBuilder/QueryBuilder";
+import {modelFromSnakeCaseToCamel} from "../../CaseUtils";
 
 export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
   protected mysqlPool: Pool;
@@ -26,6 +27,19 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     this.mysqlPool = mysqlPool;
   }
 
+  private mergeRetrievedDataIntoModel(
+    model: T,
+    row: RowDataPacket ,
+  ) {
+    Object.entries(row).forEach(([key, value]) => {
+        if (Object.hasOwnProperty.call(model, key)) {
+          Object.assign(model, { [key]: value });
+        } else {
+          model.aliasColumns[key] = value as string | number | boolean
+        }
+    })
+  }
+
   /**
    * @description Executes the query and retrieves the first result.
    * @returns A Promise resolving to the first result or null.
@@ -37,13 +51,12 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     }
 
     log(query, this.logs);
-    const model = new this.model();
+    const model = new this.model() as T;
     try {
       const [rows] = await this.mysqlPool.query<RowDataPacket[]>(query);
-      const modelData = rows[0] as T;
+      const modelData = rows[0];
 
-      // merge model data into model
-      Object.assign(model, modelData);
+      this.mergeRetrievedDataIntoModel(model, modelData)
 
       // relations parsing on the queried model
       await ModelManagerUtils.parseQueryBuilderRelations(
@@ -53,7 +66,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
         this.logs,
       );
 
-      return model as T;
+      return modelFromSnakeCaseToCamel(model) as T;
     } catch (error) {
       throw new Error("Query failed " + error);
     }
@@ -72,15 +85,14 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     query += this.groupFooterQuery();
 
     log(query, this.logs);
-    const model = new this.model();
+    const model = new this.model() as T;
     try {
       const [rows] = await this.mysqlPool.query<RowDataPacket[]>(query);
       return Promise.all(
         rows.map(async (row) => {
           const modelData = rows[0] as T;
 
-          // merge model data into model
-          Object.assign(model, modelData);
+          this.mergeRetrievedDataIntoModel(model, row)
 
           // relations parsing on the queried model
           await ModelManagerUtils.parseQueryBuilderRelations(
@@ -90,7 +102,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
             this.logs,
           );
 
-          return model as T;
+          return modelFromSnakeCaseToCamel(model) as T;
         }),
       );
     } catch (error) {

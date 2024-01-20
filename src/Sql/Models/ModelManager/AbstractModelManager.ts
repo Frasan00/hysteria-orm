@@ -22,9 +22,9 @@ export abstract class AbstractModelManager<T extends Model> {
    */
   protected constructor(model: new () => T, logs: boolean) {
     this.logs = logs;
-    this.tableName = model.name;
     this.model = model;
     this.modelInstance = new this.model();
+    this.tableName = this.modelInstance.metadata.tableName;
   }
 
   /**

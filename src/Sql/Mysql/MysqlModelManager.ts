@@ -14,6 +14,7 @@ import { MysqlQueryBuilder } from "./MysqlQueryBuilder";
 import MySqlModelManagerUtils from "./MySqlModelManagerUtils";
 import { MysqlTransaction } from "./MysqlTransaction";
 import { AbstractModelManager } from "../Models/ModelManager/AbstractModelManager";
+import {modelFromSnakeCaseToCamel} from "../../CaseUtils";
 
 export class MysqlModelManager<
   T extends Model,
@@ -46,18 +47,25 @@ export class MysqlModelManager<
         const [rows] = await this.mysqlPool.query<RowDataPacket[]>(
           select.selectAll,
         );
-        return rows.map((row) => row as T) || [];
+
+        const models = rows.map((row) => {
+          const model = row as T;
+          model.metadata = this.modelInstance.metadata;
+          return model;
+        }) || [];
+        return models.map((model) => modelFromSnakeCaseToCamel(model)) as T[] || [];
       }
 
-      const model = new this.model();
       const query = ModelManagerQueryUtils.parseSelectQueryInput(
         new this.model(),
         input,
       );
       log(query, this.logs);
+
       const [rows] = await this.mysqlPool.query<RowDataPacket[]>(query);
       return Promise.all(
         rows.map(async (row) => {
+          const model = new this.model();
           const modelData = rows[0] as T;
 
           // merge model data into model
@@ -71,7 +79,7 @@ export class MysqlModelManager<
             this.logs,
           );
 
-          return model;
+          return modelFromSnakeCaseToCamel(model) as T;
         }),
       );
     } catch (error) {
@@ -105,7 +113,7 @@ export class MysqlModelManager<
         this.logs,
       );
 
-      return model;
+      return modelFromSnakeCaseToCamel(model);
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -150,9 +158,8 @@ export class MysqlModelManager<
     try {
       const insertQuery = ModelManagerQueryUtils.parseInsert(model);
       log(insertQuery, this.logs);
-      const [rows] = await this.mysqlPool.query<RowDataPacket[]>(insertQuery);
-
-      return (await this.findOneById(rows[0].insertId)) || null;
+      const [result]: any = await this.mysqlPool.query<RowDataPacket[]>(insertQuery);
+      return (await this.findOneById(result['insertId'])) || null;
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -240,7 +247,7 @@ export class MysqlModelManager<
       const deleteQuery = ModelManagerQueryUtils.parseDelete(
         this.tableName,
         model.metadata.primaryKey,
-        model.metadata["primaryKey"],
+        model[model.metadata.primaryKey as keyof T] as string,
       );
 
       if (trx) {

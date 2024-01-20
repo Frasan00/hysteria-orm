@@ -38,7 +38,6 @@ export class MigrationController {
     if (migration.migrationType === "alter") {
       const statements = statement.split(";");
       for (const statement of statements) {
-        log(statement, this.logs);
         await this.mysqlConnection.query(statement);
       }
     }
@@ -51,17 +50,27 @@ export class MigrationController {
   private async downMigration(migration: Migration): Promise<void> {
     logger.info("Rolling back database: " + migration.tableName);
     migration.down();
-    const statement = this.parseMigration(migration);
+    const parsedStatements = this.parseMigration(migration);
     if (migration.migrationType === "alter") {
-      const statements = statement.split(";");
+      const statements = parsedStatements.split(";");
       for (const statement of statements) {
         log(statement, this.logs);
         await this.mysqlConnection.query(statement);
       }
     }
 
-    log(statement, this.logs);
-    await this.mysqlConnection.query(statement);
+    if (migration.migrationType === "drop-force") {
+      const statements = parsedStatements.split("\n");
+      for (const statement of statements) {
+        if (!statement) {
+          break;
+        }
+
+        log(statement, this.logs);
+        await this.mysqlConnection.query(statement);
+      }
+    }
+
     logger.info("Rollback complete: " + migration.tableName);
   }
 
@@ -74,7 +83,7 @@ export class MigrationController {
       return migrationParser.parseAlterTableMigration(migration);
     }
 
-    if (migration.migrationType === "drop") {
+    if (migration.migrationType === "drop-force") {
       return migrationParser.parseDropColumnMigration(migration);
     }
 

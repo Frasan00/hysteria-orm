@@ -7,6 +7,9 @@ interface Metadata {
 }
 declare abstract class Model {
     metadata: Metadata;
+    aliasColumns: {
+        [key: string]: string | number | boolean;
+    };
     protected constructor(tableName?: string, primaryKey?: string);
     setProps<T extends this>(data: Partial<T>): void;
 }
@@ -374,6 +377,7 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @param logs - A boolean indicating whether to log queries.
      */
     constructor(model: new () => T, tableName: string, mysqlPool: Pool$1, logs: boolean);
+    private mergeRetrievedDataIntoModel;
     /**
      * @description Executes the query and retrieves the first result.
      * @returns A Promise resolving to the first result or null.
@@ -1007,7 +1011,7 @@ declare class Table {
     truncate(): void;
 }
 
-type MigrationType = "create" | "alter" | "rawQuery" | "drop";
+type MigrationType = "create" | "alter" | "rawQuery" | "drop" | "drop-force";
 declare abstract class Migration {
     migrationName: string;
     tableName: string;
