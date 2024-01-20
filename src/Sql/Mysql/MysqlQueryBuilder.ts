@@ -5,7 +5,11 @@ import { log } from "../../Logger";
 import ModelManagerUtils from "./MySqlModelManagerUtils";
 import whereTemplate, { WhereOperatorType } from "../Templates/Query/WHERE.TS";
 import { QueryBuilder } from "../QueryBuilder/QueryBuilder";
-import {modelFromSnakeCaseToCamel} from "../../CaseUtils";
+import {
+  PaginatedData,
+  PaginationMetadata,
+  parseDatabaseDataIntoModelResponse,
+} from "../../CaseUtils";
 
 export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
   protected mysqlPool: Pool;
@@ -27,17 +31,14 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     this.mysqlPool = mysqlPool;
   }
 
-  private mergeRetrievedDataIntoModel(
-    model: T,
-    row: RowDataPacket ,
-  ) {
+  private mergeRetrievedDataIntoModel(model: T, row: RowDataPacket) {
     Object.entries(row).forEach(([key, value]) => {
-        if (Object.hasOwnProperty.call(model, key)) {
-          Object.assign(model, { [key]: value });
-        } else {
-          model.aliasColumns[key] = value as string | number | boolean
-        }
-    })
+      if (Object.hasOwnProperty.call(model, key)) {
+        Object.assign(model, { [key]: value });
+      } else {
+        model.aliasColumns[key] = value as string | number | boolean;
+      }
+    });
   }
 
   /**
@@ -56,7 +57,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
       const [rows] = await this.mysqlPool.query<RowDataPacket[]>(query);
       const modelData = rows[0];
 
-      this.mergeRetrievedDataIntoModel(model, modelData)
+      this.mergeRetrievedDataIntoModel(model, modelData);
 
       await ModelManagerUtils.parseQueryBuilderRelations(
         model,
@@ -65,7 +66,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
         this.logs,
       );
 
-      return modelFromSnakeCaseToCamel(model) as T;
+      return parseDatabaseDataIntoModelResponse([model]) as T;
     } catch (error) {
       throw new Error("Query failed " + error);
     }
@@ -91,7 +92,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
         rows.map(async (row) => {
           const modelData = rows[0] as T;
 
-          this.mergeRetrievedDataIntoModel(model, row)
+          this.mergeRetrievedDataIntoModel(model, row);
 
           // relations parsing on the queried model
           await ModelManagerUtils.parseQueryBuilderRelations(
@@ -101,12 +102,28 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
             this.logs,
           );
 
-          return modelFromSnakeCaseToCamel(model) as T;
+          return parseDatabaseDataIntoModelResponse([model]) as T;
         }),
       );
     } catch (error) {
       throw new Error("Query failed " + error);
     }
+  }
+
+  /**
+   * @description Paginates the query results with the given page and limit.
+   * @param page
+   * @param limit
+   */
+  public async paginate(
+    page: number,
+    limit: number,
+  ): Promise<PaginatedData<T>> {
+    const models = await this.many();
+    return parseDatabaseDataIntoModelResponse(models, {
+      page,
+      limit,
+    }) as PaginatedData<T>;
   }
 
   /**

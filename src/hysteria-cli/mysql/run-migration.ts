@@ -1,21 +1,21 @@
 #!/usr/bin/env node
 
 import path from "path";
-import CliUtils from "./CliUtils";
-import { MigrationTableType } from "./Templates/MigrationTableType";
-import { Migration } from "../Sql/Migrations/Migration";
 import dotenv from "dotenv";
-import { MigrationController } from "../Sql/Migrations/MigrationController";
 import { createPool } from "mysql2/promise";
-import MigrationTemplates from "./Templates/MigrationTemplates";
+import MysqlCliUtils from "./MysqlCliUtils";
+import { MigrationTableType } from "../Templates/MigrationTableType";
+import { Migration } from "../../Sql/Migrations/Migration";
+import { MigrationController } from "../../Sql/Migrations/MigrationController";
+import MigrationTemplates from "../Templates/MigrationTemplates";
 
 dotenv.config();
 
 // Function to run pending migrations
-export async function runMigrations(): Promise<void> {
+export async function runMigrationsSql(): Promise<void> {
   const migrationFolderPath =
     process.env.MIGRATION_PATH || "database/migrations";
-  const config = CliUtils.getMysqlConfig();
+  const config = MysqlCliUtils.getMysqlConfig();
   const mysqlPool = createPool({
     host: config.host,
     port: config.port,
@@ -28,9 +28,9 @@ export async function runMigrations(): Promise<void> {
   const mysql = await mysqlPool.getConnection();
 
   const migrationTable: MigrationTableType[] =
-    await CliUtils.getMigrationTable(mysql);
-  const migrations: Migration[] = await CliUtils.getMigrations();
-  const pendingMigrations = CliUtils.getPendingMigrations(
+    await MysqlCliUtils.getMigrationTable(mysql);
+  const migrations: Migration[] = await MysqlCliUtils.getMigrations();
+  const pendingMigrations = MysqlCliUtils.getPendingMigrations(
     migrations,
     migrationTable,
   );
@@ -38,6 +38,7 @@ export async function runMigrations(): Promise<void> {
   // Parses and runs the migrations
   const migrationManager: MigrationController = new MigrationController(
     mysqlPool,
+    null,
   );
 
   // If there are no pending migrations, print a message and exit
@@ -69,12 +70,3 @@ export async function runMigrations(): Promise<void> {
   mysql.release();
   console.log("Migrations completed successfully.");
 }
-
-runMigrations()
-  .then(() => {
-    process.exit(0);
-  })
-  .catch((error) => {
-    console.error(error);
-    process.exit(1);
-  });

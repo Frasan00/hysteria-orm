@@ -7,6 +7,7 @@ import whereTemplate, {
 } from "../Templates/Query/WHERE.TS";
 import { MysqlQueryBuilder } from "../Mysql/MysqlQueryBuilder";
 import { PostgresQueryBuilder } from "../Postgres/PostgresQueryBuilder";
+import { PaginatedData, PaginationMetadata } from "../../CaseUtils";
 
 export abstract class QueryBuilder<T extends Model> {
   protected selectQuery: string = "";
@@ -28,7 +29,6 @@ export abstract class QueryBuilder<T extends Model> {
    * @description Constructs a MysqlQueryBuilder instance.
    * @param model - The model class associated with the table.
    * @param tableName - The name of the table.
-   * @param mysqlConnection - The MySQL connection pool.
    * @param logs - A boolean indicating whether to log queries.
    */
   protected constructor(
@@ -55,6 +55,15 @@ export abstract class QueryBuilder<T extends Model> {
    * @returns A Promise resolving to an array of results.
    */
   public abstract many(): Promise<T[]>;
+
+  /**
+   * @description Executes the query and retrieves multiple results.
+   * @returns A Promise resolving to an array of results.
+   */
+  public abstract paginate(
+    page: number,
+    limit: number,
+  ): Promise<PaginatedData<T>>;
 
   /**
    * @description Columns are customizable with aliases. By default, without this function, all columns are selected

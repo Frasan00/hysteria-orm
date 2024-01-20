@@ -147,5 +147,3 @@ test/test-script.js
 /src/**/*.js
 docker-compose.yaml
 docker-compose.yml
-mysql
-postgres

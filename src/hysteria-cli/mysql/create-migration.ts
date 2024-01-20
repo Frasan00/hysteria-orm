@@ -2,13 +2,12 @@
 
 import fs from "fs";
 import path from "path";
-import MigrationTemplates from "./Templates/MigrationTemplates";
 import dotenv from "dotenv";
-import commander from "commander";
+import MigrationTemplates from "../Templates/MigrationTemplates";
 
 dotenv.config();
 
-export function createMigration(name: string): void {
+export function createMigrationSql(name: string): void {
   const migrationFolderPath = getMigrationPath();
 
   // Generate database filename
@@ -43,5 +42,3 @@ function getMigrationPath(): string {
 
   throw new Error("No database folder found");
 }
-
-createMigration(process.argv[2]);

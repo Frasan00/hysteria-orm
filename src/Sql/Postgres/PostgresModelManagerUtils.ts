@@ -215,10 +215,10 @@ class PostgresModelManagerUtils<T extends Model> {
 
   // Parses and fills input relations directly into the model
   public async parseQueryBuilderRelations(
-      model: T,
-      input: string[],
-      pgConnection: pg.Pool, // Changed from mysqlConnection to pgConnection
-      logs: boolean,
+    model: T,
+    input: string[],
+    pgConnection: pg.Pool, // Changed from mysqlConnection to pgConnection
+    logs: boolean,
   ): Promise<void> {
     if (input.length === 0) {
       return;

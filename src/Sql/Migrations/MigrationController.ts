@@ -1,24 +1,57 @@
-import { Pool } from "mysql2/promise";
+import { Pool as MySqlPool } from "mysql2/promise";
+import { Pool as PgPool } from "pg";
 import { Migration } from "./Migration";
 import logger from "../../Logger";
-import { log } from "../../Logger";
 import migrationParser from "./MigrationParser";
 
 export class MigrationController {
-  protected mysqlConnection: Pool;
-  protected logs: boolean;
+  protected mysqlPool: MySqlPool | null;
+  protected pgPool: PgPool | null;
 
-  constructor(mysqlConnection: Pool) {
-    this.mysqlConnection = mysqlConnection;
-    this.logs = true;
+  constructor(mysqlPool: MySqlPool | null, pgPool: PgPool | null) {
+    this.mysqlPool = mysqlPool;
+    this.pgPool = pgPool;
   }
 
-  public async runMigration(migration: Migration): Promise<void> {
+  private async query(text: string, params: any[] = []): Promise<any> {
+    if (this.mysqlPool) {
+      return this.mysqlPool.query(text, params);
+    } else if (this.pgPool) {
+      const client = await this.pgPool.connect();
+      try {
+        return await client.query(text, params);
+      } finally {
+        client.release();
+      }
+    } else {
+      throw new Error("No database pool provided.");
+    }
+  }
+  public async createMigrationsTable(): Promise<void> {
+    const createTableSql = `
+      CREATE TABLE IF NOT EXISTS migrations (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255),
+        executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+    await this.query(createTableSql);
+  }
+
+  public async applyMigration(
+    migrationName: string,
+    migrationSql: string,
+  ): Promise<void> {
+    await this.query("BEGIN");
     try {
-      await this.upMigration(migration);
+      await this.query(migrationSql);
+      await this.query("INSERT INTO migrations (name) VALUES (?)", [
+        migrationName,
+      ]);
+      await this.query("COMMIT");
     } catch (error) {
-      logger.error("Failed to run migrations");
-      throw new Error("Failed to run migrations" + error);
+      await this.query("ROLLBACK");
+      throw error;
     }
   }
 
@@ -31,19 +64,29 @@ export class MigrationController {
     }
   }
 
+  public async runMigration(migration: Migration): Promise<void> {
+    try {
+      await this.upMigration(migration);
+    } catch (error) {
+      logger.error("Failed to run migrations");
+      throw new Error("Failed to run migrations" + error);
+    }
+  }
+
   private async upMigration(migration: Migration): Promise<void> {
     logger.info("Running database: " + migration.tableName);
     migration.up();
     const statement = this.parseMigration(migration);
     if (migration.migrationType === "alter") {
       const statements = statement.split(";");
-      for (const statement of statements) {
-        await this.mysqlConnection.query(statement);
+      for (const stmt of statements) {
+        if (stmt.trim()) {
+          await this.query(stmt);
+        }
       }
+    } else {
+      await this.query(statement);
     }
-
-    log(statement, this.logs);
-    await this.mysqlConnection.query(statement);
     logger.info("Migration complete: " + migration.tableName);
   }
 
@@ -51,26 +94,14 @@ export class MigrationController {
     logger.info("Rolling back database: " + migration.tableName);
     migration.down();
     const parsedStatements = this.parseMigration(migration);
-    if (migration.migrationType === "alter") {
-      const statements = parsedStatements.split(";");
-      for (const statement of statements) {
-        log(statement, this.logs);
-        await this.mysqlConnection.query(statement);
+    const statements = parsedStatements.split(
+      migration.migrationType === "alter" ? ";" : "\n",
+    );
+    for (const statement of statements) {
+      if (statement.trim()) {
+        await this.query(statement);
       }
     }
-
-    if (migration.migrationType === "drop-force") {
-      const statements = parsedStatements.split("\n");
-      for (const statement of statements) {
-        if (!statement) {
-          break;
-        }
-
-        log(statement, this.logs);
-        await this.mysqlConnection.query(statement);
-      }
-    }
-
     logger.info("Rollback complete: " + migration.tableName);
   }
 

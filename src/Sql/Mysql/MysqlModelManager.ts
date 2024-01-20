@@ -14,7 +14,7 @@ import { MysqlQueryBuilder } from "./MysqlQueryBuilder";
 import MySqlModelManagerUtils from "./MySqlModelManagerUtils";
 import { MysqlTransaction } from "./MysqlTransaction";
 import { AbstractModelManager } from "../Models/ModelManager/AbstractModelManager";
-import {modelFromSnakeCaseToCamel} from "../../CaseUtils";
+import { parseDatabaseDataIntoModelResponse } from "../../CaseUtils";
 
 export class MysqlModelManager<
   T extends Model,
@@ -48,12 +48,19 @@ export class MysqlModelManager<
           select.selectAll,
         );
 
-        const models = rows.map((row) => {
-          const model = row as T;
-          model.metadata = this.modelInstance.metadata;
-          return model;
-        }) || [];
-        return models.map((model) => modelFromSnakeCaseToCamel(model)) as T[] || [];
+        const models =
+          rows.map((row) => {
+            const model = row as T;
+            model.metadata = this.modelInstance.metadata;
+            model.aliasColumns = this.modelInstance.aliasColumns;
+            model.setProps = this.modelInstance.setProps;
+            return parseDatabaseDataIntoModelResponse([model]) as T;
+          }) || [];
+        return (
+          (models.map((model) =>
+            parseDatabaseDataIntoModelResponse([model]),
+          ) as T[]) || []
+        );
       }
 
       const query = ModelManagerQueryUtils.parseSelectQueryInput(
@@ -79,7 +86,7 @@ export class MysqlModelManager<
             this.logs,
           );
 
-          return modelFromSnakeCaseToCamel(model) as T;
+          return parseDatabaseDataIntoModelResponse([model]) as T;
         }),
       );
     } catch (error) {
@@ -113,7 +120,7 @@ export class MysqlModelManager<
         this.logs,
       );
 
-      return modelFromSnakeCaseToCamel(model);
+      return parseDatabaseDataIntoModelResponse([model]) as T;
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -134,7 +141,7 @@ export class MysqlModelManager<
       log(query, this.logs);
       const [rows] = await this.mysqlPool.query<RowDataPacket[]>(query);
       const modelData = rows[0] as T;
-      return modelFromSnakeCaseToCamel(modelData) as T;
+      return parseDatabaseDataIntoModelResponse([modelData]) as T;
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -159,8 +166,9 @@ export class MysqlModelManager<
     try {
       const insertQuery = ModelManagerQueryUtils.parseInsert(model);
       log(insertQuery, this.logs);
-      const [result]: any = await this.mysqlPool.query<RowDataPacket[]>(insertQuery);
-      return await this.findOneById(result['insertId']);
+      const [result]: any =
+        await this.mysqlPool.query<RowDataPacket[]>(insertQuery);
+      return await this.findOneById(result["insertId"]);
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -176,11 +184,11 @@ export class MysqlModelManager<
   public async update(model: T, trx?: MysqlTransaction): Promise<T | null> {
     const primaryKeyValue = this.modelInstance.metadata.primaryKey;
     if (trx) {
-      await trx.queryUpdate<T>(
-        ModelManagerQueryUtils.parseUpdate(model),
-      );
+      await trx.queryUpdate<T>(ModelManagerQueryUtils.parseUpdate(model));
 
-      return await this.findOneById(model[primaryKeyValue as keyof T] as string | number);
+      return await this.findOneById(
+        model[primaryKeyValue as keyof T] as string | number,
+      );
     }
 
     try {
@@ -188,7 +196,9 @@ export class MysqlModelManager<
       log(updateQuery, this.logs);
       await this.mysqlPool.query<RowDataPacket[]>(updateQuery);
 
-      return await this.findOneById(model[primaryKeyValue as keyof T] as string | number);
+      return await this.findOneById(
+        model[primaryKeyValue as keyof T] as string | number,
+      );
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);

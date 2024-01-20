@@ -1,11 +1,11 @@
-import { DatasourceInput } from "../Datasource";
+import { DatasourceInput } from "../../Datasource";
 import { PoolConnection } from "mysql2/promise";
-import { MigrationTableType } from "./Templates/MigrationTableType";
-import { Migration } from "../Sql/Migrations/Migration";
+import { MigrationTableType } from "../Templates/MigrationTableType";
+import { Migration } from "../../Sql/Migrations/Migration";
 import fs from "fs";
-import MigrationTemplates from "./Templates/MigrationTemplates";
+import MigrationTemplates from "../Templates/MigrationTemplates";
 
-class CliUtils {
+class MysqlCliUtils {
   public getMysqlConfig(): DatasourceInput {
     if (!process.env.MYSQL_PORT) throw new Error("MYSQL_PORT is not defined");
     return {
@@ -98,4 +98,4 @@ class CliUtils {
   }
 }
 
-export default new CliUtils();
+export default new MysqlCliUtils();

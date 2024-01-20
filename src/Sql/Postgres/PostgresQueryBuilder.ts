@@ -1,10 +1,14 @@
 import { Model } from "../Models/Model";
 import { QueryBuilder } from "../QueryBuilder/QueryBuilder";
-import {Pool} from "pg";
+import { Pool } from "pg";
 import whereTemplate, { WhereOperatorType } from "../Templates/Query/WHERE.TS";
 import selectTemplate from "../Templates/Query/SELECT";
 import { log } from "../../Logger";
-import {modelFromSnakeCaseToCamel} from "../../CaseUtils";
+import {
+  PaginatedData,
+  PaginationMetadata,
+  parseDatabaseDataIntoModelResponse,
+} from "../../CaseUtils";
 import PostgresModelManagerUtils from "./PostgresModelManagerUtils";
 
 export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
@@ -20,17 +24,14 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     this.pgPool = pgPool;
   }
 
-  private mergeRetrievedDataIntoModel(
-      model: T,
-      row: any,
-  ) {
+  private mergeRetrievedDataIntoModel(model: T, row: any) {
     Object.entries(row).forEach(([key, value]) => {
       if (Object.hasOwnProperty.call(model, key)) {
         Object.assign(model, { [key]: value });
       } else {
-        model.aliasColumns[key] = value as string | number | boolean
+        model.aliasColumns[key] = value as string | number | boolean;
       }
-    })
+    });
   }
 
   public async one(): Promise<T | null> {
@@ -49,13 +50,13 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
         this.mergeRetrievedDataIntoModel(model, modelData);
 
         await PostgresModelManagerUtils.parseQueryBuilderRelations(
-            model,
-            this.relations,
-            this.pgPool,
-            this.logs,
+          model,
+          this.relations,
+          this.pgPool,
+          this.logs,
         );
 
-        return modelFromSnakeCaseToCamel(model);
+        return parseDatabaseDataIntoModelResponse([model]) as T;
       }
 
       return null;
@@ -79,25 +80,41 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
       const rows = result.rows;
 
       return Promise.all(
-          rows.map(async (row) => {
-            const modelData = row as T;
+        rows.map(async (row) => {
+          const modelData = row as T;
 
-            const rowModel = new this.model() as T;
-            this.mergeRetrievedDataIntoModel(rowModel, modelData);
+          const rowModel = new this.model() as T;
+          this.mergeRetrievedDataIntoModel(rowModel, modelData);
 
-            await PostgresModelManagerUtils.parseQueryBuilderRelations(
-                rowModel,
-                this.relations,
-                this.pgPool,
-                this.logs,
-            );
+          await PostgresModelManagerUtils.parseQueryBuilderRelations(
+            rowModel,
+            this.relations,
+            this.pgPool,
+            this.logs,
+          );
 
-            return modelFromSnakeCaseToCamel(rowModel) as T;
-          }),
+          return parseDatabaseDataIntoModelResponse([rowModel]) as T;
+        }),
       );
     } catch (error: any) {
       throw new Error("Query failed: " + error.message);
     }
+  }
+
+  /**
+   * @description Paginates the query results with the given page and limit.
+   * @param page
+   * @param limit
+   */
+  public async paginate(
+    page: number,
+    limit: number,
+  ): Promise<PaginatedData<T>> {
+    const models = await this.many();
+    return parseDatabaseDataIntoModelResponse(models, {
+      page,
+      limit,
+    }) as PaginatedData<T>;
   }
 
   public select(...columns: string[]): PostgresQueryBuilder<T> {

@@ -15,9 +15,9 @@
     "start": "tsc && node lib/test/index.js",
     "start:watch": "nodemon --exec ts-node src/index.ts",
 
-    "create:migration": "node ./lib/src/hysteria-cli/migration-create.js",
-    "run:migration": "node ./lib/src/hysteria-cli/migration-run.js",
-    "rollback:migration": "node ./lib/src/hysteria-cli/migration-rollback.js"
+    "create:migration": "node ./lib/src/hysteria-cli/migrationCreateConnector.js",
+    "run:migration": "node ./lib/src/hysteria-cli/migrationRunConnector.js",
+    "rollback:migration": "node ./lib/src/hysteria-cli/migrationRollbackConnector.js"
   },
   "license": "MIT",
   "devDependencies": {

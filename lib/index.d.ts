@@ -64,10 +64,6 @@ type FindType = FindOneType & {
   groupBy?: string[];
   limit?: number;
   offset?: number;
-  paginate?: {
-    limit: number;
-    page: number;
-  };
 };
 
 type WhereOperatorType = "=" | "!=" | ">" | "<" | ">=" | "<=" | "LIKE";
@@ -135,6 +131,18 @@ type SelectTemplateType = {
   offset: (offset: number) => string;
 };
 
+type PaginationMetadata = {
+  perPage: number;
+  currentPage: number;
+  firstPage: number;
+  isEmpty: boolean;
+  total: number;
+  hasTotal: boolean;
+  lastPage: number;
+  hasMorePages: boolean;
+  hasPages: boolean;
+};
+
 declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   protected pgPool: Pool;
   constructor(
@@ -143,8 +151,21 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     pgPool: Pool,
     logs: boolean,
   );
+  private mergeRetrievedDataIntoModel;
   one(): Promise<T | null>;
   many(): Promise<T[]>;
+  /**
+   * @description Paginates the query results with the given page and limit.
+   * @param page
+   * @param limit
+   */
+  paginate(
+    page: number,
+    limit: number,
+  ): Promise<{
+    paginationMetadata: PaginationMetadata;
+    data: T[];
+  }>;
   select(...columns: string[]): PostgresQueryBuilder<T>;
   addRelations(relations: string[]): PostgresQueryBuilder<T>;
   where(
@@ -224,7 +245,6 @@ declare abstract class QueryBuilder<T extends Model> {
    * @description Constructs a MysqlQueryBuilder instance.
    * @param model - The model class associated with the table.
    * @param tableName - The name of the table.
-   * @param mysqlConnection - The MySQL connection pool.
    * @param logs - A boolean indicating whether to log queries.
    */
   protected constructor(
@@ -242,6 +262,17 @@ declare abstract class QueryBuilder<T extends Model> {
    * @returns A Promise resolving to an array of results.
    */
   abstract many(): Promise<T[]>;
+  /**
+   * @description Executes the query and retrieves multiple results.
+   * @returns A Promise resolving to an array of results.
+   */
+  abstract paginate(
+    page: number,
+    limit: number,
+  ): Promise<{
+    paginationMetadata: PaginationMetadata;
+    data: T[];
+  }>;
   /**
    * @description Columns are customizable with aliases. By default, without this function, all columns are selected
    * @param columns
@@ -535,6 +566,18 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @returns A Promise resolving to an array of results.
    */
   many(): Promise<T[]>;
+  /**
+   * @description Paginates the query results with the given page and limit.
+   * @param page
+   * @param limit
+   */
+  paginate(
+    page: number,
+    limit: number,
+  ): Promise<{
+    paginationMetadata: PaginationMetadata;
+    data: T[];
+  }>;
   /**
    * @description Columns are customizable with aliases. By default, without this function, all columns are selected
    * @param columns

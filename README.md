@@ -159,7 +159,6 @@ import { User } from "./models/User";
 
 const queryBuilder = userManager.queryBuilder();
 const user: User | null = await queryBuilder
-    .select(['id', 'name as superName'])
     .addRelations(['post'])
     .where("name", "John Doe")
     .andWhere("email", "john@gmail.com")
@@ -176,7 +175,31 @@ const users: User[] = await queryBuilder
 ### Aliases
 
 - Aliases are available in the query builder, for example select('new as newName') will generate an alias in the columnAliases prop that every model has
+```typescript
+import { User } from "./models/User";
 
+const queryBuilder = userManager.queryBuilder();
+const user: User | null = await queryBuilder
+    .select(['id', 'name as superName'])
+    .addRelations(['post'])
+    .where("name", "John Doe")
+    .andWhere("email", "john@gmail.com")
+    .one();
+```
+
+### Pagination
+
+- Pagination is available in the queryBuilder, will return an object with the metadata for the pagination and the list of the retrieved models
+```typescript
+import { User } from "./models/User";
+
+const queryBuilder = userManager.queryBuilder();
+const user: User | null = await queryBuilder
+    .addRelations(['post'])
+    .where("name", "John Doe")
+    .andWhere("email", "john@gmail.com")
+    .paginate(1, 10); // page - limit
+```
 
 # Under Development
 - *Migrations* (advised raw queries and create table only since `alter table` is still under development and may not work as expected)
