@@ -1,24 +1,30 @@
-# Hysteria-orm
+# Hysteria ORM
 
-- Hysteria is an ORM for javascript/typescript that allows you to create models and use them to interact with your database in a more direct and simple way.
-- For now it supports MySQL and Postgres.
+Hysteria ORM is an Object-Relational Mapping (ORM) library for JavaScript and TypeScript, designed to simplify interactions between your application and a SQL database.
 
-## Software Requirements
+## Features
 
-- Javascript Runtime environment (es. nodejs)
-- SQL library as dependency (es. mysql2, pg based on your Database)
+- **Simple Model Creation:** Define models that reflect your database schema with ease.
+- **Automatic Case Conversion:** Automatically converts model properties to snake_case for the database and back to camelCase when retrieving data.
+- **Database Support:** Currently supports MySQL, with PostgreSQL support in development.
 
-## Configuration Requirements
+## Prerequisites
 
-- *IMPORTANT* if using typescript, must set *"useDefineForClassFields": true* in tsconfig.json in order for the ORM to work!
+- A JavaScript runtime environment (e.g., Node.js).
+- A SQL library corresponding to your database (e.g., `mysql2` for MySQL, `pg` for PostgreSQL).
 
-## Envs
-- MIGRATION_PATH - default: database/migrations - value [path/to/migration/folder]
-- DATABASE_TYPE - default: mysql - value [mysql, postgres]
+### TypeScript Configuration
 
-### Code Examples
+For TypeScript users, it is essential to set `"useDefineForClassFields": true` in your `tsconfig.json` file to ensure compatibility with the ORM.
 
-- Create a connection
+## Environment Variables
+
+- `MIGRATION_PATH`: Path to the migration folder (default: `database/migrations`).
+- `DATABASE_TYPE`: Type of the database (default: `mysql`, options: `mysql`, `postgres`).
+
+## Getting Started
+
+### Establishing a Connection
 
 ```typescript
 import { MysqlDatasource, DatasourceInput } from "hysteria-orm";
@@ -37,7 +43,7 @@ const datasource = new SqlDatasource(mysqlConfig)
 await datasource.connect()
 ```
 
-- Create a model
+### Create a model
 
 ```typescript
 import { Model } from "hysteria-orm";
@@ -49,14 +55,14 @@ export class User extends Model {
     constructor() {
         /*
         * Table name and primary key are optional.
-        * If you don't set them, the table name will be the class name and the model won't have a primary key.
+        * If you don't set a table name, it'll be the class name in lowercase, snake case and with a final s (es. users)
         */
-        super('User', 'id');
+        super('users', 'id');
     }
 }
 ```
 
-- Create a model with relationships
+### Create a model with relationships
 
 ```typescript
 import {Model, HasOne, HasMany} from "hysteria-orm";
@@ -68,16 +74,16 @@ export class User extends Model {
     public name!: string;
     public email!: string;
     // Relations take as params (TableName, foreignKey)
-    public profile: Profile | HasOne = new HasOne("Profile", "userId");
-    public posts: Post[] | HasMany = new HasMany("Post", "userId");
+    public profile: Profile | HasOne = new HasOne("proiles", "userId");
+    public posts: Post[] | HasMany = new HasMany("posts", "userId");
 
     constructor() {
-        super('User', 'id');
+        super('users', 'id');
     }
 }
 ```
 
-- Create, Update and Delete (with transaction)
+### Create, Update and Delete (with transaction)
 
 ```typescript
 import { User } from "./models/User";
@@ -107,7 +113,7 @@ try{
 }
 ```
 
-- Read (standard methods used for simple queries)
+### Read (standard methods used for simple queries)
 
 ```typescript
 import {MysqlDatasource} from "hysteria-orm";
@@ -145,7 +151,7 @@ const otherUser: User | null = await userManager.findOne({
 });
 ```
 
-- Query Builder
+### Query Builder
 - It's used to create more complex queries that are not supported by the standard methods
 
 ```typescript
@@ -166,6 +172,10 @@ const users: User[] = await queryBuilder
     .limit(10)
     .many();
 ```
+
+### Aliases
+
+- Aliases are available in the query builder, for example select('new as newName') will generate an alias in the columnAliases prop that every model has
 
 
 # Under Development
