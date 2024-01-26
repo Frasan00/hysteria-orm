@@ -1,20 +1,23 @@
 import { DatasourceInput } from "../../Datasource";
-import { Pool, PoolClient } from "pg";
+import { PoolClient } from "pg";
 import { MigrationTableType } from "../Templates/MigrationTableType";
 import { Migration } from "../../Sql/Migrations/Migration";
 import fs from "fs";
 import MigrationTemplates from "../Templates/MigrationTemplates";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 class PgCliUtils {
   public getPgConfig(): DatasourceInput {
-    if (!process.env.PG_PORT) throw new Error("PG_PORT is not defined");
+    if (!process.env.POSTGRES_PORT) throw new Error("POSTGRES_PORT is not defined");
     return {
       type: "postgres",
-      host: process.env.PG_HOST || "localhost",
-      port: +process.env.PG_PORT,
-      username: process.env.PG_USERNAME || "postgres",
-      password: process.env.PG_PASSWORD || "",
-      database: process.env.PG_DATABASE || "",
+      host: process.env.POSTGRES_HOST || "localhost",
+      port: +process.env.POSTGRES_PORT,
+      username: process.env.POSTGRES_USER || "postgres",
+      password: process.env.POSTGRES_PASSWORD || "",
+      database: process.env.POSTGRES_DATABASE || "",
     };
   }
 
