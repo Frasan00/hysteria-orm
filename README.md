@@ -2,9 +2,29 @@
 
 Hysteria ORM is an Object-Relational Mapping (ORM) library for JavaScript and TypeScript, designed to simplify interactions between your application and a SQL database.
 
+- [Installation](#installation)
+- [Features](#features)
+- [Prerequisites](#prerequisites)
+    - [TypeScript Configuration](#typescript-configuration)
+- [Environment Variables](#environment-variables)
+    - [Common Envs](#common-envs)
+    - [Mysql Envs](#mysql-envs)
+    - [Postgres Envs](#postgres-envs)
+    - [Complete env example](#complete-env-example)
 - [Getting Started](#getting-started)
-- [Query Builder](#Query-builder)
-- [Migrations](#Migrations)
+    - [Establishing a Connection](#establishing-a-connection)
+    - [Create a Model](#create-a-model)
+    - [Create a Model with Relationships](#create-a-model-with-relationships)
+    - [Read (standard methods used for simple queries)](#read-standard-methods-used-for-simple-queries)
+    - [Query Builder](#query-builder)
+    - [Where Builder](#where-builder)
+    - [Aliases](#aliases)
+    - [Join](#join)
+    - [Pagination](#pagination)
+- [Migrations](#migrations)
+    - [hysteria-cli for Migrations](#hysteria-cli-for-migrations)
+    - [Create Table](#create-table)
+    - [Alter Table](#alter-table)
 
 ## Installation
 ```shell
