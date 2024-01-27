@@ -1,7 +1,7 @@
 import { Pool, RowDataPacket } from "mysql2/promise";
 import selectTemplate from "../Templates/Query/SELECT";
 import { Model } from "../Models/Model";
-import {log, queryError} from "../../Logger";
+import { log, queryError } from "../../Logger";
 import ModelManagerUtils from "./MySqlModelManagerUtils";
 import whereTemplate, {
   BaseValues,
@@ -31,7 +31,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     tableName: string,
     mysqlPool: Pool,
     logs: boolean,
-    isNestedCondition = false
+    isNestedCondition = false,
   ) {
     super(model, tableName, logs);
     this.mysqlPool = mysqlPool;
@@ -229,20 +229,28 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @param cb
    */
   public whereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this {
-    const queryBuilder = new MysqlQueryBuilder(this.model as new () => T, this.tableName, this.mysqlPool, this.logs, true);
+    const queryBuilder = new MysqlQueryBuilder(
+      this.model as new () => T,
+      this.tableName,
+      this.mysqlPool,
+      this.logs,
+      true,
+    );
     cb(queryBuilder);
 
     let whereCondition = queryBuilder.whereQuery.trim();
-    if (whereCondition.startsWith('AND')) {
+    if (whereCondition.startsWith("AND")) {
       whereCondition = whereCondition.substring(4); // 'AND '.length === 4 has to be removed from the beginning of the where condition
-    } else if (whereCondition.startsWith('OR')) {
+    } else if (whereCondition.startsWith("OR")) {
       whereCondition = whereCondition.substring(3); // 'OR '.length === 3 has to be removed from the beginning of the where condition
     }
 
-    whereCondition = '(' + whereCondition + ')';
+    whereCondition = "(" + whereCondition + ")";
 
     if (!this.whereQuery) {
-      this.whereQuery = this.isNestedCondition ? whereCondition : `WHERE ${whereCondition}`;
+      this.whereQuery = this.isNestedCondition
+        ? whereCondition
+        : `WHERE ${whereCondition}`;
     } else {
       this.whereQuery += ` AND ${whereCondition}`;
     }
@@ -254,21 +262,31 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @description Build complex OR-based where conditions.
    * @param cb Callback function that takes a query builder and adds conditions to it.
    */
-  public orWhereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this {
-    const nestedBuilder = new MysqlQueryBuilder(this.model as new () => T, this.tableName, this.mysqlPool, this.logs, true);
+  public orWhereBuilder(
+    cb: (queryBuilder: MysqlQueryBuilder<T>) => void,
+  ): this {
+    const nestedBuilder = new MysqlQueryBuilder(
+      this.model as new () => T,
+      this.tableName,
+      this.mysqlPool,
+      this.logs,
+      true,
+    );
     cb(nestedBuilder);
 
     let nestedCondition = nestedBuilder.whereQuery.trim();
-    if (nestedCondition.startsWith('AND')) {
+    if (nestedCondition.startsWith("AND")) {
       nestedCondition = nestedCondition.substring(4);
-    } else if (nestedCondition.startsWith('OR')) {
+    } else if (nestedCondition.startsWith("OR")) {
       nestedCondition = nestedCondition.substring(3);
     }
 
     nestedCondition = `(${nestedCondition})`;
 
     if (!this.whereQuery) {
-      this.whereQuery = this.isNestedCondition ? nestedCondition : `WHERE ${nestedCondition}`;
+      this.whereQuery = this.isNestedCondition
+        ? nestedCondition
+        : `WHERE ${nestedCondition}`;
     } else {
       this.whereQuery += ` OR ${nestedCondition}`;
     }
@@ -280,21 +298,31 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @description Build complex AND-based where conditions.
    * @param cb Callback function that takes a query builder and adds conditions to it.
    */
-  public andWhereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this {
-    const nestedBuilder = new MysqlQueryBuilder(this.model as new () => T, this.tableName, this.mysqlPool, this.logs, true);
+  public andWhereBuilder(
+    cb: (queryBuilder: MysqlQueryBuilder<T>) => void,
+  ): this {
+    const nestedBuilder = new MysqlQueryBuilder(
+      this.model as new () => T,
+      this.tableName,
+      this.mysqlPool,
+      this.logs,
+      true,
+    );
     cb(nestedBuilder);
 
     let nestedCondition = nestedBuilder.whereQuery.trim();
-    if (nestedCondition.startsWith('AND')) {
+    if (nestedCondition.startsWith("AND")) {
       nestedCondition = nestedCondition.substring(4);
-    } else if (nestedCondition.startsWith('OR')) {
+    } else if (nestedCondition.startsWith("OR")) {
       nestedCondition = nestedCondition.substring(3);
     }
 
     nestedCondition = `(${nestedCondition})`;
 
     if (!this.whereQuery) {
-      this.whereQuery = this.isNestedCondition ? nestedCondition : `WHERE ${nestedCondition}`;
+      this.whereQuery = this.isNestedCondition
+        ? nestedCondition
+        : `WHERE ${nestedCondition}`;
     } else {
       this.whereQuery += ` AND ${nestedCondition}`;
     }
@@ -532,7 +560,10 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
       return this;
     }
 
-    this.whereQuery += whereTemplate(this.tableName).andWhereNotIn(column, values);
+    this.whereQuery += whereTemplate(this.tableName).andWhereNotIn(
+      column,
+      values,
+    );
     return this;
   }
 

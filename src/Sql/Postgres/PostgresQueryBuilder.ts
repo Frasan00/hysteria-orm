@@ -23,7 +23,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     tableName: string,
     pgPool: Pool,
     logs: boolean,
-    isNestedCondition = false
+    isNestedCondition = false,
   ) {
     super(model, tableName, logs);
     this.pgPool = pgPool;
@@ -196,9 +196,9 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @returns The MysqlQueryBuilder instance for chaining.
    */
   public where(
-      column: string,
-      value: BaseValues,
-      operator: WhereOperatorType = "=",
+    column: string,
+    value: BaseValues,
+    operator: WhereOperatorType = "=",
   ): this {
     if (this.whereQuery || this.isNestedCondition) {
       this.whereQuery += this.whereTemplate.andWhere(column, value, operator);
@@ -212,21 +212,31 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @description Build more complex where conditions.
    * @param cb
    */
-  public whereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this {
-    const queryBuilder = new PostgresQueryBuilder(this.model as new () => T, this.tableName, this.pgPool, this.logs, true);
+  public whereBuilder(
+    cb: (queryBuilder: PostgresQueryBuilder<T>) => void,
+  ): this {
+    const queryBuilder = new PostgresQueryBuilder(
+      this.model as new () => T,
+      this.tableName,
+      this.pgPool,
+      this.logs,
+      true,
+    );
     cb(queryBuilder);
 
     let whereCondition = queryBuilder.whereQuery.trim();
-    if (whereCondition.startsWith('AND')) {
+    if (whereCondition.startsWith("AND")) {
       whereCondition = whereCondition.substring(4); // 'AND '.length === 4 has to be removed from the beginning of the where condition
-    } else if (whereCondition.startsWith('OR')) {
+    } else if (whereCondition.startsWith("OR")) {
       whereCondition = whereCondition.substring(3); // 'OR '.length === 3 has to be removed from the beginning of the where condition
     }
 
-    whereCondition = '(' + whereCondition + ')';
+    whereCondition = "(" + whereCondition + ")";
 
     if (!this.whereQuery) {
-      this.whereQuery = this.isNestedCondition ? whereCondition : `WHERE ${whereCondition}`;
+      this.whereQuery = this.isNestedCondition
+        ? whereCondition
+        : `WHERE ${whereCondition}`;
     } else {
       this.whereQuery += ` AND ${whereCondition}`;
     }
@@ -238,21 +248,31 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @description Build complex OR-based where conditions.
    * @param cb Callback function that takes a query builder and adds conditions to it.
    */
-  public orWhereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this {
-    const nestedBuilder = new PostgresQueryBuilder(this.model as new () => T, this.tableName, this.pgPool, this.logs, true);
+  public orWhereBuilder(
+    cb: (queryBuilder: PostgresQueryBuilder<T>) => void,
+  ): this {
+    const nestedBuilder = new PostgresQueryBuilder(
+      this.model as new () => T,
+      this.tableName,
+      this.pgPool,
+      this.logs,
+      true,
+    );
     cb(nestedBuilder);
 
     let nestedCondition = nestedBuilder.whereQuery.trim();
-    if (nestedCondition.startsWith('AND')) {
+    if (nestedCondition.startsWith("AND")) {
       nestedCondition = nestedCondition.substring(4);
-    } else if (nestedCondition.startsWith('OR')) {
+    } else if (nestedCondition.startsWith("OR")) {
       nestedCondition = nestedCondition.substring(3);
     }
 
     nestedCondition = `(${nestedCondition})`;
 
     if (!this.whereQuery) {
-      this.whereQuery = this.isNestedCondition ? nestedCondition : `WHERE ${nestedCondition}`;
+      this.whereQuery = this.isNestedCondition
+        ? nestedCondition
+        : `WHERE ${nestedCondition}`;
     } else {
       this.whereQuery += ` OR ${nestedCondition}`;
     }
@@ -264,21 +284,31 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @description Build complex AND-based where conditions.
    * @param cb Callback function that takes a query builder and adds conditions to it.
    */
-  public andWhereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this {
-    const nestedBuilder = new PostgresQueryBuilder(this.model as new () => T, this.tableName, this.pgPool, this.logs, true);
+  public andWhereBuilder(
+    cb: (queryBuilder: PostgresQueryBuilder<T>) => void,
+  ): this {
+    const nestedBuilder = new PostgresQueryBuilder(
+      this.model as new () => T,
+      this.tableName,
+      this.pgPool,
+      this.logs,
+      true,
+    );
     cb(nestedBuilder);
 
     let nestedCondition = nestedBuilder.whereQuery.trim();
-    if (nestedCondition.startsWith('AND')) {
+    if (nestedCondition.startsWith("AND")) {
       nestedCondition = nestedCondition.substring(4);
-    } else if (nestedCondition.startsWith('OR')) {
+    } else if (nestedCondition.startsWith("OR")) {
       nestedCondition = nestedCondition.substring(3);
     }
 
     nestedCondition = `(${nestedCondition})`;
 
     if (!this.whereQuery) {
-      this.whereQuery = this.isNestedCondition ? nestedCondition : `WHERE ${nestedCondition}`;
+      this.whereQuery = this.isNestedCondition
+        ? nestedCondition
+        : `WHERE ${nestedCondition}`;
     } else {
       this.whereQuery += ` AND ${nestedCondition}`;
     }
@@ -294,9 +324,9 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @returns The MysqlQueryBuilder instance for chaining.
    */
   public andWhere(
-      column: string,
-      value: BaseValues,
-      operator: WhereOperatorType = "=",
+    column: string,
+    value: BaseValues,
+    operator: WhereOperatorType = "=",
   ): this {
     if (!this.whereQuery && !this.isNestedCondition) {
       this.whereQuery = this.whereTemplate.where(column, value, operator);
@@ -304,9 +334,9 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     }
 
     this.whereQuery += whereTemplate(this.tableName).andWhere(
-        column,
-        value,
-        operator,
+      column,
+      value,
+      operator,
     );
     return this;
   }
@@ -319,9 +349,9 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @returns The MysqlQueryBuilder instance for chaining.
    */
   public orWhere(
-      column: string,
-      value: BaseValues,
-      operator: WhereOperatorType = "=",
+    column: string,
+    value: BaseValues,
+    operator: WhereOperatorType = "=",
   ): this {
     if (!this.whereQuery && !this.isNestedCondition) {
       this.whereQuery = this.whereTemplate.where(column, value, operator);
@@ -329,9 +359,9 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     }
 
     this.whereQuery += whereTemplate(this.tableName).orWhere(
-        column,
-        value,
-        operator,
+      column,
+      value,
+      operator,
     );
     return this;
   }
@@ -350,9 +380,9 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     }
 
     this.whereQuery += whereTemplate(this.tableName).andWhereBetween(
-        column,
-        min,
-        max,
+      column,
+      min,
+      max,
     );
     return this;
   }
@@ -365,9 +395,9 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @returns The MysqlQueryBuilder instance for chaining.
    */
   public andWhereBetween(
-      column: string,
-      min: BaseValues,
-      max: BaseValues,
+    column: string,
+    min: BaseValues,
+    max: BaseValues,
   ): this {
     if (!this.whereQuery && !this.isNestedCondition) {
       this.whereQuery = this.whereTemplate.whereBetween(column, min, max);
@@ -375,9 +405,9 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     }
 
     this.whereQuery += whereTemplate(this.tableName).andWhereBetween(
-        column,
-        min,
-        max,
+      column,
+      min,
+      max,
     );
     return this;
   }
@@ -390,18 +420,18 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @returns The MysqlQueryBuilder instance for chaining.
    */
   public orWhereBetween(
-      column: string,
-      min: BaseValues,
-      max: BaseValues,
+    column: string,
+    min: BaseValues,
+    max: BaseValues,
   ): this {
     if (!this.whereQuery && !this.isNestedCondition) {
       this.whereQuery = this.whereTemplate.whereBetween(column, min, max);
       return this;
     }
     this.whereQuery += whereTemplate(this.tableName).orWhereBetween(
-        column,
-        min,
-        max,
+      column,
+      min,
+      max,
     );
     return this;
   }
@@ -414,9 +444,9 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @returns The MysqlQueryBuilder instance for chaining.
    */
   public whereNotBetween(
-      column: string,
-      min: BaseValues,
-      max: BaseValues,
+    column: string,
+    min: BaseValues,
+    max: BaseValues,
   ): this {
     if (!this.whereQuery && !this.isNestedCondition) {
       this.whereQuery = this.whereTemplate.whereNotBetween(column, min, max);
@@ -424,9 +454,9 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     }
 
     this.whereQuery += whereTemplate(this.tableName).andWhereNotBetween(
-        column,
-        min,
-        max,
+      column,
+      min,
+      max,
     );
     return this;
   }
@@ -439,9 +469,9 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @returns The MysqlQueryBuilder instance for chaining.
    */
   public orWhereNotBetween(
-      column: string,
-      min: BaseValues,
-      max: BaseValues,
+    column: string,
+    min: BaseValues,
+    max: BaseValues,
   ): this {
     if (!this.whereQuery && !this.isNestedCondition) {
       this.whereQuery = this.whereTemplate.whereNotBetween(column, min, max);
@@ -449,9 +479,9 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     }
 
     this.whereQuery += whereTemplate(this.tableName).orWhereNotBetween(
-        column,
-        min,
-        max,
+      column,
+      min,
+      max,
     );
     return this;
   }
@@ -516,7 +546,10 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
       return this;
     }
 
-    this.whereQuery += whereTemplate(this.tableName).andWhereNotIn(column, values);
+    this.whereQuery += whereTemplate(this.tableName).andWhereNotIn(
+      column,
+      values,
+    );
     return this;
   }
 
@@ -533,8 +566,8 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     }
 
     this.whereQuery += whereTemplate(this.tableName).orWhereNotIn(
-        column,
-        values,
+      column,
+      values,
     );
     return this;
   }
@@ -716,7 +749,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
   protected groupFooterQuery(): string {
     return (
-        this.groupByQuery + this.orderByQuery + this.limitQuery + this.offsetQuery
+      this.groupByQuery + this.orderByQuery + this.limitQuery + this.offsetQuery
     );
   }
 }

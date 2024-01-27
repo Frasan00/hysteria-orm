@@ -112,24 +112,24 @@ export abstract class QueryBuilder<T extends Model> {
    * @param cb
    */
   public abstract whereBuilder(
-      cb: (queryBuilder: QueryBuilders<T>) => void
-  ): QueryBuilders<T>
+    cb: (queryBuilder: QueryBuilders<T>) => void,
+  ): QueryBuilders<T>;
 
   /**
    * @description Build more complex where conditions.
    * @param cb
    */
   public abstract andWhereBuilder(
-      cb: (queryBuilder: QueryBuilders<T>) => void
-  ): QueryBuilders<T>
+    cb: (queryBuilder: QueryBuilders<T>) => void,
+  ): QueryBuilders<T>;
 
   /**
    * @description Build more complex where conditions.
    * @param cb
    */
   public abstract orWhereBuilder(
-      cb: (queryBuilder: QueryBuilders<T>) => void
-  ): QueryBuilders<T>
+    cb: (queryBuilder: QueryBuilders<T>) => void,
+  ): QueryBuilders<T>;
 
   /**
    * @description Adds a WHERE condition to the query.
