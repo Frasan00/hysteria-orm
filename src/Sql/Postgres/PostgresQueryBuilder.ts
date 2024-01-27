@@ -1,7 +1,10 @@
 import { Model } from "../Models/Model";
 import { QueryBuilder } from "../QueryBuilder/QueryBuilder";
 import { Pool } from "pg";
-import whereTemplate, {BaseValues, WhereOperatorType} from "../Templates/Query/WHERE.TS";
+import whereTemplate, {
+  BaseValues,
+  WhereOperatorType,
+} from "../Templates/Query/WHERE.TS";
 import selectTemplate from "../Templates/Query/SELECT";
 import { log } from "../../Logger";
 import {
@@ -35,8 +38,8 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   }
 
   public async one(): Promise<T | null> {
-    let query: string = '';
-    if(this.joinQuery && !this.selectQuery) {
+    let query: string = "";
+    if (this.joinQuery && !this.selectQuery) {
       const select = selectTemplate(this.tableName);
       this.selectQuery = select.selectColumns(`${this.tableName}.*`);
     }
@@ -72,8 +75,8 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   }
 
   public async many(): Promise<T[]> {
-    let query: string = '';
-    if(this.joinQuery && !this.selectQuery) {
+    let query: string = "";
+    if (this.joinQuery && !this.selectQuery) {
       const select = selectTemplate(this.tableName);
       this.selectQuery = select.selectColumns(`${this.tableName}.*`);
     }
@@ -142,11 +145,16 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @param foreignColumn - The name of the foreign column in the related table.
    */
   public join(
-      relationTable: string,
-      primaryColumn: string,
-      foreignColumn: string,
-  ) : PostgresQueryBuilder<T> {
-    const join = joinTemplate(this.tableName, relationTable, primaryColumn, foreignColumn);
+    relationTable: string,
+    primaryColumn: string,
+    foreignColumn: string,
+  ): PostgresQueryBuilder<T> {
+    const join = joinTemplate(
+      this.tableName,
+      relationTable,
+      primaryColumn,
+      foreignColumn,
+    );
     this.joinQuery += join.innerJoin();
     return this;
   }
@@ -158,11 +166,16 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @param foreignColumn - The name of the foreign column in the related table.
    */
   public leftJoin(
-      relationTable: string,
-      primaryColumn: string,
-      foreignColumn: string,
+    relationTable: string,
+    primaryColumn: string,
+    foreignColumn: string,
   ): PostgresQueryBuilder<T> {
-    const join = joinTemplate(this.tableName, relationTable, primaryColumn, foreignColumn);
+    const join = joinTemplate(
+      this.tableName,
+      relationTable,
+      primaryColumn,
+      foreignColumn,
+    );
     this.joinQuery += join.innerJoin();
     return this;
   }
@@ -175,35 +188,23 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   public where(
     column: string,
     operator: WhereOperatorType,
-    value: BaseValues
+    value: BaseValues,
   ): PostgresQueryBuilder<T> {
     if (this.whereQuery) {
-      this.whereQuery += this.whereTemplate.andWhere(
-        column,
-        value,
-        operator,
-      );
+      this.whereQuery += this.whereTemplate.andWhere(column, value, operator);
       return this;
     }
-    this.whereQuery = this.whereTemplate.where(
-      column,
-      value,
-      operator,
-    );
+    this.whereQuery = this.whereTemplate.where(column, value, operator);
     return this;
   }
 
   public andWhere(
     column: string,
     operator: WhereOperatorType,
-    value: BaseValues
+    value: BaseValues,
   ): PostgresQueryBuilder<T> {
     if (!this.whereQuery) {
-      this.whereQuery = this.whereTemplate.where(
-        column,
-        value,
-        operator,
-      );
+      this.whereQuery = this.whereTemplate.where(column, value, operator);
       return this;
     }
     this.whereQuery += whereTemplate(this.tableName).andWhere(
@@ -231,7 +232,10 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  public andWhereIn(column: string, values: BaseValues[]): PostgresQueryBuilder<T> {
+  public andWhereIn(
+    column: string,
+    values: BaseValues[],
+  ): PostgresQueryBuilder<T> {
     if (!this.whereQuery) {
       this.whereQuery = this.whereTemplate.whereIn(column, values);
       return this;
@@ -276,14 +280,10 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   public orWhere(
     column: string,
     operator: WhereOperatorType,
-    value: BaseValues
+    value: BaseValues,
   ): PostgresQueryBuilder<T> {
     if (!this.whereQuery) {
-      this.whereQuery = this.whereTemplate.where(
-        column,
-        value,
-        operator,
-      );
+      this.whereQuery = this.whereTemplate.where(column, value, operator);
       return this;
     }
     this.whereQuery += whereTemplate(this.tableName).orWhere(
@@ -311,7 +311,10 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  public orWhereIn(column: string, values: BaseValues[]): PostgresQueryBuilder<T> {
+  public orWhereIn(
+    column: string,
+    values: BaseValues[],
+  ): PostgresQueryBuilder<T> {
     if (!this.whereQuery) {
       this.whereQuery = this.whereTemplate.whereIn(column, values);
       return this;
@@ -422,7 +425,10 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  public whereIn(column: string, values: BaseValues[]): PostgresQueryBuilder<T> {
+  public whereIn(
+    column: string,
+    values: BaseValues[],
+  ): PostgresQueryBuilder<T> {
     if (!this.whereQuery) {
       this.whereQuery = this.whereTemplate.whereIn(column, values);
       return this;
@@ -448,7 +454,10 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  public whereNotIn(column: string, values: BaseValues[]): PostgresQueryBuilder<T> {
+  public whereNotIn(
+    column: string,
+    values: BaseValues[],
+  ): PostgresQueryBuilder<T> {
     if (!this.whereQuery) {
       this.whereQuery = this.whereTemplate.andWhereNotIn(column, values);
       return this;

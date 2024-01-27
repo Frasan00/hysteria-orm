@@ -8,6 +8,12 @@ import { MigrationTableType } from "../Templates/MigrationTableType";
 import { Migration } from "../../Sql/Migrations/Migration";
 import { MigrationController } from "../../Sql/Migrations/MigrationController";
 import MigrationTemplates from "../Templates/MigrationTemplates";
+import { log } from "../../Logger";
+import {
+  BEGIN_TRANSACTION,
+  COMMIT_TRANSACTION,
+  ROLLBACK_TRANSACTION,
+} from "../../Sql/Templates/Query/TRANSACTION";
 
 dotenv.config();
 
@@ -23,46 +29,43 @@ export async function runMigrationsPg(): Promise<void> {
     database: config.database,
   });
 
-  const client = await postgresPool.connect();
+  const client = await postgresPool.connect().catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
 
-  const migrationTable: MigrationTableType[] =
-    await PostgresCliUtils.getMigrationTable(client);
-  const migrations: Migration[] = await PostgresCliUtils.getMigrations();
-  const pendingMigrations = PostgresCliUtils.getPendingMigrations(
-    migrations,
-    migrationTable,
-  );
+  try {
 
-  const migrationManager: MigrationController = new MigrationController(
-    null,
-    postgresPool,
-  );
+    const migrationTable: MigrationTableType[] =
+        await PostgresCliUtils.getMigrationTable(client);
+    const migrations: Migration[] = await PostgresCliUtils.getMigrations();
+    const pendingMigrations = PostgresCliUtils.getPendingMigrations(
+        migrations,
+        migrationTable,
+    );
 
-  if (pendingMigrations.length === 0) {
-    console.log("No pending migrations.");
-    await client.release();
-    process.exit(0);
-  }
-
-  for (const migration of pendingMigrations) {
-    const migrationName = migration.migrationName;
-    const migrationFilePath = path.join(migrationFolderPath, migrationName);
-    try {
-      await client.query("BEGIN");
-      console.log(`Running migration: ${migrationName} (${migrationFilePath})`);
-      await migrationManager.runMigration(migration);
-
-      await client.query(MigrationTemplates.addMigrationTemplate(), [
-        migrationName,
-      ]);
-      console.log(`Migration completed: ${migrationName}`);
-    } catch (error: any) {
-      await client.query("ROLLBACK");
-      throw new Error(error);
+    if (pendingMigrations.length === 0) {
+      console.log("No pending migrations.");
+      client.release();
+      process.exit(0);
     }
-    await client.query("COMMIT");
-  }
 
-  client.release();
-  console.log("Migrations completed successfully.");
+    const migrationController = new MigrationController(null, client);
+
+    log(BEGIN_TRANSACTION, true);
+    await client.query(BEGIN_TRANSACTION);
+
+    await migrationController.upMigrations(migrations);
+
+    log(COMMIT_TRANSACTION, true);
+    await client.query(COMMIT_TRANSACTION);
+  } catch (error: any) {
+    log(ROLLBACK_TRANSACTION, true);
+    await client.query(ROLLBACK_TRANSACTION);
+
+    console.error(error);
+    process.exit(1);
+  } finally {
+    client.release();
+  }
 }

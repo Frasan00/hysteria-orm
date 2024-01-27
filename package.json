@@ -14,6 +14,7 @@
     "dev": "ts-node src/index.ts",
     "start": "tsc && node lib/test/index.js",
     "start:watch": "nodemon --exec ts-node src/index.ts",
+    "test-commands": "yarn build && tsc && yarn run:migration",
 
     "create:migration": "node ./lib/src/hysteria-cli/migrationCreateConnector.js",
     "run:migration": "node ./lib/src/hysteria-cli/migrationRunConnector.js",

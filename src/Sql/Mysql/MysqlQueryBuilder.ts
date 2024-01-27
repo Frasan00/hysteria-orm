@@ -3,8 +3,11 @@ import selectTemplate from "../Templates/Query/SELECT";
 import { Model } from "../Models/Model";
 import { log } from "../../Logger";
 import ModelManagerUtils from "./MySqlModelManagerUtils";
-import whereTemplate, {BaseValues, WhereOperatorType} from "../Templates/Query/WHERE.TS";
-import {QueryBuilder} from "../QueryBuilder/QueryBuilder";
+import whereTemplate, {
+  BaseValues,
+  WhereOperatorType,
+} from "../Templates/Query/WHERE.TS";
+import { QueryBuilder } from "../QueryBuilder/QueryBuilder";
 import {
   PaginatedData,
   parseDatabaseDataIntoModelResponse,
@@ -46,8 +49,8 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @returns A Promise resolving to the first result or null.
    */
   public async one(): Promise<T | null> {
-    let query: string = '';
-    if(this.joinQuery && !this.selectQuery) {
+    let query: string = "";
+    if (this.joinQuery && !this.selectQuery) {
       const select = selectTemplate(this.tableName);
       this.selectQuery = select.selectColumns(`${this.tableName}.*`);
     }
@@ -83,8 +86,8 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @returns A Promise resolving to an array of results.
    */
   public async many(): Promise<T[]> {
-    let query: string = '';
-    if(this.joinQuery && !this.selectQuery) {
+    let query: string = "";
+    if (this.joinQuery && !this.selectQuery) {
       const select = selectTemplate(this.tableName);
       this.selectQuery = select.selectColumns(`${this.tableName}.*`);
     }
@@ -155,11 +158,16 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @param foreignColumn - The name of the foreign column in the related table.
    */
   public join(
-      relationTable: string,
-      primaryColumn: string,
-      foreignColumn: string,
-  ) : MysqlQueryBuilder<T> {
-    const join = joinTemplate(this.tableName, relationTable, primaryColumn, foreignColumn);
+    relationTable: string,
+    primaryColumn: string,
+    foreignColumn: string,
+  ): MysqlQueryBuilder<T> {
+    const join = joinTemplate(
+      this.tableName,
+      relationTable,
+      primaryColumn,
+      foreignColumn,
+    );
     this.joinQuery += join.innerJoin();
     return this;
   }
@@ -171,11 +179,16 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @param foreignColumn - The name of the foreign column in the related table.
    */
   public leftJoin(
-      relationTable: string,
-      primaryColumn: string,
-      foreignColumn: string,
+    relationTable: string,
+    primaryColumn: string,
+    foreignColumn: string,
   ): MysqlQueryBuilder<T> {
-    const join = joinTemplate(this.tableName, relationTable, primaryColumn, foreignColumn);
+    const join = joinTemplate(
+      this.tableName,
+      relationTable,
+      primaryColumn,
+      foreignColumn,
+    );
     this.joinQuery += join.innerJoin();
     return this;
   }
@@ -198,18 +211,10 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     value: BaseValues,
   ): this {
     if (this.whereQuery) {
-      this.whereQuery += this.whereTemplate.andWhere(
-        column,
-        value,
-        operator,
-      );
+      this.whereQuery += this.whereTemplate.andWhere(column, value, operator);
       return this;
     }
-    this.whereQuery = this.whereTemplate.where(
-      column,
-      value,
-      operator,
-    );
+    this.whereQuery = this.whereTemplate.where(column, value, operator);
     return this;
   }
 
@@ -226,11 +231,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     value: BaseValues,
   ): this {
     if (!this.whereQuery) {
-      this.whereQuery = this.whereTemplate.where(
-        column,
-        value,
-        operator,
-      );
+      this.whereQuery = this.whereTemplate.where(column, value, operator);
       return this;
     }
     this.whereQuery += whereTemplate(this.tableName).andWhere(
@@ -254,11 +255,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     value: BaseValues,
   ): this {
     if (!this.whereQuery) {
-      this.whereQuery = this.whereTemplate.where(
-        column,
-        value,
-        operator,
-      );
+      this.whereQuery = this.whereTemplate.where(column, value, operator);
       return this;
     }
     this.whereQuery += whereTemplate(this.tableName).orWhere(
@@ -296,7 +293,11 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @param max - The maximum value for the range.
    * @returns The MysqlQueryBuilder instance for chaining.
    */
-  public andWhereBetween(column: string, min: BaseValues, max: BaseValues): this {
+  public andWhereBetween(
+    column: string,
+    min: BaseValues,
+    max: BaseValues,
+  ): this {
     if (!this.whereQuery) {
       this.whereQuery = this.whereTemplate.whereBetween(column, min, max);
       return this;
@@ -316,7 +317,11 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @param max - The maximum value for the range.
    * @returns The MysqlQueryBuilder instance for chaining.
    */
-  public orWhereBetween(column: string, min: BaseValues, max: BaseValues): this {
+  public orWhereBetween(
+    column: string,
+    min: BaseValues,
+    max: BaseValues,
+  ): this {
     if (!this.whereQuery) {
       this.whereQuery = this.whereTemplate.whereBetween(column, min, max);
       return this;
@@ -336,7 +341,11 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @param max - The maximum value for the range.
    * @returns The MysqlQueryBuilder instance for chaining.
    */
-  public whereNotBetween(column: string, min: BaseValues, max: BaseValues): this {
+  public whereNotBetween(
+    column: string,
+    min: BaseValues,
+    max: BaseValues,
+  ): this {
     if (!this.whereQuery) {
       this.whereQuery = this.whereTemplate.andWhereNotBetween(column, min, max);
       return this;
@@ -356,7 +365,11 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @param max - The maximum value for the range.
    * @returns The MysqlQueryBuilder instance for chaining.
    */
-  public orWhereNotBetween(column: string, min: BaseValues, max: BaseValues): this {
+  public orWhereNotBetween(
+    column: string,
+    min: BaseValues,
+    max: BaseValues,
+  ): this {
     if (!this.whereQuery) {
       this.whereQuery = this.whereTemplate.whereNotBetween(column, min, max);
       return this;

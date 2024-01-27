@@ -31,6 +31,17 @@ CREATE TABLE IF NOT EXISTS \`migrations\`(
 `;
   }
 
+  public migrationTableTemplatePg(): string {
+    return `
+CREATE TABLE IF NOT EXISTS migrations (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+`;
+  }
+
+
   public addMigrationTemplate(): string {
     return `
 INSERT INTO migrations (name) VALUES (?);

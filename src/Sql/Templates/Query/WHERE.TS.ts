@@ -9,25 +9,19 @@ const whereTemplate = (_tableName: string) => {
       column: string,
       value: BaseValues,
       operator: WhereOperatorType = "=",
-    ) =>
-      `\nWHERE ${camelToSnakeCase(column)} ${operator} ${parseValue(
-        value,
-      )}`,
+    ) => `\nWHERE ${camelToSnakeCase(column)} ${operator} ${parseValue(value)}`,
     andWhere: (
       column: string,
       value: BaseValues,
       operator: WhereOperatorType = "=",
-    ) =>
-      ` AND ${camelToSnakeCase(column)} ${operator} ${parseValue(value)}`,
+    ) => ` AND ${camelToSnakeCase(column)} ${operator} ${parseValue(value)}`,
     orWhere: (
       column: string,
       value: BaseValues,
       operator: WhereOperatorType = "=",
     ) => ` OR ${camelToSnakeCase(column)} ${operator} ${parseValue(value)}`,
     whereNot: (column: string, value: BaseValues) =>
-      `\nWHERE ${camelToSnakeCase(column)} != ${parseValue(
-        value,
-      )}`,
+      `\nWHERE ${camelToSnakeCase(column)} != ${parseValue(value)}`,
     andWhereNot: (column: string, value: BaseValues) =>
       ` AND ${camelToSnakeCase(column)} != ${parseValue(value)}`,
     orWhereNot: (column: string, value: BaseValues) =>
@@ -36,8 +30,7 @@ const whereTemplate = (_tableName: string) => {
       `\nWHERE ${camelToSnakeCase(column)} IS NULL`,
     andWhereNull: (column: string) =>
       ` AND ${camelToSnakeCase(column)} IS NULL`,
-    orWhereNull: (column: string) =>
-      ` OR ${camelToSnakeCase(column)} IS NULL`,
+    orWhereNull: (column: string) => ` OR ${camelToSnakeCase(column)} IS NULL`,
     whereNotNull: (column: string) =>
       `\nWHERE ${camelToSnakeCase(column)} IS NOT NULL`,
     andWhereNotNull: (column: string) =>
@@ -45,27 +38,17 @@ const whereTemplate = (_tableName: string) => {
     orWhereNotNull: (column: string) =>
       ` OR ${camelToSnakeCase(column)} IS NOT NULL`,
     whereBetween: (column: string, min: BaseValues, max: BaseValues) =>
-      `\nWHERE ${camelToSnakeCase(
-        column,
-      )} BETWEEN ${min} AND ${max}`,
+      `\nWHERE ${camelToSnakeCase(column)} BETWEEN ${min} AND ${max}`,
     andWhereBetween: (column: string, min: BaseValues, max: BaseValues) =>
-      ` AND ${camelToSnakeCase(
-        column,
-      )} BETWEEN ${min} AND ${max}`,
+      ` AND ${camelToSnakeCase(column)} BETWEEN ${min} AND ${max}`,
     orWhereBetween: (column: string, min: BaseValues, max: BaseValues) =>
       ` OR ${camelToSnakeCase(column)} BETWEEN ${min} AND ${max}`,
     whereNotBetween: (column: string, min: BaseValues, max: BaseValues) =>
-      `\nWHERE ${camelToSnakeCase(
-        column,
-      )} NOT BETWEEN ${min} AND ${max}`,
+      `\nWHERE ${camelToSnakeCase(column)} NOT BETWEEN ${min} AND ${max}`,
     andWhereNotBetween: (column: string, min: BaseValues, max: BaseValues) =>
-      ` AND ${camelToSnakeCase(
-        column,
-      )} NOT BETWEEN ${min} AND ${max}`,
+      ` AND ${camelToSnakeCase(column)} NOT BETWEEN ${min} AND ${max}`,
     orWhereNotBetween: (column: string, min: BaseValues, max: BaseValues) =>
-      ` OR ${camelToSnakeCase(
-        column,
-      )} NOT BETWEEN ${min} AND ${max}`,
+      ` OR ${camelToSnakeCase(column)} NOT BETWEEN ${min} AND ${max}`,
     whereIn: (column: string, values: BaseValues[]) =>
       `\nWHERE ${camelToSnakeCase(column)} IN (${values
         .map((value: BaseValues) => parseValue(value))

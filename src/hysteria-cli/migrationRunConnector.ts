@@ -9,10 +9,10 @@ export async function dispatch() {
 
   switch (databaseType) {
     case "mysql":
-      await runMigrationsPg();
+      await runMigrationsSql();
       break;
     case "postgres":
-      await runMigrationsSql();
+      await runMigrationsPg();
       break;
 
     default:

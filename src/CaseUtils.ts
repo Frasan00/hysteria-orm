@@ -85,7 +85,7 @@ function parseModel<T extends Record<string, any>>(model: T): T {
     const originalValue = model[key];
     const camelCaseKey = fromSnakeToCamelCase(key);
 
-    const isObject = typeof originalValue === 'object';
+    const isObject = typeof originalValue === "object";
     const isNotArray = !Array.isArray(originalValue);
     const isNotRelation = !(originalValue instanceof Relation);
     const isNotDate = !(originalValue instanceof Date);

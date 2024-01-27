@@ -10,7 +10,8 @@ dotenv.config();
 
 class PgCliUtils {
   public getPgConfig(): DatasourceInput {
-    if (!process.env.POSTGRES_PORT) throw new Error("POSTGRES_PORT is not defined");
+    if (!process.env.POSTGRES_PORT)
+      throw new Error("POSTGRES_PORT is not defined");
     return {
       type: "postgres",
       host: process.env.POSTGRES_HOST || "localhost",
@@ -24,7 +25,7 @@ class PgCliUtils {
   public async getMigrationTable(
     pgPool: PoolClient,
   ): Promise<MigrationTableType[]> {
-    await pgPool.query(MigrationTemplates.migrationTableTemplate());
+    await pgPool.query(MigrationTemplates.migrationTableTemplatePg());
     const result = await pgPool.query(
       MigrationTemplates.selectAllFromMigrationsTemplate(),
     );

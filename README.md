@@ -2,6 +2,17 @@
 
 Hysteria ORM is an Object-Relational Mapping (ORM) library for JavaScript and TypeScript, designed to simplify interactions between your application and a SQL database.
 
+- [Getting Started](#getting-started)
+- [Query Builder](#Query-builder)
+- [Migrations](#Migrations)
+
+## Installation
+```shell
+    npm install hysteria-orm
+    
+    yarn add hysteria-orm
+```
+
 ## Features
 
 - **Simple Model Creation:** Define models that reflect your database schema with ease.
@@ -19,8 +30,46 @@ For TypeScript users, it is essential to set `"useDefineForClassFields": true` i
 
 ## Environment Variables
 
+### Common Envs
+
 - `MIGRATION_PATH`: Path to the migration folder (default: `database/migrations`).
 - `DATABASE_TYPE`: Type of the database (default: `mysql`, options: `mysql`, `postgres`).
+
+### Mysql Envs
+
+- `MYSQL_ROOT_PASSWORD`
+- `MYSQL_DATABASE`
+- `MYSQL_USERNAME`
+- `MYSQL_PASSWORD`
+- `MYSQL_HOST`
+- `MYSQL_PORT`
+
+### Postgres Envs
+- `POSTGRES_USER`
+- `POSTGRES_PASSWORD`
+- `POSTGRES_DB`
+- `POSTGRES_HOST`
+- `POSTGRES_PORT`
+
+### Complete env example
+``` dotenv
+MYSQL_ROOT_PASSWORD=root
+MYSQL_DATABASE=database
+MYSQL_USERNAME=root
+MYSQL_PASSWORD=root
+MYSQL_HOST=127.0.0.1
+MYSQL_PORT=3306
+
+POSTGRES_USER: root
+POSTGRES_PASSWORD: root
+POSTGRES_DATABASE: database
+POSTGRES_HOST: 127.0.0.1
+POSTGRES_PORT: 5432
+
+MIGRATION_PATH=test/database/migrations
+DATABASE_TYPE=mysql
+```
+
 
 ## Getting Started
 
@@ -151,7 +200,7 @@ const otherUser: User | null = await userManager.findOne({
 });
 ```
 
-### Query Builder
+### Query-builder
 - It's used to create more complex queries that are not supported by the standard methods
 
 ```typescript
@@ -213,49 +262,55 @@ const user: User | null = await query
     .paginate(1, 10); // page - limit
 ```
 
-# Under Development
-- *Migrations* (advised raw queries and create table only since `alter table` is still under development and may not work as expected)
-- Environment variable *MIGRATION_PATH*, default if not set: "database/migrations"
+# Migrations
 
-Create a migration (hysteria create:migration {migrationName})
-
-```typescript
-import {Migration} from "hysteria-orm";
-
-export default class extends Migration {
-    public up(): void {
-        // useTable allows you to target a specific Table in your database in order to create, alter or drop
-        this.useTable("User", "create")
-
-        this.table.column().bigInt("id").primary().autoIncrement().commit();
-        this.table.column().string("name").notNullable().commit();
-    }
-
-    public down(): void {
-        this.useTable("User", "drop")
-        this.table.drop();
-    }
-}
-```
-
-Raw Migration
-
-```typescript
-import {Migration} from "hysteria-orm";
-
-export default class extends Migration {
-    public up(): void {
-        this.useRawQuery('YOUR RAW QUERY HERE');
-    }
-
-    public down(): void {
-        this.useRawQuery('YOUR RAW QUERY HERE');
-    }
-}
-```
-
-- hysteria cli for Migrations
+## hysteria-cli for Migrations
 
 1) npm run | yarn create:migration {migrationName}
 2) npm run | yarn run:migrations
 3) npm run | yarn rollback:migrations
+
+
+## Create Table
+
+```typescript
+import {Migration} from "hysteria-orm";
+
+export default class extends Migration {
+    public up(): void {
+        this.schema.createTable('posts', { ifNotExists: true })
+            .newColumn().bigint('id').autoIncrement().primary()
+            .newColumn().bigint('user_id').references('users', 'id')
+            .newColumn().varchar('name', 255).notNullable()
+            .commit();
+
+        this.schema.rawQuery('CREATE INDEX posts_name_idx ON posts (name)');
+    }
+
+    public down(): void {
+        this.schema.dropTable('posts');
+    }
+}
+```
+
+## Alter Table
+
+```typescript
+import {Migration} from "hysteria-orm";
+
+export default class extends Migration {
+    public up(): void {
+        this.schema.alterTable('users')
+            .dropColumn('email')
+            .addColumn('email', 'varchar', { length: 255, notNullable: true, unique: true })
+            .commit();
+    }
+
+    public down(): void {
+        this.schema.alterTable('users')
+            .dropColumn('email')
+            .addColumn('email', 'varchar', { length: 255, notNullable: true })
+            .commit();
+    }
+}
+```

@@ -10,7 +10,9 @@ import { MysqlQueryBuilder } from "../Mysql/MysqlQueryBuilder";
 import { PostgresQueryBuilder } from "../Postgres/PostgresQueryBuilder";
 import { PaginatedData, PaginationMetadata } from "../../CaseUtils";
 
-type QueryBuilders<T extends Model> = MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
+type QueryBuilders<T extends Model> =
+  | MysqlQueryBuilder<T>
+  | PostgresQueryBuilder<T>;
 
 export abstract class QueryBuilder<T extends Model> {
   protected selectQuery: string = "";
@@ -73,9 +75,7 @@ export abstract class QueryBuilder<T extends Model> {
    * @description Columns are customizable with aliases. By default, without this function, all columns are selected
    * @param columns
    */
-  public abstract select(
-    ...columns: string[]
-  ): QueryBuilders<T>;
+  public abstract select(...columns: string[]): QueryBuilders<T>;
 
   /**
    *
@@ -87,7 +87,7 @@ export abstract class QueryBuilder<T extends Model> {
     table: string,
     primaryColumn: string,
     foreignColumn: string,
-  ) : QueryBuilders<T>;
+  ): QueryBuilders<T>;
 
   /**
    *
@@ -99,16 +99,13 @@ export abstract class QueryBuilder<T extends Model> {
     table: string,
     primaryColumn: string,
     foreignColumn: string,
-  ): QueryBuilders<T>
-
+  ): QueryBuilders<T>;
 
   /**
    * @description Adds a relation to the query.
    * @param relations - The relations to add.
    */
-  public abstract addRelations(
-    relations: string[],
-  ): QueryBuilders<T>;
+  public abstract addRelations(relations: string[]): QueryBuilders<T>;
 
   /**
    * @description Adds a WHERE condition to the query.
@@ -274,90 +271,70 @@ export abstract class QueryBuilder<T extends Model> {
    * @param column - The column to filter.
    * @returns The MysqlQueryBuilder instance for chaining.
    */
-  public abstract whereNull(
-    column: string,
-  ): QueryBuilders<T>;
+  public abstract whereNull(column: string): QueryBuilders<T>;
 
   /**
    * @description Adds an AND WHERE NULL condition to the query.
    * @param column - The column to filter.
    * @returns The MysqlQueryBuilder instance for chaining.
    */
-  public abstract andWhereNull(
-    column: string,
-  ): QueryBuilders<T>;
+  public abstract andWhereNull(column: string): QueryBuilders<T>;
 
   /**
    * @description Adds an OR WHERE NULL condition to the query.
    * @param column - The column to filter.
    * @returns The MysqlQueryBuilder instance for chaining.
    */
-  public abstract orWhereNull(
-    column: string,
-  ): QueryBuilders<T>;
+  public abstract orWhereNull(column: string): QueryBuilders<T>;
 
   /**
    * @description Adds a WHERE NOT NULL condition to the query.
    * @param column - The column to filter.
    * @returns The MysqlQueryBuilder instance for chaining.
    */
-  public abstract whereNotNull(
-    column: string,
-  ): QueryBuilders<T>;
+  public abstract whereNotNull(column: string): QueryBuilders<T>;
 
   /**
    * @description Adds an AND WHERE NOT NULL condition to the query.
    * @param column - The column to filter.
    * @returns The MysqlQueryBuilder instance for chaining.
    */
-  public abstract andWhereNotNull(
-    column: string,
-  ): QueryBuilders<T>;
+  public abstract andWhereNotNull(column: string): QueryBuilders<T>;
 
   /**
    * @description Adds an OR WHERE NOT NULL condition to the query.
    * @param column - The column to filter.
    * @returns The MysqlQueryBuilder instance for chaining.
    */
-  public abstract orWhereNotNull(
-    column: string,
-  ): QueryBuilders<T>;
+  public abstract orWhereNotNull(column: string): QueryBuilders<T>;
 
   /**
    * @description Adds a raw WHERE condition to the query.
    * @param query - The raw SQL WHERE condition.
    * @returns The MysqlQueryBuilder instance for chaining.
    */
-  public abstract rawWhere(
-    query: string,
-  ): QueryBuilders<T>;
+  public abstract rawWhere(query: string): QueryBuilders<T>;
 
   /**
    * @description Adds a raw AND WHERE condition to the query.
    * @param query - The raw SQL WHERE condition.
    * @returns The MysqlQueryBuilder instance for chaining.
    */
-  public abstract rawAndWhere(
-    query: string,
-  ): QueryBuilders<T>;
+  public abstract rawAndWhere(query: string): QueryBuilders<T>;
 
   /**
    * @description Adds a raw OR WHERE condition to the query.
    * @param query - The raw SQL WHERE condition.
    * @returns The MysqlQueryBuilder instance for chaining.
    */
-  public abstract rawOrWhere(
-    query: string,
-  ): QueryBuilders<T>;
+  public abstract rawOrWhere(query: string): QueryBuilders<T>;
 
   /**
    * @description Adds GROUP BY conditions to the query.
    * @param columns - The columns to group by.
    * @returns The MysqlQueryBuilder instance for chaining.
    */
-  public abstract groupBy(
-    ...columns: BaseValues[]
-  ): QueryBuilders<T>;
+  public abstract groupBy(...columns: BaseValues[]): QueryBuilders<T>;
 
   /**
    * @description Adds ORDER BY conditions to the query.
@@ -375,18 +352,14 @@ export abstract class QueryBuilder<T extends Model> {
    * @param limit - The maximum number of rows to return.
    * @returns The MysqlQueryBuilder instance for chaining.
    */
-  public abstract limit(
-    limit: number,
-  ): QueryBuilders<T>;
+  public abstract limit(limit: number): QueryBuilders<T>;
 
   /**
    * @description Adds an OFFSET condition to the query.
    * @param offset - The number of rows to skip.
    * @returns The MysqlQueryBuilder instance for chaining.
    */
-  public abstract offset(
-    offset: number,
-  ): QueryBuilders<T>;
+  public abstract offset(offset: number): QueryBuilders<T>;
 
   protected groupFooterQuery(): string {
     return (

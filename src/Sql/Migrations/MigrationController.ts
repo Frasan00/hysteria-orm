@@ -1,127 +1,90 @@
-import { Pool as MySqlPool } from "mysql2/promise";
-import { Pool as PgPool } from "pg";
+import { PoolConnection } from "mysql2/promise";
+import { PoolClient } from "pg";
+import { log } from "../../Logger";
 import { Migration } from "./Migration";
-import logger from "../../Logger";
-import migrationParser from "./MigrationParser";
 
 export class MigrationController {
-  protected mysqlPool: MySqlPool | null;
-  protected pgPool: PgPool | null;
+  protected mysqlPool: PoolConnection | null;
+  protected pgPool: PoolClient | null;
 
-  constructor(mysqlPool: MySqlPool | null, pgPool: PgPool | null) {
+  constructor(mysqlPool: PoolConnection | null, pgPool: PoolClient | null) {
     this.mysqlPool = mysqlPool;
     this.pgPool = pgPool;
   }
 
-  private async query(text: string, params: any[] = []): Promise<any> {
-    if (this.mysqlPool) {
-      return this.mysqlPool.query(text, params);
-    } else if (this.pgPool) {
-      const client = await this.pgPool.connect();
-      try {
-        return await client.query(text, params);
-      } finally {
-        client.release();
-      }
-    } else {
-      throw new Error("No database pool provided.");
-    }
-  }
-  public async createMigrationsTable(): Promise<void> {
-    const createTableSql = `
-      CREATE TABLE IF NOT EXISTS migrations (
-        id INT AUTO_INCREMENT PRIMARY KEY,
-        name VARCHAR(255),
-        executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `;
-    await this.query(createTableSql);
-  }
-
-  public async applyMigration(
-    migrationName: string,
-    migrationSql: string,
-  ): Promise<void> {
-    await this.query("BEGIN");
+  public async upMigrations(migrations: Migration[]): Promise<void> {
     try {
-      await this.query(migrationSql);
-      await this.query("INSERT INTO migrations (name) VALUES (?)", [
-        migrationName,
-      ]);
-      await this.query("COMMIT");
-    } catch (error) {
-      await this.query("ROLLBACK");
-      throw error;
-    }
-  }
+      for (const migration of migrations) {
+        migration.up();
+        const statements = migration.schema.queryStatements;
+        for (const statement of statements) {
+          if (!statement || statement === "" || statement === ";" || statement === ',') {
+            continue;
+          }
 
-  public async rollbackMigration(migration: Migration): Promise<void> {
-    try {
-      await this.downMigration(migration);
-    } catch (error) {
-      logger.error("Failed to run migrations");
-      throw new Error("Failed to run migrations" + error);
-    }
-  }
-
-  public async runMigration(migration: Migration): Promise<void> {
-    try {
-      await this.upMigration(migration);
-    } catch (error) {
-      logger.error("Failed to run migrations");
-      throw new Error("Failed to run migrations" + error);
-    }
-  }
-
-  private async upMigration(migration: Migration): Promise<void> {
-    logger.info("Running database: " + migration.tableName);
-    migration.up();
-    const statement = this.parseMigration(migration);
-    if (migration.migrationType === "alter") {
-      const statements = statement.split(";");
-      for (const stmt of statements) {
-        if (stmt.trim()) {
-          await this.query(stmt);
+          log(statement, true);
+          await this.localQuery(statement);
         }
+
+        await this.addMigrationToMigrationTable(migration);
       }
-    } else {
-      await this.query(statement);
+    } catch (error: any) {
+      throw new Error(error);
     }
-    logger.info("Migration complete: " + migration.tableName);
   }
 
-  private async downMigration(migration: Migration): Promise<void> {
-    logger.info("Rolling back database: " + migration.tableName);
-    migration.down();
-    const parsedStatements = this.parseMigration(migration);
-    const statements = parsedStatements.split(
-      migration.migrationType === "alter" ? ";" : "\n",
-    );
-    for (const statement of statements) {
-      if (statement.trim()) {
-        await this.query(statement);
+  public async downMigrations(migrations: Migration[]): Promise<void> {
+    migrations = migrations.reverse();
+    try {
+      for (const migration of migrations) {
+        migration.down();
+        const statements = migration.schema.queryStatements;
+        for (const statement of statements) {
+          if (!statement || statement === "" || statement === ";" || statement === ',') {
+            continue;
+          }
+
+          log(statement, true);
+          await this.localQuery(statement);
+        }
+
+        await this.deleteMigrationFromMigrationTable(migration);
       }
+    } catch (error: any) {
+      throw new Error(error);
     }
-    logger.info("Rollback complete: " + migration.tableName);
   }
 
-  private parseMigration(migration: Migration): string {
-    if (migration.migrationType === "create") {
-      return migrationParser.parseCreateTableMigration(migration);
+  private async localQuery(text: string, params: any[] = []): Promise<void> {
+    if (this.mysqlPool) {
+      await this.mysqlPool.query(text, params);
+    } else if (this.pgPool) {
+      await this.pgPool.query(text, params);
     }
+  }
 
-    if (migration.migrationType === "alter") {
-      return migrationParser.parseAlterTableMigration(migration);
-    }
+  public async addMigrationToMigrationTable(migration: Migration) {
+    const completeUtcTimestamp = new Date();
+    const timestamp = completeUtcTimestamp
+      .toISOString()
+      .replace("T", " ")
+      .replace(/\.\d{3}Z$/, "");
 
-    if (migration.migrationType === "drop-force") {
-      return migrationParser.parseDropColumnMigration(migration);
-    }
+    const insertMigrationSql = `
+      INSERT INTO migrations (id, name, timestamp) VALUES (DEFAULT, ?, ?)
+    `;
 
-    if (migration.migrationType === "rawQuery") {
-      return migration.rawQuery;
-    }
+    await this.localQuery(insertMigrationSql, [
+      migration.migrationName,
+      timestamp,
+    ]);
+  }
 
-    throw new Error("Migration type not found");
+  public async deleteMigrationFromMigrationTable(migration: Migration) {
+    const deleteMigrationSql = `
+      DELETE FROM migrations WHERE name = ?
+    `;
+
+    await this.localQuery(deleteMigrationSql, [migration.migrationName]);
   }
 }

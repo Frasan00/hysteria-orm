@@ -27,6 +27,7 @@ class MysqlCliUtils {
     const [migrations] = await mysql.query(
       MigrationTemplates.selectAllFromMigrationsTemplate(),
     );
+
     return migrations as MigrationTableType[];
   }
 
@@ -93,6 +94,7 @@ class MysqlCliUtils {
       const migrationTimestamp = migrationTable.find(
         (migration) => migration.name === migrationName,
       );
+
       return !migrationTimestamp;
     });
   }
