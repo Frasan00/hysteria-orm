@@ -76,7 +76,7 @@ DATABASE_TYPE=mysql
 ### Establishing a Connection
 
 ```typescript
-import { MysqlDatasource, DatasourceInput } from "hysteria-orm";
+import { SqlDatasource, DatasourceInput } from "hysteria-orm";
 
 const mysqlConfig: DatasourceInput = {
     type: 'mysql' | 'postgres',
