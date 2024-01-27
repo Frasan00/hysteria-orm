@@ -134,17 +134,17 @@ export class User extends Model {
 ### Create a model with relationships
 
 ```typescript
-import {Model, HasOne, HasMany} from "hysteria-orm";
-import {Profile} from "./Profile";
-import {Post} from "./Post";
+import { Model, HasOne, HasMany } from "hysteria-orm";
+import { Profile } from "./Profile";
+import { Post } from "./Post";
 
 export class User extends Model {
     public id!: number;
     public name!: string;
     public email!: string;
     // Relations take as params (TableName, foreignKey)
-    public profile: Profile | HasOne = new HasOne("proiles", "userId");
-    public posts: Post[] | HasMany = new HasMany("posts", "userId");
+    public profile: Profile | HasOne = new HasOne("profiles", "user_id");
+    public posts: Post[] | HasMany = new HasMany("posts", "user_id");
 
     constructor() {
         super('users', 'id');
@@ -155,8 +155,6 @@ export class User extends Model {
 ### Create, Update and Delete (with transaction)
 
 ```typescript
-import { User } from "./models/User";
-
 // Transaction is optional in all those methods
 const trx = userManager.createTransaction()
 // Create
@@ -185,13 +183,6 @@ try{
 ### Read (standard methods used for simple queries)
 
 ```typescript
-import {MysqlDatasource} from "hysteria-orm";
-import {mysqlConfig} from "path/to/mysqlConfig";
-import { User } from "./models/User";
-
-const datasource = new MysqlDatasource(mysqlConfig)
-const userManager = datasource.getModelManager(User);
-
 // Get all
 const users: User[] = await userManager.find();
 
@@ -224,8 +215,6 @@ const otherUser: User | null = await userManager.findOne({
 - It's used to create more complex queries that are not supported by the standard methods
 
 ```typescript
-import { User } from "./models/User";
-
 const query = userManager.query();
 const user: User | null = await query
     .addRelations(['post'])
@@ -245,8 +234,6 @@ const users: User[] = await query
 
 - Used to build complex logic conditions
 ```typescript
-import { User } from "./models/User";
-
 const query = userManager.query();
 const user: User | null = await query.whereBuilder((queryBuilder) => {
     queryBuilder.andWhereBuilder((innerQueryBuilder) => {
@@ -306,15 +293,15 @@ const user: User | null = await query
 
 ## hysteria-cli for Migrations
 
-1) npm run | yarn create:migration {migrationName}
-2) npm run | yarn run:migrations
-3) npm run | yarn rollback:migrations
+1) (npm run) | (yarn) create:migration {migrationName}
+2) (npm run) | (yarn) run:migrations
+3) (npm run) | (yarn) rollback:migrations
 
 
 ## Create Table
 
 ```typescript
-import {Migration} from "hysteria-orm";
+import { Migration } from "hysteria-orm";
 
 export default class extends Migration {
     public up(): void {
@@ -336,13 +323,13 @@ export default class extends Migration {
 ## Alter Table
 
 ```typescript
-import {Migration} from "hysteria-orm";
+import { Migration } from "hysteria-orm";
 
 export default class extends Migration {
     public up(): void {
         this.schema.alterTable('users')
             .dropColumn('email')
-            .addColumn('email', 'varchar', { length: 255, notNullable: true, unique: true })
+            .addColumn('email', 'varchar', { length: 255, notNullable: true, unique: true, after: 'name' })
             .commit();
     }
 
