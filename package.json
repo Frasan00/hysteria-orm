@@ -1,6 +1,6 @@
 {
   "name": "hysteria-orm",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "A simple ORM for javascript/typescript",
   "main": "./lib/index.js",
   "repository": "https://github.com/Frasan00/hysteria-orm.git",
@@ -15,7 +15,6 @@
     "start": "tsc && node lib/test/index.js",
     "start:watch": "nodemon --exec ts-node src/index.ts",
     "test-commands": "yarn build && tsc && yarn run:migration",
-
     "create:migration": "node ./lib/src/hysteria-cli/migrationCreateConnector.js",
     "run:migration": "node ./lib/src/hysteria-cli/migrationRunConnector.js",
     "rollback:migration": "node ./lib/src/hysteria-cli/migrationRollbackConnector.js"
@@ -26,13 +25,13 @@
     "@types/node": "^20.10.2",
     "@types/pg": "^8.10.9",
     "dotenv": "^16.3.1",
+    "mysql2": "^3.6.5",
     "nodemon": "^3.0.2",
+    "pg": "^8.11.3",
     "prettier": "^3.1.0",
     "standard": "^17.1.0",
     "tsup": "^8.0.1",
-    "typescript": "^5.3.2",
-    "mysql2": "^3.6.5",
-    "pg": "^8.11.3"
+    "typescript": "^5.3.2"
   },
   "dependencies": {
     "winston": "^3.11.0"
