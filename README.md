@@ -221,6 +221,26 @@ const users: User[] = await query
     .many();
 ```
 
+### Where Builder
+
+- Used to build complex logic conditions
+```typescript
+import { User } from "./models/User";
+
+const query = userManager.query();
+const user: User | null = await query.whereBuilder((queryBuilder) => {
+    queryBuilder.andWhereBuilder((innerQueryBuilder) => {
+        innerQueryBuilder.where('department', 'sales');
+        innerQueryBuilder.where('hired_date', '2020-01-01', '>=');
+    });
+    queryBuilder.orWhereBuilder((innerQuery) => {
+        innerQuery.where('department', 'engineering');
+        innerQuery.where('hired_date', '2022-01-01', '>=');
+    });
+    queryBuilder.where('is_active', true);
+});
+```
+
 ### Aliases
 
 - Aliases are available in the query builder, for example select('new as newName') will generate an alias in the columnAliases prop that every model has

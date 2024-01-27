@@ -108,6 +108,30 @@ export abstract class QueryBuilder<T extends Model> {
   public abstract addRelations(relations: string[]): QueryBuilders<T>;
 
   /**
+   * @description Build more complex where conditions.
+   * @param cb
+   */
+  public abstract whereBuilder(
+      cb: (queryBuilder: QueryBuilders<T>) => void
+  ): QueryBuilders<T>
+
+  /**
+   * @description Build more complex where conditions.
+   * @param cb
+   */
+  public abstract andWhereBuilder(
+      cb: (queryBuilder: QueryBuilders<T>) => void
+  ): QueryBuilders<T>
+
+  /**
+   * @description Build more complex where conditions.
+   * @param cb
+   */
+  public abstract orWhereBuilder(
+      cb: (queryBuilder: QueryBuilders<T>) => void
+  ): QueryBuilders<T>
+
+  /**
    * @description Adds a WHERE condition to the query.
    * @param column - The column to filter.
    * @param operator - The comparison operator.
@@ -116,8 +140,8 @@ export abstract class QueryBuilder<T extends Model> {
    */
   public abstract where(
     column: string,
-    operator: WhereOperatorType,
     value: BaseValues,
+    operator: WhereOperatorType,
   ): QueryBuilders<T>;
 
   /**
@@ -129,8 +153,8 @@ export abstract class QueryBuilder<T extends Model> {
    */
   public abstract andWhere(
     column: string,
-    operator: WhereOperatorType,
     value: BaseValues,
+    operator: WhereOperatorType,
   ): QueryBuilders<T>;
 
   /**
@@ -142,8 +166,8 @@ export abstract class QueryBuilder<T extends Model> {
    */
   public abstract orWhere(
     column: string,
-    operator: WhereOperatorType,
     value: BaseValues,
+    operator: WhereOperatorType,
   ): QueryBuilders<T>;
 
   /**

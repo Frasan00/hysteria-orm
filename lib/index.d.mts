@@ -129,7 +129,8 @@ type PaginatedData<T> = {
 
 declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     protected pgPool: Pool;
-    constructor(model: new () => T, tableName: string, pgPool: Pool, logs: boolean);
+    protected isNestedCondition: boolean;
+    constructor(model: new () => T, tableName: string, pgPool: Pool, logs: boolean, isNestedCondition?: boolean);
     private mergeRetrievedDataIntoModel;
     one(): Promise<T | null>;
     many(): Promise<T[]>;
@@ -155,8 +156,23 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
      */
     leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresQueryBuilder<T>;
     addRelations(relations: string[]): PostgresQueryBuilder<T>;
-    where(column: string, operator: WhereOperatorType, value: BaseValues): PostgresQueryBuilder<T>;
-    andWhere(column: string, operator: WhereOperatorType, value: BaseValues): PostgresQueryBuilder<T>;
+    /**
+     * @description Build more complex where conditions.
+     * @param cb
+     */
+    whereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
+    /**
+     * @description Build complex OR-based where conditions.
+     * @param cb Callback function that takes a query builder and adds conditions to it.
+     */
+    orWhereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
+    /**
+     * @description Build complex AND-based where conditions.
+     * @param cb Callback function that takes a query builder and adds conditions to it.
+     */
+    andWhereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
+    where(column: string, value: BaseValues, operator?: WhereOperatorType): PostgresQueryBuilder<T>;
+    andWhere(column: string, value: BaseValues, operator: WhereOperatorType): PostgresQueryBuilder<T>;
     andWhereBetween(column: string, min: BaseValues, max: BaseValues): PostgresQueryBuilder<T>;
     andWhereIn(column: string, values: BaseValues[]): PostgresQueryBuilder<T>;
     andWhereNotNull(column: string): PostgresQueryBuilder<T>;
@@ -164,7 +180,7 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     groupBy(columns: string): PostgresQueryBuilder<T>;
     limit(limit: number): PostgresQueryBuilder<T>;
     offset(offset: number): PostgresQueryBuilder<T>;
-    orWhere(column: string, operator: WhereOperatorType, value: BaseValues): PostgresQueryBuilder<T>;
+    orWhere(column: string, value: BaseValues, operator: WhereOperatorType): PostgresQueryBuilder<T>;
     orWhereBetween(column: string, min: BaseValues, max: BaseValues): PostgresQueryBuilder<T>;
     orWhereIn(column: string, values: BaseValues[]): PostgresQueryBuilder<T>;
     orWhereNotBetween(column: string, min: BaseValues, max: BaseValues): PostgresQueryBuilder<T>;
@@ -188,7 +204,7 @@ declare abstract class QueryBuilder<T extends Model> {
     protected selectQuery: string;
     protected joinQuery: string;
     protected relations: string[];
-    protected whereQuery: string;
+    whereQuery: string;
     protected groupByQuery: string;
     protected orderByQuery: string;
     protected limitQuery: string;
@@ -245,13 +261,28 @@ declare abstract class QueryBuilder<T extends Model> {
      */
     abstract addRelations(relations: string[]): QueryBuilders<T>;
     /**
+     * @description Build more complex where conditions.
+     * @param cb
+     */
+    abstract whereBuilder(cb: (queryBuilder: QueryBuilders<T>) => void): QueryBuilders<T>;
+    /**
+     * @description Build more complex where conditions.
+     * @param cb
+     */
+    abstract andWhereBuilder(cb: (queryBuilder: QueryBuilders<T>) => void): QueryBuilders<T>;
+    /**
+     * @description Build more complex where conditions.
+     * @param cb
+     */
+    abstract orWhereBuilder(cb: (queryBuilder: QueryBuilders<T>) => void): QueryBuilders<T>;
+    /**
      * @description Adds a WHERE condition to the query.
      * @param column - The column to filter.
      * @param operator - The comparison operator.
      * @param value - The value to compare against.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract where(column: string, operator: WhereOperatorType, value: BaseValues): QueryBuilders<T>;
+    abstract where(column: string, value: BaseValues, operator: WhereOperatorType): QueryBuilders<T>;
     /**
      * @description Adds an AND WHERE condition to the query.
      * @param column - The column to filter.
@@ -259,7 +290,7 @@ declare abstract class QueryBuilder<T extends Model> {
      * @param value - The value to compare against.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract andWhere(column: string, operator: WhereOperatorType, value: BaseValues): QueryBuilders<T>;
+    abstract andWhere(column: string, value: BaseValues, operator: WhereOperatorType): QueryBuilders<T>;
     /**
      * @description Adds an OR WHERE condition to the query.
      * @param column - The column to filter.
@@ -267,7 +298,7 @@ declare abstract class QueryBuilder<T extends Model> {
      * @param value - The value to compare against.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract orWhere(column: string, operator: WhereOperatorType, value: BaseValues): QueryBuilders<T>;
+    abstract orWhere(column: string, value: BaseValues, operator: WhereOperatorType): QueryBuilders<T>;
     /**
      * @description Adds a WHERE BETWEEN condition to the query.
      * @param column - The column to filter.
@@ -427,14 +458,16 @@ declare abstract class QueryBuilder<T extends Model> {
 
 declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     protected mysqlPool: Pool$1;
+    protected isNestedCondition: boolean;
     /**
      * @description Constructs a MysqlQueryBuilder instance.
      * @param model - The model class associated with the table.
      * @param tableName - The name of the table.
      * @param mysqlPool - The MySQL connection pool.
      * @param logs - A boolean indicating whether to log queries.
+     * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
      */
-    constructor(model: new () => T, tableName: string, mysqlPool: Pool$1, logs: boolean);
+    constructor(model: new () => T, tableName: string, mysqlPool: Pool$1, logs: boolean, isNestedCondition?: boolean);
     private mergeRetrievedDataIntoModel;
     /**
      * @description Executes the query and retrieves the first result.
@@ -479,7 +512,22 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @param value - The value to compare against.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    where(column: string, operator: WhereOperatorType, value: BaseValues): this;
+    where(column: string, value: BaseValues, operator?: WhereOperatorType): this;
+    /**
+     * @description Build more complex where conditions.
+     * @param cb
+     */
+    whereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this;
+    /**
+     * @description Build complex OR-based where conditions.
+     * @param cb Callback function that takes a query builder and adds conditions to it.
+     */
+    orWhereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this;
+    /**
+     * @description Build complex AND-based where conditions.
+     * @param cb Callback function that takes a query builder and adds conditions to it.
+     */
+    andWhereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this;
     /**
      * @description Adds an AND WHERE condition to the query.
      * @param column - The column to filter.
@@ -487,7 +535,7 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @param value - The value to compare against.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    andWhere(column: string, operator: WhereOperatorType, value: BaseValues): this;
+    andWhere(column: string, value: BaseValues, operator?: WhereOperatorType): this;
     /**
      * @description Adds an OR WHERE condition to the query.
      * @param column - The column to filter.
@@ -495,7 +543,7 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @param value - The value to compare against.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    orWhere(column: string, operator: WhereOperatorType, value: BaseValues): this;
+    orWhere(column: string, value: BaseValues, operator?: WhereOperatorType): this;
     /**
      * @description Adds a WHERE BETWEEN condition to the query.
      * @param column - The column to filter.

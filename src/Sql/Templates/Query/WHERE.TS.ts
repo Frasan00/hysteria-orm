@@ -38,17 +38,17 @@ const whereTemplate = (_tableName: string) => {
     orWhereNotNull: (column: string) =>
       ` OR ${camelToSnakeCase(column)} IS NOT NULL`,
     whereBetween: (column: string, min: BaseValues, max: BaseValues) =>
-      `\nWHERE ${camelToSnakeCase(column)} BETWEEN ${min} AND ${max}`,
+      `\nWHERE (${camelToSnakeCase(column)} BETWEEN ${min} AND ${max})`,
     andWhereBetween: (column: string, min: BaseValues, max: BaseValues) =>
-      ` AND ${camelToSnakeCase(column)} BETWEEN ${min} AND ${max}`,
+      ` AND (${camelToSnakeCase(column)} BETWEEN ${min} AND ${max})`,
     orWhereBetween: (column: string, min: BaseValues, max: BaseValues) =>
-      ` OR ${camelToSnakeCase(column)} BETWEEN ${min} AND ${max}`,
+      ` OR (${camelToSnakeCase(column)} BETWEEN ${min} AND ${max})`,
     whereNotBetween: (column: string, min: BaseValues, max: BaseValues) =>
-      `\nWHERE ${camelToSnakeCase(column)} NOT BETWEEN ${min} AND ${max}`,
+      `\nWHERE (${camelToSnakeCase(column)} NOT BETWEEN ${min} AND ${max})`,
     andWhereNotBetween: (column: string, min: BaseValues, max: BaseValues) =>
-      ` AND ${camelToSnakeCase(column)} NOT BETWEEN ${min} AND ${max}`,
+      ` AND (${camelToSnakeCase(column)} NOT BETWEEN ${min} AND ${max})`,
     orWhereNotBetween: (column: string, min: BaseValues, max: BaseValues) =>
-      ` OR ${camelToSnakeCase(column)} NOT BETWEEN ${min} AND ${max}`,
+      ` OR (${camelToSnakeCase(column)} NOT BETWEEN ${min} AND ${max})`,
     whereIn: (column: string, values: BaseValues[]) =>
       `\nWHERE ${camelToSnakeCase(column)} IN (${values
         .map((value: BaseValues) => parseValue(value))
