@@ -41,7 +41,6 @@ CREATE TABLE IF NOT EXISTS migrations (
 `;
   }
 
-
   public addMigrationTemplate(): string {
     return `
 INSERT INTO migrations (name) VALUES (?);

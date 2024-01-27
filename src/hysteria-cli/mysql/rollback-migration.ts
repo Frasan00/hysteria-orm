@@ -31,9 +31,8 @@ export async function migrationRollBackSql(): Promise<void> {
   const mysql = await mysqlPool.getConnection();
 
   try {
-
     const migrationTable: MigrationTableType[] =
-        await CliUtils.getMigrationTable(mysql);
+      await CliUtils.getMigrationTable(mysql);
     const migrations: Migration[] = await CliUtils.getMigrations();
 
     // If there are no pending migrations, print a message and exit
@@ -44,8 +43,8 @@ export async function migrationRollBackSql(): Promise<void> {
 
     // Parses and rolls back the migrations
     const migrationController: MigrationController = new MigrationController(
-        await mysqlPool.getConnection(),
-        null,
+      await mysqlPool.getConnection(),
+      null,
     );
 
     log(BEGIN_TRANSACTION, true);

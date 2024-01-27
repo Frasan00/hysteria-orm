@@ -18,7 +18,12 @@ export class MigrationController {
         migration.up();
         const statements = migration.schema.queryStatements;
         for (const statement of statements) {
-          if (!statement || statement === "" || statement === ";" || statement === ',') {
+          if (
+            !statement ||
+            statement === "" ||
+            statement === ";" ||
+            statement === ","
+          ) {
             continue;
           }
 
@@ -40,7 +45,12 @@ export class MigrationController {
         migration.down();
         const statements = migration.schema.queryStatements;
         for (const statement of statements) {
-          if (!statement || statement === "" || statement === ";" || statement === ',') {
+          if (
+            !statement ||
+            statement === "" ||
+            statement === ";" ||
+            statement === ","
+          ) {
             continue;
           }
 

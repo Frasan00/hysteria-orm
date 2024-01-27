@@ -135,7 +135,9 @@ export default class ColumnBuilderAlter {
     values: string[],
     options?: { afterColumn?: string; notNullable?: boolean },
   ): ColumnBuilderAlter {
-    this.partialQuery = `ALTER TABLE ${this.tableName} ADD COLUMN ${columnName} ENUM(${values
+    this.partialQuery = `ALTER TABLE ${
+      this.tableName
+    } ADD COLUMN ${columnName} ENUM(${values
       .map((value) => `'${value}'`)
       .join(",")})`;
 
@@ -184,11 +186,10 @@ export default class ColumnBuilderAlter {
     return this;
   }
 
-
   public modifyColumnType(
     columnName: string,
     newDataType: DataType,
-    length?: number
+    length?: number,
   ): ColumnBuilderAlter {
     if (this.sqlType === "mysql") {
       this.partialQuery = `ALTER TABLE ${this.tableName} MODIFY COLUMN ${columnName} ${newDataType}(${length})`;

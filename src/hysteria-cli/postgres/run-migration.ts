@@ -35,13 +35,12 @@ export async function runMigrationsPg(): Promise<void> {
   });
 
   try {
-
     const migrationTable: MigrationTableType[] =
-        await PostgresCliUtils.getMigrationTable(client);
+      await PostgresCliUtils.getMigrationTable(client);
     const migrations: Migration[] = await PostgresCliUtils.getMigrations();
     const pendingMigrations = PostgresCliUtils.getPendingMigrations(
-        migrations,
-        migrationTable,
+      migrations,
+      migrationTable,
     );
 
     if (pendingMigrations.length === 0) {

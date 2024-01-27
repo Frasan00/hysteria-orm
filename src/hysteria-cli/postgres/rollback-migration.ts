@@ -19,7 +19,7 @@ dotenv.config();
 
 export async function migrationRollBackPg(): Promise<void> {
   const migrationFolderPath =
-      process.env.MIGRATION_PATH || "database/migrations";
+    process.env.MIGRATION_PATH || "database/migrations";
   const config = PostgresCliUtils.getPgConfig();
   const postgresPool = new Pool({
     host: config.host,
@@ -35,13 +35,12 @@ export async function migrationRollBackPg(): Promise<void> {
   });
 
   try {
-
     const migrationTable: MigrationTableType[] =
-        await PostgresCliUtils.getMigrationTable(client);
+      await PostgresCliUtils.getMigrationTable(client);
     const migrations: Migration[] = await PostgresCliUtils.getMigrations();
     const pendingMigrations = PostgresCliUtils.getPendingMigrations(
-        migrations,
-        migrationTable,
+      migrations,
+      migrationTable,
     );
 
     if (pendingMigrations.length === 0) {

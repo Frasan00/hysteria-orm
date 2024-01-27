@@ -28,11 +28,11 @@ export async function runMigrationsSql(): Promise<void> {
   const mysql = await mysqlPool.getConnection();
   try {
     const migrationTable: MigrationTableType[] =
-        await MysqlCliUtils.getMigrationTable(mysql);
+      await MysqlCliUtils.getMigrationTable(mysql);
     const migrations: Migration[] = await MysqlCliUtils.getMigrations();
     const pendingMigrations = MysqlCliUtils.getPendingMigrations(
-        migrations,
-        migrationTable,
+      migrations,
+      migrationTable,
     );
 
     // If there are no pending migrations, print a message and exit
