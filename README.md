@@ -270,7 +270,7 @@ import { User } from "./models/User";
 const users = await userModelManager.query()
     .select("users.*")
     .leftJoin("posts", "users.id", "posts.user_id")
-    .where('users.id', '=', 1)
+    .where('users.id', 1)
     .orderBy(['users.id'], "ASC")
     .many();
 ```
