@@ -66,7 +66,7 @@ type FindType = FindOneType & {
     offset?: number;
 };
 
-type WhereOperatorType = "=" | "!=" | ">" | "<" | ">=" | "<=" | "LIKE";
+type WhereOperatorType = "=" | "!=" | ">" | "<" | ">=" | "<=" | "LIKE" | "ILIKE";
 type BaseValues = string | number | boolean | Date;
 type WhereTemplateType = {
     where: (column: string, value: BaseValues, operator: WhereOperatorType) => string;
