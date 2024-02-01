@@ -1,6 +1,7 @@
 import { camelToSnakeCase } from "../../../CaseUtils";
+import * as sqlString from "sqlstring";
 
-export type WhereOperatorType = "=" | "!=" | ">" | "<" | ">=" | "<=" | "LIKE";
+export type WhereOperatorType = "=" | "!=" | ">" | "<" | ">=" | "<=" | "LIKE" | "ILIKE";
 export type BaseValues = string | number | boolean | Date;
 
 const whereTemplate = (_tableName: string) => {
@@ -9,23 +10,23 @@ const whereTemplate = (_tableName: string) => {
       column: string,
       value: BaseValues,
       operator: WhereOperatorType = "=",
-    ) => `\nWHERE ${camelToSnakeCase(column)} ${operator} ${parseValue(value)}`,
+    ) => `\nWHERE ${camelToSnakeCase(column)} ${operator} ${sqlString.escape(value)}`,
     andWhere: (
       column: string,
       value: BaseValues,
       operator: WhereOperatorType = "=",
-    ) => ` AND ${camelToSnakeCase(column)} ${operator} ${parseValue(value)}`,
+    ) => ` AND ${camelToSnakeCase(column)} ${operator} ${sqlString.escape(value)}`,
     orWhere: (
       column: string,
       value: BaseValues,
       operator: WhereOperatorType = "=",
-    ) => ` OR ${camelToSnakeCase(column)} ${operator} ${parseValue(value)}`,
+    ) => ` OR ${camelToSnakeCase(column)} ${operator} ${sqlString.escape(value)}`,
     whereNot: (column: string, value: BaseValues) =>
-      `\nWHERE ${camelToSnakeCase(column)} != ${parseValue(value)}`,
+      `\nWHERE ${camelToSnakeCase(column)} != ${sqlString.escape(value)}`,
     andWhereNot: (column: string, value: BaseValues) =>
-      ` AND ${camelToSnakeCase(column)} != ${parseValue(value)}`,
+      ` AND ${camelToSnakeCase(column)} != ${sqlString.escape(value)}`,
     orWhereNot: (column: string, value: BaseValues) =>
-      ` OR ${camelToSnakeCase(column)} != ${parseValue(value)}`,
+      ` OR ${camelToSnakeCase(column)} != ${sqlString.escape(value)}`,
     whereNull: (column: string) =>
       `\nWHERE ${camelToSnakeCase(column)} IS NULL`,
     andWhereNull: (column: string) =>
@@ -51,27 +52,27 @@ const whereTemplate = (_tableName: string) => {
       ` OR (${camelToSnakeCase(column)} NOT BETWEEN ${min} AND ${max})`,
     whereIn: (column: string, values: BaseValues[]) =>
       `\nWHERE ${camelToSnakeCase(column)} IN (${values
-        .map((value: BaseValues) => parseValue(value))
+        .map((value: BaseValues) => sqlString.escape(value))
         .join(", ")})`,
     andWhereIn: (column: string, values: BaseValues[]) =>
       ` AND ${camelToSnakeCase(column)} IN (${values
-        .map((value: BaseValues) => parseValue(value))
+        .map((value: BaseValues) => sqlString.escape(value))
         .join(", ")})`,
     orWhereIn: (column: string, values: BaseValues[]) =>
       ` OR ${camelToSnakeCase(column)} IN (${values
-        .map((value: BaseValues) => parseValue(value))
+        .map((value: BaseValues) => sqlString.escape(value))
         .join(", ")})`,
     whereNotIn: (column: string, values: BaseValues[]) =>
       `\nWHERE ${camelToSnakeCase(column)} NOT IN (${values
-        .map((value: BaseValues) => parseValue(value))
+        .map((value: BaseValues) => sqlString.escape(value))
         .join(", ")})`,
     andWhereNotIn: (column: string, values: BaseValues[]) =>
       ` AND ${camelToSnakeCase(column)} NOT IN (${values
-        .map((value: BaseValues) => parseValue(value))
+        .map((value: BaseValues) => sqlString.escape(value))
         .join(", ")})`,
     orWhereNotIn: (column: string, values: BaseValues[]) =>
       ` OR ${camelToSnakeCase(column)} NOT IN (${values
-        .map((value: BaseValues) => parseValue(value))
+        .map((value: BaseValues) => sqlString.escape(value))
         .join(", ")})`,
     rawWhere: (query: string) => `\nWHERE ${query} `,
     rawAndWhere: (query: string) => ` AND ${query} `,
@@ -128,20 +129,5 @@ export type WhereTemplateType = {
   rawAndWhere: (query: string) => string;
   rawOrWhere: (query: string) => string;
 };
-
-function parseValue(value: BaseValues) {
-  if (typeof value === "string") {
-    return `'${value}'`;
-  }
-
-  if (typeof value === "number") {
-    return value;
-  }
-
-  if (typeof value === "boolean") {
-    return value ? 1 : 0;
-  }
-  return `'${value.toISOString()}'`;
-}
 
 export default whereTemplate;

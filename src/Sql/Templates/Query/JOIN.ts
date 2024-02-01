@@ -1,3 +1,5 @@
+import * as sqlString from "sqlstring";
+
 const joinTemplate = (
   _table: string,
   relatedTable: string,
@@ -6,10 +8,10 @@ const joinTemplate = (
 ) => {
   return {
     innerJoin: () => {
-      return `\nINNER JOIN ${relatedTable} ON ${primaryColumn} = ${foreignColumn}`;
+      return `\nINNER JOIN ${sqlString.escape(relatedTable)} ON ${sqlString.escape(primaryColumn)} = ${sqlString.escape(foreignColumn)}`;
     },
     leftJoin: () => {
-      return `\nLEFT JOIN ${relatedTable} ON ${primaryColumn} = ${foreignColumn}`;
+      return `\nLEFT JOIN ${sqlString.escape(relatedTable)} ON ${sqlString.escape(primaryColumn)} = ${sqlString.escape(foreignColumn)}`;
     },
   };
 };

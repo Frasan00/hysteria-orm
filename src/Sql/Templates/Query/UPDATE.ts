@@ -1,4 +1,5 @@
 import { camelToSnakeCase } from "../../../CaseUtils";
+import * as sqlString from "sqlstring";
 
 const updateTemplate = (table: string) => {
   return {
@@ -8,41 +9,13 @@ const updateTemplate = (table: string) => {
       primaryKey?: string,
       primaryKeyValue?: string | undefined,
     ) => {
-      columns = columns.map((column) => camelToSnakeCase(column));
+      columns = columns.map((column) => camelToSnakeCase(sqlString.escape(column)));
       return `UPDATE ${table} SET ${columns
-        .map((column, index) => parseColumnValue(column, values[index]))
+        .map((column, index) => `${column}, ${sqlString.escape(values[index])}`)
         .filter((column) => column !== undefined)
         .join(", ")} WHERE ${primaryKey} = ${primaryKeyValue};`;
     },
   };
 };
-
-function parseColumnValue(column: string, value: any) {
-  if (typeof value === "string") {
-    return `${column} = '${value}'`;
-  }
-
-  if (typeof value === "number") {
-    return `${column} = ${value}`;
-  }
-
-  if (typeof value === "boolean") {
-    return `${column} = ${value ? 1 : 0}`;
-  }
-
-  if (value instanceof Date) {
-    return `${column} = '${value.toISOString()}'`;
-  }
-
-  if (value === null) {
-    return `${column} = NULL`;
-  }
-
-  if (typeof value === "function") {
-    return;
-  }
-
-  return `${column} = ${value}`;
-}
 
 export default updateTemplate;
