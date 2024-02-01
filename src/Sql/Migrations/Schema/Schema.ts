@@ -30,6 +30,7 @@ export default class Schema {
     const partialQuery = options.ifNotExists
       ? createTableTemplate.createTableIfNotExists(tableName)
       : createTableTemplate.createTable(tableName);
+
     return new ColumnBuilderConnector(
       tableName,
       this.queryStatements,

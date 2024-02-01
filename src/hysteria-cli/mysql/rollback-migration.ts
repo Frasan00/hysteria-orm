@@ -35,7 +35,6 @@ export async function migrationRollBackSql(): Promise<void> {
       await CliUtils.getMigrationTable(mysql);
     const migrations: Migration[] = await CliUtils.getMigrations();
 
-    // If there are no pending migrations, print a message and exit
     if (migrations.length === 0) {
       console.log("No migrations to rollback.");
       process.exit(0);

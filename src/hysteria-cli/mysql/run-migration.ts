@@ -35,7 +35,6 @@ export async function runMigrationsSql(): Promise<void> {
       migrationTable,
     );
 
-    // If there are no pending migrations, print a message and exit
     if (pendingMigrations.length === 0) {
       console.log("No pending migrations.");
       process.exit(0);

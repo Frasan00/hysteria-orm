@@ -10,7 +10,6 @@ dotenv.config();
 export function createMigrationSql(name: string): void {
   const migrationFolderPath = getMigrationPath();
 
-  // Generate database filename
   const timestamp = new Date().getTime();
   const migrationFileName = `${timestamp}_${name}.ts`;
   const migrationFilePath = path.join(migrationFolderPath, migrationFileName);

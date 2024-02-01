@@ -10,12 +10,10 @@ dotenv.config();
 export function createMigrationPg(name: string): void {
   const migrationFolderPath = getMigrationPath();
 
-  // Generate database filename
   const timestamp = new Date().getTime();
   const migrationFileName = `${timestamp}_${name}.ts`;
   const migrationFilePath = path.join(migrationFolderPath, migrationFileName);
 
-  // Assuming this template generates PostgreSQL compatible SQL.
   const migrationTemplate = MigrationTemplates.basicMigrationTemplate();
   fs.writeFileSync(migrationFilePath, migrationTemplate);
 
