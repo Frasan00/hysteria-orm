@@ -10,7 +10,7 @@ import { MysqlQueryBuilder } from "../Mysql/MysqlQueryBuilder";
 import { PostgresQueryBuilder } from "../Postgres/PostgresQueryBuilder";
 import { PaginatedData } from "../pagination";
 
-type QueryBuilders<T extends Model> =
+export type QueryBuilders<T extends Model> =
   | MysqlQueryBuilder<T>
   | PostgresQueryBuilder<T>;
 

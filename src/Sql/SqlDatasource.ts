@@ -52,7 +52,7 @@ export class SqlDataSource extends Datasource {
     }
 
     sqlDataSource.isConnected = true;
-    this.instance = sqlDataSource;
+    SqlDataSource.instance = sqlDataSource;
     return sqlDataSource;
   }
 
@@ -61,7 +61,7 @@ export class SqlDataSource extends Datasource {
       throw new Error("Sql database connection not established");
     }
 
-    return this.instance;
+    return SqlDataSource.instance;
   }
 
   /**

@@ -965,6 +965,7 @@ declare abstract class Model {
      */
     static getMetadata<T extends Model>(this: new () => T): Metadata;
     static setProps<T extends Model>(instance: T, data: Partial<T>): void;
+    private static establishConnection;
 }
 
 declare enum RelationType {
@@ -1465,11 +1466,4 @@ declare class SqlDataSource extends Datasource {
     getRawPoolConnection(): Promise<SqlPoolConnectionType>;
 }
 
-declare class User extends Model {
-    id: number;
-    name: string;
-    email: string;
-    constructor();
-}
-
-export { BelongsTo, type DatasourceInput, HasMany, HasOne, Migration, Model, SqlDataSource, User };
+export { BelongsTo, type DatasourceInput, HasMany, HasOne, Migration, Model, SqlDataSource };

@@ -6,7 +6,7 @@ import { DatasourceInput } from "./Datasource";
 import { Migration } from "./Sql/Migrations/Migration";
 import { SqlDataSource } from "./Sql/SqlDataSource";
 
-export class User extends Model {
+class User extends Model {
   public id!: number;
   public name!: string;
   public email!: string;
@@ -20,7 +20,7 @@ export class User extends Model {
 }
 
 (async () => {
-  const sql = await SqlDataSource.connect({
+  await SqlDataSource.connect({
     type: "mysql",
     host: "localhost",
     port: 3306,
@@ -31,6 +31,8 @@ export class User extends Model {
   });
 
   const user = (await User.query().where("id", 2).one()) as User;
+  console.log(user);
+
   await User.update(user);
   console.log(user);
 

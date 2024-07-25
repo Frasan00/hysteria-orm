@@ -2,6 +2,7 @@ import { camelToSnakeCase } from "../../CaseUtils";
 import { DatasourceInput } from "../../Datasource";
 import { MysqlTransaction } from "../Mysql/MysqlTransaction";
 import { PostgresTransaction } from "../Postgres/PostgresTransaction";
+import { QueryBuilder, QueryBuilders } from "../QueryBuilder/QueryBuilder";
 import { SqlDataSource } from "../SqlDataSource";
 import { FindOneType, FindType } from "./ModelManager/ModelManagerTypes";
 
@@ -32,8 +33,6 @@ export abstract class Model {
       tableName: options.tableName as string,
       primaryKey: options.primaryKey,
     };
-
-    Model.sqlInstance = SqlDataSource.getInstance();
   }
 
   // Static methods
@@ -62,7 +61,8 @@ export abstract class Model {
    * @param model
    * @returns
    */
-  public static query<T extends Model>(this: new () => T) {
+  public static query<T extends Model>(this: new () => T): QueryBuilders<T> {
+    Model.establishConnection();
     return Model.sqlInstance.getModelManager(this).query();
   }
 
@@ -72,7 +72,8 @@ export abstract class Model {
    * @param {FindType} options
    * @returns
    */
-  public static find<T extends Model>(this: new () => T, options?: FindType) {
+  public static find<T extends Model>(this: new () => T, options?: FindType): Promise<T[]> {
+    Model.establishConnection();
     return Model.sqlInstance.getModelManager(this).find(options);
   }
 
@@ -85,7 +86,8 @@ export abstract class Model {
   public static findOne<T extends Model>(
     this: new () => T,
     options: FindOneType,
-  ) {
+  ): Promise<T | null> {
+    Model.establishConnection();
     return Model.sqlInstance.getModelManager(this).findOne(options);
   }
 
@@ -98,7 +100,8 @@ export abstract class Model {
   public static findOneById<T extends Model>(
     this: new () => T,
     id: string | number,
-  ) {
+  ): Promise<T | null> {
+    Model.establishConnection();
     return Model.sqlInstance.getModelManager(this).findOneById(id);
   }
 
@@ -113,7 +116,8 @@ export abstract class Model {
     this: new () => T,
     modelInstance: T,
     trx?: MysqlTransaction & PostgresTransaction,
-  ) {
+  ): Promise<T | null> {
+    Model.establishConnection();
     return Model.sqlInstance.getModelManager(this).save(modelInstance, trx);
   }
 
@@ -128,7 +132,8 @@ export abstract class Model {
     this: new () => T,
     modelInstance: T,
     trx?: MysqlTransaction & PostgresTransaction,
-  ) {
+  ): Promise<T | null> {
+    Model.establishConnection();
     return Model.sqlInstance.getModelManager(this).update(modelInstance, trx);
   }
 
@@ -143,7 +148,8 @@ export abstract class Model {
     this: new () => T,
     modelInstance: T,
     trx?: MysqlTransaction & PostgresTransaction,
-  ) {
+  ): Promise<T | null> {
+    Model.establishConnection();
     return Model.sqlInstance.getModelManager(this).delete(modelInstance, trx);
   }
 
@@ -161,7 +167,8 @@ export abstract class Model {
     column: string,
     value: string | number | boolean,
     trx?: MysqlTransaction & PostgresTransaction,
-  ) {
+  ): Promise<number> {
+    Model.establishConnection();
     return Model.sqlInstance
       .getModelManager(this)
       .deleteByColumn(column, value, trx);
@@ -173,13 +180,20 @@ export abstract class Model {
    * @param {Model} modelInstance
    * @returns
    */
-  public static getMetadata<T extends Model>(this: new () => T) {
+  public static getMetadata<T extends Model>(this: new () => T): Metadata {
+    Model.establishConnection();
     return Model.sqlInstance.getModelManager(this).getMetadata();
   }
 
   public static setProps<T extends Model>(instance: T, data: Partial<T>): void {
     for (const key in data) {
       Object.assign(instance, { [key]: data[key] });
+    }
+  }
+
+  private static establishConnection() {
+    if (!Model.sqlInstance) {
+      Model.sqlInstance = SqlDataSource.getInstance();
     }
   }
 }
