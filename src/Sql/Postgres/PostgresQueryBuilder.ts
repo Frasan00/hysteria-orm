@@ -7,14 +7,18 @@ import whereTemplate, {
 } from "../Templates/Query/WHERE.TS";
 import selectTemplate from "../Templates/Query/SELECT";
 import { log } from "../../Logger";
-import {
-  PaginatedData,
-  parseDatabaseDataIntoModelResponse,
-} from "../../CaseUtils";
 import PostgresModelManagerUtils from "./PostgresModelManagerUtils";
 import joinTemplate from "../Templates/Query/JOIN";
+import { MysqlQueryBuilder } from "../Mysql/MysqlQueryBuilder";
+import { PaginatedData, getPaginationMetadata } from "../pagination";
+import { parseDatabaseDataIntoModelResponse } from "../serializer";
 
 export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
+  public select(
+    ...columns: string[]
+  ): PostgresQueryBuilder<T> | MysqlQueryBuilder<T> {
+    throw new Error("Method not implemented.");
+  }
   protected pgPool: Pool;
   protected isNestedCondition: boolean;
 
@@ -56,22 +60,21 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     const model = new this.model() as T;
     try {
       const result = await this.pgPool.query(query);
-      const modelData = result.rows[0];
-
-      if (modelData) {
-        this.mergeRetrievedDataIntoModel(model, modelData);
-
-        await PostgresModelManagerUtils.parseQueryBuilderRelations(
-          model,
-          this.relations,
-          this.pgPool,
-          this.logs,
-        );
-
-        return parseDatabaseDataIntoModelResponse([model]) as T;
+      if (!result.rows[0]) {
+        return null;
       }
 
-      return null;
+      const modelData = result.rows[0];
+      this.mergeRetrievedDataIntoModel(model, modelData);
+
+      await PostgresModelManagerUtils.parseQueryBuilderRelations(
+        model,
+        this.relations,
+        this.pgPool,
+        this.logs,
+      );
+
+      return parseDatabaseDataIntoModelResponse([model]) as T;
     } catch (error) {
       throw new Error("Query failed " + error);
     }
@@ -120,7 +123,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   }
 
   /**
-   * @description Paginates the query results with the given page and limit.
+   * @description Paginates the query results with the given page and limit, it removes any previous limit - offset call
    * @param page
    * @param limit
    */
@@ -128,17 +131,19 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     page: number,
     limit: number,
   ): Promise<PaginatedData<T>> {
+    this.limitQuery = this.selectTemplate.limit(limit);
+    this.offsetQuery = this.selectTemplate.offset((page - 1) * limit);
+    const countQuery = await this.pgPool.query(
+      `SELECT COUNT(*) FROM ${this.tableName}`,
+    );
+    const total = +countQuery.rows[0].count;
     const models = await this.many();
-    return parseDatabaseDataIntoModelResponse(models, {
-      page,
-      limit,
-    }) as PaginatedData<T>;
-  }
-
-  public select(...columns: string[]): PostgresQueryBuilder<T> {
-    const select = selectTemplate(this.tableName);
-    this.selectQuery = select.selectColumns(...columns);
-    return this;
+    const paginationMetadata = getPaginationMetadata(page, limit, total);
+    const data = parseDatabaseDataIntoModelResponse(models) as T[];
+    return {
+      paginationMetadata,
+      data: Array.isArray(data) ? data : [data],
+    } as PaginatedData<T>;
   }
 
   /**
@@ -273,10 +278,11 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
       this.whereQuery = this.isNestedCondition
         ? nestedCondition
         : `WHERE ${nestedCondition}`;
-    } else {
-      this.whereQuery += ` OR ${nestedCondition}`;
+
+      return this;
     }
 
+    this.whereQuery += ` OR ${nestedCondition}`;
     return this;
   }
 
@@ -309,10 +315,11 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
       this.whereQuery = this.isNestedCondition
         ? nestedCondition
         : `WHERE ${nestedCondition}`;
-    } else {
-      this.whereQuery += ` AND ${nestedCondition}`;
+
+      return this;
     }
 
+    this.whereQuery += ` AND ${nestedCondition}`;
     return this;
   }
 

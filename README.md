@@ -96,7 +96,7 @@ DATABASE_TYPE=mysql
 ### Establishing a Connection
 
 ```typescript
-import { SqlDatasource, DatasourceInput } from "hysteria-orm";
+import { SqlDataSource, DatasourceInput } from "hysteria-orm";
 
 const mysqlConfig: DatasourceInput = {
     type: 'mysql' | 'postgres',
@@ -108,14 +108,14 @@ const mysqlConfig: DatasourceInput = {
     logs: true, // query-logs (optional) - default: false
 }
 
-const datasource = new SqlDatasource(mysqlConfig)
-await datasource.connect()
+const sql = await SqlDatasource.connect(mysqlConfig);
 ```
 
 ### Create a model
 
 ```typescript
 import { Model } from "hysteria-orm";
+
 export class User extends Model {
     public id!: number;
     public name!: string;
@@ -126,7 +126,10 @@ export class User extends Model {
         * Table name and primary key are optional.
         * If you don't set a table name, it'll be the class name in lowercase, snake case and with a final s (es. users)
         */
-        super('users', 'id');
+        super({
+            tableName: "users",
+            primaryKey: "id",
+        });
     }
 }
 ```
@@ -147,7 +150,10 @@ export class User extends Model {
     public posts: Post[] | HasMany = new HasMany("posts", "user_id");
 
     constructor() {
-        super('users', 'id');
+        super({
+            tableName: "users",
+            primaryKey: "id",
+        });
     }
 }
 ```
@@ -156,22 +162,21 @@ export class User extends Model {
 
 ```typescript
 // Transaction is optional in all those methods
-const trx = userManager.createTransaction()
+const trx = await sql.startTransaction()
 // Create
 try{
-    await trx.start();
     const user = new User();
     user.name = "John Doe";
     user.email = "john@gmail.com";
-    const newUser: User = await userManager.save(user, trx);
+    const newUser: User = await User.save(user, trx);
 
 // Update
     newUser.name = "John Doe Updated";
-    const updatedUser = await userManager.update(newUser, trx);
+    const updatedUser = await User.update(newUser, trx);
 
 // Delete
-    await userManager.delete(updatedUser, trx);
-    await userManager.deleteByColumn("email", "john@gmail.com");
+    await User.delete(updatedUser, trx);
+    await User.deleteByColumn("email", "john@gmail.com");
 
     await trx.commit();
 } catch (error) {
@@ -187,7 +192,7 @@ try{
 const users: User[] = await userManager.find();
 
 // Get with optional parameters
-const filteredUsers: User[] = await userManager.find({
+const filteredUsers: User[] = await User.find({
     relations: ["profile"],
     where: {
         name: "John Doe"
@@ -200,10 +205,10 @@ const filteredUsers: User[] = await userManager.find({
 });
 
 // Get by id requires the `id` property to exist on the model in order to work
-const user: User | null = await userManager.findOneById(5);
+const user: User | null = await User.findOneById(5);
 
 // Get One
-const otherUser: User | null = await userManager.findOne({
+const otherUser: User | null = await User.findOne({
     where: {
         id: 1,
         name: "John Doe"
@@ -215,7 +220,7 @@ const otherUser: User | null = await userManager.findOne({
 - It's used to create more complex queries that are not supported by the standard methods
 
 ```typescript
-const query = userManager.query();
+const query = User.query();
 const user: User | null = await query
     .addRelations(['post'])
     .where("name", "John Doe")
@@ -234,7 +239,7 @@ const users: User[] = await query
 
 - Used to build complex logic conditions
 ```typescript
-const query = userManager.query();
+const query = User.query();
 const user: User | null = await query.whereBuilder((queryBuilder) => {
     queryBuilder.andWhereBuilder((innerQueryBuilder) => {
         innerQueryBuilder.where('department', 'sales');
@@ -252,9 +257,7 @@ const user: User | null = await query.whereBuilder((queryBuilder) => {
 
 - Aliases are available in the query builder, for example select('new as newName') will generate an alias in the columnAliases prop that every model has
 ```typescript
-import { User } from "./models/User";
-
-const query = userManager.query();
+const query = User.query();
 const user: User | null = await query
     .select(['id', 'name as superName'])
     .addRelations(['post'])
@@ -265,9 +268,7 @@ const user: User | null = await query
 
 ### Join
 ```typescript
-import { User } from "./models/User";
-
-const users = await userModelManager.query()
+const users = await User.query()
     .select("users.*")
     .leftJoin("posts", "users.id", "posts.user_id")
     .where('users.id', 1)
@@ -279,9 +280,7 @@ const users = await userModelManager.query()
 
 - Pagination is available in the queryBuilder, will return an object with the metadata for the pagination and the list of the retrieved models
 ```typescript
-import { User } from "./models/User";
-
-const query = userManager.query();
+const query = User.query();
 const user: User | null = await query
     .addRelations(['post'])
     .where("name", "John Doe")

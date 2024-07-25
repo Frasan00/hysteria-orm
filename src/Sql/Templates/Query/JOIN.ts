@@ -8,10 +8,18 @@ const joinTemplate = (
 ) => {
   return {
     innerJoin: () => {
-      return `\nINNER JOIN ${sqlString.escape(relatedTable)} ON ${sqlString.escape(primaryColumn)} = ${sqlString.escape(foreignColumn)}`;
+      return `\nINNER JOIN ${sqlString.escape(
+        relatedTable,
+      )} ON ${sqlString.escape(primaryColumn)} = ${sqlString.escape(
+        foreignColumn,
+      )}`;
     },
     leftJoin: () => {
-      return `\nLEFT JOIN ${sqlString.escape(relatedTable)} ON ${sqlString.escape(primaryColumn)} = ${sqlString.escape(foreignColumn)}`;
+      return `\nLEFT JOIN ${sqlString.escape(
+        relatedTable,
+      )} ON ${sqlString.escape(primaryColumn)} = ${sqlString.escape(
+        foreignColumn,
+      )}`;
     },
   };
 };

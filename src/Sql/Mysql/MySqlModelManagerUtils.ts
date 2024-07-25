@@ -94,14 +94,13 @@ class MySqlModelManagerUtils<T extends Model> {
     return insert.insert(keys, values);
   }
 
-  public parseUpdate(model: T, modelName?: string): string {
+  public parseUpdate(model: T, modelName: string, primaryKey?: string): string {
     const update = updateTemplate(modelName || model.metadata.tableName);
     const filteredModel = this.filterRelationsAndMetadata(model);
     const keys = Object.keys(filteredModel);
     const values = Object.values(filteredModel);
 
-    const primaryKey = model.metadata.primaryKey as string;
-    const primaryKeyValue = model[primaryKey as keyof T];
+    const primaryKeyValue = filteredModel[primaryKey as keyof T];
 
     return update.update(keys, values, primaryKey, primaryKeyValue as string);
   }

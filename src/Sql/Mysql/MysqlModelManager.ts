@@ -6,7 +6,7 @@ import {
   FindOneType,
   FindType,
 } from "../Models/ModelManager/ModelManagerTypes";
-import mysql, { Pool, RowDataPacket } from "mysql2/promise";
+import mysql, { RowDataPacket } from "mysql2/promise";
 import selectTemplate from "../Templates/Query/SELECT";
 import ModelManagerQueryUtils from "./MySqlModelManagerUtils";
 import { log, queryError } from "../../Logger";
@@ -14,7 +14,7 @@ import { MysqlQueryBuilder } from "./MysqlQueryBuilder";
 import MySqlModelManagerUtils from "./MySqlModelManagerUtils";
 import { MysqlTransaction } from "./MysqlTransaction";
 import { AbstractModelManager } from "../Models/ModelManager/AbstractModelManager";
-import { parseDatabaseDataIntoModelResponse } from "../../CaseUtils";
+import { parseDatabaseDataIntoModelResponse } from "../serializer";
 
 export class MysqlModelManager<
   T extends Model,
@@ -31,6 +31,10 @@ export class MysqlModelManager<
   constructor(model: new () => T, mysqlConnection: mysql.Pool, logs: boolean) {
     super(model, logs);
     this.mysqlPool = mysqlConnection;
+  }
+
+  public getMetadata() {
+    return this.modelInstance.metadata;
   }
 
   /**
@@ -53,7 +57,6 @@ export class MysqlModelManager<
             const model = row as T;
             model.metadata = this.modelInstance.metadata;
             model.aliasColumns = this.modelInstance.aliasColumns;
-            model.setProps = this.modelInstance.setProps;
             return parseDatabaseDataIntoModelResponse([model]) as T;
           }) || [];
         return (
@@ -107,6 +110,10 @@ export class MysqlModelManager<
       const query = ModelManagerQueryUtils.parseSelectQueryInput(model, input);
       log(query, this.logs);
       const [rows] = await this.mysqlPool.query<RowDataPacket[]>(query);
+      if (!rows[0]) {
+        return null;
+      }
+
       const modelData = rows[0] as T;
 
       // merge model data into model
@@ -140,6 +147,10 @@ export class MysqlModelManager<
       const query = select.selectById(stringedId);
       log(query, this.logs);
       const [rows] = await this.mysqlPool.query<RowDataPacket[]>(query);
+      if (!rows[0]) {
+        return null;
+      }
+
       const modelData = rows[0] as T;
       return parseDatabaseDataIntoModelResponse([modelData]) as T;
     } catch (error) {
@@ -182,22 +193,30 @@ export class MysqlModelManager<
    * @returns Promise resolving to the updated model or null if updating fails.
    */
   public async update(model: T, trx?: MysqlTransaction): Promise<T | null> {
-    const primaryKeyValue = this.modelInstance.metadata.primaryKey;
+    const { tableName, primaryKey } = this.getMetadata();
     if (trx) {
-      await trx.queryUpdate<T>(ModelManagerQueryUtils.parseUpdate(model));
+      await trx.queryUpdate<T>(
+        ModelManagerQueryUtils.parseUpdate(model, tableName, primaryKey),
+      );
+      if (!primaryKey) {
+        return null;
+      }
 
       return await this.findOneById(
-        model[primaryKeyValue as keyof T] as string | number,
+        model[primaryKey as keyof T] as string | number,
       );
     }
 
     try {
-      const updateQuery = ModelManagerQueryUtils.parseUpdate(model);
+      const updateQuery = ModelManagerQueryUtils.parseUpdate(model, tableName);
       log(updateQuery, this.logs);
-      await this.mysqlPool.query<RowDataPacket[]>(updateQuery);
+      await this.mysqlPool.query(updateQuery);
+      if (!primaryKey) {
+        return null;
+      }
 
       return await this.findOneById(
-        model[primaryKeyValue as keyof T] as string | number,
+        model[primaryKey as keyof T] as string | number,
       );
     } catch (error) {
       queryError(error);
@@ -278,10 +297,12 @@ export class MysqlModelManager<
 
   /**
    * @description Creates a new transaction.
-   * @returns {MysqlTransaction} - Instance of MysqlTransaction.
+   * @returns {Promise<MysqlTransaction>} - Instance of MysqlTransaction.
    */
-  public createTransaction(): MysqlTransaction {
-    return new MysqlTransaction(this.mysqlPool, this.tableName, this.logs);
+  public async startTransaction(): Promise<MysqlTransaction> {
+    const trx = new MysqlTransaction(this.mysqlPool, this.tableName, this.logs);
+    await trx.start();
+    return trx;
   }
 
   /**

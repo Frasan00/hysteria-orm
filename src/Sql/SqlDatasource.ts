@@ -12,40 +12,65 @@ type ModelManager<T extends Model> =
 export type SqlPoolType = mysql.Pool | pg.Pool;
 export type SqlPoolConnectionType = mysql.PoolConnection | pg.PoolClient;
 
-export class SqlDatasource extends Datasource {
+export class SqlDataSource extends Datasource {
+  public isConnected: boolean;
   protected sqlPool!: SqlPoolType;
+  private static instance: SqlDataSource;
 
-  public constructor(input: DatasourceInput) {
+  private constructor(input: DatasourceInput) {
     super(input);
+    this.isConnected = false;
   }
 
   /**
    * @description Connects to the database establishing a connection pool.
    */
-  public async connect(): Promise<void> {
-    switch (this.type) {
+  public static async connect(input: DatasourceInput): Promise<SqlDataSource> {
+    const sqlDataSource = new this(input);
+    switch (input.type) {
       case "mysql":
-        this.sqlPool = createPool({
-          host: this.host,
-          port: this.port,
-          user: this.username,
-          password: this.password,
-          database: this.database,
+        sqlDataSource.sqlPool = createPool({
+          host: input.host,
+          port: input.port,
+          user: input.username,
+          password: input.password,
+          database: input.database,
         });
         break;
 
       case "postgres":
-        this.sqlPool = new pg.Pool({
-          host: this.host,
-          port: this.port,
-          user: this.username,
-          password: this.password,
-          database: this.database,
+        sqlDataSource.sqlPool = new pg.Pool({
+          host: input.host,
+          port: input.port,
+          user: input.username,
+          password: input.password,
+          database: input.database,
         });
         break;
       default:
-        throw new Error(`Unsupported datasource type: ${this.type}`);
+        throw new Error(`Unsupported datasource type: ${input.type}`);
     }
+
+    sqlDataSource.isConnected = true;
+    this.instance = sqlDataSource;
+    return sqlDataSource;
+  }
+
+  public static getInstance(): SqlDataSource {
+    if (!this.instance) {
+      throw new Error("Sql database connection not established");
+    }
+
+    return this.instance;
+  }
+
+  /**
+   * @description Begins a transaction on the database
+   * @param model
+   * @returns
+   */
+  public startTransaction<T extends Model>(model: new () => T) {
+    return this.getModelManager(model).startTransaction();
   }
 
   /**
@@ -53,6 +78,10 @@ export class SqlDatasource extends Datasource {
    * @param model
    */
   public getModelManager<T extends Model>(model: new () => T): ModelManager<T> {
+    if (!this.isConnected) {
+      throw new Error("Sql database connection not established");
+    }
+
     switch (this.type) {
       case "mysql":
         return new MysqlModelManager<T>(

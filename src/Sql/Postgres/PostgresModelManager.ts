@@ -1,7 +1,7 @@
 /*
  * This class is used to make operations on models
  */
-import { Model } from "../Models/Model";
+import { Metadata, Model } from "../Models/Model";
 import {
   FindOneType,
   FindType,
@@ -14,7 +14,7 @@ import PostgresModelManagerUtils from "./PostgresModelManagerUtils";
 import { AbstractModelManager } from "../Models/ModelManager/AbstractModelManager";
 import { PostgresTransaction } from "./PostgresTransaction";
 import { PostgresQueryBuilder } from "./PostgresQueryBuilder";
-import { parseDatabaseDataIntoModelResponse } from "../../CaseUtils";
+import { parseDatabaseDataIntoModelResponse } from "../serializer";
 
 export class PostgresModelManager<
   T extends Model,
@@ -31,6 +31,14 @@ export class PostgresModelManager<
   constructor(model: new () => T, pgConnection: pg.Pool, logs: boolean) {
     super(model, logs);
     this.pgPool = pgConnection;
+  }
+
+  /**
+   * Returns table name and primary key fot he model manager
+   * @returns {Metadata}
+   */
+  public getMetadata(): Metadata {
+    return this.modelInstance.metadata;
   }
 
   /**
@@ -53,7 +61,6 @@ export class PostgresModelManager<
             const model = row as T;
             model.metadata = this.modelInstance.metadata;
             model.aliasColumns = this.modelInstance.aliasColumns;
-            model.setProps = this.modelInstance.setProps;
             return parseDatabaseDataIntoModelResponse([model]) as T;
           }) || [];
         return (
@@ -108,12 +115,11 @@ export class PostgresModelManager<
       log(query, this.logs);
 
       const { rows } = await this.pgPool.query(query);
-      const modelData = rows[0] as T;
-
-      if (!modelData) {
+      if (!rows[0]) {
         return null;
       }
 
+      const modelData = rows[0] as T;
       Object.assign(model, modelData);
 
       await PostgresModelManagerUtils.parseRelationInput(
@@ -176,7 +182,6 @@ export class PostgresModelManager<
       log(insertQuery, this.logs);
       const { rows } = await this.pgPool.query(insertQuery);
       const insertedModel = rows[0] as T;
-
       if (!insertedModel) {
         return null;
       }
@@ -195,22 +200,30 @@ export class PostgresModelManager<
    * @returns Promise resolving to the updated model or null if updating fails.
    */
   public async update(model: T, trx?: PostgresTransaction): Promise<T | null> {
-    const primaryKeyValue = this.modelInstance.metadata.primaryKey;
+    const { tableName, primaryKey } = this.getMetadata();
     if (trx) {
-      await trx.queryUpdate<T>(ModelManagerQueryUtils.parseUpdate(model));
+      await trx.queryUpdate<T>(
+        ModelManagerQueryUtils.parseUpdate(model, tableName, primaryKey),
+      );
+      if (!primaryKey) {
+        return null;
+      }
 
       return await this.findOneById(
-        model[primaryKeyValue as keyof T] as string | number,
+        model[primaryKey as keyof T] as string | number,
       );
     }
 
     try {
-      const updateQuery = ModelManagerQueryUtils.parseUpdate(model);
+      const updateQuery = ModelManagerQueryUtils.parseUpdate(model, tableName);
       log(updateQuery, this.logs);
       await this.pgPool.query(updateQuery);
+      if (!primaryKey) {
+        return null;
+      }
 
       return await this.findOneById(
-        model[primaryKeyValue as keyof T] as string | number,
+        model[primaryKey as keyof T] as string | number,
       );
     } catch (error) {
       queryError(error);
@@ -245,6 +258,7 @@ export class PostgresModelManager<
         column,
         value,
       );
+
       log(deleteQuery, this.logs);
       const result = await this.pgPool.query(deleteQuery);
       return result.rowCount || 0;
@@ -294,8 +308,10 @@ export class PostgresModelManager<
    * @description Creates a new transaction.
    * @returns {MysqlTransaction} - Instance of MysqlTransaction.
    */
-  public createTransaction(): PostgresTransaction {
-    return new PostgresTransaction(this.pgPool, this.tableName, this.logs);
+  public async startTransaction(): Promise<PostgresTransaction> {
+    const trx = new PostgresTransaction(this.pgPool, this.tableName, this.logs);
+    await trx.start();
+    return trx;
   }
 
   /**

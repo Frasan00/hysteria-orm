@@ -1,7 +1,15 @@
 import { camelToSnakeCase } from "../../../CaseUtils";
 import * as sqlString from "sqlstring";
 
-export type WhereOperatorType = "=" | "!=" | ">" | "<" | ">=" | "<=" | "LIKE" | "ILIKE";
+export type WhereOperatorType =
+  | "="
+  | "!="
+  | ">"
+  | "<"
+  | ">="
+  | "<="
+  | "LIKE"
+  | "ILIKE";
 export type BaseValues = string | number | boolean | Date;
 
 const whereTemplate = (_tableName: string) => {
@@ -10,17 +18,22 @@ const whereTemplate = (_tableName: string) => {
       column: string,
       value: BaseValues,
       operator: WhereOperatorType = "=",
-    ) => `\nWHERE ${camelToSnakeCase(column)} ${operator} ${sqlString.escape(value)}`,
+    ) =>
+      `\nWHERE ${camelToSnakeCase(column)} ${operator} ${sqlString.escape(
+        value,
+      )}`,
     andWhere: (
       column: string,
       value: BaseValues,
       operator: WhereOperatorType = "=",
-    ) => ` AND ${camelToSnakeCase(column)} ${operator} ${sqlString.escape(value)}`,
+    ) =>
+      ` AND ${camelToSnakeCase(column)} ${operator} ${sqlString.escape(value)}`,
     orWhere: (
       column: string,
       value: BaseValues,
       operator: WhereOperatorType = "=",
-    ) => ` OR ${camelToSnakeCase(column)} ${operator} ${sqlString.escape(value)}`,
+    ) =>
+      ` OR ${camelToSnakeCase(column)} ${operator} ${sqlString.escape(value)}`,
     whereNot: (column: string, value: BaseValues) =>
       `\nWHERE ${camelToSnakeCase(column)} != ${sqlString.escape(value)}`,
     andWhereNot: (column: string, value: BaseValues) =>

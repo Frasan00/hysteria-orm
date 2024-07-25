@@ -8,7 +8,7 @@ import whereTemplate, {
 } from "../Templates/Query/WHERE.TS";
 import { MysqlQueryBuilder } from "../Mysql/MysqlQueryBuilder";
 import { PostgresQueryBuilder } from "../Postgres/PostgresQueryBuilder";
-import { PaginatedData, PaginationMetadata } from "../../CaseUtils";
+import { PaginatedData } from "../pagination";
 
 type QueryBuilders<T extends Model> =
   | MysqlQueryBuilder<T>

@@ -8,11 +8,9 @@ import whereTemplate, {
   WhereOperatorType,
 } from "../Templates/Query/WHERE.TS";
 import { QueryBuilder } from "../QueryBuilder/QueryBuilder";
-import {
-  PaginatedData,
-  parseDatabaseDataIntoModelResponse,
-} from "../../CaseUtils";
 import joinTemplate from "../Templates/Query/JOIN";
+import { getPaginationMetadata, PaginatedData } from "../pagination";
+import { parseDatabaseDataIntoModelResponse } from "../serializer";
 
 export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
   protected mysqlPool: Pool;
@@ -68,8 +66,11 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     const model = new this.model() as T;
     try {
       const [rows] = await this.mysqlPool.query<RowDataPacket[]>(query);
-      const modelData = rows[0];
+      if (!rows[0]) {
+        return null;
+      }
 
+      const modelData = rows[0];
       this.mergeRetrievedDataIntoModel(model, modelData);
 
       await ModelManagerUtils.parseQueryBuilderRelations(
@@ -111,7 +112,6 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
       return Promise.all(
         rows.map(async (row) => {
           const modelData = rows[0] as T;
-
           this.mergeRetrievedDataIntoModel(model, row);
 
           // relations parsing on the queried model
@@ -132,7 +132,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
   }
 
   /**
-   * @description Paginates the query results with the given page and limit.
+   * @description Paginates the query results with the given page and limit, it removes any previous limit - offset calls
    * @param page
    * @param limit
    */
@@ -140,11 +140,20 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     page: number,
     limit: number,
   ): Promise<PaginatedData<T>> {
+    this.limitQuery = this.selectTemplate.limit(limit);
+    this.offsetQuery = this.selectTemplate.offset((page - 1) * limit);
+
+    const [row] = (await this.mysqlPool.query(
+      `SELECT COUNT(*) FROM ${this.tableName}`,
+    )) as any;
+    const total = row[0]["COUNT(*)"] as number;
     const models = await this.many();
-    return parseDatabaseDataIntoModelResponse(models, {
-      page,
-      limit,
-    }) as PaginatedData<T>;
+    const paginationMetadata = getPaginationMetadata(page, limit, total);
+    const data = parseDatabaseDataIntoModelResponse(models) as T[];
+    return {
+      paginationMetadata,
+      data: Array.isArray(data) ? data : [data],
+    } as PaginatedData<T>;
   }
 
   /**

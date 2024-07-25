@@ -1,7 +1,7 @@
 /*
  * This class is used to make operations on models
  */
-import { Model } from "../Model";
+import { Metadata, Model } from "../Model";
 import { FindOneType, FindType } from "./ModelManagerTypes";
 import { MysqlQueryBuilder } from "../../Mysql/MysqlQueryBuilder";
 import { MysqlTransaction } from "../../Mysql/MysqlTransaction";
@@ -20,6 +20,8 @@ export abstract class AbstractModelManager<T extends Model> {
     this.modelInstance = new this.model();
     this.tableName = this.modelInstance.metadata.tableName;
   }
+
+  public abstract getMetadata(): Metadata;
 
   public abstract find(input?: FindType): Promise<T[]>;
 
@@ -47,8 +49,6 @@ export abstract class AbstractModelManager<T extends Model> {
     model: T,
     trx?: MysqlTransaction | PostgresTransaction,
   ): Promise<T | null>;
-
-  public abstract createTransaction(): MysqlTransaction | PostgresTransaction;
 
   public abstract query(): MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
 }

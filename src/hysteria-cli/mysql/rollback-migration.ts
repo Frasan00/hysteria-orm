@@ -7,7 +7,6 @@ import CliUtils from "./MysqlCliUtils";
 import { MigrationTableType } from "../Templates/MigrationTableType";
 import { Migration } from "../../Sql/Migrations/Migration";
 import { MigrationController } from "../../Sql/Migrations/MigrationController";
-import MigrationTemplates from "../Templates/MigrationTemplates";
 import { log } from "../../Logger";
 import {
   BEGIN_TRANSACTION,
@@ -29,7 +28,6 @@ export async function migrationRollBackSql(): Promise<void> {
   });
 
   const mysql = await mysqlPool.getConnection();
-
   try {
     const migrationTable: MigrationTableType[] =
       await CliUtils.getMigrationTable(mysql);
@@ -48,7 +46,6 @@ export async function migrationRollBackSql(): Promise<void> {
 
     log(BEGIN_TRANSACTION, true);
     await mysql.beginTransaction();
-
     await migrationController.downMigrations(migrations);
 
     log(COMMIT_TRANSACTION, true);

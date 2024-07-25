@@ -34,9 +34,4 @@ export abstract class Datasource {
     this.database = input.database;
     this.logs = input.logs || false;
   }
-
-  public abstract connect(): Promise<void>;
-  public abstract getModelManager(
-    model: typeof Model,
-  ): AbstractModelManager<Model>;
 }
