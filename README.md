@@ -288,6 +288,27 @@ const user: User | null = await query
     .paginate(1, 10); // page - limit
 ```
 
+# Use Connection
+- Allows to execute operations on a separate database connection, useful for multi-database applications
+```typescript
+await User.useConnection(
+{
+    type: "mysql",
+    host: "localhost",
+    port: 3306,
+    username: "root",
+    password: "root",
+    database: "test",
+    logs: true,
+},
+async () => {
+    console.log("Connected to the database");
+    const users = await User.find();
+    console.log(users);
+},
+);
+```
+
 # Migrations
 
 ## hysteria-cli for Migrations

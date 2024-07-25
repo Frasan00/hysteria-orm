@@ -127,6 +127,21 @@ export class SqlDataSource extends Datasource {
   }
 
   /**
+   * @description Closes the connection to the database
+   * @returns
+   */
+  public async closeConnection(): Promise<void> {
+    switch (this.type) {
+      case "mysql":
+        return await (this.sqlPool as Pool).end();
+      case "postgres":
+        return await (this.sqlPool as pg.Pool).end();
+      default:
+        throw new Error(`Unsupported datasource type: ${this.type}`);
+    }
+  }
+
+  /**
    * @description Returns raw mysql PoolConnection
    */
   public async getRawPoolConnection(): Promise<SqlPoolConnectionType> {

@@ -789,6 +789,27 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     protected groupFooterQuery(): string;
 }
 
+type DatasourceType = "mysql" | "postgres";
+interface DatasourceInput {
+    readonly type: DatasourceType;
+    readonly host: string;
+    readonly port: number;
+    readonly username: string;
+    readonly password: string;
+    readonly database: string;
+    readonly logs?: boolean;
+}
+declare abstract class Datasource {
+    protected type: DatasourceType;
+    protected host: string;
+    protected port: number;
+    protected username: string;
+    protected password: string;
+    protected database: string;
+    protected logs: boolean;
+    protected constructor(input: DatasourceInput);
+}
+
 declare class MysqlTransaction {
     protected tableName: string;
     protected mysql: Pool;
@@ -859,15 +880,22 @@ interface Metadata {
     readonly primaryKey?: string;
 }
 declare abstract class Model {
-    metadata: Metadata;
     aliasColumns: {
         [key: string]: string | number | boolean;
     };
-    private static sqlDataSourceInstance;
+    metadata: Metadata;
+    private static sqlInstance;
     protected constructor(options: {
         tableName?: string;
         primaryKey?: string;
     });
+    /**
+     * @description Connects to the database with the given connection details, then after the callback is executed, it disconnects from the database and connects back to the original database specified in the SqlDataSource class
+     * @param connectionDetails - connection details for the database for the temp connection
+     * @param cb - function containing all the database operations on the provided connection details
+     * @returns
+     */
+    static useConnection<T extends Model>(this: new () => T, connectionDetails: DatasourceInput, cb: () => Promise<void>): Promise<void>;
     /**
      * @description Gives a query instance for the given model
      * @param model
@@ -970,27 +998,6 @@ declare class BelongsTo extends Relation {
     type: RelationType;
     foreignKey: string;
     constructor(relatedModel: string, foreignKey: string);
-}
-
-type DatasourceType = "mysql" | "postgres";
-interface DatasourceInput {
-    readonly type: DatasourceType;
-    readonly host: string;
-    readonly port: number;
-    readonly username: string;
-    readonly password: string;
-    readonly database: string;
-    readonly logs?: boolean;
-}
-declare abstract class Datasource {
-    protected type: DatasourceType;
-    protected host: string;
-    protected port: number;
-    protected username: string;
-    protected password: string;
-    protected database: string;
-    protected logs: boolean;
-    protected constructor(input: DatasourceInput);
 }
 
 declare class ColumnOptionsBuilder {
@@ -1447,6 +1454,11 @@ declare class SqlDataSource extends Datasource {
      * @description Returns raw mysql pool
      */
     getRawPool(): Promise<SqlPoolType>;
+    /**
+     * @description Closes the connection to the database
+     * @returns
+     */
+    closeConnection(): Promise<void>;
     /**
      * @description Returns raw mysql PoolConnection
      */
