@@ -1,8 +1,8 @@
 import { camelToSnakeCase } from "../../CaseUtils";
-import { DatasourceInput } from "../../Datasource";
+import { DataSourceInput } from "../../Datasource";
 import { MysqlTransaction } from "../Mysql/MysqlTransaction";
 import { PostgresTransaction } from "../Postgres/PostgresTransaction";
-import { QueryBuilder, QueryBuilders } from "../QueryBuilder/QueryBuilder";
+import { QueryBuilders } from "../QueryBuilder/QueryBuilder";
 import { SqlDataSource } from "../SqlDataSource";
 import { FindOneType, FindType } from "./ModelManager/ModelManagerTypes";
 
@@ -11,98 +11,92 @@ export interface Metadata {
   readonly primaryKey?: string;
 }
 
+function getBaseMetadata(className: string): Metadata {
+  className = className.at(0)?.toLowerCase() + className.slice(1);
+  const tableName = className.endsWith("s")
+    ? camelToSnakeCase(className)
+    : camelToSnakeCase(className) + "s";
+
+  return {
+    tableName: tableName,
+  };
+}
+
 /*
  * Represents a model in the Database
  */
-export abstract class Model {
+export class Model {
   public aliasColumns: { [key: string]: string | number | boolean } = {};
-  public metadata: Metadata;
-  private static sqlInstance: SqlDataSource;
+  public static sqlInstance: SqlDataSource;
+  public static metadata: Metadata = getBaseMetadata(this.constructor.name);
 
-  protected constructor(options: { tableName?: string; primaryKey?: string }) {
-    if (!options.tableName) {
-      const className =
-        this.constructor.name.at(0)?.toLowerCase() +
-        this.constructor.name.slice(1);
-      options.tableName = className.endsWith("s")
-        ? camelToSnakeCase(className)
-        : camelToSnakeCase(className) + "s";
+  public constructor(classProps: Partial<Model> = {}) {
+    for (const key in classProps) {
+      Object.assign(this, { [key]: classProps[key as keyof Model] });
     }
-
-    this.metadata = {
-      tableName: options.tableName as string,
-      primaryKey: options.primaryKey,
-    };
   }
 
-  // Static methods
-
   /**
-   * @description Connects to the database with the given connection details, then after the callback is executed, it disconnects from the database and connects back to the original database specified in the SqlDataSource class
+   * @description Connects to the database with the given connection details, then after the callback is executed, it disconnects from the database and connects back to the original database specified in the SqlDataSource.connect
    * @param connectionDetails - connection details for the database for the temp connection
    * @param cb - function containing all the database operations on the provided connection details
-   * @returns
+   * @returns {Promise<void>}
    */
   public static async useConnection<T extends Model>(
-    this: new () => T,
-    connectionDetails: DatasourceInput,
+    connectionDetails: DataSourceInput,
     cb: () => Promise<void>,
   ) {
-    const newSqlInstance = await SqlDataSource.connect(connectionDetails);
-    const oldSqlInstance = Model.sqlInstance;
-    Model.sqlInstance = newSqlInstance;
-    await cb();
-    await newSqlInstance.closeConnection();
-    Model.sqlInstance = oldSqlInstance;
+    const newSqlInstance = await SqlDataSource.tempConnect(connectionDetails);
+    this.sqlInstance = newSqlInstance;
+    await cb().then(() => newSqlInstance.closeConnection());
+    this.sqlInstance = SqlDataSource.getInstance();
   }
 
   /**
    * @description Gives a query instance for the given model
    * @param model
-   * @returns
+   * @returns {QueryBuilders<T>}
    */
-  public static query<T extends Model>(this: new () => T): QueryBuilders<T> {
-    Model.establishConnection();
-    return Model.sqlInstance.getModelManager(this).query();
+  public static query<T extends Model>(): QueryBuilders<T> {
+    this.establishConnection();
+    return this.sqlInstance.getModelManager<T>(this).query();
   }
 
   /**
    * @description Finds records for the given model
    * @param model
    * @param {FindType} options
-   * @returns
+   * @returns {Promise<T[]>}
    */
-  public static find<T extends Model>(this: new () => T, options?: FindType): Promise<T[]> {
-    Model.establishConnection();
-    return Model.sqlInstance.getModelManager(this).find(options);
+  public static find<T extends Model>(options?: FindType): Promise<T[]> {
+    this.establishConnection();
+    return this.sqlInstance.getModelManager<T>(this).find(options);
   }
 
   /**
    * @description Finds a record for the given model
    * @param model
    * @param {FindOneType} options
-   * @returns
+   * @returns {Promise<T | null>}
    */
   public static findOne<T extends Model>(
-    this: new () => T,
     options: FindOneType,
   ): Promise<T | null> {
-    Model.establishConnection();
-    return Model.sqlInstance.getModelManager(this).findOne(options);
+    this.establishConnection();
+    return this.sqlInstance.getModelManager<T>(this).findOne(options);
   }
 
   /**
    * @description Finds a record for the given model for the given id, "id" must be set in the model in order for it to work
    * @param model
    * @param {number | string} id
-   * @returns
+   * @returns {Promise<T | null>}
    */
   public static findOneById<T extends Model>(
-    this: new () => T,
     id: string | number,
   ): Promise<T | null> {
-    Model.establishConnection();
-    return Model.sqlInstance.getModelManager(this).findOneById(id);
+    this.establishConnection();
+    return this.sqlInstance.getModelManager<T>(this).findOneById(id);
   }
 
   /**
@@ -110,32 +104,50 @@ export abstract class Model {
    * @param model
    * @param {Model} modelInstance
    * @param {MysqlTransaction & PostgresTransaction} trx
-   * @returns
+   * @returns {Promise<T | null>}
    */
-  public static save<T extends Model>(
-    this: new () => T,
+  public static create<T extends Model>(
     modelInstance: T,
     trx?: MysqlTransaction & PostgresTransaction,
   ): Promise<T | null> {
-    Model.establishConnection();
-    return Model.sqlInstance.getModelManager(this).save(modelInstance, trx);
+    this.establishConnection();
+    return this.sqlInstance
+      .getModelManager<T>(this)
+      .create(modelInstance as T, trx);
   }
 
-  /**
-   * @description Updates a record to the database
-   * @param model
-   * @param {Model} modelInstance
-   * @param {MysqlTransaction & PostgresTransaction} trx
-   * @returns
-   */
-  public static update<T extends Model>(
-    this: new () => T,
-    modelInstance: T,
-    trx?: MysqlTransaction & PostgresTransaction,
-  ): Promise<T | null> {
-    Model.establishConnection();
-    return Model.sqlInstance.getModelManager(this).update(modelInstance, trx);
-  }
+  // TODO: Implement massiveCreate method
+  // /**
+  //  * @description Saves multiple records to the database
+  //  * @param model
+  //  * @param {Model} modelInstance
+  //  * @param {MysqlTransaction & PostgresTransaction} trx
+  //  * @returns {Promise<T[]>}
+  //  */
+  // public static massiveCreate<T extends Model>(
+  //   modelInstance: T,
+  //   trx?: MysqlTransaction & PostgresTransaction,
+  // ): Promise<T[]> {
+  //   this.establishConnection();
+  //   return this.sqlInstance
+  //     .getModelManager<T>(this)
+  //     .massiveCreate(modelInstance, trx);
+  // }
+
+  // /**
+  //  * @description Updates a record to the database
+  //  * @param model
+  //  * @param {Model} modelInstance
+  //  * @param {MysqlTransaction & PostgresTransaction} trx
+  //  * @returns
+  //  */
+  // public static update<T extends Model>(
+  //   modelInstance: T,
+  //   trx?: MysqlTransaction & PostgresTransaction,
+  // ): Promise<T | null> {
+  //   this.establishConnection();
+  //   return this.sqlInstance.getModelManager<T>(this).update(modelInstance, trx);
+  // }
 
   /**
    * @description Deletes a record to the database
@@ -145,12 +157,11 @@ export abstract class Model {
    * @returns
    */
   public static delete<T extends Model>(
-    this: new () => T,
     modelInstance: T,
     trx?: MysqlTransaction & PostgresTransaction,
   ): Promise<T | null> {
-    Model.establishConnection();
-    return Model.sqlInstance.getModelManager(this).delete(modelInstance, trx);
+    this.establishConnection();
+    return this.sqlInstance.getModelManager<T>(this).delete(modelInstance, trx);
   }
 
   /**
@@ -163,26 +174,14 @@ export abstract class Model {
    * @returns
    */
   public static deleteByColumn<T extends Model>(
-    this: new () => T,
     column: string,
     value: string | number | boolean,
     trx?: MysqlTransaction & PostgresTransaction,
   ): Promise<number> {
-    Model.establishConnection();
-    return Model.sqlInstance
-      .getModelManager(this)
+    this.establishConnection();
+    return this.sqlInstance
+      .getModelManager<T>(this)
       .deleteByColumn(column, value, trx);
-  }
-
-  /**
-   * @description Deletes a record to the database
-   * @param model
-   * @param {Model} modelInstance
-   * @returns
-   */
-  public static getMetadata<T extends Model>(this: new () => T): Metadata {
-    Model.establishConnection();
-    return Model.sqlInstance.getModelManager(this).getMetadata();
   }
 
   public static setProps<T extends Model>(instance: T, data: Partial<T>): void {
@@ -191,9 +190,25 @@ export abstract class Model {
     }
   }
 
+  public static generateModel<T extends Model>(
+    this: new () => T,
+    data: Partial<T>,
+  ): T {
+    const instance = new this() as T;
+    Model.setProps(instance, data);
+    return instance;
+  }
+
+  public static generateModels<T extends Model>(
+    this: new () => T,
+    data: Partial<T>[],
+  ): T[] {
+    return data.map((d) => Model.generateModel.call(this, d) as T);
+  }
+
   private static establishConnection() {
-    if (!Model.sqlInstance) {
-      Model.sqlInstance = SqlDataSource.getInstance();
+    if (!this.sqlInstance) {
+      this.sqlInstance = SqlDataSource.getInstance();
     }
   }
 }

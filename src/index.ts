@@ -1,22 +1,21 @@
-import { Model } from "./Sql/Models/Model";
+import { Metadata, Model } from "./Sql/Models/Model";
 import { HasOne } from "./Sql/Models/Relations/HasOne";
 import { HasMany } from "./Sql/Models/Relations/HasMany";
 import { BelongsTo } from "./Sql/Models/Relations/BelongsTo";
-import { DatasourceInput } from "./Datasource";
+import { DataSourceInput } from "./Datasource";
 import { Migration } from "./Sql/Migrations/Migration";
 import { SqlDataSource } from "./Sql/SqlDataSource";
+import { testQuery } from "./test";
 
 class User extends Model {
   public id!: number;
   public name!: string;
   public email!: string;
 
-  constructor() {
-    super({
-      primaryKey: "id",
-      tableName: "users",
-    });
-  }
+  public static metadata: Metadata = {
+    primaryKey: "id",
+    tableName: "users",
+  };
 }
 
 (async () => {
@@ -30,11 +29,7 @@ class User extends Model {
     logs: true,
   });
 
-  const user = (await User.query().where("id", 2).one()) as User;
-  console.log(user);
-
-  await User.update(user);
-  console.log(user);
+  await testQuery();
 
   process.exit(0);
 })();
@@ -45,6 +40,6 @@ export {
   HasMany,
   BelongsTo,
   SqlDataSource,
-  DatasourceInput,
+  DataSourceInput,
   Migration,
 };

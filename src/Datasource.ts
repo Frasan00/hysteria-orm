@@ -1,13 +1,10 @@
-import { Model } from "./Sql/Models/Model";
-import { AbstractModelManager } from "./Sql/Models/ModelManager/AbstractModelManager";
-
 /*
  * Creates a datasource for the selected database type with the provided credentials
  */
-export type DatasourceType = "mysql" | "postgres";
+export type DataSourceType = "mysql" | "postgres";
 
-export interface DatasourceInput {
-  readonly type: DatasourceType;
+export interface DataSourceInput {
+  readonly type: DataSourceType;
   readonly host: string;
   readonly port: number;
   readonly username: string;
@@ -17,7 +14,7 @@ export interface DatasourceInput {
 }
 
 export abstract class Datasource {
-  protected type: DatasourceType;
+  protected type: DataSourceType;
   protected host: string;
   protected port: number;
   protected username: string;
@@ -25,7 +22,7 @@ export abstract class Datasource {
   protected database: string;
   protected logs: boolean;
 
-  protected constructor(input: DatasourceInput) {
+  protected constructor(input: DataSourceInput) {
     this.type = input.type;
     this.host = input.host;
     this.port = input.port;

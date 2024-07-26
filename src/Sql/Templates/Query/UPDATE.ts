@@ -1,7 +1,8 @@
 import { camelToSnakeCase } from "../../../CaseUtils";
 import * as sqlString from "sqlstring";
+import { DataSourceType } from "../../Datasource";
 
-const updateTemplate = (table: string) => {
+const updateTemplate = (table: string, dbType: DataSourceType) => {
   return {
     update: (
       columns: string[],
@@ -9,13 +10,30 @@ const updateTemplate = (table: string) => {
       primaryKey?: string,
       primaryKeyValue?: string | undefined,
     ) => {
-      columns = columns.map((column) =>
-        camelToSnakeCase(sqlString.escape(column)),
-      );
-      return `UPDATE ${table} SET ${columns
-        .map((column, index) => `${column}, ${sqlString.escape(values[index])}`)
-        .filter((column) => column !== undefined)
-        .join(", ")} WHERE ${primaryKey} = ${primaryKeyValue};`;
+      columns = columns.map((column) => camelToSnakeCase(column));
+      let setClause: string;
+      let params: (string | undefined)[];
+
+      switch (dbType) {
+        case "mysql":
+          setClause = columns.map((column) => `\`${column}\` = ?`).join(", ");
+          params = [...values, primaryKeyValue];
+          break;
+        case "postgres":
+          setClause = columns
+            .map((column, index) => `"${column}" = $${index + 1}`)
+            .join(", ");
+          params = [...values, primaryKeyValue];
+          break;
+        default:
+          throw new Error("Unsupported database type");
+      }
+
+      const query = `UPDATE ${table} SET ${setClause} WHERE ${primaryKey} = ${
+        dbType === "mysql" ? "?" : `$${columns.length + 1}`
+      };`;
+
+      return { query, params };
     },
   };
 };

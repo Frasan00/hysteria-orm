@@ -24,7 +24,7 @@ export abstract class QueryBuilder<T extends Model> {
   protected limitQuery: string = "";
   protected offsetQuery: string = "";
 
-  protected model: new () => Model;
+  protected model: typeof Model;
   protected tableName: string;
   protected logs: boolean;
 
@@ -37,16 +37,18 @@ export abstract class QueryBuilder<T extends Model> {
    * @param tableName - The name of the table.
    * @param logs - A boolean indicating whether to log queries.
    */
-  protected constructor(
-    model: new () => Model,
-    tableName: string,
-    logs: boolean,
-  ) {
+  protected constructor(model: typeof Model, tableName: string, logs: boolean) {
     this.model = model;
     this.logs = logs;
     this.tableName = tableName;
-    this.selectQuery = selectTemplate(this.tableName).selectAll;
-    this.selectTemplate = selectTemplate(this.tableName);
+    this.selectQuery = selectTemplate(
+      this.tableName,
+      this.model.sqlInstance.getDbType(),
+    ).selectAll;
+    this.selectTemplate = selectTemplate(
+      this.tableName,
+      this.model.sqlInstance.getDbType(),
+    );
     this.whereTemplate = whereTemplate(this.tableName);
   }
 
@@ -70,6 +72,12 @@ export abstract class QueryBuilder<T extends Model> {
     page: number,
     limit: number,
   ): Promise<PaginatedData<T>>;
+
+  /**
+   * @description Executes the query and retrieves the results.
+   * @returns
+   */
+  public abstract raw(query: string): Promise<T | T[] | any>;
 
   /**
    * @description Columns are customizable with aliases. By default, without this function, all columns are selected

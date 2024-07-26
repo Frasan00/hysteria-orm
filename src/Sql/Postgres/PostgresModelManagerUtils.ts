@@ -17,12 +17,13 @@ import pg from "pg";
 class PostgresModelManagerUtils<T extends Model> {
   public parseSelectQueryInput(
     model: T,
+    modelTypeOf: typeof Model,
     input: FindType | FindOneType,
   ): string {
     let query = "";
-    query += this.parseSelect(model.metadata.tableName, input);
-    query += this.parseWhere(model.metadata.tableName, input);
-    query += this.parseQueryFooter(model.metadata.tableName, input);
+    query += this.parseSelect(modelTypeOf.metadata.tableName, input);
+    query += this.parseWhere(modelTypeOf.metadata.tableName, input);
+    query += this.parseQueryFooter(modelTypeOf.metadata.tableName, input);
 
     return query;
   }
@@ -31,7 +32,7 @@ class PostgresModelManagerUtils<T extends Model> {
     tableName: string,
     input: FindType | FindOneType,
   ): string {
-    const select = selectTemplate(tableName);
+    const select = selectTemplate(tableName, "postgres");
     return input.select
       ? select.selectColumns(...input.select)
       : select.selectAll;
@@ -66,7 +67,7 @@ class PostgresModelManagerUtils<T extends Model> {
       return "";
     }
 
-    const select = selectTemplate(tableName);
+    const select = selectTemplate(tableName, "postgres");
     let query = "";
     if (input.offset) {
       query += select.offset(input.offset);
@@ -87,22 +88,34 @@ class PostgresModelManagerUtils<T extends Model> {
     return query;
   }
 
-  public parseInsert(model: T): string {
+  public parseInsert(
+    model: T,
+    modelTypeOf: typeof Model,
+  ): { query: string; params: any[] } {
     const filteredModel = this.filterRelationsAndMetadata(model);
     const keys = Object.keys(filteredModel);
     const values = Object.values(filteredModel);
-    const insert = insertTemplate(model.metadata.tableName);
+    const insert = insertTemplate(
+      modelTypeOf.metadata.tableName,
+      modelTypeOf.sqlInstance.getDbType(),
+    );
 
     return insert.insert(keys, values);
   }
 
-  public parseUpdate(model: T, modelName?: string): string {
-    const update = updateTemplate(modelName || model.metadata.tableName);
+  public parseUpdate(
+    model: T,
+    modelTypeOf: typeof Model,
+  ): { query: string; params: any[] } {
+    const update = updateTemplate(
+      modelTypeOf.metadata.tableName,
+      modelTypeOf.sqlInstance.getDbType(),
+    );
     const filteredModel = this.filterRelationsAndMetadata(model);
     const keys = Object.keys(filteredModel);
     const values = Object.values(filteredModel);
 
-    const primaryKey = model.metadata.primaryKey as string;
+    const primaryKey = modelTypeOf.metadata.primaryKey as string;
     const primaryKeyValue = model[primaryKey as keyof T];
 
     return update.update(keys, values, primaryKey, primaryKeyValue as string);
@@ -149,14 +162,18 @@ class PostgresModelManagerUtils<T extends Model> {
     );
   }
 
-  private getRelationFromModel(model: T, relationField: string): Relation {
+  private getRelationFromModel(
+    model: T,
+    relationField: string,
+    modelTypeOf: typeof Model,
+  ): Relation {
     const relation = model[relationField as keyof T] as Relation;
     if (!relation) {
       throw new Error(
         "Relation " +
           relationField +
           " not found in model " +
-          model.metadata.tableName,
+          modelTypeOf.metadata.tableName,
       );
     }
 
@@ -166,6 +183,7 @@ class PostgresModelManagerUtils<T extends Model> {
   // Parses and fills input relations directly into the model
   public async parseRelationInput(
     model: T,
+    modelTypeOf: typeof Model,
     input: FindOneType,
     pgPool: Pool,
     logs: boolean,
@@ -174,14 +192,18 @@ class PostgresModelManagerUtils<T extends Model> {
       return;
     }
 
-    if (!model.metadata.primaryKey) {
+    if (!modelTypeOf.metadata.primaryKey) {
       throw new Error("Model does not have a primary key");
     }
 
     try {
       const relationPromises = input.relations.map(
         async (inputRelation: string) => {
-          const relation = this.getRelationFromModel(model, inputRelation);
+          const relation = this.getRelationFromModel(
+            model,
+            inputRelation,
+            modelTypeOf,
+          );
           const relationQuery = relationTemplates(model, relation);
           console.log(relationQuery);
 
@@ -216,6 +238,7 @@ class PostgresModelManagerUtils<T extends Model> {
   // Parses and fills input relations directly into the model
   public async parseQueryBuilderRelations(
     model: T,
+    modelTypeOf: typeof Model,
     input: string[],
     pgConnection: pg.Pool,
     logs: boolean,
@@ -224,14 +247,18 @@ class PostgresModelManagerUtils<T extends Model> {
       return;
     }
 
-    if (!model.metadata.primaryKey) {
+    if (!modelTypeOf.metadata.primaryKey) {
       throw new Error("Model does not have a primary key");
     }
 
     let relationQuery: string = "";
     try {
       const relationPromises = input.map(async (inputRelation: string) => {
-        const relation = this.getRelationFromModel(model, inputRelation);
+        const relation = this.getRelationFromModel(
+          model,
+          inputRelation,
+          modelTypeOf,
+        );
         relationQuery = relationTemplates(model, relation);
 
         // Changed to use pgConnection.query instead of mysqlConnection.query

@@ -29,12 +29,21 @@ const logger = winston.createLogger({
   transports: [consoleTransport, fileTransport],
 });
 
-export function log(query: string, logs: boolean) {
+export function log(query: string, logs: boolean, params?: any[]) {
   if (!logs) {
     return;
   }
 
-  logger.info("\n" + query);
+  if (params) {
+    params.forEach((param, index) => {
+      query = query.replace(/\?/, param);
+      query = query.replace(new RegExp(`\\$${index + 1}`, "g"), param);
+    });
+
+    logger.info("\n" + query);
+  } else {
+    logger.info("\n" + query);
+  }
 }
 export function queryError(error: any) {
   logger.error("Query Failed ", error);

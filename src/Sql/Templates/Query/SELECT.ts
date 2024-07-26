@@ -1,46 +1,57 @@
 import { camelToSnakeCase } from "../../../CaseUtils";
 import * as sqlString from "sqlstring";
+import { DataSourceType } from "../../../Datasource";
 
-const selectTemplate = (table: string) => {
+const selectTemplate = (table: string, dbType: DataSourceType) => {
+  const escapeIdentifier = (identifier: string) => {
+    switch (dbType) {
+      case "mysql":
+        return sqlString.escapeId(identifier);
+      case "postgres":
+        return `"${identifier.replace(/"/g, '""')}"`;
+      default:
+        throw new Error("Unsupported database type");
+    }
+  };
+
   return {
     selectAll: `SELECT * FROM ${table} `,
     selectById: (id: string) =>
-      `SELECT * FROM ${table} WHERE id = ${sqlString.escape(id)} `,
+      `SELECT * FROM ${table} WHERE id = ${sqlString.escape(id)}`,
     selectColumns: (...columns: string[]) => {
       columns = columns.map((column) => {
-        if (column === "*" || column.includes("as") || column.includes("AS")) {
+        if (column === "*" || column.toLowerCase().includes("as")) {
           return column;
         }
-
-        return camelToSnakeCase(sqlString.escape(column));
+        return escapeIdentifier(camelToSnakeCase(column));
       });
       return `SELECT ${columns.join(", ")} FROM ${table} `;
     },
     selectCount: `SELECT COUNT(*) FROM ${table} `,
     selectDistinct: (...columns: string[]) => {
       columns = columns.map((column) =>
-        camelToSnakeCase(sqlString.escape(column)),
+        escapeIdentifier(camelToSnakeCase(column)),
       );
       return `SELECT DISTINCT ${columns.join(", ")} FROM ${table} `;
     },
     selectSum: (column: string) =>
-      `SELECT SUM(${camelToSnakeCase(
-        sqlString.escape(column),
+      `SELECT SUM(${escapeIdentifier(
+        camelToSnakeCase(column),
       )}) FROM ${table} `,
-    orderBy: (column: string[], order?: "ASC" | "DESC") => {
-      column = column.map((column) =>
-        camelToSnakeCase(sqlString.escape(column)),
+    orderBy: (columns: string[], order: "ASC" | "DESC" = "ASC") => {
+      columns = columns.map((column) =>
+        escapeIdentifier(camelToSnakeCase(column)),
       );
-      return `\nORDER BY ${column.join(", ")} ${order}`;
+      return ` ORDER BY ${columns.join(", ")} ${order}`;
     },
     groupBy: (...columns: string[]) => {
       columns = columns.map((column) =>
-        camelToSnakeCase(sqlString.escape(column)),
+        escapeIdentifier(camelToSnakeCase(column)),
       );
-      return `\nGROUP BY ${columns.join(", ")} `;
+      return ` GROUP BY ${columns.join(", ")}`;
     },
-    limit: (limit: number) => `\nLIMIT ${limit} `,
-    offset: (offset: number) => `\nOFFSET ${offset} `,
+    limit: (limit: number) => ` LIMIT ${limit}`,
+    offset: (offset: number) => ` OFFSET ${offset}`,
   };
 };
 
@@ -51,7 +62,7 @@ export type SelectTemplateType = {
   selectCount: string;
   selectDistinct: (...columns: string[]) => string;
   selectSum: (column: string) => string;
-  orderBy: (column: string[], order?: "ASC" | "DESC") => string;
+  orderBy: (columns: string[], order?: "ASC" | "DESC") => string;
   groupBy: (...columns: string[]) => string;
   limit: (limit: number) => string;
   offset: (offset: number) => string;

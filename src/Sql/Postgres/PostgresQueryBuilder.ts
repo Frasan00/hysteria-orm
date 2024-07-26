@@ -9,21 +9,15 @@ import selectTemplate from "../Templates/Query/SELECT";
 import { log } from "../../Logger";
 import PostgresModelManagerUtils from "./PostgresModelManagerUtils";
 import joinTemplate from "../Templates/Query/JOIN";
-import { MysqlQueryBuilder } from "../Mysql/MysqlQueryBuilder";
 import { PaginatedData, getPaginationMetadata } from "../pagination";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
 
 export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
-  public select(
-    ...columns: string[]
-  ): PostgresQueryBuilder<T> | MysqlQueryBuilder<T> {
-    throw new Error("Method not implemented.");
-  }
   protected pgPool: Pool;
   protected isNestedCondition: boolean;
 
   public constructor(
-    model: new () => T,
+    model: typeof Model,
     tableName: string,
     pgPool: Pool,
     logs: boolean,
@@ -44,10 +38,30 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     });
   }
 
+  /**
+   * @description Columns are customizable with aliases. By default, without this function, all columns are selected
+   * @param columns
+   */
+  public select(...columns: string[]) {
+    const select = selectTemplate(
+      this.tableName,
+      this.model.sqlInstance.getDbType(),
+    );
+    this.selectQuery = select.selectColumns(...columns);
+    return this;
+  }
+
+  public async raw(query: string, params: any[] = []) {
+    return await this.pgPool.query(query, params);
+  }
+
   public async one(): Promise<T | null> {
     let query: string = "";
     if (this.joinQuery && !this.selectQuery) {
-      const select = selectTemplate(this.tableName);
+      const select = selectTemplate(
+        this.tableName,
+        this.model.sqlInstance.getDbType(),
+      );
       this.selectQuery = select.selectColumns(`${this.tableName}.*`);
     }
     query = this.selectQuery + this.joinQuery;
@@ -69,6 +83,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
       await PostgresModelManagerUtils.parseQueryBuilderRelations(
         model,
+        this.model,
         this.relations,
         this.pgPool,
         this.logs,
@@ -83,7 +98,10 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   public async many(): Promise<T[]> {
     let query: string = "";
     if (this.joinQuery && !this.selectQuery) {
-      const select = selectTemplate(this.tableName);
+      const select = selectTemplate(
+        this.tableName,
+        this.model.sqlInstance.getDbType(),
+      );
       this.selectQuery = select.selectColumns(`${this.tableName}.*`);
     }
     query = this.selectQuery + this.joinQuery;
@@ -95,7 +113,6 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     query += this.groupFooterQuery();
 
     log(query, this.logs);
-    const modelInstance = new this.model() as T;
     try {
       const result = await this.pgPool.query(query);
       const rows = result.rows;
@@ -103,12 +120,12 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
       return Promise.all(
         rows.map(async (row) => {
           const modelData = row as T;
-
           const rowModel = new this.model() as T;
           this.mergeRetrievedDataIntoModel(rowModel, modelData);
 
           await PostgresModelManagerUtils.parseQueryBuilderRelations(
             rowModel,
+            this.model,
             this.relations,
             this.pgPool,
             this.logs,
@@ -139,7 +156,10 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     const total = +countQuery.rows[0].count;
     const models = await this.many();
     const paginationMetadata = getPaginationMetadata(page, limit, total);
-    const data = parseDatabaseDataIntoModelResponse(models) as T[];
+    let data = parseDatabaseDataIntoModelResponse(models) || [];
+    if (Array.isArray(data)) {
+      data = data.filter((model) => model !== null);
+    }
     return {
       paginationMetadata,
       data: Array.isArray(data) ? data : [data],
@@ -221,13 +241,13 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     cb: (queryBuilder: PostgresQueryBuilder<T>) => void,
   ): this {
     const queryBuilder = new PostgresQueryBuilder(
-      this.model as new () => T,
+      this.model as typeof Model,
       this.tableName,
       this.pgPool,
       this.logs,
       true,
     );
-    cb(queryBuilder);
+    cb(queryBuilder as PostgresQueryBuilder<T>);
 
     let whereCondition = queryBuilder.whereQuery.trim();
     if (whereCondition.startsWith("AND")) {
@@ -257,13 +277,13 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     cb: (queryBuilder: PostgresQueryBuilder<T>) => void,
   ): this {
     const nestedBuilder = new PostgresQueryBuilder(
-      this.model as new () => T,
+      this.model as typeof Model,
       this.tableName,
       this.pgPool,
       this.logs,
       true,
     );
-    cb(nestedBuilder);
+    cb(nestedBuilder as PostgresQueryBuilder<T>);
 
     let nestedCondition = nestedBuilder.whereQuery.trim();
     if (nestedCondition.startsWith("AND")) {
@@ -294,13 +314,13 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     cb: (queryBuilder: PostgresQueryBuilder<T>) => void,
   ): this {
     const nestedBuilder = new PostgresQueryBuilder(
-      this.model as new () => T,
+      this.model as typeof Model,
       this.tableName,
       this.pgPool,
       this.logs,
       true,
     );
-    cb(nestedBuilder);
+    cb(nestedBuilder as PostgresQueryBuilder<T>);
 
     let nestedCondition = nestedBuilder.whereQuery.trim();
     if (nestedCondition.startsWith("AND")) {

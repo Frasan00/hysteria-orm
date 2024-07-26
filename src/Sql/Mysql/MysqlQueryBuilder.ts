@@ -25,7 +25,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
    */
   public constructor(
-    model: new () => T,
+    model: typeof Model,
     tableName: string,
     mysqlPool: Pool,
     logs: boolean,
@@ -53,7 +53,10 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
   public async one(): Promise<T | null> {
     let query: string = "";
     if (this.joinQuery && !this.selectQuery) {
-      const select = selectTemplate(this.tableName);
+      const select = selectTemplate(
+        this.tableName,
+        this.model.sqlInstance.getDbType(),
+      );
       this.selectQuery = select.selectColumns(`${this.tableName}.*`);
     }
     query = this.selectQuery + this.joinQuery;
@@ -75,6 +78,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
       await ModelManagerUtils.parseQueryBuilderRelations(
         model,
+        this.model.metadata,
         this.relations,
         this.mysqlPool,
         this.logs,
@@ -94,7 +98,10 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
   public async many(): Promise<T[]> {
     let query: string = "";
     if (this.joinQuery && !this.selectQuery) {
-      const select = selectTemplate(this.tableName);
+      const select = selectTemplate(
+        this.tableName,
+        this.model.sqlInstance.getDbType(),
+      );
       this.selectQuery = select.selectColumns(`${this.tableName}.*`);
     }
     query = this.selectQuery + this.joinQuery;
@@ -106,17 +113,18 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     query += this.groupFooterQuery();
 
     log(query, this.logs);
-    const model = new this.model() as T;
     try {
       const [rows] = await this.mysqlPool.query<RowDataPacket[]>(query);
-      return Promise.all(
+
+      return await Promise.all(
         rows.map(async (row) => {
-          const modelData = rows[0] as T;
+          const model = new this.model() as T;
           this.mergeRetrievedDataIntoModel(model, row);
 
           // relations parsing on the queried model
           await ModelManagerUtils.parseQueryBuilderRelations(
             model,
+            Model.metadata,
             this.relations,
             this.mysqlPool,
             this.logs,
@@ -129,6 +137,10 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
       queryError(query);
       throw new Error("Query failed " + error);
     }
+  }
+
+  public async raw(query: string, params: any[] = []) {
+    return await this.mysqlPool.query(query, params);
   }
 
   /**
@@ -146,10 +158,14 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     const [row] = (await this.mysqlPool.query(
       `SELECT COUNT(*) FROM ${this.tableName}`,
     )) as any;
+
     const total = row[0]["COUNT(*)"] as number;
     const models = await this.many();
     const paginationMetadata = getPaginationMetadata(page, limit, total);
-    const data = parseDatabaseDataIntoModelResponse(models) as T[];
+    let data = parseDatabaseDataIntoModelResponse(models) || [];
+    if (Array.isArray(data)) {
+      data = data.filter((model) => model !== null);
+    }
     return {
       paginationMetadata,
       data: Array.isArray(data) ? data : [data],
@@ -161,7 +177,10 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @param columns
    */
   public select(...columns: string[]) {
-    const select = selectTemplate(this.tableName);
+    const select = selectTemplate(
+      this.tableName,
+      this.model.sqlInstance.getDbType(),
+    );
     this.selectQuery = select.selectColumns(...columns);
     return this;
   }
@@ -239,13 +258,13 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
    */
   public whereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this {
     const queryBuilder = new MysqlQueryBuilder(
-      this.model as new () => T,
+      this.model as typeof Model,
       this.tableName,
       this.mysqlPool,
       this.logs,
       true,
     );
-    cb(queryBuilder);
+    cb(queryBuilder as MysqlQueryBuilder<T>);
 
     let whereCondition = queryBuilder.whereQuery.trim();
     if (whereCondition.startsWith("AND")) {
@@ -275,13 +294,13 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     cb: (queryBuilder: MysqlQueryBuilder<T>) => void,
   ): this {
     const nestedBuilder = new MysqlQueryBuilder(
-      this.model as new () => T,
+      this.model as typeof Model,
       this.tableName,
       this.mysqlPool,
       this.logs,
       true,
     );
-    cb(nestedBuilder);
+    cb(nestedBuilder as MysqlQueryBuilder<T>);
 
     let nestedCondition = nestedBuilder.whereQuery.trim();
     if (nestedCondition.startsWith("AND")) {
@@ -311,13 +330,13 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     cb: (queryBuilder: MysqlQueryBuilder<T>) => void,
   ): this {
     const nestedBuilder = new MysqlQueryBuilder(
-      this.model as new () => T,
+      this.model as typeof Model,
       this.tableName,
       this.mysqlPool,
       this.logs,
       true,
     );
-    cb(nestedBuilder);
+    cb(nestedBuilder as MysqlQueryBuilder<T>);
 
     let nestedCondition = nestedBuilder.whereQuery.trim();
     if (nestedCondition.startsWith("AND")) {

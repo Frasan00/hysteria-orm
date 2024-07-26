@@ -3,7 +3,7 @@ import {
   FindOneType,
 } from "../Models/ModelManager/ModelManagerTypes";
 import selectTemplate from "../Templates/Query/SELECT";
-import { Model } from "../Models/Model";
+import { Metadata, Model } from "../Models/Model";
 import insertTemplate from "../Templates/Query/INSERT";
 import updateTemplate from "../Templates/Query/UPDATE";
 import deleteTemplate from "../Templates/Query/DELETE";
@@ -15,7 +15,7 @@ import whereTemplate from "../Templates/Query/WHERE.TS";
 
 class MySqlModelManagerUtils<T extends Model> {
   public parseSelectQueryInput(
-    model: T,
+    model: typeof Model,
     input: FindType | FindOneType,
   ): string {
     let query = "";
@@ -30,7 +30,7 @@ class MySqlModelManagerUtils<T extends Model> {
     tableName: string,
     input: FindType | FindOneType,
   ): string {
-    const select = selectTemplate(tableName);
+    const select = selectTemplate(tableName, "mysql");
     return input.select
       ? select.selectColumns(...input.select)
       : select.selectAll;
@@ -64,7 +64,7 @@ class MySqlModelManagerUtils<T extends Model> {
       return "";
     }
 
-    const select = selectTemplate(tableName);
+    const select = selectTemplate(tableName, "mysql");
     let query = "";
     if (input.offset) {
       query += select.offset(input.offset);
@@ -85,24 +85,42 @@ class MySqlModelManagerUtils<T extends Model> {
     return query;
   }
 
-  public parseInsert(model: T): string {
+  public parseInsert(
+    model: T,
+    modelTypeof: typeof Model,
+  ): { query: string; params: any[] } {
     const filteredModel = this.filterRelationsAndMetadata(model);
     const keys = Object.keys(filteredModel);
     const values = Object.values(filteredModel);
-    const insert = insertTemplate(model.metadata.tableName);
+    const insert = insertTemplate(
+      modelTypeof.metadata.tableName,
+      modelTypeof.sqlInstance.getDbType(),
+    );
 
     return insert.insert(keys, values);
   }
 
-  public parseUpdate(model: T, modelName: string, primaryKey?: string): string {
-    const update = updateTemplate(modelName || model.metadata.tableName);
+  public parseUpdate(
+    model: T,
+    modelTypeof: typeof Model,
+  ): { query: string; params: any[] } {
+    const update = updateTemplate(
+      modelTypeof.metadata.tableName,
+      modelTypeof.sqlInstance.getDbType(),
+    );
     const filteredModel = this.filterRelationsAndMetadata(model);
     const keys = Object.keys(filteredModel);
     const values = Object.values(filteredModel);
 
-    const primaryKeyValue = filteredModel[primaryKey as keyof T];
+    const primaryKeyValue =
+      filteredModel[modelTypeof.metadata.primaryKey as keyof T];
 
-    return update.update(keys, values, primaryKey, primaryKeyValue as string);
+    return update.update(
+      keys,
+      values,
+      modelTypeof.metadata.primaryKey,
+      primaryKeyValue as string,
+    );
   }
 
   private filterRelationsAndMetadata(model: T): T {
@@ -175,14 +193,18 @@ class MySqlModelManagerUtils<T extends Model> {
     return relations.join("\n");
   }*/
 
-  private getRelationFromModel(model: T, relationField: string): Relation {
+  private getRelationFromModel(
+    model: T,
+    metadata: Metadata,
+    relationField: string,
+  ): Relation {
     const relation = model[relationField as keyof T] as Relation;
     if (!relation) {
       throw new Error(
         "Relation " +
           relationField +
           " not found in model " +
-          model.metadata.tableName,
+          metadata.tableName,
       );
     }
 
@@ -192,6 +214,7 @@ class MySqlModelManagerUtils<T extends Model> {
   // Parses and fills input relations directly into the model
   public async parseRelationInput(
     model: T,
+    metadata: Metadata,
     input: FindOneType,
     mysqlConnection: Pool,
     logs: boolean,
@@ -200,14 +223,18 @@ class MySqlModelManagerUtils<T extends Model> {
       return;
     }
 
-    if (!model.metadata.primaryKey) {
+    if (!metadata.primaryKey) {
       throw new Error("Model does not have a primary key");
     }
 
     try {
       const relationPromises = input.relations.map(
         async (inputRelation: string) => {
-          const relation = this.getRelationFromModel(model, inputRelation);
+          const relation = this.getRelationFromModel(
+            model,
+            metadata,
+            inputRelation,
+          );
           const relationQuery = relationTemplates(model, relation);
           console.log(relationQuery);
 
@@ -242,6 +269,7 @@ class MySqlModelManagerUtils<T extends Model> {
   // Parses and fills input relations directly into the model
   public async parseQueryBuilderRelations(
     model: T,
+    metadata: Metadata,
     input: string[],
     mysqlConnection: Pool,
     logs: boolean,
@@ -250,14 +278,18 @@ class MySqlModelManagerUtils<T extends Model> {
       return;
     }
 
-    if (!model.metadata.primaryKey) {
+    if (!metadata.primaryKey) {
       throw new Error("Model does not have a primary key");
     }
 
     let relationQuery: string = "";
     try {
       const relationPromises = input.map(async (inputRelation: string) => {
-        const relation = this.getRelationFromModel(model, inputRelation);
+        const relation = this.getRelationFromModel(
+          model,
+          metadata,
+          inputRelation,
+        );
         relationQuery = relationTemplates(model, relation);
 
         const [relatedModels] =

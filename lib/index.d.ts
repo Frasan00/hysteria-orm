@@ -1,5 +1,77 @@
-import mysql, { Pool, PoolConnection } from 'mysql2/promise';
-import pg, { Pool as Pool$1, PoolClient } from 'pg';
+import mysql, { Pool, PoolConnection, RowDataPacket } from 'mysql2/promise';
+import * as pg from 'pg';
+import pg__default, { Pool as Pool$1, PoolClient } from 'pg';
+import * as mysql2_typings_mysql_lib_protocol_packets_FieldPacket from 'mysql2/typings/mysql/lib/protocol/packets/FieldPacket';
+import * as mysql2_typings_mysql_lib_protocol_packets_ProcedurePacket from 'mysql2/typings/mysql/lib/protocol/packets/ProcedurePacket';
+import * as mysql2_typings_mysql_lib_protocol_packets_ResultSetHeader from 'mysql2/typings/mysql/lib/protocol/packets/ResultSetHeader';
+import * as mysql2_typings_mysql_lib_protocol_packets_OkPacket from 'mysql2/typings/mysql/lib/protocol/packets/OkPacket';
+
+type DataSourceType = "mysql" | "postgres";
+interface DataSourceInput {
+    readonly type: DataSourceType;
+    readonly host: string;
+    readonly port: number;
+    readonly username: string;
+    readonly password: string;
+    readonly database: string;
+    readonly logs?: boolean;
+}
+declare abstract class Datasource {
+    protected type: DataSourceType;
+    protected host: string;
+    protected port: number;
+    protected username: string;
+    protected password: string;
+    protected database: string;
+    protected logs: boolean;
+    protected constructor(input: DataSourceInput);
+}
+
+declare class MysqlTransaction {
+    protected tableName: string;
+    protected mysql: Pool;
+    protected mysqlConnection: PoolConnection;
+    protected logs: boolean;
+    constructor(mysql: Pool, tableName: string, logs: boolean);
+    queryInsert<T extends Model>(query: string, params: any[], metadata: Metadata): Promise<T>;
+    queryUpdate<T extends Model>(query: string, params?: any[]): Promise<number>;
+    queryDelete(query: string, params?: any[]): Promise<number>;
+    /**
+     * Start transaction.
+     */
+    start(): Promise<void>;
+    /**
+     * Commit transaction.
+     */
+    commit(): Promise<void>;
+    /**
+     * Rollback transaction.
+     */
+    rollback(): Promise<void>;
+}
+
+declare class PostgresTransaction {
+    protected tableName: string;
+    protected pgPool: Pool$1;
+    protected pgClient: PoolClient;
+    protected logs: boolean;
+    constructor(pgPool: Pool$1, tableName: string, logs: boolean);
+    queryInsert<T extends Model>(query: string, params: any[], metadata: Metadata): Promise<T>;
+    queryUpdate<T extends Model>(query: string, params?: any[]): Promise<number | null>;
+    queryDelete(query: string, params?: any[]): Promise<number | null>;
+    /**
+     * Start transaction.
+     */
+    start(): Promise<void>;
+    /**
+     * Commit transaction.
+     */
+    commit(): Promise<void>;
+    /**
+     * Rollback transaction.
+     */
+    rollback(): Promise<void>;
+}
 
 type SelectTemplateType = {
     selectAll: string;
@@ -8,7 +80,7 @@ type SelectTemplateType = {
     selectCount: string;
     selectDistinct: (...columns: string[]) => string;
     selectSum: (column: string) => string;
-    orderBy: (column: string[], order?: "ASC" | "DESC") => string;
+    orderBy: (columns: string[], order?: "ASC" | "DESC") => string;
     groupBy: (...columns: string[]) => string;
     limit: (limit: number) => string;
     offset: (offset: number) => string;
@@ -73,7 +145,7 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @param logs - A boolean indicating whether to log queries.
      * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
      */
-    constructor(model: new () => T, tableName: string, mysqlPool: Pool, logs: boolean, isNestedCondition?: boolean);
+    constructor(model: typeof Model, tableName: string, mysqlPool: Pool, logs: boolean, isNestedCondition?: boolean);
     private mergeRetrievedDataIntoModel;
     /**
      * @description Executes the query and retrieves the first result.
@@ -85,6 +157,7 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @returns A Promise resolving to an array of results.
      */
     many(): Promise<T[]>;
+    raw(query: string, params?: any[]): Promise<[mysql2_typings_mysql_lib_protocol_packets_OkPacket.OkPacket | RowDataPacket[] | mysql2_typings_mysql_lib_protocol_packets_ResultSetHeader.ResultSetHeader[] | RowDataPacket[][] | mysql2_typings_mysql_lib_protocol_packets_OkPacket.OkPacket[] | mysql2_typings_mysql_lib_protocol_packets_ProcedurePacket.ProcedureCallPacket, mysql2_typings_mysql_lib_protocol_packets_FieldPacket.FieldPacket[]]>;
     /**
      * @description Paginates the query results with the given page and limit, it removes any previous limit - offset calls
      * @param page
@@ -307,6 +380,236 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     protected groupFooterQuery(): string;
 }
 
+declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
+    protected pgPool: Pool$1;
+    protected isNestedCondition: boolean;
+    constructor(model: typeof Model, tableName: string, pgPool: Pool$1, logs: boolean, isNestedCondition?: boolean);
+    private mergeRetrievedDataIntoModel;
+    /**
+     * @description Columns are customizable with aliases. By default, without this function, all columns are selected
+     * @param columns
+     */
+    select(...columns: string[]): this;
+    raw(query: string, params?: any[]): Promise<pg.QueryResult<any>>;
+    one(): Promise<T | null>;
+    many(): Promise<T[]>;
+    /**
+     * @description Paginates the query results with the given page and limit, it removes any previous limit - offset call
+     * @param page
+     * @param limit
+     */
+    paginate(page: number, limit: number): Promise<PaginatedData<T>>;
+    /**
+     *
+     * @param relationTable - The name of the related table.
+     * @param primaryColumn - The name of the primary column in the caller table.
+     * @param foreignColumn - The name of the foreign column in the related table.
+     */
+    join(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresQueryBuilder<T>;
+    /**
+     *
+     * @param relationTable - The name of the related table.
+     * @param primaryColumn - The name of the primary column in the caller table.
+     * @param foreignColumn - The name of the foreign column in the related table.
+     */
+    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresQueryBuilder<T>;
+    addRelations(relations: string[]): PostgresQueryBuilder<T>;
+    /**
+     * @description Adds a WHERE condition to the query.
+     * @param column - The column to filter.
+     * @param operator - The comparison operator.
+     * @param value - The value to compare against.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    where(column: string, value: BaseValues, operator?: WhereOperatorType): this;
+    /**
+     * @description Build more complex where conditions.
+     * @param cb
+     */
+    whereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
+    /**
+     * @description Build complex OR-based where conditions.
+     * @param cb Callback function that takes a query builder and adds conditions to it.
+     */
+    orWhereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
+    /**
+     * @description Build complex AND-based where conditions.
+     * @param cb Callback function that takes a query builder and adds conditions to it.
+     */
+    andWhereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
+    /**
+     * @description Adds an AND WHERE condition to the query.
+     * @param column - The column to filter.
+     * @param operator - The comparison operator.
+     * @param value - The value to compare against.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    andWhere(column: string, value: BaseValues, operator?: WhereOperatorType): this;
+    /**
+     * @description Adds an OR WHERE condition to the query.
+     * @param column - The column to filter.
+     * @param operator - The comparison operator.
+     * @param value - The value to compare against.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    orWhere(column: string, value: BaseValues, operator?: WhereOperatorType): this;
+    /**
+     * @description Adds a WHERE BETWEEN condition to the query.
+     * @param column - The column to filter.
+     * @param min - The minimum value for the range.
+     * @param max - The maximum value for the range.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    whereBetween(column: string, min: BaseValues, max: BaseValues): this;
+    /**
+     * @description Adds an AND WHERE BETWEEN condition to the query.
+     * @param column - The column to filter.
+     * @param min - The minimum value for the range.
+     * @param max - The maximum value for the range.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    andWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
+    /**
+     * @description Adds an OR WHERE BETWEEN condition to the query.
+     * @param column - The column to filter.
+     * @param min - The minimum value for the range.
+     * @param max - The maximum value for the range.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    orWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
+    /**
+     * @description Adds a WHERE NOT BETWEEN condition to the query.
+     * @param column - The column to filter.
+     * @param min - The minimum value for the range.
+     * @param max - The maximum value for the range.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    whereNotBetween(column: string, min: BaseValues, max: BaseValues): this;
+    /**
+     * @description Adds an OR WHERE NOT BETWEEN condition to the query.
+     * @param column - The column to filter.
+     * @param min - The minimum value for the range.
+     * @param max - The maximum value for the range.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    orWhereNotBetween(column: string, min: BaseValues, max: BaseValues): this;
+    /**
+     * @description Adds a WHERE IN condition to the query.
+     * @param column - The column to filter.
+     * @param values - An array of values to match against.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    whereIn(column: string, values: BaseValues[]): this;
+    /**
+     * @description Adds an AND WHERE IN condition to the query.
+     * @param column - The column to filter.
+     * @param values - An array of values to match against.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    andWhereIn(column: string, values: BaseValues[]): this;
+    /**
+     * @description Adds an OR WHERE IN condition to the query.
+     * @param column - The column to filter.
+     * @param values - An array of values to match against.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    orWhereIn(column: string, values: BaseValues[]): this;
+    /**
+     * @description Adds a WHERE NOT IN condition to the query.
+     * @param column - The column to filter.
+     * @param values - An array of values to exclude.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    whereNotIn(column: string, values: BaseValues[]): this;
+    /**
+     * @description Adds an OR WHERE NOT IN condition to the query.
+     * @param column - The column to filter.
+     * @param values - An array of values to exclude.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    orWhereNotIn(column: string, values: BaseValues[]): this;
+    /**
+     * @description Adds a WHERE NULL condition to the query.
+     * @param column - The column to filter.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    whereNull(column: string): this;
+    /**
+     * @description Adds an AND WHERE NULL condition to the query.
+     * @param column - The column to filter.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    andWhereNull(column: string): this;
+    /**
+     * @description Adds an OR WHERE NULL condition to the query.
+     * @param column - The column to filter.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    orWhereNull(column: string): this;
+    /**
+     * @description Adds a WHERE NOT NULL condition to the query.
+     * @param column - The column to filter.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    whereNotNull(column: string): this;
+    /**
+     * @description Adds an AND WHERE NOT NULL condition to the query.
+     * @param column - The column to filter.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    andWhereNotNull(column: string): this;
+    /**
+     * @description Adds an OR WHERE NOT NULL condition to the query.
+     * @param column - The column to filter.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    orWhereNotNull(column: string): this;
+    /**
+     * @description Adds a raw WHERE condition to the query.
+     * @param query - The raw SQL WHERE condition.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    rawWhere(query: string): this;
+    /**
+     * @description Adds a raw AND WHERE condition to the query.
+     * @param query - The raw SQL WHERE condition.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    rawAndWhere(query: string): this;
+    /**
+     * @description Adds a raw OR WHERE condition to the query.
+     * @param query - The raw SQL WHERE condition.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    rawOrWhere(query: string): this;
+    /**
+     * @description Adds GROUP BY conditions to the query.
+     * @param columns - The columns to group by.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    groupBy(...columns: string[]): this;
+    /**
+     * @description Adds ORDER BY conditions to the query.
+     * @param column - The column to order by.
+     * @param order - The order direction, either "ASC" or "DESC".
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    orderBy(column: string[], order: "ASC" | "DESC"): this;
+    /**
+     * @description Adds a LIMIT condition to the query.
+     * @param limit - The maximum number of rows to return.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    limit(limit: number): this;
+    /**
+     * @description Adds an OFFSET condition to the query.
+     * @param offset - The number of rows to skip.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    offset(offset: number): this;
+    protected groupFooterQuery(): string;
+}
+
 type QueryBuilders<T extends Model> = MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
 declare abstract class QueryBuilder<T extends Model> {
     protected selectQuery: string;
@@ -317,7 +620,7 @@ declare abstract class QueryBuilder<T extends Model> {
     protected orderByQuery: string;
     protected limitQuery: string;
     protected offsetQuery: string;
-    protected model: new () => Model;
+    protected model: typeof Model;
     protected tableName: string;
     protected logs: boolean;
     protected selectTemplate: SelectTemplateType;
@@ -328,7 +631,7 @@ declare abstract class QueryBuilder<T extends Model> {
      * @param tableName - The name of the table.
      * @param logs - A boolean indicating whether to log queries.
      */
-    protected constructor(model: new () => Model, tableName: string, logs: boolean);
+    protected constructor(model: typeof Model, tableName: string, logs: boolean);
     /**
      * @description Executes the query and retrieves the first result.
      * @returns A Promise resolving to the first result or null.
@@ -344,6 +647,11 @@ declare abstract class QueryBuilder<T extends Model> {
      * @returns A Promise resolving to an array of results.
      */
     abstract paginate(page: number, limit: number): Promise<PaginatedData<T>>;
+    /**
+     * @description Executes the query and retrieves the results.
+     * @returns
+     */
+    abstract raw(query: string): Promise<T | T[] | any>;
     /**
      * @description Columns are customizable with aliases. By default, without this function, all columns are selected
      * @param columns
@@ -564,298 +872,6 @@ declare abstract class QueryBuilder<T extends Model> {
     protected groupFooterQuery(): string;
 }
 
-declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
-    select(...columns: string[]): PostgresQueryBuilder<T> | MysqlQueryBuilder<T>;
-    protected pgPool: Pool$1;
-    protected isNestedCondition: boolean;
-    constructor(model: new () => T, tableName: string, pgPool: Pool$1, logs: boolean, isNestedCondition?: boolean);
-    private mergeRetrievedDataIntoModel;
-    one(): Promise<T | null>;
-    many(): Promise<T[]>;
-    /**
-     * @description Paginates the query results with the given page and limit, it removes any previous limit - offset call
-     * @param page
-     * @param limit
-     */
-    paginate(page: number, limit: number): Promise<PaginatedData<T>>;
-    /**
-     *
-     * @param relationTable - The name of the related table.
-     * @param primaryColumn - The name of the primary column in the caller table.
-     * @param foreignColumn - The name of the foreign column in the related table.
-     */
-    join(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresQueryBuilder<T>;
-    /**
-     *
-     * @param relationTable - The name of the related table.
-     * @param primaryColumn - The name of the primary column in the caller table.
-     * @param foreignColumn - The name of the foreign column in the related table.
-     */
-    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresQueryBuilder<T>;
-    addRelations(relations: string[]): PostgresQueryBuilder<T>;
-    /**
-     * @description Adds a WHERE condition to the query.
-     * @param column - The column to filter.
-     * @param operator - The comparison operator.
-     * @param value - The value to compare against.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    where(column: string, value: BaseValues, operator?: WhereOperatorType): this;
-    /**
-     * @description Build more complex where conditions.
-     * @param cb
-     */
-    whereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
-    /**
-     * @description Build complex OR-based where conditions.
-     * @param cb Callback function that takes a query builder and adds conditions to it.
-     */
-    orWhereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
-    /**
-     * @description Build complex AND-based where conditions.
-     * @param cb Callback function that takes a query builder and adds conditions to it.
-     */
-    andWhereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
-    /**
-     * @description Adds an AND WHERE condition to the query.
-     * @param column - The column to filter.
-     * @param operator - The comparison operator.
-     * @param value - The value to compare against.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    andWhere(column: string, value: BaseValues, operator?: WhereOperatorType): this;
-    /**
-     * @description Adds an OR WHERE condition to the query.
-     * @param column - The column to filter.
-     * @param operator - The comparison operator.
-     * @param value - The value to compare against.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    orWhere(column: string, value: BaseValues, operator?: WhereOperatorType): this;
-    /**
-     * @description Adds a WHERE BETWEEN condition to the query.
-     * @param column - The column to filter.
-     * @param min - The minimum value for the range.
-     * @param max - The maximum value for the range.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    whereBetween(column: string, min: BaseValues, max: BaseValues): this;
-    /**
-     * @description Adds an AND WHERE BETWEEN condition to the query.
-     * @param column - The column to filter.
-     * @param min - The minimum value for the range.
-     * @param max - The maximum value for the range.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    andWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
-    /**
-     * @description Adds an OR WHERE BETWEEN condition to the query.
-     * @param column - The column to filter.
-     * @param min - The minimum value for the range.
-     * @param max - The maximum value for the range.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    orWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
-    /**
-     * @description Adds a WHERE NOT BETWEEN condition to the query.
-     * @param column - The column to filter.
-     * @param min - The minimum value for the range.
-     * @param max - The maximum value for the range.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    whereNotBetween(column: string, min: BaseValues, max: BaseValues): this;
-    /**
-     * @description Adds an OR WHERE NOT BETWEEN condition to the query.
-     * @param column - The column to filter.
-     * @param min - The minimum value for the range.
-     * @param max - The maximum value for the range.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    orWhereNotBetween(column: string, min: BaseValues, max: BaseValues): this;
-    /**
-     * @description Adds a WHERE IN condition to the query.
-     * @param column - The column to filter.
-     * @param values - An array of values to match against.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    whereIn(column: string, values: BaseValues[]): this;
-    /**
-     * @description Adds an AND WHERE IN condition to the query.
-     * @param column - The column to filter.
-     * @param values - An array of values to match against.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    andWhereIn(column: string, values: BaseValues[]): this;
-    /**
-     * @description Adds an OR WHERE IN condition to the query.
-     * @param column - The column to filter.
-     * @param values - An array of values to match against.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    orWhereIn(column: string, values: BaseValues[]): this;
-    /**
-     * @description Adds a WHERE NOT IN condition to the query.
-     * @param column - The column to filter.
-     * @param values - An array of values to exclude.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    whereNotIn(column: string, values: BaseValues[]): this;
-    /**
-     * @description Adds an OR WHERE NOT IN condition to the query.
-     * @param column - The column to filter.
-     * @param values - An array of values to exclude.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    orWhereNotIn(column: string, values: BaseValues[]): this;
-    /**
-     * @description Adds a WHERE NULL condition to the query.
-     * @param column - The column to filter.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    whereNull(column: string): this;
-    /**
-     * @description Adds an AND WHERE NULL condition to the query.
-     * @param column - The column to filter.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    andWhereNull(column: string): this;
-    /**
-     * @description Adds an OR WHERE NULL condition to the query.
-     * @param column - The column to filter.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    orWhereNull(column: string): this;
-    /**
-     * @description Adds a WHERE NOT NULL condition to the query.
-     * @param column - The column to filter.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    whereNotNull(column: string): this;
-    /**
-     * @description Adds an AND WHERE NOT NULL condition to the query.
-     * @param column - The column to filter.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    andWhereNotNull(column: string): this;
-    /**
-     * @description Adds an OR WHERE NOT NULL condition to the query.
-     * @param column - The column to filter.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    orWhereNotNull(column: string): this;
-    /**
-     * @description Adds a raw WHERE condition to the query.
-     * @param query - The raw SQL WHERE condition.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    rawWhere(query: string): this;
-    /**
-     * @description Adds a raw AND WHERE condition to the query.
-     * @param query - The raw SQL WHERE condition.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    rawAndWhere(query: string): this;
-    /**
-     * @description Adds a raw OR WHERE condition to the query.
-     * @param query - The raw SQL WHERE condition.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    rawOrWhere(query: string): this;
-    /**
-     * @description Adds GROUP BY conditions to the query.
-     * @param columns - The columns to group by.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    groupBy(...columns: string[]): this;
-    /**
-     * @description Adds ORDER BY conditions to the query.
-     * @param column - The column to order by.
-     * @param order - The order direction, either "ASC" or "DESC".
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    orderBy(column: string[], order: "ASC" | "DESC"): this;
-    /**
-     * @description Adds a LIMIT condition to the query.
-     * @param limit - The maximum number of rows to return.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    limit(limit: number): this;
-    /**
-     * @description Adds an OFFSET condition to the query.
-     * @param offset - The number of rows to skip.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    offset(offset: number): this;
-    protected groupFooterQuery(): string;
-}
-
-type DatasourceType = "mysql" | "postgres";
-interface DatasourceInput {
-    readonly type: DatasourceType;
-    readonly host: string;
-    readonly port: number;
-    readonly username: string;
-    readonly password: string;
-    readonly database: string;
-    readonly logs?: boolean;
-}
-declare abstract class Datasource {
-    protected type: DatasourceType;
-    protected host: string;
-    protected port: number;
-    protected username: string;
-    protected password: string;
-    protected database: string;
-    protected logs: boolean;
-    protected constructor(input: DatasourceInput);
-}
-
-declare class MysqlTransaction {
-    protected tableName: string;
-    protected mysql: Pool;
-    protected mysqlConnection: PoolConnection;
-    protected logs: boolean;
-    constructor(mysql: Pool, tableName: string, logs: boolean);
-    queryInsert<T extends Model>(query: string, metadata: Metadata, params?: any[]): Promise<T>;
-    queryUpdate<T extends Model>(query: string, params?: any[]): Promise<number>;
-    queryDelete(query: string, params?: any[]): Promise<number>;
-    /**
-     * Start transaction.
-     */
-    start(): Promise<void>;
-    /**
-     * Commit transaction.
-     */
-    commit(): Promise<void>;
-    /**
-     * Rollback transaction.
-     */
-    rollback(): Promise<void>;
-}
-
-declare class PostgresTransaction {
-    protected tableName: string;
-    protected pgPool: Pool$1;
-    protected pgClient: PoolClient;
-    protected logs: boolean;
-    constructor(pgPool: Pool$1, tableName: string, logs: boolean);
-    queryInsert<T extends Model>(query: string, metadata: Metadata, params?: any[]): Promise<T>;
-    queryUpdate<T extends Model>(query: string, params?: any[]): Promise<number | null>;
-    queryDelete(query: string, params?: any[]): Promise<number | null>;
-    /**
-     * Start transaction.
-     */
-    start(): Promise<void>;
-    /**
-     * Commit transaction.
-     */
-    commit(): Promise<void>;
-    /**
-     * Rollback transaction.
-     */
-    rollback(): Promise<void>;
-}
-
 type WhereType = {
     [key: string]: string | number | boolean;
 };
@@ -875,70 +891,289 @@ type FindType = FindOneType & {
     offset?: number;
 };
 
+declare abstract class AbstractModelManager<T extends Model> {
+    protected logs: boolean;
+    protected model: typeof Model;
+    protected modelInstance: T;
+    protected constructor(model: typeof Model, logs: boolean);
+    abstract find(input?: FindType): Promise<T[]>;
+    abstract findOne(input: FindOneType): Promise<T | null>;
+    abstract findOneById(id: string | number): Promise<T | null>;
+    abstract create(model: T, trx?: MysqlTransaction | PostgresTransaction): Promise<T | null>;
+    abstract massiveCreate(model: T, trx?: MysqlTransaction | PostgresTransaction): Promise<T[]>;
+    abstract updateRecord(model: T, trx?: MysqlTransaction | PostgresTransaction): Promise<T | null>;
+    abstract deleteByColumn(column: string, value: string | number | boolean, trx?: MysqlTransaction | PostgresTransaction): Promise<number> | Promise<number | null>;
+    abstract delete(model: T, trx?: MysqlTransaction | PostgresTransaction): Promise<T | null>;
+    abstract query(): MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
+}
+
+declare class MysqlModelManager<T extends Model> extends AbstractModelManager<T> {
+    protected mysqlPool: mysql.Pool;
+    /**
+     * Constructor for MysqlModelManager class.
+     *
+     * @param {typeof Model} model - Model constructor.
+     * @param {Pool} mysqlConnection - MySQL connection pool.
+     * @param {boolean} logs - Flag to enable or disable logging.
+     */
+    constructor(model: typeof Model, mysqlConnection: mysql.Pool, logs: boolean);
+    /**
+     * Find method to retrieve multiple records from the database based on the input conditions.
+     *
+     * @param {FindType} input - Optional query parameters for filtering, ordering, and pagination.
+     * @returns Promise resolving to an array of models.
+     */
+    find(input?: FindType): Promise<T[]>;
+    /**
+     * Find a single record from the database based on the input conditions.
+     *
+     * @param {FindOneType} input - Query parameters for filtering and selecting a single record.
+     * @returns Promise resolving to a single model or null if not found.
+     */
+    findOne(input: FindOneType): Promise<T | null>;
+    /**
+     * Find a single record by its ID from the database.
+     *
+     * @param {string | number} id - ID of the record to retrieve.
+     * @returns Promise resolving to a single model or null if not found.
+     */
+    findOneById(id: string | number): Promise<T | null>;
+    /**
+     * Save a new model instance to the database.
+     *
+     * @param {Model} model - Model instance to be saved.
+     * @param {MysqlTransaction} trx - MysqlTransaction to be used on the save operation.
+     * @returns Promise resolving to the saved model or null if saving fails.
+     */
+    create(model: T, trx?: MysqlTransaction): Promise<T | null>;
+    /**
+     * Create multiple model instances in the database.
+     *
+     * @param {Model} model - Model instance to be saved.
+     * @param {MysqlTransaction} trx - MysqlTransaction to be used on the save operation.
+     * @returns Promise resolving to an array of saved models or null if saving fails.
+     */
+    massiveCreate(model: T, trx?: MysqlTransaction | PostgresTransaction): Promise<T[]>;
+    /**
+     * Update an existing model instance in the database.
+     * @param {Model} model - Model instance to be updated.
+     * @param {MysqlTransaction} trx - MysqlTransaction to be used on the update operation.
+     * @returns Promise resolving to the updated model or null if updating fails.
+     */
+    updateRecord(model: T, trx?: MysqlTransaction): Promise<T | null>;
+    /**
+     * @description Delete a record from the database from the given column and value.
+     *
+     * @param {string} column - Column to filter by.
+     * @param {string | number | boolean} value - Value to filter by.
+     * @param {MysqlTransaction} trx - MysqlTransaction to be used on the delete operation.
+     * @returns Promise resolving to affected rows count
+     */
+    deleteByColumn(column: string, value: string | number | boolean, trx?: MysqlTransaction): Promise<number>;
+    /**
+     * @description Delete a record from the database from the given model.
+     *
+     * @param {Model} model - Model to delete.
+     * @param {MysqlTransaction} trx - MysqlTransaction to be used on the delete operation.
+     * @returns Promise resolving to the deleted model or null if deleting fails.
+     */
+    delete(model: T, trx?: MysqlTransaction): Promise<T | null>;
+    /**
+     * @description Creates a new transaction.
+     * @returns {Promise<MysqlTransaction>} - Instance of MysqlTransaction.
+     */
+    startTransaction(): Promise<MysqlTransaction>;
+    /**
+     * Create and return a new instance of the MysqlQueryBuilder for building more complex SQL queries.
+     *
+     * @returns {MysqlQueryBuilder<Model>} - Instance of MysqlQueryBuilder.
+     */
+    query(): MysqlQueryBuilder<T>;
+}
+
+declare class PostgresModelManager<T extends Model> extends AbstractModelManager<T> {
+    protected pgPool: pg__default.Pool;
+    /**
+     * Constructor for PostgresModelManager class.
+     *
+     * @param {typeof Model} model - Model constructor.
+     * @param {Pool} pgConnection - PostgreSQL connection pool.
+     * @param {boolean} logs - Flag to enable or disable logging.
+     */
+    constructor(model: typeof Model, pgConnection: pg__default.Pool, logs: boolean);
+    /**
+     * Find method to retrieve multiple records from the database based on the input conditions.
+     *
+     * @param {FindType} input - Optional query parameters for filtering, ordering, and pagination.
+     * @returns Promise resolving to an array of models.
+     */
+    find(input?: FindType): Promise<T[]>;
+    /**
+     * Find a single record from the database based on the input conditions.
+     *
+     * @param {FindOneType} input - Query parameters for filtering and selecting a single record.
+     * @returns Promise resolving to a single model or null if not found.
+     */
+    findOne(input: FindOneType): Promise<T | null>;
+    /**
+     * Find a single record by its ID from the database.
+     *
+     * @param {string | number} id - ID of the record to retrieve.
+     * @returns Promise resolving to a single model or null if not found.
+     */
+    findOneById(id: string | number): Promise<T | null>;
+    /**
+     * Save a new model instance to the database.
+     *
+     * @param {Model} model - Model instance to be saved.
+     * @param {MysqlTransaction} trx - MysqlTransaction to be used on the save operation.
+     * @returns Promise resolving to the saved model or null if saving fails.
+     */
+    create(model: T, trx?: PostgresTransaction): Promise<T | null>;
+    /**
+     * Create multiple model instances in the database.
+     *
+     * @param {Model} model - Model instance to be saved.
+     * @param {PostgresTransaction} trx - MysqlTransaction to be used on the save operation.
+     * @returns Promise resolving to an array of saved models or null if saving fails.
+     */
+    massiveCreate(model: T, trx?: PostgresTransaction): Promise<T[]>;
+    /**
+     * Update an existing model instance in the database.
+     * @param {Model} model - Model instance to be updated.
+     * @param {PostgresTransaction} trx - PostgresTransaction to be used on the update operation.
+     * @returns Promise resolving to the updated model or null if updating fails.
+     */
+    updateRecord(model: T, trx?: PostgresTransaction): Promise<T | null>;
+    /**
+     * @description Delete a record from the database from the given column and value.
+     *
+     * @param {string} column - Column to filter by.
+     * @param {string | number | boolean} value - Value to filter by.
+     * @param {PostgresTransaction} trx - PostgresTransaction to be used on the delete operation.
+     * @returns Promise resolving to affected rows count
+     */
+    deleteByColumn(column: string, value: string | number | boolean, trx?: PostgresTransaction): Promise<number>;
+    /**
+     * @description Delete a record from the database from the given model.
+     *
+     * @param {Model} model - Model to delete.
+     * @param {PostgresTransaction} trx - PostgresTransaction to be used on the delete operation.
+     * @returns Promise resolving to the deleted model or null if deleting fails.
+     */
+    delete(model: T, trx?: PostgresTransaction): Promise<T | null>;
+    /**
+     * @description Creates a new transaction.
+     * @returns {MysqlTransaction} - Instance of MysqlTransaction.
+     */
+    startTransaction(): Promise<PostgresTransaction>;
+    /**
+     * Create and return a new instance of the MysqlQueryBuilder for building more complex SQL queries.
+     *
+     * @returns {MysqlQueryBuilder<Model>} - Instance of MysqlQueryBuilder.
+     */
+    query(): PostgresQueryBuilder<T>;
+}
+
+type ModelManager<T extends Model> = MysqlModelManager<T> | PostgresModelManager<T>;
+type SqlPoolType = mysql.Pool | pg__default.Pool;
+type SqlPoolConnectionType = mysql.PoolConnection | pg__default.PoolClient;
+declare class SqlDataSource extends Datasource {
+    isConnected: boolean;
+    protected sqlPool: SqlPoolType;
+    private static instance;
+    private constructor();
+    getDbType(): DataSourceType;
+    /**
+     * @description Connects to the database establishing a connection pool.
+     */
+    static connect(input: DataSourceInput): Promise<SqlDataSource>;
+    /**
+     * @description Generates a temporary connection to the database, the instance will not be saved and cannot be accessed later in the getInstance method
+     * @private
+     * @internal
+     */
+    static tempConnect(input: DataSourceInput): Promise<SqlDataSource>;
+    static getInstance(): SqlDataSource;
+    /**
+     * @description Begins a transaction on the database
+     * @param model
+     * @returns
+     */
+    startTransaction<T extends Model>(): Promise<MysqlTransaction> | Promise<PostgresTransaction>;
+    /**
+     * @description Returns model manager for the provided model
+     * @param model
+     */
+    getModelManager<T extends Model>(model: typeof Model): ModelManager<T>;
+    /**
+     * @description Returns raw mysql pool
+     */
+    getRawPool(): Promise<SqlPoolType>;
+    /**
+     * @description Closes the connection to the database
+     * @returns
+     */
+    closeConnection(): Promise<void>;
+    /**
+     * @description Returns raw mysql PoolConnection
+     */
+    getRawPoolConnection(): Promise<SqlPoolConnectionType>;
+}
+
 interface Metadata {
     readonly tableName: string;
     readonly primaryKey?: string;
 }
-declare abstract class Model {
+declare class Model {
     aliasColumns: {
         [key: string]: string | number | boolean;
     };
-    metadata: Metadata;
-    private static sqlInstance;
-    protected constructor(options: {
-        tableName?: string;
-        primaryKey?: string;
-    });
+    static sqlInstance: SqlDataSource;
+    static metadata: Metadata;
+    constructor(classProps?: Partial<Model>);
     /**
-     * @description Connects to the database with the given connection details, then after the callback is executed, it disconnects from the database and connects back to the original database specified in the SqlDataSource class
+     * @description Connects to the database with the given connection details, then after the callback is executed, it disconnects from the database and connects back to the original database specified in the SqlDataSource.connect
      * @param connectionDetails - connection details for the database for the temp connection
      * @param cb - function containing all the database operations on the provided connection details
-     * @returns
+     * @returns {Promise<void>}
      */
-    static useConnection<T extends Model>(this: new () => T, connectionDetails: DatasourceInput, cb: () => Promise<void>): Promise<void>;
+    static useConnection<T extends Model>(connectionDetails: DataSourceInput, cb: () => Promise<void>): Promise<void>;
     /**
      * @description Gives a query instance for the given model
      * @param model
-     * @returns
+     * @returns {QueryBuilders<T>}
      */
-    static query<T extends Model>(this: new () => T): MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
+    static query<T extends Model>(): QueryBuilders<T>;
     /**
      * @description Finds records for the given model
      * @param model
      * @param {FindType} options
-     * @returns
+     * @returns {Promise<T[]>}
      */
-    static find<T extends Model>(this: new () => T, options?: FindType): Promise<T[]>;
+    static find<T extends Model>(options?: FindType): Promise<T[]>;
     /**
      * @description Finds a record for the given model
      * @param model
      * @param {FindOneType} options
-     * @returns
+     * @returns {Promise<T | null>}
      */
-    static findOne<T extends Model>(this: new () => T, options: FindOneType): Promise<T | null>;
+    static findOne<T extends Model>(options: FindOneType): Promise<T | null>;
     /**
      * @description Finds a record for the given model for the given id, "id" must be set in the model in order for it to work
      * @param model
      * @param {number | string} id
-     * @returns
+     * @returns {Promise<T | null>}
      */
-    static findOneById<T extends Model>(this: new () => T, id: string | number): Promise<T | null>;
+    static findOneById<T extends Model>(id: string | number): Promise<T | null>;
     /**
      * @description Saves a new record to the database
      * @param model
      * @param {Model} modelInstance
      * @param {MysqlTransaction & PostgresTransaction} trx
-     * @returns
+     * @returns {Promise<T | null>}
      */
-    static save<T extends Model>(this: new () => T, modelInstance: T, trx?: MysqlTransaction & PostgresTransaction): Promise<T | null>;
-    /**
-     * @description Updates a record to the database
-     * @param model
-     * @param {Model} modelInstance
-     * @param {MysqlTransaction & PostgresTransaction} trx
-     * @returns
-     */
-    static update<T extends Model>(this: new () => T, modelInstance: T, trx?: MysqlTransaction & PostgresTransaction): Promise<T | null>;
+    static create<T extends Model>(modelInstance: T, trx?: MysqlTransaction & PostgresTransaction): Promise<T | null>;
     /**
      * @description Deletes a record to the database
      * @param model
@@ -946,7 +1181,7 @@ declare abstract class Model {
      * @param {MysqlTransaction & PostgresTransaction} trx
      * @returns
      */
-    static delete<T extends Model>(this: new () => T, modelInstance: T, trx?: MysqlTransaction & PostgresTransaction): Promise<T | null>;
+    static delete<T extends Model>(modelInstance: T, trx?: MysqlTransaction & PostgresTransaction): Promise<T | null>;
     /**
      * @description Deletes a record to the database
      * @param model
@@ -956,15 +1191,10 @@ declare abstract class Model {
      * @param {MysqlTransaction & PostgresTransaction} trx
      * @returns
      */
-    static deleteByColumn<T extends Model>(this: new () => T, column: string, value: string | number | boolean, trx?: MysqlTransaction & PostgresTransaction): Promise<number>;
-    /**
-     * @description Deletes a record to the database
-     * @param model
-     * @param {Model} modelInstance
-     * @returns
-     */
-    static getMetadata<T extends Model>(this: new () => T): Metadata;
+    static deleteByColumn<T extends Model>(column: string, value: string | number | boolean, trx?: MysqlTransaction & PostgresTransaction): Promise<number>;
     static setProps<T extends Model>(instance: T, data: Partial<T>): void;
+    static generateModel<T extends Model>(this: new () => T, data: Partial<T>): T;
+    static generateModels<T extends Model>(this: new () => T, data: Partial<T>[]): T[];
     private static establishConnection;
 }
 
@@ -1252,218 +1482,4 @@ declare abstract class Migration {
     abstract down(): void;
 }
 
-declare abstract class AbstractModelManager<T extends Model> {
-    protected logs: boolean;
-    protected model: new () => T;
-    protected modelInstance: T;
-    tableName: string;
-    protected constructor(model: new () => T, logs: boolean);
-    abstract getMetadata(): Metadata;
-    abstract find(input?: FindType): Promise<T[]>;
-    abstract findOne(input: FindOneType): Promise<T | null>;
-    abstract findOneById(id: string | number): Promise<T | null>;
-    abstract save(model: T, trx?: MysqlTransaction | PostgresTransaction): Promise<T | null>;
-    abstract update(model: T, trx?: MysqlTransaction | PostgresTransaction): Promise<T | null>;
-    abstract deleteByColumn(column: string, value: string | number | boolean, trx?: MysqlTransaction | PostgresTransaction): Promise<number> | Promise<number | null>;
-    abstract delete(model: T, trx?: MysqlTransaction | PostgresTransaction): Promise<T | null>;
-    abstract query(): MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
-}
-
-declare class MysqlModelManager<T extends Model> extends AbstractModelManager<T> {
-    protected mysqlPool: mysql.Pool;
-    /**
-     * Constructor for MysqlModelManager class.
-     *
-     * @param {new () => T} model - Model constructor.
-     * @param {Pool} mysqlConnection - MySQL connection pool.
-     * @param {boolean} logs - Flag to enable or disable logging.
-     */
-    constructor(model: new () => T, mysqlConnection: mysql.Pool, logs: boolean);
-    getMetadata(): Metadata;
-    /**
-     * Find method to retrieve multiple records from the database based on the input conditions.
-     *
-     * @param {FindType} input - Optional query parameters for filtering, ordering, and pagination.
-     * @returns Promise resolving to an array of models.
-     */
-    find(input?: FindType): Promise<T[]>;
-    /**
-     * Find a single record from the database based on the input conditions.
-     *
-     * @param {FindOneType} input - Query parameters for filtering and selecting a single record.
-     * @returns Promise resolving to a single model or null if not found.
-     */
-    findOne(input: FindOneType): Promise<T | null>;
-    /**
-     * Find a single record by its ID from the database.
-     *
-     * @param {string | number} id - ID of the record to retrieve.
-     * @returns Promise resolving to a single model or null if not found.
-     */
-    findOneById(id: string | number): Promise<T | null>;
-    /**
-     * Save a new model instance to the database.
-     *
-     * @param {Model} model - Model instance to be saved.
-     * @param {MysqlTransaction} trx - MysqlTransaction to be used on the save operation.
-     * @returns Promise resolving to the saved model or null if saving fails.
-     */
-    save(model: T, trx?: MysqlTransaction): Promise<T | null>;
-    /**
-     * Update an existing model instance in the database.
-     * @param {Model} model - Model instance to be updated.
-     * @param {MysqlTransaction} trx - MysqlTransaction to be used on the update operation.
-     * @returns Promise resolving to the updated model or null if updating fails.
-     */
-    update(model: T, trx?: MysqlTransaction): Promise<T | null>;
-    /**
-     * @description Delete a record from the database from the given column and value.
-     *
-     * @param {string} column - Column to filter by.
-     * @param {string | number | boolean} value - Value to filter by.
-     * @param {MysqlTransaction} trx - MysqlTransaction to be used on the delete operation.
-     * @returns Promise resolving to affected rows count
-     */
-    deleteByColumn(column: string, value: string | number | boolean, trx?: MysqlTransaction): Promise<number>;
-    /**
-     * @description Delete a record from the database from the given model.
-     *
-     * @param {Model} model - Model to delete.
-     * @param {MysqlTransaction} trx - MysqlTransaction to be used on the delete operation.
-     * @returns Promise resolving to the deleted model or null if deleting fails.
-     */
-    delete(model: T, trx?: MysqlTransaction): Promise<T | null>;
-    /**
-     * @description Creates a new transaction.
-     * @returns {Promise<MysqlTransaction>} - Instance of MysqlTransaction.
-     */
-    startTransaction(): Promise<MysqlTransaction>;
-    /**
-     * Create and return a new instance of the MysqlQueryBuilder for building more complex SQL queries.
-     *
-     * @returns {MysqlQueryBuilder<Model>} - Instance of MysqlQueryBuilder.
-     */
-    query(): MysqlQueryBuilder<T>;
-}
-
-declare class PostgresModelManager<T extends Model> extends AbstractModelManager<T> {
-    protected pgPool: pg.Pool;
-    /**
-     * Constructor for PostgresModelManager class.
-     *
-     * @param {new () => T} model - Model constructor.
-     * @param {Pool} pgConnection - PostgreSQL connection pool.
-     * @param {boolean} logs - Flag to enable or disable logging.
-     */
-    constructor(model: new () => T, pgConnection: pg.Pool, logs: boolean);
-    /**
-     * Returns table name and primary key fot he model manager
-     * @returns {Metadata}
-     */
-    getMetadata(): Metadata;
-    /**
-     * Find method to retrieve multiple records from the database based on the input conditions.
-     *
-     * @param {FindType} input - Optional query parameters for filtering, ordering, and pagination.
-     * @returns Promise resolving to an array of models.
-     */
-    find(input?: FindType): Promise<T[]>;
-    /**
-     * Find a single record from the database based on the input conditions.
-     *
-     * @param {FindOneType} input - Query parameters for filtering and selecting a single record.
-     * @returns Promise resolving to a single model or null if not found.
-     */
-    findOne(input: FindOneType): Promise<T | null>;
-    /**
-     * Find a single record by its ID from the database.
-     *
-     * @param {string | number} id - ID of the record to retrieve.
-     * @returns Promise resolving to a single model or null if not found.
-     */
-    findOneById(id: string | number): Promise<T | null>;
-    /**
-     * Save a new model instance to the database.
-     *
-     * @param {Model} model - Model instance to be saved.
-     * @param {MysqlTransaction} trx - MysqlTransaction to be used on the save operation.
-     * @returns Promise resolving to the saved model or null if saving fails.
-     */
-    save(model: T, trx?: PostgresTransaction): Promise<T | null>;
-    /**
-     * Update an existing model instance in the database.
-     * @param {Model} model - Model instance to be updated.
-     * @param {PostgresTransaction} trx - PostgresTransaction to be used on the update operation.
-     * @returns Promise resolving to the updated model or null if updating fails.
-     */
-    update(model: T, trx?: PostgresTransaction): Promise<T | null>;
-    /**
-     * @description Delete a record from the database from the given column and value.
-     *
-     * @param {string} column - Column to filter by.
-     * @param {string | number | boolean} value - Value to filter by.
-     * @param {PostgresTransaction} trx - PostgresTransaction to be used on the delete operation.
-     * @returns Promise resolving to affected rows count
-     */
-    deleteByColumn(column: string, value: string | number | boolean, trx?: PostgresTransaction): Promise<number>;
-    /**
-     * @description Delete a record from the database from the given model.
-     *
-     * @param {Model} model - Model to delete.
-     * @param {PostgresTransaction} trx - PostgresTransaction to be used on the delete operation.
-     * @returns Promise resolving to the deleted model or null if deleting fails.
-     */
-    delete(model: T, trx?: PostgresTransaction): Promise<T | null>;
-    /**
-     * @description Creates a new transaction.
-     * @returns {MysqlTransaction} - Instance of MysqlTransaction.
-     */
-    startTransaction(): Promise<PostgresTransaction>;
-    /**
-     * Create and return a new instance of the MysqlQueryBuilder for building more complex SQL queries.
-     *
-     * @returns {MysqlQueryBuilder<Model>} - Instance of MysqlQueryBuilder.
-     */
-    query(): PostgresQueryBuilder<T>;
-}
-
-type ModelManager<T extends Model> = MysqlModelManager<T> | PostgresModelManager<T>;
-type SqlPoolType = mysql.Pool | pg.Pool;
-type SqlPoolConnectionType = mysql.PoolConnection | pg.PoolClient;
-declare class SqlDataSource extends Datasource {
-    isConnected: boolean;
-    protected sqlPool: SqlPoolType;
-    private static instance;
-    private constructor();
-    /**
-     * @description Connects to the database establishing a connection pool.
-     */
-    static connect(input: DatasourceInput): Promise<SqlDataSource>;
-    static getInstance(): SqlDataSource;
-    /**
-     * @description Begins a transaction on the database
-     * @param model
-     * @returns
-     */
-    startTransaction<T extends Model>(model: new () => T): Promise<MysqlTransaction> | Promise<PostgresTransaction>;
-    /**
-     * @description Returns model manager for the provided model
-     * @param model
-     */
-    getModelManager<T extends Model>(model: new () => T): ModelManager<T>;
-    /**
-     * @description Returns raw mysql pool
-     */
-    getRawPool(): Promise<SqlPoolType>;
-    /**
-     * @description Closes the connection to the database
-     * @returns
-     */
-    closeConnection(): Promise<void>;
-    /**
-     * @description Returns raw mysql PoolConnection
-     */
-    getRawPoolConnection(): Promise<SqlPoolConnectionType>;
-}
-
-export { BelongsTo, type DatasourceInput, HasMany, HasOne, Migration, Model, SqlDataSource };
+export { BelongsTo, type DataSourceInput, HasMany, HasOne, Migration, Model, SqlDataSource };

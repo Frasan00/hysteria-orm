@@ -15,6 +15,7 @@ import MySqlModelManagerUtils from "./MySqlModelManagerUtils";
 import { MysqlTransaction } from "./MysqlTransaction";
 import { AbstractModelManager } from "../Models/ModelManager/AbstractModelManager";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
+import { PostgresTransaction } from "../Postgres/PostgresTransaction";
 
 export class MysqlModelManager<
   T extends Model,
@@ -24,17 +25,13 @@ export class MysqlModelManager<
   /**
    * Constructor for MysqlModelManager class.
    *
-   * @param {new () => T} model - Model constructor.
+   * @param {typeof Model} model - Model constructor.
    * @param {Pool} mysqlConnection - MySQL connection pool.
    * @param {boolean} logs - Flag to enable or disable logging.
    */
-  constructor(model: new () => T, mysqlConnection: mysql.Pool, logs: boolean) {
+  constructor(model: typeof Model, mysqlConnection: mysql.Pool, logs: boolean) {
     super(model, logs);
     this.mysqlPool = mysqlConnection;
-  }
-
-  public getMetadata() {
-    return this.modelInstance.metadata;
   }
 
   /**
@@ -46,7 +43,10 @@ export class MysqlModelManager<
   public async find(input?: FindType): Promise<T[]> {
     try {
       if (!input) {
-        const select = selectTemplate(this.tableName);
+        const select = selectTemplate(
+          this.model.metadata.tableName,
+          this.model.sqlInstance.getDbType(),
+        );
         log(select.selectAll, this.logs);
         const [rows] = await this.mysqlPool.query<RowDataPacket[]>(
           select.selectAll,
@@ -55,7 +55,6 @@ export class MysqlModelManager<
         const models =
           rows.map((row) => {
             const model = row as T;
-            model.metadata = this.modelInstance.metadata;
             model.aliasColumns = this.modelInstance.aliasColumns;
             return parseDatabaseDataIntoModelResponse([model]) as T;
           }) || [];
@@ -67,7 +66,7 @@ export class MysqlModelManager<
       }
 
       const query = ModelManagerQueryUtils.parseSelectQueryInput(
-        new this.model(),
+        this.model,
         input,
       );
       log(query, this.logs);
@@ -76,7 +75,7 @@ export class MysqlModelManager<
       return Promise.all(
         rows.map(async (row) => {
           const model = new this.model();
-          const modelData = rows[0] as T;
+          const modelData = row as T;
 
           // merge model data into model
           Object.assign(model, modelData);
@@ -84,6 +83,7 @@ export class MysqlModelManager<
           // relations parsing on the queried model
           await MySqlModelManagerUtils.parseRelationInput(
             model,
+            this.model.metadata,
             input,
             this.mysqlPool,
             this.logs,
@@ -107,7 +107,10 @@ export class MysqlModelManager<
   public async findOne(input: FindOneType): Promise<T | null> {
     const model = new this.model();
     try {
-      const query = ModelManagerQueryUtils.parseSelectQueryInput(model, input);
+      const query = ModelManagerQueryUtils.parseSelectQueryInput(
+        this.model,
+        input,
+      );
       log(query, this.logs);
       const [rows] = await this.mysqlPool.query<RowDataPacket[]>(query);
       if (!rows[0]) {
@@ -122,6 +125,7 @@ export class MysqlModelManager<
       // relations parsing on the queried model
       await MySqlModelManagerUtils.parseRelationInput(
         model,
+        this.model.metadata,
         input,
         this.mysqlPool,
         this.logs,
@@ -141,7 +145,10 @@ export class MysqlModelManager<
    * @returns Promise resolving to a single model or null if not found.
    */
   public async findOneById(id: string | number): Promise<T | null> {
-    const select = selectTemplate(this.tableName);
+    const select = selectTemplate(
+      this.model.metadata.tableName,
+      this.model.sqlInstance.getDbType(),
+    );
     try {
       const stringedId = typeof id === "number" ? id.toString() : id;
       const query = select.selectById(stringedId);
@@ -166,19 +173,26 @@ export class MysqlModelManager<
    * @param {MysqlTransaction} trx - MysqlTransaction to be used on the save operation.
    * @returns Promise resolving to the saved model or null if saving fails.
    */
-  public async save(model: T, trx?: MysqlTransaction): Promise<T | null> {
+  public async create(model: T, trx?: MysqlTransaction): Promise<T | null> {
     if (trx) {
-      return await trx.queryInsert<T>(
-        ModelManagerQueryUtils.parseInsert(model),
-        this.modelInstance.metadata,
+      const { query, params } = ModelManagerQueryUtils.parseInsert(
+        model,
+        this.model,
       );
+      return await trx.queryInsert<T>(query, params, this.model.metadata);
     }
 
     try {
-      const insertQuery = ModelManagerQueryUtils.parseInsert(model);
-      log(insertQuery, this.logs);
-      const [result]: any =
-        await this.mysqlPool.query<RowDataPacket[]>(insertQuery);
+      const { query, params } = ModelManagerQueryUtils.parseInsert(
+        model,
+        this.model,
+      );
+
+      log(query, this.logs);
+      const [result]: any = await this.mysqlPool.query<RowDataPacket[]>(
+        query,
+        params,
+      );
       return await this.findOneById(result["insertId"]);
     } catch (error) {
       queryError(error);
@@ -187,36 +201,63 @@ export class MysqlModelManager<
   }
 
   /**
+   * Create multiple model instances in the database.
+   *
+   * @param {Model} model - Model instance to be saved.
+   * @param {MysqlTransaction} trx - MysqlTransaction to be used on the save operation.
+   * @returns Promise resolving to an array of saved models or null if saving fails.
+   */
+  public massiveCreate(
+    model: T,
+    trx?: MysqlTransaction | PostgresTransaction,
+  ): Promise<T[]> {
+    throw new Error("Method not implemented.");
+  }
+
+  /**
    * Update an existing model instance in the database.
    * @param {Model} model - Model instance to be updated.
    * @param {MysqlTransaction} trx - MysqlTransaction to be used on the update operation.
    * @returns Promise resolving to the updated model or null if updating fails.
    */
-  public async update(model: T, trx?: MysqlTransaction): Promise<T | null> {
-    const { tableName, primaryKey } = this.getMetadata();
-    if (trx) {
-      await trx.queryUpdate<T>(
-        ModelManagerQueryUtils.parseUpdate(model, tableName, primaryKey),
+  public async updateRecord(
+    model: T,
+    trx?: MysqlTransaction,
+  ): Promise<T | null> {
+    if (!this.model.metadata.primaryKey) {
+      throw new Error(
+        "Model " +
+          this.model.metadata.tableName +
+          " has no primary key to be updated, try save",
       );
-      if (!primaryKey) {
+    }
+
+    if (trx) {
+      const { query, params } = ModelManagerQueryUtils.parseUpdate(
+        model,
+        this.model,
+      );
+      await trx.queryUpdate<T>(query, params);
+      if (!this.model.metadata.primaryKey) {
         return null;
       }
 
       return await this.findOneById(
-        model[primaryKey as keyof T] as string | number,
+        model[this.model.metadata.primaryKey as keyof T] as string | number,
       );
     }
 
     try {
-      const updateQuery = ModelManagerQueryUtils.parseUpdate(model, tableName);
-      log(updateQuery, this.logs);
-      await this.mysqlPool.query(updateQuery);
-      if (!primaryKey) {
+      const updateQuery = ModelManagerQueryUtils.parseUpdate(model, this.model);
+
+      log(updateQuery.query, this.logs, updateQuery.params);
+      await this.mysqlPool.query(updateQuery.query, updateQuery.params);
+      if (!this.model.metadata.primaryKey) {
         return null;
       }
 
       return await this.findOneById(
-        model[primaryKey as keyof T] as string | number,
+        model[this.model.metadata.primaryKey as keyof T] as string | number,
       );
     } catch (error) {
       queryError(error);
@@ -239,13 +280,17 @@ export class MysqlModelManager<
   ): Promise<number> {
     if (trx) {
       return await trx.queryDelete(
-        ModelManagerQueryUtils.parseDelete(this.tableName, column, value),
+        ModelManagerQueryUtils.parseDelete(
+          this.model.metadata.tableName,
+          column,
+          value,
+        ),
       );
     }
 
     try {
       const deleteQuery = ModelManagerQueryUtils.parseDelete(
-        this.tableName,
+        this.model.metadata.tableName,
         column,
         value,
       );
@@ -268,17 +313,17 @@ export class MysqlModelManager<
    */
   public async delete(model: T, trx?: MysqlTransaction): Promise<T | null> {
     try {
-      if (!model.metadata.primaryKey) {
+      if (!this.model.metadata.primaryKey) {
         throw new Error(
           "Model " +
-            model.metadata.tableName +
+            this.model.metadata.tableName +
             " has no primary key to be deleted from, try deleteByColumn",
         );
       }
       const deleteQuery = ModelManagerQueryUtils.parseDelete(
-        this.tableName,
-        model.metadata.primaryKey,
-        model[model.metadata.primaryKey as keyof T] as string,
+        this.model.metadata.tableName,
+        this.model.metadata.primaryKey,
+        model[this.model.metadata.primaryKey as keyof T] as string,
       );
 
       if (trx) {
@@ -300,7 +345,11 @@ export class MysqlModelManager<
    * @returns {Promise<MysqlTransaction>} - Instance of MysqlTransaction.
    */
   public async startTransaction(): Promise<MysqlTransaction> {
-    const trx = new MysqlTransaction(this.mysqlPool, this.tableName, this.logs);
+    const trx = new MysqlTransaction(
+      this.mysqlPool,
+      this.model.metadata.tableName,
+      this.logs,
+    );
     await trx.start();
     return trx;
   }
@@ -313,7 +362,7 @@ export class MysqlModelManager<
   public query(): MysqlQueryBuilder<T> {
     return new MysqlQueryBuilder<T>(
       this.model,
-      this.tableName,
+      this.model.metadata.tableName,
       this.mysqlPool,
       this.logs,
     );

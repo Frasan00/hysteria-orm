@@ -10,18 +10,14 @@ import { PostgresQueryBuilder } from "../../Postgres/PostgresQueryBuilder";
 
 export abstract class AbstractModelManager<T extends Model> {
   protected logs: boolean;
-  protected model: new () => T;
+  protected model: typeof Model;
   protected modelInstance: T;
-  public tableName: string;
 
-  protected constructor(model: new () => T, logs: boolean) {
+  protected constructor(model: typeof Model, logs: boolean) {
     this.logs = logs;
     this.model = model;
-    this.modelInstance = new this.model();
-    this.tableName = this.modelInstance.metadata.tableName;
+    this.modelInstance = new this.model() as T;
   }
-
-  public abstract getMetadata(): Metadata;
 
   public abstract find(input?: FindType): Promise<T[]>;
 
@@ -29,12 +25,17 @@ export abstract class AbstractModelManager<T extends Model> {
 
   public abstract findOneById(id: string | number): Promise<T | null>;
 
-  public abstract save(
+  public abstract create(
     model: T,
     trx?: MysqlTransaction | PostgresTransaction,
   ): Promise<T | null>;
 
-  public abstract update(
+  public abstract massiveCreate(
+    model: T,
+    trx?: MysqlTransaction | PostgresTransaction,
+  ): Promise<T[]>;
+
+  public abstract updateRecord(
     model: T,
     trx?: MysqlTransaction | PostgresTransaction,
   ): Promise<T | null>;

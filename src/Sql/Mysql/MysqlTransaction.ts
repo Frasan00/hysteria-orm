@@ -20,8 +20,8 @@ export class MysqlTransaction {
 
   public async queryInsert<T extends Model>(
     query: string,
+    params: any[],
     metadata: Metadata,
-    params?: any[],
   ): Promise<T> {
     if (!this.mysqlConnection) {
       throw new Error("MysqlTransaction not started.");
@@ -33,7 +33,7 @@ export class MysqlTransaction {
       params,
     );
     const insertId = rows.insertId;
-    const select = selectTemplate(this.tableName).selectById(insertId);
+    const select = selectTemplate(this.tableName, "mysql").selectById(insertId);
     const [savedModel] =
       await this.mysqlConnection.query<RowDataPacket[]>(select);
     Object.assign(savedModel[0], { metadata });

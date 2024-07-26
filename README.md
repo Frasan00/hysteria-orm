@@ -121,16 +121,10 @@ export class User extends Model {
     public name!: string;
     public email!: string;
     
-    constructor() {
-        /*
-        * Table name and primary key are optional.
-        * If you don't set a table name, it'll be the class name in lowercase, snake case and with a final s (es. users)
-        */
-        super({
-            tableName: "users",
-            primaryKey: "id",
-        });
-    }
+    public static metadata: Metadata = {
+        primaryKey: "id",
+        tableName: "users",
+    };
 }
 ```
 

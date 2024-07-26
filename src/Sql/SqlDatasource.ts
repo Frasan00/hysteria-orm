@@ -1,4 +1,4 @@
-import { Datasource, DatasourceInput, DatasourceType } from "../Datasource";
+import { Datasource, DataSourceInput, DataSourceType } from "../Datasource";
 import mysql, { createPool, Pool } from "mysql2/promise";
 import pg from "pg";
 import { Model } from "./Models/Model";
@@ -17,15 +17,19 @@ export class SqlDataSource extends Datasource {
   protected sqlPool!: SqlPoolType;
   private static instance: SqlDataSource;
 
-  private constructor(input: DatasourceInput) {
+  private constructor(input: DataSourceInput) {
     super(input);
     this.isConnected = false;
+  }
+
+  public getDbType(): DataSourceType {
+    return this.type;
   }
 
   /**
    * @description Connects to the database establishing a connection pool.
    */
-  public static async connect(input: DatasourceInput): Promise<SqlDataSource> {
+  public static async connect(input: DataSourceInput): Promise<SqlDataSource> {
     const sqlDataSource = new this(input);
     switch (input.type) {
       case "mysql":
@@ -56,6 +60,43 @@ export class SqlDataSource extends Datasource {
     return sqlDataSource;
   }
 
+  /**
+   * @description Generates a temporary connection to the database, the instance will not be saved and cannot be accessed later in the getInstance method
+   * @private
+   * @internal
+   */
+  public static async tempConnect(
+    input: DataSourceInput,
+  ): Promise<SqlDataSource> {
+    const sqlDataSource = new this(input);
+    switch (input.type) {
+      case "mysql":
+        sqlDataSource.sqlPool = createPool({
+          host: input.host,
+          port: input.port,
+          user: input.username,
+          password: input.password,
+          database: input.database,
+        });
+        break;
+
+      case "postgres":
+        sqlDataSource.sqlPool = new pg.Pool({
+          host: input.host,
+          port: input.port,
+          user: input.username,
+          password: input.password,
+          database: input.database,
+        });
+        break;
+      default:
+        throw new Error(`Unsupported datasource type: ${input.type}`);
+    }
+
+    sqlDataSource.isConnected = true;
+    return sqlDataSource;
+  }
+
   public static getInstance(): SqlDataSource {
     if (!this.instance) {
       throw new Error("Sql database connection not established");
@@ -69,15 +110,18 @@ export class SqlDataSource extends Datasource {
    * @param model
    * @returns
    */
-  public startTransaction<T extends Model>(model: new () => T) {
-    return this.getModelManager(model).startTransaction();
+  // TODO fix this
+  public startTransaction<T extends Model>() {
+    return this.getModelManager(Model).startTransaction();
   }
 
   /**
    * @description Returns model manager for the provided model
    * @param model
    */
-  public getModelManager<T extends Model>(model: new () => T): ModelManager<T> {
+  public getModelManager<T extends Model>(
+    model: typeof Model,
+  ): ModelManager<T> {
     if (!this.isConnected) {
       throw new Error("Sql database connection not established");
     }

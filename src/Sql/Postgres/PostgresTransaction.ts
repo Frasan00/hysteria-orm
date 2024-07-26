@@ -20,8 +20,8 @@ export class PostgresTransaction {
 
   public async queryInsert<T extends Model>(
     query: string,
+    params: any[],
     metadata: Metadata,
-    params?: any[],
   ): Promise<T> {
     if (!this.pgClient) {
       throw new Error("PostgresTransaction not started.");
@@ -35,7 +35,7 @@ export class PostgresTransaction {
       );
 
       const insertId = rows[0][metadata.primaryKey as keyof T];
-      const select = selectTemplate(this.tableName).selectById(
+      const select = selectTemplate(this.tableName, "postgres").selectById(
         insertId as string,
       );
       const { rows: savedModel } = await this.pgClient.query<T>(select);
