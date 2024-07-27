@@ -1,5 +1,6 @@
 import { camelToSnakeCase } from "../../../CaseUtils";
 import * as sqlString from "sqlstring";
+import { DataSourceType } from "../../../Datasource";
 
 export type WhereOperatorType =
   | "="
@@ -12,135 +13,167 @@ export type WhereOperatorType =
   | "ILIKE";
 export type BaseValues = string | number | boolean | Date;
 
-const whereTemplate = (_tableName: string) => {
+const whereTemplate = (_tableName: string, dbType: DataSourceType) => {
   return {
+    convertPlaceHolderToValue: (query: string) => {
+      switch (dbType) {
+        case "mysql":
+          return query.replace(/PLACEHOLDER/g, () => "?");
+        case "postgres":
+          let index = 1;
+          return query.replace(/PLACEHOLDER/g, () => `$${index++}`);
+        default:
+          throw new Error("Unsupported database type");
+      }
+    },
     where: (
       column: string,
       value: BaseValues,
       operator: WhereOperatorType = "=",
-    ) =>
-      `\nWHERE ${camelToSnakeCase(column)} ${operator} ${sqlString.escape(
-        value,
-      )}`,
+      index: number = 0,
+    ) => ({
+      query: `\nWHERE ${camelToSnakeCase(column)} ${operator} PLACEHOLDER`,
+      params: [value],
+    }),
     andWhere: (
       column: string,
       value: BaseValues,
       operator: WhereOperatorType = "=",
-    ) =>
-      ` AND ${camelToSnakeCase(column)} ${operator} ${sqlString.escape(value)}`,
+      index: number = 0,
+    ) => ({
+      query: ` AND ${camelToSnakeCase(column)} ${operator} PLACEHOLDER`,
+      params: [value],
+    }),
     orWhere: (
       column: string,
       value: BaseValues,
       operator: WhereOperatorType = "=",
-    ) =>
-      ` OR ${camelToSnakeCase(column)} ${operator} ${sqlString.escape(value)}`,
-    whereNot: (column: string, value: BaseValues) =>
-      `\nWHERE ${camelToSnakeCase(column)} != ${sqlString.escape(value)}`,
-    andWhereNot: (column: string, value: BaseValues) =>
-      ` AND ${camelToSnakeCase(column)} != ${sqlString.escape(value)}`,
-    orWhereNot: (column: string, value: BaseValues) =>
-      ` OR ${camelToSnakeCase(column)} != ${sqlString.escape(value)}`,
-    whereNull: (column: string) =>
-      `\nWHERE ${camelToSnakeCase(column)} IS NULL`,
-    andWhereNull: (column: string) =>
-      ` AND ${camelToSnakeCase(column)} IS NULL`,
-    orWhereNull: (column: string) => ` OR ${camelToSnakeCase(column)} IS NULL`,
-    whereNotNull: (column: string) =>
-      `\nWHERE ${camelToSnakeCase(column)} IS NOT NULL`,
-    andWhereNotNull: (column: string) =>
-      ` AND ${camelToSnakeCase(column)} IS NOT NULL`,
-    orWhereNotNull: (column: string) =>
-      ` OR ${camelToSnakeCase(column)} IS NOT NULL`,
-    whereBetween: (column: string, min: BaseValues, max: BaseValues) =>
-      `\nWHERE (${camelToSnakeCase(column)} BETWEEN ${min} AND ${max})`,
-    andWhereBetween: (column: string, min: BaseValues, max: BaseValues) =>
-      ` AND (${camelToSnakeCase(column)} BETWEEN ${min} AND ${max})`,
-    orWhereBetween: (column: string, min: BaseValues, max: BaseValues) =>
-      ` OR (${camelToSnakeCase(column)} BETWEEN ${min} AND ${max})`,
-    whereNotBetween: (column: string, min: BaseValues, max: BaseValues) =>
-      `\nWHERE (${camelToSnakeCase(column)} NOT BETWEEN ${min} AND ${max})`,
-    andWhereNotBetween: (column: string, min: BaseValues, max: BaseValues) =>
-      ` AND (${camelToSnakeCase(column)} NOT BETWEEN ${min} AND ${max})`,
-    orWhereNotBetween: (column: string, min: BaseValues, max: BaseValues) =>
-      ` OR (${camelToSnakeCase(column)} NOT BETWEEN ${min} AND ${max})`,
-    whereIn: (column: string, values: BaseValues[]) =>
-      `\nWHERE ${camelToSnakeCase(column)} IN (${values
-        .map((value: BaseValues) => sqlString.escape(value))
+      index: number = 0,
+    ) => ({
+      query: ` OR ${camelToSnakeCase(column)} ${operator} PLACEHOLDER`,
+      params: [value],
+    }),
+    whereNot: (column: string, value: BaseValues, index: number = 0) => ({
+      query: `\nWHERE ${camelToSnakeCase(column)} != PLACEHOLDER`,
+      params: [value],
+    }),
+    andWhereNot: (column: string, value: BaseValues, index: number = 0) => ({
+      query: ` AND ${camelToSnakeCase(column)} != PLACEHOLDER`,
+      params: [value],
+    }),
+    orWhereNot: (column: string, value: BaseValues, index: number = 0) => ({
+      query: ` OR ${camelToSnakeCase(column)} != PLACEHOLDER`,
+      params: [value],
+    }),
+    whereNull: (column: string) => ({
+      query: `\nWHERE ${camelToSnakeCase(column)} IS NULL`,
+      params: [],
+    }),
+    andWhereNull: (column: string) => ({
+      query: ` AND ${camelToSnakeCase(column)} IS NULL`,
+      params: [],
+    }),
+    orWhereNull: (column: string) => ({
+      query: ` OR ${camelToSnakeCase(column)} IS NULL`,
+      params: [],
+    }),
+    whereNotNull: (column: string) => ({
+      query: `\nWHERE ${camelToSnakeCase(column)} IS NOT NULL`,
+      params: [],
+    }),
+    andWhereNotNull: (column: string) => ({
+      query: ` AND ${camelToSnakeCase(column)} IS NOT NULL`,
+      params: [],
+    }),
+    orWhereNotNull: (column: string) => ({
+      query: ` OR ${camelToSnakeCase(column)} IS NOT NULL`,
+      params: [],
+    }),
+    whereBetween: (column: string, min: BaseValues, max: BaseValues) => ({
+      query: `\nWHERE ${camelToSnakeCase(
+        column,
+      )} BETWEEN PLACEHOLDER AND PLACEHOLDER`,
+      params: [min, max],
+    }),
+    andWhereBetween: (column: string, min: BaseValues, max: BaseValues) => ({
+      query: ` AND ${camelToSnakeCase(
+        column,
+      )} BETWEEN PLACEHOLDER AND PLACEHOLDER`,
+      params: [min, max],
+    }),
+    orWhereBetween: (column: string, min: BaseValues, max: BaseValues) => ({
+      query: ` OR ${camelToSnakeCase(
+        column,
+      )} BETWEEN PLACEHOLDER AND PLACEHOLDER`,
+      params: [min, max],
+    }),
+    whereNotBetween: (column: string, min: BaseValues, max: BaseValues) => ({
+      query: `\nWHERE ${camelToSnakeCase(
+        column,
+      )} NOT BETWEEN PLACEHOLDER AND PLACEHOLDER`,
+      params: [min, max],
+    }),
+    andWhereNotBetween: (column: string, min: BaseValues, max: BaseValues) => ({
+      query: ` AND ${camelToSnakeCase(
+        column,
+      )} NOT BETWEEN PLACEHOLDER AND PLACEHOLDER`,
+      params: [min, max],
+    }),
+    orWhereNotBetween: (column: string, min: BaseValues, max: BaseValues) => ({
+      query: ` OR ${camelToSnakeCase(
+        column,
+      )} NOT BETWEEN PLACEHOLDER AND PLACEHOLDER`,
+      params: [min, max],
+    }),
+    whereIn: (column: string, values: BaseValues[]) => ({
+      query: `\nWHERE ${camelToSnakeCase(column)} IN (${values
+        .map((_, index) => "PLACEHOLDER")
         .join(", ")})`,
-    andWhereIn: (column: string, values: BaseValues[]) =>
-      ` AND ${camelToSnakeCase(column)} IN (${values
-        .map((value: BaseValues) => sqlString.escape(value))
+      params: values,
+    }),
+    andWhereIn: (column: string, values: BaseValues[]) => ({
+      query: ` AND ${camelToSnakeCase(column)} IN (${values
+        .map((_, index) => "PLACEHOLDER")
         .join(", ")})`,
-    orWhereIn: (column: string, values: BaseValues[]) =>
-      ` OR ${camelToSnakeCase(column)} IN (${values
-        .map((value: BaseValues) => sqlString.escape(value))
+      params: values,
+    }),
+    orWhereIn: (column: string, values: BaseValues[]) => ({
+      query: ` OR ${camelToSnakeCase(column)} IN (${values
+        .map((_, index) => "PLACEHOLDER")
         .join(", ")})`,
-    whereNotIn: (column: string, values: BaseValues[]) =>
-      `\nWHERE ${camelToSnakeCase(column)} NOT IN (${values
-        .map((value: BaseValues) => sqlString.escape(value))
+      params: values,
+    }),
+    whereNotIn: (column: string, values: BaseValues[]) => ({
+      query: `\nWHERE ${camelToSnakeCase(column)} NOT IN (${values
+        .map((_, index) => "PLACEHOLDER")
         .join(", ")})`,
-    andWhereNotIn: (column: string, values: BaseValues[]) =>
-      ` AND ${camelToSnakeCase(column)} NOT IN (${values
-        .map((value: BaseValues) => sqlString.escape(value))
+      params: values,
+    }),
+    andWhereNotIn: (column: string, values: BaseValues[]) => ({
+      query: ` AND ${camelToSnakeCase(column)} NOT IN (${values
+        .map((_, index) => "PLACEHOLDER")
         .join(", ")})`,
-    orWhereNotIn: (column: string, values: BaseValues[]) =>
-      ` OR ${camelToSnakeCase(column)} NOT IN (${values
-        .map((value: BaseValues) => sqlString.escape(value))
+      params: values,
+    }),
+    orWhereNotIn: (column: string, values: BaseValues[]) => ({
+      query: ` OR ${camelToSnakeCase(column)} NOT IN (${values
+        .map((_, index) => "PLACEHOLDER")
         .join(", ")})`,
-    rawWhere: (query: string) => `\nWHERE ${query} `,
-    rawAndWhere: (query: string) => ` AND ${query} `,
-    rawOrWhere: (query: string) => ` OR ${query} `,
+      params: values,
+    }),
+    rawWhere: (query: string) => ({
+      query: `\nWHERE ${query}`,
+      params: [],
+    }),
+    rawAndWhere: (query: string) => ({
+      query: ` AND ${query}`,
+      params: [],
+    }),
+    rawOrWhere: (query: string) => ({
+      query: ` OR ${query}`,
+      params: [],
+    }),
   };
-};
-
-export type WhereTemplateType = {
-  where: (
-    column: string,
-    value: BaseValues,
-    operator: WhereOperatorType,
-  ) => string;
-  andWhere: (
-    column: string,
-    value: BaseValues,
-    operator: WhereOperatorType,
-  ) => string;
-  orWhere: (
-    column: string,
-    value: BaseValues,
-    operator: WhereOperatorType,
-  ) => string;
-  whereNot: (column: string, value: BaseValues) => string;
-  andWhereNot: (column: string, value: BaseValues) => string;
-  orWhereNot: (column: string, value: BaseValues) => string;
-  whereNull: (column: string) => string;
-  andWhereNull: (column: string) => string;
-  orWhereNull: (column: string) => string;
-  whereNotNull: (column: string) => string;
-  andWhereNotNull: (column: string) => string;
-  orWhereNotNull: (column: string) => string;
-  whereBetween: (column: string, min: BaseValues, max: BaseValues) => string;
-  andWhereBetween: (column: string, min: BaseValues, max: BaseValues) => string;
-  orWhereBetween: (column: string, min: BaseValues, max: BaseValues) => string;
-  whereNotBetween: (column: string, min: BaseValues, max: BaseValues) => string;
-  andWhereNotBetween: (
-    column: string,
-    min: BaseValues,
-    max: BaseValues,
-  ) => string;
-  orWhereNotBetween: (
-    column: string,
-    min: BaseValues,
-    max: BaseValues,
-  ) => string;
-  whereIn: (column: string, values: BaseValues[]) => string;
-  andWhereIn: (column: string, values: BaseValues[]) => string;
-  orWhereIn: (column: string, values: BaseValues[]) => string;
-  whereNotIn: (column: string, values: BaseValues[]) => string;
-  andWhereNotIn: (column: string, values: BaseValues[]) => string;
-  orWhereNotIn: (column: string, values: BaseValues[]) => string;
-  rawWhere: (query: string) => string;
-  rawAndWhere: (query: string) => string;
-  rawOrWhere: (query: string) => string;
 };
 
 export default whereTemplate;

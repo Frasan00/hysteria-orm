@@ -1,4 +1,4 @@
-import { DatasourceInput } from "../../Datasource";
+import { DataSourceInput } from "../../Datasource";
 import { PoolClient } from "pg";
 import { MigrationTableType } from "../Templates/MigrationTableType";
 import { Migration } from "../../Sql/Migrations/Migration";
@@ -9,7 +9,7 @@ import dotenv from "dotenv";
 dotenv.config();
 
 class PgCliUtils {
-  public getPgConfig(): DatasourceInput {
+  public getPgConfig(): DataSourceInput {
     if (!process.env.POSTGRES_PORT)
       throw new Error("POSTGRES_PORT is not defined");
     return {

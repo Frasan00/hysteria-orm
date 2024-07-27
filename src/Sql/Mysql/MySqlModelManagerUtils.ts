@@ -17,13 +17,19 @@ class MySqlModelManagerUtils<T extends Model> {
   public parseSelectQueryInput(
     model: typeof Model,
     input: FindType | FindOneType,
-  ): string {
+  ): { query: string; params: any[] } {
     let query = "";
+    const params: any[] = [];
     query += this.parseSelect(model.metadata.tableName, input);
-    query += this.parseWhere(model.metadata.tableName, input);
+    const { query: whereQuery, params: whereParams } = this.parseWhere(
+      model.metadata.tableName,
+      input,
+    );
+    query += whereQuery;
+    params.push(...whereParams);
     query += this.parseQueryFooter(model.metadata.tableName, input);
 
-    return query;
+    return { query, params };
   }
 
   private parseSelect(
@@ -36,10 +42,14 @@ class MySqlModelManagerUtils<T extends Model> {
       : select.selectAll;
   }
 
-  private parseWhere(tableName: string, input: FindType | FindOneType): string {
-    const where = whereTemplate(tableName);
+  private parseWhere(
+    tableName: string,
+    input: FindType | FindOneType,
+  ): { query: string; params: any[] } {
+    const params: any[] = [];
+    const where = whereTemplate(tableName, "mysql");
     if (!input.where) {
-      return "";
+      return { query: "", params };
     }
 
     let query = "";
@@ -48,14 +58,27 @@ class MySqlModelManagerUtils<T extends Model> {
       const [key, value] = entries[index];
 
       if (index === 0) {
-        query += where.where(key, value);
+        const { query: whereQuery, params: whereParams } = where.where(
+          key,
+          value,
+        );
+        query += whereQuery;
+        params.push(...whereParams);
         continue;
       }
-      query += where.andWhere(key, value);
+
+      const { query: whereQuery, params: whereParams } = where.andWhere(
+        key,
+        value,
+      );
+      query += whereQuery;
+      params.push(...whereParams);
     }
 
-    return query;
+    query = where.convertPlaceHolderToValue(query);
+    return { query, params };
   }
+
   private parseQueryFooter(
     tableName: string,
     input: FindType | FindOneType,
@@ -98,6 +121,23 @@ class MySqlModelManagerUtils<T extends Model> {
     );
 
     return insert.insert(keys, values);
+  }
+
+  public parseMassiveInsert(
+    models: T[],
+    modelTypeOf: typeof Model,
+  ): { query: string; params: any[] } {
+    const filteredModels = models.map((m) =>
+      this.filterRelationsAndMetadata(m),
+    );
+    const insert = insertTemplate(
+      modelTypeOf.metadata.tableName,
+      modelTypeOf.sqlInstance.getDbType(),
+    );
+    const keys = Object.keys(filteredModels[0]);
+    const values = filteredModels.map((model) => Object.values(model));
+
+    return insert.insertMany(keys, values);
   }
 
   public parseUpdate(

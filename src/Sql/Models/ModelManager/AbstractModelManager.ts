@@ -26,12 +26,12 @@ export abstract class AbstractModelManager<T extends Model> {
   public abstract findOneById(id: string | number): Promise<T | null>;
 
   public abstract create(
-    model: T,
+    model: Partial<T>,
     trx?: MysqlTransaction | PostgresTransaction,
   ): Promise<T | null>;
 
   public abstract massiveCreate(
-    model: T,
+    model: Partial<T>[],
     trx?: MysqlTransaction | PostgresTransaction,
   ): Promise<T[]>;
 

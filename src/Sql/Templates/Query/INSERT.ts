@@ -1,10 +1,10 @@
 import { camelToSnakeCase } from "../../../CaseUtils";
 import * as sqlString from "sqlstring";
-import { DataSourceType } from "../../Datasource";
+import { DataSourceType } from "../../../Datasource";
 
 type BaseValues = string | number | boolean | Date | null | undefined;
 
-const insertTemplate = (tableName: string, dbType: DBType) => {
+const insertTemplate = (tableName: string, dbType: DataSourceType) => {
   return {
     insert: (columns: string[], values: BaseValues[]) => {
       columns = columns.map((column) => camelToSnakeCase(column));
@@ -24,8 +24,13 @@ const insertTemplate = (tableName: string, dbType: DBType) => {
           throw new Error("Unsupported database type");
       }
 
-      const query = `INSERT INTO ${tableName} (${columns.join(", ")})
-       VALUES (${placeholders});`;
+      const query =
+        dbType === "mysql"
+          ? `INSERT INTO ${tableName} (${columns.join(", ")})
+       VALUES (${placeholders}); `
+          : `INSERT INTO ${tableName} (${columns.join(
+              ", ",
+            )}) VALUES (${placeholders}) RETURNING *;`;
 
       return { query, params };
     },
@@ -55,8 +60,13 @@ const insertTemplate = (tableName: string, dbType: DBType) => {
           throw new Error("Unsupported database type");
       }
 
-      const query = `INSERT INTO ${tableName} (${columns.join(", ")})
-       VALUES ${valueSets.join(", ")};`;
+      const query =
+        dbType === "mysql"
+          ? `INSERT INTO ${tableName} (${columns.join(", ")})
+       VALUES ${valueSets.join(", ")};`
+          : `INSERT INTO ${tableName} (${columns.join(
+              ", ",
+            )}) VALUES ${valueSets.join(", ")} RETURNING *;`;
 
       return { query, params };
     },

@@ -5,6 +5,7 @@ import { ROLLBACK_TRANSACTION } from "../Templates/Query/TRANSACTION";
 import { log, queryError } from "../../Logger";
 import { Metadata, Model } from "../Models/Model";
 import selectTemplate from "../Templates/Query/SELECT";
+import { parseDatabaseDataIntoModelResponse } from "../serializer";
 
 export class PostgresTransaction {
   protected tableName: string;
@@ -28,7 +29,7 @@ export class PostgresTransaction {
     }
 
     try {
-      log(query, this.logs);
+      log(query, this.logs, params);
       const { rows }: QueryResult<T> = await this.pgClient.query<T>(
         query,
         params,
@@ -46,6 +47,29 @@ export class PostgresTransaction {
     }
   }
 
+  public async massiveInsertQuery<T extends Model>(
+    query: string,
+    params: any[],
+  ): Promise<T[]> {
+    if (!this.pgClient) {
+      throw new Error("PostgresTransaction not started.");
+    }
+
+    try {
+      log(query, this.logs, params);
+      const { rows } = await this.pgClient.query(query, params);
+
+      return rows.map(
+        (row: T) => parseDatabaseDataIntoModelResponse([row]) as T,
+      );
+    } catch (error) {
+      queryError(error);
+      throw new Error(
+        "Failed to execute massive insert query in transaction " + error,
+      );
+    }
+  }
+
   public async queryUpdate<T extends Model>(
     query: string,
     params?: any[],
@@ -55,7 +79,7 @@ export class PostgresTransaction {
     }
 
     try {
-      log(query, this.logs);
+      log(query, this.logs, params);
       const { rowCount }: QueryResult = await this.pgClient.query(
         query,
         params,
@@ -76,7 +100,7 @@ export class PostgresTransaction {
     }
 
     try {
-      log(query, this.logs);
+      log(query, this.logs, params);
       const { rowCount }: QueryResult = await this.pgClient.query(
         query,
         params,

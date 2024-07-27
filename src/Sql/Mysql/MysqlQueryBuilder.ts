@@ -65,10 +65,15 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
       query += this.whereQuery;
     }
 
-    log(query, this.logs);
     const model = new this.model() as T;
+    query = this.whereTemplate.convertPlaceHolderToValue(query);
+    query = query.trim();
+    log(query, this.logs, this.params);
     try {
-      const [rows] = await this.mysqlPool.query<RowDataPacket[]>(query);
+      const [rows] = await this.mysqlPool.query<RowDataPacket[]>(
+        query,
+        this.params,
+      );
       if (!rows[0]) {
         return null;
       }
@@ -111,10 +116,14 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     }
 
     query += this.groupFooterQuery();
-
-    log(query, this.logs);
+    query = this.whereTemplate.convertPlaceHolderToValue(query);
+    query = query.trim();
+    log(query, this.logs, this.params);
     try {
-      const [rows] = await this.mysqlPool.query<RowDataPacket[]>(query);
+      const [rows] = await this.mysqlPool.query<RowDataPacket[]>(
+        query,
+        this.params,
+      );
 
       return await Promise.all(
         rows.map(async (row) => {
@@ -245,10 +254,19 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     operator: WhereOperatorType = "=",
   ): this {
     if (this.whereQuery || this.isNestedCondition) {
-      this.whereQuery += this.whereTemplate.andWhere(column, value, operator);
+      const { query, params } = this.whereTemplate.andWhere(
+        column,
+        value,
+        operator,
+      );
+      this.whereQuery += query;
+      this.params.push(...params);
       return this;
     }
-    this.whereQuery = this.whereTemplate.where(column, value, operator);
+
+    const { query, params } = this.whereTemplate.where(column, value, operator);
+    this.whereQuery = query;
+    this.params.push(...params);
     return this;
   }
 
@@ -371,15 +389,23 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     operator: WhereOperatorType = "=",
   ): this {
     if (!this.whereQuery && !this.isNestedCondition) {
-      this.whereQuery = this.whereTemplate.where(column, value, operator);
+      const { query, params } = this.whereTemplate.where(
+        column,
+        value,
+        operator,
+      );
+      this.whereQuery = query;
+      this.params.push(...params);
       return this;
     }
 
-    this.whereQuery += whereTemplate(this.tableName).andWhere(
+    const { query, params } = this.whereTemplate.andWhere(
       column,
       value,
       operator,
     );
+    this.whereQuery += query;
+    this.params.push(...params);
     return this;
   }
 
@@ -396,15 +422,23 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     operator: WhereOperatorType = "=",
   ): this {
     if (!this.whereQuery && !this.isNestedCondition) {
-      this.whereQuery = this.whereTemplate.where(column, value, operator);
+      const { query, params } = this.whereTemplate.where(
+        column,
+        value,
+        operator,
+      );
+      this.whereQuery = query;
+      this.params.push(...params);
       return this;
     }
 
-    this.whereQuery += whereTemplate(this.tableName).orWhere(
+    const { query, params } = this.whereTemplate.orWhere(
       column,
       value,
       operator,
     );
+    this.whereQuery += query;
+    this.params.push(...params);
     return this;
   }
 
@@ -417,15 +451,23 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
    */
   public whereBetween(column: string, min: BaseValues, max: BaseValues): this {
     if (!this.whereQuery && !this.isNestedCondition) {
-      this.whereQuery = this.whereTemplate.whereBetween(column, min, max);
+      const { query, params } = this.whereTemplate.whereBetween(
+        column,
+        min,
+        max,
+      );
+      this.whereQuery = query;
+      this.params.push(...params);
       return this;
     }
 
-    this.whereQuery += whereTemplate(this.tableName).andWhereBetween(
+    const { query, params } = this.whereTemplate.andWhereBetween(
       column,
       min,
       max,
     );
+    this.whereQuery += query;
+    this.params.push(...params);
     return this;
   }
 
@@ -442,15 +484,23 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     max: BaseValues,
   ): this {
     if (!this.whereQuery && !this.isNestedCondition) {
-      this.whereQuery = this.whereTemplate.whereBetween(column, min, max);
+      const { query, params } = this.whereTemplate.whereBetween(
+        column,
+        min,
+        max,
+      );
+      this.whereQuery = query;
+      this.params.push(...params);
       return this;
     }
 
-    this.whereQuery += whereTemplate(this.tableName).andWhereBetween(
+    const { query, params } = this.whereTemplate.andWhereBetween(
       column,
       min,
       max,
     );
+    this.whereQuery += query;
+    this.params.push(...params);
     return this;
   }
 
@@ -467,14 +517,23 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     max: BaseValues,
   ): this {
     if (!this.whereQuery && !this.isNestedCondition) {
-      this.whereQuery = this.whereTemplate.whereBetween(column, min, max);
+      const { query, params } = this.whereTemplate.whereBetween(
+        column,
+        min,
+        max,
+      );
+      this.whereQuery = query;
+      this.params.push(...params);
       return this;
     }
-    this.whereQuery += whereTemplate(this.tableName).orWhereBetween(
+
+    const { query, params } = this.whereTemplate.orWhereBetween(
       column,
       min,
       max,
     );
+    this.whereQuery += query;
+    this.params.push(...params);
     return this;
   }
 
@@ -491,15 +550,23 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     max: BaseValues,
   ): this {
     if (!this.whereQuery && !this.isNestedCondition) {
-      this.whereQuery = this.whereTemplate.whereNotBetween(column, min, max);
+      const { query, params } = this.whereTemplate.whereNotBetween(
+        column,
+        min,
+        max,
+      );
+      this.whereQuery = query;
+      this.params.push(...params);
       return this;
     }
 
-    this.whereQuery += whereTemplate(this.tableName).andWhereNotBetween(
+    const { query, params } = this.whereTemplate.andWhereNotBetween(
       column,
       min,
       max,
     );
+    this.whereQuery += query;
+    this.params.push(...params);
     return this;
   }
 
@@ -516,15 +583,23 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     max: BaseValues,
   ): this {
     if (!this.whereQuery && !this.isNestedCondition) {
-      this.whereQuery = this.whereTemplate.whereNotBetween(column, min, max);
+      const { query, params } = this.whereTemplate.whereNotBetween(
+        column,
+        min,
+        max,
+      );
+      this.whereQuery = query;
+      this.params.push(...params);
       return this;
     }
 
-    this.whereQuery += whereTemplate(this.tableName).orWhereNotBetween(
+    const { query, params } = this.whereTemplate.orWhereNotBetween(
       column,
       min,
       max,
     );
+    this.whereQuery += query;
+    this.params.push(...params);
     return this;
   }
 
@@ -536,11 +611,15 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
    */
   public whereIn(column: string, values: BaseValues[]): this {
     if (!this.whereQuery || !this.isNestedCondition) {
-      this.whereQuery = this.whereTemplate.whereIn(column, values);
+      const { query, params } = this.whereTemplate.whereIn(column, values);
+      this.whereQuery = query;
+      this.params.push(...params);
       return this;
     }
 
-    this.whereQuery += whereTemplate(this.tableName).andWhereIn(column, values);
+    const { query, params } = this.whereTemplate.andWhereIn(column, values);
+    this.whereQuery += query;
+    this.params.push(...params);
     return this;
   }
 
@@ -552,11 +631,15 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
    */
   public andWhereIn(column: string, values: BaseValues[]): this {
     if (!this.whereQuery || !this.isNestedCondition) {
-      this.whereQuery = this.whereTemplate.whereIn(column, values);
+      const { query, params } = this.whereTemplate.whereIn(column, values);
+      this.whereQuery = query;
+      this.params.push(...params);
       return this;
     }
 
-    this.whereQuery += whereTemplate(this.tableName).andWhereIn(column, values);
+    const { query, params } = this.whereTemplate.andWhereIn(column, values);
+    this.whereQuery += query;
+    this.params.push(...params);
     return this;
   }
 
@@ -568,11 +651,15 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
    */
   public orWhereIn(column: string, values: BaseValues[]): this {
     if (!this.whereQuery || !this.isNestedCondition) {
-      this.whereQuery = this.whereTemplate.whereIn(column, values);
+      const { query, params } = this.whereTemplate.whereIn(column, values);
+      this.whereQuery = query;
+      this.params.push(...params);
       return this;
     }
 
-    this.whereQuery += whereTemplate(this.tableName).orWhereIn(column, values);
+    const { query, params } = this.whereTemplate.orWhereIn(column, values);
+    this.whereQuery += query;
+    this.params.push(...params);
     return this;
   }
 
@@ -584,14 +671,15 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
    */
   public whereNotIn(column: string, values: BaseValues[]): this {
     if (!this.whereQuery || !this.isNestedCondition) {
-      this.whereQuery = this.whereTemplate.whereNotIn(column, values);
+      const { query, params } = this.whereTemplate.whereNotIn(column, values);
+      this.whereQuery = query;
+      this.params.push(...params);
       return this;
     }
 
-    this.whereQuery += whereTemplate(this.tableName).andWhereNotIn(
-      column,
-      values,
-    );
+    const { query, params } = this.whereTemplate.andWhereNotIn(column, values);
+    this.whereQuery += query;
+    this.params.push(...params);
     return this;
   }
 
@@ -603,14 +691,15 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
    */
   public orWhereNotIn(column: string, values: BaseValues[]): this {
     if (!this.whereQuery || !this.isNestedCondition) {
-      this.whereQuery = this.whereTemplate.whereNotIn(column, values);
+      const { query, params } = this.whereTemplate.whereNotIn(column, values);
+      this.whereQuery = query;
+      this.params.push(...params);
       return this;
     }
 
-    this.whereQuery += whereTemplate(this.tableName).orWhereNotIn(
-      column,
-      values,
-    );
+    const { query, params } = this.whereTemplate.orWhereNotIn(column, values);
+    this.whereQuery += query;
+    this.params.push(...params);
     return this;
   }
 
@@ -621,11 +710,15 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
    */
   public whereNull(column: string): this {
     if (!this.whereQuery || !this.isNestedCondition) {
-      this.whereQuery = this.whereTemplate.whereNull(column);
+      const { query, params } = this.whereTemplate.whereNull(column);
+      this.whereQuery = query;
+      this.params.push(...params);
       return this;
     }
 
-    this.whereQuery += whereTemplate(this.tableName).andWhereNull(column);
+    const { query, params } = this.whereTemplate.andWhereNull(column);
+    this.whereQuery += query;
+    this.params.push(...params);
     return this;
   }
 
@@ -636,10 +729,15 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
    */
   public andWhereNull(column: string): this {
     if (!this.whereQuery || !this.isNestedCondition) {
-      this.whereQuery = this.whereTemplate.whereNull(column);
+      const { query, params } = this.whereTemplate.whereNull(column);
+      this.whereQuery = query;
+      this.params.push(...params);
       return this;
     }
-    this.whereQuery += whereTemplate(this.tableName).andWhereNull(column);
+
+    const { query, params } = this.whereTemplate.andWhereNull(column);
+    this.whereQuery += query;
+    this.params.push(...params);
     return this;
   }
 
@@ -650,11 +748,15 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
    */
   public orWhereNull(column: string): this {
     if (!this.whereQuery || !this.isNestedCondition) {
-      this.whereQuery = this.whereTemplate.whereNull(column);
+      const { query, params } = this.whereTemplate.whereNull(column);
+      this.whereQuery = query;
+      this.params.push(...params);
       return this;
     }
 
-    this.whereQuery += whereTemplate(this.tableName).orWhereNull(column);
+    const { query, params } = this.whereTemplate.orWhereNull(column);
+    this.whereQuery += query;
+    this.params.push(...params);
     return this;
   }
 
@@ -665,11 +767,15 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
    */
   public whereNotNull(column: string): this {
     if (!this.whereQuery || !this.isNestedCondition) {
-      this.whereQuery = this.whereTemplate.whereNotNull(column);
+      const { query, params } = this.whereTemplate.whereNotNull(column);
+      this.whereQuery = query;
+      this.params.push(...params);
       return this;
     }
 
-    this.whereQuery += whereTemplate(this.tableName).andWhereNotNull(column);
+    const { query, params } = this.whereTemplate.andWhereNotNull(column);
+    this.whereQuery += query;
+    this.params.push(...params);
     return this;
   }
 
@@ -680,11 +786,15 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
    */
   public andWhereNotNull(column: string): this {
     if (!this.whereQuery || !this.isNestedCondition) {
-      this.whereQuery = this.whereTemplate.whereNotNull(column);
+      const { query, params } = this.whereTemplate.whereNotNull(column);
+      this.whereQuery = query;
+      this.params.push(...params);
       return this;
     }
 
-    this.whereQuery += whereTemplate(this.tableName).andWhereNotNull(column);
+    const { query, params } = this.whereTemplate.andWhereNotNull(column);
+    this.whereQuery += query;
+    this.params.push(...params);
     return this;
   }
 
@@ -695,11 +805,15 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
    */
   public orWhereNotNull(column: string) {
     if (!this.whereQuery || !this.isNestedCondition) {
-      this.whereQuery = this.whereTemplate.whereNotNull(column);
+      const { query, params } = this.whereTemplate.whereNotNull(column);
+      this.whereQuery = query;
+      this.params.push(...params);
       return this;
     }
 
-    this.whereQuery += whereTemplate(this.tableName).orWhereNotNull(column);
+    const { query, params } = this.whereTemplate.orWhereNotNull(column);
+    this.whereQuery += query;
+    this.params.push(...params);
     return this;
   }
 
@@ -710,11 +824,15 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
    */
   public rawWhere(query: string) {
     if (!this.whereQuery || !this.isNestedCondition) {
-      this.whereQuery = this.whereTemplate.rawWhere(query);
+      const { query: rawQuery, params } = this.whereTemplate.rawWhere(query);
+      this.whereQuery = rawQuery;
+      this.params.push(...params);
       return this;
     }
 
-    this.whereQuery += whereTemplate(this.tableName).rawAndWhere(query);
+    const { query: rawQuery, params } = this.whereTemplate.rawAndWhere(query);
+    this.whereQuery += rawQuery;
+    this.params.push(...params);
     return this;
   }
 
@@ -725,11 +843,15 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
    */
   public rawAndWhere(query: string) {
     if (!this.whereQuery || !this.isNestedCondition) {
-      this.whereQuery = this.whereTemplate.rawWhere(query);
+      const { query: rawQuery, params } = this.whereTemplate.rawWhere(query);
+      this.whereQuery = rawQuery;
+      this.params.push(...params);
       return this;
     }
 
-    this.whereQuery += whereTemplate(this.tableName).rawAndWhere(query);
+    const { query: rawQuery, params } = this.whereTemplate.rawAndWhere(query);
+    this.whereQuery += rawQuery;
+    this.params.push(...params);
     return this;
   }
 
@@ -740,11 +862,15 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
    */
   public rawOrWhere(query: string) {
     if (!this.whereQuery || !this.isNestedCondition) {
-      this.whereQuery = this.whereTemplate.rawWhere(query);
+      const { query: rawQuery, params } = this.whereTemplate.rawWhere(query);
+      this.whereQuery = rawQuery;
+      this.params.push(...params);
       return this;
     }
 
-    this.whereQuery += whereTemplate(this.tableName).rawOrWhere(query);
+    const { query: rawQuery, params } = this.whereTemplate.rawOrWhere(query);
+    this.whereQuery += rawQuery;
+    this.params.push(...params);
     return this;
   }
 

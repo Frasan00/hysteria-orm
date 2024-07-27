@@ -35,15 +35,16 @@ export function log(query: string, logs: boolean, params?: any[]) {
   }
 
   if (params) {
-    params.forEach((param, index) => {
+    params.forEach((param) => {
       query = query.replace(/\?/, param);
-      query = query.replace(new RegExp(`\\$${index + 1}`, "g"), param);
+      query = query.replace(/\$\d+/, param);
     });
 
     logger.info("\n" + query);
-  } else {
-    logger.info("\n" + query);
+    return;
   }
+
+  logger.info("\n" + query);
 }
 export function queryError(error: any) {
   logger.error("Query Failed ", error);

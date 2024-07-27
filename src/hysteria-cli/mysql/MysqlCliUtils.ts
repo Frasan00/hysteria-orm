@@ -1,4 +1,4 @@
-import { DatasourceInput } from "../../Datasource";
+import { DataSourceInput } from "../../Datasource";
 import { PoolConnection } from "mysql2/promise";
 import { MigrationTableType } from "../Templates/MigrationTableType";
 import { Migration } from "../../Sql/Migrations/Migration";
@@ -6,7 +6,7 @@ import fs from "fs";
 import MigrationTemplates from "../Templates/MigrationTemplates";
 
 class MysqlCliUtils {
-  public getMysqlConfig(): DatasourceInput {
+  public getMysqlConfig(): DataSourceInput {
     if (!process.env.MYSQL_PORT) throw new Error("MYSQL_PORT is not defined");
     return {
       type: "mysql",

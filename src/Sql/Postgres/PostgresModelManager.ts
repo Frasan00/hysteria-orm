@@ -8,7 +8,6 @@ import {
 } from "../Models/ModelManager/ModelManagerTypes";
 import pg, { QueryResult } from "pg";
 import selectTemplate from "../Templates/Query/SELECT";
-import ModelManagerQueryUtils from "../Mysql/MySqlModelManagerUtils";
 import { log, queryError } from "../../Logger";
 import PostgresModelManagerUtils from "./PostgresModelManagerUtils";
 import { AbstractModelManager } from "../Models/ModelManager/AbstractModelManager";
@@ -64,13 +63,13 @@ export class PostgresModelManager<
         );
       }
 
-      const query = ModelManagerQueryUtils.parseSelectQueryInput(
+      const { query, params } = PostgresModelManagerUtils.parseSelectQueryInput(
         this.model,
         input,
       );
-      log(query, this.logs);
+      log(query, this.logs, params);
 
-      const { rows }: QueryResult<T> = await this.pgPool.query(query);
+      const { rows }: QueryResult<T> = await this.pgPool.query(query, params);
       return Promise.all(
         rows.map(async (row) => {
           const model = new this.model();
@@ -106,13 +105,13 @@ export class PostgresModelManager<
   public async findOne(input: FindOneType): Promise<T | null> {
     const model = new this.model();
     try {
-      const query = ModelManagerQueryUtils.parseSelectQueryInput(
+      const { query, params } = PostgresModelManagerUtils.parseSelectQueryInput(
         this.model,
         input,
       );
-      log(query, this.logs);
+      log(query, this.logs, params);
 
-      const { rows } = await this.pgPool.query(query);
+      const { rows } = await this.pgPool.query(query, params);
       if (!rows[0]) {
         return null;
       }
@@ -172,16 +171,17 @@ export class PostgresModelManager<
    * @returns Promise resolving to the saved model or null if saving fails.
    */
   public async create(model: T, trx?: PostgresTransaction): Promise<T | null> {
-    const { query, params } = ModelManagerQueryUtils.parseInsert(
+    const { query, params } = PostgresModelManagerUtils.parseInsert(
       model,
       this.model,
     );
+
     if (trx) {
       return await trx.queryInsert<T>(query, params, this.model.metadata);
     }
 
     try {
-      const { query, params } = ModelManagerQueryUtils.parseInsert(
+      const { query, params } = PostgresModelManagerUtils.parseInsert(
         model,
         this.model,
       );
@@ -206,8 +206,38 @@ export class PostgresModelManager<
    * @param {PostgresTransaction} trx - MysqlTransaction to be used on the save operation.
    * @returns Promise resolving to an array of saved models or null if saving fails.
    */
-  public massiveCreate(model: T, trx?: PostgresTransaction): Promise<T[]> {
-    throw new Error("Method not implemented.");
+  public async massiveCreate(
+    models: T[],
+    trx?: PostgresTransaction,
+  ): Promise<T[]> {
+    const { query, params } = PostgresModelManagerUtils.parseMassiveInsert(
+      models,
+      this.model,
+    );
+
+    if (trx) {
+      return await trx.massiveInsertQuery<T>(query, params);
+    }
+
+    try {
+      const { query, params } = PostgresModelManagerUtils.parseMassiveInsert(
+        models,
+        this.model,
+      );
+      log(query, this.logs, params);
+      const { rows } = await this.pgPool.query(query, params);
+      const insertedModel = rows as T[];
+      if (!insertedModel.length) {
+        return [];
+      }
+
+      return insertedModel.map(
+        (model) => parseDatabaseDataIntoModelResponse([model]) as T,
+      );
+    } catch (error) {
+      queryError(error);
+      throw new Error("Query failed " + error);
+    }
   }
 
   /**
@@ -227,7 +257,7 @@ export class PostgresModelManager<
       );
     }
 
-    const { query, params } = ModelManagerQueryUtils.parseUpdate(
+    const { query, params } = PostgresModelManagerUtils.parseUpdate(
       model,
       this.model,
     );
@@ -243,7 +273,7 @@ export class PostgresModelManager<
     }
 
     try {
-      const { query, params } = ModelManagerQueryUtils.parseUpdate(
+      const { query, params } = PostgresModelManagerUtils.parseUpdate(
         model,
         this.model,
       );
@@ -278,7 +308,7 @@ export class PostgresModelManager<
     if (trx) {
       return (
         (await trx.queryDelete(
-          ModelManagerQueryUtils.parseDelete(
+          PostgresModelManagerUtils.parseDelete(
             this.model.metadata.tableName,
             column,
             value,
@@ -288,7 +318,7 @@ export class PostgresModelManager<
     }
 
     try {
-      const deleteQuery = ModelManagerQueryUtils.parseDelete(
+      const deleteQuery = PostgresModelManagerUtils.parseDelete(
         this.model.metadata.tableName,
         column,
         value,
@@ -319,7 +349,7 @@ export class PostgresModelManager<
             " has no primary key to be deleted from, try deleteByColumn",
         );
       }
-      const deleteQuery = ModelManagerQueryUtils.parseDelete(
+      const deleteQuery = PostgresModelManagerUtils.parseDelete(
         this.model.metadata.tableName,
         this.model.metadata.primaryKey,
         model[this.model.metadata.primaryKey as keyof T] as string,

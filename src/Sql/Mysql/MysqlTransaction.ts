@@ -5,6 +5,7 @@ import { ROLLBACK_TRANSACTION } from "../Templates/Query/TRANSACTION";
 import { log, queryError } from "../../Logger";
 import { Metadata, Model } from "../Models/Model";
 import selectTemplate from "../Templates/Query/SELECT";
+import { parseDatabaseDataIntoModelResponse } from "../serializer";
 
 export class MysqlTransaction {
   protected tableName: string;
@@ -27,7 +28,7 @@ export class MysqlTransaction {
       throw new Error("MysqlTransaction not started.");
     }
 
-    log(query, this.logs);
+    log(query, this.logs, params);
     const [rows]: any = await this.mysqlConnection.query<RowDataPacket[]>(
       query,
       params,
@@ -40,6 +41,32 @@ export class MysqlTransaction {
     return savedModel[0] as T;
   }
 
+  public async massiveInsertQuery<T extends Model>(
+    query: string,
+    params: any[],
+  ): Promise<T[]> {
+    if (!this.mysql) {
+      throw new Error("PostgresTransaction not started.");
+    }
+
+    try {
+      log(query, this.logs, params);
+      const [rows]: any = await this.mysqlConnection.query<RowDataPacket[]>(
+        query,
+        params,
+      );
+
+      return rows.map(
+        (row: T) => parseDatabaseDataIntoModelResponse([row]) as T,
+      );
+    } catch (error) {
+      queryError(error);
+      throw new Error(
+        "Failed to execute massive insert query in transaction " + error,
+      );
+    }
+  }
+
   public async queryUpdate<T extends Model>(
     query: string,
     params?: any[],
@@ -48,7 +75,7 @@ export class MysqlTransaction {
       throw new Error("MysqlTransaction not started.");
     }
 
-    log(query, this.logs);
+    log(query, this.logs, params);
     const [rows]: any = await this.mysqlConnection.query<RowDataPacket[]>(
       query,
       params,
@@ -61,7 +88,7 @@ export class MysqlTransaction {
       throw new Error("MysqlTransaction not started.");
     }
 
-    log(query, this.logs);
+    log(query, this.logs, params);
     const [rows]: any = await this.mysqlConnection.query<RowDataPacket[]>(
       query,
       params,

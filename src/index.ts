@@ -5,7 +5,7 @@ import { BelongsTo } from "./Sql/Models/Relations/BelongsTo";
 import { DataSourceInput } from "./Datasource";
 import { Migration } from "./Sql/Migrations/Migration";
 import { SqlDataSource } from "./Sql/SqlDataSource";
-import { testQuery } from "./test";
+import { testCreate, testQuery } from "./test";
 
 class User extends Model {
   public id!: number;
@@ -29,7 +29,8 @@ class User extends Model {
     logs: true,
   });
 
-  await testQuery();
+  await testCreate();
+  // await testQuery();
 
   process.exit(0);
 })();

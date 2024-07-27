@@ -102,37 +102,39 @@ export class Model {
   /**
    * @description Saves a new record to the database
    * @param model
-   * @param {Model} modelInstance
+   * @param {Model} modelData
    * @param {MysqlTransaction & PostgresTransaction} trx
    * @returns {Promise<T | null>}
    */
   public static create<T extends Model>(
-    modelInstance: T,
+    this: new () => T | typeof Model,
+    modelData: Partial<T>,
     trx?: MysqlTransaction & PostgresTransaction,
   ): Promise<T | null> {
-    this.establishConnection();
-    return this.sqlInstance
-      .getModelManager<T>(this)
-      .create(modelInstance as T, trx);
+    const typeofModel = this as unknown as typeof Model;
+    return typeofModel.sqlInstance
+      .getModelManager<T>(typeofModel)
+      .create(modelData as T, trx);
   }
 
-  // TODO: Implement massiveCreate method
-  // /**
-  //  * @description Saves multiple records to the database
-  //  * @param model
-  //  * @param {Model} modelInstance
-  //  * @param {MysqlTransaction & PostgresTransaction} trx
-  //  * @returns {Promise<T[]>}
-  //  */
-  // public static massiveCreate<T extends Model>(
-  //   modelInstance: T,
-  //   trx?: MysqlTransaction & PostgresTransaction,
-  // ): Promise<T[]> {
-  //   this.establishConnection();
-  //   return this.sqlInstance
-  //     .getModelManager<T>(this)
-  //     .massiveCreate(modelInstance, trx);
-  // }
+  /**
+   * @description Saves multiple records to the database
+   * @param model
+   * @param {Model} modelsData
+   * @param {MysqlTransaction & PostgresTransaction} trx
+   * @returns {Promise<T[]>}
+   */
+  public static massiveCreate<T extends Model>(
+    this: new () => T | typeof Model,
+    modelsData: Partial<T>[],
+    trx?: MysqlTransaction & PostgresTransaction,
+  ): Promise<T[]> {
+    const typeofModel = this as unknown as typeof Model;
+    typeofModel.establishConnection();
+    return typeofModel.sqlInstance
+      .getModelManager<T>(typeofModel)
+      .massiveCreate(modelsData as T[], trx);
+  }
 
   // /**
   //  * @description Updates a record to the database

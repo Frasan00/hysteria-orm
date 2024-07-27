@@ -19,6 +19,80 @@ class User extends Model {
   };
 }
 
+export async function testCreate() {
+  // Postgres
+  await User.useConnection(
+    {
+      type: "postgres",
+      host: "localhost",
+      username: "root",
+      password: "root",
+      database: "test",
+      port: 5432,
+      logs: true,
+    },
+    async () => {
+      console.log("Postgres connection opened");
+
+      const user = await User.create({
+        name: "John Doe",
+        email: "testoooo",
+      });
+
+      console.log(user);
+
+      const users = await User.massiveCreate([
+        {
+          name: "Massive John Doe",
+          email: " massive test",
+        },
+        {
+          name: "Massive Jane Doe 2",
+          email: " massive test",
+        },
+      ]);
+      console.log(users);
+
+      console.log("Postgres connection closed");
+    },
+  );
+
+  // Mysql
+  await User.useConnection(
+    {
+      type: "mysql",
+      host: "localhost",
+      username: "root",
+      password: "root",
+      database: "test",
+      port: 3306,
+      logs: true,
+    },
+    async () => {
+      console.log("Mysql connection opened");
+
+      const user = await User.create({
+        name: "John Doe",
+        email: "testoooo",
+      });
+      console.log(user);
+
+      const users = await User.massiveCreate([
+        {
+          name: "Massive John Doe",
+          email: " massive test",
+        },
+        {
+          name: "Massive Jane Doe 2",
+          email: " massive test",
+        },
+      ]);
+      console.log(users);
+      console.log("Mysql connection closed");
+    },
+  );
+}
+
 // class Post extends Model {
 //   public id!: number;
 //   public title!: string;

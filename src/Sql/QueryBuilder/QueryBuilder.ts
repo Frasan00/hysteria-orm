@@ -1,10 +1,8 @@
-import { Pool } from "mysql2/promise";
 import selectTemplate, { SelectTemplateType } from "../Templates/Query/SELECT";
 import { Model } from "../Models/Model";
 import whereTemplate, {
   BaseValues,
   WhereOperatorType,
-  WhereTemplateType,
 } from "../Templates/Query/WHERE.TS";
 import { MysqlQueryBuilder } from "../Mysql/MysqlQueryBuilder";
 import { PostgresQueryBuilder } from "../Postgres/PostgresQueryBuilder";
@@ -23,13 +21,14 @@ export abstract class QueryBuilder<T extends Model> {
   protected orderByQuery: string = "";
   protected limitQuery: string = "";
   protected offsetQuery: string = "";
+  protected params: BaseValues[] = [];
 
   protected model: typeof Model;
   protected tableName: string;
   protected logs: boolean;
 
   protected selectTemplate: SelectTemplateType;
-  protected whereTemplate: WhereTemplateType;
+  protected whereTemplate: ReturnType<typeof whereTemplate>;
 
   /**
    * @description Constructs a MysqlQueryBuilder instance.
@@ -49,7 +48,11 @@ export abstract class QueryBuilder<T extends Model> {
       this.tableName,
       this.model.sqlInstance.getDbType(),
     );
-    this.whereTemplate = whereTemplate(this.tableName);
+    this.whereTemplate = whereTemplate(
+      this.tableName,
+      this.model.sqlInstance.getDbType(),
+    );
+    this.params = [];
   }
 
   /**

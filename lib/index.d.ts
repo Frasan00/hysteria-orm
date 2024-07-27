@@ -34,6 +34,7 @@ declare class MysqlTransaction {
     protected logs: boolean;
     constructor(mysql: Pool, tableName: string, logs: boolean);
     queryInsert<T extends Model>(query: string, params: any[], metadata: Metadata): Promise<T>;
+    massiveInsertQuery<T extends Model>(query: string, params: any[]): Promise<T[]>;
     queryUpdate<T extends Model>(query: string, params?: any[]): Promise<number>;
     queryDelete(query: string, params?: any[]): Promise<number>;
     /**
@@ -57,6 +58,7 @@ declare class PostgresTransaction {
     protected logs: boolean;
     constructor(pgPool: Pool$1, tableName: string, logs: boolean);
     queryInsert<T extends Model>(query: string, params: any[], metadata: Metadata): Promise<T>;
+    massiveInsertQuery<T extends Model>(query: string, params: any[]): Promise<T[]>;
     queryUpdate<T extends Model>(query: string, params?: any[]): Promise<number | null>;
     queryDelete(query: string, params?: any[]): Promise<number | null>;
     /**
@@ -88,34 +90,116 @@ type SelectTemplateType = {
 
 type WhereOperatorType = "=" | "!=" | ">" | "<" | ">=" | "<=" | "LIKE" | "ILIKE";
 type BaseValues = string | number | boolean | Date;
-type WhereTemplateType = {
-    where: (column: string, value: BaseValues, operator: WhereOperatorType) => string;
-    andWhere: (column: string, value: BaseValues, operator: WhereOperatorType) => string;
-    orWhere: (column: string, value: BaseValues, operator: WhereOperatorType) => string;
-    whereNot: (column: string, value: BaseValues) => string;
-    andWhereNot: (column: string, value: BaseValues) => string;
-    orWhereNot: (column: string, value: BaseValues) => string;
-    whereNull: (column: string) => string;
-    andWhereNull: (column: string) => string;
-    orWhereNull: (column: string) => string;
-    whereNotNull: (column: string) => string;
-    andWhereNotNull: (column: string) => string;
-    orWhereNotNull: (column: string) => string;
-    whereBetween: (column: string, min: BaseValues, max: BaseValues) => string;
-    andWhereBetween: (column: string, min: BaseValues, max: BaseValues) => string;
-    orWhereBetween: (column: string, min: BaseValues, max: BaseValues) => string;
-    whereNotBetween: (column: string, min: BaseValues, max: BaseValues) => string;
-    andWhereNotBetween: (column: string, min: BaseValues, max: BaseValues) => string;
-    orWhereNotBetween: (column: string, min: BaseValues, max: BaseValues) => string;
-    whereIn: (column: string, values: BaseValues[]) => string;
-    andWhereIn: (column: string, values: BaseValues[]) => string;
-    orWhereIn: (column: string, values: BaseValues[]) => string;
-    whereNotIn: (column: string, values: BaseValues[]) => string;
-    andWhereNotIn: (column: string, values: BaseValues[]) => string;
-    orWhereNotIn: (column: string, values: BaseValues[]) => string;
-    rawWhere: (query: string) => string;
-    rawAndWhere: (query: string) => string;
-    rawOrWhere: (query: string) => string;
+declare const whereTemplate: (_tableName: string, dbType: DataSourceType) => {
+    convertPlaceHolderToValue: (query: string) => string;
+    where: (column: string, value: BaseValues, operator?: WhereOperatorType, index?: number) => {
+        query: string;
+        params: BaseValues[];
+    };
+    andWhere: (column: string, value: BaseValues, operator?: WhereOperatorType, index?: number) => {
+        query: string;
+        params: BaseValues[];
+    };
+    orWhere: (column: string, value: BaseValues, operator?: WhereOperatorType, index?: number) => {
+        query: string;
+        params: BaseValues[];
+    };
+    whereNot: (column: string, value: BaseValues, index?: number) => {
+        query: string;
+        params: BaseValues[];
+    };
+    andWhereNot: (column: string, value: BaseValues, index?: number) => {
+        query: string;
+        params: BaseValues[];
+    };
+    orWhereNot: (column: string, value: BaseValues, index?: number) => {
+        query: string;
+        params: BaseValues[];
+    };
+    whereNull: (column: string) => {
+        query: string;
+        params: never[];
+    };
+    andWhereNull: (column: string) => {
+        query: string;
+        params: never[];
+    };
+    orWhereNull: (column: string) => {
+        query: string;
+        params: never[];
+    };
+    whereNotNull: (column: string) => {
+        query: string;
+        params: never[];
+    };
+    andWhereNotNull: (column: string) => {
+        query: string;
+        params: never[];
+    };
+    orWhereNotNull: (column: string) => {
+        query: string;
+        params: never[];
+    };
+    whereBetween: (column: string, min: BaseValues, max: BaseValues) => {
+        query: string;
+        params: BaseValues[];
+    };
+    andWhereBetween: (column: string, min: BaseValues, max: BaseValues) => {
+        query: string;
+        params: BaseValues[];
+    };
+    orWhereBetween: (column: string, min: BaseValues, max: BaseValues) => {
+        query: string;
+        params: BaseValues[];
+    };
+    whereNotBetween: (column: string, min: BaseValues, max: BaseValues) => {
+        query: string;
+        params: BaseValues[];
+    };
+    andWhereNotBetween: (column: string, min: BaseValues, max: BaseValues) => {
+        query: string;
+        params: BaseValues[];
+    };
+    orWhereNotBetween: (column: string, min: BaseValues, max: BaseValues) => {
+        query: string;
+        params: BaseValues[];
+    };
+    whereIn: (column: string, values: BaseValues[]) => {
+        query: string;
+        params: BaseValues[];
+    };
+    andWhereIn: (column: string, values: BaseValues[]) => {
+        query: string;
+        params: BaseValues[];
+    };
+    orWhereIn: (column: string, values: BaseValues[]) => {
+        query: string;
+        params: BaseValues[];
+    };
+    whereNotIn: (column: string, values: BaseValues[]) => {
+        query: string;
+        params: BaseValues[];
+    };
+    andWhereNotIn: (column: string, values: BaseValues[]) => {
+        query: string;
+        params: BaseValues[];
+    };
+    orWhereNotIn: (column: string, values: BaseValues[]) => {
+        query: string;
+        params: BaseValues[];
+    };
+    rawWhere: (query: string) => {
+        query: string;
+        params: never[];
+    };
+    rawAndWhere: (query: string) => {
+        query: string;
+        params: never[];
+    };
+    rawOrWhere: (query: string) => {
+        query: string;
+        params: never[];
+    };
 };
 
 type PaginationMetadata = {
@@ -419,7 +503,7 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @param column - The column to filter.
      * @param operator - The comparison operator.
      * @param value - The value to compare against.
-     * @returns The MysqlQueryBuilder instance for chaining.
+     * @returns The PostgresQueryBuilder instance for chaining.
      */
     where(column: string, value: BaseValues, operator?: WhereOperatorType): this;
     /**
@@ -442,7 +526,7 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @param column - The column to filter.
      * @param operator - The comparison operator.
      * @param value - The value to compare against.
-     * @returns The MysqlQueryBuilder instance for chaining.
+     * @returns The PostgresQueryBuilder instance for chaining.
      */
     andWhere(column: string, value: BaseValues, operator?: WhereOperatorType): this;
     /**
@@ -450,7 +534,7 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @param column - The column to filter.
      * @param operator - The comparison operator.
      * @param value - The value to compare against.
-     * @returns The MysqlQueryBuilder instance for chaining.
+     * @returns The PostgresQueryBuilder instance for chaining.
      */
     orWhere(column: string, value: BaseValues, operator?: WhereOperatorType): this;
     /**
@@ -458,7 +542,7 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @param column - The column to filter.
      * @param min - The minimum value for the range.
      * @param max - The maximum value for the range.
-     * @returns The MysqlQueryBuilder instance for chaining.
+     * @returns The PostgresQueryBuilder instance for chaining.
      */
     whereBetween(column: string, min: BaseValues, max: BaseValues): this;
     /**
@@ -466,7 +550,7 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @param column - The column to filter.
      * @param min - The minimum value for the range.
      * @param max - The maximum value for the range.
-     * @returns The MysqlQueryBuilder instance for chaining.
+     * @returns The PostgresQueryBuilder instance for chaining.
      */
     andWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
     /**
@@ -474,7 +558,7 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @param column - The column to filter.
      * @param min - The minimum value for the range.
      * @param max - The maximum value for the range.
-     * @returns The MysqlQueryBuilder instance for chaining.
+     * @returns The PostgresQueryBuilder instance for chaining.
      */
     orWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
     /**
@@ -482,7 +566,7 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @param column - The column to filter.
      * @param min - The minimum value for the range.
      * @param max - The maximum value for the range.
-     * @returns The MysqlQueryBuilder instance for chaining.
+     * @returns The PostgresQueryBuilder instance for chaining.
      */
     whereNotBetween(column: string, min: BaseValues, max: BaseValues): this;
     /**
@@ -490,121 +574,121 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @param column - The column to filter.
      * @param min - The minimum value for the range.
      * @param max - The maximum value for the range.
-     * @returns The MysqlQueryBuilder instance for chaining.
+     * @returns The PostgresQueryBuilder instance for chaining.
      */
     orWhereNotBetween(column: string, min: BaseValues, max: BaseValues): this;
     /**
      * @description Adds a WHERE IN condition to the query.
      * @param column - The column to filter.
      * @param values - An array of values to match against.
-     * @returns The MysqlQueryBuilder instance for chaining.
+     * @returns The PostgresQueryBuilder instance for chaining.
      */
     whereIn(column: string, values: BaseValues[]): this;
     /**
      * @description Adds an AND WHERE IN condition to the query.
      * @param column - The column to filter.
      * @param values - An array of values to match against.
-     * @returns The MysqlQueryBuilder instance for chaining.
+     * @returns The PostgresQueryBuilder instance for chaining.
      */
     andWhereIn(column: string, values: BaseValues[]): this;
     /**
      * @description Adds an OR WHERE IN condition to the query.
      * @param column - The column to filter.
      * @param values - An array of values to match against.
-     * @returns The MysqlQueryBuilder instance for chaining.
+     * @returns The PostgresQueryBuilder instance for chaining.
      */
     orWhereIn(column: string, values: BaseValues[]): this;
     /**
      * @description Adds a WHERE NOT IN condition to the query.
      * @param column - The column to filter.
      * @param values - An array of values to exclude.
-     * @returns The MysqlQueryBuilder instance for chaining.
+     * @returns The PostgresQueryBuilder instance for chaining.
      */
     whereNotIn(column: string, values: BaseValues[]): this;
     /**
      * @description Adds an OR WHERE NOT IN condition to the query.
      * @param column - The column to filter.
      * @param values - An array of values to exclude.
-     * @returns The MysqlQueryBuilder instance for chaining.
+     * @returns The PostgresQueryBuilder instance for chaining.
      */
     orWhereNotIn(column: string, values: BaseValues[]): this;
     /**
      * @description Adds a WHERE NULL condition to the query.
      * @param column - The column to filter.
-     * @returns The MysqlQueryBuilder instance for chaining.
+     * @returns The PostgresQueryBuilder instance for chaining.
      */
     whereNull(column: string): this;
     /**
      * @description Adds an AND WHERE NULL condition to the query.
      * @param column - The column to filter.
-     * @returns The MysqlQueryBuilder instance for chaining.
+     * @returns The PostgresQueryBuilder instance for chaining.
      */
     andWhereNull(column: string): this;
     /**
      * @description Adds an OR WHERE NULL condition to the query.
      * @param column - The column to filter.
-     * @returns The MysqlQueryBuilder instance for chaining.
+     * @returns The PostgresQueryBuilder instance for chaining.
      */
     orWhereNull(column: string): this;
     /**
      * @description Adds a WHERE NOT NULL condition to the query.
      * @param column - The column to filter.
-     * @returns The MysqlQueryBuilder instance for chaining.
+     * @returns The PostgresQueryBuilder instance for chaining.
      */
     whereNotNull(column: string): this;
     /**
      * @description Adds an AND WHERE NOT NULL condition to the query.
      * @param column - The column to filter.
-     * @returns The MysqlQueryBuilder instance for chaining.
+     * @returns The PostgresQueryBuilder instance for chaining.
      */
     andWhereNotNull(column: string): this;
     /**
      * @description Adds an OR WHERE NOT NULL condition to the query.
      * @param column - The column to filter.
-     * @returns The MysqlQueryBuilder instance for chaining.
+     * @returns The PostgresQueryBuilder instance for chaining.
      */
     orWhereNotNull(column: string): this;
     /**
      * @description Adds a raw WHERE condition to the query.
      * @param query - The raw SQL WHERE condition.
-     * @returns The MysqlQueryBuilder instance for chaining.
+     * @returns The PostgresQueryBuilder instance for chaining.
      */
     rawWhere(query: string): this;
     /**
      * @description Adds a raw AND WHERE condition to the query.
      * @param query - The raw SQL WHERE condition.
-     * @returns The MysqlQueryBuilder instance for chaining.
+     * @returns The PostgresQueryBuilder instance for chaining.
      */
     rawAndWhere(query: string): this;
     /**
      * @description Adds a raw OR WHERE condition to the query.
      * @param query - The raw SQL WHERE condition.
-     * @returns The MysqlQueryBuilder instance for chaining.
+     * @returns The PostgresQueryBuilder instance for chaining.
      */
     rawOrWhere(query: string): this;
     /**
      * @description Adds GROUP BY conditions to the query.
      * @param columns - The columns to group by.
-     * @returns The MysqlQueryBuilder instance for chaining.
+     * @returns The PostgresQueryBuilder instance for chaining.
      */
     groupBy(...columns: string[]): this;
     /**
      * @description Adds ORDER BY conditions to the query.
      * @param column - The column to order by.
      * @param order - The order direction, either "ASC" or "DESC".
-     * @returns The MysqlQueryBuilder instance for chaining.
+     * @returns The PostgresQueryBuilder instance for chaining.
      */
     orderBy(column: string[], order: "ASC" | "DESC"): this;
     /**
      * @description Adds a LIMIT condition to the query.
      * @param limit - The maximum number of rows to return.
-     * @returns The MysqlQueryBuilder instance for chaining.
+     * @returns The PostgresQueryBuilder instance for chaining.
      */
     limit(limit: number): this;
     /**
      * @description Adds an OFFSET condition to the query.
      * @param offset - The number of rows to skip.
-     * @returns The MysqlQueryBuilder instance for chaining.
+     * @returns The PostgresQueryBuilder instance for chaining.
      */
     offset(offset: number): this;
     protected groupFooterQuery(): string;
@@ -620,11 +704,12 @@ declare abstract class QueryBuilder<T extends Model> {
     protected orderByQuery: string;
     protected limitQuery: string;
     protected offsetQuery: string;
+    protected params: BaseValues[];
     protected model: typeof Model;
     protected tableName: string;
     protected logs: boolean;
     protected selectTemplate: SelectTemplateType;
-    protected whereTemplate: WhereTemplateType;
+    protected whereTemplate: ReturnType<typeof whereTemplate>;
     /**
      * @description Constructs a MysqlQueryBuilder instance.
      * @param model - The model class associated with the table.
@@ -899,8 +984,8 @@ declare abstract class AbstractModelManager<T extends Model> {
     abstract find(input?: FindType): Promise<T[]>;
     abstract findOne(input: FindOneType): Promise<T | null>;
     abstract findOneById(id: string | number): Promise<T | null>;
-    abstract create(model: T, trx?: MysqlTransaction | PostgresTransaction): Promise<T | null>;
-    abstract massiveCreate(model: T, trx?: MysqlTransaction | PostgresTransaction): Promise<T[]>;
+    abstract create(model: Partial<T>, trx?: MysqlTransaction | PostgresTransaction): Promise<T | null>;
+    abstract massiveCreate(model: Partial<T>[], trx?: MysqlTransaction | PostgresTransaction): Promise<T[]>;
     abstract updateRecord(model: T, trx?: MysqlTransaction | PostgresTransaction): Promise<T | null>;
     abstract deleteByColumn(column: string, value: string | number | boolean, trx?: MysqlTransaction | PostgresTransaction): Promise<number> | Promise<number | null>;
     abstract delete(model: T, trx?: MysqlTransaction | PostgresTransaction): Promise<T | null>;
@@ -953,7 +1038,7 @@ declare class MysqlModelManager<T extends Model> extends AbstractModelManager<T>
      * @param {MysqlTransaction} trx - MysqlTransaction to be used on the save operation.
      * @returns Promise resolving to an array of saved models or null if saving fails.
      */
-    massiveCreate(model: T, trx?: MysqlTransaction | PostgresTransaction): Promise<T[]>;
+    massiveCreate(models: T[], trx?: MysqlTransaction | PostgresTransaction): Promise<T[]>;
     /**
      * Update an existing model instance in the database.
      * @param {Model} model - Model instance to be updated.
@@ -1037,7 +1122,7 @@ declare class PostgresModelManager<T extends Model> extends AbstractModelManager
      * @param {PostgresTransaction} trx - MysqlTransaction to be used on the save operation.
      * @returns Promise resolving to an array of saved models or null if saving fails.
      */
-    massiveCreate(model: T, trx?: PostgresTransaction): Promise<T[]>;
+    massiveCreate(models: T[], trx?: PostgresTransaction): Promise<T[]>;
     /**
      * Update an existing model instance in the database.
      * @param {Model} model - Model instance to be updated.
@@ -1169,11 +1254,19 @@ declare class Model {
     /**
      * @description Saves a new record to the database
      * @param model
-     * @param {Model} modelInstance
+     * @param {Model} modelData
      * @param {MysqlTransaction & PostgresTransaction} trx
      * @returns {Promise<T | null>}
      */
-    static create<T extends Model>(modelInstance: T, trx?: MysqlTransaction & PostgresTransaction): Promise<T | null>;
+    static create<T extends Model>(this: new () => T | typeof Model, modelData: Partial<T>, trx?: MysqlTransaction & PostgresTransaction): Promise<T | null>;
+    /**
+     * @description Saves multiple records to the database
+     * @param model
+     * @param {Model} modelsData
+     * @param {MysqlTransaction & PostgresTransaction} trx
+     * @returns {Promise<T[]>}
+     */
+    static massiveCreate<T extends Model>(this: new () => T | typeof Model, modelsData: Partial<T>[], trx?: MysqlTransaction & PostgresTransaction): Promise<T[]>;
     /**
      * @description Deletes a record to the database
      * @param model
