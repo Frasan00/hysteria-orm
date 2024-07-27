@@ -1,5 +1,5 @@
 import { Model } from "../Models/Model";
-import { QueryBuilder } from "../QueryBuilder/QueryBuilder";
+import { OneOptions, QueryBuilder } from "../QueryBuilder/QueryBuilder";
 import { Pool } from "pg";
 import { BaseValues, WhereOperatorType } from "../Templates/Query/WHERE.TS";
 import selectTemplate from "../Templates/Query/SELECT";
@@ -64,7 +64,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return await this.pgPool.query(query, params);
   }
 
-  public async one(): Promise<T | null> {
+  public async one(options: OneOptions = { throwErrorOnNull: false }): Promise<T | null> {
     let query: string = "";
     if (this.joinQuery && !this.selectQuery) {
       const select = selectTemplate(
@@ -86,6 +86,10 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
       log(query, this.logs, this.params);
       const result = await this.pgPool.query(query, this.params);
       if (!result.rows[0]) {
+        if (options.throwErrorOnNull) {
+          throw new Error("ROW_NOT_FOUND");
+        }
+
         return null;
       }
 
@@ -106,8 +110,8 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     }
   }
 
-  public async first(): Promise<T | null> {
-    return await this.limit(1).one();
+  public async first(options: OneOptions = { throwErrorOnNull: false }): Promise<T | null> {
+    return await this.limit(1).one(options);
   }
 
   public async many(): Promise<T[]> {

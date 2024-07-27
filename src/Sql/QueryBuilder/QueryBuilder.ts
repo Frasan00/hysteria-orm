@@ -10,12 +10,15 @@ import { PaginatedData } from "../pagination";
 import {
   RelationType,
   SelectableType,
-  WhereType,
 } from "../Models/ModelManager/ModelManagerTypes";
 
 export type QueryBuilders<T extends Model> =
   | MysqlQueryBuilder<T>
   | PostgresQueryBuilder<T>;
+
+export type OneOptions = {
+  throwErrorOnNull: boolean;
+};
 
 export abstract class QueryBuilder<T extends Model> {
   protected selectQuery: string = "";
@@ -64,7 +67,7 @@ export abstract class QueryBuilder<T extends Model> {
    * @description Executes the query and retrieves the first result.
    * @returns A Promise resolving to the first result or null.
    */
-  public abstract one(): Promise<T | null>;
+  public abstract one(options: OneOptions): Promise<T | null>;
 
   /**
    * @description Executes the query and retrieves multiple results.
@@ -76,7 +79,7 @@ export abstract class QueryBuilder<T extends Model> {
    * @description Executes the query and retrieves the first result.
    * @returns A Promise resolving to the first result or null.
    */
-  public abstract first(): Promise<T | null>;
+  public abstract first(options: OneOptions): Promise<T | null>;
 
   /**
    * @description Executes the query and retrieves multiple results.

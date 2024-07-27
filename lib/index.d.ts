@@ -270,8 +270,9 @@ type FindOneType<T> = {
     select?: SelectableType<T>[];
     relations?: RelationType<T>[];
     where?: WhereType<T>;
+    throwErrorOnNull?: boolean;
 };
-type FindType<T> = FindOneType<T> & {
+type FindType<T> = Omit<FindOneType<T>, "throwError"> & {
     orderBy?: OrderByType;
     groupBy?: string[];
     limit?: number;
@@ -295,8 +296,8 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @description Executes the query and retrieves the first result.
      * @returns A Promise resolving to the first result or null.
      */
-    one(): Promise<T | null>;
-    first(): Promise<T | null>;
+    one(options?: OneOptions): Promise<T | null>;
+    first(options?: OneOptions): Promise<T | null>;
     /**
      * @description Executes the query and retrieves multiple results.
      * @returns A Promise resolving to an array of results.
@@ -751,6 +752,9 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
 }
 
 type QueryBuilders<T extends Model> = MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
+type OneOptions = {
+    throwErrorOnNull: boolean;
+};
 declare abstract class QueryBuilder<T extends Model> {
     protected selectQuery: string;
     protected joinQuery: string;
@@ -777,7 +781,7 @@ declare abstract class QueryBuilder<T extends Model> {
      * @description Executes the query and retrieves the first result.
      * @returns A Promise resolving to the first result or null.
      */
-    abstract one(): Promise<T | null>;
+    abstract one(options: OneOptions): Promise<T | null>;
     /**
      * @description Executes the query and retrieves multiple results.
      * @returns A Promise resolving to an array of results.
@@ -787,7 +791,7 @@ declare abstract class QueryBuilder<T extends Model> {
      * @description Executes the query and retrieves the first result.
      * @returns A Promise resolving to the first result or null.
      */
-    abstract first(): Promise<T | null>;
+    abstract first(options: OneOptions): Promise<T | null>;
     /**
      * @description Executes the query and retrieves multiple results.
      * @returns A Promise resolving to an array of results.
@@ -1027,10 +1031,11 @@ declare abstract class AbstractModelManager<T extends Model> {
     protected logs: boolean;
     protected model: typeof Model;
     protected modelInstance: T;
+    protected throwError: boolean;
     protected constructor(model: typeof Model, logs: boolean);
     abstract find(input?: FindType<T>): Promise<T[]>;
     abstract findOne(input: FindOneType<T>): Promise<T | null>;
-    abstract findOneById(id: string | number): Promise<T | null>;
+    abstract findOneById(id: string | number, throwErrorOnNull: boolean): Promise<T | null>;
     abstract create(model: Partial<T>, trx?: MysqlTransaction | PostgresTransaction): Promise<T | null>;
     abstract massiveCreate(model: Partial<T>[], trx?: MysqlTransaction | PostgresTransaction): Promise<T[]>;
     abstract updateRecord(model: T, trx?: MysqlTransaction | PostgresTransaction): Promise<T | null>;
@@ -1069,7 +1074,7 @@ declare class MysqlModelManager<T extends Model> extends AbstractModelManager<T>
      * @param {string | number} id - ID of the record to retrieve.
      * @returns Promise resolving to a single model or null if not found.
      */
-    findOneById(id: string | number): Promise<T | null>;
+    findOneById(id: string | number, throwErrorOnNull?: boolean): Promise<T | null>;
     /**
      * Save a new model instance to the database.
      *
@@ -1153,7 +1158,7 @@ declare class PostgresModelManager<T extends Model> extends AbstractModelManager
      * @param {string | number} id - ID of the record to retrieve.
      * @returns Promise resolving to a single model or null if not found.
      */
-    findOneById(id: string | number): Promise<T | null>;
+    findOneById(id: string | number, throwErrorOnNull?: boolean): Promise<T | null>;
     /**
      * Save a new model instance to the database.
      *

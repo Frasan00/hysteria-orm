@@ -4,7 +4,7 @@ import { Model } from "../Models/Model";
 import { log, queryError } from "../../Logger";
 import ModelManagerUtils from "./MySqlModelManagerUtils";
 import { BaseValues, WhereOperatorType } from "../Templates/Query/WHERE.TS";
-import { QueryBuilder } from "../QueryBuilder/QueryBuilder";
+import { OneOptions, QueryBuilder } from "../QueryBuilder/QueryBuilder";
 import joinTemplate from "../Templates/Query/JOIN";
 import { getPaginationMetadata, PaginatedData } from "../pagination";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
@@ -51,7 +51,9 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @description Executes the query and retrieves the first result.
    * @returns A Promise resolving to the first result or null.
    */
-  public async one(): Promise<T | null> {
+  public async one(
+    options: OneOptions = { throwErrorOnNull: false },
+  ): Promise<T | null> {
     let query: string = "";
     if (this.joinQuery && !this.selectQuery) {
       const select = selectTemplate(
@@ -76,6 +78,10 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
         this.params,
       );
       if (!rows[0]) {
+        if (options.throwErrorOnNull) {
+          throw new Error("ROW_NOT_FOUND");
+        }
+
         return null;
       }
 
@@ -97,8 +103,10 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     }
   }
 
-  public async first(): Promise<T | null> {
-    return await this.limit(1).one();
+  public async first(
+    options: OneOptions = { throwErrorOnNull: false },
+  ): Promise<T | null> {
+    return await this.limit(1).one(options);
   }
 
   /**

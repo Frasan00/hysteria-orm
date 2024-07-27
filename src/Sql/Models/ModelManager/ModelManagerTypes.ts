@@ -44,9 +44,10 @@ export type FindOneType<T> = {
   select?: SelectableType<T>[];
   relations?: RelationType<T>[];
   where?: WhereType<T>;
+  throwErrorOnNull?: boolean;
 };
 
-export type FindType<T> = FindOneType<T> & {
+export type FindType<T> = Omit<FindOneType<T>, "throwError"> & {
   orderBy?: OrderByType;
   groupBy?: string[];
   limit?: number;

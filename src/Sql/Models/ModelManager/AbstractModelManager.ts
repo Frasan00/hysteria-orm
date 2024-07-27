@@ -12,10 +12,12 @@ export abstract class AbstractModelManager<T extends Model> {
   protected logs: boolean;
   protected model: typeof Model;
   protected modelInstance: T;
+  protected throwError: boolean;
 
   protected constructor(model: typeof Model, logs: boolean) {
     this.logs = logs;
     this.model = model;
+    this.throwError = false;
     this.modelInstance = new this.model() as T;
   }
 
@@ -23,7 +25,10 @@ export abstract class AbstractModelManager<T extends Model> {
 
   public abstract findOne(input: FindOneType<T>): Promise<T | null>;
 
-  public abstract findOneById(id: string | number): Promise<T | null>;
+  public abstract findOneById(
+    id: string | number,
+    throwErrorOnNull: boolean,
+  ): Promise<T | null>;
 
   public abstract create(
     model: Partial<T>,

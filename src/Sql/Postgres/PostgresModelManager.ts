@@ -113,6 +113,10 @@ export class PostgresModelManager<
 
       const { rows } = await this.pgPool.query(query, params);
       if (!rows[0]) {
+        if (input.throwErrorOnNull) {
+          throw new Error("ROW_NOT_FOUND");
+        }
+
         return null;
       }
 
@@ -140,7 +144,10 @@ export class PostgresModelManager<
    * @param {string | number} id - ID of the record to retrieve.
    * @returns Promise resolving to a single model or null if not found.
    */
-  public async findOneById(id: string | number): Promise<T | null> {
+  public async findOneById(
+    id: string | number,
+    throwErrorOnNull: boolean = false,
+  ): Promise<T | null> {
     const select = selectTemplate(
       this.model.metadata.tableName,
       this.model.sqlInstance.getDbType(),
@@ -154,6 +161,10 @@ export class PostgresModelManager<
       const modelData = rows[0] as T;
 
       if (!modelData) {
+        if (throwErrorOnNull) {
+          throw new Error("ROW_NOT_FOUND");
+        }
+
         return null;
       }
 

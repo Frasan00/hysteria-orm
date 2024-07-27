@@ -114,6 +114,10 @@ export class MysqlModelManager<
       log(query, this.logs, params);
       const [rows] = await this.mysqlPool.query<RowDataPacket[]>(query, params);
       if (!rows[0]) {
+        if (input.throwErrorOnNull) {
+          throw new Error("ROW_NOT_FOUND");
+        }
+
         return null;
       }
 
@@ -144,7 +148,10 @@ export class MysqlModelManager<
    * @param {string | number} id - ID of the record to retrieve.
    * @returns Promise resolving to a single model or null if not found.
    */
-  public async findOneById(id: string | number): Promise<T | null> {
+  public async findOneById(
+    id: string | number,
+    throwErrorOnNull: boolean = false,
+  ): Promise<T | null> {
     const select = selectTemplate(
       this.model.metadata.tableName,
       this.model.sqlInstance.getDbType(),
@@ -155,6 +162,10 @@ export class MysqlModelManager<
       log(query, this.logs);
       const [rows] = await this.mysqlPool.query<RowDataPacket[]>(query);
       if (!rows[0]) {
+        if (throwErrorOnNull) {
+          throw new Error("ROW_NOT_FOUND");
+        }
+
         return null;
       }
 
