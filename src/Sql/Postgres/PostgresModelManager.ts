@@ -281,7 +281,7 @@ export class PostgresModelManager<
         model,
         this.model,
       );
-      log(query, this.logs);
+      log(query, this.logs, params);
       await this.pgPool.query(query, params);
       if (!primaryKey) {
         return null;

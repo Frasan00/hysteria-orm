@@ -164,7 +164,7 @@ try{
 
 // Update
     newUser.name = "John Doe Updated";
-    const updatedUser = await User.update(newUser, trx);
+    const updatedUser = await User.updateRecord(newUser, trx);
 
 // Delete
     await User.delete(updatedUser, trx);

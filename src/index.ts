@@ -31,7 +31,7 @@ class User extends Model {
 
   // await testQuery();
   // await testCreate();
-  // await testUpdate();
+  await testUpdate();
 
   process.exit(0);
 })();

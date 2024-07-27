@@ -134,6 +134,11 @@ export async function testUpdate() {
         name: "John Doe Updated",
         email: "testoooo",
       });
+
+      await User.updateRecord(user);
+      console.log(user);
+
+      console.log("Postgres connection closed");
     },
   );
 
@@ -148,7 +153,26 @@ export async function testUpdate() {
       port: 3306,
       logs: true,
     },
-    async () => {},
+    async () => {
+      console.log("Mysql connection opened");
+
+      const user = await User.query().first();
+      if (!user) {
+        console.log("No user found");
+        return;
+      }
+
+      console.log(user);
+      User.setProps(user, {
+        name: "John Doe Updated",
+        email: "testoooo",
+      });
+
+      await User.updateRecord(user);
+      console.log(user);
+
+      console.log("Mysql connection closed");
+    },
   );
 }
 

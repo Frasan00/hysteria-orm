@@ -35,9 +35,16 @@ export function log(query: string, logs: boolean, params?: any[]) {
   }
 
   if (params) {
-    params.forEach((param) => {
-      query = query.replace(/\?/, param);
-      query = query.replace(/\$\d+/, param);
+    params.forEach((param, index) => {
+      // Format string parameters
+      const formattedParam = typeof param === "string" ? `'${param}'` : param;
+
+      // Replace MySQL-style placeholders
+      query = query.replace(/\?/, formattedParam);
+
+      // Replace PostgreSQL-style placeholders
+      const pgPlaceholder = new RegExp(`\\$${index + 1}`, "g");
+      query = query.replace(pgPlaceholder, formattedParam);
     });
 
     logger.info("\n" + query);
