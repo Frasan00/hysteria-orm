@@ -236,6 +236,7 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @returns A Promise resolving to the first result or null.
      */
     one(): Promise<T | null>;
+    first(): Promise<T | null>;
     /**
      * @description Executes the query and retrieves multiple results.
      * @returns A Promise resolving to an array of results.
@@ -476,6 +477,7 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     select(...columns: string[]): this;
     raw(query: string, params?: any[]): Promise<pg.QueryResult<any>>;
     one(): Promise<T | null>;
+    first(): Promise<T | null>;
     many(): Promise<T[]>;
     /**
      * @description Paginates the query results with the given page and limit, it removes any previous limit - offset call
@@ -727,6 +729,11 @@ declare abstract class QueryBuilder<T extends Model> {
      * @returns A Promise resolving to an array of results.
      */
     abstract many(): Promise<T[]>;
+    /**
+     * @description Executes the query and retrieves the first result.
+     * @returns A Promise resolving to the first result or null.
+     */
+    abstract first(): Promise<T | null>;
     /**
      * @description Executes the query and retrieves multiple results.
      * @returns A Promise resolving to an array of results.
@@ -1223,34 +1230,34 @@ declare class Model {
      * @param cb - function containing all the database operations on the provided connection details
      * @returns {Promise<void>}
      */
-    static useConnection<T extends Model>(connectionDetails: DataSourceInput, cb: () => Promise<void>): Promise<void>;
+    static useConnection(connectionDetails: DataSourceInput, cb: () => Promise<void>): Promise<void>;
     /**
      * @description Gives a query instance for the given model
      * @param model
      * @returns {QueryBuilders<T>}
      */
-    static query<T extends Model>(): QueryBuilders<T>;
+    static query<T extends Model>(this: new () => T | typeof Model): QueryBuilders<T>;
     /**
      * @description Finds records for the given model
      * @param model
      * @param {FindType} options
      * @returns {Promise<T[]>}
      */
-    static find<T extends Model>(options?: FindType): Promise<T[]>;
+    static find<T extends Model>(this: new () => T | typeof Model, options?: FindType): Promise<T[]>;
     /**
      * @description Finds a record for the given model
      * @param model
      * @param {FindOneType} options
      * @returns {Promise<T | null>}
      */
-    static findOne<T extends Model>(options: FindOneType): Promise<T | null>;
+    static findOne<T extends Model>(this: new () => T | typeof Model, options: FindOneType): Promise<T | null>;
     /**
      * @description Finds a record for the given model for the given id, "id" must be set in the model in order for it to work
      * @param model
      * @param {number | string} id
      * @returns {Promise<T | null>}
      */
-    static findOneById<T extends Model>(id: string | number): Promise<T | null>;
+    static findOneById<T extends Model>(this: new () => T | typeof Model, id: string | number): Promise<T | null>;
     /**
      * @description Saves a new record to the database
      * @param model
@@ -1268,13 +1275,21 @@ declare class Model {
      */
     static massiveCreate<T extends Model>(this: new () => T | typeof Model, modelsData: Partial<T>[], trx?: MysqlTransaction & PostgresTransaction): Promise<T[]>;
     /**
+     * @description Updates a record to the database
+     * @param model
+     * @param {Model} modelInstance
+     * @param {MysqlTransaction & PostgresTransaction} trx
+     * @returns
+     */
+    static updateRecord<T extends Model>(this: new () => T | typeof Model, modelInstance: T, trx?: MysqlTransaction & PostgresTransaction): Promise<T | null>;
+    /**
      * @description Deletes a record to the database
      * @param model
      * @param {Model} modelInstance
      * @param {MysqlTransaction & PostgresTransaction} trx
      * @returns
      */
-    static delete<T extends Model>(modelInstance: T, trx?: MysqlTransaction & PostgresTransaction): Promise<T | null>;
+    static delete<T extends Model>(this: new () => T | typeof Model, modelInstance: T, trx?: MysqlTransaction & PostgresTransaction): Promise<T | null>;
     /**
      * @description Deletes a record to the database
      * @param model
@@ -1284,10 +1299,32 @@ declare class Model {
      * @param {MysqlTransaction & PostgresTransaction} trx
      * @returns
      */
-    static deleteByColumn<T extends Model>(column: string, value: string | number | boolean, trx?: MysqlTransaction & PostgresTransaction): Promise<number>;
+    static deleteByColumn<T extends Model>(this: new () => T | typeof Model, column: string, value: string | number | boolean, trx?: MysqlTransaction & PostgresTransaction): Promise<number>;
+    /**
+     * @description Merges the provided data with the instance
+     * @param instance
+     * @param data
+     * @returns {void}
+     */
     static setProps<T extends Model>(instance: T, data: Partial<T>): void;
+    /**
+     * @description Generates a model instance with the provided data
+     * @param this
+     * @param data
+     * @returns
+     */
     static generateModel<T extends Model>(this: new () => T, data: Partial<T>): T;
+    /**
+     * @description Generates model instances with the provided data
+     * @param this
+     * @param data
+     * @returns
+     */
     static generateModels<T extends Model>(this: new () => T, data: Partial<T>[]): T[];
+    /**
+     * @description Establishes a connection to the database instantiated from the SqlDataSource.connect method
+     * @returns
+     */
     private static establishConnection;
 }
 

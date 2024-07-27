@@ -280,10 +280,13 @@ export class MysqlModelManager<
 
     try {
       const updateQuery = MySqlModelManagerUtils.parseUpdate(model, this.model);
-
       log(updateQuery.query, this.logs, updateQuery.params);
       await this.mysqlPool.query(updateQuery.query, updateQuery.params);
       if (!this.model.metadata.primaryKey) {
+        log(
+          "Model has no primary key so no record can be retrieved",
+          this.logs,
+        );
         return null;
       }
 

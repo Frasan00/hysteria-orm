@@ -19,6 +19,21 @@ class User extends Model {
   };
 }
 
+// TODO test with trx and relations
+// class Post extends Model {
+//   public id!: number;
+//   public title!: string;
+//   public content!: string;
+//   public user_id!: number;
+
+//   public user: HasOne | User = new HasOne('user', 'user_id');
+
+//   public static metadata: Metadata = {
+//     primaryKey: "id",
+//     tableName: "posts",
+//   };
+// }
+
 export async function testCreate() {
   // Postgres
   await User.useConnection(
@@ -93,19 +108,49 @@ export async function testCreate() {
   );
 }
 
-// class Post extends Model {
-//   public id!: number;
-//   public title!: string;
-//   public content!: string;
-//   public user_id!: number;
+export async function testUpdate() {
+  // Postgres
+  await User.useConnection(
+    {
+      type: "postgres",
+      host: "localhost",
+      username: "root",
+      password: "root",
+      database: "test",
+      port: 5432,
+      logs: true,
+    },
+    async () => {
+      console.log("Postgres connection opened");
 
-//   public user: HasOne | User = new HasOne('user', 'user_id');
+      const user = await User.query().first();
+      if (!user) {
+        console.log("No user found");
+        return;
+      }
 
-//   public static metadata: Metadata = {
-//     primaryKey: "id",
-//     tableName: "posts",
-//   };
-// }
+      console.log(user);
+      User.setProps(user, {
+        name: "John Doe Updated",
+        email: "testoooo",
+      });
+    },
+  );
+
+  // Mysql
+  await User.useConnection(
+    {
+      type: "mysql",
+      host: "localhost",
+      username: "root",
+      password: "root",
+      database: "test",
+      port: 3306,
+      logs: true,
+    },
+    async () => {},
+  );
+}
 
 export async function testQuery() {
   // Postgres
@@ -121,6 +166,8 @@ export async function testQuery() {
     },
     async () => {
       console.log("Postgres connection opened");
+
+      const firstUser = await User.query().first();
 
       // Basic find
       const userById = await User.find({
@@ -177,6 +224,7 @@ export async function testQuery() {
       console.log(havingUsers);
       console.log(paginatedUsers);
       console.log(usersWithFullName);
+      console.log(firstUser);
 
       console.log("Postgres connection closed");
     },
@@ -195,6 +243,8 @@ export async function testQuery() {
     },
     async () => {
       console.log("Mysql connection opened");
+
+      const firstUser = await User.query().first();
 
       // Basic find
       const userById = await User.find({
@@ -251,6 +301,7 @@ export async function testQuery() {
       console.log(havingUsers);
       console.log(paginatedUsers);
       console.log(usersWithFullName);
+      console.log(firstUser);
 
       console.log("Mysql connection closed");
     },

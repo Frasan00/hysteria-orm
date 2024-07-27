@@ -1,10 +1,7 @@
 import { Model } from "../Models/Model";
 import { QueryBuilder } from "../QueryBuilder/QueryBuilder";
 import { Pool } from "pg";
-import whereTemplate, {
-  BaseValues,
-  WhereOperatorType,
-} from "../Templates/Query/WHERE.TS";
+import { BaseValues, WhereOperatorType } from "../Templates/Query/WHERE.TS";
 import selectTemplate from "../Templates/Query/SELECT";
 import { log } from "../../Logger";
 import PostgresModelManagerUtils from "./PostgresModelManagerUtils";
@@ -95,6 +92,10 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     } catch (error) {
       throw new Error("Query failed " + error);
     }
+  }
+
+  public async first(): Promise<T | null> {
+    return await this.limit(1).one();
   }
 
   public async many(): Promise<T[]> {

@@ -42,7 +42,7 @@ export class Model {
    * @param cb - function containing all the database operations on the provided connection details
    * @returns {Promise<void>}
    */
-  public static async useConnection<T extends Model>(
+  public static async useConnection(
     connectionDetails: DataSourceInput,
     cb: () => Promise<void>,
   ) {
@@ -57,9 +57,12 @@ export class Model {
    * @param model
    * @returns {QueryBuilders<T>}
    */
-  public static query<T extends Model>(): QueryBuilders<T> {
-    this.establishConnection();
-    return this.sqlInstance.getModelManager<T>(this).query();
+  public static query<T extends Model>(
+    this: new () => T | typeof Model,
+  ): QueryBuilders<T> {
+    const typeofModel = this as unknown as typeof Model;
+    typeofModel.establishConnection();
+    return typeofModel.sqlInstance.getModelManager<T>(typeofModel).query();
   }
 
   /**
@@ -68,9 +71,15 @@ export class Model {
    * @param {FindType} options
    * @returns {Promise<T[]>}
    */
-  public static find<T extends Model>(options?: FindType): Promise<T[]> {
-    this.establishConnection();
-    return this.sqlInstance.getModelManager<T>(this).find(options);
+  public static find<T extends Model>(
+    this: new () => T | typeof Model,
+    options?: FindType,
+  ): Promise<T[]> {
+    const typeofModel = this as unknown as typeof Model;
+    typeofModel.establishConnection();
+    return typeofModel.sqlInstance
+      .getModelManager<T>(typeofModel)
+      .find(options);
   }
 
   /**
@@ -80,10 +89,14 @@ export class Model {
    * @returns {Promise<T | null>}
    */
   public static findOne<T extends Model>(
+    this: new () => T | typeof Model,
     options: FindOneType,
   ): Promise<T | null> {
-    this.establishConnection();
-    return this.sqlInstance.getModelManager<T>(this).findOne(options);
+    const typeofModel = this as unknown as typeof Model;
+    typeofModel.establishConnection();
+    return typeofModel.sqlInstance
+      .getModelManager<T>(typeofModel)
+      .findOne(options);
   }
 
   /**
@@ -93,10 +106,14 @@ export class Model {
    * @returns {Promise<T | null>}
    */
   public static findOneById<T extends Model>(
+    this: new () => T | typeof Model,
     id: string | number,
   ): Promise<T | null> {
-    this.establishConnection();
-    return this.sqlInstance.getModelManager<T>(this).findOneById(id);
+    const typeofModel = this as unknown as typeof Model;
+    typeofModel.establishConnection();
+    return typeofModel.sqlInstance
+      .getModelManager<T>(typeofModel)
+      .findOneById(id);
   }
 
   /**
@@ -136,20 +153,24 @@ export class Model {
       .massiveCreate(modelsData as T[], trx);
   }
 
-  // /**
-  //  * @description Updates a record to the database
-  //  * @param model
-  //  * @param {Model} modelInstance
-  //  * @param {MysqlTransaction & PostgresTransaction} trx
-  //  * @returns
-  //  */
-  // public static update<T extends Model>(
-  //   modelInstance: T,
-  //   trx?: MysqlTransaction & PostgresTransaction,
-  // ): Promise<T | null> {
-  //   this.establishConnection();
-  //   return this.sqlInstance.getModelManager<T>(this).update(modelInstance, trx);
-  // }
+  /**
+   * @description Updates a record to the database
+   * @param model
+   * @param {Model} modelInstance
+   * @param {MysqlTransaction & PostgresTransaction} trx
+   * @returns
+   */
+  public static updateRecord<T extends Model>(
+    this: new () => T | typeof Model,
+    modelInstance: T,
+    trx?: MysqlTransaction & PostgresTransaction,
+  ): Promise<T | null> {
+    const typeofModel = this as unknown as typeof Model;
+    typeofModel.establishConnection();
+    return typeofModel.sqlInstance
+      .getModelManager<T>(typeofModel)
+      .updateRecord(modelInstance, trx);
+  }
 
   /**
    * @description Deletes a record to the database
@@ -159,11 +180,15 @@ export class Model {
    * @returns
    */
   public static delete<T extends Model>(
+    this: new () => T | typeof Model,
     modelInstance: T,
     trx?: MysqlTransaction & PostgresTransaction,
   ): Promise<T | null> {
-    this.establishConnection();
-    return this.sqlInstance.getModelManager<T>(this).delete(modelInstance, trx);
+    const typeofModel = this as unknown as typeof Model;
+    typeofModel.establishConnection();
+    return typeofModel.sqlInstance
+      .getModelManager<T>(typeofModel)
+      .delete(modelInstance, trx);
   }
 
   /**
@@ -176,22 +201,36 @@ export class Model {
    * @returns
    */
   public static deleteByColumn<T extends Model>(
+    this: new () => T | typeof Model,
     column: string,
     value: string | number | boolean,
     trx?: MysqlTransaction & PostgresTransaction,
   ): Promise<number> {
-    this.establishConnection();
-    return this.sqlInstance
-      .getModelManager<T>(this)
+    const typeofModel = this as unknown as typeof Model;
+    typeofModel.establishConnection();
+    return typeofModel.sqlInstance
+      .getModelManager<T>(typeofModel)
       .deleteByColumn(column, value, trx);
   }
 
+  /**
+   * @description Merges the provided data with the instance
+   * @param instance
+   * @param data
+   * @returns {void}
+   */
   public static setProps<T extends Model>(instance: T, data: Partial<T>): void {
     for (const key in data) {
       Object.assign(instance, { [key]: data[key] });
     }
   }
 
+  /**
+   * @description Generates a model instance with the provided data
+   * @param this
+   * @param data
+   * @returns
+   */
   public static generateModel<T extends Model>(
     this: new () => T,
     data: Partial<T>,
@@ -201,6 +240,12 @@ export class Model {
     return instance;
   }
 
+  /**
+   * @description Generates model instances with the provided data
+   * @param this
+   * @param data
+   * @returns
+   */
   public static generateModels<T extends Model>(
     this: new () => T,
     data: Partial<T>[],
@@ -208,6 +253,10 @@ export class Model {
     return data.map((d) => Model.generateModel.call(this, d) as T);
   }
 
+  /**
+   * @description Establishes a connection to the database instantiated from the SqlDataSource.connect method
+   * @returns
+   */
   private static establishConnection() {
     if (!this.sqlInstance) {
       this.sqlInstance = SqlDataSource.getInstance();

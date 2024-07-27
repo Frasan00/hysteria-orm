@@ -264,6 +264,10 @@ export class PostgresModelManager<
     if (trx) {
       await trx.queryUpdate<T>(query, params);
       if (!primaryKey) {
+        log(
+          "Model has no primary key so no record can be retrieved",
+          this.logs,
+        );
         return null;
       }
 

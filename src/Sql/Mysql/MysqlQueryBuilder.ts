@@ -96,6 +96,10 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     }
   }
 
+  public async first(): Promise<T | null> {
+    return await this.limit(1).one();
+  }
+
   /**
    * @description Executes the query and retrieves multiple results.
    * @returns A Promise resolving to an array of results.
