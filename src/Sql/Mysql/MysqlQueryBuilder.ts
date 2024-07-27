@@ -301,6 +301,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
       this.whereQuery += ` AND ${whereCondition}`;
     }
 
+    this.params.push(...queryBuilder.params);
     return this;
   }
 
@@ -333,9 +334,13 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
       this.whereQuery = this.isNestedCondition
         ? nestedCondition
         : `WHERE ${nestedCondition}`;
-    } else {
-      this.whereQuery += ` OR ${nestedCondition}`;
+
+      this.params.push(...nestedBuilder.params);
+      return this;
     }
+
+    this.whereQuery += ` OR ${nestedCondition}`;
+    this.params.push(...nestedBuilder.params);
 
     return this;
   }
@@ -363,15 +368,17 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
       nestedCondition = nestedCondition.substring(3);
     }
 
-    nestedCondition = `(${nestedCondition})`;
-
     if (!this.whereQuery) {
       this.whereQuery = this.isNestedCondition
         ? nestedCondition
         : `WHERE ${nestedCondition}`;
-    } else {
-      this.whereQuery += ` AND ${nestedCondition}`;
+
+      this.params.push(...nestedBuilder.params);
+      return this;
     }
+
+    this.whereQuery += ` AND ${nestedCondition}`;
+    this.params.push(...nestedBuilder.params);
 
     return this;
   }

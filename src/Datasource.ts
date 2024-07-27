@@ -1,10 +1,10 @@
 /*
  * Creates a datasource for the selected database type with the provided credentials
  */
-export type DataSourceType = "mysql" | "postgres";
+export type DataSourceType = "mysql" | "postgres" | "mariadb";
 
 export interface DataSourceInput {
-  readonly type: DataSourceType;
+  type: DataSourceType;
   readonly host: string;
   readonly port: number;
   readonly username: string;
@@ -23,6 +23,10 @@ export abstract class Datasource {
   protected logs: boolean;
 
   protected constructor(input: DataSourceInput) {
+    if (input.type === "mariadb") {
+      input.type = "mysql";
+    }
+
     this.type = input.type;
     this.host = input.host;
     this.port = input.port;

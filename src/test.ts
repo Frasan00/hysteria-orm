@@ -132,6 +132,11 @@ export async function testQuery() {
       // Query with limit
       const limitedUsers = await User.query().limit(4).many();
 
+      // Query with custom column fullName
+      const usersWithFullName = await User.query()
+        .select("CONCAT(name, ' ', email) as fullName")
+        .one();
+
       // Complex where conditions
       const complexUsers = await User.query()
         .whereBuilder((queryBuilder) => {
@@ -171,6 +176,7 @@ export async function testQuery() {
       console.log(groupedUsers);
       console.log(havingUsers);
       console.log(paginatedUsers);
+      console.log(usersWithFullName);
 
       console.log("Postgres connection closed");
     },
@@ -199,6 +205,11 @@ export async function testQuery() {
 
       // Query with limit
       const limitedUsers = await User.query().limit(2).many();
+
+      // Query with custom column fullName
+      const usersWithFullName = await User.query()
+        .select("CONCAT(name, ' ', email) as fullName")
+        .one();
 
       // Complex where conditions
       const complexUsers = await User.query()
@@ -239,6 +250,7 @@ export async function testQuery() {
       console.log(groupedUsers);
       console.log(havingUsers);
       console.log(paginatedUsers);
+      console.log(usersWithFullName);
 
       console.log("Mysql connection closed");
     },

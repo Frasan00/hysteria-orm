@@ -6,9 +6,9 @@ import * as mysql2_typings_mysql_lib_protocol_packets_ProcedurePacket from 'mysq
 import * as mysql2_typings_mysql_lib_protocol_packets_ResultSetHeader from 'mysql2/typings/mysql/lib/protocol/packets/ResultSetHeader';
 import * as mysql2_typings_mysql_lib_protocol_packets_OkPacket from 'mysql2/typings/mysql/lib/protocol/packets/OkPacket';
 
-type DataSourceType = "mysql" | "postgres";
+type DataSourceType = "mysql" | "postgres" | "mariadb";
 interface DataSourceInput {
-    readonly type: DataSourceType;
+    type: DataSourceType;
     readonly host: string;
     readonly port: number;
     readonly username: string;

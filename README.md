@@ -143,12 +143,10 @@ export class User extends Model {
     public profile: Profile | HasOne = new HasOne("profiles", "user_id");
     public posts: Post[] | HasMany = new HasMany("posts", "user_id");
 
-    constructor() {
-        super({
-            tableName: "users",
-            primaryKey: "id",
-        });
-    }
+    public static metadata: Metadata = {
+        primaryKey: "id",
+        tableName: "users",
+    };
 }
 ```
 
@@ -159,10 +157,10 @@ export class User extends Model {
 const trx = await sql.startTransaction()
 // Create
 try{
-    const user = new User();
-    user.name = "John Doe";
-    user.email = "john@gmail.com";
-    const newUser: User = await User.save(user, trx);
+    const newUser: User = await User.create({
+        name: "New User",
+        email: "newUserEmaik@gmail.com"
+    }, trx);
 
 // Update
     newUser.name = "John Doe Updated";
@@ -214,14 +212,13 @@ const otherUser: User | null = await User.findOne({
 - It's used to create more complex queries that are not supported by the standard methods
 
 ```typescript
-const query = User.query();
-const user: User | null = await query
+const user: User | null = await User.query()
     .addRelations(['post'])
     .where("name", "John Doe")
     .andWhere("email", "john@gmail.com")
     .one();
 
-const users: User[] = await query
+const users: User[] = await User.query()
     .where("name", "John Doe")
     .andWhere("email", "john@gmail.com")
     .orderBy("name", "ASC")
@@ -233,8 +230,7 @@ const users: User[] = await query
 
 - Used to build complex logic conditions
 ```typescript
-const query = User.query();
-const user: User | null = await query.whereBuilder((queryBuilder) => {
+const user: User | null = await User.query().whereBuilder((queryBuilder) => {
     queryBuilder.andWhereBuilder((innerQueryBuilder) => {
         innerQueryBuilder.where('department', 'sales');
         innerQueryBuilder.where('hired_date', '2020-01-01', '>=');
@@ -251,8 +247,7 @@ const user: User | null = await query.whereBuilder((queryBuilder) => {
 
 - Aliases are available in the query builder, for example select('new as newName') will generate an alias in the columnAliases prop that every model has
 ```typescript
-const query = User.query();
-const user: User | null = await query
+const user: User | null = await User.query()
     .select(['id', 'name as superName'])
     .addRelations(['post'])
     .where("name", "John Doe")
@@ -274,8 +269,7 @@ const users = await User.query()
 
 - Pagination is available in the queryBuilder, will return an object with the metadata for the pagination and the list of the retrieved models
 ```typescript
-const query = User.query();
-const user: User | null = await query
+const user: User | null = await User.query()
     .addRelations(['post'])
     .where("name", "John Doe")
     .andWhere("email", "john@gmail.com")

@@ -312,6 +312,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
         ? nestedCondition
         : `WHERE ${nestedCondition}`;
 
+      this.params.push(...nestedBuilder.params);
       return this;
     }
 
@@ -344,13 +345,12 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
       nestedCondition = nestedCondition.substring(3);
     }
 
-    nestedCondition = `(${nestedCondition})`;
-
     if (!this.whereQuery) {
       this.whereQuery = this.isNestedCondition
         ? nestedCondition
         : `WHERE ${nestedCondition}`;
 
+      this.params.push(...nestedBuilder.params);
       return this;
     }
 
