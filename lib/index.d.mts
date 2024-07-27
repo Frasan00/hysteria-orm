@@ -258,16 +258,16 @@ type OnlyRelations<T> = {
     [K in keyof T]: T[K] extends (Model[] | HasMany) | (Model | HasMany) | (Model | BelongsTo) | (Model[] | BelongsTo) | (Model | HasOne) | (Model[] | HasOne) ? K : never;
 }[keyof T];
 type WhereType<T> = {
-    [P in keyof T]?: string | number | boolean | null;
+    [P in keyof T]?: string | number | boolean | Date | null;
 };
-type SelectType<T> = ExcludeRelations<Omit<T, "aliasColumns">>;
+type SelectableType<T> = ExcludeRelations<Omit<T, "aliasColumns">>;
 type RelationType<T> = OnlyRelations<Omit<T, "aliasColumns">>;
 type OrderByType = {
     columns: string[];
     type: "ASC" | "DESC";
 };
 type FindOneType<T> = {
-    select?: SelectType<T>[];
+    select?: SelectableType<T>[];
     relations?: RelationType<T>[];
     where?: WhereType<T>;
 };
@@ -309,11 +309,8 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @param limit
      */
     paginate(page: number, limit: number): Promise<PaginatedData<T>>;
-    /**
-     * @description Columns are customizable with aliases. By default, without this function, all columns are selected
-     * @param columns
-     */
-    select(...columns: SelectType<T>[]): MysqlQueryBuilder<T>;
+    select(...columns: (SelectableType<T> | "*")[]): MysqlQueryBuilder<T>;
+    selectRaw(...columns: string[]): MysqlQueryBuilder<T>;
     /**
      *
      * @param relationTable - The name of the related table.
@@ -328,7 +325,7 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @param foreignColumn - The name of the foreign column in the related table.
      */
     leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlQueryBuilder<T>;
-    addRelations(relations: string[]): this;
+    addRelations(relations: RelationType<T>[]): MysqlQueryBuilder<T>;
     /**
      * @description Adds a WHERE condition to the query.
      * @param column - The column to filter.
@@ -336,7 +333,7 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @param value - The value to compare against.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    where(column: string, value: BaseValues, operator?: WhereOperatorType): this;
+    where(column: SelectableType<T>, value: BaseValues, operator?: WhereOperatorType): this;
     /**
      * @description Build more complex where conditions.
      * @param cb
@@ -359,7 +356,7 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @param value - The value to compare against.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    andWhere(column: string, value: BaseValues, operator?: WhereOperatorType): this;
+    andWhere(column: SelectableType<T>, value: BaseValues, operator?: WhereOperatorType): this;
     /**
      * @description Adds an OR WHERE condition to the query.
      * @param column - The column to filter.
@@ -367,7 +364,7 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @param value - The value to compare against.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    orWhere(column: string, value: BaseValues, operator?: WhereOperatorType): this;
+    orWhere(column: SelectableType<T>, value: BaseValues, operator?: WhereOperatorType): this;
     /**
      * @description Adds a WHERE BETWEEN condition to the query.
      * @param column - The column to filter.
@@ -375,7 +372,7 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @param max - The maximum value for the range.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    whereBetween(column: string, min: BaseValues, max: BaseValues): this;
+    whereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
     /**
      * @description Adds an AND WHERE BETWEEN condition to the query.
      * @param column - The column to filter.
@@ -383,7 +380,7 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @param max - The maximum value for the range.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    andWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
+    andWhereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
     /**
      * @description Adds an OR WHERE BETWEEN condition to the query.
      * @param column - The column to filter.
@@ -391,7 +388,7 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @param max - The maximum value for the range.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    orWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
+    orWhereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
     /**
      * @description Adds a WHERE NOT BETWEEN condition to the query.
      * @param column - The column to filter.
@@ -399,7 +396,7 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @param max - The maximum value for the range.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    whereNotBetween(column: string, min: BaseValues, max: BaseValues): this;
+    whereNotBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
     /**
      * @description Adds an OR WHERE NOT BETWEEN condition to the query.
      * @param column - The column to filter.
@@ -407,78 +404,78 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @param max - The maximum value for the range.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    orWhereNotBetween(column: string, min: BaseValues, max: BaseValues): this;
+    orWhereNotBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
     /**
      * @description Adds a WHERE IN condition to the query.
      * @param column - The column to filter.
      * @param values - An array of values to match against.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    whereIn(column: string, values: BaseValues[]): this;
+    whereIn(column: SelectableType<T>, values: BaseValues[]): this;
     /**
      * @description Adds an AND WHERE IN condition to the query.
      * @param column - The column to filter.
      * @param values - An array of values to match against.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    andWhereIn(column: string, values: BaseValues[]): this;
+    andWhereIn(column: SelectableType<T>, values: BaseValues[]): this;
     /**
      * @description Adds an OR WHERE IN condition to the query.
      * @param column - The column to filter.
      * @param values - An array of values to match against.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    orWhereIn(column: string, values: BaseValues[]): this;
+    orWhereIn(column: SelectableType<T>, values: BaseValues[]): this;
     /**
      * @description Adds a WHERE NOT IN condition to the query.
      * @param column - The column to filter.
      * @param values - An array of values to exclude.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    whereNotIn(column: string, values: BaseValues[]): this;
+    whereNotIn(column: SelectableType<T>, values: BaseValues[]): this;
     /**
      * @description Adds an OR WHERE NOT IN condition to the query.
      * @param column - The column to filter.
      * @param values - An array of values to exclude.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    orWhereNotIn(column: string, values: BaseValues[]): this;
+    orWhereNotIn(column: SelectableType<T>, values: BaseValues[]): this;
     /**
      * @description Adds a WHERE NULL condition to the query.
      * @param column - The column to filter.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    whereNull(column: string): this;
+    whereNull(column: SelectableType<T>): this;
     /**
      * @description Adds an AND WHERE NULL condition to the query.
      * @param column - The column to filter.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    andWhereNull(column: string): this;
+    andWhereNull(column: SelectableType<T>): this;
     /**
      * @description Adds an OR WHERE NULL condition to the query.
      * @param column - The column to filter.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    orWhereNull(column: string): this;
+    orWhereNull(column: SelectableType<T>): this;
     /**
      * @description Adds a WHERE NOT NULL condition to the query.
      * @param column - The column to filter.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    whereNotNull(column: string): this;
+    whereNotNull(column: SelectableType<T>): this;
     /**
      * @description Adds an AND WHERE NOT NULL condition to the query.
      * @param column - The column to filter.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    andWhereNotNull(column: string): this;
+    andWhereNotNull(column: SelectableType<T>): this;
     /**
      * @description Adds an OR WHERE NOT NULL condition to the query.
      * @param column - The column to filter.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    orWhereNotNull(column: string): this;
+    orWhereNotNull(column: SelectableType<T>): this;
     /**
      * @description Adds a raw WHERE condition to the query.
      * @param query - The raw SQL WHERE condition.
@@ -530,11 +527,8 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     protected isNestedCondition: boolean;
     constructor(model: typeof Model, tableName: string, pgPool: Pool$1, logs: boolean, isNestedCondition?: boolean);
     private mergeRetrievedDataIntoModel;
-    /**
-     * @description Columns are customizable with aliases. By default, without this function, all columns are selected
-     * @param columns
-     */
-    select(...columns: SelectType<T>[]): PostgresQueryBuilder<T>;
+    select(...columns: (SelectableType<T> | "*")[]): PostgresQueryBuilder<T>;
+    selectRaw(...columns: string[]): PostgresQueryBuilder<T>;
     raw(query: string, params?: any[]): Promise<pg.QueryResult<any>>;
     one(): Promise<T | null>;
     first(): Promise<T | null>;
@@ -559,7 +553,7 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @param foreignColumn - The name of the foreign column in the related table.
      */
     leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresQueryBuilder<T>;
-    addRelations(relations: string[]): PostgresQueryBuilder<T>;
+    addRelations(relations: RelationType<T>[]): PostgresQueryBuilder<T>;
     /**
      * @description Adds a WHERE condition to the query.
      * @param column - The column to filter.
@@ -567,7 +561,7 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @param value - The value to compare against.
      * @returns The PostgresQueryBuilder instance for chaining.
      */
-    where(column: string, value: BaseValues, operator?: WhereOperatorType): this;
+    where(column: SelectableType<T>, value: BaseValues, operator?: WhereOperatorType): this;
     /**
      * @description Build more complex where conditions.
      * @param cb
@@ -590,7 +584,7 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @param value - The value to compare against.
      * @returns The PostgresQueryBuilder instance for chaining.
      */
-    andWhere(column: string, value: BaseValues, operator?: WhereOperatorType): this;
+    andWhere(column: SelectableType<T>, value: BaseValues, operator?: WhereOperatorType): this;
     /**
      * @description Adds an OR WHERE condition to the query.
      * @param column - The column to filter.
@@ -598,7 +592,7 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @param value - The value to compare against.
      * @returns The PostgresQueryBuilder instance for chaining.
      */
-    orWhere(column: string, value: BaseValues, operator?: WhereOperatorType): this;
+    orWhere(column: SelectableType<T>, value: BaseValues, operator?: WhereOperatorType): this;
     /**
      * @description Adds a WHERE BETWEEN condition to the query.
      * @param column - The column to filter.
@@ -606,7 +600,7 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @param max - The maximum value for the range.
      * @returns The PostgresQueryBuilder instance for chaining.
      */
-    whereBetween(column: string, min: BaseValues, max: BaseValues): this;
+    whereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
     /**
      * @description Adds an AND WHERE BETWEEN condition to the query.
      * @param column - The column to filter.
@@ -614,7 +608,7 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @param max - The maximum value for the range.
      * @returns The PostgresQueryBuilder instance for chaining.
      */
-    andWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
+    andWhereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
     /**
      * @description Adds an OR WHERE BETWEEN condition to the query.
      * @param column - The column to filter.
@@ -622,7 +616,7 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @param max - The maximum value for the range.
      * @returns The PostgresQueryBuilder instance for chaining.
      */
-    orWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
+    orWhereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
     /**
      * @description Adds a WHERE NOT BETWEEN condition to the query.
      * @param column - The column to filter.
@@ -630,7 +624,7 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @param max - The maximum value for the range.
      * @returns The PostgresQueryBuilder instance for chaining.
      */
-    whereNotBetween(column: string, min: BaseValues, max: BaseValues): this;
+    whereNotBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
     /**
      * @description Adds an OR WHERE NOT BETWEEN condition to the query.
      * @param column - The column to filter.
@@ -638,78 +632,78 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @param max - The maximum value for the range.
      * @returns The PostgresQueryBuilder instance for chaining.
      */
-    orWhereNotBetween(column: string, min: BaseValues, max: BaseValues): this;
+    orWhereNotBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
     /**
      * @description Adds a WHERE IN condition to the query.
      * @param column - The column to filter.
      * @param values - An array of values to match against.
      * @returns The PostgresQueryBuilder instance for chaining.
      */
-    whereIn(column: string, values: BaseValues[]): this;
+    whereIn(column: SelectableType<T>, values: BaseValues[]): this;
     /**
      * @description Adds an AND WHERE IN condition to the query.
      * @param column - The column to filter.
      * @param values - An array of values to match against.
      * @returns The PostgresQueryBuilder instance for chaining.
      */
-    andWhereIn(column: string, values: BaseValues[]): this;
+    andWhereIn(column: SelectableType<T>, values: BaseValues[]): this;
     /**
      * @description Adds an OR WHERE IN condition to the query.
      * @param column - The column to filter.
      * @param values - An array of values to match against.
      * @returns The PostgresQueryBuilder instance for chaining.
      */
-    orWhereIn(column: string, values: BaseValues[]): this;
+    orWhereIn(column: SelectableType<T>, values: BaseValues[]): this;
     /**
      * @description Adds a WHERE NOT IN condition to the query.
      * @param column - The column to filter.
      * @param values - An array of values to exclude.
      * @returns The PostgresQueryBuilder instance for chaining.
      */
-    whereNotIn(column: string, values: BaseValues[]): this;
+    whereNotIn(column: SelectableType<T>, values: BaseValues[]): this;
     /**
      * @description Adds an OR WHERE NOT IN condition to the query.
      * @param column - The column to filter.
      * @param values - An array of values to exclude.
      * @returns The PostgresQueryBuilder instance for chaining.
      */
-    orWhereNotIn(column: string, values: BaseValues[]): this;
+    orWhereNotIn(column: SelectableType<T>, values: BaseValues[]): this;
     /**
      * @description Adds a WHERE NULL condition to the query.
      * @param column - The column to filter.
      * @returns The PostgresQueryBuilder instance for chaining.
      */
-    whereNull(column: string): this;
+    whereNull(column: SelectableType<T>): this;
     /**
      * @description Adds an AND WHERE NULL condition to the query.
      * @param column - The column to filter.
      * @returns The PostgresQueryBuilder instance for chaining.
      */
-    andWhereNull(column: string): this;
+    andWhereNull(column: SelectableType<T>): this;
     /**
      * @description Adds an OR WHERE NULL condition to the query.
      * @param column - The column to filter.
      * @returns The PostgresQueryBuilder instance for chaining.
      */
-    orWhereNull(column: string): this;
+    orWhereNull(column: SelectableType<T>): this;
     /**
      * @description Adds a WHERE NOT NULL condition to the query.
      * @param column - The column to filter.
      * @returns The PostgresQueryBuilder instance for chaining.
      */
-    whereNotNull(column: string): this;
+    whereNotNull(column: SelectableType<T>): this;
     /**
      * @description Adds an AND WHERE NOT NULL condition to the query.
      * @param column - The column to filter.
      * @returns The PostgresQueryBuilder instance for chaining.
      */
-    andWhereNotNull(column: string): this;
+    andWhereNotNull(column: SelectableType<T>): this;
     /**
      * @description Adds an OR WHERE NOT NULL condition to the query.
      * @param column - The column to filter.
      * @returns The PostgresQueryBuilder instance for chaining.
      */
-    orWhereNotNull(column: string): this;
+    orWhereNotNull(column: SelectableType<T>): this;
     /**
      * @description Adds a raw WHERE condition to the query.
      * @param query - The raw SQL WHERE condition.
@@ -805,10 +799,15 @@ declare abstract class QueryBuilder<T extends Model> {
      */
     abstract raw(query: string): Promise<T | T[] | any>;
     /**
+     * @description Can only select columns from the Model
+     * @param columns
+     */
+    abstract select(...columns: (SelectableType<T> | "*")[]): QueryBuilders<T>;
+    /**
      * @description Columns are customizable with aliases. By default, without this function, all columns are selected
      * @param columns
      */
-    abstract select(...columns: SelectType<T>[]): QueryBuilders<T>;
+    abstract selectRaw(...columns: string[]): QueryBuilders<T>;
     /**
      *
      * @param table
@@ -827,7 +826,7 @@ declare abstract class QueryBuilder<T extends Model> {
      * @description Adds a relation to the query.
      * @param relations - The relations to add.
      */
-    abstract addRelations(relations: string[]): QueryBuilders<T>;
+    abstract addRelations(relations: RelationType<T>[]): QueryBuilders<T>;
     /**
      * @description Build more complex where conditions.
      * @param cb
@@ -850,7 +849,7 @@ declare abstract class QueryBuilder<T extends Model> {
      * @param value - The value to compare against.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract where(column: string, value: BaseValues, operator: WhereOperatorType): QueryBuilders<T>;
+    abstract where(column: SelectableType<T>, value: BaseValues, operator: WhereOperatorType): QueryBuilders<T>;
     /**
      * @description Adds an AND WHERE condition to the query.
      * @param column - The column to filter.
@@ -858,7 +857,7 @@ declare abstract class QueryBuilder<T extends Model> {
      * @param value - The value to compare against.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract andWhere(column: string, value: BaseValues, operator: WhereOperatorType): QueryBuilders<T>;
+    abstract andWhere(column: SelectableType<T>, value: BaseValues, operator: WhereOperatorType): QueryBuilders<T>;
     /**
      * @description Adds an OR WHERE condition to the query.
      * @param column - The column to filter.
@@ -866,7 +865,7 @@ declare abstract class QueryBuilder<T extends Model> {
      * @param value - The value to compare against.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract orWhere(column: string, value: BaseValues, operator: WhereOperatorType): QueryBuilders<T>;
+    abstract orWhere(column: SelectableType<T>, value: BaseValues, operator: WhereOperatorType): QueryBuilders<T>;
     /**
      * @description Adds a WHERE BETWEEN condition to the query.
      * @param column - The column to filter.
@@ -874,7 +873,7 @@ declare abstract class QueryBuilder<T extends Model> {
      * @param max - The maximum value for the range.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract whereBetween(column: string, min: BaseValues, max: BaseValues): QueryBuilders<T>;
+    abstract whereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): QueryBuilders<T>;
     /**
      * @description Adds an AND WHERE BETWEEN condition to the query.
      * @param column - The column to filter.
@@ -882,7 +881,7 @@ declare abstract class QueryBuilder<T extends Model> {
      * @param max - The maximum value for the range.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract andWhereBetween(column: string, min: BaseValues, max: BaseValues): QueryBuilders<T>;
+    abstract andWhereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): QueryBuilders<T>;
     /**
      * @description Adds an OR WHERE BETWEEN condition to the query.
      * @param column - The column to filter.
@@ -890,7 +889,7 @@ declare abstract class QueryBuilder<T extends Model> {
      * @param max - The maximum value for the range.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract orWhereBetween(column: string, min: BaseValues, max: BaseValues): QueryBuilders<T>;
+    abstract orWhereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): QueryBuilders<T>;
     /**
      * @description Adds a WHERE NOT BETWEEN condition to the query.
      * @param column - The column to filter.
@@ -898,7 +897,7 @@ declare abstract class QueryBuilder<T extends Model> {
      * @param max - The maximum value for the range.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract whereNotBetween(column: string, min: BaseValues, max: BaseValues): QueryBuilders<T>;
+    abstract whereNotBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): QueryBuilders<T>;
     /**
      * @description Adds an OR WHERE NOT BETWEEN condition to the query.
      * @param column - The column to filter.
@@ -906,78 +905,78 @@ declare abstract class QueryBuilder<T extends Model> {
      * @param max - The maximum value for the range.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract orWhereNotBetween(column: string, min: BaseValues, max: BaseValues): QueryBuilders<T>;
+    abstract orWhereNotBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): QueryBuilders<T>;
     /**
      * @description Adds a WHERE IN condition to the query.
      * @param column - The column to filter.
      * @param values - An array of values to match against.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract whereIn(column: string, values: BaseValues[]): QueryBuilders<T>;
+    abstract whereIn(column: SelectableType<T>, values: BaseValues[]): QueryBuilders<T>;
     /**
      * @description Adds an AND WHERE IN condition to the query.
      * @param column - The column to filter.
      * @param values - An array of values to match against.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract andWhereIn(column: string, values: BaseValues[]): QueryBuilders<T>;
+    abstract andWhereIn(column: SelectableType<T>, values: BaseValues[]): QueryBuilders<T>;
     /**
      * @description Adds an OR WHERE IN condition to the query.
      * @param column - The column to filter.
      * @param values - An array of values to match against.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract orWhereIn(column: string, values: BaseValues[]): QueryBuilders<T>;
+    abstract orWhereIn(column: SelectableType<T>, values: BaseValues[]): QueryBuilders<T>;
     /**
      * @description Adds a WHERE NOT IN condition to the query.
      * @param column - The column to filter.
      * @param values - An array of values to exclude.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract whereNotIn(column: string, values: BaseValues[]): QueryBuilders<T>;
+    abstract whereNotIn(column: SelectableType<T>, values: BaseValues[]): QueryBuilders<T>;
     /**
      * @description Adds an OR WHERE NOT IN condition to the query.
      * @param column - The column to filter.
      * @param values - An array of values to exclude.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract orWhereNotIn(column: string, values: BaseValues[]): QueryBuilders<T>;
+    abstract orWhereNotIn(column: SelectableType<T>, values: BaseValues[]): QueryBuilders<T>;
     /**
      * @description Adds a WHERE NULL condition to the query.
      * @param column - The column to filter.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract whereNull(column: string): QueryBuilders<T>;
+    abstract whereNull(column: SelectableType<T>): QueryBuilders<T>;
     /**
      * @description Adds an AND WHERE NULL condition to the query.
      * @param column - The column to filter.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract andWhereNull(column: string): QueryBuilders<T>;
+    abstract andWhereNull(column: SelectableType<T>): QueryBuilders<T>;
     /**
      * @description Adds an OR WHERE NULL condition to the query.
      * @param column - The column to filter.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract orWhereNull(column: string): QueryBuilders<T>;
+    abstract orWhereNull(column: SelectableType<T>): QueryBuilders<T>;
     /**
      * @description Adds a WHERE NOT NULL condition to the query.
      * @param column - The column to filter.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract whereNotNull(column: string): QueryBuilders<T>;
+    abstract whereNotNull(column: SelectableType<T>): QueryBuilders<T>;
     /**
      * @description Adds an AND WHERE NOT NULL condition to the query.
      * @param column - The column to filter.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract andWhereNotNull(column: string): QueryBuilders<T>;
+    abstract andWhereNotNull(column: SelectableType<T>): QueryBuilders<T>;
     /**
      * @description Adds an OR WHERE NOT NULL condition to the query.
      * @param column - The column to filter.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract orWhereNotNull(column: string): QueryBuilders<T>;
+    abstract orWhereNotNull(column: SelectableType<T>): QueryBuilders<T>;
     /**
      * @description Adds a raw WHERE condition to the query.
      * @param query - The raw SQL WHERE condition.
@@ -1001,14 +1000,14 @@ declare abstract class QueryBuilder<T extends Model> {
      * @param columns - The columns to group by.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract groupBy(...columns: BaseValues[]): QueryBuilders<T>;
+    abstract groupBy(...columns: string[]): QueryBuilders<T>;
     /**
      * @description Adds ORDER BY conditions to the query.
      * @param column - The column to order by.
      * @param order - The order direction, either "ASC" or "DESC".
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract orderBy(column: BaseValues[], order: "ASC" | "DESC"): QueryBuilders<T>;
+    abstract orderBy(column: string[], order: "ASC" | "DESC"): QueryBuilders<T>;
     /**
      * @description Adds a LIMIT condition to the query.
      * @param limit - The maximum number of rows to return.

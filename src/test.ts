@@ -10,6 +10,7 @@ class User extends Model {
   public id!: number;
   public name!: string;
   public email!: string;
+  public signupSource!: string;
 
   public posts: HasMany | Post[] = new HasMany("posts", "user_id");
 
@@ -191,7 +192,7 @@ export async function testQuery() {
     async () => {
       console.log("Postgres connection opened");
 
-      const firstUser = await User.query().first();
+      const firstUser = await User.query().select("*").first();
 
       // Basic find
       const userById = await User.find({
@@ -205,7 +206,7 @@ export async function testQuery() {
 
       // Query with custom column fullName
       const usersWithFullName = await User.query()
-        .select("CONCAT(name, ' ', email) as fullName")
+        .selectRaw("CONCAT(name, ' ', email) as fullName")
         .one();
 
       // Complex where conditions
@@ -227,18 +228,20 @@ export async function testQuery() {
 
       // Group by
       const groupedUsers = await User.query()
-        .select("name", "COUNT(*) as count")
+        .selectRaw("name", "COUNT(*) as count")
         .groupBy("id", "name")
         .many();
 
       // Having
       const havingUsers = await User.query()
-        .select("name", "COUNT(*) as count")
+        .selectRaw("name", "COUNT(*) as count")
         .groupBy("name")
         .many();
 
       // Pagination
-      const paginatedUsers = await User.query().paginate(1, 10); // page - limit
+      const paginatedUsers = await User.query()
+        .whereNotNull("signupSource")
+        .paginate(1, 10); // page - limit
 
       console.log(userById);
       console.log(limitedUsers);
@@ -282,7 +285,7 @@ export async function testQuery() {
 
       // Query with custom column fullName
       const usersWithFullName = await User.query()
-        .select("CONCAT(name, ' ', email) as fullName")
+        .selectRaw("CONCAT(name, ' ', email) as fullName")
         .one();
 
       // Complex where conditions
@@ -304,13 +307,13 @@ export async function testQuery() {
 
       // Group by
       const groupedUsers = await User.query()
-        .select("name", "COUNT(*) as count")
+        .selectRaw("name", "COUNT(*) as count")
         .groupBy("name")
         .many();
 
       // Having
       const havingUsers = await User.query()
-        .select("name", "COUNT(*) as count")
+        .selectRaw("name", "COUNT(*) as count")
         .groupBy("name")
         .many();
 

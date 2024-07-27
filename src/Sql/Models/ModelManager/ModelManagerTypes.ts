@@ -28,10 +28,10 @@ type OnlyRelations<T> = {
 }[keyof T];
 
 export type WhereType<T> = {
-  [P in keyof T]?: string | number | boolean | null;
+  [P in keyof T]?: string | number | boolean | Date | null;
 };
 
-export type SelectType<T> = ExcludeRelations<Omit<T, "aliasColumns">>;
+export type SelectableType<T> = ExcludeRelations<Omit<T, "aliasColumns">>;
 export type RelationType<T> = OnlyRelations<Omit<T, "aliasColumns">>;
 
 type OrderByType = {
@@ -41,7 +41,7 @@ type OrderByType = {
 
 // model manager only makes and where, for more complex queries use query builder
 export type FindOneType<T> = {
-  select?: SelectType<T>[];
+  select?: SelectableType<T>[];
   relations?: RelationType<T>[];
   where?: WhereType<T>;
 };

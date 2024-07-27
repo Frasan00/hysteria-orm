@@ -5,6 +5,7 @@ import { Model } from "../Models/Model";
 import {
   FindOneType,
   FindType,
+  SelectableType,
 } from "../Models/ModelManager/ModelManagerTypes";
 import mysql, { RowDataPacket } from "mysql2/promise";
 import selectTemplate from "../Templates/Query/SELECT";
@@ -237,7 +238,10 @@ export class MysqlModelManager<
       );
 
       return await this.query()
-        .whereIn(this.model.metadata.primaryKey as string, idsToFetchList)
+        .whereIn(
+          this.model.metadata.primaryKey as SelectableType<T>,
+          idsToFetchList,
+        )
         .many();
     } catch (error) {
       queryError(error);
