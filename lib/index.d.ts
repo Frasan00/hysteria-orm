@@ -218,6 +218,66 @@ type PaginatedData<T> = {
     data: T[];
 };
 
+declare enum RelationType$1 {
+    hasOne = "hasOne",// One to One without foreign key
+    belongsTo = "belongsTo",// One to One with foreign key
+    hasMany = "hasMany"
+}
+/**
+ * Main Model -> Related Model
+ */
+declare abstract class Relation {
+    abstract type: RelationType$1;
+    foreignKey?: string;
+    relatedModel: string;
+    protected constructor(relatedModel: string);
+}
+
+declare class BelongsTo extends Relation {
+    type: RelationType$1;
+    foreignKey: string;
+    constructor(relatedModel: string, foreignKey: string);
+}
+
+declare class HasMany extends Relation {
+    type: RelationType$1;
+    foreignKey: string;
+    constructor(relatedModel: string, foreignKey: string);
+}
+
+declare class HasOne extends Relation {
+    type: RelationType$1;
+    foreignKey: string;
+    constructor(relatedModel: string, foreignKey: string);
+}
+
+type ExcludeRelations<T> = {
+    [K in keyof T]: T[K] extends (Model[] | HasMany) | (Model | HasMany) | (Model | BelongsTo) | (Model[] | BelongsTo) | (Model | HasOne) | (Model[] | HasOne) ? never : K;
+}[keyof T];
+type OnlyRelations<T> = {
+    [K in keyof T]: T[K] extends (Model[] | HasMany) | (Model | HasMany) | (Model | BelongsTo) | (Model[] | BelongsTo) | (Model | HasOne) | (Model[] | HasOne) ? K : never;
+}[keyof T];
+type WhereType<T> = {
+    [P in keyof T]?: string | number | boolean | null;
+};
+type SelectType<T> = ExcludeRelations<Omit<T, "aliasColumns">>;
+type RelationType<T> = OnlyRelations<Omit<T, "aliasColumns">>;
+type OrderByType = {
+    columns: string[];
+    type: "ASC" | "DESC";
+};
+type FindOneType<T> = {
+    select?: SelectType<T>[];
+    relations?: RelationType<T>[];
+    where?: WhereType<T>;
+};
+type FindType<T> = FindOneType<T> & {
+    orderBy?: OrderByType;
+    groupBy?: string[];
+    limit?: number;
+    offset?: number;
+};
+
 declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     protected mysqlPool: Pool;
     protected isNestedCondition: boolean;
@@ -253,7 +313,7 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @description Columns are customizable with aliases. By default, without this function, all columns are selected
      * @param columns
      */
-    select(...columns: string[]): this;
+    select(...columns: SelectType<T>[]): MysqlQueryBuilder<T>;
     /**
      *
      * @param relationTable - The name of the related table.
@@ -474,7 +534,7 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @description Columns are customizable with aliases. By default, without this function, all columns are selected
      * @param columns
      */
-    select(...columns: string[]): this;
+    select(...columns: SelectType<T>[]): PostgresQueryBuilder<T>;
     raw(query: string, params?: any[]): Promise<pg.QueryResult<any>>;
     one(): Promise<T | null>;
     first(): Promise<T | null>;
@@ -748,7 +808,7 @@ declare abstract class QueryBuilder<T extends Model> {
      * @description Columns are customizable with aliases. By default, without this function, all columns are selected
      * @param columns
      */
-    abstract select(...columns: string[]): QueryBuilders<T>;
+    abstract select(...columns: SelectType<T>[]): QueryBuilders<T>;
     /**
      *
      * @param table
@@ -964,32 +1024,13 @@ declare abstract class QueryBuilder<T extends Model> {
     protected groupFooterQuery(): string;
 }
 
-type WhereType = {
-    [key: string]: string | number | boolean;
-};
-type OrderByType = {
-    columns: string[];
-    type: "ASC" | "DESC";
-};
-type FindOneType = {
-    select?: string[];
-    relations?: string[];
-    where?: WhereType;
-};
-type FindType = FindOneType & {
-    orderBy?: OrderByType;
-    groupBy?: string[];
-    limit?: number;
-    offset?: number;
-};
-
 declare abstract class AbstractModelManager<T extends Model> {
     protected logs: boolean;
     protected model: typeof Model;
     protected modelInstance: T;
     protected constructor(model: typeof Model, logs: boolean);
-    abstract find(input?: FindType): Promise<T[]>;
-    abstract findOne(input: FindOneType): Promise<T | null>;
+    abstract find(input?: FindType<T>): Promise<T[]>;
+    abstract findOne(input: FindOneType<T>): Promise<T | null>;
     abstract findOneById(id: string | number): Promise<T | null>;
     abstract create(model: Partial<T>, trx?: MysqlTransaction | PostgresTransaction): Promise<T | null>;
     abstract massiveCreate(model: Partial<T>[], trx?: MysqlTransaction | PostgresTransaction): Promise<T[]>;
@@ -1015,14 +1056,14 @@ declare class MysqlModelManager<T extends Model> extends AbstractModelManager<T>
      * @param {FindType} input - Optional query parameters for filtering, ordering, and pagination.
      * @returns Promise resolving to an array of models.
      */
-    find(input?: FindType): Promise<T[]>;
+    find(input?: FindType<T>): Promise<T[]>;
     /**
      * Find a single record from the database based on the input conditions.
      *
      * @param {FindOneType} input - Query parameters for filtering and selecting a single record.
      * @returns Promise resolving to a single model or null if not found.
      */
-    findOne(input: FindOneType): Promise<T | null>;
+    findOne(input: FindOneType<T>): Promise<T | null>;
     /**
      * Find a single record by its ID from the database.
      *
@@ -1099,14 +1140,14 @@ declare class PostgresModelManager<T extends Model> extends AbstractModelManager
      * @param {FindType} input - Optional query parameters for filtering, ordering, and pagination.
      * @returns Promise resolving to an array of models.
      */
-    find(input?: FindType): Promise<T[]>;
+    find(input?: FindType<T>): Promise<T[]>;
     /**
      * Find a single record from the database based on the input conditions.
      *
      * @param {FindOneType} input - Query parameters for filtering and selecting a single record.
      * @returns Promise resolving to a single model or null if not found.
      */
-    findOne(input: FindOneType): Promise<T | null>;
+    findOne(input: FindOneType<T>): Promise<T | null>;
     /**
      * Find a single record by its ID from the database.
      *
@@ -1243,14 +1284,14 @@ declare class Model {
      * @param {FindType} options
      * @returns {Promise<T[]>}
      */
-    static find<T extends Model>(this: new () => T | typeof Model, options?: FindType): Promise<T[]>;
+    static find<T extends Model>(this: new () => T | typeof Model, options?: FindType<T>): Promise<T[]>;
     /**
      * @description Finds a record for the given model
      * @param model
      * @param {FindOneType} options
      * @returns {Promise<T | null>}
      */
-    static findOne<T extends Model>(this: new () => T | typeof Model, options: FindOneType): Promise<T | null>;
+    static findOne<T extends Model>(this: new () => T | typeof Model, options: FindOneType<T>): Promise<T | null>;
     /**
      * @description Finds a record for the given model for the given id, "id" must be set in the model in order for it to work
      * @param model
@@ -1326,39 +1367,6 @@ declare class Model {
      * @returns
      */
     private static establishConnection;
-}
-
-declare enum RelationType {
-    hasOne = "hasOne",// One to One without foreign key
-    belongsTo = "belongsTo",// One to One with foreign key
-    hasMany = "hasMany"
-}
-/**
- * Main Model -> Related Model
- */
-declare abstract class Relation {
-    abstract type: RelationType;
-    foreignKey?: string;
-    relatedModel: string;
-    protected constructor(relatedModel: string);
-}
-
-declare class HasOne extends Relation {
-    type: RelationType;
-    foreignKey: string;
-    constructor(relatedModel: string, foreignKey: string);
-}
-
-declare class HasMany extends Relation {
-    type: RelationType;
-    foreignKey: string;
-    constructor(relatedModel: string, foreignKey: string);
-}
-
-declare class BelongsTo extends Relation {
-    type: RelationType;
-    foreignKey: string;
-    constructor(relatedModel: string, foreignKey: string);
 }
 
 declare class ColumnOptionsBuilder {

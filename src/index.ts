@@ -29,9 +29,9 @@ class User extends Model {
     logs: true,
   });
 
-  // await testQuery();
+  await testQuery();
   // await testCreate();
-  await testUpdate();
+  // await testUpdate();
 
   process.exit(0);
 })();

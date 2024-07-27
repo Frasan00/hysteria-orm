@@ -73,7 +73,7 @@ export class Model {
    */
   public static find<T extends Model>(
     this: new () => T | typeof Model,
-    options?: FindType,
+    options?: FindType<T>,
   ): Promise<T[]> {
     const typeofModel = this as unknown as typeof Model;
     typeofModel.establishConnection();
@@ -90,7 +90,7 @@ export class Model {
    */
   public static findOne<T extends Model>(
     this: new () => T | typeof Model,
-    options: FindOneType,
+    options: FindOneType<T>,
   ): Promise<T | null> {
     const typeofModel = this as unknown as typeof Model;
     typeofModel.establishConnection();

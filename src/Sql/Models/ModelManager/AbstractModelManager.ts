@@ -19,9 +19,9 @@ export abstract class AbstractModelManager<T extends Model> {
     this.modelInstance = new this.model() as T;
   }
 
-  public abstract find(input?: FindType): Promise<T[]>;
+  public abstract find(input?: FindType<T>): Promise<T[]>;
 
-  public abstract findOne(input: FindOneType): Promise<T | null>;
+  public abstract findOne(input: FindOneType<T>): Promise<T | null>;
 
   public abstract findOneById(id: string | number): Promise<T | null>;
 

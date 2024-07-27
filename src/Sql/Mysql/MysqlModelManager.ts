@@ -39,7 +39,7 @@ export class MysqlModelManager<
    * @param {FindType} input - Optional query parameters for filtering, ordering, and pagination.
    * @returns Promise resolving to an array of models.
    */
-  public async find(input?: FindType): Promise<T[]> {
+  public async find(input?: FindType<T>): Promise<T[]> {
     try {
       if (!input) {
         const select = selectTemplate(
@@ -103,7 +103,7 @@ export class MysqlModelManager<
    * @param {FindOneType} input - Query parameters for filtering and selecting a single record.
    * @returns Promise resolving to a single model or null if not found.
    */
-  public async findOne(input: FindOneType): Promise<T | null> {
+  public async findOne(input: FindOneType<T>): Promise<T | null> {
     const model = new this.model();
     try {
       const { query, params } = MySqlModelManagerUtils.parseSelectQueryInput(
