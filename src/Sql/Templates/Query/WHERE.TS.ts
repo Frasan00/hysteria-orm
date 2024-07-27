@@ -15,12 +15,12 @@ export type BaseValues = string | number | boolean | Date;
 
 const whereTemplate = (_tableName: string, dbType: DataSourceType) => {
   return {
-    convertPlaceHolderToValue: (query: string) => {
+    convertPlaceHolderToValue: (query: string, startIndex: number = 1) => {
       switch (dbType) {
         case "mysql":
           return query.replace(/PLACEHOLDER/g, () => "?");
         case "postgres":
-          let index = 1;
+          let index = startIndex;
           return query.replace(/PLACEHOLDER/g, () => `$${index++}`);
         default:
           throw new Error("Unsupported database type");

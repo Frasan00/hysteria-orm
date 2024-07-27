@@ -14,6 +14,7 @@ import { AbstractModelManager } from "../Models/ModelManager/AbstractModelManage
 import { PostgresTransaction } from "./PostgresTransaction";
 import { PostgresQueryBuilder } from "./PostgresQueryBuilder";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
+import { PostgresUpdateQueryBuilder } from "./PostgresUpdateQueryBuilder";
 
 export class PostgresModelManager<
   T extends Model,
@@ -405,6 +406,15 @@ export class PostgresModelManager<
    */
   public query(): PostgresQueryBuilder<T> {
     return new PostgresQueryBuilder<T>(
+      this.model,
+      this.model.metadata.tableName,
+      this.pgPool,
+      this.logs,
+    );
+  }
+
+  public update(): any {
+    return new PostgresUpdateQueryBuilder<T>(
       this.model,
       this.model.metadata.tableName,
       this.pgPool,

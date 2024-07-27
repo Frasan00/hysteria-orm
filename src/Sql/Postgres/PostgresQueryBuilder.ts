@@ -12,6 +12,7 @@ import {
   RelationType,
   SelectableType,
 } from "../Models/ModelManager/ModelManagerTypes";
+import { fromSnakeToCamelCase } from "../../CaseUtils";
 
 export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   protected pgPool: Pool;
@@ -27,16 +28,6 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     super(model, tableName, logs);
     this.pgPool = pgPool;
     this.isNestedCondition = isNestedCondition;
-  }
-
-  private mergeRetrievedDataIntoModel(model: T, row: any) {
-    Object.entries(row).forEach(([key, value]) => {
-      if (Object.hasOwnProperty.call(model, key)) {
-        Object.assign(model, { [key]: value });
-      } else {
-        model.aliasColumns[key] = value as string | number | boolean;
-      }
-    });
   }
 
   public select(
@@ -64,7 +55,9 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return await this.pgPool.query(query, params);
   }
 
-  public async one(options: OneOptions = { throwErrorOnNull: false }): Promise<T | null> {
+  public async one(
+    options: OneOptions = { throwErrorOnNull: false },
+  ): Promise<T | null> {
     let query: string = "";
     if (this.joinQuery && !this.selectQuery) {
       const select = selectTemplate(
@@ -79,7 +72,6 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
       query += this.whereQuery;
     }
 
-    const model = new this.model() as T;
     try {
       query = this.whereTemplate.convertPlaceHolderToValue(query);
       query = query.trim();
@@ -93,24 +85,25 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
         return null;
       }
 
-      const modelData = result.rows[0];
-      this.mergeRetrievedDataIntoModel(model, modelData);
-
+      const modelInstance = new this.model() as T;
+      this.mergeRawPacketIntoModel(modelInstance, result.rows[0]);
       await PostgresModelManagerUtils.parseQueryBuilderRelations(
-        model,
+        modelInstance,
         this.model,
         this.relations,
         this.pgPool,
         this.logs,
       );
 
-      return parseDatabaseDataIntoModelResponse([model]) as T;
+      return parseDatabaseDataIntoModelResponse([modelInstance]) as T;
     } catch (error) {
       throw new Error("Query failed " + error);
     }
   }
 
-  public async first(options: OneOptions = { throwErrorOnNull: false }): Promise<T | null> {
+  public async first(
+    options: OneOptions = { throwErrorOnNull: false },
+  ): Promise<T | null> {
     return await this.limit(1).one(options);
   }
 
@@ -140,18 +133,18 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
       return Promise.all(
         rows.map(async (row) => {
           const modelData = row as T;
-          const rowModel = new this.model() as T;
-          this.mergeRetrievedDataIntoModel(rowModel, modelData);
+          const modelInstance = new this.model() as T;
+          this.mergeRawPacketIntoModel(modelInstance, modelData);
 
           await PostgresModelManagerUtils.parseQueryBuilderRelations(
-            rowModel,
+            modelInstance,
             this.model,
             this.relations,
             this.pgPool,
             this.logs,
           );
 
-          return parseDatabaseDataIntoModelResponse([rowModel]) as T;
+          return parseDatabaseDataIntoModelResponse([modelInstance]) as T;
         }),
       );
     } catch (error: any) {
@@ -170,12 +163,18 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   ): Promise<PaginatedData<T>> {
     this.limitQuery = this.selectTemplate.limit(limit);
     this.offsetQuery = this.selectTemplate.offset((page - 1) * limit);
-    const countQuery = await this.pgPool.query(
-      `SELECT COUNT(*) FROM ${this.tableName}`,
-    );
-    const total = +countQuery.rows[0].count;
+
+    const originalSelectQuery = this.selectQuery;
+    this.selectRaw("COUNT(*) as total");
+    const total = await this.many();
+    this.selectQuery = originalSelectQuery;
+
     const models = await this.many();
-    const paginationMetadata = getPaginationMetadata(page, limit, total);
+    const paginationMetadata = getPaginationMetadata(
+      page,
+      limit,
+      +total[0].aliasColumns["total"] as number,
+    );
     let data = parseDatabaseDataIntoModelResponse(models) || [];
     if (Array.isArray(data)) {
       data = data.filter((model) => model !== null);
@@ -970,5 +969,17 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return (
       this.groupByQuery + this.orderByQuery + this.limitQuery + this.offsetQuery
     );
+  }
+
+  private mergeRawPacketIntoModel(model: T, row: any) {
+    Object.entries(row).forEach(([key, value]) => {
+      const camelCaseKey = fromSnakeToCamelCase(key) as string;
+      if (Object.keys(model).includes(camelCaseKey)) {
+        Object.assign(model, { [camelCaseKey]: value });
+        return;
+      }
+
+      model.aliasColumns[key] = value as string | number | boolean;
+    });
   }
 }

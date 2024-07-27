@@ -11,6 +11,7 @@ import {
   RelationType,
   SelectableType,
 } from "../Models/ModelManager/ModelManagerTypes";
+import { WhereQueryBuilder } from "./WhereQueryBuilder";
 
 export type QueryBuilders<T extends Model> =
   | MysqlQueryBuilder<T>

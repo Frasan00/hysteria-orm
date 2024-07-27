@@ -7,6 +7,8 @@ import { MysqlQueryBuilder } from "../../Mysql/MysqlQueryBuilder";
 import { MysqlTransaction } from "../../Mysql/MysqlTransaction";
 import { PostgresTransaction } from "../../Postgres/PostgresTransaction";
 import { PostgresQueryBuilder } from "../../Postgres/PostgresQueryBuilder";
+import { MysqlUpdateQueryBuilder } from "../../Mysql/MysqlUpdateQueryBuilder";
+import { PostgresUpdateQueryBuilder } from "../../Postgres/PostgresUpdateQueryBuilder";
 
 export abstract class AbstractModelManager<T extends Model> {
   protected logs: boolean;
@@ -57,4 +59,8 @@ export abstract class AbstractModelManager<T extends Model> {
   ): Promise<T | null>;
 
   public abstract query(): MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
+
+  public abstract update():
+    | MysqlUpdateQueryBuilder<T>
+    | PostgresUpdateQueryBuilder<T>;
 }

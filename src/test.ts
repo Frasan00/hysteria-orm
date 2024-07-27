@@ -124,6 +124,12 @@ export async function testUpdate() {
     async () => {
       console.log("Postgres connection opened");
 
+      const users = await User.update().where("id", 1).withData({
+        name: "John Doe Updated",
+        email: "testoooo",
+      });
+      console.log(users);
+
       const user = await User.query().first();
       if (!user) {
         console.log("No user found");
@@ -156,6 +162,12 @@ export async function testUpdate() {
     },
     async () => {
       console.log("Mysql connection opened");
+
+      const users = await User.update().where("id", 1).withData({
+        name: "John Doe Updated",
+        email: "testoooo",
+      });
+      console.log(users);
 
       const user = await User.query().first();
       if (!user) {
@@ -243,15 +255,15 @@ export async function testQuery() {
         .whereNotNull("signupSource")
         .paginate(1, 10); // page - limit
 
-      console.log(userById);
-      console.log(limitedUsers);
-      console.log(complexUsers);
-      console.log(orderedUsers);
-      console.log(groupedUsers);
-      console.log(havingUsers);
-      console.log(paginatedUsers);
-      console.log(usersWithFullName);
-      console.log(firstUser);
+      console.log("userById:", userById);
+      console.log("limitedUsers:", limitedUsers);
+      console.log("complexUsers:", complexUsers);
+      console.log("orderedUsers:", orderedUsers);
+      console.log("groupedUsers:", groupedUsers);
+      console.log("havingUsers:", havingUsers);
+      console.log("paginatedUsers:", paginatedUsers);
+      console.log("usersWithFullName:", usersWithFullName);
+      console.log("firstUser:", firstUser);
 
       console.log("Postgres connection closed");
     },
@@ -320,15 +332,15 @@ export async function testQuery() {
       // Pagination
       const paginatedUsers = await User.query().paginate(1, 10); // page - limit
 
-      console.log(userById);
-      console.log(limitedUsers);
-      console.log(complexUsers);
-      console.log(orderedUsers);
-      console.log(groupedUsers);
-      console.log(havingUsers);
-      console.log(paginatedUsers);
-      console.log(usersWithFullName);
-      console.log(firstUser);
+      console.log("userById:", userById);
+      console.log("limitedUsers:", limitedUsers);
+      console.log("complexUsers:", complexUsers);
+      console.log("orderedUsers:", orderedUsers);
+      console.log("groupedUsers:", groupedUsers);
+      console.log("havingUsers:", havingUsers);
+      console.log("paginatedUsers:", paginatedUsers);
+      console.log("usersWithFullName:", usersWithFullName);
+      console.log("firstUser:", firstUser);
 
       console.log("Mysql connection closed");
     },

@@ -11,10 +11,28 @@ class User extends Model {
   public id!: number;
   public name!: string;
   public email!: string;
+  public signupSource!: string;
+
+  public posts: HasMany | Post[] = new HasMany("posts", "user_id");
 
   public static metadata: Metadata = {
     primaryKey: "id",
     tableName: "users",
+  };
+}
+
+// TODO test with trx and relations
+class Post extends Model {
+  public id!: number;
+  public title!: string;
+  public content!: string;
+  public user_id!: number;
+
+  public user: HasOne | User = new HasOne("user", "user_id");
+
+  public static metadata: Metadata = {
+    primaryKey: "id",
+    tableName: "posts",
   };
 }
 
@@ -29,7 +47,7 @@ class User extends Model {
     logs: true,
   });
 
-  await testQuery();
+  // await testQuery();
   // await testCreate();
   // await testUpdate();
 

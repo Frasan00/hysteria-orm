@@ -1,7 +1,9 @@
 import { camelToSnakeCase } from "../../CaseUtils";
 import { DataSourceInput } from "../../Datasource";
 import { MysqlTransaction } from "../Mysql/MysqlTransaction";
+import { MysqlUpdateQueryBuilder } from "../Mysql/MysqlUpdateQueryBuilder";
 import { PostgresTransaction } from "../Postgres/PostgresTransaction";
+import { PostgresUpdateQueryBuilder } from "../Postgres/PostgresUpdateQueryBuilder";
 import { QueryBuilders } from "../QueryBuilder/QueryBuilder";
 import { SqlDataSource } from "../SqlDataSource";
 import { FindOneType, FindType } from "./ModelManager/ModelManagerTypes";
@@ -170,6 +172,21 @@ export class Model {
     return typeofModel.sqlInstance
       .getModelManager<T>(typeofModel)
       .updateRecord(modelInstance, trx);
+  }
+
+  /**
+   * @description Updates records to the database
+   * @param model
+   * @param {Model} modelInstance
+   * @param {MysqlTransaction & PostgresTransaction} trx
+   * @returns Update query builder
+   */
+  public static update<T extends Model>(
+    this: new () => T | typeof Model,
+  ): MysqlUpdateQueryBuilder<T> | PostgresUpdateQueryBuilder<T> {
+    const typeofModel = this as unknown as typeof Model;
+    typeofModel.establishConnection();
+    return typeofModel.sqlInstance.getModelManager<T>(typeofModel).update();
   }
 
   /**

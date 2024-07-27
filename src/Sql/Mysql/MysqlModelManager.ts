@@ -16,6 +16,8 @@ import { MysqlTransaction } from "./MysqlTransaction";
 import { AbstractModelManager } from "../Models/ModelManager/AbstractModelManager";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
 import { PostgresTransaction } from "../Postgres/PostgresTransaction";
+import { MysqlUpdateQueryBuilder } from "./MysqlUpdateQueryBuilder";
+import { PostgresUpdateQueryBuilder } from "../Postgres/PostgresUpdateQueryBuilder";
 
 export class MysqlModelManager<
   T extends Model,
@@ -410,6 +412,20 @@ export class MysqlModelManager<
    */
   public query(): MysqlQueryBuilder<T> {
     return new MysqlQueryBuilder<T>(
+      this.model,
+      this.model.metadata.tableName,
+      this.mysqlPool,
+      this.logs,
+    );
+  }
+
+  /**
+   * Create and return a new instance of the MysqlUpdateQueryBuilder for building more complex SQL update queries.
+   *
+   * @returns {MysqlUpdateQueryBuilder<Model>} - Instance of MysqlUpdateQueryBuilder.
+   */
+  public update(): MysqlUpdateQueryBuilder<T> | PostgresUpdateQueryBuilder<T> {
+    return new MysqlUpdateQueryBuilder<T>(
       this.model,
       this.model.metadata.tableName,
       this.mysqlPool,
