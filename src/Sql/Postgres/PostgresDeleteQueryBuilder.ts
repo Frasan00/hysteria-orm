@@ -1,20 +1,19 @@
 import { Model } from "../Models/Model";
 import { BaseValues, WhereOperatorType } from "../Templates/Query/WHERE.TS";
-import { SelectableType } from "../Models/ModelManager/ModelManagerTypes";
 import { log, queryError } from "../../Logger";
 import { WhereQueryBuilder } from "../QueryBuilder/WhereQueryBuilder";
-import updateTemplate from "../Templates/Query/UPDATE";
 import { PostgresTransaction } from "./PostgresTransaction";
 import { Pool } from "pg";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
+import deleteTemplate from "../Templates/Query/DELETE";
 import joinTemplate from "../Templates/Query/JOIN";
 
-export class PostgresUpdateQueryBuilder<
+export class PostgresDeleteQueryBuilder<
   T extends Model,
 > extends WhereQueryBuilder<T> {
   protected pgPool: Pool;
-  protected joinQuery = "";
-  protected updateTemplate: ReturnType<typeof updateTemplate>;
+  protected joinQuery;
+  protected deleteTemplate: ReturnType<typeof deleteTemplate>;
   protected isNestedCondition = false;
 
   /**
@@ -34,7 +33,7 @@ export class PostgresUpdateQueryBuilder<
   ) {
     super(model, tableName, logs);
     this.pgPool = pgPool;
-    this.updateTemplate = updateTemplate(
+    this.deleteTemplate = deleteTemplate(
       tableName,
       this.model.sqlInstance.getDbType(),
     );
@@ -43,38 +42,25 @@ export class PostgresUpdateQueryBuilder<
   }
 
   /**
-   * @description Updates a record in the database.
+   * @description Deletes Records from the database.
    * @param data - The data to update.
    * @param trx - The transaction to run the query in.
    * @returns The updated records.
    */
-  public async withData(
-    data: Partial<T>,
-    trx?: PostgresTransaction,
-  ): Promise<T[]> {
+  public async performDelete(trx?: PostgresTransaction): Promise<T[]> {
     // TODO: Implement transactions
-    const columns = Object.keys(data);
-    const values = Object.values(data);
     this.whereQuery = this.whereTemplate.convertPlaceHolderToValue(
       this.whereQuery,
-      values.length + 1,
     );
-    const { query, params } = this.updateTemplate.massiveUpdate(
-      columns,
-      values,
+    const query = this.deleteTemplate.massiveDelete(
       this.whereQuery,
       this.joinQuery,
     );
 
-    params.push(...this.whereParams);
-    log(query, this.logs, params);
+    log(query, this.logs, this.whereParams);
     try {
-      const { rows } = await this.pgPool.query(query, params);
-      if (!rows.length) {
-        throw new Error("Failed to update");
-      }
-
-      return parseDatabaseDataIntoModelResponse(rows);
+      const result = await this.pgPool.query(query, this.whereParams);
+      return parseDatabaseDataIntoModelResponse(result.rows);
     } catch (error) {
       queryError(query);
       throw new Error("Query failed " + error);
@@ -91,7 +77,7 @@ export class PostgresUpdateQueryBuilder<
     relationTable: string,
     primaryColumn: string,
     foreignColumn: string,
-  ): PostgresUpdateQueryBuilder<T> {
+  ): PostgresDeleteQueryBuilder<T> {
     const join = joinTemplate(
       this.tableName,
       relationTable,
@@ -112,7 +98,7 @@ export class PostgresUpdateQueryBuilder<
     relationTable: string,
     primaryColumn: string,
     foreignColumn: string,
-  ): PostgresUpdateQueryBuilder<T> {
+  ): PostgresDeleteQueryBuilder<T> {
     const join = joinTemplate(
       this.tableName,
       relationTable,
@@ -161,16 +147,16 @@ export class PostgresUpdateQueryBuilder<
    * @param cb
    */
   public whereBuilder(
-    cb: (queryBuilder: PostgresUpdateQueryBuilder<T>) => void,
+    cb: (queryBuilder: PostgresDeleteQueryBuilder<T>) => void,
   ): this {
-    const queryBuilder = new PostgresUpdateQueryBuilder(
+    const queryBuilder = new PostgresDeleteQueryBuilder(
       this.model as typeof Model,
       this.tableName,
       this.pgPool,
       this.logs,
       true,
     );
-    cb(queryBuilder as unknown as PostgresUpdateQueryBuilder<T>);
+    cb(queryBuilder as unknown as PostgresDeleteQueryBuilder<T>);
 
     let whereCondition = queryBuilder.whereQuery.trim();
     if (whereCondition.startsWith("AND")) {
@@ -198,16 +184,16 @@ export class PostgresUpdateQueryBuilder<
    * @param cb Callback function that takes a query builder and adds conditions to it.
    */
   public orWhereBuilder(
-    cb: (queryBuilder: PostgresUpdateQueryBuilder<T>) => void,
+    cb: (queryBuilder: PostgresDeleteQueryBuilder<T>) => void,
   ): this {
-    const nestedBuilder = new PostgresUpdateQueryBuilder(
+    const nestedBuilder = new PostgresDeleteQueryBuilder(
       this.model as typeof Model,
       this.tableName,
       this.pgPool,
       this.logs,
       true,
     );
-    cb(nestedBuilder as unknown as PostgresUpdateQueryBuilder<T>);
+    cb(nestedBuilder as unknown as PostgresDeleteQueryBuilder<T>);
 
     let nestedCondition = nestedBuilder.whereQuery.trim();
     if (nestedCondition.startsWith("AND")) {
@@ -238,16 +224,16 @@ export class PostgresUpdateQueryBuilder<
    * @param cb Callback function that takes a query builder and adds conditions to it.
    */
   public andWhereBuilder(
-    cb: (queryBuilder: PostgresUpdateQueryBuilder<T>) => void,
+    cb: (queryBuilder: PostgresDeleteQueryBuilder<T>) => void,
   ): this {
-    const nestedBuilder = new PostgresUpdateQueryBuilder(
+    const nestedBuilder = new PostgresDeleteQueryBuilder(
       this.model as typeof Model,
       this.tableName,
       this.pgPool,
       this.logs,
       true,
     );
-    cb(nestedBuilder as unknown as PostgresUpdateQueryBuilder<T>);
+    cb(nestedBuilder as unknown as PostgresDeleteQueryBuilder<T>);
 
     let nestedCondition = nestedBuilder.whereQuery.trim();
     if (nestedCondition.startsWith("AND")) {

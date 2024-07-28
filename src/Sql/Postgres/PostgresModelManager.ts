@@ -15,6 +15,7 @@ import { PostgresTransaction } from "./PostgresTransaction";
 import { PostgresQueryBuilder } from "./PostgresQueryBuilder";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
 import { PostgresUpdateQueryBuilder } from "./PostgresUpdateQueryBuilder";
+import { PostgresDeleteQueryBuilder } from "./PostgresDeleteQueryBuilder";
 
 export class PostgresModelManager<
   T extends Model,
@@ -54,7 +55,7 @@ export class PostgresModelManager<
         const models =
           rows.map((row) => {
             const model = row as T;
-            model.aliasColumns = this.modelInstance.aliasColumns;
+            model.extraColumns = this.modelInstance.extraColumns;
             return parseDatabaseDataIntoModelResponse([model]) as T;
           }) || [];
         return (
@@ -356,7 +357,10 @@ export class PostgresModelManager<
    * @param {PostgresTransaction} trx - PostgresTransaction to be used on the delete operation.
    * @returns Promise resolving to the deleted model or null if deleting fails.
    */
-  public async delete(model: T, trx?: PostgresTransaction): Promise<T | null> {
+  public async deleteRecord(
+    model: T,
+    trx?: PostgresTransaction,
+  ): Promise<T | null> {
     try {
       if (!this.model.metadata.primaryKey) {
         throw new Error(
@@ -413,8 +417,23 @@ export class PostgresModelManager<
     );
   }
 
+  /**
+   * @description Returns an update query builder.
+   */
   public update(): any {
     return new PostgresUpdateQueryBuilder<T>(
+      this.model,
+      this.model.metadata.tableName,
+      this.pgPool,
+      this.logs,
+    );
+  }
+
+  /**
+   * @description Returns a delete query builder.
+   */
+  public delete(): PostgresDeleteQueryBuilder<T> {
+    return new PostgresDeleteQueryBuilder<T>(
       this.model,
       this.model.metadata.tableName,
       this.pgPool,

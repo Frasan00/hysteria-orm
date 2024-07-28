@@ -31,8 +31,8 @@ export type WhereType<T> = {
   [P in keyof T]?: string | number | boolean | Date | null;
 };
 
-export type SelectableType<T> = ExcludeRelations<Omit<T, "aliasColumns">>;
-export type RelationType<T> = OnlyRelations<Omit<T, "aliasColumns">>;
+export type SelectableType<T> = ExcludeRelations<Omit<T, "extraColumns">>;
+export type RelationType<T> = OnlyRelations<Omit<T, "extraColumns">>;
 
 type OrderByType = {
   columns: string[];

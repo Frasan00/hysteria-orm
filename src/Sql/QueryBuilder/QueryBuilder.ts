@@ -11,7 +11,6 @@ import {
   RelationType,
   SelectableType,
 } from "../Models/ModelManager/ModelManagerTypes";
-import { WhereQueryBuilder } from "./WhereQueryBuilder";
 
 export type QueryBuilders<T extends Model> =
   | MysqlQueryBuilder<T>
@@ -173,7 +172,7 @@ export abstract class QueryBuilder<T extends Model> {
    * @returns The MysqlQueryBuilder instance for chaining.
    */
   public abstract where(
-    column: SelectableType<T>,
+    column: string,
     value: BaseValues,
     operator: WhereOperatorType,
   ): QueryBuilders<T>;
@@ -186,7 +185,7 @@ export abstract class QueryBuilder<T extends Model> {
    * @returns The MysqlQueryBuilder instance for chaining.
    */
   public abstract andWhere(
-    column: SelectableType<T>,
+    column: string,
     value: BaseValues,
     operator: WhereOperatorType,
   ): QueryBuilders<T>;
@@ -199,7 +198,7 @@ export abstract class QueryBuilder<T extends Model> {
    * @returns The MysqlQueryBuilder instance for chaining.
    */
   public abstract orWhere(
-    column: SelectableType<T>,
+    column: string,
     value: BaseValues,
     operator: WhereOperatorType,
   ): QueryBuilders<T>;
@@ -212,7 +211,7 @@ export abstract class QueryBuilder<T extends Model> {
    * @returns The MysqlQueryBuilder instance for chaining.
    */
   public abstract whereBetween(
-    column: SelectableType<T>,
+    column: string,
     min: BaseValues,
     max: BaseValues,
   ): QueryBuilders<T>;
@@ -225,7 +224,7 @@ export abstract class QueryBuilder<T extends Model> {
    * @returns The MysqlQueryBuilder instance for chaining.
    */
   public abstract andWhereBetween(
-    column: SelectableType<T>,
+    column: string,
     min: BaseValues,
     max: BaseValues,
   ): QueryBuilders<T>;
@@ -238,7 +237,7 @@ export abstract class QueryBuilder<T extends Model> {
    * @returns The MysqlQueryBuilder instance for chaining.
    */
   public abstract orWhereBetween(
-    column: SelectableType<T>,
+    column: string,
     min: BaseValues,
     max: BaseValues,
   ): QueryBuilders<T>;
@@ -251,7 +250,7 @@ export abstract class QueryBuilder<T extends Model> {
    * @returns The MysqlQueryBuilder instance for chaining.
    */
   public abstract whereNotBetween(
-    column: SelectableType<T>,
+    column: string,
     min: BaseValues,
     max: BaseValues,
   ): QueryBuilders<T>;
@@ -264,7 +263,7 @@ export abstract class QueryBuilder<T extends Model> {
    * @returns The MysqlQueryBuilder instance for chaining.
    */
   public abstract orWhereNotBetween(
-    column: SelectableType<T>,
+    column: string,
     min: BaseValues,
     max: BaseValues,
   ): QueryBuilders<T>;
@@ -276,7 +275,7 @@ export abstract class QueryBuilder<T extends Model> {
    * @returns The MysqlQueryBuilder instance for chaining.
    */
   public abstract whereIn(
-    column: SelectableType<T>,
+    column: string,
     values: BaseValues[],
   ): QueryBuilders<T>;
 
@@ -287,7 +286,7 @@ export abstract class QueryBuilder<T extends Model> {
    * @returns The MysqlQueryBuilder instance for chaining.
    */
   public abstract andWhereIn(
-    column: SelectableType<T>,
+    column: string,
     values: BaseValues[],
   ): QueryBuilders<T>;
 
@@ -298,7 +297,7 @@ export abstract class QueryBuilder<T extends Model> {
    * @returns The MysqlQueryBuilder instance for chaining.
    */
   public abstract orWhereIn(
-    column: SelectableType<T>,
+    column: string,
     values: BaseValues[],
   ): QueryBuilders<T>;
 
@@ -309,7 +308,7 @@ export abstract class QueryBuilder<T extends Model> {
    * @returns The MysqlQueryBuilder instance for chaining.
    */
   public abstract whereNotIn(
-    column: SelectableType<T>,
+    column: string,
     values: BaseValues[],
   ): QueryBuilders<T>;
 
@@ -320,7 +319,7 @@ export abstract class QueryBuilder<T extends Model> {
    * @returns The MysqlQueryBuilder instance for chaining.
    */
   public abstract orWhereNotIn(
-    column: SelectableType<T>,
+    column: string,
     values: BaseValues[],
   ): QueryBuilders<T>;
 
@@ -329,42 +328,42 @@ export abstract class QueryBuilder<T extends Model> {
    * @param column - The column to filter.
    * @returns The MysqlQueryBuilder instance for chaining.
    */
-  public abstract whereNull(column: SelectableType<T>): QueryBuilders<T>;
+  public abstract whereNull(column: string): QueryBuilders<T>;
 
   /**
    * @description Adds an AND WHERE NULL condition to the query.
    * @param column - The column to filter.
    * @returns The MysqlQueryBuilder instance for chaining.
    */
-  public abstract andWhereNull(column: SelectableType<T>): QueryBuilders<T>;
+  public abstract andWhereNull(column: string): QueryBuilders<T>;
 
   /**
    * @description Adds an OR WHERE NULL condition to the query.
    * @param column - The column to filter.
    * @returns The MysqlQueryBuilder instance for chaining.
    */
-  public abstract orWhereNull(column: SelectableType<T>): QueryBuilders<T>;
+  public abstract orWhereNull(column: string): QueryBuilders<T>;
 
   /**
    * @description Adds a WHERE NOT NULL condition to the query.
    * @param column - The column to filter.
    * @returns The MysqlQueryBuilder instance for chaining.
    */
-  public abstract whereNotNull(column: SelectableType<T>): QueryBuilders<T>;
+  public abstract whereNotNull(column: string): QueryBuilders<T>;
 
   /**
    * @description Adds an AND WHERE NOT NULL condition to the query.
    * @param column - The column to filter.
    * @returns The MysqlQueryBuilder instance for chaining.
    */
-  public abstract andWhereNotNull(column: SelectableType<T>): QueryBuilders<T>;
+  public abstract andWhereNotNull(column: string): QueryBuilders<T>;
 
   /**
    * @description Adds an OR WHERE NOT NULL condition to the query.
    * @param column - The column to filter.
    * @returns The MysqlQueryBuilder instance for chaining.
    */
-  public abstract orWhereNotNull(column: SelectableType<T>): QueryBuilders<T>;
+  public abstract orWhereNotNull(column: string): QueryBuilders<T>;
 
   /**
    * @description Adds a raw WHERE condition to the query.

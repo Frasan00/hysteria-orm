@@ -25,7 +25,7 @@ class Post extends Model {
   public id!: number;
   public title!: string;
   public content!: string;
-  public user_id!: number;
+  public userId!: number;
 
   public user: HasOne | User = new HasOne("user", "user_id");
 
@@ -341,6 +341,62 @@ export async function testQuery() {
       console.log("paginatedUsers:", paginatedUsers);
       console.log("usersWithFullName:", usersWithFullName);
       console.log("firstUser:", firstUser);
+
+      console.log("Mysql connection closed");
+    },
+  );
+}
+
+export async function testDelete() {
+  // Postgres
+  await User.useConnection(
+    {
+      type: "postgres",
+      host: "localhost",
+      username: "root",
+      password: "root",
+      database: "test",
+      port: 5432,
+      logs: true,
+    },
+    async () => {
+      console.log("Postgres connection opened");
+      const user = await User.deleteRecord(
+        (await User.query().first()) as User,
+      );
+      console.log("record delete", user);
+
+      const deletedUsers = await User.delete()
+        .where("name", "%john%", "LIKE")
+        .performDelete();
+      console.log("multi delete", deletedUsers);
+
+      console.log("Postgres connection closed");
+    },
+  );
+
+  // Mysql
+  await User.useConnection(
+    {
+      type: "mysql",
+      host: "localhost",
+      username: "root",
+      password: "root",
+      database: "test",
+      port: 3306,
+      logs: true,
+    },
+    async () => {
+      console.log("Mysql connection opened");
+      const user = await User.deleteRecord(
+        (await User.query().first()) as User,
+      );
+      console.log("record delete", user);
+
+      const deletedUsers = await User.delete()
+        .where("name", "%john%", "LIKE")
+        .performDelete();
+      console.log("multi delete", deletedUsers);
 
       console.log("Mysql connection closed");
     },

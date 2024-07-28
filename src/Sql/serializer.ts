@@ -30,7 +30,7 @@ function serializeModel<T extends Record<string, any>>(model: T): T {
       return;
     }
 
-    if (["aliasColumns"].includes(key)) {
+    if (["extraColumns"].includes(key)) {
       if (!Object.keys(model[key]).length) {
         return;
       }

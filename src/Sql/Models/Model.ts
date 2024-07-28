@@ -1,7 +1,9 @@
 import { camelToSnakeCase } from "../../CaseUtils";
 import { DataSourceInput } from "../../Datasource";
+import { MysqlDeleteQueryBuilder } from "../Mysql/MysqlDeleteQueryBuilder";
 import { MysqlTransaction } from "../Mysql/MysqlTransaction";
 import { MysqlUpdateQueryBuilder } from "../Mysql/MysqlUpdateQueryBuilder";
+import { PostgresDeleteQueryBuilder } from "../Postgres/PostgresDeleteQueryBuilder";
 import { PostgresTransaction } from "../Postgres/PostgresTransaction";
 import { PostgresUpdateQueryBuilder } from "../Postgres/PostgresUpdateQueryBuilder";
 import { QueryBuilders } from "../QueryBuilder/QueryBuilder";
@@ -28,7 +30,7 @@ function getBaseMetadata(className: string): Metadata {
  * Represents a model in the Database
  */
 export class Model {
-  public aliasColumns: { [key: string]: string | number | boolean } = {};
+  public extraColumns: { [key: string]: string | number | boolean } = {};
   public static sqlInstance: SqlDataSource;
   public static metadata: Metadata = getBaseMetadata(this.constructor.name);
 
@@ -190,13 +192,28 @@ export class Model {
   }
 
   /**
-   * @description Deletes a record to the database
+   * @description Deletes multiple records from the database
    * @param model
    * @param {Model} modelInstance
    * @param {MysqlTransaction & PostgresTransaction} trx
    * @returns
    */
   public static delete<T extends Model>(
+    this: new () => T | typeof Model,
+  ): MysqlDeleteQueryBuilder<T> | PostgresDeleteQueryBuilder<T> {
+    const typeofModel = this as unknown as typeof Model;
+    typeofModel.establishConnection();
+    return typeofModel.sqlInstance.getModelManager<T>(typeofModel).delete();
+  }
+
+  /**
+   * @description Deletes a record to the database
+   * @param model
+   * @param {Model} modelInstance
+   * @param {MysqlTransaction & PostgresTransaction} trx
+   * @returns
+   */
+  public static deleteRecord<T extends Model>(
     this: new () => T | typeof Model,
     modelInstance: T,
     trx?: MysqlTransaction & PostgresTransaction,
@@ -205,7 +222,7 @@ export class Model {
     typeofModel.establishConnection();
     return typeofModel.sqlInstance
       .getModelManager<T>(typeofModel)
-      .delete(modelInstance, trx);
+      .deleteRecord(modelInstance, trx);
   }
 
   /**

@@ -9,6 +9,8 @@ import { PostgresTransaction } from "../../Postgres/PostgresTransaction";
 import { PostgresQueryBuilder } from "../../Postgres/PostgresQueryBuilder";
 import { MysqlUpdateQueryBuilder } from "../../Mysql/MysqlUpdateQueryBuilder";
 import { PostgresUpdateQueryBuilder } from "../../Postgres/PostgresUpdateQueryBuilder";
+import { PostgresDeleteQueryBuilder } from "../../Postgres/PostgresDeleteQueryBuilder";
+import { MysqlDeleteQueryBuilder } from "../../Mysql/MysqlDeleteQueryBuilder";
 
 export abstract class AbstractModelManager<T extends Model> {
   protected logs: boolean;
@@ -53,7 +55,7 @@ export abstract class AbstractModelManager<T extends Model> {
     trx?: MysqlTransaction | PostgresTransaction,
   ): Promise<number> | Promise<number | null>;
 
-  public abstract delete(
+  public abstract deleteRecord(
     model: T,
     trx?: MysqlTransaction | PostgresTransaction,
   ): Promise<T | null>;
@@ -63,4 +65,8 @@ export abstract class AbstractModelManager<T extends Model> {
   public abstract update():
     | MysqlUpdateQueryBuilder<T>
     | PostgresUpdateQueryBuilder<T>;
+
+  public abstract delete():
+    | MysqlDeleteQueryBuilder<T>
+    | PostgresDeleteQueryBuilder<T>;
 }

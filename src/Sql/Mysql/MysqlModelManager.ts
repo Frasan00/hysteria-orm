@@ -18,6 +18,7 @@ import { parseDatabaseDataIntoModelResponse } from "../serializer";
 import { PostgresTransaction } from "../Postgres/PostgresTransaction";
 import { MysqlUpdateQueryBuilder } from "./MysqlUpdateQueryBuilder";
 import { PostgresUpdateQueryBuilder } from "../Postgres/PostgresUpdateQueryBuilder";
+import { MysqlDeleteQueryBuilder } from "./MysqlDeleteQueryBuilder";
 
 export class MysqlModelManager<
   T extends Model,
@@ -57,7 +58,7 @@ export class MysqlModelManager<
         const models =
           rows.map((row) => {
             const model = row as T;
-            model.aliasColumns = this.modelInstance.aliasColumns;
+            model.extraColumns = this.modelInstance.extraColumns;
             return parseDatabaseDataIntoModelResponse([model]) as T;
           }) || [];
         return (
@@ -251,10 +252,7 @@ export class MysqlModelManager<
       );
 
       return await this.query()
-        .whereIn(
-          this.model.metadata.primaryKey as SelectableType<T>,
-          idsToFetchList,
-        )
+        .whereIn(this.model.metadata.primaryKey as string, idsToFetchList)
         .many();
     } catch (error) {
       queryError(error);
@@ -362,7 +360,10 @@ export class MysqlModelManager<
    * @param {MysqlTransaction} trx - MysqlTransaction to be used on the delete operation.
    * @returns Promise resolving to the deleted model or null if deleting fails.
    */
-  public async delete(model: T, trx?: MysqlTransaction): Promise<T | null> {
+  public async deleteRecord(
+    model: T,
+    trx?: MysqlTransaction,
+  ): Promise<T | null> {
     try {
       if (!this.model.metadata.primaryKey) {
         throw new Error(
@@ -420,12 +421,22 @@ export class MysqlModelManager<
   }
 
   /**
-   * Create and return a new instance of the MysqlUpdateQueryBuilder for building more complex SQL update queries.
-   *
-   * @returns {MysqlUpdateQueryBuilder<Model>} - Instance of MysqlUpdateQueryBuilder.
+   * @description Returns an update query builder.
    */
   public update(): MysqlUpdateQueryBuilder<T> | PostgresUpdateQueryBuilder<T> {
     return new MysqlUpdateQueryBuilder<T>(
+      this.model,
+      this.model.metadata.tableName,
+      this.mysqlPool,
+      this.logs,
+    );
+  }
+
+  /**
+   * @description Returns a delete query builder.
+   */
+  public delete(): MysqlDeleteQueryBuilder<T> {
+    return new MysqlDeleteQueryBuilder<T>(
       this.model,
       this.model.metadata.tableName,
       this.mysqlPool,

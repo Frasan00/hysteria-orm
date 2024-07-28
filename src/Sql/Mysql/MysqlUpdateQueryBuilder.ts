@@ -6,11 +6,13 @@ import { MysqlTransaction } from "./MysqlTransaction";
 import { log, queryError } from "../../Logger";
 import { WhereQueryBuilder } from "../QueryBuilder/WhereQueryBuilder";
 import updateTemplate from "../Templates/Query/UPDATE";
+import joinTemplate from "../Templates/Query/JOIN";
 
 export class MysqlUpdateQueryBuilder<
   T extends Model,
 > extends WhereQueryBuilder<T> {
   protected mysqlPool: Pool;
+  protected joinQuery = "";
   protected updateTemplate: ReturnType<typeof updateTemplate>;
   protected isNestedCondition = false;
 
@@ -35,6 +37,7 @@ export class MysqlUpdateQueryBuilder<
       tableName,
       this.model.sqlInstance.getDbType(),
     );
+    this.joinQuery = "";
     this.isNestedCondition = isNestedCondition;
   }
 
@@ -58,6 +61,7 @@ export class MysqlUpdateQueryBuilder<
       columns,
       values,
       this.whereQuery,
+      this.joinQuery,
     );
 
     params.push(...this.whereParams);
@@ -76,6 +80,48 @@ export class MysqlUpdateQueryBuilder<
   }
 
   /**
+   *
+   * @param relationTable - The name of the related table.
+   * @param primaryColumn - The name of the primary column in the caller table.
+   * @param foreignColumn - The name of the foreign column in the related table.
+   */
+  public join(
+    relationTable: string,
+    primaryColumn: string,
+    foreignColumn: string,
+  ): MysqlUpdateQueryBuilder<T> {
+    const join = joinTemplate(
+      this.tableName,
+      relationTable,
+      primaryColumn as string,
+      foreignColumn as string,
+    );
+    this.joinQuery += join.innerJoin();
+    return this;
+  }
+
+  /**
+   *
+   * @param relationTable - The name of the related table.
+   * @param primaryColumn - The name of the primary column in the caller table.
+   * @param foreignColumn - The name of the foreign column in the related table.
+   */
+  public leftJoin(
+    relationTable: string,
+    primaryColumn: string,
+    foreignColumn: string,
+  ): MysqlUpdateQueryBuilder<T> {
+    const join = joinTemplate(
+      this.tableName,
+      relationTable,
+      primaryColumn as string,
+      foreignColumn as string,
+    );
+    this.joinQuery += join.innerJoin();
+    return this;
+  }
+
+  /**
    * @description Adds a WHERE condition to the query.
    * @param column - The column to filter.
    * @param operator - The comparison operator.
@@ -83,7 +129,7 @@ export class MysqlUpdateQueryBuilder<
    * @returns The MysqlQueryBuilder instance for chaining.
    */
   public where(
-    column: SelectableType<T>,
+    column: string,
     value: BaseValues,
     operator: WhereOperatorType = "=",
   ): this {

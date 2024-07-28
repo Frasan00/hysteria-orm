@@ -35,7 +35,12 @@ const updateTemplate = (table: string, dbType: DataSourceType) => {
 
       return { query, params };
     },
-    massiveUpdate: (columns: string[], values: any[], whereClause: string) => {
+    massiveUpdate: (
+      columns: string[],
+      values: any[],
+      whereClause: string,
+      joinClause: string = "",
+    ) => {
       columns = columns.map((column) => camelToSnakeCase(column));
       let setClause: string;
       const params: any[] = [];
@@ -59,7 +64,7 @@ const updateTemplate = (table: string, dbType: DataSourceType) => {
           throw new Error("Unsupported database type");
       }
 
-      let query = `UPDATE ${table} SET ${setClause} ${whereClause}`;
+      let query = `UPDATE ${table} ${joinClause} SET ${setClause} ${whereClause}`;
       dbType === "postgres" && (query += " RETURNING *;");
 
       return { query, params };

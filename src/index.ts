@@ -5,7 +5,7 @@ import { BelongsTo } from "./Sql/Models/Relations/BelongsTo";
 import { DataSourceInput } from "./Datasource";
 import { Migration } from "./Sql/Migrations/Migration";
 import { SqlDataSource } from "./Sql/SqlDataSource";
-import { testCreate, testQuery, testUpdate } from "./test";
+import { testCreate, testDelete, testQuery, testUpdate } from "./test";
 
 class User extends Model {
   public id!: number;
@@ -50,6 +50,7 @@ class Post extends Model {
   // await testQuery();
   // await testCreate();
   // await testUpdate();
+  // await testDelete();
 
   process.exit(0);
 })();
