@@ -7,16 +7,19 @@ import * as mysql2_typings_mysql_lib_protocol_packets_ResultSetHeader from 'mysq
 import * as mysql2_typings_mysql_lib_protocol_packets_OkPacket from 'mysql2/typings/mysql/lib/protocol/packets/OkPacket';
 
 type DataSourceType = "mysql" | "postgres" | "mariadb";
+/**
+ * @description By default the connection details can be provided in the env.ts file, you can still override each prop with your actual connection details
+ */
 interface DataSourceInput {
-    type: DataSourceType;
-    readonly host: string;
-    readonly port: number;
-    readonly username: string;
-    readonly password: string;
-    readonly database: string;
+    type?: DataSourceType;
+    readonly host?: string;
+    readonly port?: number;
+    readonly username?: string;
+    readonly password?: string;
+    readonly database?: string;
     readonly logs?: boolean;
 }
-declare abstract class Datasource {
+declare abstract class DataSource {
     protected type: DataSourceType;
     protected host: string;
     protected port: number;
@@ -24,7 +27,7 @@ declare abstract class Datasource {
     protected password: string;
     protected database: string;
     protected logs: boolean;
-    protected constructor(input: DataSourceInput);
+    protected constructor(input?: DataSourceInput);
 }
 
 type WhereOperatorType = "=" | "!=" | ">" | "<" | ">=" | "<=" | "LIKE" | "ILIKE";
@@ -339,12 +342,13 @@ declare class MysqlTransaction {
 declare const deleteTemplate: (tableName: string, dbType: DataSourceType) => {
     delete: (column: string, value: string | number | boolean | Date) => string;
     massiveDelete: (whereClause: string, joinClause?: string) => string;
+    softDelete: (column: string, whereClause: string, joinClause?: string, softDeleteColumn?: string) => string;
 };
 
 declare class MysqlDeleteQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
     protected mysql: Pool;
     protected joinQuery: string;
-    protected updateTemplate: ReturnType<typeof deleteTemplate>;
+    protected deleteTemplate: ReturnType<typeof deleteTemplate>;
     protected isNestedCondition: boolean;
     /**
      * @description Constructs a MysqlQueryBuilder instance.
@@ -499,7 +503,7 @@ declare class PostgresTransaction {
 declare class PostgresDeleteQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
     protected pgPool: Pool$1;
     protected joinQuery: string;
-    protected updateTemplate: ReturnType<typeof deleteTemplate>;
+    protected deleteTemplate: ReturnType<typeof deleteTemplate>;
     protected isNestedCondition: boolean;
     /**
      * @description Constructs a MysqlQueryBuilder instance.
@@ -1660,16 +1664,17 @@ declare class PostgresModelManager<T extends Model> extends AbstractModelManager
 type ModelManager<T extends Model> = MysqlModelManager<T> | PostgresModelManager<T>;
 type SqlPoolType = mysql.Pool | pg__default.Pool;
 type SqlPoolConnectionType = mysql.PoolConnection | pg__default.PoolClient;
-declare class SqlDataSource extends Datasource {
+declare class SqlDataSource extends DataSource {
     isConnected: boolean;
     protected sqlPool: SqlPoolType;
     private static instance;
     private constructor();
     getDbType(): DataSourceType;
     /**
-     * @description Connects to the database establishing a connection pool.
+     * @description Connects to the database establishing a connection pool. If no connection details are provided, the default values from the env will be taken instead
+     * @description The User input connection details will always come first
      */
-    static connect(input: DataSourceInput): Promise<SqlDataSource>;
+    static connect(input?: DataSourceInput, cb?: () => void): Promise<SqlDataSource>;
     /**
      * @description Generates a temporary connection to the database, the instance will not be saved and cannot be accessed later in the getInstance method
      * @private

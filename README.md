@@ -50,46 +50,20 @@ For TypeScript users, it is essential to set `"useDefineForClassFields": true` i
 
 ## Environment Variables
 
-### Common Envs
-
-- `MIGRATION_PATH`: Path to the migration folder (default: `database/migrations`).
-- `DATABASE_TYPE`: Type of the database (default: `mysql`, options: `mysql`, `postgres`).
-
-### Mysql Envs
-
-- `MYSQL_ROOT_PASSWORD`
-- `MYSQL_DATABASE`
-- `MYSQL_USERNAME`
-- `MYSQL_PASSWORD`
-- `MYSQL_HOST`
-- `MYSQL_PORT`
-
-### Postgres Envs
-- `POSTGRES_USER`
-- `POSTGRES_PASSWORD`
-- `POSTGRES_DB`
-- `POSTGRES_HOST`
-- `POSTGRES_PORT`
+- Envs are used for both commands and for database connection
+- Connection details can still be override providing an input on `SqlDataSource.connect()` method
 
 ### Complete env example
 ``` dotenv
-MYSQL_ROOT_PASSWORD=root
-MYSQL_DATABASE=database
-MYSQL_USERNAME=root
-MYSQL_PASSWORD=root
-MYSQL_HOST=127.0.0.1
-MYSQL_PORT=3306
-
-POSTGRES_USER: root
-POSTGRES_PASSWORD: root
-POSTGRES_DATABASE: database
-POSTGRES_HOST: 127.0.0.1
-POSTGRES_PORT: 5432
-
-MIGRATION_PATH=test/database/migrations
-DATABASE_TYPE=mysql
+MIGRATION_PATH=database/migrations # default /database/migrations, this env always referees to the root of the project
+DB_TYPE=mysql # mysql | postgres
+DB_HOST=127.0.0.1
+DB_USER=root
+DB_PASSWORD=root
+DB_DATABASE=database
+DB_PORT=3306 # default 3306 for Mysql and 5432 for Postgres
+DB_LOGS=true # default false
 ```
-
 
 ## Getting Started
 
@@ -108,7 +82,7 @@ const mysqlConfig: DatasourceInput = {
     logs: true, // query-logs (optional) - default: false
 }
 
-const sql = await SqlDatasource.connect(mysqlConfig);
+const sql = await SqlDatasource.connect(mysqlConfig, () => console.log("Connected to the database"));
 ```
 
 ### Create a model

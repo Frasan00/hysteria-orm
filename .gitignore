@@ -148,3 +148,5 @@ test/test-script.js
 docker-compose.yaml
 docker-compose.yml
 test
+
+**/database**

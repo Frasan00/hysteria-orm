@@ -13,7 +13,12 @@ const deleteTemplate = (tableName: string, dbType: DataSourceType) => {
 
       return query;
     },
-    softDelete: (column: string, whereClause: string, joinClause: string = "", softDeleteColumn: string = "deleted_at") => {
+    softDelete: (
+      column: string,
+      whereClause: string,
+      joinClause: string = "",
+      softDeleteColumn: string = "deleted_at",
+    ) => {
       let query = `UPDATE ${tableName} SET ${softDeleteColumn} = TRUE ${joinClause} ${whereClause}`;
       dbType === "postgres" && (query += " RETURNING *;");
 

@@ -1,4 +1,4 @@
-import { Datasource, DataSourceInput, DataSourceType } from "../Datasource";
+import { DataSource, DataSourceInput, DataSourceType } from "../Datasource";
 import mysql, { createPool, Pool } from "mysql2/promise";
 import pg from "pg";
 import { Model } from "./Models/Model";
@@ -12,12 +12,12 @@ type ModelManager<T extends Model> =
 export type SqlPoolType = mysql.Pool | pg.Pool;
 export type SqlPoolConnectionType = mysql.PoolConnection | pg.PoolClient;
 
-export class SqlDataSource extends Datasource {
+export class SqlDataSource extends DataSource {
   public isConnected: boolean;
   protected sqlPool!: SqlPoolType;
   private static instance: SqlDataSource;
 
-  private constructor(input: DataSourceInput) {
+  private constructor(input?: DataSourceInput) {
     super(input);
     this.isConnected = false;
   }
@@ -27,36 +27,43 @@ export class SqlDataSource extends Datasource {
   }
 
   /**
-   * @description Connects to the database establishing a connection pool.
+   * @description Connects to the database establishing a connection pool. If no connection details are provided, the default values from the env will be taken instead
+   * @description The User input connection details will always come first
    */
-  public static async connect(input: DataSourceInput): Promise<SqlDataSource> {
+  public static async connect(
+    input?: DataSourceInput,
+    cb?: () => void,
+  ): Promise<SqlDataSource> {
     const sqlDataSource = new this(input);
-    switch (input.type) {
+    switch (sqlDataSource.type) {
       case "mysql":
         sqlDataSource.sqlPool = createPool({
-          host: input.host,
-          port: input.port,
-          user: input.username,
-          password: input.password,
-          database: input.database,
-        });
+          host: sqlDataSource.host,
+          port: sqlDataSource.port,
+          user: sqlDataSource.username,
+          password: sqlDataSource.password,
+          database: sqlDataSource.database,
+        }) as mysql.Pool;
+
         break;
 
       case "postgres":
         sqlDataSource.sqlPool = new pg.Pool({
-          host: input.host,
-          port: input.port,
-          user: input.username,
-          password: input.password,
-          database: input.database,
-        });
+          host: sqlDataSource.host,
+          port: sqlDataSource.port,
+          user: sqlDataSource.username,
+          password: sqlDataSource.password,
+          database: sqlDataSource.database,
+        }) as pg.Pool;
+
         break;
       default:
-        throw new Error(`Unsupported datasource type: ${input.type}`);
+        throw new Error(`Unsupported datasource type: ${sqlDataSource.type}`);
     }
 
     sqlDataSource.isConnected = true;
     SqlDataSource.instance = sqlDataSource;
+    cb?.();
     return sqlDataSource;
   }
 
@@ -69,6 +76,7 @@ export class SqlDataSource extends Datasource {
     input: DataSourceInput,
   ): Promise<SqlDataSource> {
     const sqlDataSource = new this(input);
+
     switch (input.type) {
       case "mysql":
         sqlDataSource.sqlPool = createPool({
@@ -78,6 +86,7 @@ export class SqlDataSource extends Datasource {
           password: input.password,
           database: input.database,
         });
+
         break;
 
       case "postgres":

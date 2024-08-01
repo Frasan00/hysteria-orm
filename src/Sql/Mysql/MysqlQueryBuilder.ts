@@ -67,7 +67,8 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
         query,
         this.params,
       );
-      if (!rows[0]) {
+
+      if (!rows.length) {
         if (options.throwErrorOnNull) {
           throw new Error("ROW_NOT_FOUND");
         }

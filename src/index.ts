@@ -12,6 +12,7 @@ class User extends Model {
   public name!: string;
   public email!: string;
   public signupSource!: string;
+  public active!: boolean;
 
   public posts: HasMany | Post[] = new HasMany("posts", "user_id");
 
@@ -26,7 +27,7 @@ class Post extends Model {
   public id!: number;
   public title!: string;
   public content!: string;
-  public user_id!: number;
+  public userId!: number;
 
   public user: HasOne | User = new HasOne("user", "user_id");
 
@@ -37,15 +38,7 @@ class Post extends Model {
 }
 
 (async () => {
-  await SqlDataSource.connect({
-    type: "mysql",
-    host: "localhost",
-    port: 3306,
-    username: "root",
-    password: "root",
-    database: "test",
-    logs: true,
-  });
+  await SqlDataSource.connect();
 
   // await testQuery();
   // await testCreate();

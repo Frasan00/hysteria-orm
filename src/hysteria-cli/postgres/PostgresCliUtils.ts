@@ -5,6 +5,7 @@ import { Migration } from "../../Sql/Migrations/Migration";
 import fs from "fs";
 import MigrationTemplates from "../Templates/MigrationTemplates";
 import dotenv from "dotenv";
+import path from "path";
 
 dotenv.config();
 
@@ -99,6 +100,23 @@ class PgCliUtils {
       );
       return !migrationEntry;
     });
+  }
+
+  public getMigrationPath(): string {
+    let migrationPath = process.env.MIGRATION_PATH || "database/migrations";
+
+    let i = 0;
+    while (path.basename(migrationPath) != process.cwd() || i < 5) {
+      console.log(migrationPath);
+      if (fs.existsSync(migrationPath)) {
+        return migrationPath;
+      }
+
+      migrationPath = "../" + migrationPath;
+      i++;
+    }
+
+    throw new Error("No migration folder found");
   }
 }
 
