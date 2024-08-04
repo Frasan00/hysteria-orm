@@ -1,13 +1,13 @@
 import { Model } from "../Models/Model";
-import { BaseValues, WhereOperatorType } from "../Templates/Query/WHERE.TS";
+import { BaseValues, WhereOperatorType } from "../Resources/Query/WHERE.TS";
 import { SelectableType } from "../Models/ModelManager/ModelManagerTypes";
 import { log, queryError } from "../../Logger";
 import { WhereQueryBuilder } from "../QueryBuilder/WhereQueryBuilder";
-import updateTemplate from "../Templates/Query/UPDATE";
+import updateTemplate from "../Resources/Query/UPDATE";
 import { PostgresTransaction } from "./PostgresTransaction";
 import { Pool } from "pg";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
-import joinTemplate from "../Templates/Query/JOIN";
+import joinTemplate from "../Resources/Query/JOIN";
 
 export class PostgresUpdateQueryBuilder<
   T extends Model,

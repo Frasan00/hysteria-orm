@@ -1,5 +1,4 @@
 import { camelToSnakeCase } from "../../../CaseUtils";
-import * as sqlString from "sqlstring";
 import { DataSourceType } from "../../../Datasource";
 
 type BaseValues = string | number | boolean | Date | null | undefined;

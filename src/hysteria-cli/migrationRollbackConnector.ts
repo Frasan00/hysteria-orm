@@ -4,8 +4,8 @@ import { migrationRollBackPg } from "./postgres/rollback-migration";
 
 dotenv.config();
 
-export async function dispatch() {
-  const databaseType = process.env.DATABASE_TYPE;
+export default async function rollbackMigrationConnector() {
+  const databaseType = process.env.DB_TYPE;
 
   switch (databaseType) {
     case "mysql":
@@ -19,12 +19,3 @@ export async function dispatch() {
       throw new Error("Invalid database type, must be mysql or postgres");
   }
 }
-
-dispatch()
-  .then(() => {
-    process.exit(0);
-  })
-  .catch((error) => {
-    console.log(error);
-    process.exit(1);
-  });

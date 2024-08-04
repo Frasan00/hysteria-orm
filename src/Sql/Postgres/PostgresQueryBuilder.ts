@@ -1,11 +1,11 @@
 import { Model } from "../Models/Model";
 import { OneOptions, QueryBuilder } from "../QueryBuilder/QueryBuilder";
 import { Pool } from "pg";
-import { BaseValues, WhereOperatorType } from "../Templates/Query/WHERE.TS";
-import selectTemplate from "../Templates/Query/SELECT";
+import { BaseValues, WhereOperatorType } from "../Resources/Query/WHERE.TS";
+import selectTemplate from "../Resources/Query/SELECT";
 import { log } from "../../Logger";
 import PostgresModelManagerUtils from "./PostgresModelManagerUtils";
-import joinTemplate from "../Templates/Query/JOIN";
+import joinTemplate from "../Resources/Query/JOIN";
 import { PaginatedData, getPaginationMetadata } from "../pagination";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
 import {
@@ -17,6 +17,7 @@ import { fromSnakeToCamelCase } from "../../CaseUtils";
 export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   protected pgPool: Pool;
   protected isNestedCondition: boolean;
+  protected postgresModelManagerUtils: PostgresModelManagerUtils<T>;
 
   public constructor(
     model: typeof Model,
@@ -28,6 +29,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     super(model, tableName, logs);
     this.pgPool = pgPool;
     this.isNestedCondition = isNestedCondition;
+    this.postgresModelManagerUtils = new PostgresModelManagerUtils<T>();
   }
 
   public select(
@@ -87,7 +89,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
       const modelInstance = new this.model() as T;
       this.mergeRawPacketIntoModel(modelInstance, result.rows[0]);
-      await PostgresModelManagerUtils.parseQueryBuilderRelations(
+      await this.postgresModelManagerUtils.parseQueryBuilderRelations(
         modelInstance,
         this.model,
         this.relations,
@@ -136,7 +138,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
           const modelInstance = new this.model() as T;
           this.mergeRawPacketIntoModel(modelInstance, modelData);
 
-          await PostgresModelManagerUtils.parseQueryBuilderRelations(
+          await this.postgresModelManagerUtils.parseQueryBuilderRelations(
             modelInstance,
             this.model,
             this.relations,

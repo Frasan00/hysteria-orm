@@ -1,16 +1,17 @@
+import { DataSourceType } from "../../../../Datasource";
 import ColumnTypeBuilder from "./ColumnTypeBuilder";
 
 export default class ColumnBuilderConnector {
   protected tableName: string;
   protected queryStatements: string[];
   protected partialQuery: string;
-  protected sqlType: "mysql" | "postgres";
+  protected sqlType: DataSourceType;
 
   constructor(
     tableName: string,
     queryStatements: string[],
     partialQuery: string,
-    sqlType: "mysql" | "postgres",
+    sqlType: DataSourceType,
   ) {
     this.tableName = tableName;
     this.queryStatements = queryStatements;

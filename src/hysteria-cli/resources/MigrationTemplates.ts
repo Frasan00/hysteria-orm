@@ -3,11 +3,11 @@ class MigrationTemplates {
     return `import { Migration } from 'hysteria-orm';
 
 export default class extends Migration {
-  public up(): void {
+  public async up(): Promise<void> {
     // Your migration logic here
   }
 
-  public down(): void {
+  public async down(): Promise<void> { {
     // Your rollback logic here
   }
 }

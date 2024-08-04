@@ -1,10 +1,10 @@
 import { Pool, QueryResult, PoolClient } from "pg";
-import { BEGIN_TRANSACTION } from "../Templates/Query/TRANSACTION";
-import { COMMIT_TRANSACTION } from "../Templates/Query/TRANSACTION";
-import { ROLLBACK_TRANSACTION } from "../Templates/Query/TRANSACTION";
+import { BEGIN_TRANSACTION } from "../Resources/Query/TRANSACTION";
+import { COMMIT_TRANSACTION } from "../Resources/Query/TRANSACTION";
+import { ROLLBACK_TRANSACTION } from "../Resources/Query/TRANSACTION";
 import { log, queryError } from "../../Logger";
 import { Metadata, Model } from "../Models/Model";
-import selectTemplate from "../Templates/Query/SELECT";
+import selectTemplate from "../Resources/Query/SELECT";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
 
 export class PostgresTransaction {

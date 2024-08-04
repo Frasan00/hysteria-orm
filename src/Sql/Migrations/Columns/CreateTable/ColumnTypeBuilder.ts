@@ -1,3 +1,4 @@
+import { DataSourceType } from "../../../../Datasource";
 import ColumnOptionsBuilder from "./ColumnOptionsBuilder";
 
 export default class ColumnTypeBuilder {
@@ -5,13 +6,13 @@ export default class ColumnTypeBuilder {
   protected queryStatements: string[];
   protected partialQuery: string;
   protected columnName: string;
-  protected sqlType: `mysql` | `postgres`;
+  protected sqlType: DataSourceType;
 
   constructor(
     tableName: string,
     queryStatements: string[],
     partialQuery: string,
-    sqlType: `mysql` | `postgres`,
+    sqlType: DataSourceType,
   ) {
     this.tableName = tableName;
     this.queryStatements = queryStatements;
@@ -211,6 +212,7 @@ export default class ColumnTypeBuilder {
   public integer(name: string): ColumnOptionsBuilder {
     this.columnName = name;
     this.partialQuery += `${name} INT`;
+
     return new ColumnOptionsBuilder(
       this.tableName,
       this.queryStatements,

@@ -2,7 +2,7 @@ import { Model } from "../Models/Model";
 import whereTemplate, {
   BaseValues,
   WhereOperatorType,
-} from "../Templates/Query/WHERE.TS";
+} from "../Resources/Query/WHERE.TS";
 
 export abstract class WhereQueryBuilder<T extends Model> {
   protected whereQuery: string = "";

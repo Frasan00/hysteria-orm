@@ -2,21 +2,21 @@ import {
   FindType,
   FindOneType,
 } from "../Models/ModelManager/ModelManagerTypes";
-import selectTemplate from "../Templates/Query/SELECT";
+import selectTemplate from "../Resources/Query/SELECT";
 import { Metadata, Model } from "../Models/Model";
-import insertTemplate from "../Templates/Query/INSERT";
-import updateTemplate from "../Templates/Query/UPDATE";
-import deleteTemplate from "../Templates/Query/DELETE";
+import insertTemplate from "../Resources/Query/INSERT";
+import updateTemplate from "../Resources/Query/UPDATE";
+import deleteTemplate from "../Resources/Query/DELETE";
 import { Relation } from "../Models/Relations/Relation";
 import { log, queryError } from "../../Logger";
-import relationTemplates from "../Templates/Query/RELATIONS";
+import relationTemplates from "../Resources/Query/RELATIONS";
 import { Pool, RowDataPacket } from "mysql2/promise";
-import whereTemplate from "../Templates/Query/WHERE.TS";
+import whereTemplate from "../Resources/Query/WHERE.TS";
 
-class MySqlModelManagerUtils<T extends Model> {
+export default class MySqlModelManagerUtils<T extends Model> {
   public parseSelectQueryInput(
     model: typeof Model,
-    input: FindType | FindOneType,
+    input: FindType<T> | FindOneType<T>,
   ): { query: string; params: any[] } {
     let query = "";
     const params: any[] = [];
@@ -34,17 +34,17 @@ class MySqlModelManagerUtils<T extends Model> {
 
   private parseSelect(
     tableName: string,
-    input: FindType | FindOneType,
+    input: FindType<T> | FindOneType<T>,
   ): string {
     const select = selectTemplate(tableName, "mysql");
     return input.select
-      ? select.selectColumns(...input.select)
+      ? select.selectColumns(...(input.select as string[]))
       : select.selectAll;
   }
 
   private parseWhere(
     tableName: string,
-    input: FindType | FindOneType,
+    input: FindType<T> | FindOneType<T>,
   ): { query: string; params: any[] } {
     const params: any[] = [];
     const where = whereTemplate(tableName, "mysql");
@@ -81,7 +81,7 @@ class MySqlModelManagerUtils<T extends Model> {
 
   private parseQueryFooter(
     tableName: string,
-    input: FindType | FindOneType,
+    input: FindType<T> | FindOneType<T>,
   ): string {
     if (!this.isFindType(input)) {
       return "";
@@ -191,11 +191,13 @@ class MySqlModelManagerUtils<T extends Model> {
     column: string,
     value: string | number | boolean,
   ): string {
-    return deleteTemplate(tableName).delete(column, value.toString());
+    return deleteTemplate(tableName, "mysql").delete(column, value.toString());
   }
 
-  private isFindType(input: FindType | FindOneType): input is FindType {
-    const instance = input as FindType;
+  private isFindType(
+    input: FindType<T> | FindOneType<T>,
+  ): input is FindType<T> {
+    const instance = input as FindType<T>;
     return (
       instance.hasOwnProperty("offset") ||
       instance.hasOwnProperty("groupBy") ||
@@ -255,7 +257,7 @@ class MySqlModelManagerUtils<T extends Model> {
   public async parseRelationInput(
     model: T,
     metadata: Metadata,
-    input: FindOneType,
+    input: FindOneType<T>,
     mysqlConnection: Pool,
     logs: boolean,
   ): Promise<void> {
@@ -269,14 +271,13 @@ class MySqlModelManagerUtils<T extends Model> {
 
     try {
       const relationPromises = input.relations.map(
-        async (inputRelation: string) => {
+        async (inputRelation: any) => {
           const relation = this.getRelationFromModel(
             model,
             metadata,
             inputRelation,
           );
           const relationQuery = relationTemplates(model, relation);
-          console.log(relationQuery);
 
           const [relatedModels] =
             await mysqlConnection.query<RowDataPacket[]>(relationQuery);
@@ -359,5 +360,3 @@ class MySqlModelManagerUtils<T extends Model> {
     }
   }
 }
-
-export default new MySqlModelManagerUtils();

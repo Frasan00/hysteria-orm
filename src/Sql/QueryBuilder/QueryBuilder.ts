@@ -1,9 +1,9 @@
-import selectTemplate, { SelectTemplateType } from "../Templates/Query/SELECT";
+import selectTemplate, { SelectTemplateType } from "../Resources/Query/SELECT";
 import { Model } from "../Models/Model";
 import whereTemplate, {
   BaseValues,
   WhereOperatorType,
-} from "../Templates/Query/WHERE.TS";
+} from "../Resources/Query/WHERE.TS";
 import { MysqlQueryBuilder } from "../Mysql/MysqlQueryBuilder";
 import { PostgresQueryBuilder } from "../Postgres/PostgresQueryBuilder";
 import { PaginatedData } from "../pagination";

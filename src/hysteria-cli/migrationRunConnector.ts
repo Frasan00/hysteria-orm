@@ -4,26 +4,23 @@ import { runMigrationsSql } from "./mysql/run-migration";
 
 dotenv.config();
 
-export async function dispatch() {
-  const databaseType = process.env.DATABASE_TYPE;
+export default async function runMigrationsConnector() {
+  const databaseType = process.env.DB_TYPE;
 
-  switch (databaseType) {
-    case "mysql":
-      await runMigrationsSql();
-      break;
-    case "postgres":
-      await runMigrationsPg();
-      break;
+  try {
+    switch (databaseType) {
+      case "mysql":
+        await runMigrationsSql();
+        break;
+      case "postgres":
+        await runMigrationsPg();
+        break;
 
-    default:
-      throw new Error("Invalid database type, must be mysql or postgres");
+      default:
+        throw new Error("Invalid database type, must be mysql or postgres");
+    }
+  } catch (error) {
+    console.log(error);
+    process.exit(1);
   }
 }
-
-dispatch()
-  .then(() => {
-    process.exit(0);
-  })
-  .catch((error) => {
-    process.exit(1);
-  });

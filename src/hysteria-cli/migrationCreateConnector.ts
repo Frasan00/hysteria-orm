@@ -4,26 +4,18 @@ import { createMigrationPg } from "./postgres/create-migration";
 
 dotenv.config();
 
-export async function dispatch() {
-  const databaseType = process.env.DATABASE_TYPE;
+export default function migrationCreateConnector(name: string) {
+  const databaseType = process.env.DB_TYPE;
 
   switch (databaseType) {
     case "mysql":
-      createMigrationSql(process.argv[2]);
+      createMigrationSql(name);
       break;
     case "postgres":
-      createMigrationPg(process.argv[2]);
+      createMigrationPg(name);
       break;
 
     default:
       throw new Error("Invalid database type, must be mysql or postgres");
   }
 }
-
-dispatch()
-  .then(() => {
-    process.exit(0);
-  })
-  .catch((error) => {
-    process.exit(1);
-  });

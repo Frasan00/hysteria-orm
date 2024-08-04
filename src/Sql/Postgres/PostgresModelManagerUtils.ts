@@ -2,22 +2,22 @@ import {
   FindType,
   FindOneType,
 } from "../Models/ModelManager/ModelManagerTypes";
-import selectTemplate from "../Templates/Query/SELECT";
+import selectTemplate from "../Resources/Query/SELECT";
 import { Model } from "../Models/Model";
-import insertTemplate from "../Templates/Query/INSERT";
-import updateTemplate from "../Templates/Query/UPDATE";
-import deleteTemplate from "../Templates/Query/DELETE";
+import insertTemplate from "../Resources/Query/INSERT";
+import updateTemplate from "../Resources/Query/UPDATE";
+import deleteTemplate from "../Resources/Query/DELETE";
 import { Relation } from "../Models/Relations/Relation";
 import { log, queryError } from "../../Logger";
-import relationTemplates from "../Templates/Query/RELATIONS";
+import relationTemplates from "../Resources/Query/RELATIONS";
 import { Pool, QueryResult, QueryResultRow } from "pg";
-import whereTemplate from "../Templates/Query/WHERE.TS";
+import whereTemplate from "../Resources/Query/WHERE.TS";
 import pg from "pg";
 
-class PostgresModelManagerUtils<T extends Model> {
+export default class PostgresModelManagerUtils<T extends Model> {
   public parseSelectQueryInput(
     model: typeof Model,
-    input: FindType | FindOneType,
+    input: FindType<T> | FindOneType<T>,
   ): { query: string; params: any[] } {
     let query = "";
     const params: any[] = [];
@@ -35,17 +35,17 @@ class PostgresModelManagerUtils<T extends Model> {
 
   private parseSelect(
     tableName: string,
-    input: FindType | FindOneType,
+    input: FindType<T> | FindOneType<T>,
   ): string {
     const select = selectTemplate(tableName, "postgres");
     return input.select
-      ? select.selectColumns(...input.select)
+      ? select.selectColumns(...(input.select as string[]))
       : select.selectAll;
   }
 
   private parseWhere(
     tableName: string,
-    input: FindType | FindOneType,
+    input: FindType<T> | FindOneType<T>,
   ): { query: string; params: any[] } {
     const params: any[] = [];
     const where = whereTemplate(tableName, "postgres");
@@ -82,7 +82,7 @@ class PostgresModelManagerUtils<T extends Model> {
 
   private parseQueryFooter(
     tableName: string,
-    input: FindType | FindOneType,
+    input: FindType<T> | FindOneType<T>,
   ): string {
     if (!this.isFindType(input)) {
       return "";
@@ -187,11 +187,16 @@ class PostgresModelManagerUtils<T extends Model> {
     column: string,
     value: string | number | boolean,
   ): string {
-    return deleteTemplate(tableName).delete(column, value.toString());
+    return deleteTemplate(tableName, "postgres").delete(
+      column,
+      value.toString(),
+    );
   }
 
-  private isFindType(input: FindType | FindOneType): input is FindType {
-    const instance = input as FindType;
+  private isFindType(
+    input: FindType<T> | FindOneType<T>,
+  ): input is FindType<T> {
+    const instance = input as FindType<T>;
     return (
       instance.hasOwnProperty("offset") ||
       instance.hasOwnProperty("groupBy") ||
@@ -222,7 +227,7 @@ class PostgresModelManagerUtils<T extends Model> {
   public async parseRelationInput(
     model: T,
     modelTypeOf: typeof Model,
-    input: FindOneType,
+    input: FindOneType<T>,
     pgPool: Pool,
     logs: boolean,
   ): Promise<void> {
@@ -236,7 +241,7 @@ class PostgresModelManagerUtils<T extends Model> {
 
     try {
       const relationPromises = input.relations.map(
-        async (inputRelation: string) => {
+        async (inputRelation: any) => {
           const relation = this.getRelationFromModel(
             model,
             inputRelation,
@@ -322,5 +327,3 @@ class PostgresModelManagerUtils<T extends Model> {
     }
   }
 }
-
-export default new PostgresModelManagerUtils();

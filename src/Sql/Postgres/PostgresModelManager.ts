@@ -1,13 +1,13 @@
 /*
  * This class is used to make operations on models
  */
-import { Metadata, Model } from "../Models/Model";
+import { Model } from "../Models/Model";
 import {
   FindOneType,
   FindType,
 } from "../Models/ModelManager/ModelManagerTypes";
 import pg, { QueryResult } from "pg";
-import selectTemplate from "../Templates/Query/SELECT";
+import selectTemplate from "../Resources/Query/SELECT";
 import { log, queryError } from "../../Logger";
 import PostgresModelManagerUtils from "./PostgresModelManagerUtils";
 import { AbstractModelManager } from "../Models/ModelManager/AbstractModelManager";
@@ -21,6 +21,7 @@ export class PostgresModelManager<
   T extends Model,
 > extends AbstractModelManager<T> {
   protected pgPool: pg.Pool;
+  protected postgresModelManagerUtils: PostgresModelManagerUtils<T>;
 
   /**
    * Constructor for PostgresModelManager class.
@@ -32,6 +33,7 @@ export class PostgresModelManager<
   constructor(model: typeof Model, pgConnection: pg.Pool, logs: boolean) {
     super(model, logs);
     this.pgPool = pgConnection;
+    this.postgresModelManagerUtils = new PostgresModelManagerUtils();
   }
 
   /**
@@ -65,10 +67,8 @@ export class PostgresModelManager<
         );
       }
 
-      const { query, params } = PostgresModelManagerUtils.parseSelectQueryInput(
-        this.model,
-        input,
-      );
+      const { query, params } =
+        this.postgresModelManagerUtils.parseSelectQueryInput(this.model, input);
       log(query, this.logs, params);
 
       const { rows }: QueryResult<T> = await this.pgPool.query(query, params);
@@ -81,8 +81,8 @@ export class PostgresModelManager<
           Object.assign(model, modelData);
 
           // relations parsing on the queried model
-          await PostgresModelManagerUtils.parseRelationInput(
-            model,
+          await this.postgresModelManagerUtils.parseRelationInput(
+            model as T,
             this.model,
             input,
             this.pgPool,
@@ -107,10 +107,8 @@ export class PostgresModelManager<
   public async findOne(input: FindOneType<T>): Promise<T | null> {
     const model = new this.model();
     try {
-      const { query, params } = PostgresModelManagerUtils.parseSelectQueryInput(
-        this.model,
-        input,
-      );
+      const { query, params } =
+        this.postgresModelManagerUtils.parseSelectQueryInput(this.model, input);
       log(query, this.logs, params);
 
       const { rows } = await this.pgPool.query(query, params);
@@ -125,8 +123,8 @@ export class PostgresModelManager<
       const modelData = rows[0] as T;
       Object.assign(model, modelData);
 
-      await PostgresModelManagerUtils.parseRelationInput(
-        model,
+      await this.postgresModelManagerUtils.parseRelationInput(
+        model as T,
         this.model,
         input,
         this.pgPool,
@@ -184,7 +182,7 @@ export class PostgresModelManager<
    * @returns Promise resolving to the saved model or null if saving fails.
    */
   public async create(model: T, trx?: PostgresTransaction): Promise<T | null> {
-    const { query, params } = PostgresModelManagerUtils.parseInsert(
+    const { query, params } = this.postgresModelManagerUtils.parseInsert(
       model,
       this.model,
     );
@@ -194,7 +192,7 @@ export class PostgresModelManager<
     }
 
     try {
-      const { query, params } = PostgresModelManagerUtils.parseInsert(
+      const { query, params } = this.postgresModelManagerUtils.parseInsert(
         model,
         this.model,
       );
@@ -223,7 +221,7 @@ export class PostgresModelManager<
     models: T[],
     trx?: PostgresTransaction,
   ): Promise<T[]> {
-    const { query, params } = PostgresModelManagerUtils.parseMassiveInsert(
+    const { query, params } = this.postgresModelManagerUtils.parseMassiveInsert(
       models,
       this.model,
     );
@@ -233,10 +231,8 @@ export class PostgresModelManager<
     }
 
     try {
-      const { query, params } = PostgresModelManagerUtils.parseMassiveInsert(
-        models,
-        this.model,
-      );
+      const { query, params } =
+        this.postgresModelManagerUtils.parseMassiveInsert(models, this.model);
       log(query, this.logs, params);
       const { rows } = await this.pgPool.query(query, params);
       const insertedModel = rows as T[];
@@ -270,7 +266,7 @@ export class PostgresModelManager<
       );
     }
 
-    const { query, params } = PostgresModelManagerUtils.parseUpdate(
+    const { query, params } = this.postgresModelManagerUtils.parseUpdate(
       model,
       this.model,
     );
@@ -290,7 +286,7 @@ export class PostgresModelManager<
     }
 
     try {
-      const { query, params } = PostgresModelManagerUtils.parseUpdate(
+      const { query, params } = this.postgresModelManagerUtils.parseUpdate(
         model,
         this.model,
       );
@@ -325,7 +321,7 @@ export class PostgresModelManager<
     if (trx) {
       return (
         (await trx.queryDelete(
-          PostgresModelManagerUtils.parseDelete(
+          this.postgresModelManagerUtils.parseDelete(
             this.model.metadata.tableName,
             column,
             value,
@@ -335,7 +331,7 @@ export class PostgresModelManager<
     }
 
     try {
-      const deleteQuery = PostgresModelManagerUtils.parseDelete(
+      const deleteQuery = this.postgresModelManagerUtils.parseDelete(
         this.model.metadata.tableName,
         column,
         value,
@@ -369,7 +365,7 @@ export class PostgresModelManager<
             " has no primary key to be deleted from, try deleteByColumn",
         );
       }
-      const deleteQuery = PostgresModelManagerUtils.parseDelete(
+      const deleteQuery = this.postgresModelManagerUtils.parseDelete(
         this.model.metadata.tableName,
         this.model.metadata.primaryKey,
         model[this.model.metadata.primaryKey as keyof T] as string,

@@ -1,18 +1,17 @@
 #!/usr/bin/env node
 
-import path from "path";
 import dotenv from "dotenv";
 import { createPool } from "mysql2/promise";
 import CliUtils from "./MysqlCliUtils";
-import { MigrationTableType } from "../Templates/MigrationTableType";
+import { MigrationTableType } from "../resources/MigrationTableType";
+import { log } from "console";
 import { Migration } from "../../Sql/Migrations/Migration";
 import { MigrationController } from "../../Sql/Migrations/MigrationController";
-import { log } from "../../Logger";
 import {
   BEGIN_TRANSACTION,
   COMMIT_TRANSACTION,
   ROLLBACK_TRANSACTION,
-} from "../../Sql/Templates/Query/TRANSACTION";
+} from "../../Sql/Resources/Query/TRANSACTION";
 
 dotenv.config();
 

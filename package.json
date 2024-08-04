@@ -14,10 +14,13 @@
     "dev": "ts-node src/index.ts",
     "start": "yarn format && yarn build && node lib/index.js",
     "start:watch": "nodemon --exec ts-node src/index.ts",
-    "test-commands": "yarn build && tsc && yarn run:migration",
-    "create:migration": "node ./lib/src/hysteria-cli/migrationCreateConnector.js",
-    "run:migration": "node ./lib/src/hysteria-cli/migrationRunConnector.js",
-    "rollback:migration": "node ./lib/src/hysteria-cli/migrationRollbackConnector.js"
+    "test:index": "yarn build && ts-node --transpile-only src/index.ts",
+    "create:migration": "yarn build && node ./lib/index.js create:migration",
+    "run:migrations": "yarn build && node ./lib/index.js run:migrations",
+    "rollback:migrations": "yarn build && node ./lib/index.js rollback:migrations"
+  },
+  "bin": {
+    "hysteria": "ts-node ./commands.js"
   },
   "license": "MIT",
   "devDependencies": {
@@ -35,6 +38,7 @@
     "typescript": "^5.3.2"
   },
   "dependencies": {
+    "commander": "^12.1.0",
     "sqlstring": "^2.3.3",
     "ts-node": "^10.9.2",
     "winston": "^3.11.0"

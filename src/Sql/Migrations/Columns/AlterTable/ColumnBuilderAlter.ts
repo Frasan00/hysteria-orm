@@ -1,3 +1,5 @@
+import { DataSourceType } from "../../../../Datasource";
+
 type AlterOptions = {
   afterColumn?: string;
   references?: {
@@ -32,13 +34,13 @@ export default class ColumnBuilderAlter {
   protected tableName: string;
   protected queryStatements: string[];
   protected partialQuery: string;
-  protected sqlType: "mysql" | "postgres";
+  protected sqlType: DataSourceType;
 
   constructor(
     tableName: string,
     queryStatements: string[],
     partialQuery: string,
-    sqlType: "mysql" | "postgres",
+    sqlType: DataSourceType,
   ) {
     this.tableName = tableName;
     this.queryStatements = queryStatements;

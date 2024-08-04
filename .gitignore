@@ -142,8 +142,6 @@ stop.sh
 /database
 test/test-script.js
 +.log
-*.js
-/**/*.js
 /src/**/*.js
 docker-compose.yaml
 docker-compose.yml

@@ -1,35 +1,35 @@
-import { DataSourceInput } from "../../Datasource";
 import { PoolConnection } from "mysql2/promise";
-import { MigrationTableType } from "../Templates/MigrationTableType";
-import { Migration } from "../../Sql/Migrations/Migration";
+import { MigrationTableType } from "../resources/MigrationTableType";
 import fs from "fs";
-import MigrationTemplates from "../Templates/MigrationTemplates";
+import MigrationTemplates from "../resources/MigrationTemplates";
+import dotenv from "dotenv";
 import path from "path";
+import { DataSourceInput } from "../../Datasource";
+import { Migration } from "../../Sql/Migrations/Migration";
+
+dotenv.config();
 
 class MysqlCliUtils {
   public getMysqlConfig(): DataSourceInput {
-    if (!process.env.MYSQL_PORT) throw new Error("MYSQL_PORT is not defined");
+    if (!process.env.DB_PORT) throw new Error("DB_PORT is not defined");
     return {
       type: "mysql",
-      host: process.env.MYSQL_HOST || "localhost",
-      port: +process.env.MYSQL_PORT,
-      username: process.env.MYSQL_USERNAME || "root",
-      password: process.env.MYSQL_PASSWORD || "",
-      database: process.env.MYSQL_DATABASE || "",
+      host: process.env.DB_HOST || "localhost",
+      port: +process.env.DB_PORT,
+      username: process.env.DB_USER,
+      password: process.env.DB_PASSWORD || "",
+      database: process.env.DB_DATABASE || "",
     };
   }
 
   public async getMigrationTable(
-    mysql: PoolConnection,
+    mysqlPool: PoolConnection,
   ): Promise<MigrationTableType[]> {
-    // Create the migrations table if it doesn't exist
-    await mysql.query(MigrationTemplates.migrationTableTemplate());
-    // Get the list of migrations from the table in the database
-    const [migrations] = await mysql.query(
+    await mysqlPool.query(MigrationTemplates.migrationTableTemplatePg());
+    const result = await mysqlPool.query(
       MigrationTemplates.selectAllFromMigrationsTemplate(),
     );
-
-    return migrations as MigrationTableType[];
+    return result[0] as MigrationTableType[];
   }
 
   public async getMigrations(): Promise<Migration[]> {
@@ -49,10 +49,16 @@ class MysqlCliUtils {
   }
 
   private findMigrationNames(): string[] {
-    let migrationPath = process.env.MIGRATION_PATH || "database/migrations";
+    let migrationPath = path.resolve(
+      process.env.MIGRATION_PATH || "database/migrations",
+    );
 
-    let i = 0;
-    while (i < 10) {
+    let tries = 0;
+    while (true) {
+      if (tries++ > 5) {
+        break;
+      }
+
       if (
         fs.existsSync(migrationPath) &&
         fs.readdirSync(migrationPath).length > 0
@@ -60,30 +66,44 @@ class MysqlCliUtils {
         return fs.readdirSync(migrationPath);
       }
 
-      migrationPath = "../" + migrationPath;
-      i++;
+      const parentPath = path.resolve(migrationPath, "..");
+      if (parentPath === migrationPath) {
+        break;
+      }
+
+      tries++;
+      migrationPath = parentPath;
     }
 
-    throw new Error("No database files found");
+    throw new Error("No database migration files found");
   }
 
-  private async findMigrationModule(migrationName: string) {
-    let migrationModulePath =
-      process.env.MIGRATION_PATH + "/" + migrationName ||
-      "database/migrations/" + migrationName;
+  private async findMigrationModule(
+    migrationName: string,
+    migrationModulePath: string = process.env.MIGRATION_PATH
+      ? process.env.MIGRATION_PATH + "/" + migrationName
+      : "database/migrations/" + migrationName,
+  ): Promise<any> {
+    const absolutePath = path.resolve(migrationModulePath.replace(/\.ts$/, ""));
 
-    let i = 0;
-    while (i < 8) {
-      try {
-        const migrationModule = await import(migrationModulePath.slice(0, -3));
-        if (migrationModule) {
-          return migrationModule;
-        }
-      } catch (_error) {}
+    try {
+      const migrationModule = require(absolutePath);
+      if (migrationModule.default) {
+        return migrationModule;
+      }
+    } catch (_error) {}
 
-      migrationModulePath = "../" + migrationModulePath;
-      i++;
+    const parentPath = path.resolve(path.dirname(absolutePath), "..");
+    if (parentPath === path.dirname(absolutePath)) {
+      throw new Error(
+        "Migration module not found for migration: " + migrationName,
+      );
     }
+
+    return this.findMigrationModule(
+      migrationName,
+      path.join(parentPath, path.basename(migrationModulePath)),
+    );
   }
 
   public getPendingMigrations(
@@ -92,26 +112,34 @@ class MysqlCliUtils {
   ): Migration[] {
     return migrations.filter((migration) => {
       const migrationName = migration.migrationName;
-      const migrationTimestamp = migrationTable.find(
-        (migration) => migration.name === migrationName,
+      const migrationEntry = migrationTable.find(
+        (m) => m.name === migrationName,
       );
-
-      return !migrationTimestamp;
+      return !migrationEntry;
     });
   }
 
   public getMigrationPath(): string {
     let migrationPath = process.env.MIGRATION_PATH || "database/migrations";
+    let currentPath = path.resolve(process.cwd(), migrationPath);
+    let tries = 0;
 
-    let i = 0;
-    while (path.basename(migrationPath) != process.cwd() || i < 5) {
-      console.log(migrationPath);
-      if (fs.existsSync(migrationPath)) {
-        return migrationPath;
+    while (true) {
+      if (tries++ > 5) {
+        break;
       }
 
-      migrationPath = "../" + migrationPath;
-      i++;
+      if (fs.existsSync(currentPath)) {
+        return currentPath;
+      }
+
+      const parentPath = path.resolve(currentPath, "..");
+      if (parentPath === currentPath) {
+        break;
+      }
+
+      tries++;
+      currentPath = path.resolve(parentPath, migrationPath);
     }
 
     throw new Error("No migration folder found");

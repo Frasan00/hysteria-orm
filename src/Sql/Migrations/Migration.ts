@@ -5,7 +5,7 @@ export abstract class Migration {
   public migrationName: string = path.basename(__filename);
   public schema: Schema = new Schema();
 
-  public abstract up(): void;
+  public abstract up(): Promise<void>;
 
-  public abstract down(): void;
+  public abstract down(): Promise<void>;
 }

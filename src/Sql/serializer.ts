@@ -11,13 +11,15 @@ export function parseDatabaseDataIntoModelResponse<T extends Model>(
 
   models = models.map((model) => {
     Object.keys(model).forEach((key) => {
-      if (model[key as keyof Model] === undefined) {
+      const value = model[key as keyof Model];
+      if (value === undefined) {
         delete (model as Partial<Model>)[key as keyof Model];
       }
     });
 
     return model;
   });
+
   const parsedModels = models.map((model) => serializeModel(model));
   return parsedModels.length === 1 ? parsedModels[0] : parsedModels;
 }

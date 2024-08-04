@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import mysql, { Pool, PoolConnection, RowDataPacket } from 'mysql2/promise';
 import * as pg from 'pg';
 import pg__default, { Pool as Pool$1, PoolClient } from 'pg';
@@ -710,9 +711,38 @@ type FindType<T> = Omit<FindOneType<T>, "throwError"> & {
     offset?: number;
 };
 
+declare class MySqlModelManagerUtils<T extends Model> {
+    parseSelectQueryInput(model: typeof Model, input: FindType<T> | FindOneType<T>): {
+        query: string;
+        params: any[];
+    };
+    private parseSelect;
+    private parseWhere;
+    private parseQueryFooter;
+    parseInsert(model: T, modelTypeof: typeof Model): {
+        query: string;
+        params: any[];
+    };
+    parseMassiveInsert(models: T[], modelTypeOf: typeof Model): {
+        query: string;
+        params: any[];
+    };
+    parseUpdate(model: T, modelTypeof: typeof Model): {
+        query: string;
+        params: any[];
+    };
+    private filterRelationsAndMetadata;
+    parseDelete(tableName: string, column: string, value: string | number | boolean): string;
+    private isFindType;
+    private getRelationFromModel;
+    parseRelationInput(model: T, metadata: Metadata, input: FindOneType<T>, mysqlConnection: Pool, logs: boolean): Promise<void>;
+    parseQueryBuilderRelations(model: T, metadata: Metadata, input: string[], mysqlConnection: Pool, logs: boolean): Promise<void>;
+}
+
 declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     protected mysqlPool: Pool;
     protected isNestedCondition: boolean;
+    protected mysqlModelManagerUtils: MySqlModelManagerUtils<T>;
     /**
      * @description Constructs a MysqlQueryBuilder instance.
      * @param model - The model class associated with the table.
@@ -954,9 +984,38 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     private mergeRawPacketIntoModel;
 }
 
+declare class PostgresModelManagerUtils<T extends Model> {
+    parseSelectQueryInput(model: typeof Model, input: FindType<T> | FindOneType<T>): {
+        query: string;
+        params: any[];
+    };
+    private parseSelect;
+    private parseWhere;
+    private parseQueryFooter;
+    parseInsert(model: T, modelTypeOf: typeof Model): {
+        query: string;
+        params: any[];
+    };
+    parseMassiveInsert(models: T[], modelTypeOf: typeof Model): {
+        query: string;
+        params: any[];
+    };
+    parseUpdate(model: T, modelTypeOf: typeof Model): {
+        query: string;
+        params: any[];
+    };
+    private filterRelationsAndMetadata;
+    parseDelete(tableName: string, column: string, value: string | number | boolean): string;
+    private isFindType;
+    private getRelationFromModel;
+    parseRelationInput(model: T, modelTypeOf: typeof Model, input: FindOneType<T>, pgPool: Pool$1, logs: boolean): Promise<void>;
+    parseQueryBuilderRelations(model: T, modelTypeOf: typeof Model, input: string[], pgConnection: pg__default.Pool, logs: boolean): Promise<void>;
+}
+
 declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     protected pgPool: Pool$1;
     protected isNestedCondition: boolean;
+    protected postgresModelManagerUtils: PostgresModelManagerUtils<T>;
     constructor(model: typeof Model, tableName: string, pgPool: Pool$1, logs: boolean, isNestedCondition?: boolean);
     select(...columns: (SelectableType<T> | "*")[]): PostgresQueryBuilder<T>;
     selectRaw(...columns: string[]): PostgresQueryBuilder<T>;
@@ -1479,6 +1538,7 @@ declare abstract class AbstractModelManager<T extends Model> {
 
 declare class MysqlModelManager<T extends Model> extends AbstractModelManager<T> {
     protected mysqlPool: mysql.Pool;
+    protected mysqlModelManagerUtils: MySqlModelManagerUtils<T>;
     /**
      * Constructor for MysqlModelManager class.
      *
@@ -1571,6 +1631,7 @@ declare class MysqlModelManager<T extends Model> extends AbstractModelManager<T>
 
 declare class PostgresModelManager<T extends Model> extends AbstractModelManager<T> {
     protected pgPool: pg__default.Pool;
+    protected postgresModelManagerUtils: PostgresModelManagerUtils<T>;
     /**
      * Constructor for PostgresModelManager class.
      *
@@ -1848,8 +1909,8 @@ declare class ColumnOptionsBuilder {
         table: string;
         column: string;
     };
-    protected sqlType: "mysql" | "postgres";
-    constructor(tableName: string, queryStatements: string[], partialQuery: string, sqlType: "mysql" | "postgres", columnName?: string, columnReferences?: {
+    protected sqlType: DataSourceType;
+    constructor(tableName: string, queryStatements: string[], partialQuery: string, sqlType: DataSourceType, columnName?: string, columnReferences?: {
         table: string;
         column: string;
     });
@@ -1857,6 +1918,7 @@ declare class ColumnOptionsBuilder {
      * @description Makes the column nullable
      */
     nullable(): ColumnOptionsBuilder;
+    default(value: string | number | boolean): ColumnOptionsBuilder;
     /**
      * @description Makes the column unsigned allowing only positive values
      */
@@ -1898,8 +1960,8 @@ declare class ColumnTypeBuilder {
     protected queryStatements: string[];
     protected partialQuery: string;
     protected columnName: string;
-    protected sqlType: `mysql` | `postgres`;
-    constructor(tableName: string, queryStatements: string[], partialQuery: string, sqlType: `mysql` | `postgres`);
+    protected sqlType: DataSourceType;
+    constructor(tableName: string, queryStatements: string[], partialQuery: string, sqlType: DataSourceType);
     varchar(name: string, length: number): ColumnOptionsBuilder;
     tinytext(name: string): ColumnOptionsBuilder;
     mediumtext(name: string): ColumnOptionsBuilder;
@@ -1945,8 +2007,8 @@ declare class ColumnBuilderConnector {
     protected tableName: string;
     protected queryStatements: string[];
     protected partialQuery: string;
-    protected sqlType: "mysql" | "postgres";
-    constructor(tableName: string, queryStatements: string[], partialQuery: string, sqlType: "mysql" | "postgres");
+    protected sqlType: DataSourceType;
+    constructor(tableName: string, queryStatements: string[], partialQuery: string, sqlType: DataSourceType);
     newColumn(): ColumnTypeBuilder;
 }
 
@@ -1962,8 +2024,8 @@ declare class ColumnBuilderAlter {
     protected tableName: string;
     protected queryStatements: string[];
     protected partialQuery: string;
-    protected sqlType: "mysql" | "postgres";
-    constructor(tableName: string, queryStatements: string[], partialQuery: string, sqlType: "mysql" | "postgres");
+    protected sqlType: DataSourceType;
+    constructor(tableName: string, queryStatements: string[], partialQuery: string, sqlType: DataSourceType);
     /**
      * @description Add a new column to the table
      * @param columnName { string }
@@ -2072,10 +2134,10 @@ declare class ColumnBuilderAlter {
 
 declare class Schema {
     queryStatements: string[];
-    sqlType: "mysql" | "postgres";
-    constructor(sqlType?: "mysql" | "postgres");
+    sqlType: DataSourceType;
+    constructor(sqlType?: DataSourceType);
     rawQuery(query: string): void;
-    createTable(tableName: string, options: {
+    createTable(tableName: string, options?: {
         ifNotExists?: boolean;
     }): ColumnBuilderConnector;
     alterTable(tableName: string): ColumnBuilderAlter;
@@ -2086,8 +2148,18 @@ declare class Schema {
 declare abstract class Migration {
     migrationName: string;
     schema: Schema;
-    abstract up(): void;
-    abstract down(): void;
+    abstract up(): Promise<void>;
+    abstract down(): Promise<void>;
 }
 
-export { BelongsTo, type DataSourceInput, HasMany, HasOne, Migration, Model, SqlDataSource };
+declare class User extends Model {
+    id: number;
+    name: string;
+    email: string;
+    signupSource: string;
+    isActive: boolean;
+    createdAt: Date;
+    static metadata: Metadata;
+}
+
+export { BelongsTo, type DataSourceInput, HasMany, HasOne, Migration, Model, SqlDataSource, User };

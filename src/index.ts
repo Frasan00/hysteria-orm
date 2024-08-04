@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import { Metadata, Model } from "./Sql/Models/Model";
 import { HasOne } from "./Sql/Models/Relations/HasOne";
 import { HasMany } from "./Sql/Models/Relations/HasMany";
@@ -6,15 +8,17 @@ import { DataSourceInput } from "./Datasource";
 import { Migration } from "./Sql/Migrations/Migration";
 import { SqlDataSource } from "./Sql/SqlDataSource";
 import { testCreate, testDelete, testQuery, testUpdate } from "./test";
+import runMigrationsConnector from "./hysteria-cli/migrationRunConnector";
 
-class User extends Model {
+export class User extends Model {
   public id!: number;
   public name!: string;
   public email!: string;
   public signupSource!: string;
-  public active!: boolean;
+  public isActive!: boolean;
+  public createdAt!: Date;
 
-  public posts: HasMany | Post[] = new HasMany("posts", "user_id");
+  // public posts: HasMany | Post[] = new HasMany("posts", "user_id");
 
   public static metadata: Metadata = {
     primaryKey: "id",
@@ -29,7 +33,7 @@ class Post extends Model {
   public content!: string;
   public userId!: number;
 
-  public user: HasOne | User = new HasOne("user", "user_id");
+  // public user: HasOne | User = new HasOne("user", "user_id");
 
   public static metadata: Metadata = {
     primaryKey: "id",
@@ -38,14 +42,18 @@ class Post extends Model {
 }
 
 (async () => {
-  await SqlDataSource.connect();
+  console.log("Hysteria ORM");
+  // await SqlDataSource.connect();
+  // Migrations
+  // migrationCreateConnector("users");
+  // migrationCreateConnector("posts");
+  await runMigrationsConnector();
+  // await rollbackMigrationConnector();
 
   // await testQuery();
   // await testCreate();
   // await testUpdate();
   // await testDelete();
-
-  process.exit(0);
 })();
 
 export {

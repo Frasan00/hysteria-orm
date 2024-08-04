@@ -1,11 +1,10 @@
 import { Pool, RowDataPacket } from "mysql2/promise";
-import selectTemplate from "../Templates/Query/SELECT";
+import selectTemplate from "../Resources/Query/SELECT";
 import { Model } from "../Models/Model";
 import { log, queryError } from "../../Logger";
-import ModelManagerUtils from "./MySqlModelManagerUtils";
-import { BaseValues, WhereOperatorType } from "../Templates/Query/WHERE.TS";
+import { BaseValues, WhereOperatorType } from "../Resources/Query/WHERE.TS";
 import { OneOptions, QueryBuilder } from "../QueryBuilder/QueryBuilder";
-import joinTemplate from "../Templates/Query/JOIN";
+import joinTemplate from "../Resources/Query/JOIN";
 import { getPaginationMetadata, PaginatedData } from "../pagination";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
 import {
@@ -13,10 +12,12 @@ import {
   SelectableType,
 } from "../Models/ModelManager/ModelManagerTypes";
 import { fromSnakeToCamelCase } from "../../CaseUtils";
+import MysqlModelManagerUtils from "../Mysql/MySqlModelManagerUtils";
 
 export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
   protected mysqlPool: Pool;
   protected isNestedCondition = false;
+  protected mysqlModelManagerUtils: MysqlModelManagerUtils<T>;
 
   /**
    * @description Constructs a MysqlQueryBuilder instance.
@@ -36,6 +37,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     super(model, tableName, logs);
     this.mysqlPool = mysqlPool;
     this.isNestedCondition = isNestedCondition;
+    this.mysqlModelManagerUtils = new MysqlModelManagerUtils<T>();
   }
 
   /**
@@ -78,7 +80,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
       const modelInstance = new this.model() as T;
       this.mergeRawPacketIntoModel(modelInstance, rows[0]);
-      await ModelManagerUtils.parseQueryBuilderRelations(
+      await this.mysqlModelManagerUtils.parseQueryBuilderRelations(
         modelInstance,
         this.model.metadata,
         this.relations,
@@ -134,7 +136,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
           this.mergeRawPacketIntoModel(modelInstance, row);
 
           // relations parsing on the queried model
-          await ModelManagerUtils.parseQueryBuilderRelations(
+          await this.mysqlModelManagerUtils.parseQueryBuilderRelations(
             modelInstance,
             Model.metadata,
             this.relations,

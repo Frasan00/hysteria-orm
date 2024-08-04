@@ -1,19 +1,17 @@
 #!/usr/bin/env node
 
-import path from "path";
 import dotenv from "dotenv";
 import { Pool } from "pg";
 import PostgresCliUtils from "./PostgresCliUtils";
-import { MigrationTableType } from "../Templates/MigrationTableType";
+import { log } from "console";
+import { MigrationTableType } from "../resources/MigrationTableType";
 import { Migration } from "../../Sql/Migrations/Migration";
 import { MigrationController } from "../../Sql/Migrations/MigrationController";
-import MigrationTemplates from "../Templates/MigrationTemplates";
-import { log } from "../../Logger";
 import {
   BEGIN_TRANSACTION,
   COMMIT_TRANSACTION,
   ROLLBACK_TRANSACTION,
-} from "../../Sql/Templates/Query/TRANSACTION";
+} from "../../Sql/Resources/Query/TRANSACTION";
 
 dotenv.config();
 

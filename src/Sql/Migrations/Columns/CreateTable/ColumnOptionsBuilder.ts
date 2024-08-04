@@ -1,3 +1,4 @@
+import { DataSourceType } from "../../../../Datasource";
 import ColumnTypeBuilder from "./ColumnTypeBuilder";
 
 export default class ColumnOptionsBuilder {
@@ -9,13 +10,13 @@ export default class ColumnOptionsBuilder {
     table: string;
     column: string;
   };
-  protected sqlType: "mysql" | "postgres";
+  protected sqlType: DataSourceType;
 
   constructor(
     tableName: string,
     queryStatements: string[],
     partialQuery: string,
-    sqlType: "mysql" | "postgres",
+    sqlType: DataSourceType,
     columnName: string = "",
     columnReferences?: {
       table: string;
@@ -40,6 +41,17 @@ export default class ColumnOptionsBuilder {
       this.queryStatements,
       this.partialQuery,
       this.sqlType,
+    );
+  }
+
+  public default(value: string | number | boolean): ColumnOptionsBuilder {
+    this.partialQuery += ` DEFAULT ${value}`;
+    return new ColumnOptionsBuilder(
+      this.tableName,
+      this.queryStatements,
+      this.partialQuery,
+      this.sqlType,
+      this.columnName,
     );
   }
 
@@ -111,6 +123,9 @@ export default class ColumnOptionsBuilder {
 
       case "postgres":
         throw new Error("Auto Increment not supported for PostgreSQL");
+
+      default:
+        throw new Error("Unsupported SQL type");
     }
   }
 
@@ -137,7 +152,7 @@ export default class ColumnOptionsBuilder {
   public newColumn(): ColumnTypeBuilder {
     this.partialQuery += ",\n";
     if (this.columnReferences) {
-      this.partialQuery += `CONSTRAINT ${this.tableName}_${this.columnName}_fk FOREIGN KEY (${this.columnName}) REFERENCES ${this.columnReferences.table} (${this.columnReferences.column}),\n`;
+      this.partialQuery += `CONSTRAINT ${this.tableName}_${this.columnName}_${this.columnReferences.table}_${this.columnReferences.column}_fk FOREIGN KEY (${this.columnName}) REFERENCES ${this.columnReferences.table} (${this.columnReferences.column}),\n`;
     }
 
     return new ColumnTypeBuilder(

@@ -1,11 +1,11 @@
 import { Model } from "../Models/Model";
-import { BaseValues, WhereOperatorType } from "../Templates/Query/WHERE.TS";
+import { BaseValues, WhereOperatorType } from "../Resources/Query/WHERE.TS";
 import { log, queryError } from "../../Logger";
 import { WhereQueryBuilder } from "../QueryBuilder/WhereQueryBuilder";
 import { MysqlTransaction } from "./MysqlTransaction";
 import { Pool } from "mysql2/promise";
-import joinTemplate from "../Templates/Query/JOIN";
-import deleteTemplate from "../Templates/Query/DELETE";
+import joinTemplate from "../Resources/Query/JOIN";
+import deleteTemplate from "../Resources/Query/DELETE";
 
 export class MysqlDeleteQueryBuilder<
   T extends Model,

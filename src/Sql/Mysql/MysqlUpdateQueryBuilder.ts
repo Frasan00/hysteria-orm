@@ -1,12 +1,12 @@
 import { Pool } from "mysql2/promise";
 import { Model } from "../Models/Model";
-import { BaseValues, WhereOperatorType } from "../Templates/Query/WHERE.TS";
+import { BaseValues, WhereOperatorType } from "../Resources/Query/WHERE.TS";
 import { SelectableType } from "../Models/ModelManager/ModelManagerTypes";
 import { MysqlTransaction } from "./MysqlTransaction";
 import { log, queryError } from "../../Logger";
 import { WhereQueryBuilder } from "../QueryBuilder/WhereQueryBuilder";
-import updateTemplate from "../Templates/Query/UPDATE";
-import joinTemplate from "../Templates/Query/JOIN";
+import updateTemplate from "../Resources/Query/UPDATE";
+import joinTemplate from "../Resources/Query/JOIN";
 
 export class MysqlUpdateQueryBuilder<
   T extends Model,
