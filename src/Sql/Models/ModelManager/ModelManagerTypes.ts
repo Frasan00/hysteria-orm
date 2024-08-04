@@ -1,3 +1,5 @@
+import { MysqlTransaction } from "../../Mysql/MysqlTransaction";
+import { PostgresTransaction } from "../../Postgres/PostgresTransaction";
 import { Model } from "../Model";
 import { BelongsTo } from "../Relations/BelongsTo";
 import { HasMany } from "../Relations/HasMany";
@@ -54,8 +56,4 @@ export type FindType<T> = Omit<FindOneType<T>, "throwError"> & {
   offset?: number;
 };
 
-export type TransactionType = {
-  createTrx?: string;
-  commitTrx?: string;
-  rollbackTrx?: string;
-};
+export type TransactionType = MysqlTransaction | PostgresTransaction;

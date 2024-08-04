@@ -8,15 +8,13 @@ import selectTemplate from "../Resources/Query/SELECT";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
 
 export class PostgresTransaction {
-  protected tableName: string;
   protected pgPool: Pool;
   protected pgClient!: PoolClient;
   protected logs: boolean;
 
-  constructor(pgPool: Pool, tableName: string, logs: boolean) {
+  constructor(pgPool: Pool, logs: boolean) {
     this.logs = logs;
     this.pgPool = pgPool;
-    this.tableName = tableName;
   }
 
   public async queryInsert<T extends Model>(
@@ -36,7 +34,7 @@ export class PostgresTransaction {
       );
 
       const insertId = rows[0][metadata.primaryKey as keyof T];
-      const select = selectTemplate(this.tableName, "postgres").selectById(
+      const select = selectTemplate(metadata.tableName, "postgres").selectById(
         insertId as string,
       );
       const { rows: savedModel } = await this.pgClient.query<T>(select);
@@ -48,6 +46,52 @@ export class PostgresTransaction {
   }
 
   public async massiveInsertQuery<T extends Model>(
+    query: string,
+    params: any[],
+  ): Promise<T[]> {
+    if (!this.pgClient) {
+      throw new Error("PostgresTransaction not started.");
+    }
+
+    try {
+      log(query, this.logs, params);
+      const { rows } = await this.pgClient.query(query, params);
+
+      return rows.map(
+        (row: T) => parseDatabaseDataIntoModelResponse([row]) as T,
+      );
+    } catch (error) {
+      queryError(error);
+      throw new Error(
+        "Failed to execute massive insert query in transaction " + error,
+      );
+    }
+  }
+
+  public async massiveUpdateQuery<T extends Model>(
+    query: string,
+    params: any[],
+  ): Promise<T[]> {
+    if (!this.pgClient) {
+      throw new Error("PostgresTransaction not started.");
+    }
+
+    try {
+      log(query, this.logs, params);
+      const { rows } = await this.pgClient.query(query, params);
+
+      return rows.map(
+        (row: T) => parseDatabaseDataIntoModelResponse([row]) as T,
+      );
+    } catch (error) {
+      queryError(error);
+      throw new Error(
+        "Failed to execute massive insert query in transaction " + error,
+      );
+    }
+  }
+
+  public async massiveDeleteQuery<T extends Model>(
     query: string,
     params: any[],
   ): Promise<T[]> {

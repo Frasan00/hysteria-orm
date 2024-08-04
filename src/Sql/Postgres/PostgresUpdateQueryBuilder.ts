@@ -52,7 +52,6 @@ export class PostgresUpdateQueryBuilder<
     data: Partial<T>,
     trx?: PostgresTransaction,
   ): Promise<T[]> {
-    // TODO: Implement transactions
     const columns = Object.keys(data);
     const values = Object.values(data);
     this.whereQuery = this.whereTemplate.convertPlaceHolderToValue(
@@ -67,6 +66,10 @@ export class PostgresUpdateQueryBuilder<
     );
 
     params.push(...this.whereParams);
+    if (trx) {
+      return await trx.massiveUpdateQuery(query, params);
+    }
+
     log(query, this.logs, params);
     try {
       const { rows } = await this.pgPool.query(query, params);

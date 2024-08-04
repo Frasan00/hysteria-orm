@@ -51,12 +51,12 @@ export class MysqlUpdateQueryBuilder<
     data: Partial<T>,
     trx?: MysqlTransaction,
   ): Promise<number> {
-    // TODO: Implement transactions
     const columns = Object.keys(data);
     const values = Object.values(data);
     this.whereQuery = this.whereTemplate.convertPlaceHolderToValue(
       this.whereQuery,
     );
+
     const { query, params } = this.updateTemplate.massiveUpdate(
       columns,
       values,
@@ -65,6 +65,10 @@ export class MysqlUpdateQueryBuilder<
     );
 
     params.push(...this.whereParams);
+    if (trx) {
+      return await trx.massiveUpdateQuery(query, params);
+    }
+
     log(query, this.logs, params);
     try {
       const rows: any = await this.mysqlPool.query(query, params);

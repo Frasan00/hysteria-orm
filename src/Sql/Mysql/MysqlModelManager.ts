@@ -1,19 +1,15 @@
-/*
- * This class is used to make operations on models
- */
 import { Model } from "../Models/Model";
 import {
   FindOneType,
   FindType,
+  TransactionType,
 } from "../Models/ModelManager/ModelManagerTypes";
 import mysql, { RowDataPacket } from "mysql2/promise";
 import selectTemplate from "../Resources/Query/SELECT";
 import { log, queryError } from "../../Logger";
 import { MysqlQueryBuilder } from "./MysqlQueryBuilder";
-import { MysqlTransaction } from "./MysqlTransaction";
 import { AbstractModelManager } from "../Models/ModelManager/AbstractModelManager";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
-import { PostgresTransaction } from "../Postgres/PostgresTransaction";
 import { MysqlUpdateQueryBuilder } from "./MysqlUpdateQueryBuilder";
 import { PostgresUpdateQueryBuilder } from "../Postgres/PostgresUpdateQueryBuilder";
 import { MysqlDeleteQueryBuilder } from "./MysqlDeleteQueryBuilder";
@@ -184,7 +180,7 @@ export class MysqlModelManager<
    * @param {MysqlTransaction} trx - MysqlTransaction to be used on the save operation.
    * @returns Promise resolving to the saved model or null if saving fails.
    */
-  public async create(model: T, trx?: MysqlTransaction): Promise<T | null> {
+  public async create(model: T, trx?: TransactionType): Promise<T | null> {
     const { query, params } = this.mysqlModelManagerUtils.parseInsert(
       model,
       this.model,
@@ -219,10 +215,7 @@ export class MysqlModelManager<
    * @param {MysqlTransaction} trx - MysqlTransaction to be used on the save operation.
    * @returns Promise resolving to an array of saved models or null if saving fails.
    */
-  public async massiveCreate(
-    models: T[],
-    trx?: MysqlTransaction | PostgresTransaction,
-  ): Promise<T[]> {
+  public async massiveCreate(models: T[], trx?: TransactionType): Promise<T[]> {
     const { query, params } = this.mysqlModelManagerUtils.parseMassiveInsert(
       models,
       this.model,
@@ -265,7 +258,7 @@ export class MysqlModelManager<
    */
   public async updateRecord(
     model: T,
-    trx?: MysqlTransaction,
+    trx?: TransactionType,
   ): Promise<T | null> {
     if (!this.model.metadata.primaryKey) {
       throw new Error(
@@ -325,16 +318,16 @@ export class MysqlModelManager<
   public async deleteByColumn(
     column: string,
     value: string | number | boolean,
-    trx?: MysqlTransaction,
+    trx?: TransactionType,
   ): Promise<number> {
     if (trx) {
-      return await trx.queryDelete(
+      return (await trx.queryDelete(
         this.mysqlModelManagerUtils.parseDelete(
           this.model.metadata.tableName,
           column,
           value,
         ),
-      );
+      )) as number;
     }
 
     try {
@@ -362,7 +355,7 @@ export class MysqlModelManager<
    */
   public async deleteRecord(
     model: T,
-    trx?: MysqlTransaction,
+    trx?: TransactionType,
   ): Promise<T | null> {
     try {
       if (!this.model.metadata.primaryKey) {
@@ -390,20 +383,6 @@ export class MysqlModelManager<
       queryError(error);
       throw new Error("Query failed " + error);
     }
-  }
-
-  /**
-   * @description Creates a new transaction.
-   * @returns {Promise<MysqlTransaction>} - Instance of MysqlTransaction.
-   */
-  public async startTransaction(): Promise<MysqlTransaction> {
-    const trx = new MysqlTransaction(
-      this.mysqlPool,
-      this.model.metadata.tableName,
-      this.logs,
-    );
-    await trx.start();
-    return trx;
   }
 
   /**

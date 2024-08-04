@@ -1,11 +1,9 @@
 /*
  * This class is used to make operations on models
  */
-import { Metadata, Model } from "../Model";
-import { FindOneType, FindType } from "./ModelManagerTypes";
+import { Model } from "../Model";
+import { FindOneType, FindType, TransactionType } from "./ModelManagerTypes";
 import { MysqlQueryBuilder } from "../../Mysql/MysqlQueryBuilder";
-import { MysqlTransaction } from "../../Mysql/MysqlTransaction";
-import { PostgresTransaction } from "../../Postgres/PostgresTransaction";
 import { PostgresQueryBuilder } from "../../Postgres/PostgresQueryBuilder";
 import { MysqlUpdateQueryBuilder } from "../../Mysql/MysqlUpdateQueryBuilder";
 import { PostgresUpdateQueryBuilder } from "../../Postgres/PostgresUpdateQueryBuilder";
@@ -36,28 +34,28 @@ export abstract class AbstractModelManager<T extends Model> {
 
   public abstract create(
     model: Partial<T>,
-    trx?: MysqlTransaction | PostgresTransaction,
+    trx?: TransactionType,
   ): Promise<T | null>;
 
   public abstract massiveCreate(
     model: Partial<T>[],
-    trx?: MysqlTransaction | PostgresTransaction,
+    trx?: TransactionType,
   ): Promise<T[]>;
 
   public abstract updateRecord(
     model: T,
-    trx?: MysqlTransaction | PostgresTransaction,
+    trx?: TransactionType,
   ): Promise<T | null>;
 
   public abstract deleteByColumn(
     column: string,
     value: string | number | boolean,
-    trx?: MysqlTransaction | PostgresTransaction,
+    trx?: TransactionType,
   ): Promise<number> | Promise<number | null>;
 
   public abstract deleteRecord(
     model: T,
-    trx?: MysqlTransaction | PostgresTransaction,
+    trx?: TransactionType,
   ): Promise<T | null>;
 
   public abstract query(): MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;

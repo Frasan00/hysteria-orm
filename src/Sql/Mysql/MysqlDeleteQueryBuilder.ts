@@ -47,7 +47,6 @@ export class MysqlDeleteQueryBuilder<
    * @returns The updated records.
    */
   public async performDelete(trx?: MysqlTransaction): Promise<number> {
-    // TODO: Implement transactions
     this.whereQuery = this.whereTemplate.convertPlaceHolderToValue(
       this.whereQuery,
     );
@@ -55,6 +54,10 @@ export class MysqlDeleteQueryBuilder<
       this.whereQuery,
       this.joinQuery,
     );
+
+    if (trx) {
+      return await trx.massiveDeleteQuery(query, this.whereParams);
+    }
 
     log(query, this.logs, this.whereParams);
     try {

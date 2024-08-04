@@ -1,17 +1,14 @@
-/*
- * This class is used to make operations on models
- */
 import { Model } from "../Models/Model";
 import {
   FindOneType,
   FindType,
+  TransactionType,
 } from "../Models/ModelManager/ModelManagerTypes";
 import pg, { QueryResult } from "pg";
 import selectTemplate from "../Resources/Query/SELECT";
 import { log, queryError } from "../../Logger";
 import PostgresModelManagerUtils from "./PostgresModelManagerUtils";
 import { AbstractModelManager } from "../Models/ModelManager/AbstractModelManager";
-import { PostgresTransaction } from "./PostgresTransaction";
 import { PostgresQueryBuilder } from "./PostgresQueryBuilder";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
 import { PostgresUpdateQueryBuilder } from "./PostgresUpdateQueryBuilder";
@@ -181,7 +178,7 @@ export class PostgresModelManager<
    * @param {MysqlTransaction} trx - MysqlTransaction to be used on the save operation.
    * @returns Promise resolving to the saved model or null if saving fails.
    */
-  public async create(model: T, trx?: PostgresTransaction): Promise<T | null> {
+  public async create(model: T, trx?: TransactionType): Promise<T | null> {
     const { query, params } = this.postgresModelManagerUtils.parseInsert(
       model,
       this.model,
@@ -217,10 +214,7 @@ export class PostgresModelManager<
    * @param {PostgresTransaction} trx - MysqlTransaction to be used on the save operation.
    * @returns Promise resolving to an array of saved models or null if saving fails.
    */
-  public async massiveCreate(
-    models: T[],
-    trx?: PostgresTransaction,
-  ): Promise<T[]> {
+  public async massiveCreate(models: T[], trx?: TransactionType): Promise<T[]> {
     const { query, params } = this.postgresModelManagerUtils.parseMassiveInsert(
       models,
       this.model,
@@ -257,7 +251,7 @@ export class PostgresModelManager<
    */
   public async updateRecord(
     model: T,
-    trx?: PostgresTransaction,
+    trx?: TransactionType,
   ): Promise<T | null> {
     const { tableName, primaryKey } = this.model.metadata;
     if (!primaryKey) {
@@ -316,7 +310,7 @@ export class PostgresModelManager<
   public async deleteByColumn(
     column: string,
     value: string | number | boolean,
-    trx?: PostgresTransaction,
+    trx?: TransactionType,
   ): Promise<number> {
     if (trx) {
       return (
@@ -355,7 +349,7 @@ export class PostgresModelManager<
    */
   public async deleteRecord(
     model: T,
-    trx?: PostgresTransaction,
+    trx?: TransactionType,
   ): Promise<T | null> {
     try {
       if (!this.model.metadata.primaryKey) {
@@ -383,20 +377,6 @@ export class PostgresModelManager<
       queryError(error);
       throw new Error("Query failed " + error);
     }
-  }
-
-  /**
-   * @description Creates a new transaction.
-   * @returns {MysqlTransaction} - Instance of MysqlTransaction.
-   */
-  public async startTransaction(): Promise<PostgresTransaction> {
-    const trx = new PostgresTransaction(
-      this.pgPool,
-      this.model.metadata.tableName,
-      this.logs,
-    );
-    await trx.start();
-    return trx;
   }
 
   /**

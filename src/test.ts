@@ -4,7 +4,7 @@ import { HasMany } from "./Sql/Models/Relations/HasMany";
 import { BelongsTo } from "./Sql/Models/Relations/BelongsTo";
 import { DataSourceInput } from "./Datasource";
 import { Migration } from "./Sql/Migrations/Migration";
-import { SqlDataSource } from "./Sql/SqlDataSource";
+import { SqlDataSource } from "./Sql/SqlDatasource";
 import { User } from ".";
 
 export async function testCreate() {
@@ -369,6 +369,82 @@ export async function testDelete() {
         .where("name", "%john%", "LIKE")
         .performDelete();
       console.log("multi delete", deletedUsers);
+
+      console.log("Mysql connection closed");
+    },
+  );
+}
+
+export async function testTrx() {
+  // Postgres
+  await User.useConnection(
+    {
+      type: "postgres",
+      host: "localhost",
+      username: "root",
+      password: "root",
+      database: "test",
+      port: 5432,
+      logs: true,
+    },
+    async (sql) => {
+      console.log("Postgres connection opened");
+      const trx = await sql.startTransaction();
+      try {
+        console.log(await User.query().many());
+        await User.create(
+          {
+            name: "gianni nuovo",
+            email: "jfdsionfods",
+            signupSource: "google",
+            isActive: true,
+          },
+          trx,
+        );
+        throw new Error("sfnjlsangfajs");
+        await trx.commit();
+        console.log(await User.query().many());
+      } catch (error) {
+        await trx.rollback();
+        console.log(await User.query().many());
+      }
+
+      console.log("Postgres connection closed");
+    },
+  );
+
+  // Mysql
+  await User.useConnection(
+    {
+      type: "mysql",
+      host: "localhost",
+      username: "root",
+      password: "root",
+      database: "test",
+      port: 3306,
+      logs: true,
+    },
+    async (sql) => {
+      console.log("Mysql connection opened");
+      const trx = await sql.startTransaction();
+      console.log(await User.query().many());
+      await User.create(
+        {
+          name: "gianni nuovo",
+          email: "jfdsionfods",
+          signupSource: "google",
+          isActive: true,
+        },
+        trx,
+      );
+      try {
+        throw new Error("sfnjlsangfajs");
+        await trx.commit();
+        console.log(await User.query().many());
+      } catch (error) {
+        console.log(await User.query().many());
+        await trx.rollback();
+      }
 
       console.log("Mysql connection closed");
     },

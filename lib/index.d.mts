@@ -317,13 +317,14 @@ declare abstract class WhereQueryBuilder<T extends Model> {
 }
 
 declare class MysqlTransaction {
-    protected tableName: string;
     protected mysql: Pool;
     protected mysqlConnection: PoolConnection;
     protected logs: boolean;
-    constructor(mysql: Pool, tableName: string, logs: boolean);
+    constructor(mysql: Pool, logs: boolean);
     queryInsert<T extends Model>(query: string, params: any[], metadata: Metadata): Promise<T>;
     massiveInsertQuery<T extends Model>(query: string, params: any[]): Promise<T[]>;
+    massiveUpdateQuery(query: string, params: any[]): Promise<number>;
+    massiveDeleteQuery(query: string, params: any[]): Promise<number>;
     queryUpdate<T extends Model>(query: string, params?: any[]): Promise<number>;
     queryDelete(query: string, params?: any[]): Promise<number>;
     /**
@@ -478,13 +479,14 @@ declare class MysqlUpdateQueryBuilder<T extends Model> extends WhereQueryBuilder
 }
 
 declare class PostgresTransaction {
-    protected tableName: string;
     protected pgPool: Pool$1;
     protected pgClient: PoolClient;
     protected logs: boolean;
-    constructor(pgPool: Pool$1, tableName: string, logs: boolean);
+    constructor(pgPool: Pool$1, logs: boolean);
     queryInsert<T extends Model>(query: string, params: any[], metadata: Metadata): Promise<T>;
     massiveInsertQuery<T extends Model>(query: string, params: any[]): Promise<T[]>;
+    massiveUpdateQuery<T extends Model>(query: string, params: any[]): Promise<T[]>;
+    massiveDeleteQuery<T extends Model>(query: string, params: any[]): Promise<T[]>;
     queryUpdate<T extends Model>(query: string, params?: any[]): Promise<number | null>;
     queryDelete(query: string, params?: any[]): Promise<number | null>;
     /**
@@ -710,6 +712,7 @@ type FindType<T> = Omit<FindOneType<T>, "throwError"> & {
     limit?: number;
     offset?: number;
 };
+type TransactionType = MysqlTransaction | PostgresTransaction;
 
 declare class MySqlModelManagerUtils<T extends Model> {
     parseSelectQueryInput(model: typeof Model, input: FindType<T> | FindOneType<T>): {
@@ -1526,11 +1529,11 @@ declare abstract class AbstractModelManager<T extends Model> {
     abstract find(input?: FindType<T>): Promise<T[]>;
     abstract findOne(input: FindOneType<T>): Promise<T | null>;
     abstract findOneById(id: string | number, throwErrorOnNull: boolean): Promise<T | null>;
-    abstract create(model: Partial<T>, trx?: MysqlTransaction | PostgresTransaction): Promise<T | null>;
-    abstract massiveCreate(model: Partial<T>[], trx?: MysqlTransaction | PostgresTransaction): Promise<T[]>;
-    abstract updateRecord(model: T, trx?: MysqlTransaction | PostgresTransaction): Promise<T | null>;
-    abstract deleteByColumn(column: string, value: string | number | boolean, trx?: MysqlTransaction | PostgresTransaction): Promise<number> | Promise<number | null>;
-    abstract deleteRecord(model: T, trx?: MysqlTransaction | PostgresTransaction): Promise<T | null>;
+    abstract create(model: Partial<T>, trx?: TransactionType): Promise<T | null>;
+    abstract massiveCreate(model: Partial<T>[], trx?: TransactionType): Promise<T[]>;
+    abstract updateRecord(model: T, trx?: TransactionType): Promise<T | null>;
+    abstract deleteByColumn(column: string, value: string | number | boolean, trx?: TransactionType): Promise<number> | Promise<number | null>;
+    abstract deleteRecord(model: T, trx?: TransactionType): Promise<T | null>;
     abstract query(): MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
     abstract update(): MysqlUpdateQueryBuilder<T> | PostgresUpdateQueryBuilder<T>;
     abstract delete(): MysqlDeleteQueryBuilder<T> | PostgresDeleteQueryBuilder<T>;
@@ -1575,7 +1578,7 @@ declare class MysqlModelManager<T extends Model> extends AbstractModelManager<T>
      * @param {MysqlTransaction} trx - MysqlTransaction to be used on the save operation.
      * @returns Promise resolving to the saved model or null if saving fails.
      */
-    create(model: T, trx?: MysqlTransaction): Promise<T | null>;
+    create(model: T, trx?: TransactionType): Promise<T | null>;
     /**
      * Create multiple model instances in the database.
      *
@@ -1583,14 +1586,14 @@ declare class MysqlModelManager<T extends Model> extends AbstractModelManager<T>
      * @param {MysqlTransaction} trx - MysqlTransaction to be used on the save operation.
      * @returns Promise resolving to an array of saved models or null if saving fails.
      */
-    massiveCreate(models: T[], trx?: MysqlTransaction | PostgresTransaction): Promise<T[]>;
+    massiveCreate(models: T[], trx?: TransactionType): Promise<T[]>;
     /**
      * Update an existing model instance in the database.
      * @param {Model} model - Model instance to be updated.
      * @param {MysqlTransaction} trx - MysqlTransaction to be used on the update operation.
      * @returns Promise resolving to the updated model or null if updating fails.
      */
-    updateRecord(model: T, trx?: MysqlTransaction): Promise<T | null>;
+    updateRecord(model: T, trx?: TransactionType): Promise<T | null>;
     /**
      * @description Delete a record from the database from the given column and value.
      *
@@ -1599,7 +1602,7 @@ declare class MysqlModelManager<T extends Model> extends AbstractModelManager<T>
      * @param {MysqlTransaction} trx - MysqlTransaction to be used on the delete operation.
      * @returns Promise resolving to affected rows count
      */
-    deleteByColumn(column: string, value: string | number | boolean, trx?: MysqlTransaction): Promise<number>;
+    deleteByColumn(column: string, value: string | number | boolean, trx?: TransactionType): Promise<number>;
     /**
      * @description Delete a record from the database from the given model.
      *
@@ -1607,12 +1610,7 @@ declare class MysqlModelManager<T extends Model> extends AbstractModelManager<T>
      * @param {MysqlTransaction} trx - MysqlTransaction to be used on the delete operation.
      * @returns Promise resolving to the deleted model or null if deleting fails.
      */
-    deleteRecord(model: T, trx?: MysqlTransaction): Promise<T | null>;
-    /**
-     * @description Creates a new transaction.
-     * @returns {Promise<MysqlTransaction>} - Instance of MysqlTransaction.
-     */
-    startTransaction(): Promise<MysqlTransaction>;
+    deleteRecord(model: T, trx?: TransactionType): Promise<T | null>;
     /**
      * Create and return a new instance of the MysqlQueryBuilder for building more complex SQL queries.
      *
@@ -1668,7 +1666,7 @@ declare class PostgresModelManager<T extends Model> extends AbstractModelManager
      * @param {MysqlTransaction} trx - MysqlTransaction to be used on the save operation.
      * @returns Promise resolving to the saved model or null if saving fails.
      */
-    create(model: T, trx?: PostgresTransaction): Promise<T | null>;
+    create(model: T, trx?: TransactionType): Promise<T | null>;
     /**
      * Create multiple model instances in the database.
      *
@@ -1676,14 +1674,14 @@ declare class PostgresModelManager<T extends Model> extends AbstractModelManager
      * @param {PostgresTransaction} trx - MysqlTransaction to be used on the save operation.
      * @returns Promise resolving to an array of saved models or null if saving fails.
      */
-    massiveCreate(models: T[], trx?: PostgresTransaction): Promise<T[]>;
+    massiveCreate(models: T[], trx?: TransactionType): Promise<T[]>;
     /**
      * Update an existing model instance in the database.
      * @param {Model} model - Model instance to be updated.
      * @param {PostgresTransaction} trx - PostgresTransaction to be used on the update operation.
      * @returns Promise resolving to the updated model or null if updating fails.
      */
-    updateRecord(model: T, trx?: PostgresTransaction): Promise<T | null>;
+    updateRecord(model: T, trx?: TransactionType): Promise<T | null>;
     /**
      * @description Delete a record from the database from the given column and value.
      *
@@ -1692,7 +1690,7 @@ declare class PostgresModelManager<T extends Model> extends AbstractModelManager
      * @param {PostgresTransaction} trx - PostgresTransaction to be used on the delete operation.
      * @returns Promise resolving to affected rows count
      */
-    deleteByColumn(column: string, value: string | number | boolean, trx?: PostgresTransaction): Promise<number>;
+    deleteByColumn(column: string, value: string | number | boolean, trx?: TransactionType): Promise<number>;
     /**
      * @description Delete a record from the database from the given model.
      *
@@ -1700,12 +1698,7 @@ declare class PostgresModelManager<T extends Model> extends AbstractModelManager
      * @param {PostgresTransaction} trx - PostgresTransaction to be used on the delete operation.
      * @returns Promise resolving to the deleted model or null if deleting fails.
      */
-    deleteRecord(model: T, trx?: PostgresTransaction): Promise<T | null>;
-    /**
-     * @description Creates a new transaction.
-     * @returns {MysqlTransaction} - Instance of MysqlTransaction.
-     */
-    startTransaction(): Promise<PostgresTransaction>;
+    deleteRecord(model: T, trx?: TransactionType): Promise<T | null>;
     /**
      * Create and return a new instance of the MysqlQueryBuilder for building more complex SQL queries.
      *
@@ -1744,11 +1737,11 @@ declare class SqlDataSource extends DataSource {
     static tempConnect(input: DataSourceInput): Promise<SqlDataSource>;
     static getInstance(): SqlDataSource;
     /**
-     * @description Begins a transaction on the database
+     * @description Begins a transaction on the database and returns the transaction object
      * @param model
-     * @returns
+     * @returns {Promise<MysqlTransaction | PostgresTransaction>} trx
      */
-    startTransaction<T extends Model>(): Promise<MysqlTransaction> | Promise<PostgresTransaction>;
+    startTransaction(): Promise<MysqlTransaction | PostgresTransaction>;
     /**
      * @description Returns model manager for the provided model
      * @param model
@@ -1786,7 +1779,7 @@ declare class Model {
      * @param cb - function containing all the database operations on the provided connection details
      * @returns {Promise<void>}
      */
-    static useConnection(connectionDetails: DataSourceInput, cb: () => Promise<void>): Promise<void>;
+    static useConnection(connectionDetails: DataSourceInput, cb: (sqlDataSource: SqlDataSource) => Promise<void>): Promise<void>;
     /**
      * @description Gives a query instance for the given model
      * @param model
@@ -1818,31 +1811,31 @@ declare class Model {
      * @description Saves a new record to the database
      * @param model
      * @param {Model} modelData
-     * @param {MysqlTransaction & PostgresTransaction} trx
+     * @param trx
      * @returns {Promise<T | null>}
      */
-    static create<T extends Model>(this: new () => T | typeof Model, modelData: Partial<T>, trx?: MysqlTransaction & PostgresTransaction): Promise<T | null>;
+    static create<T extends Model>(this: new () => T | typeof Model, modelData: Partial<T>, trx?: MysqlTransaction | PostgresTransaction): Promise<T | null>;
     /**
      * @description Saves multiple records to the database
      * @param model
      * @param {Model} modelsData
-     * @param {MysqlTransaction & PostgresTransaction} trx
+     * @param trx
      * @returns {Promise<T[]>}
      */
-    static massiveCreate<T extends Model>(this: new () => T | typeof Model, modelsData: Partial<T>[], trx?: MysqlTransaction & PostgresTransaction): Promise<T[]>;
+    static massiveCreate<T extends Model>(this: new () => T | typeof Model, modelsData: Partial<T>[], trx?: MysqlTransaction | PostgresTransaction): Promise<T[]>;
     /**
      * @description Updates a record to the database
      * @param model
      * @param {Model} modelInstance
-     * @param {MysqlTransaction & PostgresTransaction} trx
+     * @param trx
      * @returns
      */
-    static updateRecord<T extends Model>(this: new () => T | typeof Model, modelInstance: T, trx?: MysqlTransaction & PostgresTransaction): Promise<T | null>;
+    static updateRecord<T extends Model>(this: new () => T | typeof Model, modelInstance: T, trx?: MysqlTransaction | PostgresTransaction): Promise<T | null>;
     /**
      * @description Updates records to the database
      * @param model
      * @param {Model} modelInstance
-     * @param {MysqlTransaction & PostgresTransaction} trx
+     * @param trx
      * @returns Update query builder
      */
     static update<T extends Model>(this: new () => T | typeof Model): MysqlUpdateQueryBuilder<T> | PostgresUpdateQueryBuilder<T>;
@@ -1850,7 +1843,7 @@ declare class Model {
      * @description Deletes multiple records from the database
      * @param model
      * @param {Model} modelInstance
-     * @param {MysqlTransaction & PostgresTransaction} trx
+     * @param trx
      * @returns
      */
     static delete<T extends Model>(this: new () => T | typeof Model): MysqlDeleteQueryBuilder<T> | PostgresDeleteQueryBuilder<T>;
@@ -1858,20 +1851,20 @@ declare class Model {
      * @description Deletes a record to the database
      * @param model
      * @param {Model} modelInstance
-     * @param {MysqlTransaction & PostgresTransaction} trx
+     * @param trx
      * @returns
      */
-    static deleteRecord<T extends Model>(this: new () => T | typeof Model, modelInstance: T, trx?: MysqlTransaction & PostgresTransaction): Promise<T | null>;
+    static deleteRecord<T extends Model>(this: new () => T | typeof Model, modelInstance: T, trx?: MysqlTransaction | PostgresTransaction): Promise<T | null>;
     /**
      * @description Deletes a record to the database
      * @param model
      * @param {Model} modelInstance
      * @param {string} column
      * @param {string | number | boolean} value
-     * @param {MysqlTransaction & PostgresTransaction} trx
+     * @param trx
      * @returns
      */
-    static deleteByColumn<T extends Model>(this: new () => T | typeof Model, column: string, value: string | number | boolean, trx?: MysqlTransaction & PostgresTransaction): Promise<number>;
+    static deleteByColumn<T extends Model>(this: new () => T | typeof Model, column: string, value: string | number | boolean, trx?: MysqlTransaction | PostgresTransaction): Promise<number>;
     /**
      * @description Merges the provided data with the instance
      * @param instance

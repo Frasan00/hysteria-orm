@@ -70,9 +70,9 @@ DB_LOGS=true # default false
 ### Establishing a Connection
 
 ```typescript
-import { SqlDataSource, DatasourceInput } from "hysteria-orm";
+import { SqlDataSource, DataSourceInput } from "hysteria-orm";
 
-const mysqlConfig: DatasourceInput = {
+const mysqlConfig: DataSourceInput = {
     type: 'mysql' | 'postgres',
     host: HOST,
     port: PORT,
@@ -82,7 +82,8 @@ const mysqlConfig: DatasourceInput = {
     logs: true, // query-logs (optional) - default: false
 }
 
-const sql = await SqlDatasource.connect(mysqlConfig, () => console.log("Connected to the database"));
+// Config can be omitted, in that case envs will be used to enstablish the connection 
+const sql = await SqlDataSource.connect(mysqlConfig, () => console.log("Connected to the database"));
 ```
 
 ### Create a model
@@ -265,7 +266,7 @@ await User.useConnection(
     database: "test",
     logs: true,
 },
-async () => {
+async (_sql: SqlDataSource) => {
     console.log("Connected to the database");
     const users = await User.find();
     console.log(users);

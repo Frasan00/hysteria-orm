@@ -8,15 +8,13 @@ import selectTemplate from "../Resources/Query/SELECT";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
 
 export class MysqlTransaction {
-  protected tableName: string;
   protected mysql: Pool;
   protected mysqlConnection!: PoolConnection;
   protected logs: boolean;
 
-  constructor(mysql: Pool, tableName: string, logs: boolean) {
+  constructor(mysql: Pool, logs: boolean) {
     this.logs = logs;
     this.mysql = mysql;
-    this.tableName = tableName;
   }
 
   public async queryInsert<T extends Model>(
@@ -34,7 +32,9 @@ export class MysqlTransaction {
       params,
     );
     const insertId = rows.insertId;
-    const select = selectTemplate(this.tableName, "mysql").selectById(insertId);
+    const select = selectTemplate(metadata.tableName, "mysql").selectById(
+      insertId,
+    );
     const [savedModel] =
       await this.mysqlConnection.query<RowDataPacket[]>(select);
     Object.assign(savedModel[0], { metadata });
@@ -46,7 +46,7 @@ export class MysqlTransaction {
     params: any[],
   ): Promise<T[]> {
     if (!this.mysql) {
-      throw new Error("PostgresTransaction not started.");
+      throw new Error("MysqlTransaction not started.");
     }
 
     try {
@@ -59,6 +59,54 @@ export class MysqlTransaction {
       return rows.map(
         (row: T) => parseDatabaseDataIntoModelResponse([row]) as T,
       );
+    } catch (error) {
+      queryError(error);
+      throw new Error(
+        "Failed to execute massive insert query in transaction " + error,
+      );
+    }
+  }
+
+  public async massiveUpdateQuery(
+    query: string,
+    params: any[],
+  ): Promise<number> {
+    if (!this.mysql) {
+      throw new Error("MysqlTransaction not started.");
+    }
+
+    try {
+      log(query, this.logs, params);
+      const rows: any = await this.mysql.query(query, params);
+      if (!rows.length) {
+        throw new Error("Failed to update");
+      }
+
+      return rows[0].affectedRows;
+    } catch (error) {
+      queryError(error);
+      throw new Error(
+        "Failed to execute massive insert query in transaction " + error,
+      );
+    }
+  }
+
+  public async massiveDeleteQuery(
+    query: string,
+    params: any[],
+  ): Promise<number> {
+    if (!this.mysql) {
+      throw new Error("MysqlTransaction not started.");
+    }
+
+    log(query, this.logs, params);
+    try {
+      const rows: any = await this.mysql.query(query, params);
+      if (!rows.length) {
+        throw new Error("Failed to update");
+      }
+
+      return rows[0].affectedRows;
     } catch (error) {
       queryError(error);
       throw new Error(

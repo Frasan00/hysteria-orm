@@ -6,8 +6,8 @@ import { HasMany } from "./Sql/Models/Relations/HasMany";
 import { BelongsTo } from "./Sql/Models/Relations/BelongsTo";
 import { DataSourceInput } from "./Datasource";
 import { Migration } from "./Sql/Migrations/Migration";
-import { SqlDataSource } from "./Sql/SqlDataSource";
-import { testCreate, testDelete, testQuery, testUpdate } from "./test";
+import { SqlDataSource } from "./Sql/SqlDatasource";
+import { testCreate, testDelete, testQuery, testTrx, testUpdate } from "./test";
 import runMigrationsConnector from "./hysteria-cli/migrationRunConnector";
 
 export class User extends Model {
@@ -43,17 +43,20 @@ class Post extends Model {
 
 (async () => {
   console.log("Hysteria ORM");
-  // await SqlDataSource.connect();
+  await SqlDataSource.connect();
   // Migrations
   // migrationCreateConnector("users");
   // migrationCreateConnector("posts");
-  await runMigrationsConnector();
+  // await runMigrationsConnector();
   // await rollbackMigrationConnector();
 
   // await testQuery();
   // await testCreate();
   // await testUpdate();
   // await testDelete();
+  // await testTrx();
+
+  process.exit(0);
 })();
 
 export {

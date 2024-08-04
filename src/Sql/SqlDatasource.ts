@@ -4,6 +4,8 @@ import pg from "pg";
 import { Model } from "./Models/Model";
 import { MysqlModelManager } from "./Mysql/MysqlModelManager";
 import { PostgresModelManager } from "./Postgres/PostgresModelManager";
+import { MysqlTransaction } from "./Mysql/MysqlTransaction";
+import { PostgresTransaction } from "./Postgres/PostgresTransaction";
 
 type ModelManager<T extends Model> =
   | MysqlModelManager<T>
@@ -76,7 +78,6 @@ export class SqlDataSource extends DataSource {
     input: DataSourceInput,
   ): Promise<SqlDataSource> {
     const sqlDataSource = new this(input);
-
     switch (input.type) {
       case "mysql":
         sqlDataSource.sqlPool = createPool({
@@ -115,13 +116,33 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
-   * @description Begins a transaction on the database
+   * @description Begins a transaction on the database and returns the transaction object
    * @param model
-   * @returns
+   * @returns {Promise<MysqlTransaction | PostgresTransaction>} trx
    */
-  // TODO fix this
-  public startTransaction<T extends Model>() {
-    return this.getModelManager(Model).startTransaction();
+  public async startTransaction(): Promise<
+    MysqlTransaction | PostgresTransaction
+  > {
+    switch (this.type) {
+      case "mysql" || "mariadb":
+        const trxMysql = new MysqlTransaction(
+          this.sqlPool as mysql.Pool,
+          this.logs,
+        );
+        await trxMysql.start();
+        return trxMysql;
+      case "postgres":
+        const trxPg = new PostgresTransaction(
+          this.sqlPool as pg.Pool,
+          this.logs,
+        );
+        await trxPg.start();
+        return trxPg;
+      default:
+        throw new Error(
+          "Error while starting transaction: invalid sql database type provided",
+        );
+    }
   }
 
   /**

@@ -7,7 +7,7 @@ import { PostgresDeleteQueryBuilder } from "../Postgres/PostgresDeleteQueryBuild
 import { PostgresTransaction } from "../Postgres/PostgresTransaction";
 import { PostgresUpdateQueryBuilder } from "../Postgres/PostgresUpdateQueryBuilder";
 import { QueryBuilders } from "../QueryBuilder/QueryBuilder";
-import { SqlDataSource } from "../SqlDataSource";
+import { SqlDataSource } from "../SqlDatasource";
 import { FindOneType, FindType } from "./ModelManager/ModelManagerTypes";
 
 export interface Metadata {
@@ -48,12 +48,16 @@ export class Model {
    */
   public static async useConnection(
     connectionDetails: DataSourceInput,
-    cb: () => Promise<void>,
+    cb: (sqlDataSource: SqlDataSource) => Promise<void>,
   ) {
     const newSqlInstance = await SqlDataSource.tempConnect(connectionDetails);
     this.sqlInstance = newSqlInstance;
-    await cb().then(() => newSqlInstance.closeConnection());
-    this.sqlInstance = SqlDataSource.getInstance();
+    await cb(this.sqlInstance).then(() => newSqlInstance.closeConnection());
+    try {
+      this.sqlInstance = SqlDataSource.getInstance();
+    } catch (error) {
+      throw new Error("No SqlDataSource instance found, are you sure you are connected to the database with SqlDataSource.connect()?\n" + String(error));
+    }
   }
 
   /**
@@ -124,13 +128,13 @@ export class Model {
    * @description Saves a new record to the database
    * @param model
    * @param {Model} modelData
-   * @param {MysqlTransaction & PostgresTransaction} trx
+   * @param trx
    * @returns {Promise<T | null>}
    */
   public static create<T extends Model>(
     this: new () => T | typeof Model,
     modelData: Partial<T>,
-    trx?: MysqlTransaction & PostgresTransaction,
+    trx?: MysqlTransaction | PostgresTransaction,
   ): Promise<T | null> {
     const typeofModel = this as unknown as typeof Model;
     return typeofModel.sqlInstance
@@ -142,13 +146,13 @@ export class Model {
    * @description Saves multiple records to the database
    * @param model
    * @param {Model} modelsData
-   * @param {MysqlTransaction & PostgresTransaction} trx
+   * @param trx
    * @returns {Promise<T[]>}
    */
   public static massiveCreate<T extends Model>(
     this: new () => T | typeof Model,
     modelsData: Partial<T>[],
-    trx?: MysqlTransaction & PostgresTransaction,
+    trx?: MysqlTransaction | PostgresTransaction,
   ): Promise<T[]> {
     const typeofModel = this as unknown as typeof Model;
     typeofModel.establishConnection();
@@ -161,13 +165,13 @@ export class Model {
    * @description Updates a record to the database
    * @param model
    * @param {Model} modelInstance
-   * @param {MysqlTransaction & PostgresTransaction} trx
+   * @param trx
    * @returns
    */
   public static updateRecord<T extends Model>(
     this: new () => T | typeof Model,
     modelInstance: T,
-    trx?: MysqlTransaction & PostgresTransaction,
+    trx?: MysqlTransaction | PostgresTransaction,
   ): Promise<T | null> {
     const typeofModel = this as unknown as typeof Model;
     typeofModel.establishConnection();
@@ -180,7 +184,7 @@ export class Model {
    * @description Updates records to the database
    * @param model
    * @param {Model} modelInstance
-   * @param {MysqlTransaction & PostgresTransaction} trx
+   * @param trx
    * @returns Update query builder
    */
   public static update<T extends Model>(
@@ -195,7 +199,7 @@ export class Model {
    * @description Deletes multiple records from the database
    * @param model
    * @param {Model} modelInstance
-   * @param {MysqlTransaction & PostgresTransaction} trx
+   * @param trx
    * @returns
    */
   public static delete<T extends Model>(
@@ -210,13 +214,13 @@ export class Model {
    * @description Deletes a record to the database
    * @param model
    * @param {Model} modelInstance
-   * @param {MysqlTransaction & PostgresTransaction} trx
+   * @param trx
    * @returns
    */
   public static deleteRecord<T extends Model>(
     this: new () => T | typeof Model,
     modelInstance: T,
-    trx?: MysqlTransaction & PostgresTransaction,
+    trx?: MysqlTransaction | PostgresTransaction,
   ): Promise<T | null> {
     const typeofModel = this as unknown as typeof Model;
     typeofModel.establishConnection();
@@ -231,14 +235,14 @@ export class Model {
    * @param {Model} modelInstance
    * @param {string} column
    * @param {string | number | boolean} value
-   * @param {MysqlTransaction & PostgresTransaction} trx
+   * @param trx
    * @returns
    */
   public static deleteByColumn<T extends Model>(
     this: new () => T | typeof Model,
     column: string,
     value: string | number | boolean,
-    trx?: MysqlTransaction & PostgresTransaction,
+    trx?: MysqlTransaction | PostgresTransaction,
   ): Promise<number> {
     const typeofModel = this as unknown as typeof Model;
     typeofModel.establishConnection();

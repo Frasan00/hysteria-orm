@@ -48,7 +48,6 @@ export class PostgresDeleteQueryBuilder<
    * @returns The updated records.
    */
   public async performDelete(trx?: PostgresTransaction): Promise<T[]> {
-    // TODO: Implement transactions
     this.whereQuery = this.whereTemplate.convertPlaceHolderToValue(
       this.whereQuery,
     );
@@ -56,6 +55,10 @@ export class PostgresDeleteQueryBuilder<
       this.whereQuery,
       this.joinQuery,
     );
+
+    if (trx) {
+      return await trx.massiveDeleteQuery(query, this.whereParams);
+    }
 
     log(query, this.logs, this.whereParams);
     try {
