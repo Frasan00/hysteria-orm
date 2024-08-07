@@ -6,7 +6,7 @@ import { MysqlUpdateQueryBuilder } from "../Mysql/MysqlUpdateQueryBuilder";
 import { PostgresDeleteQueryBuilder } from "../Postgres/PostgresDeleteQueryBuilder";
 import { PostgresTransaction } from "../Postgres/PostgresTransaction";
 import { PostgresUpdateQueryBuilder } from "../Postgres/PostgresUpdateQueryBuilder";
-import { QueryBuilders } from "../QueryBuilder/QueryBuilder";
+import { OneOptions, QueryBuilders } from "../QueryBuilder/QueryBuilder";
 import { SqlDataSource } from "../SqlDatasource";
 import { FindOneType, FindType } from "./ModelManager/ModelManagerTypes";
 
@@ -56,7 +56,10 @@ export class Model {
     try {
       this.sqlInstance = SqlDataSource.getInstance();
     } catch (error) {
-      throw new Error("No SqlDataSource instance found, are you sure you are connected to the database with SqlDataSource.connect()?\n" + String(error));
+      throw new Error(
+        "No SqlDataSource instance found, are you sure you are connected to the database with SqlDataSource.connect()?\n" +
+          String(error),
+      );
     }
   }
 
@@ -71,6 +74,25 @@ export class Model {
     const typeofModel = this as unknown as typeof Model;
     typeofModel.establishConnection();
     return typeofModel.sqlInstance.getModelManager<T>(typeofModel).query();
+  }
+
+  /**
+   * @description Finds the first record in the database
+   * @param model
+   * @param {FindType} options
+   * @returns {Promise<T[]>}
+   */
+  public static async first<T extends Model>(
+    this: new () => T | typeof Model,
+    options: OneOptions = { throwErrorOnNull: false },
+  ): Promise<T | null> {
+    const typeofModel = this as unknown as typeof Model;
+    typeofModel.establishConnection();
+    return await typeofModel.sqlInstance
+      .getModelManager<T>(typeofModel)
+      .query()
+      .limit(1)
+      .one(options);
   }
 
   /**
@@ -299,5 +321,61 @@ export class Model {
     if (!this.sqlInstance) {
       this.sqlInstance = SqlDataSource.getInstance();
     }
+  }
+
+  public static async beforeFetch<T extends Model>(
+    this: typeof Model,
+    models: T[] | T,
+  ) {
+    return;
+  }
+
+  public static async afterFetch<T extends Model>(
+    this: typeof Model,
+    models: T[] | T,
+  ) {
+    return;
+  }
+
+  public static async beforeCreate<T extends Model>(
+    this: typeof Model,
+    models: T[] | T,
+  ) {
+    return;
+  }
+
+  public static async afterCreate<T extends Model>(
+    this: typeof Model,
+    models: T[] | T,
+  ) {
+    return;
+  }
+
+  public static async beforeUpdate<T extends Model>(
+    this: typeof Model,
+    models: T[] | T,
+  ) {
+    return;
+  }
+
+  public static async afterUpdate<T extends Model>(
+    this: typeof Model,
+    models: T[] | T,
+  ) {
+    return;
+  }
+
+  public static async beforeDelete<T extends Model>(
+    this: typeof Model,
+    models: T[] | T,
+  ) {
+    return;
+  }
+
+  public static async afterDelete<T extends Model>(
+    this: typeof Model,
+    models: T[] | T,
+  ) {
+    return;
   }
 }

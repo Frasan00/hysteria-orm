@@ -97,16 +97,13 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
         this.logs,
       );
 
-      return parseDatabaseDataIntoModelResponse([modelInstance]) as T;
+      return (await parseDatabaseDataIntoModelResponse(
+        [modelInstance],
+        this.model,
+      )) as T;
     } catch (error) {
       throw new Error("Query failed " + error);
     }
-  }
-
-  public async first(
-    options: OneOptions = { throwErrorOnNull: false },
-  ): Promise<T | null> {
-    return await this.limit(1).one(options);
   }
 
   public async many(): Promise<T[]> {
@@ -132,23 +129,34 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
       const result = await this.pgPool.query(query, this.params);
       const rows = result.rows;
 
-      return Promise.all(
-        rows.map(async (row) => {
-          const modelData = row as T;
-          const modelInstance = new this.model() as T;
-          this.mergeRawPacketIntoModel(modelInstance, modelData);
+      const modelPromises = rows.map(async (row) => {
+        const modelInstance = new this.model() as T;
+        this.mergeRawPacketIntoModel(modelInstance, row);
 
-          await this.postgresModelManagerUtils.parseQueryBuilderRelations(
-            modelInstance,
-            this.model,
-            this.relations,
-            this.pgPool,
-            this.logs,
-          );
+        // relations parsing on the queried model
+        await this.postgresModelManagerUtils.parseQueryBuilderRelations(
+          modelInstance,
+          this.model,
+          this.relations,
+          this.pgPool,
+          this.logs,
+        );
 
-          return parseDatabaseDataIntoModelResponse([modelInstance]) as T;
-        }),
+        return modelInstance as T;
+      });
+
+      const models = await Promise.all(modelPromises);
+      const serializedModels = await await parseDatabaseDataIntoModelResponse(
+        models,
+        this.model,
       );
+      if (!serializedModels) {
+        return [];
+      }
+
+      return Array.isArray(serializedModels)
+        ? serializedModels
+        : [serializedModels];
     } catch (error: any) {
       throw new Error("Query failed: " + error.message);
     }
@@ -177,7 +185,8 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
       limit,
       +total[0].extraColumns["total"] as number,
     );
-    let data = parseDatabaseDataIntoModelResponse(models) || [];
+    let data =
+      (await parseDatabaseDataIntoModelResponse(models, this.model)) || [];
     if (Array.isArray(data)) {
       data = data.filter((model) => model !== null);
     }

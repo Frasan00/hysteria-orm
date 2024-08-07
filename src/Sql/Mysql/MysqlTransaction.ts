@@ -44,6 +44,7 @@ export class MysqlTransaction {
   public async massiveInsertQuery<T extends Model>(
     query: string,
     params: any[],
+    typeofModel: typeof Model,
   ): Promise<T[]> {
     if (!this.mysql) {
       throw new Error("MysqlTransaction not started.");
@@ -56,9 +57,10 @@ export class MysqlTransaction {
         params,
       );
 
-      return rows.map(
-        (row: T) => parseDatabaseDataIntoModelResponse([row]) as T,
-      );
+      return (await parseDatabaseDataIntoModelResponse(
+        rows as T[],
+        typeofModel,
+      )) as T[];
     } catch (error) {
       queryError(error);
       throw new Error(

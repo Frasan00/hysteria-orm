@@ -52,17 +52,23 @@ export class MysqlModelManager<
           select.selectAll,
         );
 
-        const models =
-          rows.map((row) => {
-            const model = row as T;
-            model.extraColumns = this.modelInstance.extraColumns;
-            return parseDatabaseDataIntoModelResponse([model]) as T;
-          }) || [];
-        return (
-          (models.map((model) =>
-            parseDatabaseDataIntoModelResponse([model]),
-          ) as T[]) || []
+        const models = rows.map((row) => {
+          const model = row as T;
+          model.extraColumns = this.modelInstance.extraColumns;
+          return model;
+        });
+
+        const serializedModels = await parseDatabaseDataIntoModelResponse(
+          models,
+          this.model,
         );
+        if (!serializedModels) {
+          return [];
+        }
+
+        return Array.isArray(serializedModels)
+          ? serializedModels
+          : [serializedModels];
       }
 
       const { query, params } =
@@ -70,26 +76,37 @@ export class MysqlModelManager<
 
       log(query, this.logs, params);
       const [rows] = await this.mysqlPool.query<RowDataPacket[]>(query, params);
-      return await Promise.all(
-        rows.map(async (row) => {
-          const model = new this.model();
-          const modelData = row as T;
+      const modelsPromises = rows.map(async (row) => {
+        const model = new this.model();
+        const modelData = row as T;
 
-          // merge model data into model
-          Object.assign(model, modelData);
+        // merge model data into model
+        Object.assign(model, modelData);
 
-          // relations parsing on the queried model
-          await this.mysqlModelManagerUtils.parseRelationInput(
-            model as T,
-            this.model.metadata,
-            input,
-            this.mysqlPool,
-            this.logs,
-          );
+        // relations parsing on the queried model
+        await this.mysqlModelManagerUtils.parseRelationInput(
+          model as T,
+          this.model.metadata,
+          input,
+          this.mysqlPool,
+          this.logs,
+        );
 
-          return parseDatabaseDataIntoModelResponse([model]) as T;
-        }),
+        return model as T;
+      });
+
+      const models = (await Promise.all(modelsPromises)) as T[];
+      const serializedModels = await parseDatabaseDataIntoModelResponse(
+        models,
+        this.model,
       );
+      if (!serializedModels) {
+        return [];
+      }
+
+      return Array.isArray(serializedModels)
+        ? serializedModels
+        : [serializedModels];
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -131,7 +148,10 @@ export class MysqlModelManager<
         this.logs,
       );
 
-      return parseDatabaseDataIntoModelResponse([model]) as T;
+      return (await parseDatabaseDataIntoModelResponse(
+        [model],
+        this.model,
+      )) as T;
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -166,7 +186,10 @@ export class MysqlModelManager<
       }
 
       const modelData = rows[0] as T;
-      return parseDatabaseDataIntoModelResponse([modelData]) as T;
+      return (await parseDatabaseDataIntoModelResponse(
+        [modelData],
+        this.model,
+      )) as T;
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -222,7 +245,7 @@ export class MysqlModelManager<
     );
 
     if (trx) {
-      return await trx.massiveInsertQuery<T>(query, params);
+      return await trx.massiveInsertQuery<T>(query, params, this.model);
     }
 
     try {

@@ -322,7 +322,7 @@ declare class MysqlTransaction {
     protected logs: boolean;
     constructor(mysql: Pool, logs: boolean);
     queryInsert<T extends Model>(query: string, params: any[], metadata: Metadata): Promise<T>;
-    massiveInsertQuery<T extends Model>(query: string, params: any[]): Promise<T[]>;
+    massiveInsertQuery<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T[]>;
     massiveUpdateQuery(query: string, params: any[]): Promise<number>;
     massiveDeleteQuery(query: string, params: any[]): Promise<number>;
     queryUpdate<T extends Model>(query: string, params?: any[]): Promise<number>;
@@ -484,9 +484,9 @@ declare class PostgresTransaction {
     protected logs: boolean;
     constructor(pgPool: Pool$1, logs: boolean);
     queryInsert<T extends Model>(query: string, params: any[], metadata: Metadata): Promise<T>;
-    massiveInsertQuery<T extends Model>(query: string, params: any[]): Promise<T[]>;
-    massiveUpdateQuery<T extends Model>(query: string, params: any[]): Promise<T[]>;
-    massiveDeleteQuery<T extends Model>(query: string, params: any[]): Promise<T[]>;
+    massiveInsertQuery<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T[]>;
+    massiveUpdateQuery<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T[]>;
+    massiveDeleteQuery<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T[]>;
     queryUpdate<T extends Model>(query: string, params?: any[]): Promise<number | null>;
     queryDelete(query: string, params?: any[]): Promise<number | null>;
     /**
@@ -760,7 +760,6 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @returns A Promise resolving to the first result or null.
      */
     one(options?: OneOptions): Promise<T | null>;
-    first(options?: OneOptions): Promise<T | null>;
     /**
      * @description Executes the query and retrieves multiple results.
      * @returns A Promise resolving to an array of results.
@@ -1024,7 +1023,6 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     selectRaw(...columns: string[]): PostgresQueryBuilder<T>;
     raw(query: string, params?: any[]): Promise<pg.QueryResult<any>>;
     one(options?: OneOptions): Promise<T | null>;
-    first(options?: OneOptions): Promise<T | null>;
     many(): Promise<T[]>;
     /**
      * @description Paginates the query results with the given page and limit, it removes any previous limit - offset call
@@ -1280,11 +1278,6 @@ declare abstract class QueryBuilder<T extends Model> {
      * @returns A Promise resolving to an array of results.
      */
     abstract many(): Promise<T[]>;
-    /**
-     * @description Executes the query and retrieves the first result.
-     * @returns A Promise resolving to the first result or null.
-     */
-    abstract first(options: OneOptions): Promise<T | null>;
     /**
      * @description Executes the query and retrieves multiple results.
      * @returns A Promise resolving to an array of results.
@@ -1787,6 +1780,13 @@ declare class Model {
      */
     static query<T extends Model>(this: new () => T | typeof Model): QueryBuilders<T>;
     /**
+     * @description Finds the first record in the database
+     * @param model
+     * @param {FindType} options
+     * @returns {Promise<T[]>}
+     */
+    static first<T extends Model>(this: new () => T | typeof Model, options?: OneOptions): Promise<T | null>;
+    /**
      * @description Finds records for the given model
      * @param model
      * @param {FindType} options
@@ -1891,6 +1891,14 @@ declare class Model {
      * @returns
      */
     private static establishConnection;
+    static beforeFetch<T extends Model>(this: typeof Model, models: T[] | T): Promise<void>;
+    static afterFetch<T extends Model>(this: typeof Model, models: T[] | T): Promise<void>;
+    static beforeCreate<T extends Model>(this: typeof Model, models: T[] | T): Promise<void>;
+    static afterCreate<T extends Model>(this: typeof Model, models: T[] | T): Promise<void>;
+    static beforeUpdate<T extends Model>(this: typeof Model, models: T[] | T): Promise<void>;
+    static afterUpdate<T extends Model>(this: typeof Model, models: T[] | T): Promise<void>;
+    static beforeDelete<T extends Model>(this: typeof Model, models: T[] | T): Promise<void>;
+    static afterDelete<T extends Model>(this: typeof Model, models: T[] | T): Promise<void>;
 }
 
 declare class ColumnOptionsBuilder {

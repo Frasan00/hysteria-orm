@@ -102,7 +102,7 @@ export async function testUpdate() {
       });
       console.log(users);
 
-      const user = await User.query().first();
+      const user = await User.first();
       if (!user) {
         console.log("No user found");
         return;
@@ -141,7 +141,7 @@ export async function testUpdate() {
       });
       console.log(users);
 
-      const user = await User.query().first();
+      const user = await User.first();
       if (!user) {
         console.log("No user found");
         return;
@@ -162,84 +162,84 @@ export async function testUpdate() {
 }
 
 export async function testQuery() {
-  // Postgres
-  // await User.useConnection(
-  //   {
-  //     type: "postgres",
-  //     host: "localhost",
-  //     username: "root",
-  //     password: "root",
-  //     database: "test",
-  //     port: 5432,
-  //     logs: true,
-  //   },
-  //   async () => {
-  //     console.log("Postgres connection opened");
+  //  Postgres
+  await User.useConnection(
+    {
+      type: "postgres",
+      host: "localhost",
+      username: "root",
+      password: "root",
+      database: "test",
+      port: 5432,
+      logs: true,
+    },
+    async () => {
+      console.log("Postgres connection opened");
 
-  //     const firstUser = await User.query().select().where("id", 12).first();
+      const firstUser = await User.first();
 
-  //     // Basic find
-  //     const userById = await User.find({
-  //       where: {
-  //         id: 1,
-  //       },
-  //     });
+      // Basic find
+      const userById = await User.find({
+        where: {
+          id: 1,
+        },
+      });
 
-  //     // Query with limit
-  //     const limitedUsers = await User.query().limit(4).many();
+      // Query with limit
+      const limitedUsers = await User.query().limit(4).many();
 
-  //     // Query with custom column fullName
-  //     const usersWithFullName = await User.query()
-  //       .selectRaw("CONCAT(name, ' ', email) as fullName")
-  //       .one();
+      // Query with custom column fullName
+      const usersWithFullName = await User.query()
+        .selectRaw("CONCAT(name, ' ', email) as fullName")
+        .one();
 
-  //     // Complex where conditions
-  //     const complexUsers = await User.query()
-  //       .whereBuilder((queryBuilder) => {
-  //         queryBuilder.andWhereBuilder((innerQueryBuilder) => {
-  //           innerQueryBuilder.where("name", "John Doe");
-  //           innerQueryBuilder.where("email", "john@gmail.com");
-  //         });
-  //         queryBuilder.orWhereBuilder((innerQuery) => {
-  //           innerQuery.where("name", "Jane Doe");
-  //           innerQuery.where("email", "jane@gmail.com");
-  //         });
-  //       })
-  //       .many();
+      // Complex where conditions
+      const complexUsers = await User.query()
+        .whereBuilder((queryBuilder) => {
+          queryBuilder.andWhereBuilder((innerQueryBuilder) => {
+            innerQueryBuilder.where("name", "John Doe");
+            innerQueryBuilder.where("email", "john@gmail.com");
+          });
+          queryBuilder.orWhereBuilder((innerQuery) => {
+            innerQuery.where("name", "Jane Doe");
+            innerQuery.where("email", "jane@gmail.com");
+          });
+        })
+        .many();
 
-  //     // Order by
-  //     const orderedUsers = await User.query().orderBy(["name"], "ASC").many();
+      // Order by
+      const orderedUsers = await User.query().orderBy(["name"], "ASC").many();
 
-  //     // Group by
-  //     const groupedUsers = await User.query()
-  //       .selectRaw("name", "COUNT(*) as count")
-  //       .groupBy("id", "name")
-  //       .many();
+      // Group by
+      const groupedUsers = await User.query()
+        .selectRaw("name", "COUNT(*) as count")
+        .groupBy("id", "name")
+        .many();
 
-  //     // Having
-  //     const havingUsers = await User.query()
-  //       .selectRaw("name", "COUNT(*) as count")
-  //       .groupBy("name")
-  //       .many();
+      // Having
+      const havingUsers = await User.query()
+        .selectRaw("name", "COUNT(*) as count")
+        .groupBy("name")
+        .many();
 
-  //     // Pagination
-  //     const paginatedUsers = await User.query()
-  //       .whereNotNull("signupSource")
-  //       .paginate(1, 10); // page - limit
+      // Pagination
+      const paginatedUsers = await User.query()
+        .whereNotNull("signupSource")
+        .paginate(1, 10); // page - limit
 
-  //     console.log("userById:", userById);
-  //     console.log("limitedUsers:", limitedUsers);
-  //     console.log("complexUsers:", complexUsers);
-  //     console.log("orderedUsers:", orderedUsers);
-  //     console.log("groupedUsers:", groupedUsers);
-  //     console.log("havingUsers:", havingUsers);
-  //     console.log("paginatedUsers:", paginatedUsers);
-  //     console.log("usersWithFullName:", usersWithFullName);
-  //     console.log("firstUser:", firstUser);
+      console.log("userById:", userById);
+      console.log("limitedUsers:", limitedUsers);
+      console.log("complexUsers:", complexUsers);
+      console.log("orderedUsers:", orderedUsers);
+      console.log("groupedUsers:", groupedUsers);
+      console.log("havingUsers:", havingUsers);
+      console.log("paginatedUsers:", paginatedUsers);
+      console.log("usersWithFullName:", usersWithFullName);
+      console.log("firstUser:", firstUser);
 
-  //     console.log("Postgres connection closed");
-  //   },
-  // );
+      console.log("Postgres connection closed");
+    },
+  );
 
   // Mysql
   await User.useConnection(
@@ -255,7 +255,7 @@ export async function testQuery() {
     async () => {
       console.log("Mysql connection opened");
 
-      const firstUser = await User.query().first();
+      const firstUser = await User.first();
 
       // Basic find
       const userById = await User.find({
@@ -333,9 +333,7 @@ export async function testDelete() {
     },
     async () => {
       console.log("Postgres connection opened");
-      const user = await User.deleteRecord(
-        (await User.query().first()) as User,
-      );
+      const user = await User.deleteRecord((await User.first()) as User);
       console.log("record delete", user);
 
       const deletedUsers = await User.delete()
@@ -360,9 +358,7 @@ export async function testDelete() {
     },
     async () => {
       console.log("Mysql connection opened");
-      const user = await User.deleteRecord(
-        (await User.query().first()) as User,
-      );
+      const user = await User.deleteRecord((await User.first()) as User);
       console.log("record delete", user);
 
       const deletedUsers = await User.delete()

@@ -50,7 +50,7 @@ class Post extends Model {
   // await runMigrationsConnector();
   // await rollbackMigrationConnector();
 
-  // await testQuery();
+  await testQuery();
   // await testCreate();
   // await testUpdate();
   // await testDelete();

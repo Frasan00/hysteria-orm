@@ -2,9 +2,10 @@ import { fromSnakeToCamelCase } from "../CaseUtils";
 import { Model } from "./Models/Model";
 import { Relation } from "./Models/Relations/Relation";
 
-export function parseDatabaseDataIntoModelResponse<T extends Model>(
+export async function parseDatabaseDataIntoModelResponse<T extends Model>(
   models: T[],
-): T | T[] | null {
+  typeofModel: typeof Model,
+): Promise<T | T[] | null> {
   if (!models.length) {
     return null;
   }
@@ -21,6 +22,7 @@ export function parseDatabaseDataIntoModelResponse<T extends Model>(
   });
 
   const parsedModels = models.map((model) => serializeModel(model));
+  await typeofModel.afterFetch(parsedModels);
   return parsedModels.length === 1 ? parsedModels[0] : parsedModels;
 }
 

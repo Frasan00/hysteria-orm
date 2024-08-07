@@ -57,13 +57,13 @@ export class PostgresDeleteQueryBuilder<
     );
 
     if (trx) {
-      return await trx.massiveDeleteQuery(query, this.whereParams);
+      return await trx.massiveDeleteQuery(query, this.whereParams, this.model);
     }
 
     log(query, this.logs, this.whereParams);
     try {
       const result = await this.pgPool.query(query, this.whereParams);
-      return parseDatabaseDataIntoModelResponse(result.rows);
+      return parseDatabaseDataIntoModelResponse(result.rows, this.model);
     } catch (error) {
       queryError(query);
       throw new Error("Query failed " + error);

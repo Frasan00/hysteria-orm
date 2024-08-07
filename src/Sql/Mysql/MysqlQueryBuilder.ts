@@ -88,17 +88,14 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
         this.logs,
       );
 
-      return parseDatabaseDataIntoModelResponse([modelInstance]) as T;
+      return (await parseDatabaseDataIntoModelResponse(
+        [modelInstance],
+        this.model,
+      )) as T;
     } catch (error) {
       queryError(query);
       throw new Error("Query failed " + error);
     }
-  }
-
-  public async first(
-    options: OneOptions = { throwErrorOnNull: false },
-  ): Promise<T | null> {
-    return await this.limit(1).one(options);
   }
 
   /**
@@ -130,23 +127,34 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
         this.params,
       );
 
-      return await Promise.all(
-        rows.map(async (row) => {
-          const modelInstance = new this.model() as T;
-          this.mergeRawPacketIntoModel(modelInstance, row);
+      const modelPromises = rows.map(async (row) => {
+        const modelInstance = new this.model() as T;
+        this.mergeRawPacketIntoModel(modelInstance, row);
 
-          // relations parsing on the queried model
-          await this.mysqlModelManagerUtils.parseQueryBuilderRelations(
-            modelInstance,
-            Model.metadata,
-            this.relations,
-            this.mysqlPool,
-            this.logs,
-          );
+        // relations parsing on the queried model
+        await this.mysqlModelManagerUtils.parseQueryBuilderRelations(
+          modelInstance,
+          Model.metadata,
+          this.relations,
+          this.mysqlPool,
+          this.logs,
+        );
 
-          return parseDatabaseDataIntoModelResponse([modelInstance]) as T;
-        }),
+        return modelInstance as T;
+      });
+
+      const models = await Promise.all(modelPromises);
+      const serializedModels = await await parseDatabaseDataIntoModelResponse(
+        models,
+        this.model,
       );
+      if (!serializedModels) {
+        return [];
+      }
+
+      return Array.isArray(serializedModels)
+        ? serializedModels
+        : [serializedModels];
     } catch (error) {
       queryError(query);
       throw new Error("Query failed " + error);
@@ -181,7 +189,8 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
       limit,
       +total[0].extraColumns["total"] as number,
     );
-    let data = parseDatabaseDataIntoModelResponse(models) || [];
+    let data =
+      (await parseDatabaseDataIntoModelResponse(models, this.model)) || [];
     if (Array.isArray(data)) {
       data = data.filter((model) => model !== null);
     }

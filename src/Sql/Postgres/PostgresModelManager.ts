@@ -51,17 +51,16 @@ export class PostgresModelManager<
           select.selectAll,
         );
 
-        const models =
-          rows.map((row) => {
+        const modelsPromises =
+          rows.map(async (row) => {
             const model = row as T;
             model.extraColumns = this.modelInstance.extraColumns;
-            return parseDatabaseDataIntoModelResponse([model]) as T;
+            return (await parseDatabaseDataIntoModelResponse(
+              [model],
+              this.model,
+            )) as T;
           }) || [];
-        return (
-          (models.map((model) =>
-            parseDatabaseDataIntoModelResponse([model]),
-          ) as T[]) || []
-        );
+        return await Promise.all(modelsPromises);
       }
 
       const { query, params } =
@@ -69,26 +68,37 @@ export class PostgresModelManager<
       log(query, this.logs, params);
 
       const { rows }: QueryResult<T> = await this.pgPool.query(query, params);
-      return Promise.all(
-        rows.map(async (row) => {
-          const model = new this.model();
-          const modelData = row as T;
+      const modelPromises = rows.map(async (row) => {
+        const model = new this.model();
+        const modelData = row as T;
 
-          // merge model data into model
-          Object.assign(model, modelData);
+        // merge model data into model
+        Object.assign(model, modelData);
 
-          // relations parsing on the queried model
-          await this.postgresModelManagerUtils.parseRelationInput(
-            model as T,
-            this.model,
-            input,
-            this.pgPool,
-            this.logs,
-          );
+        // relations parsing on the queried model
+        await this.postgresModelManagerUtils.parseRelationInput(
+          model as T,
+          this.model,
+          input,
+          this.pgPool,
+          this.logs,
+        );
 
-          return parseDatabaseDataIntoModelResponse([model]) as T;
-        }),
-      );
+        return model as T;
+      });
+
+      const models = await Promise.all(modelPromises);
+      const serializedModels = (await parseDatabaseDataIntoModelResponse(
+        models,
+        this.model,
+      )) as T;
+      if (!serializedModels) {
+        return [];
+      }
+
+      return Array.isArray(serializedModels)
+        ? serializedModels
+        : [serializedModels];
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -128,7 +138,10 @@ export class PostgresModelManager<
         this.logs,
       );
 
-      return parseDatabaseDataIntoModelResponse([model]) as T;
+      return (await parseDatabaseDataIntoModelResponse(
+        [model],
+        this.model,
+      )) as T;
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -165,7 +178,10 @@ export class PostgresModelManager<
         return null;
       }
 
-      return parseDatabaseDataIntoModelResponse([modelData]) as T;
+      return (await parseDatabaseDataIntoModelResponse(
+        [modelData],
+        this.model,
+      )) as T;
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -200,7 +216,10 @@ export class PostgresModelManager<
         return null;
       }
 
-      return parseDatabaseDataIntoModelResponse([insertedModel]) as T;
+      return (await parseDatabaseDataIntoModelResponse(
+        [insertedModel],
+        this.model,
+      )) as T;
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -221,7 +240,7 @@ export class PostgresModelManager<
     );
 
     if (trx) {
-      return await trx.massiveInsertQuery<T>(query, params);
+      return await trx.massiveInsertQuery<T>(query, params, this.model);
     }
 
     try {
@@ -234,9 +253,11 @@ export class PostgresModelManager<
         return [];
       }
 
-      return insertedModel.map(
-        (model) => parseDatabaseDataIntoModelResponse([model]) as T,
+      const insertModelPromise = insertedModel.map(
+        async (model) =>
+          (await parseDatabaseDataIntoModelResponse([model], this.model)) as T,
       );
+      return await Promise.all(insertModelPromise);
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);

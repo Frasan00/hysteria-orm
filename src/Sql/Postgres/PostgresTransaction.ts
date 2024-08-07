@@ -48,6 +48,7 @@ export class PostgresTransaction {
   public async massiveInsertQuery<T extends Model>(
     query: string,
     params: any[],
+    typeofModel: typeof Model,
   ): Promise<T[]> {
     if (!this.pgClient) {
       throw new Error("PostgresTransaction not started.");
@@ -57,9 +58,10 @@ export class PostgresTransaction {
       log(query, this.logs, params);
       const { rows } = await this.pgClient.query(query, params);
 
-      return rows.map(
-        (row: T) => parseDatabaseDataIntoModelResponse([row]) as T,
-      );
+      return (await parseDatabaseDataIntoModelResponse(
+        rows as T[],
+        typeofModel,
+      )) as T[];
     } catch (error) {
       queryError(error);
       throw new Error(
@@ -71,6 +73,7 @@ export class PostgresTransaction {
   public async massiveUpdateQuery<T extends Model>(
     query: string,
     params: any[],
+    typeofModel: typeof Model,
   ): Promise<T[]> {
     if (!this.pgClient) {
       throw new Error("PostgresTransaction not started.");
@@ -80,9 +83,10 @@ export class PostgresTransaction {
       log(query, this.logs, params);
       const { rows } = await this.pgClient.query(query, params);
 
-      return rows.map(
-        (row: T) => parseDatabaseDataIntoModelResponse([row]) as T,
-      );
+      return (await parseDatabaseDataIntoModelResponse(
+        rows as T[],
+        typeofModel,
+      )) as T[];
     } catch (error) {
       queryError(error);
       throw new Error(
@@ -94,6 +98,7 @@ export class PostgresTransaction {
   public async massiveDeleteQuery<T extends Model>(
     query: string,
     params: any[],
+    typeofModel: typeof Model,
   ): Promise<T[]> {
     if (!this.pgClient) {
       throw new Error("PostgresTransaction not started.");
@@ -103,9 +108,10 @@ export class PostgresTransaction {
       log(query, this.logs, params);
       const { rows } = await this.pgClient.query(query, params);
 
-      return rows.map(
-        (row: T) => parseDatabaseDataIntoModelResponse([row]) as T,
-      );
+      return (await parseDatabaseDataIntoModelResponse(
+        rows as T[],
+        typeofModel,
+      )) as T[];
     } catch (error) {
       queryError(error);
       throw new Error(

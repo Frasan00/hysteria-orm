@@ -67,7 +67,7 @@ export class PostgresUpdateQueryBuilder<
 
     params.push(...this.whereParams);
     if (trx) {
-      return await trx.massiveUpdateQuery(query, params);
+      return await trx.massiveUpdateQuery(query, params, this.model);
     }
 
     log(query, this.logs, params);
@@ -77,7 +77,7 @@ export class PostgresUpdateQueryBuilder<
         throw new Error("Failed to update");
       }
 
-      return parseDatabaseDataIntoModelResponse(rows);
+      return parseDatabaseDataIntoModelResponse(rows, this.model);
     } catch (error) {
       queryError(query);
       throw new Error("Query failed " + error);

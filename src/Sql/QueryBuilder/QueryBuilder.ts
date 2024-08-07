@@ -76,12 +76,6 @@ export abstract class QueryBuilder<T extends Model> {
   public abstract many(): Promise<T[]>;
 
   /**
-   * @description Executes the query and retrieves the first result.
-   * @returns A Promise resolving to the first result or null.
-   */
-  public abstract first(options: OneOptions): Promise<T | null>;
-
-  /**
    * @description Executes the query and retrieves multiple results.
    * @returns A Promise resolving to an array of results.
    */
