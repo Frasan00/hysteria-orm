@@ -9,6 +9,7 @@ import { Migration } from "./Sql/Migrations/Migration";
 import { SqlDataSource } from "./Sql/SqlDatasource";
 import { testCreate, testDelete, testQuery, testTrx, testUpdate } from "./test";
 import runMigrationsConnector from "./hysteria-cli/migrationRunConnector";
+import { DateTime } from "luxon";
 
 export class User extends Model {
   public id!: number;
@@ -16,7 +17,7 @@ export class User extends Model {
   public email!: string;
   public signupSource!: string;
   public isActive!: boolean;
-  public createdAt!: Date;
+  public createdAt!: DateTime;
 
   // public posts: HasMany | Post[] = new HasMany("posts", "user_id");
 

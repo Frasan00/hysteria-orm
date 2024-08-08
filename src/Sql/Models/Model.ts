@@ -286,34 +286,6 @@ export class Model {
   }
 
   /**
-   * @description Generates a model instance with the provided data
-   * @param this
-   * @param data
-   * @returns
-   */
-  public static generateModel<T extends Model>(
-    this: new () => T,
-    data: Partial<T>,
-  ): T {
-    const instance = new this() as T;
-    Model.setProps(instance, data);
-    return instance;
-  }
-
-  /**
-   * @description Generates model instances with the provided data
-   * @param this
-   * @param data
-   * @returns
-   */
-  public static generateModels<T extends Model>(
-    this: new () => T,
-    data: Partial<T>[],
-  ): T[] {
-    return data.map((d) => Model.generateModel.call(this, d) as T);
-  }
-
-  /**
    * @description Establishes a connection to the database instantiated from the SqlDataSource.connect method
    * @returns
    */

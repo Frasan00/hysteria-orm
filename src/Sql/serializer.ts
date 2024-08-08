@@ -4,7 +4,7 @@ import { Relation } from "./Models/Relations/Relation";
 
 export async function parseDatabaseDataIntoModelResponse<T extends Model>(
   models: T[],
-  typeofModel: typeof Model,
+  _typeofModel: typeof Model,
 ): Promise<T | T[] | null> {
   if (!models.length) {
     return null;
@@ -22,7 +22,6 @@ export async function parseDatabaseDataIntoModelResponse<T extends Model>(
   });
 
   const parsedModels = models.map((model) => serializeModel(model));
-  await typeofModel.afterFetch(parsedModels);
   return parsedModels.length === 1 ? parsedModels[0] : parsedModels;
 }
 
@@ -46,14 +45,14 @@ function serializeModel<T extends Record<string, any>>(model: T): T {
     const originalValue = model[key];
     const camelCaseKey = fromSnakeToCamelCase(key);
 
-    const isObject = typeof originalValue === "object";
+    const isNestedObject =
+      typeof originalValue === "object" && !Object.keys(originalValue);
     const isNotArray = !Array.isArray(originalValue);
     const isNotRelation = !(originalValue instanceof Relation);
-    const isNotDate = !(originalValue instanceof Date);
 
-    if (originalValue && isObject && isNotArray && isNotRelation && isNotDate) {
+    if (originalValue && isNestedObject && isNotArray && isNotRelation) {
       camelCaseModel[camelCaseKey] = serializeModel(originalValue);
-    } else if (isNotRelation && isNotDate) {
+    } else if (isNotRelation) {
       camelCaseModel[camelCaseKey] = originalValue;
     }
   });

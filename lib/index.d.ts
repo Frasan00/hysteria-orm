@@ -6,6 +6,7 @@ import * as mysql2_typings_mysql_lib_protocol_packets_FieldPacket from 'mysql2/t
 import * as mysql2_typings_mysql_lib_protocol_packets_ProcedurePacket from 'mysql2/typings/mysql/lib/protocol/packets/ProcedurePacket';
 import * as mysql2_typings_mysql_lib_protocol_packets_ResultSetHeader from 'mysql2/typings/mysql/lib/protocol/packets/ResultSetHeader';
 import * as mysql2_typings_mysql_lib_protocol_packets_OkPacket from 'mysql2/typings/mysql/lib/protocol/packets/OkPacket';
+import { DateTime } from 'luxon';
 
 type DataSourceType = "mysql" | "postgres" | "mariadb";
 /**
@@ -1891,14 +1892,6 @@ declare class Model {
      * @returns
      */
     private static establishConnection;
-    static beforeFetch<T extends Model>(this: typeof Model, models: T[] | T): Promise<void>;
-    static afterFetch<T extends Model>(this: typeof Model, models: T[] | T): Promise<void>;
-    static beforeCreate<T extends Model>(this: typeof Model, models: T[] | T): Promise<void>;
-    static afterCreate<T extends Model>(this: typeof Model, models: T[] | T): Promise<void>;
-    static beforeUpdate<T extends Model>(this: typeof Model, models: T[] | T): Promise<void>;
-    static afterUpdate<T extends Model>(this: typeof Model, models: T[] | T): Promise<void>;
-    static beforeDelete<T extends Model>(this: typeof Model, models: T[] | T): Promise<void>;
-    static afterDelete<T extends Model>(this: typeof Model, models: T[] | T): Promise<void>;
 }
 
 declare class ColumnOptionsBuilder {
@@ -2159,7 +2152,7 @@ declare class User extends Model {
     email: string;
     signupSource: string;
     isActive: boolean;
-    createdAt: Date;
+    createdAt: DateTime;
     static metadata: Metadata;
 }
 

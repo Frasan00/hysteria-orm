@@ -25,6 +25,7 @@
   "license": "MIT",
   "devDependencies": {
     "@adonisjs/eslint-config": "^1.2.0",
+    "@types/luxon": "^3.4.2",
     "@types/node": "^20.10.2",
     "@types/pg": "^8.10.9",
     "@types/sqlstring": "^2.3.2",
@@ -39,6 +40,7 @@
   },
   "dependencies": {
     "commander": "^12.1.0",
+    "luxon": "^3.5.0",
     "sqlstring": "^2.3.3",
     "ts-node": "^10.9.2",
     "winston": "^3.11.0"
