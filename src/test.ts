@@ -179,6 +179,12 @@ export async function testQuery() {
 
       const firstUser = await User.first();
 
+      const joinedUser = await User.query()
+        .selectRaw("COUNT(*) as count")
+        .join("posts", "id", "userId")
+        .where("posts.id", 1)
+        .one();
+
       const usersWithPosts = await User.query().addRelations(["posts"]).many();
       const postsWithUser = await Post.query().addRelations(["user"]).many();
       const usersWithPostsFind = await User.find({
@@ -261,6 +267,7 @@ export async function testQuery() {
       console.log("postsWithUser:", postsWithUser);
       console.log("usersWithPostsFind:", usersWithPostsFind);
       console.log("postsWithUserFind:", postsWithUserFind);
+      console.log("joinedUser:", joinedUser);
 
       console.log("Postgres connection closed");
     },
@@ -281,6 +288,11 @@ export async function testQuery() {
       console.log("Mysql connection opened");
 
       const firstUser = await User.first();
+
+      const joinedUser = await User.query()
+        .join("posts", "id", "userId")
+        .where("posts.id", 1)
+        .one();
 
       const usersWithPosts = await User.query().addRelations(["posts"]).many();
       const postsWithUser = await Post.query().addRelations(["user"]).many();
@@ -363,6 +375,7 @@ export async function testQuery() {
       console.log("postsWithUser:", postsWithUser);
       console.log("usersWithPostsFind:", usersWithPostsFind);
       console.log("postsWithUserFind:", postsWithUserFind);
+      console.log("joinedUser:", joinedUser);
 
       console.log("Mysql connection closed");
     },

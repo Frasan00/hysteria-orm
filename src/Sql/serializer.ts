@@ -53,6 +53,16 @@ function serializeModel<T extends Record<string, any>>(
       return;
     }
 
+    // Remove instances of Relation from the serialized model
+    if (
+      originalValue.hasOwnProperty("type") &&
+      originalValue.hasOwnProperty("relatedModel") &&
+      originalValue.hasOwnProperty("foreignKey")
+    ) {
+      return;
+    }
+
+    // Serialize the relations
     const camelCaseKey = fromSnakeToCamelCase(key);
     if (relations && tempModel && relations.includes(key)) {
       const relation = tempModel[key] as Relation;
@@ -94,7 +104,12 @@ function serializeModel<T extends Record<string, any>>(
       }
     }
 
-    if (typeof originalValue === "object") {
+    // Serialize the rest of the model
+    if (
+      typeof originalValue === "object" &&
+      Object.keys(originalValue).length &&
+      !Array.isArray(originalValue)
+    ) {
       const camelCaseObject = Object.keys(originalValue).reduce(
         (acc, objKey) => {
           acc[fromSnakeToCamelCase(objKey)] = originalValue[objKey];
@@ -104,6 +119,10 @@ function serializeModel<T extends Record<string, any>>(
       );
 
       camelCaseModel[camelCaseKey] = camelCaseObject;
+      return;
+    }
+
+    if (Array.isArray(originalValue)) {
       return;
     }
 

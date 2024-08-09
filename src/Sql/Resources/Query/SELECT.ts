@@ -2,6 +2,19 @@ import { camelToSnakeCase } from "../../../CaseUtils";
 import * as sqlString from "sqlstring";
 import { DataSourceType } from "../../../Datasource";
 
+const commonmSelectMethods = [
+  "*",
+  "COUNT",
+  "DISTINCT",
+  "CONCAT",
+  "GROUP_CONCAT",
+  "AVG",
+  "MAX",
+  "MIN",
+  "SUM",
+  "AS",
+  "DISTINCTROW",
+];
 const selectTemplate = (table: string, dbType: DataSourceType) => {
   const escapeIdentifier = (identifier: string) => {
     switch (dbType) {
@@ -20,7 +33,10 @@ const selectTemplate = (table: string, dbType: DataSourceType) => {
       `SELECT * FROM ${table} WHERE id = ${sqlString.escape(id)}`,
     selectColumns: (...columns: string[]) => {
       columns = columns.map((column) => {
-        if (column === "*" || column.toLowerCase().includes("as")) {
+        if (
+          commonmSelectMethods.includes(column.toUpperCase()) ||
+          column.includes("(")
+        ) {
           return column;
         }
         return escapeIdentifier(camelToSnakeCase(column));

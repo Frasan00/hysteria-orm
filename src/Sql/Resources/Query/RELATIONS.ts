@@ -7,7 +7,6 @@ function relationTemplates<T extends Model>(
   modelTypeOf: typeof Model,
   relation: Relation,
 ) {
-  console.log("model", model);
   const primaryKey = modelTypeOf.metadata.primaryKey as keyof T;
   const foreignKey = relation.foreignKey as keyof T;
   const relatedModel = relation.relatedModel;

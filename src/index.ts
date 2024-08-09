@@ -42,7 +42,6 @@ export class Post extends Model {
 }
 
 (async () => {
-  console.log("Hysteria ORM");
   await SqlDataSource.connect();
   // Migrations
   // migrationCreateConnector("users");

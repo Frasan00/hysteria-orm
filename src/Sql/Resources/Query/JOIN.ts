@@ -1,25 +1,21 @@
-import * as sqlString from "sqlstring";
+import { camelToSnakeCase } from "../../../CaseUtils";
 
 const joinTemplate = (
-  _table: string,
+  table: string,
   relatedTable: string,
   primaryColumn: string,
   foreignColumn: string,
 ) => {
   return {
     innerJoin: () => {
-      return `\nINNER JOIN ${sqlString.escape(
-        relatedTable,
-      )} ON ${sqlString.escape(primaryColumn)} = ${sqlString.escape(
+      return `\nINNER JOIN ${relatedTable} ON ${relatedTable}.${camelToSnakeCase(
         foreignColumn,
-      )}`;
+      )} = ${table}.${camelToSnakeCase(primaryColumn)}`;
     },
     leftJoin: () => {
-      return `\nLEFT JOIN ${sqlString.escape(
-        relatedTable,
-      )} ON ${sqlString.escape(primaryColumn)} = ${sqlString.escape(
+      return `\nLEFT JOIN ${relatedTable} ON ${relatedTable}.${camelToSnakeCase(
         foreignColumn,
-      )}`;
+      )} = ${table}.${camelToSnakeCase(primaryColumn)}`;
     },
   };
 };
