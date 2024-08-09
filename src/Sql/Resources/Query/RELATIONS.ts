@@ -1,43 +1,54 @@
-/**
- * @description Queries to retrieve model's relations from the related relation type
- */
 import { Relation, RelationType } from "../../Models/Relations/Relation";
 import { Model } from "../../Models/Model";
-import { camelToSnakeCase } from "../../../CaseUtils";
-import * as sqlString from "sqlstring";
+import { camelToSnakeCase, fromSnakeToCamelCase } from "../../../CaseUtils";
 
-function relationTemplates<T extends Model>(model: T, relation: Relation) {
-  const primaryKey = model.metadata.primaryKey as keyof T;
+function relationTemplates<T extends Model>(
+  model: T,
+  modelTypeOf: typeof Model,
+  relation: Relation,
+) {
+  console.log("model", model);
+  const primaryKey = modelTypeOf.metadata.primaryKey as keyof T;
+  const foreignKey = relation.foreignKey as keyof T;
+  const relatedModel = relation.relatedModel;
+  const foreignKeyValue =
+    model[fromSnakeToCamelCase(foreignKey) as keyof T] ||
+    model[camelToSnakeCase(foreignKey) as keyof T] ||
+    model[foreignKey];
+  const primaryKeyValue =
+    model[fromSnakeToCamelCase(primaryKey) as keyof T] ||
+    model[camelToSnakeCase(primaryKey) as keyof T] ||
+    model[primaryKey];
+
   switch (relation.type) {
     case RelationType.hasOne:
-      return `SELECT * FROM ${relation.relatedModel} WHERE ${sqlString.escape(
-        relation.relatedModel,
-      )}.${camelToSnakeCase(
-        sqlString.escape(relation.foreignKey as string),
-      )} = ${camelToSnakeCase(
-        sqlString.escape(model[primaryKey] as string),
-      )} LIMIT 1;`;
+      if (!foreignKeyValue || !primaryKeyValue) {
+        console.error(
+          `Invalid foreignKey or primaryKey value: foreignKey=${foreignKeyValue}, primaryKey=${primaryKeyValue}`,
+        );
+        throw new Error("Invalid foreignKey or primaryKey value");
+      }
+
+      return `SELECT * FROM ${relatedModel} WHERE ${relatedModel}.${camelToSnakeCase(
+        foreignKey,
+      )} = ${primaryKeyValue} LIMIT 1;`;
 
     case RelationType.belongsTo:
-      return `SELECT * FROM ${relation.relatedModel} WHERE ${sqlString.escape(
-        relation.relatedModel,
-      )}.${primaryKey.toString()} = ${
-        model[
-          camelToSnakeCase(
-            sqlString.escape(relation.foreignKey as string),
-          ) as keyof T
-        ]
-      };`;
+      if (!foreignKeyValue) {
+        throw new Error("Invalid foreignKey value");
+      }
+      return `SELECT * FROM ${relatedModel} WHERE ${relatedModel}.${primaryKey.toString()} = ${foreignKeyValue};`;
 
     case RelationType.hasMany:
-      return `SELECT * FROM ${relation.relatedModel} WHERE ${sqlString.escape(
-        relation.relatedModel,
-      )}.${camelToSnakeCase(
-        relation.foreignKey as string,
-      )} = ${camelToSnakeCase(sqlString.escape(model[primaryKey] as string))};`;
+      if (!primaryKeyValue) {
+        throw new Error("Invalid primaryKey value");
+      }
+      return `SELECT * FROM ${relatedModel} WHERE ${relatedModel}.${camelToSnakeCase(
+        foreignKey,
+      )} = ${primaryKeyValue};`;
 
     default:
-      return "";
+      throw new Error(`Unknown relation type: ${relation.type}`);
   }
 }
 

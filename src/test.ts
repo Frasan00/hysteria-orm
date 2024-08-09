@@ -5,7 +5,7 @@ import { BelongsTo } from "./Sql/Models/Relations/BelongsTo";
 import { DataSourceInput } from "./Datasource";
 import { Migration } from "./Sql/Migrations/Migration";
 import { SqlDataSource } from "./Sql/SqlDatasource";
-import { User } from ".";
+import { User, Post } from ".";
 import { DateTime } from "luxon";
 
 export async function testCreate() {
@@ -179,6 +179,21 @@ export async function testQuery() {
 
       const firstUser = await User.first();
 
+      const usersWithPosts = await User.query().addRelations(["posts"]).many();
+      const postsWithUser = await Post.query().addRelations(["user"]).many();
+      const usersWithPostsFind = await User.find({
+        where: {
+          id: 1,
+        },
+        relations: ["posts"],
+      });
+      const postsWithUserFind = await Post.find({
+        where: {
+          id: 1,
+        },
+        relations: ["user"],
+      });
+
       // Basic find
       const userById = await User.find({
         where: {
@@ -242,6 +257,10 @@ export async function testQuery() {
       console.log("usersWithFullName:", usersWithFullName);
       console.log("firstUser:", firstUser);
       console.log("dateUsers:", dateUsers);
+      console.log("usersWithPosts:", usersWithPosts);
+      console.log("postsWithUser:", postsWithUser);
+      console.log("usersWithPostsFind:", usersWithPostsFind);
+      console.log("postsWithUserFind:", postsWithUserFind);
 
       console.log("Postgres connection closed");
     },
@@ -262,6 +281,22 @@ export async function testQuery() {
       console.log("Mysql connection opened");
 
       const firstUser = await User.first();
+
+      const usersWithPosts = await User.query().addRelations(["posts"]).many();
+      const postsWithUser = await Post.query().addRelations(["user"]).many();
+
+      const usersWithPostsFind = await User.find({
+        where: {
+          id: 1,
+        },
+        relations: ["posts"],
+      });
+      const postsWithUserFind = await Post.find({
+        where: {
+          id: 1,
+        },
+        relations: ["user"],
+      });
 
       // Basic find
       const userById = await User.find({
@@ -324,6 +359,10 @@ export async function testQuery() {
       console.log("usersWithFullName:", usersWithFullName);
       console.log("firstUser:", firstUser);
       console.log("dateUsers:", dateUsers);
+      console.log("usersWithPosts:", usersWithPosts);
+      console.log("postsWithUser:", postsWithUser);
+      console.log("usersWithPostsFind:", usersWithPostsFind);
+      console.log("postsWithUserFind:", postsWithUserFind);
 
       console.log("Mysql connection closed");
     },

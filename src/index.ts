@@ -19,7 +19,7 @@ export class User extends Model {
   public isActive!: boolean;
   public createdAt!: DateTime;
 
-  // public posts: HasMany | Post[] = new HasMany("posts", "user_id");
+  public posts: HasMany | Post[] = new HasMany("posts", "user_id");
 
   public static metadata: Metadata = {
     primaryKey: "id",
@@ -27,14 +27,13 @@ export class User extends Model {
   };
 }
 
-// TODO test with trx and relations
-class Post extends Model {
+export class Post extends Model {
   public id!: number;
   public title!: string;
   public content!: string;
   public userId!: number;
 
-  // public user: HasOne | User = new HasOne("user", "user_id");
+  public user: BelongsTo | User = new BelongsTo("users", "userId");
 
   public static metadata: Metadata = {
     primaryKey: "id",

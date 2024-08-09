@@ -256,7 +256,7 @@ export default class MySqlModelManagerUtils<T extends Model> {
   // Parses and fills input relations directly into the model
   public async parseRelationInput(
     model: T,
-    metadata: Metadata,
+    modelTypeOf: typeof Model,
     input: FindOneType<T>,
     mysqlConnection: Pool,
     logs: boolean,
@@ -265,8 +265,10 @@ export default class MySqlModelManagerUtils<T extends Model> {
       return;
     }
 
-    if (!metadata.primaryKey) {
-      throw new Error("Model does not have a primary key");
+    if (!modelTypeOf.metadata.primaryKey) {
+      throw new Error(
+        `Model ${modelTypeOf.metadata.tableName} does not have a primary key`,
+      );
     }
 
     try {
@@ -274,16 +276,16 @@ export default class MySqlModelManagerUtils<T extends Model> {
         async (inputRelation: any) => {
           const relation = this.getRelationFromModel(
             model,
-            metadata,
+            modelTypeOf.metadata,
             inputRelation,
           );
-          const relationQuery = relationTemplates(model, relation);
+          const relationQuery = relationTemplates(model, modelTypeOf, relation);
 
+          log(relationQuery, logs);
           const [relatedModels] =
             await mysqlConnection.query<RowDataPacket[]>(relationQuery);
           if (relatedModels.length === 0) {
             Object.assign(model, { [inputRelation as keyof T]: null });
-            log(relationQuery, logs);
             return;
           }
 
@@ -291,12 +293,10 @@ export default class MySqlModelManagerUtils<T extends Model> {
             Object.assign(model, {
               [inputRelation as keyof T]: relatedModels[0],
             });
-            log(relationQuery, logs);
             return;
           }
 
           Object.assign(model, { [inputRelation as keyof T]: relatedModels });
-          log(relationQuery, logs);
         },
       );
 
@@ -310,7 +310,7 @@ export default class MySqlModelManagerUtils<T extends Model> {
   // Parses and fills input relations directly into the model
   public async parseQueryBuilderRelations(
     model: T,
-    metadata: Metadata,
+    modelTypeOf: typeof Model,
     input: string[],
     mysqlConnection: Pool,
     logs: boolean,
@@ -319,7 +319,7 @@ export default class MySqlModelManagerUtils<T extends Model> {
       return;
     }
 
-    if (!metadata.primaryKey) {
+    if (!modelTypeOf.metadata.primaryKey) {
       throw new Error("Model does not have a primary key");
     }
 
@@ -328,16 +328,16 @@ export default class MySqlModelManagerUtils<T extends Model> {
       const relationPromises = input.map(async (inputRelation: string) => {
         const relation = this.getRelationFromModel(
           model,
-          metadata,
+          modelTypeOf.metadata,
           inputRelation,
         );
-        relationQuery = relationTemplates(model, relation);
+        relationQuery = relationTemplates(model, modelTypeOf, relation);
 
+        log(relationQuery, logs);
         const [relatedModels] =
           await mysqlConnection.query<RowDataPacket[]>(relationQuery);
         if (relatedModels.length === 0) {
           Object.assign(model, { [inputRelation as keyof T]: null });
-          log(relationQuery, logs);
           return;
         }
 
@@ -345,12 +345,10 @@ export default class MySqlModelManagerUtils<T extends Model> {
           Object.assign(model, {
             [inputRelation as keyof T]: relatedModels[0],
           });
-          log(relationQuery, logs);
           return;
         }
 
         Object.assign(model, { [inputRelation as keyof T]: relatedModels });
-        log(relationQuery, logs);
       });
 
       await Promise.all(relationPromises);

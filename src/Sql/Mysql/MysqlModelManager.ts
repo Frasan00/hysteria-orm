@@ -86,7 +86,7 @@ export class MysqlModelManager<
         // relations parsing on the queried model
         await this.mysqlModelManagerUtils.parseRelationInput(
           model as T,
-          this.model.metadata,
+          this.model,
           input,
           this.mysqlPool,
           this.logs,
@@ -142,7 +142,7 @@ export class MysqlModelManager<
       // relations parsing on the queried model
       await this.mysqlModelManagerUtils.parseRelationInput(
         model as T,
-        this.model.metadata,
+        this.model,
         input,
         this.mysqlPool,
         this.logs,

@@ -739,8 +739,8 @@ declare class MySqlModelManagerUtils<T extends Model> {
     parseDelete(tableName: string, column: string, value: string | number | boolean): string;
     private isFindType;
     private getRelationFromModel;
-    parseRelationInput(model: T, metadata: Metadata, input: FindOneType<T>, mysqlConnection: Pool, logs: boolean): Promise<void>;
-    parseQueryBuilderRelations(model: T, metadata: Metadata, input: string[], mysqlConnection: Pool, logs: boolean): Promise<void>;
+    parseRelationInput(model: T, modelTypeOf: typeof Model, input: FindOneType<T>, mysqlConnection: Pool, logs: boolean): Promise<void>;
+    parseQueryBuilderRelations(model: T, modelTypeOf: typeof Model, input: string[], mysqlConnection: Pool, logs: boolean): Promise<void>;
 }
 
 declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
@@ -2139,7 +2139,16 @@ declare class User extends Model {
     signupSource: string;
     isActive: boolean;
     createdAt: DateTime;
+    posts: HasMany | Post[];
+    static metadata: Metadata;
+}
+declare class Post extends Model {
+    id: number;
+    title: string;
+    content: string;
+    userId: number;
+    user: BelongsTo | User;
     static metadata: Metadata;
 }
 
-export { BelongsTo, type DataSourceInput, HasMany, HasOne, Migration, Model, SqlDataSource, User };
+export { BelongsTo, type DataSourceInput, HasMany, HasOne, Migration, Model, Post, SqlDataSource, User };

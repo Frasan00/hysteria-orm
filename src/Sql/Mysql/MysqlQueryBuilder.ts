@@ -82,7 +82,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
       this.mergeRawPacketIntoModel(modelInstance, rows[0]);
       await this.mysqlModelManagerUtils.parseQueryBuilderRelations(
         modelInstance,
-        this.model.metadata,
+        this.model,
         this.relations,
         this.mysqlPool,
         this.logs,
@@ -134,7 +134,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
         // relations parsing on the queried model
         await this.mysqlModelManagerUtils.parseQueryBuilderRelations(
           modelInstance,
-          Model.metadata,
+          this.model,
           this.relations,
           this.mysqlPool,
           this.logs,

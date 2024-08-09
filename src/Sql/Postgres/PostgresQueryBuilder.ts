@@ -146,7 +146,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
       });
 
       const models = await Promise.all(modelPromises);
-      const serializedModels = await await parseDatabaseDataIntoModelResponse(
+      const serializedModels = await parseDatabaseDataIntoModelResponse(
         models,
         this.model,
       );

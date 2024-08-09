@@ -247,14 +247,13 @@ export default class PostgresModelManagerUtils<T extends Model> {
             inputRelation,
             modelTypeOf,
           );
-          const relationQuery = relationTemplates(model, relation);
-          console.log(relationQuery);
+          const relationQuery = relationTemplates(model, modelTypeOf, relation);
 
+          log(relationQuery, logs);
           const { rows }: QueryResult<QueryResultRow> =
             await pgPool.query(relationQuery);
           if (rows.length === 0) {
             Object.assign(model, { [inputRelation as keyof T]: null });
-            log(relationQuery, logs);
             return;
           }
 
@@ -262,7 +261,6 @@ export default class PostgresModelManagerUtils<T extends Model> {
             Object.assign(model, {
               [inputRelation as keyof T]: rows[0],
             });
-            log(relationQuery, logs);
             return;
           }
 
@@ -286,12 +284,14 @@ export default class PostgresModelManagerUtils<T extends Model> {
     pgConnection: pg.Pool,
     logs: boolean,
   ): Promise<void> {
-    if (input.length === 0) {
+    if (!input.length) {
       return;
     }
 
     if (!modelTypeOf.metadata.primaryKey) {
-      throw new Error("Model does not have a primary key");
+      throw new Error(
+        `Model ${modelTypeOf.metadata.tableName} does not have a primary key`,
+      );
     }
 
     let relationQuery: string = "";
@@ -302,9 +302,11 @@ export default class PostgresModelManagerUtils<T extends Model> {
           inputRelation,
           modelTypeOf,
         );
-        relationQuery = relationTemplates(model, relation);
 
-        // Changed to use pgConnection.query instead of mysqlConnection.query
+        // make the relation field name camelCase
+        relationQuery = relationTemplates(model, modelTypeOf, relation);
+
+        log(relationQuery, logs);
         const result = await pgConnection.query(relationQuery);
         const relatedModels = result.rows;
 
@@ -317,7 +319,6 @@ export default class PostgresModelManagerUtils<T extends Model> {
         } else {
           Object.assign(model, { [inputRelation as keyof T]: relatedModels });
         }
-        log(relationQuery, logs);
       });
 
       await Promise.all(relationPromises);
