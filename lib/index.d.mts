@@ -1874,20 +1874,6 @@ declare class Model {
      */
     static setProps<T extends Model>(instance: T, data: Partial<T>): void;
     /**
-     * @description Generates a model instance with the provided data
-     * @param this
-     * @param data
-     * @returns
-     */
-    static generateModel<T extends Model>(this: new () => T, data: Partial<T>): T;
-    /**
-     * @description Generates model instances with the provided data
-     * @param this
-     * @param data
-     * @returns
-     */
-    static generateModels<T extends Model>(this: new () => T, data: Partial<T>[]): T[];
-    /**
      * @description Establishes a connection to the database instantiated from the SqlDataSource.connect method
      * @returns
      */

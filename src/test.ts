@@ -6,6 +6,7 @@ import { DataSourceInput } from "./Datasource";
 import { Migration } from "./Sql/Migrations/Migration";
 import { SqlDataSource } from "./Sql/SqlDatasource";
 import { User } from ".";
+import { DateTime } from "luxon";
 
 export async function testCreate() {
   // Postgres
@@ -227,6 +228,10 @@ export async function testQuery() {
         .whereNotNull("signupSource")
         .paginate(1, 10); // page - limit
 
+      const dateUsers = await User.query()
+        .where("created_at", DateTime.local().toString(), "<")
+        .many();
+
       console.log("userById:", userById);
       console.log("limitedUsers:", limitedUsers);
       console.log("complexUsers:", complexUsers);
@@ -236,6 +241,7 @@ export async function testQuery() {
       console.log("paginatedUsers:", paginatedUsers);
       console.log("usersWithFullName:", usersWithFullName);
       console.log("firstUser:", firstUser);
+      console.log("dateUsers:", dateUsers);
 
       console.log("Postgres connection closed");
     },
@@ -304,6 +310,10 @@ export async function testQuery() {
       // Pagination
       const paginatedUsers = await User.query().paginate(1, 10); // page - limit
 
+      const dateUsers = await User.query()
+        .where("created_at", DateTime.local().toString(), "<")
+        .many();
+
       console.log("userById:", userById);
       console.log("limitedUsers:", limitedUsers);
       console.log("complexUsers:", complexUsers);
@@ -313,6 +323,7 @@ export async function testQuery() {
       console.log("paginatedUsers:", paginatedUsers);
       console.log("usersWithFullName:", usersWithFullName);
       console.log("firstUser:", firstUser);
+      console.log("dateUsers:", dateUsers);
 
       console.log("Mysql connection closed");
     },
