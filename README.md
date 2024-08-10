@@ -221,11 +221,12 @@ const user: User | null = await User.query().whereBuilder((queryBuilder) => {
 ### Aliases
 
 - Aliases are available in the query builder, for example selectRaw('new as newName') will generate an alias in the extraColumns prop that every model has
+- Everything inside the extraColumns will be converted to camel case automatically regardless of the alias name
 - Must use selectRaw for custom columns, by default `select`
  can only query 
 ```typescript
 const user: User | null = await User.query()
-    .selectRaw(['id', 'name as superName'])
+    .selectRaw('id', 'name as superName')
     .addRelations(['post'])
     .where("name", "John Doe")
     .andWhere("email", "john@gmail.com")

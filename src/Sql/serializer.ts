@@ -44,7 +44,15 @@ function serializeModel<T extends Record<string, any>>(
         return;
       }
 
-      camelCaseModel[key] = model[key];
+      const extraColumns = Object.keys(model[key]).reduce(
+        (acc, objKey) => {
+          acc[fromSnakeToCamelCase(objKey)] = model[key][objKey];
+          return acc;
+        },
+        {} as Record<string, any>,
+      );
+
+      camelCaseModel[key] = extraColumns;
       return;
     }
 
