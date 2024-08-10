@@ -16,8 +16,6 @@ import {
 dotenv.config();
 
 export async function migrationRollBackPg(): Promise<void> {
-  const migrationFolderPath =
-    process.env.MIGRATION_PATH || "database/migrations";
   const config = PostgresCliUtils.getPgConfig();
   const postgresPool = new Pool({
     host: config.host,
@@ -36,11 +34,12 @@ export async function migrationRollBackPg(): Promise<void> {
     const migrationTable: MigrationTableType[] =
       await PostgresCliUtils.getMigrationTable(client);
     const migrations: Migration[] = await PostgresCliUtils.getMigrations();
-    const pendingMigrations = PostgresCliUtils.getPendingMigrations(
-      migrations,
-      migrationTable,
-    );
 
+    const tableMigrations = migrationTable.map((migration) => migration.name);
+    const pendingMigrations = migrations.filter(
+      (migration) => tableMigrations.includes(migration.migrationName),
+    );
+  
     if (pendingMigrations.length === 0) {
       console.log("No pending migrations.");
       client.release();
@@ -51,18 +50,16 @@ export async function migrationRollBackPg(): Promise<void> {
 
     log(BEGIN_TRANSACTION, true);
     await client.query(BEGIN_TRANSACTION);
-
-    await migrationController.downMigrations(migrations);
+    await migrationController.downMigrations(pendingMigrations);
 
     log(COMMIT_TRANSACTION, true);
     await client.query(COMMIT_TRANSACTION);
   } catch (error: any) {
     log(ROLLBACK_TRANSACTION, true);
     await client.query(ROLLBACK_TRANSACTION);
-
     console.error(error);
-    process.exit(1);
   } finally {
     client.release();
+    process.exit(0);
   }
 }

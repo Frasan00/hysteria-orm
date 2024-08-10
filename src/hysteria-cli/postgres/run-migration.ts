@@ -38,9 +38,9 @@ export async function runMigrationsPg(): Promise<void> {
     const migrationTable: MigrationTableType[] =
       await PostgresCliUtils.getMigrationTable(client);
     const migrations: Migration[] = await PostgresCliUtils.getMigrations();
-    const pendingMigrations = PostgresCliUtils.getPendingMigrations(
-      migrations,
-      migrationTable,
+    const pendingMigrations = migrations.filter(
+      (migration) =>
+        !migrationTable.map((table) => table.name).includes(migration.migrationName),
     );
 
     if (pendingMigrations.length === 0) {
@@ -50,8 +50,7 @@ export async function runMigrationsPg(): Promise<void> {
     }
 
     const migrationController = new MigrationController(null, client);
-
-    await migrationController.upMigrations(migrations);
+    await migrationController.upMigrations(pendingMigrations);
 
     log(COMMIT_TRANSACTION, true);
     await client.query(COMMIT_TRANSACTION);

@@ -26,26 +26,34 @@ export async function migrationRollBackSql(): Promise<void> {
     waitForConnections: true,
   });
 
-  const mysql = await mysqlPool.getConnection();
+  const mysql = await mysqlPool.getConnection().catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
+
   try {
+    log(BEGIN_TRANSACTION, true);
+    await mysql.beginTransaction();
     const migrationTable: MigrationTableType[] =
       await CliUtils.getMigrationTable(mysql);
     const migrations: Migration[] = await CliUtils.getMigrations();
-
-    if (migrations.length === 0) {
-      console.log("No migrations to rollback.");
+    const tableMigrations = migrationTable.map((migration) => migration.name);
+    const pendingMigrations = migrations.filter(
+      (migration) => tableMigrations.includes(migration.migrationName),
+    );
+  
+    if (pendingMigrations.length === 0) {
+      console.log("No pending migrations.");
+      mysql.release();
       process.exit(0);
     }
 
-    // Parses and rolls back the migrations
     const migrationController: MigrationController = new MigrationController(
       await mysqlPool.getConnection(),
       null,
     );
 
-    log(BEGIN_TRANSACTION, true);
-    await mysql.beginTransaction();
-    await migrationController.downMigrations(migrations);
+    await migrationController.downMigrations(pendingMigrations);
 
     log(COMMIT_TRANSACTION, true);
     await mysql.commit();
@@ -54,8 +62,8 @@ export async function migrationRollBackSql(): Promise<void> {
     await mysql.rollback();
 
     console.error(error);
-    process.exit(1);
   } finally {
     mysql.release();
+    process.exit(0);
   }
 }

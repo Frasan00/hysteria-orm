@@ -41,7 +41,7 @@ export abstract class DataSource {
     if (!this.port) {
       switch (this.type) {
         case "mysql":
-      case "mariadb":
+        case "mariadb":
           this.port = 3306;
           break;
         case "postgres":

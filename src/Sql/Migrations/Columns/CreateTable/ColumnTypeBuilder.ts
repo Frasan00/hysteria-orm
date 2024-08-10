@@ -154,13 +154,13 @@ export default class ColumnTypeBuilder {
   }
 
   /**
-   * @description If using mysql, it will automatically add INT AUTO_INCREMENT PRIMARY KEY
+   * @description If using mysql, it will automatically add INT AUTO_INCREMENT
    * @param name
    */
   public serial(name: string): ColumnOptionsBuilder {
     if (this.sqlType === `mysql`) {
       this.columnName = name;
-      this.partialQuery += `${name} INT AUTO_INCREMENT PRIMARY KEY`;
+      this.partialQuery += `${name} INT AUTO_INCREMENT`;
       return new ColumnOptionsBuilder(
         this.tableName,
         this.queryStatements,
@@ -182,13 +182,13 @@ export default class ColumnTypeBuilder {
   }
 
   /**
-   * @description If using mysql, it will automatically add BIGINT AUTO_INCREMENT PRIMARY KEY
+   * @description If using mysql, it will automatically add BIGINT AUTO_INCREMENT
    * @param name
    */
   public bigSerial(name: string): ColumnOptionsBuilder {
     if (this.sqlType === `mysql`) {
       this.columnName = name;
-      this.partialQuery += `${name} BIGINT AUTO_INCREMENT PRIMARY KEY`;
+      this.partialQuery += `${name} BIGINT AUTO_INCREMENT`;
       return new ColumnOptionsBuilder(
         this.tableName,
         this.queryStatements,

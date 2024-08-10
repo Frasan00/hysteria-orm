@@ -27,26 +27,24 @@ export async function runMigrationsSql(): Promise<void> {
 
   const mysql = await mysqlPool.getConnection();
   try {
+    log(BEGIN_TRANSACTION, true);
+    await mysql.beginTransaction();
     const migrationTable: MigrationTableType[] =
       await MysqlCliUtils.getMigrationTable(mysql);
     const migrations: Migration[] = await MysqlCliUtils.getMigrations();
-
-    const pendingMigrations = MysqlCliUtils.getPendingMigrations(
-      migrations,
-      migrationTable,
+    const pendingMigrations = migrations.filter(
+      (migration) =>
+        !migrationTable.map((table) => table.name).includes(migration.migrationName),
     );
 
     if (pendingMigrations.length === 0) {
       console.log("No pending migrations.");
-      return;
+      mysql.release();
+      process.exit(0);
     }
 
     const migrationController = new MigrationController(mysql, null);
-
-    log(BEGIN_TRANSACTION, true);
-    await mysql.beginTransaction();
-
-    await migrationController.upMigrations(migrations);
+    await migrationController.upMigrations(pendingMigrations);
 
     log(COMMIT_TRANSACTION, true);
     await mysql.commit();

@@ -20,9 +20,9 @@
     "rollback:migrations": "yarn build && ts-node src/hysteria-cli/migrationRollbackConnector.ts"
   },
   "bin": {
-    "hysteria-create:migration": "ts-node src/hysteria-cli/migrationCreateConnector.ts",
-    "hysteria-run:migrations": "ts-node src/hysteria-cli/migrationRunConnector.ts",
-    "hysteria-rollback:migrations": "ts-node src/hysteria-cli/migrationRollbackConnector.ts"
+    "hysteria-create:migration": "./src/hysteria-cli/migrationCreateConnector.ts",
+    "hysteria-run:migrations": "./src/hysteria-cli/migrationRunConnector.ts",
+    "hysteria-rollback:migrations": "./src/hysteria-cli/migrationRollbackConnector.ts"
   },
   "license": "MIT",
   "devDependencies": {

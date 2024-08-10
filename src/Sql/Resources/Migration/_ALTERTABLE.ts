@@ -1,3 +1,5 @@
+// UNUSED
+
 import { DataSourceType } from "../../../Datasource";
 
 const alterTableTemplate = (dbType: DataSourceType) => ({
@@ -85,6 +87,50 @@ const alterTableTemplate = (dbType: DataSourceType) => ({
         return `\nRENAME ${oldConstraint} TO ${newConstraint}`;
       case "postgres":
         return `\nRENAME CONSTRAINT ${oldConstraint} TO ${newConstraint}`;
+      default:
+        throw new Error("Unsupported database type");
+    }
+  },
+  addIndex: (indexName: string, columns: string) => {
+    switch (dbType) {
+      case "mysql":
+      case "mariadb":
+        return `\nADD INDEX \`${indexName}\` (${columns})`;
+      case "postgres":
+        return `\nCREATE INDEX ${indexName} ON ${columns}`;
+      default:
+        throw new Error("Unsupported database type");
+    }
+  },
+  dropIndex: (indexName: string) => {
+    switch (dbType) {
+      case "mysql":
+      case "mariadb":
+        return `\nDROP INDEX \`${indexName}\``;
+      case "postgres":
+        return `\nDROP INDEX ${indexName}`;
+      default:
+        throw new Error("Unsupported database type");
+    }
+  },
+  addPrimaryKey: (columns: string) => {
+    switch (dbType) {
+      case "mysql":
+      case "mariadb":
+        return `\nADD PRIMARY KEY (${columns})`;
+      case "postgres":
+        return `\nADD PRIMARY KEY (${columns})`;
+      default:
+        throw new Error("Unsupported database type");
+    }
+  },
+  dropPrimaryKey: () => {
+    switch (dbType) {
+      case "mysql":
+      case "mariadb":
+        return `\nDROP PRIMARY KEY`;
+      case "postgres":
+        return `\nDROP CONSTRAINT PRIMARY KEY`;
       default:
         throw new Error("Unsupported database type");
     }

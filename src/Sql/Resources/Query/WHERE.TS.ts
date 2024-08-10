@@ -18,7 +18,7 @@ const whereTemplate = (_tableName: string, dbType: DataSourceType) => {
     convertPlaceHolderToValue: (query: string, startIndex: number = 1) => {
       switch (dbType) {
         case "mysql":
-      case "mariadb":
+        case "mariadb":
           return query.replace(/PLACEHOLDER/g, () => "?");
         case "postgres":
           let index = startIndex;

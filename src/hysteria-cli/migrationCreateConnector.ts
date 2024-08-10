@@ -6,7 +6,6 @@ dotenv.config();
 
 export default function migrationCreateConnector(name: string) {
   const databaseType = process.env.DB_TYPE;
-  console.log("Creating migration...");
 
   switch (databaseType) {
     case "mysql":

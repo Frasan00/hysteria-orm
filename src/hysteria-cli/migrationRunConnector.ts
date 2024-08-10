@@ -6,8 +6,6 @@ dotenv.config();
 
 export default async function runMigrationsConnector() {
   const databaseType = process.env.DB_TYPE;
-  console.log("Running migrations...");
-
   switch (databaseType) {
     case "mysql":
       await runMigrationsSql();

@@ -5,6 +5,7 @@ import { HasOne } from "./Sql/Models/Relations/HasOne";
 import { HasMany } from "./Sql/Models/Relations/HasMany";
 import { BelongsTo } from "./Sql/Models/Relations/BelongsTo";
 import { DataSourceInput } from "./Datasource";
+import { Relation } from "./Sql/Models/Relations/Relation";
 import { Migration } from "./Sql/Migrations/Migration";
 import { SqlDataSource } from "./Sql/SqlDatasource";
 import { testCreate, testDelete, testQuery, testTrx, testUpdate } from "./test";
@@ -46,13 +47,14 @@ export class Post extends Model {
   // await testUpdate();
   // await testDelete();
   // await testTrx();
-  // await testQuery();
+  await testQuery();
 
   process.exit(0);
 })();
 
 export {
   Model,
+  Relation,
   HasOne,
   HasMany,
   BelongsTo,

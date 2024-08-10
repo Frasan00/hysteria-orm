@@ -27,11 +27,10 @@ export class MigrationController {
           ) {
             return;
           }
-  
-          log(statement, true);
+
           await this.localQuery(statement);
         });
-  
+
         await Promise.all(statementPromises);
         await this.addMigrationToMigrationTable(migration);
 
@@ -41,7 +40,7 @@ export class MigrationController {
           await sql.closeConnection();
         }
       });
-  
+
       await Promise.all(migrationPromises);
     } catch (error: any) {
       throw new Error(error);
@@ -64,7 +63,6 @@ export class MigrationController {
             continue;
           }
 
-          log(statement, true);
           await this.localQuery(statement);
         }
 
@@ -83,11 +81,13 @@ export class MigrationController {
   private async localQuery(text: string, params: any[] = []): Promise<void> {
     if (this.mysqlPool) {
       text = text.replace(/PLACEHOLDER/g, "?");
+      log(text, true, params);
       await this.mysqlPool.query(text, params);
       return;
     } else if (this.pgPool) {
       let index = 1;
       text = text.replace(/PLACEHOLDER/g, () => `$${index++}`);
+      log(text, true, params);
       await this.pgPool.query(text, params);
       return;
     }
@@ -102,9 +102,7 @@ export class MigrationController {
       .replace("T", " ")
       .replace(/\.\d{3}Z$/, "");
 
-    const insertMigrationSql = `
-      INSERT INTO migrations (id, name, timestamp) VALUES (DEFAULT, PLACEHOLDER, PLACEHOLDER)
-    `;
+    const insertMigrationSql = `INSERT INTO migrations (id, name, timestamp) VALUES (DEFAULT, PLACEHOLDER, PLACEHOLDER)`;
 
     await this.localQuery(insertMigrationSql, [
       migration.migrationName,
@@ -113,10 +111,17 @@ export class MigrationController {
   }
 
   public async deleteMigrationFromMigrationTable(migration: Migration) {
-    const deleteMigrationSql = `
-      DELETE FROM migrations WHERE name = ?
-    `;
+    const deleteMigrationSql = `DELETE FROM migrations WHERE name = PLACEHOLDER`;
 
     await this.localQuery(deleteMigrationSql, [migration.migrationName]);
+  }
+
+  public async removeMigrationTable() {
+    const dropMigrationTableSql = `
+      DROP TABLE IF EXISTS migrations
+    `;
+
+    log(dropMigrationTableSql, true);
+    await this.localQuery(dropMigrationTableSql);
   }
 }

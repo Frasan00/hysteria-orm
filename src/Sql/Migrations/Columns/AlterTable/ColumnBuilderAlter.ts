@@ -93,10 +93,16 @@ export default class ColumnBuilderAlter {
     }
 
     if (options?.autoIncrement) {
-      if (this.sqlType === "mysql") {
-        query += " AUTO_INCREMENT";
-      } else {
-        query += " SERIAL";
+      switch (this.sqlType) {
+        case "mariadb":
+        case "mysql":
+          query += " AUTO_INCREMENT";
+          break;
+        case "postgres":
+          query += " SERIAL";
+          break;
+        default:
+          throw new Error("Unsupported database type");
       }
     }
 
@@ -116,8 +122,18 @@ export default class ColumnBuilderAlter {
       query += ` REFERENCES ${options.references.table}(${options.references.column})`;
     }
 
-    if (this.sqlType === "mysql" && options?.afterColumn) {
-      query += ` AFTER ${options.afterColumn}`;
+    if (options?.afterColumn) {
+      switch (this.sqlType) {
+        case "mariadb":
+        case "mysql":
+          query += ` AFTER ${options.afterColumn}`;
+          break;
+        case "postgres":
+          query += ` AFTER ${options.afterColumn}`;
+          break;
+        default:
+          throw new Error("Unsupported database type");
+      }
     }
 
     this.partialQuery = query;
@@ -137,18 +153,36 @@ export default class ColumnBuilderAlter {
     values: string[],
     options?: { afterColumn?: string; notNullable?: boolean },
   ): ColumnBuilderAlter {
-    this.partialQuery = `ALTER TABLE ${
-      this.tableName
-    } ADD COLUMN ${columnName} ENUM(${values
-      .map((value) => `'${value}'`)
-      .join(",")})`;
+    switch (this.sqlType) {
+      case "mariadb":
+      case "mysql":
+        this.partialQuery = `ALTER TABLE ${
+          this.tableName
+        } ADD COLUMN ${columnName} ENUM('${values.join("', '")}')`;
+        break;
+      case "postgres":
+        this.partialQuery = `ALTER TABLE ${this.tableName} ADD COLUMN ${columnName} ${values[0]}`;
+        break;
+      default:
+        throw new Error("Unsupported database type");
+    }
 
     if (options?.notNullable) {
       this.partialQuery += " NOT NULL";
     }
 
     if (options?.afterColumn) {
-      this.partialQuery += ` AFTER ${options.afterColumn}`;
+      switch (this.sqlType) {
+        case "mariadb":
+        case "mysql":
+          this.partialQuery += ` AFTER ${options.afterColumn}`;
+          break;
+        case "postgres":
+          this.partialQuery += ` AFTER ${options.afterColumn}`;
+          break;
+        default:
+          throw new Error("Unsupported database type");
+      }
     }
 
     this.queryStatements.push(this.partialQuery);
@@ -161,7 +195,17 @@ export default class ColumnBuilderAlter {
    * @param columnName
    */
   public dropColumn(columnName: string): ColumnBuilderAlter {
-    this.partialQuery = `ALTER TABLE ${this.tableName} DROP COLUMN ${columnName}`;
+    switch (this.sqlType) {
+      case "mariadb":
+      case "mysql":
+        this.partialQuery = `ALTER TABLE ${this.tableName} DROP COLUMN ${columnName}`;
+        break;
+      case "postgres":
+        this.partialQuery = `ALTER TABLE ${this.tableName} DROP COLUMN ${columnName}`;
+        break;
+      default:
+        throw new Error("Unsupported database type");
+    }
 
     this.queryStatements.push(this.partialQuery);
     this.partialQuery = "";
@@ -177,10 +221,16 @@ export default class ColumnBuilderAlter {
     oldColumnName: string,
     newColumnName: string,
   ): ColumnBuilderAlter {
-    if (this.sqlType === "mysql") {
-      this.partialQuery = `ALTER TABLE ${this.tableName} CHANGE ${oldColumnName} ${newColumnName}`;
-    } else {
-      this.partialQuery = `ALTER TABLE ${this.tableName} RENAME COLUMN ${oldColumnName} TO ${newColumnName}`;
+    switch (this.sqlType) {
+      case "mariadb":
+      case "mysql":
+        this.partialQuery = `ALTER TABLE ${this.tableName} CHANGE ${oldColumnName} ${newColumnName}`;
+        break;
+      case "postgres":
+        this.partialQuery = `ALTER TABLE ${this.tableName} RENAME COLUMN ${oldColumnName} TO ${newColumnName}`;
+        break;
+      default:
+        throw new Error("Unsupported database type");
     }
 
     this.queryStatements.push(this.partialQuery);
@@ -193,10 +243,24 @@ export default class ColumnBuilderAlter {
     newDataType: DataType,
     length?: number,
   ): ColumnBuilderAlter {
-    if (this.sqlType === "mysql") {
-      this.partialQuery = `ALTER TABLE ${this.tableName} MODIFY COLUMN ${columnName} ${newDataType}(${length})`;
-    } else {
-      this.partialQuery = `ALTER TABLE ${this.tableName} ALTER COLUMN ${columnName} TYPE ${newDataType}(${length})`;
+    switch (this.sqlType) {
+      case "mariadb":
+      case "mysql":
+        this.partialQuery = `ALTER TABLE ${
+          this.tableName
+        } MODIFY COLUMN ${columnName} ${newDataType}${
+          length ? `(${length})` : ""
+        }`;
+        break;
+      case "postgres":
+        this.partialQuery = `ALTER TABLE ${
+          this.tableName
+        } ALTER COLUMN ${columnName} TYPE ${newDataType}${
+          length ? `(${length})` : ""
+        }`;
+        break;
+      default:
+        throw new Error("Unsupported database type");
     }
 
     this.queryStatements.push(this.partialQuery);
@@ -213,10 +277,16 @@ export default class ColumnBuilderAlter {
     oldTableName: string,
     newTableName: string,
   ): ColumnBuilderAlter {
-    if (this.sqlType === "mysql") {
-      this.partialQuery = `RENAME TABLE ${oldTableName} TO ${newTableName}`;
-    } else {
-      this.partialQuery = `ALTER TABLE ${oldTableName} RENAME TO ${newTableName}`;
+    switch (this.sqlType) {
+      case "mariadb":
+      case "mysql":
+        this.partialQuery = `RENAME TABLE ${oldTableName} TO ${newTableName}`;
+        break;
+      case "postgres":
+        this.partialQuery = `ALTER TABLE ${oldTableName} RENAME TO ${newTableName}`;
+        break;
+      default:
+        throw new Error("Unsupported database type");
     }
 
     this.queryStatements.push(this.partialQuery);
@@ -233,7 +303,17 @@ export default class ColumnBuilderAlter {
     columnName: string,
     defaultValue: string,
   ): ColumnBuilderAlter {
-    this.partialQuery = `ALTER TABLE ${this.tableName} ALTER COLUMN ${columnName} SET DEFAULT ${defaultValue}`;
+    switch (this.sqlType) {
+      case "mariadb":
+      case "mysql":
+        this.partialQuery = `ALTER TABLE ${this.tableName} ALTER COLUMN ${columnName} SET DEFAULT ${defaultValue}`;
+        break;
+      case "postgres":
+        this.partialQuery = `ALTER TABLE ${this.tableName} ALTER COLUMN ${columnName} SET DEFAULT ${defaultValue}`;
+        break;
+      default:
+        throw new Error("Unsupported database type");
+    }
 
     this.queryStatements.push(this.partialQuery);
     this.partialQuery = "";
@@ -245,7 +325,17 @@ export default class ColumnBuilderAlter {
    * @param columnName
    */
   public dropDefaultValue(columnName: string): ColumnBuilderAlter {
-    this.partialQuery = `ALTER TABLE ${this.tableName} ALTER COLUMN ${columnName} DROP DEFAULT`;
+    switch (this.sqlType) {
+      case "mariadb":
+      case "mysql":
+        this.partialQuery = `ALTER TABLE ${this.tableName} ALTER COLUMN ${columnName} DROP DEFAULT`;
+        break;
+      case "postgres":
+        this.partialQuery = `ALTER TABLE ${this.tableName} ALTER COLUMN ${columnName} DROP DEFAULT`;
+        break;
+      default:
+        throw new Error("Unsupported database type");
+    }
 
     this.queryStatements.push(this.partialQuery);
     this.partialQuery = "";
@@ -268,12 +358,16 @@ export default class ColumnBuilderAlter {
     }
 
     const fkName = `${this.tableName}_${columnName}_fk`;
-    const referencesSQL = `REFERENCES ${options.references.table}(${options.references.column})`;
-
-    if (this.sqlType === "mysql") {
-      this.partialQuery = `ALTER TABLE ${this.tableName} ADD CONSTRAINT ${fkName} FOREIGN KEY (${columnName}) ${referencesSQL}`;
-    } else {
-      this.partialQuery = `ALTER TABLE ${this.tableName} ADD FOREIGN KEY (${columnName}) ${referencesSQL}`;
+    switch (this.sqlType) {
+      case "mariadb":
+      case "mysql":
+        this.partialQuery = `ALTER TABLE ${this.tableName} ADD CONSTRAINT ${fkName} FOREIGN KEY (${columnName}) REFERENCES ${options.references.table}(${options.references.column})`;
+        break;
+      case "postgres":
+        this.partialQuery = `ALTER TABLE ${this.tableName} ADD CONSTRAINT ${fkName} FOREIGN KEY (${columnName}) REFERENCES ${options.references.table}(${options.references.column})`;
+        break;
+      default:
+        throw new Error("Unsupported database type");
     }
 
     this.queryStatements.push(this.partialQuery);
@@ -286,103 +380,18 @@ export default class ColumnBuilderAlter {
    * @param columnName
    */
   public dropForeignKey(columnName: string): ColumnBuilderAlter {
-    if (this.sqlType === "mysql") {
-      this.partialQuery = `ALTER TABLE ${this.tableName} DROP FOREIGN KEY ${columnName}`;
-    } else {
-      this.partialQuery = `ALTER TABLE ${this.tableName} DROP CONSTRAINT IF EXISTS ${this.tableName}_${columnName}_fk`;
+    const fkName = `${this.tableName}_${columnName}_fk`;
+    switch (this.sqlType) {
+      case "mariadb":
+      case "mysql":
+        this.partialQuery = `ALTER TABLE ${this.tableName} DROP FOREIGN KEY ${fkName}`;
+        break;
+      case "postgres":
+        this.partialQuery = `ALTER TABLE ${this.tableName} DROP CONSTRAINT ${fkName}`;
+        break;
+      default:
+        throw new Error("Unsupported database type");
     }
-
-    this.queryStatements.push(this.partialQuery);
-    this.partialQuery = "";
-    return this;
-  }
-
-  /**
-   * @description Add a primary key
-   * @param columnNames
-   */
-  public addPrimaryKey(columnNames: string[]): ColumnBuilderAlter {
-    const pkName = `${this.tableName}_pk`;
-    this.partialQuery = `ALTER TABLE ${
-      this.tableName
-    } ADD CONSTRAINT ${pkName} PRIMARY KEY (${columnNames.join(", ")})`;
-
-    this.queryStatements.push(this.partialQuery);
-    this.partialQuery = "";
-    return this;
-  }
-
-  /**
-   * @description Drop a primary key
-   */
-  public dropPrimaryKey(): ColumnBuilderAlter {
-    if (this.sqlType === "mysql") {
-      this.partialQuery = `ALTER TABLE ${this.tableName} DROP PRIMARY KEY`;
-    } else {
-      const pkName = `${this.tableName}_pkey`;
-      this.partialQuery = `ALTER TABLE ${this.tableName} DROP CONSTRAINT ${pkName}`;
-    }
-
-    this.queryStatements.push(this.partialQuery);
-    this.partialQuery = "";
-    return this;
-  }
-
-  /**
-   * @description Add a check constraint - EXPERIMENTAL
-   * @param condition
-   * @param constraintName
-   */
-  public addCheckConstraint(
-    condition: string,
-    constraintName?: string,
-  ): ColumnBuilderAlter {
-    const ckName = constraintName || `${this.tableName}_ck`;
-    this.partialQuery = `ALTER TABLE ${this.tableName} ADD CONSTRAINT ${ckName} CHECK (${condition})`;
-
-    this.queryStatements.push(this.partialQuery);
-    this.partialQuery = "";
-    return this;
-  }
-
-  /**
-   * @description drop a check constraint - EXPERIMENTAL
-   * @param constraintName
-   */
-  public dropCheckConstraint(constraintName: string): ColumnBuilderAlter {
-    this.partialQuery = `ALTER TABLE ${this.tableName} DROP CONSTRAINT ${constraintName}`;
-
-    this.queryStatements.push(this.partialQuery);
-    this.partialQuery = "";
-    return this;
-  }
-
-  /**
-   * @description Add a unique constraint - EXPERIMENTAL
-   * @param columnNames
-   * @param constraintName
-   */
-  public addUniqueConstraint(
-    columnNames: string[],
-    constraintName?: string,
-  ): ColumnBuilderAlter {
-    const uqName =
-      constraintName || `${this.tableName}_uq_${columnNames.join("_")}`;
-    this.partialQuery = `ALTER TABLE ${
-      this.tableName
-    } ADD CONSTRAINT ${uqName} UNIQUE (${columnNames.join(", ")})`;
-
-    this.queryStatements.push(this.partialQuery);
-    this.partialQuery = "";
-    return this;
-  }
-
-  /**
-   * @description Drop a unique constraint - EXPERIMENTAL
-   * @param constraintName
-   */
-  public dropUniqueConstraint(constraintName: string): ColumnBuilderAlter {
-    this.partialQuery = `ALTER TABLE ${this.tableName} DROP CONSTRAINT ${constraintName}`;
 
     this.queryStatements.push(this.partialQuery);
     this.partialQuery = "";

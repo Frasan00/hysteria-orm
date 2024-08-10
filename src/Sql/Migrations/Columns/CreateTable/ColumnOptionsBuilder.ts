@@ -6,10 +6,10 @@ export default class ColumnOptionsBuilder {
   protected queryStatements: string[];
   protected partialQuery: string;
   protected columnName: string;
-  protected columnReferences?: {
+  protected columnReferences: {
     table: string;
     column: string;
-  };
+  }[];
   protected sqlType: DataSourceType;
 
   constructor(
@@ -18,10 +18,10 @@ export default class ColumnOptionsBuilder {
     partialQuery: string,
     sqlType: DataSourceType,
     columnName: string = "",
-    columnReferences?: {
+    columnReferences: {
       table: string;
       column: string;
-    },
+    }[] = [],
   ) {
     this.tableName = tableName;
     this.queryStatements = queryStatements;
@@ -41,6 +41,8 @@ export default class ColumnOptionsBuilder {
       this.queryStatements,
       this.partialQuery,
       this.sqlType,
+      this.columnName,
+      this.columnReferences,
     );
   }
 
@@ -52,6 +54,7 @@ export default class ColumnOptionsBuilder {
       this.partialQuery,
       this.sqlType,
       this.columnName,
+      this.columnReferences,
     );
   }
 
@@ -65,6 +68,8 @@ export default class ColumnOptionsBuilder {
       this.queryStatements,
       this.partialQuery,
       this.sqlType,
+      this.columnName,
+      this.columnReferences,
     );
   }
 
@@ -78,6 +83,8 @@ export default class ColumnOptionsBuilder {
       this.queryStatements,
       this.partialQuery,
       this.sqlType,
+      this.columnName,
+      this.columnReferences,
     );
   }
 
@@ -91,6 +98,8 @@ export default class ColumnOptionsBuilder {
       this.queryStatements,
       this.partialQuery,
       this.sqlType,
+      this.columnName,
+      this.columnReferences,
     );
   }
 
@@ -104,6 +113,8 @@ export default class ColumnOptionsBuilder {
       this.queryStatements,
       this.partialQuery,
       this.sqlType,
+      this.columnName,
+      this.columnReferences,
     );
   }
 
@@ -136,7 +147,7 @@ export default class ColumnOptionsBuilder {
    * @param column
    */
   public references(table: string, column: string): ColumnOptionsBuilder {
-    this.columnReferences = { table, column };
+    this.columnReferences?.push({ table, column });
     return new ColumnOptionsBuilder(
       this.tableName,
       this.queryStatements,
@@ -152,10 +163,6 @@ export default class ColumnOptionsBuilder {
    */
   public newColumn(): ColumnTypeBuilder {
     this.partialQuery += ",\n";
-    if (this.columnReferences) {
-      this.partialQuery += `CONSTRAINT ${this.tableName}_${this.columnName}_${this.columnReferences.table}_${this.columnReferences.column}_fk FOREIGN KEY (${this.columnName}) REFERENCES ${this.columnReferences.table} (${this.columnReferences.column}),\n`;
-    }
-
     return new ColumnTypeBuilder(
       this.tableName,
       this.queryStatements,
@@ -168,12 +175,23 @@ export default class ColumnOptionsBuilder {
    * @description Commits the column creation - if omitted, the migration will be run empty
    */
   public commit(): void {
-    if (this.columnReferences) {
-      this.partialQuery += ",\n";
-      this.partialQuery += `CONSTRAINT ${this.columnName}_fk FOREIGN KEY (${this.columnName}) REFERENCES ${this.columnReferences.table} (${this.columnReferences.column}),\n`;
+    if (this.columnReferences.length) {
+      this.columnReferences.forEach((reference) => {
+        switch (this.sqlType) {
+          case "mysql":
+          case "mariadb":
+            this.partialQuery += `,\nCONSTRAINT fk_${this.tableName}_${this.columnName} FOREIGN KEY (${this.columnName}) REFERENCES ${reference.table}(${reference.column})`;
+            break;
+          case "postgres":
+            this.partialQuery += `,\nCONSTRAINT fk_${this.tableName}_${this.columnName} FOREIGN KEY (${this.columnName}) REFERENCES ${reference.table}(${reference.column})`;
+            break;
+          default:
+            throw new Error("Unsupported SQL type");
+        }
+      });
     }
-    this.partialQuery += "\n";
 
+    this.partialQuery += "\n";
     this.partialQuery += ");";
     this.queryStatements.push(this.partialQuery);
   }

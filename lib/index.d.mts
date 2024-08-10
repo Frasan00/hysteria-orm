@@ -1886,15 +1886,15 @@ declare class ColumnOptionsBuilder {
     protected queryStatements: string[];
     protected partialQuery: string;
     protected columnName: string;
-    protected columnReferences?: {
+    protected columnReferences: {
         table: string;
         column: string;
-    };
+    }[];
     protected sqlType: DataSourceType;
     constructor(tableName: string, queryStatements: string[], partialQuery: string, sqlType: DataSourceType, columnName?: string, columnReferences?: {
         table: string;
         column: string;
-    });
+    }[]);
     /**
      * @description Makes the column nullable
      */
@@ -1955,12 +1955,12 @@ declare class ColumnTypeBuilder {
     smallint(name: string): ColumnOptionsBuilder;
     mediumint(name: string): ColumnOptionsBuilder;
     /**
-     * @description If using mysql, it will automatically add INT AUTO_INCREMENT PRIMARY KEY
+     * @description If using mysql, it will automatically add INT AUTO_INCREMENT
      * @param name
      */
     serial(name: string): ColumnOptionsBuilder;
     /**
-     * @description If using mysql, it will automatically add BIGINT AUTO_INCREMENT PRIMARY KEY
+     * @description If using mysql, it will automatically add BIGINT AUTO_INCREMENT
      * @param name
      */
     bigSerial(name: string): ColumnOptionsBuilder;
@@ -2077,37 +2077,6 @@ declare class ColumnBuilderAlter {
      */
     dropForeignKey(columnName: string): ColumnBuilderAlter;
     /**
-     * @description Add a primary key
-     * @param columnNames
-     */
-    addPrimaryKey(columnNames: string[]): ColumnBuilderAlter;
-    /**
-     * @description Drop a primary key
-     */
-    dropPrimaryKey(): ColumnBuilderAlter;
-    /**
-     * @description Add a check constraint - EXPERIMENTAL
-     * @param condition
-     * @param constraintName
-     */
-    addCheckConstraint(condition: string, constraintName?: string): ColumnBuilderAlter;
-    /**
-     * @description drop a check constraint - EXPERIMENTAL
-     * @param constraintName
-     */
-    dropCheckConstraint(constraintName: string): ColumnBuilderAlter;
-    /**
-     * @description Add a unique constraint - EXPERIMENTAL
-     * @param columnNames
-     * @param constraintName
-     */
-    addUniqueConstraint(columnNames: string[], constraintName?: string): ColumnBuilderAlter;
-    /**
-     * @description Drop a unique constraint - EXPERIMENTAL
-     * @param constraintName
-     */
-    dropUniqueConstraint(constraintName: string): ColumnBuilderAlter;
-    /**
      * @description Commits the changes - if omitted, the migration will be run empty
      */
     commit(): void;
@@ -2117,13 +2086,101 @@ declare class Schema {
     queryStatements: string[];
     sqlType: DataSourceType;
     constructor(sqlType?: DataSourceType);
+    /**
+     * @description Add raw query to the migration
+     * @param query
+     */
     rawQuery(query: string): void;
     createTable(tableName: string, options?: {
         ifNotExists?: boolean;
     }): ColumnBuilderConnector;
+    /**
+     * @description Alter table
+     * @param tableName
+     * @returns ColumnBuilderAlter
+     */
     alterTable(tableName: string): ColumnBuilderAlter;
+    /**
+     * @description Drop table
+     * @param tableName
+     * @param ifExists
+     * @returns void
+     */
     dropTable(tableName: string, ifExists?: boolean): void;
+    /**
+     * @description Rename table
+     * @param oldTableName
+     * @param newTableName
+     * @returns void
+     */
+    renameTable(oldTableName: string, newTableName: string): void;
+    /**
+     * @description Truncate table
+     * @param tableName
+     * @returns void
+     */
     truncateTable(tableName: string): void;
+    /**
+     * @description Create index on table
+     * @param tableName
+     * @param indexName
+     * @param columns
+     * @param unique
+     * @returns void
+     */
+    createIndex(tableName: string, indexName: string, columns: string[], unique?: boolean): void;
+    /**
+     * @description Drop index on table
+     * @param tableName
+     * @param indexName
+     * @returns void
+     */
+    dropIndex(tableName: string, indexName: string): void;
+    /**
+     * @description Adds a primary key to a table
+     * @param tableName
+     * @param columnName
+     * @param type
+     * @param options
+     * @returns void
+     */
+    addPrimaryKey(tableName: string, columns: string[]): void;
+    /**
+     * @description Drops a primary key from a table
+     * @param tableName
+     * @returns void
+     */
+    dropPrimaryKey(tableName: string): void;
+    /**
+     * @description Adds a foreign key to a table
+     * @param tableName
+     * @param constraintName
+     * @param columns
+     * @returns void
+     */
+    addConstraint(tableName: string, constraintName: string, columns: string[]): void;
+    /**
+     * @description Drops a cosntraint from a table
+     * @param tableName
+     * @param constraintName
+     * @returns void
+     */
+    dropConstraint(tableName: string, constraintName: string): void;
+    /**
+     * @description Adds a unique constraint to a table
+     * @param tableName
+     * @param constraintName
+     * @param columns
+     * @returns void
+     */
+    addUniqueConstraint(tableName: string, constraintName: string, columns: string[]): void;
+    /**
+     * @description Drops a unique constraint from a table
+     * @param tableName
+     * @param constraintName
+     * @returns void
+     */
+    dropUniqueConstraint(tableName: string, constraintName: string): void;
 }
 
 declare abstract class Migration {
@@ -2166,4 +2223,4 @@ declare class Post extends Model {
     static metadata: Metadata;
 }
 
-export { BelongsTo, type DataSourceInput, HasMany, HasOne, Migration, Model, Post, SqlDataSource, User };
+export { BelongsTo, type DataSourceInput, HasMany, HasOne, Migration, Model, Post, Relation, SqlDataSource, User };

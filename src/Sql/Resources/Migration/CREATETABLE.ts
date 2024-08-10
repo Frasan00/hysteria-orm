@@ -5,9 +5,9 @@ const createTableTemplate = {
     switch (dbType) {
       case "mysql":
       case "mariadb":
-        return `\nCREATE TABLE IF NOT EXISTS \`${tableName}\` (\n`;
+        return `CREATE TABLE IF NOT EXISTS \`${tableName}\` (\n`;
       case "postgres":
-        return `\nCREATE TABLE IF NOT EXISTS "${tableName}" (\n`;
+        return `CREATE TABLE IF NOT EXISTS "${tableName}" (\n`;
       default:
         throw new Error("Unsupported database type");
     }
@@ -16,9 +16,9 @@ const createTableTemplate = {
     switch (dbType) {
       case "mysql":
       case "mariadb":
-        return `\nCREATE TABLE \`${tableName}\` (\n`;
+        return `CREATE TABLE \`${tableName}\` (\n`;
       case "postgres":
-        return `\nCREATE TABLE "${tableName}" (\n`;
+        return `CREATE TABLE "${tableName}" (\n`;
       default:
         throw new Error("Unsupported database type");
     }
