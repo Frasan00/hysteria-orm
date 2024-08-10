@@ -39,6 +39,7 @@ export class SqlDataSource extends DataSource {
     const sqlDataSource = new this(input);
     switch (sqlDataSource.type) {
       case "mysql":
+      case "mariadb":
         sqlDataSource.sqlPool = createPool({
           host: sqlDataSource.host,
           port: sqlDataSource.port,
@@ -80,6 +81,7 @@ export class SqlDataSource extends DataSource {
     const sqlDataSource = new this(input);
     switch (input.type) {
       case "mysql":
+      case "mariadb":
         sqlDataSource.sqlPool = createPool({
           host: input.host,
           port: input.port,
@@ -158,6 +160,7 @@ export class SqlDataSource extends DataSource {
 
     switch (this.type) {
       case "mysql":
+      case "mariadb":
         return new MysqlModelManager<T>(
           model,
           this.sqlPool as mysql.Pool,
@@ -180,6 +183,7 @@ export class SqlDataSource extends DataSource {
   public async getRawPool(): Promise<SqlPoolType> {
     switch (this.type) {
       case "mysql":
+      case "mariadb":
         return createPool({
           host: this.host,
           port: this.port,
@@ -207,6 +211,7 @@ export class SqlDataSource extends DataSource {
   public async closeConnection(): Promise<void> {
     switch (this.type) {
       case "mysql":
+      case "mariadb":
         return await (this.sqlPool as Pool).end();
       case "postgres":
         return await (this.sqlPool as pg.Pool).end();
@@ -221,6 +226,7 @@ export class SqlDataSource extends DataSource {
   public async getRawPoolConnection(): Promise<SqlPoolConnectionType> {
     switch (this.type) {
       case "mysql":
+      case "mariadb":
         return createPool({
           host: this.host,
           port: this.port,

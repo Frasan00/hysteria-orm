@@ -113,6 +113,7 @@ export default class ColumnOptionsBuilder {
   public autoIncrement(): ColumnOptionsBuilder {
     switch (this.sqlType) {
       case "mysql":
+      case "mariadb":
         this.partialQuery += " AUTO_INCREMENT";
         return new ColumnOptionsBuilder(
           this.tableName,

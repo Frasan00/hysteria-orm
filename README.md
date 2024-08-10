@@ -56,7 +56,7 @@ For TypeScript users, it is essential to set `"useDefineForClassFields": true` i
 ### Complete env example
 ```dotenv
 MIGRATION_PATH=database/migrations # default /database/migrations, this env always referees to the root of the project
-DB_TYPE=mysql # mysql | postgres
+DB_TYPE=mysql # mysql | postgres | [mariadb(experimental)]
 DB_HOST=127.0.0.1
 DB_USER=root
 DB_PASSWORD=root
@@ -73,7 +73,7 @@ DB_LOGS=true # default false
 import { SqlDataSource, DataSourceInput } from "hysteria-orm";
 
 const mysqlConfig: DataSourceInput = {
-    type: 'mysql' | 'postgres',
+    type: 'mysql' | 'postgres' | 'mariadb',
     host: HOST,
     port: PORT,
     username: USERNAME,

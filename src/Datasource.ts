@@ -38,13 +38,10 @@ export abstract class DataSource {
     this.database = (input?.database || process.env.DB_DATABASE) as string;
     this.logs = Boolean(input?.logs) || Boolean(process.env.DB_LOGS) || false;
 
-    if (this.type === "mariadb") {
-      this.type = "mysql";
-    }
-
     if (!this.port) {
       switch (this.type) {
         case "mysql":
+      case "mariadb":
           this.port = 3306;
           break;
         case "postgres":

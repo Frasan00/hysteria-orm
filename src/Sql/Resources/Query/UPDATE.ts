@@ -16,6 +16,7 @@ const updateTemplate = (table: string, dbType: DataSourceType) => {
 
       switch (dbType) {
         case "mysql":
+      case "mariadb":
           setClause = columns.map((column) => `\`${column}\` = ?`).join(", ");
           params = [...values, primaryKeyValue];
           break;
@@ -47,6 +48,7 @@ const updateTemplate = (table: string, dbType: DataSourceType) => {
 
       switch (dbType) {
         case "mysql":
+      case "mariadb":
           setClause = columns.map((column) => `\`${column}\` = ?`).join(", ");
           values.forEach((value) => {
             params.push(value);

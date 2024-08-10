@@ -4,6 +4,7 @@ const createTableTemplate = {
   createTableIfNotExists: (tableName: string, dbType: DataSourceType) => {
     switch (dbType) {
       case "mysql":
+      case "mariadb":
         return `\nCREATE TABLE IF NOT EXISTS \`${tableName}\` (\n`;
       case "postgres":
         return `\nCREATE TABLE IF NOT EXISTS "${tableName}" (\n`;
@@ -14,6 +15,7 @@ const createTableTemplate = {
   createTable: (tableName: string, dbType: DataSourceType) => {
     switch (dbType) {
       case "mysql":
+      case "mariadb":
         return `\nCREATE TABLE \`${tableName}\` (\n`;
       case "postgres":
         return `\nCREATE TABLE "${tableName}" (\n`;

@@ -12,6 +12,7 @@ const insertTemplate = (tableName: string, dbType: DataSourceType) => {
 
       switch (dbType) {
         case "mysql":
+      case "mariadb":
           placeholders = columns.map(() => "?").join(", ");
           params = values;
           break;
@@ -40,6 +41,7 @@ const insertTemplate = (tableName: string, dbType: DataSourceType) => {
 
       switch (dbType) {
         case "mysql":
+      case "mariadb":
           valueSets = values.map((valueSet) => {
             params.push(...valueSet);
             return `(${valueSet.map(() => "?").join(", ")})`;

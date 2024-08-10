@@ -19,6 +19,7 @@ const selectTemplate = (table: string, dbType: DataSourceType) => {
   const escapeIdentifier = (identifier: string) => {
     switch (dbType) {
       case "mysql":
+      case "mariadb":
         return sqlString.escapeId(identifier);
       case "postgres":
         return `"${identifier.replace(/"/g, '""')}"`;
