@@ -15,12 +15,14 @@
     "start": "yarn format && yarn build && node lib/index.js",
     "start:watch": "nodemon --exec ts-node src/index.ts",
     "test:index": "yarn build && ts-node --transpile-only src/index.ts",
-    "create:migration": "yarn build && node ./lib/index.js create:migration",
-    "run:migrations": "yarn build && node ./lib/index.js run:migrations",
-    "rollback:migrations": "yarn build && node ./lib/index.js rollback:migrations"
+    "create:migration": "yarn build && ts-node src/hysteria-cli/migrationCreateConnector.ts",
+    "run:migrations": "yarn build && ts-node src/hysteria-cli/migrationRunConnector.ts",
+    "rollback:migrations": "yarn build && ts-node src/hysteria-cli/migrationRollbackConnector.ts"
   },
   "bin": {
-    "hysteria": "ts-node ./commands.js"
+    "hysteria-create:migration": "ts-node src/hysteria-cli/migrationCreateConnector.ts",
+    "hysteria-run:migrations": "ts-node src/hysteria-cli/migrationRunConnector.ts",
+    "hysteria-rollback:migrations": "ts-node src/hysteria-cli/migrationRollbackConnector.ts"
   },
   "license": "MIT",
   "devDependencies": {
@@ -29,21 +31,20 @@
     "@types/node": "^20.10.2",
     "@types/pg": "^8.10.9",
     "@types/sqlstring": "^2.3.2",
-    "dotenv": "^16.3.1",
     "mysql2": "^3.9.8",
     "nodemon": "^3.0.2",
     "pg": "^8.11.3",
     "prettier": "^3.1.0",
     "standard": "^17.1.0",
     "tsup": "^8.0.1",
-    "typescript": "^5.3.2"
+    "typescript": "^5.3.2",
+    "luxon": "^3.5.0"
   },
   "dependencies": {
-    "commander": "^12.1.0",
-    "luxon": "^3.5.0",
     "sqlstring": "^2.3.3",
     "ts-node": "^10.9.2",
-    "winston": "^3.11.0"
+    "winston": "^3.11.0",
+    "dotenv": "^16.3.1"
   },
   "keywords": [
     "orm",

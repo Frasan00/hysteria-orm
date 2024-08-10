@@ -74,7 +74,7 @@ export class PostgresUpdateQueryBuilder<
     try {
       const { rows } = await this.pgPool.query(query, params);
       if (!rows.length) {
-        throw new Error("Failed to update");
+        return [];
       }
 
       return parseDatabaseDataIntoModelResponse(rows, this.model);

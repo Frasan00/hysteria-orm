@@ -2116,6 +2116,7 @@ declare class Schema {
     queryStatements: string[];
     sqlType: DataSourceType;
     constructor(sqlType?: DataSourceType);
+    delayed(): Promise<void>;
     rawQuery(query: string): void;
     createTable(tableName: string, options?: {
         ifNotExists?: boolean;
@@ -2128,8 +2129,15 @@ declare class Schema {
 declare abstract class Migration {
     migrationName: string;
     schema: Schema;
+    /**
+     * @description This method is called when the migration is to be run
+     */
     abstract up(): Promise<void>;
+    /**
+     * @description This method is called when the migration is to be rolled back
+     */
     abstract down(): Promise<void>;
+    delayed?(): Promise<void>;
 }
 
 declare class User extends Model {

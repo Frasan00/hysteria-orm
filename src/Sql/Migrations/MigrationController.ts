@@ -2,7 +2,6 @@ import { PoolConnection } from "mysql2/promise";
 import { PoolClient } from "pg";
 import { log } from "../../Logger";
 import { Migration } from "./Migration";
-import { DataSourceType } from "../../Datasource";
 
 export class MigrationController {
   protected mysqlPool: PoolConnection | null;
@@ -14,8 +13,6 @@ export class MigrationController {
   }
 
   public async upMigrations(migrations: Migration[]): Promise<void> {
-    console.log("Running migrations", migrations);
-
     try {
       for (const migration of migrations) {
         await migration.up();

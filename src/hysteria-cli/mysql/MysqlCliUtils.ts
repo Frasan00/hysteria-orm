@@ -34,7 +34,6 @@ class MysqlCliUtils {
 
   public async getMigrations(): Promise<Migration[]> {
     const migrationNames = this.findMigrationNames();
-
     const migrations: Migration[] = [];
 
     for (const migrationName of migrationNames) {

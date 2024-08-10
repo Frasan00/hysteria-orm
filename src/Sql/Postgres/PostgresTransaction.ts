@@ -82,6 +82,9 @@ export class PostgresTransaction {
     try {
       log(query, this.logs, params);
       const { rows } = await this.pgClient.query(query, params);
+      if (!rows.length) {
+        return [];
+      }
 
       return (await parseDatabaseDataIntoModelResponse(
         rows as T[],

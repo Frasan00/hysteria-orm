@@ -7,7 +7,7 @@ export default class extends Migration {
     // Your migration logic here
   }
 
-  public async down(): Promise<void> { {
+  public async down(): Promise<void> {
     // Your rollback logic here
   }
 }

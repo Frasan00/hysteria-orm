@@ -73,7 +73,7 @@ export class MysqlUpdateQueryBuilder<
     try {
       const rows: any = await this.mysqlPool.query(query, params);
       if (!rows.length) {
-        throw new Error("Failed to update");
+        return 0;
       }
 
       return rows[0].affectedRows;

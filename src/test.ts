@@ -25,7 +25,8 @@ export async function testCreate() {
 
       const user = await User.create({
         name: "John Doe",
-        email: "testoooo",
+        email: "testoooo 10",
+        signupSource: "google",
       });
 
       console.log(user);
@@ -33,11 +34,13 @@ export async function testCreate() {
       const users = await User.massiveCreate([
         {
           name: "Massive John Doe",
-          email: " massive test",
+          email: " massive test 1",
+          signupSource: "google",
         },
         {
           name: "Massive Jane Doe 2",
-          email: " massive test",
+          email: " massive test 2",
+          signupSource: "google",
         },
       ]);
       console.log(users);
@@ -62,18 +65,21 @@ export async function testCreate() {
 
       const user = await User.create({
         name: "John Doe",
-        email: "testoooo",
+        email: "testoooo 1",
+        signupSource: "google",
       });
       console.log(user);
 
       const users = await User.massiveCreate([
         {
           name: "Massive John Doe",
-          email: " massive test",
+          email: " massive test 1",
+          signupSource: "google",
         },
         {
           name: "Massive Jane Doe 2",
-          email: " massive test",
+          email: " massive test 2",
+          signupSource: "google",
         },
       ]);
       console.log(users);

@@ -8,7 +8,6 @@ import { DataSourceInput } from "./Datasource";
 import { Migration } from "./Sql/Migrations/Migration";
 import { SqlDataSource } from "./Sql/SqlDatasource";
 import { testCreate, testDelete, testQuery, testTrx, testUpdate } from "./test";
-import runMigrationsConnector from "./hysteria-cli/migrationRunConnector";
 import { DateTime } from "luxon";
 
 export class User extends Model {
@@ -43,17 +42,11 @@ export class Post extends Model {
 
 (async () => {
   await SqlDataSource.connect();
-  // Migrations
-  // migrationCreateConnector("users");
-  // migrationCreateConnector("posts");
-  // await runMigrationsConnector();
-  // await rollbackMigrationConnector();
-
-  await testQuery();
   // await testCreate();
   // await testUpdate();
   // await testDelete();
   // await testTrx();
+  // await testQuery();
 
   process.exit(0);
 })();

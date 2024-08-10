@@ -209,7 +209,7 @@ export class PostgresModelManager<
         model,
         this.model,
       );
-      log(query, this.logs);
+      log(query, this.logs, params);
       const { rows } = await this.pgPool.query(query, params);
       const insertedModel = rows[0] as T;
       if (!insertedModel) {

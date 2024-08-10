@@ -6,6 +6,7 @@ dotenv.config();
 
 export default function migrationCreateConnector(name: string) {
   const databaseType = process.env.DB_TYPE;
+  console.log("Creating migration...");
 
   switch (databaseType) {
     case "mysql":
@@ -19,3 +20,10 @@ export default function migrationCreateConnector(name: string) {
       throw new Error("Invalid database type, must be mysql or postgres");
   }
 }
+
+const arg = process.argv[2];
+if (!arg) {
+  throw new Error("Please provide a name for the migration");
+}
+
+migrationCreateConnector(arg);

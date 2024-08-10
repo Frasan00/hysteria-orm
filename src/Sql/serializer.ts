@@ -4,15 +4,15 @@ import { Relation, RelationType } from "./Models/Relations/Relation";
 
 export async function parseDatabaseDataIntoModelResponse<T extends Model>(
   models: T[],
-  _typeofModel: typeof Model,
+  typeofModel: typeof Model,
 ): Promise<T | T[] | null> {
   if (!models.length) {
     return null;
   }
 
-  const _tempModel = new _typeofModel() as T;
-  const relations = Object.keys(_tempModel).filter(
-    (key) => _tempModel[key as keyof T] instanceof Relation,
+  const tempModel = new typeofModel() as T;
+  const relations = Object.keys(tempModel).filter(
+    (key) => tempModel[key as keyof T] instanceof Relation,
   );
 
   models = models.map((model) => {
@@ -27,7 +27,7 @@ export async function parseDatabaseDataIntoModelResponse<T extends Model>(
   });
 
   const parsedModels = models.map((model) =>
-    serializeModel(model, relations, _tempModel),
+    serializeModel(model, relations, tempModel),
   );
   return parsedModels.length === 1 ? parsedModels[0] : parsedModels;
 }

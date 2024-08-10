@@ -219,7 +219,7 @@ export class MysqlModelManager<
         this.model,
       );
 
-      log(query, this.logs);
+      log(query, this.logs, params);
       const [result]: any = await this.mysqlPool.query<RowDataPacket[]>(
         query,
         params,
