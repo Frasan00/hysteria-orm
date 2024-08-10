@@ -37,8 +37,10 @@ class MysqlCliUtils {
     const migrations: Migration[] = [];
 
     for (const migrationName of migrationNames) {
+      console.log("migrationName", migrationName);
       const migrationModule = (await this.findMigrationModule(migrationName))
         .default;
+        console.log("migrationModule", migrationModule);
       const migration: Migration = new migrationModule();
       migration.migrationName = migrationName;
       migrations.push(migration);

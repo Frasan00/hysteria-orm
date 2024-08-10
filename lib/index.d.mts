@@ -1771,6 +1771,7 @@ declare class Model {
      * @description Connects to the database with the given connection details, then after the callback is executed, it disconnects from the database and connects back to the original database specified in the SqlDataSource.connect
      * @param connectionDetails - connection details for the database for the temp connection
      * @param cb - function containing all the database operations on the provided connection details
+     * @experimental
      * @returns {Promise<void>}
      */
     static useConnection(connectionDetails: DataSourceInput, cb: (sqlDataSource: SqlDataSource) => Promise<void>): Promise<void>;
@@ -2116,7 +2117,6 @@ declare class Schema {
     queryStatements: string[];
     sqlType: DataSourceType;
     constructor(sqlType?: DataSourceType);
-    delayed(): Promise<void>;
     rawQuery(query: string): void;
     createTable(tableName: string, options?: {
         ifNotExists?: boolean;
@@ -2137,7 +2137,14 @@ declare abstract class Migration {
      * @description This method is called when the migration is to be rolled back
      */
     abstract down(): Promise<void>;
-    delayed?(): Promise<void>;
+    /**
+     * @description This method is called after the migration has been run
+     */
+    afterUp?(): Promise<void>;
+    /**
+     * @description This method is called after the migration has been rolled back
+     */
+    afterDown?(): Promise<void>;
 }
 
 declare class User extends Model {

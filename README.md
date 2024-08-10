@@ -54,7 +54,7 @@ For TypeScript users, it is essential to set `"useDefineForClassFields": true` i
 - Connection details can still be override providing an input on `SqlDataSource.connect()` method
 
 ### Complete env example
-``` dotenv
+```dotenv
 MIGRATION_PATH=database/migrations # default /database/migrations, this env always referees to the root of the project
 DB_TYPE=mysql # mysql | postgres
 DB_HOST=127.0.0.1
@@ -114,6 +114,7 @@ export class User extends Model {
     public id!: number;
     public name!: string;
     public email!: string;
+
     // Relations take as params (TableName, foreignKey)
     public profile: Profile | HasOne = new HasOne("profiles", "user_id");
     public posts: Post[] | HasMany = new HasMany("posts", "user_id");
@@ -288,6 +289,7 @@ async (_sql: SqlDataSource) => {
 
 ```typescript
 import { Migration } from "hysteria-orm";
+import { Post } from "../Models/Post";
 
 export default class extends Migration {
     public up(): void {
@@ -302,6 +304,18 @@ export default class extends Migration {
 
     public down(): void {
         this.schema.dropTable('posts');
+    }
+
+    // Hooks for after up and down migrations are executed immediately after the relative migration method is executed
+    public async afterUp(): Promise<void> {
+        await Post.create({
+            name: "post 1",
+            userId: 1,
+        });
+    }
+
+    public async afterDown(): Promise<void> {
+        // after down logic here
     }
 }
 ```

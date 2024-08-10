@@ -2,6 +2,7 @@ import { PoolConnection } from "mysql2/promise";
 import { PoolClient } from "pg";
 import { log } from "../../Logger";
 import { Migration } from "./Migration";
+import { SqlDataSource } from "../SqlDatasource";
 
 export class MigrationController {
   protected mysqlPool: PoolConnection | null;
@@ -14,25 +15,34 @@ export class MigrationController {
 
   public async upMigrations(migrations: Migration[]): Promise<void> {
     try {
-      for (const migration of migrations) {
+      const migrationPromises = migrations.map(async (migration) => {
         await migration.up();
         const statements = migration.schema.queryStatements;
-        for (const statement of statements) {
+        const statementPromises = statements.map(async (statement) => {
           if (
             !statement ||
             statement === "" ||
             statement === ";" ||
             statement === ","
           ) {
-            continue;
+            return;
           }
-
+  
           log(statement, true);
           await this.localQuery(statement);
-        }
-
+        });
+  
+        await Promise.all(statementPromises);
         await this.addMigrationToMigrationTable(migration);
-      }
+
+        if (migration.afterUp) {
+          const sql = await SqlDataSource.connect();
+          await migration.afterUp();
+          await sql.closeConnection();
+        }
+      });
+  
+      await Promise.all(migrationPromises);
     } catch (error: any) {
       throw new Error(error);
     }
@@ -59,6 +69,11 @@ export class MigrationController {
         }
 
         await this.deleteMigrationFromMigrationTable(migration);
+        if (migration.afterDown) {
+          const sql = await SqlDataSource.connect();
+          await migration.afterDown();
+          await sql.closeConnection();
+        }
       }
     } catch (error: any) {
       throw new Error(error);

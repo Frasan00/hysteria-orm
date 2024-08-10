@@ -28,8 +28,8 @@ export default class Schema {
   ): ColumnBuilderConnector {
     const partialQuery =
       options && options.ifNotExists
-        ? createTableTemplate.createTableIfNotExists(tableName)
-        : createTableTemplate.createTable(tableName);
+        ? createTableTemplate.createTableIfNotExists(tableName, this.sqlType)
+        : createTableTemplate.createTable(tableName, this.sqlType);
 
     return new ColumnBuilderConnector(
       tableName,
@@ -49,7 +49,7 @@ export default class Schema {
   }
 
   public dropTable(tableName: string, ifExists: boolean = false): void {
-    this.rawQuery(dropTableTemplate(tableName, ifExists));
+    this.rawQuery(dropTableTemplate(tableName, ifExists, this.sqlType));
   }
 
   public truncateTable(tableName: string): void {
