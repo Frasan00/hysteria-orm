@@ -345,6 +345,15 @@ export class Model {
   }
 
   /**
+   * @description Adds a afterFetch clause to the model, adding the ability to modify the data after fetching the data
+   * @param data
+   * @returns {T}
+   */
+  public static async afterFetch(data: Model[]): Promise<Model[]> {
+    return data;
+  }
+
+  /**
    * @description Establishes a connection to the database instantiated from the SqlDataSource.connect method
    * @returns
    */

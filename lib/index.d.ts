@@ -1756,7 +1756,6 @@ declare class Model {
     };
     static sqlInstance: SqlDataSource;
     static metadata: Metadata;
-    static columns: string[];
     constructor(classProps?: Partial<Model>);
     /**
      * @description Connects to the database with the given connection details, then after the callback is executed, it disconnects from the database and connects back to the original database specified in the SqlDataSource.connect
@@ -1888,6 +1887,18 @@ declare class Model {
      * @param data
      */
     static beforeDelete(queryBuilder: DeleteQueryBuilders<any>): DeleteQueryBuilders<any>;
+    /**
+     * @description Adds a afterFetch clause to the model, adding the ability to modify the data after fetching the data
+     * @param data
+     * @returns {T}
+     */
+    static afterFetch(data: Model[]): Promise<Model[]>;
+    /**
+     * @description Adds a afterCreate clause to the model, adding the ability to modify the data after creating the data
+     * @param data
+     * @returns {T}
+     */
+    static afterCreate(data: Model[]): Promise<Model[]>;
     /**
      * @description Establishes a connection to the database instantiated from the SqlDataSource.connect method
      * @returns
@@ -2223,6 +2234,7 @@ declare class User extends Model {
     createdAt: DateTime;
     posts: HasMany | Post[];
     static metadata: Metadata;
+    static afterFetch(data: User[]): Promise<User[]>;
 }
 declare class Post extends Model {
     id: number;

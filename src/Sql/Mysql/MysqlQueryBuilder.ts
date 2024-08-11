@@ -96,10 +96,11 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
         this.logs,
       );
 
-      return (await parseDatabaseDataIntoModelResponse(
+      const model = (await parseDatabaseDataIntoModelResponse(
         [modelInstance],
         this.model,
       )) as T;
+      return (await this.model.afterFetch([model]))[0] as T;
     } catch (error) {
       queryError(query);
       throw new Error("Query failed " + error);
@@ -164,9 +165,10 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
         return [];
       }
 
-      return Array.isArray(serializedModels)
-        ? serializedModels
-        : [serializedModels];
+      await this.model.afterFetch(serializedModels as T[]);
+      return (
+        Array.isArray(serializedModels) ? serializedModels : [serializedModels]
+      ) as T[];
     } catch (error) {
       queryError(query);
       throw new Error("Query failed " + error);

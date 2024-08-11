@@ -45,6 +45,20 @@ export class User extends Model {
     primaryKey: "id",
     tableName: "users",
   };
+
+  public static async afterFetch(data: User[]): Promise<User[]> {
+    if (!data.length) {
+      return data;
+    }
+
+    return data.map((user) => {
+      if (user.name) {
+        user.name = user.name.toUpperCase();
+      }
+
+      return user;
+    });
+  }
 }
 
 export class Post extends Model {

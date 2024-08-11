@@ -190,6 +190,20 @@ export class User extends Model {
         data.isActive = true;
         return data;
     }
+
+    public static async afterFetch(data: User[]): Promise<User[]> {
+        if (!data.length) {
+            return data;
+        }
+
+        return data.map((user) => {
+            if (user.name) {
+                user.name = user.name.toUpperCase();
+            }
+
+            return user;
+        });
+    }
 }
 ```
 
