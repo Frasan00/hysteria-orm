@@ -288,6 +288,31 @@ export class Model {
   }
 
   /**
+   * @description Adds a beforeFetch clause to the model, adding the ability to modify the query before fetching the data
+   * @param queryBuilder
+   */
+  public static beforeFetch(
+    queryBuilder: QueryBuilders<any>,
+  ): QueryBuilders<any> {
+    return queryBuilder;
+  }
+
+  /**
+   * @description Adds a beforeCreate clause to the model, adding the ability to modify the data after fetching the data
+   * @param data
+   * @returns {T}
+   */
+  public static beforeCreate(data: Model): Model {
+    return data;
+  }
+
+  /**
+   * @description Adds a beforeUpdate clause to the model, adding the ability to modify the data before updating the data
+   * @param data
+   * @returns {T}
+   */
+
+  /**
    * @description Establishes a connection to the database instantiated from the SqlDataSource.connect method
    * @returns
    */

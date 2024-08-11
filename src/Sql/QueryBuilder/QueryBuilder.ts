@@ -412,6 +412,12 @@ export abstract class QueryBuilder<T extends Model> {
    */
   public abstract offset(offset: number): QueryBuilders<T>;
 
+  /**
+   * @description Returns a copy of the query builder instance.
+   * @returns A copy of the query builder instance.
+   */
+  public abstract copy(): QueryBuilders<T>;
+
   protected groupFooterQuery(): string {
     return (
       this.groupByQuery + this.orderByQuery + this.limitQuery + this.offsetQuery

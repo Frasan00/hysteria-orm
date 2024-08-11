@@ -114,6 +114,7 @@ export class User extends Model {
     public id!: number;
     public name!: string;
     public email!: string;
+    public isActive!: boolean;
 
     // Relations take as params (TableName, foreignKey)
     public profile: Profile | HasOne = new HasOne("profiles", "user_id");
@@ -123,6 +124,16 @@ export class User extends Model {
         primaryKey: "id",
         tableName: "users",
     };
+
+    // Hooks
+    public static beforeFetch(queryBuilder: QueryBuilders<User>): QueryBuilders<User> {
+        return queryBuilder.where("", true);
+    }
+
+    public static beforeCreate(data: User): User {
+        data.isActive = true;
+        return data;
+    }
 }
 ```
 

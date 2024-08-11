@@ -3,7 +3,11 @@ import selectTemplate from "../Resources/Query/SELECT";
 import { Model } from "../Models/Model";
 import { log, queryError } from "../../Logger";
 import { BaseValues, WhereOperatorType } from "../Resources/Query/WHERE.TS";
-import { OneOptions, QueryBuilder } from "../QueryBuilder/QueryBuilder";
+import {
+  OneOptions,
+  QueryBuilder,
+  QueryBuilders,
+} from "../QueryBuilder/QueryBuilder";
 import joinTemplate from "../Resources/Query/JOIN";
 import { getPaginationMetadata, PaginatedData } from "../pagination";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
@@ -47,6 +51,9 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
   public async one(
     options: OneOptions = { throwErrorOnNull: false },
   ): Promise<T | null> {
+    // hook query builder
+    this.model.beforeFetch(this);
+
     let query: string = "";
     if (this.joinQuery && !this.selectQuery) {
       const select = selectTemplate(
@@ -63,6 +70,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
     query = this.whereTemplate.convertPlaceHolderToValue(query);
     query = query.trim();
+
     log(query, this.logs, this.params);
     try {
       const [rows] = await this.mysqlPool.query<RowDataPacket[]>(
@@ -103,6 +111,9 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @returns A Promise resolving to an array of results.
    */
   public async many(): Promise<T[]> {
+    // hook query builder
+    this.model.beforeFetch(this);
+
     let query: string = "";
     if (this.joinQuery && !this.selectQuery) {
       const select = selectTemplate(
@@ -120,6 +131,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     query += this.groupFooterQuery();
     query = this.whereTemplate.convertPlaceHolderToValue(query);
     query = query.trim();
+
     log(query, this.logs, this.params);
     try {
       const [rows] = await this.mysqlPool.query<RowDataPacket[]>(
@@ -994,6 +1006,39 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
   public offset(offset: number) {
     this.offsetQuery = this.selectTemplate.offset(offset);
     return this;
+  }
+
+  public copy(): QueryBuilders<T> {
+    const queryBuilder = new MysqlQueryBuilder<T>(
+      this.model as typeof Model,
+      this.tableName,
+      this.mysqlPool,
+      this.logs,
+      this.isNestedCondition,
+    );
+
+    queryBuilder.selectQuery = this.selectQuery;
+    queryBuilder.whereQuery = this.whereQuery;
+    queryBuilder.joinQuery = this.joinQuery;
+    queryBuilder.groupByQuery = this.groupByQuery;
+    queryBuilder.orderByQuery = this.orderByQuery;
+    queryBuilder.limitQuery = this.limitQuery;
+    queryBuilder.offsetQuery = this.offsetQuery;
+    queryBuilder.params = [...this.params];
+    queryBuilder.relations = [...this.relations];
+    return queryBuilder;
+  }
+
+  public mergeQueryBuilder(queryBuilder: MysqlQueryBuilder<T>): void {
+    this.selectQuery += queryBuilder.selectQuery;
+    this.whereQuery += queryBuilder.whereQuery;
+    this.joinQuery += queryBuilder.joinQuery;
+    this.groupByQuery += queryBuilder.groupByQuery;
+    this.orderByQuery += queryBuilder.orderByQuery;
+    this.limitQuery += queryBuilder.limitQuery;
+    this.offsetQuery += queryBuilder.offsetQuery;
+    this.params.push(...queryBuilder.params);
+    this.relations.push(...queryBuilder.relations);
   }
 
   protected groupFooterQuery(): string {

@@ -716,13 +716,6 @@ type FindType<T> = Omit<FindOneType<T>, "throwError"> & {
 type TransactionType = MysqlTransaction | PostgresTransaction;
 
 declare class MySqlModelManagerUtils<T extends Model> {
-    parseSelectQueryInput(model: typeof Model, input: FindType<T> | FindOneType<T>): {
-        query: string;
-        params: any[];
-    };
-    private parseSelect;
-    private parseWhere;
-    private parseQueryFooter;
     parseInsert(model: T, modelTypeof: typeof Model): {
         query: string;
         params: any[];
@@ -737,9 +730,7 @@ declare class MySqlModelManagerUtils<T extends Model> {
     };
     private filterRelationsAndMetadata;
     parseDelete(tableName: string, column: string, value: string | number | boolean): string;
-    private isFindType;
     private getRelationFromModel;
-    parseRelationInput(model: T, modelTypeOf: typeof Model, input: FindOneType<T>, mysqlConnection: Pool, logs: boolean): Promise<void>;
     parseQueryBuilderRelations(model: T, modelTypeOf: typeof Model, input: string[], mysqlConnection: Pool, logs: boolean): Promise<void>;
 }
 
@@ -983,6 +974,8 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @returns The MysqlQueryBuilder instance for chaining.
      */
     offset(offset: number): this;
+    copy(): QueryBuilders<T>;
+    mergeQueryBuilder(queryBuilder: MysqlQueryBuilder<T>): void;
     protected groupFooterQuery(): string;
     private mergeRawPacketIntoModel;
 }
@@ -1231,6 +1224,7 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @returns The PostgresQueryBuilder instance for chaining.
      */
     offset(offset: number): this;
+    copy(): QueryBuilders<T>;
     protected groupFooterQuery(): string;
     private mergeRawPacketIntoModel;
 }
@@ -1503,6 +1497,11 @@ declare abstract class QueryBuilder<T extends Model> {
      * @returns The MysqlQueryBuilder instance for chaining.
      */
     abstract offset(offset: number): QueryBuilders<T>;
+    /**
+     * @description Returns a copy of the query builder instance.
+     * @returns A copy of the query builder instance.
+     */
+    abstract copy(): QueryBuilders<T>;
     protected groupFooterQuery(): string;
 }
 
@@ -1800,7 +1799,9 @@ declare class Model {
      * @param {number | string} id
      * @returns {Promise<T | null>}
      */
-    static findOneByPrimaryKey<T extends Model>(this: new () => T | typeof Model, id: string | number): Promise<T | null>;
+    static findOneByPrimaryKey<T extends Model>(this: new () => T | typeof Model, value: string | number | boolean, options?: {
+        throwErrorOnNull: boolean;
+    }): Promise<T | null>;
     /**
      * @description Saves a new record to the database
      * @param model
@@ -1866,6 +1867,22 @@ declare class Model {
      * @returns {void}
      */
     static setProps<T extends Model>(instance: T, data: Partial<T>): void;
+    /**
+     * @description Adds a beforeFetch clause to the model, adding the ability to modify the query before fetching the data
+     * @param queryBuilder
+     */
+    static beforeFetch(queryBuilder: QueryBuilders<any>): QueryBuilders<any>;
+    /**
+     * @description Adds a beforeCreate clause to the model, adding the ability to modify the data after fetching the data
+     * @param data
+     * @returns {T}
+     */
+    static beforeCreate(data: Model): Model;
+    /**
+     * @description Adds a beforeUpdate clause to the model, adding the ability to modify the data before updating the data
+     * @param data
+     * @returns {T}
+     */
     /**
      * @description Establishes a connection to the database instantiated from the SqlDataSource.connect method
      * @returns
@@ -2205,6 +2222,8 @@ declare class User extends Model {
     createdAt: DateTime;
     posts: HasMany | Post[];
     static metadata: Metadata;
+    static beforeFetch(queryBuilder: QueryBuilders<User>): QueryBuilders<User>;
+    static beforeCreate(data: User): User;
 }
 declare class Post extends Model {
     id: number;

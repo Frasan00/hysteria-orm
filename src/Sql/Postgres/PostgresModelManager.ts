@@ -149,6 +149,7 @@ export class PostgresModelManager<
    * @returns Promise resolving to the saved model or null if saving fails.
    */
   public async create(model: T, trx?: TransactionType): Promise<T | null> {
+    this.model.beforeCreate(model);
     const { query, params } = this.postgresModelManagerUtils.parseInsert(
       model,
       this.model,
@@ -188,6 +189,7 @@ export class PostgresModelManager<
    * @returns Promise resolving to an array of saved models or null if saving fails.
    */
   public async massiveCreate(models: T[], trx?: TransactionType): Promise<T[]> {
+    models.forEach((model) => this.model.beforeCreate(model));
     const { query, params } = this.postgresModelManagerUtils.parseMassiveInsert(
       models,
       this.model,
@@ -334,6 +336,7 @@ export class PostgresModelManager<
             " has no primary key to be deleted from, try deleteByColumn",
         );
       }
+
       const deleteQuery = this.postgresModelManagerUtils.parseDelete(
         this.model.metadata.tableName,
         this.model.metadata.primaryKey,

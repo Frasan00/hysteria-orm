@@ -1,5 +1,9 @@
 import { Model } from "../Models/Model";
-import { OneOptions, QueryBuilder } from "../QueryBuilder/QueryBuilder";
+import {
+  OneOptions,
+  QueryBuilder,
+  QueryBuilders,
+} from "../QueryBuilder/QueryBuilder";
 import { Pool } from "pg";
 import { BaseValues, WhereOperatorType } from "../Resources/Query/WHERE.TS";
 import selectTemplate from "../Resources/Query/SELECT";
@@ -60,6 +64,9 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   public async one(
     options: OneOptions = { throwErrorOnNull: false },
   ): Promise<T | null> {
+    // hook query builder
+    this.model.beforeFetch(this);
+
     let query: string = "";
     if (this.joinQuery && !this.selectQuery) {
       const select = selectTemplate(
@@ -74,10 +81,11 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
       query += this.whereQuery;
     }
 
+    query = this.whereTemplate.convertPlaceHolderToValue(query);
+    query = query.trim();
+
+    log(query, this.logs, this.params);
     try {
-      query = this.whereTemplate.convertPlaceHolderToValue(query);
-      query = query.trim();
-      log(query, this.logs, this.params);
       const result = await this.pgPool.query(query, this.params);
       if (!result.rows[0]) {
         if (options.throwErrorOnNull) {
@@ -107,6 +115,9 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   }
 
   public async many(): Promise<T[]> {
+    // hook query builder
+    this.model.beforeFetch(this);
+
     let query: string = "";
     if (this.joinQuery && !this.selectQuery) {
       const select = selectTemplate(
@@ -124,6 +135,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     query += this.groupFooterQuery();
     query = this.whereTemplate.convertPlaceHolderToValue(query);
     query = query.trim();
+
     log(query, this.logs, this.params);
     try {
       const result = await this.pgPool.query(query, this.params);
@@ -970,6 +982,24 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   public offset(offset: number) {
     this.offsetQuery = this.selectTemplate.offset(offset);
     return this;
+  }
+
+  public copy(): QueryBuilders<T> {
+    const queryBuilder = new PostgresQueryBuilder<T>(
+      this.model as typeof Model,
+      this.tableName,
+      this.pgPool,
+      this.logs,
+      this.isNestedCondition,
+    );
+    queryBuilder.selectQuery = this.selectQuery;
+    queryBuilder.whereQuery = this.whereQuery;
+    queryBuilder.groupByQuery = this.groupByQuery;
+    queryBuilder.orderByQuery = this.orderByQuery;
+    queryBuilder.limitQuery = this.limitQuery;
+    queryBuilder.offsetQuery = this.offsetQuery;
+    queryBuilder.params = [...this.params];
+    return queryBuilder;
   }
 
   protected groupFooterQuery(): string {
