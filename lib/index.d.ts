@@ -988,13 +988,6 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
 }
 
 declare class PostgresModelManagerUtils<T extends Model> {
-    parseSelectQueryInput(model: typeof Model, input: FindType<T> | FindOneType<T>): {
-        query: string;
-        params: any[];
-    };
-    private parseSelect;
-    private parseWhere;
-    private parseQueryFooter;
     parseInsert(model: T, modelTypeOf: typeof Model): {
         query: string;
         params: any[];
@@ -1011,7 +1004,6 @@ declare class PostgresModelManagerUtils<T extends Model> {
     parseDelete(tableName: string, column: string, value: string | number | boolean): string;
     private isFindType;
     private getRelationFromModel;
-    parseRelationInput(model: T, modelTypeOf: typeof Model, input: FindOneType<T>, pgPool: Pool$1, logs: boolean): Promise<void>;
     parseQueryBuilderRelations(model: T, modelTypeOf: typeof Model, input: string[], pgConnection: pg__default.Pool, logs: boolean): Promise<void>;
 }
 
@@ -1522,7 +1514,7 @@ declare abstract class AbstractModelManager<T extends Model> {
     protected constructor(model: typeof Model, logs: boolean);
     abstract find(input?: FindType<T>): Promise<T[]>;
     abstract findOne(input: FindOneType<T>): Promise<T | null>;
-    abstract findOneById(id: string | number, throwErrorOnNull: boolean): Promise<T | null>;
+    abstract findOneByPrimaryKey(value: string | number | boolean, throwErrorOnNull: boolean): Promise<T | null>;
     abstract create(model: Partial<T>, trx?: TransactionType): Promise<T | null>;
     abstract massiveCreate(model: Partial<T>[], trx?: TransactionType): Promise<T[]>;
     abstract updateRecord(model: T, trx?: TransactionType): Promise<T | null>;
@@ -1559,12 +1551,12 @@ declare class MysqlModelManager<T extends Model> extends AbstractModelManager<T>
      */
     findOne(input: FindOneType<T>): Promise<T | null>;
     /**
-     * Find a single record by its ID from the database.
+     * Find a single record by its PK from the database.
      *
-     * @param {string | number} id - ID of the record to retrieve.
+     * @param {string | number | boolean} value - PK of the record to retrieve.
      * @returns Promise resolving to a single model or null if not found.
      */
-    findOneById(id: string | number, throwErrorOnNull?: boolean): Promise<T | null>;
+    findOneByPrimaryKey(value: string | number | boolean, throwErrorOnNull?: boolean): Promise<T | null>;
     /**
      * Save a new model instance to the database.
      *
@@ -1647,12 +1639,12 @@ declare class PostgresModelManager<T extends Model> extends AbstractModelManager
      */
     findOne(input: FindOneType<T>): Promise<T | null>;
     /**
-     * Find a single record by its ID from the database.
+     * Find a single record by its PK from the database.
      *
-     * @param {string | number} id - ID of the record to retrieve.
+     * @param {string | number | boolean} value - PK value of the record to retrieve.
      * @returns Promise resolving to a single model or null if not found.
      */
-    findOneById(id: string | number, throwErrorOnNull?: boolean): Promise<T | null>;
+    findOneByPrimaryKey(value: string | number | boolean, throwErrorOnNull?: boolean): Promise<T | null>;
     /**
      * Save a new model instance to the database.
      *
@@ -1808,7 +1800,7 @@ declare class Model {
      * @param {number | string} id
      * @returns {Promise<T | null>}
      */
-    static findOneById<T extends Model>(this: new () => T | typeof Model, id: string | number): Promise<T | null>;
+    static findOneByPrimaryKey<T extends Model>(this: new () => T | typeof Model, id: string | number): Promise<T | null>;
     /**
      * @description Saves a new record to the database
      * @param model

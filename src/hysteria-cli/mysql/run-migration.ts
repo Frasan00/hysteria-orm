@@ -34,7 +34,9 @@ export async function runMigrationsSql(): Promise<void> {
     const migrations: Migration[] = await MysqlCliUtils.getMigrations();
     const pendingMigrations = migrations.filter(
       (migration) =>
-        !migrationTable.map((table) => table.name).includes(migration.migrationName),
+        !migrationTable
+          .map((table) => table.name)
+          .includes(migration.migrationName),
     );
 
     if (pendingMigrations.length === 0) {

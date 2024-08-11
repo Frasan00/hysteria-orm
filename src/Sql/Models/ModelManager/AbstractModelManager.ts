@@ -27,8 +27,8 @@ export abstract class AbstractModelManager<T extends Model> {
 
   public abstract findOne(input: FindOneType<T>): Promise<T | null>;
 
-  public abstract findOneById(
-    id: string | number,
+  public abstract findOneByPrimaryKey(
+    value: string | number | boolean,
     throwErrorOnNull: boolean,
   ): Promise<T | null>;
 

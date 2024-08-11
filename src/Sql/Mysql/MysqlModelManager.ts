@@ -9,7 +9,6 @@ import selectTemplate from "../Resources/Query/SELECT";
 import { log, queryError } from "../../Logger";
 import { MysqlQueryBuilder } from "./MysqlQueryBuilder";
 import { AbstractModelManager } from "../Models/ModelManager/AbstractModelManager";
-import { parseDatabaseDataIntoModelResponse } from "../serializer";
 import { MysqlUpdateQueryBuilder } from "./MysqlUpdateQueryBuilder";
 import { PostgresUpdateQueryBuilder } from "../Postgres/PostgresUpdateQueryBuilder";
 import { MysqlDeleteQueryBuilder } from "./MysqlDeleteQueryBuilder";
@@ -43,70 +42,41 @@ export class MysqlModelManager<
   public async find(input?: FindType<T>): Promise<T[]> {
     try {
       if (!input) {
-        const select = selectTemplate(
-          this.model.metadata.tableName,
-          this.model.sqlInstance.getDbType(),
-        );
-        log(select.selectAll, this.logs);
-        const [rows] = await this.mysqlPool.query<RowDataPacket[]>(
-          select.selectAll,
-        );
+        return await this.query().many();
+      }
 
-        const models = rows.map((row) => {
-          const model = row as T;
-          model.extraColumns = this.modelInstance.extraColumns;
-          return model;
+      const query = this.query();
+      if (input.select) {
+        query.select(...input.select);
+      }
+
+      if (input.relations) {
+        query.addRelations(input.relations);
+      }
+
+      if (input.where) {
+        Object.entries(input.where).forEach(([key, value]) => {
+          query.where(key, value);
         });
-
-        const serializedModels = await parseDatabaseDataIntoModelResponse(
-          models,
-          this.model,
-        );
-        if (!serializedModels) {
-          return [];
-        }
-
-        return Array.isArray(serializedModels)
-          ? serializedModels
-          : [serializedModels];
       }
 
-      const { query, params } =
-        this.mysqlModelManagerUtils.parseSelectQueryInput(this.model, input);
-
-      log(query, this.logs, params);
-      const [rows] = await this.mysqlPool.query<RowDataPacket[]>(query, params);
-      const modelsPromises = rows.map(async (row) => {
-        const model = new this.model();
-        const modelData = row as T;
-
-        // merge model data into model
-        Object.assign(model, modelData);
-
-        // relations parsing on the queried model
-        await this.mysqlModelManagerUtils.parseRelationInput(
-          model as T,
-          this.model,
-          input,
-          this.mysqlPool,
-          this.logs,
-        );
-
-        return model as T;
-      });
-
-      const models = (await Promise.all(modelsPromises)) as T[];
-      const serializedModels = await parseDatabaseDataIntoModelResponse(
-        models,
-        this.model,
-      );
-      if (!serializedModels) {
-        return [];
+      if (input.orderBy) {
+        query.orderBy(input.orderBy.columns, input.orderBy.type);
       }
 
-      return Array.isArray(serializedModels)
-        ? serializedModels
-        : [serializedModels];
+      if (input.limit) {
+        query.limit(input.limit);
+      }
+
+      if (input.offset) {
+        query.offset(input.offset);
+      }
+
+      if (input.groupBy) {
+        query.groupBy(...input.groupBy);
+      }
+
+      return await query.many();
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -122,36 +92,24 @@ export class MysqlModelManager<
   public async findOne(input: FindOneType<T>): Promise<T | null> {
     const model = new this.model();
     try {
-      const { query, params } =
-        this.mysqlModelManagerUtils.parseSelectQueryInput(this.model, input);
-      log(query, this.logs, params);
-      const [rows] = await this.mysqlPool.query<RowDataPacket[]>(query, params);
-      if (!rows[0]) {
-        if (input.throwErrorOnNull) {
-          throw new Error("ROW_NOT_FOUND");
-        }
-
-        return null;
+      const query = this.query();
+      if (input.select) {
+        query.select(...input.select);
       }
 
-      const modelData = rows[0] as T;
+      if (input.relations) {
+        query.addRelations(input.relations);
+      }
 
-      // merge model data into model
-      Object.assign(model, modelData);
+      if (input.where) {
+        Object.entries(input.where).forEach(([key, value]) => {
+          query.where(key, value);
+        });
+      }
 
-      // relations parsing on the queried model
-      await this.mysqlModelManagerUtils.parseRelationInput(
-        model as T,
-        this.model,
-        input,
-        this.mysqlPool,
-        this.logs,
-      );
-
-      return (await parseDatabaseDataIntoModelResponse(
-        [model],
-        this.model,
-      )) as T;
+      return await query.one({
+        throwErrorOnNull: input.throwErrorOnNull || false,
+      });
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -159,37 +117,32 @@ export class MysqlModelManager<
   }
 
   /**
-   * Find a single record by its ID from the database.
+   * Find a single record by its PK from the database.
    *
-   * @param {string | number} id - ID of the record to retrieve.
+   * @param {string | number | boolean} value - PK of the record to retrieve.
    * @returns Promise resolving to a single model or null if not found.
    */
-  public async findOneById(
-    id: string | number,
+  public async findOneByPrimaryKey(
+    value: string | number | boolean,
     throwErrorOnNull: boolean = false,
   ): Promise<T | null> {
     const select = selectTemplate(
       this.model.metadata.tableName,
       this.model.sqlInstance.getDbType(),
     );
-    try {
-      const stringedId = typeof id === "number" ? id.toString() : id;
-      const query = select.selectById(stringedId);
-      log(query, this.logs);
-      const [rows] = await this.mysqlPool.query<RowDataPacket[]>(query);
-      if (!rows[0]) {
-        if (throwErrorOnNull) {
-          throw new Error("ROW_NOT_FOUND");
-        }
 
-        return null;
+    try {
+      if (!this.model.metadata.primaryKey) {
+        throw new Error(
+          "Model " +
+            this.model.metadata.tableName +
+            " has no primary key to be retrieved by",
+        );
       }
 
-      const modelData = rows[0] as T;
-      return (await parseDatabaseDataIntoModelResponse(
-        [modelData],
-        this.model,
-      )) as T;
+      return await this.query()
+        .where(this.model.metadata.primaryKey as string, value)
+        .one({ throwErrorOnNull });
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -224,7 +177,7 @@ export class MysqlModelManager<
         query,
         params,
       );
-      return await this.findOneById(result["insertId"]);
+      return await this.findOneByPrimaryKey(result["insertId"]);
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -301,7 +254,7 @@ export class MysqlModelManager<
         return null;
       }
 
-      return await this.findOneById(
+      return await this.findOneByPrimaryKey(
         model[this.model.metadata.primaryKey as keyof T] as string | number,
       );
     }
@@ -321,7 +274,7 @@ export class MysqlModelManager<
         return null;
       }
 
-      return await this.findOneById(
+      return await this.findOneByPrimaryKey(
         model[this.model.metadata.primaryKey as keyof T] as string | number,
       );
     } catch (error) {

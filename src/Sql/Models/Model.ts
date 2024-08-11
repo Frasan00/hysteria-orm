@@ -136,15 +136,16 @@ export class Model {
    * @param {number | string} id
    * @returns {Promise<T | null>}
    */
-  public static findOneById<T extends Model>(
+  public static findOneByPrimaryKey<T extends Model>(
     this: new () => T | typeof Model,
-    id: string | number,
+    value: string | number | boolean,
+    options: { throwErrorOnNull: boolean } = { throwErrorOnNull: false },
   ): Promise<T | null> {
     const typeofModel = this as unknown as typeof Model;
     typeofModel.establishConnection();
     return typeofModel.sqlInstance
       .getModelManager<T>(typeofModel)
-      .findOneById(id);
+      .findOneByPrimaryKey(value, options.throwErrorOnNull);
   }
 
   /**

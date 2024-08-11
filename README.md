@@ -172,8 +172,8 @@ const filteredUsers: User[] = await User.find({
     offset: 0
 });
 
-// Get by id requires the `id` property to exist on the model in order to work
-const user: User | null = await User.findOneById(5);
+// Get by ok requires a primary key to exist on the model in order to work
+const user: User | null = await User.findOneByPrimaryKey(5, { throwErrorOnNull: true });
 
 // Get One
 const otherUser: User | null = await User.findOne({

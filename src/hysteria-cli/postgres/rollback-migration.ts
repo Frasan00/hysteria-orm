@@ -36,10 +36,10 @@ export async function migrationRollBackPg(): Promise<void> {
     const migrations: Migration[] = await PostgresCliUtils.getMigrations();
 
     const tableMigrations = migrationTable.map((migration) => migration.name);
-    const pendingMigrations = migrations.filter(
-      (migration) => tableMigrations.includes(migration.migrationName),
+    const pendingMigrations = migrations.filter((migration) =>
+      tableMigrations.includes(migration.migrationName),
     );
-  
+
     if (pendingMigrations.length === 0) {
       console.log("No pending migrations.");
       client.release();

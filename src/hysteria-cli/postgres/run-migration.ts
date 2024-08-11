@@ -40,7 +40,9 @@ export async function runMigrationsPg(): Promise<void> {
     const migrations: Migration[] = await PostgresCliUtils.getMigrations();
     const pendingMigrations = migrations.filter(
       (migration) =>
-        !migrationTable.map((table) => table.name).includes(migration.migrationName),
+        !migrationTable
+          .map((table) => table.name)
+          .includes(migration.migrationName),
     );
 
     if (pendingMigrations.length === 0) {

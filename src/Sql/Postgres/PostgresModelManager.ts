@@ -4,8 +4,7 @@ import {
   FindType,
   TransactionType,
 } from "../Models/ModelManager/ModelManagerTypes";
-import pg, { QueryResult } from "pg";
-import selectTemplate from "../Resources/Query/SELECT";
+import pg from "pg";
 import { log, queryError } from "../../Logger";
 import PostgresModelManagerUtils from "./PostgresModelManagerUtils";
 import { AbstractModelManager } from "../Models/ModelManager/AbstractModelManager";
@@ -42,63 +41,41 @@ export class PostgresModelManager<
   public async find(input?: FindType<T>): Promise<T[]> {
     try {
       if (!input) {
-        const select = selectTemplate(
-          this.model.metadata.tableName,
-          this.model.sqlInstance.getDbType(),
-        );
-        log(select.selectAll, this.logs);
-        const { rows }: QueryResult<T> = await this.pgPool.query(
-          select.selectAll,
-        );
-
-        const modelsPromises =
-          rows.map(async (row) => {
-            const model = row as T;
-            model.extraColumns = this.modelInstance.extraColumns;
-            return (await parseDatabaseDataIntoModelResponse(
-              [model],
-              this.model,
-            )) as T;
-          }) || [];
-        return await Promise.all(modelsPromises);
+        return await this.query().many();
       }
 
-      const { query, params } =
-        this.postgresModelManagerUtils.parseSelectQueryInput(this.model, input);
-      log(query, this.logs, params);
-
-      const { rows }: QueryResult<T> = await this.pgPool.query(query, params);
-      const modelPromises = rows.map(async (row) => {
-        const model = new this.model();
-        const modelData = row as T;
-
-        // merge model data into model
-        Object.assign(model, modelData);
-
-        // relations parsing on the queried model
-        await this.postgresModelManagerUtils.parseRelationInput(
-          model as T,
-          this.model,
-          input,
-          this.pgPool,
-          this.logs,
-        );
-
-        return model as T;
-      });
-
-      const models = await Promise.all(modelPromises);
-      const serializedModels = (await parseDatabaseDataIntoModelResponse(
-        models,
-        this.model,
-      )) as T;
-      if (!serializedModels) {
-        return [];
+      const query = this.query();
+      if (input.select) {
+        query.select(...input.select);
       }
 
-      return Array.isArray(serializedModels)
-        ? serializedModels
-        : [serializedModels];
+      if (input.relations) {
+        query.addRelations(input.relations);
+      }
+
+      if (input.where) {
+        Object.entries(input.where).forEach(([key, value]) => {
+          query.where(key, value);
+        });
+      }
+
+      if (input.orderBy) {
+        query.orderBy(input.orderBy.columns, input.orderBy.type);
+      }
+
+      if (input.limit) {
+        query.limit(input.limit);
+      }
+
+      if (input.offset) {
+        query.offset(input.offset);
+      }
+
+      if (input.groupBy) {
+        query.groupBy(...input.groupBy);
+      }
+
+      return await query.many();
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -112,36 +89,25 @@ export class PostgresModelManager<
    * @returns Promise resolving to a single model or null if not found.
    */
   public async findOne(input: FindOneType<T>): Promise<T | null> {
-    const model = new this.model();
     try {
-      const { query, params } =
-        this.postgresModelManagerUtils.parseSelectQueryInput(this.model, input);
-      log(query, this.logs, params);
-
-      const { rows } = await this.pgPool.query(query, params);
-      if (!rows[0]) {
-        if (input.throwErrorOnNull) {
-          throw new Error("ROW_NOT_FOUND");
-        }
-
-        return null;
+      const query = this.query();
+      if (input.select) {
+        query.select(...input.select);
       }
 
-      const modelData = rows[0] as T;
-      Object.assign(model, modelData);
+      if (input.relations) {
+        query.addRelations(input.relations);
+      }
 
-      await this.postgresModelManagerUtils.parseRelationInput(
-        model as T,
-        this.model,
-        input,
-        this.pgPool,
-        this.logs,
-      );
+      if (input.where) {
+        Object.entries(input.where).forEach(([key, value]) => {
+          query.where(key, value);
+        });
+      }
 
-      return (await parseDatabaseDataIntoModelResponse(
-        [model],
-        this.model,
-      )) as T;
+      return await query.one({
+        throwErrorOnNull: input.throwErrorOnNull || false,
+      });
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -149,39 +115,27 @@ export class PostgresModelManager<
   }
 
   /**
-   * Find a single record by its ID from the database.
+   * Find a single record by its PK from the database.
    *
-   * @param {string | number} id - ID of the record to retrieve.
+   * @param {string | number | boolean} value - PK value of the record to retrieve.
    * @returns Promise resolving to a single model or null if not found.
    */
-  public async findOneById(
-    id: string | number,
+  public async findOneByPrimaryKey(
+    value: string | number | boolean,
     throwErrorOnNull: boolean = false,
   ): Promise<T | null> {
-    const select = selectTemplate(
-      this.model.metadata.tableName,
-      this.model.sqlInstance.getDbType(),
-    );
     try {
-      const stringedId = typeof id === "number" ? id.toString() : id;
-      const query = select.selectById(stringedId);
-      log(query, this.logs);
-
-      const { rows } = await this.pgPool.query(query);
-      const modelData = rows[0] as T;
-
-      if (!modelData) {
-        if (throwErrorOnNull) {
-          throw new Error("ROW_NOT_FOUND");
-        }
-
-        return null;
+      if (!this.model.metadata.primaryKey) {
+        throw new Error(
+          "Model " +
+            this.model.metadata.tableName +
+            " has no primary key to be retrieved by",
+        );
       }
 
-      return (await parseDatabaseDataIntoModelResponse(
-        [modelData],
-        this.model,
-      )) as T;
+      return await this.query()
+        .where(this.model.metadata.primaryKey as string, value)
+        .one({ throwErrorOnNull });
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -295,8 +249,8 @@ export class PostgresModelManager<
         return null;
       }
 
-      return await this.findOneById(
-        model[primaryKey as keyof T] as string | number,
+      return await this.findOneByPrimaryKey(
+        model[primaryKey as keyof T] as string | number | boolean,
       );
     }
 
@@ -311,8 +265,8 @@ export class PostgresModelManager<
         return null;
       }
 
-      return await this.findOneById(
-        model[primaryKey as keyof T] as string | number,
+      return await this.findOneByPrimaryKey(
+        model[primaryKey as keyof T] as string | number | boolean,
       );
     } catch (error) {
       queryError(error);

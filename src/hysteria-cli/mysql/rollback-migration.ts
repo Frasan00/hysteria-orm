@@ -38,10 +38,10 @@ export async function migrationRollBackSql(): Promise<void> {
       await CliUtils.getMigrationTable(mysql);
     const migrations: Migration[] = await CliUtils.getMigrations();
     const tableMigrations = migrationTable.map((migration) => migration.name);
-    const pendingMigrations = migrations.filter(
-      (migration) => tableMigrations.includes(migration.migrationName),
+    const pendingMigrations = migrations.filter((migration) =>
+      tableMigrations.includes(migration.migrationName),
     );
-  
+
     if (pendingMigrations.length === 0) {
       console.log("No pending migrations.");
       mysql.release();
