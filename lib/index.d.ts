@@ -1,11 +1,9 @@
 #!/usr/bin/env node
-import mysql, { Pool, PoolConnection, RowDataPacket } from 'mysql2/promise';
+import * as mysql from 'mysql2/promise';
+import mysql__default, { Pool, PoolConnection } from 'mysql2/promise';
 import * as pg from 'pg';
 import pg__default, { Pool as Pool$1, PoolClient } from 'pg';
 import * as mysql2_typings_mysql_lib_protocol_packets_FieldPacket from 'mysql2/typings/mysql/lib/protocol/packets/FieldPacket';
-import * as mysql2_typings_mysql_lib_protocol_packets_ProcedurePacket from 'mysql2/typings/mysql/lib/protocol/packets/ProcedurePacket';
-import * as mysql2_typings_mysql_lib_protocol_packets_ResultSetHeader from 'mysql2/typings/mysql/lib/protocol/packets/ResultSetHeader';
-import * as mysql2_typings_mysql_lib_protocol_packets_OkPacket from 'mysql2/typings/mysql/lib/protocol/packets/OkPacket';
 import { DateTime } from 'luxon';
 
 type DataSourceType = "mysql" | "postgres" | "mariadb";
@@ -329,7 +327,7 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @returns A Promise resolving to an array of results.
      */
     many(): Promise<T[]>;
-    raw(query: string, params?: any[]): Promise<[mysql2_typings_mysql_lib_protocol_packets_OkPacket.OkPacket | RowDataPacket[] | mysql2_typings_mysql_lib_protocol_packets_ResultSetHeader.ResultSetHeader[] | RowDataPacket[][] | mysql2_typings_mysql_lib_protocol_packets_OkPacket.OkPacket[] | mysql2_typings_mysql_lib_protocol_packets_ProcedurePacket.ProcedureCallPacket, mysql2_typings_mysql_lib_protocol_packets_FieldPacket.FieldPacket[]]>;
+    raw(query: string, params?: any[]): Promise<[mysql.QueryResult, mysql2_typings_mysql_lib_protocol_packets_FieldPacket.FieldPacket[]]>;
     /**
      * @description Paginates the query results with the given page and limit, it removes any previous limit - offset calls
      * @param page
@@ -1525,7 +1523,7 @@ declare abstract class AbstractModelManager<T extends Model> {
 }
 
 declare class MysqlModelManager<T extends Model> extends AbstractModelManager<T> {
-    protected mysqlPool: mysql.Pool;
+    protected mysqlPool: mysql__default.Pool;
     protected mysqlModelManagerUtils: MySqlModelManagerUtils<T>;
     /**
      * Constructor for MysqlModelManager class.
@@ -1534,7 +1532,7 @@ declare class MysqlModelManager<T extends Model> extends AbstractModelManager<T>
      * @param {Pool} mysqlConnection - MySQL connection pool.
      * @param {boolean} logs - Flag to enable or disable logging.
      */
-    constructor(model: typeof Model, mysqlConnection: mysql.Pool, logs: boolean);
+    constructor(model: typeof Model, mysqlConnection: mysql__default.Pool, logs: boolean);
     /**
      * Find method to retrieve multiple records from the database based on the input conditions.
      *
@@ -1701,8 +1699,8 @@ declare class PostgresModelManager<T extends Model> extends AbstractModelManager
 }
 
 type ModelManager<T extends Model> = MysqlModelManager<T> | PostgresModelManager<T>;
-type SqlPoolType = mysql.Pool | pg__default.Pool;
-type SqlPoolConnectionType = mysql.PoolConnection | pg__default.PoolClient;
+type SqlPoolType = mysql__default.Pool | pg__default.Pool;
+type SqlPoolConnectionType = mysql__default.PoolConnection | pg__default.PoolClient;
 declare class SqlDataSource extends DataSource {
     isConnected: boolean;
     protected sqlPool: SqlPoolType;
@@ -1751,12 +1749,14 @@ interface Metadata {
     readonly tableName: string;
     readonly primaryKey?: string;
 }
+declare function column(): PropertyDecorator;
 declare class Model {
     extraColumns: {
         [key: string]: string | number | boolean;
     };
     static sqlInstance: SqlDataSource;
     static metadata: Metadata;
+    static columns: string[];
     constructor(classProps?: Partial<Model>);
     /**
      * @description Connects to the database with the given connection details, then after the callback is executed, it disconnects from the database and connects back to the original database specified in the SqlDataSource.connect
@@ -2233,4 +2233,4 @@ declare class Post extends Model {
     static metadata: Metadata;
 }
 
-export { BelongsTo, type DataSourceInput, type DeleteQueryBuilders, HasMany, HasOne, Migration, Model, Post, type QueryBuilders, Relation, SqlDataSource, type UpdateQueryBuilders, User };
+export { BelongsTo, type DataSourceInput, type DeleteQueryBuilders, HasMany, HasOne, Migration, Model, Post, type QueryBuilders, Relation, SqlDataSource, type UpdateQueryBuilders, User, column };

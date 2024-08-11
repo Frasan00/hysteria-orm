@@ -1,4 +1,4 @@
-import { Model } from "../Models/Model";
+import { getModelColumns, Model } from "../Models/Model";
 import {
   OneOptions,
   QueryBuilder,
@@ -16,6 +16,7 @@ import {
   RelationType,
   SelectableType,
 } from "../Models/ModelManager/ModelManagerTypes";
+import "reflect-metadata";
 import { fromSnakeToCamelCase } from "../../CaseUtils";
 
 export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
@@ -1009,9 +1010,10 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   }
 
   private mergeRawPacketIntoModel(model: T, row: any) {
+    const columns = getModelColumns(this.model);
     Object.entries(row).forEach(([key, value]) => {
       const camelCaseKey = fromSnakeToCamelCase(key) as string;
-      if (Object.keys(model).includes(camelCaseKey)) {
+      if (columns.includes(camelCaseKey)) {
         Object.assign(model, { [camelCaseKey]: value });
         return;
       }

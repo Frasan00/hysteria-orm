@@ -46,9 +46,29 @@ Hysteria ORM is an Object-Relational Mapping (ORM) library for JavaScript and Ty
 - A JavaScript runtime environment (e.g., Node.js).
 - A SQL library corresponding to your database (e.g., `mysql2` for MySQL, `pg` for PostgreSQL).
 
-### TypeScript Configuration
+### TypeScript Configuration example
 
-For TypeScript users, it is essential to set `"useDefineForClassFields": true` in your `tsconfig.json` file to ensure compatibility with the ORM.
+```json 
+{
+  "compilerOptions": {
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "module": "commonjs",
+    "outDir": "lib",
+    "rootDirs": ["src", "test"],
+    "skipLibCheck": true,
+    "strict": true,
+    "target": "ES2020",
+    "moduleResolution": "node",
+    "declaration": true,
+    // Must set decorators support
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts"],
+  "exclude": ["node_modules"]
+}
+```
 
 ## Environment Variables
 
@@ -92,16 +112,34 @@ const sql = await SqlDataSource.connect(mysqlConfig, () => console.log("Connecte
 
 ```typescript
 import { Model } from "hysteria-orm";
+import { DateTime } from "luxon";
 
 export class User extends Model {
-    public id!: number;
-    public name!: string;
-    public email!: string;
-    
-    public static metadata: Metadata = {
-        primaryKey: "id",
-        tableName: "users",
-    };
+  @column()
+  declare id: number;
+
+  @column()
+  declare name: string;
+
+  @column()
+  declare email: string;
+
+  @column()
+  declare signupSource: string;
+
+  @column()
+  declare isActive: boolean;
+
+  @column()
+  declare json: Record<string, any>;
+
+  @column()
+  declare createdAt: DateTime;
+
+  public static metadata: Metadata = {
+    primaryKey: "id",
+    tableName: "users",
+  };
 }
 ```
 
@@ -113,10 +151,26 @@ import { Profile } from "./Profile";
 import { Post } from "./Post";
 
 export class User extends Model {
-    public id!: number;
-    public name!: string;
-    public email!: string;
-    public isActive!: boolean;
+    @column()
+    declare id: number;
+
+    @column()
+    declare name: string;
+
+    @column()
+    declare email: string;
+
+    @column()
+    declare signupSource: string;
+
+    @column()
+    declare isActive: boolean;
+
+    @column()
+    declare json: Record<string, any>;
+
+    @column()
+    declare createdAt: DateTime;
 
     // Relations take as params (TableName, foreignKey)
     public profile: Profile | HasOne = new HasOne("profiles", "user_id");

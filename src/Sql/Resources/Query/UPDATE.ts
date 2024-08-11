@@ -1,5 +1,4 @@
 import { camelToSnakeCase } from "../../../CaseUtils";
-import * as sqlString from "sqlstring";
 import { DataSourceType } from "../../../Datasource";
 
 const updateTemplate = (table: string, dbType: DataSourceType) => {

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { Metadata, Model } from "./Sql/Models/Model";
+import { column, Metadata, Model } from "./Sql/Models/Model";
 import { HasOne } from "./Sql/Models/Relations/HasOne";
 import { HasMany } from "./Sql/Models/Relations/HasMany";
 import { BelongsTo } from "./Sql/Models/Relations/BelongsTo";
@@ -15,15 +15,29 @@ import {
   UpdateQueryBuilders,
   DeleteQueryBuilders,
 } from "./Sql/QueryBuilder/QueryBuilder";
+import "reflect-metadata";
 
 export class User extends Model {
-  public id!: number;
-  public name!: string;
-  public email!: string;
-  public signupSource!: string;
-  public isActive!: boolean;
-  public json!: Record<string, any>;
-  public createdAt!: DateTime;
+  @column()
+  declare id: number;
+
+  @column()
+  declare name: string;
+
+  @column()
+  declare email: string;
+
+  @column()
+  declare signupSource: string;
+
+  @column()
+  declare isActive: boolean;
+
+  @column()
+  declare json: Record<string, any>;
+
+  @column()
+  declare createdAt: DateTime;
 
   public posts: HasMany | Post[] = new HasMany("posts", "user_id");
 
@@ -34,10 +48,17 @@ export class User extends Model {
 }
 
 export class Post extends Model {
-  public id!: number;
-  public title!: string;
-  public content!: string;
-  public userId!: number;
+  @column()
+  declare id: number;
+
+  @column()
+  declare title: string;
+
+  @column()
+  declare content: string;
+
+  @column()
+  declare userId: number;
 
   public user: BelongsTo | User = new BelongsTo("users", "userId");
 
@@ -53,13 +74,14 @@ export class Post extends Model {
   // await testUpdate();
   // await testDelete();
   // await testTrx();
-  // await testQuery();
+  await testQuery();
 
   process.exit(0);
 })();
 
 export {
   Model,
+  column,
   Relation,
   HasOne,
   HasMany,

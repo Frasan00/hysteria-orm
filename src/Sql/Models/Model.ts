@@ -10,6 +10,7 @@ import {
 } from "../QueryBuilder/QueryBuilder";
 import { SqlDataSource } from "../SqlDatasource";
 import { FindOneType, FindType } from "./ModelManager/ModelManagerTypes";
+import "reflect-metadata";
 
 export interface Metadata {
   readonly tableName: string;
@@ -25,6 +26,21 @@ function getBaseMetadata(className: string): Metadata {
   return {
     tableName: tableName,
   };
+}
+
+const COLUMN_METADATA_KEY = Symbol("columns");
+
+export function column(): PropertyDecorator {
+  return (target: Object, propertyKey: string | symbol) => {
+    const existingColumns =
+      Reflect.getMetadata(COLUMN_METADATA_KEY, target) || [];
+    existingColumns.push(propertyKey);
+    Reflect.defineMetadata(COLUMN_METADATA_KEY, existingColumns, target);
+  };
+}
+
+export function getModelColumns(target: any): string[] {
+  return Reflect.getMetadata(COLUMN_METADATA_KEY, target.prototype) || [];
 }
 
 /*

@@ -1,6 +1,6 @@
 import { Pool, RowDataPacket } from "mysql2/promise";
 import selectTemplate from "../Resources/Query/SELECT";
-import { Model } from "../Models/Model";
+import { getModelColumns, Model } from "../Models/Model";
 import { log, queryError } from "../../Logger";
 import { BaseValues, WhereOperatorType } from "../Resources/Query/WHERE.TS";
 import {
@@ -1047,10 +1047,11 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     );
   }
 
-  private mergeRawPacketIntoModel(model: T, row: RowDataPacket) {
+  private mergeRawPacketIntoModel(model: T, row: any) {
+    const columns = getModelColumns(this.model);
     Object.entries(row).forEach(([key, value]) => {
       const camelCaseKey = fromSnakeToCamelCase(key) as string;
-      if (Object.keys(model).includes(camelCaseKey)) {
+      if (columns.includes(camelCaseKey)) {
         Object.assign(model, { [camelCaseKey]: value });
         return;
       }
