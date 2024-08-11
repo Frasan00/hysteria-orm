@@ -1,7 +1,3 @@
-import {
-  FindType,
-  FindOneType,
-} from "../Models/ModelManager/ModelManagerTypes";
 import { Model } from "../Models/Model";
 import insertTemplate from "../Resources/Query/INSERT";
 import updateTemplate from "../Resources/Query/UPDATE";
@@ -64,18 +60,11 @@ export default class PostgresModelManagerUtils<T extends Model> {
 
   private filterRelationsAndMetadata(model: T): T {
     const filteredModel = {};
+    const isRelation = (value: any) => value instanceof Relation;
 
     const keys = Object.keys(model);
     for (const key of keys) {
-      if (key === "metadata") {
-        continue;
-      }
-
-      if (
-        typeof model[key as keyof T] === "object" &&
-        (model[key as keyof T] !== null ||
-          !Array.isArray(model[key as keyof T]))
-      ) {
+      if (isRelation(model[key as keyof T])) {
         continue;
       }
 
@@ -93,18 +82,6 @@ export default class PostgresModelManagerUtils<T extends Model> {
     return deleteTemplate(tableName, "postgres").delete(
       column,
       value.toString(),
-    );
-  }
-
-  private isFindType(
-    input: FindType<T> | FindOneType<T>,
-  ): input is FindType<T> {
-    const instance = input as FindType<T>;
-    return (
-      instance.hasOwnProperty("offset") ||
-      instance.hasOwnProperty("groupBy") ||
-      instance.hasOwnProperty("orderBy") ||
-      instance.hasOwnProperty("limit")
     );
   }
 

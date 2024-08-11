@@ -1,5 +1,4 @@
 import { camelToSnakeCase } from "../../../CaseUtils";
-import * as sqlString from "sqlstring";
 import { DataSourceType } from "../../../Datasource";
 
 export type WhereOperatorType =
@@ -11,7 +10,7 @@ export type WhereOperatorType =
   | "<="
   | "LIKE"
   | "ILIKE";
-export type BaseValues = string | number | boolean | Date;
+export type BaseValues = string | number | boolean | object;
 
 const whereTemplate = (_tableName: string, dbType: DataSourceType) => {
   return {
@@ -31,41 +30,477 @@ const whereTemplate = (_tableName: string, dbType: DataSourceType) => {
       column: string,
       value: BaseValues,
       operator: WhereOperatorType = "=",
-      index: number = 0,
-    ) => ({
-      query: `\nWHERE ${camelToSnakeCase(column)} ${operator} PLACEHOLDER`,
-      params: [value],
-    }),
+    ) => {
+      let query = `\nWHERE ${camelToSnakeCase(column)} ${operator} PLACEHOLDER`;
+      let params = [value];
+
+      if (typeof value === "object" && value !== null) {
+        switch (dbType) {
+          case "mariadb":
+          case "mysql":
+            query = `\nWHERE JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) ${operator} ?`;
+            params = [value]; // Use the JSON string directly
+            break;
+          case "postgres":
+            query = `\nWHERE ${column}::jsonb ${operator} PLACEHOLDER::jsonb`;
+            break;
+          default:
+            throw new Error(`Unsupported database type: ${dbType}`);
+        }
+      }
+
+      return {
+        query,
+        params,
+      };
+    },
     andWhere: (
       column: string,
       value: BaseValues,
       operator: WhereOperatorType = "=",
-      index: number = 0,
-    ) => ({
-      query: ` AND ${camelToSnakeCase(column)} ${operator} PLACEHOLDER`,
-      params: [value],
-    }),
+    ) => {
+      let query = ` AND ${camelToSnakeCase(column)} ${operator} PLACEHOLDER`;
+      let params = [value];
+
+      if (typeof value === "object" && value !== null) {
+        switch (dbType) {
+          case "mariadb":
+          case "mysql":
+            query = ` AND JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) ${operator} PLACEHOLDER`;
+            break;
+          case "postgres":
+            query = ` AND ${column}::jsonb ${operator} PLACEHOLDER::jsonb`;
+            break;
+          default:
+            throw new Error(`Unsupported database type: ${dbType}`);
+        }
+      }
+
+      return {
+        query,
+        params,
+      };
+    },
     orWhere: (
       column: string,
       value: BaseValues,
       operator: WhereOperatorType = "=",
-      index: number = 0,
-    ) => ({
-      query: ` OR ${camelToSnakeCase(column)} ${operator} PLACEHOLDER`,
-      params: [value],
-    }),
-    whereNot: (column: string, value: BaseValues, index: number = 0) => ({
-      query: `\nWHERE ${camelToSnakeCase(column)} != PLACEHOLDER`,
-      params: [value],
-    }),
-    andWhereNot: (column: string, value: BaseValues, index: number = 0) => ({
-      query: ` AND ${camelToSnakeCase(column)} != PLACEHOLDER`,
-      params: [value],
-    }),
-    orWhereNot: (column: string, value: BaseValues, index: number = 0) => ({
-      query: ` OR ${camelToSnakeCase(column)} != PLACEHOLDER`,
-      params: [value],
-    }),
+    ) => {
+      let query = ` OR ${camelToSnakeCase(column)} ${operator} PLACEHOLDER`;
+      let params = [value];
+
+      if (typeof value === "object" && value !== null) {
+        switch (dbType) {
+          case "mariadb":
+          case "mysql":
+            query = ` OR JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) ${operator} PLACEHOLDER`;
+            break;
+          case "postgres":
+            query = ` OR ${column}::jsonb ${operator} PLACEHOLDER::jsonb`;
+            break;
+          default:
+            throw new Error(`Unsupported database type: ${dbType}`);
+        }
+      }
+
+      return {
+        query,
+        params,
+      };
+    },
+    whereNot: (column: string, value: BaseValues) => {
+      let query = `\nWHERE ${camelToSnakeCase(column)} != PLACEHOLDER`;
+      let params = [value];
+
+      if (typeof value === "object" && value !== null) {
+        switch (dbType) {
+          case "mariadb":
+          case "mysql":
+            query = `\nWHERE JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) != PLACEHOLDER`;
+            break;
+          case "postgres":
+            query = `\nWHERE ${column}::jsonb != PLACEHOLDER::jsonb`;
+            break;
+          default:
+            throw new Error(`Unsupported database type: ${dbType}`);
+        }
+      }
+
+      return {
+        query,
+        params,
+      };
+    },
+    andWhereNot: (column: string, value: BaseValues) => {
+      let query = ` AND ${camelToSnakeCase(column)} != PLACEHOLDER`;
+      let params = [value];
+
+      if (typeof value === "object" && value !== null) {
+        switch (dbType) {
+          case "mariadb":
+          case "mysql":
+            query = ` AND JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) != PLACEHOLDER`;
+            break;
+          case "postgres":
+            query = ` AND ${column}::jsonb != PLACEHOLDER::jsonb`;
+            break;
+          default:
+            throw new Error(`Unsupported database type: ${dbType}`);
+        }
+      }
+
+      return {
+        query,
+        params,
+      };
+    },
+    orWhereNot: (column: string, value: BaseValues) => {
+      let query = ` OR ${camelToSnakeCase(column)} != PLACEHOLDER`;
+      let params = [value];
+
+      if (typeof value === "object" && value !== null) {
+        switch (dbType) {
+          case "mariadb":
+          case "mysql":
+            query = ` OR JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) != PLACEHOLDER`;
+            break;
+          case "postgres":
+            query = ` OR ${column}::jsonb != PLACEHOLDER::jsonb`;
+            break;
+          default:
+            throw new Error(`Unsupported database type: ${dbType}`);
+        }
+      }
+
+      return {
+        query,
+        params,
+      };
+    },
+    whereBetween: (column: string, min: BaseValues, max: BaseValues) => {
+      let query = `\nWHERE ${camelToSnakeCase(
+        column,
+      )} BETWEEN PLACEHOLDER AND PLACEHOLDER`;
+      let params = [min, max];
+
+      if (typeof min === "object" && min !== null) {
+        switch (dbType) {
+          case "mariadb":
+          case "mysql":
+            query = `\nWHERE JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) BETWEEN PLACEHOLDER AND PLACEHOLDER`;
+            break;
+          case "postgres":
+            query = `\nWHERE ${column}::jsonb BETWEEN PLACEHOLDER::jsonb AND PLACEHOLDER::jsonb`;
+            break;
+          default:
+            throw new Error(`Unsupported database type: ${dbType}`);
+        }
+      }
+
+      return {
+        query,
+        params,
+      };
+    },
+    andWhereBetween: (column: string, min: BaseValues, max: BaseValues) => {
+      let query = ` AND ${camelToSnakeCase(
+        column,
+      )} BETWEEN PLACEHOLDER AND PLACEHOLDER`;
+      let params = [min, max];
+
+      if (typeof min === "object" && min !== null) {
+        switch (dbType) {
+          case "mariadb":
+          case "mysql":
+            query = ` AND JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) BETWEEN PLACEHOLDER AND PLACEHOLDER`;
+            break;
+          case "postgres":
+            query = ` AND ${column}::jsonb BETWEEN PLACEHOLDER::jsonb AND PLACEHOLDER::jsonb`;
+            break;
+          default:
+            throw new Error(`Unsupported database type: ${dbType}`);
+        }
+      }
+
+      return {
+        query,
+        params,
+      };
+    },
+    orWhereBetween: (column: string, min: BaseValues, max: BaseValues) => {
+      let query = ` OR ${camelToSnakeCase(
+        column,
+      )} BETWEEN PLACEHOLDER AND PLACEHOLDER`;
+      let params = [min, max];
+
+      if (typeof min === "object" && min !== null) {
+        switch (dbType) {
+          case "mariadb":
+          case "mysql":
+            query = ` OR JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) BETWEEN PLACEHOLDER AND PLACEHOLDER`;
+            break;
+          case "postgres":
+            query = ` OR ${column}::jsonb BETWEEN PLACEHOLDER::jsonb AND PLACEHOLDER::jsonb`;
+            break;
+          default:
+            throw new Error(`Unsupported database type: ${dbType}`);
+        }
+      }
+
+      return {
+        query,
+        params,
+      };
+    },
+    whereNotBetween: (column: string, min: BaseValues, max: BaseValues) => {
+      let query = `\nWHERE ${camelToSnakeCase(
+        column,
+      )} NOT BETWEEN PLACEHOLDER AND PLACEHOLDER`;
+      let params = [min, max];
+
+      if (typeof min === "object" && min !== null) {
+        switch (dbType) {
+          case "mariadb":
+          case "mysql":
+            query = `\nWHERE JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) NOT BETWEEN PLACEHOLDER AND PLACEHOLDER`;
+            break;
+          case "postgres":
+            query = `\nWHERE ${column}::jsonb NOT BETWEEN PLACEHOLDER::jsonb AND PLACEHOLDER::jsonb`;
+            break;
+          default:
+            throw new Error(`Unsupported database type: ${dbType}`);
+        }
+      }
+
+      return {
+        query,
+        params,
+      };
+    },
+    andWhereNotBetween: (column: string, min: BaseValues, max: BaseValues) => {
+      let query = ` AND ${camelToSnakeCase(
+        column,
+      )} NOT BETWEEN PLACEHOLDER AND PLACEHOLDER`;
+      let params = [min, max];
+
+      if (typeof min === "object" && min !== null) {
+        switch (dbType) {
+          case "mariadb":
+          case "mysql":
+            query = ` AND JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) NOT BETWEEN PLACEHOLDER AND PLACEHOLDER`;
+            break;
+          case "postgres":
+            query = ` AND ${column}::jsonb NOT BETWEEN PLACEHOLDER::jsonb AND PLACEHOLDER::jsonb`;
+            break;
+          default:
+            throw new Error(`Unsupported database type: ${dbType}`);
+        }
+      }
+
+      return {
+        query,
+        params,
+      };
+    },
+    orWhereNotBetween: (column: string, min: BaseValues, max: BaseValues) => {
+      let query = ` OR ${camelToSnakeCase(
+        column,
+      )} NOT BETWEEN PLACEHOLDER AND PLACEHOLDER`;
+      let params = [min, max];
+
+      if (typeof min === "object" && min !== null) {
+        switch (dbType) {
+          case "mariadb":
+          case "mysql":
+            query = ` OR JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) NOT BETWEEN PLACEHOLDER AND PLACEHOLDER`;
+            break;
+          case "postgres":
+            query = ` OR ${column}::jsonb NOT BETWEEN PLACEHOLDER::jsonb AND PLACEHOLDER::jsonb`;
+            break;
+          default:
+            throw new Error(`Unsupported database type: ${dbType}`);
+        }
+      }
+
+      return {
+        query,
+        params,
+      };
+    },
+    whereIn: (column: string, values: BaseValues[]) => {
+      let query = `\nWHERE ${camelToSnakeCase(column)} IN (${values
+        .map((_) => "PLACEHOLDER")
+        .join(", ")})`;
+      let params = values;
+
+      if (values[0] && typeof values[0] === "object") {
+        switch (dbType) {
+          case "mariadb":
+          case "mysql":
+            query = `\nWHERE JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) IN (${values
+              .map((_) => "PLACEHOLDER")
+              .join(", ")})`;
+            break;
+          case "postgres":
+            query = `\nWHERE ${camelToSnakeCase(column)}::jsonb IN (${values
+              .map((_) => "PLACEHOLDER")
+              .join(", ")})`;
+            break;
+          default:
+            throw new Error(`Unsupported database type: ${dbType}`);
+        }
+      }
+
+      return {
+        query,
+        params,
+      };
+    },
+    andWhereIn: (column: string, values: BaseValues[]) => {
+      let query = ` AND ${camelToSnakeCase(column)} IN (${values
+        .map((_) => "PLACEHOLDER")
+        .join(", ")})`;
+      let params = values;
+
+      if (values[0] && typeof values[0] === "object") {
+        switch (dbType) {
+          case "mariadb":
+          case "mysql":
+            query = ` AND JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) IN (${values
+              .map((_) => "PLACEHOLDER")
+              .join(", ")})`;
+            break;
+          case "postgres":
+            query = ` AND ${camelToSnakeCase(column)}::jsonb IN (${values
+              .map((_) => "PLACEHOLDER")
+              .join(", ")})`;
+            break;
+          default:
+            throw new Error(`Unsupported database type: ${dbType}`);
+        }
+      }
+
+      return {
+        query,
+        params,
+      };
+    },
+    orWhereIn: (column: string, values: BaseValues[]) => {
+      let query = ` OR ${camelToSnakeCase(column)} IN (${values
+        .map((_) => "PLACEHOLDER")
+        .join(", ")})`;
+      let params = values;
+
+      if (values[0] && typeof values[0] === "object") {
+        switch (dbType) {
+          case "mariadb":
+          case "mysql":
+            query = ` OR JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) IN (${values
+              .map((_) => "PLACEHOLDER")
+              .join(", ")})`;
+            break;
+          case "postgres":
+            query = ` OR ${camelToSnakeCase(column)}::jsonb IN (${values
+              .map((_) => "PLACEHOLDER")
+              .join(", ")})`;
+            break;
+          default:
+            throw new Error(`Unsupported database type: ${dbType}`);
+        }
+      }
+
+      return {
+        query,
+        params,
+      };
+    },
+    whereNotIn: (column: string, values: BaseValues[]) => {
+      let query = `\nWHERE ${camelToSnakeCase(column)} NOT IN (${values
+        .map((_) => "PLACEHOLDER")
+        .join(", ")})`;
+      let params = values;
+
+      if (values[0] && typeof values[0] === "object") {
+        switch (dbType) {
+          case "mariadb":
+          case "mysql":
+            query = `\nWHERE JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) NOT IN (${values
+              .map((_) => "PLACEHOLDER")
+              .join(", ")})`;
+            break;
+          case "postgres":
+            query = `\nWHERE ${camelToSnakeCase(column)}::jsonb NOT IN (${values
+              .map((_) => "PLACEHOLDER")
+              .join(", ")})`;
+            break;
+          default:
+            throw new Error(`Unsupported database type: ${dbType}`);
+        }
+      }
+
+      return {
+        query,
+        params,
+      };
+    },
+    andWhereNotIn: (column: string, values: BaseValues[]) => {
+      let query = ` AND ${camelToSnakeCase(column)} NOT IN (${values
+        .map((_) => "PLACEHOLDER")
+        .join(", ")})`;
+      let params = values;
+
+      if (values[0] && typeof values[0] === "object") {
+        switch (dbType) {
+          case "mariadb":
+          case "mysql":
+            query = ` AND JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) NOT IN (${values
+              .map((_) => "PLACEHOLDER")
+              .join(", ")})`;
+            break;
+          case "postgres":
+            query = ` AND ${camelToSnakeCase(column)}::jsonb NOT IN (${values
+              .map((_) => "PLACEHOLDER")
+              .join(", ")})`;
+            break;
+          default:
+            throw new Error(`Unsupported database type: ${dbType}`);
+        }
+      }
+
+      return {
+        query,
+        params,
+      };
+    },
+    orWhereNotIn: (column: string, values: BaseValues[]) => {
+      let query = ` OR ${camelToSnakeCase(column)} NOT IN (${values
+        .map((_) => "PLACEHOLDER")
+        .join(", ")})`;
+      let params = values;
+
+      if (values[0] && typeof values[0] === "object") {
+        switch (dbType) {
+          case "mariadb":
+          case "mysql":
+            query = ` OR JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) NOT IN (${values
+              .map((_) => "PLACEHOLDER")
+              .join(", ")})`;
+            break;
+          case "postgres":
+            query = ` OR ${camelToSnakeCase(column)}::jsonb NOT IN (${values
+              .map((_) => "PLACEHOLDER")
+              .join(", ")})`;
+            break;
+          default:
+            throw new Error(`Unsupported database type: ${dbType}`);
+        }
+      }
+
+      return {
+        query,
+        params,
+      };
+    },
     whereNull: (column: string) => ({
       query: `\nWHERE ${camelToSnakeCase(column)} IS NULL`,
       params: [],
@@ -89,78 +524,6 @@ const whereTemplate = (_tableName: string, dbType: DataSourceType) => {
     orWhereNotNull: (column: string) => ({
       query: ` OR ${camelToSnakeCase(column)} IS NOT NULL`,
       params: [],
-    }),
-    whereBetween: (column: string, min: BaseValues, max: BaseValues) => ({
-      query: `\nWHERE ${camelToSnakeCase(
-        column,
-      )} BETWEEN PLACEHOLDER AND PLACEHOLDER`,
-      params: [min, max],
-    }),
-    andWhereBetween: (column: string, min: BaseValues, max: BaseValues) => ({
-      query: ` AND ${camelToSnakeCase(
-        column,
-      )} BETWEEN PLACEHOLDER AND PLACEHOLDER`,
-      params: [min, max],
-    }),
-    orWhereBetween: (column: string, min: BaseValues, max: BaseValues) => ({
-      query: ` OR ${camelToSnakeCase(
-        column,
-      )} BETWEEN PLACEHOLDER AND PLACEHOLDER`,
-      params: [min, max],
-    }),
-    whereNotBetween: (column: string, min: BaseValues, max: BaseValues) => ({
-      query: `\nWHERE ${camelToSnakeCase(
-        column,
-      )} NOT BETWEEN PLACEHOLDER AND PLACEHOLDER`,
-      params: [min, max],
-    }),
-    andWhereNotBetween: (column: string, min: BaseValues, max: BaseValues) => ({
-      query: ` AND ${camelToSnakeCase(
-        column,
-      )} NOT BETWEEN PLACEHOLDER AND PLACEHOLDER`,
-      params: [min, max],
-    }),
-    orWhereNotBetween: (column: string, min: BaseValues, max: BaseValues) => ({
-      query: ` OR ${camelToSnakeCase(
-        column,
-      )} NOT BETWEEN PLACEHOLDER AND PLACEHOLDER`,
-      params: [min, max],
-    }),
-    whereIn: (column: string, values: BaseValues[]) => ({
-      query: `\nWHERE ${camelToSnakeCase(column)} IN (${values
-        .map((_, index) => "PLACEHOLDER")
-        .join(", ")})`,
-      params: values,
-    }),
-    andWhereIn: (column: string, values: BaseValues[]) => ({
-      query: ` AND ${camelToSnakeCase(column)} IN (${values
-        .map((_, index) => "PLACEHOLDER")
-        .join(", ")})`,
-      params: values,
-    }),
-    orWhereIn: (column: string, values: BaseValues[]) => ({
-      query: ` OR ${camelToSnakeCase(column)} IN (${values
-        .map((_, index) => "PLACEHOLDER")
-        .join(", ")})`,
-      params: values,
-    }),
-    whereNotIn: (column: string, values: BaseValues[]) => ({
-      query: `\nWHERE ${camelToSnakeCase(column)} NOT IN (${values
-        .map((_, index) => "PLACEHOLDER")
-        .join(", ")})`,
-      params: values,
-    }),
-    andWhereNotIn: (column: string, values: BaseValues[]) => ({
-      query: ` AND ${camelToSnakeCase(column)} NOT IN (${values
-        .map((_, index) => "PLACEHOLDER")
-        .join(", ")})`,
-      params: values,
-    }),
-    orWhereNotIn: (column: string, values: BaseValues[]) => ({
-      query: ` OR ${camelToSnakeCase(column)} NOT IN (${values
-        .map((_, index) => "PLACEHOLDER")
-        .join(", ")})`,
-      params: values,
     }),
     rawWhere: (query: string) => ({
       query: `\nWHERE ${query}`,

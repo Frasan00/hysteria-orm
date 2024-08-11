@@ -25,6 +25,8 @@ Hysteria ORM is an Object-Relational Mapping (ORM) library for JavaScript and Ty
     - [hysteria-cli for Migrations](#hysteria-cli-for-migrations)
     - [Create Table](#create-table)
     - [Alter Table](#alter-table)
+- [Experimental](#experimental)
+    - [json-support](#json-support-unstable-on-mysql)
 
 ## Installation
 ```shell
@@ -351,4 +353,62 @@ export default class extends Migration {
             .commit();
     }
 }
+```
+
+# Experimental
+
+## JSON support (UNSTABLE ON MYSQL)
+
+- It's advices to use JSON only on POSTGRESQL
+- It could be necessary to use raw queries on mysql and mariadb
+
+```typescript
+// You can query directly on the model using an object
+const jsonQuery = await User.query().where("json_prop", { main: "value" }).one();
+
+// Contains
+const jsonQueryContains = await User.query()
+.where("json_prop", { main: "value" }, ">")
+.one();
+
+// Does not contain
+const jsonQueryContains = await User.query()
+.where("json_prop", { main: "value" }, "<")
+.one();
+
+// Create new users
+const newUsers = await User.massiveCreate([
+    {
+        name: "John Doe",
+        email: "test@gmail.com",
+        signupSource: "google",
+        json: { key: "value" },
+        isActive: true,
+    },
+    {
+        name: "Jane Doe",
+        email: "test2@gmail.com",
+        signupSource: "google",
+        json: { key: "value" },
+        isActive: true,
+    },
+]);
+
+// Update all users
+const newJsonUser = await User.update().withData({
+    json: {
+        foo: "bar",
+        bar: "foo",
+    },
+});
+
+// Delete every instance that contains the properties in the json column
+const deletedUsers = await User.delete()
+.where("json", {
+        foo: "bar",
+        bar: "foo",
+    },
+    ">",
+)
+.performDelete();
 ```

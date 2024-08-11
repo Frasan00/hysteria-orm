@@ -27,7 +27,6 @@ type DataType =
   | "boolean"
   | "date"
   | "timestamp"
-  | "json"
   | "jsonb";
 
 export default class ColumnBuilderAlter {
@@ -51,7 +50,7 @@ export default class ColumnBuilderAlter {
   /**
    * @description Add a new column to the table
    * @param columnName { string }
-   * @param dataType { varchar | tinytext | mediumtext | longtext | binary | text | char | tinyint | smallint | mediumint | integer | bigint | float | decimal | double | boolean | date | timestamp | json | jsonb }
+   * @param dataType { varchar | tinytext | mediumtext | longtext | binary | text | char | tinyint | smallint | mediumint | integer | bigint | float | decimal | double | boolean | date | timestamp | jsonb }
    * @param options { afterColumn?: string; references?: { table: string; column: string }; default?: string; primaryKey?: boolean; unique?: boolean; notNullable?: boolean; autoIncrement?: boolean; length?: number; }
    */
   public addColumn(
@@ -82,6 +81,19 @@ export default class ColumnBuilderAlter {
           break;
         case "binary":
           query += " binary()";
+          break;
+        case "jsonb":
+          switch (this.sqlType) {
+            case "mariadb":
+            case "mysql":
+              query += " json";
+              break;
+            case "postgres":
+              query += " jsonb";
+              break;
+            default:
+              throw new Error("Unsupported database type");
+          }
           break;
         default:
           query += ` ${dataType}`;

@@ -162,6 +162,7 @@ export class Model {
     trx?: MysqlTransaction | PostgresTransaction,
   ): Promise<T | null> {
     const typeofModel = this as unknown as typeof Model;
+    typeofModel.establishConnection();
     return typeofModel.sqlInstance
       .getModelManager<T>(typeofModel)
       .create(modelData as T, trx);

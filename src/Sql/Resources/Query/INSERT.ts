@@ -1,7 +1,8 @@
 import { camelToSnakeCase } from "../../../CaseUtils";
 import { DataSourceType } from "../../../Datasource";
+import { isNestedObject } from "../../jsonUtils";
 
-type BaseValues = string | number | boolean | Date | null | undefined;
+type BaseValues = string | number | boolean | Date | null | object | undefined;
 
 const insertTemplate = (tableName: string, dbType: DataSourceType) => {
   return {
@@ -17,8 +18,17 @@ const insertTemplate = (tableName: string, dbType: DataSourceType) => {
           params = values;
           break;
         case "postgres":
-          placeholders = columns.map((_, index) => `$${index + 1}`).join(", ");
-          params = values;
+          placeholders = columns
+            .map((_, index) => {
+              if (isNestedObject(values[index])) {
+                return `$${index + 1}::jsonb`;
+              }
+              return `$${index + 1}`;
+            })
+            .join(", ");
+          params = values.map((value) =>
+            isNestedObject(value) ? JSON.stringify(value) : value,
+          );
           break;
         default:
           throw new Error("Unsupported database type");
@@ -27,10 +37,9 @@ const insertTemplate = (tableName: string, dbType: DataSourceType) => {
       const query =
         dbType === "mysql"
           ? `INSERT INTO ${tableName} (${columns.join(", ")})
-       VALUES (${placeholders}); `
-          : `INSERT INTO ${tableName} (${columns.join(
-              ", ",
-            )}) VALUES (${placeholders}) RETURNING *;`;
+             VALUES (${placeholders});`
+          : `INSERT INTO ${tableName} (${columns.join(", ")})
+             VALUES (${placeholders}) RETURNING *;`;
 
       return { query, params };
     },
@@ -49,11 +58,18 @@ const insertTemplate = (tableName: string, dbType: DataSourceType) => {
           break;
         case "postgres":
           valueSets = values.map((valueSet, rowIndex) => {
-            params.push(...valueSet);
+            params.push(
+              ...valueSet.map((value) =>
+                isNestedObject(value) ? JSON.stringify(value) : value,
+              ),
+            );
             return `(${valueSet
-              .map(
-                (_, colIndex) => `$${rowIndex * columns.length + colIndex + 1}`,
-              )
+              .map((value, colIndex) => {
+                if (isNestedObject(value)) {
+                  return `$${rowIndex * columns.length + colIndex + 1}::jsonb`;
+                }
+                return `$${rowIndex * columns.length + colIndex + 1}`;
+              })
               .join(", ")})`;
           });
           break;
@@ -64,10 +80,9 @@ const insertTemplate = (tableName: string, dbType: DataSourceType) => {
       const query =
         dbType === "mysql"
           ? `INSERT INTO ${tableName} (${columns.join(", ")})
-       VALUES ${valueSets.join(", ")};`
-          : `INSERT INTO ${tableName} (${columns.join(
-              ", ",
-            )}) VALUES ${valueSets.join(", ")} RETURNING *;`;
+             VALUES ${valueSets.join(", ")};`
+          : `INSERT INTO ${tableName} (${columns.join(", ")})
+             VALUES ${valueSets.join(", ")} RETURNING *;`;
 
       return { query, params };
     },

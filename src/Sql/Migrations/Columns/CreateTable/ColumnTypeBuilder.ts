@@ -310,25 +310,20 @@ export default class ColumnTypeBuilder {
    * @description EXPERIMENTAL
    * @param name
    */
-  public json(name: string): ColumnOptionsBuilder {
-    this.columnName = name;
-    this.partialQuery += `${name} JSON`;
-    return new ColumnOptionsBuilder(
-      this.tableName,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
-    );
-  }
-
-  /**
-   * @description EXPERIMENTAL
-   * @param name
-   */
   public jsonb(name: string): ColumnOptionsBuilder {
     this.columnName = name;
-    this.partialQuery += `${name} JSONB`;
+    switch (this.sqlType) {
+      case "postgres":
+        this.partialQuery += `${name} JSONB`;
+        break;
+      case "mariadb":
+      case "mysql":
+        this.partialQuery += `${name} JSON`;
+        break;
+      default:
+        throw new Error("Unsupported SQL type");
+    }
+
     return new ColumnOptionsBuilder(
       this.tableName,
       this.queryStatements,

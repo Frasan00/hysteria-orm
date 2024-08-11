@@ -1,8 +1,7 @@
 import { camelToSnakeCase } from "../../../CaseUtils";
-import * as sqlString from "sqlstring";
 import { DataSourceType } from "../../../Datasource";
 
-const commonmSelectMethods = [
+const commonSelectMethods = [
   "*",
   "COUNT",
   "DISTINCT",
@@ -20,7 +19,7 @@ const selectTemplate = (table: string, dbType: DataSourceType) => {
     switch (dbType) {
       case "mysql":
       case "mariadb":
-        return sqlString.escapeId(identifier);
+        return `\`${identifier.replace(/`/g, "``")}\``;
       case "postgres":
         return `"${identifier.replace(/"/g, '""')}"`;
       default:
@@ -30,12 +29,11 @@ const selectTemplate = (table: string, dbType: DataSourceType) => {
 
   return {
     selectAll: `SELECT * FROM ${table} `,
-    selectById: (id: string) =>
-      `SELECT * FROM ${table} WHERE id = ${sqlString.escape(id)}`,
+    selectById: (id: string) => `SELECT * FROM ${table} WHERE id = ${id}`,
     selectColumns: (...columns: string[]) => {
       columns = columns.map((column) => {
         if (
-          commonmSelectMethods.includes(column.toUpperCase()) ||
+          commonSelectMethods.includes(column.toUpperCase()) ||
           column.includes("(")
         ) {
           return column;
@@ -70,19 +68,6 @@ const selectTemplate = (table: string, dbType: DataSourceType) => {
     limit: (limit: number) => ` LIMIT ${limit}`,
     offset: (offset: number) => ` OFFSET ${offset}`,
   };
-};
-
-export type SelectTemplateType = {
-  selectAll: string;
-  selectById: (id: string) => string;
-  selectColumns: (...columns: string[]) => string;
-  selectCount: string;
-  selectDistinct: (...columns: string[]) => string;
-  selectSum: (column: string) => string;
-  orderBy: (columns: string[], order?: "ASC" | "DESC") => string;
-  groupBy: (...columns: string[]) => string;
-  limit: (limit: number) => string;
-  offset: (offset: number) => string;
 };
 
 export default selectTemplate;

@@ -82,7 +82,7 @@ declare class PostgresTransaction {
     rollback(): Promise<void>;
 }
 
-type SelectTemplateType = {
+declare const selectTemplate: (table: string, dbType: DataSourceType) => {
     selectAll: string;
     selectById: (id: string) => string;
     selectColumns: (...columns: string[]) => string;
@@ -96,56 +96,32 @@ type SelectTemplateType = {
 };
 
 type WhereOperatorType = "=" | "!=" | ">" | "<" | ">=" | "<=" | "LIKE" | "ILIKE";
-type BaseValues = string | number | boolean | Date;
+type BaseValues = string | number | boolean | object;
 declare const whereTemplate: (_tableName: string, dbType: DataSourceType) => {
     convertPlaceHolderToValue: (query: string, startIndex?: number) => string;
-    where: (column: string, value: BaseValues, operator?: WhereOperatorType, index?: number) => {
+    where: (column: string, value: BaseValues, operator?: WhereOperatorType) => {
         query: string;
         params: BaseValues[];
     };
-    andWhere: (column: string, value: BaseValues, operator?: WhereOperatorType, index?: number) => {
+    andWhere: (column: string, value: BaseValues, operator?: WhereOperatorType) => {
         query: string;
         params: BaseValues[];
     };
-    orWhere: (column: string, value: BaseValues, operator?: WhereOperatorType, index?: number) => {
+    orWhere: (column: string, value: BaseValues, operator?: WhereOperatorType) => {
         query: string;
         params: BaseValues[];
     };
-    whereNot: (column: string, value: BaseValues, index?: number) => {
+    whereNot: (column: string, value: BaseValues) => {
         query: string;
         params: BaseValues[];
     };
-    andWhereNot: (column: string, value: BaseValues, index?: number) => {
+    andWhereNot: (column: string, value: BaseValues) => {
         query: string;
         params: BaseValues[];
     };
-    orWhereNot: (column: string, value: BaseValues, index?: number) => {
+    orWhereNot: (column: string, value: BaseValues) => {
         query: string;
         params: BaseValues[];
-    };
-    whereNull: (column: string) => {
-        query: string;
-        params: never[];
-    };
-    andWhereNull: (column: string) => {
-        query: string;
-        params: never[];
-    };
-    orWhereNull: (column: string) => {
-        query: string;
-        params: never[];
-    };
-    whereNotNull: (column: string) => {
-        query: string;
-        params: never[];
-    };
-    andWhereNotNull: (column: string) => {
-        query: string;
-        params: never[];
-    };
-    orWhereNotNull: (column: string) => {
-        query: string;
-        params: never[];
     };
     whereBetween: (column: string, min: BaseValues, max: BaseValues) => {
         query: string;
@@ -194,6 +170,30 @@ declare const whereTemplate: (_tableName: string, dbType: DataSourceType) => {
     orWhereNotIn: (column: string, values: BaseValues[]) => {
         query: string;
         params: BaseValues[];
+    };
+    whereNull: (column: string) => {
+        query: string;
+        params: never[];
+    };
+    andWhereNull: (column: string) => {
+        query: string;
+        params: never[];
+    };
+    orWhereNull: (column: string) => {
+        query: string;
+        params: never[];
+    };
+    whereNotNull: (column: string) => {
+        query: string;
+        params: never[];
+    };
+    andWhereNotNull: (column: string) => {
+        query: string;
+        params: never[];
+    };
+    orWhereNotNull: (column: string) => {
+        query: string;
+        params: never[];
     };
     rawWhere: (query: string) => {
         query: string;
@@ -567,7 +567,6 @@ declare class PostgresModelManagerUtils<T extends Model> {
     };
     private filterRelationsAndMetadata;
     parseDelete(tableName: string, column: string, value: string | number | boolean): string;
-    private isFindType;
     private getRelationFromModel;
     parseQueryBuilderRelations(model: T, modelTypeOf: typeof Model, input: string[], pgConnection: pg__default.Pool, logs: boolean): Promise<void>;
 }
@@ -1106,7 +1105,6 @@ declare class PostgresUpdateQueryBuilder<T extends Model> extends WhereQueryBuil
 declare const deleteTemplate: (tableName: string, dbType: DataSourceType) => {
     delete: (column: string, value: string | number | boolean | Date) => string;
     massiveDelete: (whereClause: string, joinClause?: string) => string;
-    softDelete: (column: string, whereClause: string, joinClause?: string, softDeleteColumn?: string) => string;
 };
 
 declare class MysqlDeleteQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
@@ -1248,7 +1246,7 @@ declare abstract class QueryBuilder<T extends Model> {
     protected model: typeof Model;
     protected tableName: string;
     protected logs: boolean;
-    protected selectTemplate: SelectTemplateType;
+    protected selectTemplate: ReturnType<typeof selectTemplate>;
     protected whereTemplate: ReturnType<typeof whereTemplate>;
     /**
      * @description Constructs a MysqlQueryBuilder instance.
@@ -1992,11 +1990,6 @@ declare class ColumnTypeBuilder {
      * @description EXPERIMENTAL
      * @param name
      */
-    json(name: string): ColumnOptionsBuilder;
-    /**
-     * @description EXPERIMENTAL
-     * @param name
-     */
     jsonb(name: string): ColumnOptionsBuilder;
 }
 
@@ -2016,7 +2009,7 @@ type AlterOptions = {
         column: string;
     };
 };
-type DataType = "varchar" | "tinytext" | "mediumtext" | "longtext" | "binary" | "text" | "char" | "tinyint" | "smallint" | "mediumint" | "integer" | "bigint" | "float" | "decimal" | "double" | "boolean" | "date" | "timestamp" | "json" | "jsonb";
+type DataType = "varchar" | "tinytext" | "mediumtext" | "longtext" | "binary" | "text" | "char" | "tinyint" | "smallint" | "mediumint" | "integer" | "bigint" | "float" | "decimal" | "double" | "boolean" | "date" | "timestamp" | "jsonb";
 declare class ColumnBuilderAlter {
     protected tableName: string;
     protected queryStatements: string[];
@@ -2026,7 +2019,7 @@ declare class ColumnBuilderAlter {
     /**
      * @description Add a new column to the table
      * @param columnName { string }
-     * @param dataType { varchar | tinytext | mediumtext | longtext | binary | text | char | tinyint | smallint | mediumint | integer | bigint | float | decimal | double | boolean | date | timestamp | json | jsonb }
+     * @param dataType { varchar | tinytext | mediumtext | longtext | binary | text | char | tinyint | smallint | mediumint | integer | bigint | float | decimal | double | boolean | date | timestamp | jsonb }
      * @param options { afterColumn?: string; references?: { table: string; column: string }; default?: string; primaryKey?: boolean; unique?: boolean; notNullable?: boolean; autoIncrement?: boolean; length?: number; }
      */
     addColumn(columnName: string, dataType: DataType, options?: {
@@ -2226,6 +2219,7 @@ declare class User extends Model {
     email: string;
     signupSource: string;
     isActive: boolean;
+    json: Record<string, any>;
     createdAt: DateTime;
     posts: HasMany | Post[];
     static metadata: Metadata;
@@ -2239,4 +2233,4 @@ declare class Post extends Model {
     static metadata: Metadata;
 }
 
-export { BelongsTo, type DataSourceInput, HasMany, HasOne, Migration, Model, Post, Relation, SqlDataSource, User };
+export { BelongsTo, type DataSourceInput, type DeleteQueryBuilders, HasMany, HasOne, Migration, Model, Post, type QueryBuilders, Relation, SqlDataSource, type UpdateQueryBuilders, User };

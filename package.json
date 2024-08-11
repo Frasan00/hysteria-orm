@@ -30,7 +30,6 @@
     "@types/luxon": "^3.4.2",
     "@types/node": "^20.10.2",
     "@types/pg": "^8.10.9",
-    "@types/sqlstring": "^2.3.2",
     "mysql2": "^3.9.8",
     "nodemon": "^3.0.2",
     "pg": "^8.11.3",
@@ -38,11 +37,10 @@
     "standard": "^17.1.0",
     "tsup": "^8.0.1",
     "typescript": "^5.3.2",
-    "luxon": "^3.5.0"
+    "luxon": "^3.5.0",
+    "ts-node": "^10.9.2"
   },
   "dependencies": {
-    "sqlstring": "^2.3.3",
-    "ts-node": "^10.9.2",
     "winston": "^3.11.0",
     "dotenv": "^16.3.1"
   },

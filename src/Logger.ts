@@ -36,8 +36,25 @@ export function log(query: string, logs: boolean, params?: any[]) {
 
   if (params) {
     params.forEach((param, index) => {
-      // Format string parameters
-      const formattedParam = typeof param === "string" ? `'${param}'` : param;
+      let formattedParam;
+
+      if (typeof param === "string") {
+        // Format string parameters
+        formattedParam = `'${param}'`;
+      }
+
+      if (
+        typeof param === "object" &&
+        param !== null &&
+        Object.keys(param).length > 0
+      ) {
+        formattedParam = `'${JSON.stringify(param)}'`;
+      }
+
+      if (typeof param !== "string" && typeof param !== "object") {
+        // Use the parameter as is for other types (e.g., numbers)
+        formattedParam = param;
+      }
 
       // Replace MySQL-style placeholders
       query = query.replace(/\?/, formattedParam);
@@ -46,9 +63,6 @@ export function log(query: string, logs: boolean, params?: any[]) {
       const pgPlaceholder = new RegExp(`\\$${index + 1}`, "g");
       query = query.replace(pgPlaceholder, formattedParam);
     });
-
-    logger.info("\n" + query);
-    return;
   }
 
   logger.info("\n" + query);

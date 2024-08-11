@@ -10,7 +10,11 @@ import { Migration } from "./Sql/Migrations/Migration";
 import { SqlDataSource } from "./Sql/SqlDatasource";
 import { testCreate, testDelete, testQuery, testTrx, testUpdate } from "./test";
 import { DateTime } from "luxon";
-import { QueryBuilders, UpdateQueryBuilders, DeleteQueryBuilders } from "./Sql/QueryBuilder/QueryBuilder";
+import {
+  QueryBuilders,
+  UpdateQueryBuilders,
+  DeleteQueryBuilders,
+} from "./Sql/QueryBuilder/QueryBuilder";
 
 export class User extends Model {
   public id!: number;
@@ -18,6 +22,7 @@ export class User extends Model {
   public email!: string;
   public signupSource!: string;
   public isActive!: boolean;
+  public json!: Record<string, any>;
   public createdAt!: DateTime;
 
   public posts: HasMany | Post[] = new HasMany("posts", "user_id");
@@ -48,7 +53,7 @@ export class Post extends Model {
   // await testUpdate();
   // await testDelete();
   // await testTrx();
-  await testQuery();
+  // await testQuery();
 
   process.exit(0);
 })();

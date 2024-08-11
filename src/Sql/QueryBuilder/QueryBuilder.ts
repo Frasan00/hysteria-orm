@@ -1,4 +1,4 @@
-import selectTemplate, { SelectTemplateType } from "../Resources/Query/SELECT";
+import selectTemplate from "../Resources/Query/SELECT";
 import { Model } from "../Models/Model";
 import whereTemplate, {
   BaseValues,
@@ -47,7 +47,7 @@ export abstract class QueryBuilder<T extends Model> {
   protected tableName: string;
   protected logs: boolean;
 
-  protected selectTemplate: SelectTemplateType;
+  protected selectTemplate: ReturnType<typeof selectTemplate>;
   protected whereTemplate: ReturnType<typeof whereTemplate>;
 
   /**

@@ -1,7 +1,3 @@
-import {
-  FindType,
-  FindOneType,
-} from "../Models/ModelManager/ModelManagerTypes";
 import { Metadata, Model } from "../Models/Model";
 import insertTemplate from "../Resources/Query/INSERT";
 import updateTemplate from "../Resources/Query/UPDATE";
@@ -10,7 +6,6 @@ import { Relation } from "../Models/Relations/Relation";
 import { log, queryError } from "../../Logger";
 import relationTemplates from "../Resources/Query/RELATIONS";
 import { Pool, RowDataPacket } from "mysql2/promise";
-import { MysqlQueryBuilder } from "./MysqlQueryBuilder";
 
 export default class MySqlModelManagerUtils<T extends Model> {
   public parseInsert(
@@ -72,16 +67,9 @@ export default class MySqlModelManagerUtils<T extends Model> {
     const filteredModel = {};
 
     const keys = Object.keys(model);
+    const isRelation = (value: any) => value instanceof Relation;
     for (const key of keys) {
-      if (key === "metadata") {
-        continue;
-      }
-
-      if (
-        typeof model[key as keyof T] === "object" &&
-        (model[key as keyof T] !== null ||
-          !Array.isArray(model[key as keyof T]))
-      ) {
+      if (isRelation(model[key as keyof T])) {
         continue;
       }
 
