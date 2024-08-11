@@ -1,12 +1,13 @@
 import { camelToSnakeCase } from "../../CaseUtils";
 import { DataSourceInput } from "../../Datasource";
-import { MysqlDeleteQueryBuilder } from "../Mysql/MysqlDeleteQueryBuilder";
 import { MysqlTransaction } from "../Mysql/MysqlTransaction";
-import { MysqlUpdateQueryBuilder } from "../Mysql/MysqlUpdateQueryBuilder";
-import { PostgresDeleteQueryBuilder } from "../Postgres/PostgresDeleteQueryBuilder";
 import { PostgresTransaction } from "../Postgres/PostgresTransaction";
-import { PostgresUpdateQueryBuilder } from "../Postgres/PostgresUpdateQueryBuilder";
-import { OneOptions, QueryBuilders } from "../QueryBuilder/QueryBuilder";
+import {
+  DeleteQueryBuilders,
+  OneOptions,
+  QueryBuilders,
+  UpdateQueryBuilders,
+} from "../QueryBuilder/QueryBuilder";
 import { SqlDataSource } from "../SqlDatasource";
 import { FindOneType, FindType } from "./ModelManager/ModelManagerTypes";
 
@@ -213,7 +214,7 @@ export class Model {
    */
   public static update<T extends Model>(
     this: new () => T | typeof Model,
-  ): MysqlUpdateQueryBuilder<T> | PostgresUpdateQueryBuilder<T> {
+  ): UpdateQueryBuilders<T> {
     const typeofModel = this as unknown as typeof Model;
     typeofModel.establishConnection();
     return typeofModel.sqlInstance.getModelManager<T>(typeofModel).update();
@@ -228,7 +229,7 @@ export class Model {
    */
   public static delete<T extends Model>(
     this: new () => T | typeof Model,
-  ): MysqlDeleteQueryBuilder<T> | PostgresDeleteQueryBuilder<T> {
+  ): DeleteQueryBuilders<T> {
     const typeofModel = this as unknown as typeof Model;
     typeofModel.establishConnection();
     return typeofModel.sqlInstance.getModelManager<T>(typeofModel).delete();
@@ -309,8 +310,22 @@ export class Model {
   /**
    * @description Adds a beforeUpdate clause to the model, adding the ability to modify the data before updating the data
    * @param data
-   * @returns {T}
    */
+  public static beforeUpdate(
+    queryBuilder: UpdateQueryBuilders<any>,
+  ): UpdateQueryBuilders<any> {
+    return queryBuilder;
+  }
+
+  /**
+   * @description Adds a beforeDelete clause to the model, adding the ability to modify the data before deleting the data
+   * @param data
+   */
+  public static beforeDelete(
+    queryBuilder: DeleteQueryBuilders<any>,
+  ): DeleteQueryBuilders<any> {
+    return queryBuilder;
+  }
 
   /**
    * @description Establishes a connection to the database instantiated from the SqlDataSource.connect method

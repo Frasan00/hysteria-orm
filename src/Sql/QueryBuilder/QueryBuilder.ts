@@ -11,10 +11,22 @@ import {
   RelationType,
   SelectableType,
 } from "../Models/ModelManager/ModelManagerTypes";
+import { MysqlUpdateQueryBuilder } from "../Mysql/MysqlUpdateQueryBuilder";
+import { PostgresUpdateQueryBuilder } from "../Postgres/PostgresUpdateQueryBuilder";
+import { MysqlDeleteQueryBuilder } from "../Mysql/MysqlDeleteQueryBuilder";
+import { PostgresDeleteQueryBuilder } from "../Postgres/PostgresDeleteQueryBuilder";
 
 export type QueryBuilders<T extends Model> =
   | MysqlQueryBuilder<T>
   | PostgresQueryBuilder<T>;
+
+export type UpdateQueryBuilders<T extends Model> =
+  | MysqlUpdateQueryBuilder<T>
+  | PostgresUpdateQueryBuilder<T>;
+
+export type DeleteQueryBuilders<T extends Model> =
+  | MysqlDeleteQueryBuilder<T>
+  | PostgresDeleteQueryBuilder<T>;
 
 export type OneOptions = {
   throwErrorOnNull: boolean;

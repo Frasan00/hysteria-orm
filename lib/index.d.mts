@@ -32,6 +32,69 @@ declare abstract class DataSource {
     protected constructor(input?: DataSourceInput);
 }
 
+declare class MysqlTransaction {
+    protected mysql: Pool;
+    protected mysqlConnection: PoolConnection;
+    protected logs: boolean;
+    constructor(mysql: Pool, logs: boolean);
+    queryInsert<T extends Model>(query: string, params: any[], metadata: Metadata): Promise<T>;
+    massiveInsertQuery<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T[]>;
+    massiveUpdateQuery(query: string, params: any[]): Promise<number>;
+    massiveDeleteQuery(query: string, params: any[]): Promise<number>;
+    queryUpdate<T extends Model>(query: string, params?: any[]): Promise<number>;
+    queryDelete(query: string, params?: any[]): Promise<number>;
+    /**
+     * Start transaction.
+     */
+    start(): Promise<void>;
+    /**
+     * Commit transaction.
+     */
+    commit(): Promise<void>;
+    /**
+     * Rollback transaction.
+     */
+    rollback(): Promise<void>;
+}
+
+declare class PostgresTransaction {
+    protected pgPool: Pool$1;
+    protected pgClient: PoolClient;
+    protected logs: boolean;
+    constructor(pgPool: Pool$1, logs: boolean);
+    queryInsert<T extends Model>(query: string, params: any[], metadata: Metadata): Promise<T>;
+    massiveInsertQuery<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T[]>;
+    massiveUpdateQuery<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T[]>;
+    massiveDeleteQuery<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T[]>;
+    queryUpdate<T extends Model>(query: string, params?: any[]): Promise<number | null>;
+    queryDelete(query: string, params?: any[]): Promise<number | null>;
+    /**
+     * Start transaction.
+     */
+    start(): Promise<void>;
+    /**
+     * Commit transaction.
+     */
+    commit(): Promise<void>;
+    /**
+     * Rollback transaction.
+     */
+    rollback(): Promise<void>;
+}
+
+type SelectTemplateType = {
+    selectAll: string;
+    selectById: (id: string) => string;
+    selectColumns: (...columns: string[]) => string;
+    selectCount: string;
+    selectDistinct: (...columns: string[]) => string;
+    selectSum: (column: string) => string;
+    orderBy: (columns: string[], order?: "ASC" | "DESC") => string;
+    groupBy: (...columns: string[]) => string;
+    limit: (limit: number) => string;
+    offset: (offset: number) => string;
+};
+
 type WhereOperatorType = "=" | "!=" | ">" | "<" | ">=" | "<=" | "LIKE" | "ILIKE";
 type BaseValues = string | number | boolean | Date;
 declare const whereTemplate: (_tableName: string, dbType: DataSourceType) => {
@@ -144,497 +207,6 @@ declare const whereTemplate: (_tableName: string, dbType: DataSourceType) => {
         query: string;
         params: never[];
     };
-};
-
-declare abstract class WhereQueryBuilder<T extends Model> {
-    protected whereQuery: string;
-    protected whereParams: BaseValues[];
-    protected model: typeof Model;
-    protected tableName: string;
-    protected logs: boolean;
-    protected whereTemplate: ReturnType<typeof whereTemplate>;
-    protected isNestedCondition: boolean;
-    /**
-     * @description Constructs a MysqlQueryBuilder instance.
-     * @param model - The model class associated with the table.
-     * @param tableName - The name of the table.
-     * @param logs - A boolean indicating whether to log queries.
-     * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
-     */
-    constructor(model: typeof Model, tableName: string, logs: boolean, isNestedCondition?: boolean);
-    /**
-     * @description Adds a WHERE condition to the query.
-     * @param column - The column to filter.
-     * @param operator - The comparison operator.
-     * @param value - The value to compare against.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    where(column: string, value: BaseValues, operator?: WhereOperatorType): this;
-    /**
-     * @description Adds an AND WHERE condition to the query.
-     * @param column - The column to filter.
-     * @param operator - The comparison operator.
-     * @param value - The value to compare against.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    andWhere(column: string, value: BaseValues, operator?: WhereOperatorType): this;
-    /**
-     * @description Adds an OR WHERE condition to the query.
-     * @param column - The column to filter.
-     * @param operator - The comparison operator.
-     * @param value - The value to compare against.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    orWhere(column: string, value: BaseValues, operator?: WhereOperatorType): this;
-    /**
-     * @description Adds a WHERE BETWEEN condition to the query.
-     * @param column - The column to filter.
-     * @param min - The minimum value for the range.
-     * @param max - The maximum value for the range.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    whereBetween(column: string, min: BaseValues, max: BaseValues): this;
-    /**
-     * @description Adds an AND WHERE BETWEEN condition to the query.
-     * @param column - The column to filter.
-     * @param min - The minimum value for the range.
-     * @param max - The maximum value for the range.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    andWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
-    /**
-     * @description Adds an OR WHERE BETWEEN condition to the query.
-     * @param column - The column to filter.
-     * @param min - The minimum value for the range.
-     * @param max - The maximum value for the range.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    orWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
-    /**
-     * @description Adds a WHERE NOT BETWEEN condition to the query.
-     * @param column - The column to filter.
-     * @param min - The minimum value for the range.
-     * @param max - The maximum value for the range.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    whereNotBetween(column: string, min: BaseValues, max: BaseValues): this;
-    /**
-     * @description Adds an OR WHERE NOT BETWEEN condition to the query.
-     * @param column - The column to filter.
-     * @param min - The minimum value for the range.
-     * @param max - The maximum value for the range.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    orWhereNotBetween(column: string, min: BaseValues, max: BaseValues): this;
-    /**
-     * @description Adds a WHERE IN condition to the query.
-     * @param column - The column to filter.
-     * @param values - An array of values to match against.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    whereIn(column: string, values: BaseValues[]): this;
-    /**
-     * @description Adds an AND WHERE IN condition to the query.
-     * @param column - The column to filter.
-     * @param values - An array of values to match against.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    andWhereIn(column: string, values: BaseValues[]): this;
-    /**
-     * @description Adds an OR WHERE IN condition to the query.
-     * @param column - The column to filter.
-     * @param values - An array of values to match against.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    orWhereIn(column: string, values: BaseValues[]): this;
-    /**
-     * @description Adds a WHERE NOT IN condition to the query.
-     * @param column - The column to filter.
-     * @param values - An array of values to exclude.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    whereNotIn(column: string, values: BaseValues[]): this;
-    /**
-     * @description Adds an OR WHERE NOT IN condition to the query.
-     * @param column - The column to filter.
-     * @param values - An array of values to exclude.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    orWhereNotIn(column: string, values: BaseValues[]): this;
-    /**
-     * @description Adds a WHERE NULL condition to the query.
-     * @param column - The column to filter.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    whereNull(column: string): this;
-    /**
-     * @description Adds an AND WHERE NULL condition to the query.
-     * @param column - The column to filter.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    andWhereNull(column: string): this;
-    /**
-     * @description Adds an OR WHERE NULL condition to the query.
-     * @param column - The column to filter.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    orWhereNull(column: string): this;
-    /**
-     * @description Adds a WHERE NOT NULL condition to the query.
-     * @param column - The column to filter.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    whereNotNull(column: string): this;
-    /**
-     * @description Adds an AND WHERE NOT NULL condition to the query.
-     * @param column - The column to filter.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    andWhereNotNull(column: string): this;
-    /**
-     * @description Adds an OR WHERE NOT NULL condition to the query.
-     * @param column - The column to filter.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    orWhereNotNull(column: string): this;
-    /**
-     * @description Adds a raw WHERE condition to the query.
-     * @param query - The raw SQL WHERE condition.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    rawWhere(query: string): this;
-    /**
-     * @description Adds a raw AND WHERE condition to the query.
-     * @param query - The raw SQL WHERE condition.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    rawAndWhere(query: string): this;
-    /**
-     * @description Adds a raw OR WHERE condition to the query.
-     * @param query - The raw SQL WHERE condition.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    rawOrWhere(query: string): this;
-}
-
-declare class MysqlTransaction {
-    protected mysql: Pool;
-    protected mysqlConnection: PoolConnection;
-    protected logs: boolean;
-    constructor(mysql: Pool, logs: boolean);
-    queryInsert<T extends Model>(query: string, params: any[], metadata: Metadata): Promise<T>;
-    massiveInsertQuery<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T[]>;
-    massiveUpdateQuery(query: string, params: any[]): Promise<number>;
-    massiveDeleteQuery(query: string, params: any[]): Promise<number>;
-    queryUpdate<T extends Model>(query: string, params?: any[]): Promise<number>;
-    queryDelete(query: string, params?: any[]): Promise<number>;
-    /**
-     * Start transaction.
-     */
-    start(): Promise<void>;
-    /**
-     * Commit transaction.
-     */
-    commit(): Promise<void>;
-    /**
-     * Rollback transaction.
-     */
-    rollback(): Promise<void>;
-}
-
-declare const deleteTemplate: (tableName: string, dbType: DataSourceType) => {
-    delete: (column: string, value: string | number | boolean | Date) => string;
-    massiveDelete: (whereClause: string, joinClause?: string) => string;
-    softDelete: (column: string, whereClause: string, joinClause?: string, softDeleteColumn?: string) => string;
-};
-
-declare class MysqlDeleteQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
-    protected mysql: Pool;
-    protected joinQuery: string;
-    protected deleteTemplate: ReturnType<typeof deleteTemplate>;
-    protected isNestedCondition: boolean;
-    /**
-     * @description Constructs a MysqlQueryBuilder instance.
-     * @param model - The model class associated with the table.
-     * @param tableName - The name of the table.
-     * @param mysqlPool - The MySQL connection pool.
-     * @param logs - A boolean indicating whether to log queries.
-     * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
-     */
-    constructor(model: typeof Model, tableName: string, mysql: Pool, logs: boolean, isNestedCondition?: boolean);
-    /**
-     * @description Deletes Records from the database.
-     * @param data - The data to update.
-     * @param trx - The transaction to run the query in.
-     * @returns The updated records.
-     */
-    performDelete(trx?: MysqlTransaction): Promise<number>;
-    /**
-     *
-     * @param relationTable - The name of the related table.
-     * @param primaryColumn - The name of the primary column in the caller table.
-     * @param foreignColumn - The name of the foreign column in the related table.
-     */
-    join(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlDeleteQueryBuilder<T>;
-    /**
-     *
-     * @param relationTable - The name of the related table.
-     * @param primaryColumn - The name of the primary column in the caller table.
-     * @param foreignColumn - The name of the foreign column in the related table.
-     */
-    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlDeleteQueryBuilder<T>;
-    /**
-     * @description Adds a WHERE condition to the query.
-     * @param column - The column to filter.
-     * @param operator - The comparison operator.
-     * @param value - The value to compare against.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    where(column: string, value: BaseValues, operator?: WhereOperatorType): this;
-    /**
-     * @description Build more complex where conditions.
-     * @param cb
-     */
-    whereBuilder(cb: (queryBuilder: MysqlDeleteQueryBuilder<T>) => void): this;
-    /**
-     * @description Build complex OR-based where conditions.
-     * @param cb Callback function that takes a query builder and adds conditions to it.
-     */
-    orWhereBuilder(cb: (queryBuilder: MysqlDeleteQueryBuilder<T>) => void): this;
-    /**
-     * @description Build complex AND-based where conditions.
-     * @param cb Callback function that takes a query builder and adds conditions to it.
-     */
-    andWhereBuilder(cb: (queryBuilder: MysqlDeleteQueryBuilder<T>) => void): this;
-}
-
-declare const updateTemplate: (table: string, dbType: DataSourceType) => {
-    update: (columns: string[], values: string[], primaryKey?: string, primaryKeyValue?: string | undefined) => {
-        query: string;
-        params: (string | undefined)[];
-    };
-    massiveUpdate: (columns: string[], values: any[], whereClause: string, joinClause?: string) => {
-        query: string;
-        params: any[];
-    };
-};
-
-declare class MysqlUpdateQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
-    protected mysqlPool: Pool;
-    protected joinQuery: string;
-    protected updateTemplate: ReturnType<typeof updateTemplate>;
-    protected isNestedCondition: boolean;
-    /**
-     * @description Constructs a MysqlQueryBuilder instance.
-     * @param model - The model class associated with the table.
-     * @param tableName - The name of the table.
-     * @param mysqlPool - The MySQL connection pool.
-     * @param logs - A boolean indicating whether to log queries.
-     * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
-     */
-    constructor(model: typeof Model, tableName: string, mysqlPool: Pool, logs: boolean, isNestedCondition?: boolean);
-    /**
-     * @description Updates a record in the database.
-     * @param data - The data to update.
-     * @param trx - The transaction to run the query in.
-     * @returns The number of affected rows.
-     */
-    withData(data: Partial<T>, trx?: MysqlTransaction): Promise<number>;
-    /**
-     *
-     * @param relationTable - The name of the related table.
-     * @param primaryColumn - The name of the primary column in the caller table.
-     * @param foreignColumn - The name of the foreign column in the related table.
-     */
-    join(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlUpdateQueryBuilder<T>;
-    /**
-     *
-     * @param relationTable - The name of the related table.
-     * @param primaryColumn - The name of the primary column in the caller table.
-     * @param foreignColumn - The name of the foreign column in the related table.
-     */
-    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlUpdateQueryBuilder<T>;
-    /**
-     * @description Adds a WHERE condition to the query.
-     * @param column - The column to filter.
-     * @param operator - The comparison operator.
-     * @param value - The value to compare against.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    where(column: string, value: BaseValues, operator?: WhereOperatorType): this;
-    /**
-     * @description Build more complex where conditions.
-     * @param cb
-     */
-    whereBuilder(cb: (queryBuilder: MysqlUpdateQueryBuilder<T>) => void): this;
-    /**
-     * @description Build complex OR-based where conditions.
-     * @param cb Callback function that takes a query builder and adds conditions to it.
-     */
-    orWhereBuilder(cb: (queryBuilder: MysqlUpdateQueryBuilder<T>) => void): this;
-    /**
-     * @description Build complex AND-based where conditions.
-     * @param cb Callback function that takes a query builder and adds conditions to it.
-     */
-    andWhereBuilder(cb: (queryBuilder: MysqlUpdateQueryBuilder<T>) => void): this;
-}
-
-declare class PostgresTransaction {
-    protected pgPool: Pool$1;
-    protected pgClient: PoolClient;
-    protected logs: boolean;
-    constructor(pgPool: Pool$1, logs: boolean);
-    queryInsert<T extends Model>(query: string, params: any[], metadata: Metadata): Promise<T>;
-    massiveInsertQuery<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T[]>;
-    massiveUpdateQuery<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T[]>;
-    massiveDeleteQuery<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T[]>;
-    queryUpdate<T extends Model>(query: string, params?: any[]): Promise<number | null>;
-    queryDelete(query: string, params?: any[]): Promise<number | null>;
-    /**
-     * Start transaction.
-     */
-    start(): Promise<void>;
-    /**
-     * Commit transaction.
-     */
-    commit(): Promise<void>;
-    /**
-     * Rollback transaction.
-     */
-    rollback(): Promise<void>;
-}
-
-declare class PostgresDeleteQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
-    protected pgPool: Pool$1;
-    protected joinQuery: string;
-    protected deleteTemplate: ReturnType<typeof deleteTemplate>;
-    protected isNestedCondition: boolean;
-    /**
-     * @description Constructs a MysqlQueryBuilder instance.
-     * @param model - The model class associated with the table.
-     * @param tableName - The name of the table.
-     * @param mysqlPool - The MySQL connection pool.
-     * @param logs - A boolean indicating whether to log queries.
-     * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
-     */
-    constructor(model: typeof Model, tableName: string, pgPool: Pool$1, logs: boolean, isNestedCondition?: boolean);
-    /**
-     * @description Deletes Records from the database.
-     * @param data - The data to update.
-     * @param trx - The transaction to run the query in.
-     * @returns The updated records.
-     */
-    performDelete(trx?: PostgresTransaction): Promise<T[]>;
-    /**
-     *
-     * @param relationTable - The name of the related table.
-     * @param primaryColumn - The name of the primary column in the caller table.
-     * @param foreignColumn - The name of the foreign column in the related table.
-     */
-    join(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresDeleteQueryBuilder<T>;
-    /**
-     *
-     * @param relationTable - The name of the related table.
-     * @param primaryColumn - The name of the primary column in the caller table.
-     * @param foreignColumn - The name of the foreign column in the related table.
-     */
-    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresDeleteQueryBuilder<T>;
-    /**
-     * @description Adds a WHERE condition to the query.
-     * @param column - The column to filter.
-     * @param operator - The comparison operator.
-     * @param value - The value to compare against.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    where(column: string, value: BaseValues, operator?: WhereOperatorType): this;
-    /**
-     * @description Build more complex where conditions.
-     * @param cb
-     */
-    whereBuilder(cb: (queryBuilder: PostgresDeleteQueryBuilder<T>) => void): this;
-    /**
-     * @description Build complex OR-based where conditions.
-     * @param cb Callback function that takes a query builder and adds conditions to it.
-     */
-    orWhereBuilder(cb: (queryBuilder: PostgresDeleteQueryBuilder<T>) => void): this;
-    /**
-     * @description Build complex AND-based where conditions.
-     * @param cb Callback function that takes a query builder and adds conditions to it.
-     */
-    andWhereBuilder(cb: (queryBuilder: PostgresDeleteQueryBuilder<T>) => void): this;
-}
-
-declare class PostgresUpdateQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
-    protected pgPool: Pool$1;
-    protected joinQuery: string;
-    protected updateTemplate: ReturnType<typeof updateTemplate>;
-    protected isNestedCondition: boolean;
-    /**
-     * @description Constructs a MysqlQueryBuilder instance.
-     * @param model - The model class associated with the table.
-     * @param tableName - The name of the table.
-     * @param mysqlPool - The MySQL connection pool.
-     * @param logs - A boolean indicating whether to log queries.
-     * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
-     */
-    constructor(model: typeof Model, tableName: string, pgPool: Pool$1, logs: boolean, isNestedCondition?: boolean);
-    /**
-     * @description Updates a record in the database.
-     * @param data - The data to update.
-     * @param trx - The transaction to run the query in.
-     * @returns The updated records.
-     */
-    withData(data: Partial<T>, trx?: PostgresTransaction): Promise<T[]>;
-    /**
-     *
-     * @param relationTable - The name of the related table.
-     * @param primaryColumn - The name of the primary column in the caller table.
-     * @param foreignColumn - The name of the foreign column in the related table.
-     */
-    join(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresUpdateQueryBuilder<T>;
-    /**
-     *
-     * @param relationTable - The name of the related table.
-     * @param primaryColumn - The name of the primary column in the caller table.
-     * @param foreignColumn - The name of the foreign column in the related table.
-     */
-    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresUpdateQueryBuilder<T>;
-    /**
-     * @description Adds a WHERE condition to the query.
-     * @param column - The column to filter.
-     * @param operator - The comparison operator.
-     * @param value - The value to compare against.
-     * @returns The MysqlQueryBuilder instance for chaining.
-     */
-    where(column: string, value: BaseValues, operator?: WhereOperatorType): this;
-    /**
-     * @description Build more complex where conditions.
-     * @param cb
-     */
-    whereBuilder(cb: (queryBuilder: PostgresUpdateQueryBuilder<T>) => void): this;
-    /**
-     * @description Build complex OR-based where conditions.
-     * @param cb Callback function that takes a query builder and adds conditions to it.
-     */
-    orWhereBuilder(cb: (queryBuilder: PostgresUpdateQueryBuilder<T>) => void): this;
-    /**
-     * @description Build complex AND-based where conditions.
-     * @param cb Callback function that takes a query builder and adds conditions to it.
-     */
-    andWhereBuilder(cb: (queryBuilder: PostgresUpdateQueryBuilder<T>) => void): this;
-}
-
-type SelectTemplateType = {
-    selectAll: string;
-    selectById: (id: string) => string;
-    selectColumns: (...columns: string[]) => string;
-    selectCount: string;
-    selectDistinct: (...columns: string[]) => string;
-    selectSum: (column: string) => string;
-    orderBy: (columns: string[], order?: "ASC" | "DESC") => string;
-    groupBy: (...columns: string[]) => string;
-    limit: (limit: number) => string;
-    offset: (offset: number) => string;
 };
 
 type PaginationMetadata = {
@@ -1229,7 +801,437 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     private mergeRawPacketIntoModel;
 }
 
+declare abstract class WhereQueryBuilder<T extends Model> {
+    protected whereQuery: string;
+    protected whereParams: BaseValues[];
+    protected model: typeof Model;
+    protected tableName: string;
+    protected logs: boolean;
+    protected whereTemplate: ReturnType<typeof whereTemplate>;
+    protected isNestedCondition: boolean;
+    /**
+     * @description Constructs a MysqlQueryBuilder instance.
+     * @param model - The model class associated with the table.
+     * @param tableName - The name of the table.
+     * @param logs - A boolean indicating whether to log queries.
+     * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
+     */
+    constructor(model: typeof Model, tableName: string, logs: boolean, isNestedCondition?: boolean);
+    /**
+     * @description Adds a WHERE condition to the query.
+     * @param column - The column to filter.
+     * @param operator - The comparison operator.
+     * @param value - The value to compare against.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    where(column: string, value: BaseValues, operator?: WhereOperatorType): this;
+    /**
+     * @description Adds an AND WHERE condition to the query.
+     * @param column - The column to filter.
+     * @param operator - The comparison operator.
+     * @param value - The value to compare against.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    andWhere(column: string, value: BaseValues, operator?: WhereOperatorType): this;
+    /**
+     * @description Adds an OR WHERE condition to the query.
+     * @param column - The column to filter.
+     * @param operator - The comparison operator.
+     * @param value - The value to compare against.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    orWhere(column: string, value: BaseValues, operator?: WhereOperatorType): this;
+    /**
+     * @description Adds a WHERE BETWEEN condition to the query.
+     * @param column - The column to filter.
+     * @param min - The minimum value for the range.
+     * @param max - The maximum value for the range.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    whereBetween(column: string, min: BaseValues, max: BaseValues): this;
+    /**
+     * @description Adds an AND WHERE BETWEEN condition to the query.
+     * @param column - The column to filter.
+     * @param min - The minimum value for the range.
+     * @param max - The maximum value for the range.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    andWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
+    /**
+     * @description Adds an OR WHERE BETWEEN condition to the query.
+     * @param column - The column to filter.
+     * @param min - The minimum value for the range.
+     * @param max - The maximum value for the range.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    orWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
+    /**
+     * @description Adds a WHERE NOT BETWEEN condition to the query.
+     * @param column - The column to filter.
+     * @param min - The minimum value for the range.
+     * @param max - The maximum value for the range.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    whereNotBetween(column: string, min: BaseValues, max: BaseValues): this;
+    /**
+     * @description Adds an OR WHERE NOT BETWEEN condition to the query.
+     * @param column - The column to filter.
+     * @param min - The minimum value for the range.
+     * @param max - The maximum value for the range.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    orWhereNotBetween(column: string, min: BaseValues, max: BaseValues): this;
+    /**
+     * @description Adds a WHERE IN condition to the query.
+     * @param column - The column to filter.
+     * @param values - An array of values to match against.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    whereIn(column: string, values: BaseValues[]): this;
+    /**
+     * @description Adds an AND WHERE IN condition to the query.
+     * @param column - The column to filter.
+     * @param values - An array of values to match against.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    andWhereIn(column: string, values: BaseValues[]): this;
+    /**
+     * @description Adds an OR WHERE IN condition to the query.
+     * @param column - The column to filter.
+     * @param values - An array of values to match against.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    orWhereIn(column: string, values: BaseValues[]): this;
+    /**
+     * @description Adds a WHERE NOT IN condition to the query.
+     * @param column - The column to filter.
+     * @param values - An array of values to exclude.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    whereNotIn(column: string, values: BaseValues[]): this;
+    /**
+     * @description Adds an OR WHERE NOT IN condition to the query.
+     * @param column - The column to filter.
+     * @param values - An array of values to exclude.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    orWhereNotIn(column: string, values: BaseValues[]): this;
+    /**
+     * @description Adds a WHERE NULL condition to the query.
+     * @param column - The column to filter.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    whereNull(column: string): this;
+    /**
+     * @description Adds an AND WHERE NULL condition to the query.
+     * @param column - The column to filter.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    andWhereNull(column: string): this;
+    /**
+     * @description Adds an OR WHERE NULL condition to the query.
+     * @param column - The column to filter.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    orWhereNull(column: string): this;
+    /**
+     * @description Adds a WHERE NOT NULL condition to the query.
+     * @param column - The column to filter.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    whereNotNull(column: string): this;
+    /**
+     * @description Adds an AND WHERE NOT NULL condition to the query.
+     * @param column - The column to filter.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    andWhereNotNull(column: string): this;
+    /**
+     * @description Adds an OR WHERE NOT NULL condition to the query.
+     * @param column - The column to filter.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    orWhereNotNull(column: string): this;
+    /**
+     * @description Adds a raw WHERE condition to the query.
+     * @param query - The raw SQL WHERE condition.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    rawWhere(query: string): this;
+    /**
+     * @description Adds a raw AND WHERE condition to the query.
+     * @param query - The raw SQL WHERE condition.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    rawAndWhere(query: string): this;
+    /**
+     * @description Adds a raw OR WHERE condition to the query.
+     * @param query - The raw SQL WHERE condition.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    rawOrWhere(query: string): this;
+}
+
+declare const updateTemplate: (table: string, dbType: DataSourceType) => {
+    update: (columns: string[], values: string[], primaryKey?: string, primaryKeyValue?: string | undefined) => {
+        query: string;
+        params: (string | undefined)[];
+    };
+    massiveUpdate: (columns: string[], values: any[], whereClause: string, joinClause?: string) => {
+        query: string;
+        params: any[];
+    };
+};
+
+declare class MysqlUpdateQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
+    protected mysqlPool: Pool;
+    protected joinQuery: string;
+    protected updateTemplate: ReturnType<typeof updateTemplate>;
+    protected isNestedCondition: boolean;
+    /**
+     * @description Constructs a MysqlQueryBuilder instance.
+     * @param model - The model class associated with the table.
+     * @param tableName - The name of the table.
+     * @param mysqlPool - The MySQL connection pool.
+     * @param logs - A boolean indicating whether to log queries.
+     * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
+     */
+    constructor(model: typeof Model, tableName: string, mysqlPool: Pool, logs: boolean, isNestedCondition?: boolean);
+    /**
+     * @description Updates a record in the database.
+     * @param data - The data to update.
+     * @param trx - The transaction to run the query in.
+     * @returns The number of affected rows.
+     */
+    withData(data: Partial<T>, trx?: MysqlTransaction): Promise<number>;
+    /**
+     *
+     * @param relationTable - The name of the related table.
+     * @param primaryColumn - The name of the primary column in the caller table.
+     * @param foreignColumn - The name of the foreign column in the related table.
+     */
+    join(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlUpdateQueryBuilder<T>;
+    /**
+     *
+     * @param relationTable - The name of the related table.
+     * @param primaryColumn - The name of the primary column in the caller table.
+     * @param foreignColumn - The name of the foreign column in the related table.
+     */
+    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlUpdateQueryBuilder<T>;
+    /**
+     * @description Adds a WHERE condition to the query.
+     * @param column - The column to filter.
+     * @param operator - The comparison operator.
+     * @param value - The value to compare against.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    where(column: string, value: BaseValues, operator?: WhereOperatorType): this;
+    /**
+     * @description Build more complex where conditions.
+     * @param cb
+     */
+    whereBuilder(cb: (queryBuilder: MysqlUpdateQueryBuilder<T>) => void): this;
+    /**
+     * @description Build complex OR-based where conditions.
+     * @param cb Callback function that takes a query builder and adds conditions to it.
+     */
+    orWhereBuilder(cb: (queryBuilder: MysqlUpdateQueryBuilder<T>) => void): this;
+    /**
+     * @description Build complex AND-based where conditions.
+     * @param cb Callback function that takes a query builder and adds conditions to it.
+     */
+    andWhereBuilder(cb: (queryBuilder: MysqlUpdateQueryBuilder<T>) => void): this;
+}
+
+declare class PostgresUpdateQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
+    protected pgPool: Pool$1;
+    protected joinQuery: string;
+    protected updateTemplate: ReturnType<typeof updateTemplate>;
+    protected isNestedCondition: boolean;
+    /**
+     * @description Constructs a MysqlQueryBuilder instance.
+     * @param model - The model class associated with the table.
+     * @param tableName - The name of the table.
+     * @param mysqlPool - The MySQL connection pool.
+     * @param logs - A boolean indicating whether to log queries.
+     * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
+     */
+    constructor(model: typeof Model, tableName: string, pgPool: Pool$1, logs: boolean, isNestedCondition?: boolean);
+    /**
+     * @description Updates a record in the database.
+     * @param data - The data to update.
+     * @param trx - The transaction to run the query in.
+     * @returns The updated records.
+     */
+    withData(data: Partial<T>, trx?: PostgresTransaction): Promise<T[]>;
+    /**
+     *
+     * @param relationTable - The name of the related table.
+     * @param primaryColumn - The name of the primary column in the caller table.
+     * @param foreignColumn - The name of the foreign column in the related table.
+     */
+    join(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresUpdateQueryBuilder<T>;
+    /**
+     *
+     * @param relationTable - The name of the related table.
+     * @param primaryColumn - The name of the primary column in the caller table.
+     * @param foreignColumn - The name of the foreign column in the related table.
+     */
+    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresUpdateQueryBuilder<T>;
+    /**
+     * @description Adds a WHERE condition to the query.
+     * @param column - The column to filter.
+     * @param operator - The comparison operator.
+     * @param value - The value to compare against.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    where(column: string, value: BaseValues, operator?: WhereOperatorType): this;
+    /**
+     * @description Build more complex where conditions.
+     * @param cb
+     */
+    whereBuilder(cb: (queryBuilder: PostgresUpdateQueryBuilder<T>) => void): this;
+    /**
+     * @description Build complex OR-based where conditions.
+     * @param cb Callback function that takes a query builder and adds conditions to it.
+     */
+    orWhereBuilder(cb: (queryBuilder: PostgresUpdateQueryBuilder<T>) => void): this;
+    /**
+     * @description Build complex AND-based where conditions.
+     * @param cb Callback function that takes a query builder and adds conditions to it.
+     */
+    andWhereBuilder(cb: (queryBuilder: PostgresUpdateQueryBuilder<T>) => void): this;
+}
+
+declare const deleteTemplate: (tableName: string, dbType: DataSourceType) => {
+    delete: (column: string, value: string | number | boolean | Date) => string;
+    massiveDelete: (whereClause: string, joinClause?: string) => string;
+    softDelete: (column: string, whereClause: string, joinClause?: string, softDeleteColumn?: string) => string;
+};
+
+declare class MysqlDeleteQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
+    protected mysql: Pool;
+    protected joinQuery: string;
+    protected deleteTemplate: ReturnType<typeof deleteTemplate>;
+    protected isNestedCondition: boolean;
+    /**
+     * @description Constructs a MysqlQueryBuilder instance.
+     * @param model - The model class associated with the table.
+     * @param tableName - The name of the table.
+     * @param mysqlPool - The MySQL connection pool.
+     * @param logs - A boolean indicating whether to log queries.
+     * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
+     */
+    constructor(model: typeof Model, tableName: string, mysql: Pool, logs: boolean, isNestedCondition?: boolean);
+    /**
+     * @description Deletes Records from the database.
+     * @param data - The data to update.
+     * @param trx - The transaction to run the query in.
+     * @returns The updated records.
+     */
+    performDelete(trx?: MysqlTransaction): Promise<number>;
+    /**
+     *
+     * @param relationTable - The name of the related table.
+     * @param primaryColumn - The name of the primary column in the caller table.
+     * @param foreignColumn - The name of the foreign column in the related table.
+     */
+    join(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlDeleteQueryBuilder<T>;
+    /**
+     *
+     * @param relationTable - The name of the related table.
+     * @param primaryColumn - The name of the primary column in the caller table.
+     * @param foreignColumn - The name of the foreign column in the related table.
+     */
+    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlDeleteQueryBuilder<T>;
+    /**
+     * @description Adds a WHERE condition to the query.
+     * @param column - The column to filter.
+     * @param operator - The comparison operator.
+     * @param value - The value to compare against.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    where(column: string, value: BaseValues, operator?: WhereOperatorType): this;
+    /**
+     * @description Build more complex where conditions.
+     * @param cb
+     */
+    whereBuilder(cb: (queryBuilder: MysqlDeleteQueryBuilder<T>) => void): this;
+    /**
+     * @description Build complex OR-based where conditions.
+     * @param cb Callback function that takes a query builder and adds conditions to it.
+     */
+    orWhereBuilder(cb: (queryBuilder: MysqlDeleteQueryBuilder<T>) => void): this;
+    /**
+     * @description Build complex AND-based where conditions.
+     * @param cb Callback function that takes a query builder and adds conditions to it.
+     */
+    andWhereBuilder(cb: (queryBuilder: MysqlDeleteQueryBuilder<T>) => void): this;
+}
+
+declare class PostgresDeleteQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
+    protected pgPool: Pool$1;
+    protected joinQuery: string;
+    protected deleteTemplate: ReturnType<typeof deleteTemplate>;
+    protected isNestedCondition: boolean;
+    /**
+     * @description Constructs a MysqlQueryBuilder instance.
+     * @param model - The model class associated with the table.
+     * @param tableName - The name of the table.
+     * @param mysqlPool - The MySQL connection pool.
+     * @param logs - A boolean indicating whether to log queries.
+     * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
+     */
+    constructor(model: typeof Model, tableName: string, pgPool: Pool$1, logs: boolean, isNestedCondition?: boolean);
+    /**
+     * @description Deletes Records from the database.
+     * @param data - The data to update.
+     * @param trx - The transaction to run the query in.
+     * @returns The updated records.
+     */
+    performDelete(trx?: PostgresTransaction): Promise<T[]>;
+    /**
+     *
+     * @param relationTable - The name of the related table.
+     * @param primaryColumn - The name of the primary column in the caller table.
+     * @param foreignColumn - The name of the foreign column in the related table.
+     */
+    join(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresDeleteQueryBuilder<T>;
+    /**
+     *
+     * @param relationTable - The name of the related table.
+     * @param primaryColumn - The name of the primary column in the caller table.
+     * @param foreignColumn - The name of the foreign column in the related table.
+     */
+    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresDeleteQueryBuilder<T>;
+    /**
+     * @description Adds a WHERE condition to the query.
+     * @param column - The column to filter.
+     * @param operator - The comparison operator.
+     * @param value - The value to compare against.
+     * @returns The MysqlQueryBuilder instance for chaining.
+     */
+    where(column: string, value: BaseValues, operator?: WhereOperatorType): this;
+    /**
+     * @description Build more complex where conditions.
+     * @param cb
+     */
+    whereBuilder(cb: (queryBuilder: PostgresDeleteQueryBuilder<T>) => void): this;
+    /**
+     * @description Build complex OR-based where conditions.
+     * @param cb Callback function that takes a query builder and adds conditions to it.
+     */
+    orWhereBuilder(cb: (queryBuilder: PostgresDeleteQueryBuilder<T>) => void): this;
+    /**
+     * @description Build complex AND-based where conditions.
+     * @param cb Callback function that takes a query builder and adds conditions to it.
+     */
+    andWhereBuilder(cb: (queryBuilder: PostgresDeleteQueryBuilder<T>) => void): this;
+}
+
 type QueryBuilders<T extends Model> = MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
+type UpdateQueryBuilders<T extends Model> = MysqlUpdateQueryBuilder<T> | PostgresUpdateQueryBuilder<T>;
+type DeleteQueryBuilders<T extends Model> = MysqlDeleteQueryBuilder<T> | PostgresDeleteQueryBuilder<T>;
 type OneOptions = {
     throwErrorOnNull: boolean;
 };
@@ -1833,7 +1835,7 @@ declare class Model {
      * @param trx
      * @returns Update query builder
      */
-    static update<T extends Model>(this: new () => T | typeof Model): MysqlUpdateQueryBuilder<T> | PostgresUpdateQueryBuilder<T>;
+    static update<T extends Model>(this: new () => T | typeof Model): UpdateQueryBuilders<T>;
     /**
      * @description Deletes multiple records from the database
      * @param model
@@ -1841,7 +1843,7 @@ declare class Model {
      * @param trx
      * @returns
      */
-    static delete<T extends Model>(this: new () => T | typeof Model): MysqlDeleteQueryBuilder<T> | PostgresDeleteQueryBuilder<T>;
+    static delete<T extends Model>(this: new () => T | typeof Model): DeleteQueryBuilders<T>;
     /**
      * @description Deletes a record to the database
      * @param model
@@ -1881,8 +1883,13 @@ declare class Model {
     /**
      * @description Adds a beforeUpdate clause to the model, adding the ability to modify the data before updating the data
      * @param data
-     * @returns {T}
      */
+    static beforeUpdate(queryBuilder: UpdateQueryBuilders<any>): UpdateQueryBuilders<any>;
+    /**
+     * @description Adds a beforeDelete clause to the model, adding the ability to modify the data before deleting the data
+     * @param data
+     */
+    static beforeDelete(queryBuilder: DeleteQueryBuilders<any>): DeleteQueryBuilders<any>;
     /**
      * @description Establishes a connection to the database instantiated from the SqlDataSource.connect method
      * @returns
@@ -2222,8 +2229,6 @@ declare class User extends Model {
     createdAt: DateTime;
     posts: HasMany | Post[];
     static metadata: Metadata;
-    static beforeFetch(queryBuilder: QueryBuilders<User>): QueryBuilders<User>;
-    static beforeCreate(data: User): User;
 }
 declare class Post extends Model {
     id: number;

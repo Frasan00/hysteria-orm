@@ -10,7 +10,7 @@ import { Migration } from "./Sql/Migrations/Migration";
 import { SqlDataSource } from "./Sql/SqlDatasource";
 import { testCreate, testDelete, testQuery, testTrx, testUpdate } from "./test";
 import { DateTime } from "luxon";
-import { QueryBuilders } from "./Sql/QueryBuilder/QueryBuilder";
+import { QueryBuilders, UpdateQueryBuilders, DeleteQueryBuilders } from "./Sql/QueryBuilder/QueryBuilder";
 
 export class User extends Model {
   public id!: number;
@@ -61,5 +61,8 @@ export {
   BelongsTo,
   SqlDataSource,
   DataSourceInput,
+  QueryBuilders,
+  UpdateQueryBuilders,
+  DeleteQueryBuilders,
   Migration,
 };
