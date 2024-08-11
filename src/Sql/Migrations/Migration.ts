@@ -18,10 +18,10 @@ export abstract class Migration {
   /**
    * @description This method is called after the migration has been run
    */
-  public async afterUp?(): Promise<void> {}
+  public async afterUp?(): Promise<void>;
 
   /**
    * @description This method is called after the migration has been rolled back
    */
-  public async afterDown?(): Promise<void> {}
+  public async afterDown?(): Promise<void>;
 }

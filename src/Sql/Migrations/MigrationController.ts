@@ -43,7 +43,7 @@ export class MigrationController {
 
       await Promise.all(migrationPromises);
     } catch (error: any) {
-      throw new Error(error);
+      throw error;
     }
   }
 

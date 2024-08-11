@@ -39,6 +39,12 @@ export class User extends Model {
   @column()
   declare createdAt: DateTime;
 
+  @column()
+  declare updatedAt: DateTime;
+
+  @column()
+  declare deletedAt: DateTime | null;
+
   public posts: HasMany | Post[] = new HasMany("posts", "user_id");
 
   public static metadata: Metadata = {

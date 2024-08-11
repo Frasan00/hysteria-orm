@@ -1,4 +1,5 @@
 import { DataSourceType } from "../../../../Datasource";
+import { DateOptions } from "../CreateTable/ColumnTypeBuilder";
 
 type AlterOptions = {
   afterColumn?: string;
@@ -29,6 +30,17 @@ type DataType =
   | "timestamp"
   | "jsonb";
 
+type BaseOptions = {
+    afterColumn?: string;
+    references?: { table: string; column: string };
+    default?: string;
+    primaryKey?: boolean;
+    unique?: boolean;
+    notNullable?: boolean;
+    autoIncrement?: boolean;
+    length?: number;
+} & DateOptions;
+
 export default class ColumnBuilderAlter {
   protected tableName: string;
   protected queryStatements: string[];
@@ -56,16 +68,7 @@ export default class ColumnBuilderAlter {
   public addColumn(
     columnName: string,
     dataType: DataType,
-    options?: {
-      afterColumn?: string;
-      references?: { table: string; column: string };
-      default?: string;
-      primaryKey?: boolean;
-      unique?: boolean;
-      notNullable?: boolean;
-      autoIncrement?: boolean;
-      length?: number;
-    },
+    options?: BaseOptions,
   ): ColumnBuilderAlter {
     let query = `ALTER TABLE ${this.tableName} ADD COLUMN ${columnName}`;
 
@@ -141,11 +144,22 @@ export default class ColumnBuilderAlter {
           query += ` AFTER ${options.afterColumn}`;
           break;
         case "postgres":
-          query += ` AFTER ${options.afterColumn}`;
-          break;
+          throw new Error("Postgres does not support AFTER in ALTER COLUMN");
         default:
           throw new Error("Unsupported database type");
       }
+    }
+
+    if (options && (dataType === "date" || dataType) === "timestamp" && Object.hasOwnProperty.call(options, 'autoCreate')) {
+      this.partialQuery += " DEFAULT CURRENT_DATE";
+    }
+
+    if (options && (dataType === "date" || dataType) === "timestamp" && Object.hasOwnProperty.call(options, 'autoUpdate')) {
+      if (this.sqlType === 'postgres') {
+        throw new Error("Postgres does not support ON UPDATE CURRENT_DATE");
+      }
+
+      this.partialQuery += " ON UPDATE CURRENT_DATE";
     }
 
     this.partialQuery = query;
@@ -253,7 +267,7 @@ export default class ColumnBuilderAlter {
   public modifyColumnType(
     columnName: string,
     newDataType: DataType,
-    length?: number,
+    options?: BaseOptions,
   ): ColumnBuilderAlter {
     switch (this.sqlType) {
       case "mariadb":
@@ -261,18 +275,52 @@ export default class ColumnBuilderAlter {
         this.partialQuery = `ALTER TABLE ${
           this.tableName
         } MODIFY COLUMN ${columnName} ${newDataType}${
-          length ? `(${length})` : ""
+          options && options.length ? `(${options.length})` : ""
         }`;
         break;
       case "postgres":
         this.partialQuery = `ALTER TABLE ${
           this.tableName
         } ALTER COLUMN ${columnName} TYPE ${newDataType}${
-          length ? `(${length})` : ""
+          options && options.length ? `(${options.length})` : ""
         }`;
         break;
       default:
         throw new Error("Unsupported database type");
+    }
+
+    if (options?.notNullable) {
+      this.partialQuery += " NOT NULL";
+    }
+
+    if (options?.default !== undefined) {
+      this.partialQuery += ` DEFAULT ${options.default}`;
+    }
+
+    if (options?.primaryKey) {
+      this.partialQuery += " PRIMARY KEY";
+    }
+
+    if (options?.unique) {
+      this.partialQuery += " UNIQUE";
+    }
+
+    if (options?.references) {
+      this.partialQuery += ` REFERENCES ${options.references.table}(${options.references.column})`;
+    }
+
+    if (options?.afterColumn) {
+      switch (this.sqlType) {
+        case "mariadb":
+        case "mysql":
+          this.partialQuery += ` AFTER ${options.afterColumn}`;
+          break;
+        case "postgres":
+          throw new Error("Postgres does not support AFTER in ALTER COLUMN");
+          break;
+        default:
+          throw new Error("Unsupported database type");
+      }
     }
 
     this.queryStatements.push(this.partialQuery);

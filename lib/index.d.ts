@@ -1955,6 +1955,10 @@ declare class ColumnOptionsBuilder {
     commit(): void;
 }
 
+type DateOptions = {
+    autoCreate?: boolean;
+    autoUpdate?: boolean;
+};
 declare class ColumnTypeBuilder {
     protected tableName: string;
     protected queryStatements: string[];
@@ -1989,8 +1993,8 @@ declare class ColumnTypeBuilder {
     decimal(name: string): ColumnOptionsBuilder;
     double(name: string): ColumnOptionsBuilder;
     boolean(name: string): ColumnOptionsBuilder;
-    date(name: string): ColumnOptionsBuilder;
-    timestamp(name: string): ColumnOptionsBuilder;
+    date(name: string, options?: DateOptions): ColumnOptionsBuilder;
+    timestamp(name: string, options?: DateOptions): ColumnOptionsBuilder;
     /**
      * @description EXPERIMENTAL
      * @param name
@@ -2015,6 +2019,19 @@ type AlterOptions = {
     };
 };
 type DataType = "varchar" | "tinytext" | "mediumtext" | "longtext" | "binary" | "text" | "char" | "tinyint" | "smallint" | "mediumint" | "integer" | "bigint" | "float" | "decimal" | "double" | "boolean" | "date" | "timestamp" | "jsonb";
+type BaseOptions = {
+    afterColumn?: string;
+    references?: {
+        table: string;
+        column: string;
+    };
+    default?: string;
+    primaryKey?: boolean;
+    unique?: boolean;
+    notNullable?: boolean;
+    autoIncrement?: boolean;
+    length?: number;
+} & DateOptions;
 declare class ColumnBuilderAlter {
     protected tableName: string;
     protected queryStatements: string[];
@@ -2027,19 +2044,7 @@ declare class ColumnBuilderAlter {
      * @param dataType { varchar | tinytext | mediumtext | longtext | binary | text | char | tinyint | smallint | mediumint | integer | bigint | float | decimal | double | boolean | date | timestamp | jsonb }
      * @param options { afterColumn?: string; references?: { table: string; column: string }; default?: string; primaryKey?: boolean; unique?: boolean; notNullable?: boolean; autoIncrement?: boolean; length?: number; }
      */
-    addColumn(columnName: string, dataType: DataType, options?: {
-        afterColumn?: string;
-        references?: {
-            table: string;
-            column: string;
-        };
-        default?: string;
-        primaryKey?: boolean;
-        unique?: boolean;
-        notNullable?: boolean;
-        autoIncrement?: boolean;
-        length?: number;
-    }): ColumnBuilderAlter;
+    addColumn(columnName: string, dataType: DataType, options?: BaseOptions): ColumnBuilderAlter;
     /**
      * @description Add a new enum column to the table
      * @param columnName { string }
@@ -2061,7 +2066,7 @@ declare class ColumnBuilderAlter {
      * @param newColumnName
      */
     renameColumn(oldColumnName: string, newColumnName: string): ColumnBuilderAlter;
-    modifyColumnType(columnName: string, newDataType: DataType, length?: number): ColumnBuilderAlter;
+    modifyColumnType(columnName: string, newDataType: DataType, options?: BaseOptions): ColumnBuilderAlter;
     /**
      * @description Renames a table
      * @param oldTableName
@@ -2226,6 +2231,8 @@ declare class User extends Model {
     isActive: boolean;
     json: Record<string, any>;
     createdAt: DateTime;
+    updatedAt: DateTime;
+    deletedAt: DateTime | null;
     posts: HasMany | Post[];
     static metadata: Metadata;
 }

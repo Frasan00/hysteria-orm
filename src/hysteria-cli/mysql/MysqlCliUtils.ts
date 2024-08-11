@@ -25,7 +25,7 @@ class MysqlCliUtils {
   public async getMigrationTable(
     mysqlPool: PoolConnection,
   ): Promise<MigrationTableType[]> {
-    await mysqlPool.query(MigrationTemplates.migrationTableTemplatePg());
+    await mysqlPool.query(MigrationTemplates.migrationTableTemplate());
     const result = await mysqlPool.query(
       MigrationTemplates.selectAllFromMigrationsTemplate(),
     );

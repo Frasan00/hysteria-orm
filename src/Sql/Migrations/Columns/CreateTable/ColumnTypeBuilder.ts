@@ -1,6 +1,11 @@
 import { DataSourceType } from "../../../../Datasource";
 import ColumnOptionsBuilder from "./ColumnOptionsBuilder";
 
+export type DateOptions = {
+  autoCreate?: boolean;
+  autoUpdate?: boolean;
+};
+
 export default class ColumnTypeBuilder {
   protected tableName: string;
   protected queryStatements: string[];
@@ -282,9 +287,22 @@ export default class ColumnTypeBuilder {
     );
   }
 
-  public date(name: string): ColumnOptionsBuilder {
+  public date(name: string, options?: DateOptions): ColumnOptionsBuilder {
     this.columnName = name;
     this.partialQuery += `${name} DATE`;
+
+    if (options && options.autoCreate) {
+      this.partialQuery += " DEFAULT CURRENT_DATE";
+    }
+
+    if (options && options.autoUpdate) {
+      if (this.sqlType === 'postgres') {
+        throw new Error("Postgres does not support ON UPDATE CURRENT_DATE");
+      }
+
+      this.partialQuery += " ON UPDATE CURRENT_DATE";
+    }
+
     return new ColumnOptionsBuilder(
       this.tableName,
       this.queryStatements,
@@ -294,9 +312,21 @@ export default class ColumnTypeBuilder {
     );
   }
 
-  public timestamp(name: string): ColumnOptionsBuilder {
+  public timestamp(name: string, options?: DateOptions): ColumnOptionsBuilder {
     this.columnName = name;
     this.partialQuery += `${name} TIMESTAMP`;
+    if (options && options.autoCreate) {
+      this.partialQuery += " DEFAULT CURRENT_TIMESTAMP";
+    }
+
+    if (options && options.autoUpdate) {
+      if (this.sqlType === 'postgres') {
+        throw new Error("Postgres does not support ON UPDATE CURRENT_DATE");
+      }
+
+      this.partialQuery += " ON UPDATE CURRENT_TIMESTAMP";
+    }
+
     return new ColumnOptionsBuilder(
       this.tableName,
       this.queryStatements,
