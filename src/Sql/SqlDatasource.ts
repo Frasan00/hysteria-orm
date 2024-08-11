@@ -47,7 +47,6 @@ export class SqlDataSource extends DataSource {
           password: sqlDataSource.password,
           database: sqlDataSource.database,
         }) as mysql.Pool;
-
         break;
 
       case "postgres":
@@ -58,10 +57,25 @@ export class SqlDataSource extends DataSource {
           password: sqlDataSource.password,
           database: sqlDataSource.database,
         }) as pg.Pool;
-
         break;
       default:
         throw new Error(`Unsupported datasource type: ${sqlDataSource.type}`);
+    }
+
+    try {
+      switch (sqlDataSource.type) {
+        case "mysql":
+        case "mariadb":
+          await (sqlDataSource.sqlPool as Pool).getConnection();
+          break;
+        case "postgres":
+          await (sqlDataSource.sqlPool as pg.Pool).connect();
+          break;
+        default:
+          throw new Error(`Unsupported datasource type: ${sqlDataSource.type}`);
+      }
+    } catch (error) {
+      throw error;
     }
 
     sqlDataSource.isConnected = true;
@@ -103,6 +117,22 @@ export class SqlDataSource extends DataSource {
         break;
       default:
         throw new Error(`Unsupported datasource type: ${input.type}`);
+    }
+
+    try {
+      switch (input.type) {
+        case "mysql":
+        case "mariadb":
+          await (sqlDataSource.sqlPool as Pool).getConnection();
+          break;
+        case "postgres":
+          await (sqlDataSource.sqlPool as pg.Pool).connect();
+          break;
+        default:
+          throw new Error(`Unsupported datasource type: ${input.type}`);
+      }
+    } catch (error) {
+      throw error;
     }
 
     sqlDataSource.isConnected = true;

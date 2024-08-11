@@ -17,13 +17,6 @@ export async function parseDatabaseDataIntoModelResponse<T extends Model>(
   );
 
   const serializedModels = models.map((model) => {
-    Object.keys(model).forEach((key) => {
-      const value = model[key as keyof Model];
-      if (value === undefined) {
-        delete (model as Partial<Model>)[key as keyof Model];
-      }
-    });
-
     return serializeModel(model, relations, tempModel);
   });
 
@@ -36,50 +29,51 @@ function serializeModel<T extends Record<string, any>>(
   tempModel?: T,
 ): T {
   const camelCaseModel: Record<string, any> = {};
-  const keys = Object.keys(model);
-  // Used to avoid having to have relations first in the final object
   const relationProps: Record<string, any>[] = [];
 
-  for (const key of keys) {
-    if (["extraColumns"].includes(key)) {
-      processExtraColumns(model, key, camelCaseModel);
-      continue;
+  for (const key in model) {
+    if (model[key] === undefined) {
+      delete (model as Partial<Model>)[key as keyof Model];
     }
 
-    const originalValue = model[key];
-    if (!originalValue) {
-      continue;
-    }
+    if (model.hasOwnProperty(key)) {
+      if (key === "extraColumns") {
+        processExtraColumns(model, key, camelCaseModel);
+        continue;
+      }
 
-    if (isRelationDefinition(originalValue)) {
-      continue;
-    }
+      const originalValue = model[key];
+      if (!originalValue || isRelationDefinition(originalValue)) {
+        continue;
+      }
 
-    // Serialize the relations
-    const camelCaseKey = fromSnakeToCamelCase(key);
-    if (relations && tempModel && relations.includes(key)) {
-      processRelation(key, relations, tempModel, originalValue, relationProps);
-      continue;
-    }
+      const camelCaseKey = fromSnakeToCamelCase(key);
+      if (relations && tempModel && relations.includes(key)) {
+        processRelation(
+          key,
+          relations,
+          tempModel,
+          originalValue,
+          relationProps,
+        );
+        continue;
+      }
 
-    // Serialize the rest of the model
-    if (isNestedObject(originalValue) && !Array.isArray(originalValue)) {
-      convertToCamelCaseObject(originalValue);
-      continue;
-    }
+      if (isNestedObject(originalValue) && !Array.isArray(originalValue)) {
+        camelCaseModel[camelCaseKey] = convertToCamelCaseObject(originalValue);
+        continue;
+      }
 
-    // Removes every array value key that is not a relation or an extra column
-    if (Array.isArray(originalValue)) {
-      continue;
+      if (!Array.isArray(originalValue)) {
+        camelCaseModel[camelCaseKey] = originalValue;
+      }
     }
-
-    camelCaseModel[camelCaseKey] = originalValue;
   }
 
-  // Add the relation properties to the final object
   relationProps.forEach((relationProp) => {
     camelCaseModel[relationProp.key] = relationProp.value;
   });
+
   return camelCaseModel as T;
 }
 

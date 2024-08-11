@@ -74,7 +74,7 @@ export class Post extends Model {
   // await testUpdate();
   // await testDelete();
   // await testTrx();
-  await testQuery();
+  // await testQuery();
 
   process.exit(0);
 })();

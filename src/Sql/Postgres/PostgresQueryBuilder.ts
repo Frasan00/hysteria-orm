@@ -7,7 +7,7 @@ import {
 import { Pool } from "pg";
 import { BaseValues, WhereOperatorType } from "../Resources/Query/WHERE.TS";
 import selectTemplate from "../Resources/Query/SELECT";
-import { log } from "../../Logger";
+import { log, queryError } from "../../Logger";
 import PostgresModelManagerUtils from "./PostgresModelManagerUtils";
 import joinTemplate from "../Resources/Query/JOIN";
 import { PaginatedData, getPaginationMetadata } from "../pagination";
@@ -112,6 +112,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
       )) as T;
       return (await this.model.afterFetch([model]))[0] as T;
     } catch (error) {
+      queryError(query);
       throw new Error("Query failed " + error);
     }
   }
