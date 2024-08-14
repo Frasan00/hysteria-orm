@@ -31,14 +31,14 @@ type DataType =
   | "jsonb";
 
 type BaseOptions = {
-    afterColumn?: string;
-    references?: { table: string; column: string };
-    default?: string;
-    primaryKey?: boolean;
-    unique?: boolean;
-    notNullable?: boolean;
-    autoIncrement?: boolean;
-    length?: number;
+  afterColumn?: string;
+  references?: { table: string; column: string };
+  default?: string;
+  primaryKey?: boolean;
+  unique?: boolean;
+  notNullable?: boolean;
+  autoIncrement?: boolean;
+  length?: number;
 } & DateOptions;
 
 export default class ColumnBuilderAlter {
@@ -150,12 +150,20 @@ export default class ColumnBuilderAlter {
       }
     }
 
-    if (options && (dataType === "date" || dataType) === "timestamp" && Object.hasOwnProperty.call(options, 'autoCreate')) {
+    if (
+      options &&
+      (dataType === "date" || dataType) === "timestamp" &&
+      Object.hasOwnProperty.call(options, "autoCreate")
+    ) {
       this.partialQuery += " DEFAULT CURRENT_DATE";
     }
 
-    if (options && (dataType === "date" || dataType) === "timestamp" && Object.hasOwnProperty.call(options, 'autoUpdate')) {
-      if (this.sqlType === 'postgres') {
+    if (
+      options &&
+      (dataType === "date" || dataType) === "timestamp" &&
+      Object.hasOwnProperty.call(options, "autoUpdate")
+    ) {
+      if (this.sqlType === "postgres") {
         throw new Error("Postgres does not support ON UPDATE CURRENT_DATE");
       }
 

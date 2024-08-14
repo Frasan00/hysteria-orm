@@ -105,14 +105,14 @@ export default class PostgresModelManagerUtils<T extends Model> {
 
   // Parses and fills input relations directly into the model
   public async parseQueryBuilderRelations(
-    model: T,
+    models: T[],
     modelTypeOf: typeof Model,
     input: string[],
     pgConnection: pg.Pool,
     logs: boolean,
-  ): Promise<void> {
+  ): Promise<{ [relationName: string]: Model[] }[]> {
     if (!input.length) {
-      return;
+      return [];
     }
 
     if (!modelTypeOf.metadata.primaryKey) {
@@ -122,33 +122,54 @@ export default class PostgresModelManagerUtils<T extends Model> {
     }
 
     let relationQuery: string = "";
+    const relationQueries: string[] = [];
+    const relationMap: { [key: string]: string } = {};
+
     try {
-      const relationPromises = input.map(async (inputRelation: string) => {
+      input.forEach((inputRelation: string) => {
         const relation = this.getRelationFromModel(
-          model,
+          models[0],
           inputRelation,
           modelTypeOf,
         );
-
-        // make the relation field name camelCase
-        relationQuery = relationTemplates(model, modelTypeOf, relation);
-
-        log(relationQuery, logs);
-        const result = await pgConnection.query(relationQuery);
-        const relatedModels = result.rows;
-
-        if (relatedModels.length === 0) {
-          Object.assign(model, { [inputRelation as keyof T]: null });
-        } else if (relatedModels.length === 1) {
-          Object.assign(model, {
-            [inputRelation as keyof T]: relatedModels[0],
-          });
-        } else {
-          Object.assign(model, { [inputRelation as keyof T]: relatedModels });
-        }
+        const query = relationTemplates(
+          models,
+          modelTypeOf,
+          relation,
+          inputRelation,
+        );
+        relationQueries.push(query);
+        relationMap[inputRelation] = query;
       });
 
-      await Promise.all(relationPromises);
+      relationQuery = relationQueries.join(" UNION ALL ");
+      log(relationQuery, logs);
+
+      const result = await pgConnection.query(relationQuery);
+      const relatedModels = result.rows;
+
+      const resultMap: { [key: string]: any[] } = {};
+      relatedModels.forEach((row) => {
+        const relationName = row.relation_name;
+        delete row.relation_name;
+        if (!resultMap[relationName]) {
+          resultMap[relationName] = [];
+        }
+
+        resultMap[relationName].push(row);
+      });
+
+      // Ensure all input relations are included in the result
+      const resultArray: { [relationName: string]: any[] }[] = input.map(
+        (inputRelation) => {
+          const modelsForRelation = resultMap[inputRelation] || [];
+          return {
+            [inputRelation]: modelsForRelation,
+          };
+        },
+      );
+
+      return resultArray;
     } catch (error) {
       queryError("Query Error: " + relationQuery + error);
       throw new Error("Failed to parse relations " + error);

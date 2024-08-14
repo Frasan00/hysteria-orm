@@ -296,7 +296,7 @@ export default class ColumnTypeBuilder {
     }
 
     if (options && options.autoUpdate) {
-      if (this.sqlType === 'postgres') {
+      if (this.sqlType === "postgres") {
         throw new Error("Postgres does not support ON UPDATE CURRENT_DATE");
       }
 
@@ -320,7 +320,7 @@ export default class ColumnTypeBuilder {
     }
 
     if (options && options.autoUpdate) {
-      if (this.sqlType === 'postgres') {
+      if (this.sqlType === "postgres") {
         throw new Error("Postgres does not support ON UPDATE CURRENT_DATE");
       }
 

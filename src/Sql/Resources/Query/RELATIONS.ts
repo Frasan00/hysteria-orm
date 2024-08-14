@@ -3,48 +3,61 @@ import { Model } from "../../Models/Model";
 import { camelToSnakeCase, fromSnakeToCamelCase } from "../../../CaseUtils";
 
 function relationTemplates<T extends Model>(
-  model: T,
+  models: T[],
   modelTypeOf: typeof Model,
   relation: Relation,
+  relationName: string,
 ) {
   const primaryKey = modelTypeOf.metadata.primaryKey as keyof T;
   const foreignKey = relation.foreignKey as keyof T;
   const relatedModel = relation.relatedModel;
-  const foreignKeyValue =
-    model[fromSnakeToCamelCase(foreignKey) as keyof T] ||
-    model[camelToSnakeCase(foreignKey) as keyof T] ||
-    model[foreignKey];
-  const primaryKeyValue =
-    model[fromSnakeToCamelCase(primaryKey) as keyof T] ||
-    model[camelToSnakeCase(primaryKey) as keyof T] ||
-    model[primaryKey];
+
+  const primaryKeyValues = models.map((model) => {
+    return (
+      model[fromSnakeToCamelCase(primaryKey) as keyof T] ||
+      model[camelToSnakeCase(primaryKey) as keyof T] ||
+      model[primaryKey]
+    );
+  });
+
+  const foreignKeyValues = models.map((model) => {
+    return (
+      model[fromSnakeToCamelCase(foreignKey) as keyof T] ||
+      model[camelToSnakeCase(foreignKey) as keyof T] ||
+      model[foreignKey]
+    );
+  });
 
   switch (relation.type) {
     case RelationType.hasOne:
-      if (!foreignKeyValue || !primaryKeyValue) {
-        console.error(
-          `Invalid foreignKey or primaryKey value: foreignKey=${foreignKeyValue}, primaryKey=${primaryKeyValue}`,
-        );
-        throw new Error("Invalid foreignKey or primaryKey value");
+      if (primaryKeyValues.some((value) => !value)) {
+        console.error(`Invalid primaryKey values: ${primaryKeyValues}`);
+        throw new Error("Invalid primaryKey values");
       }
 
-      return `SELECT * FROM ${relatedModel} WHERE ${relatedModel}.${camelToSnakeCase(
+      return `SELECT *, '${relationName}' as relation_name FROM ${relatedModel} WHERE ${relatedModel}.${camelToSnakeCase(
         foreignKey,
-      )} = ${primaryKeyValue} LIMIT 1;`;
+      )} IN (${primaryKeyValues.join(", ")});`;
 
     case RelationType.belongsTo:
-      if (!foreignKeyValue) {
-        throw new Error("Invalid foreignKey value");
+      if (foreignKeyValues.some((value) => !value)) {
+        console.error(`Invalid foreignKey values: ${foreignKeyValues}`);
+        throw new Error("Invalid foreignKey values");
       }
-      return `SELECT * FROM ${relatedModel} WHERE ${relatedModel}.${primaryKey.toString()} = ${foreignKeyValue};`;
+
+      return `SELECT *, '${relationName}' as relation_name FROM ${relatedModel} WHERE ${relatedModel}.${primaryKey.toString()} IN (${foreignKeyValues.join(
+        ", ",
+      )});`;
 
     case RelationType.hasMany:
-      if (!primaryKeyValue) {
-        throw new Error("Invalid primaryKey value");
+      if (primaryKeyValues.some((value) => !value)) {
+        console.error(`Invalid primaryKey values: ${primaryKeyValues}`);
+        throw new Error("Invalid primaryKey values");
       }
-      return `SELECT * FROM ${relatedModel} WHERE ${relatedModel}.${camelToSnakeCase(
+
+      return `SELECT *, '${relationName}' as relation_name FROM ${relatedModel} WHERE ${relatedModel}.${camelToSnakeCase(
         foreignKey,
-      )} = ${primaryKeyValue};`;
+      )} IN (${primaryKeyValues.join(", ")});`;
 
     default:
       throw new Error(`Unknown relation type: ${relation.type}`);

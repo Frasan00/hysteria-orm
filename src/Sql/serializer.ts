@@ -6,6 +6,7 @@ import { Relation, RelationType } from "./Models/Relations/Relation";
 export async function parseDatabaseDataIntoModelResponse<T extends Model>(
   models: T[],
   typeofModel: typeof Model,
+  relationModels: { [relationName: string]: Model[] }[] = [],
 ): Promise<T | T[] | null> {
   if (!models.length) {
     return null;
@@ -17,19 +18,23 @@ export async function parseDatabaseDataIntoModelResponse<T extends Model>(
   );
 
   const serializedModels = models.map((model) => {
-    return serializeModel(model, relations, tempModel);
+    const serializedModel = serializeModel(model);
+    processRelation(
+      serializedModel,
+      tempModel,
+      typeofModel,
+      relations,
+      relationModels,
+    );
+
+    return serializedModel;
   });
 
   return serializedModels.length === 1 ? serializedModels[0] : serializedModels;
 }
 
-function serializeModel<T extends Record<string, any>>(
-  model: T,
-  relations?: string[],
-  tempModel?: T,
-): T {
+function serializeModel<T extends Record<string, any>>(model: T): T {
   const camelCaseModel: Record<string, any> = {};
-  const relationProps: Record<string, any>[] = [];
 
   for (const key in model) {
     if (model[key] === undefined) {
@@ -43,36 +48,30 @@ function serializeModel<T extends Record<string, any>>(
       }
 
       const originalValue = model[key];
-      if (!originalValue || isRelationDefinition(originalValue)) {
+      // Include null values
+      if (!originalValue) {
+        camelCaseModel[fromSnakeToCamelCase(key)] = originalValue;
+        continue;
+      }
+
+      if (isRelationDefinition(originalValue)) {
         continue;
       }
 
       const camelCaseKey = fromSnakeToCamelCase(key);
-      if (relations && tempModel && relations.includes(key)) {
-        processRelation(
-          key,
-          relations,
-          tempModel,
-          originalValue,
-          relationProps,
-        );
-        continue;
-      }
-
       if (isNestedObject(originalValue) && !Array.isArray(originalValue)) {
         camelCaseModel[camelCaseKey] = convertToCamelCaseObject(originalValue);
         continue;
       }
 
-      if (!Array.isArray(originalValue)) {
-        camelCaseModel[camelCaseKey] = originalValue;
+      // TODO: For now, non relation arrays are not supported
+      if (Array.isArray(originalValue)) {
+        continue;
       }
+
+      camelCaseModel[camelCaseKey] = originalValue;
     }
   }
-
-  relationProps.forEach((relationProp) => {
-    camelCaseModel[relationProp.key] = relationProp.value;
-  });
 
   return camelCaseModel as T;
 }
@@ -112,58 +111,67 @@ function isRelationDefinition<T extends Record<string, any>>(
 }
 
 function processRelation(
-  key: string,
-  relations: string[],
-  tempModel: Record<string, any>,
-  originalValue: any,
-  relationProps: Record<string, any>[],
+  serializedModel: Record<string, any>,
+  tempModel: Record<string, any>, // For relations
+  typeofModel: typeof Model,
+  relationsNames: string[],
+  relationModels: { [relationName: string]: Model[] }[],
 ) {
-  const camelCaseKey = fromSnakeToCamelCase(key);
-  if (relations && tempModel && relations.includes(key)) {
-    const relation = tempModel[key] as Relation;
+  relationsNames.forEach((relationName) => {
+    const relation = tempModel[relationName as keyof Model] as Relation;
+    const relationModel = relationModels.find(
+      (relationModel) => relationModel[relationName],
+    );
+
+    if (!relationModel) {
+      return;
+    }
+
+    const relatedModel = relationModel[relationName];
+    const foreignKey = fromSnakeToCamelCase(relation.foreignKey) as string;
+    const primaryKey = typeofModel.metadata.primaryKey as string;
+
+    // Create a map for quick lookup
+    const relatedModelMap = new Map<any, Model>();
+    relatedModel.forEach((model) => {
+      relatedModelMap.set(model[primaryKey as keyof Model], model);
+    });
+
     switch (relation.type) {
-      case RelationType.hasOne:
       case RelationType.belongsTo:
-        const camelCaseObject = Object.keys(originalValue).reduce(
-          (acc, objKey) => {
-            acc[fromSnakeToCamelCase(objKey)] = originalValue[objKey];
-            return acc;
-          },
-          {} as Record<string, any>,
+      case RelationType.hasOne:
+        const retrievedRelatedModel = relatedModelMap.get(
+          serializedModel[foreignKey as keyof Model],
         );
 
-        relationProps.push({
-          key: camelCaseKey,
-          value: camelCaseObject,
-        });
+        if (retrievedRelatedModel) {
+          serializedModel[relationName] = serializeModel(retrievedRelatedModel);
+        }
         break;
 
       case RelationType.hasMany:
-        const originalValueArray = Array.isArray(originalValue)
-          ? originalValue
-          : [originalValue];
-        const camelCaseArray = originalValueArray.map((value: any) => {
-          return Object.keys(value).reduce(
-            (acc, objKey) => {
-              acc[fromSnakeToCamelCase(objKey)] = value[objKey];
-              return acc;
-            },
-            {} as Record<string, any>,
+        Object.keys(relatedModel).forEach((key: string) => {
+          // @ts-ignore
+          relatedModel[key as keyof Model] = convertToCamelCaseObject(
+            relatedModel[key as any],
           );
         });
 
-        relationProps.push({
-          key: camelCaseKey,
-          value: camelCaseArray,
-        });
+        const retrievedRelatedModels = relatedModel.filter(
+          (item) =>
+            item[foreignKey as keyof Model] ===
+            serializedModel[primaryKey as keyof Model],
+        );
+
+        serializedModel[relationName] = retrievedRelatedModels
+          .flat()
+          .map((model) => serializeModel(model));
         break;
 
       default:
-        throw new Error(
-          "Invalid relation type while serializing for key " + key,
-        );
+        throw new Error("Relation type not supported");
     }
-  }
+  });
 }
 
 function convertToCamelCaseObject(

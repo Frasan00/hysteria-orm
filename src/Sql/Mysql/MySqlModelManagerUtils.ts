@@ -89,8 +89,8 @@ export default class MySqlModelManagerUtils<T extends Model> {
 
   private getRelationFromModel(
     model: T,
-    metadata: Metadata,
     relationField: string,
+    modelTypeOf: typeof Model,
   ): Relation {
     const relation = model[relationField as keyof T] as Relation;
     if (!relation) {
@@ -98,7 +98,7 @@ export default class MySqlModelManagerUtils<T extends Model> {
         "Relation " +
           relationField +
           " not found in model " +
-          metadata.tableName,
+          modelTypeOf.metadata.tableName,
       );
     }
 
@@ -107,49 +107,71 @@ export default class MySqlModelManagerUtils<T extends Model> {
 
   // Parses and fills input relations directly into the model
   public async parseQueryBuilderRelations(
-    model: T,
+    models: T[],
     modelTypeOf: typeof Model,
     input: string[],
     mysqlConnection: Pool,
     logs: boolean,
-  ): Promise<void> {
-    if (input.length === 0) {
-      return;
+  ): Promise<{ [relationName: string]: Model[] }[]> {
+    if (!input.length) {
+      return [];
     }
 
     if (!modelTypeOf.metadata.primaryKey) {
-      throw new Error("Model does not have a primary key");
+      throw new Error(
+        `Model ${modelTypeOf.metadata.tableName} does not have a primary key`,
+      );
     }
 
     let relationQuery: string = "";
+    const relationQueries: string[] = [];
+    const relationMap: { [key: string]: string } = {};
+
     try {
-      const relationPromises = input.map(async (inputRelation: string) => {
+      input.forEach((inputRelation: string) => {
         const relation = this.getRelationFromModel(
-          model,
-          modelTypeOf.metadata,
+          models[0],
+          inputRelation,
+          modelTypeOf,
+        );
+        const query = relationTemplates(
+          models,
+          modelTypeOf,
+          relation,
           inputRelation,
         );
-        relationQuery = relationTemplates(model, modelTypeOf, relation);
-
-        log(relationQuery, logs);
-        const [relatedModels] =
-          await mysqlConnection.query<RowDataPacket[]>(relationQuery);
-        if (relatedModels.length === 0) {
-          Object.assign(model, { [inputRelation as keyof T]: null });
-          return;
-        }
-
-        if (relatedModels.length === 1) {
-          Object.assign(model, {
-            [inputRelation as keyof T]: relatedModels[0],
-          });
-          return;
-        }
-
-        Object.assign(model, { [inputRelation as keyof T]: relatedModels });
+        relationQueries.push(query);
+        relationMap[inputRelation] = query;
       });
 
-      await Promise.all(relationPromises);
+      relationQuery = relationQueries.join(" UNION ALL ");
+      log(relationQuery, logs);
+
+      const result = await mysqlConnection.query(relationQuery);
+      const relatedModels = result[0] as RowDataPacket[];
+
+      const resultMap: { [key: string]: any[] } = {};
+      relatedModels.forEach((row) => {
+        const relationName = row.relation_name;
+        delete row.relation_name;
+        if (!resultMap[relationName]) {
+          resultMap[relationName] = [];
+        }
+
+        resultMap[relationName].push(row);
+      });
+
+      // Ensure all input relations are included in the result
+      const resultArray: { [relationName: string]: any[] }[] = input.map(
+        (inputRelation) => {
+          const modelsForRelation = resultMap[inputRelation] || [];
+          return {
+            [inputRelation]: modelsForRelation,
+          };
+        },
+      );
+
+      return resultArray;
     } catch (error) {
       queryError("Query Error: " + relationQuery + error);
       throw new Error("Failed to parse relations " + error);

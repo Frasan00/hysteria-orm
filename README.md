@@ -19,6 +19,7 @@ Hysteria ORM is an Object-Relational Mapping (ORM) library for JavaScript and Ty
     - [Query Builder](#query-builder)
     - [Where Builder](#where-builder)
     - [Aliases](#aliases)
+    - [Relations](#relations-retrieve)
     - [Join](#join)
     - [Pagination](#pagination)
 - [Migrations](#migrations)
@@ -266,6 +267,7 @@ const otherUser: User | null = await User.findOne({
 ```
 
 ### Query-builder
+
 - It's used to create more complex queries that are not supported by the standard methods
 
 ```typescript
@@ -315,7 +317,24 @@ const user: User | null = await User.query()
     .one();
 ```
 
+### Relations Retrieve
+
+- Relations can be retrieved both from Standard methods and the query builder
+- Those retrieves are especially fast since for each relation a single db query is made and the retrieve of each relation for each model is made in O(n)
+- Based on the relation type can be retrieved both a list (HasMany) or a single record (BelongsTo, HasOne)
+
+```typescript
+const user: User | null = await User.query()
+    .addRelations(['posts'])
+    .one();
+
+const users: User[] = await User.find({
+    relations: ["profile"],
+});
+```
+
 ### Join
+
 ```typescript
 const users = await User.query()
     .selectRaw("users.*")

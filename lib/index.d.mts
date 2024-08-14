@@ -301,7 +301,9 @@ declare class MySqlModelManagerUtils<T extends Model> {
     private filterRelationsAndMetadata;
     parseDelete(tableName: string, column: string, value: string | number | boolean): string;
     private getRelationFromModel;
-    parseQueryBuilderRelations(model: T, modelTypeOf: typeof Model, input: string[], mysqlConnection: Pool, logs: boolean): Promise<void>;
+    parseQueryBuilderRelations(models: T[], modelTypeOf: typeof Model, input: string[], mysqlConnection: Pool, logs: boolean): Promise<{
+        [relationName: string]: Model[];
+    }[]>;
 }
 
 declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
@@ -566,7 +568,9 @@ declare class PostgresModelManagerUtils<T extends Model> {
     private filterRelationsAndMetadata;
     parseDelete(tableName: string, column: string, value: string | number | boolean): string;
     private getRelationFromModel;
-    parseQueryBuilderRelations(model: T, modelTypeOf: typeof Model, input: string[], pgConnection: pg__default.Pool, logs: boolean): Promise<void>;
+    parseQueryBuilderRelations(models: T[], modelTypeOf: typeof Model, input: string[], pgConnection: pg__default.Pool, logs: boolean): Promise<{
+        [relationName: string]: Model[];
+    }[]>;
 }
 
 declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {

@@ -88,17 +88,19 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
       const modelInstance = new this.model() as T;
       this.mergeRawPacketIntoModel(modelInstance, rows[0]);
-      await this.mysqlModelManagerUtils.parseQueryBuilderRelations(
-        modelInstance,
-        this.model,
-        this.relations,
-        this.mysqlPool,
-        this.logs,
-      );
+      const relationModels =
+        await this.mysqlModelManagerUtils.parseQueryBuilderRelations(
+          [modelInstance],
+          this.model,
+          this.relations,
+          this.mysqlPool,
+          this.logs,
+        );
 
       const model = (await parseDatabaseDataIntoModelResponse(
         [modelInstance],
         this.model,
+        relationModels,
       )) as T;
       return (await this.model.afterFetch([model]))[0] as T;
     } catch (error) {
@@ -144,22 +146,23 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
         const modelInstance = new this.model() as T;
         this.mergeRawPacketIntoModel(modelInstance, row);
 
-        // relations parsing on the queried model
+        return modelInstance as T;
+      });
+
+      const models = await Promise.all(modelPromises);
+      const relationModels =
         await this.mysqlModelManagerUtils.parseQueryBuilderRelations(
-          modelInstance,
+          models,
           this.model,
           this.relations,
           this.mysqlPool,
           this.logs,
         );
 
-        return modelInstance as T;
-      });
-
-      const models = await Promise.all(modelPromises);
-      const serializedModels = await await parseDatabaseDataIntoModelResponse(
+      const serializedModels = await parseDatabaseDataIntoModelResponse(
         models,
         this.model,
+        relationModels,
       );
       if (!serializedModels) {
         return [];
