@@ -6,19 +6,18 @@ import { Relation } from "../Models/Relations/Relation";
 import { log, queryError } from "../../Logger";
 import relationTemplates from "../Resources/Query/RELATIONS";
 import { Pool, RowDataPacket } from "mysql2/promise";
+import { DataSourceType } from "../../Datasource";
 
 export default class MySqlModelManagerUtils<T extends Model> {
   public parseInsert(
     model: T,
     modelTypeof: typeof Model,
+    dbType: DataSourceType,
   ): { query: string; params: any[] } {
     const filteredModel = this.filterRelationsAndMetadata(model);
     const keys = Object.keys(filteredModel);
     const values = Object.values(filteredModel);
-    const insert = insertTemplate(
-      modelTypeof.metadata.tableName,
-      modelTypeof.sqlInstance.getDbType(),
-    );
+    const insert = insertTemplate(modelTypeof.metadata.tableName, dbType);
 
     return insert.insert(keys, values);
   }
@@ -26,14 +25,12 @@ export default class MySqlModelManagerUtils<T extends Model> {
   public parseMassiveInsert(
     models: T[],
     modelTypeOf: typeof Model,
+    dbType: DataSourceType,
   ): { query: string; params: any[] } {
     const filteredModels = models.map((m) =>
       this.filterRelationsAndMetadata(m),
     );
-    const insert = insertTemplate(
-      modelTypeOf.metadata.tableName,
-      modelTypeOf.sqlInstance.getDbType(),
-    );
+    const insert = insertTemplate(modelTypeOf.metadata.tableName, dbType);
     const keys = Object.keys(filteredModels[0]);
     const values = filteredModels.map((model) => Object.values(model));
 
@@ -43,11 +40,9 @@ export default class MySqlModelManagerUtils<T extends Model> {
   public parseUpdate(
     model: T,
     modelTypeof: typeof Model,
+    dbType: DataSourceType,
   ): { query: string; params: any[] } {
-    const update = updateTemplate(
-      modelTypeof.metadata.tableName,
-      modelTypeof.sqlInstance.getDbType(),
-    );
+    const update = updateTemplate(modelTypeof.metadata.tableName, dbType);
     const filteredModel = this.filterRelationsAndMetadata(model);
     const keys = Object.keys(filteredModel);
     const values = Object.values(filteredModel);

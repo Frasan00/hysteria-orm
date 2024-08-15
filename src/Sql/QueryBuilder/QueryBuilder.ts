@@ -15,6 +15,7 @@ import { MysqlUpdateQueryBuilder } from "../Mysql/MysqlUpdateQueryBuilder";
 import { PostgresUpdateQueryBuilder } from "../Postgres/PostgresUpdateQueryBuilder";
 import { MysqlDeleteQueryBuilder } from "../Mysql/MysqlDeleteQueryBuilder";
 import { PostgresDeleteQueryBuilder } from "../Postgres/PostgresDeleteQueryBuilder";
+import { SqlDataSource } from "../SqlDatasource";
 
 export type QueryBuilders<T extends Model> =
   | MysqlQueryBuilder<T>
@@ -33,6 +34,7 @@ export type OneOptions = {
 };
 
 export abstract class QueryBuilder<T extends Model> {
+  protected sqlDataSource: SqlDataSource;
   protected selectQuery: string = "";
   protected joinQuery: string = "";
   protected relations: string[] = [];
@@ -56,21 +58,27 @@ export abstract class QueryBuilder<T extends Model> {
    * @param tableName - The name of the table.
    * @param logs - A boolean indicating whether to log queries.
    */
-  protected constructor(model: typeof Model, tableName: string, logs: boolean) {
+  protected constructor(
+    model: typeof Model,
+    tableName: string,
+    logs: boolean,
+    sqlDataSource: SqlDataSource,
+  ) {
+    this.sqlDataSource = sqlDataSource;
     this.model = model;
     this.logs = logs;
     this.tableName = tableName;
     this.selectQuery = selectTemplate(
       this.tableName,
-      this.model.sqlInstance.getDbType(),
+      this.sqlDataSource.getDbType(),
     ).selectAll;
     this.selectTemplate = selectTemplate(
       this.tableName,
-      this.model.sqlInstance.getDbType(),
+      this.sqlDataSource.getDbType(),
     );
     this.whereTemplate = whereTemplate(
       this.tableName,
-      this.model.sqlInstance.getDbType(),
+      this.sqlDataSource.getDbType(),
     );
     this.params = [];
   }

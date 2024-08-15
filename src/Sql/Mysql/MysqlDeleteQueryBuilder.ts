@@ -6,6 +6,7 @@ import { MysqlTransaction } from "./MysqlTransaction";
 import { Pool } from "mysql2/promise";
 import joinTemplate from "../Resources/Query/JOIN";
 import deleteTemplate from "../Resources/Query/DELETE";
+import { SqlDataSource } from "../SqlDatasource";
 
 export class MysqlDeleteQueryBuilder<
   T extends Model,
@@ -29,13 +30,11 @@ export class MysqlDeleteQueryBuilder<
     mysql: Pool,
     logs: boolean,
     isNestedCondition = false,
+    sqlDataSource: SqlDataSource,
   ) {
-    super(model, tableName, logs);
+    super(model, tableName, logs, false, sqlDataSource);
     this.mysql = mysql;
-    this.deleteTemplate = deleteTemplate(
-      tableName,
-      this.model.sqlInstance.getDbType(),
-    );
+    this.deleteTemplate = deleteTemplate(tableName, sqlDataSource.getDbType());
     this.joinQuery = "";
     this.isNestedCondition = isNestedCondition;
   }
@@ -157,6 +156,7 @@ export class MysqlDeleteQueryBuilder<
       this.mysql,
       this.logs,
       true,
+      this.sqlDataSource,
     );
     cb(queryBuilder as unknown as MysqlDeleteQueryBuilder<T>);
 
@@ -194,6 +194,7 @@ export class MysqlDeleteQueryBuilder<
       this.mysql,
       this.logs,
       true,
+      this.sqlDataSource,
     );
     cb(nestedBuilder as unknown as MysqlDeleteQueryBuilder<T>);
 
@@ -234,6 +235,7 @@ export class MysqlDeleteQueryBuilder<
       this.mysql,
       this.logs,
       true,
+      this.sqlDataSource,
     );
     cb(nestedBuilder as unknown as MysqlDeleteQueryBuilder<T>);
 

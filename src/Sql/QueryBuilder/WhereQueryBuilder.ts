@@ -3,8 +3,10 @@ import whereTemplate, {
   BaseValues,
   WhereOperatorType,
 } from "../Resources/Query/WHERE.TS";
+import { SqlDataSource } from "../SqlDatasource";
 
 export abstract class WhereQueryBuilder<T extends Model> {
+  protected sqlDataSource: SqlDataSource;
   protected whereQuery: string = "";
   protected whereParams: BaseValues[] = [];
   protected model: typeof Model;
@@ -26,13 +28,15 @@ export abstract class WhereQueryBuilder<T extends Model> {
     tableName: string,
     logs: boolean,
     isNestedCondition = false,
+    sqlDataSource: SqlDataSource,
   ) {
     this.model = model;
+    this.sqlDataSource = sqlDataSource;
     this.logs = logs;
     this.tableName = tableName;
     this.whereTemplate = whereTemplate(
       this.tableName,
-      this.model.sqlInstance.getDbType(),
+      this.sqlDataSource.getDbType(),
     );
     this.whereParams = [];
     this.isNestedCondition = isNestedCondition;

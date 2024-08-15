@@ -1,533 +1,75 @@
-import { Metadata, Model } from "./Sql/Models/Model";
+import { column, Metadata, Model } from "./Sql/Models/Model";
 import { HasOne } from "./Sql/Models/Relations/HasOne";
 import { HasMany } from "./Sql/Models/Relations/HasMany";
 import { BelongsTo } from "./Sql/Models/Relations/BelongsTo";
 import { DataSourceInput } from "./Datasource";
 import { Migration } from "./Sql/Migrations/Migration";
 import { SqlDataSource } from "./Sql/SqlDatasource";
-import { User, Post } from ".";
 import { DateTime } from "luxon";
 
-export async function testCreate() {
-  // Postgres
-  await User.useConnection(
-    {
-      type: "postgres",
-      host: "localhost",
-      username: "root",
-      password: "root",
-      database: "test",
-      port: 5432,
-      logs: true,
-    },
-    async () => {
-      console.log("Postgres connection opened");
+export async function testCreate() {}
 
-      const user = await User.create({
-        name: "John Doe",
-        email: "testoooo 10",
-        signupSource: "google",
-      });
+export async function testUpdate() {}
 
-      console.log(user);
+export async function testQuery() {}
 
-      const users = await User.massiveCreate([
-        {
-          name: "Massive John Doe",
-          email: " massive test 1",
-          signupSource: "google",
-        },
-        {
-          name: "Massive Jane Doe 2",
-          email: " massive test 2",
-          signupSource: "google",
-        },
-      ]);
-      console.log(users);
+export async function testDelete() {}
 
-      console.log("Postgres connection closed");
-    },
-  );
+export async function testTrx() {}
 
-  // Mysql
-  await User.useConnection(
-    {
-      type: "mysql",
-      host: "localhost",
-      username: "root",
-      password: "root",
-      database: "test",
-      port: 3306,
-      logs: true,
-    },
-    async () => {
-      console.log("Mysql connection opened");
+export class User extends Model {
+  @column()
+  declare id: number;
 
-      const user = await User.create({
-        name: "John Doe",
-        email: "testoooo 1",
-        signupSource: "google",
-      });
-      console.log(user);
+  @column()
+  declare name: string;
 
-      const users = await User.massiveCreate([
-        {
-          name: "Massive John Doe",
-          email: " massive test 1",
-          signupSource: "google",
-        },
-        {
-          name: "Massive Jane Doe 2",
-          email: " massive test 2",
-          signupSource: "google",
-        },
-      ]);
-      console.log(users);
-      console.log("Mysql connection closed");
-    },
-  );
+  @column()
+  declare email: string;
+
+  @column()
+  declare signupSource: string;
+
+  @column()
+  declare isActive: boolean;
+
+  @column()
+  declare json: Record<string, any>;
+
+  @column()
+  declare createdAt: DateTime;
+
+  @column()
+  declare updatedAt: DateTime;
+
+  @column()
+  declare deletedAt: DateTime | null;
+
+  public posts: HasMany | Post[] = new HasMany("posts", "user_id");
+
+  public static metadata: Metadata = {
+    primaryKey: "id",
+    tableName: "users",
+  };
 }
 
-export async function testUpdate() {
-  // Postgres
-  await User.useConnection(
-    {
-      type: "postgres",
-      host: "localhost",
-      username: "root",
-      password: "root",
-      database: "test",
-      port: 5432,
-      logs: true,
-    },
-    async () => {
-      console.log("Postgres connection opened");
+export class Post extends Model {
+  @column()
+  declare id: number;
 
-      const users = await User.update().where("id", 1).withData({
-        name: "John Doe Updated",
-        email: "testoooo",
-      });
-      console.log(users);
+  @column()
+  declare title: string;
 
-      const user = await User.first();
-      if (!user) {
-        console.log("No user found");
-        return;
-      }
+  @column()
+  declare content: string;
 
-      console.log(user);
-      User.setProps(user, {
-        name: "John Doe Updated",
-        email: "testoooo",
-      });
+  @column()
+  declare userId: number;
 
-      await User.updateRecord(user);
-      console.log(user);
+  public user: BelongsTo | User = new BelongsTo("users", "userId");
 
-      console.log("Postgres connection closed");
-    },
-  );
-
-  // Mysql
-  await User.useConnection(
-    {
-      type: "mysql",
-      host: "localhost",
-      username: "root",
-      password: "root",
-      database: "test",
-      port: 3306,
-      logs: true,
-    },
-    async () => {
-      console.log("Mysql connection opened");
-
-      const users = await User.update().where("id", 1).withData({
-        name: "John Doe Updated",
-        email: "testoooo",
-      });
-      console.log(users);
-
-      const user = await User.first();
-      if (!user) {
-        console.log("No user found");
-        return;
-      }
-
-      console.log(user);
-      User.setProps(user, {
-        name: "John Doe Updated",
-        email: "testoooo",
-      });
-
-      await User.updateRecord(user);
-      console.log(user);
-
-      console.log("Mysql connection closed");
-    },
-  );
-}
-
-export async function testQuery() {
-  //  Postgres
-  await User.useConnection(
-    {
-      type: "postgres",
-      host: "localhost",
-      username: "root",
-      password: "root",
-      database: "test",
-      port: 5432,
-      logs: true,
-    },
-    async () => {
-      console.log("Postgres connection opened");
-
-      const firstUser = await User.first();
-      const findOneUser = await User.findOne({
-        where: {
-          id: 1,
-        },
-      });
-      const findByPK = await User.findOneByPrimaryKey(1);
-
-      const joinedUser = await User.query()
-        .selectRaw("COUNT(*) as count")
-        .join("posts", "id", "userId")
-        .where("posts.id", 1)
-        .one();
-
-      const usersWithPosts = await User.query().addRelations(["posts"]).many();
-      const postsWithUser = await Post.query().addRelations(["user"]).many();
-      const usersWithPostsFind = await User.find({
-        where: {
-          id: 1,
-        },
-        relations: ["posts"],
-      });
-      const postsWithUserFind = await Post.find({
-        where: {
-          id: 1,
-        },
-        relations: ["user"],
-      });
-
-      // Basic find
-      const userById = await User.find({
-        where: {
-          id: 1,
-        },
-      });
-
-      // Query with limit
-      const limitedUsers = await User.query().limit(4).many();
-
-      // Query with custom column fullName
-      const usersWithFullName = await User.query()
-        .selectRaw("CONCAT(name, ' ', email) as fullName")
-        .one();
-
-      // Complex where conditions
-      const complexUsers = await User.query()
-        .whereBuilder((queryBuilder) => {
-          queryBuilder.andWhereBuilder((innerQueryBuilder) => {
-            innerQueryBuilder.where("name", "John Doe");
-            innerQueryBuilder.where("email", "john@gmail.com");
-          });
-          queryBuilder.orWhereBuilder((innerQuery) => {
-            innerQuery.where("name", "Jane Doe");
-            innerQuery.where("email", "jane@gmail.com");
-          });
-        })
-        .many();
-
-      // Order by
-      const orderedUsers = await User.query().orderBy(["name"], "ASC").many();
-
-      // Group by
-      const groupedUsers = await User.query()
-        .selectRaw("name", "COUNT(*) as count")
-        .groupBy("id", "name")
-        .many();
-
-      // Having
-      const havingUsers = await User.query()
-        .selectRaw("name", "COUNT(*) as count")
-        .groupBy("name")
-        .many();
-
-      // Pagination
-      const paginatedUsers = await User.query()
-        .whereNotNull("signupSource")
-        .paginate(1, 10); // page - limit
-
-      const dateUsers = await User.query()
-        .where("created_at", DateTime.local().toString(), "<")
-        .many();
-
-      console.log("userById:", userById);
-      console.log("limitedUsers:", limitedUsers);
-      console.log("complexUsers:", complexUsers);
-      console.log("orderedUsers:", orderedUsers);
-      console.log("groupedUsers:", groupedUsers);
-      console.log("havingUsers:", havingUsers);
-      console.log("paginatedUsers:", paginatedUsers);
-      console.log("usersWithFullName:", usersWithFullName);
-      console.log("firstUser:", firstUser);
-      console.log("dateUsers:", dateUsers);
-      console.log("usersWithPosts:", usersWithPosts);
-      console.log("postsWithUser:", postsWithUser);
-      console.log("usersWithPostsFind:", usersWithPostsFind);
-      console.log("postsWithUserFind:", postsWithUserFind);
-      console.log("joinedUser:", joinedUser);
-      console.log("findOneUser:", findOneUser);
-      console.log("findByPK:", findByPK);
-
-      console.log("Postgres connection closed");
-    },
-  );
-
-  // Mysql
-  await User.useConnection(
-    {
-      type: "mysql",
-      host: "localhost",
-      username: "root",
-      password: "root",
-      database: "test",
-      port: 3306,
-      logs: true,
-    },
-    async () => {
-      console.log("Mysql connection opened");
-
-      const firstUser = await User.first();
-      const findOneUser = await User.findOne({
-        where: {
-          id: 1,
-        },
-      });
-      const findByPK = await User.findOneByPrimaryKey(1);
-
-      const joinedUser = await User.query()
-        .join("posts", "id", "userId")
-        .where("posts.id", 1)
-        .one();
-
-      const usersWithPosts = await User.query().addRelations(["posts"]).many();
-      const postsWithUser = await Post.query().addRelations(["user"]).many();
-
-      const usersWithPostsFind = await User.find({
-        where: {
-          id: 1,
-        },
-        relations: ["posts"],
-      });
-      const postsWithUserFind = await Post.find({
-        where: {
-          id: 1,
-        },
-        relations: ["user"],
-      });
-
-      // Basic find
-      const userById = await User.find({
-        where: {
-          id: 1,
-        },
-      });
-
-      // Query with limit
-      const limitedUsers = await User.query().limit(2).many();
-
-      // Query with custom column fullName
-      const usersWithFullName = await User.query()
-        .selectRaw("CONCAT(name, ' ', email) as fullName")
-        .one();
-
-      // Complex where conditions
-      const complexUsers = await User.query()
-        .whereBuilder((queryBuilder) => {
-          queryBuilder.andWhereBuilder((innerQueryBuilder) => {
-            innerQueryBuilder.where("name", "John Doe");
-            innerQueryBuilder.where("email", "john@gmail.com");
-          });
-          queryBuilder.orWhereBuilder((innerQuery) => {
-            innerQuery.where("name", "Jane Doe");
-            innerQuery.where("email", "jane@gmail.com");
-          });
-        })
-        .many();
-
-      // Order by
-      const orderedUsers = await User.query().orderBy(["name"], "ASC").many();
-
-      // Group by
-      const groupedUsers = await User.query()
-        .selectRaw("name", "COUNT(*) as count")
-        .groupBy("name")
-        .many();
-
-      // Having
-      const havingUsers = await User.query()
-        .selectRaw("name", "COUNT(*) as count")
-        .groupBy("name")
-        .many();
-
-      // Pagination
-      const paginatedUsers = await User.query().paginate(1, 10); // page - limit
-
-      const dateUsers = await User.query()
-        .where("created_at", DateTime.local().toString(), "<")
-        .many();
-
-      console.log("userById:", userById);
-      console.log("limitedUsers:", limitedUsers);
-      console.log("complexUsers:", complexUsers);
-      console.log("orderedUsers:", orderedUsers);
-      console.log("groupedUsers:", groupedUsers);
-      console.log("havingUsers:", havingUsers);
-      console.log("paginatedUsers:", paginatedUsers);
-      console.log("usersWithFullName:", usersWithFullName);
-      console.log("firstUser:", firstUser);
-      console.log("dateUsers:", dateUsers);
-      console.log("usersWithPosts:", usersWithPosts);
-      console.log("postsWithUser:", postsWithUser);
-      console.log("usersWithPostsFind:", usersWithPostsFind);
-      console.log("postsWithUserFind:", postsWithUserFind);
-      console.log("joinedUser:", joinedUser);
-      console.log("findOneUser:", findOneUser);
-      console.log("findByPK:", findByPK);
-
-      console.log("Mysql connection closed");
-    },
-  );
-}
-
-export async function testDelete() {
-  // Postgres
-  await User.useConnection(
-    {
-      type: "postgres",
-      host: "localhost",
-      username: "root",
-      password: "root",
-      database: "test",
-      port: 5432,
-      logs: true,
-    },
-    async () => {
-      console.log("Postgres connection opened");
-      const user = await User.deleteRecord((await User.first()) as User);
-      console.log("record delete", user);
-
-      const deletedUsers = await User.delete()
-        .where("name", "%john%", "LIKE")
-        .performDelete();
-      console.log("multi delete", deletedUsers);
-
-      console.log("Postgres connection closed");
-    },
-  );
-
-  // Mysql
-  await User.useConnection(
-    {
-      type: "mysql",
-      host: "localhost",
-      username: "root",
-      password: "root",
-      database: "test",
-      port: 3306,
-      logs: true,
-    },
-    async () => {
-      console.log("Mysql connection opened");
-      const user = await User.deleteRecord((await User.first()) as User);
-      console.log("record delete", user);
-
-      const deletedUsers = await User.delete()
-        .where("name", "%john%", "LIKE")
-        .performDelete();
-      console.log("multi delete", deletedUsers);
-
-      console.log("Mysql connection closed");
-    },
-  );
-}
-
-export async function testTrx() {
-  // Postgres
-  await User.useConnection(
-    {
-      type: "postgres",
-      host: "localhost",
-      username: "root",
-      password: "root",
-      database: "test",
-      port: 5432,
-      logs: true,
-    },
-    async (sql) => {
-      console.log("Postgres connection opened");
-      const trx = await sql.startTransaction();
-      try {
-        console.log(await User.query().many());
-        await User.create(
-          {
-            name: "gianni nuovo",
-            email: "jfdsionfods",
-            signupSource: "google",
-            isActive: true,
-          },
-          trx,
-        );
-        throw new Error("sfnjlsangfajs");
-        await trx.commit();
-        console.log(await User.query().many());
-      } catch (error) {
-        await trx.rollback();
-        console.log(await User.query().many());
-      }
-
-      console.log("Postgres connection closed");
-    },
-  );
-
-  // Mysql
-  await User.useConnection(
-    {
-      type: "mysql",
-      host: "localhost",
-      username: "root",
-      password: "root",
-      database: "test",
-      port: 3306,
-      logs: true,
-    },
-    async (sql) => {
-      console.log("Mysql connection opened");
-      const trx = await sql.startTransaction();
-      console.log(await User.query().many());
-      await User.create(
-        {
-          name: "gianni nuovo",
-          email: "jfdsionfods",
-          signupSource: "google",
-          isActive: true,
-        },
-        trx,
-      );
-      try {
-        throw new Error("sfnjlsangfajs");
-        await trx.commit();
-        console.log(await User.query().many());
-      } catch (error) {
-        console.log(await User.query().many());
-        await trx.rollback();
-      }
-
-      console.log("Mysql connection closed");
-    },
-  );
+  public static metadata: Metadata = {
+    primaryKey: "id",
+    tableName: "posts",
+  };
 }

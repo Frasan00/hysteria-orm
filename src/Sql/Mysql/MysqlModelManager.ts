@@ -13,6 +13,7 @@ import { MysqlUpdateQueryBuilder } from "./MysqlUpdateQueryBuilder";
 import { PostgresUpdateQueryBuilder } from "../Postgres/PostgresUpdateQueryBuilder";
 import { MysqlDeleteQueryBuilder } from "./MysqlDeleteQueryBuilder";
 import MySqlModelManagerUtils from "./MySqlModelManagerUtils";
+import { SqlDataSource } from "../SqlDatasource";
 
 export class MysqlModelManager<
   T extends Model,
@@ -27,8 +28,13 @@ export class MysqlModelManager<
    * @param {Pool} mysqlConnection - MySQL connection pool.
    * @param {boolean} logs - Flag to enable or disable logging.
    */
-  constructor(model: typeof Model, mysqlConnection: mysql.Pool, logs: boolean) {
-    super(model, logs);
+  constructor(
+    model: typeof Model,
+    mysqlConnection: mysql.Pool,
+    logs: boolean,
+    sqlDataSource: SqlDataSource,
+  ) {
+    super(model, logs, sqlDataSource);
     this.mysqlPool = mysqlConnection;
     this.mysqlModelManagerUtils = new MySqlModelManagerUtils<T>();
   }
@@ -128,7 +134,7 @@ export class MysqlModelManager<
   ): Promise<T | null> {
     const select = selectTemplate(
       this.model.metadata.tableName,
-      this.model.sqlInstance.getDbType(),
+      this.sqlDataSource.getDbType(),
     );
 
     try {
@@ -161,6 +167,7 @@ export class MysqlModelManager<
     const { query, params } = this.mysqlModelManagerUtils.parseInsert(
       model,
       this.model,
+      this.sqlDataSource.getDbType(),
     );
 
     if (trx) {
@@ -171,6 +178,7 @@ export class MysqlModelManager<
       const { query, params } = this.mysqlModelManagerUtils.parseInsert(
         model,
         this.model,
+        this.sqlDataSource.getDbType(),
       );
 
       log(query, this.logs, params);
@@ -200,6 +208,7 @@ export class MysqlModelManager<
     const { query, params } = this.mysqlModelManagerUtils.parseMassiveInsert(
       models,
       this.model,
+      this.sqlDataSource.getDbType(),
     );
 
     if (trx) {
@@ -210,6 +219,7 @@ export class MysqlModelManager<
       const { query, params } = this.mysqlModelManagerUtils.parseMassiveInsert(
         models,
         this.model,
+        this.sqlDataSource.getDbType(),
       );
       log(query, this.logs, params);
       const [rows]: any = await this.mysqlPool.query(query, params);
@@ -253,6 +263,7 @@ export class MysqlModelManager<
       const { query, params } = this.mysqlModelManagerUtils.parseUpdate(
         model,
         this.model,
+        this.sqlDataSource.getDbType(),
       );
       await trx.queryUpdate<T>(query, params);
       if (!this.model.metadata.primaryKey) {
@@ -268,6 +279,7 @@ export class MysqlModelManager<
       const updateQuery = this.mysqlModelManagerUtils.parseUpdate(
         model,
         this.model,
+        this.sqlDataSource.getDbType(),
       );
       log(updateQuery.query, this.logs, updateQuery.params);
       await this.mysqlPool.query(updateQuery.query, updateQuery.params);
@@ -377,6 +389,8 @@ export class MysqlModelManager<
       this.model.metadata.tableName,
       this.mysqlPool,
       this.logs,
+      false,
+      this.sqlDataSource,
     );
   }
 
@@ -389,6 +403,8 @@ export class MysqlModelManager<
       this.model.metadata.tableName,
       this.mysqlPool,
       this.logs,
+      false,
+      this.sqlDataSource,
     );
   }
 
@@ -401,6 +417,8 @@ export class MysqlModelManager<
       this.model.metadata.tableName,
       this.mysqlPool,
       this.logs,
+      false,
+      this.sqlDataSource,
     );
   }
 }

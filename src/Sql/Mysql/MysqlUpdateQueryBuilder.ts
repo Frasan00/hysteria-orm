@@ -7,6 +7,7 @@ import { log, queryError } from "../../Logger";
 import { WhereQueryBuilder } from "../QueryBuilder/WhereQueryBuilder";
 import updateTemplate from "../Resources/Query/UPDATE";
 import joinTemplate from "../Resources/Query/JOIN";
+import { SqlDataSource } from "../SqlDatasource";
 
 export class MysqlUpdateQueryBuilder<
   T extends Model,
@@ -30,12 +31,13 @@ export class MysqlUpdateQueryBuilder<
     mysqlPool: Pool,
     logs: boolean,
     isNestedCondition = false,
+    sqlDataSource: SqlDataSource,
   ) {
-    super(model, tableName, logs);
+    super(model, tableName, logs, false, sqlDataSource);
     this.mysqlPool = mysqlPool;
     this.updateTemplate = updateTemplate(
       tableName,
-      this.model.sqlInstance.getDbType(),
+      this.sqlDataSource.getDbType(),
     );
     this.joinQuery = "";
     this.isNestedCondition = isNestedCondition;
@@ -171,6 +173,7 @@ export class MysqlUpdateQueryBuilder<
       this.mysqlPool,
       this.logs,
       true,
+      this.sqlDataSource,
     );
     cb(queryBuilder as unknown as MysqlUpdateQueryBuilder<T>);
 
@@ -208,6 +211,7 @@ export class MysqlUpdateQueryBuilder<
       this.mysqlPool,
       this.logs,
       true,
+      this.sqlDataSource,
     );
     cb(nestedBuilder as unknown as MysqlUpdateQueryBuilder<T>);
 
@@ -248,6 +252,7 @@ export class MysqlUpdateQueryBuilder<
       this.mysqlPool,
       this.logs,
       true,
+      this.sqlDataSource,
     );
     cb(nestedBuilder as unknown as MysqlUpdateQueryBuilder<T>);
 

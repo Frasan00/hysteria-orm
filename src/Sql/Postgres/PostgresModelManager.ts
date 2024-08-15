@@ -12,6 +12,7 @@ import { PostgresQueryBuilder } from "./PostgresQueryBuilder";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
 import { PostgresUpdateQueryBuilder } from "./PostgresUpdateQueryBuilder";
 import { PostgresDeleteQueryBuilder } from "./PostgresDeleteQueryBuilder";
+import { SqlDataSource } from "../SqlDatasource";
 
 export class PostgresModelManager<
   T extends Model,
@@ -26,8 +27,13 @@ export class PostgresModelManager<
    * @param {Pool} pgConnection - PostgreSQL connection pool.
    * @param {boolean} logs - Flag to enable or disable logging.
    */
-  constructor(model: typeof Model, pgConnection: pg.Pool, logs: boolean) {
-    super(model, logs);
+  constructor(
+    model: typeof Model,
+    pgConnection: pg.Pool,
+    logs: boolean,
+    sqlDataSource: SqlDataSource,
+  ) {
+    super(model, logs, sqlDataSource);
     this.pgPool = pgConnection;
     this.postgresModelManagerUtils = new PostgresModelManagerUtils();
   }
@@ -153,6 +159,7 @@ export class PostgresModelManager<
     const { query, params } = this.postgresModelManagerUtils.parseInsert(
       model,
       this.model,
+      this.sqlDataSource.getDbType(),
     );
 
     if (trx) {
@@ -163,6 +170,7 @@ export class PostgresModelManager<
       const { query, params } = this.postgresModelManagerUtils.parseInsert(
         model,
         this.model,
+        this.sqlDataSource.getDbType(),
       );
       log(query, this.logs, params);
       const { rows } = await this.pgPool.query(query, params);
@@ -193,6 +201,7 @@ export class PostgresModelManager<
     const { query, params } = this.postgresModelManagerUtils.parseMassiveInsert(
       models,
       this.model,
+      this.sqlDataSource.getDbType(),
     );
 
     if (trx) {
@@ -201,7 +210,11 @@ export class PostgresModelManager<
 
     try {
       const { query, params } =
-        this.postgresModelManagerUtils.parseMassiveInsert(models, this.model);
+        this.postgresModelManagerUtils.parseMassiveInsert(
+          models,
+          this.model,
+          this.sqlDataSource.getDbType(),
+        );
       log(query, this.logs, params);
       const { rows } = await this.pgPool.query(query, params);
       const insertedModel = rows as T[];
@@ -240,6 +253,7 @@ export class PostgresModelManager<
     const { query, params } = this.postgresModelManagerUtils.parseUpdate(
       model,
       this.model,
+      this.sqlDataSource.getDbType(),
     );
     if (trx) {
       await trx.queryUpdate<T>(query, params);
@@ -260,6 +274,7 @@ export class PostgresModelManager<
       const { query, params } = this.postgresModelManagerUtils.parseUpdate(
         model,
         this.model,
+        this.sqlDataSource.getDbType(),
       );
       log(query, this.logs, params);
       await this.pgPool.query(query, params);
@@ -368,18 +383,22 @@ export class PostgresModelManager<
       this.model.metadata.tableName,
       this.pgPool,
       this.logs,
+      false,
+      this.sqlDataSource,
     );
   }
 
   /**
    * @description Returns an update query builder.
    */
-  public update(): any {
+  public update(): PostgresUpdateQueryBuilder<T> {
     return new PostgresUpdateQueryBuilder<T>(
       this.model,
       this.model.metadata.tableName,
       this.pgPool,
       this.logs,
+      false,
+      this.sqlDataSource,
     );
   }
 
@@ -392,6 +411,8 @@ export class PostgresModelManager<
       this.model.metadata.tableName,
       this.pgPool,
       this.logs,
+      false,
+      this.sqlDataSource,
     );
   }
 }

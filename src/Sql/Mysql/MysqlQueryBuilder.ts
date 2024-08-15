@@ -17,6 +17,7 @@ import {
 } from "../Models/ModelManager/ModelManagerTypes";
 import { fromSnakeToCamelCase } from "../../CaseUtils";
 import MysqlModelManagerUtils from "../Mysql/MySqlModelManagerUtils";
+import { SqlDataSource } from "../SqlDatasource";
 
 export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
   protected mysqlPool: Pool;
@@ -37,8 +38,9 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     mysqlPool: Pool,
     logs: boolean,
     isNestedCondition = false,
+    sqlDataSource: SqlDataSource,
   ) {
-    super(model, tableName, logs);
+    super(model, tableName, logs, sqlDataSource);
     this.mysqlPool = mysqlPool;
     this.isNestedCondition = isNestedCondition;
     this.mysqlModelManagerUtils = new MysqlModelManagerUtils<T>();
@@ -58,7 +60,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     if (this.joinQuery && !this.selectQuery) {
       const select = selectTemplate(
         this.tableName,
-        this.model.sqlInstance.getDbType(),
+        this.sqlDataSource.getDbType(),
       );
       this.selectQuery = select.selectColumns(`${this.tableName}.*`);
     }
@@ -121,7 +123,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     if (this.joinQuery && !this.selectQuery) {
       const select = selectTemplate(
         this.tableName,
-        this.model.sqlInstance.getDbType(),
+        this.sqlDataSource.getDbType(),
       );
       this.selectQuery = select.selectColumns(`${this.tableName}.*`);
     }
@@ -221,7 +223,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
   public select(...columns: (SelectableType<T> | "*")[]): MysqlQueryBuilder<T> {
     const select = selectTemplate(
       this.tableName,
-      this.model.sqlInstance.getDbType(),
+      this.sqlDataSource.getDbType(),
     );
 
     this.selectQuery = select.selectColumns(...(columns as string[]));
@@ -231,7 +233,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
   public selectRaw(...columns: string[]): MysqlQueryBuilder<T> {
     const select = selectTemplate(
       this.tableName,
-      this.model.sqlInstance.getDbType(),
+      this.sqlDataSource.getDbType(),
     );
 
     this.selectQuery = select.selectColumns(...(columns as string[]));
@@ -329,6 +331,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
       this.mysqlPool,
       this.logs,
       true,
+      this.sqlDataSource,
     );
     cb(queryBuilder as unknown as MysqlQueryBuilder<T>);
 
@@ -366,6 +369,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
       this.mysqlPool,
       this.logs,
       true,
+      this.sqlDataSource,
     );
     cb(nestedBuilder as unknown as MysqlQueryBuilder<T>);
 
@@ -406,6 +410,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
       this.mysqlPool,
       this.logs,
       true,
+      this.sqlDataSource,
     );
     cb(nestedBuilder as unknown as MysqlQueryBuilder<T>);
 
@@ -1020,6 +1025,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
       this.mysqlPool,
       this.logs,
       this.isNestedCondition,
+      this.sqlDataSource,
     );
 
     queryBuilder.selectQuery = this.selectQuery;

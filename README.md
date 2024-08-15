@@ -357,22 +357,32 @@ const user: User | null = await User.query()
 
 # Use Connection
 - Allows to execute operations on a separate database connection, useful for multi-database applications
+- Model static methods will always refer to the main connection established with await SqlDataSource.connect();
+
 ```typescript
-await User.useConnection(
-{
-    type: "mysql",
-    host: "localhost",
-    port: 3306,
-    username: "root",
-    password: "root",
-    database: "test",
-    logs: true,
-},
-async (_sql: SqlDataSource) => {
-    console.log("Connected to the database");
-    const users = await User.find();
-    console.log(users);
-},
+await SqlDataSource.useConnection(
+    {
+        type: "mysql",
+        host: "localhost",
+        database: "test",
+        username: "root",
+        password: "root",
+    },
+    async (sql) => {
+        const userRepo = sql.getModelManager<User>(User);
+
+        const newUser = await userRepo.create({
+        name: "john",
+        email: "john-email@gmail.com",
+        signupSource: "google",
+        } as User);
+        console.log(newUser);
+
+        const updatedUser = await userRepo.update().withData({
+        name: "new name",
+        });
+        console.log(updatedUser);
+    },
 );
 ```
 

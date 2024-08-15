@@ -8,6 +8,7 @@ import { PostgresTransaction } from "./PostgresTransaction";
 import { Pool } from "pg";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
 import joinTemplate from "../Resources/Query/JOIN";
+import { SqlDataSource } from "../SqlDatasource";
 
 export class PostgresUpdateQueryBuilder<
   T extends Model,
@@ -31,12 +32,13 @@ export class PostgresUpdateQueryBuilder<
     pgPool: Pool,
     logs: boolean,
     isNestedCondition = false,
+    sqlDataSource: SqlDataSource,
   ) {
-    super(model, tableName, logs);
+    super(model, tableName, logs, false, sqlDataSource);
     this.pgPool = pgPool;
     this.updateTemplate = updateTemplate(
       tableName,
-      this.model.sqlInstance.getDbType(),
+      this.sqlDataSource.getDbType(),
     );
     this.joinQuery = "";
     this.isNestedCondition = isNestedCondition;
@@ -172,6 +174,7 @@ export class PostgresUpdateQueryBuilder<
       this.pgPool,
       this.logs,
       true,
+      this.sqlDataSource,
     );
     cb(queryBuilder as unknown as PostgresUpdateQueryBuilder<T>);
 
@@ -209,6 +212,7 @@ export class PostgresUpdateQueryBuilder<
       this.pgPool,
       this.logs,
       true,
+      this.sqlDataSource,
     );
     cb(nestedBuilder as unknown as PostgresUpdateQueryBuilder<T>);
 
@@ -249,6 +253,7 @@ export class PostgresUpdateQueryBuilder<
       this.pgPool,
       this.logs,
       true,
+      this.sqlDataSource,
     );
     cb(nestedBuilder as unknown as PostgresUpdateQueryBuilder<T>);
 

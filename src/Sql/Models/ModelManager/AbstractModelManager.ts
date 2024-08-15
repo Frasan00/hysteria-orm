@@ -9,18 +9,30 @@ import { MysqlUpdateQueryBuilder } from "../../Mysql/MysqlUpdateQueryBuilder";
 import { PostgresUpdateQueryBuilder } from "../../Postgres/PostgresUpdateQueryBuilder";
 import { PostgresDeleteQueryBuilder } from "../../Postgres/PostgresDeleteQueryBuilder";
 import { MysqlDeleteQueryBuilder } from "../../Mysql/MysqlDeleteQueryBuilder";
+import { SqlDataSource } from "../../SqlDatasource";
 
 export abstract class AbstractModelManager<T extends Model> {
   protected logs: boolean;
+  protected sqlDataSource: SqlDataSource;
   protected model: typeof Model;
   protected modelInstance: T;
   protected throwError: boolean;
 
-  protected constructor(model: typeof Model, logs: boolean) {
+  /**
+   * @param model
+   * @param logs
+   * @param sqlDataSource Passed if a custom connection is provided
+   */
+  protected constructor(
+    model: typeof Model,
+    logs: boolean,
+    sqlDataSource: SqlDataSource,
+  ) {
     this.logs = logs;
     this.model = model;
     this.throwError = false;
     this.modelInstance = new this.model() as T;
+    this.sqlDataSource = sqlDataSource;
   }
 
   public abstract find(input?: FindType<T>): Promise<T[]>;

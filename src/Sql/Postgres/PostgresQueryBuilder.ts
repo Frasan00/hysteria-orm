@@ -18,6 +18,7 @@ import {
 } from "../Models/ModelManager/ModelManagerTypes";
 import "reflect-metadata";
 import { fromSnakeToCamelCase } from "../../CaseUtils";
+import { SqlDataSource } from "../SqlDatasource";
 
 export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   protected pgPool: Pool;
@@ -30,8 +31,9 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     pgPool: Pool,
     logs: boolean,
     isNestedCondition = false,
+    sqlDataSource: SqlDataSource,
   ) {
-    super(model, tableName, logs);
+    super(model, tableName, logs, sqlDataSource);
     this.pgPool = pgPool;
     this.isNestedCondition = isNestedCondition;
     this.postgresModelManagerUtils = new PostgresModelManagerUtils<T>();
@@ -42,7 +44,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   ): PostgresQueryBuilder<T> {
     const select = selectTemplate(
       this.tableName,
-      this.model.sqlInstance.getDbType(),
+      this.sqlDataSource.getDbType(),
     );
 
     this.selectQuery = select.selectColumns(...(columns as string[]));
@@ -51,7 +53,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   public selectRaw(...columns: string[]): PostgresQueryBuilder<T> {
     const select = selectTemplate(
       this.tableName,
-      this.model.sqlInstance.getDbType(),
+      this.sqlDataSource.getDbType(),
     );
 
     this.selectQuery = select.selectColumns(...(columns as string[]));
@@ -72,7 +74,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     if (this.joinQuery && !this.selectQuery) {
       const select = selectTemplate(
         this.tableName,
-        this.model.sqlInstance.getDbType(),
+        this.sqlDataSource.getDbType(),
       );
       this.selectQuery = select.selectColumns(`${this.tableName}.*`);
     }
@@ -128,7 +130,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     if (this.joinQuery && !this.selectQuery) {
       const select = selectTemplate(
         this.tableName,
-        this.model.sqlInstance.getDbType(),
+        this.sqlDataSource.getDbType(),
       );
       this.selectQuery = select.selectColumns(`${this.tableName}.*`);
     }
@@ -309,6 +311,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
       this.pgPool,
       this.logs,
       true,
+      this.sqlDataSource,
     );
     cb(queryBuilder as unknown as PostgresQueryBuilder<T>);
 
@@ -346,6 +349,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
       this.pgPool,
       this.logs,
       true,
+      this.sqlDataSource,
     );
     cb(nestedBuilder as unknown as PostgresQueryBuilder<T>);
 
@@ -386,6 +390,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
       this.pgPool,
       this.logs,
       true,
+      this.sqlDataSource,
     );
     cb(nestedBuilder as unknown as PostgresQueryBuilder<T>);
 
@@ -999,6 +1004,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
       this.pgPool,
       this.logs,
       this.isNestedCondition,
+      this.sqlDataSource,
     );
     queryBuilder.selectQuery = this.selectQuery;
     queryBuilder.whereQuery = this.whereQuery;

@@ -8,8 +8,8 @@ import { DataSourceInput } from "./Datasource";
 import { Relation } from "./Sql/Models/Relations/Relation";
 import { Migration } from "./Sql/Migrations/Migration";
 import { SqlDataSource } from "./Sql/SqlDatasource";
-import { testCreate, testDelete, testQuery, testTrx, testUpdate } from "./test";
 import { DateTime } from "luxon";
+import { User } from "./test";
 import {
   QueryBuilders,
   UpdateQueryBuilders,
@@ -17,71 +17,49 @@ import {
 } from "./Sql/QueryBuilder/QueryBuilder";
 import "reflect-metadata";
 
-export class User extends Model {
-  @column()
-  declare id: number;
-
-  @column()
-  declare name: string;
-
-  @column()
-  declare email: string;
-
-  @column()
-  declare signupSource: string;
-
-  @column()
-  declare isActive: boolean;
-
-  @column()
-  declare json: Record<string, any>;
-
-  @column()
-  declare createdAt: DateTime;
-
-  @column()
-  declare updatedAt: DateTime;
-
-  @column()
-  declare deletedAt: DateTime | null;
-
-  public posts: HasMany | Post[] = new HasMany("posts", "user_id");
-
-  public static metadata: Metadata = {
-    primaryKey: "id",
-    tableName: "users",
-  };
-}
-
-export class Post extends Model {
-  @column()
-  declare id: number;
-
-  @column()
-  declare title: string;
-
-  @column()
-  declare content: string;
-
-  @column()
-  declare userId: number;
-
-  public user: BelongsTo | User = new BelongsTo("users", "userId");
-
-  public static metadata: Metadata = {
-    primaryKey: "id",
-    tableName: "posts",
-  };
-}
-
 (async () => {
   await SqlDataSource.connect();
-  // await testCreate();
-  // await testUpdate();
-  // await testDelete();
-  // await testTrx();
-  // await testQuery();
 
+  // const newUser = await User.create({
+  //   name: "gianni 2",
+  //   email: "gianni2@gmail.com",
+  //   signupSource: "mdfakofmad",
+  // });
+
+  // console.log(newUser);
+  // const updatedUser = await User.update().withData({
+  //   name: "new gianni 2",
+  // });
+  // console.log(updatedUser);
+
+  // console.log(
+  //   await User.delete().where("name", "new gianni 2").performDelete(),
+  // );
+
+  await SqlDataSource.useConnection(
+    {
+      type: "mysql",
+      host: "localhost",
+      database: "test",
+      username: "root",
+      password: "root",
+    },
+    async (sql) => {
+      const userRepo = sql.getModelManager<User>(User);
+
+      const newUser = await userRepo.create({
+        name: "john",
+        email: "john-email@gmail.com",
+        signupSource: "google",
+      } as User);
+      console.log(newUser);
+
+      const updatedUser = await userRepo.update().withData({
+        name: "new name",
+      });
+      console.log(updatedUser);
+    },
+  );
   process.exit(0);
 })();
 

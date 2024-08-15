@@ -58,30 +58,6 @@ export class Model {
   }
 
   /**
-   * @description Connects to the database with the given connection details, then after the callback is executed, it disconnects from the database and connects back to the original database specified in the SqlDataSource.connect
-   * @param connectionDetails - connection details for the database for the temp connection
-   * @param cb - function containing all the database operations on the provided connection details
-   * @experimental
-   * @returns {Promise<void>}
-   */
-  public static async useConnection(
-    connectionDetails: DataSourceInput,
-    cb: (sqlDataSource: SqlDataSource) => Promise<void>,
-  ) {
-    const newSqlInstance = await SqlDataSource.tempConnect(connectionDetails);
-    this.sqlInstance = newSqlInstance;
-    await cb(this.sqlInstance).then(() => newSqlInstance.closeConnection());
-    try {
-      this.sqlInstance = SqlDataSource.getInstance();
-    } catch (error) {
-      throw new Error(
-        "No SqlDataSource instance found, are you sure you are connected to the database with SqlDataSource.connect()?\n" +
-          String(error),
-      );
-    }
-  }
-
-  /**
    * @description Gives a query instance for the given model
    * @param model
    * @returns {QueryBuilders<T>}
