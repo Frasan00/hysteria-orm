@@ -67,6 +67,8 @@ interface DataSourceInput {
     readonly password?: string;
     readonly database?: string;
     readonly logs?: boolean;
+    readonly mysqlOptions?: mysql__default.PoolOptions;
+    readonly pgOptions?: pg__default.PoolConfig;
 }
 declare abstract class DataSource {
     protected type: DataSourceType;
@@ -1047,7 +1049,7 @@ declare class MysqlModelManager<T extends Model> extends AbstractModelManager<T>
      * @param {MysqlTransaction} trx - MysqlTransaction to be used on the save operation.
      * @returns Promise resolving to the saved model or null if saving fails.
      */
-    create(model: T, trx?: TransactionType): Promise<T | null>;
+    create(model: Partial<T>, trx?: TransactionType): Promise<T | null>;
     /**
      * Create multiple model instances in the database.
      *
@@ -1055,7 +1057,7 @@ declare class MysqlModelManager<T extends Model> extends AbstractModelManager<T>
      * @param {MysqlTransaction} trx - MysqlTransaction to be used on the save operation.
      * @returns Promise resolving to an array of saved models or null if saving fails.
      */
-    massiveCreate(models: T[], trx?: TransactionType): Promise<T[]>;
+    massiveCreate(models: Partial<T>[], trx?: TransactionType): Promise<T[]>;
     /**
      * Update an existing model instance in the database.
      * @param {Model} model - Model instance to be updated.
@@ -1135,7 +1137,7 @@ declare class PostgresModelManager<T extends Model> extends AbstractModelManager
      * @param {MysqlTransaction} trx - MysqlTransaction to be used on the save operation.
      * @returns Promise resolving to the saved model or null if saving fails.
      */
-    create(model: T, trx?: TransactionType): Promise<T | null>;
+    create(model: Partial<T>, trx?: TransactionType): Promise<T | null>;
     /**
      * Create multiple model instances in the database.
      *
@@ -1143,7 +1145,7 @@ declare class PostgresModelManager<T extends Model> extends AbstractModelManager
      * @param {PostgresTransaction} trx - MysqlTransaction to be used on the save operation.
      * @returns Promise resolving to an array of saved models or null if saving fails.
      */
-    massiveCreate(models: T[], trx?: TransactionType): Promise<T[]>;
+    massiveCreate(models: Partial<T>[], trx?: TransactionType): Promise<T[]>;
     /**
      * Update an existing model instance in the database.
      * @param {Model} model - Model instance to be updated.
@@ -1209,7 +1211,9 @@ declare class SqlDataSource extends DataSource {
      * @description Returns model manager for the provided model
      * @param model
      */
-    getModelManager<T extends Model>(model: typeof Model): ModelManager<T>;
+    getModelManager<T extends Model>(model: {
+        new (): T;
+    } | typeof Model): ModelManager<T>;
     /**
      * @description Executes a callback function with the provided connection details
      * @description Static Model methods will always use the base connection created with SqlDataSource.connect() method

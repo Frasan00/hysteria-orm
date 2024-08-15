@@ -154,10 +154,13 @@ export class PostgresModelManager<
    * @param {MysqlTransaction} trx - MysqlTransaction to be used on the save operation.
    * @returns Promise resolving to the saved model or null if saving fails.
    */
-  public async create(model: T, trx?: TransactionType): Promise<T | null> {
-    this.model.beforeCreate(model);
+  public async create(
+    model: Partial<T>,
+    trx?: TransactionType,
+  ): Promise<T | null> {
+    this.model.beforeCreate(model as T);
     const { query, params } = this.postgresModelManagerUtils.parseInsert(
-      model,
+      model as T,
       this.model,
       this.sqlDataSource.getDbType(),
     );
@@ -168,7 +171,7 @@ export class PostgresModelManager<
 
     try {
       const { query, params } = this.postgresModelManagerUtils.parseInsert(
-        model,
+        model as T,
         this.model,
         this.sqlDataSource.getDbType(),
       );
@@ -196,10 +199,13 @@ export class PostgresModelManager<
    * @param {PostgresTransaction} trx - MysqlTransaction to be used on the save operation.
    * @returns Promise resolving to an array of saved models or null if saving fails.
    */
-  public async massiveCreate(models: T[], trx?: TransactionType): Promise<T[]> {
-    models.forEach((model) => this.model.beforeCreate(model));
+  public async massiveCreate(
+    models: Partial<T>[],
+    trx?: TransactionType,
+  ): Promise<T[]> {
+    models.forEach((model) => this.model.beforeCreate(model as T));
     const { query, params } = this.postgresModelManagerUtils.parseMassiveInsert(
-      models,
+      models as T[],
       this.model,
       this.sqlDataSource.getDbType(),
     );
@@ -211,7 +217,7 @@ export class PostgresModelManager<
     try {
       const { query, params } =
         this.postgresModelManagerUtils.parseMassiveInsert(
-          models,
+          models as T[],
           this.model,
           this.sqlDataSource.getDbType(),
         );

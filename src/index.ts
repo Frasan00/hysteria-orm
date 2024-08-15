@@ -19,17 +19,17 @@ import "reflect-metadata";
 (async () => {
   await SqlDataSource.connect();
 
-  // const newUser = await User.create({
-  //   name: "gianni 2",
-  //   email: "gianni2@gmail.com",
-  //   signupSource: "mdfakofmad",
-  // });
+  const newUser = await User.create({
+    name: "gianni 3",
+    email: "gianni3@gmail.com",
+    signupSource: "mdfakofmad",
+  });
 
-  // console.log(newUser);
-  // const updatedUser = await User.update().withData({
-  //   name: "new gianni 2",
-  // });
-  // console.log(updatedUser);
+  console.log(newUser);
+  const updatedUser = await User.update().withData({
+    name: "new gianni 2",
+  });
+  console.log(updatedUser);
 
   // console.log(
   //   await User.delete().where("name", "new gianni 2").performDelete(),
@@ -44,13 +44,13 @@ import "reflect-metadata";
       password: "root",
     },
     async (sql) => {
-      const userRepo = sql.getModelManager<User>(User);
+      const userRepo = sql.getModelManager(User);
 
       const newUser = await userRepo.create({
         name: "john",
-        email: "john-email@gmail.com",
+        email: "john-email2@gmail.com",
         signupSource: "google",
-      } as User);
+      });
       console.log(newUser);
 
       const updatedUser = await userRepo.update().withData({

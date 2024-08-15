@@ -130,7 +130,7 @@ export class SqlDataSource extends DataSource {
    * @param model
    */
   public getModelManager<T extends Model>(
-    model: typeof Model,
+    model: { new (): T } | typeof Model,
   ): ModelManager<T> {
     if (!this.isConnected) {
       throw new Error("Sql database connection not established");
@@ -140,14 +140,14 @@ export class SqlDataSource extends DataSource {
       case "mysql":
       case "mariadb":
         return new MysqlModelManager<T>(
-          model,
+          model as typeof Model,
           this.sqlPool as mysql.Pool,
           this.logs,
           this,
         );
       case "postgres":
         return new PostgresModelManager<T>(
-          model,
+          model as typeof Model,
           this.sqlPool as pg.Pool,
           this.logs,
           this,

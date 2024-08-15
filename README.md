@@ -5,7 +5,7 @@ Hysteria ORM is an Object-Relational Mapping (ORM) library for JavaScript and Ty
 - [Installation](#installation)
 - [Features](#features)
 - [Prerequisites](#prerequisites)
-    - [TypeScript Configuration](#typescript-configuration)
+    - [TypeScript Configuration](#typescript-configuration-example)
 - [Environment Variables](#environment-variables)
     - [Common Envs](#common-envs)
     - [Mysql Envs](#mysql-envs)
@@ -369,12 +369,12 @@ await SqlDataSource.useConnection(
         password: "root",
     },
     async (sql) => {
-        const userRepo = sql.getModelManager<User>(User);
+        const userRepo = sql.getModelManager(User);
 
         const newUser = await userRepo.create({
-        name: "john",
-        email: "john-email@gmail.com",
-        signupSource: "google",
+            name: "john",
+            email: "john-email@gmail.com",
+            signupSource: "google",
         } as User);
         console.log(newUser);
 

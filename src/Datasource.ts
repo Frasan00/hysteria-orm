@@ -20,8 +20,8 @@ export interface DataSourceInput {
   readonly password?: string;
   readonly database?: string;
   readonly logs?: boolean;
-  readonly mysqlOptions?: mysql.PoolOptions
-  readonly pgOptions?: pg.PoolConfig
+  readonly mysqlOptions?: mysql.PoolOptions;
+  readonly pgOptions?: pg.PoolConfig;
 }
 
 export abstract class DataSource {

@@ -157,7 +157,7 @@ export class Model {
     typeofModel.establishConnection();
     return typeofModel.sqlInstance
       .getModelManager<T>(typeofModel)
-      .create(modelData as T, trx);
+      .create(modelData, trx);
   }
 
   /**
@@ -176,7 +176,7 @@ export class Model {
     typeofModel.establishConnection();
     return typeofModel.sqlInstance
       .getModelManager<T>(typeofModel)
-      .massiveCreate(modelsData as T[], trx);
+      .massiveCreate(modelsData, trx);
   }
 
   /**
