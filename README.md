@@ -31,9 +31,9 @@ Hysteria ORM is an Object-Relational Mapping (ORM) library for JavaScript and Ty
 
 ## Installation
 ```shell
-    npm install hysteria
+    npm install hysteria-orm
     
-    yarn add hysteria
+    yarn add hysteria-orm
 ```
 
 ## Features
@@ -93,7 +93,7 @@ DB_LOGS=true # default false
 ### Establishing a Connection
 
 ```typescript
-import { SqlDataSource, DataSourceInput } from "hysteria";
+import { SqlDataSource, DataSourceInput } from "hysteria-orm";
 
 const mysqlConfig: DataSourceInput = {
     type: 'mysql' | 'postgres' | 'mariadb',
@@ -112,7 +112,7 @@ const sql = await SqlDataSource.connect(mysqlConfig, () => console.log("Connecte
 ### Create a model
 
 ```typescript
-import { Model } from "hysteria";
+import { Model } from "hysteria-orm";
 import { DateTime } from "luxon";
 
 export class User extends Model {
@@ -147,7 +147,7 @@ export class User extends Model {
 ### Create a model with relationships
 
 ```typescript
-import { Model, HasOne, HasMany } from "hysteria";
+import { Model, HasOne, HasMany } from "hysteria-orm";
 import { Profile } from "./Profile";
 import { Post } from "./Post";
 
@@ -388,7 +388,7 @@ await SqlDataSource.useConnection(
 
 # Migrations
 
-## hysteria-cli for Migrations
+## hysteria-orm-cli for Migrations
 
 1) (npm run) | (yarn) create:migration {migrationName}
 2) (npm run) | (yarn) run:migrations
@@ -398,7 +398,7 @@ await SqlDataSource.useConnection(
 ## Create Table
 
 ```typescript
-import { Migration } from "hysteria";
+import { Migration } from "hysteria-orm";
 import { Post } from "../Models/Post";
 
 export default class extends Migration {
@@ -433,7 +433,7 @@ export default class extends Migration {
 ## Alter Table
 
 ```typescript
-import { Migration } from "hysteria";
+import { Migration } from "hysteria-orm";
 
 export default class extends Migration {
     public up(): void {

@@ -1,5 +1,5 @@
 {
-  "name": "hysteria",
+  "name": "hysteria-orm",
   "version": "1.0.0",
   "description": "A simple ORM for javascript/typescript",
   "main": "./lib/index.js",
