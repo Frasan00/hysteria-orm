@@ -5,6 +5,355 @@ import * as pg from 'pg';
 import pg__default, { Pool as Pool$1, PoolClient } from 'pg';
 import * as mysql2_typings_mysql_lib_protocol_packets_FieldPacket from 'mysql2/typings/mysql/lib/protocol/packets/FieldPacket';
 
+type DataSourceType = "mysql" | "postgres" | "mariadb";
+/**
+ * @description By default the connection details can be provided in the env.ts file, you can still override each prop with your actual connection details
+ */
+interface DataSourceInput {
+    type?: DataSourceType;
+    readonly host?: string;
+    readonly port?: number;
+    readonly username?: string;
+    readonly password?: string;
+    readonly database?: string;
+    readonly logs?: boolean;
+    readonly mysqlOptions?: mysql__default.PoolOptions;
+    readonly pgOptions?: pg__default.PoolConfig;
+}
+declare abstract class DataSource {
+    protected type: DataSourceType;
+    protected host: string;
+    protected port: number;
+    protected username: string;
+    protected password: string;
+    protected database: string;
+    protected logs: boolean;
+    protected constructor(input?: DataSourceInput);
+}
+
+declare class ColumnOptionsBuilder {
+    protected tableName: string;
+    protected queryStatements: string[];
+    protected partialQuery: string;
+    protected columnName: string;
+    protected columnReferences: {
+        table: string;
+        column: string;
+    }[];
+    protected sqlType: DataSourceType;
+    constructor(tableName: string, queryStatements: string[], partialQuery: string, sqlType: DataSourceType, columnName?: string, columnReferences?: {
+        table: string;
+        column: string;
+    }[]);
+    /**
+     * @description Makes the column nullable
+     */
+    nullable(): ColumnOptionsBuilder;
+    default(value: string | number | boolean): ColumnOptionsBuilder;
+    /**
+     * @description Makes the column unsigned allowing only positive values
+     */
+    unsigned(): ColumnOptionsBuilder;
+    /**
+     * @description Makes the column not nullable
+     */
+    notNullable(): ColumnOptionsBuilder;
+    /**
+     * @description Makes the column the primary key
+     */
+    primary(): ColumnOptionsBuilder;
+    /**
+     * @description Adds an unique constraint
+     */
+    unique(): ColumnOptionsBuilder;
+    /**
+     * @description Adds an auto increment - only for mysql
+     */
+    autoIncrement(): ColumnOptionsBuilder;
+    /**
+     * @description Adds a foreign key with a specific constraint
+     * @param table
+     * @param column
+     */
+    references(table: string, column: string): ColumnOptionsBuilder;
+    /**
+     * @description Chains a new column creation
+     */
+    newColumn(): ColumnTypeBuilder;
+    /**
+     * @description Commits the column creation - if omitted, the migration will be run empty
+     */
+    commit(): void;
+}
+
+type DateOptions = {
+    autoCreate?: boolean;
+    autoUpdate?: boolean;
+};
+declare class ColumnTypeBuilder {
+    protected tableName: string;
+    protected queryStatements: string[];
+    protected partialQuery: string;
+    protected columnName: string;
+    protected sqlType: DataSourceType;
+    constructor(tableName: string, queryStatements: string[], partialQuery: string, sqlType: DataSourceType);
+    varchar(name: string, length: number): ColumnOptionsBuilder;
+    tinytext(name: string): ColumnOptionsBuilder;
+    mediumtext(name: string): ColumnOptionsBuilder;
+    longtext(name: string): ColumnOptionsBuilder;
+    binary(name: string, length: number): ColumnOptionsBuilder;
+    enum(name: string, values: string[]): ColumnOptionsBuilder;
+    text(name: string): ColumnOptionsBuilder;
+    char(name: string, length: number): ColumnOptionsBuilder;
+    tinyint(name: string): ColumnOptionsBuilder;
+    smallint(name: string): ColumnOptionsBuilder;
+    mediumint(name: string): ColumnOptionsBuilder;
+    /**
+     * @description If using mysql, it will automatically add INT AUTO_INCREMENT
+     * @param name
+     */
+    serial(name: string): ColumnOptionsBuilder;
+    /**
+     * @description If using mysql, it will automatically add BIGINT AUTO_INCREMENT
+     * @param name
+     */
+    bigSerial(name: string): ColumnOptionsBuilder;
+    integer(name: string): ColumnOptionsBuilder;
+    bigint(name: string): ColumnOptionsBuilder;
+    float(name: string): ColumnOptionsBuilder;
+    decimal(name: string): ColumnOptionsBuilder;
+    double(name: string): ColumnOptionsBuilder;
+    boolean(name: string): ColumnOptionsBuilder;
+    date(name: string, options?: DateOptions): ColumnOptionsBuilder;
+    timestamp(name: string, options?: DateOptions): ColumnOptionsBuilder;
+    /**
+     * @description EXPERIMENTAL
+     * @param name
+     */
+    jsonb(name: string): ColumnOptionsBuilder;
+}
+
+declare class ColumnBuilderConnector {
+    protected tableName: string;
+    protected queryStatements: string[];
+    protected partialQuery: string;
+    protected sqlType: DataSourceType;
+    constructor(tableName: string, queryStatements: string[], partialQuery: string, sqlType: DataSourceType);
+    newColumn(): ColumnTypeBuilder;
+}
+
+type AlterOptions = {
+    afterColumn?: string;
+    references?: {
+        table: string;
+        column: string;
+    };
+};
+type DataType = "varchar" | "tinytext" | "mediumtext" | "longtext" | "binary" | "text" | "char" | "tinyint" | "smallint" | "mediumint" | "integer" | "bigint" | "float" | "decimal" | "double" | "boolean" | "date" | "timestamp" | "jsonb";
+type BaseOptions = {
+    afterColumn?: string;
+    references?: {
+        table: string;
+        column: string;
+    };
+    default?: string;
+    primaryKey?: boolean;
+    unique?: boolean;
+    notNullable?: boolean;
+    autoIncrement?: boolean;
+    length?: number;
+} & DateOptions;
+declare class ColumnBuilderAlter {
+    protected tableName: string;
+    protected queryStatements: string[];
+    protected partialQuery: string;
+    protected sqlType: DataSourceType;
+    constructor(tableName: string, queryStatements: string[], partialQuery: string, sqlType: DataSourceType);
+    /**
+     * @description Add a new column to the table
+     * @param columnName { string }
+     * @param dataType { varchar | tinytext | mediumtext | longtext | binary | text | char | tinyint | smallint | mediumint | integer | bigint | float | decimal | double | boolean | date | timestamp | jsonb }
+     * @param options { afterColumn?: string; references?: { table: string; column: string }; default?: string; primaryKey?: boolean; unique?: boolean; notNullable?: boolean; autoIncrement?: boolean; length?: number; }
+     */
+    addColumn(columnName: string, dataType: DataType, options?: BaseOptions): ColumnBuilderAlter;
+    /**
+     * @description Add a new enum column to the table
+     * @param columnName { string }
+     * @param values { string[] }
+     * @param options { afterColumn?: string; notNullable?: boolean }
+     */
+    addEnumColumn(columnName: string, values: string[], options?: {
+        afterColumn?: string;
+        notNullable?: boolean;
+    }): ColumnBuilderAlter;
+    /**
+     * @description Drops a column from the table
+     * @param columnName
+     */
+    dropColumn(columnName: string): ColumnBuilderAlter;
+    /**
+     * @description Renames a column
+     * @param oldColumnName
+     * @param newColumnName
+     */
+    renameColumn(oldColumnName: string, newColumnName: string): ColumnBuilderAlter;
+    modifyColumnType(columnName: string, newDataType: DataType, options?: BaseOptions): ColumnBuilderAlter;
+    /**
+     * @description Renames a table
+     * @param oldTableName
+     * @param newTableName
+     */
+    renameTable(oldTableName: string, newTableName: string): ColumnBuilderAlter;
+    /**
+     * @description Set a default value
+     * @param columnName
+     * @param defaultValue
+     */
+    setDefaultValue(columnName: string, defaultValue: string): ColumnBuilderAlter;
+    /**
+     * @description Drop a default value
+     * @param columnName
+     */
+    dropDefaultValue(columnName: string): ColumnBuilderAlter;
+    /**
+     * @description Add a foreign key
+     * @param columnName
+     * @param options
+     */
+    addForeignKey(columnName: string, options: AlterOptions): ColumnBuilderAlter;
+    /**
+     * @description Drop a foreign key
+     * @param columnName
+     */
+    dropForeignKey(columnName: string): ColumnBuilderAlter;
+    /**
+     * @description Commits the changes - if omitted, the migration will be run empty
+     */
+    commit(): void;
+}
+
+declare class Schema {
+    queryStatements: string[];
+    sqlType: DataSourceType;
+    constructor(sqlType?: DataSourceType);
+    /**
+     * @description Add raw query to the migration
+     * @param query
+     */
+    rawQuery(query: string): void;
+    createTable(tableName: string, options?: {
+        ifNotExists?: boolean;
+    }): ColumnBuilderConnector;
+    /**
+     * @description Alter table
+     * @param tableName
+     * @returns ColumnBuilderAlter
+     */
+    alterTable(tableName: string): ColumnBuilderAlter;
+    /**
+     * @description Drop table
+     * @param tableName
+     * @param ifExists
+     * @returns void
+     */
+    dropTable(tableName: string, ifExists?: boolean): void;
+    /**
+     * @description Rename table
+     * @param oldTableName
+     * @param newTableName
+     * @returns void
+     */
+    renameTable(oldTableName: string, newTableName: string): void;
+    /**
+     * @description Truncate table
+     * @param tableName
+     * @returns void
+     */
+    truncateTable(tableName: string): void;
+    /**
+     * @description Create index on table
+     * @param tableName
+     * @param indexName
+     * @param columns
+     * @param unique
+     * @returns void
+     */
+    createIndex(tableName: string, indexName: string, columns: string[], unique?: boolean): void;
+    /**
+     * @description Drop index on table
+     * @param tableName
+     * @param indexName
+     * @returns void
+     */
+    dropIndex(tableName: string, indexName: string): void;
+    /**
+     * @description Adds a primary key to a table
+     * @param tableName
+     * @param columnName
+     * @param type
+     * @param options
+     * @returns void
+     */
+    addPrimaryKey(tableName: string, columns: string[]): void;
+    /**
+     * @description Drops a primary key from a table
+     * @param tableName
+     * @returns void
+     */
+    dropPrimaryKey(tableName: string): void;
+    /**
+     * @description Adds a foreign key to a table
+     * @param tableName
+     * @param constraintName
+     * @param columns
+     * @returns void
+     */
+    addConstraint(tableName: string, constraintName: string, columns: string[]): void;
+    /**
+     * @description Drops a cosntraint from a table
+     * @param tableName
+     * @param constraintName
+     * @returns void
+     */
+    dropConstraint(tableName: string, constraintName: string): void;
+    /**
+     * @description Adds a unique constraint to a table
+     * @param tableName
+     * @param constraintName
+     * @param columns
+     * @returns void
+     */
+    addUniqueConstraint(tableName: string, constraintName: string, columns: string[]): void;
+    /**
+     * @description Drops a unique constraint from a table
+     * @param tableName
+     * @param constraintName
+     * @returns void
+     */
+    dropUniqueConstraint(tableName: string, constraintName: string): void;
+}
+
+declare abstract class Migration {
+    migrationName: string;
+    schema: Schema;
+    /**
+     * @description This method is called when the migration is to be run
+     */
+    abstract up(): Promise<void>;
+    /**
+     * @description This method is called when the migration is to be rolled back
+     */
+    abstract down(): Promise<void>;
+    /**
+     * @description This method is called after the migration has been run
+     */
+    afterUp?(): Promise<void>;
+    /**
+     * @description This method is called after the migration has been rolled back
+     */
+    afterDown?(): Promise<void>;
+}
+
 declare class MysqlTransaction {
     protected mysql: Pool;
     protected mysqlConnection: PoolConnection;
@@ -53,32 +402,6 @@ declare class PostgresTransaction {
      * Rollback transaction.
      */
     rollback(): Promise<void>;
-}
-
-type DataSourceType = "mysql" | "postgres" | "mariadb";
-/**
- * @description By default the connection details can be provided in the env.ts file, you can still override each prop with your actual connection details
- */
-interface DataSourceInput {
-    type?: DataSourceType;
-    readonly host?: string;
-    readonly port?: number;
-    readonly username?: string;
-    readonly password?: string;
-    readonly database?: string;
-    readonly logs?: boolean;
-    readonly mysqlOptions?: mysql__default.PoolOptions;
-    readonly pgOptions?: pg__default.PoolConfig;
-}
-declare abstract class DataSource {
-    protected type: DataSourceType;
-    protected host: string;
-    protected port: number;
-    protected username: string;
-    protected password: string;
-    protected database: string;
-    protected logs: boolean;
-    protected constructor(input?: DataSourceInput);
 }
 
 declare const selectTemplate: (table: string, dbType: DataSourceType) => {
@@ -1906,329 +2229,6 @@ declare class Model {
      * @returns
      */
     private static establishConnection;
-}
-
-declare class ColumnOptionsBuilder {
-    protected tableName: string;
-    protected queryStatements: string[];
-    protected partialQuery: string;
-    protected columnName: string;
-    protected columnReferences: {
-        table: string;
-        column: string;
-    }[];
-    protected sqlType: DataSourceType;
-    constructor(tableName: string, queryStatements: string[], partialQuery: string, sqlType: DataSourceType, columnName?: string, columnReferences?: {
-        table: string;
-        column: string;
-    }[]);
-    /**
-     * @description Makes the column nullable
-     */
-    nullable(): ColumnOptionsBuilder;
-    default(value: string | number | boolean): ColumnOptionsBuilder;
-    /**
-     * @description Makes the column unsigned allowing only positive values
-     */
-    unsigned(): ColumnOptionsBuilder;
-    /**
-     * @description Makes the column not nullable
-     */
-    notNullable(): ColumnOptionsBuilder;
-    /**
-     * @description Makes the column the primary key
-     */
-    primary(): ColumnOptionsBuilder;
-    /**
-     * @description Adds an unique constraint
-     */
-    unique(): ColumnOptionsBuilder;
-    /**
-     * @description Adds an auto increment - only for mysql
-     */
-    autoIncrement(): ColumnOptionsBuilder;
-    /**
-     * @description Adds a foreign key with a specific constraint
-     * @param table
-     * @param column
-     */
-    references(table: string, column: string): ColumnOptionsBuilder;
-    /**
-     * @description Chains a new column creation
-     */
-    newColumn(): ColumnTypeBuilder;
-    /**
-     * @description Commits the column creation - if omitted, the migration will be run empty
-     */
-    commit(): void;
-}
-
-type DateOptions = {
-    autoCreate?: boolean;
-    autoUpdate?: boolean;
-};
-declare class ColumnTypeBuilder {
-    protected tableName: string;
-    protected queryStatements: string[];
-    protected partialQuery: string;
-    protected columnName: string;
-    protected sqlType: DataSourceType;
-    constructor(tableName: string, queryStatements: string[], partialQuery: string, sqlType: DataSourceType);
-    varchar(name: string, length: number): ColumnOptionsBuilder;
-    tinytext(name: string): ColumnOptionsBuilder;
-    mediumtext(name: string): ColumnOptionsBuilder;
-    longtext(name: string): ColumnOptionsBuilder;
-    binary(name: string, length: number): ColumnOptionsBuilder;
-    enum(name: string, values: string[]): ColumnOptionsBuilder;
-    text(name: string): ColumnOptionsBuilder;
-    char(name: string, length: number): ColumnOptionsBuilder;
-    tinyint(name: string): ColumnOptionsBuilder;
-    smallint(name: string): ColumnOptionsBuilder;
-    mediumint(name: string): ColumnOptionsBuilder;
-    /**
-     * @description If using mysql, it will automatically add INT AUTO_INCREMENT
-     * @param name
-     */
-    serial(name: string): ColumnOptionsBuilder;
-    /**
-     * @description If using mysql, it will automatically add BIGINT AUTO_INCREMENT
-     * @param name
-     */
-    bigSerial(name: string): ColumnOptionsBuilder;
-    integer(name: string): ColumnOptionsBuilder;
-    bigint(name: string): ColumnOptionsBuilder;
-    float(name: string): ColumnOptionsBuilder;
-    decimal(name: string): ColumnOptionsBuilder;
-    double(name: string): ColumnOptionsBuilder;
-    boolean(name: string): ColumnOptionsBuilder;
-    date(name: string, options?: DateOptions): ColumnOptionsBuilder;
-    timestamp(name: string, options?: DateOptions): ColumnOptionsBuilder;
-    /**
-     * @description EXPERIMENTAL
-     * @param name
-     */
-    jsonb(name: string): ColumnOptionsBuilder;
-}
-
-declare class ColumnBuilderConnector {
-    protected tableName: string;
-    protected queryStatements: string[];
-    protected partialQuery: string;
-    protected sqlType: DataSourceType;
-    constructor(tableName: string, queryStatements: string[], partialQuery: string, sqlType: DataSourceType);
-    newColumn(): ColumnTypeBuilder;
-}
-
-type AlterOptions = {
-    afterColumn?: string;
-    references?: {
-        table: string;
-        column: string;
-    };
-};
-type DataType = "varchar" | "tinytext" | "mediumtext" | "longtext" | "binary" | "text" | "char" | "tinyint" | "smallint" | "mediumint" | "integer" | "bigint" | "float" | "decimal" | "double" | "boolean" | "date" | "timestamp" | "jsonb";
-type BaseOptions = {
-    afterColumn?: string;
-    references?: {
-        table: string;
-        column: string;
-    };
-    default?: string;
-    primaryKey?: boolean;
-    unique?: boolean;
-    notNullable?: boolean;
-    autoIncrement?: boolean;
-    length?: number;
-} & DateOptions;
-declare class ColumnBuilderAlter {
-    protected tableName: string;
-    protected queryStatements: string[];
-    protected partialQuery: string;
-    protected sqlType: DataSourceType;
-    constructor(tableName: string, queryStatements: string[], partialQuery: string, sqlType: DataSourceType);
-    /**
-     * @description Add a new column to the table
-     * @param columnName { string }
-     * @param dataType { varchar | tinytext | mediumtext | longtext | binary | text | char | tinyint | smallint | mediumint | integer | bigint | float | decimal | double | boolean | date | timestamp | jsonb }
-     * @param options { afterColumn?: string; references?: { table: string; column: string }; default?: string; primaryKey?: boolean; unique?: boolean; notNullable?: boolean; autoIncrement?: boolean; length?: number; }
-     */
-    addColumn(columnName: string, dataType: DataType, options?: BaseOptions): ColumnBuilderAlter;
-    /**
-     * @description Add a new enum column to the table
-     * @param columnName { string }
-     * @param values { string[] }
-     * @param options { afterColumn?: string; notNullable?: boolean }
-     */
-    addEnumColumn(columnName: string, values: string[], options?: {
-        afterColumn?: string;
-        notNullable?: boolean;
-    }): ColumnBuilderAlter;
-    /**
-     * @description Drops a column from the table
-     * @param columnName
-     */
-    dropColumn(columnName: string): ColumnBuilderAlter;
-    /**
-     * @description Renames a column
-     * @param oldColumnName
-     * @param newColumnName
-     */
-    renameColumn(oldColumnName: string, newColumnName: string): ColumnBuilderAlter;
-    modifyColumnType(columnName: string, newDataType: DataType, options?: BaseOptions): ColumnBuilderAlter;
-    /**
-     * @description Renames a table
-     * @param oldTableName
-     * @param newTableName
-     */
-    renameTable(oldTableName: string, newTableName: string): ColumnBuilderAlter;
-    /**
-     * @description Set a default value
-     * @param columnName
-     * @param defaultValue
-     */
-    setDefaultValue(columnName: string, defaultValue: string): ColumnBuilderAlter;
-    /**
-     * @description Drop a default value
-     * @param columnName
-     */
-    dropDefaultValue(columnName: string): ColumnBuilderAlter;
-    /**
-     * @description Add a foreign key
-     * @param columnName
-     * @param options
-     */
-    addForeignKey(columnName: string, options: AlterOptions): ColumnBuilderAlter;
-    /**
-     * @description Drop a foreign key
-     * @param columnName
-     */
-    dropForeignKey(columnName: string): ColumnBuilderAlter;
-    /**
-     * @description Commits the changes - if omitted, the migration will be run empty
-     */
-    commit(): void;
-}
-
-declare class Schema {
-    queryStatements: string[];
-    sqlType: DataSourceType;
-    constructor(sqlType?: DataSourceType);
-    /**
-     * @description Add raw query to the migration
-     * @param query
-     */
-    rawQuery(query: string): void;
-    createTable(tableName: string, options?: {
-        ifNotExists?: boolean;
-    }): ColumnBuilderConnector;
-    /**
-     * @description Alter table
-     * @param tableName
-     * @returns ColumnBuilderAlter
-     */
-    alterTable(tableName: string): ColumnBuilderAlter;
-    /**
-     * @description Drop table
-     * @param tableName
-     * @param ifExists
-     * @returns void
-     */
-    dropTable(tableName: string, ifExists?: boolean): void;
-    /**
-     * @description Rename table
-     * @param oldTableName
-     * @param newTableName
-     * @returns void
-     */
-    renameTable(oldTableName: string, newTableName: string): void;
-    /**
-     * @description Truncate table
-     * @param tableName
-     * @returns void
-     */
-    truncateTable(tableName: string): void;
-    /**
-     * @description Create index on table
-     * @param tableName
-     * @param indexName
-     * @param columns
-     * @param unique
-     * @returns void
-     */
-    createIndex(tableName: string, indexName: string, columns: string[], unique?: boolean): void;
-    /**
-     * @description Drop index on table
-     * @param tableName
-     * @param indexName
-     * @returns void
-     */
-    dropIndex(tableName: string, indexName: string): void;
-    /**
-     * @description Adds a primary key to a table
-     * @param tableName
-     * @param columnName
-     * @param type
-     * @param options
-     * @returns void
-     */
-    addPrimaryKey(tableName: string, columns: string[]): void;
-    /**
-     * @description Drops a primary key from a table
-     * @param tableName
-     * @returns void
-     */
-    dropPrimaryKey(tableName: string): void;
-    /**
-     * @description Adds a foreign key to a table
-     * @param tableName
-     * @param constraintName
-     * @param columns
-     * @returns void
-     */
-    addConstraint(tableName: string, constraintName: string, columns: string[]): void;
-    /**
-     * @description Drops a cosntraint from a table
-     * @param tableName
-     * @param constraintName
-     * @returns void
-     */
-    dropConstraint(tableName: string, constraintName: string): void;
-    /**
-     * @description Adds a unique constraint to a table
-     * @param tableName
-     * @param constraintName
-     * @param columns
-     * @returns void
-     */
-    addUniqueConstraint(tableName: string, constraintName: string, columns: string[]): void;
-    /**
-     * @description Drops a unique constraint from a table
-     * @param tableName
-     * @param constraintName
-     * @returns void
-     */
-    dropUniqueConstraint(tableName: string, constraintName: string): void;
-}
-
-declare abstract class Migration {
-    migrationName: string;
-    schema: Schema;
-    /**
-     * @description This method is called when the migration is to be run
-     */
-    abstract up(): Promise<void>;
-    /**
-     * @description This method is called when the migration is to be rolled back
-     */
-    abstract down(): Promise<void>;
-    /**
-     * @description This method is called after the migration has been run
-     */
-    afterUp?(): Promise<void>;
-    /**
-     * @description This method is called after the migration has been rolled back
-     */
-    afterDown?(): Promise<void>;
 }
 
 export { BelongsTo, type DataSourceInput, type DeleteQueryBuilders, HasMany, HasOne, Migration, Model, type QueryBuilders, Relation, SqlDataSource, type UpdateQueryBuilders, column };

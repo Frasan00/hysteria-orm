@@ -1,3 +1,5 @@
+#!/usr/bin/env ts-node
+
 import dotenv from "dotenv";
 import { createMigrationSql } from "./mysql/create-migration";
 import { createMigrationPg } from "./postgres/create-migration";

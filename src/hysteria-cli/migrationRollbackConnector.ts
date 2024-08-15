@@ -1,3 +1,5 @@
+#!/usr/bin/env ts-node
+
 import dotenv from "dotenv";
 import { migrationRollBackSql } from "./mysql/rollback-migration";
 import { migrationRollBackPg } from "./postgres/rollback-migration";

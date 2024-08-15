@@ -1,35 +1,35 @@
 #!/usr/bin/env node
 
-import { column, Metadata, Model } from "./Sql/Models/Model";
-import { HasOne } from "./Sql/Models/Relations/HasOne";
-import { HasMany } from "./Sql/Models/Relations/HasMany";
-import { BelongsTo } from "./Sql/Models/Relations/BelongsTo";
+import "reflect-metadata";
 import { DataSourceInput } from "./Datasource";
-import { Relation } from "./Sql/Models/Relations/Relation";
 import { Migration } from "./Sql/Migrations/Migration";
-import { SqlDataSource } from "./Sql/SqlDatasource";
-import { User } from "./test";
+import { Model, column } from "./Sql/Models/Model";
+import { BelongsTo } from "./Sql/Models/Relations/BelongsTo";
+import { HasMany } from "./Sql/Models/Relations/HasMany";
+import { HasOne } from "./Sql/Models/Relations/HasOne";
+import { Relation } from "./Sql/Models/Relations/Relation";
 import {
   QueryBuilders,
   UpdateQueryBuilders,
   DeleteQueryBuilders,
 } from "./Sql/QueryBuilder/QueryBuilder";
-import "reflect-metadata";
+import { SqlDataSource } from "./Sql/SqlDatasource";
+import { User } from "./test";
 
 (async () => {
   await SqlDataSource.connect();
 
-  const newUser = await User.create({
-    name: "gianni 3",
-    email: "gianni3@gmail.com",
-    signupSource: "mdfakofmad",
-  });
+  // const newUser = await User.create({
+  //   name: "gianni 3",
+  //   email: "gianni3@gmail.com",
+  //   signupSource: "mdfakofmad",
+  // });
 
-  console.log(newUser);
-  const updatedUser = await User.update().withData({
-    name: "new gianni 2",
-  });
-  console.log(updatedUser);
+  // console.log(newUser);
+  // const updatedUser = await User.update().withData({
+  //   name: "new gianni 2",
+  // });
+  // console.log(updatedUser);
 
   // console.log(
   //   await User.delete().where("name", "new gianni 2").performDelete(),
