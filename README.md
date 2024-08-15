@@ -31,9 +31,9 @@ Hysteria ORM is an Object-Relational Mapping (ORM) library for JavaScript and Ty
 
 ## Installation
 ```shell
-    npm install hysteria-orm
+    npm install hysteria
     
-    yarn add hysteria-orm
+    yarn add hysteria
 ```
 
 ## Features
@@ -93,7 +93,7 @@ DB_LOGS=true # default false
 ### Establishing a Connection
 
 ```typescript
-import { SqlDataSource, DataSourceInput } from "hysteria-orm";
+import { SqlDataSource, DataSourceInput } from "hysteria";
 
 const mysqlConfig: DataSourceInput = {
     type: 'mysql' | 'postgres' | 'mariadb',
@@ -112,7 +112,7 @@ const sql = await SqlDataSource.connect(mysqlConfig, () => console.log("Connecte
 ### Create a model
 
 ```typescript
-import { Model } from "hysteria-orm";
+import { Model } from "hysteria";
 import { DateTime } from "luxon";
 
 export class User extends Model {
@@ -147,7 +147,7 @@ export class User extends Model {
 ### Create a model with relationships
 
 ```typescript
-import { Model, HasOne, HasMany } from "hysteria-orm";
+import { Model, HasOne, HasMany } from "hysteria";
 import { Profile } from "./Profile";
 import { Post } from "./Post";
 
@@ -398,7 +398,7 @@ await SqlDataSource.useConnection(
 ## Create Table
 
 ```typescript
-import { Migration } from "hysteria-orm";
+import { Migration } from "hysteria";
 import { Post } from "../Models/Post";
 
 export default class extends Migration {
@@ -433,7 +433,7 @@ export default class extends Migration {
 ## Alter Table
 
 ```typescript
-import { Migration } from "hysteria-orm";
+import { Migration } from "hysteria";
 
 export default class extends Migration {
     public up(): void {
