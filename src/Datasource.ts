@@ -1,4 +1,6 @@
 import dotenv from "dotenv";
+import mysql from "mysql2/promise";
+import pg from "pg";
 
 dotenv.config();
 
@@ -18,6 +20,8 @@ export interface DataSourceInput {
   readonly password?: string;
   readonly database?: string;
   readonly logs?: boolean;
+  readonly mysqlOptions?: mysql.PoolOptions
+  readonly pgOptions?: pg.PoolConfig
 }
 
 export abstract class DataSource {

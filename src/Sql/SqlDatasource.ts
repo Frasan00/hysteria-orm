@@ -46,6 +46,7 @@ export class SqlDataSource extends DataSource {
           user: sqlDataSource.username,
           password: sqlDataSource.password,
           database: sqlDataSource.database,
+          ...input?.mysqlOptions,
         }) as mysql.Pool;
         break;
 
@@ -56,6 +57,7 @@ export class SqlDataSource extends DataSource {
           user: sqlDataSource.username,
           password: sqlDataSource.password,
           database: sqlDataSource.database,
+          ...input?.pgOptions,
         }) as pg.Pool;
         break;
       default:
