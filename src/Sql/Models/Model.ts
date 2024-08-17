@@ -1,5 +1,4 @@
 import { camelToSnakeCase } from "../../CaseUtils";
-import { DataSourceInput } from "../../Datasource";
 import { MysqlTransaction } from "../Mysql/MysqlTransaction";
 import { PostgresTransaction } from "../Postgres/PostgresTransaction";
 import {
@@ -139,6 +138,24 @@ export class Model {
     return typeofModel.sqlInstance
       .getModelManager<T>(typeofModel)
       .findOneByPrimaryKey(value, options.throwErrorOnNull);
+  }
+
+  /**
+   * @description Refreshes a model from the database, the model must have a primary key defined in the metadata
+   * @param model
+   */
+  public static refresh<T extends Model>(
+    this: new () => T | typeof Model,
+    model: T,
+    options: { throwErrorOnNull: boolean } = { throwErrorOnNull: false },
+  ): Promise<T | null> {
+    const typeofModel = this as unknown as typeof Model;
+    typeofModel.establishConnection();
+    const primaryKey = typeofModel.metadata.primaryKey as keyof T;
+    const primaryKeyValue = model[primaryKey];
+    return typeofModel.sqlInstance
+      .getModelManager<T>(typeofModel)
+      .findOneByPrimaryKey(primaryKeyValue as string, options.throwErrorOnNull);
   }
 
   /**

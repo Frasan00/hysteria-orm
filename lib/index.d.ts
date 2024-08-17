@@ -2133,6 +2133,13 @@ declare class Model {
         throwErrorOnNull: boolean;
     }): Promise<T | null>;
     /**
+     * @description Refreshes a model from the database, the model must have a primary key defined in the metadata
+     * @param model
+     */
+    static refresh<T extends Model>(this: new () => T | typeof Model, model: T, options?: {
+        throwErrorOnNull: boolean;
+    }): Promise<T | null>;
+    /**
      * @description Saves a new record to the database
      * @param model
      * @param {Model} modelData

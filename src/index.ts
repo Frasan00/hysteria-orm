@@ -19,46 +19,6 @@ import { User } from "./test";
 (async () => {
   await SqlDataSource.connect();
 
-  // const newUser = await User.create({
-  //   name: "gianni 3",
-  //   email: "gianni3@gmail.com",
-  //   signupSource: "mdfakofmad",
-  // });
-
-  // console.log(newUser);
-  // const updatedUser = await User.update().withData({
-  //   name: "new gianni 2",
-  // });
-  // console.log(updatedUser);
-
-  // console.log(
-  //   await User.delete().where("name", "new gianni 2").performDelete(),
-  // );
-
-  await SqlDataSource.useConnection(
-    {
-      type: "mysql",
-      host: "localhost",
-      database: "test",
-      username: "root",
-      password: "root",
-    },
-    async (sql) => {
-      const userRepo = sql.getModelManager(User);
-
-      const newUser = await userRepo.create({
-        name: "john",
-        email: "john-email2@gmail.com",
-        signupSource: "google",
-      });
-      console.log(newUser);
-
-      const updatedUser = await userRepo.update().withData({
-        name: "new name",
-      });
-      console.log(updatedUser);
-    },
-  );
   process.exit(0);
 })();
 
