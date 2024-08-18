@@ -112,6 +112,7 @@ const sql = await SqlDataSource.connect(mysqlConfig, () => console.log("Connecte
 ### Create a model
 
 ```typescript
+import "reflect-metadata";
 import { Model } from "hysteria-orm";
 import { DateTime } from "luxon"; // Both Date and Datetime from luxon are supported
 
@@ -147,6 +148,7 @@ export class User extends Model {
 ### Create a model with relations and hooks
 
 ```typescript
+import "reflect-metadata";
 import { Model, HasOne, HasMany } from "hysteria-orm";
 import { Profile } from "./Profile";
 import { Post } from "./Post";
