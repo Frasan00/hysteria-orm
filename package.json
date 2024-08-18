@@ -20,9 +20,7 @@
     "rollback:migrations": "yarn build && ts-node src/hysteria-cli/migrationRollbackConnector.ts"
   },
   "bin": {
-    "create:migration": "./src/hysteria-cli/migrationCreateConnector.ts",
-    "run:migrations": "./src/hysteria-cli/migrationRunConnector.ts",
-    "rollback:migrations": "./src/hysteria-cli/migrationRollbackConnector.ts"
+    "hysteria": "./cli.js"
   },
   "license": "MIT",
   "devDependencies": {
@@ -30,7 +28,6 @@
     "@types/luxon": "^3.4.2",
     "@types/node": "^22.2.0",
     "@types/pg": "^8.10.9",
-    "luxon": "^3.5.0",
     "mysql2": "^3.9.8",
     "nodemon": "^3.0.2",
     "pg": "^8.11.3",
@@ -41,7 +38,9 @@
     "typescript": "^5.3.2"
   },
   "dependencies": {
+    "commander": "^12.1.0",
     "dotenv": "^16.3.1",
+    "luxon": "^3.5.0",
     "reflect-metadata": "^0.2.2",
     "winston": "^3.11.0"
   },

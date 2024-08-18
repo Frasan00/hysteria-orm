@@ -113,7 +113,7 @@ const sql = await SqlDataSource.connect(mysqlConfig, () => console.log("Connecte
 
 ```typescript
 import { Model } from "hysteria-orm";
-import { DateTime } from "luxon";
+import { DateTime } from "luxon"; // Both Date and Datetime from luxon are supported
 
 export class User extends Model {
   @column()
@@ -144,7 +144,7 @@ export class User extends Model {
 }
 ```
 
-### Create a model with relationships
+### Create a model with relations and hooks
 
 ```typescript
 import { Model, HasOne, HasMany } from "hysteria-orm";
@@ -184,7 +184,7 @@ export class User extends Model {
 
     // Hooks
     public static beforeFetch(queryBuilder: QueryBuilders<User>): QueryBuilders<User> {
-        return queryBuilder.where("", true);
+        return queryBuilder.where("isActive", true);
     }
 
     public static beforeCreate(data: User): User {
@@ -306,7 +306,7 @@ const user: User | null = await User.query().whereBuilder((queryBuilder) => {
 
 - Aliases are available in the query builder, for example selectRaw('new as newName') will generate an alias in the extraColumns prop that every model has
 - Everything inside the extraColumns will be converted to camel case automatically regardless of the alias name
-- Must use selectRaw for custom columns, by default `select`
+- Must use selectRaw for custom columns, by default `select` can only query the Model's columns
  can only query 
 ```typescript
 const user: User | null = await User.query()
@@ -390,9 +390,11 @@ await SqlDataSource.useConnection(
 
 ## hysteria-orm-cli for Migrations
 
-1) (npm run) | (yarn) create:migration {migrationName}
-2) (npm run) | (yarn) run:migrations
-3) (npm run) | (yarn) rollback:migrations
+- In order to run those script is necessary to have installed typescript and ts-node
+
+1) hysteria create:migration {migrationName}
+2) hysteria run:migrations
+3) hysteria rollback:migrations
 
 
 ## Create Table
@@ -465,13 +467,13 @@ const jsonQuery = await User.query().where("json_prop", { main: "value" }).one()
 
 // Contains
 const jsonQueryContains = await User.query()
-.where("json_prop", { main: "value" }, ">")
-.one();
+    .where("json_prop", { main: "value" }, ">")
+    .one();
 
 // Does not contain
 const jsonQueryContains = await User.query()
-.where("json_prop", { main: "value" }, "<")
-.one();
+    .where("json_prop", { main: "value" }, "<")
+    .one();
 
 // Create new users
 const newUsers = await User.massiveCreate([
@@ -501,11 +503,11 @@ const newJsonUser = await User.update().withData({
 
 // Delete every instance that contains the properties in the json column
 const deletedUsers = await User.delete()
-.where("json", {
-        foo: "bar",
-        bar: "foo",
-    },
-    ">",
-)
-.performDelete();
+    .where("json", {
+            foo: "bar",
+            bar: "foo",
+        },
+        ">",
+    )
+    .execute();
 ```

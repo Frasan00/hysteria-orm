@@ -8,12 +8,16 @@ import { parseDatabaseDataIntoModelResponse } from "../serializer";
 import deleteTemplate from "../Resources/Query/DELETE";
 import joinTemplate from "../Resources/Query/JOIN";
 import { SqlDataSource } from "../SqlDatasource";
+import { DateTime } from "luxon";
+import { SelectableType } from "../Models/ModelManager/ModelManagerTypes";
+import updateTemplate from "../Resources/Query/UPDATE";
 
 export class PostgresDeleteQueryBuilder<
   T extends Model,
 > extends WhereQueryBuilder<T> {
   protected pgPool: Pool;
   protected joinQuery;
+  protected updateTemplate: ReturnType<typeof updateTemplate>;
   protected deleteTemplate: ReturnType<typeof deleteTemplate>;
   protected isNestedCondition = false;
 
@@ -35,6 +39,7 @@ export class PostgresDeleteQueryBuilder<
   ) {
     super(model, tableName, logs, false, sqlDataSource);
     this.pgPool = pgPool;
+    this.updateTemplate = updateTemplate(tableName, sqlDataSource.getDbType());
     this.deleteTemplate = deleteTemplate(tableName, sqlDataSource.getDbType());
     this.joinQuery = "";
     this.isNestedCondition = isNestedCondition;
@@ -46,7 +51,7 @@ export class PostgresDeleteQueryBuilder<
    * @param trx - The transaction to run the query in.
    * @returns The updated records.
    */
-  public async performDelete(trx?: PostgresTransaction): Promise<T[]> {
+  public async execute(trx?: PostgresTransaction): Promise<T[]> {
     this.whereQuery = this.whereTemplate.convertPlaceHolderToValue(
       this.whereQuery,
     );
@@ -61,13 +66,62 @@ export class PostgresDeleteQueryBuilder<
 
     log(query, this.logs, this.whereParams);
     try {
-      const result = await this.pgPool.query(query, this.whereParams);
-      return parseDatabaseDataIntoModelResponse(result.rows, this.model);
+      const result = await this.pgPool.query<T>(query, this.whereParams);
+      if (!result.rows) {
+        return [];
+      }
+
+      return await parseDatabaseDataIntoModelResponse(result.rows, this.model) as T[];
     } catch (error) {
       queryError(query);
       throw new Error("Query failed " + error);
     }
   }
+
+    /**
+   * @description Soft Deletes Records from the database.
+   * @param column - The column to soft delete. Default is 'deletedAt'.
+   * @param value - The value to set the column to. Default is the current date and time.
+   * @param trx - The transaction to run the query in.
+   * @returns The updated records.
+   */
+    public async softDelete(options?: {
+      column?: SelectableType<T>;
+      value?: string | number | boolean | Date | DateTime;
+      trx?: PostgresTransaction;
+    }): Promise<T[]> {
+      const {
+        column = "deletedAt" as SelectableType<T>,
+        value = DateTime.local().toString(),
+        trx,
+      } = options || {};
+      let {query, params} = this.updateTemplate.massiveUpdate(
+        [column as string],
+        [value],
+        this.whereQuery,
+        this.joinQuery,
+      );
+  
+      params = [...params, ...this.whereParams];
+  
+      if (trx) {
+        return await trx.massiveUpdateQuery(query, params, this.model);
+      }
+  
+      log(query, this.logs, params);
+      try {
+        const rows = await this.pgPool.query<T>(query, params);
+        const models = await parseDatabaseDataIntoModelResponse(rows.rows, this.model);
+        if (!models) {
+          return [];
+        }
+
+        return Array.isArray(models) ? models : [models] as T[];
+      } catch (error) {
+        queryError(query);
+        throw new Error("Query failed " + error);
+      }
+    }
 
   /**
    *

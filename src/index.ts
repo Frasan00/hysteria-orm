@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 import "reflect-metadata";
 import { DataSourceInput } from "./Datasource";
 import { Migration } from "./Sql/Migrations/Migration";
@@ -14,13 +12,7 @@ import {
   DeleteQueryBuilders,
 } from "./Sql/QueryBuilder/QueryBuilder";
 import { SqlDataSource } from "./Sql/SqlDatasource";
-import { User } from "./test";
 
-(async () => {
-  await SqlDataSource.connect();
-
-  process.exit(0);
-})();
 
 export {
   Model,

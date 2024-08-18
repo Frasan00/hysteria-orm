@@ -1,3 +1,4 @@
+import { DateTime } from "luxon";
 import { camelToSnakeCase } from "../../CaseUtils";
 import { MysqlTransaction } from "../Mysql/MysqlTransaction";
 import { PostgresTransaction } from "../Postgres/PostgresTransaction";
@@ -8,7 +9,7 @@ import {
   UpdateQueryBuilders,
 } from "../QueryBuilder/QueryBuilder";
 import { SqlDataSource } from "../SqlDatasource";
-import { FindOneType, FindType } from "./ModelManager/ModelManagerTypes";
+import { FindOneType, FindType, SelectableType } from "./ModelManager/ModelManagerTypes";
 import "reflect-metadata";
 
 export interface Metadata {
@@ -262,6 +263,37 @@ export class Model {
     return typeofModel.sqlInstance
       .getModelManager<T>(typeofModel)
       .deleteRecord(modelInstance, trx);
+  }
+
+  /**
+   * @description Soft Deletes a record to the database
+   * @param model
+   * @param {Model} modelInstance
+   * @param options - The options to soft delete the record, column and value - Default is 'deletedAt' for column and the current date and time for value
+   * @returns
+   */
+  public static async softDelete<T extends Model>(
+    this: new () => T | typeof Model,
+    modelInstance: T,
+    options?: {
+      column?: string;
+      value?: string | number | boolean | Date | DateTime;
+      trx?: MysqlTransaction | PostgresTransaction;
+    },
+  ): Promise<T> {
+    const typeofModel = this as unknown as typeof Model;
+    typeofModel.establishConnection();
+    const {
+      column = "deletedAt" as SelectableType<T>,
+      value = DateTime.local().toString(),
+      trx,
+    } = options || {};
+    modelInstance[column as keyof T] = value as T[keyof T];
+    await typeofModel.sqlInstance
+      .getModelManager<T>(typeofModel)
+      .updateRecord(modelInstance, trx);
+
+    return modelInstance;
   }
 
   /**

@@ -3,6 +3,7 @@ import * as mysql from 'mysql2/promise';
 import mysql__default, { Pool, PoolConnection } from 'mysql2/promise';
 import * as pg from 'pg';
 import pg__default, { Pool as Pool$1, PoolClient } from 'pg';
+import { DateTime } from 'luxon';
 import * as mysql2_typings_mysql_lib_protocol_packets_FieldPacket from 'mysql2/typings/mysql/lib/protocol/packets/FieldPacket';
 
 type DataSourceType = "mysql" | "postgres" | "mariadb";
@@ -1191,6 +1192,7 @@ declare const deleteTemplate: (tableName: string, dbType: DataSourceType) => {
 declare class PostgresDeleteQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
     protected pgPool: Pool$1;
     protected joinQuery: string;
+    protected updateTemplate: ReturnType<typeof updateTemplate>;
     protected deleteTemplate: ReturnType<typeof deleteTemplate>;
     protected isNestedCondition: boolean;
     /**
@@ -1208,7 +1210,19 @@ declare class PostgresDeleteQueryBuilder<T extends Model> extends WhereQueryBuil
      * @param trx - The transaction to run the query in.
      * @returns The updated records.
      */
-    performDelete(trx?: PostgresTransaction): Promise<T[]>;
+    execute(trx?: PostgresTransaction): Promise<T[]>;
+    /**
+   * @description Soft Deletes Records from the database.
+   * @param column - The column to soft delete. Default is 'deletedAt'.
+   * @param value - The value to set the column to. Default is the current date and time.
+   * @param trx - The transaction to run the query in.
+   * @returns The updated records.
+   */
+    softDelete(options?: {
+        column?: SelectableType<T>;
+        value?: string | number | boolean | Date | DateTime;
+        trx?: PostgresTransaction;
+    }): Promise<T[]>;
     /**
      *
      * @param relationTable - The name of the related table.
@@ -1251,6 +1265,7 @@ declare class PostgresDeleteQueryBuilder<T extends Model> extends WhereQueryBuil
 declare class MysqlDeleteQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
     protected mysql: Pool;
     protected joinQuery: string;
+    protected updateTemplate: ReturnType<typeof updateTemplate>;
     protected deleteTemplate: ReturnType<typeof deleteTemplate>;
     protected isNestedCondition: boolean;
     /**
@@ -1263,12 +1278,23 @@ declare class MysqlDeleteQueryBuilder<T extends Model> extends WhereQueryBuilder
      */
     constructor(model: typeof Model, tableName: string, mysql: Pool, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
     /**
-     * @description Deletes Records from the database.
-     * @param data - The data to update.
+     * @description Soft Deletes Records from the database.
+     * @param column - The column to soft delete. Default is 'deletedAt'.
+     * @param value - The value to set the column to. Default is the current date and time.
      * @param trx - The transaction to run the query in.
      * @returns The updated records.
      */
-    performDelete(trx?: MysqlTransaction): Promise<number>;
+    softDelete(options?: {
+        column?: SelectableType<T>;
+        value?: string | number | boolean | Date | DateTime;
+        trx?: MysqlTransaction;
+    }): Promise<number>;
+    /**
+     * @description Deletes Records from the database.
+     * @param trx - The transaction to run the query in.
+     * @returns The updated records.
+     */
+    execute(trx?: MysqlTransaction): Promise<number>;
     /**
      *
      * @param relationTable - The name of the related table.
@@ -2187,6 +2213,18 @@ declare class Model {
      * @returns
      */
     static deleteRecord<T extends Model>(this: new () => T | typeof Model, modelInstance: T, trx?: MysqlTransaction | PostgresTransaction): Promise<T | null>;
+    /**
+     * @description Soft Deletes a record to the database
+     * @param model
+     * @param {Model} modelInstance
+     * @param options - The options to soft delete the record, column and value - Default is 'deletedAt' for column and the current date and time for value
+     * @returns
+     */
+    static softDelete<T extends Model>(this: new () => T | typeof Model, modelInstance: T, options?: {
+        column?: string;
+        value?: string | number | boolean | Date | DateTime;
+        trx?: MysqlTransaction | PostgresTransaction;
+    }): Promise<T>;
     /**
      * @description Deletes a record to the database
      * @param model

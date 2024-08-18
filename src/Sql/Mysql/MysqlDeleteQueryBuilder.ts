@@ -7,12 +7,16 @@ import { Pool } from "mysql2/promise";
 import joinTemplate from "../Resources/Query/JOIN";
 import deleteTemplate from "../Resources/Query/DELETE";
 import { SqlDataSource } from "../SqlDatasource";
+import { DateTime } from "luxon";
+import updateTemplate from "../Resources/Query/UPDATE";
+import { SelectableType } from "../Models/ModelManager/ModelManagerTypes";
 
 export class MysqlDeleteQueryBuilder<
   T extends Model,
 > extends WhereQueryBuilder<T> {
   protected mysql: Pool;
   protected joinQuery;
+  protected updateTemplate: ReturnType<typeof updateTemplate>;
   protected deleteTemplate: ReturnType<typeof deleteTemplate>;
   protected isNestedCondition = false;
 
@@ -34,18 +38,58 @@ export class MysqlDeleteQueryBuilder<
   ) {
     super(model, tableName, logs, false, sqlDataSource);
     this.mysql = mysql;
+    this.updateTemplate = updateTemplate(tableName, sqlDataSource.getDbType());
     this.deleteTemplate = deleteTemplate(tableName, sqlDataSource.getDbType());
     this.joinQuery = "";
     this.isNestedCondition = isNestedCondition;
   }
 
   /**
-   * @description Deletes Records from the database.
-   * @param data - The data to update.
+   * @description Soft Deletes Records from the database.
+   * @param column - The column to soft delete. Default is 'deletedAt'.
+   * @param value - The value to set the column to. Default is the current date and time.
    * @param trx - The transaction to run the query in.
    * @returns The updated records.
    */
-  public async performDelete(trx?: MysqlTransaction): Promise<number> {
+  public async softDelete(options?: {
+    column?: SelectableType<T>;
+    value?: string | number | boolean | Date | DateTime;
+    trx?: MysqlTransaction;
+  }): Promise<number> {
+    const {
+      column = "deletedAt" as SelectableType<T>,
+      value = DateTime.local().toString(),
+      trx,
+    } = options || {};
+    let {query, params} = this.updateTemplate.massiveUpdate(
+      [column as string],
+      [value],
+      this.whereQuery,
+      this.joinQuery,
+    );
+
+    params = [...params, ...this.whereParams];
+
+    if (trx) {
+      return await trx.massiveUpdateQuery(query, params);
+    }
+
+    log(query, this.logs, params);
+    try {
+      const [rows]: any = await this.mysql.query(query, params);
+      return rows.affectedRows;
+    } catch (error) {
+      queryError(query);
+      throw new Error("Query failed " + error);
+    }
+  }
+
+  /**
+   * @description Deletes Records from the database.
+   * @param trx - The transaction to run the query in.
+   * @returns The updated records.
+   */
+  public async execute(trx?: MysqlTransaction): Promise<number> {
     this.whereQuery = this.whereTemplate.convertPlaceHolderToValue(
       this.whereQuery,
     );
