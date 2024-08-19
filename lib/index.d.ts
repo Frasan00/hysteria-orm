@@ -1,9 +1,7 @@
-#!/usr/bin/env node
 import * as mysql from 'mysql2/promise';
 import mysql__default, { Pool, PoolConnection } from 'mysql2/promise';
 import * as pg from 'pg';
 import pg__default, { Pool as Pool$1, PoolClient } from 'pg';
-import { DateTime } from 'luxon';
 import * as mysql2_typings_mysql_lib_protocol_packets_FieldPacket from 'mysql2/typings/mysql/lib/protocol/packets/FieldPacket';
 
 type DataSourceType = "mysql" | "postgres" | "mariadb";
@@ -1212,15 +1210,15 @@ declare class PostgresDeleteQueryBuilder<T extends Model> extends WhereQueryBuil
      */
     execute(trx?: PostgresTransaction): Promise<T[]>;
     /**
-   * @description Soft Deletes Records from the database.
-   * @param column - The column to soft delete. Default is 'deletedAt'.
-   * @param value - The value to set the column to. Default is the current date and time.
-   * @param trx - The transaction to run the query in.
-   * @returns The updated records.
-   */
+     * @description Soft Deletes Records from the database.
+     * @param column - The column to soft delete. Default is 'deletedAt'.
+     * @param value - The value to set the column to. Default is the current date and time.
+     * @param trx - The transaction to run the query in.
+     * @returns The updated records.
+     */
     softDelete(options?: {
         column?: SelectableType<T>;
-        value?: string | number | boolean | Date | DateTime;
+        value?: string | number | boolean;
         trx?: PostgresTransaction;
     }): Promise<T[]>;
     /**
@@ -1286,7 +1284,7 @@ declare class MysqlDeleteQueryBuilder<T extends Model> extends WhereQueryBuilder
      */
     softDelete(options?: {
         column?: SelectableType<T>;
-        value?: string | number | boolean | Date | DateTime;
+        value?: string | number | boolean;
         trx?: MysqlTransaction;
     }): Promise<number>;
     /**
@@ -2217,12 +2215,13 @@ declare class Model {
      * @description Soft Deletes a record to the database
      * @param model
      * @param {Model} modelInstance
-     * @param options - The options to soft delete the record, column and value - Default is 'deletedAt' for column and the current date and time for value
+     * @param options - The options to soft delete the record, column and value - Default is 'deletedAt' for column and the current date and time for value, string is always counted as a Date stringified as new Date().toString()
+     * @param trx
      * @returns
      */
     static softDelete<T extends Model>(this: new () => T | typeof Model, modelInstance: T, options?: {
         column?: string;
-        value?: string | number | boolean | Date | DateTime;
+        value?: string | number | boolean;
         trx?: MysqlTransaction | PostgresTransaction;
     }): Promise<T>;
     /**

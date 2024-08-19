@@ -53,7 +53,7 @@ export class MysqlDeleteQueryBuilder<
    */
   public async softDelete(options?: {
     column?: SelectableType<T>;
-    value?: string | number | boolean | Date | DateTime;
+    value?: string | number | boolean;
     trx?: MysqlTransaction;
   }): Promise<number> {
     const {
@@ -61,7 +61,7 @@ export class MysqlDeleteQueryBuilder<
       value = DateTime.local().toString(),
       trx,
     } = options || {};
-    let {query, params} = this.updateTemplate.massiveUpdate(
+    let { query, params } = this.updateTemplate.massiveUpdate(
       [column as string],
       [value],
       this.whereQuery,

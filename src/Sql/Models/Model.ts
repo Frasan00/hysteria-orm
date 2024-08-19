@@ -1,3 +1,4 @@
+import "reflect-metadata";
 import { DateTime } from "luxon";
 import { camelToSnakeCase } from "../../CaseUtils";
 import { MysqlTransaction } from "../Mysql/MysqlTransaction";
@@ -9,8 +10,12 @@ import {
   UpdateQueryBuilders,
 } from "../QueryBuilder/QueryBuilder";
 import { SqlDataSource } from "../SqlDatasource";
-import { FindOneType, FindType, SelectableType } from "./ModelManager/ModelManagerTypes";
-import "reflect-metadata";
+import {
+  FindOneType,
+  FindType,
+  SelectableType,
+} from "./ModelManager/ModelManagerTypes";
+import { parseDatabaseDataIntoModelResponse } from "../serializer";
 
 export interface Metadata {
   readonly tableName: string;
@@ -269,7 +274,8 @@ export class Model {
    * @description Soft Deletes a record to the database
    * @param model
    * @param {Model} modelInstance
-   * @param options - The options to soft delete the record, column and value - Default is 'deletedAt' for column and the current date and time for value
+   * @param options - The options to soft delete the record, column and value - Default is 'deletedAt' for column and the current date and time for value, string is always counted as a Date stringified as new Date().toString()
+   * @param trx
    * @returns
    */
   public static async softDelete<T extends Model>(
@@ -277,7 +283,7 @@ export class Model {
     modelInstance: T,
     options?: {
       column?: string;
-      value?: string | number | boolean | Date | DateTime;
+      value?: string | number | boolean;
       trx?: MysqlTransaction | PostgresTransaction;
     },
   ): Promise<T> {
@@ -288,12 +294,20 @@ export class Model {
       value = DateTime.local().toString(),
       trx,
     } = options || {};
+
     modelInstance[column as keyof T] = value as T[keyof T];
     await typeofModel.sqlInstance
       .getModelManager<T>(typeofModel)
       .updateRecord(modelInstance, trx);
 
-    return modelInstance;
+    if (typeof value === "string") {
+      modelInstance[column as keyof T] = new Date(value) as T[keyof T];
+    }
+
+    return (await parseDatabaseDataIntoModelResponse(
+      [modelInstance],
+      typeofModel,
+    )) as T;
   }
 
   /**

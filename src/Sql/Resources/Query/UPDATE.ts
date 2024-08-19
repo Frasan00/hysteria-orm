@@ -9,6 +9,12 @@ const updateTemplate = (table: string, dbType: DataSourceType) => {
       primaryKey?: string,
       primaryKeyValue?: string | undefined,
     ) => {
+      if (columns.includes("extraColumns")) {
+        const extraColumnsIndex = columns.indexOf("extraColumns");
+        columns.splice(columns.indexOf("extraColumns"), 1);
+        values.splice(extraColumnsIndex, 1);
+      }
+
       columns = columns.map((column) => camelToSnakeCase(column));
       let setClause: string;
       let params: (string | undefined)[];

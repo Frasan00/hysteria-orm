@@ -71,57 +71,63 @@ export class PostgresDeleteQueryBuilder<
         return [];
       }
 
-      return await parseDatabaseDataIntoModelResponse(result.rows, this.model) as T[];
+      return (await parseDatabaseDataIntoModelResponse(
+        result.rows,
+        this.model,
+      )) as T[];
     } catch (error) {
       queryError(query);
       throw new Error("Query failed " + error);
     }
   }
 
-    /**
+  /**
    * @description Soft Deletes Records from the database.
    * @param column - The column to soft delete. Default is 'deletedAt'.
    * @param value - The value to set the column to. Default is the current date and time.
    * @param trx - The transaction to run the query in.
    * @returns The updated records.
    */
-    public async softDelete(options?: {
-      column?: SelectableType<T>;
-      value?: string | number | boolean | Date | DateTime;
-      trx?: PostgresTransaction;
-    }): Promise<T[]> {
-      const {
-        column = "deletedAt" as SelectableType<T>,
-        value = DateTime.local().toString(),
-        trx,
-      } = options || {};
-      let {query, params} = this.updateTemplate.massiveUpdate(
-        [column as string],
-        [value],
-        this.whereQuery,
-        this.joinQuery,
-      );
-  
-      params = [...params, ...this.whereParams];
-  
-      if (trx) {
-        return await trx.massiveUpdateQuery(query, params, this.model);
-      }
-  
-      log(query, this.logs, params);
-      try {
-        const rows = await this.pgPool.query<T>(query, params);
-        const models = await parseDatabaseDataIntoModelResponse(rows.rows, this.model);
-        if (!models) {
-          return [];
-        }
+  public async softDelete(options?: {
+    column?: SelectableType<T>;
+    value?: string | number | boolean;
+    trx?: PostgresTransaction;
+  }): Promise<T[]> {
+    const {
+      column = "deletedAt" as SelectableType<T>,
+      value = DateTime.local().toString(),
+      trx,
+    } = options || {};
+    let { query, params } = this.updateTemplate.massiveUpdate(
+      [column as string],
+      [value],
+      this.whereQuery,
+      this.joinQuery,
+    );
 
-        return Array.isArray(models) ? models : [models] as T[];
-      } catch (error) {
-        queryError(query);
-        throw new Error("Query failed " + error);
-      }
+    params = [...params, ...this.whereParams];
+
+    if (trx) {
+      return await trx.massiveUpdateQuery(query, params, this.model);
     }
+
+    log(query, this.logs, params);
+    try {
+      const rows = await this.pgPool.query<T>(query, params);
+      const models = await parseDatabaseDataIntoModelResponse(
+        rows.rows,
+        this.model,
+      );
+      if (!models) {
+        return [];
+      }
+
+      return Array.isArray(models) ? models : ([models] as T[]);
+    } catch (error) {
+      queryError(query);
+      throw new Error("Query failed " + error);
+    }
+  }
 
   /**
    *

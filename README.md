@@ -394,9 +394,15 @@ await SqlDataSource.useConnection(
 
 - In order to run those script is necessary to have installed typescript and ts-node
 
+- If the package is installed globally you can use hysteria:
 1) hysteria create:migration {migrationName}
 2) hysteria run:migrations
 3) hysteria rollback:migrations
+
+- Else you can add an entry to your scripts in the package.json `"hysteria": "hysteria"`
+1) (npm run | yarn run) hysteria create:migration {migrationName}
+2) (npm run | yarn run) hysteria run:migrations
+3) (npm run | yarn run) hysteria rollback:migrations
 
 
 ## Create Table
