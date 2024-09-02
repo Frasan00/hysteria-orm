@@ -116,32 +116,6 @@ class PgCliUtils {
       return !migrationEntry;
     });
   }
-
-  public getMigrationPath(): string {
-    let migrationPath = process.env.MIGRATION_PATH || "database/migrations";
-    let currentPath = path.resolve(process.cwd(), migrationPath);
-    let tries = 0;
-
-    while (true) {
-      if (tries++ > 5) {
-        break;
-      }
-
-      if (fs.existsSync(currentPath)) {
-        return currentPath;
-      }
-
-      const parentPath = path.resolve(currentPath, "..");
-      if (parentPath === currentPath) {
-        break;
-      }
-
-      tries++;
-      currentPath = path.resolve(parentPath, migrationPath);
-    }
-
-    throw new Error("No migration folder found");
-  }
 }
 
 export default new PgCliUtils();

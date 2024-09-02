@@ -1,25 +1,49 @@
 #!/usr/bin/env ts-node
 
 import dotenv from "dotenv";
-import { createMigrationSql } from "./mysql/create-migration";
-import { createMigrationPg } from "./postgres/create-migration";
+import path from "path";
+import MigrationTemplates from "./resources/MigrationTemplates";
+import fs from "fs";
 
 dotenv.config();
 
-export default function migrationCreateConnector(name: string) {
-  const databaseType = process.env.DB_TYPE;
+function getMigrationPath(): string {
+  let migrationPath = process.env.MIGRATION_PATH || "database/migrations";
+  let currentPath = path.resolve(process.cwd(), migrationPath);
+  let tries = 0;
 
-  switch (databaseType) {
-    case "mysql":
-      createMigrationSql(name);
+  while (true) {
+    if (tries++ > 5) {
       break;
-    case "postgres":
-      createMigrationPg(name);
-      break;
+    }
 
-    default:
-      throw new Error("Invalid database type, must be mysql or postgres");
+    if (fs.existsSync(currentPath)) {
+      return currentPath;
+    }
+
+    const parentPath = path.resolve(currentPath, "..");
+    if (parentPath === currentPath) {
+      break;
+    }
+
+    tries++;
+    currentPath = path.resolve(parentPath, migrationPath);
   }
+
+  throw new Error("No migration folder found");
+}
+
+export default function migrationCreateConnector(name: string) {
+  const migrationFolderPath = getMigrationPath();
+
+  const timestamp = new Date().getTime();
+  const migrationFileName = `${timestamp}_${name}.ts`;
+  const migrationFilePath = path.join(migrationFolderPath, migrationFileName);
+
+  const migrationTemplate = MigrationTemplates.basicMigrationTemplate();
+  fs.writeFileSync(migrationFilePath, migrationTemplate);
+
+  console.log(`Migration created successfully at '${migrationFilePath}'.`);
 }
 
 const arg = process.argv[2];
