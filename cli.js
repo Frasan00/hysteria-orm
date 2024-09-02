@@ -18,21 +18,21 @@ program
       console.error('Error: Migration name is required.');
       process.exit(1);
     }
-    execSync(`ts-node ${migrationCreateConnectorPath} ${name}`, { stdio: 'inherit' });
+    execSync(`${resolve(`${process.cwd()}/node_modules/.bin/ts-node`)} ${migrationCreateConnectorPath} ${name}`, { stdio: 'inherit' });
   });
 
 program
   .command('run:migrations')
   .description('Run pending migrations')
   .action(() => {
-    execSync(`ts-node ${migrationRunConnectorPath}`, { stdio: 'inherit' });
+    execSync(`${resolve(`${process.cwd()}/node_modules/.bin/ts-node`)} ${migrationRunConnectorPath}`, { stdio: 'inherit' });
   });
 
 program
   .command('rollback:migrations')
   .description('Rollbacks every migration that has been run')
   .action(() => {
-    execSync(`ts-node ${migrationRollbackConnectorPath}`, { stdio: 'inherit' });
+    execSync(`${resolve(`${process.cwd()}/node_modules/.bin/ts-node`)} ${migrationRollbackConnectorPath}`, { stdio: 'inherit' });
   });
 
 program.parse(process.argv);

@@ -1,6 +1,6 @@
 {
   "name": "hysteria-orm",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "A simple ORM for javascript/typescript",
   "main": "./lib/index.js",
   "repository": "https://github.com/Frasan00/hysteria-orm.git",
@@ -26,22 +26,22 @@
   "devDependencies": {
     "@adonisjs/eslint-config": "^1.2.0",
     "@types/luxon": "^3.4.2",
-    "@types/node": "^22.2.0",
     "@types/pg": "^8.10.9",
     "mysql2": "^3.9.8",
     "nodemon": "^3.0.2",
     "pg": "^8.11.3",
     "prettier": "^3.1.0",
     "standard": "^17.1.0",
-    "ts-node": "^10.9.2",
-    "tsup": "^8.0.1",
-    "typescript": "^5.3.2"
+    "tsup": "^8.0.1"
   },
   "dependencies": {
+    "@types/node": "^22.2.0",
     "commander": "^12.1.0",
     "dotenv": "^16.3.1",
     "luxon": "^3.5.0",
     "reflect-metadata": "^0.2.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.2",
     "winston": "^3.11.0"
   },
   "keywords": [
