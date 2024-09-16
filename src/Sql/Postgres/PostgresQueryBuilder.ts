@@ -39,18 +39,14 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     this.postgresModelManagerUtils = new PostgresModelManagerUtils<T>();
   }
 
+  // SELECT
+  public select(...columns: string[]): PostgresQueryBuilder<T>;
   public select(
     ...columns: (SelectableType<T> | "*")[]
+  ): PostgresQueryBuilder<T>;
+  public select(
+    ...columns: (SelectableType<T> | "*" | string)[]
   ): PostgresQueryBuilder<T> {
-    const select = selectTemplate(
-      this.tableName,
-      this.sqlDataSource.getDbType(),
-    );
-
-    this.selectQuery = select.selectColumns(...(columns as string[]));
-    return this;
-  }
-  public selectRaw(...columns: string[]): PostgresQueryBuilder<T> {
     const select = selectTemplate(
       this.tableName,
       this.sqlDataSource.getDbType(),
@@ -197,7 +193,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     this.offsetQuery = this.selectTemplate.offset((page - 1) * limit);
 
     const originalSelectQuery = this.selectQuery;
-    this.selectRaw("COUNT(*) as total");
+    this.select("COUNT(*) as total");
     const total = await this.many();
     this.selectQuery = originalSelectQuery;
 
@@ -273,7 +269,18 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @returns The PostgresQueryBuilder instance for chaining.
    */
   public where(
+    column: SelectableType<T>,
+    value: BaseValues,
+    operator: WhereOperatorType,
+  ): this;
+  public where(
     column: string,
+    value: BaseValues,
+    operator: WhereOperatorType,
+  ): this;
+  public where(column: SelectableType<T> | string, value: BaseValues): this;
+  public where(
+    column: SelectableType<T> | string,
     value: BaseValues,
     operator: WhereOperatorType = "=",
   ): this {
@@ -424,7 +431,18 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @returns The PostgresQueryBuilder instance for chaining.
    */
   public andWhere(
+    column: SelectableType<T>,
+    value: BaseValues,
+    operator: WhereOperatorType,
+  ): this;
+  public andWhere(
     column: string,
+    value: BaseValues,
+    operator: WhereOperatorType,
+  ): this;
+  public andWhere(column: SelectableType<T> | string, value: BaseValues): this;
+  public andWhere(
+    column: SelectableType<T> | string,
     value: BaseValues,
     operator: WhereOperatorType = "=",
   ): this {
@@ -457,7 +475,18 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @returns The PostgresQueryBuilder instance for chaining.
    */
   public orWhere(
+    column: SelectableType<T>,
+    value: BaseValues,
+    operator: WhereOperatorType,
+  ): this;
+  public orWhere(
     column: string,
+    value: BaseValues,
+    operator: WhereOperatorType,
+  ): this;
+  public orWhere(column: SelectableType<T> | string, value: BaseValues): this;
+  public orWhere(
+    column: SelectableType<T> | string,
     value: BaseValues,
     operator: WhereOperatorType = "=",
   ): this {
@@ -489,7 +518,17 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @param max - The maximum value for the range.
    * @returns The PostgresQueryBuilder instance for chaining.
    */
-  public whereBetween(column: string, min: BaseValues, max: BaseValues): this {
+  public whereBetween(
+    column: SelectableType<T>,
+    min: BaseValues,
+    max: BaseValues,
+  ): this;
+  public whereBetween(column: string, min: BaseValues, max: BaseValues): this;
+  public whereBetween(
+    column: SelectableType<T> | string,
+    min: BaseValues,
+    max: BaseValues,
+  ): this {
     if (!this.whereQuery && !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereBetween(
         column as string,
@@ -519,7 +558,17 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @returns The PostgresQueryBuilder instance for chaining.
    */
   public andWhereBetween(
+    column: SelectableType<T>,
+    min: BaseValues,
+    max: BaseValues,
+  ): this;
+  public andWhereBetween(
     column: string,
+    min: BaseValues,
+    max: BaseValues,
+  ): this;
+  public andWhereBetween(
+    column: SelectableType<T> | string,
     min: BaseValues,
     max: BaseValues,
   ): this {
@@ -552,7 +601,13 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @returns The PostgresQueryBuilder instance for chaining.
    */
   public orWhereBetween(
-    column: string,
+    column: SelectableType<T>,
+    min: BaseValues,
+    max: BaseValues,
+  ): this;
+  public orWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
+  public orWhereBetween(
+    column: SelectableType<T> | string,
     min: BaseValues,
     max: BaseValues,
   ): this {
@@ -585,7 +640,17 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @returns The PostgresQueryBuilder instance for chaining.
    */
   public whereNotBetween(
+    column: SelectableType<T>,
+    min: BaseValues,
+    max: BaseValues,
+  ): this;
+  public whereNotBetween(
     column: string,
+    min: BaseValues,
+    max: BaseValues,
+  ): this;
+  public whereNotBetween(
+    column: SelectableType<T> | string,
     min: BaseValues,
     max: BaseValues,
   ): this {
@@ -618,7 +683,17 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @returns The PostgresQueryBuilder instance for chaining.
    */
   public orWhereNotBetween(
+    column: SelectableType<T>,
+    min: BaseValues,
+    max: BaseValues,
+  ): this;
+  public orWhereNotBetween(
     column: string,
+    min: BaseValues,
+    max: BaseValues,
+  ): this;
+  public orWhereNotBetween(
+    column: SelectableType<T> | string,
     min: BaseValues,
     max: BaseValues,
   ): this {
@@ -649,7 +724,12 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @param values - An array of values to match against.
    * @returns The PostgresQueryBuilder instance for chaining.
    */
-  public whereIn(column: string, values: BaseValues[]): this {
+  public whereIn(column: SelectableType<T>, values: BaseValues[]): this;
+  public whereIn(column: string, values: BaseValues[]): this;
+  public whereIn(
+    column: SelectableType<T> | string,
+    values: BaseValues[],
+  ): this {
     if (!this.whereQuery || !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereIn(
         column as string,
@@ -675,7 +755,12 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @param values - An array of values to match against.
    * @returns The PostgresQueryBuilder instance for chaining.
    */
-  public andWhereIn(column: string, values: BaseValues[]): this {
+  public andWhereIn(column: SelectableType<T>, values: BaseValues[]): this;
+  public andWhereIn(column: string, values: BaseValues[]): this;
+  public andWhereIn(
+    column: SelectableType<T> | string,
+    values: BaseValues[],
+  ): this {
     if (!this.whereQuery || !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereIn(
         column as string,
@@ -701,7 +786,12 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @param values - An array of values to match against.
    * @returns The PostgresQueryBuilder instance for chaining.
    */
-  public orWhereIn(column: string, values: BaseValues[]): this {
+  public orWhereIn(column: SelectableType<T>, values: BaseValues[]): this;
+  public orWhereIn(column: string, values: BaseValues[]): this;
+  public orWhereIn(
+    column: SelectableType<T> | string,
+    values: BaseValues[],
+  ): this {
     if (!this.whereQuery || !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereIn(
         column as string,
@@ -727,7 +817,12 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @param values - An array of values to exclude.
    * @returns The PostgresQueryBuilder instance for chaining.
    */
-  public whereNotIn(column: string, values: BaseValues[]): this {
+  public whereNotIn(column: SelectableType<T>, values: BaseValues[]): this;
+  public whereNotIn(column: string, values: BaseValues[]): this;
+  public whereNotIn(
+    column: SelectableType<T> | string,
+    values: BaseValues[],
+  ): this {
     if (!this.whereQuery || !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereNotIn(
         column as string,
@@ -753,7 +848,12 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @param values - An array of values to exclude.
    * @returns The PostgresQueryBuilder instance for chaining.
    */
-  public orWhereNotIn(column: string, values: BaseValues[]): this {
+  public orWhereNotIn(column: SelectableType<T>, values: BaseValues[]): this;
+  public orWhereNotIn(column: string, values: BaseValues[]): this;
+  public orWhereNotIn(
+    column: SelectableType<T> | string,
+    values: BaseValues[],
+  ): this {
     if (!this.whereQuery || !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereNotIn(
         column as string,
@@ -778,7 +878,9 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @param column - The column to filter.
    * @returns The PostgresQueryBuilder instance for chaining.
    */
-  public whereNull(column: string): this {
+  public whereNull(column: SelectableType<T>): this;
+  public whereNull(column: string): this;
+  public whereNull(column: SelectableType<T> | string): this {
     if (!this.whereQuery || !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereNull(column as string);
       this.whereQuery = query;
@@ -797,7 +899,9 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @param column - The column to filter.
    * @returns The PostgresQueryBuilder instance for chaining.
    */
-  public andWhereNull(column: string): this {
+  public andWhereNull(column: SelectableType<T>): this;
+  public andWhereNull(column: string): this;
+  public andWhereNull(column: SelectableType<T> | string): this {
     if (!this.whereQuery || !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereNull(column as string);
       this.whereQuery = query;
@@ -816,7 +920,9 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @param column - The column to filter.
    * @returns The PostgresQueryBuilder instance for chaining.
    */
-  public orWhereNull(column: string): this {
+  public orWhereNull(column: SelectableType<T>): this;
+  public orWhereNull(column: string): this;
+  public orWhereNull(column: SelectableType<T> | string): this {
     if (!this.whereQuery || !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereNull(column as string);
       this.whereQuery = query;
@@ -835,7 +941,9 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @param column - The column to filter.
    * @returns The PostgresQueryBuilder instance for chaining.
    */
-  public whereNotNull(column: string): this {
+  public whereNotNull(column: SelectableType<T>): this;
+  public whereNotNull(column: string): this;
+  public whereNotNull(column: SelectableType<T> | string): this {
     if (!this.whereQuery || !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereNotNull(
         column as string,
@@ -858,7 +966,9 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @param column - The column to filter.
    * @returns The PostgresQueryBuilder instance for chaining.
    */
-  public andWhereNotNull(column: string): this {
+  public andWhereNotNull(column: SelectableType<T>): this;
+  public andWhereNotNull(column: string): this;
+  public andWhereNotNull(column: SelectableType<T> | string): this {
     if (!this.whereQuery || !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereNotNull(
         column as string,
@@ -881,7 +991,9 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @param column - The column to filter.
    * @returns The PostgresQueryBuilder instance for chaining.
    */
-  public orWhereNotNull(column: string) {
+  public orWhereNotNull(column: SelectableType<T>): this;
+  public orWhereNotNull(column: string): this;
+  public orWhereNotNull(column: SelectableType<T> | string): this {
     if (!this.whereQuery || !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereNotNull(
         column as string,
@@ -961,8 +1073,10 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @param columns - The columns to group by.
    * @returns The PostgresQueryBuilder instance for chaining.
    */
-  public groupBy(...columns: string[]) {
-    this.groupByQuery = this.selectTemplate.groupBy(...columns);
+  public groupBy(...columns: SelectableType<T>[]): this;
+  public groupBy(...columns: string[]): this;
+  public groupBy(...columns: (SelectableType<T> | string)[]): this {
+    this.groupByQuery = this.selectTemplate.groupBy(...(columns as string[]));
     return this;
   }
 
@@ -972,8 +1086,13 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @param order - The order direction, either "ASC" or "DESC".
    * @returns The PostgresQueryBuilder instance for chaining.
    */
-  public orderBy(column: string[], order: "ASC" | "DESC") {
-    this.orderByQuery = this.selectTemplate.orderBy(column, order);
+  public orderBy(columns: SelectableType<T>[], order: "ASC" | "DESC"): this;
+  public orderBy(columns: string[], order: "ASC" | "DESC"): this;
+  public orderBy(
+    columns: (SelectableType<T> | string)[],
+    order: "ASC" | "DESC",
+  ): this {
+    this.orderByQuery = this.selectTemplate.orderBy(columns as string[], order);
     return this;
   }
 

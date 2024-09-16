@@ -1,7 +1,7 @@
 import "reflect-metadata";
 import { DataSourceInput } from "./Datasource";
 import { Migration } from "./Sql/Migrations/Migration";
-import { Model, column } from "./Sql/Models/Model";
+import { Metadata, Model, column } from "./Sql/Models/Model";
 import { BelongsTo } from "./Sql/Models/Relations/BelongsTo";
 import { HasMany } from "./Sql/Models/Relations/HasMany";
 import { HasOne } from "./Sql/Models/Relations/HasOne";
@@ -12,6 +12,7 @@ import {
   DeleteQueryBuilders,
 } from "./Sql/QueryBuilder/QueryBuilder";
 import { SqlDataSource } from "./Sql/SqlDatasource";
+
 
 export {
   Model,
@@ -26,4 +27,5 @@ export {
   UpdateQueryBuilders,
   DeleteQueryBuilders,
   Migration,
+  Metadata,
 };
