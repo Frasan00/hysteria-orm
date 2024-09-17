@@ -3,7 +3,6 @@ import mysql__default, { Pool, PoolConnection } from 'mysql2/promise';
 import * as pg from 'pg';
 import pg__default, { Pool as Pool$1, PoolClient } from 'pg';
 import * as mysql2_typings_mysql_lib_protocol_packets_FieldPacket from 'mysql2/typings/mysql/lib/protocol/packets/FieldPacket';
-import { DateTime } from 'luxon';
 
 type DataSourceType = "mysql" | "postgres" | "mariadb";
 /**
@@ -689,8 +688,8 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @param value - The value to compare against.
      * @returns The PostgresQueryBuilder instance for chaining.
      */
-    where(column: SelectableType<T>, value: BaseValues, operator: WhereOperatorType): this;
-    where(column: string, value: BaseValues, operator: WhereOperatorType): this;
+    where(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
+    where(column: string, operator: WhereOperatorType, value: BaseValues): this;
     where(column: SelectableType<T> | string, value: BaseValues): this;
     /**
      * @description Build more complex where conditions.
@@ -714,8 +713,8 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @param value - The value to compare against.
      * @returns The PostgresQueryBuilder instance for chaining.
      */
-    andWhere(column: SelectableType<T>, value: BaseValues, operator: WhereOperatorType): this;
-    andWhere(column: string, value: BaseValues, operator: WhereOperatorType): this;
+    andWhere(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
+    andWhere(column: string, operator: WhereOperatorType, value: BaseValues): this;
     andWhere(column: SelectableType<T> | string, value: BaseValues): this;
     /**
      * @description Adds an OR WHERE condition to the query.
@@ -724,8 +723,8 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @param value - The value to compare against.
      * @returns The PostgresQueryBuilder instance for chaining.
      */
-    orWhere(column: SelectableType<T>, value: BaseValues, operator: WhereOperatorType): this;
-    orWhere(column: string, value: BaseValues, operator: WhereOperatorType): this;
+    orWhere(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
+    orWhere(column: string, operator: WhereOperatorType, value: BaseValues): this;
     orWhere(column: SelectableType<T> | string, value: BaseValues): this;
     /**
      * @description Adds a WHERE BETWEEN condition to the query.
@@ -1662,8 +1661,8 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @param value - The value to compare against.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    where(column: SelectableType<T>, value: BaseValues, operator: WhereOperatorType): this;
-    where(column: string, value: BaseValues, operator: WhereOperatorType): this;
+    where(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
+    where(column: string, operator: WhereOperatorType, value: BaseValues): this;
     where(column: SelectableType<T> | string, value: BaseValues): this;
     /**
      * @description Build more complex where conditions.
@@ -1687,8 +1686,8 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @param value - The value to compare against.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    andWhere(column: SelectableType<T>, value: BaseValues, operator: WhereOperatorType): this;
-    andWhere(column: string, value: BaseValues, operator: WhereOperatorType): this;
+    andWhere(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
+    andWhere(column: string, operator: WhereOperatorType, value: BaseValues): this;
     andWhere(column: SelectableType<T> | string, value: BaseValues): this;
     /**
      * @description Adds an OR WHERE condition to the query.
@@ -1697,8 +1696,8 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @param value - The value to compare against.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    orWhere(column: SelectableType<T>, value: BaseValues, operator: WhereOperatorType): this;
-    orWhere(column: string, value: BaseValues, operator: WhereOperatorType): this;
+    orWhere(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
+    orWhere(column: string, operator: WhereOperatorType, value: BaseValues): this;
     orWhere(column: SelectableType<T> | string, value: BaseValues): this;
     /**
      * @description Adds a WHERE BETWEEN condition to the query.
@@ -1976,10 +1975,10 @@ declare abstract class QueryBuilder<T extends Model> {
      * @param value - The value to compare against.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract where(column: SelectableType<T>, value: BaseValues, operator: WhereOperatorType): QueryBuilders<T>;
-    abstract where(column: string, value: BaseValues, operator: WhereOperatorType): QueryBuilders<T>;
+    abstract where(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): QueryBuilders<T>;
+    abstract where(column: string, operator: WhereOperatorType, value: BaseValues): QueryBuilders<T>;
     abstract where(column: SelectableType<T> | string, value: BaseValues): QueryBuilders<T>;
-    abstract where(column: SelectableType<T> | string, value: BaseValues, operator: WhereOperatorType): QueryBuilders<T>;
+    abstract where(column: SelectableType<T> | string, operator: WhereOperatorType, value: BaseValues): QueryBuilders<T>;
     /**
      * @description Adds an AND WHERE condition to the query.
      * @param column - The column to filter.
@@ -1987,10 +1986,10 @@ declare abstract class QueryBuilder<T extends Model> {
      * @param value - The value to compare against.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract andWhere(column: SelectableType<T>, value: BaseValues, operator: WhereOperatorType): QueryBuilders<T>;
-    abstract andWhere(column: string, value: BaseValues, operator: WhereOperatorType): QueryBuilders<T>;
+    abstract andWhere(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): QueryBuilders<T>;
+    abstract andWhere(column: string, operator: WhereOperatorType, value: BaseValues): QueryBuilders<T>;
     abstract andWhere(column: SelectableType<T> | string, value: BaseValues): QueryBuilders<T>;
-    abstract andWhere(column: SelectableType<T> | string, value: BaseValues, operator: WhereOperatorType): QueryBuilders<T>;
+    abstract andWhere(column: SelectableType<T> | string, operator: WhereOperatorType, value: BaseValues): QueryBuilders<T>;
     /**
      * @description Adds an OR WHERE condition to the query.
      * @param column - The column to filter.
@@ -1998,10 +1997,10 @@ declare abstract class QueryBuilder<T extends Model> {
      * @param value - The value to compare against.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract orWhere(column: SelectableType<T>, value: BaseValues, operator: WhereOperatorType): QueryBuilders<T>;
-    abstract orWhere(column: string, value: BaseValues, operator: WhereOperatorType): QueryBuilders<T>;
+    abstract orWhere(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): QueryBuilders<T>;
+    abstract orWhere(column: string, operator: WhereOperatorType, value: BaseValues): QueryBuilders<T>;
     abstract orWhere(column: SelectableType<T> | string, value: BaseValues): QueryBuilders<T>;
-    abstract orWhere(column: SelectableType<T> | string, value: BaseValues, operator: WhereOperatorType): QueryBuilders<T>;
+    abstract orWhere(column: SelectableType<T> | string, operator: WhereOperatorType, value: BaseValues): QueryBuilders<T>;
     /**
      * @description Adds a WHERE BETWEEN condition to the query.
      * @param column - The column to filter.
@@ -2367,31 +2366,4 @@ declare class Model {
     private static establishConnection;
 }
 
-declare function testCreate(): Promise<void>;
-declare function testUpdate(): Promise<void>;
-declare function testQuery(): Promise<void>;
-declare function testDelete(): Promise<void>;
-declare function testTrx(): Promise<void>;
-declare class User extends Model {
-    id: number;
-    name: string;
-    email: string;
-    signupSource: string;
-    isActive: boolean;
-    json: Record<string, any>;
-    createdAt: DateTime;
-    updatedAt: DateTime;
-    deletedAt: DateTime | null;
-    posts: HasMany | Post[];
-    static metadata: Metadata;
-}
-declare class Post extends Model {
-    id: number;
-    title: string;
-    content: string;
-    userId: number;
-    user: BelongsTo | User;
-    static metadata: Metadata;
-}
-
-export { BelongsTo, type DataSourceInput, type DeleteQueryBuilders, HasMany, HasOne, type Metadata, Migration, Model, Post, type QueryBuilders, Relation, SqlDataSource, type UpdateQueryBuilders, User, column, testCreate, testDelete, testQuery, testTrx, testUpdate };
+export { BelongsTo, type DataSourceInput, type DeleteQueryBuilders, HasMany, HasOne, type Metadata, Migration, Model, type QueryBuilders, Relation, SqlDataSource, type UpdateQueryBuilders, column };

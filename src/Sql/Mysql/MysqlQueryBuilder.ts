@@ -291,24 +291,35 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
    */
   public where(
     column: SelectableType<T>,
-    value: BaseValues,
     operator: WhereOperatorType,
+    value: BaseValues,
   ): this;
   public where(
     column: string,
-    value: BaseValues,
     operator: WhereOperatorType,
+    value: BaseValues,
   ): this;
   public where(column: SelectableType<T> | string, value: BaseValues): this;
   public where(
     column: SelectableType<T> | string,
-    value: BaseValues,
-    operator: WhereOperatorType = "=",
+    operatorOrValue: WhereOperatorType | BaseValues,
+    value?: BaseValues,
   ): this {
+    let operator: WhereOperatorType = "=";
+    let actualValue: BaseValues;
+
+    if (typeof operatorOrValue === "string" && value) {
+      operator = operatorOrValue as WhereOperatorType;
+      actualValue = value;
+    } else {
+      actualValue = operatorOrValue as BaseValues;
+      operator = "=";
+    }
+
     if (this.whereQuery || this.isNestedCondition) {
       const { query, params } = this.whereTemplate.andWhere(
         column as string,
-        value,
+        actualValue,
         operator,
       );
       this.whereQuery += query;
@@ -318,10 +329,10 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
     const { query, params } = this.whereTemplate.where(
       column as string,
-      value,
+      actualValue,
       operator,
     );
-    this.whereQuery = query;
+    this.whereQuery += query;
     this.params.push(...params);
     return this;
   }
@@ -451,24 +462,35 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
    */
   public andWhere(
     column: SelectableType<T>,
-    value: BaseValues,
     operator: WhereOperatorType,
+    value: BaseValues,
   ): this;
   public andWhere(
     column: string,
-    value: BaseValues,
     operator: WhereOperatorType,
+    value: BaseValues,
   ): this;
   public andWhere(column: SelectableType<T> | string, value: BaseValues): this;
   public andWhere(
     column: SelectableType<T> | string,
-    value: BaseValues,
-    operator: WhereOperatorType = "=",
+    operatorOrValue: WhereOperatorType | BaseValues,
+    value?: BaseValues,
   ): this {
+    let operator: WhereOperatorType = "=";
+    let actualValue: BaseValues;
+
+    if (typeof operatorOrValue === "string" && value) {
+      operator = operatorOrValue as WhereOperatorType;
+      actualValue = value;
+    } else {
+      actualValue = operatorOrValue as BaseValues;
+      operator = "=";
+    }
+
     if (!this.whereQuery && !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.where(
         column as string,
-        value,
+        actualValue,
         operator,
       );
       this.whereQuery = query;
@@ -478,7 +500,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
     const { query, params } = this.whereTemplate.andWhere(
       column as string,
-      value,
+      actualValue,
       operator,
     );
     this.whereQuery += query;
@@ -495,24 +517,35 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
    */
   public orWhere(
     column: SelectableType<T>,
-    value: BaseValues,
     operator: WhereOperatorType,
+    value: BaseValues,
   ): this;
   public orWhere(
     column: string,
-    value: BaseValues,
     operator: WhereOperatorType,
+    value: BaseValues,
   ): this;
   public orWhere(column: SelectableType<T> | string, value: BaseValues): this;
   public orWhere(
     column: SelectableType<T> | string,
-    value: BaseValues,
-    operator: WhereOperatorType = "=",
+    operatorOrValue: WhereOperatorType | BaseValues,
+    value?: BaseValues,
   ): this {
+    let operator: WhereOperatorType = "=";
+    let actualValue: BaseValues;
+
+    if (typeof operatorOrValue === "string" && value) {
+      operator = operatorOrValue as WhereOperatorType;
+      actualValue = value;
+    } else {
+      actualValue = operatorOrValue as BaseValues;
+      operator = "=";
+    }
+
     if (!this.whereQuery && !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.where(
         column as string,
-        value,
+        actualValue,
         operator,
       );
       this.whereQuery = query;
@@ -522,7 +555,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
     const { query, params } = this.whereTemplate.orWhere(
       column as string,
-      value,
+      actualValue,
       operator,
     );
     this.whereQuery += query;

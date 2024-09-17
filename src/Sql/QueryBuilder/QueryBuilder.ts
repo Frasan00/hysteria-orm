@@ -186,13 +186,13 @@ export abstract class QueryBuilder<T extends Model> {
    */
   public abstract where(
     column: SelectableType<T>,
-    value: BaseValues,
     operator: WhereOperatorType,
+    value: BaseValues,
   ): QueryBuilders<T>;
   public abstract where(
     column: string,
-    value: BaseValues,
     operator: WhereOperatorType,
+    value: BaseValues,
   ): QueryBuilders<T>;
   public abstract where(
     column: SelectableType<T> | string,
@@ -200,8 +200,8 @@ export abstract class QueryBuilder<T extends Model> {
   ): QueryBuilders<T>;
   public abstract where(
     column: SelectableType<T> | string,
-    value: BaseValues,
     operator: WhereOperatorType,
+    value: BaseValues,
   ): QueryBuilders<T>;
 
   /**
@@ -213,13 +213,13 @@ export abstract class QueryBuilder<T extends Model> {
    */
   public abstract andWhere(
     column: SelectableType<T>,
-    value: BaseValues,
     operator: WhereOperatorType,
+    value: BaseValues,
   ): QueryBuilders<T>;
   public abstract andWhere(
     column: string,
-    value: BaseValues,
     operator: WhereOperatorType,
+    value: BaseValues,
   ): QueryBuilders<T>;
   public abstract andWhere(
     column: SelectableType<T> | string,
@@ -227,8 +227,8 @@ export abstract class QueryBuilder<T extends Model> {
   ): QueryBuilders<T>;
   public abstract andWhere(
     column: SelectableType<T> | string,
-    value: BaseValues,
     operator: WhereOperatorType,
+    value: BaseValues,
   ): QueryBuilders<T>;
 
   /**
@@ -240,13 +240,13 @@ export abstract class QueryBuilder<T extends Model> {
    */
   public abstract orWhere(
     column: SelectableType<T>,
-    value: BaseValues,
     operator: WhereOperatorType,
+    value: BaseValues,
   ): QueryBuilders<T>;
   public abstract orWhere(
     column: string,
-    value: BaseValues,
     operator: WhereOperatorType,
+    value: BaseValues,
   ): QueryBuilders<T>;
   public abstract orWhere(
     column: SelectableType<T> | string,
@@ -254,8 +254,8 @@ export abstract class QueryBuilder<T extends Model> {
   ): QueryBuilders<T>;
   public abstract orWhere(
     column: SelectableType<T> | string,
-    value: BaseValues,
     operator: WhereOperatorType,
+    value: BaseValues,
   ): QueryBuilders<T>;
 
   /**

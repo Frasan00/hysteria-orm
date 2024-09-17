@@ -13,7 +13,6 @@ import {
 } from "./Sql/QueryBuilder/QueryBuilder";
 import { SqlDataSource } from "./Sql/SqlDatasource";
 
-
 export {
   Model,
   column,

@@ -294,11 +294,11 @@ const users: User[] = await User.query()
 const user: User | null = await User.query().whereBuilder((queryBuilder) => {
     queryBuilder.andWhereBuilder((innerQueryBuilder) => {
         innerQueryBuilder.where('department', 'sales');
-        innerQueryBuilder.where('hired_date', '2020-01-01', '>=');
+        innerQueryBuilder.where('hired_date', '>=', '2020-01-01');
     });
     queryBuilder.orWhereBuilder((innerQuery) => {
         innerQuery.where('department', 'engineering');
-        innerQuery.where('hired_date', '2022-01-01', '>=');
+        innerQuery.where('hired_date', '>=', '2022-01-01');
     });
     queryBuilder.where('is_active', true);
 });
@@ -467,12 +467,12 @@ const jsonQuery = await User.query().where("json_prop", { main: "value" }).one()
 
 // Contains
 const jsonQueryContains = await User.query()
-    .where("json_prop", { main: "value" }, ">")
+    .where("json_prop",  ">", { main: "value" })
     .one();
 
 // Does not contain
 const jsonQueryContains = await User.query()
-    .where("json_prop", { main: "value" }, "<")
+    .where("json_prop", "<", { main: "value" })
     .one();
 
 // Create new users
