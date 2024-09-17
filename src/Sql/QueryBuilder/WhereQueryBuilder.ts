@@ -1,4 +1,5 @@
 import { Model } from "../Models/Model";
+import { SelectableType } from "../Models/ModelManager/ModelManagerTypes";
 import whereTemplate, {
   BaseValues,
   WhereOperatorType,
@@ -17,7 +18,7 @@ export abstract class WhereQueryBuilder<T extends Model> {
   protected isNestedCondition = false;
 
   /**
-   * @description Constructs a MysqlQueryBuilder instance.
+   * @description Constructs a QueryBuilder instance.
    * @param model - The model class associated with the table.
    * @param tableName - The name of the table.
    * @param logs - A boolean indicating whether to log queries.
@@ -47,17 +48,39 @@ export abstract class WhereQueryBuilder<T extends Model> {
    * @param column - The column to filter.
    * @param operator - The comparison operator.
    * @param value - The value to compare against.
-   * @returns The MysqlQueryBuilder instance for chaining.
+   * @returns The QueryBuilder instance for chaining.
    */
   public where(
-    column: string,
+    column: SelectableType<T>,
+    operator: WhereOperatorType,
     value: BaseValues,
-    operator: WhereOperatorType = "=",
+  ): this;
+  public where(
+    column: string,
+    operator: WhereOperatorType,
+    value: BaseValues,
+  ): this;
+  public where(column: SelectableType<T> | string, value: BaseValues): this;
+  public where(
+    column: SelectableType<T> | string,
+    operatorOrValue: WhereOperatorType | BaseValues,
+    value?: BaseValues,
   ): this {
+    let operator: WhereOperatorType = "=";
+    let actualValue: BaseValues;
+
+    if (typeof operatorOrValue === "string" && value) {
+      operator = operatorOrValue as WhereOperatorType;
+      actualValue = value;
+    } else {
+      actualValue = operatorOrValue as BaseValues;
+      operator = "=";
+    }
+
     if (this.whereQuery || this.isNestedCondition) {
       const { query, params } = this.whereTemplate.andWhere(
         column as string,
-        value,
+        actualValue,
         operator,
       );
       this.whereQuery += query;
@@ -67,7 +90,7 @@ export abstract class WhereQueryBuilder<T extends Model> {
 
     const { query, params } = this.whereTemplate.where(
       column as string,
-      value,
+      actualValue,
       operator,
     );
     this.whereQuery = query;
@@ -80,17 +103,39 @@ export abstract class WhereQueryBuilder<T extends Model> {
    * @param column - The column to filter.
    * @param operator - The comparison operator.
    * @param value - The value to compare against.
-   * @returns The MysqlQueryBuilder instance for chaining.
+   * @returns The QueryBuilder instance for chaining.
    */
   public andWhere(
-    column: string,
+    column: SelectableType<T>,
+    operator: WhereOperatorType,
     value: BaseValues,
-    operator: WhereOperatorType = "=",
+  ): this;
+  public andWhere(
+    column: string,
+    operator: WhereOperatorType,
+    value: BaseValues,
+  ): this;
+  public andWhere(column: SelectableType<T> | string, value: BaseValues): this;
+  public andWhere(
+    column: SelectableType<T> | string,
+    operatorOrValue: WhereOperatorType | BaseValues,
+    value?: BaseValues,
   ): this {
+    let operator: WhereOperatorType = "=";
+    let actualValue: BaseValues;
+
+    if (typeof operatorOrValue === "string" && value) {
+      operator = operatorOrValue as WhereOperatorType;
+      actualValue = value;
+    } else {
+      actualValue = operatorOrValue as BaseValues;
+      operator = "=";
+    }
+
     if (!this.whereQuery && !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.where(
         column as string,
-        value,
+        actualValue,
         operator,
       );
       this.whereQuery = query;
@@ -100,7 +145,7 @@ export abstract class WhereQueryBuilder<T extends Model> {
 
     const { query, params } = this.whereTemplate.andWhere(
       column as string,
-      value,
+      actualValue,
       operator,
     );
     this.whereQuery += query;
@@ -113,17 +158,39 @@ export abstract class WhereQueryBuilder<T extends Model> {
    * @param column - The column to filter.
    * @param operator - The comparison operator.
    * @param value - The value to compare against.
-   * @returns The MysqlQueryBuilder instance for chaining.
+   * @returns The QueryBuilder instance for chaining.
    */
   public orWhere(
-    column: string,
+    column: SelectableType<T>,
+    operator: WhereOperatorType,
     value: BaseValues,
-    operator: WhereOperatorType = "=",
+  ): this;
+  public orWhere(
+    column: string,
+    operator: WhereOperatorType,
+    value: BaseValues,
+  ): this;
+  public orWhere(column: SelectableType<T> | string, value: BaseValues): this;
+  public orWhere(
+    column: SelectableType<T> | string,
+    operatorOrValue: WhereOperatorType | BaseValues,
+    value?: BaseValues,
   ): this {
+    let operator: WhereOperatorType = "=";
+    let actualValue: BaseValues;
+
+    if (typeof operatorOrValue === "string" && value) {
+      operator = operatorOrValue as WhereOperatorType;
+      actualValue = value;
+    } else {
+      actualValue = operatorOrValue as BaseValues;
+      operator = "=";
+    }
+
     if (!this.whereQuery && !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.where(
         column as string,
-        value,
+        actualValue,
         operator,
       );
       this.whereQuery = query;
@@ -133,7 +200,7 @@ export abstract class WhereQueryBuilder<T extends Model> {
 
     const { query, params } = this.whereTemplate.orWhere(
       column as string,
-      value,
+      actualValue,
       operator,
     );
     this.whereQuery += query;
@@ -146,9 +213,11 @@ export abstract class WhereQueryBuilder<T extends Model> {
    * @param column - The column to filter.
    * @param min - The minimum value for the range.
    * @param max - The maximum value for the range.
-   * @returns The MysqlQueryBuilder instance for chaining.
+   * @returns The QueryBuilder instance for chaining.
    */
-  public whereBetween(column: string, min: BaseValues, max: BaseValues): this {
+  public whereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
+  public whereBetween(column: string, min: BaseValues, max: BaseValues): this;
+  public whereBetween(column: SelectableType<T> | string, min: BaseValues, max: BaseValues): this {
     if (!this.whereQuery && !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereBetween(
         column as string,
@@ -175,10 +244,12 @@ export abstract class WhereQueryBuilder<T extends Model> {
    * @param column - The column to filter.
    * @param min - The minimum value for the range.
    * @param max - The maximum value for the range.
-   * @returns The MysqlQueryBuilder instance for chaining.
+   * @returns The QueryBuilder instance for chaining.
    */
+  public andWhereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
+  public andWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
   public andWhereBetween(
-    column: string,
+    column: SelectableType<T> | string,
     min: BaseValues,
     max: BaseValues,
   ): this {
@@ -208,10 +279,12 @@ export abstract class WhereQueryBuilder<T extends Model> {
    * @param column - The column to filter.
    * @param min - The minimum value for the range.
    * @param max - The maximum value for the range.
-   * @returns The MysqlQueryBuilder instance for chaining.
+   * @returns The QueryBuilder instance for chaining.
    */
+  public orWhereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
+  public orWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
   public orWhereBetween(
-    column: string,
+    column: SelectableType<T> | string,
     min: BaseValues,
     max: BaseValues,
   ): this {
@@ -241,10 +314,12 @@ export abstract class WhereQueryBuilder<T extends Model> {
    * @param column - The column to filter.
    * @param min - The minimum value for the range.
    * @param max - The maximum value for the range.
-   * @returns The MysqlQueryBuilder instance for chaining.
+   * @returns The QueryBuilder instance for chaining.
    */
+  public whereNotBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
+  public whereNotBetween(column: string, min: BaseValues, max: BaseValues): this;
   public whereNotBetween(
-    column: string,
+    column: SelectableType<T> | string,
     min: BaseValues,
     max: BaseValues,
   ): this {
@@ -274,10 +349,12 @@ export abstract class WhereQueryBuilder<T extends Model> {
    * @param column - The column to filter.
    * @param min - The minimum value for the range.
    * @param max - The maximum value for the range.
-   * @returns The MysqlQueryBuilder instance for chaining.
+   * @returns The QueryBuilder instance for chaining.
    */
+  public orWhereNotBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
+  public orWhereNotBetween(column: string, min: BaseValues, max: BaseValues): this;
   public orWhereNotBetween(
-    column: string,
+    column: SelectableType<T> | string,
     min: BaseValues,
     max: BaseValues,
   ): this {
@@ -306,9 +383,11 @@ export abstract class WhereQueryBuilder<T extends Model> {
    * @description Adds a WHERE IN condition to the query.
    * @param column - The column to filter.
    * @param values - An array of values to match against.
-   * @returns The MysqlQueryBuilder instance for chaining.
+   * @returns The QueryBuilder instance for chaining.
    */
-  public whereIn(column: string, values: BaseValues[]): this {
+  public whereIn(column: SelectableType<T>, values: BaseValues[]): this;
+  public whereIn(column: string, values: BaseValues[]): this
+  public whereIn(column: SelectableType<T> | string, values: BaseValues[]): this {
     if (!this.whereQuery || !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereIn(
         column as string,
@@ -332,9 +411,11 @@ export abstract class WhereQueryBuilder<T extends Model> {
    * @description Adds an AND WHERE IN condition to the query.
    * @param column - The column to filter.
    * @param values - An array of values to match against.
-   * @returns The MysqlQueryBuilder instance for chaining.
+   * @returns The QueryBuilder instance for chaining.
    */
-  public andWhereIn(column: string, values: BaseValues[]): this {
+  public andWhereIn(column: SelectableType<T>, values: BaseValues[]): this;
+  public andWhereIn(column: string, values: BaseValues[]): this;
+  public andWhereIn(column: SelectableType<T> | string, values: BaseValues[]): this {
     if (!this.whereQuery || !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereIn(
         column as string,
@@ -358,9 +439,11 @@ export abstract class WhereQueryBuilder<T extends Model> {
    * @description Adds an OR WHERE IN condition to the query.
    * @param column - The column to filter.
    * @param values - An array of values to match against.
-   * @returns The MysqlQueryBuilder instance for chaining.
+   * @returns The QueryBuilder instance for chaining.
    */
-  public orWhereIn(column: string, values: BaseValues[]): this {
+  public orWhereIn(column: SelectableType<T>, values: BaseValues[]): this;
+  public orWhereIn(column: string, values: BaseValues[]): this
+  public orWhereIn(column: SelectableType<T> | string, values: BaseValues[]): this {
     if (!this.whereQuery || !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereIn(
         column as string,
@@ -384,9 +467,11 @@ export abstract class WhereQueryBuilder<T extends Model> {
    * @description Adds a WHERE NOT IN condition to the query.
    * @param column - The column to filter.
    * @param values - An array of values to exclude.
-   * @returns The MysqlQueryBuilder instance for chaining.
+   * @returns The QueryBuilder instance for chaining.
    */
-  public whereNotIn(column: string, values: BaseValues[]): this {
+  public whereNotIn(column: SelectableType<T>, values: BaseValues[]): this;
+  public whereNotIn(column: string, values: BaseValues[]): this;
+  public whereNotIn(column: SelectableType<T> | string, values: BaseValues[]): this {
     if (!this.whereQuery || !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereNotIn(
         column as string,
@@ -410,9 +495,11 @@ export abstract class WhereQueryBuilder<T extends Model> {
    * @description Adds an OR WHERE NOT IN condition to the query.
    * @param column - The column to filter.
    * @param values - An array of values to exclude.
-   * @returns The MysqlQueryBuilder instance for chaining.
+   * @returns The QueryBuilder instance for chaining.
    */
-  public orWhereNotIn(column: string, values: BaseValues[]): this {
+  public orWhereNotIn(column: SelectableType<T>, values: BaseValues[]): this;
+  public orWhereNotIn(column: string, values: BaseValues[]): this;
+  public orWhereNotIn(column: SelectableType<T> | string, values: BaseValues[]): this {
     if (!this.whereQuery || !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereNotIn(
         column as string,
@@ -435,9 +522,11 @@ export abstract class WhereQueryBuilder<T extends Model> {
   /**
    * @description Adds a WHERE NULL condition to the query.
    * @param column - The column to filter.
-   * @returns The MysqlQueryBuilder instance for chaining.
+   * @returns The QueryBuilder instance for chaining.
    */
-  public whereNull(column: string): this {
+  public whereNull(column: SelectableType<T>): this;
+  public whereNull(column: string): this;
+  public whereNull(column: SelectableType<T> | string): this {
     if (!this.whereQuery || !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereNull(column as string);
       this.whereQuery = query;
@@ -454,9 +543,11 @@ export abstract class WhereQueryBuilder<T extends Model> {
   /**
    * @description Adds an AND WHERE NULL condition to the query.
    * @param column - The column to filter.
-   * @returns The MysqlQueryBuilder instance for chaining.
+   * @returns The QueryBuilder instance for chaining.
    */
-  public andWhereNull(column: string): this {
+  public andWhereNull(column: SelectableType<T>): this;
+  public andWhereNull(column: string): this;
+  public andWhereNull(column: SelectableType<T> | string): this {
     if (!this.whereQuery || !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereNull(column as string);
       this.whereQuery = query;
@@ -473,9 +564,11 @@ export abstract class WhereQueryBuilder<T extends Model> {
   /**
    * @description Adds an OR WHERE NULL condition to the query.
    * @param column - The column to filter.
-   * @returns The MysqlQueryBuilder instance for chaining.
+   * @returns The QueryBuilder instance for chaining.
    */
-  public orWhereNull(column: string): this {
+  public orWhereNull(column: SelectableType<T>): this;
+  public orWhereNull(column: string): this;
+  public orWhereNull(column: SelectableType<T> | string): this {
     if (!this.whereQuery || !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereNull(column as string);
       this.whereQuery = query;
@@ -492,9 +585,11 @@ export abstract class WhereQueryBuilder<T extends Model> {
   /**
    * @description Adds a WHERE NOT NULL condition to the query.
    * @param column - The column to filter.
-   * @returns The MysqlQueryBuilder instance for chaining.
+   * @returns The QueryBuilder instance for chaining.
    */
-  public whereNotNull(column: string): this {
+  public whereNotNull(column: SelectableType<T>): this;
+  public whereNotNull(column: string): this;
+  public whereNotNull(column: SelectableType<T> | string): this {
     if (!this.whereQuery || !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereNotNull(
         column as string,
@@ -515,9 +610,11 @@ export abstract class WhereQueryBuilder<T extends Model> {
   /**
    * @description Adds an AND WHERE NOT NULL condition to the query.
    * @param column - The column to filter.
-   * @returns The MysqlQueryBuilder instance for chaining.
+   * @returns The QueryBuilder instance for chaining.
    */
-  public andWhereNotNull(column: string): this {
+  public andWhereNotNull(column: SelectableType<T>): this;
+  public andWhereNotNull(column: string): this;
+  public andWhereNotNull(column: SelectableType<T> | string): this {
     if (!this.whereQuery || !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereNotNull(
         column as string,
@@ -538,9 +635,11 @@ export abstract class WhereQueryBuilder<T extends Model> {
   /**
    * @description Adds an OR WHERE NOT NULL condition to the query.
    * @param column - The column to filter.
-   * @returns The MysqlQueryBuilder instance for chaining.
+   * @returns The QueryBuilder instance for chaining.
    */
-  public orWhereNotNull(column: string) {
+  public orWhereNotNull(column: SelectableType<T>): this;
+  public orWhereNotNull(column: string): this;
+  public orWhereNotNull(column: SelectableType<T> | string): this {
     if (!this.whereQuery || !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereNotNull(
         column as string,
@@ -561,7 +660,7 @@ export abstract class WhereQueryBuilder<T extends Model> {
   /**
    * @description Adds a raw WHERE condition to the query.
    * @param query - The raw SQL WHERE condition.
-   * @returns The MysqlQueryBuilder instance for chaining.
+   * @returns The QueryBuilder instance for chaining.
    */
   public rawWhere(query: string) {
     if (!this.whereQuery || !this.isNestedCondition) {
@@ -580,7 +679,7 @@ export abstract class WhereQueryBuilder<T extends Model> {
   /**
    * @description Adds a raw AND WHERE condition to the query.
    * @param query - The raw SQL WHERE condition.
-   * @returns The MysqlQueryBuilder instance for chaining.
+   * @returns The QueryBuilder instance for chaining.
    */
   public rawAndWhere(query: string) {
     if (!this.whereQuery || !this.isNestedCondition) {
@@ -599,7 +698,7 @@ export abstract class WhereQueryBuilder<T extends Model> {
   /**
    * @description Adds a raw OR WHERE condition to the query.
    * @param query - The raw SQL WHERE condition.
-   * @returns The MysqlQueryBuilder instance for chaining.
+   * @returns The QueryBuilder instance for chaining.
    */
   public rawOrWhere(query: string) {
     if (!this.whereQuery || !this.isNestedCondition) {

@@ -1,6 +1,5 @@
 import { Model } from "../Models/Model";
 import { BaseValues, WhereOperatorType } from "../Resources/Query/WHERE.TS";
-import { SelectableType } from "../Models/ModelManager/ModelManagerTypes";
 import { log, queryError } from "../../Logger";
 import { WhereQueryBuilder } from "../QueryBuilder/WhereQueryBuilder";
 import updateTemplate from "../Resources/Query/UPDATE";
@@ -125,39 +124,6 @@ export class PostgresUpdateQueryBuilder<
       foreignColumn as string,
     );
     this.joinQuery += join.innerJoin();
-    return this;
-  }
-
-  /**
-   * @description Adds a WHERE condition to the query.
-   * @param column - The column to filter.
-   * @param operator - The comparison operator.
-   * @param value - The value to compare against.
-   * @returns The MysqlQueryBuilder instance for chaining.
-   */
-  public where(
-    column: string,
-    value: BaseValues,
-    operator: WhereOperatorType = "=",
-  ): this {
-    if (this.whereQuery || this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.andWhere(
-        column as string,
-        value,
-        operator,
-      );
-      this.whereQuery += query;
-      this.whereParams.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.where(
-      column as string,
-      value,
-      operator,
-    );
-    this.whereQuery = query;
-    this.whereParams.push(...params);
     return this;
   }
 
