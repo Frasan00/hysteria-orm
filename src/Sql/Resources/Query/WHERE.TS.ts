@@ -4,12 +4,22 @@ import { DataSourceType } from "../../../Datasource";
 export type WhereOperatorType =
   | "="
   | "!="
+  | "<>"
   | ">"
   | "<"
   | ">="
   | "<="
   | "LIKE"
-  | "ILIKE";
+  | "ILIKE"
+  | "NOT LIKE"
+  | "NOT ILIKE"
+  | "IN"
+  | "NOT IN"
+  | "BETWEEN"
+  | "NOT BETWEEN"
+  | "IS NULL"
+  | "IS NOT NULL";
+
 export type BaseValues = string | number | boolean | object;
 
 const whereTemplate = (_tableName: string, dbType: DataSourceType) => {
