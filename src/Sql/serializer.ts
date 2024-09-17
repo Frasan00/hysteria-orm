@@ -1,6 +1,6 @@
 import { fromSnakeToCamelCase } from "../CaseUtils";
 import { isNestedObject } from "./jsonUtils";
-import { Model } from "./Models/Model";
+import { getModelBooleanColumns, Model } from "./Models/Model";
 import { Relation, RelationType } from "./Models/Relations/Relation";
 
 export async function parseDatabaseDataIntoModelResponse<T extends Model>(
@@ -18,7 +18,7 @@ export async function parseDatabaseDataIntoModelResponse<T extends Model>(
   );
 
   const serializedModels = models.map((model) => {
-    const serializedModel = serializeModel(model);
+    const serializedModel = serializeModel(model, typeofModel);
     processRelation(
       serializedModel,
       tempModel,
@@ -33,8 +33,12 @@ export async function parseDatabaseDataIntoModelResponse<T extends Model>(
   return serializedModels.length === 1 ? serializedModels[0] : serializedModels;
 }
 
-function serializeModel<T extends Record<string, any>>(model: T): T {
+function serializeModel<T extends Record<string, any>>(
+  model: T,
+  typeofModel: typeof Model,
+): T {
   const camelCaseModel: Record<string, any> = {};
+  const booleanColumns = getModelBooleanColumns(typeofModel);
 
   for (const key in model) {
     if (model[key] === undefined) {
@@ -49,7 +53,7 @@ function serializeModel<T extends Record<string, any>>(model: T): T {
 
       const originalValue = model[key];
       // Include null values
-      if (!originalValue) {
+      if (originalValue == null) {
         camelCaseModel[fromSnakeToCamelCase(key)] = originalValue;
         continue;
       }
@@ -66,6 +70,12 @@ function serializeModel<T extends Record<string, any>>(model: T): T {
 
       // TODO: For now, non relation arrays are not supported
       if (Array.isArray(originalValue)) {
+        continue;
+      }
+
+      if (booleanColumns.includes(camelCaseKey)) {
+        camelCaseModel[camelCaseKey] = Boolean(originalValue);
+        console.log(camelCaseKey, originalValue);
         continue;
       }
 
@@ -96,9 +106,7 @@ function processExtraColumns(
   camelCaseModel[key] = extraColumns;
 }
 
-function isRelationDefinition<T extends Record<string, any>>(
-  originalValue: any,
-): originalValue is Relation {
+function isRelationDefinition(originalValue: any): originalValue is Relation {
   if (
     originalValue.hasOwnProperty("type") &&
     originalValue.hasOwnProperty("relatedModel") &&
@@ -131,7 +139,6 @@ function processRelation(
     const foreignKey = fromSnakeToCamelCase(relation.foreignKey) as string;
     const primaryKey = typeofModel.metadata.primaryKey as string;
 
-    // Create a map for quick lookup
     const relatedModelMap = new Map<any, Model>();
     relatedModel.forEach((model) => {
       relatedModelMap.set(model[primaryKey as keyof Model], model);
@@ -145,7 +152,10 @@ function processRelation(
         );
 
         if (retrievedRelatedModel) {
-          serializedModel[relationName] = serializeModel(retrievedRelatedModel);
+          serializedModel[relationName] = serializeModel(
+            retrievedRelatedModel,
+            relation.model,
+          );
         }
         break;
 
@@ -163,9 +173,9 @@ function processRelation(
             serializedModel[primaryKey as keyof Model],
         );
 
-        serializedModel[relationName] = retrievedRelatedModels
-          .flat()
-          .map((model) => serializeModel(model));
+        serializedModel[relationName] = retrievedRelatedModels.map((model) =>
+          serializeModel(model, relation.model),
+        );
         break;
 
       default:

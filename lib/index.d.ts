@@ -546,6 +546,15 @@ type PaginatedData<T> = {
     data: T[];
 };
 
+/**
+ * @description Options for the relation
+ * @property {string} softDeleteColumn - The column name for the soft delete column, if set, the relation will only return rows that have not been soft deleted
+ * @property {string} softDeleteType - The type of the soft delete column
+ */
+interface RelationOptions {
+    softDeleteColumn: string;
+    softDeleteType: "date" | "boolean";
+}
 declare enum RelationType$1 {
     hasOne = "hasOne",// One to One without foreign key
     belongsTo = "belongsTo",// One to One with foreign key
@@ -556,27 +565,29 @@ declare enum RelationType$1 {
  */
 declare abstract class Relation {
     abstract type: RelationType$1;
+    model: typeof Model;
     foreignKey?: string;
     relatedModel: string;
-    protected constructor(relatedModel: string);
+    options?: RelationOptions;
+    protected constructor(model: typeof Model, options?: RelationOptions);
 }
 
 declare class BelongsTo extends Relation {
     type: RelationType$1;
     foreignKey: string;
-    constructor(relatedModel: string, foreignKey: string);
+    constructor(relatedModel: typeof Model, foreignKey: string, options?: RelationOptions);
 }
 
 declare class HasMany extends Relation {
     type: RelationType$1;
     foreignKey: string;
-    constructor(relatedModel: string, foreignKey: string);
+    constructor(relatedModel: typeof Model, foreignKey: string, options?: RelationOptions);
 }
 
 declare class HasOne extends Relation {
     type: RelationType$1;
     foreignKey: string;
-    constructor(relatedModel: string, foreignKey: string);
+    constructor(relatedModel: typeof Model, foreignKey: string, options?: RelationOptions);
 }
 
 type ExcludeRelations<T> = {
@@ -2203,7 +2214,10 @@ interface Metadata {
     readonly tableName: string;
     readonly primaryKey?: string;
 }
-declare function column(): PropertyDecorator;
+interface ColumnOptions {
+    booleanColumn: boolean;
+}
+declare function column(options?: ColumnOptions): PropertyDecorator;
 declare class Model {
     extraColumns: {
         [key: string]: string | number | boolean;

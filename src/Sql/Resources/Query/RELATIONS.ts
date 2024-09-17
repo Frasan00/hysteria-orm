@@ -1,6 +1,7 @@
 import { Relation, RelationType } from "../../Models/Relations/Relation";
 import { Model } from "../../Models/Model";
 import { camelToSnakeCase, fromSnakeToCamelCase } from "../../../CaseUtils";
+import logger from "../../../Logger";
 
 function relationTemplates<T extends Model>(
   models: T[],
@@ -28,36 +29,48 @@ function relationTemplates<T extends Model>(
     );
   });
 
+  const softDeleteColumn = relation.options?.softDeleteColumn;
+  const softDeleteQuery =
+    relation.options?.softDeleteType === "date"
+      ? ` AND ${relatedModel}.${camelToSnakeCase(softDeleteColumn)} IS NULL`
+      : ` AND ${relatedModel}.${fromSnakeToCamelCase(
+          softDeleteColumn,
+        )} = false`;
+
   switch (relation.type) {
     case RelationType.hasOne:
       if (primaryKeyValues.some((value) => !value)) {
-        console.error(`Invalid primaryKey values: ${primaryKeyValues}`);
+        logger.error(`Invalid primaryKey values: ${primaryKeyValues}`);
         throw new Error("Invalid primaryKey values");
       }
 
       return `SELECT *, '${relationName}' as relation_name FROM ${relatedModel} WHERE ${relatedModel}.${camelToSnakeCase(
         foreignKey,
-      )} IN (${primaryKeyValues.join(", ")});`;
+      )} IN (${primaryKeyValues.join(", ")}) ${
+        softDeleteColumn ? softDeleteQuery : ""
+      };`;
 
     case RelationType.belongsTo:
       if (foreignKeyValues.some((value) => !value)) {
-        console.error(`Invalid foreignKey values: ${foreignKeyValues}`);
+        logger.error(`Invalid foreignKey values: ${foreignKeyValues}`);
         throw new Error("Invalid foreignKey values");
       }
 
       return `SELECT *, '${relationName}' as relation_name FROM ${relatedModel} WHERE ${relatedModel}.${primaryKey.toString()} IN (${foreignKeyValues.join(
         ", ",
-      )});`;
+      )}) ${softDeleteColumn ? softDeleteQuery : ""};`;
 
     case RelationType.hasMany:
       if (primaryKeyValues.some((value) => !value)) {
-        console.error(`Invalid primaryKey values: ${primaryKeyValues}`);
+        logger.error(`Invalid primaryKey values: ${primaryKeyValues}`);
         throw new Error("Invalid primaryKey values");
       }
 
       return `SELECT *, '${relationName}' as relation_name FROM ${relatedModel} WHERE ${relatedModel}.${camelToSnakeCase(
         foreignKey,
-      )} IN (${primaryKeyValues.join(", ")});`;
+      )} IN (${primaryKeyValues.join(", ")}) ${
+        softDeleteColumn ? softDeleteQuery : ""
+      };`;
 
     default:
       throw new Error(`Unknown relation type: ${relation.type}`);

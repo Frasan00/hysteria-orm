@@ -129,7 +129,10 @@ export class User extends Model {
   @column()
   declare signupSource: string;
 
-  @column()
+  // Only useful with mysql to convert tiny int directly in Boolean
+  @column({
+    booleanColumn: true
+  })
   declare isActive: boolean;
 
   @column()
@@ -138,7 +141,7 @@ export class User extends Model {
   @column()
   declare createdAt: DateTime;
 
-  public static metadata: Metadata = {
+   publicstatic metadata: Metadata = {
     primaryKey: "id",
     tableName: "users",
   };
@@ -176,8 +179,11 @@ export class User extends Model {
     declare createdAt: DateTime;
 
     // Relations take as params (TableName, foreignKey)
-    public profile: Profile | HasOne = new HasOne("profiles", "user_id");
-    public posts: Post[] | HasMany = new HasMany("posts", "user_id");
+    public profile: Profile | HasOne = new HasOne(Profile, "user_id");
+    /* You can pass a soft delete column with the relative type in order to remove those records while using query().addRelation method
+    * Date soft column will be queried as AND column IS NULL, boolean soft delete column will be queried column = false instead
+    */
+    public posts: HasMany | Post[] = new HasMany(Post, "userId", { softDeleteColumn: "deletedAt", softDeleteType: "date" });
 
     public static metadata: Metadata = {
         primaryKey: "id",
@@ -324,6 +330,7 @@ const user: User | null = await User.query()
 - Relations can be retrieved both from Standard methods and the query builder
 - Those retrieves are especially fast since for each relation a single db query is made and the retrieve of each relation for each model is made in O(n)
 - Based on the relation type can be retrieved both a list (HasMany) or a single record (BelongsTo, HasOne)
+- Those are special queries that are not influenced by hooks defined in the class
 
 ```typescript
 const user: User | null = await User.query()

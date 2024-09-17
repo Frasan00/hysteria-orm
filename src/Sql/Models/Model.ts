@@ -22,6 +22,10 @@ export interface Metadata {
   readonly primaryKey?: string;
 }
 
+interface ColumnOptions {
+  booleanColumn: boolean;
+}
+
 function getBaseMetadata(className: string): Metadata {
   className = className.at(0)?.toLowerCase() + className.slice(1);
   const tableName = className.endsWith("s")
@@ -35,8 +39,23 @@ function getBaseMetadata(className: string): Metadata {
 
 const COLUMN_METADATA_KEY = Symbol("columns");
 
-export function column(): PropertyDecorator {
+const BOOLEAN_COLUMN_METADATA_KEY = Symbol("booleanColumns");
+
+export function column(
+  options: ColumnOptions = { booleanColumn: false },
+): PropertyDecorator {
   return (target: Object, propertyKey: string | symbol) => {
+    if (options.booleanColumn) {
+      const booleanColumns =
+        Reflect.getMetadata(BOOLEAN_COLUMN_METADATA_KEY, target) || [];
+      booleanColumns.push(propertyKey);
+      Reflect.defineMetadata(
+        BOOLEAN_COLUMN_METADATA_KEY,
+        booleanColumns,
+        target,
+      );
+    }
+
     const existingColumns =
       Reflect.getMetadata(COLUMN_METADATA_KEY, target) || [];
     existingColumns.push(propertyKey);
@@ -46,6 +65,12 @@ export function column(): PropertyDecorator {
 
 export function getModelColumns(target: any): string[] {
   return Reflect.getMetadata(COLUMN_METADATA_KEY, target.prototype) || [];
+}
+
+export function getModelBooleanColumns(target: any): string[] {
+  return (
+    Reflect.getMetadata(BOOLEAN_COLUMN_METADATA_KEY, target.prototype) || []
+  );
 }
 
 /*
