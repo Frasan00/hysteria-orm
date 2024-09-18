@@ -3,12 +3,13 @@
 import dotenv from "dotenv";
 import { migrationRollBackSql } from "./mysql/rollback-migration";
 import { migrationRollBackPg } from "./postgres/rollback-migration";
+import logger from "../Logger";
 
 dotenv.config();
 
 export default async function rollbackMigrationConnector() {
   const databaseType = process.env.DB_TYPE;
-  console.log("Rolling back migrations...");
+  logger.info("Rolling back migrations...");
 
   switch (databaseType) {
     case "mysql":
@@ -25,10 +26,10 @@ export default async function rollbackMigrationConnector() {
 
 rollbackMigrationConnector()
   .then(() => {
-    console.log("Migration rolled back successfully");
+    logger.info("Migration rolled back successfully");
     process.exit(0);
   })
   .catch((error) => {
-    console.log(error);
+    logger.error(error);
     process.exit(1);
   });

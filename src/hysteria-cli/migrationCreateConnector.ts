@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import path from "path";
 import MigrationTemplates from "./resources/MigrationTemplates";
 import fs from "fs";
+import logger from "../Logger";
 
 dotenv.config();
 
@@ -43,7 +44,7 @@ export default function migrationCreateConnector(name: string) {
   const migrationTemplate = MigrationTemplates.basicMigrationTemplate();
   fs.writeFileSync(migrationFilePath, migrationTemplate);
 
-  console.log(`Migration created successfully at '${migrationFilePath}'.`);
+  logger.info(`Migration created successfully at '${migrationFilePath}'.`);
 }
 
 const arg = process.argv[2];

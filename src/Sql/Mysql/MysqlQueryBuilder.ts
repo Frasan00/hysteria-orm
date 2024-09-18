@@ -1,6 +1,7 @@
 import { Pool, RowDataPacket } from "mysql2/promise";
 import selectTemplate from "../Resources/Query/SELECT";
-import { getModelColumns, Model } from "../Models/Model";
+import { Model } from "../Models/Model";
+import { getModelColumns } from "../Models/ModelDecorators";
 import { log, queryError } from "../../Logger";
 import { BaseValues, WhereOperatorType } from "../Resources/Query/WHERE.TS";
 import {

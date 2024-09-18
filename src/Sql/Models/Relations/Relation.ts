@@ -22,13 +22,19 @@ export enum RelationType {
 
 export abstract class Relation {
   public abstract type: RelationType;
-  public model: typeof Model;
+  public model: typeof Model = Model;
+  public columnName: string = "";
   public foreignKey?: string;
-  public relatedModel: string;
+  public relatedModel: string = "";
   public options?: RelationOptions;
 
-  protected constructor(model: typeof Model, options?: RelationOptions) {
+  protected constructor(
+    model: typeof Model,
+    columnName: string,
+    options?: RelationOptions,
+  ) {
     this.model = model;
+    this.columnName = columnName;
     this.relatedModel = this.model.metadata.tableName;
     this.options = options;
   }

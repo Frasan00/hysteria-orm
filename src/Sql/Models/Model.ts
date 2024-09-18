@@ -22,10 +22,6 @@ export interface Metadata {
   readonly primaryKey?: string;
 }
 
-interface ColumnOptions {
-  booleanColumn: boolean;
-}
-
 function getBaseMetadata(className: string): Metadata {
   className = className.at(0)?.toLowerCase() + className.slice(1);
   const tableName = className.endsWith("s")
@@ -37,49 +33,13 @@ function getBaseMetadata(className: string): Metadata {
   };
 }
 
-const COLUMN_METADATA_KEY = Symbol("columns");
-
-const BOOLEAN_COLUMN_METADATA_KEY = Symbol("booleanColumns");
-
-export function column(
-  options: ColumnOptions = { booleanColumn: false },
-): PropertyDecorator {
-  return (target: Object, propertyKey: string | symbol) => {
-    if (options.booleanColumn) {
-      const booleanColumns =
-        Reflect.getMetadata(BOOLEAN_COLUMN_METADATA_KEY, target) || [];
-      booleanColumns.push(propertyKey);
-      Reflect.defineMetadata(
-        BOOLEAN_COLUMN_METADATA_KEY,
-        booleanColumns,
-        target,
-      );
-    }
-
-    const existingColumns =
-      Reflect.getMetadata(COLUMN_METADATA_KEY, target) || [];
-    existingColumns.push(propertyKey);
-    Reflect.defineMetadata(COLUMN_METADATA_KEY, existingColumns, target);
-  };
-}
-
-export function getModelColumns(target: any): string[] {
-  return Reflect.getMetadata(COLUMN_METADATA_KEY, target.prototype) || [];
-}
-
-export function getModelBooleanColumns(target: any): string[] {
-  return (
-    Reflect.getMetadata(BOOLEAN_COLUMN_METADATA_KEY, target.prototype) || []
-  );
-}
-
 /*
  * Represents a model in the Database
  */
 export class Model {
-  public extraColumns: { [key: string]: string | number | boolean } = {};
   public static sqlInstance: SqlDataSource;
   public static metadata: Metadata = getBaseMetadata(this.constructor.name);
+  public extraColumns: { [key: string]: any } = {};
 
   public constructor(classProps: Partial<Model> = {}) {
     for (const key in classProps) {

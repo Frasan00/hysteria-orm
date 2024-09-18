@@ -1,4 +1,5 @@
-import { getModelColumns, Model } from "../Models/Model";
+import { Model } from "../Models/Model";
+import { getModelColumns } from "../Models/ModelDecorators";
 import {
   OneOptions,
   QueryBuilder,

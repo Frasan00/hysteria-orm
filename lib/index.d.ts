@@ -566,28 +566,29 @@ declare enum RelationType$1 {
 declare abstract class Relation {
     abstract type: RelationType$1;
     model: typeof Model;
+    columnName: string;
     foreignKey?: string;
     relatedModel: string;
     options?: RelationOptions;
-    protected constructor(model: typeof Model, options?: RelationOptions);
+    protected constructor(model: typeof Model, columnName: string, options?: RelationOptions);
 }
 
 declare class BelongsTo extends Relation {
     type: RelationType$1;
     foreignKey: string;
-    constructor(relatedModel: typeof Model, foreignKey: string, options?: RelationOptions);
+    constructor(relatedModel: typeof Model, columnName: string, foreignKey: string, options?: RelationOptions);
 }
 
 declare class HasMany extends Relation {
     type: RelationType$1;
     foreignKey: string;
-    constructor(relatedModel: typeof Model, foreignKey: string, options?: RelationOptions);
+    constructor(relatedModel: typeof Model, columnName: string, foreignKey: string, options?: RelationOptions);
 }
 
 declare class HasOne extends Relation {
     type: RelationType$1;
     foreignKey: string;
-    constructor(relatedModel: typeof Model, foreignKey: string, options?: RelationOptions);
+    constructor(relatedModel: typeof Model, columnName: string, foreignKey: string, options?: RelationOptions);
 }
 
 type ExcludeRelations<T> = {
@@ -2204,16 +2205,12 @@ interface Metadata {
     readonly tableName: string;
     readonly primaryKey?: string;
 }
-interface ColumnOptions {
-    booleanColumn: boolean;
-}
-declare function column(options?: ColumnOptions): PropertyDecorator;
 declare class Model {
-    extraColumns: {
-        [key: string]: string | number | boolean;
-    };
     static sqlInstance: SqlDataSource;
     static metadata: Metadata;
+    extraColumns: {
+        [key: string]: any;
+    };
     constructor(classProps?: Partial<Model>);
     /**
      * @description Gives a query instance for the given model
@@ -2370,4 +2367,39 @@ declare class Model {
     private static establishConnection;
 }
 
-export { BelongsTo, type DataSourceInput, type DeleteQueryBuilders, HasMany, HasOne, type Metadata, Migration, Model, type QueryBuilders, Relation, SqlDataSource, type UpdateQueryBuilders, column };
+/**
+ * Columns
+ */
+interface ColumnOptions {
+    booleanColumn: boolean;
+}
+declare function column(options?: ColumnOptions): PropertyDecorator;
+/**
+ * Relations
+ */
+/**
+ * @description Establishes a belongs to relation with the given model
+ * @param model - callback that returns the related model
+ * @param foreignKey - the foreign key in the current model that defines the relation
+ * @param options - Options for the relation
+ * @returns
+ */
+declare function belongsTo(model: () => typeof Model, foreignKey: string, options?: RelationOptions): PropertyDecorator;
+/**
+ * @description Establishes a has one relation with the given model
+ * @param model - callback that returns the related model
+ * @param foreignKey - the foreign key in the relation model that defines the relation
+ * @param options - Options for the relation
+ * @returns
+ */
+declare function hasOne(model: () => typeof Model, foreignKey: string, options?: RelationOptions): PropertyDecorator;
+/**
+ * @description Establishes a has many relation with the given model
+ * @param model - callback that returns the related model
+ * @param foreignKey - the foreign key in the relation model that defines the relation
+ * @param options - Options for the relation
+ * @returns
+ */
+declare function hasMany(model: () => typeof Model, foreignKey: string, options?: RelationOptions): PropertyDecorator;
+
+export { type DataSourceInput, type DeleteQueryBuilders, type Metadata, Migration, Model, type QueryBuilders, Relation, SqlDataSource, type UpdateQueryBuilders, belongsTo, column, hasMany, hasOne };

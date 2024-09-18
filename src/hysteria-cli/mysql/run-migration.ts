@@ -12,6 +12,7 @@ import {
   COMMIT_TRANSACTION,
   ROLLBACK_TRANSACTION,
 } from "../../Sql/Resources/Query/TRANSACTION";
+import logger from "../../Logger";
 
 dotenv.config();
 
@@ -40,7 +41,7 @@ export async function runMigrationsSql(): Promise<void> {
     );
 
     if (pendingMigrations.length === 0) {
-      console.log("No pending migrations.");
+      logger.info("No pending migrations.");
       mysql.release();
       process.exit(0);
     }

@@ -3,6 +3,7 @@
 import dotenv from "dotenv";
 import { runMigrationsPg } from "./postgres/run-migration";
 import { runMigrationsSql } from "./mysql/run-migration";
+import logger from "../Logger";
 
 dotenv.config();
 
@@ -23,10 +24,10 @@ export default async function runMigrationsConnector() {
 
 runMigrationsConnector()
   .then(() => {
-    console.log("Migrations ran successfully");
+    logger.info("Migrations ran successfully");
     process.exit(0);
   })
   .catch((error) => {
-    console.log(error);
+    logger.error(error);
     process.exit(1);
   });

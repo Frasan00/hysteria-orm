@@ -2,14 +2,14 @@ import { Relation, RelationType } from "../../Models/Relations/Relation";
 import { Model } from "../../Models/Model";
 import { camelToSnakeCase, fromSnakeToCamelCase } from "../../../CaseUtils";
 import logger from "../../../Logger";
+import { Mode } from "fs";
 
 function relationTemplates<T extends Model>(
   models: T[],
-  modelTypeOf: typeof Model,
   relation: Relation,
   relationName: string,
 ) {
-  const primaryKey = modelTypeOf.metadata.primaryKey as keyof T;
+  const primaryKey = relation.model.metadata.primaryKey;
   const foreignKey = relation.foreignKey as keyof T;
   const relatedModel = relation.relatedModel;
 
@@ -17,7 +17,7 @@ function relationTemplates<T extends Model>(
     return (
       model[fromSnakeToCamelCase(primaryKey) as keyof T] ||
       model[camelToSnakeCase(primaryKey) as keyof T] ||
-      model[primaryKey]
+      model[primaryKey as string as keyof Model]
     );
   });
 
@@ -46,7 +46,7 @@ function relationTemplates<T extends Model>(
 
       return `SELECT *, '${relationName}' as relation_name FROM ${relatedModel} WHERE ${relatedModel}.${camelToSnakeCase(
         foreignKey,
-      )} IN (${primaryKeyValues.join(", ")}) ${
+      )} IN (${primaryKeyValues.join(", ")})${
         softDeleteColumn ? softDeleteQuery : ""
       };`;
 
@@ -56,7 +56,13 @@ function relationTemplates<T extends Model>(
         throw new Error("Invalid foreignKey values");
       }
 
-      return `SELECT *, '${relationName}' as relation_name FROM ${relatedModel} WHERE ${relatedModel}.${primaryKey.toString()} IN (${foreignKeyValues.join(
+      if (!primaryKey) {
+        throw new Error(
+          `Related Model ${relatedModel} does not have a primary key`,
+        );
+      }
+
+      return `SELECT *, '${relationName}' as relation_name FROM ${relatedModel} WHERE ${relatedModel}.${primaryKey} IN (${foreignKeyValues.join(
         ", ",
       )}) ${softDeleteColumn ? softDeleteQuery : ""};`;
 

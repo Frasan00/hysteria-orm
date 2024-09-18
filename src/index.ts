@@ -1,10 +1,14 @@
 import "reflect-metadata";
 import { DataSourceInput } from "./Datasource";
 import { Migration } from "./Sql/Migrations/Migration";
-import { Metadata, Model, column } from "./Sql/Models/Model";
-import { BelongsTo } from "./Sql/Models/Relations/BelongsTo";
-import { HasMany } from "./Sql/Models/Relations/HasMany";
-import { HasOne } from "./Sql/Models/Relations/HasOne";
+import { Metadata, Model } from "./Sql/Models/Model";
+import {
+  belongsTo,
+  hasOne,
+  hasMany,
+  column,
+  getRelations,
+} from "./Sql/Models/ModelDecorators";
 import { Relation } from "./Sql/Models/Relations/Relation";
 import {
   QueryBuilders,
@@ -16,10 +20,10 @@ import { SqlDataSource } from "./Sql/SqlDatasource";
 export {
   Model,
   column,
+  belongsTo,
+  hasOne,
+  hasMany,
   Relation,
-  HasOne,
-  HasMany,
-  BelongsTo,
   SqlDataSource,
   DataSourceInput,
   QueryBuilders,

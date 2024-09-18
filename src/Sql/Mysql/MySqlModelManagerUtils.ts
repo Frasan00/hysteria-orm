@@ -7,6 +7,7 @@ import { log, queryError } from "../../Logger";
 import relationTemplates from "../Resources/Query/RELATIONS";
 import { Pool, RowDataPacket } from "mysql2/promise";
 import { DataSourceType } from "../../Datasource";
+import { getRelations } from "../Models/ModelDecorators";
 
 export default class MySqlModelManagerUtils<T extends Model> {
   public parseInsert(
@@ -83,17 +84,14 @@ export default class MySqlModelManagerUtils<T extends Model> {
   }
 
   private getRelationFromModel(
-    model: T,
     relationField: string,
     modelTypeOf: typeof Model,
   ): Relation {
-    const relation = model[relationField as keyof T] as Relation;
+    const relations = getRelations(modelTypeOf);
+    const relation = relations.find((r) => r.columnName === relationField);
     if (!relation) {
       throw new Error(
-        "Relation " +
-          relationField +
-          " not found in model " +
-          modelTypeOf.metadata.tableName,
+        `Relation ${relationField} not found in model ${modelTypeOf.metadata.tableName}`,
       );
     }
 
@@ -124,17 +122,8 @@ export default class MySqlModelManagerUtils<T extends Model> {
 
     try {
       input.forEach((inputRelation: string) => {
-        const relation = this.getRelationFromModel(
-          models[0],
-          inputRelation,
-          modelTypeOf,
-        );
-        const query = relationTemplates(
-          models,
-          modelTypeOf,
-          relation,
-          inputRelation,
-        );
+        const relation = this.getRelationFromModel(inputRelation, modelTypeOf);
+        const query = relationTemplates(models, relation, inputRelation);
         relationQueries.push(query);
         relationMap[inputRelation] = query;
       });

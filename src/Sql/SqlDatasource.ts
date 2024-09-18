@@ -6,6 +6,7 @@ import { MysqlModelManager } from "./Mysql/MysqlModelManager";
 import { PostgresModelManager } from "./Postgres/PostgresModelManager";
 import { MysqlTransaction } from "./Mysql/MysqlTransaction";
 import { PostgresTransaction } from "./Postgres/PostgresTransaction";
+import logger from "../Logger";
 
 type ModelManager<T extends Model> =
   | MysqlModelManager<T>
@@ -262,7 +263,7 @@ export class SqlDataSource extends DataSource {
       return;
     }
 
-    console.log("Closing connection", this);
+    logger.warn("Closing connection", this);
     switch (this.type) {
       case "mysql":
       case "mariadb":

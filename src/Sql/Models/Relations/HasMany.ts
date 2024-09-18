@@ -7,10 +7,11 @@ export class HasMany extends Relation {
 
   public constructor(
     relatedModel: typeof Model,
+    columnName: string,
     foreignKey: string,
     options?: RelationOptions,
   ) {
-    super(relatedModel, options);
+    super(relatedModel, columnName, options);
     this.foreignKey = foreignKey;
     this.type = RelationType.hasMany;
   }

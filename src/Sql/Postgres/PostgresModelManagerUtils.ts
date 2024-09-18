@@ -7,6 +7,7 @@ import { log, queryError } from "../../Logger";
 import relationTemplates from "../Resources/Query/RELATIONS";
 import pg from "pg";
 import { DataSourceType } from "../../Datasource";
+import { getRelations } from "../Models/ModelDecorators";
 
 export default class PostgresModelManagerUtils<T extends Model> {
   public parseInsert(
@@ -81,17 +82,15 @@ export default class PostgresModelManagerUtils<T extends Model> {
   }
 
   private getRelationFromModel(
-    model: T,
+    _model: T,
     relationField: string,
     modelTypeOf: typeof Model,
   ): Relation {
-    const relation = model[relationField as keyof T] as Relation;
+    const relations = getRelations(modelTypeOf);
+    const relation = relations.find((r) => r.columnName === relationField);
     if (!relation) {
       throw new Error(
-        "Relation " +
-          relationField +
-          " not found in model " +
-          modelTypeOf.metadata.tableName,
+        `Relation ${relationField} not found in model ${modelTypeOf.name}`,
       );
     }
 
@@ -127,12 +126,7 @@ export default class PostgresModelManagerUtils<T extends Model> {
           inputRelation,
           modelTypeOf,
         );
-        const query = relationTemplates(
-          models,
-          modelTypeOf,
-          relation,
-          inputRelation,
-        );
+        const query = relationTemplates(models, relation, inputRelation);
         relationQueries.push(query);
         relationMap[inputRelation] = query;
       });
