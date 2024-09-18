@@ -38,6 +38,7 @@
     "@types/node": "^22.2.0",
     "commander": "^12.1.0",
     "dotenv": "^16.3.1",
+    "husky": "^9.1.6",
     "luxon": "^3.5.0",
     "reflect-metadata": "^0.2.2",
     "ts-node": "^10.9.2",
