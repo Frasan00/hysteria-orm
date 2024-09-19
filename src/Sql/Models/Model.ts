@@ -18,39 +18,36 @@ import {
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
 
 export interface Metadata {
-  readonly tableName: string;
-  readonly primaryKey?: string;
+  tableName: string;
+  primaryKey?: string;
 }
 
 export function getBaseModelInstance<T extends Model>(): T {
   return { extraColumns: {} } as T;
 }
 
-function getBaseMetadata(className: string): Metadata {
-  className = className.at(0)?.toLowerCase() + className.slice(1);
-  const tableName = className.endsWith("s")
-    ? camelToSnakeCase(className)
-    : camelToSnakeCase(className) + "s";
-
-  return {
-    tableName: tableName,
-  };
-}
-
 /*
- * Represents a model in the Database
+ * Represents a Table in the Database
  */
 export abstract class Model {
   public static sqlInstance: SqlDataSource;
-  public static metadata: Metadata = {
-    tableName: this.name,
-  };
+  public static metadata: Metadata = {} as Metadata;
   public extraColumns: { [key: string]: any } = {};
 
-  public constructor(classProps: Partial<Model> = {}) {
-    for (const key in classProps) {
-      Object.assign(this, { [key]: classProps[key as keyof Model] });
-    }
+  public constructor() {
+    this.extraColumns = {};
+  }
+
+  static {
+    this.metadata.tableName = this.name;
+  }
+
+  private static getClassName(): string {
+    const className = this.constructor.name;
+    const tableName = className.endsWith("s")
+      ? camelToSnakeCase(className)
+      : camelToSnakeCase(className) + "s";
+    return tableName;
   }
 
   /**

@@ -147,7 +147,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
       const rows = result.rows;
 
       const modelPromises = rows.map(async (row) => {
-        const modelInstance = {} as T;
+        const modelInstance = getBaseModelInstance<T>();
         this.mergeRawPacketIntoModel(modelInstance, row);
 
         return modelInstance as T;

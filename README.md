@@ -120,7 +120,7 @@ export class User extends Model {
     // optional Metadata
     public static metadata: Metadata = {
         primaryKey: "id", // default undefined
-        tableName: "users", // default class name in snake case with a final "s"
+        tableName: "users",
     };
 
     @column()

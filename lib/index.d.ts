@@ -2211,8 +2211,8 @@ declare abstract class QueryBuilder<T extends Model> {
 }
 
 interface Metadata {
-    readonly tableName: string;
-    readonly primaryKey?: string;
+    tableName: string;
+    primaryKey?: string;
 }
 declare abstract class Model {
     static sqlInstance: SqlDataSource;
@@ -2220,7 +2220,8 @@ declare abstract class Model {
     extraColumns: {
         [key: string]: any;
     };
-    constructor(classProps?: Partial<Model>);
+    constructor();
+    private static getClassName;
     /**
      * @description Gives a query instance for the given model
      * @param model
