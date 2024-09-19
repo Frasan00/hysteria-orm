@@ -35,7 +35,7 @@ const insertTemplate = (tableName: string, dbType: DataSourceType) => {
       }
 
       const query =
-        dbType === "mysql"
+        dbType === "mysql" || dbType === "mariadb"
           ? `INSERT INTO ${tableName} (${columns.join(", ")})
              VALUES (${placeholders});`
           : `INSERT INTO ${tableName} (${columns.join(", ")})

@@ -634,7 +634,10 @@ declare class MySqlModelManagerUtils<T extends Model> {
         params: any[];
     };
     private filterRelationsAndMetadata;
-    parseDelete(tableName: string, column: string, value: string | number | boolean): string;
+    parseDelete(tableName: string, column: string, value: string | number | boolean): {
+        query: string;
+        params: any[];
+    };
     private getRelationFromModel;
     parseQueryBuilderRelations(models: T[], modelTypeOf: typeof Model, input: string[], mysqlConnection: Pool, logs: boolean): Promise<{
         [relationName: string]: Model[];
@@ -655,7 +658,10 @@ declare class PostgresModelManagerUtils<T extends Model> {
         params: any[];
     };
     private filterRelationsAndMetadata;
-    parseDelete(tableName: string, column: string, value: string | number | boolean): string;
+    parseDelete(tableName: string, column: string, value: string | number | boolean): {
+        query: string;
+        params: any[];
+    };
     private getRelationFromModel;
     parseQueryBuilderRelations(models: T[], modelTypeOf: typeof Model, input: string[], pgConnection: pg__default.Pool, logs: boolean): Promise<{
         [relationName: string]: Model[];
@@ -1225,7 +1231,10 @@ declare class PostgresUpdateQueryBuilder<T extends Model> extends WhereQueryBuil
 }
 
 declare const deleteTemplate: (tableName: string, dbType: DataSourceType) => {
-    delete: (column: string, value: string | number | boolean | Date) => string;
+    delete: (column: string, value: string | number | boolean | Date) => {
+        query: string;
+        params: (string | number | boolean | Date)[];
+    };
     massiveDelete: (whereClause: string, joinClause?: string) => string;
 };
 
@@ -1514,7 +1523,7 @@ declare class PostgresModelManager<T extends Model> extends AbstractModelManager
     /**
      * Create multiple model instances in the database.
      *
-     * @param {Model} model - Model instance to be saved.
+     * @param {Model} models - Model instance to be saved.
      * @param {PostgresTransaction} trx - MysqlTransaction to be used on the save operation.
      * @returns Promise resolving to an array of saved models or null if saving fails.
      */
@@ -1573,7 +1582,7 @@ declare class SqlDataSource extends DataSource {
      * @description The User input connection details will always come first
      */
     static connect(input?: DataSourceInput, cb?: () => Promise<void> | void): Promise<SqlDataSource>;
-    static getInstance(): SqlDataSource;
+    static getInstance(): SqlDataSource | null;
     /**
      * @description Begins a transaction on the database and returns the transaction object
      * @param model
@@ -1595,7 +1604,7 @@ declare class SqlDataSource extends DataSource {
      */
     static useConnection(connectionDetails: DataSourceInput, cb: (sqlDataSource: SqlDataSource) => Promise<void>): Promise<void>;
     /**
-     * @description Returns raw mysql pool
+     * @description Returns separate raw sql pool
      */
     getRawPool(): Promise<SqlPoolType>;
     /**
@@ -1604,7 +1613,7 @@ declare class SqlDataSource extends DataSource {
      */
     closeConnection(): Promise<void>;
     /**
-     * @description Returns raw mysql PoolConnection
+     * @description Returns a separate raw sql PoolConnection
      */
     getRawPoolConnection(): Promise<SqlPoolConnectionType>;
 }
@@ -2205,7 +2214,7 @@ interface Metadata {
     readonly tableName: string;
     readonly primaryKey?: string;
 }
-declare class Model {
+declare abstract class Model {
     static sqlInstance: SqlDataSource;
     static metadata: Metadata;
     extraColumns: {

@@ -117,34 +117,33 @@ import { Model } from "hysteria-orm";
 import { DateTime } from "luxon"; // Both Date and Datetime from luxon are supported
 
 export class User extends Model {
-  @column()
-  declare id: number;
+    // optional Metadata
+    public static metadata: Metadata = {
+        primaryKey: "id", // default undefined
+        tableName: "users", // default class name in snake case with a final "s"
+    };
 
-  @column()
-  declare name: string;
+    @column()
+    declare id: number;
 
-  @column()
-  declare email: string;
+    @column()
+    declare name: string;
 
-  @column()
-  declare signupSource: string;
+    @column()
+    declare email: string;
 
-  // Only useful with mysql to convert tiny int directly in Boolean
-  @column({
-    booleanColumn: true
-  })
-  declare isActive: boolean;
+    @column()
+    declare signupSource: string;
 
-  @column()
-  declare json: Record<string, any>;
+    // Only useful with mysql to convert tiny int directly in Boolean
+    @column({ booleanColumn: true })
+    declare isActive: boolean;
 
-  @column()
-  declare createdAt: DateTime;
+    @column()
+    declare json: Record<string, any>;
 
-   publicstatic metadata: Metadata = {
-    primaryKey: "id",
-    tableName: "users",
-  };
+    @column()
+    declare createdAt: DateTime;
 }
 ```
 
@@ -152,7 +151,7 @@ export class User extends Model {
 
 ```typescript
 import "reflect-metadata";
-import { Model, HasOne, HasMany } from "hysteria-orm";
+import { Model, HasOne, HasMany, column, hasOne } from "hysteria-orm";
 import { Profile } from "./Profile";
 import { Post } from "./Post";
 
@@ -179,16 +178,15 @@ export class User extends Model {
     declare createdAt: DateTime;
 
     // Relations take as params (TableName, foreignKey)
-    public profile: Profile | HasOne = new HasOne(Profile, "user_id");
-    /* You can pass a soft delete column with the relative type in order to remove those records while using query().addRelation method
+    @hasOne(() => Profile, "userId")
+    public profile: Profile;
+
+    /* 
+    * You can pass a soft delete column with the relative type in order to remove those records while using query().addRelation method
     * Date soft column will be queried as AND column IS NULL, boolean soft delete column will be queried column = false instead
     */
-    public posts: HasMany | Post[] = new HasMany(Post, "userId", { softDeleteColumn: "deletedAt", softDeleteType: "date" });
-
-    public static metadata: Metadata = {
-        primaryKey: "id",
-        tableName: "users",
-    };
+    @hasMany(() => Post, "userId", { softDeleteColumn: "deletedAt", softDeleteType: "date" })
+    public posts: Post[];
 
     // Hooks
     public static beforeFetch(queryBuilder: QueryBuilders<User>): QueryBuilders<User> {
@@ -219,6 +217,8 @@ export class User extends Model {
 ### Create, Update and Delete (with transaction)
 
 ```typescript
+import { User } from "./User";
+
 // Transaction is optional in all those methods
 const trx = await sql.startTransaction()
 // Create
@@ -246,6 +246,8 @@ try{
 ### Read (standard methods used for simple queries)
 
 ```typescript
+import { User } from "./User";
+
 // Get all
 const users: User[] = await userManager.find();
 
@@ -279,6 +281,8 @@ const otherUser: User | null = await User.findOne({
 - It's used to create more complex queries that are not supported by the standard methods
 
 ```typescript
+import { User } from "./User";
+
 const user: User | null = await User.query()
     .addRelations(['post'])
     .where("name", "John Doe")
@@ -297,6 +301,8 @@ const users: User[] = await User.query()
 
 - Used to build complex logic conditions
 ```typescript
+import { User } from "./User";
+
 const user: User | null = await User.query().whereBuilder((queryBuilder) => {
     queryBuilder.andWhereBuilder((innerQueryBuilder) => {
         innerQueryBuilder.where('department', 'sales');
@@ -317,6 +323,8 @@ const user: User | null = await User.query().whereBuilder((queryBuilder) => {
 - Must use selectRaw for custom columns, by default `select` can only query the Model's columns
  can only query 
 ```typescript
+import { User } from "./User";
+
 const user: User | null = await User.query()
     .selectRaw('id', 'name as superName')
     .addRelations(['post'])
@@ -333,6 +341,8 @@ const user: User | null = await User.query()
 - Those are special queries that are not influenced by hooks defined in the class
 
 ```typescript
+import { User } from "./User";
+
 const user: User | null = await User.query()
     .addRelations(['posts'])
     .one();
@@ -345,6 +355,8 @@ const users: User[] = await User.find({
 ### Join
 
 ```typescript
+import { User } from "./User";
+
 const users = await User.query()
     .selectRaw("users.*")
     .leftJoin("posts", "users.id", "posts.user_id")
@@ -357,6 +369,8 @@ const users = await User.query()
 
 - Pagination is available in the queryBuilder, will return an object with the metadata for the pagination and the list of the retrieved models
 ```typescript
+import { User } from "./User";
+
 const user: User | null = await User.query()
     .addRelations(['post'])
     .where("name", "John Doe")
@@ -369,6 +383,9 @@ const user: User | null = await User.query()
 - Model static methods will always refer to the main connection established with await SqlDataSource.connect();
 
 ```typescript
+import { SqlDataSource } from "hysteria-orm";
+import { User } from "./User";
+
 await SqlDataSource.useConnection(
     {
         type: "mysql",
@@ -385,12 +402,10 @@ await SqlDataSource.useConnection(
             email: "john-email@gmail.com",
             signupSource: "google",
         } as User);
-        console.log(newUser);
 
         const updatedUser = await userRepo.update().withData({
         name: "new name",
         });
-        console.log(updatedUser);
     },
 );
 ```
@@ -469,6 +484,8 @@ export default class extends Migration {
 - It could be necessary to use raw queries on mysql and mariadb
 
 ```typescript
+import { User} from "./User";
+
 // You can query directly on the model using an object
 const jsonQuery = await User.query().where("json_prop", { main: "value" }).one();
 

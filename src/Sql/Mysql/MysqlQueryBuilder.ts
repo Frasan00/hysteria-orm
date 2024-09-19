@@ -1,6 +1,6 @@
 import { Pool, RowDataPacket } from "mysql2/promise";
 import selectTemplate from "../Resources/Query/SELECT";
-import { Model } from "../Models/Model";
+import { getBaseModelInstance, Model } from "../Models/Model";
 import { getModelColumns } from "../Models/ModelDecorators";
 import { log, queryError } from "../../Logger";
 import { BaseValues, WhereOperatorType } from "../Resources/Query/WHERE.TS";
@@ -89,7 +89,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
         return null;
       }
 
-      const modelInstance = new this.model() as T;
+      const modelInstance = getBaseModelInstance<T>();
       this.mergeRawPacketIntoModel(modelInstance, rows[0]);
       const relationModels =
         await this.mysqlModelManagerUtils.parseQueryBuilderRelations(
@@ -146,7 +146,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
       );
 
       const modelPromises = rows.map(async (row) => {
-        const modelInstance = new this.model() as T;
+        const modelInstance = getBaseModelInstance<T>();
         this.mergeRawPacketIntoModel(modelInstance, row);
 
         return modelInstance as T;

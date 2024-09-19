@@ -74,7 +74,7 @@ export default class PostgresModelManagerUtils<T extends Model> {
     tableName: string,
     column: string,
     value: string | number | boolean,
-  ): string {
+  ): { query: string; params: any[] } {
     return deleteTemplate(tableName, "postgres").delete(
       column,
       value.toString(),

@@ -114,7 +114,6 @@ dist
 # FuseBox cache
 .fusebox/
 
-/test
 /dist
 
 # DynamoDB Local files
@@ -132,20 +131,15 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
-
 TODO
 run.sh
 stop.sh
 .eslintrc.js
-/test
 /migrations
 /database
-test/test-script.js
 +.log
 /src/**/*.js
 docker-compose.yaml
 docker-compose.yml
-test
 
 **/database**
-**test.ts**

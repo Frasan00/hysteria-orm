@@ -22,6 +22,10 @@ export interface Metadata {
   readonly primaryKey?: string;
 }
 
+export function getBaseModelInstance<T extends Model>(): T {
+  return { extraColumns: {} } as T;
+}
+
 function getBaseMetadata(className: string): Metadata {
   className = className.at(0)?.toLowerCase() + className.slice(1);
   const tableName = className.endsWith("s")
@@ -36,9 +40,11 @@ function getBaseMetadata(className: string): Metadata {
 /*
  * Represents a model in the Database
  */
-export class Model {
+export abstract class Model {
   public static sqlInstance: SqlDataSource;
-  public static metadata: Metadata = getBaseMetadata(this.constructor.name);
+  public static metadata: Metadata = {
+    tableName: this.name,
+  };
   public extraColumns: { [key: string]: any } = {};
 
   public constructor(classProps: Partial<Model> = {}) {
@@ -382,8 +388,13 @@ export class Model {
    * @returns
    */
   private static establishConnection() {
-    if (!this.sqlInstance) {
-      this.sqlInstance = SqlDataSource.getInstance();
+    const sql = SqlDataSource.getInstance();
+    if (!sql) {
+      throw new Error(
+        "Sql instance not initialized, did you defined it in SqlDataSource.connect static method?",
+      );
     }
+
+    this.sqlInstance = sql;
   }
 }

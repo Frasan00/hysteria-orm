@@ -1,0 +1,292 @@
+import { DateTime } from "luxon";
+import { SqlDataSource } from "../../../src/Sql/SqlDatasource";
+import { User } from "../Models/User";
+
+// Create a new user in an async test function
+test("Create a new user", async () => {
+  const sql = await SqlDataSource.connect({
+    type: "postgres",
+    database: "test",
+    username: "root",
+    password: "root",
+    host: "127.0.0.1",
+    port: 5432,
+  });
+  await User.delete().execute();
+
+  const user = await User.create({
+    name: "Alice",
+    email: "Alice@gmail.com",
+    signupSource: "email",
+    isActive: true,
+  });
+
+  if (!user) {
+    throw new Error("User not created");
+  }
+
+  expect(user.name).toBe("Alice");
+  expect(user.email).toBe("Alice@gmail.com");
+  expect(user.signupSource).toBe("email");
+  expect(user.isActive).toBe(true);
+
+  const users = await User.massiveCreate([
+    {
+      name: "Bob",
+      email: "Bob@gmail.com",
+      signupSource: "email",
+      isActive: true,
+    },
+    {
+      name: "Charlie",
+      email: "Charlie@gmail.com",
+      signupSource: "email",
+      isActive: true,
+    },
+  ]);
+
+  expect(users.length).toBe(2);
+  await sql.closeConnection();
+});
+
+test("Find a user by primary key", async () => {
+  const sql = await SqlDataSource.connect({
+    type: "postgres",
+    database: "test",
+    username: "root",
+    password: "root",
+    host: "127.0.0.1",
+    port: 5432,
+  });
+  const user = await User.create({
+    name: "Dave",
+    email: "Dave@gmail.com",
+    signupSource: "email",
+    isActive: true,
+  });
+
+  if (!user) {
+    throw new Error("User not created");
+  }
+
+  const foundUser = await User.findOneByPrimaryKey(user.id, {
+    throwErrorOnNull: true,
+  });
+  expect(foundUser).not.toBeNull();
+  expect(foundUser?.name).toBe("Dave");
+  await sql.closeConnection();
+});
+
+test("Find multiple users", async () => {
+  const sql = await SqlDataSource.connect({
+    type: "postgres",
+    database: "test",
+    username: "root",
+    password: "root",
+    host: "127.0.0.1",
+    port: 5432,
+  });
+  const users = await User.find();
+  expect(users.length).toBeGreaterThanOrEqual(0);
+  await sql.closeConnection();
+});
+
+test("Find one user", async () => {
+  const sql = await SqlDataSource.connect({
+    type: "postgres",
+    database: "test",
+    username: "root",
+    password: "root",
+    host: "127.0.0.1",
+    port: 5432,
+  });
+  const user = await User.create({
+    name: "Eve",
+    email: "Eve@gmail.com",
+    signupSource: "email",
+    isActive: true,
+  });
+
+  if (!user) {
+    throw new Error("User not created");
+  }
+
+  const foundUser = await User.findOne({ where: { email: "Eve@gmail.com" } });
+  expect(foundUser).not.toBeNull();
+  expect(foundUser?.name).toBe("Eve");
+  await sql.closeConnection();
+});
+
+test("Update a user", async () => {
+  const sql = await SqlDataSource.connect({
+    type: "postgres",
+    database: "test",
+    username: "root",
+    password: "root",
+    host: "127.0.0.1",
+    port: 5432,
+  });
+
+  const user = (await User.query()
+    .where("name", "Eve")
+    .one({ throwErrorOnNull: true })) as User;
+  user.name = "Eve Updated";
+  const updatedUser = await User.updateRecord(user);
+
+  expect(updatedUser).not.toBeNull();
+  expect(updatedUser?.name).toBe("Eve Updated");
+
+  await User.update()
+    .where("name", "Eve Updated")
+    .withData({ name: "Eve updated two" });
+  const newUpdatedUser = await User.findOneByPrimaryKey(user.id);
+  expect(newUpdatedUser?.name).toBe("Eve updated two");
+  await sql.closeConnection();
+});
+
+test("Delete a user", async () => {
+  const sql = await SqlDataSource.connect({
+    type: "postgres",
+    database: "test",
+    username: "root",
+    password: "root",
+    host: "127.0.0.1",
+    port: 5432,
+  });
+  await User.delete().where("name", "Eve updated two").execute();
+  const updatedUser = await User.query().where("name", "Eve updated two").one();
+  expect(updatedUser).toBeNull();
+  await sql.closeConnection();
+});
+
+test("Soft delete a user", async () => {
+  const sql = await SqlDataSource.connect({
+    type: "postgres",
+    database: "test",
+    username: "root",
+    password: "root",
+    host: "127.0.0.1",
+    port: 5432,
+  });
+  const user = await User.create({
+    name: "Grace",
+    email: "Grace@gmail.com",
+    signupSource: "email",
+    isActive: true,
+  });
+
+  if (!user) {
+    throw new Error("User not created");
+  }
+
+  const softDeletedUser = await User.softDelete(user, {
+    column: "deletedAt",
+    value: DateTime.local().toString(),
+  });
+  expect(softDeletedUser).not.toBeNull();
+  expect(softDeletedUser.deletedAt).not.toBeNull();
+
+  await User.delete().execute();
+  const allUsers = await User.query().many();
+  expect(allUsers.length).toBe(0);
+  await sql.closeConnection();
+});
+
+test("Massive create users", async () => {
+  const sql = await SqlDataSource.connect({
+    type: "postgres",
+    database: "test",
+    username: "root",
+    password: "root",
+    host: "127.0.0.1",
+    port: 5432,
+  });
+  const users = await User.massiveCreate([
+    {
+      name: "Hank",
+      email: "Hank@gmail.com",
+      signupSource: "email",
+      isActive: true,
+    },
+    {
+      name: "Ivy",
+      email: "Ivy@gmail.com",
+      signupSource: "email",
+      isActive: true,
+    },
+  ]);
+
+  expect(users.length).toBe(2);
+  expect(users[0].name).toBe("Hank");
+  expect(users[1].name).toBe("Ivy");
+  await sql.closeConnection();
+});
+
+test("Refresh a user", async () => {
+  const sql = await SqlDataSource.connect({
+    type: "postgres",
+    database: "test",
+    username: "root",
+    password: "root",
+    host: "127.0.0.1",
+    port: 5432,
+  });
+  const user = await User.create({
+    name: "Jack",
+    email: "Jack@gmail.com",
+    signupSource: "email",
+    isActive: true,
+  });
+
+  if (!user) {
+    throw new Error("User not created");
+  }
+
+  const refreshedUser = await User.refresh(user);
+  expect(refreshedUser).not.toBeNull();
+  expect(refreshedUser?.name).toBe("Jack");
+  await sql.closeConnection();
+});
+
+test("Delete user by column", async () => {
+  const sql = await SqlDataSource.connect({
+    type: "postgres",
+    database: "test",
+    username: "root",
+    password: "root",
+    host: "127.0.0.1",
+    port: 5432,
+  });
+  const user = await User.create({
+    name: "Kate",
+    email: "Kate@gmail.com",
+    signupSource: "email",
+    isActive: true,
+  });
+
+  if (!user) {
+    throw new Error("User not created");
+  }
+
+  const deletedCount = await User.deleteByColumn("email", "Kate@gmail.com");
+  expect(deletedCount).toBe(1);
+
+  const foundUser = await User.findOneByPrimaryKey(user.id);
+  expect(foundUser).toBeNull();
+  await sql.closeConnection();
+});
+
+test("Remove all users from the database", async () => {
+  const sql = await SqlDataSource.connect({
+    type: "postgres",
+    database: "test",
+    username: "root",
+    password: "root",
+    host: "127.0.0.1",
+    port: 5432,
+  });
+  await User.delete().execute();
+  const allUsers = await User.query().many();
+  expect(allUsers.length).toBe(0);
+  await sql.closeConnection();
+});

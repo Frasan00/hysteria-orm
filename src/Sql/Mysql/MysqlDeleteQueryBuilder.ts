@@ -1,5 +1,4 @@
 import { Model } from "../Models/Model";
-import { BaseValues, WhereOperatorType } from "../Resources/Query/WHERE.TS";
 import { log, queryError } from "../../Logger";
 import { WhereQueryBuilder } from "../QueryBuilder/WhereQueryBuilder";
 import { MysqlTransaction } from "./MysqlTransaction";

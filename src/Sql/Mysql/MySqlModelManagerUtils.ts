@@ -79,8 +79,8 @@ export default class MySqlModelManagerUtils<T extends Model> {
     tableName: string,
     column: string,
     value: string | number | boolean,
-  ): string {
-    return deleteTemplate(tableName, "mysql").delete(column, value.toString());
+  ): { query: string; params: any[] } {
+    return deleteTemplate(tableName, "mysql").delete(column, value);
   }
 
   private getRelationFromModel(

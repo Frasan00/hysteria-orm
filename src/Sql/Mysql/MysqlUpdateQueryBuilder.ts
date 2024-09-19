@@ -1,6 +1,5 @@
 import { Pool } from "mysql2/promise";
 import { Model } from "../Models/Model";
-import { BaseValues, WhereOperatorType } from "../Resources/Query/WHERE.TS";
 import { MysqlTransaction } from "./MysqlTransaction";
 import { log, queryError } from "../../Logger";
 import { WhereQueryBuilder } from "../QueryBuilder/WhereQueryBuilder";

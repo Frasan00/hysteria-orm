@@ -16,6 +16,11 @@ import {
   DeleteQueryBuilders,
 } from "./Sql/QueryBuilder/QueryBuilder";
 import { SqlDataSource } from "./Sql/SqlDatasource";
+import { Post } from "../test/sql/Models/Post";
+
+console.log(Post.metadata);
+console.log(Post.constructor.name);
+console.log(Post.prototype);
 
 export {
   Model,

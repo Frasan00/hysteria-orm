@@ -1,7 +1,7 @@
 /*
  * This class is used to make operations on models
  */
-import { Model } from "../Model";
+import { getBaseModelInstance, Model } from "../Model";
 import { FindOneType, FindType, TransactionType } from "./ModelManagerTypes";
 import { MysqlQueryBuilder } from "../../Mysql/MysqlQueryBuilder";
 import { PostgresQueryBuilder } from "../../Postgres/PostgresQueryBuilder";
@@ -31,7 +31,7 @@ export abstract class AbstractModelManager<T extends Model> {
     this.logs = logs;
     this.model = model;
     this.throwError = false;
-    this.modelInstance = new this.model() as T;
+    this.modelInstance = getBaseModelInstance<T>();
     this.sqlDataSource = sqlDataSource;
   }
 

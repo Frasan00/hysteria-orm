@@ -131,11 +131,6 @@ export class MysqlModelManager<
     value: string | number | boolean,
     throwErrorOnNull: boolean = false,
   ): Promise<T | null> {
-    const select = selectTemplate(
-      this.model.metadata.tableName,
-      this.sqlDataSource.getDbType(),
-    );
-
     try {
       if (!this.model.metadata.primaryKey) {
         throw new Error(
@@ -188,6 +183,7 @@ export class MysqlModelManager<
         query,
         params,
       );
+
       return await this.findOneByPrimaryKey(result["insertId"]);
     } catch (error) {
       queryError(error);
@@ -319,24 +315,26 @@ export class MysqlModelManager<
     trx?: TransactionType,
   ): Promise<number> {
     if (trx) {
-      return (await trx.queryDelete(
-        this.mysqlModelManagerUtils.parseDelete(
-          this.model.metadata.tableName,
-          column,
-          value,
-        ),
-      )) as number;
-    }
-
-    try {
-      const deleteQuery = this.mysqlModelManagerUtils.parseDelete(
+      const { query, params } = this.mysqlModelManagerUtils.parseDelete(
         this.model.metadata.tableName,
         column,
         value,
       );
-      log(deleteQuery, this.logs);
-      const [rows]: any =
-        await this.mysqlPool.query<RowDataPacket[]>(deleteQuery);
+
+      return (await trx.queryDelete(query, params)) as number;
+    }
+
+    try {
+      const { query, params } = this.mysqlModelManagerUtils.parseDelete(
+        this.model.metadata.tableName,
+        column,
+        value,
+      );
+      log(query, this.logs, params);
+      const [rows]: any = await this.mysqlPool.query<RowDataPacket[]>(
+        query,
+        params,
+      );
       return rows.affectedRows;
     } catch (error) {
       queryError(error);
@@ -363,19 +361,19 @@ export class MysqlModelManager<
             " has no primary key to be deleted from, try deleteByColumn",
         );
       }
-      const deleteQuery = this.mysqlModelManagerUtils.parseDelete(
+      const { query, params } = this.mysqlModelManagerUtils.parseDelete(
         this.model.metadata.tableName,
         this.model.metadata.primaryKey,
         model[this.model.metadata.primaryKey as keyof T] as string,
       );
 
       if (trx) {
-        await trx.queryDelete(deleteQuery);
+        await trx.queryDelete(query, params);
         return model;
       }
 
-      log(deleteQuery, this.logs);
-      await this.mysqlPool.query<RowDataPacket[]>(deleteQuery);
+      log(query, this.logs, params);
+      await this.mysqlPool.query<RowDataPacket[]>(query, params);
       return model;
     } catch (error) {
       queryError(error);

@@ -1,4 +1,4 @@
-import { Model } from "../Models/Model";
+import { getBaseModelInstance, Model } from "../Models/Model";
 import { getModelColumns } from "../Models/ModelDecorators";
 import {
   OneOptions,
@@ -95,7 +95,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
         return null;
       }
 
-      const modelInstance = new this.model() as T;
+      const modelInstance = getBaseModelInstance<T>();
       this.mergeRawPacketIntoModel(modelInstance, result.rows[0]);
 
       const relationModels =
@@ -147,7 +147,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
       const rows = result.rows;
 
       const modelPromises = rows.map(async (row) => {
-        const modelInstance = new this.model() as T;
+        const modelInstance = {} as T;
         this.mergeRawPacketIntoModel(modelInstance, row);
 
         return modelInstance as T;

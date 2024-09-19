@@ -140,13 +140,14 @@ export class PostgresModelManager<
       }
 
       return await this.query()
-        .where(this.model.metadata.primaryKey as string, value)
+        .where(this.model.metadata.primaryKey as string, "=", value)
         .one({ throwErrorOnNull });
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
     }
   }
+
   /**
    * Save a new model instance to the database.
    *
@@ -179,7 +180,7 @@ export class PostgresModelManager<
       const { rows } = await this.pgPool.query(query, params);
       const insertedModel = rows[0] as T;
       if (!insertedModel) {
-        return null;
+        throw new Error(rows[0]);
       }
 
       return (await parseDatabaseDataIntoModelResponse(
@@ -195,7 +196,7 @@ export class PostgresModelManager<
   /**
    * Create multiple model instances in the database.
    *
-   * @param {Model} model - Model instance to be saved.
+   * @param {Model} models - Model instance to be saved.
    * @param {PostgresTransaction} trx - MysqlTransaction to be used on the save operation.
    * @returns Promise resolving to an array of saved models or null if saving fails.
    */
@@ -221,6 +222,7 @@ export class PostgresModelManager<
           this.model,
           this.sqlDataSource.getDbType(),
         );
+
       log(query, this.logs, params);
       const { rows } = await this.pgPool.query(query, params);
       const insertedModel = rows as T[];
@@ -311,26 +313,24 @@ export class PostgresModelManager<
     trx?: TransactionType,
   ): Promise<number> {
     if (trx) {
-      return (
-        (await trx.queryDelete(
-          this.postgresModelManagerUtils.parseDelete(
-            this.model.metadata.tableName,
-            column,
-            value,
-          ),
-        )) || 0
-      );
-    }
-
-    try {
-      const deleteQuery = this.postgresModelManagerUtils.parseDelete(
+      const { query, params } = this.postgresModelManagerUtils.parseDelete(
         this.model.metadata.tableName,
         column,
         value,
       );
 
-      log(deleteQuery, this.logs);
-      const result = await this.pgPool.query(deleteQuery);
+      return (await trx.queryDelete(query, params)) || 0;
+    }
+
+    try {
+      const { query, params } = this.postgresModelManagerUtils.parseDelete(
+        this.model.metadata.tableName,
+        column,
+        value,
+      );
+
+      log(query, this.logs, params);
+      const result = await this.pgPool.query(query, params);
       return result.rowCount || 0;
     } catch (error) {
       queryError(error);
@@ -358,19 +358,19 @@ export class PostgresModelManager<
         );
       }
 
-      const deleteQuery = this.postgresModelManagerUtils.parseDelete(
+      const { query, params } = this.postgresModelManagerUtils.parseDelete(
         this.model.metadata.tableName,
         this.model.metadata.primaryKey,
         model[this.model.metadata.primaryKey as keyof T] as string,
       );
 
       if (trx) {
-        await trx.queryDelete(deleteQuery);
+        await trx.queryDelete(query, params);
         return model;
       }
 
-      log(deleteQuery, this.logs);
-      await this.pgPool.query(deleteQuery);
+      log(query, this.logs, params);
+      await this.pgPool.query(query, params);
       return model;
     } catch (error) {
       queryError(error);
