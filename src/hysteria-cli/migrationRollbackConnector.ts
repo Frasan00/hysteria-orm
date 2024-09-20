@@ -12,6 +12,7 @@ export default async function rollbackMigrationConnector() {
   logger.info("Rolling back migrations...");
 
   switch (databaseType) {
+    case "mariadb":
     case "mysql":
       await migrationRollBackSql();
       break;
