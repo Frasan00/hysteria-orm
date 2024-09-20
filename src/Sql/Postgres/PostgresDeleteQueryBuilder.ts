@@ -10,11 +10,12 @@ import { SqlDataSource } from "../SqlDatasource";
 import { DateTime } from "luxon";
 import { SelectableType } from "../Models/ModelManager/ModelManagerTypes";
 import updateTemplate from "../Resources/Query/UPDATE";
+import { AbstractDeleteQueryBuilder } from "../QueryBuilder/DeleteQueryBuilder";
 
 export class PostgresDeleteQueryBuilder<
   T extends Model,
-> extends WhereQueryBuilder<T> {
-  protected pgClient: Client;
+> extends AbstractDeleteQueryBuilder<T> {
+  protected sqlConnection: Client;
   protected joinQuery;
   protected updateTemplate: ReturnType<typeof updateTemplate>;
   protected deleteTemplate: ReturnType<typeof deleteTemplate>;
@@ -37,7 +38,7 @@ export class PostgresDeleteQueryBuilder<
     sqlDataSource: SqlDataSource,
   ) {
     super(model, tableName, logs, false, sqlDataSource);
-    this.pgClient = pgClient;
+    this.sqlConnection = pgClient;
     this.updateTemplate = updateTemplate(sqlDataSource.getDbType(), this.model);
     this.deleteTemplate = deleteTemplate(tableName, sqlDataSource.getDbType());
     this.joinQuery = "";
@@ -65,7 +66,7 @@ export class PostgresDeleteQueryBuilder<
 
     log(query, this.logs, this.whereParams);
     try {
-      const result = await this.pgClient.query<T>(query, this.whereParams);
+      const result = await this.sqlConnection.query<T>(query, this.whereParams);
       if (!result.rows) {
         return [];
       }
@@ -112,7 +113,7 @@ export class PostgresDeleteQueryBuilder<
 
     log(query, this.logs, params);
     try {
-      const rows = await this.pgClient.query<T>(query, params);
+      const rows = await this.sqlConnection.query<T>(query, params);
       const models = await parseDatabaseDataIntoModelResponse(
         rows.rows,
         this.model,
@@ -180,7 +181,7 @@ export class PostgresDeleteQueryBuilder<
     const queryBuilder = new PostgresDeleteQueryBuilder(
       this.model as typeof Model,
       this.tableName,
-      this.pgClient,
+      this.sqlConnection,
       this.logs,
       true,
       this.sqlDataSource,
@@ -218,7 +219,7 @@ export class PostgresDeleteQueryBuilder<
     const nestedBuilder = new PostgresDeleteQueryBuilder(
       this.model as typeof Model,
       this.tableName,
-      this.pgClient,
+      this.sqlConnection,
       this.logs,
       true,
       this.sqlDataSource,
@@ -259,7 +260,7 @@ export class PostgresDeleteQueryBuilder<
     const nestedBuilder = new PostgresDeleteQueryBuilder(
       this.model as typeof Model,
       this.tableName,
-      this.pgClient,
+      this.sqlConnection,
       this.logs,
       true,
       this.sqlDataSource,

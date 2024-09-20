@@ -11,14 +11,12 @@ import {
   getModelColumns,
 } from "./Sql/Models/ModelDecorators";
 import { Relation } from "./Sql/Models/Relations/Relation";
-import {
-  QueryBuilders,
-  UpdateQueryBuilders,
-  DeleteQueryBuilders,
-} from "./Sql/QueryBuilder/QueryBuilder";
+import { AbstractQueryBuilders } from "./Sql/QueryBuilder/QueryBuilder";
 import { SqlDataSource } from "./Sql/SqlDatasource";
 import { Post } from "../test/sql/Models/Post";
 import { CaseConvention } from "./CaseUtils";
+import { AbstractDeleteQueryBuilder } from "./Sql/QueryBuilder/DeleteQueryBuilder";
+import { AbstractUpdateQueryBuilder } from "./Sql/QueryBuilder/UpdateQueryBuilder";
 
 // console.log(Post.metadata);
 
@@ -44,9 +42,9 @@ export {
   Relation,
   SqlDataSource,
   DataSourceInput,
-  QueryBuilders,
-  UpdateQueryBuilders,
-  DeleteQueryBuilders,
+  AbstractQueryBuilders,
+  AbstractDeleteQueryBuilder,
+  AbstractUpdateQueryBuilder,
   Migration,
   Metadata,
   CaseConvention,

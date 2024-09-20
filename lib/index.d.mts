@@ -914,10 +914,21 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @returns The PostgresQueryBuilder instance for chaining.
      */
     offset(offset: number): this;
-    copy(): QueryBuilders<T>;
+    copy(): AbstractQueryBuilders<T>;
     protected groupFooterQuery(): string;
     private mergeRawPacketIntoModel;
 }
+
+declare const updateTemplate: (dbType: DataSourceType, typeofModel: typeof Model) => {
+    update: (columns: string[], values: string[], primaryKey?: string, primaryKeyValue?: string | undefined) => {
+        query: string;
+        params: (string | undefined)[];
+    };
+    massiveUpdate: (columns: string[], values: any[], whereClause: string, joinClause?: string) => {
+        query: string;
+        params: any[];
+    };
+};
 
 declare abstract class WhereQueryBuilder<T extends Model> {
     protected sqlDataSource: SqlDataSource;
@@ -1113,19 +1124,21 @@ declare abstract class WhereQueryBuilder<T extends Model> {
     rawOrWhere(query: string): this;
 }
 
-declare const updateTemplate: (dbType: DataSourceType, typeofModel: typeof Model) => {
-    update: (columns: string[], values: string[], primaryKey?: string, primaryKeyValue?: string | undefined) => {
-        query: string;
-        params: (string | undefined)[];
-    };
-    massiveUpdate: (columns: string[], values: any[], whereClause: string, joinClause?: string) => {
-        query: string;
-        params: any[];
-    };
-};
+declare abstract class AbstractUpdateQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
+    protected abstract sqlConnection: Connection | Client;
+    protected abstract joinQuery: string;
+    protected abstract updateTemplate: ReturnType<typeof updateTemplate>;
+    protected abstract isNestedCondition: boolean;
+    abstract withData(data: Partial<T>, trx?: TransactionType): Promise<T[] | number>;
+    abstract join(relationTable: string, primaryColumn: string, foreignColumn: string): AbstractUpdateQueryBuilder<T>;
+    abstract leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): AbstractUpdateQueryBuilder<T>;
+    abstract whereBuilder(cb: (queryBuilder: AbstractUpdateQueryBuilder<T>) => void): this;
+    abstract orWhereBuilder(cb: (queryBuilder: AbstractUpdateQueryBuilder<T>) => void): this;
+    abstract andWhereBuilder(cb: (queryBuilder: AbstractUpdateQueryBuilder<T>) => void): this;
+}
 
-declare class MysqlUpdateQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
-    protected mysqlConnection: Connection;
+declare class MysqlUpdateQueryBuilder<T extends Model> extends AbstractUpdateQueryBuilder<T> {
+    protected sqlConnection: Connection;
     protected joinQuery: string;
     protected updateTemplate: ReturnType<typeof updateTemplate>;
     protected isNestedCondition: boolean;
@@ -1176,8 +1189,8 @@ declare class MysqlUpdateQueryBuilder<T extends Model> extends WhereQueryBuilder
     andWhereBuilder(cb: (queryBuilder: MysqlUpdateQueryBuilder<T>) => void): this;
 }
 
-declare class PostgresUpdateQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
-    protected pgClient: Client;
+declare class PostgresUpdateQueryBuilder<T extends Model> extends AbstractUpdateQueryBuilder<T> {
+    protected sqlConnection: Client;
     protected joinQuery: string;
     protected updateTemplate: ReturnType<typeof updateTemplate>;
     protected isNestedCondition: boolean;
@@ -1236,8 +1249,27 @@ declare const deleteTemplate: (tableName: string, dbType: DataSourceType) => {
     massiveDelete: (whereClause: string, joinClause?: string) => string;
 };
 
-declare class PostgresDeleteQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
-    protected pgClient: Client;
+declare abstract class AbstractDeleteQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
+    protected abstract sqlConnection: Connection | Client;
+    protected abstract joinQuery: string;
+    protected abstract updateTemplate: ReturnType<typeof updateTemplate>;
+    protected abstract deleteTemplate: ReturnType<typeof deleteTemplate>;
+    protected abstract isNestedCondition: boolean;
+    abstract softDelete(options?: {
+        column?: SelectableType<T>;
+        value?: string | number | boolean;
+        trx?: TransactionType;
+    }): Promise<T[] | number>;
+    abstract execute(trx?: TransactionType): Promise<T[] | number>;
+    abstract join(relationTable: string, primaryColumn: string, foreignColumn: string): AbstractDeleteQueryBuilder<T>;
+    abstract leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): AbstractDeleteQueryBuilder<T>;
+    abstract whereBuilder(cb: (queryBuilder: AbstractDeleteQueryBuilder<T>) => void): this;
+    abstract orWhereBuilder(cb: (queryBuilder: AbstractDeleteQueryBuilder<T>) => void): this;
+    abstract andWhereBuilder(cb: (queryBuilder: AbstractDeleteQueryBuilder<T>) => void): this;
+}
+
+declare class PostgresDeleteQueryBuilder<T extends Model> extends AbstractDeleteQueryBuilder<T> {
+    protected sqlConnection: Client;
     protected joinQuery: string;
     protected updateTemplate: ReturnType<typeof updateTemplate>;
     protected deleteTemplate: ReturnType<typeof deleteTemplate>;
@@ -1301,8 +1333,8 @@ declare class PostgresDeleteQueryBuilder<T extends Model> extends WhereQueryBuil
     andWhereBuilder(cb: (queryBuilder: PostgresDeleteQueryBuilder<T>) => void): this;
 }
 
-declare class MysqlDeleteQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
-    protected mysql: Connection;
+declare class MysqlDeleteQueryBuilder<T extends Model> extends AbstractDeleteQueryBuilder<T> {
+    protected sqlConnection: Connection;
     protected joinQuery: string;
     protected updateTemplate: ReturnType<typeof updateTemplate>;
     protected deleteTemplate: ReturnType<typeof deleteTemplate>;
@@ -1875,15 +1907,16 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @returns The MysqlQueryBuilder instance for chaining.
      */
     offset(offset: number): this;
-    copy(): QueryBuilders<T>;
+    copy(): AbstractQueryBuilders<T>;
     mergeQueryBuilder(queryBuilder: MysqlQueryBuilder<T>): void;
     protected groupFooterQuery(): string;
     private mergeRawPacketIntoModel;
 }
 
-type QueryBuilders<T extends Model> = MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
-type UpdateQueryBuilders<T extends Model> = MysqlUpdateQueryBuilder<T> | PostgresUpdateQueryBuilder<T>;
-type DeleteQueryBuilders<T extends Model> = MysqlDeleteQueryBuilder<T> | PostgresDeleteQueryBuilder<T>;
+/**
+ * @description The abstract class for query builders for selecting data.
+ */
+type AbstractQueryBuilders<T extends Model> = MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
 type OneOptions = {
     throwErrorOnNull: boolean;
 };
@@ -1930,9 +1963,9 @@ declare abstract class QueryBuilder<T extends Model> {
      * @param columns - The columns to select.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract select(...columns: string[]): QueryBuilders<T>;
-    abstract select(...columns: (SelectableType<T> | "*")[]): QueryBuilders<T>;
-    abstract select(...columns: (SelectableType<T> | "*" | string)[]): QueryBuilders<T>;
+    abstract select(...columns: string[]): AbstractQueryBuilders<T>;
+    abstract select(...columns: (SelectableType<T> | "*")[]): AbstractQueryBuilders<T>;
+    abstract select(...columns: (SelectableType<T> | "*" | string)[]): AbstractQueryBuilders<T>;
     /**
      * @description Executes the query and retrieves the results.
      * @returns
@@ -1944,34 +1977,34 @@ declare abstract class QueryBuilder<T extends Model> {
      * @param primaryColumn
      * @param foreignColumn
      */
-    abstract join(table: string, primaryColumn: string, foreignColumn: string): QueryBuilders<T>;
+    abstract join(table: string, primaryColumn: string, foreignColumn: string): AbstractQueryBuilders<T>;
     /**
      *
      * @param table
      * @param primaryColumn
      * @param foreignColumn
      */
-    abstract leftJoin(table: string, primaryColumn: string, foreignColumn: string): QueryBuilders<T>;
+    abstract leftJoin(table: string, primaryColumn: string, foreignColumn: string): AbstractQueryBuilders<T>;
     /**
      * @description Adds a relation to the query.
      * @param relations - The relations to add.
      */
-    abstract addRelations(relations: RelationType<T>[]): QueryBuilders<T>;
+    abstract addRelations(relations: RelationType<T>[]): AbstractQueryBuilders<T>;
     /**
      * @description Build more complex where conditions.
      * @param cb
      */
-    abstract whereBuilder(cb: (queryBuilder: QueryBuilders<T>) => void): QueryBuilders<T>;
+    abstract whereBuilder(cb: (queryBuilder: AbstractQueryBuilders<T>) => void): AbstractQueryBuilders<T>;
     /**
      * @description Build more complex where conditions.
      * @param cb
      */
-    abstract andWhereBuilder(cb: (queryBuilder: QueryBuilders<T>) => void): QueryBuilders<T>;
+    abstract andWhereBuilder(cb: (queryBuilder: AbstractQueryBuilders<T>) => void): AbstractQueryBuilders<T>;
     /**
      * @description Build more complex where conditions.
      * @param cb
      */
-    abstract orWhereBuilder(cb: (queryBuilder: QueryBuilders<T>) => void): QueryBuilders<T>;
+    abstract orWhereBuilder(cb: (queryBuilder: AbstractQueryBuilders<T>) => void): AbstractQueryBuilders<T>;
     /**
      * @description Adds a WHERE condition to the query.
      * @param column - The column to filter.
@@ -1979,10 +2012,10 @@ declare abstract class QueryBuilder<T extends Model> {
      * @param value - The value to compare against.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract where(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): QueryBuilders<T>;
-    abstract where(column: string, operator: WhereOperatorType, value: BaseValues): QueryBuilders<T>;
-    abstract where(column: SelectableType<T> | string, value: BaseValues): QueryBuilders<T>;
-    abstract where(column: SelectableType<T> | string, operator: WhereOperatorType, value: BaseValues): QueryBuilders<T>;
+    abstract where(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): AbstractQueryBuilders<T>;
+    abstract where(column: string, operator: WhereOperatorType, value: BaseValues): AbstractQueryBuilders<T>;
+    abstract where(column: SelectableType<T> | string, value: BaseValues): AbstractQueryBuilders<T>;
+    abstract where(column: SelectableType<T> | string, operator: WhereOperatorType, value: BaseValues): AbstractQueryBuilders<T>;
     /**
      * @description Adds an AND WHERE condition to the query.
      * @param column - The column to filter.
@@ -1990,10 +2023,10 @@ declare abstract class QueryBuilder<T extends Model> {
      * @param value - The value to compare against.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract andWhere(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): QueryBuilders<T>;
-    abstract andWhere(column: string, operator: WhereOperatorType, value: BaseValues): QueryBuilders<T>;
-    abstract andWhere(column: SelectableType<T> | string, value: BaseValues): QueryBuilders<T>;
-    abstract andWhere(column: SelectableType<T> | string, operator: WhereOperatorType, value: BaseValues): QueryBuilders<T>;
+    abstract andWhere(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): AbstractQueryBuilders<T>;
+    abstract andWhere(column: string, operator: WhereOperatorType, value: BaseValues): AbstractQueryBuilders<T>;
+    abstract andWhere(column: SelectableType<T> | string, value: BaseValues): AbstractQueryBuilders<T>;
+    abstract andWhere(column: SelectableType<T> | string, operator: WhereOperatorType, value: BaseValues): AbstractQueryBuilders<T>;
     /**
      * @description Adds an OR WHERE condition to the query.
      * @param column - The column to filter.
@@ -2001,10 +2034,10 @@ declare abstract class QueryBuilder<T extends Model> {
      * @param value - The value to compare against.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract orWhere(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): QueryBuilders<T>;
-    abstract orWhere(column: string, operator: WhereOperatorType, value: BaseValues): QueryBuilders<T>;
-    abstract orWhere(column: SelectableType<T> | string, value: BaseValues): QueryBuilders<T>;
-    abstract orWhere(column: SelectableType<T> | string, operator: WhereOperatorType, value: BaseValues): QueryBuilders<T>;
+    abstract orWhere(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): AbstractQueryBuilders<T>;
+    abstract orWhere(column: string, operator: WhereOperatorType, value: BaseValues): AbstractQueryBuilders<T>;
+    abstract orWhere(column: SelectableType<T> | string, value: BaseValues): AbstractQueryBuilders<T>;
+    abstract orWhere(column: SelectableType<T> | string, operator: WhereOperatorType, value: BaseValues): AbstractQueryBuilders<T>;
     /**
      * @description Adds a WHERE BETWEEN condition to the query.
      * @param column - The column to filter.
@@ -2012,9 +2045,9 @@ declare abstract class QueryBuilder<T extends Model> {
      * @param max - The maximum value for the range.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract whereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): QueryBuilders<T>;
-    abstract whereBetween(column: string, min: BaseValues, max: BaseValues): QueryBuilders<T>;
-    abstract whereBetween(column: SelectableType<T> | string, min: BaseValues, max: BaseValues): QueryBuilders<T>;
+    abstract whereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): AbstractQueryBuilders<T>;
+    abstract whereBetween(column: string, min: BaseValues, max: BaseValues): AbstractQueryBuilders<T>;
+    abstract whereBetween(column: SelectableType<T> | string, min: BaseValues, max: BaseValues): AbstractQueryBuilders<T>;
     /**
      * @description Adds an AND WHERE BETWEEN condition to the query.
      * @param column - The column to filter.
@@ -2022,9 +2055,9 @@ declare abstract class QueryBuilder<T extends Model> {
      * @param max - The maximum value for the range.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract andWhereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): QueryBuilders<T>;
-    abstract andWhereBetween(column: string, min: BaseValues, max: BaseValues): QueryBuilders<T>;
-    abstract andWhereBetween(column: SelectableType<T> | string, min: BaseValues, max: BaseValues): QueryBuilders<T>;
+    abstract andWhereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): AbstractQueryBuilders<T>;
+    abstract andWhereBetween(column: string, min: BaseValues, max: BaseValues): AbstractQueryBuilders<T>;
+    abstract andWhereBetween(column: SelectableType<T> | string, min: BaseValues, max: BaseValues): AbstractQueryBuilders<T>;
     /**
      * @description Adds an OR WHERE BETWEEN condition to the query.
      * @param column - The column to filter.
@@ -2032,9 +2065,9 @@ declare abstract class QueryBuilder<T extends Model> {
      * @param max - The maximum value for the range.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract orWhereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): QueryBuilders<T>;
-    abstract orWhereBetween(column: string, min: BaseValues, max: BaseValues): QueryBuilders<T>;
-    abstract orWhereBetween(column: SelectableType<T> | string, min: BaseValues, max: BaseValues): QueryBuilders<T>;
+    abstract orWhereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): AbstractQueryBuilders<T>;
+    abstract orWhereBetween(column: string, min: BaseValues, max: BaseValues): AbstractQueryBuilders<T>;
+    abstract orWhereBetween(column: SelectableType<T> | string, min: BaseValues, max: BaseValues): AbstractQueryBuilders<T>;
     /**
      * @description Adds a WHERE NOT BETWEEN condition to the query.
      * @param column - The column to filter.
@@ -2042,9 +2075,9 @@ declare abstract class QueryBuilder<T extends Model> {
      * @param max - The maximum value for the range.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract whereNotBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): QueryBuilders<T>;
-    abstract whereNotBetween(column: string, min: BaseValues, max: BaseValues): QueryBuilders<T>;
-    abstract whereNotBetween(column: SelectableType<T> | string, min: BaseValues, max: BaseValues): QueryBuilders<T>;
+    abstract whereNotBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): AbstractQueryBuilders<T>;
+    abstract whereNotBetween(column: string, min: BaseValues, max: BaseValues): AbstractQueryBuilders<T>;
+    abstract whereNotBetween(column: SelectableType<T> | string, min: BaseValues, max: BaseValues): AbstractQueryBuilders<T>;
     /**
      * @description Adds an OR WHERE NOT BETWEEN condition to the query.
      * @param column - The column to filter.
@@ -2052,154 +2085,154 @@ declare abstract class QueryBuilder<T extends Model> {
      * @param max - The maximum value for the range.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract orWhereNotBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): QueryBuilders<T>;
-    abstract orWhereNotBetween(column: string, min: BaseValues, max: BaseValues): QueryBuilders<T>;
-    abstract orWhereNotBetween(column: SelectableType<T> | string, min: BaseValues, max: BaseValues): QueryBuilders<T>;
+    abstract orWhereNotBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): AbstractQueryBuilders<T>;
+    abstract orWhereNotBetween(column: string, min: BaseValues, max: BaseValues): AbstractQueryBuilders<T>;
+    abstract orWhereNotBetween(column: SelectableType<T> | string, min: BaseValues, max: BaseValues): AbstractQueryBuilders<T>;
     /**
      * @description Adds a WHERE IN condition to the query.
      * @param column - The column to filter.
      * @param values - An array of values to match against.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract whereIn(column: SelectableType<T>, values: BaseValues[]): QueryBuilders<T>;
-    abstract whereIn(column: string, values: BaseValues[]): QueryBuilders<T>;
-    abstract whereIn(column: SelectableType<T> | string, values: BaseValues[]): QueryBuilders<T>;
+    abstract whereIn(column: SelectableType<T>, values: BaseValues[]): AbstractQueryBuilders<T>;
+    abstract whereIn(column: string, values: BaseValues[]): AbstractQueryBuilders<T>;
+    abstract whereIn(column: SelectableType<T> | string, values: BaseValues[]): AbstractQueryBuilders<T>;
     /**
      * @description Adds an AND WHERE IN condition to the query.
      * @param column - The column to filter.
      * @param values - An array of values to match against.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract andWhereIn(column: SelectableType<T>, values: BaseValues[]): QueryBuilders<T>;
-    abstract andWhereIn(column: string, values: BaseValues[]): QueryBuilders<T>;
-    abstract andWhereIn(column: SelectableType<T> | string, values: BaseValues[]): QueryBuilders<T>;
+    abstract andWhereIn(column: SelectableType<T>, values: BaseValues[]): AbstractQueryBuilders<T>;
+    abstract andWhereIn(column: string, values: BaseValues[]): AbstractQueryBuilders<T>;
+    abstract andWhereIn(column: SelectableType<T> | string, values: BaseValues[]): AbstractQueryBuilders<T>;
     /**
      * @description Adds an OR WHERE IN condition to the query.
      * @param column - The column to filter.
      * @param values - An array of values to match against.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract orWhereIn(column: string, values: BaseValues[]): QueryBuilders<T>;
-    abstract orWhereIn(column: SelectableType<T>, values: BaseValues[]): QueryBuilders<T>;
-    abstract orWhereIn(column: SelectableType<T> | string, values: BaseValues[]): QueryBuilders<T>;
+    abstract orWhereIn(column: string, values: BaseValues[]): AbstractQueryBuilders<T>;
+    abstract orWhereIn(column: SelectableType<T>, values: BaseValues[]): AbstractQueryBuilders<T>;
+    abstract orWhereIn(column: SelectableType<T> | string, values: BaseValues[]): AbstractQueryBuilders<T>;
     /**
      * @description Adds a WHERE NOT IN condition to the query.
      * @param column - The column to filter.
      * @param values - An array of values to exclude.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract whereNotIn(column: SelectableType<T>, values: BaseValues[]): QueryBuilders<T>;
-    abstract whereNotIn(column: string, values: BaseValues[]): QueryBuilders<T>;
-    abstract whereNotIn(column: SelectableType<T> | string, values: BaseValues[]): QueryBuilders<T>;
+    abstract whereNotIn(column: SelectableType<T>, values: BaseValues[]): AbstractQueryBuilders<T>;
+    abstract whereNotIn(column: string, values: BaseValues[]): AbstractQueryBuilders<T>;
+    abstract whereNotIn(column: SelectableType<T> | string, values: BaseValues[]): AbstractQueryBuilders<T>;
     /**
      * @description Adds an OR WHERE NOT IN condition to the query.
      * @param column - The column to filter.
      * @param values - An array of values to exclude.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract orWhereNotIn(column: SelectableType<T>, values: BaseValues[]): QueryBuilders<T>;
-    abstract orWhereNotIn(column: string, values: BaseValues[]): QueryBuilders<T>;
-    abstract orWhereNotIn(column: SelectableType<T> | string, values: BaseValues[]): QueryBuilders<T>;
+    abstract orWhereNotIn(column: SelectableType<T>, values: BaseValues[]): AbstractQueryBuilders<T>;
+    abstract orWhereNotIn(column: string, values: BaseValues[]): AbstractQueryBuilders<T>;
+    abstract orWhereNotIn(column: SelectableType<T> | string, values: BaseValues[]): AbstractQueryBuilders<T>;
     /**
      * @description Adds a WHERE NULL condition to the query.
      * @param column - The column to filter.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract whereNull(column: SelectableType<T>): QueryBuilders<T>;
-    abstract whereNull(column: string): QueryBuilders<T>;
-    abstract whereNull(column: SelectableType<T> | string): QueryBuilders<T>;
+    abstract whereNull(column: SelectableType<T>): AbstractQueryBuilders<T>;
+    abstract whereNull(column: string): AbstractQueryBuilders<T>;
+    abstract whereNull(column: SelectableType<T> | string): AbstractQueryBuilders<T>;
     /**
      * @description Adds an AND WHERE NULL condition to the query.
      * @param column - The column to filter.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract andWhereNull(column: SelectableType<T>): QueryBuilders<T>;
-    abstract andWhereNull(column: string): QueryBuilders<T>;
-    abstract andWhereNull(column: SelectableType<T> | string): QueryBuilders<T>;
+    abstract andWhereNull(column: SelectableType<T>): AbstractQueryBuilders<T>;
+    abstract andWhereNull(column: string): AbstractQueryBuilders<T>;
+    abstract andWhereNull(column: SelectableType<T> | string): AbstractQueryBuilders<T>;
     /**
      * @description Adds an OR WHERE NULL condition to the query.
      * @param column - The column to filter.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract orWhereNull(column: SelectableType<T>): QueryBuilders<T>;
-    abstract orWhereNull(column: string): QueryBuilders<T>;
-    abstract orWhereNull(column: SelectableType<T> | string): QueryBuilders<T>;
+    abstract orWhereNull(column: SelectableType<T>): AbstractQueryBuilders<T>;
+    abstract orWhereNull(column: string): AbstractQueryBuilders<T>;
+    abstract orWhereNull(column: SelectableType<T> | string): AbstractQueryBuilders<T>;
     /**
      * @description Adds a WHERE NOT NULL condition to the query.
      * @param column - The column to filter.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract whereNotNull(column: SelectableType<T>): QueryBuilders<T>;
-    abstract whereNotNull(column: string): QueryBuilders<T>;
-    abstract whereNotNull(column: SelectableType<T> | string): QueryBuilders<T>;
+    abstract whereNotNull(column: SelectableType<T>): AbstractQueryBuilders<T>;
+    abstract whereNotNull(column: string): AbstractQueryBuilders<T>;
+    abstract whereNotNull(column: SelectableType<T> | string): AbstractQueryBuilders<T>;
     /**
      * @description Adds an AND WHERE NOT NULL condition to the query.
      * @param column - The column to filter.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract andWhereNotNull(column: SelectableType<T>): QueryBuilders<T>;
-    abstract andWhereNotNull(column: string): QueryBuilders<T>;
-    abstract andWhereNotNull(column: SelectableType<T> | string): QueryBuilders<T>;
+    abstract andWhereNotNull(column: SelectableType<T>): AbstractQueryBuilders<T>;
+    abstract andWhereNotNull(column: string): AbstractQueryBuilders<T>;
+    abstract andWhereNotNull(column: SelectableType<T> | string): AbstractQueryBuilders<T>;
     /**
      * @description Adds an OR WHERE NOT NULL condition to the query.
      * @param column - The column to filter.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract orWhereNotNull(column: SelectableType<T>): QueryBuilders<T>;
-    abstract orWhereNotNull(column: string): QueryBuilders<T>;
-    abstract orWhereNotNull(column: SelectableType<T> | string): QueryBuilders<T>;
+    abstract orWhereNotNull(column: SelectableType<T>): AbstractQueryBuilders<T>;
+    abstract orWhereNotNull(column: string): AbstractQueryBuilders<T>;
+    abstract orWhereNotNull(column: SelectableType<T> | string): AbstractQueryBuilders<T>;
     /**
      * @description Adds a raw WHERE condition to the query.
      * @param query - The raw SQL WHERE condition.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract rawWhere(query: string): QueryBuilders<T>;
+    abstract rawWhere(query: string): AbstractQueryBuilders<T>;
     /**
      * @description Adds a raw AND WHERE condition to the query.
      * @param query - The raw SQL WHERE condition.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract rawAndWhere(query: string): QueryBuilders<T>;
+    abstract rawAndWhere(query: string): AbstractQueryBuilders<T>;
     /**
      * @description Adds a raw OR WHERE condition to the query.
      * @param query - The raw SQL WHERE condition.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract rawOrWhere(query: string): QueryBuilders<T>;
+    abstract rawOrWhere(query: string): AbstractQueryBuilders<T>;
     /**
      * @description Adds GROUP BY conditions to the query.
      * @param columns - The columns to group by.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract groupBy(...columns: SelectableType<T>[]): QueryBuilders<T>;
-    abstract groupBy(...columns: string[]): QueryBuilders<T>;
-    abstract groupBy(...columns: (SelectableType<T> | string)[]): QueryBuilders<T>;
+    abstract groupBy(...columns: SelectableType<T>[]): AbstractQueryBuilders<T>;
+    abstract groupBy(...columns: string[]): AbstractQueryBuilders<T>;
+    abstract groupBy(...columns: (SelectableType<T> | string)[]): AbstractQueryBuilders<T>;
     /**
      * @description Adds ORDER BY conditions to the query.
      * @param column - The column to order by.
      * @param order - The order direction, either "ASC" or "DESC".
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract orderBy(columns: SelectableType<T>[], order: "ASC" | "DESC"): QueryBuilders<T>;
-    abstract orderBy(columns: string[], order: "ASC" | "DESC"): QueryBuilders<T>;
-    abstract orderBy(columns: (SelectableType<T> | string)[], order: "ASC" | "DESC"): QueryBuilders<T>;
+    abstract orderBy(columns: SelectableType<T>[], order: "ASC" | "DESC"): AbstractQueryBuilders<T>;
+    abstract orderBy(columns: string[], order: "ASC" | "DESC"): AbstractQueryBuilders<T>;
+    abstract orderBy(columns: (SelectableType<T> | string)[], order: "ASC" | "DESC"): AbstractQueryBuilders<T>;
     /**
      * @description Adds a LIMIT condition to the query.
      * @param limit - The maximum number of rows to return.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract limit(limit: number): QueryBuilders<T>;
+    abstract limit(limit: number): AbstractQueryBuilders<T>;
     /**
      * @description Adds an OFFSET condition to the query.
      * @param offset - The number of rows to skip.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract offset(offset: number): QueryBuilders<T>;
+    abstract offset(offset: number): AbstractQueryBuilders<T>;
     /**
      * @description Returns a copy of the query builder instance.
      * @returns A copy of the query builder instance.
      */
-    abstract copy(): QueryBuilders<T>;
+    abstract copy(): AbstractQueryBuilders<T>;
     protected groupFooterQuery(): string;
 }
 
@@ -2240,9 +2273,9 @@ declare abstract class Model {
     /**
      * @description Gives a query instance for the given model
      * @param model
-     * @returns {QueryBuilders<T>}
+     * @returns {AbstractQueryBuilders<T>}
      */
-    static query<T extends Model>(this: new () => T | typeof Model): QueryBuilders<T>;
+    static query<T extends Model>(this: new () => T | typeof Model): AbstractQueryBuilders<T>;
     /**
      * @description Finds the first record in the database
      * @param model
@@ -2311,7 +2344,7 @@ declare abstract class Model {
      * @param trx
      * @returns Update query builder
      */
-    static update<T extends Model>(this: new () => T | typeof Model): UpdateQueryBuilders<T>;
+    static update<T extends Model>(this: new () => T | typeof Model): AbstractUpdateQueryBuilder<T>;
     /**
      * @description Deletes multiple records from the database
      * @param model
@@ -2319,7 +2352,7 @@ declare abstract class Model {
      * @param trx
      * @returns
      */
-    static delete<T extends Model>(this: new () => T | typeof Model): DeleteQueryBuilders<T>;
+    static delete<T extends Model>(this: new () => T | typeof Model): AbstractDeleteQueryBuilder<T>;
     /**
      * @description Deletes a record to the database
      * @param model
@@ -2362,7 +2395,7 @@ declare abstract class Model {
      * @description Adds a beforeFetch clause to the model, adding the ability to modify the query before fetching the data
      * @param queryBuilder
      */
-    static beforeFetch(queryBuilder: QueryBuilders<any>): QueryBuilders<any>;
+    static beforeFetch(queryBuilder: AbstractQueryBuilders<any>): AbstractQueryBuilders<any>;
     /**
      * @description Adds a beforeCreate clause to the model, adding the ability to modify the data after fetching the data
      * @param data
@@ -2373,12 +2406,12 @@ declare abstract class Model {
      * @description Adds a beforeUpdate clause to the model, adding the ability to modify the data before updating the data
      * @param data
      */
-    static beforeUpdate(queryBuilder: UpdateQueryBuilders<any>): UpdateQueryBuilders<any>;
+    static beforeUpdate(queryBuilder: AbstractUpdateQueryBuilder<any>): AbstractUpdateQueryBuilder<any>;
     /**
      * @description Adds a beforeDelete clause to the model, adding the ability to modify the data before deleting the data
      * @param data
      */
-    static beforeDelete(queryBuilder: DeleteQueryBuilders<any>): DeleteQueryBuilders<any>;
+    static beforeDelete(queryBuilder: AbstractDeleteQueryBuilder<any>): AbstractDeleteQueryBuilder<any>;
     /**
      * @description Adds a afterFetch clause to the model, adding the ability to modify the data after fetching the data
      * @param data
@@ -2457,4 +2490,4 @@ declare const _default: {
     getModelColumns: typeof getModelColumns;
 };
 
-export { type CaseConvention, type DataSourceInput, type DeleteQueryBuilders, type Metadata, Migration, Model, type QueryBuilders, Relation, SqlDataSource, type UpdateQueryBuilders, belongsTo, column, _default as default, getModelColumns, getRelations, hasMany, hasOne };
+export { AbstractDeleteQueryBuilder, type AbstractQueryBuilders, AbstractUpdateQueryBuilder, type CaseConvention, type DataSourceInput, type Metadata, Migration, Model, Relation, SqlDataSource, belongsTo, column, _default as default, getModelColumns, getRelations, hasMany, hasOne };

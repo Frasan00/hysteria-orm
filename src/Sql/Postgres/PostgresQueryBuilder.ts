@@ -3,7 +3,7 @@ import { getModelColumns } from "../Models/ModelDecorators";
 import {
   OneOptions,
   QueryBuilder,
-  QueryBuilders,
+  AbstractQueryBuilders,
 } from "../QueryBuilder/QueryBuilder";
 import { Client } from "pg";
 import { BaseValues, WhereOperatorType } from "../Resources/Query/WHERE.TS";
@@ -1143,7 +1143,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  public copy(): QueryBuilders<T> {
+  public copy(): AbstractQueryBuilders<T> {
     const queryBuilder = new PostgresQueryBuilder<T>(
       this.model as typeof Model,
       this.tableName,

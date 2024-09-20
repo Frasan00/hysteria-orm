@@ -9,11 +9,12 @@ import { SqlDataSource } from "../SqlDatasource";
 import { DateTime } from "luxon";
 import updateTemplate from "../Resources/Query/UPDATE";
 import { SelectableType } from "../Models/ModelManager/ModelManagerTypes";
+import { AbstractDeleteQueryBuilder } from "../QueryBuilder/DeleteQueryBuilder";
 
 export class MysqlDeleteQueryBuilder<
   T extends Model,
-> extends WhereQueryBuilder<T> {
-  protected mysql: Connection;
+> extends AbstractDeleteQueryBuilder<T> {
+  protected sqlConnection: Connection;
   protected joinQuery;
   protected updateTemplate: ReturnType<typeof updateTemplate>;
   protected deleteTemplate: ReturnType<typeof deleteTemplate>;
@@ -36,7 +37,7 @@ export class MysqlDeleteQueryBuilder<
     sqlDataSource: SqlDataSource,
   ) {
     super(model, tableName, logs, false, sqlDataSource);
-    this.mysql = mysql;
+    this.sqlConnection = mysql;
     this.updateTemplate = updateTemplate(sqlDataSource.getDbType(), this.model);
     this.deleteTemplate = deleteTemplate(tableName, sqlDataSource.getDbType());
     this.joinQuery = "";
@@ -75,7 +76,7 @@ export class MysqlDeleteQueryBuilder<
 
     log(query, this.logs, params);
     try {
-      const [rows]: any = await this.mysql.query(query, params);
+      const [rows]: any = await this.sqlConnection.query(query, params);
       return rows.affectedRows;
     } catch (error) {
       queryError(query);
@@ -103,7 +104,10 @@ export class MysqlDeleteQueryBuilder<
 
     log(query, this.logs, this.whereParams);
     try {
-      const [rows]: any = await this.mysql.query(query, this.whereParams);
+      const [rows]: any = await this.sqlConnection.query(
+        query,
+        this.whereParams,
+      );
       return rows.affectedRows;
     } catch (error) {
       queryError(query);
@@ -163,7 +167,7 @@ export class MysqlDeleteQueryBuilder<
     const queryBuilder = new MysqlDeleteQueryBuilder(
       this.model as typeof Model,
       this.model.metadata.tableName,
-      this.mysql,
+      this.sqlConnection,
       this.logs,
       true,
       this.sqlDataSource,
@@ -201,7 +205,7 @@ export class MysqlDeleteQueryBuilder<
     const nestedBuilder = new MysqlDeleteQueryBuilder(
       this.model as typeof Model,
       this.model.metadata.tableName,
-      this.mysql,
+      this.sqlConnection,
       this.logs,
       true,
       this.sqlDataSource,
@@ -242,7 +246,7 @@ export class MysqlDeleteQueryBuilder<
     const nestedBuilder = new MysqlDeleteQueryBuilder(
       this.model as typeof Model,
       this.model.metadata.tableName,
-      this.mysql,
+      this.sqlConnection,
       this.logs,
       true,
       this.sqlDataSource,

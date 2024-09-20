@@ -189,7 +189,7 @@ export class User extends Model {
     public posts: Post[];
 
     // Hooks
-    public static beforeFetch(queryBuilder: QueryBuilders<User>): QueryBuilders<User> {
+    public static beforeFetch(queryBuilder: AbstractQueryBuilders<User>): AbstractQueryBuilders<User> {
         return queryBuilder.where("isActive", true);
     }
 

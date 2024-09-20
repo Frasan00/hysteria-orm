@@ -6,11 +6,12 @@ import { WhereQueryBuilder } from "../QueryBuilder/WhereQueryBuilder";
 import updateTemplate from "../Resources/Query/UPDATE";
 import joinTemplate from "../Resources/Query/JOIN";
 import { SqlDataSource } from "../SqlDatasource";
+import { AbstractUpdateQueryBuilder } from "../QueryBuilder/UpdateQueryBuilder";
 
 export class MysqlUpdateQueryBuilder<
   T extends Model,
-> extends WhereQueryBuilder<T> {
-  protected mysqlConnection: Connection;
+> extends AbstractUpdateQueryBuilder<T> {
+  protected sqlConnection: Connection;
   protected joinQuery = "";
   protected updateTemplate: ReturnType<typeof updateTemplate>;
   protected isNestedCondition = false;
@@ -32,7 +33,7 @@ export class MysqlUpdateQueryBuilder<
     sqlDataSource: SqlDataSource,
   ) {
     super(model, tableName, logs, false, sqlDataSource);
-    this.mysqlConnection = mysqlConnection;
+    this.sqlConnection = mysqlConnection;
     this.updateTemplate = updateTemplate(
       this.sqlDataSource.getDbType(),
       this.model,
@@ -71,7 +72,7 @@ export class MysqlUpdateQueryBuilder<
 
     log(query, this.logs, params);
     try {
-      const rows: any = await this.mysqlConnection.query(query, params);
+      const rows: any = await this.sqlConnection.query(query, params);
       if (!rows.length) {
         return 0;
       }
@@ -135,7 +136,7 @@ export class MysqlUpdateQueryBuilder<
     const queryBuilder = new MysqlUpdateQueryBuilder(
       this.model as typeof Model,
       this.tableName,
-      this.mysqlConnection,
+      this.sqlConnection,
       this.logs,
       true,
       this.sqlDataSource,
@@ -173,7 +174,7 @@ export class MysqlUpdateQueryBuilder<
     const nestedBuilder = new MysqlUpdateQueryBuilder(
       this.model as typeof Model,
       this.tableName,
-      this.mysqlConnection,
+      this.sqlConnection,
       this.logs,
       true,
       this.sqlDataSource,
@@ -214,7 +215,7 @@ export class MysqlUpdateQueryBuilder<
     const nestedBuilder = new MysqlUpdateQueryBuilder(
       this.model as typeof Model,
       this.tableName,
-      this.mysqlConnection,
+      this.sqlConnection,
       this.logs,
       true,
       this.sqlDataSource,
