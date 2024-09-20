@@ -117,7 +117,6 @@ import { Model } from "hysteria-orm";
 import { DateTime } from "luxon"; // Both Date and Datetime from luxon are supported
 
 export class User extends Model {
-    // optional Metadata
     static tableName: string = "users"; // Default Class name lowercase, in snake case with a final "s" (given for granted that the Class is defined in Pascal Case)
 
     @column({ primaryKey: true })
@@ -132,7 +131,7 @@ export class User extends Model {
     @column()
     declare signupSource: string;
 
-    // Only useful with mysql to convert tiny int directly in Boolean
+    // Only useful with mysql to convert tiny int directly into Boolean
     @column({ booleanColumn: true })
     declare isActive: boolean;
 
@@ -180,7 +179,7 @@ export class User extends Model {
 
     /* 
     * You can pass a soft delete column with the relative type in order to remove those records while using query().addRelation method
-    * Date soft column will be queried as AND column IS NULL, boolean soft delete column will be queried column = false instead
+    * Date soft COLUMN will be queried as AND column IS NULL, boolean soft delete column will be queried COLUMN = false instead
     */
     @hasMany(() => Post, "userId", { softDeleteColumn: "deletedAt", softDeleteType: "date" })
     public posts: Post[];
@@ -213,8 +212,8 @@ export class User extends Model {
 
 ### Case Convention
 - In Hysteria-orm the case convention is defined in the Model and it's extended to all columns in it
-- You can customize the behavior of the database interactions with
 - Extra columns will be converted to the standard given by modelCaseConvention
+- You can customize the behavior of the database interactions with
 
 ```typescript
 export class User extends Model {
@@ -250,7 +249,7 @@ try{
     const updatedUser = await User.updateRecord(newUser, trx);
 
 // Delete
-    await User.delete(updatedUser, trx);
+    await User.deleteRecord(updatedUser, trx);
     await User.deleteByColumn("email", "john@gmail.com");
 
     await trx.commit();
@@ -269,6 +268,7 @@ import { User } from "./User";
 const users: User[] = await userManager.find();
 
 // Get with optional parameters
+// params in select, where and relations are type safe with the columns and relations of the Model, dormire elastic aueries use the query builder
 const filteredUsers: User[] = await User.find({
     relations: ["profile"],
     where: {
@@ -281,7 +281,7 @@ const filteredUsers: User[] = await User.find({
     offset: 0
 });
 
-// Get by ok requires a primary key to exist on the model in order to work
+// Get by pk requires a primary key to exist on the model in order to work
 const user: User | null = await User.findOneByPrimaryKey(5, { throwErrorOnNull: true });
 
 // Get One
@@ -296,6 +296,7 @@ const otherUser: User | null = await User.findOne({
 ### Query-builder
 
 - It's used to create more complex queries that are not supported by the standard methods
+- all select-where-relations-orderby columns are partially type safe, they can both be a specifico column in the Model or a string
 
 ```typescript
 import { User } from "./User";
@@ -336,14 +337,11 @@ const user: User | null = await User.query().whereBuilder((queryBuilder) => {
 ### Aliases
 
 - Aliases are available in the query builder, for example selectRaw('new as newName') will generate an alias in the extraColumns prop that every model has
-- Everything inside the extraColumns will be converted to camel case automatically regardless of the alias name
-- Must use selectRaw for custom columns, by default `select` can only query the Model's columns
- can only query 
 ```typescript
 import { User } from "./User";
 
 const user: User | null = await User.query()
-    .selectRaw('id', 'name as superName')
+    .select('id', 'name as superName')
     .addRelations(['post'])
     .where("name", "John Doe")
     .andWhere("email", "john@gmail.com")
@@ -355,7 +353,7 @@ const user: User | null = await User.query()
 - Relations can be retrieved both from Standard methods and the query builder
 - Those retrieves are especially fast since for each relation a single db query is made and the retrieve of each relation for each model is made in O(n)
 - Based on the relation type can be retrieved both a list (HasMany) or a single record (BelongsTo, HasOne)
-- Those are special queries that are not influenced by hooks defined in the class
+- Those are special queries that are not influenced by hooks defined in their classes
 
 ```typescript
 import { User } from "./User";
@@ -392,7 +390,7 @@ const user: User | null = await User.query()
     .addRelations(['post'])
     .where("name", "John Doe")
     .andWhere("email", "john@gmail.com")
-    .paginate(1, 10); // page - limit
+    .paginate(1, 10); // page, for-page
 ```
 
 # Migrations
