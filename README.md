@@ -297,7 +297,7 @@ const otherUser: User | null = await User.findOne({
 ### Query-builder
 
 - It's used to create more complex queries that are not supported by the standard methods
-- all select-where-relations-orderby columns are partially type safe, they can both be a specifico column in the Model or a string
+- all select-where-relations-orderby columns are partially type safe, they can both be a specific column in the Model or a string
 
 ```typescript
 import { User } from "./User";
