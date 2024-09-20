@@ -10,6 +10,7 @@ dotenv.config();
 export default async function runMigrationsConnector() {
   const databaseType = process.env.DB_TYPE;
   switch (databaseType) {
+    case "mariadb":
     case "mysql":
       await runMigrationsSql();
       break;
