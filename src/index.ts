@@ -18,6 +18,28 @@ import { CaseConvention } from "./CaseUtils";
 import { AbstractDeleteQueryBuilder } from "./Sql/QueryBuilder/DeleteQueryBuilder";
 import { AbstractUpdateQueryBuilder } from "./Sql/QueryBuilder/UpdateQueryBuilder";
 
+export class Post extends Model {
+  @column({ primaryKey: true })
+  declare id: number;
+
+  @column()
+  declare userId: number;
+
+  @column()
+  declare title: string;
+
+  @column()
+  declare content: string;
+}
+
+SqlDataSource.connect().then(async (sql) => {
+  const count = await Post.query().getCount();
+
+  const sum = await Post.query().getSum("id");
+
+  console.log(count, sum);
+});
+
 export default {
   Model,
   column,

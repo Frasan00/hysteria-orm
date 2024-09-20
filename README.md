@@ -17,6 +17,7 @@ Hysteria ORM is an Object-Relational Mapping (ORM) library for TypeScript, desig
     - [Query Builder](#query-builder)
     - [Where Builder](#where-builder)
     - [Aliases](#aliases)
+    - [Count And Sum](#count-and-sum)
     - [Relations](#relations-retrieve)
     - [Join](#join)
     - [Pagination](#pagination)
@@ -346,6 +347,16 @@ const user: User | null = await User.query()
     .where("name", "John Doe")
     .andWhere("email", "john@gmail.com")
     .one();
+```
+
+### Count and Sum
+
+- There are two very simple methods for Count and Sum functions
+```typescript
+import { User } from "./User";
+
+const count = await User.query().getCount(); // number
+const sum = await User.query().getSum("id"); // number
 ```
 
 ### Relations Retrieve
