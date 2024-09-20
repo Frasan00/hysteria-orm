@@ -169,11 +169,21 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     }
   }
 
-  /**
-   * @description Paginates the query results with the given page and limit, it removes any previous limit - offset call
-   * @param page
-   * @param limit
-   */
+  public async getCount(): Promise<number> {
+    this.select("COUNT(*) as total");
+    const result = await this.one();
+    return result ? +result.extraColumns["total"] : 0;
+  }
+
+  public async getSum(column: SelectableType<T>): Promise<number>;
+  public async getSum(column: string): Promise<number>;
+  public async getSum(column: SelectableType<T> | string): Promise<number> {
+    column = convertCase(column as string, this.model.databaseCaseConvention);
+    this.select(`SUM(${column as string}) as total`);
+    const result = await this.one();
+    return result ? +result.extraColumns["total"] : 0;
+  }
+
   public async paginate(
     page: number,
     limit: number,
@@ -203,12 +213,6 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     } as PaginatedData<T>;
   }
 
-  /**
-   *
-   * @param relationTable - The name of the related table.
-   * @param primaryColumn - The name of the primary column in the caller table.
-   * @param foreignColumn - The name of the foreign column in the related table.
-   */
   public join(
     relationTable: string,
     primaryColumn: string,
@@ -224,12 +228,6 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  /**
-   *
-   * @param relationTable - The name of the related table.
-   * @param primaryColumn - The name of the primary column in the caller table.
-   * @param foreignColumn - The name of the foreign column in the related table.
-   */
   public leftJoin(
     relationTable: string,
     primaryColumn: string,
@@ -250,13 +248,6 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  /**
-   * @description Adds a WHERE condition to the query.
-   * @param column - The column to filter.
-   * @param operator - The comparison operator.
-   * @param value - The value to compare against.
-   * @returns The PostgresQueryBuilder instance for chaining.
-   */
   public where(
     column: SelectableType<T>,
     operator: WhereOperatorType,
@@ -305,10 +296,6 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  /**
-   * @description Build more complex where conditions.
-   * @param cb
-   */
   public whereBuilder(
     cb: (queryBuilder: PostgresQueryBuilder<T>) => void,
   ): this {
@@ -343,10 +330,6 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  /**
-   * @description Build complex OR-based where conditions.
-   * @param cb Callback function that takes a query builder and adds conditions to it.
-   */
   public orWhereBuilder(
     cb: (queryBuilder: PostgresQueryBuilder<T>) => void,
   ): this {
@@ -384,10 +367,6 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  /**
-   * @description Build complex AND-based where conditions.
-   * @param cb Callback function that takes a query builder and adds conditions to it.
-   */
   public andWhereBuilder(
     cb: (queryBuilder: PostgresQueryBuilder<T>) => void,
   ): this {
@@ -423,13 +402,6 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  /**
-   * @description Adds an AND WHERE condition to the query.
-   * @param column - The column to filter.
-   * @param operator - The comparison operator.
-   * @param value - The value to compare against.
-   * @returns The PostgresQueryBuilder instance for chaining.
-   */
   public andWhere(
     column: SelectableType<T>,
     operator: WhereOperatorType,
@@ -478,13 +450,6 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  /**
-   * @description Adds an OR WHERE condition to the query.
-   * @param column - The column to filter.
-   * @param operator - The comparison operator.
-   * @param value - The value to compare against.
-   * @returns The PostgresQueryBuilder instance for chaining.
-   */
   public orWhere(
     column: SelectableType<T>,
     operator: WhereOperatorType,
@@ -533,13 +498,6 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  /**
-   * @description Adds a WHERE BETWEEN condition to the query.
-   * @param column - The column to filter.
-   * @param min - The minimum value for the range.
-   * @param max - The maximum value for the range.
-   * @returns The PostgresQueryBuilder instance for chaining.
-   */
   public whereBetween(
     column: SelectableType<T>,
     min: BaseValues,
@@ -572,13 +530,6 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  /**
-   * @description Adds an AND WHERE BETWEEN condition to the query.
-   * @param column - The column to filter.
-   * @param min - The minimum value for the range.
-   * @param max - The maximum value for the range.
-   * @returns The PostgresQueryBuilder instance for chaining.
-   */
   public andWhereBetween(
     column: SelectableType<T>,
     min: BaseValues,
@@ -615,13 +566,6 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  /**
-   * @description Adds an OR WHERE BETWEEN condition to the query.
-   * @param column - The column to filter.
-   * @param min - The minimum value for the range.
-   * @param max - The maximum value for the range.
-   * @returns The PostgresQueryBuilder instance for chaining.
-   */
   public orWhereBetween(
     column: SelectableType<T>,
     min: BaseValues,
@@ -654,13 +598,6 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  /**
-   * @description Adds a WHERE NOT BETWEEN condition to the query.
-   * @param column - The column to filter.
-   * @param min - The minimum value for the range.
-   * @param max - The maximum value for the range.
-   * @returns The PostgresQueryBuilder instance for chaining.
-   */
   public whereNotBetween(
     column: SelectableType<T>,
     min: BaseValues,
@@ -697,13 +634,6 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  /**
-   * @description Adds an OR WHERE NOT BETWEEN condition to the query.
-   * @param column - The column to filter.
-   * @param min - The minimum value for the range.
-   * @param max - The maximum value for the range.
-   * @returns The PostgresQueryBuilder instance for chaining.
-   */
   public orWhereNotBetween(
     column: SelectableType<T>,
     min: BaseValues,
@@ -740,12 +670,6 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  /**
-   * @description Adds a WHERE IN condition to the query.
-   * @param column - The column to filter.
-   * @param values - An array of values to match against.
-   * @returns The PostgresQueryBuilder instance for chaining.
-   */
   public whereIn(column: SelectableType<T>, values: BaseValues[]): this;
   public whereIn(column: string, values: BaseValues[]): this;
   public whereIn(
@@ -771,12 +695,6 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  /**
-   * @description Adds an AND WHERE IN condition to the query.
-   * @param column - The column to filter.
-   * @param values - An array of values to match against.
-   * @returns The PostgresQueryBuilder instance for chaining.
-   */
   public andWhereIn(column: SelectableType<T>, values: BaseValues[]): this;
   public andWhereIn(column: string, values: BaseValues[]): this;
   public andWhereIn(
@@ -802,12 +720,6 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  /**
-   * @description Adds an OR WHERE IN condition to the query.
-   * @param column - The column to filter.
-   * @param values - An array of values to match against.
-   * @returns The PostgresQueryBuilder instance for chaining.
-   */
   public orWhereIn(column: SelectableType<T>, values: BaseValues[]): this;
   public orWhereIn(column: string, values: BaseValues[]): this;
   public orWhereIn(
@@ -833,12 +745,6 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  /**
-   * @description Adds a WHERE NOT IN condition to the query.
-   * @param column - The column to filter.
-   * @param values - An array of values to exclude.
-   * @returns The PostgresQueryBuilder instance for chaining.
-   */
   public whereNotIn(column: SelectableType<T>, values: BaseValues[]): this;
   public whereNotIn(column: string, values: BaseValues[]): this;
   public whereNotIn(
@@ -864,12 +770,6 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  /**
-   * @description Adds an OR WHERE NOT IN condition to the query.
-   * @param column - The column to filter.
-   * @param values - An array of values to exclude.
-   * @returns The PostgresQueryBuilder instance for chaining.
-   */
   public orWhereNotIn(column: SelectableType<T>, values: BaseValues[]): this;
   public orWhereNotIn(column: string, values: BaseValues[]): this;
   public orWhereNotIn(
@@ -895,11 +795,6 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  /**
-   * @description Adds a WHERE NULL condition to the query.
-   * @param column - The column to filter.
-   * @returns The PostgresQueryBuilder instance for chaining.
-   */
   public whereNull(column: SelectableType<T>): this;
   public whereNull(column: string): this;
   public whereNull(column: SelectableType<T> | string): this {
@@ -916,11 +811,6 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  /**
-   * @description Adds an AND WHERE NULL condition to the query.
-   * @param column - The column to filter.
-   * @returns The PostgresQueryBuilder instance for chaining.
-   */
   public andWhereNull(column: SelectableType<T>): this;
   public andWhereNull(column: string): this;
   public andWhereNull(column: SelectableType<T> | string): this {
@@ -937,11 +827,6 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  /**
-   * @description Adds an OR WHERE NULL condition to the query.
-   * @param column - The column to filter.
-   * @returns The PostgresQueryBuilder instance for chaining.
-   */
   public orWhereNull(column: SelectableType<T>): this;
   public orWhereNull(column: string): this;
   public orWhereNull(column: SelectableType<T> | string): this {
@@ -958,11 +843,6 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  /**
-   * @description Adds a WHERE NOT NULL condition to the query.
-   * @param column - The column to filter.
-   * @returns The PostgresQueryBuilder instance for chaining.
-   */
   public whereNotNull(column: SelectableType<T>): this;
   public whereNotNull(column: string): this;
   public whereNotNull(column: SelectableType<T> | string): this {
@@ -983,11 +863,6 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  /**
-   * @description Adds an AND WHERE NOT NULL condition to the query.
-   * @param column - The column to filter.
-   * @returns The PostgresQueryBuilder instance for chaining.
-   */
   public andWhereNotNull(column: SelectableType<T>): this;
   public andWhereNotNull(column: string): this;
   public andWhereNotNull(column: SelectableType<T> | string): this {
@@ -1008,11 +883,6 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  /**
-   * @description Adds an OR WHERE NOT NULL condition to the query.
-   * @param column - The column to filter.
-   * @returns The PostgresQueryBuilder instance for chaining.
-   */
   public orWhereNotNull(column: SelectableType<T>): this;
   public orWhereNotNull(column: string): this;
   public orWhereNotNull(column: SelectableType<T> | string): this {
@@ -1033,11 +903,6 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  /**
-   * @description Adds a raw WHERE condition to the query.
-   * @param query - The raw SQL WHERE condition.
-   * @returns The PostgresQueryBuilder instance for chaining.
-   */
   public rawWhere(query: string) {
     if (!this.whereQuery || !this.isNestedCondition) {
       const { query: rawQuery, params } = this.whereTemplate.rawWhere(query);
@@ -1052,11 +917,6 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  /**
-   * @description Adds a raw AND WHERE condition to the query.
-   * @param query - The raw SQL WHERE condition.
-   * @returns The PostgresQueryBuilder instance for chaining.
-   */
   public rawAndWhere(query: string) {
     if (!this.whereQuery || !this.isNestedCondition) {
       const { query: rawQuery, params } = this.whereTemplate.rawWhere(query);
@@ -1071,11 +931,6 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  /**
-   * @description Adds a raw OR WHERE condition to the query.
-   * @param query - The raw SQL WHERE condition.
-   * @returns The PostgresQueryBuilder instance for chaining.
-   */
   public rawOrWhere(query: string) {
     if (!this.whereQuery || !this.isNestedCondition) {
       const { query: rawQuery, params } = this.whereTemplate.rawWhere(query);
@@ -1090,11 +945,6 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  /**
-   * @description Adds GROUP BY conditions to the query.
-   * @param columns - The columns to group by.
-   * @returns The PostgresQueryBuilder instance for chaining.
-   */
   public groupBy(...columns: SelectableType<T>[]): this;
   public groupBy(...columns: string[]): this;
   public groupBy(...columns: (SelectableType<T> | string)[]): this {
@@ -1102,12 +952,6 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  /**
-   * @description Adds ORDER BY conditions to the query.
-   * @param column - The column to order by.
-   * @param order - The order direction, either "ASC" or "DESC".
-   * @returns The PostgresQueryBuilder instance for chaining.
-   */
   public orderBy(columns: SelectableType<T>[], order: "ASC" | "DESC"): this;
   public orderBy(columns: string[], order: "ASC" | "DESC"): this;
   public orderBy(
@@ -1118,21 +962,11 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  /**
-   * @description Adds a LIMIT condition to the query.
-   * @param limit - The maximum number of rows to return.
-   * @returns The PostgresQueryBuilder instance for chaining.
-   */
   public limit(limit: number) {
     this.limitQuery = this.selectTemplate.limit(limit);
     return this;
   }
 
-  /**
-   * @description Adds an OFFSET condition to the query.
-   * @param offset - The number of rows to skip.
-   * @returns The PostgresQueryBuilder instance for chaining.
-   */
   public offset(offset: number) {
     this.offsetQuery = this.selectTemplate.offset(offset);
     return this;

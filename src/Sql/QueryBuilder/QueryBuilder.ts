@@ -87,6 +87,19 @@ export abstract class QueryBuilder<T extends Model> {
   public abstract many(): Promise<T[]>;
 
   /**
+   * @description Executes the query and retrieves the count of results, it ignores all select, group by, order by, limit and offset clauses if they are present.
+   * @returns A Promise resolving to the count of results.
+   */
+  public abstract getCount(): Promise<number>;
+
+  /**
+   * @description Executes the query and retrieves the sum of a column, it ignores all select, group by, order by, limit and offset clauses if they are present.
+   * @param column - The column to sum.
+   * @returns A Promise resolving to the sum of the column.
+   */
+  public abstract getSum(column: string): Promise<number>;
+
+  /**
    * @description Executes the query and retrieves multiple results.
    * @returns A Promise resolving to an array of results.
    */
@@ -115,7 +128,7 @@ export abstract class QueryBuilder<T extends Model> {
   public abstract raw(query: string): Promise<T | T[] | any>;
 
   /**
-   *
+   * @description Adds a JOIN condition to the query.
    * @param table
    * @param primaryColumn
    * @param foreignColumn
@@ -127,7 +140,7 @@ export abstract class QueryBuilder<T extends Model> {
   ): AbstractQueryBuilders<T>;
 
   /**
-   *
+   * @description Adds a LEFT JOIN condition to the query.
    * @param table
    * @param primaryColumn
    * @param foreignColumn
