@@ -35,8 +35,8 @@ export class PostgresUpdateQueryBuilder<
     super(model, tableName, logs, false, sqlDataSource);
     this.pgPool = pgPool;
     this.updateTemplate = updateTemplate(
-      tableName,
       this.sqlDataSource.getDbType(),
+      this.model,
     );
     this.joinQuery = "";
     this.isNestedCondition = isNestedCondition;
@@ -96,7 +96,7 @@ export class PostgresUpdateQueryBuilder<
     foreignColumn: string,
   ): PostgresUpdateQueryBuilder<T> {
     const join = joinTemplate(
-      this.tableName,
+      this.model,
       relationTable,
       primaryColumn as string,
       foreignColumn as string,
@@ -117,7 +117,7 @@ export class PostgresUpdateQueryBuilder<
     foreignColumn: string,
   ): PostgresUpdateQueryBuilder<T> {
     const join = joinTemplate(
-      this.tableName,
+      this.model,
       relationTable,
       primaryColumn as string,
       foreignColumn as string,

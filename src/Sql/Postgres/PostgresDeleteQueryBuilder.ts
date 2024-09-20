@@ -38,7 +38,7 @@ export class PostgresDeleteQueryBuilder<
   ) {
     super(model, tableName, logs, false, sqlDataSource);
     this.pgPool = pgPool;
-    this.updateTemplate = updateTemplate(tableName, sqlDataSource.getDbType());
+    this.updateTemplate = updateTemplate(sqlDataSource.getDbType(), this.model);
     this.deleteTemplate = deleteTemplate(tableName, sqlDataSource.getDbType());
     this.joinQuery = "";
     this.isNestedCondition = isNestedCondition;
@@ -140,7 +140,7 @@ export class PostgresDeleteQueryBuilder<
     foreignColumn: string,
   ): PostgresDeleteQueryBuilder<T> {
     const join = joinTemplate(
-      this.tableName,
+      this.model,
       relationTable,
       primaryColumn as string,
       foreignColumn as string,
@@ -161,7 +161,7 @@ export class PostgresDeleteQueryBuilder<
     foreignColumn: string,
   ): PostgresDeleteQueryBuilder<T> {
     const join = joinTemplate(
-      this.tableName,
+      this.model,
       relationTable,
       primaryColumn as string,
       foreignColumn as string,

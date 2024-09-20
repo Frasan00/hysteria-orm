@@ -16,9 +16,9 @@ import {
   RelationType,
   SelectableType,
 } from "../Models/ModelManager/ModelManagerTypes";
-import { fromSnakeToCamelCase } from "../../CaseUtils";
 import MysqlModelManagerUtils from "../Mysql/MySqlModelManagerUtils";
 import { SqlDataSource } from "../SqlDatasource";
+import { convertCase } from "../../CaseUtils";
 
 export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
   protected mysqlPool: Pool;
@@ -59,11 +59,9 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
     let query: string = "";
     if (this.joinQuery && !this.selectQuery) {
-      const select = selectTemplate(
-        this.tableName,
-        this.sqlDataSource.getDbType(),
+      this.selectQuery = this.selectTemplate.selectColumns(
+        `${this.tableName}.*`,
       );
-      this.selectQuery = select.selectColumns(`${this.tableName}.*`);
     }
     query = this.selectQuery + this.joinQuery;
 
@@ -90,7 +88,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
       }
 
       const modelInstance = getBaseModelInstance<T>();
-      this.mergeRawPacketIntoModel(modelInstance, rows[0]);
+      this.mergeRawPacketIntoModel(modelInstance, rows[0], this.model);
       const relationModels =
         await this.mysqlModelManagerUtils.parseQueryBuilderRelations(
           [modelInstance],
@@ -122,11 +120,9 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
     let query: string = "";
     if (this.joinQuery && !this.selectQuery) {
-      const select = selectTemplate(
-        this.tableName,
-        this.sqlDataSource.getDbType(),
+      this.selectQuery = this.selectTemplate.selectColumns(
+        `${this.tableName}.*`,
       );
-      this.selectQuery = select.selectColumns(`${this.tableName}.*`);
     }
     query = this.selectQuery + this.joinQuery;
 
@@ -147,7 +143,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
       const modelPromises = rows.map(async (row) => {
         const modelInstance = getBaseModelInstance<T>();
-        this.mergeRawPacketIntoModel(modelInstance, row);
+        this.mergeRawPacketIntoModel(modelInstance, row, this.model);
 
         return modelInstance as T;
       });
@@ -227,12 +223,9 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
   public select(
     ...columns: (SelectableType<T> | "*" | string)[]
   ): MysqlQueryBuilder<T> {
-    const select = selectTemplate(
-      this.tableName,
-      this.sqlDataSource.getDbType(),
+    this.selectQuery = this.selectTemplate.selectColumns(
+      ...(columns as string[]),
     );
-
-    this.selectQuery = select.selectColumns(...(columns as string[]));
     return this;
   }
 
@@ -248,7 +241,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     foreignColumn: string,
   ): MysqlQueryBuilder<T> {
     const join = joinTemplate(
-      this.tableName,
+      this.model,
       relationTable,
       primaryColumn,
       foreignColumn,
@@ -269,7 +262,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     foreignColumn: string,
   ): MysqlQueryBuilder<T> {
     const join = joinTemplate(
-      this.tableName,
+      this.model,
       relationTable,
       primaryColumn,
       foreignColumn,
@@ -1209,10 +1202,17 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     );
   }
 
-  private mergeRawPacketIntoModel(model: T, row: any) {
+  private mergeRawPacketIntoModel(
+    model: T,
+    row: any,
+    typeofModel: typeof Model,
+  ) {
     const columns = getModelColumns(this.model);
     Object.entries(row).forEach(([key, value]) => {
-      const camelCaseKey = fromSnakeToCamelCase(key) as string;
+      const camelCaseKey = convertCase(
+        key,
+        typeofModel.modelCaseConvention,
+      ) as string;
       if (columns.includes(camelCaseKey)) {
         Object.assign(model, { [camelCaseKey]: value });
         return;

@@ -37,7 +37,7 @@ export class MysqlDeleteQueryBuilder<
   ) {
     super(model, tableName, logs, false, sqlDataSource);
     this.mysql = mysql;
-    this.updateTemplate = updateTemplate(tableName, sqlDataSource.getDbType());
+    this.updateTemplate = updateTemplate(sqlDataSource.getDbType(), this.model);
     this.deleteTemplate = deleteTemplate(tableName, sqlDataSource.getDbType());
     this.joinQuery = "";
     this.isNestedCondition = isNestedCondition;
@@ -123,7 +123,7 @@ export class MysqlDeleteQueryBuilder<
     foreignColumn: string,
   ): MysqlDeleteQueryBuilder<T> {
     const join = joinTemplate(
-      this.tableName,
+      this.model,
       relationTable,
       primaryColumn as string,
       foreignColumn as string,
@@ -144,7 +144,7 @@ export class MysqlDeleteQueryBuilder<
     foreignColumn: string,
   ): MysqlDeleteQueryBuilder<T> {
     const join = joinTemplate(
-      this.tableName,
+      this.model,
       relationTable,
       primaryColumn as string,
       foreignColumn as string,
@@ -162,7 +162,7 @@ export class MysqlDeleteQueryBuilder<
   ): this {
     const queryBuilder = new MysqlDeleteQueryBuilder(
       this.model as typeof Model,
-      this.tableName,
+      this.model.metadata.tableName,
       this.mysql,
       this.logs,
       true,
@@ -200,7 +200,7 @@ export class MysqlDeleteQueryBuilder<
   ): this {
     const nestedBuilder = new MysqlDeleteQueryBuilder(
       this.model as typeof Model,
-      this.tableName,
+      this.model.metadata.tableName,
       this.mysql,
       this.logs,
       true,
@@ -241,7 +241,7 @@ export class MysqlDeleteQueryBuilder<
   ): this {
     const nestedBuilder = new MysqlDeleteQueryBuilder(
       this.model as typeof Model,
-      this.tableName,
+      this.model.metadata.tableName,
       this.mysql,
       this.logs,
       true,

@@ -24,6 +24,11 @@ const COLUMN_METADATA_KEY = Symbol("columns");
 const BOOLEAN_COLUMN_METADATA_KEY = Symbol("booleanColumns");
 const RELATION_METADATA_KEY = Symbol("relations");
 
+/**
+ * @description Decorator to define a column in the model
+ * @param options - Options for the column
+ * @returns
+ */
 export function column(
   options: ColumnOptions = { booleanColumn: false },
 ): PropertyDecorator {
@@ -46,10 +51,20 @@ export function column(
   };
 }
 
+/**
+ * @description Returns the columns of the model, columns must be decorated with the column decorator
+ * @param target Model
+ * @returns
+ */
 export function getModelColumns(target: typeof Model): string[] {
   return Reflect.getMetadata(COLUMN_METADATA_KEY, target.prototype) || [];
 }
 
+/**
+ * @description Returns the boolean columns of the model
+ * @param target Model
+ * @returns
+ */
 export function getModelBooleanColumns(target: typeof Model): string[] {
   return (
     Reflect.getMetadata(BOOLEAN_COLUMN_METADATA_KEY, target.prototype) || []
@@ -138,6 +153,11 @@ export function hasMany(
   };
 }
 
+/**
+ * @description Returns the relations of the model
+ * @param target Model
+ * @returns
+ */
 export function getRelations(target: typeof Model): Relation[] {
   const relations =
     Reflect.getMetadata(RELATION_METADATA_KEY, target.prototype) || [];

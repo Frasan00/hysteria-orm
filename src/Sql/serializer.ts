@@ -1,4 +1,4 @@
-import { camelToSnakeCase, fromSnakeToCamelCase } from "../CaseUtils";
+import { convertCase } from "../CaseUtils";
 import { isNestedObject } from "./jsonUtils";
 import { Model } from "./Models/Model";
 import { getModelBooleanColumns, getRelations } from "./Models/ModelDecorators";
@@ -39,14 +39,15 @@ function serializeModel<T extends Record<string, any>>(
 
     if (model.hasOwnProperty(key)) {
       if (key === "extraColumns") {
-        processExtraColumns(model, key, camelCaseModel);
+        processExtraColumns(model, key, camelCaseModel, typeofModel);
         continue;
       }
 
       const originalValue = model[key];
       // Include null values
       if (originalValue == null) {
-        camelCaseModel[fromSnakeToCamelCase(key)] = originalValue;
+        camelCaseModel[convertCase(key, typeofModel.modelCaseConvention)] =
+          originalValue;
         continue;
       }
 
@@ -54,9 +55,12 @@ function serializeModel<T extends Record<string, any>>(
         continue;
       }
 
-      const camelCaseKey = fromSnakeToCamelCase(key);
+      const camelCaseKey = convertCase(key, typeofModel.modelCaseConvention);
       if (isNestedObject(originalValue) && !Array.isArray(originalValue)) {
-        camelCaseModel[camelCaseKey] = convertToCamelCaseObject(originalValue);
+        camelCaseModel[camelCaseKey] = convertToModelCaseConvention(
+          originalValue,
+          typeofModel,
+        );
         continue;
       }
 
@@ -81,6 +85,7 @@ function processExtraColumns(
   model: Record<string, any>,
   key: string,
   camelCaseModel: Record<string, any>,
+  typeofModel: typeof Model,
 ) {
   if (!Object.keys(model[key]).length) {
     return;
@@ -88,7 +93,8 @@ function processExtraColumns(
 
   const extraColumns = Object.keys(model[key]).reduce(
     (acc, objKey) => {
-      acc[fromSnakeToCamelCase(objKey)] = model[key][objKey];
+      acc[convertCase(objKey, typeofModel.modelCaseConvention)] =
+        model[key][objKey];
       return acc;
     },
     {} as Record<string, any>,
@@ -125,9 +131,13 @@ function processRelation(
     }
 
     const relatedModels = relationModel[relation.columnName];
-    const foreignKey = fromSnakeToCamelCase(relation.foreignKey) as string;
-    const primaryKey = fromSnakeToCamelCase(
+    const foreignKey = convertCase(
+      relation.foreignKey,
+      typeofModel.modelCaseConvention,
+    ) as string;
+    const primaryKey = convertCase(
       typeofModel.metadata.primaryKey,
+      typeofModel.modelCaseConvention,
     ) as string;
 
     switch (relation.type) {
@@ -171,8 +181,12 @@ function processRelation(
         const retrievedRelatedModels = relatedModels.filter(
           (item) =>
             // Since it's still raw data and it's not yet been converted to camel case (it will soon in the serializeModel call)m it's matched with the camel case key
-            item[camelToSnakeCase(foreignKey) as keyof Model] ===
-            serializedModel[primaryKey as keyof Model],
+            item[
+              convertCase(
+                foreignKey,
+                typeofModel.databaseCaseConvention,
+              ) as keyof Model
+            ] === serializedModel[primaryKey as keyof Model],
         );
 
         serializedModel[relation.columnName] = retrievedRelatedModels.map(
@@ -186,12 +200,14 @@ function processRelation(
   });
 }
 
-function convertToCamelCaseObject(
+function convertToModelCaseConvention(
   originalValue: Record<string, any>,
+  typeofModel: typeof Model,
 ): Record<string, any> {
   return Object.keys(originalValue).reduce(
     (acc, objKey) => {
-      acc[fromSnakeToCamelCase(objKey)] = originalValue[objKey];
+      acc[convertCase(objKey, typeofModel.modelCaseConvention)] =
+        originalValue[objKey];
       return acc;
     },
     {} as Record<string, any>,

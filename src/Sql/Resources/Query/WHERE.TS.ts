@@ -1,5 +1,6 @@
-import { camelToSnakeCase } from "../../../CaseUtils";
+import { convertCase } from "../../../CaseUtils";
 import { DataSourceType } from "../../../Datasource";
+import { Model } from "../../Models/Model";
 
 export type WhereOperatorType =
   | "="
@@ -22,7 +23,7 @@ export type WhereOperatorType =
 
 export type BaseValues = string | number | boolean | object;
 
-const whereTemplate = (_tableName: string, dbType: DataSourceType) => {
+const whereTemplate = (dbType: DataSourceType, typeofModel: typeof Model) => {
   return {
     convertPlaceHolderToValue: (query: string, startIndex: number = 1) => {
       switch (dbType) {
@@ -41,7 +42,10 @@ const whereTemplate = (_tableName: string, dbType: DataSourceType) => {
       value: BaseValues,
       operator: WhereOperatorType = "=",
     ) => {
-      let query = `\nWHERE ${camelToSnakeCase(column)} ${operator} PLACEHOLDER`;
+      let query = `\nWHERE ${convertCase(
+        column,
+        typeofModel.databaseCaseConvention,
+      )} ${operator} PLACEHOLDER`;
       let params = [value];
 
       if (typeof value === "object" && value !== null) {
@@ -69,7 +73,10 @@ const whereTemplate = (_tableName: string, dbType: DataSourceType) => {
       value: BaseValues,
       operator: WhereOperatorType = "=",
     ) => {
-      let query = ` AND ${camelToSnakeCase(column)} ${operator} PLACEHOLDER`;
+      let query = ` AND ${convertCase(
+        column,
+        typeofModel.databaseCaseConvention,
+      )} ${operator} PLACEHOLDER`;
       let params = [value];
 
       if (typeof value === "object" && value !== null) {
@@ -96,7 +103,10 @@ const whereTemplate = (_tableName: string, dbType: DataSourceType) => {
       value: BaseValues,
       operator: WhereOperatorType = "=",
     ) => {
-      let query = ` OR ${camelToSnakeCase(column)} ${operator} PLACEHOLDER`;
+      let query = ` OR ${convertCase(
+        column,
+        typeofModel.databaseCaseConvention,
+      )} ${operator} PLACEHOLDER`;
       let params = [value];
 
       if (typeof value === "object" && value !== null) {
@@ -119,7 +129,10 @@ const whereTemplate = (_tableName: string, dbType: DataSourceType) => {
       };
     },
     whereNot: (column: string, value: BaseValues) => {
-      let query = `\nWHERE ${camelToSnakeCase(column)} != PLACEHOLDER`;
+      let query = `\nWHERE ${convertCase(
+        column,
+        typeofModel.databaseCaseConvention,
+      )} != PLACEHOLDER`;
       let params = [value];
 
       if (typeof value === "object" && value !== null) {
@@ -142,7 +155,10 @@ const whereTemplate = (_tableName: string, dbType: DataSourceType) => {
       };
     },
     andWhereNot: (column: string, value: BaseValues) => {
-      let query = ` AND ${camelToSnakeCase(column)} != PLACEHOLDER`;
+      let query = ` AND ${convertCase(
+        column,
+        typeofModel.databaseCaseConvention,
+      )} != PLACEHOLDER`;
       let params = [value];
 
       if (typeof value === "object" && value !== null) {
@@ -165,7 +181,10 @@ const whereTemplate = (_tableName: string, dbType: DataSourceType) => {
       };
     },
     orWhereNot: (column: string, value: BaseValues) => {
-      let query = ` OR ${camelToSnakeCase(column)} != PLACEHOLDER`;
+      let query = ` OR ${convertCase(
+        column,
+        typeofModel.databaseCaseConvention,
+      )} != PLACEHOLDER`;
       let params = [value];
 
       if (typeof value === "object" && value !== null) {
@@ -188,8 +207,9 @@ const whereTemplate = (_tableName: string, dbType: DataSourceType) => {
       };
     },
     whereBetween: (column: string, min: BaseValues, max: BaseValues) => {
-      let query = `\nWHERE ${camelToSnakeCase(
+      let query = `\nWHERE ${convertCase(
         column,
+        typeofModel.databaseCaseConvention,
       )} BETWEEN PLACEHOLDER AND PLACEHOLDER`;
       let params = [min, max];
 
@@ -213,8 +233,9 @@ const whereTemplate = (_tableName: string, dbType: DataSourceType) => {
       };
     },
     andWhereBetween: (column: string, min: BaseValues, max: BaseValues) => {
-      let query = ` AND ${camelToSnakeCase(
+      let query = ` AND ${convertCase(
         column,
+        typeofModel.databaseCaseConvention,
       )} BETWEEN PLACEHOLDER AND PLACEHOLDER`;
       let params = [min, max];
 
@@ -238,8 +259,9 @@ const whereTemplate = (_tableName: string, dbType: DataSourceType) => {
       };
     },
     orWhereBetween: (column: string, min: BaseValues, max: BaseValues) => {
-      let query = ` OR ${camelToSnakeCase(
+      let query = ` OR ${convertCase(
         column,
+        typeofModel.databaseCaseConvention,
       )} BETWEEN PLACEHOLDER AND PLACEHOLDER`;
       let params = [min, max];
 
@@ -263,8 +285,9 @@ const whereTemplate = (_tableName: string, dbType: DataSourceType) => {
       };
     },
     whereNotBetween: (column: string, min: BaseValues, max: BaseValues) => {
-      let query = `\nWHERE ${camelToSnakeCase(
+      let query = `\nWHERE ${convertCase(
         column,
+        typeofModel.databaseCaseConvention,
       )} NOT BETWEEN PLACEHOLDER AND PLACEHOLDER`;
       let params = [min, max];
 
@@ -288,8 +311,9 @@ const whereTemplate = (_tableName: string, dbType: DataSourceType) => {
       };
     },
     andWhereNotBetween: (column: string, min: BaseValues, max: BaseValues) => {
-      let query = ` AND ${camelToSnakeCase(
+      let query = ` AND ${convertCase(
         column,
+        typeofModel.databaseCaseConvention,
       )} NOT BETWEEN PLACEHOLDER AND PLACEHOLDER`;
       let params = [min, max];
 
@@ -313,8 +337,9 @@ const whereTemplate = (_tableName: string, dbType: DataSourceType) => {
       };
     },
     orWhereNotBetween: (column: string, min: BaseValues, max: BaseValues) => {
-      let query = ` OR ${camelToSnakeCase(
+      let query = ` OR ${convertCase(
         column,
+        typeofModel.databaseCaseConvention,
       )} NOT BETWEEN PLACEHOLDER AND PLACEHOLDER`;
       let params = [min, max];
 
@@ -338,9 +363,10 @@ const whereTemplate = (_tableName: string, dbType: DataSourceType) => {
       };
     },
     whereIn: (column: string, values: BaseValues[]) => {
-      let query = `\nWHERE ${camelToSnakeCase(column)} IN (${values
-        .map((_) => "PLACEHOLDER")
-        .join(", ")})`;
+      let query = `\nWHERE ${convertCase(
+        column,
+        typeofModel.databaseCaseConvention,
+      )} IN (${values.map((_) => "PLACEHOLDER").join(", ")})`;
       let params = values;
 
       if (values[0] && typeof values[0] === "object") {
@@ -352,9 +378,10 @@ const whereTemplate = (_tableName: string, dbType: DataSourceType) => {
               .join(", ")})`;
             break;
           case "postgres":
-            query = `\nWHERE ${camelToSnakeCase(column)}::jsonb IN (${values
-              .map((_) => "PLACEHOLDER")
-              .join(", ")})`;
+            query = `\nWHERE ${convertCase(
+              column,
+              typeofModel.databaseCaseConvention,
+            )}::jsonb IN (${values.map((_) => "PLACEHOLDER").join(", ")})`;
             break;
           default:
             throw new Error(`Unsupported database type: ${dbType}`);
@@ -367,9 +394,10 @@ const whereTemplate = (_tableName: string, dbType: DataSourceType) => {
       };
     },
     andWhereIn: (column: string, values: BaseValues[]) => {
-      let query = ` AND ${camelToSnakeCase(column)} IN (${values
-        .map((_) => "PLACEHOLDER")
-        .join(", ")})`;
+      let query = ` AND ${convertCase(
+        column,
+        typeofModel.databaseCaseConvention,
+      )} IN (${values.map((_) => "PLACEHOLDER").join(", ")})`;
       let params = values;
 
       if (values[0] && typeof values[0] === "object") {
@@ -381,9 +409,10 @@ const whereTemplate = (_tableName: string, dbType: DataSourceType) => {
               .join(", ")})`;
             break;
           case "postgres":
-            query = ` AND ${camelToSnakeCase(column)}::jsonb IN (${values
-              .map((_) => "PLACEHOLDER")
-              .join(", ")})`;
+            query = ` AND ${convertCase(
+              column,
+              typeofModel.databaseCaseConvention,
+            )}::jsonb IN (${values.map((_) => "PLACEHOLDER").join(", ")})`;
             break;
           default:
             throw new Error(`Unsupported database type: ${dbType}`);
@@ -396,9 +425,10 @@ const whereTemplate = (_tableName: string, dbType: DataSourceType) => {
       };
     },
     orWhereIn: (column: string, values: BaseValues[]) => {
-      let query = ` OR ${camelToSnakeCase(column)} IN (${values
-        .map((_) => "PLACEHOLDER")
-        .join(", ")})`;
+      let query = ` OR ${convertCase(
+        column,
+        typeofModel.databaseCaseConvention,
+      )} IN (${values.map((_) => "PLACEHOLDER").join(", ")})`;
       let params = values;
 
       if (values[0] && typeof values[0] === "object") {
@@ -410,9 +440,10 @@ const whereTemplate = (_tableName: string, dbType: DataSourceType) => {
               .join(", ")})`;
             break;
           case "postgres":
-            query = ` OR ${camelToSnakeCase(column)}::jsonb IN (${values
-              .map((_) => "PLACEHOLDER")
-              .join(", ")})`;
+            query = ` OR ${convertCase(
+              column,
+              typeofModel.databaseCaseConvention,
+            )}::jsonb IN (${values.map((_) => "PLACEHOLDER").join(", ")})`;
             break;
           default:
             throw new Error(`Unsupported database type: ${dbType}`);
@@ -425,9 +456,10 @@ const whereTemplate = (_tableName: string, dbType: DataSourceType) => {
       };
     },
     whereNotIn: (column: string, values: BaseValues[]) => {
-      let query = `\nWHERE ${camelToSnakeCase(column)} NOT IN (${values
-        .map((_) => "PLACEHOLDER")
-        .join(", ")})`;
+      let query = `\nWHERE ${convertCase(
+        column,
+        typeofModel.databaseCaseConvention,
+      )} NOT IN (${values.map((_) => "PLACEHOLDER").join(", ")})`;
       let params = values;
 
       if (values[0] && typeof values[0] === "object") {
@@ -439,9 +471,10 @@ const whereTemplate = (_tableName: string, dbType: DataSourceType) => {
               .join(", ")})`;
             break;
           case "postgres":
-            query = `\nWHERE ${camelToSnakeCase(column)}::jsonb NOT IN (${values
-              .map((_) => "PLACEHOLDER")
-              .join(", ")})`;
+            query = `\nWHERE ${convertCase(
+              column,
+              typeofModel.databaseCaseConvention,
+            )}::jsonb NOT IN (${values.map((_) => "PLACEHOLDER").join(", ")})`;
             break;
           default:
             throw new Error(`Unsupported database type: ${dbType}`);
@@ -454,9 +487,10 @@ const whereTemplate = (_tableName: string, dbType: DataSourceType) => {
       };
     },
     andWhereNotIn: (column: string, values: BaseValues[]) => {
-      let query = ` AND ${camelToSnakeCase(column)} NOT IN (${values
-        .map((_) => "PLACEHOLDER")
-        .join(", ")})`;
+      let query = ` AND ${convertCase(
+        column,
+        typeofModel.databaseCaseConvention,
+      )} NOT IN (${values.map((_) => "PLACEHOLDER").join(", ")})`;
       let params = values;
 
       if (values[0] && typeof values[0] === "object") {
@@ -468,9 +502,10 @@ const whereTemplate = (_tableName: string, dbType: DataSourceType) => {
               .join(", ")})`;
             break;
           case "postgres":
-            query = ` AND ${camelToSnakeCase(column)}::jsonb NOT IN (${values
-              .map((_) => "PLACEHOLDER")
-              .join(", ")})`;
+            query = ` AND ${convertCase(
+              column,
+              typeofModel.databaseCaseConvention,
+            )}::jsonb NOT IN (${values.map((_) => "PLACEHOLDER").join(", ")})`;
             break;
           default:
             throw new Error(`Unsupported database type: ${dbType}`);
@@ -483,9 +518,10 @@ const whereTemplate = (_tableName: string, dbType: DataSourceType) => {
       };
     },
     orWhereNotIn: (column: string, values: BaseValues[]) => {
-      let query = ` OR ${camelToSnakeCase(column)} NOT IN (${values
-        .map((_) => "PLACEHOLDER")
-        .join(", ")})`;
+      let query = ` OR ${convertCase(
+        column,
+        typeofModel.databaseCaseConvention,
+      )} NOT IN (${values.map((_) => "PLACEHOLDER").join(", ")})`;
       let params = values;
 
       if (values[0] && typeof values[0] === "object") {
@@ -497,9 +533,10 @@ const whereTemplate = (_tableName: string, dbType: DataSourceType) => {
               .join(", ")})`;
             break;
           case "postgres":
-            query = ` OR ${camelToSnakeCase(column)}::jsonb NOT IN (${values
-              .map((_) => "PLACEHOLDER")
-              .join(", ")})`;
+            query = ` OR ${convertCase(
+              column,
+              typeofModel.databaseCaseConvention,
+            )}::jsonb NOT IN (${values.map((_) => "PLACEHOLDER").join(", ")})`;
             break;
           default:
             throw new Error(`Unsupported database type: ${dbType}`);
@@ -512,27 +549,45 @@ const whereTemplate = (_tableName: string, dbType: DataSourceType) => {
       };
     },
     whereNull: (column: string) => ({
-      query: `\nWHERE ${camelToSnakeCase(column)} IS NULL`,
+      query: `\nWHERE ${convertCase(
+        column,
+        typeofModel.databaseCaseConvention,
+      )} IS NULL`,
       params: [],
     }),
     andWhereNull: (column: string) => ({
-      query: ` AND ${camelToSnakeCase(column)} IS NULL`,
+      query: ` AND ${convertCase(
+        column,
+        typeofModel.databaseCaseConvention,
+      )} IS NULL`,
       params: [],
     }),
     orWhereNull: (column: string) => ({
-      query: ` OR ${camelToSnakeCase(column)} IS NULL`,
+      query: ` OR ${convertCase(
+        column,
+        typeofModel.databaseCaseConvention,
+      )} IS NULL`,
       params: [],
     }),
     whereNotNull: (column: string) => ({
-      query: `\nWHERE ${camelToSnakeCase(column)} IS NOT NULL`,
+      query: `\nWHERE ${convertCase(
+        column,
+        typeofModel.databaseCaseConvention,
+      )} IS NOT NULL`,
       params: [],
     }),
     andWhereNotNull: (column: string) => ({
-      query: ` AND ${camelToSnakeCase(column)} IS NOT NULL`,
+      query: ` AND ${convertCase(
+        column,
+        typeofModel.databaseCaseConvention,
+      )} IS NOT NULL`,
       params: [],
     }),
     orWhereNotNull: (column: string) => ({
-      query: ` OR ${camelToSnakeCase(column)} IS NOT NULL`,
+      query: ` OR ${convertCase(
+        column,
+        typeofModel.databaseCaseConvention,
+      )} IS NOT NULL`,
       params: [],
     }),
     rawWhere: (query: string) => ({

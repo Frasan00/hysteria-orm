@@ -1,21 +1,31 @@
-import { camelToSnakeCase } from "../../../CaseUtils";
+import { convertCase } from "../../../CaseUtils";
+import { Model } from "../../Models/Model";
 
 const joinTemplate = (
-  table: string,
+  typeofModel: typeof Model,
   relatedTable: string,
   primaryColumn: string,
   foreignColumn: string,
 ) => {
+  const table = typeofModel.metadata.tableName;
   return {
     innerJoin: () => {
-      return `\nINNER JOIN ${relatedTable} ON ${relatedTable}.${camelToSnakeCase(
+      return `\nINNER JOIN ${relatedTable} ON ${relatedTable}.${convertCase(
         foreignColumn,
-      )} = ${table}.${camelToSnakeCase(primaryColumn)}`;
+        typeofModel.databaseCaseConvention,
+      )} = ${table}.${convertCase(
+        primaryColumn,
+        typeofModel.databaseCaseConvention,
+      )}`;
     },
     leftJoin: () => {
-      return `\nLEFT JOIN ${relatedTable} ON ${relatedTable}.${camelToSnakeCase(
+      return `\nLEFT JOIN ${relatedTable} ON ${relatedTable}.${convertCase(
         foreignColumn,
-      )} = ${table}.${camelToSnakeCase(primaryColumn)}`;
+        typeofModel.databaseCaseConvention,
+      )} = ${table}.${convertCase(
+        primaryColumn,
+        typeofModel.databaseCaseConvention,
+      )}`;
     },
   };
 };

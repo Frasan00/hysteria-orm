@@ -2,8 +2,6 @@ import { User } from "../Models/User";
 import { Post } from "../Models/Post";
 import { SqlDataSource } from "../../../src/Sql/SqlDatasource";
 
-// Make relations tests
-
 test("Create a new user with posts", async () => {
   const sql = await SqlDataSource.connect({
     type: "postgres",

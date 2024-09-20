@@ -69,16 +69,16 @@ export abstract class QueryBuilder<T extends Model> {
     this.logs = logs;
     this.tableName = tableName;
     this.selectQuery = selectTemplate(
-      this.tableName,
       this.sqlDataSource.getDbType(),
+      this.model,
     ).selectAll;
     this.selectTemplate = selectTemplate(
-      this.tableName,
       this.sqlDataSource.getDbType(),
+      this.model,
     );
     this.whereTemplate = whereTemplate(
-      this.tableName,
       this.sqlDataSource.getDbType(),
+      this.model,
     );
     this.params = [];
   }

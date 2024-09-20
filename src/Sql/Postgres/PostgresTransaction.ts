@@ -3,7 +3,7 @@ import { BEGIN_TRANSACTION } from "../Resources/Query/TRANSACTION";
 import { COMMIT_TRANSACTION } from "../Resources/Query/TRANSACTION";
 import { ROLLBACK_TRANSACTION } from "../Resources/Query/TRANSACTION";
 import { log, queryError } from "../../Logger";
-import { Metadata, Model } from "../Models/Model";
+import { Model } from "../Models/Model";
 import selectTemplate from "../Resources/Query/SELECT";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
 
@@ -20,7 +20,7 @@ export class PostgresTransaction {
   public async queryInsert<T extends Model>(
     query: string,
     params: any[],
-    metadata: Metadata,
+    typeofModel: typeof Model,
   ): Promise<T> {
     if (!this.pgClient) {
       throw new Error("PostgresTransaction not started.");
@@ -33,8 +33,8 @@ export class PostgresTransaction {
         params,
       );
 
-      const insertId = rows[0][metadata.primaryKey as keyof T];
-      const select = selectTemplate(metadata.tableName, "postgres").selectById(
+      const insertId = rows[0][typeofModel.metadata.primaryKey as keyof T];
+      const select = selectTemplate("postgres", typeofModel).selectById(
         insertId as string,
       );
       const { rows: savedModel } = await this.pgClient.query<T>(select);

@@ -1,7 +1,9 @@
-import { camelToSnakeCase } from "../../../CaseUtils";
+import { convertCase } from "../../../CaseUtils";
 import { DataSourceType } from "../../../Datasource";
+import { Model } from "../../Models/Model";
 
-const updateTemplate = (table: string, dbType: DataSourceType) => {
+const updateTemplate = (dbType: DataSourceType, typeofModel: typeof Model) => {
+  const table = typeofModel.metadata.tableName;
   return {
     update: (
       columns: string[],
@@ -15,7 +17,9 @@ const updateTemplate = (table: string, dbType: DataSourceType) => {
         values.splice(extraColumnsIndex, 1);
       }
 
-      columns = columns.map((column) => camelToSnakeCase(column));
+      columns = columns.map((column) =>
+        convertCase(column, typeofModel.databaseCaseConvention),
+      );
       let setClause: string;
       let params: (string | undefined)[];
 
@@ -47,7 +51,9 @@ const updateTemplate = (table: string, dbType: DataSourceType) => {
       whereClause: string,
       joinClause: string = "",
     ) => {
-      columns = columns.map((column) => camelToSnakeCase(column));
+      columns = columns.map((column) =>
+        convertCase(column, typeofModel.databaseCaseConvention),
+      );
       let setClause: string;
       const params: any[] = [];
 

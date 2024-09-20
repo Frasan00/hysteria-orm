@@ -36,8 +36,8 @@ export abstract class WhereQueryBuilder<T extends Model> {
     this.logs = logs;
     this.tableName = tableName;
     this.whereTemplate = whereTemplate(
-      this.tableName,
       this.sqlDataSource.getDbType(),
+      this.model,
     );
     this.whereParams = [];
     this.isNestedCondition = isNestedCondition;

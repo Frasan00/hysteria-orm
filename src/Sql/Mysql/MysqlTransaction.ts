@@ -3,7 +3,7 @@ import { BEGIN_TRANSACTION } from "../Resources/Query/TRANSACTION";
 import { COMMIT_TRANSACTION } from "../Resources/Query/TRANSACTION";
 import { ROLLBACK_TRANSACTION } from "../Resources/Query/TRANSACTION";
 import { log, queryError } from "../../Logger";
-import { Metadata, Model } from "../Models/Model";
+import { Model } from "../Models/Model";
 import selectTemplate from "../Resources/Query/SELECT";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
 
@@ -20,7 +20,7 @@ export class MysqlTransaction {
   public async queryInsert<T extends Model>(
     query: string,
     params: any[],
-    metadata: Metadata,
+    typeofModel: typeof Model,
   ): Promise<T> {
     if (!this.mysqlConnection) {
       throw new Error("MysqlTransaction not started.");
@@ -32,12 +32,9 @@ export class MysqlTransaction {
       params,
     );
     const insertId = rows.insertId;
-    const select = selectTemplate(metadata.tableName, "mysql").selectById(
-      insertId,
-    );
+    const select = selectTemplate("mysql", typeofModel).selectById(insertId);
     const [savedModel] =
       await this.mysqlConnection.query<RowDataPacket[]>(select);
-    Object.assign(savedModel[0], { metadata });
     return savedModel[0] as T;
   }
 

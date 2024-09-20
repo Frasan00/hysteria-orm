@@ -18,8 +18,8 @@ import {
   SelectableType,
 } from "../Models/ModelManager/ModelManagerTypes";
 import "reflect-metadata";
-import { fromSnakeToCamelCase } from "../../CaseUtils";
 import { SqlDataSource } from "../SqlDatasource";
+import { convertCase } from "../../CaseUtils";
 
 export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   protected pgPool: Pool;
@@ -48,12 +48,9 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   public select(
     ...columns: (SelectableType<T> | "*" | string)[]
   ): PostgresQueryBuilder<T> {
-    const select = selectTemplate(
-      this.tableName,
-      this.sqlDataSource.getDbType(),
+    this.selectQuery = this.selectTemplate.selectColumns(
+      ...(columns as string[]),
     );
-
-    this.selectQuery = select.selectColumns(...(columns as string[]));
     return this;
   }
 
@@ -69,11 +66,9 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
     let query: string = "";
     if (this.joinQuery && !this.selectQuery) {
-      const select = selectTemplate(
-        this.tableName,
-        this.sqlDataSource.getDbType(),
+      this.selectQuery = this.selectTemplate.selectColumns(
+        `${this.tableName}.*`,
       );
-      this.selectQuery = select.selectColumns(`${this.tableName}.*`);
     }
     query = this.selectQuery + this.joinQuery;
 
@@ -96,7 +91,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
       }
 
       const modelInstance = getBaseModelInstance<T>();
-      this.mergeRawPacketIntoModel(modelInstance, result.rows[0]);
+      this.mergeRawPacketIntoModel(modelInstance, result.rows[0], this.model);
 
       const relationModels =
         await this.postgresModelManagerUtils.parseQueryBuilderRelations(
@@ -125,11 +120,9 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
     let query: string = "";
     if (this.joinQuery && !this.selectQuery) {
-      const select = selectTemplate(
-        this.tableName,
-        this.sqlDataSource.getDbType(),
+      this.selectQuery = this.selectTemplate.selectColumns(
+        `${this.tableName}.*`,
       );
-      this.selectQuery = select.selectColumns(`${this.tableName}.*`);
     }
     query = this.selectQuery + this.joinQuery;
 
@@ -148,7 +141,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
       const modelPromises = rows.map(async (row) => {
         const modelInstance = getBaseModelInstance<T>();
-        this.mergeRawPacketIntoModel(modelInstance, row);
+        this.mergeRawPacketIntoModel(modelInstance, row, this.model);
 
         return modelInstance as T;
       });
@@ -227,7 +220,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     foreignColumn: string,
   ): PostgresQueryBuilder<T> {
     const join = joinTemplate(
-      this.tableName,
+      this.model,
       relationTable,
       primaryColumn as string,
       foreignColumn as string,
@@ -248,7 +241,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     foreignColumn: string,
   ): PostgresQueryBuilder<T> {
     const join = joinTemplate(
-      this.tableName,
+      this.model,
       relationTable,
       primaryColumn as string,
       foreignColumn as string,
@@ -1175,10 +1168,17 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     );
   }
 
-  private mergeRawPacketIntoModel(model: T, row: any) {
+  private mergeRawPacketIntoModel(
+    model: T,
+    row: any,
+    typeofModel: typeof Model,
+  ) {
     const columns = getModelColumns(this.model);
     Object.entries(row).forEach(([key, value]) => {
-      const camelCaseKey = fromSnakeToCamelCase(key) as string;
+      const camelCaseKey = convertCase(
+        key,
+        typeofModel.modelCaseConvention,
+      ) as string;
       if (columns.includes(camelCaseKey)) {
         Object.assign(model, { [camelCaseKey]: value });
         return;

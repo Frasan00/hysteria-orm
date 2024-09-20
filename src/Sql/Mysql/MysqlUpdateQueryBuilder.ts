@@ -34,8 +34,8 @@ export class MysqlUpdateQueryBuilder<
     super(model, tableName, logs, false, sqlDataSource);
     this.mysqlPool = mysqlPool;
     this.updateTemplate = updateTemplate(
-      tableName,
       this.sqlDataSource.getDbType(),
+      this.model,
     );
     this.joinQuery = "";
     this.isNestedCondition = isNestedCondition;
@@ -95,7 +95,7 @@ export class MysqlUpdateQueryBuilder<
     foreignColumn: string,
   ): MysqlUpdateQueryBuilder<T> {
     const join = joinTemplate(
-      this.tableName,
+      this.model,
       relationTable,
       primaryColumn as string,
       foreignColumn as string,
@@ -116,7 +116,7 @@ export class MysqlUpdateQueryBuilder<
     foreignColumn: string,
   ): MysqlUpdateQueryBuilder<T> {
     const join = joinTemplate(
-      this.tableName,
+      this.model,
       relationTable,
       primaryColumn as string,
       foreignColumn as string,

@@ -168,7 +168,7 @@ export class MysqlModelManager<
     );
 
     if (trx) {
-      return await trx.queryInsert<T>(query, params, this.model.metadata);
+      return await trx.queryInsert<T>(query, params, this.model);
     }
 
     try {

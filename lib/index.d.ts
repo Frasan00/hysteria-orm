@@ -358,7 +358,7 @@ declare class MysqlTransaction {
     protected mysqlConnection: PoolConnection;
     protected logs: boolean;
     constructor(mysql: Pool, logs: boolean);
-    queryInsert<T extends Model>(query: string, params: any[], metadata: Metadata): Promise<T>;
+    queryInsert<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T>;
     massiveInsertQuery<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T[]>;
     massiveUpdateQuery(query: string, params: any[]): Promise<number>;
     massiveDeleteQuery(query: string, params: any[]): Promise<number>;
@@ -383,7 +383,7 @@ declare class PostgresTransaction {
     protected pgClient: PoolClient;
     protected logs: boolean;
     constructor(pgPool: Pool$1, logs: boolean);
-    queryInsert<T extends Model>(query: string, params: any[], metadata: Metadata): Promise<T>;
+    queryInsert<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T>;
     massiveInsertQuery<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T[]>;
     massiveUpdateQuery<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T[]>;
     massiveDeleteQuery<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T[]>;
@@ -403,7 +403,7 @@ declare class PostgresTransaction {
     rollback(): Promise<void>;
 }
 
-declare const selectTemplate: (table: string, dbType: DataSourceType) => {
+declare const selectTemplate: (dbType: DataSourceType, typeofModel: typeof Model) => {
     selectAll: string;
     selectById: (id: string) => string;
     selectColumns: (...columns: string[]) => string;
@@ -418,7 +418,7 @@ declare const selectTemplate: (table: string, dbType: DataSourceType) => {
 
 type WhereOperatorType = "=" | "!=" | "<>" | ">" | "<" | ">=" | "<=" | "LIKE" | "ILIKE" | "NOT LIKE" | "NOT ILIKE" | "IN" | "NOT IN" | "BETWEEN" | "NOT BETWEEN" | "IS NULL" | "IS NOT NULL";
 type BaseValues = string | number | boolean | object;
-declare const whereTemplate: (_tableName: string, dbType: DataSourceType) => {
+declare const whereTemplate: (dbType: DataSourceType, typeofModel: typeof Model) => {
     convertPlaceHolderToValue: (query: string, startIndex?: number) => string;
     where: (column: string, value: BaseValues, operator?: WhereOperatorType) => {
         query: string;
@@ -621,15 +621,15 @@ type FindType<T> = Omit<FindOneType<T>, "throwError"> & {
 type TransactionType = MysqlTransaction | PostgresTransaction;
 
 declare class MySqlModelManagerUtils<T extends Model> {
-    parseInsert(model: T, modelTypeof: typeof Model, dbType: DataSourceType): {
+    parseInsert(model: T, typeofModel: typeof Model, dbType: DataSourceType): {
         query: string;
         params: any[];
     };
-    parseMassiveInsert(models: T[], modelTypeOf: typeof Model, dbType: DataSourceType): {
+    parseMassiveInsert(models: T[], typeofModel: typeof Model, dbType: DataSourceType): {
         query: string;
         params: any[];
     };
-    parseUpdate(model: T, modelTypeof: typeof Model, dbType: DataSourceType): {
+    parseUpdate(model: T, typeofModel: typeof Model, dbType: DataSourceType): {
         query: string;
         params: any[];
     };
@@ -639,21 +639,21 @@ declare class MySqlModelManagerUtils<T extends Model> {
         params: any[];
     };
     private getRelationFromModel;
-    parseQueryBuilderRelations(models: T[], modelTypeOf: typeof Model, input: string[], mysqlConnection: Pool, logs: boolean): Promise<{
+    parseQueryBuilderRelations(models: T[], typeofModel: typeof Model, input: string[], mysqlConnection: Pool, logs: boolean): Promise<{
         [relationName: string]: Model[];
     }[]>;
 }
 
 declare class PostgresModelManagerUtils<T extends Model> {
-    parseInsert(model: T, modelTypeOf: typeof Model, dbType: DataSourceType): {
+    parseInsert(model: T, typeofModel: typeof Model, dbType: DataSourceType): {
         query: string;
         params: any[];
     };
-    parseMassiveInsert(models: T[], modelTypeOf: typeof Model, dbType: DataSourceType): {
+    parseMassiveInsert(models: T[], typeofModel: typeof Model, dbType: DataSourceType): {
         query: string;
         params: any[];
     };
-    parseUpdate(model: T, modelTypeOf: typeof Model, dbType: DataSourceType): {
+    parseUpdate(model: T, typeofModel: typeof Model, dbType: DataSourceType): {
         query: string;
         params: any[];
     };
@@ -663,7 +663,7 @@ declare class PostgresModelManagerUtils<T extends Model> {
         params: any[];
     };
     private getRelationFromModel;
-    parseQueryBuilderRelations(models: T[], modelTypeOf: typeof Model, input: string[], pgConnection: pg__default.Pool, logs: boolean): Promise<{
+    parseQueryBuilderRelations(models: T[], typeofModel: typeof Model, input: string[], pgConnection: pg__default.Pool, logs: boolean): Promise<{
         [relationName: string]: Model[];
     }[]>;
 }
@@ -1115,7 +1115,7 @@ declare abstract class WhereQueryBuilder<T extends Model> {
     rawOrWhere(query: string): this;
 }
 
-declare const updateTemplate: (table: string, dbType: DataSourceType) => {
+declare const updateTemplate: (dbType: DataSourceType, typeofModel: typeof Model) => {
     update: (columns: string[], values: string[], primaryKey?: string, primaryKeyValue?: string | undefined) => {
         query: string;
         params: (string | undefined)[];
@@ -2210,13 +2210,35 @@ declare abstract class QueryBuilder<T extends Model> {
     protected groupFooterQuery(): string;
 }
 
+type CaseConvention = "camel" | "snake" | "none" | RegExp | ((column: string) => string);
+
 interface Metadata {
     tableName: string;
     primaryKey?: string;
 }
 declare abstract class Model {
+    /**
+     * @description THe sql instance generated by SqlDataSource.connect
+     */
     static sqlInstance: SqlDataSource;
+    /**
+     * @description Metadata for the model
+     * @type {Metadata}
+     */
     static metadata: Metadata;
+    /**
+     * @description Defines the case convention for the model
+     * @type {CaseConvention}
+     */
+    static modelCaseConvention: CaseConvention;
+    /**
+     * @description Defines the case convention for the database, this should be the case convention you use in your database
+     * @type {CaseConvention}
+     */
+    static databaseCaseConvention: CaseConvention;
+    /**
+     * @description Extra columns for the model, all data retrieved from the database that is not part of the model will be stored here
+     */
     extraColumns: {
         [key: string]: any;
     };
@@ -2383,7 +2405,18 @@ declare abstract class Model {
 interface ColumnOptions {
     booleanColumn: boolean;
 }
+/**
+ * @description Decorator to define a column in the model
+ * @param options - Options for the column
+ * @returns
+ */
 declare function column(options?: ColumnOptions): PropertyDecorator;
+/**
+ * @description Returns the columns of the model, columns must be decorated with the column decorator
+ * @param target Model
+ * @returns
+ */
+declare function getModelColumns(target: typeof Model): string[];
 /**
  * Relations
  */
@@ -2411,5 +2444,24 @@ declare function hasOne(model: () => typeof Model, foreignKey: string, options?:
  * @returns
  */
 declare function hasMany(model: () => typeof Model, foreignKey: string, options?: RelationOptions): PropertyDecorator;
+/**
+ * @description Returns the relations of the model
+ * @param target Model
+ * @returns
+ */
+declare function getRelations(target: typeof Model): Relation[];
 
-export { type DataSourceInput, type DeleteQueryBuilders, type Metadata, Migration, Model, type QueryBuilders, Relation, SqlDataSource, type UpdateQueryBuilders, belongsTo, column, hasMany, hasOne };
+declare const _default: {
+    Model: typeof Model;
+    column: typeof column;
+    belongsTo: typeof belongsTo;
+    hasOne: typeof hasOne;
+    hasMany: typeof hasMany;
+    Relation: typeof Relation;
+    SqlDataSource: typeof SqlDataSource;
+    Migration: typeof Migration;
+    getRelations: typeof getRelations;
+    getModelColumns: typeof getModelColumns;
+};
+
+export { type CaseConvention, type DataSourceInput, type DeleteQueryBuilders, type Metadata, Migration, Model, type QueryBuilders, Relation, SqlDataSource, type UpdateQueryBuilders, belongsTo, column, _default as default, getModelColumns, getRelations, hasMany, hasOne };

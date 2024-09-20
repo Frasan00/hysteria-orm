@@ -6,7 +6,7 @@
   "repository": "https://github.com/Frasan00/hysteria-orm.git",
   "author": "Frasan00 <francesco.sangiovanni.7@gmail.com>",
   "scripts": {
-    "test": "yarn format && yarn build && jest",
+    "test": "yarn format && yarn build && node testRunner.js",
     "watch": "tsc --watch",
     "format": "prettier --write \"**/*.ts\" \"**/*.test.ts\"",
     "lint": "standard",

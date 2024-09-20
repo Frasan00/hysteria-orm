@@ -8,6 +8,7 @@ import {
   hasMany,
   column,
   getRelations,
+  getModelColumns,
 } from "./Sql/Models/ModelDecorators";
 import { Relation } from "./Sql/Models/Relations/Relation";
 import {
@@ -17,10 +18,22 @@ import {
 } from "./Sql/QueryBuilder/QueryBuilder";
 import { SqlDataSource } from "./Sql/SqlDatasource";
 import { Post } from "../test/sql/Models/Post";
+import { CaseConvention } from "./CaseUtils";
 
-console.log(Post.metadata);
-console.log(Post.constructor.name);
-console.log(Post.prototype);
+// console.log(Post.metadata);
+
+export default {
+  Model,
+  column,
+  belongsTo,
+  hasOne,
+  hasMany,
+  Relation,
+  SqlDataSource,
+  Migration,
+  getRelations,
+  getModelColumns,
+};
 
 export {
   Model,
@@ -36,4 +49,7 @@ export {
   DeleteQueryBuilders,
   Migration,
   Metadata,
+  CaseConvention,
+  getRelations,
+  getModelColumns,
 };

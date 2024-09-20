@@ -1,13 +1,17 @@
-import { camelToSnakeCase } from "../../../CaseUtils";
+import { convertCase } from "../../../CaseUtils";
 import { DataSourceType } from "../../../Datasource";
 import { isNestedObject } from "../../jsonUtils";
+import { Model } from "../../Models/Model";
 
 type BaseValues = string | number | boolean | Date | null | object | undefined;
 
-const insertTemplate = (tableName: string, dbType: DataSourceType) => {
+const insertTemplate = (dbType: DataSourceType, typeofModel: typeof Model) => {
+  const tableName = typeofModel.metadata.tableName;
   return {
     insert: (columns: string[], values: BaseValues[]) => {
-      columns = columns.map((column) => camelToSnakeCase(column));
+      columns = columns.map((column) =>
+        convertCase(column, typeofModel.databaseCaseConvention),
+      );
       let placeholders: string;
       let params: BaseValues[];
 
@@ -44,7 +48,9 @@ const insertTemplate = (tableName: string, dbType: DataSourceType) => {
       return { query, params };
     },
     insertMany: (columns: string[], values: BaseValues[][]) => {
-      columns = columns.map((column) => camelToSnakeCase(column));
+      columns = columns.map((column) =>
+        convertCase(column, typeofModel.databaseCaseConvention),
+      );
       let valueSets: string[];
       let params: BaseValues[] = [];
 

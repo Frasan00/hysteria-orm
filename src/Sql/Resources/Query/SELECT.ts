@@ -1,5 +1,6 @@
-import { camelToSnakeCase } from "../../../CaseUtils";
+import { convertCase } from "../../../CaseUtils";
 import { DataSourceType } from "../../../Datasource";
+import { Model } from "../../Models/Model";
 
 const commonSelectMethods = [
   "*",
@@ -14,7 +15,8 @@ const commonSelectMethods = [
   "AS",
   "DISTINCTROW",
 ];
-const selectTemplate = (table: string, dbType: DataSourceType) => {
+const selectTemplate = (dbType: DataSourceType, typeofModel: typeof Model) => {
+  const table = typeofModel.metadata.tableName;
   const escapeIdentifier = (identifier: string) => {
     switch (dbType) {
       case "mysql":
@@ -38,30 +40,38 @@ const selectTemplate = (table: string, dbType: DataSourceType) => {
         ) {
           return column;
         }
-        return escapeIdentifier(camelToSnakeCase(column));
+        return escapeIdentifier(
+          convertCase(column, typeofModel.databaseCaseConvention),
+        );
       });
       return `SELECT ${columns.join(", ")} FROM ${table} `;
     },
     selectCount: `SELECT COUNT(*) FROM ${table} `,
     selectDistinct: (...columns: string[]) => {
       columns = columns.map((column) =>
-        escapeIdentifier(camelToSnakeCase(column)),
+        escapeIdentifier(
+          convertCase(column, typeofModel.databaseCaseConvention),
+        ),
       );
       return `SELECT DISTINCT ${columns.join(", ")} FROM ${table} `;
     },
     selectSum: (column: string) =>
       `SELECT SUM(${escapeIdentifier(
-        camelToSnakeCase(column),
+        convertCase(column, typeofModel.databaseCaseConvention),
       )}) FROM ${table} `,
     orderBy: (columns: string[], order: "ASC" | "DESC" = "ASC") => {
       columns = columns.map((column) =>
-        escapeIdentifier(camelToSnakeCase(column)),
+        escapeIdentifier(
+          convertCase(column, typeofModel.databaseCaseConvention),
+        ),
       );
       return ` ORDER BY ${columns.join(", ")} ${order}`;
     },
     groupBy: (...columns: string[]) => {
       columns = columns.map((column) =>
-        escapeIdentifier(camelToSnakeCase(column)),
+        escapeIdentifier(
+          convertCase(column, typeofModel.databaseCaseConvention),
+        ),
       );
       return ` GROUP BY ${columns.join(", ")}`;
     },

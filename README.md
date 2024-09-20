@@ -1,20 +1,18 @@
 # Hysteria ORM
 
-Hysteria ORM is an Object-Relational Mapping (ORM) library for JavaScript and TypeScript, designed to simplify interactions between your application and a SQL database.
+Hysteria ORM is an Object-Relational Mapping (ORM) library for TypeScript, designed to simplify interactions between your application and a SQL database.
 
 - [Installation](#installation)
 - [Features](#features)
 - [Prerequisites](#prerequisites)
     - [TypeScript Configuration](#typescript-configuration-example)
 - [Environment Variables](#environment-variables)
-    - [Common Envs](#common-envs)
-    - [Mysql Envs](#mysql-envs)
-    - [Postgres Envs](#postgres-envs)
     - [Complete env example](#complete-env-example)
 - [Getting Started](#getting-started)
     - [Establishing a Connection](#establishing-a-connection)
     - [Create a Model](#create-a-model)
-    - [Create a Model with Relationships](#create-a-model-with-relationships)
+    - [Create a Model with Relationships](#create-a-model-with-relations-and-hooks)
+    - [Case Convention](#case-convention)
     - [Read (standard methods used for simple queries)](#read-standard-methods-used-for-simple-queries)
     - [Query Builder](#query-builder)
     - [Where Builder](#where-builder)
@@ -28,6 +26,7 @@ Hysteria ORM is an Object-Relational Mapping (ORM) library for JavaScript and Ty
     - [Alter Table](#alter-table)
 - [Experimental](#experimental)
     - [json-support](#json-support-unstable-on-mysql)
+    - [use-connection](#use-connection)
 
 ## Installation
 ```shell
@@ -39,13 +38,14 @@ Hysteria ORM is an Object-Relational Mapping (ORM) library for JavaScript and Ty
 ## Features
 
 - **Simple Model Creation:** Define models that reflect your database schema with ease.
-- **Automatic Case Conversion:** Automatically converts model properties to snake_case for the database and back to camelCase when retrieving data.
-- **Database Support:** Currently supports MySQL and PostgreSQL.
+- **Database Support:** Currently supports MySQL, MariaDB and PostgreSQL.
+- **Fast relations retrieve:** O(n) Complexity for relation retrieve
+- **Simplicity:** Simple syntax to interact with your data
 
 ## Prerequisites
 
 - A JavaScript runtime environment (e.g., Node.js).
-- A SQL library corresponding to your database (e.g., `mysql2` for MySQL, `pg` for PostgreSQL).
+- A SQL driver for your database type (e.g., `mysql2` for MySQL, `pg` for PostgreSQL).
 
 ### TypeScript Configuration example
 
@@ -214,6 +214,26 @@ export class User extends Model {
 }
 ```
 
+### Case Convention
+- In Hysteria-orm the case convention is defined in the Model and it's extended to all columns in it
+- You can customize the behavior of the database interactions with
+- Extra columns will be converted to the standard given by modelCaseConvention
+
+```typescript
+export class User extends Model {
+    static databaseCaseConvention: CaseConvention = "snake"; // default
+    static modelCaseConvention: CaseConvention = "camel"; // Default
+}
+
+// where CaseConvention is defined as
+type CaseConvention =
+  | "camel" // All columns converted to camel case
+  | "snake" // All columns converted to snake case
+  | "none" // Columns are treated as defined in the database and in the model
+  | RegExp // Custom RegExp
+  | ((column: string) => string); // Custom function
+```
+
 ### Create, Update and Delete (with transaction)
 
 ```typescript
@@ -378,39 +398,9 @@ const user: User | null = await User.query()
     .paginate(1, 10); // page - limit
 ```
 
-# Use Connection
-- Allows to execute operations on a separate database connection, useful for multi-database applications
-- Model static methods will always refer to the main connection established with await SqlDataSource.connect();
-
-```typescript
-import { SqlDataSource } from "hysteria-orm";
-import { User } from "./User";
-
-await SqlDataSource.useConnection(
-    {
-        type: "mysql",
-        host: "localhost",
-        database: "test",
-        username: "root",
-        password: "root",
-    },
-    async (sql) => {
-        const userRepo = sql.getModelManager(User);
-
-        const newUser = await userRepo.create({
-            name: "john",
-            email: "john-email@gmail.com",
-            signupSource: "google",
-        } as User);
-
-        const updatedUser = await userRepo.update().withData({
-        name: "new name",
-        });
-    },
-);
-```
-
 # Migrations
+- Migrations are meant to be executed in a Typescript environment because migration files and the migration cli are standalone feature that does not need to be built in js
+- You do not need to have Typescript installed in order to run the migration cli
 
 ## hysteria-orm-cli for Migrations
 
@@ -477,6 +467,38 @@ export default class extends Migration {
 ```
 
 # Experimental
+
+# Use Connection
+- Allows to execute operations on a separate database connection, useful for multi-database applications
+- Model static methods will always refer to the main connection established with await SqlDataSource.connect();
+
+```typescript
+import { SqlDataSource } from "hysteria-orm";
+import { User } from "./User";
+
+await SqlDataSource.useConnection(
+    {
+        type: "mysql",
+        host: "localhost",
+        database: "test",
+        username: "root",
+        password: "root",
+    },
+    async (sql) => {
+        const userRepo = sql.getModelManager(User);
+
+        const newUser = await userRepo.create({
+            name: "john",
+            email: "john-email@gmail.com",
+            signupSource: "google",
+        } as User);
+
+        const updatedUser = await userRepo.update().withData({
+        name: "new name",
+        });
+    },
+);
+```
 
 ## JSON support (UNSTABLE ON MYSQL)
 
