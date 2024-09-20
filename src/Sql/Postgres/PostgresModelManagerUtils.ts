@@ -48,7 +48,7 @@ export default class PostgresModelManagerUtils<T extends Model> {
     const keys = Object.keys(filteredModel);
     const values = Object.values(filteredModel);
 
-    const primaryKey = typeofModel.metadata.primaryKey as string;
+    const primaryKey = typeofModel.primaryKey as string;
     const primaryKeyValue = model[primaryKey as keyof T];
 
     return update.update(keys, values, primaryKey, primaryKeyValue as string);
@@ -71,14 +71,11 @@ export default class PostgresModelManagerUtils<T extends Model> {
   }
 
   public parseDelete(
-    tableName: string,
+    table: string,
     column: string,
     value: string | number | boolean,
   ): { query: string; params: any[] } {
-    return deleteTemplate(tableName, "postgres").delete(
-      column,
-      value.toString(),
-    );
+    return deleteTemplate(table, "postgres").delete(column, value.toString());
   }
 
   private getRelationFromModel(
@@ -109,7 +106,7 @@ export default class PostgresModelManagerUtils<T extends Model> {
       return [];
     }
 
-    if (!typeofModel.metadata.primaryKey) {
+    if (!typeofModel.primaryKey) {
       throw new Error(`Model ${typeofModel} dbType, doeot have a primary key`);
     }
 

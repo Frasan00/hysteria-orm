@@ -19,20 +19,20 @@ export class MysqlUpdateQueryBuilder<
   /**
    * @description Constructs a MysqlQueryBuilder instance.
    * @param model - The model class associated with the table.
-   * @param tableName - The name of the table.
+   * @param table - The name of the table.
    * @param mysqlConnection - The MySQL connection pool.
    * @param logs - A boolean indicating whether to log queries.
    * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
    */
   public constructor(
     model: typeof Model,
-    tableName: string,
+    table: string,
     mysqlConnection: Connection,
     logs: boolean,
     isNestedCondition = false,
     sqlDataSource: SqlDataSource,
   ) {
-    super(model, tableName, logs, false, sqlDataSource);
+    super(model, table, logs, false, sqlDataSource);
     this.sqlConnection = mysqlConnection;
     this.updateTemplate = updateTemplate(
       this.sqlDataSource.getDbType(),
@@ -135,7 +135,7 @@ export class MysqlUpdateQueryBuilder<
   ): this {
     const queryBuilder = new MysqlUpdateQueryBuilder(
       this.model as typeof Model,
-      this.tableName,
+      this.table,
       this.sqlConnection,
       this.logs,
       true,
@@ -173,7 +173,7 @@ export class MysqlUpdateQueryBuilder<
   ): this {
     const nestedBuilder = new MysqlUpdateQueryBuilder(
       this.model as typeof Model,
-      this.tableName,
+      this.table,
       this.sqlConnection,
       this.logs,
       true,
@@ -214,7 +214,7 @@ export class MysqlUpdateQueryBuilder<
   ): this {
     const nestedBuilder = new MysqlUpdateQueryBuilder(
       this.model as typeof Model,
-      this.tableName,
+      this.table,
       this.sqlConnection,
       this.logs,
       true,

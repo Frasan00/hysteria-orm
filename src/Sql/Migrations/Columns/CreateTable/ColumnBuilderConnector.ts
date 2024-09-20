@@ -2,18 +2,18 @@ import { DataSourceType } from "../../../../Datasource";
 import ColumnTypeBuilder from "./ColumnTypeBuilder";
 
 export default class ColumnBuilderConnector {
-  protected tableName: string;
+  protected table: string;
   protected queryStatements: string[];
   protected partialQuery: string;
   protected sqlType: DataSourceType;
 
   constructor(
-    tableName: string,
+    table: string,
     queryStatements: string[],
     partialQuery: string,
     sqlType: DataSourceType,
   ) {
-    this.tableName = tableName;
+    this.table = table;
     this.queryStatements = queryStatements;
     this.partialQuery = partialQuery;
     this.sqlType = sqlType;
@@ -21,7 +21,7 @@ export default class ColumnBuilderConnector {
 
   public newColumn(): ColumnTypeBuilder {
     return new ColumnTypeBuilder(
-      this.tableName,
+      this.table,
       this.queryStatements,
       this.partialQuery,
       this.sqlType,

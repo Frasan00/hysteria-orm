@@ -48,13 +48,12 @@ export default class MySqlModelManagerUtils<T extends Model> {
     const keys = Object.keys(filteredModel);
     const values = Object.values(filteredModel);
 
-    const primaryKeyValue =
-      filteredModel[typeofModel.metadata.primaryKey as keyof T];
+    const primaryKeyValue = filteredModel[typeofModel.primaryKey as keyof T];
 
     return update.update(
       keys,
       values,
-      typeofModel.metadata.primaryKey,
+      typeofModel.primaryKey,
       primaryKeyValue as string,
     );
   }
@@ -76,11 +75,11 @@ export default class MySqlModelManagerUtils<T extends Model> {
   }
 
   public parseDelete(
-    tableName: string,
+    table: string,
     column: string,
     value: string | number | boolean,
   ): { query: string; params: any[] } {
-    return deleteTemplate(tableName, "mysql").delete(column, value);
+    return deleteTemplate(table, "mysql").delete(column, value);
   }
 
   private getRelationFromModel(
@@ -110,7 +109,7 @@ export default class MySqlModelManagerUtils<T extends Model> {
       return [];
     }
 
-    if (!typeofModel.metadata.primaryKey) {
+    if (!typeofModel.primaryKey) {
       throw new Error(`Model ${typeofModel} does not have a primary key`);
     }
 

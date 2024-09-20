@@ -131,16 +131,16 @@ export class PostgresModelManager<
     throwErrorOnNull: boolean = false,
   ): Promise<T | null> {
     try {
-      if (!this.model.metadata.primaryKey) {
+      if (!this.model.primaryKey) {
         throw new Error(
           "Model " +
-            this.model.metadata.tableName +
+            this.model.table +
             " has no primary key to be retrieved by",
         );
       }
 
       return await this.query()
-        .where(this.model.metadata.primaryKey as string, "=", value)
+        .where(this.model.primaryKey as string, "=", value)
         .one({ throwErrorOnNull });
     } catch (error) {
       queryError(error);
@@ -251,10 +251,10 @@ export class PostgresModelManager<
     model: T,
     trx?: TransactionType,
   ): Promise<T | null> {
-    const { tableName, primaryKey } = this.model.metadata;
+    const { table, primaryKey } = this.model;
     if (!primaryKey) {
       throw new Error(
-        "Model " + tableName + " has no primary key to be updated, try save",
+        "Model " + table + " has no primary key to be updated, try save",
       );
     }
 
@@ -314,7 +314,7 @@ export class PostgresModelManager<
   ): Promise<number> {
     if (trx) {
       const { query, params } = this.postgresModelManagerUtils.parseDelete(
-        this.model.metadata.tableName,
+        this.model.table,
         column,
         value,
       );
@@ -324,7 +324,7 @@ export class PostgresModelManager<
 
     try {
       const { query, params } = this.postgresModelManagerUtils.parseDelete(
-        this.model.metadata.tableName,
+        this.model.table,
         column,
         value,
       );
@@ -350,18 +350,18 @@ export class PostgresModelManager<
     trx?: TransactionType,
   ): Promise<T | null> {
     try {
-      if (!this.model.metadata.primaryKey) {
+      if (!this.model.primaryKey) {
         throw new Error(
           "Model " +
-            this.model.metadata.tableName +
+            this.model.table +
             " has no primary key to be deleted from, try deleteByColumn",
         );
       }
 
       const { query, params } = this.postgresModelManagerUtils.parseDelete(
-        this.model.metadata.tableName,
-        this.model.metadata.primaryKey,
-        model[this.model.metadata.primaryKey as keyof T] as string,
+        this.model.table,
+        this.model.primaryKey,
+        model[this.model.primaryKey as keyof T] as string,
       );
 
       if (trx) {
@@ -386,7 +386,7 @@ export class PostgresModelManager<
   public query(): PostgresQueryBuilder<T> {
     return new PostgresQueryBuilder<T>(
       this.model,
-      this.model.metadata.tableName,
+      this.model.table,
       this.pgConnection,
       this.logs,
       false,
@@ -400,7 +400,7 @@ export class PostgresModelManager<
   public update(): PostgresUpdateQueryBuilder<T> {
     return new PostgresUpdateQueryBuilder<T>(
       this.model,
-      this.model.metadata.tableName,
+      this.model.table,
       this.pgConnection,
       this.logs,
       false,
@@ -414,7 +414,7 @@ export class PostgresModelManager<
   public delete(): PostgresDeleteQueryBuilder<T> {
     return new PostgresDeleteQueryBuilder<T>(
       this.model,
-      this.model.metadata.tableName,
+      this.model.table,
       this.pgConnection,
       this.logs,
       false,

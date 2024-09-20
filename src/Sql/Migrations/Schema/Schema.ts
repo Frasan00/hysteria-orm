@@ -27,16 +27,16 @@ export default class Schema {
   }
 
   public createTable(
-    tableName: string,
+    table: string,
     options?: { ifNotExists?: boolean },
   ): ColumnBuilderConnector {
     const partialQuery =
       options && options.ifNotExists
-        ? createTableTemplate.createTableIfNotExists(tableName, this.sqlType)
-        : createTableTemplate.createTable(tableName, this.sqlType);
+        ? createTableTemplate.createTableIfNotExists(table, this.sqlType)
+        : createTableTemplate.createTable(table, this.sqlType);
 
     return new ColumnBuilderConnector(
-      tableName,
+      table,
       this.queryStatements,
       partialQuery,
       this.sqlType,
@@ -45,12 +45,12 @@ export default class Schema {
 
   /**
    * @description Alter table
-   * @param tableName
+   * @param table
    * @returns ColumnBuilderAlter
    */
-  public alterTable(tableName: string) {
+  public alterTable(table: string) {
     return new ColumnBuilderAlter(
-      tableName,
+      table,
       this.queryStatements,
       "",
       this.sqlType,
@@ -59,32 +59,28 @@ export default class Schema {
 
   /**
    * @description Drop table
-   * @param tableName
+   * @param table
    * @param ifExists
    * @returns void
    */
-  public dropTable(tableName: string, ifExists: boolean = false): void {
-    this.rawQuery(dropTableTemplate(tableName, ifExists, this.sqlType));
+  public dropTable(table: string, ifExists: boolean = false): void {
+    this.rawQuery(dropTableTemplate(table, ifExists, this.sqlType));
   }
 
   /**
    * @description Rename table
-   * @param oldTableName
-   * @param newTableName
+   * @param oldtable
+   * @param newtable
    * @returns void
    */
-  public renameTable(oldTableName: string, newTableName: string): void {
+  public renameTable(oldtable: string, newtable: string): void {
     switch (this.sqlType) {
       case "mysql":
       case "mariadb":
-        this.rawQuery(
-          `RENAME TABLE \`${oldTableName}\` TO \`${newTableName}\``,
-        );
+        this.rawQuery(`RENAME TABLE \`${oldtable}\` TO \`${newtable}\``);
         break;
       case "postgres":
-        this.rawQuery(
-          `ALTER TABLE "${oldTableName}" RENAME TO "${newTableName}"`,
-        );
+        this.rawQuery(`ALTER TABLE "${oldtable}" RENAME TO "${newtable}"`);
         break;
       default:
         throw new Error("Unsupported database type");
@@ -93,17 +89,17 @@ export default class Schema {
 
   /**
    * @description Truncate table
-   * @param tableName
+   * @param table
    * @returns void
    */
-  public truncateTable(tableName: string): void {
+  public truncateTable(table: string): void {
     switch (this.sqlType) {
       case "mysql":
       case "mariadb":
-        this.rawQuery(`TRUNCATE TABLE \`${tableName}\``);
+        this.rawQuery(`TRUNCATE TABLE \`${table}\``);
         break;
       case "postgres":
-        this.rawQuery(`TRUNCATE TABLE "${tableName}"`);
+        this.rawQuery(`TRUNCATE TABLE "${table}"`);
         break;
       default:
         throw new Error("Unsupported database type");
@@ -112,14 +108,14 @@ export default class Schema {
 
   /**
    * @description Create index on table
-   * @param tableName
+   * @param table
    * @param indexName
    * @param columns
    * @param unique
    * @returns void
    */
   public createIndex(
-    tableName: string,
+    table: string,
     indexName: string,
     columns: string[],
     unique: boolean = false,
@@ -130,14 +126,14 @@ export default class Schema {
         this.rawQuery(
           `CREATE ${
             unique ? "UNIQUE" : ""
-          } INDEX ${indexName} ON \`${tableName}\` (${columns.join(", ")})`,
+          } INDEX ${indexName} ON \`${table}\` (${columns.join(", ")})`,
         );
         break;
       case "postgres":
         this.rawQuery(
           `CREATE ${
             unique ? "UNIQUE" : ""
-          } INDEX ${indexName} ON "${tableName}" (${columns.join(", ")})`,
+          } INDEX ${indexName} ON "${table}" (${columns.join(", ")})`,
         );
         break;
       default:
@@ -147,15 +143,15 @@ export default class Schema {
 
   /**
    * @description Drop index on table
-   * @param tableName
+   * @param table
    * @param indexName
    * @returns void
    */
-  public dropIndex(tableName: string, indexName: string): void {
+  public dropIndex(table: string, indexName: string): void {
     switch (this.sqlType) {
       case "mysql":
       case "mariadb":
-        this.rawQuery(`DROP INDEX \`${indexName}\` ON \`${tableName}\``);
+        this.rawQuery(`DROP INDEX \`${indexName}\` ON \`${table}\``);
         break;
       case "postgres":
         this.rawQuery(`DROP INDEX ${indexName}`);
@@ -167,25 +163,23 @@ export default class Schema {
 
   /**
    * @description Adds a primary key to a table
-   * @param tableName
+   * @param table
    * @param columnName
    * @param type
    * @param options
    * @returns void
    */
-  public addPrimaryKey(tableName: string, columns: string[]): void {
+  public addPrimaryKey(table: string, columns: string[]): void {
     switch (this.sqlType) {
       case "mysql":
       case "mariadb":
         this.rawQuery(
-          `ALTER TABLE \`${tableName}\` ADD PRIMARY KEY (${columns.join(
-            ", ",
-          )})`,
+          `ALTER TABLE \`${table}\` ADD PRIMARY KEY (${columns.join(", ")})`,
         );
         break;
       case "postgres":
         this.rawQuery(
-          `ALTER TABLE "${tableName}" ADD PRIMARY KEY (${columns.join(", ")})`,
+          `ALTER TABLE "${table}" ADD PRIMARY KEY (${columns.join(", ")})`,
         );
         break;
       default:
@@ -195,17 +189,17 @@ export default class Schema {
 
   /**
    * @description Drops a primary key from a table
-   * @param tableName
+   * @param table
    * @returns void
    */
-  public dropPrimaryKey(tableName: string): void {
+  public dropPrimaryKey(table: string): void {
     switch (this.sqlType) {
       case "mysql":
       case "mariadb":
-        this.rawQuery(`ALTER TABLE \`${tableName}\` DROP PRIMARY KEY`);
+        this.rawQuery(`ALTER TABLE \`${table}\` DROP PRIMARY KEY`);
         break;
       case "postgres":
-        this.rawQuery(`ALTER TABLE "${tableName}" DROP CONSTRAINT PRIMARY KEY`);
+        this.rawQuery(`ALTER TABLE "${table}" DROP CONSTRAINT PRIMARY KEY`);
         break;
       default:
         throw new Error("Unsupported database type");
@@ -214,13 +208,13 @@ export default class Schema {
 
   /**
    * @description Adds a foreign key to a table
-   * @param tableName
+   * @param table
    * @param constraintName
    * @param columns
    * @returns void
    */
   public addConstraint(
-    tableName: string,
+    table: string,
     constraintName: string,
     columns: string[],
   ): void {
@@ -228,14 +222,14 @@ export default class Schema {
       case "mysql":
       case "mariadb":
         this.rawQuery(
-          `ALTER TABLE \`${tableName}\` ADD CONSTRAINT ${constraintName} FOREIGN KEY (${columns.join(
+          `ALTER TABLE \`${table}\` ADD CONSTRAINT ${constraintName} FOREIGN KEY (${columns.join(
             ", ",
           )}) REFERENCES ${columns[0].split("_")[0]}s(id)`,
         );
         break;
       case "postgres":
         this.rawQuery(
-          `ALTER TABLE "${tableName}" ADD CONSTRAINT ${constraintName} FOREIGN KEY (${columns.join(
+          `ALTER TABLE "${table}" ADD CONSTRAINT ${constraintName} FOREIGN KEY (${columns.join(
             ", ",
           )}) REFERENCES ${columns[0].split("_")[0]}s(id)`,
         );
@@ -247,21 +241,21 @@ export default class Schema {
 
   /**
    * @description Drops a cosntraint from a table
-   * @param tableName
+   * @param table
    * @param constraintName
    * @returns void
    */
-  public dropConstraint(tableName: string, constraintName: string): void {
+  public dropConstraint(table: string, constraintName: string): void {
     switch (this.sqlType) {
       case "mysql":
       case "mariadb":
         this.rawQuery(
-          `ALTER TABLE \`${tableName}\` DROP FOREIGN KEY ${constraintName}`,
+          `ALTER TABLE \`${table}\` DROP FOREIGN KEY ${constraintName}`,
         );
         break;
       case "postgres":
         this.rawQuery(
-          `ALTER TABLE "${tableName}" DROP CONSTRAINT ${constraintName}`,
+          `ALTER TABLE "${table}" DROP CONSTRAINT ${constraintName}`,
         );
         break;
       default:
@@ -271,13 +265,13 @@ export default class Schema {
 
   /**
    * @description Adds a unique constraint to a table
-   * @param tableName
+   * @param table
    * @param constraintName
    * @param columns
    * @returns void
    */
   public addUniqueConstraint(
-    tableName: string,
+    table: string,
     constraintName: string,
     columns: string[],
   ): void {
@@ -285,14 +279,14 @@ export default class Schema {
       case "mysql":
       case "mariadb":
         this.rawQuery(
-          `ALTER TABLE \`${tableName}\` ADD CONSTRAINT ${constraintName} UNIQUE (${columns.join(
+          `ALTER TABLE \`${table}\` ADD CONSTRAINT ${constraintName} UNIQUE (${columns.join(
             ", ",
           )})`,
         );
         break;
       case "postgres":
         this.rawQuery(
-          `ALTER TABLE "${tableName}" ADD CONSTRAINT ${constraintName} UNIQUE (${columns.join(
+          `ALTER TABLE "${table}" ADD CONSTRAINT ${constraintName} UNIQUE (${columns.join(
             ", ",
           )})`,
         );
@@ -304,21 +298,19 @@ export default class Schema {
 
   /**
    * @description Drops a unique constraint from a table
-   * @param tableName
+   * @param table
    * @param constraintName
    * @returns void
    */
-  public dropUniqueConstraint(tableName: string, constraintName: string): void {
+  public dropUniqueConstraint(table: string, constraintName: string): void {
     switch (this.sqlType) {
       case "mysql":
       case "mariadb":
-        this.rawQuery(
-          `ALTER TABLE \`${tableName}\` DROP INDEX ${constraintName}`,
-        );
+        this.rawQuery(`ALTER TABLE \`${table}\` DROP INDEX ${constraintName}`);
         break;
       case "postgres":
         this.rawQuery(
-          `ALTER TABLE "${tableName}" DROP CONSTRAINT ${constraintName}`,
+          `ALTER TABLE "${table}" DROP CONSTRAINT ${constraintName}`,
         );
         break;
       default:

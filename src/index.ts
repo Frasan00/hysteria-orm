@@ -1,7 +1,7 @@
 import "reflect-metadata";
 import { DataSourceInput } from "./Datasource";
 import { Migration } from "./Sql/Migrations/Migration";
-import { Metadata, Model } from "./Sql/Models/Model";
+import { Model } from "./Sql/Models/Model";
 import {
   belongsTo,
   hasOne,
@@ -13,12 +13,10 @@ import {
 import { Relation } from "./Sql/Models/Relations/Relation";
 import { AbstractQueryBuilders } from "./Sql/QueryBuilder/QueryBuilder";
 import { SqlDataSource } from "./Sql/SqlDatasource";
-import { Post } from "../test/sql/Models/Post";
+import { getPrimaryKey } from "./Sql/Models/ModelDecorators";
 import { CaseConvention } from "./CaseUtils";
 import { AbstractDeleteQueryBuilder } from "./Sql/QueryBuilder/DeleteQueryBuilder";
 import { AbstractUpdateQueryBuilder } from "./Sql/QueryBuilder/UpdateQueryBuilder";
-
-// console.log(Post.metadata);
 
 export default {
   Model,
@@ -46,8 +44,8 @@ export {
   AbstractDeleteQueryBuilder,
   AbstractUpdateQueryBuilder,
   Migration,
-  Metadata,
   CaseConvention,
   getRelations,
   getModelColumns,
+  getPrimaryKey,
 };

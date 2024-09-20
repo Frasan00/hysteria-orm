@@ -118,12 +118,9 @@ import { DateTime } from "luxon"; // Both Date and Datetime from luxon are suppo
 
 export class User extends Model {
     // optional Metadata
-    public static metadata: Metadata = {
-        primaryKey: "id", // default undefined
-        tableName: "users",
-    };
+    static tableName: string = "users"; // Default Class name lowercase, in snake case with a final "s" (given for granted that the Class is defined in Pascal Case)
 
-    @column()
+    @column({ primaryKey: true })
     declare id: number;
 
     @column()
@@ -156,7 +153,7 @@ import { Profile } from "./Profile";
 import { Post } from "./Post";
 
 export class User extends Model {
-    @column()
+    @column({ primaryKey: true })
     declare id: number;
 
     @column()
@@ -177,7 +174,7 @@ export class User extends Model {
     @column()
     declare createdAt: DateTime;
 
-    // Relations take as params (TableName, foreignKey)
+    // Relations take as params (table, foreignKey)
     @hasOne(() => Profile, "userId")
     public profile: Profile;
 

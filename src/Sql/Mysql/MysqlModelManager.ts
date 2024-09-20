@@ -132,16 +132,16 @@ export class MysqlModelManager<
     throwErrorOnNull: boolean = false,
   ): Promise<T | null> {
     try {
-      if (!this.model.metadata.primaryKey) {
+      if (!this.model.primaryKey) {
         throw new Error(
           "Model " +
-            this.model.metadata.tableName +
+            this.model.table +
             " has no primary key to be retrieved by",
         );
       }
 
       return await this.query()
-        .where(this.model.metadata.primaryKey as string, value)
+        .where(this.model.primaryKey as string, value)
         .one({ throwErrorOnNull });
     } catch (error) {
       queryError(error);
@@ -234,7 +234,7 @@ export class MysqlModelManager<
       );
 
       return await this.query()
-        .whereIn(this.model.metadata.primaryKey as string, idsToFetchList)
+        .whereIn(this.model.primaryKey as string, idsToFetchList)
         .many();
     } catch (error) {
       queryError(error);
@@ -252,10 +252,10 @@ export class MysqlModelManager<
     model: T,
     trx?: TransactionType,
   ): Promise<T | null> {
-    if (!this.model.metadata.primaryKey) {
+    if (!this.model.primaryKey) {
       throw new Error(
         "Model " +
-          this.model.metadata.tableName +
+          this.model.table +
           " has no primary key to be updated, try save",
       );
     }
@@ -267,12 +267,12 @@ export class MysqlModelManager<
         this.sqlDataSource.getDbType(),
       );
       await trx.queryUpdate<T>(query, params);
-      if (!this.model.metadata.primaryKey) {
+      if (!this.model.primaryKey) {
         return null;
       }
 
       return await this.findOneByPrimaryKey(
-        model[this.model.metadata.primaryKey as keyof T] as string | number,
+        model[this.model.primaryKey as keyof T] as string | number,
       );
     }
 
@@ -284,7 +284,7 @@ export class MysqlModelManager<
       );
       log(updateQuery.query, this.logs, updateQuery.params);
       await this.mysqlConnection.query(updateQuery.query, updateQuery.params);
-      if (!this.model.metadata.primaryKey) {
+      if (!this.model.primaryKey) {
         log(
           "Model has no primary key so no record can be retrieved",
           this.logs,
@@ -293,7 +293,7 @@ export class MysqlModelManager<
       }
 
       return await this.findOneByPrimaryKey(
-        model[this.model.metadata.primaryKey as keyof T] as string | number,
+        model[this.model.primaryKey as keyof T] as string | number,
       );
     } catch (error) {
       queryError(error);
@@ -316,7 +316,7 @@ export class MysqlModelManager<
   ): Promise<number> {
     if (trx) {
       const { query, params } = this.mysqlModelManagerUtils.parseDelete(
-        this.model.metadata.tableName,
+        this.model.table,
         column,
         value,
       );
@@ -326,7 +326,7 @@ export class MysqlModelManager<
 
     try {
       const { query, params } = this.mysqlModelManagerUtils.parseDelete(
-        this.model.metadata.tableName,
+        this.model.table,
         column,
         value,
       );
@@ -354,17 +354,17 @@ export class MysqlModelManager<
     trx?: TransactionType,
   ): Promise<T | null> {
     try {
-      if (!this.model.metadata.primaryKey) {
+      if (!this.model.primaryKey) {
         throw new Error(
           "Model " +
-            this.model.metadata.tableName +
+            this.model.table +
             " has no primary key to be deleted from, try deleteByColumn",
         );
       }
       const { query, params } = this.mysqlModelManagerUtils.parseDelete(
-        this.model.metadata.tableName,
-        this.model.metadata.primaryKey,
-        model[this.model.metadata.primaryKey as keyof T] as string,
+        this.model.table,
+        this.model.primaryKey,
+        model[this.model.primaryKey as keyof T] as string,
       );
 
       if (trx) {
@@ -389,7 +389,7 @@ export class MysqlModelManager<
   public query(): MysqlQueryBuilder<T> {
     return new MysqlQueryBuilder<T>(
       this.model,
-      this.model.metadata.tableName,
+      this.model.table,
       this.mysqlConnection,
       this.logs,
       false,
@@ -403,7 +403,7 @@ export class MysqlModelManager<
   public update(): MysqlUpdateQueryBuilder<T> | PostgresUpdateQueryBuilder<T> {
     return new MysqlUpdateQueryBuilder<T>(
       this.model,
-      this.model.metadata.tableName,
+      this.model.table,
       this.mysqlConnection,
       this.logs,
       false,
@@ -417,7 +417,7 @@ export class MysqlModelManager<
   public delete(): MysqlDeleteQueryBuilder<T> {
     return new MysqlDeleteQueryBuilder<T>(
       this.model,
-      this.model.metadata.tableName,
+      this.model.table,
       this.mysqlConnection,
       this.logs,
       false,

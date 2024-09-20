@@ -3,7 +3,7 @@ import { DataSourceType } from "../../../Datasource";
 import { Model } from "../../Models/Model";
 
 const updateTemplate = (dbType: DataSourceType, typeofModel: typeof Model) => {
-  const table = typeofModel.metadata.tableName;
+  const table = typeofModel.table;
   return {
     update: (
       columns: string[],

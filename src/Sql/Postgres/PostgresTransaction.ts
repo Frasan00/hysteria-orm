@@ -33,7 +33,7 @@ export class PostgresTransaction {
         params,
       );
 
-      const insertId = rows[0][typeofModel.metadata.primaryKey as keyof T];
+      const insertId = rows[0][typeofModel.primaryKey as keyof T];
       const select = selectTemplate("postgres", typeofModel).selectById(
         insertId as string,
       );

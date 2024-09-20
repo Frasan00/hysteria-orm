@@ -1,9 +1,9 @@
 import { DataSourceType } from "../../../Datasource";
 
-const deleteTemplate = (tableName: string, dbType: DataSourceType) => {
+const deleteTemplate = (table: string, dbType: DataSourceType) => {
   return {
     delete: (column: string, value: string | number | boolean | Date) => {
-      let baseQuery = `DELETE FROM ${tableName} WHERE ${column} = PLACEHOLDER`;
+      let baseQuery = `DELETE FROM ${table} WHERE ${column} = PLACEHOLDER`;
       switch (dbType) {
         case "mariadb":
         case "mysql":
@@ -19,7 +19,7 @@ const deleteTemplate = (tableName: string, dbType: DataSourceType) => {
       return { query: baseQuery, params: [value] };
     },
     massiveDelete: (whereClause: string, joinClause: string = "") => {
-      let query = `DELETE FROM ${tableName} ${joinClause} ${whereClause}`;
+      let query = `DELETE FROM ${table} ${joinClause} ${whereClause}`;
       dbType === "postgres" && (query += " RETURNING *;");
 
       return query;

@@ -6,7 +6,7 @@ import { Model } from "../../Models/Model";
 type BaseValues = string | number | boolean | Date | null | object | undefined;
 
 const insertTemplate = (dbType: DataSourceType, typeofModel: typeof Model) => {
-  const tableName = typeofModel.metadata.tableName;
+  const table = typeofModel.table;
   return {
     insert: (columns: string[], values: BaseValues[]) => {
       columns = columns.map((column) =>
@@ -40,9 +40,9 @@ const insertTemplate = (dbType: DataSourceType, typeofModel: typeof Model) => {
 
       const query =
         dbType === "mysql" || dbType === "mariadb"
-          ? `INSERT INTO ${tableName} (${columns.join(", ")})
+          ? `INSERT INTO ${table} (${columns.join(", ")})
              VALUES (${placeholders});`
-          : `INSERT INTO ${tableName} (${columns.join(", ")})
+          : `INSERT INTO ${table} (${columns.join(", ")})
              VALUES (${placeholders}) RETURNING *;`;
 
       return { query, params };
@@ -85,9 +85,9 @@ const insertTemplate = (dbType: DataSourceType, typeofModel: typeof Model) => {
 
       const query =
         dbType === "mysql"
-          ? `INSERT INTO ${tableName} (${columns.join(", ")})
+          ? `INSERT INTO ${table} (${columns.join(", ")})
              VALUES ${valueSets.join(", ")};`
-          : `INSERT INTO ${tableName} (${columns.join(", ")})
+          : `INSERT INTO ${table} (${columns.join(", ")})
              VALUES ${valueSets.join(", ")} RETURNING *;`;
 
       return { query, params };

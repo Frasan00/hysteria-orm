@@ -3,13 +3,13 @@
 import { DataSourceType } from "../../../Datasource";
 
 const alterTableTemplate = (dbType: DataSourceType) => ({
-  alterTable: (tableName: string) => {
+  alterTable: (table: string) => {
     switch (dbType) {
       case "mysql":
       case "mariadb":
-        return `\nALTER TABLE \`${tableName}\``;
+        return `\nALTER TABLE \`${table}\``;
       case "postgres":
-        return `\nALTER TABLE "${tableName}"`;
+        return `\nALTER TABLE "${table}"`;
       default:
         throw new Error("Unsupported database type");
     }

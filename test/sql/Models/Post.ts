@@ -1,14 +1,9 @@
 import { User } from "./User";
 import { column, belongsTo } from "../../../src/Sql/Models/ModelDecorators";
-import { Metadata, Model } from "../../../src/Sql/Models/Model";
+import { Model } from "../../../src/Sql/Models/Model";
 
 export class Post extends Model {
-  static metadata: Metadata = {
-    tableName: "posts",
-    primaryKey: "id",
-  };
-
-  @column()
+  @column({ primaryKey: true })
   declare id: number;
 
   @column()

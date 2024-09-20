@@ -4,16 +4,11 @@ import {
   hasMany,
   hasOne,
 } from "../../../src/Sql/Models/ModelDecorators";
-import { Model, Metadata } from "../../../src/Sql/Models/Model";
+import { Model } from "../../../src/Sql/Models/Model";
 import { Post } from "./Post";
 
 export class User extends Model {
-  static metadata: Metadata = {
-    tableName: "users",
-    primaryKey: "id",
-  };
-
-  @column()
+  @column({ primaryKey: true })
   declare id: number;
 
   @column()

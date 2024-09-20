@@ -136,7 +136,7 @@ function processRelation(
       typeofModel.modelCaseConvention,
     ) as string;
     const primaryKey = convertCase(
-      typeofModel.metadata.primaryKey,
+      typeofModel.primaryKey,
       typeofModel.modelCaseConvention,
     ) as string;
 

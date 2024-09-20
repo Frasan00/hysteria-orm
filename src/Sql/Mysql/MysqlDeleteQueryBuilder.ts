@@ -23,23 +23,23 @@ export class MysqlDeleteQueryBuilder<
   /**
    * @description Constructs a MysqlQueryBuilder instance.
    * @param model - The model class associated with the table.
-   * @param tableName - The name of the table.
+   * @param table - The name of the table.
    * @param mysqlConnection - The MySQL connection pool.
    * @param logs - A boolean indicating whether to log queries.
    * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
    */
   public constructor(
     model: typeof Model,
-    tableName: string,
+    table: string,
     mysql: Connection,
     logs: boolean,
     isNestedCondition = false,
     sqlDataSource: SqlDataSource,
   ) {
-    super(model, tableName, logs, false, sqlDataSource);
+    super(model, table, logs, false, sqlDataSource);
     this.sqlConnection = mysql;
     this.updateTemplate = updateTemplate(sqlDataSource.getDbType(), this.model);
-    this.deleteTemplate = deleteTemplate(tableName, sqlDataSource.getDbType());
+    this.deleteTemplate = deleteTemplate(table, sqlDataSource.getDbType());
     this.joinQuery = "";
     this.isNestedCondition = isNestedCondition;
   }
@@ -166,7 +166,7 @@ export class MysqlDeleteQueryBuilder<
   ): this {
     const queryBuilder = new MysqlDeleteQueryBuilder(
       this.model as typeof Model,
-      this.model.metadata.tableName,
+      this.model.table,
       this.sqlConnection,
       this.logs,
       true,
@@ -204,7 +204,7 @@ export class MysqlDeleteQueryBuilder<
   ): this {
     const nestedBuilder = new MysqlDeleteQueryBuilder(
       this.model as typeof Model,
-      this.model.metadata.tableName,
+      this.model.table,
       this.sqlConnection,
       this.logs,
       true,
@@ -245,7 +245,7 @@ export class MysqlDeleteQueryBuilder<
   ): this {
     const nestedBuilder = new MysqlDeleteQueryBuilder(
       this.model as typeof Model,
-      this.model.metadata.tableName,
+      this.model.table,
       this.sqlConnection,
       this.logs,
       true,

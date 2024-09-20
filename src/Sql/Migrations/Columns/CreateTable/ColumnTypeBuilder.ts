@@ -7,19 +7,19 @@ export type DateOptions = {
 };
 
 export default class ColumnTypeBuilder {
-  protected tableName: string;
+  protected table: string;
   protected queryStatements: string[];
   protected partialQuery: string;
   protected columnName: string;
   protected sqlType: DataSourceType;
 
   constructor(
-    tableName: string,
+    table: string,
     queryStatements: string[],
     partialQuery: string,
     sqlType: DataSourceType,
   ) {
-    this.tableName = tableName;
+    this.table = table;
     this.queryStatements = queryStatements;
     this.partialQuery = partialQuery;
     this.sqlType = sqlType;
@@ -30,7 +30,7 @@ export default class ColumnTypeBuilder {
     this.columnName = name;
     this.partialQuery += `${name} VARCHAR(${length})`;
     return new ColumnOptionsBuilder(
-      this.tableName,
+      this.table,
       this.queryStatements,
       this.partialQuery,
       this.sqlType,
@@ -42,7 +42,7 @@ export default class ColumnTypeBuilder {
     this.columnName = name;
     this.partialQuery += `${name} TINYTEXT`;
     return new ColumnOptionsBuilder(
-      this.tableName,
+      this.table,
       this.queryStatements,
       this.partialQuery,
       this.sqlType,
@@ -54,7 +54,7 @@ export default class ColumnTypeBuilder {
     this.columnName = name;
     this.partialQuery += `${name} MEDIUMTEXT`;
     return new ColumnOptionsBuilder(
-      this.tableName,
+      this.table,
       this.queryStatements,
       this.partialQuery,
       this.sqlType,
@@ -66,7 +66,7 @@ export default class ColumnTypeBuilder {
     this.columnName = name;
     this.partialQuery += `${name} LONGTEXT`;
     return new ColumnOptionsBuilder(
-      this.tableName,
+      this.table,
       this.queryStatements,
       this.partialQuery,
       this.sqlType,
@@ -78,7 +78,7 @@ export default class ColumnTypeBuilder {
     this.columnName = name;
     this.partialQuery += `${name} BINARY(${length})`;
     return new ColumnOptionsBuilder(
-      this.tableName,
+      this.table,
       this.queryStatements,
       this.partialQuery,
       this.sqlType,
@@ -90,7 +90,7 @@ export default class ColumnTypeBuilder {
     this.columnName = name;
     this.partialQuery += `${name} ENUM("${values.join('","')}")`;
     return new ColumnOptionsBuilder(
-      this.tableName,
+      this.table,
       this.queryStatements,
       this.partialQuery,
       this.sqlType,
@@ -102,7 +102,7 @@ export default class ColumnTypeBuilder {
     this.columnName = name;
     this.partialQuery += `${name} TEXT`;
     return new ColumnOptionsBuilder(
-      this.tableName,
+      this.table,
       this.queryStatements,
       this.partialQuery,
       this.sqlType,
@@ -114,7 +114,7 @@ export default class ColumnTypeBuilder {
     this.columnName = name;
     this.partialQuery += `${name} CHAR(${length})`;
     return new ColumnOptionsBuilder(
-      this.tableName,
+      this.table,
       this.queryStatements,
       this.partialQuery,
       this.sqlType,
@@ -126,7 +126,7 @@ export default class ColumnTypeBuilder {
     this.columnName = name;
     this.partialQuery += `${name} TINYINT`;
     return new ColumnOptionsBuilder(
-      this.tableName,
+      this.table,
       this.queryStatements,
       this.partialQuery,
       this.sqlType,
@@ -138,7 +138,7 @@ export default class ColumnTypeBuilder {
     this.columnName = name;
     this.partialQuery += `${name} SMALLINT`;
     return new ColumnOptionsBuilder(
-      this.tableName,
+      this.table,
       this.queryStatements,
       this.partialQuery,
       this.sqlType,
@@ -150,7 +150,7 @@ export default class ColumnTypeBuilder {
     this.columnName = name;
     this.partialQuery += `${name} MEDIUMINT`;
     return new ColumnOptionsBuilder(
-      this.tableName,
+      this.table,
       this.queryStatements,
       this.partialQuery,
       this.sqlType,
@@ -167,7 +167,7 @@ export default class ColumnTypeBuilder {
       this.columnName = name;
       this.partialQuery += `${name} INT AUTO_INCREMENT`;
       return new ColumnOptionsBuilder(
-        this.tableName,
+        this.table,
         this.queryStatements,
         this.partialQuery,
         this.sqlType,
@@ -178,7 +178,7 @@ export default class ColumnTypeBuilder {
     this.columnName = name;
     this.partialQuery += `${name} SERIAL`;
     return new ColumnOptionsBuilder(
-      this.tableName,
+      this.table,
       this.queryStatements,
       this.partialQuery,
       this.sqlType,
@@ -195,7 +195,7 @@ export default class ColumnTypeBuilder {
       this.columnName = name;
       this.partialQuery += `${name} BIGINT AUTO_INCREMENT`;
       return new ColumnOptionsBuilder(
-        this.tableName,
+        this.table,
         this.queryStatements,
         this.partialQuery,
         this.sqlType,
@@ -206,7 +206,7 @@ export default class ColumnTypeBuilder {
     this.columnName = name;
     this.partialQuery += `${name} BIGSERIAL`;
     return new ColumnOptionsBuilder(
-      this.tableName,
+      this.table,
       this.queryStatements,
       this.partialQuery,
       this.sqlType,
@@ -219,7 +219,7 @@ export default class ColumnTypeBuilder {
     this.partialQuery += `${name} INT`;
 
     return new ColumnOptionsBuilder(
-      this.tableName,
+      this.table,
       this.queryStatements,
       this.partialQuery,
       this.sqlType,
@@ -231,7 +231,7 @@ export default class ColumnTypeBuilder {
     this.columnName = name;
     this.partialQuery += `${name} BIGINT`;
     return new ColumnOptionsBuilder(
-      this.tableName,
+      this.table,
       this.queryStatements,
       this.partialQuery,
       this.sqlType,
@@ -243,7 +243,7 @@ export default class ColumnTypeBuilder {
     this.columnName = name;
     this.partialQuery += `${name} FLOAT`;
     return new ColumnOptionsBuilder(
-      this.tableName,
+      this.table,
       this.queryStatements,
       this.partialQuery,
       this.sqlType,
@@ -255,7 +255,7 @@ export default class ColumnTypeBuilder {
     this.columnName = name;
     this.partialQuery += `${name} DECIMAL`;
     return new ColumnOptionsBuilder(
-      this.tableName,
+      this.table,
       this.queryStatements,
       this.partialQuery,
       this.sqlType,
@@ -267,7 +267,7 @@ export default class ColumnTypeBuilder {
     this.columnName = name;
     this.partialQuery += `${name} DOUBLE`;
     return new ColumnOptionsBuilder(
-      this.tableName,
+      this.table,
       this.queryStatements,
       this.partialQuery,
       this.sqlType,
@@ -279,7 +279,7 @@ export default class ColumnTypeBuilder {
     this.columnName = name;
     this.partialQuery += `${name} BOOLEAN`;
     return new ColumnOptionsBuilder(
-      this.tableName,
+      this.table,
       this.queryStatements,
       this.partialQuery,
       this.sqlType,
@@ -304,7 +304,7 @@ export default class ColumnTypeBuilder {
     }
 
     return new ColumnOptionsBuilder(
-      this.tableName,
+      this.table,
       this.queryStatements,
       this.partialQuery,
       this.sqlType,
@@ -328,7 +328,7 @@ export default class ColumnTypeBuilder {
     }
 
     return new ColumnOptionsBuilder(
-      this.tableName,
+      this.table,
       this.queryStatements,
       this.partialQuery,
       this.sqlType,
@@ -355,7 +355,7 @@ export default class ColumnTypeBuilder {
     }
 
     return new ColumnOptionsBuilder(
-      this.tableName,
+      this.table,
       this.queryStatements,
       this.partialQuery,
       this.sqlType,

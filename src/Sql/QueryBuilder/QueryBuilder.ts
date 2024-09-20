@@ -37,7 +37,7 @@ export abstract class QueryBuilder<T extends Model> {
   protected params: BaseValues[] = [];
 
   protected model: typeof Model;
-  protected tableName: string;
+  protected table: string;
   protected logs: boolean;
 
   protected selectTemplate: ReturnType<typeof selectTemplate>;
@@ -46,19 +46,19 @@ export abstract class QueryBuilder<T extends Model> {
   /**
    * @description Constructs a MysqlQueryBuilder instance.
    * @param model - The model class associated with the table.
-   * @param tableName - The name of the table.
+   * @param table - The name of the table.
    * @param logs - A boolean indicating whether to log queries.
    */
   protected constructor(
     model: typeof Model,
-    tableName: string,
+    table: string,
     logs: boolean,
     sqlDataSource: SqlDataSource,
   ) {
     this.sqlDataSource = sqlDataSource;
     this.model = model;
     this.logs = logs;
-    this.tableName = tableName;
+    this.table = table;
     this.selectQuery = selectTemplate(
       this.sqlDataSource.getDbType(),
       this.model,

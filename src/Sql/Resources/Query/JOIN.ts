@@ -7,7 +7,7 @@ const joinTemplate = (
   primaryColumn: string,
   foreignColumn: string,
 ) => {
-  const table = typeofModel.metadata.tableName;
+  const table = typeofModel.table;
   return {
     innerJoin: () => {
       return `\nINNER JOIN ${relatedTable} ON ${relatedTable}.${convertCase(

@@ -1,4 +1,4 @@
-import { Model } from "./Model";
+import { getBasetable, Model as AbstractModel } from "./Model";
 import { BelongsTo } from "./Relations/BelongsTo";
 import { HasMany } from "./Relations/HasMany";
 import { HasOne } from "./Relations/HasOne";
@@ -7,7 +7,7 @@ import { Relation, RelationOptions, RelationType } from "./Relations/Relation";
 type LazyRelationType = {
   type: RelationType;
   columnName: string;
-  model: () => typeof Model;
+  model: () => typeof AbstractModel;
   foreignKey: string;
   options?: RelationOptions;
 };
@@ -17,10 +17,12 @@ type LazyRelationType = {
  */
 
 interface ColumnOptions {
-  booleanColumn: boolean;
+  booleanColumn?: boolean;
+  primaryKey?: boolean;
 }
 
 const COLUMN_METADATA_KEY = Symbol("columns");
+const PRIMARY_KEY_METADATA_KEY = Symbol("primaryKey");
 const BOOLEAN_COLUMN_METADATA_KEY = Symbol("booleanColumns");
 const RELATION_METADATA_KEY = Symbol("relations");
 
@@ -30,9 +32,17 @@ const RELATION_METADATA_KEY = Symbol("relations");
  * @returns
  */
 export function column(
-  options: ColumnOptions = { booleanColumn: false },
+  options: ColumnOptions = { primaryKey: false, booleanColumn: false },
 ): PropertyDecorator {
   return (target: Object, propertyKey: string | symbol) => {
+    if (options.primaryKey) {
+      const primaryKey = Reflect.getMetadata(PRIMARY_KEY_METADATA_KEY, target);
+      if (primaryKey) {
+        throw new Error("Multiple primary keys are not allowed");
+      }
+      Reflect.defineMetadata(PRIMARY_KEY_METADATA_KEY, propertyKey, target);
+    }
+
     if (options.booleanColumn) {
       const booleanColumns =
         Reflect.getMetadata(BOOLEAN_COLUMN_METADATA_KEY, target) || [];
@@ -56,7 +66,7 @@ export function column(
  * @param target Model
  * @returns
  */
-export function getModelColumns(target: typeof Model): string[] {
+export function getModelColumns(target: typeof AbstractModel): string[] {
   return Reflect.getMetadata(COLUMN_METADATA_KEY, target.prototype) || [];
 }
 
@@ -65,7 +75,7 @@ export function getModelColumns(target: typeof Model): string[] {
  * @param target Model
  * @returns
  */
-export function getModelBooleanColumns(target: typeof Model): string[] {
+export function getModelBooleanColumns(target: typeof AbstractModel): string[] {
   return (
     Reflect.getMetadata(BOOLEAN_COLUMN_METADATA_KEY, target.prototype) || []
   );
@@ -83,7 +93,7 @@ export function getModelBooleanColumns(target: typeof Model): string[] {
  * @returns
  */
 export function belongsTo(
-  model: () => typeof Model,
+  model: () => typeof AbstractModel,
   foreignKey: string,
   options?: RelationOptions,
 ): PropertyDecorator {
@@ -109,7 +119,7 @@ export function belongsTo(
  * @returns
  */
 export function hasOne(
-  model: () => typeof Model,
+  model: () => typeof AbstractModel,
   foreignKey: string,
   options?: RelationOptions,
 ): PropertyDecorator {
@@ -135,7 +145,7 @@ export function hasOne(
  * @returns
  */
 export function hasMany(
-  model: () => typeof Model,
+  model: () => typeof AbstractModel,
   foreignKey: string,
   options?: RelationOptions,
 ): PropertyDecorator {
@@ -158,7 +168,7 @@ export function hasMany(
  * @param target Model
  * @returns
  */
-export function getRelations(target: typeof Model): Relation[] {
+export function getRelations(target: typeof AbstractModel): Relation[] {
   const relations =
     Reflect.getMetadata(RELATION_METADATA_KEY, target.prototype) || [];
   return relations.map((relation: LazyRelationType) => {
@@ -174,4 +184,13 @@ export function getRelations(target: typeof Model): Relation[] {
         throw new Error(`Unknown relation type: ${type}`);
     }
   });
+}
+
+/**
+ * @description Returns the primary key of the model
+ * @param target Model
+ * @returns
+ */
+export function getPrimaryKey(target: typeof AbstractModel): string {
+  return Reflect.getMetadata(PRIMARY_KEY_METADATA_KEY, target.prototype);
 }

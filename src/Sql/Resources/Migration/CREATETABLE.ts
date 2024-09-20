@@ -1,24 +1,24 @@
 import { DataSourceType } from "../../../Datasource";
 
 const createTableTemplate = {
-  createTableIfNotExists: (tableName: string, dbType: DataSourceType) => {
+  createTableIfNotExists: (table: string, dbType: DataSourceType) => {
     switch (dbType) {
       case "mysql":
       case "mariadb":
-        return `CREATE TABLE IF NOT EXISTS \`${tableName}\` (\n`;
+        return `CREATE TABLE IF NOT EXISTS \`${table}\` (\n`;
       case "postgres":
-        return `CREATE TABLE IF NOT EXISTS "${tableName}" (\n`;
+        return `CREATE TABLE IF NOT EXISTS "${table}" (\n`;
       default:
         throw new Error("Unsupported database type");
     }
   },
-  createTable: (tableName: string, dbType: DataSourceType) => {
+  createTable: (table: string, dbType: DataSourceType) => {
     switch (dbType) {
       case "mysql":
       case "mariadb":
-        return `CREATE TABLE \`${tableName}\` (\n`;
+        return `CREATE TABLE \`${table}\` (\n`;
       case "postgres":
-        return `CREATE TABLE "${tableName}" (\n`;
+        return `CREATE TABLE "${table}" (\n`;
       default:
         throw new Error("Unsupported database type");
     }

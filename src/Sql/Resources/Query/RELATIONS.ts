@@ -9,7 +9,7 @@ function relationTemplates<T extends Model>(
   relationName: string,
   typeofModel: typeof Model,
 ) {
-  const primaryKey = relation.model.metadata.primaryKey;
+  const primaryKey = relation.model.primaryKey;
   const foreignKey = relation.foreignKey as keyof T;
   const relatedModel = relation.relatedModel;
 

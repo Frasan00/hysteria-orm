@@ -16,7 +16,7 @@ const commonSelectMethods = [
   "DISTINCTROW",
 ];
 const selectTemplate = (dbType: DataSourceType, typeofModel: typeof Model) => {
-  const table = typeofModel.metadata.tableName;
+  const table = typeofModel.table;
   const escapeIdentifier = (identifier: string) => {
     switch (dbType) {
       case "mysql":

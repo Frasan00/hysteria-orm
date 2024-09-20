@@ -35,7 +35,7 @@ export abstract class Relation {
   ) {
     this.model = model;
     this.columnName = columnName;
-    this.relatedModel = this.model.metadata.tableName;
+    this.relatedModel = this.model.table;
     this.options = options;
   }
 }

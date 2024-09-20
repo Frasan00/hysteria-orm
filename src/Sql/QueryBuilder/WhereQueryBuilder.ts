@@ -11,7 +11,7 @@ export abstract class WhereQueryBuilder<T extends Model> {
   protected whereQuery: string = "";
   protected whereParams: BaseValues[] = [];
   protected model: typeof Model;
-  protected tableName: string;
+  protected table: string;
   protected logs: boolean;
 
   protected whereTemplate: ReturnType<typeof whereTemplate>;
@@ -20,13 +20,13 @@ export abstract class WhereQueryBuilder<T extends Model> {
   /**
    * @description Constructs a QueryBuilder instance.
    * @param model - The model class associated with the table.
-   * @param tableName - The name of the table.
+   * @param table - The name of the table.
    * @param logs - A boolean indicating whether to log queries.
    * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
    */
   public constructor(
     model: typeof Model,
-    tableName: string,
+    table: string,
     logs: boolean,
     isNestedCondition = false,
     sqlDataSource: SqlDataSource,
@@ -34,7 +34,7 @@ export abstract class WhereQueryBuilder<T extends Model> {
     this.model = model;
     this.sqlDataSource = sqlDataSource;
     this.logs = logs;
-    this.tableName = tableName;
+    this.table = table;
     this.whereTemplate = whereTemplate(
       this.sqlDataSource.getDbType(),
       this.model,

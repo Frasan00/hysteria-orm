@@ -7,7 +7,6 @@ import {
 } from "../QueryBuilder/QueryBuilder";
 import { Client } from "pg";
 import { BaseValues, WhereOperatorType } from "../Resources/Query/WHERE.TS";
-import selectTemplate from "../Resources/Query/SELECT";
 import { log, queryError } from "../../Logger";
 import PostgresModelManagerUtils from "./PostgresModelManagerUtils";
 import joinTemplate from "../Resources/Query/JOIN";
@@ -28,13 +27,13 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
   public constructor(
     model: typeof Model,
-    tableName: string,
+    table: string,
     pgClient: Client,
     logs: boolean,
     isNestedCondition = false,
     sqlDataSource: SqlDataSource,
   ) {
-    super(model, tableName, logs, sqlDataSource);
+    super(model, table, logs, sqlDataSource);
     this.pgClient = pgClient;
     this.isNestedCondition = isNestedCondition;
     this.postgresModelManagerUtils = new PostgresModelManagerUtils<T>();
@@ -66,9 +65,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
     let query: string = "";
     if (this.joinQuery && !this.selectQuery) {
-      this.selectQuery = this.selectTemplate.selectColumns(
-        `${this.tableName}.*`,
-      );
+      this.selectQuery = this.selectTemplate.selectColumns(`${this.table}.*`);
     }
     query = this.selectQuery + this.joinQuery;
 
@@ -120,9 +117,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
     let query: string = "";
     if (this.joinQuery && !this.selectQuery) {
-      this.selectQuery = this.selectTemplate.selectColumns(
-        `${this.tableName}.*`,
-      );
+      this.selectQuery = this.selectTemplate.selectColumns(`${this.table}.*`);
     }
     query = this.selectQuery + this.joinQuery;
 
@@ -319,7 +314,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   ): this {
     const queryBuilder = new PostgresQueryBuilder(
       this.model as typeof Model,
-      this.tableName,
+      this.table,
       this.pgClient,
       this.logs,
       true,
@@ -357,7 +352,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   ): this {
     const nestedBuilder = new PostgresQueryBuilder(
       this.model as typeof Model,
-      this.tableName,
+      this.table,
       this.pgClient,
       this.logs,
       true,
@@ -398,7 +393,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   ): this {
     const nestedBuilder = new PostgresQueryBuilder(
       this.model as typeof Model,
-      this.tableName,
+      this.table,
       this.pgClient,
       this.logs,
       true,
@@ -1146,7 +1141,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   public copy(): AbstractQueryBuilders<T> {
     const queryBuilder = new PostgresQueryBuilder<T>(
       this.model as typeof Model,
-      this.tableName,
+      this.table,
       this.pgClient,
       this.logs,
       this.isNestedCondition,

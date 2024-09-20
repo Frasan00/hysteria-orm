@@ -2,7 +2,7 @@ import { DataSourceType } from "../../../../Datasource";
 import ColumnTypeBuilder from "./ColumnTypeBuilder";
 
 export default class ColumnOptionsBuilder {
-  protected tableName: string;
+  protected table: string;
   protected queryStatements: string[];
   protected partialQuery: string;
   protected columnName: string;
@@ -13,7 +13,7 @@ export default class ColumnOptionsBuilder {
   protected sqlType: DataSourceType;
 
   constructor(
-    tableName: string,
+    table: string,
     queryStatements: string[],
     partialQuery: string,
     sqlType: DataSourceType,
@@ -23,7 +23,7 @@ export default class ColumnOptionsBuilder {
       column: string;
     }[] = [],
   ) {
-    this.tableName = tableName;
+    this.table = table;
     this.queryStatements = queryStatements;
     this.partialQuery = partialQuery;
     this.sqlType = sqlType;
@@ -37,7 +37,7 @@ export default class ColumnOptionsBuilder {
   public nullable(): ColumnOptionsBuilder {
     this.partialQuery += " NULL";
     return new ColumnOptionsBuilder(
-      this.tableName,
+      this.table,
       this.queryStatements,
       this.partialQuery,
       this.sqlType,
@@ -49,7 +49,7 @@ export default class ColumnOptionsBuilder {
   public default(value: string | number | boolean): ColumnOptionsBuilder {
     this.partialQuery += ` DEFAULT ${value}`;
     return new ColumnOptionsBuilder(
-      this.tableName,
+      this.table,
       this.queryStatements,
       this.partialQuery,
       this.sqlType,
@@ -64,7 +64,7 @@ export default class ColumnOptionsBuilder {
   public unsigned(): ColumnOptionsBuilder {
     this.partialQuery += " UNSIGNED";
     return new ColumnOptionsBuilder(
-      this.tableName,
+      this.table,
       this.queryStatements,
       this.partialQuery,
       this.sqlType,
@@ -79,7 +79,7 @@ export default class ColumnOptionsBuilder {
   public notNullable(): ColumnOptionsBuilder {
     this.partialQuery += " NOT NULL";
     return new ColumnOptionsBuilder(
-      this.tableName,
+      this.table,
       this.queryStatements,
       this.partialQuery,
       this.sqlType,
@@ -94,7 +94,7 @@ export default class ColumnOptionsBuilder {
   public primary(): ColumnOptionsBuilder {
     this.partialQuery += " PRIMARY KEY";
     return new ColumnOptionsBuilder(
-      this.tableName,
+      this.table,
       this.queryStatements,
       this.partialQuery,
       this.sqlType,
@@ -109,7 +109,7 @@ export default class ColumnOptionsBuilder {
   public unique(): ColumnOptionsBuilder {
     this.partialQuery += " UNIQUE";
     return new ColumnOptionsBuilder(
-      this.tableName,
+      this.table,
       this.queryStatements,
       this.partialQuery,
       this.sqlType,
@@ -127,7 +127,7 @@ export default class ColumnOptionsBuilder {
       case "mariadb":
         this.partialQuery += " AUTO_INCREMENT";
         return new ColumnOptionsBuilder(
-          this.tableName,
+          this.table,
           this.queryStatements,
           this.partialQuery,
           this.sqlType,
@@ -149,7 +149,7 @@ export default class ColumnOptionsBuilder {
   public references(table: string, column: string): ColumnOptionsBuilder {
     this.columnReferences?.push({ table, column });
     return new ColumnOptionsBuilder(
-      this.tableName,
+      this.table,
       this.queryStatements,
       this.partialQuery,
       this.sqlType,
@@ -164,7 +164,7 @@ export default class ColumnOptionsBuilder {
   public newColumn(): ColumnTypeBuilder {
     this.partialQuery += ",\n";
     return new ColumnTypeBuilder(
-      this.tableName,
+      this.table,
       this.queryStatements,
       this.partialQuery,
       this.sqlType,
@@ -180,10 +180,10 @@ export default class ColumnOptionsBuilder {
         switch (this.sqlType) {
           case "mysql":
           case "mariadb":
-            this.partialQuery += `,\nCONSTRAINT fk_${this.tableName}_${this.columnName} FOREIGN KEY (${this.columnName}) REFERENCES ${reference.table}(${reference.column})`;
+            this.partialQuery += `,\nCONSTRAINT fk_${this.table}_${this.columnName} FOREIGN KEY (${this.columnName}) REFERENCES ${reference.table}(${reference.column})`;
             break;
           case "postgres":
-            this.partialQuery += `,\nCONSTRAINT fk_${this.tableName}_${this.columnName} FOREIGN KEY (${this.columnName}) REFERENCES ${reference.table}(${reference.column})`;
+            this.partialQuery += `,\nCONSTRAINT fk_${this.table}_${this.columnName} FOREIGN KEY (${this.columnName}) REFERENCES ${reference.table}(${reference.column})`;
             break;
           default:
             throw new Error("Unsupported SQL type");

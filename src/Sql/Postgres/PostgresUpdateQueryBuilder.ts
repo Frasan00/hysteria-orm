@@ -20,20 +20,20 @@ export class PostgresUpdateQueryBuilder<
   /**
    * @description Constructs a MysqlQueryBuilder instance.
    * @param model - The model class associated with the table.
-   * @param tableName - The name of the table.
+   * @param table - The name of the table.
    * @param pgClient - The MySQL connection pool.
    * @param logs - A boolean indicating whether to log queries.
    * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
    */
   public constructor(
     model: typeof Model,
-    tableName: string,
+    table: string,
     pgClient: Client,
     logs: boolean,
     isNestedCondition = false,
     sqlDataSource: SqlDataSource,
   ) {
-    super(model, tableName, logs, false, sqlDataSource);
+    super(model, table, logs, false, sqlDataSource);
     this.sqlConnection = pgClient;
     this.updateTemplate = updateTemplate(
       this.sqlDataSource.getDbType(),
@@ -136,7 +136,7 @@ export class PostgresUpdateQueryBuilder<
   ): this {
     const queryBuilder = new PostgresUpdateQueryBuilder(
       this.model as typeof Model,
-      this.tableName,
+      this.table,
       this.sqlConnection,
       this.logs,
       true,
@@ -174,7 +174,7 @@ export class PostgresUpdateQueryBuilder<
   ): this {
     const nestedBuilder = new PostgresUpdateQueryBuilder(
       this.model as typeof Model,
-      this.tableName,
+      this.table,
       this.sqlConnection,
       this.logs,
       true,
@@ -215,7 +215,7 @@ export class PostgresUpdateQueryBuilder<
   ): this {
     const nestedBuilder = new PostgresUpdateQueryBuilder(
       this.model as typeof Model,
-      this.tableName,
+      this.table,
       this.sqlConnection,
       this.logs,
       true,

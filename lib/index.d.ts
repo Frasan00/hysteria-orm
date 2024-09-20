@@ -29,7 +29,7 @@ declare abstract class DataSource {
 }
 
 declare class ColumnOptionsBuilder {
-    protected tableName: string;
+    protected table: string;
     protected queryStatements: string[];
     protected partialQuery: string;
     protected columnName: string;
@@ -38,7 +38,7 @@ declare class ColumnOptionsBuilder {
         column: string;
     }[];
     protected sqlType: DataSourceType;
-    constructor(tableName: string, queryStatements: string[], partialQuery: string, sqlType: DataSourceType, columnName?: string, columnReferences?: {
+    constructor(table: string, queryStatements: string[], partialQuery: string, sqlType: DataSourceType, columnName?: string, columnReferences?: {
         table: string;
         column: string;
     }[]);
@@ -88,12 +88,12 @@ type DateOptions = {
     autoUpdate?: boolean;
 };
 declare class ColumnTypeBuilder {
-    protected tableName: string;
+    protected table: string;
     protected queryStatements: string[];
     protected partialQuery: string;
     protected columnName: string;
     protected sqlType: DataSourceType;
-    constructor(tableName: string, queryStatements: string[], partialQuery: string, sqlType: DataSourceType);
+    constructor(table: string, queryStatements: string[], partialQuery: string, sqlType: DataSourceType);
     varchar(name: string, length: number): ColumnOptionsBuilder;
     tinytext(name: string): ColumnOptionsBuilder;
     mediumtext(name: string): ColumnOptionsBuilder;
@@ -131,11 +131,11 @@ declare class ColumnTypeBuilder {
 }
 
 declare class ColumnBuilderConnector {
-    protected tableName: string;
+    protected table: string;
     protected queryStatements: string[];
     protected partialQuery: string;
     protected sqlType: DataSourceType;
-    constructor(tableName: string, queryStatements: string[], partialQuery: string, sqlType: DataSourceType);
+    constructor(table: string, queryStatements: string[], partialQuery: string, sqlType: DataSourceType);
     newColumn(): ColumnTypeBuilder;
 }
 
@@ -161,11 +161,11 @@ type BaseOptions = {
     length?: number;
 } & DateOptions;
 declare class ColumnBuilderAlter {
-    protected tableName: string;
+    protected table: string;
     protected queryStatements: string[];
     protected partialQuery: string;
     protected sqlType: DataSourceType;
-    constructor(tableName: string, queryStatements: string[], partialQuery: string, sqlType: DataSourceType);
+    constructor(table: string, queryStatements: string[], partialQuery: string, sqlType: DataSourceType);
     /**
      * @description Add a new column to the table
      * @param columnName { string }
@@ -197,10 +197,10 @@ declare class ColumnBuilderAlter {
     modifyColumnType(columnName: string, newDataType: DataType, options?: BaseOptions): ColumnBuilderAlter;
     /**
      * @description Renames a table
-     * @param oldTableName
-     * @param newTableName
+     * @param oldtable
+     * @param newtable
      */
-    renameTable(oldTableName: string, newTableName: string): ColumnBuilderAlter;
+    renameTable(oldtable: string, newtable: string): ColumnBuilderAlter;
     /**
      * @description Set a default value
      * @param columnName
@@ -238,96 +238,96 @@ declare class Schema {
      * @param query
      */
     rawQuery(query: string): void;
-    createTable(tableName: string, options?: {
+    createTable(table: string, options?: {
         ifNotExists?: boolean;
     }): ColumnBuilderConnector;
     /**
      * @description Alter table
-     * @param tableName
+     * @param table
      * @returns ColumnBuilderAlter
      */
-    alterTable(tableName: string): ColumnBuilderAlter;
+    alterTable(table: string): ColumnBuilderAlter;
     /**
      * @description Drop table
-     * @param tableName
+     * @param table
      * @param ifExists
      * @returns void
      */
-    dropTable(tableName: string, ifExists?: boolean): void;
+    dropTable(table: string, ifExists?: boolean): void;
     /**
      * @description Rename table
-     * @param oldTableName
-     * @param newTableName
+     * @param oldtable
+     * @param newtable
      * @returns void
      */
-    renameTable(oldTableName: string, newTableName: string): void;
+    renameTable(oldtable: string, newtable: string): void;
     /**
      * @description Truncate table
-     * @param tableName
+     * @param table
      * @returns void
      */
-    truncateTable(tableName: string): void;
+    truncateTable(table: string): void;
     /**
      * @description Create index on table
-     * @param tableName
+     * @param table
      * @param indexName
      * @param columns
      * @param unique
      * @returns void
      */
-    createIndex(tableName: string, indexName: string, columns: string[], unique?: boolean): void;
+    createIndex(table: string, indexName: string, columns: string[], unique?: boolean): void;
     /**
      * @description Drop index on table
-     * @param tableName
+     * @param table
      * @param indexName
      * @returns void
      */
-    dropIndex(tableName: string, indexName: string): void;
+    dropIndex(table: string, indexName: string): void;
     /**
      * @description Adds a primary key to a table
-     * @param tableName
+     * @param table
      * @param columnName
      * @param type
      * @param options
      * @returns void
      */
-    addPrimaryKey(tableName: string, columns: string[]): void;
+    addPrimaryKey(table: string, columns: string[]): void;
     /**
      * @description Drops a primary key from a table
-     * @param tableName
+     * @param table
      * @returns void
      */
-    dropPrimaryKey(tableName: string): void;
+    dropPrimaryKey(table: string): void;
     /**
      * @description Adds a foreign key to a table
-     * @param tableName
+     * @param table
      * @param constraintName
      * @param columns
      * @returns void
      */
-    addConstraint(tableName: string, constraintName: string, columns: string[]): void;
+    addConstraint(table: string, constraintName: string, columns: string[]): void;
     /**
      * @description Drops a cosntraint from a table
-     * @param tableName
+     * @param table
      * @param constraintName
      * @returns void
      */
-    dropConstraint(tableName: string, constraintName: string): void;
+    dropConstraint(table: string, constraintName: string): void;
     /**
      * @description Adds a unique constraint to a table
-     * @param tableName
+     * @param table
      * @param constraintName
      * @param columns
      * @returns void
      */
-    addUniqueConstraint(tableName: string, constraintName: string, columns: string[]): void;
+    addUniqueConstraint(table: string, constraintName: string, columns: string[]): void;
     /**
      * @description Drops a unique constraint from a table
-     * @param tableName
+     * @param table
      * @param constraintName
      * @returns void
      */
-    dropUniqueConstraint(tableName: string, constraintName: string): void;
+    dropUniqueConstraint(table: string, constraintName: string): void;
 }
 
 declare abstract class Migration {
@@ -632,7 +632,7 @@ declare class MySqlModelManagerUtils<T extends Model> {
         params: any[];
     };
     private filterRelationsAndMetadata;
-    parseDelete(tableName: string, column: string, value: string | number | boolean): {
+    parseDelete(table: string, column: string, value: string | number | boolean): {
         query: string;
         params: any[];
     };
@@ -656,7 +656,7 @@ declare class PostgresModelManagerUtils<T extends Model> {
         params: any[];
     };
     private filterRelationsAndMetadata;
-    parseDelete(tableName: string, column: string, value: string | number | boolean): {
+    parseDelete(table: string, column: string, value: string | number | boolean): {
         query: string;
         params: any[];
     };
@@ -670,7 +670,7 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     protected pgClient: Client;
     protected isNestedCondition: boolean;
     protected postgresModelManagerUtils: PostgresModelManagerUtils<T>;
-    constructor(model: typeof Model, tableName: string, pgClient: Client, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
+    constructor(model: typeof Model, table: string, pgClient: Client, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
     select(...columns: string[]): PostgresQueryBuilder<T>;
     select(...columns: (SelectableType<T> | "*")[]): PostgresQueryBuilder<T>;
     raw(query: string, params?: any[]): Promise<pg.QueryResult<any>>;
@@ -935,18 +935,18 @@ declare abstract class WhereQueryBuilder<T extends Model> {
     protected whereQuery: string;
     protected whereParams: BaseValues[];
     protected model: typeof Model;
-    protected tableName: string;
+    protected table: string;
     protected logs: boolean;
     protected whereTemplate: ReturnType<typeof whereTemplate>;
     protected isNestedCondition: boolean;
     /**
      * @description Constructs a QueryBuilder instance.
      * @param model - The model class associated with the table.
-     * @param tableName - The name of the table.
+     * @param table - The name of the table.
      * @param logs - A boolean indicating whether to log queries.
      * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
      */
-    constructor(model: typeof Model, tableName: string, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
+    constructor(model: typeof Model, table: string, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
     /**
      * @description Adds a WHERE condition to the query.
      * @param column - The column to filter.
@@ -1145,12 +1145,12 @@ declare class MysqlUpdateQueryBuilder<T extends Model> extends AbstractUpdateQue
     /**
      * @description Constructs a MysqlQueryBuilder instance.
      * @param model - The model class associated with the table.
-     * @param tableName - The name of the table.
+     * @param table - The name of the table.
      * @param mysqlConnection - The MySQL connection pool.
      * @param logs - A boolean indicating whether to log queries.
      * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
      */
-    constructor(model: typeof Model, tableName: string, mysqlConnection: Connection, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
+    constructor(model: typeof Model, table: string, mysqlConnection: Connection, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
     /**
      * @description Updates a record in the database.
      * @param data - The data to update.
@@ -1197,12 +1197,12 @@ declare class PostgresUpdateQueryBuilder<T extends Model> extends AbstractUpdate
     /**
      * @description Constructs a MysqlQueryBuilder instance.
      * @param model - The model class associated with the table.
-     * @param tableName - The name of the table.
+     * @param table - The name of the table.
      * @param pgClient - The MySQL connection pool.
      * @param logs - A boolean indicating whether to log queries.
      * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
      */
-    constructor(model: typeof Model, tableName: string, pgClient: Client, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
+    constructor(model: typeof Model, table: string, pgClient: Client, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
     /**
      * @description Updates a record in the database.
      * @param data - The data to update.
@@ -1241,7 +1241,7 @@ declare class PostgresUpdateQueryBuilder<T extends Model> extends AbstractUpdate
     andWhereBuilder(cb: (queryBuilder: PostgresUpdateQueryBuilder<T>) => void): this;
 }
 
-declare const deleteTemplate: (tableName: string, dbType: DataSourceType) => {
+declare const deleteTemplate: (table: string, dbType: DataSourceType) => {
     delete: (column: string, value: string | number | boolean | Date) => {
         query: string;
         params: (string | number | boolean | Date)[];
@@ -1277,12 +1277,12 @@ declare class PostgresDeleteQueryBuilder<T extends Model> extends AbstractDelete
     /**
      * @description Constructs a MysqlQueryBuilder instance.
      * @param model - The model class associated with the table.
-     * @param tableName - The name of the table.
+     * @param table - The name of the table.
      * @param pgClient - The MySQL connection pool.
      * @param logs - A boolean indicating whether to log queries.
      * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
      */
-    constructor(model: typeof Model, tableName: string, pgClient: Client, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
+    constructor(model: typeof Model, table: string, pgClient: Client, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
     /**
      * @description Deletes Records from the database.
      * @param data - The data to update.
@@ -1342,12 +1342,12 @@ declare class MysqlDeleteQueryBuilder<T extends Model> extends AbstractDeleteQue
     /**
      * @description Constructs a MysqlQueryBuilder instance.
      * @param model - The model class associated with the table.
-     * @param tableName - The name of the table.
+     * @param table - The name of the table.
      * @param mysqlConnection - The MySQL connection pool.
      * @param logs - A boolean indicating whether to log queries.
      * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
      */
-    constructor(model: typeof Model, tableName: string, mysql: Connection, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
+    constructor(model: typeof Model, table: string, mysql: Connection, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
     /**
      * @description Soft Deletes Records from the database.
      * @param column - The column to soft delete. Default is 'deletedAt'.
@@ -1650,12 +1650,12 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     /**
      * @description Constructs a MysqlQueryBuilder instance.
      * @param model - The model class associated with the table.
-     * @param tableName - The name of the table.
+     * @param table - The name of the table.
      * @param mysqlConnection - The MySQL connection pool.
      * @param logs - A boolean indicating whether to log queries.
      * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
      */
-    constructor(model: typeof Model, tableName: string, mysqlConnection: mysql.Connection, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
+    constructor(model: typeof Model, table: string, mysqlConnection: mysql.Connection, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
     /**
      * @description Executes the query and retrieves the first result.
      * @returns A Promise resolving to the first result or null.
@@ -1932,17 +1932,17 @@ declare abstract class QueryBuilder<T extends Model> {
     protected offsetQuery: string;
     protected params: BaseValues[];
     protected model: typeof Model;
-    protected tableName: string;
+    protected table: string;
     protected logs: boolean;
     protected selectTemplate: ReturnType<typeof selectTemplate>;
     protected whereTemplate: ReturnType<typeof whereTemplate>;
     /**
      * @description Constructs a MysqlQueryBuilder instance.
      * @param model - The model class associated with the table.
-     * @param tableName - The name of the table.
+     * @param table - The name of the table.
      * @param logs - A boolean indicating whether to log queries.
      */
-    protected constructor(model: typeof Model, tableName: string, logs: boolean, sqlDataSource: SqlDataSource);
+    protected constructor(model: typeof Model, table: string, logs: boolean, sqlDataSource: SqlDataSource);
     /**
      * @description Executes the query and retrieves the first result.
      * @returns A Promise resolving to the first result or null.
@@ -2238,20 +2238,27 @@ declare abstract class QueryBuilder<T extends Model> {
 
 type CaseConvention = "camel" | "snake" | "none" | RegExp | ((column: string) => string);
 
-interface Metadata {
-    tableName: string;
-    primaryKey?: string;
-}
+/**
+ * @description Represents a Table in the Database
+ */
 declare abstract class Model {
     /**
-     * @description THe sql instance generated by SqlDataSource.connect
+     * @description The sql instance generated by SqlDataSource.connect
      */
     static sqlInstance: SqlDataSource;
     /**
-     * @description Metadata for the model
-     * @type {Metadata}
+     * @description Table name for the model, if not set it will be the plural snake case of the model name given that is in PascalCase (es. User -> users)
      */
-    static metadata: Metadata;
+    static tableName: string;
+    /**
+     * @description Static getter for table;
+     * @internal
+     */
+    static get table(): string;
+    /**
+     * @description Getter for the primary key of the model
+     */
+    static get primaryKey(): string | undefined;
     /**
      * @description Defines the case convention for the model
      * @type {CaseConvention}
@@ -2268,8 +2275,10 @@ declare abstract class Model {
     extraColumns: {
         [key: string]: any;
     };
+    /**
+     * @description Constructor for the model, it's not meant to be used directly, it just initializes the extraColumns, it's advised to only use the static methods to interact with the Model instances
+     */
     constructor();
-    private static getClassName;
     /**
      * @description Gives a query instance for the given model
      * @param model
@@ -2307,7 +2316,7 @@ declare abstract class Model {
         throwErrorOnNull: boolean;
     }): Promise<T | null>;
     /**
-     * @description Refreshes a model from the database, the model must have a primary key defined in the metadata
+     * @description Refreshes a model from the database, the model must have a primary key defined
      * @param model
      */
     static refresh<T extends Model>(this: new () => T | typeof Model, model: T, options?: {
@@ -2419,17 +2428,20 @@ declare abstract class Model {
      */
     static afterFetch(data: Model[]): Promise<Model[]>;
     /**
-     * @description Establishes a connection to the database instantiated from the SqlDataSource.connect method
-     * @returns
+     * @description Establishes a connection to the database instantiated from the SqlDataSource.connect method, this is done automatically when using the static methods
+     * @description This method is meant to be used only if you want to establish sql instance of the model directly
+     * @internal
+     * @returns {void}
      */
-    private static establishConnection;
+    static establishConnection(): void;
 }
 
 /**
  * Columns
  */
 interface ColumnOptions {
-    booleanColumn: boolean;
+    booleanColumn?: boolean;
+    primaryKey?: boolean;
 }
 /**
  * @description Decorator to define a column in the model
@@ -2476,6 +2488,12 @@ declare function hasMany(model: () => typeof Model, foreignKey: string, options?
  * @returns
  */
 declare function getRelations(target: typeof Model): Relation[];
+/**
+ * @description Returns the primary key of the model
+ * @param target Model
+ * @returns
+ */
+declare function getPrimaryKey(target: typeof Model): string;
 
 declare const _default: {
     Model: typeof Model;
@@ -2490,4 +2508,4 @@ declare const _default: {
     getModelColumns: typeof getModelColumns;
 };
 
-export { AbstractDeleteQueryBuilder, type AbstractQueryBuilders, AbstractUpdateQueryBuilder, type CaseConvention, type DataSourceInput, type Metadata, Migration, Model, Relation, SqlDataSource, belongsTo, column, _default as default, getModelColumns, getRelations, hasMany, hasOne };
+export { AbstractDeleteQueryBuilder, type AbstractQueryBuilders, AbstractUpdateQueryBuilder, type CaseConvention, type DataSourceInput, Migration, Model, Relation, SqlDataSource, belongsTo, column, _default as default, getModelColumns, getPrimaryKey, getRelations, hasMany, hasOne };

@@ -1,14 +1,14 @@
 import { DataSourceType } from "../../../Datasource";
 
-export const dropColumnForce = (tableName: string, dbType: DataSourceType) => {
+export const dropColumnForce = (table: string, dbType: DataSourceType) => {
   switch (dbType) {
     case "mariadb":
     case "mysql":
       return `SET FOREIGN_KEY_CHECKS = 0;
-DROP TABLE IF EXISTS \`${tableName}\`;
+DROP TABLE IF EXISTS \`${table}\`;
 SET FOREIGN_KEY_CHECKS = 1;`;
     case "postgres":
-      return `DROP TABLE IF EXISTS "${tableName}" CASCADE;`;
+      return `DROP TABLE IF EXISTS "${table}" CASCADE;`;
     default:
       throw new Error("Unsupported database type");
   }
