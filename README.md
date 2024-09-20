@@ -337,7 +337,7 @@ const user: User | null = await User.query().whereBuilder((queryBuilder) => {
 
 ### Aliases
 
-- Aliases are available in the query builder, for example selectRaw('new as newName') will generate an alias in the extraColumns prop that every model has
+- Aliases are available in the query builder, for example select('new as newName') will generate an alias in the extraColumns property that every model instances has
 ```typescript
 import { User } from "./User";
 
@@ -351,7 +351,7 @@ const user: User | null = await User.query()
 
 ### Count and Sum
 
-- There are two very simple methods for Count and Sum functions
+- Quick count and sum methods
 ```typescript
 import { User } from "./User";
 
