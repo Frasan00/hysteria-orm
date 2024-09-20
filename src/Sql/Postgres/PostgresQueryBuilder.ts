@@ -5,7 +5,7 @@ import {
   QueryBuilder,
   QueryBuilders,
 } from "../QueryBuilder/QueryBuilder";
-import { Pool } from "pg";
+import { Client } from "pg";
 import { BaseValues, WhereOperatorType } from "../Resources/Query/WHERE.TS";
 import selectTemplate from "../Resources/Query/SELECT";
 import { log, queryError } from "../../Logger";
@@ -22,20 +22,20 @@ import { SqlDataSource } from "../SqlDatasource";
 import { convertCase } from "../../CaseUtils";
 
 export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
-  protected pgPool: Pool;
+  protected pgClient: Client;
   protected isNestedCondition: boolean;
   protected postgresModelManagerUtils: PostgresModelManagerUtils<T>;
 
   public constructor(
     model: typeof Model,
     tableName: string,
-    pgPool: Pool,
+    pgClient: Client,
     logs: boolean,
     isNestedCondition = false,
     sqlDataSource: SqlDataSource,
   ) {
     super(model, tableName, logs, sqlDataSource);
-    this.pgPool = pgPool;
+    this.pgClient = pgClient;
     this.isNestedCondition = isNestedCondition;
     this.postgresModelManagerUtils = new PostgresModelManagerUtils<T>();
   }
@@ -55,7 +55,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   }
 
   public async raw(query: string, params: any[] = []) {
-    return await this.pgPool.query(query, params);
+    return await this.pgClient.query(query, params);
   }
 
   public async one(
@@ -81,7 +81,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
     log(query, this.logs, this.params);
     try {
-      const result = await this.pgPool.query(query, this.params);
+      const result = await this.pgClient.query(query, this.params);
       if (!result.rows[0]) {
         if (options.throwErrorOnNull) {
           throw new Error("ROW_NOT_FOUND");
@@ -98,7 +98,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
           [modelInstance],
           this.model,
           this.relations,
-          this.pgPool,
+          this.pgClient,
           this.logs,
         );
 
@@ -136,7 +136,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
     log(query, this.logs, this.params);
     try {
-      const result = await this.pgPool.query(query, this.params);
+      const result = await this.pgClient.query(query, this.params);
       const rows = result.rows;
 
       const modelPromises = rows.map(async (row) => {
@@ -152,7 +152,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
           models,
           this.model,
           this.relations,
-          this.pgPool,
+          this.pgClient,
           this.logs,
         );
 
@@ -320,7 +320,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     const queryBuilder = new PostgresQueryBuilder(
       this.model as typeof Model,
       this.tableName,
-      this.pgPool,
+      this.pgClient,
       this.logs,
       true,
       this.sqlDataSource,
@@ -358,7 +358,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     const nestedBuilder = new PostgresQueryBuilder(
       this.model as typeof Model,
       this.tableName,
-      this.pgPool,
+      this.pgClient,
       this.logs,
       true,
       this.sqlDataSource,
@@ -399,7 +399,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     const nestedBuilder = new PostgresQueryBuilder(
       this.model as typeof Model,
       this.tableName,
-      this.pgPool,
+      this.pgClient,
       this.logs,
       true,
       this.sqlDataSource,
@@ -1147,7 +1147,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     const queryBuilder = new PostgresQueryBuilder<T>(
       this.model as typeof Model,
       this.tableName,
-      this.pgPool,
+      this.pgClient,
       this.logs,
       this.isNestedCondition,
       this.sqlDataSource,

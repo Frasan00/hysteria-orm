@@ -1,11 +1,11 @@
-import { Metadata, Model } from "../Models/Model";
+import { Model } from "../Models/Model";
 import insertTemplate from "../Resources/Query/INSERT";
 import updateTemplate from "../Resources/Query/UPDATE";
 import deleteTemplate from "../Resources/Query/DELETE";
 import { Relation } from "../Models/Relations/Relation";
 import { log, queryError } from "../../Logger";
 import relationTemplates from "../Resources/Query/RELATIONS";
-import { Pool, RowDataPacket } from "mysql2/promise";
+import mysql, { RowDataPacket } from "mysql2/promise";
 import { DataSourceType } from "../../Datasource";
 import { getRelations } from "../Models/ModelDecorators";
 
@@ -103,7 +103,7 @@ export default class MySqlModelManagerUtils<T extends Model> {
     models: T[],
     typeofModel: typeof Model,
     input: string[],
-    mysqlConnection: Pool,
+    mysqlConnection: mysql.Connection,
     logs: boolean,
   ): Promise<{ [relationName: string]: Model[] }[]> {
     if (!input.length) {

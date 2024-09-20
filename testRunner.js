@@ -3,10 +3,10 @@
 const { execSync } = require('child_process');
 
 const testFiles = [
-    './test/sql/mysql/relations.mysql.test.ts',
-    './test/sql/mysql/crud.mysql.test.ts',
     './test/sql/pg/relations.pg.test.ts',
     './test/sql/pg/crud.pg.test.ts',
+    './test/sql/mysql/relations.mysql.test.ts',
+    './test/sql/mysql/crud.mysql.test.ts',
 ];
 
 testFiles.forEach((file) => {

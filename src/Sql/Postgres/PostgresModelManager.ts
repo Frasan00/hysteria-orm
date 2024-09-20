@@ -17,7 +17,7 @@ import { SqlDataSource } from "../SqlDatasource";
 export class PostgresModelManager<
   T extends Model,
 > extends AbstractModelManager<T> {
-  protected pgPool: pg.Pool;
+  protected pgConnection: pg.Client;
   protected postgresModelManagerUtils: PostgresModelManagerUtils<T>;
 
   /**
@@ -29,12 +29,12 @@ export class PostgresModelManager<
    */
   constructor(
     model: typeof Model,
-    pgConnection: pg.Pool,
+    pgConnection: pg.Client,
     logs: boolean,
     sqlDataSource: SqlDataSource,
   ) {
     super(model, logs, sqlDataSource);
-    this.pgPool = pgConnection;
+    this.pgConnection = pgConnection;
     this.postgresModelManagerUtils = new PostgresModelManagerUtils();
   }
 
@@ -177,7 +177,7 @@ export class PostgresModelManager<
         this.sqlDataSource.getDbType(),
       );
       log(query, this.logs, params);
-      const { rows } = await this.pgPool.query(query, params);
+      const { rows } = await this.pgConnection.query(query, params);
       const insertedModel = rows[0] as T;
       if (!insertedModel) {
         throw new Error(rows[0]);
@@ -224,7 +224,7 @@ export class PostgresModelManager<
         );
 
       log(query, this.logs, params);
-      const { rows } = await this.pgPool.query(query, params);
+      const { rows } = await this.pgConnection.query(query, params);
       const insertedModel = rows as T[];
       if (!insertedModel.length) {
         return [];
@@ -285,7 +285,7 @@ export class PostgresModelManager<
         this.sqlDataSource.getDbType(),
       );
       log(query, this.logs, params);
-      await this.pgPool.query(query, params);
+      await this.pgConnection.query(query, params);
       if (!primaryKey) {
         return null;
       }
@@ -330,7 +330,7 @@ export class PostgresModelManager<
       );
 
       log(query, this.logs, params);
-      const result = await this.pgPool.query(query, params);
+      const result = await this.pgConnection.query(query, params);
       return result.rowCount || 0;
     } catch (error) {
       queryError(error);
@@ -370,7 +370,7 @@ export class PostgresModelManager<
       }
 
       log(query, this.logs, params);
-      await this.pgPool.query(query, params);
+      await this.pgConnection.query(query, params);
       return model;
     } catch (error) {
       queryError(error);
@@ -387,7 +387,7 @@ export class PostgresModelManager<
     return new PostgresQueryBuilder<T>(
       this.model,
       this.model.metadata.tableName,
-      this.pgPool,
+      this.pgConnection,
       this.logs,
       false,
       this.sqlDataSource,
@@ -401,7 +401,7 @@ export class PostgresModelManager<
     return new PostgresUpdateQueryBuilder<T>(
       this.model,
       this.model.metadata.tableName,
-      this.pgPool,
+      this.pgConnection,
       this.logs,
       false,
       this.sqlDataSource,
@@ -415,7 +415,7 @@ export class PostgresModelManager<
     return new PostgresDeleteQueryBuilder<T>(
       this.model,
       this.model.metadata.tableName,
-      this.pgPool,
+      this.pgConnection,
       this.logs,
       false,
       this.sqlDataSource,

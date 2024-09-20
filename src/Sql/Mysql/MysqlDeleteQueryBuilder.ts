@@ -2,7 +2,7 @@ import { Model } from "../Models/Model";
 import { log, queryError } from "../../Logger";
 import { WhereQueryBuilder } from "../QueryBuilder/WhereQueryBuilder";
 import { MysqlTransaction } from "./MysqlTransaction";
-import { Pool } from "mysql2/promise";
+import { Connection } from "mysql2/promise";
 import joinTemplate from "../Resources/Query/JOIN";
 import deleteTemplate from "../Resources/Query/DELETE";
 import { SqlDataSource } from "../SqlDatasource";
@@ -13,7 +13,7 @@ import { SelectableType } from "../Models/ModelManager/ModelManagerTypes";
 export class MysqlDeleteQueryBuilder<
   T extends Model,
 > extends WhereQueryBuilder<T> {
-  protected mysql: Pool;
+  protected mysql: Connection;
   protected joinQuery;
   protected updateTemplate: ReturnType<typeof updateTemplate>;
   protected deleteTemplate: ReturnType<typeof deleteTemplate>;
@@ -23,14 +23,14 @@ export class MysqlDeleteQueryBuilder<
    * @description Constructs a MysqlQueryBuilder instance.
    * @param model - The model class associated with the table.
    * @param tableName - The name of the table.
-   * @param mysqlPool - The MySQL connection pool.
+   * @param mysqlConnection - The MySQL connection pool.
    * @param logs - A boolean indicating whether to log queries.
    * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
    */
   public constructor(
     model: typeof Model,
     tableName: string,
-    mysql: Pool,
+    mysql: Connection,
     logs: boolean,
     isNestedCondition = false,
     sqlDataSource: SqlDataSource,

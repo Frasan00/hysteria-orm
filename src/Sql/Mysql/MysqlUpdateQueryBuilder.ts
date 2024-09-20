@@ -1,4 +1,4 @@
-import { Pool } from "mysql2/promise";
+import { Connection } from "mysql2/promise";
 import { Model } from "../Models/Model";
 import { MysqlTransaction } from "./MysqlTransaction";
 import { log, queryError } from "../../Logger";
@@ -10,7 +10,7 @@ import { SqlDataSource } from "../SqlDatasource";
 export class MysqlUpdateQueryBuilder<
   T extends Model,
 > extends WhereQueryBuilder<T> {
-  protected mysqlPool: Pool;
+  protected mysqlConnection: Connection;
   protected joinQuery = "";
   protected updateTemplate: ReturnType<typeof updateTemplate>;
   protected isNestedCondition = false;
@@ -19,20 +19,20 @@ export class MysqlUpdateQueryBuilder<
    * @description Constructs a MysqlQueryBuilder instance.
    * @param model - The model class associated with the table.
    * @param tableName - The name of the table.
-   * @param mysqlPool - The MySQL connection pool.
+   * @param mysqlConnection - The MySQL connection pool.
    * @param logs - A boolean indicating whether to log queries.
    * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
    */
   public constructor(
     model: typeof Model,
     tableName: string,
-    mysqlPool: Pool,
+    mysqlConnection: Connection,
     logs: boolean,
     isNestedCondition = false,
     sqlDataSource: SqlDataSource,
   ) {
     super(model, tableName, logs, false, sqlDataSource);
-    this.mysqlPool = mysqlPool;
+    this.mysqlConnection = mysqlConnection;
     this.updateTemplate = updateTemplate(
       this.sqlDataSource.getDbType(),
       this.model,
@@ -71,7 +71,7 @@ export class MysqlUpdateQueryBuilder<
 
     log(query, this.logs, params);
     try {
-      const rows: any = await this.mysqlPool.query(query, params);
+      const rows: any = await this.mysqlConnection.query(query, params);
       if (!rows.length) {
         return 0;
       }
@@ -135,7 +135,7 @@ export class MysqlUpdateQueryBuilder<
     const queryBuilder = new MysqlUpdateQueryBuilder(
       this.model as typeof Model,
       this.tableName,
-      this.mysqlPool,
+      this.mysqlConnection,
       this.logs,
       true,
       this.sqlDataSource,
@@ -173,7 +173,7 @@ export class MysqlUpdateQueryBuilder<
     const nestedBuilder = new MysqlUpdateQueryBuilder(
       this.model as typeof Model,
       this.tableName,
-      this.mysqlPool,
+      this.mysqlConnection,
       this.logs,
       true,
       this.sqlDataSource,
@@ -214,7 +214,7 @@ export class MysqlUpdateQueryBuilder<
     const nestedBuilder = new MysqlUpdateQueryBuilder(
       this.model as typeof Model,
       this.tableName,
-      this.mysqlPool,
+      this.mysqlConnection,
       this.logs,
       true,
       this.sqlDataSource,

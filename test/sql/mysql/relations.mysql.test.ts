@@ -67,5 +67,5 @@ test("Create a new user with posts", async () => {
   expect(allPosts.length).toBe(0);
   const allUsers = await User.query().many();
   expect(allUsers.length).toBe(0);
-  // await sql.closeConnection();
+  await sql.closeConnection();
 });

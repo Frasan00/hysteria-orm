@@ -2,7 +2,7 @@ import { Model } from "../Models/Model";
 import { log, queryError } from "../../Logger";
 import { WhereQueryBuilder } from "../QueryBuilder/WhereQueryBuilder";
 import { PostgresTransaction } from "./PostgresTransaction";
-import { Pool } from "pg";
+import { Client } from "pg";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
 import deleteTemplate from "../Resources/Query/DELETE";
 import joinTemplate from "../Resources/Query/JOIN";
@@ -14,7 +14,7 @@ import updateTemplate from "../Resources/Query/UPDATE";
 export class PostgresDeleteQueryBuilder<
   T extends Model,
 > extends WhereQueryBuilder<T> {
-  protected pgPool: Pool;
+  protected pgClient: Client;
   protected joinQuery;
   protected updateTemplate: ReturnType<typeof updateTemplate>;
   protected deleteTemplate: ReturnType<typeof deleteTemplate>;
@@ -24,20 +24,20 @@ export class PostgresDeleteQueryBuilder<
    * @description Constructs a MysqlQueryBuilder instance.
    * @param model - The model class associated with the table.
    * @param tableName - The name of the table.
-   * @param mysqlPool - The MySQL connection pool.
+   * @param pgClient - The MySQL connection pool.
    * @param logs - A boolean indicating whether to log queries.
    * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
    */
   public constructor(
     model: typeof Model,
     tableName: string,
-    pgPool: Pool,
+    pgClient: Client,
     logs: boolean,
     isNestedCondition = false,
     sqlDataSource: SqlDataSource,
   ) {
     super(model, tableName, logs, false, sqlDataSource);
-    this.pgPool = pgPool;
+    this.pgClient = pgClient;
     this.updateTemplate = updateTemplate(sqlDataSource.getDbType(), this.model);
     this.deleteTemplate = deleteTemplate(tableName, sqlDataSource.getDbType());
     this.joinQuery = "";
@@ -65,7 +65,7 @@ export class PostgresDeleteQueryBuilder<
 
     log(query, this.logs, this.whereParams);
     try {
-      const result = await this.pgPool.query<T>(query, this.whereParams);
+      const result = await this.pgClient.query<T>(query, this.whereParams);
       if (!result.rows) {
         return [];
       }
@@ -112,7 +112,7 @@ export class PostgresDeleteQueryBuilder<
 
     log(query, this.logs, params);
     try {
-      const rows = await this.pgPool.query<T>(query, params);
+      const rows = await this.pgClient.query<T>(query, params);
       const models = await parseDatabaseDataIntoModelResponse(
         rows.rows,
         this.model,
@@ -180,7 +180,7 @@ export class PostgresDeleteQueryBuilder<
     const queryBuilder = new PostgresDeleteQueryBuilder(
       this.model as typeof Model,
       this.tableName,
-      this.pgPool,
+      this.pgClient,
       this.logs,
       true,
       this.sqlDataSource,
@@ -218,7 +218,7 @@ export class PostgresDeleteQueryBuilder<
     const nestedBuilder = new PostgresDeleteQueryBuilder(
       this.model as typeof Model,
       this.tableName,
-      this.pgPool,
+      this.pgClient,
       this.logs,
       true,
       this.sqlDataSource,
@@ -259,7 +259,7 @@ export class PostgresDeleteQueryBuilder<
     const nestedBuilder = new PostgresDeleteQueryBuilder(
       this.model as typeof Model,
       this.tableName,
-      this.pgPool,
+      this.pgClient,
       this.logs,
       true,
       this.sqlDataSource,

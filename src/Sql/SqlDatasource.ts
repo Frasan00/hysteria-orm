@@ -1,5 +1,5 @@
 import { DataSource, DataSourceInput, DataSourceType } from "../Datasource";
-import mysql, { createPool } from "mysql2/promise";
+import mysql, { createConnection } from "mysql2/promise";
 import pg from "pg";
 import { Model } from "./Models/Model";
 import { MysqlModelManager } from "./Mysql/MysqlModelManager";
@@ -12,12 +12,11 @@ type ModelManager<T extends Model> =
   | MysqlModelManager<T>
   | PostgresModelManager<T>;
 
-export type SqlPoolType = mysql.Pool | pg.Pool;
-export type SqlPoolConnectionType = mysql.PoolConnection | pg.PoolClient;
+export type SqlConnectionType = mysql.Connection | pg.Client;
 
 export class SqlDataSource extends DataSource {
   public isConnected: boolean;
-  protected sqlPool!: SqlPoolType;
+  protected sqlConnection!: SqlConnectionType;
   private static instance: SqlDataSource | null = null;
 
   private constructor(input?: DataSourceInput) {
@@ -30,7 +29,7 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
-   * @description Connects to the database establishing a connection pool. If no connection details are provided, the default values from the env will be taken instead
+   * @description Connects to the database establishing a connection. If no connection details are provided, the default values from the env will be taken instead
    * @description The User input connection details will always come first
    */
   public static async connect(
@@ -41,37 +40,25 @@ export class SqlDataSource extends DataSource {
     switch (sqlDataSource.type) {
       case "mysql":
       case "mariadb":
-        sqlDataSource.sqlPool = createPool({
+        sqlDataSource.sqlConnection = await mysql.createConnection({
           host: sqlDataSource.host,
           port: sqlDataSource.port,
           user: sqlDataSource.username,
           password: sqlDataSource.password,
           database: sqlDataSource.database,
-          ...input?.mysqlOptions,
-        }) as mysql.Pool;
+        });
         break;
 
       case "postgres":
-        sqlDataSource.sqlPool = new pg.Pool({
+        sqlDataSource.sqlConnection = new pg.Client({
           host: sqlDataSource.host,
           port: sqlDataSource.port,
           user: sqlDataSource.username,
           password: sqlDataSource.password,
           database: sqlDataSource.database,
           ...input?.pgOptions,
-        }) as pg.Pool;
-        break;
-      default:
-        throw new Error(`Unsupported datasource type: ${sqlDataSource.type}`);
-    }
-
-    switch (sqlDataSource.type) {
-      case "mysql":
-      case "mariadb":
-        await (sqlDataSource.sqlPool as mysql.Pool).getConnection();
-        break;
-      case "postgres":
-        await (sqlDataSource.sqlPool as pg.Pool).connect();
+        });
+        await sqlDataSource.sqlConnection.connect();
         break;
       default:
         throw new Error(`Unsupported datasource type: ${sqlDataSource.type}`);
@@ -102,17 +89,27 @@ export class SqlDataSource extends DataSource {
     switch (this.type) {
       case "mariadb":
       case "mysql":
-        const trxMysql = new MysqlTransaction(
-          this.sqlPool as mysql.Pool,
-          this.logs,
-        );
+        const sqlPool = mysql.createPool({
+          host: this.host,
+          port: this.port,
+          user: this.username,
+          password: this.password,
+          database: this.database,
+        });
+
+        const trxMysql = new MysqlTransaction(sqlPool, this.logs);
         await trxMysql.start();
         return trxMysql;
       case "postgres":
-        const trxPg = new PostgresTransaction(
-          this.sqlPool as pg.Pool,
-          this.logs,
-        );
+        const pgPool = new pg.Pool({
+          host: this.host,
+          port: this.port,
+          user: this.username,
+          password: this.password,
+          database: this.database,
+        });
+
+        const trxPg = new PostgresTransaction(pgPool, this.logs);
         await trxPg.start();
         return trxPg;
       default:
@@ -138,14 +135,14 @@ export class SqlDataSource extends DataSource {
       case "mariadb":
         return new MysqlModelManager<T>(
           model as typeof Model,
-          this.sqlPool as mysql.Pool,
+          this.sqlConnection as mysql.Connection,
           this.logs,
           this,
         );
       case "postgres":
         return new PostgresModelManager<T>(
           model as typeof Model,
-          this.sqlPool as pg.Pool,
+          this.sqlConnection as pg.Client,
           this.logs,
           this,
         );
@@ -168,46 +165,29 @@ export class SqlDataSource extends DataSource {
     switch (customSqlInstance.type) {
       case "mysql":
       case "mariadb":
-        customSqlInstance.sqlPool = createPool({
+        customSqlInstance.sqlConnection = await createConnection({
           host: customSqlInstance.host,
           port: customSqlInstance.port,
           user: customSqlInstance.username,
           password: customSqlInstance.password,
           database: customSqlInstance.database,
-        }) as mysql.Pool;
+        });
         break;
 
       case "postgres":
-        customSqlInstance.sqlPool = new pg.Pool({
+        customSqlInstance.sqlConnection = new pg.Client({
           host: customSqlInstance.host,
           port: customSqlInstance.port,
           user: customSqlInstance.username,
           password: customSqlInstance.password,
           database: customSqlInstance.database,
-        }) as pg.Pool;
+        });
+        await customSqlInstance.sqlConnection.connect();
         break;
       default:
         throw new Error(
           `Unsupported datasource type: ${customSqlInstance.type}`,
         );
-    }
-
-    try {
-      switch (customSqlInstance.type) {
-        case "mysql":
-        case "mariadb":
-          await (customSqlInstance.sqlPool as mysql.Pool).getConnection();
-          break;
-        case "postgres":
-          await (customSqlInstance.sqlPool as pg.Pool).connect();
-          break;
-        default:
-          throw new Error(
-            `Unsupported datasource type: ${customSqlInstance.type}`,
-          );
-      }
-    } catch (error) {
-      throw error;
     }
 
     customSqlInstance.isConnected = true;
@@ -224,13 +204,13 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
-   * @description Returns separate raw sql pool
+   * @description Returns separate raw sql connection
    */
-  public async getRawPool(): Promise<SqlPoolType> {
+  public async getRawConnection(): Promise<SqlConnectionType> {
     switch (this.type) {
       case "mysql":
       case "mariadb":
-        return createPool({
+        return createConnection({
           host: this.host,
           port: this.port,
           user: this.username,
@@ -238,13 +218,15 @@ export class SqlDataSource extends DataSource {
           database: this.database,
         });
       case "postgres":
-        return new pg.Pool({
+        const client = new pg.Client({
           host: this.host,
           port: this.port,
           user: this.username,
           password: this.password,
           database: this.database,
         });
+        await client.connect();
+        return client;
       default:
         throw new Error(`Unsupported datasource type: ${this.type}`);
     }
@@ -263,44 +245,15 @@ export class SqlDataSource extends DataSource {
     switch (this.type) {
       case "mysql":
       case "mariadb":
-        (this.sqlPool as mysql.Pool).end().catch((error) => {
-          logger.error(`Error while closing sql connection ${String(error)}`);
-        });
+        await (this.sqlConnection as mysql.Connection).end();
+        this.isConnected = false;
         SqlDataSource.instance = null;
         break;
       case "postgres":
-        (this.sqlPool as pg.Pool).end().catch((error) => {
-          logger.error(`Error while closing sql connection ${String(error)}`);
-        });
+        await (this.sqlConnection as pg.Client).end();
+        this.isConnected = false;
         SqlDataSource.instance = null;
         break;
-      default:
-        throw new Error(`Unsupported datasource type: ${this.type}`);
-    }
-  }
-
-  /**
-   * @description Returns a separate raw sql PoolConnection
-   */
-  public async getRawPoolConnection(): Promise<SqlPoolConnectionType> {
-    switch (this.type) {
-      case "mysql":
-      case "mariadb":
-        return createPool({
-          host: this.host,
-          port: this.port,
-          user: this.username,
-          password: this.password,
-          database: this.database,
-        }).getConnection();
-      case "postgres":
-        return new pg.Pool({
-          host: this.host,
-          port: this.port,
-          user: this.username,
-          password: this.password,
-          database: this.database,
-        }).connect();
       default:
         throw new Error(`Unsupported datasource type: ${this.type}`);
     }

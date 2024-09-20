@@ -9,7 +9,7 @@ import { parseDatabaseDataIntoModelResponse } from "../serializer";
 
 export class MysqlTransaction {
   protected mysql: Pool;
-  protected mysqlConnection!: PoolConnection;
+  protected mysqlPool!: PoolConnection;
   protected logs: boolean;
 
   constructor(mysql: Pool, logs: boolean) {
@@ -22,19 +22,18 @@ export class MysqlTransaction {
     params: any[],
     typeofModel: typeof Model,
   ): Promise<T> {
-    if (!this.mysqlConnection) {
+    if (!this.mysqlPool) {
       throw new Error("MysqlTransaction not started.");
     }
 
     log(query, this.logs, params);
-    const [rows]: any = await this.mysqlConnection.query<RowDataPacket[]>(
+    const [rows]: any = await this.mysqlPool.query<RowDataPacket[]>(
       query,
       params,
     );
     const insertId = rows.insertId;
     const select = selectTemplate("mysql", typeofModel).selectById(insertId);
-    const [savedModel] =
-      await this.mysqlConnection.query<RowDataPacket[]>(select);
+    const [savedModel] = await this.mysqlPool.query<RowDataPacket[]>(select);
     return savedModel[0] as T;
   }
 
@@ -49,7 +48,7 @@ export class MysqlTransaction {
 
     try {
       log(query, this.logs, params);
-      const [rows]: any = await this.mysqlConnection.query<RowDataPacket[]>(
+      const [rows]: any = await this.mysqlPool.query<RowDataPacket[]>(
         query,
         params,
       );
@@ -118,12 +117,12 @@ export class MysqlTransaction {
     query: string,
     params?: any[],
   ): Promise<number> {
-    if (!this.mysqlConnection) {
+    if (!this.mysqlPool) {
       throw new Error("MysqlTransaction not started.");
     }
 
     log(query, this.logs, params);
-    const [rows]: any = await this.mysqlConnection.query<RowDataPacket[]>(
+    const [rows]: any = await this.mysqlPool.query<RowDataPacket[]>(
       query,
       params,
     );
@@ -131,12 +130,12 @@ export class MysqlTransaction {
   }
 
   public async queryDelete(query: string, params?: any[]): Promise<number> {
-    if (!this.mysqlConnection) {
+    if (!this.mysqlPool) {
       throw new Error("MysqlTransaction not started.");
     }
 
     log(query, this.logs, params);
-    const [rows]: any = await this.mysqlConnection.query<RowDataPacket[]>(
+    const [rows]: any = await this.mysqlPool.query<RowDataPacket[]>(
       query,
       params,
     );
@@ -150,8 +149,8 @@ export class MysqlTransaction {
   async start(): Promise<void> {
     try {
       log(BEGIN_TRANSACTION, this.logs);
-      this.mysqlConnection = await this.mysql.getConnection();
-      await this.mysqlConnection.query(BEGIN_TRANSACTION);
+      this.mysqlPool = await this.mysql.getConnection();
+      await this.mysqlPool.query(BEGIN_TRANSACTION);
     } catch (error) {
       queryError(error);
       throw new Error("Failed to start transaction " + error);
@@ -162,14 +161,14 @@ export class MysqlTransaction {
    * Commit transaction.
    */
   async commit(): Promise<void> {
-    if (!this.mysqlConnection) {
+    if (!this.mysqlPool) {
       throw new Error("MysqlTransaction not started.");
     }
 
     try {
       log(COMMIT_TRANSACTION, this.logs);
-      await this.mysqlConnection.query(COMMIT_TRANSACTION);
-      this.mysqlConnection.release();
+      await this.mysqlPool.query(COMMIT_TRANSACTION);
+      this.mysqlPool.release();
     } catch (error) {
       queryError(error);
       throw new Error("Failed to commit transaction " + error);
@@ -180,14 +179,14 @@ export class MysqlTransaction {
    * Rollback transaction.
    */
   async rollback(): Promise<void> {
-    if (!this.mysqlConnection) {
+    if (!this.mysqlPool) {
       return;
     }
 
     try {
       log(ROLLBACK_TRANSACTION, this.logs);
-      await this.mysqlConnection.query(ROLLBACK_TRANSACTION);
-      this.mysqlConnection.release();
+      await this.mysqlPool.query(ROLLBACK_TRANSACTION);
+      this.mysqlPool.release();
     } catch (error) {
       queryError(error);
       throw new Error("Failed to rollback transaction " + error);

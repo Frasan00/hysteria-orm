@@ -1,8 +1,6 @@
-import * as mysql from 'mysql2/promise';
-import mysql__default, { Pool, PoolConnection } from 'mysql2/promise';
+import mysql, { Pool, PoolConnection, Connection } from 'mysql2/promise';
 import * as pg from 'pg';
-import pg__default, { Pool as Pool$1, PoolClient } from 'pg';
-import * as mysql2_typings_mysql_lib_protocol_packets_FieldPacket from 'mysql2/typings/mysql/lib/protocol/packets/FieldPacket';
+import pg__default, { Pool as Pool$1, PoolClient, Client } from 'pg';
 
 type DataSourceType = "mysql" | "postgres" | "mariadb";
 /**
@@ -16,7 +14,7 @@ interface DataSourceInput {
     readonly password?: string;
     readonly database?: string;
     readonly logs?: boolean;
-    readonly mysqlOptions?: mysql__default.PoolOptions;
+    readonly mysqlOptions?: mysql.PoolOptions;
     readonly pgOptions?: pg__default.PoolConfig;
 }
 declare abstract class DataSource {
@@ -355,7 +353,7 @@ declare abstract class Migration {
 
 declare class MysqlTransaction {
     protected mysql: Pool;
-    protected mysqlConnection: PoolConnection;
+    protected mysqlPool: PoolConnection;
     protected logs: boolean;
     constructor(mysql: Pool, logs: boolean);
     queryInsert<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T>;
@@ -639,7 +637,7 @@ declare class MySqlModelManagerUtils<T extends Model> {
         params: any[];
     };
     private getRelationFromModel;
-    parseQueryBuilderRelations(models: T[], typeofModel: typeof Model, input: string[], mysqlConnection: Pool, logs: boolean): Promise<{
+    parseQueryBuilderRelations(models: T[], typeofModel: typeof Model, input: string[], mysqlConnection: mysql.Connection, logs: boolean): Promise<{
         [relationName: string]: Model[];
     }[]>;
 }
@@ -663,16 +661,16 @@ declare class PostgresModelManagerUtils<T extends Model> {
         params: any[];
     };
     private getRelationFromModel;
-    parseQueryBuilderRelations(models: T[], typeofModel: typeof Model, input: string[], pgConnection: pg__default.Pool, logs: boolean): Promise<{
+    parseQueryBuilderRelations(models: T[], typeofModel: typeof Model, input: string[], pgConnection: pg__default.Client, logs: boolean): Promise<{
         [relationName: string]: Model[];
     }[]>;
 }
 
 declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
-    protected pgPool: Pool$1;
+    protected pgClient: Client;
     protected isNestedCondition: boolean;
     protected postgresModelManagerUtils: PostgresModelManagerUtils<T>;
-    constructor(model: typeof Model, tableName: string, pgPool: Pool$1, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
+    constructor(model: typeof Model, tableName: string, pgClient: Client, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
     select(...columns: string[]): PostgresQueryBuilder<T>;
     select(...columns: (SelectableType<T> | "*")[]): PostgresQueryBuilder<T>;
     raw(query: string, params?: any[]): Promise<pg.QueryResult<any>>;
@@ -1127,7 +1125,7 @@ declare const updateTemplate: (dbType: DataSourceType, typeofModel: typeof Model
 };
 
 declare class MysqlUpdateQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
-    protected mysqlPool: Pool;
+    protected mysqlConnection: Connection;
     protected joinQuery: string;
     protected updateTemplate: ReturnType<typeof updateTemplate>;
     protected isNestedCondition: boolean;
@@ -1135,11 +1133,11 @@ declare class MysqlUpdateQueryBuilder<T extends Model> extends WhereQueryBuilder
      * @description Constructs a MysqlQueryBuilder instance.
      * @param model - The model class associated with the table.
      * @param tableName - The name of the table.
-     * @param mysqlPool - The MySQL connection pool.
+     * @param mysqlConnection - The MySQL connection pool.
      * @param logs - A boolean indicating whether to log queries.
      * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
      */
-    constructor(model: typeof Model, tableName: string, mysqlPool: Pool, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
+    constructor(model: typeof Model, tableName: string, mysqlConnection: Connection, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
     /**
      * @description Updates a record in the database.
      * @param data - The data to update.
@@ -1179,7 +1177,7 @@ declare class MysqlUpdateQueryBuilder<T extends Model> extends WhereQueryBuilder
 }
 
 declare class PostgresUpdateQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
-    protected pgPool: Pool$1;
+    protected pgClient: Client;
     protected joinQuery: string;
     protected updateTemplate: ReturnType<typeof updateTemplate>;
     protected isNestedCondition: boolean;
@@ -1187,11 +1185,11 @@ declare class PostgresUpdateQueryBuilder<T extends Model> extends WhereQueryBuil
      * @description Constructs a MysqlQueryBuilder instance.
      * @param model - The model class associated with the table.
      * @param tableName - The name of the table.
-     * @param mysqlPool - The MySQL connection pool.
+     * @param pgClient - The MySQL connection pool.
      * @param logs - A boolean indicating whether to log queries.
      * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
      */
-    constructor(model: typeof Model, tableName: string, pgPool: Pool$1, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
+    constructor(model: typeof Model, tableName: string, pgClient: Client, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
     /**
      * @description Updates a record in the database.
      * @param data - The data to update.
@@ -1239,7 +1237,7 @@ declare const deleteTemplate: (tableName: string, dbType: DataSourceType) => {
 };
 
 declare class PostgresDeleteQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
-    protected pgPool: Pool$1;
+    protected pgClient: Client;
     protected joinQuery: string;
     protected updateTemplate: ReturnType<typeof updateTemplate>;
     protected deleteTemplate: ReturnType<typeof deleteTemplate>;
@@ -1248,11 +1246,11 @@ declare class PostgresDeleteQueryBuilder<T extends Model> extends WhereQueryBuil
      * @description Constructs a MysqlQueryBuilder instance.
      * @param model - The model class associated with the table.
      * @param tableName - The name of the table.
-     * @param mysqlPool - The MySQL connection pool.
+     * @param pgClient - The MySQL connection pool.
      * @param logs - A boolean indicating whether to log queries.
      * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
      */
-    constructor(model: typeof Model, tableName: string, pgPool: Pool$1, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
+    constructor(model: typeof Model, tableName: string, pgClient: Client, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
     /**
      * @description Deletes Records from the database.
      * @param data - The data to update.
@@ -1304,7 +1302,7 @@ declare class PostgresDeleteQueryBuilder<T extends Model> extends WhereQueryBuil
 }
 
 declare class MysqlDeleteQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
-    protected mysql: Pool;
+    protected mysql: Connection;
     protected joinQuery: string;
     protected updateTemplate: ReturnType<typeof updateTemplate>;
     protected deleteTemplate: ReturnType<typeof deleteTemplate>;
@@ -1313,11 +1311,11 @@ declare class MysqlDeleteQueryBuilder<T extends Model> extends WhereQueryBuilder
      * @description Constructs a MysqlQueryBuilder instance.
      * @param model - The model class associated with the table.
      * @param tableName - The name of the table.
-     * @param mysqlPool - The MySQL connection pool.
+     * @param mysqlConnection - The MySQL connection pool.
      * @param logs - A boolean indicating whether to log queries.
      * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
      */
-    constructor(model: typeof Model, tableName: string, mysql: Pool, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
+    constructor(model: typeof Model, tableName: string, mysql: Connection, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
     /**
      * @description Soft Deletes Records from the database.
      * @param column - The column to soft delete. Default is 'deletedAt'.
@@ -1393,7 +1391,7 @@ declare abstract class AbstractModelManager<T extends Model> {
 }
 
 declare class MysqlModelManager<T extends Model> extends AbstractModelManager<T> {
-    protected mysqlPool: mysql__default.Pool;
+    protected mysqlConnection: mysql.Connection;
     protected mysqlModelManagerUtils: MySqlModelManagerUtils<T>;
     /**
      * Constructor for MysqlModelManager class.
@@ -1402,7 +1400,7 @@ declare class MysqlModelManager<T extends Model> extends AbstractModelManager<T>
      * @param {Pool} mysqlConnection - MySQL connection pool.
      * @param {boolean} logs - Flag to enable or disable logging.
      */
-    constructor(model: typeof Model, mysqlConnection: mysql__default.Pool, logs: boolean, sqlDataSource: SqlDataSource);
+    constructor(model: typeof Model, mysqlConnection: mysql.Connection, logs: boolean, sqlDataSource: SqlDataSource);
     /**
      * Find method to retrieve multiple records from the database based on the input conditions.
      *
@@ -1481,7 +1479,7 @@ declare class MysqlModelManager<T extends Model> extends AbstractModelManager<T>
 }
 
 declare class PostgresModelManager<T extends Model> extends AbstractModelManager<T> {
-    protected pgPool: pg__default.Pool;
+    protected pgConnection: pg__default.Client;
     protected postgresModelManagerUtils: PostgresModelManagerUtils<T>;
     /**
      * Constructor for PostgresModelManager class.
@@ -1490,7 +1488,7 @@ declare class PostgresModelManager<T extends Model> extends AbstractModelManager
      * @param {Pool} pgConnection - PostgreSQL connection pool.
      * @param {boolean} logs - Flag to enable or disable logging.
      */
-    constructor(model: typeof Model, pgConnection: pg__default.Pool, logs: boolean, sqlDataSource: SqlDataSource);
+    constructor(model: typeof Model, pgConnection: pg__default.Client, logs: boolean, sqlDataSource: SqlDataSource);
     /**
      * Find method to retrieve multiple records from the database based on the input conditions.
      *
@@ -1569,16 +1567,15 @@ declare class PostgresModelManager<T extends Model> extends AbstractModelManager
 }
 
 type ModelManager<T extends Model> = MysqlModelManager<T> | PostgresModelManager<T>;
-type SqlPoolType = mysql__default.Pool | pg__default.Pool;
-type SqlPoolConnectionType = mysql__default.PoolConnection | pg__default.PoolClient;
+type SqlConnectionType = mysql.Connection | pg__default.Client;
 declare class SqlDataSource extends DataSource {
     isConnected: boolean;
-    protected sqlPool: SqlPoolType;
+    protected sqlConnection: SqlConnectionType;
     private static instance;
     private constructor();
     getDbType(): DataSourceType;
     /**
-     * @description Connects to the database establishing a connection pool. If no connection details are provided, the default values from the env will be taken instead
+     * @description Connects to the database establishing a connection. If no connection details are provided, the default values from the env will be taken instead
      * @description The User input connection details will always come first
      */
     static connect(input?: DataSourceInput, cb?: () => Promise<void> | void): Promise<SqlDataSource>;
@@ -1604,33 +1601,29 @@ declare class SqlDataSource extends DataSource {
      */
     static useConnection(connectionDetails: DataSourceInput, cb: (sqlDataSource: SqlDataSource) => Promise<void>): Promise<void>;
     /**
-     * @description Returns separate raw sql pool
+     * @description Returns separate raw sql connection
      */
-    getRawPool(): Promise<SqlPoolType>;
+    getRawConnection(): Promise<SqlConnectionType>;
     /**
      * @description Closes the connection to the database
      * @returns
      */
     closeConnection(): Promise<void>;
-    /**
-     * @description Returns a separate raw sql PoolConnection
-     */
-    getRawPoolConnection(): Promise<SqlPoolConnectionType>;
 }
 
 declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
-    protected mysqlPool: Pool;
+    protected mysqlConnection: mysql.Connection;
     protected isNestedCondition: boolean;
     protected mysqlModelManagerUtils: MySqlModelManagerUtils<T>;
     /**
      * @description Constructs a MysqlQueryBuilder instance.
      * @param model - The model class associated with the table.
      * @param tableName - The name of the table.
-     * @param mysqlPool - The MySQL connection pool.
+     * @param mysqlConnection - The MySQL connection pool.
      * @param logs - A boolean indicating whether to log queries.
      * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
      */
-    constructor(model: typeof Model, tableName: string, mysqlPool: Pool, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
+    constructor(model: typeof Model, tableName: string, mysqlConnection: mysql.Connection, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
     /**
      * @description Executes the query and retrieves the first result.
      * @returns A Promise resolving to the first result or null.
@@ -1641,7 +1634,7 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
      * @returns A Promise resolving to an array of results.
      */
     many(): Promise<T[]>;
-    raw(query: string, params?: any[]): Promise<[mysql.QueryResult, mysql2_typings_mysql_lib_protocol_packets_FieldPacket.FieldPacket[]]>;
+    raw(query: string, params?: any[]): Promise<[mysql.QueryResult, mysql.FieldPacket[]]>;
     /**
      * @description Paginates the query results with the given page and limit, it removes any previous limit - offset calls
      * @param page

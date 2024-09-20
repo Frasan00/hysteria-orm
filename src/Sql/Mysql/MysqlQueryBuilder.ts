@@ -1,5 +1,4 @@
-import { Pool, RowDataPacket } from "mysql2/promise";
-import selectTemplate from "../Resources/Query/SELECT";
+import mysql, { RowDataPacket } from "mysql2/promise";
 import { getBaseModelInstance, Model } from "../Models/Model";
 import { getModelColumns } from "../Models/ModelDecorators";
 import { log, queryError } from "../../Logger";
@@ -21,7 +20,7 @@ import { SqlDataSource } from "../SqlDatasource";
 import { convertCase } from "../../CaseUtils";
 
 export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
-  protected mysqlPool: Pool;
+  protected mysqlConnection: mysql.Connection;
   protected isNestedCondition = false;
   protected mysqlModelManagerUtils: MysqlModelManagerUtils<T>;
 
@@ -29,20 +28,20 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @description Constructs a MysqlQueryBuilder instance.
    * @param model - The model class associated with the table.
    * @param tableName - The name of the table.
-   * @param mysqlPool - The MySQL connection pool.
+   * @param mysqlConnection - The MySQL connection pool.
    * @param logs - A boolean indicating whether to log queries.
    * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
    */
   public constructor(
     model: typeof Model,
     tableName: string,
-    mysqlPool: Pool,
+    mysqlConnection: mysql.Connection,
     logs: boolean,
     isNestedCondition = false,
     sqlDataSource: SqlDataSource,
   ) {
     super(model, tableName, logs, sqlDataSource);
-    this.mysqlPool = mysqlPool;
+    this.mysqlConnection = mysqlConnection;
     this.isNestedCondition = isNestedCondition;
     this.mysqlModelManagerUtils = new MysqlModelManagerUtils<T>();
   }
@@ -74,7 +73,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
     log(query, this.logs, this.params);
     try {
-      const [rows] = await this.mysqlPool.query<RowDataPacket[]>(
+      const [rows] = await this.mysqlConnection.query<RowDataPacket[]>(
         query,
         this.params,
       );
@@ -94,7 +93,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
           [modelInstance],
           this.model,
           this.relations,
-          this.mysqlPool,
+          this.mysqlConnection,
           this.logs,
         );
 
@@ -136,7 +135,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
     log(query, this.logs, this.params);
     try {
-      const [rows] = await this.mysqlPool.query<RowDataPacket[]>(
+      const [rows] = await this.mysqlConnection.query<RowDataPacket[]>(
         query,
         this.params,
       );
@@ -154,7 +153,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
           models,
           this.model,
           this.relations,
-          this.mysqlPool,
+          this.mysqlConnection,
           this.logs,
         );
 
@@ -178,7 +177,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
   }
 
   public async raw(query: string, params: any[] = []) {
-    return await this.mysqlPool.query(query, params);
+    return await this.mysqlConnection.query(query, params);
   }
 
   /**
@@ -339,7 +338,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     const queryBuilder = new MysqlQueryBuilder(
       this.model as typeof Model,
       this.tableName,
-      this.mysqlPool,
+      this.mysqlConnection,
       this.logs,
       true,
       this.sqlDataSource,
@@ -377,7 +376,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     const nestedBuilder = new MysqlQueryBuilder(
       this.model as typeof Model,
       this.tableName,
-      this.mysqlPool,
+      this.mysqlConnection,
       this.logs,
       true,
       this.sqlDataSource,
@@ -418,7 +417,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     const nestedBuilder = new MysqlQueryBuilder(
       this.model as typeof Model,
       this.tableName,
-      this.mysqlPool,
+      this.mysqlConnection,
       this.logs,
       true,
       this.sqlDataSource,
@@ -1166,7 +1165,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     const queryBuilder = new MysqlQueryBuilder<T>(
       this.model as typeof Model,
       this.tableName,
-      this.mysqlPool,
+      this.mysqlConnection,
       this.logs,
       this.isNestedCondition,
       this.sqlDataSource,

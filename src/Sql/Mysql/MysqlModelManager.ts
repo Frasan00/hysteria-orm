@@ -18,7 +18,7 @@ import { SqlDataSource } from "../SqlDatasource";
 export class MysqlModelManager<
   T extends Model,
 > extends AbstractModelManager<T> {
-  protected mysqlPool: mysql.Pool;
+  protected mysqlConnection: mysql.Connection;
   protected mysqlModelManagerUtils: MySqlModelManagerUtils<T>;
 
   /**
@@ -30,12 +30,12 @@ export class MysqlModelManager<
    */
   constructor(
     model: typeof Model,
-    mysqlConnection: mysql.Pool,
+    mysqlConnection: mysql.Connection,
     logs: boolean,
     sqlDataSource: SqlDataSource,
   ) {
     super(model, logs, sqlDataSource);
-    this.mysqlPool = mysqlConnection;
+    this.mysqlConnection = mysqlConnection;
     this.mysqlModelManagerUtils = new MySqlModelManagerUtils<T>();
   }
 
@@ -179,7 +179,7 @@ export class MysqlModelManager<
       );
 
       log(query, this.logs, params);
-      const [result]: any = await this.mysqlPool.query<RowDataPacket[]>(
+      const [result]: any = await this.mysqlConnection.query<RowDataPacket[]>(
         query,
         params,
       );
@@ -223,7 +223,7 @@ export class MysqlModelManager<
         this.sqlDataSource.getDbType(),
       );
       log(query, this.logs, params);
-      const [rows]: any = await this.mysqlPool.query(query, params);
+      const [rows]: any = await this.mysqlConnection.query(query, params);
       if (!rows.affectedRows) {
         return [];
       }
@@ -283,7 +283,7 @@ export class MysqlModelManager<
         this.sqlDataSource.getDbType(),
       );
       log(updateQuery.query, this.logs, updateQuery.params);
-      await this.mysqlPool.query(updateQuery.query, updateQuery.params);
+      await this.mysqlConnection.query(updateQuery.query, updateQuery.params);
       if (!this.model.metadata.primaryKey) {
         log(
           "Model has no primary key so no record can be retrieved",
@@ -331,7 +331,7 @@ export class MysqlModelManager<
         value,
       );
       log(query, this.logs, params);
-      const [rows]: any = await this.mysqlPool.query<RowDataPacket[]>(
+      const [rows]: any = await this.mysqlConnection.query<RowDataPacket[]>(
         query,
         params,
       );
@@ -373,7 +373,7 @@ export class MysqlModelManager<
       }
 
       log(query, this.logs, params);
-      await this.mysqlPool.query<RowDataPacket[]>(query, params);
+      await this.mysqlConnection.query<RowDataPacket[]>(query, params);
       return model;
     } catch (error) {
       queryError(error);
@@ -390,7 +390,7 @@ export class MysqlModelManager<
     return new MysqlQueryBuilder<T>(
       this.model,
       this.model.metadata.tableName,
-      this.mysqlPool,
+      this.mysqlConnection,
       this.logs,
       false,
       this.sqlDataSource,
@@ -404,7 +404,7 @@ export class MysqlModelManager<
     return new MysqlUpdateQueryBuilder<T>(
       this.model,
       this.model.metadata.tableName,
-      this.mysqlPool,
+      this.mysqlConnection,
       this.logs,
       false,
       this.sqlDataSource,
@@ -418,7 +418,7 @@ export class MysqlModelManager<
     return new MysqlDeleteQueryBuilder<T>(
       this.model,
       this.model.metadata.tableName,
-      this.mysqlPool,
+      this.mysqlConnection,
       this.logs,
       false,
       this.sqlDataSource,

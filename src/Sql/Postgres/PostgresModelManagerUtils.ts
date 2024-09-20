@@ -102,7 +102,7 @@ export default class PostgresModelManagerUtils<T extends Model> {
     models: T[],
     typeofModel: typeof Model,
     input: string[],
-    pgConnection: pg.Pool,
+    pgConnection: pg.Client,
     logs: boolean,
   ): Promise<{ [relationName: string]: Model[] }[]> {
     if (!input.length) {

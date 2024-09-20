@@ -3,7 +3,7 @@ import { log, queryError } from "../../Logger";
 import { WhereQueryBuilder } from "../QueryBuilder/WhereQueryBuilder";
 import updateTemplate from "../Resources/Query/UPDATE";
 import { PostgresTransaction } from "./PostgresTransaction";
-import { Pool } from "pg";
+import { Client } from "pg";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
 import joinTemplate from "../Resources/Query/JOIN";
 import { SqlDataSource } from "../SqlDatasource";
@@ -11,7 +11,7 @@ import { SqlDataSource } from "../SqlDatasource";
 export class PostgresUpdateQueryBuilder<
   T extends Model,
 > extends WhereQueryBuilder<T> {
-  protected pgPool: Pool;
+  protected pgClient: Client;
   protected joinQuery = "";
   protected updateTemplate: ReturnType<typeof updateTemplate>;
   protected isNestedCondition = false;
@@ -20,20 +20,20 @@ export class PostgresUpdateQueryBuilder<
    * @description Constructs a MysqlQueryBuilder instance.
    * @param model - The model class associated with the table.
    * @param tableName - The name of the table.
-   * @param mysqlPool - The MySQL connection pool.
+   * @param pgClient - The MySQL connection pool.
    * @param logs - A boolean indicating whether to log queries.
    * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
    */
   public constructor(
     model: typeof Model,
     tableName: string,
-    pgPool: Pool,
+    pgClient: Client,
     logs: boolean,
     isNestedCondition = false,
     sqlDataSource: SqlDataSource,
   ) {
     super(model, tableName, logs, false, sqlDataSource);
-    this.pgPool = pgPool;
+    this.pgClient = pgClient;
     this.updateTemplate = updateTemplate(
       this.sqlDataSource.getDbType(),
       this.model,
@@ -72,7 +72,7 @@ export class PostgresUpdateQueryBuilder<
 
     log(query, this.logs, params);
     try {
-      const { rows } = await this.pgPool.query(query, params);
+      const { rows } = await this.pgClient.query(query, params);
       if (!rows.length) {
         return [];
       }
@@ -136,7 +136,7 @@ export class PostgresUpdateQueryBuilder<
     const queryBuilder = new PostgresUpdateQueryBuilder(
       this.model as typeof Model,
       this.tableName,
-      this.pgPool,
+      this.pgClient,
       this.logs,
       true,
       this.sqlDataSource,
@@ -174,7 +174,7 @@ export class PostgresUpdateQueryBuilder<
     const nestedBuilder = new PostgresUpdateQueryBuilder(
       this.model as typeof Model,
       this.tableName,
-      this.pgPool,
+      this.pgClient,
       this.logs,
       true,
       this.sqlDataSource,
@@ -215,7 +215,7 @@ export class PostgresUpdateQueryBuilder<
     const nestedBuilder = new PostgresUpdateQueryBuilder(
       this.model as typeof Model,
       this.tableName,
-      this.pgPool,
+      this.pgClient,
       this.logs,
       true,
       this.sqlDataSource,
