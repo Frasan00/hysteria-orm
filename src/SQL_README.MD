@@ -174,18 +174,18 @@ export class User extends Model {
 
     // Relations take as params (table, foreignKey)
     @hasOne(() => Profile, "userId")
-    public profile: Profile;
+    declare profile: Profile;
 
     /* 
     * You can pass a soft delete column with the relative type in order to remove those records while using query().addRelation method
     * Date soft COLUMN will be queried as AND column IS NULL, boolean soft delete column will be queried COLUMN = false instead
     */
     @hasMany(() => Post, "userId", { softDeleteColumn: "deletedAt", softDeleteType: "date" })
-    public posts: Post[];
+    declare posts: Post[];
 
     // Hooks
-    static beforeFetch(queryBuilder: ModelQueryBuilder<User>): ModelQueryBuilder<User> {
-        return queryBuilder.where("isActive", true);
+    static beforeFetch(queryBuilder: ModelQueryBuilder<User>) {
+        queryBuilder.whereNull("deletedAt");
     }
 
     static beforeCreate(data: User): User {

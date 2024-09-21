@@ -48,7 +48,10 @@ export type UnrestrictedFindOneType<T> = {
   throwErrorOnNull?: boolean;
 };
 
-export type UnrestrictedFindType<T> = Omit<UnrestrictedFindOneType<T>, "throwErrorOnNull"> & {
+export type UnrestrictedFindType<T> = Omit<
+  UnrestrictedFindOneType<T>,
+  "throwErrorOnNull"
+> & {
   orderBy?: OrderByType;
   groupBy?: string[];
   limit?: number;

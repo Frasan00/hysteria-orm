@@ -377,10 +377,8 @@ export abstract class Model {
    * @description Adds a beforeFetch clause to the model, adding the ability to modify the query before fetching the data
    * @param queryBuilder
    */
-  static beforeFetch(
-    queryBuilder: ModelQueryBuilder<any>,
-  ): ModelQueryBuilder<any> {
-    return queryBuilder;
+  static beforeFetch(queryBuilder: ModelQueryBuilder<any>): void {
+    queryBuilder;
   }
 
   /**

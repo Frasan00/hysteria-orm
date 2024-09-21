@@ -47,7 +47,9 @@ export class MysqlModelManager<
    * @param {FindType} input - Optional query parameters for filtering, ordering, and pagination.
    * @returns Promise resolving to an array of models.
    */
-  public async find(input?: FindType<T> | UnrestrictedFindType<T>): Promise<T[]> {
+  public async find(
+    input?: FindType<T> | UnrestrictedFindType<T>,
+  ): Promise<T[]> {
     try {
       if (!input) {
         return await this.query().many();
@@ -55,7 +57,7 @@ export class MysqlModelManager<
 
       const query = this.query();
       if (input.select) {
-        query.select(...input.select as string[]);
+        query.select(...(input.select as string[]));
       }
 
       if (input.relations) {
@@ -97,11 +99,13 @@ export class MysqlModelManager<
    * @param {FindOneType} input - Query parameters for filtering and selecting a single record.
    * @returns Promise resolving to a single model or null if not found.
    */
-  public async findOne(input: FindOneType<T> | UnrestrictedFindOneType<T>): Promise<T | null> {
+  public async findOne(
+    input: FindOneType<T> | UnrestrictedFindOneType<T>,
+  ): Promise<T | null> {
     try {
       const query = this.query();
       if (input.select) {
-        query.select(...input.select as string[]);
+        query.select(...(input.select as string[]));
       }
 
       if (input.relations) {

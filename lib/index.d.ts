@@ -628,13 +628,25 @@ type OrderByType = {
     columns: string[];
     type: "ASC" | "DESC";
 };
+type UnrestrictedFindOneType<T> = {
+    select?: string[];
+    relations?: RelationType<T>[];
+    where?: Record<string, any>;
+    throwErrorOnNull?: boolean;
+};
+type UnrestrictedFindType<T> = Omit<UnrestrictedFindOneType<T>, "throwErrorOnNull"> & {
+    orderBy?: OrderByType;
+    groupBy?: string[];
+    limit?: number;
+    offset?: number;
+};
 type FindOneType<T> = {
     select?: SelectableType<T>[];
     relations?: RelationType<T>[];
     where?: WhereType<T>;
     throwErrorOnNull?: boolean;
 };
-type FindType<T> = Omit<FindOneType<T>, "throwError"> & {
+type FindType<T> = Omit<FindOneType<T>, "throwErrorOnNull"> & {
     orderBy?: OrderByType;
     groupBy?: string[];
     limit?: number;
@@ -1257,7 +1269,11 @@ declare abstract class AbstractModelManager<T extends Model> {
      */
     protected constructor(model: typeof Model, logs: boolean, sqlDataSource: SqlDataSource);
     abstract find(input?: FindType<T>): Promise<T[]>;
+    abstract find(input?: UnrestrictedFindType<T>): Promise<T[]>;
+    abstract find(input?: FindType<T> | UnrestrictedFindType<T>): Promise<T[]>;
+    abstract findOne(input: UnrestrictedFindOneType<T>): Promise<T | null>;
     abstract findOne(input: FindOneType<T>): Promise<T | null>;
+    abstract findOne(input: FindOneType<T> | UnrestrictedFindOneType<T>): Promise<T | null>;
     abstract findOneByPrimaryKey(value: string | number | boolean, throwErrorOnNull: boolean): Promise<T | null>;
     abstract create(model: Partial<T>, trx?: TransactionType): Promise<T | null>;
     abstract massiveCreate(model: Partial<T>[], trx?: TransactionType): Promise<T[]>;
@@ -1286,14 +1302,14 @@ declare class MysqlModelManager<T extends Model> extends AbstractModelManager<T>
      * @param {FindType} input - Optional query parameters for filtering, ordering, and pagination.
      * @returns Promise resolving to an array of models.
      */
-    find(input?: FindType<T>): Promise<T[]>;
+    find(input?: FindType<T> | UnrestrictedFindType<T>): Promise<T[]>;
     /**
      * Find a single record from the database based on the input conditions.
      *
      * @param {FindOneType} input - Query parameters for filtering and selecting a single record.
      * @returns Promise resolving to a single model or null if not found.
      */
-    findOne(input: FindOneType<T>): Promise<T | null>;
+    findOne(input: FindOneType<T> | UnrestrictedFindOneType<T>): Promise<T | null>;
     /**
      * Find a single record by its PK from the database.
      *
@@ -1374,14 +1390,14 @@ declare class PostgresModelManager<T extends Model> extends AbstractModelManager
      * @param {FindType} input - Optional query parameters for filtering, ordering, and pagination.
      * @returns Promise resolving to an array of models.
      */
-    find(input?: FindType<T>): Promise<T[]>;
+    find(input?: FindType<T> | UnrestrictedFindType<T>): Promise<T[]>;
     /**
      * Find a single record from the database based on the input conditions.
      *
      * @param {FindOneType} input - Query parameters for filtering and selecting a single record.
      * @returns Promise resolving to a single model or null if not found.
      */
-    findOne(input: FindOneType<T>): Promise<T | null>;
+    findOne(input: FindOneType<T> | UnrestrictedFindOneType<T>): Promise<T | null>;
     /**
      * Find a single record by its PK from the database.
      *
@@ -1973,7 +1989,7 @@ declare abstract class Model {
      * @param {FindType} options
      * @returns {Promise<T[]>}
      */
-    static find<T extends Model>(this: new () => T | typeof Model, options?: FindType<T>): Promise<T[]>;
+    static find<T extends Model>(this: new () => T | typeof Model, options?: FindType<T> | UnrestrictedFindType<T>): Promise<T[]>;
     /**
      * @description Finds a record for the given model
      * @param model
@@ -2081,7 +2097,7 @@ declare abstract class Model {
      * @description Adds a beforeFetch clause to the model, adding the ability to modify the query before fetching the data
      * @param queryBuilder
      */
-    static beforeFetch(queryBuilder: ModelQueryBuilder<any>): ModelQueryBuilder<any>;
+    static beforeFetch(queryBuilder: ModelQueryBuilder<any>): void;
     /**
      * @description Adds a beforeCreate clause to the model, adding the ability to modify the data after fetching the data
      * @param data

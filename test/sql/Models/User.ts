@@ -43,10 +43,7 @@ export class User extends Model {
   @hasOne(() => Post, "userId")
   declare post: Post;
 
-  static beforeFetch(
-    queryBuilder: ModelQueryBuilder<User>,
-  ): ModelQueryBuilder<User> {
+  static beforeFetch(queryBuilder: ModelQueryBuilder<User>) {
     queryBuilder.whereNull("deletedAt");
-    return queryBuilder;
   }
 }
