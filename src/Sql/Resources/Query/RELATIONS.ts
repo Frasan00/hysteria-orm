@@ -3,6 +3,22 @@ import { Model } from "../../Models/Model";
 import logger from "../../../Logger";
 import { convertCase } from "../../../CaseUtils";
 
+function parseValueType(value: any): string {
+  return typeof value;
+}
+
+function convertValueToSQL(value: any, type: string): string {
+  switch (type) {
+    case "string":
+      return `'${value}'`;
+    case "number":
+    case "boolean":
+      return `${value}`;
+    default:
+      throw new Error(`Unsupported value type: ${type}`);
+  }
+}
+
 function relationTemplates<T extends Model>(
   models: T[],
   relation: Relation,
@@ -14,15 +30,19 @@ function relationTemplates<T extends Model>(
   const relatedModel = relation.relatedModel;
 
   const primaryKeyValues = models.map((model) => {
-    return model[
-      convertCase(primaryKey, typeofModel.modelCaseConvention) as keyof T
-    ];
+    const value =
+      model[
+        convertCase(primaryKey, typeofModel.modelCaseConvention) as keyof T
+      ];
+    return { value, type: parseValueType(value) };
   });
 
   const foreignKeyValues = models.map((model) => {
-    return model[
-      convertCase(foreignKey, typeofModel.modelCaseConvention) as keyof T
-    ];
+    const value =
+      model[
+        convertCase(foreignKey, typeofModel.modelCaseConvention) as keyof T
+      ];
+    return { value, type: parseValueType(value) };
   });
 
   const softDeleteColumn = relation.options?.softDeleteColumn;
@@ -39,37 +59,37 @@ function relationTemplates<T extends Model>(
 
   switch (relation.type) {
     case RelationType.hasOne:
-      if (primaryKeyValues.some((value) => !value)) {
+      if (primaryKeyValues.some(({ value }) => !value)) {
         logger.error(
-          `Invalid primaryKey values for ${
-            typeofModel.name
-          }, ${primaryKeyValues.join(", ")}`,
+          `Invalid primaryKey values for ${typeofModel.name}, ${primaryKeyValues
+            .map(({ value }) => value)
+            .join(", ")}`,
         );
         throw new Error(
-          `Invalid primaryKey values for ${
-            typeofModel.name
-          }, ${primaryKeyValues.join(", ")}`,
+          `Invalid primaryKey values for ${typeofModel.name}, ${primaryKeyValues
+            .map(({ value }) => value)
+            .join(", ")}`,
         );
       }
 
       return `SELECT *, '${relationName}' as relation_name FROM ${relatedModel} WHERE ${relatedModel}.${convertCase(
         foreignKey,
         typeofModel.databaseCaseConvention,
-      )} IN (${primaryKeyValues.join(", ")})${
-        softDeleteColumn ? softDeleteQuery : ""
-      };`;
+      )} IN (${primaryKeyValues
+        .map(({ value, type }) => convertValueToSQL(value, type))
+        .join(", ")})${softDeleteColumn ? softDeleteQuery : ""};`;
 
     case RelationType.belongsTo:
-      if (foreignKeyValues.some((value) => !value)) {
+      if (foreignKeyValues.some(({ value }) => !value)) {
         logger.error(
-          `Invalid foreignKey values for ${relatedModel}, ${foreignKeyValues.join(
-            ", ",
-          )}`,
+          `Invalid foreignKey values for ${relatedModel}, ${foreignKeyValues
+            .map(({ value }) => value)
+            .join(", ")}`,
         );
         throw new Error(
-          `Invalid foreignKey values for ${relatedModel}, ${foreignKeyValues.join(
-            ", ",
-          )}`,
+          `Invalid foreignKey values for ${relatedModel}, ${foreignKeyValues
+            .map(({ value }) => value)
+            .join(", ")}`,
         );
       }
 
@@ -79,22 +99,26 @@ function relationTemplates<T extends Model>(
         );
       }
 
-      return `SELECT *, '${relationName}' as relation_name FROM ${relatedModel} WHERE ${relatedModel}.${primaryKey} IN (${foreignKeyValues.join(
-        ", ",
-      )}) ${softDeleteColumn ? softDeleteQuery : ""};`;
+      return `SELECT *, '${relationName}' as relation_name FROM ${relatedModel} WHERE ${relatedModel}.${primaryKey} IN (${foreignKeyValues
+        .map(({ value, type }) => convertValueToSQL(value, type))
+        .join(", ")}) ${softDeleteColumn ? softDeleteQuery : ""};`;
 
     case RelationType.hasMany:
-      if (primaryKeyValues.some((value) => !value)) {
-        logger.error(`Invalid primaryKey values: ${primaryKeyValues}`);
+      if (primaryKeyValues.some(({ value }) => !value)) {
+        logger.error(
+          `Invalid primaryKey values: ${primaryKeyValues.map(
+            ({ value }) => value,
+          )}`,
+        );
         throw new Error("Invalid primaryKey values");
       }
 
       return `SELECT *, '${relationName}' as relation_name FROM ${relatedModel} WHERE ${relatedModel}.${convertCase(
         foreignKey,
         typeofModel.databaseCaseConvention,
-      )} IN (${primaryKeyValues.join(", ")}) ${
-        softDeleteColumn ? softDeleteQuery : ""
-      };`;
+      )} IN (${primaryKeyValues
+        .map(({ value, type }) => convertValueToSQL(value, type))
+        .join(", ")}) ${softDeleteColumn ? softDeleteQuery : ""};`;
 
     default:
       throw new Error(`Unknown relation type: ${relation.type}`);

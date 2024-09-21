@@ -43,12 +43,10 @@ export class User extends Model {
   @hasOne(() => Post, "userId")
   declare post: Post;
 
-  static beforeCreate(data: User): User {
-    data.id = crypto.randomUUID();
-    return data;
-  }
-
-  static beforeFetch(queryBuilder: AbstractQueryBuilders<User>): any {
+  static beforeFetch(
+    queryBuilder: AbstractQueryBuilders<User>,
+  ): AbstractQueryBuilders<User> {
     queryBuilder.whereNull("deletedAt");
+    return queryBuilder;
   }
 }

@@ -26,15 +26,15 @@ export type OneOptions = {
 
 export abstract class QueryBuilder<T extends Model> {
   protected sqlDataSource: SqlDataSource;
-  protected selectQuery: string = "";
-  protected joinQuery: string = "";
-  protected relations: string[] = [];
-  protected whereQuery: string = "";
-  protected groupByQuery: string = "";
-  protected orderByQuery: string = "";
-  protected limitQuery: string = "";
-  protected offsetQuery: string = "";
-  protected params: BaseValues[] = [];
+  protected selectQuery: string;
+  protected joinQuery: string;
+  protected relations: string[];
+  protected whereQuery: string;
+  protected groupByQuery: string;
+  protected orderByQuery: string;
+  protected limitQuery: string;
+  protected offsetQuery: string;
+  protected params: BaseValues[];
 
   protected model: typeof Model;
   protected table: string;
@@ -71,6 +71,13 @@ export abstract class QueryBuilder<T extends Model> {
       this.sqlDataSource.getDbType(),
       this.model,
     );
+    this.joinQuery = "";
+    this.relations = [];
+    this.whereQuery = "";
+    this.groupByQuery = "";
+    this.orderByQuery = "";
+    this.limitQuery = "";
+    this.offsetQuery = "";
     this.params = [];
   }
 

@@ -225,3 +225,67 @@ test("Remove all users from the database", async () => {
   const allUsers = await User.query().many();
   expect(allUsers.length).toBe(0);
 });
+
+test("Nested query builder", async () => {
+  const user = await User.create({
+    name: "Linda",
+    email: "ssdada",
+    signupSource: "email",
+    isActive: true,
+  });
+
+  if (!user) {
+    throw new Error("User not created");
+  }
+
+  await User.query()
+    .whereBuilder((builder) => {
+      builder.where("name", "Linda");
+    })
+    .orWhereBuilder((builder) => {
+      builder.where("email", "ssdada");
+    })
+    .andWhere("createdAt", ">", DateTime.local().minus({ days: 1 }).toString())
+    .andWhereBuilder((builder) => {
+      builder.where("isActive", true);
+    })
+    .one();
+
+  await User.query()
+    .whereBuilder((builder) => {
+      builder.where("name", "Linda");
+    })
+    .orWhereBetween(
+      "createdAt",
+      DateTime.local().minus({ days: 1 }).toString(),
+      DateTime.local().toString(),
+    )
+    .andWhereBuilder((builder) => {
+      builder.where("isActive", true);
+    })
+    .many();
+});
+
+test("Multiple update", async () => {
+  await User.create({
+    name: "Micheal",
+    email: "test",
+    signupSource: "email",
+    isActive: true,
+  });
+
+  await User.create({
+    name: "Micheal",
+    email: "test2",
+    signupSource: "email",
+    isActive: true,
+  });
+
+  const models = (await User.update()
+    .where("name", "Micheal")
+    .withData({ name: "Micheal Updated" })) as User[];
+
+  expect(models.length).toBe(2);
+  const users = await User.query().many();
+  expect(users.length).toBe(2);
+});

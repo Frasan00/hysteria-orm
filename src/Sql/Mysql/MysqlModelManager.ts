@@ -124,7 +124,7 @@ export class MysqlModelManager<
   /**
    * Find a single record by its PK from the database.
    *
-   * @param {string | number | boolean} value - PK of the record to retrieve.
+   * @param {string | number | boolean} value - PK of the record to retrieve, hooks will not have any effect, since it's a direct query for the PK.
    * @returns Promise resolving to a single model or null if not found.
    */
   public async findOneByPrimaryKey(
@@ -142,7 +142,9 @@ export class MysqlModelManager<
 
       return await this.query()
         .where(this.model.primaryKey as string, value)
-        .one({ throwErrorOnNull });
+        .one({
+          throwErrorOnNull,
+        });
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -224,7 +226,7 @@ export class MysqlModelManager<
       );
       log(query, this.logs, params);
       const [rows]: any = await this.mysqlConnection.query(query, params);
-      if (!rows.affectedRows) {
+      if (!rows.affectedRows || !rows.insertId) {
         return [];
       }
 

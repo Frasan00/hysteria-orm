@@ -20,25 +20,28 @@ import { AbstractUpdateQueryBuilder } from "./Sql/QueryBuilder/UpdateQueryBuilde
 import { User } from "../test/sql/Models/User";
 import { DateTime } from "luxon";
 import crypto from "crypto";
+import { Post } from "../test/sql/Models/Post";
 
 SqlDataSource.connect().then(async (sql) => {
-  const user = await User.create({
-    name: "Grace",
-    email: crypto.randomUUID(),
-    signupSource: "email",
-    isActive: true,
-  });
+  const userWithPosts = await User.query()
+    .where("id", "")
+    .whereNull("deletedAt")
+    .addRelations(["posts"])
+    .one();
 
-  if (!user) {
-    throw new Error("User not created");
-  }
+  await User.query()
+    .where("id", "")
+    .whereBuilder((qb) => {
+      qb.where("id", "").where("name", "safsafdas").whereNull("deletedAt");
+      qb.orWhere("id", "").orWhere("name", "safsafdas").whereNull("deletedAt");
+    })
+    .whereBuilder((qb2) => {
+      qb2.where("id", "").where("name", "safsafdas").whereNull("deletedAt");
+    })
+    .one();
 
-  const softDeletedUser = await User.softDelete(user, {
-    column: "deletedAt",
-    value: DateTime.local().toString(),
-  });
-
-  const allUsers = await User.query().one();
+  await sql.closeConnection();
+  return userWithPosts;
 });
 
 export default {

@@ -707,12 +707,12 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     join(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresQueryBuilder<T>;
     leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresQueryBuilder<T>;
     addRelations(relations: RelationType<T>[]): PostgresQueryBuilder<T>;
-    where(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
-    where(column: string, operator: WhereOperatorType, value: BaseValues): this;
-    where(column: SelectableType<T> | string, value: BaseValues): this;
     whereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
     orWhereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
     andWhereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
+    where(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
+    where(column: string, operator: WhereOperatorType, value: BaseValues): this;
+    where(column: SelectableType<T> | string, value: BaseValues): this;
     andWhere(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
     andWhere(column: string, operator: WhereOperatorType, value: BaseValues): this;
     andWhere(column: SelectableType<T> | string, value: BaseValues): this;
@@ -1296,7 +1296,7 @@ declare class MysqlModelManager<T extends Model> extends AbstractModelManager<T>
     /**
      * Find a single record by its PK from the database.
      *
-     * @param {string | number | boolean} value - PK of the record to retrieve.
+     * @param {string | number | boolean} value - PK of the record to retrieve, hooks will not have any effect, since it's a direct query for the PK.
      * @returns Promise resolving to a single model or null if not found.
      */
     findOneByPrimaryKey(value: string | number | boolean, throwErrorOnNull?: boolean): Promise<T | null>;
@@ -1512,12 +1512,12 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     join(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlQueryBuilder<T>;
     leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlQueryBuilder<T>;
     addRelations(relations: RelationType<T>[]): MysqlQueryBuilder<T>;
-    where(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
-    where(column: string, operator: WhereOperatorType, value: BaseValues): this;
-    where(column: SelectableType<T> | string, value: BaseValues): this;
     whereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this;
     orWhereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this;
     andWhereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this;
+    where(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
+    where(column: string, operator: WhereOperatorType, value: BaseValues): this;
+    where(column: SelectableType<T> | string, value: BaseValues): this;
     andWhere(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
     andWhere(column: string, operator: WhereOperatorType, value: BaseValues): this;
     andWhere(column: SelectableType<T> | string, value: BaseValues): this;
@@ -1993,6 +1993,7 @@ declare abstract class Model {
     }): Promise<T | null>;
     /**
      * @description Saves a new record to the database
+     * @description While using mysql, it will return records only if the primary key is auto incrementing integer, else it will always return null
      * @param model
      * @param {Model} modelData
      * @param trx
@@ -2001,6 +2002,7 @@ declare abstract class Model {
     static create<T extends Model>(this: new () => T | typeof Model, modelData: Partial<T>, trx?: MysqlTransaction | PostgresTransaction): Promise<T | null>;
     /**
      * @description Saves multiple records to the database
+     * @description WHile using mysql, it will return records only if the primary key is auto incrementing integer, else it will always return []
      * @param model
      * @param {Model} modelsData
      * @param trx

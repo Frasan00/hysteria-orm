@@ -21,21 +21,6 @@ const updateTemplate = (dbType: DataSourceType, typeofModel: typeof Model) => {
       columns = columns.map((column) =>
         convertCase(column, typeofModel.databaseCaseConvention),
       );
-      values = values.map((value) => {
-        if (value === null) {
-          return null;
-        }
-
-        if (value instanceof DateTime) {
-          return value.toISO();
-        }
-
-        if (typeof value === "object") {
-          return JSON.stringify(value);
-        }
-
-        return value;
-      });
       let setClause: string;
       let params: (any | null)[];
 
@@ -71,21 +56,6 @@ const updateTemplate = (dbType: DataSourceType, typeofModel: typeof Model) => {
         convertCase(column, typeofModel.databaseCaseConvention),
       );
 
-      values = values.map((value) => {
-        if (value === null) {
-          return null;
-        }
-
-        if (value instanceof DateTime) {
-          return value.toISO();
-        }
-
-        if (typeof value === "object") {
-          return JSON.stringify(value);
-        }
-
-        return value;
-      });
       let setClause: string;
       const params: any[] = [];
 

@@ -198,6 +198,7 @@ export abstract class Model {
 
   /**
    * @description Saves a new record to the database
+   * @description While using mysql, it will return records only if the primary key is auto incrementing integer, else it will always return null
    * @param model
    * @param {Model} modelData
    * @param trx
@@ -217,6 +218,7 @@ export abstract class Model {
 
   /**
    * @description Saves multiple records to the database
+   * @description WHile using mysql, it will return records only if the primary key is auto incrementing integer, else it will always return []
    * @param model
    * @param {Model} modelsData
    * @param trx

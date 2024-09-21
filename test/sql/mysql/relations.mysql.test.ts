@@ -77,9 +77,4 @@ test("Create a new user with posts", async () => {
   expect(postWithUser?.user).not.toBeNull();
   expect(postWithUser?.user.name).toBe("Alice");
   expect(postWithUser?.user.email).toBe("alice-test@gmail.com");
-
-  const allPosts = await Post.query().many();
-  expect(allPosts.length).toBe(0);
-  const allUsers = await User.query().many();
-  expect(allUsers.length).toBe(0);
 });

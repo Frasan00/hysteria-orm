@@ -248,54 +248,6 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  public where(
-    column: SelectableType<T>,
-    operator: WhereOperatorType,
-    value: BaseValues,
-  ): this;
-  public where(
-    column: string,
-    operator: WhereOperatorType,
-    value: BaseValues,
-  ): this;
-  public where(column: SelectableType<T> | string, value: BaseValues): this;
-  public where(
-    column: SelectableType<T> | string,
-    operatorOrValue: WhereOperatorType | BaseValues,
-    value?: BaseValues,
-  ): this {
-    let operator: WhereOperatorType = "=";
-    let actualValue: BaseValues;
-
-    if (typeof operatorOrValue === "string" && value) {
-      operator = operatorOrValue as WhereOperatorType;
-      actualValue = value;
-    } else {
-      actualValue = operatorOrValue as BaseValues;
-      operator = "=";
-    }
-
-    if (this.whereQuery || this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.andWhere(
-        column as string,
-        actualValue,
-        operator,
-      );
-      this.whereQuery += query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.where(
-      column as string,
-      actualValue,
-      operator,
-    );
-    this.whereQuery += query;
-    this.params.push(...params);
-    return this;
-  }
-
   public whereBuilder(
     cb: (queryBuilder: PostgresQueryBuilder<T>) => void,
   ): this {
@@ -402,6 +354,66 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
+  public where(
+    column: SelectableType<T>,
+    operator: WhereOperatorType,
+    value: BaseValues,
+  ): this;
+  public where(
+    column: string,
+    operator: WhereOperatorType,
+    value: BaseValues,
+  ): this;
+  public where(column: SelectableType<T> | string, value: BaseValues): this;
+  public where(
+    column: SelectableType<T> | string,
+    operatorOrValue: WhereOperatorType | BaseValues,
+    value?: BaseValues,
+  ): this {
+    let operator: WhereOperatorType = "=";
+    let actualValue: BaseValues;
+
+    if (typeof operatorOrValue === "string" && value) {
+      operator = operatorOrValue as WhereOperatorType;
+      actualValue = value;
+    } else {
+      actualValue = operatorOrValue as BaseValues;
+      operator = "=";
+    }
+
+    if (this.isNestedCondition) {
+      const { query, params } = this.whereTemplate.andWhere(
+        column as string,
+        actualValue,
+        operator,
+      );
+      this.whereQuery += query;
+      this.params.push(...params);
+      return this;
+    }
+
+    if (!this.whereQuery) {
+      const { query, params } = this.whereTemplate.where(
+        column as string,
+        actualValue,
+        operator,
+      );
+      this.whereQuery = query;
+      this.params.push(...params);
+      return this;
+    }
+
+    const { query, params } = this.whereTemplate.andWhere(
+      column as string,
+      actualValue,
+      operator,
+    );
+
+    this.whereQuery += query;
+    this.params.push(...params);
+    return this;
+  }
+
   public andWhere(
     column: SelectableType<T>,
     operator: WhereOperatorType,
@@ -429,7 +441,18 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
       operator = "=";
     }
 
-    if (!this.whereQuery && !this.isNestedCondition) {
+    if (this.isNestedCondition) {
+      const { query, params } = this.whereTemplate.andWhere(
+        column as string,
+        actualValue,
+        operator,
+      );
+      this.whereQuery += query;
+      this.params.push(...params);
+      return this;
+    }
+
+    if (!this.whereQuery) {
       const { query, params } = this.whereTemplate.where(
         column as string,
         actualValue,
@@ -445,6 +468,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
       actualValue,
       operator,
     );
+
     this.whereQuery += query;
     this.params.push(...params);
     return this;
@@ -477,7 +501,18 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
       operator = "=";
     }
 
-    if (!this.whereQuery && !this.isNestedCondition) {
+    if (this.isNestedCondition) {
+      const { query, params } = this.whereTemplate.orWhere(
+        column as string,
+        actualValue,
+        operator,
+      );
+      this.whereQuery += query;
+      this.params.push(...params);
+      return this;
+    }
+
+    if (!this.whereQuery) {
       const { query, params } = this.whereTemplate.where(
         column as string,
         actualValue,
@@ -493,6 +528,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
       actualValue,
       operator,
     );
+
     this.whereQuery += query;
     this.params.push(...params);
     return this;
@@ -509,7 +545,18 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     min: BaseValues,
     max: BaseValues,
   ): this {
-    if (!this.whereQuery && !this.isNestedCondition) {
+    if (this.isNestedCondition) {
+      const { query, params } = this.whereTemplate.andWhereBetween(
+        column as string,
+        min,
+        max,
+      );
+      this.whereQuery += query;
+      this.params.push(...params);
+      return this;
+    }
+
+    if (!this.whereQuery) {
       const { query, params } = this.whereTemplate.whereBetween(
         column as string,
         min,
@@ -525,6 +572,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
       min,
       max,
     );
+
     this.whereQuery += query;
     this.params.push(...params);
     return this;
@@ -545,7 +593,18 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     min: BaseValues,
     max: BaseValues,
   ): this {
-    if (!this.whereQuery && !this.isNestedCondition) {
+    if (this.isNestedCondition) {
+      const { query, params } = this.whereTemplate.andWhereBetween(
+        column as string,
+        min,
+        max,
+      );
+      this.whereQuery += query;
+      this.params.push(...params);
+      return this;
+    }
+
+    if (!this.whereQuery) {
       const { query, params } = this.whereTemplate.whereBetween(
         column as string,
         min,
@@ -561,6 +620,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
       min,
       max,
     );
+
     this.whereQuery += query;
     this.params.push(...params);
     return this;
@@ -577,7 +637,18 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     min: BaseValues,
     max: BaseValues,
   ): this {
-    if (!this.whereQuery && !this.isNestedCondition) {
+    if (this.isNestedCondition) {
+      const { query, params } = this.whereTemplate.orWhereBetween(
+        column as string,
+        min,
+        max,
+      );
+      this.whereQuery += query;
+      this.params.push(...params);
+      return this;
+    }
+
+    if (!this.whereQuery) {
       const { query, params } = this.whereTemplate.whereBetween(
         column as string,
         min,
@@ -593,6 +664,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
       min,
       max,
     );
+
     this.whereQuery += query;
     this.params.push(...params);
     return this;
@@ -613,7 +685,18 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     min: BaseValues,
     max: BaseValues,
   ): this {
-    if (!this.whereQuery && !this.isNestedCondition) {
+    if (this.isNestedCondition) {
+      const { query, params } = this.whereTemplate.andWhereNotBetween(
+        column as string,
+        min,
+        max,
+      );
+      this.whereQuery += query;
+      this.params.push(...params);
+      return this;
+    }
+
+    if (!this.whereQuery) {
       const { query, params } = this.whereTemplate.whereNotBetween(
         column as string,
         min,
@@ -629,6 +712,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
       min,
       max,
     );
+
     this.whereQuery += query;
     this.params.push(...params);
     return this;
@@ -649,7 +733,18 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     min: BaseValues,
     max: BaseValues,
   ): this {
-    if (!this.whereQuery && !this.isNestedCondition) {
+    if (this.isNestedCondition) {
+      const { query, params } = this.whereTemplate.orWhereNotBetween(
+        column as string,
+        min,
+        max,
+      );
+      this.whereQuery += query;
+      this.params.push(...params);
+      return this;
+    }
+
+    if (!this.whereQuery) {
       const { query, params } = this.whereTemplate.whereNotBetween(
         column as string,
         min,
@@ -665,6 +760,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
       min,
       max,
     );
+
     this.whereQuery += query;
     this.params.push(...params);
     return this;
@@ -676,7 +772,17 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     column: SelectableType<T> | string,
     values: BaseValues[],
   ): this {
-    if (!this.whereQuery || !this.isNestedCondition) {
+    if (this.isNestedCondition) {
+      const { query, params } = this.whereTemplate.andWhereIn(
+        column as string,
+        values,
+      );
+      this.whereQuery += query;
+      this.params.push(...params);
+      return this;
+    }
+
+    if (!this.whereQuery) {
       const { query, params } = this.whereTemplate.whereIn(
         column as string,
         values,
@@ -690,6 +796,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
       column as string,
       values,
     );
+
     this.whereQuery += query;
     this.params.push(...params);
     return this;
@@ -701,7 +808,17 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     column: SelectableType<T> | string,
     values: BaseValues[],
   ): this {
-    if (!this.whereQuery || !this.isNestedCondition) {
+    if (this.isNestedCondition) {
+      const { query, params } = this.whereTemplate.andWhereIn(
+        column as string,
+        values,
+      );
+      this.whereQuery += query;
+      this.params.push(...params);
+      return this;
+    }
+
+    if (!this.whereQuery) {
       const { query, params } = this.whereTemplate.whereIn(
         column as string,
         values,
@@ -715,6 +832,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
       column as string,
       values,
     );
+
     this.whereQuery += query;
     this.params.push(...params);
     return this;
@@ -726,7 +844,17 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     column: SelectableType<T> | string,
     values: BaseValues[],
   ): this {
-    if (!this.whereQuery || !this.isNestedCondition) {
+    if (this.isNestedCondition) {
+      const { query, params } = this.whereTemplate.orWhereIn(
+        column as string,
+        values,
+      );
+      this.whereQuery += query;
+      this.params.push(...params);
+      return this;
+    }
+
+    if (!this.whereQuery) {
       const { query, params } = this.whereTemplate.whereIn(
         column as string,
         values,
@@ -740,6 +868,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
       column as string,
       values,
     );
+
     this.whereQuery += query;
     this.params.push(...params);
     return this;
@@ -751,7 +880,17 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     column: SelectableType<T> | string,
     values: BaseValues[],
   ): this {
-    if (!this.whereQuery || !this.isNestedCondition) {
+    if (this.isNestedCondition) {
+      const { query, params } = this.whereTemplate.andWhereNotIn(
+        column as string,
+        values,
+      );
+      this.whereQuery += query;
+      this.params.push(...params);
+      return this;
+    }
+
+    if (!this.whereQuery) {
       const { query, params } = this.whereTemplate.whereNotIn(
         column as string,
         values,
@@ -765,6 +904,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
       column as string,
       values,
     );
+
     this.whereQuery += query;
     this.params.push(...params);
     return this;
@@ -776,7 +916,17 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     column: SelectableType<T> | string,
     values: BaseValues[],
   ): this {
-    if (!this.whereQuery || !this.isNestedCondition) {
+    if (this.isNestedCondition) {
+      const { query, params } = this.whereTemplate.orWhereNotIn(
+        column as string,
+        values,
+      );
+      this.whereQuery += query;
+      this.params.push(...params);
+      return this;
+    }
+
+    if (!this.whereQuery) {
       const { query, params } = this.whereTemplate.whereNotIn(
         column as string,
         values,
@@ -790,6 +940,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
       column as string,
       values,
     );
+
     this.whereQuery += query;
     this.params.push(...params);
     return this;
@@ -798,7 +949,16 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   public whereNull(column: SelectableType<T>): this;
   public whereNull(column: string): this;
   public whereNull(column: SelectableType<T> | string): this {
-    if (!this.whereQuery || !this.isNestedCondition) {
+    if (this.isNestedCondition) {
+      const { query, params } = this.whereTemplate.andWhereNull(
+        column as string,
+      );
+      this.whereQuery += query;
+      this.params.push(...params);
+      return this;
+    }
+
+    if (!this.whereQuery) {
       const { query, params } = this.whereTemplate.whereNull(column as string);
       this.whereQuery = query;
       this.params.push(...params);
@@ -814,7 +974,16 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   public andWhereNull(column: SelectableType<T>): this;
   public andWhereNull(column: string): this;
   public andWhereNull(column: SelectableType<T> | string): this {
-    if (!this.whereQuery || !this.isNestedCondition) {
+    if (this.isNestedCondition) {
+      const { query, params } = this.whereTemplate.andWhereNull(
+        column as string,
+      );
+      this.whereQuery += query;
+      this.params.push(...params);
+      return this;
+    }
+
+    if (!this.whereQuery) {
       const { query, params } = this.whereTemplate.whereNull(column as string);
       this.whereQuery = query;
       this.params.push(...params);
@@ -830,7 +999,16 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   public orWhereNull(column: SelectableType<T>): this;
   public orWhereNull(column: string): this;
   public orWhereNull(column: SelectableType<T> | string): this {
-    if (!this.whereQuery || !this.isNestedCondition) {
+    if (this.isNestedCondition) {
+      const { query, params } = this.whereTemplate.orWhereNull(
+        column as string,
+      );
+      this.whereQuery += query;
+      this.params.push(...params);
+      return this;
+    }
+
+    if (!this.whereQuery) {
       const { query, params } = this.whereTemplate.whereNull(column as string);
       this.whereQuery = query;
       this.params.push(...params);
@@ -846,7 +1024,16 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   public whereNotNull(column: SelectableType<T>): this;
   public whereNotNull(column: string): this;
   public whereNotNull(column: SelectableType<T> | string): this {
-    if (!this.whereQuery || !this.isNestedCondition) {
+    if (this.isNestedCondition) {
+      const { query, params } = this.whereTemplate.andWhereNotNull(
+        column as string,
+      );
+      this.whereQuery += query;
+      this.params.push(...params);
+      return this;
+    }
+
+    if (!this.whereQuery) {
       const { query, params } = this.whereTemplate.whereNotNull(
         column as string,
       );
@@ -866,7 +1053,16 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   public andWhereNotNull(column: SelectableType<T>): this;
   public andWhereNotNull(column: string): this;
   public andWhereNotNull(column: SelectableType<T> | string): this {
-    if (!this.whereQuery || !this.isNestedCondition) {
+    if (this.isNestedCondition) {
+      const { query, params } = this.whereTemplate.andWhereNotNull(
+        column as string,
+      );
+      this.whereQuery += query;
+      this.params.push(...params);
+      return this;
+    }
+
+    if (!this.whereQuery) {
       const { query, params } = this.whereTemplate.whereNotNull(
         column as string,
       );
@@ -886,7 +1082,16 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   public orWhereNotNull(column: SelectableType<T>): this;
   public orWhereNotNull(column: string): this;
   public orWhereNotNull(column: SelectableType<T> | string): this {
-    if (!this.whereQuery || !this.isNestedCondition) {
+    if (this.isNestedCondition) {
+      const { query, params } = this.whereTemplate.orWhereNotNull(
+        column as string,
+      );
+      this.whereQuery += query;
+      this.params.push(...params);
+      return this;
+    }
+
+    if (!this.whereQuery) {
       const { query, params } = this.whereTemplate.whereNotNull(
         column as string,
       );
@@ -904,22 +1109,36 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   }
 
   public rawWhere(query: string) {
-    if (!this.whereQuery || !this.isNestedCondition) {
+    if (this.isNestedCondition) {
+      const { query: rawQuery, params } = this.whereTemplate.rawWhere(query);
+      this.whereQuery += rawQuery;
+      this.params.push(...params);
+      return this;
+    }
+
+    if (!this.whereQuery) {
       const { query: rawQuery, params } = this.whereTemplate.rawWhere(query);
       this.whereQuery = rawQuery;
       this.params.push(...params);
       return this;
     }
 
-    const { query: rawQuery, params } = this.whereTemplate.rawAndWhere(query);
+    const { query: rawQuery, params } = this.whereTemplate.rawWhere(query);
     this.whereQuery += rawQuery;
     this.params.push(...params);
     return this;
   }
 
   public rawAndWhere(query: string) {
-    if (!this.whereQuery || !this.isNestedCondition) {
-      const { query: rawQuery, params } = this.whereTemplate.rawWhere(query);
+    if (this.isNestedCondition) {
+      const { query: rawQuery, params } = this.whereTemplate.rawAndWhere(query);
+      this.whereQuery += rawQuery;
+      this.params.push(...params);
+      return this;
+    }
+
+    if (!this.whereQuery) {
+      const { query: rawQuery, params } = this.whereTemplate.rawAndWhere(query);
       this.whereQuery = rawQuery;
       this.params.push(...params);
       return this;
@@ -932,8 +1151,15 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   }
 
   public rawOrWhere(query: string) {
-    if (!this.whereQuery || !this.isNestedCondition) {
-      const { query: rawQuery, params } = this.whereTemplate.rawWhere(query);
+    if (this.isNestedCondition) {
+      const { query: rawQuery, params } = this.whereTemplate.rawOrWhere(query);
+      this.whereQuery += rawQuery;
+      this.params.push(...params);
+      return this;
+    }
+
+    if (!this.whereQuery) {
+      const { query: rawQuery, params } = this.whereTemplate.rawOrWhere(query);
       this.whereQuery = rawQuery;
       this.params.push(...params);
       return this;
