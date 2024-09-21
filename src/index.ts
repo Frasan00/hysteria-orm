@@ -17,27 +17,28 @@ import { getPrimaryKey } from "./Sql/Models/ModelDecorators";
 import { CaseConvention } from "./CaseUtils";
 import { AbstractDeleteQueryBuilder } from "./Sql/QueryBuilder/DeleteQueryBuilder";
 import { AbstractUpdateQueryBuilder } from "./Sql/QueryBuilder/UpdateQueryBuilder";
-
-export class Post extends Model {
-  @column({ primaryKey: true })
-  declare id: number;
-
-  @column()
-  declare userId: number;
-
-  @column()
-  declare title: string;
-
-  @column()
-  declare content: string;
-}
+import { User } from "../test/sql/Models/User";
+import { DateTime } from "luxon";
+import crypto from "crypto";
 
 SqlDataSource.connect().then(async (sql) => {
-  const count = await Post.query().getCount();
+  const user = await User.create({
+    name: "Grace",
+    email: crypto.randomUUID(),
+    signupSource: "email",
+    isActive: true,
+  });
 
-  const sum = await Post.query().getSum("id");
+  if (!user) {
+    throw new Error("User not created");
+  }
 
-  console.log(count, sum);
+  const softDeletedUser = await User.softDelete(user, {
+    column: "deletedAt",
+    value: DateTime.local().toString(),
+  });
+
+  const allUsers = await User.query().one();
 });
 
 export default {

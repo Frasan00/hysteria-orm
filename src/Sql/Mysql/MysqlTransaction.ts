@@ -113,10 +113,7 @@ export class MysqlTransaction {
     }
   }
 
-  public async queryUpdate<T extends Model>(
-    query: string,
-    params?: any[],
-  ): Promise<number> {
+  public async queryUpdate(query: string, params?: any[]): Promise<number> {
     if (!this.mysqlPool) {
       throw new Error("MysqlTransaction not started.");
     }

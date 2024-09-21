@@ -17,9 +17,7 @@ export type WhereOperatorType =
   | "IN"
   | "NOT IN"
   | "BETWEEN"
-  | "NOT BETWEEN"
-  | "IS NULL"
-  | "IS NOT NULL";
+  | "NOT BETWEEN";
 
 export type BaseValues = string | number | boolean | object;
 

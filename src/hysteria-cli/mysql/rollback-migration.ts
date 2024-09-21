@@ -63,8 +63,8 @@ export async function migrationRollBackSql(): Promise<void> {
     await mysql.rollback();
 
     console.error(error);
+    throw error;
   } finally {
     mysql.release();
-    process.exit(0);
   }
 }

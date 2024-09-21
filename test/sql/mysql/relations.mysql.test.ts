@@ -2,8 +2,9 @@ import { User } from "../Models/User";
 import { Post } from "../Models/Post";
 import { SqlDataSource } from "../../../src/Sql/SqlDatasource";
 
-test("Create a new user with posts", async () => {
-  const sql = await SqlDataSource.connect({
+let sql: SqlDataSource | null = null;
+beforeAll(async () => {
+  sql = await SqlDataSource.connect({
     type: "mysql",
     database: "test",
     username: "root",
@@ -11,9 +12,25 @@ test("Create a new user with posts", async () => {
     host: "127.0.0.1",
     port: 3306,
   });
+});
+
+afterAll(async () => {
+  if (sql) {
+    await sql.closeConnection();
+  }
+});
+
+beforeEach(async () => {
   await Post.delete().execute();
   await User.delete().execute();
+});
 
+afterEach(async () => {
+  await Post.delete().execute();
+  await User.delete().execute();
+});
+
+test("Create a new user with posts", async () => {
   const user = await User.create({
     name: "Alice",
     email: "alice-test@gmail.com",
@@ -61,11 +78,8 @@ test("Create a new user with posts", async () => {
   expect(postWithUser?.user.name).toBe("Alice");
   expect(postWithUser?.user.email).toBe("alice-test@gmail.com");
 
-  await Post.delete().execute();
-  await User.delete().execute();
   const allPosts = await Post.query().many();
   expect(allPosts.length).toBe(0);
   const allUsers = await User.query().many();
   expect(allUsers.length).toBe(0);
-  await sql.closeConnection();
 });

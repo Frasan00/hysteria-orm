@@ -1,5 +1,8 @@
+import { DateTime } from "luxon";
 import { DataSourceType } from "../../../../Datasource";
-import { DateOptions } from "../CreateTable/ColumnTypeBuilder";
+import ColumnTypeBuilder, {
+  DateOptions,
+} from "../CreateTable/ColumnTypeBuilder";
 
 type AlterOptions = {
   afterColumn?: string;
@@ -10,6 +13,7 @@ type AlterOptions = {
 };
 
 type DataType =
+  | "uuid"
   | "varchar"
   | "tinytext"
   | "mediumtext"
@@ -26,26 +30,24 @@ type DataType =
   | "decimal"
   | "double"
   | "boolean"
-  | "date"
-  | "timestamp"
   | "jsonb";
 
 type BaseOptions = {
   afterColumn?: string;
   references?: { table: string; column: string };
-  default?: string;
+  default?: any;
   primaryKey?: boolean;
   unique?: boolean;
   notNullable?: boolean;
   autoIncrement?: boolean;
   length?: number;
-} & DateOptions;
+};
 
 export default class ColumnBuilderAlter {
   protected table: string;
   protected queryStatements: string[];
-  protected partialQuery: string;
   protected sqlType: DataSourceType;
+  protected partialQuery: string;
 
   constructor(
     table: string,
@@ -62,67 +64,91 @@ export default class ColumnBuilderAlter {
   /**
    * @description Add a new column to the table
    * @param columnName { string }
-   * @param dataType { varchar | tinytext | mediumtext | longtext | binary | text | char | tinyint | smallint | mediumint | integer | bigint | float | decimal | double | boolean | date | timestamp | jsonb }
-   * @param options { afterColumn?: string; references?: { table: string; column: string }; default?: string; primaryKey?: boolean; unique?: boolean; notNullable?: boolean; autoIncrement?: boolean; length?: number; }
+   * @param {DataType} dataType
+   * @param {BaseOptions} options
    */
   public addColumn(
     columnName: string,
     dataType: DataType,
     options?: BaseOptions,
   ): ColumnBuilderAlter {
-    let query = `ALTER TABLE ${this.table} ADD COLUMN ${columnName}`;
-
-    if (options?.length) {
-      query += ` ${dataType}(${options.length})`;
-    } else {
-      switch (dataType) {
-        case "varchar":
-          query += " varchar(255)";
-          break;
-        case "char":
-          query += " char(1)";
-          break;
-        case "binary":
-          query += " binary()";
-          break;
-        case "jsonb":
-          switch (this.sqlType) {
-            case "mariadb":
-            case "mysql":
-              query += " json";
-              break;
-            case "postgres":
-              query += " jsonb";
-              break;
-            default:
-              throw new Error("Unsupported database type");
-          }
-          break;
-        default:
-          query += ` ${dataType}`;
-      }
+    let query = `ALTER TABLE ${this.table} ADD COLUMN `;
+    const columnsBuilder = new ColumnTypeBuilder("", [], "", this.sqlType);
+    switch (dataType) {
+      case "uuid":
+        columnsBuilder.uuid(columnName);
+        break;
+      case "varchar":
+        columnsBuilder.varchar(columnName, options?.length);
+        break;
+      case "tinytext":
+        columnsBuilder.tinytext(columnName);
+        break;
+      case "mediumtext":
+        columnsBuilder.mediumtext(columnName);
+        break;
+      case "longtext":
+        columnsBuilder.longtext(columnName);
+        break;
+      case "binary":
+        columnsBuilder.binary(columnName, options?.length);
+        break;
+      case "text":
+        columnsBuilder.text(columnName);
+        break;
+      case "char":
+        columnsBuilder.char(columnName, options?.length);
+        break;
+      case "tinyint":
+        columnsBuilder.tinyint(columnName);
+        break;
+      case "smallint":
+        columnsBuilder.smallint(columnName);
+        break;
+      case "mediumint":
+        columnsBuilder.mediumint(columnName);
+        break;
+      case "integer":
+        columnsBuilder.integer(columnName, options?.length);
+        break;
+      case "bigint":
+        columnsBuilder.bigint(columnName);
+        break;
+      case "float":
+        columnsBuilder.float(columnName);
+        break;
+      case "decimal":
+        columnsBuilder.decimal(columnName);
+        break;
+      case "double":
+        columnsBuilder.double(columnName);
+        break;
+      case "boolean":
+        columnsBuilder.boolean(columnName);
+        break;
+      case "jsonb":
+        columnsBuilder.jsonb(columnName);
+        break;
+      default:
+        throw new Error("Unsupported data type");
     }
 
-    if (options?.notNullable) {
-      query += " NOT NULL";
-    }
-
-    if (options?.autoIncrement) {
-      switch (this.sqlType) {
-        case "mariadb":
-        case "mysql":
-          query += " AUTO_INCREMENT";
-          break;
-        case "postgres":
-          query += " SERIAL";
-          break;
-        default:
-          throw new Error("Unsupported database type");
-      }
-    }
+    query += columnsBuilder.partialQuery;
 
     if (options?.default !== undefined) {
-      query += ` DEFAULT ${options.default}`;
+      if (typeof options.default === "string") {
+        query += ` DEFAULT '${options.default}'`;
+      } else if (options.default instanceof Date) {
+        query += ` DEFAULT '${options.default.toISOString()}'`;
+      } else if (options.default instanceof DateTime) {
+        query += ` DEFAULT '${options.default.toISO()}'`;
+      } else if (typeof options.default === "object") {
+        query += ` DEFAULT '${JSON.stringify(options.default)}'`;
+      } else if (typeof options.default === null) {
+        query += " DEFAULT NULL";
+      } else {
+        query += ` DEFAULT ${options.default}`;
+      }
     }
 
     if (options?.primaryKey) {
@@ -150,24 +176,80 @@ export default class ColumnBuilderAlter {
       }
     }
 
-    if (
-      options &&
-      (dataType === "date" || dataType) === "timestamp" &&
-      Object.hasOwnProperty.call(options, "autoCreate")
-    ) {
-      this.partialQuery += " DEFAULT CURRENT_DATE";
+    this.partialQuery = query;
+    this.queryStatements.push(this.partialQuery);
+    this.partialQuery = "";
+    return this;
+  }
+
+  /**
+   * @description Add a new date column to the table
+   * @param columnName { string }
+   * @param options { DateOptions }
+   */
+  public addDateColumn(
+    columnName: string,
+    type: "date" | "timestamp",
+    options?: DateOptions & {
+      afterColumn?: string;
+      notNullable?: boolean;
+      default?: string | Date | DateTime;
+    },
+  ): ColumnBuilderAlter {
+    let query = `ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${type}`;
+    if (options?.autoCreate) {
+      switch (this.sqlType) {
+        case "mariadb":
+        case "mysql":
+          query += " DEFAULT CURRENT_TIMESTAMP";
+          break;
+        case "postgres":
+          query += " DEFAULT CURRENT_TIMESTAMP";
+          break;
+        default:
+          throw new Error("Unsupported database type");
+      }
     }
 
-    if (
-      options &&
-      (dataType === "date" || dataType) === "timestamp" &&
-      Object.hasOwnProperty.call(options, "autoUpdate")
-    ) {
-      if (this.sqlType === "postgres") {
-        throw new Error("Postgres does not support ON UPDATE CURRENT_DATE");
+    if (options?.autoUpdate) {
+      switch (this.sqlType) {
+        case "mariadb":
+        case "mysql":
+          query += " ON UPDATE CURRENT_TIMESTAMP";
+          break;
+        case "postgres":
+          query += " ON UPDATE CURRENT_TIMESTAMP";
+          break;
+        default:
+          throw new Error("Unsupported database type");
       }
+    }
 
-      this.partialQuery += " ON UPDATE CURRENT_DATE";
+    if (options?.notNullable) {
+      query += " NOT NULL";
+    }
+
+    if (options?.default !== undefined) {
+      if (typeof options.default === "string") {
+        query += ` DEFAULT '${options.default}'`;
+      } else if (options.default instanceof Date) {
+        query += ` DEFAULT '${options.default.toISOString()}'`;
+      } else {
+        query += ` DEFAULT '${options.default.toISO()}'`;
+      }
+    }
+
+    if (options?.afterColumn) {
+      switch (this.sqlType) {
+        case "mariadb":
+        case "mysql":
+          query += ` AFTER ${options.afterColumn}`;
+          break;
+        case "postgres":
+          throw new Error("Postgres does not support AFTER in ALTER COLUMN");
+        default:
+          throw new Error("Unsupported database type");
+      }
     }
 
     this.partialQuery = query;

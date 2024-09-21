@@ -21,7 +21,10 @@ export default async function rollbackMigrationConnector() {
       break;
 
     default:
-      throw new Error("Invalid database type, must be mysql or postgres");
+      throw new Error(
+        "Invalid database type, must be mysql or postgres, got: " +
+          databaseType,
+      );
   }
 }
 

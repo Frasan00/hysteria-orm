@@ -58,9 +58,10 @@ export async function migrationRollBackPg(): Promise<void> {
   } catch (error: any) {
     log(ROLLBACK_TRANSACTION, true);
     await client.query(ROLLBACK_TRANSACTION);
+
     console.error(error);
+    throw error;
   } finally {
     client.release();
-    process.exit(0);
   }
 }

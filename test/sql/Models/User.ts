@@ -6,10 +6,12 @@ import {
 } from "../../../src/Sql/Models/ModelDecorators";
 import { Model } from "../../../src/Sql/Models/Model";
 import { Post } from "./Post";
+import crypto from "crypto";
+import { AbstractQueryBuilders } from "../../../src/Sql/QueryBuilder/QueryBuilder";
 
 export class User extends Model {
   @column({ primaryKey: true })
-  declare id: number;
+  declare id: string;
 
   @column()
   declare name: string;
@@ -40,4 +42,13 @@ export class User extends Model {
 
   @hasOne(() => Post, "userId")
   declare post: Post;
+
+  static beforeCreate(data: User): User {
+    data.id = crypto.randomUUID();
+    return data;
+  }
+
+  static beforeFetch(queryBuilder: AbstractQueryBuilders<User>): any {
+    queryBuilder.whereNull("deletedAt");
+  }
 }

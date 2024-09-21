@@ -62,7 +62,7 @@ export async function runMigrationsPg(): Promise<void> {
     await client.query(ROLLBACK_TRANSACTION);
 
     console.error(error);
-    process.exit(1);
+    throw error;
   } finally {
     client.release();
   }

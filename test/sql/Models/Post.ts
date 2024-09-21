@@ -7,7 +7,7 @@ export class Post extends Model {
   declare id: number;
 
   @column()
-  declare userId: number;
+  declare userId: string;
 
   @column()
   declare title: string;

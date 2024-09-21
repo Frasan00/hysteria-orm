@@ -9,9 +9,9 @@ export type DateOptions = {
 export default class ColumnTypeBuilder {
   protected table: string;
   protected queryStatements: string[];
-  protected partialQuery: string;
   protected columnName: string;
   protected sqlType: DataSourceType;
+  public partialQuery: string;
 
   constructor(
     table: string,
@@ -26,7 +26,7 @@ export default class ColumnTypeBuilder {
     this.columnName = "";
   }
 
-  public varchar(name: string, length: number): ColumnOptionsBuilder {
+  public varchar(name: string, length: number = 255): ColumnOptionsBuilder {
     this.columnName = name;
     this.partialQuery += `${name} VARCHAR(${length})`;
     return new ColumnOptionsBuilder(
@@ -38,124 +38,304 @@ export default class ColumnTypeBuilder {
     );
   }
 
+  public uuid(name: string): ColumnOptionsBuilder {
+    switch (this.sqlType) {
+      case "postgres":
+        this.columnName = name;
+        this.partialQuery += `${name} UUID`;
+        return new ColumnOptionsBuilder(
+          this.table,
+          this.queryStatements,
+          this.partialQuery,
+          this.sqlType,
+          this.columnName,
+        );
+      case "mariadb":
+      case "mysql":
+        this.columnName = name;
+        this.partialQuery += `${name} CHAR(36)`;
+        return new ColumnOptionsBuilder(
+          this.table,
+          this.queryStatements,
+          this.partialQuery,
+          this.sqlType,
+          this.columnName,
+        );
+      default:
+        throw new Error("Unsupported SQL type");
+    }
+  }
+
   public tinytext(name: string): ColumnOptionsBuilder {
-    this.columnName = name;
-    this.partialQuery += `${name} TINYTEXT`;
-    return new ColumnOptionsBuilder(
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
-    );
+    switch (this.sqlType) {
+      case "mariadb":
+      case "mysql":
+        this.columnName = name;
+        this.partialQuery += `${name} TINYTEXT`;
+        return new ColumnOptionsBuilder(
+          this.table,
+          this.queryStatements,
+          this.partialQuery,
+          this.sqlType,
+          this.columnName,
+        );
+      case "postgres":
+        this.columnName = name;
+        this.partialQuery += `${name} TEXT`;
+        return new ColumnOptionsBuilder(
+          this.table,
+          this.queryStatements,
+          this.partialQuery,
+          this.sqlType,
+          this.columnName,
+        );
+      default:
+        throw new Error("Unsupported SQL type");
+    }
   }
 
   public mediumtext(name: string): ColumnOptionsBuilder {
-    this.columnName = name;
-    this.partialQuery += `${name} MEDIUMTEXT`;
-    return new ColumnOptionsBuilder(
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
-    );
+    switch (this.sqlType) {
+      case "mariadb":
+      case "mysql":
+        this.columnName = name;
+        this.partialQuery += `${name} MEDIUMTEXT`;
+        return new ColumnOptionsBuilder(
+          this.table,
+          this.queryStatements,
+          this.partialQuery,
+          this.sqlType,
+          this.columnName,
+        );
+      case "postgres":
+        this.columnName = name;
+        this.partialQuery += `${name} TEXT`;
+        return new ColumnOptionsBuilder(
+          this.table,
+          this.queryStatements,
+          this.partialQuery,
+          this.sqlType,
+          this.columnName,
+        );
+      default:
+        throw new Error("Unsupported SQL type");
+    }
   }
 
   public longtext(name: string): ColumnOptionsBuilder {
-    this.columnName = name;
-    this.partialQuery += `${name} LONGTEXT`;
-    return new ColumnOptionsBuilder(
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
-    );
+    switch (this.sqlType) {
+      case "mariadb":
+      case "mysql":
+        this.columnName = name;
+        this.partialQuery += `${name} LONGTEXT`;
+        return new ColumnOptionsBuilder(
+          this.table,
+          this.queryStatements,
+          this.partialQuery,
+          this.sqlType,
+          this.columnName,
+        );
+      case "postgres":
+        this.columnName = name;
+        this.partialQuery += `${name} TEXT`;
+        return new ColumnOptionsBuilder(
+          this.table,
+          this.queryStatements,
+          this.partialQuery,
+          this.sqlType,
+          this.columnName,
+        );
+      default:
+        throw new Error("Unsupported SQL type");
+    }
   }
 
-  public binary(name: string, length: number): ColumnOptionsBuilder {
-    this.columnName = name;
-    this.partialQuery += `${name} BINARY(${length})`;
-    return new ColumnOptionsBuilder(
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
-    );
+  public binary(name: string, length: number = 255): ColumnOptionsBuilder {
+    switch (this.sqlType) {
+      case "mariadb":
+      case "mysql":
+        this.columnName = name;
+        this.partialQuery += `${name} BINARY(${length})`;
+        return new ColumnOptionsBuilder(
+          this.table,
+          this.queryStatements,
+          this.partialQuery,
+          this.sqlType,
+          this.columnName,
+        );
+      case "postgres":
+        this.columnName = name;
+        this.partialQuery += `${name} BYTEA`;
+        return new ColumnOptionsBuilder(
+          this.table,
+          this.queryStatements,
+          this.partialQuery,
+          this.sqlType,
+          this.columnName,
+        );
+      default:
+        throw new Error("Unsupported SQL type");
+    }
   }
 
   public enum(name: string, values: string[]): ColumnOptionsBuilder {
-    this.columnName = name;
-    this.partialQuery += `${name} ENUM("${values.join('","')}")`;
-    return new ColumnOptionsBuilder(
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
-    );
+    switch (this.sqlType) {
+      case "mariadb":
+      case "mysql":
+        this.columnName = name;
+        this.partialQuery += `${name} ENUM('${values.join("', '")}')`;
+        return new ColumnOptionsBuilder(
+          this.table,
+          this.queryStatements,
+          this.partialQuery,
+          this.sqlType,
+          this.columnName,
+        );
+      case "postgres":
+        throw new Error("Postgres does not support ENUM as a column type");
+      default:
+        throw new Error("Unsupported SQL type");
+    }
   }
 
   public text(name: string): ColumnOptionsBuilder {
-    this.columnName = name;
-    this.partialQuery += `${name} TEXT`;
-    return new ColumnOptionsBuilder(
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
-    );
+    switch (this.sqlType) {
+      case "mariadb":
+      case "mysql":
+        this.columnName = name;
+        this.partialQuery += `${name} TEXT`;
+        return new ColumnOptionsBuilder(
+          this.table,
+          this.queryStatements,
+          this.partialQuery,
+          this.sqlType,
+          this.columnName,
+        );
+      case "postgres":
+        this.columnName = name;
+        this.partialQuery += `${name} TEXT`;
+        return new ColumnOptionsBuilder(
+          this.table,
+          this.queryStatements,
+          this.partialQuery,
+          this.sqlType,
+          this.columnName,
+        );
+      default:
+        throw new Error("Unsupported SQL type");
+    }
   }
 
-  public char(name: string, length: number): ColumnOptionsBuilder {
-    this.columnName = name;
-    this.partialQuery += `${name} CHAR(${length})`;
-    return new ColumnOptionsBuilder(
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
-    );
+  public char(name: string, length: number = 255): ColumnOptionsBuilder {
+    switch (this.sqlType) {
+      case "mariadb":
+      case "mysql":
+        this.columnName = name;
+        this.partialQuery += `${name} CHAR(${length})`;
+        return new ColumnOptionsBuilder(
+          this.table,
+          this.queryStatements,
+          this.partialQuery,
+          this.sqlType,
+          this.columnName,
+        );
+      case "postgres":
+        this.columnName = name;
+        this.partialQuery += `${name} CHAR(${length})`;
+        return new ColumnOptionsBuilder(
+          this.table,
+          this.queryStatements,
+          this.partialQuery,
+          this.sqlType,
+          this.columnName,
+        );
+      default:
+        throw new Error("Unsupported SQL type");
+    }
   }
 
   public tinyint(name: string): ColumnOptionsBuilder {
-    this.columnName = name;
-    this.partialQuery += `${name} TINYINT`;
-    return new ColumnOptionsBuilder(
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
-    );
+    switch (this.sqlType) {
+      case "mariadb":
+      case "mysql":
+        this.columnName = name;
+        this.partialQuery += `${name} TINYINT`;
+        return new ColumnOptionsBuilder(
+          this.table,
+          this.queryStatements,
+          this.partialQuery,
+          this.sqlType,
+          this.columnName,
+        );
+      case "postgres":
+        this.columnName = name;
+        this.partialQuery += `${name} SMALLINT`;
+        return new ColumnOptionsBuilder(
+          this.table,
+          this.queryStatements,
+          this.partialQuery,
+          this.sqlType,
+          this.columnName,
+        );
+      default:
+        throw new Error("Unsupported SQL type");
+    }
   }
 
   public smallint(name: string): ColumnOptionsBuilder {
-    this.columnName = name;
-    this.partialQuery += `${name} SMALLINT`;
-    return new ColumnOptionsBuilder(
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
-    );
+    switch (this.sqlType) {
+      case "mariadb":
+      case "mysql":
+        this.columnName = name;
+        this.partialQuery += `${name} SMALLINT`;
+        return new ColumnOptionsBuilder(
+          this.table,
+          this.queryStatements,
+          this.partialQuery,
+          this.sqlType,
+          this.columnName,
+        );
+      case "postgres":
+        this.columnName = name;
+        this.partialQuery += `${name} SMALLINT`;
+        return new ColumnOptionsBuilder(
+          this.table,
+          this.queryStatements,
+          this.partialQuery,
+          this.sqlType,
+          this.columnName,
+        );
+      default:
+        throw new Error("Unsupported SQL type");
+    }
   }
 
   public mediumint(name: string): ColumnOptionsBuilder {
-    this.columnName = name;
-    this.partialQuery += `${name} MEDIUMINT`;
-    return new ColumnOptionsBuilder(
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
-    );
+    switch (this.sqlType) {
+      case "mariadb":
+      case "mysql":
+        this.columnName = name;
+        this.partialQuery += `${name} MEDIUMINT`;
+        return new ColumnOptionsBuilder(
+          this.table,
+          this.queryStatements,
+          this.partialQuery,
+          this.sqlType,
+          this.columnName,
+        );
+      case "postgres":
+        this.columnName = name;
+        this.partialQuery += `${name} INTEGER`;
+        return new ColumnOptionsBuilder(
+          this.table,
+          this.queryStatements,
+          this.partialQuery,
+          this.sqlType,
+          this.columnName,
+        );
+      default:
+        throw new Error("Unsupported SQL type");
+    }
   }
 
   /**
@@ -163,7 +343,7 @@ export default class ColumnTypeBuilder {
    * @param name
    */
   public serial(name: string): ColumnOptionsBuilder {
-    if (this.sqlType === `mysql`) {
+    if (this.sqlType === `mysql` || this.sqlType === `mariadb`) {
       this.columnName = name;
       this.partialQuery += `${name} INT AUTO_INCREMENT`;
       return new ColumnOptionsBuilder(
@@ -191,7 +371,7 @@ export default class ColumnTypeBuilder {
    * @param name
    */
   public bigSerial(name: string): ColumnOptionsBuilder {
-    if (this.sqlType === `mysql`) {
+    if (this.sqlType === `mysql` || this.sqlType === `mariadb`) {
       this.columnName = name;
       this.partialQuery += `${name} BIGINT AUTO_INCREMENT`;
       return new ColumnOptionsBuilder(
@@ -214,77 +394,192 @@ export default class ColumnTypeBuilder {
     );
   }
 
-  public integer(name: string): ColumnOptionsBuilder {
-    this.columnName = name;
-    this.partialQuery += `${name} INT`;
-
-    return new ColumnOptionsBuilder(
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
-    );
+  public integer(name: string, length?: number): ColumnOptionsBuilder {
+    switch (this.sqlType) {
+      case "mariadb":
+      case "mysql":
+        this.columnName = name;
+        this.partialQuery += `${name} INT ${length ? `(${length})` : ""}`;
+        return new ColumnOptionsBuilder(
+          this.table,
+          this.queryStatements,
+          this.partialQuery,
+          this.sqlType,
+          this.columnName,
+        );
+      case "postgres":
+        this.columnName = name;
+        this.partialQuery += `${name} INTEGER ${length ? `(${length})` : ""}`;
+        return new ColumnOptionsBuilder(
+          this.table,
+          this.queryStatements,
+          this.partialQuery,
+          this.sqlType,
+          this.columnName,
+        );
+      default:
+        throw new Error("Unsupported SQL type");
+    }
   }
 
+  public bigInteger(name: string): ColumnOptionsBuilder {
+    switch (this.sqlType) {
+      case "mariadb":
+      case "mysql":
+        this.columnName = name;
+        this.partialQuery += `${name} BIGINT`;
+        return new ColumnOptionsBuilder(
+          this.table,
+          this.queryStatements,
+          this.partialQuery,
+          this.sqlType,
+          this.columnName,
+        );
+      case "postgres":
+        this.columnName = name;
+        this.partialQuery += `${name} BIGINT`;
+        return new ColumnOptionsBuilder(
+          this.table,
+          this.queryStatements,
+          this.partialQuery,
+          this.sqlType,
+          this.columnName,
+        );
+      default:
+        throw new Error("Unsupported SQL type");
+    }
+  }
+
+  /**
+   * @description Alias for integer
+   * @param name
+   * @returns ColumnOptionsBuilder
+   */
+  public int(name: string): ColumnOptionsBuilder {
+    return this.integer(name);
+  }
+
+  /**
+   * @description Alias for bigInteger
+   * @param name
+   * @returns ColumnOptionsBuilder
+   */
   public bigint(name: string): ColumnOptionsBuilder {
-    this.columnName = name;
-    this.partialQuery += `${name} BIGINT`;
-    return new ColumnOptionsBuilder(
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
-    );
+    return this.bigInteger(name);
   }
 
   public float(name: string): ColumnOptionsBuilder {
-    this.columnName = name;
-    this.partialQuery += `${name} FLOAT`;
-    return new ColumnOptionsBuilder(
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
-    );
+    switch (this.sqlType) {
+      case "mariadb":
+      case "mysql":
+        this.columnName = name;
+        this.partialQuery += `${name} FLOAT`;
+        return new ColumnOptionsBuilder(
+          this.table,
+          this.queryStatements,
+          this.partialQuery,
+          this.sqlType,
+          this.columnName,
+        );
+      case "postgres":
+        this.columnName = name;
+        this.partialQuery += `${name} REAL`;
+        return new ColumnOptionsBuilder(
+          this.table,
+          this.queryStatements,
+          this.partialQuery,
+          this.sqlType,
+          this.columnName,
+        );
+      default:
+        throw new Error("Unsupported SQL type");
+    }
   }
 
   public decimal(name: string): ColumnOptionsBuilder {
-    this.columnName = name;
-    this.partialQuery += `${name} DECIMAL`;
-    return new ColumnOptionsBuilder(
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
-    );
+    switch (this.sqlType) {
+      case "mariadb":
+      case "mysql":
+        this.columnName = name;
+        this.partialQuery += `${name} DECIMAL`;
+        return new ColumnOptionsBuilder(
+          this.table,
+          this.queryStatements,
+          this.partialQuery,
+          this.sqlType,
+          this.columnName,
+        );
+      case "postgres":
+        this.columnName = name;
+        this.partialQuery += `${name} DECIMAL`;
+        return new ColumnOptionsBuilder(
+          this.table,
+          this.queryStatements,
+          this.partialQuery,
+          this.sqlType,
+          this.columnName,
+        );
+      default:
+        throw new Error("Unsupported SQL type");
+    }
   }
 
   public double(name: string): ColumnOptionsBuilder {
-    this.columnName = name;
-    this.partialQuery += `${name} DOUBLE`;
-    return new ColumnOptionsBuilder(
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
-    );
+    switch (this.sqlType) {
+      case "mariadb":
+      case "mysql":
+        this.columnName = name;
+        this.partialQuery += `${name} DOUBLE`;
+        return new ColumnOptionsBuilder(
+          this.table,
+          this.queryStatements,
+          this.partialQuery,
+          this.sqlType,
+          this.columnName,
+        );
+      case "postgres":
+        this.columnName = name;
+        this.partialQuery += `${name} DOUBLE PRECISION`;
+        return new ColumnOptionsBuilder(
+          this.table,
+          this.queryStatements,
+          this.partialQuery,
+          this.sqlType,
+          this.columnName,
+        );
+      default:
+        throw new Error("Unsupported SQL type");
+    }
   }
 
   public boolean(name: string): ColumnOptionsBuilder {
-    this.columnName = name;
-    this.partialQuery += `${name} BOOLEAN`;
-    return new ColumnOptionsBuilder(
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
-    );
+    switch (this.sqlType) {
+      case "mariadb":
+      case "mysql":
+        this.columnName = name;
+        this.partialQuery += `${name} BOOLEAN`;
+        return new ColumnOptionsBuilder(
+          this.table,
+          this.queryStatements,
+          this.partialQuery,
+          this.sqlType,
+          this.columnName,
+        );
+
+      case "postgres":
+        this.columnName = name;
+        this.partialQuery += `${name} BOOLEAN`;
+        return new ColumnOptionsBuilder(
+          this.table,
+          this.queryStatements,
+          this.partialQuery,
+          this.sqlType,
+          this.columnName,
+        );
+
+      default:
+        throw new Error("Unsupported SQL type");
+    }
   }
 
   public date(name: string, options?: DateOptions): ColumnOptionsBuilder {
@@ -297,7 +592,9 @@ export default class ColumnTypeBuilder {
 
     if (options && options.autoUpdate) {
       if (this.sqlType === "postgres") {
-        throw new Error("Postgres does not support ON UPDATE CURRENT_DATE");
+        throw new Error(
+          "Postgres does not support auto updating a date column",
+        );
       }
 
       this.partialQuery += " ON UPDATE CURRENT_DATE";
@@ -321,7 +618,9 @@ export default class ColumnTypeBuilder {
 
     if (options && options.autoUpdate) {
       if (this.sqlType === "postgres") {
-        throw new Error("Postgres does not support ON UPDATE CURRENT_DATE");
+        throw new Error(
+          "Postgres does not support auto updating a date column",
+        );
       }
 
       this.partialQuery += " ON UPDATE CURRENT_TIMESTAMP";

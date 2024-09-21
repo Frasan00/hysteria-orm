@@ -336,10 +336,8 @@ export abstract class Model {
       modelInstance[column as keyof T] = new Date(value) as T[keyof T];
     }
 
-    return (await parseDatabaseDataIntoModelResponse(
-      [modelInstance],
-      typeofModel,
-    )) as T;
+    modelInstance[column as keyof T] = value as T[keyof T];
+    return modelInstance;
   }
 
   /**

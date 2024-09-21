@@ -17,15 +17,18 @@ export default async function runMigrationsConnector() {
     case "postgres":
       await runMigrationsPg();
       break;
-
     default:
-      throw new Error("Invalid database type, must be mysql or postgres");
+      throw new Error(
+        "Invalid database type, must be mysql or postgres, got: " +
+          databaseType,
+      );
   }
+
+  logger.info("Migrations ran successfully");
 }
 
 runMigrationsConnector()
   .then(() => {
-    logger.info("Migrations ran successfully");
     process.exit(0);
   })
   .catch((error) => {

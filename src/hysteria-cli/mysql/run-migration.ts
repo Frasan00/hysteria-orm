@@ -56,7 +56,7 @@ export async function runMigrationsSql(): Promise<void> {
     await mysql.rollback();
 
     console.error(error);
-    return;
+    throw error;
   } finally {
     mysql.release();
   }

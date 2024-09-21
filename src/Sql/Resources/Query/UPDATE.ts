@@ -1,3 +1,4 @@
+import { DateTime } from "luxon";
 import { convertCase } from "../../../CaseUtils";
 import { DataSourceType } from "../../../Datasource";
 import { Model } from "../../Models/Model";
@@ -7,7 +8,7 @@ const updateTemplate = (dbType: DataSourceType, typeofModel: typeof Model) => {
   return {
     update: (
       columns: string[],
-      values: string[],
+      values: any[],
       primaryKey?: string,
       primaryKeyValue?: string | undefined,
     ) => {
@@ -20,8 +21,23 @@ const updateTemplate = (dbType: DataSourceType, typeofModel: typeof Model) => {
       columns = columns.map((column) =>
         convertCase(column, typeofModel.databaseCaseConvention),
       );
+      values = values.map((value) => {
+        if (value === null) {
+          return null;
+        }
+
+        if (value instanceof DateTime) {
+          return value.toISO();
+        }
+
+        if (typeof value === "object") {
+          return JSON.stringify(value);
+        }
+
+        return value;
+      });
       let setClause: string;
-      let params: (string | undefined)[];
+      let params: (any | null)[];
 
       switch (dbType) {
         case "mysql":
@@ -54,6 +70,22 @@ const updateTemplate = (dbType: DataSourceType, typeofModel: typeof Model) => {
       columns = columns.map((column) =>
         convertCase(column, typeofModel.databaseCaseConvention),
       );
+
+      values = values.map((value) => {
+        if (value === null) {
+          return null;
+        }
+
+        if (value instanceof DateTime) {
+          return value.toISO();
+        }
+
+        if (typeof value === "object") {
+          return JSON.stringify(value);
+        }
+
+        return value;
+      });
       let setClause: string;
       const params: any[] = [];
 
@@ -62,7 +94,7 @@ const updateTemplate = (dbType: DataSourceType, typeofModel: typeof Model) => {
         case "mariadb":
           setClause = columns.map((column) => `\`${column}\` = ?`).join(", ");
           values.forEach((value) => {
-            params.push(value);
+            params.push(value ?? null);
           });
           break;
         case "postgres":
@@ -70,7 +102,7 @@ const updateTemplate = (dbType: DataSourceType, typeofModel: typeof Model) => {
             .map((column, index) => `"${column}" = $${index + 1}`)
             .join(", ");
           values.forEach((value) => {
-            params.push(value);
+            params.push(value ?? null);
           });
           break;
         default:

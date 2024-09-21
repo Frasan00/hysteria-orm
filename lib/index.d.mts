@@ -1,6 +1,7 @@
 import mysql, { Pool, PoolConnection, Connection } from 'mysql2/promise';
 import * as pg from 'pg';
 import pg__default, { Pool as Pool$1, PoolClient, Client } from 'pg';
+import { DateTime } from 'luxon';
 
 type DataSourceType = "mysql" | "postgres" | "mariadb";
 /**
@@ -90,18 +91,19 @@ type DateOptions = {
 declare class ColumnTypeBuilder {
     protected table: string;
     protected queryStatements: string[];
-    protected partialQuery: string;
     protected columnName: string;
     protected sqlType: DataSourceType;
+    partialQuery: string;
     constructor(table: string, queryStatements: string[], partialQuery: string, sqlType: DataSourceType);
-    varchar(name: string, length: number): ColumnOptionsBuilder;
+    varchar(name: string, length?: number): ColumnOptionsBuilder;
+    uuid(name: string): ColumnOptionsBuilder;
     tinytext(name: string): ColumnOptionsBuilder;
     mediumtext(name: string): ColumnOptionsBuilder;
     longtext(name: string): ColumnOptionsBuilder;
-    binary(name: string, length: number): ColumnOptionsBuilder;
+    binary(name: string, length?: number): ColumnOptionsBuilder;
     enum(name: string, values: string[]): ColumnOptionsBuilder;
     text(name: string): ColumnOptionsBuilder;
-    char(name: string, length: number): ColumnOptionsBuilder;
+    char(name: string, length?: number): ColumnOptionsBuilder;
     tinyint(name: string): ColumnOptionsBuilder;
     smallint(name: string): ColumnOptionsBuilder;
     mediumint(name: string): ColumnOptionsBuilder;
@@ -115,7 +117,19 @@ declare class ColumnTypeBuilder {
      * @param name
      */
     bigSerial(name: string): ColumnOptionsBuilder;
-    integer(name: string): ColumnOptionsBuilder;
+    integer(name: string, length?: number): ColumnOptionsBuilder;
+    bigInteger(name: string): ColumnOptionsBuilder;
+    /**
+     * @description Alias for integer
+     * @param name
+     * @returns ColumnOptionsBuilder
+     */
+    int(name: string): ColumnOptionsBuilder;
+    /**
+     * @description Alias for bigInteger
+     * @param name
+     * @returns ColumnOptionsBuilder
+     */
     bigint(name: string): ColumnOptionsBuilder;
     float(name: string): ColumnOptionsBuilder;
     decimal(name: string): ColumnOptionsBuilder;
@@ -146,33 +160,43 @@ type AlterOptions = {
         column: string;
     };
 };
-type DataType = "varchar" | "tinytext" | "mediumtext" | "longtext" | "binary" | "text" | "char" | "tinyint" | "smallint" | "mediumint" | "integer" | "bigint" | "float" | "decimal" | "double" | "boolean" | "date" | "timestamp" | "jsonb";
+type DataType = "uuid" | "varchar" | "tinytext" | "mediumtext" | "longtext" | "binary" | "text" | "char" | "tinyint" | "smallint" | "mediumint" | "integer" | "bigint" | "float" | "decimal" | "double" | "boolean" | "jsonb";
 type BaseOptions = {
     afterColumn?: string;
     references?: {
         table: string;
         column: string;
     };
-    default?: string;
+    default?: any;
     primaryKey?: boolean;
     unique?: boolean;
     notNullable?: boolean;
     autoIncrement?: boolean;
     length?: number;
-} & DateOptions;
+};
 declare class ColumnBuilderAlter {
     protected table: string;
     protected queryStatements: string[];
-    protected partialQuery: string;
     protected sqlType: DataSourceType;
+    protected partialQuery: string;
     constructor(table: string, queryStatements: string[], partialQuery: string, sqlType: DataSourceType);
     /**
      * @description Add a new column to the table
      * @param columnName { string }
-     * @param dataType { varchar | tinytext | mediumtext | longtext | binary | text | char | tinyint | smallint | mediumint | integer | bigint | float | decimal | double | boolean | date | timestamp | jsonb }
-     * @param options { afterColumn?: string; references?: { table: string; column: string }; default?: string; primaryKey?: boolean; unique?: boolean; notNullable?: boolean; autoIncrement?: boolean; length?: number; }
+     * @param {DataType} dataType
+     * @param {BaseOptions} options
      */
     addColumn(columnName: string, dataType: DataType, options?: BaseOptions): ColumnBuilderAlter;
+    /**
+     * @description Add a new date column to the table
+     * @param columnName { string }
+     * @param options { DateOptions }
+     */
+    addDateColumn(columnName: string, type: "date" | "timestamp", options?: DateOptions & {
+        afterColumn?: string;
+        notNullable?: boolean;
+        default?: string | Date | DateTime;
+    }): ColumnBuilderAlter;
     /**
      * @description Add a new enum column to the table
      * @param columnName { string }
@@ -360,7 +384,7 @@ declare class MysqlTransaction {
     massiveInsertQuery<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T[]>;
     massiveUpdateQuery(query: string, params: any[]): Promise<number>;
     massiveDeleteQuery(query: string, params: any[]): Promise<number>;
-    queryUpdate<T extends Model>(query: string, params?: any[]): Promise<number>;
+    queryUpdate(query: string, params?: any[]): Promise<number>;
     queryDelete(query: string, params?: any[]): Promise<number>;
     /**
      * Start transaction.
@@ -414,7 +438,7 @@ declare const selectTemplate: (dbType: DataSourceType, typeofModel: typeof Model
     offset: (offset: number) => string;
 };
 
-type WhereOperatorType = "=" | "!=" | "<>" | ">" | "<" | ">=" | "<=" | "LIKE" | "ILIKE" | "NOT LIKE" | "NOT ILIKE" | "IN" | "NOT IN" | "BETWEEN" | "NOT BETWEEN" | "IS NULL" | "IS NOT NULL";
+type WhereOperatorType = "=" | "!=" | "<>" | ">" | "<" | ">=" | "<=" | "LIKE" | "ILIKE" | "NOT LIKE" | "NOT ILIKE" | "IN" | "NOT IN" | "BETWEEN" | "NOT BETWEEN";
 type BaseValues = string | number | boolean | object;
 declare const whereTemplate: (dbType: DataSourceType, typeofModel: typeof Model) => {
     convertPlaceHolderToValue: (query: string, startIndex?: number) => string;
@@ -742,9 +766,9 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
 }
 
 declare const updateTemplate: (dbType: DataSourceType, typeofModel: typeof Model) => {
-    update: (columns: string[], values: string[], primaryKey?: string, primaryKeyValue?: string | undefined) => {
+    update: (columns: string[], values: any[], primaryKey?: string, primaryKeyValue?: string | undefined) => {
         query: string;
-        params: (string | undefined)[];
+        params: any[];
     };
     massiveUpdate: (columns: string[], values: any[], whereClause: string, joinClause?: string) => {
         query: string;
@@ -2140,12 +2164,6 @@ declare function getRelations(target: typeof Model): Relation[];
  */
 declare function getPrimaryKey(target: typeof Model): string;
 
-declare class Post extends Model {
-    id: number;
-    userId: number;
-    title: string;
-    content: string;
-}
 declare const _default: {
     Model: typeof Model;
     column: typeof column;
@@ -2159,4 +2177,4 @@ declare const _default: {
     getModelColumns: typeof getModelColumns;
 };
 
-export { AbstractDeleteQueryBuilder, type AbstractQueryBuilders, AbstractUpdateQueryBuilder, type CaseConvention, type DataSourceInput, Migration, Model, Post, Relation, SqlDataSource, belongsTo, column, _default as default, getModelColumns, getPrimaryKey, getRelations, hasMany, hasOne };
+export { AbstractDeleteQueryBuilder, type AbstractQueryBuilders, AbstractUpdateQueryBuilder, type CaseConvention, type DataSourceInput, Migration, Model, Relation, SqlDataSource, belongsTo, column, _default as default, getModelColumns, getPrimaryKey, getRelations, hasMany, hasOne };
