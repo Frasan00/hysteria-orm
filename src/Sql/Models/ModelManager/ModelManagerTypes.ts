@@ -41,7 +41,20 @@ type OrderByType = {
   type: "ASC" | "DESC";
 };
 
-// model manager only makes and where, for more complex queries use query builder
+export type UnrestrictedFindOneType<T> = {
+  select?: string[];
+  relations?: RelationType<T>[];
+  where?: Record<string, any>;
+  throwErrorOnNull?: boolean;
+};
+
+export type UnrestrictedFindType<T> = Omit<UnrestrictedFindOneType<T>, "throwErrorOnNull"> & {
+  orderBy?: OrderByType;
+  groupBy?: string[];
+  limit?: number;
+  offset?: number;
+};
+
 export type FindOneType<T> = {
   select?: SelectableType<T>[];
   relations?: RelationType<T>[];
@@ -49,7 +62,7 @@ export type FindOneType<T> = {
   throwErrorOnNull?: boolean;
 };
 
-export type FindType<T> = Omit<FindOneType<T>, "throwError"> & {
+export type FindType<T> = Omit<FindOneType<T>, "throwErrorOnNull"> & {
   orderBy?: OrderByType;
   groupBy?: string[];
   limit?: number;

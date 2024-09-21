@@ -2,7 +2,7 @@
  * This class is used to make operations on models
  */
 import { getBaseModelInstance, Model } from "../Model";
-import { FindOneType, FindType, TransactionType } from "./ModelManagerTypes";
+import { FindOneType, FindType, TransactionType, UnrestrictedFindOneType, UnrestrictedFindType } from "./ModelManagerTypes";
 import { MysqlQueryBuilder } from "../../Mysql/MysqlQueryBuilder";
 import { PostgresQueryBuilder } from "../../Postgres/PostgresQueryBuilder";
 import { MysqlUpdateQueryBuilder } from "../../Mysql/MysqlUpdateQueryBuilder";
@@ -36,8 +36,12 @@ export abstract class AbstractModelManager<T extends Model> {
   }
 
   public abstract find(input?: FindType<T>): Promise<T[]>;
+  public abstract find(input?: UnrestrictedFindType<T>): Promise<T[]>;
+  public abstract find(input?: FindType<T> | UnrestrictedFindType<T>): Promise<T[]>;
 
+  public abstract findOne(input: UnrestrictedFindOneType<T>): Promise<T | null>;
   public abstract findOne(input: FindOneType<T>): Promise<T | null>;
+  public abstract findOne(input: FindOneType<T> | UnrestrictedFindOneType<T>): Promise<T | null>;
 
   public abstract findOneByPrimaryKey(
     value: string | number | boolean,

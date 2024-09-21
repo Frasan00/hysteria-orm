@@ -184,16 +184,16 @@ export class User extends Model {
     public posts: Post[];
 
     // Hooks
-    public static beforeFetch(queryBuilder: ModelQueryBuilder<User>): ModelQueryBuilder<User> {
+    static beforeFetch(queryBuilder: ModelQueryBuilder<User>): ModelQueryBuilder<User> {
         return queryBuilder.where("isActive", true);
     }
 
-    public static beforeCreate(data: User): User {
+    static beforeCreate(data: User): User {
         data.isActive = true;
         return data;
     }
 
-    public static async afterFetch(data: User[]): Promise<User[]> {
+    static async afterFetch(data: User[]): Promise<User[]> {
         if (!data.length) {
             return data;
         }

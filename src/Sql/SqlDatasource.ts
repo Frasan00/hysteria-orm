@@ -32,7 +32,7 @@ export class SqlDataSource extends DataSource {
    * @description Connects to the database establishing a connection. If no connection details are provided, the default values from the env will be taken instead
    * @description The User input connection details will always come first
    */
-  public static async connect(
+  static async connect(
     input?: DataSourceInput,
     cb?: () => Promise<void> | void,
   ): Promise<SqlDataSource> {
@@ -70,7 +70,7 @@ export class SqlDataSource extends DataSource {
     return sqlDataSource;
   }
 
-  public static getInstance(): SqlDataSource | null {
+  static getInstance(): SqlDataSource | null {
     if (!this.instance) {
       throw new Error("Sql database connection not established");
     }
@@ -157,7 +157,7 @@ export class SqlDataSource extends DataSource {
    * @param connectionDetails
    * @param cb
    */
-  public static async useConnection(
+  static async useConnection(
     connectionDetails: DataSourceInput,
     cb: (sqlDataSource: SqlDataSource) => Promise<void>,
   ) {
