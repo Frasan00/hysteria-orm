@@ -226,7 +226,7 @@ export class User extends Model {
 type CaseConvention =
   | "camel" // All columns converted to camel case
   | "snake" // All columns converted to snake case
-  | "none" // Columns are treated as defined in the database and in the model
+  | "none" // Columns are treated as defined in the model
   | RegExp // Custom RegExp
   | ((column: string) => string); // Custom function
 ```
