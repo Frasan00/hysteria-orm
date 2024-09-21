@@ -41,9 +41,9 @@ const insertTemplate = (dbType: DataSourceType, typeofModel: typeof Model) => {
       const query =
         dbType === "mysql" || dbType === "mariadb"
           ? `INSERT INTO ${table} (${columns.join(", ")})
-             VALUES (${placeholders});`
+VALUES (${placeholders});`
           : `INSERT INTO ${table} (${columns.join(", ")})
-             VALUES (${placeholders}) RETURNING *;`;
+VALUES (${placeholders}) RETURNING *;`;
 
       return { query, params };
     },
@@ -86,9 +86,9 @@ const insertTemplate = (dbType: DataSourceType, typeofModel: typeof Model) => {
       const query =
         dbType === "mysql"
           ? `INSERT INTO ${table} (${columns.join(", ")})
-             VALUES ${valueSets.join(", ")};`
+VALUES ${valueSets.join(", ")};`
           : `INSERT INTO ${table} (${columns.join(", ")})
-             VALUES ${valueSets.join(", ")} RETURNING *;`;
+VALUES ${valueSets.join(", ")} RETURNING *;`;
 
       return { query, params };
     },

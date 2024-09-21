@@ -1,4 +1,3 @@
-import { DateTime } from "luxon";
 import { convertCase } from "../../../CaseUtils";
 import { DataSourceType } from "../../../Datasource";
 import { Model } from "../../Models/Model";
@@ -40,9 +39,9 @@ const updateTemplate = (dbType: DataSourceType, typeofModel: typeof Model) => {
           throw new Error("Unsupported database type");
       }
 
-      const query = `UPDATE ${table} SET ${setClause} WHERE ${primaryKey} = ${
-        dbType === "mysql" ? "?" : `$${columns.length + 1}`
-      };`;
+      const query = `UPDATE ${table}
+SET ${setClause}
+WHERE ${primaryKey} = ${dbType === "mysql" ? "?" : `$${columns.length + 1}`};`;
 
       return { query, params };
     },
@@ -79,7 +78,9 @@ const updateTemplate = (dbType: DataSourceType, typeofModel: typeof Model) => {
           throw new Error("Unsupported database type");
       }
 
-      let query = `UPDATE ${table} ${joinClause} SET ${setClause} ${whereClause}`;
+      let query = `UPDATE ${table} ${joinClause}
+SET ${setClause}
+${whereClause}`;
       dbType === "postgres" && (query += " RETURNING *;");
 
       return { query, params };

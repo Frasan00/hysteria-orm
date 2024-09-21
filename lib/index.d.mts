@@ -699,6 +699,7 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     select(...columns: (SelectableType<T> | "*")[]): PostgresQueryBuilder<T>;
     raw(query: string, params?: any[]): Promise<pg.QueryResult<any>>;
     one(options?: OneOptions): Promise<T | null>;
+    oneOrFail(): Promise<T>;
     many(): Promise<T[]>;
     getCount(): Promise<number>;
     getSum(column: SelectableType<T>): Promise<number>;
@@ -1501,6 +1502,7 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
      */
     constructor(model: typeof Model, table: string, mysqlConnection: mysql.Connection, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
     one(options?: OneOptions): Promise<T | null>;
+    oneOrFail(): Promise<T>;
     many(): Promise<T[]>;
     raw(query: string, params?: any[]): Promise<[mysql.QueryResult, mysql.FieldPacket[]]>;
     getCount(): Promise<number>;
@@ -1606,6 +1608,10 @@ declare abstract class QueryBuilder<T extends Model> {
      * @returns A Promise resolving to the first result or null.
      */
     abstract one(options: OneOptions): Promise<T | null>;
+    /**
+     * @description Executes the query and retrieves the first result. Fail if no result is found.
+     */
+    abstract oneOrFail(): Promise<T>;
     /**
      * @description Executes the query and retrieves multiple results.
      * @returns A Promise resolving to an array of results.

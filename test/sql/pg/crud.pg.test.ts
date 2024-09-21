@@ -112,9 +112,7 @@ test("Update a user", async () => {
     isActive: true,
   });
 
-  const user = (await User.query()
-    .where("name", "Eve")
-    .one({ throwErrorOnNull: true })) as User;
+  const user = await User.query().where("name", "Eve").oneOrFail();
   user.name = "Eve Updated";
   const updatedUser = await User.updateRecord(user);
 

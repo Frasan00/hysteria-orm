@@ -17,29 +17,6 @@ import { getPrimaryKey } from "./Sql/Models/ModelDecorators";
 import { CaseConvention } from "./CaseUtils";
 import { ModelDeleteQueryBuilder } from "./Sql/QueryBuilder/DeleteQueryBuilder";
 import { ModelUpdateQueryBuilder } from "./Sql/QueryBuilder/UpdateQueryBuilder";
-import { User } from "../test/sql/Models/User";
-
-SqlDataSource.connect().then(async (sql) => {
-  const userWithPosts = await User.query()
-    .where("id", "")
-    .whereNull("deletedAt")
-    .addRelations(["posts"])
-    .one();
-
-  await User.query()
-    .where("id", "")
-    .whereBuilder((qb) => {
-      qb.where("id", "").where("name", "safsafdas").whereNull("deletedAt");
-      qb.orWhere("id", "").orWhere("name", "safsafdas").whereNull("deletedAt");
-    })
-    .whereBuilder((qb2) => {
-      qb2.where("id", "").where("name", "safsafdas").whereNull("deletedAt");
-    })
-    .one();
-
-  await sql.closeConnection();
-  return userWithPosts;
-});
 
 export default {
   Model,

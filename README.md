@@ -306,7 +306,7 @@ const user: User | null = await User.query()
     .addRelations(['post'])
     .where("name", "John Doe")
     .andWhere("email", "john@gmail.com")
-    .one();
+    .oneOrFail();
 
 const users: User[] = await User.query()
     .where("name", "John Doe")

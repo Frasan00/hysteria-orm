@@ -61,8 +61,12 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     }
 
     query = this.whereTemplate.convertPlaceHolderToValue(query);
-    query = query.trim();
 
+    // limit to 1
+    this.limit(1);
+    query += this.groupFooterQuery();
+
+    query = query.trim();
     log(query, this.logs, this.params);
     try {
       const [rows] = await this.mysqlConnection.query<RowDataPacket[]>(
@@ -99,6 +103,11 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
       queryError(query);
       throw new Error("Query failed " + error);
     }
+  }
+
+  public async oneOrFail(): Promise<T> {
+    const model = await this.one({ throwErrorOnNull: true });
+    return model as T;
   }
 
   public async many(): Promise<T[]> {
