@@ -555,11 +555,10 @@ const newJsonUser = await User.update().withData({
 
 // Delete every instance that contains the properties in the json column
 const deletedUsers = await User.delete()
-    .where("json", {
+    .where("json", '>', {
             foo: "bar",
             bar: "foo",
         },
-        ">",
     )
     .execute();
 ```
