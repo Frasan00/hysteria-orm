@@ -2,8 +2,9 @@ import mysql, { Pool, PoolConnection, Connection } from 'mysql2/promise';
 import * as pg from 'pg';
 import pg__default, { Pool as Pool$1, PoolClient, Client } from 'pg';
 import { DateTime } from 'luxon';
+import Redis, { RedisOptions } from 'ioredis';
 
-type DataSourceType = "mysql" | "postgres" | "mariadb";
+type DataSourceType = "mysql" | "postgres" | "mariadb" | "redis";
 /**
  * @description By default the connection details can be provided in the env.ts file, you can still override each prop with your actual connection details
  */
@@ -27,6 +28,8 @@ declare abstract class DataSource {
     protected database: string;
     protected logs: boolean;
     protected constructor(input?: DataSourceInput);
+    protected handleRedisSource(input?: DataSourceInput): void;
+    protected handleSqlSource(input?: DataSourceInput): void;
 }
 
 declare class ColumnOptionsBuilder {
@@ -1463,6 +1466,9 @@ declare class PostgresModelManager<T extends Model> extends AbstractModelManager
 
 type ModelManager<T extends Model> = MysqlModelManager<T> | PostgresModelManager<T>;
 type SqlConnectionType = mysql.Connection | pg__default.Client;
+interface SqlDataSourceInput extends DataSourceInput {
+    type: Exclude<DataSourceType, "redis">;
+}
 declare class SqlDataSource extends DataSource {
     isConnected: boolean;
     protected sqlConnection: SqlConnectionType;
@@ -1473,7 +1479,7 @@ declare class SqlDataSource extends DataSource {
      * @description Connects to the database establishing a connection. If no connection details are provided, the default values from the env will be taken instead
      * @description The User input connection details will always come first
      */
-    static connect(input?: DataSourceInput, cb?: () => Promise<void> | void): Promise<SqlDataSource>;
+    static connect(input?: SqlDataSourceInput, cb?: () => Promise<void> | void): Promise<SqlDataSource>;
     static getInstance(): SqlDataSource | null;
     /**
      * @description Begins a transaction on the database and returns the transaction object
@@ -1494,7 +1500,7 @@ declare class SqlDataSource extends DataSource {
      * @param connectionDetails
      * @param cb
      */
-    static useConnection(connectionDetails: DataSourceInput, cb: (sqlDataSource: SqlDataSource) => Promise<void>): Promise<void>;
+    static useConnection(connectionDetails: SqlDataSourceInput, cb: (sqlDataSource: SqlDataSource) => Promise<void>): Promise<void>;
     /**
      * @description Returns separate raw sql connection
      */
@@ -2188,6 +2194,113 @@ declare function getRelations(target: typeof Model): Relation[];
  */
 declare function getPrimaryKey(target: typeof Model): string;
 
+type RedisStorable = string | number | boolean | Buffer | Record<string, any>;
+declare class RedisDataSource {
+    static isConnected: boolean;
+    protected static redisConnection: Redis;
+    isConnected: boolean;
+    protected redisConnection: Redis;
+    constructor(input?: RedisOptions);
+    /**
+     * @description Connects to the Redis database establishing a connection. If no connection details are provided, the default values from the env will be taken instead
+     * @description The User input connection details will always come first
+     * @description This is intended as a singleton connection to the redis database, if you need multiple connections, use the getConnection method
+     * @param {RedisDataSourceInput} input - Details for the Redis connection
+     */
+    static connect(input?: RedisOptions): Promise<void>;
+    /**
+     * @description Establishes a connection to the Redis database and returns the connection
+     * @param input
+     * @returns
+     */
+    static getConnection(input?: RedisOptions): Promise<RedisDataSource>;
+    /**
+     * @description Sets a key-value pair in the Redis database
+     * @param {string} key - The key
+     * @param {string} value - The value
+     * @param {number} expirationTime - The expiration time in seconds
+     * @returns {Promise<void>}
+     */
+    static set(key: string, value: RedisStorable, expirationTime?: number): Promise<void>;
+    /**
+     * @description Gets the value of a key in the Redis database
+     * @param {string} key - The key
+     * @returns {Promise<string>}
+     */
+    static get<T = RedisStorable>(key: string): Promise<T | null>;
+    /**
+     * @description Gets the value of a key in the Redis database and deletes the key
+     * @param {string} key - The key
+     * @returns {Promise
+     * <T | null>}
+     */
+    static getAndDelete<T = RedisStorable>(key: string): Promise<T | null>;
+    /**
+     * @description Deletes a key from the Redis database
+     * @param {string} key - The key
+     * @returns {Promise<void>}
+     */
+    static delete(key: string): Promise<void>;
+    /**
+     * @description Flushes all the data in the Redis database
+     * @returns {Promise<void>}
+     */
+    static flushAll(): Promise<void>;
+    /**
+     * @description Returns the raw Redis connection that uses the ioredis library
+     * @returns {Redis}
+     */
+    static getRawConnection(): Redis;
+    /**
+     * @description Disconnects from the Redis database
+     * @returns {Promise<void>}
+     */
+    static disconnect(): Promise<void>;
+    /**
+     * @description Sets a key-value pair in the Redis database
+     * @param {string} key - The key
+     * @param {string} value - The value
+     * @param {number} expirationTime - The expiration time in seconds
+     * @returns {Promise<void>}
+     */
+    set(key: string, value: RedisStorable, expirationTime?: number): Promise<void>;
+    /**
+     * @description Gets the value of a key in the Redis database
+     * @param {string} key - The key
+     * @returns {Promise<string>}
+     */
+    get<T = RedisStorable>(key: string): Promise<T | null>;
+    /**
+     * @description Gets the value of a key in the Redis database and deletes the key
+     * @param {string} key - The key
+     * @returns {Promise
+     * <T | null>}
+     */
+    getAndDelete<T = RedisStorable>(key: string): Promise<T | null>;
+    /**
+     * @description Deletes a key from the Redis database
+     * @param {string} key - The key
+     * @returns {Promise<void>}
+     */
+    delete(key: string): Promise<void>;
+    /**
+     * @description Flushes all the data in the Redis database
+     * @returns {Promise<void>}
+     */
+    flushAll(): Promise<void>;
+    /**
+     * @description Returns the raw Redis connection that uses the ioredis library
+     * @returns {Redis}
+     */
+    getRawConnection(): Redis;
+    /**
+     * @description Disconnects from the Redis database
+     * @returns {Promise<void>}
+     */
+    disconnect(): Promise<void>;
+    protected static getValue<T = RedisStorable>(value: string | null): T | null;
+}
+
 declare const _default: {
     Model: typeof Model;
     column: typeof column;
@@ -2199,6 +2312,7 @@ declare const _default: {
     Migration: typeof Migration;
     getRelations: typeof getRelations;
     getModelColumns: typeof getModelColumns;
+    Redis: typeof RedisDataSource;
 };
 
-export { type CaseConvention, type DataSourceInput, Migration, Model, ModelDeleteQueryBuilder, type ModelQueryBuilder, ModelUpdateQueryBuilder, Relation, SqlDataSource, belongsTo, column, _default as default, getModelColumns, getPrimaryKey, getRelations, hasMany, hasOne };
+export { type CaseConvention, type DataSourceInput, Migration, Model, ModelDeleteQueryBuilder, type ModelQueryBuilder, ModelUpdateQueryBuilder, RedisDataSource as Redis, Relation, SqlDataSource, belongsTo, column, _default as default, getModelColumns, getPrimaryKey, getRelations, hasMany, hasOne };

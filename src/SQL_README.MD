@@ -44,7 +44,7 @@
 ## Prerequisites
 
 - A JavaScript runtime environment (e.g., Node.js).
-- A SQL driver for your database type (e.g., `mysql2` for MySQL, `pg` for PostgreSQL).
+- A SQL driver for your database type (e.g., `mysql2` for MySQL and MariaDB, `pg` for PostgreSQL).
 
 ### TypeScript Configuration example
 

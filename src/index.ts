@@ -17,8 +17,10 @@ import { getPrimaryKey } from "./Sql/Models/ModelDecorators";
 import { CaseConvention } from "./CaseUtils";
 import { ModelDeleteQueryBuilder } from "./Sql/QueryBuilder/DeleteQueryBuilder";
 import { ModelUpdateQueryBuilder } from "./Sql/QueryBuilder/UpdateQueryBuilder";
+import { RedisDataSource as Redis } from "./NoSql/Redis/RedisDataSource";
 
 export default {
+  // Sql
   Model,
   column,
   belongsTo,
@@ -29,9 +31,13 @@ export default {
   Migration,
   getRelations,
   getModelColumns,
+
+  // Redis
+  Redis,
 };
 
 export {
+  // Sql
   Model,
   column,
   belongsTo,
@@ -48,4 +54,7 @@ export {
   getRelations,
   getModelColumns,
   getPrimaryKey,
+
+  // Redis
+  Redis,
 };

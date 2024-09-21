@@ -14,12 +14,16 @@ type ModelManager<T extends Model> =
 
 export type SqlConnectionType = mysql.Connection | pg.Client;
 
+export interface SqlDataSourceInput extends DataSourceInput {
+  type: Exclude<DataSourceType, "redis">;
+}
+
 export class SqlDataSource extends DataSource {
   public isConnected: boolean;
   protected sqlConnection!: SqlConnectionType;
   private static instance: SqlDataSource | null = null;
 
-  private constructor(input?: DataSourceInput) {
+  private constructor(input?: SqlDataSourceInput) {
     super(input);
     this.isConnected = false;
   }
@@ -33,7 +37,7 @@ export class SqlDataSource extends DataSource {
    * @description The User input connection details will always come first
    */
   static async connect(
-    input?: DataSourceInput,
+    input?: SqlDataSourceInput,
     cb?: () => Promise<void> | void,
   ): Promise<SqlDataSource> {
     const sqlDataSource = new this(input);
@@ -158,7 +162,7 @@ export class SqlDataSource extends DataSource {
    * @param cb
    */
   static async useConnection(
-    connectionDetails: DataSourceInput,
+    connectionDetails: SqlDataSourceInput,
     cb: (sqlDataSource: SqlDataSource) => Promise<void>,
   ) {
     const customSqlInstance = new SqlDataSource(connectionDetails);
