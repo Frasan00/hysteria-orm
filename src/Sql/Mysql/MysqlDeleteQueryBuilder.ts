@@ -9,11 +9,11 @@ import { SqlDataSource } from "../SqlDatasource";
 import { DateTime } from "luxon";
 import updateTemplate from "../Resources/Query/UPDATE";
 import { SelectableType } from "../Models/ModelManager/ModelManagerTypes";
-import { AbstractDeleteQueryBuilder } from "../QueryBuilder/DeleteQueryBuilder";
+import { ModelDeleteQueryBuilder } from "../QueryBuilder/DeleteQueryBuilder";
 
 export class MysqlDeleteQueryBuilder<
   T extends Model,
-> extends AbstractDeleteQueryBuilder<T> {
+> extends ModelDeleteQueryBuilder<T> {
   protected sqlConnection: Connection;
   protected joinQuery;
   protected updateTemplate: ReturnType<typeof updateTemplate>;

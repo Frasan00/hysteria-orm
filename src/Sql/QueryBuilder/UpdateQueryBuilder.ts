@@ -5,7 +5,7 @@ import updateTemplate from "../Resources/Query/UPDATE";
 import { TransactionType } from "../Models/ModelManager/ModelManagerTypes";
 import { Client } from "pg";
 
-export abstract class AbstractUpdateQueryBuilder<
+export abstract class ModelUpdateQueryBuilder<
   T extends Model,
 > extends WhereQueryBuilder<T> {
   protected abstract sqlConnection: Connection | Client;
@@ -21,19 +21,19 @@ export abstract class AbstractUpdateQueryBuilder<
     relationTable: string,
     primaryColumn: string,
     foreignColumn: string,
-  ): AbstractUpdateQueryBuilder<T>;
+  ): ModelUpdateQueryBuilder<T>;
   public abstract leftJoin(
     relationTable: string,
     primaryColumn: string,
     foreignColumn: string,
-  ): AbstractUpdateQueryBuilder<T>;
+  ): ModelUpdateQueryBuilder<T>;
   public abstract whereBuilder(
-    cb: (queryBuilder: AbstractUpdateQueryBuilder<T>) => void,
+    cb: (queryBuilder: ModelUpdateQueryBuilder<T>) => void,
   ): this;
   public abstract orWhereBuilder(
-    cb: (queryBuilder: AbstractUpdateQueryBuilder<T>) => void,
+    cb: (queryBuilder: ModelUpdateQueryBuilder<T>) => void,
   ): this;
   public abstract andWhereBuilder(
-    cb: (queryBuilder: AbstractUpdateQueryBuilder<T>) => void,
+    cb: (queryBuilder: ModelUpdateQueryBuilder<T>) => void,
   ): this;
 }

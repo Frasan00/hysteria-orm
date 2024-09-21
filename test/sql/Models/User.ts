@@ -7,7 +7,7 @@ import {
 import { Model } from "../../../src/Sql/Models/Model";
 import { Post } from "./Post";
 import crypto from "crypto";
-import { AbstractQueryBuilders } from "../../../src/Sql/QueryBuilder/QueryBuilder";
+import { ModelQueryBuilder } from "../../../src/Sql/QueryBuilder/QueryBuilder";
 
 export class User extends Model {
   @column({ primaryKey: true })
@@ -44,8 +44,8 @@ export class User extends Model {
   declare post: Post;
 
   static beforeFetch(
-    queryBuilder: AbstractQueryBuilders<User>,
-  ): AbstractQueryBuilders<User> {
+    queryBuilder: ModelQueryBuilder<User>,
+  ): ModelQueryBuilder<User> {
     queryBuilder.whereNull("deletedAt");
     return queryBuilder;
   }

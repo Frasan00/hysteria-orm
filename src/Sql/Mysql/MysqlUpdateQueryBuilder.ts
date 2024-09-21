@@ -6,11 +6,11 @@ import { WhereQueryBuilder } from "../QueryBuilder/WhereQueryBuilder";
 import updateTemplate from "../Resources/Query/UPDATE";
 import joinTemplate from "../Resources/Query/JOIN";
 import { SqlDataSource } from "../SqlDatasource";
-import { AbstractUpdateQueryBuilder } from "../QueryBuilder/UpdateQueryBuilder";
+import { ModelUpdateQueryBuilder } from "../QueryBuilder/UpdateQueryBuilder";
 
 export class MysqlUpdateQueryBuilder<
   T extends Model,
-> extends AbstractUpdateQueryBuilder<T> {
+> extends ModelUpdateQueryBuilder<T> {
   protected sqlConnection: Connection;
   protected joinQuery = "";
   protected updateTemplate: ReturnType<typeof updateTemplate>;

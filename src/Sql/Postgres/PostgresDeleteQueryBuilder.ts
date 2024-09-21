@@ -10,11 +10,11 @@ import { SqlDataSource } from "../SqlDatasource";
 import { DateTime } from "luxon";
 import { SelectableType } from "../Models/ModelManager/ModelManagerTypes";
 import updateTemplate from "../Resources/Query/UPDATE";
-import { AbstractDeleteQueryBuilder } from "../QueryBuilder/DeleteQueryBuilder";
+import { ModelDeleteQueryBuilder } from "../QueryBuilder/DeleteQueryBuilder";
 
 export class PostgresDeleteQueryBuilder<
   T extends Model,
-> extends AbstractDeleteQueryBuilder<T> {
+> extends ModelDeleteQueryBuilder<T> {
   protected sqlConnection: Client;
   protected joinQuery;
   protected updateTemplate: ReturnType<typeof updateTemplate>;

@@ -6,7 +6,7 @@ import { BaseValues, WhereOperatorType } from "../Resources/Query/WHERE.TS";
 import {
   OneOptions,
   QueryBuilder,
-  AbstractQueryBuilders,
+  ModelQueryBuilder,
 } from "../QueryBuilder/QueryBuilder";
 import joinTemplate from "../Resources/Query/JOIN";
 import { getPaginationMetadata, PaginatedData } from "../pagination";
@@ -1207,7 +1207,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  public copy(): AbstractQueryBuilders<T> {
+  public copy(): ModelQueryBuilder<T> {
     const queryBuilder = new MysqlQueryBuilder<T>(
       this.model as typeof Model,
       this.table,

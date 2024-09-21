@@ -11,16 +11,13 @@ import {
   getModelColumns,
 } from "./Sql/Models/ModelDecorators";
 import { Relation } from "./Sql/Models/Relations/Relation";
-import { AbstractQueryBuilders } from "./Sql/QueryBuilder/QueryBuilder";
+import { ModelQueryBuilder } from "./Sql/QueryBuilder/QueryBuilder";
 import { SqlDataSource } from "./Sql/SqlDatasource";
 import { getPrimaryKey } from "./Sql/Models/ModelDecorators";
 import { CaseConvention } from "./CaseUtils";
-import { AbstractDeleteQueryBuilder } from "./Sql/QueryBuilder/DeleteQueryBuilder";
-import { AbstractUpdateQueryBuilder } from "./Sql/QueryBuilder/UpdateQueryBuilder";
+import { ModelDeleteQueryBuilder } from "./Sql/QueryBuilder/DeleteQueryBuilder";
+import { ModelUpdateQueryBuilder } from "./Sql/QueryBuilder/UpdateQueryBuilder";
 import { User } from "../test/sql/Models/User";
-import { DateTime } from "luxon";
-import crypto from "crypto";
-import { Post } from "../test/sql/Models/Post";
 
 SqlDataSource.connect().then(async (sql) => {
   const userWithPosts = await User.query()
@@ -66,9 +63,9 @@ export {
   Relation,
   SqlDataSource,
   DataSourceInput,
-  AbstractQueryBuilders,
-  AbstractDeleteQueryBuilder,
-  AbstractUpdateQueryBuilder,
+  ModelQueryBuilder,
+  ModelDeleteQueryBuilder,
+  ModelUpdateQueryBuilder,
   Migration,
   CaseConvention,
   getRelations,

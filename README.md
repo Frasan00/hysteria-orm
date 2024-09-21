@@ -148,7 +148,7 @@ export class User extends Model {
 
 ```typescript
 import "reflect-metadata";
-import { Model, HasOne, HasMany, column, hasOne } from "hysteria-orm";
+import { Model, HasOne, HasMany, column, hasOne, ModelQueryBuilder } from "hysteria-orm";
 import { Profile } from "./Profile";
 import { Post } from "./Post";
 
@@ -186,7 +186,7 @@ export class User extends Model {
     public posts: Post[];
 
     // Hooks
-    public static beforeFetch(queryBuilder: AbstractQueryBuilders<User>): AbstractQueryBuilders<User> {
+    public static beforeFetch(queryBuilder: ModelQueryBuilder<User>): ModelQueryBuilder<User> {
         return queryBuilder.where("isActive", true);
     }
 

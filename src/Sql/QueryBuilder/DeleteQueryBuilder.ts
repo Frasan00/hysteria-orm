@@ -9,7 +9,7 @@ import {
 } from "../Models/ModelManager/ModelManagerTypes";
 import { Client } from "pg";
 
-export abstract class AbstractDeleteQueryBuilder<
+export abstract class ModelDeleteQueryBuilder<
   T extends Model,
 > extends WhereQueryBuilder<T> {
   protected abstract sqlConnection: Connection | Client;
@@ -30,23 +30,23 @@ export abstract class AbstractDeleteQueryBuilder<
     relationTable: string,
     primaryColumn: string,
     foreignColumn: string,
-  ): AbstractDeleteQueryBuilder<T>;
+  ): ModelDeleteQueryBuilder<T>;
 
   public abstract leftJoin(
     relationTable: string,
     primaryColumn: string,
     foreignColumn: string,
-  ): AbstractDeleteQueryBuilder<T>;
+  ): ModelDeleteQueryBuilder<T>;
 
   public abstract whereBuilder(
-    cb: (queryBuilder: AbstractDeleteQueryBuilder<T>) => void,
+    cb: (queryBuilder: ModelDeleteQueryBuilder<T>) => void,
   ): this;
 
   public abstract orWhereBuilder(
-    cb: (queryBuilder: AbstractDeleteQueryBuilder<T>) => void,
+    cb: (queryBuilder: ModelDeleteQueryBuilder<T>) => void,
   ): this;
 
   public abstract andWhereBuilder(
-    cb: (queryBuilder: AbstractDeleteQueryBuilder<T>) => void,
+    cb: (queryBuilder: ModelDeleteQueryBuilder<T>) => void,
   ): this;
 }

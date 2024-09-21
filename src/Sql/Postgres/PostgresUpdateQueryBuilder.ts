@@ -7,11 +7,11 @@ import { Client } from "pg";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
 import joinTemplate from "../Resources/Query/JOIN";
 import { SqlDataSource } from "../SqlDatasource";
-import { AbstractUpdateQueryBuilder } from "../QueryBuilder/UpdateQueryBuilder";
+import { ModelUpdateQueryBuilder } from "../QueryBuilder/UpdateQueryBuilder";
 
 export class PostgresUpdateQueryBuilder<
   T extends Model,
-> extends AbstractUpdateQueryBuilder<T> {
+> extends ModelUpdateQueryBuilder<T> {
   protected sqlConnection: Client;
   protected joinQuery = "";
   protected updateTemplate: ReturnType<typeof updateTemplate>;

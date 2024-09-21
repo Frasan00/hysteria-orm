@@ -2,20 +2,16 @@ import "reflect-metadata";
 import { DateTime } from "luxon";
 import { MysqlTransaction } from "../Mysql/MysqlTransaction";
 import { PostgresTransaction } from "../Postgres/PostgresTransaction";
-import {
-  OneOptions,
-  AbstractQueryBuilders,
-} from "../QueryBuilder/QueryBuilder";
+import { OneOptions, ModelQueryBuilder } from "../QueryBuilder/QueryBuilder";
 import { SqlDataSource } from "../SqlDatasource";
 import {
   FindOneType,
   FindType,
   SelectableType,
 } from "./ModelManager/ModelManagerTypes";
-import { parseDatabaseDataIntoModelResponse } from "../serializer";
 import { CaseConvention, convertCase } from "../../CaseUtils";
-import { AbstractUpdateQueryBuilder } from "../QueryBuilder/UpdateQueryBuilder";
-import { AbstractDeleteQueryBuilder } from "../QueryBuilder/DeleteQueryBuilder";
+import { ModelUpdateQueryBuilder } from "../QueryBuilder/UpdateQueryBuilder";
+import { ModelDeleteQueryBuilder } from "../QueryBuilder/DeleteQueryBuilder";
 import { getPrimaryKey } from "./ModelDecorators";
 
 export function getBasetable(target: typeof Model): string {
@@ -97,11 +93,11 @@ export abstract class Model {
   /**
    * @description Gives a query instance for the given model
    * @param model
-   * @returns {AbstractQueryBuilders<T>}
+   * @returns {ModelQueryBuilder<T>}
    */
   public static query<T extends Model>(
     this: new () => T | typeof Model,
-  ): AbstractQueryBuilders<T> {
+  ): ModelQueryBuilder<T> {
     const typeofModel = this as unknown as typeof Model;
     typeofModel.establishConnection();
     return typeofModel.sqlInstance.getModelManager<T>(typeofModel).query();
@@ -264,7 +260,7 @@ export abstract class Model {
    */
   public static update<T extends Model>(
     this: new () => T | typeof Model,
-  ): AbstractUpdateQueryBuilder<T> {
+  ): ModelUpdateQueryBuilder<T> {
     const typeofModel = this as unknown as typeof Model;
     typeofModel.establishConnection();
     return typeofModel.sqlInstance.getModelManager<T>(typeofModel).update();
@@ -279,7 +275,7 @@ export abstract class Model {
    */
   public static delete<T extends Model>(
     this: new () => T | typeof Model,
-  ): AbstractDeleteQueryBuilder<T> {
+  ): ModelDeleteQueryBuilder<T> {
     const typeofModel = this as unknown as typeof Model;
     typeofModel.establishConnection();
     return typeofModel.sqlInstance.getModelManager<T>(typeofModel).delete();
@@ -381,8 +377,8 @@ export abstract class Model {
    * @param queryBuilder
    */
   public static beforeFetch(
-    queryBuilder: AbstractQueryBuilders<any>,
-  ): AbstractQueryBuilders<any> {
+    queryBuilder: ModelQueryBuilder<any>,
+  ): ModelQueryBuilder<any> {
     return queryBuilder;
   }
 
@@ -400,8 +396,8 @@ export abstract class Model {
    * @param data
    */
   public static beforeUpdate(
-    queryBuilder: AbstractUpdateQueryBuilder<any>,
-  ): AbstractUpdateQueryBuilder<any> {
+    queryBuilder: ModelUpdateQueryBuilder<any>,
+  ): ModelUpdateQueryBuilder<any> {
     return queryBuilder;
   }
 
@@ -410,8 +406,8 @@ export abstract class Model {
    * @param data
    */
   public static beforeDelete(
-    queryBuilder: AbstractDeleteQueryBuilder<any>,
-  ): AbstractDeleteQueryBuilder<any> {
+    queryBuilder: ModelDeleteQueryBuilder<any>,
+  ): ModelDeleteQueryBuilder<any> {
     return queryBuilder;
   }
 
