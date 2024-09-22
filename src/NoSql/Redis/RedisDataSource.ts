@@ -1,6 +1,26 @@
 import Redis, { RedisOptions } from "ioredis";
 
-type RedisStorable = string | number | boolean | Buffer | Record<string, any>;
+/**
+ * @description The RedisDataSource class is a wrapper around the ioredis library that provides a simple interface to interact with a Redis database
+ */
+export type RedisStorable =
+  | string
+  | number
+  | boolean
+  | Buffer
+  | Array<any>
+  | Record<string, any>;
+
+/**
+ * @description The RedisGiveable type is a type that can be stored in the Redis database
+ */
+export type RedisGiveable =
+  | string
+  | number
+  | boolean
+  | Record<string, any>
+  | Array<any>
+  | null;
 
 export class RedisDataSource {
   public static isConnected: boolean;
@@ -10,7 +30,13 @@ export class RedisDataSource {
 
   public constructor(input?: RedisOptions) {
     this.isConnected = false;
+    const port = input?.port || +(process.env.REDIS_PORT as string) || 6379;
+
     this.redisConnection = new Redis({
+      host: input?.host || process.env.REDIS_HOST,
+      username: input?.username || process.env.REDIS_USERNAME,
+      port: port,
+      password: input?.password || process.env.REDIS_PASSWORD,
       ...input,
     });
   }
@@ -59,7 +85,7 @@ export class RedisDataSource {
    * @description Sets a key-value pair in the Redis database
    * @param {string} key - The key
    * @param {string} value - The value
-   * @param {number} expirationTime - The expiration time in seconds
+   * @param {number} expirationTime - The expiration time in milliseconds
    * @returns {Promise<void>}
    */
   static async set(
@@ -67,6 +93,8 @@ export class RedisDataSource {
     value: RedisStorable,
     expirationTime?: number,
   ): Promise<void> {
+    expirationTime = expirationTime ? expirationTime / 1000 : undefined;
+
     if (typeof value === "object" && !Buffer.isBuffer(value)) {
       value = JSON.stringify(value);
     }
@@ -92,10 +120,21 @@ export class RedisDataSource {
    * @param {string} key - The key
    * @returns {Promise<string>}
    */
-  static async get<T = RedisStorable>(key: string): Promise<T | null> {
+  static async get<T = RedisGiveable>(key: string): Promise<T | null> {
     try {
       const value = await RedisDataSource.redisConnection.get(key);
       return RedisDataSource.getValue<T>(value);
+    } catch (error) {
+      throw new Error(`Failed to get value from Redis: ${error}`);
+    }
+  }
+
+  /**
+   * @description Gets the value of a key in the Redis database as a buffer
+   */
+  static async getBuffer(key: string): Promise<Buffer | null> {
+    try {
+      return await RedisDataSource.redisConnection.getBuffer(key);
     } catch (error) {
       throw new Error(`Failed to get value from Redis: ${error}`);
     }
@@ -107,7 +146,7 @@ export class RedisDataSource {
    * @returns {Promise
    * <T | null>}
    */
-  static async getAndDelete<T = RedisStorable>(key: string): Promise<T | null> {
+  static async getAndDelete<T = RedisGiveable>(key: string): Promise<T | null> {
     try {
       const value = await RedisDataSource.redisConnection.get(key);
       await RedisDataSource.redisConnection.del(key);
@@ -171,7 +210,7 @@ export class RedisDataSource {
    * @description Sets a key-value pair in the Redis database
    * @param {string} key - The key
    * @param {string} value - The value
-   * @param {number} expirationTime - The expiration time in seconds
+   * @param {number} expirationTime - The expiration time in milliseconds
    * @returns {Promise<void>}
    */
   async set(
@@ -179,6 +218,8 @@ export class RedisDataSource {
     value: RedisStorable,
     expirationTime?: number,
   ): Promise<void> {
+    expirationTime = expirationTime ? expirationTime / 1000 : undefined;
+
     if (typeof value === "object" && !Buffer.isBuffer(value)) {
       value = JSON.stringify(value);
     }
@@ -204,10 +245,21 @@ export class RedisDataSource {
    * @param {string} key - The key
    * @returns {Promise<string>}
    */
-  async get<T = RedisStorable>(key: string): Promise<T | null> {
+  async get<T = RedisGiveable>(key: string): Promise<T | null> {
     try {
       const value = await this.redisConnection.get(key);
       return RedisDataSource.getValue<T>(value);
+    } catch (error) {
+      throw new Error(`Failed to get value from Redis: ${error}`);
+    }
+  }
+
+  /**
+   * @description Gets the value of a key in the Redis database as a buffer
+   */
+  async getBuffer(key: string): Promise<Buffer | null> {
+    try {
+      return await this.redisConnection.getBuffer(key);
     } catch (error) {
       throw new Error(`Failed to get value from Redis: ${error}`);
     }
@@ -219,7 +271,7 @@ export class RedisDataSource {
    * @returns {Promise
    * <T | null>}
    */
-  async getAndDelete<T = RedisStorable>(key: string): Promise<T | null> {
+  async getAndDelete<T = RedisGiveable>(key: string): Promise<T | null> {
     try {
       const value = await this.redisConnection.get(key);
       await this.redisConnection.del(key);
@@ -279,7 +331,7 @@ export class RedisDataSource {
     }
   }
 
-  protected static getValue<T = RedisStorable>(value: string | null): T | null {
+  protected static getValue<T = RedisGiveable>(value: string | null): T | null {
     if (!value) {
       return null;
     }

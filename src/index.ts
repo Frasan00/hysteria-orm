@@ -17,7 +17,12 @@ import { getPrimaryKey } from "./Sql/Models/ModelDecorators";
 import { CaseConvention } from "./CaseUtils";
 import { ModelDeleteQueryBuilder } from "./Sql/QueryBuilder/DeleteQueryBuilder";
 import { ModelUpdateQueryBuilder } from "./Sql/QueryBuilder/UpdateQueryBuilder";
-import { RedisDataSource as Redis } from "./NoSql/Redis/RedisDataSource";
+import { RedisOptions } from "ioredis";
+import {
+  RedisDataSource as Redis,
+  RedisGiveable,
+  RedisStorable,
+} from "./NoSql/Redis/RedisDataSource";
 
 export default {
   // Sql
@@ -57,4 +62,7 @@ export {
 
   // Redis
   Redis,
+  RedisGiveable,
+  RedisStorable,
+  RedisOptions,
 };

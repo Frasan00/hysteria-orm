@@ -8,3 +8,6 @@ Hysteria ORM is an Object-Relational Mapping (ORM) library for TypeScript, desig
 1) Mysql
 2) MariaDB
 3) Postgres
+
+## NoSQl
+- [Documentation](./src/NoSql/NOSQL_README.MD)

@@ -3,6 +3,7 @@ import * as pg from 'pg';
 import pg__default, { Pool as Pool$1, PoolClient, Client } from 'pg';
 import { DateTime } from 'luxon';
 import Redis, { RedisOptions } from 'ioredis';
+export { RedisOptions } from 'ioredis';
 
 type DataSourceType = "mysql" | "postgres" | "mariadb" | "redis";
 /**
@@ -2194,7 +2195,14 @@ declare function getRelations(target: typeof Model): Relation[];
  */
 declare function getPrimaryKey(target: typeof Model): string;
 
-type RedisStorable = string | number | boolean | Buffer | Record<string, any>;
+/**
+ * @description The RedisDataSource class is a wrapper around the ioredis library that provides a simple interface to interact with a Redis database
+ */
+type RedisStorable = string | number | boolean | Buffer | Array<any> | Record<string, any>;
+/**
+ * @description The RedisGiveable type is a type that can be stored in the Redis database
+ */
+type RedisGiveable = string | number | boolean | Record<string, any> | Array<any> | null;
 declare class RedisDataSource {
     static isConnected: boolean;
     protected static redisConnection: Redis;
@@ -2218,7 +2226,7 @@ declare class RedisDataSource {
      * @description Sets a key-value pair in the Redis database
      * @param {string} key - The key
      * @param {string} value - The value
-     * @param {number} expirationTime - The expiration time in seconds
+     * @param {number} expirationTime - The expiration time in milliseconds
      * @returns {Promise<void>}
      */
     static set(key: string, value: RedisStorable, expirationTime?: number): Promise<void>;
@@ -2227,14 +2235,18 @@ declare class RedisDataSource {
      * @param {string} key - The key
      * @returns {Promise<string>}
      */
-    static get<T = RedisStorable>(key: string): Promise<T | null>;
+    static get<T = RedisGiveable>(key: string): Promise<T | null>;
+    /**
+     * @description Gets the value of a key in the Redis database as a buffer
+     */
+    static getBuffer(key: string): Promise<Buffer | null>;
     /**
      * @description Gets the value of a key in the Redis database and deletes the key
      * @param {string} key - The key
      * @returns {Promise
      * <T | null>}
      */
-    static getAndDelete<T = RedisStorable>(key: string): Promise<T | null>;
+    static getAndDelete<T = RedisGiveable>(key: string): Promise<T | null>;
     /**
      * @description Deletes a key from the Redis database
      * @param {string} key - The key
@@ -2260,7 +2272,7 @@ declare class RedisDataSource {
      * @description Sets a key-value pair in the Redis database
      * @param {string} key - The key
      * @param {string} value - The value
-     * @param {number} expirationTime - The expiration time in seconds
+     * @param {number} expirationTime - The expiration time in milliseconds
      * @returns {Promise<void>}
      */
     set(key: string, value: RedisStorable, expirationTime?: number): Promise<void>;
@@ -2269,14 +2281,18 @@ declare class RedisDataSource {
      * @param {string} key - The key
      * @returns {Promise<string>}
      */
-    get<T = RedisStorable>(key: string): Promise<T | null>;
+    get<T = RedisGiveable>(key: string): Promise<T | null>;
+    /**
+     * @description Gets the value of a key in the Redis database as a buffer
+     */
+    getBuffer(key: string): Promise<Buffer | null>;
     /**
      * @description Gets the value of a key in the Redis database and deletes the key
      * @param {string} key - The key
      * @returns {Promise
      * <T | null>}
      */
-    getAndDelete<T = RedisStorable>(key: string): Promise<T | null>;
+    getAndDelete<T = RedisGiveable>(key: string): Promise<T | null>;
     /**
      * @description Deletes a key from the Redis database
      * @param {string} key - The key
@@ -2298,7 +2314,7 @@ declare class RedisDataSource {
      * @returns {Promise<void>}
      */
     disconnect(): Promise<void>;
-    protected static getValue<T = RedisStorable>(value: string | null): T | null;
+    protected static getValue<T = RedisGiveable>(value: string | null): T | null;
 }
 
 declare const _default: {
@@ -2315,4 +2331,4 @@ declare const _default: {
     Redis: typeof RedisDataSource;
 };
 
-export { type CaseConvention, type DataSourceInput, Migration, Model, ModelDeleteQueryBuilder, type ModelQueryBuilder, ModelUpdateQueryBuilder, RedisDataSource as Redis, Relation, SqlDataSource, belongsTo, column, _default as default, getModelColumns, getPrimaryKey, getRelations, hasMany, hasOne };
+export { type CaseConvention, type DataSourceInput, Migration, Model, ModelDeleteQueryBuilder, type ModelQueryBuilder, ModelUpdateQueryBuilder, RedisDataSource as Redis, type RedisGiveable, type RedisStorable, Relation, SqlDataSource, belongsTo, column, _default as default, getModelColumns, getPrimaryKey, getRelations, hasMany, hasOne };
