@@ -12,13 +12,15 @@ import {
   SelectableType,
 } from "../Models/ModelManager/ModelManagerTypes";
 import { SqlDataSource } from "../SqlDatasource";
+import { SQLiteQueryBuilder } from "../Sqlite/SQLiteQueryBuilder";
 
 /**
  * @description The abstract class for query builders for selecting data.
  */
 export type ModelQueryBuilder<T extends Model> =
   | MysqlQueryBuilder<T>
-  | PostgresQueryBuilder<T>;
+  | PostgresQueryBuilder<T>
+  | SQLiteQueryBuilder<T>;
 
 export type OneOptions = {
   throwErrorOnNull: boolean;

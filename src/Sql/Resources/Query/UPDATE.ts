@@ -28,6 +28,7 @@ const updateTemplate = (
 
       switch (dbType) {
         case "mysql":
+        case "sqlite":
         case "mariadb":
           setClause = columns.map((column) => `\`${column}\` = ?`).join(", ");
           params = [...values, primaryKeyValue];
@@ -42,9 +43,11 @@ const updateTemplate = (
           throw new Error("Unsupported database type");
       }
 
-      const query = `UPDATE ${table}
+      let query = `UPDATE ${table}
 SET ${setClause}
-WHERE ${primaryKey} = ${dbType === "mysql" ? "?" : `$${columns.length + 1}`};`;
+WHERE ${primaryKey} = ${
+        dbType !== "postgres" ? "?" : `$${columns.length + 1}`
+      };`;
 
       return { query, params };
     },
@@ -63,6 +66,7 @@ WHERE ${primaryKey} = ${dbType === "mysql" ? "?" : `$${columns.length + 1}`};`;
 
       switch (dbType) {
         case "mysql":
+        case "sqlite":
         case "mariadb":
           setClause = columns.map((column) => `\`${column}\` = ?`).join(", ");
           values.forEach((value) => {
@@ -84,7 +88,9 @@ WHERE ${primaryKey} = ${dbType === "mysql" ? "?" : `$${columns.length + 1}`};`;
       let query = `UPDATE ${table} ${joinClause}
 SET ${setClause}
 ${whereClause}`;
-      dbType === "postgres" && (query += " RETURNING *;");
+      if (dbType === "postgres" || dbType === "sqlite") {
+        query += " RETURNING *";
+      }
 
       return { query, params };
     },

@@ -1,20 +1,18 @@
-import { Pool, PoolConnection, RowDataPacket } from "mysql2/promise";
 import { BEGIN_TRANSACTION } from "../Resources/Query/TRANSACTION";
 import { COMMIT_TRANSACTION } from "../Resources/Query/TRANSACTION";
 import { ROLLBACK_TRANSACTION } from "../Resources/Query/TRANSACTION";
 import { log, queryError } from "../../Logger";
 import { Model } from "../Models/Model";
-import selectTemplate from "../Resources/Query/SELECT";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
+import sqlite3 from "sqlite3";
 
-export class MysqlTransaction {
-  protected mysql: Pool;
-  protected mysqlPool!: PoolConnection;
+export class SQLiteTransaction {
+  protected sqLite: sqlite3.Database;
   protected logs: boolean;
 
-  constructor(mysql: Pool, logs: boolean) {
+  constructor(sqLite: sqlite3.Database, logs: boolean) {
     this.logs = logs;
-    this.mysql = mysql;
+    this.sqLite = sqLite;
   }
 
   public async queryInsert<T extends Model>(
@@ -22,19 +20,12 @@ export class MysqlTransaction {
     params: any[],
     typeofModel: typeof Model,
   ): Promise<T> {
-    if (!this.mysqlPool) {
-      throw new Error("MysqlTransaction not started.");
+    if (!this.sqLite) {
+      throw new Error("SQLiteTransaction not started.");
     }
 
     log(query, this.logs, params);
-    const [rows]: any = await this.mysqlPool.query<RowDataPacket[]>(
-      query,
-      params,
-    );
-    const insertId = rows.insertId;
-    const select = selectTemplate("mysql", typeofModel).selectById(insertId);
-    const [savedModel] = await this.mysqlPool.query<RowDataPacket[]>(select);
-    const result = savedModel[0] as T;
+    const result = await this.promisifyQuery<T>(query, params);
     return (await parseDatabaseDataIntoModelResponse(
       [result],
       typeofModel,
@@ -46,19 +37,16 @@ export class MysqlTransaction {
     params: any[],
     typeofModel: typeof Model,
   ): Promise<T[]> {
-    if (!this.mysql) {
-      throw new Error("MysqlTransaction not started.");
+    if (!this.sqLite) {
+      throw new Error("SQLiteTransaction not started.");
     }
 
     try {
       log(query, this.logs, params);
-      const [rows]: any = await this.mysqlPool.query<RowDataPacket[]>(
-        query,
-        params,
-      );
+      const result = await this.promisifyQuery<T[]>(query, params);
 
       return (await parseDatabaseDataIntoModelResponse(
-        rows as T[],
+        result,
         typeofModel,
       )) as T[];
     } catch (error) {
@@ -69,22 +57,17 @@ export class MysqlTransaction {
     }
   }
 
-  public async massiveUpdateQuery(
+  public async massiveUpdateQuery<T extends Model>(
     query: string,
     params: any[],
-  ): Promise<number> {
-    if (!this.mysql) {
-      throw new Error("MysqlTransaction not started.");
+  ): Promise<T[]> {
+    if (!this.sqLite) {
+      throw new Error("SQLiteTransaction not started.");
     }
 
     try {
       log(query, this.logs, params);
-      const rows: any = await this.mysql.query(query, params);
-      if (!rows.length) {
-        return 0;
-      }
-
-      return rows[0].affectedRows;
+      return await this.promisifyQuery<T[]>(query, params);
     } catch (error) {
       queryError(error);
       throw new Error(
@@ -93,22 +76,17 @@ export class MysqlTransaction {
     }
   }
 
-  public async massiveDeleteQuery(
+  public async massiveDeleteQuery<T extends Model>(
     query: string,
     params: any[],
-  ): Promise<number> {
-    if (!this.mysql) {
-      throw new Error("MysqlTransaction not started.");
+  ): Promise<T[]> {
+    if (!this.sqLite) {
+      throw new Error("SQLiteTransaction not started.");
     }
 
     log(query, this.logs, params);
     try {
-      const rows: any = await this.mysql.query(query, params);
-      if (!rows.length) {
-        throw new Error("Failed to update");
-      }
-
-      return rows[0].affectedRows;
+      return await this.promisifyQuery<T[]>(query, params);
     } catch (error) {
       queryError(error);
       throw new Error(
@@ -117,31 +95,28 @@ export class MysqlTransaction {
     }
   }
 
-  public async queryUpdate(query: string, params?: any[]): Promise<number> {
-    if (!this.mysqlPool) {
-      throw new Error("MysqlTransaction not started.");
+  public async queryUpdate<T extends Model>(
+    query: string,
+    params?: any[],
+  ): Promise<T[]> {
+    if (!this.sqLite) {
+      throw new Error("SQLiteTransaction not started.");
     }
 
     log(query, this.logs, params);
-    const [rows]: any = await this.mysqlPool.query<RowDataPacket[]>(
-      query,
-      params,
-    );
-    return rows.affectedRows;
+    return await this.promisifyQuery<T[]>(query, params);
   }
 
-  public async queryDelete(query: string, params?: any[]): Promise<number> {
-    if (!this.mysqlPool) {
-      throw new Error("MysqlTransaction not started.");
+  public async queryDelete<T extends Model>(
+    query: string,
+    params?: any[],
+  ): Promise<T[]> {
+    if (!this.sqLite) {
+      throw new Error("SQLiteTransaction not started.");
     }
 
     log(query, this.logs, params);
-    const [rows]: any = await this.mysqlPool.query<RowDataPacket[]>(
-      query,
-      params,
-    );
-
-    return rows.affectedRows;
+    return await this.promisifyQuery<T[]>(query, params);
   }
 
   /**
@@ -150,8 +125,7 @@ export class MysqlTransaction {
   async start(): Promise<void> {
     try {
       log(BEGIN_TRANSACTION, this.logs);
-      this.mysqlPool = await this.mysql.getConnection();
-      await this.mysqlPool.query(BEGIN_TRANSACTION);
+      await this.promisifyQuery<void>(BEGIN_TRANSACTION, []);
     } catch (error) {
       queryError(error);
       throw new Error("Failed to start transaction " + error);
@@ -162,14 +136,13 @@ export class MysqlTransaction {
    * Commit transaction.
    */
   async commit(): Promise<void> {
-    if (!this.mysqlPool) {
-      throw new Error("MysqlTransaction not started.");
+    if (!this.sqLite) {
+      throw new Error("SQLiteTransaction not started.");
     }
 
     try {
       log(COMMIT_TRANSACTION, this.logs);
-      await this.mysqlPool.query(COMMIT_TRANSACTION);
-      this.mysqlPool.release();
+      await this.promisifyQuery<void>(COMMIT_TRANSACTION, []);
     } catch (error) {
       queryError(error);
       throw new Error("Failed to commit transaction " + error);
@@ -180,17 +153,27 @@ export class MysqlTransaction {
    * Rollback transaction.
    */
   async rollback(): Promise<void> {
-    if (!this.mysqlPool) {
+    if (!this.sqLite) {
       return;
     }
 
     try {
       log(ROLLBACK_TRANSACTION, this.logs);
-      await this.mysqlPool.query(ROLLBACK_TRANSACTION);
-      this.mysqlPool.release();
+      await this.promisifyQuery<void>(ROLLBACK_TRANSACTION, []);
     } catch (error) {
       queryError(error);
       throw new Error("Failed to rollback transaction " + error);
     }
+  }
+
+  private promisifyQuery<T>(query: string, params: any): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      this.sqLite.get<T>(query, params, (err, result) => {
+        if (err) {
+          reject(err);
+        }
+        resolve(result);
+      });
+    });
   }
 }

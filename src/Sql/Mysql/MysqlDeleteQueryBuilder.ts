@@ -1,6 +1,5 @@
 import { Model } from "../Models/Model";
 import { log, queryError } from "../../Logger";
-import { WhereQueryBuilder } from "../QueryBuilder/WhereQueryBuilder";
 import { MysqlTransaction } from "./MysqlTransaction";
 import { Connection } from "mysql2/promise";
 import joinTemplate from "../Resources/Query/JOIN";

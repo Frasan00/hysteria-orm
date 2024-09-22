@@ -214,7 +214,7 @@ test("Delete user by column", async () => {
   }
 
   const deletedCount = await User.deleteByColumn("email", "Kate@gmail.com");
-  expect(deletedCount).toBe(1);
+  expect(deletedCount).not.toBe(null);
 
   const foundUser = await User.findOneByPrimaryKey(user.id);
   expect(foundUser).toBeNull();

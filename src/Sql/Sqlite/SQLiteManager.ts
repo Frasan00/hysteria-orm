@@ -6,40 +6,40 @@ import {
   UnrestrictedFindOneType,
   UnrestrictedFindType,
 } from "../Models/ModelManager/ModelManagerTypes";
-import pg from "pg";
-import logger, { log, queryError } from "../../Logger";
+import { log, queryError } from "../../Logger";
 import { AbstractModelManager } from "../Models/ModelManager/AbstractModelManager";
-import { PostgresQueryBuilder } from "./PostgresQueryBuilder";
-import { parseDatabaseDataIntoModelResponse } from "../serializer";
-import { PostgresUpdateQueryBuilder } from "./PostgresUpdateQueryBuilder";
-import { PostgresDeleteQueryBuilder } from "./PostgresDeleteQueryBuilder";
+import { PostgresUpdateQueryBuilder } from "../Postgres/PostgresUpdateQueryBuilder";
 import { SqlDataSource } from "../SqlDatasource";
 import SqlModelManagerUtils from "../Models/ModelManager/ModelManagerUtils";
+import sqlite3 from "sqlite3";
+import { SQLiteQueryBuilder } from "./SQLiteQueryBuilder";
+import { SQLiteUpdateQueryBuilder } from "./SQLiteUpdateQueryBuilder";
+import { SQLiteDeleteQueryBuilder } from "./SQLiteDeleteQueryBuilder";
 
-export class PostgresModelManager<
+export class SQLiteModelManager<
   T extends Model,
 > extends AbstractModelManager<T> {
-  protected pgConnection: pg.Client;
+  protected mysqlConnection: sqlite3.Database;
   protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
 
   /**
-   * Constructor for PostgresModelManager class.
+   * Constructor for MysqlModelManager class.
    *
    * @param {typeof Model} model - Model constructor.
-   * @param {Pool} pgConnection - PostgreSQL connection pool.
+   * @param {Pool} mysqlConnection - MySQL connection pool.
    * @param {boolean} logs - Flag to enable or disable logging.
    */
   constructor(
     model: typeof Model,
-    pgConnection: pg.Client,
+    mysqlConnection: sqlite3.Database,
     logs: boolean,
     sqlDataSource: SqlDataSource,
   ) {
     super(model, logs, sqlDataSource);
-    this.pgConnection = pgConnection;
-    this.sqlModelManagerUtils = new SqlModelManagerUtils(
-      "postgres",
-      pgConnection,
+    this.mysqlConnection = mysqlConnection;
+    this.sqlModelManagerUtils = new SqlModelManagerUtils<T>(
+      "mysql",
+      mysqlConnection,
     );
   }
 
@@ -132,7 +132,7 @@ export class PostgresModelManager<
   /**
    * Find a single record by its PK from the database.
    *
-   * @param {string | number | boolean} value - PK value of the record to retrieve.
+   * @param {string | number | boolean} value - PK of the record to retrieve, hooks will not have any effect, since it's a direct query for the PK.
    * @returns Promise resolving to a single model or null if not found.
    */
   public async findOneByPrimaryKey(
@@ -149,8 +149,10 @@ export class PostgresModelManager<
       }
 
       return await this.query()
-        .where(this.model.primaryKey as string, "=", value)
-        .one({ throwErrorOnNull });
+        .where(this.model.primaryKey as string, value)
+        .one({
+          throwErrorOnNull,
+        });
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -185,17 +187,9 @@ export class PostgresModelManager<
         this.model,
         this.sqlDataSource.getDbType(),
       );
-      log(query, this.logs, params);
-      const { rows } = await this.pgConnection.query(query, params);
-      const insertedModel = rows[0] as T;
-      if (!insertedModel) {
-        throw new Error(rows[0]);
-      }
 
-      return (await parseDatabaseDataIntoModelResponse(
-        [insertedModel],
-        this.model,
-      )) as T;
+      log(query, this.logs, params);
+      return await this.promisifyQuery<T>(query, params);
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -205,15 +199,18 @@ export class PostgresModelManager<
   /**
    * Create multiple model instances in the database.
    *
-   * @param {Model} models - Model instance to be saved.
-   * @param {PostgresTransaction} trx - MysqlTransaction to be used on the save operation.
+   * @param {Model} model - Model instance to be saved.
+   * @param {MysqlTransaction} trx - MysqlTransaction to be used on the save operation.
    * @returns Promise resolving to an array of saved models or null if saving fails.
    */
   public async massiveCreate(
     models: Partial<T>[],
     trx?: TransactionType,
   ): Promise<T[]> {
-    models.forEach((model) => this.model.beforeCreate(model as T));
+    models.forEach((model) => {
+      this.model.beforeCreate(model as T);
+    });
+
     const { query, params } = this.sqlModelManagerUtils.parseMassiveInsert(
       models as T[],
       this.model,
@@ -230,19 +227,8 @@ export class PostgresModelManager<
         this.model,
         this.sqlDataSource.getDbType(),
       );
-
       log(query, this.logs, params);
-      const { rows } = await this.pgConnection.query(query, params);
-      const insertedModel = rows as T[];
-      if (!insertedModel.length) {
-        return [];
-      }
-
-      const insertModelPromise = insertedModel.map(
-        async (model) =>
-          (await parseDatabaseDataIntoModelResponse([model], this.model)) as T,
-      );
-      return await Promise.all(insertModelPromise);
+      return await this.promisifyQuery<T[]>(query, params);
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -252,54 +238,47 @@ export class PostgresModelManager<
   /**
    * Update an existing model instance in the database.
    * @param {Model} model - Model instance to be updated.
-   * @param {PostgresTransaction} trx - PostgresTransaction to be used on the update operation.
+   * @param {MysqlTransaction} trx - MysqlTransaction to be used on the update operation.
    * @returns Promise resolving to the updated model or null if updating fails.
    */
   public async updateRecord(
     model: T,
     trx?: TransactionType,
   ): Promise<T | null> {
-    const { table, primaryKey } = this.model;
-    if (!primaryKey) {
+    if (!this.model.primaryKey) {
       throw new Error(
-        "Model " + table + " has no primary key to be updated, try save",
+        "Model " +
+          this.model.table +
+          " has no primary key to be updated, try save",
       );
     }
 
-    const { query, params } = this.sqlModelManagerUtils.parseUpdate(
-      model,
-      this.model,
-      this.sqlDataSource.getDbType(),
-    );
     if (trx) {
-      await trx.queryUpdate<T>(query, params);
-      if (!primaryKey) {
-        log(
-          "Model has no primary key so no record can be retrieved",
-          this.logs,
-        );
-        return null;
-      }
-
-      return await this.findOneByPrimaryKey(
-        model[primaryKey as keyof T] as string | number | boolean,
-      );
-    }
-
-    try {
       const { query, params } = this.sqlModelManagerUtils.parseUpdate(
         model,
         this.model,
         this.sqlDataSource.getDbType(),
       );
-      log(query, this.logs, params);
-      await this.pgConnection.query(query, params);
-      if (!primaryKey) {
+      await trx.queryUpdate<T>(query, params);
+      if (!this.model.primaryKey) {
         return null;
       }
 
       return await this.findOneByPrimaryKey(
-        model[primaryKey as keyof T] as string | number | boolean,
+        model[this.model.primaryKey as keyof T] as string | number,
+      );
+    }
+
+    try {
+      const updateQuery = this.sqlModelManagerUtils.parseUpdate(
+        model,
+        this.model,
+        this.sqlDataSource.getDbType(),
+      );
+      log(updateQuery.query, this.logs, updateQuery.params);
+      return await this.promisifyQuery<T>(
+        updateQuery.query,
+        updateQuery.params,
       );
     } catch (error) {
       queryError(error);
@@ -312,14 +291,14 @@ export class PostgresModelManager<
    *
    * @param {string} column - Column to filter by.
    * @param {string | number | boolean} value - Value to filter by.
-   * @param {PostgresTransaction} trx - PostgresTransaction to be used on the delete operation.
+   * @param {MysqlTransaction} trx - MysqlTransaction to be used on the delete operation.
    * @returns Promise resolving to affected rows count
    */
   public async deleteByColumn(
     column: string,
     value: string | number | boolean,
     trx?: TransactionType,
-  ): Promise<T | null> {
+  ): Promise<number> {
     if (trx) {
       const { query, params } = this.sqlModelManagerUtils.parseDelete(
         this.model.table,
@@ -327,8 +306,7 @@ export class PostgresModelManager<
         value,
       );
 
-      console.log("Executing query with transaction:", query, params);
-      return (await trx.queryDelete(query, params)) as T;
+      return (await trx.queryDelete(query, params)) as number;
     }
 
     try {
@@ -337,13 +315,9 @@ export class PostgresModelManager<
         column,
         value,
       );
-
-      logger.debug(query, this.logs, params);
       log(query, this.logs, params);
-      const result = await this.pgConnection.query(query, params);
-      return result.rows[0] as T;
+      return await this.promisifyQuery<number>(query, params);
     } catch (error) {
-      console.error("Query error:", error);
       queryError(error);
       throw new Error("Query failed " + error);
     }
@@ -353,7 +327,7 @@ export class PostgresModelManager<
    * @description Delete a record from the database from the given model.
    *
    * @param {Model} model - Model to delete.
-   * @param {PostgresTransaction} trx - PostgresTransaction to be used on the delete operation.
+   * @param {MysqlTransaction} trx - MysqlTransaction to be used on the delete operation.
    * @returns Promise resolving to the deleted model or null if deleting fails.
    */
   public async deleteRecord(
@@ -368,7 +342,6 @@ export class PostgresModelManager<
             " has no primary key to be deleted from, try deleteByColumn",
         );
       }
-
       const { query, params } = this.sqlModelManagerUtils.parseDelete(
         this.model.table,
         this.model.primaryKey,
@@ -381,8 +354,7 @@ export class PostgresModelManager<
       }
 
       log(query, this.logs, params);
-      await this.pgConnection.query(query, params);
-      return model;
+      return await this.promisifyQuery<T>(query, params);
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -394,11 +366,11 @@ export class PostgresModelManager<
    *
    * @returns {MysqlQueryBuilder<Model>} - Instance of MysqlQueryBuilder.
    */
-  public query(): PostgresQueryBuilder<T> {
-    return new PostgresQueryBuilder<T>(
+  public query(): SQLiteQueryBuilder<T> {
+    return new SQLiteQueryBuilder<T>(
       this.model,
       this.model.table,
-      this.pgConnection,
+      this.mysqlConnection,
       this.logs,
       false,
       this.sqlDataSource,
@@ -408,11 +380,11 @@ export class PostgresModelManager<
   /**
    * @description Returns an update query builder.
    */
-  public update(): PostgresUpdateQueryBuilder<T> {
-    return new PostgresUpdateQueryBuilder<T>(
+  public update(): SQLiteUpdateQueryBuilder<T> | PostgresUpdateQueryBuilder<T> {
+    return new SQLiteUpdateQueryBuilder<T>(
       this.model,
       this.model.table,
-      this.pgConnection,
+      this.mysqlConnection,
       this.logs,
       false,
       this.sqlDataSource,
@@ -422,14 +394,25 @@ export class PostgresModelManager<
   /**
    * @description Returns a delete query builder.
    */
-  public delete(): PostgresDeleteQueryBuilder<T> {
-    return new PostgresDeleteQueryBuilder<T>(
+  public delete(): SQLiteDeleteQueryBuilder<T> {
+    return new SQLiteDeleteQueryBuilder<T>(
       this.model,
       this.model.table,
-      this.pgConnection,
+      this.mysqlConnection,
       this.logs,
       false,
       this.sqlDataSource,
     );
+  }
+
+  private promisifyQuery<T>(query: string, params: any): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      this.mysqlConnection.get<T>(query, params, (err, result) => {
+        if (err) {
+          reject(err);
+        }
+        resolve(result);
+      });
+    });
   }
 }

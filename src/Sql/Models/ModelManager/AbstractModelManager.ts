@@ -9,13 +9,10 @@ import {
   UnrestrictedFindOneType,
   UnrestrictedFindType,
 } from "./ModelManagerTypes";
-import { MysqlQueryBuilder } from "../../Mysql/MysqlQueryBuilder";
-import { PostgresQueryBuilder } from "../../Postgres/PostgresQueryBuilder";
-import { MysqlUpdateQueryBuilder } from "../../Mysql/MysqlUpdateQueryBuilder";
-import { PostgresUpdateQueryBuilder } from "../../Postgres/PostgresUpdateQueryBuilder";
-import { PostgresDeleteQueryBuilder } from "../../Postgres/PostgresDeleteQueryBuilder";
-import { MysqlDeleteQueryBuilder } from "../../Mysql/MysqlDeleteQueryBuilder";
 import { SqlDataSource } from "../../SqlDatasource";
+import { QueryBuilder } from "../../QueryBuilder/QueryBuilder";
+import { ModelUpdateQueryBuilder } from "../../QueryBuilder/UpdateQueryBuilder";
+import { ModelDeleteQueryBuilder } from "../../QueryBuilder/DeleteQueryBuilder";
 
 export abstract class AbstractModelManager<T extends Model> {
   protected logs: boolean;
@@ -41,56 +38,100 @@ export abstract class AbstractModelManager<T extends Model> {
     this.sqlDataSource = sqlDataSource;
   }
 
+  /**
+   * @description Finds all records that match the input
+   * @param input
+   */
   public abstract find(input?: FindType<T>): Promise<T[]>;
   public abstract find(input?: UnrestrictedFindType<T>): Promise<T[]>;
   public abstract find(
     input?: FindType<T> | UnrestrictedFindType<T>,
   ): Promise<T[]>;
 
+  /**
+   * @description Finds the first record that matches the input
+   * @param input
+   */
   public abstract findOne(input: UnrestrictedFindOneType<T>): Promise<T | null>;
   public abstract findOne(input: FindOneType<T>): Promise<T | null>;
   public abstract findOne(
     input: FindOneType<T> | UnrestrictedFindOneType<T>,
   ): Promise<T | null>;
 
+  /**
+   * @description Finds a record by its primary key
+   * @param value
+   * @param throwErrorOnNull
+   */
   public abstract findOneByPrimaryKey(
     value: string | number | boolean,
     throwErrorOnNull: boolean,
   ): Promise<T | null>;
 
+  /**
+   * @description Creates a new record
+   * @param model
+   * @param trx
+   */
   public abstract create(
     model: Partial<T>,
     trx?: TransactionType,
   ): Promise<T | null>;
 
+  /**
+   * @description Creates multiple records
+   * @param model
+   * @param trx
+   */
   public abstract massiveCreate(
     model: Partial<T>[],
     trx?: TransactionType,
   ): Promise<T[]>;
 
+  /**
+   * @description Updates a record
+   * @param model
+   * @param trx
+   */
   public abstract updateRecord(
     model: T,
     trx?: TransactionType,
   ): Promise<T | null>;
 
+  /**
+   * @description Deletes a record by a column
+   * @param column
+   * @param value
+   * @param trx
+   */
   public abstract deleteByColumn(
     column: string,
     value: string | number | boolean,
     trx?: TransactionType,
-  ): Promise<number> | Promise<number | null>;
+  ): Promise<number> | Promise<T | null>;
 
+  /**
+   * @description Deletes a record
+   * @param model
+   * @param trx
+   */
   public abstract deleteRecord(
     model: T,
     trx?: TransactionType,
   ): Promise<T | null>;
 
-  public abstract query(): MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
+  /**
+   * @description Returns a query builder
+   */
+  public abstract query(): QueryBuilder<T>;
 
-  public abstract update():
-    | MysqlUpdateQueryBuilder<T>
-    | PostgresUpdateQueryBuilder<T>;
+  /**
+   * @description Returns an update query builder
+   */
+  public abstract update(): ModelUpdateQueryBuilder<T>;
 
-  public abstract delete():
-    | MysqlDeleteQueryBuilder<T>
-    | PostgresDeleteQueryBuilder<T>;
+  /**
+   * @description Returns a delete query builder
+   */
+  public abstract delete(): ModelDeleteQueryBuilder<T>;
 }

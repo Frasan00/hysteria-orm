@@ -29,6 +29,7 @@ const whereTemplate = (
     convertPlaceHolderToValue: (query: string, startIndex: number = 1) => {
       switch (dbType) {
         case "mysql":
+        case "sqlite":
         case "mariadb":
           return query.replace(/PLACEHOLDER/g, () => "?");
         case "postgres":
@@ -53,6 +54,7 @@ const whereTemplate = (
         switch (dbType) {
           case "mariadb":
           case "mysql":
+          case "sqlite":
             query = `\nWHERE JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) ${operator} ?`;
             params = [value]; // Use the JSON string directly
             break;
@@ -84,6 +86,7 @@ const whereTemplate = (
         switch (dbType) {
           case "mariadb":
           case "mysql":
+          case "sqlite":
             query = ` AND JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) ${operator} PLACEHOLDER`;
             break;
           case "postgres":
@@ -114,6 +117,7 @@ const whereTemplate = (
         switch (dbType) {
           case "mariadb":
           case "mysql":
+          case "sqlite":
             query = ` OR JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) ${operator} PLACEHOLDER`;
             break;
           case "postgres":
@@ -140,6 +144,7 @@ const whereTemplate = (
         switch (dbType) {
           case "mariadb":
           case "mysql":
+          case "sqlite":
             query = `\nWHERE JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) != PLACEHOLDER`;
             break;
           case "postgres":
@@ -166,6 +171,7 @@ const whereTemplate = (
         switch (dbType) {
           case "mariadb":
           case "mysql":
+          case "sqlite":
             query = ` AND JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) != PLACEHOLDER`;
             break;
           case "postgres":
@@ -192,6 +198,7 @@ const whereTemplate = (
         switch (dbType) {
           case "mariadb":
           case "mysql":
+          case "sqlite":
             query = ` OR JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) != PLACEHOLDER`;
             break;
           case "postgres":
@@ -218,6 +225,7 @@ const whereTemplate = (
         switch (dbType) {
           case "mariadb":
           case "mysql":
+          case "sqlite":
             query = `\nWHERE JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) BETWEEN PLACEHOLDER AND PLACEHOLDER`;
             break;
           case "postgres":
@@ -244,6 +252,7 @@ const whereTemplate = (
         switch (dbType) {
           case "mariadb":
           case "mysql":
+          case "sqlite":
             query = ` AND JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) BETWEEN PLACEHOLDER AND PLACEHOLDER`;
             break;
           case "postgres":
@@ -270,6 +279,7 @@ const whereTemplate = (
         switch (dbType) {
           case "mariadb":
           case "mysql":
+          case "sqlite":
             query = ` OR JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) BETWEEN PLACEHOLDER AND PLACEHOLDER`;
             break;
           case "postgres":
@@ -296,6 +306,7 @@ const whereTemplate = (
         switch (dbType) {
           case "mariadb":
           case "mysql":
+          case "sqlite":
             query = `\nWHERE JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) NOT BETWEEN PLACEHOLDER AND PLACEHOLDER`;
             break;
           case "postgres":
@@ -322,6 +333,7 @@ const whereTemplate = (
         switch (dbType) {
           case "mariadb":
           case "mysql":
+          case "sqlite":
             query = ` AND JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) NOT BETWEEN PLACEHOLDER AND PLACEHOLDER`;
             break;
           case "postgres":
@@ -348,6 +360,7 @@ const whereTemplate = (
         switch (dbType) {
           case "mariadb":
           case "mysql":
+          case "sqlite":
             query = ` OR JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) NOT BETWEEN PLACEHOLDER AND PLACEHOLDER`;
             break;
           case "postgres":
@@ -374,6 +387,7 @@ const whereTemplate = (
         switch (dbType) {
           case "mariadb":
           case "mysql":
+          case "sqlite":
             query = `\nWHERE JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) IN (${values
               .map((_) => "PLACEHOLDER")
               .join(", ")})`;
@@ -405,6 +419,7 @@ const whereTemplate = (
         switch (dbType) {
           case "mariadb":
           case "mysql":
+          case "sqlite":
             query = ` AND JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) IN (${values
               .map((_) => "PLACEHOLDER")
               .join(", ")})`;
@@ -436,6 +451,7 @@ const whereTemplate = (
         switch (dbType) {
           case "mariadb":
           case "mysql":
+          case "sqlite":
             query = ` OR JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) IN (${values
               .map((_) => "PLACEHOLDER")
               .join(", ")})`;
@@ -467,6 +483,7 @@ const whereTemplate = (
         switch (dbType) {
           case "mariadb":
           case "mysql":
+          case "sqlite":
             query = `\nWHERE JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) NOT IN (${values
               .map((_) => "PLACEHOLDER")
               .join(", ")})`;
@@ -498,6 +515,7 @@ const whereTemplate = (
         switch (dbType) {
           case "mariadb":
           case "mysql":
+          case "sqlite":
             query = ` AND JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) NOT IN (${values
               .map((_) => "PLACEHOLDER")
               .join(", ")})`;
@@ -529,6 +547,7 @@ const whereTemplate = (
         switch (dbType) {
           case "mariadb":
           case "mysql":
+          case "sqlite":
             query = ` OR JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) NOT IN (${values
               .map((_) => "PLACEHOLDER")
               .join(", ")})`;

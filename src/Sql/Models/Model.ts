@@ -353,7 +353,7 @@ export abstract class Model {
     column: string,
     value: string | number | boolean,
     trx?: MysqlTransaction | PostgresTransaction,
-  ): Promise<number> {
+  ): Promise<number> | Promise<T | null> {
     const typeofModel = this as unknown as typeof Model;
     typeofModel.establishConnection();
     return typeofModel.sqlInstance

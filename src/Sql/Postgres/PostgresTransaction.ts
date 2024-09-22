@@ -38,7 +38,11 @@ export class PostgresTransaction {
         insertId as string,
       );
       const { rows: savedModel } = await this.pgClient.query<T>(select);
-      return savedModel[0];
+      const model = savedModel[0] as T;
+      return (await parseDatabaseDataIntoModelResponse(
+        [model],
+        typeofModel,
+      )) as T;
     } catch (error) {
       queryError(error);
       throw new Error("Failed to execute insert query in transaction " + error);
@@ -144,10 +148,10 @@ export class PostgresTransaction {
     }
   }
 
-  public async queryDelete(
+  public async queryDelete<T extends Model>(
     query: string,
     params?: any[],
-  ): Promise<number | null> {
+  ): Promise<T | number | null> {
     if (!this.pgClient) {
       throw new Error("PostgresTransaction not started.");
     }

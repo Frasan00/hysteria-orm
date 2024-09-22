@@ -8,11 +8,12 @@ import {
   TransactionType,
 } from "../Models/ModelManager/ModelManagerTypes";
 import { Client } from "pg";
+import { SqlConnectionType } from "../SqlDatasource";
 
 export abstract class ModelDeleteQueryBuilder<
   T extends Model,
 > extends WhereQueryBuilder<T> {
-  protected abstract sqlConnection: Connection | Client;
+  protected abstract sqlConnection: SqlConnectionType;
   protected abstract joinQuery: string;
   protected abstract updateTemplate: ReturnType<typeof updateTemplate>;
   protected abstract deleteTemplate: ReturnType<typeof deleteTemplate>;

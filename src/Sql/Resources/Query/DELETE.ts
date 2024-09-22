@@ -6,6 +6,7 @@ const deleteTemplate = (table: string, dbType: SqlDataSourceType) => {
       let baseQuery = `DELETE FROM ${table} WHERE ${column} = PLACEHOLDER`;
       switch (dbType) {
         case "mariadb":
+        case "sqlite":
         case "mysql":
           baseQuery = baseQuery.replace("PLACEHOLDER", "?");
           break;
@@ -16,11 +17,17 @@ const deleteTemplate = (table: string, dbType: SqlDataSourceType) => {
           throw new Error("Unsupported database type");
       }
 
+      if (dbType === "postgres" || dbType === "sqlite") {
+        baseQuery += " RETURNING *";
+      }
+
       return { query: baseQuery, params: [value] };
     },
     massiveDelete: (whereClause: string, joinClause: string = "") => {
       let query = `DELETE FROM ${table} ${joinClause} ${whereClause}`;
-      dbType === "postgres" && (query += " RETURNING *;");
+      if (dbType === "postgres" || dbType === "sqlite") {
+        query += " RETURNING *";
+      }
 
       return query;
     },

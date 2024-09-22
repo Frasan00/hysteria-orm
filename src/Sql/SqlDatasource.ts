@@ -1,6 +1,7 @@
 import { DataSource, DataSourceInput, DataSourceType } from "../Datasource";
 import mysql, { createConnection } from "mysql2/promise";
 import pg from "pg";
+import sqlite3 from "sqlite3";
 import { Model } from "./Models/Model";
 import { MysqlModelManager } from "./Mysql/MysqlModelManager";
 import { PostgresModelManager } from "./Postgres/PostgresModelManager";
@@ -12,7 +13,7 @@ type ModelManager<T extends Model> =
   | MysqlModelManager<T>
   | PostgresModelManager<T>;
 
-export type SqlConnectionType = mysql.Connection | pg.Client;
+export type SqlConnectionType = mysql.Connection | pg.Client | sqlite3.Database;
 
 export interface SqlDataSourceInput extends DataSourceInput {
   type: Exclude<DataSourceType, "redis">;
@@ -65,6 +66,18 @@ export class SqlDataSource extends DataSource {
           ...input?.pgOptions,
         });
         await sqlDataSource.sqlConnection.connect();
+        break;
+
+      case "sqlite":
+        sqlDataSource.sqlConnection = new sqlite3.Database(
+          sqlDataSource.database,
+          sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE,
+          (err) => {
+            if (err) {
+              throw new Error(`Error while connecting to sqlite: ${err}`);
+            }
+          },
+        );
         break;
       default:
         throw new Error(`Unsupported datasource type: ${sqlDataSource.type}`);
@@ -190,6 +203,18 @@ export class SqlDataSource extends DataSource {
         });
         await customSqlInstance.sqlConnection.connect();
         break;
+
+      case "sqlite":
+        customSqlInstance.sqlConnection = new sqlite3.Database(
+          customSqlInstance.database,
+          sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE,
+          (err) => {
+            if (err) {
+              throw new Error(`Error while connecting to sqlite: ${err}`);
+            }
+          },
+        );
+        break;
       default:
         throw new Error(
           `Unsupported datasource type: ${customSqlInstance.type}`,
@@ -233,6 +258,17 @@ export class SqlDataSource extends DataSource {
         });
         await client.connect();
         return client;
+
+      case "sqlite":
+        return new sqlite3.Database(
+          this.database,
+          sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE,
+          (err) => {
+            if (err) {
+              throw new Error(`Error while connecting to sqlite: ${err}`);
+            }
+          },
+        );
       default:
         throw new Error(`Unsupported datasource type: ${this.type}`);
     }
@@ -257,6 +293,18 @@ export class SqlDataSource extends DataSource {
         break;
       case "postgres":
         await (this.sqlConnection as pg.Client).end();
+        this.isConnected = false;
+        SqlDataSource.instance = null;
+        break;
+      case "sqlite":
+        await new Promise<void>((resolve, reject) => {
+          (this.sqlConnection as sqlite3.Database).close((err) => {
+            if (err) {
+              reject(err);
+            }
+            resolve();
+          });
+        });
         this.isConnected = false;
         SqlDataSource.instance = null;
         break;

@@ -8,7 +8,12 @@ dotenv.config();
 /*
  * Creates a datasource for the selected database type with the provided credentials
  */
-export type DataSourceType = "mysql" | "postgres" | "mariadb" | "redis";
+export type DataSourceType =
+  | "mysql"
+  | "postgres"
+  | "mariadb"
+  | "sqlite"
+  | "redis";
 
 export type SqlDataSourceType = Omit<DataSourceType, "redis">;
 

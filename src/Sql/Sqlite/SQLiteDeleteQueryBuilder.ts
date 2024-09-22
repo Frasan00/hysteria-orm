@@ -1,82 +1,123 @@
-import { Connection } from "mysql2/promise";
 import { Model } from "../Models/Model";
-import { MysqlTransaction } from "./MysqlTransaction";
 import { log, queryError } from "../../Logger";
-import updateTemplate from "../Resources/Query/UPDATE";
+import { parseDatabaseDataIntoModelResponse } from "../serializer";
+import deleteTemplate from "../Resources/Query/DELETE";
 import joinTemplate from "../Resources/Query/JOIN";
 import { SqlDataSource } from "../SqlDatasource";
-import { ModelUpdateQueryBuilder } from "../QueryBuilder/UpdateQueryBuilder";
+import { DateTime } from "luxon";
+import { SelectableType } from "../Models/ModelManager/ModelManagerTypes";
+import updateTemplate from "../Resources/Query/UPDATE";
+import { ModelDeleteQueryBuilder } from "../QueryBuilder/DeleteQueryBuilder";
+import sqlite3 from "sqlite3";
+import { SQLiteTransaction } from "./SQLiteTransaction";
 
-export class MysqlUpdateQueryBuilder<
+export class SQLiteDeleteQueryBuilder<
   T extends Model,
-> extends ModelUpdateQueryBuilder<T> {
-  protected sqlConnection: Connection;
-  protected joinQuery = "";
+> extends ModelDeleteQueryBuilder<T> {
+  protected sqlConnection: sqlite3.Database;
+  protected joinQuery;
   protected updateTemplate: ReturnType<typeof updateTemplate>;
+  protected deleteTemplate: ReturnType<typeof deleteTemplate>;
   protected isNestedCondition = false;
 
   /**
    * @description Constructs a MysqlQueryBuilder instance.
    * @param model - The model class associated with the table.
    * @param table - The name of the table.
-   * @param mysqlConnection - The MySQL connection pool.
+   * @param sqlConnection - The Sqlite connection pool.
    * @param logs - A boolean indicating whether to log queries.
    * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
    */
   public constructor(
     model: typeof Model,
     table: string,
-    mysqlConnection: Connection,
+    sqlConnection: sqlite3.Database,
     logs: boolean,
     isNestedCondition = false,
     sqlDataSource: SqlDataSource,
   ) {
     super(model, table, logs, false, sqlDataSource);
-    this.sqlConnection = mysqlConnection;
-    this.updateTemplate = updateTemplate(
-      this.sqlDataSource.getDbType(),
-      this.model,
-    );
+    this.sqlConnection = sqlConnection;
+    this.updateTemplate = updateTemplate(sqlDataSource.getDbType(), this.model);
+    this.deleteTemplate = deleteTemplate(table, sqlDataSource.getDbType());
     this.joinQuery = "";
     this.isNestedCondition = isNestedCondition;
   }
 
   /**
-   * @description Updates a record in the database.
+   * @description Deletes Records from the database.
    * @param data - The data to update.
    * @param trx - The transaction to run the query in.
-   * @returns The number of affected rows.
+   * @returns The updated records.
    */
-  public async withData(
-    data: Partial<T>,
-    trx?: MysqlTransaction,
-  ): Promise<number> {
-    const columns = Object.keys(data);
-    const values = Object.values(data);
+  public async execute(trx?: SQLiteTransaction): Promise<T[]> {
     this.whereQuery = this.whereTemplate.convertPlaceHolderToValue(
       this.whereQuery,
     );
-
-    const { query, params } = this.updateTemplate.massiveUpdate(
-      columns,
-      values,
+    const query = this.deleteTemplate.massiveDelete(
       this.whereQuery,
       this.joinQuery,
     );
 
-    params.push(...this.whereParams);
+    if (trx) {
+      return await trx.massiveDeleteQuery(query, this.whereParams);
+    }
+
+    log(query, this.logs, this.whereParams);
+    try {
+      const result = await this.promisifyQuery<T[]>(query, this.whereParams);
+      return (await parseDatabaseDataIntoModelResponse(
+        result,
+        this.model,
+      )) as T[];
+    } catch (error) {
+      queryError(query);
+      throw new Error("Query failed " + error);
+    }
+  }
+
+  /**
+   * @description Soft Deletes Records from the database.
+   * @param column - The column to soft delete. Default is 'deletedAt'.
+   * @param value - The value to set the column to. Default is the current date and time.
+   * @param trx - The transaction to run the query in.
+   * @returns The updated records.
+   */
+  public async softDelete(options?: {
+    column?: SelectableType<T>;
+    value?: string | number | boolean;
+    trx?: SQLiteTransaction;
+  }): Promise<T[]> {
+    const {
+      column = "deletedAt" as SelectableType<T>,
+      value = DateTime.local().toString(),
+      trx,
+    } = options || {};
+    let { query, params } = this.updateTemplate.massiveUpdate(
+      [column as string],
+      [value],
+      this.whereQuery,
+      this.joinQuery,
+    );
+
+    params = [...params, ...this.whereParams];
+
     if (trx) {
       return await trx.massiveUpdateQuery(query, params);
     }
 
     log(query, this.logs, params);
     try {
-      const rows: any = await this.sqlConnection.query(query, params);
-      if (!rows.length) {
-        return 0;
+      const result = await this.promisifyQuery<T[]>(query, params);
+      const models = await parseDatabaseDataIntoModelResponse(
+        result,
+        this.model,
+      );
+      if (!models) {
+        return [];
       }
 
-      return rows[0].affectedRows;
+      return Array.isArray(models) ? models : ([models] as T[]);
     } catch (error) {
       queryError(query);
       throw new Error("Query failed " + error);
@@ -93,7 +134,7 @@ export class MysqlUpdateQueryBuilder<
     relationTable: string,
     primaryColumn: string,
     foreignColumn: string,
-  ): MysqlUpdateQueryBuilder<T> {
+  ): SQLiteDeleteQueryBuilder<T> {
     const join = joinTemplate(
       this.model,
       relationTable,
@@ -114,7 +155,7 @@ export class MysqlUpdateQueryBuilder<
     relationTable: string,
     primaryColumn: string,
     foreignColumn: string,
-  ): MysqlUpdateQueryBuilder<T> {
+  ): SQLiteDeleteQueryBuilder<T> {
     const join = joinTemplate(
       this.model,
       relationTable,
@@ -130,9 +171,9 @@ export class MysqlUpdateQueryBuilder<
    * @param cb
    */
   public whereBuilder(
-    cb: (queryBuilder: MysqlUpdateQueryBuilder<T>) => void,
+    cb: (queryBuilder: SQLiteDeleteQueryBuilder<T>) => void,
   ): this {
-    const queryBuilder = new MysqlUpdateQueryBuilder(
+    const queryBuilder = new SQLiteDeleteQueryBuilder(
       this.model as typeof Model,
       this.table,
       this.sqlConnection,
@@ -140,7 +181,7 @@ export class MysqlUpdateQueryBuilder<
       true,
       this.sqlDataSource,
     );
-    cb(queryBuilder as unknown as MysqlUpdateQueryBuilder<T>);
+    cb(queryBuilder as unknown as SQLiteDeleteQueryBuilder<T>);
 
     let whereCondition = queryBuilder.whereQuery.trim();
     if (whereCondition.startsWith("AND")) {
@@ -168,9 +209,9 @@ export class MysqlUpdateQueryBuilder<
    * @param cb Callback function that takes a query builder and adds conditions to it.
    */
   public orWhereBuilder(
-    cb: (queryBuilder: MysqlUpdateQueryBuilder<T>) => void,
+    cb: (queryBuilder: SQLiteDeleteQueryBuilder<T>) => void,
   ): this {
-    const nestedBuilder = new MysqlUpdateQueryBuilder(
+    const nestedBuilder = new SQLiteDeleteQueryBuilder(
       this.model as typeof Model,
       this.table,
       this.sqlConnection,
@@ -178,7 +219,7 @@ export class MysqlUpdateQueryBuilder<
       true,
       this.sqlDataSource,
     );
-    cb(nestedBuilder as unknown as MysqlUpdateQueryBuilder<T>);
+    cb(nestedBuilder as unknown as SQLiteDeleteQueryBuilder<T>);
 
     let nestedCondition = nestedBuilder.whereQuery.trim();
     if (nestedCondition.startsWith("AND")) {
@@ -209,9 +250,9 @@ export class MysqlUpdateQueryBuilder<
    * @param cb Callback function that takes a query builder and adds conditions to it.
    */
   public andWhereBuilder(
-    cb: (queryBuilder: MysqlUpdateQueryBuilder<T>) => void,
+    cb: (queryBuilder: SQLiteDeleteQueryBuilder<T>) => void,
   ): this {
-    const nestedBuilder = new MysqlUpdateQueryBuilder(
+    const nestedBuilder = new SQLiteDeleteQueryBuilder(
       this.model as typeof Model,
       this.table,
       this.sqlConnection,
@@ -219,7 +260,7 @@ export class MysqlUpdateQueryBuilder<
       true,
       this.sqlDataSource,
     );
-    cb(nestedBuilder as unknown as MysqlUpdateQueryBuilder<T>);
+    cb(nestedBuilder as unknown as SQLiteDeleteQueryBuilder<T>);
 
     let nestedCondition = nestedBuilder.whereQuery.trim();
     if (nestedCondition.startsWith("AND")) {
@@ -241,5 +282,16 @@ export class MysqlUpdateQueryBuilder<
     this.whereParams.push(...nestedBuilder.whereParams);
 
     return this;
+  }
+
+  private promisifyQuery<T>(query: string, params: any): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      this.sqlConnection.get<T>(query, params, (err, result) => {
+        if (err) {
+          reject(err);
+        }
+        resolve(result);
+      });
+    });
   }
 }

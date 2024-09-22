@@ -1,6 +1,5 @@
 import { Model } from "../Models/Model";
 import { log, queryError } from "../../Logger";
-import { WhereQueryBuilder } from "../QueryBuilder/WhereQueryBuilder";
 import updateTemplate from "../Resources/Query/UPDATE";
 import { PostgresTransaction } from "./PostgresTransaction";
 import { Client } from "pg";

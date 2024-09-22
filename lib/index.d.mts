@@ -2,10 +2,11 @@ import mysql, { Pool, PoolConnection, Connection } from 'mysql2/promise';
 import * as pg from 'pg';
 import pg__default, { Pool as Pool$1, PoolClient, Client } from 'pg';
 import { DateTime } from 'luxon';
+import sqlite3 from 'sqlite3';
 import Redis, { RedisOptions } from 'ioredis';
 export { RedisOptions } from 'ioredis';
 
-type DataSourceType = "mysql" | "postgres" | "mariadb" | "redis";
+type DataSourceType = "mysql" | "postgres" | "mariadb" | "sqlite" | "redis";
 type SqlDataSourceType$1 = Omit<DataSourceType, "redis">;
 /**
  * @description By default the connection details can be provided in the env.ts file, you can still override each prop with your actual connection details
@@ -415,7 +416,7 @@ declare class PostgresTransaction {
     massiveUpdateQuery<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T[]>;
     massiveDeleteQuery<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T[]>;
     queryUpdate<T extends Model>(query: string, params?: any[]): Promise<number | null>;
-    queryDelete(query: string, params?: any[]): Promise<number | null>;
+    queryDelete<T extends Model>(query: string, params?: any[]): Promise<T | number | null>;
     /**
      * Start transaction.
      */
@@ -573,6 +574,31 @@ type PaginatedData<T> = {
     data: T[];
 };
 
+declare class SQLiteTransaction {
+    protected sqLite: sqlite3.Database;
+    protected logs: boolean;
+    constructor(sqLite: sqlite3.Database, logs: boolean);
+    queryInsert<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T>;
+    massiveInsertQuery<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T[]>;
+    massiveUpdateQuery<T extends Model>(query: string, params: any[]): Promise<T[]>;
+    massiveDeleteQuery<T extends Model>(query: string, params: any[]): Promise<T[]>;
+    queryUpdate<T extends Model>(query: string, params?: any[]): Promise<T[]>;
+    queryDelete<T extends Model>(query: string, params?: any[]): Promise<T[]>;
+    /**
+     * Start transaction.
+     */
+    start(): Promise<void>;
+    /**
+     * Commit transaction.
+     */
+    commit(): Promise<void>;
+    /**
+     * Rollback transaction.
+     */
+    rollback(): Promise<void>;
+    private promisifyQuery;
+}
+
 /**
  * @description Options for the relation
  * @property {string} softDeleteColumn - The column name for the soft delete column, if set, the relation will only return rows that have not been soft deleted
@@ -657,122 +683,7 @@ type FindType<T> = Omit<FindOneType<T>, "throwErrorOnNull"> & {
     limit?: number;
     offset?: number;
 };
-type TransactionType = MysqlTransaction | PostgresTransaction;
-
-declare class SqlModelManagerUtils<T extends Model> {
-    protected dbType: SqlDataSourceType$1;
-    protected sqlConnection: SqlConnectionType;
-    constructor(dbType: SqlDataSourceType$1, sqlConnection: SqlConnectionType);
-    parseInsert(model: T, typeofModel: typeof Model, dbType: SqlDataSourceType$1): {
-        query: string;
-        params: any[];
-    };
-    parseMassiveInsert(models: T[], typeofModel: typeof Model, dbType: SqlDataSourceType$1): {
-        query: string;
-        params: any[];
-    };
-    parseUpdate(model: T, typeofModel: typeof Model, dbType: SqlDataSourceType$1): {
-        query: string;
-        params: any[];
-    };
-    private filterRelationsAndMetadata;
-    parseDelete(table: string, column: string, value: string | number | boolean): {
-        query: string;
-        params: any[];
-    };
-    private getRelationFromModel;
-    parseQueryBuilderRelations(models: T[], typeofModel: typeof Model, input: string[], logs: boolean): Promise<{
-        [relationName: string]: Model[];
-    }[]>;
-    private getQueryResult;
-}
-
-declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
-    protected pgClient: Client;
-    protected isNestedCondition: boolean;
-    protected postgresModelManagerUtils: SqlModelManagerUtils<T>;
-    constructor(model: typeof Model, table: string, pgClient: Client, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
-    select(...columns: string[]): PostgresQueryBuilder<T>;
-    select(...columns: (SelectableType<T> | "*")[]): PostgresQueryBuilder<T>;
-    raw(query: string, params?: any[]): Promise<pg.QueryResult<any>>;
-    one(options?: OneOptions): Promise<T | null>;
-    oneOrFail(): Promise<T>;
-    many(): Promise<T[]>;
-    getCount(): Promise<number>;
-    getSum(column: SelectableType<T>): Promise<number>;
-    getSum(column: string): Promise<number>;
-    paginate(page: number, limit: number): Promise<PaginatedData<T>>;
-    join(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresQueryBuilder<T>;
-    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresQueryBuilder<T>;
-    addRelations(relations: RelationType<T>[]): PostgresQueryBuilder<T>;
-    whereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
-    orWhereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
-    andWhereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
-    where(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
-    where(column: string, operator: WhereOperatorType, value: BaseValues): this;
-    where(column: SelectableType<T> | string, value: BaseValues): this;
-    andWhere(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
-    andWhere(column: string, operator: WhereOperatorType, value: BaseValues): this;
-    andWhere(column: SelectableType<T> | string, value: BaseValues): this;
-    orWhere(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
-    orWhere(column: string, operator: WhereOperatorType, value: BaseValues): this;
-    orWhere(column: SelectableType<T> | string, value: BaseValues): this;
-    whereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
-    whereBetween(column: string, min: BaseValues, max: BaseValues): this;
-    andWhereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
-    andWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
-    orWhereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
-    orWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
-    whereNotBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
-    whereNotBetween(column: string, min: BaseValues, max: BaseValues): this;
-    orWhereNotBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
-    orWhereNotBetween(column: string, min: BaseValues, max: BaseValues): this;
-    whereIn(column: SelectableType<T>, values: BaseValues[]): this;
-    whereIn(column: string, values: BaseValues[]): this;
-    andWhereIn(column: SelectableType<T>, values: BaseValues[]): this;
-    andWhereIn(column: string, values: BaseValues[]): this;
-    orWhereIn(column: SelectableType<T>, values: BaseValues[]): this;
-    orWhereIn(column: string, values: BaseValues[]): this;
-    whereNotIn(column: SelectableType<T>, values: BaseValues[]): this;
-    whereNotIn(column: string, values: BaseValues[]): this;
-    orWhereNotIn(column: SelectableType<T>, values: BaseValues[]): this;
-    orWhereNotIn(column: string, values: BaseValues[]): this;
-    whereNull(column: SelectableType<T>): this;
-    whereNull(column: string): this;
-    andWhereNull(column: SelectableType<T>): this;
-    andWhereNull(column: string): this;
-    orWhereNull(column: SelectableType<T>): this;
-    orWhereNull(column: string): this;
-    whereNotNull(column: SelectableType<T>): this;
-    whereNotNull(column: string): this;
-    andWhereNotNull(column: SelectableType<T>): this;
-    andWhereNotNull(column: string): this;
-    orWhereNotNull(column: SelectableType<T>): this;
-    orWhereNotNull(column: string): this;
-    rawWhere(query: string): this;
-    rawAndWhere(query: string): this;
-    rawOrWhere(query: string): this;
-    groupBy(...columns: SelectableType<T>[]): this;
-    groupBy(...columns: string[]): this;
-    orderBy(columns: SelectableType<T>[], order: "ASC" | "DESC"): this;
-    orderBy(columns: string[], order: "ASC" | "DESC"): this;
-    limit(limit: number): this;
-    offset(offset: number): this;
-    copy(): ModelQueryBuilder<T>;
-    protected groupFooterQuery(): string;
-    private mergeRawPacketIntoModel;
-}
-
-declare const updateTemplate: (dbType: SqlDataSourceType$1, typeofModel: typeof Model) => {
-    update: (columns: string[], values: any[], primaryKey?: string, primaryKeyValue?: string | undefined) => {
-        query: string;
-        params: any[];
-    };
-    massiveUpdate: (columns: string[], values: any[], whereClause: string, joinClause?: string) => {
-        query: string;
-        params: any[];
-    };
-};
+type TransactionType = MysqlTransaction | PostgresTransaction | SQLiteTransaction;
 
 declare abstract class WhereQueryBuilder<T extends Model> {
     protected sqlDataSource: SqlDataSource;
@@ -968,8 +879,19 @@ declare abstract class WhereQueryBuilder<T extends Model> {
     rawOrWhere(query: string): this;
 }
 
+declare const updateTemplate: (dbType: SqlDataSourceType$1, typeofModel: typeof Model) => {
+    update: (columns: string[], values: any[], primaryKey?: string, primaryKeyValue?: string | undefined) => {
+        query: string;
+        params: any[];
+    };
+    massiveUpdate: (columns: string[], values: any[], whereClause: string, joinClause?: string) => {
+        query: string;
+        params: any[];
+    };
+};
+
 declare abstract class ModelUpdateQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
-    protected abstract sqlConnection: Connection | Client;
+    protected abstract sqlConnection: SqlConnectionType;
     protected abstract joinQuery: string;
     protected abstract updateTemplate: ReturnType<typeof updateTemplate>;
     protected abstract isNestedCondition: boolean;
@@ -979,6 +901,110 @@ declare abstract class ModelUpdateQueryBuilder<T extends Model> extends WhereQue
     abstract whereBuilder(cb: (queryBuilder: ModelUpdateQueryBuilder<T>) => void): this;
     abstract orWhereBuilder(cb: (queryBuilder: ModelUpdateQueryBuilder<T>) => void): this;
     abstract andWhereBuilder(cb: (queryBuilder: ModelUpdateQueryBuilder<T>) => void): this;
+}
+
+declare const deleteTemplate: (table: string, dbType: SqlDataSourceType$1) => {
+    delete: (column: string, value: string | number | boolean | Date) => {
+        query: string;
+        params: (string | number | boolean | Date)[];
+    };
+    massiveDelete: (whereClause: string, joinClause?: string) => string;
+};
+
+declare abstract class ModelDeleteQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
+    protected abstract sqlConnection: SqlConnectionType;
+    protected abstract joinQuery: string;
+    protected abstract updateTemplate: ReturnType<typeof updateTemplate>;
+    protected abstract deleteTemplate: ReturnType<typeof deleteTemplate>;
+    protected abstract isNestedCondition: boolean;
+    abstract softDelete(options?: {
+        column?: SelectableType<T>;
+        value?: string | number | boolean;
+        trx?: TransactionType;
+    }): Promise<T[] | number>;
+    abstract execute(trx?: TransactionType): Promise<T[] | number>;
+    abstract join(relationTable: string, primaryColumn: string, foreignColumn: string): ModelDeleteQueryBuilder<T>;
+    abstract leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): ModelDeleteQueryBuilder<T>;
+    abstract whereBuilder(cb: (queryBuilder: ModelDeleteQueryBuilder<T>) => void): this;
+    abstract orWhereBuilder(cb: (queryBuilder: ModelDeleteQueryBuilder<T>) => void): this;
+    abstract andWhereBuilder(cb: (queryBuilder: ModelDeleteQueryBuilder<T>) => void): this;
+}
+
+declare abstract class AbstractModelManager<T extends Model> {
+    protected logs: boolean;
+    protected sqlDataSource: SqlDataSource;
+    protected model: typeof Model;
+    protected modelInstance: T;
+    protected throwError: boolean;
+    /**
+     * @param model
+     * @param logs
+     * @param sqlDataSource Passed if a custom connection is provided
+     */
+    protected constructor(model: typeof Model, logs: boolean, sqlDataSource: SqlDataSource);
+    /**
+     * @description Finds all records that match the input
+     * @param input
+     */
+    abstract find(input?: FindType<T>): Promise<T[]>;
+    abstract find(input?: UnrestrictedFindType<T>): Promise<T[]>;
+    abstract find(input?: FindType<T> | UnrestrictedFindType<T>): Promise<T[]>;
+    /**
+     * @description Finds the first record that matches the input
+     * @param input
+     */
+    abstract findOne(input: UnrestrictedFindOneType<T>): Promise<T | null>;
+    abstract findOne(input: FindOneType<T>): Promise<T | null>;
+    abstract findOne(input: FindOneType<T> | UnrestrictedFindOneType<T>): Promise<T | null>;
+    /**
+     * @description Finds a record by its primary key
+     * @param value
+     * @param throwErrorOnNull
+     */
+    abstract findOneByPrimaryKey(value: string | number | boolean, throwErrorOnNull: boolean): Promise<T | null>;
+    /**
+     * @description Creates a new record
+     * @param model
+     * @param trx
+     */
+    abstract create(model: Partial<T>, trx?: TransactionType): Promise<T | null>;
+    /**
+     * @description Creates multiple records
+     * @param model
+     * @param trx
+     */
+    abstract massiveCreate(model: Partial<T>[], trx?: TransactionType): Promise<T[]>;
+    /**
+     * @description Updates a record
+     * @param model
+     * @param trx
+     */
+    abstract updateRecord(model: T, trx?: TransactionType): Promise<T | null>;
+    /**
+     * @description Deletes a record by a column
+     * @param column
+     * @param value
+     * @param trx
+     */
+    abstract deleteByColumn(column: string, value: string | number | boolean, trx?: TransactionType): Promise<number> | Promise<T | null>;
+    /**
+     * @description Deletes a record
+     * @param model
+     * @param trx
+     */
+    abstract deleteRecord(model: T, trx?: TransactionType): Promise<T | null>;
+    /**
+     * @description Returns a query builder
+     */
+    abstract query(): QueryBuilder<T>;
+    /**
+     * @description Returns an update query builder
+     */
+    abstract update(): ModelUpdateQueryBuilder<T>;
+    /**
+     * @description Returns a delete query builder
+     */
+    abstract delete(): ModelDeleteQueryBuilder<T>;
 }
 
 declare class MysqlUpdateQueryBuilder<T extends Model> extends ModelUpdateQueryBuilder<T> {
@@ -1085,98 +1111,6 @@ declare class PostgresUpdateQueryBuilder<T extends Model> extends ModelUpdateQue
     andWhereBuilder(cb: (queryBuilder: PostgresUpdateQueryBuilder<T>) => void): this;
 }
 
-declare const deleteTemplate: (table: string, dbType: SqlDataSourceType$1) => {
-    delete: (column: string, value: string | number | boolean | Date) => {
-        query: string;
-        params: (string | number | boolean | Date)[];
-    };
-    massiveDelete: (whereClause: string, joinClause?: string) => string;
-};
-
-declare abstract class ModelDeleteQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
-    protected abstract sqlConnection: Connection | Client;
-    protected abstract joinQuery: string;
-    protected abstract updateTemplate: ReturnType<typeof updateTemplate>;
-    protected abstract deleteTemplate: ReturnType<typeof deleteTemplate>;
-    protected abstract isNestedCondition: boolean;
-    abstract softDelete(options?: {
-        column?: SelectableType<T>;
-        value?: string | number | boolean;
-        trx?: TransactionType;
-    }): Promise<T[] | number>;
-    abstract execute(trx?: TransactionType): Promise<T[] | number>;
-    abstract join(relationTable: string, primaryColumn: string, foreignColumn: string): ModelDeleteQueryBuilder<T>;
-    abstract leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): ModelDeleteQueryBuilder<T>;
-    abstract whereBuilder(cb: (queryBuilder: ModelDeleteQueryBuilder<T>) => void): this;
-    abstract orWhereBuilder(cb: (queryBuilder: ModelDeleteQueryBuilder<T>) => void): this;
-    abstract andWhereBuilder(cb: (queryBuilder: ModelDeleteQueryBuilder<T>) => void): this;
-}
-
-declare class PostgresDeleteQueryBuilder<T extends Model> extends ModelDeleteQueryBuilder<T> {
-    protected sqlConnection: Client;
-    protected joinQuery: string;
-    protected updateTemplate: ReturnType<typeof updateTemplate>;
-    protected deleteTemplate: ReturnType<typeof deleteTemplate>;
-    protected isNestedCondition: boolean;
-    /**
-     * @description Constructs a MysqlQueryBuilder instance.
-     * @param model - The model class associated with the table.
-     * @param table - The name of the table.
-     * @param pgClient - The MySQL connection pool.
-     * @param logs - A boolean indicating whether to log queries.
-     * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
-     */
-    constructor(model: typeof Model, table: string, pgClient: Client, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
-    /**
-     * @description Deletes Records from the database.
-     * @param data - The data to update.
-     * @param trx - The transaction to run the query in.
-     * @returns The updated records.
-     */
-    execute(trx?: PostgresTransaction): Promise<T[]>;
-    /**
-     * @description Soft Deletes Records from the database.
-     * @param column - The column to soft delete. Default is 'deletedAt'.
-     * @param value - The value to set the column to. Default is the current date and time.
-     * @param trx - The transaction to run the query in.
-     * @returns The updated records.
-     */
-    softDelete(options?: {
-        column?: SelectableType<T>;
-        value?: string | number | boolean;
-        trx?: PostgresTransaction;
-    }): Promise<T[]>;
-    /**
-     *
-     * @param relationTable - The name of the related table.
-     * @param primaryColumn - The name of the primary column in the caller table.
-     * @param foreignColumn - The name of the foreign column in the related table.
-     */
-    join(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresDeleteQueryBuilder<T>;
-    /**
-     *
-     * @param relationTable - The name of the related table.
-     * @param primaryColumn - The name of the primary column in the caller table.
-     * @param foreignColumn - The name of the foreign column in the related table.
-     */
-    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresDeleteQueryBuilder<T>;
-    /**
-     * @description Build more complex where conditions.
-     * @param cb
-     */
-    whereBuilder(cb: (queryBuilder: PostgresDeleteQueryBuilder<T>) => void): this;
-    /**
-     * @description Build complex OR-based where conditions.
-     * @param cb Callback function that takes a query builder and adds conditions to it.
-     */
-    orWhereBuilder(cb: (queryBuilder: PostgresDeleteQueryBuilder<T>) => void): this;
-    /**
-     * @description Build complex AND-based where conditions.
-     * @param cb Callback function that takes a query builder and adds conditions to it.
-     */
-    andWhereBuilder(cb: (queryBuilder: PostgresDeleteQueryBuilder<T>) => void): this;
-}
-
 declare class MysqlDeleteQueryBuilder<T extends Model> extends ModelDeleteQueryBuilder<T> {
     protected sqlConnection: Connection;
     protected joinQuery: string;
@@ -1241,33 +1175,32 @@ declare class MysqlDeleteQueryBuilder<T extends Model> extends ModelDeleteQueryB
     andWhereBuilder(cb: (queryBuilder: MysqlDeleteQueryBuilder<T>) => void): this;
 }
 
-declare abstract class AbstractModelManager<T extends Model> {
-    protected logs: boolean;
-    protected sqlDataSource: SqlDataSource;
-    protected model: typeof Model;
-    protected modelInstance: T;
-    protected throwError: boolean;
-    /**
-     * @param model
-     * @param logs
-     * @param sqlDataSource Passed if a custom connection is provided
-     */
-    protected constructor(model: typeof Model, logs: boolean, sqlDataSource: SqlDataSource);
-    abstract find(input?: FindType<T>): Promise<T[]>;
-    abstract find(input?: UnrestrictedFindType<T>): Promise<T[]>;
-    abstract find(input?: FindType<T> | UnrestrictedFindType<T>): Promise<T[]>;
-    abstract findOne(input: UnrestrictedFindOneType<T>): Promise<T | null>;
-    abstract findOne(input: FindOneType<T>): Promise<T | null>;
-    abstract findOne(input: FindOneType<T> | UnrestrictedFindOneType<T>): Promise<T | null>;
-    abstract findOneByPrimaryKey(value: string | number | boolean, throwErrorOnNull: boolean): Promise<T | null>;
-    abstract create(model: Partial<T>, trx?: TransactionType): Promise<T | null>;
-    abstract massiveCreate(model: Partial<T>[], trx?: TransactionType): Promise<T[]>;
-    abstract updateRecord(model: T, trx?: TransactionType): Promise<T | null>;
-    abstract deleteByColumn(column: string, value: string | number | boolean, trx?: TransactionType): Promise<number> | Promise<number | null>;
-    abstract deleteRecord(model: T, trx?: TransactionType): Promise<T | null>;
-    abstract query(): MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
-    abstract update(): MysqlUpdateQueryBuilder<T> | PostgresUpdateQueryBuilder<T>;
-    abstract delete(): MysqlDeleteQueryBuilder<T> | PostgresDeleteQueryBuilder<T>;
+declare class SqlModelManagerUtils<T extends Model> {
+    protected dbType: SqlDataSourceType$1;
+    protected sqlConnection: SqlConnectionType;
+    constructor(dbType: SqlDataSourceType$1, sqlConnection: SqlConnectionType);
+    parseInsert(model: T, typeofModel: typeof Model, dbType: SqlDataSourceType$1): {
+        query: string;
+        params: any[];
+    };
+    parseMassiveInsert(models: T[], typeofModel: typeof Model, dbType: SqlDataSourceType$1): {
+        query: string;
+        params: any[];
+    };
+    parseUpdate(model: T, typeofModel: typeof Model, dbType: SqlDataSourceType$1): {
+        query: string;
+        params: any[];
+    };
+    private filterRelationsAndMetadata;
+    parseDelete(table: string, column: string, value: string | number | boolean): {
+        query: string;
+        params: any[];
+    };
+    private getRelationFromModel;
+    parseQueryBuilderRelations(models: T[], typeofModel: typeof Model, input: string[], logs: boolean): Promise<{
+        [relationName: string]: Model[];
+    }[]>;
+    private getQueryResult;
 }
 
 declare class MysqlModelManager<T extends Model> extends AbstractModelManager<T> {
@@ -1358,6 +1291,147 @@ declare class MysqlModelManager<T extends Model> extends AbstractModelManager<T>
     delete(): MysqlDeleteQueryBuilder<T>;
 }
 
+declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
+    protected pgClient: Client;
+    protected isNestedCondition: boolean;
+    protected postgresModelManagerUtils: SqlModelManagerUtils<T>;
+    constructor(model: typeof Model, table: string, pgClient: Client, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
+    select(...columns: string[]): PostgresQueryBuilder<T>;
+    select(...columns: (SelectableType<T> | "*")[]): PostgresQueryBuilder<T>;
+    raw(query: string, params?: any[]): Promise<pg.QueryResult<any>>;
+    one(options?: OneOptions): Promise<T | null>;
+    oneOrFail(): Promise<T>;
+    many(): Promise<T[]>;
+    getCount(): Promise<number>;
+    getSum(column: SelectableType<T>): Promise<number>;
+    getSum(column: string): Promise<number>;
+    paginate(page: number, limit: number): Promise<PaginatedData<T>>;
+    join(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresQueryBuilder<T>;
+    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresQueryBuilder<T>;
+    addRelations(relations: RelationType<T>[]): PostgresQueryBuilder<T>;
+    whereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
+    orWhereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
+    andWhereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
+    where(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
+    where(column: string, operator: WhereOperatorType, value: BaseValues): this;
+    where(column: SelectableType<T> | string, value: BaseValues): this;
+    andWhere(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
+    andWhere(column: string, operator: WhereOperatorType, value: BaseValues): this;
+    andWhere(column: SelectableType<T> | string, value: BaseValues): this;
+    orWhere(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
+    orWhere(column: string, operator: WhereOperatorType, value: BaseValues): this;
+    orWhere(column: SelectableType<T> | string, value: BaseValues): this;
+    whereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
+    whereBetween(column: string, min: BaseValues, max: BaseValues): this;
+    andWhereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
+    andWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
+    orWhereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
+    orWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
+    whereNotBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
+    whereNotBetween(column: string, min: BaseValues, max: BaseValues): this;
+    orWhereNotBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
+    orWhereNotBetween(column: string, min: BaseValues, max: BaseValues): this;
+    whereIn(column: SelectableType<T>, values: BaseValues[]): this;
+    whereIn(column: string, values: BaseValues[]): this;
+    andWhereIn(column: SelectableType<T>, values: BaseValues[]): this;
+    andWhereIn(column: string, values: BaseValues[]): this;
+    orWhereIn(column: SelectableType<T>, values: BaseValues[]): this;
+    orWhereIn(column: string, values: BaseValues[]): this;
+    whereNotIn(column: SelectableType<T>, values: BaseValues[]): this;
+    whereNotIn(column: string, values: BaseValues[]): this;
+    orWhereNotIn(column: SelectableType<T>, values: BaseValues[]): this;
+    orWhereNotIn(column: string, values: BaseValues[]): this;
+    whereNull(column: SelectableType<T>): this;
+    whereNull(column: string): this;
+    andWhereNull(column: SelectableType<T>): this;
+    andWhereNull(column: string): this;
+    orWhereNull(column: SelectableType<T>): this;
+    orWhereNull(column: string): this;
+    whereNotNull(column: SelectableType<T>): this;
+    whereNotNull(column: string): this;
+    andWhereNotNull(column: SelectableType<T>): this;
+    andWhereNotNull(column: string): this;
+    orWhereNotNull(column: SelectableType<T>): this;
+    orWhereNotNull(column: string): this;
+    rawWhere(query: string): this;
+    rawAndWhere(query: string): this;
+    rawOrWhere(query: string): this;
+    groupBy(...columns: SelectableType<T>[]): this;
+    groupBy(...columns: string[]): this;
+    orderBy(columns: SelectableType<T>[], order: "ASC" | "DESC"): this;
+    orderBy(columns: string[], order: "ASC" | "DESC"): this;
+    limit(limit: number): this;
+    offset(offset: number): this;
+    copy(): ModelQueryBuilder<T>;
+    protected groupFooterQuery(): string;
+    private mergeRawPacketIntoModel;
+}
+
+declare class PostgresDeleteQueryBuilder<T extends Model> extends ModelDeleteQueryBuilder<T> {
+    protected sqlConnection: Client;
+    protected joinQuery: string;
+    protected updateTemplate: ReturnType<typeof updateTemplate>;
+    protected deleteTemplate: ReturnType<typeof deleteTemplate>;
+    protected isNestedCondition: boolean;
+    /**
+     * @description Constructs a MysqlQueryBuilder instance.
+     * @param model - The model class associated with the table.
+     * @param table - The name of the table.
+     * @param pgClient - The MySQL connection pool.
+     * @param logs - A boolean indicating whether to log queries.
+     * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
+     */
+    constructor(model: typeof Model, table: string, pgClient: Client, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
+    /**
+     * @description Deletes Records from the database.
+     * @param data - The data to update.
+     * @param trx - The transaction to run the query in.
+     * @returns The updated records.
+     */
+    execute(trx?: PostgresTransaction): Promise<T[]>;
+    /**
+     * @description Soft Deletes Records from the database.
+     * @param column - The column to soft delete. Default is 'deletedAt'.
+     * @param value - The value to set the column to. Default is the current date and time.
+     * @param trx - The transaction to run the query in.
+     * @returns The updated records.
+     */
+    softDelete(options?: {
+        column?: SelectableType<T>;
+        value?: string | number | boolean;
+        trx?: PostgresTransaction;
+    }): Promise<T[]>;
+    /**
+     *
+     * @param relationTable - The name of the related table.
+     * @param primaryColumn - The name of the primary column in the caller table.
+     * @param foreignColumn - The name of the foreign column in the related table.
+     */
+    join(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresDeleteQueryBuilder<T>;
+    /**
+     *
+     * @param relationTable - The name of the related table.
+     * @param primaryColumn - The name of the primary column in the caller table.
+     * @param foreignColumn - The name of the foreign column in the related table.
+     */
+    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresDeleteQueryBuilder<T>;
+    /**
+     * @description Build more complex where conditions.
+     * @param cb
+     */
+    whereBuilder(cb: (queryBuilder: PostgresDeleteQueryBuilder<T>) => void): this;
+    /**
+     * @description Build complex OR-based where conditions.
+     * @param cb Callback function that takes a query builder and adds conditions to it.
+     */
+    orWhereBuilder(cb: (queryBuilder: PostgresDeleteQueryBuilder<T>) => void): this;
+    /**
+     * @description Build complex AND-based where conditions.
+     * @param cb Callback function that takes a query builder and adds conditions to it.
+     */
+    andWhereBuilder(cb: (queryBuilder: PostgresDeleteQueryBuilder<T>) => void): this;
+}
+
 declare class PostgresModelManager<T extends Model> extends AbstractModelManager<T> {
     protected pgConnection: pg__default.Client;
     protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
@@ -1421,7 +1495,7 @@ declare class PostgresModelManager<T extends Model> extends AbstractModelManager
      * @param {PostgresTransaction} trx - PostgresTransaction to be used on the delete operation.
      * @returns Promise resolving to affected rows count
      */
-    deleteByColumn(column: string, value: string | number | boolean, trx?: TransactionType): Promise<number>;
+    deleteByColumn(column: string, value: string | number | boolean, trx?: TransactionType): Promise<T | null>;
     /**
      * @description Delete a record from the database from the given model.
      *
@@ -1447,7 +1521,7 @@ declare class PostgresModelManager<T extends Model> extends AbstractModelManager
 }
 
 type ModelManager<T extends Model> = MysqlModelManager<T> | PostgresModelManager<T>;
-type SqlConnectionType = mysql.Connection | pg__default.Client;
+type SqlConnectionType = mysql.Connection | pg__default.Client | sqlite3.Database;
 interface SqlDataSourceInput extends DataSourceInput {
     type: Exclude<DataSourceType, "redis">;
 }
@@ -1578,10 +1652,94 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     private mergeRawPacketIntoModel;
 }
 
+declare class SQLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
+    protected sqLiteConnection: sqlite3.Database;
+    protected isNestedCondition: boolean;
+    protected mysqlModelManagerUtils: SqlModelManagerUtils<T>;
+    /**
+     * @param table - The name of the table.
+     * @param sqLiteConnection - The MySQL connection pool.
+     * @param logs - A boolean indicating whether to log queries.
+     * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
+     */
+    constructor(model: typeof Model, table: string, sqLiteConnection: sqlite3.Database, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
+    one(options?: OneOptions): Promise<T | null>;
+    oneOrFail(): Promise<T>;
+    many(): Promise<T[]>;
+    raw<T>(query: string, params?: any[]): Promise<T>;
+    getCount(): Promise<number>;
+    getSum(column: SelectableType<T>): Promise<number>;
+    getSum(column: string): Promise<number>;
+    paginate(page: number, limit: number): Promise<PaginatedData<T>>;
+    select(...columns: string[]): SQLiteQueryBuilder<T>;
+    select(...columns: (SelectableType<T> | "*")[]): SQLiteQueryBuilder<T>;
+    join(relationTable: string, primaryColumn: string, foreignColumn: string): SQLiteQueryBuilder<T>;
+    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): SQLiteQueryBuilder<T>;
+    addRelations(relations: RelationType<T>[]): SQLiteQueryBuilder<T>;
+    whereBuilder(cb: (queryBuilder: SQLiteQueryBuilder<T>) => void): this;
+    orWhereBuilder(cb: (queryBuilder: SQLiteQueryBuilder<T>) => void): this;
+    andWhereBuilder(cb: (queryBuilder: SQLiteQueryBuilder<T>) => void): this;
+    where(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
+    where(column: string, operator: WhereOperatorType, value: BaseValues): this;
+    where(column: SelectableType<T> | string, value: BaseValues): this;
+    andWhere(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
+    andWhere(column: string, operator: WhereOperatorType, value: BaseValues): this;
+    andWhere(column: SelectableType<T> | string, value: BaseValues): this;
+    orWhere(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
+    orWhere(column: string, operator: WhereOperatorType, value: BaseValues): this;
+    orWhere(column: SelectableType<T> | string, value: BaseValues): this;
+    whereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
+    whereBetween(column: string, min: BaseValues, max: BaseValues): this;
+    andWhereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
+    andWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
+    orWhereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
+    orWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
+    whereNotBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
+    whereNotBetween(column: string, min: BaseValues, max: BaseValues): this;
+    orWhereNotBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
+    orWhereNotBetween(column: string, min: BaseValues, max: BaseValues): this;
+    whereIn(column: SelectableType<T>, values: BaseValues[]): this;
+    whereIn(column: string, values: BaseValues[]): this;
+    andWhereIn(column: SelectableType<T>, values: BaseValues[]): this;
+    andWhereIn(column: string, values: BaseValues[]): this;
+    orWhereIn(column: SelectableType<T>, values: BaseValues[]): this;
+    orWhereIn(column: string, values: BaseValues[]): this;
+    whereNotIn(column: SelectableType<T>, values: BaseValues[]): this;
+    whereNotIn(column: string, values: BaseValues[]): this;
+    orWhereNotIn(column: SelectableType<T>, values: BaseValues[]): this;
+    orWhereNotIn(column: string, values: BaseValues[]): this;
+    whereNull(column: SelectableType<T>): this;
+    whereNull(column: string): this;
+    andWhereNull(column: SelectableType<T>): this;
+    andWhereNull(column: string): this;
+    orWhereNull(column: SelectableType<T>): this;
+    orWhereNull(column: string): this;
+    whereNotNull(column: SelectableType<T>): this;
+    whereNotNull(column: string): this;
+    andWhereNotNull(column: SelectableType<T>): this;
+    andWhereNotNull(column: string): this;
+    orWhereNotNull(column: SelectableType<T>): this;
+    orWhereNotNull(column: string): this;
+    rawWhere(query: string): this;
+    rawAndWhere(query: string): this;
+    rawOrWhere(query: string): this;
+    groupBy(...columns: SelectableType<T>[]): this;
+    groupBy(...columns: string[]): this;
+    orderBy(columns: SelectableType<T>[], order: "ASC" | "DESC"): this;
+    orderBy(columns: string[], order: "ASC" | "DESC"): this;
+    limit(limit: number): this;
+    offset(offset: number): this;
+    copy(): ModelQueryBuilder<T>;
+    mergeQueryBuilder(queryBuilder: SQLiteQueryBuilder<T>): void;
+    protected groupFooterQuery(): string;
+    private mergeRawPacketIntoModel;
+    private promisifyQuery;
+}
+
 /**
  * @description The abstract class for query builders for selecting data.
  */
-type ModelQueryBuilder<T extends Model> = MysqlQueryBuilder<T> | PostgresQueryBuilder<T>;
+type ModelQueryBuilder<T extends Model> = MysqlQueryBuilder<T> | PostgresQueryBuilder<T> | SQLiteQueryBuilder<T>;
 type OneOptions = {
     throwErrorOnNull: boolean;
 };
@@ -2074,7 +2232,7 @@ declare abstract class Model {
      * @param trx
      * @returns
      */
-    static deleteByColumn<T extends Model>(this: new () => T | typeof Model, column: string, value: string | number | boolean, trx?: MysqlTransaction | PostgresTransaction): Promise<number>;
+    static deleteByColumn<T extends Model>(this: new () => T | typeof Model, column: string, value: string | number | boolean, trx?: MysqlTransaction | PostgresTransaction): Promise<number> | Promise<T | null>;
     /**
      * @description Merges the provided data with the instance
      * @param instance

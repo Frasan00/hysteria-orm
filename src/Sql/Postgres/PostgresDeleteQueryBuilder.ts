@@ -1,6 +1,5 @@
 import { Model } from "../Models/Model";
 import { log, queryError } from "../../Logger";
-import { WhereQueryBuilder } from "../QueryBuilder/WhereQueryBuilder";
 import { PostgresTransaction } from "./PostgresTransaction";
 import { Client } from "pg";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";

@@ -1,16 +1,17 @@
-import { Connection } from "mysql2/promise";
 import { Model } from "../Models/Model";
-import { MysqlTransaction } from "./MysqlTransaction";
 import { log, queryError } from "../../Logger";
 import updateTemplate from "../Resources/Query/UPDATE";
+import { parseDatabaseDataIntoModelResponse } from "../serializer";
 import joinTemplate from "../Resources/Query/JOIN";
 import { SqlDataSource } from "../SqlDatasource";
 import { ModelUpdateQueryBuilder } from "../QueryBuilder/UpdateQueryBuilder";
+import { SQLiteTransaction } from "./SQLiteTransaction";
+import sqlite3 from "sqlite3";
 
-export class MysqlUpdateQueryBuilder<
+export class SQLiteUpdateQueryBuilder<
   T extends Model,
 > extends ModelUpdateQueryBuilder<T> {
-  protected sqlConnection: Connection;
+  protected sqlConnection: sqlite3.Database;
   protected joinQuery = "";
   protected updateTemplate: ReturnType<typeof updateTemplate>;
   protected isNestedCondition = false;
@@ -19,20 +20,20 @@ export class MysqlUpdateQueryBuilder<
    * @description Constructs a MysqlQueryBuilder instance.
    * @param model - The model class associated with the table.
    * @param table - The name of the table.
-   * @param mysqlConnection - The MySQL connection pool.
+   * @param sqlLiteCOnnection - The MySQL connection pool.
    * @param logs - A boolean indicating whether to log queries.
    * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
    */
   public constructor(
     model: typeof Model,
     table: string,
-    mysqlConnection: Connection,
+    sqlLiteConnection: sqlite3.Database,
     logs: boolean,
     isNestedCondition = false,
     sqlDataSource: SqlDataSource,
   ) {
     super(model, table, logs, false, sqlDataSource);
-    this.sqlConnection = mysqlConnection;
+    this.sqlConnection = sqlLiteConnection;
     this.updateTemplate = updateTemplate(
       this.sqlDataSource.getDbType(),
       this.model,
@@ -45,18 +46,18 @@ export class MysqlUpdateQueryBuilder<
    * @description Updates a record in the database.
    * @param data - The data to update.
    * @param trx - The transaction to run the query in.
-   * @returns The number of affected rows.
+   * @returns The updated records.
    */
   public async withData(
     data: Partial<T>,
-    trx?: MysqlTransaction,
-  ): Promise<number> {
+    trx?: SQLiteTransaction,
+  ): Promise<T[]> {
     const columns = Object.keys(data);
     const values = Object.values(data);
     this.whereQuery = this.whereTemplate.convertPlaceHolderToValue(
       this.whereQuery,
+      values.length + 1,
     );
-
     const { query, params } = this.updateTemplate.massiveUpdate(
       columns,
       values,
@@ -71,12 +72,11 @@ export class MysqlUpdateQueryBuilder<
 
     log(query, this.logs, params);
     try {
-      const rows: any = await this.sqlConnection.query(query, params);
-      if (!rows.length) {
-        return 0;
-      }
-
-      return rows[0].affectedRows;
+      const result = await this.promisifyQuery<T[]>(query, params);
+      return (await parseDatabaseDataIntoModelResponse(
+        result,
+        this.model,
+      )) as T[];
     } catch (error) {
       queryError(query);
       throw new Error("Query failed " + error);
@@ -93,7 +93,7 @@ export class MysqlUpdateQueryBuilder<
     relationTable: string,
     primaryColumn: string,
     foreignColumn: string,
-  ): MysqlUpdateQueryBuilder<T> {
+  ): SQLiteUpdateQueryBuilder<T> {
     const join = joinTemplate(
       this.model,
       relationTable,
@@ -114,7 +114,7 @@ export class MysqlUpdateQueryBuilder<
     relationTable: string,
     primaryColumn: string,
     foreignColumn: string,
-  ): MysqlUpdateQueryBuilder<T> {
+  ): SQLiteUpdateQueryBuilder<T> {
     const join = joinTemplate(
       this.model,
       relationTable,
@@ -130,9 +130,9 @@ export class MysqlUpdateQueryBuilder<
    * @param cb
    */
   public whereBuilder(
-    cb: (queryBuilder: MysqlUpdateQueryBuilder<T>) => void,
+    cb: (queryBuilder: SQLiteUpdateQueryBuilder<T>) => void,
   ): this {
-    const queryBuilder = new MysqlUpdateQueryBuilder(
+    const queryBuilder = new SQLiteUpdateQueryBuilder(
       this.model as typeof Model,
       this.table,
       this.sqlConnection,
@@ -140,7 +140,7 @@ export class MysqlUpdateQueryBuilder<
       true,
       this.sqlDataSource,
     );
-    cb(queryBuilder as unknown as MysqlUpdateQueryBuilder<T>);
+    cb(queryBuilder as unknown as SQLiteUpdateQueryBuilder<T>);
 
     let whereCondition = queryBuilder.whereQuery.trim();
     if (whereCondition.startsWith("AND")) {
@@ -168,9 +168,9 @@ export class MysqlUpdateQueryBuilder<
    * @param cb Callback function that takes a query builder and adds conditions to it.
    */
   public orWhereBuilder(
-    cb: (queryBuilder: MysqlUpdateQueryBuilder<T>) => void,
+    cb: (queryBuilder: SQLiteUpdateQueryBuilder<T>) => void,
   ): this {
-    const nestedBuilder = new MysqlUpdateQueryBuilder(
+    const nestedBuilder = new SQLiteUpdateQueryBuilder(
       this.model as typeof Model,
       this.table,
       this.sqlConnection,
@@ -178,7 +178,7 @@ export class MysqlUpdateQueryBuilder<
       true,
       this.sqlDataSource,
     );
-    cb(nestedBuilder as unknown as MysqlUpdateQueryBuilder<T>);
+    cb(nestedBuilder as unknown as SQLiteUpdateQueryBuilder<T>);
 
     let nestedCondition = nestedBuilder.whereQuery.trim();
     if (nestedCondition.startsWith("AND")) {
@@ -209,9 +209,9 @@ export class MysqlUpdateQueryBuilder<
    * @param cb Callback function that takes a query builder and adds conditions to it.
    */
   public andWhereBuilder(
-    cb: (queryBuilder: MysqlUpdateQueryBuilder<T>) => void,
+    cb: (queryBuilder: SQLiteUpdateQueryBuilder<T>) => void,
   ): this {
-    const nestedBuilder = new MysqlUpdateQueryBuilder(
+    const nestedBuilder = new SQLiteUpdateQueryBuilder(
       this.model as typeof Model,
       this.table,
       this.sqlConnection,
@@ -219,7 +219,7 @@ export class MysqlUpdateQueryBuilder<
       true,
       this.sqlDataSource,
     );
-    cb(nestedBuilder as unknown as MysqlUpdateQueryBuilder<T>);
+    cb(nestedBuilder as unknown as SQLiteUpdateQueryBuilder<T>);
 
     let nestedCondition = nestedBuilder.whereQuery.trim();
     if (nestedCondition.startsWith("AND")) {
@@ -241,5 +241,16 @@ export class MysqlUpdateQueryBuilder<
     this.whereParams.push(...nestedBuilder.whereParams);
 
     return this;
+  }
+
+  private promisifyQuery<T>(query: string, params: any): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      this.sqlConnection.get<T>(query, params, (err, result) => {
+        if (err) {
+          reject(err);
+        }
+        resolve(result);
+      });
+    });
   }
 }

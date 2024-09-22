@@ -13,8 +13,45 @@ const commonSelectMethods = [
   "MIN",
   "SUM",
   "AS",
+  "CONVERT",
+  "CAST",
+  "CONVERT_TZ",
+  "DATE_FORMAT",
+  "CURDATE",
+  "CURRENT_DATE",
+  "CURRENT_TIME",
+  "CURRENT_TIMESTAMP",
+  "CURTIME",
+  "DAYNAME",
+  "DAYOFMONTH",
+  "DAYOFWEEK",
+  "DAYOFYEAR",
+  "EXTRACT",
+  "HOUR",
+  "LOCALTIME",
+  "LOCALTIMESTAMP",
+  "MICROSECOND",
+  "MINUTE",
+  "MONTH",
+  "QUARTER",
+  "SECOND",
+  "STR_TO_DATE",
+  "TIME",
+  "TIMESTAMP",
+  "WEEK",
+  "YEAR",
+  "NOW",
+  "UTC_DATE",
+  "UTC_TIME",
+  "UTC_TIMESTAMP",
+  "DATE_ADD",
+  "DATE_SUB",
+  "DATE",
+  "DATEDIFF",
+  "DATE_FORMAT",
   "DISTINCTROW",
 ];
+
 const selectTemplate = (
   dbType: SqlDataSourceType,
   typeofModel: typeof Model,
@@ -23,6 +60,7 @@ const selectTemplate = (
   const escapeIdentifier = (identifier: string) => {
     switch (dbType) {
       case "mysql":
+      case "sqlite":
       case "mariadb":
         return `\`${identifier.replace(/`/g, "``")}\``;
       case "postgres":

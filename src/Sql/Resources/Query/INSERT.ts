@@ -1,9 +1,18 @@
+import { DateTime } from "luxon";
 import { convertCase } from "../../../CaseUtils";
 import { SqlDataSourceType } from "../../../Datasource";
 import { isNestedObject } from "../../jsonUtils";
 import { Model } from "../../Models/Model";
 
-type BaseValues = string | number | boolean | Date | null | object | undefined;
+type BaseValues =
+  | string
+  | number
+  | boolean
+  | Date
+  | null
+  | object
+  | undefined
+  | DateTime;
 
 const insertTemplate = (
   dbType: SqlDataSourceType,
@@ -20,6 +29,7 @@ const insertTemplate = (
 
       switch (dbType) {
         case "mysql":
+        case "sqlite":
         case "mariadb":
           placeholders = columns.map(() => "?").join(", ");
           params = values;
@@ -59,6 +69,7 @@ VALUES (${placeholders}) RETURNING *;`;
 
       switch (dbType) {
         case "mysql":
+        case "sqlite":
         case "mariadb":
           valueSets = values.map((valueSet) => {
             params.push(...valueSet);
@@ -87,7 +98,7 @@ VALUES (${placeholders}) RETURNING *;`;
       }
 
       const query =
-        dbType === "mysql"
+        dbType === "mysql" || dbType === "mariadb"
           ? `INSERT INTO ${table} (${columns.join(", ")})
 VALUES ${valueSets.join(", ")};`
           : `INSERT INTO ${table} (${columns.join(", ")})
