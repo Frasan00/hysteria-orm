@@ -7,21 +7,20 @@ import {
   UnrestrictedFindType,
 } from "../Models/ModelManager/ModelManagerTypes";
 import mysql, { RowDataPacket } from "mysql2/promise";
-import selectTemplate from "../Resources/Query/SELECT";
 import { log, queryError } from "../../Logger";
 import { MysqlQueryBuilder } from "./MysqlQueryBuilder";
 import { AbstractModelManager } from "../Models/ModelManager/AbstractModelManager";
 import { MysqlUpdateQueryBuilder } from "./MysqlUpdateQueryBuilder";
 import { PostgresUpdateQueryBuilder } from "../Postgres/PostgresUpdateQueryBuilder";
 import { MysqlDeleteQueryBuilder } from "./MysqlDeleteQueryBuilder";
-import MySqlModelManagerUtils from "./MySqlModelManagerUtils";
 import { SqlDataSource } from "../SqlDatasource";
+import SqlModelManagerUtils from "../Models/ModelManager/ModelManagerUtils";
 
 export class MysqlModelManager<
   T extends Model,
 > extends AbstractModelManager<T> {
   protected mysqlConnection: mysql.Connection;
-  protected mysqlModelManagerUtils: MySqlModelManagerUtils<T>;
+  protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
 
   /**
    * Constructor for MysqlModelManager class.
@@ -38,7 +37,10 @@ export class MysqlModelManager<
   ) {
     super(model, logs, sqlDataSource);
     this.mysqlConnection = mysqlConnection;
-    this.mysqlModelManagerUtils = new MySqlModelManagerUtils<T>();
+    this.sqlModelManagerUtils = new SqlModelManagerUtils<T>(
+      "mysql",
+      mysqlConnection,
+    );
   }
 
   /**
@@ -169,7 +171,7 @@ export class MysqlModelManager<
     trx?: TransactionType,
   ): Promise<T | null> {
     this.model.beforeCreate(model as T);
-    const { query, params } = this.mysqlModelManagerUtils.parseInsert(
+    const { query, params } = this.sqlModelManagerUtils.parseInsert(
       model as T,
       this.model,
       this.sqlDataSource.getDbType(),
@@ -180,7 +182,7 @@ export class MysqlModelManager<
     }
 
     try {
-      const { query, params } = this.mysqlModelManagerUtils.parseInsert(
+      const { query, params } = this.sqlModelManagerUtils.parseInsert(
         model as T,
         this.model,
         this.sqlDataSource.getDbType(),
@@ -214,7 +216,7 @@ export class MysqlModelManager<
       this.model.beforeCreate(model as T);
     });
 
-    const { query, params } = this.mysqlModelManagerUtils.parseMassiveInsert(
+    const { query, params } = this.sqlModelManagerUtils.parseMassiveInsert(
       models as T[],
       this.model,
       this.sqlDataSource.getDbType(),
@@ -225,7 +227,7 @@ export class MysqlModelManager<
     }
 
     try {
-      const { query, params } = this.mysqlModelManagerUtils.parseMassiveInsert(
+      const { query, params } = this.sqlModelManagerUtils.parseMassiveInsert(
         models as T[],
         this.model,
         this.sqlDataSource.getDbType(),
@@ -269,7 +271,7 @@ export class MysqlModelManager<
     }
 
     if (trx) {
-      const { query, params } = this.mysqlModelManagerUtils.parseUpdate(
+      const { query, params } = this.sqlModelManagerUtils.parseUpdate(
         model,
         this.model,
         this.sqlDataSource.getDbType(),
@@ -285,7 +287,7 @@ export class MysqlModelManager<
     }
 
     try {
-      const updateQuery = this.mysqlModelManagerUtils.parseUpdate(
+      const updateQuery = this.sqlModelManagerUtils.parseUpdate(
         model,
         this.model,
         this.sqlDataSource.getDbType(),
@@ -323,7 +325,7 @@ export class MysqlModelManager<
     trx?: TransactionType,
   ): Promise<number> {
     if (trx) {
-      const { query, params } = this.mysqlModelManagerUtils.parseDelete(
+      const { query, params } = this.sqlModelManagerUtils.parseDelete(
         this.model.table,
         column,
         value,
@@ -333,7 +335,7 @@ export class MysqlModelManager<
     }
 
     try {
-      const { query, params } = this.mysqlModelManagerUtils.parseDelete(
+      const { query, params } = this.sqlModelManagerUtils.parseDelete(
         this.model.table,
         column,
         value,
@@ -369,7 +371,7 @@ export class MysqlModelManager<
             " has no primary key to be deleted from, try deleteByColumn",
         );
       }
-      const { query, params } = this.mysqlModelManagerUtils.parseDelete(
+      const { query, params } = this.sqlModelManagerUtils.parseDelete(
         this.model.table,
         this.model.primaryKey,
         model[this.model.primaryKey as keyof T] as string,

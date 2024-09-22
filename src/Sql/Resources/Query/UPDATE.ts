@@ -1,8 +1,11 @@
 import { convertCase } from "../../../CaseUtils";
-import { DataSourceType } from "../../../Datasource";
+import { SqlDataSourceType } from "../../../Datasource";
 import { Model } from "../../Models/Model";
 
-const updateTemplate = (dbType: DataSourceType, typeofModel: typeof Model) => {
+const updateTemplate = (
+  dbType: SqlDataSourceType,
+  typeofModel: typeof Model,
+) => {
   const table = typeofModel.table;
   return {
     update: (

@@ -7,20 +7,20 @@ import {
   UnrestrictedFindType,
 } from "../Models/ModelManager/ModelManagerTypes";
 import pg from "pg";
-import { log, queryError } from "../../Logger";
-import PostgresModelManagerUtils from "./PostgresModelManagerUtils";
+import logger, { log, queryError } from "../../Logger";
 import { AbstractModelManager } from "../Models/ModelManager/AbstractModelManager";
 import { PostgresQueryBuilder } from "./PostgresQueryBuilder";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
 import { PostgresUpdateQueryBuilder } from "./PostgresUpdateQueryBuilder";
 import { PostgresDeleteQueryBuilder } from "./PostgresDeleteQueryBuilder";
 import { SqlDataSource } from "../SqlDatasource";
+import SqlModelManagerUtils from "../Models/ModelManager/ModelManagerUtils";
 
 export class PostgresModelManager<
   T extends Model,
 > extends AbstractModelManager<T> {
   protected pgConnection: pg.Client;
-  protected postgresModelManagerUtils: PostgresModelManagerUtils<T>;
+  protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
 
   /**
    * Constructor for PostgresModelManager class.
@@ -37,7 +37,10 @@ export class PostgresModelManager<
   ) {
     super(model, logs, sqlDataSource);
     this.pgConnection = pgConnection;
-    this.postgresModelManagerUtils = new PostgresModelManagerUtils();
+    this.sqlModelManagerUtils = new SqlModelManagerUtils(
+      "postgres",
+      pgConnection,
+    );
   }
 
   /**
@@ -166,7 +169,7 @@ export class PostgresModelManager<
     trx?: TransactionType,
   ): Promise<T | null> {
     this.model.beforeCreate(model as T);
-    const { query, params } = this.postgresModelManagerUtils.parseInsert(
+    const { query, params } = this.sqlModelManagerUtils.parseInsert(
       model as T,
       this.model,
       this.sqlDataSource.getDbType(),
@@ -177,7 +180,7 @@ export class PostgresModelManager<
     }
 
     try {
-      const { query, params } = this.postgresModelManagerUtils.parseInsert(
+      const { query, params } = this.sqlModelManagerUtils.parseInsert(
         model as T,
         this.model,
         this.sqlDataSource.getDbType(),
@@ -211,7 +214,7 @@ export class PostgresModelManager<
     trx?: TransactionType,
   ): Promise<T[]> {
     models.forEach((model) => this.model.beforeCreate(model as T));
-    const { query, params } = this.postgresModelManagerUtils.parseMassiveInsert(
+    const { query, params } = this.sqlModelManagerUtils.parseMassiveInsert(
       models as T[],
       this.model,
       this.sqlDataSource.getDbType(),
@@ -222,12 +225,11 @@ export class PostgresModelManager<
     }
 
     try {
-      const { query, params } =
-        this.postgresModelManagerUtils.parseMassiveInsert(
-          models as T[],
-          this.model,
-          this.sqlDataSource.getDbType(),
-        );
+      const { query, params } = this.sqlModelManagerUtils.parseMassiveInsert(
+        models as T[],
+        this.model,
+        this.sqlDataSource.getDbType(),
+      );
 
       log(query, this.logs, params);
       const { rows } = await this.pgConnection.query(query, params);
@@ -264,7 +266,7 @@ export class PostgresModelManager<
       );
     }
 
-    const { query, params } = this.postgresModelManagerUtils.parseUpdate(
+    const { query, params } = this.sqlModelManagerUtils.parseUpdate(
       model,
       this.model,
       this.sqlDataSource.getDbType(),
@@ -285,7 +287,7 @@ export class PostgresModelManager<
     }
 
     try {
-      const { query, params } = this.postgresModelManagerUtils.parseUpdate(
+      const { query, params } = this.sqlModelManagerUtils.parseUpdate(
         model,
         this.model,
         this.sqlDataSource.getDbType(),
@@ -319,26 +321,29 @@ export class PostgresModelManager<
     trx?: TransactionType,
   ): Promise<number> {
     if (trx) {
-      const { query, params } = this.postgresModelManagerUtils.parseDelete(
+      const { query, params } = this.sqlModelManagerUtils.parseDelete(
         this.model.table,
         column,
         value,
       );
 
+      console.log("Executing query with transaction:", query, params);
       return (await trx.queryDelete(query, params)) || 0;
     }
 
     try {
-      const { query, params } = this.postgresModelManagerUtils.parseDelete(
+      const { query, params } = this.sqlModelManagerUtils.parseDelete(
         this.model.table,
         column,
         value,
       );
 
+      logger.debug(query, this.logs, params);
       log(query, this.logs, params);
       const result = await this.pgConnection.query(query, params);
       return result.rowCount || 0;
     } catch (error) {
+      console.error("Query error:", error);
       queryError(error);
       throw new Error("Query failed " + error);
     }
@@ -364,7 +369,7 @@ export class PostgresModelManager<
         );
       }
 
-      const { query, params } = this.postgresModelManagerUtils.parseDelete(
+      const { query, params } = this.sqlModelManagerUtils.parseDelete(
         this.model.table,
         this.model.primaryKey,
         model[this.model.primaryKey as keyof T] as string,

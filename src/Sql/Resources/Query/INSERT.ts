@@ -1,11 +1,14 @@
 import { convertCase } from "../../../CaseUtils";
-import { DataSourceType } from "../../../Datasource";
+import { SqlDataSourceType } from "../../../Datasource";
 import { isNestedObject } from "../../jsonUtils";
 import { Model } from "../../Models/Model";
 
 type BaseValues = string | number | boolean | Date | null | object | undefined;
 
-const insertTemplate = (dbType: DataSourceType, typeofModel: typeof Model) => {
+const insertTemplate = (
+  dbType: SqlDataSourceType,
+  typeofModel: typeof Model,
+) => {
   const table = typeofModel.table;
   return {
     insert: (columns: string[], values: BaseValues[]) => {

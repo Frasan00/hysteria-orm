@@ -15,14 +15,14 @@ import {
   RelationType,
   SelectableType,
 } from "../Models/ModelManager/ModelManagerTypes";
-import MysqlModelManagerUtils from "../Mysql/MySqlModelManagerUtils";
 import { SqlDataSource } from "../SqlDatasource";
 import { convertCase } from "../../CaseUtils";
+import SqlModelManagerUtils from "../Models/ModelManager/ModelManagerUtils";
 
 export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
   protected mysqlConnection: mysql.Connection;
   protected isNestedCondition = false;
-  protected mysqlModelManagerUtils: MysqlModelManagerUtils<T>;
+  protected mysqlModelManagerUtils: SqlModelManagerUtils<T>;
 
   /**
    * @param table - The name of the table.
@@ -41,7 +41,10 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     super(model, table, logs, sqlDataSource);
     this.mysqlConnection = mysqlConnection;
     this.isNestedCondition = isNestedCondition;
-    this.mysqlModelManagerUtils = new MysqlModelManagerUtils<T>();
+    this.mysqlModelManagerUtils = new SqlModelManagerUtils<T>(
+      "mysql",
+      this.mysqlConnection,
+    );
   }
 
   public async one(
@@ -89,7 +92,6 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
           [modelInstance],
           this.model,
           this.relations,
-          this.mysqlConnection,
           this.logs,
         );
 
@@ -148,7 +150,6 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
           models,
           this.model,
           this.relations,
-          this.mysqlConnection,
           this.logs,
         );
 

@@ -1,9 +1,9 @@
-import { DataSourceType } from "../../../Datasource";
+import { SqlDataSourceType } from "../../../Datasource";
 
 const dropTableTemplate = (
   table: string,
   ifExists: boolean,
-  dbType: DataSourceType,
+  dbType: SqlDataSourceType,
 ) => {
   switch (dbType) {
     case "mariadb":

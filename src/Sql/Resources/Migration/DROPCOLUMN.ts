@@ -1,6 +1,6 @@
-import { DataSourceType } from "../../../Datasource";
+import { SqlDataSourceType } from "../../../Datasource";
 
-export const dropColumnForce = (table: string, dbType: DataSourceType) => {
+export const dropColumnForce = (table: string, dbType: SqlDataSourceType) => {
   switch (dbType) {
     case "mariadb":
     case "mysql":

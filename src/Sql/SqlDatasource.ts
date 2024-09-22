@@ -18,6 +18,8 @@ export interface SqlDataSourceInput extends DataSourceInput {
   type: Exclude<DataSourceType, "redis">;
 }
 
+export type SqlDataSourceType = SqlDataSourceInput["type"];
+
 export class SqlDataSource extends DataSource {
   public isConnected: boolean;
   protected sqlConnection!: SqlConnectionType;
@@ -28,8 +30,8 @@ export class SqlDataSource extends DataSource {
     this.isConnected = false;
   }
 
-  public getDbType(): DataSourceType {
-    return this.type;
+  public getDbType(): SqlDataSourceType {
+    return this.type as SqlDataSourceType;
   }
 
   /**

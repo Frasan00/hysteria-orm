@@ -1,8 +1,8 @@
 // UNUSED
 
-import { DataSourceType } from "../../../Datasource";
+import { SqlDataSourceType } from "../../../Datasource";
 
-const alterTableTemplate = (dbType: DataSourceType) => ({
+const alterTableTemplate = (dbType: SqlDataSourceType) => ({
   alterTable: (table: string) => {
     switch (dbType) {
       case "mysql":

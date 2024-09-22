@@ -1,6 +1,6 @@
-import { DataSourceType } from "../../../Datasource";
+import { SqlDataSourceType } from "../../../Datasource";
 
-const deleteTemplate = (table: string, dbType: DataSourceType) => {
+const deleteTemplate = (table: string, dbType: SqlDataSourceType) => {
   return {
     delete: (column: string, value: string | number | boolean | Date) => {
       let baseQuery = `DELETE FROM ${table} WHERE ${column} = PLACEHOLDER`;

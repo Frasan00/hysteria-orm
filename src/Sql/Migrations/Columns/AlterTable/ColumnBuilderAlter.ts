@@ -1,5 +1,5 @@
 import { DateTime } from "luxon";
-import { DataSourceType } from "../../../../Datasource";
+import { SqlDataSourceType } from "../../../../Datasource";
 import ColumnTypeBuilder, {
   DateOptions,
 } from "../CreateTable/ColumnTypeBuilder";
@@ -46,14 +46,14 @@ type BaseOptions = {
 export default class ColumnBuilderAlter {
   protected table: string;
   protected queryStatements: string[];
-  protected sqlType: DataSourceType;
+  protected sqlType: SqlDataSourceType;
   protected partialQuery: string;
 
   constructor(
     table: string,
     queryStatements: string[],
     partialQuery: string,
-    sqlType: DataSourceType,
+    sqlType: SqlDataSourceType,
   ) {
     this.table = table;
     this.queryStatements = queryStatements;

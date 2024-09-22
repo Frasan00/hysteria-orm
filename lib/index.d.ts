@@ -6,6 +6,7 @@ import Redis, { RedisOptions } from 'ioredis';
 export { RedisOptions } from 'ioredis';
 
 type DataSourceType = "mysql" | "postgres" | "mariadb" | "redis";
+type SqlDataSourceType$1 = Omit<DataSourceType, "redis">;
 /**
  * @description By default the connection details can be provided in the env.ts file, you can still override each prop with your actual connection details
  */
@@ -42,8 +43,8 @@ declare class ColumnOptionsBuilder {
         table: string;
         column: string;
     }[];
-    protected sqlType: DataSourceType;
-    constructor(table: string, queryStatements: string[], partialQuery: string, sqlType: DataSourceType, columnName?: string, columnReferences?: {
+    protected sqlType: SqlDataSourceType$1;
+    constructor(table: string, queryStatements: string[], partialQuery: string, sqlType: SqlDataSourceType$1, columnName?: string, columnReferences?: {
         table: string;
         column: string;
     }[]);
@@ -96,9 +97,9 @@ declare class ColumnTypeBuilder {
     protected table: string;
     protected queryStatements: string[];
     protected columnName: string;
-    protected sqlType: DataSourceType;
+    protected sqlType: SqlDataSourceType$1;
     partialQuery: string;
-    constructor(table: string, queryStatements: string[], partialQuery: string, sqlType: DataSourceType);
+    constructor(table: string, queryStatements: string[], partialQuery: string, sqlType: SqlDataSourceType$1);
     varchar(name: string, length?: number): ColumnOptionsBuilder;
     uuid(name: string): ColumnOptionsBuilder;
     tinytext(name: string): ColumnOptionsBuilder;
@@ -152,8 +153,8 @@ declare class ColumnBuilderConnector {
     protected table: string;
     protected queryStatements: string[];
     protected partialQuery: string;
-    protected sqlType: DataSourceType;
-    constructor(table: string, queryStatements: string[], partialQuery: string, sqlType: DataSourceType);
+    protected sqlType: SqlDataSourceType$1;
+    constructor(table: string, queryStatements: string[], partialQuery: string, sqlType: SqlDataSourceType$1);
     newColumn(): ColumnTypeBuilder;
 }
 
@@ -181,9 +182,9 @@ type BaseOptions = {
 declare class ColumnBuilderAlter {
     protected table: string;
     protected queryStatements: string[];
-    protected sqlType: DataSourceType;
+    protected sqlType: SqlDataSourceType$1;
     protected partialQuery: string;
-    constructor(table: string, queryStatements: string[], partialQuery: string, sqlType: DataSourceType);
+    constructor(table: string, queryStatements: string[], partialQuery: string, sqlType: SqlDataSourceType$1);
     /**
      * @description Add a new column to the table
      * @param columnName { string }
@@ -259,8 +260,8 @@ declare class ColumnBuilderAlter {
 
 declare class Schema {
     queryStatements: string[];
-    sqlType: DataSourceType;
-    constructor(sqlType?: DataSourceType);
+    sqlType: SqlDataSourceType$1;
+    constructor(sqlType?: SqlDataSourceType$1);
     /**
      * @description Add raw query to the migration
      * @param query
@@ -429,7 +430,7 @@ declare class PostgresTransaction {
     rollback(): Promise<void>;
 }
 
-declare const selectTemplate: (dbType: DataSourceType, typeofModel: typeof Model) => {
+declare const selectTemplate: (dbType: SqlDataSourceType$1, typeofModel: typeof Model) => {
     selectAll: string;
     selectById: (id: string) => string;
     selectColumns: (...columns: string[]) => string;
@@ -444,7 +445,7 @@ declare const selectTemplate: (dbType: DataSourceType, typeofModel: typeof Model
 
 type WhereOperatorType = "=" | "!=" | "<>" | ">" | "<" | ">=" | "<=" | "LIKE" | "ILIKE" | "NOT LIKE" | "NOT ILIKE" | "IN" | "NOT IN" | "BETWEEN" | "NOT BETWEEN";
 type BaseValues = string | number | boolean | object;
-declare const whereTemplate: (dbType: DataSourceType, typeofModel: typeof Model) => {
+declare const whereTemplate: (dbType: SqlDataSourceType$1, typeofModel: typeof Model) => {
     convertPlaceHolderToValue: (query: string, startIndex?: number) => string;
     where: (column: string, value: BaseValues, operator?: WhereOperatorType) => {
         query: string;
@@ -658,40 +659,19 @@ type FindType<T> = Omit<FindOneType<T>, "throwErrorOnNull"> & {
 };
 type TransactionType = MysqlTransaction | PostgresTransaction;
 
-declare class MySqlModelManagerUtils<T extends Model> {
-    parseInsert(model: T, typeofModel: typeof Model, dbType: DataSourceType): {
+declare class SqlModelManagerUtils<T extends Model> {
+    protected dbType: SqlDataSourceType$1;
+    protected sqlConnection: SqlConnectionType;
+    constructor(dbType: SqlDataSourceType$1, sqlConnection: SqlConnectionType);
+    parseInsert(model: T, typeofModel: typeof Model, dbType: SqlDataSourceType$1): {
         query: string;
         params: any[];
     };
-    parseMassiveInsert(models: T[], typeofModel: typeof Model, dbType: DataSourceType): {
+    parseMassiveInsert(models: T[], typeofModel: typeof Model, dbType: SqlDataSourceType$1): {
         query: string;
         params: any[];
     };
-    parseUpdate(model: T, typeofModel: typeof Model, dbType: DataSourceType): {
-        query: string;
-        params: any[];
-    };
-    private filterRelationsAndMetadata;
-    parseDelete(table: string, column: string, value: string | number | boolean): {
-        query: string;
-        params: any[];
-    };
-    private getRelationFromModel;
-    parseQueryBuilderRelations(models: T[], typeofModel: typeof Model, input: string[], mysqlConnection: mysql.Connection, logs: boolean): Promise<{
-        [relationName: string]: Model[];
-    }[]>;
-}
-
-declare class PostgresModelManagerUtils<T extends Model> {
-    parseInsert(model: T, typeofModel: typeof Model, dbType: DataSourceType): {
-        query: string;
-        params: any[];
-    };
-    parseMassiveInsert(models: T[], typeofModel: typeof Model, dbType: DataSourceType): {
-        query: string;
-        params: any[];
-    };
-    parseUpdate(model: T, typeofModel: typeof Model, dbType: DataSourceType): {
+    parseUpdate(model: T, typeofModel: typeof Model, dbType: SqlDataSourceType$1): {
         query: string;
         params: any[];
     };
@@ -701,15 +681,16 @@ declare class PostgresModelManagerUtils<T extends Model> {
         params: any[];
     };
     private getRelationFromModel;
-    parseQueryBuilderRelations(models: T[], typeofModel: typeof Model, input: string[], pgConnection: pg__default.Client, logs: boolean): Promise<{
+    parseQueryBuilderRelations(models: T[], typeofModel: typeof Model, input: string[], logs: boolean): Promise<{
         [relationName: string]: Model[];
     }[]>;
+    private getQueryResult;
 }
 
 declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     protected pgClient: Client;
     protected isNestedCondition: boolean;
-    protected postgresModelManagerUtils: PostgresModelManagerUtils<T>;
+    protected postgresModelManagerUtils: SqlModelManagerUtils<T>;
     constructor(model: typeof Model, table: string, pgClient: Client, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
     select(...columns: string[]): PostgresQueryBuilder<T>;
     select(...columns: (SelectableType<T> | "*")[]): PostgresQueryBuilder<T>;
@@ -782,7 +763,7 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     private mergeRawPacketIntoModel;
 }
 
-declare const updateTemplate: (dbType: DataSourceType, typeofModel: typeof Model) => {
+declare const updateTemplate: (dbType: SqlDataSourceType$1, typeofModel: typeof Model) => {
     update: (columns: string[], values: any[], primaryKey?: string, primaryKeyValue?: string | undefined) => {
         query: string;
         params: any[];
@@ -1104,7 +1085,7 @@ declare class PostgresUpdateQueryBuilder<T extends Model> extends ModelUpdateQue
     andWhereBuilder(cb: (queryBuilder: PostgresUpdateQueryBuilder<T>) => void): this;
 }
 
-declare const deleteTemplate: (table: string, dbType: DataSourceType) => {
+declare const deleteTemplate: (table: string, dbType: SqlDataSourceType$1) => {
     delete: (column: string, value: string | number | boolean | Date) => {
         query: string;
         params: (string | number | boolean | Date)[];
@@ -1291,7 +1272,7 @@ declare abstract class AbstractModelManager<T extends Model> {
 
 declare class MysqlModelManager<T extends Model> extends AbstractModelManager<T> {
     protected mysqlConnection: mysql.Connection;
-    protected mysqlModelManagerUtils: MySqlModelManagerUtils<T>;
+    protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
     /**
      * Constructor for MysqlModelManager class.
      *
@@ -1379,7 +1360,7 @@ declare class MysqlModelManager<T extends Model> extends AbstractModelManager<T>
 
 declare class PostgresModelManager<T extends Model> extends AbstractModelManager<T> {
     protected pgConnection: pg__default.Client;
-    protected postgresModelManagerUtils: PostgresModelManagerUtils<T>;
+    protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
     /**
      * Constructor for PostgresModelManager class.
      *
@@ -1470,12 +1451,13 @@ type SqlConnectionType = mysql.Connection | pg__default.Client;
 interface SqlDataSourceInput extends DataSourceInput {
     type: Exclude<DataSourceType, "redis">;
 }
+type SqlDataSourceType = SqlDataSourceInput["type"];
 declare class SqlDataSource extends DataSource {
     isConnected: boolean;
     protected sqlConnection: SqlConnectionType;
     private static instance;
     private constructor();
-    getDbType(): DataSourceType;
+    getDbType(): SqlDataSourceType;
     /**
      * @description Connects to the database establishing a connection. If no connection details are provided, the default values from the env will be taken instead
      * @description The User input connection details will always come first
@@ -1516,7 +1498,7 @@ declare class SqlDataSource extends DataSource {
 declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     protected mysqlConnection: mysql.Connection;
     protected isNestedCondition: boolean;
-    protected mysqlModelManagerUtils: MySqlModelManagerUtils<T>;
+    protected mysqlModelManagerUtils: SqlModelManagerUtils<T>;
     /**
      * @param table - The name of the table.
      * @param mysqlConnection - The MySQL connection pool.

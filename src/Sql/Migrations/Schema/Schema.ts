@@ -3,19 +3,19 @@ import createTableTemplate from "../../Resources/Migration/CREATETABLE";
 import ColumnBuilderConnector from "../Columns/CreateTable/ColumnBuilderConnector";
 import dropTableTemplate from "../../Resources/Migration/DROPTABLE";
 import ColumnBuilderAlter from "../Columns/AlterTable/ColumnBuilderAlter";
-import { DataSourceType } from "../../../Datasource";
+import { SqlDataSourceType } from "../../../Datasource";
 
 dotenv.config();
 
 export default class Schema {
   public queryStatements: string[];
-  public sqlType: DataSourceType;
+  public sqlType: SqlDataSourceType;
 
-  constructor(sqlType?: DataSourceType) {
+  constructor(sqlType?: SqlDataSourceType) {
     this.queryStatements = [];
     this.sqlType = (sqlType ||
       process.env.DB_TYPE ||
-      "mysql") as DataSourceType;
+      "mysql") as SqlDataSourceType;
   }
 
   /**

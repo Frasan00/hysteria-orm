@@ -1,5 +1,5 @@
 import { convertCase } from "../../../CaseUtils";
-import { DataSourceType } from "../../../Datasource";
+import { SqlDataSourceType } from "../../../Datasource";
 import { Model } from "../../Models/Model";
 
 const commonSelectMethods = [
@@ -15,7 +15,10 @@ const commonSelectMethods = [
   "AS",
   "DISTINCTROW",
 ];
-const selectTemplate = (dbType: DataSourceType, typeofModel: typeof Model) => {
+const selectTemplate = (
+  dbType: SqlDataSourceType,
+  typeofModel: typeof Model,
+) => {
   const table = typeofModel.table;
   const escapeIdentifier = (identifier: string) => {
     switch (dbType) {

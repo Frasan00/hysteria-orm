@@ -1,19 +1,30 @@
-import { Model } from "../Models/Model";
-import insertTemplate from "../Resources/Query/INSERT";
-import updateTemplate from "../Resources/Query/UPDATE";
-import deleteTemplate from "../Resources/Query/DELETE";
-import { Relation } from "../Models/Relations/Relation";
-import { log, queryError } from "../../Logger";
-import relationTemplates from "../Resources/Query/RELATIONS";
-import mysql, { RowDataPacket } from "mysql2/promise";
-import { DataSourceType } from "../../Datasource";
-import { getRelations } from "../Models/ModelDecorators";
+import { log } from "console";
+import { SqlDataSourceType } from "../../../Datasource";
+import { queryError } from "../../../Logger";
+import deleteTemplate from "../../Resources/Query/DELETE";
+import insertTemplate from "../../Resources/Query/INSERT";
+import relationTemplates from "../../Resources/Query/RELATIONS";
+import updateTemplate from "../../Resources/Query/UPDATE";
+import { Model } from "../Model";
+import { getRelations } from "../ModelDecorators";
+import { Relation } from "../Relations/Relation";
+import { SqlConnectionType } from "../../SqlDatasource";
+import mysql from "mysql2/promise";
+import pg from "pg";
 
-export default class MySqlModelManagerUtils<T extends Model> {
+export default class SqlModelManagerUtils<T extends Model> {
+  protected dbType: SqlDataSourceType;
+  protected sqlConnection: SqlConnectionType;
+
+  constructor(dbType: SqlDataSourceType, sqlConnection: SqlConnectionType) {
+    this.dbType = dbType;
+    this.sqlConnection = sqlConnection;
+  }
+
   public parseInsert(
     model: T,
     typeofModel: typeof Model,
-    dbType: DataSourceType,
+    dbType: SqlDataSourceType,
   ): { query: string; params: any[] } {
     const filteredModel = this.filterRelationsAndMetadata(model);
     const keys = Object.keys(filteredModel);
@@ -26,7 +37,7 @@ export default class MySqlModelManagerUtils<T extends Model> {
   public parseMassiveInsert(
     models: T[],
     typeofModel: typeof Model,
-    dbType: DataSourceType,
+    dbType: SqlDataSourceType,
   ): { query: string; params: any[] } {
     const filteredModels = models.map((m) =>
       this.filterRelationsAndMetadata(m),
@@ -41,7 +52,7 @@ export default class MySqlModelManagerUtils<T extends Model> {
   public parseUpdate(
     model: T,
     typeofModel: typeof Model,
-    dbType: DataSourceType,
+    dbType: SqlDataSourceType,
   ): { query: string; params: any[] } {
     const update = updateTemplate(dbType, typeofModel);
     const filteredModel = this.filterRelationsAndMetadata(model);
@@ -79,7 +90,7 @@ export default class MySqlModelManagerUtils<T extends Model> {
     column: string,
     value: string | number | boolean,
   ): { query: string; params: any[] } {
-    return deleteTemplate(table, "mysql").delete(column, value);
+    return deleteTemplate(table, this.dbType).delete(column, value);
   }
 
   private getRelationFromModel(
@@ -102,7 +113,6 @@ export default class MySqlModelManagerUtils<T extends Model> {
     models: T[],
     typeofModel: typeof Model,
     input: string[],
-    mysqlConnection: mysql.Connection,
     logs: boolean,
   ): Promise<{ [relationName: string]: Model[] }[]> {
     if (!input.length) {
@@ -133,11 +143,9 @@ export default class MySqlModelManagerUtils<T extends Model> {
       relationQuery = relationQueries.join(" UNION ALL ");
       log(relationQuery, logs);
 
-      const result = await mysqlConnection.query(relationQuery);
-      const relatedModels = result[0] as RowDataPacket[];
-
+      const result = await this.getQueryResult(relationQuery);
       const resultMap: { [key: string]: any[] } = {};
-      relatedModels.forEach((row) => {
+      result.forEach((row: any) => {
         const relationName = row.relation_name;
         delete row.relation_name;
         if (!resultMap[relationName]) {
@@ -161,6 +169,28 @@ export default class MySqlModelManagerUtils<T extends Model> {
     } catch (error) {
       queryError("Query Error: " + relationQuery + error);
       throw new Error("Failed to parse relations " + error);
+    }
+  }
+
+  private async getQueryResult(
+    query: string,
+    params: any[] = [],
+  ): Promise<any> {
+    switch (this.dbType) {
+      case "mysql":
+      case "mariadb":
+        const resultMysql = await (
+          this.sqlConnection as mysql.Connection
+        ).query(query, params);
+        return resultMysql[0];
+      case "postgres":
+        const resultPg = await (this.sqlConnection as pg.Client).query(
+          query,
+          params,
+        );
+        return resultPg.rows;
+      default:
+        throw new Error(`Unsupported datasource type: ${this.dbType}`);
     }
   }
 }

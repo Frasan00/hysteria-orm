@@ -1,4 +1,4 @@
-import { DataSourceType } from "../../../../Datasource";
+import { SqlDataSourceType } from "../../../../Datasource";
 import ColumnOptionsBuilder from "./ColumnOptionsBuilder";
 
 export type DateOptions = {
@@ -10,14 +10,14 @@ export default class ColumnTypeBuilder {
   protected table: string;
   protected queryStatements: string[];
   protected columnName: string;
-  protected sqlType: DataSourceType;
+  protected sqlType: SqlDataSourceType;
   public partialQuery: string;
 
   constructor(
     table: string,
     queryStatements: string[],
     partialQuery: string,
-    sqlType: DataSourceType,
+    sqlType: SqlDataSourceType,
   ) {
     this.table = table;
     this.queryStatements = queryStatements;

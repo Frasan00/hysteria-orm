@@ -1,5 +1,5 @@
 import { convertCase } from "../../../CaseUtils";
-import { DataSourceType } from "../../../Datasource";
+import { SqlDataSourceType } from "../../../Datasource";
 import { Model } from "../../Models/Model";
 
 export type WhereOperatorType =
@@ -21,7 +21,10 @@ export type WhereOperatorType =
 
 export type BaseValues = string | number | boolean | object;
 
-const whereTemplate = (dbType: DataSourceType, typeofModel: typeof Model) => {
+const whereTemplate = (
+  dbType: SqlDataSourceType,
+  typeofModel: typeof Model,
+) => {
   return {
     convertPlaceHolderToValue: (query: string, startIndex: number = 1) => {
       switch (dbType) {

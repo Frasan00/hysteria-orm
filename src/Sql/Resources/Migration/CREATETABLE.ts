@@ -1,7 +1,7 @@
-import { DataSourceType } from "../../../Datasource";
+import { SqlDataSourceType } from "../../../Datasource";
 
 const createTableTemplate = {
-  createTableIfNotExists: (table: string, dbType: DataSourceType) => {
+  createTableIfNotExists: (table: string, dbType: SqlDataSourceType) => {
     switch (dbType) {
       case "mysql":
       case "mariadb":
@@ -12,7 +12,7 @@ const createTableTemplate = {
         throw new Error("Unsupported database type");
     }
   },
-  createTable: (table: string, dbType: DataSourceType) => {
+  createTable: (table: string, dbType: SqlDataSourceType) => {
     switch (dbType) {
       case "mysql":
       case "mariadb":

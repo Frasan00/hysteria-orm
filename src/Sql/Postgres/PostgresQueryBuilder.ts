@@ -8,7 +8,6 @@ import {
 import { Client } from "pg";
 import { BaseValues, WhereOperatorType } from "../Resources/Query/WHERE.TS";
 import { log, queryError } from "../../Logger";
-import PostgresModelManagerUtils from "./PostgresModelManagerUtils";
 import joinTemplate from "../Resources/Query/JOIN";
 import { PaginatedData, getPaginationMetadata } from "../pagination";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
@@ -19,11 +18,12 @@ import {
 import "reflect-metadata";
 import { SqlDataSource } from "../SqlDatasource";
 import { convertCase } from "../../CaseUtils";
+import SqlModelManagerUtils from "../Models/ModelManager/ModelManagerUtils";
 
 export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   protected pgClient: Client;
   protected isNestedCondition: boolean;
-  protected postgresModelManagerUtils: PostgresModelManagerUtils<T>;
+  protected postgresModelManagerUtils: SqlModelManagerUtils<T>;
 
   public constructor(
     model: typeof Model,
@@ -36,7 +36,10 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     super(model, table, logs, sqlDataSource);
     this.pgClient = pgClient;
     this.isNestedCondition = isNestedCondition;
-    this.postgresModelManagerUtils = new PostgresModelManagerUtils<T>();
+    this.postgresModelManagerUtils = new SqlModelManagerUtils<T>(
+      "postgres",
+      this.pgClient,
+    );
   }
 
   // SELECT
@@ -100,7 +103,6 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
           [modelInstance],
           this.model,
           this.relations,
-          this.pgClient,
           this.logs,
         );
 
@@ -157,7 +159,6 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
           models,
           this.model,
           this.relations,
-          this.pgClient,
           this.logs,
         );
 

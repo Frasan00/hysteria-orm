@@ -1,4 +1,4 @@
-import { DataSourceType } from "../../../../Datasource";
+import { SqlDataSourceType } from "../../../../Datasource";
 import ColumnTypeBuilder from "./ColumnTypeBuilder";
 
 export default class ColumnOptionsBuilder {
@@ -10,13 +10,13 @@ export default class ColumnOptionsBuilder {
     table: string;
     column: string;
   }[];
-  protected sqlType: DataSourceType;
+  protected sqlType: SqlDataSourceType;
 
   constructor(
     table: string,
     queryStatements: string[],
     partialQuery: string,
-    sqlType: DataSourceType,
+    sqlType: SqlDataSourceType,
     columnName: string = "",
     columnReferences: {
       table: string;
