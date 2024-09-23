@@ -1,4 +1,4 @@
-import { log } from "console";
+import { error, log } from "console";
 import { SqlDataSourceType } from "../../../Datasource";
 import { queryError } from "../../../Logger";
 import deleteTemplate from "../../Resources/Query/DELETE";
@@ -11,6 +11,7 @@ import { Relation } from "../Relations/Relation";
 import { SqlConnectionType } from "../../SqlDatasource";
 import mysql from "mysql2/promise";
 import pg from "pg";
+import sqlite3 from "sqlite3";
 
 export default class SqlModelManagerUtils<T extends Model> {
   protected dbType: SqlDataSourceType;
@@ -189,8 +190,18 @@ export default class SqlModelManagerUtils<T extends Model> {
           params,
         );
         return resultPg.rows;
+      case "sqlite":
+        return (this.sqlConnection as sqlite3.Database).run(
+          query,
+          params,
+          (err) => {
+            if (err) {
+              throw err;
+            }
+          },
+        );
       default:
-        throw new Error(`Unsupported datasource type: ${this.dbType}`);
+        throw new Error(`Unsupported data source type: ${this.dbType}`);
     }
   }
 }

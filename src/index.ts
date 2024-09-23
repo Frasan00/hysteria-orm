@@ -25,6 +25,18 @@ import {
 } from "./NoSql/Redis/RedisDataSource";
 import { User } from "../test/sql/Models/User";
 
+(async () => {
+  const sql = await SqlDataSource.connect();
+  const value = 1;
+  const user = await User.query()
+    .when(value, (value, query) => {
+      query.where("id", value);
+    })
+    .one();
+  console.log(user);
+  await sql.closeConnection();
+})();
+
 export default {
   // Sql
   Model,

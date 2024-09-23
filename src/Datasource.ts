@@ -85,6 +85,10 @@ export abstract class DataSource {
           break;
         case "postgres":
           this.port = 5432;
+        case "redis":
+          this.port = 6379;
+        case "sqlite":
+          break;
         default:
           throw new Error(
             "Database type not provided in the envs nor in the connection details",

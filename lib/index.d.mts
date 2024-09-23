@@ -708,6 +708,12 @@ declare abstract class WhereQueryBuilder<T extends Model> {
      */
     constructor(model: typeof Model, table: string, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
     /**
+     * @description Accepts a value and executes a callback only of the value exists
+     * @param {any} value
+     * @param callback
+     */
+    when(value: any, cb: (value: any, query: WhereQueryBuilder<T>) => void): this;
+    /**
      * @description Adds a WHERE condition to the query.
      * @param column - The column to filter.
      * @param operator - The comparison operator.
@@ -1526,7 +1532,299 @@ declare class PostgresModelManager<T extends Model> extends AbstractModelManager
     delete(): PostgresDeleteQueryBuilder<T>;
 }
 
-type ModelManager<T extends Model> = MysqlModelManager<T> | PostgresModelManager<T>;
+declare class SQLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
+    protected sqLiteConnection: sqlite3.Database;
+    protected isNestedCondition: boolean;
+    protected mysqlModelManagerUtils: SqlModelManagerUtils<T>;
+    /**
+     * @param table - The name of the table.
+     * @param sqLiteConnection - The MySQL connection pool.
+     * @param logs - A boolean indicating whether to log queries.
+     * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
+     */
+    constructor(model: typeof Model, table: string, sqLiteConnection: sqlite3.Database, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
+    one(options?: OneOptions): Promise<T | null>;
+    oneOrFail(): Promise<T>;
+    many(): Promise<T[]>;
+    raw<T>(query: string, params?: any[]): Promise<T>;
+    getCount(): Promise<number>;
+    getSum(column: SelectableType<T>): Promise<number>;
+    getSum(column: string): Promise<number>;
+    paginate(page: number, limit: number): Promise<PaginatedData<T>>;
+    select(...columns: string[]): SQLiteQueryBuilder<T>;
+    select(...columns: (SelectableType<T> | "*")[]): SQLiteQueryBuilder<T>;
+    join(relationTable: string, primaryColumn: string, foreignColumn: string): SQLiteQueryBuilder<T>;
+    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): SQLiteQueryBuilder<T>;
+    addRelations(relations: RelationType<T>[]): SQLiteQueryBuilder<T>;
+    addDynamicColumns(dynamicColumns: DynamicColumnType<T>[]): ModelQueryBuilder<T>;
+    whereBuilder(cb: (queryBuilder: SQLiteQueryBuilder<T>) => void): this;
+    orWhereBuilder(cb: (queryBuilder: SQLiteQueryBuilder<T>) => void): this;
+    andWhereBuilder(cb: (queryBuilder: SQLiteQueryBuilder<T>) => void): this;
+    when(value: any, cb: (value: any, query: ModelQueryBuilder<T>) => void): this;
+    where(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
+    where(column: string, operator: WhereOperatorType, value: BaseValues): this;
+    where(column: SelectableType<T> | string, value: BaseValues): this;
+    andWhere(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
+    andWhere(column: string, operator: WhereOperatorType, value: BaseValues): this;
+    andWhere(column: SelectableType<T> | string, value: BaseValues): this;
+    orWhere(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
+    orWhere(column: string, operator: WhereOperatorType, value: BaseValues): this;
+    orWhere(column: SelectableType<T> | string, value: BaseValues): this;
+    whereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
+    whereBetween(column: string, min: BaseValues, max: BaseValues): this;
+    andWhereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
+    andWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
+    orWhereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
+    orWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
+    whereNotBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
+    whereNotBetween(column: string, min: BaseValues, max: BaseValues): this;
+    orWhereNotBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
+    orWhereNotBetween(column: string, min: BaseValues, max: BaseValues): this;
+    whereIn(column: SelectableType<T>, values: BaseValues[]): this;
+    whereIn(column: string, values: BaseValues[]): this;
+    andWhereIn(column: SelectableType<T>, values: BaseValues[]): this;
+    andWhereIn(column: string, values: BaseValues[]): this;
+    orWhereIn(column: SelectableType<T>, values: BaseValues[]): this;
+    orWhereIn(column: string, values: BaseValues[]): this;
+    whereNotIn(column: SelectableType<T>, values: BaseValues[]): this;
+    whereNotIn(column: string, values: BaseValues[]): this;
+    orWhereNotIn(column: SelectableType<T>, values: BaseValues[]): this;
+    orWhereNotIn(column: string, values: BaseValues[]): this;
+    whereNull(column: SelectableType<T>): this;
+    whereNull(column: string): this;
+    andWhereNull(column: SelectableType<T>): this;
+    andWhereNull(column: string): this;
+    orWhereNull(column: SelectableType<T>): this;
+    orWhereNull(column: string): this;
+    whereNotNull(column: SelectableType<T>): this;
+    whereNotNull(column: string): this;
+    andWhereNotNull(column: SelectableType<T>): this;
+    andWhereNotNull(column: string): this;
+    orWhereNotNull(column: SelectableType<T>): this;
+    orWhereNotNull(column: string): this;
+    rawWhere(query: string): this;
+    rawAndWhere(query: string): this;
+    rawOrWhere(query: string): this;
+    groupBy(...columns: SelectableType<T>[]): this;
+    groupBy(...columns: string[]): this;
+    orderBy(columns: SelectableType<T>[], order: "ASC" | "DESC"): this;
+    orderBy(columns: string[], order: "ASC" | "DESC"): this;
+    limit(limit: number): this;
+    offset(offset: number): this;
+    copy(): ModelQueryBuilder<T>;
+    protected groupFooterQuery(): string;
+    private promisifyQuery;
+}
+
+declare class SQLiteUpdateQueryBuilder<T extends Model> extends ModelUpdateQueryBuilder<T> {
+    protected sqlConnection: sqlite3.Database;
+    protected joinQuery: string;
+    protected updateTemplate: ReturnType<typeof updateTemplate>;
+    protected isNestedCondition: boolean;
+    /**
+     * @description Constructs a MysqlQueryBuilder instance.
+     * @param model - The model class associated with the table.
+     * @param table - The name of the table.
+     * @param sqlLiteCOnnection - The MySQL connection pool.
+     * @param logs - A boolean indicating whether to log queries.
+     * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
+     */
+    constructor(model: typeof Model, table: string, sqlLiteConnection: sqlite3.Database, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
+    /**
+     * @description Updates a record in the database.
+     * @param data - The data to update.
+     * @param trx - The transaction to run the query in.
+     * @returns The updated records.
+     */
+    withData(data: Partial<T>, trx?: SQLiteTransaction): Promise<T[]>;
+    /**
+     *
+     * @param relationTable - The name of the related table.
+     * @param primaryColumn - The name of the primary column in the caller table.
+     * @param foreignColumn - The name of the foreign column in the related table.
+     */
+    join(relationTable: string, primaryColumn: string, foreignColumn: string): SQLiteUpdateQueryBuilder<T>;
+    /**
+     *
+     * @param relationTable - The name of the related table.
+     * @param primaryColumn - The name of the primary column in the caller table.
+     * @param foreignColumn - The name of the foreign column in the related table.
+     */
+    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): SQLiteUpdateQueryBuilder<T>;
+    /**
+     * @description Build more complex where conditions.
+     * @param cb
+     */
+    whereBuilder(cb: (queryBuilder: SQLiteUpdateQueryBuilder<T>) => void): this;
+    /**
+     * @description Build complex OR-based where conditions.
+     * @param cb Callback function that takes a query builder and adds conditions to it.
+     */
+    orWhereBuilder(cb: (queryBuilder: SQLiteUpdateQueryBuilder<T>) => void): this;
+    /**
+     * @description Build complex AND-based where conditions.
+     * @param cb Callback function that takes a query builder and adds conditions to it.
+     */
+    andWhereBuilder(cb: (queryBuilder: SQLiteUpdateQueryBuilder<T>) => void): this;
+    private promisifyQuery;
+}
+
+declare class SQLiteDeleteQueryBuilder<T extends Model> extends ModelDeleteQueryBuilder<T> {
+    protected sqlConnection: sqlite3.Database;
+    protected joinQuery: string;
+    protected updateTemplate: ReturnType<typeof updateTemplate>;
+    protected deleteTemplate: ReturnType<typeof deleteTemplate>;
+    protected isNestedCondition: boolean;
+    /**
+     * @description Constructs a MysqlQueryBuilder instance.
+     * @param model - The model class associated with the table.
+     * @param table - The name of the table.
+     * @param sqlConnection - The Sqlite connection pool.
+     * @param logs - A boolean indicating whether to log queries.
+     * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
+     */
+    constructor(model: typeof Model, table: string, sqlConnection: sqlite3.Database, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
+    /**
+     * @description Deletes Records from the database.
+     * @param data - The data to update.
+     * @param trx - The transaction to run the query in.
+     * @returns The updated records.
+     */
+    execute(trx?: SQLiteTransaction): Promise<T[]>;
+    /**
+     * @description Soft Deletes Records from the database.
+     * @param column - The column to soft delete. Default is 'deletedAt'.
+     * @param value - The value to set the column to. Default is the current date and time.
+     * @param trx - The transaction to run the query in.
+     * @returns The updated records.
+     */
+    softDelete(options?: {
+        column?: SelectableType<T>;
+        value?: string | number | boolean;
+        trx?: SQLiteTransaction;
+    }): Promise<T[]>;
+    /**
+     *
+     * @param relationTable - The name of the related table.
+     * @param primaryColumn - The name of the primary column in the caller table.
+     * @param foreignColumn - The name of the foreign column in the related table.
+     */
+    join(relationTable: string, primaryColumn: string, foreignColumn: string): SQLiteDeleteQueryBuilder<T>;
+    /**
+     *
+     * @param relationTable - The name of the related table.
+     * @param primaryColumn - The name of the primary column in the caller table.
+     * @param foreignColumn - The name of the foreign column in the related table.
+     */
+    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): SQLiteDeleteQueryBuilder<T>;
+    /**
+     * @description Build more complex where conditions.
+     * @param cb
+     */
+    whereBuilder(cb: (queryBuilder: SQLiteDeleteQueryBuilder<T>) => void): this;
+    /**
+     * @description Build complex OR-based where conditions.
+     * @param cb Callback function that takes a query builder and adds conditions to it.
+     */
+    orWhereBuilder(cb: (queryBuilder: SQLiteDeleteQueryBuilder<T>) => void): this;
+    /**
+     * @description Build complex AND-based where conditions.
+     * @param cb Callback function that takes a query builder and adds conditions to it.
+     */
+    andWhereBuilder(cb: (queryBuilder: SQLiteDeleteQueryBuilder<T>) => void): this;
+    private promisifyQuery;
+}
+
+declare class SQLiteModelManager<T extends Model> extends AbstractModelManager<T> {
+    protected sqLiteConnection: sqlite3.Database;
+    protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
+    /**
+     * Constructor for SqLiteModelManager class.
+     *
+     * @param {typeof Model} model - Model constructor.
+     * @param {Pool} sqLiteConnection - SQLite connection.
+     * @param {boolean} logs - Flag to enable or disable logging.
+     */
+    constructor(model: typeof Model, sqLiteConnection: sqlite3.Database, logs: boolean, sqlDataSource: SqlDataSource);
+    /**
+     * Find method to retrieve multiple records from the database based on the input conditions.
+     *
+     * @param {FindType} input - Optional query parameters for filtering, ordering, and pagination.
+     * @returns Promise resolving to an array of models.
+     */
+    find(input?: FindType<T> | UnrestrictedFindType<T>): Promise<T[]>;
+    /**
+     * Find a single record from the database based on the input conditions.
+     *
+     * @param {FindOneType} input - Query parameters for filtering and selecting a single record.
+     * @returns Promise resolving to a single model or null if not found.
+     */
+    findOne(input: FindOneType<T> | UnrestrictedFindOneType<T>): Promise<T | null>;
+    /**
+     * Find a single record by its PK from the database.
+     *
+     * @param {string | number | boolean} value - PK of the record to retrieve, hooks will not have any effect, since it's a direct query for the PK.
+     * @returns Promise resolving to a single model or null if not found.
+     */
+    findOneByPrimaryKey(value: string | number | boolean, throwErrorOnNull?: boolean): Promise<T | null>;
+    /**
+     * Save a new model instance to the database.
+     *
+     * @param {Model} model - Model instance to be saved.
+     * @param {MysqlTransaction} trx - MysqlTransaction to be used on the save operation.
+     * @returns Promise resolving to the saved model or null if saving fails.
+     */
+    create(model: Partial<T>, trx?: TransactionType): Promise<T | null>;
+    /**
+     * Create multiple model instances in the database.
+     *
+     * @param {Model} model - Model instance to be saved.
+     * @param {MysqlTransaction} trx - MysqlTransaction to be used on the save operation.
+     * @returns Promise resolving to an array of saved models or null if saving fails.
+     */
+    massiveCreate(models: Partial<T>[], trx?: TransactionType): Promise<T[]>;
+    /**
+     * Update an existing model instance in the database.
+     * @param {Model} model - Model instance to be updated.
+     * @param {MysqlTransaction} trx - MysqlTransaction to be used on the update operation.
+     * @returns Promise resolving to the updated model or null if updating fails.
+     */
+    updateRecord(model: T, trx?: TransactionType): Promise<T | null>;
+    /**
+     * @description Delete a record from the database from the given column and value.
+     *
+     * @param {string} column - Column to filter by.
+     * @param {string | number | boolean} value - Value to filter by.
+     * @param {MysqlTransaction} trx - MysqlTransaction to be used on the delete operation.
+     * @returns Promise resolving to affected rows count
+     */
+    deleteByColumn(column: string, value: string | number | boolean, trx?: TransactionType): Promise<number>;
+    /**
+     * @description Delete a record from the database from the given model.
+     *
+     * @param {Model} model - Model to delete.
+     * @param {MysqlTransaction} trx - MysqlTransaction to be used on the delete operation.
+     * @returns Promise resolving to the deleted model or null if deleting fails.
+     */
+    deleteRecord(model: T, trx?: TransactionType): Promise<T | null>;
+    /**
+     * Create and return a new instance of the MysqlQueryBuilder for building more complex SQL queries.
+     *
+     * @returns {MysqlQueryBuilder<Model>} - Instance of MysqlQueryBuilder.
+     */
+    query(): SQLiteQueryBuilder<T>;
+    /**
+     * @description Returns an update query builder.
+     */
+    update(): SQLiteUpdateQueryBuilder<T> | PostgresUpdateQueryBuilder<T>;
+    /**
+     * @description Returns a delete query builder.
+     */
+    delete(): SQLiteDeleteQueryBuilder<T>;
+    private promisifyQuery;
+}
+
+type ModelManager<T extends Model> = MysqlModelManager<T> | PostgresModelManager<T> | SQLiteModelManager<T>;
 type SqlConnectionType = mysql.Connection | pg__default.Client | sqlite3.Database;
 interface SqlDataSourceInput extends DataSourceInput {
     type: Exclude<DataSourceType, "redis">;
@@ -1656,90 +1954,6 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     offset(offset: number): this;
     copy(): ModelQueryBuilder<T>;
     protected groupFooterQuery(): string;
-}
-
-declare class SQLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
-    protected sqLiteConnection: sqlite3.Database;
-    protected isNestedCondition: boolean;
-    protected mysqlModelManagerUtils: SqlModelManagerUtils<T>;
-    /**
-     * @param table - The name of the table.
-     * @param sqLiteConnection - The MySQL connection pool.
-     * @param logs - A boolean indicating whether to log queries.
-     * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
-     */
-    constructor(model: typeof Model, table: string, sqLiteConnection: sqlite3.Database, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
-    one(options?: OneOptions): Promise<T | null>;
-    oneOrFail(): Promise<T>;
-    many(): Promise<T[]>;
-    raw<T>(query: string, params?: any[]): Promise<T>;
-    getCount(): Promise<number>;
-    getSum(column: SelectableType<T>): Promise<number>;
-    getSum(column: string): Promise<number>;
-    paginate(page: number, limit: number): Promise<PaginatedData<T>>;
-    select(...columns: string[]): SQLiteQueryBuilder<T>;
-    select(...columns: (SelectableType<T> | "*")[]): SQLiteQueryBuilder<T>;
-    join(relationTable: string, primaryColumn: string, foreignColumn: string): SQLiteQueryBuilder<T>;
-    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): SQLiteQueryBuilder<T>;
-    addRelations(relations: RelationType<T>[]): SQLiteQueryBuilder<T>;
-    addDynamicColumns(dynamicColumns: DynamicColumnType<T>[]): ModelQueryBuilder<T>;
-    whereBuilder(cb: (queryBuilder: SQLiteQueryBuilder<T>) => void): this;
-    orWhereBuilder(cb: (queryBuilder: SQLiteQueryBuilder<T>) => void): this;
-    andWhereBuilder(cb: (queryBuilder: SQLiteQueryBuilder<T>) => void): this;
-    when(value: any, cb: (value: any, query: ModelQueryBuilder<T>) => void): this;
-    where(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
-    where(column: string, operator: WhereOperatorType, value: BaseValues): this;
-    where(column: SelectableType<T> | string, value: BaseValues): this;
-    andWhere(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
-    andWhere(column: string, operator: WhereOperatorType, value: BaseValues): this;
-    andWhere(column: SelectableType<T> | string, value: BaseValues): this;
-    orWhere(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
-    orWhere(column: string, operator: WhereOperatorType, value: BaseValues): this;
-    orWhere(column: SelectableType<T> | string, value: BaseValues): this;
-    whereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
-    whereBetween(column: string, min: BaseValues, max: BaseValues): this;
-    andWhereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
-    andWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
-    orWhereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
-    orWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
-    whereNotBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
-    whereNotBetween(column: string, min: BaseValues, max: BaseValues): this;
-    orWhereNotBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
-    orWhereNotBetween(column: string, min: BaseValues, max: BaseValues): this;
-    whereIn(column: SelectableType<T>, values: BaseValues[]): this;
-    whereIn(column: string, values: BaseValues[]): this;
-    andWhereIn(column: SelectableType<T>, values: BaseValues[]): this;
-    andWhereIn(column: string, values: BaseValues[]): this;
-    orWhereIn(column: SelectableType<T>, values: BaseValues[]): this;
-    orWhereIn(column: string, values: BaseValues[]): this;
-    whereNotIn(column: SelectableType<T>, values: BaseValues[]): this;
-    whereNotIn(column: string, values: BaseValues[]): this;
-    orWhereNotIn(column: SelectableType<T>, values: BaseValues[]): this;
-    orWhereNotIn(column: string, values: BaseValues[]): this;
-    whereNull(column: SelectableType<T>): this;
-    whereNull(column: string): this;
-    andWhereNull(column: SelectableType<T>): this;
-    andWhereNull(column: string): this;
-    orWhereNull(column: SelectableType<T>): this;
-    orWhereNull(column: string): this;
-    whereNotNull(column: SelectableType<T>): this;
-    whereNotNull(column: string): this;
-    andWhereNotNull(column: SelectableType<T>): this;
-    andWhereNotNull(column: string): this;
-    orWhereNotNull(column: SelectableType<T>): this;
-    orWhereNotNull(column: string): this;
-    rawWhere(query: string): this;
-    rawAndWhere(query: string): this;
-    rawOrWhere(query: string): this;
-    groupBy(...columns: SelectableType<T>[]): this;
-    groupBy(...columns: string[]): this;
-    orderBy(columns: SelectableType<T>[], order: "ASC" | "DESC"): this;
-    orderBy(columns: string[], order: "ASC" | "DESC"): this;
-    limit(limit: number): this;
-    offset(offset: number): this;
-    copy(): ModelQueryBuilder<T>;
-    protected groupFooterQuery(): string;
-    private promisifyQuery;
 }
 
 /**

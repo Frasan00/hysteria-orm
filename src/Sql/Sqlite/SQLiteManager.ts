@@ -19,27 +19,27 @@ import { SQLiteDeleteQueryBuilder } from "./SQLiteDeleteQueryBuilder";
 export class SQLiteModelManager<
   T extends Model,
 > extends AbstractModelManager<T> {
-  protected mysqlConnection: sqlite3.Database;
+  protected sqLiteConnection: sqlite3.Database;
   protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
 
   /**
-   * Constructor for MysqlModelManager class.
+   * Constructor for SqLiteModelManager class.
    *
    * @param {typeof Model} model - Model constructor.
-   * @param {Pool} mysqlConnection - MySQL connection pool.
+   * @param {Pool} sqLiteConnection - SQLite connection.
    * @param {boolean} logs - Flag to enable or disable logging.
    */
   constructor(
     model: typeof Model,
-    mysqlConnection: sqlite3.Database,
+    sqLiteConnection: sqlite3.Database,
     logs: boolean,
     sqlDataSource: SqlDataSource,
   ) {
     super(model, logs, sqlDataSource);
-    this.mysqlConnection = mysqlConnection;
+    this.sqLiteConnection = sqLiteConnection;
     this.sqlModelManagerUtils = new SqlModelManagerUtils<T>(
       "mysql",
-      mysqlConnection,
+      sqLiteConnection,
     );
   }
 
@@ -370,7 +370,7 @@ export class SQLiteModelManager<
     return new SQLiteQueryBuilder<T>(
       this.model,
       this.model.table,
-      this.mysqlConnection,
+      this.sqLiteConnection,
       this.logs,
       false,
       this.sqlDataSource,
@@ -384,7 +384,7 @@ export class SQLiteModelManager<
     return new SQLiteUpdateQueryBuilder<T>(
       this.model,
       this.model.table,
-      this.mysqlConnection,
+      this.sqLiteConnection,
       this.logs,
       false,
       this.sqlDataSource,
@@ -398,7 +398,7 @@ export class SQLiteModelManager<
     return new SQLiteDeleteQueryBuilder<T>(
       this.model,
       this.model.table,
-      this.mysqlConnection,
+      this.sqLiteConnection,
       this.logs,
       false,
       this.sqlDataSource,
@@ -407,7 +407,7 @@ export class SQLiteModelManager<
 
   private promisifyQuery<T>(query: string, params: any): Promise<T> {
     return new Promise<T>((resolve, reject) => {
-      this.mysqlConnection.get<T>(query, params, (err, result) => {
+      this.sqLiteConnection.get<T>(query, params, (err, result) => {
         if (err) {
           reject(err);
         }

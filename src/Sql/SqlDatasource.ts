@@ -8,10 +8,12 @@ import { PostgresModelManager } from "./Postgres/PostgresModelManager";
 import { MysqlTransaction } from "./Mysql/MysqlTransaction";
 import { PostgresTransaction } from "./Postgres/PostgresTransaction";
 import logger from "../Logger";
+import { SQLiteModelManager } from "./Sqlite/SQLiteManager";
 
 type ModelManager<T extends Model> =
   | MysqlModelManager<T>
-  | PostgresModelManager<T>;
+  | PostgresModelManager<T>
+  | SQLiteModelManager<T>;
 
 export type SqlConnectionType = mysql.Connection | pg.Client | sqlite3.Database;
 
@@ -162,6 +164,13 @@ export class SqlDataSource extends DataSource {
         return new PostgresModelManager<T>(
           model as typeof Model,
           this.sqlConnection as pg.Client,
+          this.logs,
+          this,
+        );
+      case "sqlite":
+        return new SQLiteModelManager<T>(
+          model as typeof Model,
+          this.sqlConnection as sqlite3.Database,
           this.logs,
           this,
         );
