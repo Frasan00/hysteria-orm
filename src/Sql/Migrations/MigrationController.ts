@@ -3,14 +3,17 @@ import { PoolClient } from "pg";
 import { log } from "../../Logger";
 import { Migration } from "./Migration";
 import { SqlDataSource } from "../SqlDatasource";
+import sqlite3 from "sqlite3";
 
 export class MigrationController {
   protected mysqlPool: PoolConnection | null;
   protected pgPool: PoolClient | null;
+  protected sqliteConnection: sqlite3.Database | null;
 
-  constructor(mysqlPool: PoolConnection | null, pgPool: PoolClient | null) {
+  constructor(mysqlPool: PoolConnection | null, pgPool: PoolClient | null, sqliteConnection: sqlite3.Database | null) {
     this.mysqlPool = mysqlPool;
     this.pgPool = pgPool;
+    this.sqliteConnection = sqliteConnection;
   }
 
   public async upMigrations(migrations: Migration[]): Promise<void> {
@@ -89,6 +92,19 @@ export class MigrationController {
       text = text.replace(/PLACEHOLDER/g, () => `$${index++}`);
       log(text, true, params);
       await this.pgPool.query(text, params);
+      return;
+    } else if (this.sqliteConnection) {
+      text = text.replace(/PLACEHOLDER/g, "?");
+      log(text, true, params);
+      await new Promise<void>((resolve, reject) => {
+        (this.sqliteConnection as sqlite3.Database).run(text, params, (error) => {
+          if (error) {
+            reject(error);
+          } else {
+            resolve();
+          }
+        });
+      });
       return;
     }
 

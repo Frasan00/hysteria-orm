@@ -10,11 +10,10 @@ dotenv.config();
 
 class PgCliUtils {
   public getPgConfig(): DataSourceInput {
-    if (!process.env.DB_PORT) throw new Error("DB_PORT is not defined");
     return {
       type: "postgres",
       host: process.env.DB_HOST || "localhost",
-      port: +process.env.DB_PORT,
+      port: +(process.env.DB_PORT as string) || 5432,
       username: process.env.DB_USER,
       password: process.env.DB_PASSWORD || "",
       database: process.env.DB_DATABASE || "",

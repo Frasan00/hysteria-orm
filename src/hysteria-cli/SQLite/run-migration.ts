@@ -1,9 +1,7 @@
 #!/usr/bin/env node
 
-import path from "path";
 import dotenv from "dotenv";
-import { Pool } from "pg";
-import PostgresCliUtils from "./PostgresCliUtils";
+import sqlite3 from "sqlite3";
 import { MigrationTableType } from "../resources/MigrationTableType";
 import { log } from "console";
 import { Migration } from "../../Sql/Migrations/Migration";
@@ -14,28 +12,26 @@ import {
   ROLLBACK_TRANSACTION,
 } from "../../Sql/Resources/Query/TRANSACTION";
 import logger from "../../Logger";
+import SQLIteMIgrationUtils from "./SQLIteMIgrationUtils";
 
 dotenv.config();
 
-export async function runMigrationsPg(): Promise<void> {
-  const config = PostgresCliUtils.getPgConfig();
-  const postgresPool = new Pool({
-    host: config.host,
-    port: config.port,
-    user: config.username,
-    password: config.password,
-    database: config.database,
+export async function runMigrationsSQLite(): Promise<void> {
+  const config = SQLIteMIgrationUtils.getSQLiteConfig();
+  const sqliteConnection = new sqlite3.Database(config.database as string, (error) => {
+    if (error) {
+      logger.error(error);
+      throw error;
+    }
   });
-
-  const client = await postgresPool.connect();
 
   try {
     log(BEGIN_TRANSACTION, true);
-    await client.query(BEGIN_TRANSACTION);
+    await SQLIteMIgrationUtils.promisifyQuery(BEGIN_TRANSACTION, [], sqliteConnection);
 
     const migrationTable: MigrationTableType[] =
-      await PostgresCliUtils.getMigrationTable(client);
-    const migrations: Migration[] = await PostgresCliUtils.getMigrations();
+      await SQLIteMIgrationUtils.getMigrationTable(sqliteConnection);
+    const migrations: Migration[] = await SQLIteMIgrationUtils.getMigrations();
     const pendingMigrations = migrations.filter(
       (migration) =>
         !migrationTable
@@ -45,22 +41,21 @@ export async function runMigrationsPg(): Promise<void> {
 
     if (pendingMigrations.length === 0) {
       logger.info("No pending migrations.");
-      client.release();
+      sqliteConnection.close();
       process.exit(0);
     }
 
-    const migrationController = new MigrationController(null, client, null);
+    const migrationController = new MigrationController(null, null, sqliteConnection);
     await migrationController.upMigrations(pendingMigrations);
 
     log(COMMIT_TRANSACTION, true);
-    await client.query(COMMIT_TRANSACTION);
+    await SQLIteMIgrationUtils.promisifyQuery(COMMIT_TRANSACTION, [], sqliteConnection);
   } catch (error: any) {
     log(ROLLBACK_TRANSACTION, true);
-    await client.query(ROLLBACK_TRANSACTION);
+    await SQLIteMIgrationUtils.promisifyQuery(ROLLBACK_TRANSACTION, [], sqliteConnection);
 
-    console.error(error);
     throw error;
   } finally {
-    client.release();
+    sqliteConnection.close();
   }
 }

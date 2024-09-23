@@ -1,34 +1,32 @@
-import { PoolConnection } from "mysql2/promise";
+import { PoolClient } from "pg";
 import { MigrationTableType } from "../resources/MigrationTableType";
 import fs from "fs";
 import MigrationTemplates from "../resources/MigrationTemplates";
 import dotenv from "dotenv";
 import path from "path";
-import { DataSourceInput } from "../../Datasource";
-import { Migration } from "../../Sql/Migrations/Migration";
+import { DataSourceInput, Migration } from "../..";
+import sqlite3 from "sqlite3";
 
 dotenv.config();
 
-class MysqlCliUtils {
-  public getMysqlConfig(): DataSourceInput {
+class SQLiteMigrationUtils {
+  public getSQLiteConfig(): DataSourceInput {
     return {
-      type: "mysql",
-      host: process.env.DB_HOST || "localhost",
-      port: +(process.env.DB_PORT as string) || 3306,
-      username: process.env.DB_USER,
-      password: process.env.DB_PASSWORD || "",
+      type: "sqlite",
       database: process.env.DB_DATABASE || "",
     };
   }
 
   public async getMigrationTable(
-    mysqlPool: PoolConnection,
+    sqLiteConnection: sqlite3.Database,
   ): Promise<MigrationTableType[]> {
-    await mysqlPool.query(MigrationTemplates.migrationTableTemplate());
-    const result = await mysqlPool.query(
+    await this.promisifyQuery(MigrationTemplates.migrationTableTemplatePg(), [], sqLiteConnection);
+    const result = await this.promisifyQuery<MigrationTableType[]>(
       MigrationTemplates.selectAllFromMigrationsTemplate(),
+      [],
+      sqLiteConnection,
     );
-    return result[0] as MigrationTableType[];
+    return result as MigrationTableType[];
   }
 
   public async getMigrations(): Promise<Migration[]> {
@@ -76,7 +74,7 @@ class MysqlCliUtils {
     throw new Error("No database migration files found");
   }
 
-  private async findMigrationModule(
+  public async findMigrationModule(
     migrationName: string,
     migrationModulePath: string = process.env.MIGRATION_PATH
       ? process.env.MIGRATION_PATH + "/" + migrationName
@@ -85,7 +83,7 @@ class MysqlCliUtils {
     const absolutePath = path.resolve(migrationModulePath.replace(/\.ts$/, ""));
 
     try {
-      const migrationModule = require(absolutePath);
+      const migrationModule = await import(absolutePath);
       if (migrationModule.default) {
         return migrationModule;
       }
@@ -116,6 +114,17 @@ class MysqlCliUtils {
       return !migrationEntry;
     });
   }
+
+  public promisifyQuery<T>(query: string, params: any, sqLiteConnection: sqlite3.Database): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      sqLiteConnection.get<T>(query, params, (err, result) => {
+        if (err) {
+          reject(err);
+        }
+        resolve(result);
+      });
+    });
+  }
 }
 
-export default new MysqlCliUtils();
+export default new SQLiteMigrationUtils();

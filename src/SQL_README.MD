@@ -79,7 +79,7 @@
 ### Complete env example
 ```dotenv
 MIGRATION_PATH=database/migrations # default /database/migrations, this env always referees to the root of the project
-DB_TYPE=mysql # mysql | postgres | [mariadb(experimental)]
+DB_TYPE=mysql # mysql | postgres | mariadb | sqlite
 DB_HOST=127.0.0.1
 DB_USER=root
 DB_PASSWORD=root

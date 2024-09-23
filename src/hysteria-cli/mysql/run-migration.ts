@@ -46,7 +46,7 @@ export async function runMigrationsSql(): Promise<void> {
       process.exit(0);
     }
 
-    const migrationController = new MigrationController(mysql, null);
+    const migrationController = new MigrationController(mysql, null, null);
     await migrationController.upMigrations(pendingMigrations);
 
     log(COMMIT_TRANSACTION, true);
