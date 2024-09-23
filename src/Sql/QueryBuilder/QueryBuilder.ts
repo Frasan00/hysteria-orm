@@ -14,6 +14,8 @@ import {
 } from "../Models/ModelManager/ModelManagerTypes";
 import { SqlDataSource } from "../SqlDatasource";
 import { SQLiteQueryBuilder } from "../Sqlite/SQLiteQueryBuilder";
+import { convertCase } from "../../CaseUtils";
+import { getModelColumns, getDynamicColumns } from "../Models/ModelDecorators";
 
 /**
  * @description The abstract class for query builders for selecting data.
@@ -646,5 +648,58 @@ export abstract class QueryBuilder<T extends Model> {
     return (
       this.groupByQuery + this.orderByQuery + this.limitQuery + this.offsetQuery
     );
+  }
+
+  protected async mergeRawPacketIntoModel(
+    model: T,
+    row: any,
+    typeofModel: typeof Model,
+  ) {
+    const columns = getModelColumns(this.model);
+    Object.entries(row).forEach(([key, value]) => {
+      const casedKey = convertCase(
+        key,
+        typeofModel.modelCaseConvention,
+      ) as string;
+      if (columns.includes(casedKey)) {
+        Object.assign(model, { [casedKey]: value });
+        return;
+      }
+
+      model.extraColumns[key] = value as string | number | boolean;
+    });
+
+    // Dynamic columns
+    const dynamicColumns = getDynamicColumns(this.model);
+    if (!dynamicColumns || !dynamicColumns.length) {
+      return;
+    }
+
+    const dynamicColumnMap = new Map<
+      string,
+      {
+        columnName: string;
+        dynamicColumnFn: (...args: any[]) => any;
+      }
+    >();
+
+    for (const dynamicColumn of dynamicColumns) {
+      dynamicColumnMap.set(dynamicColumn.functionName, {
+        columnName: dynamicColumn.columnName,
+        dynamicColumnFn: dynamicColumn.dynamicColumnFn,
+      });
+    }
+
+    const promises = this.dynamicColumns.map(async (dynamicColumn: string) => {
+      const dynamic = dynamicColumnMap.get(dynamicColumn);
+      const casedKey = convertCase(
+        dynamic?.columnName,
+        typeofModel.modelCaseConvention,
+      );
+
+      Object.assign(model, { [casedKey]: await dynamic?.dynamicColumnFn() });
+    });
+
+    await Promise.all(promises);
   }
 }

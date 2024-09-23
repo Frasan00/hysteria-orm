@@ -97,7 +97,11 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
       }
 
       const modelInstance = getBaseModelInstance<T>();
-      this.mergeRawPacketIntoModel(modelInstance, result.rows[0], this.model);
+      await this.mergeRawPacketIntoModel(
+        modelInstance,
+        result.rows[0],
+        this.model,
+      );
 
       const relationModels =
         await this.postgresModelManagerUtils.parseQueryBuilderRelations(
@@ -149,7 +153,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
       const modelPromises = rows.map(async (row) => {
         const modelInstance = getBaseModelInstance<T>();
-        this.mergeRawPacketIntoModel(modelInstance, row, this.model);
+        await this.mergeRawPacketIntoModel(modelInstance, row, this.model);
 
         return modelInstance as T;
       });
@@ -1240,50 +1244,5 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return (
       this.groupByQuery + this.orderByQuery + this.limitQuery + this.offsetQuery
     );
-  }
-
-  private mergeRawPacketIntoModel(
-    model: T,
-    row: any,
-    typeofModel: typeof Model,
-  ) {
-    const columns = getModelColumns(this.model);
-    const dynamicColumns = getDynamicColumns(this.model);
-    const dynamicColumnMap = new Map<
-      string,
-      {
-        columnName: string;
-        dynamicColumnFn: (...args: any[]) => any;
-      }
-    >();
-
-    for (const dynamicColumn of dynamicColumns) {
-      dynamicColumnMap.set(dynamicColumn.functionName, {
-        columnName: dynamicColumn.columnName,
-        dynamicColumnFn: dynamicColumn.dynamicColumnFn,
-      });
-    }
-
-    Object.entries(row).forEach(([key, value]) => {
-      const casedKey = convertCase(
-        key,
-        typeofModel.modelCaseConvention,
-      ) as string;
-      if (columns.includes(casedKey)) {
-        Object.assign(model, { [casedKey]: value });
-        return;
-      }
-
-      model.extraColumns[key] = value as string | number | boolean;
-    });
-
-    this.dynamicColumns.map((dynamicColumn: string) => {
-      const dynamic = dynamicColumnMap.get(dynamicColumn);
-      const casedKey = convertCase(
-        dynamic?.columnName,
-        typeofModel.modelCaseConvention,
-      );
-      Object.assign(model, { [casedKey]: dynamic?.dynamicColumnFn() });
-    });
   }
 }

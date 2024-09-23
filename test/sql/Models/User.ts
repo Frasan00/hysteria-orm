@@ -10,6 +10,7 @@ import { Post } from "./Post";
 import { ModelQueryBuilder } from "../../../src/Sql/QueryBuilder/QueryBuilder";
 
 export class User extends Model {
+  static tableName: string = "users";
   @column({ primaryKey: true })
   declare id: string;
 
@@ -51,7 +52,7 @@ export class User extends Model {
   declare test: string;
 
   @dynamicColumn("test")
-  getTest() {
-    return "test";
+  async getTest() {
+    return await User.query().one();
   }
 }

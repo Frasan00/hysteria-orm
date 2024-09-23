@@ -1370,7 +1370,6 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     offset(offset: number): this;
     copy(): ModelQueryBuilder<T>;
     protected groupFooterQuery(): string;
-    private mergeRawPacketIntoModel;
 }
 
 declare class PostgresDeleteQueryBuilder<T extends Model> extends ModelDeleteQueryBuilder<T> {
@@ -1654,9 +1653,7 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     limit(limit: number): this;
     offset(offset: number): this;
     copy(): ModelQueryBuilder<T>;
-    mergeQueryBuilder(queryBuilder: MysqlQueryBuilder<T>): void;
     protected groupFooterQuery(): string;
-    private mergeRawPacketIntoModel;
 }
 
 declare class SQLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
@@ -1738,9 +1735,7 @@ declare class SQLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     limit(limit: number): this;
     offset(offset: number): this;
     copy(): ModelQueryBuilder<T>;
-    mergeQueryBuilder(queryBuilder: SQLiteQueryBuilder<T>): void;
     protected groupFooterQuery(): string;
-    private mergeRawPacketIntoModel;
     private promisifyQuery;
 }
 
@@ -2086,6 +2081,7 @@ declare abstract class QueryBuilder<T extends Model> {
      */
     abstract copy(): ModelQueryBuilder<T>;
     protected groupFooterQuery(): string;
+    protected mergeRawPacketIntoModel(model: T, row: any, typeofModel: typeof Model): Promise<void>;
 }
 
 type CaseConvention = "camel" | "snake" | "none" | RegExp | ((column: string) => string);

@@ -79,7 +79,7 @@ export class SQLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
       }
 
       const modelInstance = getBaseModelInstance<T>();
-      this.mergeRawPacketIntoModel(modelInstance, result, this.model);
+      await this.mergeRawPacketIntoModel(modelInstance, result, this.model);
       const relationModels =
         await this.mysqlModelManagerUtils.parseQueryBuilderRelations(
           [modelInstance],
@@ -128,7 +128,7 @@ export class SQLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
       const results = await this.promisifyQuery<T[]>(query, this.params);
       const modelPromises = results.map(async (result) => {
         const modelInstance = getBaseModelInstance<T>();
-        this.mergeRawPacketIntoModel(modelInstance, result, this.model);
+        await this.mergeRawPacketIntoModel(modelInstance, result, this.model);
 
         return modelInstance as T;
       });
@@ -1235,67 +1235,10 @@ export class SQLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return queryBuilder;
   }
 
-  public mergeQueryBuilder(queryBuilder: SQLiteQueryBuilder<T>): void {
-    this.selectQuery += queryBuilder.selectQuery;
-    this.whereQuery += queryBuilder.whereQuery;
-    this.joinQuery += queryBuilder.joinQuery;
-    this.groupByQuery += queryBuilder.groupByQuery;
-    this.orderByQuery += queryBuilder.orderByQuery;
-    this.limitQuery += queryBuilder.limitQuery;
-    this.offsetQuery += queryBuilder.offsetQuery;
-    this.params.push(...queryBuilder.params);
-    this.relations.push(...queryBuilder.relations);
-  }
-
   protected groupFooterQuery(): string {
     return (
       this.groupByQuery + this.orderByQuery + this.limitQuery + this.offsetQuery
     );
-  }
-
-  private mergeRawPacketIntoModel(
-    model: T,
-    row: any,
-    typeofModel: typeof Model,
-  ) {
-    const columns = getModelColumns(this.model);
-    const dynamicColumns = getDynamicColumns(this.model);
-    const dynamicColumnMap = new Map<
-      string,
-      {
-        columnName: string;
-        dynamicColumnFn: (...args: any[]) => any;
-      }
-    >();
-
-    for (const dynamicColumn of dynamicColumns) {
-      dynamicColumnMap.set(dynamicColumn.functionName, {
-        columnName: dynamicColumn.columnName,
-        dynamicColumnFn: dynamicColumn.dynamicColumnFn,
-      });
-    }
-
-    Object.entries(row).forEach(([key, value]) => {
-      const casedKey = convertCase(
-        key,
-        typeofModel.modelCaseConvention,
-      ) as string;
-      if (columns.includes(casedKey)) {
-        Object.assign(model, { [casedKey]: value });
-        return;
-      }
-
-      model.extraColumns[key] = value as string | number | boolean;
-    });
-
-    this.dynamicColumns.map((dynamicColumn: string) => {
-      const dynamic = dynamicColumnMap.get(dynamicColumn);
-      const casedKey = convertCase(
-        dynamic?.columnName,
-        typeofModel.modelCaseConvention,
-      );
-      Object.assign(model, { [casedKey]: dynamic?.dynamicColumnFn() });
-    });
   }
 
   private promisifyQuery<T>(query: string, params: any): Promise<T> {
