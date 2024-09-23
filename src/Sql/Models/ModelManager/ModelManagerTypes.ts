@@ -14,6 +14,7 @@ type ExcludeRelations<T> = {
     | (Model[] | BelongsTo)
     | (Model | HasOne)
     | (Model[] | HasOne)
+    | ((...args: any[]) => any)
     ? never
     : K;
 }[keyof T];

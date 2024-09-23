@@ -1,13 +1,11 @@
 import { Model } from "../Models/Model";
 import { WhereQueryBuilder } from "../QueryBuilder/WhereQueryBuilder";
-import { Connection } from "mysql2/promise";
 import deleteTemplate from "../Resources/Query/DELETE";
 import updateTemplate from "../Resources/Query/UPDATE";
 import {
   SelectableType,
   TransactionType,
 } from "../Models/ModelManager/ModelManagerTypes";
-import { Client } from "pg";
 import { SqlConnectionType } from "../SqlDatasource";
 
 export abstract class ModelDeleteQueryBuilder<

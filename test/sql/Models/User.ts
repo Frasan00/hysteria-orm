@@ -56,3 +56,5 @@ export class User extends Model {
     return await User.query().one();
   }
 }
+
+const user = User.delete().where("id", "1");
