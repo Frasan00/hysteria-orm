@@ -1,4 +1,5 @@
 import { SqlDataSourceType } from "../../../../Datasource";
+import logger from "../../../../Logger";
 import ColumnOptionsBuilder from "./ColumnOptionsBuilder";
 
 export type DateOptions = {
@@ -62,6 +63,7 @@ export default class ColumnTypeBuilder {
           this.columnName,
         );
       case "sqlite":
+        logger.warn("SQLite does not support UUID, using text instead");
         this.columnName = name;
         this.partialQuery += `${name} TEXT`;
         return new ColumnOptionsBuilder(
@@ -479,7 +481,7 @@ export default class ColumnTypeBuilder {
 
     if (this.sqlType === `sqlite`) {
       this.columnName = name;
-      this.partialQuery += `${name} INTEGER PRIMARY KEY AUTOINCREMENT`;
+      this.partialQuery += `${name} INTEGER AUTOINCREMENT`;
       return new ColumnOptionsBuilder(
         this.table,
         this.queryStatements,
@@ -501,7 +503,8 @@ export default class ColumnTypeBuilder {
   }
 
   /**
-   * @description If using mysql, it will automatically add BIGINT AUTO_INCREMENT
+   * @description If not using postgres, it will automatically be converted in BIGINT AUTO_INCREMENT
+   * @description If using sqlite, it will automatically be converted in INTEGER PRIMARY KEY AUTOINCREMENT
    * @param name
    */
   public bigSerial(name: string): ColumnOptionsBuilder {
@@ -773,8 +776,11 @@ export default class ColumnTypeBuilder {
           this.columnName,
         );
       case "sqlite":
+        logger.warn(
+          "SQLite does not support boolean columns, using integer instead",
+        );
         this.columnName = name;
-        this.partialQuery += `${name} BOOLEAN`;
+        this.partialQuery += `${name} INTEGER CHECK(${name} IN (0, 1))`;
         return new ColumnOptionsBuilder(
           this.table,
           this.queryStatements,
@@ -789,7 +795,17 @@ export default class ColumnTypeBuilder {
 
   public date(name: string, options?: DateOptions): ColumnOptionsBuilder {
     if (this.sqlType === "sqlite") {
-      throw new Error("SQLite does not support date columns, use text instead");
+      logger.warn("SQLite does not support date columns, using text instead");
+
+      this.columnName = name;
+      this.partialQuery += `${name} TEXT`;
+      return new ColumnOptionsBuilder(
+        this.table,
+        this.queryStatements,
+        this.partialQuery,
+        this.sqlType,
+        this.columnName,
+      );
     }
 
     this.columnName = name;
@@ -820,8 +836,18 @@ export default class ColumnTypeBuilder {
 
   public timestamp(name: string, options?: DateOptions): ColumnOptionsBuilder {
     if (this.sqlType === "sqlite") {
-      throw new Error(
-        "SQLite does not support timestamp columns, use text instead",
+      logger.warn(
+        "SQLite does not support timestamp columns, using text instead",
+      );
+
+      this.columnName = name;
+      this.partialQuery += `${name} TEXT`;
+      return new ColumnOptionsBuilder(
+        this.table,
+        this.queryStatements,
+        this.partialQuery,
+        this.sqlType,
+        this.columnName,
       );
     }
 
@@ -869,6 +895,12 @@ export default class ColumnTypeBuilder {
       case "mariadb":
       case "mysql":
         this.partialQuery += `${name} JSON`;
+        break;
+      case "sqlite":
+        logger.warn(
+          "SQLite does not support jsonb columns, using text instead",
+        );
+        this.partialQuery += `${name} TEXT`;
         break;
       default:
         throw new Error("Unsupported SQL type");

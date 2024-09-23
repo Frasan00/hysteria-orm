@@ -6,6 +6,7 @@ import dotenv from "dotenv";
 import path from "path";
 import { DataSourceInput, Migration } from "../..";
 import sqlite3 from "sqlite3";
+import { log } from "../../Logger";
 
 dotenv.config();
 
@@ -21,16 +22,18 @@ class SQLiteMigrationUtils {
     sqLiteConnection: sqlite3.Database,
   ): Promise<MigrationTableType[]> {
     await this.promisifyQuery(
-      MigrationTemplates.migrationTableTemplatePg(),
+      MigrationTemplates.migrationTableTemplateSQLite(),
       [],
       sqLiteConnection,
     );
-    const result = await this.promisifyQuery<MigrationTableType[]>(
-      MigrationTemplates.selectAllFromMigrationsTemplate(),
-      [],
-      sqLiteConnection,
-    );
-    return result as MigrationTableType[];
+    log(MigrationTemplates.migrationTableTemplateSQLite(), true);
+    const result =
+      (await this.promisifyQuery<MigrationTableType[]>(
+        MigrationTemplates.selectAllFromMigrationsTemplate(),
+        [],
+        sqLiteConnection,
+      )) || [];
+    return Array.isArray(result) ? result : [result];
   }
 
   public async getMigrations(): Promise<Migration[]> {

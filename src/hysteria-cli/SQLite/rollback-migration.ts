@@ -17,7 +17,7 @@ import sqlite3 from "sqlite3";
 
 dotenv.config();
 
-export async function migrationRollBackPg(): Promise<void> {
+export async function migrationRollBackSqlite(): Promise<void> {
   const config = SQLIteMIgrationUtils.getSQLiteConfig();
   const sqliteConnection = new sqlite3.Database(
     config.database as string,
@@ -31,7 +31,7 @@ export async function migrationRollBackPg(): Promise<void> {
 
   try {
     const migrationTable: MigrationTableType[] =
-      await SQLIteMIgrationUtils.getMigrationTable(sqliteConnection);
+      (await SQLIteMIgrationUtils.getMigrationTable(sqliteConnection)) || [];
     const migrations: Migration[] = await SQLIteMIgrationUtils.getMigrations();
 
     const tableMigrations = migrationTable.map((migration) => migration.name);
@@ -61,19 +61,19 @@ export async function migrationRollBackPg(): Promise<void> {
 
     log(COMMIT_TRANSACTION, true);
     await SQLIteMIgrationUtils.promisifyQuery(
-      BEGIN_TRANSACTION,
+      COMMIT_TRANSACTION,
       [],
       sqliteConnection,
     );
   } catch (error: any) {
+    console.error(error);
     log(ROLLBACK_TRANSACTION, true);
     await SQLIteMIgrationUtils.promisifyQuery(
       ROLLBACK_TRANSACTION,
       [],
       sqliteConnection,
-    );
+    ).catch();
 
-    console.error(error);
     throw error;
   } finally {
     sqliteConnection.close();

@@ -135,7 +135,8 @@ export default class ColumnOptionsBuilder {
 
       case "postgres":
         throw new Error("Auto Increment not supported for PostgreSQL");
-
+      case "sqlite":
+        throw new Error("Auto Increment not supported for SQLite");
       default:
         throw new Error("Unsupported SQL type");
     }
@@ -184,6 +185,9 @@ export default class ColumnOptionsBuilder {
             break;
           case "postgres":
             this.partialQuery += `,\nCONSTRAINT fk_${this.table}_${this.columnName} FOREIGN KEY (${this.columnName}) REFERENCES ${reference.table}(${reference.column})`;
+            break;
+          case "sqlite":
+            this.partialQuery += `,\nFOREIGN KEY (${this.columnName}) REFERENCES ${reference.table}(${reference.column})`;
             break;
           default:
             throw new Error("Unsupported SQL type");

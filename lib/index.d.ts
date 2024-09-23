@@ -119,7 +119,8 @@ declare class ColumnTypeBuilder {
      */
     serial(name: string): ColumnOptionsBuilder;
     /**
-     * @description If using mysql, it will automatically add BIGINT AUTO_INCREMENT
+     * @description If not using postgres, it will automatically be converted in BIGINT AUTO_INCREMENT
+     * @description If using sqlite, it will automatically be converted in INTEGER PRIMARY KEY AUTOINCREMENT
      * @param name
      */
     bigSerial(name: string): ColumnOptionsBuilder;

@@ -15,6 +15,10 @@ const dropTableTemplate = (
       return ifExists
         ? `DROP TABLE IF EXISTS "${table}"`
         : `DROP TABLE "${table}"`;
+    case "sqlite":
+      return ifExists
+        ? `DROP TABLE IF EXISTS "${table}"`
+        : `DROP TABLE "${table}"`;
     default:
       throw new Error("Unsupported database type");
   }

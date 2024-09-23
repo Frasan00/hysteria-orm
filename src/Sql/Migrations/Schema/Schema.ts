@@ -82,6 +82,9 @@ export default class Schema {
       case "postgres":
         this.rawQuery(`ALTER TABLE "${oldtable}" RENAME TO "${newtable}"`);
         break;
+      case "sqlite":
+        this.rawQuery(`ALTER TABLE "${oldtable}" RENAME TO "${newtable}"`);
+        break;
       default:
         throw new Error("Unsupported database type");
     }
@@ -100,6 +103,9 @@ export default class Schema {
         break;
       case "postgres":
         this.rawQuery(`TRUNCATE TABLE "${table}"`);
+        break;
+      case "sqlite":
+        this.rawQuery(`DELETE FROM "${table}"`);
         break;
       default:
         throw new Error("Unsupported database type");
@@ -136,6 +142,13 @@ export default class Schema {
           } INDEX ${indexName} ON "${table}" (${columns.join(", ")})`,
         );
         break;
+      case "sqlite":
+        this.rawQuery(
+          `CREATE ${
+            unique ? "UNIQUE" : ""
+          } INDEX ${indexName} ON "${table}" (${columns.join(", ")})`,
+        );
+        break;
       default:
         throw new Error("Unsupported database type");
     }
@@ -154,6 +167,9 @@ export default class Schema {
         this.rawQuery(`DROP INDEX \`${indexName}\` ON \`${table}\``);
         break;
       case "postgres":
+        this.rawQuery(`DROP INDEX ${indexName}`);
+        break;
+      case "sqlite":
         this.rawQuery(`DROP INDEX ${indexName}`);
         break;
       default:
@@ -182,6 +198,11 @@ export default class Schema {
           `ALTER TABLE "${table}" ADD PRIMARY KEY (${columns.join(", ")})`,
         );
         break;
+      case "sqlite":
+        this.rawQuery(
+          `ALTER TABLE "${table}" ADD PRIMARY KEY (${columns.join(", ")})`,
+        );
+        break;
       default:
         throw new Error("Unsupported database type");
     }
@@ -200,6 +221,9 @@ export default class Schema {
         break;
       case "postgres":
         this.rawQuery(`ALTER TABLE "${table}" DROP CONSTRAINT PRIMARY KEY`);
+        break;
+      case "sqlite":
+        this.rawQuery(`ALTER TABLE "${table}" DROP PRIMARY KEY`);
         break;
       default:
         throw new Error("Unsupported database type");
@@ -234,6 +258,13 @@ export default class Schema {
           )}) REFERENCES ${columns[0].split("_")[0]}s(id)`,
         );
         break;
+      case "sqlite":
+        this.rawQuery(
+          `ALTER TABLE "${table}" ADD CONSTRAINT ${constraintName} FOREIGN KEY (${columns.join(
+            ", ",
+          )}) REFERENCES ${columns[0].split("_")[0]}s(id)`,
+        );
+        break;
       default:
         throw new Error("Unsupported database type");
     }
@@ -258,6 +289,11 @@ export default class Schema {
           `ALTER TABLE "${table}" DROP CONSTRAINT ${constraintName}`,
         );
         break;
+      case "sqlite":
+        this.rawQuery(
+          `ALTER TABLE "${table}" DROP CONSTRAINT ${constraintName}`,
+        );
+        break;
       default:
         throw new Error("Unsupported database type");
     }
@@ -278,6 +314,13 @@ export default class Schema {
     switch (this.sqlType) {
       case "mysql":
       case "mariadb":
+        this.rawQuery(
+          `ALTER TABLE \`${table}\` ADD CONSTRAINT ${constraintName} UNIQUE (${columns.join(
+            ", ",
+          )})`,
+        );
+        break;
+      case "sqlite":
         this.rawQuery(
           `ALTER TABLE \`${table}\` ADD CONSTRAINT ${constraintName} UNIQUE (${columns.join(
             ", ",
@@ -309,6 +352,11 @@ export default class Schema {
         this.rawQuery(`ALTER TABLE \`${table}\` DROP INDEX ${constraintName}`);
         break;
       case "postgres":
+        this.rawQuery(
+          `ALTER TABLE "${table}" DROP CONSTRAINT ${constraintName}`,
+        );
+        break;
+      case "sqlite":
         this.rawQuery(
           `ALTER TABLE "${table}" DROP CONSTRAINT ${constraintName}`,
         );

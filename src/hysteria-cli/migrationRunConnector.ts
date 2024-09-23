@@ -25,9 +25,10 @@ export default async function runMigrationsConnector() {
       break;
     case "sqlite":
       await runMigrationsSQLite();
+      break;
     default:
       throw new Error(
-        "Invalid database type, must be mysql or postgres, got: " +
+        "Invalid database type, must be mysql, postgres or sqlite, got: " +
           databaseType,
       );
   }

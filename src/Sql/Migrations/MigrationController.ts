@@ -126,7 +126,7 @@ export class MigrationController {
       .replace("T", " ")
       .replace(/\.\d{3}Z$/, "");
 
-    const insertMigrationSql = `INSERT INTO migrations (id, name, timestamp) VALUES (DEFAULT, PLACEHOLDER, PLACEHOLDER)`;
+    const insertMigrationSql = `INSERT INTO migrations (name, timestamp) VALUES (PLACEHOLDER, PLACEHOLDER)`;
 
     await this.localQuery(insertMigrationSql, [
       migration.migrationName,

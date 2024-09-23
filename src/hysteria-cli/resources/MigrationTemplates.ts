@@ -44,6 +44,15 @@ export default class extends Migration {
 );
 `;
   }
+
+  public migrationTableTemplateSQLite(): string {
+    const now = new Date().toISOString();
+    return `CREATE TABLE IF NOT EXISTS migrations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    timestamp TEXT NOT NULL DEFAULT '${now}'
+);`;
+  }
 }
 
 export default new MigrationTemplates();

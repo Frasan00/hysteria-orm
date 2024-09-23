@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import { migrationRollBackSql } from "./mysql/rollback-migration";
 import { migrationRollBackPg } from "./postgres/rollback-migration";
 import logger from "../Logger";
+import { migrationRollBackSqlite } from "./SQLite/rollback-migration";
 
 dotenv.config();
 
@@ -19,10 +20,12 @@ export default async function rollbackMigrationConnector() {
     case "postgres":
       await migrationRollBackPg();
       break;
-
+    case "sqlite":
+      await migrationRollBackSqlite();
+      break;
     default:
       throw new Error(
-        "Invalid database type, must be mysql or postgres, got: " +
+        "Invalid database type, must be mysql or mysql, postgres, mariadb, sqlite, got: " +
           databaseType,
       );
   }

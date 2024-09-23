@@ -37,7 +37,8 @@ export async function runMigrationsSQLite(): Promise<void> {
     );
 
     const migrationTable: MigrationTableType[] =
-      await SQLIteMIgrationUtils.getMigrationTable(sqliteConnection);
+      (await SQLIteMIgrationUtils.getMigrationTable(sqliteConnection)) || [];
+    console.log(migrationTable);
     const migrations: Migration[] = await SQLIteMIgrationUtils.getMigrations();
     const pendingMigrations = migrations.filter(
       (migration) =>
