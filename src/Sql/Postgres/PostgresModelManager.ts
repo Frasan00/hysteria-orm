@@ -327,7 +327,6 @@ export class PostgresModelManager<
         value,
       );
 
-      console.log("Executing query with transaction:", query, params);
       return (await trx.queryDelete(query, params)) as T;
     }
 
@@ -338,7 +337,6 @@ export class PostgresModelManager<
         value,
       );
 
-      logger.debug(query, this.logs, params);
       log(query, this.logs, params);
       const result = await this.pgConnection.query(query, params);
       return result.rows[0] as T;

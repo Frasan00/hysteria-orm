@@ -8,6 +8,7 @@ import { MysqlQueryBuilder } from "../Mysql/MysqlQueryBuilder";
 import { PostgresQueryBuilder } from "../Postgres/PostgresQueryBuilder";
 import { PaginatedData } from "../pagination";
 import {
+  DynamicColumnType,
   RelationType,
   SelectableType,
 } from "../Models/ModelManager/ModelManagerTypes";
@@ -31,6 +32,7 @@ export abstract class QueryBuilder<T extends Model> {
   protected selectQuery: string;
   protected joinQuery: string;
   protected relations: string[];
+  protected dynamicColumns: string[];
   protected whereQuery: string;
   protected groupByQuery: string;
   protected orderByQuery: string;
@@ -75,6 +77,7 @@ export abstract class QueryBuilder<T extends Model> {
     );
     this.joinQuery = "";
     this.relations = [];
+    this.dynamicColumns = [];
     this.whereQuery = "";
     this.groupByQuery = "";
     this.orderByQuery = "";
@@ -171,6 +174,14 @@ export abstract class QueryBuilder<T extends Model> {
    */
   public abstract addRelations(
     relations: RelationType<T>[],
+  ): ModelQueryBuilder<T>;
+
+  /**
+   * @description Adds a the selected dynamic columns from the model into the final model
+   * @param relations - The dynamic columns to add.
+   */
+  public abstract addDynamicColumns(
+    dynamicColumns: DynamicColumnType<T>[],
   ): ModelQueryBuilder<T>;
 
   /**

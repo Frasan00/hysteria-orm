@@ -24,10 +24,6 @@ import {
   RedisStorable,
 } from "./NoSql/Redis/RedisDataSource";
 
-(async () => {
-  await SqlDataSource.connect();
-})();
-
 export default {
   // Sql
   Model,

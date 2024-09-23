@@ -15,6 +15,7 @@
     - [Query Builder](#query-builder)
     - [Where Builder](#where-builder)
     - [Aliases](#aliases)
+    - [Dynamic Columns](#dynamic-columns)
     - [Count And Sum](#count-and-sum)
     - [Relations](#relations-retrieve)
     - [Join](#join)
@@ -345,6 +346,38 @@ const user: User | null = await User.query()
     .where("name", "John Doe")
     .andWhere("email", "john@gmail.com")
     .one();
+```
+
+### Dynamic Columns
+- For columns that are not in the Table that have to be computed dynamically you can use @dynamicColumn decorator
+```typescript
+import {
+  column,
+  dynamicColumn,
+} from "hysteria";
+import { Model } from "../../../src/Sql/Models/Model";
+
+export class User extends Model {
+  @column({ primaryKey: true })
+  declare id: string;
+
+  @column()
+  declare name: string;
+
+  @column()
+  declare email: string;
+
+  // Optional in order to retrieve the column easily from the model
+  @column()
+  declare test: string;
+
+  @dynamicColumn("test")
+  getTest() {
+    return "test";
+  }
+}
+
+const model: User = await User.query().addDynamicColumns(["getTest"]).one();
 ```
 
 ### Count and Sum

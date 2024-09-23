@@ -651,10 +651,13 @@ type OnlyRelations<T> = {
     [K in keyof T]: T[K] extends (Model[] | HasMany) | (Model | HasMany) | (Model | BelongsTo) | (Model[] | BelongsTo) | (Model | HasOne) | (Model[] | HasOne) ? K : never;
 }[keyof T];
 type WhereType<T> = {
-    [P in keyof T]?: string | number | boolean | Date | null;
+    [K in keyof T]?: string | number | boolean | Date | null;
 };
 type SelectableType<T> = ExcludeRelations<Omit<T, "extraColumns">>;
 type RelationType<T> = OnlyRelations<Omit<T, "extraColumns">>;
+type DynamicColumnType<T> = {
+    [k in keyof T]: T[k] extends (...args: any[]) => any ? k : never;
+}[keyof T];
 type OrderByType = {
     columns: string[];
     type: "ASC" | "DESC";
@@ -662,6 +665,7 @@ type OrderByType = {
 type UnrestrictedFindOneType<T> = {
     select?: string[];
     relations?: RelationType<T>[];
+    dynamicColumns?: DynamicColumnType<T>;
     where?: Record<string, any>;
     throwErrorOnNull?: boolean;
 };
@@ -674,6 +678,7 @@ type UnrestrictedFindType<T> = Omit<UnrestrictedFindOneType<T>, "throwErrorOnNul
 type FindOneType<T> = {
     select?: SelectableType<T>[];
     relations?: RelationType<T>[];
+    dynamicColumns?: DynamicColumnType<T>;
     where?: WhereType<T>;
     throwErrorOnNull?: boolean;
 };
@@ -1309,6 +1314,7 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     join(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresQueryBuilder<T>;
     leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresQueryBuilder<T>;
     addRelations(relations: RelationType<T>[]): PostgresQueryBuilder<T>;
+    addDynamicColumns(dynamicColumns: DynamicColumnType<T>[]): ModelQueryBuilder<T>;
     whereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
     orWhereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
     andWhereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
@@ -1593,6 +1599,7 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     join(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlQueryBuilder<T>;
     leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlQueryBuilder<T>;
     addRelations(relations: RelationType<T>[]): MysqlQueryBuilder<T>;
+    addDynamicColumns(dynamicColumns: DynamicColumnType<T>[]): ModelQueryBuilder<T>;
     whereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this;
     orWhereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this;
     andWhereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this;
@@ -1676,6 +1683,7 @@ declare class SQLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     join(relationTable: string, primaryColumn: string, foreignColumn: string): SQLiteQueryBuilder<T>;
     leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): SQLiteQueryBuilder<T>;
     addRelations(relations: RelationType<T>[]): SQLiteQueryBuilder<T>;
+    addDynamicColumns(dynamicColumns: DynamicColumnType<T>[]): ModelQueryBuilder<T>;
     whereBuilder(cb: (queryBuilder: SQLiteQueryBuilder<T>) => void): this;
     orWhereBuilder(cb: (queryBuilder: SQLiteQueryBuilder<T>) => void): this;
     andWhereBuilder(cb: (queryBuilder: SQLiteQueryBuilder<T>) => void): this;
@@ -1748,6 +1756,7 @@ declare abstract class QueryBuilder<T extends Model> {
     protected selectQuery: string;
     protected joinQuery: string;
     protected relations: string[];
+    protected dynamicColumns: string[];
     protected whereQuery: string;
     protected groupByQuery: string;
     protected orderByQuery: string;
@@ -1828,6 +1837,11 @@ declare abstract class QueryBuilder<T extends Model> {
      * @param relations - The relations to add.
      */
     abstract addRelations(relations: RelationType<T>[]): ModelQueryBuilder<T>;
+    /**
+     * @description Adds a the selected dynamic columns from the model into the final model
+     * @param relations - The dynamic columns to add.
+     */
+    abstract addDynamicColumns(dynamicColumns: DynamicColumnType<T>[]): ModelQueryBuilder<T>;
     /**
      * @description Build more complex where conditions.
      * @param cb

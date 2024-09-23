@@ -31,11 +31,14 @@ type OnlyRelations<T> = {
 }[keyof T];
 
 export type WhereType<T> = {
-  [P in keyof T]?: string | number | boolean | Date | null;
+  [K in keyof T]?: string | number | boolean | Date | null;
 };
 
 export type SelectableType<T> = ExcludeRelations<Omit<T, "extraColumns">>;
 export type RelationType<T> = OnlyRelations<Omit<T, "extraColumns">>;
+export type DynamicColumnType<T> = {
+  [k in keyof T]: T[k] extends (...args: any[]) => any ? k : never;
+}[keyof T];
 
 type OrderByType = {
   columns: string[];
@@ -45,6 +48,7 @@ type OrderByType = {
 export type UnrestrictedFindOneType<T> = {
   select?: string[];
   relations?: RelationType<T>[];
+  dynamicColumns?: DynamicColumnType<T>;
   where?: Record<string, any>;
   throwErrorOnNull?: boolean;
 };
@@ -62,6 +66,7 @@ export type UnrestrictedFindType<T> = Omit<
 export type FindOneType<T> = {
   select?: SelectableType<T>[];
   relations?: RelationType<T>[];
+  dynamicColumns?: DynamicColumnType<T>;
   where?: WhereType<T>;
   throwErrorOnNull?: boolean;
 };

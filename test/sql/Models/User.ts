@@ -1,12 +1,12 @@
 import { DateTime } from "luxon";
 import {
   column,
+  dynamicColumn,
   hasMany,
   hasOne,
 } from "../../../src/Sql/Models/ModelDecorators";
 import { Model } from "../../../src/Sql/Models/Model";
 import { Post } from "./Post";
-import crypto from "crypto";
 import { ModelQueryBuilder } from "../../../src/Sql/QueryBuilder/QueryBuilder";
 
 export class User extends Model {
@@ -45,5 +45,13 @@ export class User extends Model {
 
   static beforeFetch(queryBuilder: ModelQueryBuilder<User>) {
     queryBuilder.whereNull("deletedAt");
+  }
+
+  @column()
+  declare test: string;
+
+  @dynamicColumn("test")
+  getTest() {
+    return "test";
   }
 }

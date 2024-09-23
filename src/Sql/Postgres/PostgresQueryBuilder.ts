@@ -1,5 +1,5 @@
 import { getBaseModelInstance, Model } from "../Models/Model";
-import { getModelColumns } from "../Models/ModelDecorators";
+import { getDynamicColumns, getModelColumns } from "../Models/ModelDecorators";
 import {
   OneOptions,
   QueryBuilder,
@@ -12,6 +12,7 @@ import joinTemplate from "../Resources/Query/JOIN";
 import { PaginatedData, getPaginationMetadata } from "../pagination";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
 import {
+  DynamicColumnType,
   RelationType,
   SelectableType,
 } from "../Models/ModelManager/ModelManagerTypes";
@@ -256,6 +257,13 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
   public addRelations(relations: RelationType<T>[]): PostgresQueryBuilder<T> {
     this.relations = relations as string[];
+    return this;
+  }
+
+  public addDynamicColumns(
+    dynamicColumns: DynamicColumnType<T>[],
+  ): ModelQueryBuilder<T> {
+    this.dynamicColumns = dynamicColumns as string[];
     return this;
   }
 
@@ -1240,17 +1248,42 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     typeofModel: typeof Model,
   ) {
     const columns = getModelColumns(this.model);
+    const dynamicColumns = getDynamicColumns(this.model);
+    const dynamicColumnMap = new Map<
+      string,
+      {
+        columnName: string;
+        dynamicColumnFn: (...args: any[]) => any;
+      }
+    >();
+
+    for (const dynamicColumn of dynamicColumns) {
+      dynamicColumnMap.set(dynamicColumn.functionName, {
+        columnName: dynamicColumn.columnName,
+        dynamicColumnFn: dynamicColumn.dynamicColumnFn,
+      });
+    }
+
     Object.entries(row).forEach(([key, value]) => {
-      const camelCaseKey = convertCase(
+      const casedKey = convertCase(
         key,
         typeofModel.modelCaseConvention,
       ) as string;
-      if (columns.includes(camelCaseKey)) {
-        Object.assign(model, { [camelCaseKey]: value });
+      if (columns.includes(casedKey)) {
+        Object.assign(model, { [casedKey]: value });
         return;
       }
 
       model.extraColumns[key] = value as string | number | boolean;
+    });
+
+    this.dynamicColumns.map((dynamicColumn: string) => {
+      const dynamic = dynamicColumnMap.get(dynamicColumn);
+      const casedKey = convertCase(
+        dynamic?.columnName,
+        typeofModel.modelCaseConvention,
+      );
+      Object.assign(model, { [casedKey]: dynamic?.dynamicColumnFn() });
     });
   }
 }
