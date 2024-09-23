@@ -1318,6 +1318,7 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     whereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
     orWhereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
     andWhereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
+    when(value: any, cb: (value: any, query: ModelQueryBuilder<T>) => void): this;
     where(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
     where(column: string, operator: WhereOperatorType, value: BaseValues): this;
     where(column: SelectableType<T> | string, value: BaseValues): this;
@@ -1602,6 +1603,7 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     whereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this;
     orWhereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this;
     andWhereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this;
+    when(value: any, cb: (value: any, query: ModelQueryBuilder<T>) => void): this;
     where(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
     where(column: string, operator: WhereOperatorType, value: BaseValues): this;
     where(column: SelectableType<T> | string, value: BaseValues): this;
@@ -1684,6 +1686,7 @@ declare class SQLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     whereBuilder(cb: (queryBuilder: SQLiteQueryBuilder<T>) => void): this;
     orWhereBuilder(cb: (queryBuilder: SQLiteQueryBuilder<T>) => void): this;
     andWhereBuilder(cb: (queryBuilder: SQLiteQueryBuilder<T>) => void): this;
+    when(value: any, cb: (value: any, query: ModelQueryBuilder<T>) => void): this;
     where(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
     where(column: string, operator: WhereOperatorType, value: BaseValues): this;
     where(column: SelectableType<T> | string, value: BaseValues): this;
@@ -1837,6 +1840,12 @@ declare abstract class QueryBuilder<T extends Model> {
      * @param relations - The dynamic columns to add.
      */
     abstract addDynamicColumns(dynamicColumns: DynamicColumnType<T>[]): ModelQueryBuilder<T>;
+    /**
+     * @description Accepts a value and executes a callback only of the value exists
+     * @param {any} value
+     * @param callback
+     */
+    abstract when(value: any, cb: (value: any, query: ModelQueryBuilder<T>) => void): ModelQueryBuilder<T>;
     /**
      * @description Build more complex where conditions.
      * @param cb

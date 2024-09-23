@@ -18,16 +18,23 @@ dotenv.config();
 
 export async function runMigrationsSQLite(): Promise<void> {
   const config = SQLIteMIgrationUtils.getSQLiteConfig();
-  const sqliteConnection = new sqlite3.Database(config.database as string, (error) => {
-    if (error) {
-      logger.error(error);
-      throw error;
-    }
-  });
+  const sqliteConnection = new sqlite3.Database(
+    config.database as string,
+    (error) => {
+      if (error) {
+        logger.error(error);
+        throw error;
+      }
+    },
+  );
 
   try {
     log(BEGIN_TRANSACTION, true);
-    await SQLIteMIgrationUtils.promisifyQuery(BEGIN_TRANSACTION, [], sqliteConnection);
+    await SQLIteMIgrationUtils.promisifyQuery(
+      BEGIN_TRANSACTION,
+      [],
+      sqliteConnection,
+    );
 
     const migrationTable: MigrationTableType[] =
       await SQLIteMIgrationUtils.getMigrationTable(sqliteConnection);
@@ -45,14 +52,26 @@ export async function runMigrationsSQLite(): Promise<void> {
       process.exit(0);
     }
 
-    const migrationController = new MigrationController(null, null, sqliteConnection);
+    const migrationController = new MigrationController(
+      null,
+      null,
+      sqliteConnection,
+    );
     await migrationController.upMigrations(pendingMigrations);
 
     log(COMMIT_TRANSACTION, true);
-    await SQLIteMIgrationUtils.promisifyQuery(COMMIT_TRANSACTION, [], sqliteConnection);
+    await SQLIteMIgrationUtils.promisifyQuery(
+      COMMIT_TRANSACTION,
+      [],
+      sqliteConnection,
+    );
   } catch (error: any) {
     log(ROLLBACK_TRANSACTION, true);
-    await SQLIteMIgrationUtils.promisifyQuery(ROLLBACK_TRANSACTION, [], sqliteConnection);
+    await SQLIteMIgrationUtils.promisifyQuery(
+      ROLLBACK_TRANSACTION,
+      [],
+      sqliteConnection,
+    );
 
     throw error;
   } finally {

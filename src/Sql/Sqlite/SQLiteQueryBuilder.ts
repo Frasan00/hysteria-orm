@@ -369,6 +369,18 @@ export class SQLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
+  public when(
+    value: any,
+    cb: (value: any, query: ModelQueryBuilder<T>) => void,
+  ): this {
+    if (!value) {
+      return this;
+    }
+
+    cb(value, this);
+    return this;
+  }
+
   public where(
     column: SelectableType<T>,
     operator: WhereOperatorType,

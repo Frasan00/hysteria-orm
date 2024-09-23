@@ -315,6 +315,29 @@ const users: User[] = await User.query()
     .many();
 ```
 
+### When condition
+- Given a value, it accepts a callback that gives the value itself and the current query builder
+- The callback will be called only if the value is truish
+```typescript
+import { User } from "./User";
+
+const falseValue = false;
+const trueValue = 1;
+const user = await User.query()
+// Will enter here
+await User.query().when(trueValue, (value, query) => {
+    query.where("id", 1);
+})
+.one();
+
+// Won't enter here
+await User.query().when(falseValue, (value, query) => {
+    query.where("id", 1);
+})
+.one();
+```
+
+
 ### Where Builder
 
 - Used to build complex logic conditions

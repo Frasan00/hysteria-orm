@@ -23,10 +23,7 @@ import {
   RedisGiveable,
   RedisStorable,
 } from "./NoSql/Redis/RedisDataSource";
-
-(async () => {
-  await SqlDataSource.connect();
-})();
+import { User } from "../test/sql/Models/User";
 
 export default {
   // Sql

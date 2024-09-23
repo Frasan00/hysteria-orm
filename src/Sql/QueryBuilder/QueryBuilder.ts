@@ -187,6 +187,16 @@ export abstract class QueryBuilder<T extends Model> {
   ): ModelQueryBuilder<T>;
 
   /**
+   * @description Accepts a value and executes a callback only of the value exists
+   * @param {any} value
+   * @param callback
+   */
+  public abstract when(
+    value: any,
+    cb: (value: any, query: ModelQueryBuilder<T>) => void,
+  ): ModelQueryBuilder<T>;
+
+  /**
    * @description Build more complex where conditions.
    * @param cb
    */

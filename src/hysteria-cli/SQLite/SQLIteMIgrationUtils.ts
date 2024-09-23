@@ -20,7 +20,11 @@ class SQLiteMigrationUtils {
   public async getMigrationTable(
     sqLiteConnection: sqlite3.Database,
   ): Promise<MigrationTableType[]> {
-    await this.promisifyQuery(MigrationTemplates.migrationTableTemplatePg(), [], sqLiteConnection);
+    await this.promisifyQuery(
+      MigrationTemplates.migrationTableTemplatePg(),
+      [],
+      sqLiteConnection,
+    );
     const result = await this.promisifyQuery<MigrationTableType[]>(
       MigrationTemplates.selectAllFromMigrationsTemplate(),
       [],
@@ -115,7 +119,11 @@ class SQLiteMigrationUtils {
     });
   }
 
-  public promisifyQuery<T>(query: string, params: any, sqLiteConnection: sqlite3.Database): Promise<T> {
+  public promisifyQuery<T>(
+    query: string,
+    params: any,
+    sqLiteConnection: sqlite3.Database,
+  ): Promise<T> {
     return new Promise<T>((resolve, reject) => {
       sqLiteConnection.get<T>(query, params, (err, result) => {
         if (err) {

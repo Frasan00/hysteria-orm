@@ -83,6 +83,45 @@ test("Find a user by primary key", async () => {
   expect(foundUser?.name).toBe("Dave");
 });
 
+test("When condition", async () => {
+  await User.create({
+    name: "Dave",
+    email: "Dave@gmail.com",
+    signupSource: "email",
+    isActive: true,
+  });
+
+  const trueValue = 1;
+  let user: User | null = null;
+  user = await User.query()
+    .when(trueValue, (_value, query) => {
+      query.where("name", "LIKE", "Dave");
+    })
+    .one();
+
+  expect(user).not.toBeNull();
+  expect(user?.name).toBe("Dave");
+});
+
+test("Dynamic column", async () => {
+  const user = await User.create({
+    name: "Jack",
+    email: "Jack@gmail.com",
+    signupSource: "email",
+    isActive: true,
+  });
+
+  if (!user) {
+    throw new Error("User not created");
+  }
+
+  const dynamicColumnUser = await User.query()
+    .addDynamicColumns(["getFirstUser"])
+    .one();
+  expect(dynamicColumnUser).not.toBe(null);
+  expect(dynamicColumnUser?.id).not.toBe(null);
+});
+
 test("Find multiple users", async () => {
   const users = await User.find();
   expect(users.length).toBeGreaterThanOrEqual(0);

@@ -200,6 +200,45 @@ test("Refresh a user", async () => {
   expect(refreshedUser?.name).toBe("Jack");
 });
 
+test("Dynamic column", async () => {
+  const user = await User.create({
+    name: "Jack",
+    email: "Jack@gmail.com",
+    signupSource: "email",
+    isActive: true,
+  });
+
+  if (!user) {
+    throw new Error("User not created");
+  }
+
+  const dynamicColumnUser = await User.query()
+    .addDynamicColumns(["getFirstUser"])
+    .one();
+  expect(dynamicColumnUser).not.toBe(null);
+  expect(dynamicColumnUser?.id).not.toBe(null);
+});
+
+test("When condition", async () => {
+  await User.create({
+    name: "Dave",
+    email: "Dave@gmail.com",
+    signupSource: "email",
+    isActive: true,
+  });
+
+  const trueValue = 1;
+  let user: User | null = null;
+  user = await User.query()
+    .when(trueValue, (_value, query) => {
+      query.where("name", "LIKE", "Dave");
+    })
+    .one();
+
+  expect(user).not.toBeNull();
+  expect(user?.name).toBe("Dave");
+});
+
 test("Delete user by column", async () => {
   const user = await User.create({
     name: "Kate",

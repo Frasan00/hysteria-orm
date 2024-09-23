@@ -10,7 +10,11 @@ export class MigrationController {
   protected pgPool: PoolClient | null;
   protected sqliteConnection: sqlite3.Database | null;
 
-  constructor(mysqlPool: PoolConnection | null, pgPool: PoolClient | null, sqliteConnection: sqlite3.Database | null) {
+  constructor(
+    mysqlPool: PoolConnection | null,
+    pgPool: PoolClient | null,
+    sqliteConnection: sqlite3.Database | null,
+  ) {
     this.mysqlPool = mysqlPool;
     this.pgPool = pgPool;
     this.sqliteConnection = sqliteConnection;
@@ -97,13 +101,17 @@ export class MigrationController {
       text = text.replace(/PLACEHOLDER/g, "?");
       log(text, true, params);
       await new Promise<void>((resolve, reject) => {
-        (this.sqliteConnection as sqlite3.Database).run(text, params, (error) => {
-          if (error) {
-            reject(error);
-          } else {
-            resolve();
-          }
-        });
+        (this.sqliteConnection as sqlite3.Database).run(
+          text,
+          params,
+          (error) => {
+            if (error) {
+              reject(error);
+            } else {
+              resolve();
+            }
+          },
+        );
       });
       return;
     }

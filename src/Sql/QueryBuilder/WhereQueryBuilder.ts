@@ -44,6 +44,23 @@ export abstract class WhereQueryBuilder<T extends Model> {
   }
 
   /**
+   * @description Accepts a value and executes a callback only of the value exists
+   * @param {any} value
+   * @param callback
+   */
+  public when(
+    value: any,
+    cb: (value: any, query: WhereQueryBuilder<T>) => void,
+  ): this {
+    if (!value) {
+      return this;
+    }
+
+    cb(value, this);
+    return this;
+  }
+
+  /**
    * @description Adds a WHERE condition to the query.
    * @param column - The column to filter.
    * @param operator - The comparison operator.

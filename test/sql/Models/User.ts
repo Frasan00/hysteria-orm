@@ -49,10 +49,10 @@ export class User extends Model {
   }
 
   @column()
-  declare test: string;
+  declare firstUser: User;
 
-  @dynamicColumn("test")
-  async getTest() {
+  @dynamicColumn("firstUser")
+  async getFirstUser() {
     return await User.query().one();
   }
 }
