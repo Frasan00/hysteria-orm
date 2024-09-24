@@ -135,10 +135,12 @@ export class MysqlTransaction {
     }
   }
 
-  public async massiveDeleteQuery(
+  public async massiveDeleteQuery<T extends Model>(
     query: string,
     params: any[],
-  ): Promise<number> {
+    models: T[],
+    typeofModel: typeof Model,
+  ): Promise<T[]> {
     if (!this.mysql) {
       throw new Error("MysqlTransaction not started.");
     }
@@ -150,7 +152,11 @@ export class MysqlTransaction {
         throw new Error("Failed to update");
       }
 
-      return rows[0].affectedRows;
+      const data = await (parseDatabaseDataIntoModelResponse(
+        models as T[],
+        typeofModel,
+      ) as Promise<T[]>);
+      return Array.isArray(data) ? data : [data];
     } catch (error) {
       queryError(error);
       throw new Error(

@@ -9,6 +9,7 @@ import { DateTime } from "luxon";
 import updateTemplate from "../Resources/Query/UPDATE";
 import { SelectableType } from "../Models/ModelManager/ModelManagerTypes";
 import { ModelDeleteQueryBuilder } from "../QueryBuilder/DeleteQueryBuilder";
+import { parseDatabaseDataIntoModelResponse } from "../serializer";
 
 export class MysqlDeleteQueryBuilder<
   T extends Model,
@@ -69,10 +70,11 @@ export class MysqlDeleteQueryBuilder<
 
     params = [...params, ...this.whereParams];
 
+    const modelIds = await this.getBeforeUpdateQueryIds(this.sqlConnection);
     if (trx) {
       return await trx.massiveUpdateQuery(query, params, {
         typeofModel: this.model,
-        modelIds: [],
+        modelIds: modelIds,
         primaryKey: this.model.primaryKey as string,
         table: this.model.table,
         joinClause: this.joinQuery,
@@ -81,8 +83,21 @@ export class MysqlDeleteQueryBuilder<
 
     log(query, this.logs, params);
     try {
-      const [rows]: any = await this.sqlConnection.query(query, params);
-      return rows.affectedRows;
+      const rows: any = await this.sqlConnection.query(query, params);
+      if (!rows[0].affectedRows) {
+        return [];
+      }
+
+      const updatedData = await this.getAfterUpdateQuery(
+        this.sqlConnection,
+        modelIds,
+      );
+
+      const data = await (parseDatabaseDataIntoModelResponse(
+        updatedData,
+        this.model,
+      ) as Promise<T[]>);
+      return Array.isArray(data) ? data : [data];
     } catch (error) {
       queryError(query);
       throw new Error("Query failed " + error);
@@ -94,26 +109,45 @@ export class MysqlDeleteQueryBuilder<
    * @param trx - The transaction to run the query in.
    * @returns The updated records.
    */
-  public async delete(trx?: MysqlTransaction): Promise<number> {
+  public async delete(trx?: MysqlTransaction): Promise<T[]> {
     this.whereQuery = this.whereTemplate.convertPlaceHolderToValue(
       this.whereQuery,
     );
+
+    const selectPreDeleteModelsQuery = `SELECT * FROM ${this.table} ${this.joinQuery} ${this.whereQuery};`;
+    log(selectPreDeleteModelsQuery, this.logs, this.whereParams);
+    const preDeleteModels = await this.sqlConnection.query(
+      `SELECT * FROM ${this.table} ${this.joinQuery} ${this.whereQuery};`,
+      this.whereParams,
+    );
+
     const query = this.deleteTemplate.massiveDelete(
       this.whereQuery,
       this.joinQuery,
     );
 
     if (trx) {
-      return await trx.massiveDeleteQuery(query, this.whereParams);
+      return await trx.massiveDeleteQuery(
+        query,
+        this.whereParams,
+        preDeleteModels[0] as T[],
+        this.model,
+      );
     }
 
     log(query, this.logs, this.whereParams);
     try {
-      const [rows]: any = await this.sqlConnection.query(
-        query,
-        this.whereParams,
-      );
-      return rows.affectedRows;
+      const rows: any = await this.sqlConnection.query(query, this.whereParams);
+
+      if (!rows[0].affectedRows) {
+        return [];
+      }
+
+      const data = await (parseDatabaseDataIntoModelResponse(
+        preDeleteModels[0] as T[],
+        this.model,
+      ) as Promise<T[]>);
+      return Array.isArray(data) ? data : [data];
     } catch (error) {
       queryError(query);
       throw new Error("Query failed " + error);

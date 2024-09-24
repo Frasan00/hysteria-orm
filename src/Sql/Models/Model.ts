@@ -324,7 +324,7 @@ export abstract class Model {
     typeofModel.establishConnection();
     const {
       column = "deletedAt" as SelectableType<T>,
-      value = DateTime.local().toString(),
+      value = DateTime.local().toISO(),
       trx,
     } = options || {};
 

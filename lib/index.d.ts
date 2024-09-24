@@ -397,7 +397,7 @@ declare class MysqlTransaction {
         table: string;
         joinClause: string;
     }): Promise<T[]>;
-    massiveDeleteQuery(query: string, params: any[]): Promise<number>;
+    massiveDeleteQuery<T extends Model>(query: string, params: any[], models: T[], typeofModel: typeof Model): Promise<T[]>;
     queryUpdate(query: string, params?: any[]): Promise<number>;
     queryDelete(query: string, params?: any[]): Promise<number>;
     /**
@@ -953,17 +953,24 @@ declare abstract class ModelDeleteQueryBuilder<T extends Model> extends WhereQue
         column?: SelectableType<T>;
         value?: string | number | boolean;
         trx?: TransactionType;
-    }): Promise<T[] | number>;
+    }): Promise<T[]>;
     /**
      * @description Deletes Records from the database for the current query.
      * @param trx - The transaction to run the query in.
      */
-    abstract delete(trx?: TransactionType): Promise<T[] | number>;
+    abstract delete(trx?: TransactionType): Promise<T[]>;
     abstract join(relationTable: string, primaryColumn: string, foreignColumn: string): ModelDeleteQueryBuilder<T>;
     abstract leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): ModelDeleteQueryBuilder<T>;
     abstract whereBuilder(cb: (queryBuilder: ModelDeleteQueryBuilder<T>) => void): this;
     abstract orWhereBuilder(cb: (queryBuilder: ModelDeleteQueryBuilder<T>) => void): this;
     abstract andWhereBuilder(cb: (queryBuilder: ModelDeleteQueryBuilder<T>) => void): this;
+    /**
+     * @description Used to retrieve the data before the update in order to return the data after the update.
+     * @param sqlConnection
+     * @returns
+     */
+    protected getBeforeUpdateQueryIds(sqlConnection: mysql.Connection): Promise<(string | number)[]>;
+    protected getAfterUpdateQuery(sqlConnection: mysql.Connection, modelIds: (string | number)[]): Promise<T[]>;
 }
 
 declare abstract class AbstractModelManager<T extends Model> {
@@ -1172,7 +1179,7 @@ declare class MysqlDeleteQueryBuilder<T extends Model> extends ModelDeleteQueryB
      * @param trx - The transaction to run the query in.
      * @returns The updated records.
      */
-    delete(trx?: MysqlTransaction): Promise<number>;
+    delete(trx?: MysqlTransaction): Promise<T[]>;
     /**
      *
      * @param relationTable - The name of the related table.
@@ -1322,7 +1329,9 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     one(options?: OneOptions): Promise<T | null>;
     oneOrFail(): Promise<T>;
     many(): Promise<T[]>;
-    getCount(): Promise<number>;
+    getCount(options?: {
+        ignoreHooks: boolean;
+    }): Promise<number>;
     getSum(column: SelectableType<T>): Promise<number>;
     getSum(column: string): Promise<number>;
     paginate(page: number, limit: number): Promise<PaginatedData<T>>;
@@ -1547,7 +1556,9 @@ declare class SQLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     oneOrFail(): Promise<T>;
     many(): Promise<T[]>;
     raw<T>(query: string, params?: any[]): Promise<T>;
-    getCount(): Promise<number>;
+    getCount(options?: {
+        ignoreHooks: boolean;
+    }): Promise<number>;
     getSum(column: SelectableType<T>): Promise<number>;
     getSum(column: string): Promise<number>;
     paginate(page: number, limit: number): Promise<PaginatedData<T>>;
@@ -1879,7 +1890,9 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     oneOrFail(): Promise<T>;
     many(): Promise<T[]>;
     raw(query: string, params?: any[]): Promise<[mysql.QueryResult, mysql.FieldPacket[]]>;
-    getCount(): Promise<number>;
+    getCount(options?: {
+        ignoreHooks: boolean;
+    }): Promise<number>;
     getSum(column: SelectableType<T>): Promise<number>;
     getSum(column: string): Promise<number>;
     paginate(page: number, limit: number): Promise<PaginatedData<T>>;
@@ -1996,13 +2009,17 @@ declare abstract class QueryBuilder<T extends Model> {
      * @description Executes the query and retrieves the count of results, it ignores all select, group by, order by, limit and offset clauses if they are present.
      * @returns A Promise resolving to the count of results.
      */
-    abstract getCount(): Promise<number>;
+    abstract getCount(options: {
+        ignoreHooks: boolean;
+    }): Promise<number>;
     /**
      * @description Executes the query and retrieves the sum of a column, it ignores all select, group by, order by, limit and offset clauses if they are present.
      * @param column - The column to sum.
      * @returns A Promise resolving to the sum of the column.
      */
-    abstract getSum(column: string): Promise<number>;
+    abstract getSum(column: string, options: {
+        ignoreHooks: boolean;
+    }): Promise<number>;
     /**
      * @description Executes the query and retrieves multiple results.
      * @returns A Promise resolving to an array of results.

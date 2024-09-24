@@ -24,11 +24,18 @@ import {
   RedisStorable,
 } from "./NoSql/Redis/RedisDataSource";
 import { User } from "../test/sql/Models/User";
+import { DateTime } from "luxon";
 
 (async () => {
   const sql = await SqlDataSource.connect();
-  const users = await User.update().withData({
-    name: "test updated 3",
+  await User.create({
+    name: "ddsds",
+    email: Math.random().toString(),
+    signupSource: "d,spmda",
+  });
+  const users = await User.deleteQuery().softDelete({
+    column: "deletedAt",
+    value: DateTime.local().toISODate(),
   });
   console.log(users);
   await sql.closeConnection();

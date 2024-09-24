@@ -109,14 +109,17 @@ export abstract class QueryBuilder<T extends Model> {
    * @description Executes the query and retrieves the count of results, it ignores all select, group by, order by, limit and offset clauses if they are present.
    * @returns A Promise resolving to the count of results.
    */
-  public abstract getCount(): Promise<number>;
+  public abstract getCount(options: { ignoreHooks: boolean }): Promise<number>;
 
   /**
    * @description Executes the query and retrieves the sum of a column, it ignores all select, group by, order by, limit and offset clauses if they are present.
    * @param column - The column to sum.
    * @returns A Promise resolving to the sum of the column.
    */
-  public abstract getSum(column: string): Promise<number>;
+  public abstract getSum(
+    column: string,
+    options: { ignoreHooks: boolean },
+  ): Promise<number>;
 
   /**
    * @description Executes the query and retrieves multiple results.

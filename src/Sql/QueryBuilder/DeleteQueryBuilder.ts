@@ -7,6 +7,8 @@ import {
   TransactionType,
 } from "../Models/ModelManager/ModelManagerTypes";
 import { SqlConnectionType } from "../SqlDatasource";
+import mysql from "mysql2/promise";
+import { log } from "../../Logger";
 
 export abstract class ModelDeleteQueryBuilder<
   T extends Model,
@@ -27,13 +29,13 @@ export abstract class ModelDeleteQueryBuilder<
     column?: SelectableType<T>;
     value?: string | number | boolean;
     trx?: TransactionType;
-  }): Promise<T[] | number>;
+  }): Promise<T[]>;
 
   /**
    * @description Deletes Records from the database for the current query.
    * @param trx - The transaction to run the query in.
    */
-  public abstract delete(trx?: TransactionType): Promise<T[] | number>;
+  public abstract delete(trx?: TransactionType): Promise<T[]>;
 
   public abstract join(
     relationTable: string,
@@ -58,4 +60,42 @@ export abstract class ModelDeleteQueryBuilder<
   public abstract andWhereBuilder(
     cb: (queryBuilder: ModelDeleteQueryBuilder<T>) => void,
   ): this;
+
+  /**
+   * @description Used to retrieve the data before the update in order to return the data after the update.
+   * @param sqlConnection
+   * @returns
+   */
+  protected async getBeforeUpdateQueryIds(
+    sqlConnection: mysql.Connection,
+  ): Promise<(string | number)[]> {
+    const beforeUpdateData = await sqlConnection.query<mysql.RowDataPacket[]>(
+      `SELECT * FROM ${this.table} ${this.joinQuery} ${this.whereQuery}`,
+      this.whereParams,
+    );
+
+    return beforeUpdateData[0].map(
+      (row: any) => row[this.model.primaryKey as string],
+    ) as (string | number)[];
+  }
+
+  protected async getAfterUpdateQuery(
+    sqlConnection: mysql.Connection,
+    modelIds: (string | number)[],
+  ): Promise<T[]> {
+    const afterUpdateDataQuery = `SELECT * FROM ${this.table} ${
+      this.joinQuery
+    } WHERE ${this.model.primaryKey} IN (${Array(modelIds.length)
+      .fill("?")
+      .join(",")})`;
+
+    log(afterUpdateDataQuery, this.logs, modelIds);
+    const updatedData = await sqlConnection.query<mysql.RowDataPacket[]>(
+      afterUpdateDataQuery,
+      modelIds,
+    );
+
+    const results = updatedData[0] as T[];
+    return Array.isArray(results) ? results : [results];
+  }
 }

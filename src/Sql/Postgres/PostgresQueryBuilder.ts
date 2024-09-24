@@ -1,5 +1,4 @@
 import { getBaseModelInstance, Model } from "../Models/Model";
-import { getDynamicColumns, getModelColumns } from "../Models/ModelDecorators";
 import {
   OneOptions,
   QueryBuilder,
@@ -185,7 +184,15 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     }
   }
 
-  public async getCount(): Promise<number> {
+  public async getCount(
+    options: { ignoreHooks: boolean } = { ignoreHooks: false },
+  ): Promise<number> {
+    if (options.ignoreHooks) {
+      const { rows } = await this.pgClient.query(
+        `SELECT COUNT(*) as total from ${this.table}`,
+      );
+      return +rows[0].total;
+    }
     this.select("COUNT(*) as total");
     const result = await this.one();
     return result ? +result.extraColumns["total"] : 0;
@@ -193,7 +200,17 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
   public async getSum(column: SelectableType<T>): Promise<number>;
   public async getSum(column: string): Promise<number>;
-  public async getSum(column: SelectableType<T> | string): Promise<number> {
+  public async getSum(
+    column: SelectableType<T> | string,
+    options: { ignoreHooks: boolean } = { ignoreHooks: false },
+  ): Promise<number> {
+    if (options.ignoreHooks) {
+      const { rows } = await this.pgClient.query(
+        `SELECT SUM(${column as string}) as total from ${this.table}`,
+      );
+      return +rows[0].total || 0;
+    }
+
     column = convertCase(column as string, this.model.databaseCaseConvention);
     this.select(`SUM(${column as string}) as total`);
     const result = await this.one();

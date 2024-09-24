@@ -164,7 +164,17 @@ export class SQLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return await this.promisifyQuery<T>(query, params);
   }
 
-  public async getCount(): Promise<number> {
+  public async getCount(
+    options: { ignoreHooks: boolean } = { ignoreHooks: false },
+  ): Promise<number> {
+    if (!options.ignoreHooks) {
+      const result = this.promisifyQuery(
+        "SELECT COUNT(*) as total FROM " + this.table,
+        [],
+      ) as any;
+      return +result[0].total;
+    }
+
     this.select("COUNT(*) as total");
     const result = await this.one();
     return result ? +result.extraColumns.total : 0;
@@ -172,7 +182,18 @@ export class SQLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
   public async getSum(column: SelectableType<T>): Promise<number>;
   public async getSum(column: string): Promise<number>;
-  public async getSum(column: SelectableType<T> | string): Promise<number> {
+  public async getSum(
+    column: SelectableType<T> | string,
+    options: { ignoreHooks: boolean } = { ignoreHooks: false },
+  ): Promise<number> {
+    if (!options.ignoreHooks) {
+      const result = (await this.promisifyQuery(
+        `SELECT SUM("${column as string}) as total FROM ` + this.table,
+        [],
+      )) as any;
+      return +result[0].total || 0;
+    }
+
     column = convertCase(column as string, this.model.databaseCaseConvention);
     this.select(`SUM(${column as string}) as total`);
     const result = await this.one();

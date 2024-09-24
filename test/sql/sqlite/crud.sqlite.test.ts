@@ -304,3 +304,31 @@ test("Multiple update", async () => {
   const users = await User.query().many();
   expect(users.length).toBe(2);
 });
+
+test("massive delete", async () => {
+  await User.create({
+    name: "Dave",
+    email: "Dave@gmail.com",
+    signupSource: "email",
+    isActive: true,
+  });
+
+  const users = await User.deleteQuery().delete();
+  expect(users[0].name).toBe("Dave");
+  expect(await User.query().getCount()).toBe(0);
+});
+
+test("massive soft delete", async () => {
+  await User.create({
+    name: "Dave",
+    email: "Dave@gmail.com",
+    signupSource: "email",
+    isActive: true,
+  });
+
+  const users = await User.deleteQuery().softDelete();
+  expect(users.length).toBeGreaterThanOrEqual(0);
+  expect(users[0].name).toBe("Dave");
+  expect(users[0].deletedAt).not.toBe(null);
+  expect(await User.query().getCount({ ignoreHooks: true })).toBe(1);
+});

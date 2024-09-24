@@ -1,6 +1,5 @@
 import mysql, { RowDataPacket } from "mysql2/promise";
 import { getBaseModelInstance, Model } from "../Models/Model";
-import { getDynamicColumns, getModelColumns } from "../Models/ModelDecorators";
 import { log, queryError } from "../../Logger";
 import { BaseValues, WhereOperatorType } from "../Resources/Query/WHERE.TS";
 import {
@@ -177,7 +176,16 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return await this.mysqlConnection.query(query, params);
   }
 
-  public async getCount(): Promise<number> {
+  public async getCount(
+    options: { ignoreHooks: boolean } = { ignoreHooks: false },
+  ): Promise<number> {
+    if (options.ignoreHooks) {
+      const [result]: any = await this.mysqlConnection.query(
+        `SELECT COUNT(*) as total from ${this.table}`,
+      );
+      return result[0].total;
+    }
+
     this.select("COUNT(*) as total");
     const result = await this.one();
     return result ? +result.extraColumns.total : 0;
@@ -185,7 +193,17 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
   public async getSum(column: SelectableType<T>): Promise<number>;
   public async getSum(column: string): Promise<number>;
-  public async getSum(column: SelectableType<T> | string): Promise<number> {
+  public async getSum(
+    column: SelectableType<T> | string,
+    options: { ignoreHooks: boolean } = { ignoreHooks: false },
+  ): Promise<number> {
+    if (options.ignoreHooks) {
+      const [result]: any = await this.mysqlConnection.query(
+        `SELECT SUM(${column as string}) as total from ${this.table}`,
+      );
+      return result[0].total;
+    }
+
     column = convertCase(column as string, this.model.databaseCaseConvention);
     this.select(`SUM(${column as string}) as total`);
     const result = await this.one();
