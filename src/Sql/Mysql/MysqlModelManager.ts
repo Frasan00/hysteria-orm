@@ -195,13 +195,6 @@ export class MysqlModelManager<
         params,
       );
 
-      if (this.sqlDataSource.getDbType() === "mariadb") {
-        return (await parseDatabaseDataIntoModelResponse(
-          [result[0] as T],
-          this.model,
-        )) as T;
-      }
-
       return await this.findOneByPrimaryKey(result["insertId"]);
     } catch (error) {
       queryError(error);
@@ -242,13 +235,6 @@ export class MysqlModelManager<
       );
       log(query, this.logs, params);
       const [rows]: any = await this.mysqlConnection.query(query, params);
-
-      if (this.sqlDataSource.getDbType() === "mariadb") {
-        return (await parseDatabaseDataIntoModelResponse(
-          rows,
-          this.model,
-        )) as T[];
-      }
 
       if (!rows.affectedRows || !rows.insertId) {
         return [];
@@ -328,55 +314,6 @@ export class MysqlModelManager<
   }
 
   /**
-   * @description Delete a record from the database from the given column and value.
-   *
-   * @param {string} column - Column to filter by.
-   * @param {string | number | boolean} value - Value to filter by.
-   * @param {MysqlTransaction} trx - MysqlTransaction to be used on the delete operation.
-   * @returns Promise resolving to affected rows count
-   */
-  public async deleteByColumn(
-    column: string,
-    value: string | number | boolean,
-    trx?: TransactionType,
-  ): Promise<T | null | number> {
-    if (trx) {
-      const { query, params } = this.sqlModelManagerUtils.parseDelete(
-        this.model.table,
-        column,
-        value,
-      );
-
-      return (await trx.queryDelete(query, params)) as number;
-    }
-
-    try {
-      const { query, params } = this.sqlModelManagerUtils.parseDelete(
-        this.model.table,
-        column,
-        value,
-      );
-      log(query, this.logs, params);
-      const [rows]: any = await this.mysqlConnection.query<RowDataPacket[]>(
-        query,
-        params,
-      );
-
-      if (this.sqlDataSource.getDbType() === "mariadb") {
-        return (await parseDatabaseDataIntoModelResponse(
-          [rows[0] as T],
-          this.model,
-        )) as T;
-      }
-
-      return rows.affectedRows;
-    } catch (error) {
-      queryError(error);
-      throw new Error("Query failed " + error);
-    }
-  }
-
-  /**
    * @description Delete a record from the database from the given model.
    *
    * @param {Model} model - Model to delete.
@@ -392,7 +329,7 @@ export class MysqlModelManager<
         throw new Error(
           "Model " +
             this.model.table +
-            " has no primary key to be deleted from, try deleteByColumn",
+            " has no primary key to be deleted from",
         );
       }
       const { query, params } = this.sqlModelManagerUtils.parseDelete(

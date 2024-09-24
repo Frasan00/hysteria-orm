@@ -34,24 +34,21 @@ export function log(query: string, logs: boolean, params?: any[]) {
     return;
   }
 
-  if (params) {
+  if (params && params.length) {
     params.forEach((param, index) => {
       let formattedParam;
 
       if (typeof param === "string") {
         // Format string parameters
         formattedParam = `'${param}'`;
-      }
-
-      if (
+      } else if (
         typeof param === "object" &&
         param !== null &&
         Object.keys(param).length > 0
       ) {
+        // Format object parameters
         formattedParam = `'${JSON.stringify(param)}'`;
-      }
-
-      if (typeof param !== "string" && typeof param !== "object") {
+      } else {
         // Use the parameter as is for other types (e.g., numbers)
         formattedParam = param;
       }
@@ -65,8 +62,16 @@ export function log(query: string, logs: boolean, params?: any[]) {
     });
   }
 
+  // Clean up the query string
+  query = query.replace(/\s{2,}/g, " ");
+  query = query.replace(/\n/g, "").trim();
+  if (!query.endsWith(";")) {
+    query += ";";
+  }
+
   logger.info("\n" + query);
 }
+
 export function queryError(error: any) {
   logger.error("Query Failed ", error);
 }

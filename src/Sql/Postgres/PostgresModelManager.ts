@@ -308,46 +308,6 @@ export class PostgresModelManager<
   }
 
   /**
-   * @description Delete a record from the database from the given column and value.
-   *
-   * @param {string} column - Column to filter by.
-   * @param {string | number | boolean} value - Value to filter by.
-   * @param {PostgresTransaction} trx - PostgresTransaction to be used on the delete operation.
-   * @returns Promise resolving to affected rows count
-   */
-  public async deleteByColumn(
-    column: string,
-    value: string | number | boolean,
-    trx?: TransactionType,
-  ): Promise<T | null> {
-    if (trx) {
-      const { query, params } = this.sqlModelManagerUtils.parseDelete(
-        this.model.table,
-        column,
-        value,
-      );
-
-      return (await trx.queryDelete(query, params)) as T;
-    }
-
-    try {
-      const { query, params } = this.sqlModelManagerUtils.parseDelete(
-        this.model.table,
-        column,
-        value,
-      );
-
-      log(query, this.logs, params);
-      const result = await this.pgConnection.query(query, params);
-      return result.rows[0] as T;
-    } catch (error) {
-      console.error("Query error:", error);
-      queryError(error);
-      throw new Error("Query failed " + error);
-    }
-  }
-
-  /**
    * @description Delete a record from the database from the given model.
    *
    * @param {Model} model - Model to delete.
@@ -363,7 +323,7 @@ export class PostgresModelManager<
         throw new Error(
           "Model " +
             this.model.table +
-            " has no primary key to be deleted from, try deleteByColumn",
+            " has no primary key to be deleted from",
         );
       }
 

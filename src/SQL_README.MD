@@ -250,7 +250,6 @@ try{
 
 // Delete
     await User.deleteRecord(updatedUser, trx);
-    await User.deleteByColumn("email", "john@gmail.com");
 
     await trx.commit();
 } catch (error) {

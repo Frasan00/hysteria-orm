@@ -342,28 +342,6 @@ export abstract class Model {
   }
 
   /**
-   * @description Deletes a record to the database
-   * @param model
-   * @param {Model} modelInstance
-   * @param {string} column
-   * @param {string | number | boolean} value
-   * @param trx
-   * @returns
-   */
-  static deleteByColumn<T extends Model>(
-    this: new () => T | typeof Model,
-    column: string,
-    value: string | number | boolean,
-    trx?: MysqlTransaction | PostgresTransaction,
-  ): Promise<number | T | null> {
-    const typeofModel = this as unknown as typeof Model;
-    typeofModel.establishConnection();
-    return typeofModel.sqlInstance
-      .getModelManager<T>(typeofModel)
-      .deleteByColumn(column, value, trx);
-  }
-
-  /**
    * @description Merges the provided data with the instance
    * @param instance
    * @param data

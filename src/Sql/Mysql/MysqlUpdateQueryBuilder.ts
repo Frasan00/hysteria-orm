@@ -6,6 +6,8 @@ import updateTemplate from "../Resources/Query/UPDATE";
 import joinTemplate from "../Resources/Query/JOIN";
 import { SqlDataSource } from "../SqlDatasource";
 import { ModelUpdateQueryBuilder } from "../QueryBuilder/UpdateQueryBuilder";
+import mysql from "mysql2/promise";
+import { parseDatabaseDataIntoModelResponse } from "../serializer";
 
 export class MysqlUpdateQueryBuilder<
   T extends Model,
@@ -50,13 +52,14 @@ export class MysqlUpdateQueryBuilder<
   public async withData(
     data: Partial<T>,
     trx?: MysqlTransaction,
-  ): Promise<number> {
+  ): Promise<T[]> {
     const columns = Object.keys(data);
     const values = Object.values(data);
     this.whereQuery = this.whereTemplate.convertPlaceHolderToValue(
       this.whereQuery,
     );
 
+    const modelIds = await this.getBeforeUpdateQueryIds(this.sqlConnection);
     const { query, params } = this.updateTemplate.massiveUpdate(
       columns,
       values,
@@ -66,17 +69,32 @@ export class MysqlUpdateQueryBuilder<
 
     params.push(...this.whereParams);
     if (trx) {
-      return await trx.massiveUpdateQuery(query, params);
+      return await trx.massiveUpdateQuery(query, params, {
+        typeofModel: this.model,
+        modelIds,
+        primaryKey: this.model.primaryKey as string,
+        table: this.table,
+        joinClause: this.joinQuery,
+      });
     }
 
     log(query, this.logs, params);
     try {
       const rows: any = await this.sqlConnection.query(query, params);
-      if (!rows.length) {
-        return 0;
+      if (!rows[0].affectedRows) {
+        return [];
       }
 
-      return rows[0].affectedRows;
+      const updatedData = await this.getAfterUpdateQuery(
+        this.sqlConnection,
+        modelIds,
+      );
+
+      const data = await (parseDatabaseDataIntoModelResponse(
+        updatedData,
+        this.model,
+      ) as Promise<T[]>);
+      return Array.isArray(data) ? data : [data];
     } catch (error) {
       queryError(query);
       throw new Error("Query failed " + error);

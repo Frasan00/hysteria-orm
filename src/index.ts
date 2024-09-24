@@ -27,13 +27,10 @@ import { User } from "../test/sql/Models/User";
 
 (async () => {
   const sql = await SqlDataSource.connect();
-  const value = 1;
-  const user = await User.query()
-    .when(value, (value, query) => {
-      query.where("id", value);
-    })
-    .one();
-  console.log(user);
+  const users = await User.update().withData({
+    name: "test updated 3",
+  });
+  console.log(users);
   await sql.closeConnection();
 })();
 

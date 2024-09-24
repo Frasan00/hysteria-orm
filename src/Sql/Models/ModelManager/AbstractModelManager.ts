@@ -99,18 +99,6 @@ export abstract class AbstractModelManager<T extends Model> {
   ): Promise<T | null>;
 
   /**
-   * @description Deletes a record by a column
-   * @param column
-   * @param value
-   * @param trx
-   */
-  public abstract deleteByColumn(
-    column: string,
-    value: string | number | boolean,
-    trx?: TransactionType,
-  ): Promise<number | T | null>;
-
-  /**
    * @description Deletes a record
    * @param model
    * @param trx

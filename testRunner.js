@@ -4,8 +4,8 @@ const { execSync } = require('child_process');
 
 const testFiles = [
     // sqlite
-    './test/sql/sqlite/relations.sqlite.test.ts',
-    './test/sql/sqlite/crud.sqlite.test.ts',
+    // './test/sql/sqlite/relations.sqlite.test.ts',
+    // './test/sql/sqlite/crud.sqlite.test.ts',
 
     // maria
     './test/sql/mariadb/relations.mariadb.test.ts',

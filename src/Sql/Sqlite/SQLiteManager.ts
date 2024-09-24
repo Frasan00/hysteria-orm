@@ -163,7 +163,7 @@ export class SQLiteModelManager<
    * Save a new model instance to the database.
    *
    * @param {Model} model - Model instance to be saved.
-   * @param {MysqlTransaction} trx - MysqlTransaction to be used on the save operation.
+   * @param {SqliteTransaction} trx - SqliteTransaction to be used on the save operation.
    * @returns Promise resolving to the saved model or null if saving fails.
    */
   public async create(
@@ -200,7 +200,7 @@ export class SQLiteModelManager<
    * Create multiple model instances in the database.
    *
    * @param {Model} model - Model instance to be saved.
-   * @param {MysqlTransaction} trx - MysqlTransaction to be used on the save operation.
+   * @param {SqliteTransaction} trx - SqliteTransaction to be used on the save operation.
    * @returns Promise resolving to an array of saved models or null if saving fails.
    */
   public async massiveCreate(
@@ -238,7 +238,7 @@ export class SQLiteModelManager<
   /**
    * Update an existing model instance in the database.
    * @param {Model} model - Model instance to be updated.
-   * @param {MysqlTransaction} trx - MysqlTransaction to be used on the update operation.
+   * @param {SqliteTransaction} trx - SqliteTransaction to be used on the update operation.
    * @returns Promise resolving to the updated model or null if updating fails.
    */
   public async updateRecord(
@@ -287,47 +287,10 @@ export class SQLiteModelManager<
   }
 
   /**
-   * @description Delete a record from the database from the given column and value.
-   *
-   * @param {string} column - Column to filter by.
-   * @param {string | number | boolean} value - Value to filter by.
-   * @param {MysqlTransaction} trx - MysqlTransaction to be used on the delete operation.
-   * @returns Promise resolving to affected rows count
-   */
-  public async deleteByColumn(
-    column: string,
-    value: string | number | boolean,
-    trx?: TransactionType,
-  ): Promise<number> {
-    if (trx) {
-      const { query, params } = this.sqlModelManagerUtils.parseDelete(
-        this.model.table,
-        column,
-        value,
-      );
-
-      return (await trx.queryDelete(query, params)) as number;
-    }
-
-    try {
-      const { query, params } = this.sqlModelManagerUtils.parseDelete(
-        this.model.table,
-        column,
-        value,
-      );
-      log(query, this.logs, params);
-      return await this.promisifyQuery<number>(query, params);
-    } catch (error) {
-      queryError(error);
-      throw new Error("Query failed " + error);
-    }
-  }
-
-  /**
    * @description Delete a record from the database from the given model.
    *
    * @param {Model} model - Model to delete.
-   * @param {MysqlTransaction} trx - MysqlTransaction to be used on the delete operation.
+   * @param trx - SqliteTransaction to be used on the delete operation.
    * @returns Promise resolving to the deleted model or null if deleting fails.
    */
   public async deleteRecord(
@@ -339,7 +302,7 @@ export class SQLiteModelManager<
         throw new Error(
           "Model " +
             this.model.table +
-            " has no primary key to be deleted from, try deleteByColumn",
+            " has no primary key to be deleted from",
         );
       }
       const { query, params } = this.sqlModelManagerUtils.parseDelete(

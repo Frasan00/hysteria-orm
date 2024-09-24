@@ -241,25 +241,6 @@ test("Refresh a user", async () => {
   expect(refreshedUser?.name).toBe("Jack");
 });
 
-test("Delete user by column", async () => {
-  const user = await User.create({
-    name: "Kate",
-    email: "Kate@gmail.com",
-    signupSource: "email",
-    isActive: true,
-  });
-
-  if (!user) {
-    throw new Error("User not created");
-  }
-
-  const deletedCount = await User.deleteByColumn("email", "Kate@gmail.com");
-  expect(deletedCount).not.toBe(null);
-
-  const foundUser = await User.findOneByPrimaryKey(user.id);
-  expect(foundUser).toBeNull();
-});
-
 test("Remove all users from the database", async () => {
   const allUsers = await User.query().many();
   expect(allUsers.length).toBe(0);
@@ -320,11 +301,10 @@ test("Multiple update", async () => {
     isActive: true,
   });
 
-  const affectedRows = (await User.update()
+  const users = await User.update()
     .where("name", "Micheal")
-    .withData({ name: "Micheal Updated" })) as User[];
+    .withData({ name: "Micheal Updated" });
 
-  expect(affectedRows).toBe(2);
-  const users = await User.query().many();
   expect(users.length).toBe(2);
+  expect(users[0].name).toBe("Micheal Updated");
 });

@@ -6,6 +6,7 @@ import { log, queryError } from "../../Logger";
 import { Model } from "../Models/Model";
 import selectTemplate from "../Resources/Query/SELECT";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
+import mysql from "mysql2/promise";
 
 export class MysqlTransaction {
   protected mysql: Pool;
@@ -87,22 +88,45 @@ export class MysqlTransaction {
     }
   }
 
-  public async massiveUpdateQuery(
+  public async massiveUpdateQuery<T extends Model>(
     query: string,
     params: any[],
-  ): Promise<number> {
+    selectQueryDetails: {
+      typeofModel: typeof Model;
+      modelIds: (string | number)[];
+      primaryKey: string;
+      table: string;
+      joinClause: string;
+    },
+  ): Promise<T[]> {
     if (!this.mysql) {
       throw new Error("MysqlTransaction not started.");
     }
 
+    const { typeofModel, modelIds, table, joinClause, primaryKey } =
+      selectQueryDetails;
     try {
       log(query, this.logs, params);
       const rows: any = await this.mysql.query(query, params);
       if (!rows.length) {
-        return 0;
+        return [];
       }
 
-      return rows[0].affectedRows;
+      const afterUpdateDataQuery = `SELECT * FROM ${table} ${joinClause} WHERE ${primaryKey} IN (${Array(
+        modelIds.length,
+      )
+        .fill("?")
+        .join(",")})`;
+
+      const updatedData = await this.mysql.query<mysql.RowDataPacket[]>(
+        afterUpdateDataQuery,
+        [modelIds],
+      );
+
+      return await (parseDatabaseDataIntoModelResponse(
+        updatedData[0] as T[],
+        typeofModel,
+      ) as Promise<T[]>);
     } catch (error) {
       queryError(error);
       throw new Error(

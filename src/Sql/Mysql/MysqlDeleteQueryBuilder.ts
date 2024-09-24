@@ -54,7 +54,7 @@ export class MysqlDeleteQueryBuilder<
     column?: SelectableType<T>;
     value?: string | number | boolean;
     trx?: MysqlTransaction;
-  }): Promise<number> {
+  }): Promise<T[]> {
     const {
       column = "deletedAt" as SelectableType<T>,
       value = DateTime.local().toISO(),
@@ -70,7 +70,13 @@ export class MysqlDeleteQueryBuilder<
     params = [...params, ...this.whereParams];
 
     if (trx) {
-      return await trx.massiveUpdateQuery(query, params);
+      return await trx.massiveUpdateQuery(query, params, {
+        typeofModel: this.model,
+        modelIds: [],
+        primaryKey: this.model.primaryKey as string,
+        table: this.model.table,
+        joinClause: this.joinQuery,
+      });
     }
 
     log(query, this.logs, params);
