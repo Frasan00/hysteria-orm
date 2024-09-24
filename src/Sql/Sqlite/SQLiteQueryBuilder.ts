@@ -1,5 +1,4 @@
 import { getBaseModelInstance, Model } from "../Models/Model";
-import { getDynamicColumns, getModelColumns } from "../Models/ModelDecorators";
 import { log, queryError } from "../../Logger";
 import { BaseValues, WhereOperatorType } from "../Resources/Query/WHERE.TS";
 import {
@@ -23,7 +22,7 @@ import sqlite3 from "sqlite3";
 export class SQLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
   protected sqLiteConnection: sqlite3.Database;
   protected isNestedCondition = false;
-  protected mysqlModelManagerUtils: SqlModelManagerUtils<T>;
+  protected sqliteModelManagerUtils: SqlModelManagerUtils<T>;
 
   /**
    * @param table - The name of the table.
@@ -42,8 +41,8 @@ export class SQLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     super(model, table, logs, sqlDataSource);
     this.sqLiteConnection = sqLiteConnection;
     this.isNestedCondition = isNestedCondition;
-    this.mysqlModelManagerUtils = new SqlModelManagerUtils<T>(
-      "mysql",
+    this.sqliteModelManagerUtils = new SqlModelManagerUtils<T>(
+      "sqlite",
       this.sqLiteConnection,
     );
   }
@@ -81,7 +80,7 @@ export class SQLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
       const modelInstance = getBaseModelInstance<T>();
       await this.mergeRawPacketIntoModel(modelInstance, result, this.model);
       const relationModels =
-        await this.mysqlModelManagerUtils.parseQueryBuilderRelations(
+        await this.sqliteModelManagerUtils.parseQueryBuilderRelations(
           [modelInstance],
           this.model,
           this.relations,
@@ -135,7 +134,7 @@ export class SQLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
       const models = await Promise.all(modelPromises);
       const relationModels =
-        await this.mysqlModelManagerUtils.parseQueryBuilderRelations(
+        await this.sqliteModelManagerUtils.parseQueryBuilderRelations(
           models,
           this.model,
           this.relations,

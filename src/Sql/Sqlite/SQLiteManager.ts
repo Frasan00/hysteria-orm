@@ -38,7 +38,7 @@ export class SQLiteModelManager<
     super(model, logs, sqlDataSource);
     this.sqLiteConnection = sqLiteConnection;
     this.sqlModelManagerUtils = new SqlModelManagerUtils<T>(
-      "mysql",
+      "sqlite",
       sqLiteConnection,
     );
   }

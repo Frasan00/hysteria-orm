@@ -50,7 +50,7 @@ export class SQLiteDeleteQueryBuilder<
    * @param trx - The transaction to run the query in.
    * @returns The updated records.
    */
-  public async delete(trx?: SQLiteTransaction): Promise<T[]> {
+  public async delete(trx?: SQLiteTransaction): Promise<any> {
     this.whereQuery = this.whereTemplate.convertPlaceHolderToValue(
       this.whereQuery,
     );
@@ -66,10 +66,10 @@ export class SQLiteDeleteQueryBuilder<
     log(query, this.logs, this.whereParams);
     try {
       const result = await this.promisifyQuery<T[]>(query, this.whereParams);
-      return (await parseDatabaseDataIntoModelResponse(
-        result,
-        this.model,
-      )) as T[];
+      // return (await parseDatabaseDataIntoModelResponse(
+      //   result,
+      //   this.model,
+      // )) as T[];
     } catch (error) {
       queryError(query);
       throw new Error("Query failed " + error);

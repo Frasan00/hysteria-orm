@@ -1,6 +1,5 @@
-import { error, log } from "console";
 import { SqlDataSourceType } from "../../../Datasource";
-import { queryError } from "../../../Logger";
+import { log, queryError } from "../../../Logger";
 import deleteTemplate from "../../Resources/Query/DELETE";
 import insertTemplate from "../../Resources/Query/INSERT";
 import relationTemplates from "../../Resources/Query/RELATIONS";
@@ -14,8 +13,8 @@ import pg from "pg";
 import sqlite3 from "sqlite3";
 
 export default class SqlModelManagerUtils<T extends Model> {
-  protected dbType: SqlDataSourceType;
-  protected sqlConnection: SqlConnectionType;
+  private dbType: SqlDataSourceType;
+  private sqlConnection: SqlConnectionType;
 
   constructor(dbType: SqlDataSourceType, sqlConnection: SqlConnectionType) {
     this.dbType = dbType;
@@ -144,7 +143,8 @@ export default class SqlModelManagerUtils<T extends Model> {
       relationQuery = relationQueries.join(" UNION ALL ");
       log(relationQuery, logs);
 
-      const result = await this.getQueryResult(relationQuery);
+      let result = await this.getQueryResult(relationQuery);
+      result = Array.isArray(result) ? result : [result];
       const resultMap: { [key: string]: any[] } = {};
       result.forEach((row: any) => {
         const relationName = row.relation_name;

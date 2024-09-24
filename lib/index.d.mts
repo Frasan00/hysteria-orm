@@ -930,11 +930,21 @@ declare abstract class ModelDeleteQueryBuilder<T extends Model> extends WhereQue
     protected abstract updateTemplate: ReturnType<typeof updateTemplate>;
     protected abstract deleteTemplate: ReturnType<typeof deleteTemplate>;
     protected abstract isNestedCondition: boolean;
+    /**
+     * @description soft Deletes Records from the database.
+     * @param options - The options for the soft delete, including the column to soft delete, the value to set the column to, and the transaction to run the query in.
+     * @default column - 'deletedAt'
+     * @default value - The current date and time.
+     */
     abstract softDelete(options?: {
         column?: SelectableType<T>;
         value?: string | number | boolean;
         trx?: TransactionType;
     }): Promise<T[] | number>;
+    /**
+     * @description Deletes Records from the database for the current query.
+     * @param trx - The transaction to run the query in.
+     */
     abstract delete(trx?: TransactionType): Promise<T[] | number>;
     abstract join(relationTable: string, primaryColumn: string, foreignColumn: string): ModelDeleteQueryBuilder<T>;
     abstract leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): ModelDeleteQueryBuilder<T>;
@@ -1189,8 +1199,8 @@ declare class MysqlDeleteQueryBuilder<T extends Model> extends ModelDeleteQueryB
 }
 
 declare class SqlModelManagerUtils<T extends Model> {
-    protected dbType: SqlDataSourceType$1;
-    protected sqlConnection: SqlConnectionType;
+    private dbType;
+    private sqlConnection;
     constructor(dbType: SqlDataSourceType$1, sqlConnection: SqlConnectionType);
     parseInsert(model: T, typeofModel: typeof Model, dbType: SqlDataSourceType$1): {
         query: string;
@@ -1537,7 +1547,7 @@ declare class PostgresModelManager<T extends Model> extends AbstractModelManager
 declare class SQLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     protected sqLiteConnection: sqlite3.Database;
     protected isNestedCondition: boolean;
-    protected mysqlModelManagerUtils: SqlModelManagerUtils<T>;
+    protected sqliteModelManagerUtils: SqlModelManagerUtils<T>;
     /**
      * @param table - The name of the table.
      * @param sqLiteConnection - The MySQL connection pool.
@@ -1692,7 +1702,7 @@ declare class SQLiteDeleteQueryBuilder<T extends Model> extends ModelDeleteQuery
      * @param trx - The transaction to run the query in.
      * @returns The updated records.
      */
-    delete(trx?: SQLiteTransaction): Promise<T[]>;
+    delete(trx?: SQLiteTransaction): Promise<any>;
     /**
      * @description Soft Deletes Records from the database.
      * @param column - The column to soft delete. Default is 'deletedAt'.
