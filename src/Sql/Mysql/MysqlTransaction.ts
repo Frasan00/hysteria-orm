@@ -11,10 +11,12 @@ export class MysqlTransaction {
   protected mysql: Pool;
   protected mysqlPool!: PoolConnection;
   protected logs: boolean;
+  protected mysqlType: "mysql" | "mariadb";
 
-  constructor(mysql: Pool, logs: boolean) {
+  constructor(mysql: Pool, logs: boolean, mysqlType: "mysql" | "mariadb") {
     this.logs = logs;
     this.mysql = mysql;
+    this.mysqlType = mysqlType;
   }
 
   public async queryInsert<T extends Model>(
@@ -31,6 +33,14 @@ export class MysqlTransaction {
       query,
       params,
     );
+
+    if (this.mysqlType === "mariadb") {
+      return (await parseDatabaseDataIntoModelResponse(
+        [rows[0] as T],
+        typeofModel,
+      )) as T;
+    }
+
     const insertId = rows.insertId;
     const select = selectTemplate("mysql", typeofModel).selectById(insertId);
     const [savedModel] = await this.mysqlPool.query<RowDataPacket[]>(select);
@@ -57,6 +67,14 @@ export class MysqlTransaction {
         params,
       );
 
+      if (this.mysqlType === "mariadb") {
+        return (await parseDatabaseDataIntoModelResponse(
+          rows,
+          typeofModel,
+        )) as T[];
+      }
+
+      // FIXME: should check the insertIds
       return (await parseDatabaseDataIntoModelResponse(
         rows as T[],
         typeofModel,

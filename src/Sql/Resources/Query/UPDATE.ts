@@ -88,7 +88,7 @@ WHERE ${primaryKey} = ${
       let query = `UPDATE ${table} ${joinClause}
 SET ${setClause}
 ${whereClause}`;
-      if (dbType === "postgres" || dbType === "sqlite") {
+      if (dbType !== "mysql" && dbType != "mariadb") {
         query += " RETURNING *";
       }
 

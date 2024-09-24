@@ -118,7 +118,7 @@ export class SqlDataSource extends DataSource {
           database: this.database,
         });
 
-        const trxMysql = new MysqlTransaction(sqlPool, this.logs);
+        const trxMysql = new MysqlTransaction(sqlPool, this.logs, this.type);
         await trxMysql.start();
         return trxMysql;
       case "postgres":

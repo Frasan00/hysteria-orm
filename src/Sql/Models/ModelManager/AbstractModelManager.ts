@@ -108,7 +108,7 @@ export abstract class AbstractModelManager<T extends Model> {
     column: string,
     value: string | number | boolean,
     trx?: TransactionType,
-  ): Promise<number> | Promise<T | null>;
+  ): Promise<number | T | null>;
 
   /**
    * @description Deletes a record

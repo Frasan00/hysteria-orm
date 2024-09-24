@@ -52,7 +52,7 @@ const insertTemplate = (
       }
 
       const query =
-        dbType === "mysql" || dbType === "mariadb"
+        dbType === "mysql"
           ? `INSERT INTO ${table} (${columns.join(", ")})
 VALUES (${placeholders});`
           : `INSERT INTO ${table} (${columns.join(", ")})
@@ -98,7 +98,7 @@ VALUES (${placeholders}) RETURNING *;`;
       }
 
       const query =
-        dbType === "mysql" || dbType === "mariadb"
+        dbType === "mysql"
           ? `INSERT INTO ${table} (${columns.join(", ")})
 VALUES ${valueSets.join(", ")};`
           : `INSERT INTO ${table} (${columns.join(", ")})

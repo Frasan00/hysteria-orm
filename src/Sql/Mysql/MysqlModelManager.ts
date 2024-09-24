@@ -15,6 +15,7 @@ import { PostgresUpdateQueryBuilder } from "../Postgres/PostgresUpdateQueryBuild
 import { MysqlDeleteQueryBuilder } from "./MysqlDeleteQueryBuilder";
 import { SqlDataSource } from "../SqlDatasource";
 import SqlModelManagerUtils from "../Models/ModelManager/ModelManagerUtils";
+import { parseDatabaseDataIntoModelResponse } from "../serializer";
 
 export class MysqlModelManager<
   T extends Model,
@@ -26,7 +27,7 @@ export class MysqlModelManager<
    * Constructor for MysqlModelManager class.
    *
    * @param {typeof Model} model - Model constructor.
-   * @param {Pool} mysqlConnection - MySQL connection pool.
+   * @param {Connection} mysqlConnection - MySQL connection pool.
    * @param {boolean} logs - Flag to enable or disable logging.
    */
   constructor(
@@ -194,6 +195,13 @@ export class MysqlModelManager<
         params,
       );
 
+      if (this.sqlDataSource.getDbType() === "mariadb") {
+        return (await parseDatabaseDataIntoModelResponse(
+          [result[0] as T],
+          this.model,
+        )) as T;
+      }
+
       return await this.findOneByPrimaryKey(result["insertId"]);
     } catch (error) {
       queryError(error);
@@ -234,6 +242,14 @@ export class MysqlModelManager<
       );
       log(query, this.logs, params);
       const [rows]: any = await this.mysqlConnection.query(query, params);
+
+      if (this.sqlDataSource.getDbType() === "mariadb") {
+        return (await parseDatabaseDataIntoModelResponse(
+          rows,
+          this.model,
+        )) as T[];
+      }
+
       if (!rows.affectedRows || !rows.insertId) {
         return [];
       }
@@ -323,7 +339,7 @@ export class MysqlModelManager<
     column: string,
     value: string | number | boolean,
     trx?: TransactionType,
-  ): Promise<number> {
+  ): Promise<T | null | number> {
     if (trx) {
       const { query, params } = this.sqlModelManagerUtils.parseDelete(
         this.model.table,
@@ -345,6 +361,14 @@ export class MysqlModelManager<
         query,
         params,
       );
+
+      if (this.sqlDataSource.getDbType() === "mariadb") {
+        return (await parseDatabaseDataIntoModelResponse(
+          [rows[0] as T],
+          this.model,
+        )) as T;
+      }
+
       return rows.affectedRows;
     } catch (error) {
       queryError(error);
@@ -383,7 +407,17 @@ export class MysqlModelManager<
       }
 
       log(query, this.logs, params);
-      await this.mysqlConnection.query<RowDataPacket[]>(query, params);
+      const [rows]: any = await this.mysqlConnection.query<RowDataPacket[]>(
+        query,
+        params,
+      );
+      if (this.sqlDataSource.getDbType() === "mariadb") {
+        return (await parseDatabaseDataIntoModelResponse(
+          [rows[0] as T],
+          this.model,
+        )) as T;
+      }
+
       return model;
     } catch (error) {
       queryError(error);

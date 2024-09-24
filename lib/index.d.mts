@@ -386,7 +386,8 @@ declare class MysqlTransaction {
     protected mysql: Pool;
     protected mysqlPool: PoolConnection;
     protected logs: boolean;
-    constructor(mysql: Pool, logs: boolean);
+    protected mysqlType: "mysql" | "mariadb";
+    constructor(mysql: Pool, logs: boolean, mysqlType: "mysql" | "mariadb");
     queryInsert<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T>;
     massiveInsertQuery<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T[]>;
     massiveUpdateQuery(query: string, params: any[]): Promise<number>;
@@ -998,7 +999,7 @@ declare abstract class AbstractModelManager<T extends Model> {
      * @param value
      * @param trx
      */
-    abstract deleteByColumn(column: string, value: string | number | boolean, trx?: TransactionType): Promise<number> | Promise<T | null>;
+    abstract deleteByColumn(column: string, value: string | number | boolean, trx?: TransactionType): Promise<number | T | null>;
     /**
      * @description Deletes a record
      * @param model
@@ -1222,7 +1223,7 @@ declare class MysqlModelManager<T extends Model> extends AbstractModelManager<T>
      * Constructor for MysqlModelManager class.
      *
      * @param {typeof Model} model - Model constructor.
-     * @param {Pool} mysqlConnection - MySQL connection pool.
+     * @param {Connection} mysqlConnection - MySQL connection pool.
      * @param {boolean} logs - Flag to enable or disable logging.
      */
     constructor(model: typeof Model, mysqlConnection: mysql.Connection, logs: boolean, sqlDataSource: SqlDataSource);
@@ -1278,7 +1279,7 @@ declare class MysqlModelManager<T extends Model> extends AbstractModelManager<T>
      * @param {MysqlTransaction} trx - MysqlTransaction to be used on the delete operation.
      * @returns Promise resolving to affected rows count
      */
-    deleteByColumn(column: string, value: string | number | boolean, trx?: TransactionType): Promise<number>;
+    deleteByColumn(column: string, value: string | number | boolean, trx?: TransactionType): Promise<T | null | number>;
     /**
      * @description Delete a record from the database from the given model.
      *
@@ -2466,7 +2467,7 @@ declare abstract class Model {
      * @param trx
      * @returns
      */
-    static deleteByColumn<T extends Model>(this: new () => T | typeof Model, column: string, value: string | number | boolean, trx?: MysqlTransaction | PostgresTransaction): Promise<number> | Promise<T | null>;
+    static deleteByColumn<T extends Model>(this: new () => T | typeof Model, column: string, value: string | number | boolean, trx?: MysqlTransaction | PostgresTransaction): Promise<number | T | null>;
     /**
      * @description Merges the provided data with the instance
      * @param instance

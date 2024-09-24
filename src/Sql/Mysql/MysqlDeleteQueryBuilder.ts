@@ -57,7 +57,7 @@ export class MysqlDeleteQueryBuilder<
   }): Promise<number> {
     const {
       column = "deletedAt" as SelectableType<T>,
-      value = DateTime.local().toString(),
+      value = DateTime.local().toISO(),
       trx,
     } = options || {};
     let { query, params } = this.updateTemplate.massiveUpdate(

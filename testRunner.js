@@ -3,6 +3,9 @@
 const { execSync } = require('child_process');
 
 const testFiles = [
+    './test/sql/mariadb/relations.mariadb.test.ts',
+    './test/sql/mariadb/crud.mariadb.test.ts',
+
     './test/sql/pg/relations.pg.test.ts',
     './test/sql/pg/crud.pg.test.ts',
     // './test/sql/pg/trx.pg.test.ts',
