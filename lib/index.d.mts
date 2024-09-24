@@ -935,7 +935,7 @@ declare abstract class ModelDeleteQueryBuilder<T extends Model> extends WhereQue
         value?: string | number | boolean;
         trx?: TransactionType;
     }): Promise<T[] | number>;
-    abstract execute(trx?: TransactionType): Promise<T[] | number>;
+    abstract delete(trx?: TransactionType): Promise<T[] | number>;
     abstract join(relationTable: string, primaryColumn: string, foreignColumn: string): ModelDeleteQueryBuilder<T>;
     abstract leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): ModelDeleteQueryBuilder<T>;
     abstract whereBuilder(cb: (queryBuilder: ModelDeleteQueryBuilder<T>) => void): this;
@@ -1017,7 +1017,7 @@ declare abstract class AbstractModelManager<T extends Model> {
     /**
      * @description Returns a delete query builder
      */
-    abstract delete(): ModelDeleteQueryBuilder<T>;
+    abstract deleteQuery(): ModelDeleteQueryBuilder<T>;
 }
 
 declare class MysqlUpdateQueryBuilder<T extends Model> extends ModelUpdateQueryBuilder<T> {
@@ -1156,7 +1156,7 @@ declare class MysqlDeleteQueryBuilder<T extends Model> extends ModelDeleteQueryB
      * @param trx - The transaction to run the query in.
      * @returns The updated records.
      */
-    execute(trx?: MysqlTransaction): Promise<number>;
+    delete(trx?: MysqlTransaction): Promise<number>;
     /**
      *
      * @param relationTable - The name of the related table.
@@ -1301,7 +1301,7 @@ declare class MysqlModelManager<T extends Model> extends AbstractModelManager<T>
     /**
      * @description Returns a delete query builder.
      */
-    delete(): MysqlDeleteQueryBuilder<T>;
+    deleteQuery(): MysqlDeleteQueryBuilder<T>;
 }
 
 declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
@@ -1402,7 +1402,7 @@ declare class PostgresDeleteQueryBuilder<T extends Model> extends ModelDeleteQue
      * @param trx - The transaction to run the query in.
      * @returns The updated records.
      */
-    execute(trx?: PostgresTransaction): Promise<T[]>;
+    delete(trx?: PostgresTransaction): Promise<T[]>;
     /**
      * @description Soft Deletes Records from the database.
      * @param column - The column to soft delete. Default is 'deletedAt'.
@@ -1531,7 +1531,7 @@ declare class PostgresModelManager<T extends Model> extends AbstractModelManager
     /**
      * @description Returns a delete query builder.
      */
-    delete(): PostgresDeleteQueryBuilder<T>;
+    deleteQuery(): PostgresDeleteQueryBuilder<T>;
 }
 
 declare class SQLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
@@ -1692,7 +1692,7 @@ declare class SQLiteDeleteQueryBuilder<T extends Model> extends ModelDeleteQuery
      * @param trx - The transaction to run the query in.
      * @returns The updated records.
      */
-    execute(trx?: SQLiteTransaction): Promise<T[]>;
+    delete(trx?: SQLiteTransaction): Promise<T[]>;
     /**
      * @description Soft Deletes Records from the database.
      * @param column - The column to soft delete. Default is 'deletedAt'.
@@ -1822,7 +1822,7 @@ declare class SQLiteModelManager<T extends Model> extends AbstractModelManager<T
     /**
      * @description Returns a delete query builder.
      */
-    delete(): SQLiteDeleteQueryBuilder<T>;
+    deleteQuery(): SQLiteDeleteQueryBuilder<T>;
     private promisifyQuery;
 }
 
@@ -2430,13 +2430,13 @@ declare abstract class Model {
      */
     static update<T extends Model>(this: new () => T | typeof Model): ModelUpdateQueryBuilder<T>;
     /**
-     * @description Deletes multiple records from the database
+     * @description Gives a Delete query builder instance
      * @param model
      * @param {Model} modelInstance
      * @param trx
      * @returns
      */
-    static delete<T extends Model>(this: new () => T | typeof Model): ModelDeleteQueryBuilder<T>;
+    static deleteQuery<T extends Model>(this: new () => T | typeof Model): ModelDeleteQueryBuilder<T>;
     /**
      * @description Deletes a record to the database
      * @param model

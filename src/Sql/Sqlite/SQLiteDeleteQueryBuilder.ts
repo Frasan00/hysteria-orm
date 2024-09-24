@@ -50,7 +50,7 @@ export class SQLiteDeleteQueryBuilder<
    * @param trx - The transaction to run the query in.
    * @returns The updated records.
    */
-  public async execute(trx?: SQLiteTransaction): Promise<T[]> {
+  public async delete(trx?: SQLiteTransaction): Promise<T[]> {
     this.whereQuery = this.whereTemplate.convertPlaceHolderToValue(
       this.whereQuery,
     );

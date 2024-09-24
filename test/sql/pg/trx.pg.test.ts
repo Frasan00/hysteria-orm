@@ -11,8 +11,8 @@ test("Create a new user with posts within a transaction", async () => {
     host: "127.0.0.1",
     port: 5432,
   });
-  await Post.delete().execute();
-  await User.delete().execute();
+  await Post.deleteQuery().delete();
+  await User.deleteQuery().delete();
 
   const trx = await sql.startTransaction();
 
@@ -58,8 +58,8 @@ test("Create a new user with posts within a transaction", async () => {
     await trx.rollback();
     throw error;
   } finally {
-    await Post.delete().execute();
-    await User.delete().execute();
+    await Post.deleteQuery().delete();
+    await User.deleteQuery().delete();
     await sql.closeConnection();
   }
 });
@@ -73,8 +73,8 @@ test("Rollback transaction on error", async () => {
     host: "127.0.0.1",
     port: 5432,
   });
-  await Post.delete().execute();
-  await User.delete().execute();
+  await Post.deleteQuery().delete();
+  await User.deleteQuery().delete();
 
   const trx = await sql.startTransaction();
 
@@ -114,8 +114,8 @@ test("Rollback transaction on error", async () => {
       .one();
     expect(userWithPosts).toBeNull();
   } finally {
-    await Post.delete().execute();
-    await User.delete().execute();
+    await Post.deleteQuery().delete();
+    await User.deleteQuery().delete();
     await sql.closeConnection();
   }
 });
@@ -129,8 +129,8 @@ test("Massive update within a transaction", async () => {
     host: "127.0.0.1",
     port: 5432,
   });
-  await Post.delete().execute();
-  await User.delete().execute();
+  await Post.deleteQuery().delete();
+  await User.deleteQuery().delete();
 
   const trx = await sql.startTransaction();
 
@@ -177,8 +177,8 @@ test("Massive update within a transaction", async () => {
     await trx.rollback();
     throw error;
   } finally {
-    await Post.delete().execute();
-    await User.delete().execute();
+    await Post.deleteQuery().delete();
+    await User.deleteQuery().delete();
     await sql.closeConnection();
   }
 });
@@ -192,8 +192,8 @@ test("Delete records within a transaction", async () => {
     host: "127.0.0.1",
     port: 5432,
   });
-  await Post.delete().execute();
-  await User.delete().execute();
+  await Post.deleteQuery().delete();
+  await User.deleteQuery().delete();
 
   const trx = await sql.startTransaction();
 
@@ -212,7 +212,7 @@ test("Delete records within a transaction", async () => {
       throw new Error("User not created");
     }
 
-    await User.delete().where("id", user.id).execute(trx);
+    await User.deleteQuery().where("id", user.id).delete(trx);
 
     await trx.commit();
 
@@ -222,8 +222,8 @@ test("Delete records within a transaction", async () => {
     await trx.rollback();
     throw error;
   } finally {
-    await Post.delete().execute();
-    await User.delete().execute();
+    await Post.deleteQuery().delete();
+    await User.deleteQuery().delete();
     await sql.closeConnection();
   }
 });

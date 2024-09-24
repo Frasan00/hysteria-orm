@@ -297,10 +297,12 @@ const otherUser: User | null = await User.findOne({
 
 - It's used to create more complex queries that are not supported by the standard methods
 - all select-where-relations-orderby columns are partially type safe, they can both be a specific column in the Model or a string
+- You can also use the query builder for bulk updates and deleted
 
 ```typescript
 import { User } from "./User";
 
+// READ
 const user: User | null = await User.query()
     .addRelations(['post'])
     .where("name", "John Doe")
@@ -313,6 +315,23 @@ const users: User[] = await User.query()
     .orderBy("name", "ASC")
     .limit(10)
     .many();
+
+// bulk update and bulk delete Return le the list of the models for postgres and sqlite, else the number of affected rows
+
+// BULK UPDATE
+const models = await User.update()
+    .where("name", "Micheal")
+    .withData({ name: "Micheal Updated" });
+
+// BULK DELETE
+await User.deleteQuery().where("name", "Eve updated two").delete();
+
+// BULK SOFT DELETE
+await User.deleteQuery().where("name", "Eve updated two").softDelete({
+    column: "deletedAt" // default,
+    value: string | number | boolean // default current timestamp Datetime.local().toISO(),
+    // trx: optional
+});
 ```
 
 ### When condition
@@ -608,12 +627,12 @@ const newJsonUser = await User.update().withData({
 });
 
 // Delete every instance that contains the properties in the json column
-const deletedUsers = await User.delete()
+const deletedUsers = await User.deleteQuery()
     .where("json", {
             foo: "bar",
             bar: "foo",
         },
         ">",
     )
-    .execute();
+    .delete();
 ```

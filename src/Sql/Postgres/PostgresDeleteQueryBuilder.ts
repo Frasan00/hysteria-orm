@@ -50,7 +50,7 @@ export class PostgresDeleteQueryBuilder<
    * @param trx - The transaction to run the query in.
    * @returns The updated records.
    */
-  public async execute(trx?: PostgresTransaction): Promise<T[]> {
+  public async delete(trx?: PostgresTransaction): Promise<T[]> {
     this.whereQuery = this.whereTemplate.convertPlaceHolderToValue(
       this.whereQuery,
     );

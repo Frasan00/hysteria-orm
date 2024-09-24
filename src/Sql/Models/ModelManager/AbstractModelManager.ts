@@ -133,5 +133,5 @@ export abstract class AbstractModelManager<T extends Model> {
   /**
    * @description Returns a delete query builder
    */
-  public abstract delete(): ModelDeleteQueryBuilder<T>;
+  public abstract deleteQuery(): ModelDeleteQueryBuilder<T>;
 }

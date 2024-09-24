@@ -21,13 +21,13 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  await Post.delete().execute();
-  await User.delete().execute();
+  await Post.deleteQuery().delete();
+  await User.deleteQuery().delete();
 });
 
 afterEach(async () => {
-  await Post.delete().execute();
-  await User.delete().execute();
+  await Post.deleteQuery().delete();
+  await User.deleteQuery().delete();
 });
 
 test("Create a new user with posts", async () => {

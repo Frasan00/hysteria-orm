@@ -458,7 +458,7 @@ export class MysqlModelManager<
   /**
    * @description Returns a delete query builder.
    */
-  public delete(): MysqlDeleteQueryBuilder<T> {
+  public deleteQuery(): MysqlDeleteQueryBuilder<T> {
     return new MysqlDeleteQueryBuilder<T>(
       this.model,
       this.model.table,

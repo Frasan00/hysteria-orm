@@ -88,7 +88,7 @@ export class MysqlDeleteQueryBuilder<
    * @param trx - The transaction to run the query in.
    * @returns The updated records.
    */
-  public async execute(trx?: MysqlTransaction): Promise<number> {
+  public async delete(trx?: MysqlTransaction): Promise<number> {
     this.whereQuery = this.whereTemplate.convertPlaceHolderToValue(
       this.whereQuery,
     );

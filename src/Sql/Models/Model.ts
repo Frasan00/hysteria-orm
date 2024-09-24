@@ -268,18 +268,20 @@ export abstract class Model {
   }
 
   /**
-   * @description Deletes multiple records from the database
+   * @description Gives a Delete query builder instance
    * @param model
    * @param {Model} modelInstance
    * @param trx
    * @returns
    */
-  static delete<T extends Model>(
+  static deleteQuery<T extends Model>(
     this: new () => T | typeof Model,
   ): ModelDeleteQueryBuilder<T> {
     const typeofModel = this as unknown as typeof Model;
     typeofModel.establishConnection();
-    return typeofModel.sqlInstance.getModelManager<T>(typeofModel).delete();
+    return typeofModel.sqlInstance
+      .getModelManager<T>(typeofModel)
+      .deleteQuery();
   }
 
   /**

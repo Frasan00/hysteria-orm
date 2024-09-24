@@ -420,7 +420,7 @@ export class PostgresModelManager<
   /**
    * @description Returns a delete query builder.
    */
-  public delete(): PostgresDeleteQueryBuilder<T> {
+  public deleteQuery(): PostgresDeleteQueryBuilder<T> {
     return new PostgresDeleteQueryBuilder<T>(
       this.model,
       this.model.table,

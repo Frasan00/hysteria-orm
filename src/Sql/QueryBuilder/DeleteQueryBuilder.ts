@@ -17,13 +17,23 @@ export abstract class ModelDeleteQueryBuilder<
   protected abstract deleteTemplate: ReturnType<typeof deleteTemplate>;
   protected abstract isNestedCondition: boolean;
 
+  /**
+   * @description soft Deletes Records from the database.
+   * @param options - The options for the soft delete, including the column to soft delete, the value to set the column to, and the transaction to run the query in.
+   * @default column - 'deletedAt'
+   * @default value - The current date and time.
+   */
   public abstract softDelete(options?: {
     column?: SelectableType<T>;
     value?: string | number | boolean;
     trx?: TransactionType;
   }): Promise<T[] | number>;
 
-  public abstract execute(trx?: TransactionType): Promise<T[] | number>;
+  /**
+   * @description Deletes Records from the database for the current query.
+   * @param trx - The transaction to run the query in.
+   */
+  public abstract delete(trx?: TransactionType): Promise<T[] | number>;
 
   public abstract join(
     relationTable: string,

@@ -394,7 +394,7 @@ export class SQLiteModelManager<
   /**
    * @description Returns a delete query builder.
    */
-  public delete(): SQLiteDeleteQueryBuilder<T> {
+  public deleteQuery(): SQLiteDeleteQueryBuilder<T> {
     return new SQLiteDeleteQueryBuilder<T>(
       this.model,
       this.model.table,

@@ -22,11 +22,11 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  await User.delete().execute();
+  await User.deleteQuery().delete();
 });
 
 afterEach(async () => {
-  await User.delete().execute();
+  await User.deleteQuery().delete();
 });
 
 test("Create a new user", async () => {
@@ -175,7 +175,7 @@ test("Delete a user", async () => {
     isActive: true,
   });
 
-  await User.delete().where("name", "Eve updated two").execute();
+  await User.deleteQuery().where("name", "Eve updated two").delete();
   const updatedUser = await User.query().where("name", "Eve updated two").one();
   expect(updatedUser).toBeNull();
 });
