@@ -78,3 +78,52 @@ test("Create a new user with posts", async () => {
   expect(postWithUser?.user.name).toBe("Alice");
   expect(postWithUser?.user.email).toBe("alice-test@gmail.com");
 });
+
+test("Join users and posts", async () => {
+  const user = await User.create({
+    name: "Bob",
+    email: "bob-test@gmail.com",
+    signupSource: "email",
+    isActive: true,
+  });
+
+  if (!user) {
+    throw new Error("User not created");
+  }
+
+  const post1 = await Post.create({
+    userId: user.id,
+    title: "Post 1",
+    content: "Content 1",
+  });
+
+  const post2 = await Post.create({
+    userId: user.id,
+    title: "Post 2",
+    content: "Content 2",
+  });
+
+  if (!post1 || !post2) {
+    throw new Error("Posts not created");
+  }
+
+  const joinedUsersAndPosts = await User.query()
+    .select("*")
+    .join("posts", "users.id", "posts.userId")
+    .where("users.id", user.id)
+    .many();
+
+  expect(joinedUsersAndPosts).not.toBeNull();
+  expect(joinedUsersAndPosts.length).toBe(2);
+  expect(joinedUsersAndPosts[0].extraColumns.title).toBe("Post 1");
+
+  const leftJoinedUsersAndPosts = await User.query()
+    .select("*")
+    .leftJoin("posts", "users.id", "posts.userId")
+    .where("users.id", user.id)
+    .many();
+
+  expect(leftJoinedUsersAndPosts).not.toBeNull();
+  expect(leftJoinedUsersAndPosts.length).toBe(2);
+  expect(leftJoinedUsersAndPosts[0].extraColumns.title).toBe("Post 1");
+});

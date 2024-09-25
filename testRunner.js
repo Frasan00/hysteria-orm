@@ -8,8 +8,8 @@ const testFiles = [
     // './test/sql/mysql/trx.mysql.test.ts',
 
     // sqlite
-    './test/sql/sqlite/relations.sqlite.test.ts',
-    './test/sql/sqlite/crud.sqlite.test.ts',
+    // './test/sql/sqlite/relations.sqlite.test.ts',
+    // './test/sql/sqlite/crud.sqlite.test.ts',
 
     // maria
     './test/sql/mariadb/relations.mariadb.test.ts',

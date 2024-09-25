@@ -8,24 +8,37 @@ const joinTemplate = (
   foreignColumn: string,
 ) => {
   const table = typeofModel.table;
+  const foreignColumnName = foreignColumn.includes(".")
+    ? foreignColumn.split(".").pop()
+    : foreignColumn;
+  const primaryColumnName = primaryColumn.includes(".")
+    ? primaryColumn.split(".").pop()
+    : primaryColumn;
+
   return {
     innerJoin: () => {
-      return `\nINNER JOIN ${relatedTable} ON ${relatedTable}.${convertCase(
-        foreignColumn,
+      const foreignColumnConverted = convertCase(
+        foreignColumnName,
         typeofModel.databaseCaseConvention,
-      )} = ${table}.${convertCase(
-        primaryColumn,
+      );
+      const primaryColumnConverted = convertCase(
+        primaryColumnName,
         typeofModel.databaseCaseConvention,
-      )}`;
+      );
+
+      return `\nINNER JOIN ${relatedTable} ON ${relatedTable}.${foreignColumnConverted} = ${table}.${primaryColumnConverted}`;
     },
     leftJoin: () => {
-      return `\nLEFT JOIN ${relatedTable} ON ${relatedTable}.${convertCase(
-        foreignColumn,
+      const foreignColumnConverted = convertCase(
+        foreignColumnName,
         typeofModel.databaseCaseConvention,
-      )} = ${table}.${convertCase(
-        primaryColumn,
+      );
+      const primaryColumnConverted = convertCase(
+        primaryColumnName,
         typeofModel.databaseCaseConvention,
-      )}`;
+      );
+
+      return `\nLEFT JOIN ${relatedTable} ON ${relatedTable}.${foreignColumnConverted} = ${table}.${primaryColumnConverted}`;
     },
   };
 };
