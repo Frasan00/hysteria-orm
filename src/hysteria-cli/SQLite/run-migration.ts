@@ -13,32 +13,20 @@ import {
 } from "../../Sql/Resources/Query/TRANSACTION";
 import logger from "../../Logger";
 import SQLIteMIgrationUtils from "./SQLIteMIgrationUtils";
+import { SqlDataSource } from "../../Sql/SqlDatasource";
 
 dotenv.config();
 
 export async function runMigrationsSQLite(): Promise<void> {
-  const config = SQLIteMIgrationUtils.getSQLiteConfig();
-  const sqliteConnection = new sqlite3.Database(
-    config.database as string,
-    (error) => {
-      if (error) {
-        logger.error(error);
-        throw error;
-      }
-    },
-  );
+  const sql = await SqlDataSource.connect();
+  const sqlConnection = sql.getCurrentConnection() as sqlite3.Database;
 
   try {
     log(BEGIN_TRANSACTION, true);
-    await SQLIteMIgrationUtils.promisifyQuery(
-      BEGIN_TRANSACTION,
-      [],
-      sqliteConnection,
-    );
+    sqlConnection.exec(BEGIN_TRANSACTION);
 
     const migrationTable: MigrationTableType[] =
-      (await SQLIteMIgrationUtils.getMigrationTable(sqliteConnection)) || [];
-    console.log(migrationTable);
+      (await SQLIteMIgrationUtils.getMigrationTable(sqlConnection)) || [];
     const migrations: Migration[] = await SQLIteMIgrationUtils.getMigrations();
     const pendingMigrations = migrations.filter(
       (migration) =>
@@ -49,33 +37,24 @@ export async function runMigrationsSQLite(): Promise<void> {
 
     if (pendingMigrations.length === 0) {
       logger.info("No pending migrations.");
-      sqliteConnection.close();
+      await sql.closeConnection();
       process.exit(0);
     }
 
     const migrationController = new MigrationController(
-      null,
-      null,
-      sqliteConnection,
+      sqlConnection,
+      "sqlite",
     );
     await migrationController.upMigrations(pendingMigrations);
 
     log(COMMIT_TRANSACTION, true);
-    await SQLIteMIgrationUtils.promisifyQuery(
-      COMMIT_TRANSACTION,
-      [],
-      sqliteConnection,
-    );
+    sqlConnection.exec(COMMIT_TRANSACTION);
   } catch (error: any) {
     log(ROLLBACK_TRANSACTION, true);
-    await SQLIteMIgrationUtils.promisifyQuery(
-      ROLLBACK_TRANSACTION,
-      [],
-      sqliteConnection,
-    );
+    sqlConnection.exec(ROLLBACK_TRANSACTION);
 
     throw error;
   } finally {
-    sqliteConnection.close();
+    await sql.closeConnection();
   }
 }

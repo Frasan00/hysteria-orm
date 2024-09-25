@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import dotenv from "dotenv";
-import { createPool } from "mysql2/promise";
+import * as mysql2 from "mysql2/promise";
 import { MigrationTableType } from "../resources/MigrationTableType";
 import MysqlCliUtils from "./MysqlCliUtils";
 import { log } from "console";
@@ -13,25 +13,18 @@ import {
   ROLLBACK_TRANSACTION,
 } from "../../Sql/Resources/Query/TRANSACTION";
 import logger from "../../Logger";
+import { SqlDataSource } from "../../Sql/SqlDatasource";
 
 dotenv.config();
 
 export async function runMigrationsSql(): Promise<void> {
-  const config = MysqlCliUtils.getMysqlConfig();
-  const mysqlPool = createPool({
-    host: config.host,
-    port: config.port,
-    user: config.username,
-    password: config.password,
-    database: config.database,
-  });
-
-  const mysql = await mysqlPool.getConnection();
+  const sql = await SqlDataSource.connect();
+  const sqlConnection = sql.getCurrentConnection() as mysql2.Connection;
   try {
     log(BEGIN_TRANSACTION, true);
-    await mysql.beginTransaction();
+    await sqlConnection.beginTransaction();
     const migrationTable: MigrationTableType[] =
-      await MysqlCliUtils.getMigrationTable(mysql);
+      await MysqlCliUtils.getMigrationTable(sqlConnection as mysql2.Connection);
     const migrations: Migration[] = await MysqlCliUtils.getMigrations();
     const pendingMigrations = migrations.filter(
       (migration) =>
@@ -42,22 +35,25 @@ export async function runMigrationsSql(): Promise<void> {
 
     if (pendingMigrations.length === 0) {
       logger.info("No pending migrations.");
-      mysql.release();
+      await sql.closeConnection();
       process.exit(0);
     }
 
-    const migrationController = new MigrationController(mysql, null, null);
+    const migrationController = new MigrationController(
+      sqlConnection as mysql2.Connection,
+      "mysql",
+    );
     await migrationController.upMigrations(pendingMigrations);
 
     log(COMMIT_TRANSACTION, true);
-    await mysql.commit();
+    await sqlConnection.commit();
   } catch (error: any) {
     log(ROLLBACK_TRANSACTION, true);
-    await mysql.rollback();
+    await sqlConnection.rollback();
 
     console.error(error);
     throw error;
   } finally {
-    mysql.release();
+    await sql.closeConnection();
   }
 }

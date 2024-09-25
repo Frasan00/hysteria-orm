@@ -6,7 +6,7 @@ import { runMigrationsSql } from "./mysql/run-migration";
 import { runMigrationsSQLite } from "./SQLite/run-migration";
 import logger from "../Logger";
 
-dotenv.config({ path: "../../.sadjkasdnaksjd" });
+dotenv.config();
 
 export default async function runMigrationsConnector() {
   const databaseType = process.env.DB_TYPE;

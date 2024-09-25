@@ -1876,6 +1876,11 @@ declare class SqlDataSource extends DataSource {
      */
     static useConnection(connectionDetails: SqlDataSourceInput, cb: (sqlDataSource: SqlDataSource) => Promise<void>): Promise<void>;
     /**
+     * @description Returns the current connection
+     * @returns {Promise<SqlConnectionType>} sqlConnection
+     */
+    getCurrentConnection(): SqlConnectionType;
+    /**
      * @description Returns separate raw sql connection
      */
     getRawConnection(): Promise<SqlConnectionType>;

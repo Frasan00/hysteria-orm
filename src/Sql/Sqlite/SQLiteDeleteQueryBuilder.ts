@@ -323,12 +323,12 @@ export class SQLiteDeleteQueryBuilder<
       .join(",")})`;
 
     log(afterUpdateDataQuery, this.logs, modelIds);
-    const updatedData = await this.promisifyQuery<T>(
+    const deletedData = await this.promisifyQuery<T>(
       afterUpdateDataQuery,
       modelIds,
     );
 
-    return Array.isArray(updatedData) ? updatedData : [updatedData];
+    return Array.isArray(deletedData) ? deletedData : [deletedData];
   }
 
   private promisifyQuery<T>(query: string, params: any): Promise<T[]> {

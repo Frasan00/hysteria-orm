@@ -10,7 +10,7 @@ dotenv.config();
 
 export default async function rollbackMigrationConnector() {
   const databaseType = process.env.DB_TYPE;
-  logger.info("Rolling back migrations...");
+  logger.info("Rolling back migrations for database type: " + databaseType);
 
   switch (databaseType) {
     case "mariadb":

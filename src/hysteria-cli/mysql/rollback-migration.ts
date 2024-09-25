@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 import dotenv from "dotenv";
-import { createPool } from "mysql2/promise";
 import CliUtils from "./MysqlCliUtils";
 import { MigrationTableType } from "../resources/MigrationTableType";
 import { log } from "console";
@@ -13,30 +12,20 @@ import {
   ROLLBACK_TRANSACTION,
 } from "../../Sql/Resources/Query/TRANSACTION";
 import logger from "../../Logger";
+import { SqlDataSource } from "../../Sql/SqlDatasource";
+import * as mysql2 from "mysql2/promise";
 
 dotenv.config();
 
 export async function migrationRollBackSql(): Promise<void> {
-  const config = CliUtils.getMysqlConfig();
-  const mysqlPool = createPool({
-    host: config.host,
-    port: config.port,
-    user: config.username,
-    password: config.password,
-    database: config.database,
-    waitForConnections: true,
-  });
-
-  const mysql = await mysqlPool.getConnection().catch((error) => {
-    console.error(error);
-    process.exit(1);
-  });
+  const sql = await SqlDataSource.connect();
+  const sqlConnection = sql.getCurrentConnection() as mysql2.Connection;
 
   try {
     log(BEGIN_TRANSACTION, true);
-    await mysql.beginTransaction();
+    await sqlConnection.beginTransaction();
     const migrationTable: MigrationTableType[] =
-      await CliUtils.getMigrationTable(mysql);
+      await CliUtils.getMigrationTable(sqlConnection);
     const migrations: Migration[] = await CliUtils.getMigrations();
     const tableMigrations = migrationTable.map((migration) => migration.name);
     const pendingMigrations = migrations.filter((migration) =>
@@ -45,27 +34,26 @@ export async function migrationRollBackSql(): Promise<void> {
 
     if (pendingMigrations.length === 0) {
       logger.info("No pending migrations.");
-      mysql.release();
+      await sql.closeConnection();
       process.exit(0);
     }
 
     const migrationController: MigrationController = new MigrationController(
-      await mysqlPool.getConnection(),
-      null,
-      null,
+      sqlConnection,
+      "mysql",
     );
 
     await migrationController.downMigrations(pendingMigrations);
 
     log(COMMIT_TRANSACTION, true);
-    await mysql.commit();
+    await sqlConnection.commit();
   } catch (error: any) {
     log(ROLLBACK_TRANSACTION, true);
-    await mysql.rollback();
+    await sqlConnection.rollback();
 
     console.error(error);
     throw error;
   } finally {
-    mysql.release();
+    await sql.closeConnection();
   }
 }

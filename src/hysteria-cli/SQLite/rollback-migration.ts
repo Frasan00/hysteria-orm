@@ -46,9 +46,8 @@ export async function migrationRollBackSqlite(): Promise<void> {
     }
 
     const migrationController = new MigrationController(
-      null,
-      null,
-      sqliteConnection,
+      sqliteConnection as any,
+      "sqlite",
     );
 
     log(BEGIN_TRANSACTION, true);

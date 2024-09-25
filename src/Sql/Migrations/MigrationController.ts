@@ -1,54 +1,45 @@
-import { PoolConnection } from "mysql2/promise";
-import { PoolClient } from "pg";
+import { Connection } from "mysql2/promise";
+import { Client } from "pg";
 import { log } from "../../Logger";
 import { Migration } from "./Migration";
 import { SqlDataSource } from "../SqlDatasource";
 import sqlite3 from "sqlite3";
+import { SqlDataSourceType } from "../../Datasource";
 
 export class MigrationController {
-  protected mysqlPool: PoolConnection | null;
-  protected pgPool: PoolClient | null;
-  protected sqliteConnection: sqlite3.Database | null;
+  protected sqlConnection: Connection | Client | sqlite3.Database;
+  private sqlType: SqlDataSourceType;
 
   constructor(
-    mysqlPool: PoolConnection | null,
-    pgPool: PoolClient | null,
-    sqliteConnection: sqlite3.Database | null,
+    sqlConnection: Connection | Client | sqlite3.Database,
+    sqlType: SqlDataSourceType,
   ) {
-    this.mysqlPool = mysqlPool;
-    this.pgPool = pgPool;
-    this.sqliteConnection = sqliteConnection;
+    this.sqlConnection = sqlConnection;
+    this.sqlType = sqlType;
   }
 
   public async upMigrations(migrations: Migration[]): Promise<void> {
     try {
-      const migrationPromises = migrations.map(async (migration) => {
+      for (const migration of migrations) {
         await migration.up();
         const statements = migration.schema.queryStatements;
-        const statementPromises = statements.map(async (statement) => {
+        for (const statement of statements) {
           if (
             !statement ||
             statement === "" ||
             statement === ";" ||
             statement === ","
           ) {
-            return;
+            continue;
           }
-
           await this.localQuery(statement);
-        });
-
-        await Promise.all(statementPromises);
-        await this.addMigrationToMigrationTable(migration);
-
-        if (migration.afterUp) {
-          const sql = await SqlDataSource.connect();
-          await migration.afterUp();
-          await sql.closeConnection();
         }
-      });
 
-      await Promise.all(migrationPromises);
+        await this.addMigrationToMigrationTable(migration);
+        if (migration.afterUp) {
+          await migration.afterUp();
+        }
+      }
     } catch (error: any) {
       throw error;
     }
@@ -69,10 +60,8 @@ export class MigrationController {
           ) {
             continue;
           }
-
           await this.localQuery(statement);
         }
-
         await this.deleteMigrationFromMigrationTable(migration);
         if (migration.afterDown) {
           const sql = await SqlDataSource.connect();
@@ -86,32 +75,28 @@ export class MigrationController {
   }
 
   private async localQuery(text: string, params: any[] = []): Promise<void> {
-    if (this.mysqlPool) {
+    if (this.sqlType === "mysql" || this.sqlType === "mariadb") {
       text = text.replace(/PLACEHOLDER/g, "?");
       log(text, true, params);
-      await this.mysqlPool.query(text, params);
+      await (this.sqlConnection as Connection).query(text, params);
       return;
-    } else if (this.pgPool) {
+    } else if (this.sqlType === "postgres") {
       let index = 1;
       text = text.replace(/PLACEHOLDER/g, () => `$${index++}`);
       log(text, true, params);
-      await this.pgPool.query(text, params);
+      await (this.sqlConnection as Client).query(text, params);
       return;
-    } else if (this.sqliteConnection) {
+    } else if (this.sqlType === "sqlite") {
       text = text.replace(/PLACEHOLDER/g, "?");
       log(text, true, params);
       await new Promise<void>((resolve, reject) => {
-        (this.sqliteConnection as sqlite3.Database).run(
-          text,
-          params,
-          (error) => {
-            if (error) {
-              reject(error);
-            } else {
-              resolve();
-            }
-          },
-        );
+        (this.sqlConnection as sqlite3.Database).run(text, params, (error) => {
+          if (error) {
+            reject(error);
+          } else {
+            resolve();
+          }
+        });
       });
       return;
     }

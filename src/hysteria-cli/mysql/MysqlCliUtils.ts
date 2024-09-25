@@ -1,4 +1,4 @@
-import { PoolConnection } from "mysql2/promise";
+import { Connection, PoolConnection } from "mysql2/promise";
 import { MigrationTableType } from "../resources/MigrationTableType";
 import fs from "fs";
 import MigrationTemplates from "../resources/MigrationTemplates";
@@ -22,7 +22,7 @@ class MysqlCliUtils {
   }
 
   public async getMigrationTable(
-    mysqlPool: PoolConnection,
+    mysqlPool: Connection,
   ): Promise<MigrationTableType[]> {
     await mysqlPool.query(MigrationTemplates.migrationTableTemplate());
     const result = await mysqlPool.query(

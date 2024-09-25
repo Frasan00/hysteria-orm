@@ -1,6 +1,6 @@
 # Hysteria ORM
 
-Hysteria ORM is an Object-Relational Mapping (ORM) library for TypeScript, designed to simplify interactions between your application and a SQL and NoSql databases.
+- Hysteria ORM is a partially type safe Object-Relational Mapping (ORM) library for TypeScript, designed to simplify interactions between your application and a SQL and NoSql databases.
 
 ## Sql
 - [Documentation](src/SQL_README.MD)

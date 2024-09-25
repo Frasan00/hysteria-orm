@@ -1,4 +1,4 @@
-import { PoolClient } from "pg";
+import { Client } from "pg";
 import { MigrationTableType } from "../resources/MigrationTableType";
 import fs from "fs";
 import MigrationTemplates from "../resources/MigrationTemplates";
@@ -21,7 +21,7 @@ class PgCliUtils {
   }
 
   public async getMigrationTable(
-    pgPool: PoolClient,
+    pgPool: Client,
   ): Promise<MigrationTableType[]> {
     await pgPool.query(MigrationTemplates.migrationTableTemplatePg());
     const result = await pgPool.query(

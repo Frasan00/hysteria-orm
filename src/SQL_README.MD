@@ -238,7 +238,6 @@ type CaseConvention =
 ```
 
 ### Create, Update and Delete (with transaction)
-
 ```typescript
 import { User } from "./User";
 
@@ -274,9 +273,9 @@ import { User } from "./User";
 const users: User[] = await userManager.find();
 
 // Get with optional parameters
-// params in select, where and relations are type safe with the columns and relations of the Model, dormire elastic aueries use the query builder
+// params in select, where and relations are partially type safe with the columns and relations of the Model, for more elastic queries use the query builder
 const filteredUsers: User[] = await User.find({
-    relations: ["profile"],
+    relations: ["profile"], // only Model defined relations can be used
     where: {
         name: "John Doe"
     },

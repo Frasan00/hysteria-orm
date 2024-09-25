@@ -69,7 +69,7 @@ export class SqlDataSource extends DataSource {
           database: sqlDataSource.database,
           ...input?.pgOptions,
         });
-        await sqlDataSource.sqlConnection.connect();
+        await (sqlDataSource.sqlConnection as pg.Client).connect();
         break;
 
       case "sqlite":
@@ -248,6 +248,14 @@ export class SqlDataSource extends DataSource {
       }
       throw error;
     }
+  }
+
+  /**
+   * @description Returns the current connection
+   * @returns {Promise<SqlConnectionType>} sqlConnection
+   */
+  public getCurrentConnection(): SqlConnectionType {
+    return this.sqlConnection;
   }
 
   /**
