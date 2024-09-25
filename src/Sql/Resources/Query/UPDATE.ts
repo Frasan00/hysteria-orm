@@ -43,7 +43,7 @@ const updateTemplate = (
           throw new Error("Unsupported database type");
       }
 
-      let query = `UPDATE ${table} 
+      const query = `UPDATE ${table} 
 SET ${setClause} 
 WHERE ${primaryKey} = ${
         dbType !== "postgres" ? "?" : `$${columns.length + 1}`
@@ -85,12 +85,9 @@ WHERE ${primaryKey} = ${
           throw new Error("Unsupported database type");
       }
 
-      let query = `UPDATE ${table} ${joinClause}
+      const query = `UPDATE ${table} ${joinClause}
 SET ${setClause}
 ${whereClause}`;
-      if (dbType !== "mysql" && dbType != "mariadb") {
-        query += " RETURNING *";
-      }
 
       return { query, params };
     },

@@ -9,7 +9,6 @@ import { DateTime } from "luxon";
 import updateTemplate from "../Resources/Query/UPDATE";
 import { SelectableType } from "../Models/ModelManager/ModelManagerTypes";
 import { ModelDeleteQueryBuilder } from "../QueryBuilder/DeleteQueryBuilder";
-import { parseDatabaseDataIntoModelResponse } from "../serializer";
 import mysql from "mysql2/promise";
 
 export class MysqlDeleteQueryBuilder<
@@ -45,18 +44,11 @@ export class MysqlDeleteQueryBuilder<
     this.isNestedCondition = isNestedCondition;
   }
 
-  /**
-   * @description Soft Deletes Records from the database.
-   * @param column - The column to soft delete. Default is 'deletedAt'.
-   * @param value - The value to set the column to. Default is the current date and time.
-   * @param trx - The transaction to run the query in.
-   * @returns The updated records.
-   */
   public async softDelete(options?: {
     column?: SelectableType<T>;
     value?: string | number | boolean;
     trx?: MysqlTransaction;
-  }): Promise<T[]> {
+  }): Promise<number> {
     const {
       column = "deletedAt" as SelectableType<T>,
       value = DateTime.local().toISO(),
@@ -73,50 +65,26 @@ export class MysqlDeleteQueryBuilder<
 
     const modelIds = await this.getBeforeUpdateQueryIds();
     if (trx) {
-      return await trx.massiveUpdateQuery(query, params, {
-        typeofModel: this.model,
-        modelIds: modelIds,
-        primaryKey: this.model.primaryKey as string,
-        table: this.model.table,
-        joinClause: this.joinQuery,
-      });
+      return await trx.massiveUpdateQuery(query, params);
     }
 
     log(query, this.logs, params);
     try {
       const rows: any = await this.sqlConnection.query(query, params);
       if (!rows[0].affectedRows) {
-        return [];
+        return 0;
       }
 
-      const updatedData = await this.getAfterUpdateQuery(modelIds);
-
-      const data = await (parseDatabaseDataIntoModelResponse(
-        updatedData,
-        this.model,
-      ) as Promise<T[]>);
-      return Array.isArray(data) ? data : [data];
+      return rows[0].affectedRows;
     } catch (error) {
       queryError(query);
       throw new Error("Query failed " + error);
     }
   }
 
-  /**
-   * @description Deletes Records from the database.
-   * @param trx - The transaction to run the query in.
-   * @returns The updated records.
-   */
-  public async delete(trx?: MysqlTransaction): Promise<T[]> {
+  public async delete(trx?: MysqlTransaction): Promise<number> {
     this.whereQuery = this.whereTemplate.convertPlaceHolderToValue(
       this.whereQuery,
-    );
-
-    const selectPreDeleteModelsQuery = `SELECT * FROM ${this.table} ${this.joinQuery} ${this.whereQuery};`;
-    log(selectPreDeleteModelsQuery, this.logs, this.whereParams);
-    const preDeleteModels = await this.sqlConnection.query(
-      `SELECT * FROM ${this.table} ${this.joinQuery} ${this.whereQuery};`,
-      this.whereParams,
     );
 
     const query = this.deleteTemplate.massiveDelete(
@@ -125,12 +93,7 @@ export class MysqlDeleteQueryBuilder<
     );
 
     if (trx) {
-      return await trx.massiveDeleteQuery(
-        query,
-        this.whereParams,
-        preDeleteModels[0] as T[],
-        this.model,
-      );
+      return await trx.massiveDeleteQuery(query, this.whereParams);
     }
 
     log(query, this.logs, this.whereParams);
@@ -138,18 +101,10 @@ export class MysqlDeleteQueryBuilder<
       const rows: any = await this.sqlConnection.query(query, this.whereParams);
 
       if (!rows[0].affectedRows) {
-        return [];
+        return 0;
       }
 
-      const data = await (parseDatabaseDataIntoModelResponse(
-        preDeleteModels[0] as T[],
-        this.model,
-      ) as Promise<T[]>);
-      if (!data) {
-        return [];
-      }
-
-      return Array.isArray(data) ? data : [data];
+      return rows[0].affectedRows;
     } catch (error) {
       queryError(query);
       throw new Error("Query failed " + error);

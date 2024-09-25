@@ -110,7 +110,6 @@ test("Join users and posts", async () => {
     .where("users.id", user.id)
     .many();
 
-  console.log(joinedUsersAndPosts);
   expect(joinedUsersAndPosts).not.toBeNull();
   expect(joinedUsersAndPosts[0].extraColumns.title).toBe("Post 1");
 

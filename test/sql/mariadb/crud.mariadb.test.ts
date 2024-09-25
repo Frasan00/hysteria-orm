@@ -304,8 +304,7 @@ test("Multiple update", async () => {
     .where("name", "Micheal")
     .withData({ name: "Micheal Updated" });
 
-  expect(users.length).toBe(2);
-  expect(users[0].name).toBe("Micheal Updated");
+  expect(users).toBe(2);
 });
 
 test("massive delete", async () => {
@@ -317,7 +316,7 @@ test("massive delete", async () => {
   });
 
   const users = await User.deleteQuery().delete();
-  expect(users[0].name).toBe("Dave");
+  expect(users).toBe(1);
   expect(await User.query().getCount()).toBe(0);
 });
 
@@ -333,8 +332,6 @@ test("massive soft delete", async () => {
     column: "deletedAt",
     value: DateTime.local().toISODate(),
   });
-  expect(users.length).toBeGreaterThanOrEqual(0);
-  expect(users[0].name).toBe("Dave");
-  expect(users[0].deletedAt).not.toBe(null);
+  expect(users).toBe(1);
   expect(await User.query().getCount({ ignoreHooks: true })).toBe(1);
 });

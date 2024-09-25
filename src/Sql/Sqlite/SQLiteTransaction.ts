@@ -60,46 +60,14 @@ export class SQLiteTransaction {
   public async massiveUpdateQuery<T extends Model>(
     query: string,
     params: any[],
-    selectQueryDetails: {
-      typeofModel: typeof Model;
-      modelIds: (string | number)[];
-      primaryKey: string;
-      table: string;
-      joinClause: string;
-    },
-  ): Promise<T[]> {
+  ): Promise<number> {
     if (!this.sqLite) {
       throw new Error("SQLiteTransaction not started.");
     }
 
-    const { typeofModel, modelIds, table, joinClause, primaryKey } =
-      selectQueryDetails;
-
     try {
       log(query, this.logs, params);
-      const rows: any = await this.promisifyQuery<T>(query, params);
-      if (!rows.length) {
-        return [];
-      }
-
-      const afterUpdateDataQuery = modelIds.length
-        ? `SELECT * FROM ${table} ${joinClause} WHERE ${primaryKey} IN (${Array(
-            modelIds.length,
-          )
-            .fill("?")
-            .join(",")}) `
-        : `SELECT * FROM ${table}`;
-
-      const updatedData = await this.promisifyQuery<T>(
-        afterUpdateDataQuery,
-        modelIds,
-      );
-
-      const data = await (parseDatabaseDataIntoModelResponse(
-        updatedData as T[],
-        typeofModel,
-      ) as Promise<T[]>);
-      return Array.isArray(data) ? data : [data];
+      return await this.promisifyQueryAffectedRows(query, params);
     } catch (error) {
       queryError(error);
       throw new Error(
@@ -111,21 +79,14 @@ export class SQLiteTransaction {
   public async massiveDeleteQuery<T extends Model>(
     query: string,
     params: any[],
-    models: T[],
-    typeofModel: typeof Model,
-  ): Promise<T[]> {
+  ): Promise<number> {
     if (!this.sqLite) {
       throw new Error("SQLiteTransaction not started.");
     }
 
     log(query, this.logs, params);
     try {
-      await this.promisifyQuery<T>(query, params);
-      const data = await (parseDatabaseDataIntoModelResponse(
-        models as T[],
-        typeofModel,
-      ) as Promise<T[]>);
-      return Array.isArray(data) ? data : [data];
+      return await this.promisifyQueryAffectedRows(query, params);
     } catch (error) {
       queryError(error);
       throw new Error(
@@ -137,25 +98,25 @@ export class SQLiteTransaction {
   public async queryUpdate<T extends Model>(
     query: string,
     params?: any[],
-  ): Promise<T[]> {
+  ): Promise<number> {
     if (!this.sqLite) {
       throw new Error("SQLiteTransaction not started.");
     }
 
     log(query, this.logs, params);
-    return await this.promisifyQuery<T>(query, params);
+    return await this.promisifyQueryAffectedRows(query, params);
   }
 
   public async queryDelete<T extends Model>(
     query: string,
     params?: any[],
-  ): Promise<T[]> {
+  ): Promise<number> {
     if (!this.sqLite) {
       throw new Error("SQLiteTransaction not started.");
     }
 
     log(query, this.logs, params);
-    return await this.promisifyQuery<T>(query, params);
+    return await this.promisifyQueryAffectedRows(query, params);
   }
 
   /**
@@ -209,7 +170,6 @@ export class SQLiteTransaction {
     query: string,
     params: any,
     typeofModel?: typeof Model,
-    sqliteConnection?: sqlite3.Database,
     sqlModelManagerUtils?: SqlModelManagerUtils<T>,
     options: {
       isCreate?: boolean;
@@ -298,6 +258,21 @@ export class SQLiteTransaction {
           reject(err);
         }
         resolve(result);
+      });
+    });
+  }
+
+  private promisifyQueryAffectedRows(
+    query: string,
+    params: any,
+  ): Promise<number> {
+    return new Promise<number>((resolve, reject) => {
+      this.sqLite.run(query, params, function (this: any, err: any) {
+        if (err) {
+          return reject(err);
+        }
+
+        resolve(this.changes);
       });
     });
   }

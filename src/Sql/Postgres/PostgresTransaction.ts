@@ -77,8 +77,7 @@ export class PostgresTransaction {
   public async massiveUpdateQuery<T extends Model>(
     query: string,
     params: any[],
-    typeofModel: typeof Model,
-  ): Promise<T[]> {
+  ): Promise<number> {
     if (!this.pgClient) {
       throw new Error("PostgresTransaction not started.");
     }
@@ -87,13 +86,10 @@ export class PostgresTransaction {
       log(query, this.logs, params);
       const { rows } = await this.pgClient.query(query, params);
       if (!rows.length) {
-        return [];
+        return 0;
       }
 
-      return (await parseDatabaseDataIntoModelResponse(
-        rows as T[],
-        typeofModel,
-      )) as T[];
+      return rows[0].affectedRows;
     } catch (error) {
       queryError(error);
       throw new Error(
@@ -105,8 +101,7 @@ export class PostgresTransaction {
   public async massiveDeleteQuery<T extends Model>(
     query: string,
     params: any[],
-    typeofModel: typeof Model,
-  ): Promise<T[]> {
+  ): Promise<number> {
     if (!this.pgClient) {
       throw new Error("PostgresTransaction not started.");
     }
@@ -115,10 +110,11 @@ export class PostgresTransaction {
       log(query, this.logs, params);
       const { rows } = await this.pgClient.query(query, params);
 
-      return (await parseDatabaseDataIntoModelResponse(
-        rows as T[],
-        typeofModel,
-      )) as T[];
+      if (!rows[0].affectedRows) {
+        return 0;
+      }
+
+      return rows[0].affectedRows;
     } catch (error) {
       queryError(error);
       throw new Error(

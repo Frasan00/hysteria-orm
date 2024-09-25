@@ -303,7 +303,6 @@ const otherUser: User | null = await User.findOne({
 - It's used to create more complex queries that are not supported by the standard methods
 - all select-where-relations-orderby columns are partially type safe, they can both be a specific column in the Model or a string
 - You can also use the query builder for bulk updates and deleted
-- IMPORTANT: bulk delete and updated resolve the list of affected models only if a primary key is present in the Model, else will always return an empty Array
 
 ```typescript
 import { User } from "./User";
@@ -322,7 +321,6 @@ const users: User[] = await User.query()
     .limit(10)
     .many();
 
-// bulk update and bulk delete Return le the list of the models for postgres and sqlite, else the number of affected rows
 
 // BULK UPDATE
 const models = await User.update()
@@ -335,7 +333,7 @@ await User.deleteQuery().where("name", "Eve updated two").delete();
 // BULK SOFT DELETE
 await User.deleteQuery().where("name", "Eve updated two").softDelete({
     column: "deletedAt" // default,
-    value: string | number | boolean // default current timestamp Datetime.local().toISO(),
+    value: string | number | boolean // default Datetime.local().toISO(),
     // trx: optional
 });
 ```

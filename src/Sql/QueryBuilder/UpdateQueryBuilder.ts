@@ -14,10 +14,16 @@ export abstract class ModelUpdateQueryBuilder<
   protected abstract updateTemplate: ReturnType<typeof updateTemplate>;
   protected abstract isNestedCondition: boolean;
 
+  /**
+   * @description Updates a record in the database.
+   * @param data
+   * @param trx
+   * @returns The number of affected rows.
+   */
   public abstract withData(
     data: Partial<T>,
     trx?: TransactionType,
-  ): Promise<T[]>;
+  ): Promise<number>;
   public abstract join(
     relationTable: string,
     primaryColumn: string,

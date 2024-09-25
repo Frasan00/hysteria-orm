@@ -44,13 +44,7 @@ export class PostgresDeleteQueryBuilder<
     this.isNestedCondition = isNestedCondition;
   }
 
-  /**
-   * @description Deletes Records from the database.
-   * @param data - The data to update.
-   * @param trx - The transaction to run the query in.
-   * @returns The updated records.
-   */
-  public async delete(trx?: PostgresTransaction): Promise<T[]> {
+  public async delete(trx?: PostgresTransaction): Promise<number> {
     this.whereQuery = this.whereTemplate.convertPlaceHolderToValue(
       this.whereQuery,
     );
@@ -60,39 +54,28 @@ export class PostgresDeleteQueryBuilder<
     );
 
     if (trx) {
-      return await trx.massiveDeleteQuery(query, this.whereParams, this.model);
+      return await trx.massiveDeleteQuery(query, this.whereParams);
     }
 
     log(query, this.logs, this.whereParams);
     try {
       const result = await this.sqlConnection.query<T>(query, this.whereParams);
       if (!result.rows) {
-        return [];
+        return 0;
       }
 
-      const data = (await parseDatabaseDataIntoModelResponse(
-        result.rows,
-        this.model,
-      )) as T[];
-      return Array.isArray(data) ? data : [data];
+      return result.rowCount || 0;
     } catch (error) {
       queryError(query);
       throw new Error("Query failed " + error);
     }
   }
 
-  /**
-   * @description Soft Deletes Records from the database.
-   * @param column - The column to soft delete. Default is 'deletedAt'.
-   * @param value - The value to set the column to. Default is the current date and time.
-   * @param trx - The transaction to run the query in.
-   * @returns The updated records.
-   */
   public async softDelete(options?: {
     column?: SelectableType<T>;
     value?: string | number | boolean;
     trx?: PostgresTransaction;
-  }): Promise<T[]> {
+  }): Promise<number> {
     const {
       column = "deletedAt" as SelectableType<T>,
       value = DateTime.local().toISO(),
@@ -108,21 +91,17 @@ export class PostgresDeleteQueryBuilder<
     params = [...params, ...this.whereParams];
 
     if (trx) {
-      return await trx.massiveUpdateQuery(query, params, this.model);
+      return await trx.massiveUpdateQuery(query, params);
     }
 
     log(query, this.logs, params);
     try {
-      const rows = await this.sqlConnection.query<T>(query, params);
-      const models = await parseDatabaseDataIntoModelResponse(
-        rows.rows,
-        this.model,
-      );
-      if (!models) {
-        return [];
+      const result = await this.sqlConnection.query<T>(query, params);
+      if (!result.rows) {
+        return 0;
       }
 
-      return Array.isArray(models) ? models : ([models] as T[]);
+      return result.rowCount || 0;
     } catch (error) {
       queryError(query);
       throw new Error("Query failed " + error);

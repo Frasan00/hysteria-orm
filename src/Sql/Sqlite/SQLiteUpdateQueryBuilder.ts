@@ -1,7 +1,6 @@
 import { Model } from "../Models/Model";
 import { log, queryError } from "../../Logger";
 import updateTemplate from "../Resources/Query/UPDATE";
-import { parseDatabaseDataIntoModelResponse } from "../serializer";
 import joinTemplate from "../Resources/Query/JOIN";
 import { SqlDataSource } from "../SqlDatasource";
 import { ModelUpdateQueryBuilder } from "../QueryBuilder/UpdateQueryBuilder";
@@ -55,7 +54,7 @@ export class SQLiteUpdateQueryBuilder<
   public async withData(
     data: Partial<T>,
     trx?: SQLiteTransaction,
-  ): Promise<T[]> {
+  ): Promise<number> {
     const columns = Object.keys(data);
     const values = Object.values(data);
     this.whereQuery = this.whereTemplate.convertPlaceHolderToValue(
@@ -71,22 +70,13 @@ export class SQLiteUpdateQueryBuilder<
 
     params.push(...this.whereParams);
     if (trx) {
-      return await trx.massiveUpdateQuery(query, params, {
-        typeofModel: this.model,
-        modelIds: await this.getBeforeUpdateQueryIds(),
-        primaryKey: this.model.primaryKey as string,
-        table: this.table,
-        joinClause: this.joinQuery,
-      });
+      return await trx.massiveUpdateQuery(query, params);
     }
 
     log(query, this.logs, params);
     try {
-      const result = await this.promisifyQuery<T>(query, params);
-      return (await parseDatabaseDataIntoModelResponse(
-        result,
-        this.model,
-      )) as T[];
+      const result = await this.promisifyQuery(query, params);
+      return result;
     } catch (error) {
       queryError(query);
       throw new Error("Query failed " + error);
@@ -256,47 +246,14 @@ export class SQLiteUpdateQueryBuilder<
     return this;
   }
 
-  /**
-   * @description Used to retrieve the data before the update in order to return the data after the update.
-   * @param sqlConnection
-   * @returns
-   */
-  protected async getBeforeUpdateQueryIds(): Promise<(string | number)[]> {
-    const beforeUpdateData = await this.promisifyQuery<T[]>(
-      `SELECT * FROM ${this.table} ${this.joinQuery} ${this.whereQuery}`,
-      this.whereParams,
-    );
-
-    return beforeUpdateData[0].map(
-      (row: any) => row[this.model.primaryKey as string],
-    ) as (string | number)[];
-  }
-
-  protected async getAfterUpdateQuery(
-    modelIds: (string | number)[],
-  ): Promise<T[]> {
-    const afterUpdateDataQuery = modelIds.length
-      ? `SELECT * FROM ${this.table} ${this.joinQuery} WHERE ${
-          this.model.primaryKey
-        } IN (${Array(modelIds.length).fill("?").join(",")})`
-      : `SELECT * FROM ${this.table}`;
-
-    log(afterUpdateDataQuery, this.logs, modelIds);
-    const updatedData = await this.promisifyQuery<T>(
-      afterUpdateDataQuery,
-      modelIds,
-    );
-
-    return Array.isArray(updatedData) ? updatedData : [updatedData];
-  }
-
-  private promisifyQuery<T>(query: string, params: any): Promise<T[]> {
-    return new Promise<T[]>((resolve, reject) => {
-      this.sqlConnection.all<T[]>(query, params, (err, result) => {
+  private promisifyQuery(query: string, params: any): Promise<number> {
+    return new Promise<number>((resolve, reject) => {
+      this.sqlConnection.run(query, params, function (this: any, err: any) {
         if (err) {
-          reject(err);
+          return reject(err);
         }
-        resolve(result as T[]);
+
+        resolve(this.changes);
       });
     });
   }

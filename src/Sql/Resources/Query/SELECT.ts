@@ -73,6 +73,10 @@ const selectTemplate = (
   return {
     selectAll: `SELECT * FROM ${table} `,
     selectById: (id: string) => `SELECT * FROM ${table} WHERE id = ${id}`,
+    selectByIds: (ids: string[]) => {
+      ids = ids.map((id) => escapeIdentifier(id));
+      return `SELECT * FROM ${table} WHERE id IN (${ids.join(", ")})`;
+    },
     selectColumns: (...columns: string[]) => {
       columns = columns.map((column) => {
         const columnCase = typeofModel.databaseCaseConvention;

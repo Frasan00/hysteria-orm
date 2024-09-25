@@ -68,18 +68,25 @@ export class MysqlTransaction {
         params,
       );
 
-      if (this.mysqlType === "mariadb") {
-        return (await parseDatabaseDataIntoModelResponse(
-          rows,
-          typeofModel,
-        )) as T[];
-      }
+      const idsToFetchList = Array.from(
+        { length: rows.affectedRows },
+        (_, i) => i + rows.insertId,
+      );
 
-      // FIXME: should check the insertIds
-      return (await parseDatabaseDataIntoModelResponse(
-        rows as T[],
+      const select = selectTemplate("mysql", typeofModel).selectByIds(
+        idsToFetchList,
+      );
+
+      const [savedModels] = await this.mysqlPool.query<RowDataPacket[]>(select);
+      const results = savedModels as T[];
+      const serializedModel = (await parseDatabaseDataIntoModelResponse(
+        results,
         typeofModel,
       )) as T[];
+
+      return typeofModel.afterFetch
+        ? ((await typeofModel.afterFetch(serializedModel)) as T[])
+        : serializedModel;
     } catch (error) {
       queryError(error);
       throw new Error(
@@ -91,45 +98,18 @@ export class MysqlTransaction {
   public async massiveUpdateQuery<T extends Model>(
     query: string,
     params: any[],
-    selectQueryDetails: {
-      typeofModel: typeof Model;
-      modelIds: (string | number)[];
-      primaryKey: string;
-      table: string;
-      joinClause: string;
-    },
-  ): Promise<T[]> {
+  ): Promise<number> {
     if (!this.mysql) {
       throw new Error("MysqlTransaction not started.");
     }
-
-    const { typeofModel, modelIds, table, joinClause, primaryKey } =
-      selectQueryDetails;
     try {
       log(query, this.logs, params);
       const rows: any = await this.mysql.query(query, params);
-      if (!rows.length) {
-        return [];
+      if (!rows[0].affectedRows) {
+        return 0;
       }
 
-      const afterUpdateDataQuery = modelIds.length
-        ? `SELECT * FROM ${table} ${joinClause} WHERE ${primaryKey} IN (${Array(
-            modelIds.length,
-          )
-            .fill("?")
-            .join(",")}) `
-        : `SELECT * FROM ${table}`;
-
-      const updatedData = await this.mysql.query<mysql.RowDataPacket[]>(
-        afterUpdateDataQuery,
-        modelIds,
-      );
-
-      const data = await (parseDatabaseDataIntoModelResponse(
-        updatedData[0] as T[],
-        typeofModel,
-      ) as Promise<T[]>);
-      return Array.isArray(data) ? data : [data];
+      return rows[0].affectedRows;
     } catch (error) {
       queryError(error);
       throw new Error(
@@ -141,25 +121,19 @@ export class MysqlTransaction {
   public async massiveDeleteQuery<T extends Model>(
     query: string,
     params: any[],
-    models: T[],
-    typeofModel: typeof Model,
-  ): Promise<T[]> {
+  ): Promise<number> {
     if (!this.mysql) {
       throw new Error("MysqlTransaction not started.");
     }
 
     log(query, this.logs, params);
     try {
-      const rows: any = await this.mysql.query(query, params);
-      if (!rows.length) {
-        throw new Error("Failed to update");
+      const [rows]: any = await this.mysql.query(query, params);
+      if (!rows[0].affectedRows) {
+        return 0;
       }
 
-      const data = await (parseDatabaseDataIntoModelResponse(
-        models as T[],
-        typeofModel,
-      ) as Promise<T[]>);
-      return Array.isArray(data) ? data : [data];
+      return rows.affectedRows;
     } catch (error) {
       queryError(error);
       throw new Error(

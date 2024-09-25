@@ -385,6 +385,7 @@ declare abstract class Migration {
 declare const selectTemplate: (dbType: SqlDataSourceType$1, typeofModel: typeof Model) => {
     selectAll: string;
     selectById: (id: string) => string;
+    selectByIds: (ids: string[]) => string;
     selectColumns: (...columns: string[]) => string;
     selectCount: string;
     selectDistinct: (...columns: string[]) => string;
@@ -533,14 +534,8 @@ declare class MysqlTransaction {
     constructor(mysql: Pool, logs: boolean, mysqlType: "mysql" | "mariadb");
     queryInsert<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T>;
     massiveInsertQuery<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T[]>;
-    massiveUpdateQuery<T extends Model>(query: string, params: any[], selectQueryDetails: {
-        typeofModel: typeof Model;
-        modelIds: (string | number)[];
-        primaryKey: string;
-        table: string;
-        joinClause: string;
-    }): Promise<T[]>;
-    massiveDeleteQuery<T extends Model>(query: string, params: any[], models: T[], typeofModel: typeof Model): Promise<T[]>;
+    massiveUpdateQuery<T extends Model>(query: string, params: any[]): Promise<number>;
+    massiveDeleteQuery<T extends Model>(query: string, params: any[]): Promise<number>;
     queryUpdate(query: string, params?: any[]): Promise<number>;
     queryDelete(query: string, params?: any[]): Promise<number>;
     /**
@@ -564,8 +559,8 @@ declare class PostgresTransaction {
     constructor(pgPool: Pool$1, logs: boolean);
     queryInsert<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T>;
     massiveInsertQuery<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T[]>;
-    massiveUpdateQuery<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T[]>;
-    massiveDeleteQuery<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T[]>;
+    massiveUpdateQuery<T extends Model>(query: string, params: any[]): Promise<number>;
+    massiveDeleteQuery<T extends Model>(query: string, params: any[]): Promise<number>;
     queryUpdate<T extends Model>(query: string, params?: any[]): Promise<number | null>;
     queryDelete<T extends Model>(query: string, params?: any[]): Promise<T | number | null>;
     /**
@@ -588,16 +583,10 @@ declare class SQLiteTransaction {
     constructor(sqLite: sqlite3.Database, logs: boolean);
     queryInsert<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T>;
     massiveInsertQuery<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T[]>;
-    massiveUpdateQuery<T extends Model>(query: string, params: any[], selectQueryDetails: {
-        typeofModel: typeof Model;
-        modelIds: (string | number)[];
-        primaryKey: string;
-        table: string;
-        joinClause: string;
-    }): Promise<T[]>;
-    massiveDeleteQuery<T extends Model>(query: string, params: any[], models: T[], typeofModel: typeof Model): Promise<T[]>;
-    queryUpdate<T extends Model>(query: string, params?: any[]): Promise<T[]>;
-    queryDelete<T extends Model>(query: string, params?: any[]): Promise<T[]>;
+    massiveUpdateQuery<T extends Model>(query: string, params: any[]): Promise<number>;
+    massiveDeleteQuery<T extends Model>(query: string, params: any[]): Promise<number>;
+    queryUpdate<T extends Model>(query: string, params?: any[]): Promise<number>;
+    queryDelete<T extends Model>(query: string, params?: any[]): Promise<number>;
     /**
      * Start transaction.
      */
@@ -611,6 +600,7 @@ declare class SQLiteTransaction {
      */
     rollback(): Promise<void>;
     private promisifyQuery;
+    private promisifyQueryAffectedRows;
 }
 
 /**
@@ -920,7 +910,13 @@ declare abstract class ModelUpdateQueryBuilder<T extends Model> extends WhereQue
     protected abstract joinQuery: string;
     protected abstract updateTemplate: ReturnType<typeof updateTemplate>;
     protected abstract isNestedCondition: boolean;
-    abstract withData(data: Partial<T>, trx?: TransactionType): Promise<T[]>;
+    /**
+     * @description Updates a record in the database.
+     * @param data
+     * @param trx
+     * @returns The number of affected rows.
+     */
+    abstract withData(data: Partial<T>, trx?: TransactionType): Promise<number>;
     abstract join(relationTable: string, primaryColumn: string, foreignColumn: string): ModelUpdateQueryBuilder<T>;
     abstract leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): ModelUpdateQueryBuilder<T>;
     abstract whereBuilder(cb: (queryBuilder: ModelUpdateQueryBuilder<T>) => void): this;
@@ -947,17 +943,20 @@ declare abstract class ModelDeleteQueryBuilder<T extends Model> extends WhereQue
      * @param options - The options for the soft delete, including the column to soft delete, the value to set the column to, and the transaction to run the query in.
      * @default column - 'deletedAt'
      * @default value - The current date and time.
+     * @default trx - undefined
+     * @returns The number of affected rows.
      */
     abstract softDelete(options?: {
         column?: SelectableType<T>;
         value?: string | number | boolean;
         trx?: TransactionType;
-    }): Promise<T[]>;
+    }): Promise<number>;
     /**
      * @description Deletes Records from the database for the current query.
      * @param trx - The transaction to run the query in.
+     * @returns The number of affected rows.
      */
-    abstract delete(trx?: TransactionType): Promise<T[]>;
+    abstract delete(trx?: TransactionType): Promise<number>;
     abstract join(relationTable: string, primaryColumn: string, foreignColumn: string): ModelDeleteQueryBuilder<T>;
     abstract leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): ModelDeleteQueryBuilder<T>;
     abstract whereBuilder(cb: (queryBuilder: ModelDeleteQueryBuilder<T>) => void): this;
@@ -1049,13 +1048,7 @@ declare class MysqlUpdateQueryBuilder<T extends Model> extends ModelUpdateQueryB
      * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
      */
     constructor(model: typeof Model, table: string, mysqlConnection: Connection, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
-    /**
-     * @description Updates a record in the database.
-     * @param data - The data to update.
-     * @param trx - The transaction to run the query in.
-     * @returns The number of affected rows.
-     */
-    withData(data: Partial<T>, trx?: MysqlTransaction): Promise<T[]>;
+    withData(data: Partial<T>, trx?: MysqlTransaction): Promise<number>;
     /**
      *
      * @param relationTable - The name of the related table.
@@ -1085,65 +1078,6 @@ declare class MysqlUpdateQueryBuilder<T extends Model> extends ModelUpdateQueryB
      * @param cb Callback function that takes a query builder and adds conditions to it.
      */
     andWhereBuilder(cb: (queryBuilder: MysqlUpdateQueryBuilder<T>) => void): this;
-    /**
-     * @description Used to retrieve the data before the update in order to return the data after the update.
-     * @param sqlConnection
-     * @returns
-     */
-    protected getBeforeUpdateQueryIds(): Promise<(string | number)[]>;
-    protected getAfterUpdateQuery(modelIds: (string | number)[]): Promise<T[]>;
-}
-
-declare class PostgresUpdateQueryBuilder<T extends Model> extends ModelUpdateQueryBuilder<T> {
-    protected sqlConnection: Client;
-    protected joinQuery: string;
-    protected updateTemplate: ReturnType<typeof updateTemplate>;
-    protected isNestedCondition: boolean;
-    /**
-     * @description Constructs a MysqlQueryBuilder instance.
-     * @param model - The model class associated with the table.
-     * @param table - The name of the table.
-     * @param pgClient - The MySQL connection pool.
-     * @param logs - A boolean indicating whether to log queries.
-     * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
-     */
-    constructor(model: typeof Model, table: string, pgClient: Client, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
-    /**
-     * @description Updates a record in the database.
-     * @param data - The data to update.
-     * @param trx - The transaction to run the query in.
-     * @returns The updated records.
-     */
-    withData(data: Partial<T>, trx?: PostgresTransaction): Promise<T[]>;
-    /**
-     *
-     * @param relationTable - The name of the related table.
-     * @param primaryColumn - The name of the primary column in the caller table.
-     * @param foreignColumn - The name of the foreign column in the related table.
-     */
-    join(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresUpdateQueryBuilder<T>;
-    /**
-     *
-     * @param relationTable - The name of the related table.
-     * @param primaryColumn - The name of the primary column in the caller table.
-     * @param foreignColumn - The name of the foreign column in the related table.
-     */
-    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresUpdateQueryBuilder<T>;
-    /**
-     * @description Build more complex where conditions.
-     * @param cb
-     */
-    whereBuilder(cb: (queryBuilder: PostgresUpdateQueryBuilder<T>) => void): this;
-    /**
-     * @description Build complex OR-based where conditions.
-     * @param cb Callback function that takes a query builder and adds conditions to it.
-     */
-    orWhereBuilder(cb: (queryBuilder: PostgresUpdateQueryBuilder<T>) => void): this;
-    /**
-     * @description Build complex AND-based where conditions.
-     * @param cb Callback function that takes a query builder and adds conditions to it.
-     */
-    andWhereBuilder(cb: (queryBuilder: PostgresUpdateQueryBuilder<T>) => void): this;
 }
 
 declare class MysqlDeleteQueryBuilder<T extends Model> extends ModelDeleteQueryBuilder<T> {
@@ -1161,24 +1095,12 @@ declare class MysqlDeleteQueryBuilder<T extends Model> extends ModelDeleteQueryB
      * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
      */
     constructor(model: typeof Model, table: string, mysql: Connection, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
-    /**
-     * @description Soft Deletes Records from the database.
-     * @param column - The column to soft delete. Default is 'deletedAt'.
-     * @param value - The value to set the column to. Default is the current date and time.
-     * @param trx - The transaction to run the query in.
-     * @returns The updated records.
-     */
     softDelete(options?: {
         column?: SelectableType<T>;
         value?: string | number | boolean;
         trx?: MysqlTransaction;
-    }): Promise<T[]>;
-    /**
-     * @description Deletes Records from the database.
-     * @param trx - The transaction to run the query in.
-     * @returns The updated records.
-     */
-    delete(trx?: MysqlTransaction): Promise<T[]>;
+    }): Promise<number>;
+    delete(trx?: MysqlTransaction): Promise<number>;
     /**
      *
      * @param relationTable - The name of the related table.
@@ -1317,7 +1239,7 @@ declare class MysqlModelManager<T extends Model> extends AbstractModelManager<T>
     /**
      * @description Returns an update query builder.
      */
-    update(): MysqlUpdateQueryBuilder<T> | PostgresUpdateQueryBuilder<T>;
+    update(): MysqlUpdateQueryBuilder<T>;
     /**
      * @description Returns a delete query builder.
      */
@@ -1403,6 +1325,40 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     protected groupFooterQuery(): string;
 }
 
+declare class PostgresUpdateQueryBuilder<T extends Model> extends ModelUpdateQueryBuilder<T> {
+    protected sqlConnection: Client;
+    protected joinQuery: string;
+    protected updateTemplate: ReturnType<typeof updateTemplate>;
+    protected isNestedCondition: boolean;
+    /**
+     * @description Constructs a MysqlQueryBuilder instance.
+     * @param model - The model class associated with the table.
+     * @param table - The name of the table.
+     * @param pgClient - The MySQL connection pool.
+     * @param logs - A boolean indicating whether to log queries.
+     * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
+     */
+    constructor(model: typeof Model, table: string, pgClient: Client, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
+    withData(data: Partial<T>, trx?: PostgresTransaction): Promise<number>;
+    join(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresUpdateQueryBuilder<T>;
+    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresUpdateQueryBuilder<T>;
+    /**
+     * @description Build more complex where conditions.
+     * @param cb
+     */
+    whereBuilder(cb: (queryBuilder: PostgresUpdateQueryBuilder<T>) => void): this;
+    /**
+     * @description Build complex OR-based where conditions.
+     * @param cb Callback function that takes a query builder and adds conditions to it.
+     */
+    orWhereBuilder(cb: (queryBuilder: PostgresUpdateQueryBuilder<T>) => void): this;
+    /**
+     * @description Build complex AND-based where conditions.
+     * @param cb Callback function that takes a query builder and adds conditions to it.
+     */
+    andWhereBuilder(cb: (queryBuilder: PostgresUpdateQueryBuilder<T>) => void): this;
+}
+
 declare class PostgresDeleteQueryBuilder<T extends Model> extends ModelDeleteQueryBuilder<T> {
     protected sqlConnection: Client;
     protected joinQuery: string;
@@ -1418,25 +1374,12 @@ declare class PostgresDeleteQueryBuilder<T extends Model> extends ModelDeleteQue
      * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
      */
     constructor(model: typeof Model, table: string, pgClient: Client, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
-    /**
-     * @description Deletes Records from the database.
-     * @param data - The data to update.
-     * @param trx - The transaction to run the query in.
-     * @returns The updated records.
-     */
-    delete(trx?: PostgresTransaction): Promise<T[]>;
-    /**
-     * @description Soft Deletes Records from the database.
-     * @param column - The column to soft delete. Default is 'deletedAt'.
-     * @param value - The value to set the column to. Default is the current date and time.
-     * @param trx - The transaction to run the query in.
-     * @returns The updated records.
-     */
+    delete(trx?: PostgresTransaction): Promise<number>;
     softDelete(options?: {
         column?: SelectableType<T>;
         value?: string | number | boolean;
         trx?: PostgresTransaction;
-    }): Promise<T[]>;
+    }): Promise<number>;
     /**
      *
      * @param relationTable - The name of the related table.
@@ -1654,7 +1597,7 @@ declare class SQLiteUpdateQueryBuilder<T extends Model> extends ModelUpdateQuery
      * @param trx - The transaction to run the query in.
      * @returns The updated records.
      */
-    withData(data: Partial<T>, trx?: SQLiteTransaction): Promise<T[]>;
+    withData(data: Partial<T>, trx?: SQLiteTransaction): Promise<number>;
     /**
      *
      * @param relationTable - The name of the related table.
@@ -1684,13 +1627,6 @@ declare class SQLiteUpdateQueryBuilder<T extends Model> extends ModelUpdateQuery
      * @param cb Callback function that takes a query builder and adds conditions to it.
      */
     andWhereBuilder(cb: (queryBuilder: SQLiteUpdateQueryBuilder<T>) => void): this;
-    /**
-     * @description Used to retrieve the data before the update in order to return the data after the update.
-     * @param sqlConnection
-     * @returns
-     */
-    protected getBeforeUpdateQueryIds(): Promise<(string | number)[]>;
-    protected getAfterUpdateQuery(modelIds: (string | number)[]): Promise<T[]>;
     private promisifyQuery;
 }
 
@@ -1716,7 +1652,7 @@ declare class SQLiteDeleteQueryBuilder<T extends Model> extends ModelDeleteQuery
      * @param trx - The transaction to run the query in.
      * @returns The updated records.
      */
-    delete(trx?: SQLiteTransaction): Promise<T[]>;
+    delete(trx?: SQLiteTransaction): Promise<number>;
     /**
      * @description Soft Deletes Records from the database.
      * @param column - The column to soft delete. Default is 'deletedAt'.
@@ -1728,7 +1664,7 @@ declare class SQLiteDeleteQueryBuilder<T extends Model> extends ModelDeleteQuery
         column?: SelectableType<T>;
         value?: string | number | boolean;
         trx?: SQLiteTransaction;
-    }): Promise<T[]>;
+    }): Promise<number>;
     /**
      *
      * @param relationTable - The name of the related table.
@@ -1758,8 +1694,6 @@ declare class SQLiteDeleteQueryBuilder<T extends Model> extends ModelDeleteQuery
      * @param cb Callback function that takes a query builder and adds conditions to it.
      */
     andWhereBuilder(cb: (queryBuilder: SQLiteDeleteQueryBuilder<T>) => void): this;
-    protected getBeforeUpdateQueryIds(): Promise<(string | number)[]>;
-    protected getAfterUpdateQuery(modelIds: (string | number)[]): Promise<T[]>;
     private promisifyQuery;
 }
 

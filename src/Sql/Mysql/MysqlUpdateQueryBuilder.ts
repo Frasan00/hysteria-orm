@@ -6,8 +6,6 @@ import updateTemplate from "../Resources/Query/UPDATE";
 import joinTemplate from "../Resources/Query/JOIN";
 import { SqlDataSource } from "../SqlDatasource";
 import { ModelUpdateQueryBuilder } from "../QueryBuilder/UpdateQueryBuilder";
-import { parseDatabaseDataIntoModelResponse } from "../serializer";
-import mysql from "mysql2/promise";
 
 export class MysqlUpdateQueryBuilder<
   T extends Model,
@@ -43,23 +41,16 @@ export class MysqlUpdateQueryBuilder<
     this.isNestedCondition = isNestedCondition;
   }
 
-  /**
-   * @description Updates a record in the database.
-   * @param data - The data to update.
-   * @param trx - The transaction to run the query in.
-   * @returns The number of affected rows.
-   */
   public async withData(
     data: Partial<T>,
     trx?: MysqlTransaction,
-  ): Promise<T[]> {
+  ): Promise<number> {
     const columns = Object.keys(data);
     const values = Object.values(data);
     this.whereQuery = this.whereTemplate.convertPlaceHolderToValue(
       this.whereQuery,
     );
 
-    const modelIds = await this.getBeforeUpdateQueryIds();
     const { query, params } = this.updateTemplate.massiveUpdate(
       columns,
       values,
@@ -69,29 +60,17 @@ export class MysqlUpdateQueryBuilder<
 
     params.push(...this.whereParams);
     if (trx) {
-      return await trx.massiveUpdateQuery(query, params, {
-        typeofModel: this.model,
-        modelIds,
-        primaryKey: this.model.primaryKey as string,
-        table: this.table,
-        joinClause: this.joinQuery,
-      });
+      return await trx.massiveUpdateQuery(query, params);
     }
 
     log(query, this.logs, params);
     try {
       const rows: any = await this.sqlConnection.query(query, params);
       if (!rows[0].affectedRows) {
-        return [];
+        return 0;
       }
 
-      const updatedData = await this.getAfterUpdateQuery(modelIds);
-
-      const data = await (parseDatabaseDataIntoModelResponse(
-        updatedData,
-        this.model,
-      ) as Promise<T[]>);
-      return Array.isArray(data) ? data : [data];
+      return rows[0].affectedRows;
     } catch (error) {
       queryError(query);
       throw new Error("Query failed " + error);
@@ -256,42 +235,5 @@ export class MysqlUpdateQueryBuilder<
     this.whereParams.push(...nestedBuilder.whereParams);
 
     return this;
-  }
-
-  /**
-   * @description Used to retrieve the data before the update in order to return the data after the update.
-   * @param sqlConnection
-   * @returns
-   */
-  protected async getBeforeUpdateQueryIds(): Promise<(string | number)[]> {
-    const beforeUpdateData = await this.sqlConnection.query<
-      mysql.RowDataPacket[]
-    >(
-      `SELECT * FROM ${this.table} ${this.joinQuery} ${this.whereQuery}`,
-      this.whereParams,
-    );
-
-    return beforeUpdateData[0].map(
-      (row: any) => row[this.model.primaryKey as string],
-    ) as (string | number)[];
-  }
-
-  protected async getAfterUpdateQuery(
-    modelIds: (string | number)[],
-  ): Promise<T[]> {
-    const afterUpdateDataQuery = modelIds.length
-      ? `SELECT * FROM ${this.table} ${this.joinQuery} WHERE ${
-          this.model.primaryKey
-        } IN (${Array(modelIds.length).fill("?").join(",")})`
-      : `SELECT * FROM ${this.table}`;
-
-    log(afterUpdateDataQuery, this.logs, modelIds);
-    const updatedData = await this.sqlConnection.query<mysql.RowDataPacket[]>(
-      afterUpdateDataQuery,
-      modelIds,
-    );
-
-    const results = updatedData[0] as T[];
-    return Array.isArray(results) ? results : [results];
   }
 }

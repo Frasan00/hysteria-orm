@@ -17,19 +17,10 @@ const deleteTemplate = (table: string, dbType: SqlDataSourceType) => {
           throw new Error("Unsupported database type");
       }
 
-      if (dbType === "postgres" || dbType === "sqlite") {
-        baseQuery += " RETURNING *";
-      }
-
       return { query: baseQuery, params: [value] };
     },
     massiveDelete: (whereClause: string, joinClause: string = "") => {
-      let query = `DELETE FROM ${table} ${joinClause} ${whereClause}`;
-      if (dbType === "postgres" || dbType === "sqlite") {
-        query += " RETURNING *";
-      }
-
-      return query;
+      return `DELETE FROM ${table} ${joinClause} ${whereClause}`;
     },
   };
 };

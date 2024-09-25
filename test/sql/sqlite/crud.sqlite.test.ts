@@ -290,11 +290,11 @@ test("Multiple update", async () => {
     isActive: true,
   });
 
-  const models = (await User.update()
+  const models = await User.update()
     .where("name", "Micheal")
-    .withData({ name: "Micheal Updated" })) as User[];
+    .withData({ name: "Micheal Updated" });
 
-  expect(models.length).toBe(2);
+  expect(models).toBe(2);
   const users = await User.query().many();
   expect(users.length).toBe(2);
 });
@@ -308,7 +308,7 @@ test("massive delete", async () => {
   });
 
   const users = await User.deleteQuery().delete();
-  expect(users[0].name).toBe("Dave");
+  expect(users).toBe(1);
   expect(await User.query().getCount()).toBe(0);
 });
 
@@ -321,8 +321,6 @@ test("massive soft delete", async () => {
   });
 
   const users = await User.deleteQuery().softDelete();
-  expect(users.length).toBeGreaterThanOrEqual(0);
-  expect(users[0].name).toBe("Dave");
-  expect(users[0].deletedAt).not.toBe(null);
+  expect(users).toBe(1);
   expect(await User.query().getCount({ ignoreHooks: true })).toBe(1);
 });

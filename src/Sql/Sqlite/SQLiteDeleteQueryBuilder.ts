@@ -1,6 +1,5 @@
 import { Model } from "../Models/Model";
 import { log, queryError } from "../../Logger";
-import { parseDatabaseDataIntoModelResponse } from "../serializer";
 import deleteTemplate from "../Resources/Query/DELETE";
 import joinTemplate from "../Resources/Query/JOIN";
 import { SqlDataSource } from "../SqlDatasource";
@@ -55,7 +54,7 @@ export class SQLiteDeleteQueryBuilder<
    * @param trx - The transaction to run the query in.
    * @returns The updated records.
    */
-  public async delete(trx?: SQLiteTransaction): Promise<T[]> {
+  public async delete(trx?: SQLiteTransaction): Promise<number> {
     this.whereQuery = this.whereTemplate.convertPlaceHolderToValue(
       this.whereQuery,
     );
@@ -64,38 +63,13 @@ export class SQLiteDeleteQueryBuilder<
       this.joinQuery,
     );
 
-    const preDeleteModels = await this.promisifyQuery<T>(
-      `SELECT * FROM ${this.table} ${this.joinQuery} ${this.whereQuery};`,
-      this.whereParams,
-    );
-    console.log(preDeleteModels);
     if (trx) {
-      return await trx.massiveDeleteQuery(
-        query,
-        this.whereParams,
-        preDeleteModels,
-        this.model,
-      );
+      return await trx.massiveDeleteQuery(query, this.whereParams);
     }
 
     log(query, this.logs, this.whereParams);
     try {
-      await this.promisifyQuery<T[]>(query, this.whereParams);
-      console.log(
-        preDeleteModels,
-        "soiadjasoif",
-        await parseDatabaseDataIntoModelResponse(preDeleteModels, this.model),
-      );
-      const data = await parseDatabaseDataIntoModelResponse(
-        preDeleteModels as T[],
-        this.model,
-      );
-
-      if (!data) {
-        return [];
-      }
-
-      return Array.isArray(data) ? data : [data];
+      return await this.promisifyQuery(query, this.whereParams);
     } catch (error) {
       queryError(query);
       throw new Error("Query failed " + error);
@@ -113,7 +87,7 @@ export class SQLiteDeleteQueryBuilder<
     column?: SelectableType<T>;
     value?: string | number | boolean;
     trx?: SQLiteTransaction;
-  }): Promise<T[]> {
+  }): Promise<number> {
     const {
       column = "deletedAt" as SelectableType<T>,
       value = DateTime.local().toISO(),
@@ -126,32 +100,15 @@ export class SQLiteDeleteQueryBuilder<
       this.joinQuery,
     );
 
-    const modelIds = await this.getBeforeUpdateQueryIds();
     params = [...params, ...this.whereParams];
 
     if (trx) {
-      return await trx.massiveUpdateQuery(query, params, {
-        typeofModel: this.model,
-        modelIds,
-        primaryKey: this.model.primaryKey as string,
-        table: this.table,
-        joinClause: this.joinQuery,
-      });
+      return await trx.massiveUpdateQuery(query, params);
     }
 
     log(query, this.logs, params);
     try {
-      await this.promisifyQuery<T>(query, params);
-      const result = await this.getAfterUpdateQuery(modelIds);
-      const models = await parseDatabaseDataIntoModelResponse(
-        result,
-        this.model,
-      );
-      if (!models) {
-        return [];
-      }
-
-      return Array.isArray(models) ? models : ([models] as T[]);
+      return await this.promisifyQuery(query, params);
     } catch (error) {
       queryError(query);
       throw new Error("Query failed " + error);
@@ -321,42 +278,14 @@ export class SQLiteDeleteQueryBuilder<
     return this;
   }
 
-  protected async getBeforeUpdateQueryIds(): Promise<(string | number)[]> {
-    const beforeUpdateData = await this.promisifyQuery<T>(
-      `SELECT * FROM ${this.table} ${this.joinQuery} ${this.whereQuery}`,
-      this.whereParams,
-    );
-
-    return beforeUpdateData.map(
-      (row: any) => row[this.model.primaryKey as string],
-    ) as (string | number)[];
-  }
-
-  protected async getAfterUpdateQuery(
-    modelIds: (string | number)[],
-  ): Promise<T[]> {
-    const afterUpdateDataQuery = modelIds.length
-      ? `SELECT * FROM ${this.table} ${this.joinQuery} WHERE ${
-          this.model.primaryKey
-        } IN (${Array(modelIds.length).fill("?").join(",")})`
-      : `SELECT * FROM ${this.table}`;
-
-    log(afterUpdateDataQuery, this.logs, modelIds);
-    const deletedData = await this.promisifyQuery<T>(
-      afterUpdateDataQuery,
-      modelIds,
-    );
-
-    return Array.isArray(deletedData) ? deletedData : [deletedData];
-  }
-
-  private promisifyQuery<T>(query: string, params: any): Promise<T[]> {
-    return new Promise<T[]>((resolve, reject) => {
-      this.sqlConnection.all<T>(query, params, (err, result) => {
+  private promisifyQuery(query: string, params: any): Promise<number> {
+    return new Promise<number>((resolve, reject) => {
+      this.sqlConnection.run(query, params, function (this: any, err: any) {
         if (err) {
-          reject(err);
+          return reject(err);
         }
-        resolve(result as T[]);
+
+        resolve(this.changes);
       });
     });
   }

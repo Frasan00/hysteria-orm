@@ -381,7 +381,7 @@ export class MysqlModelManager<
   /**
    * @description Returns an update query builder.
    */
-  public update(): MysqlUpdateQueryBuilder<T> | PostgresUpdateQueryBuilder<T> {
+  public update(): MysqlUpdateQueryBuilder<T> {
     return new MysqlUpdateQueryBuilder<T>(
       this.model,
       this.model.table,

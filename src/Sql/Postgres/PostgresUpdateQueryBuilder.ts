@@ -3,7 +3,6 @@ import { log, queryError } from "../../Logger";
 import updateTemplate from "../Resources/Query/UPDATE";
 import { PostgresTransaction } from "./PostgresTransaction";
 import { Client } from "pg";
-import { parseDatabaseDataIntoModelResponse } from "../serializer";
 import joinTemplate from "../Resources/Query/JOIN";
 import { SqlDataSource } from "../SqlDatasource";
 import { ModelUpdateQueryBuilder } from "../QueryBuilder/UpdateQueryBuilder";
@@ -42,16 +41,10 @@ export class PostgresUpdateQueryBuilder<
     this.isNestedCondition = isNestedCondition;
   }
 
-  /**
-   * @description Updates a record in the database.
-   * @param data - The data to update.
-   * @param trx - The transaction to run the query in.
-   * @returns The updated records.
-   */
   public async withData(
     data: Partial<T>,
     trx?: PostgresTransaction,
-  ): Promise<T[]> {
+  ): Promise<number> {
     const columns = Object.keys(data);
     const values = Object.values(data);
     this.whereQuery = this.whereTemplate.convertPlaceHolderToValue(
@@ -67,29 +60,23 @@ export class PostgresUpdateQueryBuilder<
 
     params.push(...this.whereParams);
     if (trx) {
-      return await trx.massiveUpdateQuery(query, params, this.model);
+      return await trx.massiveUpdateQuery(query, params);
     }
 
     log(query, this.logs, params);
     try {
-      const { rows } = await this.sqlConnection.query(query, params);
-      if (!rows.length) {
-        return [];
+      const result = await this.sqlConnection.query<T>(query, params);
+      if (!result.rows) {
+        return 0;
       }
 
-      return parseDatabaseDataIntoModelResponse(rows, this.model);
+      return result.rowCount || 0;
     } catch (error) {
       queryError(query);
       throw new Error("Query failed " + error);
     }
   }
 
-  /**
-   *
-   * @param relationTable - The name of the related table.
-   * @param primaryColumn - The name of the primary column in the caller table.
-   * @param foreignColumn - The name of the foreign column in the related table.
-   */
   public join(
     relationTable: string,
     primaryColumn: string,
@@ -105,12 +92,6 @@ export class PostgresUpdateQueryBuilder<
     return this;
   }
 
-  /**
-   *
-   * @param relationTable - The name of the related table.
-   * @param primaryColumn - The name of the primary column in the caller table.
-   * @param foreignColumn - The name of the foreign column in the related table.
-   */
   public leftJoin(
     relationTable: string,
     primaryColumn: string,
