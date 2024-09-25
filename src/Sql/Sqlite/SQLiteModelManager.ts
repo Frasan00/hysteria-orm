@@ -14,8 +14,6 @@ import sqlite3 from "sqlite3";
 import { SQLiteQueryBuilder } from "./SQLiteQueryBuilder";
 import { SQLiteUpdateQueryBuilder } from "./SQLiteUpdateQueryBuilder";
 import { SQLiteDeleteQueryBuilder } from "./SQLiteDeleteQueryBuilder";
-import selectTemplate from "../Resources/Query/SELECT";
-import { parseDatabaseDataIntoModelResponse } from "../serializer";
 
 export class SQLiteModelManager<
   T extends Model,
@@ -285,15 +283,11 @@ export class SQLiteModelManager<
       );
 
       log(updateQuery.query, this.logs, updateQuery.params);
-      (await this.promisifyQuery<T>(
-        updateQuery.query,
-        updateQuery.params,
-      )) as T;
+      await this.promisifyQuery<T>(updateQuery.query, updateQuery.params);
 
-      const selectQuery = selectTemplate("sqlite", this.model).selectAll;
-      return (await this.promisifyQuery<T>(selectQuery, [
-        model[this.model.primaryKey as keyof T],
-      ])) as T;
+      return await this.findOneByPrimaryKey(
+        model[this.model.primaryKey as keyof T] as string | number,
+      );
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -331,11 +325,8 @@ export class SQLiteModelManager<
       }
 
       log(query, this.logs, params);
-      (await this.promisifyQuery<T>(query, params)) as T;
-      return (await parseDatabaseDataIntoModelResponse(
-        [model],
-        this.model,
-      )) as T;
+      await this.promisifyQuery<T>(query, params);
+      return model;
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);

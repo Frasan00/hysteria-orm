@@ -72,10 +72,14 @@ export class SQLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     query = query.trim();
     log(query, this.logs, this.params);
     try {
-      const results = await this.promisifyQuery<T | null>(query, this.params);
-      const result = Array.isArray(results) ? results[0] : results;
+      const results = await this.promisifyQuery<T>(query, this.params);
+      if (!results.length) {
+        return null;
+      }
+
+      const result = results[0];
       if (options.throwErrorOnNull && !result) {
-        throw new Error("No results found");
+        throw new Error("ERR_NOT_FOUND");
       }
 
       const modelInstance = getBaseModelInstance<T>();
@@ -168,11 +172,11 @@ export class SQLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
   public async getCount(
     options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<number> {
-    if (!options.ignoreHooks) {
-      const result = this.promisifyQuery(
+    if (options.ignoreHooks) {
+      const result = (await this.promisifyQuery<T>(
         "SELECT COUNT(*) as total FROM " + this.table,
         [],
-      ) as any;
+      )) as any;
       return +result[0].total;
     }
 
@@ -1276,7 +1280,7 @@ export class SQLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
   private promisifyQuery<T>(query: string, params: any): Promise<T[]> {
     return new Promise<T[]>((resolve, reject) => {
-      this.sqLiteConnection.get<T[]>(query, params, (err, result) => {
+      this.sqLiteConnection.all<T>(query, params, (err, result) => {
         if (err) {
           reject(err);
         }

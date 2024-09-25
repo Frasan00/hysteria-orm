@@ -279,11 +279,11 @@ export class MysqlUpdateQueryBuilder<
   protected async getAfterUpdateQuery(
     modelIds: (string | number)[],
   ): Promise<T[]> {
-    const afterUpdateDataQuery = `SELECT * FROM ${this.table} ${
-      this.joinQuery
-    } WHERE ${this.model.primaryKey} IN (${Array(modelIds.length)
-      .fill("?")
-      .join(",")})`;
+    const afterUpdateDataQuery = modelIds.length
+      ? `SELECT * FROM ${this.table} ${this.joinQuery} WHERE ${
+          this.model.primaryKey
+        } IN (${Array(modelIds.length).fill("?").join(",")})`
+      : `SELECT * FROM ${this.table}`;
 
     log(afterUpdateDataQuery, this.logs, modelIds);
     const updatedData = await this.sqlConnection.query<mysql.RowDataPacket[]>(

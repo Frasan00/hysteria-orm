@@ -333,7 +333,7 @@ export abstract class Model {
       .updateRecord(modelInstance, trx);
 
     if (typeof value === "string") {
-      modelInstance[column as keyof T] = new Date(value) as T[keyof T];
+      modelInstance[column as keyof T] = DateTime.fromISO(value) as T[keyof T];
     }
 
     modelInstance[column as keyof T] = value as T[keyof T];

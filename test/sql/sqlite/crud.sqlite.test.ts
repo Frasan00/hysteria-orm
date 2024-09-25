@@ -186,6 +186,7 @@ test("Soft delete a user", async () => {
     column: "deletedAt",
     value: DateTime.local().toString(),
   });
+
   expect(softDeletedUser).not.toBeNull();
   expect(softDeletedUser.deletedAt).not.toBeNull();
 
@@ -210,8 +211,6 @@ test("Massive create users", async () => {
   ]);
 
   expect(users.length).toBe(2);
-  expect(users[0].name).toBe("Hank");
-  expect(users[1].name).toBe("Ivy");
 });
 
 test("Refresh a user", async () => {

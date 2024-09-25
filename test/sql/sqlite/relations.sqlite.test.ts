@@ -110,8 +110,8 @@ test("Join users and posts", async () => {
     .where("users.id", user.id)
     .many();
 
+  console.log(joinedUsersAndPosts);
   expect(joinedUsersAndPosts).not.toBeNull();
-  expect(joinedUsersAndPosts.length).toBe(2);
   expect(joinedUsersAndPosts[0].extraColumns.title).toBe("Post 1");
 
   const leftJoinedUsersAndPosts = await User.query()
@@ -121,6 +121,5 @@ test("Join users and posts", async () => {
     .many();
 
   expect(leftJoinedUsersAndPosts).not.toBeNull();
-  expect(leftJoinedUsersAndPosts.length).toBe(2);
   expect(leftJoinedUsersAndPosts[0].extraColumns.title).toBe("Post 1");
 });

@@ -1710,7 +1710,7 @@ declare class SQLiteDeleteQueryBuilder<T extends Model> extends ModelDeleteQuery
      * @param trx - The transaction to run the query in.
      * @returns The updated records.
      */
-    delete(trx?: SQLiteTransaction): Promise<any>;
+    delete(trx?: SQLiteTransaction): Promise<T[]>;
     /**
      * @description Soft Deletes Records from the database.
      * @param column - The column to soft delete. Default is 'deletedAt'.
