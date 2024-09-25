@@ -920,13 +920,6 @@ declare abstract class ModelUpdateQueryBuilder<T extends Model> extends WhereQue
     abstract whereBuilder(cb: (queryBuilder: ModelUpdateQueryBuilder<T>) => void): this;
     abstract orWhereBuilder(cb: (queryBuilder: ModelUpdateQueryBuilder<T>) => void): this;
     abstract andWhereBuilder(cb: (queryBuilder: ModelUpdateQueryBuilder<T>) => void): this;
-    /**
-     * @description Used to retrieve the data before the update in order to return the data after the update.
-     * @param sqlConnection
-     * @returns
-     */
-    protected getBeforeUpdateQueryIds(sqlConnection: mysql.Connection): Promise<(string | number)[]>;
-    protected getAfterUpdateQuery(sqlConnection: mysql.Connection, modelIds: (string | number)[]): Promise<T[]>;
 }
 
 declare const deleteTemplate: (table: string, dbType: SqlDataSourceType$1) => {
@@ -964,13 +957,6 @@ declare abstract class ModelDeleteQueryBuilder<T extends Model> extends WhereQue
     abstract whereBuilder(cb: (queryBuilder: ModelDeleteQueryBuilder<T>) => void): this;
     abstract orWhereBuilder(cb: (queryBuilder: ModelDeleteQueryBuilder<T>) => void): this;
     abstract andWhereBuilder(cb: (queryBuilder: ModelDeleteQueryBuilder<T>) => void): this;
-    /**
-     * @description Used to retrieve the data before the update in order to return the data after the update.
-     * @param sqlConnection
-     * @returns
-     */
-    protected getBeforeUpdateQueryIds(sqlConnection: mysql.Connection): Promise<(string | number)[]>;
-    protected getAfterUpdateQuery(sqlConnection: mysql.Connection, modelIds: (string | number)[]): Promise<T[]>;
 }
 
 declare abstract class AbstractModelManager<T extends Model> {
@@ -1093,6 +1079,13 @@ declare class MysqlUpdateQueryBuilder<T extends Model> extends ModelUpdateQueryB
      * @param cb Callback function that takes a query builder and adds conditions to it.
      */
     andWhereBuilder(cb: (queryBuilder: MysqlUpdateQueryBuilder<T>) => void): this;
+    /**
+     * @description Used to retrieve the data before the update in order to return the data after the update.
+     * @param sqlConnection
+     * @returns
+     */
+    protected getBeforeUpdateQueryIds(): Promise<(string | number)[]>;
+    protected getAfterUpdateQuery(modelIds: (string | number)[]): Promise<T[]>;
 }
 
 declare class PostgresUpdateQueryBuilder<T extends Model> extends ModelUpdateQueryBuilder<T> {
@@ -1209,6 +1202,13 @@ declare class MysqlDeleteQueryBuilder<T extends Model> extends ModelDeleteQueryB
      * @param cb Callback function that takes a query builder and adds conditions to it.
      */
     andWhereBuilder(cb: (queryBuilder: MysqlDeleteQueryBuilder<T>) => void): this;
+    /**
+     * @description Used to retrieve the data before the update in order to return the data after the update.
+     * @param sqlConnection
+     * @returns
+     */
+    protected getBeforeUpdateQueryIds(): Promise<(string | number)[]>;
+    protected getAfterUpdateQuery(modelIds: (string | number)[]): Promise<T[]>;
 }
 
 declare class SqlModelManagerUtils<T extends Model> {
@@ -1555,7 +1555,7 @@ declare class SQLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     one(options?: OneOptions): Promise<T | null>;
     oneOrFail(): Promise<T>;
     many(): Promise<T[]>;
-    raw<T>(query: string, params?: any[]): Promise<T>;
+    raw<T>(query: string, params?: any[]): Promise<T[]>;
     getCount(options?: {
         ignoreHooks: boolean;
     }): Promise<number>;
@@ -1678,6 +1678,13 @@ declare class SQLiteUpdateQueryBuilder<T extends Model> extends ModelUpdateQuery
      * @param cb Callback function that takes a query builder and adds conditions to it.
      */
     andWhereBuilder(cb: (queryBuilder: SQLiteUpdateQueryBuilder<T>) => void): this;
+    /**
+     * @description Used to retrieve the data before the update in order to return the data after the update.
+     * @param sqlConnection
+     * @returns
+     */
+    protected getBeforeUpdateQueryIds(): Promise<(string | number)[]>;
+    protected getAfterUpdateQuery(modelIds: (string | number)[]): Promise<T[]>;
     private promisifyQuery;
 }
 
@@ -1745,6 +1752,8 @@ declare class SQLiteDeleteQueryBuilder<T extends Model> extends ModelDeleteQuery
      * @param cb Callback function that takes a query builder and adds conditions to it.
      */
     andWhereBuilder(cb: (queryBuilder: SQLiteDeleteQueryBuilder<T>) => void): this;
+    protected getBeforeUpdateQueryIds(): Promise<(string | number)[]>;
+    protected getAfterUpdateQuery(modelIds: (string | number)[]): Promise<T[]>;
     private promisifyQuery;
 }
 

@@ -53,7 +53,6 @@ test("Create a new user with posts", async () => {
     .where("id", user.id)
     .addRelations(["posts"])
     .one();
-  console.log(userWithPosts);
   expect(userWithPosts).not.toBeNull();
   expect(userWithPosts?.posts).not.toBeNull();
   expect(userWithPosts?.posts.length).toBe(1);

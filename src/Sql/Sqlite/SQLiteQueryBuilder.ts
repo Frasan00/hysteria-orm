@@ -72,7 +72,8 @@ export class SQLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     query = query.trim();
     log(query, this.logs, this.params);
     try {
-      const result = await this.promisifyQuery<T | null>(query, this.params);
+      const results = await this.promisifyQuery<T | null>(query, this.params);
+      const result = Array.isArray(results) ? results[0] : results;
       if (options.throwErrorOnNull && !result) {
         throw new Error("No results found");
       }
@@ -1273,12 +1274,21 @@ export class SQLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     );
   }
 
-  private promisifyQuery<T>(query: string, params: any): Promise<T> {
-    return new Promise<T>((resolve, reject) => {
-      this.sqLiteConnection.get<T>(query, params, (err, result) => {
+  private promisifyQuery<T>(query: string, params: any): Promise<T[]> {
+    return new Promise<T[]>((resolve, reject) => {
+      this.sqLiteConnection.get<T[]>(query, params, (err, result) => {
         if (err) {
           reject(err);
         }
+
+        if (!result) {
+          resolve([] as T[]);
+        }
+
+        if (!Array.isArray(result)) {
+          resolve([result]);
+        }
+
         resolve(result);
       });
     });

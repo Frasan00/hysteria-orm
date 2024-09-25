@@ -6,8 +6,8 @@ import updateTemplate from "../Resources/Query/UPDATE";
 import joinTemplate from "../Resources/Query/JOIN";
 import { SqlDataSource } from "../SqlDatasource";
 import { ModelUpdateQueryBuilder } from "../QueryBuilder/UpdateQueryBuilder";
-import mysql from "mysql2/promise";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
+import mysql from "mysql2/promise";
 
 export class MysqlUpdateQueryBuilder<
   T extends Model,
@@ -59,7 +59,7 @@ export class MysqlUpdateQueryBuilder<
       this.whereQuery,
     );
 
-    const modelIds = await this.getBeforeUpdateQueryIds(this.sqlConnection);
+    const modelIds = await this.getBeforeUpdateQueryIds();
     const { query, params } = this.updateTemplate.massiveUpdate(
       columns,
       values,
@@ -85,10 +85,7 @@ export class MysqlUpdateQueryBuilder<
         return [];
       }
 
-      const updatedData = await this.getAfterUpdateQuery(
-        this.sqlConnection,
-        modelIds,
-      );
+      const updatedData = await this.getAfterUpdateQuery(modelIds);
 
       const data = await (parseDatabaseDataIntoModelResponse(
         updatedData,
@@ -259,5 +256,42 @@ export class MysqlUpdateQueryBuilder<
     this.whereParams.push(...nestedBuilder.whereParams);
 
     return this;
+  }
+
+  /**
+   * @description Used to retrieve the data before the update in order to return the data after the update.
+   * @param sqlConnection
+   * @returns
+   */
+  protected async getBeforeUpdateQueryIds(): Promise<(string | number)[]> {
+    const beforeUpdateData = await this.sqlConnection.query<
+      mysql.RowDataPacket[]
+    >(
+      `SELECT * FROM ${this.table} ${this.joinQuery} ${this.whereQuery}`,
+      this.whereParams,
+    );
+
+    return beforeUpdateData[0].map(
+      (row: any) => row[this.model.primaryKey as string],
+    ) as (string | number)[];
+  }
+
+  protected async getAfterUpdateQuery(
+    modelIds: (string | number)[],
+  ): Promise<T[]> {
+    const afterUpdateDataQuery = `SELECT * FROM ${this.table} ${
+      this.joinQuery
+    } WHERE ${this.model.primaryKey} IN (${Array(modelIds.length)
+      .fill("?")
+      .join(",")})`;
+
+    log(afterUpdateDataQuery, this.logs, modelIds);
+    const updatedData = await this.sqlConnection.query<mysql.RowDataPacket[]>(
+      afterUpdateDataQuery,
+      modelIds,
+    );
+
+    const results = updatedData[0] as T[];
+    return Array.isArray(results) ? results : [results];
   }
 }

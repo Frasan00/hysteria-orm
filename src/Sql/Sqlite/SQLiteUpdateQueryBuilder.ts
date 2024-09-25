@@ -76,7 +76,7 @@ export class SQLiteUpdateQueryBuilder<
 
     log(query, this.logs, params);
     try {
-      const result = await this.promisifyQuery<T[]>(query, params);
+      const result = await this.promisifyQuery<T>(query, params);
       return (await parseDatabaseDataIntoModelResponse(
         result,
         this.model,
@@ -250,13 +250,47 @@ export class SQLiteUpdateQueryBuilder<
     return this;
   }
 
-  private promisifyQuery<T>(query: string, params: any): Promise<T> {
-    return new Promise<T>((resolve, reject) => {
-      this.sqlConnection.get<T>(query, params, (err, result) => {
+  /**
+   * @description Used to retrieve the data before the update in order to return the data after the update.
+   * @param sqlConnection
+   * @returns
+   */
+  protected async getBeforeUpdateQueryIds(): Promise<(string | number)[]> {
+    const beforeUpdateData = await this.promisifyQuery<T[]>(
+      `SELECT * FROM ${this.table} ${this.joinQuery} ${this.whereQuery}`,
+      this.whereParams,
+    );
+
+    return beforeUpdateData[0].map(
+      (row: any) => row[this.model.primaryKey as string],
+    ) as (string | number)[];
+  }
+
+  protected async getAfterUpdateQuery(
+    modelIds: (string | number)[],
+  ): Promise<T[]> {
+    const afterUpdateDataQuery = `SELECT * FROM ${this.table} ${
+      this.joinQuery
+    } WHERE ${this.model.primaryKey} IN (${Array(modelIds.length)
+      .fill("?")
+      .join(",")})`;
+
+    log(afterUpdateDataQuery, this.logs, modelIds);
+    const updatedData = await this.promisifyQuery<T>(
+      afterUpdateDataQuery,
+      modelIds,
+    );
+
+    return Array.isArray(updatedData) ? updatedData : [updatedData];
+  }
+
+  private promisifyQuery<T>(query: string, params: any): Promise<T[]> {
+    return new Promise<T[]>((resolve, reject) => {
+      this.sqlConnection.all<T[]>(query, params, (err, result) => {
         if (err) {
           reject(err);
         }
-        resolve(result);
+        resolve(result as T[]);
       });
     });
   }

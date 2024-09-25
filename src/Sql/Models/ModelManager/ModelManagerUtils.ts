@@ -191,15 +191,19 @@ export default class SqlModelManagerUtils<T extends Model> {
         );
         return resultPg.rows;
       case "sqlite":
-        return (this.sqlConnection as sqlite3.Database).run(
-          query,
-          params,
-          (err) => {
-            if (err) {
-              throw err;
-            }
-          },
-        );
+        return await new Promise((resolve, reject) => {
+          (this.sqlConnection as sqlite3.Database).all(
+            query,
+            params,
+            (err, result) => {
+              if (err) {
+                reject(err);
+              }
+
+              resolve(result);
+            },
+          );
+        });
       default:
         throw new Error(`Unsupported data source type: ${this.dbType}`);
     }

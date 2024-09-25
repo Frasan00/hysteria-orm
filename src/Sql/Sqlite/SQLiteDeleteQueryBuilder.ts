@@ -64,17 +64,25 @@ export class SQLiteDeleteQueryBuilder<
       this.joinQuery,
     );
 
+    const modelIds = await this.getBeforeUpdateQueryIds();
     if (trx) {
       return await trx.massiveDeleteQuery(query, this.whereParams);
     }
 
     log(query, this.logs, this.whereParams);
     try {
-      const result = await this.promisifyQuery<T[]>(query, this.whereParams);
-      // return (await parseDatabaseDataIntoModelResponse(
-      //   result,
-      //   this.model,
-      // )) as T[];
+      await this.promisifyQuery<T[]>(query, this.whereParams);
+      const result = await this.getAfterUpdateQuery(modelIds);
+      const models = await parseDatabaseDataIntoModelResponse(
+        result,
+        this.model,
+      );
+
+      if (!models) {
+        return [];
+      }
+
+      return Array.isArray(models) ? models : ([models] as T[]);
     } catch (error) {
       queryError(query);
       throw new Error("Query failed " + error);
@@ -105,6 +113,7 @@ export class SQLiteDeleteQueryBuilder<
       this.joinQuery,
     );
 
+    const modelIds = await this.getBeforeUpdateQueryIds();
     params = [...params, ...this.whereParams];
 
     if (trx) {
@@ -113,7 +122,8 @@ export class SQLiteDeleteQueryBuilder<
 
     log(query, this.logs, params);
     try {
-      const result = await this.promisifyQuery<T[]>(query, params);
+      await this.promisifyQuery<T>(query, params);
+      const result = await this.getAfterUpdateQuery(modelIds);
       const models = await parseDatabaseDataIntoModelResponse(
         result,
         this.model,
@@ -292,13 +302,42 @@ export class SQLiteDeleteQueryBuilder<
     return this;
   }
 
-  private promisifyQuery<T>(query: string, params: any): Promise<T> {
-    return new Promise<T>((resolve, reject) => {
-      this.sqlConnection.get<T>(query, params, (err, result) => {
+  protected async getBeforeUpdateQueryIds(): Promise<(string | number)[]> {
+    const beforeUpdateData = await this.promisifyQuery<T>(
+      `SELECT * FROM ${this.table} ${this.joinQuery} ${this.whereQuery}`,
+      this.whereParams,
+    );
+
+    return beforeUpdateData.map(
+      (row: any) => row[this.model.primaryKey as string],
+    ) as (string | number)[];
+  }
+
+  protected async getAfterUpdateQuery(
+    modelIds: (string | number)[],
+  ): Promise<T[]> {
+    const afterUpdateDataQuery = `SELECT * FROM ${this.table} ${
+      this.joinQuery
+    } WHERE ${this.model.primaryKey} IN (${Array(modelIds.length)
+      .fill("?")
+      .join(",")})`;
+
+    log(afterUpdateDataQuery, this.logs, modelIds);
+    const updatedData = await this.promisifyQuery<T>(
+      afterUpdateDataQuery,
+      modelIds,
+    );
+
+    return Array.isArray(updatedData) ? updatedData : [updatedData];
+  }
+
+  private promisifyQuery<T>(query: string, params: any): Promise<T[]> {
+    return new Promise<T[]>((resolve, reject) => {
+      this.sqlConnection.all<T[]>(query, params, (err, result) => {
         if (err) {
           reject(err);
         }
-        resolve(result);
+        resolve(result as T[]);
       });
     });
   }

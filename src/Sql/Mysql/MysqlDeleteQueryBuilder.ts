@@ -10,6 +10,7 @@ import updateTemplate from "../Resources/Query/UPDATE";
 import { SelectableType } from "../Models/ModelManager/ModelManagerTypes";
 import { ModelDeleteQueryBuilder } from "../QueryBuilder/DeleteQueryBuilder";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
+import mysql from "mysql2/promise";
 
 export class MysqlDeleteQueryBuilder<
   T extends Model,
@@ -70,7 +71,7 @@ export class MysqlDeleteQueryBuilder<
 
     params = [...params, ...this.whereParams];
 
-    const modelIds = await this.getBeforeUpdateQueryIds(this.sqlConnection);
+    const modelIds = await this.getBeforeUpdateQueryIds();
     if (trx) {
       return await trx.massiveUpdateQuery(query, params, {
         typeofModel: this.model,
@@ -88,10 +89,7 @@ export class MysqlDeleteQueryBuilder<
         return [];
       }
 
-      const updatedData = await this.getAfterUpdateQuery(
-        this.sqlConnection,
-        modelIds,
-      );
+      const updatedData = await this.getAfterUpdateQuery(modelIds);
 
       const data = await (parseDatabaseDataIntoModelResponse(
         updatedData,
@@ -312,5 +310,42 @@ export class MysqlDeleteQueryBuilder<
     this.whereParams.push(...nestedBuilder.whereParams);
 
     return this;
+  }
+
+  /**
+   * @description Used to retrieve the data before the update in order to return the data after the update.
+   * @param sqlConnection
+   * @returns
+   */
+  protected async getBeforeUpdateQueryIds(): Promise<(string | number)[]> {
+    const beforeUpdateData = await this.sqlConnection.query<
+      mysql.RowDataPacket[]
+    >(
+      `SELECT * FROM ${this.table} ${this.joinQuery} ${this.whereQuery}`,
+      this.whereParams,
+    );
+
+    return beforeUpdateData[0].map(
+      (row: any) => row[this.model.primaryKey as string],
+    ) as (string | number)[];
+  }
+
+  protected async getAfterUpdateQuery(
+    modelIds: (string | number)[],
+  ): Promise<T[]> {
+    const afterUpdateDataQuery = `SELECT * FROM ${this.table} ${
+      this.joinQuery
+    } WHERE ${this.model.primaryKey} IN (${Array(modelIds.length)
+      .fill("?")
+      .join(",")})`;
+
+    log(afterUpdateDataQuery, this.logs, modelIds);
+    const updatedData = await this.sqlConnection.query<mysql.RowDataPacket[]>(
+      afterUpdateDataQuery,
+      modelIds,
+    );
+
+    const results = updatedData[0] as T[];
+    return Array.isArray(results) ? results : [results];
   }
 }
