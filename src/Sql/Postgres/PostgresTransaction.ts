@@ -215,6 +215,7 @@ export class PostgresTransaction {
       this.pgClient.release();
     } catch (error) {
       queryError(error);
+      this.pgClient.release();
       throw new Error("Failed to rollback transaction " + error);
     }
   }

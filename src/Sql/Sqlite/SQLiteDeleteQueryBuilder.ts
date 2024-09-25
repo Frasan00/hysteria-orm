@@ -10,6 +10,7 @@ import updateTemplate from "../Resources/Query/UPDATE";
 import { ModelDeleteQueryBuilder } from "../QueryBuilder/DeleteQueryBuilder";
 import sqlite3 from "sqlite3";
 import { SQLiteTransaction } from "./SQLiteTransaction";
+import SqlModelManagerUtils from "../Models/ModelManager/ModelManagerUtils";
 
 export class SQLiteDeleteQueryBuilder<
   T extends Model,
@@ -19,6 +20,7 @@ export class SQLiteDeleteQueryBuilder<
   protected updateTemplate: ReturnType<typeof updateTemplate>;
   protected deleteTemplate: ReturnType<typeof deleteTemplate>;
   protected isNestedCondition = false;
+  protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
 
   /**
    * @description Constructs a MysqlQueryBuilder instance.
@@ -35,6 +37,7 @@ export class SQLiteDeleteQueryBuilder<
     logs: boolean,
     isNestedCondition = false,
     sqlDataSource: SqlDataSource,
+    sqlModelManagerUtils: SqlModelManagerUtils<T>,
   ) {
     super(model, table, logs, false, sqlDataSource);
     this.sqlConnection = sqlConnection;
@@ -42,6 +45,8 @@ export class SQLiteDeleteQueryBuilder<
     this.deleteTemplate = deleteTemplate(table, sqlDataSource.getDbType());
     this.joinQuery = "";
     this.isNestedCondition = isNestedCondition;
+    this.isNestedCondition = isNestedCondition;
+    this.sqlModelManagerUtils = sqlModelManagerUtils;
   }
 
   /**
@@ -180,6 +185,7 @@ export class SQLiteDeleteQueryBuilder<
       this.logs,
       true,
       this.sqlDataSource,
+      this.sqlModelManagerUtils,
     );
     cb(queryBuilder as unknown as SQLiteDeleteQueryBuilder<T>);
 
@@ -218,6 +224,7 @@ export class SQLiteDeleteQueryBuilder<
       this.logs,
       true,
       this.sqlDataSource,
+      this.sqlModelManagerUtils,
     );
     cb(nestedBuilder as unknown as SQLiteDeleteQueryBuilder<T>);
 
@@ -259,6 +266,7 @@ export class SQLiteDeleteQueryBuilder<
       this.logs,
       true,
       this.sqlDataSource,
+      this.sqlModelManagerUtils,
     );
     cb(nestedBuilder as unknown as SQLiteDeleteQueryBuilder<T>);
 

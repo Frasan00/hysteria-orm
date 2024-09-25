@@ -8,7 +8,9 @@ import { PostgresModelManager } from "./Postgres/PostgresModelManager";
 import { MysqlTransaction } from "./Mysql/MysqlTransaction";
 import { PostgresTransaction } from "./Postgres/PostgresTransaction";
 import logger from "../Logger";
-import { SQLiteModelManager } from "./Sqlite/SQLiteManager";
+import { SQLiteModelManager } from "./Sqlite/SQLiteModelManager";
+import { SQLiteTransaction } from "./Sqlite/SQLiteTransaction";
+import { TransactionType } from "./Models/ModelManager/ModelManagerTypes";
 
 type ModelManager<T extends Model> =
   | MysqlModelManager<T>
@@ -102,11 +104,9 @@ export class SqlDataSource extends DataSource {
   /**
    * @description Begins a transaction on the database and returns the transaction object
    * @param model
-   * @returns {Promise<MysqlTransaction | PostgresTransaction>} trx
+   * @returns {Promise<TransactionType>} trx
    */
-  public async startTransaction(): Promise<
-    MysqlTransaction | PostgresTransaction
-  > {
+  public async startTransaction(): Promise<TransactionType> {
     switch (this.type) {
       case "mariadb":
       case "mysql":
@@ -133,6 +133,13 @@ export class SqlDataSource extends DataSource {
         const trxPg = new PostgresTransaction(pgPool, this.logs);
         await trxPg.start();
         return trxPg;
+      case "sqlite":
+        const sqliteTransaction = new SQLiteTransaction(
+          this.sqlConnection as sqlite3.Database,
+          this.logs,
+        );
+        await sqliteTransaction.start();
+        return sqliteTransaction;
       default:
         throw new Error(
           "Error while starting transaction: invalid sql database type provided",

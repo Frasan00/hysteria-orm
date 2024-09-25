@@ -27,12 +27,12 @@ import { User } from "../test/sql/Models/User";
 import { DateTime } from "luxon";
 
 (async () => {
-  const sql = await SqlDataSource.connect();
-  await User.create({
-    name: "ddsds",
-    email: Math.random().toString(),
-    signupSource: "d,spmda",
+  const sql = await SqlDataSource.connect({
+    type: "sqlite",
+    database: "sqlite.db",
   });
+  const user = (await User.query().one()) as User;
+  user.isActive = 0 as any;
   const users = await User.deleteQuery().softDelete({
     column: "deletedAt",
     value: DateTime.local().toISODate(),

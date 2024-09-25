@@ -7,7 +7,7 @@ import {
   UnrestrictedFindType,
 } from "../Models/ModelManager/ModelManagerTypes";
 import pg from "pg";
-import logger, { log, queryError } from "../../Logger";
+import { log, queryError } from "../../Logger";
 import { AbstractModelManager } from "../Models/ModelManager/AbstractModelManager";
 import { PostgresQueryBuilder } from "./PostgresQueryBuilder";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
@@ -206,7 +206,7 @@ export class PostgresModelManager<
    * Create multiple model instances in the database.
    *
    * @param {Model} models - Model instance to be saved.
-   * @param {PostgresTransaction} trx - MysqlTransaction to be used on the save operation.
+   * @param {TransactionType} trx - MysqlTransaction to be used on the save operation.
    * @returns Promise resolving to an array of saved models or null if saving fails.
    */
   public async massiveCreate(
@@ -252,7 +252,7 @@ export class PostgresModelManager<
   /**
    * Update an existing model instance in the database.
    * @param {Model} model - Model instance to be updated.
-   * @param {PostgresTransaction} trx - PostgresTransaction to be used on the update operation.
+   * @param {TransactionType} trx - TransactionType to be used on the update operation.
    * @returns Promise resolving to the updated model or null if updating fails.
    */
   public async updateRecord(
@@ -311,7 +311,7 @@ export class PostgresModelManager<
    * @description Delete a record from the database from the given model.
    *
    * @param {Model} model - Model to delete.
-   * @param {PostgresTransaction} trx - PostgresTransaction to be used on the delete operation.
+   * @param {TransactionType} trx - TransactionType to be used on the delete operation.
    * @returns Promise resolving to the deleted model or null if deleting fails.
    */
   public async deleteRecord(

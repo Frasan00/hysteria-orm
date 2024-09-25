@@ -3,6 +3,10 @@
 const { execSync } = require('child_process');
 
 const testFiles = [
+    // trx
+    // './test/sql/pg/trx.pg.test.ts',
+    // './test/sql/mysql/trx.mysql.test.ts',
+
     // sqlite
     // './test/sql/sqlite/relations.sqlite.test.ts',
     // './test/sql/sqlite/crud.sqlite.test.ts',
@@ -14,12 +18,10 @@ const testFiles = [
     // pg
     './test/sql/pg/relations.pg.test.ts',
     './test/sql/pg/crud.pg.test.ts',
-    // './test/sql/pg/trx.pg.test.ts',
 
     // mysql
     './test/sql/mysql/relations.mysql.test.ts',
     './test/sql/mysql/crud.mysql.test.ts',
-    // './test/sql/mysql/trx.mysql.test.ts',
 
     // Redis
     // './test/redis/redis.test.ts',

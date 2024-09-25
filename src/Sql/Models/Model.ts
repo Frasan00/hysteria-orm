@@ -1,13 +1,12 @@
 import "reflect-metadata";
 import { DateTime } from "luxon";
-import { MysqlTransaction } from "../Mysql/MysqlTransaction";
-import { PostgresTransaction } from "../Postgres/PostgresTransaction";
 import { OneOptions, ModelQueryBuilder } from "../QueryBuilder/QueryBuilder";
 import { SqlDataSource } from "../SqlDatasource";
 import {
   FindOneType,
   FindType,
   SelectableType,
+  TransactionType,
   UnrestrictedFindType,
 } from "./ModelManager/ModelManagerTypes";
 import { CaseConvention, convertCase } from "../../CaseUtils";
@@ -204,7 +203,7 @@ export abstract class Model {
   static create<T extends Model>(
     this: new () => T | typeof Model,
     modelData: Partial<T>,
-    trx?: MysqlTransaction | PostgresTransaction,
+    trx?: TransactionType,
   ): Promise<T | null> {
     const typeofModel = this as unknown as typeof Model;
     typeofModel.establishConnection();
@@ -224,7 +223,7 @@ export abstract class Model {
   static massiveCreate<T extends Model>(
     this: new () => T | typeof Model,
     modelsData: Partial<T>[],
-    trx?: MysqlTransaction | PostgresTransaction,
+    trx?: TransactionType,
   ): Promise<T[]> {
     const typeofModel = this as unknown as typeof Model;
     typeofModel.establishConnection();
@@ -243,7 +242,7 @@ export abstract class Model {
   static updateRecord<T extends Model>(
     this: new () => T | typeof Model,
     modelInstance: T,
-    trx?: MysqlTransaction | PostgresTransaction,
+    trx?: TransactionType,
   ): Promise<T | null> {
     const typeofModel = this as unknown as typeof Model;
     typeofModel.establishConnection();
@@ -294,7 +293,7 @@ export abstract class Model {
   static deleteRecord<T extends Model>(
     this: new () => T | typeof Model,
     modelInstance: T,
-    trx?: MysqlTransaction | PostgresTransaction,
+    trx?: TransactionType,
   ): Promise<T | null> {
     const typeofModel = this as unknown as typeof Model;
     typeofModel.establishConnection();
@@ -317,7 +316,7 @@ export abstract class Model {
     options?: {
       column?: string;
       value?: string | number | boolean;
-      trx?: MysqlTransaction | PostgresTransaction;
+      trx?: TransactionType;
     },
   ): Promise<T> {
     const typeofModel = this as unknown as typeof Model;

@@ -238,6 +238,7 @@ export class MysqlTransaction {
       this.mysqlPool.release();
     } catch (error) {
       queryError(error);
+      this.mysqlPool.release();
       throw new Error("Failed to rollback transaction " + error);
     }
   }

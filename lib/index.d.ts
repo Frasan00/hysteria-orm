@@ -382,63 +382,6 @@ declare abstract class Migration {
     afterDown?(): Promise<void>;
 }
 
-declare class MysqlTransaction {
-    protected mysql: Pool;
-    protected mysqlPool: PoolConnection;
-    protected logs: boolean;
-    protected mysqlType: "mysql" | "mariadb";
-    constructor(mysql: Pool, logs: boolean, mysqlType: "mysql" | "mariadb");
-    queryInsert<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T>;
-    massiveInsertQuery<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T[]>;
-    massiveUpdateQuery<T extends Model>(query: string, params: any[], selectQueryDetails: {
-        typeofModel: typeof Model;
-        modelIds: (string | number)[];
-        primaryKey: string;
-        table: string;
-        joinClause: string;
-    }): Promise<T[]>;
-    massiveDeleteQuery<T extends Model>(query: string, params: any[], models: T[], typeofModel: typeof Model): Promise<T[]>;
-    queryUpdate(query: string, params?: any[]): Promise<number>;
-    queryDelete(query: string, params?: any[]): Promise<number>;
-    /**
-     * Start transaction.
-     */
-    start(): Promise<void>;
-    /**
-     * Commit transaction.
-     */
-    commit(): Promise<void>;
-    /**
-     * Rollback transaction.
-     */
-    rollback(): Promise<void>;
-}
-
-declare class PostgresTransaction {
-    protected pgPool: Pool$1;
-    protected pgClient: PoolClient;
-    protected logs: boolean;
-    constructor(pgPool: Pool$1, logs: boolean);
-    queryInsert<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T>;
-    massiveInsertQuery<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T[]>;
-    massiveUpdateQuery<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T[]>;
-    massiveDeleteQuery<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T[]>;
-    queryUpdate<T extends Model>(query: string, params?: any[]): Promise<number | null>;
-    queryDelete<T extends Model>(query: string, params?: any[]): Promise<T | number | null>;
-    /**
-     * Start transaction.
-     */
-    start(): Promise<void>;
-    /**
-     * Commit transaction.
-     */
-    commit(): Promise<void>;
-    /**
-     * Rollback transaction.
-     */
-    rollback(): Promise<void>;
-}
-
 declare const selectTemplate: (dbType: SqlDataSourceType$1, typeofModel: typeof Model) => {
     selectAll: string;
     selectById: (id: string) => string;
@@ -581,6 +524,63 @@ type PaginatedData<T> = {
     paginationMetadata: PaginationMetadata;
     data: T[];
 };
+
+declare class MysqlTransaction {
+    protected mysql: Pool;
+    protected mysqlPool: PoolConnection;
+    protected logs: boolean;
+    protected mysqlType: "mysql" | "mariadb";
+    constructor(mysql: Pool, logs: boolean, mysqlType: "mysql" | "mariadb");
+    queryInsert<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T>;
+    massiveInsertQuery<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T[]>;
+    massiveUpdateQuery<T extends Model>(query: string, params: any[], selectQueryDetails: {
+        typeofModel: typeof Model;
+        modelIds: (string | number)[];
+        primaryKey: string;
+        table: string;
+        joinClause: string;
+    }): Promise<T[]>;
+    massiveDeleteQuery<T extends Model>(query: string, params: any[], models: T[], typeofModel: typeof Model): Promise<T[]>;
+    queryUpdate(query: string, params?: any[]): Promise<number>;
+    queryDelete(query: string, params?: any[]): Promise<number>;
+    /**
+     * Start transaction.
+     */
+    start(): Promise<void>;
+    /**
+     * Commit transaction.
+     */
+    commit(): Promise<void>;
+    /**
+     * Rollback transaction.
+     */
+    rollback(): Promise<void>;
+}
+
+declare class PostgresTransaction {
+    protected pgPool: Pool$1;
+    protected pgClient: PoolClient;
+    protected logs: boolean;
+    constructor(pgPool: Pool$1, logs: boolean);
+    queryInsert<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T>;
+    massiveInsertQuery<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T[]>;
+    massiveUpdateQuery<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T[]>;
+    massiveDeleteQuery<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T[]>;
+    queryUpdate<T extends Model>(query: string, params?: any[]): Promise<number | null>;
+    queryDelete<T extends Model>(query: string, params?: any[]): Promise<T | number | null>;
+    /**
+     * Start transaction.
+     */
+    start(): Promise<void>;
+    /**
+     * Commit transaction.
+     */
+    commit(): Promise<void>;
+    /**
+     * Rollback transaction.
+     */
+    rollback(): Promise<void>;
+}
 
 declare class SQLiteTransaction {
     protected sqLite: sqlite3.Database;
@@ -1275,7 +1275,7 @@ declare class MysqlModelManager<T extends Model> extends AbstractModelManager<T>
      * Save a new model instance to the database.
      *
      * @param {Model} model - Model instance to be saved.
-     * @param {MysqlTransaction} trx - MysqlTransaction to be used on the save operation.
+     * @param {TransactionType} trx - TransactionType to be used on the save operation.
      * @returns Promise resolving to the saved model or null if saving fails.
      */
     create(model: Partial<T>, trx?: TransactionType): Promise<T | null>;
@@ -1283,14 +1283,14 @@ declare class MysqlModelManager<T extends Model> extends AbstractModelManager<T>
      * Create multiple model instances in the database.
      *
      * @param {Model} model - Model instance to be saved.
-     * @param {MysqlTransaction} trx - MysqlTransaction to be used on the save operation.
+     * @param {TransactionType} trx - TransactionType to be used on the save operation.
      * @returns Promise resolving to an array of saved models or null if saving fails.
      */
     massiveCreate(models: Partial<T>[], trx?: TransactionType): Promise<T[]>;
     /**
      * Update an existing model instance in the database.
      * @param {Model} model - Model instance to be updated.
-     * @param {MysqlTransaction} trx - MysqlTransaction to be used on the update operation.
+     * @param {TransactionType} trx - TransactionType to be used on the update operation.
      * @returns Promise resolving to the updated model or null if updating fails.
      */
     updateRecord(model: T, trx?: TransactionType): Promise<T | null>;
@@ -1298,7 +1298,7 @@ declare class MysqlModelManager<T extends Model> extends AbstractModelManager<T>
      * @description Delete a record from the database from the given model.
      *
      * @param {Model} model - Model to delete.
-     * @param {MysqlTransaction} trx - MysqlTransaction to be used on the delete operation.
+     * @param {TransactionType} trx - TransactionType to be used on the delete operation.
      * @returns Promise resolving to the deleted model or null if deleting fails.
      */
     deleteRecord(model: T, trx?: TransactionType): Promise<T | null>;
@@ -1506,14 +1506,14 @@ declare class PostgresModelManager<T extends Model> extends AbstractModelManager
      * Create multiple model instances in the database.
      *
      * @param {Model} models - Model instance to be saved.
-     * @param {PostgresTransaction} trx - MysqlTransaction to be used on the save operation.
+     * @param {TransactionType} trx - MysqlTransaction to be used on the save operation.
      * @returns Promise resolving to an array of saved models or null if saving fails.
      */
     massiveCreate(models: Partial<T>[], trx?: TransactionType): Promise<T[]>;
     /**
      * Update an existing model instance in the database.
      * @param {Model} model - Model instance to be updated.
-     * @param {PostgresTransaction} trx - PostgresTransaction to be used on the update operation.
+     * @param {TransactionType} trx - TransactionType to be used on the update operation.
      * @returns Promise resolving to the updated model or null if updating fails.
      */
     updateRecord(model: T, trx?: TransactionType): Promise<T | null>;
@@ -1521,7 +1521,7 @@ declare class PostgresModelManager<T extends Model> extends AbstractModelManager
      * @description Delete a record from the database from the given model.
      *
      * @param {Model} model - Model to delete.
-     * @param {PostgresTransaction} trx - PostgresTransaction to be used on the delete operation.
+     * @param {TransactionType} trx - TransactionType to be used on the delete operation.
      * @returns Promise resolving to the deleted model or null if deleting fails.
      */
     deleteRecord(model: T, trx?: TransactionType): Promise<T | null>;
@@ -1632,6 +1632,7 @@ declare class SQLiteUpdateQueryBuilder<T extends Model> extends ModelUpdateQuery
     protected joinQuery: string;
     protected updateTemplate: ReturnType<typeof updateTemplate>;
     protected isNestedCondition: boolean;
+    protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
     /**
      * @description Constructs a MysqlQueryBuilder instance.
      * @param model - The model class associated with the table.
@@ -1640,7 +1641,7 @@ declare class SQLiteUpdateQueryBuilder<T extends Model> extends ModelUpdateQuery
      * @param logs - A boolean indicating whether to log queries.
      * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
      */
-    constructor(model: typeof Model, table: string, sqlLiteConnection: sqlite3.Database, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
+    constructor(model: typeof Model, table: string, sqlLiteConnection: sqlite3.Database, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource, sqlModelManagerUtils: SqlModelManagerUtils<T>);
     /**
      * @description Updates a record in the database.
      * @param data - The data to update.
@@ -1686,6 +1687,7 @@ declare class SQLiteDeleteQueryBuilder<T extends Model> extends ModelDeleteQuery
     protected updateTemplate: ReturnType<typeof updateTemplate>;
     protected deleteTemplate: ReturnType<typeof deleteTemplate>;
     protected isNestedCondition: boolean;
+    protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
     /**
      * @description Constructs a MysqlQueryBuilder instance.
      * @param model - The model class associated with the table.
@@ -1694,7 +1696,7 @@ declare class SQLiteDeleteQueryBuilder<T extends Model> extends ModelDeleteQuery
      * @param logs - A boolean indicating whether to log queries.
      * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
      */
-    constructor(model: typeof Model, table: string, sqlConnection: sqlite3.Database, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
+    constructor(model: typeof Model, table: string, sqlConnection: sqlite3.Database, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource, sqlModelManagerUtils: SqlModelManagerUtils<T>);
     /**
      * @description Deletes Records from the database.
      * @param data - The data to update.
@@ -1818,7 +1820,7 @@ declare class SQLiteModelManager<T extends Model> extends AbstractModelManager<T
     /**
      * @description Returns an update query builder.
      */
-    update(): SQLiteUpdateQueryBuilder<T> | PostgresUpdateQueryBuilder<T>;
+    update(): SQLiteUpdateQueryBuilder<T>;
     /**
      * @description Returns a delete query builder.
      */
@@ -1847,9 +1849,9 @@ declare class SqlDataSource extends DataSource {
     /**
      * @description Begins a transaction on the database and returns the transaction object
      * @param model
-     * @returns {Promise<MysqlTransaction | PostgresTransaction>} trx
+     * @returns {Promise<TransactionType>} trx
      */
-    startTransaction(): Promise<MysqlTransaction | PostgresTransaction>;
+    startTransaction(): Promise<TransactionType>;
     /**
      * @description Returns model manager for the provided model
      * @param model
@@ -2409,7 +2411,7 @@ declare abstract class Model {
      * @param trx
      * @returns {Promise<T | null>}
      */
-    static create<T extends Model>(this: new () => T | typeof Model, modelData: Partial<T>, trx?: MysqlTransaction | PostgresTransaction): Promise<T | null>;
+    static create<T extends Model>(this: new () => T | typeof Model, modelData: Partial<T>, trx?: TransactionType): Promise<T | null>;
     /**
      * @description Saves multiple records to the database
      * @description WHile using mysql, it will return records only if the primary key is auto incrementing integer, else it will always return []
@@ -2418,7 +2420,7 @@ declare abstract class Model {
      * @param trx
      * @returns {Promise<T[]>}
      */
-    static massiveCreate<T extends Model>(this: new () => T | typeof Model, modelsData: Partial<T>[], trx?: MysqlTransaction | PostgresTransaction): Promise<T[]>;
+    static massiveCreate<T extends Model>(this: new () => T | typeof Model, modelsData: Partial<T>[], trx?: TransactionType): Promise<T[]>;
     /**
      * @description Updates a record to the database
      * @param model
@@ -2426,7 +2428,7 @@ declare abstract class Model {
      * @param trx
      * @returns
      */
-    static updateRecord<T extends Model>(this: new () => T | typeof Model, modelInstance: T, trx?: MysqlTransaction | PostgresTransaction): Promise<T | null>;
+    static updateRecord<T extends Model>(this: new () => T | typeof Model, modelInstance: T, trx?: TransactionType): Promise<T | null>;
     /**
      * @description Updates records to the database
      * @param model
@@ -2450,7 +2452,7 @@ declare abstract class Model {
      * @param trx
      * @returns
      */
-    static deleteRecord<T extends Model>(this: new () => T | typeof Model, modelInstance: T, trx?: MysqlTransaction | PostgresTransaction): Promise<T | null>;
+    static deleteRecord<T extends Model>(this: new () => T | typeof Model, modelInstance: T, trx?: TransactionType): Promise<T | null>;
     /**
      * @description Soft Deletes a record to the database
      * @param model
@@ -2462,7 +2464,7 @@ declare abstract class Model {
     static softDelete<T extends Model>(this: new () => T | typeof Model, modelInstance: T, options?: {
         column?: string;
         value?: string | number | boolean;
-        trx?: MysqlTransaction | PostgresTransaction;
+        trx?: TransactionType;
     }): Promise<T>;
     /**
      * @description Merges the provided data with the instance

@@ -2,20 +2,29 @@ import { User } from "../Models/User";
 import { Post } from "../Models/Post";
 import { SqlDataSource } from "../../../src/Sql/SqlDatasource";
 
-test("Create a new user with posts within a transaction", async () => {
-  const sql = await SqlDataSource.connect({
+let sql: SqlDataSource;
+beforeAll(async () => {
+  sql = await SqlDataSource.connect({
     type: "mysql",
     database: "test",
     username: "root",
     password: "root",
-    host: "127.0.0.1",
+    host: "localhost",
     port: 3306,
   });
+});
+
+afterAll(async () => {
+  await sql.closeConnection();
+});
+
+beforeEach(async () => {
   await Post.deleteQuery().delete();
   await User.deleteQuery().delete();
+});
 
+test("Create a new user with posts within a transaction", async () => {
   const trx = await sql.startTransaction();
-
   try {
     const user = await User.create(
       {
@@ -57,25 +66,10 @@ test("Create a new user with posts within a transaction", async () => {
   } catch (error) {
     await trx.rollback();
     throw error;
-  } finally {
-    await Post.deleteQuery().delete();
-    await User.deleteQuery().delete();
-    await sql.closeConnection();
   }
 });
 
 test("Rollback transaction on error", async () => {
-  const sql = await SqlDataSource.connect({
-    type: "mysql",
-    database: "test",
-    username: "root",
-    password: "root",
-    host: "127.0.0.1",
-    port: 3306,
-  });
-  await Post.deleteQuery().delete();
-  await User.deleteQuery().delete();
-
   const trx = await sql.startTransaction();
 
   try {
@@ -113,25 +107,10 @@ test("Rollback transaction on error", async () => {
       .addRelations(["posts"])
       .one();
     expect(userWithPosts).toBeNull();
-  } finally {
-    await Post.deleteQuery().delete();
-    await User.deleteQuery().delete();
-    await sql.closeConnection();
   }
 });
 
 test("Massive update within a transaction", async () => {
-  const sql = await SqlDataSource.connect({
-    type: "mysql",
-    database: "test",
-    username: "root",
-    password: "root",
-    host: "127.0.0.1",
-    port: 3306,
-  });
-  await Post.deleteQuery().delete();
-  await User.deleteQuery().delete();
-
   const trx = await sql.startTransaction();
   try {
     const users = await User.massiveCreate(
@@ -152,10 +131,10 @@ test("Massive update within a transaction", async () => {
       trx,
     );
 
-    expect(users).toBe(true);
+    expect(users.length).toBeGreaterThan(0);
     expect(users.length).toBe(2);
 
-    await User.update()
+    const updatedUsers = await User.update()
       .whereIn(
         "id",
         users.map((user) => user.id),
@@ -164,35 +143,14 @@ test("Massive update within a transaction", async () => {
 
     await trx.commit();
 
-    const updatedUsers = await User.query()
-      .whereIn(
-        "id",
-        users.map((user) => user.id),
-      )
-      .many();
     expect(updatedUsers.every((user) => user.isActive === false)).toBe(true);
   } catch (error) {
     await trx.rollback();
     throw error;
-  } finally {
-    await Post.deleteQuery().delete();
-    await User.deleteQuery().delete();
-    await sql.closeConnection();
   }
 });
 
 test("Delete records within a transaction", async () => {
-  const sql = await SqlDataSource.connect({
-    type: "mysql",
-    database: "test",
-    username: "root",
-    password: "root",
-    host: "127.0.0.1",
-    port: 3306,
-  });
-  await Post.deleteQuery().delete();
-  await User.deleteQuery().delete();
-
   const trx = await sql.startTransaction();
 
   try {
@@ -219,9 +177,5 @@ test("Delete records within a transaction", async () => {
   } catch (error) {
     await trx.rollback();
     throw error;
-  } finally {
-    await Post.deleteQuery().delete();
-    await User.deleteQuery().delete();
-    await sql.closeConnection();
   }
 });

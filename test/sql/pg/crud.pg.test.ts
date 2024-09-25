@@ -318,7 +318,6 @@ test("massive delete", async () => {
   });
 
   const users = await User.deleteQuery().delete();
-  console.log(users);
   expect(users[0].name).toBe("Dave");
   expect(await User.query().getCount()).toBe(0);
 });

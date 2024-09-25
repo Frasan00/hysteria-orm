@@ -164,7 +164,7 @@ export class MysqlModelManager<
    * Save a new model instance to the database.
    *
    * @param {Model} model - Model instance to be saved.
-   * @param {MysqlTransaction} trx - MysqlTransaction to be used on the save operation.
+   * @param {TransactionType} trx - TransactionType to be used on the save operation.
    * @returns Promise resolving to the saved model or null if saving fails.
    */
   public async create(
@@ -206,7 +206,7 @@ export class MysqlModelManager<
    * Create multiple model instances in the database.
    *
    * @param {Model} model - Model instance to be saved.
-   * @param {MysqlTransaction} trx - MysqlTransaction to be used on the save operation.
+   * @param {TransactionType} trx - TransactionType to be used on the save operation.
    * @returns Promise resolving to an array of saved models or null if saving fails.
    */
   public async massiveCreate(
@@ -257,7 +257,7 @@ export class MysqlModelManager<
   /**
    * Update an existing model instance in the database.
    * @param {Model} model - Model instance to be updated.
-   * @param {MysqlTransaction} trx - MysqlTransaction to be used on the update operation.
+   * @param {TransactionType} trx - TransactionType to be used on the update operation.
    * @returns Promise resolving to the updated model or null if updating fails.
    */
   public async updateRecord(
@@ -278,7 +278,7 @@ export class MysqlModelManager<
         this.model,
         this.sqlDataSource.getDbType(),
       );
-      await trx.queryUpdate<T>(query, params);
+      await trx.queryUpdate(query, params);
       if (!this.model.primaryKey) {
         return null;
       }
@@ -317,7 +317,7 @@ export class MysqlModelManager<
    * @description Delete a record from the database from the given model.
    *
    * @param {Model} model - Model to delete.
-   * @param {MysqlTransaction} trx - MysqlTransaction to be used on the delete operation.
+   * @param {TransactionType} trx - TransactionType to be used on the delete operation.
    * @returns Promise resolving to the deleted model or null if deleting fails.
    */
   public async deleteRecord(

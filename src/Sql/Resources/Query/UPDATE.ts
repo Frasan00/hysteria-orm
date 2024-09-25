@@ -43,8 +43,8 @@ const updateTemplate = (
           throw new Error("Unsupported database type");
       }
 
-      let query = `UPDATE ${table}
-SET ${setClause}
+      let query = `UPDATE ${table} 
+SET ${setClause} 
 WHERE ${primaryKey} = ${
         dbType !== "postgres" ? "?" : `$${columns.length + 1}`
       };`;

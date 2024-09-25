@@ -7,6 +7,7 @@ import { SqlDataSource } from "../SqlDatasource";
 import { ModelUpdateQueryBuilder } from "../QueryBuilder/UpdateQueryBuilder";
 import { SQLiteTransaction } from "./SQLiteTransaction";
 import sqlite3 from "sqlite3";
+import SqlModelManagerUtils from "../Models/ModelManager/ModelManagerUtils";
 
 export class SQLiteUpdateQueryBuilder<
   T extends Model,
@@ -15,6 +16,7 @@ export class SQLiteUpdateQueryBuilder<
   protected joinQuery = "";
   protected updateTemplate: ReturnType<typeof updateTemplate>;
   protected isNestedCondition = false;
+  protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
 
   /**
    * @description Constructs a MysqlQueryBuilder instance.
@@ -31,6 +33,7 @@ export class SQLiteUpdateQueryBuilder<
     logs: boolean,
     isNestedCondition = false,
     sqlDataSource: SqlDataSource,
+    sqlModelManagerUtils: SqlModelManagerUtils<T>,
   ) {
     super(model, table, logs, false, sqlDataSource);
     this.sqlConnection = sqlLiteConnection;
@@ -40,6 +43,7 @@ export class SQLiteUpdateQueryBuilder<
     );
     this.joinQuery = "";
     this.isNestedCondition = isNestedCondition;
+    this.sqlModelManagerUtils = sqlModelManagerUtils;
   }
 
   /**
@@ -139,6 +143,7 @@ export class SQLiteUpdateQueryBuilder<
       this.logs,
       true,
       this.sqlDataSource,
+      this.sqlModelManagerUtils,
     );
     cb(queryBuilder as unknown as SQLiteUpdateQueryBuilder<T>);
 
@@ -177,6 +182,7 @@ export class SQLiteUpdateQueryBuilder<
       this.logs,
       true,
       this.sqlDataSource,
+      this.sqlModelManagerUtils,
     );
     cb(nestedBuilder as unknown as SQLiteUpdateQueryBuilder<T>);
 
@@ -218,6 +224,7 @@ export class SQLiteUpdateQueryBuilder<
       this.logs,
       true,
       this.sqlDataSource,
+      this.sqlModelManagerUtils,
     );
     cb(nestedBuilder as unknown as SQLiteUpdateQueryBuilder<T>);
 

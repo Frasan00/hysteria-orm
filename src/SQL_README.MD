@@ -105,6 +105,13 @@ const mysqlConfig: DataSourceInput = {
     logs: true, // query-logs (optional) - default: false
 }
 
+// For sqlite it's only needed the DB_DATABASE env that should be yor DATABASE.db file
+const mysqlConfig: DataSourceInput = {
+    type: 'sqlite',
+    database: DATABASE,
+    logs: true, // query-logs (optional) - default: false
+}
+
 // Config can be omitted, in that case envs will be used to enstablish the connection 
 const sql = await SqlDataSource.connect(mysqlConfig, () => console.log("Connected to the database"));
 ```
@@ -427,7 +434,8 @@ const model: User = await User.query().addDynamicColumns(["getTest"]).one();
 ```typescript
 import { User } from "./User";
 
-const count = await User.query().getCount(); // number
+// You can specify if ignore hooks like beforeFetch
+const count = await User.query().getCount({ ignoreHooks: false }); // number
 const sum = await User.query().getSum("id"); // number
 ```
 

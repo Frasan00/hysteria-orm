@@ -8,13 +8,14 @@ import {
 } from "../Models/ModelManager/ModelManagerTypes";
 import { log, queryError } from "../../Logger";
 import { AbstractModelManager } from "../Models/ModelManager/AbstractModelManager";
-import { PostgresUpdateQueryBuilder } from "../Postgres/PostgresUpdateQueryBuilder";
 import { SqlDataSource } from "../SqlDatasource";
 import SqlModelManagerUtils from "../Models/ModelManager/ModelManagerUtils";
 import sqlite3 from "sqlite3";
 import { SQLiteQueryBuilder } from "./SQLiteQueryBuilder";
 import { SQLiteUpdateQueryBuilder } from "./SQLiteUpdateQueryBuilder";
 import { SQLiteDeleteQueryBuilder } from "./SQLiteDeleteQueryBuilder";
+import selectTemplate from "../Resources/Query/SELECT";
+import { parseDatabaseDataIntoModelResponse } from "../serializer";
 
 export class SQLiteModelManager<
   T extends Model,
@@ -189,7 +190,10 @@ export class SQLiteModelManager<
       );
 
       log(query, this.logs, params);
-      return await this.promisifyQuery<T>(query, params);
+      return (await this.promisifyQuery<T>(query, params, {
+        isCreate: true,
+        models: model as T,
+      })) as T;
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -228,7 +232,10 @@ export class SQLiteModelManager<
         this.sqlDataSource.getDbType(),
       );
       log(query, this.logs, params);
-      return await this.promisifyQuery<T[]>(query, params);
+      return (await this.promisifyQuery<T[]>(query, params, {
+        isMassiveCreate: true,
+        models: models as T[],
+      })) as T[];
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -259,6 +266,7 @@ export class SQLiteModelManager<
         this.model,
         this.sqlDataSource.getDbType(),
       );
+
       await trx.queryUpdate<T>(query, params);
       if (!this.model.primaryKey) {
         return null;
@@ -275,11 +283,17 @@ export class SQLiteModelManager<
         this.model,
         this.sqlDataSource.getDbType(),
       );
+
       log(updateQuery.query, this.logs, updateQuery.params);
-      return await this.promisifyQuery<T>(
+      (await this.promisifyQuery<T>(
         updateQuery.query,
         updateQuery.params,
-      );
+      )) as T;
+
+      const selectQuery = selectTemplate("sqlite", this.model).selectAll;
+      return (await this.promisifyQuery<T>(selectQuery, [
+        model[this.model.primaryKey as keyof T],
+      ])) as T;
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -317,7 +331,11 @@ export class SQLiteModelManager<
       }
 
       log(query, this.logs, params);
-      return await this.promisifyQuery<T>(query, params);
+      (await this.promisifyQuery<T>(query, params)) as T;
+      return (await parseDatabaseDataIntoModelResponse(
+        [model],
+        this.model,
+      )) as T;
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -343,7 +361,7 @@ export class SQLiteModelManager<
   /**
    * @description Returns an update query builder.
    */
-  public update(): SQLiteUpdateQueryBuilder<T> | PostgresUpdateQueryBuilder<T> {
+  public update(): SQLiteUpdateQueryBuilder<T> {
     return new SQLiteUpdateQueryBuilder<T>(
       this.model,
       this.model.table,
@@ -351,6 +369,7 @@ export class SQLiteModelManager<
       this.logs,
       false,
       this.sqlDataSource,
+      this.sqlModelManagerUtils,
     );
   }
 
@@ -365,16 +384,101 @@ export class SQLiteModelManager<
       this.logs,
       false,
       this.sqlDataSource,
+      this.sqlModelManagerUtils,
     );
   }
 
-  private promisifyQuery<T>(query: string, params: any): Promise<T> {
+  private promisifyQuery<T>(
+    query: string,
+    params: any,
+    options: {
+      isCreate?: boolean;
+      isMassiveCreate?: boolean;
+      models?: T | T[];
+    } = {
+      isCreate: false,
+      isMassiveCreate: false,
+      models: [],
+    },
+  ): Promise<T | T[]> {
+    if (options.isCreate || options.isMassiveCreate) {
+      if (options.isCreate) {
+        const table = this.model.table;
+        const sqLiteConnection = this.sqLiteConnection;
+        return new Promise<T>((resolve, reject) => {
+          this.sqLiteConnection.run(
+            query,
+            params,
+            function (this: any, err: any) {
+              if (err) {
+                return reject(err);
+              }
+
+              const lastID = this.lastID;
+              const selectQuery = `SELECT * FROM ${table} WHERE id = ?`;
+              sqLiteConnection.get(
+                selectQuery,
+                [lastID],
+                (err: any, row: T) => {
+                  if (err) {
+                    return reject(err);
+                  }
+
+                  resolve(row as T);
+                },
+              );
+            },
+          );
+        });
+      }
+
+      if (!Array.isArray(options.models)) {
+        throw new Error(
+          "Models should be an array when massive creating on sqlite",
+        );
+      }
+
+      const models = options.models as T[];
+      const table = this.model.table;
+      const finalResult: T[] = [];
+      const sqLiteConnection = this.sqLiteConnection;
+      return new Promise<T[]>((resolve, reject) => {
+        models.forEach((model) => {
+          const { query, params } = this.sqlModelManagerUtils.parseInsert(
+            model as any,
+            this.model,
+            this.sqlDataSource.getDbType(),
+          );
+
+          this.sqLiteConnection.run(query, params, function (err: any) {
+            if (err) {
+              return reject(err);
+            }
+
+            const lastID = this.lastID;
+            const selectQuery = `SELECT * FROM ${table} WHERE id = ?`;
+            sqLiteConnection.get(selectQuery, [lastID], (err: any, row: T) => {
+              if (err) {
+                return reject(err);
+              }
+
+              finalResult.push(row as T);
+              if (finalResult.length === models.length) {
+                resolve(finalResult);
+              }
+            });
+          });
+        });
+      });
+    }
+
     return new Promise<T>((resolve, reject) => {
-      this.sqLiteConnection.get<T>(query, params, (err, result) => {
+      this.sqLiteConnection.all<T>(query, params, (err, rows) => {
         if (err) {
-          reject(err);
+          return reject(err);
         }
-        resolve(result);
+
+        resolve(rows as T);
       });
     });
   }
