@@ -111,6 +111,7 @@ test("Join users and posts", async () => {
     .select("posts.*", "users.email AS superUserEmail")
     .join("posts", "users.id", "posts.userId")
     .where("users.id", user.id)
+    .groupBy("posts.id", "users.id")
     .many();
 
   expect(joinedUsersAndPosts).not.toBeNull();

@@ -307,6 +307,9 @@ test("Multiple update", async () => {
   expect(models.length).toBe(2);
   const users = await User.query().many();
   expect(users.length).toBe(2);
+
+  const UserWithManualSum = await User.query().select("SUM(id) as total").one();
+  expect(+UserWithManualSum?.extraColumns.total).toBeGreaterThanOrEqual(0);
 });
 
 test("massive delete", async () => {

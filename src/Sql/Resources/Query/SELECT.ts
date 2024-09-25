@@ -127,19 +127,43 @@ const selectTemplate = (
         convertCase(column, typeofModel.databaseCaseConvention),
       )}) FROM ${table} `,
     orderBy: (columns: string[], order: "ASC" | "DESC" = "ASC") => {
-      columns = columns.map((column) =>
-        escapeIdentifier(
-          convertCase(column, typeofModel.databaseCaseConvention),
-        ),
-      );
+      columns = columns.map((column) => {
+        let tableName = "";
+        let columnName = column;
+
+        if (column.includes(".")) {
+          [tableName, columnName] = column.split(".");
+        }
+
+        const processedColumnName = escapeIdentifier(
+          convertCase(columnName, typeofModel.databaseCaseConvention),
+        );
+
+        return tableName
+          ? `${tableName}.${processedColumnName}`
+          : processedColumnName;
+      });
+
       return ` ORDER BY ${columns.join(", ")} ${order}`;
     },
     groupBy: (...columns: string[]) => {
-      columns = columns.map((column) =>
-        escapeIdentifier(
-          convertCase(column, typeofModel.databaseCaseConvention),
-        ),
-      );
+      columns = columns.map((column) => {
+        let tableName = "";
+        let columnName = column;
+
+        if (column.includes(".")) {
+          [tableName, columnName] = column.split(".");
+        }
+
+        const processedColumnName = escapeIdentifier(
+          convertCase(columnName, typeofModel.databaseCaseConvention),
+        );
+
+        return tableName
+          ? `${tableName}.${processedColumnName}`
+          : processedColumnName;
+      });
+
       return ` GROUP BY ${columns.join(", ")}`;
     },
     limit: (limit: number) => ` LIMIT ${limit}`,
