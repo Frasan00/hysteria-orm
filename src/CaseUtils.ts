@@ -10,11 +10,19 @@ function camelToSnakeCase(camelCase: any) {
     return camelCase;
   }
 
+  if (camelCase === camelCase.toLowerCase()) {
+    return camelCase;
+  }
+
   return camelCase.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
 }
 
 function fromSnakeToCamelCase(snake: any) {
   if (typeof snake !== "string" || !snake) {
+    return snake;
+  }
+
+  if (snake === snake.toUpperCase()) {
     return snake;
   }
 

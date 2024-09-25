@@ -14,7 +14,7 @@ import { Relation } from "./Sql/Models/Relations/Relation";
 import { ModelQueryBuilder } from "./Sql/QueryBuilder/QueryBuilder";
 import { SqlDataSource } from "./Sql/SqlDatasource";
 import { getPrimaryKey } from "./Sql/Models/ModelDecorators";
-import { CaseConvention } from "./CaseUtils";
+import { CaseConvention, convertCase } from "./CaseUtils";
 import { ModelDeleteQueryBuilder } from "./Sql/QueryBuilder/DeleteQueryBuilder";
 import { ModelUpdateQueryBuilder } from "./Sql/QueryBuilder/UpdateQueryBuilder";
 import { RedisOptions } from "ioredis";
@@ -23,23 +23,23 @@ import {
   RedisGiveable,
   RedisStorable,
 } from "./NoSql/Redis/RedisDataSource";
-import { User } from "../test/sql/Models/User";
 import { DateTime } from "luxon";
+import { User } from "../test/sql/Models/User";
 
-(async () => {
-  const sql = await SqlDataSource.connect({
-    type: "sqlite",
-    database: "sqlite.db",
-  });
-  const user = (await User.query().one()) as User;
-  user.isActive = 0 as any;
-  const users = await User.deleteQuery().softDelete({
-    column: "deletedAt",
-    value: DateTime.local().toISODate(),
-  });
-  console.log(users);
-  await sql.closeConnection();
-})();
+// (async () => {
+//   const sql = await SqlDataSource.connect({
+//     type: "sqlite",
+//     database: "sqlite.db",
+//   });
+//   const user = (await User.query().one()) as User;
+//   user.isActive = 0 as any;
+//   const users = await User.deleteQuery().softDelete({
+//     column: "deletedAt",
+//     value: DateTime.local().toISODate(),
+//   });
+//   console.log(users);
+//   await sql.closeConnection();
+// })();
 
 export default {
   // Sql

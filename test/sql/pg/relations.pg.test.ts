@@ -108,7 +108,7 @@ test("Join users and posts", async () => {
   }
 
   const joinedUsersAndPosts = await User.query()
-    .select("*")
+    .select("posts.*", "users.email AS superUserEmail")
     .join("posts", "users.id", "posts.userId")
     .where("users.id", user.id)
     .many();
@@ -116,6 +116,9 @@ test("Join users and posts", async () => {
   expect(joinedUsersAndPosts).not.toBeNull();
   expect(joinedUsersAndPosts.length).toBe(2);
   expect(joinedUsersAndPosts[0].extraColumns.title).toBe("Post 1");
+  expect(joinedUsersAndPosts[0].extraColumns.superUserEmail).toBe(
+    "bob-test@gmail.com",
+  );
 
   const leftJoinedUsersAndPosts = await User.query()
     .select("*")

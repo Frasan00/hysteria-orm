@@ -75,16 +75,42 @@ const selectTemplate = (
     selectById: (id: string) => `SELECT * FROM ${table} WHERE id = ${id}`,
     selectColumns: (...columns: string[]) => {
       columns = columns.map((column) => {
-        if (
-          commonSelectMethods.includes(column.toUpperCase()) ||
-          column.includes("(")
-        ) {
-          return column;
+        const columnCase = typeofModel.databaseCaseConvention;
+        let tableName = "";
+        let columnName = column;
+        let alias = "";
+
+        if (column.toUpperCase().includes(" AS ")) {
+          [columnName, alias] = column.split(/ AS /i);
         }
-        return escapeIdentifier(
-          convertCase(column, typeofModel.databaseCaseConvention),
-        );
+        alias = convertCase(alias, columnCase);
+
+        if (columnName.includes(".")) {
+          [tableName, columnName] = columnName.split(".");
+        }
+
+        if (
+          commonSelectMethods.includes(columnName.toUpperCase()) ||
+          columnName.includes("(")
+        ) {
+          return alias ? `${columnName} AS ${alias}` : columnName;
+        }
+
+        let finalColumn = columnName;
+        if (!alias) {
+          const processedColumnName = escapeIdentifier(
+            convertCase(columnName, columnCase),
+          );
+          finalColumn = tableName
+            ? `${tableName}.${processedColumnName}`
+            : processedColumnName;
+        } else if (tableName) {
+          finalColumn = `${tableName}.${columnName}`;
+        }
+
+        return alias ? `${finalColumn} AS ${alias}` : finalColumn;
       });
+
       return `SELECT ${columns.join(", ")} FROM ${table} `;
     },
     selectCount: `SELECT COUNT(*) FROM ${table} `,
