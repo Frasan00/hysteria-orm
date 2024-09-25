@@ -112,21 +112,24 @@ export class MysqlTransaction {
         return [];
       }
 
-      const afterUpdateDataQuery = `SELECT * FROM ${table} ${joinClause} WHERE ${primaryKey} IN (${Array(
-        modelIds.length,
-      )
-        .fill("?")
-        .join(",")})`;
+      const afterUpdateDataQuery = modelIds.length
+        ? `SELECT * FROM ${table} ${joinClause} WHERE ${primaryKey} IN (${Array(
+            modelIds.length,
+          )
+            .fill("?")
+            .join(",")}) `
+        : `SELECT * FROM ${table}`;
 
       const updatedData = await this.mysql.query<mysql.RowDataPacket[]>(
         afterUpdateDataQuery,
-        [modelIds],
+        modelIds,
       );
 
-      return await (parseDatabaseDataIntoModelResponse(
+      const data = await (parseDatabaseDataIntoModelResponse(
         updatedData[0] as T[],
         typeofModel,
       ) as Promise<T[]>);
+      return Array.isArray(data) ? data : [data];
     } catch (error) {
       queryError(error);
       throw new Error(

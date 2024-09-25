@@ -71,7 +71,13 @@ export class SQLiteUpdateQueryBuilder<
 
     params.push(...this.whereParams);
     if (trx) {
-      return await trx.massiveUpdateQuery(query, params);
+      return await trx.massiveUpdateQuery(query, params, {
+        typeofModel: this.model,
+        modelIds: await this.getBeforeUpdateQueryIds(),
+        primaryKey: this.model.primaryKey as string,
+        table: this.table,
+        joinClause: this.joinQuery,
+      });
     }
 
     log(query, this.logs, params);

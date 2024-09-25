@@ -588,8 +588,14 @@ declare class SQLiteTransaction {
     constructor(sqLite: sqlite3.Database, logs: boolean);
     queryInsert<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T>;
     massiveInsertQuery<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T[]>;
-    massiveUpdateQuery<T extends Model>(query: string, params: any[]): Promise<T[]>;
-    massiveDeleteQuery<T extends Model>(query: string, params: any[]): Promise<T[]>;
+    massiveUpdateQuery<T extends Model>(query: string, params: any[], selectQueryDetails: {
+        typeofModel: typeof Model;
+        modelIds: (string | number)[];
+        primaryKey: string;
+        table: string;
+        joinClause: string;
+    }): Promise<T[]>;
+    massiveDeleteQuery<T extends Model>(query: string, params: any[], models: T[], typeofModel: typeof Model): Promise<T[]>;
     queryUpdate<T extends Model>(query: string, params?: any[]): Promise<T[]>;
     queryDelete<T extends Model>(query: string, params?: any[]): Promise<T[]>;
     /**

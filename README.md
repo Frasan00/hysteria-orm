@@ -8,7 +8,7 @@
 1) Mysql
 2) MariaDB
 3) Postgres
-4) sqlite (not yet stable)
+4) sqlite
 
 ## NoSQl
 - [Documentation](./src/NoSql/NOSQL_README.MD)

@@ -70,7 +70,12 @@ export class SQLiteDeleteQueryBuilder<
     );
     console.log(preDeleteModels);
     if (trx) {
-      return await trx.massiveDeleteQuery(query, this.whereParams);
+      return await trx.massiveDeleteQuery(
+        query,
+        this.whereParams,
+        preDeleteModels,
+        this.model,
+      );
     }
 
     log(query, this.logs, this.whereParams);
@@ -125,7 +130,13 @@ export class SQLiteDeleteQueryBuilder<
     params = [...params, ...this.whereParams];
 
     if (trx) {
-      return await trx.massiveUpdateQuery(query, params);
+      return await trx.massiveUpdateQuery(query, params, {
+        typeofModel: this.model,
+        modelIds,
+        primaryKey: this.model.primaryKey as string,
+        table: this.table,
+        joinClause: this.joinQuery,
+      });
     }
 
     log(query, this.logs, params);
