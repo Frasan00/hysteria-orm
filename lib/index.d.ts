@@ -907,6 +907,10 @@ declare const updateTemplate: (dbType: SqlDataSourceType$1, typeofModel: typeof 
     };
 };
 
+type WithDataOptions = {
+    ignoreBeforeUpdateHook?: boolean;
+    trx?: TransactionType;
+};
 declare abstract class ModelUpdateQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
     protected abstract sqlConnection: SqlConnectionType;
     protected abstract joinQuery: string;
@@ -918,12 +922,12 @@ declare abstract class ModelUpdateQueryBuilder<T extends Model> extends WhereQue
      * @param trx
      * @returns The number of affected rows.
      */
-    abstract withData(data: Partial<T>, trx?: TransactionType): Promise<number>;
+    abstract withData(data: Partial<T>, options?: WithDataOptions): Promise<number>;
     abstract join(relationTable: string, primaryColumn: string, foreignColumn: string): ModelUpdateQueryBuilder<T>;
     abstract leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): ModelUpdateQueryBuilder<T>;
-    abstract whereBuilder(cb: (queryBuilder: ModelUpdateQueryBuilder<T>) => void): this;
-    abstract orWhereBuilder(cb: (queryBuilder: ModelUpdateQueryBuilder<T>) => void): this;
-    abstract andWhereBuilder(cb: (queryBuilder: ModelUpdateQueryBuilder<T>) => void): this;
+    abstract whereBuilder(cb: (queryBuilder: ModelUpdateQueryBuilder<T>) => void): ModelUpdateQueryBuilder<T>;
+    abstract orWhereBuilder(cb: (queryBuilder: ModelUpdateQueryBuilder<T>) => void): ModelUpdateQueryBuilder<T>;
+    abstract andWhereBuilder(cb: (queryBuilder: ModelUpdateQueryBuilder<T>) => void): ModelUpdateQueryBuilder<T>;
 }
 
 declare const deleteTemplate: (table: string, dbType: SqlDataSourceType$1) => {
@@ -934,6 +938,16 @@ declare const deleteTemplate: (table: string, dbType: SqlDataSourceType$1) => {
     massiveDelete: (whereClause: string, joinClause?: string) => string;
 };
 
+type DeleteOptions = {
+    ignoreBeforeDeleteHook?: boolean;
+    trx?: TransactionType;
+};
+type SoftDeleteOptions<T> = {
+    column?: SelectableType<T>;
+    value?: string | number | boolean;
+    ignoreBeforeDeleteHook?: boolean;
+    trx?: TransactionType;
+};
 declare abstract class ModelDeleteQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
     protected abstract sqlConnection: SqlConnectionType;
     protected abstract joinQuery: string;
@@ -945,20 +959,17 @@ declare abstract class ModelDeleteQueryBuilder<T extends Model> extends WhereQue
      * @param options - The options for the soft delete, including the column to soft delete, the value to set the column to, and the transaction to run the query in.
      * @default column - 'deletedAt'
      * @default value - The current date and time.
+     * @default ignoreBeforeDeleteHook - false
      * @default trx - undefined
      * @returns The number of affected rows.
      */
-    abstract softDelete(options?: {
-        column?: SelectableType<T>;
-        value?: string | number | boolean;
-        trx?: TransactionType;
-    }): Promise<number>;
+    abstract softDelete(options?: SoftDeleteOptions<T>): Promise<number>;
     /**
      * @description Deletes Records from the database for the current query.
      * @param trx - The transaction to run the query in.
      * @returns The number of affected rows.
      */
-    abstract delete(trx?: TransactionType): Promise<number>;
+    abstract delete(options?: DeleteOptions): Promise<number>;
     abstract join(relationTable: string, primaryColumn: string, foreignColumn: string): ModelDeleteQueryBuilder<T>;
     abstract leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): ModelDeleteQueryBuilder<T>;
     abstract whereBuilder(cb: (queryBuilder: ModelDeleteQueryBuilder<T>) => void): this;
@@ -1050,7 +1061,7 @@ declare class MysqlUpdateQueryBuilder<T extends Model> extends ModelUpdateQueryB
      * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
      */
     constructor(model: typeof Model, table: string, mysqlConnection: Connection, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
-    withData(data: Partial<T>, trx?: MysqlTransaction): Promise<number>;
+    withData(data: Partial<T>, options?: WithDataOptions): Promise<number>;
     /**
      *
      * @param relationTable - The name of the related table.
@@ -1097,12 +1108,8 @@ declare class MysqlDeleteQueryBuilder<T extends Model> extends ModelDeleteQueryB
      * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
      */
     constructor(model: typeof Model, table: string, mysql: Connection, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
-    softDelete(options?: {
-        column?: SelectableType<T>;
-        value?: string | number | boolean;
-        trx?: MysqlTransaction;
-    }): Promise<number>;
-    delete(trx?: MysqlTransaction): Promise<number>;
+    softDelete(options?: SoftDeleteOptions<T>): Promise<number>;
+    delete(options?: DeleteOptions): Promise<number>;
     /**
      *
      * @param relationTable - The name of the related table.
@@ -1343,7 +1350,7 @@ declare class PostgresUpdateQueryBuilder<T extends Model> extends ModelUpdateQue
      * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
      */
     constructor(model: typeof Model, table: string, pgClient: Client, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
-    withData(data: Partial<T>, trx?: PostgresTransaction): Promise<number>;
+    withData(data: Partial<T>, options?: WithDataOptions): Promise<number>;
     join(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresUpdateQueryBuilder<T>;
     leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresUpdateQueryBuilder<T>;
     /**
@@ -1378,12 +1385,8 @@ declare class PostgresDeleteQueryBuilder<T extends Model> extends ModelDeleteQue
      * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
      */
     constructor(model: typeof Model, table: string, pgClient: Client, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
-    delete(trx?: PostgresTransaction): Promise<number>;
-    softDelete(options?: {
-        column?: SelectableType<T>;
-        value?: string | number | boolean;
-        trx?: PostgresTransaction;
-    }): Promise<number>;
+    delete(options?: DeleteOptions): Promise<number>;
+    softDelete(options?: SoftDeleteOptions<T>): Promise<number>;
     /**
      *
      * @param relationTable - The name of the related table.
@@ -1603,7 +1606,7 @@ declare class SQLiteUpdateQueryBuilder<T extends Model> extends ModelUpdateQuery
      * @param trx - The transaction to run the query in.
      * @returns The updated records.
      */
-    withData(data: Partial<T>, trx?: SQLiteTransaction): Promise<number>;
+    withData(data: Partial<T>, options?: WithDataOptions): Promise<number>;
     /**
      *
      * @param relationTable - The name of the related table.
@@ -1652,25 +1655,8 @@ declare class SQLiteDeleteQueryBuilder<T extends Model> extends ModelDeleteQuery
      * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
      */
     constructor(model: typeof Model, table: string, sqlConnection: sqlite3.Database, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource, sqlModelManagerUtils: SqlModelManagerUtils<T>);
-    /**
-     * @description Deletes Records from the database.
-     * @param data - The data to update.
-     * @param trx - The transaction to run the query in.
-     * @returns The updated records.
-     */
-    delete(trx?: SQLiteTransaction): Promise<number>;
-    /**
-     * @description Soft Deletes Records from the database.
-     * @param column - The column to soft delete. Default is 'deletedAt'.
-     * @param value - The value to set the column to. Default is the current date and time.
-     * @param trx - The transaction to run the query in.
-     * @returns The updated records.
-     */
-    softDelete(options?: {
-        column?: SelectableType<T>;
-        value?: string | number | boolean;
-        trx?: SQLiteTransaction;
-    }): Promise<number>;
+    delete(options?: DeleteOptions): Promise<number>;
+    softDelete(options?: SoftDeleteOptions<T>): Promise<number>;
     /**
      *
      * @param relationTable - The name of the related table.
@@ -2452,17 +2438,17 @@ declare abstract class Model {
      * @param data
      * @returns {T}
      */
-    static beforeCreate(data: Model): Model;
+    static beforeCreate(data: any): Model[];
     /**
-     * @description Adds a beforeUpdate clause to the model, adding the ability to modify the data before updating the data
+     * @description Adds a beforeUpdate clause to the model, adding the ability to modify the query before updating the data
      * @param data
      */
-    static beforeUpdate(queryBuilder: ModelUpdateQueryBuilder<any>): ModelUpdateQueryBuilder<any>;
+    static beforeUpdate(queryBuilder: ModelUpdateQueryBuilder<any>): void;
     /**
-     * @description Adds a beforeDelete clause to the model, adding the ability to modify the data before deleting the data
+     * @description Adds a beforeDelete clause to the model, adding the ability to modify the query before deleting the data
      * @param data
      */
-    static beforeDelete(queryBuilder: ModelDeleteQueryBuilder<any>): ModelDeleteQueryBuilder<any>;
+    static beforeDelete(queryBuilder: ModelDeleteQueryBuilder<any>): void;
     /**
      * @description Adds a afterFetch clause to the model, adding the ability to modify the data after fetching the data
      * @param data
@@ -2673,4 +2659,4 @@ declare const _default: {
     Redis: typeof RedisDataSource;
 };
 
-export { type CaseConvention, type DataSourceInput, Migration, Model, ModelDeleteQueryBuilder, type ModelQueryBuilder, ModelUpdateQueryBuilder, RedisDataSource as Redis, type RedisGiveable, type RedisStorable, Relation, SqlDataSource, belongsTo, column, _default as default, getModelColumns, getPrimaryKey, getRelations, hasMany, hasOne };
+export { type CaseConvention, type DataSourceInput, Migration, Model, ModelDeleteQueryBuilder, type ModelQueryBuilder, ModelUpdateQueryBuilder, type PaginatedData, type PaginationMetadata, RedisDataSource as Redis, type RedisGiveable, type RedisStorable, Relation, SqlDataSource, belongsTo, column, _default as default, getModelColumns, getPrimaryKey, getRelations, hasMany, hasOne };

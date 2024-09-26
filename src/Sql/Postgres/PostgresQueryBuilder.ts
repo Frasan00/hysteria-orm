@@ -289,7 +289,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
       primaryColumn as string,
       foreignColumn as string,
     );
-    this.joinQuery += join.innerJoin();
+    this.joinQuery += join.leftJoin();
     return this;
   }
 

@@ -14,7 +14,8 @@ import { Relation } from "./Sql/Models/Relations/Relation";
 import { ModelQueryBuilder } from "./Sql/QueryBuilder/QueryBuilder";
 import { SqlDataSource } from "./Sql/SqlDatasource";
 import { getPrimaryKey } from "./Sql/Models/ModelDecorators";
-import { CaseConvention, convertCase } from "./CaseUtils";
+import { CaseConvention } from "./CaseUtils";
+import { PaginatedData, PaginationMetadata } from "./Sql/pagination";
 import { ModelDeleteQueryBuilder } from "./Sql/QueryBuilder/DeleteQueryBuilder";
 import { ModelUpdateQueryBuilder } from "./Sql/QueryBuilder/UpdateQueryBuilder";
 import { RedisOptions } from "ioredis";
@@ -73,6 +74,8 @@ export {
   ModelUpdateQueryBuilder,
   Migration,
   CaseConvention,
+  PaginatedData,
+  PaginationMetadata,
   getRelations,
   getModelColumns,
   getPrimaryKey,

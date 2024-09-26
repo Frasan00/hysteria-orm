@@ -369,28 +369,24 @@ export abstract class Model {
    * @param data
    * @returns {T}
    */
-  static beforeCreate(data: Model): Model {
+  static beforeCreate(data: any): Model[] {
     return data;
   }
 
   /**
-   * @description Adds a beforeUpdate clause to the model, adding the ability to modify the data before updating the data
+   * @description Adds a beforeUpdate clause to the model, adding the ability to modify the query before updating the data
    * @param data
    */
-  static beforeUpdate(
-    queryBuilder: ModelUpdateQueryBuilder<any>,
-  ): ModelUpdateQueryBuilder<any> {
-    return queryBuilder;
+  static beforeUpdate(queryBuilder: ModelUpdateQueryBuilder<any>): void {
+    queryBuilder;
   }
 
   /**
-   * @description Adds a beforeDelete clause to the model, adding the ability to modify the data before deleting the data
+   * @description Adds a beforeDelete clause to the model, adding the ability to modify the query before deleting the data
    * @param data
    */
-  static beforeDelete(
-    queryBuilder: ModelDeleteQueryBuilder<any>,
-  ): ModelDeleteQueryBuilder<any> {
-    return queryBuilder;
+  static beforeDelete(queryBuilder: ModelDeleteQueryBuilder<any>): void {
+    queryBuilder;
   }
 
   /**

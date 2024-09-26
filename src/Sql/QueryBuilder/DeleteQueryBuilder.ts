@@ -7,8 +7,18 @@ import {
   TransactionType,
 } from "../Models/ModelManager/ModelManagerTypes";
 import { SqlConnectionType } from "../SqlDatasource";
-import mysql from "mysql2/promise";
-import { log } from "../../Logger";
+
+export type DeleteOptions = {
+  ignoreBeforeDeleteHook?: boolean;
+  trx?: TransactionType;
+};
+
+export type SoftDeleteOptions<T> = {
+  column?: SelectableType<T>;
+  value?: string | number | boolean;
+  ignoreBeforeDeleteHook?: boolean;
+  trx?: TransactionType;
+};
 
 export abstract class ModelDeleteQueryBuilder<
   T extends Model,
@@ -24,21 +34,18 @@ export abstract class ModelDeleteQueryBuilder<
    * @param options - The options for the soft delete, including the column to soft delete, the value to set the column to, and the transaction to run the query in.
    * @default column - 'deletedAt'
    * @default value - The current date and time.
+   * @default ignoreBeforeDeleteHook - false
    * @default trx - undefined
    * @returns The number of affected rows.
    */
-  public abstract softDelete(options?: {
-    column?: SelectableType<T>;
-    value?: string | number | boolean;
-    trx?: TransactionType;
-  }): Promise<number>;
+  public abstract softDelete(options?: SoftDeleteOptions<T>): Promise<number>;
 
   /**
    * @description Deletes Records from the database for the current query.
    * @param trx - The transaction to run the query in.
    * @returns The number of affected rows.
    */
-  public abstract delete(trx?: TransactionType): Promise<number>;
+  public abstract delete(options?: DeleteOptions): Promise<number>;
 
   public abstract join(
     relationTable: string,

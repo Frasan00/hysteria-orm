@@ -8,6 +8,8 @@ import {
 import { Model } from "../../../src/Sql/Models/Model";
 import { Post } from "./Post";
 import { ModelQueryBuilder } from "../../../src/Sql/QueryBuilder/QueryBuilder";
+import { ModelUpdateQueryBuilder } from "../../../src/Sql/QueryBuilder/UpdateQueryBuilder";
+import { ModelDeleteQueryBuilder } from "../../../src/Sql/QueryBuilder/DeleteQueryBuilder";
 
 export class User extends Model {
   static tableName: string = "users";
@@ -44,7 +46,7 @@ export class User extends Model {
   @hasOne(() => Post, "userId")
   declare post: Post;
 
-  static beforeFetch(queryBuilder: ModelQueryBuilder<User>) {
+  static beforeFetch(queryBuilder: ModelQueryBuilder<User>): void {
     queryBuilder.whereNull("deletedAt");
   }
 

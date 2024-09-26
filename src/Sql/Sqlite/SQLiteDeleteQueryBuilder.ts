@@ -4,11 +4,13 @@ import deleteTemplate from "../Resources/Query/DELETE";
 import joinTemplate from "../Resources/Query/JOIN";
 import { SqlDataSource } from "../SqlDatasource";
 import { DateTime } from "luxon";
-import { SelectableType } from "../Models/ModelManager/ModelManagerTypes";
 import updateTemplate from "../Resources/Query/UPDATE";
-import { ModelDeleteQueryBuilder } from "../QueryBuilder/DeleteQueryBuilder";
+import {
+  DeleteOptions,
+  ModelDeleteQueryBuilder,
+  SoftDeleteOptions,
+} from "../QueryBuilder/DeleteQueryBuilder";
 import sqlite3 from "sqlite3";
-import { SQLiteTransaction } from "./SQLiteTransaction";
 import SqlModelManagerUtils from "../Models/ModelManager/ModelManagerUtils";
 
 export class SQLiteDeleteQueryBuilder<
@@ -48,13 +50,12 @@ export class SQLiteDeleteQueryBuilder<
     this.sqlModelManagerUtils = sqlModelManagerUtils;
   }
 
-  /**
-   * @description Deletes Records from the database.
-   * @param data - The data to update.
-   * @param trx - The transaction to run the query in.
-   * @returns The updated records.
-   */
-  public async delete(trx?: SQLiteTransaction): Promise<number> {
+  public async delete(options: DeleteOptions = {}): Promise<number> {
+    const { trx, ignoreBeforeDeleteHook } = options || {};
+    if (!ignoreBeforeDeleteHook) {
+      this.model.beforeDelete(this);
+    }
+
     this.whereQuery = this.whereTemplate.convertPlaceHolderToValue(
       this.whereQuery,
     );
@@ -76,23 +77,17 @@ export class SQLiteDeleteQueryBuilder<
     }
   }
 
-  /**
-   * @description Soft Deletes Records from the database.
-   * @param column - The column to soft delete. Default is 'deletedAt'.
-   * @param value - The value to set the column to. Default is the current date and time.
-   * @param trx - The transaction to run the query in.
-   * @returns The updated records.
-   */
-  public async softDelete(options?: {
-    column?: SelectableType<T>;
-    value?: string | number | boolean;
-    trx?: SQLiteTransaction;
-  }): Promise<number> {
+  public async softDelete(options?: SoftDeleteOptions<T>): Promise<number> {
     const {
-      column = "deletedAt" as SelectableType<T>,
+      column = "deletedAt",
       value = DateTime.local().toISO(),
+      ignoreBeforeDeleteHook = false,
       trx,
     } = options || {};
+    if (!ignoreBeforeDeleteHook) {
+      this.model.beforeDelete(this);
+    }
+
     let { query, params } = this.updateTemplate.massiveUpdate(
       [column as string],
       [value],

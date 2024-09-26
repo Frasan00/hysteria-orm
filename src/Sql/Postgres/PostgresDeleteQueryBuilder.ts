@@ -1,15 +1,16 @@
 import { Model } from "../Models/Model";
 import { log, queryError } from "../../Logger";
-import { PostgresTransaction } from "./PostgresTransaction";
 import { Client } from "pg";
-import { parseDatabaseDataIntoModelResponse } from "../serializer";
 import deleteTemplate from "../Resources/Query/DELETE";
 import joinTemplate from "../Resources/Query/JOIN";
 import { SqlDataSource } from "../SqlDatasource";
 import { DateTime } from "luxon";
-import { SelectableType } from "../Models/ModelManager/ModelManagerTypes";
 import updateTemplate from "../Resources/Query/UPDATE";
-import { ModelDeleteQueryBuilder } from "../QueryBuilder/DeleteQueryBuilder";
+import {
+  DeleteOptions,
+  ModelDeleteQueryBuilder,
+  SoftDeleteOptions,
+} from "../QueryBuilder/DeleteQueryBuilder";
 
 export class PostgresDeleteQueryBuilder<
   T extends Model,
@@ -44,7 +45,12 @@ export class PostgresDeleteQueryBuilder<
     this.isNestedCondition = isNestedCondition;
   }
 
-  public async delete(trx?: PostgresTransaction): Promise<number> {
+  public async delete(options: DeleteOptions = {}): Promise<number> {
+    const { trx, ignoreBeforeDeleteHook } = options || {};
+    if (!ignoreBeforeDeleteHook) {
+      this.model.beforeDelete(this);
+    }
+
     this.whereQuery = this.whereTemplate.convertPlaceHolderToValue(
       this.whereQuery,
     );
@@ -71,16 +77,17 @@ export class PostgresDeleteQueryBuilder<
     }
   }
 
-  public async softDelete(options?: {
-    column?: SelectableType<T>;
-    value?: string | number | boolean;
-    trx?: PostgresTransaction;
-  }): Promise<number> {
+  public async softDelete(options?: SoftDeleteOptions<T>): Promise<number> {
     const {
-      column = "deletedAt" as SelectableType<T>,
+      column = "deletedAt",
       value = DateTime.local().toISO(),
+      ignoreBeforeDeleteHook = false,
       trx,
     } = options || {};
+    if (!ignoreBeforeDeleteHook) {
+      this.model.beforeDelete(this);
+    }
+
     let { query, params } = this.updateTemplate.massiveUpdate(
       [column as string],
       [value],

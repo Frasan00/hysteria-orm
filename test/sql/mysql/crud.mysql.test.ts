@@ -378,3 +378,38 @@ test("Ignore hooks", async () => {
   const userOne = await User.query().one({ ignoreHooks: ["beforeFetch"] });
   expect(userOne).not.toBeNull();
 });
+
+test("Very complex query", async () => {
+  await User.query()
+    .whereBuilder((builder) => {
+      builder.where("name", "Dave");
+      builder.where("email", "sdasd");
+      builder.orWhereBetween("createdAt", "2021-01-01", "2021-01-02");
+    })
+    .orWhereBuilder((builder) => {
+      builder.where("email", "sadasd");
+      builder.where("isActive", true);
+    })
+    .andWhereBuilder((builder) => {
+      builder.where("isActive", true);
+    })
+    .orWhere("signupSource", "email")
+    .addRelations(["posts"])
+    .andWhereIn("name", ["Dave", "John", "Alice"])
+    .addDynamicColumns(["getFirstUser"])
+    .where("name", "LIKE", "Dave")
+    .orWhere("email", "LIKE", "Dave")
+    .andWhere("is_active", true)
+    .orWhere("signup_source", "email")
+    .where("name", "LIKE", "Dave")
+    .orWhere("email", "LIKE", "Dave")
+    .andWhere("isActive", true)
+    .orWhere("signupSource", "email")
+    .where("name", "LIKE", "Dave")
+    .join("posts", "users.id", "posts.user_id")
+    .groupBy("users.id", "posts.id")
+    .orderBy(["deletedAt"], "ASC")
+    .limit(10)
+    .offset(0)
+    .one();
+});

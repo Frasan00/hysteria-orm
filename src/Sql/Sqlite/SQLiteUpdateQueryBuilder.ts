@@ -3,7 +3,10 @@ import { log, queryError } from "../../Logger";
 import updateTemplate from "../Resources/Query/UPDATE";
 import joinTemplate from "../Resources/Query/JOIN";
 import { SqlDataSource } from "../SqlDatasource";
-import { ModelUpdateQueryBuilder } from "../QueryBuilder/UpdateQueryBuilder";
+import {
+  ModelUpdateQueryBuilder,
+  WithDataOptions,
+} from "../QueryBuilder/UpdateQueryBuilder";
 import { SQLiteTransaction } from "./SQLiteTransaction";
 import sqlite3 from "sqlite3";
 import SqlModelManagerUtils from "../Models/ModelManager/ModelManagerUtils";
@@ -53,8 +56,13 @@ export class SQLiteUpdateQueryBuilder<
    */
   public async withData(
     data: Partial<T>,
-    trx?: SQLiteTransaction,
+    options?: WithDataOptions,
   ): Promise<number> {
+    const { trx, ignoreBeforeUpdateHook } = options || {};
+    if (!ignoreBeforeUpdateHook) {
+      this.model.beforeUpdate(this);
+    }
+
     const columns = Object.keys(data);
     const values = Object.values(data);
     this.whereQuery = this.whereTemplate.convertPlaceHolderToValue(

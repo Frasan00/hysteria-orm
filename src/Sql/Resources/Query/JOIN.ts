@@ -26,7 +26,7 @@ const joinTemplate = (
         typeofModel.databaseCaseConvention,
       );
 
-      return `\nINNER JOIN ${relatedTable} ON ${relatedTable}.${foreignColumnConverted} = ${table}.${primaryColumnConverted}`;
+      return `\nINNER JOIN ${relatedTable} ON ${relatedTable}.${foreignColumnConverted} = ${table}.${primaryColumnConverted} `;
     },
     leftJoin: () => {
       const foreignColumnConverted = convertCase(
@@ -38,7 +38,7 @@ const joinTemplate = (
         typeofModel.databaseCaseConvention,
       );
 
-      return `\nLEFT JOIN ${relatedTable} ON ${relatedTable}.${foreignColumnConverted} = ${table}.${primaryColumnConverted}`;
+      return `\nLEFT JOIN ${relatedTable} ON ${relatedTable}.${foreignColumnConverted} = ${table}.${primaryColumnConverted} `;
     },
   };
 };

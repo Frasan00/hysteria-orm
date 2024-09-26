@@ -3,8 +3,11 @@ import { WhereQueryBuilder } from "../QueryBuilder/WhereQueryBuilder";
 import updateTemplate from "../Resources/Query/UPDATE";
 import { TransactionType } from "../Models/ModelManager/ModelManagerTypes";
 import { SqlConnectionType } from "../SqlDatasource";
-import mysql from "mysql2/promise";
-import { log } from "../../Logger";
+
+export type WithDataOptions = {
+  ignoreBeforeUpdateHook?: boolean;
+  trx?: TransactionType;
+};
 
 export abstract class ModelUpdateQueryBuilder<
   T extends Model,
@@ -22,7 +25,7 @@ export abstract class ModelUpdateQueryBuilder<
    */
   public abstract withData(
     data: Partial<T>,
-    trx?: TransactionType,
+    options?: WithDataOptions,
   ): Promise<number>;
   public abstract join(
     relationTable: string,
@@ -36,11 +39,11 @@ export abstract class ModelUpdateQueryBuilder<
   ): ModelUpdateQueryBuilder<T>;
   public abstract whereBuilder(
     cb: (queryBuilder: ModelUpdateQueryBuilder<T>) => void,
-  ): this;
+  ): ModelUpdateQueryBuilder<T>;
   public abstract orWhereBuilder(
     cb: (queryBuilder: ModelUpdateQueryBuilder<T>) => void,
-  ): this;
+  ): ModelUpdateQueryBuilder<T>;
   public abstract andWhereBuilder(
     cb: (queryBuilder: ModelUpdateQueryBuilder<T>) => void,
-  ): this;
+  ): ModelUpdateQueryBuilder<T>;
 }

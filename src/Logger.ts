@@ -62,13 +62,6 @@ export function log(query: string, logs: boolean, params?: any[]) {
     });
   }
 
-  // Clean up the query string
-  query = query.replace(/\s{2,}/g, " ");
-  query = query.replace(/\n/g, "").trim();
-  if (!query.endsWith(";")) {
-    query += ";";
-  }
-
   logger.info("\n" + query);
 }
 

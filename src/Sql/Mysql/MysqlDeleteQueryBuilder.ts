@@ -1,14 +1,16 @@
 import { Model } from "../Models/Model";
 import { log, queryError } from "../../Logger";
-import { MysqlTransaction } from "./MysqlTransaction";
 import { Connection } from "mysql2/promise";
 import joinTemplate from "../Resources/Query/JOIN";
 import deleteTemplate from "../Resources/Query/DELETE";
 import { SqlDataSource } from "../SqlDatasource";
 import { DateTime } from "luxon";
 import updateTemplate from "../Resources/Query/UPDATE";
-import { SelectableType } from "../Models/ModelManager/ModelManagerTypes";
-import { ModelDeleteQueryBuilder } from "../QueryBuilder/DeleteQueryBuilder";
+import {
+  DeleteOptions,
+  ModelDeleteQueryBuilder,
+  SoftDeleteOptions,
+} from "../QueryBuilder/DeleteQueryBuilder";
 import mysql from "mysql2/promise";
 
 export class MysqlDeleteQueryBuilder<
@@ -44,16 +46,17 @@ export class MysqlDeleteQueryBuilder<
     this.isNestedCondition = isNestedCondition;
   }
 
-  public async softDelete(options?: {
-    column?: SelectableType<T>;
-    value?: string | number | boolean;
-    trx?: MysqlTransaction;
-  }): Promise<number> {
+  public async softDelete(options?: SoftDeleteOptions<T>): Promise<number> {
     const {
-      column = "deletedAt" as SelectableType<T>,
+      column = "deletedAt",
       value = DateTime.local().toISO(),
+      ignoreBeforeDeleteHook = false,
       trx,
     } = options || {};
+    if (!ignoreBeforeDeleteHook) {
+      this.model.beforeDelete(this);
+    }
+
     let { query, params } = this.updateTemplate.massiveUpdate(
       [column as string],
       [value],
@@ -82,7 +85,12 @@ export class MysqlDeleteQueryBuilder<
     }
   }
 
-  public async delete(trx?: MysqlTransaction): Promise<number> {
+  public async delete(options: DeleteOptions = {}): Promise<number> {
+    const { trx, ignoreBeforeDeleteHook } = options || {};
+    if (!ignoreBeforeDeleteHook) {
+      this.model.beforeDelete(this);
+    }
+
     this.whereQuery = this.whereTemplate.convertPlaceHolderToValue(
       this.whereQuery,
     );

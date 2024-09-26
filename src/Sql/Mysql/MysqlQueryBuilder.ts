@@ -296,7 +296,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
       primaryColumn,
       foreignColumn,
     );
-    this.joinQuery += join.innerJoin();
+    this.joinQuery += join.leftJoin();
     return this;
   }
 
