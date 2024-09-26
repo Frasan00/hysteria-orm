@@ -11,7 +11,6 @@ import { log, queryError } from "../../Logger";
 import { MysqlQueryBuilder } from "./MysqlQueryBuilder";
 import { AbstractModelManager } from "../Models/ModelManager/AbstractModelManager";
 import { MysqlUpdateQueryBuilder } from "./MysqlUpdateQueryBuilder";
-import { PostgresUpdateQueryBuilder } from "../Postgres/PostgresUpdateQueryBuilder";
 import { MysqlDeleteQueryBuilder } from "./MysqlDeleteQueryBuilder";
 import { SqlDataSource } from "../SqlDatasource";
 import SqlModelManagerUtils from "../Models/ModelManager/ModelManagerUtils";
@@ -89,7 +88,7 @@ export class MysqlModelManager<
         query.groupBy(...input.groupBy);
       }
 
-      return await query.many();
+      return await query.many({ ignoreHooks: input.ignoreHooks || [] });
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -123,6 +122,7 @@ export class MysqlModelManager<
 
       return await query.one({
         throwErrorOnNull: input.throwErrorOnNull || false,
+        ignoreHooks: input.ignoreHooks || [],
       });
     } catch (error) {
       queryError(error);

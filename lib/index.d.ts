@@ -669,6 +669,7 @@ type OrderByType = {
 type UnrestrictedFindOneType<T> = {
     select?: string[];
     relations?: RelationType<T>[];
+    ignoreHooks?: FetchHooks[];
     dynamicColumns?: DynamicColumnType<T>;
     where?: Record<string, any>;
     throwErrorOnNull?: boolean;
@@ -684,6 +685,7 @@ type FindOneType<T> = {
     relations?: RelationType<T>[];
     dynamicColumns?: DynamicColumnType<T>;
     where?: WhereType<T>;
+    ignoreHooks?: FetchHooks[];
     throwErrorOnNull?: boolean;
 };
 type FindType<T> = Omit<FindOneType<T>, "throwErrorOnNull"> & {
@@ -1255,14 +1257,16 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     select(...columns: (SelectableType<T> | "*")[]): PostgresQueryBuilder<T>;
     raw(query: string, params?: any[]): Promise<pg.QueryResult<any>>;
     one(options?: OneOptions): Promise<T | null>;
-    oneOrFail(): Promise<T>;
-    many(): Promise<T[]>;
+    oneOrFail(options?: {
+        ignoreHooks: OneOptions["ignoreHooks"];
+    }): Promise<T>;
+    many(options?: ManyOptions): Promise<T[]>;
     getCount(options?: {
         ignoreHooks: boolean;
     }): Promise<number>;
     getSum(column: SelectableType<T>): Promise<number>;
     getSum(column: string): Promise<number>;
-    paginate(page: number, limit: number): Promise<PaginatedData<T>>;
+    paginate(page: number, limit: number, options?: ManyOptions): Promise<PaginatedData<T>>;
     join(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresQueryBuilder<T>;
     leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresQueryBuilder<T>;
     addRelations(relations: RelationType<T>[]): PostgresQueryBuilder<T>;
@@ -1502,15 +1506,17 @@ declare class SQLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
      */
     constructor(model: typeof Model, table: string, sqLiteConnection: sqlite3.Database, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
     one(options?: OneOptions): Promise<T | null>;
-    oneOrFail(): Promise<T>;
-    many(): Promise<T[]>;
+    oneOrFail(options?: {
+        ignoreHooks: OneOptions["ignoreHooks"];
+    }): Promise<T>;
+    many(options?: ManyOptions): Promise<T[]>;
     raw<T>(query: string, params?: any[]): Promise<T[]>;
     getCount(options?: {
         ignoreHooks: boolean;
     }): Promise<number>;
     getSum(column: SelectableType<T>): Promise<number>;
     getSum(column: string): Promise<number>;
-    paginate(page: number, limit: number): Promise<PaginatedData<T>>;
+    paginate(page: number, limit: number, options?: ManyOptions): Promise<PaginatedData<T>>;
     select(...columns: string[]): SQLiteQueryBuilder<T>;
     select(...columns: (SelectableType<T> | "*")[]): SQLiteQueryBuilder<T>;
     join(relationTable: string, primaryColumn: string, foreignColumn: string): SQLiteQueryBuilder<T>;
@@ -1843,15 +1849,17 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
      */
     constructor(model: typeof Model, table: string, mysqlConnection: mysql.Connection, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
     one(options?: OneOptions): Promise<T | null>;
-    oneOrFail(): Promise<T>;
-    many(): Promise<T[]>;
+    oneOrFail(options?: {
+        ignoreHooks?: OneOptions["ignoreHooks"];
+    }): Promise<T>;
+    many(options?: ManyOptions): Promise<T[]>;
     raw(query: string, params?: any[]): Promise<[mysql.QueryResult, mysql.FieldPacket[]]>;
     getCount(options?: {
         ignoreHooks: boolean;
     }): Promise<number>;
     getSum(column: SelectableType<T>): Promise<number>;
     getSum(column: string): Promise<number>;
-    paginate(page: number, limit: number): Promise<PaginatedData<T>>;
+    paginate(page: number, limit: number, options?: ManyOptions): Promise<PaginatedData<T>>;
     select(...columns: string[]): MysqlQueryBuilder<T>;
     select(...columns: (SelectableType<T> | "*")[]): MysqlQueryBuilder<T>;
     join(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlQueryBuilder<T>;
@@ -1920,8 +1928,13 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
  * @description The abstract class for query builders for selecting data.
  */
 type ModelQueryBuilder<T extends Model> = MysqlQueryBuilder<T> | PostgresQueryBuilder<T> | SQLiteQueryBuilder<T>;
+type FetchHooks = "beforeFetch" | "afterFetch";
 type OneOptions = {
-    throwErrorOnNull: boolean;
+    throwErrorOnNull?: boolean;
+    ignoreHooks?: FetchHooks[];
+};
+type ManyOptions = {
+    ignoreHooks?: FetchHooks[];
 };
 declare abstract class QueryBuilder<T extends Model> {
     protected sqlDataSource: SqlDataSource;
@@ -1955,12 +1968,14 @@ declare abstract class QueryBuilder<T extends Model> {
     /**
      * @description Executes the query and retrieves the first result. Fail if no result is found.
      */
-    abstract oneOrFail(): Promise<T>;
+    abstract oneOrFail(options?: {
+        ignoreHooks?: OneOptions["ignoreHooks"];
+    }): Promise<T>;
     /**
      * @description Executes the query and retrieves multiple results.
      * @returns A Promise resolving to an array of results.
      */
-    abstract many(): Promise<T[]>;
+    abstract many(options: ManyOptions): Promise<T[]>;
     /**
      * @description Executes the query and retrieves the count of results, it ignores all select, group by, order by, limit and offset clauses if they are present.
      * @returns A Promise resolving to the count of results.
@@ -1980,7 +1995,7 @@ declare abstract class QueryBuilder<T extends Model> {
      * @description Executes the query and retrieves multiple results.
      * @returns A Promise resolving to an array of results.
      */
-    abstract paginate(page: number, limit: number): Promise<PaginatedData<T>>;
+    abstract paginate(page: number, limit: number, options?: ManyOptions): Promise<PaginatedData<T>>;
     /**
      * @description Adds a SELECT condition to the query.
      * @param columns - The columns to select.
@@ -1993,7 +2008,7 @@ declare abstract class QueryBuilder<T extends Model> {
      * @description Executes the query and retrieves the results.
      * @returns
      */
-    abstract raw(query: string): Promise<T | T[] | any>;
+    abstract raw(query: string, params: []): Promise<T | T[] | any>;
     /**
      * @description Adds a JOIN condition to the query.
      * @param table
@@ -2232,7 +2247,7 @@ declare abstract class QueryBuilder<T extends Model> {
      * @param query - The raw SQL WHERE condition.
      * @returns The MysqlQueryBuilder instance for chaining.
      */
-    abstract rawOrWhere(query: string): ModelQueryBuilder<T>;
+    abstract rawOrWhere(query: string, params: []): ModelQueryBuilder<T>;
     /**
      * @description Adds GROUP BY conditions to the query.
      * @param columns - The columns to group by.
@@ -2426,7 +2441,7 @@ declare abstract class Model {
      * @param data
      * @returns {void}
      */
-    static setProps<T extends Model>(instance: T, data: Partial<T>): void;
+    static combineProps<T extends Model>(instance: T, data: Partial<T>): void;
     /**
      * @description Adds a beforeFetch clause to the model, adding the ability to modify the query before fetching the data
      * @param queryBuilder

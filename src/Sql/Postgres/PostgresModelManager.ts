@@ -88,7 +88,7 @@ export class PostgresModelManager<
         query.groupBy(...input.groupBy);
       }
 
-      return await query.many();
+      return await query.many({ ignoreHooks: input.ignoreHooks || [] });
     } catch (error) {
       queryError(error);
       throw new Error("Query failed " + error);
@@ -122,6 +122,7 @@ export class PostgresModelManager<
 
       return await query.one({
         throwErrorOnNull: input.throwErrorOnNull || false,
+        ignoreHooks: input.ignoreHooks || [],
       });
     } catch (error) {
       queryError(error);

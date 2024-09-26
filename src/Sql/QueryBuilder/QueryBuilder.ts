@@ -25,8 +25,15 @@ export type ModelQueryBuilder<T extends Model> =
   | PostgresQueryBuilder<T>
   | SQLiteQueryBuilder<T>;
 
+export type FetchHooks = "beforeFetch" | "afterFetch";
+
 export type OneOptions = {
-  throwErrorOnNull: boolean;
+  throwErrorOnNull?: boolean;
+  ignoreHooks?: FetchHooks[];
+};
+
+export type ManyOptions = {
+  ignoreHooks?: FetchHooks[];
 };
 
 export abstract class QueryBuilder<T extends Model> {
@@ -97,13 +104,15 @@ export abstract class QueryBuilder<T extends Model> {
   /**
    * @description Executes the query and retrieves the first result. Fail if no result is found.
    */
-  public abstract oneOrFail(): Promise<T>;
+  public abstract oneOrFail(options?: {
+    ignoreHooks?: OneOptions["ignoreHooks"];
+  }): Promise<T>;
 
   /**
    * @description Executes the query and retrieves multiple results.
    * @returns A Promise resolving to an array of results.
    */
-  public abstract many(): Promise<T[]>;
+  public abstract many(options: ManyOptions): Promise<T[]>;
 
   /**
    * @description Executes the query and retrieves the count of results, it ignores all select, group by, order by, limit and offset clauses if they are present.
@@ -128,6 +137,7 @@ export abstract class QueryBuilder<T extends Model> {
   public abstract paginate(
     page: number,
     limit: number,
+    options?: ManyOptions,
   ): Promise<PaginatedData<T>>;
 
   /**
@@ -147,7 +157,7 @@ export abstract class QueryBuilder<T extends Model> {
    * @description Executes the query and retrieves the results.
    * @returns
    */
-  public abstract raw(query: string): Promise<T | T[] | any>;
+  public abstract raw(query: string, params: []): Promise<T | T[] | any>;
 
   /**
    * @description Adds a JOIN condition to the query.
@@ -603,7 +613,7 @@ export abstract class QueryBuilder<T extends Model> {
    * @param query - The raw SQL WHERE condition.
    * @returns The MysqlQueryBuilder instance for chaining.
    */
-  public abstract rawOrWhere(query: string): ModelQueryBuilder<T>;
+  public abstract rawOrWhere(query: string, params: []): ModelQueryBuilder<T>;
 
   /**
    * @description Adds GROUP BY conditions to the query.

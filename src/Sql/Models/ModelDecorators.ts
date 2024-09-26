@@ -63,8 +63,8 @@ export function column(
 }
 
 /**
- * @description Defines a dynamic calculated column that is not defined inside the model, it must be added to a query in order to be retrieved
- * @param columnName
+ * @description Defines a dynamic calculated column that is not defined inside the Table, it must be added to a query in order to be retrieved
+ * @param columnName that will be filled inside the dynamicColumn field
  * @returns
  */
 export function dynamicColumn(columnName: string): PropertyDecorator {

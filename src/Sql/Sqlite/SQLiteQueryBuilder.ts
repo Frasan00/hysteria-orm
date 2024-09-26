@@ -5,6 +5,7 @@ import {
   OneOptions,
   QueryBuilder,
   ModelQueryBuilder,
+  ManyOptions,
 } from "../QueryBuilder/QueryBuilder";
 import joinTemplate from "../Resources/Query/JOIN";
 import { getPaginationMetadata, PaginatedData } from "../pagination";
@@ -51,7 +52,9 @@ export class SQLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     options: OneOptions = { throwErrorOnNull: false },
   ): Promise<T | null> {
     // hook query builder
-    this.model.beforeFetch(this);
+    if (!options.ignoreHooks?.includes("beforeFetch")) {
+      this.model.beforeFetch(this);
+    }
 
     let query: string = "";
     if (this.joinQuery && !this.selectQuery) {
@@ -97,21 +100,31 @@ export class SQLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
         this.model,
         relationModels,
       )) as T;
-      return (await this.model.afterFetch([model]))[0] as T;
+
+      return !options.ignoreHooks?.includes("afterFetch")
+        ? ((await this.model.afterFetch([model]))[0] as T)
+        : model;
     } catch (error) {
       queryError(query);
       throw new Error("Query failed " + error);
     }
   }
 
-  public async oneOrFail(): Promise<T> {
-    const model = await this.one({ throwErrorOnNull: true });
+  public async oneOrFail(options?: {
+    ignoreHooks: OneOptions["ignoreHooks"];
+  }): Promise<T> {
+    const model = await this.one({
+      throwErrorOnNull: true,
+      ignoreHooks: options?.ignoreHooks,
+    });
     return model as T;
   }
 
-  public async many(): Promise<T[]> {
+  public async many(options: ManyOptions = {}): Promise<T[]> {
     // hook query builder
-    this.model.beforeFetch(this);
+    if (!options.ignoreHooks?.includes("beforeFetch")) {
+      this.model.beforeFetch(this);
+    }
 
     let query: string = "";
     if (this.joinQuery && !this.selectQuery) {
@@ -155,7 +168,10 @@ export class SQLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
         return [];
       }
 
-      await this.model.afterFetch(serializedModels as T[]);
+      if (!options.ignoreHooks?.includes("afterFetch")) {
+        await this.model.afterFetch(serializedModels as T[]);
+      }
+
       return (
         Array.isArray(serializedModels) ? serializedModels : [serializedModels]
       ) as T[];
@@ -208,16 +224,17 @@ export class SQLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
   public async paginate(
     page: number,
     limit: number,
+    options?: ManyOptions,
   ): Promise<PaginatedData<T>> {
     this.limitQuery = this.selectTemplate.limit(limit);
     this.offsetQuery = this.selectTemplate.offset((page - 1) * limit);
 
     const originalSelectQuery = this.selectQuery;
     this.select("COUNT(*) as total");
-    const total = await this.many();
+    const total = await this.many(options);
 
     this.selectQuery = originalSelectQuery;
-    const models = await this.many();
+    const models = await this.many(options);
 
     const paginationMetadata = getPaginationMetadata(
       page,

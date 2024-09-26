@@ -380,6 +380,14 @@ const user: User | null = await User.query().whereBuilder((queryBuilder) => {
 });
 ```
 
+## Ignore Hooks
+- In both standard read methods and select query (pagination included) builders it's possible to ignore hooks
+- This is not available for findOneByPrimaryKey method
+```typescript
+const userFind = await User.find({ ignoreHooks: ["beforeFetch"] });
+const userOne = await User.query().one({ ignoreHooks: ["afterFetch"] });
+```
+
 ### Aliases
 
 - Aliases are available in the query builder, for example select('new as newName') will generate an alias in the extraColumns property that every model instances has
@@ -396,6 +404,7 @@ const user: User | null = await User.query()
 
 ### Dynamic Columns
 - For columns that are not in the Table that have to be computed dynamically you can use @dynamicColumn decorator
+- Those columns are meant to be made in the last part of a query as a final result
 ```typescript
 import {
   column,
@@ -413,10 +422,7 @@ export class User extends Model {
   @column()
   declare email: string;
 
-  // Optional in order to retrieve the column easily from the model
-  @column()
-  declare test: string;
-
+  // dynamic columns are avaliable in extraColumns prop
   @dynamicColumn("test")
   getTest() {
     return "test";

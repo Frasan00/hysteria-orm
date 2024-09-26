@@ -1,8 +1,16 @@
 import { convertCase } from "../CaseUtils";
 import { isNestedObject } from "./jsonUtils";
 import { Model } from "./Models/Model";
-import { getModelBooleanColumns, getRelations } from "./Models/ModelDecorators";
-import { Relation, RelationType } from "./Models/Relations/Relation";
+import {
+  getModelBooleanColumns,
+  getModelColumns,
+  getRelations,
+} from "./Models/ModelDecorators";
+import {
+  isRelationDefinition,
+  Relation,
+  RelationType,
+} from "./Models/Relations/Relation";
 
 export async function parseDatabaseDataIntoModelResponse<T extends Model>(
   models: T[],
@@ -18,6 +26,7 @@ export async function parseDatabaseDataIntoModelResponse<T extends Model>(
   const serializedModels = models.map((model) => {
     const serializedModel = serializeModel(model, typeofModel);
     processRelation(serializedModel, typeofModel, relations, relationModels);
+    addNullModelColumns(typeofModel, serializedModel);
 
     return serializedModel;
   });
@@ -81,6 +90,25 @@ function serializeModel<T extends Record<string, any>>(
   return camelCaseModel as T;
 }
 
+function addNullModelColumns(
+  typeofModel: typeof Model,
+  serializedModel: Record<string, any>,
+) {
+  const columns = getModelColumns(typeofModel);
+  columns.forEach((column) => {
+    const casedColumn = convertCase(
+      column,
+      typeofModel.modelCaseConvention,
+    ) as string;
+
+    if (serializedModel.hasOwnProperty(column)) {
+      return;
+    }
+
+    serializedModel[casedColumn] = null;
+  });
+}
+
 function processExtraColumns(
   model: Record<string, any>,
   key: string,
@@ -101,18 +129,6 @@ function processExtraColumns(
   );
 
   camelCaseModel[key] = extraColumns;
-}
-
-function isRelationDefinition(originalValue: any): originalValue is Relation {
-  if (
-    originalValue.hasOwnProperty("type") &&
-    originalValue.hasOwnProperty("relatedModel") &&
-    originalValue.hasOwnProperty("foreignKey")
-  ) {
-    return true;
-  }
-
-  return false;
 }
 
 function processRelation(

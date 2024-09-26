@@ -1,5 +1,6 @@
 import { MysqlTransaction } from "../../Mysql/MysqlTransaction";
 import { PostgresTransaction } from "../../Postgres/PostgresTransaction";
+import { FetchHooks } from "../../QueryBuilder/QueryBuilder";
 import { SQLiteTransaction } from "../../Sqlite/SQLiteTransaction";
 import { Model } from "../Model";
 import { BelongsTo } from "../Relations/BelongsTo";
@@ -49,6 +50,7 @@ type OrderByType = {
 export type UnrestrictedFindOneType<T> = {
   select?: string[];
   relations?: RelationType<T>[];
+  ignoreHooks?: FetchHooks[];
   dynamicColumns?: DynamicColumnType<T>;
   where?: Record<string, any>;
   throwErrorOnNull?: boolean;
@@ -69,6 +71,7 @@ export type FindOneType<T> = {
   relations?: RelationType<T>[];
   dynamicColumns?: DynamicColumnType<T>;
   where?: WhereType<T>;
+  ignoreHooks?: FetchHooks[];
   throwErrorOnNull?: boolean;
 };
 

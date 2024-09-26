@@ -1,6 +1,7 @@
 import { DateTime } from "luxon";
 import { User } from "../Models/User";
 import { SqlDataSource } from "../../../src/Sql/SqlDatasource";
+import rollbackMigrationConnector from "../../hysteria-cli/migrationRollbackConnector";
 
 let sql: SqlDataSource | null = null;
 beforeAll(async () => {
@@ -118,8 +119,11 @@ test("Dynamic column", async () => {
   const dynamicColumnUser = await User.query()
     .addDynamicColumns(["getFirstUser"])
     .one();
+
   expect(dynamicColumnUser).not.toBe(null);
   expect(dynamicColumnUser?.id).not.toBe(null);
+  expect((dynamicColumnUser as any).firstUser).not.toBe(null);
+  expect((dynamicColumnUser as any).firstUser.name).toBe("Jack");
 });
 
 test("Find multiple users", async () => {
@@ -334,4 +338,47 @@ test("massive soft delete", async () => {
   });
   expect(users).toBe(1);
   expect(await User.query().getCount({ ignoreHooks: true })).toBe(1);
+});
+
+test("Pagination", async () => {
+  await User.create({
+    name: "Dave",
+    email: "sdsa",
+    signupSource: "email",
+    isActive: true,
+  });
+
+  const users = await User.query().paginate(1, 10);
+  expect(users.paginationMetadata).not.toBeNull();
+
+  expect(users.data.length).toBe(1);
+});
+
+test("Ignore hooks", async () => {
+  await User.create({
+    name: "Dave",
+    email: "sdsa",
+    signupSource: "email",
+    isActive: true,
+  });
+
+  await User.deleteQuery().softDelete({
+    column: "deletedAt",
+    value: DateTime.local().toISODate(),
+  });
+
+  const user = await User.query().one({ ignoreHooks: ["beforeFetch"] });
+  expect(user).not.toBeNull();
+
+  const userFindOne = await User.findOne({
+    where: { name: "Dave" },
+    ignoreHooks: ["beforeFetch"],
+  });
+  expect(userFindOne).not.toBeNull();
+
+  const userFind = await User.find({ ignoreHooks: ["beforeFetch"] });
+  expect(userFind).not.toBeNull();
+
+  const userOne = await User.query().one({ ignoreHooks: ["beforeFetch"] });
+  expect(userOne).not.toBeNull();
 });

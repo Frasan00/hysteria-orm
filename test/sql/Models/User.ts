@@ -27,7 +27,7 @@ export class User extends Model {
   declare isActive: boolean;
 
   @column()
-  declare json: Record<string, any>;
+  declare json: Record<string, any> | null;
 
   @column()
   declare createdAt: DateTime;
@@ -48,8 +48,16 @@ export class User extends Model {
     queryBuilder.whereNull("deletedAt");
   }
 
-  @column()
-  declare firstUser: User;
+  static async afterFetch(data: User[]): Promise<User[]> {
+    if (!data.length) {
+      return data;
+    }
+
+    return data.map((user) => {
+      user.json = null;
+      return user;
+    });
+  }
 
   @dynamicColumn("firstUser")
   async getFirstUser() {

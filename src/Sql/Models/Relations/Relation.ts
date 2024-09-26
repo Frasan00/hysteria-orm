@@ -16,6 +16,20 @@ export enum RelationType {
   hasMany = "hasMany",
 }
 
+export function isRelationDefinition(
+  originalValue: any,
+): originalValue is Relation {
+  if (
+    originalValue.hasOwnProperty("type") &&
+    originalValue.hasOwnProperty("relatedModel") &&
+    originalValue.hasOwnProperty("foreignKey")
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
 /**
  * Main Model -> Related Model
  */

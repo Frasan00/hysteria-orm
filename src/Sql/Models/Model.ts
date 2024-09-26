@@ -13,8 +13,9 @@ import { CaseConvention, convertCase } from "../../CaseUtils";
 import { ModelUpdateQueryBuilder } from "../QueryBuilder/UpdateQueryBuilder";
 import { ModelDeleteQueryBuilder } from "../QueryBuilder/DeleteQueryBuilder";
 import { getPrimaryKey } from "./ModelDecorators";
+import { parseDatabaseDataIntoModelResponse } from "../serializer";
 
-export function getBasetable(target: typeof Model): string {
+export function getBaseTable(target: typeof Model): string {
   const className = target.name;
   const table = className.endsWith("s")
     ? convertCase(className, "snake")
@@ -49,7 +50,7 @@ export abstract class Model {
    */
   static get table(): string {
     if (!tableMap.has(this)) {
-      tableMap.set(this, this.tableName || getBasetable(this));
+      tableMap.set(this, this.tableName || getBaseTable(this));
     }
 
     return tableMap.get(this)!;
@@ -81,7 +82,7 @@ export abstract class Model {
   /**
    * @description Extra columns for the model, all data retrieved from the database that is not part of the model will be stored here
    */
-  public extraColumns: { [key: string]: any } = {};
+  public extraColumns: { [key: string]: any };
 
   /**
    * @description Constructor for the model, it's not meant to be used directly, it just initializes the extraColumns, it's advised to only use the static methods to interact with the Model instances
@@ -337,7 +338,10 @@ export abstract class Model {
     }
 
     modelInstance[column as keyof T] = value as T[keyof T];
-    return modelInstance;
+    return (await parseDatabaseDataIntoModelResponse(
+      [modelInstance],
+      typeofModel,
+    )) as T;
   }
 
   /**
@@ -346,7 +350,7 @@ export abstract class Model {
    * @param data
    * @returns {void}
    */
-  static setProps<T extends Model>(instance: T, data: Partial<T>): void {
+  static combineProps<T extends Model>(instance: T, data: Partial<T>): void {
     for (const key in data) {
       Object.assign(instance, { [key]: data[key] });
     }
