@@ -16,6 +16,7 @@ import { SqlDataSource } from "../SqlDatasource";
 import { SQLiteQueryBuilder } from "../Sqlite/SQLiteQueryBuilder";
 import { convertCase } from "../../CaseUtils";
 import { getModelColumns, getDynamicColumns } from "../Models/ModelDecorators";
+import { addDynamicColumnsToModel } from "../serializer";
 
 /**
  * @description The abstract class for query builders for selecting data.
@@ -692,37 +693,10 @@ export abstract class QueryBuilder<T extends Model> {
       model.extraColumns[key] = value as string | number | boolean;
     });
 
-    // Dynamic columns
-    const dynamicColumns = getDynamicColumns(this.model);
-    if (!dynamicColumns || !dynamicColumns.length) {
+    if (!this.dynamicColumns.length) {
       return;
     }
 
-    const dynamicColumnMap = new Map<
-      string,
-      {
-        columnName: string;
-        dynamicColumnFn: (...args: any[]) => any;
-      }
-    >();
-
-    for (const dynamicColumn of dynamicColumns) {
-      dynamicColumnMap.set(dynamicColumn.functionName, {
-        columnName: dynamicColumn.columnName,
-        dynamicColumnFn: dynamicColumn.dynamicColumnFn,
-      });
-    }
-
-    const promises = this.dynamicColumns.map(async (dynamicColumn: string) => {
-      const dynamic = dynamicColumnMap.get(dynamicColumn);
-      const casedKey = convertCase(
-        dynamic?.columnName,
-        typeofModel.modelCaseConvention,
-      );
-
-      Object.assign(model, { [casedKey]: await dynamic?.dynamicColumnFn() });
-    });
-
-    await Promise.all(promises);
+    await addDynamicColumnsToModel(this.model, model, this.dynamicColumns);
   }
 }

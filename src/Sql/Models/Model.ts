@@ -3,6 +3,7 @@ import { DateTime } from "luxon";
 import { OneOptions, ModelQueryBuilder } from "../QueryBuilder/QueryBuilder";
 import { SqlDataSource } from "../SqlDatasource";
 import {
+  DynamicColumnType,
   FindOneType,
   FindType,
   SelectableType,
@@ -13,7 +14,11 @@ import { CaseConvention, convertCase } from "../../CaseUtils";
 import { ModelUpdateQueryBuilder } from "../QueryBuilder/UpdateQueryBuilder";
 import { ModelDeleteQueryBuilder } from "../QueryBuilder/DeleteQueryBuilder";
 import { getPrimaryKey } from "./ModelDecorators";
-import { parseDatabaseDataIntoModelResponse } from "../serializer";
+import {
+  addDynamicColumnsToModel,
+  parseDatabaseDataIntoModelResponse,
+} from "../serializer";
+import { PaginatedData } from "../pagination";
 
 export function getBaseTable(target: typeof Model): string {
   const className = target.name;
@@ -342,6 +347,53 @@ export abstract class Model {
       [modelInstance],
       typeofModel,
     )) as T;
+  }
+
+  /**
+   * @description Adds dynamic columns to the model that are not defined in the Table and are defined in the model
+   * @param model
+   * @param data
+   * @param dynamicColumns
+   * @returns
+   */
+  static async addDynamicColumns<T extends Model>(
+    this: new () => T | typeof Model,
+    data: T | T[] | PaginatedData<T>,
+    dynamicColumns: DynamicColumnType<T>[],
+  ): Promise<T | T[] | PaginatedData<T>> {
+    const typeofModel = this as unknown as typeof Model;
+    typeofModel.establishConnection();
+    if (Array.isArray(data)) {
+      for (const model of data) {
+        await addDynamicColumnsToModel(
+          typeofModel,
+          model,
+          dynamicColumns as string[],
+        );
+      }
+
+      return data as T[];
+    }
+
+    if (!Array.isArray(data)) {
+      await addDynamicColumnsToModel(
+        typeofModel,
+        data,
+        dynamicColumns as string[],
+      );
+
+      return data as T;
+    }
+
+    for (const model of (data as PaginatedData<T>).data) {
+      await addDynamicColumnsToModel(
+        typeofModel,
+        model,
+        dynamicColumns as string[],
+      );
+    }
+
+    return data as PaginatedData<T>;
   }
 
   /**

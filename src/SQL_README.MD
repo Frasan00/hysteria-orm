@@ -429,7 +429,13 @@ export class User extends Model {
   }
 }
 
+// You can add dynamic columns in a query
 const model: User = await User.query().addDynamicColumns(["getTest"]).one();
+
+// Or inject them directly in a Model | Model[] | PaginatedModel
+const userWithDynamicColumn = await User.addDynamicColumns(user, [
+"getTest",
+]);
 ```
 
 ### Count and Sum

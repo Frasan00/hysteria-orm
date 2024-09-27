@@ -2422,6 +2422,14 @@ declare abstract class Model {
         trx?: TransactionType;
     }): Promise<T>;
     /**
+     * @description Adds dynamic columns to the model that are not defined in the Table and are defined in the model
+     * @param model
+     * @param data
+     * @param dynamicColumns
+     * @returns
+     */
+    static addDynamicColumns<T extends Model>(this: new () => T | typeof Model, data: T | T[] | PaginatedData<T>, dynamicColumns: DynamicColumnType<T>[]): Promise<T | T[] | PaginatedData<T>>;
+    /**
      * @description Merges the provided data with the instance
      * @param instance
      * @param data

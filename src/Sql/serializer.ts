@@ -2,6 +2,7 @@ import { convertCase } from "../CaseUtils";
 import { isNestedObject } from "./jsonUtils";
 import { Model } from "./Models/Model";
 import {
+  getDynamicColumns,
   getModelBooleanColumns,
   getModelColumns,
   getRelations,
@@ -228,4 +229,42 @@ function convertToModelCaseConvention(
     },
     {} as Record<string, any>,
   );
+}
+
+export async function addDynamicColumnsToModel(
+  typeofModel: typeof Model,
+  model: Record<string, any>,
+  dynamicColumnsToAdd: string[],
+): Promise<void> {
+  const dynamicColumns = getDynamicColumns(typeofModel);
+  if (!dynamicColumns || !dynamicColumns.length) {
+    return;
+  }
+
+  const dynamicColumnMap = new Map<
+    string,
+    {
+      columnName: string;
+      dynamicColumnFn: (...args: any[]) => any;
+    }
+  >();
+
+  for (const dynamicColumn of dynamicColumns) {
+    dynamicColumnMap.set(dynamicColumn.functionName, {
+      columnName: dynamicColumn.columnName,
+      dynamicColumnFn: dynamicColumn.dynamicColumnFn,
+    });
+  }
+
+  const promises = dynamicColumnsToAdd.map(async (dynamicColumn: string) => {
+    const dynamic = dynamicColumnMap.get(dynamicColumn);
+    const casedKey = convertCase(
+      dynamic?.columnName,
+      typeofModel.modelCaseConvention,
+    );
+
+    Object.assign(model, { [casedKey]: await dynamic?.dynamicColumnFn() });
+  });
+
+  await Promise.all(promises);
 }

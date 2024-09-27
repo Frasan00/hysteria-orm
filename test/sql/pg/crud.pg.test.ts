@@ -115,6 +115,13 @@ test("Dynamic column", async () => {
     throw new Error("User not created");
   }
 
+  const userWithDynamicColumn = await User.addDynamicColumns(user, [
+    "getFirstUser",
+  ]);
+  expect(userWithDynamicColumn).not.toBeNull();
+  expect((userWithDynamicColumn as User).id).not.toBeNull();
+  expect((userWithDynamicColumn as any).firstUser.name).not.toBeNull();
+
   const dynamicColumnUser = await User.query()
     .addDynamicColumns(["getFirstUser"])
     .one();
