@@ -73,7 +73,7 @@ export abstract class AbstractModelManager<T extends Model> {
    * @param model
    * @param trx
    */
-  public abstract create(
+  public abstract insert(
     model: Partial<T>,
     trx?: TransactionType,
   ): Promise<T | null>;
@@ -83,7 +83,7 @@ export abstract class AbstractModelManager<T extends Model> {
    * @param model
    * @param trx
    */
-  public abstract massiveCreate(
+  public abstract insertMany(
     model: Partial<T>[],
     trx?: TransactionType,
   ): Promise<T[]>;

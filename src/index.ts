@@ -29,19 +29,6 @@ import { User } from "../test/sql/Models/User";
 
 (async () => {
   const sql = await SqlDataSource.connect();
-  const firstOrCreate = await User.firstOrCreate(
-    {
-      email: "Gianni2",
-    },
-    {
-      email: "Gianni2",
-      name: "Gianni",
-      signupSource: "email",
-    },
-  );
-
-  console.log(firstOrCreate);
-  await User.deleteQuery().delete();
   await sql.closeConnection();
 })();
 

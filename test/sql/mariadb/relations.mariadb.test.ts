@@ -32,7 +32,7 @@ afterEach(async () => {
 });
 
 test("Create a new user with posts", async () => {
-  const user = await User.create({
+  const user = await User.insert({
     name: "Alice",
     email: "alice-test@gmail.com",
     signupSource: "email",
@@ -43,7 +43,7 @@ test("Create a new user with posts", async () => {
     throw new Error("User not created");
   }
 
-  const post = await Post.create({
+  const post = await Post.insert({
     userId: user.id,
     title: "Post 1",
     content: "Content 1",
@@ -81,7 +81,7 @@ test("Create a new user with posts", async () => {
 });
 
 test("Join users and posts", async () => {
-  const user = await User.create({
+  const user = await User.insert({
     name: "Bob",
     email: "bob-test@gmail.com",
     signupSource: "email",
@@ -92,13 +92,13 @@ test("Join users and posts", async () => {
     throw new Error("User not created");
   }
 
-  const post1 = await Post.create({
+  const post1 = await Post.insert({
     userId: user.id,
     title: "Post 1",
     content: "Content 1",
   });
 
-  const post2 = await Post.create({
+  const post2 = await Post.insert({
     userId: user.id,
     title: "Post 2",
     content: "Content 2",

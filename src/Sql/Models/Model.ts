@@ -206,7 +206,7 @@ export abstract class Model {
    * @param trx
    * @returns {Promise<T | null>}
    */
-  static create<T extends Model>(
+  static insert<T extends Model>(
     this: new () => T | typeof Model,
     modelData: Partial<T>,
     trx?: TransactionType,
@@ -215,7 +215,7 @@ export abstract class Model {
     typeofModel.establishConnection();
     return typeofModel.sqlInstance
       .getModelManager<T>(typeofModel)
-      .create(modelData, trx);
+      .insert(modelData, trx);
   }
 
   /**
@@ -226,7 +226,7 @@ export abstract class Model {
    * @param trx
    * @returns {Promise<T[]>}
    */
-  static massiveCreate<T extends Model>(
+  static insertMany<T extends Model>(
     this: new () => T | typeof Model,
     modelsData: Partial<T>[],
     trx?: TransactionType,
@@ -235,7 +235,7 @@ export abstract class Model {
     typeofModel.establishConnection();
     return typeofModel.sqlInstance
       .getModelManager<T>(typeofModel)
-      .massiveCreate(modelsData, trx);
+      .insertMany(modelsData, trx);
   }
 
   /**
@@ -283,7 +283,7 @@ export abstract class Model {
       return doesExist;
     }
 
-    return (await modelManager.create(createData, trx)) as T;
+    return (await modelManager.insert(createData, trx)) as T;
   }
 
   /**
@@ -319,7 +319,7 @@ export abstract class Model {
       return doesExist;
     }
 
-    return (await modelManager.create(data, options.trx)) as T;
+    return (await modelManager.insert(data, options.trx)) as T;
   }
 
   /**
@@ -381,7 +381,7 @@ export abstract class Model {
         continue;
       }
 
-      results.push((await modelManager.create(record, options.trx)) as T);
+      results.push((await modelManager.insert(record, options.trx)) as T);
     }
 
     return results;
@@ -551,7 +551,7 @@ export abstract class Model {
    * @param data
    * @returns {T}
    */
-  static beforeCreate(data: any): Model[] {
+  static beforeinsert(data: any): Model[] {
     return data;
   }
 

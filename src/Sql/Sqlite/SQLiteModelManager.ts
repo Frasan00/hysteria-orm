@@ -166,11 +166,11 @@ export class SQLiteModelManager<
    * @param {SqliteTransaction} trx - SqliteTransaction to be used on the save operation.
    * @returns Promise resolving to the saved model or null if saving fails.
    */
-  public async create(
+  public async insert(
     model: Partial<T>,
     trx?: TransactionType,
   ): Promise<T | null> {
-    this.model.beforeCreate(model as T);
+    this.model.beforeinsert(model as T);
     const { query, params } = this.sqlModelManagerUtils.parseInsert(
       model as T,
       this.model,
@@ -206,12 +206,12 @@ export class SQLiteModelManager<
    * @param {SqliteTransaction} trx - SqliteTransaction to be used on the save operation.
    * @returns Promise resolving to an array of saved models or null if saving fails.
    */
-  public async massiveCreate(
+  public async insertMany(
     models: Partial<T>[],
     trx?: TransactionType,
   ): Promise<T[]> {
     models.forEach((model) => {
-      this.model.beforeCreate(model as T);
+      this.model.beforeinsert(model as T);
     });
 
     const { query, params } = this.sqlModelManagerUtils.parseMassiveInsert(
@@ -232,7 +232,7 @@ export class SQLiteModelManager<
       );
       log(query, this.logs, params);
       return (await this.promisifyQuery<T[]>(query, params, {
-        isMassiveCreate: true,
+        isinsertMany: true,
         models: models as T[],
       })) as T[];
     } catch (error) {
@@ -385,15 +385,15 @@ export class SQLiteModelManager<
     params: any,
     options: {
       isCreate?: boolean;
-      isMassiveCreate?: boolean;
+      isinsertMany?: boolean;
       models?: T | T[];
     } = {
       isCreate: false,
-      isMassiveCreate: false,
+      isinsertMany: false,
       models: [],
     },
   ): Promise<T | T[]> {
-    if (options.isCreate || options.isMassiveCreate) {
+    if (options.isCreate || options.isinsertMany) {
       if (options.isCreate) {
         const table = this.model.table;
         const sqLiteConnection = this.sqLiteConnection;

@@ -167,11 +167,11 @@ export class MysqlModelManager<
    * @param {TransactionType} trx - TransactionType to be used on the save operation.
    * @returns Promise resolving to the saved model or null if saving fails.
    */
-  public async create(
+  public async insert(
     model: Partial<T>,
     trx?: TransactionType,
   ): Promise<T | null> {
-    this.model.beforeCreate(model as T);
+    this.model.beforeinsert(model as T);
     const { query, params } = this.sqlModelManagerUtils.parseInsert(
       model as T,
       this.model,
@@ -209,12 +209,12 @@ export class MysqlModelManager<
    * @param {TransactionType} trx - TransactionType to be used on the save operation.
    * @returns Promise resolving to an array of saved models or null if saving fails.
    */
-  public async massiveCreate(
+  public async insertMany(
     models: Partial<T>[],
     trx?: TransactionType,
   ): Promise<T[]> {
     models.forEach((model) => {
-      this.model.beforeCreate(model as T);
+      this.model.beforeinsert(model as T);
     });
 
     const { query, params } = this.sqlModelManagerUtils.parseMassiveInsert(

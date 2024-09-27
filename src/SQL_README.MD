@@ -197,7 +197,7 @@ export class User extends Model {
         queryBuilder.whereNull("deletedAt");
     }
 
-    static beforeCreate(data: User): User {
+    static beforeinsert(data: User): User {
         data.isActive = true;
         return data;
     }
@@ -242,7 +242,7 @@ type CaseConvention =
 ```typescript
 import { User } from "./User";
 
-const firstOrCreate = await User.firstOrCreate(
+const firstOrCreate = await User.firstOrinsert(
     // search columns
     {
         email: "Gianni2",
@@ -295,7 +295,7 @@ import { User } from "./User";
 const trx = await sql.startTransaction()
 // Create
 try{
-    const newUser: User = await User.create({
+    const newUser: User = await User.insert({
         name: "New User",
         email: "newUserEmaik@gmail.com"
     }, trx);
@@ -578,7 +578,7 @@ export default class extends Migration {
 
     // Hooks for after up and down migrations are executed immediately after the relative migration method is executed
     public async afterUp(): Promise<void> {
-        await Post.create({
+        await Post.insert({
             name: "post 1",
             userId: 1,
         });
@@ -633,7 +633,7 @@ await SqlDataSource.useConnection(
     async (sql) => {
         const userRepo = sql.getModelManager(User);
 
-        const newUser = await userRepo.create({
+        const newUser = await userRepo.insert({
             name: "john",
             email: "john-email@gmail.com",
             signupSource: "google",
@@ -668,7 +668,7 @@ const jsonQueryContains = await User.query()
     .one();
 
 // Create new users
-const newUsers = await User.massiveCreate([
+const newUsers = await User.insertMany([
     {
         name: "John Doe",
         email: "test@gmail.com",

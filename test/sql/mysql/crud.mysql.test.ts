@@ -29,7 +29,7 @@ afterEach(async () => {
 });
 
 test("Create a new user", async () => {
-  const user = await User.create({
+  const user = await User.insert({
     name: "Alice",
     email: "Alice@gmail.com",
     signupSource: "email",
@@ -45,7 +45,7 @@ test("Create a new user", async () => {
   expect(user.signupSource).toBe("email");
   expect(user.isActive).toBe(true);
 
-  const users = await User.massiveCreate([
+  const users = await User.insertMany([
     {
       name: "Bob",
       email: "Bob@gmail.com",
@@ -64,7 +64,7 @@ test("Create a new user", async () => {
 });
 
 test("Find a user by primary key", async () => {
-  const user = await User.create({
+  const user = await User.insert({
     name: "Dave",
     email: "Dave@gmail.com",
     signupSource: "email",
@@ -83,7 +83,7 @@ test("Find a user by primary key", async () => {
 });
 
 test("Find multiple users", async () => {
-  await User.create({
+  await User.insert({
     name: "Dave",
     email: "Dave@gmail.com",
     signupSource: "email",
@@ -95,7 +95,7 @@ test("Find multiple users", async () => {
 });
 
 test("Find one user", async () => {
-  const user = await User.create({
+  const user = await User.insert({
     name: "Eve",
     email: "Eve@gmail.com",
     signupSource: "email",
@@ -112,7 +112,7 @@ test("Find one user", async () => {
 });
 
 test("Update a user", async () => {
-  await User.create({
+  await User.insert({
     name: "Eve",
     email: "sdada",
     signupSource: "email",
@@ -136,7 +136,7 @@ test("Update a user", async () => {
 });
 
 test("Delete a user", async () => {
-  await User.create({
+  await User.insert({
     name: "Eve updated two",
     email: "sdada",
     signupSource: "email",
@@ -149,7 +149,7 @@ test("Delete a user", async () => {
 });
 
 test("Soft delete a user", async () => {
-  const user = await User.create({
+  const user = await User.insert({
     name: "Grace",
     email: "Grace@gmail.com",
     signupSource: "email",
@@ -172,7 +172,7 @@ test("Soft delete a user", async () => {
 });
 
 test("Massive create users", async () => {
-  const users = await User.massiveCreate([
+  const users = await User.insertMany([
     {
       name: "Hank",
       email: "Hank@gmail.com",
@@ -191,7 +191,7 @@ test("Massive create users", async () => {
 });
 
 test("Refresh a user", async () => {
-  const user = await User.create({
+  const user = await User.insert({
     name: "Jack",
     email: "Jack@gmail.com",
     signupSource: "email",
@@ -208,7 +208,7 @@ test("Refresh a user", async () => {
 });
 
 test("Dynamic column", async () => {
-  const user = await User.create({
+  const user = await User.insert({
     name: "Jack",
     email: "Jack@gmail.com",
     signupSource: "email",
@@ -227,7 +227,7 @@ test("Dynamic column", async () => {
 });
 
 test("When condition", async () => {
-  await User.create({
+  await User.insert({
     name: "Dave",
     email: "Dave@gmail.com",
     signupSource: "email",
@@ -252,7 +252,7 @@ test("Remove all users from the database", async () => {
 });
 
 test("Nested query builder", async () => {
-  const user = await User.create({
+  const user = await User.insert({
     name: "Linda",
     email: "ssdada",
     signupSource: "email",
@@ -292,14 +292,14 @@ test("Nested query builder", async () => {
 });
 
 test("Multiple update", async () => {
-  await User.create({
+  await User.insert({
     name: "Micheal",
     email: "test",
     signupSource: "email",
     isActive: true,
   });
 
-  await User.create({
+  await User.insert({
     name: "Micheal",
     email: "test2",
     signupSource: "email",
@@ -314,7 +314,7 @@ test("Multiple update", async () => {
 });
 
 test("massive delete", async () => {
-  await User.create({
+  await User.insert({
     name: "Dave",
     email: "Dave@gmail.com",
     signupSource: "email",
@@ -327,7 +327,7 @@ test("massive delete", async () => {
 });
 
 test("massive soft delete", async () => {
-  await User.create({
+  await User.insert({
     name: "Dave",
     email: "Dave@gmail.com",
     signupSource: "email",
@@ -340,7 +340,7 @@ test("massive soft delete", async () => {
 });
 
 test("Pagination", async () => {
-  await User.create({
+  await User.insert({
     name: "Dave",
     email: "sdsa",
     signupSource: "email",
@@ -354,7 +354,7 @@ test("Pagination", async () => {
 });
 
 test("Ignore hooks", async () => {
-  await User.create({
+  await User.insert({
     name: "Dave",
     email: "sdsa",
     signupSource: "email",

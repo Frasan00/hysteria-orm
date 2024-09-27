@@ -1025,13 +1025,13 @@ declare abstract class AbstractModelManager<T extends Model> {
      * @param model
      * @param trx
      */
-    abstract create(model: Partial<T>, trx?: TransactionType): Promise<T | null>;
+    abstract insert(model: Partial<T>, trx?: TransactionType): Promise<T | null>;
     /**
      * @description Creates multiple records
      * @param model
      * @param trx
      */
-    abstract massiveCreate(model: Partial<T>[], trx?: TransactionType): Promise<T[]>;
+    abstract insertMany(model: Partial<T>[], trx?: TransactionType): Promise<T[]>;
     /**
      * @description Updates a record
      * @param model
@@ -1226,7 +1226,7 @@ declare class MysqlModelManager<T extends Model> extends AbstractModelManager<T>
      * @param {TransactionType} trx - TransactionType to be used on the save operation.
      * @returns Promise resolving to the saved model or null if saving fails.
      */
-    create(model: Partial<T>, trx?: TransactionType): Promise<T | null>;
+    insert(model: Partial<T>, trx?: TransactionType): Promise<T | null>;
     /**
      * Create multiple model instances in the database.
      *
@@ -1234,7 +1234,7 @@ declare class MysqlModelManager<T extends Model> extends AbstractModelManager<T>
      * @param {TransactionType} trx - TransactionType to be used on the save operation.
      * @returns Promise resolving to an array of saved models or null if saving fails.
      */
-    massiveCreate(models: Partial<T>[], trx?: TransactionType): Promise<T[]>;
+    insertMany(models: Partial<T>[], trx?: TransactionType): Promise<T[]>;
     /**
      * Update an existing model instance in the database.
      * @param {Model} model - Model instance to be updated.
@@ -1468,7 +1468,7 @@ declare class PostgresModelManager<T extends Model> extends AbstractModelManager
      * @param {MysqlTransaction} trx - MysqlTransaction to be used on the save operation.
      * @returns Promise resolving to the saved model or null if saving fails.
      */
-    create(model: Partial<T>, trx?: TransactionType): Promise<T | null>;
+    insert(model: Partial<T>, trx?: TransactionType): Promise<T | null>;
     /**
      * Create multiple model instances in the database.
      *
@@ -1476,7 +1476,7 @@ declare class PostgresModelManager<T extends Model> extends AbstractModelManager
      * @param {TransactionType} trx - MysqlTransaction to be used on the save operation.
      * @returns Promise resolving to an array of saved models or null if saving fails.
      */
-    massiveCreate(models: Partial<T>[], trx?: TransactionType): Promise<T[]>;
+    insertMany(models: Partial<T>[], trx?: TransactionType): Promise<T[]>;
     /**
      * Update an existing model instance in the database.
      * @param {Model} model - Model instance to be updated.
@@ -1739,7 +1739,7 @@ declare class SQLiteModelManager<T extends Model> extends AbstractModelManager<T
      * @param {SqliteTransaction} trx - SqliteTransaction to be used on the save operation.
      * @returns Promise resolving to the saved model or null if saving fails.
      */
-    create(model: Partial<T>, trx?: TransactionType): Promise<T | null>;
+    insert(model: Partial<T>, trx?: TransactionType): Promise<T | null>;
     /**
      * Create multiple model instances in the database.
      *
@@ -1747,7 +1747,7 @@ declare class SQLiteModelManager<T extends Model> extends AbstractModelManager<T
      * @param {SqliteTransaction} trx - SqliteTransaction to be used on the save operation.
      * @returns Promise resolving to an array of saved models or null if saving fails.
      */
-    massiveCreate(models: Partial<T>[], trx?: TransactionType): Promise<T[]>;
+    insertMany(models: Partial<T>[], trx?: TransactionType): Promise<T[]>;
     /**
      * Update an existing model instance in the database.
      * @param {Model} model - Model instance to be updated.
@@ -2377,7 +2377,7 @@ declare abstract class Model {
      * @param trx
      * @returns {Promise<T | null>}
      */
-    static create<T extends Model>(this: new () => T | typeof Model, modelData: Partial<T>, trx?: TransactionType): Promise<T | null>;
+    static insert<T extends Model>(this: new () => T | typeof Model, modelData: Partial<T>, trx?: TransactionType): Promise<T | null>;
     /**
      * @description Saves multiple records to the database
      * @description WHile using mysql, it will return records only if the primary key is auto incrementing integer, else it will always return []
@@ -2386,7 +2386,7 @@ declare abstract class Model {
      * @param trx
      * @returns {Promise<T[]>}
      */
-    static massiveCreate<T extends Model>(this: new () => T | typeof Model, modelsData: Partial<T>[], trx?: TransactionType): Promise<T[]>;
+    static insertMany<T extends Model>(this: new () => T | typeof Model, modelsData: Partial<T>[], trx?: TransactionType): Promise<T[]>;
     /**
      * @description Updates a record to the database
      * @param model
@@ -2488,7 +2488,7 @@ declare abstract class Model {
      * @param data
      * @returns {T}
      */
-    static beforeCreate(data: any): Model[];
+    static beforeinsert(data: any): Model[];
     /**
      * @description Adds a beforeUpdate clause to the model, adding the ability to modify the query before updating the data
      * @param data

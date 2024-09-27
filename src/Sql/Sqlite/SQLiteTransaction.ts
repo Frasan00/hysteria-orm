@@ -173,15 +173,15 @@ export class SQLiteTransaction {
     sqlModelManagerUtils?: SqlModelManagerUtils<T>,
     options: {
       isCreate?: boolean;
-      isMassiveCreate?: boolean;
+      isinsertMany?: boolean;
       models?: T | T[];
     } = {
       isCreate: false,
-      isMassiveCreate: false,
+      isinsertMany: false,
       models: [],
     },
   ): Promise<T[]> {
-    if (options.isCreate || options.isMassiveCreate) {
+    if (options.isCreate || options.isinsertMany) {
       if (options.isCreate) {
         if (!typeofModel) {
           throw new Error("Model type is required for create operation");

@@ -26,7 +26,7 @@ beforeEach(async () => {
 test("Create a new user with posts within a transaction", async () => {
   const trx = await sql.startTransaction();
   try {
-    const user = await User.create(
+    const user = await User.insert(
       {
         name: "Bob",
         email: "bob-test@gmail.com",
@@ -40,7 +40,7 @@ test("Create a new user with posts within a transaction", async () => {
       throw new Error("User not created");
     }
 
-    const post = await Post.create(
+    const post = await Post.insert(
       {
         userId: user.id,
         title: "Post 2",
@@ -73,7 +73,7 @@ test("Rollback transaction on error", async () => {
   const trx = await sql.startTransaction();
 
   try {
-    const user = await User.create(
+    const user = await User.insert(
       {
         name: "Charlie",
         email: "charlie-test@gmail.com",
@@ -88,7 +88,7 @@ test("Rollback transaction on error", async () => {
     }
 
     // Intentionally cause an error
-    await Post.create(
+    await Post.insert(
       {
         userId: user.id,
         title: "Post 3",
@@ -113,7 +113,7 @@ test("Rollback transaction on error", async () => {
 test("Massive update within a transaction", async () => {
   const trx = await sql.startTransaction();
   try {
-    const users = await User.massiveCreate(
+    const users = await User.insertMany(
       [
         {
           name: "Dave",
@@ -154,7 +154,7 @@ test("Delete records within a transaction", async () => {
   const trx = await sql.startTransaction();
 
   try {
-    const user = await User.create(
+    const user = await User.insert(
       {
         name: "Frank",
         email: "frank-test@gmail.com",
