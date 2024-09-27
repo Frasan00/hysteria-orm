@@ -637,12 +637,20 @@ export default class ColumnTypeBuilder {
     return this.bigInteger(name);
   }
 
-  public float(name: string): ColumnOptionsBuilder {
+  public float(name: string,
+    options: {
+      precision: number;
+      scale: number;
+    } = {
+      precision: 10,
+      scale: 2,
+    }
+  ): ColumnOptionsBuilder {
     switch (this.sqlType) {
       case "mariadb":
       case "mysql":
         this.columnName = name;
-        this.partialQuery += `${name} FLOAT`;
+        this.partialQuery += `${name} FLOAT(${options.precision}, ${options.scale})`;
         return new ColumnOptionsBuilder(
           this.table,
           this.queryStatements,
@@ -675,12 +683,18 @@ export default class ColumnTypeBuilder {
     }
   }
 
-  public decimal(name: string): ColumnOptionsBuilder {
+  public decimal(name: string, options: {
+    precision: number;
+    scale: number;
+  } = {
+    precision: 10,
+    scale: 2,
+  }): ColumnOptionsBuilder {
     switch (this.sqlType) {
       case "mariadb":
       case "mysql":
         this.columnName = name;
-        this.partialQuery += `${name} DECIMAL`;
+        this.partialQuery += `${name} DECIMAL(${options.precision}, ${options.scale})`;
         return new ColumnOptionsBuilder(
           this.table,
           this.queryStatements,
@@ -690,7 +704,7 @@ export default class ColumnTypeBuilder {
         );
       case "postgres":
         this.columnName = name;
-        this.partialQuery += `${name} DECIMAL`;
+        this.partialQuery += `${name} DECIMAL(${options.precision}, ${options.scale})`;
         return new ColumnOptionsBuilder(
           this.table,
           this.queryStatements,
@@ -700,7 +714,7 @@ export default class ColumnTypeBuilder {
         );
       case "sqlite":
         this.columnName = name;
-        this.partialQuery += `${name} DECIMAL`;
+        this.partialQuery += `${name} DECIMAL(${options.precision}, ${options.scale})`;
         return new ColumnOptionsBuilder(
           this.table,
           this.queryStatements,
@@ -713,12 +727,20 @@ export default class ColumnTypeBuilder {
     }
   }
 
-  public double(name: string): ColumnOptionsBuilder {
+  public double(name: string,
+    options: {
+      precision: number;
+      scale: number;
+    } = {
+      precision: 10,
+      scale: 2,
+    }
+  ): ColumnOptionsBuilder {
     switch (this.sqlType) {
       case "mariadb":
       case "mysql":
         this.columnName = name;
-        this.partialQuery += `${name} DOUBLE`;
+        this.partialQuery += `${name} DOUBLE(${options.precision}, ${options.scale})`;
         return new ColumnOptionsBuilder(
           this.table,
           this.queryStatements,
@@ -738,7 +760,7 @@ export default class ColumnTypeBuilder {
         );
       case "sqlite":
         this.columnName = name;
-        this.partialQuery += `${name} DOUBLE PRECISION`;
+        this.partialQuery += `${name} REAL`;
         return new ColumnOptionsBuilder(
           this.table,
           this.queryStatements,

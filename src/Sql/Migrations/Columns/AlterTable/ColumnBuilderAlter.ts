@@ -35,6 +35,8 @@ type DataType =
 type BaseOptions = {
   afterColumn?: string;
   references?: { table: string; column: string };
+  precision?: number;
+  scale?: number;
   default?: any;
   primaryKey?: boolean;
   unique?: boolean;
@@ -115,13 +117,16 @@ export default class ColumnBuilderAlter {
         columnsBuilder.bigint(columnName);
         break;
       case "float":
-        columnsBuilder.float(columnName);
+        const { precision: floatPrecision = 10, scale: floatScale = 2 } = options || {};
+        columnsBuilder.float(columnName, { precision: floatPrecision, scale: floatScale });
         break;
       case "decimal":
-        columnsBuilder.decimal(columnName);
+        const { precision = 10, scale = 2 } = options || {};
+        columnsBuilder.decimal(columnName, { precision: precision, scale: scale });
         break;
       case "double":
-        columnsBuilder.double(columnName);
+        const { precision: doublePrecision = 10, scale: doubleScale = 2 } = options || {};
+        columnsBuilder.double(columnName, { precision: doublePrecision, scale: doubleScale });
         break;
       case "boolean":
         columnsBuilder.boolean(columnName);
@@ -171,6 +176,8 @@ export default class ColumnBuilderAlter {
           break;
         case "postgres":
           throw new Error("Postgres does not support AFTER in ALTER COLUMN");
+        case "sqlite":
+          throw new Error("Sqlite does not support AFTER in ALTER COLUMN");
         default:
           throw new Error("Unsupported database type");
       }
@@ -206,6 +213,9 @@ export default class ColumnBuilderAlter {
         case "postgres":
           query += " DEFAULT CURRENT_TIMESTAMP";
           break;
+        case "sqlite":
+          query += " DEFAULT CURRENT_TIMESTAMP";
+          break;
         default:
           throw new Error("Unsupported database type");
       }
@@ -220,6 +230,9 @@ export default class ColumnBuilderAlter {
         case "postgres":
           query += " ON UPDATE CURRENT_TIMESTAMP";
           break;
+        case "sqlite":
+          query += " ON UPDATE CURRENT_TIMESTAMP";
+          break;  
         default:
           throw new Error("Unsupported database type");
       }
@@ -247,6 +260,8 @@ export default class ColumnBuilderAlter {
           break;
         case "postgres":
           throw new Error("Postgres does not support AFTER in ALTER COLUMN");
+        case "sqlite":
+          throw new Error("Sqlite does not support AFTER in ALTER COLUMN");  
         default:
           throw new Error("Unsupported database type");
       }
@@ -279,6 +294,9 @@ export default class ColumnBuilderAlter {
       case "postgres":
         this.partialQuery = `ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${values[0]}`;
         break;
+      case "sqlite":
+        this.partialQuery = `ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${values[0]}`;
+        break;  
       default:
         throw new Error("Unsupported database type");
     }
@@ -294,8 +312,9 @@ export default class ColumnBuilderAlter {
           this.partialQuery += ` AFTER ${options.afterColumn}`;
           break;
         case "postgres":
-          this.partialQuery += ` AFTER ${options.afterColumn}`;
-          break;
+          throw new Error("Postgres does not support AFTER in ALTER COLUMN");
+        case "sqlite":
+          throw new Error("Sqlite does not support AFTER in ALTER COLUMN");
         default:
           throw new Error("Unsupported database type");
       }
@@ -319,6 +338,9 @@ export default class ColumnBuilderAlter {
       case "postgres":
         this.partialQuery = `ALTER TABLE ${this.table} DROP COLUMN ${columnName}`;
         break;
+      case "sqlite":
+        this.partialQuery = `ALTER TABLE ${this.table} DROP COLUMN ${columnName}`;
+        break;  
       default:
         throw new Error("Unsupported database type");
     }
@@ -343,6 +365,9 @@ export default class ColumnBuilderAlter {
         this.partialQuery = `ALTER TABLE ${this.table} CHANGE ${oldColumnName} ${newColumnName}`;
         break;
       case "postgres":
+        this.partialQuery = `ALTER TABLE ${this.table} RENAME COLUMN ${oldColumnName} TO ${newColumnName}`;
+        break;
+      case "sqlite":
         this.partialQuery = `ALTER TABLE ${this.table} RENAME COLUMN ${oldColumnName} TO ${newColumnName}`;
         break;
       default:
@@ -375,6 +400,12 @@ export default class ColumnBuilderAlter {
           options && options.length ? `(${options.length})` : ""
         }`;
         break;
+      case "sqlite":
+        this.partialQuery = `ALTER TABLE ${
+          this.table
+        } ALTER COLUMN ${columnName} TYPE ${newDataType}${
+          options && options.length ? `(${options.length})` : ""
+        }`;
       default:
         throw new Error("Unsupported database type");
     }
@@ -407,7 +438,8 @@ export default class ColumnBuilderAlter {
           break;
         case "postgres":
           throw new Error("Postgres does not support AFTER in ALTER COLUMN");
-          break;
+        case "sqlite":
+          throw new Error("Sqlite does not support AFTER in ALTER COLUMN");
         default:
           throw new Error("Unsupported database type");
       }
@@ -430,6 +462,9 @@ export default class ColumnBuilderAlter {
         this.partialQuery = `RENAME TABLE ${oldtable} TO ${newtable}`;
         break;
       case "postgres":
+        this.partialQuery = `ALTER TABLE ${oldtable} RENAME TO ${newtable}`;
+        break;
+      case "sqlite":
         this.partialQuery = `ALTER TABLE ${oldtable} RENAME TO ${newtable}`;
         break;
       default:
@@ -458,6 +493,9 @@ export default class ColumnBuilderAlter {
       case "postgres":
         this.partialQuery = `ALTER TABLE ${this.table} ALTER COLUMN ${columnName} SET DEFAULT ${defaultValue}`;
         break;
+      case "sqlite":
+        this.partialQuery = `ALTER TABLE ${this.table} ALTER COLUMN ${columnName} SET DEFAULT ${defaultValue}`;
+        break;   
       default:
         throw new Error("Unsupported database type");
     }
@@ -480,6 +518,9 @@ export default class ColumnBuilderAlter {
       case "postgres":
         this.partialQuery = `ALTER TABLE ${this.table} ALTER COLUMN ${columnName} DROP DEFAULT`;
         break;
+      case "sqlite":
+        this.partialQuery = `ALTER TABLE ${this.table} ALTER COLUMN ${columnName} DROP DEFAULT`;
+        break;  
       default:
         throw new Error("Unsupported database type");
     }
@@ -513,6 +554,9 @@ export default class ColumnBuilderAlter {
       case "postgres":
         this.partialQuery = `ALTER TABLE ${this.table} ADD CONSTRAINT ${fkName} FOREIGN KEY (${columnName}) REFERENCES ${options.references.table}(${options.references.column})`;
         break;
+      case "sqlite":
+        this.partialQuery = `ALTER TABLE ${this.table} ADD CONSTRAINT ${fkName} FOREIGN KEY (${columnName}) REFERENCES ${options.references.table}(${options.references.column})`;
+        break  
       default:
         throw new Error("Unsupported database type");
     }
@@ -536,6 +580,9 @@ export default class ColumnBuilderAlter {
       case "postgres":
         this.partialQuery = `ALTER TABLE ${this.table} DROP CONSTRAINT ${fkName}`;
         break;
+      case "sqlite":
+        this.partialQuery = `ALTER TABLE ${this.table} DROP CONSTRAINT ${fkName}`;
+        break;  
       default:
         throw new Error("Unsupported database type");
     }

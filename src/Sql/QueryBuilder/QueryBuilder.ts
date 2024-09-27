@@ -15,7 +15,7 @@ import {
 import { SqlDataSource } from "../SqlDatasource";
 import { SQLiteQueryBuilder } from "../Sqlite/SQLiteQueryBuilder";
 import { convertCase } from "../../CaseUtils";
-import { getModelColumns, getDynamicColumns } from "../Models/ModelDecorators";
+import { getModelColumns } from "../Models/ModelDecorators";
 import { addDynamicColumnsToModel } from "../serializer";
 
 /**
