@@ -544,7 +544,7 @@ const user: User | null = await User.query()
 ```
 
 # Migrations
-- Migrations are meant to be executed in a Typescript environment because migration files and the migration cli are standalone feature that does not need to be built in js
+- Migrations are meant to be executed in a Typescript environment because migration files and the migration cli are standalone feature that do not need to be built in js
 - You do not need to have Typescript installed in order to run the migration cli
 
 ## hysteria-orm-cli for Migrations
