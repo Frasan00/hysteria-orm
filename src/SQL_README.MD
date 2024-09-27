@@ -11,6 +11,7 @@
     - [Create a Model](#create-a-model)
     - [Create a Model with Relationships](#create-a-model-with-relations-and-hooks)
     - [Case Convention](#case-convention)
+    - [Upsert](#Upsert-methods)
     - [Read (standard methods used for simple queries)](#read-standard-methods-used-for-simple-queries)
     - [Query Builder](#query-builder)
     - [Where Builder](#where-builder)
@@ -235,6 +236,55 @@ type CaseConvention =
   | "none" // Columns are treated as defined in the database and in the model
   | RegExp // Custom RegExp
   | ((column: string) => string); // Custom function
+```
+
+### Upsert Methods
+```typescript
+import { User } from "./User";
+
+const firstOrCreate = await User.firstOrCreate(
+    // search columns
+    {
+        email: "Gianni2",
+    },
+    // persist data
+    {
+        email: "Gianni2",
+        name: "Gianni",
+        signupSource: "email",
+    },
+);
+
+const createdOrUpdated = await User.upsert(
+    // search columns
+    {
+        name: "Bob",
+    },
+    // persist data
+    {
+        name: "Bob",
+        email: "jaighjipajgpajdg",
+        signupSource: "email",
+        isActive: true,
+    },
+);
+
+const updatedOrdInsertedMany = await User.upsertMany(
+    ["email"], // search columns
+    // persist data
+    [
+        {
+        name: "Sando",
+        email: "sandoiado",
+        signupSource: "google",
+        },
+        {
+        name: "Sando",
+        email: "asngiogisanhgias",
+        signupSource: "google",
+        },
+    ],
+);
 ```
 
 ### Create, Update and Delete (with transaction)
