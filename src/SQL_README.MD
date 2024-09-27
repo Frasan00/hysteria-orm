@@ -523,7 +523,7 @@ const users: User[] = await User.find({
 import { User } from "./User";
 
 const users = await User.query()
-    .selectRaw("users.*")
+    .select("users.*")
     .leftJoin("posts", "users.id", "posts.user_id")
     .where('users.id', 1)
     .orderBy(['users.id'], "ASC")
