@@ -472,7 +472,6 @@ export class User extends Model {
   @column()
   declare email: string;
 
-  // dynamic columns are avaliable in extraColumns prop
   @dynamicColumn("test")
   getTest() {
     return "test";
