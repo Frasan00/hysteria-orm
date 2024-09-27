@@ -138,9 +138,18 @@ declare class ColumnTypeBuilder {
      * @returns ColumnOptionsBuilder
      */
     bigint(name: string): ColumnOptionsBuilder;
-    float(name: string): ColumnOptionsBuilder;
-    decimal(name: string): ColumnOptionsBuilder;
-    double(name: string): ColumnOptionsBuilder;
+    float(name: string, options?: {
+        precision: number;
+        scale: number;
+    }): ColumnOptionsBuilder;
+    decimal(name: string, options?: {
+        precision: number;
+        scale: number;
+    }): ColumnOptionsBuilder;
+    double(name: string, options?: {
+        precision: number;
+        scale: number;
+    }): ColumnOptionsBuilder;
     boolean(name: string): ColumnOptionsBuilder;
     date(name: string, options?: DateOptions): ColumnOptionsBuilder;
     timestamp(name: string, options?: DateOptions): ColumnOptionsBuilder;
@@ -174,6 +183,8 @@ type BaseOptions = {
         table: string;
         column: string;
     };
+    precision?: number;
+    scale?: number;
     default?: any;
     primaryKey?: boolean;
     unique?: boolean;
@@ -2384,6 +2395,37 @@ declare abstract class Model {
      * @returns
      */
     static updateRecord<T extends Model>(this: new () => T | typeof Model, modelInstance: T, trx?: TransactionType): Promise<T | null>;
+    /**
+     * @description Finds the first record or creates a new one if it doesn't exist
+     *
+     * @param model
+     * @param {Partial<T>} searchCriteria
+     * @param {Partial<T>} createData
+     * @param {Partial<T>} data
+     */
+    static firstOrCreate<T extends Model>(this: new () => T | typeof Model, searchCriteria: Partial<T>, createData: Partial<T>, trx?: TransactionType): Promise<T>;
+    /**
+     * @description Updates or creates a new record
+     * @param {Partial<T>} searchCriteria
+     * @param {Partial<T>} data
+     * @param options - The options to update the record on conflict, default is true
+     */
+    static upsert<T extends Model>(this: new () => T | typeof Model, searchCriteria: Partial<T>, data: Partial<T>, options?: {
+        updateOnConflict: boolean;
+        trx?: TransactionType;
+    }): Promise<T>;
+    /**
+     * @description Updates or creates multiple records
+     * @returns - The updated or created records
+     */
+    /**
+     * @description Updates or creates multiple records
+     * @returns - The updated or created records
+     */
+    static upsertMany<T extends Model>(this: new () => T | typeof Model, searchCriteria: SelectableType<T>[], data: Partial<T>[], options?: {
+        updateOnConflict: boolean;
+        trx?: TransactionType;
+    }): Promise<T[]>;
     /**
      * @description Updates records to the database
      * @param model

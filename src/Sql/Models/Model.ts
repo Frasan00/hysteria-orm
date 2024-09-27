@@ -258,6 +258,136 @@ export abstract class Model {
   }
 
   /**
+   * @description Finds the first record or creates a new one if it doesn't exist
+   *
+   * @param model
+   * @param {Partial<T>} searchCriteria
+   * @param {Partial<T>} createData
+   * @param {Partial<T>} data
+   */
+  static async firstOrCreate<T extends Model>(
+    this: new () => T | typeof Model,
+    searchCriteria: Partial<T>,
+    createData: Partial<T>,
+    trx?: TransactionType,
+  ): Promise<T> {
+    const typeofModel = this as unknown as typeof Model;
+    typeofModel.establishConnection();
+    const modelManager =
+      typeofModel.sqlInstance.getModelManager<T>(typeofModel);
+    const doesExist = await modelManager.findOne({
+      where: searchCriteria,
+    });
+
+    if (doesExist) {
+      return doesExist;
+    }
+
+    return (await modelManager.create(createData, trx)) as T;
+  }
+
+  /**
+   * @description Updates or creates a new record
+   * @param {Partial<T>} searchCriteria
+   * @param {Partial<T>} data
+   * @param options - The options to update the record on conflict, default is true
+   */
+  static async upsert<T extends Model>(
+    this: new () => T | typeof Model,
+    searchCriteria: Partial<T>,
+    data: Partial<T>,
+    options: { updateOnConflict: boolean; trx?: TransactionType } = {
+      updateOnConflict: true,
+    },
+  ): Promise<T> {
+    const typeofModel = this as unknown as typeof Model;
+    typeofModel.establishConnection();
+    const modelManager =
+      typeofModel.sqlInstance.getModelManager<T>(typeofModel);
+    const doesExist = await modelManager.findOne({
+      where: searchCriteria,
+    });
+
+    if (doesExist) {
+      data[typeofModel.primaryKey as keyof T] =
+        doesExist[typeofModel.primaryKey as keyof T];
+
+      if (options.updateOnConflict) {
+        return (await modelManager.updateRecord(data as T, options.trx)) as T;
+      }
+
+      return doesExist;
+    }
+
+    return (await modelManager.create(data, options.trx)) as T;
+  }
+
+  /**
+   * @description Updates or creates multiple records
+   * @returns - The updated or created records
+   */
+  /**
+   * @description Updates or creates multiple records
+   * @returns - The updated or created records
+   */
+  static async upsertMany<T extends Model>(
+    this: new () => T | typeof Model,
+    searchCriteria: SelectableType<T>[],
+    data: Partial<T>[],
+    options: { updateOnConflict: boolean; trx?: TransactionType } = {
+      updateOnConflict: true,
+    },
+  ): Promise<T[]> {
+    const typeofModel = this as unknown as typeof Model;
+    typeofModel.establishConnection();
+    const modelManager =
+      typeofModel.sqlInstance.getModelManager<T>(typeofModel);
+    if (
+      !data.every((record) =>
+        searchCriteria.every((column) => column in record),
+      )
+    ) {
+      throw new Error(
+        "Conflict columns are not present in the data, please make sure to include them in the data, " +
+          searchCriteria.join(", "),
+      );
+    }
+
+    const results: T[] = [];
+
+    for (let i = 0; i < data.length; i++) {
+      const record = data[i];
+      const search = searchCriteria.reduce((acc, column) => {
+        acc[column] = record[column];
+        return acc;
+      }, {} as Partial<T>);
+
+      const doesExist = await modelManager.findOne({
+        where: search,
+      });
+
+      if (doesExist) {
+        record[typeofModel.primaryKey as keyof T] =
+          doesExist[typeofModel.primaryKey as keyof T];
+
+        if (options.updateOnConflict) {
+          results.push(
+            (await modelManager.updateRecord(record as T, options.trx)) as T,
+          );
+          continue;
+        }
+
+        results.push(doesExist);
+        continue;
+      }
+
+      results.push((await modelManager.create(record, options.trx)) as T);
+    }
+
+    return results;
+  }
+
+  /**
    * @description Updates records to the database
    * @param model
    * @param {Model} modelInstance

@@ -95,15 +95,5 @@ export abstract class DataSource {
           );
       }
     }
-
-    if (
-      [this.type, this.host, this.username, this.password, this.database].some(
-        (connectionDetail) => !connectionDetail,
-      )
-    ) {
-      throw new Error(
-        "Missing connection details in the envs or in the connection details",
-      );
-    }
   }
 }

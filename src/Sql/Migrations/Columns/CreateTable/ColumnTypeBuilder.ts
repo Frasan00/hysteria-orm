@@ -637,14 +637,15 @@ export default class ColumnTypeBuilder {
     return this.bigInteger(name);
   }
 
-  public float(name: string,
+  public float(
+    name: string,
     options: {
       precision: number;
       scale: number;
     } = {
       precision: 10,
       scale: 2,
-    }
+    },
   ): ColumnOptionsBuilder {
     switch (this.sqlType) {
       case "mariadb":
@@ -683,13 +684,16 @@ export default class ColumnTypeBuilder {
     }
   }
 
-  public decimal(name: string, options: {
-    precision: number;
-    scale: number;
-  } = {
-    precision: 10,
-    scale: 2,
-  }): ColumnOptionsBuilder {
+  public decimal(
+    name: string,
+    options: {
+      precision: number;
+      scale: number;
+    } = {
+      precision: 10,
+      scale: 2,
+    },
+  ): ColumnOptionsBuilder {
     switch (this.sqlType) {
       case "mariadb":
       case "mysql":
@@ -727,14 +731,15 @@ export default class ColumnTypeBuilder {
     }
   }
 
-  public double(name: string,
+  public double(
+    name: string,
     options: {
       precision: number;
       scale: number;
     } = {
       precision: 10,
       scale: 2,
-    }
+    },
   ): ColumnOptionsBuilder {
     switch (this.sqlType) {
       case "mariadb":
