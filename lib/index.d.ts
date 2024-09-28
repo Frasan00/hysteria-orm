@@ -537,98 +537,6 @@ type PaginatedData<T> = {
     data: T[];
 };
 
-/**
- * @description Options for the relation
- * @property {string} softDeleteColumn - The column name for the soft delete column, if set, the relation will only return rows that have not been soft deleted
- * @property {string} softDeleteType - The type of the soft delete column
- */
-interface RelationOptions {
-    softDeleteColumn: string;
-    softDeleteType: "date" | "boolean";
-}
-declare enum RelationType$1 {
-    hasOne = "hasOne",// One to One without foreign key
-    belongsTo = "belongsTo",// One to One with foreign key
-    hasMany = "hasMany"
-}
-/**
- * Main Model -> Related Model
- */
-declare abstract class Relation {
-    abstract type: RelationType$1;
-    model: typeof Model;
-    columnName: string;
-    foreignKey?: string;
-    relatedModel: string;
-    options?: RelationOptions;
-    protected constructor(model: typeof Model, columnName: string, options?: RelationOptions);
-}
-
-declare class BelongsTo extends Relation {
-    type: RelationType$1;
-    foreignKey: string;
-    constructor(relatedModel: typeof Model, columnName: string, foreignKey: string, options?: RelationOptions);
-}
-
-declare class HasMany extends Relation {
-    type: RelationType$1;
-    foreignKey: string;
-    constructor(relatedModel: typeof Model, columnName: string, foreignKey: string, options?: RelationOptions);
-}
-
-declare class HasOne extends Relation {
-    type: RelationType$1;
-    foreignKey: string;
-    constructor(relatedModel: typeof Model, columnName: string, foreignKey: string, options?: RelationOptions);
-}
-
-type ExcludeRelations<T> = {
-    [K in keyof T]: T[K] extends (Model[] | HasMany) | (Model | HasMany) | (Model | BelongsTo) | (Model[] | BelongsTo) | (Model | HasOne) | (Model[] | HasOne) | ((...args: any[]) => any) ? never : K;
-}[keyof T];
-type OnlyRelations<T> = {
-    [K in keyof T]: T[K] extends (Model[] | HasMany) | (Model | HasMany) | (Model | BelongsTo) | (Model[] | BelongsTo) | (Model | HasOne) | (Model[] | HasOne) ? K : never;
-}[keyof T];
-type WhereType<T> = {
-    [K in keyof T]?: string | number | boolean | Date | null;
-};
-type SelectableType<T> = ExcludeRelations<Omit<T, "extraColumns">>;
-type RelationType<T> = OnlyRelations<Omit<T, "extraColumns">>;
-type DynamicColumnType<T> = {
-    [k in keyof T]: T[k] extends (...args: any[]) => any ? k : never;
-}[keyof T];
-type OrderByType = {
-    columns: string[];
-    type: "ASC" | "DESC";
-};
-type UnrestrictedFindOneType<T> = {
-    select?: string[];
-    relations?: RelationType<T>[];
-    ignoreHooks?: FetchHooks[];
-    dynamicColumns?: DynamicColumnType<T>;
-    where?: Record<string, any>;
-    throwErrorOnNull?: boolean;
-};
-type UnrestrictedFindType<T> = Omit<UnrestrictedFindOneType<T>, "throwErrorOnNull"> & {
-    orderBy?: OrderByType;
-    groupBy?: string[];
-    limit?: number;
-    offset?: number;
-};
-type FindOneType<T> = {
-    select?: SelectableType<T>[];
-    relations?: RelationType<T>[];
-    dynamicColumns?: DynamicColumnType<T>;
-    where?: WhereType<T>;
-    ignoreHooks?: FetchHooks[];
-    throwErrorOnNull?: boolean;
-};
-type FindType<T> = Omit<FindOneType<T>, "throwErrorOnNull"> & {
-    orderBy?: OrderByType;
-    groupBy?: string[];
-    limit?: number;
-    offset?: number;
-};
-
 declare abstract class WhereQueryBuilder<T extends Model> {
     protected sqlDataSource: SqlDataSource;
     protected whereQuery: string;
@@ -1758,6 +1666,102 @@ declare class SqlDataSource extends DataSource {
     private connectDriver;
 }
 
+/**
+ * @description Options for the relation
+ * @property {string} softDeleteColumn - The column name for the soft delete column, if set, the relation will only return rows that have not been soft deleted
+ * @property {string} softDeleteType - The type of the soft delete column
+ */
+interface RelationOptions {
+    softDeleteColumn: string;
+    softDeleteType: "date" | "boolean";
+}
+declare enum RelationType$1 {
+    hasOne = "hasOne",// One to One without foreign key
+    belongsTo = "belongsTo",// One to One with foreign key
+    hasMany = "hasMany"
+}
+/**
+ * Main Model -> Related Model
+ */
+declare abstract class Relation {
+    abstract type: RelationType$1;
+    model: typeof Model;
+    columnName: string;
+    foreignKey?: string;
+    relatedModel: string;
+    options?: RelationOptions;
+    protected constructor(model: typeof Model, columnName: string, options?: RelationOptions);
+}
+
+declare class BelongsTo extends Relation {
+    type: RelationType$1;
+    foreignKey: string;
+    constructor(relatedModel: typeof Model, columnName: string, foreignKey: string, options?: RelationOptions);
+}
+
+declare class HasMany extends Relation {
+    type: RelationType$1;
+    foreignKey: string;
+    constructor(relatedModel: typeof Model, columnName: string, foreignKey: string, options?: RelationOptions);
+}
+
+declare class HasOne extends Relation {
+    type: RelationType$1;
+    foreignKey: string;
+    constructor(relatedModel: typeof Model, columnName: string, foreignKey: string, options?: RelationOptions);
+}
+
+type ExcludeRelations<T> = {
+    [K in keyof T]: T[K] extends (Model[] | HasMany) | (Model | HasMany) | (Model | BelongsTo) | (Model[] | BelongsTo) | (Model | HasOne) | (Model[] | HasOne) | ((...args: any[]) => any) ? never : K;
+}[keyof T];
+type OnlyRelations<T> = {
+    [K in keyof T]: T[K] extends (Model[] | HasMany) | (Model | HasMany) | (Model | BelongsTo) | (Model[] | BelongsTo) | (Model | HasOne) | (Model[] | HasOne) ? K : never;
+}[keyof T];
+type WhereType<T> = {
+    [K in keyof T]?: string | number | boolean | Date | null;
+};
+type SelectableType<T> = ExcludeRelations<Omit<T, "extraColumns">>;
+type RelationType<T> = OnlyRelations<Omit<T, "extraColumns">>;
+type DynamicColumnType<T> = {
+    [k in keyof T]: T[k] extends (...args: any[]) => any ? k : never;
+}[keyof T];
+type OrderByType = {
+    columns: string[];
+    type: "ASC" | "DESC";
+};
+type UnrestrictedFindOneType<T> = {
+    select?: string[];
+    relations?: RelationType<T>[];
+    ignoreHooks?: FetchHooks[];
+    dynamicColumns?: DynamicColumnType<T>;
+    where?: Record<string, any>;
+    useConnection?: SqlDataSource;
+    trx?: Transaction;
+    throwErrorOnNull?: boolean;
+};
+type UnrestrictedFindType<T> = Omit<UnrestrictedFindOneType<T>, "throwErrorOnNull"> & {
+    orderBy?: OrderByType;
+    groupBy?: string[];
+    limit?: number;
+    offset?: number;
+};
+type FindOneType<T> = {
+    select?: SelectableType<T>[];
+    relations?: RelationType<T>[];
+    dynamicColumns?: DynamicColumnType<T>;
+    where?: WhereType<T>;
+    ignoreHooks?: FetchHooks[];
+    useConnection?: SqlDataSource;
+    trx?: Transaction;
+    throwErrorOnNull?: boolean;
+};
+type FindType<T> = Omit<FindOneType<T>, "throwErrorOnNull"> & {
+    orderBy?: OrderByType;
+    groupBy?: string[];
+    limit?: number;
+    offset?: number;
+};
+
 declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     protected mysqlConnection: mysql.Connection;
     protected isNestedCondition: boolean;
@@ -2209,6 +2213,10 @@ declare abstract class QueryBuilder<T extends Model> {
 
 type CaseConvention = "camel" | "snake" | "none" | RegExp | ((column: string) => string);
 
+type BaseModelMethodOptions = {
+    useConnection?: SqlDataSource;
+    trx?: Transaction;
+};
 /**
  * @description Represents a Table in the Database
  */
@@ -2255,14 +2263,14 @@ declare abstract class Model {
      * @param model
      * @returns {ModelQueryBuilder<T>}
      */
-    static query<T extends Model>(this: new () => T | typeof Model): ModelQueryBuilder<T>;
+    static query<T extends Model>(this: new () => T | typeof Model, options?: BaseModelMethodOptions): ModelQueryBuilder<T>;
     /**
      * @description Finds the first record in the database
      * @param model
      * @param {FindType} options
      * @returns {Promise<T[]>}
      */
-    static first<T extends Model>(this: new () => T | typeof Model, options?: OneOptions): Promise<T | null>;
+    static first<T extends Model>(this: new () => T | typeof Model, options?: OneOptions & BaseModelMethodOptions): Promise<T | null>;
     /**
      * @description Finds records for the given model
      * @param model
@@ -2276,7 +2284,7 @@ declare abstract class Model {
      * @param {FindOneType} options
      * @returns {Promise<T | null>}
      */
-    static findOne<T extends Model>(this: new () => T | typeof Model, options: FindOneType<T>): Promise<T | null>;
+    static findOne<T extends Model>(this: new () => T | typeof Model, options: FindOneType<T> | UnrestrictedFindOneType<T>): Promise<T | null>;
     /**
      * @description Finds a record for the given model for the given id, "id" must be set in the model in order for it to work
      * @param model
@@ -2285,14 +2293,14 @@ declare abstract class Model {
      */
     static findOneByPrimaryKey<T extends Model>(this: new () => T | typeof Model, value: string | number | boolean, options?: {
         throwErrorOnNull: boolean;
-    }): Promise<T | null>;
+    } & BaseModelMethodOptions): Promise<T | null>;
     /**
      * @description Refreshes a model from the database, the model must have a primary key defined
      * @param model
      */
     static refresh<T extends Model>(this: new () => T | typeof Model, model: T, options?: {
         throwErrorOnNull: boolean;
-    }): Promise<T | null>;
+    } & BaseModelMethodOptions): Promise<T | null>;
     /**
      * @description Saves a new record to the database
      * @description While using mysql, it will return records only if the primary key is auto incrementing integer, else it will always return null
@@ -2301,7 +2309,7 @@ declare abstract class Model {
      * @param trx
      * @returns {Promise<T | null>}
      */
-    static insert<T extends Model>(this: new () => T | typeof Model, modelData: Partial<T>, trx?: Transaction): Promise<T | null>;
+    static insert<T extends Model>(this: new () => T | typeof Model, modelData: Partial<T>, options?: BaseModelMethodOptions): Promise<T | null>;
     /**
      * @description Saves multiple records to the database
      * @description WHile using mysql, it will return records only if the primary key is auto incrementing integer, else it will always return []
@@ -2310,7 +2318,7 @@ declare abstract class Model {
      * @param trx
      * @returns {Promise<T[]>}
      */
-    static insertMany<T extends Model>(this: new () => T | typeof Model, modelsData: Partial<T>[], trx?: Transaction): Promise<T[]>;
+    static insertMany<T extends Model>(this: new () => T | typeof Model, modelsData: Partial<T>[], options?: BaseModelMethodOptions): Promise<T[]>;
     /**
      * @description Updates a record to the database
      * @param model
@@ -2318,14 +2326,14 @@ declare abstract class Model {
      * @param trx
      * @returns
      */
-    static updateRecord<T extends Model>(this: new () => T | typeof Model, modelInstance: T, trx?: Transaction): Promise<T | null>;
+    static updateRecord<T extends Model>(this: new () => T | typeof Model, modelInstance: T, options?: BaseModelMethodOptions): Promise<T | null>;
     /**
      * @description Finds the first record or creates a new one if it doesn't exist
      * @param model
      * @param {Partial<T>} searchCriteria
      * @param {Partial<T>} createData
      */
-    static firstOrCreate<T extends Model>(this: new () => T | typeof Model, searchCriteria: Partial<T>, createData: Partial<T>, trx?: Transaction): Promise<T>;
+    static firstOrCreate<T extends Model>(this: new () => T | typeof Model, searchCriteria: Partial<T>, createData: Partial<T>, options?: BaseModelMethodOptions): Promise<T>;
     /**
      * @description Updates or creates a new record
      * @param {Partial<T>} searchCriteria
@@ -2334,8 +2342,7 @@ declare abstract class Model {
      */
     static upsert<T extends Model>(this: new () => T | typeof Model, searchCriteria: Partial<T>, data: Partial<T>, options?: {
         updateOnConflict?: boolean;
-        trx?: Transaction;
-    }): Promise<T>;
+    } & BaseModelMethodOptions): Promise<T>;
     /**
      * @description Updates or creates multiple records
      * @param {Partial<T>} searchCriteria
@@ -2345,8 +2352,7 @@ declare abstract class Model {
      */
     static upsertMany<T extends Model>(this: new () => T | typeof Model, searchCriteria: SelectableType<T>[], data: Partial<T>[], options?: {
         updateOnConflict?: boolean;
-        trx?: Transaction;
-    }): Promise<T[]>;
+    } & BaseModelMethodOptions): Promise<T[]>;
     /**
      * @description Updates records to the database
      * @param model
@@ -2354,7 +2360,7 @@ declare abstract class Model {
      * @param trx
      * @returns Update query builder
      */
-    static update<T extends Model>(this: new () => T | typeof Model, trx?: Transaction): ModelUpdateQueryBuilder<T>;
+    static update<T extends Model>(this: new () => T | typeof Model, options?: BaseModelMethodOptions): ModelUpdateQueryBuilder<T>;
     /**
      * @description Gives a Delete query builder instance
      * @param model
@@ -2362,7 +2368,7 @@ declare abstract class Model {
      * @param trx
      * @returns
      */
-    static deleteQuery<T extends Model>(this: new () => T | typeof Model, trx?: Transaction): ModelDeleteQueryBuilder<T>;
+    static deleteQuery<T extends Model>(this: new () => T | typeof Model, options?: BaseModelMethodOptions): ModelDeleteQueryBuilder<T>;
     /**
      * @description Deletes a record to the database
      * @param model
@@ -2370,7 +2376,7 @@ declare abstract class Model {
      * @param trx
      * @returns
      */
-    static deleteRecord<T extends Model>(this: new () => T | typeof Model, modelInstance: T, trx?: Transaction): Promise<T | null>;
+    static deleteRecord<T extends Model>(this: new () => T | typeof Model, modelInstance: T, options?: BaseModelMethodOptions): Promise<T | null>;
     /**
      * @description Soft Deletes a record to the database
      * @param model
@@ -2382,10 +2388,10 @@ declare abstract class Model {
     static softDelete<T extends Model>(this: new () => T | typeof Model, modelInstance: T, options?: {
         column?: string;
         value?: string | number | boolean;
-        trx?: Transaction;
-    }): Promise<T>;
+    } & BaseModelMethodOptions): Promise<T>;
     /**
      * @description Adds dynamic columns to the model that are not defined in the Table and are defined in the model
+     * @description It does not support custom connection or transaction
      * @param model
      * @param data
      * @param dynamicColumns
@@ -2433,7 +2439,13 @@ declare abstract class Model {
      * @returns {void}
      */
     static establishConnection(): void;
-    private static checkCustomConnection;
+    /**
+     * @description Gives the correct model manager with the correct connection based on the options provided
+     * @param this
+     * @param options
+     * @returns
+     */
+    private static getModelManager;
 }
 
 /**

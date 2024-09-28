@@ -1,4 +1,6 @@
 import { FetchHooks } from "../../QueryBuilder/QueryBuilder";
+import { SqlDataSource } from "../../SqlDatasource";
+import { Transaction } from "../../Transaction";
 import { Model } from "../Model";
 import { BelongsTo } from "../Relations/BelongsTo";
 import { HasMany } from "../Relations/HasMany";
@@ -50,6 +52,8 @@ export type UnrestrictedFindOneType<T> = {
   ignoreHooks?: FetchHooks[];
   dynamicColumns?: DynamicColumnType<T>;
   where?: Record<string, any>;
+  useConnection?: SqlDataSource;
+  trx?: Transaction;
   throwErrorOnNull?: boolean;
 };
 
@@ -69,6 +73,8 @@ export type FindOneType<T> = {
   dynamicColumns?: DynamicColumnType<T>;
   where?: WhereType<T>;
   ignoreHooks?: FetchHooks[];
+  useConnection?: SqlDataSource;
+  trx?: Transaction;
   throwErrorOnNull?: boolean;
 };
 

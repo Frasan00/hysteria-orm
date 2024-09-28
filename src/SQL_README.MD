@@ -615,7 +615,6 @@ export default class extends Migration {
 
 # Use Connection
 - Allows to execute operations on a separate database connection, useful for multi-database applications
-- Model static methods will always refer to the main connection established with await SqlDataSource.connect();
 
 ```typescript
 import { SqlDataSource } from "hysteria-orm";
@@ -641,6 +640,9 @@ await SqlDataSource.useConnection(
         const updatedUser = await userRepo.update().withData({
         name: "new name",
         });
+
+        // you can also use Model static methods
+        await User.query({ useConnection: sql })
     },
 );
 ```

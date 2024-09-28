@@ -34,7 +34,7 @@ test("Create a new user with posts within a transaction", async () => {
         signupSource: "email",
         isActive: true,
       },
-      trx,
+      { trx },
     );
 
     if (!user) {
@@ -47,7 +47,7 @@ test("Create a new user with posts within a transaction", async () => {
         title: "Post 2",
         content: "Content 2",
       },
-      trx,
+      { trx },
     );
 
     if (!post) {
@@ -81,7 +81,7 @@ test("Rollback transaction on error", async () => {
         signupSource: "email",
         isActive: true,
       },
-      trx,
+      { trx },
     );
 
     if (!user) {
@@ -95,7 +95,7 @@ test("Rollback transaction on error", async () => {
         title: "Post 3",
         content: "Content 3",
       },
-      trx,
+      { trx },
     );
     throw new Error("Intentional error");
 
@@ -129,12 +129,12 @@ test("Massive update within a transaction", async () => {
           isActive: true,
         },
       ],
-      trx,
+      { trx },
     );
 
     expect(users.length).toBe(2);
 
-    await User.update(trx)
+    await User.update({ trx })
       .whereIn(
         "id",
         users.map((user) => user.id),
@@ -163,14 +163,14 @@ test("Delete records within a transaction", async () => {
         signupSource: "email",
         isActive: true,
       },
-      trx,
+      { trx },
     );
 
     if (!user) {
       throw new Error("User not created");
     }
 
-    await User.deleteQuery(trx).where("id", user.id).delete();
+    await User.deleteQuery({ trx }).where("id", user.id).delete();
 
     await trx.commit();
   } catch (error) {
@@ -180,8 +180,6 @@ test("Delete records within a transaction", async () => {
   const deletedUser = await User.query().where("id", user.id).one();
   expect(deletedUser).toBeNull();
 });
-
-// more tests
 
 test("Update records within a transaction", async () => {
   const trx = await sql.startTransaction();
@@ -195,14 +193,16 @@ test("Update records within a transaction", async () => {
         signupSource: "email",
         isActive: true,
       },
-      trx,
+      { trx },
     );
 
     if (!user) {
       throw new Error("User not created");
     }
 
-    await User.update(trx).where("id", user.id).withData({ isActive: false });
+    await User.update({ trx })
+      .where("id", user.id)
+      .withData({ isActive: false });
 
     await trx.commit();
   } catch (error) {
@@ -225,7 +225,7 @@ test("Insert records within a transaction with error", async () => {
         signupSource: "email",
         isActive: true,
       },
-      trx,
+      { trx },
     );
 
     if (!user) {
@@ -239,7 +239,7 @@ test("Insert records within a transaction with error", async () => {
         signupSource: "email",
         isActive: true,
       },
-      trx,
+      { trx },
     );
 
     throw new Error("Intentional error");

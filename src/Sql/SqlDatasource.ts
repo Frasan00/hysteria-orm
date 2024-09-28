@@ -9,7 +9,7 @@ import logger from "../Logger";
 import { SQLiteModelManager } from "./Sqlite/SQLiteModelManager";
 import { Transaction } from "./Transaction";
 
-type ModelManager<T extends Model> =
+export type ModelManager<T extends Model> =
   | MysqlModelManager<T>
   | PostgresModelManager<T>
   | SQLiteModelManager<T>;
