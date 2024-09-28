@@ -1,7 +1,4 @@
-import { MysqlTransaction } from "../../Mysql/MysqlTransaction";
-import { PostgresTransaction } from "../../Postgres/PostgresTransaction";
 import { FetchHooks } from "../../QueryBuilder/QueryBuilder";
-import { SQLiteTransaction } from "../../Sqlite/SQLiteTransaction";
 import { Model } from "../Model";
 import { BelongsTo } from "../Relations/BelongsTo";
 import { HasMany } from "../Relations/HasMany";
@@ -81,8 +78,3 @@ export type FindType<T> = Omit<FindOneType<T>, "throwErrorOnNull"> & {
   limit?: number;
   offset?: number;
 };
-
-export type TransactionType =
-  | MysqlTransaction
-  | PostgresTransaction
-  | SQLiteTransaction;

@@ -197,7 +197,7 @@ export class User extends Model {
         queryBuilder.whereNull("deletedAt");
     }
 
-    static beforeinsert(data: User): User {
+    static beforeInsert(data: User): User {
         data.isActive = true;
         return data;
     }

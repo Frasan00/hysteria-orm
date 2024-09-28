@@ -7,7 +7,6 @@ import {
   ModelUpdateQueryBuilder,
   WithDataOptions,
 } from "../QueryBuilder/UpdateQueryBuilder";
-import { SQLiteTransaction } from "./SQLiteTransaction";
 import sqlite3 from "sqlite3";
 import SqlModelManagerUtils from "../Models/ModelManager/ModelManagerUtils";
 
@@ -58,7 +57,7 @@ export class SQLiteUpdateQueryBuilder<
     data: Partial<T>,
     options?: WithDataOptions,
   ): Promise<number> {
-    const { trx, ignoreBeforeUpdateHook } = options || {};
+    const { ignoreBeforeUpdateHook } = options || {};
     if (!ignoreBeforeUpdateHook) {
       this.model.beforeUpdate(this);
     }
@@ -77,9 +76,6 @@ export class SQLiteUpdateQueryBuilder<
     );
 
     params.push(...this.whereParams);
-    if (trx) {
-      return await trx.massiveUpdateQuery(query, params);
-    }
 
     log(query, this.logs, params);
     try {

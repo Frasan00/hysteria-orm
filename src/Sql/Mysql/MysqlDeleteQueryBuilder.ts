@@ -11,7 +11,6 @@ import {
   ModelDeleteQueryBuilder,
   SoftDeleteOptions,
 } from "../QueryBuilder/DeleteQueryBuilder";
-import mysql from "mysql2/promise";
 
 export class MysqlDeleteQueryBuilder<
   T extends Model,
@@ -51,7 +50,6 @@ export class MysqlDeleteQueryBuilder<
       column = "deletedAt",
       value = DateTime.local().toISO(),
       ignoreBeforeDeleteHook = false,
-      trx,
     } = options || {};
     if (!ignoreBeforeDeleteHook) {
       this.model.beforeDelete(this);
@@ -65,11 +63,6 @@ export class MysqlDeleteQueryBuilder<
     );
 
     params = [...params, ...this.whereParams];
-
-    const modelIds = await this.getBeforeUpdateQueryIds();
-    if (trx) {
-      return await trx.massiveUpdateQuery(query, params);
-    }
 
     log(query, this.logs, params);
     try {
@@ -86,7 +79,7 @@ export class MysqlDeleteQueryBuilder<
   }
 
   public async delete(options: DeleteOptions = {}): Promise<number> {
-    const { trx, ignoreBeforeDeleteHook } = options || {};
+    const { ignoreBeforeDeleteHook } = options || {};
     if (!ignoreBeforeDeleteHook) {
       this.model.beforeDelete(this);
     }
@@ -99,10 +92,6 @@ export class MysqlDeleteQueryBuilder<
       this.whereQuery,
       this.joinQuery,
     );
-
-    if (trx) {
-      return await trx.massiveDeleteQuery(query, this.whereParams);
-    }
 
     log(query, this.logs, this.whereParams);
     try {
@@ -277,42 +266,5 @@ export class MysqlDeleteQueryBuilder<
     this.whereParams.push(...nestedBuilder.whereParams);
 
     return this;
-  }
-
-  /**
-   * @description Used to retrieve the data before the update in order to return the data after the update.
-   * @param sqlConnection
-   * @returns
-   */
-  protected async getBeforeUpdateQueryIds(): Promise<(string | number)[]> {
-    const beforeUpdateData = await this.sqlConnection.query<
-      mysql.RowDataPacket[]
-    >(
-      `SELECT * FROM ${this.table} ${this.joinQuery} ${this.whereQuery}`,
-      this.whereParams,
-    );
-
-    return beforeUpdateData[0].map(
-      (row: any) => row[this.model.primaryKey as string],
-    ) as (string | number)[];
-  }
-
-  protected async getAfterUpdateQuery(
-    modelIds: (string | number)[],
-  ): Promise<T[]> {
-    const afterUpdateDataQuery = modelIds.length
-      ? `SELECT * FROM ${this.table} ${this.joinQuery} WHERE ${
-          this.model.primaryKey
-        } IN (${Array(modelIds.length).fill("?").join(",")})`
-      : `SELECT * FROM ${this.table}`;
-
-    log(afterUpdateDataQuery, this.logs, modelIds);
-    const updatedData = await this.sqlConnection.query<mysql.RowDataPacket[]>(
-      afterUpdateDataQuery,
-      modelIds,
-    );
-
-    const results = updatedData[0] as T[];
-    return Array.isArray(results) ? results : [results];
   }
 }

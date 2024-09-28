@@ -1,12 +1,10 @@
 import { Model } from "../Models/Model";
 import { WhereQueryBuilder } from "../QueryBuilder/WhereQueryBuilder";
 import updateTemplate from "../Resources/Query/UPDATE";
-import { TransactionType } from "../Models/ModelManager/ModelManagerTypes";
 import { SqlConnectionType } from "../SqlDatasource";
 
 export type WithDataOptions = {
   ignoreBeforeUpdateHook?: boolean;
-  trx?: TransactionType;
 };
 
 export abstract class ModelUpdateQueryBuilder<

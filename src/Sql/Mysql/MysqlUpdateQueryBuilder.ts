@@ -1,6 +1,5 @@
 import { Connection } from "mysql2/promise";
 import { Model } from "../Models/Model";
-import { MysqlTransaction } from "./MysqlTransaction";
 import { log, queryError } from "../../Logger";
 import updateTemplate from "../Resources/Query/UPDATE";
 import joinTemplate from "../Resources/Query/JOIN";
@@ -48,7 +47,7 @@ export class MysqlUpdateQueryBuilder<
     data: Partial<T>,
     options?: WithDataOptions,
   ): Promise<number> {
-    const { trx, ignoreBeforeUpdateHook } = options || {};
+    const { ignoreBeforeUpdateHook } = options || {};
     if (!ignoreBeforeUpdateHook) {
       this.model.beforeUpdate(this);
     }
@@ -67,9 +66,6 @@ export class MysqlUpdateQueryBuilder<
     );
 
     params.push(...this.whereParams);
-    if (trx) {
-      return await trx.massiveUpdateQuery(query, params);
-    }
 
     log(query, this.logs, params);
     try {

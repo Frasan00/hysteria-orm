@@ -2,7 +2,6 @@ import { Model } from "../Models/Model";
 import {
   FindOneType,
   FindType,
-  TransactionType,
   UnrestrictedFindOneType,
   UnrestrictedFindType,
 } from "../Models/ModelManager/ModelManagerTypes";
@@ -167,20 +166,13 @@ export class MysqlModelManager<
    * @param {TransactionType} trx - TransactionType to be used on the save operation.
    * @returns Promise resolving to the saved model or null if saving fails.
    */
-  public async insert(
-    model: Partial<T>,
-    trx?: TransactionType,
-  ): Promise<T | null> {
-    this.model.beforeinsert(model as T);
+  public async insert(model: Partial<T>): Promise<T | null> {
+    this.model.beforeInsert(model as T);
     const { query, params } = this.sqlModelManagerUtils.parseInsert(
       model as T,
       this.model,
       this.sqlDataSource.getDbType(),
     );
-
-    if (trx) {
-      return await trx.queryInsert<T>(query, params, this.model);
-    }
 
     try {
       const { query, params } = this.sqlModelManagerUtils.parseInsert(
@@ -209,12 +201,9 @@ export class MysqlModelManager<
    * @param {TransactionType} trx - TransactionType to be used on the save operation.
    * @returns Promise resolving to an array of saved models or null if saving fails.
    */
-  public async insertMany(
-    models: Partial<T>[],
-    trx?: TransactionType,
-  ): Promise<T[]> {
+  public async insertMany(models: Partial<T>[]): Promise<T[]> {
     models.forEach((model) => {
-      this.model.beforeinsert(model as T);
+      this.model.beforeInsert(model as T);
     });
 
     const { query, params } = this.sqlModelManagerUtils.parseMassiveInsert(
@@ -222,10 +211,6 @@ export class MysqlModelManager<
       this.model,
       this.sqlDataSource.getDbType(),
     );
-
-    if (trx) {
-      return await trx.massiveInsertQuery<T>(query, params, this.model);
-    }
 
     try {
       const { query, params } = this.sqlModelManagerUtils.parseMassiveInsert(
@@ -260,31 +245,12 @@ export class MysqlModelManager<
    * @param {TransactionType} trx - TransactionType to be used on the update operation.
    * @returns Promise resolving to the updated model or null if updating fails.
    */
-  public async updateRecord(
-    model: T,
-    trx?: TransactionType,
-  ): Promise<T | null> {
+  public async updateRecord(model: T): Promise<T | null> {
     if (!this.model.primaryKey) {
       throw new Error(
         "Model " +
           this.model.table +
           " has no primary key to be updated, try save",
-      );
-    }
-
-    if (trx) {
-      const { query, params } = this.sqlModelManagerUtils.parseUpdate(
-        model,
-        this.model,
-        this.sqlDataSource.getDbType(),
-      );
-      await trx.queryUpdate(query, params);
-      if (!this.model.primaryKey) {
-        return null;
-      }
-
-      return await this.findOneByPrimaryKey(
-        model[this.model.primaryKey as keyof T] as string | number,
       );
     }
 
@@ -320,10 +286,7 @@ export class MysqlModelManager<
    * @param {TransactionType} trx - TransactionType to be used on the delete operation.
    * @returns Promise resolving to the deleted model or null if deleting fails.
    */
-  public async deleteRecord(
-    model: T,
-    trx?: TransactionType,
-  ): Promise<T | null> {
+  public async deleteRecord(model: T): Promise<T | null> {
     try {
       if (!this.model.primaryKey) {
         throw new Error(
@@ -337,11 +300,6 @@ export class MysqlModelManager<
         this.model.primaryKey,
         model[this.model.primaryKey as keyof T] as string,
       );
-
-      if (trx) {
-        await trx.queryDelete(query, params);
-        return model;
-      }
 
       log(query, this.logs, params);
       const [rows]: any = await this.mysqlConnection.query<RowDataPacket[]>(

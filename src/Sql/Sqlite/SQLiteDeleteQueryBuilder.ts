@@ -51,7 +51,7 @@ export class SQLiteDeleteQueryBuilder<
   }
 
   public async delete(options: DeleteOptions = {}): Promise<number> {
-    const { trx, ignoreBeforeDeleteHook } = options || {};
+    const { ignoreBeforeDeleteHook } = options || {};
     if (!ignoreBeforeDeleteHook) {
       this.model.beforeDelete(this);
     }
@@ -63,10 +63,6 @@ export class SQLiteDeleteQueryBuilder<
       this.whereQuery,
       this.joinQuery,
     );
-
-    if (trx) {
-      return await trx.massiveDeleteQuery(query, this.whereParams);
-    }
 
     log(query, this.logs, this.whereParams);
     try {
@@ -82,7 +78,6 @@ export class SQLiteDeleteQueryBuilder<
       column = "deletedAt",
       value = DateTime.local().toISO(),
       ignoreBeforeDeleteHook = false,
-      trx,
     } = options || {};
     if (!ignoreBeforeDeleteHook) {
       this.model.beforeDelete(this);
@@ -96,10 +91,6 @@ export class SQLiteDeleteQueryBuilder<
     );
 
     params = [...params, ...this.whereParams];
-
-    if (trx) {
-      return await trx.massiveUpdateQuery(query, params);
-    }
 
     log(query, this.logs, params);
     try {

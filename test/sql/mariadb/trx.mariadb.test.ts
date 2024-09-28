@@ -5,12 +5,12 @@ import { SqlDataSource } from "../../../src/Sql/SqlDatasource";
 let sql: SqlDataSource;
 beforeAll(async () => {
   sql = await SqlDataSource.connect({
-    type: "postgres",
+    type: "mariadb",
     database: "test",
     username: "root",
     password: "root",
     host: "localhost",
-    port: 5432,
+    port: 3307,
     logs: true,
   });
 });
@@ -132,9 +132,10 @@ test("Massive update within a transaction", async () => {
       trx,
     );
 
+    expect(users.length).toBeGreaterThan(0);
     expect(users.length).toBe(2);
 
-    await User.update(trx)
+    const updatedUsers = await User.update(trx)
       .whereIn(
         "id",
         users.map((user) => user.id),
@@ -142,21 +143,19 @@ test("Massive update within a transaction", async () => {
       .withData({ isActive: false });
 
     await trx.commit();
+
+    expect(updatedUsers).toBe(users.length);
   } catch (error) {
     await trx.rollback();
     throw error;
   }
-
-  const updatedUsers = await User.query().many();
-  expect(updatedUsers.every((user) => user.isActive === false)).toBe(true);
 });
 
 test("Delete records within a transaction", async () => {
   const trx = await sql.startTransaction();
 
-  let user: User | null = null;
   try {
-    user = await User.insert(
+    const user = await User.insert(
       {
         name: "Frank",
         email: "frank-test@gmail.com",
@@ -173,15 +172,14 @@ test("Delete records within a transaction", async () => {
     await User.deleteQuery(trx).where("id", user.id).delete();
 
     await trx.commit();
+
+    const deletedUser = await User.query().where("id", user.id).one();
+    expect(deletedUser).toBeNull();
   } catch (error) {
     await trx.rollback();
     throw error;
   }
-  const deletedUser = await User.query().where("id", user.id).one();
-  expect(deletedUser).toBeNull();
 });
-
-// more tests
 
 test("Update records within a transaction", async () => {
   const trx = await sql.startTransaction();

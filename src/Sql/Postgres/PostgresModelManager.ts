@@ -2,7 +2,6 @@ import { Model } from "../Models/Model";
 import {
   FindOneType,
   FindType,
-  TransactionType,
   UnrestrictedFindOneType,
   UnrestrictedFindType,
 } from "../Models/ModelManager/ModelManagerTypes";
@@ -165,20 +164,13 @@ export class PostgresModelManager<
    * @param {MysqlTransaction} trx - MysqlTransaction to be used on the save operation.
    * @returns Promise resolving to the saved model or null if saving fails.
    */
-  public async insert(
-    model: Partial<T>,
-    trx?: TransactionType,
-  ): Promise<T | null> {
-    this.model.beforeinsert(model as T);
+  public async insert(model: Partial<T>): Promise<T | null> {
+    this.model.beforeInsert(model as T);
     const { query, params } = this.sqlModelManagerUtils.parseInsert(
       model as T,
       this.model,
       this.sqlDataSource.getDbType(),
     );
-
-    if (trx) {
-      return await trx.queryInsert<T>(query, params, this.model);
-    }
 
     try {
       const { query, params } = this.sqlModelManagerUtils.parseInsert(
@@ -207,23 +199,16 @@ export class PostgresModelManager<
    * Create multiple model instances in the database.
    *
    * @param {Model} models - Model instance to be saved.
-   * @param {TransactionType} trx - MysqlTransaction to be used on the save operation.
+   * @param {Transaction} trx - MysqlTransaction to be used on the save operation.
    * @returns Promise resolving to an array of saved models or null if saving fails.
    */
-  public async insertMany(
-    models: Partial<T>[],
-    trx?: TransactionType,
-  ): Promise<T[]> {
-    models.forEach((model) => this.model.beforeinsert(model as T));
+  public async insertMany(models: Partial<T>[]): Promise<T[]> {
+    models.forEach((model) => this.model.beforeInsert(model as T));
     const { query, params } = this.sqlModelManagerUtils.parseMassiveInsert(
       models as T[],
       this.model,
       this.sqlDataSource.getDbType(),
     );
-
-    if (trx) {
-      return await trx.massiveInsertQuery<T>(query, params, this.model);
-    }
 
     try {
       const { query, params } = this.sqlModelManagerUtils.parseMassiveInsert(
@@ -253,13 +238,10 @@ export class PostgresModelManager<
   /**
    * Update an existing model instance in the database.
    * @param {Model} model - Model instance to be updated.
-   * @param {TransactionType} trx - TransactionType to be used on the update operation.
+   * @param {Transaction} trx - Transaction to be used on the update operation.
    * @returns Promise resolving to the updated model or null if updating fails.
    */
-  public async updateRecord(
-    model: T,
-    trx?: TransactionType,
-  ): Promise<T | null> {
+  public async updateRecord(model: T): Promise<T | null> {
     const { table, primaryKey } = this.model;
     if (!primaryKey) {
       throw new Error(
@@ -272,20 +254,6 @@ export class PostgresModelManager<
       this.model,
       this.sqlDataSource.getDbType(),
     );
-    if (trx) {
-      await trx.queryUpdate<T>(query, params);
-      if (!primaryKey) {
-        log(
-          "Model has no primary key so no record can be retrieved",
-          this.logs,
-        );
-        return null;
-      }
-
-      return await this.findOneByPrimaryKey(
-        model[primaryKey as keyof T] as string | number | boolean,
-      );
-    }
 
     try {
       const { query, params } = this.sqlModelManagerUtils.parseUpdate(
@@ -312,13 +280,10 @@ export class PostgresModelManager<
    * @description Delete a record from the database from the given model.
    *
    * @param {Model} model - Model to delete.
-   * @param {TransactionType} trx - TransactionType to be used on the delete operation.
+   * @param {Transaction} trx - Transaction to be used on the delete operation.
    * @returns Promise resolving to the deleted model or null if deleting fails.
    */
-  public async deleteRecord(
-    model: T,
-    trx?: TransactionType,
-  ): Promise<T | null> {
+  public async deleteRecord(model: T): Promise<T | null> {
     try {
       if (!this.model.primaryKey) {
         throw new Error(
@@ -333,11 +298,6 @@ export class PostgresModelManager<
         this.model.primaryKey,
         model[this.model.primaryKey as keyof T] as string,
       );
-
-      if (trx) {
-        await trx.queryDelete(query, params);
-        return model;
-      }
 
       log(query, this.logs, params);
       await this.pgConnection.query(query, params);

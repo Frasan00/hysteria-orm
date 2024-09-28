@@ -2,22 +2,17 @@ import { Model } from "../Models/Model";
 import { WhereQueryBuilder } from "../QueryBuilder/WhereQueryBuilder";
 import deleteTemplate from "../Resources/Query/DELETE";
 import updateTemplate from "../Resources/Query/UPDATE";
-import {
-  SelectableType,
-  TransactionType,
-} from "../Models/ModelManager/ModelManagerTypes";
+import { SelectableType } from "../Models/ModelManager/ModelManagerTypes";
 import { SqlConnectionType } from "../SqlDatasource";
 
 export type DeleteOptions = {
   ignoreBeforeDeleteHook?: boolean;
-  trx?: TransactionType;
 };
 
 export type SoftDeleteOptions<T> = {
   column?: SelectableType<T>;
   value?: string | number | boolean;
   ignoreBeforeDeleteHook?: boolean;
-  trx?: TransactionType;
 };
 
 export abstract class ModelDeleteQueryBuilder<

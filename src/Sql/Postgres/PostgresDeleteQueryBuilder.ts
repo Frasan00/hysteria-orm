@@ -46,7 +46,7 @@ export class PostgresDeleteQueryBuilder<
   }
 
   public async delete(options: DeleteOptions = {}): Promise<number> {
-    const { trx, ignoreBeforeDeleteHook } = options || {};
+    const { ignoreBeforeDeleteHook } = options || {};
     if (!ignoreBeforeDeleteHook) {
       this.model.beforeDelete(this);
     }
@@ -58,10 +58,6 @@ export class PostgresDeleteQueryBuilder<
       this.whereQuery,
       this.joinQuery,
     );
-
-    if (trx) {
-      return await trx.massiveDeleteQuery(query, this.whereParams);
-    }
 
     log(query, this.logs, this.whereParams);
     try {
@@ -82,7 +78,6 @@ export class PostgresDeleteQueryBuilder<
       column = "deletedAt",
       value = DateTime.local().toISO(),
       ignoreBeforeDeleteHook = false,
-      trx,
     } = options || {};
     if (!ignoreBeforeDeleteHook) {
       this.model.beforeDelete(this);
@@ -96,10 +91,6 @@ export class PostgresDeleteQueryBuilder<
     );
 
     params = [...params, ...this.whereParams];
-
-    if (trx) {
-      return await trx.massiveUpdateQuery(query, params);
-    }
 
     log(query, this.logs, params);
     try {

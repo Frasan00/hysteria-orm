@@ -47,7 +47,7 @@ export class PostgresUpdateQueryBuilder<
     data: Partial<T>,
     options?: WithDataOptions,
   ): Promise<number> {
-    const { trx, ignoreBeforeUpdateHook } = options || {};
+    const { ignoreBeforeUpdateHook } = options || {};
     if (!ignoreBeforeUpdateHook) {
       this.model.beforeUpdate(this);
     }
@@ -66,9 +66,6 @@ export class PostgresUpdateQueryBuilder<
     );
 
     params.push(...this.whereParams);
-    if (trx) {
-      return await trx.massiveUpdateQuery(query, params);
-    }
 
     log(query, this.logs, params);
     try {

@@ -4,12 +4,14 @@ const { execSync } = require('child_process');
 
 const testFiles = [
     // trx
-    // './test/sql/pg/trx.pg.test.ts',
     './test/sql/mysql/trx.mysql.test.ts',
-
+    './test/sql/pg/trx.pg.test.ts',
+    './test/sql/mariadb/trx.mariadb.test.ts',
+    './test/sql/sqlite/trx.sqlite.test.ts',
+    
     // sqlite
-    // './test/sql/sqlite/relations.sqlite.test.ts',
-    // './test/sql/sqlite/crud.sqlite.test.ts',
+    './test/sql/sqlite/relations.sqlite.test.ts',
+    './test/sql/sqlite/crud.sqlite.test.ts',
     
     // pg
     './test/sql/pg/relations.pg.test.ts',
@@ -25,7 +27,7 @@ const testFiles = [
     './test/sql/mysql/crud.mysql.test.ts',
 
     // Redis
-    // './test/redis/redis.test.ts',
+    './test/redis/redis.test.ts',
 ];
 
 testFiles.forEach((file) => {

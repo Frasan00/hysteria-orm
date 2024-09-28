@@ -5,7 +5,6 @@ import { getBaseModelInstance, Model } from "../Model";
 import {
   FindOneType,
   FindType,
-  TransactionType,
   UnrestrictedFindOneType,
   UnrestrictedFindType,
 } from "./ModelManagerTypes";
@@ -73,40 +72,28 @@ export abstract class AbstractModelManager<T extends Model> {
    * @param model
    * @param trx
    */
-  public abstract insert(
-    model: Partial<T>,
-    trx?: TransactionType,
-  ): Promise<T | null>;
+  public abstract insert(model: Partial<T>): Promise<T | null>;
 
   /**
    * @description Creates multiple records
    * @param model
    * @param trx
    */
-  public abstract insertMany(
-    model: Partial<T>[],
-    trx?: TransactionType,
-  ): Promise<T[]>;
+  public abstract insertMany(model: Partial<T>[]): Promise<T[]>;
 
   /**
    * @description Updates a record
    * @param model
    * @param trx
    */
-  public abstract updateRecord(
-    model: T,
-    trx?: TransactionType,
-  ): Promise<T | null>;
+  public abstract updateRecord(model: T): Promise<T | null>;
 
   /**
    * @description Deletes a record
    * @param model
    * @param trx
    */
-  public abstract deleteRecord(
-    model: T,
-    trx?: TransactionType,
-  ): Promise<T | null>;
+  public abstract deleteRecord(model: T): Promise<T | null>;
 
   /**
    * @description Returns a query builder

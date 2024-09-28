@@ -5,12 +5,9 @@ import sqlite3 from "sqlite3";
 import { Model } from "./Models/Model";
 import { MysqlModelManager } from "./Mysql/MysqlModelManager";
 import { PostgresModelManager } from "./Postgres/PostgresModelManager";
-import { MysqlTransaction } from "./Mysql/MysqlTransaction";
-import { PostgresTransaction } from "./Postgres/PostgresTransaction";
 import logger from "../Logger";
 import { SQLiteModelManager } from "./Sqlite/SQLiteModelManager";
-import { SQLiteTransaction } from "./Sqlite/SQLiteTransaction";
-import { TransactionType } from "./Models/ModelManager/ModelManagerTypes";
+import { Transaction } from "./Transaction";
 
 type ModelManager<T extends Model> =
   | MysqlModelManager<T>
@@ -102,53 +99,25 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
-   * @description Begins a transaction on the database and returns the transaction object
+   * @description Starts a transaction on the database and returns the transaction object
    * @param model
-   * @returns {Promise<TransactionType>} trx
+   * @returns {Promise<Transaction>} trx
    */
-  public async startTransaction(): Promise<TransactionType> {
-    switch (this.type) {
-      case "mariadb":
-      case "mysql":
-        const sqlConnection = await mysql.createConnection({
-          host: this.host,
-          port: this.port,
-          user: this.username,
-          password: this.password,
-          database: this.database,
-        });
+  public async startTransaction(): Promise<Transaction> {
+    const sqlDataSource = new SqlDataSource({
+      type: this.type as SqlDataSourceType,
+      host: this.host,
+      port: this.port,
+      username: this.username,
+      password: this.password,
+      database: this.database,
+    });
 
-        const trxMysql = new MysqlTransaction(
-          sqlConnection,
-          this.logs,
-          this.type,
-        );
-        await trxMysql.start();
-        return trxMysql;
-      case "postgres":
-        const pgClient = new pg.Client({
-          host: this.host,
-          port: this.port,
-          user: this.username,
-          password: this.password,
-          database: this.database,
-        });
-
-        const trxPg = new PostgresTransaction(pgClient, this.logs);
-        await trxPg.start();
-        return trxPg;
-      case "sqlite":
-        const sqliteTransaction = new SQLiteTransaction(
-          this.sqlConnection as sqlite3.Database,
-          this.logs,
-        );
-        await sqliteTransaction.start();
-        return sqliteTransaction;
-      default:
-        throw new Error(
-          "Error while starting transaction: invalid sql database type provided",
-        );
-    }
+    await sqlDataSource.connectDriver();
+    sqlDataSource.isConnected = true;
+    const mysqlTrx = new Transaction(sqlDataSource, this.logs);
+    await mysqlTrx.startTransaction();
+    return mysqlTrx;
   }
 
   /**
@@ -201,46 +170,7 @@ export class SqlDataSource extends DataSource {
     cb: (sqlDataSource: SqlDataSource) => Promise<void>,
   ) {
     const customSqlInstance = new SqlDataSource(connectionDetails);
-    switch (customSqlInstance.type) {
-      case "mysql":
-      case "mariadb":
-        customSqlInstance.sqlConnection = await createConnection({
-          host: customSqlInstance.host,
-          port: customSqlInstance.port,
-          user: customSqlInstance.username,
-          password: customSqlInstance.password,
-          database: customSqlInstance.database,
-        });
-        break;
-
-      case "postgres":
-        customSqlInstance.sqlConnection = new pg.Client({
-          host: customSqlInstance.host,
-          port: customSqlInstance.port,
-          user: customSqlInstance.username,
-          password: customSqlInstance.password,
-          database: customSqlInstance.database,
-        });
-        await customSqlInstance.sqlConnection.connect();
-        break;
-
-      case "sqlite":
-        customSqlInstance.sqlConnection = new sqlite3.Database(
-          customSqlInstance.database,
-          sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE,
-          (err) => {
-            if (err) {
-              throw new Error(`Error while connecting to sqlite: ${err}`);
-            }
-          },
-        );
-        break;
-      default:
-        throw new Error(
-          `Unsupported data source type: ${customSqlInstance.type}`,
-        );
-    }
-
+    await customSqlInstance.connectDriver();
     customSqlInstance.isConnected = true;
     try {
       await cb(customSqlInstance).then(
@@ -335,6 +265,44 @@ export class SqlDataSource extends DataSource {
         });
         this.isConnected = false;
         SqlDataSource.instance = null;
+        break;
+      default:
+        throw new Error(`Unsupported datasource type: ${this.type}`);
+    }
+  }
+
+  private async connectDriver(): Promise<void> {
+    switch (this.type) {
+      case "mysql":
+      case "mariadb":
+        this.sqlConnection = await mysql.createConnection({
+          host: this.host,
+          port: this.port,
+          user: this.username,
+          password: this.password,
+          database: this.database,
+        });
+        break;
+      case "postgres":
+        this.sqlConnection = new pg.Client({
+          host: this.host,
+          port: this.port,
+          user: this.username,
+          password: this.password,
+          database: this.database,
+        });
+        await (this.sqlConnection as pg.Client).connect();
+        break;
+      case "sqlite":
+        this.sqlConnection = new sqlite3.Database(
+          this.database,
+          sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE,
+          (err) => {
+            if (err) {
+              throw new Error(`Error while connecting to sqlite: ${err}`);
+            }
+          },
+        );
         break;
       default:
         throw new Error(`Unsupported datasource type: ${this.type}`);

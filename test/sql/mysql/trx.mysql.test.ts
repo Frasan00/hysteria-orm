@@ -11,6 +11,7 @@ beforeAll(async () => {
     password: "root",
     host: "localhost",
     port: 3306,
+    logs: true,
   });
 });
 
@@ -134,12 +135,12 @@ test("Massive update within a transaction", async () => {
     expect(users.length).toBeGreaterThan(0);
     expect(users.length).toBe(2);
 
-    const updatedUsers = await User.update()
+    const updatedUsers = await User.update(trx)
       .whereIn(
         "id",
         users.map((user) => user.id),
       )
-      .withData({ isActive: false }, { trx });
+      .withData({ isActive: false });
 
     await trx.commit();
 
@@ -168,7 +169,7 @@ test("Delete records within a transaction", async () => {
       throw new Error("User not created");
     }
 
-    await User.deleteQuery().where("id", user.id).delete({ trx });
+    await User.deleteQuery(trx).where("id", user.id).delete();
 
     await trx.commit();
 
@@ -178,4 +179,73 @@ test("Delete records within a transaction", async () => {
     await trx.rollback();
     throw error;
   }
+});
+
+test("Update records within a transaction", async () => {
+  const trx = await sql.startTransaction();
+
+  let user: User | null = null;
+  try {
+    user = await User.insert(
+      {
+        name: "Frank",
+        email: "sdosaifmoas",
+        signupSource: "email",
+        isActive: true,
+      },
+      trx,
+    );
+
+    if (!user) {
+      throw new Error("User not created");
+    }
+
+    await User.update(trx).where("id", user.id).withData({ isActive: false });
+
+    await trx.commit();
+  } catch (error) {
+    await trx.rollback();
+    throw error;
+  }
+
+  const updatedUser = await User.query().where("id", user.id).one();
+  expect(updatedUser?.isActive).toBe(false);
+});
+
+test("Insert records within a transaction with error", async () => {
+  const trx = await sql.startTransaction();
+
+  try {
+    const user = await User.insert(
+      {
+        name: "Frank",
+        email: "sdasdsd",
+        signupSource: "email",
+        isActive: true,
+      },
+      trx,
+    );
+
+    if (!user) {
+      throw new Error("User not created");
+    }
+
+    await User.insert(
+      {
+        name: "Frank",
+        email: "sdasdsd",
+        signupSource: "email",
+        isActive: true,
+      },
+      trx,
+    );
+
+    throw new Error("Intentional error");
+    await trx.commit();
+  } catch (error) {
+    await trx.rollback();
+  }
+
+  const user = await User.query().where("email", "sdasdsd").one();
+  expect(user).toBeNull();
 });

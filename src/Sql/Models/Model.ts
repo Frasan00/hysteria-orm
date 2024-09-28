@@ -7,7 +7,6 @@ import {
   FindOneType,
   FindType,
   SelectableType,
-  TransactionType,
   UnrestrictedFindType,
 } from "./ModelManager/ModelManagerTypes";
 import { CaseConvention, convertCase } from "../../CaseUtils";
@@ -19,6 +18,7 @@ import {
   parseDatabaseDataIntoModelResponse,
 } from "../serializer";
 import { PaginatedData } from "../pagination";
+import { Transaction } from "../Transaction";
 
 export function getBaseTable(target: typeof Model): string {
   const className = target.name;
@@ -208,13 +208,17 @@ export abstract class Model {
   static insert<T extends Model>(
     this: new () => T | typeof Model,
     modelData: Partial<T>,
-    trx?: TransactionType,
+    trx?: Transaction,
   ): Promise<T | null> {
     const typeofModel = this as unknown as typeof Model;
-    typeofModel.establishConnection();
-    return typeofModel.sqlInstance
-      .getModelManager<T>(typeofModel)
-      .insert(modelData, trx);
+    const customConnection = typeofModel.checkCustomConnection<T>(
+      trx?.sqlDataSource,
+    );
+    const modelManager = customConnection
+      ? customConnection.getModelManager<T>(typeofModel)
+      : typeofModel.sqlInstance.getModelManager<T>(typeofModel);
+
+    return modelManager.insert(modelData);
   }
 
   /**
@@ -228,13 +232,17 @@ export abstract class Model {
   static insertMany<T extends Model>(
     this: new () => T | typeof Model,
     modelsData: Partial<T>[],
-    trx?: TransactionType,
+    trx?: Transaction,
   ): Promise<T[]> {
     const typeofModel = this as unknown as typeof Model;
-    typeofModel.establishConnection();
-    return typeofModel.sqlInstance
-      .getModelManager<T>(typeofModel)
-      .insertMany(modelsData, trx);
+    const customConnection = typeofModel.checkCustomConnection<T>(
+      trx?.sqlDataSource,
+    );
+    const modelManager = customConnection
+      ? customConnection.getModelManager<T>(typeofModel)
+      : typeofModel.sqlInstance.getModelManager<T>(typeofModel);
+
+    return modelManager.insertMany(modelsData);
   }
 
   /**
@@ -247,13 +255,17 @@ export abstract class Model {
   static updateRecord<T extends Model>(
     this: new () => T | typeof Model,
     modelInstance: T,
-    trx?: TransactionType,
+    trx?: Transaction,
   ): Promise<T | null> {
     const typeofModel = this as unknown as typeof Model;
-    typeofModel.establishConnection();
-    return typeofModel.sqlInstance
-      .getModelManager<T>(typeofModel)
-      .updateRecord(modelInstance, trx);
+    const customConnection = typeofModel.checkCustomConnection<T>(
+      trx?.sqlDataSource,
+    );
+    const modelManager = customConnection
+      ? customConnection.getModelManager<T>(typeofModel)
+      : typeofModel.sqlInstance.getModelManager<T>(typeofModel);
+
+    return modelManager.updateRecord(modelInstance);
   }
 
   /**
@@ -266,12 +278,17 @@ export abstract class Model {
     this: new () => T | typeof Model,
     searchCriteria: Partial<T>,
     createData: Partial<T>,
-    trx?: TransactionType,
+    trx?: Transaction,
   ): Promise<T> {
     const typeofModel = this as unknown as typeof Model;
-    typeofModel.establishConnection();
-    const modelManager =
-      typeofModel.sqlInstance.getModelManager<T>(typeofModel);
+    const customConnection = typeofModel.checkCustomConnection<T>(
+      trx?.sqlDataSource,
+    );
+
+    const modelManager = customConnection
+      ? customConnection.getModelManager<T>(typeofModel)
+      : typeofModel.sqlInstance.getModelManager<T>(typeofModel);
+
     const doesExist = await modelManager.findOne({
       where: searchCriteria,
     });
@@ -280,7 +297,7 @@ export abstract class Model {
       return doesExist;
     }
 
-    return (await modelManager.insert(createData, trx)) as T;
+    return (await modelManager.insert(createData)) as T;
   }
 
   /**
@@ -293,14 +310,19 @@ export abstract class Model {
     this: new () => T | typeof Model,
     searchCriteria: Partial<T>,
     data: Partial<T>,
-    options: { updateOnConflict?: boolean; trx?: TransactionType } = {
+    options: { updateOnConflict?: boolean; trx?: Transaction } = {
       updateOnConflict: true,
     },
   ): Promise<T> {
     const typeofModel = this as unknown as typeof Model;
-    typeofModel.establishConnection();
-    const modelManager =
-      typeofModel.sqlInstance.getModelManager<T>(typeofModel);
+    const customConnection = typeofModel.checkCustomConnection<T>(
+      options.trx?.sqlDataSource,
+    );
+
+    const modelManager = customConnection
+      ? customConnection.getModelManager<T>(typeofModel)
+      : typeofModel.sqlInstance.getModelManager<T>(typeofModel);
+
     const doesExist = await modelManager.findOne({
       where: searchCriteria,
     });
@@ -310,13 +332,13 @@ export abstract class Model {
         doesExist[typeofModel.primaryKey as keyof T];
 
       if (options.updateOnConflict) {
-        return (await modelManager.updateRecord(data as T, options.trx)) as T;
+        return (await modelManager.updateRecord(data as T)) as T;
       }
 
       return doesExist;
     }
 
-    return (await modelManager.insert(data, options.trx)) as T;
+    return (await modelManager.insert(data)) as T;
   }
 
   /**
@@ -330,14 +352,19 @@ export abstract class Model {
     this: new () => T | typeof Model,
     searchCriteria: SelectableType<T>[],
     data: Partial<T>[],
-    options: { updateOnConflict?: boolean; trx?: TransactionType } = {
+    options: { updateOnConflict?: boolean; trx?: Transaction } = {
       updateOnConflict: true,
     },
   ): Promise<T[]> {
     const typeofModel = this as unknown as typeof Model;
-    typeofModel.establishConnection();
-    const modelManager =
-      typeofModel.sqlInstance.getModelManager<T>(typeofModel);
+    const customConnection = typeofModel.checkCustomConnection<T>(
+      options.trx?.sqlDataSource,
+    );
+
+    const modelManager = customConnection
+      ? customConnection.getModelManager<T>(typeofModel)
+      : typeofModel.sqlInstance.getModelManager<T>(typeofModel);
+
     if (
       !data.every((record) =>
         searchCriteria.every((column) => column in record),
@@ -367,9 +394,7 @@ export abstract class Model {
           doesExist[typeofModel.primaryKey as keyof T];
 
         if (options.updateOnConflict) {
-          results.push(
-            (await modelManager.updateRecord(record as T, options.trx)) as T,
-          );
+          results.push((await modelManager.updateRecord(record as T)) as T);
           continue;
         }
 
@@ -377,7 +402,7 @@ export abstract class Model {
         continue;
       }
 
-      results.push((await modelManager.insert(record, options.trx)) as T);
+      results.push((await modelManager.insert(record)) as T);
     }
 
     return results;
@@ -392,10 +417,17 @@ export abstract class Model {
    */
   static update<T extends Model>(
     this: new () => T | typeof Model,
+    trx?: Transaction,
   ): ModelUpdateQueryBuilder<T> {
     const typeofModel = this as unknown as typeof Model;
-    typeofModel.establishConnection();
-    return typeofModel.sqlInstance.getModelManager<T>(typeofModel).update();
+    const customConnection = typeofModel.checkCustomConnection<T>(
+      trx?.sqlDataSource,
+    );
+    const modelManager = customConnection
+      ? customConnection.getModelManager<T>(typeofModel)
+      : typeofModel.sqlInstance.getModelManager<T>(typeofModel);
+
+    return modelManager.update();
   }
 
   /**
@@ -407,12 +439,17 @@ export abstract class Model {
    */
   static deleteQuery<T extends Model>(
     this: new () => T | typeof Model,
+    trx?: Transaction,
   ): ModelDeleteQueryBuilder<T> {
     const typeofModel = this as unknown as typeof Model;
-    typeofModel.establishConnection();
-    return typeofModel.sqlInstance
-      .getModelManager<T>(typeofModel)
-      .deleteQuery();
+    const customConnection = typeofModel.checkCustomConnection<T>(
+      trx?.sqlDataSource,
+    );
+    const modelManager = customConnection
+      ? customConnection.getModelManager<T>(typeofModel)
+      : typeofModel.sqlInstance.getModelManager<T>(typeofModel);
+
+    return modelManager.deleteQuery();
   }
 
   /**
@@ -425,13 +462,17 @@ export abstract class Model {
   static deleteRecord<T extends Model>(
     this: new () => T | typeof Model,
     modelInstance: T,
-    trx?: TransactionType,
+    trx?: Transaction,
   ): Promise<T | null> {
     const typeofModel = this as unknown as typeof Model;
-    typeofModel.establishConnection();
-    return typeofModel.sqlInstance
-      .getModelManager<T>(typeofModel)
-      .deleteRecord(modelInstance, trx);
+    const customConnection = typeofModel.checkCustomConnection<T>(
+      trx?.sqlDataSource,
+    );
+    const modelManager = customConnection
+      ? customConnection.getModelManager<T>(typeofModel)
+      : typeofModel.sqlInstance.getModelManager<T>(typeofModel);
+
+    return modelManager.deleteRecord(modelInstance);
   }
 
   /**
@@ -448,11 +489,10 @@ export abstract class Model {
     options?: {
       column?: string;
       value?: string | number | boolean;
-      trx?: TransactionType;
+      trx?: Transaction;
     },
   ): Promise<T> {
     const typeofModel = this as unknown as typeof Model;
-    typeofModel.establishConnection();
     const {
       column = "deletedAt" as SelectableType<T>,
       value = DateTime.local().toISO(),
@@ -460,9 +500,14 @@ export abstract class Model {
     } = options || {};
 
     modelInstance[column as keyof T] = value as T[keyof T];
-    await typeofModel.sqlInstance
-      .getModelManager<T>(typeofModel)
-      .updateRecord(modelInstance, trx);
+    const customConnection = typeofModel.checkCustomConnection<T>(
+      trx?.sqlDataSource,
+    );
+    const modelManager = customConnection
+      ? customConnection.getModelManager<T>(typeofModel)
+      : typeofModel.sqlInstance.getModelManager<T>(typeofModel);
+
+    await modelManager.updateRecord(modelInstance);
 
     if (typeof value === "string") {
       modelInstance[column as keyof T] = DateTime.fromISO(value) as T[keyof T];
@@ -547,7 +592,7 @@ export abstract class Model {
    * @param data
    * @returns {T}
    */
-  static beforeinsert(data: any): Model[] {
+  static beforeInsert(data: any): Model[] {
     return data;
   }
 
@@ -591,5 +636,17 @@ export abstract class Model {
     }
 
     this.sqlInstance = sql;
+  }
+
+  private static checkCustomConnection<T extends Model>(
+    sqlDataSource?: SqlDataSource,
+  ): SqlDataSource | null {
+    if (!sqlDataSource) {
+      const typeofModel = this as unknown as typeof Model;
+      typeofModel.establishConnection();
+      return null;
+    }
+
+    return sqlDataSource;
   }
 }
