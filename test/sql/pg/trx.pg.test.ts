@@ -138,7 +138,7 @@ test("Massive update within a transaction", async () => {
         "id",
         users.map((user) => user.id),
       )
-      .withData({ isActive: false }, trx);
+      .withData({ isActive: false }, { trx });
 
     await trx.commit();
 
@@ -173,7 +173,7 @@ test("Delete records within a transaction", async () => {
       throw new Error("User not created");
     }
 
-    await User.deleteQuery().where("id", user.id).delete(trx);
+    await User.deleteQuery().where("id", user.id).delete({ trx });
 
     await trx.commit();
 

@@ -110,7 +110,7 @@ export class SqlDataSource extends DataSource {
     switch (this.type) {
       case "mariadb":
       case "mysql":
-        const sqlPool = mysql.createPool({
+        const sqlConnection = await mysql.createConnection({
           host: this.host,
           port: this.port,
           user: this.username,
@@ -118,11 +118,15 @@ export class SqlDataSource extends DataSource {
           database: this.database,
         });
 
-        const trxMysql = new MysqlTransaction(sqlPool, this.logs, this.type);
+        const trxMysql = new MysqlTransaction(
+          sqlConnection,
+          this.logs,
+          this.type,
+        );
         await trxMysql.start();
         return trxMysql;
       case "postgres":
-        const pgPool = new pg.Pool({
+        const pgClient = new pg.Client({
           host: this.host,
           port: this.port,
           user: this.username,
@@ -130,7 +134,7 @@ export class SqlDataSource extends DataSource {
           database: this.database,
         });
 
-        const trxPg = new PostgresTransaction(pgPool, this.logs);
+        const trxPg = new PostgresTransaction(pgClient, this.logs);
         await trxPg.start();
         return trxPg;
       case "sqlite":
@@ -233,7 +237,7 @@ export class SqlDataSource extends DataSource {
         break;
       default:
         throw new Error(
-          `Unsupported datasource type: ${customSqlInstance.type}`,
+          `Unsupported data source type: ${customSqlInstance.type}`,
         );
     }
 
@@ -265,7 +269,7 @@ export class SqlDataSource extends DataSource {
     switch (this.type) {
       case "mysql":
       case "mariadb":
-        return createConnection({
+        return await createConnection({
           host: this.host,
           port: this.port,
           user: this.username,

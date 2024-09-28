@@ -124,7 +124,6 @@ export abstract class Model {
     return await typeofModel.sqlInstance
       .getModelManager<T>(typeofModel)
       .query()
-      .limit(1)
       .one(options);
   }
 
@@ -259,11 +258,9 @@ export abstract class Model {
 
   /**
    * @description Finds the first record or creates a new one if it doesn't exist
-   *
    * @param model
    * @param {Partial<T>} searchCriteria
    * @param {Partial<T>} createData
-   * @param {Partial<T>} data
    */
   static async firstOrCreate<T extends Model>(
     this: new () => T | typeof Model,
@@ -296,7 +293,7 @@ export abstract class Model {
     this: new () => T | typeof Model,
     searchCriteria: Partial<T>,
     data: Partial<T>,
-    options: { updateOnConflict: boolean; trx?: TransactionType } = {
+    options: { updateOnConflict?: boolean; trx?: TransactionType } = {
       updateOnConflict: true,
     },
   ): Promise<T> {
@@ -324,17 +321,16 @@ export abstract class Model {
 
   /**
    * @description Updates or creates multiple records
-   * @returns - The updated or created records
-   */
-  /**
-   * @description Updates or creates multiple records
+   * @param {Partial<T>} searchCriteria
+   * @param {Partial<T>} data
+   * @param options - The options to update the record on conflict, default is true
    * @returns - The updated or created records
    */
   static async upsertMany<T extends Model>(
     this: new () => T | typeof Model,
     searchCriteria: SelectableType<T>[],
     data: Partial<T>[],
-    options: { updateOnConflict: boolean; trx?: TransactionType } = {
+    options: { updateOnConflict?: boolean; trx?: TransactionType } = {
       updateOnConflict: true,
     },
   ): Promise<T[]> {

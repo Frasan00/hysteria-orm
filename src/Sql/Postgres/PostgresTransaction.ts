@@ -1,4 +1,4 @@
-import { Pool, QueryResult, PoolClient } from "pg";
+import { QueryResult, Client } from "pg";
 import { BEGIN_TRANSACTION } from "../Resources/Query/TRANSACTION";
 import { COMMIT_TRANSACTION } from "../Resources/Query/TRANSACTION";
 import { ROLLBACK_TRANSACTION } from "../Resources/Query/TRANSACTION";
@@ -8,13 +8,13 @@ import selectTemplate from "../Resources/Query/SELECT";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
 
 export class PostgresTransaction {
-  protected pgPool: Pool;
-  protected pgClient!: PoolClient;
+  protected pgClient: Client;
+  protected isTransactionStarted: boolean = false;
   protected logs: boolean;
 
-  constructor(pgPool: Pool, logs: boolean) {
+  constructor(pgClient: Client, logs: boolean) {
     this.logs = logs;
-    this.pgPool = pgPool;
+    this.pgClient = pgClient;
   }
 
   public async queryInsert<T extends Model>(
@@ -22,7 +22,7 @@ export class PostgresTransaction {
     params: any[],
     typeofModel: typeof Model,
   ): Promise<T> {
-    if (!this.pgClient) {
+    if (!this.isTransactionStarted) {
       throw new Error("PostgresTransaction not started.");
     }
 
@@ -54,7 +54,7 @@ export class PostgresTransaction {
     params: any[],
     typeofModel: typeof Model,
   ): Promise<T[]> {
-    if (!this.pgClient) {
+    if (!this.isTransactionStarted) {
       throw new Error("PostgresTransaction not started.");
     }
 
@@ -78,7 +78,7 @@ export class PostgresTransaction {
     query: string,
     params: any[],
   ): Promise<number> {
-    if (!this.pgClient) {
+    if (!this.isTransactionStarted) {
       throw new Error("PostgresTransaction not started.");
     }
 
@@ -102,7 +102,7 @@ export class PostgresTransaction {
     query: string,
     params: any[],
   ): Promise<number> {
-    if (!this.pgClient) {
+    if (!this.isTransactionStarted) {
       throw new Error("PostgresTransaction not started.");
     }
 
@@ -127,7 +127,7 @@ export class PostgresTransaction {
     query: string,
     params?: any[],
   ): Promise<number | null> {
-    if (!this.pgClient) {
+    if (!this.isTransactionStarted) {
       throw new Error("PostgresTransaction not started.");
     }
 
@@ -148,7 +148,7 @@ export class PostgresTransaction {
     query: string,
     params?: any[],
   ): Promise<T | number | null> {
-    if (!this.pgClient) {
+    if (!this.isTransactionStarted) {
       throw new Error("PostgresTransaction not started.");
     }
 
@@ -170,9 +170,9 @@ export class PostgresTransaction {
    */
   async start(): Promise<void> {
     try {
-      this.pgClient = await this.pgPool.connect();
-      await this.pgClient.query(BEGIN_TRANSACTION);
       log(BEGIN_TRANSACTION, this.logs);
+      await this.pgClient.query(BEGIN_TRANSACTION);
+      this.isTransactionStarted = true;
     } catch (error) {
       queryError(error);
       throw new Error("Failed to start transaction " + error);
@@ -183,14 +183,14 @@ export class PostgresTransaction {
    * Commit transaction.
    */
   async commit(): Promise<void> {
-    if (!this.pgClient) {
+    if (!this.isTransactionStarted) {
       throw new Error("PostgresTransaction not started.");
     }
 
     try {
       log(COMMIT_TRANSACTION, this.logs);
       await this.pgClient.query(COMMIT_TRANSACTION);
-      this.pgClient.release();
+      await this.pgClient.end();
     } catch (error) {
       queryError(error);
       throw new Error("Failed to commit transaction " + error);
@@ -208,10 +208,10 @@ export class PostgresTransaction {
     try {
       log(ROLLBACK_TRANSACTION, this.logs);
       await this.pgClient.query(ROLLBACK_TRANSACTION);
-      this.pgClient.release();
+      await this.pgClient.end();
     } catch (error) {
       queryError(error);
-      this.pgClient.release();
+      await this.pgClient.end();
       throw new Error("Failed to rollback transaction " + error);
     }
   }

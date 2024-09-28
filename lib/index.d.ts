@@ -1,6 +1,6 @@
-import mysql, { Pool, PoolConnection, Connection } from 'mysql2/promise';
+import mysql, { Connection } from 'mysql2/promise';
 import * as pg from 'pg';
-import pg__default, { Pool as Pool$1, PoolClient, Client } from 'pg';
+import pg__default, { Client } from 'pg';
 import { DateTime } from 'luxon';
 import sqlite3 from 'sqlite3';
 import Redis, { RedisOptions } from 'ioredis';
@@ -538,11 +538,11 @@ type PaginatedData<T> = {
 };
 
 declare class MysqlTransaction {
-    protected mysql: Pool;
-    protected mysqlPool: PoolConnection;
+    protected mysql: Connection;
     protected logs: boolean;
+    protected isTransactionStarted: boolean;
     protected mysqlType: "mysql" | "mariadb";
-    constructor(mysql: Pool, logs: boolean, mysqlType: "mysql" | "mariadb");
+    constructor(mysql: Connection, logs: boolean, mysqlType: "mysql" | "mariadb");
     queryInsert<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T>;
     massiveInsertQuery<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T[]>;
     massiveUpdateQuery<T extends Model>(query: string, params: any[]): Promise<number>;
@@ -564,10 +564,10 @@ declare class MysqlTransaction {
 }
 
 declare class PostgresTransaction {
-    protected pgPool: Pool$1;
-    protected pgClient: PoolClient;
+    protected pgClient: Client;
+    protected isTransactionStarted: boolean;
     protected logs: boolean;
-    constructor(pgPool: Pool$1, logs: boolean);
+    constructor(pgClient: Client, logs: boolean);
     queryInsert<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T>;
     massiveInsertQuery<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T[]>;
     massiveUpdateQuery<T extends Model>(query: string, params: any[]): Promise<number>;
@@ -590,6 +590,7 @@ declare class PostgresTransaction {
 
 declare class SQLiteTransaction {
     protected sqLite: sqlite3.Database;
+    protected isTransactionStarted: boolean;
     protected logs: boolean;
     constructor(sqLite: sqlite3.Database, logs: boolean);
     queryInsert<T extends Model>(query: string, params: any[], typeofModel: typeof Model): Promise<T>;
@@ -2397,11 +2398,9 @@ declare abstract class Model {
     static updateRecord<T extends Model>(this: new () => T | typeof Model, modelInstance: T, trx?: TransactionType): Promise<T | null>;
     /**
      * @description Finds the first record or creates a new one if it doesn't exist
-     *
      * @param model
      * @param {Partial<T>} searchCriteria
      * @param {Partial<T>} createData
-     * @param {Partial<T>} data
      */
     static firstOrCreate<T extends Model>(this: new () => T | typeof Model, searchCriteria: Partial<T>, createData: Partial<T>, trx?: TransactionType): Promise<T>;
     /**
@@ -2411,19 +2410,18 @@ declare abstract class Model {
      * @param options - The options to update the record on conflict, default is true
      */
     static upsert<T extends Model>(this: new () => T | typeof Model, searchCriteria: Partial<T>, data: Partial<T>, options?: {
-        updateOnConflict: boolean;
+        updateOnConflict?: boolean;
         trx?: TransactionType;
     }): Promise<T>;
     /**
      * @description Updates or creates multiple records
-     * @returns - The updated or created records
-     */
-    /**
-     * @description Updates or creates multiple records
+     * @param {Partial<T>} searchCriteria
+     * @param {Partial<T>} data
+     * @param options - The options to update the record on conflict, default is true
      * @returns - The updated or created records
      */
     static upsertMany<T extends Model>(this: new () => T | typeof Model, searchCriteria: SelectableType<T>[], data: Partial<T>[], options?: {
-        updateOnConflict: boolean;
+        updateOnConflict?: boolean;
         trx?: TransactionType;
     }): Promise<T[]>;
     /**

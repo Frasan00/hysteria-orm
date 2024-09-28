@@ -5,7 +5,7 @@ const { execSync } = require('child_process');
 const testFiles = [
     // trx
     // './test/sql/pg/trx.pg.test.ts',
-    // './test/sql/mysql/trx.mysql.test.ts',
+    './test/sql/mysql/trx.mysql.test.ts',
 
     // sqlite
     // './test/sql/sqlite/relations.sqlite.test.ts',

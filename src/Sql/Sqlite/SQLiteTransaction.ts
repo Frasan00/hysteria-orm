@@ -9,6 +9,7 @@ import SqlModelManagerUtils from "../Models/ModelManager/ModelManagerUtils";
 
 export class SQLiteTransaction {
   protected sqLite: sqlite3.Database;
+  protected isTransactionStarted: boolean = false;
   protected logs: boolean;
 
   constructor(sqLite: sqlite3.Database, logs: boolean) {
@@ -21,7 +22,7 @@ export class SQLiteTransaction {
     params: any[],
     typeofModel: typeof Model,
   ): Promise<T> {
-    if (!this.sqLite) {
+    if (!this.isTransactionStarted) {
       throw new Error("SQLiteTransaction not started.");
     }
 
@@ -38,7 +39,7 @@ export class SQLiteTransaction {
     params: any[],
     typeofModel: typeof Model,
   ): Promise<T[]> {
-    if (!this.sqLite) {
+    if (!this.isTransactionStarted) {
       throw new Error("SQLiteTransaction not started.");
     }
 
@@ -61,7 +62,7 @@ export class SQLiteTransaction {
     query: string,
     params: any[],
   ): Promise<number> {
-    if (!this.sqLite) {
+    if (!this.isTransactionStarted) {
       throw new Error("SQLiteTransaction not started.");
     }
 
@@ -80,7 +81,7 @@ export class SQLiteTransaction {
     query: string,
     params: any[],
   ): Promise<number> {
-    if (!this.sqLite) {
+    if (!this.isTransactionStarted) {
       throw new Error("SQLiteTransaction not started.");
     }
 
@@ -99,7 +100,7 @@ export class SQLiteTransaction {
     query: string,
     params?: any[],
   ): Promise<number> {
-    if (!this.sqLite) {
+    if (!this.isTransactionStarted) {
       throw new Error("SQLiteTransaction not started.");
     }
 
@@ -111,7 +112,7 @@ export class SQLiteTransaction {
     query: string,
     params?: any[],
   ): Promise<number> {
-    if (!this.sqLite) {
+    if (!this.isTransactionStarted) {
       throw new Error("SQLiteTransaction not started.");
     }
 
@@ -126,6 +127,7 @@ export class SQLiteTransaction {
     try {
       log(BEGIN_TRANSACTION, this.logs);
       await this.promisifyQuery(BEGIN_TRANSACTION, []);
+      this.isTransactionStarted = true;
     } catch (error) {
       queryError(error);
       throw new Error("Failed to start transaction " + error);
@@ -136,7 +138,7 @@ export class SQLiteTransaction {
    * Commit transaction.
    */
   async commit(): Promise<void> {
-    if (!this.sqLite) {
+    if (!this.isTransactionStarted) {
       throw new Error("SQLiteTransaction not started.");
     }
 
