@@ -8,6 +8,7 @@
     - [Complete env example](#complete-env-example)
 - [Getting Started](#getting-started)
     - [Establishing a Connection](#establishing-a-connection)
+        - [use-connection](#use-connection)
     - [Create a Model](#create-a-model)
     - [Create a Model with Relationships](#create-a-model-with-relations-and-hooks)
     - [Case Convention](#case-convention)
@@ -27,7 +28,6 @@
     - [Alter Table](#alter-table)
 - [Experimental](#experimental)
     - [json-support](#json-support-unstable-on-mysql)
-    - [use-connection](#use-connection)
 
 ## Installation
 ```shell
@@ -115,6 +115,46 @@ const mysqlConfig: DataSourceInput = {
 
 // Config can be omitted, in that case envs will be used to enstablish the connection 
 const sql = await SqlDataSource.connect(mysqlConfig, () => console.log("Connected to the database"));
+```
+
+
+# Use Connection
+- Allows to execute operations on a separate database connection, useful for multi-database applications
+- The hierarchy of the connection in the static Model methods is:
+1) useConnection connection if passed as an argument
+2) trx connection (the connection that created the trx) if passed as an argument
+3) the main connection you can create with SqlDataSource.connect method
+
+```typescript
+import { SqlDataSource } from "hysteria-orm";
+import { User } from "./User";
+
+await SqlDataSource.useConnection(
+    {
+        type: "mysql",
+        host: "localhost",
+        database: "test",
+        username: "root",
+        password: "root",
+    },
+    async (sql) => {
+        // You can get a model manager directly from the connection
+        const userRepo = sql.getModelManager(User);
+
+        const newUser = await userRepo.insert({
+            name: "john",
+            email: "john-email@gmail.com",
+            signupSource: "google",
+        } as User);
+
+        const updatedUser = await userRepo.update().withData({
+        name: "new name",
+        });
+
+        // you can also use Model static methods specifying the connection the should use
+        await User.query({ useConnection: sql })
+    },
+);
 ```
 
 ### Create a model
@@ -612,40 +652,6 @@ export default class extends Migration {
 ```
 
 # Experimental
-
-# Use Connection
-- Allows to execute operations on a separate database connection, useful for multi-database applications
-
-```typescript
-import { SqlDataSource } from "hysteria-orm";
-import { User } from "./User";
-
-await SqlDataSource.useConnection(
-    {
-        type: "mysql",
-        host: "localhost",
-        database: "test",
-        username: "root",
-        password: "root",
-    },
-    async (sql) => {
-        const userRepo = sql.getModelManager(User);
-
-        const newUser = await userRepo.insert({
-            name: "john",
-            email: "john-email@gmail.com",
-            signupSource: "google",
-        } as User);
-
-        const updatedUser = await userRepo.update().withData({
-        name: "new name",
-        });
-
-        // you can also use Model static methods
-        await User.query({ useConnection: sql })
-    },
-);
-```
 
 ## JSON support (UNSTABLE ON MYSQL)
 

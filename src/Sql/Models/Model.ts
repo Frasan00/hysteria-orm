@@ -114,6 +114,7 @@ export abstract class Model {
   ): ModelQueryBuilder<T> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.getModelManager<T>(options);
+    console.log(modelManager);
     return modelManager.query();
   }
 

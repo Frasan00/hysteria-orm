@@ -27,10 +27,37 @@ import {
 import { DateTime } from "luxon";
 import { User } from "../test/sql/Models/User";
 
-(async () => {
-  const sql = await SqlDataSource.connect();
-  await sql.closeConnection();
-})();
+// (async () => {
+//   const sql = await SqlDataSource.connect({
+//     type: "sqlite",
+//     database: "sqlite.db",
+//     logs: true,
+//   });
+
+//   await User.insert({
+//     name: "sqlite",
+//     email: "user",
+//     signupSource: "email",
+//     isActive: true,
+//   });
+//   await sql.closeConnection();
+// })();
+
+// (async () => {
+//   const sql = await SqlDataSource.connect();
+//   await SqlDataSource.useConnection(
+//     {
+//       type: "sqlite",
+//       database: "sqlite.db",
+//       logs: true,
+//     },
+//     async (sql) => {
+//       const a = await User.query({ useConnection: sql }).many();
+//       console.log(a);
+//       await sql.closeConnection();
+//     },
+//   );
+// })();
 
 export default {
   // Sql
