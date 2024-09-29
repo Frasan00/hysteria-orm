@@ -1636,6 +1636,16 @@ declare class SqlDataSource extends DataSource {
      */
     startTransaction(): Promise<Transaction>;
     /**
+     * @description Alias for startTransaction
+     * @returns {Promise<Transaction>} trx
+     */
+    beginTransaction(): Promise<Transaction>;
+    /**
+     * @description Alias for startTransaction
+     * @returns {Promise<Transaction>} trx
+     */
+    transaction(): Promise<Transaction>;
+    /**
      * @description Returns model manager for the provided model
      * @param model
      */

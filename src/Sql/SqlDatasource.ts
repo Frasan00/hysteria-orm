@@ -54,6 +54,7 @@ export class SqlDataSource extends DataSource {
           user: sqlDataSource.username,
           password: sqlDataSource.password,
           database: sqlDataSource.database,
+          ...input?.mysqlOptions,
         });
         break;
 
@@ -121,6 +122,22 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
+   * @description Alias for startTransaction
+   * @returns {Promise<Transaction>} trx
+   */
+  public async beginTransaction(): Promise<Transaction> {
+    return this.startTransaction();
+  }
+
+  /**
+   * @description Alias for startTransaction
+   * @returns {Promise<Transaction>} trx
+   */
+  public async transaction(): Promise<Transaction> {
+    return this.startTransaction();
+  }
+
+  /**
    * @description Returns model manager for the provided model
    * @param model
    */
@@ -170,12 +187,19 @@ export class SqlDataSource extends DataSource {
     cb: (sqlDataSource: SqlDataSource) => Promise<void>,
   ) {
     const customSqlInstance = new SqlDataSource(connectionDetails);
-    await customSqlInstance.connectDriver();
+    await customSqlInstance.connectDriver({
+      mysqlOptions: connectionDetails.mysqlOptions,
+      pgOptions: connectionDetails.pgOptions,
+    });
     customSqlInstance.isConnected = true;
     try {
-      await cb(customSqlInstance).then(
-        async () => await customSqlInstance.closeConnection(),
-      );
+      await cb(customSqlInstance).then(async () => {
+        if (!customSqlInstance.isConnected) {
+          return;
+        }
+
+        await customSqlInstance.closeConnection();
+      });
     } catch (error) {
       if (customSqlInstance.isConnected) {
         await customSqlInstance.closeConnection();
@@ -238,6 +262,7 @@ export class SqlDataSource extends DataSource {
    */
   public async closeConnection(): Promise<void> {
     if (!this.isConnected) {
+      logger.warn("Connection already closed", this);
       return;
     }
 
@@ -362,7 +387,10 @@ export class SqlDataSource extends DataSource {
     }
   }
 
-  private async connectDriver(): Promise<void> {
+  private async connectDriver(driverSpecificOptions?: {
+    mysqlOptions?: mysql.PoolOptions;
+    pgOptions?: pg.ClientConfig;
+  }): Promise<void> {
     switch (this.type) {
       case "mysql":
       case "mariadb":
@@ -372,6 +400,7 @@ export class SqlDataSource extends DataSource {
           user: this.username,
           password: this.password,
           database: this.database,
+          ...driverSpecificOptions?.mysqlOptions,
         });
         break;
       case "postgres":
@@ -381,6 +410,7 @@ export class SqlDataSource extends DataSource {
           user: this.username,
           password: this.password,
           database: this.database,
+          ...driverSpecificOptions?.pgOptions,
         });
         await (this.sqlConnection as pg.Client).connect();
         break;
