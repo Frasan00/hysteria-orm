@@ -51,7 +51,7 @@ describe("RedisDataSource", () => {
   });
 
   test("Redis static buffer operations", async () => {
-    RedisDataSource.set("key", Buffer.from("value"), 1000);
+    RedisDataSource.set("key", Buffer.from("value"), 10000);
     const bufferValue = await RedisDataSource.getBuffer("key");
     expect(bufferValue).toEqual(Buffer.from("value"));
 
