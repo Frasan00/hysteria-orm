@@ -43,21 +43,25 @@ import { User } from "../test/sql/Models/User";
 //   await sql.closeConnection();
 // })();
 
-// (async () => {
-//   const sql = await SqlDataSource.connect();
-//   await SqlDataSource.useConnection(
-//     {
-//       type: "sqlite",
-//       database: "sqlite.db",
-//       logs: true,
-//     },
-//     async (sql) => {
-//       const a = await User.query({ useConnection: sql }).many();
-//       console.log(a);
-//       await sql.closeConnection();
-//     },
-//   );
-// })();
+(async () => {
+  const sql = await SqlDataSource.connect();
+  const raw = await sql.rawQuery("SELECT * FROM users");
+  console.log(raw);
+  await SqlDataSource.useConnection(
+    {
+      type: "sqlite",
+      database: "sqlite.db",
+      logs: true,
+    },
+    async (sql) => {
+      const raw = await sql.rawQuery("SELECT * FROM users");
+      console.log(raw);
+      await sql.closeConnection();
+    },
+  );
+
+  await sql.closeConnection();
+})();
 
 export default {
   // Sql

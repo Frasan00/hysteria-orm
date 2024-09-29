@@ -46,7 +46,13 @@
 ## Prerequisites
 
 - A JavaScript runtime environment (e.g., Node.js).
-- A SQL driver for your database type (e.g., `mysql2` for MySQL and MariaDB, `pg` for PostgreSQL).
+- Official version used for each driver:
+```json
+"mysql2": "^3.9.8",
+"pg": "^8.11.3",
+"sqlite3": "^5.1.7",
+"mssql": "^11.0.1",
+```
 
 ### TypeScript Configuration example
 
@@ -151,7 +157,7 @@ await SqlDataSource.useConnection(
         name: "new name",
         });
 
-        // you can also use Model static methods specifying the connection the should use
+        // you can also use Model static methods specifying the connection they should use
         await User.query({ useConnection: sql })
     },
 );

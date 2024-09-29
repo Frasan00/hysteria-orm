@@ -271,6 +271,97 @@ export class SqlDataSource extends DataSource {
     }
   }
 
+  /**
+   * @description Executes a raw query on the database
+   * @param query
+   * @param params
+   * @returns
+   */
+  async rawQuery(query: string, params: any[] = []): Promise<any> {
+    if (!this.isConnected) {
+      throw new Error("Sql database connection not established");
+    }
+
+    switch (this.type) {
+      case "mysql":
+      case "mariadb":
+        const [mysqlRows] = await (
+          this.sqlConnection as mysql.Connection
+        ).execute(query, params);
+
+        return mysqlRows;
+      case "postgres":
+        const { rows } = await (this.sqlConnection as pg.Client).query(
+          query,
+          params,
+        );
+
+        return rows;
+      case "sqlite":
+        return new Promise((resolve, reject) => {
+          (this.sqlConnection as sqlite3.Database).all(
+            query,
+            params,
+            (err, rows) => {
+              if (err) {
+                reject(err);
+              }
+
+              resolve(rows);
+            },
+          );
+        });
+      default:
+        throw new Error(`Unsupported datasource type: ${this.type}`);
+    }
+  }
+
+  /**
+   * @description Executes a raw query on the database with the base connection created with SqlDataSource.connect() method
+   * @param query
+   * @param params
+   * @returns
+   */
+  static async rawQuery(query: string, params: any[] = []): Promise<any> {
+    const sqlDataSource = SqlDataSource.getInstance();
+    if (!sqlDataSource || !sqlDataSource.isConnected) {
+      throw new Error("Sql database connection not established");
+    }
+
+    switch (sqlDataSource.type) {
+      case "mysql":
+      case "mariadb":
+        const [mysqlRows] = await (
+          sqlDataSource.sqlConnection as mysql.Connection
+        ).execute(query, params);
+
+        return mysqlRows;
+      case "postgres":
+        const { rows } = await (sqlDataSource.sqlConnection as pg.Client).query(
+          query,
+          params,
+        );
+
+        return rows;
+      case "sqlite":
+        return new Promise((resolve, reject) => {
+          (sqlDataSource.sqlConnection as sqlite3.Database).all(
+            query,
+            params,
+            (err, rows) => {
+              if (err) {
+                reject(err);
+              }
+
+              resolve(rows);
+            },
+          );
+        });
+      default:
+        throw new Error(`Unsupported datasource type: ${sqlDataSource.type}`);
+    }
+  }
+
   private async connectDriver(): Promise<void> {
     switch (this.type) {
       case "mysql":
