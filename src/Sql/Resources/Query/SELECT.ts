@@ -65,6 +65,9 @@ const selectTemplate = (
         return `\`${identifier.replace(/`/g, "``")}\``;
       case "postgres":
         return `"${identifier.replace(/"/g, '""')}"`;
+      // FIXME ?
+      case "mssql":
+        break;
       default:
         throw new Error("Unsupported database type");
     }
@@ -74,7 +77,7 @@ const selectTemplate = (
     selectAll: `SELECT * FROM ${table} `,
     selectById: (id: string) => `SELECT * FROM ${table} WHERE id = ${id}`,
     selectByIds: (ids: string[]) => {
-      ids = ids.map((id) => escapeIdentifier(id));
+      ids = ids.map((id) => escapeIdentifier(id) as string);
       return `SELECT * FROM ${table} WHERE id IN (${ids.join(", ")})`;
     },
     selectColumns: (...columns: string[]) => {
@@ -104,7 +107,7 @@ const selectTemplate = (
         if (!alias) {
           const processedColumnName = escapeIdentifier(
             convertCase(columnName, columnCase),
-          );
+          ) as string;
           finalColumn = tableName
             ? `${tableName}.${processedColumnName}`
             : processedColumnName;
@@ -123,7 +126,7 @@ const selectTemplate = (
         escapeIdentifier(
           convertCase(column, typeofModel.databaseCaseConvention),
         ),
-      );
+      ) as string[];
       return `SELECT DISTINCT ${columns.join(", ")} FROM ${table} `;
     },
     selectSum: (column: string) =>
@@ -139,14 +142,15 @@ const selectTemplate = (
           [tableName, columnName] = column.split(".");
         }
 
-        const processedColumnName = escapeIdentifier(
-          convertCase(columnName, typeofModel.databaseCaseConvention),
+        const processedColumnName = convertCase(
+          columnName,
+          typeofModel.databaseCaseConvention,
         );
 
         return tableName
           ? `${tableName}.${processedColumnName}`
           : processedColumnName;
-      });
+      }) as string[];
 
       return ` ORDER BY ${columns.join(", ")} ${order}`;
     },
@@ -159,19 +163,36 @@ const selectTemplate = (
           [tableName, columnName] = column.split(".");
         }
 
-        const processedColumnName = escapeIdentifier(
-          convertCase(columnName, typeofModel.databaseCaseConvention),
+        const processedColumnName = convertCase(
+          columnName,
+          typeofModel.databaseCaseConvention,
         );
 
         return tableName
           ? `${tableName}.${processedColumnName}`
           : processedColumnName;
-      });
+      }) as string[];
 
       return ` GROUP BY ${columns.join(", ")}`;
     },
-    limit: (limit: number) => ` LIMIT ${limit}`,
-    offset: (offset: number) => ` OFFSET ${offset}`,
+    limit: (limit: number, preOffset?: boolean) => {
+      if (dbType !== "mssql") {
+        return ` LIMIT ${limit}`;
+      }
+
+      if (preOffset) {
+        return ` FETCH NEXT ${limit} ROWS ONLY`;
+      }
+
+      return ` OFFSET 0 ROWS FETCH NEXT ${limit} ROWS ONLY`;
+    },
+    offset: (offset: number) => {
+      if (dbType !== "mssql") {
+        return ` OFFSET ${offset}`;
+      }
+
+      return ` OFFSET ${offset} ROWS`;
+    },
   };
 };
 

@@ -36,7 +36,7 @@ export function log(query: string, logs: boolean, params?: any[]) {
 
   if (params && params.length) {
     params.forEach((param, index) => {
-      let formattedParam;
+      let formattedParam: any = null;
 
       if (typeof param === "string") {
         // Format string parameters
@@ -59,6 +59,12 @@ export function log(query: string, logs: boolean, params?: any[]) {
       // Replace PostgreSQL-style placeholders
       const pgPlaceholder = new RegExp(`\\$${index + 1}`, "g");
       query = query.replace(pgPlaceholder, formattedParam);
+
+      // Replace Mssql-style placeholders
+      const queryParameters = query.match(/@(\w+)/g);
+      if (queryParameters) {
+        query = query.replace(queryParameters[0], formattedParam);
+      }
     });
   }
 

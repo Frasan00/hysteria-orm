@@ -57,10 +57,6 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  public async raw(query: string, params: any[] = []) {
-    return await this.pgClient.query(query, params);
-  }
-
   public async one(
     options: OneOptions = { throwErrorOnNull: false },
   ): Promise<T | null> {
@@ -411,11 +407,11 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  public when(
-    value: any,
-    cb: (value: any, query: ModelQueryBuilder<T>) => void,
+  public when<O>(
+    value: O,
+    cb: (value: O, query: ModelQueryBuilder<T>) => void,
   ): this {
-    if (!value) {
+    if (value === undefined || value === null) {
       return this;
     }
 

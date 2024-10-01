@@ -1,12 +1,12 @@
 import mysql, { Connection } from 'mysql2/promise';
-import * as pg from 'pg';
-import pg__default, { Client } from 'pg';
+import pg, { Client } from 'pg';
+import mssql from 'mssql';
 import { DateTime } from 'luxon';
 import sqlite3 from 'sqlite3';
 import Redis, { RedisOptions } from 'ioredis';
 export { RedisOptions } from 'ioredis';
 
-type DataSourceType = "mysql" | "postgres" | "mariadb" | "sqlite" | "redis";
+type DataSourceType = "mysql" | "postgres" | "mariadb" | "sqlite" | "mssql" | "redis";
 type SqlDataSourceType$1 = Omit<DataSourceType, "redis">;
 /**
  * @description By default the connection details can be provided in the env.ts file, you can still override each prop with your actual connection details
@@ -20,7 +20,8 @@ interface DataSourceInput {
     readonly database?: string;
     readonly logs?: boolean;
     readonly mysqlOptions?: mysql.PoolOptions;
-    readonly pgOptions?: pg__default.PoolConfig;
+    readonly pgOptions?: pg.PoolConfig;
+    readonly mssqlOptions?: mssql.config;
 }
 declare abstract class DataSource {
     protected type: DataSourceType;
@@ -101,6 +102,7 @@ declare class ColumnTypeBuilder {
     protected sqlType: SqlDataSourceType$1;
     partialQuery: string;
     constructor(table: string, queryStatements: string[], partialQuery: string, sqlType: SqlDataSourceType$1);
+    string(name: string, length?: number): ColumnOptionsBuilder;
     varchar(name: string, length?: number): ColumnOptionsBuilder;
     uuid(name: string): ColumnOptionsBuilder;
     tinytext(name: string): ColumnOptionsBuilder;
@@ -403,7 +405,7 @@ declare const selectTemplate: (dbType: SqlDataSourceType$1, typeofModel: typeof 
     selectSum: (column: string) => string;
     orderBy: (columns: string[], order?: "ASC" | "DESC") => string;
     groupBy: (...columns: string[]) => string;
-    limit: (limit: number) => string;
+    limit: (limit: number, preOffset?: boolean) => string;
     offset: (offset: number) => string;
 };
 
@@ -1093,7 +1095,6 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     constructor(model: typeof Model, table: string, pgClient: Client, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
     select(...columns: string[]): PostgresQueryBuilder<T>;
     select(...columns: (SelectableType<T> | "*")[]): PostgresQueryBuilder<T>;
-    raw(query: string, params?: any[]): Promise<pg.QueryResult<any>>;
     one(options?: OneOptions): Promise<T | null>;
     oneOrFail(options?: {
         ignoreHooks: OneOptions["ignoreHooks"];
@@ -1112,7 +1113,7 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     whereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
     orWhereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
     andWhereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
-    when(value: any, cb: (value: any, query: ModelQueryBuilder<T>) => void): this;
+    when<O>(value: O, cb: (value: O, query: ModelQueryBuilder<T>) => void): this;
     where(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
     where(column: string, operator: WhereOperatorType, value: BaseValues): this;
     where(column: SelectableType<T> | string, value: BaseValues): this;
@@ -1250,7 +1251,7 @@ declare class PostgresDeleteQueryBuilder<T extends Model> extends ModelDeleteQue
 }
 
 declare class PostgresModelManager<T extends Model> extends AbstractModelManager<T> {
-    protected pgConnection: pg__default.Client;
+    protected pgConnection: pg.Client;
     protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
     /**
      * Constructor for PostgresModelManager class.
@@ -1259,7 +1260,7 @@ declare class PostgresModelManager<T extends Model> extends AbstractModelManager
      * @param {Pool} pgConnection - PostgreSQL connection pool.
      * @param {boolean} logs - Flag to enable or disable logging.
      */
-    constructor(model: typeof Model, pgConnection: pg__default.Client, logs: boolean, sqlDataSource: SqlDataSource);
+    constructor(model: typeof Model, pgConnection: pg.Client, logs: boolean, sqlDataSource: SqlDataSource);
     /**
      * Find method to retrieve multiple records from the database based on the input conditions.
      *
@@ -1360,7 +1361,7 @@ declare class SQLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     whereBuilder(cb: (queryBuilder: SQLiteQueryBuilder<T>) => void): this;
     orWhereBuilder(cb: (queryBuilder: SQLiteQueryBuilder<T>) => void): this;
     andWhereBuilder(cb: (queryBuilder: SQLiteQueryBuilder<T>) => void): this;
-    when(value: any, cb: (value: any, query: ModelQueryBuilder<T>) => void): this;
+    when<O>(value: O, cb: (value: O, query: ModelQueryBuilder<T>) => void): this;
     where(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
     where(column: string, operator: WhereOperatorType, value: BaseValues): this;
     where(column: SelectableType<T> | string, value: BaseValues): this;
@@ -1611,8 +1612,281 @@ declare class Transaction {
     private releaseConnection;
 }
 
-type ModelManager<T extends Model> = MysqlModelManager<T> | PostgresModelManager<T> | SQLiteModelManager<T>;
-type SqlConnectionType = mysql.Connection | pg__default.Client | sqlite3.Database;
+declare class MssqlUpdateQueryBuilder<T extends Model> extends ModelUpdateQueryBuilder<T> {
+    protected sqlConnection: mssql.ConnectionPool;
+    protected joinQuery: string;
+    protected updateTemplate: ReturnType<typeof updateTemplate>;
+    protected isNestedCondition: boolean;
+    /**
+     * @description Constructs a MysqlQueryBuilder instance.
+     * @param model - The model class associated with the table.
+     * @param table - The name of the table.
+     * @param mssqlConnection - The MySQL connection pool.
+     * @param logs - A boolean indicating whether to log queries.
+     * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
+     */
+    constructor(model: typeof Model, table: string, mssqlConnection: mssql.ConnectionPool, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
+    withData(data: Partial<T>, options?: WithDataOptions): Promise<number>;
+    /**
+     *
+     * @param relationTable - The name of the related table.
+     * @param primaryColumn - The name of the primary column in the caller table.
+     * @param foreignColumn - The name of the foreign column in the related table.
+     */
+    join(relationTable: string, primaryColumn: string, foreignColumn: string): MssqlUpdateQueryBuilder<T>;
+    /**
+     *
+     * @param relationTable - The name of the related table.
+     * @param primaryColumn - The name of the primary column in the caller table.
+     * @param foreignColumn - The name of the foreign column in the related table.
+     */
+    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): MssqlUpdateQueryBuilder<T>;
+    /**
+     * @description Build more complex where conditions.
+     * @param cb
+     */
+    whereBuilder(cb: (queryBuilder: MssqlUpdateQueryBuilder<T>) => void): this;
+    /**
+     * @description Build complex OR-based where conditions.
+     * @param cb Callback function that takes a query builder and adds conditions to it.
+     */
+    orWhereBuilder(cb: (queryBuilder: MssqlUpdateQueryBuilder<T>) => void): this;
+    /**
+     * @description Build complex AND-based where conditions.
+     * @param cb Callback function that takes a query builder and adds conditions to it.
+     */
+    andWhereBuilder(cb: (queryBuilder: MssqlUpdateQueryBuilder<T>) => void): this;
+}
+
+declare class MssqlDeleteQueryBuilder<T extends Model> extends ModelDeleteQueryBuilder<T> {
+    protected sqlConnection: mssql.ConnectionPool;
+    protected joinQuery: string;
+    protected updateTemplate: ReturnType<typeof updateTemplate>;
+    protected deleteTemplate: ReturnType<typeof deleteTemplate>;
+    protected isNestedCondition: boolean;
+    /**
+     * @description Constructs a MysqlQueryBuilder instance.
+     * @param model - The model class associated with the table.
+     * @param table - The name of the table.
+     * @param sqlConnection - The mssql connection pool.
+     * @param logs - A boolean indicating whether to log queries.
+     * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
+     */
+    constructor(model: typeof Model, table: string, sqlConnection: mssql.ConnectionPool, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
+    softDelete(options?: SoftDeleteOptions<T>): Promise<number>;
+    delete(options?: DeleteOptions): Promise<number>;
+    /**
+     *
+     * @param relationTable - The name of the related table.
+     * @param primaryColumn - The name of the primary column in the caller table.
+     * @param foreignColumn - The name of the foreign column in the related table.
+     */
+    join(relationTable: string, primaryColumn: string, foreignColumn: string): MssqlDeleteQueryBuilder<T>;
+    /**
+     *
+     * @param relationTable - The name of the related table.
+     * @param primaryColumn - The name of the primary column in the caller table.
+     * @param foreignColumn - The name of the foreign column in the related table.
+     */
+    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): MssqlDeleteQueryBuilder<T>;
+    /**
+     * @description Build more complex where conditions.
+     * @param cb
+     */
+    whereBuilder(cb: (queryBuilder: MssqlDeleteQueryBuilder<T>) => void): this;
+    /**
+     * @description Build complex OR-based where conditions.
+     * @param cb Callback function that takes a query builder and adds conditions to it.
+     */
+    orWhereBuilder(cb: (queryBuilder: MssqlDeleteQueryBuilder<T>) => void): this;
+    /**
+     * @description Build complex AND-based where conditions.
+     * @param cb Callback function that takes a query builder and adds conditions to it.
+     */
+    andWhereBuilder(cb: (queryBuilder: MssqlDeleteQueryBuilder<T>) => void): this;
+}
+
+declare class MssqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
+    protected sqlConnection: mssql.ConnectionPool;
+    protected isNestedCondition: boolean;
+    protected mysqlModelManagerUtils: SqlModelManagerUtils<T>;
+    protected limitNumber: number;
+    /**
+     * @param table - The name of the table.
+     * @param sqlConnection - The mssql connection pool.
+     * @param logs - A boolean indicating whether to log queries.
+     * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
+     */
+    constructor(model: typeof Model, table: string, sqlConnection: mssql.ConnectionPool, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
+    private checkLimitQuery;
+    one(options?: OneOptions): Promise<T | null>;
+    oneOrFail(options?: {
+        ignoreHooks?: OneOptions["ignoreHooks"];
+    }): Promise<T>;
+    many(options?: ManyOptions): Promise<T[]>;
+    getCount(options?: {
+        ignoreHooks: boolean;
+    }): Promise<number>;
+    getSum(column: SelectableType<T>): Promise<number>;
+    getSum(column: string): Promise<number>;
+    paginate(page: number, limit: number, options?: ManyOptions): Promise<PaginatedData<T>>;
+    select(...columns: string[]): MssqlQueryBuilder<T>;
+    select(...columns: (SelectableType<T> | "*")[]): MssqlQueryBuilder<T>;
+    join(relationTable: string, primaryColumn: string, foreignColumn: string): MssqlQueryBuilder<T>;
+    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): MssqlQueryBuilder<T>;
+    addRelations(relations: RelationType<T>[]): MssqlQueryBuilder<T>;
+    addDynamicColumns(dynamicColumns: DynamicColumnType<T>[]): ModelQueryBuilder<T>;
+    whereBuilder(cb: (queryBuilder: MssqlQueryBuilder<T>) => void): this;
+    orWhereBuilder(cb: (queryBuilder: MssqlQueryBuilder<T>) => void): this;
+    andWhereBuilder(cb: (queryBuilder: MssqlQueryBuilder<T>) => void): this;
+    when<O>(value: O, cb: (value: O, query: ModelQueryBuilder<T>) => void): this;
+    where(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
+    where(column: string, operator: WhereOperatorType, value: BaseValues): this;
+    where(column: SelectableType<T> | string, value: BaseValues): this;
+    andWhere(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
+    andWhere(column: string, operator: WhereOperatorType, value: BaseValues): this;
+    andWhere(column: SelectableType<T> | string, value: BaseValues): this;
+    orWhere(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
+    orWhere(column: string, operator: WhereOperatorType, value: BaseValues): this;
+    orWhere(column: SelectableType<T> | string, value: BaseValues): this;
+    whereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
+    whereBetween(column: string, min: BaseValues, max: BaseValues): this;
+    andWhereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
+    andWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
+    orWhereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
+    orWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
+    whereNotBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
+    whereNotBetween(column: string, min: BaseValues, max: BaseValues): this;
+    orWhereNotBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
+    orWhereNotBetween(column: string, min: BaseValues, max: BaseValues): this;
+    whereIn(column: SelectableType<T>, values: BaseValues[]): this;
+    whereIn(column: string, values: BaseValues[]): this;
+    andWhereIn(column: SelectableType<T>, values: BaseValues[]): this;
+    andWhereIn(column: string, values: BaseValues[]): this;
+    orWhereIn(column: SelectableType<T>, values: BaseValues[]): this;
+    orWhereIn(column: string, values: BaseValues[]): this;
+    whereNotIn(column: SelectableType<T>, values: BaseValues[]): this;
+    whereNotIn(column: string, values: BaseValues[]): this;
+    orWhereNotIn(column: SelectableType<T>, values: BaseValues[]): this;
+    orWhereNotIn(column: string, values: BaseValues[]): this;
+    whereNull(column: SelectableType<T>): this;
+    whereNull(column: string): this;
+    andWhereNull(column: SelectableType<T>): this;
+    andWhereNull(column: string): this;
+    orWhereNull(column: SelectableType<T>): this;
+    orWhereNull(column: string): this;
+    whereNotNull(column: SelectableType<T>): this;
+    whereNotNull(column: string): this;
+    andWhereNotNull(column: SelectableType<T>): this;
+    andWhereNotNull(column: string): this;
+    orWhereNotNull(column: SelectableType<T>): this;
+    orWhereNotNull(column: string): this;
+    rawWhere(query: string): this;
+    rawAndWhere(query: string): this;
+    rawOrWhere(query: string): this;
+    groupBy(...columns: SelectableType<T>[]): this;
+    groupBy(...columns: string[]): this;
+    orderBy(columns: SelectableType<T>[], order: "ASC" | "DESC"): this;
+    orderBy(columns: string[], order: "ASC" | "DESC"): this;
+    limit(limit: number): this;
+    offset(offset: number): this;
+    copy(): ModelQueryBuilder<T>;
+    protected groupFooterQuery(): string;
+}
+
+declare class MssqllModelManager<T extends Model> extends AbstractModelManager<T> {
+    protected mssqlConnection: mssql.ConnectionPool;
+    protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
+    /**
+     * Constructor for MssqlModelManager class.
+     *
+     * @param {typeof Model} model - Model constructor.
+     * @param {Connection} mssqlConnection - MySQL connection pool.
+     * @param {boolean} logs - Flag to enable or disable logging.
+     */
+    constructor(model: typeof Model, mssqlConnection: mssql.ConnectionPool, logs: boolean, sqlDataSource: SqlDataSource);
+    /**
+     * Find method to retrieve multiple records from the database based on the input conditions.
+     *
+     * @param {FindType} input - Optional query parameters for filtering, ordering, and pagination.
+     * @returns Promise resolving to an array of models.
+     */
+    find(input?: FindType<T> | UnrestrictedFindType<T>): Promise<T[]>;
+    /**
+     * Find a single record from the database based on the input conditions.
+     *
+     * @param {FindOneType} input - Query parameters for filtering and selecting a single record.
+     * @returns Promise resolving to a single model or null if not found.
+     */
+    findOne(input: FindOneType<T> | UnrestrictedFindOneType<T>): Promise<T | null>;
+    /**
+     * Find a single record by its PK from the database.
+     *
+     * @param {string | number | boolean} value - PK of the record to retrieve, hooks will not have any effect, since it's a direct query for the PK.
+     * @returns Promise resolving to a single model or null if not found.
+     */
+    findOneByPrimaryKey(value: string | number | boolean, throwErrorOnNull?: boolean): Promise<T | null>;
+    /**
+     * Save a new model instance to the database.
+     *
+     * @param {Model} model - Model instance to be saved.
+     * @param {TransactionType} trx - TransactionType to be used on the save operation.
+     * @returns Promise resolving to the saved model or null if saving fails.
+     */
+    insert(model: Partial<T>): Promise<T | null>;
+    /**
+     * Create multiple model instances in the database.
+     *
+     * @param {Model} model - Model instance to be saved.
+     * @param {TransactionType} trx - TransactionType to be used on the save operation.
+     * @returns Promise resolving to an array of saved models or null if saving fails.
+     */
+    insertMany(models: Partial<T>[]): Promise<T[]>;
+    /**
+     * Update an existing model instance in the database.
+     * @param {Model} model - Model instance to be updated.
+     * @param {TransactionType} trx - TransactionType to be used on the update operation.
+     * @returns Promise resolving to the updated model or null if updating fails.
+     */
+    updateRecord(model: T): Promise<T | null>;
+    /**
+     * @description Delete a record from the database from the given model.
+     *
+     * @param {Model} model - Model to delete.
+     * @param {TransactionType} trx - TransactionType to be used on the delete operation.
+     * @returns Promise resolving to the deleted model or null if deleting fails.
+     */
+    deleteRecord(model: T): Promise<T | null>;
+    /**
+     * Create and return a new instance of the MysqlQueryBuilder for building more complex SQL queries.
+     *
+     * @returns {MssqlQueryBuilder<Model>} - Instance of MysqlQueryBuilder.
+     */
+    query(): MssqlQueryBuilder<T>;
+    /**
+     * @description Returns an update query builder.
+     */
+    update(): MssqlUpdateQueryBuilder<T>;
+    /**
+     * @description Returns a delete query builder.
+     */
+    deleteQuery(): MssqlDeleteQueryBuilder<T>;
+    /**
+     *  @description Adds parameters to the mssql request object given a li
+     * @param request
+     * @param query
+     * @param params
+     */
+    static addParamsToMssqlRequest(request: mssql.Request, query: string, params: any[]): void;
+}
+
+type DriverSpecificOptions = {
+    mysqlOptions?: mysql.PoolOptions;
+    pgOptions?: pg.PoolConfig;
+    mssqlOptions?: mssql.config;
+};
+type ModelManager<T extends Model> = MysqlModelManager<T> | PostgresModelManager<T> | SQLiteModelManager<T> | MssqllModelManager<T>;
+type SqlConnectionType = mysql.Connection | pg.Client | sqlite3.Database | mssql.ConnectionPool;
 interface SqlDataSourceInput extends DataSourceInput {
     type: Exclude<DataSourceType, "redis">;
 }
@@ -1634,17 +1908,17 @@ declare class SqlDataSource extends DataSource {
      * @param model
      * @returns {Promise<Transaction>} trx
      */
-    startTransaction(): Promise<Transaction>;
+    startTransaction(driverSpecificOptions?: DriverSpecificOptions): Promise<Transaction>;
     /**
      * @description Alias for startTransaction
      * @returns {Promise<Transaction>} trx
      */
-    beginTransaction(): Promise<Transaction>;
+    beginTransaction(driverSpecificOptions?: DriverSpecificOptions): Promise<Transaction>;
     /**
      * @description Alias for startTransaction
      * @returns {Promise<Transaction>} trx
      */
-    transaction(): Promise<Transaction>;
+    transaction(driverSpecificOptions?: DriverSpecificOptions): Promise<Transaction>;
     /**
      * @description Returns model manager for the provided model
      * @param model
@@ -1667,7 +1941,7 @@ declare class SqlDataSource extends DataSource {
     /**
      * @description Returns separate raw sql connection
      */
-    getRawConnection(): Promise<SqlConnectionType>;
+    getRawConnection(driverSpecificOptions?: DriverSpecificOptions): Promise<SqlConnectionType>;
     /**
      * @description Closes the connection to the database
      * @returns
@@ -1802,7 +2076,6 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
         ignoreHooks?: OneOptions["ignoreHooks"];
     }): Promise<T>;
     many(options?: ManyOptions): Promise<T[]>;
-    raw(query: string, params?: any[]): Promise<[mysql.QueryResult, mysql.FieldPacket[]]>;
     getCount(options?: {
         ignoreHooks: boolean;
     }): Promise<number>;
@@ -1818,7 +2091,7 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     whereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this;
     orWhereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this;
     andWhereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this;
-    when(value: any, cb: (value: any, query: ModelQueryBuilder<T>) => void): this;
+    when<O>(value: O, cb: (value: O, query: ModelQueryBuilder<T>) => void): this;
     where(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
     where(column: string, operator: WhereOperatorType, value: BaseValues): this;
     where(column: SelectableType<T> | string, value: BaseValues): this;
@@ -1876,7 +2149,7 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
 /**
  * @description The abstract class for query builders for selecting data.
  */
-type ModelQueryBuilder<T extends Model> = MysqlQueryBuilder<T> | PostgresQueryBuilder<T> | SQLiteQueryBuilder<T>;
+type ModelQueryBuilder<T extends Model> = MysqlQueryBuilder<T> | PostgresQueryBuilder<T> | SQLiteQueryBuilder<T> | MssqlQueryBuilder<T>;
 type FetchHooks = "beforeFetch" | "afterFetch";
 type OneOptions = {
     throwErrorOnNull?: boolean;
@@ -1953,11 +2226,6 @@ declare abstract class QueryBuilder<T extends Model> {
     abstract select(...columns: string[]): ModelQueryBuilder<T>;
     abstract select(...columns: (SelectableType<T> | "*")[]): ModelQueryBuilder<T>;
     abstract select(...columns: (SelectableType<T> | "*" | string)[]): ModelQueryBuilder<T>;
-    /**
-     * @description Executes the query and retrieves the results.
-     * @returns
-     */
-    abstract raw(query: string, params: []): Promise<T | T[] | any>;
     /**
      * @description Adds a JOIN condition to the query.
      * @param table

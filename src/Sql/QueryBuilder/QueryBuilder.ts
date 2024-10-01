@@ -17,6 +17,7 @@ import { SQLiteQueryBuilder } from "../Sqlite/SQLiteQueryBuilder";
 import { convertCase } from "../../CaseUtils";
 import { getModelColumns } from "../Models/ModelDecorators";
 import { addDynamicColumnsToModel } from "../serializer";
+import { MssqlQueryBuilder } from "../Mssql/MssqlQueryBuilder";
 
 /**
  * @description The abstract class for query builders for selecting data.
@@ -24,7 +25,8 @@ import { addDynamicColumnsToModel } from "../serializer";
 export type ModelQueryBuilder<T extends Model> =
   | MysqlQueryBuilder<T>
   | PostgresQueryBuilder<T>
-  | SQLiteQueryBuilder<T>;
+  | SQLiteQueryBuilder<T>
+  | MssqlQueryBuilder<T>;
 
 export type FetchHooks = "beforeFetch" | "afterFetch";
 
@@ -153,12 +155,6 @@ export abstract class QueryBuilder<T extends Model> {
   public abstract select(
     ...columns: (SelectableType<T> | "*" | string)[]
   ): ModelQueryBuilder<T>;
-
-  /**
-   * @description Executes the query and retrieves the results.
-   * @returns
-   */
-  public abstract raw(query: string, params: []): Promise<T | T[] | any>;
 
   /**
    * @description Adds a JOIN condition to the query.

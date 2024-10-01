@@ -52,7 +52,7 @@ export abstract class WhereQueryBuilder<T extends Model> {
     value: any,
     cb: (value: any, query: WhereQueryBuilder<T>) => void,
   ): this {
-    if (!value) {
+    if (value === undefined || value === null) {
       return this;
     }
 

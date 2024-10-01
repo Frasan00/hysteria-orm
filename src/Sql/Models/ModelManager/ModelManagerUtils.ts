@@ -11,6 +11,8 @@ import { SqlConnectionType } from "../../SqlDatasource";
 import mysql from "mysql2/promise";
 import pg from "pg";
 import sqlite3 from "sqlite3";
+import mssql from "mssql";
+import { MssqllModelManager } from "../../Mssql/MssqlModelManager";
 
 export default class SqlModelManagerUtils<T extends Model> {
   private dbType: SqlDataSourceType;
@@ -204,6 +206,14 @@ export default class SqlModelManagerUtils<T extends Model> {
             },
           );
         });
+      case "mssql":
+        const mssqlRequest = (
+          this.sqlConnection as mssql.ConnectionPool
+        ).request();
+        MssqllModelManager.addParamsToMssqlRequest(mssqlRequest, query, params);
+
+        const result = await mssqlRequest.query(query);
+        return result.recordsets;
       default:
         throw new Error(`Unsupported data source type: ${this.dbType}`);
     }

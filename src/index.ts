@@ -44,21 +44,24 @@ import { User } from "../test/sql/Models/User";
 // })();
 
 (async () => {
-  const sql = await SqlDataSource.connect();
-  const raw = await sql.rawQuery("SELECT * FROM users");
-  console.log(raw);
-  await SqlDataSource.useConnection(
-    {
-      type: "sqlite",
-      database: "sqlite.db",
-      logs: true,
+  const sql = await SqlDataSource.connect({
+    type: "mssql",
+    host: "localhost",
+    port: 1433,
+    username: "sa",
+    password: "s!wASadsfamfèasp@ßfasngosinam",
+    database: "master",
+    logs: true,
+    mssqlOptions: {
+      driver: "msnodesqlv8",
+      server: "localhost",
+      options: {
+        encrypt: false,
+        trustServerCertificate: true,
+        trustedConnection: true,
+      },
     },
-    async (sql) => {
-      const raw = await sql.rawQuery("SELECT * FROM users");
-      console.log(raw);
-      await sql.closeConnection();
-    },
-  );
+  });
 
   await sql.closeConnection();
 })();

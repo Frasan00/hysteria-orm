@@ -411,11 +411,11 @@ export class SQLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  public when(
-    value: any,
-    cb: (value: any, query: ModelQueryBuilder<T>) => void,
+  public when<O>(
+    value: O,
+    cb: (value: O, query: ModelQueryBuilder<T>) => void,
   ): this {
-    if (!value) {
+    if (value === undefined || value === null) {
       return this;
     }
 

@@ -188,10 +188,6 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     }
   }
 
-  public async raw(query: string, params: any[] = []) {
-    return await this.mysqlConnection.query(query, params);
-  }
-
   public async getCount(
     options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<number> {
@@ -416,11 +412,11 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  public when(
-    value: any,
-    cb: (value: any, query: ModelQueryBuilder<T>) => void,
+  public when<O>(
+    value: O,
+    cb: (value: O, query: ModelQueryBuilder<T>) => void,
   ): this {
-    if (!value) {
+    if (value === undefined || value === null) {
       return this;
     }
 

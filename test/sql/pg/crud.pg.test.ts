@@ -91,11 +91,28 @@ test("When condition", async () => {
     isActive: true,
   });
 
+  await User.insert({
+    name: "Dave2",
+    email: "Dave2@gmail.com",
+    signupSource: "email",
+    isActive: true,
+  });
+
   const trueValue = 1;
+  const notExistingValue = null;
   let user: User | null = null;
   user = await User.query()
     .when(trueValue, (_value, query) => {
-      query.where("name", "LIKE", "Dave");
+      query.orWhere("name", "LIKE", "Dave2");
+    })
+    .one();
+
+  expect(user).not.toBeNull();
+  expect(user?.name).toBe("Dave2");
+
+  user = await User.query()
+    .when(notExistingValue, (_value, query) => {
+      query.orWhere("name", "LIKE", "Dave2");
     })
     .one();
 

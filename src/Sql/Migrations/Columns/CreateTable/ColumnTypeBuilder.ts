@@ -27,18 +27,109 @@ export default class ColumnTypeBuilder {
     this.columnName = "";
   }
 
-  public varchar(name: string, length: number = 255): ColumnOptionsBuilder {
-    this.columnName = name;
-    this.partialQuery += `${name} VARCHAR(${length})`;
-    return new ColumnOptionsBuilder(
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
-    );
+  public string(name: string, length: number = 255) {
+    switch (this.sqlType) {
+      case "mariadb":
+      case "mysql":
+        this.columnName = name;
+        this.partialQuery += `${name} VARCHAR(${length})`;
+        return new ColumnOptionsBuilder(
+          this.table,
+          this.queryStatements,
+          this.partialQuery,
+          this.sqlType,
+          this.columnName,
+        );
+
+      case "postgres":
+        this.columnName = name;
+        this.partialQuery += `${name} VARCHAR(${length})`;
+        return new ColumnOptionsBuilder(
+          this.table,
+          this.queryStatements,
+          this.partialQuery,
+          this.sqlType,
+          this.columnName,
+        );
+
+      case "sqlite":
+        this.columnName = name;
+        this.partialQuery += `${name} TEXT`;
+        return new ColumnOptionsBuilder(
+          this.table,
+          this.queryStatements,
+          this.partialQuery,
+          this.sqlType,
+          this.columnName,
+        );
+
+      case "mssql":
+        this.columnName = name;
+        this.partialQuery += `${name} NVARCHAR(${length})`;
+        return new ColumnOptionsBuilder(
+          this.table,
+          this.queryStatements,
+          this.partialQuery,
+          this.sqlType,
+          this.columnName,
+        );
+      default:
+        throw new Error("Unsupported SQL type");
+    }
   }
 
+  public varchar(name: string, length: number = 255): ColumnOptionsBuilder {
+    switch (this.sqlType) {
+      case "mariadb":
+      case "mysql":
+        this.columnName = name;
+        this.partialQuery += `${name} VARCHAR(${length})`;
+        return new ColumnOptionsBuilder(
+          this.table,
+          this.queryStatements,
+          this.partialQuery,
+          this.sqlType,
+          this.columnName,
+        );
+
+      case "postgres":
+        this.columnName = name;
+        this.partialQuery += `${name} VARCHAR(${length})`;
+        return new ColumnOptionsBuilder(
+          this.table,
+          this.queryStatements,
+          this.partialQuery,
+          this.sqlType,
+          this.columnName,
+        );
+
+      case "sqlite":
+        this.columnName = name;
+        this.partialQuery += `${name} TEXT`;
+        return new ColumnOptionsBuilder(
+          this.table,
+          this.queryStatements,
+          this.partialQuery,
+          this.sqlType,
+          this.columnName,
+        );
+
+      case "mssql":
+        this.columnName = name;
+        this.partialQuery += `${name} NVARCHAR(${length})`;
+        return new ColumnOptionsBuilder(
+          this.table,
+          this.queryStatements,
+          this.partialQuery,
+          this.sqlType,
+          this.columnName,
+        );
+      default:
+        throw new Error("Unsupported SQL type");
+    }
+  }
+
+  // TODO: finish mssql integration
   public uuid(name: string): ColumnOptionsBuilder {
     switch (this.sqlType) {
       case "postgres":

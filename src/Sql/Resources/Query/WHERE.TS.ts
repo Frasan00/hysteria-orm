@@ -35,6 +35,8 @@ const whereTemplate = (
         case "postgres":
           let index = startIndex;
           return query.replace(/PLACEHOLDER/g, () => `$${index++}`);
+        case "mssql":
+          return query.replace(/PLACEHOLDER/g, () => `@p${startIndex++}`);
         default:
           throw new Error("Unsupported database type");
       }
@@ -56,7 +58,7 @@ const whereTemplate = (
           case "mysql":
           case "sqlite":
             query = `\nWHERE JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) ${operator} ?`;
-            params = [value]; // Use the JSON string directly
+            params = [value];
             break;
           case "postgres":
             query = `\nWHERE ${column}::jsonb ${operator} PLACEHOLDER::jsonb`;

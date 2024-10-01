@@ -46,12 +46,12 @@
 ## Prerequisites
 
 - A JavaScript runtime environment (e.g., Node.js).
-- Official version used for each driver:
+- Official types version used for each driver, you must use a driver version that is compatible with those:
 ```json
-"mysql2": "^3.9.8",
-"pg": "^8.11.3",
-"sqlite3": "^5.1.7",
-"mssql": "^11.0.1",
+"@types/mssql": "^9.1.5",
+"@types/node": "^22.2.0",
+"@types/pg": "^8.10.9",
+"@types/sqlite3": "^3.1.11",
 ```
 
 ### TypeScript Configuration example
@@ -86,12 +86,12 @@
 ### Complete env example
 ```dotenv
 MIGRATION_PATH=database/migrations # default /database/migrations, this env always referees to the root of the project
-DB_TYPE=mysql # mysql | postgres | mariadb | sqlite
+DB_TYPE=# mysql | postgres | mariadb | sqlite | mssql
 DB_HOST=127.0.0.1
 DB_USER=root
 DB_PASSWORD=root
 DB_DATABASE=database
-DB_PORT=3306 # default 3306 for Mysql and 5432 for Postgres
+DB_PORT=3306 # default 3306 for Mysql and mariadb and 5432 for Postgres
 DB_LOGS=true # default false
 ```
 
@@ -103,13 +103,16 @@ DB_LOGS=true # default false
 import { SqlDataSource, DataSourceInput } from "hysteria-orm";
 
 const mysqlConfig: DataSourceInput = {
-    type: 'mysql' | 'postgres' | 'mariadb',
+    type: 'mysql' | 'postgres' | 'mariadb' | 'sqlite' | 'mssql',
     host: HOST,
     port: PORT,
     username: USERNAME,
     password: PASSWORD,
     database: DATABASE,
     logs: true, // query-logs (optional) - default: false
+    mssqlOptions: {<Every mssql option>}
+    pgOptions: {<Every pg client options>}
+    mysqlOptions: {<Every mysql2 createConnection option>}
 }
 
 // For sqlite it's only needed the DB_DATABASE env that should be yor DATABASE.db file
@@ -291,12 +294,12 @@ import { User } from "./User";
 const firstOrCreate = await User.firstOrinsert(
     // search columns
     {
-        email: "Gianni2",
+        email: "John@gmail.com",
     },
     // persist data
     {
-        email: "Gianni2",
-        name: "Gianni",
+        email: "John@gmail.com",
+        name: "John",
         signupSource: "email",
     },
 );
@@ -309,7 +312,7 @@ const createdOrUpdated = await User.upsert(
     // persist data
     {
         name: "Bob",
-        email: "jaighjipajgpajdg",
+        email: "Bob@gmail.com",
         signupSource: "email",
         isActive: true,
     },
@@ -320,14 +323,14 @@ const updatedOrdInsertedMany = await User.upsertMany(
     // persist data
     [
         {
-        name: "Sando",
-        email: "sandoiado",
-        signupSource: "google",
+            name: "Kevin",
+            email: "Kevin@gmail.com",
+            signupSource: "google",
         },
         {
-        name: "Sando",
-        email: "asngiogisanhgias",
-        signupSource: "google",
+            name: "Kevin2",
+            email: "Kevin2@gmail.com",
+            signupSource: "google",
         },
     ],
 );
@@ -436,7 +439,7 @@ await User.deleteQuery().where("name", "Eve updated two").softDelete({
 
 ### When condition
 - Given a value, it accepts a callback that gives the value itself and the current query builder
-- The callback will be called only if the value is truish
+- The callback will be called only if the value exists (not null or undefined)
 ```typescript
 import { User } from "./User";
 

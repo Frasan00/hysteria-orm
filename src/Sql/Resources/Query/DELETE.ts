@@ -13,6 +13,9 @@ const deleteTemplate = (table: string, dbType: SqlDataSourceType) => {
         case "postgres":
           baseQuery = baseQuery.replace("PLACEHOLDER", "$1");
           break;
+        case "mssql":
+          baseQuery = baseQuery.replace("PLACEHOLDER", `@${column}`);
+          break;
         default:
           throw new Error("Unsupported database type");
       }

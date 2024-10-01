@@ -1,20 +1,33 @@
 import { DataSource, DataSourceInput, DataSourceType } from "../Datasource";
 import mysql, { createConnection } from "mysql2/promise";
 import pg from "pg";
+import mssql from "mssql";
 import sqlite3 from "sqlite3";
 import { Model } from "./Models/Model";
 import { MysqlModelManager } from "./Mysql/MysqlModelManager";
 import { PostgresModelManager } from "./Postgres/PostgresModelManager";
-import logger from "../Logger";
+import logger, { log } from "../Logger";
 import { SQLiteModelManager } from "./Sqlite/SQLiteModelManager";
 import { Transaction } from "./Transaction";
+import { MssqllModelManager } from "./Mssql/MssqlModelManager";
+
+type DriverSpecificOptions = {
+  mysqlOptions?: mysql.PoolOptions;
+  pgOptions?: pg.PoolConfig;
+  mssqlOptions?: mssql.config;
+};
 
 export type ModelManager<T extends Model> =
   | MysqlModelManager<T>
   | PostgresModelManager<T>
-  | SQLiteModelManager<T>;
+  | SQLiteModelManager<T>
+  | MssqllModelManager<T>;
 
-export type SqlConnectionType = mysql.Connection | pg.Client | sqlite3.Database;
+export type SqlConnectionType =
+  | mysql.Connection
+  | pg.Client
+  | sqlite3.Database
+  | mssql.ConnectionPool;
 
 export interface SqlDataSourceInput extends DataSourceInput {
   type: Exclude<DataSourceType, "redis">;
@@ -81,6 +94,17 @@ export class SqlDataSource extends DataSource {
           },
         );
         break;
+
+      case "mssql":
+        sqlDataSource.sqlConnection = await mssql.connect({
+          server: sqlDataSource.host,
+          user: sqlDataSource.username,
+          password: sqlDataSource.password,
+          database: sqlDataSource.database,
+          ...input?.mssqlOptions,
+        });
+        break;
+
       default:
         throw new Error(`Unsupported datasource type: ${sqlDataSource.type}`);
     }
@@ -104,7 +128,9 @@ export class SqlDataSource extends DataSource {
    * @param model
    * @returns {Promise<Transaction>} trx
    */
-  public async startTransaction(): Promise<Transaction> {
+  public async startTransaction(
+    driverSpecificOptions?: DriverSpecificOptions,
+  ): Promise<Transaction> {
     const sqlDataSource = new SqlDataSource({
       type: this.type as SqlDataSourceType,
       host: this.host,
@@ -112,6 +138,8 @@ export class SqlDataSource extends DataSource {
       username: this.username,
       password: this.password,
       database: this.database,
+      logs: this.logs,
+      ...driverSpecificOptions,
     });
 
     await sqlDataSource.connectDriver();
@@ -125,16 +153,20 @@ export class SqlDataSource extends DataSource {
    * @description Alias for startTransaction
    * @returns {Promise<Transaction>} trx
    */
-  public async beginTransaction(): Promise<Transaction> {
-    return this.startTransaction();
+  public async beginTransaction(
+    driverSpecificOptions?: DriverSpecificOptions,
+  ): Promise<Transaction> {
+    return this.startTransaction(driverSpecificOptions);
   }
 
   /**
    * @description Alias for startTransaction
    * @returns {Promise<Transaction>} trx
    */
-  public async transaction(): Promise<Transaction> {
-    return this.startTransaction();
+  public async transaction(
+    driverSpecificOptions?: DriverSpecificOptions,
+  ): Promise<Transaction> {
+    return this.startTransaction(driverSpecificOptions);
   }
 
   /**
@@ -171,6 +203,13 @@ export class SqlDataSource extends DataSource {
           this.logs,
           this,
         );
+      case "mssql":
+        return new MssqllModelManager<T>(
+          model as typeof Model,
+          this.sqlConnection as mssql.ConnectionPool,
+          this.logs,
+          this,
+        );
       default:
         throw new Error(`Unsupported datasource type: ${this.type}`);
     }
@@ -190,6 +229,7 @@ export class SqlDataSource extends DataSource {
     await customSqlInstance.connectDriver({
       mysqlOptions: connectionDetails.mysqlOptions,
       pgOptions: connectionDetails.pgOptions,
+      mssqlOptions: connectionDetails.mssqlOptions,
     });
     customSqlInstance.isConnected = true;
     try {
@@ -219,7 +259,9 @@ export class SqlDataSource extends DataSource {
   /**
    * @description Returns separate raw sql connection
    */
-  public async getRawConnection(): Promise<SqlConnectionType> {
+  public async getRawConnection(
+    driverSpecificOptions?: DriverSpecificOptions,
+  ): Promise<SqlConnectionType> {
     switch (this.type) {
       case "mysql":
       case "mariadb":
@@ -229,6 +271,7 @@ export class SqlDataSource extends DataSource {
           user: this.username,
           password: this.password,
           database: this.database,
+          ...driverSpecificOptions?.mysqlOptions,
         });
       case "postgres":
         const client = new pg.Client({
@@ -237,6 +280,7 @@ export class SqlDataSource extends DataSource {
           user: this.username,
           password: this.password,
           database: this.database,
+          ...driverSpecificOptions?.pgOptions,
         });
         await client.connect();
         return client;
@@ -251,6 +295,15 @@ export class SqlDataSource extends DataSource {
             }
           },
         );
+
+      case "mssql":
+        return await mssql.connect({
+          server: this.host,
+          user: this.username,
+          password: this.password,
+          database: this.database,
+          ...driverSpecificOptions?.mssqlOptions,
+        });
       default:
         throw new Error(`Unsupported datasource type: ${this.type}`);
     }
@@ -291,6 +344,11 @@ export class SqlDataSource extends DataSource {
         this.isConnected = false;
         SqlDataSource.instance = null;
         break;
+      case "mssql":
+        await (this.sqlConnection as mssql.ConnectionPool).close();
+        this.isConnected = false;
+        SqlDataSource.instance = null;
+        break;
       default:
         throw new Error(`Unsupported datasource type: ${this.type}`);
     }
@@ -307,6 +365,7 @@ export class SqlDataSource extends DataSource {
       throw new Error("Sql database connection not established");
     }
 
+    log(query, this.logs, params);
     switch (this.type) {
       case "mysql":
       case "mariadb":
@@ -318,7 +377,7 @@ export class SqlDataSource extends DataSource {
       case "postgres":
         const { rows } = await (this.sqlConnection as pg.Client).query(
           query,
-          params,
+          params as any[],
         );
 
         return rows;
@@ -336,6 +395,13 @@ export class SqlDataSource extends DataSource {
             },
           );
         });
+
+      case "mssql":
+        const mssqlRequest = (
+          this.sqlConnection as mssql.ConnectionPool
+        ).request();
+        MssqllModelManager.addParamsToMssqlRequest(mssqlRequest, query, params);
+        return (await mssqlRequest.query(query)).recordset;
       default:
         throw new Error(`Unsupported datasource type: ${this.type}`);
     }
@@ -353,6 +419,7 @@ export class SqlDataSource extends DataSource {
       throw new Error("Sql database connection not established");
     }
 
+    log(query, SqlDataSource.getInstance()?.logs ?? false, params);
     switch (sqlDataSource.type) {
       case "mysql":
       case "mariadb":
@@ -382,15 +449,21 @@ export class SqlDataSource extends DataSource {
             },
           );
         });
+
+      case "mssql":
+        const mssqlRequest = (
+          sqlDataSource.sqlConnection as mssql.ConnectionPool
+        ).request();
+        MssqllModelManager.addParamsToMssqlRequest(mssqlRequest, query, params);
+        return (await mssqlRequest.query(query)).recordset;
       default:
         throw new Error(`Unsupported datasource type: ${sqlDataSource.type}`);
     }
   }
 
-  private async connectDriver(driverSpecificOptions?: {
-    mysqlOptions?: mysql.PoolOptions;
-    pgOptions?: pg.ClientConfig;
-  }): Promise<void> {
+  private async connectDriver(
+    driverSpecificOptions?: DriverSpecificOptions,
+  ): Promise<void> {
     switch (this.type) {
       case "mysql":
       case "mariadb":
@@ -424,6 +497,15 @@ export class SqlDataSource extends DataSource {
             }
           },
         );
+        break;
+      case "mssql":
+        this.sqlConnection = await mssql.connect({
+          server: this.host,
+          user: this.username,
+          password: this.password,
+          database: this.database,
+          ...driverSpecificOptions?.mssqlOptions,
+        });
         break;
       default:
         throw new Error(`Unsupported datasource type: ${this.type}`);
