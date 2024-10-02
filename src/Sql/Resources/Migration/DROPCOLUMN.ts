@@ -10,6 +10,8 @@ DROP TABLE IF EXISTS \`${table}\`;
 SET FOREIGN_KEY_CHECKS = 1;`;
     case "postgres":
       return `DROP TABLE IF EXISTS "${table}" CASCADE;`;
+    case "sqlite":
+      return `DROP TABLE IF EXISTS "${table}";`;
     default:
       throw new Error("Unsupported database type");
   }

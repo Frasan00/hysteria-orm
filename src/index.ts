@@ -43,29 +43,6 @@ import { User } from "../test/sql/Models/User";
 //   await sql.closeConnection();
 // })();
 
-(async () => {
-  const sql = await SqlDataSource.connect({
-    type: "mssql",
-    host: "localhost",
-    port: 1433,
-    username: "sa",
-    password: "s!wASadsfamfèasp@ßfasngosinam",
-    database: "master",
-    logs: true,
-    mssqlOptions: {
-      driver: "msnodesqlv8",
-      server: "localhost",
-      options: {
-        encrypt: false,
-        trustServerCertificate: true,
-        trustedConnection: true,
-      },
-    },
-  });
-
-  await sql.closeConnection();
-})();
-
 export default {
   // Sql
   Model,
