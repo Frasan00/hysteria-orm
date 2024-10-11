@@ -7,15 +7,18 @@ import sqlite3 from "sqlite3";
 import { SqlDataSourceType } from "../../Datasource";
 
 export class MigrationController {
+  protected sqlDataSource: SqlDataSource;
   protected sqlConnection: Connection | Client | sqlite3.Database;
   private sqlType: SqlDataSourceType;
 
   constructor(
+    sqlDataSource: SqlDataSource,
     sqlConnection: Connection | Client | sqlite3.Database,
     sqlType: SqlDataSourceType,
   ) {
     this.sqlConnection = sqlConnection;
     this.sqlType = sqlType;
+    this.sqlDataSource = sqlDataSource;
   }
 
   public async upMigrations(migrations: Migration[]): Promise<void> {
@@ -37,7 +40,7 @@ export class MigrationController {
 
         await this.addMigrationToMigrationTable(migration);
         if (migration.afterUp) {
-          await migration.afterUp();
+          await migration.afterUp(this.sqlDataSource);
         }
       }
     } catch (error: any) {
@@ -64,9 +67,7 @@ export class MigrationController {
         }
         await this.deleteMigrationFromMigrationTable(migration);
         if (migration.afterDown) {
-          const sql = await SqlDataSource.connect();
-          await migration.afterDown();
-          await sql.closeConnection();
+          await migration.afterDown(this.sqlDataSource);
         }
       }
     } catch (error: any) {

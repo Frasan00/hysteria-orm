@@ -625,14 +625,14 @@ export default class extends Migration {
     }
 
     // Hooks for after up and down migrations are executed immediately after the relative migration method is executed
-    public async afterUp(): Promise<void> {
+    public async afterUp(_sql: SqlDataSource): Promise<void> {
         await Post.insert({
             name: "post 1",
             userId: 1,
         });
     }
 
-    public async afterDown(): Promise<void> {
+    public async afterDown(_sql: SqlDataSource): Promise<void> {
         // after down logic here
     }
 }

@@ -40,6 +40,7 @@ export async function runMigrationsSql(): Promise<void> {
     }
 
     const migrationController = new MigrationController(
+      sql,
       sqlConnection as mysql2.Connection,
       "mysql",
     );

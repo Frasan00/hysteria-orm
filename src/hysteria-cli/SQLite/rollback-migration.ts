@@ -14,24 +14,17 @@ import {
 import logger from "../../Logger";
 import SQLIteMIgrationUtils from "./SQLIteMIgrationUtils";
 import sqlite3 from "sqlite3";
+import { SqlDataSource } from "../../Sql/SqlDatasource";
 
 dotenv.config();
 
 export async function migrationRollBackSqlite(): Promise<void> {
-  const config = SQLIteMIgrationUtils.getSQLiteConfig();
-  const sqliteConnection = new sqlite3.Database(
-    config.database as string,
-    (error) => {
-      if (error) {
-        logger.error(error);
-        throw error;
-      }
-    },
-  );
+  const sql = await SqlDataSource.connect();
+  const sqlConnection = sql.getCurrentConnection() as sqlite3.Database;
 
   try {
     const migrationTable: MigrationTableType[] =
-      (await SQLIteMIgrationUtils.getMigrationTable(sqliteConnection)) || [];
+      (await SQLIteMIgrationUtils.getMigrationTable(sqlConnection)) || [];
     const migrations: Migration[] = await SQLIteMIgrationUtils.getMigrations();
 
     const tableMigrations = migrationTable.map((migration) => migration.name);
@@ -41,12 +34,13 @@ export async function migrationRollBackSqlite(): Promise<void> {
 
     if (pendingMigrations.length === 0) {
       logger.info("No pending migrations.");
-      sqliteConnection.close();
+      await sql.closeConnection();
       process.exit(0);
     }
 
     const migrationController = new MigrationController(
-      sqliteConnection as any,
+      sql,
+      sqlConnection,
       "sqlite",
     );
 
@@ -54,7 +48,7 @@ export async function migrationRollBackSqlite(): Promise<void> {
     await SQLIteMIgrationUtils.promisifyQuery(
       BEGIN_TRANSACTION,
       [],
-      sqliteConnection,
+      sqlConnection,
     );
     await migrationController.downMigrations(pendingMigrations);
 
@@ -62,7 +56,7 @@ export async function migrationRollBackSqlite(): Promise<void> {
     await SQLIteMIgrationUtils.promisifyQuery(
       COMMIT_TRANSACTION,
       [],
-      sqliteConnection,
+      sqlConnection,
     );
   } catch (error: any) {
     console.error(error);
@@ -70,11 +64,11 @@ export async function migrationRollBackSqlite(): Promise<void> {
     await SQLIteMIgrationUtils.promisifyQuery(
       ROLLBACK_TRANSACTION,
       [],
-      sqliteConnection,
+      sqlConnection,
     ).catch();
 
     throw error;
   } finally {
-    sqliteConnection.close();
+    await sql.closeConnection();
   }
 }

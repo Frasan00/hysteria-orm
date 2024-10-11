@@ -42,6 +42,7 @@ export async function runMigrationsSQLite(): Promise<void> {
     }
 
     const migrationController = new MigrationController(
+      sql,
       sqlConnection,
       "sqlite",
     );

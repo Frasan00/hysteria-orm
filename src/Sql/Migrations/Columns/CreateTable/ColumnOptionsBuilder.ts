@@ -9,6 +9,8 @@ export default class ColumnOptionsBuilder {
   protected columnReferences: {
     table: string;
     column: string;
+    onDelete?: string;
+    onUpdate?: string;
   }[];
   protected sqlType: SqlDataSourceType;
 
@@ -21,6 +23,8 @@ export default class ColumnOptionsBuilder {
     columnReferences: {
       table: string;
       column: string;
+      onDelete?: string;
+      onUpdate?: string;
     }[] = [],
   ) {
     this.table = table;
@@ -147,8 +151,12 @@ export default class ColumnOptionsBuilder {
    * @param table
    * @param column
    */
-  public references(table: string, column: string): ColumnOptionsBuilder {
-    this.columnReferences?.push({ table, column });
+  public references(
+    table: string,
+    column: string,
+    options?: { onDelete: string; onUpdate: string },
+  ): ColumnOptionsBuilder {
+    this.columnReferences?.push({ table, column, onDelete: options?.onDelete, onUpdate: options?.onUpdate });
     return new ColumnOptionsBuilder(
       this.table,
       this.queryStatements,
@@ -181,13 +189,29 @@ export default class ColumnOptionsBuilder {
         switch (this.sqlType) {
           case "mysql":
           case "mariadb":
-            this.partialQuery += `,\nCONSTRAINT fk_${this.table}_${this.columnName} FOREIGN KEY (${this.columnName}) REFERENCES ${reference.table}(${reference.column})`;
+            this.partialQuery += `,\nCONSTRAINT fk_${this.table}_${
+              this.columnName
+            } FOREIGN KEY (${this.columnName}) REFERENCES ${reference.table}(${
+              reference.column
+            }) ${reference.onDelete ? `ON DELETE ${reference.onDelete}` : ""} ${
+              reference.onUpdate ? `ON UPDATE ${reference.onUpdate}` : ""
+            }`;
             break;
           case "postgres":
-            this.partialQuery += `,\nCONSTRAINT fk_${this.table}_${this.columnName} FOREIGN KEY (${this.columnName}) REFERENCES ${reference.table}(${reference.column})`;
+            this.partialQuery += `,\nCONSTRAINT fk_${this.table}_${
+              this.columnName
+            } FOREIGN KEY (${this.columnName}) REFERENCES ${reference.table}(${
+              reference.column
+            }) ${reference.onDelete ? `ON DELETE ${reference.onDelete}` : ""} ${
+              reference.onUpdate ? `ON UPDATE ${reference.onUpdate}` : ""
+            }`;
             break;
           case "sqlite":
-            this.partialQuery += `,\nFOREIGN KEY (${this.columnName}) REFERENCES ${reference.table}(${reference.column})`;
+            this.partialQuery += `,\nFOREIGN KEY (${
+              this.columnName
+            }) REFERENCES ${reference.table}(${reference.column}) ${
+              reference.onDelete ? `ON DELETE ${reference.onDelete}` : ""
+            } ${reference.onUpdate ? `ON UPDATE ${reference.onUpdate}` : ""}`;
             break;
           default:
             throw new Error("Unsupported SQL type");

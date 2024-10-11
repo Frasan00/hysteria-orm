@@ -10,14 +10,6 @@ export default class extends Migration {
   public async down(): Promise<void> {
     // Your rollback logic here
   }
-
-  public async afterUp(): Promise<void> {
-    // Your logic after the up migration here
-  }
-
-  public async afterDown(): Promise<void> {
-    // Your logic after the down migration here
-  }
 }
 `;
   }

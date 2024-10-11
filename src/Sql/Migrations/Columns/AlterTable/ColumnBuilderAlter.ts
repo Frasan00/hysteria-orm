@@ -4,12 +4,16 @@ import ColumnTypeBuilder, {
   DateOptions,
 } from "../CreateTable/ColumnTypeBuilder";
 
+type References = {
+  table: string;
+  column: string;
+  onDelete?: string;
+  onUpdate?: string;
+};
+
 type AlterOptions = {
   afterColumn?: string;
-  references?: {
-    table: string;
-    column: string;
-  };
+  references?: References;
 };
 
 type DataType =
@@ -34,7 +38,7 @@ type DataType =
 
 type BaseOptions = {
   afterColumn?: string;
-  references?: { table: string; column: string };
+  references?: References;
   precision?: number;
   scale?: number;
   default?: any;
@@ -176,7 +180,11 @@ export default class ColumnBuilderAlter {
     }
 
     if (options?.references) {
-      query += ` REFERENCES ${options.references.table}(${options.references.column})`;
+      query += ` REFERENCES ${options.references.table}(${
+        options.references.column
+      }) ON DELETE ${options.references.onDelete || "NO ACTION"} ON UPDATE ${
+        options.references.onUpdate || "NO ACTION"
+      }`;
     }
 
     if (options?.afterColumn) {
@@ -293,20 +301,62 @@ export default class ColumnBuilderAlter {
   public addEnumColumn(
     columnName: string,
     values: string[],
-    options?: { afterColumn?: string; notNullable?: boolean },
+    options?: {
+      afterColumn?: string;
+      notNullable?: boolean;
+      default?: string;
+      unique?: boolean;
+    },
   ): ColumnBuilderAlter {
     switch (this.sqlType) {
       case "mariadb":
       case "mysql":
+        const parsedValues = values.map((value) => {
+          if (typeof value === "number") {
+            return value;
+          } else if (typeof value === "boolean") {
+            return value ? 1 : 0;
+          } else if (typeof value === "string") {
+            return `'${value}'`;
+          }
+        });
         this.partialQuery = `ALTER TABLE ${
           this.table
-        } ADD COLUMN ${columnName} ENUM('${values.join("', '")}')`;
+        } ADD COLUMN ${columnName} ENUM(${parsedValues.join(", ")})`;
         break;
       case "postgres":
-        this.partialQuery = `ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${values[0]}`;
+        const enumTypeName = `${this.table}_${columnName}_enum`;
+        const parsedValuesPg = values.map((value) => {
+          if (typeof value === "number") {
+            return value;
+          } else if (typeof value === "boolean") {
+            return value ? 1 : 0;
+          } else if (typeof value === "string") {
+            return `'${value}'`;
+          }
+        });
+        this.partialQuery = `
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = '${enumTypeName}') THEN
+    CREATE TYPE ${enumTypeName} AS ENUM(${parsedValuesPg.join(", ")});
+  END IF;
+END $$;
+ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
+      `;
         break;
       case "sqlite":
-        this.partialQuery = `ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${values[0]}`;
+        const parsedValuesSqlite = values.map((value) => {
+          if (typeof value === "number") {
+            return value;
+          } else if (typeof value === "boolean") {
+            return value ? 1 : 0;
+          } else if (typeof value === "string") {
+            return `'${value}'`;
+          }
+        });
+        this.partialQuery = `ALTER TABLE ${
+          this.table
+        } ADD COLUMN ${columnName} ENUM(${parsedValuesSqlite.join(", ")})`;
         break;
       default:
         throw new Error("Unsupported database type");
@@ -314,6 +364,14 @@ export default class ColumnBuilderAlter {
 
     if (options?.notNullable) {
       this.partialQuery += " NOT NULL";
+    }
+
+    if (options?.default) {
+      this.partialQuery += ` DEFAULT '${options.default}'`;
+    }
+
+    if (options?.unique) {
+      this.partialQuery += " UNIQUE";
     }
 
     if (options?.afterColumn) {
@@ -373,7 +431,7 @@ export default class ColumnBuilderAlter {
     switch (this.sqlType) {
       case "mariadb":
       case "mysql":
-        this.partialQuery = `ALTER TABLE ${this.table} CHANGE ${oldColumnName} ${newColumnName}`;
+        this.partialQuery = `ALTER TABLE ${this.table} CHANGE COLUMN ${oldColumnName} ${newColumnName}`;
         break;
       case "postgres":
         this.partialQuery = `ALTER TABLE ${this.table} RENAME COLUMN ${oldColumnName} TO ${newColumnName}`;
@@ -392,7 +450,7 @@ export default class ColumnBuilderAlter {
 
   public modifyColumnType(
     columnName: string,
-    newDataType: DataType,
+    newDataType: string,
     options?: BaseOptions,
   ): ColumnBuilderAlter {
     switch (this.sqlType) {
@@ -438,7 +496,11 @@ export default class ColumnBuilderAlter {
     }
 
     if (options?.references) {
-      this.partialQuery += ` REFERENCES ${options.references.table}(${options.references.column})`;
+      this.partialQuery += ` REFERENCES ${options.references.table}(${
+        options.references.column
+      }) ON DELETE ${options.references.onDelete || "NO ACTION"} ON UPDATE ${
+        options.references.onUpdate || "NO ACTION"
+      }`;
     }
 
     if (options?.afterColumn) {
@@ -560,13 +622,31 @@ export default class ColumnBuilderAlter {
     switch (this.sqlType) {
       case "mariadb":
       case "mysql":
-        this.partialQuery = `ALTER TABLE ${this.table} ADD CONSTRAINT ${fkName} FOREIGN KEY (${columnName}) REFERENCES ${options.references.table}(${options.references.column})`;
+        this.partialQuery = `ALTER TABLE ${
+          this.table
+        } ADD CONSTRAINT ${fkName} FOREIGN KEY (${columnName}) REFERENCES ${
+          options.references.table
+        }(${options.references.column}) ON DELETE ${
+          options.references.onDelete || "NO ACTION"
+        } ON UPDATE ${options.references.onUpdate || "NO ACTION"}`;
         break;
       case "postgres":
-        this.partialQuery = `ALTER TABLE ${this.table} ADD CONSTRAINT ${fkName} FOREIGN KEY (${columnName}) REFERENCES ${options.references.table}(${options.references.column})`;
+        this.partialQuery = `ALTER TABLE ${
+          this.table
+        } ADD CONSTRAINT ${fkName} FOREIGN KEY (${columnName}) REFERENCES ${
+          options.references.table
+        }(${options.references.column}) ON DELETE ${
+          options.references.onDelete || "NO ACTION"
+        } ON UPDATE ${options.references.onUpdate || "NO ACTION"}`;
         break;
       case "sqlite":
-        this.partialQuery = `ALTER TABLE ${this.table} ADD CONSTRAINT ${fkName} FOREIGN KEY (${columnName}) REFERENCES ${options.references.table}(${options.references.column})`;
+        this.partialQuery = `ALTER TABLE ${
+          this.table
+        } ADD CONSTRAINT ${fkName} FOREIGN KEY (${columnName}) REFERENCES ${
+          options.references.table
+        }(${options.references.column}) ON DELETE ${
+          options.references.onDelete || "NO ACTION"
+        } ON UPDATE ${options.references.onUpdate || "NO ACTION"}`;
         break;
       default:
         throw new Error("Unsupported database type");

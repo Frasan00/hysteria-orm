@@ -37,6 +37,7 @@ export async function migrationRollBackPg(): Promise<void> {
     }
 
     const migrationController = new MigrationController(
+      sql,
       sqlConnection,
       "postgres",
     );

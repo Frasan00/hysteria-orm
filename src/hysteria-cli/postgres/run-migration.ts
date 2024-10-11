@@ -41,6 +41,7 @@ export async function runMigrationsPg(): Promise<void> {
     }
 
     const migrationController = new MigrationController(
+      sql,
       sqlConnection,
       "postgres",
     );

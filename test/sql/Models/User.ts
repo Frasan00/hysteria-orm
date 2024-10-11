@@ -8,8 +8,6 @@ import {
 import { Model } from "../../../src/Sql/Models/Model";
 import { Post } from "./Post";
 import { ModelQueryBuilder } from "../../../src/Sql/QueryBuilder/QueryBuilder";
-import { ModelUpdateQueryBuilder } from "../../../src/Sql/QueryBuilder/UpdateQueryBuilder";
-import { ModelDeleteQueryBuilder } from "../../../src/Sql/QueryBuilder/DeleteQueryBuilder";
 
 export class User extends Model {
   static tableName: string = "users";

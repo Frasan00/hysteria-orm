@@ -39,6 +39,7 @@ export async function migrationRollBackSql(): Promise<void> {
     }
 
     const migrationController: MigrationController = new MigrationController(
+      sql,
       sqlConnection,
       "mysql",
     );

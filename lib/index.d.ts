@@ -44,11 +44,15 @@ declare class ColumnOptionsBuilder {
     protected columnReferences: {
         table: string;
         column: string;
+        onDelete?: string;
+        onUpdate?: string;
     }[];
     protected sqlType: SqlDataSourceType$1;
     constructor(table: string, queryStatements: string[], partialQuery: string, sqlType: SqlDataSourceType$1, columnName?: string, columnReferences?: {
         table: string;
         column: string;
+        onDelete?: string;
+        onUpdate?: string;
     }[]);
     /**
      * @description Makes the column nullable
@@ -80,7 +84,10 @@ declare class ColumnOptionsBuilder {
      * @param table
      * @param column
      */
-    references(table: string, column: string): ColumnOptionsBuilder;
+    references(table: string, column: string, options?: {
+        onDelete: string;
+        onUpdate: string;
+    }): ColumnOptionsBuilder;
     /**
      * @description Chains a new column creation
      */
@@ -171,20 +178,20 @@ declare class ColumnBuilderConnector {
     newColumn(): ColumnTypeBuilder;
 }
 
+type References = {
+    table: string;
+    column: string;
+    onDelete?: string;
+    onUpdate?: string;
+};
 type AlterOptions = {
     afterColumn?: string;
-    references?: {
-        table: string;
-        column: string;
-    };
+    references?: References;
 };
 type DataType = "uuid" | "varchar" | "tinytext" | "mediumtext" | "longtext" | "binary" | "text" | "char" | "tinyint" | "smallint" | "mediumint" | "integer" | "bigint" | "float" | "decimal" | "double" | "boolean" | "jsonb";
 type BaseOptions = {
     afterColumn?: string;
-    references?: {
-        table: string;
-        column: string;
-    };
+    references?: References;
     precision?: number;
     scale?: number;
     default?: any;
@@ -226,6 +233,8 @@ declare class ColumnBuilderAlter {
     addEnumColumn(columnName: string, values: string[], options?: {
         afterColumn?: string;
         notNullable?: boolean;
+        default?: string;
+        unique?: boolean;
     }): ColumnBuilderAlter;
     /**
      * @description Drops a column from the table
@@ -238,7 +247,7 @@ declare class ColumnBuilderAlter {
      * @param newColumnName
      */
     renameColumn(oldColumnName: string, newColumnName: string): ColumnBuilderAlter;
-    modifyColumnType(columnName: string, newDataType: DataType, options?: BaseOptions): ColumnBuilderAlter;
+    modifyColumnType(columnName: string, newDataType: string, options?: BaseOptions): ColumnBuilderAlter;
     /**
      * @description Renames a table
      * @param oldtable
