@@ -62,17 +62,6 @@ export default class ColumnTypeBuilder {
           this.sqlType,
           this.columnName,
         );
-
-      case "mssql":
-        this.columnName = name;
-        this.partialQuery += `${name} NVARCHAR(${length})`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
       default:
         throw new Error("Unsupported SQL type");
     }
@@ -113,23 +102,11 @@ export default class ColumnTypeBuilder {
           this.sqlType,
           this.columnName,
         );
-
-      case "mssql":
-        this.columnName = name;
-        this.partialQuery += `${name} NVARCHAR(${length})`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
       default:
         throw new Error("Unsupported SQL type");
     }
   }
 
-  // TODO: finish mssql integration
   public uuid(name: string): ColumnOptionsBuilder {
     switch (this.sqlType) {
       case "postgres":

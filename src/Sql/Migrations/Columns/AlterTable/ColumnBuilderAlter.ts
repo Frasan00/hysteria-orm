@@ -356,17 +356,21 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
         });
         this.partialQuery = `ALTER TABLE ${
           this.table
-        } ADD COLUMN ${columnName} ENUM(${parsedValuesSqlite.join(", ")})`;
+        } ADD COLUMN ${columnName} TEXT ${
+          options?.notNullable ? "NOT NULL" : ""
+        } DEFAULT ${
+          options?.default ? `'${options.default}'` : "NULL"
+        } CHECK (${columnName} IN (${parsedValuesSqlite.join(", ")}))`;
         break;
       default:
         throw new Error("Unsupported database type");
     }
 
-    if (options?.notNullable) {
+    if (options?.notNullable && this.sqlType !== "sqlite") {
       this.partialQuery += " NOT NULL";
     }
 
-    if (options?.default) {
+    if (options?.default && this.sqlType !== "sqlite") {
       this.partialQuery += ` DEFAULT '${options.default}'`;
     }
 
@@ -381,9 +385,9 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
           this.partialQuery += ` AFTER ${options.afterColumn}`;
           break;
         case "postgres":
-          throw new Error("Postgres does not support AFTER in ALTER COLUMN");
+          throw new Error("Postgres does not support AFTER in AFTER COLUMN");
         case "sqlite":
-          throw new Error("Sqlite does not support AFTER in ALTER COLUMN");
+          throw new Error("Sqlite does not support AFTER in AFTER COLUMN");
         default:
           throw new Error("Unsupported database type");
       }
@@ -470,11 +474,7 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
         }`;
         break;
       case "sqlite":
-        this.partialQuery = `ALTER TABLE ${
-          this.table
-        } ALTER COLUMN ${columnName} TYPE ${newDataType}${
-          options && options.length ? `(${options.length})` : ""
-        }`;
+        throw new Error("Sqlite does not support modifying column types");
       default:
         throw new Error("Unsupported database type");
     }
@@ -592,8 +592,7 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
         this.partialQuery = `ALTER TABLE ${this.table} ALTER COLUMN ${columnName} DROP DEFAULT`;
         break;
       case "sqlite":
-        this.partialQuery = `ALTER TABLE ${this.table} ALTER COLUMN ${columnName} DROP DEFAULT`;
-        break;
+        throw new Error("Sqlite does not support dropping default values");
       default:
         throw new Error("Unsupported database type");
     }

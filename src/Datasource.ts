@@ -1,7 +1,6 @@
 import dotenv from "dotenv";
 import mysql from "mysql2/promise";
 import pg from "pg";
-import mssql from "mssql";
 
 dotenv.config();
 
@@ -13,7 +12,6 @@ export type DataSourceType =
   | "postgres"
   | "mariadb"
   | "sqlite"
-  | "mssql"
   | "redis";
 
 export type SqlDataSourceType = Omit<DataSourceType, "redis">;
@@ -31,7 +29,6 @@ export interface DataSourceInput {
   readonly logs?: boolean;
   readonly mysqlOptions?: mysql.PoolOptions;
   readonly pgOptions?: pg.PoolConfig;
-  readonly mssqlOptions?: mssql.config;
 }
 
 export abstract class DataSource {

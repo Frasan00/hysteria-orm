@@ -17,7 +17,6 @@ import { SQLiteQueryBuilder } from "../Sqlite/SQLiteQueryBuilder";
 import { convertCase } from "../../CaseUtils";
 import { getModelColumns } from "../Models/ModelDecorators";
 import { addDynamicColumnsToModel } from "../serializer";
-import { MssqlQueryBuilder } from "../Mssql/MssqlQueryBuilder";
 
 /**
  * @description The abstract class for query builders for selecting data.
@@ -25,8 +24,7 @@ import { MssqlQueryBuilder } from "../Mssql/MssqlQueryBuilder";
 export type ModelQueryBuilder<T extends Model> =
   | MysqlQueryBuilder<T>
   | PostgresQueryBuilder<T>
-  | SQLiteQueryBuilder<T>
-  | MssqlQueryBuilder<T>;
+  | SQLiteQueryBuilder<T>;
 
 export type FetchHooks = "beforeFetch" | "afterFetch";
 

@@ -39,22 +39,12 @@ const updateTemplate = (
             .join(", ");
           params = [...values, primaryKeyValue];
           break;
-        case "mssql":
-          setClause = columns
-            .map((column, index) => `"${column}" = @${column}`)
-            .join(", ");
-          params = [...values, primaryKeyValue];
-          break;
         default:
           throw new Error("Unsupported database type");
       }
 
       const primaryKeyPlaceholder =
-        dbType === "postgres"
-          ? `$${columns.length + 1}`
-          : dbType === "mssql"
-            ? `@${primaryKey}`
-            : "?";
+        dbType === "postgres" ? `$${columns.length + 1}` : "?";
       const query = `UPDATE ${table} 
 SET ${setClause} 
 WHERE ${primaryKey} = ${primaryKeyPlaceholder};`;
@@ -86,14 +76,6 @@ WHERE ${primaryKey} = ${primaryKeyPlaceholder};`;
         case "postgres":
           setClause = columns
             .map((column, index) => `"${column}" = $${index + 1}`)
-            .join(", ");
-          values.forEach((value) => {
-            params.push(value ?? null);
-          });
-          break;
-        case "mssql":
-          setClause = columns
-            .map((column) => `"${column}" = @${column}`)
             .join(", ");
           values.forEach((value) => {
             params.push(value ?? null);

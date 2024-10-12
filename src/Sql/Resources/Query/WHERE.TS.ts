@@ -35,8 +35,6 @@ const whereTemplate = (
         case "postgres":
           let index = startIndex;
           return query.replace(/PLACEHOLDER/g, () => `$${index++}`);
-        case "mssql":
-          return query.replace(/PLACEHOLDER/g, () => `@p${startIndex++}`);
         default:
           throw new Error("Unsupported database type");
       }

@@ -34,10 +34,6 @@ const insertTemplate = (
           placeholders = columns.map(() => "?").join(", ");
           params = values;
           break;
-        case "mssql":
-          placeholders = columns.map((column) => `@${column}`).join(", ");
-          params = values;
-          break;
         case "postgres":
           placeholders = columns
             .map((_, index) => {
@@ -78,12 +74,6 @@ VALUES (${placeholders}) RETURNING *;`;
           valueSets = values.map((valueSet) => {
             params.push(...valueSet);
             return `(${valueSet.map(() => "?").join(", ")})`;
-          });
-          break;
-        case "mssql":
-          valueSets = values.map((valueSet) => {
-            params.push(...valueSet);
-            return `(${valueSet.map((column) => `@${column}`).join(", ")})`;
           });
           break;
         case "postgres":

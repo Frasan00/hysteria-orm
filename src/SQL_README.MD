@@ -48,7 +48,6 @@
 - A JavaScript runtime environment (e.g., Node.js).
 - Official types version used for each driver, you must use a driver version that is compatible with those:
 ```json
-"@types/mssql": "^9.1.5",
 "@types/node": "^22.2.0",
 "@types/pg": "^8.10.9",
 "@types/sqlite3": "^3.1.11",
@@ -86,7 +85,7 @@
 ### Complete env example
 ```dotenv
 MIGRATION_PATH=database/migrations # default /database/migrations, this env always referees to the root of the project
-DB_TYPE=# mysql | postgres | mariadb | sqlite | mssql
+DB_TYPE=# mysql | postgres | mariadb | sqlite
 DB_HOST=127.0.0.1
 DB_USER=root
 DB_PASSWORD=root
@@ -103,14 +102,13 @@ DB_LOGS=true # default false
 import { SqlDataSource, DataSourceInput } from "hysteria-orm";
 
 const mysqlConfig: DataSourceInput = {
-    type: 'mysql' | 'postgres' | 'mariadb' | 'sqlite' | 'mssql',
+    type: 'mysql' | 'postgres' | 'mariadb' | 'sqlite',
     host: HOST,
     port: PORT,
     username: USERNAME,
     password: PASSWORD,
     database: DATABASE,
     logs: true, // query-logs (optional) - default: false
-    mssqlOptions: {<Every mssql option>}
     pgOptions: {<Every pg client options>}
     mysqlOptions: {<Every mysql2 createConnection option>}
 }
@@ -157,7 +155,7 @@ await SqlDataSource.useConnection(
         } as User);
 
         const updatedUser = await userRepo.update().withData({
-        name: "new name",
+            name: "new name",
         });
 
         // you can also use Model static methods specifying the connection they should use
@@ -270,7 +268,7 @@ export class User extends Model {
 ### Case Convention
 - In Hysteria-orm the case convention is defined in the Model and it's extended to all columns in it
 - Extra columns will be converted to the standard given by modelCaseConvention
-- You can customize the behavior of the database interactions with
+- You can customize the case behavior for typescript Models and the Database
 
 ```typescript
 export class User extends Model {
@@ -618,22 +616,26 @@ export default class extends Migration {
             .commit();
 
         this.schema.rawQuery('CREATE INDEX posts_name_idx ON posts (name)');
+
+        // Hooks for after up and down migrations are executed immediately after the relative migration file is executed
+        this.afterUp = async () => {
+            console.log('Creating user...')
+            await User.insert({
+                name: 'John Doe',
+                email: 'john@gmail.com',
+                signupSource: 'web',
+                isActive: true,
+            })
+
+            console.log('User created.')
+            console.log(await User.query().many())
+        }
+
+        this.afterDown = async () => { /* After down logic here*/ }
     }
 
     public down(): void {
         this.schema.dropTable('posts');
-    }
-
-    // Hooks for after up and down migrations are executed immediately after the relative migration method is executed
-    public async afterUp(_sql: SqlDataSource): Promise<void> {
-        await Post.insert({
-            name: "post 1",
-            userId: 1,
-        });
-    }
-
-    public async afterDown(_sql: SqlDataSource): Promise<void> {
-        // after down logic here
     }
 }
 ```

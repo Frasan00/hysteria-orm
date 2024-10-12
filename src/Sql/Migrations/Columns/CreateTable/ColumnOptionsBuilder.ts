@@ -156,7 +156,12 @@ export default class ColumnOptionsBuilder {
     column: string,
     options?: { onDelete: string; onUpdate: string },
   ): ColumnOptionsBuilder {
-    this.columnReferences?.push({ table, column, onDelete: options?.onDelete, onUpdate: options?.onUpdate });
+    this.columnReferences?.push({
+      table,
+      column,
+      onDelete: options?.onDelete,
+      onUpdate: options?.onUpdate,
+    });
     return new ColumnOptionsBuilder(
       this.table,
       this.queryStatements,

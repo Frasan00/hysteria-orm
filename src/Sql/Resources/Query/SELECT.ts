@@ -65,9 +65,6 @@ const selectTemplate = (
         return `\`${identifier.replace(/`/g, "``")}\``;
       case "postgres":
         return `"${identifier.replace(/"/g, '""')}"`;
-      // FIXME ?
-      case "mssql":
-        break;
       default:
         throw new Error("Unsupported database type");
     }
@@ -175,23 +172,11 @@ const selectTemplate = (
 
       return ` GROUP BY ${columns.join(", ")}`;
     },
-    limit: (limit: number, preOffset?: boolean) => {
-      if (dbType !== "mssql") {
-        return ` LIMIT ${limit}`;
-      }
-
-      if (preOffset) {
-        return ` FETCH NEXT ${limit} ROWS ONLY`;
-      }
-
-      return ` OFFSET 0 ROWS FETCH NEXT ${limit} ROWS ONLY`;
+    limit: (limit: number) => {
+      return ` LIMIT ${limit}`;
     },
     offset: (offset: number) => {
-      if (dbType !== "mssql") {
-        return ` OFFSET ${offset}`;
-      }
-
-      return ` OFFSET ${offset} ROWS`;
+      return ` OFFSET ${offset}`;
     },
   };
 };
