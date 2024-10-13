@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 import dotenv from "dotenv";
-import CliUtils from "./MysqlCliUtils";
 import { MigrationTableType } from "../resources/MigrationTableType";
 import { log } from "console";
 import { Migration } from "../../Sql/Migrations/Migration";
@@ -14,6 +13,7 @@ import {
 import logger from "../../Logger";
 import { SqlDataSource } from "../../Sql/SqlDatasource";
 import * as mysql2 from "mysql2/promise";
+import { getMigrations, getMigrationTable } from "../MigrationUtils";
 
 dotenv.config();
 
@@ -25,8 +25,8 @@ export async function migrationRollBackSql(): Promise<void> {
     log(BEGIN_TRANSACTION, true);
     await sqlConnection.beginTransaction();
     const migrationTable: MigrationTableType[] =
-      await CliUtils.getMigrationTable(sqlConnection);
-    const migrations: Migration[] = await CliUtils.getMigrations();
+      await getMigrationTable(sqlConnection);
+    const migrations: Migration[] = await getMigrations();
     const tableMigrations = migrationTable.map((migration) => migration.name);
     const pendingMigrations = migrations.filter((migration) =>
       tableMigrations.includes(migration.migrationName),

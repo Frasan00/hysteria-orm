@@ -592,14 +592,25 @@ const user: User | null = await User.query()
 
 # Migrations
 - Migrations are meant to be executed in a Typescript environment because migration files and the migration cli are standalone feature that do not need to be built in js
+- Migration Cli should be used in the root of the project
 - You do not need to have Typescript installed in order to run the migration cli
+- Migrations cli starts from the current user location (process.cwd) and appends the path/to/migrations (default `database/migrations`), this can be customized with `MIGRATION_PATH` environment variable
 
 ## hysteria-orm-cli for Migrations
 
-1) (npm run | yarn run) hysteria create:migration {migrationName}
+1) (npm run | yarn run) hysteria create:migration <name>
 2) (npm run | yarn run) hysteria run:migrations
 3) (npm run | yarn run) hysteria rollback:migrations
 
+## create:migration <name>
+- Creates a migration in the migrations folder
+- If the creation folder specified in the .env (or the default one database/migrations) it will be created automatically
+
+## run:migrations
+- Runs all pending migrations
+
+## rollback:migrations
+- Rollbacks all existing migrations
 
 ## Create Table
 
@@ -630,12 +641,11 @@ export default class extends Migration {
             console.log('User created.')
             console.log(await User.query().many())
         }
-
-        this.afterDown = async () => { /* After down logic here*/ }
     }
 
     public down(): void {
         this.schema.dropTable('posts');
+        this.afterDown = async () => { /* After down logic here*/ }
     }
 }
 ```

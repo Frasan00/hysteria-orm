@@ -18,7 +18,7 @@ export default class extends Migration {
     return `SELECT * FROM migrations;`;
   }
 
-  public migrationTableTemplate(): string {
+  public migrationTableTemplateMysql(): string {
     return `CREATE TABLE IF NOT EXISTS \`migrations\`(
     \`id\` INT NOT NULL AUTO_INCREMENT,
     \`name\` VARCHAR(255) NOT NULL,

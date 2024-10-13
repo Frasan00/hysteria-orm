@@ -3,7 +3,6 @@
 import dotenv from "dotenv";
 import * as mysql2 from "mysql2/promise";
 import { MigrationTableType } from "../resources/MigrationTableType";
-import MysqlCliUtils from "./MysqlCliUtils";
 import { log } from "console";
 import { Migration } from "../../Sql/Migrations/Migration";
 import { MigrationController } from "../../Sql/Migrations/MigrationController";
@@ -14,6 +13,7 @@ import {
 } from "../../Sql/Resources/Query/TRANSACTION";
 import logger from "../../Logger";
 import { SqlDataSource } from "../../Sql/SqlDatasource";
+import { getMigrations, getMigrationTable } from "../MigrationUtils";
 
 dotenv.config();
 
@@ -23,9 +23,10 @@ export async function runMigrationsSql(): Promise<void> {
   try {
     log(BEGIN_TRANSACTION, true);
     await sqlConnection.beginTransaction();
-    const migrationTable: MigrationTableType[] =
-      await MysqlCliUtils.getMigrationTable(sqlConnection as mysql2.Connection);
-    const migrations: Migration[] = await MysqlCliUtils.getMigrations();
+    const migrationTable: MigrationTableType[] = await getMigrationTable(
+      sqlConnection as mysql2.Connection,
+    );
+    const migrations: Migration[] = await getMigrations();
     const pendingMigrations = migrations.filter(
       (migration) =>
         !migrationTable

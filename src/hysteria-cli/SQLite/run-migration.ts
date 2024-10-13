@@ -12,8 +12,8 @@ import {
   ROLLBACK_TRANSACTION,
 } from "../../Sql/Resources/Query/TRANSACTION";
 import logger from "../../Logger";
-import SQLIteMIgrationUtils from "./SQLIteMIgrationUtils";
 import { SqlDataSource } from "../../Sql/SqlDatasource";
+import { getMigrations, getMigrationTable } from "../MigrationUtils";
 
 dotenv.config();
 
@@ -26,8 +26,8 @@ export async function runMigrationsSQLite(): Promise<void> {
     sqlConnection.exec(BEGIN_TRANSACTION);
 
     const migrationTable: MigrationTableType[] =
-      (await SQLIteMIgrationUtils.getMigrationTable(sqlConnection)) || [];
-    const migrations: Migration[] = await SQLIteMIgrationUtils.getMigrations();
+      (await getMigrationTable(sqlConnection)) || [];
+    const migrations: Migration[] = await getMigrations();
     const pendingMigrations = migrations.filter(
       (migration) =>
         !migrationTable

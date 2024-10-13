@@ -2,7 +2,6 @@
 
 import dotenv from "dotenv";
 import { Client } from "pg";
-import PostgresCliUtils from "./PostgresCliUtils";
 import { log } from "console";
 import { MigrationTableType } from "../resources/MigrationTableType";
 import { Migration } from "../../Sql/Migrations/Migration";
@@ -14,6 +13,7 @@ import {
 } from "../../Sql/Resources/Query/TRANSACTION";
 import logger from "../../Logger";
 import { SqlDataSource } from "../../Sql/SqlDatasource";
+import { getMigrationTable, getMigrations } from "../MigrationUtils";
 
 dotenv.config();
 
@@ -22,8 +22,8 @@ export async function migrationRollBackPg(): Promise<void> {
   const sqlConnection = sql.getCurrentConnection() as Client;
   try {
     const migrationTable: MigrationTableType[] =
-      await PostgresCliUtils.getMigrationTable(sqlConnection);
-    const migrations: Migration[] = await PostgresCliUtils.getMigrations();
+      await getMigrationTable(sqlConnection);
+    const migrations: Migration[] = await getMigrations();
 
     const tableMigrations = migrationTable.map((migration) => migration.name);
     const pendingMigrations = migrations.filter((migration) =>

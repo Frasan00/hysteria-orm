@@ -2,7 +2,6 @@
 
 import dotenv from "dotenv";
 import { Client } from "pg";
-import PostgresCliUtils from "./PostgresCliUtils";
 import { MigrationTableType } from "../resources/MigrationTableType";
 import { log } from "console";
 import { Migration } from "../../Sql/Migrations/Migration";
@@ -14,6 +13,7 @@ import {
 } from "../../Sql/Resources/Query/TRANSACTION";
 import logger from "../../Logger";
 import { SqlDataSource } from "../../Sql/SqlDatasource";
+import { getMigrationTable, getMigrations } from "../MigrationUtils";
 
 dotenv.config();
 
@@ -25,8 +25,8 @@ export async function runMigrationsPg(): Promise<void> {
     await sqlConnection.query(BEGIN_TRANSACTION);
 
     const migrationTable: MigrationTableType[] =
-      await PostgresCliUtils.getMigrationTable(sqlConnection);
-    const migrations: Migration[] = await PostgresCliUtils.getMigrations();
+      await getMigrationTable(sqlConnection);
+    const migrations: Migration[] = await getMigrations();
     const pendingMigrations = migrations.filter(
       (migration) =>
         !migrationTable
