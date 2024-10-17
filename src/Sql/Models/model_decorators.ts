@@ -1,7 +1,7 @@
 import { Model as AbstractModel } from "./model";
-import { Belongs_to } from "./relations/belongs_to";
-import { Has_many } from "./relations/has_many";
-import { Has_one } from "./relations/has_one";
+import { BelongsTo } from "./relations/belongs_to";
+import { HasMany } from "./relations/has_many";
+import { HasOne } from "./relations/has_one";
 import { Relation, RelationOptions, RelationType } from "./relations/relation";
 
 type LazyRelationType = {
@@ -200,11 +200,11 @@ export function getRelations(target: typeof AbstractModel): Relation[] {
     const { type, model, columnName, foreignKey, options } = relation;
     switch (type) {
       case RelationType.belongsTo:
-        return new Belongs_to(model(), columnName, foreignKey, options);
+        return new BelongsTo(model(), columnName, foreignKey, options);
       case RelationType.hasOne:
-        return new Has_one(model(), columnName, foreignKey, options);
+        return new HasOne(model(), columnName, foreignKey, options);
       case RelationType.hasMany:
-        return new Has_many(model(), columnName, foreignKey, options);
+        return new HasMany(model(), columnName, foreignKey, options);
       default:
         throw new Error(`Unknown relation type: ${type}`);
     }

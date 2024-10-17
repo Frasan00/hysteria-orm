@@ -2,18 +2,18 @@ import { FetchHooks } from "../../query_builder/query_builder";
 import { SqlDataSource } from "../../sql_data_source";
 import { Transaction } from "../../transaction";
 import { Model } from "../model";
-import { Belongs_to } from "../relations/belongs_to";
-import { Has_many } from "../relations/has_many";
-import { Has_one } from "../relations/has_one";
+import { BelongsTo } from "../relations/belongs_to";
+import { HasMany } from "../relations/has_many";
+import { HasOne } from "../relations/has_one";
 
 type ExcludeRelations<T> = {
   [K in keyof T]: T[K] extends
-    | (Model[] | Has_many)
-    | (Model | Has_many)
-    | (Model | Belongs_to)
-    | (Model[] | Belongs_to)
-    | (Model | Has_one)
-    | (Model[] | Has_one)
+    | (Model[] | HasMany)
+    | (Model | HasMany)
+    | (Model | BelongsTo)
+    | (Model[] | BelongsTo)
+    | (Model | HasOne)
+    | (Model[] | HasOne)
     | ((...args: any[]) => any)
     ? never
     : K;
@@ -21,12 +21,12 @@ type ExcludeRelations<T> = {
 
 type OnlyRelations<T> = {
   [K in keyof T]: T[K] extends
-    | (Model[] | Has_many)
-    | (Model | Has_many)
-    | (Model | Belongs_to)
-    | (Model[] | Belongs_to)
-    | (Model | Has_one)
-    | (Model[] | Has_one)
+    | (Model[] | HasMany)
+    | (Model | HasMany)
+    | (Model | BelongsTo)
+    | (Model[] | BelongsTo)
+    | (Model | HasOne)
+    | (Model[] | HasOne)
     ? K
     : never;
 }[keyof T];

@@ -528,7 +528,7 @@ type PaginatedData<T> = {
 declare class Transaction {
     sqlDataSource: SqlDataSource;
     sqlConnection: SqlConnectionType;
-    private logs;
+    private readonly logs;
     constructor(sqlDataSource: SqlDataSource, logs?: boolean);
     startTransaction(): Promise<void>;
     commit(): Promise<void>;
@@ -563,29 +563,29 @@ declare abstract class Relation {
     protected constructor(model: typeof Model, columnName: string, options?: RelationOptions);
 }
 
-declare class Belongs_to extends Relation {
+declare class BelongsTo extends Relation {
     type: RelationType$1;
     foreignKey: string;
     constructor(relatedModel: typeof Model, columnName: string, foreignKey: string, options?: RelationOptions);
 }
 
-declare class Has_many extends Relation {
+declare class HasMany extends Relation {
     type: RelationType$1;
     foreignKey: string;
     constructor(relatedModel: typeof Model, columnName: string, foreignKey: string, options?: RelationOptions);
 }
 
-declare class Has_one extends Relation {
+declare class HasOne extends Relation {
     type: RelationType$1;
     foreignKey: string;
     constructor(relatedModel: typeof Model, columnName: string, foreignKey: string, options?: RelationOptions);
 }
 
 type ExcludeRelations<T> = {
-    [K in keyof T]: T[K] extends (Model[] | Has_many) | (Model | Has_many) | (Model | Belongs_to) | (Model[] | Belongs_to) | (Model | Has_one) | (Model[] | Has_one) | ((...args: any[]) => any) ? never : K;
+    [K in keyof T]: T[K] extends (Model[] | HasMany) | (Model | HasMany) | (Model | BelongsTo) | (Model[] | BelongsTo) | (Model | HasOne) | (Model[] | HasOne) | ((...args: any[]) => any) ? never : K;
 }[keyof T];
 type OnlyRelations<T> = {
-    [K in keyof T]: T[K] extends (Model[] | Has_many) | (Model | Has_many) | (Model | Belongs_to) | (Model[] | Belongs_to) | (Model | Has_one) | (Model[] | Has_one) ? K : never;
+    [K in keyof T]: T[K] extends (Model[] | HasMany) | (Model | HasMany) | (Model | BelongsTo) | (Model[] | BelongsTo) | (Model | HasOne) | (Model[] | HasOne) ? K : never;
 }[keyof T];
 type WhereType<T> = {
     [K in keyof T]?: string | number | boolean | Date | null;

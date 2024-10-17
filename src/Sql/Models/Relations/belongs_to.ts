@@ -1,7 +1,7 @@
 import { Relation, RelationOptions, RelationType } from "./relation";
 import { Model } from "../model";
 
-export class Belongs_to extends Relation {
+export class BelongsTo extends Relation {
   public type: RelationType;
   public foreignKey: string;
 

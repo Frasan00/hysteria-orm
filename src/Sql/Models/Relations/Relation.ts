@@ -19,15 +19,11 @@ export enum RelationType {
 export function isRelationDefinition(
   originalValue: any,
 ): originalValue is Relation {
-  if (
-    originalValue.hasOwnProperty("type") &&
-    originalValue.hasOwnProperty("relatedModel") &&
-    originalValue.hasOwnProperty("foreignKey")
-  ) {
-    return true;
-  }
+  return originalValue.hasOwnProperty("type") &&
+      originalValue.hasOwnProperty("relatedModel") &&
+      originalValue.hasOwnProperty("foreignKey");
 
-  return false;
+
 }
 
 /**

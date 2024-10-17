@@ -12,7 +12,7 @@ import { Database } from "sqlite3";
 export class Transaction {
   public sqlDataSource: SqlDataSource;
   public sqlConnection: SqlConnectionType;
-  private logs: boolean;
+  private readonly logs: boolean;
 
   constructor(sqlDataSource: SqlDataSource, logs: boolean = false) {
     this.sqlDataSource = sqlDataSource;

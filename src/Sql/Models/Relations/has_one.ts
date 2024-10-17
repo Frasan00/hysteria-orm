@@ -1,7 +1,7 @@
 import { Relation, RelationOptions, RelationType } from "./relation";
 import { Model } from "../model";
 
-export class Has_one extends Relation {
+export class HasOne extends Relation {
   public type: RelationType;
   public foreignKey: string;
 
