@@ -80,7 +80,7 @@
 ## Environment Variables
 
 - Envs are used for both commands and for database connection
-- Connection details can still be override providing an input on `SqlDataSource.connect()` method
+- Connection details can still be override providing an input on `Sql_data_source.connect()` method
 
 ### Complete env example
 ```dotenv
@@ -99,7 +99,7 @@ DB_LOGS=true # default false
 ### Establishing a Connection
 
 ```typescript
-import { SqlDataSource, DataSourceInput } from "hysteria-orm";
+import { Sql_data_source, DataSourceInput } from "hysteria-orm";
 
 const mysqlConfig: DataSourceInput = {
     type: 'mysql' | 'postgres' | 'mariadb' | 'sqlite',
@@ -121,7 +121,7 @@ const mysqlConfig: DataSourceInput = {
 }
 
 // Config can be omitted, in that case envs will be used to enstablish the connection 
-const sql = await SqlDataSource.connect(mysqlConfig, () => console.log("Connected to the database"));
+const sql = await Sql_data_source.connect(mysqlConfig, () => console.log("Connected to the database"));
 ```
 
 
@@ -130,13 +130,13 @@ const sql = await SqlDataSource.connect(mysqlConfig, () => console.log("Connecte
 - The hierarchy of the connection in the static Model methods is:
 1) useConnection connection if passed as an argument
 2) trx connection (the connection that created the trx) if passed as an argument
-3) the main connection you can create with SqlDataSource.connect method
+3) the main connection you can create with Sql_data_source.connect method
 
 ```typescript
-import { SqlDataSource } from "hysteria-orm";
+import { Sql_data_source } from "hysteria-orm";
 import { User } from "./User";
 
-await SqlDataSource.useConnection(
+await Sql_data_source.useConnection(
     {
         type: "mysql",
         host: "localhost",
@@ -202,7 +202,7 @@ export class User extends Model {
 
 ```typescript
 import "reflect-metadata";
-import { Model, HasOne, HasMany, column, hasOne, ModelQueryBuilder } from "hysteria-orm";
+import { Model, Has_one, Has_many, column, hasOne, ModelQueryBuilder } from "hysteria-orm";
 import { Profile } from "./Profile";
 import { Post } from "./Post";
 
@@ -228,7 +228,7 @@ export class User extends Model {
     @column()
     declare createdAt: DateTime;
 
-    // Relations take as params (table, foreignKey)
+    // relations take as params (table, foreignKey)
     @hasOne(() => Profile, "userId")
     declare profile: Profile;
 
@@ -280,7 +280,7 @@ export class User extends Model {
 type CaseConvention =
   | "camel" // All columns converted to camel case
   | "snake" // All columns converted to snake case
-  | "none" // Columns are treated as defined in the database and in the model
+  | "none" // columns are treated as defined in the database and in the model
   | RegExp // Custom RegExp
   | ((column: string) => string); // Custom function
 ```
@@ -507,7 +507,7 @@ import {
   column,
   dynamicColumn,
 } from "hysteria";
-import { Model } from "../../../src/Sql/Models/Model";
+import { Model } from "../../../src/sql/Models/Model";
 
 export class User extends Model {
   @column({ primaryKey: true })
@@ -549,7 +549,7 @@ const sum = await User.query().getSum("id"); // number
 
 - Relations can be retrieved both from Standard methods and the query builder
 - Those retrieves are especially fast since for each relation a single db query is made and the retrieve of each relation for each model is made in O(n)
-- Based on the relation type can be retrieved both a list (HasMany) or a single record (BelongsTo, HasOne)
+- Based on the relation type can be retrieved both a list (Has_many) or a single record (Belongs_to, Has_one)
 - Those are special queries that are not influenced by hooks defined in their classes
 
 ```typescript

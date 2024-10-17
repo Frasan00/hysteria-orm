@@ -1,8 +1,8 @@
 import { DateTime } from "luxon";
-import { convertCase } from "../../../CaseUtils";
-import { SqlDataSourceType } from "../../../Datasource";
-import { isNestedObject } from "../../jsonUtils";
-import { Model } from "../../Models/Model";
+import { convertCase } from "../../../case_utils";
+import { SqlDataSourceType } from "../../../datasource";
+import { isNestedObject } from "../../json_utils";
+import { Model } from "../../models/model";
 
 type BaseValues =
   | string

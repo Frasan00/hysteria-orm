@@ -1,10 +1,10 @@
 import { DateTime } from "luxon";
-import { SqlDataSource } from "../../../src/Sql/SqlDatasource";
+import { Sql_data_source } from "../../../src/sql/sql_data_source";
 import { User } from "../Models/User";
 
-let sql: SqlDataSource | null = null;
+let sql: Sql_data_source | null = null;
 beforeAll(async () => {
-  sql = await SqlDataSource.connect({
+  sql = await Sql_data_source.connect({
     type: "postgres",
     database: "test",
     username: "root",

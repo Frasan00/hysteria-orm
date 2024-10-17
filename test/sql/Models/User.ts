@@ -4,10 +4,10 @@ import {
   dynamicColumn,
   hasMany,
   hasOne,
-} from "../../../src/Sql/Models/ModelDecorators";
-import { Model } from "../../../src/Sql/Models/Model";
+} from "../../../src/sql/models/model_decorators";
+import { Model } from "../../../src/sql/models/model";
 import { Post } from "./Post";
-import { ModelQueryBuilder } from "../../../src/Sql/QueryBuilder/QueryBuilder";
+import { ModelQueryBuilder } from "../../../src/sql/query_builder/query_builder";
 
 export class User extends Model {
   static tableName: string = "users";

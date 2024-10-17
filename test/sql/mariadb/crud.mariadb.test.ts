@@ -1,11 +1,11 @@
 import { DateTime } from "luxon";
 import { User } from "../Models/User";
-import { SqlDataSource } from "../../../src/Sql/SqlDatasource";
-import rollbackMigrationConnector from "../../hysteria-cli/migrationRollbackConnector";
+import { Sql_data_source } from "../../../src/sql/sql_data_source";
+import rollbackMigrationConnector from "../../../src/hysteria_cli/migration_rollback_connector";
 
-let sql: SqlDataSource | null = null;
+let sql: Sql_data_source | null = null;
 beforeAll(async () => {
-  sql = await SqlDataSource.connect({
+  sql = await Sql_data_source.connect({
     type: "mariadb",
     database: "test",
     username: "root",

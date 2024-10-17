@@ -6,7 +6,7 @@
   "repository": "https://github.com/Frasan00/hysteria-orm.git",
   "author": "Frasan00 <francesco.sangiovanni.7@gmail.com>",
   "scripts": {
-    "test": "yarn format && yarn build && node testRunner.js",
+    "test": "yarn format && yarn build && node test_runner.js",
     "watch": "tsc --watch",
     "format": "prettier --write \"**/*.ts\"",
     "lint": "standard",
@@ -16,9 +16,9 @@
     "start": "yarn format && yarn build && node lib/index.js",
     "start:watch": "nodemon --exec ts-node src/index.ts",
     "test:index": "yarn build && ts-node --transpile-only src/index.ts",
-    "create:migration": "yarn build && ts-node --transpile-only src/hysteria-cli/migrationCreateConnector.ts",
-    "run:migrations": "yarn build && ts-node --transpile-only src/hysteria-cli/migrationRunConnector.ts",
-    "rollback:migrations": "yarn build && ts-node --transpile-only src/hysteria-cli/migrationRollbackConnector.ts"
+    "create:migration": "yarn build && ts-node --transpile-only src/hysteria_cli/migration_create_connector.ts",
+    "run:migrations": "yarn build && ts-node --transpile-only src/hysteria_cli/migration_run_connector.ts",
+    "rollback:migrations": "yarn build && ts-node --transpile-only src/hysteria_cli/migration_rollback_connector.ts"
   },
   "bin": {
     "hysteria": "./cli.js"

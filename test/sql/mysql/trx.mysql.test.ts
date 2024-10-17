@@ -1,10 +1,10 @@
 import { User } from "../Models/User";
 import { Post } from "../Models/Post";
-import { SqlDataSource } from "../../../src/Sql/SqlDatasource";
+import { Sql_data_source } from "../../../src/sql/sql_data_source";
 
-let sql: SqlDataSource;
+let sql: Sql_data_source;
 beforeAll(async () => {
-  sql = await SqlDataSource.connect({
+  sql = await Sql_data_source.connect({
     type: "mysql",
     database: "test",
     username: "root",

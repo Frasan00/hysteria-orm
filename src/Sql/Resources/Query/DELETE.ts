@@ -1,4 +1,4 @@
-import { SqlDataSourceType } from "../../../Datasource";
+import { SqlDataSourceType } from "../../../datasource";
 
 const deleteTemplate = (table: string, dbType: SqlDataSourceType) => {
   return {

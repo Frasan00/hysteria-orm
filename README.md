@@ -11,7 +11,7 @@
 4) sqlite
 
 ## NoSQl
-- [Documentation](./src/NoSql/NOSQL_README.MD)
+- [Documentation](src/no_sql/NOSQL_README.MD)
 
 
 ## Setup Example

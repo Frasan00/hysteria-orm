@@ -1,7 +1,7 @@
 import "reflect-metadata";
-import { DataSourceInput } from "./Datasource";
-import { Migration } from "./Sql/Migrations/Migration";
-import { Model } from "./Sql/Models/Model";
+import { DataSourceInput } from "./datasource";
+import { Migration } from "./sql/migrations/migration";
+import { Model } from "./sql/models/model";
 import {
   belongsTo,
   hasOne,
@@ -9,26 +9,26 @@ import {
   column,
   getRelations,
   getModelColumns,
-} from "./Sql/Models/ModelDecorators";
-import { Relation } from "./Sql/Models/Relations/Relation";
-import { ModelQueryBuilder } from "./Sql/QueryBuilder/QueryBuilder";
-import { SqlDataSource } from "./Sql/SqlDatasource";
-import { getPrimaryKey } from "./Sql/Models/ModelDecorators";
-import { CaseConvention } from "./CaseUtils";
-import { PaginatedData, PaginationMetadata } from "./Sql/pagination";
-import { ModelDeleteQueryBuilder } from "./Sql/QueryBuilder/DeleteQueryBuilder";
-import { ModelUpdateQueryBuilder } from "./Sql/QueryBuilder/UpdateQueryBuilder";
+} from "./sql/models/model_decorators";
+import { Relation } from "./sql/models/relations/relation";
+import { ModelQueryBuilder } from "./sql/query_builder/query_builder";
+import { Sql_data_source } from "./sql/sql_data_source";
+import { getPrimaryKey } from "./sql/models/model_decorators";
+import { CaseConvention } from "./case_utils";
+import { PaginatedData, PaginationMetadata } from "./sql/pagination";
+import { ModelDeleteQueryBuilder } from "./sql/query_builder/delete_query_builder";
+import { ModelUpdateQueryBuilder } from "./sql/query_builder/update_query_builder";
 import { RedisOptions } from "ioredis";
 import {
-  RedisDataSource as Redis,
+  Redis_data_source as Redis,
   RedisGiveable,
   RedisStorable,
-} from "./NoSql/Redis/RedisDataSource";
+} from "./no_sql/redis/redis_data_source";
 import { DateTime } from "luxon";
 import { User } from "../test/sql/Models/User";
 
 // (async () => {
-//   const sql = await SqlDataSource.connect({
+//   const sql = await Sql_data_source.connect({
 //     type: "sqlite",
 //     database: "sqlite.db",
 //     logs: true,
@@ -44,31 +44,31 @@ import { User } from "../test/sql/Models/User";
 // })();
 
 export default {
-  // Sql
+  // sql
   Model,
   column,
   belongsTo,
   hasOne,
   hasMany,
   Relation,
-  SqlDataSource,
+  SqlDataSource: Sql_data_source,
   Migration,
   getRelations,
   getModelColumns,
 
-  // Redis
+  // redis
   Redis,
 };
 
 export {
-  // Sql
+  // sql
   Model,
   column,
   belongsTo,
   hasOne,
   hasMany,
   Relation,
-  SqlDataSource,
+  Sql_data_source,
   DataSourceInput,
   ModelQueryBuilder,
   ModelDeleteQueryBuilder,
@@ -81,7 +81,7 @@ export {
   getModelColumns,
   getPrimaryKey,
 
-  // Redis
+  // redis
   Redis,
   RedisGiveable,
   RedisStorable,

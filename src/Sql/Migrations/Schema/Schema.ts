@@ -1,9 +1,9 @@
 import dotenv from "dotenv";
-import createTableTemplate from "../../Resources/Migration/CREATETABLE";
-import ColumnBuilderConnector from "../Columns/CreateTable/ColumnBuilderConnector";
-import dropTableTemplate from "../../Resources/Migration/DROPTABLE";
-import ColumnBuilderAlter from "../Columns/AlterTable/ColumnBuilderAlter";
-import { SqlDataSourceType } from "../../../Datasource";
+import createTableTemplate from "../../resources/migrations/CREATE_TABLE";
+import Column_builder_connector from "../columns/create_table/column_builder_connector";
+import dropTableTemplate from "../../resources/migrations/DROP_TABLE";
+import Column_builder_alter from "../columns/alter_table/column_builder_alter";
+import { SqlDataSourceType } from "../../../datasource";
 
 dotenv.config();
 
@@ -29,13 +29,13 @@ export default class Schema {
   public createTable(
     table: string,
     options?: { ifNotExists?: boolean },
-  ): ColumnBuilderConnector {
+  ): Column_builder_connector {
     const partialQuery =
       options && options.ifNotExists
         ? createTableTemplate.createTableIfNotExists(table, this.sqlType)
         : createTableTemplate.createTable(table, this.sqlType);
 
-    return new ColumnBuilderConnector(
+    return new Column_builder_connector(
       table,
       this.queryStatements,
       partialQuery,
@@ -46,10 +46,10 @@ export default class Schema {
   /**
    * @description Alter table
    * @param table
-   * @returns ColumnBuilderAlter
+   * @returns Column_builder_alter
    */
   public alterTable(table: string) {
-    return new ColumnBuilderAlter(
+    return new Column_builder_alter(
       table,
       this.queryStatements,
       "",

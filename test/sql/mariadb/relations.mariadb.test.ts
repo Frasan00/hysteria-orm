@@ -1,10 +1,10 @@
 import { User } from "../Models/User";
 import { Post } from "../Models/Post";
-import { SqlDataSource } from "../../../src/Sql/SqlDatasource";
+import { Sql_data_source } from "../../../src/sql/sql_data_source";
 
-let sql: SqlDataSource | null = null;
+let sql: Sql_data_source | null = null;
 beforeAll(async () => {
-  sql = await SqlDataSource.connect({
+  sql = await Sql_data_source.connect({
     type: "mariadb",
     database: "test",
     username: "root",

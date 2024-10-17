@@ -1,5 +1,5 @@
-import { convertCase } from "../../../CaseUtils";
-import { Model } from "../../Models/Model";
+import { convertCase } from "../../../case_utils";
+import { Model } from "../../models/model";
 
 const joinTemplate = (
   typeofModel: typeof Model,

@@ -1,20 +1,20 @@
 import { Connection } from "mysql2/promise";
-import { SqlConnectionType, SqlDataSource } from "./SqlDatasource";
-import { log } from "../Logger";
+import { SqlConnectionType, Sql_data_source } from "./sql_data_source";
+import { log } from "../logger";
 import {
   BEGIN_TRANSACTION,
   COMMIT_TRANSACTION,
   ROLLBACK_TRANSACTION,
-} from "./Resources/Query/TRANSACTION";
+} from "./resources/query/TRANSACTION";
 import { Client } from "pg";
 import { Database } from "sqlite3";
 
 export class Transaction {
-  public sqlDataSource: SqlDataSource;
+  public sqlDataSource: Sql_data_source;
   public sqlConnection: SqlConnectionType;
   private logs: boolean;
 
-  constructor(sqlDataSource: SqlDataSource, logs: boolean = false) {
+  constructor(sqlDataSource: Sql_data_source, logs: boolean = false) {
     this.sqlDataSource = sqlDataSource;
     this.sqlConnection = this.sqlDataSource.getCurrentConnection();
     this.logs = logs;

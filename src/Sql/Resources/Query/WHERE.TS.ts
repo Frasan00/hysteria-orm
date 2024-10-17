@@ -1,6 +1,6 @@
-import { convertCase } from "../../../CaseUtils";
-import { SqlDataSourceType } from "../../../Datasource";
-import { Model } from "../../Models/Model";
+import { convertCase } from "../../../case_utils";
+import { SqlDataSourceType } from "../../../datasource";
+import { Model } from "../../models/model";
 
 export type WhereOperatorType =
   | "="
