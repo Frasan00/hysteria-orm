@@ -1749,11 +1749,11 @@ declare abstract class Model {
      */
     static beforeFetch(queryBuilder: ModelQueryBuilder<any>): void;
     /**
-     * @description Adds a beforeCreate clause to the model, adding the ability to modify the data after fetching the data
+     * @description Adds a beforeInsert clause to the model, adding the ability to modify the data after fetching the data
      * @param data
      * @returns {T}
      */
-    static beforeInsert(data: any): Model[];
+    static beforeInsert(data: any): void;
     /**
      * @description Adds a beforeUpdate clause to the model, adding the ability to modify the query before updating the data
      * @param data

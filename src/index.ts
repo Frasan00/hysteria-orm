@@ -24,22 +24,26 @@ import {
   RedisGiveable,
   RedisStorable,
 } from "./no_sql/redis/redis_data_source";
-import { DateTime } from "luxon";
-import { User } from "../test/sql/Models/User";
 
 // (async () => {
-//   const sql = await SqlDataSource.connect({
-//     type: "sqlite",
-//     database: "sqlite.db",
-//     logs: true,
-//   });
+//   const sql = await SqlDataSource.connect();
 
-//   await User.insert({
-//     name: "sqlite",
-//     email: "user",
-//     signupSource: "email",
-//     isActive: true,
-//   });
+//   const user = await User.insertMany([
+//     {
+//       name: "sqlite",
+//       email: "user12",
+//       signupSource: "email",
+//       isActive: true,
+//     },
+//     {
+//       name: "sqlite",
+//       email: "user13",
+//       signupSource: "email",
+//       isActive: true,
+//     },
+//   ]);
+
+//   console.log(user);
 //   await sql.closeConnection();
 // })();
 

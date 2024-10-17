@@ -534,11 +534,11 @@ export abstract class Model {
   }
 
   /**
-   * @description Adds a beforeCreate clause to the model, adding the ability to modify the data after fetching the data
+   * @description Adds a beforeInsert clause to the model, adding the ability to modify the data after fetching the data
    * @param data
    * @returns {T}
    */
-  static beforeInsert(data: any): Model[] {
+  static beforeInsert(data: any): void {
     return data;
   }
 

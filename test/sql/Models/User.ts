@@ -7,6 +7,7 @@ import {
 } from "../../../src/sql/models/model_decorators";
 import { Model } from "../../../src/sql/models/model";
 import { Post } from "./Post";
+import crypto from "crypto";
 import { ModelQueryBuilder } from "../../../src/sql/query_builder/query_builder";
 
 export class User extends Model {
@@ -57,6 +58,10 @@ export class User extends Model {
       user.json = null;
       return user;
     });
+  }
+
+  static beforeInsert(user: User): void {
+    user.id = crypto.randomUUID();
   }
 
   @dynamicColumn("firstUser")

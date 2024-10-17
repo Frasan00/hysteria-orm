@@ -79,7 +79,7 @@
 
 ## Environment Variables
 
-- Envs are used for both commands and for database connection
+- Envs are used for both commands and database connection
 - Connection details can still be override providing an input on `SqlDataSource.connect()` method
 
 ### Complete env example
@@ -205,10 +205,11 @@ import "reflect-metadata";
 import { Model, Has_one, Has_many, column, hasOne, ModelQueryBuilder } from "hysteria-orm";
 import { Profile } from "./Profile";
 import { Post } from "./Post";
+import crypto from "crypto";
 
 export class User extends Model {
     @column({ primaryKey: true })
-    declare id: number;
+    declare id: string;
 
     @column()
     declare name: string;
@@ -244,9 +245,8 @@ export class User extends Model {
         queryBuilder.whereNull("deletedAt");
     }
 
-    static beforeInsert(data: User): User {
-        data.isActive = true;
-        return data;
+    static beforeInsert(data: User): void {
+        data.id = crypto.randomUUID();
     }
 
     static async afterFetch(data: User[]): Promise<User[]> {
