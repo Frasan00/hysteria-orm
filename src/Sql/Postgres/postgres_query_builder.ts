@@ -17,7 +17,7 @@ import {
   SelectableType,
 } from "../models/model_manager/model_manager_types";
 import "reflect-metadata";
-import { Sql_data_source } from "../sql_data_source";
+import { SqlDataSource } from "../sql_data_source";
 import { convertCase } from "../../case_utils";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
 
@@ -32,7 +32,7 @@ export class Postgres_query_builder<T extends Model> extends Query_builder<T> {
     pgClient: Client,
     logs: boolean,
     isNestedCondition = false,
-    sqlDataSource: Sql_data_source,
+    sqlDataSource: SqlDataSource,
   ) {
     super(model, table, logs, sqlDataSource);
     this.pgClient = pgClient;

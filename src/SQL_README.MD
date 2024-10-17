@@ -80,7 +80,7 @@
 ## Environment Variables
 
 - Envs are used for both commands and for database connection
-- Connection details can still be override providing an input on `Sql_data_source.connect()` method
+- Connection details can still be override providing an input on `SqlDataSource.connect()` method
 
 ### Complete env example
 ```dotenv
@@ -121,7 +121,7 @@ const mysqlConfig: DataSourceInput = {
 }
 
 // Config can be omitted, in that case envs will be used to enstablish the connection 
-const sql = await Sql_data_source.connect(mysqlConfig, () => console.log("Connected to the database"));
+const sql = await SqlDataSource.connect(mysqlConfig, () => console.log("Connected to the database"));
 ```
 
 
@@ -130,13 +130,13 @@ const sql = await Sql_data_source.connect(mysqlConfig, () => console.log("Connec
 - The hierarchy of the connection in the static Model methods is:
 1) useConnection connection if passed as an argument
 2) trx connection (the connection that created the trx) if passed as an argument
-3) the main connection you can create with Sql_data_source.connect method
+3) the main connection you can create with SqlDataSource.connect method
 
 ```typescript
-import { Sql_data_source } from "hysteria-orm";
+import { SqlDataSource } from "hysteria-orm";
 import { User } from "./User";
 
-await Sql_data_source.useConnection(
+await SqlDataSource.useConnection(
     {
         type: "mysql",
         host: "localhost",

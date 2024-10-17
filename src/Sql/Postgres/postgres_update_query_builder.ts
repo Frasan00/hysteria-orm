@@ -3,7 +3,7 @@ import { log, queryError } from "../../logger";
 import updateTemplate from "../resources/query/UPDATE";
 import { Client } from "pg";
 import joinTemplate from "../resources/query/JOIN";
-import { Sql_data_source } from "../sql_data_source";
+import { SqlDataSource } from "../sql_data_source";
 import {
   ModelUpdateQueryBuilder,
   WithDataOptions,
@@ -31,7 +31,7 @@ export class Postgres_update_query_builder<
     pgClient: Client,
     logs: boolean,
     isNestedCondition = false,
-    sqlDataSource: Sql_data_source,
+    sqlDataSource: SqlDataSource,
   ) {
     super(model, table, logs, false, sqlDataSource);
     this.sqlConnection = pgClient;

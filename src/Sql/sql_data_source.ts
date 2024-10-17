@@ -27,10 +27,10 @@ export interface SqlDataSourceInput extends DataSourceInput {
 
 export type SqlDataSourceType = SqlDataSourceInput["type"];
 
-export class Sql_data_source extends Datasource {
+export class SqlDataSource extends Datasource {
   public isConnected: boolean;
   protected sqlConnection!: SqlConnectionType;
-  private static instance: Sql_data_source | null = null;
+  private static instance: SqlDataSource | null = null;
 
   private constructor(input?: SqlDataSourceInput) {
     super(input);
@@ -48,7 +48,7 @@ export class Sql_data_source extends Datasource {
   static async connect(
     input?: SqlDataSourceInput,
     cb?: () => Promise<void> | void,
-  ): Promise<Sql_data_source> {
+  ): Promise<SqlDataSource> {
     const sqlDataSource = new this(input);
     switch (sqlDataSource.type) {
       case "mysql":
@@ -92,17 +92,17 @@ export class Sql_data_source extends Datasource {
     }
 
     sqlDataSource.isConnected = true;
-    Sql_data_source.instance = sqlDataSource;
+    SqlDataSource.instance = sqlDataSource;
     cb?.();
     return sqlDataSource;
   }
 
-  static getInstance(): Sql_data_source | null {
+  static getInstance(): SqlDataSource | null {
     if (!this.instance) {
       throw new Error("sql database connection not established");
     }
 
-    return Sql_data_source.instance;
+    return SqlDataSource.instance;
   }
 
   /**
@@ -113,7 +113,7 @@ export class Sql_data_source extends Datasource {
   public async startTransaction(
     driverSpecificOptions?: DriverSpecificOptions,
   ): Promise<Transaction> {
-    const sqlDataSource = new Sql_data_source({
+    const sqlDataSource = new SqlDataSource({
       type: this.type as SqlDataSourceType,
       host: this.host,
       port: this.port,
@@ -192,15 +192,15 @@ export class Sql_data_source extends Datasource {
 
   /**
    * @description Executes a callback function with the provided connection details
-   * @description Static Model methods will always use the base connection created with Sql_data_source.connect() method
+   * @description Static Model methods will always use the base connection created with SqlDataSource.connect() method
    * @param connectionDetails
    * @param cb
    */
   static async useConnection(
     connectionDetails: SqlDataSourceInput,
-    cb: (sqlDataSource: Sql_data_source) => Promise<void>,
+    cb: (sqlDataSource: SqlDataSource) => Promise<void>,
   ) {
-    const customSqlInstance = new Sql_data_source(connectionDetails);
+    const customSqlInstance = new SqlDataSource(connectionDetails);
     await customSqlInstance.connectDriver({
       mysqlOptions: connectionDetails.mysqlOptions,
       pgOptions: connectionDetails.pgOptions,
@@ -290,12 +290,12 @@ export class Sql_data_source extends Datasource {
       case "mariadb":
         await (this.sqlConnection as mysql.Connection).end();
         this.isConnected = false;
-        Sql_data_source.instance = null;
+        SqlDataSource.instance = null;
         break;
       case "postgres":
         await (this.sqlConnection as pg.Client).end();
         this.isConnected = false;
-        Sql_data_source.instance = null;
+        SqlDataSource.instance = null;
         break;
       case "sqlite":
         await new Promise<void>((resolve, reject) => {
@@ -307,7 +307,7 @@ export class Sql_data_source extends Datasource {
           });
         });
         this.isConnected = false;
-        Sql_data_source.instance = null;
+        SqlDataSource.instance = null;
         break;
       default:
         throw new Error(`Unsupported datasource type: ${this.type}`);
@@ -361,18 +361,18 @@ export class Sql_data_source extends Datasource {
   }
 
   /**
-   * @description Executes a raw query on the database with the base connection created with Sql_data_source.connect() method
+   * @description Executes a raw query on the database with the base connection created with SqlDataSource.connect() method
    * @param query
    * @param params
    * @returns
    */
   static async rawQuery(query: string, params: any[] = []): Promise<any> {
-    const sqlDataSource = Sql_data_source.getInstance();
+    const sqlDataSource = SqlDataSource.getInstance();
     if (!sqlDataSource || !sqlDataSource.isConnected) {
       throw new Error("sql database connection not established");
     }
 
-    log(query, Sql_data_source.getInstance()?.logs ?? false, params);
+    log(query, SqlDataSource.getInstance()?.logs ?? false, params);
     switch (sqlDataSource.type) {
       case "mysql":
       case "mariadb":

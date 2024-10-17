@@ -11,7 +11,7 @@ import { Mysql_query_builder } from "./mysql_query_builder";
 import { Abstract_model_manager } from "../models/model_manager/abstract_model_manager";
 import { Mysql_update_query_builder } from "./mysql_update_query_builder";
 import { Mysql_delete_query_builder } from "./mysql_delete_query_builder";
-import { Sql_data_source } from "../sql_data_source";
+import { SqlDataSource } from "../sql_data_source";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
 
@@ -32,7 +32,7 @@ export class Mysql_model_manager<
     model: typeof Model,
     mysqlConnection: mysql.Connection,
     logs: boolean,
-    sqlDataSource: Sql_data_source,
+    sqlDataSource: SqlDataSource,
   ) {
     super(model, logs, sqlDataSource);
     this.mysqlConnection = mysqlConnection;

@@ -1,6 +1,6 @@
 import path from "path";
 import Schema from "./schema/schema";
-import { Sql_data_source } from "../sql_data_source";
+import { SqlDataSource } from "../sql_data_source";
 
 export abstract class Migration {
   public migrationName: string = path.basename(__filename);
@@ -19,10 +19,10 @@ export abstract class Migration {
   /**
    * @description This method is called after the migration has been run
    */
-  public async afterUp?(sql: Sql_data_source): Promise<void>;
+  public async afterUp?(sql: SqlDataSource): Promise<void>;
 
   /**
    * @description This method is called after the migration has been rolled back
    */
-  public async afterDown?(sql: Sql_data_source): Promise<void>;
+  public async afterDown?(sql: SqlDataSource): Promise<void>;
 }

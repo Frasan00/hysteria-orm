@@ -11,14 +11,14 @@ import {
   ROLLBACK_TRANSACTION,
 } from "../../sql/resources/query/TRANSACTION";
 import logger from "../../logger";
-import { Sql_data_source } from "../../sql/sql_data_source";
+import { SqlDataSource } from "../../sql/sql_data_source";
 import * as mysql2 from "mysql2/promise";
 import { getMigrations, getMigrationTable } from "../migration_utils";
 
 dotenv.config();
 
 export async function migrationRollBackSql(): Promise<void> {
-  const sql = await Sql_data_source.connect();
+  const sql = await SqlDataSource.connect();
   const sqlConnection = sql.getCurrentConnection() as mysql2.Connection;
 
   try {

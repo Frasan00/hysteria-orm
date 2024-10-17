@@ -2,17 +2,17 @@ import { Connection } from "mysql2/promise";
 import { Client } from "pg";
 import { log } from "../../logger";
 import { Migration } from "./migration";
-import { Sql_data_source } from "../sql_data_source";
+import { SqlDataSource } from "../sql_data_source";
 import sqlite3 from "sqlite3";
 import { SqlDataSourceType } from "../../datasource";
 
 export class Migration_controller {
-  protected sqlDataSource: Sql_data_source;
+  protected sqlDataSource: SqlDataSource;
   protected sqlConnection: Connection | Client | sqlite3.Database;
   private sqlType: SqlDataSourceType;
 
   constructor(
-    sqlDataSource: Sql_data_source,
+    sqlDataSource: SqlDataSource,
     sqlConnection: Connection | Client | sqlite3.Database,
     sqlType: SqlDataSourceType,
   ) {

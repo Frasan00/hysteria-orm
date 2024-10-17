@@ -3,7 +3,7 @@ import { Model } from "../models/model";
 import { log, queryError } from "../../logger";
 import updateTemplate from "../resources/query/UPDATE";
 import joinTemplate from "../resources/query/JOIN";
-import { Sql_data_source } from "../sql_data_source";
+import { SqlDataSource } from "../sql_data_source";
 import {
   ModelUpdateQueryBuilder,
   WithDataOptions,
@@ -31,7 +31,7 @@ export class Mysql_update_query_builder<
     mysqlConnection: Connection,
     logs: boolean,
     isNestedCondition = false,
-    sqlDataSource: Sql_data_source,
+    sqlDataSource: SqlDataSource,
   ) {
     super(model, table, logs, false, sqlDataSource);
     this.sqlConnection = mysqlConnection;

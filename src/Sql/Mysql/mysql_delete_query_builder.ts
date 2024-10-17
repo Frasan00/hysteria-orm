@@ -3,7 +3,7 @@ import { log, queryError } from "../../logger";
 import { Connection } from "mysql2/promise";
 import joinTemplate from "../resources/query/JOIN";
 import deleteTemplate from "../resources/query/DELETE";
-import { Sql_data_source } from "../sql_data_source";
+import { SqlDataSource } from "../sql_data_source";
 import { DateTime } from "luxon";
 import updateTemplate from "../resources/query/UPDATE";
 import {
@@ -35,7 +35,7 @@ export class Mysql_delete_query_builder<
     mysql: Connection,
     logs: boolean,
     isNestedCondition = false,
-    sqlDataSource: Sql_data_source,
+    sqlDataSource: SqlDataSource,
   ) {
     super(model, table, logs, false, sqlDataSource);
     this.sqlConnection = mysql;

@@ -4,10 +4,10 @@ import whereTemplate, {
   BaseValues,
   WhereOperatorType,
 } from "../resources/query/WHERE.TS";
-import { Sql_data_source } from "../sql_data_source";
+import { SqlDataSource } from "../sql_data_source";
 
 export abstract class Where_query_builder<T extends Model> {
-  protected sqlDataSource: Sql_data_source;
+  protected sqlDataSource: SqlDataSource;
   protected whereQuery: string = "";
   protected whereParams: BaseValues[] = [];
   protected model: typeof Model;
@@ -29,7 +29,7 @@ export abstract class Where_query_builder<T extends Model> {
     table: string,
     logs: boolean,
     isNestedCondition = false,
-    sqlDataSource: Sql_data_source,
+    sqlDataSource: SqlDataSource,
   ) {
     this.model = model;
     this.sqlDataSource = sqlDataSource;

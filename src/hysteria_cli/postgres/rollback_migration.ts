@@ -12,13 +12,13 @@ import {
   ROLLBACK_TRANSACTION,
 } from "../../sql/resources/query/TRANSACTION";
 import logger from "../../logger";
-import { Sql_data_source } from "../../sql/sql_data_source";
+import { SqlDataSource } from "../../sql/sql_data_source";
 import { getMigrationTable, getMigrations } from "../migration_utils";
 
 dotenv.config();
 
 export async function migrationRollBackPg(): Promise<void> {
-  const sql = await Sql_data_source.connect();
+  const sql = await SqlDataSource.connect();
   const sqlConnection = sql.getCurrentConnection() as Client;
   try {
     const migrationTable: Migration_table_type[] =

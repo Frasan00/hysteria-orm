@@ -526,10 +526,10 @@ type PaginatedData<T> = {
 };
 
 declare class Transaction {
-    sqlDataSource: Sql_data_source;
+    sqlDataSource: SqlDataSource;
     sqlConnection: SqlConnectionType;
     private logs;
-    constructor(sqlDataSource: Sql_data_source, logs?: boolean);
+    constructor(sqlDataSource: SqlDataSource, logs?: boolean);
     startTransaction(): Promise<void>;
     commit(): Promise<void>;
     rollback(): Promise<void>;
@@ -605,7 +605,7 @@ type UnrestrictedFindOneType<T> = {
     ignoreHooks?: FetchHooks[];
     dynamicColumns?: DynamicColumnType<T>;
     where?: Record<string, any>;
-    useConnection?: Sql_data_source;
+    useConnection?: SqlDataSource;
     trx?: Transaction;
     throwErrorOnNull?: boolean;
 };
@@ -621,7 +621,7 @@ type FindOneType<T> = {
     dynamicColumns?: DynamicColumnType<T>;
     where?: WhereType<T>;
     ignoreHooks?: FetchHooks[];
-    useConnection?: Sql_data_source;
+    useConnection?: SqlDataSource;
     trx?: Transaction;
     throwErrorOnNull?: boolean;
 };
@@ -670,7 +670,7 @@ declare class Mysql_query_builder<T extends Model> extends Query_builder<T> {
      * @param logs - A boolean indicating whether to log queries.
      * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
      */
-    constructor(model: typeof Model, table: string, mysqlConnection: mysql.Connection, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: Sql_data_source);
+    constructor(model: typeof Model, table: string, mysqlConnection: mysql.Connection, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
     one(options?: OneOptions): Promise<T | null>;
     oneOrFail(options?: {
         ignoreHooks?: OneOptions["ignoreHooks"];
@@ -750,7 +750,7 @@ declare class Postgres_query_builder<T extends Model> extends Query_builder<T> {
     protected pgClient: Client;
     protected isNestedCondition: boolean;
     protected postgresModelManagerUtils: SqlModelManagerUtils<T>;
-    constructor(model: typeof Model, table: string, pgClient: Client, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: Sql_data_source);
+    constructor(model: typeof Model, table: string, pgClient: Client, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
     select(...columns: string[]): Postgres_query_builder<T>;
     select(...columns: (SelectableType<T> | "*")[]): Postgres_query_builder<T>;
     one(options?: OneOptions): Promise<T | null>;
@@ -836,7 +836,7 @@ declare class Sql_lite_query_builder<T extends Model> extends Query_builder<T> {
      * @param logs - A boolean indicating whether to log queries.
      * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
      */
-    constructor(model: typeof Model, table: string, sqLiteConnection: sqlite3.Database, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: Sql_data_source);
+    constructor(model: typeof Model, table: string, sqLiteConnection: sqlite3.Database, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
     one(options?: OneOptions): Promise<T | null>;
     oneOrFail(options?: {
         ignoreHooks: OneOptions["ignoreHooks"];
@@ -927,7 +927,7 @@ type ManyOptions = {
     ignoreHooks?: FetchHooks[];
 };
 declare abstract class Query_builder<T extends Model> {
-    protected sqlDataSource: Sql_data_source;
+    protected sqlDataSource: SqlDataSource;
     protected selectQuery: string;
     protected joinQuery: string;
     protected relations: string[];
@@ -949,7 +949,7 @@ declare abstract class Query_builder<T extends Model> {
      * @param table - The name of the table.
      * @param logs - A boolean indicating whether to log queries.
      */
-    protected constructor(model: typeof Model, table: string, logs: boolean, sqlDataSource: Sql_data_source);
+    protected constructor(model: typeof Model, table: string, logs: boolean, sqlDataSource: SqlDataSource);
     /**
      * @description Executes the query and retrieves the first result.
      * @returns A Promise resolving to the first result or null.
@@ -1274,7 +1274,7 @@ declare abstract class Query_builder<T extends Model> {
 type CaseConvention = "camel" | "snake" | "none" | RegExp | ((column: string) => string);
 
 declare abstract class Where_query_builder<T extends Model> {
-    protected sqlDataSource: Sql_data_source;
+    protected sqlDataSource: SqlDataSource;
     protected whereQuery: string;
     protected whereParams: BaseValues[];
     protected model: typeof Model;
@@ -1289,7 +1289,7 @@ declare abstract class Where_query_builder<T extends Model> {
      * @param logs - A boolean indicating whether to log queries.
      * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
      */
-    constructor(model: typeof Model, table: string, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: Sql_data_source);
+    constructor(model: typeof Model, table: string, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
     /**
      * @description Accepts a value and executes a callback only of the value exists
      * @param {any} value
@@ -1552,7 +1552,7 @@ declare abstract class ModelDeleteQueryBuilder<T extends Model> extends Where_qu
 }
 
 type BaseModelMethodOptions = {
-    useConnection?: Sql_data_source;
+    useConnection?: SqlDataSource;
     trx?: Transaction;
 };
 /**
@@ -1560,9 +1560,9 @@ type BaseModelMethodOptions = {
  */
 declare abstract class Model {
     /**
-     * @description The sql instance generated by Sql_data_source.connect
+     * @description The sql instance generated by SqlDataSource.connect
      */
-    static sqlInstance: Sql_data_source;
+    static sqlInstance: SqlDataSource;
     /**
      * @description Table name for the model, if not set it will be the plural snake case of the model name given that is in PascalCase (es. User -> users)
      */
@@ -1771,7 +1771,7 @@ declare abstract class Model {
      */
     static afterFetch(data: Model[]): Promise<Model[]>;
     /**
-     * @description Establishes a connection to the database instantiated from the Sql_data_source.connect method, this is done automatically when using the static methods
+     * @description Establishes a connection to the database instantiated from the SqlDataSource.connect method, this is done automatically when using the static methods
      * @description This method is meant to be used only if you want to establish sql instance of the model directly
      * @internal
      * @returns {void}
@@ -1788,7 +1788,7 @@ declare abstract class Model {
 
 declare abstract class Abstract_model_manager<T extends Model> {
     protected logs: boolean;
-    protected sqlDataSource: Sql_data_source;
+    protected sqlDataSource: SqlDataSource;
     protected model: typeof Model;
     protected modelInstance: T;
     protected throwError: boolean;
@@ -1797,7 +1797,7 @@ declare abstract class Abstract_model_manager<T extends Model> {
      * @param logs
      * @param sqlDataSource Passed if a custom connection is provided
      */
-    protected constructor(model: typeof Model, logs: boolean, sqlDataSource: Sql_data_source);
+    protected constructor(model: typeof Model, logs: boolean, sqlDataSource: SqlDataSource);
     /**
      * @description Finds all records that match the input
      * @param input
@@ -1869,7 +1869,7 @@ declare class Mysql_update_query_builder<T extends Model> extends ModelUpdateQue
      * @param logs - A boolean indicating whether to log queries.
      * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
      */
-    constructor(model: typeof Model, table: string, mysqlConnection: Connection, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: Sql_data_source);
+    constructor(model: typeof Model, table: string, mysqlConnection: Connection, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
     withData(data: Partial<T>, options?: WithDataOptions): Promise<number>;
     /**
      *
@@ -1916,7 +1916,7 @@ declare class Mysql_delete_query_builder<T extends Model> extends ModelDeleteQue
      * @param logs - A boolean indicating whether to log queries.
      * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
      */
-    constructor(model: typeof Model, table: string, mysql: Connection, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: Sql_data_source);
+    constructor(model: typeof Model, table: string, mysql: Connection, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
     softDelete(options?: SoftDeleteOptions<T>): Promise<number>;
     delete(options?: DeleteOptions): Promise<number>;
     /**
@@ -1960,7 +1960,7 @@ declare class Mysql_model_manager<T extends Model> extends Abstract_model_manage
      * @param {Connection} mysqlConnection - MySQL connection pool.
      * @param {boolean} logs - Flag to enable or disable logging.
      */
-    constructor(model: typeof Model, mysqlConnection: mysql.Connection, logs: boolean, sqlDataSource: Sql_data_source);
+    constructor(model: typeof Model, mysqlConnection: mysql.Connection, logs: boolean, sqlDataSource: SqlDataSource);
     /**
      * Find method to retrieve multiple records from the database based on the input conditions.
      *
@@ -2042,7 +2042,7 @@ declare class Postgres_update_query_builder<T extends Model> extends ModelUpdate
      * @param logs - A boolean indicating whether to log queries.
      * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
      */
-    constructor(model: typeof Model, table: string, pgClient: Client, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: Sql_data_source);
+    constructor(model: typeof Model, table: string, pgClient: Client, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
     withData(data: Partial<T>, options?: WithDataOptions): Promise<number>;
     join(relationTable: string, primaryColumn: string, foreignColumn: string): Postgres_update_query_builder<T>;
     leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): Postgres_update_query_builder<T>;
@@ -2077,7 +2077,7 @@ declare class Postgres_delete_query_builder<T extends Model> extends ModelDelete
      * @param logs - A boolean indicating whether to log queries.
      * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
      */
-    constructor(model: typeof Model, table: string, pgClient: Client, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: Sql_data_source);
+    constructor(model: typeof Model, table: string, pgClient: Client, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
     delete(options?: DeleteOptions): Promise<number>;
     softDelete(options?: SoftDeleteOptions<T>): Promise<number>;
     /**
@@ -2121,7 +2121,7 @@ declare class Postgres_model_manager<T extends Model> extends Abstract_model_man
      * @param {Pool} pgConnection - PostgreSQL connection pool.
      * @param {boolean} logs - Flag to enable or disable logging.
      */
-    constructor(model: typeof Model, pgConnection: pg.Client, logs: boolean, sqlDataSource: Sql_data_source);
+    constructor(model: typeof Model, pgConnection: pg.Client, logs: boolean, sqlDataSource: SqlDataSource);
     /**
      * Find method to retrieve multiple records from the database based on the input conditions.
      *
@@ -2204,7 +2204,7 @@ declare class Sql_lite_update_query_builder<T extends Model> extends ModelUpdate
      * @param logs - A boolean indicating whether to log queries.
      * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
      */
-    constructor(model: typeof Model, table: string, sqlLiteConnection: sqlite3.Database, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: Sql_data_source, sqlModelManagerUtils: SqlModelManagerUtils<T>);
+    constructor(model: typeof Model, table: string, sqlLiteConnection: sqlite3.Database, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource, sqlModelManagerUtils: SqlModelManagerUtils<T>);
     /**
      * @description Updates a record in the database.
      * @param data - The data to update.
@@ -2259,7 +2259,7 @@ declare class Sql_lite_delete_query_builder<T extends Model> extends ModelDelete
      * @param logs - A boolean indicating whether to log queries.
      * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
      */
-    constructor(model: typeof Model, table: string, sqlConnection: sqlite3.Database, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: Sql_data_source, sqlModelManagerUtils: SqlModelManagerUtils<T>);
+    constructor(model: typeof Model, table: string, sqlConnection: sqlite3.Database, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource, sqlModelManagerUtils: SqlModelManagerUtils<T>);
     delete(options?: DeleteOptions): Promise<number>;
     softDelete(options?: SoftDeleteOptions<T>): Promise<number>;
     /**
@@ -2304,7 +2304,7 @@ declare class Sql_lite_model_manager<T extends Model> extends Abstract_model_man
      * @param {Pool} sqLiteConnection - sqlite connection.
      * @param {boolean} logs - Flag to enable or disable logging.
      */
-    constructor(model: typeof Model, sqLiteConnection: sqlite3.Database, logs: boolean, sqlDataSource: Sql_data_source);
+    constructor(model: typeof Model, sqLiteConnection: sqlite3.Database, logs: boolean, sqlDataSource: SqlDataSource);
     /**
      * Find method to retrieve multiple records from the database based on the input conditions.
      *
@@ -2384,7 +2384,7 @@ interface SqlDataSourceInput extends DataSourceInput {
     type: Exclude<DataSourceType, "redis">;
 }
 type SqlDataSourceType = SqlDataSourceInput["type"];
-declare class Sql_data_source extends Datasource {
+declare class SqlDataSource extends Datasource {
     isConnected: boolean;
     protected sqlConnection: SqlConnectionType;
     private static instance;
@@ -2394,8 +2394,8 @@ declare class Sql_data_source extends Datasource {
      * @description Connects to the database establishing a connection. If no connection details are provided, the default values from the env will be taken instead
      * @description The User input connection details will always come first
      */
-    static connect(input?: SqlDataSourceInput, cb?: () => Promise<void> | void): Promise<Sql_data_source>;
-    static getInstance(): Sql_data_source | null;
+    static connect(input?: SqlDataSourceInput, cb?: () => Promise<void> | void): Promise<SqlDataSource>;
+    static getInstance(): SqlDataSource | null;
     /**
      * @description Starts a transaction on the database and returns the transaction object
      * @param model
@@ -2421,11 +2421,11 @@ declare class Sql_data_source extends Datasource {
     } | typeof Model): ModelManager<T>;
     /**
      * @description Executes a callback function with the provided connection details
-     * @description Static Model methods will always use the base connection created with Sql_data_source.connect() method
+     * @description Static Model methods will always use the base connection created with SqlDataSource.connect() method
      * @param connectionDetails
      * @param cb
      */
-    static useConnection(connectionDetails: SqlDataSourceInput, cb: (sqlDataSource: Sql_data_source) => Promise<void>): Promise<void>;
+    static useConnection(connectionDetails: SqlDataSourceInput, cb: (sqlDataSource: SqlDataSource) => Promise<void>): Promise<void>;
     /**
      * @description Returns the current connection
      * @returns {Promise<SqlConnectionType>} sqlConnection
@@ -2448,7 +2448,7 @@ declare class Sql_data_source extends Datasource {
      */
     rawQuery(query: string, params?: any[]): Promise<any>;
     /**
-     * @description Executes a raw query on the database with the base connection created with Sql_data_source.connect() method
+     * @description Executes a raw query on the database with the base connection created with SqlDataSource.connect() method
      * @param query
      * @param params
      * @returns
@@ -2471,11 +2471,11 @@ declare abstract class Migration {
     /**
      * @description This method is called after the migration has been run
      */
-    afterUp?(sql: Sql_data_source): Promise<void>;
+    afterUp?(sql: SqlDataSource): Promise<void>;
     /**
      * @description This method is called after the migration has been rolled back
      */
-    afterDown?(sql: Sql_data_source): Promise<void>;
+    afterDown?(sql: SqlDataSource): Promise<void>;
 }
 
 /**
@@ -2666,11 +2666,11 @@ declare const _default: {
     hasOne: typeof hasOne;
     hasMany: typeof hasMany;
     Relation: typeof Relation;
-    SqlDataSource: typeof Sql_data_source;
+    SqlDataSource: typeof SqlDataSource;
     Migration: typeof Migration;
     getRelations: typeof getRelations;
     getModelColumns: typeof getModelColumns;
     Redis: typeof Redis_data_source;
 };
 
-export { type CaseConvention, type DataSourceInput, Migration, Model, ModelDeleteQueryBuilder, type ModelQueryBuilder, ModelUpdateQueryBuilder, type PaginatedData, type PaginationMetadata, Redis_data_source as Redis, type RedisGiveable, type RedisStorable, Relation, Sql_data_source, belongsTo, column, _default as default, getModelColumns, getPrimaryKey, getRelations, hasMany, hasOne };
+export { type CaseConvention, type DataSourceInput, Migration, Model, ModelDeleteQueryBuilder, type ModelQueryBuilder, ModelUpdateQueryBuilder, type PaginatedData, type PaginationMetadata, Redis_data_source as Redis, type RedisGiveable, type RedisStorable, Relation, SqlDataSource, belongsTo, column, _default as default, getModelColumns, getPrimaryKey, getRelations, hasMany, hasOne };

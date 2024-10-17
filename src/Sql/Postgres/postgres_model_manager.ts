@@ -12,7 +12,7 @@ import { Postgres_query_builder } from "./postgres_query_builder";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
 import { Postgres_update_query_builder } from "./postgres_update_query_builder";
 import { Postgres_delete_query_builder } from "./postgres_delete_query_builder";
-import { Sql_data_source } from "../sql_data_source";
+import { SqlDataSource } from "../sql_data_source";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
 
 export class Postgres_model_manager<
@@ -32,7 +32,7 @@ export class Postgres_model_manager<
     model: typeof Model,
     pgConnection: pg.Client,
     logs: boolean,
-    sqlDataSource: Sql_data_source,
+    sqlDataSource: SqlDataSource,
   ) {
     super(model, logs, sqlDataSource);
     this.pgConnection = pgConnection;

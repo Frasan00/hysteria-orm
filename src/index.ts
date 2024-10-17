@@ -12,7 +12,7 @@ import {
 } from "./sql/models/model_decorators";
 import { Relation } from "./sql/models/relations/relation";
 import { ModelQueryBuilder } from "./sql/query_builder/query_builder";
-import { Sql_data_source } from "./sql/sql_data_source";
+import { SqlDataSource } from "./sql/sql_data_source";
 import { getPrimaryKey } from "./sql/models/model_decorators";
 import { CaseConvention } from "./case_utils";
 import { PaginatedData, PaginationMetadata } from "./sql/pagination";
@@ -28,7 +28,7 @@ import { DateTime } from "luxon";
 import { User } from "../test/sql/Models/User";
 
 // (async () => {
-//   const sql = await Sql_data_source.connect({
+//   const sql = await SqlDataSource.connect({
 //     type: "sqlite",
 //     database: "sqlite.db",
 //     logs: true,
@@ -51,7 +51,7 @@ export default {
   hasOne,
   hasMany,
   Relation,
-  SqlDataSource: Sql_data_source,
+  SqlDataSource: SqlDataSource,
   Migration,
   getRelations,
   getModelColumns,
@@ -68,7 +68,7 @@ export {
   hasOne,
   hasMany,
   Relation,
-  Sql_data_source,
+  SqlDataSource,
   DataSourceInput,
   ModelQueryBuilder,
   ModelDeleteQueryBuilder,

@@ -12,7 +12,7 @@ import {
   RelationType,
   SelectableType,
 } from "../models/model_manager/model_manager_types";
-import { Sql_data_source } from "../sql_data_source";
+import { SqlDataSource } from "../sql_data_source";
 import { Sql_lite_query_builder } from "../sqlite/sql_lite_query_builder";
 import { convertCase } from "../../case_utils";
 import { getModelColumns } from "../models/model_decorators";
@@ -38,7 +38,7 @@ export type ManyOptions = {
 };
 
 export abstract class Query_builder<T extends Model> {
-  protected sqlDataSource: Sql_data_source;
+  protected sqlDataSource: SqlDataSource;
   protected selectQuery: string;
   protected joinQuery: string;
   protected relations: string[];
@@ -67,7 +67,7 @@ export abstract class Query_builder<T extends Model> {
     model: typeof Model,
     table: string,
     logs: boolean,
-    sqlDataSource: Sql_data_source,
+    sqlDataSource: SqlDataSource,
   ) {
     this.sqlDataSource = sqlDataSource;
     this.model = model;

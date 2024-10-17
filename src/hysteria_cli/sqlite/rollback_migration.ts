@@ -12,7 +12,7 @@ import {
 } from "../../sql/resources/query/TRANSACTION";
 import logger from "../../logger";
 import sqlite3 from "sqlite3";
-import { Sql_data_source } from "../../sql/sql_data_source";
+import { SqlDataSource } from "../../sql/sql_data_source";
 import {
   getMigrations,
   getMigrationTable,
@@ -22,7 +22,7 @@ import {
 dotenv.config();
 
 export async function migrationRollBackSqlite(): Promise<void> {
-  const sql = await Sql_data_source.connect();
+  const sql = await SqlDataSource.connect();
   const sqlConnection = sql.getCurrentConnection() as sqlite3.Database;
 
   try {

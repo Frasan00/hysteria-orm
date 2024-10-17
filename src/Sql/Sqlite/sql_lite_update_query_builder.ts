@@ -2,7 +2,7 @@ import { Model } from "../models/model";
 import { log, queryError } from "../../logger";
 import updateTemplate from "../resources/query/UPDATE";
 import joinTemplate from "../resources/query/JOIN";
-import { Sql_data_source } from "../sql_data_source";
+import { SqlDataSource } from "../sql_data_source";
 import {
   ModelUpdateQueryBuilder,
   WithDataOptions,
@@ -33,7 +33,7 @@ export class Sql_lite_update_query_builder<
     sqlLiteConnection: sqlite3.Database,
     logs: boolean,
     isNestedCondition = false,
-    sqlDataSource: Sql_data_source,
+    sqlDataSource: SqlDataSource,
     sqlModelManagerUtils: SqlModelManagerUtils<T>,
   ) {
     super(model, table, logs, false, sqlDataSource);

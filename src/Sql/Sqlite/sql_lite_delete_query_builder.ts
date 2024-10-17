@@ -2,7 +2,7 @@ import { Model } from "../models/model";
 import { log, queryError } from "../../logger";
 import deleteTemplate from "../resources/query/DELETE";
 import joinTemplate from "../resources/query/JOIN";
-import { Sql_data_source } from "../sql_data_source";
+import { SqlDataSource } from "../sql_data_source";
 import { DateTime } from "luxon";
 import updateTemplate from "../resources/query/UPDATE";
 import {
@@ -37,7 +37,7 @@ export class Sql_lite_delete_query_builder<
     sqlConnection: sqlite3.Database,
     logs: boolean,
     isNestedCondition = false,
-    sqlDataSource: Sql_data_source,
+    sqlDataSource: SqlDataSource,
     sqlModelManagerUtils: SqlModelManagerUtils<T>,
   ) {
     super(model, table, logs, false, sqlDataSource);

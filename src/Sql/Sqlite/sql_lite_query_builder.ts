@@ -15,7 +15,7 @@ import {
   RelationType,
   SelectableType,
 } from "../models/model_manager/model_manager_types";
-import { Sql_data_source } from "../sql_data_source";
+import { SqlDataSource } from "../sql_data_source";
 import { convertCase } from "../../case_utils";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
 import sqlite3 from "sqlite3";
@@ -37,7 +37,7 @@ export class Sql_lite_query_builder<T extends Model> extends Query_builder<T> {
     sqLiteConnection: sqlite3.Database,
     logs: boolean,
     isNestedCondition = false,
-    sqlDataSource: Sql_data_source,
+    sqlDataSource: SqlDataSource,
   ) {
     super(model, table, logs, sqlDataSource);
     this.sqLiteConnection = sqLiteConnection;

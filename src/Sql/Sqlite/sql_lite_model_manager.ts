@@ -7,7 +7,7 @@ import {
 } from "../models/model_manager/model_manager_types";
 import { log, queryError } from "../../logger";
 import { Abstract_model_manager } from "../models/model_manager/abstract_model_manager";
-import { Sql_data_source } from "../sql_data_source";
+import { SqlDataSource } from "../sql_data_source";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
 import sqlite3 from "sqlite3";
 import { Sql_lite_query_builder } from "./sql_lite_query_builder";
@@ -31,7 +31,7 @@ export class Sql_lite_model_manager<
     model: typeof Model,
     sqLiteConnection: sqlite3.Database,
     logs: boolean,
-    sqlDataSource: Sql_data_source,
+    sqlDataSource: SqlDataSource,
   ) {
     super(model, logs, sqlDataSource);
     this.sqLiteConnection = sqLiteConnection;
