@@ -45,6 +45,10 @@ export class User extends Model {
   @hasOne(() => Post, "userId")
   declare post: Post;
 
+  static beforeInsert(data: User): void {
+    data.id = crypto.randomUUID();
+  }
+
   static beforeFetch(queryBuilder: ModelQueryBuilder<User>): void {
     queryBuilder.whereNull("deletedAt");
   }
@@ -58,10 +62,6 @@ export class User extends Model {
       user.json = null;
       return user;
     });
-  }
-
-  static beforeInsert(user: User): void {
-    user.id = crypto.randomUUID();
   }
 
   @dynamicColumn("firstUser")

@@ -332,8 +332,8 @@ test("Multiple update", async () => {
   const users = await User.query().many();
   expect(users.length).toBe(2);
 
-  const UserWithManualSum = await User.query().select("SUM(id) as total").one();
-  expect(+UserWithManualSum?.extraColumns.total).toBeGreaterThanOrEqual(0);
+  const userCount = await User.query().getCount();
+  expect(userCount).toBe(2);
 });
 
 test("massive delete", async () => {
@@ -430,7 +430,13 @@ test("Very complex query", async () => {
     .orWhere("signupSource", "email")
     .where("name", "LIKE", "Dave")
     .join("posts", "users.id", "posts.user_id")
-    .groupBy("users.id", "posts.id")
+    .groupBy(
+      "users.id",
+      "posts.id",
+      "posts.title",
+      "posts.content",
+      "posts.userId",
+    )
     .orderBy(["deletedAt"], "ASC")
     .limit(10)
     .offset(0)

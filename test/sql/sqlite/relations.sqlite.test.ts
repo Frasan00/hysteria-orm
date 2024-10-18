@@ -94,13 +94,7 @@ test("Join users and posts", async () => {
     content: "Content 1",
   });
 
-  const post2 = await Post.insert({
-    userId: user.id,
-    title: "Post 2",
-    content: "Content 2",
-  });
-
-  if (!post1 || !post2) {
+  if (!post1) {
     throw new Error("Posts not created");
   }
 

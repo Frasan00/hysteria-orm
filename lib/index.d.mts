@@ -126,7 +126,7 @@ declare class ColumnTypeBuilder {
      */
     serial(name: string): ColumnOptionsBuilder;
     /**
-     * @description If not using postgres, it will automatically be converted in BIGINT AUTO_INCREMENT
+     * @description If using mysql, it will automatically be converted in BIGINT AUTO_INCREMENT
      * @description If using sqlite, it will automatically be converted in INTEGER PRIMARY KEY AUTOINCREMENT
      * @param name
      */
@@ -199,7 +199,7 @@ type BaseOptions = {
     autoIncrement?: boolean;
     length?: number;
 };
-declare class Column_builder_alter {
+declare class ColumnBuilderAlter {
     protected table: string;
     protected queryStatements: string[];
     protected sqlType: SqlDataSourceType$1;
@@ -211,7 +211,7 @@ declare class Column_builder_alter {
      * @param {DataType} dataType
      * @param {BaseOptions} options
      */
-    addColumn(columnName: string, dataType: DataType, options?: BaseOptions): Column_builder_alter;
+    addColumn(columnName: string, dataType: DataType, options?: BaseOptions): ColumnBuilderAlter;
     /**
      * @description Add a new date column to the table
      * @param columnName { string }
@@ -221,7 +221,7 @@ declare class Column_builder_alter {
         afterColumn?: string;
         notNullable?: boolean;
         default?: string | Date | DateTime;
-    }): Column_builder_alter;
+    }): ColumnBuilderAlter;
     /**
      * @description Add a new enum column to the table
      * @param columnName { string }
@@ -233,47 +233,47 @@ declare class Column_builder_alter {
         notNullable?: boolean;
         default?: string;
         unique?: boolean;
-    }): Column_builder_alter;
+    }): ColumnBuilderAlter;
     /**
      * @description Drops a column from the table
      * @param columnName
      */
-    dropColumn(columnName: string): Column_builder_alter;
+    dropColumn(columnName: string): ColumnBuilderAlter;
     /**
      * @description Renames a column
      * @param oldColumnName
      * @param newColumnName
      */
-    renameColumn(oldColumnName: string, newColumnName: string): Column_builder_alter;
-    modifyColumnType(columnName: string, newDataType: string, options?: BaseOptions): Column_builder_alter;
+    renameColumn(oldColumnName: string, newColumnName: string): ColumnBuilderAlter;
+    modifyColumnType(columnName: string, newDataType: string, options?: BaseOptions): ColumnBuilderAlter;
     /**
      * @description Renames a table
      * @param oldtable
      * @param newtable
      */
-    renameTable(oldtable: string, newtable: string): Column_builder_alter;
+    renameTable(oldtable: string, newtable: string): ColumnBuilderAlter;
     /**
      * @description Set a default value
      * @param columnName
      * @param defaultValue
      */
-    setDefaultValue(columnName: string, defaultValue: string): Column_builder_alter;
+    setDefaultValue(columnName: string, defaultValue: string): ColumnBuilderAlter;
     /**
      * @description Drop a default value
      * @param columnName
      */
-    dropDefaultValue(columnName: string): Column_builder_alter;
+    dropDefaultValue(columnName: string): ColumnBuilderAlter;
     /**
      * @description Add a foreign key
      * @param columnName
      * @param options
      */
-    addForeignKey(columnName: string, options: AlterOptions): Column_builder_alter;
+    addForeignKey(columnName: string, options: AlterOptions): ColumnBuilderAlter;
     /**
      * @description Drop a foreign key
      * @param columnName
      */
-    dropForeignKey(columnName: string): Column_builder_alter;
+    dropForeignKey(columnName: string): ColumnBuilderAlter;
     /**
      * @description Commits the changes - if omitted, the migration will be run empty
      */
@@ -295,9 +295,9 @@ declare class Schema {
     /**
      * @description Alter table
      * @param table
-     * @returns Column_builder_alter
+     * @returns ColumnBuilderAlter
      */
-    alterTable(table: string): Column_builder_alter;
+    alterTable(table: string): ColumnBuilderAlter;
     /**
      * @description Drop table
      * @param table
@@ -660,7 +660,7 @@ declare class SqlModelManagerUtils<T extends Model> {
     private getQueryResult;
 }
 
-declare class Mysql_query_builder<T extends Model> extends Query_builder<T> {
+declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     protected mysqlConnection: mysql.Connection;
     protected isNestedCondition: boolean;
     protected mysqlModelManagerUtils: SqlModelManagerUtils<T>;
@@ -682,15 +682,15 @@ declare class Mysql_query_builder<T extends Model> extends Query_builder<T> {
     getSum(column: SelectableType<T>): Promise<number>;
     getSum(column: string): Promise<number>;
     paginate(page: number, limit: number, options?: ManyOptions): Promise<PaginatedData<T>>;
-    select(...columns: string[]): Mysql_query_builder<T>;
-    select(...columns: (SelectableType<T> | "*")[]): Mysql_query_builder<T>;
-    join(relationTable: string, primaryColumn: string, foreignColumn: string): Mysql_query_builder<T>;
-    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): Mysql_query_builder<T>;
-    addRelations(relations: RelationType<T>[]): Mysql_query_builder<T>;
+    select(...columns: string[]): MysqlQueryBuilder<T>;
+    select(...columns: (SelectableType<T> | "*")[]): MysqlQueryBuilder<T>;
+    join(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlQueryBuilder<T>;
+    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlQueryBuilder<T>;
+    addRelations(relations: RelationType<T>[]): MysqlQueryBuilder<T>;
     addDynamicColumns(dynamicColumns: DynamicColumnType<T>[]): ModelQueryBuilder<T>;
-    whereBuilder(cb: (queryBuilder: Mysql_query_builder<T>) => void): this;
-    orWhereBuilder(cb: (queryBuilder: Mysql_query_builder<T>) => void): this;
-    andWhereBuilder(cb: (queryBuilder: Mysql_query_builder<T>) => void): this;
+    whereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this;
+    orWhereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this;
+    andWhereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this;
     when<O>(value: O, cb: (value: O, query: ModelQueryBuilder<T>) => void): this;
     where(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
     where(column: string, operator: WhereOperatorType, value: BaseValues): this;
@@ -738,21 +738,23 @@ declare class Mysql_query_builder<T extends Model> extends Query_builder<T> {
     rawOrWhere(query: string): this;
     groupBy(...columns: SelectableType<T>[]): this;
     groupBy(...columns: string[]): this;
+    groupByRaw(query: string): this;
     orderBy(columns: SelectableType<T>[], order: "ASC" | "DESC"): this;
     orderBy(columns: string[], order: "ASC" | "DESC"): this;
+    orderByRaw(query: string): this;
     limit(limit: number): this;
     offset(offset: number): this;
     copy(): ModelQueryBuilder<T>;
     protected groupFooterQuery(): string;
 }
 
-declare class Postgres_query_builder<T extends Model> extends Query_builder<T> {
+declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     protected pgClient: Client;
     protected isNestedCondition: boolean;
     protected postgresModelManagerUtils: SqlModelManagerUtils<T>;
     constructor(model: typeof Model, table: string, pgClient: Client, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
-    select(...columns: string[]): Postgres_query_builder<T>;
-    select(...columns: (SelectableType<T> | "*")[]): Postgres_query_builder<T>;
+    select(...columns: string[]): PostgresQueryBuilder<T>;
+    select(...columns: (SelectableType<T> | "*")[]): PostgresQueryBuilder<T>;
     one(options?: OneOptions): Promise<T | null>;
     oneOrFail(options?: {
         ignoreHooks: OneOptions["ignoreHooks"];
@@ -764,13 +766,13 @@ declare class Postgres_query_builder<T extends Model> extends Query_builder<T> {
     getSum(column: SelectableType<T>): Promise<number>;
     getSum(column: string): Promise<number>;
     paginate(page: number, limit: number, options?: ManyOptions): Promise<PaginatedData<T>>;
-    join(relationTable: string, primaryColumn: string, foreignColumn: string): Postgres_query_builder<T>;
-    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): Postgres_query_builder<T>;
-    addRelations(relations: RelationType<T>[]): Postgres_query_builder<T>;
+    join(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresQueryBuilder<T>;
+    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresQueryBuilder<T>;
+    addRelations(relations: RelationType<T>[]): PostgresQueryBuilder<T>;
     addDynamicColumns(dynamicColumns: DynamicColumnType<T>[]): ModelQueryBuilder<T>;
-    whereBuilder(cb: (queryBuilder: Postgres_query_builder<T>) => void): this;
-    orWhereBuilder(cb: (queryBuilder: Postgres_query_builder<T>) => void): this;
-    andWhereBuilder(cb: (queryBuilder: Postgres_query_builder<T>) => void): this;
+    whereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
+    orWhereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
+    andWhereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
     when<O>(value: O, cb: (value: O, query: ModelQueryBuilder<T>) => void): this;
     where(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
     where(column: string, operator: WhereOperatorType, value: BaseValues): this;
@@ -818,15 +820,17 @@ declare class Postgres_query_builder<T extends Model> extends Query_builder<T> {
     rawOrWhere(query: string): this;
     groupBy(...columns: SelectableType<T>[]): this;
     groupBy(...columns: string[]): this;
+    groupByRaw(query: string): this;
     orderBy(columns: SelectableType<T>[], order: "ASC" | "DESC"): this;
     orderBy(columns: string[], order: "ASC" | "DESC"): this;
+    orderByRaw(query: string): this;
     limit(limit: number): this;
     offset(offset: number): this;
     copy(): ModelQueryBuilder<T>;
     protected groupFooterQuery(): string;
 }
 
-declare class Sql_lite_query_builder<T extends Model> extends Query_builder<T> {
+declare class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     protected sqLiteConnection: sqlite3.Database;
     protected isNestedCondition: boolean;
     protected sqliteModelManagerUtils: SqlModelManagerUtils<T>;
@@ -849,15 +853,15 @@ declare class Sql_lite_query_builder<T extends Model> extends Query_builder<T> {
     getSum(column: SelectableType<T>): Promise<number>;
     getSum(column: string): Promise<number>;
     paginate(page: number, limit: number, options?: ManyOptions): Promise<PaginatedData<T>>;
-    select(...columns: string[]): Sql_lite_query_builder<T>;
-    select(...columns: (SelectableType<T> | "*")[]): Sql_lite_query_builder<T>;
-    join(relationTable: string, primaryColumn: string, foreignColumn: string): Sql_lite_query_builder<T>;
-    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): Sql_lite_query_builder<T>;
-    addRelations(relations: RelationType<T>[]): Sql_lite_query_builder<T>;
+    select(...columns: string[]): SqlLiteQueryBuilder<T>;
+    select(...columns: (SelectableType<T> | "*")[]): SqlLiteQueryBuilder<T>;
+    join(relationTable: string, primaryColumn: string, foreignColumn: string): SqlLiteQueryBuilder<T>;
+    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): SqlLiteQueryBuilder<T>;
+    addRelations(relations: RelationType<T>[]): SqlLiteQueryBuilder<T>;
     addDynamicColumns(dynamicColumns: DynamicColumnType<T>[]): ModelQueryBuilder<T>;
-    whereBuilder(cb: (queryBuilder: Sql_lite_query_builder<T>) => void): this;
-    orWhereBuilder(cb: (queryBuilder: Sql_lite_query_builder<T>) => void): this;
-    andWhereBuilder(cb: (queryBuilder: Sql_lite_query_builder<T>) => void): this;
+    whereBuilder(cb: (queryBuilder: SqlLiteQueryBuilder<T>) => void): this;
+    orWhereBuilder(cb: (queryBuilder: SqlLiteQueryBuilder<T>) => void): this;
+    andWhereBuilder(cb: (queryBuilder: SqlLiteQueryBuilder<T>) => void): this;
     when<O>(value: O, cb: (value: O, query: ModelQueryBuilder<T>) => void): this;
     where(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
     where(column: string, operator: WhereOperatorType, value: BaseValues): this;
@@ -905,8 +909,10 @@ declare class Sql_lite_query_builder<T extends Model> extends Query_builder<T> {
     rawOrWhere(query: string): this;
     groupBy(...columns: SelectableType<T>[]): this;
     groupBy(...columns: string[]): this;
+    groupByRaw(query: string): this;
     orderBy(columns: SelectableType<T>[], order: "ASC" | "DESC"): this;
     orderBy(columns: string[], order: "ASC" | "DESC"): this;
+    orderByRaw(query: string): this;
     limit(limit: number): this;
     offset(offset: number): this;
     copy(): ModelQueryBuilder<T>;
@@ -917,7 +923,7 @@ declare class Sql_lite_query_builder<T extends Model> extends Query_builder<T> {
 /**
  * @description The abstract class for query builders for selecting data.
  */
-type ModelQueryBuilder<T extends Model> = Mysql_query_builder<T> | Postgres_query_builder<T> | Sql_lite_query_builder<T>;
+type ModelQueryBuilder<T extends Model> = MysqlQueryBuilder<T> | PostgresQueryBuilder<T> | SqlLiteQueryBuilder<T>;
 type FetchHooks = "beforeFetch" | "afterFetch";
 type OneOptions = {
     throwErrorOnNull?: boolean;
@@ -926,7 +932,7 @@ type OneOptions = {
 type ManyOptions = {
     ignoreHooks?: FetchHooks[];
 };
-declare abstract class Query_builder<T extends Model> {
+declare abstract class QueryBuilder<T extends Model> {
     protected sqlDataSource: SqlDataSource;
     protected selectQuery: string;
     protected joinQuery: string;
@@ -1242,6 +1248,12 @@ declare abstract class Query_builder<T extends Model> {
     abstract groupBy(...columns: string[]): ModelQueryBuilder<T>;
     abstract groupBy(...columns: (SelectableType<T> | string)[]): ModelQueryBuilder<T>;
     /**
+     * @description Adds a raw GROUP BY condition to the query, only one raw GROUP BY condition is stackable, the last one will be used.
+     * @param query - The raw SQL GROUP BY condition.
+     * @returns The Mysql_query_builder instance for chaining.
+     */
+    abstract groupByRaw(query: string): ModelQueryBuilder<T>;
+    /**
      * @description Adds ORDER BY conditions to the query.
      * @param column - The column to order by.
      * @param order - The order direction, either "ASC" or "DESC".
@@ -1250,6 +1262,12 @@ declare abstract class Query_builder<T extends Model> {
     abstract orderBy(columns: SelectableType<T>[], order: "ASC" | "DESC"): ModelQueryBuilder<T>;
     abstract orderBy(columns: string[], order: "ASC" | "DESC"): ModelQueryBuilder<T>;
     abstract orderBy(columns: (SelectableType<T> | string)[], order: "ASC" | "DESC"): ModelQueryBuilder<T>;
+    /**
+     * @description Adds a raw ORDER BY condition to the query, only one raw ORDER BY condition is stackable, the last one will be used.
+     * @param query - The raw SQL ORDER BY condition.
+     * @returns The Mysql_query_builder instance for chaining.
+     */
+    abstract orderByRaw(query: string): ModelQueryBuilder<T>;
     /**
      * @description Adds a LIMIT condition to the query.
      * @param limit - The maximum number of rows to return.
@@ -1273,7 +1291,7 @@ declare abstract class Query_builder<T extends Model> {
 
 type CaseConvention = "camel" | "snake" | "none" | RegExp | ((column: string) => string);
 
-declare abstract class Where_query_builder<T extends Model> {
+declare abstract class WhereQueryBuilder<T extends Model> {
     protected sqlDataSource: SqlDataSource;
     protected whereQuery: string;
     protected whereParams: BaseValues[];
@@ -1295,7 +1313,7 @@ declare abstract class Where_query_builder<T extends Model> {
      * @param {any} value
      * @param callback
      */
-    when(value: any, cb: (value: any, query: Where_query_builder<T>) => void): this;
+    when(value: any, cb: (value: any, query: WhereQueryBuilder<T>) => void): this;
     /**
      * @description Adds a WHERE condition to the query.
      * @param column - The column to filter.
@@ -1487,7 +1505,7 @@ declare const updateTemplate: (dbType: SqlDataSourceType$1, typeofModel: typeof 
 type WithDataOptions = {
     ignoreBeforeUpdateHook?: boolean;
 };
-declare abstract class ModelUpdateQueryBuilder<T extends Model> extends Where_query_builder<T> {
+declare abstract class ModelUpdateQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
     protected abstract sqlConnection: SqlConnectionType;
     protected abstract joinQuery: string;
     protected abstract updateTemplate: ReturnType<typeof updateTemplate>;
@@ -1522,7 +1540,7 @@ type SoftDeleteOptions<T> = {
     value?: string | number | boolean;
     ignoreBeforeDeleteHook?: boolean;
 };
-declare abstract class ModelDeleteQueryBuilder<T extends Model> extends Where_query_builder<T> {
+declare abstract class ModelDeleteQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
     protected abstract sqlConnection: SqlConnectionType;
     protected abstract joinQuery: string;
     protected abstract updateTemplate: ReturnType<typeof updateTemplate>;
@@ -1786,7 +1804,7 @@ declare abstract class Model {
     private static getModelManager;
 }
 
-declare abstract class Abstract_model_manager<T extends Model> {
+declare abstract class ModelManager$1<T extends Model> {
     protected logs: boolean;
     protected sqlDataSource: SqlDataSource;
     protected model: typeof Model;
@@ -1845,7 +1863,7 @@ declare abstract class Abstract_model_manager<T extends Model> {
     /**
      * @description Returns a query builder
      */
-    abstract query(): Query_builder<T>;
+    abstract query(): QueryBuilder<T>;
     /**
      * @description Returns an update query builder
      */
@@ -1856,7 +1874,7 @@ declare abstract class Abstract_model_manager<T extends Model> {
     abstract deleteQuery(): ModelDeleteQueryBuilder<T>;
 }
 
-declare class Mysql_update_query_builder<T extends Model> extends ModelUpdateQueryBuilder<T> {
+declare class MysqlUpdateQueryBuilder<T extends Model> extends ModelUpdateQueryBuilder<T> {
     protected sqlConnection: Connection;
     protected joinQuery: string;
     protected updateTemplate: ReturnType<typeof updateTemplate>;
@@ -1877,32 +1895,32 @@ declare class Mysql_update_query_builder<T extends Model> extends ModelUpdateQue
      * @param primaryColumn - The name of the primary column in the caller table.
      * @param foreignColumn - The name of the foreign column in the related table.
      */
-    join(relationTable: string, primaryColumn: string, foreignColumn: string): Mysql_update_query_builder<T>;
+    join(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlUpdateQueryBuilder<T>;
     /**
      *
      * @param relationTable - The name of the related table.
      * @param primaryColumn - The name of the primary column in the caller table.
      * @param foreignColumn - The name of the foreign column in the related table.
      */
-    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): Mysql_update_query_builder<T>;
+    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlUpdateQueryBuilder<T>;
     /**
      * @description Build more complex where conditions.
      * @param cb
      */
-    whereBuilder(cb: (queryBuilder: Mysql_update_query_builder<T>) => void): this;
+    whereBuilder(cb: (queryBuilder: MysqlUpdateQueryBuilder<T>) => void): this;
     /**
      * @description Build complex OR-based where conditions.
      * @param cb Callback function that takes a query builder and adds conditions to it.
      */
-    orWhereBuilder(cb: (queryBuilder: Mysql_update_query_builder<T>) => void): this;
+    orWhereBuilder(cb: (queryBuilder: MysqlUpdateQueryBuilder<T>) => void): this;
     /**
      * @description Build complex AND-based where conditions.
      * @param cb Callback function that takes a query builder and adds conditions to it.
      */
-    andWhereBuilder(cb: (queryBuilder: Mysql_update_query_builder<T>) => void): this;
+    andWhereBuilder(cb: (queryBuilder: MysqlUpdateQueryBuilder<T>) => void): this;
 }
 
-declare class Mysql_delete_query_builder<T extends Model> extends ModelDeleteQueryBuilder<T> {
+declare class MysqlDeleteQueryBuilder<T extends Model> extends ModelDeleteQueryBuilder<T> {
     protected sqlConnection: Connection;
     protected joinQuery: string;
     protected updateTemplate: ReturnType<typeof updateTemplate>;
@@ -1925,36 +1943,36 @@ declare class Mysql_delete_query_builder<T extends Model> extends ModelDeleteQue
      * @param primaryColumn - The name of the primary column in the caller table.
      * @param foreignColumn - The name of the foreign column in the related table.
      */
-    join(relationTable: string, primaryColumn: string, foreignColumn: string): Mysql_delete_query_builder<T>;
+    join(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlDeleteQueryBuilder<T>;
     /**
      *
      * @param relationTable - The name of the related table.
      * @param primaryColumn - The name of the primary column in the caller table.
      * @param foreignColumn - The name of the foreign column in the related table.
      */
-    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): Mysql_delete_query_builder<T>;
+    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlDeleteQueryBuilder<T>;
     /**
      * @description Build more complex where conditions.
      * @param cb
      */
-    whereBuilder(cb: (queryBuilder: Mysql_delete_query_builder<T>) => void): this;
+    whereBuilder(cb: (queryBuilder: MysqlDeleteQueryBuilder<T>) => void): this;
     /**
      * @description Build complex OR-based where conditions.
      * @param cb Callback function that takes a query builder and adds conditions to it.
      */
-    orWhereBuilder(cb: (queryBuilder: Mysql_delete_query_builder<T>) => void): this;
+    orWhereBuilder(cb: (queryBuilder: MysqlDeleteQueryBuilder<T>) => void): this;
     /**
      * @description Build complex AND-based where conditions.
      * @param cb Callback function that takes a query builder and adds conditions to it.
      */
-    andWhereBuilder(cb: (queryBuilder: Mysql_delete_query_builder<T>) => void): this;
+    andWhereBuilder(cb: (queryBuilder: MysqlDeleteQueryBuilder<T>) => void): this;
 }
 
-declare class Mysql_model_manager<T extends Model> extends Abstract_model_manager<T> {
+declare class MysqlModelManager<T extends Model> extends ModelManager$1<T> {
     protected mysqlConnection: mysql.Connection;
     protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
     /**
-     * Constructor for Mysql_model_manager class.
+     * Constructor for MysqlModelManager class.
      *
      * @param {typeof Model} model - Model constructor.
      * @param {Connection} mysqlConnection - MySQL connection pool.
@@ -2018,18 +2036,18 @@ declare class Mysql_model_manager<T extends Model> extends Abstract_model_manage
      *
      * @returns {Mysql_query_builder<Model>} - Instance of Mysql_query_builder.
      */
-    query(): Mysql_query_builder<T>;
+    query(): MysqlQueryBuilder<T>;
     /**
      * @description Returns an update query builder.
      */
-    update(): Mysql_update_query_builder<T>;
+    update(): MysqlUpdateQueryBuilder<T>;
     /**
      * @description Returns a delete query builder.
      */
-    deleteQuery(): Mysql_delete_query_builder<T>;
+    deleteQuery(): MysqlDeleteQueryBuilder<T>;
 }
 
-declare class Postgres_update_query_builder<T extends Model> extends ModelUpdateQueryBuilder<T> {
+declare class PostgresUpdateQueryBuilder<T extends Model> extends ModelUpdateQueryBuilder<T> {
     protected sqlConnection: Client;
     protected joinQuery: string;
     protected updateTemplate: ReturnType<typeof updateTemplate>;
@@ -2044,26 +2062,26 @@ declare class Postgres_update_query_builder<T extends Model> extends ModelUpdate
      */
     constructor(model: typeof Model, table: string, pgClient: Client, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
     withData(data: Partial<T>, options?: WithDataOptions): Promise<number>;
-    join(relationTable: string, primaryColumn: string, foreignColumn: string): Postgres_update_query_builder<T>;
-    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): Postgres_update_query_builder<T>;
+    join(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresUpdateQueryBuilder<T>;
+    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresUpdateQueryBuilder<T>;
     /**
      * @description Build more complex where conditions.
      * @param cb
      */
-    whereBuilder(cb: (queryBuilder: Postgres_update_query_builder<T>) => void): this;
+    whereBuilder(cb: (queryBuilder: PostgresUpdateQueryBuilder<T>) => void): this;
     /**
      * @description Build complex OR-based where conditions.
      * @param cb Callback function that takes a query builder and adds conditions to it.
      */
-    orWhereBuilder(cb: (queryBuilder: Postgres_update_query_builder<T>) => void): this;
+    orWhereBuilder(cb: (queryBuilder: PostgresUpdateQueryBuilder<T>) => void): this;
     /**
      * @description Build complex AND-based where conditions.
      * @param cb Callback function that takes a query builder and adds conditions to it.
      */
-    andWhereBuilder(cb: (queryBuilder: Postgres_update_query_builder<T>) => void): this;
+    andWhereBuilder(cb: (queryBuilder: PostgresUpdateQueryBuilder<T>) => void): this;
 }
 
-declare class Postgres_delete_query_builder<T extends Model> extends ModelDeleteQueryBuilder<T> {
+declare class PostgresDeleteQueryBuilder<T extends Model> extends ModelDeleteQueryBuilder<T> {
     protected sqlConnection: Client;
     protected joinQuery: string;
     protected updateTemplate: ReturnType<typeof updateTemplate>;
@@ -2086,32 +2104,32 @@ declare class Postgres_delete_query_builder<T extends Model> extends ModelDelete
      * @param primaryColumn - The name of the primary column in the caller table.
      * @param foreignColumn - The name of the foreign column in the related table.
      */
-    join(relationTable: string, primaryColumn: string, foreignColumn: string): Postgres_delete_query_builder<T>;
+    join(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresDeleteQueryBuilder<T>;
     /**
      *
      * @param relationTable - The name of the related table.
      * @param primaryColumn - The name of the primary column in the caller table.
      * @param foreignColumn - The name of the foreign column in the related table.
      */
-    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): Postgres_delete_query_builder<T>;
+    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresDeleteQueryBuilder<T>;
     /**
      * @description Build more complex where conditions.
      * @param cb
      */
-    whereBuilder(cb: (queryBuilder: Postgres_delete_query_builder<T>) => void): this;
+    whereBuilder(cb: (queryBuilder: PostgresDeleteQueryBuilder<T>) => void): this;
     /**
      * @description Build complex OR-based where conditions.
      * @param cb Callback function that takes a query builder and adds conditions to it.
      */
-    orWhereBuilder(cb: (queryBuilder: Postgres_delete_query_builder<T>) => void): this;
+    orWhereBuilder(cb: (queryBuilder: PostgresDeleteQueryBuilder<T>) => void): this;
     /**
      * @description Build complex AND-based where conditions.
      * @param cb Callback function that takes a query builder and adds conditions to it.
      */
-    andWhereBuilder(cb: (queryBuilder: Postgres_delete_query_builder<T>) => void): this;
+    andWhereBuilder(cb: (queryBuilder: PostgresDeleteQueryBuilder<T>) => void): this;
 }
 
-declare class Postgres_model_manager<T extends Model> extends Abstract_model_manager<T> {
+declare class PostgresModelManager<T extends Model> extends ModelManager$1<T> {
     protected pgConnection: pg.Client;
     protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
     /**
@@ -2179,18 +2197,18 @@ declare class Postgres_model_manager<T extends Model> extends Abstract_model_man
      *
      * @returns {MysqlQueryBuilder<Model>} - Instance of Mysql_query_builder.
      */
-    query(): Postgres_query_builder<T>;
+    query(): PostgresQueryBuilder<T>;
     /**
      * @description Returns an update query builder.
      */
-    update(): Postgres_update_query_builder<T>;
+    update(): PostgresUpdateQueryBuilder<T>;
     /**
      * @description Returns a delete query builder.
      */
-    deleteQuery(): Postgres_delete_query_builder<T>;
+    deleteQuery(): PostgresDeleteQueryBuilder<T>;
 }
 
-declare class Sql_lite_update_query_builder<T extends Model> extends ModelUpdateQueryBuilder<T> {
+declare class SqliteUpdateQueryBuilder<T extends Model> extends ModelUpdateQueryBuilder<T> {
     protected sqlConnection: sqlite3.Database;
     protected joinQuery: string;
     protected updateTemplate: ReturnType<typeof updateTemplate>;
@@ -2218,33 +2236,33 @@ declare class Sql_lite_update_query_builder<T extends Model> extends ModelUpdate
      * @param primaryColumn - The name of the primary column in the caller table.
      * @param foreignColumn - The name of the foreign column in the related table.
      */
-    join(relationTable: string, primaryColumn: string, foreignColumn: string): Sql_lite_update_query_builder<T>;
+    join(relationTable: string, primaryColumn: string, foreignColumn: string): SqliteUpdateQueryBuilder<T>;
     /**
      *
      * @param relationTable - The name of the related table.
      * @param primaryColumn - The name of the primary column in the caller table.
      * @param foreignColumn - The name of the foreign column in the related table.
      */
-    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): Sql_lite_update_query_builder<T>;
+    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): SqliteUpdateQueryBuilder<T>;
     /**
      * @description Build more complex where conditions.
      * @param cb
      */
-    whereBuilder(cb: (queryBuilder: Sql_lite_update_query_builder<T>) => void): this;
+    whereBuilder(cb: (queryBuilder: SqliteUpdateQueryBuilder<T>) => void): this;
     /**
      * @description Build complex OR-based where conditions.
      * @param cb Callback function that takes a query builder and adds conditions to it.
      */
-    orWhereBuilder(cb: (queryBuilder: Sql_lite_update_query_builder<T>) => void): this;
+    orWhereBuilder(cb: (queryBuilder: SqliteUpdateQueryBuilder<T>) => void): this;
     /**
      * @description Build complex AND-based where conditions.
      * @param cb Callback function that takes a query builder and adds conditions to it.
      */
-    andWhereBuilder(cb: (queryBuilder: Sql_lite_update_query_builder<T>) => void): this;
+    andWhereBuilder(cb: (queryBuilder: SqliteUpdateQueryBuilder<T>) => void): this;
     private promisifyQuery;
 }
 
-declare class Sql_lite_delete_query_builder<T extends Model> extends ModelDeleteQueryBuilder<T> {
+declare class SqlLiteDeleteQueryBuilder<T extends Model> extends ModelDeleteQueryBuilder<T> {
     protected sqlConnection: sqlite3.Database;
     protected joinQuery: string;
     protected updateTemplate: ReturnType<typeof updateTemplate>;
@@ -2268,33 +2286,33 @@ declare class Sql_lite_delete_query_builder<T extends Model> extends ModelDelete
      * @param primaryColumn - The name of the primary column in the caller table.
      * @param foreignColumn - The name of the foreign column in the related table.
      */
-    join(relationTable: string, primaryColumn: string, foreignColumn: string): Sql_lite_delete_query_builder<T>;
+    join(relationTable: string, primaryColumn: string, foreignColumn: string): SqlLiteDeleteQueryBuilder<T>;
     /**
      *
      * @param relationTable - The name of the related table.
      * @param primaryColumn - The name of the primary column in the caller table.
      * @param foreignColumn - The name of the foreign column in the related table.
      */
-    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): Sql_lite_delete_query_builder<T>;
+    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): SqlLiteDeleteQueryBuilder<T>;
     /**
      * @description Build more complex where conditions.
      * @param cb
      */
-    whereBuilder(cb: (queryBuilder: Sql_lite_delete_query_builder<T>) => void): this;
+    whereBuilder(cb: (queryBuilder: SqlLiteDeleteQueryBuilder<T>) => void): this;
     /**
      * @description Build complex OR-based where conditions.
      * @param cb Callback function that takes a query builder and adds conditions to it.
      */
-    orWhereBuilder(cb: (queryBuilder: Sql_lite_delete_query_builder<T>) => void): this;
+    orWhereBuilder(cb: (queryBuilder: SqlLiteDeleteQueryBuilder<T>) => void): this;
     /**
      * @description Build complex AND-based where conditions.
      * @param cb Callback function that takes a query builder and adds conditions to it.
      */
-    andWhereBuilder(cb: (queryBuilder: Sql_lite_delete_query_builder<T>) => void): this;
+    andWhereBuilder(cb: (queryBuilder: SqlLiteDeleteQueryBuilder<T>) => void): this;
     private promisifyQuery;
 }
 
-declare class Sql_lite_model_manager<T extends Model> extends Abstract_model_manager<T> {
+declare class SqliteModelManager<T extends Model> extends ModelManager$1<T> {
     protected sqLiteConnection: sqlite3.Database;
     protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
     /**
@@ -2362,15 +2380,15 @@ declare class Sql_lite_model_manager<T extends Model> extends Abstract_model_man
      *
      * @returns {MysqlQueryBuilder<Model>} - Instance of Mysql_query_builder.
      */
-    query(): Sql_lite_query_builder<T>;
+    query(): SqlLiteQueryBuilder<T>;
     /**
      * @description Returns an update query builder.
      */
-    update(): Sql_lite_update_query_builder<T>;
+    update(): SqliteUpdateQueryBuilder<T>;
     /**
      * @description Returns a delete query builder.
      */
-    deleteQuery(): Sql_lite_delete_query_builder<T>;
+    deleteQuery(): SqlLiteDeleteQueryBuilder<T>;
     private promisifyQuery;
 }
 
@@ -2378,7 +2396,7 @@ type DriverSpecificOptions = {
     mysqlOptions?: mysql.PoolOptions;
     pgOptions?: pg.PoolConfig;
 };
-type ModelManager<T extends Model> = Mysql_model_manager<T> | Postgres_model_manager<T> | Sql_lite_model_manager<T>;
+type ModelManager<T extends Model> = MysqlModelManager<T> | PostgresModelManager<T> | SqliteModelManager<T>;
 type SqlConnectionType = mysql.Connection | pg.Client | sqlite3.Database;
 interface SqlDataSourceInput extends DataSourceInput {
     type: Exclude<DataSourceType, "redis">;

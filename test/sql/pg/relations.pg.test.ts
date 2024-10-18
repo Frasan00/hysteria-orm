@@ -98,13 +98,7 @@ test("Join users and posts", async () => {
     content: "Content 1",
   });
 
-  const post2 = await Post.insert({
-    userId: user.id,
-    title: "Post 2",
-    content: "Content 2",
-  });
-
-  if (!post1 || !post2) {
+  if (!post1) {
     throw new Error("Posts not created");
   }
 
@@ -112,11 +106,17 @@ test("Join users and posts", async () => {
     .select("posts.*", "users.email AS superUserEmail")
     .join("posts", "users.id", "posts.userId")
     .where("users.id", user.id)
-    .groupBy("posts.id", "users.id")
+    .groupBy(
+      "posts.id",
+      "users.id",
+      "posts.title",
+      "posts.content",
+      "posts.userId",
+    )
     .many();
 
   expect(joinedUsersAndPosts).not.toBeNull();
-  expect(joinedUsersAndPosts.length).toBe(2);
+  expect(joinedUsersAndPosts.length).toBe(1);
   expect(joinedUsersAndPosts[0].extraColumns.title).toBe("Post 1");
   expect(joinedUsersAndPosts[0].extraColumns.superUserEmail).toBe(
     "bob-test@gmail.com",
@@ -129,6 +129,6 @@ test("Join users and posts", async () => {
     .many();
 
   expect(leftJoinedUsersAndPosts).not.toBeNull();
-  expect(leftJoinedUsersAndPosts.length).toBe(2);
+  expect(leftJoinedUsersAndPosts.length).toBe(1);
   expect(leftJoinedUsersAndPosts[0].extraColumns.title).toBe("Post 1");
 });

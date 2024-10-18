@@ -246,6 +246,7 @@ test("When condition", async () => {
   const notExistingValue = null;
   let user: User | null = null;
   user = await User.query()
+    .orderBy(["createdAt"], "ASC")
     .when(trueValue, (_value, query) => {
       query.orWhere("name", "LIKE", "Dave2");
     })
@@ -255,6 +256,7 @@ test("When condition", async () => {
   expect(user?.name).toBe("Dave2");
 
   user = await User.query()
+    .orderBy(["createdAt"], "ASC")
     .when(notExistingValue, (_value, query) => {
       query.orWhere("name", "LIKE", "Dave2");
     })
@@ -425,7 +427,13 @@ test("Very complex query", async () => {
     .orWhere("signupSource", "email")
     .where("name", "LIKE", "Dave")
     .join("posts", "users.id", "posts.user_id")
-    .groupBy("users.id", "posts.id")
+    .groupBy(
+      "users.id",
+      "posts.id",
+      "posts.title",
+      "posts.content",
+      "posts.userId",
+    )
     .orderBy(["deletedAt"], "ASC")
     .limit(10)
     .offset(0)
