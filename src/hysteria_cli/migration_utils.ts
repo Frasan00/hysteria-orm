@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import { Migration } from "../sql/migrations/migration";
 import dotenv from "dotenv";
-import { Migration_table_type } from "./resources/migration_table_type";
+import { MigrationTableType } from "./resources/migration_table_type";
 import { SqlConnectionType } from "../sql/sql_data_source";
 import mysql from "mysql2/promise";
 import pg from "pg";
