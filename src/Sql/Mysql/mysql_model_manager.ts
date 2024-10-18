@@ -7,22 +7,20 @@ import {
 } from "../models/model_manager/model_manager_types";
 import mysql, { RowDataPacket } from "mysql2/promise";
 import { log, queryError } from "../../logger";
-import { Mysql_query_builder } from "./mysql_query_builder";
-import { Abstract_model_manager } from "../models/model_manager/abstract_model_manager";
-import { Mysql_update_query_builder } from "./mysql_update_query_builder";
-import { Mysql_delete_query_builder } from "./mysql_delete_query_builder";
+import { MysqlQueryBuilder } from "./mysql_query_builder";
+import { ModelManager } from "../models/model_manager/model_manager";
+import { MysqlUpdateQueryBuilder } from "./mysql_update_query_builder";
+import { MysqlDeleteQueryBuilder } from "./mysql_delete_query_builder";
 import { SqlDataSource } from "../sql_data_source";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
 
-export class Mysql_model_manager<
-  T extends Model,
-> extends Abstract_model_manager<T> {
+export class MysqlModelManager<T extends Model> extends ModelManager<T> {
   protected mysqlConnection: mysql.Connection;
   protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
 
   /**
-   * Constructor for Mysql_model_manager class.
+   * Constructor for MysqlModelManager class.
    *
    * @param {typeof Model} model - Model constructor.
    * @param {Connection} mysqlConnection - MySQL connection pool.
@@ -217,7 +215,6 @@ export class Mysql_model_manager<
     try {
       log(query, this.logs, params);
       const [rows]: any = await this.mysqlConnection.query(query, params);
-      console.log(rows);
 
       if (!rows.affectedRows) {
         return [];
@@ -232,8 +229,13 @@ export class Mysql_model_manager<
           (model) => model[this.model.primaryKey as keyof T],
         ) as string[];
 
+        const primaryKeyList = idsToFetchList
+          .map((key) => `'${key}'`)
+          .join(",");
+
         return await this.query()
           .whereIn(this.model.primaryKey as string, idsToFetchList)
+          .orderByRaw(`FIELD(${this.model.primaryKey}, ${primaryKeyList})`)
           .many();
       }
 
@@ -337,8 +339,8 @@ export class Mysql_model_manager<
    *
    * @returns {Mysql_query_builder<Model>} - Instance of Mysql_query_builder.
    */
-  public query(): Mysql_query_builder<T> {
-    return new Mysql_query_builder<T>(
+  public query(): MysqlQueryBuilder<T> {
+    return new MysqlQueryBuilder<T>(
       this.model,
       this.model.table,
       this.mysqlConnection,
@@ -351,8 +353,8 @@ export class Mysql_model_manager<
   /**
    * @description Returns an update query builder.
    */
-  public update(): Mysql_update_query_builder<T> {
-    return new Mysql_update_query_builder<T>(
+  public update(): MysqlUpdateQueryBuilder<T> {
+    return new MysqlUpdateQueryBuilder<T>(
       this.model,
       this.model.table,
       this.mysqlConnection,
@@ -365,8 +367,8 @@ export class Mysql_model_manager<
   /**
    * @description Returns a delete query builder.
    */
-  public deleteQuery(): Mysql_delete_query_builder<T> {
-    return new Mysql_delete_query_builder<T>(
+  public deleteQuery(): MysqlDeleteQueryBuilder<T> {
+    return new MysqlDeleteQueryBuilder<T>(
       this.model,
       this.model.table,
       this.mysqlConnection,

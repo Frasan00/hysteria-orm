@@ -6,17 +6,15 @@ import {
   UnrestrictedFindType,
 } from "../models/model_manager/model_manager_types";
 import { log, queryError } from "../../logger";
-import { Abstract_model_manager } from "../models/model_manager/abstract_model_manager";
+import { ModelManager } from "../models/model_manager/model_manager";
 import { SqlDataSource } from "../sql_data_source";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
 import sqlite3 from "sqlite3";
-import { Sql_lite_query_builder } from "./sql_lite_query_builder";
-import { Sql_lite_update_query_builder } from "./sql_lite_update_query_builder";
-import { Sql_lite_delete_query_builder } from "./sql_lite_delete_query_builder";
+import { SqlLiteQueryBuilder } from "./sql_lite_query_builder";
+import { SqliteUpdateQueryBuilder } from "./sql_lite_update_query_builder";
+import { SqlLiteDeleteQueryBuilder } from "./sql_lite_delete_query_builder";
 
-export class Sql_lite_model_manager<
-  T extends Model,
-> extends Abstract_model_manager<T> {
+export class SqliteModelManager<T extends Model> extends ModelManager<T> {
   protected sqLiteConnection: sqlite3.Database;
   protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
 
@@ -217,7 +215,7 @@ export class Sql_lite_model_manager<
       );
       log(query, this.logs, params);
       return (await this.promisifyQuery<T[]>(query, params, {
-        isinsertMany: true,
+        isInsertMany: true,
         models: models as T[],
       })) as T[];
     } catch (error) {
@@ -296,8 +294,8 @@ export class Sql_lite_model_manager<
    *
    * @returns {MysqlQueryBuilder<Model>} - Instance of Mysql_query_builder.
    */
-  public query(): Sql_lite_query_builder<T> {
-    return new Sql_lite_query_builder<T>(
+  public query(): SqlLiteQueryBuilder<T> {
+    return new SqlLiteQueryBuilder<T>(
       this.model,
       this.model.table,
       this.sqLiteConnection,
@@ -310,8 +308,8 @@ export class Sql_lite_model_manager<
   /**
    * @description Returns an update query builder.
    */
-  public update(): Sql_lite_update_query_builder<T> {
-    return new Sql_lite_update_query_builder<T>(
+  public update(): SqliteUpdateQueryBuilder<T> {
+    return new SqliteUpdateQueryBuilder<T>(
       this.model,
       this.model.table,
       this.sqLiteConnection,
@@ -325,8 +323,8 @@ export class Sql_lite_model_manager<
   /**
    * @description Returns a delete query builder.
    */
-  public deleteQuery(): Sql_lite_delete_query_builder<T> {
-    return new Sql_lite_delete_query_builder<T>(
+  public deleteQuery(): SqlLiteDeleteQueryBuilder<T> {
+    return new SqlLiteDeleteQueryBuilder<T>(
       this.model,
       this.model.table,
       this.sqLiteConnection,
@@ -342,15 +340,16 @@ export class Sql_lite_model_manager<
     params: any,
     options: {
       isCreate?: boolean;
-      isinsertMany?: boolean;
+      isInsertMany?: boolean;
       models?: T | T[];
     } = {
       isCreate: false,
-      isinsertMany: false,
+      isInsertMany: false,
       models: [],
     },
   ): Promise<T | T[]> {
-    if (options.isCreate || options.isinsertMany) {
+    const primaryKeyName = this.model.primaryKey as string;
+    if (options.isCreate || options.isInsertMany) {
       if (options.isCreate) {
         const table = this.model.table;
         const sqLiteConnection = this.sqLiteConnection;
@@ -363,8 +362,10 @@ export class Sql_lite_model_manager<
                 return reject(err);
               }
 
-              const lastID = this.lastID;
-              const selectQuery = `SELECT * FROM ${table} WHERE id = ?`;
+              const currentModel = options.models as T;
+              const lastID =
+                currentModel[primaryKeyName as keyof T] || this.lastID;
+              const selectQuery = `SELECT * FROM ${table} WHERE ${primaryKeyName} = ?`;
               sqLiteConnection.get(
                 selectQuery,
                 [lastID],
@@ -404,8 +405,8 @@ export class Sql_lite_model_manager<
               return reject(err);
             }
 
-            const lastID = this.lastID;
-            const selectQuery = `SELECT * FROM ${table} WHERE id = ?`;
+            const lastID = model[primaryKeyName as keyof T] || this.lastID;
+            const selectQuery = `SELECT * FROM ${table} WHERE ${primaryKeyName} = ?`;
             sqLiteConnection.get(selectQuery, [lastID], (err: any, row: T) => {
               if (err) {
                 return reject(err);

@@ -26,7 +26,7 @@ export async function migrationRollBackSqlite(): Promise<void> {
   const sqlConnection = sql.getCurrentConnection() as sqlite3.Database;
 
   try {
-    const migrationTable: MigrationTableType[]  =
+    const migrationTable: MigrationTableType[] =
       (await getMigrationTable(sqlConnection)) || [];
     const migrations: Migration[] = await getMigrations();
 

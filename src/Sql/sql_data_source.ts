@@ -3,10 +3,10 @@ import mysql, { createConnection } from "mysql2/promise";
 import pg from "pg";
 import sqlite3 from "sqlite3";
 import { Model } from "./models/model";
-import { Mysql_model_manager } from "./mysql/mysql_model_manager";
-import { Postgres_model_manager } from "./postgres/postgres_model_manager";
+import { MysqlModelManager } from "./mysql/mysql_model_manager";
+import { PostgresModelManager } from "./postgres/postgres_model_manager";
+import { SqliteModelManager } from "./sqlite/sql_lite_model_manager";
 import logger, { log } from "../logger";
-import { Sql_lite_model_manager } from "./sqlite/sql_lite_model_manager";
 import { Transaction } from "./transaction";
 
 type DriverSpecificOptions = {
@@ -15,9 +15,9 @@ type DriverSpecificOptions = {
 };
 
 export type ModelManager<T extends Model> =
-  | Mysql_model_manager<T>
-  | Postgres_model_manager<T>
-  | Sql_lite_model_manager<T>;
+  | MysqlModelManager<T>
+  | PostgresModelManager<T>
+  | SqliteModelManager<T>;
 
 export type SqlConnectionType = mysql.Connection | pg.Client | sqlite3.Database;
 
@@ -165,21 +165,21 @@ export class SqlDataSource extends Datasource {
     switch (this.type) {
       case "mysql":
       case "mariadb":
-        return new Mysql_model_manager<T>(
+        return new MysqlModelManager<T>(
           model as typeof Model,
           this.sqlConnection as mysql.Connection,
           this.logs,
           this,
         );
       case "postgres":
-        return new Postgres_model_manager<T>(
+        return new PostgresModelManager<T>(
           model as typeof Model,
           this.sqlConnection as pg.Client,
           this.logs,
           this,
         );
       case "sqlite":
-        return new Sql_lite_model_manager<T>(
+        return new SqliteModelManager<T>(
           model as typeof Model,
           this.sqlConnection as sqlite3.Database,
           this.logs,

@@ -96,15 +96,44 @@ export default class ColumnOptionsBuilder {
    * @description Makes the column the primary key
    */
   public primary(): ColumnOptionsBuilder {
-    this.partialQuery += " PRIMARY KEY";
-    return new ColumnOptionsBuilder(
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
-      this.columnReferences,
-    );
+    switch (this.sqlType) {
+      case "mysql":
+      case "mariadb":
+        this.partialQuery += " PRIMARY KEY";
+        return new ColumnOptionsBuilder(
+          this.table,
+          this.queryStatements,
+          this.partialQuery,
+          this.sqlType,
+          this.columnName,
+          this.columnReferences,
+        );
+
+      case "postgres":
+        this.partialQuery += " PRIMARY KEY";
+        return new ColumnOptionsBuilder(
+          this.table,
+          this.queryStatements,
+          this.partialQuery,
+          this.sqlType,
+          this.columnName,
+          this.columnReferences,
+        );
+
+      case "sqlite":
+        this.partialQuery += " PRIMARY KEY";
+        return new ColumnOptionsBuilder(
+          this.table,
+          this.queryStatements,
+          this.partialQuery,
+          this.sqlType,
+          this.columnName,
+          this.columnReferences,
+        );
+
+      default:
+        throw new Error("Unsupported SQL type");
+    }
   }
 
   /**

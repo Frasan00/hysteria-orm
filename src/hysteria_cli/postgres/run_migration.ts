@@ -24,7 +24,7 @@ export async function runMigrationsPg(): Promise<void> {
     log(BEGIN_TRANSACTION, true);
     await sqlConnection.query(BEGIN_TRANSACTION);
 
-    const migrationTable: MigrationTableType[]  =
+    const migrationTable: MigrationTableType[] =
       await getMigrationTable(sqlConnection);
     const migrations: Migration[] = await getMigrations();
     const pendingMigrations = migrations.filter(

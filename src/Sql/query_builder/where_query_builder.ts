@@ -6,7 +6,7 @@ import whereTemplate, {
 } from "../resources/query/WHERE.TS";
 import { SqlDataSource } from "../sql_data_source";
 
-export abstract class Where_query_builder<T extends Model> {
+export abstract class WhereQueryBuilder<T extends Model> {
   protected sqlDataSource: SqlDataSource;
   protected whereQuery: string = "";
   protected whereParams: BaseValues[] = [];
@@ -50,7 +50,7 @@ export abstract class Where_query_builder<T extends Model> {
    */
   public when(
     value: any,
-    cb: (value: any, query: Where_query_builder<T>) => void,
+    cb: (value: any, query: WhereQueryBuilder<T>) => void,
   ): this {
     if (value === undefined || value === null) {
       return this;

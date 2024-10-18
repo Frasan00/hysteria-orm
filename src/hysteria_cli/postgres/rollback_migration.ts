@@ -21,7 +21,7 @@ export async function migrationRollBackPg(): Promise<void> {
   const sql = await SqlDataSource.connect();
   const sqlConnection = sql.getCurrentConnection() as Client;
   try {
-    const migrationTable: MigrationTableType[]  =
+    const migrationTable: MigrationTableType[] =
       await getMigrationTable(sqlConnection);
     const migrations: Migration[] = await getMigrations();
 

@@ -23,7 +23,7 @@ export async function runMigrationsSql(): Promise<void> {
   try {
     log(BEGIN_TRANSACTION, true);
     await sqlConnection.beginTransaction();
-    const migrationTable: MigrationTableType[]  = await getMigrationTable(
+    const migrationTable: MigrationTableType[] = await getMigrationTable(
       sqlConnection as mysql2.Connection,
     );
     const migrations: Migration[] = await getMigrations();

@@ -9,7 +9,7 @@ import {
   WithDataOptions,
 } from "../query_builder/update_query_builder";
 
-export class Postgres_update_query_builder<
+export class PostgresUpdateQueryBuilder<
   T extends Model,
 > extends ModelUpdateQueryBuilder<T> {
   protected sqlConnection: Client;
@@ -85,7 +85,7 @@ export class Postgres_update_query_builder<
     relationTable: string,
     primaryColumn: string,
     foreignColumn: string,
-  ): Postgres_update_query_builder<T> {
+  ): PostgresUpdateQueryBuilder<T> {
     const join = joinTemplate(
       this.model,
       relationTable,
@@ -100,7 +100,7 @@ export class Postgres_update_query_builder<
     relationTable: string,
     primaryColumn: string,
     foreignColumn: string,
-  ): Postgres_update_query_builder<T> {
+  ): PostgresUpdateQueryBuilder<T> {
     const join = joinTemplate(
       this.model,
       relationTable,
@@ -116,9 +116,9 @@ export class Postgres_update_query_builder<
    * @param cb
    */
   public whereBuilder(
-    cb: (queryBuilder: Postgres_update_query_builder<T>) => void,
+    cb: (queryBuilder: PostgresUpdateQueryBuilder<T>) => void,
   ): this {
-    const queryBuilder = new Postgres_update_query_builder(
+    const queryBuilder = new PostgresUpdateQueryBuilder(
       this.model as typeof Model,
       this.table,
       this.sqlConnection,
@@ -126,7 +126,7 @@ export class Postgres_update_query_builder<
       true,
       this.sqlDataSource,
     );
-    cb(queryBuilder as unknown as Postgres_update_query_builder<T>);
+    cb(queryBuilder as unknown as PostgresUpdateQueryBuilder<T>);
 
     let whereCondition = queryBuilder.whereQuery.trim();
     if (whereCondition.startsWith("AND")) {
@@ -154,9 +154,9 @@ export class Postgres_update_query_builder<
    * @param cb Callback function that takes a query builder and adds conditions to it.
    */
   public orWhereBuilder(
-    cb: (queryBuilder: Postgres_update_query_builder<T>) => void,
+    cb: (queryBuilder: PostgresUpdateQueryBuilder<T>) => void,
   ): this {
-    const nestedBuilder = new Postgres_update_query_builder(
+    const nestedBuilder = new PostgresUpdateQueryBuilder(
       this.model as typeof Model,
       this.table,
       this.sqlConnection,
@@ -164,7 +164,7 @@ export class Postgres_update_query_builder<
       true,
       this.sqlDataSource,
     );
-    cb(nestedBuilder as unknown as Postgres_update_query_builder<T>);
+    cb(nestedBuilder as unknown as PostgresUpdateQueryBuilder<T>);
 
     let nestedCondition = nestedBuilder.whereQuery.trim();
     if (nestedCondition.startsWith("AND")) {
@@ -195,9 +195,9 @@ export class Postgres_update_query_builder<
    * @param cb Callback function that takes a query builder and adds conditions to it.
    */
   public andWhereBuilder(
-    cb: (queryBuilder: Postgres_update_query_builder<T>) => void,
+    cb: (queryBuilder: PostgresUpdateQueryBuilder<T>) => void,
   ): this {
-    const nestedBuilder = new Postgres_update_query_builder(
+    const nestedBuilder = new PostgresUpdateQueryBuilder(
       this.model as typeof Model,
       this.table,
       this.sqlConnection,
@@ -205,7 +205,7 @@ export class Postgres_update_query_builder<
       true,
       this.sqlDataSource,
     );
-    cb(nestedBuilder as unknown as Postgres_update_query_builder<T>);
+    cb(nestedBuilder as unknown as PostgresUpdateQueryBuilder<T>);
 
     let nestedCondition = nestedBuilder.whereQuery.trim();
     if (nestedCondition.startsWith("AND")) {

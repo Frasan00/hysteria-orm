@@ -10,7 +10,7 @@ import {
 import sqlite3 from "sqlite3";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
 
-export class Sql_lite_update_query_builder<
+export class SqliteUpdateQueryBuilder<
   T extends Model,
 > extends ModelUpdateQueryBuilder<T> {
   protected sqlConnection: sqlite3.Database;
@@ -97,7 +97,7 @@ export class Sql_lite_update_query_builder<
     relationTable: string,
     primaryColumn: string,
     foreignColumn: string,
-  ): Sql_lite_update_query_builder<T> {
+  ): SqliteUpdateQueryBuilder<T> {
     const join = joinTemplate(
       this.model,
       relationTable,
@@ -118,7 +118,7 @@ export class Sql_lite_update_query_builder<
     relationTable: string,
     primaryColumn: string,
     foreignColumn: string,
-  ): Sql_lite_update_query_builder<T> {
+  ): SqliteUpdateQueryBuilder<T> {
     const join = joinTemplate(
       this.model,
       relationTable,
@@ -134,9 +134,9 @@ export class Sql_lite_update_query_builder<
    * @param cb
    */
   public whereBuilder(
-    cb: (queryBuilder: Sql_lite_update_query_builder<T>) => void,
+    cb: (queryBuilder: SqliteUpdateQueryBuilder<T>) => void,
   ): this {
-    const queryBuilder = new Sql_lite_update_query_builder(
+    const queryBuilder = new SqliteUpdateQueryBuilder(
       this.model as typeof Model,
       this.table,
       this.sqlConnection,
@@ -145,7 +145,7 @@ export class Sql_lite_update_query_builder<
       this.sqlDataSource,
       this.sqlModelManagerUtils,
     );
-    cb(queryBuilder as unknown as Sql_lite_update_query_builder<T>);
+    cb(queryBuilder as unknown as SqliteUpdateQueryBuilder<T>);
 
     let whereCondition = queryBuilder.whereQuery.trim();
     if (whereCondition.startsWith("AND")) {
@@ -173,9 +173,9 @@ export class Sql_lite_update_query_builder<
    * @param cb Callback function that takes a query builder and adds conditions to it.
    */
   public orWhereBuilder(
-    cb: (queryBuilder: Sql_lite_update_query_builder<T>) => void,
+    cb: (queryBuilder: SqliteUpdateQueryBuilder<T>) => void,
   ): this {
-    const nestedBuilder = new Sql_lite_update_query_builder(
+    const nestedBuilder = new SqliteUpdateQueryBuilder(
       this.model as typeof Model,
       this.table,
       this.sqlConnection,
@@ -184,7 +184,7 @@ export class Sql_lite_update_query_builder<
       this.sqlDataSource,
       this.sqlModelManagerUtils,
     );
-    cb(nestedBuilder as unknown as Sql_lite_update_query_builder<T>);
+    cb(nestedBuilder as unknown as SqliteUpdateQueryBuilder<T>);
 
     let nestedCondition = nestedBuilder.whereQuery.trim();
     if (nestedCondition.startsWith("AND")) {
@@ -215,9 +215,9 @@ export class Sql_lite_update_query_builder<
    * @param cb Callback function that takes a query builder and adds conditions to it.
    */
   public andWhereBuilder(
-    cb: (queryBuilder: Sql_lite_update_query_builder<T>) => void,
+    cb: (queryBuilder: SqliteUpdateQueryBuilder<T>) => void,
   ): this {
-    const nestedBuilder = new Sql_lite_update_query_builder(
+    const nestedBuilder = new SqliteUpdateQueryBuilder(
       this.model as typeof Model,
       this.table,
       this.sqlConnection,
@@ -226,7 +226,7 @@ export class Sql_lite_update_query_builder<
       this.sqlDataSource,
       this.sqlModelManagerUtils,
     );
-    cb(nestedBuilder as unknown as Sql_lite_update_query_builder<T>);
+    cb(nestedBuilder as unknown as SqliteUpdateQueryBuilder<T>);
 
     let nestedCondition = nestedBuilder.whereQuery.trim();
     if (nestedCondition.startsWith("AND")) {

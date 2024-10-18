@@ -7,17 +7,15 @@ import {
 } from "../models/model_manager/model_manager_types";
 import pg from "pg";
 import { log, queryError } from "../../logger";
-import { Abstract_model_manager } from "../models/model_manager/abstract_model_manager";
-import { Postgres_query_builder } from "./postgres_query_builder";
+import { ModelManager } from "../models/model_manager/model_manager";
+import { PostgresQueryBuilder } from "./postgres_query_builder";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
-import { Postgres_update_query_builder } from "./postgres_update_query_builder";
-import { Postgres_delete_query_builder } from "./postgres_delete_query_builder";
+import { PostgresUpdateQueryBuilder } from "./postgres_update_query_builder";
+import { PostgresDeleteQueryBuilder } from "./postgres_delete_query_builder";
 import { SqlDataSource } from "../sql_data_source";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
 
-export class Postgres_model_manager<
-  T extends Model,
-> extends Abstract_model_manager<T> {
+export class PostgresModelManager<T extends Model> extends ModelManager<T> {
   protected pgConnection: pg.Client;
   protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
 
@@ -313,8 +311,8 @@ export class Postgres_model_manager<
    *
    * @returns {MysqlQueryBuilder<Model>} - Instance of Mysql_query_builder.
    */
-  public query(): Postgres_query_builder<T> {
-    return new Postgres_query_builder<T>(
+  public query(): PostgresQueryBuilder<T> {
+    return new PostgresQueryBuilder<T>(
       this.model,
       this.model.table,
       this.pgConnection,
@@ -327,8 +325,8 @@ export class Postgres_model_manager<
   /**
    * @description Returns an update query builder.
    */
-  public update(): Postgres_update_query_builder<T> {
-    return new Postgres_update_query_builder<T>(
+  public update(): PostgresUpdateQueryBuilder<T> {
+    return new PostgresUpdateQueryBuilder<T>(
       this.model,
       this.model.table,
       this.pgConnection,
@@ -341,8 +339,8 @@ export class Postgres_model_manager<
   /**
    * @description Returns a delete query builder.
    */
-  public deleteQuery(): Postgres_delete_query_builder<T> {
-    return new Postgres_delete_query_builder<T>(
+  public deleteQuery(): PostgresDeleteQueryBuilder<T> {
+    return new PostgresDeleteQueryBuilder<T>(
       this.model,
       this.model.table,
       this.pgConnection,

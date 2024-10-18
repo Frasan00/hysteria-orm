@@ -8,12 +8,12 @@ import {
   UnrestrictedFindOneType,
   UnrestrictedFindType,
 } from "./model_manager_types";
-import { Query_builder } from "../../query_builder/query_builder";
+import { QueryBuilder } from "../../query_builder/query_builder";
 import { ModelUpdateQueryBuilder } from "../../query_builder/update_query_builder";
 import { ModelDeleteQueryBuilder } from "../../query_builder/delete_query_builder";
 import { SqlDataSource } from "../../sql_data_source";
 
-export abstract class Abstract_model_manager<T extends Model> {
+export abstract class ModelManager<T extends Model> {
   protected logs: boolean;
   protected sqlDataSource: SqlDataSource;
   protected model: typeof Model;
@@ -98,7 +98,7 @@ export abstract class Abstract_model_manager<T extends Model> {
   /**
    * @description Returns a query builder
    */
-  public abstract query(): Query_builder<T>;
+  public abstract query(): QueryBuilder<T>;
 
   /**
    * @description Returns an update query builder

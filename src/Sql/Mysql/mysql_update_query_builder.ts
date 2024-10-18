@@ -9,7 +9,7 @@ import {
   WithDataOptions,
 } from "../query_builder/update_query_builder";
 
-export class Mysql_update_query_builder<
+export class MysqlUpdateQueryBuilder<
   T extends Model,
 > extends ModelUpdateQueryBuilder<T> {
   protected sqlConnection: Connection;
@@ -91,7 +91,7 @@ export class Mysql_update_query_builder<
     relationTable: string,
     primaryColumn: string,
     foreignColumn: string,
-  ): Mysql_update_query_builder<T> {
+  ): MysqlUpdateQueryBuilder<T> {
     const join = joinTemplate(
       this.model,
       relationTable,
@@ -112,7 +112,7 @@ export class Mysql_update_query_builder<
     relationTable: string,
     primaryColumn: string,
     foreignColumn: string,
-  ): Mysql_update_query_builder<T> {
+  ): MysqlUpdateQueryBuilder<T> {
     const join = joinTemplate(
       this.model,
       relationTable,
@@ -128,9 +128,9 @@ export class Mysql_update_query_builder<
    * @param cb
    */
   public whereBuilder(
-    cb: (queryBuilder: Mysql_update_query_builder<T>) => void,
+    cb: (queryBuilder: MysqlUpdateQueryBuilder<T>) => void,
   ): this {
-    const queryBuilder = new Mysql_update_query_builder(
+    const queryBuilder = new MysqlUpdateQueryBuilder(
       this.model as typeof Model,
       this.table,
       this.sqlConnection,
@@ -138,7 +138,7 @@ export class Mysql_update_query_builder<
       true,
       this.sqlDataSource,
     );
-    cb(queryBuilder as unknown as Mysql_update_query_builder<T>);
+    cb(queryBuilder as unknown as MysqlUpdateQueryBuilder<T>);
 
     let whereCondition = queryBuilder.whereQuery.trim();
     if (whereCondition.startsWith("AND")) {
@@ -166,9 +166,9 @@ export class Mysql_update_query_builder<
    * @param cb Callback function that takes a query builder and adds conditions to it.
    */
   public orWhereBuilder(
-    cb: (queryBuilder: Mysql_update_query_builder<T>) => void,
+    cb: (queryBuilder: MysqlUpdateQueryBuilder<T>) => void,
   ): this {
-    const nestedBuilder = new Mysql_update_query_builder(
+    const nestedBuilder = new MysqlUpdateQueryBuilder(
       this.model as typeof Model,
       this.table,
       this.sqlConnection,
@@ -176,7 +176,7 @@ export class Mysql_update_query_builder<
       true,
       this.sqlDataSource,
     );
-    cb(nestedBuilder as unknown as Mysql_update_query_builder<T>);
+    cb(nestedBuilder as unknown as MysqlUpdateQueryBuilder<T>);
 
     let nestedCondition = nestedBuilder.whereQuery.trim();
     if (nestedCondition.startsWith("AND")) {
@@ -207,9 +207,9 @@ export class Mysql_update_query_builder<
    * @param cb Callback function that takes a query builder and adds conditions to it.
    */
   public andWhereBuilder(
-    cb: (queryBuilder: Mysql_update_query_builder<T>) => void,
+    cb: (queryBuilder: MysqlUpdateQueryBuilder<T>) => void,
   ): this {
-    const nestedBuilder = new Mysql_update_query_builder(
+    const nestedBuilder = new MysqlUpdateQueryBuilder(
       this.model as typeof Model,
       this.table,
       this.sqlConnection,
@@ -217,7 +217,7 @@ export class Mysql_update_query_builder<
       true,
       this.sqlDataSource,
     );
-    cb(nestedBuilder as unknown as Mysql_update_query_builder<T>);
+    cb(nestedBuilder as unknown as MysqlUpdateQueryBuilder<T>);
 
     let nestedCondition = nestedBuilder.whereQuery.trim();
     if (nestedCondition.startsWith("AND")) {

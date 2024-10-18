@@ -4,7 +4,7 @@ import { log, queryError } from "../../logger";
 import { BaseValues, WhereOperatorType } from "../resources/query/WHERE.TS";
 import {
   OneOptions,
-  Query_builder,
+  QueryBuilder,
   ModelQueryBuilder,
   ManyOptions,
 } from "../query_builder/query_builder";
@@ -20,7 +20,7 @@ import { SqlDataSource } from "../sql_data_source";
 import { convertCase } from "../../case_utils";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
 
-export class Mysql_query_builder<T extends Model> extends Query_builder<T> {
+export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
   protected mysqlConnection: mysql.Connection;
   protected isNestedCondition = false;
   protected mysqlModelManagerUtils: SqlModelManagerUtils<T>;
@@ -255,13 +255,11 @@ export class Mysql_query_builder<T extends Model> extends Query_builder<T> {
   }
 
   // SELECT
-  public select(...columns: string[]): Mysql_query_builder<T>;
-  public select(
-    ...columns: (SelectableType<T> | "*")[]
-  ): Mysql_query_builder<T>;
+  public select(...columns: string[]): MysqlQueryBuilder<T>;
+  public select(...columns: (SelectableType<T> | "*")[]): MysqlQueryBuilder<T>;
   public select(
     ...columns: (SelectableType<T> | "*" | string)[]
-  ): Mysql_query_builder<T> {
+  ): MysqlQueryBuilder<T> {
     this.selectQuery = this.selectTemplate.selectColumns(
       ...(columns as string[]),
     );
@@ -272,7 +270,7 @@ export class Mysql_query_builder<T extends Model> extends Query_builder<T> {
     relationTable: string,
     primaryColumn: string,
     foreignColumn: string,
-  ): Mysql_query_builder<T> {
+  ): MysqlQueryBuilder<T> {
     const join = joinTemplate(
       this.model,
       relationTable,
@@ -287,7 +285,7 @@ export class Mysql_query_builder<T extends Model> extends Query_builder<T> {
     relationTable: string,
     primaryColumn: string,
     foreignColumn: string,
-  ): Mysql_query_builder<T> {
+  ): MysqlQueryBuilder<T> {
     const join = joinTemplate(
       this.model,
       relationTable,
@@ -298,7 +296,7 @@ export class Mysql_query_builder<T extends Model> extends Query_builder<T> {
     return this;
   }
 
-  public addRelations(relations: RelationType<T>[]): Mysql_query_builder<T> {
+  public addRelations(relations: RelationType<T>[]): MysqlQueryBuilder<T> {
     this.relations = relations as string[];
     return this;
   }
@@ -310,10 +308,8 @@ export class Mysql_query_builder<T extends Model> extends Query_builder<T> {
     return this;
   }
 
-  public whereBuilder(
-    cb: (queryBuilder: Mysql_query_builder<T>) => void,
-  ): this {
-    const queryBuilder = new Mysql_query_builder(
+  public whereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this {
+    const queryBuilder = new MysqlQueryBuilder(
       this.model as typeof Model,
       this.table,
       this.mysqlConnection,
@@ -321,7 +317,7 @@ export class Mysql_query_builder<T extends Model> extends Query_builder<T> {
       true,
       this.sqlDataSource,
     );
-    cb(queryBuilder as unknown as Mysql_query_builder<T>);
+    cb(queryBuilder as unknown as MysqlQueryBuilder<T>);
 
     let whereCondition = queryBuilder.whereQuery.trim();
     if (whereCondition.startsWith("AND")) {
@@ -345,9 +341,9 @@ export class Mysql_query_builder<T extends Model> extends Query_builder<T> {
   }
 
   public orWhereBuilder(
-    cb: (queryBuilder: Mysql_query_builder<T>) => void,
+    cb: (queryBuilder: MysqlQueryBuilder<T>) => void,
   ): this {
-    const nestedBuilder = new Mysql_query_builder(
+    const nestedBuilder = new MysqlQueryBuilder(
       this.model as typeof Model,
       this.table,
       this.mysqlConnection,
@@ -355,7 +351,7 @@ export class Mysql_query_builder<T extends Model> extends Query_builder<T> {
       true,
       this.sqlDataSource,
     );
-    cb(nestedBuilder as unknown as Mysql_query_builder<T>);
+    cb(nestedBuilder as unknown as MysqlQueryBuilder<T>);
 
     let nestedCondition = nestedBuilder.whereQuery.trim();
     if (nestedCondition.startsWith("AND")) {
@@ -382,9 +378,9 @@ export class Mysql_query_builder<T extends Model> extends Query_builder<T> {
   }
 
   public andWhereBuilder(
-    cb: (queryBuilder: Mysql_query_builder<T>) => void,
+    cb: (queryBuilder: MysqlQueryBuilder<T>) => void,
   ): this {
-    const nestedBuilder = new Mysql_query_builder(
+    const nestedBuilder = new MysqlQueryBuilder(
       this.model as typeof Model,
       this.table,
       this.mysqlConnection,
@@ -392,7 +388,7 @@ export class Mysql_query_builder<T extends Model> extends Query_builder<T> {
       true,
       this.sqlDataSource,
     );
-    cb(nestedBuilder as unknown as Mysql_query_builder<T>);
+    cb(nestedBuilder as unknown as MysqlQueryBuilder<T>);
 
     let nestedCondition = nestedBuilder.whereQuery.trim();
     if (nestedCondition.startsWith("AND")) {
@@ -1252,6 +1248,11 @@ export class Mysql_query_builder<T extends Model> extends Query_builder<T> {
     return this;
   }
 
+  public groupByRaw(query: string): this {
+    this.groupByQuery = ` GROUP BY ${query}`;
+    return this;
+  }
+
   public orderBy(columns: SelectableType<T>[], order: "ASC" | "DESC"): this;
   public orderBy(columns: string[], order: "ASC" | "DESC"): this;
   public orderBy(
@@ -1259,6 +1260,11 @@ export class Mysql_query_builder<T extends Model> extends Query_builder<T> {
     order: "ASC" | "DESC",
   ): this {
     this.orderByQuery = this.selectTemplate.orderBy(columns as string[], order);
+    return this;
+  }
+
+  public orderByRaw(query: string): this {
+    this.orderByQuery = ` ORDER BY ${query}`;
     return this;
   }
 
@@ -1273,7 +1279,7 @@ export class Mysql_query_builder<T extends Model> extends Query_builder<T> {
   }
 
   public copy(): ModelQueryBuilder<T> {
-    const queryBuilder = new Mysql_query_builder<T>(
+    const queryBuilder = new MysqlQueryBuilder<T>(
       this.model as typeof Model,
       this.table,
       this.mysqlConnection,

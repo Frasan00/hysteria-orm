@@ -24,7 +24,7 @@ export async function migrationRollBackSql(): Promise<void> {
   try {
     log(BEGIN_TRANSACTION, true);
     await sqlConnection.beginTransaction();
-    const migrationTable: MigrationTableType[]  =
+    const migrationTable: MigrationTableType[] =
       await getMigrationTable(sqlConnection);
     const migrations: Migration[] = await getMigrations();
     const tableMigrations = migrationTable.map((migration) => migration.name);

@@ -12,7 +12,7 @@ import {
   SoftDeleteOptions,
 } from "../query_builder/delete_query_builder";
 
-export class Mysql_delete_query_builder<
+export class MysqlDeleteQueryBuilder<
   T extends Model,
 > extends ModelDeleteQueryBuilder<T> {
   protected sqlConnection: Connection;
@@ -118,7 +118,7 @@ export class Mysql_delete_query_builder<
     relationTable: string,
     primaryColumn: string,
     foreignColumn: string,
-  ): Mysql_delete_query_builder<T> {
+  ): MysqlDeleteQueryBuilder<T> {
     const join = joinTemplate(
       this.model,
       relationTable,
@@ -139,7 +139,7 @@ export class Mysql_delete_query_builder<
     relationTable: string,
     primaryColumn: string,
     foreignColumn: string,
-  ): Mysql_delete_query_builder<T> {
+  ): MysqlDeleteQueryBuilder<T> {
     const join = joinTemplate(
       this.model,
       relationTable,
@@ -155,9 +155,9 @@ export class Mysql_delete_query_builder<
    * @param cb
    */
   public whereBuilder(
-    cb: (queryBuilder: Mysql_delete_query_builder<T>) => void,
+    cb: (queryBuilder: MysqlDeleteQueryBuilder<T>) => void,
   ): this {
-    const queryBuilder = new Mysql_delete_query_builder(
+    const queryBuilder = new MysqlDeleteQueryBuilder(
       this.model as typeof Model,
       this.model.table,
       this.sqlConnection,
@@ -165,7 +165,7 @@ export class Mysql_delete_query_builder<
       true,
       this.sqlDataSource,
     );
-    cb(queryBuilder as unknown as Mysql_delete_query_builder<T>);
+    cb(queryBuilder as unknown as MysqlDeleteQueryBuilder<T>);
 
     let whereCondition = queryBuilder.whereQuery.trim();
     if (whereCondition.startsWith("AND")) {
@@ -193,9 +193,9 @@ export class Mysql_delete_query_builder<
    * @param cb Callback function that takes a query builder and adds conditions to it.
    */
   public orWhereBuilder(
-    cb: (queryBuilder: Mysql_delete_query_builder<T>) => void,
+    cb: (queryBuilder: MysqlDeleteQueryBuilder<T>) => void,
   ): this {
-    const nestedBuilder = new Mysql_delete_query_builder(
+    const nestedBuilder = new MysqlDeleteQueryBuilder(
       this.model as typeof Model,
       this.model.table,
       this.sqlConnection,
@@ -203,7 +203,7 @@ export class Mysql_delete_query_builder<
       true,
       this.sqlDataSource,
     );
-    cb(nestedBuilder as unknown as Mysql_delete_query_builder<T>);
+    cb(nestedBuilder as unknown as MysqlDeleteQueryBuilder<T>);
 
     let nestedCondition = nestedBuilder.whereQuery.trim();
     if (nestedCondition.startsWith("AND")) {
@@ -234,9 +234,9 @@ export class Mysql_delete_query_builder<
    * @param cb Callback function that takes a query builder and adds conditions to it.
    */
   public andWhereBuilder(
-    cb: (queryBuilder: Mysql_delete_query_builder<T>) => void,
+    cb: (queryBuilder: MysqlDeleteQueryBuilder<T>) => void,
   ): this {
-    const nestedBuilder = new Mysql_delete_query_builder(
+    const nestedBuilder = new MysqlDeleteQueryBuilder(
       this.model as typeof Model,
       this.model.table,
       this.sqlConnection,
@@ -244,7 +244,7 @@ export class Mysql_delete_query_builder<
       true,
       this.sqlDataSource,
     );
-    cb(nestedBuilder as unknown as Mysql_delete_query_builder<T>);
+    cb(nestedBuilder as unknown as MysqlDeleteQueryBuilder<T>);
 
     let nestedCondition = nestedBuilder.whereQuery.trim();
     if (nestedCondition.startsWith("AND")) {

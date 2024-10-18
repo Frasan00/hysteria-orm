@@ -24,19 +24,20 @@ import {
   RedisGiveable,
   RedisStorable,
 } from "./no_sql/redis/redis_data_source";
+// import { User } from "../test/sql/Models/User";
 
 // (async () => {
 //   const sql = await SqlDataSource.connect();
 
 //   const user = await User.insertMany([
 //     {
-//       name: "sqlite",
+//       name: "sqlite1",
 //       email: "user12",
 //       signupSource: "email",
 //       isActive: true,
 //     },
 //     {
-//       name: "sqlite",
+//       name: "sqlite2",
 //       email: "user13",
 //       signupSource: "email",
 //       isActive: true,

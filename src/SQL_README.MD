@@ -11,6 +11,7 @@
         - [use-connection](#use-connection)
     - [Create a Model](#create-a-model)
     - [Create a Model with Relationships](#create-a-model-with-relations-and-hooks)
+    - [UUID] (#model-with-uuid)
     - [Case Convention](#case-convention)
     - [Upsert](#Upsert-methods)
     - [Read (standard methods used for simple queries)](#read-standard-methods-used-for-simple-queries)
@@ -205,11 +206,10 @@ import "reflect-metadata";
 import { Model, Has_one, Has_many, column, hasOne, ModelQueryBuilder } from "hysteria-orm";
 import { Profile } from "./Profile";
 import { Post } from "./Post";
-import crypto from "crypto";
 
 export class User extends Model {
     @column({ primaryKey: true })
-    declare id: string;
+    declare id: number;
 
     @column()
     declare name: string;
@@ -245,10 +245,6 @@ export class User extends Model {
         queryBuilder.whereNull("deletedAt");
     }
 
-    static beforeInsert(data: User): void {
-        data.id = crypto.randomUUID();
-    }
-
     static async afterFetch(data: User[]): Promise<User[]> {
         if (!data.length) {
             return data;
@@ -261,6 +257,37 @@ export class User extends Model {
 
             return user;
         });
+    }
+}
+```
+
+### Model with uuid
+- All databases support uuid but there are some things to make them work
+
+##### UUID Model definition
+```typescript
+import "reflect-metadata";
+import { Model, Has_one, Has_many, column, hasOne, ModelQueryBuilder } from "hysteria-orm";
+import { Profile } from "./Profile";
+import { Post } from "./Post";
+import crypto from "crypto";
+
+export class User extends Model {
+    @column({ primaryKey: true })
+    declare id: string;
+
+    @column()
+    declare createdAt: DateTime;
+
+    // It's suggested to add a precise retrieve order in the queries or in the hooks
+    static beforeFetch(queryBuilder: ModelQueryBuilder<User>) {
+        queryBuilder.orderBy(["createdAt"], "ASC");
+    }
+
+    // UUIDs must be created prior to database interaction using the beforeInsert hook
+    // insert and insertMany function naturally return the created records in creation order
+    static beforeInsert(data: User): void {
+        data.id = crypto.randomUUID();
     }
 }
 ```

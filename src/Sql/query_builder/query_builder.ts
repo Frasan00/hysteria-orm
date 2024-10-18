@@ -4,8 +4,9 @@ import whereTemplate, {
   BaseValues,
   WhereOperatorType,
 } from "../resources/query/WHERE.TS";
-import { Mysql_query_builder } from "../mysql/mysql_query_builder";
-import { Postgres_query_builder } from "../postgres/postgres_query_builder";
+import { MysqlQueryBuilder } from "../mysql/mysql_query_builder";
+import { PostgresQueryBuilder } from "../postgres/postgres_query_builder";
+import { SqlLiteQueryBuilder } from "../sqlite/sql_lite_query_builder";
 import { PaginatedData } from "../pagination";
 import {
   DynamicColumnType,
@@ -13,7 +14,6 @@ import {
   SelectableType,
 } from "../models/model_manager/model_manager_types";
 import { SqlDataSource } from "../sql_data_source";
-import { Sql_lite_query_builder } from "../sqlite/sql_lite_query_builder";
 import { convertCase } from "../../case_utils";
 import { getModelColumns } from "../models/model_decorators";
 import { addDynamicColumnsToModel } from "../serializer";
@@ -22,9 +22,9 @@ import { addDynamicColumnsToModel } from "../serializer";
  * @description The abstract class for query builders for selecting data.
  */
 export type ModelQueryBuilder<T extends Model> =
-  | Mysql_query_builder<T>
-  | Postgres_query_builder<T>
-  | Sql_lite_query_builder<T>;
+  | MysqlQueryBuilder<T>
+  | PostgresQueryBuilder<T>
+  | SqlLiteQueryBuilder<T>;
 
 export type FetchHooks = "beforeFetch" | "afterFetch";
 
@@ -37,7 +37,7 @@ export type ManyOptions = {
   ignoreHooks?: FetchHooks[];
 };
 
-export abstract class Query_builder<T extends Model> {
+export abstract class QueryBuilder<T extends Model> {
   protected sqlDataSource: SqlDataSource;
   protected selectQuery: string;
   protected joinQuery: string;
@@ -624,6 +624,13 @@ export abstract class Query_builder<T extends Model> {
   ): ModelQueryBuilder<T>;
 
   /**
+   * @description Adds a raw GROUP BY condition to the query, only one raw GROUP BY condition is stackable, the last one will be used.
+   * @param query - The raw SQL GROUP BY condition.
+   * @returns The Mysql_query_builder instance for chaining.
+   */
+  public abstract groupByRaw(query: string): ModelQueryBuilder<T>;
+
+  /**
    * @description Adds ORDER BY conditions to the query.
    * @param column - The column to order by.
    * @param order - The order direction, either "ASC" or "DESC".
@@ -641,6 +648,13 @@ export abstract class Query_builder<T extends Model> {
     columns: (SelectableType<T> | string)[],
     order: "ASC" | "DESC",
   ): ModelQueryBuilder<T>;
+
+  /**
+   * @description Adds a raw ORDER BY condition to the query, only one raw ORDER BY condition is stackable, the last one will be used.
+   * @param query - The raw SQL ORDER BY condition.
+   * @returns The Mysql_query_builder instance for chaining.
+   */
+  public abstract orderByRaw(query: string): ModelQueryBuilder<T>;
 
   /**
    * @description Adds a LIMIT condition to the query.

@@ -3,7 +3,7 @@ import { log, queryError } from "../../logger";
 import { BaseValues, WhereOperatorType } from "../resources/query/WHERE.TS";
 import {
   OneOptions,
-  Query_builder,
+  QueryBuilder,
   ModelQueryBuilder,
   ManyOptions,
 } from "../query_builder/query_builder";
@@ -20,7 +20,7 @@ import { convertCase } from "../../case_utils";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
 import sqlite3 from "sqlite3";
 
-export class Sql_lite_query_builder<T extends Model> extends Query_builder<T> {
+export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
   protected sqLiteConnection: sqlite3.Database;
   protected isNestedCondition = false;
   protected sqliteModelManagerUtils: SqlModelManagerUtils<T>;
@@ -254,13 +254,13 @@ export class Sql_lite_query_builder<T extends Model> extends Query_builder<T> {
   }
 
   // SELECT
-  public select(...columns: string[]): Sql_lite_query_builder<T>;
+  public select(...columns: string[]): SqlLiteQueryBuilder<T>;
   public select(
     ...columns: (SelectableType<T> | "*")[]
-  ): Sql_lite_query_builder<T>;
+  ): SqlLiteQueryBuilder<T>;
   public select(
     ...columns: (SelectableType<T> | "*" | string)[]
-  ): Sql_lite_query_builder<T> {
+  ): SqlLiteQueryBuilder<T> {
     this.selectQuery = this.selectTemplate.selectColumns(
       ...(columns as string[]),
     );
@@ -271,7 +271,7 @@ export class Sql_lite_query_builder<T extends Model> extends Query_builder<T> {
     relationTable: string,
     primaryColumn: string,
     foreignColumn: string,
-  ): Sql_lite_query_builder<T> {
+  ): SqlLiteQueryBuilder<T> {
     const join = joinTemplate(
       this.model,
       relationTable,
@@ -286,7 +286,7 @@ export class Sql_lite_query_builder<T extends Model> extends Query_builder<T> {
     relationTable: string,
     primaryColumn: string,
     foreignColumn: string,
-  ): Sql_lite_query_builder<T> {
+  ): SqlLiteQueryBuilder<T> {
     const join = joinTemplate(
       this.model,
       relationTable,
@@ -297,7 +297,7 @@ export class Sql_lite_query_builder<T extends Model> extends Query_builder<T> {
     return this;
   }
 
-  public addRelations(relations: RelationType<T>[]): Sql_lite_query_builder<T> {
+  public addRelations(relations: RelationType<T>[]): SqlLiteQueryBuilder<T> {
     this.relations = relations as string[];
     return this;
   }
@@ -310,9 +310,9 @@ export class Sql_lite_query_builder<T extends Model> extends Query_builder<T> {
   }
 
   public whereBuilder(
-    cb: (queryBuilder: Sql_lite_query_builder<T>) => void,
+    cb: (queryBuilder: SqlLiteQueryBuilder<T>) => void,
   ): this {
-    const queryBuilder = new Sql_lite_query_builder(
+    const queryBuilder = new SqlLiteQueryBuilder(
       this.model as typeof Model,
       this.table,
       this.sqLiteConnection,
@@ -320,7 +320,7 @@ export class Sql_lite_query_builder<T extends Model> extends Query_builder<T> {
       true,
       this.sqlDataSource,
     );
-    cb(queryBuilder as unknown as Sql_lite_query_builder<T>);
+    cb(queryBuilder as unknown as SqlLiteQueryBuilder<T>);
 
     let whereCondition = queryBuilder.whereQuery.trim();
     if (whereCondition.startsWith("AND")) {
@@ -344,9 +344,9 @@ export class Sql_lite_query_builder<T extends Model> extends Query_builder<T> {
   }
 
   public orWhereBuilder(
-    cb: (queryBuilder: Sql_lite_query_builder<T>) => void,
+    cb: (queryBuilder: SqlLiteQueryBuilder<T>) => void,
   ): this {
-    const nestedBuilder = new Sql_lite_query_builder(
+    const nestedBuilder = new SqlLiteQueryBuilder(
       this.model as typeof Model,
       this.table,
       this.sqLiteConnection,
@@ -354,7 +354,7 @@ export class Sql_lite_query_builder<T extends Model> extends Query_builder<T> {
       true,
       this.sqlDataSource,
     );
-    cb(nestedBuilder as unknown as Sql_lite_query_builder<T>);
+    cb(nestedBuilder as unknown as SqlLiteQueryBuilder<T>);
 
     let nestedCondition = nestedBuilder.whereQuery.trim();
     if (nestedCondition.startsWith("AND")) {
@@ -381,9 +381,9 @@ export class Sql_lite_query_builder<T extends Model> extends Query_builder<T> {
   }
 
   public andWhereBuilder(
-    cb: (queryBuilder: Sql_lite_query_builder<T>) => void,
+    cb: (queryBuilder: SqlLiteQueryBuilder<T>) => void,
   ): this {
-    const nestedBuilder = new Sql_lite_query_builder(
+    const nestedBuilder = new SqlLiteQueryBuilder(
       this.model as typeof Model,
       this.table,
       this.sqLiteConnection,
@@ -391,7 +391,7 @@ export class Sql_lite_query_builder<T extends Model> extends Query_builder<T> {
       true,
       this.sqlDataSource,
     );
-    cb(nestedBuilder as unknown as Sql_lite_query_builder<T>);
+    cb(nestedBuilder as unknown as SqlLiteQueryBuilder<T>);
 
     let nestedCondition = nestedBuilder.whereQuery.trim();
     if (nestedCondition.startsWith("AND")) {
@@ -1251,6 +1251,11 @@ export class Sql_lite_query_builder<T extends Model> extends Query_builder<T> {
     return this;
   }
 
+  public groupByRaw(query: string): this {
+    this.groupByQuery = ` GROUP BY ${query}`;
+    return this;
+  }
+
   public orderBy(columns: SelectableType<T>[], order: "ASC" | "DESC"): this;
   public orderBy(columns: string[], order: "ASC" | "DESC"): this;
   public orderBy(
@@ -1258,6 +1263,11 @@ export class Sql_lite_query_builder<T extends Model> extends Query_builder<T> {
     order: "ASC" | "DESC",
   ): this {
     this.orderByQuery = this.selectTemplate.orderBy(columns as string[], order);
+    return this;
+  }
+
+  public orderByRaw(query: string): this {
+    this.orderByQuery = ` ORDER BY ${query}`;
     return this;
   }
 
@@ -1272,7 +1282,7 @@ export class Sql_lite_query_builder<T extends Model> extends Query_builder<T> {
   }
 
   public copy(): ModelQueryBuilder<T> {
-    const queryBuilder = new Sql_lite_query_builder<T>(
+    const queryBuilder = new SqlLiteQueryBuilder<T>(
       this.model as typeof Model,
       this.table,
       this.sqLiteConnection,

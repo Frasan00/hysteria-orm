@@ -2,7 +2,7 @@ import dotenv from "dotenv";
 import createTableTemplate from "../../resources/migrations/CREATE_TABLE";
 import ColumnBuilderConnector from "../columns/create_table/column_builder_connector";
 import dropTableTemplate from "../../resources/migrations/DROP_TABLE";
-import Column_builder_alter from "../columns/alter_table/column_builder_alter";
+import ColumnBuilderAlter from "../columns/alter_table/column_builder_alter";
 import { SqlDataSourceType } from "../../../datasource";
 
 dotenv.config();
@@ -46,10 +46,10 @@ export default class Schema {
   /**
    * @description Alter table
    * @param table
-   * @returns Column_builder_alter
+   * @returns ColumnBuilderAlter
    */
   public alterTable(table: string) {
-    return new Column_builder_alter(
+    return new ColumnBuilderAlter(
       table,
       this.queryStatements,
       "",

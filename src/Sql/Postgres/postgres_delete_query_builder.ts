@@ -12,7 +12,7 @@ import {
   SoftDeleteOptions,
 } from "../query_builder/delete_query_builder";
 
-export class Postgres_delete_query_builder<
+export class PostgresDeleteQueryBuilder<
   T extends Model,
 > extends ModelDeleteQueryBuilder<T> {
   protected sqlConnection: Client;
@@ -116,7 +116,7 @@ export class Postgres_delete_query_builder<
     relationTable: string,
     primaryColumn: string,
     foreignColumn: string,
-  ): Postgres_delete_query_builder<T> {
+  ): PostgresDeleteQueryBuilder<T> {
     const join = joinTemplate(
       this.model,
       relationTable,
@@ -137,7 +137,7 @@ export class Postgres_delete_query_builder<
     relationTable: string,
     primaryColumn: string,
     foreignColumn: string,
-  ): Postgres_delete_query_builder<T> {
+  ): PostgresDeleteQueryBuilder<T> {
     const join = joinTemplate(
       this.model,
       relationTable,
@@ -153,9 +153,9 @@ export class Postgres_delete_query_builder<
    * @param cb
    */
   public whereBuilder(
-    cb: (queryBuilder: Postgres_delete_query_builder<T>) => void,
+    cb: (queryBuilder: PostgresDeleteQueryBuilder<T>) => void,
   ): this {
-    const queryBuilder = new Postgres_delete_query_builder(
+    const queryBuilder = new PostgresDeleteQueryBuilder(
       this.model as typeof Model,
       this.table,
       this.sqlConnection,
@@ -163,7 +163,7 @@ export class Postgres_delete_query_builder<
       true,
       this.sqlDataSource,
     );
-    cb(queryBuilder as unknown as Postgres_delete_query_builder<T>);
+    cb(queryBuilder as unknown as PostgresDeleteQueryBuilder<T>);
 
     let whereCondition = queryBuilder.whereQuery.trim();
     if (whereCondition.startsWith("AND")) {
@@ -191,9 +191,9 @@ export class Postgres_delete_query_builder<
    * @param cb Callback function that takes a query builder and adds conditions to it.
    */
   public orWhereBuilder(
-    cb: (queryBuilder: Postgres_delete_query_builder<T>) => void,
+    cb: (queryBuilder: PostgresDeleteQueryBuilder<T>) => void,
   ): this {
-    const nestedBuilder = new Postgres_delete_query_builder(
+    const nestedBuilder = new PostgresDeleteQueryBuilder(
       this.model as typeof Model,
       this.table,
       this.sqlConnection,
@@ -201,7 +201,7 @@ export class Postgres_delete_query_builder<
       true,
       this.sqlDataSource,
     );
-    cb(nestedBuilder as unknown as Postgres_delete_query_builder<T>);
+    cb(nestedBuilder as unknown as PostgresDeleteQueryBuilder<T>);
 
     let nestedCondition = nestedBuilder.whereQuery.trim();
     if (nestedCondition.startsWith("AND")) {
@@ -232,9 +232,9 @@ export class Postgres_delete_query_builder<
    * @param cb Callback function that takes a query builder and adds conditions to it.
    */
   public andWhereBuilder(
-    cb: (queryBuilder: Postgres_delete_query_builder<T>) => void,
+    cb: (queryBuilder: PostgresDeleteQueryBuilder<T>) => void,
   ): this {
-    const nestedBuilder = new Postgres_delete_query_builder(
+    const nestedBuilder = new PostgresDeleteQueryBuilder(
       this.model as typeof Model,
       this.table,
       this.sqlConnection,
@@ -242,7 +242,7 @@ export class Postgres_delete_query_builder<
       true,
       this.sqlDataSource,
     );
-    cb(nestedBuilder as unknown as Postgres_delete_query_builder<T>);
+    cb(nestedBuilder as unknown as PostgresDeleteQueryBuilder<T>);
 
     let nestedCondition = nestedBuilder.whereQuery.trim();
     if (nestedCondition.startsWith("AND")) {

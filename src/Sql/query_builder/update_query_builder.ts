@@ -1,5 +1,5 @@
 import { Model } from "../models/model";
-import { Where_query_builder } from "./where_query_builder";
+import { WhereQueryBuilder } from "./where_query_builder";
 import updateTemplate from "../resources/query/UPDATE";
 import { SqlConnectionType } from "../sql_data_source";
 
@@ -9,7 +9,7 @@ export type WithDataOptions = {
 
 export abstract class ModelUpdateQueryBuilder<
   T extends Model,
-> extends Where_query_builder<T> {
+> extends WhereQueryBuilder<T> {
   protected abstract sqlConnection: SqlConnectionType;
   protected abstract joinQuery: string;
   protected abstract updateTemplate: ReturnType<typeof updateTemplate>;

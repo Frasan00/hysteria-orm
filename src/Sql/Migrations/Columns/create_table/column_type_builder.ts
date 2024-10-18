@@ -549,7 +549,7 @@ export default class ColumnTypeBuilder {
 
     if (this.sqlType === `sqlite`) {
       this.columnName = name;
-      this.partialQuery += `${name} INTEGER AUTOINCREMENT`;
+      this.partialQuery += `${name} INTEGER PRIMARY KEY AUTOINCREMENT`;
       return new ColumnOptionsBuilder(
         this.table,
         this.queryStatements,
@@ -571,7 +571,7 @@ export default class ColumnTypeBuilder {
   }
 
   /**
-   * @description If not using postgres, it will automatically be converted in BIGINT AUTO_INCREMENT
+   * @description If using mysql, it will automatically be converted in BIGINT AUTO_INCREMENT
    * @description If using sqlite, it will automatically be converted in INTEGER PRIMARY KEY AUTOINCREMENT
    * @param name
    */
@@ -929,10 +929,7 @@ export default class ColumnTypeBuilder {
     );
   }
 
-  public timestamp(
-    name: string,
-    options?: DateOptions,
-  ): ColumnOptionsBuilder {
+  public timestamp(name: string, options?: DateOptions): ColumnOptionsBuilder {
     if (this.sqlType === "sqlite") {
       logger.warn(
         "sqlite does not support timestamp columns, using text instead",
