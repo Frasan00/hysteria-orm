@@ -1,7 +1,7 @@
 import { SqlDataSourceType } from "../../../../datasource";
-import Column_type_builder from "./column_type_builder";
+import ColumnTypeBuilder from "./column_type_builder";
 
-export default class Column_builder_connector {
+export default class ColumnBuilderConnector {
   protected table: string;
   protected queryStatements: string[];
   protected partialQuery: string;
@@ -19,8 +19,8 @@ export default class Column_builder_connector {
     this.sqlType = sqlType;
   }
 
-  public newColumn(): Column_type_builder {
-    return new Column_type_builder(
+  public newColumn(): ColumnTypeBuilder {
+    return new ColumnTypeBuilder(
       this.table,
       this.queryStatements,
       this.partialQuery,

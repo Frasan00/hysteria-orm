@@ -2,9 +2,9 @@
 
 import dotenv from "dotenv";
 import { log } from "console";
-import { Migration_table_type } from "../resources/migration_table_type";
+import { MigrationTableType } from "../resources/migration_table_type";
 import { Migration } from "../../sql/migrations/migration";
-import { Migration_controller } from "../../sql/migrations/migration_controller";
+import { MigrationController } from "../../sql/migrations/migration_controller";
 import {
   BEGIN_TRANSACTION,
   COMMIT_TRANSACTION,
@@ -26,7 +26,7 @@ export async function migrationRollBackSqlite(): Promise<void> {
   const sqlConnection = sql.getCurrentConnection() as sqlite3.Database;
 
   try {
-    const migrationTable: Migration_table_type[] =
+    const migrationTable: MigrationTableType[]  =
       (await getMigrationTable(sqlConnection)) || [];
     const migrations: Migration[] = await getMigrations();
 
@@ -41,7 +41,7 @@ export async function migrationRollBackSqlite(): Promise<void> {
       process.exit(0);
     }
 
-    const migrationController = new Migration_controller(
+    const migrationController = new MigrationController(
       sql,
       sqlConnection,
       "sqlite",

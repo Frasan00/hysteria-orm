@@ -2,10 +2,10 @@
 
 import dotenv from "dotenv";
 import * as mysql2 from "mysql2/promise";
-import { Migration_table_type } from "../resources/migration_table_type";
+import { MigrationTableType } from "../resources/migration_table_type";
 import { log } from "console";
 import { Migration } from "../../sql/migrations/migration";
-import { Migration_controller } from "../../sql/migrations/migration_controller";
+import { MigrationController } from "../../sql/migrations/migration_controller";
 import {
   BEGIN_TRANSACTION,
   COMMIT_TRANSACTION,
@@ -23,7 +23,7 @@ export async function runMigrationsSql(): Promise<void> {
   try {
     log(BEGIN_TRANSACTION, true);
     await sqlConnection.beginTransaction();
-    const migrationTable: Migration_table_type[] = await getMigrationTable(
+    const migrationTable: MigrationTableType[]  = await getMigrationTable(
       sqlConnection as mysql2.Connection,
     );
     const migrations: Migration[] = await getMigrations();
@@ -40,7 +40,7 @@ export async function runMigrationsSql(): Promise<void> {
       process.exit(0);
     }
 
-    const migrationController = new Migration_controller(
+    const migrationController = new MigrationController(
       sql,
       sqlConnection as mysql2.Connection,
       "mysql",

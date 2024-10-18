@@ -34,7 +34,7 @@ declare abstract class Datasource {
     protected handleSqlSource(input?: DataSourceInput): void;
 }
 
-declare class Column_options_builder {
+declare class ColumnOptionsBuilder {
     protected table: string;
     protected queryStatements: string[];
     protected partialQuery: string;
@@ -55,28 +55,28 @@ declare class Column_options_builder {
     /**
      * @description Makes the column nullable
      */
-    nullable(): Column_options_builder;
-    default(value: string | number | boolean): Column_options_builder;
+    nullable(): ColumnOptionsBuilder;
+    default(value: string | number | boolean): ColumnOptionsBuilder;
     /**
      * @description Makes the column unsigned allowing only positive values
      */
-    unsigned(): Column_options_builder;
+    unsigned(): ColumnOptionsBuilder;
     /**
      * @description Makes the column not nullable
      */
-    notNullable(): Column_options_builder;
+    notNullable(): ColumnOptionsBuilder;
     /**
      * @description Makes the column the primary key
      */
-    primary(): Column_options_builder;
+    primary(): ColumnOptionsBuilder;
     /**
      * @description Adds an unique constraint
      */
-    unique(): Column_options_builder;
+    unique(): ColumnOptionsBuilder;
     /**
      * @description Adds an auto increment - only for mysql
      */
-    autoIncrement(): Column_options_builder;
+    autoIncrement(): ColumnOptionsBuilder;
     /**
      * @description Adds a foreign key with a specific constraint
      * @param table
@@ -85,11 +85,11 @@ declare class Column_options_builder {
     references(table: string, column: string, options?: {
         onDelete: string;
         onUpdate: string;
-    }): Column_options_builder;
+    }): ColumnOptionsBuilder;
     /**
      * @description Chains a new column creation
      */
-    newColumn(): Column_type_builder;
+    newColumn(): ColumnTypeBuilder;
     /**
      * @description Commits the column creation - if omitted, the migration will be run empty
      */
@@ -100,80 +100,80 @@ type DateOptions = {
     autoCreate?: boolean;
     autoUpdate?: boolean;
 };
-declare class Column_type_builder {
+declare class ColumnTypeBuilder {
     protected table: string;
     protected queryStatements: string[];
     protected columnName: string;
     protected sqlType: SqlDataSourceType$1;
     partialQuery: string;
     constructor(table: string, queryStatements: string[], partialQuery: string, sqlType: SqlDataSourceType$1);
-    string(name: string, length?: number): Column_options_builder;
-    varchar(name: string, length?: number): Column_options_builder;
-    uuid(name: string): Column_options_builder;
-    tinytext(name: string): Column_options_builder;
-    mediumtext(name: string): Column_options_builder;
-    longtext(name: string): Column_options_builder;
-    binary(name: string, length?: number): Column_options_builder;
-    enum(name: string, values: string[]): Column_options_builder;
-    text(name: string): Column_options_builder;
-    char(name: string, length?: number): Column_options_builder;
-    tinyint(name: string): Column_options_builder;
-    smallint(name: string): Column_options_builder;
-    mediumint(name: string): Column_options_builder;
+    string(name: string, length?: number): ColumnOptionsBuilder;
+    varchar(name: string, length?: number): ColumnOptionsBuilder;
+    uuid(name: string): ColumnOptionsBuilder;
+    tinytext(name: string): ColumnOptionsBuilder;
+    mediumtext(name: string): ColumnOptionsBuilder;
+    longtext(name: string): ColumnOptionsBuilder;
+    binary(name: string, length?: number): ColumnOptionsBuilder;
+    enum(name: string, values: string[]): ColumnOptionsBuilder;
+    text(name: string): ColumnOptionsBuilder;
+    char(name: string, length?: number): ColumnOptionsBuilder;
+    tinyint(name: string): ColumnOptionsBuilder;
+    smallint(name: string): ColumnOptionsBuilder;
+    mediumint(name: string): ColumnOptionsBuilder;
     /**
      * @description If using mysql, it will automatically add INT AUTO_INCREMENT
      * @param name
      */
-    serial(name: string): Column_options_builder;
+    serial(name: string): ColumnOptionsBuilder;
     /**
      * @description If not using postgres, it will automatically be converted in BIGINT AUTO_INCREMENT
      * @description If using sqlite, it will automatically be converted in INTEGER PRIMARY KEY AUTOINCREMENT
      * @param name
      */
-    bigSerial(name: string): Column_options_builder;
-    integer(name: string, length?: number): Column_options_builder;
-    bigInteger(name: string): Column_options_builder;
+    bigSerial(name: string): ColumnOptionsBuilder;
+    integer(name: string, length?: number): ColumnOptionsBuilder;
+    bigInteger(name: string): ColumnOptionsBuilder;
     /**
      * @description Alias for integer
      * @param name
-     * @returns Column_options_builder
+     * @returns ColumnOptionsBuilder
      */
-    int(name: string): Column_options_builder;
+    int(name: string): ColumnOptionsBuilder;
     /**
      * @description Alias for bigInteger
      * @param name
-     * @returns Column_options_builder
+     * @returns ColumnOptionsBuilder
      */
-    bigint(name: string): Column_options_builder;
+    bigint(name: string): ColumnOptionsBuilder;
     float(name: string, options?: {
         precision: number;
         scale: number;
-    }): Column_options_builder;
+    }): ColumnOptionsBuilder;
     decimal(name: string, options?: {
         precision: number;
         scale: number;
-    }): Column_options_builder;
+    }): ColumnOptionsBuilder;
     double(name: string, options?: {
         precision: number;
         scale: number;
-    }): Column_options_builder;
-    boolean(name: string): Column_options_builder;
-    date(name: string, options?: DateOptions): Column_options_builder;
-    timestamp(name: string, options?: DateOptions): Column_options_builder;
+    }): ColumnOptionsBuilder;
+    boolean(name: string): ColumnOptionsBuilder;
+    date(name: string, options?: DateOptions): ColumnOptionsBuilder;
+    timestamp(name: string, options?: DateOptions): ColumnOptionsBuilder;
     /**
      * @description EXPERIMENTAL
      * @param name
      */
-    jsonb(name: string): Column_options_builder;
+    jsonb(name: string): ColumnOptionsBuilder;
 }
 
-declare class Column_builder_connector {
+declare class ColumnBuilderConnector {
     protected table: string;
     protected queryStatements: string[];
     protected partialQuery: string;
     protected sqlType: SqlDataSourceType$1;
     constructor(table: string, queryStatements: string[], partialQuery: string, sqlType: SqlDataSourceType$1);
-    newColumn(): Column_type_builder;
+    newColumn(): ColumnTypeBuilder;
 }
 
 type References = {
@@ -291,7 +291,7 @@ declare class Schema {
     rawQuery(query: string): void;
     createTable(table: string, options?: {
         ifNotExists?: boolean;
-    }): Column_builder_connector;
+    }): ColumnBuilderConnector;
     /**
      * @description Alter table
      * @param table

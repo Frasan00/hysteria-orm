@@ -6,7 +6,7 @@ import { SqlDataSource } from "../sql_data_source";
 import sqlite3 from "sqlite3";
 import { SqlDataSourceType } from "../../datasource";
 
-export class Migration_controller {
+export class MigrationController {
   protected sqlDataSource: SqlDataSource;
   protected sqlConnection: Connection | Client | sqlite3.Database;
   private sqlType: SqlDataSourceType;

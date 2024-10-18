@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
 import dotenv from "dotenv";
-import { Migration_table_type } from "../resources/migration_table_type";
+import { MigrationTableType } from "../resources/migration_table_type";
 import { log } from "console";
 import { Migration } from "../../sql/migrations/migration";
-import { Migration_controller } from "../../sql/migrations/migration_controller";
+import { MigrationController } from "../../sql/migrations/migration_controller";
 import {
   BEGIN_TRANSACTION,
   COMMIT_TRANSACTION,
@@ -24,7 +24,7 @@ export async function migrationRollBackSql(): Promise<void> {
   try {
     log(BEGIN_TRANSACTION, true);
     await sqlConnection.beginTransaction();
-    const migrationTable: Migration_table_type[] =
+    const migrationTable: MigrationTableType[]  =
       await getMigrationTable(sqlConnection);
     const migrations: Migration[] = await getMigrations();
     const tableMigrations = migrationTable.map((migration) => migration.name);
@@ -38,7 +38,7 @@ export async function migrationRollBackSql(): Promise<void> {
       process.exit(0);
     }
 
-    const migrationController: Migration_controller = new Migration_controller(
+    const migrationController: MigrationController = new MigrationController(
       sql,
       sqlConnection,
       "mysql",

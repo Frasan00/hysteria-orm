@@ -1,4 +1,4 @@
-export interface Migration_table_type {
+export interface MigrationTableType {
   id: number;
   name: string;
   timestamp: Date;

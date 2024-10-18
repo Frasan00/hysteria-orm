@@ -1,7 +1,7 @@
 import { SqlDataSourceType } from "../../../../datasource";
-import Column_type_builder from "./column_type_builder";
+import ColumnTypeBuilder from "./column_type_builder";
 
-export default class Column_options_builder {
+export default class ColumnOptionsBuilder {
   protected table: string;
   protected queryStatements: string[];
   protected partialQuery: string;
@@ -38,9 +38,9 @@ export default class Column_options_builder {
   /**
    * @description Makes the column nullable
    */
-  public nullable(): Column_options_builder {
+  public nullable(): ColumnOptionsBuilder {
     this.partialQuery += " NULL";
-    return new Column_options_builder(
+    return new ColumnOptionsBuilder(
       this.table,
       this.queryStatements,
       this.partialQuery,
@@ -50,9 +50,9 @@ export default class Column_options_builder {
     );
   }
 
-  public default(value: string | number | boolean): Column_options_builder {
+  public default(value: string | number | boolean): ColumnOptionsBuilder {
     this.partialQuery += ` DEFAULT ${value}`;
-    return new Column_options_builder(
+    return new ColumnOptionsBuilder(
       this.table,
       this.queryStatements,
       this.partialQuery,
@@ -65,9 +65,9 @@ export default class Column_options_builder {
   /**
    * @description Makes the column unsigned allowing only positive values
    */
-  public unsigned(): Column_options_builder {
+  public unsigned(): ColumnOptionsBuilder {
     this.partialQuery += " UNSIGNED";
-    return new Column_options_builder(
+    return new ColumnOptionsBuilder(
       this.table,
       this.queryStatements,
       this.partialQuery,
@@ -80,9 +80,9 @@ export default class Column_options_builder {
   /**
    * @description Makes the column not nullable
    */
-  public notNullable(): Column_options_builder {
+  public notNullable(): ColumnOptionsBuilder {
     this.partialQuery += " NOT NULL";
-    return new Column_options_builder(
+    return new ColumnOptionsBuilder(
       this.table,
       this.queryStatements,
       this.partialQuery,
@@ -95,9 +95,9 @@ export default class Column_options_builder {
   /**
    * @description Makes the column the primary key
    */
-  public primary(): Column_options_builder {
+  public primary(): ColumnOptionsBuilder {
     this.partialQuery += " PRIMARY KEY";
-    return new Column_options_builder(
+    return new ColumnOptionsBuilder(
       this.table,
       this.queryStatements,
       this.partialQuery,
@@ -110,9 +110,9 @@ export default class Column_options_builder {
   /**
    * @description Adds an unique constraint
    */
-  public unique(): Column_options_builder {
+  public unique(): ColumnOptionsBuilder {
     this.partialQuery += " UNIQUE";
-    return new Column_options_builder(
+    return new ColumnOptionsBuilder(
       this.table,
       this.queryStatements,
       this.partialQuery,
@@ -125,12 +125,12 @@ export default class Column_options_builder {
   /**
    * @description Adds an auto increment - only for mysql
    */
-  public autoIncrement(): Column_options_builder {
+  public autoIncrement(): ColumnOptionsBuilder {
     switch (this.sqlType) {
       case "mysql":
       case "mariadb":
         this.partialQuery += " AUTO_INCREMENT";
-        return new Column_options_builder(
+        return new ColumnOptionsBuilder(
           this.table,
           this.queryStatements,
           this.partialQuery,
@@ -155,14 +155,14 @@ export default class Column_options_builder {
     table: string,
     column: string,
     options?: { onDelete: string; onUpdate: string },
-  ): Column_options_builder {
+  ): ColumnOptionsBuilder {
     this.columnReferences?.push({
       table,
       column,
       onDelete: options?.onDelete,
       onUpdate: options?.onUpdate,
     });
-    return new Column_options_builder(
+    return new ColumnOptionsBuilder(
       this.table,
       this.queryStatements,
       this.partialQuery,
@@ -175,9 +175,9 @@ export default class Column_options_builder {
   /**
    * @description Chains a new column creation
    */
-  public newColumn(): Column_type_builder {
+  public newColumn(): ColumnTypeBuilder {
     this.partialQuery += ",\n";
-    return new Column_type_builder(
+    return new ColumnTypeBuilder(
       this.table,
       this.queryStatements,
       this.partialQuery,

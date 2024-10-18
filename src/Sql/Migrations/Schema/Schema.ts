@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
 import createTableTemplate from "../../resources/migrations/CREATE_TABLE";
-import Column_builder_connector from "../columns/create_table/column_builder_connector";
+import ColumnBuilderConnector from "../columns/create_table/column_builder_connector";
 import dropTableTemplate from "../../resources/migrations/DROP_TABLE";
 import Column_builder_alter from "../columns/alter_table/column_builder_alter";
 import { SqlDataSourceType } from "../../../datasource";
@@ -29,13 +29,13 @@ export default class Schema {
   public createTable(
     table: string,
     options?: { ifNotExists?: boolean },
-  ): Column_builder_connector {
+  ): ColumnBuilderConnector {
     const partialQuery =
       options && options.ifNotExists
         ? createTableTemplate.createTableIfNotExists(table, this.sqlType)
         : createTableTemplate.createTable(table, this.sqlType);
 
-    return new Column_builder_connector(
+    return new ColumnBuilderConnector(
       table,
       this.queryStatements,
       partialQuery,

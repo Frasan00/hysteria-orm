@@ -14,9 +14,9 @@ dotenv.config();
 
 export async function getMigrationTable(
   sqlConnection: SqlConnectionType,
-): Promise<Migration_table_type[]> {
+): Promise<MigrationTableType[] > {
   switch (process.env.DB_TYPE) {
-    case "mariaDb":
+    case "mariadb":
     case "mysql":
       const mysqlConnection = sqlConnection as mysql.Connection;
       log(MigrationTemplates.migrationTableTemplateMysql(), true);
@@ -27,7 +27,7 @@ export async function getMigrationTable(
       const result = await mysqlConnection.query(
         MigrationTemplates.selectAllFromMigrationsTemplate(),
       );
-      return result[0] as Migration_table_type[];
+      return result[0] as MigrationTableType[] ;
 
     case "postgres":
       const pgConnection = sqlConnection as pg.Client;
@@ -37,7 +37,7 @@ export async function getMigrationTable(
       const pgResult = await pgConnection.query(
         MigrationTemplates.selectAllFromMigrationsTemplate(),
       );
-      return pgResult.rows as Migration_table_type[];
+      return pgResult.rows as MigrationTableType[] ;
 
     case "sqlite":
       log(MigrationTemplates.migrationTableTemplateSQLite(), true);
@@ -48,7 +48,7 @@ export async function getMigrationTable(
       );
       log(MigrationTemplates.migrationTableTemplateSQLite(), true);
       const resultSqlite =
-        (await promisifySqliteQuery<Migration_table_type[]>(
+        (await promisifySqliteQuery<MigrationTableType[] >(
           MigrationTemplates.selectAllFromMigrationsTemplate(),
           [],
           sqlConnection as sqlite3.Database,
@@ -76,7 +76,7 @@ export async function getMigrations(): Promise<Migration[]> {
 
 export function getPendingMigrations(
   migrations: Migration[],
-  migrationTable: Migration_table_type[],
+  migrationTable: MigrationTableType[] ,
 ): Migration[] {
   return migrations.filter((migration) => {
     const migrationName = migration.migrationName;
