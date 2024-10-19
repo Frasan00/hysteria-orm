@@ -1,16 +1,12 @@
-import { User } from "../Models/User";
-import { Post } from "../Models/Post";
+import { User } from "../../User";
+import { Post } from "../../Post";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
 
 let sql: SqlDataSource;
 beforeAll(async () => {
   sql = await SqlDataSource.connect({
-    type: "mariadb",
-    database: "test",
-    username: "root",
-    password: "root",
-    host: "localhost",
-    port: 3307,
+    type: "sqlite",
+    database: "sqlite.db",
     logs: true,
   });
 });

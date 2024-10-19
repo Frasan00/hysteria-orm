@@ -11,7 +11,7 @@ import { MysqlQueryBuilder } from "./mysql_query_builder";
 import { ModelManager } from "../models/model_manager/model_manager";
 import { MysqlUpdateQueryBuilder } from "./mysql_update_query_builder";
 import { MysqlDeleteQueryBuilder } from "./mysql_delete_query_builder";
-import { SqlDataSource } from "../sql_data_source";
+import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
 

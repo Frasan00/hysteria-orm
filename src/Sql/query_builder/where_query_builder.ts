@@ -3,13 +3,13 @@ import { SelectableType } from "../models/model_manager/model_manager_types";
 import whereTemplate, {
   BaseValues,
   WhereOperatorType,
-} from "../resources/query/WHERE.TS";
-import { SqlDataSource } from "../sql_data_source";
+} from "../resources/query/WHERE";
+import { SqlDataSource } from "../../../src/sql/sql_data_source";
 
 export abstract class WhereQueryBuilder<T extends Model> {
   protected sqlDataSource: SqlDataSource;
   protected whereQuery: string = "";
-  protected whereParams: BaseValues[] = [];
+  protected params: BaseValues[] = [];
   protected model: typeof Model;
   protected table: string;
   protected logs: boolean;
@@ -39,7 +39,7 @@ export abstract class WhereQueryBuilder<T extends Model> {
       this.sqlDataSource.getDbType(),
       this.model,
     );
-    this.whereParams = [];
+    this.params = [];
     this.isNestedCondition = isNestedCondition;
   }
 
@@ -101,7 +101,7 @@ export abstract class WhereQueryBuilder<T extends Model> {
         operator,
       );
       this.whereQuery += query;
-      this.whereParams.push(...params);
+      this.params.push(...params);
       return this;
     }
 
@@ -111,7 +111,7 @@ export abstract class WhereQueryBuilder<T extends Model> {
       operator,
     );
     this.whereQuery = query;
-    this.whereParams.push(...params);
+    this.params.push(...params);
     return this;
   }
 
@@ -156,7 +156,7 @@ export abstract class WhereQueryBuilder<T extends Model> {
         operator,
       );
       this.whereQuery = query;
-      this.whereParams.push(...params);
+      this.params.push(...params);
       return this;
     }
 
@@ -166,7 +166,7 @@ export abstract class WhereQueryBuilder<T extends Model> {
       operator,
     );
     this.whereQuery += query;
-    this.whereParams.push(...params);
+    this.params.push(...params);
     return this;
   }
 
@@ -211,7 +211,7 @@ export abstract class WhereQueryBuilder<T extends Model> {
         operator,
       );
       this.whereQuery = query;
-      this.whereParams.push(...params);
+      this.params.push(...params);
       return this;
     }
 
@@ -221,7 +221,7 @@ export abstract class WhereQueryBuilder<T extends Model> {
       operator,
     );
     this.whereQuery += query;
-    this.whereParams.push(...params);
+    this.params.push(...params);
     return this;
   }
 
@@ -250,7 +250,7 @@ export abstract class WhereQueryBuilder<T extends Model> {
         max,
       );
       this.whereQuery = query;
-      this.whereParams.push(...params);
+      this.params.push(...params);
       return this;
     }
 
@@ -260,7 +260,7 @@ export abstract class WhereQueryBuilder<T extends Model> {
       max,
     );
     this.whereQuery += query;
-    this.whereParams.push(...params);
+    this.params.push(...params);
     return this;
   }
 
@@ -293,7 +293,7 @@ export abstract class WhereQueryBuilder<T extends Model> {
         max,
       );
       this.whereQuery = query;
-      this.whereParams.push(...params);
+      this.params.push(...params);
       return this;
     }
 
@@ -303,7 +303,7 @@ export abstract class WhereQueryBuilder<T extends Model> {
       max,
     );
     this.whereQuery += query;
-    this.whereParams.push(...params);
+    this.params.push(...params);
     return this;
   }
 
@@ -332,7 +332,7 @@ export abstract class WhereQueryBuilder<T extends Model> {
         max,
       );
       this.whereQuery = query;
-      this.whereParams.push(...params);
+      this.params.push(...params);
       return this;
     }
 
@@ -342,7 +342,7 @@ export abstract class WhereQueryBuilder<T extends Model> {
       max,
     );
     this.whereQuery += query;
-    this.whereParams.push(...params);
+    this.params.push(...params);
     return this;
   }
 
@@ -375,7 +375,7 @@ export abstract class WhereQueryBuilder<T extends Model> {
         max,
       );
       this.whereQuery = query;
-      this.whereParams.push(...params);
+      this.params.push(...params);
       return this;
     }
 
@@ -385,7 +385,7 @@ export abstract class WhereQueryBuilder<T extends Model> {
       max,
     );
     this.whereQuery += query;
-    this.whereParams.push(...params);
+    this.params.push(...params);
     return this;
   }
 
@@ -418,7 +418,7 @@ export abstract class WhereQueryBuilder<T extends Model> {
         max,
       );
       this.whereQuery = query;
-      this.whereParams.push(...params);
+      this.params.push(...params);
       return this;
     }
 
@@ -428,7 +428,7 @@ export abstract class WhereQueryBuilder<T extends Model> {
       max,
     );
     this.whereQuery += query;
-    this.whereParams.push(...params);
+    this.params.push(...params);
     return this;
   }
 
@@ -450,7 +450,7 @@ export abstract class WhereQueryBuilder<T extends Model> {
         values,
       );
       this.whereQuery = query;
-      this.whereParams.push(...params);
+      this.params.push(...params);
       return this;
     }
 
@@ -459,7 +459,7 @@ export abstract class WhereQueryBuilder<T extends Model> {
       values,
     );
     this.whereQuery += query;
-    this.whereParams.push(...params);
+    this.params.push(...params);
     return this;
   }
 
@@ -481,7 +481,7 @@ export abstract class WhereQueryBuilder<T extends Model> {
         values,
       );
       this.whereQuery = query;
-      this.whereParams.push(...params);
+      this.params.push(...params);
       return this;
     }
 
@@ -490,7 +490,7 @@ export abstract class WhereQueryBuilder<T extends Model> {
       values,
     );
     this.whereQuery += query;
-    this.whereParams.push(...params);
+    this.params.push(...params);
     return this;
   }
 
@@ -512,7 +512,7 @@ export abstract class WhereQueryBuilder<T extends Model> {
         values,
       );
       this.whereQuery = query;
-      this.whereParams.push(...params);
+      this.params.push(...params);
       return this;
     }
 
@@ -521,7 +521,7 @@ export abstract class WhereQueryBuilder<T extends Model> {
       values,
     );
     this.whereQuery += query;
-    this.whereParams.push(...params);
+    this.params.push(...params);
     return this;
   }
 
@@ -543,7 +543,7 @@ export abstract class WhereQueryBuilder<T extends Model> {
         values,
       );
       this.whereQuery = query;
-      this.whereParams.push(...params);
+      this.params.push(...params);
       return this;
     }
 
@@ -552,7 +552,7 @@ export abstract class WhereQueryBuilder<T extends Model> {
       values,
     );
     this.whereQuery += query;
-    this.whereParams.push(...params);
+    this.params.push(...params);
     return this;
   }
 
@@ -574,7 +574,7 @@ export abstract class WhereQueryBuilder<T extends Model> {
         values,
       );
       this.whereQuery = query;
-      this.whereParams.push(...params);
+      this.params.push(...params);
       return this;
     }
 
@@ -583,7 +583,7 @@ export abstract class WhereQueryBuilder<T extends Model> {
       values,
     );
     this.whereQuery += query;
-    this.whereParams.push(...params);
+    this.params.push(...params);
     return this;
   }
 
@@ -598,13 +598,13 @@ export abstract class WhereQueryBuilder<T extends Model> {
     if (!this.whereQuery || !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereNull(column as string);
       this.whereQuery = query;
-      this.whereParams.push(...params);
+      this.params.push(...params);
       return this;
     }
 
     const { query, params } = this.whereTemplate.andWhereNull(column as string);
     this.whereQuery += query;
-    this.whereParams.push(...params);
+    this.params.push(...params);
     return this;
   }
 
@@ -619,13 +619,13 @@ export abstract class WhereQueryBuilder<T extends Model> {
     if (!this.whereQuery || !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereNull(column as string);
       this.whereQuery = query;
-      this.whereParams.push(...params);
+      this.params.push(...params);
       return this;
     }
 
     const { query, params } = this.whereTemplate.andWhereNull(column as string);
     this.whereQuery += query;
-    this.whereParams.push(...params);
+    this.params.push(...params);
     return this;
   }
 
@@ -640,13 +640,13 @@ export abstract class WhereQueryBuilder<T extends Model> {
     if (!this.whereQuery || !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereNull(column as string);
       this.whereQuery = query;
-      this.whereParams.push(...params);
+      this.params.push(...params);
       return this;
     }
 
     const { query, params } = this.whereTemplate.orWhereNull(column as string);
     this.whereQuery += query;
-    this.whereParams.push(...params);
+    this.params.push(...params);
     return this;
   }
 
@@ -663,7 +663,7 @@ export abstract class WhereQueryBuilder<T extends Model> {
         column as string,
       );
       this.whereQuery = query;
-      this.whereParams.push(...params);
+      this.params.push(...params);
       return this;
     }
 
@@ -671,7 +671,7 @@ export abstract class WhereQueryBuilder<T extends Model> {
       column as string,
     );
     this.whereQuery += query;
-    this.whereParams.push(...params);
+    this.params.push(...params);
     return this;
   }
 
@@ -688,7 +688,7 @@ export abstract class WhereQueryBuilder<T extends Model> {
         column as string,
       );
       this.whereQuery = query;
-      this.whereParams.push(...params);
+      this.params.push(...params);
       return this;
     }
 
@@ -696,7 +696,7 @@ export abstract class WhereQueryBuilder<T extends Model> {
       column as string,
     );
     this.whereQuery += query;
-    this.whereParams.push(...params);
+    this.params.push(...params);
     return this;
   }
 
@@ -713,7 +713,7 @@ export abstract class WhereQueryBuilder<T extends Model> {
         column as string,
       );
       this.whereQuery = query;
-      this.whereParams.push(...params);
+      this.params.push(...params);
       return this;
     }
 
@@ -721,7 +721,7 @@ export abstract class WhereQueryBuilder<T extends Model> {
       column as string,
     );
     this.whereQuery += query;
-    this.whereParams.push(...params);
+    this.params.push(...params);
     return this;
   }
 
@@ -734,13 +734,13 @@ export abstract class WhereQueryBuilder<T extends Model> {
     if (!this.whereQuery || !this.isNestedCondition) {
       const { query: rawQuery, params } = this.whereTemplate.rawWhere(query);
       this.whereQuery = rawQuery;
-      this.whereParams.push(...params);
+      this.params.push(...params);
       return this;
     }
 
     const { query: rawQuery, params } = this.whereTemplate.rawAndWhere(query);
     this.whereQuery += rawQuery;
-    this.whereParams.push(...params);
+    this.params.push(...params);
     return this;
   }
 
@@ -753,13 +753,13 @@ export abstract class WhereQueryBuilder<T extends Model> {
     if (!this.whereQuery || !this.isNestedCondition) {
       const { query: rawQuery, params } = this.whereTemplate.rawWhere(query);
       this.whereQuery = rawQuery;
-      this.whereParams.push(...params);
+      this.params.push(...params);
       return this;
     }
 
     const { query: rawQuery, params } = this.whereTemplate.rawAndWhere(query);
     this.whereQuery += rawQuery;
-    this.whereParams.push(...params);
+    this.params.push(...params);
     return this;
   }
 
@@ -772,13 +772,13 @@ export abstract class WhereQueryBuilder<T extends Model> {
     if (!this.whereQuery || !this.isNestedCondition) {
       const { query: rawQuery, params } = this.whereTemplate.rawWhere(query);
       this.whereQuery = rawQuery;
-      this.whereParams.push(...params);
+      this.params.push(...params);
       return this;
     }
 
     const { query: rawQuery, params } = this.whereTemplate.rawOrWhere(query);
     this.whereQuery += rawQuery;
-    this.whereParams.push(...params);
+    this.params.push(...params);
     return this;
   }
 }

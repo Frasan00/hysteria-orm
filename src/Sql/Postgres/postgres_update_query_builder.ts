@@ -3,7 +3,7 @@ import { log, queryError } from "../../logger";
 import updateTemplate from "../resources/query/UPDATE";
 import { Client } from "pg";
 import joinTemplate from "../resources/query/JOIN";
-import { SqlDataSource } from "../sql_data_source";
+import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import {
   ModelUpdateQueryBuilder,
   WithDataOptions,
@@ -65,7 +65,7 @@ export class PostgresUpdateQueryBuilder<
       this.joinQuery,
     );
 
-    params.push(...this.whereParams);
+    params.push(...this.params);
 
     log(query, this.logs, params);
     try {
@@ -145,7 +145,7 @@ export class PostgresUpdateQueryBuilder<
       this.whereQuery += ` AND ${whereCondition}`;
     }
 
-    this.whereParams.push(...queryBuilder.whereParams);
+    this.params.push(...queryBuilder.params);
     return this;
   }
 
@@ -180,12 +180,12 @@ export class PostgresUpdateQueryBuilder<
         ? nestedCondition
         : `WHERE ${nestedCondition}`;
 
-      this.whereParams.push(...nestedBuilder.whereParams);
+      this.params.push(...nestedBuilder.params);
       return this;
     }
 
     this.whereQuery += ` OR ${nestedCondition}`;
-    this.whereParams.push(...nestedBuilder.whereParams);
+    this.params.push(...nestedBuilder.params);
 
     return this;
   }
@@ -219,12 +219,12 @@ export class PostgresUpdateQueryBuilder<
         ? nestedCondition
         : `WHERE ${nestedCondition}`;
 
-      this.whereParams.push(...nestedBuilder.whereParams);
+      this.params.push(...nestedBuilder.params);
       return this;
     }
 
     this.whereQuery += ` AND ${nestedCondition}`;
-    this.whereParams.push(...nestedBuilder.whereParams);
+    this.params.push(...nestedBuilder.params);
 
     return this;
   }

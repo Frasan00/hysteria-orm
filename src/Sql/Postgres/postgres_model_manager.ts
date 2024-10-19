@@ -12,7 +12,7 @@ import { PostgresQueryBuilder } from "./postgres_query_builder";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
 import { PostgresUpdateQueryBuilder } from "./postgres_update_query_builder";
 import { PostgresDeleteQueryBuilder } from "./postgres_delete_query_builder";
-import { SqlDataSource } from "../sql_data_source";
+import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
 
 export class PostgresModelManager<T extends Model> extends ModelManager<T> {

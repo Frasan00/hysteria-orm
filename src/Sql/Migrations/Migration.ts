@@ -1,6 +1,6 @@
 import path from "path";
 import Schema from "./schema/schema";
-import { SqlDataSource } from "../sql_data_source";
+import { SqlDataSource } from "../../../src/sql/sql_data_source";
 
 export abstract class Migration {
   public migrationName: string = path.basename(__filename);

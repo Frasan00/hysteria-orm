@@ -3,7 +3,7 @@ import { log, queryError } from "../../logger";
 import { Connection } from "mysql2/promise";
 import joinTemplate from "../resources/query/JOIN";
 import deleteTemplate from "../resources/query/DELETE";
-import { SqlDataSource } from "../sql_data_source";
+import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { DateTime } from "luxon";
 import updateTemplate from "../resources/query/UPDATE";
 import {
@@ -62,7 +62,7 @@ export class MysqlDeleteQueryBuilder<
       this.joinQuery,
     );
 
-    params = [...params, ...this.whereParams];
+    params = [...params, ...this.params];
 
     log(query, this.logs, params);
     try {
@@ -93,9 +93,9 @@ export class MysqlDeleteQueryBuilder<
       this.joinQuery,
     );
 
-    log(query, this.logs, this.whereParams);
+    log(query, this.logs, this.params);
     try {
-      const rows: any = await this.sqlConnection.query(query, this.whereParams);
+      const rows: any = await this.sqlConnection.query(query, this.params);
 
       if (!rows[0].affectedRows) {
         return 0;
@@ -184,7 +184,7 @@ export class MysqlDeleteQueryBuilder<
       this.whereQuery += ` AND ${whereCondition}`;
     }
 
-    this.whereParams.push(...queryBuilder.whereParams);
+    this.params.push(...queryBuilder.params);
     return this;
   }
 
@@ -219,12 +219,12 @@ export class MysqlDeleteQueryBuilder<
         ? nestedCondition
         : `WHERE ${nestedCondition}`;
 
-      this.whereParams.push(...nestedBuilder.whereParams);
+      this.params.push(...nestedBuilder.params);
       return this;
     }
 
     this.whereQuery += ` OR ${nestedCondition}`;
-    this.whereParams.push(...nestedBuilder.whereParams);
+    this.params.push(...nestedBuilder.params);
 
     return this;
   }
@@ -258,12 +258,12 @@ export class MysqlDeleteQueryBuilder<
         ? nestedCondition
         : `WHERE ${nestedCondition}`;
 
-      this.whereParams.push(...nestedBuilder.whereParams);
+      this.params.push(...nestedBuilder.params);
       return this;
     }
 
     this.whereQuery += ` AND ${nestedCondition}`;
-    this.whereParams.push(...nestedBuilder.whereParams);
+    this.params.push(...nestedBuilder.params);
 
     return this;
   }

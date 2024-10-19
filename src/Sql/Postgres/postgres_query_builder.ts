@@ -6,7 +6,7 @@ import {
   ManyOptions,
 } from "../query_builder/query_builder";
 import { Client } from "pg";
-import { BaseValues, WhereOperatorType } from "../resources/query/WHERE.TS";
+import { BaseValues, WhereOperatorType } from "../resources/query/WHERE";
 import { log, queryError } from "../../logger";
 import joinTemplate from "../resources/query/JOIN";
 import { PaginatedData, getPaginationMetadata } from "../pagination";
@@ -17,7 +17,7 @@ import {
   SelectableType,
 } from "../models/model_manager/model_manager_types";
 import "reflect-metadata";
-import { SqlDataSource } from "../sql_data_source";
+import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { convertCase } from "../../case_utils";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
 

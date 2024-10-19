@@ -7,6 +7,7 @@
   "author": "Frasan00 <francesco.sangiovanni.7@gmail.com>",
   "scripts": {
     "test": "yarn format && yarn build && node test_runner.js",
+    "test:complete": "yarn format && yarn build && sh roll_and_run_migrations.sh && node test_runner.js",
     "watch": "tsc --watch",
     "format": "prettier --write \"**/*.ts\"",
     "lint": "standard",

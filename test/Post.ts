@@ -1,14 +1,14 @@
 import { User } from "./User";
-import { column, belongsTo } from "../../../src/sql/models/model_decorators";
-import { Model } from "../../../src/sql/models/model";
 import * as crypto from "crypto";
+import { Model } from "../src/sql/models/model";
+import { column, belongsTo } from "../src/sql/models/model_decorators";
 
 export class Post extends Model {
   @column({ primaryKey: true })
-  declare id: string;
+  declare id: number;
 
   @column()
-  declare userId: string;
+  declare userId: number;
 
   @column()
   declare title: string;
@@ -18,8 +18,4 @@ export class Post extends Model {
 
   @belongsTo(() => User, "userId")
   declare user: User;
-
-  static beforeInsert(data: Post): void {
-    data.id = crypto.randomUUID();
-  }
 }

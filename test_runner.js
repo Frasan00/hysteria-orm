@@ -4,27 +4,26 @@ const { execSync } = require('child_process');
 
 const testFiles = [
     // trx
-    './test/sql/mysql/trx.mysql.test.ts',
-    './test/sql/pg/trx.pg.test.ts',
-    './test/sql/mariadb/trx.mariadb.test.ts',
-    './test/sql/sqlite/trx.sqlite.test.ts',
+    './test/sql/mysql/trx_mysql.test.ts',
+    './test/sql/pg/trx_pg.test.ts',
+    './test/sql/mariadb/trx_mariadb.test.ts',
+    './test/sql/sqlite/trx_sqlite.test.ts',
     
     // sqlite
-    './test/sql/sqlite/relations.sqlite.test.ts',
-    './test/sql/sqlite/crud.sqlite.test.ts',
+    './test/sql/sqlite/relations_sqlite.test.ts',
+    './test/sql/sqlite/crud_sqlite.test.ts',
     
     // pg
-    './test/sql/pg/relations.pg.test.ts',
-    './test/sql/pg/crud.pg.test.ts',
+    './test/sql/pg/relations_pg.test.ts',
+    './test/sql/pg/crud_pg.test.ts',
     
     // maria
-    './test/sql/mariadb/relations.mariadb.test.ts',
-    './test/sql/mariadb/crud.mariadb.test.ts',
-
+    './test/sql/mariadb/relations_mariadb.test.ts',
+    './test/sql/mariadb/crud_mariadb.test.ts',
 
     // mysql
-    './test/sql/mysql/relations.mysql.test.ts',
-    './test/sql/mysql/crud.mysql.test.ts',
+    './test/sql/mysql/relations_mysql.test.ts',
+    './test/sql/mysql/crud_mysql.test.ts',
 
     // redis
     './test/redis/redis.test.ts',

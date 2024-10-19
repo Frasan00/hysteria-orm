@@ -3,7 +3,7 @@ import { log, queryError } from "../../logger";
 import { Client } from "pg";
 import deleteTemplate from "../resources/query/DELETE";
 import joinTemplate from "../resources/query/JOIN";
-import { SqlDataSource } from "../sql_data_source";
+import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { DateTime } from "luxon";
 import updateTemplate from "../resources/query/UPDATE";
 import {
@@ -59,9 +59,9 @@ export class PostgresDeleteQueryBuilder<
       this.joinQuery,
     );
 
-    log(query, this.logs, this.whereParams);
+    log(query, this.logs, this.params);
     try {
-      const result = await this.sqlConnection.query<T>(query, this.whereParams);
+      const result = await this.sqlConnection.query<T>(query, this.params);
       if (!result.rows) {
         return 0;
       }
@@ -90,7 +90,7 @@ export class PostgresDeleteQueryBuilder<
       this.joinQuery,
     );
 
-    params = [...params, ...this.whereParams];
+    params = [...params, ...this.params];
 
     log(query, this.logs, params);
     try {
@@ -182,7 +182,7 @@ export class PostgresDeleteQueryBuilder<
       this.whereQuery += ` AND ${whereCondition}`;
     }
 
-    this.whereParams.push(...queryBuilder.whereParams);
+    this.params.push(...queryBuilder.params);
     return this;
   }
 
@@ -217,12 +217,12 @@ export class PostgresDeleteQueryBuilder<
         ? nestedCondition
         : `WHERE ${nestedCondition}`;
 
-      this.whereParams.push(...nestedBuilder.whereParams);
+      this.params.push(...nestedBuilder.params);
       return this;
     }
 
     this.whereQuery += ` OR ${nestedCondition}`;
-    this.whereParams.push(...nestedBuilder.whereParams);
+    this.params.push(...nestedBuilder.params);
 
     return this;
   }
@@ -256,12 +256,12 @@ export class PostgresDeleteQueryBuilder<
         ? nestedCondition
         : `WHERE ${nestedCondition}`;
 
-      this.whereParams.push(...nestedBuilder.whereParams);
+      this.params.push(...nestedBuilder.params);
       return this;
     }
 
     this.whereQuery += ` AND ${nestedCondition}`;
-    this.whereParams.push(...nestedBuilder.whereParams);
+    this.params.push(...nestedBuilder.params);
 
     return this;
   }

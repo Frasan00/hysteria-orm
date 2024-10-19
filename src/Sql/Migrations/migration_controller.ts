@@ -2,7 +2,7 @@ import { Connection } from "mysql2/promise";
 import { Client } from "pg";
 import { log } from "../../logger";
 import { Migration } from "./migration";
-import { SqlDataSource } from "../sql_data_source";
+import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import sqlite3 from "sqlite3";
 import { SqlDataSourceType } from "../../datasource";
 

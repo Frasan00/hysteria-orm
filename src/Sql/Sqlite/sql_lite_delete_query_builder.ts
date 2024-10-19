@@ -2,7 +2,7 @@ import { Model } from "../models/model";
 import { log, queryError } from "../../logger";
 import deleteTemplate from "../resources/query/DELETE";
 import joinTemplate from "../resources/query/JOIN";
-import { SqlDataSource } from "../sql_data_source";
+import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { DateTime } from "luxon";
 import updateTemplate from "../resources/query/UPDATE";
 import {
@@ -64,9 +64,9 @@ export class SqlLiteDeleteQueryBuilder<
       this.joinQuery,
     );
 
-    log(query, this.logs, this.whereParams);
+    log(query, this.logs, this.params);
     try {
-      return await this.promisifyQuery(query, this.whereParams);
+      return await this.promisifyQuery(query, this.params);
     } catch (error) {
       queryError(query);
       throw new Error("query failed " + error);
@@ -90,7 +90,7 @@ export class SqlLiteDeleteQueryBuilder<
       this.joinQuery,
     );
 
-    params = [...params, ...this.whereParams];
+    params = [...params, ...this.params];
 
     log(query, this.logs, params);
     try {
@@ -178,7 +178,7 @@ export class SqlLiteDeleteQueryBuilder<
       this.whereQuery += ` AND ${whereCondition}`;
     }
 
-    this.whereParams.push(...queryBuilder.whereParams);
+    this.params.push(...queryBuilder.params);
     return this;
   }
 
@@ -214,12 +214,12 @@ export class SqlLiteDeleteQueryBuilder<
         ? nestedCondition
         : `WHERE ${nestedCondition}`;
 
-      this.whereParams.push(...nestedBuilder.whereParams);
+      this.params.push(...nestedBuilder.params);
       return this;
     }
 
     this.whereQuery += ` OR ${nestedCondition}`;
-    this.whereParams.push(...nestedBuilder.whereParams);
+    this.params.push(...nestedBuilder.params);
 
     return this;
   }
@@ -254,12 +254,12 @@ export class SqlLiteDeleteQueryBuilder<
         ? nestedCondition
         : `WHERE ${nestedCondition}`;
 
-      this.whereParams.push(...nestedBuilder.whereParams);
+      this.params.push(...nestedBuilder.params);
       return this;
     }
 
     this.whereQuery += ` AND ${nestedCondition}`;
-    this.whereParams.push(...nestedBuilder.whereParams);
+    this.params.push(...nestedBuilder.params);
 
     return this;
   }

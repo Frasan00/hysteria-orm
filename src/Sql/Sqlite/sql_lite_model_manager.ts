@@ -7,7 +7,7 @@ import {
 } from "../models/model_manager/model_manager_types";
 import { log, queryError } from "../../logger";
 import { ModelManager } from "../models/model_manager/model_manager";
-import { SqlDataSource } from "../sql_data_source";
+import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
 import sqlite3 from "sqlite3";
 import { SqlLiteQueryBuilder } from "./sql_lite_query_builder";

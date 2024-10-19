@@ -1,19 +1,19 @@
 import { DateTime } from "luxon";
-import {
-  column,
-  dynamicColumn,
-  hasMany,
-  hasOne,
-} from "../../../src/sql/models/model_decorators";
-import { Model } from "../../../src/sql/models/model";
 import { Post } from "./Post";
 import crypto from "crypto";
-import { ModelQueryBuilder } from "../../../src/sql/query_builder/query_builder";
+import { ModelQueryBuilder } from "./sql/query_builder/query_builder";
+import { Model } from "../src/sql/models/model";
+import {
+  column,
+  hasMany,
+  hasOne,
+  dynamicColumn,
+} from "../src/sql/models/model_decorators";
 
 export class User extends Model {
   static tableName: string = "users";
   @column({ primaryKey: true })
-  declare id: string;
+  declare id: number;
 
   @column()
   declare name: string;
@@ -44,10 +44,6 @@ export class User extends Model {
 
   @hasOne(() => Post, "userId")
   declare post: Post;
-
-  static beforeInsert(data: User): void {
-    data.id = crypto.randomUUID();
-  }
 
   static beforeFetch(queryBuilder: ModelQueryBuilder<User>): void {
     queryBuilder.whereNull("deletedAt");

@@ -1,7 +1,7 @@
 import mysql, { RowDataPacket } from "mysql2/promise";
 import { getBaseModelInstance, Model } from "../models/model";
 import { log, queryError } from "../../logger";
-import { BaseValues, WhereOperatorType } from "../resources/query/WHERE.TS";
+import { BaseValues, WhereOperatorType } from "../resources/query/WHERE";
 import {
   OneOptions,
   QueryBuilder,
@@ -16,7 +16,7 @@ import {
   RelationType,
   SelectableType,
 } from "../models/model_manager/model_manager_types";
-import { SqlDataSource } from "../sql_data_source";
+import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { convertCase } from "../../case_utils";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
 

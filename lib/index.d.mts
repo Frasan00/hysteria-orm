@@ -381,18 +381,111 @@ declare class Schema {
     dropUniqueConstraint(table: string, constraintName: string): void;
 }
 
-declare const selectTemplate: (dbType: SqlDataSourceType$1, typeofModel: typeof Model) => {
-    selectAll: string;
-    selectById: (id: string) => string;
-    selectByIds: (ids: string[]) => string;
-    selectColumns: (...columns: string[]) => string;
-    selectCount: string;
-    selectDistinct: (...columns: string[]) => string;
-    selectSum: (column: string) => string;
-    orderBy: (columns: string[], order?: "ASC" | "DESC") => string;
-    groupBy: (...columns: string[]) => string;
-    limit: (limit: number) => string;
-    offset: (offset: number) => string;
+declare class Transaction {
+    sqlDataSource: SqlDataSource;
+    sqlConnection: SqlConnectionType;
+    private readonly logs;
+    constructor(sqlDataSource: SqlDataSource, logs?: boolean);
+    startTransaction(): Promise<void>;
+    commit(): Promise<void>;
+    rollback(): Promise<void>;
+    private releaseConnection;
+}
+
+/**
+ * @description Options for the relation
+ * @property {string} softDeleteColumn - The column name for the soft delete column, if set, the relation will only return rows that have not been soft deleted
+ * @property {string} softDeleteType - The type of the soft delete column
+ */
+interface RelationOptions {
+    softDeleteColumn: string;
+    softDeleteType: "date" | "boolean";
+}
+declare enum RelationType$1 {
+    hasOne = "hasOne",// One to One without foreign key
+    belongsTo = "belongsTo",// One to One with foreign key
+    hasMany = "hasMany"
+}
+/**
+ * Main Model -> Related Model
+ */
+declare abstract class Relation {
+    abstract type: RelationType$1;
+    model: typeof Model;
+    columnName: string;
+    foreignKey?: string;
+    relatedModel: string;
+    options?: RelationOptions;
+    protected constructor(model: typeof Model, columnName: string, options?: RelationOptions);
+}
+
+declare class BelongsTo extends Relation {
+    type: RelationType$1;
+    foreignKey: string;
+    constructor(relatedModel: typeof Model, columnName: string, foreignKey: string, options?: RelationOptions);
+}
+
+declare class HasMany extends Relation {
+    type: RelationType$1;
+    foreignKey: string;
+    constructor(relatedModel: typeof Model, columnName: string, foreignKey: string, options?: RelationOptions);
+}
+
+declare class HasOne extends Relation {
+    type: RelationType$1;
+    foreignKey: string;
+    constructor(relatedModel: typeof Model, columnName: string, foreignKey: string, options?: RelationOptions);
+}
+
+type ExcludeRelations<T> = {
+    [K in keyof T]: T[K] extends (Model[] | HasMany) | (Model | HasMany) | (Model | BelongsTo) | (Model[] | BelongsTo) | (Model | HasOne) | (Model[] | HasOne) | ((...args: any[]) => any) ? never : K;
+}[keyof T];
+type OnlyRelations<T> = {
+    [K in keyof T]: T[K] extends (Model[] | HasMany) | (Model | HasMany) | (Model | BelongsTo) | (Model[] | BelongsTo) | (Model | HasOne) | (Model[] | HasOne) ? K : never;
+}[keyof T];
+type WhereType<T> = {
+    [K in keyof T]?: string | number | boolean | Date | null;
+};
+type SelectableType<T> = ExcludeRelations<Omit<T, "extraColumns">>;
+type RelationType<T> = OnlyRelations<Omit<T, "extraColumns">>;
+type DynamicColumnType<T> = {
+    [k in keyof T]: T[k] extends (...args: any[]) => any ? k : never;
+}[keyof T];
+type OrderByType = {
+    columns: string[];
+    type: "ASC" | "DESC";
+};
+type UnrestrictedFindOneType<T> = {
+    select?: string[];
+    relations?: RelationType<T>[];
+    ignoreHooks?: FetchHooks[];
+    dynamicColumns?: DynamicColumnType<T>;
+    where?: Record<string, any>;
+    useConnection?: SqlDataSource;
+    trx?: Transaction;
+    throwErrorOnNull?: boolean;
+};
+type UnrestrictedFindType<T> = Omit<UnrestrictedFindOneType<T>, "throwErrorOnNull"> & {
+    orderBy?: OrderByType;
+    groupBy?: string[];
+    limit?: number;
+    offset?: number;
+};
+type FindOneType<T> = {
+    select?: SelectableType<T>[];
+    relations?: RelationType<T>[];
+    dynamicColumns?: DynamicColumnType<T>;
+    where?: WhereType<T>;
+    ignoreHooks?: FetchHooks[];
+    useConnection?: SqlDataSource;
+    trx?: Transaction;
+    throwErrorOnNull?: boolean;
+};
+type FindType<T> = Omit<FindOneType<T>, "throwErrorOnNull"> & {
+    orderBy?: OrderByType;
+    groupBy?: string[];
+    limit?: number;
+    offset?: number;
 };
 
 type WhereOperatorType = "=" | "!=" | "<>" | ">" | "<" | ">=" | "<=" | "LIKE" | "ILIKE" | "NOT LIKE" | "NOT ILIKE" | "IN" | "NOT IN" | "BETWEEN" | "NOT BETWEEN";
@@ -523,113 +616,6 @@ type PaginationMetadata = {
 type PaginatedData<T> = {
     paginationMetadata: PaginationMetadata;
     data: T[];
-};
-
-declare class Transaction {
-    sqlDataSource: SqlDataSource;
-    sqlConnection: SqlConnectionType;
-    private readonly logs;
-    constructor(sqlDataSource: SqlDataSource, logs?: boolean);
-    startTransaction(): Promise<void>;
-    commit(): Promise<void>;
-    rollback(): Promise<void>;
-    private releaseConnection;
-}
-
-/**
- * @description Options for the relation
- * @property {string} softDeleteColumn - The column name for the soft delete column, if set, the relation will only return rows that have not been soft deleted
- * @property {string} softDeleteType - The type of the soft delete column
- */
-interface RelationOptions {
-    softDeleteColumn: string;
-    softDeleteType: "date" | "boolean";
-}
-declare enum RelationType$1 {
-    hasOne = "hasOne",// One to One without foreign key
-    belongsTo = "belongsTo",// One to One with foreign key
-    hasMany = "hasMany"
-}
-/**
- * Main Model -> Related Model
- */
-declare abstract class Relation {
-    abstract type: RelationType$1;
-    model: typeof Model;
-    columnName: string;
-    foreignKey?: string;
-    relatedModel: string;
-    options?: RelationOptions;
-    protected constructor(model: typeof Model, columnName: string, options?: RelationOptions);
-}
-
-declare class BelongsTo extends Relation {
-    type: RelationType$1;
-    foreignKey: string;
-    constructor(relatedModel: typeof Model, columnName: string, foreignKey: string, options?: RelationOptions);
-}
-
-declare class HasMany extends Relation {
-    type: RelationType$1;
-    foreignKey: string;
-    constructor(relatedModel: typeof Model, columnName: string, foreignKey: string, options?: RelationOptions);
-}
-
-declare class HasOne extends Relation {
-    type: RelationType$1;
-    foreignKey: string;
-    constructor(relatedModel: typeof Model, columnName: string, foreignKey: string, options?: RelationOptions);
-}
-
-type ExcludeRelations<T> = {
-    [K in keyof T]: T[K] extends (Model[] | HasMany) | (Model | HasMany) | (Model | BelongsTo) | (Model[] | BelongsTo) | (Model | HasOne) | (Model[] | HasOne) | ((...args: any[]) => any) ? never : K;
-}[keyof T];
-type OnlyRelations<T> = {
-    [K in keyof T]: T[K] extends (Model[] | HasMany) | (Model | HasMany) | (Model | BelongsTo) | (Model[] | BelongsTo) | (Model | HasOne) | (Model[] | HasOne) ? K : never;
-}[keyof T];
-type WhereType<T> = {
-    [K in keyof T]?: string | number | boolean | Date | null;
-};
-type SelectableType<T> = ExcludeRelations<Omit<T, "extraColumns">>;
-type RelationType<T> = OnlyRelations<Omit<T, "extraColumns">>;
-type DynamicColumnType<T> = {
-    [k in keyof T]: T[k] extends (...args: any[]) => any ? k : never;
-}[keyof T];
-type OrderByType = {
-    columns: string[];
-    type: "ASC" | "DESC";
-};
-type UnrestrictedFindOneType<T> = {
-    select?: string[];
-    relations?: RelationType<T>[];
-    ignoreHooks?: FetchHooks[];
-    dynamicColumns?: DynamicColumnType<T>;
-    where?: Record<string, any>;
-    useConnection?: SqlDataSource;
-    trx?: Transaction;
-    throwErrorOnNull?: boolean;
-};
-type UnrestrictedFindType<T> = Omit<UnrestrictedFindOneType<T>, "throwErrorOnNull"> & {
-    orderBy?: OrderByType;
-    groupBy?: string[];
-    limit?: number;
-    offset?: number;
-};
-type FindOneType<T> = {
-    select?: SelectableType<T>[];
-    relations?: RelationType<T>[];
-    dynamicColumns?: DynamicColumnType<T>;
-    where?: WhereType<T>;
-    ignoreHooks?: FetchHooks[];
-    useConnection?: SqlDataSource;
-    trx?: Transaction;
-    throwErrorOnNull?: boolean;
-};
-type FindType<T> = Omit<FindOneType<T>, "throwErrorOnNull"> & {
-    orderBy?: OrderByType;
-    groupBy?: string[];
-    limit?: number;
-    offset?: number;
 };
 
 declare class SqlModelManagerUtils<T extends Model> {
@@ -830,6 +816,20 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     protected groupFooterQuery(): string;
 }
 
+declare const selectTemplate: (dbType: SqlDataSourceType$1, typeofModel: typeof Model) => {
+    selectAll: string;
+    selectById: (id: string) => string;
+    selectByIds: (ids: string[]) => string;
+    selectColumns: (...columns: string[]) => string;
+    selectCount: string;
+    selectDistinct: (...columns: string[]) => string;
+    selectSum: (column: string) => string;
+    orderBy: (columns: string[], order?: "ASC" | "DESC") => string;
+    groupBy: (...columns: string[]) => string;
+    limit: (limit: number) => string;
+    offset: (offset: number) => string;
+};
+
 declare class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     protected sqLiteConnection: sqlite3.Database;
     protected isNestedCondition: boolean;
@@ -920,381 +920,10 @@ declare class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     private promisifyQuery;
 }
 
-/**
- * @description The abstract class for query builders for selecting data.
- */
-type ModelQueryBuilder<T extends Model> = MysqlQueryBuilder<T> | PostgresQueryBuilder<T> | SqlLiteQueryBuilder<T>;
-type FetchHooks = "beforeFetch" | "afterFetch";
-type OneOptions = {
-    throwErrorOnNull?: boolean;
-    ignoreHooks?: FetchHooks[];
-};
-type ManyOptions = {
-    ignoreHooks?: FetchHooks[];
-};
-declare abstract class QueryBuilder<T extends Model> {
-    protected sqlDataSource: SqlDataSource;
-    protected selectQuery: string;
-    protected joinQuery: string;
-    protected relations: string[];
-    protected dynamicColumns: string[];
-    protected whereQuery: string;
-    protected groupByQuery: string;
-    protected orderByQuery: string;
-    protected limitQuery: string;
-    protected offsetQuery: string;
-    protected params: BaseValues[];
-    protected model: typeof Model;
-    protected table: string;
-    protected logs: boolean;
-    protected selectTemplate: ReturnType<typeof selectTemplate>;
-    protected whereTemplate: ReturnType<typeof whereTemplate>;
-    /**
-     * @description Constructs a Mysql_query_builder instance.
-     * @param model - The model class associated with the table.
-     * @param table - The name of the table.
-     * @param logs - A boolean indicating whether to log queries.
-     */
-    protected constructor(model: typeof Model, table: string, logs: boolean, sqlDataSource: SqlDataSource);
-    /**
-     * @description Executes the query and retrieves the first result.
-     * @returns A Promise resolving to the first result or null.
-     */
-    abstract one(options: OneOptions): Promise<T | null>;
-    /**
-     * @description Executes the query and retrieves the first result. Fail if no result is found.
-     */
-    abstract oneOrFail(options?: {
-        ignoreHooks?: OneOptions["ignoreHooks"];
-    }): Promise<T>;
-    /**
-     * @description Executes the query and retrieves multiple results.
-     * @returns A Promise resolving to an array of results.
-     */
-    abstract many(options: ManyOptions): Promise<T[]>;
-    /**
-     * @description Executes the query and retrieves the count of results, it ignores all select, group by, order by, limit and offset clauses if they are present.
-     * @returns A Promise resolving to the count of results.
-     */
-    abstract getCount(options: {
-        ignoreHooks: boolean;
-    }): Promise<number>;
-    /**
-     * @description Executes the query and retrieves the sum of a column, it ignores all select, group by, order by, limit and offset clauses if they are present.
-     * @param column - The column to sum.
-     * @returns A Promise resolving to the sum of the column.
-     */
-    abstract getSum(column: string, options: {
-        ignoreHooks: boolean;
-    }): Promise<number>;
-    /**
-     * @description Executes the query and retrieves multiple results.
-     * @returns A Promise resolving to an array of results.
-     */
-    abstract paginate(page: number, limit: number, options?: ManyOptions): Promise<PaginatedData<T>>;
-    /**
-     * @description Adds a SELECT condition to the query.
-     * @param columns - The columns to select.
-     * @returns The Mysql_query_builder instance for chaining.
-     */
-    abstract select(...columns: string[]): ModelQueryBuilder<T>;
-    abstract select(...columns: (SelectableType<T> | "*")[]): ModelQueryBuilder<T>;
-    abstract select(...columns: (SelectableType<T> | "*" | string)[]): ModelQueryBuilder<T>;
-    /**
-     * @description Adds a JOIN condition to the query.
-     * @param table
-     * @param primaryColumn
-     * @param foreignColumn
-     */
-    abstract join(table: string, primaryColumn: string, foreignColumn: string): ModelQueryBuilder<T>;
-    /**
-     * @description Adds a LEFT JOIN condition to the query.
-     * @param table
-     * @param primaryColumn
-     * @param foreignColumn
-     */
-    abstract leftJoin(table: string, primaryColumn: string, foreignColumn: string): ModelQueryBuilder<T>;
-    /**
-     * @description Adds a relation to the query.
-     * @param relations - The relations to add.
-     */
-    abstract addRelations(relations: RelationType<T>[]): ModelQueryBuilder<T>;
-    /**
-     * @description Adds a the selected dynamic columns from the model into the final model
-     * @param relations - The dynamic columns to add.
-     */
-    abstract addDynamicColumns(dynamicColumns: DynamicColumnType<T>[]): ModelQueryBuilder<T>;
-    /**
-     * @description Accepts a value and executes a callback only of the value exists
-     * @param {any} value
-     * @param callback
-     */
-    abstract when(value: any, cb: (value: any, query: ModelQueryBuilder<T>) => void): ModelQueryBuilder<T>;
-    /**
-     * @description Build more complex where conditions.
-     * @param cb
-     */
-    abstract whereBuilder(cb: (queryBuilder: ModelQueryBuilder<T>) => void): ModelQueryBuilder<T>;
-    /**
-     * @description Build more complex where conditions.
-     * @param cb
-     */
-    abstract andWhereBuilder(cb: (queryBuilder: ModelQueryBuilder<T>) => void): ModelQueryBuilder<T>;
-    /**
-     * @description Build more complex where conditions.
-     * @param cb
-     */
-    abstract orWhereBuilder(cb: (queryBuilder: ModelQueryBuilder<T>) => void): ModelQueryBuilder<T>;
-    /**
-     * @description Adds a WHERE condition to the query.
-     * @param column - The column to filter.
-     * @param operator - The comparison operator.
-     * @param value - The value to compare against.
-     * @returns The Mysql_query_builder instance for chaining.
-     */
-    abstract where(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): ModelQueryBuilder<T>;
-    abstract where(column: string, operator: WhereOperatorType, value: BaseValues): ModelQueryBuilder<T>;
-    abstract where(column: SelectableType<T> | string, value: BaseValues): ModelQueryBuilder<T>;
-    abstract where(column: SelectableType<T> | string, operator: WhereOperatorType, value: BaseValues): ModelQueryBuilder<T>;
-    /**
-     * @description Adds an AND WHERE condition to the query.
-     * @param column - The column to filter.
-     * @param operator - The comparison operator.
-     * @param value - The value to compare against.
-     * @returns The Mysql_query_builder instance for chaining.
-     */
-    abstract andWhere(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): ModelQueryBuilder<T>;
-    abstract andWhere(column: string, operator: WhereOperatorType, value: BaseValues): ModelQueryBuilder<T>;
-    abstract andWhere(column: SelectableType<T> | string, value: BaseValues): ModelQueryBuilder<T>;
-    abstract andWhere(column: SelectableType<T> | string, operator: WhereOperatorType, value: BaseValues): ModelQueryBuilder<T>;
-    /**
-     * @description Adds an OR WHERE condition to the query.
-     * @param column - The column to filter.
-     * @param operator - The comparison operator.
-     * @param value - The value to compare against.
-     * @returns The Mysql_query_builder instance for chaining.
-     */
-    abstract orWhere(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): ModelQueryBuilder<T>;
-    abstract orWhere(column: string, operator: WhereOperatorType, value: BaseValues): ModelQueryBuilder<T>;
-    abstract orWhere(column: SelectableType<T> | string, value: BaseValues): ModelQueryBuilder<T>;
-    abstract orWhere(column: SelectableType<T> | string, operator: WhereOperatorType, value: BaseValues): ModelQueryBuilder<T>;
-    /**
-     * @description Adds a WHERE BETWEEN condition to the query.
-     * @param column - The column to filter.
-     * @param min - The minimum value for the range.
-     * @param max - The maximum value for the range.
-     * @returns The Mysql_query_builder instance for chaining.
-     */
-    abstract whereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): ModelQueryBuilder<T>;
-    abstract whereBetween(column: string, min: BaseValues, max: BaseValues): ModelQueryBuilder<T>;
-    abstract whereBetween(column: SelectableType<T> | string, min: BaseValues, max: BaseValues): ModelQueryBuilder<T>;
-    /**
-     * @description Adds an AND WHERE BETWEEN condition to the query.
-     * @param column - The column to filter.
-     * @param min - The minimum value for the range.
-     * @param max - The maximum value for the range.
-     * @returns The Mysql_query_builder instance for chaining.
-     */
-    abstract andWhereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): ModelQueryBuilder<T>;
-    abstract andWhereBetween(column: string, min: BaseValues, max: BaseValues): ModelQueryBuilder<T>;
-    abstract andWhereBetween(column: SelectableType<T> | string, min: BaseValues, max: BaseValues): ModelQueryBuilder<T>;
-    /**
-     * @description Adds an OR WHERE BETWEEN condition to the query.
-     * @param column - The column to filter.
-     * @param min - The minimum value for the range.
-     * @param max - The maximum value for the range.
-     * @returns The Mysql_query_builder instance for chaining.
-     */
-    abstract orWhereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): ModelQueryBuilder<T>;
-    abstract orWhereBetween(column: string, min: BaseValues, max: BaseValues): ModelQueryBuilder<T>;
-    abstract orWhereBetween(column: SelectableType<T> | string, min: BaseValues, max: BaseValues): ModelQueryBuilder<T>;
-    /**
-     * @description Adds a WHERE NOT BETWEEN condition to the query.
-     * @param column - The column to filter.
-     * @param min - The minimum value for the range.
-     * @param max - The maximum value for the range.
-     * @returns The Mysql_query_builder instance for chaining.
-     */
-    abstract whereNotBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): ModelQueryBuilder<T>;
-    abstract whereNotBetween(column: string, min: BaseValues, max: BaseValues): ModelQueryBuilder<T>;
-    abstract whereNotBetween(column: SelectableType<T> | string, min: BaseValues, max: BaseValues): ModelQueryBuilder<T>;
-    /**
-     * @description Adds an OR WHERE NOT BETWEEN condition to the query.
-     * @param column - The column to filter.
-     * @param min - The minimum value for the range.
-     * @param max - The maximum value for the range.
-     * @returns The Mysql_query_builder instance for chaining.
-     */
-    abstract orWhereNotBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): ModelQueryBuilder<T>;
-    abstract orWhereNotBetween(column: string, min: BaseValues, max: BaseValues): ModelQueryBuilder<T>;
-    abstract orWhereNotBetween(column: SelectableType<T> | string, min: BaseValues, max: BaseValues): ModelQueryBuilder<T>;
-    /**
-     * @description Adds a WHERE IN condition to the query.
-     * @param column - The column to filter.
-     * @param values - An array of values to match against.
-     * @returns The Mysql_query_builder instance for chaining.
-     */
-    abstract whereIn(column: SelectableType<T>, values: BaseValues[]): ModelQueryBuilder<T>;
-    abstract whereIn(column: string, values: BaseValues[]): ModelQueryBuilder<T>;
-    abstract whereIn(column: SelectableType<T> | string, values: BaseValues[]): ModelQueryBuilder<T>;
-    /**
-     * @description Adds an AND WHERE IN condition to the query.
-     * @param column - The column to filter.
-     * @param values - An array of values to match against.
-     * @returns The Mysql_query_builder instance for chaining.
-     */
-    abstract andWhereIn(column: SelectableType<T>, values: BaseValues[]): ModelQueryBuilder<T>;
-    abstract andWhereIn(column: string, values: BaseValues[]): ModelQueryBuilder<T>;
-    abstract andWhereIn(column: SelectableType<T> | string, values: BaseValues[]): ModelQueryBuilder<T>;
-    /**
-     * @description Adds an OR WHERE IN condition to the query.
-     * @param column - The column to filter.
-     * @param values - An array of values to match against.
-     * @returns The Mysql_query_builder instance for chaining.
-     */
-    abstract orWhereIn(column: string, values: BaseValues[]): ModelQueryBuilder<T>;
-    abstract orWhereIn(column: SelectableType<T>, values: BaseValues[]): ModelQueryBuilder<T>;
-    abstract orWhereIn(column: SelectableType<T> | string, values: BaseValues[]): ModelQueryBuilder<T>;
-    /**
-     * @description Adds a WHERE NOT IN condition to the query.
-     * @param column - The column to filter.
-     * @param values - An array of values to exclude.
-     * @returns The Mysql_query_builder instance for chaining.
-     */
-    abstract whereNotIn(column: SelectableType<T>, values: BaseValues[]): ModelQueryBuilder<T>;
-    abstract whereNotIn(column: string, values: BaseValues[]): ModelQueryBuilder<T>;
-    abstract whereNotIn(column: SelectableType<T> | string, values: BaseValues[]): ModelQueryBuilder<T>;
-    /**
-     * @description Adds an OR WHERE NOT IN condition to the query.
-     * @param column - The column to filter.
-     * @param values - An array of values to exclude.
-     * @returns The Mysql_query_builder instance for chaining.
-     */
-    abstract orWhereNotIn(column: SelectableType<T>, values: BaseValues[]): ModelQueryBuilder<T>;
-    abstract orWhereNotIn(column: string, values: BaseValues[]): ModelQueryBuilder<T>;
-    abstract orWhereNotIn(column: SelectableType<T> | string, values: BaseValues[]): ModelQueryBuilder<T>;
-    /**
-     * @description Adds a WHERE NULL condition to the query.
-     * @param column - The column to filter.
-     * @returns The Mysql_query_builder instance for chaining.
-     */
-    abstract whereNull(column: SelectableType<T>): ModelQueryBuilder<T>;
-    abstract whereNull(column: string): ModelQueryBuilder<T>;
-    abstract whereNull(column: SelectableType<T> | string): ModelQueryBuilder<T>;
-    /**
-     * @description Adds an AND WHERE NULL condition to the query.
-     * @param column - The column to filter.
-     * @returns The Mysql_query_builder instance for chaining.
-     */
-    abstract andWhereNull(column: SelectableType<T>): ModelQueryBuilder<T>;
-    abstract andWhereNull(column: string): ModelQueryBuilder<T>;
-    abstract andWhereNull(column: SelectableType<T> | string): ModelQueryBuilder<T>;
-    /**
-     * @description Adds an OR WHERE NULL condition to the query.
-     * @param column - The column to filter.
-     * @returns The Mysql_query_builder instance for chaining.
-     */
-    abstract orWhereNull(column: SelectableType<T>): ModelQueryBuilder<T>;
-    abstract orWhereNull(column: string): ModelQueryBuilder<T>;
-    abstract orWhereNull(column: SelectableType<T> | string): ModelQueryBuilder<T>;
-    /**
-     * @description Adds a WHERE NOT NULL condition to the query.
-     * @param column - The column to filter.
-     * @returns The Mysql_query_builder instance for chaining.
-     */
-    abstract whereNotNull(column: SelectableType<T>): ModelQueryBuilder<T>;
-    abstract whereNotNull(column: string): ModelQueryBuilder<T>;
-    abstract whereNotNull(column: SelectableType<T> | string): ModelQueryBuilder<T>;
-    /**
-     * @description Adds an AND WHERE NOT NULL condition to the query.
-     * @param column - The column to filter.
-     * @returns The Mysql_query_builder instance for chaining.
-     */
-    abstract andWhereNotNull(column: SelectableType<T>): ModelQueryBuilder<T>;
-    abstract andWhereNotNull(column: string): ModelQueryBuilder<T>;
-    abstract andWhereNotNull(column: SelectableType<T> | string): ModelQueryBuilder<T>;
-    /**
-     * @description Adds an OR WHERE NOT NULL condition to the query.
-     * @param column - The column to filter.
-     * @returns The Mysql_query_builder instance for chaining.
-     */
-    abstract orWhereNotNull(column: SelectableType<T>): ModelQueryBuilder<T>;
-    abstract orWhereNotNull(column: string): ModelQueryBuilder<T>;
-    abstract orWhereNotNull(column: SelectableType<T> | string): ModelQueryBuilder<T>;
-    /**
-     * @description Adds a raw WHERE condition to the query.
-     * @param query - The raw SQL WHERE condition.
-     * @returns The Mysql_query_builder instance for chaining.
-     */
-    abstract rawWhere(query: string): ModelQueryBuilder<T>;
-    /**
-     * @description Adds a raw AND WHERE condition to the query.
-     * @param query - The raw SQL WHERE condition.
-     * @returns The Mysql_query_builder instance for chaining.
-     */
-    abstract rawAndWhere(query: string): ModelQueryBuilder<T>;
-    /**
-     * @description Adds a raw OR WHERE condition to the query.
-     * @param query - The raw SQL WHERE condition.
-     * @returns The Mysql_query_builder instance for chaining.
-     */
-    abstract rawOrWhere(query: string, params: []): ModelQueryBuilder<T>;
-    /**
-     * @description Adds GROUP BY conditions to the query.
-     * @param columns - The columns to group by.
-     * @returns The Mysql_query_builder instance for chaining.
-     */
-    abstract groupBy(...columns: SelectableType<T>[]): ModelQueryBuilder<T>;
-    abstract groupBy(...columns: string[]): ModelQueryBuilder<T>;
-    abstract groupBy(...columns: (SelectableType<T> | string)[]): ModelQueryBuilder<T>;
-    /**
-     * @description Adds a raw GROUP BY condition to the query, only one raw GROUP BY condition is stackable, the last one will be used.
-     * @param query - The raw SQL GROUP BY condition.
-     * @returns The Mysql_query_builder instance for chaining.
-     */
-    abstract groupByRaw(query: string): ModelQueryBuilder<T>;
-    /**
-     * @description Adds ORDER BY conditions to the query.
-     * @param column - The column to order by.
-     * @param order - The order direction, either "ASC" or "DESC".
-     * @returns The Mysql_query_builder instance for chaining.
-     */
-    abstract orderBy(columns: SelectableType<T>[], order: "ASC" | "DESC"): ModelQueryBuilder<T>;
-    abstract orderBy(columns: string[], order: "ASC" | "DESC"): ModelQueryBuilder<T>;
-    abstract orderBy(columns: (SelectableType<T> | string)[], order: "ASC" | "DESC"): ModelQueryBuilder<T>;
-    /**
-     * @description Adds a raw ORDER BY condition to the query, only one raw ORDER BY condition is stackable, the last one will be used.
-     * @param query - The raw SQL ORDER BY condition.
-     * @returns The Mysql_query_builder instance for chaining.
-     */
-    abstract orderByRaw(query: string): ModelQueryBuilder<T>;
-    /**
-     * @description Adds a LIMIT condition to the query.
-     * @param limit - The maximum number of rows to return.
-     * @returns The Mysql_query_builder instance for chaining.
-     */
-    abstract limit(limit: number): ModelQueryBuilder<T>;
-    /**
-     * @description Adds an OFFSET condition to the query.
-     * @param offset - The number of rows to skip.
-     * @returns The Mysql_query_builder instance for chaining.
-     */
-    abstract offset(offset: number): ModelQueryBuilder<T>;
-    /**
-     * @description Returns a copy of the query builder instance.
-     * @returns A copy of the query builder instance.
-     */
-    abstract copy(): ModelQueryBuilder<T>;
-    protected groupFooterQuery(): string;
-    protected mergeRawPacketIntoModel(model: T, row: any, typeofModel: typeof Model): Promise<void>;
-}
-
-type CaseConvention = "camel" | "snake" | "none" | RegExp | ((column: string) => string);
-
 declare abstract class WhereQueryBuilder<T extends Model> {
     protected sqlDataSource: SqlDataSource;
     protected whereQuery: string;
-    protected whereParams: BaseValues[];
+    protected params: BaseValues[];
     protected model: typeof Model;
     protected table: string;
     protected logs: boolean;
@@ -1490,6 +1119,170 @@ declare abstract class WhereQueryBuilder<T extends Model> {
      */
     rawOrWhere(query: string): this;
 }
+
+/**
+ * @description The abstract class for query builders for selecting data.
+ */
+type ModelQueryBuilder<T extends Model> = MysqlQueryBuilder<T> | PostgresQueryBuilder<T> | SqlLiteQueryBuilder<T>;
+type FetchHooks = "beforeFetch" | "afterFetch";
+type OneOptions = {
+    throwErrorOnNull?: boolean;
+    ignoreHooks?: FetchHooks[];
+};
+type ManyOptions = {
+    ignoreHooks?: FetchHooks[];
+};
+declare abstract class QueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
+    protected selectQuery: string;
+    protected joinQuery: string;
+    protected relations: string[];
+    protected dynamicColumns: string[];
+    protected groupByQuery: string;
+    protected orderByQuery: string;
+    protected limitQuery: string;
+    protected offsetQuery: string;
+    protected selectTemplate: ReturnType<typeof selectTemplate>;
+    /**
+     * @description Constructs a Mysql_query_builder instance.
+     * @param model - The model class associated with the table.
+     * @param table - The name of the table.
+     * @param logs - A boolean indicating whether to log queries.
+     */
+    protected constructor(model: typeof Model, table: string, logs: boolean, sqlDataSource: SqlDataSource);
+    /**
+     * @description Executes the query and retrieves the first result.
+     * @returns A Promise resolving to the first result or null.
+     */
+    abstract one(options: OneOptions): Promise<T | null>;
+    /**
+     * @description Executes the query and retrieves the first result. Fail if no result is found.
+     */
+    abstract oneOrFail(options?: {
+        ignoreHooks?: OneOptions["ignoreHooks"];
+    }): Promise<T>;
+    /**
+     * @description Executes the query and retrieves multiple results.
+     * @returns A Promise resolving to an array of results.
+     */
+    abstract many(options: ManyOptions): Promise<T[]>;
+    /**
+     * @description Executes the query and retrieves the count of results, it ignores all select, group by, order by, limit and offset clauses if they are present.
+     * @returns A Promise resolving to the count of results.
+     */
+    abstract getCount(options: {
+        ignoreHooks: boolean;
+    }): Promise<number>;
+    /**
+     * @description Executes the query and retrieves the sum of a column, it ignores all select, group by, order by, limit and offset clauses if they are present.
+     * @param column - The column to sum.
+     * @returns A Promise resolving to the sum of the column.
+     */
+    abstract getSum(column: string, options: {
+        ignoreHooks: boolean;
+    }): Promise<number>;
+    /**
+     * @description Executes the query and retrieves multiple results.
+     * @returns A Promise resolving to an array of results.
+     */
+    abstract paginate(page: number, limit: number, options?: ManyOptions): Promise<PaginatedData<T>>;
+    /**
+     * @description Adds a SELECT condition to the query.
+     * @param columns - The columns to select.
+     * @returns The Mysql_query_builder instance for chaining.
+     */
+    abstract select(...columns: string[]): ModelQueryBuilder<T>;
+    abstract select(...columns: (SelectableType<T> | "*")[]): ModelQueryBuilder<T>;
+    abstract select(...columns: (SelectableType<T> | "*" | string)[]): ModelQueryBuilder<T>;
+    /**
+     * @description Adds a JOIN condition to the query.
+     * @param table
+     * @param primaryColumn
+     * @param foreignColumn
+     */
+    abstract join(table: string, primaryColumn: string, foreignColumn: string): ModelQueryBuilder<T>;
+    /**
+     * @description Adds a LEFT JOIN condition to the query.
+     * @param table
+     * @param primaryColumn
+     * @param foreignColumn
+     */
+    abstract leftJoin(table: string, primaryColumn: string, foreignColumn: string): ModelQueryBuilder<T>;
+    /**
+     * @description Adds a relation to the query.
+     * @param relations - The relations to add.
+     */
+    abstract addRelations(relations: RelationType<T>[]): ModelQueryBuilder<T>;
+    /**
+     * @description Adds a the selected dynamic columns from the model into the final model
+     * @param relations - The dynamic columns to add.
+     */
+    abstract addDynamicColumns(dynamicColumns: DynamicColumnType<T>[]): ModelQueryBuilder<T>;
+    /**
+     * @description Build more complex where conditions.
+     * @param cb
+     */
+    abstract whereBuilder(cb: (queryBuilder: ModelQueryBuilder<T>) => void): ModelQueryBuilder<T>;
+    /**
+     * @description Build more complex where conditions.
+     * @param cb
+     */
+    abstract andWhereBuilder(cb: (queryBuilder: ModelQueryBuilder<T>) => void): ModelQueryBuilder<T>;
+    /**
+     * @description Build more complex where conditions.
+     * @param cb
+     */
+    abstract orWhereBuilder(cb: (queryBuilder: ModelQueryBuilder<T>) => void): ModelQueryBuilder<T>;
+    /**
+     * @description Adds GROUP BY conditions to the query.
+     * @param columns - The columns to group by.
+     * @returns The Mysql_query_builder instance for chaining.
+     */
+    abstract groupBy(...columns: SelectableType<T>[]): ModelQueryBuilder<T>;
+    abstract groupBy(...columns: string[]): ModelQueryBuilder<T>;
+    abstract groupBy(...columns: (SelectableType<T> | string)[]): ModelQueryBuilder<T>;
+    /**
+     * @description Adds a raw GROUP BY condition to the query, only one raw GROUP BY condition is stackable, the last one will be used.
+     * @param query - The raw SQL GROUP BY condition.
+     * @returns The Mysql_query_builder instance for chaining.
+     */
+    abstract groupByRaw(query: string): ModelQueryBuilder<T>;
+    /**
+     * @description Adds ORDER BY conditions to the query.
+     * @param column - The column to order by.
+     * @param order - The order direction, either "ASC" or "DESC".
+     * @returns The Mysql_query_builder instance for chaining.
+     */
+    abstract orderBy(columns: SelectableType<T>[], order: "ASC" | "DESC"): ModelQueryBuilder<T>;
+    abstract orderBy(columns: string[], order: "ASC" | "DESC"): ModelQueryBuilder<T>;
+    abstract orderBy(columns: (SelectableType<T> | string)[], order: "ASC" | "DESC"): ModelQueryBuilder<T>;
+    /**
+     * @description Adds a raw ORDER BY condition to the query, only one raw ORDER BY condition is stackable, the last one will be used.
+     * @param query - The raw SQL ORDER BY condition.
+     * @returns The Mysql_query_builder instance for chaining.
+     */
+    abstract orderByRaw(query: string): ModelQueryBuilder<T>;
+    /**
+     * @description Adds a LIMIT condition to the query.
+     * @param limit - The maximum number of rows to return.
+     * @returns The Mysql_query_builder instance for chaining.
+     */
+    abstract limit(limit: number): ModelQueryBuilder<T>;
+    /**
+     * @description Adds an OFFSET condition to the query.
+     * @param offset - The number of rows to skip.
+     * @returns The Mysql_query_builder instance for chaining.
+     */
+    abstract offset(offset: number): ModelQueryBuilder<T>;
+    /**
+     * @description Returns a copy of the query builder instance.
+     * @returns A copy of the query builder instance.
+     */
+    abstract copy(): ModelQueryBuilder<T>;
+    protected groupFooterQuery(): string;
+    protected mergeRawPacketIntoModel(model: T, row: any, typeofModel: typeof Model): Promise<void>;
+}
+
+type CaseConvention = "camel" | "snake" | "none" | RegExp | ((column: string) => string);
 
 declare const updateTemplate: (dbType: SqlDataSourceType$1, typeofModel: typeof Model) => {
     update: (columns: string[], values: any[], primaryKey?: string, primaryKeyValue?: string | undefined) => {

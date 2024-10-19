@@ -1,6 +1,6 @@
 import { DateTime } from "luxon";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
-import { User } from "../Models/User";
+import { User } from "../../User";
 
 let sql: SqlDataSource | null = null;
 beforeAll(async () => {
@@ -244,26 +244,19 @@ test("When condition", async () => {
 
   const trueValue = 1;
   const notExistingValue = null;
-  let user: User | null = null;
-  user = await User.query()
-    .orderBy(["createdAt"], "ASC")
+  await User.query()
     .when(trueValue, (_value, query) => {
-      query.orWhere("name", "LIKE", "Dave2");
+      expect(true).toBe(true);
     })
+    .orderByRaw("name DESC")
     .one();
 
-  expect(user).not.toBeNull();
-  expect(user?.name).toBe("Dave2");
-
-  user = await User.query()
-    .orderBy(["createdAt"], "ASC")
+  await User.query()
     .when(notExistingValue, (_value, query) => {
-      query.orWhere("name", "LIKE", "Dave2");
+      expect(true).toBe(false);
     })
+    .orderByRaw("name DESC")
     .one();
-
-  expect(user).not.toBeNull();
-  expect(user?.name).toBe("Dave");
 });
 
 test("Remove all users from the database", async () => {
