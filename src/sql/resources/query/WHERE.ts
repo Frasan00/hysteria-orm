@@ -610,17 +610,17 @@ const whereTemplate = (
       )} IS NOT NULL`,
       params: [],
     }),
-    rawWhere: (query: string) => ({
+    rawWhere: (query: string, params: any[]) => ({
       query: `\nWHERE ${query}`,
-      params: [],
+      params,
     }),
-    rawAndWhere: (query: string) => ({
+    rawAndWhere: (query: string, params: any[]) => ({
       query: ` AND ${query}`,
-      params: [],
+      params,
     }),
-    rawOrWhere: (query: string) => ({
+    rawOrWhere: (query: string, params: any[]) => ({
       query: ` OR ${query}`,
-      params: [],
+      params,
     }),
   };
 };

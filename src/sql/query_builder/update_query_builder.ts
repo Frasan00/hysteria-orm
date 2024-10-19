@@ -35,13 +35,4 @@ export abstract class ModelUpdateQueryBuilder<
     primaryColumn: string,
     foreignColumn: string,
   ): ModelUpdateQueryBuilder<T>;
-  public abstract whereBuilder(
-    cb: (queryBuilder: ModelUpdateQueryBuilder<T>) => void,
-  ): ModelUpdateQueryBuilder<T>;
-  public abstract orWhereBuilder(
-    cb: (queryBuilder: ModelUpdateQueryBuilder<T>) => void,
-  ): ModelUpdateQueryBuilder<T>;
-  public abstract andWhereBuilder(
-    cb: (queryBuilder: ModelUpdateQueryBuilder<T>) => void,
-  ): ModelUpdateQueryBuilder<T>;
 }

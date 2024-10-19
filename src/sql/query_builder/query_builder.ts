@@ -72,7 +72,6 @@ export abstract class QueryBuilder<
     this.joinQuery = "";
     this.relations = [];
     this.dynamicColumns = [];
-    this.whereQuery = "";
     this.groupByQuery = "";
     this.orderByQuery = "";
     this.limitQuery = "";

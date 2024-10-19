@@ -1,6 +1,5 @@
 import { getBaseModelInstance, Model } from "../models/model";
 import { log, queryError } from "../../utils/logger";
-import { BaseValues, WhereOperatorType } from "../resources/query/WHERE";
 import {
   OneOptions,
   QueryBuilder,
@@ -22,15 +21,8 @@ import sqlite3 from "sqlite3";
 
 export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
   protected sqLiteConnection: sqlite3.Database;
-  protected isNestedCondition = false;
   protected sqliteModelManagerUtils: SqlModelManagerUtils<T>;
 
-  /**
-   * @param table - The name of the table.
-   * @param sqLiteConnection - The MySQL connection pool.
-   * @param logs - A boolean indicating whether to log queries.
-   * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
-   */
   public constructor(
     model: typeof Model,
     table: string,
@@ -181,6 +173,112 @@ export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     }
   }
 
+  public whereBuilder(
+    cb: (queryBuilder: SqlLiteQueryBuilder<T>) => void,
+  ): this {
+    const queryBuilder = new SqlLiteQueryBuilder(
+      this.model as typeof Model,
+      this.table,
+      this.sqLiteConnection,
+      this.logs,
+      true,
+      this.sqlDataSource,
+    );
+    cb(queryBuilder as unknown as SqlLiteQueryBuilder<T>);
+
+    let whereCondition = queryBuilder.whereQuery.trim();
+    if (whereCondition.startsWith("AND")) {
+      whereCondition = whereCondition.substring(4); // 'AND '.length === 4 has to be removed from the beginning of the where condition
+    } else if (whereCondition.startsWith("OR")) {
+      whereCondition = whereCondition.substring(3); // 'OR '.length === 3 has to be removed from the beginning of the where condition
+    }
+
+    whereCondition = "(" + whereCondition + ")";
+
+    if (!this.whereQuery) {
+      this.whereQuery = this.isNestedCondition
+        ? whereCondition
+        : `WHERE ${whereCondition}`;
+    } else {
+      this.whereQuery += ` AND ${whereCondition}`;
+    }
+
+    this.params.push(...queryBuilder.params);
+    return this;
+  }
+
+  public orWhereBuilder(
+    cb: (queryBuilder: SqlLiteQueryBuilder<T>) => void,
+  ): this {
+    const nestedBuilder = new SqlLiteQueryBuilder(
+      this.model as typeof Model,
+      this.table,
+      this.sqLiteConnection,
+      this.logs,
+      true,
+      this.sqlDataSource,
+    );
+    cb(nestedBuilder as unknown as SqlLiteQueryBuilder<T>);
+
+    let nestedCondition = nestedBuilder.whereQuery.trim();
+    if (nestedCondition.startsWith("AND")) {
+      nestedCondition = nestedCondition.substring(4);
+    } else if (nestedCondition.startsWith("OR")) {
+      nestedCondition = nestedCondition.substring(3);
+    }
+
+    nestedCondition = `(${nestedCondition})`;
+
+    if (!this.whereQuery) {
+      this.whereQuery = this.isNestedCondition
+        ? nestedCondition
+        : `WHERE ${nestedCondition}`;
+
+      this.params.push(...nestedBuilder.params);
+      return this;
+    }
+
+    this.whereQuery += ` OR ${nestedCondition}`;
+    this.params.push(...nestedBuilder.params);
+
+    return this;
+  }
+
+  public andWhereBuilder(
+    cb: (queryBuilder: SqlLiteQueryBuilder<T>) => void,
+  ): this {
+    const nestedBuilder = new SqlLiteQueryBuilder(
+      this.model as typeof Model,
+      this.table,
+      this.sqLiteConnection,
+      this.logs,
+      true,
+      this.sqlDataSource,
+    );
+    cb(nestedBuilder as unknown as SqlLiteQueryBuilder<T>);
+
+    let nestedCondition = nestedBuilder.whereQuery.trim();
+    if (nestedCondition.startsWith("AND")) {
+      nestedCondition = nestedCondition.substring(4);
+    } else if (nestedCondition.startsWith("OR")) {
+      nestedCondition = nestedCondition.substring(3);
+    }
+
+    if (!this.whereQuery) {
+      this.whereQuery = this.isNestedCondition
+        ? nestedCondition
+        : `WHERE ${nestedCondition}`;
+
+      this.params.push(...nestedBuilder.params);
+      return this;
+    }
+
+    this.whereQuery += ` AND ${nestedCondition}`;
+    this.params.push(...nestedBuilder.params);
+
+    return this;
+  }
+
   public async raw<T>(query: string, params: any[] = []) {
     return await this.promisifyQuery<T>(query, params);
   }
@@ -306,941 +404,6 @@ export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     dynamicColumns: DynamicColumnType<T>[],
   ): ModelQueryBuilder<T> {
     this.dynamicColumns = dynamicColumns as string[];
-    return this;
-  }
-
-  public whereBuilder(
-    cb: (queryBuilder: SqlLiteQueryBuilder<T>) => void,
-  ): this {
-    const queryBuilder = new SqlLiteQueryBuilder(
-      this.model as typeof Model,
-      this.table,
-      this.sqLiteConnection,
-      this.logs,
-      true,
-      this.sqlDataSource,
-    );
-    cb(queryBuilder as unknown as SqlLiteQueryBuilder<T>);
-
-    let whereCondition = queryBuilder.whereQuery.trim();
-    if (whereCondition.startsWith("AND")) {
-      whereCondition = whereCondition.substring(4); // 'AND '.length === 4 has to be removed from the beginning of the where condition
-    } else if (whereCondition.startsWith("OR")) {
-      whereCondition = whereCondition.substring(3); // 'OR '.length === 3 has to be removed from the beginning of the where condition
-    }
-
-    whereCondition = "(" + whereCondition + ")";
-
-    if (!this.whereQuery) {
-      this.whereQuery = this.isNestedCondition
-        ? whereCondition
-        : `WHERE ${whereCondition}`;
-    } else {
-      this.whereQuery += ` AND ${whereCondition}`;
-    }
-
-    this.params.push(...queryBuilder.params);
-    return this;
-  }
-
-  public orWhereBuilder(
-    cb: (queryBuilder: SqlLiteQueryBuilder<T>) => void,
-  ): this {
-    const nestedBuilder = new SqlLiteQueryBuilder(
-      this.model as typeof Model,
-      this.table,
-      this.sqLiteConnection,
-      this.logs,
-      true,
-      this.sqlDataSource,
-    );
-    cb(nestedBuilder as unknown as SqlLiteQueryBuilder<T>);
-
-    let nestedCondition = nestedBuilder.whereQuery.trim();
-    if (nestedCondition.startsWith("AND")) {
-      nestedCondition = nestedCondition.substring(4);
-    } else if (nestedCondition.startsWith("OR")) {
-      nestedCondition = nestedCondition.substring(3);
-    }
-
-    nestedCondition = `(${nestedCondition})`;
-
-    if (!this.whereQuery) {
-      this.whereQuery = this.isNestedCondition
-        ? nestedCondition
-        : `WHERE ${nestedCondition}`;
-
-      this.params.push(...nestedBuilder.params);
-      return this;
-    }
-
-    this.whereQuery += ` OR ${nestedCondition}`;
-    this.params.push(...nestedBuilder.params);
-
-    return this;
-  }
-
-  public andWhereBuilder(
-    cb: (queryBuilder: SqlLiteQueryBuilder<T>) => void,
-  ): this {
-    const nestedBuilder = new SqlLiteQueryBuilder(
-      this.model as typeof Model,
-      this.table,
-      this.sqLiteConnection,
-      this.logs,
-      true,
-      this.sqlDataSource,
-    );
-    cb(nestedBuilder as unknown as SqlLiteQueryBuilder<T>);
-
-    let nestedCondition = nestedBuilder.whereQuery.trim();
-    if (nestedCondition.startsWith("AND")) {
-      nestedCondition = nestedCondition.substring(4);
-    } else if (nestedCondition.startsWith("OR")) {
-      nestedCondition = nestedCondition.substring(3);
-    }
-
-    if (!this.whereQuery) {
-      this.whereQuery = this.isNestedCondition
-        ? nestedCondition
-        : `WHERE ${nestedCondition}`;
-
-      this.params.push(...nestedBuilder.params);
-      return this;
-    }
-
-    this.whereQuery += ` AND ${nestedCondition}`;
-    this.params.push(...nestedBuilder.params);
-
-    return this;
-  }
-
-  public when<O>(
-    value: O,
-    cb: (value: O, query: ModelQueryBuilder<T>) => void,
-  ): this {
-    if (value === undefined || value === null) {
-      return this;
-    }
-
-    cb(value, this);
-    return this;
-  }
-
-  public where(
-    column: SelectableType<T>,
-    operator: WhereOperatorType,
-    value: BaseValues,
-  ): this;
-  public where(
-    column: string,
-    operator: WhereOperatorType,
-    value: BaseValues,
-  ): this;
-  public where(column: SelectableType<T> | string, value: BaseValues): this;
-  public where(
-    column: SelectableType<T> | string,
-    operatorOrValue: WhereOperatorType | BaseValues,
-    value?: BaseValues,
-  ): this {
-    let operator: WhereOperatorType = "=";
-    let actualValue: BaseValues;
-
-    if (typeof operatorOrValue === "string" && value) {
-      operator = operatorOrValue as WhereOperatorType;
-      actualValue = value;
-    } else {
-      actualValue = operatorOrValue as BaseValues;
-      operator = "=";
-    }
-
-    if (this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.andWhere(
-        column as string,
-        actualValue,
-        operator,
-      );
-      this.whereQuery += query;
-      this.params.push(...params);
-      return this;
-    }
-
-    if (!this.whereQuery) {
-      const { query, params } = this.whereTemplate.where(
-        column as string,
-        actualValue,
-        operator,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.andWhere(
-      column as string,
-      actualValue,
-      operator,
-    );
-
-    this.whereQuery += query;
-    this.params.push(...params);
-    return this;
-  }
-
-  public andWhere(
-    column: SelectableType<T>,
-    operator: WhereOperatorType,
-    value: BaseValues,
-  ): this;
-  public andWhere(
-    column: string,
-    operator: WhereOperatorType,
-    value: BaseValues,
-  ): this;
-  public andWhere(column: SelectableType<T> | string, value: BaseValues): this;
-  public andWhere(
-    column: SelectableType<T> | string,
-    operatorOrValue: WhereOperatorType | BaseValues,
-    value?: BaseValues,
-  ): this {
-    let operator: WhereOperatorType = "=";
-    let actualValue: BaseValues;
-
-    if (typeof operatorOrValue === "string" && value) {
-      operator = operatorOrValue as WhereOperatorType;
-      actualValue = value;
-    } else {
-      actualValue = operatorOrValue as BaseValues;
-      operator = "=";
-    }
-
-    if (this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.andWhere(
-        column as string,
-        actualValue,
-        operator,
-      );
-      this.whereQuery += query;
-      this.params.push(...params);
-      return this;
-    }
-
-    if (!this.whereQuery) {
-      const { query, params } = this.whereTemplate.where(
-        column as string,
-        actualValue,
-        operator,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.andWhere(
-      column as string,
-      actualValue,
-      operator,
-    );
-
-    this.whereQuery += query;
-    this.params.push(...params);
-    return this;
-  }
-
-  public orWhere(
-    column: SelectableType<T>,
-    operator: WhereOperatorType,
-    value: BaseValues,
-  ): this;
-  public orWhere(
-    column: string,
-    operator: WhereOperatorType,
-    value: BaseValues,
-  ): this;
-  public orWhere(column: SelectableType<T> | string, value: BaseValues): this;
-  public orWhere(
-    column: SelectableType<T> | string,
-    operatorOrValue: WhereOperatorType | BaseValues,
-    value?: BaseValues,
-  ): this {
-    let operator: WhereOperatorType = "=";
-    let actualValue: BaseValues;
-
-    if (typeof operatorOrValue === "string" && value) {
-      operator = operatorOrValue as WhereOperatorType;
-      actualValue = value;
-    } else {
-      actualValue = operatorOrValue as BaseValues;
-      operator = "=";
-    }
-
-    if (this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.orWhere(
-        column as string,
-        actualValue,
-        operator,
-      );
-      this.whereQuery += query;
-      this.params.push(...params);
-      return this;
-    }
-
-    if (!this.whereQuery) {
-      const { query, params } = this.whereTemplate.where(
-        column as string,
-        actualValue,
-        operator,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.orWhere(
-      column as string,
-      actualValue,
-      operator,
-    );
-
-    this.whereQuery += query;
-    this.params.push(...params);
-    return this;
-  }
-
-  public whereBetween(
-    column: SelectableType<T>,
-    min: BaseValues,
-    max: BaseValues,
-  ): this;
-  public whereBetween(column: string, min: BaseValues, max: BaseValues): this;
-  public whereBetween(
-    column: SelectableType<T> | string,
-    min: BaseValues,
-    max: BaseValues,
-  ): this {
-    if (this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.andWhereBetween(
-        column as string,
-        min,
-        max,
-      );
-      this.whereQuery += query;
-      this.params.push(...params);
-      return this;
-    }
-
-    if (!this.whereQuery) {
-      const { query, params } = this.whereTemplate.whereBetween(
-        column as string,
-        min,
-        max,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.andWhereBetween(
-      column as string,
-      min,
-      max,
-    );
-
-    this.whereQuery += query;
-    this.params.push(...params);
-    return this;
-  }
-
-  public andWhereBetween(
-    column: SelectableType<T>,
-    min: BaseValues,
-    max: BaseValues,
-  ): this;
-  public andWhereBetween(
-    column: string,
-    min: BaseValues,
-    max: BaseValues,
-  ): this;
-  public andWhereBetween(
-    column: SelectableType<T> | string,
-    min: BaseValues,
-    max: BaseValues,
-  ): this {
-    if (this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.andWhereBetween(
-        column as string,
-        min,
-        max,
-      );
-      this.whereQuery += query;
-      this.params.push(...params);
-      return this;
-    }
-
-    if (!this.whereQuery) {
-      const { query, params } = this.whereTemplate.whereBetween(
-        column as string,
-        min,
-        max,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.andWhereBetween(
-      column as string,
-      min,
-      max,
-    );
-
-    this.whereQuery += query;
-    this.params.push(...params);
-    return this;
-  }
-
-  public orWhereBetween(
-    column: SelectableType<T>,
-    min: BaseValues,
-    max: BaseValues,
-  ): this;
-  public orWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
-  public orWhereBetween(
-    column: SelectableType<T> | string,
-    min: BaseValues,
-    max: BaseValues,
-  ): this {
-    if (this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.orWhereBetween(
-        column as string,
-        min,
-        max,
-      );
-      this.whereQuery += query;
-      this.params.push(...params);
-      return this;
-    }
-
-    if (!this.whereQuery) {
-      const { query, params } = this.whereTemplate.whereBetween(
-        column as string,
-        min,
-        max,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.orWhereBetween(
-      column as string,
-      min,
-      max,
-    );
-
-    this.whereQuery += query;
-    this.params.push(...params);
-    return this;
-  }
-
-  public whereNotBetween(
-    column: SelectableType<T>,
-    min: BaseValues,
-    max: BaseValues,
-  ): this;
-  public whereNotBetween(
-    column: string,
-    min: BaseValues,
-    max: BaseValues,
-  ): this;
-  public whereNotBetween(
-    column: SelectableType<T> | string,
-    min: BaseValues,
-    max: BaseValues,
-  ): this {
-    if (this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.andWhereNotBetween(
-        column as string,
-        min,
-        max,
-      );
-      this.whereQuery += query;
-      this.params.push(...params);
-      return this;
-    }
-
-    if (!this.whereQuery) {
-      const { query, params } = this.whereTemplate.whereNotBetween(
-        column as string,
-        min,
-        max,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.andWhereNotBetween(
-      column as string,
-      min,
-      max,
-    );
-
-    this.whereQuery += query;
-    this.params.push(...params);
-    return this;
-  }
-
-  public orWhereNotBetween(
-    column: SelectableType<T>,
-    min: BaseValues,
-    max: BaseValues,
-  ): this;
-  public orWhereNotBetween(
-    column: string,
-    min: BaseValues,
-    max: BaseValues,
-  ): this;
-  public orWhereNotBetween(
-    column: SelectableType<T> | string,
-    min: BaseValues,
-    max: BaseValues,
-  ): this {
-    if (this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.orWhereNotBetween(
-        column as string,
-        min,
-        max,
-      );
-      this.whereQuery += query;
-      this.params.push(...params);
-      return this;
-    }
-
-    if (!this.whereQuery) {
-      const { query, params } = this.whereTemplate.whereNotBetween(
-        column as string,
-        min,
-        max,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.orWhereNotBetween(
-      column as string,
-      min,
-      max,
-    );
-
-    this.whereQuery += query;
-    this.params.push(...params);
-    return this;
-  }
-
-  public whereIn(column: SelectableType<T>, values: BaseValues[]): this;
-  public whereIn(column: string, values: BaseValues[]): this;
-  public whereIn(
-    column: SelectableType<T> | string,
-    values: BaseValues[],
-  ): this {
-    if (this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.andWhereIn(
-        column as string,
-        values,
-      );
-      this.whereQuery += query;
-      this.params.push(...params);
-      return this;
-    }
-
-    if (!this.whereQuery) {
-      const { query, params } = this.whereTemplate.whereIn(
-        column as string,
-        values,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.andWhereIn(
-      column as string,
-      values,
-    );
-
-    this.whereQuery += query;
-    this.params.push(...params);
-    return this;
-  }
-
-  public andWhereIn(column: SelectableType<T>, values: BaseValues[]): this;
-  public andWhereIn(column: string, values: BaseValues[]): this;
-  public andWhereIn(
-    column: SelectableType<T> | string,
-    values: BaseValues[],
-  ): this {
-    if (this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.andWhereIn(
-        column as string,
-        values,
-      );
-      this.whereQuery += query;
-      this.params.push(...params);
-      return this;
-    }
-
-    if (!this.whereQuery) {
-      const { query, params } = this.whereTemplate.whereIn(
-        column as string,
-        values,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.andWhereIn(
-      column as string,
-      values,
-    );
-
-    this.whereQuery += query;
-    this.params.push(...params);
-    return this;
-  }
-
-  public orWhereIn(column: SelectableType<T>, values: BaseValues[]): this;
-  public orWhereIn(column: string, values: BaseValues[]): this;
-  public orWhereIn(
-    column: SelectableType<T> | string,
-    values: BaseValues[],
-  ): this {
-    if (this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.orWhereIn(
-        column as string,
-        values,
-      );
-      this.whereQuery += query;
-      this.params.push(...params);
-      return this;
-    }
-
-    if (!this.whereQuery) {
-      const { query, params } = this.whereTemplate.whereIn(
-        column as string,
-        values,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.orWhereIn(
-      column as string,
-      values,
-    );
-
-    this.whereQuery += query;
-    this.params.push(...params);
-    return this;
-  }
-
-  public whereNotIn(column: SelectableType<T>, values: BaseValues[]): this;
-  public whereNotIn(column: string, values: BaseValues[]): this;
-  public whereNotIn(
-    column: SelectableType<T> | string,
-    values: BaseValues[],
-  ): this {
-    if (this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.andWhereNotIn(
-        column as string,
-        values,
-      );
-      this.whereQuery += query;
-      this.params.push(...params);
-      return this;
-    }
-
-    if (!this.whereQuery) {
-      const { query, params } = this.whereTemplate.whereNotIn(
-        column as string,
-        values,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.andWhereNotIn(
-      column as string,
-      values,
-    );
-
-    this.whereQuery += query;
-    this.params.push(...params);
-    return this;
-  }
-
-  public orWhereNotIn(column: SelectableType<T>, values: BaseValues[]): this;
-  public orWhereNotIn(column: string, values: BaseValues[]): this;
-  public orWhereNotIn(
-    column: SelectableType<T> | string,
-    values: BaseValues[],
-  ): this {
-    if (this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.orWhereNotIn(
-        column as string,
-        values,
-      );
-      this.whereQuery += query;
-      this.params.push(...params);
-      return this;
-    }
-
-    if (!this.whereQuery) {
-      const { query, params } = this.whereTemplate.whereNotIn(
-        column as string,
-        values,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.orWhereNotIn(
-      column as string,
-      values,
-    );
-
-    this.whereQuery += query;
-    this.params.push(...params);
-    return this;
-  }
-
-  public whereNull(column: SelectableType<T>): this;
-  public whereNull(column: string): this;
-  public whereNull(column: SelectableType<T> | string): this {
-    if (this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.andWhereNull(
-        column as string,
-      );
-      this.whereQuery += query;
-      this.params.push(...params);
-      return this;
-    }
-
-    if (!this.whereQuery) {
-      const { query, params } = this.whereTemplate.whereNull(column as string);
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.andWhereNull(column as string);
-    this.whereQuery += query;
-    this.params.push(...params);
-    return this;
-  }
-
-  public andWhereNull(column: SelectableType<T>): this;
-  public andWhereNull(column: string): this;
-  public andWhereNull(column: SelectableType<T> | string): this {
-    if (this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.andWhereNull(
-        column as string,
-      );
-      this.whereQuery += query;
-      this.params.push(...params);
-      return this;
-    }
-
-    if (!this.whereQuery) {
-      const { query, params } = this.whereTemplate.whereNull(column as string);
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.andWhereNull(column as string);
-    this.whereQuery += query;
-    this.params.push(...params);
-    return this;
-  }
-
-  public orWhereNull(column: SelectableType<T>): this;
-  public orWhereNull(column: string): this;
-  public orWhereNull(column: SelectableType<T> | string): this {
-    if (this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.orWhereNull(
-        column as string,
-      );
-      this.whereQuery += query;
-      this.params.push(...params);
-      return this;
-    }
-
-    if (!this.whereQuery) {
-      const { query, params } = this.whereTemplate.whereNull(column as string);
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.orWhereNull(column as string);
-    this.whereQuery += query;
-    this.params.push(...params);
-    return this;
-  }
-
-  public whereNotNull(column: SelectableType<T>): this;
-  public whereNotNull(column: string): this;
-  public whereNotNull(column: SelectableType<T> | string): this {
-    if (this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.andWhereNotNull(
-        column as string,
-      );
-      this.whereQuery += query;
-      this.params.push(...params);
-      return this;
-    }
-
-    if (!this.whereQuery) {
-      const { query, params } = this.whereTemplate.whereNotNull(
-        column as string,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.andWhereNotNull(
-      column as string,
-    );
-    this.whereQuery += query;
-    this.params.push(...params);
-    return this;
-  }
-
-  public andWhereNotNull(column: SelectableType<T>): this;
-  public andWhereNotNull(column: string): this;
-  public andWhereNotNull(column: SelectableType<T> | string): this {
-    if (this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.andWhereNotNull(
-        column as string,
-      );
-      this.whereQuery += query;
-      this.params.push(...params);
-      return this;
-    }
-
-    if (!this.whereQuery) {
-      const { query, params } = this.whereTemplate.whereNotNull(
-        column as string,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.andWhereNotNull(
-      column as string,
-    );
-    this.whereQuery += query;
-    this.params.push(...params);
-    return this;
-  }
-
-  public orWhereNotNull(column: SelectableType<T>): this;
-  public orWhereNotNull(column: string): this;
-  public orWhereNotNull(column: SelectableType<T> | string): this {
-    if (this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.orWhereNotNull(
-        column as string,
-      );
-      this.whereQuery += query;
-      this.params.push(...params);
-      return this;
-    }
-
-    if (!this.whereQuery) {
-      const { query, params } = this.whereTemplate.whereNotNull(
-        column as string,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.orWhereNotNull(
-      column as string,
-    );
-    this.whereQuery += query;
-    this.params.push(...params);
-    return this;
-  }
-
-  public rawWhere(query: string) {
-    if (this.isNestedCondition) {
-      const { query: rawQuery, params } = this.whereTemplate.rawWhere(query);
-      this.whereQuery += rawQuery;
-      this.params.push(...params);
-      return this;
-    }
-
-    if (!this.whereQuery) {
-      const { query: rawQuery, params } = this.whereTemplate.rawWhere(query);
-      this.whereQuery = rawQuery;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query: rawQuery, params } = this.whereTemplate.rawWhere(query);
-    this.whereQuery += rawQuery;
-    this.params.push(...params);
-    return this;
-  }
-
-  public rawAndWhere(query: string) {
-    if (this.isNestedCondition) {
-      const { query: rawQuery, params } = this.whereTemplate.rawAndWhere(query);
-      this.whereQuery += rawQuery;
-      this.params.push(...params);
-      return this;
-    }
-
-    if (!this.whereQuery) {
-      const { query: rawQuery, params } = this.whereTemplate.rawAndWhere(query);
-      this.whereQuery = rawQuery;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query: rawQuery, params } = this.whereTemplate.rawAndWhere(query);
-    this.whereQuery += rawQuery;
-    this.params.push(...params);
-    return this;
-  }
-
-  public rawOrWhere(query: string) {
-    if (this.isNestedCondition) {
-      const { query: rawQuery, params } = this.whereTemplate.rawOrWhere(query);
-      this.whereQuery += rawQuery;
-      this.params.push(...params);
-      return this;
-    }
-
-    if (!this.whereQuery) {
-      const { query: rawQuery, params } = this.whereTemplate.rawOrWhere(query);
-      this.whereQuery = rawQuery;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query: rawQuery, params } = this.whereTemplate.rawOrWhere(query);
-    this.whereQuery += rawQuery;
-    this.params.push(...params);
     return this;
   }
 

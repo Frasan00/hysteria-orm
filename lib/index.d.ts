@@ -79,6 +79,130 @@ declare class SqlModelManagerUtils<T extends Model> {
     private getQueryResult;
 }
 
+declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
+    protected mysqlConnection: mysql.Connection;
+    protected mysqlModelManagerUtils: SqlModelManagerUtils<T>;
+    constructor(model: typeof Model, table: string, mysqlConnection: mysql.Connection, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
+    one(options?: OneOptions): Promise<T | null>;
+    oneOrFail(options?: {
+        ignoreHooks?: OneOptions["ignoreHooks"];
+    }): Promise<T>;
+    many(options?: ManyOptions): Promise<T[]>;
+    whereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this;
+    orWhereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this;
+    andWhereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this;
+    getCount(options?: {
+        ignoreHooks: boolean;
+    }): Promise<number>;
+    getSum(column: SelectableType<T>): Promise<number>;
+    getSum(column: string): Promise<number>;
+    paginate(page: number, limit: number, options?: ManyOptions): Promise<PaginatedData<T>>;
+    select(...columns: string[]): MysqlQueryBuilder<T>;
+    select(...columns: (SelectableType<T> | "*")[]): MysqlQueryBuilder<T>;
+    join(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlQueryBuilder<T>;
+    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlQueryBuilder<T>;
+    addRelations(relations: RelationType<T>[]): MysqlQueryBuilder<T>;
+    addDynamicColumns(dynamicColumns: DynamicColumnType<T>[]): ModelQueryBuilder<T>;
+    groupBy(...columns: SelectableType<T>[]): this;
+    groupBy(...columns: string[]): this;
+    groupByRaw(query: string): this;
+    orderBy(columns: SelectableType<T>[], order: "ASC" | "DESC"): this;
+    orderBy(columns: string[], order: "ASC" | "DESC"): this;
+    orderByRaw(query: string): this;
+    limit(limit: number): this;
+    offset(offset: number): this;
+    copy(): ModelQueryBuilder<T>;
+    protected groupFooterQuery(): string;
+}
+
+declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
+    protected pgClient: Client;
+    protected postgresModelManagerUtils: SqlModelManagerUtils<T>;
+    constructor(model: typeof Model, table: string, pgClient: Client, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
+    select(...columns: string[]): PostgresQueryBuilder<T>;
+    select(...columns: (SelectableType<T> | "*")[]): PostgresQueryBuilder<T>;
+    one(options?: OneOptions): Promise<T | null>;
+    oneOrFail(options?: {
+        ignoreHooks: OneOptions["ignoreHooks"];
+    }): Promise<T>;
+    many(options?: ManyOptions): Promise<T[]>;
+    whereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
+    orWhereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
+    andWhereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
+    getCount(options?: {
+        ignoreHooks: boolean;
+    }): Promise<number>;
+    getSum(column: SelectableType<T>): Promise<number>;
+    getSum(column: string): Promise<number>;
+    paginate(page: number, limit: number, options?: ManyOptions): Promise<PaginatedData<T>>;
+    join(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresQueryBuilder<T>;
+    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresQueryBuilder<T>;
+    addRelations(relations: RelationType<T>[]): PostgresQueryBuilder<T>;
+    addDynamicColumns(dynamicColumns: DynamicColumnType<T>[]): ModelQueryBuilder<T>;
+    groupBy(...columns: SelectableType<T>[]): this;
+    groupBy(...columns: string[]): this;
+    groupByRaw(query: string): this;
+    orderBy(columns: SelectableType<T>[], order: "ASC" | "DESC"): this;
+    orderBy(columns: string[], order: "ASC" | "DESC"): this;
+    orderByRaw(query: string): this;
+    limit(limit: number): this;
+    offset(offset: number): this;
+    copy(): ModelQueryBuilder<T>;
+    protected groupFooterQuery(): string;
+}
+
+declare const selectTemplate: (dbType: SqlDataSourceType, typeofModel: typeof Model) => {
+    selectAll: string;
+    selectById: (id: string) => string;
+    selectByIds: (ids: string[]) => string;
+    selectColumns: (...columns: string[]) => string;
+    selectCount: string;
+    selectDistinct: (...columns: string[]) => string;
+    selectSum: (column: string) => string;
+    orderBy: (columns: string[], order?: "ASC" | "DESC") => string;
+    groupBy: (...columns: string[]) => string;
+    limit: (limit: number) => string;
+    offset: (offset: number) => string;
+};
+
+declare class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
+    protected sqLiteConnection: sqlite3.Database;
+    protected sqliteModelManagerUtils: SqlModelManagerUtils<T>;
+    constructor(model: typeof Model, table: string, sqLiteConnection: sqlite3.Database, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
+    one(options?: OneOptions): Promise<T | null>;
+    oneOrFail(options?: {
+        ignoreHooks: OneOptions["ignoreHooks"];
+    }): Promise<T>;
+    many(options?: ManyOptions): Promise<T[]>;
+    whereBuilder(cb: (queryBuilder: SqlLiteQueryBuilder<T>) => void): this;
+    orWhereBuilder(cb: (queryBuilder: SqlLiteQueryBuilder<T>) => void): this;
+    andWhereBuilder(cb: (queryBuilder: SqlLiteQueryBuilder<T>) => void): this;
+    raw<T>(query: string, params?: any[]): Promise<T[]>;
+    getCount(options?: {
+        ignoreHooks: boolean;
+    }): Promise<number>;
+    getSum(column: SelectableType<T>): Promise<number>;
+    getSum(column: string): Promise<number>;
+    paginate(page: number, limit: number, options?: ManyOptions): Promise<PaginatedData<T>>;
+    select(...columns: string[]): SqlLiteQueryBuilder<T>;
+    select(...columns: (SelectableType<T> | "*")[]): SqlLiteQueryBuilder<T>;
+    join(relationTable: string, primaryColumn: string, foreignColumn: string): SqlLiteQueryBuilder<T>;
+    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): SqlLiteQueryBuilder<T>;
+    addRelations(relations: RelationType<T>[]): SqlLiteQueryBuilder<T>;
+    addDynamicColumns(dynamicColumns: DynamicColumnType<T>[]): ModelQueryBuilder<T>;
+    groupBy(...columns: SelectableType<T>[]): this;
+    groupBy(...columns: string[]): this;
+    groupByRaw(query: string): this;
+    orderBy(columns: SelectableType<T>[], order: "ASC" | "DESC"): this;
+    orderBy(columns: string[], order: "ASC" | "DESC"): this;
+    orderByRaw(query: string): this;
+    limit(limit: number): this;
+    offset(offset: number): this;
+    copy(): ModelQueryBuilder<T>;
+    protected groupFooterQuery(): string;
+    private promisifyQuery;
+}
+
 type WhereOperatorType = "=" | "!=" | "<>" | ">" | "<" | ">=" | "<=" | "LIKE" | "ILIKE" | "NOT LIKE" | "NOT ILIKE" | "IN" | "NOT IN" | "BETWEEN" | "NOT BETWEEN";
 type BaseValues = string | number | boolean | object;
 declare const whereTemplate: (dbType: SqlDataSourceType, typeofModel: typeof Model) => {
@@ -179,295 +303,21 @@ declare const whereTemplate: (dbType: SqlDataSourceType, typeofModel: typeof Mod
         query: string;
         params: never[];
     };
-    rawWhere: (query: string) => {
+    rawWhere: (query: string, params: any[]) => {
         query: string;
-        params: never[];
+        params: any[];
     };
-    rawAndWhere: (query: string) => {
+    rawAndWhere: (query: string, params: any[]) => {
         query: string;
-        params: never[];
+        params: any[];
     };
-    rawOrWhere: (query: string) => {
+    rawOrWhere: (query: string, params: any[]) => {
         query: string;
-        params: never[];
+        params: any[];
     };
 };
 
-declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
-    protected mysqlConnection: mysql.Connection;
-    protected isNestedCondition: boolean;
-    protected mysqlModelManagerUtils: SqlModelManagerUtils<T>;
-    /**
-     * @param table - The name of the table.
-     * @param mysqlConnection - The MySQL connection pool.
-     * @param logs - A boolean indicating whether to log queries.
-     * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
-     */
-    constructor(model: typeof Model, table: string, mysqlConnection: mysql.Connection, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
-    one(options?: OneOptions): Promise<T | null>;
-    oneOrFail(options?: {
-        ignoreHooks?: OneOptions["ignoreHooks"];
-    }): Promise<T>;
-    many(options?: ManyOptions): Promise<T[]>;
-    getCount(options?: {
-        ignoreHooks: boolean;
-    }): Promise<number>;
-    getSum(column: SelectableType<T>): Promise<number>;
-    getSum(column: string): Promise<number>;
-    paginate(page: number, limit: number, options?: ManyOptions): Promise<PaginatedData<T>>;
-    select(...columns: string[]): MysqlQueryBuilder<T>;
-    select(...columns: (SelectableType<T> | "*")[]): MysqlQueryBuilder<T>;
-    join(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlQueryBuilder<T>;
-    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlQueryBuilder<T>;
-    addRelations(relations: RelationType<T>[]): MysqlQueryBuilder<T>;
-    addDynamicColumns(dynamicColumns: DynamicColumnType<T>[]): ModelQueryBuilder<T>;
-    whereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this;
-    orWhereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this;
-    andWhereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this;
-    when<O>(value: O, cb: (value: O, query: ModelQueryBuilder<T>) => void): this;
-    where(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
-    where(column: string, operator: WhereOperatorType, value: BaseValues): this;
-    where(column: SelectableType<T> | string, value: BaseValues): this;
-    andWhere(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
-    andWhere(column: string, operator: WhereOperatorType, value: BaseValues): this;
-    andWhere(column: SelectableType<T> | string, value: BaseValues): this;
-    orWhere(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
-    orWhere(column: string, operator: WhereOperatorType, value: BaseValues): this;
-    orWhere(column: SelectableType<T> | string, value: BaseValues): this;
-    whereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
-    whereBetween(column: string, min: BaseValues, max: BaseValues): this;
-    andWhereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
-    andWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
-    orWhereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
-    orWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
-    whereNotBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
-    whereNotBetween(column: string, min: BaseValues, max: BaseValues): this;
-    orWhereNotBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
-    orWhereNotBetween(column: string, min: BaseValues, max: BaseValues): this;
-    whereIn(column: SelectableType<T>, values: BaseValues[]): this;
-    whereIn(column: string, values: BaseValues[]): this;
-    andWhereIn(column: SelectableType<T>, values: BaseValues[]): this;
-    andWhereIn(column: string, values: BaseValues[]): this;
-    orWhereIn(column: SelectableType<T>, values: BaseValues[]): this;
-    orWhereIn(column: string, values: BaseValues[]): this;
-    whereNotIn(column: SelectableType<T>, values: BaseValues[]): this;
-    whereNotIn(column: string, values: BaseValues[]): this;
-    orWhereNotIn(column: SelectableType<T>, values: BaseValues[]): this;
-    orWhereNotIn(column: string, values: BaseValues[]): this;
-    whereNull(column: SelectableType<T>): this;
-    whereNull(column: string): this;
-    andWhereNull(column: SelectableType<T>): this;
-    andWhereNull(column: string): this;
-    orWhereNull(column: SelectableType<T>): this;
-    orWhereNull(column: string): this;
-    whereNotNull(column: SelectableType<T>): this;
-    whereNotNull(column: string): this;
-    andWhereNotNull(column: SelectableType<T>): this;
-    andWhereNotNull(column: string): this;
-    orWhereNotNull(column: SelectableType<T>): this;
-    orWhereNotNull(column: string): this;
-    rawWhere(query: string): this;
-    rawAndWhere(query: string): this;
-    rawOrWhere(query: string): this;
-    groupBy(...columns: SelectableType<T>[]): this;
-    groupBy(...columns: string[]): this;
-    groupByRaw(query: string): this;
-    orderBy(columns: SelectableType<T>[], order: "ASC" | "DESC"): this;
-    orderBy(columns: string[], order: "ASC" | "DESC"): this;
-    orderByRaw(query: string): this;
-    limit(limit: number): this;
-    offset(offset: number): this;
-    copy(): ModelQueryBuilder<T>;
-    protected groupFooterQuery(): string;
-}
-
-declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
-    protected pgClient: Client;
-    protected isNestedCondition: boolean;
-    protected postgresModelManagerUtils: SqlModelManagerUtils<T>;
-    constructor(model: typeof Model, table: string, pgClient: Client, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
-    select(...columns: string[]): PostgresQueryBuilder<T>;
-    select(...columns: (SelectableType<T> | "*")[]): PostgresQueryBuilder<T>;
-    one(options?: OneOptions): Promise<T | null>;
-    oneOrFail(options?: {
-        ignoreHooks: OneOptions["ignoreHooks"];
-    }): Promise<T>;
-    many(options?: ManyOptions): Promise<T[]>;
-    getCount(options?: {
-        ignoreHooks: boolean;
-    }): Promise<number>;
-    getSum(column: SelectableType<T>): Promise<number>;
-    getSum(column: string): Promise<number>;
-    paginate(page: number, limit: number, options?: ManyOptions): Promise<PaginatedData<T>>;
-    join(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresQueryBuilder<T>;
-    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresQueryBuilder<T>;
-    addRelations(relations: RelationType<T>[]): PostgresQueryBuilder<T>;
-    addDynamicColumns(dynamicColumns: DynamicColumnType<T>[]): ModelQueryBuilder<T>;
-    whereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
-    orWhereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
-    andWhereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
-    when<O>(value: O, cb: (value: O, query: ModelQueryBuilder<T>) => void): this;
-    where(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
-    where(column: string, operator: WhereOperatorType, value: BaseValues): this;
-    where(column: SelectableType<T> | string, value: BaseValues): this;
-    andWhere(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
-    andWhere(column: string, operator: WhereOperatorType, value: BaseValues): this;
-    andWhere(column: SelectableType<T> | string, value: BaseValues): this;
-    orWhere(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
-    orWhere(column: string, operator: WhereOperatorType, value: BaseValues): this;
-    orWhere(column: SelectableType<T> | string, value: BaseValues): this;
-    whereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
-    whereBetween(column: string, min: BaseValues, max: BaseValues): this;
-    andWhereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
-    andWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
-    orWhereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
-    orWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
-    whereNotBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
-    whereNotBetween(column: string, min: BaseValues, max: BaseValues): this;
-    orWhereNotBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
-    orWhereNotBetween(column: string, min: BaseValues, max: BaseValues): this;
-    whereIn(column: SelectableType<T>, values: BaseValues[]): this;
-    whereIn(column: string, values: BaseValues[]): this;
-    andWhereIn(column: SelectableType<T>, values: BaseValues[]): this;
-    andWhereIn(column: string, values: BaseValues[]): this;
-    orWhereIn(column: SelectableType<T>, values: BaseValues[]): this;
-    orWhereIn(column: string, values: BaseValues[]): this;
-    whereNotIn(column: SelectableType<T>, values: BaseValues[]): this;
-    whereNotIn(column: string, values: BaseValues[]): this;
-    orWhereNotIn(column: SelectableType<T>, values: BaseValues[]): this;
-    orWhereNotIn(column: string, values: BaseValues[]): this;
-    whereNull(column: SelectableType<T>): this;
-    whereNull(column: string): this;
-    andWhereNull(column: SelectableType<T>): this;
-    andWhereNull(column: string): this;
-    orWhereNull(column: SelectableType<T>): this;
-    orWhereNull(column: string): this;
-    whereNotNull(column: SelectableType<T>): this;
-    whereNotNull(column: string): this;
-    andWhereNotNull(column: SelectableType<T>): this;
-    andWhereNotNull(column: string): this;
-    orWhereNotNull(column: SelectableType<T>): this;
-    orWhereNotNull(column: string): this;
-    rawWhere(query: string): this;
-    rawAndWhere(query: string): this;
-    rawOrWhere(query: string): this;
-    groupBy(...columns: SelectableType<T>[]): this;
-    groupBy(...columns: string[]): this;
-    groupByRaw(query: string): this;
-    orderBy(columns: SelectableType<T>[], order: "ASC" | "DESC"): this;
-    orderBy(columns: string[], order: "ASC" | "DESC"): this;
-    orderByRaw(query: string): this;
-    limit(limit: number): this;
-    offset(offset: number): this;
-    copy(): ModelQueryBuilder<T>;
-    protected groupFooterQuery(): string;
-}
-
-declare const selectTemplate: (dbType: SqlDataSourceType, typeofModel: typeof Model) => {
-    selectAll: string;
-    selectById: (id: string) => string;
-    selectByIds: (ids: string[]) => string;
-    selectColumns: (...columns: string[]) => string;
-    selectCount: string;
-    selectDistinct: (...columns: string[]) => string;
-    selectSum: (column: string) => string;
-    orderBy: (columns: string[], order?: "ASC" | "DESC") => string;
-    groupBy: (...columns: string[]) => string;
-    limit: (limit: number) => string;
-    offset: (offset: number) => string;
-};
-
-declare class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
-    protected sqLiteConnection: sqlite3.Database;
-    protected isNestedCondition: boolean;
-    protected sqliteModelManagerUtils: SqlModelManagerUtils<T>;
-    /**
-     * @param table - The name of the table.
-     * @param sqLiteConnection - The MySQL connection pool.
-     * @param logs - A boolean indicating whether to log queries.
-     * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
-     */
-    constructor(model: typeof Model, table: string, sqLiteConnection: sqlite3.Database, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
-    one(options?: OneOptions): Promise<T | null>;
-    oneOrFail(options?: {
-        ignoreHooks: OneOptions["ignoreHooks"];
-    }): Promise<T>;
-    many(options?: ManyOptions): Promise<T[]>;
-    raw<T>(query: string, params?: any[]): Promise<T[]>;
-    getCount(options?: {
-        ignoreHooks: boolean;
-    }): Promise<number>;
-    getSum(column: SelectableType<T>): Promise<number>;
-    getSum(column: string): Promise<number>;
-    paginate(page: number, limit: number, options?: ManyOptions): Promise<PaginatedData<T>>;
-    select(...columns: string[]): SqlLiteQueryBuilder<T>;
-    select(...columns: (SelectableType<T> | "*")[]): SqlLiteQueryBuilder<T>;
-    join(relationTable: string, primaryColumn: string, foreignColumn: string): SqlLiteQueryBuilder<T>;
-    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): SqlLiteQueryBuilder<T>;
-    addRelations(relations: RelationType<T>[]): SqlLiteQueryBuilder<T>;
-    addDynamicColumns(dynamicColumns: DynamicColumnType<T>[]): ModelQueryBuilder<T>;
-    whereBuilder(cb: (queryBuilder: SqlLiteQueryBuilder<T>) => void): this;
-    orWhereBuilder(cb: (queryBuilder: SqlLiteQueryBuilder<T>) => void): this;
-    andWhereBuilder(cb: (queryBuilder: SqlLiteQueryBuilder<T>) => void): this;
-    when<O>(value: O, cb: (value: O, query: ModelQueryBuilder<T>) => void): this;
-    where(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
-    where(column: string, operator: WhereOperatorType, value: BaseValues): this;
-    where(column: SelectableType<T> | string, value: BaseValues): this;
-    andWhere(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
-    andWhere(column: string, operator: WhereOperatorType, value: BaseValues): this;
-    andWhere(column: SelectableType<T> | string, value: BaseValues): this;
-    orWhere(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
-    orWhere(column: string, operator: WhereOperatorType, value: BaseValues): this;
-    orWhere(column: SelectableType<T> | string, value: BaseValues): this;
-    whereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
-    whereBetween(column: string, min: BaseValues, max: BaseValues): this;
-    andWhereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
-    andWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
-    orWhereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
-    orWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
-    whereNotBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
-    whereNotBetween(column: string, min: BaseValues, max: BaseValues): this;
-    orWhereNotBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
-    orWhereNotBetween(column: string, min: BaseValues, max: BaseValues): this;
-    whereIn(column: SelectableType<T>, values: BaseValues[]): this;
-    whereIn(column: string, values: BaseValues[]): this;
-    andWhereIn(column: SelectableType<T>, values: BaseValues[]): this;
-    andWhereIn(column: string, values: BaseValues[]): this;
-    orWhereIn(column: SelectableType<T>, values: BaseValues[]): this;
-    orWhereIn(column: string, values: BaseValues[]): this;
-    whereNotIn(column: SelectableType<T>, values: BaseValues[]): this;
-    whereNotIn(column: string, values: BaseValues[]): this;
-    orWhereNotIn(column: SelectableType<T>, values: BaseValues[]): this;
-    orWhereNotIn(column: string, values: BaseValues[]): this;
-    whereNull(column: SelectableType<T>): this;
-    whereNull(column: string): this;
-    andWhereNull(column: SelectableType<T>): this;
-    andWhereNull(column: string): this;
-    orWhereNull(column: SelectableType<T>): this;
-    orWhereNull(column: string): this;
-    whereNotNull(column: SelectableType<T>): this;
-    whereNotNull(column: string): this;
-    andWhereNotNull(column: SelectableType<T>): this;
-    andWhereNotNull(column: string): this;
-    orWhereNotNull(column: SelectableType<T>): this;
-    orWhereNotNull(column: string): this;
-    rawWhere(query: string): this;
-    rawAndWhere(query: string): this;
-    rawOrWhere(query: string): this;
-    groupBy(...columns: SelectableType<T>[]): this;
-    groupBy(...columns: string[]): this;
-    groupByRaw(query: string): this;
-    orderBy(columns: SelectableType<T>[], order: "ASC" | "DESC"): this;
-    orderBy(columns: string[], order: "ASC" | "DESC"): this;
-    orderByRaw(query: string): this;
-    limit(limit: number): this;
-    offset(offset: number): this;
-    copy(): ModelQueryBuilder<T>;
-    protected groupFooterQuery(): string;
-    private promisifyQuery;
-}
-
-declare abstract class WhereQueryBuilder<T extends Model> {
+declare class WhereQueryBuilder<T extends Model> {
     protected sqlDataSource: SqlDataSource;
     protected whereQuery: string;
     protected params: BaseValues[];
@@ -485,7 +335,7 @@ declare abstract class WhereQueryBuilder<T extends Model> {
      */
     constructor(model: typeof Model, table: string, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
     /**
-     * @description Accepts a value and executes a callback only of the value exists
+     * @description Accepts a value and executes a callback only of the value is not null or undefined.
      * @param {any} value
      * @param callback
      */
@@ -652,19 +502,19 @@ declare abstract class WhereQueryBuilder<T extends Model> {
      * @param query - The raw SQL WHERE condition.
      * @returns The query_builder instance for chaining.
      */
-    rawWhere(query: string): this;
+    rawWhere(query: string, queryParams?: any[]): this;
     /**
      * @description Adds a raw AND WHERE condition to the query.
      * @param query - The raw SQL WHERE condition.
      * @returns The query_builder instance for chaining.
      */
-    rawAndWhere(query: string): this;
+    rawAndWhere(query: string, queryParams?: any[]): this;
     /**
      * @description Adds a raw OR WHERE condition to the query.
      * @param query - The raw SQL WHERE condition.
      * @returns The query_builder instance for chaining.
      */
-    rawOrWhere(query: string): this;
+    rawOrWhere(query: string, queryParams?: any[]): this;
 }
 
 /**
@@ -1009,9 +859,6 @@ declare abstract class ModelUpdateQueryBuilder<T extends Model> extends WhereQue
     abstract withData(data: Partial<T>, options?: WithDataOptions): Promise<number>;
     abstract join(relationTable: string, primaryColumn: string, foreignColumn: string): ModelUpdateQueryBuilder<T>;
     abstract leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): ModelUpdateQueryBuilder<T>;
-    abstract whereBuilder(cb: (queryBuilder: ModelUpdateQueryBuilder<T>) => void): ModelUpdateQueryBuilder<T>;
-    abstract orWhereBuilder(cb: (queryBuilder: ModelUpdateQueryBuilder<T>) => void): ModelUpdateQueryBuilder<T>;
-    abstract andWhereBuilder(cb: (queryBuilder: ModelUpdateQueryBuilder<T>) => void): ModelUpdateQueryBuilder<T>;
 }
 
 type BaseModelMethodOptions = {

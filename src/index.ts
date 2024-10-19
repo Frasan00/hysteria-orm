@@ -24,29 +24,24 @@ import {
   RedisGiveable,
   RedisStorable,
 } from "./no_sql/redis/redis_data_source";
-import { User } from "../test/User";
+// import { User } from "../test/User";
 
-(async () => {
-  const sql = await SqlDataSource.connect();
+// (async () => {
+//   const sql = await SqlDataSource.connect();
 
-  const user = await User.insertMany([
-    {
-      name: "sqlite1",
-      email: "user12",
-      signupSource: "email",
-      isActive: true,
-    },
-    {
-      name: "sqlite2",
-      email: "user13",
-      signupSource: "email",
-      isActive: true,
-    },
-  ]);
+//   await User.query()
+//     .whereBuilder((builder) => {
+//       builder.where("id", 1);
+//       builder.orWhere("id", 2);
+//       builder.andWhereBuilder((builder) => {
+//         builder.where("id", 3);
+//         builder.orWhere("id", 4);
+//       });
+//     })
+//     .one();
 
-  console.log(user);
-  await sql.closeConnection();
-})();
+//   await sql.closeConnection();
+// })();
 
 export default {
   // sql

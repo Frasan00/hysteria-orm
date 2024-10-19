@@ -6,7 +6,6 @@ import {
   ManyOptions,
 } from "../query_builder/query_builder";
 import { Client } from "pg";
-import { BaseValues, WhereOperatorType } from "../resources/query/WHERE";
 import { log, queryError } from "../../utils/logger";
 import joinTemplate from "../resources/query/JOIN";
 import { PaginatedData, getPaginationMetadata } from "../pagination";
@@ -23,7 +22,6 @@ import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
 
 export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   protected pgClient: Client;
-  protected isNestedCondition: boolean;
   protected postgresModelManagerUtils: SqlModelManagerUtils<T>;
 
   public constructor(
@@ -83,6 +81,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     query += this.groupFooterQuery();
 
     query = query.trim();
+    console.log(query, this.params);
     log(query, this.logs, this.params);
     try {
       const result = await this.pgClient.query(query, this.params);
@@ -196,111 +195,6 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     }
   }
 
-  public async getCount(
-    options: { ignoreHooks: boolean } = { ignoreHooks: false },
-  ): Promise<number> {
-    if (options.ignoreHooks) {
-      const { rows } = await this.pgClient.query(
-        `SELECT COUNT(*) as total from ${this.table}`,
-      );
-      return +rows[0].total;
-    }
-    this.select("COUNT(*) as total");
-    const result = await this.one();
-    return result ? +result.extraColumns["total"] : 0;
-  }
-
-  public async getSum(column: SelectableType<T>): Promise<number>;
-  public async getSum(column: string): Promise<number>;
-  public async getSum(
-    column: SelectableType<T> | string,
-    options: { ignoreHooks: boolean } = { ignoreHooks: false },
-  ): Promise<number> {
-    if (options.ignoreHooks) {
-      const { rows } = await this.pgClient.query(
-        `SELECT SUM(${column as string}) as total from ${this.table}`,
-      );
-      return +rows[0].total || 0;
-    }
-
-    column = convertCase(column as string, this.model.databaseCaseConvention);
-    this.select(`SUM(${column as string}) as total`);
-    const result = await this.one();
-    return result ? +result.extraColumns["total"] : 0;
-  }
-
-  public async paginate(
-    page: number,
-    limit: number,
-    options?: ManyOptions,
-  ): Promise<PaginatedData<T>> {
-    this.limitQuery = this.selectTemplate.limit(limit);
-    this.offsetQuery = this.selectTemplate.offset((page - 1) * limit);
-
-    const originalSelectQuery = this.selectQuery;
-    this.select("COUNT(*) as total");
-    const total = await this.many(options);
-    this.selectQuery = originalSelectQuery;
-
-    const models = await this.many(options);
-    const paginationMetadata = getPaginationMetadata(
-      page,
-      limit,
-      +total[0].extraColumns["total"] as number,
-    );
-    let data =
-      (await parseDatabaseDataIntoModelResponse(models, this.model)) || [];
-    if (Array.isArray(data)) {
-      data = data.filter((model) => model !== null);
-    }
-    return {
-      paginationMetadata,
-      data: Array.isArray(data) ? data : [data],
-    } as PaginatedData<T>;
-  }
-
-  public join(
-    relationTable: string,
-    primaryColumn: string,
-    foreignColumn: string,
-  ): PostgresQueryBuilder<T> {
-    const join = joinTemplate(
-      this.model,
-      relationTable,
-      primaryColumn as string,
-      foreignColumn as string,
-    );
-    this.joinQuery += join.innerJoin();
-    return this;
-  }
-
-  public leftJoin(
-    relationTable: string,
-    primaryColumn: string,
-    foreignColumn: string,
-  ): PostgresQueryBuilder<T> {
-    const join = joinTemplate(
-      this.model,
-      relationTable,
-      primaryColumn as string,
-      foreignColumn as string,
-    );
-    this.joinQuery += join.leftJoin();
-    return this;
-  }
-
-  public addRelations(relations: RelationType<T>[]): PostgresQueryBuilder<T> {
-    this.relations = relations as string[];
-    return this;
-  }
-
-  public addDynamicColumns(
-    dynamicColumns: DynamicColumnType<T>[],
-  ): ModelQueryBuilder<T> {
-    this.dynamicColumns = dynamicColumns as string[];
-    return this;
-  }
-
   public whereBuilder(
     cb: (queryBuilder: PostgresQueryBuilder<T>) => void,
   ): this {
@@ -407,832 +301,108 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  public when<O>(
-    value: O,
-    cb: (value: O, query: ModelQueryBuilder<T>) => void,
-  ): this {
-    if (value === undefined || value === null) {
-      return this;
+  public async getCount(
+    options: { ignoreHooks: boolean } = { ignoreHooks: false },
+  ): Promise<number> {
+    if (options.ignoreHooks) {
+      const { rows } = await this.pgClient.query(
+        `SELECT COUNT(*) as total from ${this.table}`,
+      );
+      return +rows[0].total;
     }
-
-    cb(value, this);
-    return this;
+    this.select("COUNT(*) as total");
+    const result = await this.one();
+    return result ? +result.extraColumns["total"] : 0;
   }
 
-  public where(
-    column: SelectableType<T>,
-    operator: WhereOperatorType,
-    value: BaseValues,
-  ): this;
-  public where(
-    column: string,
-    operator: WhereOperatorType,
-    value: BaseValues,
-  ): this;
-  public where(column: SelectableType<T> | string, value: BaseValues): this;
-  public where(
+  public async getSum(column: SelectableType<T>): Promise<number>;
+  public async getSum(column: string): Promise<number>;
+  public async getSum(
     column: SelectableType<T> | string,
-    operatorOrValue: WhereOperatorType | BaseValues,
-    value?: BaseValues,
-  ): this {
-    let operator: WhereOperatorType = "=";
-    let actualValue: BaseValues;
-
-    if (typeof operatorOrValue === "string" && value) {
-      operator = operatorOrValue as WhereOperatorType;
-      actualValue = value;
-    } else {
-      actualValue = operatorOrValue as BaseValues;
-      operator = "=";
-    }
-
-    if (this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.andWhere(
-        column as string,
-        actualValue,
-        operator,
+    options: { ignoreHooks: boolean } = { ignoreHooks: false },
+  ): Promise<number> {
+    if (options.ignoreHooks) {
+      const { rows } = await this.pgClient.query(
+        `SELECT SUM(${column as string}) as total from ${this.table}`,
       );
-      this.whereQuery += query;
-      this.params.push(...params);
-      return this;
+      return +rows[0].total || 0;
     }
 
-    if (!this.whereQuery) {
-      const { query, params } = this.whereTemplate.where(
-        column as string,
-        actualValue,
-        operator,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
+    column = convertCase(column as string, this.model.databaseCaseConvention);
+    this.select(`SUM(${column as string}) as total`);
+    const result = await this.one();
+    return result ? +result.extraColumns["total"] : 0;
+  }
 
-    const { query, params } = this.whereTemplate.andWhere(
-      column as string,
-      actualValue,
-      operator,
+  public async paginate(
+    page: number,
+    limit: number,
+    options?: ManyOptions,
+  ): Promise<PaginatedData<T>> {
+    this.limitQuery = this.selectTemplate.limit(limit);
+    this.offsetQuery = this.selectTemplate.offset((page - 1) * limit);
+
+    const originalSelectQuery = this.selectQuery;
+    this.select("COUNT(*) as total");
+    const total = await this.many(options);
+    this.selectQuery = originalSelectQuery;
+
+    const models = await this.many(options);
+    const paginationMetadata = getPaginationMetadata(
+      page,
+      limit,
+      +total[0].extraColumns["total"] as number,
     );
-
-    this.whereQuery += query;
-    this.params.push(...params);
-    return this;
+    let data =
+      (await parseDatabaseDataIntoModelResponse(models, this.model)) || [];
+    if (Array.isArray(data)) {
+      data = data.filter((model) => model !== null);
+    }
+    return {
+      paginationMetadata,
+      data: Array.isArray(data) ? data : [data],
+    } as PaginatedData<T>;
   }
 
-  public andWhere(
-    column: SelectableType<T>,
-    operator: WhereOperatorType,
-    value: BaseValues,
-  ): this;
-  public andWhere(
-    column: string,
-    operator: WhereOperatorType,
-    value: BaseValues,
-  ): this;
-  public andWhere(column: SelectableType<T> | string, value: BaseValues): this;
-  public andWhere(
-    column: SelectableType<T> | string,
-    operatorOrValue: WhereOperatorType | BaseValues,
-    value?: BaseValues,
-  ): this {
-    let operator: WhereOperatorType = "=";
-    let actualValue: BaseValues;
-
-    if (typeof operatorOrValue === "string" && value) {
-      operator = operatorOrValue as WhereOperatorType;
-      actualValue = value;
-    } else {
-      actualValue = operatorOrValue as BaseValues;
-      operator = "=";
-    }
-
-    if (this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.andWhere(
-        column as string,
-        actualValue,
-        operator,
-      );
-      this.whereQuery += query;
-      this.params.push(...params);
-      return this;
-    }
-
-    if (!this.whereQuery) {
-      const { query, params } = this.whereTemplate.where(
-        column as string,
-        actualValue,
-        operator,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.andWhere(
-      column as string,
-      actualValue,
-      operator,
+  public join(
+    relationTable: string,
+    primaryColumn: string,
+    foreignColumn: string,
+  ): PostgresQueryBuilder<T> {
+    const join = joinTemplate(
+      this.model,
+      relationTable,
+      primaryColumn as string,
+      foreignColumn as string,
     );
-
-    this.whereQuery += query;
-    this.params.push(...params);
+    this.joinQuery += join.innerJoin();
     return this;
   }
 
-  public orWhere(
-    column: SelectableType<T>,
-    operator: WhereOperatorType,
-    value: BaseValues,
-  ): this;
-  public orWhere(
-    column: string,
-    operator: WhereOperatorType,
-    value: BaseValues,
-  ): this;
-  public orWhere(column: SelectableType<T> | string, value: BaseValues): this;
-  public orWhere(
-    column: SelectableType<T> | string,
-    operatorOrValue: WhereOperatorType | BaseValues,
-    value?: BaseValues,
-  ): this {
-    let operator: WhereOperatorType = "=";
-    let actualValue: BaseValues;
-
-    if (typeof operatorOrValue === "string" && value) {
-      operator = operatorOrValue as WhereOperatorType;
-      actualValue = value;
-    } else {
-      actualValue = operatorOrValue as BaseValues;
-      operator = "=";
-    }
-
-    if (this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.orWhere(
-        column as string,
-        actualValue,
-        operator,
-      );
-      this.whereQuery += query;
-      this.params.push(...params);
-      return this;
-    }
-
-    if (!this.whereQuery) {
-      const { query, params } = this.whereTemplate.where(
-        column as string,
-        actualValue,
-        operator,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.orWhere(
-      column as string,
-      actualValue,
-      operator,
+  public leftJoin(
+    relationTable: string,
+    primaryColumn: string,
+    foreignColumn: string,
+  ): PostgresQueryBuilder<T> {
+    const join = joinTemplate(
+      this.model,
+      relationTable,
+      primaryColumn as string,
+      foreignColumn as string,
     );
-
-    this.whereQuery += query;
-    this.params.push(...params);
+    this.joinQuery += join.leftJoin();
     return this;
   }
 
-  public whereBetween(
-    column: SelectableType<T>,
-    min: BaseValues,
-    max: BaseValues,
-  ): this;
-  public whereBetween(column: string, min: BaseValues, max: BaseValues): this;
-  public whereBetween(
-    column: SelectableType<T> | string,
-    min: BaseValues,
-    max: BaseValues,
-  ): this {
-    if (this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.andWhereBetween(
-        column as string,
-        min,
-        max,
-      );
-      this.whereQuery += query;
-      this.params.push(...params);
-      return this;
-    }
-
-    if (!this.whereQuery) {
-      const { query, params } = this.whereTemplate.whereBetween(
-        column as string,
-        min,
-        max,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.andWhereBetween(
-      column as string,
-      min,
-      max,
-    );
-
-    this.whereQuery += query;
-    this.params.push(...params);
+  public addRelations(relations: RelationType<T>[]): PostgresQueryBuilder<T> {
+    this.relations = relations as string[];
     return this;
   }
 
-  public andWhereBetween(
-    column: SelectableType<T>,
-    min: BaseValues,
-    max: BaseValues,
-  ): this;
-  public andWhereBetween(
-    column: string,
-    min: BaseValues,
-    max: BaseValues,
-  ): this;
-  public andWhereBetween(
-    column: SelectableType<T> | string,
-    min: BaseValues,
-    max: BaseValues,
-  ): this {
-    if (this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.andWhereBetween(
-        column as string,
-        min,
-        max,
-      );
-      this.whereQuery += query;
-      this.params.push(...params);
-      return this;
-    }
-
-    if (!this.whereQuery) {
-      const { query, params } = this.whereTemplate.whereBetween(
-        column as string,
-        min,
-        max,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.andWhereBetween(
-      column as string,
-      min,
-      max,
-    );
-
-    this.whereQuery += query;
-    this.params.push(...params);
-    return this;
-  }
-
-  public orWhereBetween(
-    column: SelectableType<T>,
-    min: BaseValues,
-    max: BaseValues,
-  ): this;
-  public orWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
-  public orWhereBetween(
-    column: SelectableType<T> | string,
-    min: BaseValues,
-    max: BaseValues,
-  ): this {
-    if (this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.orWhereBetween(
-        column as string,
-        min,
-        max,
-      );
-      this.whereQuery += query;
-      this.params.push(...params);
-      return this;
-    }
-
-    if (!this.whereQuery) {
-      const { query, params } = this.whereTemplate.whereBetween(
-        column as string,
-        min,
-        max,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.orWhereBetween(
-      column as string,
-      min,
-      max,
-    );
-
-    this.whereQuery += query;
-    this.params.push(...params);
-    return this;
-  }
-
-  public whereNotBetween(
-    column: SelectableType<T>,
-    min: BaseValues,
-    max: BaseValues,
-  ): this;
-  public whereNotBetween(
-    column: string,
-    min: BaseValues,
-    max: BaseValues,
-  ): this;
-  public whereNotBetween(
-    column: SelectableType<T> | string,
-    min: BaseValues,
-    max: BaseValues,
-  ): this {
-    if (this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.andWhereNotBetween(
-        column as string,
-        min,
-        max,
-      );
-      this.whereQuery += query;
-      this.params.push(...params);
-      return this;
-    }
-
-    if (!this.whereQuery) {
-      const { query, params } = this.whereTemplate.whereNotBetween(
-        column as string,
-        min,
-        max,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.andWhereNotBetween(
-      column as string,
-      min,
-      max,
-    );
-
-    this.whereQuery += query;
-    this.params.push(...params);
-    return this;
-  }
-
-  public orWhereNotBetween(
-    column: SelectableType<T>,
-    min: BaseValues,
-    max: BaseValues,
-  ): this;
-  public orWhereNotBetween(
-    column: string,
-    min: BaseValues,
-    max: BaseValues,
-  ): this;
-  public orWhereNotBetween(
-    column: SelectableType<T> | string,
-    min: BaseValues,
-    max: BaseValues,
-  ): this {
-    if (this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.orWhereNotBetween(
-        column as string,
-        min,
-        max,
-      );
-      this.whereQuery += query;
-      this.params.push(...params);
-      return this;
-    }
-
-    if (!this.whereQuery) {
-      const { query, params } = this.whereTemplate.whereNotBetween(
-        column as string,
-        min,
-        max,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.orWhereNotBetween(
-      column as string,
-      min,
-      max,
-    );
-
-    this.whereQuery += query;
-    this.params.push(...params);
-    return this;
-  }
-
-  public whereIn(column: SelectableType<T>, values: BaseValues[]): this;
-  public whereIn(column: string, values: BaseValues[]): this;
-  public whereIn(
-    column: SelectableType<T> | string,
-    values: BaseValues[],
-  ): this {
-    if (this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.andWhereIn(
-        column as string,
-        values,
-      );
-      this.whereQuery += query;
-      this.params.push(...params);
-      return this;
-    }
-
-    if (!this.whereQuery) {
-      const { query, params } = this.whereTemplate.whereIn(
-        column as string,
-        values,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.andWhereIn(
-      column as string,
-      values,
-    );
-
-    this.whereQuery += query;
-    this.params.push(...params);
-    return this;
-  }
-
-  public andWhereIn(column: SelectableType<T>, values: BaseValues[]): this;
-  public andWhereIn(column: string, values: BaseValues[]): this;
-  public andWhereIn(
-    column: SelectableType<T> | string,
-    values: BaseValues[],
-  ): this {
-    if (this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.andWhereIn(
-        column as string,
-        values,
-      );
-      this.whereQuery += query;
-      this.params.push(...params);
-      return this;
-    }
-
-    if (!this.whereQuery) {
-      const { query, params } = this.whereTemplate.whereIn(
-        column as string,
-        values,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.andWhereIn(
-      column as string,
-      values,
-    );
-
-    this.whereQuery += query;
-    this.params.push(...params);
-    return this;
-  }
-
-  public orWhereIn(column: SelectableType<T>, values: BaseValues[]): this;
-  public orWhereIn(column: string, values: BaseValues[]): this;
-  public orWhereIn(
-    column: SelectableType<T> | string,
-    values: BaseValues[],
-  ): this {
-    if (this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.orWhereIn(
-        column as string,
-        values,
-      );
-      this.whereQuery += query;
-      this.params.push(...params);
-      return this;
-    }
-
-    if (!this.whereQuery) {
-      const { query, params } = this.whereTemplate.whereIn(
-        column as string,
-        values,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.orWhereIn(
-      column as string,
-      values,
-    );
-
-    this.whereQuery += query;
-    this.params.push(...params);
-    return this;
-  }
-
-  public whereNotIn(column: SelectableType<T>, values: BaseValues[]): this;
-  public whereNotIn(column: string, values: BaseValues[]): this;
-  public whereNotIn(
-    column: SelectableType<T> | string,
-    values: BaseValues[],
-  ): this {
-    if (this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.andWhereNotIn(
-        column as string,
-        values,
-      );
-      this.whereQuery += query;
-      this.params.push(...params);
-      return this;
-    }
-
-    if (!this.whereQuery) {
-      const { query, params } = this.whereTemplate.whereNotIn(
-        column as string,
-        values,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.andWhereNotIn(
-      column as string,
-      values,
-    );
-
-    this.whereQuery += query;
-    this.params.push(...params);
-    return this;
-  }
-
-  public orWhereNotIn(column: SelectableType<T>, values: BaseValues[]): this;
-  public orWhereNotIn(column: string, values: BaseValues[]): this;
-  public orWhereNotIn(
-    column: SelectableType<T> | string,
-    values: BaseValues[],
-  ): this {
-    if (this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.orWhereNotIn(
-        column as string,
-        values,
-      );
-      this.whereQuery += query;
-      this.params.push(...params);
-      return this;
-    }
-
-    if (!this.whereQuery) {
-      const { query, params } = this.whereTemplate.whereNotIn(
-        column as string,
-        values,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.orWhereNotIn(
-      column as string,
-      values,
-    );
-
-    this.whereQuery += query;
-    this.params.push(...params);
-    return this;
-  }
-
-  public whereNull(column: SelectableType<T>): this;
-  public whereNull(column: string): this;
-  public whereNull(column: SelectableType<T> | string): this {
-    if (this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.andWhereNull(
-        column as string,
-      );
-      this.whereQuery += query;
-      this.params.push(...params);
-      return this;
-    }
-
-    if (!this.whereQuery) {
-      const { query, params } = this.whereTemplate.whereNull(column as string);
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.andWhereNull(column as string);
-    this.whereQuery += query;
-    this.params.push(...params);
-    return this;
-  }
-
-  public andWhereNull(column: SelectableType<T>): this;
-  public andWhereNull(column: string): this;
-  public andWhereNull(column: SelectableType<T> | string): this {
-    if (this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.andWhereNull(
-        column as string,
-      );
-      this.whereQuery += query;
-      this.params.push(...params);
-      return this;
-    }
-
-    if (!this.whereQuery) {
-      const { query, params } = this.whereTemplate.whereNull(column as string);
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.andWhereNull(column as string);
-    this.whereQuery += query;
-    this.params.push(...params);
-    return this;
-  }
-
-  public orWhereNull(column: SelectableType<T>): this;
-  public orWhereNull(column: string): this;
-  public orWhereNull(column: SelectableType<T> | string): this {
-    if (this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.orWhereNull(
-        column as string,
-      );
-      this.whereQuery += query;
-      this.params.push(...params);
-      return this;
-    }
-
-    if (!this.whereQuery) {
-      const { query, params } = this.whereTemplate.whereNull(column as string);
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.orWhereNull(column as string);
-    this.whereQuery += query;
-    this.params.push(...params);
-    return this;
-  }
-
-  public whereNotNull(column: SelectableType<T>): this;
-  public whereNotNull(column: string): this;
-  public whereNotNull(column: SelectableType<T> | string): this {
-    if (this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.andWhereNotNull(
-        column as string,
-      );
-      this.whereQuery += query;
-      this.params.push(...params);
-      return this;
-    }
-
-    if (!this.whereQuery) {
-      const { query, params } = this.whereTemplate.whereNotNull(
-        column as string,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.andWhereNotNull(
-      column as string,
-    );
-    this.whereQuery += query;
-    this.params.push(...params);
-    return this;
-  }
-
-  public andWhereNotNull(column: SelectableType<T>): this;
-  public andWhereNotNull(column: string): this;
-  public andWhereNotNull(column: SelectableType<T> | string): this {
-    if (this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.andWhereNotNull(
-        column as string,
-      );
-      this.whereQuery += query;
-      this.params.push(...params);
-      return this;
-    }
-
-    if (!this.whereQuery) {
-      const { query, params } = this.whereTemplate.whereNotNull(
-        column as string,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.andWhereNotNull(
-      column as string,
-    );
-    this.whereQuery += query;
-    this.params.push(...params);
-    return this;
-  }
-
-  public orWhereNotNull(column: SelectableType<T>): this;
-  public orWhereNotNull(column: string): this;
-  public orWhereNotNull(column: SelectableType<T> | string): this {
-    if (this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.orWhereNotNull(
-        column as string,
-      );
-      this.whereQuery += query;
-      this.params.push(...params);
-      return this;
-    }
-
-    if (!this.whereQuery) {
-      const { query, params } = this.whereTemplate.whereNotNull(
-        column as string,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.orWhereNotNull(
-      column as string,
-    );
-    this.whereQuery += query;
-    this.params.push(...params);
-    return this;
-  }
-
-  public rawWhere(query: string) {
-    if (this.isNestedCondition) {
-      const { query: rawQuery, params } = this.whereTemplate.rawWhere(query);
-      this.whereQuery += rawQuery;
-      this.params.push(...params);
-      return this;
-    }
-
-    if (!this.whereQuery) {
-      const { query: rawQuery, params } = this.whereTemplate.rawWhere(query);
-      this.whereQuery = rawQuery;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query: rawQuery, params } = this.whereTemplate.rawWhere(query);
-    this.whereQuery += rawQuery;
-    this.params.push(...params);
-    return this;
-  }
-
-  public rawAndWhere(query: string) {
-    if (this.isNestedCondition) {
-      const { query: rawQuery, params } = this.whereTemplate.rawAndWhere(query);
-      this.whereQuery += rawQuery;
-      this.params.push(...params);
-      return this;
-    }
-
-    if (!this.whereQuery) {
-      const { query: rawQuery, params } = this.whereTemplate.rawAndWhere(query);
-      this.whereQuery = rawQuery;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query: rawQuery, params } = this.whereTemplate.rawAndWhere(query);
-    this.whereQuery += rawQuery;
-    this.params.push(...params);
-    return this;
-  }
-
-  public rawOrWhere(query: string) {
-    if (this.isNestedCondition) {
-      const { query: rawQuery, params } = this.whereTemplate.rawOrWhere(query);
-      this.whereQuery += rawQuery;
-      this.params.push(...params);
-      return this;
-    }
-
-    if (!this.whereQuery) {
-      const { query: rawQuery, params } = this.whereTemplate.rawOrWhere(query);
-      this.whereQuery = rawQuery;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query: rawQuery, params } = this.whereTemplate.rawOrWhere(query);
-    this.whereQuery += rawQuery;
-    this.params.push(...params);
+  public addDynamicColumns(
+    dynamicColumns: DynamicColumnType<T>[],
+  ): ModelQueryBuilder<T> {
+    this.dynamicColumns = dynamicColumns as string[];
     return this;
   }
 
