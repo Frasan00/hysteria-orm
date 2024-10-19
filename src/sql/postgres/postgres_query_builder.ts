@@ -81,7 +81,6 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     query += this.groupFooterQuery();
 
     query = query.trim();
-    console.log(query, this.params);
     log(query, this.logs, this.params);
     try {
       const result = await this.pgClient.query(query, this.params);
