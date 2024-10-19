@@ -20,7 +20,7 @@ interface DataSourceInput {
     readonly mysqlOptions?: mysql.PoolOptions;
     readonly pgOptions?: pg.PoolConfig;
 }
-declare abstract class Datasource {
+declare abstract class DataSource {
     protected type: DataSourceType;
     protected host: string;
     protected port: number;
@@ -1847,7 +1847,7 @@ interface SqlDataSourceInput extends DataSourceInput {
     type: Exclude<DataSourceType, "redis">;
 }
 type SqlDataSourceType = SqlDataSourceInput["type"];
-declare class SqlDataSource extends Datasource {
+declare class SqlDataSource extends DataSource {
     isConnected: boolean;
     protected sqlConnection: SqlConnectionType;
     private static instance;

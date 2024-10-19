@@ -29,7 +29,7 @@ export interface DataSourceInput {
   readonly pgOptions?: pg.PoolConfig;
 }
 
-export abstract class Datasource {
+export abstract class DataSource {
   protected type!: DataSourceType;
   protected host!: string;
   protected port!: number;

@@ -1,7 +1,7 @@
 import mysql, { createConnection } from "mysql2/promise";
 import pg from "pg";
 import sqlite3 from "sqlite3";
-import { DataSourceInput, DataSourceType, Datasource } from "../data_source";
+import { DataSourceInput, DataSourceType, DataSource } from "../data_source";
 import logger, { log } from "../utils/logger";
 import { Model } from "./models/model";
 import { MysqlModelManager } from "./mysql/mysql_model_manager";
@@ -27,7 +27,7 @@ export interface SqlDataSourceInput extends DataSourceInput {
 
 export type SqlDataSourceType = SqlDataSourceInput["type"];
 
-export class SqlDataSource extends Datasource {
+export class SqlDataSource extends DataSource {
   public isConnected: boolean;
   protected sqlConnection!: SqlConnectionType;
   private static instance: SqlDataSource | null = null;
