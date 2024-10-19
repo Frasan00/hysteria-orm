@@ -20,7 +20,7 @@ import { ModelDeleteQueryBuilder } from "./sql/query_builder/delete_query_builde
 import { ModelUpdateQueryBuilder } from "./sql/query_builder/update_query_builder";
 import { RedisOptions } from "ioredis";
 import {
-  Redis_data_source as Redis,
+  RedisDataSource as Redis,
   RedisGiveable,
   RedisStorable,
 } from "./no_sql/redis/redis_data_source";

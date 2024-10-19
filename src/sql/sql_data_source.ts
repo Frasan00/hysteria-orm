@@ -21,9 +21,11 @@ export type ModelManager<T extends Model> =
 
 export type SqlConnectionType = mysql.Connection | pg.Client | sqlite3.Database;
 
-export interface SqlDataSourceInput extends DataSourceInput {
-  type: Exclude<DataSourceType, "redis">;
+export interface ISqlDataSourceInput extends DataSourceInput {
+  type: Exclude<DataSourceType, "mongo">;
 }
+
+export type SqlDataSourceInput = Exclude<ISqlDataSourceInput, "mongoOptions">;
 
 export type SqlDataSourceType = SqlDataSourceInput["type"];
 
@@ -97,8 +99,8 @@ export class SqlDataSource extends DataSource {
     return sqlDataSource;
   }
 
-  static getInstance(): SqlDataSource | null {
-    if (!this.instance) {
+  static getInstance(): SqlDataSource {
+    if (!SqlDataSource.instance) {
       throw new Error("sql database connection not established");
     }
 

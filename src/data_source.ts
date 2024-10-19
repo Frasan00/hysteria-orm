@@ -1,6 +1,7 @@
 import dotenv from "dotenv";
 import mysql from "mysql2/promise";
 import pg from "pg";
+import { MongoClientOptions } from "mongodb";
 
 dotenv.config();
 
@@ -12,7 +13,7 @@ export type DataSourceType =
   | "postgres"
   | "mariadb"
   | "sqlite"
-  | "redis";
+  | "mongo";
 
 /**
  * @description By default the connection details can be provided in the env.ts file, you can still override each prop with your actual connection details
@@ -27,8 +28,13 @@ export interface DataSourceInput {
   readonly logs?: boolean;
   readonly mysqlOptions?: mysql.PoolOptions;
   readonly pgOptions?: pg.PoolConfig;
-}
+  readonly mongoOptions?: MongoClientOptions;
 
+  /**
+   * @description Mongo specific option, sql databases won't use this
+   */
+  readonly url?: string;
+}
 export abstract class DataSource {
   protected type!: DataSourceType;
   protected host!: string;
@@ -36,33 +42,20 @@ export abstract class DataSource {
   protected username!: string;
   protected password!: string;
   protected database!: string;
+  protected url!: string;
   protected logs!: boolean;
 
   protected constructor(input?: DataSourceInput) {
-    if (this.type === "redis") {
-      this.handleRedisSource(input);
+    if (this.type === "mongo") {
+      this.handleMongoSource();
       return;
     }
 
     this.handleSqlSource(input);
   }
 
-  protected handleRedisSource(input?: DataSourceInput) {
-    this.type = "redis";
-    this.host = (input?.host || process.env.REDIS_HOST) as string;
-    this.port = +(input?.port as number) || +(process.env.REDIS_PORT as string);
-    this.logs =
-      Boolean(input?.logs) || Boolean(process.env.REDIS_LOGS) || false;
-
-    if (!this.port) {
-      this.port = 6379;
-    }
-
-    if (![this.host].some((connectionDetail) => !connectionDetail)) {
-      throw new Error(
-        "Missing connection details in the envs or in the connection details",
-      );
-    }
+  protected handleMongoSource() {
+    this.type = "mongo";
   }
 
   protected handleSqlSource(input?: DataSourceInput) {
@@ -82,8 +75,10 @@ export abstract class DataSource {
           break;
         case "postgres":
           this.port = 5432;
-        case "redis":
-          this.port = 6379;
+          break;
+        case "mongo":
+          this.port = 27017;
+          break;
         case "sqlite":
           break;
         default:

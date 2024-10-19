@@ -1,16 +1,16 @@
-import { Redis_data_source } from "../../src/no_sql/redis/redis_data_source";
+import { RedisDataSource } from "../../src/no_sql/redis/redis_data_source";
 
-let redisInstance: Redis_data_source;
+let redisInstance: RedisDataSource;
 describe("RedisDataSource", () => {
   beforeAll(async () => {
-    await Redis_data_source.connect({
+    await RedisDataSource.connect({
       host: "localhost",
       port: 6379,
       username: "default",
       password: "root",
     });
 
-    redisInstance = await Redis_data_source.getConnection({
+    redisInstance = await RedisDataSource.getConnection({
       host: "localhost",
       port: 6379,
       username: "default",
@@ -20,73 +20,73 @@ describe("RedisDataSource", () => {
 
   afterAll(async () => {
     await redisInstance.disconnect();
-    await Redis_data_source.disconnect();
+    await RedisDataSource.disconnect();
   });
 
   // Test singleton static class
   test("redis static isConnected check", async () => {
-    expect(Redis_data_source.isConnected).toBe(true);
+    expect(RedisDataSource.isConnected).toBe(true);
   });
 
   test("redis static string operations", async () => {
-    Redis_data_source.set("key", "value", 1000);
-    const value = await Redis_data_source.get<string | null>("key");
+    RedisDataSource.set("key", "value", 1000);
+    const value = await RedisDataSource.get<string | null>("key");
     expect(value).toBe("value");
 
-    await Redis_data_source.delete("key");
-    const deletedValue = await Redis_data_source.get<string>("key");
+    await RedisDataSource.delete("key");
+    const deletedValue = await RedisDataSource.get<string>("key");
     expect(deletedValue).toBe(null);
   });
 
   test("redis static object operations", async () => {
-    Redis_data_source.set("key", { key: "value" }, 1000);
-    const objectValue = await Redis_data_source.get<{ key: string }>("key");
+    RedisDataSource.set("key", { key: "value" }, 1000);
+    const objectValue = await RedisDataSource.get<{ key: string }>("key");
     expect(objectValue).toEqual({ key: "value" });
 
-    await Redis_data_source.delete("key");
-    const deletedObjectValue = await Redis_data_source.get<{ key: string }>(
+    await RedisDataSource.delete("key");
+    const deletedObjectValue = await RedisDataSource.get<{ key: string }>(
       "key",
     );
     expect(deletedObjectValue).toBe(null);
   });
 
   test("redis static buffer operations", async () => {
-    Redis_data_source.set("key", Buffer.from("value"), 10000);
-    const bufferValue = await Redis_data_source.getBuffer("key");
+    RedisDataSource.set("key", Buffer.from("value"), 10000);
+    const bufferValue = await RedisDataSource.getBuffer("key");
     expect(bufferValue).toEqual(Buffer.from("value"));
 
-    await Redis_data_source.delete("key");
-    const deletedBufferValue = await Redis_data_source.get<Buffer>("key");
+    await RedisDataSource.delete("key");
+    const deletedBufferValue = await RedisDataSource.get<Buffer>("key");
     expect(deletedBufferValue).toBe(null);
   });
 
   test("redis static number operations", async () => {
-    Redis_data_source.set("key", 1, 1000);
-    const numberValue = await Redis_data_source.get<number>("key");
+    RedisDataSource.set("key", 1, 1000);
+    const numberValue = await RedisDataSource.get<number>("key");
     expect(numberValue).toBe(1);
 
-    await Redis_data_source.delete("key");
-    const deletedNumberValue = await Redis_data_source.get<number>("key");
+    await RedisDataSource.delete("key");
+    const deletedNumberValue = await RedisDataSource.get<number>("key");
     expect(deletedNumberValue).toBe(null);
   });
 
   test("redis static boolean operations", async () => {
-    Redis_data_source.set("key", true, 1000);
-    const booleanValue = await Redis_data_source.get<boolean>("key");
+    RedisDataSource.set("key", true, 1000);
+    const booleanValue = await RedisDataSource.get<boolean>("key");
     expect(booleanValue).toBe(true);
 
-    await Redis_data_source.delete("key");
-    const deletedBooleanValue = await Redis_data_source.get<boolean>("key");
+    await RedisDataSource.delete("key");
+    const deletedBooleanValue = await RedisDataSource.get<boolean>("key");
     expect(deletedBooleanValue).toBe(null);
   });
 
   test("redis static array operations", async () => {
-    Redis_data_source.set("key", [1, 2, 3], 1000);
-    const arrayValue = await Redis_data_source.get<number[]>("key");
+    RedisDataSource.set("key", [1, 2, 3], 1000);
+    const arrayValue = await RedisDataSource.get<number[]>("key");
     expect(arrayValue).toEqual([1, 2, 3]);
 
-    await Redis_data_source.delete("key");
-    const deletedArrayValue = await Redis_data_source.get<number[]>("key");
+    await RedisDataSource.delete("key");
+    const deletedArrayValue = await RedisDataSource.get<number[]>("key");
     expect(deletedArrayValue).toBe(null);
   });
 
@@ -117,7 +117,7 @@ describe("RedisDataSource", () => {
 
   test("redis instance buffer operations", async () => {
     redisInstance.set("key", Buffer.from("value"), 1000);
-    const bufferValue = await Redis_data_source.getBuffer("key");
+    const bufferValue = await RedisDataSource.getBuffer("key");
     expect(bufferValue).toEqual(Buffer.from("value"));
 
     await redisInstance.delete("key");

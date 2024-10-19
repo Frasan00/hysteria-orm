@@ -22,7 +22,7 @@ export type RedisGiveable =
   | Array<any>
   | null;
 
-export class Redis_data_source {
+export class RedisDataSource {
   public static isConnected: boolean;
   protected static redisConnection: Redis;
   public isConnected: boolean;
@@ -48,12 +48,12 @@ export class Redis_data_source {
    * @param {RedisDataSourceInput} input - Details for the redis connection
    */
   static async connect(input?: RedisOptions): Promise<void> {
-    if (Redis_data_source.isConnected) {
+    if (RedisDataSource.isConnected) {
       return;
     }
 
     const port = input?.port || +(process.env.REDIS_PORT as string) || 6379;
-    Redis_data_source.redisConnection = new Redis({
+    RedisDataSource.redisConnection = new Redis({
       host: input?.host || process.env.REDIS_HOST,
       username: input?.username || process.env.REDIS_USERNAME,
       port: port,
@@ -62,8 +62,8 @@ export class Redis_data_source {
     });
 
     try {
-      await Redis_data_source.redisConnection.ping();
-      Redis_data_source.isConnected = true;
+      await RedisDataSource.redisConnection.ping();
+      RedisDataSource.isConnected = true;
     } catch (error) {
       throw new Error(`Failed to connect to Redis: ${error}`);
     }
@@ -74,8 +74,8 @@ export class Redis_data_source {
    * @param input
    * @returns
    */
-  static async getConnection(input?: RedisOptions): Promise<Redis_data_source> {
-    const connection = new Redis_data_source(input);
+  static async getConnection(input?: RedisOptions): Promise<RedisDataSource> {
+    const connection = new RedisDataSource(input);
     await connection.redisConnection.ping();
     connection.isConnected = true;
     return connection;
@@ -105,15 +105,11 @@ export class Redis_data_source {
 
     try {
       if (expirationTime) {
-        await Redis_data_source.redisConnection.setex(
-          key,
-          expirationTime,
-          value,
-        );
+        await RedisDataSource.redisConnection.setex(key, expirationTime, value);
         return;
       }
 
-      await Redis_data_source.redisConnection.set(key, value);
+      await RedisDataSource.redisConnection.set(key, value);
     } catch (error) {
       throw new Error(`Failed to set key-value pair in Redis: ${error}`);
     }
@@ -126,8 +122,8 @@ export class Redis_data_source {
    */
   static async get<T = RedisGiveable>(key: string): Promise<T | null> {
     try {
-      const value = await Redis_data_source.redisConnection.get(key);
-      return Redis_data_source.getValue<T>(value);
+      const value = await RedisDataSource.redisConnection.get(key);
+      return RedisDataSource.getValue<T>(value);
     } catch (error) {
       throw new Error(`Failed to get value from Redis: ${error}`);
     }
@@ -138,7 +134,7 @@ export class Redis_data_source {
    */
   static async getBuffer(key: string): Promise<Buffer | null> {
     try {
-      return await Redis_data_source.redisConnection.getBuffer(key);
+      return await RedisDataSource.redisConnection.getBuffer(key);
     } catch (error) {
       throw new Error(`Failed to get value from Redis: ${error}`);
     }
@@ -152,9 +148,9 @@ export class Redis_data_source {
    */
   static async getAndDelete<T = RedisGiveable>(key: string): Promise<T | null> {
     try {
-      const value = await Redis_data_source.redisConnection.get(key);
-      await Redis_data_source.redisConnection.del(key);
-      return Redis_data_source.getValue<T>(value);
+      const value = await RedisDataSource.redisConnection.get(key);
+      await RedisDataSource.redisConnection.del(key);
+      return RedisDataSource.getValue<T>(value);
     } catch (error) {
       throw new Error(`Failed to get value from Redis: ${error}`);
     }
@@ -167,7 +163,7 @@ export class Redis_data_source {
    */
   static async delete(key: string): Promise<void> {
     try {
-      await Redis_data_source.redisConnection.del(key);
+      await RedisDataSource.redisConnection.del(key);
     } catch (error) {
       throw new Error(`Failed to delete key from Redis: ${error}`);
     }
@@ -179,7 +175,7 @@ export class Redis_data_source {
    */
   static async flushAll(): Promise<void> {
     try {
-      await Redis_data_source.redisConnection.flushall();
+      await RedisDataSource.redisConnection.flushall();
     } catch (error) {
       throw new Error(`Failed to flush Redis database: ${error}`);
     }
@@ -190,11 +186,11 @@ export class Redis_data_source {
    * @returns {Redis}
    */
   static getRawConnection(): Redis {
-    if (!Redis_data_source.isConnected || !Redis_data_source.redisConnection) {
+    if (!RedisDataSource.isConnected || !RedisDataSource.redisConnection) {
       throw new Error("redis connection not established");
     }
 
-    return Redis_data_source.redisConnection;
+    return RedisDataSource.redisConnection;
   }
 
   /**
@@ -203,8 +199,8 @@ export class Redis_data_source {
    */
   static async disconnect(): Promise<void> {
     try {
-      await Redis_data_source.redisConnection.quit();
-      Redis_data_source.isConnected = false;
+      await RedisDataSource.redisConnection.quit();
+      RedisDataSource.isConnected = false;
     } catch (error) {
       throw new Error(`Failed to disconnect from Redis: ${error}`);
     }
@@ -252,7 +248,7 @@ export class Redis_data_source {
   async get<T = RedisGiveable>(key: string): Promise<T | null> {
     try {
       const value = await this.redisConnection.get(key);
-      return Redis_data_source.getValue<T>(value);
+      return RedisDataSource.getValue<T>(value);
     } catch (error) {
       throw new Error(`Failed to get value from Redis: ${error}`);
     }
@@ -279,7 +275,7 @@ export class Redis_data_source {
     try {
       const value = await this.redisConnection.get(key);
       await this.redisConnection.del(key);
-      return Redis_data_source.getValue<T>(value);
+      return RedisDataSource.getValue<T>(value);
     } catch (error) {
       throw new Error(`Failed to get value from Redis: ${error}`);
     }
