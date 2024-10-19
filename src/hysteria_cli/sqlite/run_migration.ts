@@ -3,7 +3,6 @@
 import dotenv from "dotenv";
 import sqlite3 from "sqlite3";
 import { MigrationTableType } from "../resources/migration_table_type";
-import { log } from "console";
 import { Migration } from "../../sql/migrations/migration";
 import { MigrationController } from "../../sql/migrations/migration_controller";
 import {
@@ -11,7 +10,7 @@ import {
   COMMIT_TRANSACTION,
   ROLLBACK_TRANSACTION,
 } from "../../sql/resources/query/TRANSACTION";
-import logger from "../../logger";
+import logger, { log } from "../../utils/logger";
 import { SqlDataSource } from "../../sql/sql_data_source";
 import { getMigrations, getMigrationTable } from "../migration_utils";
 

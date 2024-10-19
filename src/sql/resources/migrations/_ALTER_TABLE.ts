@@ -1,6 +1,6 @@
 // UNUSED
 
-import { SqlDataSourceType } from "../../../datasource";
+import { SqlDataSourceType } from "../../sql_data_source";
 
 const alterTableTemplate = (dbType: SqlDataSourceType) => ({
   alterTable: (table: string) => {

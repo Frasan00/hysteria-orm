@@ -1,8 +1,8 @@
-import { Relation, RelationOptions, RelationType } from "./relation";
 import { Model } from "../model";
+import { Relation, RelationEnum, RelationOptions } from "./relation";
 
 export class BelongsTo extends Relation {
-  public type: RelationType;
+  public type: RelationEnum;
   public foreignKey: string;
 
   public constructor(
@@ -13,6 +13,6 @@ export class BelongsTo extends Relation {
   ) {
     super(relatedModel, columnName, options);
     this.foreignKey = foreignKey;
-    this.type = RelationType.belongsTo;
+    this.type = RelationEnum.belongsTo;
   }
 }

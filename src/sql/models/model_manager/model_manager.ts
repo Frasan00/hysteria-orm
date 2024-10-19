@@ -1,17 +1,14 @@
-/*
- * This class is used to make operations on models
- */
-import { getBaseModelInstance, Model } from "../model";
-import {
-  FindOneType,
-  FindType,
-  UnrestrictedFindOneType,
-  UnrestrictedFindType,
-} from "./model_manager_types";
+import { ModelDeleteQueryBuilder } from "../../query_builder/delete_query_builder";
 import { QueryBuilder } from "../../query_builder/query_builder";
 import { ModelUpdateQueryBuilder } from "../../query_builder/update_query_builder";
-import { ModelDeleteQueryBuilder } from "../../query_builder/delete_query_builder";
 import { SqlDataSource } from "../../sql_data_source";
+import { Model, getBaseModelInstance } from "../model";
+import {
+  FindType,
+  UnrestrictedFindType,
+  UnrestrictedFindOneType,
+  FindOneType,
+} from "./model_manager_types";
 
 export abstract class ModelManager<T extends Model> {
   protected logs: boolean;

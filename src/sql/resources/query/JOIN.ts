@@ -1,4 +1,4 @@
-import { convertCase } from "../../../case_utils";
+import { convertCase } from "../../../utils/case_utils";
 import { Model } from "../../models/model";
 
 const joinTemplate = (

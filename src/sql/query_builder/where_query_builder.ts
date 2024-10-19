@@ -4,7 +4,7 @@ import whereTemplate, {
   BaseValues,
   WhereOperatorType,
 } from "../resources/query/WHERE";
-import { SqlDataSource } from "../../../src/sql/sql_data_source";
+import { SqlDataSource } from "../sql_data_source";
 
 export abstract class WhereQueryBuilder<T extends Model> {
   protected sqlDataSource: SqlDataSource;

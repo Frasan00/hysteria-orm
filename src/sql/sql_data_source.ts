@@ -1,12 +1,12 @@
-import { Datasource, DataSourceInput, DataSourceType } from "../datasource";
 import mysql, { createConnection } from "mysql2/promise";
 import pg from "pg";
 import sqlite3 from "sqlite3";
+import { DataSourceInput, DataSourceType, Datasource } from "../data_source";
+import logger, { log } from "../utils/logger";
 import { Model } from "./models/model";
 import { MysqlModelManager } from "./mysql/mysql_model_manager";
 import { PostgresModelManager } from "./postgres/postgres_model_manager";
 import { SqliteModelManager } from "./sqlite/sql_lite_model_manager";
-import logger, { log } from "../logger";
 import { Transaction } from "./transaction";
 
 type DriverSpecificOptions = {

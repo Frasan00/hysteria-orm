@@ -1,5 +1,5 @@
 import { Model } from "../models/model";
-import { log, queryError } from "../../logger";
+import { log, queryError } from "../../utils/logger";
 import updateTemplate from "../resources/query/UPDATE";
 import { Client } from "pg";
 import joinTemplate from "../resources/query/JOIN";

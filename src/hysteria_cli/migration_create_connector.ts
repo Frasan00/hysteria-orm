@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 import path from "path";
 import MigrationTemplates from "./resources/migration_templates";
 import fs from "fs";
-import logger from "../logger";
+import logger from "../utils/logger";
 
 dotenv.config();
 

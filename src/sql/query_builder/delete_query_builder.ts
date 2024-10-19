@@ -1,9 +1,9 @@
 import { Model } from "../models/model";
-import { WhereQueryBuilder } from "./where_query_builder";
+import { SelectableType } from "../models/model_manager/model_manager_types";
 import deleteTemplate from "../resources/query/DELETE";
 import updateTemplate from "../resources/query/UPDATE";
-import { SelectableType } from "../models/model_manager/model_manager_types";
 import { SqlConnectionType } from "../sql_data_source";
+import { WhereQueryBuilder } from "./where_query_builder";
 
 export type DeleteOptions = {
   ignoreBeforeDeleteHook?: boolean;

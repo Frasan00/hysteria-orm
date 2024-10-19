@@ -1,16 +1,16 @@
-import { convertCase } from "../case_utils";
-import { isNestedObject } from "./json_utils";
+import { convertCase } from "../utils/case_utils";
+import { isNestedObject } from "../utils/json_utils";
 import { Model } from "./models/model";
 import {
-  getDynamicColumns,
+  getRelations,
   getModelBooleanColumns,
   getModelColumns,
-  getRelations,
+  getDynamicColumns,
 } from "./models/model_decorators";
 import {
   isRelationDefinition,
   Relation,
-  RelationType,
+  RelationEnum,
 } from "./models/relations/relation";
 
 export async function parseDatabaseDataIntoModelResponse<T extends Model>(
@@ -158,7 +158,7 @@ function processRelation(
     ) as string;
 
     switch (relation.type) {
-      case RelationType.belongsTo:
+      case RelationEnum.belongsTo:
         const relatedModelMap = new Map<any, Model>();
         relatedModels.forEach((model) => {
           relatedModelMap.set(model[primaryKey as keyof Model], model);
@@ -176,7 +176,7 @@ function processRelation(
         }
         break;
 
-      case RelationType.hasOne:
+      case RelationEnum.hasOne:
         const relatedModelMapHasOne = new Map<any, Model>();
         relatedModels.forEach((model) => {
           relatedModelMapHasOne.set(model[foreignKey as keyof Model], model);
@@ -194,7 +194,7 @@ function processRelation(
         }
         break;
 
-      case RelationType.hasMany:
+      case RelationEnum.hasMany:
         const retrievedRelatedModels = relatedModels.filter(
           (item) =>
             // Since it's still raw data and it's not yet been converted to camel case (it will soon in the serializeModel call)m it's matched with the camel case key

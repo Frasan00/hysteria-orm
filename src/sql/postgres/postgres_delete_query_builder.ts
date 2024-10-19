@@ -1,5 +1,4 @@
 import { Model } from "../models/model";
-import { log, queryError } from "../../logger";
 import { Client } from "pg";
 import deleteTemplate from "../resources/query/DELETE";
 import joinTemplate from "../resources/query/JOIN";
@@ -11,6 +10,7 @@ import {
   ModelDeleteQueryBuilder,
   SoftDeleteOptions,
 } from "../query_builder/delete_query_builder";
+import { log, queryError } from "../../utils/logger";
 
 export class PostgresDeleteQueryBuilder<
   T extends Model,

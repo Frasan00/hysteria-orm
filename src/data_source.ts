@@ -14,8 +14,6 @@ export type DataSourceType =
   | "sqlite"
   | "redis";
 
-export type SqlDataSourceType = Omit<DataSourceType, "redis">;
-
 /**
  * @description By default the connection details can be provided in the env.ts file, you can still override each prop with your actual connection details
  */

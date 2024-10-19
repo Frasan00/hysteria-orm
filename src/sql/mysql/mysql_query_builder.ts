@@ -1,24 +1,24 @@
 import mysql, { RowDataPacket } from "mysql2/promise";
-import { getBaseModelInstance, Model } from "../models/model";
-import { log, queryError } from "../../logger";
-import { BaseValues, WhereOperatorType } from "../resources/query/WHERE";
+import { convertCase } from "../../utils/case_utils";
+import { log, queryError } from "../../utils/logger";
+import { Model, getBaseModelInstance } from "../models/model";
 import {
-  OneOptions,
+  SelectableType,
+  RelationType,
+  DynamicColumnType,
+} from "../models/model_manager/model_manager_types";
+import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
+import { PaginatedData, getPaginationMetadata } from "../pagination";
+import {
   QueryBuilder,
-  ModelQueryBuilder,
+  OneOptions,
   ManyOptions,
+  ModelQueryBuilder,
 } from "../query_builder/query_builder";
 import joinTemplate from "../resources/query/JOIN";
-import { getPaginationMetadata, PaginatedData } from "../pagination";
+import { WhereOperatorType, BaseValues } from "../resources/query/WHERE";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
-import {
-  DynamicColumnType,
-  RelationType,
-  SelectableType,
-} from "../models/model_manager/model_manager_types";
-import { SqlDataSource } from "../../../src/sql/sql_data_source";
-import { convertCase } from "../../case_utils";
-import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
+import { SqlDataSource } from "../sql_data_source";
 
 export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
   protected mysqlConnection: mysql.Connection;

@@ -1,8 +1,8 @@
-import { Relation, RelationOptions, RelationType } from "./relation";
 import { Model } from "../model";
+import { Relation, RelationEnum, RelationOptions } from "./relation";
 
 export class HasMany extends Relation {
-  public type: RelationType = RelationType.hasMany;
+  public type: RelationEnum = RelationEnum.hasMany;
   public foreignKey: string;
 
   public constructor(
@@ -13,6 +13,6 @@ export class HasMany extends Relation {
   ) {
     super(relatedModel, columnName, options);
     this.foreignKey = foreignKey;
-    this.type = RelationType.hasMany;
+    this.type = RelationEnum.hasMany;
   }
 }

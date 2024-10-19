@@ -10,7 +10,7 @@ export interface RelationOptions {
   softDeleteType: "date" | "boolean";
 }
 
-export enum RelationType {
+export enum RelationEnum {
   hasOne = "hasOne", // One to One without foreign key
   belongsTo = "belongsTo", // One to One with foreign key
   hasMany = "hasMany",
@@ -31,7 +31,7 @@ export function isRelationDefinition(
  */
 
 export abstract class Relation {
-  public abstract type: RelationType;
+  public abstract type: RelationEnum;
   public model: typeof Model = Model;
   public columnName: string = "";
   public foreignKey?: string;

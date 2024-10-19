@@ -1,7 +1,7 @@
 import { Model } from "../models/model";
-import { WhereQueryBuilder } from "./where_query_builder";
 import updateTemplate from "../resources/query/UPDATE";
 import { SqlConnectionType } from "../sql_data_source";
+import { WhereQueryBuilder } from "./where_query_builder";
 
 export type WithDataOptions = {
   ignoreBeforeUpdateHook?: boolean;

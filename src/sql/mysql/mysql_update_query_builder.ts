@@ -1,13 +1,13 @@
 import { Connection } from "mysql2/promise";
+import { log, queryError } from "../../utils/logger";
 import { Model } from "../models/model";
-import { log, queryError } from "../../logger";
-import updateTemplate from "../resources/query/UPDATE";
-import joinTemplate from "../resources/query/JOIN";
-import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import {
   ModelUpdateQueryBuilder,
   WithDataOptions,
 } from "../query_builder/update_query_builder";
+import joinTemplate from "../resources/query/JOIN";
+import updateTemplate from "../resources/query/UPDATE";
+import { SqlDataSource } from "../sql_data_source";
 
 export class MysqlUpdateQueryBuilder<
   T extends Model,

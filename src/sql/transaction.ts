@@ -1,6 +1,5 @@
 import { Connection } from "mysql2/promise";
 import { SqlConnectionType, SqlDataSource } from "./sql_data_source";
-import { log } from "../logger";
 import {
   BEGIN_TRANSACTION,
   COMMIT_TRANSACTION,
@@ -8,6 +7,7 @@ import {
 } from "./resources/query/TRANSACTION";
 import { Client } from "pg";
 import { Database } from "sqlite3";
+import { log } from "../utils/logger";
 
 export class Transaction {
   public sqlDataSource: SqlDataSource;

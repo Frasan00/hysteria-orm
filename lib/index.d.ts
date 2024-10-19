@@ -1,12 +1,11 @@
 import mysql, { Connection } from 'mysql2/promise';
 import pg, { Client } from 'pg';
-import { DateTime } from 'luxon';
 import sqlite3 from 'sqlite3';
+import { DateTime } from 'luxon';
 import Redis, { RedisOptions } from 'ioredis';
 export { RedisOptions } from 'ioredis';
 
 type DataSourceType = "mysql" | "postgres" | "mariadb" | "sqlite" | "redis";
-type SqlDataSourceType$1 = Omit<DataSourceType, "redis">;
 /**
  * @description By default the connection details can be provided in the env.ts file, you can still override each prop with your actual connection details
  */
@@ -34,463 +33,55 @@ declare abstract class Datasource {
     protected handleSqlSource(input?: DataSourceInput): void;
 }
 
-declare class ColumnOptionsBuilder {
-    protected table: string;
-    protected queryStatements: string[];
-    protected partialQuery: string;
-    protected columnName: string;
-    protected columnReferences: {
-        table: string;
-        column: string;
-        onDelete?: string;
-        onUpdate?: string;
-    }[];
-    protected sqlType: SqlDataSourceType$1;
-    constructor(table: string, queryStatements: string[], partialQuery: string, sqlType: SqlDataSourceType$1, columnName?: string, columnReferences?: {
-        table: string;
-        column: string;
-        onDelete?: string;
-        onUpdate?: string;
-    }[]);
-    /**
-     * @description Makes the column nullable
-     */
-    nullable(): ColumnOptionsBuilder;
-    default(value: string | number | boolean): ColumnOptionsBuilder;
-    /**
-     * @description Makes the column unsigned allowing only positive values
-     */
-    unsigned(): ColumnOptionsBuilder;
-    /**
-     * @description Makes the column not nullable
-     */
-    notNullable(): ColumnOptionsBuilder;
-    /**
-     * @description Makes the column the primary key
-     */
-    primary(): ColumnOptionsBuilder;
-    /**
-     * @description Adds an unique constraint
-     */
-    unique(): ColumnOptionsBuilder;
-    /**
-     * @description Adds an auto increment - only for mysql
-     */
-    autoIncrement(): ColumnOptionsBuilder;
-    /**
-     * @description Adds a foreign key with a specific constraint
-     * @param table
-     * @param column
-     */
-    references(table: string, column: string, options?: {
-        onDelete: string;
-        onUpdate: string;
-    }): ColumnOptionsBuilder;
-    /**
-     * @description Chains a new column creation
-     */
-    newColumn(): ColumnTypeBuilder;
-    /**
-     * @description Commits the column creation - if omitted, the migration will be run empty
-     */
-    commit(): void;
-}
+type CaseConvention = "camel" | "snake" | "none" | RegExp | ((column: string) => string);
 
-type DateOptions = {
-    autoCreate?: boolean;
-    autoUpdate?: boolean;
+type PaginationMetadata = {
+    perPage: number;
+    currentPage: number;
+    firstPage: number;
+    isEmpty: boolean;
+    total: number;
+    hasTotal: boolean;
+    lastPage: number;
+    hasMorePages: boolean;
+    hasPages: boolean;
 };
-declare class ColumnTypeBuilder {
-    protected table: string;
-    protected queryStatements: string[];
-    protected columnName: string;
-    protected sqlType: SqlDataSourceType$1;
-    partialQuery: string;
-    constructor(table: string, queryStatements: string[], partialQuery: string, sqlType: SqlDataSourceType$1);
-    string(name: string, length?: number): ColumnOptionsBuilder;
-    varchar(name: string, length?: number): ColumnOptionsBuilder;
-    uuid(name: string): ColumnOptionsBuilder;
-    tinytext(name: string): ColumnOptionsBuilder;
-    mediumtext(name: string): ColumnOptionsBuilder;
-    longtext(name: string): ColumnOptionsBuilder;
-    binary(name: string, length?: number): ColumnOptionsBuilder;
-    enum(name: string, values: string[]): ColumnOptionsBuilder;
-    text(name: string): ColumnOptionsBuilder;
-    char(name: string, length?: number): ColumnOptionsBuilder;
-    tinyint(name: string): ColumnOptionsBuilder;
-    smallint(name: string): ColumnOptionsBuilder;
-    mediumint(name: string): ColumnOptionsBuilder;
-    /**
-     * @description If using mysql, it will automatically add INT AUTO_INCREMENT
-     * @param name
-     */
-    serial(name: string): ColumnOptionsBuilder;
-    /**
-     * @description If using mysql, it will automatically be converted in BIGINT AUTO_INCREMENT
-     * @description If using sqlite, it will automatically be converted in INTEGER PRIMARY KEY AUTOINCREMENT
-     * @param name
-     */
-    bigSerial(name: string): ColumnOptionsBuilder;
-    integer(name: string, length?: number): ColumnOptionsBuilder;
-    bigInteger(name: string): ColumnOptionsBuilder;
-    /**
-     * @description Alias for integer
-     * @param name
-     * @returns ColumnOptionsBuilder
-     */
-    int(name: string): ColumnOptionsBuilder;
-    /**
-     * @description Alias for bigInteger
-     * @param name
-     * @returns ColumnOptionsBuilder
-     */
-    bigint(name: string): ColumnOptionsBuilder;
-    float(name: string, options?: {
-        precision: number;
-        scale: number;
-    }): ColumnOptionsBuilder;
-    decimal(name: string, options?: {
-        precision: number;
-        scale: number;
-    }): ColumnOptionsBuilder;
-    double(name: string, options?: {
-        precision: number;
-        scale: number;
-    }): ColumnOptionsBuilder;
-    boolean(name: string): ColumnOptionsBuilder;
-    date(name: string, options?: DateOptions): ColumnOptionsBuilder;
-    timestamp(name: string, options?: DateOptions): ColumnOptionsBuilder;
-    /**
-     * @description EXPERIMENTAL
-     * @param name
-     */
-    jsonb(name: string): ColumnOptionsBuilder;
-}
+type PaginatedData<T> = {
+    paginationMetadata: PaginationMetadata;
+    data: T[];
+};
 
-declare class ColumnBuilderConnector {
-    protected table: string;
-    protected queryStatements: string[];
-    protected partialQuery: string;
-    protected sqlType: SqlDataSourceType$1;
-    constructor(table: string, queryStatements: string[], partialQuery: string, sqlType: SqlDataSourceType$1);
-    newColumn(): ColumnTypeBuilder;
+declare class SqlModelManagerUtils<T extends Model> {
+    private dbType;
+    private sqlConnection;
+    constructor(dbType: SqlDataSourceType, sqlConnection: SqlConnectionType);
+    parseInsert(model: T, typeofModel: typeof Model, dbType: SqlDataSourceType): {
+        query: string;
+        params: any[];
+    };
+    parseMassiveInsert(models: T[], typeofModel: typeof Model, dbType: SqlDataSourceType): {
+        query: string;
+        params: any[];
+    };
+    parseUpdate(model: T, typeofModel: typeof Model, dbType: SqlDataSourceType): {
+        query: string;
+        params: any[];
+    };
+    private filterRelationsAndMetadata;
+    parseDelete(table: string, column: string, value: string | number | boolean): {
+        query: string;
+        params: any[];
+    };
+    private getRelationFromModel;
+    parseQueryBuilderRelations(models: T[], typeofModel: typeof Model, input: string[], logs: boolean): Promise<{
+        [relationName: string]: Model[];
+    }[]>;
+    private getQueryResult;
 }
-
-type References = {
-    table: string;
-    column: string;
-    onDelete?: string;
-    onUpdate?: string;
-};
-type AlterOptions = {
-    afterColumn?: string;
-    references?: References;
-};
-type DataType = "uuid" | "varchar" | "tinytext" | "mediumtext" | "longtext" | "binary" | "text" | "char" | "tinyint" | "smallint" | "mediumint" | "integer" | "bigint" | "float" | "decimal" | "double" | "boolean" | "jsonb";
-type BaseOptions = {
-    afterColumn?: string;
-    references?: References;
-    precision?: number;
-    scale?: number;
-    default?: any;
-    primaryKey?: boolean;
-    unique?: boolean;
-    notNullable?: boolean;
-    autoIncrement?: boolean;
-    length?: number;
-};
-declare class ColumnBuilderAlter {
-    protected table: string;
-    protected queryStatements: string[];
-    protected sqlType: SqlDataSourceType$1;
-    protected partialQuery: string;
-    constructor(table: string, queryStatements: string[], partialQuery: string, sqlType: SqlDataSourceType$1);
-    /**
-     * @description Add a new column to the table
-     * @param columnName { string }
-     * @param {DataType} dataType
-     * @param {BaseOptions} options
-     */
-    addColumn(columnName: string, dataType: DataType, options?: BaseOptions): ColumnBuilderAlter;
-    /**
-     * @description Add a new date column to the table
-     * @param columnName { string }
-     * @param options { DateOptions }
-     */
-    addDateColumn(columnName: string, type: "date" | "timestamp", options?: DateOptions & {
-        afterColumn?: string;
-        notNullable?: boolean;
-        default?: string | Date | DateTime;
-    }): ColumnBuilderAlter;
-    /**
-     * @description Add a new enum column to the table
-     * @param columnName { string }
-     * @param values { string[] }
-     * @param options { afterColumn?: string; notNullable?: boolean }
-     */
-    addEnumColumn(columnName: string, values: string[], options?: {
-        afterColumn?: string;
-        notNullable?: boolean;
-        default?: string;
-        unique?: boolean;
-    }): ColumnBuilderAlter;
-    /**
-     * @description Drops a column from the table
-     * @param columnName
-     */
-    dropColumn(columnName: string): ColumnBuilderAlter;
-    /**
-     * @description Renames a column
-     * @param oldColumnName
-     * @param newColumnName
-     */
-    renameColumn(oldColumnName: string, newColumnName: string): ColumnBuilderAlter;
-    modifyColumnType(columnName: string, newDataType: string, options?: BaseOptions): ColumnBuilderAlter;
-    /**
-     * @description Renames a table
-     * @param oldtable
-     * @param newtable
-     */
-    renameTable(oldtable: string, newtable: string): ColumnBuilderAlter;
-    /**
-     * @description Set a default value
-     * @param columnName
-     * @param defaultValue
-     */
-    setDefaultValue(columnName: string, defaultValue: string): ColumnBuilderAlter;
-    /**
-     * @description Drop a default value
-     * @param columnName
-     */
-    dropDefaultValue(columnName: string): ColumnBuilderAlter;
-    /**
-     * @description Add a foreign key
-     * @param columnName
-     * @param options
-     */
-    addForeignKey(columnName: string, options: AlterOptions): ColumnBuilderAlter;
-    /**
-     * @description Drop a foreign key
-     * @param columnName
-     */
-    dropForeignKey(columnName: string): ColumnBuilderAlter;
-    /**
-     * @description Commits the changes - if omitted, the migration will be run empty
-     */
-    commit(): void;
-}
-
-declare class Schema {
-    queryStatements: string[];
-    sqlType: SqlDataSourceType$1;
-    constructor(sqlType?: SqlDataSourceType$1);
-    /**
-     * @description Add raw query to the migration
-     * @param query
-     */
-    rawQuery(query: string): void;
-    createTable(table: string, options?: {
-        ifNotExists?: boolean;
-    }): ColumnBuilderConnector;
-    /**
-     * @description Alter table
-     * @param table
-     * @returns ColumnBuilderAlter
-     */
-    alterTable(table: string): ColumnBuilderAlter;
-    /**
-     * @description Drop table
-     * @param table
-     * @param ifExists
-     * @returns void
-     */
-    dropTable(table: string, ifExists?: boolean): void;
-    /**
-     * @description Rename table
-     * @param oldtable
-     * @param newtable
-     * @returns void
-     */
-    renameTable(oldtable: string, newtable: string): void;
-    /**
-     * @description Truncate table
-     * @param table
-     * @returns void
-     */
-    truncateTable(table: string): void;
-    /**
-     * @description Create index on table
-     * @param table
-     * @param indexName
-     * @param columns
-     * @param unique
-     * @returns void
-     */
-    createIndex(table: string, indexName: string, columns: string[], unique?: boolean): void;
-    /**
-     * @description Drop index on table
-     * @param table
-     * @param indexName
-     * @returns void
-     */
-    dropIndex(table: string, indexName: string): void;
-    /**
-     * @description Adds a primary key to a table
-     * @param table
-     * @param columnName
-     * @param type
-     * @param options
-     * @returns void
-     */
-    addPrimaryKey(table: string, columns: string[]): void;
-    /**
-     * @description Drops a primary key from a table
-     * @param table
-     * @returns void
-     */
-    dropPrimaryKey(table: string): void;
-    /**
-     * @description Adds a foreign key to a table
-     * @param table
-     * @param constraintName
-     * @param columns
-     * @returns void
-     */
-    addConstraint(table: string, constraintName: string, columns: string[]): void;
-    /**
-     * @description Drops a cosntraint from a table
-     * @param table
-     * @param constraintName
-     * @returns void
-     */
-    dropConstraint(table: string, constraintName: string): void;
-    /**
-     * @description Adds a unique constraint to a table
-     * @param table
-     * @param constraintName
-     * @param columns
-     * @returns void
-     */
-    addUniqueConstraint(table: string, constraintName: string, columns: string[]): void;
-    /**
-     * @description Drops a unique constraint from a table
-     * @param table
-     * @param constraintName
-     * @returns void
-     */
-    dropUniqueConstraint(table: string, constraintName: string): void;
-}
-
-declare class Transaction {
-    sqlDataSource: SqlDataSource;
-    sqlConnection: SqlConnectionType;
-    private readonly logs;
-    constructor(sqlDataSource: SqlDataSource, logs?: boolean);
-    startTransaction(): Promise<void>;
-    commit(): Promise<void>;
-    rollback(): Promise<void>;
-    private releaseConnection;
-}
-
-/**
- * @description Options for the relation
- * @property {string} softDeleteColumn - The column name for the soft delete column, if set, the relation will only return rows that have not been soft deleted
- * @property {string} softDeleteType - The type of the soft delete column
- */
-interface RelationOptions {
-    softDeleteColumn: string;
-    softDeleteType: "date" | "boolean";
-}
-declare enum RelationType$1 {
-    hasOne = "hasOne",// One to One without foreign key
-    belongsTo = "belongsTo",// One to One with foreign key
-    hasMany = "hasMany"
-}
-/**
- * Main Model -> Related Model
- */
-declare abstract class Relation {
-    abstract type: RelationType$1;
-    model: typeof Model;
-    columnName: string;
-    foreignKey?: string;
-    relatedModel: string;
-    options?: RelationOptions;
-    protected constructor(model: typeof Model, columnName: string, options?: RelationOptions);
-}
-
-declare class BelongsTo extends Relation {
-    type: RelationType$1;
-    foreignKey: string;
-    constructor(relatedModel: typeof Model, columnName: string, foreignKey: string, options?: RelationOptions);
-}
-
-declare class HasMany extends Relation {
-    type: RelationType$1;
-    foreignKey: string;
-    constructor(relatedModel: typeof Model, columnName: string, foreignKey: string, options?: RelationOptions);
-}
-
-declare class HasOne extends Relation {
-    type: RelationType$1;
-    foreignKey: string;
-    constructor(relatedModel: typeof Model, columnName: string, foreignKey: string, options?: RelationOptions);
-}
-
-type ExcludeRelations<T> = {
-    [K in keyof T]: T[K] extends (Model[] | HasMany) | (Model | HasMany) | (Model | BelongsTo) | (Model[] | BelongsTo) | (Model | HasOne) | (Model[] | HasOne) | ((...args: any[]) => any) ? never : K;
-}[keyof T];
-type OnlyRelations<T> = {
-    [K in keyof T]: T[K] extends (Model[] | HasMany) | (Model | HasMany) | (Model | BelongsTo) | (Model[] | BelongsTo) | (Model | HasOne) | (Model[] | HasOne) ? K : never;
-}[keyof T];
-type WhereType<T> = {
-    [K in keyof T]?: string | number | boolean | Date | null;
-};
-type SelectableType<T> = ExcludeRelations<Omit<T, "extraColumns">>;
-type RelationType<T> = OnlyRelations<Omit<T, "extraColumns">>;
-type DynamicColumnType<T> = {
-    [k in keyof T]: T[k] extends (...args: any[]) => any ? k : never;
-}[keyof T];
-type OrderByType = {
-    columns: string[];
-    type: "ASC" | "DESC";
-};
-type UnrestrictedFindOneType<T> = {
-    select?: string[];
-    relations?: RelationType<T>[];
-    ignoreHooks?: FetchHooks[];
-    dynamicColumns?: DynamicColumnType<T>;
-    where?: Record<string, any>;
-    useConnection?: SqlDataSource;
-    trx?: Transaction;
-    throwErrorOnNull?: boolean;
-};
-type UnrestrictedFindType<T> = Omit<UnrestrictedFindOneType<T>, "throwErrorOnNull"> & {
-    orderBy?: OrderByType;
-    groupBy?: string[];
-    limit?: number;
-    offset?: number;
-};
-type FindOneType<T> = {
-    select?: SelectableType<T>[];
-    relations?: RelationType<T>[];
-    dynamicColumns?: DynamicColumnType<T>;
-    where?: WhereType<T>;
-    ignoreHooks?: FetchHooks[];
-    useConnection?: SqlDataSource;
-    trx?: Transaction;
-    throwErrorOnNull?: boolean;
-};
-type FindType<T> = Omit<FindOneType<T>, "throwErrorOnNull"> & {
-    orderBy?: OrderByType;
-    groupBy?: string[];
-    limit?: number;
-    offset?: number;
-};
 
 type WhereOperatorType = "=" | "!=" | "<>" | ">" | "<" | ">=" | "<=" | "LIKE" | "ILIKE" | "NOT LIKE" | "NOT ILIKE" | "IN" | "NOT IN" | "BETWEEN" | "NOT BETWEEN";
 type BaseValues = string | number | boolean | object;
-declare const whereTemplate: (dbType: SqlDataSourceType$1, typeofModel: typeof Model) => {
+declare const whereTemplate: (dbType: SqlDataSourceType, typeofModel: typeof Model) => {
     convertPlaceHolderToValue: (query: string, startIndex?: number) => string;
     where: (column: string, value: BaseValues, operator?: WhereOperatorType) => {
         query: string;
@@ -601,50 +192,6 @@ declare const whereTemplate: (dbType: SqlDataSourceType$1, typeofModel: typeof M
         params: never[];
     };
 };
-
-type PaginationMetadata = {
-    perPage: number;
-    currentPage: number;
-    firstPage: number;
-    isEmpty: boolean;
-    total: number;
-    hasTotal: boolean;
-    lastPage: number;
-    hasMorePages: boolean;
-    hasPages: boolean;
-};
-type PaginatedData<T> = {
-    paginationMetadata: PaginationMetadata;
-    data: T[];
-};
-
-declare class SqlModelManagerUtils<T extends Model> {
-    private dbType;
-    private sqlConnection;
-    constructor(dbType: SqlDataSourceType$1, sqlConnection: SqlConnectionType);
-    parseInsert(model: T, typeofModel: typeof Model, dbType: SqlDataSourceType$1): {
-        query: string;
-        params: any[];
-    };
-    parseMassiveInsert(models: T[], typeofModel: typeof Model, dbType: SqlDataSourceType$1): {
-        query: string;
-        params: any[];
-    };
-    parseUpdate(model: T, typeofModel: typeof Model, dbType: SqlDataSourceType$1): {
-        query: string;
-        params: any[];
-    };
-    private filterRelationsAndMetadata;
-    parseDelete(table: string, column: string, value: string | number | boolean): {
-        query: string;
-        params: any[];
-    };
-    private getRelationFromModel;
-    parseQueryBuilderRelations(models: T[], typeofModel: typeof Model, input: string[], logs: boolean): Promise<{
-        [relationName: string]: Model[];
-    }[]>;
-    private getQueryResult;
-}
 
 declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     protected mysqlConnection: mysql.Connection;
@@ -816,7 +363,7 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     protected groupFooterQuery(): string;
 }
 
-declare const selectTemplate: (dbType: SqlDataSourceType$1, typeofModel: typeof Model) => {
+declare const selectTemplate: (dbType: SqlDataSourceType, typeofModel: typeof Model) => {
     selectAll: string;
     selectById: (id: string) => string;
     selectByIds: (ids: string[]) => string;
@@ -1282,9 +829,122 @@ declare abstract class QueryBuilder<T extends Model> extends WhereQueryBuilder<T
     protected mergeRawPacketIntoModel(model: T, row: any, typeofModel: typeof Model): Promise<void>;
 }
 
-type CaseConvention = "camel" | "snake" | "none" | RegExp | ((column: string) => string);
+declare class Transaction {
+    sqlDataSource: SqlDataSource;
+    sqlConnection: SqlConnectionType;
+    private readonly logs;
+    constructor(sqlDataSource: SqlDataSource, logs?: boolean);
+    startTransaction(): Promise<void>;
+    commit(): Promise<void>;
+    rollback(): Promise<void>;
+    private releaseConnection;
+}
 
-declare const updateTemplate: (dbType: SqlDataSourceType$1, typeofModel: typeof Model) => {
+/**
+ * @description Options for the relation
+ * @property {string} softDeleteColumn - The column name for the soft delete column, if set, the relation will only return rows that have not been soft deleted
+ * @property {string} softDeleteType - The type of the soft delete column
+ */
+interface RelationOptions {
+    softDeleteColumn: string;
+    softDeleteType: "date" | "boolean";
+}
+declare enum RelationEnum {
+    hasOne = "hasOne",// One to One without foreign key
+    belongsTo = "belongsTo",// One to One with foreign key
+    hasMany = "hasMany"
+}
+/**
+ * Main Model -> Related Model
+ */
+declare abstract class Relation {
+    abstract type: RelationEnum;
+    model: typeof Model;
+    columnName: string;
+    foreignKey?: string;
+    relatedModel: string;
+    options?: RelationOptions;
+    protected constructor(model: typeof Model, columnName: string, options?: RelationOptions);
+}
+
+declare class BelongsTo extends Relation {
+    type: RelationEnum;
+    foreignKey: string;
+    constructor(relatedModel: typeof Model, columnName: string, foreignKey: string, options?: RelationOptions);
+}
+
+declare class HasMany extends Relation {
+    type: RelationEnum;
+    foreignKey: string;
+    constructor(relatedModel: typeof Model, columnName: string, foreignKey: string, options?: RelationOptions);
+}
+
+declare class HasOne extends Relation {
+    type: RelationEnum;
+    foreignKey: string;
+    constructor(relatedModel: typeof Model, columnName: string, foreignKey: string, options?: RelationOptions);
+}
+
+type ExcludeRelations<T> = {
+    [K in keyof T]: T[K] extends (Model[] | HasMany) | (Model | HasMany) | (Model | BelongsTo) | (Model[] | BelongsTo) | (Model | HasOne) | (Model[] | HasOne) | ((...args: any[]) => any) ? never : K;
+}[keyof T];
+type OnlyRelations<T> = {
+    [K in keyof T]: T[K] extends (Model[] | HasMany) | (Model | HasMany) | (Model | BelongsTo) | (Model[] | BelongsTo) | (Model | HasOne) | (Model[] | HasOne) ? K : never;
+}[keyof T];
+type WhereType<T> = {
+    [K in keyof T]?: string | number | boolean | Date | null;
+};
+type SelectableType<T> = ExcludeRelations<Omit<T, "extraColumns">>;
+type RelationType<T> = OnlyRelations<Omit<T, "extraColumns">>;
+type DynamicColumnType<T> = {
+    [k in keyof T]: T[k] extends (...args: any[]) => any ? k : never;
+}[keyof T];
+type OrderByType = {
+    columns: string[];
+    type: "ASC" | "DESC";
+};
+type UnrestrictedFindOneType<T> = {
+    select?: string[];
+    relations?: RelationType<T>[];
+    ignoreHooks?: FetchHooks[];
+    dynamicColumns?: DynamicColumnType<T>;
+    where?: Record<string, any>;
+    useConnection?: SqlDataSource;
+    trx?: Transaction;
+    throwErrorOnNull?: boolean;
+};
+type UnrestrictedFindType<T> = Omit<UnrestrictedFindOneType<T>, "throwErrorOnNull"> & {
+    orderBy?: OrderByType;
+    groupBy?: string[];
+    limit?: number;
+    offset?: number;
+};
+type FindOneType<T> = {
+    select?: SelectableType<T>[];
+    relations?: RelationType<T>[];
+    dynamicColumns?: DynamicColumnType<T>;
+    where?: WhereType<T>;
+    ignoreHooks?: FetchHooks[];
+    useConnection?: SqlDataSource;
+    trx?: Transaction;
+    throwErrorOnNull?: boolean;
+};
+type FindType<T> = Omit<FindOneType<T>, "throwErrorOnNull"> & {
+    orderBy?: OrderByType;
+    groupBy?: string[];
+    limit?: number;
+    offset?: number;
+};
+
+declare const deleteTemplate: (table: string, dbType: SqlDataSourceType) => {
+    delete: (column: string, value: string | number | boolean | Date) => {
+        query: string;
+        params: (string | number | boolean | Date)[];
+    };
+    massiveDelete: (whereClause: string, joinClause?: string) => string;
+};
+
+declare const updateTemplate: (dbType: SqlDataSourceType, typeofModel: typeof Model) => {
     update: (columns: string[], values: any[], primaryKey?: string, primaryKeyValue?: string | undefined) => {
         query: string;
         params: any[];
@@ -1293,36 +953,6 @@ declare const updateTemplate: (dbType: SqlDataSourceType$1, typeofModel: typeof 
         query: string;
         params: any[];
     };
-};
-
-type WithDataOptions = {
-    ignoreBeforeUpdateHook?: boolean;
-};
-declare abstract class ModelUpdateQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
-    protected abstract sqlConnection: SqlConnectionType;
-    protected abstract joinQuery: string;
-    protected abstract updateTemplate: ReturnType<typeof updateTemplate>;
-    protected abstract isNestedCondition: boolean;
-    /**
-     * @description Updates a record in the database.
-     * @param data
-     * @param trx
-     * @returns The number of affected rows.
-     */
-    abstract withData(data: Partial<T>, options?: WithDataOptions): Promise<number>;
-    abstract join(relationTable: string, primaryColumn: string, foreignColumn: string): ModelUpdateQueryBuilder<T>;
-    abstract leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): ModelUpdateQueryBuilder<T>;
-    abstract whereBuilder(cb: (queryBuilder: ModelUpdateQueryBuilder<T>) => void): ModelUpdateQueryBuilder<T>;
-    abstract orWhereBuilder(cb: (queryBuilder: ModelUpdateQueryBuilder<T>) => void): ModelUpdateQueryBuilder<T>;
-    abstract andWhereBuilder(cb: (queryBuilder: ModelUpdateQueryBuilder<T>) => void): ModelUpdateQueryBuilder<T>;
-}
-
-declare const deleteTemplate: (table: string, dbType: SqlDataSourceType$1) => {
-    delete: (column: string, value: string | number | boolean | Date) => {
-        query: string;
-        params: (string | number | boolean | Date)[];
-    };
-    massiveDelete: (whereClause: string, joinClause?: string) => string;
 };
 
 type DeleteOptions = {
@@ -1360,6 +990,28 @@ declare abstract class ModelDeleteQueryBuilder<T extends Model> extends WhereQue
     abstract whereBuilder(cb: (queryBuilder: ModelDeleteQueryBuilder<T>) => void): this;
     abstract orWhereBuilder(cb: (queryBuilder: ModelDeleteQueryBuilder<T>) => void): this;
     abstract andWhereBuilder(cb: (queryBuilder: ModelDeleteQueryBuilder<T>) => void): this;
+}
+
+type WithDataOptions = {
+    ignoreBeforeUpdateHook?: boolean;
+};
+declare abstract class ModelUpdateQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
+    protected abstract sqlConnection: SqlConnectionType;
+    protected abstract joinQuery: string;
+    protected abstract updateTemplate: ReturnType<typeof updateTemplate>;
+    protected abstract isNestedCondition: boolean;
+    /**
+     * @description Updates a record in the database.
+     * @param data
+     * @param trx
+     * @returns The number of affected rows.
+     */
+    abstract withData(data: Partial<T>, options?: WithDataOptions): Promise<number>;
+    abstract join(relationTable: string, primaryColumn: string, foreignColumn: string): ModelUpdateQueryBuilder<T>;
+    abstract leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): ModelUpdateQueryBuilder<T>;
+    abstract whereBuilder(cb: (queryBuilder: ModelUpdateQueryBuilder<T>) => void): ModelUpdateQueryBuilder<T>;
+    abstract orWhereBuilder(cb: (queryBuilder: ModelUpdateQueryBuilder<T>) => void): ModelUpdateQueryBuilder<T>;
+    abstract andWhereBuilder(cb: (queryBuilder: ModelUpdateQueryBuilder<T>) => void): ModelUpdateQueryBuilder<T>;
 }
 
 type BaseModelMethodOptions = {
@@ -1667,52 +1319,6 @@ declare abstract class ModelManager$1<T extends Model> {
     abstract deleteQuery(): ModelDeleteQueryBuilder<T>;
 }
 
-declare class MysqlUpdateQueryBuilder<T extends Model> extends ModelUpdateQueryBuilder<T> {
-    protected sqlConnection: Connection;
-    protected joinQuery: string;
-    protected updateTemplate: ReturnType<typeof updateTemplate>;
-    protected isNestedCondition: boolean;
-    /**
-     * @description Constructs a Mysql_query_builder instance.
-     * @param model - The model class associated with the table.
-     * @param table - The name of the table.
-     * @param mysqlConnection - The MySQL connection pool.
-     * @param logs - A boolean indicating whether to log queries.
-     * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
-     */
-    constructor(model: typeof Model, table: string, mysqlConnection: Connection, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
-    withData(data: Partial<T>, options?: WithDataOptions): Promise<number>;
-    /**
-     *
-     * @param relationTable - The name of the related table.
-     * @param primaryColumn - The name of the primary column in the caller table.
-     * @param foreignColumn - The name of the foreign column in the related table.
-     */
-    join(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlUpdateQueryBuilder<T>;
-    /**
-     *
-     * @param relationTable - The name of the related table.
-     * @param primaryColumn - The name of the primary column in the caller table.
-     * @param foreignColumn - The name of the foreign column in the related table.
-     */
-    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlUpdateQueryBuilder<T>;
-    /**
-     * @description Build more complex where conditions.
-     * @param cb
-     */
-    whereBuilder(cb: (queryBuilder: MysqlUpdateQueryBuilder<T>) => void): this;
-    /**
-     * @description Build complex OR-based where conditions.
-     * @param cb Callback function that takes a query builder and adds conditions to it.
-     */
-    orWhereBuilder(cb: (queryBuilder: MysqlUpdateQueryBuilder<T>) => void): this;
-    /**
-     * @description Build complex AND-based where conditions.
-     * @param cb Callback function that takes a query builder and adds conditions to it.
-     */
-    andWhereBuilder(cb: (queryBuilder: MysqlUpdateQueryBuilder<T>) => void): this;
-}
-
 declare class MysqlDeleteQueryBuilder<T extends Model> extends ModelDeleteQueryBuilder<T> {
     protected sqlConnection: Connection;
     protected joinQuery: string;
@@ -1759,6 +1365,52 @@ declare class MysqlDeleteQueryBuilder<T extends Model> extends ModelDeleteQueryB
      * @param cb Callback function that takes a query builder and adds conditions to it.
      */
     andWhereBuilder(cb: (queryBuilder: MysqlDeleteQueryBuilder<T>) => void): this;
+}
+
+declare class MysqlUpdateQueryBuilder<T extends Model> extends ModelUpdateQueryBuilder<T> {
+    protected sqlConnection: Connection;
+    protected joinQuery: string;
+    protected updateTemplate: ReturnType<typeof updateTemplate>;
+    protected isNestedCondition: boolean;
+    /**
+     * @description Constructs a Mysql_query_builder instance.
+     * @param model - The model class associated with the table.
+     * @param table - The name of the table.
+     * @param mysqlConnection - The MySQL connection pool.
+     * @param logs - A boolean indicating whether to log queries.
+     * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
+     */
+    constructor(model: typeof Model, table: string, mysqlConnection: Connection, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
+    withData(data: Partial<T>, options?: WithDataOptions): Promise<number>;
+    /**
+     *
+     * @param relationTable - The name of the related table.
+     * @param primaryColumn - The name of the primary column in the caller table.
+     * @param foreignColumn - The name of the foreign column in the related table.
+     */
+    join(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlUpdateQueryBuilder<T>;
+    /**
+     *
+     * @param relationTable - The name of the related table.
+     * @param primaryColumn - The name of the primary column in the caller table.
+     * @param foreignColumn - The name of the foreign column in the related table.
+     */
+    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlUpdateQueryBuilder<T>;
+    /**
+     * @description Build more complex where conditions.
+     * @param cb
+     */
+    whereBuilder(cb: (queryBuilder: MysqlUpdateQueryBuilder<T>) => void): this;
+    /**
+     * @description Build complex OR-based where conditions.
+     * @param cb Callback function that takes a query builder and adds conditions to it.
+     */
+    orWhereBuilder(cb: (queryBuilder: MysqlUpdateQueryBuilder<T>) => void): this;
+    /**
+     * @description Build complex AND-based where conditions.
+     * @param cb Callback function that takes a query builder and adds conditions to it.
+     */
+    andWhereBuilder(cb: (queryBuilder: MysqlUpdateQueryBuilder<T>) => void): this;
 }
 
 declare class MysqlModelManager<T extends Model> extends ModelManager$1<T> {
@@ -2266,6 +1918,353 @@ declare class SqlDataSource extends Datasource {
      */
     static rawQuery(query: string, params?: any[]): Promise<any>;
     private connectDriver;
+}
+
+declare class ColumnOptionsBuilder {
+    protected table: string;
+    protected queryStatements: string[];
+    protected partialQuery: string;
+    protected columnName: string;
+    protected columnReferences: {
+        table: string;
+        column: string;
+        onDelete?: string;
+        onUpdate?: string;
+    }[];
+    protected sqlType: SqlDataSourceType;
+    constructor(table: string, queryStatements: string[], partialQuery: string, sqlType: SqlDataSourceType, columnName?: string, columnReferences?: {
+        table: string;
+        column: string;
+        onDelete?: string;
+        onUpdate?: string;
+    }[]);
+    /**
+     * @description Makes the column nullable
+     */
+    nullable(): ColumnOptionsBuilder;
+    default(value: string | number | boolean): ColumnOptionsBuilder;
+    /**
+     * @description Makes the column unsigned allowing only positive values
+     */
+    unsigned(): ColumnOptionsBuilder;
+    /**
+     * @description Makes the column not nullable
+     */
+    notNullable(): ColumnOptionsBuilder;
+    /**
+     * @description Makes the column the primary key
+     */
+    primary(): ColumnOptionsBuilder;
+    /**
+     * @description Adds an unique constraint
+     */
+    unique(): ColumnOptionsBuilder;
+    /**
+     * @description Adds an auto increment - only for mysql
+     */
+    autoIncrement(): ColumnOptionsBuilder;
+    /**
+     * @description Adds a foreign key with a specific constraint
+     * @param table
+     * @param column
+     */
+    references(table: string, column: string, options?: {
+        onDelete: string;
+        onUpdate: string;
+    }): ColumnOptionsBuilder;
+    /**
+     * @description Chains a new column creation
+     */
+    newColumn(): ColumnTypeBuilder;
+    /**
+     * @description Commits the column creation - if omitted, the migration will be run empty
+     */
+    commit(): void;
+}
+
+type DateOptions = {
+    autoCreate?: boolean;
+    autoUpdate?: boolean;
+};
+declare class ColumnTypeBuilder {
+    protected table: string;
+    protected queryStatements: string[];
+    protected columnName: string;
+    protected sqlType: SqlDataSourceType;
+    partialQuery: string;
+    constructor(table: string, queryStatements: string[], partialQuery: string, sqlType: SqlDataSourceType);
+    string(name: string, length?: number): ColumnOptionsBuilder;
+    varchar(name: string, length?: number): ColumnOptionsBuilder;
+    uuid(name: string): ColumnOptionsBuilder;
+    tinytext(name: string): ColumnOptionsBuilder;
+    mediumtext(name: string): ColumnOptionsBuilder;
+    longtext(name: string): ColumnOptionsBuilder;
+    binary(name: string, length?: number): ColumnOptionsBuilder;
+    enum(name: string, values: string[]): ColumnOptionsBuilder;
+    text(name: string): ColumnOptionsBuilder;
+    char(name: string, length?: number): ColumnOptionsBuilder;
+    tinyint(name: string): ColumnOptionsBuilder;
+    smallint(name: string): ColumnOptionsBuilder;
+    mediumint(name: string): ColumnOptionsBuilder;
+    /**
+     * @description If using mysql, it will automatically add INT AUTO_INCREMENT
+     * @param name
+     */
+    serial(name: string): ColumnOptionsBuilder;
+    /**
+     * @description If using mysql, it will automatically be converted in BIGINT AUTO_INCREMENT
+     * @description If using sqlite, it will automatically be converted in INTEGER PRIMARY KEY AUTOINCREMENT
+     * @param name
+     */
+    bigSerial(name: string): ColumnOptionsBuilder;
+    integer(name: string, length?: number): ColumnOptionsBuilder;
+    bigInteger(name: string): ColumnOptionsBuilder;
+    /**
+     * @description Alias for integer
+     * @param name
+     * @returns ColumnOptionsBuilder
+     */
+    int(name: string): ColumnOptionsBuilder;
+    /**
+     * @description Alias for bigInteger
+     * @param name
+     * @returns ColumnOptionsBuilder
+     */
+    bigint(name: string): ColumnOptionsBuilder;
+    float(name: string, options?: {
+        precision: number;
+        scale: number;
+    }): ColumnOptionsBuilder;
+    decimal(name: string, options?: {
+        precision: number;
+        scale: number;
+    }): ColumnOptionsBuilder;
+    double(name: string, options?: {
+        precision: number;
+        scale: number;
+    }): ColumnOptionsBuilder;
+    boolean(name: string): ColumnOptionsBuilder;
+    date(name: string, options?: DateOptions): ColumnOptionsBuilder;
+    timestamp(name: string, options?: DateOptions): ColumnOptionsBuilder;
+    /**
+     * @description EXPERIMENTAL
+     * @param name
+     */
+    jsonb(name: string): ColumnOptionsBuilder;
+}
+
+type References = {
+    table: string;
+    column: string;
+    onDelete?: string;
+    onUpdate?: string;
+};
+type AlterOptions = {
+    afterColumn?: string;
+    references?: References;
+};
+type DataType = "uuid" | "varchar" | "tinytext" | "mediumtext" | "longtext" | "binary" | "text" | "char" | "tinyint" | "smallint" | "mediumint" | "integer" | "bigint" | "float" | "decimal" | "double" | "boolean" | "jsonb";
+type BaseOptions = {
+    afterColumn?: string;
+    references?: References;
+    precision?: number;
+    scale?: number;
+    default?: any;
+    primaryKey?: boolean;
+    unique?: boolean;
+    notNullable?: boolean;
+    autoIncrement?: boolean;
+    length?: number;
+};
+declare class ColumnBuilderAlter {
+    protected table: string;
+    protected queryStatements: string[];
+    protected sqlType: SqlDataSourceType;
+    protected partialQuery: string;
+    constructor(table: string, queryStatements: string[], partialQuery: string, sqlType: SqlDataSourceType);
+    /**
+     * @description Add a new column to the table
+     * @param columnName { string }
+     * @param {DataType} dataType
+     * @param {BaseOptions} options
+     */
+    addColumn(columnName: string, dataType: DataType, options?: BaseOptions): ColumnBuilderAlter;
+    /**
+     * @description Add a new date column to the table
+     * @param columnName { string }
+     * @param options { DateOptions }
+     */
+    addDateColumn(columnName: string, type: "date" | "timestamp", options?: DateOptions & {
+        afterColumn?: string;
+        notNullable?: boolean;
+        default?: string | Date | DateTime;
+    }): ColumnBuilderAlter;
+    /**
+     * @description Add a new enum column to the table
+     * @param columnName { string }
+     * @param values { string[] }
+     * @param options { afterColumn?: string; notNullable?: boolean }
+     */
+    addEnumColumn(columnName: string, values: string[], options?: {
+        afterColumn?: string;
+        notNullable?: boolean;
+        default?: string;
+        unique?: boolean;
+    }): ColumnBuilderAlter;
+    /**
+     * @description Drops a column from the table
+     * @param columnName
+     */
+    dropColumn(columnName: string): ColumnBuilderAlter;
+    /**
+     * @description Renames a column
+     * @param oldColumnName
+     * @param newColumnName
+     */
+    renameColumn(oldColumnName: string, newColumnName: string): ColumnBuilderAlter;
+    modifyColumnType(columnName: string, newDataType: string, options?: BaseOptions): ColumnBuilderAlter;
+    /**
+     * @description Renames a table
+     * @param oldtable
+     * @param newtable
+     */
+    renameTable(oldtable: string, newtable: string): ColumnBuilderAlter;
+    /**
+     * @description Set a default value
+     * @param columnName
+     * @param defaultValue
+     */
+    setDefaultValue(columnName: string, defaultValue: string): ColumnBuilderAlter;
+    /**
+     * @description Drop a default value
+     * @param columnName
+     */
+    dropDefaultValue(columnName: string): ColumnBuilderAlter;
+    /**
+     * @description Add a foreign key
+     * @param columnName
+     * @param options
+     */
+    addForeignKey(columnName: string, options: AlterOptions): ColumnBuilderAlter;
+    /**
+     * @description Drop a foreign key
+     * @param columnName
+     */
+    dropForeignKey(columnName: string): ColumnBuilderAlter;
+    /**
+     * @description Commits the changes - if omitted, the migration will be run empty
+     */
+    commit(): void;
+}
+
+declare class ColumnBuilderConnector {
+    protected table: string;
+    protected queryStatements: string[];
+    protected partialQuery: string;
+    protected sqlType: SqlDataSourceType;
+    constructor(table: string, queryStatements: string[], partialQuery: string, sqlType: SqlDataSourceType);
+    newColumn(): ColumnTypeBuilder;
+}
+
+declare class Schema {
+    queryStatements: string[];
+    sqlType: SqlDataSourceType;
+    constructor(sqlType?: SqlDataSourceType);
+    /**
+     * @description Add raw query to the migration
+     * @param query
+     */
+    rawQuery(query: string): void;
+    createTable(table: string, options?: {
+        ifNotExists?: boolean;
+    }): ColumnBuilderConnector;
+    /**
+     * @description Alter table
+     * @param table
+     * @returns ColumnBuilderAlter
+     */
+    alterTable(table: string): ColumnBuilderAlter;
+    /**
+     * @description Drop table
+     * @param table
+     * @param ifExists
+     * @returns void
+     */
+    dropTable(table: string, ifExists?: boolean): void;
+    /**
+     * @description Rename table
+     * @param oldtable
+     * @param newtable
+     * @returns void
+     */
+    renameTable(oldtable: string, newtable: string): void;
+    /**
+     * @description Truncate table
+     * @param table
+     * @returns void
+     */
+    truncateTable(table: string): void;
+    /**
+     * @description Create index on table
+     * @param table
+     * @param indexName
+     * @param columns
+     * @param unique
+     * @returns void
+     */
+    createIndex(table: string, indexName: string, columns: string[], unique?: boolean): void;
+    /**
+     * @description Drop index on table
+     * @param table
+     * @param indexName
+     * @returns void
+     */
+    dropIndex(table: string, indexName: string): void;
+    /**
+     * @description Adds a primary key to a table
+     * @param table
+     * @param columnName
+     * @param type
+     * @param options
+     * @returns void
+     */
+    addPrimaryKey(table: string, columns: string[]): void;
+    /**
+     * @description Drops a primary key from a table
+     * @param table
+     * @returns void
+     */
+    dropPrimaryKey(table: string): void;
+    /**
+     * @description Adds a foreign key to a table
+     * @param table
+     * @param constraintName
+     * @param columns
+     * @returns void
+     */
+    addConstraint(table: string, constraintName: string, columns: string[]): void;
+    /**
+     * @description Drops a cosntraint from a table
+     * @param table
+     * @param constraintName
+     * @returns void
+     */
+    dropConstraint(table: string, constraintName: string): void;
+    /**
+     * @description Adds a unique constraint to a table
+     * @param table
+     * @param constraintName
+     * @param columns
+     * @returns void
+     */
+    addUniqueConstraint(table: string, constraintName: string, columns: string[]): void;
+    /**
+     * @description Drops a unique constraint from a table
+     * @param table
+     * @param constraintName
+     * @returns void
+     */
+    dropUniqueConstraint(table: string, constraintName: string): void;
 }
 
 declare abstract class Migration {

@@ -2,10 +2,10 @@ import { Model as AbstractModel } from "./model";
 import { BelongsTo } from "./relations/belongs_to";
 import { HasMany } from "./relations/has_many";
 import { HasOne } from "./relations/has_one";
-import { Relation, RelationOptions, RelationType } from "./relations/relation";
+import { RelationEnum, RelationOptions, Relation } from "./relations/relation";
 
-type LazyRelationType = {
-  type: RelationType;
+type LazyRelationEnum = {
+  type: RelationEnum;
   columnName: string;
   model: () => typeof AbstractModel;
   foreignKey: string;
@@ -124,7 +124,7 @@ export function belongsTo(
 ): PropertyDecorator {
   return (target: Object, propertyKey: string | symbol) => {
     const relation = {
-      type: RelationType.belongsTo,
+      type: RelationEnum.belongsTo,
       columnName: propertyKey as string,
       model,
       foreignKey,
@@ -150,7 +150,7 @@ export function hasOne(
 ): PropertyDecorator {
   return (target: Object, propertyKey: string | symbol) => {
     const relation = {
-      type: RelationType.hasOne,
+      type: RelationEnum.hasOne,
       columnName: propertyKey as string,
       model,
       foreignKey,
@@ -176,7 +176,7 @@ export function hasMany(
 ): PropertyDecorator {
   return (target: Object, propertyKey: string | symbol) => {
     const relation = {
-      type: RelationType.hasMany,
+      type: RelationEnum.hasMany,
       columnName: propertyKey,
       model,
       foreignKey,
@@ -196,14 +196,14 @@ export function hasMany(
 export function getRelations(target: typeof AbstractModel): Relation[] {
   const relations =
     Reflect.getMetadata(RELATION_METADATA_KEY, target.prototype) || [];
-  return relations.map((relation: LazyRelationType) => {
+  return relations.map((relation: LazyRelationEnum) => {
     const { type, model, columnName, foreignKey, options } = relation;
     switch (type) {
-      case RelationType.belongsTo:
+      case RelationEnum.belongsTo:
         return new BelongsTo(model(), columnName, foreignKey, options);
-      case RelationType.hasOne:
+      case RelationEnum.hasOne:
         return new HasOne(model(), columnName, foreignKey, options);
-      case RelationType.hasMany:
+      case RelationEnum.hasMany:
         return new HasMany(model(), columnName, foreignKey, options);
       default:
         throw new Error(`Unknown relation type: ${type}`);

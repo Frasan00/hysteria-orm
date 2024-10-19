@@ -1,5 +1,5 @@
-import { SqlDataSourceType } from "../../../../datasource";
-import logger from "../../../../logger";
+import logger from "../../../../utils/logger";
+import { SqlDataSourceType } from "../../../sql_data_source";
 import ColumnOptionsBuilder from "./column_options_builder";
 
 export type DateOptions = {
@@ -976,12 +976,6 @@ export default class ColumnTypeBuilder {
    * @param name
    */
   public jsonb(name: string): ColumnOptionsBuilder {
-    if (this.sqlType === "sqlite") {
-      throw new Error(
-        "sqlite does not support jsonb columns, use text instead",
-      );
-    }
-
     this.columnName = name;
     switch (this.sqlType) {
       case "postgres":

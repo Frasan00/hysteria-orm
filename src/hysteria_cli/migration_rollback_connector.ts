@@ -3,7 +3,7 @@
 import dotenv from "dotenv";
 import { migrationRollBackSql } from "./mysql/rollback_migration";
 import { migrationRollBackPg } from "./postgres/rollback_migration";
-import logger from "../logger";
+import logger from "../utils/logger";
 import { migrationRollBackSqlite } from "./sqlite/rollback_migration";
 
 dotenv.config();

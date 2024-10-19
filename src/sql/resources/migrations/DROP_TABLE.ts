@@ -1,4 +1,4 @@
-import { SqlDataSourceType } from "../../../datasource";
+import { SqlDataSourceType } from "../../sql_data_source";
 
 const dropTableTemplate = (
   table: string,

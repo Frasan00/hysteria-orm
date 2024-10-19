@@ -1,5 +1,4 @@
 import { Model } from "../models/model";
-import { log, queryError } from "../../logger";
 import { Connection } from "mysql2/promise";
 import joinTemplate from "../resources/query/JOIN";
 import deleteTemplate from "../resources/query/DELETE";
@@ -11,6 +10,7 @@ import {
   ModelDeleteQueryBuilder,
   SoftDeleteOptions,
 } from "../query_builder/delete_query_builder";
+import { log, queryError } from "../../utils/logger";
 
 export class MysqlDeleteQueryBuilder<
   T extends Model,

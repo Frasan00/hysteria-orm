@@ -32,9 +32,9 @@ const testFiles = [
 testFiles.forEach((file) => {
     console.log(`Running ${file}`);
     try {
-        execSync(`jest --detectOpenHandles ${file}` , { stdio: 'inherit' });
+        execSync(`jest --config=jest.config.js --detectOpenHandles ${file}` , { stdio: 'inherit' });
     } catch (error) {
         console.error(`Error running ${file}`);
         process.exit(1);
     }
-});    
+});

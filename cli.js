@@ -3,6 +3,7 @@
 const { Command } = require('commander');
 const { execSync } = require('child_process');
 const { resolve } = require('path');
+const moduleAlias = require('module-alias');
 
 const program = new Command();
 

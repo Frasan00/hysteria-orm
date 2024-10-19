@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 import { runMigrationsPg } from "./postgres/run_migration";
 import { runMigrationsSql } from "./mysql/run_migration";
 import { runMigrationsSQLite } from "./sqlite/run_migration";
-import logger from "../logger";
+import logger from "../utils/logger";
 
 dotenv.config();
 

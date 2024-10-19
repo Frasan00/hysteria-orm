@@ -1,19 +1,19 @@
-import { Model } from "../models/model";
-import {
-  FindOneType,
-  FindType,
-  UnrestrictedFindOneType,
-  UnrestrictedFindType,
-} from "../models/model_manager/model_manager_types";
 import mysql, { RowDataPacket } from "mysql2/promise";
-import { log, queryError } from "../../logger";
-import { MysqlQueryBuilder } from "./mysql_query_builder";
+import { log, queryError } from "../../utils/logger";
+import { Model } from "../models/model";
 import { ModelManager } from "../models/model_manager/model_manager";
-import { MysqlUpdateQueryBuilder } from "./mysql_update_query_builder";
-import { MysqlDeleteQueryBuilder } from "./mysql_delete_query_builder";
-import { SqlDataSource } from "../../../src/sql/sql_data_source";
+import {
+  FindType,
+  UnrestrictedFindType,
+  FindOneType,
+  UnrestrictedFindOneType,
+} from "../models/model_manager/model_manager_types";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
+import { SqlDataSource } from "../sql_data_source";
+import { MysqlDeleteQueryBuilder } from "./mysql_delete_query_builder";
+import { MysqlQueryBuilder } from "./mysql_query_builder";
+import { MysqlUpdateQueryBuilder } from "./mysql_update_query_builder";
 
 export class MysqlModelManager<T extends Model> extends ModelManager<T> {
   protected mysqlConnection: mysql.Connection;

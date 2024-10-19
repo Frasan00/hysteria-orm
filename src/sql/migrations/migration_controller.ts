@@ -1,10 +1,9 @@
 import { Connection } from "mysql2/promise";
-import { Client } from "pg";
-import { log } from "../../logger";
-import { Migration } from "./migration";
-import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import sqlite3 from "sqlite3";
-import { SqlDataSourceType } from "../../datasource";
+import { Client } from "pg";
+import { SqlDataSource, SqlDataSourceType } from "../sql_data_source";
+import { Migration } from "./migration";
+import { log } from "../../utils/logger";
 
 export class MigrationController {
   protected sqlDataSource: SqlDataSource;

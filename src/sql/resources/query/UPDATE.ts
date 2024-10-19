@@ -1,5 +1,5 @@
-import { convertCase } from "../../../case_utils";
-import { SqlDataSourceType } from "../../../datasource";
+import { convertCase } from "../../../utils/case_utils";
+import { SqlDataSourceType } from "../../sql_data_source";
 import { Model } from "../../models/model";
 
 const updateTemplate = (

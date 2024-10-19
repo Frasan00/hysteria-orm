@@ -1,6 +1,6 @@
 import { DateTime } from "luxon";
-import { SqlDataSourceType } from "../../../../datasource";
-import Column_type_builder, {
+import { SqlDataSourceType } from "../../../sql_data_source";
+import ColumnTypeBuilder, {
   DateOptions,
 } from "../create_table/column_type_builder";
 
@@ -79,7 +79,7 @@ export default class ColumnBuilderAlter {
     options?: BaseOptions,
   ): ColumnBuilderAlter {
     let query = `ALTER TABLE ${this.table} ADD COLUMN `;
-    const columnsBuilder = new Column_type_builder("", [], "", this.sqlType);
+    const columnsBuilder = new ColumnTypeBuilder("", [], "", this.sqlType);
     switch (dataType) {
       case "uuid":
         columnsBuilder.uuid(columnName);
@@ -511,8 +511,6 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
           break;
         case "postgres":
           throw new Error("Postgres does not support AFTER in ALTER COLUMN");
-        case "sqlite":
-          throw new Error("Sqlite does not support AFTER in ALTER COLUMN");
         default:
           throw new Error("Unsupported database type");
       }

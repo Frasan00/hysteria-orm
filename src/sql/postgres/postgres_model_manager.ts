@@ -6,7 +6,7 @@ import {
   UnrestrictedFindType,
 } from "../models/model_manager/model_manager_types";
 import pg from "pg";
-import { log, queryError } from "../../logger";
+import { log, queryError } from "../../utils/logger";
 import { ModelManager } from "../models/model_manager/model_manager";
 import { PostgresQueryBuilder } from "./postgres_query_builder";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";

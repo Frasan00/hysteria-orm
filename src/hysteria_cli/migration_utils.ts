@@ -8,7 +8,7 @@ import mysql from "mysql2/promise";
 import pg from "pg";
 import sqlite3 from "sqlite3";
 import MigrationTemplates from "./resources/migration_templates";
-import { log } from "../logger";
+import { log } from "../utils/logger";
 
 dotenv.config();
 

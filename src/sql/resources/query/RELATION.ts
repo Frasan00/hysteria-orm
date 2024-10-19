@@ -1,7 +1,7 @@
-import { Relation, RelationType } from "../../models/relations/relation";
+import { convertCase } from "../../../utils/case_utils";
+import logger from "../../../utils/logger";
 import { Model } from "../../models/model";
-import logger from "../../../logger";
-import { convertCase } from "../../../case_utils";
+import { Relation, RelationEnum } from "../../models/relations/relation";
 
 function parseValueType(value: any): string {
   return typeof value;
@@ -58,7 +58,7 @@ function relationTemplates<T extends Model>(
         )} = false`;
 
   switch (relation.type) {
-    case RelationType.hasOne:
+    case RelationEnum.hasOne:
       if (primaryKeyValues.some(({ value }) => !value)) {
         logger.error(
           `Invalid primaryKey values for ${typeofModel.name}, ${primaryKeyValues
@@ -79,7 +79,7 @@ function relationTemplates<T extends Model>(
         .map(({ value, type }) => convertValueToSQL(value, type))
         .join(", ")})${softDeleteColumn ? softDeleteQuery : ""};`;
 
-    case RelationType.belongsTo:
+    case RelationEnum.belongsTo:
       if (foreignKeyValues.some(({ value }) => !value)) {
         logger.error(
           `Invalid foreignKey values for ${relatedModel}, ${foreignKeyValues
@@ -103,7 +103,7 @@ function relationTemplates<T extends Model>(
         .map(({ value, type }) => convertValueToSQL(value, type))
         .join(", ")}) ${softDeleteColumn ? softDeleteQuery : ""};`;
 
-    case RelationType.hasMany:
+    case RelationEnum.hasMany:
       if (primaryKeyValues.some(({ value }) => !value)) {
         logger.error(
           `Invalid primaryKey values: ${primaryKeyValues.map(

@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 import dotenv from "dotenv";
-import { log } from "console";
 import { MigrationTableType } from "../resources/migration_table_type";
 import { Migration } from "../../sql/migrations/migration";
 import { MigrationController } from "../../sql/migrations/migration_controller";
@@ -10,7 +9,7 @@ import {
   COMMIT_TRANSACTION,
   ROLLBACK_TRANSACTION,
 } from "../../sql/resources/query/TRANSACTION";
-import logger from "../../logger";
+import logger, { log } from "../../utils/logger";
 import sqlite3 from "sqlite3";
 import { SqlDataSource } from "../../sql/sql_data_source";
 import {

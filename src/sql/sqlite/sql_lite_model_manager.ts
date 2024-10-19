@@ -5,7 +5,7 @@ import {
   UnrestrictedFindOneType,
   UnrestrictedFindType,
 } from "../models/model_manager/model_manager_types";
-import { log, queryError } from "../../logger";
+import { log, queryError } from "../../utils/logger";
 import { ModelManager } from "../models/model_manager/model_manager";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";

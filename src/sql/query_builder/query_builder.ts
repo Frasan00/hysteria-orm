@@ -1,17 +1,17 @@
-import { convertCase } from "../../case_utils";
+import { convertCase } from "../../utils/case_utils";
 import { Model } from "../models/model";
 import { getModelColumns } from "../models/model_decorators";
 import {
   SelectableType,
+  RelationType,
   DynamicColumnType,
 } from "../models/model_manager/model_manager_types";
-import { RelationType } from "../models/model_manager/model_manager_types";
 import { MysqlQueryBuilder } from "../mysql/mysql_query_builder";
 import { PaginatedData } from "../pagination";
 import { PostgresQueryBuilder } from "../postgres/postgres_query_builder";
 import selectTemplate from "../resources/query/SELECT";
 import { addDynamicColumnsToModel } from "../serializer";
-import { SqlDataSource } from "../../../src/sql/sql_data_source";
+import { SqlDataSource } from "../sql_data_source";
 import { SqlLiteQueryBuilder } from "../sqlite/sql_lite_query_builder";
 import { WhereQueryBuilder } from "./where_query_builder";
 

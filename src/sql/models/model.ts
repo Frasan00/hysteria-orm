@@ -1,24 +1,24 @@
 import "reflect-metadata";
 import { DateTime } from "luxon";
-import { OneOptions, ModelQueryBuilder } from "../query_builder/query_builder";
-import { ModelManager, SqlDataSource } from "../sql_data_source";
-import {
-  DynamicColumnType,
-  FindOneType,
-  FindType,
-  SelectableType,
-  UnrestrictedFindOneType,
-  UnrestrictedFindType,
-} from "./model_manager/model_manager_types";
-import { CaseConvention, convertCase } from "../../case_utils";
-import { ModelUpdateQueryBuilder } from "../query_builder/update_query_builder";
+import { convertCase, CaseConvention } from "../../utils/case_utils";
+import { PaginatedData } from "../pagination";
 import { ModelDeleteQueryBuilder } from "../query_builder/delete_query_builder";
+import { ModelQueryBuilder, OneOptions } from "../query_builder/query_builder";
+import { ModelUpdateQueryBuilder } from "../query_builder/update_query_builder";
+import {
+  parseDatabaseDataIntoModelResponse,
+  addDynamicColumnsToModel,
+} from "../serializer";
+import { SqlDataSource, ModelManager } from "../sql_data_source";
 import { getPrimaryKey } from "./model_decorators";
 import {
-  addDynamicColumnsToModel,
-  parseDatabaseDataIntoModelResponse,
-} from "../serializer";
-import { PaginatedData } from "../pagination";
+  FindType,
+  UnrestrictedFindType,
+  FindOneType,
+  UnrestrictedFindOneType,
+  SelectableType,
+  DynamicColumnType,
+} from "./model_manager/model_manager_types";
 import { Transaction } from "../transaction";
 
 export type BaseModelMethodOptions = {
