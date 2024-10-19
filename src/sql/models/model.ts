@@ -1,6 +1,6 @@
 import "reflect-metadata";
 import { DateTime } from "luxon";
-import { convertCase, CaseConvention } from "../../utils/case_utils";
+import { convertCase } from "../../utils/case_utils";
 import { PaginatedData } from "../pagination";
 import { ModelDeleteQueryBuilder } from "../query_builder/delete_query_builder";
 import { ModelQueryBuilder, OneOptions } from "../query_builder/query_builder";
