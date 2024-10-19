@@ -27,44 +27,34 @@ export default class ColumnTypeBuilder {
     this.columnName = "";
   }
 
-  public string(name: string, length: number = 255) {
+  public string(name: string, length: number = 255): ColumnOptionsBuilder {
     switch (this.sqlType) {
       case "mariadb":
       case "mysql":
         this.columnName = name;
         this.partialQuery += `${name} VARCHAR(${length})`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
 
       case "postgres":
         this.columnName = name;
         this.partialQuery += `${name} VARCHAR(${length})`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
 
       case "sqlite":
         this.columnName = name;
         this.partialQuery += `${name} TEXT`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       default:
         throw new Error("Unsupported SQL type");
     }
+
+    return new ColumnOptionsBuilder(
+      this.table,
+      this.queryStatements,
+      this.partialQuery,
+      this.sqlType,
+      this.columnName,
+    );
   }
 
   public varchar(name: string, length: number = 255): ColumnOptionsBuilder {
@@ -73,38 +63,28 @@ export default class ColumnTypeBuilder {
       case "mysql":
         this.columnName = name;
         this.partialQuery += `${name} VARCHAR(${length})`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
 
       case "postgres":
         this.columnName = name;
         this.partialQuery += `${name} VARCHAR(${length})`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
 
       case "sqlite":
         this.columnName = name;
         this.partialQuery += `${name} TEXT`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       default:
         throw new Error("Unsupported SQL type");
     }
+
+    return new ColumnOptionsBuilder(
+      this.table,
+      this.queryStatements,
+      this.partialQuery,
+      this.sqlType,
+      this.columnName,
+    );
   }
 
   public uuid(name: string): ColumnOptionsBuilder {
@@ -112,38 +92,28 @@ export default class ColumnTypeBuilder {
       case "postgres":
         this.columnName = name;
         this.partialQuery += `${name} UUID`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       case "mariadb":
       case "mysql":
         this.columnName = name;
         this.partialQuery += `${name} CHAR(36)`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       case "sqlite":
         logger.warn("sqlite does not support UUID, using text instead");
         this.columnName = name;
         this.partialQuery += `${name} TEXT`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       default:
         throw new Error("Unsupported SQL type");
     }
+
+    return new ColumnOptionsBuilder(
+      this.table,
+      this.queryStatements,
+      this.partialQuery,
+      this.sqlType,
+      this.columnName,
+    );
   }
 
   public tinytext(name: string): ColumnOptionsBuilder {
@@ -152,36 +122,26 @@ export default class ColumnTypeBuilder {
       case "mysql":
         this.columnName = name;
         this.partialQuery += `${name} TINYTEXT`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       case "postgres":
         this.columnName = name;
         this.partialQuery += `${name} TEXT`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       case "sqlite":
         this.columnName = name;
         this.partialQuery += `${name} TEXT`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       default:
         throw new Error("Unsupported SQL type");
     }
+
+    return new ColumnOptionsBuilder(
+      this.table,
+      this.queryStatements,
+      this.partialQuery,
+      this.sqlType,
+      this.columnName,
+    );
   }
 
   public mediumtext(name: string): ColumnOptionsBuilder {
@@ -190,36 +150,26 @@ export default class ColumnTypeBuilder {
       case "mysql":
         this.columnName = name;
         this.partialQuery += `${name} MEDIUMTEXT`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       case "postgres":
         this.columnName = name;
         this.partialQuery += `${name} TEXT`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       case "sqlite":
         this.columnName = name;
         this.partialQuery += `${name} TEXT`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       default:
         throw new Error("Unsupported SQL type");
     }
+
+    return new ColumnOptionsBuilder(
+      this.table,
+      this.queryStatements,
+      this.partialQuery,
+      this.sqlType,
+      this.columnName,
+    );
   }
 
   public longtext(name: string): ColumnOptionsBuilder {
@@ -228,36 +178,26 @@ export default class ColumnTypeBuilder {
       case "mysql":
         this.columnName = name;
         this.partialQuery += `${name} LONGTEXT`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       case "postgres":
         this.columnName = name;
         this.partialQuery += `${name} TEXT`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       case "sqlite":
         this.columnName = name;
         this.partialQuery += `${name} TEXT`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       default:
         throw new Error("Unsupported SQL type");
     }
+
+    return new ColumnOptionsBuilder(
+      this.table,
+      this.queryStatements,
+      this.partialQuery,
+      this.sqlType,
+      this.columnName,
+    );
   }
 
   public binary(name: string, length: number = 255): ColumnOptionsBuilder {
@@ -266,36 +206,26 @@ export default class ColumnTypeBuilder {
       case "mysql":
         this.columnName = name;
         this.partialQuery += `${name} BINARY(${length})`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       case "postgres":
         this.columnName = name;
         this.partialQuery += `${name} BYTEA`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       case "sqlite":
         this.columnName = name;
         this.partialQuery += `${name} BLOB(${length})`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       default:
         throw new Error("Unsupported SQL type");
     }
+
+    return new ColumnOptionsBuilder(
+      this.table,
+      this.queryStatements,
+      this.partialQuery,
+      this.sqlType,
+      this.columnName,
+    );
   }
 
   public enum(name: string, values: string[]): ColumnOptionsBuilder {
@@ -304,40 +234,30 @@ export default class ColumnTypeBuilder {
       case "mysql":
         this.columnName = name;
         this.partialQuery += `${name} ENUM('${values.join("', '")}')`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       case "sqlite":
         this.columnName = name;
         this.partialQuery += `${name} TEXT CHECK(${name} IN ('${values.join(
           "', '",
         )}'))`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       case "postgres":
         this.columnName = name;
         this.partialQuery += `${name} CHECK(${name} IN ('${values.join(
           "', '",
         )}'))`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       default:
         throw new Error("Unsupported SQL type");
     }
+
+    return new ColumnOptionsBuilder(
+      this.table,
+      this.queryStatements,
+      this.partialQuery,
+      this.sqlType,
+      this.columnName,
+    );
   }
 
   public text(name: string): ColumnOptionsBuilder {
@@ -346,36 +266,26 @@ export default class ColumnTypeBuilder {
       case "mysql":
         this.columnName = name;
         this.partialQuery += `${name} TEXT`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       case "postgres":
         this.columnName = name;
         this.partialQuery += `${name} TEXT`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       case "sqlite":
         this.columnName = name;
         this.partialQuery += `${name} TEXT`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       default:
         throw new Error("Unsupported SQL type");
     }
+
+    return new ColumnOptionsBuilder(
+      this.table,
+      this.queryStatements,
+      this.partialQuery,
+      this.sqlType,
+      this.columnName,
+    );
   }
 
   public char(name: string, length: number = 255): ColumnOptionsBuilder {
@@ -384,36 +294,26 @@ export default class ColumnTypeBuilder {
       case "mysql":
         this.columnName = name;
         this.partialQuery += `${name} CHAR(${length})`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       case "postgres":
         this.columnName = name;
         this.partialQuery += `${name} CHAR(${length})`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       case "sqlite":
         this.columnName = name;
         this.partialQuery += `${name} CHAR(${length})`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       default:
         throw new Error("Unsupported SQL type");
     }
+
+    return new ColumnOptionsBuilder(
+      this.table,
+      this.queryStatements,
+      this.partialQuery,
+      this.sqlType,
+      this.columnName,
+    );
   }
 
   public tinyint(name: string): ColumnOptionsBuilder {
@@ -422,36 +322,26 @@ export default class ColumnTypeBuilder {
       case "mysql":
         this.columnName = name;
         this.partialQuery += `${name} TINYINT`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       case "postgres":
         this.columnName = name;
         this.partialQuery += `${name} SMALLINT`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       case "sqlite":
         this.columnName = name;
         this.partialQuery += `${name} TINYINT`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       default:
         throw new Error("Unsupported SQL type");
     }
+
+    return new ColumnOptionsBuilder(
+      this.table,
+      this.queryStatements,
+      this.partialQuery,
+      this.sqlType,
+      this.columnName,
+    );
   }
 
   public smallint(name: string): ColumnOptionsBuilder {
@@ -460,36 +350,26 @@ export default class ColumnTypeBuilder {
       case "mysql":
         this.columnName = name;
         this.partialQuery += `${name} SMALLINT`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       case "postgres":
         this.columnName = name;
         this.partialQuery += `${name} SMALLINT`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       case "sqlite":
         this.columnName = name;
         this.partialQuery += `${name} SMALLINT`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       default:
         throw new Error("Unsupported SQL type");
     }
+
+    return new ColumnOptionsBuilder(
+      this.table,
+      this.queryStatements,
+      this.partialQuery,
+      this.sqlType,
+      this.columnName,
+    );
   }
 
   public mediumint(name: string): ColumnOptionsBuilder {
@@ -498,36 +378,26 @@ export default class ColumnTypeBuilder {
       case "mysql":
         this.columnName = name;
         this.partialQuery += `${name} MEDIUMINT`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       case "postgres":
         this.columnName = name;
         this.partialQuery += `${name} INTEGER`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       case "sqlite":
         this.columnName = name;
         this.partialQuery += `${name} MEDIUMINT`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       default:
         throw new Error("Unsupported SQL type");
     }
+
+    return new ColumnOptionsBuilder(
+      this.table,
+      this.queryStatements,
+      this.partialQuery,
+      this.sqlType,
+      this.columnName,
+    );
   }
 
   /**
@@ -617,36 +487,26 @@ export default class ColumnTypeBuilder {
       case "mysql":
         this.columnName = name;
         this.partialQuery += `${name} INT ${length ? `(${length})` : ""}`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       case "postgres":
         this.columnName = name;
         this.partialQuery += `${name} INTEGER ${length ? `(${length})` : ""}`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       case "sqlite":
         this.columnName = name;
         this.partialQuery += `${name} INTEGER ${length ? `(${length})` : ""}`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       default:
         throw new Error("Unsupported SQL type");
     }
+
+    return new ColumnOptionsBuilder(
+      this.table,
+      this.queryStatements,
+      this.partialQuery,
+      this.sqlType,
+      this.columnName,
+    );
   }
 
   public bigInteger(name: string): ColumnOptionsBuilder {
@@ -655,36 +515,26 @@ export default class ColumnTypeBuilder {
       case "mysql":
         this.columnName = name;
         this.partialQuery += `${name} BIGINT`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       case "postgres":
         this.columnName = name;
         this.partialQuery += `${name} BIGINT`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       case "sqlite":
         this.columnName = name;
         this.partialQuery += `${name} BIGINT`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       default:
         throw new Error("Unsupported SQL type");
     }
+
+    return new ColumnOptionsBuilder(
+      this.table,
+      this.queryStatements,
+      this.partialQuery,
+      this.sqlType,
+      this.columnName,
+    );
   }
 
   /**
@@ -720,36 +570,26 @@ export default class ColumnTypeBuilder {
       case "mysql":
         this.columnName = name;
         this.partialQuery += `${name} FLOAT(${options.precision}, ${options.scale})`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       case "postgres":
         this.columnName = name;
         this.partialQuery += `${name} REAL`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       case "sqlite":
         this.columnName = name;
         this.partialQuery += `${name} REAL`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       default:
         throw new Error("Unsupported SQL type");
     }
+
+    return new ColumnOptionsBuilder(
+      this.table,
+      this.queryStatements,
+      this.partialQuery,
+      this.sqlType,
+      this.columnName,
+    );
   }
 
   public decimal(
@@ -767,36 +607,26 @@ export default class ColumnTypeBuilder {
       case "mysql":
         this.columnName = name;
         this.partialQuery += `${name} DECIMAL(${options.precision}, ${options.scale})`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       case "postgres":
         this.columnName = name;
         this.partialQuery += `${name} DECIMAL(${options.precision}, ${options.scale})`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       case "sqlite":
         this.columnName = name;
         this.partialQuery += `${name} DECIMAL(${options.precision}, ${options.scale})`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       default:
         throw new Error("Unsupported SQL type");
     }
+
+    return new ColumnOptionsBuilder(
+      this.table,
+      this.queryStatements,
+      this.partialQuery,
+      this.sqlType,
+      this.columnName,
+    );
   }
 
   public double(
@@ -814,36 +644,26 @@ export default class ColumnTypeBuilder {
       case "mysql":
         this.columnName = name;
         this.partialQuery += `${name} DOUBLE(${options.precision}, ${options.scale})`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       case "postgres":
         this.columnName = name;
         this.partialQuery += `${name} DOUBLE PRECISION`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       case "sqlite":
         this.columnName = name;
         this.partialQuery += `${name} REAL`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       default:
         throw new Error("Unsupported SQL type");
     }
+
+    return new ColumnOptionsBuilder(
+      this.table,
+      this.queryStatements,
+      this.partialQuery,
+      this.sqlType,
+      this.columnName,
+    );
   }
 
   public boolean(name: string): ColumnOptionsBuilder {
@@ -852,40 +672,30 @@ export default class ColumnTypeBuilder {
       case "mysql":
         this.columnName = name;
         this.partialQuery += `${name} BOOLEAN`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
 
       case "postgres":
         this.columnName = name;
         this.partialQuery += `${name} BOOLEAN`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       case "sqlite":
         logger.warn(
           "sqlite does not support boolean columns, using integer instead",
         );
         this.columnName = name;
         this.partialQuery += `${name} INTEGER CHECK(${name} IN (0, 1))`;
-        return new ColumnOptionsBuilder(
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-        );
+        break;
       default:
         throw new Error("Unsupported SQL type");
     }
+
+    return new ColumnOptionsBuilder(
+      this.table,
+      this.queryStatements,
+      this.partialQuery,
+      this.sqlType,
+      this.columnName,
+    );
   }
 
   public date(name: string, options?: DateOptions): ColumnOptionsBuilder {
@@ -994,6 +804,14 @@ export default class ColumnTypeBuilder {
       default:
         throw new Error("Unsupported SQL type");
     }
+
+    return new ColumnOptionsBuilder(
+      this.table,
+      this.queryStatements,
+      this.partialQuery,
+      this.sqlType,
+      this.columnName,
+    );
 
     return new ColumnOptionsBuilder(
       this.table,
