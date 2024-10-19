@@ -36,7 +36,7 @@ declare abstract class DataSource {
     protected url: string;
     protected logs: boolean;
     protected constructor(input?: DataSourceInput);
-    protected handleMongoSource(): void;
+    protected handleMongoSource(url?: string): void;
     protected handleSqlSource(input?: DataSourceInput): void;
 }
 
@@ -963,7 +963,6 @@ declare abstract class Model extends AbstractModel {
     } & BaseModelMethodOptions): Promise<T | null>;
     /**
      * @description Saves a new record to the database
-     * @description While using mysql, it will return records only if the primary key is auto incrementing integer, else it will always return null
      * @param model
      * @param {Model} modelData
      * @param trx
@@ -1102,10 +1101,10 @@ declare abstract class Model extends AbstractModel {
     /**
      * @description Gives the correct model manager with the correct connection based on the options provided
      * @param this
-     * @param options
+     * @param options - The options to get the model manager
      * @returns
      */
-    private static getModelManager;
+    private static dispatchModelManager;
 }
 
 declare abstract class ModelManager$1<T extends Model> {

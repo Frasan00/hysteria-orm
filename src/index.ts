@@ -9,6 +9,7 @@ import {
   column,
   getRelations,
   getModelColumns,
+  dynamicColumn,
 } from "./sql/models/model_decorators";
 import { Relation } from "./sql/models/relations/relation";
 import { ModelQueryBuilder } from "./sql/query_builder/query_builder";
@@ -24,6 +25,8 @@ import {
   RedisGiveable,
   RedisStorable,
 } from "./no_sql/redis/redis_data_source";
+import { MongoDataSource } from "./no_sql/mongo/mongo_data_source";
+import { MongoModel } from "./no_sql/mongo/mongo_models/mongo_model";
 // import { User } from "../test/User";
 
 // (async () => {
@@ -42,6 +45,27 @@ import {
 
 //   await sql.closeConnection();
 // })();
+
+class User extends MongoModel {
+  @column()
+  declare name: string;
+
+  @dynamicColumn("test")
+  getTest() {
+    return "test";
+  }
+}
+
+(async () => {
+  const mongo = await MongoDataSource.connect(
+    "mongodb://root:root@localhost:27017",
+  );
+
+  const user = await User.insert({ name: "John Doe" });
+  console.log(user);
+
+  await mongo.disconnect();
+})();
 
 export default {
   // sql
