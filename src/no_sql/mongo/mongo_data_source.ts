@@ -1,5 +1,10 @@
 import { DataSource, DataSourceInput } from "../../data_source";
-import mongodb from "mongodb";
+import * as mongodb from "mongodb";
+import { CollectionManager } from "./mongo_models/mongo_collection_manager";
+import dotenv from "dotenv";
+import { Collection } from "./mongo_models/mongo_collection";
+
+dotenv.config();
 
 export type MongoDataSourceInput = Exclude<
   DataSourceInput,
@@ -7,30 +12,42 @@ export type MongoDataSourceInput = Exclude<
 >;
 
 export class MongoDataSource extends DataSource {
-  public url: string;
-  public isConnected: boolean;
+  url: string;
+  isConnected: boolean;
   private mongoClient: mongodb.MongoClient;
   private static instance: MongoDataSource | null = null;
 
   private constructor(url: string, mongoClient: mongodb.MongoClient) {
-    super();
+    super({ type: "mongo" });
     this.url = url;
     this.isConnected = false;
     this.mongoClient = mongoClient;
   }
 
-  public static connect(
-    url: string,
-    options?: MongoDataSourceInput["mongoOptions"],
+  getCurrentConnection(): mongodb.MongoClient {
+    return this.mongoClient;
+  }
+
+  static async connect(
+    url?: string,
+    options?: MongoDataSourceInput["mongoOptions"] & { logs?: boolean },
     cb?: () => void,
-  ): MongoDataSource {
+  ): Promise<MongoDataSource> {
     if (!url) {
-      throw new Error("url is required to connect to mongo database");
+      url = process.env.MONGO_URL;
+      if (!url) {
+        throw new Error(
+          "url is required to connect to mongo database and was not provided in the options nor the environment variables",
+        );
+      }
     }
 
     const mongoClient = new mongodb.MongoClient(url, options);
+    await mongoClient.connect();
     this.instance = new MongoDataSource(url, mongoClient);
     this.instance.isConnected = true;
+    this.instance.logs =
+      options?.logs || process.env.MONGO_LOGS === "true" || false;
     cb?.();
     return this.instance;
   }
@@ -43,8 +60,52 @@ export class MongoDataSource extends DataSource {
     return MongoDataSource.instance;
   }
 
-  public async disconnect(): Promise<void> {
+  /**
+   * @description Starts a new session and transaction
+   * @returns {mongodb.ClientSession}
+   */
+  startSession(): mongodb.ClientSession {
+    const session = this.mongoClient.startSession();
+    session.startTransaction();
+    return session;
+  }
+
+  async disconnect(): Promise<void> {
     await this.mongoClient.close();
     this.isConnected = false;
+  }
+
+  /**
+   * @description Executes a callback function with the provided connection details
+   * @param connectionDetails
+   * @param cb
+   */
+  static async useConnection<T extends Collection>(
+    this: typeof MongoDataSource,
+    connectionDetails: {
+      url: string;
+      options?: MongoDataSourceInput["mongoOptions"];
+    },
+    cb: (mongoDataSource: MongoDataSource) => Promise<void>,
+  ): Promise<void> {
+    const mongoClient = new mongodb.MongoClient(
+      connectionDetails.url,
+      connectionDetails.options,
+    );
+    await mongoClient.connect();
+    const mongoDataSource = new MongoDataSource(
+      connectionDetails.url,
+      mongoClient,
+    );
+    const result = await cb(mongoDataSource);
+    await mongoClient.close();
+  }
+
+  getModelManager<T extends Collection>(
+    model: typeof Collection,
+    mongoDataSource: MongoDataSource,
+    session?: mongodb.ClientSession,
+  ): CollectionManager<T> {
+    return new CollectionManager<T>(model, mongoDataSource, session, this.logs);
   }
 }

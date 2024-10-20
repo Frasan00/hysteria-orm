@@ -95,7 +95,7 @@ export abstract class Model extends AbstractModel {
     options: BaseModelMethodOptions = {},
   ): ModelQueryBuilder<T> {
     const typeofModel = this as unknown as typeof Model;
-    const modelManager = typeofModel.getModelManager<T>(options);
+    const modelManager = typeofModel.dispatchModelManager<T>(options);
     return modelManager.query();
   }
 
@@ -111,7 +111,7 @@ export abstract class Model extends AbstractModel {
     options: OneOptions & BaseModelMethodOptions = { throwErrorOnNull: false },
   ): Promise<T | null> {
     const typeofModel = this as unknown as typeof Model;
-    const modelManager = typeofModel.getModelManager<T>(options);
+    const modelManager = typeofModel.dispatchModelManager<T>(options);
     return await modelManager.query().one(options);
   }
 
@@ -126,7 +126,7 @@ export abstract class Model extends AbstractModel {
     options?: FindType<T> | UnrestrictedFindType<T>,
   ): Promise<T[]> {
     const typeofModel = this as unknown as typeof Model;
-    const modelManager = typeofModel.getModelManager<T>({
+    const modelManager = typeofModel.dispatchModelManager<T>({
       trx: options?.trx,
       useConnection: options?.useConnection,
     } as BaseModelMethodOptions);
@@ -144,7 +144,7 @@ export abstract class Model extends AbstractModel {
     options: FindOneType<T> | UnrestrictedFindOneType<T>,
   ): Promise<T | null> {
     const typeofModel = this as unknown as typeof Model;
-    const modelManager = typeofModel.getModelManager<T>(options);
+    const modelManager = typeofModel.dispatchModelManager<T>(options);
     return modelManager.findOne(options);
   }
 
@@ -162,7 +162,7 @@ export abstract class Model extends AbstractModel {
     },
   ): Promise<T | null> {
     const typeofModel = this as unknown as typeof Model;
-    const modelManager = typeofModel.getModelManager<T>(options);
+    const modelManager = typeofModel.dispatchModelManager<T>(options);
     return modelManager.findOneByPrimaryKey(value, options.throwErrorOnNull);
   }
 
@@ -178,7 +178,7 @@ export abstract class Model extends AbstractModel {
     },
   ): Promise<T | null> {
     const typeofModel = this as unknown as typeof Model;
-    const modelManager = typeofModel.getModelManager<T>(options);
+    const modelManager = typeofModel.dispatchModelManager<T>(options);
     const primaryKey = typeofModel.primaryKey as keyof T;
     const primaryKeyValue = model[primaryKey];
     return modelManager.findOneByPrimaryKey(
@@ -189,7 +189,6 @@ export abstract class Model extends AbstractModel {
 
   /**
    * @description Saves a new record to the database
-   * @description While using mysql, it will return records only if the primary key is auto incrementing integer, else it will always return null
    * @param model
    * @param {Model} modelData
    * @param trx
@@ -201,7 +200,7 @@ export abstract class Model extends AbstractModel {
     options: BaseModelMethodOptions = {},
   ): Promise<T | null> {
     const typeofModel = this as unknown as typeof Model;
-    const modelManager = typeofModel.getModelManager<T>(options);
+    const modelManager = typeofModel.dispatchModelManager<T>(options);
     return modelManager.insert(modelData);
   }
 
@@ -219,7 +218,7 @@ export abstract class Model extends AbstractModel {
     options: BaseModelMethodOptions = {},
   ): Promise<T[]> {
     const typeofModel = this as unknown as typeof Model;
-    const modelManager = typeofModel.getModelManager<T>(options);
+    const modelManager = typeofModel.dispatchModelManager<T>(options);
     return modelManager.insertMany(modelsData);
   }
 
@@ -236,7 +235,7 @@ export abstract class Model extends AbstractModel {
     options: BaseModelMethodOptions = {},
   ): Promise<T | null> {
     const typeofModel = this as unknown as typeof Model;
-    const modelManager = typeofModel.getModelManager<T>(options);
+    const modelManager = typeofModel.dispatchModelManager<T>(options);
     return modelManager.updateRecord(modelsqlInstance);
   }
 
@@ -253,7 +252,7 @@ export abstract class Model extends AbstractModel {
     options: BaseModelMethodOptions = {},
   ): Promise<T> {
     const typeofModel = this as unknown as typeof Model;
-    const modelManager = typeofModel.getModelManager<T>(options);
+    const modelManager = typeofModel.dispatchModelManager<T>(options);
     const doesExist = await modelManager.findOne({
       where: searchCriteria,
     });
@@ -280,7 +279,7 @@ export abstract class Model extends AbstractModel {
     },
   ): Promise<T> {
     const typeofModel = this as unknown as typeof Model;
-    const modelManager = typeofModel.getModelManager<T>(options);
+    const modelManager = typeofModel.dispatchModelManager<T>(options);
     const doesExist = await modelManager.findOne({
       where: searchCriteria,
     });
@@ -315,7 +314,7 @@ export abstract class Model extends AbstractModel {
     },
   ): Promise<T[]> {
     const typeofModel = this as unknown as typeof Model;
-    const modelManager = typeofModel.getModelManager<T>(options);
+    const modelManager = typeofModel.dispatchModelManager<T>(options);
 
     if (
       !data.every((record) =>
@@ -372,7 +371,7 @@ export abstract class Model extends AbstractModel {
     options: BaseModelMethodOptions = {},
   ): ModelUpdateQueryBuilder<T> {
     const typeofModel = this as unknown as typeof Model;
-    const modelManager = typeofModel.getModelManager<T>(options);
+    const modelManager = typeofModel.dispatchModelManager<T>(options);
     return modelManager.update();
   }
 
@@ -388,7 +387,7 @@ export abstract class Model extends AbstractModel {
     options: BaseModelMethodOptions = {},
   ): ModelDeleteQueryBuilder<T> {
     const typeofModel = this as unknown as typeof Model;
-    const modelManager = typeofModel.getModelManager<T>(options);
+    const modelManager = typeofModel.dispatchModelManager<T>(options);
     return modelManager.deleteQuery();
   }
 
@@ -405,7 +404,7 @@ export abstract class Model extends AbstractModel {
     options: BaseModelMethodOptions = {},
   ): Promise<T | null> {
     const typeofModel = this as unknown as typeof Model;
-    const modelManager = typeofModel.getModelManager<T>(options);
+    const modelManager = typeofModel.dispatchModelManager<T>(options);
     return modelManager.deleteRecord(modelsqlInstance);
   }
 
@@ -432,7 +431,7 @@ export abstract class Model extends AbstractModel {
     } = options || {};
 
     modelsqlInstance[column as keyof T] = value as T[keyof T];
-    const modelManager = typeofModel.getModelManager<T>({
+    const modelManager = typeofModel.dispatchModelManager<T>({
       trx: options?.trx,
       useConnection: options?.useConnection,
     });
@@ -573,10 +572,10 @@ export abstract class Model extends AbstractModel {
   /**
    * @description Gives the correct model manager with the correct connection based on the options provided
    * @param this
-   * @param options
+   * @param options - The options to get the model manager
    * @returns
    */
-  private static getModelManager<T extends Model>(
+  private static dispatchModelManager<T extends Model>(
     this: typeof Model,
     options: BaseModelMethodOptions,
   ): ModelManager<T> {

@@ -47,14 +47,14 @@ export abstract class DataSource {
 
   protected constructor(input?: DataSourceInput) {
     if (this.type === "mongo") {
-      this.handleMongoSource();
+      this.handleMongoSource(input?.url);
       return;
     }
 
     this.handleSqlSource(input);
   }
 
-  protected handleMongoSource() {
+  protected handleMongoSource(url?: string) {
     this.type = "mongo";
   }
 

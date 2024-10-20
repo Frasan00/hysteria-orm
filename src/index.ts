@@ -9,6 +9,7 @@ import {
   column,
   getRelations,
   getModelColumns,
+  dynamicColumn,
 } from "./sql/models/model_decorators";
 import { Relation } from "./sql/models/relations/relation";
 import { ModelQueryBuilder } from "./sql/query_builder/query_builder";
@@ -24,41 +25,13 @@ import {
   RedisGiveable,
   RedisStorable,
 } from "./no_sql/redis/redis_data_source";
+import { MongoDataSource } from "./no_sql/mongo/mongo_data_source";
+import { Collection } from "./no_sql/mongo/mongo_models/mongo_collection";
 import { StandaloneQueryBuilder } from "./sql/query_builder/standalone_sql_query_builder";
-import { User } from "../test/User";
-
-(async () => {
-  // const sql = await SqlDataSource.connect();
-
-  // const { query, params } = User.query()
-  //   .whereBuilder((builder) => {
-  //     builder.where("id", 1);
-  //     builder.orWhere("name", "John");
-  //     builder.andWhereBuilder((builder) => {
-  //       builder.where("signup_date", "2021-01-01");
-  //       builder.orWhere("signup_date", "2021-01-02");
-  //     });
-  //   })
-  //   .getCurrentQuery();
-
-  // console.log(query, params);
-
-  // await sql.closeConnection();
-
-  const userQueryBuilder = new StandaloneQueryBuilder("postgres", "users");
-  const { query, params } = userQueryBuilder
-    .whereBuilder((builder) => {
-      builder.where("id", 1);
-      builder.orWhere("name", "John");
-      builder.andWhereBuilder((builder) => {
-        builder.where("signup_date", "2021-01-01");
-        builder.orWhere("signup_date", "2021-01-02");
-      });
-    })
-    .getCurrentQuery();
-
-  console.log(query, params);
-})();
+import {
+  property,
+  dynamicProperty,
+} from "./no_sql/mongo/mongo_models/mongo_collection_decorators";
 
 export default {
   // sql
@@ -72,9 +45,16 @@ export default {
   Migration,
   getRelations,
   getModelColumns,
+  getPrimaryKey,
 
   // redis
   Redis,
+
+  // mongo
+  MongoDataSource,
+  Collection,
+  property,
+  dynamicColumn,
 };
 
 export {
@@ -104,4 +84,10 @@ export {
   RedisGiveable,
   RedisStorable,
   RedisOptions,
+
+  // mongo
+  MongoDataSource,
+  Collection,
+  property,
+  dynamicProperty,
 };

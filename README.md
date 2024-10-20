@@ -2,17 +2,26 @@
 
 - Hysteria ORM is a partially type safe Object-Relational Mapping (ORM) library for TypeScript, designed to simplify interactions between your application and a SQL and NoSql databases.
 
-## Sql
-- [Documentation](src/SQL_README.MD)
+## Installation
+```shell
+    npm install hysteria-orm
+    
+    yarn add hysteria-orm
+```
+
+## Supported Databases
+
+### Sql
+[Documentation](src/SQL_README.MD)
 - Sql supported databases are
 1) Mysql
 2) MariaDB
 3) Postgres
 4) sqlite
 
-## NoSQl
-- [Documentation](src/no_sql/NOSQL_README.MD)
-
+### NoSQl
+- [Redis](src/no_sql/redis/docs/REDIS.MD)
+- [Mongo](src/no_sql/mongo/MONGO.MD)
 
 ## Setup Example
 - Docker compose example with the database versions used in the development
@@ -51,6 +60,14 @@ services:
       - REDIS_PASSWORD=root
     ports:
       - "6379:6379"
+
+  mongo:
+    image: mongo:4.4
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: root
+    ports:
+      - "27017:27017"
 ```
 
 - Env example with a config for each database
@@ -96,4 +113,7 @@ DB_PASSWORD=root
 DB_DATABASE=0
 DB_PORT=6379
 DB_LOGS=true
+
+# MONGO
+MONGO_URL=mongodb://root:root@localhost:27017
 ```

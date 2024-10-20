@@ -194,7 +194,6 @@ export class SqlDataSource extends DataSource {
 
   /**
    * @description Executes a callback function with the provided connection details
-   * @description Static Model methods will always use the base connection created with SqlDataSource.connect() method
    * @param connectionDetails
    * @param cb
    */
