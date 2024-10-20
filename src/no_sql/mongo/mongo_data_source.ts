@@ -1,8 +1,8 @@
 import { DataSource, DataSourceInput } from "../../data_source";
 import * as mongodb from "mongodb";
-import { MongoModelManager } from "./mongo_models/mongo_model_manager";
+import { CollectionManager } from "./mongo_models/mongo_collection_manager";
 import dotenv from "dotenv";
-import { MongoModel } from "./mongo_models/mongo_model";
+import { Collection } from "./mongo_models/mongo_collection";
 
 dotenv.config();
 
@@ -12,8 +12,8 @@ export type MongoDataSourceInput = Exclude<
 >;
 
 export class MongoDataSource extends DataSource {
-  public url: string;
-  public isConnected: boolean;
+  url: string;
+  isConnected: boolean;
   private mongoClient: mongodb.MongoClient;
   private static instance: MongoDataSource | null = null;
 
@@ -24,11 +24,11 @@ export class MongoDataSource extends DataSource {
     this.mongoClient = mongoClient;
   }
 
-  public getCurrentConnection(): mongodb.MongoClient {
+  getCurrentConnection(): mongodb.MongoClient {
     return this.mongoClient;
   }
 
-  public static async connect(
+  static async connect(
     url?: string,
     options?: MongoDataSourceInput["mongoOptions"] & { logs?: boolean },
     cb?: () => void,
@@ -60,15 +60,52 @@ export class MongoDataSource extends DataSource {
     return MongoDataSource.instance;
   }
 
-  public async disconnect(): Promise<void> {
+  /**
+   * @description Starts a new session and transaction
+   * @returns {mongodb.ClientSession}
+   */
+  startSession(): mongodb.ClientSession {
+    const session = this.mongoClient.startSession();
+    session.startTransaction();
+    return session;
+  }
+
+  async disconnect(): Promise<void> {
     await this.mongoClient.close();
     this.isConnected = false;
   }
 
-  public getModelManager<T extends MongoModel>(
-    model: typeof MongoModel,
+  /**
+   * @description Executes a callback function with the provided connection details
+   * @param connectionDetails
+   * @param cb
+   */
+  static async useConnection<T extends Collection>(
+    this: typeof MongoDataSource,
+    connectionDetails: {
+      url: string;
+      options?: MongoDataSourceInput["mongoOptions"];
+    },
+    cb: (mongoDataSource: MongoDataSource) => Promise<void>,
+  ): Promise<void> {
+    const mongoClient = new mongodb.MongoClient(
+      connectionDetails.url,
+      connectionDetails.options,
+    );
+    await mongoClient.connect();
+    const mongoDataSource = new MongoDataSource(
+      connectionDetails.url,
+      mongoClient,
+    );
+    const result = await cb(mongoDataSource);
+    await mongoClient.close();
+  }
+
+  getModelManager<T extends Collection>(
+    model: typeof Collection,
     mongoDataSource: MongoDataSource,
-  ): MongoModelManager<T> {
-    return new MongoModelManager<T>(model, mongoDataSource, this.logs);
+    session?: mongodb.ClientSession,
+  ): CollectionManager<T> {
+    return new CollectionManager<T>(model, mongoDataSource, session, this.logs);
   }
 }

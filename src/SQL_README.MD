@@ -1,6 +1,5 @@
 # Hysteria ORM Sql Documentation
 
-- [Installation](#installation)
 - [Features](#features)
 - [Prerequisites](#prerequisites)
     - [TypeScript Configuration](#typescript-configuration-example)
@@ -11,7 +10,7 @@
         - [use-connection](#use-connection)
     - [Create a Model](#create-a-model)
     - [Create a Model with Relationships](#create-a-model-with-relations-and-hooks)
-    - [UUID] (#model-with-uuid)
+    - [UUID](#model-with-uuid)
     - [Case Convention](#case-convention)
     - [Upsert](#Upsert-methods)
     - [Read (standard methods used for simple queries)](#read-standard-methods-used-for-simple-queries)
@@ -29,13 +28,6 @@
     - [Alter Table](#alter-table)
 - [Experimental](#experimental)
     - [json-support](#json-support-unstable-on-mysql)
-
-## Installation
-```shell
-    npm install hysteria-orm
-    
-    yarn add hysteria-orm
-```
 
 ## Features
 

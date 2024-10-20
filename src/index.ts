@@ -26,50 +26,11 @@ import {
   RedisStorable,
 } from "./no_sql/redis/redis_data_source";
 import { MongoDataSource } from "./no_sql/mongo/mongo_data_source";
-import { MongoModel } from "./no_sql/mongo/mongo_models/mongo_model";
-import { mongoColumn } from "./no_sql/mongo/mongo_models/mongo_model_decorators";
-// import { User } from "../test/User";
-
-// (async () => {
-//   const sql = await SqlDataSource.connect();
-
-//   await User.query()
-//     .whereBuilder((builder) => {
-//       builder.where("id", 1);
-//       builder.orWhere("id", 2);
-//       builder.andWhereBuilder((builder) => {
-//         builder.where("id", 3);
-//         builder.orWhere("id", 4);
-//       });
-//     })
-//     .one();
-
-//   await sql.closeConnection();
-// })();
-
-class User extends MongoModel {
-  @mongoColumn()
-  declare name: string;
-
-  @mongoColumn()
-  declare email: string;
-
-  @dynamicColumn("test")
-  getTest() {
-    return "test";
-  }
-}
-
-(async () => {
-  const mongo = await MongoDataSource.connect(
-    "mongodb://root:root@localhost:27017",
-  );
-
-  const user = await User.query().select(["email"]).many();
-  console.log(user);
-
-  await mongo.disconnect();
-})();
+import { Collection } from "./no_sql/mongo/mongo_models/mongo_collection";
+import {
+  property,
+  dynamicProperty,
+} from "./no_sql/mongo/mongo_models/mongo_collection_decorators";
 
 export default {
   // sql
@@ -90,8 +51,9 @@ export default {
 
   // mongo
   MongoDataSource,
-  MongoModel,
-  mongoColumn,
+  Collection,
+  property,
+  dynamicColumn,
 };
 
 export {
@@ -123,6 +85,7 @@ export {
 
   // mongo
   MongoDataSource,
-  MongoModel,
-  mongoColumn,
+  Collection,
+  property,
+  dynamicColumn,
 };

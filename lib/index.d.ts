@@ -1744,7 +1744,6 @@ declare class SqlDataSource extends DataSource {
     } | typeof Model): ModelManager<T>;
     /**
      * @description Executes a callback function with the provided connection details
-     * @description Static Model methods will always use the base connection created with SqlDataSource.connect() method
      * @param connectionDetails
      * @param cb
      */
@@ -2162,6 +2161,12 @@ interface ColumnOptions {
  */
 declare function column(options?: ColumnOptions): PropertyDecorator;
 /**
+ * @description Defines a dynamic calculated column that is not defined inside the Table, it must be added to a query in order to be retrieved
+ * @param columnName that will be filled inside the dynamicColumn field
+ * @returns
+ */
+declare function dynamicColumn(columnName: string): PropertyDecorator;
+/**
  * @description Returns the columns of the model, columns must be decorated with the column decorator
  * @param target Model
  * @returns
@@ -2329,53 +2334,9 @@ declare class RedisDataSource {
     protected static getValue<T = RedisGiveable>(value: string | null): T | null;
 }
 
-type FetchHooks = "beforeFetch" | "afterFetch";
-type OneOptions = {
-    throwErrorOnNull?: boolean;
-    ignoreHooks?: FetchHooks[];
-};
-type ManyOptions = {
-    ignoreHooks?: FetchHooks[];
-};
-declare class MongoQueryBuilder<T extends MongoModel> {
-    protected dynamicColumns: string[];
-    protected selectFields?: string[];
-    protected whereObject: mongodb.Filter<mongodb.BSON.Document>;
-    protected groupByObject: object;
-    protected orderByObject: object;
-    protected limitObject: object;
-    protected offsetObject: object;
-    protected mongoDataSource: MongoDataSource;
-    protected collection: mongodb.Collection;
-    protected model: typeof MongoModel;
-    protected logs: boolean;
-    constructor(model: typeof MongoModel, mongoDataSource: MongoDataSource, logs: boolean);
-    one(options?: OneOptions): Promise<T | null>;
-    many(options?: ManyOptions): Promise<T[]>;
-    /**
-     * @description Only fetches the provided fields
-     * @param fields - Fields to select
-     */
-    select(fields: SelectableType<T>[]): this;
-    select(fields: string[]): this;
-    private convertIdToObjectId;
-}
-
-declare class Session {
-    mongoDataSource: MongoDataSource;
-    private mongoClient;
-    private session;
-    private readonly logs;
-    constructor(mongoDataSource: MongoDataSource, logs?: boolean);
-    startSession(): Promise<void>;
-    commit(): Promise<void>;
-    rollback(): Promise<void>;
-    private releaseConnection;
-}
-
 type BaseModelMethodOptions = {
     useConnection?: MongoDataSource;
-    session?: Session;
+    session?: mongodb.ClientSession;
 };
 /**
  * @descriptionAllows Allows a type safe way to make a Partial of T, while keeping the keys that are not in T for unstructured data
@@ -2385,8 +2346,112 @@ type ModelKeyOrAny<T> = {
 } & {
     [key: string]: any;
 };
+/**
+ * @description Allows a type-safe way to make a Partial of T, while keeping the keys that are not in T for unstructured data, with values restricted to 1 or -1
+ */
+type ModelKeyOrAnySort<T> = {
+    [key in keyof T]?: 1 | -1;
+} & {
+    [key: string]: 1 | -1;
+};
 
-declare class MongoModel extends AbstractModel {
+type FetchHooks = "beforeFetch" | "afterFetch";
+type OneOptions = {
+    throwErrorOnNull?: boolean;
+    ignoreHooks?: FetchHooks[];
+};
+type ManyOptions = {
+    ignoreHooks?: FetchHooks[];
+};
+declare class MongoQueryBuilder<T extends Collection> {
+    protected dynamicColumns: string[];
+    protected selectObject?: Record<string, 1>;
+    protected selectFields?: string[];
+    protected whereObject: mongodb.Filter<mongodb.BSON.Document>;
+    protected sortObject?: mongodb.Sort;
+    protected limitNumber?: number;
+    protected offsetNumber?: number;
+    protected mongoDataSource: MongoDataSource;
+    protected collection: mongodb.Collection;
+    protected model: typeof Collection;
+    protected logs: boolean;
+    protected session?: mongodb.ClientSession;
+    constructor(model: typeof Collection, mongoDataSource: MongoDataSource, session?: mongodb.ClientSession, logs?: boolean);
+    one(options?: OneOptions): Promise<T | null>;
+    oneOrFail(options?: OneOptions): Promise<T>;
+    many(options?: ManyOptions): Promise<T[]>;
+    /**
+     * @Massive Updates all the documents that match the query
+     * @param modelData
+     * @returns
+     */
+    update(modelData: ModelKeyOrAny<T>, options?: {
+        ignoreHooks?: boolean;
+    }): Promise<T[]>;
+    /**
+     * @Massive Deletes all the documents that match the query
+     * @returns
+     */
+    delete(options?: {
+        ignoreHooks?: boolean;
+    }): Promise<void>;
+    /**
+     * @description Fetches the count of the query
+     * @returns - The count of the query
+     */
+    count(options?: {
+        ignoreHooks?: boolean;
+    }): Promise<number>;
+    addDynamicColumn(dynamicColumns: DynamicColumnType<T>[]): this;
+    /**
+     * @description Only fetches the provided fields
+     * @param fields - Fields to select
+     */
+    select(fields: SelectableType<T>[]): this;
+    select(fields: string[]): this;
+    /**
+     * @description Adds a where clause to the query
+     * @param whereObject - The where clause
+     */
+    where(whereObject: ModelKeyOrAny<T>): this;
+    /**
+     * @description Adds a where clause to the query - alias for where
+     * @param whereObject - The where clause
+     */
+    andWhere(whereObject: ModelKeyOrAny<T>): this;
+    /**
+     * @description Adds an or where clause to the query
+     * @param whereObject - The where clause
+     * @returns
+     */
+    orWhere(whereObject: ModelKeyOrAny<T>): this;
+    /**
+     * @description Adds a sort to the query
+     * @param sortBy - The sort criteria, which can be a number, string, object, or array of these types
+     * @returns The current instance for chaining
+     */
+    sort(sortBy: 1 | -1): this;
+    sort(sortBy: SelectableType<T>): this;
+    sort(sortBy: SelectableType<T>[]): this;
+    sort(sortBy: string): this;
+    sort(sortBy: string[]): this;
+    sort(sortBy: ModelKeyOrAnySort<T>): this;
+    /**
+     * @description Adds a limit to the query
+     * @param limit - The limit to set
+     * @returns
+     */
+    limit(limit: number): this;
+    /**
+     * @description Adds an offset to the query
+     * @param offset - The offset to set
+     * @returns
+     */
+    offset(offset: number): this;
+    private parseWhereCondition;
+}
+
+declare class Collection extends AbstractModel {
     /**
      * @description The sql sqlInstance generated by SqlDataSource.connect
      */
@@ -2406,7 +2471,13 @@ declare class MongoModel extends AbstractModel {
      * @param options - The options to get the model manager
      * @returns {MongoQueryBuilder<T>}
      */
-    static query<T extends MongoModel>(this: new () => T | typeof MongoModel, options?: BaseModelMethodOptions): MongoQueryBuilder<T>;
+    static query<T extends Collection>(this: new () => T | typeof Collection, options?: BaseModelMethodOptions): MongoQueryBuilder<T>;
+    static find<T extends Collection>(this: new () => T | typeof Collection, options?: MongoFindManyOptions<T> & BaseModelMethodOptions): Promise<T[]>;
+    static find<T extends Collection>(this: new () => T | typeof Collection, options?: MongoUnrestrictedFindManyOptions<T> & BaseModelMethodOptions): Promise<T[]>;
+    static findOne<T extends Collection>(this: new () => T | typeof Collection, options: MongoFindOneOptions<T> & BaseModelMethodOptions): Promise<T | null>;
+    static findOne<T extends Collection>(this: new () => T | typeof Collection, options: UnrestrictedMongoFindOneOptions<T> & BaseModelMethodOptions): Promise<T | null>;
+    static findOneOrFail<T extends Collection>(this: new () => T | typeof Collection, options: MongoFindOneOptions<T> & BaseModelMethodOptions): Promise<T>;
+    static findOneOrFail<T extends Collection>(this: new () => T | typeof Collection, options: UnrestrictedMongoFindOneOptions<T> & BaseModelMethodOptions): Promise<T>;
     /**
      * @description Saves a new record to the collection
      * @param model
@@ -2414,14 +2485,28 @@ declare class MongoModel extends AbstractModel {
      * @param {BaseModelMethodOptions} options - The options to get the model manager
      * @returns {Promise<T>}
      */
-    static insert<T extends MongoModel>(this: new () => T | typeof MongoModel, modelData: ModelKeyOrAny<T>, options?: BaseModelMethodOptions): Promise<T>;
+    static insert<T extends Collection>(this: new () => T | typeof Collection, modelData: ModelKeyOrAny<T>, options?: BaseModelMethodOptions): Promise<T>;
     /**
      * @description Saves multiple records to the collection
      * @param {Model} modelData - The data to be fetched
      * @param {BaseModelMethodOptions} options - The options to get the model manager
      * @returns {Promise<T>}
      */
-    static insertMany<T extends MongoModel>(this: new () => T | typeof MongoModel, modelData: ModelKeyOrAny<T>[], options?: BaseModelMethodOptions): Promise<T[]>;
+    static insertMany<T extends Collection>(this: new () => T | typeof Collection, modelData: ModelKeyOrAny<T>[], options?: BaseModelMethodOptions): Promise<T[]>;
+    /**
+     * @description Updates a record in the collection using it's id
+     * @param {Model} modelData - The data to be updated
+     * @param {BaseModelMethodOptions} options - The options to get the model manager
+     * @returns {Promise<T>} - The updated record refreshed from the database
+     */
+    static updateRecord<T extends Collection>(this: new () => T | typeof Collection, model: T, options?: BaseModelMethodOptions): Promise<T>;
+    /**
+     * @description Deletes a record in the collection using it's id
+     * @param {BaseModelMethodOptions} options - The options to get the model manager
+     * @returns {Promise<void>}
+     * @throws {Error} - If the record could not be deleted
+     */
+    static deleteRecord<T extends Collection>(this: new () => T | typeof Collection, model: T, options?: BaseModelMethodOptions): Promise<void>;
     /**
      * @description Gets the main connection from the mongoInstance
      */
@@ -2448,30 +2533,64 @@ declare class MongoModel extends AbstractModel {
      * @description Adds a beforeUpdate clause to the model, adding the ability to modify the query before updating the data
      * @param data
      */
+    static beforeUpdate(queryBuilder: MongoQueryBuilder<any>): void;
     /**
      * @description Adds a beforeDelete clause to the model, adding the ability to modify the query before deleting the data
      * @param data
      */
+    static beforeDelete(queryBuilder: MongoQueryBuilder<any>): void;
     /**
      * @description Adds a afterFetch clause to the model, adding the ability to modify the data after fetching the data
      * @param data
      * @returns {T}
      */
-    static afterFetch(data: any[]): Promise<MongoModel[]>;
+    static afterFetch(data: any[]): Promise<Collection[]>;
 }
 
-declare class MongoModelManager<T extends MongoModel> {
+type MongoFindOneOptions<T extends Collection> = {
+    ignoreHooks?: FetchHooks[];
+    select?: SelectableType<T>[];
+    where?: ModelKeyOrAny<T>;
+    orWhere?: ModelKeyOrAny<T>;
+    andWhere?: ModelKeyOrAny<T>;
+};
+type UnrestrictedMongoFindOneOptions<T extends Collection> = {
+    ignoreHooks?: FetchHooks[];
+    select?: string[];
+    where?: ModelKeyOrAny<T>;
+    orWhere?: ModelKeyOrAny<T>;
+    andWhere?: ModelKeyOrAny<T>;
+};
+type MongoFindManyOptions<T extends Collection> = MongoFindOneOptions<T> & {
+    sort?: ModelKeyOrAnySort<T>;
+    limit?: number;
+    offset?: number;
+};
+type MongoUnrestrictedFindManyOptions<T extends Collection> = UnrestrictedMongoFindOneOptions<T> & {
+    sort?: Record<string, 1 | -1>;
+    limit?: number;
+    offset?: number;
+};
+declare class CollectionManager<T extends Collection> {
     protected logs: boolean;
-    protected model: typeof MongoModel;
+    protected collection: typeof Collection;
     protected mongoClient: mongodb.MongoClient;
     protected mongoDataSource: MongoDataSource;
-    protected collection: mongodb.Collection;
-    constructor(mongoModel: typeof MongoModel, mongoDataSource: MongoDataSource, logs?: boolean);
-    find(): Promise<T[]>;
-    findOne(): Promise<T | null>;
-    query<T extends MongoModel>(): MongoQueryBuilder<T>;
-    insert<T extends MongoModel>(modelData: ModelKeyOrAny<T>): Promise<T>;
-    insertMany<T extends MongoModel>(modelData: ModelKeyOrAny<T>[]): Promise<T[]>;
+    protected collectionInstance: mongodb.Collection;
+    protected session?: mongodb.ClientSession;
+    constructor(_collection: typeof Collection, mongoDataSource: MongoDataSource, session?: mongodb.ClientSession, logs?: boolean);
+    find(options?: MongoUnrestrictedFindManyOptions<T> | MongoFindManyOptions<T>): Promise<T[]>;
+    findOne(options: UnrestrictedMongoFindOneOptions<T> | MongoFindOneOptions<T>): Promise<T | null>;
+    findOneOrFail(options: UnrestrictedMongoFindOneOptions<T> | MongoFindOneOptions<T>): Promise<T>;
+    query<T extends Collection>(): MongoQueryBuilder<T>;
+    insert(modelData: ModelKeyOrAny<T>, options?: {
+        ignoreHooks?: boolean;
+    }): Promise<T>;
+    insertMany(modelData: ModelKeyOrAny<T>[], options?: {
+        ignoreHooks?: boolean;
+    }): Promise<T[]>;
+    updateRecord(modelData: T): Promise<T>;
+    deleteRecord(model: T): Promise<T>;
 }
 
 type MongoDataSourceInput = Exclude<DataSourceInput, "pgOptions" | "mysqlOptions">;
@@ -2486,15 +2605,29 @@ declare class MongoDataSource extends DataSource {
         logs?: boolean;
     }, cb?: () => void): Promise<MongoDataSource>;
     static getInstance(): MongoDataSource;
+    /**
+     * @description Starts a new session and transaction
+     * @returns {mongodb.ClientSession}
+     */
+    startSession(): mongodb.ClientSession;
     disconnect(): Promise<void>;
-    getModelManager<T extends MongoModel>(model: typeof MongoModel, mongoDataSource: MongoDataSource): MongoModelManager<T>;
+    /**
+     * @description Executes a callback function with the provided connection details
+     * @param connectionDetails
+     * @param cb
+     */
+    static useConnection<T extends Collection>(this: typeof MongoDataSource, connectionDetails: {
+        url: string;
+        options?: MongoDataSourceInput["mongoOptions"];
+    }, cb: (mongoDataSource: MongoDataSource) => Promise<void>): Promise<void>;
+    getModelManager<T extends Collection>(model: typeof Collection, mongoDataSource: MongoDataSource, session?: mongodb.ClientSession): CollectionManager<T>;
 }
 
 /**
- * @description Defines a column that will be used in the model
+ * @description Defines a property that will be used in the model
  * @returns
  */
-declare function mongoColumn(): PropertyDecorator;
+declare function property(): PropertyDecorator;
 
 declare const _default: {
     Model: typeof Model;
@@ -2510,8 +2643,9 @@ declare const _default: {
     getPrimaryKey: typeof getPrimaryKey;
     Redis: typeof RedisDataSource;
     MongoDataSource: typeof MongoDataSource;
-    MongoModel: typeof MongoModel;
-    mongoColumn: typeof mongoColumn;
+    Collection: typeof Collection;
+    property: typeof property;
+    dynamicColumn: typeof dynamicColumn;
 };
 
-export { type CaseConvention, type DataSourceInput, Migration, Model, ModelDeleteQueryBuilder, type ModelQueryBuilder, ModelUpdateQueryBuilder, MongoDataSource, MongoModel, type PaginatedData, type PaginationMetadata, RedisDataSource as Redis, type RedisGiveable, type RedisStorable, Relation, SqlDataSource, belongsTo, column, _default as default, getModelColumns, getPrimaryKey, getRelations, hasMany, hasOne, mongoColumn };
+export { type CaseConvention, Collection, type DataSourceInput, Migration, Model, ModelDeleteQueryBuilder, type ModelQueryBuilder, ModelUpdateQueryBuilder, MongoDataSource, type PaginatedData, type PaginationMetadata, RedisDataSource as Redis, type RedisGiveable, type RedisStorable, Relation, SqlDataSource, belongsTo, column, _default as default, dynamicColumn, getModelColumns, getPrimaryKey, getRelations, hasMany, hasOne, property };

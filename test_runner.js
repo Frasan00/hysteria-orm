@@ -3,6 +3,10 @@
 const { execSync } = require('child_process');
 
 const testFiles = [
+    // mongo
+    // './test/mongo/trx_mongo.test.ts',
+    './test/mongo/crud_mongo.test.ts',
+
     // trx
     './test/sql/pg/trx_pg.test.ts',
     './test/sql/mysql/trx_mysql.test.ts',
