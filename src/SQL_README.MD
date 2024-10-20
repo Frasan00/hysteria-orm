@@ -22,6 +22,7 @@
     - [Relations](#relations-retrieve)
     - [Join](#join)
     - [Pagination](#pagination)
+    - [Standalone Query Builder](#standalone-query-builder)
 - [Migrations](#migrations)
     - [hysteria-cli for Migrations](#hysteria-cli-for-migrations)
     - [Create Table](#create-table)
@@ -607,6 +608,45 @@ const user: User | null = await User.query()
     .where("name", "John Doe")
     .andWhere("email", "john@gmail.com")
     .paginate(1, 10); // page, for-page
+```
+
+### Standalone Query Builder
+- You may not want an ORM overhead in you project, but using raw query can be not scalable and difficult to maintain
+- In this case you can use the StandaloneQueryBuilder that does not need a connection to a database and only returns the query and the params for the selected database
+- You can then use the query and the params directly on the database driver
+
+```typescript
+import { StandaloneQueryBuilder } from "hysteria-orm";
+
+const userQueryBuilder = new StandaloneQueryBuilder("mysql", "users");
+const { query, params } = userQueryBuilder
+.whereBuilder((builder) => {
+    builder.where("id", 1);
+    builder.orWhere("name", "John");
+    builder.andWhereBuilder((builder) => {
+    builder.where("signup_date", "2021-01-01");
+    builder.orWhere("signup_date", "2021-01-02");
+    });
+})
+.getCurrentQuery();
+
+// You can also specify case convention for model and database
+const userQueryBuilder = new StandaloneQueryBuilder("postgres", "users", "camel", "snake");
+const { query, params } = userQueryBuilder
+.whereBuilder((builder) => {
+    builder.where("id", 1);
+    builder.orWhere("name", "John");
+    builder.andWhereBuilder((builder) => {
+    builder.where("signup_date", "2021-01-01");
+    builder.orWhere("signup_date", "2021-01-02");
+    });
+})
+.getCurrentQuery();
+
+// Example of couple { query, params }
+
+// query = SELECT * FROM users WHERE (id = $1 OR name = $2 AND signup_date = $3 OR signup_date = $4) 
+// params = [ 1, 'John', '2021-01-01', '2021-01-02' ]
 ```
 
 # Migrations

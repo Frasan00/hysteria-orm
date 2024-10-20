@@ -681,6 +681,10 @@ declare abstract class QueryBuilder<T extends Model> extends WhereQueryBuilder<T
      * @returns A copy of the query builder instance.
      */
     abstract copy(): ModelQueryBuilder<T>;
+    getCurrentQuery(): {
+        query: string;
+        params: any[];
+    };
     protected groupFooterQuery(): string;
     protected mergeRawPacketIntoModel(model: T, row: any, typeofModel: typeof Model): Promise<void>;
 }
@@ -2623,11 +2627,217 @@ declare class MongoDataSource extends DataSource {
     getModelManager<T extends Collection>(model: typeof Collection, mongoDataSource: MongoDataSource, session?: mongodb.ClientSession): CollectionManager<T>;
 }
 
+declare class StandaloneQueryBuilder {
+    protected selectQuery: string;
+    protected joinQuery: string;
+    protected relations: string[];
+    protected dynamicColumns: string[];
+    protected groupByQuery: string;
+    protected orderByQuery: string;
+    protected limitQuery: string;
+    protected offsetQuery: string;
+    protected whereQuery: string;
+    protected dbType: SqlDataSourceType;
+    protected params: any[];
+    protected model: typeof Model;
+    protected whereTemplate: ReturnType<typeof whereTemplate>;
+    protected isNestedCondition: boolean;
+    protected selectTemplate: ReturnType<typeof selectTemplate>;
+    /**
+     * @description Constructs a Mysql_query_builder instance.
+     * @param model - The model class associated with the table.
+     * @param table - The name of the table.
+     * @param logs - A boolean indicating whether to log queries.
+     */
+    constructor(dbType: SqlDataSourceType, table: string, modelCaseConvention?: CaseConvention, databaseCaseConvention?: CaseConvention, isNestedCondition?: boolean);
+    select(...columns: string[]): StandaloneQueryBuilder;
+    join(relationTable: string, primaryColumn: string, foreignColumn: string): StandaloneQueryBuilder;
+    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): StandaloneQueryBuilder;
+    whereBuilder(cb: (queryBuilder: StandaloneQueryBuilder) => void): this;
+    orWhereBuilder(cb: (queryBuilder: StandaloneQueryBuilder) => void): this;
+    andWhereBuilder(cb: (queryBuilder: StandaloneQueryBuilder) => void): this;
+    /**
+     * @description Accepts a value and executes a callback only of the value is not null or undefined.
+     * @param {any} value
+     * @param callback
+     */
+    when(value: any, cb: (value: any, query: StandaloneQueryBuilder) => void): this;
+    /**
+     * @description Adds a WHERE condition to the query.
+     * @param column - The column to filter.
+     * @param operator - The comparison operator.
+     * @param value - The value to compare against.
+     * @returns The query_builder instance for chaining.
+     */
+    where(column: string, operatorOrValue: WhereOperatorType | BaseValues, value?: BaseValues): this;
+    /**
+     * @description Adds an AND WHERE condition to the query.
+     * @param column - The column to filter.
+     * @param operator - The comparison operator.
+     * @param value - The value to compare against.
+     * @returns The query_builder instance for chaining.
+     */
+    andWhere(column: string, operatorOrValue: WhereOperatorType | BaseValues, value?: BaseValues): this;
+    /**
+     * @description Adds an OR WHERE condition to the query.
+     * @param column - The column to filter.
+     * @param operator - The comparison operator.
+     * @param value - The value to compare against.
+     * @returns The query_builder instance for chaining.
+     */
+    orWhere(column: string, operatorOrValue: WhereOperatorType | BaseValues, value?: BaseValues): this;
+    /**
+     * @description Adds a WHERE BETWEEN condition to the query.
+     * @param column - The column to filter.
+     * @param min - The minimum value for the range.
+     * @param max - The maximum value for the range.
+     * @returns The query_builder instance for chaining.
+     */
+    whereBetween(column: string, min: BaseValues, max: BaseValues): this;
+    /**
+     * @description Adds an AND WHERE BETWEEN condition to the query.
+     * @param column - The column to filter.
+     * @param min - The minimum value for the range.
+     * @param max - The maximum value for the range.
+     * @returns The query_builder instance for chaining.
+     */
+    andWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
+    /**
+     * @description Adds an OR WHERE BETWEEN condition to the query.
+     * @param column - The column to filter.
+     * @param min - The minimum value for the range.
+     * @param max - The maximum value for the range.
+     * @returns The query_builder instance for chaining.
+     */
+    orWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
+    /**
+     * @description Adds a WHERE NOT BETWEEN condition to the query.
+     * @param column - The column to filter.
+     * @param min - The minimum value for the range.
+     * @param max - The maximum value for the range.
+     * @returns The query_builder instance for chaining.
+     */
+    whereNotBetween(column: string, min: BaseValues, max: BaseValues): this;
+    /**
+     * @description Adds an OR WHERE NOT BETWEEN condition to the query.
+     * @param column - The column to filter.
+     * @param min - The minimum value for the range.
+     * @param max - The maximum value for the range.
+     * @returns The query_builder instance for chaining.
+     */
+    orWhereNotBetween(column: string, min: BaseValues, max: BaseValues): this;
+    /**
+     * @description Adds a WHERE IN condition to the query.
+     * @param column - The column to filter.
+     * @param values - An array of values to match against.
+     * @returns The query_builder instance for chaining.
+     */
+    whereIn(column: string, values: BaseValues[]): this;
+    /**
+     * @description Adds an AND WHERE IN condition to the query.
+     * @param column - The column to filter.
+     * @param values - An array of values to match against.
+     * @returns The query_builder instance for chaining.
+     */
+    andWhereIn(column: string, values: BaseValues[]): this;
+    /**
+     * @description Adds an OR WHERE IN condition to the query.
+     * @param column - The column to filter.
+     * @param values - An array of values to match against.
+     * @returns The query_builder instance for chaining.
+     */
+    orWhereIn(column: string, values: BaseValues[]): this;
+    /**
+     * @description Adds a WHERE NOT IN condition to the query.
+     * @param column - The column to filter.
+     * @param values - An array of values to exclude.
+     * @returns The query_builder instance for chaining.
+     */
+    whereNotIn(column: string, values: BaseValues[]): this;
+    /**
+     * @description Adds an OR WHERE NOT IN condition to the query.
+     * @param column - The column to filter.
+     * @param values - An array of values to exclude.
+     * @returns The query_builder instance for chaining.
+     */
+    orWhereNotIn(column: string, values: BaseValues[]): this;
+    /**
+     * @description Adds a WHERE NULL condition to the query.
+     * @param column - The column to filter.
+     * @returns The query_builder instance for chaining.
+     */
+    whereNull(column: string): this;
+    /**
+     * @description Adds an AND WHERE NULL condition to the query.
+     * @param column - The column to filter.
+     * @returns The query_builder instance for chaining.
+     */
+    andWhereNull(column: string): this;
+    /**
+     * @description Adds an OR WHERE NULL condition to the query.
+     * @param column - The column to filter.
+     * @returns The query_builder instance for chaining.
+     */
+    orWhereNull(column: string): this;
+    /**
+     * @description Adds a WHERE NOT NULL condition to the query.
+     * @param column - The column to filter.
+     * @returns The query_builder instance for chaining.
+     */
+    whereNotNull(column: string): this;
+    /**
+     * @description Adds an AND WHERE NOT NULL condition to the query.
+     * @param column - The column to filter.
+     * @returns The query_builder instance for chaining.
+     */
+    andWhereNotNull(column: string): this;
+    /**
+     * @description Adds an OR WHERE NOT NULL condition to the query.
+     * @param column - The column to filter.
+     * @returns The query_builder instance for chaining.
+     */
+    orWhereNotNull(column: string): this;
+    /**
+     * @description Adds a raw WHERE condition to the query.
+     * @param query - The raw SQL WHERE condition.
+     * @returns The query_builder instance for chaining.
+     */
+    rawWhere(query: string, queryParams?: any[]): this;
+    /**
+     * @description Adds a raw AND WHERE condition to the query.
+     * @param query - The raw SQL WHERE condition.
+     * @returns The query_builder instance for chaining.
+     */
+    rawAndWhere(query: string, queryParams?: any[]): this;
+    /**
+     * @description Adds a raw OR WHERE condition to the query.
+     * @param query - The raw SQL WHERE condition.
+     * @returns The query_builder instance for chaining.
+     */
+    rawOrWhere(query: string, queryParams?: any[]): this;
+    groupBy(...columns: string[]): this;
+    groupByRaw(query: string): this;
+    orderBy(columns: string[], order: "ASC" | "DESC"): this;
+    orderByRaw(query: string): this;
+    limit(limit: number): this;
+    offset(offset: number): this;
+    getCurrentQuery(dbType?: SqlDataSourceType): {
+        query: string;
+        params: any[];
+    };
+}
+
 /**
  * @description Defines a property that will be used in the model
  * @returns
  */
 declare function property(): PropertyDecorator;
+/**
+ * @description Defines a dynamic calculated property that is not defined inside the Table, it must be added to a query in order to be retrieved
+ * @param propertyName that will be filled inside the dynamicProperty field
+ * @returns
+ */
+declare function dynamicProperty(propertyName: string): PropertyDecorator;
 
 declare const _default: {
     Model: typeof Model;
@@ -2648,4 +2858,4 @@ declare const _default: {
     dynamicColumn: typeof dynamicColumn;
 };
 
-export { type CaseConvention, Collection, type DataSourceInput, Migration, Model, ModelDeleteQueryBuilder, type ModelQueryBuilder, ModelUpdateQueryBuilder, MongoDataSource, type PaginatedData, type PaginationMetadata, RedisDataSource as Redis, type RedisGiveable, type RedisStorable, Relation, SqlDataSource, belongsTo, column, _default as default, dynamicColumn, getModelColumns, getPrimaryKey, getRelations, hasMany, hasOne, property };
+export { type CaseConvention, Collection, type DataSourceInput, Migration, Model, ModelDeleteQueryBuilder, type ModelQueryBuilder, ModelUpdateQueryBuilder, MongoDataSource, type PaginatedData, type PaginationMetadata, RedisDataSource as Redis, type RedisGiveable, type RedisStorable, Relation, SqlDataSource, StandaloneQueryBuilder, belongsTo, column, _default as default, dynamicProperty, getModelColumns, getPrimaryKey, getRelations, hasMany, hasOne, property };

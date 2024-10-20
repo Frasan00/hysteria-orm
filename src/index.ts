@@ -27,6 +27,7 @@ import {
 } from "./no_sql/redis/redis_data_source";
 import { MongoDataSource } from "./no_sql/mongo/mongo_data_source";
 import { Collection } from "./no_sql/mongo/mongo_models/mongo_collection";
+import { StandaloneQueryBuilder } from "./sql/query_builder/standalone_sql_query_builder";
 import {
   property,
   dynamicProperty,
@@ -67,6 +68,7 @@ export {
   SqlDataSource,
   DataSourceInput,
   ModelQueryBuilder,
+  StandaloneQueryBuilder,
   ModelDeleteQueryBuilder,
   ModelUpdateQueryBuilder,
   Migration,
@@ -87,5 +89,5 @@ export {
   MongoDataSource,
   Collection,
   property,
-  dynamicColumn,
+  dynamicProperty,
 };
