@@ -1,5 +1,6 @@
 import mysql, { Connection } from 'mysql2/promise';
 import pg, { Client } from 'pg';
+import * as mongodb from 'mongodb';
 import { MongoClientOptions } from 'mongodb';
 import sqlite3 from 'sqlite3';
 import { DateTime } from 'luxon';
@@ -88,11 +89,11 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     protected mysqlConnection: mysql.Connection;
     protected mysqlModelManagerUtils: SqlModelManagerUtils<T>;
     constructor(model: typeof Model, table: string, mysqlConnection: mysql.Connection, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
-    one(options?: OneOptions): Promise<T | null>;
+    one(options?: OneOptions$1): Promise<T | null>;
     oneOrFail(options?: {
-        ignoreHooks?: OneOptions["ignoreHooks"];
+        ignoreHooks?: OneOptions$1["ignoreHooks"];
     }): Promise<T>;
-    many(options?: ManyOptions): Promise<T[]>;
+    many(options?: ManyOptions$1): Promise<T[]>;
     whereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this;
     orWhereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this;
     andWhereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this;
@@ -101,7 +102,7 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     }): Promise<number>;
     getSum(column: SelectableType<T>): Promise<number>;
     getSum(column: string): Promise<number>;
-    paginate(page: number, limit: number, options?: ManyOptions): Promise<PaginatedData<T>>;
+    paginate(page: number, limit: number, options?: ManyOptions$1): Promise<PaginatedData<T>>;
     select(...columns: string[]): MysqlQueryBuilder<T>;
     select(...columns: (SelectableType<T> | "*")[]): MysqlQueryBuilder<T>;
     join(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlQueryBuilder<T>;
@@ -126,11 +127,11 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     constructor(model: typeof Model, table: string, pgClient: Client, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
     select(...columns: string[]): PostgresQueryBuilder<T>;
     select(...columns: (SelectableType<T> | "*")[]): PostgresQueryBuilder<T>;
-    one(options?: OneOptions): Promise<T | null>;
+    one(options?: OneOptions$1): Promise<T | null>;
     oneOrFail(options?: {
-        ignoreHooks: OneOptions["ignoreHooks"];
+        ignoreHooks: OneOptions$1["ignoreHooks"];
     }): Promise<T>;
-    many(options?: ManyOptions): Promise<T[]>;
+    many(options?: ManyOptions$1): Promise<T[]>;
     whereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
     orWhereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
     andWhereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
@@ -139,7 +140,7 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     }): Promise<number>;
     getSum(column: SelectableType<T>): Promise<number>;
     getSum(column: string): Promise<number>;
-    paginate(page: number, limit: number, options?: ManyOptions): Promise<PaginatedData<T>>;
+    paginate(page: number, limit: number, options?: ManyOptions$1): Promise<PaginatedData<T>>;
     join(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresQueryBuilder<T>;
     leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresQueryBuilder<T>;
     addRelations(relations: RelationType<T>[]): PostgresQueryBuilder<T>;
@@ -174,11 +175,11 @@ declare class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     protected sqLiteConnection: sqlite3.Database;
     protected sqliteModelManagerUtils: SqlModelManagerUtils<T>;
     constructor(model: typeof Model, table: string, sqLiteConnection: sqlite3.Database, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
-    one(options?: OneOptions): Promise<T | null>;
+    one(options?: OneOptions$1): Promise<T | null>;
     oneOrFail(options?: {
-        ignoreHooks: OneOptions["ignoreHooks"];
+        ignoreHooks: OneOptions$1["ignoreHooks"];
     }): Promise<T>;
-    many(options?: ManyOptions): Promise<T[]>;
+    many(options?: ManyOptions$1): Promise<T[]>;
     whereBuilder(cb: (queryBuilder: SqlLiteQueryBuilder<T>) => void): this;
     orWhereBuilder(cb: (queryBuilder: SqlLiteQueryBuilder<T>) => void): this;
     andWhereBuilder(cb: (queryBuilder: SqlLiteQueryBuilder<T>) => void): this;
@@ -188,7 +189,7 @@ declare class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     }): Promise<number>;
     getSum(column: SelectableType<T>): Promise<number>;
     getSum(column: string): Promise<number>;
-    paginate(page: number, limit: number, options?: ManyOptions): Promise<PaginatedData<T>>;
+    paginate(page: number, limit: number, options?: ManyOptions$1): Promise<PaginatedData<T>>;
     select(...columns: string[]): SqlLiteQueryBuilder<T>;
     select(...columns: (SelectableType<T> | "*")[]): SqlLiteQueryBuilder<T>;
     join(relationTable: string, primaryColumn: string, foreignColumn: string): SqlLiteQueryBuilder<T>;
@@ -526,13 +527,13 @@ declare class WhereQueryBuilder<T extends Model> {
  * @description The abstract class for query builders for selecting data.
  */
 type ModelQueryBuilder<T extends Model> = MysqlQueryBuilder<T> | PostgresQueryBuilder<T> | SqlLiteQueryBuilder<T>;
-type FetchHooks = "beforeFetch" | "afterFetch";
-type OneOptions = {
+type FetchHooks$1 = "beforeFetch" | "afterFetch";
+type OneOptions$1 = {
     throwErrorOnNull?: boolean;
-    ignoreHooks?: FetchHooks[];
+    ignoreHooks?: FetchHooks$1[];
 };
-type ManyOptions = {
-    ignoreHooks?: FetchHooks[];
+type ManyOptions$1 = {
+    ignoreHooks?: FetchHooks$1[];
 };
 declare abstract class QueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
     protected selectQuery: string;
@@ -555,18 +556,18 @@ declare abstract class QueryBuilder<T extends Model> extends WhereQueryBuilder<T
      * @description Executes the query and retrieves the first result.
      * @returns A Promise resolving to the first result or null.
      */
-    abstract one(options: OneOptions): Promise<T | null>;
+    abstract one(options: OneOptions$1): Promise<T | null>;
     /**
      * @description Executes the query and retrieves the first result. Fail if no result is found.
      */
     abstract oneOrFail(options?: {
-        ignoreHooks?: OneOptions["ignoreHooks"];
+        ignoreHooks?: OneOptions$1["ignoreHooks"];
     }): Promise<T>;
     /**
      * @description Executes the query and retrieves multiple results.
      * @returns A Promise resolving to an array of results.
      */
-    abstract many(options: ManyOptions): Promise<T[]>;
+    abstract many(options: ManyOptions$1): Promise<T[]>;
     /**
      * @description Executes the query and retrieves the count of results, it ignores all select, group by, order by, limit and offset clauses if they are present.
      * @returns A Promise resolving to the count of results.
@@ -586,7 +587,7 @@ declare abstract class QueryBuilder<T extends Model> extends WhereQueryBuilder<T
      * @description Executes the query and retrieves multiple results.
      * @returns A Promise resolving to an array of results.
      */
-    abstract paginate(page: number, limit: number, options?: ManyOptions): Promise<PaginatedData<T>>;
+    abstract paginate(page: number, limit: number, options?: ManyOptions$1): Promise<PaginatedData<T>>;
     /**
      * @description Adds a SELECT condition to the query.
      * @param columns - The columns to select.
@@ -761,7 +762,7 @@ type OrderByType = {
 type UnrestrictedFindOneType<T> = {
     select?: string[];
     relations?: RelationType<T>[];
-    ignoreHooks?: FetchHooks[];
+    ignoreHooks?: FetchHooks$1[];
     dynamicColumns?: DynamicColumnType<T>;
     where?: Record<string, any>;
     useConnection?: SqlDataSource;
@@ -779,7 +780,7 @@ type FindOneType<T> = {
     relations?: RelationType<T>[];
     dynamicColumns?: DynamicColumnType<T>;
     where?: WhereType<T>;
-    ignoreHooks?: FetchHooks[];
+    ignoreHooks?: FetchHooks$1[];
     useConnection?: SqlDataSource;
     trx?: Transaction;
     throwErrorOnNull?: boolean;
@@ -888,7 +889,7 @@ declare abstract class AbstractModel {
     constructor();
 }
 
-type BaseModelMethodOptions = {
+type BaseModelMethodOptions$1 = {
     useConnection?: SqlDataSource;
     trx?: Transaction;
 };
@@ -922,7 +923,7 @@ declare abstract class Model extends AbstractModel {
      * @param model
      * @returns {ModelQueryBuilder<T>}
      */
-    static query<T extends Model>(this: new () => T | typeof Model, options?: BaseModelMethodOptions): ModelQueryBuilder<T>;
+    static query<T extends Model>(this: new () => T | typeof Model, options?: BaseModelMethodOptions$1): ModelQueryBuilder<T>;
     /**
      * @description Finds the first record in the database
      * @param model
@@ -930,7 +931,7 @@ declare abstract class Model extends AbstractModel {
      * @deprecated Used only for debugging purposes, use findOne or query instead
      * @returns {Promise<T[]>}
      */
-    static first<T extends Model>(this: new () => T | typeof Model, options?: OneOptions & BaseModelMethodOptions): Promise<T | null>;
+    static first<T extends Model>(this: new () => T | typeof Model, options?: OneOptions$1 & BaseModelMethodOptions$1): Promise<T | null>;
     /**
      * @description Finds records for the given model
      * @param model
@@ -953,14 +954,14 @@ declare abstract class Model extends AbstractModel {
      */
     static findOneByPrimaryKey<T extends Model>(this: new () => T | typeof Model, value: string | number | boolean, options?: {
         throwErrorOnNull: boolean;
-    } & BaseModelMethodOptions): Promise<T | null>;
+    } & BaseModelMethodOptions$1): Promise<T | null>;
     /**
      * @description Refreshes a model from the database, the model must have a primary key defined
      * @param model
      */
     static refresh<T extends Model>(this: new () => T | typeof Model, model: T, options?: {
         throwErrorOnNull: boolean;
-    } & BaseModelMethodOptions): Promise<T | null>;
+    } & BaseModelMethodOptions$1): Promise<T | null>;
     /**
      * @description Saves a new record to the database
      * @param model
@@ -968,7 +969,7 @@ declare abstract class Model extends AbstractModel {
      * @param trx
      * @returns {Promise<T | null>}
      */
-    static insert<T extends Model>(this: new () => T | typeof Model, modelData: Partial<T>, options?: BaseModelMethodOptions): Promise<T | null>;
+    static insert<T extends Model>(this: new () => T | typeof Model, modelData: Partial<T>, options?: BaseModelMethodOptions$1): Promise<T | null>;
     /**
      * @description Saves multiple records to the database
      * @description WHile using mysql, it will return records only if the primary key is auto incrementing integer, else it will always return []
@@ -977,7 +978,7 @@ declare abstract class Model extends AbstractModel {
      * @param trx
      * @returns {Promise<T[]>}
      */
-    static insertMany<T extends Model>(this: new () => T | typeof Model, modelsData: Partial<T>[], options?: BaseModelMethodOptions): Promise<T[]>;
+    static insertMany<T extends Model>(this: new () => T | typeof Model, modelsData: Partial<T>[], options?: BaseModelMethodOptions$1): Promise<T[]>;
     /**
      * @description Updates a record to the database
      * @param model
@@ -985,14 +986,14 @@ declare abstract class Model extends AbstractModel {
      * @param trx
      * @returns
      */
-    static updateRecord<T extends Model>(this: new () => T | typeof Model, modelsqlInstance: T, options?: BaseModelMethodOptions): Promise<T | null>;
+    static updateRecord<T extends Model>(this: new () => T | typeof Model, modelsqlInstance: T, options?: BaseModelMethodOptions$1): Promise<T | null>;
     /**
      * @description Finds the first record or creates a new one if it doesn't exist
      * @param model
      * @param {Partial<T>} searchCriteria
      * @param {Partial<T>} createData
      */
-    static firstOrCreate<T extends Model>(this: new () => T | typeof Model, searchCriteria: Partial<T>, createData: Partial<T>, options?: BaseModelMethodOptions): Promise<T>;
+    static firstOrCreate<T extends Model>(this: new () => T | typeof Model, searchCriteria: Partial<T>, createData: Partial<T>, options?: BaseModelMethodOptions$1): Promise<T>;
     /**
      * @description Updates or creates a new record
      * @param {Partial<T>} searchCriteria
@@ -1001,7 +1002,7 @@ declare abstract class Model extends AbstractModel {
      */
     static upsert<T extends Model>(this: new () => T | typeof Model, searchCriteria: Partial<T>, data: Partial<T>, options?: {
         updateOnConflict?: boolean;
-    } & BaseModelMethodOptions): Promise<T>;
+    } & BaseModelMethodOptions$1): Promise<T>;
     /**
      * @description Updates or creates multiple records
      * @param {Partial<T>} searchCriteria
@@ -1011,7 +1012,7 @@ declare abstract class Model extends AbstractModel {
      */
     static upsertMany<T extends Model>(this: new () => T | typeof Model, searchCriteria: SelectableType<T>[], data: Partial<T>[], options?: {
         updateOnConflict?: boolean;
-    } & BaseModelMethodOptions): Promise<T[]>;
+    } & BaseModelMethodOptions$1): Promise<T[]>;
     /**
      * @description Updates records to the database
      * @param model
@@ -1019,7 +1020,7 @@ declare abstract class Model extends AbstractModel {
      * @param trx
      * @returns Update query builder
      */
-    static update<T extends Model>(this: new () => T | typeof Model, options?: BaseModelMethodOptions): ModelUpdateQueryBuilder<T>;
+    static update<T extends Model>(this: new () => T | typeof Model, options?: BaseModelMethodOptions$1): ModelUpdateQueryBuilder<T>;
     /**
      * @description Gives a Delete query builder sqlInstance
      * @param model
@@ -1027,7 +1028,7 @@ declare abstract class Model extends AbstractModel {
      * @param trx
      * @returns
      */
-    static deleteQuery<T extends Model>(this: new () => T | typeof Model, options?: BaseModelMethodOptions): ModelDeleteQueryBuilder<T>;
+    static deleteQuery<T extends Model>(this: new () => T | typeof Model, options?: BaseModelMethodOptions$1): ModelDeleteQueryBuilder<T>;
     /**
      * @description Deletes a record to the database
      * @param model
@@ -1035,7 +1036,7 @@ declare abstract class Model extends AbstractModel {
      * @param trx
      * @returns
      */
-    static deleteRecord<T extends Model>(this: new () => T | typeof Model, modelsqlInstance: T, options?: BaseModelMethodOptions): Promise<T | null>;
+    static deleteRecord<T extends Model>(this: new () => T | typeof Model, modelsqlInstance: T, options?: BaseModelMethodOptions$1): Promise<T | null>;
     /**
      * @description Soft Deletes a record to the database
      * @param model
@@ -1047,7 +1048,7 @@ declare abstract class Model extends AbstractModel {
     static softDelete<T extends Model>(this: new () => T | typeof Model, modelsqlInstance: T, options?: {
         column?: string;
         value?: string | number | boolean;
-    } & BaseModelMethodOptions): Promise<T>;
+    } & BaseModelMethodOptions$1): Promise<T>;
     /**
      * @description Adds dynamic columns to the model that are not defined in the Table and are defined in the model
      * @description It does not support custom connection or transaction
@@ -2328,6 +2329,173 @@ declare class RedisDataSource {
     protected static getValue<T = RedisGiveable>(value: string | null): T | null;
 }
 
+type FetchHooks = "beforeFetch" | "afterFetch";
+type OneOptions = {
+    throwErrorOnNull?: boolean;
+    ignoreHooks?: FetchHooks[];
+};
+type ManyOptions = {
+    ignoreHooks?: FetchHooks[];
+};
+declare class MongoQueryBuilder<T extends MongoModel> {
+    protected dynamicColumns: string[];
+    protected selectFields?: string[];
+    protected whereObject: mongodb.Filter<mongodb.BSON.Document>;
+    protected groupByObject: object;
+    protected orderByObject: object;
+    protected limitObject: object;
+    protected offsetObject: object;
+    protected mongoDataSource: MongoDataSource;
+    protected collection: mongodb.Collection;
+    protected model: typeof MongoModel;
+    protected logs: boolean;
+    constructor(model: typeof MongoModel, mongoDataSource: MongoDataSource, logs: boolean);
+    one(options?: OneOptions): Promise<T | null>;
+    many(options?: ManyOptions): Promise<T[]>;
+    /**
+     * @description Only fetches the provided fields
+     * @param fields - Fields to select
+     */
+    select(fields: SelectableType<T>[]): this;
+    select(fields: string[]): this;
+    private convertIdToObjectId;
+}
+
+declare class Session {
+    mongoDataSource: MongoDataSource;
+    private mongoClient;
+    private session;
+    private readonly logs;
+    constructor(mongoDataSource: MongoDataSource, logs?: boolean);
+    startSession(): Promise<void>;
+    commit(): Promise<void>;
+    rollback(): Promise<void>;
+    private releaseConnection;
+}
+
+type BaseModelMethodOptions = {
+    useConnection?: MongoDataSource;
+    session?: Session;
+};
+/**
+ * @descriptionAllows Allows a type safe way to make a Partial of T, while keeping the keys that are not in T for unstructured data
+ */
+type ModelKeyOrAny<T> = {
+    [key in keyof T]?: T[key];
+} & {
+    [key: string]: any;
+};
+
+declare class MongoModel extends AbstractModel {
+    /**
+     * @description The sql sqlInstance generated by SqlDataSource.connect
+     */
+    static mongoInstance: MongoDataSource;
+    /**
+     * @description Collection name for the model, if not set it will be the plural snake case of the model name given that is in PascalCase (es. User -> users)
+     */
+    static collectionName: string;
+    /**
+     * @description Static getter for collection;
+     * @internal
+     */
+    static get collection(): string;
+    id: string;
+    /**
+     * @description Gets the main query builder for the model
+     * @param options - The options to get the model manager
+     * @returns {MongoQueryBuilder<T>}
+     */
+    static query<T extends MongoModel>(this: new () => T | typeof MongoModel, options?: BaseModelMethodOptions): MongoQueryBuilder<T>;
+    /**
+     * @description Saves a new record to the collection
+     * @param model
+     * @param {Model} modelData - The data to be saved
+     * @param {BaseModelMethodOptions} options - The options to get the model manager
+     * @returns {Promise<T>}
+     */
+    static insert<T extends MongoModel>(this: new () => T | typeof MongoModel, modelData: ModelKeyOrAny<T>, options?: BaseModelMethodOptions): Promise<T>;
+    /**
+     * @description Saves multiple records to the collection
+     * @param {Model} modelData - The data to be fetched
+     * @param {BaseModelMethodOptions} options - The options to get the model manager
+     * @returns {Promise<T>}
+     */
+    static insertMany<T extends MongoModel>(this: new () => T | typeof MongoModel, modelData: ModelKeyOrAny<T>[], options?: BaseModelMethodOptions): Promise<T[]>;
+    /**
+     * @description Gets the main connection from the mongoInstance
+     */
+    private static establishConnection;
+    /**
+     * @description Gives the correct model manager with the correct connection based on the options provided
+     * @param this
+     * @param options - The options to get the model manager
+     * @returns
+     */
+    private static dispatchModelManager;
+    /**
+     * @description Adds a beforeFetch clause to the model, adding the ability to modify the query before fetching the data
+     * @param queryBuilder
+     */
+    static beforeFetch(queryBuilder: MongoQueryBuilder<any>): void;
+    /**
+     * @description Adds a beforeInsert clause to the model, adding the ability to modify the data after fetching the data
+     * @param data
+     * @returns {T}
+     */
+    static beforeInsert(data: any): void;
+    /**
+     * @description Adds a beforeUpdate clause to the model, adding the ability to modify the query before updating the data
+     * @param data
+     */
+    /**
+     * @description Adds a beforeDelete clause to the model, adding the ability to modify the query before deleting the data
+     * @param data
+     */
+    /**
+     * @description Adds a afterFetch clause to the model, adding the ability to modify the data after fetching the data
+     * @param data
+     * @returns {T}
+     */
+    static afterFetch(data: any[]): Promise<MongoModel[]>;
+}
+
+declare class MongoModelManager<T extends MongoModel> {
+    protected logs: boolean;
+    protected model: typeof MongoModel;
+    protected mongoClient: mongodb.MongoClient;
+    protected mongoDataSource: MongoDataSource;
+    protected collection: mongodb.Collection;
+    constructor(mongoModel: typeof MongoModel, mongoDataSource: MongoDataSource, logs?: boolean);
+    find(): Promise<T[]>;
+    findOne(): Promise<T | null>;
+    query<T extends MongoModel>(): MongoQueryBuilder<T>;
+    insert<T extends MongoModel>(modelData: ModelKeyOrAny<T>): Promise<T>;
+    insertMany<T extends MongoModel>(modelData: ModelKeyOrAny<T>[]): Promise<T[]>;
+}
+
+type MongoDataSourceInput = Exclude<DataSourceInput, "pgOptions" | "mysqlOptions">;
+declare class MongoDataSource extends DataSource {
+    url: string;
+    isConnected: boolean;
+    private mongoClient;
+    private static instance;
+    private constructor();
+    getCurrentConnection(): mongodb.MongoClient;
+    static connect(url?: string, options?: MongoDataSourceInput["mongoOptions"] & {
+        logs?: boolean;
+    }, cb?: () => void): Promise<MongoDataSource>;
+    static getInstance(): MongoDataSource;
+    disconnect(): Promise<void>;
+    getModelManager<T extends MongoModel>(model: typeof MongoModel, mongoDataSource: MongoDataSource): MongoModelManager<T>;
+}
+
+/**
+ * @description Defines a column that will be used in the model
+ * @returns
+ */
+declare function mongoColumn(): PropertyDecorator;
+
 declare const _default: {
     Model: typeof Model;
     column: typeof column;
@@ -2339,7 +2507,11 @@ declare const _default: {
     Migration: typeof Migration;
     getRelations: typeof getRelations;
     getModelColumns: typeof getModelColumns;
+    getPrimaryKey: typeof getPrimaryKey;
     Redis: typeof RedisDataSource;
+    MongoDataSource: typeof MongoDataSource;
+    MongoModel: typeof MongoModel;
+    mongoColumn: typeof mongoColumn;
 };
 
-export { type CaseConvention, type DataSourceInput, Migration, Model, ModelDeleteQueryBuilder, type ModelQueryBuilder, ModelUpdateQueryBuilder, type PaginatedData, type PaginationMetadata, RedisDataSource as Redis, type RedisGiveable, type RedisStorable, Relation, SqlDataSource, belongsTo, column, _default as default, getModelColumns, getPrimaryKey, getRelations, hasMany, hasOne };
+export { type CaseConvention, type DataSourceInput, Migration, Model, ModelDeleteQueryBuilder, type ModelQueryBuilder, ModelUpdateQueryBuilder, MongoDataSource, MongoModel, type PaginatedData, type PaginationMetadata, RedisDataSource as Redis, type RedisGiveable, type RedisStorable, Relation, SqlDataSource, belongsTo, column, _default as default, getModelColumns, getPrimaryKey, getRelations, hasMany, hasOne, mongoColumn };

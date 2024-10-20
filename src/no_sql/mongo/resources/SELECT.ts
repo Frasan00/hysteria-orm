@@ -1,6 +1,6 @@
 export function selectMongoTemplate(collection: string) {
   return {
-      selectAll: `db.${collection}.find({})`,
+    selectAll: `db.${collection}.find({})`,
   };
 }
 

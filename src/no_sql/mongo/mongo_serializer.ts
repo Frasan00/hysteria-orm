@@ -11,6 +11,7 @@ import {
 export async function serializeMongoModel<T extends MongoModel>(
   model: typeof MongoModel,
   data: any,
+  selectedColumns: string[] = [],
   dynamicColumnsToAdd: string[] = [],
 ): Promise<T | null> {
   if (!data) {
@@ -27,16 +28,25 @@ export async function serializeMongoModel<T extends MongoModel>(
     }
 
     if (!modelColumns.includes(key)) {
-      serializedModel.extraColumns[key] = convertCase(
-        key,
-        model.modelCaseConvention,
-      );
-
+      const casedKey = convertCase(key, model.modelCaseConvention);
+      serializedModel.extraColumns[casedKey] = data[key];
       continue;
     }
 
     const casedKey = convertCase(key, model.modelCaseConvention);
     serializedModel[casedKey] = data[key];
+  }
+
+  if (!Object.keys(serializedModel.extraColumns).length) {
+    delete serializedModel.extraColumns;
+  }
+
+  for (const column of selectedColumns) {
+    if (!data.hasOwnProperty(column)) {
+      const casedKey = convertCase(column, model.modelCaseConvention);
+      serializedModel[casedKey] = null;
+      continue;
+    }
   }
 
   await addDynamicColumnsToModel(model, serializedModel, dynamicColumnsToAdd);
@@ -45,11 +55,17 @@ export async function serializeMongoModel<T extends MongoModel>(
 
 export async function serializeMongoModels<T extends MongoModel>(
   model: typeof MongoModel,
-  data: T[],
+  data: any[],
+  selectedColumns: string[] = [],
   dynamicColumnsToAdd: string[] = [],
 ): Promise<T[]> {
   const promises = data.map(async (modelData: T) => {
-    return await serializeMongoModel(model, modelData, dynamicColumnsToAdd);
+    return await serializeMongoModel(
+      model,
+      modelData,
+      selectedColumns,
+      dynamicColumnsToAdd,
+    );
   });
 
   const serializedModels = await Promise.all(promises);

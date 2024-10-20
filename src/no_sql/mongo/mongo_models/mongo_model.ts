@@ -1,9 +1,11 @@
 import { AbstractModel } from "../../../abstract_model";
+import { column } from "../../../sql/models/model_decorators";
 import { MongoDataSource } from "../mongo_data_source";
+import { MongoQueryBuilder } from "../query_builder/mongo_query_builder";
 import { MongoModelManager } from "./mongo_model_manager";
 import {
-  BaseModelMethodOptions,
   getBaseCollectionName,
+  BaseModelMethodOptions,
   ModelKeyOrAny,
 } from "./mongo_model_types";
 
@@ -39,7 +41,22 @@ export class MongoModel extends AbstractModel {
     return collectionMap.get(this)!;
   }
 
-  public id!: string;
+  @column()
+  declare id: string;
+
+  /**
+   * @description Gets the main query builder for the model
+   * @param options - The options to get the model manager
+   * @returns {MongoQueryBuilder<T>}
+   */
+  static query<T extends MongoModel>(
+    this: new () => T | typeof MongoModel,
+    options: BaseModelMethodOptions = {},
+  ): MongoQueryBuilder<T> {
+    const typeofModel = this as unknown as typeof MongoModel;
+    const modelManager = typeofModel.dispatchModelManager<T>(options);
+    return modelManager.query();
+  }
 
   /**
    * @description Saves a new record to the collection
@@ -58,6 +75,12 @@ export class MongoModel extends AbstractModel {
     return modelManager.insert(modelData);
   }
 
+  /**
+   * @description Saves multiple records to the collection
+   * @param {Model} modelData - The data to be fetched
+   * @param {BaseModelMethodOptions} options - The options to get the model manager
+   * @returns {Promise<T>}
+   */
   static async insertMany<T extends MongoModel>(
     this: new () => T | typeof MongoModel,
     modelData: ModelKeyOrAny<T>[],
@@ -89,18 +112,19 @@ export class MongoModel extends AbstractModel {
    * @returns
    */
   private static dispatchModelManager<T extends MongoModel>(
+    this: typeof MongoModel,
     options: BaseModelMethodOptions,
   ): MongoModelManager<T> {
     if (options.useConnection) {
       return options.useConnection.getModelManager<T>(
-        this as unknown as typeof MongoModel,
-        this.mongoInstance,
+        this,
+        options.useConnection,
       );
     }
 
     if (options.session) {
       return options.session.mongoDataSource.getModelManager<T>(
-        this as unknown as typeof MongoModel,
+        this,
         options.session.mongoDataSource,
       );
     }
@@ -111,5 +135,47 @@ export class MongoModel extends AbstractModel {
       typeofModel,
       typeofModel.mongoInstance,
     );
+  }
+
+  /**
+   * @description Adds a beforeFetch clause to the model, adding the ability to modify the query before fetching the data
+   * @param queryBuilder
+   */
+  static beforeFetch(queryBuilder: MongoQueryBuilder<any>): void {
+    queryBuilder;
+  }
+
+  /**
+   * @description Adds a beforeInsert clause to the model, adding the ability to modify the data after fetching the data
+   * @param data
+   * @returns {T}
+   */
+  static beforeInsert(data: any): void {
+    return data;
+  }
+
+  /**
+   * @description Adds a beforeUpdate clause to the model, adding the ability to modify the query before updating the data
+   * @param data
+   */
+  // static beforeUpdate(queryBuilder: ModelUpdateQueryBuilder<any>): void {
+  //   queryBuilder;
+  // }
+
+  /**
+   * @description Adds a beforeDelete clause to the model, adding the ability to modify the query before deleting the data
+   * @param data
+   */
+  // static beforeDelete(queryBuilder: ModelDeleteQueryBuilder<any>): void {
+  //   queryBuilder;
+  // }
+
+  /**
+   * @description Adds a afterFetch clause to the model, adding the ability to modify the data after fetching the data
+   * @param data
+   * @returns {T}
+   */
+  static async afterFetch(data: any[]): Promise<MongoModel[]> {
+    return data;
   }
 }

@@ -1,29 +1,18 @@
-import { MongoModel } from ".";
+import { MongoModel } from "./mongo_model";
 
-const COLUMN_METADATA_KEY = Symbol("columns");
+const MONGO_COLUMN_METADATA_KEY = Symbol("mongoColumns");
 const DYNAMIC_COLUMN_METADATA_KEY = Symbol("dynamicColumns");
 
 /**
- * @description Defines a dynamic calculated column that is not defined inside the Table, it must be added to a query in order to be retrieved
- * @param columnName that will be filled inside the dynamicColumn field
+ * @description Defines a column that will be used in the model
  * @returns
  */
-export function dynamicColumn(columnName: string): PropertyDecorator {
+export function mongoColumn(): PropertyDecorator {
   return (target: Object, propertyKey: string | symbol) => {
-    const dynamicColumn = {
-      columnName: columnName,
-      functionName: propertyKey,
-      dynamicColumnFn: target.constructor.prototype[propertyKey],
-    };
-
-    const existingColumns =
-      Reflect.getMetadata(DYNAMIC_COLUMN_METADATA_KEY, target) || [];
-    existingColumns.push(dynamicColumn);
-    Reflect.defineMetadata(
-      DYNAMIC_COLUMN_METADATA_KEY,
-      existingColumns,
-      target,
-    );
+    const columns =
+      Reflect.getMetadata(MONGO_COLUMN_METADATA_KEY, target) || [];
+    columns.push(propertyKey);
+    Reflect.defineMetadata(MONGO_COLUMN_METADATA_KEY, columns, target);
   };
 }
 
@@ -33,7 +22,7 @@ export function dynamicColumn(columnName: string): PropertyDecorator {
  * @returns
  */
 export function getMongoModelColumns(target: typeof MongoModel): string[] {
-  return Reflect.getMetadata(COLUMN_METADATA_KEY, target.prototype) || [];
+  return Reflect.getMetadata(MONGO_COLUMN_METADATA_KEY, target.prototype) || [];
 }
 
 /**

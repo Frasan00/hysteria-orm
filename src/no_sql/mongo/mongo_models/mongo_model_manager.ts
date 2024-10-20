@@ -3,6 +3,7 @@ import { MongoModel } from "./mongo_model";
 import { serializeMongoModel } from "../mongo_serializer";
 import { ModelKeyOrAny } from "./mongo_model_types";
 import * as mongodb from "mongodb";
+import { MongoQueryBuilder } from "../query_builder/mongo_query_builder";
 
 export class MongoModelManager<T extends MongoModel> {
   protected logs: boolean;
@@ -32,10 +33,16 @@ export class MongoModelManager<T extends MongoModel> {
     return null;
   }
 
-  async query() {}
+  query<T extends MongoModel>() {
+    return new MongoQueryBuilder<T>(
+      this.model,
+      this.mongoDataSource,
+      this.logs,
+    );
+  }
 
   // Insert actual select methods
-  async insert(modelData: ModelKeyOrAny<T>): Promise<T> {
+  async insert<T extends MongoModel>(modelData: ModelKeyOrAny<T>): Promise<T> {
     const result = await this.collection.insertOne(
       modelData as mongodb.OptionalId<mongodb.BSON.Document>,
     );
@@ -47,7 +54,9 @@ export class MongoModelManager<T extends MongoModel> {
     return (await serializeMongoModel(this.model, insertedDocument)) as T;
   }
 
-  async insertMany(modelData: ModelKeyOrAny<T>[]): Promise<T[]> {
+  async insertMany<T extends MongoModel>(
+    modelData: ModelKeyOrAny<T>[],
+  ): Promise<T[]> {
     const result = await this.collection.insertMany(
       modelData as mongodb.OptionalId<mongodb.BSON.Document>[],
     );

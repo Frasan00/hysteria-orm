@@ -46,7 +46,8 @@ export class MongoDataSource extends DataSource {
     await mongoClient.connect();
     this.instance = new MongoDataSource(url, mongoClient);
     this.instance.isConnected = true;
-    this.instance.logs = options?.logs || process.env.MONGO_LOGS === "true" || false;
+    this.instance.logs =
+      options?.logs || process.env.MONGO_LOGS === "true" || false;
     cb?.();
     return this.instance;
   }

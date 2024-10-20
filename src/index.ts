@@ -27,6 +27,7 @@ import {
 } from "./no_sql/redis/redis_data_source";
 import { MongoDataSource } from "./no_sql/mongo/mongo_data_source";
 import { MongoModel } from "./no_sql/mongo/mongo_models/mongo_model";
+import { mongoColumn } from "./no_sql/mongo/mongo_models/mongo_model_decorators";
 // import { User } from "../test/User";
 
 // (async () => {
@@ -47,8 +48,11 @@ import { MongoModel } from "./no_sql/mongo/mongo_models/mongo_model";
 // })();
 
 class User extends MongoModel {
-  @column()
+  @mongoColumn()
   declare name: string;
+
+  @mongoColumn()
+  declare email: string;
 
   @dynamicColumn("test")
   getTest() {
@@ -61,7 +65,7 @@ class User extends MongoModel {
     "mongodb://root:root@localhost:27017",
   );
 
-  const user = await User.insert({ name: "John Doe" });
+  const user = await User.query().select(["email"]).many();
   console.log(user);
 
   await mongo.disconnect();
@@ -79,9 +83,15 @@ export default {
   Migration,
   getRelations,
   getModelColumns,
+  getPrimaryKey,
 
   // redis
   Redis,
+
+  // mongo
+  MongoDataSource,
+  MongoModel,
+  mongoColumn,
 };
 
 export {
@@ -110,4 +120,9 @@ export {
   RedisGiveable,
   RedisStorable,
   RedisOptions,
+
+  // mongo
+  MongoDataSource,
+  MongoModel,
+  mongoColumn,
 };
