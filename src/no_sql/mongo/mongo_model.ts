@@ -20,7 +20,10 @@ export class MongoModel {
    */
   static get collection(): string {
     if (!collectionMap.has(this)) {
-      collectionMap.set(this, this.collectionName || getBaseCollectionName(this));
+      collectionMap.set(
+        this,
+        this.collectionName || getBaseCollectionName(this),
+      );
     }
 
     return collectionMap.get(this)!;

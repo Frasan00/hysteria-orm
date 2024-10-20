@@ -266,6 +266,47 @@ export abstract class QueryBuilder<
    */
   public abstract copy(): ModelQueryBuilder<T>;
 
+  public getCurrentQuery(): {
+    query: string;
+    params: any[];
+  } {
+    const query =
+      this.selectQuery +
+      this.joinQuery +
+      this.whereQuery +
+      this.groupByQuery +
+      this.orderByQuery +
+      this.limitQuery +
+      this.offsetQuery;
+
+    function parsePlaceHolders(
+      dbType: string,
+      query: string,
+      startIndex: number = 1,
+    ): string {
+      switch (dbType) {
+        case "mysql":
+        case "sqlite":
+        case "mariadb":
+          return query.replace(/PLACEHOLDER/g, () => "?");
+        case "postgres":
+          let index = startIndex;
+          return query.replace(/PLACEHOLDER/g, () => `$${index++}`);
+        default:
+          throw new Error(
+            "Unsupported database type, did you forget to set the dbType in the function params?",
+          );
+      }
+    }
+
+    const parsedQuery = parsePlaceHolders(
+      this.sqlDataSource.getDbType(),
+      query,
+    );
+
+    return { query: parsedQuery, params: this.params };
+  }
+
   protected groupFooterQuery(): string {
     return (
       this.groupByQuery + this.orderByQuery + this.limitQuery + this.offsetQuery

@@ -24,24 +24,41 @@ import {
   RedisGiveable,
   RedisStorable,
 } from "./no_sql/redis/redis_data_source";
-// import { User } from "../test/User";
+import { StandaloneQueryBuilder } from "./sql/query_builder/standalone_sql_query_builder";
+import { User } from "../test/User";
 
-// (async () => {
-//   const sql = await SqlDataSource.connect();
+(async () => {
+  // const sql = await SqlDataSource.connect();
 
-//   await User.query()
-//     .whereBuilder((builder) => {
-//       builder.where("id", 1);
-//       builder.orWhere("id", 2);
-//       builder.andWhereBuilder((builder) => {
-//         builder.where("id", 3);
-//         builder.orWhere("id", 4);
-//       });
-//     })
-//     .one();
+  // const { query, params } = User.query()
+  //   .whereBuilder((builder) => {
+  //     builder.where("id", 1);
+  //     builder.orWhere("name", "John");
+  //     builder.andWhereBuilder((builder) => {
+  //       builder.where("signup_date", "2021-01-01");
+  //       builder.orWhere("signup_date", "2021-01-02");
+  //     });
+  //   })
+  //   .getCurrentQuery();
 
-//   await sql.closeConnection();
-// })();
+  // console.log(query, params);
+
+  // await sql.closeConnection();
+
+  const userQueryBuilder = new StandaloneQueryBuilder("postgres", "users");
+  const { query, params } = userQueryBuilder
+    .whereBuilder((builder) => {
+      builder.where("id", 1);
+      builder.orWhere("name", "John");
+      builder.andWhereBuilder((builder) => {
+        builder.where("signup_date", "2021-01-01");
+        builder.orWhere("signup_date", "2021-01-02");
+      });
+    })
+    .getCurrentQuery();
+
+  console.log(query, params);
+})();
 
 export default {
   // sql
@@ -71,6 +88,7 @@ export {
   SqlDataSource,
   DataSourceInput,
   ModelQueryBuilder,
+  StandaloneQueryBuilder,
   ModelDeleteQueryBuilder,
   ModelUpdateQueryBuilder,
   Migration,
