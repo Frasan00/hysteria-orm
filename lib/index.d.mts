@@ -209,81 +209,81 @@ declare class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     private promisifyQuery;
 }
 
-type WhereOperatorType = "=" | "!=" | "<>" | ">" | "<" | ">=" | "<=" | "LIKE" | "ILIKE" | "NOT LIKE" | "NOT ILIKE" | "IN" | "NOT IN" | "BETWEEN" | "NOT BETWEEN";
-type BaseValues = string | number | boolean | object;
+type WhereOperatorType$1 = "=" | "!=" | "<>" | ">" | "<" | ">=" | "<=" | "LIKE" | "ILIKE" | "NOT LIKE" | "NOT ILIKE" | "IN" | "NOT IN" | "BETWEEN" | "NOT BETWEEN";
+type BaseValues$1 = string | number | boolean | object;
 declare const whereTemplate: (dbType: SqlDataSourceType, typeofModel: typeof Model) => {
     convertPlaceHolderToValue: (query: string, startIndex?: number) => string;
-    where: (column: string, value: BaseValues, operator?: WhereOperatorType) => {
+    where: (column: string, value: BaseValues$1, operator?: WhereOperatorType$1) => {
         query: string;
-        params: BaseValues[];
+        params: BaseValues$1[];
     };
-    andWhere: (column: string, value: BaseValues, operator?: WhereOperatorType) => {
+    andWhere: (column: string, value: BaseValues$1, operator?: WhereOperatorType$1) => {
         query: string;
-        params: BaseValues[];
+        params: BaseValues$1[];
     };
-    orWhere: (column: string, value: BaseValues, operator?: WhereOperatorType) => {
+    orWhere: (column: string, value: BaseValues$1, operator?: WhereOperatorType$1) => {
         query: string;
-        params: BaseValues[];
+        params: BaseValues$1[];
     };
-    whereNot: (column: string, value: BaseValues) => {
+    whereNot: (column: string, value: BaseValues$1) => {
         query: string;
-        params: BaseValues[];
+        params: BaseValues$1[];
     };
-    andWhereNot: (column: string, value: BaseValues) => {
+    andWhereNot: (column: string, value: BaseValues$1) => {
         query: string;
-        params: BaseValues[];
+        params: BaseValues$1[];
     };
-    orWhereNot: (column: string, value: BaseValues) => {
+    orWhereNot: (column: string, value: BaseValues$1) => {
         query: string;
-        params: BaseValues[];
+        params: BaseValues$1[];
     };
-    whereBetween: (column: string, min: BaseValues, max: BaseValues) => {
+    whereBetween: (column: string, min: BaseValues$1, max: BaseValues$1) => {
         query: string;
-        params: BaseValues[];
+        params: BaseValues$1[];
     };
-    andWhereBetween: (column: string, min: BaseValues, max: BaseValues) => {
+    andWhereBetween: (column: string, min: BaseValues$1, max: BaseValues$1) => {
         query: string;
-        params: BaseValues[];
+        params: BaseValues$1[];
     };
-    orWhereBetween: (column: string, min: BaseValues, max: BaseValues) => {
+    orWhereBetween: (column: string, min: BaseValues$1, max: BaseValues$1) => {
         query: string;
-        params: BaseValues[];
+        params: BaseValues$1[];
     };
-    whereNotBetween: (column: string, min: BaseValues, max: BaseValues) => {
+    whereNotBetween: (column: string, min: BaseValues$1, max: BaseValues$1) => {
         query: string;
-        params: BaseValues[];
+        params: BaseValues$1[];
     };
-    andWhereNotBetween: (column: string, min: BaseValues, max: BaseValues) => {
+    andWhereNotBetween: (column: string, min: BaseValues$1, max: BaseValues$1) => {
         query: string;
-        params: BaseValues[];
+        params: BaseValues$1[];
     };
-    orWhereNotBetween: (column: string, min: BaseValues, max: BaseValues) => {
+    orWhereNotBetween: (column: string, min: BaseValues$1, max: BaseValues$1) => {
         query: string;
-        params: BaseValues[];
+        params: BaseValues$1[];
     };
-    whereIn: (column: string, values: BaseValues[]) => {
+    whereIn: (column: string, values: BaseValues$1[]) => {
         query: string;
-        params: BaseValues[];
+        params: BaseValues$1[];
     };
-    andWhereIn: (column: string, values: BaseValues[]) => {
+    andWhereIn: (column: string, values: BaseValues$1[]) => {
         query: string;
-        params: BaseValues[];
+        params: BaseValues$1[];
     };
-    orWhereIn: (column: string, values: BaseValues[]) => {
+    orWhereIn: (column: string, values: BaseValues$1[]) => {
         query: string;
-        params: BaseValues[];
+        params: BaseValues$1[];
     };
-    whereNotIn: (column: string, values: BaseValues[]) => {
+    whereNotIn: (column: string, values: BaseValues$1[]) => {
         query: string;
-        params: BaseValues[];
+        params: BaseValues$1[];
     };
-    andWhereNotIn: (column: string, values: BaseValues[]) => {
+    andWhereNotIn: (column: string, values: BaseValues$1[]) => {
         query: string;
-        params: BaseValues[];
+        params: BaseValues$1[];
     };
-    orWhereNotIn: (column: string, values: BaseValues[]) => {
+    orWhereNotIn: (column: string, values: BaseValues$1[]) => {
         query: string;
-        params: BaseValues[];
+        params: BaseValues$1[];
     };
     whereNull: (column: string) => {
         query: string;
@@ -326,7 +326,7 @@ declare const whereTemplate: (dbType: SqlDataSourceType, typeofModel: typeof Mod
 declare class WhereQueryBuilder<T extends Model> {
     protected sqlDataSource: SqlDataSource;
     protected whereQuery: string;
-    protected params: BaseValues[];
+    protected params: BaseValues$1[];
     protected model: typeof Model;
     protected table: string;
     protected logs: boolean;
@@ -353,9 +353,9 @@ declare class WhereQueryBuilder<T extends Model> {
      * @param value - The value to compare against.
      * @returns The query_builder instance for chaining.
      */
-    where(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
-    where(column: string, operator: WhereOperatorType, value: BaseValues): this;
-    where(column: SelectableType<T> | string, value: BaseValues): this;
+    where(column: SelectableType<T>, operator: WhereOperatorType$1, value: BaseValues$1): this;
+    where(column: string, operator: WhereOperatorType$1, value: BaseValues$1): this;
+    where(column: SelectableType<T> | string, value: BaseValues$1): this;
     /**
      * @description Adds an AND WHERE condition to the query.
      * @param column - The column to filter.
@@ -363,9 +363,9 @@ declare class WhereQueryBuilder<T extends Model> {
      * @param value - The value to compare against.
      * @returns The query_builder instance for chaining.
      */
-    andWhere(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
-    andWhere(column: string, operator: WhereOperatorType, value: BaseValues): this;
-    andWhere(column: SelectableType<T> | string, value: BaseValues): this;
+    andWhere(column: SelectableType<T>, operator: WhereOperatorType$1, value: BaseValues$1): this;
+    andWhere(column: string, operator: WhereOperatorType$1, value: BaseValues$1): this;
+    andWhere(column: SelectableType<T> | string, value: BaseValues$1): this;
     /**
      * @description Adds an OR WHERE condition to the query.
      * @param column - The column to filter.
@@ -373,9 +373,9 @@ declare class WhereQueryBuilder<T extends Model> {
      * @param value - The value to compare against.
      * @returns The query_builder instance for chaining.
      */
-    orWhere(column: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
-    orWhere(column: string, operator: WhereOperatorType, value: BaseValues): this;
-    orWhere(column: SelectableType<T> | string, value: BaseValues): this;
+    orWhere(column: SelectableType<T>, operator: WhereOperatorType$1, value: BaseValues$1): this;
+    orWhere(column: string, operator: WhereOperatorType$1, value: BaseValues$1): this;
+    orWhere(column: SelectableType<T> | string, value: BaseValues$1): this;
     /**
      * @description Adds a WHERE BETWEEN condition to the query.
      * @param column - The column to filter.
@@ -383,8 +383,8 @@ declare class WhereQueryBuilder<T extends Model> {
      * @param max - The maximum value for the range.
      * @returns The query_builder instance for chaining.
      */
-    whereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
-    whereBetween(column: string, min: BaseValues, max: BaseValues): this;
+    whereBetween(column: SelectableType<T>, min: BaseValues$1, max: BaseValues$1): this;
+    whereBetween(column: string, min: BaseValues$1, max: BaseValues$1): this;
     /**
      * @description Adds an AND WHERE BETWEEN condition to the query.
      * @param column - The column to filter.
@@ -392,8 +392,8 @@ declare class WhereQueryBuilder<T extends Model> {
      * @param max - The maximum value for the range.
      * @returns The query_builder instance for chaining.
      */
-    andWhereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
-    andWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
+    andWhereBetween(column: SelectableType<T>, min: BaseValues$1, max: BaseValues$1): this;
+    andWhereBetween(column: string, min: BaseValues$1, max: BaseValues$1): this;
     /**
      * @description Adds an OR WHERE BETWEEN condition to the query.
      * @param column - The column to filter.
@@ -401,8 +401,8 @@ declare class WhereQueryBuilder<T extends Model> {
      * @param max - The maximum value for the range.
      * @returns The query_builder instance for chaining.
      */
-    orWhereBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
-    orWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
+    orWhereBetween(column: SelectableType<T>, min: BaseValues$1, max: BaseValues$1): this;
+    orWhereBetween(column: string, min: BaseValues$1, max: BaseValues$1): this;
     /**
      * @description Adds a WHERE NOT BETWEEN condition to the query.
      * @param column - The column to filter.
@@ -410,8 +410,8 @@ declare class WhereQueryBuilder<T extends Model> {
      * @param max - The maximum value for the range.
      * @returns The query_builder instance for chaining.
      */
-    whereNotBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
-    whereNotBetween(column: string, min: BaseValues, max: BaseValues): this;
+    whereNotBetween(column: SelectableType<T>, min: BaseValues$1, max: BaseValues$1): this;
+    whereNotBetween(column: string, min: BaseValues$1, max: BaseValues$1): this;
     /**
      * @description Adds an OR WHERE NOT BETWEEN condition to the query.
      * @param column - The column to filter.
@@ -419,48 +419,48 @@ declare class WhereQueryBuilder<T extends Model> {
      * @param max - The maximum value for the range.
      * @returns The query_builder instance for chaining.
      */
-    orWhereNotBetween(column: SelectableType<T>, min: BaseValues, max: BaseValues): this;
-    orWhereNotBetween(column: string, min: BaseValues, max: BaseValues): this;
+    orWhereNotBetween(column: SelectableType<T>, min: BaseValues$1, max: BaseValues$1): this;
+    orWhereNotBetween(column: string, min: BaseValues$1, max: BaseValues$1): this;
     /**
      * @description Adds a WHERE IN condition to the query.
      * @param column - The column to filter.
      * @param values - An array of values to match against.
      * @returns The query_builder instance for chaining.
      */
-    whereIn(column: SelectableType<T>, values: BaseValues[]): this;
-    whereIn(column: string, values: BaseValues[]): this;
+    whereIn(column: SelectableType<T>, values: BaseValues$1[]): this;
+    whereIn(column: string, values: BaseValues$1[]): this;
     /**
      * @description Adds an AND WHERE IN condition to the query.
      * @param column - The column to filter.
      * @param values - An array of values to match against.
      * @returns The query_builder instance for chaining.
      */
-    andWhereIn(column: SelectableType<T>, values: BaseValues[]): this;
-    andWhereIn(column: string, values: BaseValues[]): this;
+    andWhereIn(column: SelectableType<T>, values: BaseValues$1[]): this;
+    andWhereIn(column: string, values: BaseValues$1[]): this;
     /**
      * @description Adds an OR WHERE IN condition to the query.
      * @param column - The column to filter.
      * @param values - An array of values to match against.
      * @returns The query_builder instance for chaining.
      */
-    orWhereIn(column: SelectableType<T>, values: BaseValues[]): this;
-    orWhereIn(column: string, values: BaseValues[]): this;
+    orWhereIn(column: SelectableType<T>, values: BaseValues$1[]): this;
+    orWhereIn(column: string, values: BaseValues$1[]): this;
     /**
      * @description Adds a WHERE NOT IN condition to the query.
      * @param column - The column to filter.
      * @param values - An array of values to exclude.
      * @returns The query_builder instance for chaining.
      */
-    whereNotIn(column: SelectableType<T>, values: BaseValues[]): this;
-    whereNotIn(column: string, values: BaseValues[]): this;
+    whereNotIn(column: SelectableType<T>, values: BaseValues$1[]): this;
+    whereNotIn(column: string, values: BaseValues$1[]): this;
     /**
      * @description Adds an OR WHERE NOT IN condition to the query.
      * @param column - The column to filter.
      * @param values - An array of values to exclude.
      * @returns The query_builder instance for chaining.
      */
-    orWhereNotIn(column: SelectableType<T>, values: BaseValues[]): this;
-    orWhereNotIn(column: string, values: BaseValues[]): this;
+    orWhereNotIn(column: SelectableType<T>, values: BaseValues$1[]): this;
+    orWhereNotIn(column: string, values: BaseValues$1[]): this;
     /**
      * @description Adds a WHERE NULL condition to the query.
      * @param column - The column to filter.
@@ -2360,6 +2360,8 @@ type ModelKeyOrAnySort<T> = {
 };
 
 type FetchHooks = "beforeFetch" | "afterFetch";
+type WhereOperatorType = "$eq" | "$ne" | "$gt" | "$gte" | "$lt" | "$lte";
+type BaseValues = string | number | boolean | Date | Array<string | number | boolean | Date>;
 type OneOptions = {
     throwErrorOnNull?: boolean;
     ignoreHooks?: FetchHooks[];
@@ -2368,7 +2370,8 @@ type ManyOptions = {
     ignoreHooks?: FetchHooks[];
 };
 declare class MongoQueryBuilder<T extends Collection> {
-    protected dynamicColumns: string[];
+    protected dynamicPropertys: string[];
+    protected idObject: mongodb.Filter<mongodb.BSON.Document>;
     protected selectObject?: Record<string, 1>;
     protected selectFields?: string[];
     protected whereObject: mongodb.Filter<mongodb.BSON.Document>;
@@ -2406,7 +2409,7 @@ declare class MongoQueryBuilder<T extends Collection> {
     count(options?: {
         ignoreHooks?: boolean;
     }): Promise<number>;
-    addDynamicColumn(dynamicColumns: DynamicColumnType<T>[]): this;
+    addDynamicproperty(dynamicPropertys: DynamicColumnType<T>[]): this;
     /**
      * @description Only fetches the provided fields
      * @param fields - Fields to select
@@ -2417,18 +2420,68 @@ declare class MongoQueryBuilder<T extends Collection> {
      * @description Adds a where clause to the query
      * @param whereObject - The where clause
      */
-    where(whereObject: ModelKeyOrAny<T>): this;
+    where(property: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
+    where(property: string, operator: WhereOperatorType, value: BaseValues): this;
+    where(property: SelectableType<T> | string, value: BaseValues): this;
     /**
      * @description Adds a where clause to the query - alias for where
      * @param whereObject - The where clause
      */
-    andWhere(whereObject: ModelKeyOrAny<T>): this;
+    andWhere(property: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
+    andWhere(property: string, operator: WhereOperatorType, value: BaseValues): this;
+    andWhere(property: SelectableType<T> | string, value: BaseValues): this;
     /**
      * @description Adds an or where clause to the query
      * @param whereObject - The where clause
      * @returns
      */
-    orWhere(whereObject: ModelKeyOrAny<T>): this;
+    orWhere(property: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
+    orWhere(property: string, operator: WhereOperatorType, value: BaseValues): this;
+    orWhere(property: SelectableType<T> | string, value: BaseValues): this;
+    whereIn(property: SelectableType<T>, values: BaseValues[]): this;
+    whereIn(property: string, values: BaseValues[]): this;
+    andWhereIn(property: SelectableType<T>, values: BaseValues[]): this;
+    andWhereIn(property: string, values: BaseValues[]): this;
+    orWhereIn(property: SelectableType<T>, values: BaseValues[]): this;
+    orWhereIn(property: string, values: BaseValues[]): this;
+    whereNotIn(property: SelectableType<T>, values: BaseValues[]): this;
+    whereNotIn(property: string, values: BaseValues[]): this;
+    andWhereNotIn(property: SelectableType<T>, values: BaseValues[]): this;
+    andWhereNotIn(property: string, values: BaseValues[]): this;
+    orWhereNotIn(property: SelectableType<T>, values: BaseValues[]): this;
+    orWhereNotIn(property: string, values: BaseValues[]): this;
+    whereNull(property: SelectableType<T>): this;
+    whereNull(property: string): this;
+    andWhereNull(property: SelectableType<T>): this;
+    andWhereNull(property: string): this;
+    orWhereNull(property: SelectableType<T>): this;
+    orWhereNull(property: string): this;
+    whereNotNull(property: SelectableType<T>): this;
+    whereNotNull(property: string): this;
+    andWhereNotNull(property: SelectableType<T>): this;
+    andWhereNotNull(property: string): this;
+    orWhereNotNull(property: SelectableType<T>): this;
+    orWhereNotNull(property: string): this;
+    whereBetween(property: SelectableType<T>, values: [BaseValues, BaseValues]): this;
+    whereBetween(property: string, values: [BaseValues, BaseValues]): this;
+    andWhereBetween(property: SelectableType<T>, values: [BaseValues, BaseValues]): this;
+    andWhereBetween(property: string, values: [BaseValues, BaseValues]): this;
+    orWhereBetween(property: SelectableType<T>, values: [BaseValues, BaseValues]): this;
+    orWhereBetween(property: string, values: [BaseValues, BaseValues]): this;
+    whereNotBetween(property: SelectableType<T>, values: [BaseValues, BaseValues]): this;
+    whereNotBetween(property: string, values: [BaseValues, BaseValues]): this;
+    andWhereNotBetween(property: SelectableType<T>, values: [BaseValues, BaseValues]): this;
+    andWhereNotBetween(property: string, values: [BaseValues, BaseValues]): this;
+    orWhereNotBetween(property: SelectableType<T>, values: [BaseValues, BaseValues]): this;
+    orWhereNotBetween(property: string, values: [BaseValues, BaseValues]): this;
+    /**
+     * @description Gives the possibility to add a raw where clause using the mongodb.Filter type
+     * @param whereObject
+     * @returns
+     */
+    rawWhere(whereObject: mongodb.Filter<mongodb.BSON.Document>): this;
+    andRawWhere(whereObject: mongodb.Filter<mongodb.BSON.Document>): this;
+    orRawWhere(whereObject: mongodb.Filter<mongodb.BSON.Document>): this;
     /**
      * @description Adds a sort to the query
      * @param sortBy - The sort criteria, which can be a number, string, object, or array of these types
@@ -2452,7 +2505,6 @@ declare class MongoQueryBuilder<T extends Collection> {
      * @returns
      */
     offset(offset: number): this;
-    private parseWhereCondition;
 }
 
 declare class Collection extends AbstractModel {
@@ -2555,15 +2607,11 @@ type MongoFindOneOptions<T extends Collection> = {
     ignoreHooks?: FetchHooks[];
     select?: SelectableType<T>[];
     where?: ModelKeyOrAny<T>;
-    orWhere?: ModelKeyOrAny<T>;
-    andWhere?: ModelKeyOrAny<T>;
 };
 type UnrestrictedMongoFindOneOptions<T extends Collection> = {
     ignoreHooks?: FetchHooks[];
     select?: string[];
     where?: ModelKeyOrAny<T>;
-    orWhere?: ModelKeyOrAny<T>;
-    andWhere?: ModelKeyOrAny<T>;
 };
 type MongoFindManyOptions<T extends Collection> = MongoFindOneOptions<T> & {
     sort?: ModelKeyOrAnySort<T>;
@@ -2669,7 +2717,7 @@ declare class StandaloneQueryBuilder {
      * @param value - The value to compare against.
      * @returns The query_builder instance for chaining.
      */
-    where(column: string, operatorOrValue: WhereOperatorType | BaseValues, value?: BaseValues): this;
+    where(column: string, operatorOrValue: WhereOperatorType$1 | BaseValues$1, value?: BaseValues$1): this;
     /**
      * @description Adds an AND WHERE condition to the query.
      * @param column - The column to filter.
@@ -2677,7 +2725,7 @@ declare class StandaloneQueryBuilder {
      * @param value - The value to compare against.
      * @returns The query_builder instance for chaining.
      */
-    andWhere(column: string, operatorOrValue: WhereOperatorType | BaseValues, value?: BaseValues): this;
+    andWhere(column: string, operatorOrValue: WhereOperatorType$1 | BaseValues$1, value?: BaseValues$1): this;
     /**
      * @description Adds an OR WHERE condition to the query.
      * @param column - The column to filter.
@@ -2685,7 +2733,7 @@ declare class StandaloneQueryBuilder {
      * @param value - The value to compare against.
      * @returns The query_builder instance for chaining.
      */
-    orWhere(column: string, operatorOrValue: WhereOperatorType | BaseValues, value?: BaseValues): this;
+    orWhere(column: string, operatorOrValue: WhereOperatorType$1 | BaseValues$1, value?: BaseValues$1): this;
     /**
      * @description Adds a WHERE BETWEEN condition to the query.
      * @param column - The column to filter.
@@ -2693,7 +2741,7 @@ declare class StandaloneQueryBuilder {
      * @param max - The maximum value for the range.
      * @returns The query_builder instance for chaining.
      */
-    whereBetween(column: string, min: BaseValues, max: BaseValues): this;
+    whereBetween(column: string, min: BaseValues$1, max: BaseValues$1): this;
     /**
      * @description Adds an AND WHERE BETWEEN condition to the query.
      * @param column - The column to filter.
@@ -2701,7 +2749,7 @@ declare class StandaloneQueryBuilder {
      * @param max - The maximum value for the range.
      * @returns The query_builder instance for chaining.
      */
-    andWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
+    andWhereBetween(column: string, min: BaseValues$1, max: BaseValues$1): this;
     /**
      * @description Adds an OR WHERE BETWEEN condition to the query.
      * @param column - The column to filter.
@@ -2709,7 +2757,7 @@ declare class StandaloneQueryBuilder {
      * @param max - The maximum value for the range.
      * @returns The query_builder instance for chaining.
      */
-    orWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
+    orWhereBetween(column: string, min: BaseValues$1, max: BaseValues$1): this;
     /**
      * @description Adds a WHERE NOT BETWEEN condition to the query.
      * @param column - The column to filter.
@@ -2717,7 +2765,7 @@ declare class StandaloneQueryBuilder {
      * @param max - The maximum value for the range.
      * @returns The query_builder instance for chaining.
      */
-    whereNotBetween(column: string, min: BaseValues, max: BaseValues): this;
+    whereNotBetween(column: string, min: BaseValues$1, max: BaseValues$1): this;
     /**
      * @description Adds an OR WHERE NOT BETWEEN condition to the query.
      * @param column - The column to filter.
@@ -2725,42 +2773,42 @@ declare class StandaloneQueryBuilder {
      * @param max - The maximum value for the range.
      * @returns The query_builder instance for chaining.
      */
-    orWhereNotBetween(column: string, min: BaseValues, max: BaseValues): this;
+    orWhereNotBetween(column: string, min: BaseValues$1, max: BaseValues$1): this;
     /**
      * @description Adds a WHERE IN condition to the query.
      * @param column - The column to filter.
      * @param values - An array of values to match against.
      * @returns The query_builder instance for chaining.
      */
-    whereIn(column: string, values: BaseValues[]): this;
+    whereIn(column: string, values: BaseValues$1[]): this;
     /**
      * @description Adds an AND WHERE IN condition to the query.
      * @param column - The column to filter.
      * @param values - An array of values to match against.
      * @returns The query_builder instance for chaining.
      */
-    andWhereIn(column: string, values: BaseValues[]): this;
+    andWhereIn(column: string, values: BaseValues$1[]): this;
     /**
      * @description Adds an OR WHERE IN condition to the query.
      * @param column - The column to filter.
      * @param values - An array of values to match against.
      * @returns The query_builder instance for chaining.
      */
-    orWhereIn(column: string, values: BaseValues[]): this;
+    orWhereIn(column: string, values: BaseValues$1[]): this;
     /**
      * @description Adds a WHERE NOT IN condition to the query.
      * @param column - The column to filter.
      * @param values - An array of values to exclude.
      * @returns The query_builder instance for chaining.
      */
-    whereNotIn(column: string, values: BaseValues[]): this;
+    whereNotIn(column: string, values: BaseValues$1[]): this;
     /**
      * @description Adds an OR WHERE NOT IN condition to the query.
      * @param column - The column to filter.
      * @param values - An array of values to exclude.
      * @returns The query_builder instance for chaining.
      */
-    orWhereNotIn(column: string, values: BaseValues[]): this;
+    orWhereNotIn(column: string, values: BaseValues$1[]): this;
     /**
      * @description Adds a WHERE NULL condition to the query.
      * @param column - The column to filter.

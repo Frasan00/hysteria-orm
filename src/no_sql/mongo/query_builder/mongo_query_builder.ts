@@ -10,8 +10,16 @@ import {
   DynamicColumnType,
   SelectableType,
 } from "../../../sql/models/model_manager/model_manager_types";
+import logger from "../../../utils/logger";
 
 export type FetchHooks = "beforeFetch" | "afterFetch";
+type WhereOperatorType = "$eq" | "$ne" | "$gt" | "$gte" | "$lt" | "$lte";
+type BaseValues =
+  | string
+  | number
+  | boolean
+  | Date
+  | Array<string | number | boolean | Date>;
 
 export type OneOptions = {
   throwErrorOnNull?: boolean;
@@ -23,7 +31,8 @@ export type ManyOptions = {
 };
 
 export class MongoQueryBuilder<T extends Collection> {
-  protected dynamicColumns: string[];
+  protected dynamicPropertys: string[];
+  protected idObject: mongodb.Filter<mongodb.BSON.Document>;
   protected selectObject?: Record<string, 1>;
   protected selectFields?: string[];
   protected whereObject: mongodb.Filter<mongodb.BSON.Document>;
@@ -44,7 +53,8 @@ export class MongoQueryBuilder<T extends Collection> {
     logs: boolean = false,
   ) {
     this.model = model;
-    this.dynamicColumns = [];
+    this.dynamicPropertys = [];
+    this.idObject = {};
     this.whereObject = {};
     this.logs = logs;
     this.session;
@@ -63,7 +73,15 @@ export class MongoQueryBuilder<T extends Collection> {
       this.model.beforeFetch(this);
     }
 
-    const result = await this.collection.findOne(this.whereObject, {
+    const queryPayload: mongodb.Filter<mongodb.BSON.Document> = {
+      ...this.whereObject,
+    };
+
+    if (Object.keys(this.idObject).length) {
+      queryPayload._id = this.idObject;
+    }
+
+    const result = await this.collection.findOne(queryPayload, {
       projection: this.selectObject,
       limit: 1,
       session: this.session,
@@ -73,7 +91,7 @@ export class MongoQueryBuilder<T extends Collection> {
       this.model,
       result,
       this.selectFields,
-      this.dynamicColumns,
+      this.dynamicPropertys,
     );
 
     return !options.ignoreHooks?.includes("afterFetch")
@@ -97,8 +115,16 @@ export class MongoQueryBuilder<T extends Collection> {
       this.model.beforeFetch(this);
     }
 
+    const queryPayload: mongodb.Filter<mongodb.BSON.Document> = {
+      ...this.whereObject,
+    };
+
+    if (Object.keys(this.idObject).length) {
+      queryPayload._id = this.idObject;
+    }
+
     const result = await this.collection
-      .find(this.whereObject, {
+      .find(queryPayload, {
         projection: this.selectFields,
         sort: this.sortObject,
         limit: this.limitNumber,
@@ -111,7 +137,7 @@ export class MongoQueryBuilder<T extends Collection> {
       this.model,
       result,
       this.selectFields,
-      this.dynamicColumns,
+      this.dynamicPropertys,
     );
 
     return !options.ignoreHooks?.includes("afterFetch")
@@ -132,23 +158,35 @@ export class MongoQueryBuilder<T extends Collection> {
       this.model.beforeUpdate(this);
     }
 
-    const result = await this.collection.updateMany(this.whereObject, {
-      $set: modelData,
-    });
+    const result = await this.collection.updateMany(
+      {
+        _id: this.idObject,
+        ...this.whereObject,
+      },
+      {
+        $set: modelData,
+      },
+    );
 
     if (result.modifiedCount === 0) {
       return [];
     }
 
     const updatedDocuments = await this.collection
-      .find(this.whereObject, { projection: this.selectFields })
+      .find(
+        {
+          _id: Object.keys(this.idObject).length ? this.idObject : undefined,
+          ...this.whereObject,
+        },
+        { projection: this.selectFields },
+      )
       .toArray();
 
     return await serializeCollections(
       this.model,
       updatedDocuments,
       this.selectFields,
-      this.dynamicColumns,
+      this.dynamicPropertys,
     );
   }
 
@@ -176,8 +214,8 @@ export class MongoQueryBuilder<T extends Collection> {
     return this.collection.countDocuments(this.whereObject);
   }
 
-  addDynamicColumn(dynamicColumns: DynamicColumnType<T>[]): this {
-    this.dynamicColumns = dynamicColumns as string[];
+  addDynamicproperty(dynamicPropertys: DynamicColumnType<T>[]): this {
+    this.dynamicPropertys = dynamicPropertys as string[];
     return this;
   }
 
@@ -203,21 +241,49 @@ export class MongoQueryBuilder<T extends Collection> {
    * @description Adds a where clause to the query
    * @param whereObject - The where clause
    */
-  where(whereObject: ModelKeyOrAny<T>): this {
-    const _id = whereObject.id
-      ? new mongodb.ObjectId(whereObject.id)
-      : undefined;
-    delete whereObject.id;
-    const andCondition = Object.keys(whereObject).map((key) => {
-      return { [key]: whereObject[key] };
-    });
+  public where(
+    property: SelectableType<T>,
+    operator: WhereOperatorType,
+    value: BaseValues,
+  ): this;
+  public where(
+    property: string,
+    operator: WhereOperatorType,
+    value: BaseValues,
+  ): this;
+  public where(property: SelectableType<T> | string, value: BaseValues): this;
+  public where(
+    property: SelectableType<T> | string,
+    operatorOrValue: WhereOperatorType | BaseValues,
+    value?: BaseValues,
+  ): this {
+    let operator: WhereOperatorType = "$eq";
+    let actualValue: BaseValues;
 
-    this.whereObject = {
-      _id: _id,
-      $and: [...(this.whereObject.$and || []), ...andCondition],
-    };
+    if (typeof operatorOrValue === "string" && value !== undefined) {
+      operator = operatorOrValue as WhereOperatorType;
+      actualValue = value;
+    } else {
+      actualValue = operatorOrValue as BaseValues;
+      operator = "$eq";
+    }
 
-    this.parseWhereCondition(!!_id);
+    if (property === "id") {
+      this.idObject = { $eq: new mongodb.ObjectId(actualValue as string) };
+      return this;
+    }
+
+    const condition = { [property as string]: { [operator]: actualValue } };
+
+    if (!this.whereObject) {
+      this.whereObject = { $and: [condition] };
+    } else {
+      if (!this.whereObject.$and) {
+        this.whereObject.$and = [];
+      }
+      this.whereObject.$and.push(condition);
+    }
+
     return this;
   }
 
@@ -225,21 +291,51 @@ export class MongoQueryBuilder<T extends Collection> {
    * @description Adds a where clause to the query - alias for where
    * @param whereObject - The where clause
    */
-  andWhere(whereObject: ModelKeyOrAny<T>): this {
-    const _id = whereObject.id
-      ? new mongodb.ObjectId(whereObject.id)
-      : undefined;
-    delete whereObject.id;
-    const andCondition = Object.keys(whereObject).map((key) => {
-      return { [key]: whereObject[key] };
-    });
+  public andWhere(
+    property: SelectableType<T>,
+    operator: WhereOperatorType,
+    value: BaseValues,
+  ): this;
+  public andWhere(
+    property: string,
+    operator: WhereOperatorType,
+    value: BaseValues,
+  ): this;
+  public andWhere(
+    property: SelectableType<T> | string,
+    value: BaseValues,
+  ): this;
+  public andWhere(
+    property: SelectableType<T> | string,
+    operatorOrValue: WhereOperatorType | BaseValues,
+    value?: BaseValues,
+  ): this {
+    let operator: WhereOperatorType = "$eq";
+    let actualValue: BaseValues;
 
-    this.whereObject = {
-      _id: _id,
-      $and: [...(this.whereObject.$and || []), ...andCondition],
-    };
+    if (typeof operatorOrValue === "string" && value !== undefined) {
+      operator = operatorOrValue as WhereOperatorType;
+      actualValue = value;
+    } else {
+      actualValue = operatorOrValue as BaseValues;
+      operator = "$eq";
+    }
 
-    this.parseWhereCondition(!!_id);
+    const condition = { [property as string]: { [operator]: actualValue } };
+    if (property === "id") {
+      this.idObject = { $eq: new mongodb.ObjectId(actualValue as string) };
+      return this;
+    }
+
+    if (!this.whereObject) {
+      this.whereObject = { $and: [condition] };
+    } else {
+      if (!this.whereObject.$and) {
+        this.whereObject.$and = [];
+      }
+      this.whereObject.$and.push(condition);
+    }
+
     return this;
   }
 
@@ -248,25 +344,601 @@ export class MongoQueryBuilder<T extends Collection> {
    * @param whereObject - The where clause
    * @returns
    */
-  orWhere(whereObject: ModelKeyOrAny<T>): this {
-    if (!this.whereObject) {
-      return this.where(whereObject);
+  public orWhere(
+    property: SelectableType<T>,
+    operator: WhereOperatorType,
+    value: BaseValues,
+  ): this;
+  public orWhere(
+    property: string,
+    operator: WhereOperatorType,
+    value: BaseValues,
+  ): this;
+  public orWhere(property: SelectableType<T> | string, value: BaseValues): this;
+  public orWhere(
+    property: SelectableType<T> | string,
+    operatorOrValue: WhereOperatorType | BaseValues,
+    value?: BaseValues,
+  ): this {
+    let operator: WhereOperatorType = "$eq";
+    let actualValue: BaseValues;
+
+    if (typeof operatorOrValue === "string" && value !== undefined) {
+      operator = operatorOrValue as WhereOperatorType;
+      actualValue = value;
+    } else {
+      actualValue = operatorOrValue as BaseValues;
+      operator = "$eq";
     }
 
-    const _id = whereObject.id
-      ? new mongodb.ObjectId(whereObject.id)
-      : undefined;
-    delete whereObject.id;
-    const orCondition = Object.keys(whereObject).map((key) => {
-      return { [key]: whereObject[key] };
-    });
+    const condition = { [property as string]: { [operator]: actualValue } };
+    if (property === "id") {
+      this.idObject = { $eq: new mongodb.ObjectId(actualValue as string) };
+      return this;
+    }
 
-    this.whereObject = {
-      _id: _id,
-      $or: [...(this.whereObject.$or || []), ...orCondition],
+    if (!this.whereObject) {
+      this.whereObject = { $or: [condition] };
+    } else {
+      if (!this.whereObject.$or) {
+        this.whereObject.$or = [];
+      }
+      this.whereObject.$or.push(condition);
+    }
+
+    return this;
+  }
+
+  whereIn(property: SelectableType<T>, values: BaseValues[]): this;
+  whereIn(property: string, values: BaseValues[]): this;
+  whereIn(property: SelectableType<T> | string, values: BaseValues[]): this {
+    if (property === "id") {
+      const valuesObject = values.map(
+        (value) => new mongodb.ObjectId(value as string),
+      );
+      this.idObject = { $in: valuesObject };
+      return this;
+    }
+
+    const condition = { [property as string]: { $in: values } };
+
+    if (!this.whereObject) {
+      this.whereObject = { $and: [condition] };
+      return this;
+    }
+
+    if (!this.whereObject.$and) {
+      this.whereObject.$and = [condition];
+      return this;
+    }
+
+    this.whereObject.$and.push(condition);
+    return this;
+  }
+
+  andWhereIn(property: SelectableType<T>, values: BaseValues[]): this;
+  andWhereIn(property: string, values: BaseValues[]): this;
+  andWhereIn(property: SelectableType<T> | string, values: BaseValues[]): this {
+    if (property === "id") {
+      const valuesObject = values.map(
+        (value) => new mongodb.ObjectId(value as string),
+      );
+      this.idObject = { $in: valuesObject };
+      return this;
+    }
+
+    const condition = { [property as string]: { $in: values } };
+
+    if (!this.whereObject) {
+      this.whereObject = { $and: [condition] };
+      return this;
+    }
+
+    if (!this.whereObject.$and) {
+      this.whereObject.$and = [condition];
+      return this;
+    }
+
+    this.whereObject.$and.push(condition);
+    return this;
+  }
+
+  orWhereIn(property: SelectableType<T>, values: BaseValues[]): this;
+  orWhereIn(property: string, values: BaseValues[]): this;
+  orWhereIn(property: SelectableType<T> | string, values: BaseValues[]): this {
+    if (property === "id") {
+      const valuesObject = values.map(
+        (value) => new mongodb.ObjectId(value as string),
+      );
+      this.idObject = { $in: valuesObject };
+      return this;
+    }
+
+    const condition = { [property as string]: { $in: values } };
+
+    if (!this.whereObject) {
+      this.whereObject = { $or: [condition] };
+      return this;
+    }
+
+    if (!this.whereObject.$or) {
+      this.whereObject.$or = [condition];
+      return this;
+    }
+
+    this.whereObject.$or.push(condition);
+    return this;
+  }
+
+  whereNotIn(property: SelectableType<T>, values: BaseValues[]): this;
+  whereNotIn(property: string, values: BaseValues[]): this;
+  whereNotIn(property: SelectableType<T> | string, values: BaseValues[]): this {
+    if (property === "id") {
+      const valuesObject = values.map(
+        (value) => new mongodb.ObjectId(value as string),
+      );
+      this.idObject = { $nin: valuesObject };
+      return this;
+    }
+
+    const condition = { [property as string]: { $nin: values } };
+
+    if (!this.whereObject) {
+      this.whereObject = { $and: [condition] };
+      return this;
+    }
+
+    if (!this.whereObject.$and) {
+      this.whereObject.$and = [condition];
+      return this;
+    }
+
+    this.whereObject.$and.push(condition);
+    return this;
+  }
+
+  andWhereNotIn(property: SelectableType<T>, values: BaseValues[]): this;
+  andWhereNotIn(property: string, values: BaseValues[]): this;
+  andWhereNotIn(
+    property: SelectableType<T> | string,
+    values: BaseValues[],
+  ): this {
+    if (property === "id") {
+      const valuesObject = values.map(
+        (value) => new mongodb.ObjectId(value as string),
+      );
+      this.idObject = { $nin: valuesObject };
+      return this;
+    }
+
+    const condition = { [property as string]: { $nin: values } };
+
+    if (!this.whereObject) {
+      this.whereObject = { $and: [condition] };
+      return this;
+    }
+
+    if (!this.whereObject.$and) {
+      this.whereObject.$and = [condition];
+      return this;
+    }
+
+    this.whereObject.$and.push(condition);
+    return this;
+  }
+
+  orWhereNotIn(property: SelectableType<T>, values: BaseValues[]): this;
+  orWhereNotIn(property: string, values: BaseValues[]): this;
+  orWhereNotIn(
+    property: SelectableType<T> | string,
+    values: BaseValues[],
+  ): this {
+    if (property === "id") {
+      const valuesObject = values.map(
+        (value) => new mongodb.ObjectId(value as string),
+      );
+      this.idObject = { $nin: valuesObject };
+      return this;
+    }
+
+    const condition = { [property as string]: { $nin: values } };
+
+    if (!this.whereObject) {
+      this.whereObject = { $or: [condition] };
+      return this;
+    }
+
+    if (!this.whereObject.$or) {
+      this.whereObject.$or = [condition];
+      return this;
+    }
+
+    this.whereObject.$or.push(condition);
+    return this;
+  }
+
+  whereNull(property: SelectableType<T>): this;
+  whereNull(property: string): this;
+  whereNull(property: SelectableType<T> | string): this {
+    if (property === "id") {
+      logger.warn("Id cannot be null");
+      return this;
+    }
+
+    const condition = { [property as string]: null };
+
+    if (!this.whereObject) {
+      this.whereObject = { $and: [condition] };
+      return this;
+    }
+
+    if (!this.whereObject.$and) {
+      this.whereObject.$and = [condition];
+      return this;
+    }
+
+    this.whereObject.$and.push(condition);
+    return this;
+  }
+
+  andWhereNull(property: SelectableType<T>): this;
+  andWhereNull(property: string): this;
+  andWhereNull(property: SelectableType<T> | string): this {
+    if (property === "id") {
+      logger.warn("Id cannot be null");
+      return this;
+    }
+
+    const condition = { [property as string]: null };
+
+    if (!this.whereObject) {
+      this.whereObject = { $and: [condition] };
+      return this;
+    }
+
+    if (!this.whereObject.$and) {
+      this.whereObject.$and = [condition];
+      return this;
+    }
+
+    this.whereObject.$and.push(condition);
+    return this;
+  }
+
+  orWhereNull(property: SelectableType<T>): this;
+  orWhereNull(property: string): this;
+  orWhereNull(property: SelectableType<T> | string): this {
+    if (property === "id") {
+      logger.warn("Id cannot be null");
+      return this;
+    }
+
+    const condition = { [property as string]: null };
+
+    if (!this.whereObject) {
+      this.whereObject = { $or: [condition] };
+      return this;
+    }
+
+    if (!this.whereObject.$or) {
+      this.whereObject.$or = [condition];
+      return this;
+    }
+
+    this.whereObject.$or.push(condition);
+    return this;
+  }
+
+  whereNotNull(property: SelectableType<T>): this;
+  whereNotNull(property: string): this;
+  whereNotNull(property: SelectableType<T> | string): this {
+    if (property === "id") {
+      logger.warn("Id cannot be null");
+      return this;
+    }
+
+    const condition = { [property as string]: { $ne: null } };
+
+    if (!this.whereObject) {
+      this.whereObject = { $and: [condition] };
+      return this;
+    }
+
+    if (!this.whereObject.$and) {
+      this.whereObject.$and = [condition];
+      return this;
+    }
+
+    this.whereObject.$and.push(condition);
+    return this;
+  }
+
+  andWhereNotNull(property: SelectableType<T>): this;
+  andWhereNotNull(property: string): this;
+  andWhereNotNull(property: SelectableType<T> | string): this {
+    if (property === "id") {
+      logger.warn("Id cannot be null");
+      return this;
+    }
+
+    const condition = { [property as string]: { $ne: null } };
+
+    if (!this.whereObject) {
+      this.whereObject = { $and: [condition] };
+      return this;
+    }
+
+    if (!this.whereObject.$and) {
+      this.whereObject.$and = [condition];
+      return this;
+    }
+
+    this.whereObject.$and.push(condition);
+    return this;
+  }
+
+  orWhereNotNull(property: SelectableType<T>): this;
+  orWhereNotNull(property: string): this;
+  orWhereNotNull(property: SelectableType<T> | string): this {
+    if (property === "id") {
+      logger.warn("Id cannot be null");
+      return this;
+    }
+
+    const condition = { [property as string]: { $ne: null } };
+
+    if (!this.whereObject) {
+      this.whereObject = { $or: [condition] };
+      return this;
+    }
+
+    if (!this.whereObject.$or) {
+      this.whereObject.$or = [condition];
+      return this;
+    }
+
+    this.whereObject.$or.push(condition);
+    return this;
+  }
+
+  whereBetween(
+    property: SelectableType<T>,
+    values: [BaseValues, BaseValues],
+  ): this;
+  whereBetween(property: string, values: [BaseValues, BaseValues]): this;
+  whereBetween(
+    property: SelectableType<T> | string,
+    values: [BaseValues, BaseValues],
+  ): this {
+    if (property === "id") {
+      const valuesObject = values.map(
+        (value) => new mongodb.ObjectId(value as string),
+      );
+      this.idObject = { $nin: valuesObject };
+      return this;
+    }
+
+    const condition = {
+      [property as string]: { $gte: values[0], $lte: values[1] },
     };
 
-    this.parseWhereCondition(!!_id);
+    if (!this.whereObject) {
+      this.whereObject = { $and: [condition] };
+      return this;
+    }
+
+    if (!this.whereObject.$and) {
+      this.whereObject.$and = [condition];
+      return this;
+    }
+
+    this.whereObject.$and.push(condition);
+    return this;
+  }
+
+  andWhereBetween(
+    property: SelectableType<T>,
+    values: [BaseValues, BaseValues],
+  ): this;
+  andWhereBetween(property: string, values: [BaseValues, BaseValues]): this;
+  andWhereBetween(
+    property: SelectableType<T> | string,
+    values: [BaseValues, BaseValues],
+  ): this {
+    if (property === "id") {
+      const valuesObject = values.map(
+        (value) => new mongodb.ObjectId(value as string),
+      );
+      this.idObject = { $nin: valuesObject };
+      return this;
+    }
+
+    const condition = {
+      [property as string]: { $gte: values[0], $lte: values[1] },
+    };
+
+    if (!this.whereObject) {
+      this.whereObject = { $and: [condition] };
+      return this;
+    }
+
+    if (!this.whereObject.$and) {
+      this.whereObject.$and = [condition];
+      return this;
+    }
+
+    this.whereObject.$and.push(condition);
+    return this;
+  }
+
+  orWhereBetween(
+    property: SelectableType<T>,
+    values: [BaseValues, BaseValues],
+  ): this;
+  orWhereBetween(property: string, values: [BaseValues, BaseValues]): this;
+  orWhereBetween(
+    property: SelectableType<T> | string,
+    values: [BaseValues, BaseValues],
+  ): this {
+    if (property === "id") {
+      const valuesObject = values.map(
+        (value) => new mongodb.ObjectId(value as string),
+      );
+      this.idObject = { $nin: valuesObject };
+      return this;
+    }
+
+    const condition = {
+      [property as string]: { $gte: values[0], $lte: values[1] },
+    };
+
+    if (!this.whereObject) {
+      this.whereObject = { $or: [condition] };
+      return this;
+    }
+
+    if (!this.whereObject.$or) {
+      this.whereObject.$or = [condition];
+      return this;
+    }
+
+    this.whereObject.$or.push(condition);
+    return this;
+  }
+
+  whereNotBetween(
+    property: SelectableType<T>,
+    values: [BaseValues, BaseValues],
+  ): this;
+  whereNotBetween(property: string, values: [BaseValues, BaseValues]): this;
+  whereNotBetween(
+    property: SelectableType<T> | string,
+    values: [BaseValues, BaseValues],
+  ): this {
+    if (property === "id") {
+      const valuesObject = values.map(
+        (value) => new mongodb.ObjectId(value as string),
+      );
+      this.idObject = { $nin: valuesObject };
+      return this;
+    }
+
+    const condition = {
+      [property as string]: { $lt: values[0], $gt: values[1] },
+    };
+
+    if (!this.whereObject) {
+      this.whereObject = { $and: [condition] };
+      return this;
+    }
+
+    if (!this.whereObject.$and) {
+      this.whereObject.$and = [condition];
+      return this;
+    }
+
+    this.whereObject.$and.push(condition);
+    return this;
+  }
+
+  andWhereNotBetween(
+    property: SelectableType<T>,
+    values: [BaseValues, BaseValues],
+  ): this;
+  andWhereNotBetween(property: string, values: [BaseValues, BaseValues]): this;
+  andWhereNotBetween(
+    property: SelectableType<T> | string,
+    values: [BaseValues, BaseValues],
+  ): this {
+    if (property === "id") {
+      const valuesObject = values.map(
+        (value) => new mongodb.ObjectId(value as string),
+      );
+      this.idObject = { $nin: valuesObject };
+      return this;
+    }
+
+    const condition = {
+      [property as string]: { $lt: values[0], $gt: values[1] },
+    };
+
+    if (!this.whereObject) {
+      this.whereObject = { $and: [condition] };
+      return this;
+    }
+
+    if (!this.whereObject.$and) {
+      this.whereObject.$and = [condition];
+      return this;
+    }
+
+    this.whereObject.$and.push(condition);
+    return this;
+  }
+
+  orWhereNotBetween(
+    property: SelectableType<T>,
+    values: [BaseValues, BaseValues],
+  ): this;
+  orWhereNotBetween(property: string, values: [BaseValues, BaseValues]): this;
+  orWhereNotBetween(
+    property: SelectableType<T> | string,
+    values: [BaseValues, BaseValues],
+  ): this {
+    if (property === "id") {
+      const valuesObject = values.map(
+        (value) => new mongodb.ObjectId(value as string),
+      );
+      this.idObject = { $nin: valuesObject };
+      return this;
+    }
+
+    const condition = {
+      [property as string]: { $lt: values[0], $gt: values[1] },
+    };
+
+    if (!this.whereObject) {
+      this.whereObject = { $or: [condition] };
+      return this;
+    }
+
+    if (!this.whereObject.$or) {
+      this.whereObject.$or = [condition];
+      return this;
+    }
+
+    this.whereObject.$or.push(condition);
+    return this;
+  }
+
+  /**
+   * @description Gives the possibility to add a raw where clause using the mongodb.Filter type
+   * @param whereObject
+   * @returns
+   */
+  public rawWhere(whereObject: mongodb.Filter<mongodb.BSON.Document>): this {
+    this.whereObject = {
+      ...this.whereObject,
+      ...whereObject,
+    };
+    return this;
+  }
+
+  andRawWhere(whereObject: mongodb.Filter<mongodb.BSON.Document>): this {
+    this.whereObject = {
+      ...this.whereObject,
+      ...whereObject,
+    };
+
+    return this;
+  }
+
+  orRawWhere(whereObject: mongodb.Filter<mongodb.BSON.Document>): this {
+    if (!this.whereObject.$or) {
+      this.whereObject.$or = [];
+    }
+
+    this.whereObject.$or.push(whereObject);
     return this;
   }
 
@@ -337,21 +1009,5 @@ export class MongoQueryBuilder<T extends Collection> {
   offset(offset: number): this {
     this.offsetNumber = offset;
     return this;
-  }
-
-  private parseWhereCondition(containsId: boolean = false) {
-    if (this.whereObject.$or && !this.whereObject.$or.length) {
-      delete this.whereObject.$or;
-    }
-
-    if (this.whereObject.$and && !this.whereObject.$and.length) {
-      delete this.whereObject.$and;
-    }
-
-    if (containsId) {
-      return;
-    }
-
-    delete this.whereObject._id;
   }
 }

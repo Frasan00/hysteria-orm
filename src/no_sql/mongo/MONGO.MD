@@ -4,6 +4,7 @@
 - Some of the features that could be not working are:
   1. Complex where clauses
   2. Sessions
+  3. Sort by id
 
 - [Setup](#setup)
 - [DataSource Configuration](#datasource-configuration)

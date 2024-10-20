@@ -62,6 +62,7 @@ describe("TestModel", () => {
       { name: "Test Name 1", email: "test1@example.com" },
       { name: "Test Name 2", email: "test2@example.com" },
     ]);
+
     const foundModels = await TestModel.find();
     expect(foundModels.length).toBe(2);
   });
@@ -83,9 +84,11 @@ describe("TestModel", () => {
       name: "Test Name",
       email: "test@example.com",
     });
+
     const foundModel = await TestModel.findOneOrFail({
       where: { id: insertedModel.id },
     });
+
     expect(foundModel.name).toBe("Test Name");
     expect(foundModel.email).toBe("test@example.com");
   });
@@ -123,8 +126,8 @@ describe("TestModel", () => {
     ]);
 
     const foundModels = await TestModel.query()
-      .orWhere({ name: "Test Name 1" })
-      .orWhere({ email: "test2@example.com" })
+      .orWhere("name", "Test Name 1")
+      .orWhere("name", "Test Name 2")
       .many();
 
     expect(foundModels.length).toBe(2);
@@ -161,5 +164,129 @@ describe("TestModel", () => {
     const foundModels = await TestModel.query().limit(2).many();
 
     expect(foundModels.length).toBe(2);
+  });
+
+  test("should find records using whereIn", async () => {
+    await TestModel.insertMany([
+      { name: "Test Name 1", email: "test" },
+      { name: "Test Name 2", email: "test" },
+      { name: "Test Name 3", email: "test" },
+    ]);
+
+    const foundModels = await TestModel.query()
+      .whereIn("name", ["Test Name 1", "Test Name 2"])
+      .many();
+
+    expect(foundModels.length).toBe(2);
+  });
+
+  test("should find records using whereNull", async () => {
+    const users = await TestModel.insertMany([
+      { name: "Test Name 1", email: "test" },
+      { name: "Test Name 2" },
+      { name: "Test Name 3" },
+    ]);
+
+    const foundModels = await TestModel.query().whereNull("email").many();
+    expect(foundModels.length).toBe(2);
+  });
+
+  test("should find records using raw query", async () => {
+    await TestModel.insertMany([
+      { name: "Test Name 1", email: "test" },
+      { name: "Test Name 2" },
+      { name: "Test Name 3" },
+    ]);
+
+    const foundModels = await TestModel.query()
+      .rawWhere({
+        email: { $exists: false },
+      })
+      .many();
+
+    const foundModels2 = await TestModel.query()
+      .andRawWhere({
+        email: { $exists: false },
+      })
+      .many();
+
+    const foundModels3 = await TestModel.query()
+      .orRawWhere({
+        email: { $exists: false },
+      })
+      .many();
+
+    expect(foundModels.length).toBe(2);
+    expect(foundModels2.length).toBe(2);
+    expect(foundModels3.length).toBe(2);
+  });
+
+  test("should find records using whereBetween", async () => {
+    await TestModel.insertMany([
+      { name: "Test Name 1", email: "test" },
+      { name: "Test Name 2" },
+      { name: "Test Name 3" },
+    ]);
+
+    const foundModels = await TestModel.query()
+      .whereBetween("name", ["Test Name 1", "Test Name 2"])
+      .many();
+
+    expect(foundModels.length).toBe(2);
+  });
+
+  test("should find records using whereNotIn", async () => {
+    await TestModel.insertMany([
+      { name: "Test Name 1", email: "test" },
+      { name: "Test Name 2" },
+      { name: "Test Name 3" },
+    ]);
+
+    const foundModels = await TestModel.query()
+      .whereNotIn("name", ["Test Name 1", "Test Name 2"])
+      .many();
+
+    expect(foundModels.length).toBe(1);
+  });
+
+  test("should find records using whereNot", async () => {
+    await TestModel.insertMany([
+      { name: "Test Name 1", email: "test" },
+      { name: "Test Name 2" },
+      { name: "Test Name 3" },
+    ]);
+
+    const foundModels = await TestModel.query()
+      .where("email", "$ne", "test")
+      .many();
+
+    expect(foundModels.length).toBe(2);
+  });
+
+  test("should find records using where and andWhere", async () => {
+    await TestModel.insertMany([
+      { name: "Test Name 1", email: "test" },
+      { name: "Test Name 2", email: "test" },
+      { name: "Test Name 3" },
+    ]);
+
+    const foundModels = await TestModel.query()
+      .where("email", "test")
+      .andWhere("name", "Test Name 1")
+      .many();
+
+    expect(foundModels.length).toBe(1);
+  });
+
+  test("should find records using where and andWhere", async () => {
+    const inserted = await TestModel.insertMany([
+      { name: "Test Name 1", email: "test" },
+    ]);
+
+    const foundModels = await TestModel.query()
+      .where("id", inserted[0].id)
+      .many();
+
+    expect(foundModels.length).toBe(1);
   });
 });

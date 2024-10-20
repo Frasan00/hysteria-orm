@@ -13,16 +13,12 @@ export type MongoFindOneOptions<T extends Collection> = {
   ignoreHooks?: FetchHooks[];
   select?: SelectableType<T>[];
   where?: ModelKeyOrAny<T>;
-  orWhere?: ModelKeyOrAny<T>;
-  andWhere?: ModelKeyOrAny<T>;
 };
 
 export type UnrestrictedMongoFindOneOptions<T extends Collection> = {
   ignoreHooks?: FetchHooks[];
   select?: string[];
   where?: ModelKeyOrAny<T>;
-  orWhere?: ModelKeyOrAny<T>;
-  andWhere?: ModelKeyOrAny<T>;
 };
 
 export type MongoFindManyOptions<T extends Collection> =
@@ -76,15 +72,9 @@ export class CollectionManager<T extends Collection> {
     }
 
     if (options.where) {
-      queryBuilder.where(options.where);
-    }
-
-    if (options.orWhere) {
-      queryBuilder.orWhere(options.orWhere);
-    }
-
-    if (options.andWhere) {
-      queryBuilder.andWhere(options.andWhere);
+      Object.entries(options.where).forEach(([key, value]) => {
+        queryBuilder.where(key, value);
+      });
     }
 
     if (options.sort) {
@@ -110,20 +100,10 @@ export class CollectionManager<T extends Collection> {
       return queryBuilder.oneOrFail();
     }
 
-    if (options.select) {
-      queryBuilder.select(options.select as string[]);
-    }
-
     if (options.where) {
-      queryBuilder.where(options.where);
-    }
-
-    if (options.orWhere) {
-      queryBuilder.orWhere(options.orWhere);
-    }
-
-    if (options.andWhere) {
-      queryBuilder.andWhere(options.andWhere);
+      Object.entries(options.where).forEach(([key, value]) => {
+        queryBuilder.where(key, value);
+      });
     }
 
     return queryBuilder.one({ ignoreHooks: options.ignoreHooks });
@@ -142,15 +122,9 @@ export class CollectionManager<T extends Collection> {
     }
 
     if (options.where) {
-      queryBuilder.where(options.where);
-    }
-
-    if (options.orWhere) {
-      queryBuilder.orWhere(options.orWhere);
-    }
-
-    if (options.andWhere) {
-      queryBuilder.andWhere(options.andWhere);
+      Object.entries(options.where).forEach(([key, value]) => {
+        queryBuilder.where(key, value);
+      });
     }
 
     return queryBuilder.oneOrFail({ ignoreHooks: options.ignoreHooks });
