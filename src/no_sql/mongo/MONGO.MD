@@ -44,7 +44,7 @@ await mongoDataSource.useConnection({
 const session = await mongoDataSource.startSession();
 try {
   // Here you can execute your queries
-  User.find({ session: session });
+  await User.find({ session: session });
   await session.commit();
 } catch (error) {
   await session.rollback();
@@ -77,6 +77,13 @@ class User extends Collection {
 
   @property()
   declare password: string;
+
+  @property()
+  declare userProfile: {
+    birthData: DateTime;
+    age: number;
+    preferredName: string;
+  };
 
   @dynamicProperty("test")
   getTest() {
@@ -137,6 +144,7 @@ import { User } from "./models/User";
 // Basic query
 const user = await User.query()
   .where({ name: "Test Name" })
+  .addDynamicProperty("test")
   .first();
 
 // Insert
@@ -165,4 +173,13 @@ const user = await User.updateRecord(user);
 
 // Delete record
 await User.deleteRecord(user);
+
+// Nested checks
+const sorted = await TestModel.query()
+  .sort({ "userProfile.age": -1 })
+  .many();
+
+const filtered = await TestModel.query()
+  .where("userProfile.age", 20)
+  .many();
 ```
