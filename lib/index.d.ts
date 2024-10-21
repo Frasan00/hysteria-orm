@@ -2150,7 +2150,13 @@ declare class MongoQueryBuilder<T extends Collection> {
     andRawWhere(whereObject: mongodb.Filter<mongodb.BSON.Document>): this;
     orRawWhere(whereObject: mongodb.Filter<mongodb.BSON.Document>): this;
     /**
-     * @description Adds a sort to the query
+     * @description Adds a sort to the query for the id
+     * @param sortBy - The sort criteria, which can be a number, string, object, or array of these types
+     * @returns
+     */
+    sortById(sortBy: 1 | -1): this;
+    /**
+     * @description Adds a sort to the query, do not use this method if you want to sort by id use the sortById method
      * @param sortBy - The sort criteria, which can be a number, string, object, or array of these types
      * @returns The current instance for chaining
      */

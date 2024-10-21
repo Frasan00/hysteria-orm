@@ -4,6 +4,7 @@ import {
 } from "../../src/no_sql/mongo/mongo_models/mongo_collection_decorators";
 import { MongoDataSource } from "../../src/no_sql/mongo/mongo_data_source";
 import { Collection } from "../../src/no_sql/mongo/mongo_models/mongo_collection";
+import { DateTime } from "luxon";
 
 class TestModel extends Collection {
   @property()
@@ -11,6 +12,13 @@ class TestModel extends Collection {
 
   @property()
   declare email: string;
+
+  @property()
+  declare userProfile: {
+    birthData: DateTime;
+    age: number;
+    preferredName: string;
+  };
 
   @dynamicProperty("test")
   getTest() {
@@ -288,5 +296,32 @@ describe("TestModel", () => {
       .many();
 
     expect(foundModels.length).toBe(1);
+  });
+
+  test("should insert a record with nested object", async () => {
+    const modelData = {
+      name: "Test Name",
+      email: "test",
+      userProfile: {
+        birthData: DateTime.now(),
+        age: 20,
+        preferredName: "test",
+      },
+    };
+
+    const insertedModel = await TestModel.insert(modelData);
+    expect(insertedModel.name).toBe("Test Name");
+    expect(insertedModel.email).toBe("test");
+    expect(insertedModel.userProfile.age).toBe(20);
+
+    const sorted = await TestModel.query()
+      .sort({ "userProfile.age": -1 })
+      .many();
+    expect(sorted[0].userProfile.age).toBe(20);
+
+    const filtered = await TestModel.query()
+      .where("userProfile.age", 20)
+      .many();
+    expect(filtered.length).toBe(1);
   });
 });
