@@ -29,7 +29,7 @@ describe("RedisDataSource", () => {
   });
 
   test("redis static string operations", async () => {
-    RedisDataSource.set("key", "value", 1000);
+    await RedisDataSource.set("key", "value", 1000);
     const value = await RedisDataSource.get<string | null>("key");
     expect(value).toBe("value");
 
@@ -39,7 +39,7 @@ describe("RedisDataSource", () => {
   });
 
   test("redis static object operations", async () => {
-    RedisDataSource.set("key", { key: "value" }, 1000);
+    await RedisDataSource.set("key", { key: "value" }, 1000);
     const objectValue = await RedisDataSource.get<{ key: string }>("key");
     expect(objectValue).toEqual({ key: "value" });
 
@@ -51,7 +51,7 @@ describe("RedisDataSource", () => {
   });
 
   test("redis static buffer operations", async () => {
-    RedisDataSource.set("key", Buffer.from("value"), 10000);
+    await RedisDataSource.set("key", Buffer.from("value"), 10000);
     const bufferValue = await RedisDataSource.getBuffer("key");
     expect(bufferValue).toEqual(Buffer.from("value"));
 
@@ -61,7 +61,7 @@ describe("RedisDataSource", () => {
   });
 
   test("redis static number operations", async () => {
-    RedisDataSource.set("key", 1, 1000);
+    await RedisDataSource.set("key", 1, 1000);
     const numberValue = await RedisDataSource.get<number>("key");
     expect(numberValue).toBe(1);
 
@@ -71,7 +71,7 @@ describe("RedisDataSource", () => {
   });
 
   test("redis static boolean operations", async () => {
-    RedisDataSource.set("key", true, 1000);
+    await RedisDataSource.set("key", true, 1000);
     const booleanValue = await RedisDataSource.get<boolean>("key");
     expect(booleanValue).toBe(true);
 
@@ -81,7 +81,7 @@ describe("RedisDataSource", () => {
   });
 
   test("redis static array operations", async () => {
-    RedisDataSource.set("key", [1, 2, 3], 1000);
+    await RedisDataSource.set("key", [1, 2, 3], 1000);
     const arrayValue = await RedisDataSource.get<number[]>("key");
     expect(arrayValue).toEqual([1, 2, 3]);
 
