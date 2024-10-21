@@ -55,7 +55,7 @@ try {
 ### Model Configuration
 - The id property is handled automatically by the library, you don't need to define it, while using it you only refer to it as `id`m the library will handle the rest parsing it to `_id` for mongo.
 - You can use `@property` to define a property for the model, note that since it's a no-sql database, the database itself will not enforce the schema, so you can define any property you want.
-- You can use `@mongoDynamicColumn` to define a dynamic property for the model, this will be a function that will be called when you try to access the property.
+- You can use `@dynamicProperty` to define a dynamic property for the model, this will be a function that will be called when you try to access the property.
 - Different from sql databases, mongo implementation at the moment does not support the relations between models.
 
 ```typescript
