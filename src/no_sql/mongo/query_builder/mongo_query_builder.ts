@@ -245,7 +245,6 @@ export class MongoQueryBuilder<T extends Collection> {
 
   /**
    * @description Adds a where clause to the query
-   * @param whereObject - The where clause
    */
   public where(
     property: SelectableType<T>,
@@ -295,7 +294,6 @@ export class MongoQueryBuilder<T extends Collection> {
 
   /**
    * @description Adds a where clause to the query - alias for where
-   * @param whereObject - The where clause
    */
   public andWhere(
     property: SelectableType<T>,
@@ -347,8 +345,6 @@ export class MongoQueryBuilder<T extends Collection> {
 
   /**
    * @description Adds an or where clause to the query
-   * @param whereObject - The where clause
-   * @returns
    */
   public orWhere(
     property: SelectableType<T>,
@@ -395,6 +391,339 @@ export class MongoQueryBuilder<T extends Collection> {
     return this;
   }
 
+  /**
+   * @description Adds a where exists clause to the query
+   */
+  whereExists(property: SelectableType<T>): this;
+  whereExists(property: string): this;
+  whereExists(property: SelectableType<T> | string): this {
+    const condition = { [property as string]: { $exists: true } };
+
+    if (!this.whereObject) {
+      this.whereObject = { $and: [condition] };
+      return this;
+    }
+
+    if (!this.whereObject.$and) {
+      this.whereObject.$and = [condition];
+      return this;
+    }
+
+    this.whereObject.$and.push(condition);
+    return this;
+  }
+
+  /**
+   * @description Adds an and where exists clause to the query
+   */
+  andWhereExists(property: SelectableType<T>): this;
+  andWhereExists(property: string): this;
+  andWhereExists(property: SelectableType<T> | string): this {
+    const condition = { [property as string]: { $exists: true } };
+
+    if (!this.whereObject) {
+      this.whereObject = { $and: [condition] };
+      return this;
+    }
+
+    if (!this.whereObject.$and) {
+      this.whereObject.$and = [condition];
+      return this;
+    }
+
+    this.whereObject.$and.push(condition);
+    return this;
+  }
+
+  /**
+   * @description Adds an or where exists clause to the query
+   */
+  orWhereExists(property: SelectableType<T>): this;
+  orWhereExists(property: string): this;
+  orWhereExists(property: SelectableType<T> | string): this {
+    const condition = { [property as string]: { $exists: true } };
+
+    if (!this.whereObject) {
+      this.whereObject = { $or: [condition] };
+      return this;
+    }
+
+    if (!this.whereObject.$or) {
+      this.whereObject.$or = [condition];
+      return this;
+    }
+
+    this.whereObject.$or.push(condition);
+    return this;
+  }
+
+  /**
+   * @description Adds a where not exists clause to the query
+   */
+  whereNotExists(property: SelectableType<T>): this;
+  whereNotExists(property: string): this;
+  whereNotExists(property: SelectableType<T> | string): this {
+    const condition = { [property as string]: { $exists: false } };
+
+    if (!this.whereObject) {
+      this.whereObject = { $and: [condition] };
+      return this;
+    }
+
+    if (!this.whereObject.$and) {
+      this.whereObject.$and = [condition];
+      return this;
+    }
+
+    this.whereObject.$and.push(condition);
+    return this;
+  }
+
+  /**
+   * @description Adds an and where not exists clause to the query
+   */
+  andWhereNotExists(property: SelectableType<T>): this;
+  andWhereNotExists(property: string): this;
+  andWhereNotExists(property: SelectableType<T> | string): this {
+    const condition = { [property as string]: { $exists: false } };
+
+    if (!this.whereObject) {
+      this.whereObject = { $and: [condition] };
+      return this;
+    }
+
+    if (!this.whereObject.$and) {
+      this.whereObject.$and = [condition];
+      return this;
+    }
+
+    this.whereObject.$and.push(condition);
+    return this;
+  }
+
+  /**
+   * @description Adds an or where not exists clause to the query
+   */
+  orWhereNotExists(property: SelectableType<T>): this;
+  orWhereNotExists(property: string): this;
+  orWhereNotExists(property: SelectableType<T> | string): this {
+    const condition = { [property as string]: { $exists: false } };
+
+    if (!this.whereObject) {
+      this.whereObject = { $or: [condition] };
+      return this;
+    }
+
+    if (!this.whereObject.$or) {
+      this.whereObject.$or = [condition];
+      return this;
+    }
+
+    this.whereObject.$or.push(condition);
+    return this;
+  }
+
+  /**
+   * @description Adds a where not clause to the query
+   */
+  whereNot(property: SelectableType<T>, value: BaseValues): this;
+  whereNot(property: string, value: BaseValues): this;
+  whereNot(property: SelectableType<T> | string, value: BaseValues): this {
+    const condition = { [property as string]: { $ne: value } };
+
+    if (!this.whereObject) {
+      this.whereObject = { $and: [condition] };
+      return this;
+    }
+
+    if (!this.whereObject.$and) {
+      this.whereObject.$and = [condition];
+      return this;
+    }
+
+    this.whereObject.$and.push(condition);
+    return this;
+  }
+
+  /**
+   * @description Adds an and where not clause to the query
+   */
+  andWhereNot(property: SelectableType<T>, value: BaseValues): this;
+  andWhereNot(property: string, value: BaseValues): this;
+  andWhereNot(property: SelectableType<T> | string, value: BaseValues): this {
+    const condition = { [property as string]: { $ne: value } };
+
+    if (!this.whereObject) {
+      this.whereObject = { $and: [condition] };
+      return this;
+    }
+
+    if (!this.whereObject.$and) {
+      this.whereObject.$and = [condition];
+      return this;
+    }
+
+    this.whereObject.$and.push(condition);
+    return this;
+  }
+
+  /**
+   * @description Adds an or where not clause to the query
+   */
+  orWhereNot(property: SelectableType<T>, value: BaseValues): this;
+  orWhereNot(property: string, value: BaseValues): this;
+  orWhereNot(property: SelectableType<T> | string, value: BaseValues): this {
+    const condition = { [property as string]: { $ne: value } };
+
+    if (!this.whereObject) {
+      this.whereObject = { $or: [condition] };
+      return this;
+    }
+
+    if (!this.whereObject.$or) {
+      this.whereObject.$or = [condition];
+      return this;
+    }
+
+    this.whereObject.$or.push(condition);
+    return this;
+  }
+
+  /**
+   * @description Adds a where like clause to the query
+   */
+  whereLike(property: SelectableType<T>, value: string): this;
+  whereLike(property: string, value: string): this;
+  whereLike(property: SelectableType<T> | string, value: string): this {
+    const condition = { [property as string]: { $regex: value } };
+
+    if (!this.whereObject) {
+      this.whereObject = { $and: [condition] };
+      return this;
+    }
+
+    if (!this.whereObject.$and) {
+      this.whereObject.$and = [condition];
+      return this;
+    }
+
+    this.whereObject.$and.push(condition);
+    return this;
+  }
+
+  /**
+   * @description Adds an and where like clause to the query
+   */
+  andWhereLike(property: SelectableType<T>, value: string): this;
+  andWhereLike(property: string, value: string): this;
+  andWhereLike(property: SelectableType<T> | string, value: string): this {
+    const condition = { [property as string]: { $regex: value } };
+
+    if (!this.whereObject) {
+      this.whereObject = { $and: [condition] };
+      return this;
+    }
+
+    if (!this.whereObject.$and) {
+      this.whereObject.$and = [condition];
+      return this;
+    }
+
+    this.whereObject.$and.push(condition);
+    return this;
+  }
+
+  /**
+   * @description Adds an or where like clause to the query
+   */
+  orWhereLike(property: SelectableType<T>, value: string): this;
+  orWhereLike(property: string, value: string): this;
+  orWhereLike(property: SelectableType<T> | string, value: string): this {
+    const condition = { [property as string]: { $regex: value } };
+
+    if (!this.whereObject) {
+      this.whereObject = { $or: [condition] };
+      return this;
+    }
+
+    if (!this.whereObject.$or) {
+      this.whereObject.$or = [condition];
+      return this;
+    }
+
+    this.whereObject.$or.push(condition);
+    return this;
+  }
+
+  /**
+   * @description Adds a where not like clause to the query
+   */
+  whereNotLike(property: SelectableType<T>, value: string): this;
+  whereNotLike(property: string, value: string): this;
+  whereNotLike(property: SelectableType<T> | string, value: string): this {
+    const condition = { [property as string]: { $not: { $regex: value } } };
+
+    if (!this.whereObject) {
+      this.whereObject = { $and: [condition] };
+      return this;
+    }
+
+    if (!this.whereObject.$and) {
+      this.whereObject.$and = [condition];
+      return this;
+    }
+
+    this.whereObject.$and.push(condition);
+    return this;
+  }
+
+  /**
+   * @description Adds an and where not like clause to the query
+   */
+  andWhereNotLike(property: SelectableType<T>, value: string): this;
+  andWhereNotLike(property: string, value: string): this;
+  andWhereNotLike(property: SelectableType<T> | string, value: string): this {
+    const condition = { [property as string]: { $not: { $regex: value } } };
+
+    if (!this.whereObject) {
+      this.whereObject = { $and: [condition] };
+      return this;
+    }
+
+    if (!this.whereObject.$and) {
+      this.whereObject.$and = [condition];
+      return this;
+    }
+
+    this.whereObject.$and.push(condition);
+    return this;
+  }
+
+  /**
+   * @description Adds an or where not like clause to the query
+   */
+  orWhereNotLike(property: SelectableType<T>, value: string): this;
+  orWhereNotLike(property: string, value: string): this;
+  orWhereNotLike(property: SelectableType<T> | string, value: string): this {
+    const condition = { [property as string]: { $not: { $regex: value } } };
+
+    if (!this.whereObject) {
+      this.whereObject = { $or: [condition] };
+      return this;
+    }
+
+    if (!this.whereObject.$or) {
+      this.whereObject.$or = [condition];
+      return this;
+    }
+
+    this.whereObject.$or.push(condition);
+    return this;
+  }
+
+  /**
+   * @description Adds a where in clause to the query
+   */
   whereIn(property: SelectableType<T>, values: BaseValues[]): this;
   whereIn(property: string, values: BaseValues[]): this;
   whereIn(property: SelectableType<T> | string, values: BaseValues[]): this {
@@ -422,6 +751,9 @@ export class MongoQueryBuilder<T extends Collection> {
     return this;
   }
 
+  /**
+   * @description Adds an and where in clause to the query
+   */
   andWhereIn(property: SelectableType<T>, values: BaseValues[]): this;
   andWhereIn(property: string, values: BaseValues[]): this;
   andWhereIn(property: SelectableType<T> | string, values: BaseValues[]): this {
@@ -449,6 +781,9 @@ export class MongoQueryBuilder<T extends Collection> {
     return this;
   }
 
+  /**
+   * @description Adds an or where in clause to the query
+   */
   orWhereIn(property: SelectableType<T>, values: BaseValues[]): this;
   orWhereIn(property: string, values: BaseValues[]): this;
   orWhereIn(property: SelectableType<T> | string, values: BaseValues[]): this {
@@ -476,6 +811,9 @@ export class MongoQueryBuilder<T extends Collection> {
     return this;
   }
 
+  /**
+   * @description Adds a where not in clause to the query
+   */
   whereNotIn(property: SelectableType<T>, values: BaseValues[]): this;
   whereNotIn(property: string, values: BaseValues[]): this;
   whereNotIn(property: SelectableType<T> | string, values: BaseValues[]): this {
@@ -503,6 +841,9 @@ export class MongoQueryBuilder<T extends Collection> {
     return this;
   }
 
+  /**
+   * @description Adds an and where not in clause to the query
+   */
   andWhereNotIn(property: SelectableType<T>, values: BaseValues[]): this;
   andWhereNotIn(property: string, values: BaseValues[]): this;
   andWhereNotIn(
@@ -533,6 +874,9 @@ export class MongoQueryBuilder<T extends Collection> {
     return this;
   }
 
+  /**
+   * @description Adds an or where not in clause to the query
+   */
   orWhereNotIn(property: SelectableType<T>, values: BaseValues[]): this;
   orWhereNotIn(property: string, values: BaseValues[]): this;
   orWhereNotIn(
@@ -563,6 +907,9 @@ export class MongoQueryBuilder<T extends Collection> {
     return this;
   }
 
+  /**
+   * @description Adds a where null clause to the query
+   */
   whereNull(property: SelectableType<T>): this;
   whereNull(property: string): this;
   whereNull(property: SelectableType<T> | string): this {
@@ -587,6 +934,9 @@ export class MongoQueryBuilder<T extends Collection> {
     return this;
   }
 
+  /**
+   * @description Adds an and where null clause to the query
+   */
   andWhereNull(property: SelectableType<T>): this;
   andWhereNull(property: string): this;
   andWhereNull(property: SelectableType<T> | string): this {
@@ -611,6 +961,9 @@ export class MongoQueryBuilder<T extends Collection> {
     return this;
   }
 
+  /**
+   * @description Adds an or where null clause to the query
+   */
   orWhereNull(property: SelectableType<T>): this;
   orWhereNull(property: string): this;
   orWhereNull(property: SelectableType<T> | string): this {
@@ -635,6 +988,9 @@ export class MongoQueryBuilder<T extends Collection> {
     return this;
   }
 
+  /**
+   * @description Adds a where not null clause to the query
+   */
   whereNotNull(property: SelectableType<T>): this;
   whereNotNull(property: string): this;
   whereNotNull(property: SelectableType<T> | string): this {
@@ -659,6 +1015,9 @@ export class MongoQueryBuilder<T extends Collection> {
     return this;
   }
 
+  /**
+   * @description Adds an and where not null clause to the query
+   */
   andWhereNotNull(property: SelectableType<T>): this;
   andWhereNotNull(property: string): this;
   andWhereNotNull(property: SelectableType<T> | string): this {
@@ -683,6 +1042,9 @@ export class MongoQueryBuilder<T extends Collection> {
     return this;
   }
 
+  /**
+   * @description Adds an or where not null clause to the query
+   */
   orWhereNotNull(property: SelectableType<T>): this;
   orWhereNotNull(property: string): this;
   orWhereNotNull(property: SelectableType<T> | string): this {
@@ -707,6 +1069,9 @@ export class MongoQueryBuilder<T extends Collection> {
     return this;
   }
 
+  /**
+   * @description Adds a where between clause to the query
+   */
   whereBetween(
     property: SelectableType<T>,
     values: [BaseValues, BaseValues],
@@ -742,6 +1107,9 @@ export class MongoQueryBuilder<T extends Collection> {
     return this;
   }
 
+  /**
+   * @description Adds an and where between clause to the query
+   */
   andWhereBetween(
     property: SelectableType<T>,
     values: [BaseValues, BaseValues],
@@ -777,6 +1145,9 @@ export class MongoQueryBuilder<T extends Collection> {
     return this;
   }
 
+  /**
+   * @description Adds an or where between clause to the query
+   */
   orWhereBetween(
     property: SelectableType<T>,
     values: [BaseValues, BaseValues],
@@ -812,6 +1183,9 @@ export class MongoQueryBuilder<T extends Collection> {
     return this;
   }
 
+  /**
+   * @description Adds a where not between clause to the query
+   */
   whereNotBetween(
     property: SelectableType<T>,
     values: [BaseValues, BaseValues],
@@ -847,6 +1221,9 @@ export class MongoQueryBuilder<T extends Collection> {
     return this;
   }
 
+  /**
+   * @description Adds an and where not between clause to the query
+   */
   andWhereNotBetween(
     property: SelectableType<T>,
     values: [BaseValues, BaseValues],
@@ -882,6 +1259,9 @@ export class MongoQueryBuilder<T extends Collection> {
     return this;
   }
 
+  /**
+   * @description Adds an or where not between clause to the query
+   */
   orWhereNotBetween(
     property: SelectableType<T>,
     values: [BaseValues, BaseValues],
@@ -919,8 +1299,6 @@ export class MongoQueryBuilder<T extends Collection> {
 
   /**
    * @description Gives the possibility to add a raw where clause using the mongodb.Filter type
-   * @param whereObject
-   * @returns
    */
   public rawWhere(whereObject: mongodb.Filter<mongodb.BSON.Document>): this {
     this.whereObject = {
@@ -930,6 +1308,9 @@ export class MongoQueryBuilder<T extends Collection> {
     return this;
   }
 
+  /**
+   * @description Gives the possibility to add a raw where clause using the mongodb.Filter type
+   */
   andRawWhere(whereObject: mongodb.Filter<mongodb.BSON.Document>): this {
     this.whereObject = {
       ...this.whereObject,
@@ -939,6 +1320,9 @@ export class MongoQueryBuilder<T extends Collection> {
     return this;
   }
 
+  /**
+   * @description Gives the possibility to add a raw where clause using the mongodb.Filter type
+   */
   orRawWhere(whereObject: mongodb.Filter<mongodb.BSON.Document>): this {
     if (!this.whereObject.$or) {
       this.whereObject.$or = [];

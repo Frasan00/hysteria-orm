@@ -324,4 +324,58 @@ describe("TestModel", () => {
       .many();
     expect(filtered.length).toBe(1);
   });
+
+  test("should find records using whereExists and whereNotExists", async () => {
+    await TestModel.insertMany([
+      { name: "Test Name 1", email: "test" },
+      { name: "Test Name 2" },
+      { name: "Test Name 3" },
+    ]);
+
+    const foundModels = await TestModel.query().whereExists("email").many();
+
+    const foundModels2 = await TestModel.query().whereNotExists("email").many();
+
+    expect(foundModels.length).toBe(1);
+    expect(foundModels2.length).toBe(2);
+  });
+
+  test("should find records using whereLike and whereNotLike", async () => {
+    await TestModel.insertMany([
+      { name: "Test Name 1", email: "test" },
+      { name: "Test Name 2", email: "test" },
+      { name: "Test Name 3" },
+    ]);
+
+    const foundModels = await TestModel.query()
+      .whereLike("email", "test")
+      .many();
+
+    const foundModels2 = await TestModel.query()
+      .whereNotLike("email", "test")
+      .many();
+
+    const foundModels3 = await TestModel.query()
+      .andWhereLike("email", "test")
+      .many();
+
+    const foundModels4 = await TestModel.query()
+      .andWhereNotLike("email", "test")
+      .many();
+
+    const foundModels5 = await TestModel.query()
+      .orWhereLike("email", "test")
+      .many();
+
+    const foundModels6 = await TestModel.query()
+      .orWhereNotLike("email", "test")
+      .many();
+
+    expect(foundModels.length).toBe(2);
+    expect(foundModels2.length).toBe(1);
+    expect(foundModels3.length).toBe(2);
+    expect(foundModels4.length).toBe(1);
+    expect(foundModels5.length).toBe(2);
+    expect(foundModels6.length).toBe(1);
+  });
 });

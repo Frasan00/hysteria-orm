@@ -2085,69 +2085,198 @@ declare class MongoQueryBuilder<T extends Collection> {
     select(fields: string[]): this;
     /**
      * @description Adds a where clause to the query
-     * @param whereObject - The where clause
      */
     where(property: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
     where(property: string, operator: WhereOperatorType, value: BaseValues): this;
     where(property: SelectableType<T> | string, value: BaseValues): this;
     /**
      * @description Adds a where clause to the query - alias for where
-     * @param whereObject - The where clause
      */
     andWhere(property: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
     andWhere(property: string, operator: WhereOperatorType, value: BaseValues): this;
     andWhere(property: SelectableType<T> | string, value: BaseValues): this;
     /**
      * @description Adds an or where clause to the query
-     * @param whereObject - The where clause
-     * @returns
      */
     orWhere(property: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
     orWhere(property: string, operator: WhereOperatorType, value: BaseValues): this;
     orWhere(property: SelectableType<T> | string, value: BaseValues): this;
+    /**
+     * @description Adds a where exists clause to the query
+     */
+    whereExists(property: SelectableType<T>): this;
+    whereExists(property: string): this;
+    /**
+     * @description Adds an and where exists clause to the query
+     */
+    andWhereExists(property: SelectableType<T>): this;
+    andWhereExists(property: string): this;
+    /**
+     * @description Adds an or where exists clause to the query
+     */
+    orWhereExists(property: SelectableType<T>): this;
+    orWhereExists(property: string): this;
+    /**
+     * @description Adds a where not exists clause to the query
+     */
+    whereNotExists(property: SelectableType<T>): this;
+    whereNotExists(property: string): this;
+    /**
+     * @description Adds an and where not exists clause to the query
+     */
+    andWhereNotExists(property: SelectableType<T>): this;
+    andWhereNotExists(property: string): this;
+    /**
+     * @description Adds an or where not exists clause to the query
+     */
+    orWhereNotExists(property: SelectableType<T>): this;
+    orWhereNotExists(property: string): this;
+    /**
+     * @description Adds a where not clause to the query
+     */
+    whereNot(property: SelectableType<T>, value: BaseValues): this;
+    whereNot(property: string, value: BaseValues): this;
+    /**
+     * @description Adds an and where not clause to the query
+     */
+    andWhereNot(property: SelectableType<T>, value: BaseValues): this;
+    andWhereNot(property: string, value: BaseValues): this;
+    /**
+     * @description Adds an or where not clause to the query
+     */
+    orWhereNot(property: SelectableType<T>, value: BaseValues): this;
+    orWhereNot(property: string, value: BaseValues): this;
+    /**
+     * @description Adds a where like clause to the query
+     */
+    whereLike(property: SelectableType<T>, value: string): this;
+    whereLike(property: string, value: string): this;
+    /**
+     * @description Adds an and where like clause to the query
+     */
+    andWhereLike(property: SelectableType<T>, value: string): this;
+    andWhereLike(property: string, value: string): this;
+    /**
+     * @description Adds an or where like clause to the query
+     */
+    orWhereLike(property: SelectableType<T>, value: string): this;
+    orWhereLike(property: string, value: string): this;
+    /**
+     * @description Adds a where not like clause to the query
+     */
+    whereNotLike(property: SelectableType<T>, value: string): this;
+    whereNotLike(property: string, value: string): this;
+    /**
+     * @description Adds an and where not like clause to the query
+     */
+    andWhereNotLike(property: SelectableType<T>, value: string): this;
+    andWhereNotLike(property: string, value: string): this;
+    /**
+     * @description Adds an or where not like clause to the query
+     */
+    orWhereNotLike(property: SelectableType<T>, value: string): this;
+    orWhereNotLike(property: string, value: string): this;
+    /**
+     * @description Adds a where in clause to the query
+     */
     whereIn(property: SelectableType<T>, values: BaseValues[]): this;
     whereIn(property: string, values: BaseValues[]): this;
+    /**
+     * @description Adds an and where in clause to the query
+     */
     andWhereIn(property: SelectableType<T>, values: BaseValues[]): this;
     andWhereIn(property: string, values: BaseValues[]): this;
+    /**
+     * @description Adds an or where in clause to the query
+     */
     orWhereIn(property: SelectableType<T>, values: BaseValues[]): this;
     orWhereIn(property: string, values: BaseValues[]): this;
+    /**
+     * @description Adds a where not in clause to the query
+     */
     whereNotIn(property: SelectableType<T>, values: BaseValues[]): this;
     whereNotIn(property: string, values: BaseValues[]): this;
+    /**
+     * @description Adds an and where not in clause to the query
+     */
     andWhereNotIn(property: SelectableType<T>, values: BaseValues[]): this;
     andWhereNotIn(property: string, values: BaseValues[]): this;
+    /**
+     * @description Adds an or where not in clause to the query
+     */
     orWhereNotIn(property: SelectableType<T>, values: BaseValues[]): this;
     orWhereNotIn(property: string, values: BaseValues[]): this;
+    /**
+     * @description Adds a where null clause to the query
+     */
     whereNull(property: SelectableType<T>): this;
     whereNull(property: string): this;
+    /**
+     * @description Adds an and where null clause to the query
+     */
     andWhereNull(property: SelectableType<T>): this;
     andWhereNull(property: string): this;
+    /**
+     * @description Adds an or where null clause to the query
+     */
     orWhereNull(property: SelectableType<T>): this;
     orWhereNull(property: string): this;
+    /**
+     * @description Adds a where not null clause to the query
+     */
     whereNotNull(property: SelectableType<T>): this;
     whereNotNull(property: string): this;
+    /**
+     * @description Adds an and where not null clause to the query
+     */
     andWhereNotNull(property: SelectableType<T>): this;
     andWhereNotNull(property: string): this;
+    /**
+     * @description Adds an or where not null clause to the query
+     */
     orWhereNotNull(property: SelectableType<T>): this;
     orWhereNotNull(property: string): this;
+    /**
+     * @description Adds a where between clause to the query
+     */
     whereBetween(property: SelectableType<T>, values: [BaseValues, BaseValues]): this;
     whereBetween(property: string, values: [BaseValues, BaseValues]): this;
+    /**
+     * @description Adds an and where between clause to the query
+     */
     andWhereBetween(property: SelectableType<T>, values: [BaseValues, BaseValues]): this;
     andWhereBetween(property: string, values: [BaseValues, BaseValues]): this;
+    /**
+     * @description Adds an or where between clause to the query
+     */
     orWhereBetween(property: SelectableType<T>, values: [BaseValues, BaseValues]): this;
     orWhereBetween(property: string, values: [BaseValues, BaseValues]): this;
+    /**
+     * @description Adds a where not between clause to the query
+     */
     whereNotBetween(property: SelectableType<T>, values: [BaseValues, BaseValues]): this;
     whereNotBetween(property: string, values: [BaseValues, BaseValues]): this;
+    /**
+     * @description Adds an and where not between clause to the query
+     */
     andWhereNotBetween(property: SelectableType<T>, values: [BaseValues, BaseValues]): this;
     andWhereNotBetween(property: string, values: [BaseValues, BaseValues]): this;
+    /**
+     * @description Adds an or where not between clause to the query
+     */
     orWhereNotBetween(property: SelectableType<T>, values: [BaseValues, BaseValues]): this;
     orWhereNotBetween(property: string, values: [BaseValues, BaseValues]): this;
     /**
      * @description Gives the possibility to add a raw where clause using the mongodb.Filter type
-     * @param whereObject
-     * @returns
      */
     rawWhere(whereObject: mongodb.Filter<mongodb.BSON.Document>): this;
+    /**
+     * @description Gives the possibility to add a raw where clause using the mongodb.Filter type
+     */
     andRawWhere(whereObject: mongodb.Filter<mongodb.BSON.Document>): this;
+    /**
+     * @description Gives the possibility to add a raw where clause using the mongodb.Filter type
+     */
     orRawWhere(whereObject: mongodb.Filter<mongodb.BSON.Document>): this;
     /**
      * @description Adds a sort to the query for the id
