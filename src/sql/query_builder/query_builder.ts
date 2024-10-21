@@ -13,6 +13,8 @@ import selectTemplate from "../resources/query/SELECT";
 import { addDynamicColumnsToModel } from "../serializer";
 import { SqlDataSource } from "../sql_data_source";
 import { SqlLiteQueryBuilder } from "../sqlite/sql_lite_query_builder";
+import { DeleteOptions, SoftDeleteOptions } from "./delete_query_builder_type";
+import { UpdateOptions } from "./update_query_builder_types";
 import { WhereQueryBuilder } from "./where_query_builder";
 
 /**
@@ -96,6 +98,35 @@ export abstract class QueryBuilder<
    * @returns A Promise resolving to an array of results.
    */
   public abstract many(options: ManyOptions): Promise<T[]>;
+
+    /**
+   * @description Updates records in the database.
+   * @param data
+   * @param trx
+   * @returns The number of affected rows.
+   */
+    public abstract update(
+      data: Partial<T>,
+      options?: UpdateOptions,
+    ): Promise<number>;
+
+      /**
+   * @description soft Deletes Records from the database.
+   * @param options - The options for the soft delete, including the column to soft delete, the value to set the column to, and the transaction to run the query in.
+   * @default column - 'deletedAt'
+   * @default value - The current date and time.
+   * @default ignoreBeforeDeleteHook - false
+   * @default trx - undefined
+   * @returns The number of affected rows.
+   */
+  public abstract softDelete(options?: SoftDeleteOptions<T>): Promise<number>;
+
+  /**
+   * @description Deletes Records from the database for the current query.
+   * @param trx - The transaction to run the query in.
+   * @returns The number of affected rows.
+   */
+  public abstract delete(options?: DeleteOptions): Promise<number>;
 
   /**
    * @description Executes the query and retrieves the count of results, it ignores all select, group by, order by, limit and offset clauses if they are present.

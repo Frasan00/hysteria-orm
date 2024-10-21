@@ -2,9 +2,7 @@ import "reflect-metadata";
 import { DateTime } from "luxon";
 import { convertCase } from "../../utils/case_utils";
 import { PaginatedData } from "../pagination";
-import { ModelDeleteQueryBuilder } from "../query_builder/delete_query_builder";
 import { ModelQueryBuilder, OneOptions } from "../query_builder/query_builder";
-import { ModelUpdateQueryBuilder } from "../query_builder/update_query_builder";
 import {
   parseDatabaseDataIntoModelResponse,
   addDynamicColumnsToModel,
@@ -360,38 +358,6 @@ export abstract class Model extends AbstractModel {
   }
 
   /**
-   * @description Updates records to the database
-   * @param model
-   * @param {Model} modelsqlInstance
-   * @param trx
-   * @returns Update query builder
-   */
-  static update<T extends Model>(
-    this: new () => T | typeof Model,
-    options: BaseModelMethodOptions = {},
-  ): ModelUpdateQueryBuilder<T> {
-    const typeofModel = this as unknown as typeof Model;
-    const modelManager = typeofModel.dispatchModelManager<T>(options);
-    return modelManager.update();
-  }
-
-  /**
-   * @description Gives a Delete query builder sqlInstance
-   * @param model
-   * @param {Model} modelsqlInstance
-   * @param trx
-   * @returns
-   */
-  static deleteQuery<T extends Model>(
-    this: new () => T | typeof Model,
-    options: BaseModelMethodOptions = {},
-  ): ModelDeleteQueryBuilder<T> {
-    const typeofModel = this as unknown as typeof Model;
-    const modelManager = typeofModel.dispatchModelManager<T>(options);
-    return modelManager.deleteQuery();
-  }
-
-  /**
    * @description Deletes a record to the database
    * @param model
    * @param {Model} modelsqlInstance
@@ -531,7 +497,7 @@ export abstract class Model extends AbstractModel {
    * @description Adds a beforeUpdate clause to the model, adding the ability to modify the query before updating the data
    * @param data
    */
-  static beforeUpdate(queryBuilder: ModelUpdateQueryBuilder<any>): void {
+  static beforeUpdate(queryBuilder: ModelQueryBuilder<any>): void {
     queryBuilder;
   }
 
@@ -539,7 +505,7 @@ export abstract class Model extends AbstractModel {
    * @description Adds a beforeDelete clause to the model, adding the ability to modify the query before deleting the data
    * @param data
    */
-  static beforeDelete(queryBuilder: ModelDeleteQueryBuilder<any>): void {
+  static beforeDelete(queryBuilder: ModelQueryBuilder<any>): void {
     queryBuilder;
   }
 

@@ -18,10 +18,17 @@ import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { convertCase } from "../../utils/case_utils";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
 import sqlite3 from "sqlite3";
+import { DeleteOptions, SoftDeleteOptions } from "../query_builder/delete_query_builder_type";
+import { DateTime } from "luxon";
+import deleteTemplate from "../resources/query/DELETE";
+import updateTemplate from "../resources/query/UPDATE";
+import { UpdateOptions } from "../query_builder/update_query_builder_types";
 
 export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
   protected sqLiteConnection: sqlite3.Database;
   protected sqliteModelManagerUtils: SqlModelManagerUtils<T>;
+  protected updateTemplate: ReturnType<typeof updateTemplate>;
+  protected deleteTemplate: ReturnType<typeof deleteTemplate>;
 
   public constructor(
     model: typeof Model,
@@ -34,6 +41,8 @@ export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     super(model, table, logs, sqlDataSource);
     this.sqLiteConnection = sqLiteConnection;
     this.isNestedCondition = isNestedCondition;
+    this.updateTemplate = updateTemplate(sqlDataSource.getDbType(), this.model);
+    this.deleteTemplate = deleteTemplate(table, sqlDataSource.getDbType());
     this.sqliteModelManagerUtils = new SqlModelManagerUtils<T>(
       "sqlite",
       this.sqLiteConnection,
@@ -167,6 +176,114 @@ export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
       return (
         Array.isArray(serializedModels) ? serializedModels : [serializedModels]
       ) as T[];
+    } catch (error) {
+      queryError(query);
+      throw new Error("query failed " + error);
+    }
+  }
+
+  public async update(
+    data: Partial<T>,
+    options?: UpdateOptions,
+  ): Promise<number> {
+    const { ignoreBeforeUpdateHook } = options || {};
+    if (!ignoreBeforeUpdateHook) {
+      this.model.beforeUpdate(this);
+    }
+
+    const columns = Object.keys(data);
+    const values = Object.values(data);
+    this.whereQuery = this.whereTemplate.convertPlaceHolderToValue(
+      this.whereQuery,
+      values.length + 1,
+    );
+    const { query, params } = this.updateTemplate.massiveUpdate(
+      columns,
+      values,
+      this.whereQuery,
+      this.joinQuery,
+    );
+
+    params.push(...this.params);
+
+    log(query, this.logs, params);
+    try {
+      return await new Promise((resolve, reject) => {
+        this.sqLiteConnection.run(query, params, function (this: any, err) {
+          if (err) {
+            reject(new Error(err.message));
+          } else {
+            resolve(this.changes);
+          }
+        });
+      });
+    } catch (error) {
+      queryError(query);
+      throw new Error("query failed " + error);
+    }
+  }
+
+  public async delete(options: DeleteOptions = {}): Promise<number> {
+    const { ignoreBeforeDeleteHook } = options || {};
+    if (!ignoreBeforeDeleteHook) {
+      this.model.beforeDelete(this);
+    }
+
+    this.whereQuery = this.whereTemplate.convertPlaceHolderToValue(
+      this.whereQuery,
+    );
+    const query = this.deleteTemplate.massiveDelete(
+      this.whereQuery,
+      this.joinQuery,
+    );
+
+    log(query, this.logs, this.params);
+    try {
+      return new Promise((resolve, reject) => {
+        this.sqLiteConnection.run(query, this.params, function (this: any, err) {
+          if (err) {
+            reject(new Error(err.message));
+          } else {
+            resolve(this.changes);
+          }
+        });
+      });
+    } catch (error) {
+      queryError(query);
+      throw new Error("query failed " + error);
+    }
+  }
+
+  public async softDelete(options?: SoftDeleteOptions<T>): Promise<number> {
+    const {
+      column = "deletedAt",
+      value = DateTime.local().toISO(),
+      ignoreBeforeDeleteHook = false,
+    } = options || {};
+    if (!ignoreBeforeDeleteHook) {
+      this.model.beforeDelete(this);
+    }
+
+    let { query, params } = this.updateTemplate.massiveUpdate(
+      [column as string],
+      [value],
+      this.whereQuery,
+      this.joinQuery,
+    );
+
+    params = [...params, ...this.params];
+
+    log(query, this.logs, params);
+    try {
+      return new Promise((resolve, reject) => {
+        this.sqLiteConnection.run(query, params, function (this: any, err) {
+          if (err) {
+            reject(new Error(err.message));
+          } else {
+            resolve(this.changes);
+          }
+        });
+      });
     } catch (error) {
       queryError(query);
       throw new Error("query failed " + error);

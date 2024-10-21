@@ -1,6 +1,6 @@
-import { ModelDeleteQueryBuilder } from "../../query_builder/delete_query_builder";
+import { ModelDeleteQueryBuilder } from "../../query_builder/delete_query_builder_type";
 import { QueryBuilder } from "../../query_builder/query_builder";
-import { ModelUpdateQueryBuilder } from "../../query_builder/update_query_builder";
+import { ModelUpdateQueryBuilder } from "../../query_builder/update_query_builder_types";
 import { SqlDataSource } from "../../sql_data_source";
 import { Model, getBaseModelInstance } from "../model";
 import {

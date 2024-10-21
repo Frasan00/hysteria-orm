@@ -18,9 +18,16 @@ import {
 import joinTemplate from "../resources/query/JOIN";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
 import { SqlDataSource } from "../sql_data_source";
+import { DeleteOptions, SoftDeleteOptions } from "../query_builder/delete_query_builder_type";
+import { DateTime } from "luxon";
+import deleteTemplate from "../resources/query/DELETE";
+import updateTemplate from "../resources/query/UPDATE";
+import { UpdateOptions } from "../query_builder/update_query_builder_types";
 
 export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
   protected mysqlConnection: mysql.Connection;
+  protected updateTemplate: ReturnType<typeof updateTemplate>;
+  protected deleteTemplate: ReturnType<typeof deleteTemplate>;
   protected mysqlModelManagerUtils: SqlModelManagerUtils<T>;
 
   public constructor(
@@ -33,6 +40,8 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
   ) {
     super(model, table, logs, sqlDataSource);
     this.mysqlConnection = mysqlConnection;
+    this.updateTemplate = updateTemplate(sqlDataSource.getDbType(), this.model);
+    this.deleteTemplate = deleteTemplate(table, sqlDataSource.getDbType());
     this.isNestedCondition = isNestedCondition;
     this.mysqlModelManagerUtils = new SqlModelManagerUtils<T>(
       "mysql",
@@ -174,6 +183,107 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
       return (
         Array.isArray(serializedModels) ? serializedModels : [serializedModels]
       ) as T[];
+    } catch (error) {
+      queryError(query);
+      throw new Error("query failed " + error);
+    }
+  }
+
+  public async softDelete(options?: SoftDeleteOptions<T>): Promise<number> {
+    const {
+      column = "deletedAt",
+      value = DateTime.local().toISO(),
+      ignoreBeforeDeleteHook = false,
+    } = options || {};
+    if (!ignoreBeforeDeleteHook) {
+      this.model.beforeDelete(this);
+    }
+
+    let { query, params } = this.updateTemplate.massiveUpdate(
+      [column as string],
+      [value],
+      this.whereQuery,
+      this.joinQuery,
+    );
+
+    params = [...params, ...this.params];
+
+    log(query, this.logs, params);
+    try {
+      const rows: any = await this.mysqlConnection.query(query, params);
+      if (!rows[0].affectedRows) {
+        return 0;
+      }
+
+      return rows[0].affectedRows;
+    } catch (error) {
+      queryError(query);
+      throw new Error("query failed " + error);
+    }
+  }
+
+  public async delete(options: DeleteOptions = {}): Promise<number> {
+    const { ignoreBeforeDeleteHook } = options || {};
+    if (!ignoreBeforeDeleteHook) {
+      this.model.beforeDelete(this);
+    }
+
+    this.whereQuery = this.whereTemplate.convertPlaceHolderToValue(
+      this.whereQuery,
+    );
+
+    const query = this.deleteTemplate.massiveDelete(
+      this.whereQuery,
+      this.joinQuery,
+    );
+
+    log(query, this.logs, this.params);
+    try {
+      const rows: any = await this.mysqlConnection.query(query, this.params);
+
+      if (!rows[0].affectedRows) {
+        return 0;
+      }
+
+      return rows[0].affectedRows;
+    } catch (error) {
+      queryError(query);
+      throw new Error("query failed " + error);
+    }
+  }
+
+  public async update(
+    data: Partial<T>,
+    options?: UpdateOptions,
+  ): Promise<number> {
+    const { ignoreBeforeUpdateHook } = options || {};
+    if (!ignoreBeforeUpdateHook) {
+      this.model.beforeUpdate(this);
+    }
+
+    const columns = Object.keys(data);
+    const values = Object.values(data);
+    this.whereQuery = this.whereTemplate.convertPlaceHolderToValue(
+      this.whereQuery,
+    );
+
+    const { query, params } = this.updateTemplate.massiveUpdate(
+      columns,
+      values,
+      this.whereQuery,
+      this.joinQuery,
+    );
+
+    params.push(...this.params);
+
+    log(query, this.logs, params);
+    try {
+      const rows: any = await this.mysqlConnection.query(query, params);
+      if (!rows[0].affectedRows) {
+        return 0;
+      }
+
+      return rows[0].affectedRows;
     } catch (error) {
       queryError(query);
       throw new Error("query failed " + error);

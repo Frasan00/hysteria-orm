@@ -17,8 +17,6 @@ import { SqlDataSource } from "./sql/sql_data_source";
 import { getPrimaryKey } from "./sql/models/model_decorators";
 import { CaseConvention } from "./utils/case_utils";
 import { PaginatedData, PaginationMetadata } from "./sql/pagination";
-import { ModelDeleteQueryBuilder } from "./sql/query_builder/delete_query_builder";
-import { ModelUpdateQueryBuilder } from "./sql/query_builder/update_query_builder";
 import { RedisOptions } from "ioredis";
 import {
   RedisDataSource as Redis,
@@ -32,6 +30,8 @@ import {
   property,
   dynamicProperty,
 } from "./no_sql/mongo/mongo_models/mongo_collection_decorators";
+
+class User extends Model {}
 
 export default {
   // sql
@@ -69,8 +69,6 @@ export {
   DataSourceInput,
   ModelQueryBuilder,
   StandaloneQueryBuilder,
-  ModelDeleteQueryBuilder,
-  ModelUpdateQueryBuilder,
   Migration,
   CaseConvention,
   PaginatedData,
