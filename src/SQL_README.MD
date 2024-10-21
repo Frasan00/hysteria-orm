@@ -440,7 +440,7 @@ const users: User[] = await User.query()
 
 
 // BULK UPDATE
-const models = await User.query()
+await User.query()
     .where("name", "Micheal")
     .update({ name: "Micheal Updated" });
 
