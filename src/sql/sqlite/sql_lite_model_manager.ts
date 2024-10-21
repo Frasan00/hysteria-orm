@@ -391,7 +391,7 @@ export class SqliteModelManager<T extends Model> extends ModelManager<T> {
     }
 
     return new Promise<T>((resolve, reject) => {
-      this.sqLiteConnection.all<T>(query, params, (err, rows) => {
+      this.sqLiteConnection.all(query, params, (err, rows) => {
         if (err) {
           return reject(err);
         }

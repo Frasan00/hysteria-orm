@@ -1,6 +1,3 @@
-import mysql, { createConnection } from "mysql2/promise";
-import pg from "pg";
-import sqlite3 from "sqlite3";
 import { DataSourceInput, DataSourceType, DataSource } from "../data_source";
 import logger, { log } from "../utils/logger";
 import { Model } from "./models/model";
@@ -8,6 +5,9 @@ import { MysqlModelManager } from "./mysql/mysql_model_manager";
 import { PostgresModelManager } from "./postgres/postgres_model_manager";
 import { SqliteModelManager } from "./sqlite/sql_lite_model_manager";
 import { Transaction } from "./transaction";
+import pg from "pg";
+import mysql from "mysql2/promise";
+import sqlite3 from "sqlite3";
 
 type DriverSpecificOptions = {
   mysqlOptions?: mysql.PoolOptions;
@@ -240,7 +240,7 @@ export class SqlDataSource extends DataSource {
     switch (this.type) {
       case "mysql":
       case "mariadb":
-        return await createConnection({
+        return await mysql.createConnection({
           host: this.host,
           port: this.port,
           user: this.username,

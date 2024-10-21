@@ -13,6 +13,15 @@
     "emitDecoratorMetadata": true,
     "declaration": true,
   },
+  "types": [
+    "@types/node",
+    "@types/jest",
+    "@types/pg",
+    "@types/mongodb",
+    "@types/mysql2",
+    "@types/sqlite3",
+    "@types/ioredis",
+  ],
   "include": ["src/**/*.ts", "test/**/*.ts"],
   "exclude": ["node_modules"]
 }
