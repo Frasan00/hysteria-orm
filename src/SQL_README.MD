@@ -39,12 +39,27 @@
 
 ## Prerequisites
 
-- A JavaScript runtime environment (e.g., Node.js).
-- Official types version used for each driver, you must use a driver version that is compatible with those:
-```json
-"@types/node": "^22.2.0",
-"@types/pg": "^8.10.9",
-"@types/sqlite3": "^3.1.11",
+- A JavaScript runtime environment (e.g., Node.js, deno or bun).
+- The driver for you database, supported drivers are:
+```bash
+### Sql
+
+# postgres
+yarn add pg
+
+# mysql or mariadb
+yarn add mysql2
+
+# sqlite
+yarn add sqlite3
+
+### NoSql
+
+# mongo
+yarn add mongodb
+
+# redis
+yarn add ioredis
 ```
 
 ### TypeScript Configuration example
@@ -115,7 +130,7 @@ const mysqlConfig: DataSourceInput = {
 }
 
 // Config can be omitted, in that case envs will be used to enstablish the connection 
-const sql = await SqlDataSource.connect(mysqlConfig, () => console.log("Connected to the database"));
+const sql = await SqlDataSource.connect(mysqlConfig, () => console.log("Connected to the database!"));
 ```
 
 
