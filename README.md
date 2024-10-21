@@ -2,7 +2,7 @@
 
 ## Philosophy
 - Hysteria ORM is an Object-Relational Mapping (ORM) library for TypeScript, designed to simplify interactions between your application and a SQL and NoSql databases.
-- It's partially type safe by design, allowing you to have features like intellisense for you models interactions while maintaining the flexibility of shooting yourself in your foot!
+- It's partially type safe by design, allowing you to have features like intellisense for you models interactions while maintaining the flexibility of shooting yourself in the foot!
 - The main characteristic Is that Models classes refer to the database repository allowing you to interact with It via static methods in a concise and minimal way. While Models instances do not have anything else but what you define as Columns(sql) or Properties(noSql) and are designed to be used directly in you typescript Logic without any overhead.
 
 
