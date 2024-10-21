@@ -598,7 +598,7 @@ export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
   private promisifyQuery<T>(query: string, params: any): Promise<T[]> {
     return new Promise<T[]>((resolve, reject) => {
-      this.sqLiteConnection.all<T>(query, params, (err, result) => {
+      this.sqLiteConnection.all(query, params, (err, result) => {
         if (err) {
           reject(err);
         }
@@ -608,10 +608,10 @@ export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
         }
 
         if (!Array.isArray(result)) {
-          resolve([result]);
+          resolve([result as T]);
         }
 
-        resolve(result);
+        resolve(result as T[]);
       });
     });
   }
