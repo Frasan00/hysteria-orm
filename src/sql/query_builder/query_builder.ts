@@ -99,18 +99,18 @@ export abstract class QueryBuilder<
    */
   public abstract many(options: ManyOptions): Promise<T[]>;
 
-    /**
+  /**
    * @description Updates records in the database.
    * @param data
    * @param trx
    * @returns The number of affected rows.
    */
-    public abstract update(
-      data: Partial<T>,
-      options?: UpdateOptions,
-    ): Promise<number>;
+  public abstract update(
+    data: Partial<T>,
+    options?: UpdateOptions,
+  ): Promise<number>;
 
-      /**
+  /**
    * @description soft Deletes Records from the database.
    * @param options - The options for the soft delete, including the column to soft delete, the value to set the column to, and the transaction to run the query in.
    * @default column - 'deletedAt'

@@ -22,11 +22,11 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  await User.deleteQuery().delete();
+  await User.query().delete();
 });
 
 afterEach(async () => {
-  await User.deleteQuery().delete();
+  await User.query().delete();
 });
 
 test("Create a new user", async () => {
@@ -129,9 +129,9 @@ test("Update a user", async () => {
   expect(updatedUser).not.toBeNull();
   expect(updatedUser?.name).toBe("Eve Updated");
 
-  await User.update()
+  await User.query()
     .where("name", "Eve Updated")
-    .withData({ name: "Eve updated two" });
+    .update({ name: "Eve updated two" });
   const newUpdatedUser = await User.findOneByPrimaryKey(user.id);
   expect(newUpdatedUser?.name).toBe("Eve updated two");
 });
@@ -144,7 +144,7 @@ test("Delete a user", async () => {
     isActive: true,
   });
 
-  await User.deleteQuery().where("name", "Eve updated two").delete();
+  await User.query().where("name", "Eve updated two").delete();
   const updatedUser = await User.query().where("name", "Eve updated two").one();
   expect(updatedUser).toBeNull();
 });
@@ -319,9 +319,9 @@ test("Multiple update", async () => {
     isActive: true,
   });
 
-  const users = await User.update()
+  const users = await User.query()
     .where("name", "Micheal")
-    .withData({ name: "Micheal Updated" });
+    .update({ name: "Micheal Updated" });
 
   expect(users).toBe(2);
 });
@@ -334,7 +334,7 @@ test("massive delete", async () => {
     isActive: true,
   });
 
-  const users = await User.deleteQuery().delete();
+  const users = await User.query().delete();
   expect(users).toBe(1);
   expect(await User.query().getCount()).toBe(0);
 });
@@ -347,7 +347,7 @@ test("massive soft delete", async () => {
     isActive: true,
   });
 
-  const users = await User.deleteQuery().softDelete();
+  const users = await User.query().softDelete();
   expect(users).toBe(1);
   expect(await User.query().getCount({ ignoreHooks: true })).toBe(1);
 });
@@ -374,7 +374,7 @@ test("Ignore hooks", async () => {
     isActive: true,
   });
 
-  await User.deleteQuery().softDelete();
+  await User.query().softDelete();
 
   const user = await User.query().one({ ignoreHooks: ["beforeFetch"] });
   expect(user).not.toBeNull();

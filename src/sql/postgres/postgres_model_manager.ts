@@ -10,8 +10,6 @@ import { log, queryError } from "../../utils/logger";
 import { ModelManager } from "../models/model_manager/model_manager";
 import { PostgresQueryBuilder } from "./postgres_query_builder";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
-import { PostgresUpdateQueryBuilder } from "./postgres_update_query_builder";
-import { PostgresDeleteQueryBuilder } from "./postgres_delete_query_builder";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
 
@@ -313,34 +311,6 @@ export class PostgresModelManager<T extends Model> extends ModelManager<T> {
    */
   public query(): PostgresQueryBuilder<T> {
     return new PostgresQueryBuilder<T>(
-      this.model,
-      this.model.table,
-      this.pgConnection,
-      this.logs,
-      false,
-      this.sqlDataSource,
-    );
-  }
-
-  /**
-   * @description Returns an update query builder.
-   */
-  public update(): PostgresUpdateQueryBuilder<T> {
-    return new PostgresUpdateQueryBuilder<T>(
-      this.model,
-      this.model.table,
-      this.pgConnection,
-      this.logs,
-      false,
-      this.sqlDataSource,
-    );
-  }
-
-  /**
-   * @description Returns a delete query builder.
-   */
-  public deleteQuery(): PostgresDeleteQueryBuilder<T> {
-    return new PostgresDeleteQueryBuilder<T>(
       this.model,
       this.model.table,
       this.pgConnection,

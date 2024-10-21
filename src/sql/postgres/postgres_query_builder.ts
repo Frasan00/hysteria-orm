@@ -20,7 +20,10 @@ import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { convertCase } from "../../utils/case_utils";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
 import { DateTime } from "luxon";
-import { DeleteOptions, SoftDeleteOptions } from "../query_builder/delete_query_builder_type";
+import {
+  DeleteOptions,
+  SoftDeleteOptions,
+} from "../query_builder/delete_query_builder_type";
 import deleteTemplate from "../resources/query/DELETE";
 import updateTemplate from "../resources/query/UPDATE";
 import { UpdateOptions } from "../query_builder/update_query_builder_types";

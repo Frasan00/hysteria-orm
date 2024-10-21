@@ -1,4 +1,4 @@
-import mysql, { Connection } from 'mysql2/promise';
+import mysql from 'mysql2/promise';
 import pg, { Client } from 'pg';
 import * as mongodb from 'mongodb';
 import { MongoClientOptions } from 'mongodb';
@@ -57,6 +57,113 @@ type PaginatedData<T> = {
     data: T[];
 };
 
+declare class Transaction {
+    sqlDataSource: SqlDataSource;
+    sqlConnection: SqlConnectionType;
+    private readonly logs;
+    constructor(sqlDataSource: SqlDataSource, logs?: boolean);
+    startTransaction(): Promise<void>;
+    commit(): Promise<void>;
+    rollback(): Promise<void>;
+    private releaseConnection;
+}
+
+/**
+ * @description Options for the relation
+ * @property {string} softDeleteColumn - The column name for the soft delete column, if set, the relation will only return rows that have not been soft deleted
+ * @property {string} softDeleteType - The type of the soft delete column
+ */
+interface RelationOptions {
+    softDeleteColumn: string;
+    softDeleteType: "date" | "boolean";
+}
+declare enum RelationEnum {
+    hasOne = "hasOne",// One to One without foreign key
+    belongsTo = "belongsTo",// One to One with foreign key
+    hasMany = "hasMany"
+}
+/**
+ * Main Model -> Related Model
+ */
+declare abstract class Relation {
+    abstract type: RelationEnum;
+    model: typeof Model;
+    columnName: string;
+    foreignKey?: string;
+    relatedModel: string;
+    options?: RelationOptions;
+    protected constructor(model: typeof Model, columnName: string, options?: RelationOptions);
+}
+
+declare class BelongsTo extends Relation {
+    type: RelationEnum;
+    foreignKey: string;
+    constructor(relatedModel: typeof Model, columnName: string, foreignKey: string, options?: RelationOptions);
+}
+
+declare class HasMany extends Relation {
+    type: RelationEnum;
+    foreignKey: string;
+    constructor(relatedModel: typeof Model, columnName: string, foreignKey: string, options?: RelationOptions);
+}
+
+declare class HasOne extends Relation {
+    type: RelationEnum;
+    foreignKey: string;
+    constructor(relatedModel: typeof Model, columnName: string, foreignKey: string, options?: RelationOptions);
+}
+
+type ExcludeRelations<T> = {
+    [K in keyof T]: T[K] extends (Model[] | HasMany) | (Model | HasMany) | (Model | BelongsTo) | (Model[] | BelongsTo) | (Model | HasOne) | (Model[] | HasOne) | ((...args: any[]) => any) ? never : K;
+}[keyof T];
+type OnlyRelations<T> = {
+    [K in keyof T]: T[K] extends (Model[] | HasMany) | (Model | HasMany) | (Model | BelongsTo) | (Model[] | BelongsTo) | (Model | HasOne) | (Model[] | HasOne) ? K : never;
+}[keyof T];
+type WhereType<T> = {
+    [K in keyof T]?: string | number | boolean | Date | null;
+};
+type SelectableType<T> = ExcludeRelations<Omit<T, "extraColumns">>;
+type RelationType<T> = OnlyRelations<Omit<T, "extraColumns">>;
+type DynamicColumnType<T> = {
+    [k in keyof T]: T[k] extends (...args: any[]) => any ? k : never;
+}[keyof T];
+type OrderByType = {
+    columns: string[];
+    type: "ASC" | "DESC";
+};
+type UnrestrictedFindOneType<T> = {
+    select?: string[];
+    relations?: RelationType<T>[];
+    ignoreHooks?: FetchHooks$1[];
+    dynamicColumns?: DynamicColumnType<T>;
+    where?: Record<string, any>;
+    useConnection?: SqlDataSource;
+    trx?: Transaction;
+    throwErrorOnNull?: boolean;
+};
+type UnrestrictedFindType<T> = Omit<UnrestrictedFindOneType<T>, "throwErrorOnNull"> & {
+    orderBy?: OrderByType;
+    groupBy?: string[];
+    limit?: number;
+    offset?: number;
+};
+type FindOneType<T> = {
+    select?: SelectableType<T>[];
+    relations?: RelationType<T>[];
+    dynamicColumns?: DynamicColumnType<T>;
+    where?: WhereType<T>;
+    ignoreHooks?: FetchHooks$1[];
+    useConnection?: SqlDataSource;
+    trx?: Transaction;
+    throwErrorOnNull?: boolean;
+};
+type FindType<T> = Omit<FindOneType<T>, "throwErrorOnNull"> & {
+    orderBy?: OrderByType;
+    groupBy?: string[];
+    limit?: number;
+    offset?: number;
+};
+
 declare class SqlModelManagerUtils<T extends Model> {
     private dbType;
     private sqlConnection;
@@ -85,8 +192,42 @@ declare class SqlModelManagerUtils<T extends Model> {
     private getQueryResult;
 }
 
+type DeleteOptions = {
+    ignoreBeforeDeleteHook?: boolean;
+};
+type SoftDeleteOptions<T> = {
+    column?: SelectableType<T>;
+    value?: string | number | boolean;
+    ignoreBeforeDeleteHook?: boolean;
+};
+
+declare const deleteTemplate: (table: string, dbType: SqlDataSourceType) => {
+    delete: (column: string, value: string | number | boolean | Date) => {
+        query: string;
+        params: (string | number | boolean | Date)[];
+    };
+    massiveDelete: (whereClause: string, joinClause?: string) => string;
+};
+
+declare const updateTemplate: (dbType: SqlDataSourceType, typeofModel: typeof Model) => {
+    update: (columns: string[], values: any[], primaryKey?: string, primaryKeyValue?: string | undefined) => {
+        query: string;
+        params: any[];
+    };
+    massiveUpdate: (columns: string[], values: any[], whereClause: string, joinClause?: string) => {
+        query: string;
+        params: any[];
+    };
+};
+
+type UpdateOptions = {
+    ignoreBeforeUpdateHook?: boolean;
+};
+
 declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     protected mysqlConnection: mysql.Connection;
+    protected updateTemplate: ReturnType<typeof updateTemplate>;
+    protected deleteTemplate: ReturnType<typeof deleteTemplate>;
     protected mysqlModelManagerUtils: SqlModelManagerUtils<T>;
     constructor(model: typeof Model, table: string, mysqlConnection: mysql.Connection, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
     one(options?: OneOptions$1): Promise<T | null>;
@@ -94,6 +235,9 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
         ignoreHooks?: OneOptions$1["ignoreHooks"];
     }): Promise<T>;
     many(options?: ManyOptions$1): Promise<T[]>;
+    softDelete(options?: SoftDeleteOptions<T>): Promise<number>;
+    delete(options?: DeleteOptions): Promise<number>;
+    update(data: Partial<T>, options?: UpdateOptions): Promise<number>;
     whereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this;
     orWhereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this;
     andWhereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this;
@@ -124,6 +268,8 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
 declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     protected pgClient: Client;
     protected postgresModelManagerUtils: SqlModelManagerUtils<T>;
+    protected updateTemplate: ReturnType<typeof updateTemplate>;
+    protected deleteTemplate: ReturnType<typeof deleteTemplate>;
     constructor(model: typeof Model, table: string, pgClient: Client, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
     select(...columns: string[]): PostgresQueryBuilder<T>;
     select(...columns: (SelectableType<T> | "*")[]): PostgresQueryBuilder<T>;
@@ -132,6 +278,9 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
         ignoreHooks: OneOptions$1["ignoreHooks"];
     }): Promise<T>;
     many(options?: ManyOptions$1): Promise<T[]>;
+    update(data: Partial<T>, options?: UpdateOptions): Promise<number>;
+    delete(options?: DeleteOptions): Promise<number>;
+    softDelete(options?: SoftDeleteOptions<T>): Promise<number>;
     whereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
     orWhereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
     andWhereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
@@ -174,12 +323,17 @@ declare const selectTemplate: (dbType: SqlDataSourceType, typeofModel: typeof Mo
 declare class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     protected sqLiteConnection: sqlite3.Database;
     protected sqliteModelManagerUtils: SqlModelManagerUtils<T>;
+    protected updateTemplate: ReturnType<typeof updateTemplate>;
+    protected deleteTemplate: ReturnType<typeof deleteTemplate>;
     constructor(model: typeof Model, table: string, sqLiteConnection: sqlite3.Database, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
     one(options?: OneOptions$1): Promise<T | null>;
     oneOrFail(options?: {
         ignoreHooks: OneOptions$1["ignoreHooks"];
     }): Promise<T>;
     many(options?: ManyOptions$1): Promise<T[]>;
+    update(data: Partial<T>, options?: UpdateOptions): Promise<number>;
+    delete(options?: DeleteOptions): Promise<number>;
+    softDelete(options?: SoftDeleteOptions<T>): Promise<number>;
     whereBuilder(cb: (queryBuilder: SqlLiteQueryBuilder<T>) => void): this;
     orWhereBuilder(cb: (queryBuilder: SqlLiteQueryBuilder<T>) => void): this;
     andWhereBuilder(cb: (queryBuilder: SqlLiteQueryBuilder<T>) => void): this;
@@ -569,6 +723,29 @@ declare abstract class QueryBuilder<T extends Model> extends WhereQueryBuilder<T
      */
     abstract many(options: ManyOptions$1): Promise<T[]>;
     /**
+     * @description Updates records in the database.
+     * @param data
+     * @param trx
+     * @returns The number of affected rows.
+     */
+    abstract update(data: Partial<T>, options?: UpdateOptions): Promise<number>;
+    /**
+     * @description soft Deletes Records from the database.
+     * @param options - The options for the soft delete, including the column to soft delete, the value to set the column to, and the transaction to run the query in.
+     * @default column - 'deletedAt'
+     * @default value - The current date and time.
+     * @default ignoreBeforeDeleteHook - false
+     * @default trx - undefined
+     * @returns The number of affected rows.
+     */
+    abstract softDelete(options?: SoftDeleteOptions<T>): Promise<number>;
+    /**
+     * @description Deletes Records from the database for the current query.
+     * @param trx - The transaction to run the query in.
+     * @returns The number of affected rows.
+     */
+    abstract delete(options?: DeleteOptions): Promise<number>;
+    /**
      * @description Executes the query and retrieves the count of results, it ignores all select, group by, order by, limit and offset clauses if they are present.
      * @returns A Promise resolving to the count of results.
      */
@@ -687,188 +864,6 @@ declare abstract class QueryBuilder<T extends Model> extends WhereQueryBuilder<T
     };
     protected groupFooterQuery(): string;
     protected mergeRawPacketIntoModel(model: T, row: any, typeofModel: typeof Model): Promise<void>;
-}
-
-declare class Transaction {
-    sqlDataSource: SqlDataSource;
-    sqlConnection: SqlConnectionType;
-    private readonly logs;
-    constructor(sqlDataSource: SqlDataSource, logs?: boolean);
-    startTransaction(): Promise<void>;
-    commit(): Promise<void>;
-    rollback(): Promise<void>;
-    private releaseConnection;
-}
-
-/**
- * @description Options for the relation
- * @property {string} softDeleteColumn - The column name for the soft delete column, if set, the relation will only return rows that have not been soft deleted
- * @property {string} softDeleteType - The type of the soft delete column
- */
-interface RelationOptions {
-    softDeleteColumn: string;
-    softDeleteType: "date" | "boolean";
-}
-declare enum RelationEnum {
-    hasOne = "hasOne",// One to One without foreign key
-    belongsTo = "belongsTo",// One to One with foreign key
-    hasMany = "hasMany"
-}
-/**
- * Main Model -> Related Model
- */
-declare abstract class Relation {
-    abstract type: RelationEnum;
-    model: typeof Model;
-    columnName: string;
-    foreignKey?: string;
-    relatedModel: string;
-    options?: RelationOptions;
-    protected constructor(model: typeof Model, columnName: string, options?: RelationOptions);
-}
-
-declare class BelongsTo extends Relation {
-    type: RelationEnum;
-    foreignKey: string;
-    constructor(relatedModel: typeof Model, columnName: string, foreignKey: string, options?: RelationOptions);
-}
-
-declare class HasMany extends Relation {
-    type: RelationEnum;
-    foreignKey: string;
-    constructor(relatedModel: typeof Model, columnName: string, foreignKey: string, options?: RelationOptions);
-}
-
-declare class HasOne extends Relation {
-    type: RelationEnum;
-    foreignKey: string;
-    constructor(relatedModel: typeof Model, columnName: string, foreignKey: string, options?: RelationOptions);
-}
-
-type ExcludeRelations<T> = {
-    [K in keyof T]: T[K] extends (Model[] | HasMany) | (Model | HasMany) | (Model | BelongsTo) | (Model[] | BelongsTo) | (Model | HasOne) | (Model[] | HasOne) | ((...args: any[]) => any) ? never : K;
-}[keyof T];
-type OnlyRelations<T> = {
-    [K in keyof T]: T[K] extends (Model[] | HasMany) | (Model | HasMany) | (Model | BelongsTo) | (Model[] | BelongsTo) | (Model | HasOne) | (Model[] | HasOne) ? K : never;
-}[keyof T];
-type WhereType<T> = {
-    [K in keyof T]?: string | number | boolean | Date | null;
-};
-type SelectableType<T> = ExcludeRelations<Omit<T, "extraColumns">>;
-type RelationType<T> = OnlyRelations<Omit<T, "extraColumns">>;
-type DynamicColumnType<T> = {
-    [k in keyof T]: T[k] extends (...args: any[]) => any ? k : never;
-}[keyof T];
-type OrderByType = {
-    columns: string[];
-    type: "ASC" | "DESC";
-};
-type UnrestrictedFindOneType<T> = {
-    select?: string[];
-    relations?: RelationType<T>[];
-    ignoreHooks?: FetchHooks$1[];
-    dynamicColumns?: DynamicColumnType<T>;
-    where?: Record<string, any>;
-    useConnection?: SqlDataSource;
-    trx?: Transaction;
-    throwErrorOnNull?: boolean;
-};
-type UnrestrictedFindType<T> = Omit<UnrestrictedFindOneType<T>, "throwErrorOnNull"> & {
-    orderBy?: OrderByType;
-    groupBy?: string[];
-    limit?: number;
-    offset?: number;
-};
-type FindOneType<T> = {
-    select?: SelectableType<T>[];
-    relations?: RelationType<T>[];
-    dynamicColumns?: DynamicColumnType<T>;
-    where?: WhereType<T>;
-    ignoreHooks?: FetchHooks$1[];
-    useConnection?: SqlDataSource;
-    trx?: Transaction;
-    throwErrorOnNull?: boolean;
-};
-type FindType<T> = Omit<FindOneType<T>, "throwErrorOnNull"> & {
-    orderBy?: OrderByType;
-    groupBy?: string[];
-    limit?: number;
-    offset?: number;
-};
-
-declare const deleteTemplate: (table: string, dbType: SqlDataSourceType) => {
-    delete: (column: string, value: string | number | boolean | Date) => {
-        query: string;
-        params: (string | number | boolean | Date)[];
-    };
-    massiveDelete: (whereClause: string, joinClause?: string) => string;
-};
-
-declare const updateTemplate: (dbType: SqlDataSourceType, typeofModel: typeof Model) => {
-    update: (columns: string[], values: any[], primaryKey?: string, primaryKeyValue?: string | undefined) => {
-        query: string;
-        params: any[];
-    };
-    massiveUpdate: (columns: string[], values: any[], whereClause: string, joinClause?: string) => {
-        query: string;
-        params: any[];
-    };
-};
-
-type DeleteOptions = {
-    ignoreBeforeDeleteHook?: boolean;
-};
-type SoftDeleteOptions<T> = {
-    column?: SelectableType<T>;
-    value?: string | number | boolean;
-    ignoreBeforeDeleteHook?: boolean;
-};
-declare abstract class ModelDeleteQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
-    protected abstract sqlConnection: SqlConnectionType;
-    protected abstract joinQuery: string;
-    protected abstract updateTemplate: ReturnType<typeof updateTemplate>;
-    protected abstract deleteTemplate: ReturnType<typeof deleteTemplate>;
-    protected abstract isNestedCondition: boolean;
-    /**
-     * @description soft Deletes Records from the database.
-     * @param options - The options for the soft delete, including the column to soft delete, the value to set the column to, and the transaction to run the query in.
-     * @default column - 'deletedAt'
-     * @default value - The current date and time.
-     * @default ignoreBeforeDeleteHook - false
-     * @default trx - undefined
-     * @returns The number of affected rows.
-     */
-    abstract softDelete(options?: SoftDeleteOptions<T>): Promise<number>;
-    /**
-     * @description Deletes Records from the database for the current query.
-     * @param trx - The transaction to run the query in.
-     * @returns The number of affected rows.
-     */
-    abstract delete(options?: DeleteOptions): Promise<number>;
-    abstract join(relationTable: string, primaryColumn: string, foreignColumn: string): ModelDeleteQueryBuilder<T>;
-    abstract leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): ModelDeleteQueryBuilder<T>;
-    abstract whereBuilder(cb: (queryBuilder: ModelDeleteQueryBuilder<T>) => void): this;
-    abstract orWhereBuilder(cb: (queryBuilder: ModelDeleteQueryBuilder<T>) => void): this;
-    abstract andWhereBuilder(cb: (queryBuilder: ModelDeleteQueryBuilder<T>) => void): this;
-}
-
-type WithDataOptions = {
-    ignoreBeforeUpdateHook?: boolean;
-};
-declare abstract class ModelUpdateQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
-    protected abstract sqlConnection: SqlConnectionType;
-    protected abstract joinQuery: string;
-    protected abstract updateTemplate: ReturnType<typeof updateTemplate>;
-    protected abstract isNestedCondition: boolean;
-    /**
-     * @description Updates a record in the database.
-     * @param data
-     * @param trx
-     * @returns The number of affected rows.
-     */
-    abstract withData(data: Partial<T>, options?: WithDataOptions): Promise<number>;
-    abstract join(relationTable: string, primaryColumn: string, foreignColumn: string): ModelUpdateQueryBuilder<T>;
-    abstract leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): ModelUpdateQueryBuilder<T>;
 }
 
 type CaseConvention = "camel" | "snake" | "none" | RegExp | ((column: string) => string);
@@ -1018,22 +1013,6 @@ declare abstract class Model extends AbstractModel {
         updateOnConflict?: boolean;
     } & BaseModelMethodOptions$1): Promise<T[]>;
     /**
-     * @description Updates records to the database
-     * @param model
-     * @param {Model} modelsqlInstance
-     * @param trx
-     * @returns Update query builder
-     */
-    static update<T extends Model>(this: new () => T | typeof Model, options?: BaseModelMethodOptions$1): ModelUpdateQueryBuilder<T>;
-    /**
-     * @description Gives a Delete query builder sqlInstance
-     * @param model
-     * @param {Model} modelsqlInstance
-     * @param trx
-     * @returns
-     */
-    static deleteQuery<T extends Model>(this: new () => T | typeof Model, options?: BaseModelMethodOptions$1): ModelDeleteQueryBuilder<T>;
-    /**
      * @description Deletes a record to the database
      * @param model
      * @param {Model} modelsqlInstance
@@ -1084,12 +1063,12 @@ declare abstract class Model extends AbstractModel {
      * @description Adds a beforeUpdate clause to the model, adding the ability to modify the query before updating the data
      * @param data
      */
-    static beforeUpdate(queryBuilder: ModelUpdateQueryBuilder<any>): void;
+    static beforeUpdate(queryBuilder: ModelQueryBuilder<any>): void;
     /**
      * @description Adds a beforeDelete clause to the model, adding the ability to modify the query before deleting the data
      * @param data
      */
-    static beforeDelete(queryBuilder: ModelDeleteQueryBuilder<any>): void;
+    static beforeDelete(queryBuilder: ModelQueryBuilder<any>): void;
     /**
      * @description Adds a afterFetch clause to the model, adding the ability to modify the data after fetching the data
      * @param data
@@ -1172,108 +1151,6 @@ declare abstract class ModelManager$1<T extends Model> {
      * @description Returns a query builder
      */
     abstract query(): QueryBuilder<T>;
-    /**
-     * @description Returns an update query builder
-     */
-    abstract update(): ModelUpdateQueryBuilder<T>;
-    /**
-     * @description Returns a delete query builder
-     */
-    abstract deleteQuery(): ModelDeleteQueryBuilder<T>;
-}
-
-declare class MysqlDeleteQueryBuilder<T extends Model> extends ModelDeleteQueryBuilder<T> {
-    protected sqlConnection: Connection;
-    protected joinQuery: string;
-    protected updateTemplate: ReturnType<typeof updateTemplate>;
-    protected deleteTemplate: ReturnType<typeof deleteTemplate>;
-    protected isNestedCondition: boolean;
-    /**
-     * @description Constructs a Mysql_query_builder instance.
-     * @param model - The model class associated with the table.
-     * @param table - The name of the table.
-     * @param mysqlConnection - The MySQL connection pool.
-     * @param logs - A boolean indicating whether to log queries.
-     * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
-     */
-    constructor(model: typeof Model, table: string, mysql: Connection, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
-    softDelete(options?: SoftDeleteOptions<T>): Promise<number>;
-    delete(options?: DeleteOptions): Promise<number>;
-    /**
-     *
-     * @param relationTable - The name of the related table.
-     * @param primaryColumn - The name of the primary column in the caller table.
-     * @param foreignColumn - The name of the foreign column in the related table.
-     */
-    join(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlDeleteQueryBuilder<T>;
-    /**
-     *
-     * @param relationTable - The name of the related table.
-     * @param primaryColumn - The name of the primary column in the caller table.
-     * @param foreignColumn - The name of the foreign column in the related table.
-     */
-    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlDeleteQueryBuilder<T>;
-    /**
-     * @description Build more complex where conditions.
-     * @param cb
-     */
-    whereBuilder(cb: (queryBuilder: MysqlDeleteQueryBuilder<T>) => void): this;
-    /**
-     * @description Build complex OR-based where conditions.
-     * @param cb Callback function that takes a query builder and adds conditions to it.
-     */
-    orWhereBuilder(cb: (queryBuilder: MysqlDeleteQueryBuilder<T>) => void): this;
-    /**
-     * @description Build complex AND-based where conditions.
-     * @param cb Callback function that takes a query builder and adds conditions to it.
-     */
-    andWhereBuilder(cb: (queryBuilder: MysqlDeleteQueryBuilder<T>) => void): this;
-}
-
-declare class MysqlUpdateQueryBuilder<T extends Model> extends ModelUpdateQueryBuilder<T> {
-    protected sqlConnection: Connection;
-    protected joinQuery: string;
-    protected updateTemplate: ReturnType<typeof updateTemplate>;
-    protected isNestedCondition: boolean;
-    /**
-     * @description Constructs a Mysql_query_builder instance.
-     * @param model - The model class associated with the table.
-     * @param table - The name of the table.
-     * @param mysqlConnection - The MySQL connection pool.
-     * @param logs - A boolean indicating whether to log queries.
-     * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
-     */
-    constructor(model: typeof Model, table: string, mysqlConnection: Connection, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
-    withData(data: Partial<T>, options?: WithDataOptions): Promise<number>;
-    /**
-     *
-     * @param relationTable - The name of the related table.
-     * @param primaryColumn - The name of the primary column in the caller table.
-     * @param foreignColumn - The name of the foreign column in the related table.
-     */
-    join(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlUpdateQueryBuilder<T>;
-    /**
-     *
-     * @param relationTable - The name of the related table.
-     * @param primaryColumn - The name of the primary column in the caller table.
-     * @param foreignColumn - The name of the foreign column in the related table.
-     */
-    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlUpdateQueryBuilder<T>;
-    /**
-     * @description Build more complex where conditions.
-     * @param cb
-     */
-    whereBuilder(cb: (queryBuilder: MysqlUpdateQueryBuilder<T>) => void): this;
-    /**
-     * @description Build complex OR-based where conditions.
-     * @param cb Callback function that takes a query builder and adds conditions to it.
-     */
-    orWhereBuilder(cb: (queryBuilder: MysqlUpdateQueryBuilder<T>) => void): this;
-    /**
-     * @description Build complex AND-based where conditions.
-     * @param cb Callback function that takes a query builder and adds conditions to it.
-     */
-    andWhereBuilder(cb: (queryBuilder: MysqlUpdateQueryBuilder<T>) => void): this;
 }
 
 declare class MysqlModelManager<T extends Model> extends ModelManager$1<T> {
@@ -1345,96 +1222,6 @@ declare class MysqlModelManager<T extends Model> extends ModelManager$1<T> {
      * @returns {Mysql_query_builder<Model>} - Instance of Mysql_query_builder.
      */
     query(): MysqlQueryBuilder<T>;
-    /**
-     * @description Returns an update query builder.
-     */
-    update(): MysqlUpdateQueryBuilder<T>;
-    /**
-     * @description Returns a delete query builder.
-     */
-    deleteQuery(): MysqlDeleteQueryBuilder<T>;
-}
-
-declare class PostgresUpdateQueryBuilder<T extends Model> extends ModelUpdateQueryBuilder<T> {
-    protected sqlConnection: Client;
-    protected joinQuery: string;
-    protected updateTemplate: ReturnType<typeof updateTemplate>;
-    protected isNestedCondition: boolean;
-    /**
-     * @description Constructs a Mysql_query_builder instance.
-     * @param model - The model class associated with the table.
-     * @param table - The name of the table.
-     * @param pgClient - The MySQL connection pool.
-     * @param logs - A boolean indicating whether to log queries.
-     * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
-     */
-    constructor(model: typeof Model, table: string, pgClient: Client, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
-    withData(data: Partial<T>, options?: WithDataOptions): Promise<number>;
-    join(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresUpdateQueryBuilder<T>;
-    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresUpdateQueryBuilder<T>;
-    /**
-     * @description Build more complex where conditions.
-     * @param cb
-     */
-    whereBuilder(cb: (queryBuilder: PostgresUpdateQueryBuilder<T>) => void): this;
-    /**
-     * @description Build complex OR-based where conditions.
-     * @param cb Callback function that takes a query builder and adds conditions to it.
-     */
-    orWhereBuilder(cb: (queryBuilder: PostgresUpdateQueryBuilder<T>) => void): this;
-    /**
-     * @description Build complex AND-based where conditions.
-     * @param cb Callback function that takes a query builder and adds conditions to it.
-     */
-    andWhereBuilder(cb: (queryBuilder: PostgresUpdateQueryBuilder<T>) => void): this;
-}
-
-declare class PostgresDeleteQueryBuilder<T extends Model> extends ModelDeleteQueryBuilder<T> {
-    protected sqlConnection: Client;
-    protected joinQuery: string;
-    protected updateTemplate: ReturnType<typeof updateTemplate>;
-    protected deleteTemplate: ReturnType<typeof deleteTemplate>;
-    protected isNestedCondition: boolean;
-    /**
-     * @description Constructs a Mysql_query_builder instance.
-     * @param model - The model class associated with the table.
-     * @param table - The name of the table.
-     * @param pgClient - The MySQL connection pool.
-     * @param logs - A boolean indicating whether to log queries.
-     * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
-     */
-    constructor(model: typeof Model, table: string, pgClient: Client, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
-    delete(options?: DeleteOptions): Promise<number>;
-    softDelete(options?: SoftDeleteOptions<T>): Promise<number>;
-    /**
-     *
-     * @param relationTable - The name of the related table.
-     * @param primaryColumn - The name of the primary column in the caller table.
-     * @param foreignColumn - The name of the foreign column in the related table.
-     */
-    join(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresDeleteQueryBuilder<T>;
-    /**
-     *
-     * @param relationTable - The name of the related table.
-     * @param primaryColumn - The name of the primary column in the caller table.
-     * @param foreignColumn - The name of the foreign column in the related table.
-     */
-    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresDeleteQueryBuilder<T>;
-    /**
-     * @description Build more complex where conditions.
-     * @param cb
-     */
-    whereBuilder(cb: (queryBuilder: PostgresDeleteQueryBuilder<T>) => void): this;
-    /**
-     * @description Build complex OR-based where conditions.
-     * @param cb Callback function that takes a query builder and adds conditions to it.
-     */
-    orWhereBuilder(cb: (queryBuilder: PostgresDeleteQueryBuilder<T>) => void): this;
-    /**
-     * @description Build complex AND-based where conditions.
-     * @param cb Callback function that takes a query builder and adds conditions to it.
-     */
-    andWhereBuilder(cb: (queryBuilder: PostgresDeleteQueryBuilder<T>) => void): this;
 }
 
 declare class PostgresModelManager<T extends Model> extends ModelManager$1<T> {
@@ -1506,118 +1293,6 @@ declare class PostgresModelManager<T extends Model> extends ModelManager$1<T> {
      * @returns {MysqlQueryBuilder<Model>} - Instance of Mysql_query_builder.
      */
     query(): PostgresQueryBuilder<T>;
-    /**
-     * @description Returns an update query builder.
-     */
-    update(): PostgresUpdateQueryBuilder<T>;
-    /**
-     * @description Returns a delete query builder.
-     */
-    deleteQuery(): PostgresDeleteQueryBuilder<T>;
-}
-
-declare class SqliteUpdateQueryBuilder<T extends Model> extends ModelUpdateQueryBuilder<T> {
-    protected sqlConnection: sqlite3.Database;
-    protected joinQuery: string;
-    protected updateTemplate: ReturnType<typeof updateTemplate>;
-    protected isNestedCondition: boolean;
-    protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
-    /**
-     * @description Constructs a Mysql_query_builder instance.
-     * @param model - The model class associated with the table.
-     * @param table - The name of the table.
-     * @param sqlLiteCOnnection - The MySQL connection pool.
-     * @param logs - A boolean indicating whether to log queries.
-     * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
-     */
-    constructor(model: typeof Model, table: string, sqlLiteConnection: sqlite3.Database, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource, sqlModelManagerUtils: SqlModelManagerUtils<T>);
-    /**
-     * @description Updates a record in the database.
-     * @param data - The data to update.
-     * @param trx - The transaction to run the query in.
-     * @returns The updated records.
-     */
-    withData(data: Partial<T>, options?: WithDataOptions): Promise<number>;
-    /**
-     *
-     * @param relationTable - The name of the related table.
-     * @param primaryColumn - The name of the primary column in the caller table.
-     * @param foreignColumn - The name of the foreign column in the related table.
-     */
-    join(relationTable: string, primaryColumn: string, foreignColumn: string): SqliteUpdateQueryBuilder<T>;
-    /**
-     *
-     * @param relationTable - The name of the related table.
-     * @param primaryColumn - The name of the primary column in the caller table.
-     * @param foreignColumn - The name of the foreign column in the related table.
-     */
-    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): SqliteUpdateQueryBuilder<T>;
-    /**
-     * @description Build more complex where conditions.
-     * @param cb
-     */
-    whereBuilder(cb: (queryBuilder: SqliteUpdateQueryBuilder<T>) => void): this;
-    /**
-     * @description Build complex OR-based where conditions.
-     * @param cb Callback function that takes a query builder and adds conditions to it.
-     */
-    orWhereBuilder(cb: (queryBuilder: SqliteUpdateQueryBuilder<T>) => void): this;
-    /**
-     * @description Build complex AND-based where conditions.
-     * @param cb Callback function that takes a query builder and adds conditions to it.
-     */
-    andWhereBuilder(cb: (queryBuilder: SqliteUpdateQueryBuilder<T>) => void): this;
-    private promisifyQuery;
-}
-
-declare class SqlLiteDeleteQueryBuilder<T extends Model> extends ModelDeleteQueryBuilder<T> {
-    protected sqlConnection: sqlite3.Database;
-    protected joinQuery: string;
-    protected updateTemplate: ReturnType<typeof updateTemplate>;
-    protected deleteTemplate: ReturnType<typeof deleteTemplate>;
-    protected isNestedCondition: boolean;
-    protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
-    /**
-     * @description Constructs a Mysql_query_builder instance.
-     * @param model - The model class associated with the table.
-     * @param table - The name of the table.
-     * @param sqlConnection - The Sqlite connection pool.
-     * @param logs - A boolean indicating whether to log queries.
-     * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
-     */
-    constructor(model: typeof Model, table: string, sqlConnection: sqlite3.Database, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource, sqlModelManagerUtils: SqlModelManagerUtils<T>);
-    delete(options?: DeleteOptions): Promise<number>;
-    softDelete(options?: SoftDeleteOptions<T>): Promise<number>;
-    /**
-     *
-     * @param relationTable - The name of the related table.
-     * @param primaryColumn - The name of the primary column in the caller table.
-     * @param foreignColumn - The name of the foreign column in the related table.
-     */
-    join(relationTable: string, primaryColumn: string, foreignColumn: string): SqlLiteDeleteQueryBuilder<T>;
-    /**
-     *
-     * @param relationTable - The name of the related table.
-     * @param primaryColumn - The name of the primary column in the caller table.
-     * @param foreignColumn - The name of the foreign column in the related table.
-     */
-    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): SqlLiteDeleteQueryBuilder<T>;
-    /**
-     * @description Build more complex where conditions.
-     * @param cb
-     */
-    whereBuilder(cb: (queryBuilder: SqlLiteDeleteQueryBuilder<T>) => void): this;
-    /**
-     * @description Build complex OR-based where conditions.
-     * @param cb Callback function that takes a query builder and adds conditions to it.
-     */
-    orWhereBuilder(cb: (queryBuilder: SqlLiteDeleteQueryBuilder<T>) => void): this;
-    /**
-     * @description Build complex AND-based where conditions.
-     * @param cb Callback function that takes a query builder and adds conditions to it.
-     */
-    andWhereBuilder(cb: (queryBuilder: SqlLiteDeleteQueryBuilder<T>) => void): this;
-    private promisifyQuery;
 }
 
 declare class SqliteModelManager<T extends Model> extends ModelManager$1<T> {
@@ -1689,14 +1364,6 @@ declare class SqliteModelManager<T extends Model> extends ModelManager$1<T> {
      * @returns {MysqlQueryBuilder<Model>} - Instance of Mysql_query_builder.
      */
     query(): SqlLiteQueryBuilder<T>;
-    /**
-     * @description Returns an update query builder.
-     */
-    update(): SqliteUpdateQueryBuilder<T>;
-    /**
-     * @description Returns a delete query builder.
-     */
-    deleteQuery(): SqlLiteDeleteQueryBuilder<T>;
     private promisifyQuery;
 }
 
@@ -2906,4 +2573,4 @@ declare const _default: {
     dynamicColumn: typeof dynamicColumn;
 };
 
-export { type CaseConvention, Collection, type DataSourceInput, Migration, Model, ModelDeleteQueryBuilder, type ModelQueryBuilder, ModelUpdateQueryBuilder, MongoDataSource, type PaginatedData, type PaginationMetadata, RedisDataSource as Redis, type RedisGiveable, type RedisStorable, Relation, SqlDataSource, StandaloneQueryBuilder, belongsTo, column, _default as default, dynamicProperty, getModelColumns, getPrimaryKey, getRelations, hasMany, hasOne, property };
+export { type CaseConvention, Collection, type DataSourceInput, Migration, Model, type ModelQueryBuilder, MongoDataSource, type PaginatedData, type PaginationMetadata, RedisDataSource as Redis, type RedisGiveable, type RedisStorable, Relation, SqlDataSource, StandaloneQueryBuilder, belongsTo, column, _default as default, dynamicProperty, getModelColumns, getPrimaryKey, getRelations, hasMany, hasOne, property };

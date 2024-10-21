@@ -11,8 +11,6 @@ import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
 import sqlite3 from "sqlite3";
 import { SqlLiteQueryBuilder } from "./sql_lite_query_builder";
-import { SqliteUpdateQueryBuilder } from "./sql_lite_update_query_builder";
-import { SqlLiteDeleteQueryBuilder } from "./sql_lite_delete_query_builder";
 
 export class SqliteModelManager<T extends Model> extends ModelManager<T> {
   protected sqLiteConnection: sqlite3.Database;
@@ -302,36 +300,6 @@ export class SqliteModelManager<T extends Model> extends ModelManager<T> {
       this.logs,
       false,
       this.sqlDataSource,
-    );
-  }
-
-  /**
-   * @description Returns an update query builder.
-   */
-  public update(): SqliteUpdateQueryBuilder<T> {
-    return new SqliteUpdateQueryBuilder<T>(
-      this.model,
-      this.model.table,
-      this.sqLiteConnection,
-      this.logs,
-      false,
-      this.sqlDataSource,
-      this.sqlModelManagerUtils,
-    );
-  }
-
-  /**
-   * @description Returns a delete query builder.
-   */
-  public deleteQuery(): SqlLiteDeleteQueryBuilder<T> {
-    return new SqlLiteDeleteQueryBuilder<T>(
-      this.model,
-      this.model.table,
-      this.sqLiteConnection,
-      this.logs,
-      false,
-      this.sqlDataSource,
-      this.sqlModelManagerUtils,
     );
   }
 

@@ -16,8 +16,8 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  await Post.deleteQuery().delete();
-  await User.deleteQuery().delete();
+  await Post.query().delete();
+  await User.query().delete();
 });
 
 test("Create a new user with posts within a transaction", async () => {
@@ -130,12 +130,12 @@ test("Massive update within a transaction", async () => {
 
     expect(users.length).toBe(2);
 
-    await User.update({ trx })
+    await User.query({ trx })
       .whereIn(
         "id",
         users.map((user) => user.id),
       )
-      .withData({ isActive: false });
+      .update({ isActive: false });
 
     await trx.commit();
   } catch (error) {
@@ -166,7 +166,7 @@ test("Delete records within a transaction", async () => {
       throw new Error("User not created");
     }
 
-    await User.deleteQuery({ trx }).where("id", user.id).delete();
+    await User.query({ trx }).where("id", user.id).delete();
 
     await trx.commit();
   } catch (error) {
@@ -196,9 +196,7 @@ test("Update records within a transaction", async () => {
       throw new Error("User not created");
     }
 
-    await User.update({ trx })
-      .where("id", user.id)
-      .withData({ isActive: false });
+    await User.query({ trx }).where("id", user.id).update({ isActive: false });
 
     await trx.commit();
   } catch (error) {

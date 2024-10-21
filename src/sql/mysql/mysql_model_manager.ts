@@ -11,9 +11,7 @@ import {
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
 import { SqlDataSource } from "../sql_data_source";
-import { MysqlDeleteQueryBuilder } from "./mysql_delete_query_builder";
 import { MysqlQueryBuilder } from "./mysql_query_builder";
-import { MysqlUpdateQueryBuilder } from "./mysql_update_query_builder";
 
 export class MysqlModelManager<T extends Model> extends ModelManager<T> {
   protected mysqlConnection: mysql.Connection;
@@ -341,34 +339,6 @@ export class MysqlModelManager<T extends Model> extends ModelManager<T> {
    */
   public query(): MysqlQueryBuilder<T> {
     return new MysqlQueryBuilder<T>(
-      this.model,
-      this.model.table,
-      this.mysqlConnection,
-      this.logs,
-      false,
-      this.sqlDataSource,
-    );
-  }
-
-  /**
-   * @description Returns an update query builder.
-   */
-  public update(): MysqlUpdateQueryBuilder<T> {
-    return new MysqlUpdateQueryBuilder<T>(
-      this.model,
-      this.model.table,
-      this.mysqlConnection,
-      this.logs,
-      false,
-      this.sqlDataSource,
-    );
-  }
-
-  /**
-   * @description Returns a delete query builder.
-   */
-  public deleteQuery(): MysqlDeleteQueryBuilder<T> {
-    return new MysqlDeleteQueryBuilder<T>(
       this.model,
       this.model.table,
       this.mysqlConnection,

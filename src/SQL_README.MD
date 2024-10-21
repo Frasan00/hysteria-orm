@@ -148,7 +148,7 @@ await SqlDataSource.useConnection(
             signupSource: "google",
         } as User);
 
-        const updatedUser = await userRepo.update().withData({
+        const updatedUser = await userRepo.query().update({
             name: "new name",
         });
 
@@ -440,15 +440,15 @@ const users: User[] = await User.query()
 
 
 // BULK UPDATE
-const models = await User.update()
+const models = await User.query()
     .where("name", "Micheal")
-    .withData({ name: "Micheal Updated" });
+    .update({ name: "Micheal Updated" });
 
 // BULK DELETE
-await User.deleteQuery().where("name", "Eve updated two").delete();
+await User.query().where("name", "Eve updated two").delete();
 
 // BULK SOFT DELETE
-await User.deleteQuery().where("name", "Eve updated two").softDelete({
+await User.query().where("name", "Eve updated two").softDelete({
     column: "deletedAt" // default,
     value: string | number | boolean // default Datetime.local().toISO(),
     // trx: optional
@@ -773,7 +773,7 @@ const newUsers = await User.insertMany([
 ]);
 
 // Update all users
-const newJsonUser = await User.update().withData({
+const newJsonUser = await User.query().update({
     json: {
         foo: "bar",
         bar: "foo",
@@ -781,7 +781,7 @@ const newJsonUser = await User.update().withData({
 });
 
 // Delete every instance that contains the properties in the json column
-const deletedUsers = await User.deleteQuery()
+const deletedUsers = await User.query()
     .where("json", {
             foo: "bar",
             bar: "foo",

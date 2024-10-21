@@ -18,7 +18,10 @@ import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { convertCase } from "../../utils/case_utils";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
 import sqlite3 from "sqlite3";
-import { DeleteOptions, SoftDeleteOptions } from "../query_builder/delete_query_builder_type";
+import {
+  DeleteOptions,
+  SoftDeleteOptions,
+} from "../query_builder/delete_query_builder_type";
 import { DateTime } from "luxon";
 import deleteTemplate from "../resources/query/DELETE";
 import updateTemplate from "../resources/query/UPDATE";
@@ -240,13 +243,17 @@ export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     log(query, this.logs, this.params);
     try {
       return new Promise((resolve, reject) => {
-        this.sqLiteConnection.run(query, this.params, function (this: any, err) {
-          if (err) {
-            reject(new Error(err.message));
-          } else {
-            resolve(this.changes);
-          }
-        });
+        this.sqLiteConnection.run(
+          query,
+          this.params,
+          function (this: any, err) {
+            if (err) {
+              reject(new Error(err.message));
+            } else {
+              resolve(this.changes);
+            }
+          },
+        );
       });
     } catch (error) {
       queryError(query);

@@ -18,7 +18,10 @@ import {
 import joinTemplate from "../resources/query/JOIN";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
 import { SqlDataSource } from "../sql_data_source";
-import { DeleteOptions, SoftDeleteOptions } from "../query_builder/delete_query_builder_type";
+import {
+  DeleteOptions,
+  SoftDeleteOptions,
+} from "../query_builder/delete_query_builder_type";
 import { DateTime } from "luxon";
 import deleteTemplate from "../resources/query/DELETE";
 import updateTemplate from "../resources/query/UPDATE";
