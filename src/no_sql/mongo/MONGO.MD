@@ -2,9 +2,7 @@
 
 - Some features are still missing or could not be working as expected.
 - Some of the features that could be not working are:
-  1. Complex where clauses
-  2. Sessions
-  3. Sort by id
+  1. Sessions
 
 - [Setup](#setup)
 - [DataSource Configuration](#datasource-configuration)
