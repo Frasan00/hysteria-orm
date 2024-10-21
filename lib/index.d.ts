@@ -2076,7 +2076,7 @@ declare class MongoQueryBuilder<T extends Collection> {
     count(options?: {
         ignoreHooks?: boolean;
     }): Promise<number>;
-    addDynamicproperty(dynamicPropertys: DynamicColumnType<T>[]): this;
+    addDynamicProperty(dynamicPropertys: DynamicColumnType<T>[]): this;
     /**
      * @description Only fetches the provided fields
      * @param fields - Fields to select
@@ -2188,6 +2188,9 @@ declare class Collection extends AbstractModel {
      * @internal
      */
     static get collection(): string;
+    /**
+     * @description The id of the record, this will be used to interact with the _id field in the database, every model has an id by default
+     */
     id: string;
     /**
      * @description Gets the main query builder for the model
@@ -2195,10 +2198,27 @@ declare class Collection extends AbstractModel {
      * @returns {MongoQueryBuilder<T>}
      */
     static query<T extends Collection>(this: new () => T | typeof Collection, options?: BaseModelMethodOptions): MongoQueryBuilder<T>;
+    /**
+     * @description Finds records in the collection, to use for simple queries
+     * @param this
+     * @param options
+     */
     static find<T extends Collection>(this: new () => T | typeof Collection, options?: MongoFindManyOptions<T> & BaseModelMethodOptions): Promise<T[]>;
     static find<T extends Collection>(this: new () => T | typeof Collection, options?: MongoUnrestrictedFindManyOptions<T> & BaseModelMethodOptions): Promise<T[]>;
+    /**
+     * @description Finds a record in the collection, to use for simple queries
+     * @param this
+     * @param options
+     */
     static findOne<T extends Collection>(this: new () => T | typeof Collection, options: MongoFindOneOptions<T> & BaseModelMethodOptions): Promise<T | null>;
     static findOne<T extends Collection>(this: new () => T | typeof Collection, options: UnrestrictedMongoFindOneOptions<T> & BaseModelMethodOptions): Promise<T | null>;
+    /**
+     * @description Finds a record in the collection, to use for simple queries
+     * @param this
+     * @param options
+     * @throws {Error} - If the record could not be found
+     * @returns {Promise<T>}
+     */
     static findOneOrFail<T extends Collection>(this: new () => T | typeof Collection, options: MongoFindOneOptions<T> & BaseModelMethodOptions): Promise<T>;
     static findOneOrFail<T extends Collection>(this: new () => T | typeof Collection, options: UnrestrictedMongoFindOneOptions<T> & BaseModelMethodOptions): Promise<T>;
     /**
@@ -2319,13 +2339,24 @@ declare class MongoDataSource extends DataSource {
     private mongoClient;
     private static instance;
     private constructor();
+    /**
+     * @description Returns the current connection to the mongo client to execute direct statements using the mongo client from `mongodb` package
+     * @returns {mongodb.MongoClient} - returns the current connection to the mongo database
+     */
     getCurrentConnection(): mongodb.MongoClient;
+    /**
+     * @description Connects to the mongo database using the provided url and options
+     * @param url - url to connect to the mongo database
+     * @param options - options to connect to the mongo database
+     * @param cb - callback function executed after the connection is established
+     * @returns
+     */
     static connect(url?: string, options?: MongoDataSourceInput["mongoOptions"] & {
         logs?: boolean;
     }, cb?: () => void): Promise<MongoDataSource>;
     static getInstance(): MongoDataSource;
     /**
-     * @description Starts a new session and transaction
+     * @description Starts a new session and transaction using the current connection
      * @returns {mongodb.ClientSession}
      */
     startSession(): mongodb.ClientSession;

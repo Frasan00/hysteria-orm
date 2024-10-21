@@ -33,11 +33,11 @@ export class MongoDataSource extends DataSource {
   }
 
   /**
-   * @description Connects to the mongo database using the provided url and options   
+   * @description Connects to the mongo database using the provided url and options
    * @param url - url to connect to the mongo database
    * @param options - options to connect to the mongo database
    * @param cb - callback function executed after the connection is established
-   * @returns 
+   * @returns
    */
   static async connect(
     url?: string,
@@ -65,7 +65,7 @@ export class MongoDataSource extends DataSource {
 
   static getInstance(): MongoDataSource {
     if (!MongoDataSource.instance) {
-      throw new Error("sql database connection not established");
+      throw new Error("mongo database connection not established");
     }
 
     return MongoDataSource.instance;

@@ -23,7 +23,7 @@ describe("TestModel", () => {
 
   beforeAll(async () => {
     mongoDataSource = await MongoDataSource.connect(
-      "mongodb://root:root@localhost:27017",
+      "mongodb://root:root@localhost:27017/?replicaSet=rs0",
       {},
     );
   });

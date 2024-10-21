@@ -39,6 +39,7 @@ await mongoDataSource.useConnection({
 
 ### Session
 - Like the sql databases, you can use the session to execute rollbackable transactions.
+- IMPORTANT: Mongo sessions can only be used with replica sets!
 ```typescript
 const session = await mongoDataSource.startSession();
 try {

@@ -165,6 +165,7 @@ export class MongoQueryBuilder<T extends Collection> {
       },
       {
         $set: modelData,
+        session: this.session,
       },
     );
 
@@ -199,7 +200,9 @@ export class MongoQueryBuilder<T extends Collection> {
       this.model.beforeDelete(this);
     }
 
-    await this.collection.deleteMany(this.whereObject);
+    await this.collection.deleteMany(this.whereObject, {
+      session: this.session,
+    });
   }
 
   /**
@@ -211,10 +214,12 @@ export class MongoQueryBuilder<T extends Collection> {
       this.model.beforeFetch(this);
     }
 
-    return this.collection.countDocuments(this.whereObject);
+    return this.collection.countDocuments(this.whereObject, {
+      session: this.session,
+    });
   }
 
-  addDynamicproperty(dynamicPropertys: DynamicColumnType<T>[]): this {
+  addDynamicProperty(dynamicPropertys: DynamicColumnType<T>[]): this {
     this.dynamicPropertys = dynamicPropertys as string[];
     return this;
   }
@@ -234,6 +239,7 @@ export class MongoQueryBuilder<T extends Collection> {
       },
       {} as Record<string, 1>,
     );
+
     return this;
   }
 

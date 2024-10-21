@@ -70,8 +70,8 @@ export class Collection extends AbstractModel {
 
   /**
    * @description Finds records in the collection, to use for simple queries
-   * @param this 
-   * @param options 
+   * @param this
+   * @param options
    */
   static async find<T extends Collection>(
     this: new () => T | typeof Collection,
@@ -96,8 +96,8 @@ export class Collection extends AbstractModel {
 
   /**
    * @description Finds a record in the collection, to use for simple queries
-   * @param this 
-   * @param options 
+   * @param this
+   * @param options
    */
   static async findOne<T extends Collection>(
     this: new () => T | typeof Collection,
