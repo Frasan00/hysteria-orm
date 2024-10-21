@@ -48,6 +48,9 @@ export class Collection extends AbstractModel {
     return collectionMap.get(this)!;
   }
 
+  /**
+   * @description The id of the record, this will be used to interact with the _id field in the database, every model has an id by default
+   */
   @property()
   declare id: string;
 
@@ -65,6 +68,11 @@ export class Collection extends AbstractModel {
     return modelManager.query();
   }
 
+  /**
+   * @description Finds records in the collection, to use for simple queries
+   * @param this 
+   * @param options 
+   */
   static async find<T extends Collection>(
     this: new () => T | typeof Collection,
     options?: MongoFindManyOptions<T> & BaseModelMethodOptions,
@@ -86,6 +94,11 @@ export class Collection extends AbstractModel {
     return await modelManager.find(options);
   }
 
+  /**
+   * @description Finds a record in the collection, to use for simple queries
+   * @param this 
+   * @param options 
+   */
   static async findOne<T extends Collection>(
     this: new () => T | typeof Collection,
     options: MongoFindOneOptions<T> & BaseModelMethodOptions,
@@ -107,6 +120,13 @@ export class Collection extends AbstractModel {
     return await modelManager.findOne(options);
   }
 
+  /**
+   * @description Finds a record in the collection, to use for simple queries
+   * @param this
+   * @param options
+   * @throws {Error} - If the record could not be found
+   * @returns {Promise<T>}
+   */
   static async findOneOrFail<T extends Collection>(
     this: new () => T | typeof Collection,
     options: MongoFindOneOptions<T> & BaseModelMethodOptions,

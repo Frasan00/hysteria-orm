@@ -24,10 +24,21 @@ export class MongoDataSource extends DataSource {
     this.mongoClient = mongoClient;
   }
 
+  /**
+   * @description Returns the current connection to the mongo client to execute direct statements using the mongo client from `mongodb` package
+   * @returns {mongodb.MongoClient} - returns the current connection to the mongo database
+   */
   getCurrentConnection(): mongodb.MongoClient {
     return this.mongoClient;
   }
 
+  /**
+   * @description Connects to the mongo database using the provided url and options   
+   * @param url - url to connect to the mongo database
+   * @param options - options to connect to the mongo database
+   * @param cb - callback function executed after the connection is established
+   * @returns 
+   */
   static async connect(
     url?: string,
     options?: MongoDataSourceInput["mongoOptions"] & { logs?: boolean },
@@ -61,7 +72,7 @@ export class MongoDataSource extends DataSource {
   }
 
   /**
-   * @description Starts a new session and transaction
+   * @description Starts a new session and transaction using the current connection
    * @returns {mongodb.ClientSession}
    */
   startSession(): mongodb.ClientSession {
@@ -97,7 +108,7 @@ export class MongoDataSource extends DataSource {
       connectionDetails.url,
       mongoClient,
     );
-    const result = await cb(mongoDataSource);
+    await cb(mongoDataSource);
     await mongoClient.close();
   }
 
