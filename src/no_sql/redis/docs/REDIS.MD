@@ -70,19 +70,19 @@ const value = await Redis.get<string>("key"); // string
 const nullableValue = await Redis.get<string | null>("key"); // string | null
 
 // Object
-Redis.set("key", { key: "value" }, 1000);
+await Redis.set("key", { key: "value" }, 1000);
 const objectValue = await Redis.get<{ key: string }>("key");
 
 // Number
-Redis.set("key", 1, 1000);
+await Redis.set("key", 1, 1000);
 const numberValue = await Redis.get<number>("key");
 
 // Booleam
-Redis.set("key", true, 1000);
+await Redis.set("key", true, 1000);
 const booleanValue = await Redis.get<boolean>("key");
 
 // Array
-Redis.set("key", [1, 2, 3], 1000);
+await Redis.set("key", [1, 2, 3], 1000);
 const arrayValue = await Redis.get<number[]>("key");
 ```
 
@@ -93,12 +93,12 @@ const arrayValue = await Redis.get<number[]>("key");
 ```typescript
 import { Redis } from "hysteria-orm";
 
-Redis.set("key", Buffer.from("value"), 1000);
+await Redis.set("key", Buffer.from("value"), 1000);
 const bufferValue = await Redis.getBuffer("key");
 ```
 
 ## Base Features
-- You can use all ioredis features using getRawConnection method
+- You can use all `ioredis` features using getRawConnection method
 ```typescript
 import { Redis } from "hysteria-orm";
 
