@@ -13,10 +13,35 @@
     yarn add hysteria-orm
 ```
 
+## Prerequisites
+
+- A JavaScript runtime environment (e.g., Node.js, deno or bun).
+- The driver for you database, supported drivers are:
+```bash
+### Sql
+
+# postgres
+yarn add pg
+
+# mysql or mariadb
+yarn add mysql2
+
+# sqlite
+yarn add sqlite3
+
+### NoSql
+
+# mongo
+yarn add mongodb
+
+# redis
+yarn add ioredis
+```
+
 ## Supported Databases
 
 ### Sql
-[Documentation](src/SQL_README.MD)
+[Documentation For Sql Databases](src/sql/docs/SQL_README.MD)
 - Sql supported databases are
 1) Mysql
 2) MariaDB
@@ -25,7 +50,31 @@
 
 ### NoSQl
 - [Redis](src/no_sql/redis/docs/REDIS.MD)
-- [Mongo](src/no_sql/mongo/MONGO.MD)
+- [Mongo](src/no_sql/mongo/docs/MONGO.MD)
+
+### TypeScript Configuration example
+
+```json 
+{
+  "compilerOptions": {
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "module": "commonjs",
+    "outDir": "lib",
+    "rootDirs": ["src", "test"],
+    "skipLibCheck": true,
+    "strict": true,
+    "target": "ES2020",
+    "moduleResolution": "node",
+    "declaration": true,
+    // Must set decorators support
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts"],
+  "exclude": ["node_modules"]
+}
+```
 
 ## Setup Example
 - Docker compose example with the database versions used in the development
