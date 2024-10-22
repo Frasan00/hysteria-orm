@@ -31,8 +31,6 @@ import {
   dynamicProperty,
 } from "./no_sql/mongo/mongo_models/mongo_collection_decorators";
 
-class User extends Model {}
-
 export default {
   // sql
   Model,
