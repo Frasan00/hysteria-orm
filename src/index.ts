@@ -29,6 +29,8 @@ import { StandaloneQueryBuilder } from "./sql/query_builder/standalone_sql_query
 import {
   property,
   dynamicProperty,
+  getMongoDynamicProperties,
+  getCollectionProperties,
 } from "./no_sql/mongo/mongo_models/mongo_collection_decorators";
 
 export default {
@@ -86,4 +88,6 @@ export {
   Collection,
   property,
   dynamicProperty,
+  getMongoDynamicProperties,
+  getCollectionProperties,
 };
