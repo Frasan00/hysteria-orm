@@ -4,7 +4,7 @@ import { Model } from "./models/model";
 import { MysqlModelManager } from "./mysql/mysql_model_manager";
 import { PostgresModelManager } from "./postgres/postgres_model_manager";
 import { SqliteModelManager } from "./sqlite/sql_lite_model_manager";
-import { Transaction } from "./transaction";
+import { Transaction } from "./transactions/transaction";
 import pg from "pg";
 import mysql from "mysql2/promise";
 import sqlite3 from "sqlite3";

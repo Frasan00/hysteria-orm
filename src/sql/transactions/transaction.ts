@@ -1,23 +1,23 @@
 import { Connection } from "mysql2/promise";
-import { SqlConnectionType, SqlDataSource } from "./sql_data_source";
+import { SqlConnectionType, SqlDataSource } from "../sql_data_source";
 import {
   BEGIN_TRANSACTION,
   COMMIT_TRANSACTION,
   ROLLBACK_TRANSACTION,
-} from "./resources/query/TRANSACTION";
+} from "../resources/query/TRANSACTION";
 import { Client } from "pg";
 import { Database } from "sqlite3";
-import { log } from "../utils/logger";
+import { log } from "../../utils/logger";
 
 export class Transaction {
   public sqlDataSource: SqlDataSource;
   public sqlConnection: SqlConnectionType;
   private readonly logs: boolean;
 
-  constructor(sqlDataSource: SqlDataSource, logs: boolean = false) {
+  constructor(sqlDataSource: SqlDataSource, logs?: boolean) {
     this.sqlDataSource = sqlDataSource;
     this.sqlConnection = this.sqlDataSource.getCurrentConnection();
-    this.logs = logs;
+    this.logs = logs || this.sqlDataSource.logs || false;
   }
 
   public async startTransaction(): Promise<void> {

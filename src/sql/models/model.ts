@@ -17,7 +17,7 @@ import {
   SelectableType,
   DynamicColumnType,
 } from "./model_manager/model_manager_types";
-import { Transaction } from "../transaction";
+import { Transaction } from "../transactions/transaction";
 import { AbstractModel } from "../../abstract_model";
 
 export type BaseModelMethodOptions = {
@@ -85,8 +85,6 @@ export abstract class Model extends AbstractModel {
 
   /**
    * @description Gives a query sqlInstance for the given model
-   * @param model
-   * @returns {ModelQueryBuilder<T>}
    */
   static query<T extends Model>(
     this: new () => T | typeof Model,
@@ -99,10 +97,7 @@ export abstract class Model extends AbstractModel {
 
   /**
    * @description Finds the first record in the database
-   * @param model
-   * @param {FindType} options
    * @deprecated Used only for debugging purposes, use findOne or query instead
-   * @returns {Promise<T[]>}
    */
   static async first<T extends Model>(
     this: new () => T | typeof Model,
@@ -110,49 +105,40 @@ export abstract class Model extends AbstractModel {
   ): Promise<T | null> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
-    return await modelManager.query().one(options);
+    return modelManager.query().one(options);
   }
 
   /**
    * @description Finds records for the given model
-   * @param model
-   * @param {FindType} options
-   * @returns {Promise<T[]>}
    */
-  static find<T extends Model>(
+  static async find<T extends Model>(
     this: new () => T | typeof Model,
-    options?: FindType<T> | UnrestrictedFindType<T>,
+    findOptions?: FindType<T> | UnrestrictedFindType<T>,
+    options: BaseModelMethodOptions = {},
   ): Promise<T[]> {
     const typeofModel = this as unknown as typeof Model;
-    const modelManager = typeofModel.dispatchModelManager<T>({
-      trx: options?.trx,
-      useConnection: options?.useConnection,
-    } as BaseModelMethodOptions);
-    return modelManager.find(options);
+    const modelManager = typeofModel.dispatchModelManager<T>(options);
+    return modelManager.find(findOptions);
   }
 
   /**
    * @description Finds a record for the given model
-   * @param model
-   * @param {FindOneType} options
-   * @returns {Promise<T | null>}
    */
-  static findOne<T extends Model>(
+  static async findOne<T extends Model>(
     this: new () => T | typeof Model,
-    options: FindOneType<T> | UnrestrictedFindOneType<T>,
+    findOneOptions: (FindOneType<T> | UnrestrictedFindOneType<T>) &
+      BaseModelMethodOptions,
+    options: BaseModelMethodOptions = {},
   ): Promise<T | null> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
-    return modelManager.findOne(options);
+    return modelManager.findOne(findOneOptions);
   }
 
   /**
    * @description Finds a record for the given model for the given id, "id" must be set in the model in order for it to work
-   * @param model
-   * @param {number | string} id
-   * @returns {Promise<T | null>}
    */
-  static findOneByPrimaryKey<T extends Model>(
+  static async findOneByPrimaryKey<T extends Model>(
     this: new () => T | typeof Model,
     value: string | number | boolean,
     options: { throwErrorOnNull: boolean } & BaseModelMethodOptions = {
@@ -166,33 +152,23 @@ export abstract class Model extends AbstractModel {
 
   /**
    * @description Refreshes a model from the database, the model must have a primary key defined
-   * @param model
    */
-  static refresh<T extends Model>(
+  static async refresh<T extends Model>(
     this: new () => T | typeof Model,
     model: T,
-    options: { throwErrorOnNull: boolean } & BaseModelMethodOptions = {
-      throwErrorOnNull: false,
-    },
+    options: BaseModelMethodOptions = {},
   ): Promise<T | null> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
     const primaryKey = typeofModel.primaryKey as keyof T;
     const primaryKeyValue = model[primaryKey];
-    return modelManager.findOneByPrimaryKey(
-      primaryKeyValue as string,
-      options.throwErrorOnNull,
-    );
+    return modelManager.findOneByPrimaryKey(primaryKeyValue as string);
   }
 
   /**
    * @description Saves a new record to the database
-   * @param model
-   * @param {Model} modelData
-   * @param trx
-   * @returns {Promise<T | null>}
    */
-  static insert<T extends Model>(
+  static async insert<T extends Model>(
     this: new () => T | typeof Model,
     modelData: Partial<T>,
     options: BaseModelMethodOptions = {},
@@ -205,12 +181,8 @@ export abstract class Model extends AbstractModel {
   /**
    * @description Saves multiple records to the database
    * @description WHile using mysql, it will return records only if the primary key is auto incrementing integer, else it will always return []
-   * @param model
-   * @param {Model} modelsData
-   * @param trx
-   * @returns {Promise<T[]>}
    */
-  static insertMany<T extends Model>(
+  static async insertMany<T extends Model>(
     this: new () => T | typeof Model,
     modelsData: Partial<T>[],
     options: BaseModelMethodOptions = {},
@@ -222,12 +194,8 @@ export abstract class Model extends AbstractModel {
 
   /**
    * @description Updates a record to the database
-   * @param model
-   * @param {Model} modelsqlInstance
-   * @param trx
-   * @returns
    */
-  static updateRecord<T extends Model>(
+  static async updateRecord<T extends Model>(
     this: new () => T | typeof Model,
     modelsqlInstance: T,
     options: BaseModelMethodOptions = {},
@@ -239,9 +207,6 @@ export abstract class Model extends AbstractModel {
 
   /**
    * @description Finds the first record or creates a new one if it doesn't exist
-   * @param model
-   * @param {Partial<T>} searchCriteria
-   * @param {Partial<T>} createData
    */
   static async firstOrCreate<T extends Model>(
     this: new () => T | typeof Model,
@@ -264,9 +229,6 @@ export abstract class Model extends AbstractModel {
 
   /**
    * @description Updates or creates a new record
-   * @param {Partial<T>} searchCriteria
-   * @param {Partial<T>} data
-   * @param options - The options to update the record on conflict, default is true
    */
   static async upsert<T extends Model>(
     this: new () => T | typeof Model,
@@ -298,10 +260,6 @@ export abstract class Model extends AbstractModel {
 
   /**
    * @description Updates or creates multiple records
-   * @param {Partial<T>} searchCriteria
-   * @param {Partial<T>} data
-   * @param options - The options to update the record on conflict, default is true
-   * @returns - The updated or created records
    */
   static async upsertMany<T extends Model>(
     this: new () => T | typeof Model,
@@ -359,12 +317,8 @@ export abstract class Model extends AbstractModel {
 
   /**
    * @description Deletes a record to the database
-   * @param model
-   * @param {Model} modelsqlInstance
-   * @param trx
-   * @returns
    */
-  static deleteRecord<T extends Model>(
+  static async deleteRecord<T extends Model>(
     this: new () => T | typeof Model,
     modelsqlInstance: T,
     options: BaseModelMethodOptions = {},
@@ -376,11 +330,6 @@ export abstract class Model extends AbstractModel {
 
   /**
    * @description Soft Deletes a record to the database
-   * @param model
-   * @param {Model} modelsqlInstance
-   * @param options - The options to soft delete the record, column and value - Default is 'deletedAt' for column and the current date and time for value, string is always counted as a Date stringified as new Date().toString()
-   * @param trx
-   * @returns
    */
   static async softDelete<T extends Model>(
     this: new () => T | typeof Model,
@@ -419,10 +368,6 @@ export abstract class Model extends AbstractModel {
   /**
    * @description Adds dynamic columns to the model that are not defined in the Table and are defined in the model
    * @description It does not support custom connection or transaction
-   * @param model
-   * @param data
-   * @param dynamicColumns
-   * @returns
    */
   static async addDynamicColumns<T extends Model>(
     this: new () => T | typeof Model,
@@ -466,9 +411,6 @@ export abstract class Model extends AbstractModel {
 
   /**
    * @description Merges the provided data with the sqlInstance
-   * @param sqlInstance
-   * @param data
-   * @returns {void}
    */
   static combineProps<T extends Model>(sqlInstance: T, data: Partial<T>): void {
     for (const key in data) {
@@ -478,7 +420,6 @@ export abstract class Model extends AbstractModel {
 
   /**
    * @description Adds a beforeFetch clause to the model, adding the ability to modify the query before fetching the data
-   * @param queryBuilder
    */
   static beforeFetch(queryBuilder: ModelQueryBuilder<any>): void {
     queryBuilder;
@@ -486,8 +427,6 @@ export abstract class Model extends AbstractModel {
 
   /**
    * @description Adds a beforeInsert clause to the model, adding the ability to modify the data after fetching the data
-   * @param data
-   * @returns {T}
    */
   static beforeInsert(data: any): void {
     return data;
@@ -495,7 +434,6 @@ export abstract class Model extends AbstractModel {
 
   /**
    * @description Adds a beforeUpdate clause to the model, adding the ability to modify the query before updating the data
-   * @param data
    */
   static beforeUpdate(queryBuilder: ModelQueryBuilder<any>): void {
     queryBuilder;
@@ -503,7 +441,6 @@ export abstract class Model extends AbstractModel {
 
   /**
    * @description Adds a beforeDelete clause to the model, adding the ability to modify the query before deleting the data
-   * @param data
    */
   static beforeDelete(queryBuilder: ModelQueryBuilder<any>): void {
     queryBuilder;
@@ -511,8 +448,6 @@ export abstract class Model extends AbstractModel {
 
   /**
    * @description Adds a afterFetch clause to the model, adding the ability to modify the data after fetching the data
-   * @param data
-   * @returns {T}
    */
   static async afterFetch(data: Model[]): Promise<Model[]> {
     return data;
@@ -522,7 +457,6 @@ export abstract class Model extends AbstractModel {
    * @description Establishes a connection to the database instantiated from the SqlDataSource.connect method, this is done automatically when using the static methods
    * @description This method is meant to be used only if you want to establish sql sqlInstance of the model directly
    * @internal
-   * @returns {void}
    */
   private static establishConnection(): void {
     const sql = SqlDataSource.getInstance();
@@ -537,21 +471,18 @@ export abstract class Model extends AbstractModel {
 
   /**
    * @description Gives the correct model manager with the correct connection based on the options provided
-   * @param this
-   * @param options - The options to get the model manager
-   * @returns
    */
   private static dispatchModelManager<T extends Model>(
     this: typeof Model,
-    options: BaseModelMethodOptions,
+    options?: BaseModelMethodOptions,
   ): ModelManager<T> {
-    if (options.useConnection) {
+    if (options?.useConnection) {
       return options.useConnection.getModelManager<T>(
         this as unknown as typeof Model,
       );
     }
 
-    if (options.trx) {
+    if (options?.trx) {
       return options.trx.sqlDataSource.getModelManager<T>(
         this as unknown as typeof Model,
       );

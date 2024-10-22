@@ -35,7 +35,7 @@ declare abstract class DataSource {
     protected password: string;
     protected database: string;
     protected url: string;
-    protected logs: boolean;
+    logs: boolean;
     protected constructor(input?: DataSourceInput);
     protected handleMongoSource(url?: string): void;
     protected handleSqlSource(input?: DataSourceInput): void;
@@ -137,8 +137,6 @@ type UnrestrictedFindOneType<T> = {
     ignoreHooks?: FetchHooks$1[];
     dynamicColumns?: DynamicColumnType<T>;
     where?: Record<string, any>;
-    useConnection?: SqlDataSource;
-    trx?: Transaction;
     throwErrorOnNull?: boolean;
 };
 type UnrestrictedFindType<T> = Omit<UnrestrictedFindOneType<T>, "throwErrorOnNull"> & {
@@ -919,114 +917,66 @@ declare abstract class Model extends AbstractModel {
     constructor();
     /**
      * @description Gives a query sqlInstance for the given model
-     * @param model
-     * @returns {ModelQueryBuilder<T>}
      */
     static query<T extends Model>(this: new () => T | typeof Model, options?: BaseModelMethodOptions$1): ModelQueryBuilder<T>;
     /**
      * @description Finds the first record in the database
-     * @param model
-     * @param {FindType} options
      * @deprecated Used only for debugging purposes, use findOne or query instead
-     * @returns {Promise<T[]>}
      */
     static first<T extends Model>(this: new () => T | typeof Model, options?: OneOptions$1 & BaseModelMethodOptions$1): Promise<T | null>;
     /**
      * @description Finds records for the given model
-     * @param model
-     * @param {FindType} options
-     * @returns {Promise<T[]>}
      */
-    static find<T extends Model>(this: new () => T | typeof Model, options?: FindType<T> | UnrestrictedFindType<T>): Promise<T[]>;
+    static find<T extends Model>(this: new () => T | typeof Model, findOptions?: FindType<T> | UnrestrictedFindType<T>, options?: BaseModelMethodOptions$1): Promise<T[]>;
     /**
      * @description Finds a record for the given model
-     * @param model
-     * @param {FindOneType} options
-     * @returns {Promise<T | null>}
      */
-    static findOne<T extends Model>(this: new () => T | typeof Model, options: FindOneType<T> | UnrestrictedFindOneType<T>): Promise<T | null>;
+    static findOne<T extends Model>(this: new () => T | typeof Model, findOneOptions: (FindOneType<T> | UnrestrictedFindOneType<T>) & BaseModelMethodOptions$1, options?: BaseModelMethodOptions$1): Promise<T | null>;
     /**
      * @description Finds a record for the given model for the given id, "id" must be set in the model in order for it to work
-     * @param model
-     * @param {number | string} id
-     * @returns {Promise<T | null>}
      */
     static findOneByPrimaryKey<T extends Model>(this: new () => T | typeof Model, value: string | number | boolean, options?: {
         throwErrorOnNull: boolean;
     } & BaseModelMethodOptions$1): Promise<T | null>;
     /**
      * @description Refreshes a model from the database, the model must have a primary key defined
-     * @param model
      */
-    static refresh<T extends Model>(this: new () => T | typeof Model, model: T, options?: {
-        throwErrorOnNull: boolean;
-    } & BaseModelMethodOptions$1): Promise<T | null>;
+    static refresh<T extends Model>(this: new () => T | typeof Model, model: T, options?: BaseModelMethodOptions$1): Promise<T | null>;
     /**
      * @description Saves a new record to the database
-     * @param model
-     * @param {Model} modelData
-     * @param trx
-     * @returns {Promise<T | null>}
      */
     static insert<T extends Model>(this: new () => T | typeof Model, modelData: Partial<T>, options?: BaseModelMethodOptions$1): Promise<T | null>;
     /**
      * @description Saves multiple records to the database
      * @description WHile using mysql, it will return records only if the primary key is auto incrementing integer, else it will always return []
-     * @param model
-     * @param {Model} modelsData
-     * @param trx
-     * @returns {Promise<T[]>}
      */
     static insertMany<T extends Model>(this: new () => T | typeof Model, modelsData: Partial<T>[], options?: BaseModelMethodOptions$1): Promise<T[]>;
     /**
      * @description Updates a record to the database
-     * @param model
-     * @param {Model} modelsqlInstance
-     * @param trx
-     * @returns
      */
     static updateRecord<T extends Model>(this: new () => T | typeof Model, modelsqlInstance: T, options?: BaseModelMethodOptions$1): Promise<T | null>;
     /**
      * @description Finds the first record or creates a new one if it doesn't exist
-     * @param model
-     * @param {Partial<T>} searchCriteria
-     * @param {Partial<T>} createData
      */
     static firstOrCreate<T extends Model>(this: new () => T | typeof Model, searchCriteria: Partial<T>, createData: Partial<T>, options?: BaseModelMethodOptions$1): Promise<T>;
     /**
      * @description Updates or creates a new record
-     * @param {Partial<T>} searchCriteria
-     * @param {Partial<T>} data
-     * @param options - The options to update the record on conflict, default is true
      */
     static upsert<T extends Model>(this: new () => T | typeof Model, searchCriteria: Partial<T>, data: Partial<T>, options?: {
         updateOnConflict?: boolean;
     } & BaseModelMethodOptions$1): Promise<T>;
     /**
      * @description Updates or creates multiple records
-     * @param {Partial<T>} searchCriteria
-     * @param {Partial<T>} data
-     * @param options - The options to update the record on conflict, default is true
-     * @returns - The updated or created records
      */
     static upsertMany<T extends Model>(this: new () => T | typeof Model, searchCriteria: SelectableType<T>[], data: Partial<T>[], options?: {
         updateOnConflict?: boolean;
     } & BaseModelMethodOptions$1): Promise<T[]>;
     /**
      * @description Deletes a record to the database
-     * @param model
-     * @param {Model} modelsqlInstance
-     * @param trx
-     * @returns
      */
     static deleteRecord<T extends Model>(this: new () => T | typeof Model, modelsqlInstance: T, options?: BaseModelMethodOptions$1): Promise<T | null>;
     /**
      * @description Soft Deletes a record to the database
-     * @param model
-     * @param {Model} modelsqlInstance
-     * @param options - The options to soft delete the record, column and value - Default is 'deletedAt' for column and the current date and time for value, string is always counted as a Date stringified as new Date().toString()
-     * @param trx
-     * @returns
      */
     static softDelete<T extends Model>(this: new () => T | typeof Model, modelsqlInstance: T, options?: {
         column?: string;
@@ -1035,58 +985,40 @@ declare abstract class Model extends AbstractModel {
     /**
      * @description Adds dynamic columns to the model that are not defined in the Table and are defined in the model
      * @description It does not support custom connection or transaction
-     * @param model
-     * @param data
-     * @param dynamicColumns
-     * @returns
      */
     static addDynamicColumns<T extends Model>(this: new () => T | typeof Model, data: T | T[] | PaginatedData<T>, dynamicColumns: DynamicColumnType<T>[]): Promise<T | T[] | PaginatedData<T>>;
     /**
      * @description Merges the provided data with the sqlInstance
-     * @param sqlInstance
-     * @param data
-     * @returns {void}
      */
     static combineProps<T extends Model>(sqlInstance: T, data: Partial<T>): void;
     /**
      * @description Adds a beforeFetch clause to the model, adding the ability to modify the query before fetching the data
-     * @param queryBuilder
      */
     static beforeFetch(queryBuilder: ModelQueryBuilder<any>): void;
     /**
      * @description Adds a beforeInsert clause to the model, adding the ability to modify the data after fetching the data
-     * @param data
-     * @returns {T}
      */
     static beforeInsert(data: any): void;
     /**
      * @description Adds a beforeUpdate clause to the model, adding the ability to modify the query before updating the data
-     * @param data
      */
     static beforeUpdate(queryBuilder: ModelQueryBuilder<any>): void;
     /**
      * @description Adds a beforeDelete clause to the model, adding the ability to modify the query before deleting the data
-     * @param data
      */
     static beforeDelete(queryBuilder: ModelQueryBuilder<any>): void;
     /**
      * @description Adds a afterFetch clause to the model, adding the ability to modify the data after fetching the data
-     * @param data
-     * @returns {T}
      */
     static afterFetch(data: Model[]): Promise<Model[]>;
     /**
      * @description Establishes a connection to the database instantiated from the SqlDataSource.connect method, this is done automatically when using the static methods
      * @description This method is meant to be used only if you want to establish sql sqlInstance of the model directly
      * @internal
-     * @returns {void}
      */
     private static establishConnection;
     /**
      * @description Gives the correct model manager with the correct connection based on the options provided
-     * @param this
-     * @param options - The options to get the model manager
-     * @returns
      */
     private static dispatchModelManager;
 }
