@@ -19,7 +19,7 @@ export default class ColumnBuilderConnector {
     this.sqlType = sqlType;
   }
 
-  public newColumn(): ColumnTypeBuilder {
+  newColumn(): ColumnTypeBuilder {
     return new ColumnTypeBuilder(
       this.table,
       this.queryStatements,

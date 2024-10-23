@@ -73,7 +73,7 @@ export default class ColumnBuilderAlter {
    * @param {DataType} dataType
    * @param {BaseOptions} options
    */
-  public addColumn(
+  addColumn(
     columnName: string,
     dataType: DataType,
     options?: BaseOptions,
@@ -213,7 +213,7 @@ export default class ColumnBuilderAlter {
    * @param columnName { string }
    * @param options { DateOptions }
    */
-  public addDateColumn(
+  addDateColumn(
     columnName: string,
     type: "date" | "timestamp",
     options?: DateOptions & {
@@ -298,7 +298,7 @@ export default class ColumnBuilderAlter {
    * @param values { string[] }
    * @param options { afterColumn?: string; notNullable?: boolean }
    */
-  public addEnumColumn(
+  addEnumColumn(
     columnName: string,
     values: string[],
     options?: {
@@ -402,7 +402,7 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
    * @description Drops a column from the table
    * @param columnName
    */
-  public dropColumn(columnName: string): ColumnBuilderAlter {
+  dropColumn(columnName: string): ColumnBuilderAlter {
     switch (this.sqlType) {
       case "mariadb":
       case "mysql":
@@ -428,7 +428,7 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
    * @param oldColumnName
    * @param newColumnName
    */
-  public renameColumn(
+  renameColumn(
     oldColumnName: string,
     newColumnName: string,
   ): ColumnBuilderAlter {
@@ -452,7 +452,7 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
     return this;
   }
 
-  public modifyColumnType(
+  modifyColumnType(
     columnName: string,
     newDataType: string,
     options?: BaseOptions,
@@ -526,7 +526,7 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
    * @param oldtable
    * @param newtable
    */
-  public renameTable(oldtable: string, newtable: string): ColumnBuilderAlter {
+  renameTable(oldtable: string, newtable: string): ColumnBuilderAlter {
     switch (this.sqlType) {
       case "mariadb":
       case "mysql":
@@ -552,7 +552,7 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
    * @param columnName
    * @param defaultValue
    */
-  public setDefaultValue(
+  setDefaultValue(
     columnName: string,
     defaultValue: string,
   ): ColumnBuilderAlter {
@@ -580,7 +580,7 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
    * @description Drop a default value
    * @param columnName
    */
-  public dropDefaultValue(columnName: string): ColumnBuilderAlter {
+  dropDefaultValue(columnName: string): ColumnBuilderAlter {
     switch (this.sqlType) {
       case "mariadb":
       case "mysql":
@@ -605,10 +605,7 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
    * @param columnName
    * @param options
    */
-  public addForeignKey(
-    columnName: string,
-    options: AlterOptions,
-  ): ColumnBuilderAlter {
+  addForeignKey(columnName: string, options: AlterOptions): ColumnBuilderAlter {
     if (!options.references) {
       throw new Error(
         "References option must be provided to add a foreign key",
@@ -658,7 +655,7 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
    * @description Drop a foreign key
    * @param columnName
    */
-  public dropForeignKey(columnName: string): ColumnBuilderAlter {
+  dropForeignKey(columnName: string): ColumnBuilderAlter {
     const fkName = `${this.table}_${columnName}_fk`;
     switch (this.sqlType) {
       case "mariadb":
@@ -683,7 +680,7 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
   /**
    * @description Commits the changes - if omitted, the migration will be run empty
    */
-  public commit(): void {
+  commit(): void {
     this.queryStatements.push(this.partialQuery);
     this.partialQuery = "";
   }

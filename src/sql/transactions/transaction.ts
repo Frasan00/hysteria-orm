@@ -10,8 +10,8 @@ import { Database } from "sqlite3";
 import { log } from "../../utils/logger";
 
 export class Transaction {
-  public sqlDataSource: SqlDataSource;
-  public sqlConnection: SqlConnectionType;
+  sqlDataSource: SqlDataSource;
+  sqlConnection: SqlConnectionType;
   private readonly logs: boolean;
 
   constructor(sqlDataSource: SqlDataSource, logs?: boolean) {
@@ -20,7 +20,7 @@ export class Transaction {
     this.logs = logs || this.sqlDataSource.logs || false;
   }
 
-  public async startTransaction(): Promise<void> {
+  async startTransaction(): Promise<void> {
     try {
       switch (this.sqlDataSource.getDbType()) {
         case "mysql":
@@ -51,7 +51,7 @@ export class Transaction {
     }
   }
 
-  public async commit(): Promise<void> {
+  async commit(): Promise<void> {
     try {
       switch (this.sqlDataSource.getDbType()) {
         case "mysql":
@@ -84,7 +84,7 @@ export class Transaction {
     }
   }
 
-  public async rollback(): Promise<void> {
+  async rollback(): Promise<void> {
     try {
       switch (this.sqlDataSource.getDbType()) {
         case "mysql":

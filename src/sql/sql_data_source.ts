@@ -30,7 +30,7 @@ export type SqlDataSourceInput = Exclude<ISqlDataSourceInput, "mongoOptions">;
 export type SqlDataSourceType = SqlDataSourceInput["type"];
 
 export class SqlDataSource extends DataSource {
-  public isConnected: boolean;
+  isConnected: boolean;
   protected sqlConnection!: SqlConnectionType;
   private static instance: SqlDataSource | null = null;
 
@@ -39,7 +39,7 @@ export class SqlDataSource extends DataSource {
     this.isConnected = false;
   }
 
-  public getDbType(): SqlDataSourceType {
+  getDbType(): SqlDataSourceType {
     return this.type as SqlDataSourceType;
   }
 
@@ -90,7 +90,7 @@ export class SqlDataSource extends DataSource {
         break;
 
       default:
-        throw new Error(`Unsupported datasource type: ${sqlDataSource.type}`);
+        throw new Error(`Unsupported data source type: ${sqlDataSource.type}`);
     }
 
     sqlDataSource.isConnected = true;
@@ -109,10 +109,8 @@ export class SqlDataSource extends DataSource {
 
   /**
    * @description Starts a transaction on the database and returns the transaction object
-   * @param model
-   * @returns {Promise<Transaction>} trx
    */
-  public async startTransaction(
+  async startTransaction(
     driverSpecificOptions?: DriverSpecificOptions,
   ): Promise<Transaction> {
     const sqlDataSource = new SqlDataSource({
@@ -134,20 +132,18 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
-   * @description Alias for startTransaction
-   * @returns {Promise<Transaction>} trx
+   * @description Alias for startTransaction {Promise<Transaction>} trx
    */
-  public async beginTransaction(
+  async beginTransaction(
     driverSpecificOptions?: DriverSpecificOptions,
   ): Promise<Transaction> {
     return this.startTransaction(driverSpecificOptions);
   }
 
   /**
-   * @description Alias for startTransaction
-   * @returns {Promise<Transaction>} trx
+   * @description Alias for startTransaction {Promise<Transaction>} trx
    */
-  public async transaction(
+  async transaction(
     driverSpecificOptions?: DriverSpecificOptions,
   ): Promise<Transaction> {
     return this.startTransaction(driverSpecificOptions);
@@ -155,9 +151,8 @@ export class SqlDataSource extends DataSource {
 
   /**
    * @description Returns model manager for the provided model
-   * @param model
    */
-  public getModelManager<T extends Model>(
+  getModelManager<T extends Model>(
     model: { new (): T } | typeof Model,
   ): ModelManager<T> {
     if (!this.isConnected) {
@@ -188,14 +183,12 @@ export class SqlDataSource extends DataSource {
           this,
         );
       default:
-        throw new Error(`Unsupported datasource type: ${this.type}`);
+        throw new Error(`Unsupported data source type: ${this.type}`);
     }
   }
 
   /**
    * @description Executes a callback function with the provided connection details
-   * @param connectionDetails
-   * @param cb
    */
   static async useConnection(
     connectionDetails: SqlDataSourceInput,
@@ -224,17 +217,16 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
-   * @description Returns the current connection
-   * @returns {Promise<SqlConnectionType>} sqlConnection
+   * @description Returns the current connection {Promise<SqlConnectionType>} sqlConnection
    */
-  public getCurrentConnection(): SqlConnectionType {
+  getCurrentConnection(): SqlConnectionType {
     return this.sqlConnection;
   }
 
   /**
    * @description Returns separate raw sql connection
    */
-  public async getRawConnection(
+  async getRawConnection(
     driverSpecificOptions?: DriverSpecificOptions,
   ): Promise<SqlConnectionType> {
     switch (this.type) {
@@ -271,15 +263,14 @@ export class SqlDataSource extends DataSource {
           },
         );
       default:
-        throw new Error(`Unsupported datasource type: ${this.type}`);
+        throw new Error(`Unsupported data source type: ${this.type}`);
     }
   }
 
   /**
    * @description Closes the connection to the database
-   * @returns
    */
-  public async closeConnection(): Promise<void> {
+  async closeConnection(): Promise<void> {
     if (!this.isConnected) {
       logger.warn("Connection already closed", this);
       return;
@@ -311,15 +302,14 @@ export class SqlDataSource extends DataSource {
         SqlDataSource.instance = null;
         break;
       default:
-        throw new Error(`Unsupported datasource type: ${this.type}`);
+        throw new Error(`Unsupported data source type: ${this.type}`);
     }
   }
 
-   /**
+  /**
    * @description Closes the main connection to the database established with SqlDataSource.connect() method
-   * @returns
    */
-   public static async closeConnection(): Promise<void> {
+  static async closeConnection(): Promise<void> {
     const sqlDataSource = SqlDataSource.getInstance();
     if (!sqlDataSource.isConnected) {
       logger.warn("Connection already closed", sqlDataSource);
@@ -352,7 +342,7 @@ export class SqlDataSource extends DataSource {
         SqlDataSource.instance = null;
         break;
       default:
-        throw new Error(`Unsupported datasource type: ${sqlDataSource.type}`);
+        throw new Error(`Unsupported data source type: ${sqlDataSource.type}`);
     }
   }
 
@@ -374,9 +364,6 @@ export class SqlDataSource extends DataSource {
 
   /**
    * @description Executes a raw query on the database
-   * @param query
-   * @param params
-   * @returns
    */
   async rawQuery(query: string, params: any[] = []): Promise<any> {
     if (!this.isConnected) {
@@ -414,15 +401,12 @@ export class SqlDataSource extends DataSource {
           );
         });
       default:
-        throw new Error(`Unsupported datasource type: ${this.type}`);
+        throw new Error(`Unsupported data source type: ${this.type}`);
     }
   }
 
   /**
    * @description Executes a raw query on the database with the base connection created with SqlDataSource.connect() method
-   * @param query
-   * @param params
-   * @returns
    */
   static async rawQuery(query: string, params: any[] = []): Promise<any> {
     const sqlDataSource = SqlDataSource.getInstance();
@@ -461,7 +445,7 @@ export class SqlDataSource extends DataSource {
           );
         });
       default:
-        throw new Error(`Unsupported datasource type: ${sqlDataSource.type}`);
+        throw new Error(`Unsupported data source type: ${sqlDataSource.type}`);
     }
   }
 
@@ -503,7 +487,7 @@ export class SqlDataSource extends DataSource {
         );
         break;
       default:
-        throw new Error(`Unsupported datasource type: ${this.type}`);
+        throw new Error(`Unsupported data source type: ${this.type}`);
     }
   }
 }

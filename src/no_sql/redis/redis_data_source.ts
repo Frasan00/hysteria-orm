@@ -23,12 +23,12 @@ export type RedisGiveable =
   | null;
 
 export class RedisDataSource {
-  public static isConnected: boolean;
+  static isConnected: boolean;
   protected static redisConnection: Redis;
-  public isConnected: boolean;
+  isConnected: boolean;
   protected redisConnection: Redis;
 
-  public constructor(input?: RedisOptions) {
+  constructor(input?: RedisOptions) {
     this.isConnected = false;
     const port = input?.port || +(process.env.REDIS_PORT as string) || 6379;
 

@@ -43,7 +43,7 @@ export abstract class DataSource {
   protected password!: string;
   protected database!: string;
   protected url!: string;
-  public logs!: boolean;
+  logs!: boolean;
 
   protected constructor(input?: DataSourceInput) {
     if (this.type === "mongo") {

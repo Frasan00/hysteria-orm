@@ -8,8 +8,8 @@ import ColumnBuilderConnector from "../column/create_table/column_builder_connec
 dotenv.config();
 
 export default class Schema {
-  public queryStatements: string[];
-  public sqlType: SqlDataSourceType;
+  queryStatements: string[];
+  sqlType: SqlDataSourceType;
 
   constructor(sqlType?: SqlDataSourceType) {
     this.queryStatements = [];
@@ -22,11 +22,11 @@ export default class Schema {
    * @description Add raw query to the migration
    * @param query
    */
-  public rawQuery(query: string): void {
+  rawQuery(query: string): void {
     this.queryStatements.push(query);
   }
 
-  public createTable(
+  createTable(
     table: string,
     options?: { ifNotExists?: boolean },
   ): ColumnBuilderConnector {
@@ -48,7 +48,7 @@ export default class Schema {
    * @param table
    * @returns ColumnBuilderAlter
    */
-  public alterTable(table: string) {
+  alterTable(table: string) {
     return new ColumnBuilderAlter(
       table,
       this.queryStatements,
@@ -63,7 +63,7 @@ export default class Schema {
    * @param ifExists
    * @returns void
    */
-  public dropTable(table: string, ifExists: boolean = false): void {
+  dropTable(table: string, ifExists: boolean = false): void {
     this.rawQuery(dropTableTemplate(table, ifExists, this.sqlType));
   }
 
@@ -73,7 +73,7 @@ export default class Schema {
    * @param newtable
    * @returns void
    */
-  public renameTable(oldtable: string, newtable: string): void {
+  renameTable(oldtable: string, newtable: string): void {
     switch (this.sqlType) {
       case "mysql":
       case "mariadb":
@@ -95,7 +95,7 @@ export default class Schema {
    * @param table
    * @returns void
    */
-  public truncateTable(table: string): void {
+  truncateTable(table: string): void {
     switch (this.sqlType) {
       case "mysql":
       case "mariadb":
@@ -120,7 +120,7 @@ export default class Schema {
    * @param unique
    * @returns void
    */
-  public createIndex(
+  createIndex(
     table: string,
     indexName: string,
     columns: string[],
@@ -160,7 +160,7 @@ export default class Schema {
    * @param indexName
    * @returns void
    */
-  public dropIndex(table: string, indexName: string): void {
+  dropIndex(table: string, indexName: string): void {
     switch (this.sqlType) {
       case "mysql":
       case "mariadb":
@@ -185,7 +185,7 @@ export default class Schema {
    * @param options
    * @returns void
    */
-  public addPrimaryKey(table: string, columns: string[]): void {
+  addPrimaryKey(table: string, columns: string[]): void {
     switch (this.sqlType) {
       case "mysql":
       case "mariadb":
@@ -213,7 +213,7 @@ export default class Schema {
    * @param table
    * @returns void
    */
-  public dropPrimaryKey(table: string): void {
+  dropPrimaryKey(table: string): void {
     switch (this.sqlType) {
       case "mysql":
       case "mariadb":
@@ -237,7 +237,7 @@ export default class Schema {
    * @param columns
    * @returns void
    */
-  public addConstraint(
+  addConstraint(
     table: string,
     constraintName: string,
     columns: string[],
@@ -276,7 +276,7 @@ export default class Schema {
    * @param constraintName
    * @returns void
    */
-  public dropConstraint(table: string, constraintName: string): void {
+  dropConstraint(table: string, constraintName: string): void {
     switch (this.sqlType) {
       case "mysql":
       case "mariadb":
@@ -306,7 +306,7 @@ export default class Schema {
    * @param columns
    * @returns void
    */
-  public addUniqueConstraint(
+  addUniqueConstraint(
     table: string,
     constraintName: string,
     columns: string[],
@@ -345,7 +345,7 @@ export default class Schema {
    * @param constraintName
    * @returns void
    */
-  public dropUniqueConstraint(table: string, constraintName: string): void {
+  dropUniqueConstraint(table: string, constraintName: string): void {
     switch (this.sqlType) {
       case "mysql":
       case "mariadb":

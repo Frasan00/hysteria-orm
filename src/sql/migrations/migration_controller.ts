@@ -20,7 +20,7 @@ export class MigrationController {
     this.sqlDataSource = sqlDataSource;
   }
 
-  public async upMigrations(migrations: Migration[]): Promise<void> {
+  async upMigrations(migrations: Migration[]): Promise<void> {
     try {
       for (const migration of migrations) {
         await migration.up();
@@ -47,7 +47,7 @@ export class MigrationController {
     }
   }
 
-  public async downMigrations(migrations: Migration[]): Promise<void> {
+  async downMigrations(migrations: Migration[]): Promise<void> {
     migrations = migrations.reverse();
     try {
       for (const migration of migrations) {
@@ -104,7 +104,7 @@ export class MigrationController {
     throw new Error("No database connection found while running migration");
   }
 
-  public async addMigrationToMigrationTable(migration: Migration) {
+  async addMigrationToMigrationTable(migration: Migration) {
     const completeUtcTimestamp = new Date();
     const timestamp = completeUtcTimestamp
       .toISOString()
@@ -119,13 +119,13 @@ export class MigrationController {
     ]);
   }
 
-  public async deleteMigrationFromMigrationTable(migration: Migration) {
+  async deleteMigrationFromMigrationTable(migration: Migration) {
     const deleteMigrationSql = `DELETE FROM migrations WHERE name = PLACEHOLDER`;
 
     await this.localQuery(deleteMigrationSql, [migration.migrationName]);
   }
 
-  public async removeMigrationTable() {
+  async removeMigrationTable() {
     const dropMigrationTableSql = `
       DROP TABLE IF EXISTS migrations
     `;

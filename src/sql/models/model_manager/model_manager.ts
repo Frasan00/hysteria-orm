@@ -36,19 +36,17 @@ export abstract class ModelManager<T extends Model> {
    * @description Finds all records that match the input
    * @param input
    */
-  public abstract find(input?: FindType<T>): Promise<T[]>;
-  public abstract find(input?: UnrestrictedFindType<T>): Promise<T[]>;
-  public abstract find(
-    input?: FindType<T> | UnrestrictedFindType<T>,
-  ): Promise<T[]>;
+  abstract find(input?: FindType<T>): Promise<T[]>;
+  abstract find(input?: UnrestrictedFindType<T>): Promise<T[]>;
+  abstract find(input?: FindType<T> | UnrestrictedFindType<T>): Promise<T[]>;
 
   /**
    * @description Finds the first record that matches the input
    * @param input
    */
-  public abstract findOne(input: UnrestrictedFindOneType<T>): Promise<T | null>;
-  public abstract findOne(input: FindOneType<T>): Promise<T | null>;
-  public abstract findOne(
+  abstract findOne(input: UnrestrictedFindOneType<T>): Promise<T | null>;
+  abstract findOne(input: FindOneType<T>): Promise<T | null>;
+  abstract findOne(
     input: FindOneType<T> | UnrestrictedFindOneType<T>,
   ): Promise<T | null>;
 
@@ -57,7 +55,7 @@ export abstract class ModelManager<T extends Model> {
    * @param value
    * @param throwErrorOnNull
    */
-  public abstract findOneByPrimaryKey(
+  abstract findOneByPrimaryKey(
     value: string | number | boolean,
     throwErrorOnNull: boolean,
   ): Promise<T | null>;
@@ -67,31 +65,31 @@ export abstract class ModelManager<T extends Model> {
    * @param model
    * @param trx
    */
-  public abstract insert(model: Partial<T>): Promise<T | null>;
+  abstract insert(model: Partial<T>): Promise<T | null>;
 
   /**
    * @description Creates multiple records
    * @param model
    * @param trx
    */
-  public abstract insertMany(model: Partial<T>[]): Promise<T[]>;
+  abstract insertMany(model: Partial<T>[]): Promise<T[]>;
 
   /**
    * @description Updates a record
    * @param model
    * @param trx
    */
-  public abstract updateRecord(model: T): Promise<T | null>;
+  abstract updateRecord(model: T): Promise<T | null>;
 
   /**
    * @description Deletes a record
    * @param model
    * @param trx
    */
-  public abstract deleteRecord(model: T): Promise<T | null>;
+  abstract deleteRecord(model: T): Promise<T | null>;
 
   /**
    * @description Returns a query builder
    */
-  public abstract query(): QueryBuilder<T>;
+  abstract query(): QueryBuilder<T>;
 }

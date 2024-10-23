@@ -46,7 +46,7 @@ export class MongoQueryBuilder<T extends Collection> {
 
   protected session?: mongodb.ClientSession;
 
-  public constructor(
+  constructor(
     model: typeof Collection,
     mongoDataSource: MongoDataSource,
     session?: mongodb.ClientSession,
@@ -246,18 +246,14 @@ export class MongoQueryBuilder<T extends Collection> {
   /**
    * @description Adds a where clause to the query
    */
-  public where(
+  where(
     property: SelectableType<T>,
     operator: WhereOperatorType,
     value: BaseValues,
   ): this;
-  public where(
-    property: string,
-    operator: WhereOperatorType,
-    value: BaseValues,
-  ): this;
-  public where(property: SelectableType<T> | string, value: BaseValues): this;
-  public where(
+  where(property: string, operator: WhereOperatorType, value: BaseValues): this;
+  where(property: SelectableType<T> | string, value: BaseValues): this;
+  where(
     property: SelectableType<T> | string,
     operatorOrValue: WhereOperatorType | BaseValues,
     value?: BaseValues,
@@ -295,21 +291,18 @@ export class MongoQueryBuilder<T extends Collection> {
   /**
    * @description Adds a where clause to the query - alias for where
    */
-  public andWhere(
+  andWhere(
     property: SelectableType<T>,
     operator: WhereOperatorType,
     value: BaseValues,
   ): this;
-  public andWhere(
+  andWhere(
     property: string,
     operator: WhereOperatorType,
     value: BaseValues,
   ): this;
-  public andWhere(
-    property: SelectableType<T> | string,
-    value: BaseValues,
-  ): this;
-  public andWhere(
+  andWhere(property: SelectableType<T> | string, value: BaseValues): this;
+  andWhere(
     property: SelectableType<T> | string,
     operatorOrValue: WhereOperatorType | BaseValues,
     value?: BaseValues,
@@ -346,18 +339,18 @@ export class MongoQueryBuilder<T extends Collection> {
   /**
    * @description Adds an or where clause to the query
    */
-  public orWhere(
+  orWhere(
     property: SelectableType<T>,
     operator: WhereOperatorType,
     value: BaseValues,
   ): this;
-  public orWhere(
+  orWhere(
     property: string,
     operator: WhereOperatorType,
     value: BaseValues,
   ): this;
-  public orWhere(property: SelectableType<T> | string, value: BaseValues): this;
-  public orWhere(
+  orWhere(property: SelectableType<T> | string, value: BaseValues): this;
+  orWhere(
     property: SelectableType<T> | string,
     operatorOrValue: WhereOperatorType | BaseValues,
     value?: BaseValues,
@@ -1300,7 +1293,7 @@ export class MongoQueryBuilder<T extends Collection> {
   /**
    * @description Gives the possibility to add a raw where clause using the mongodb.Filter type
    */
-  public rawWhere(whereObject: mongodb.Filter<mongodb.BSON.Document>): this {
+  rawWhere(whereObject: mongodb.Filter<mongodb.BSON.Document>): this {
     this.whereObject = {
       ...this.whereObject,
       ...whereObject,

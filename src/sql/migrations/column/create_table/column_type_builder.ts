@@ -12,7 +12,7 @@ export default class ColumnTypeBuilder {
   protected queryStatements: string[];
   protected columnName: string;
   protected sqlType: SqlDataSourceType;
-  public partialQuery: string;
+  partialQuery: string;
 
   constructor(
     table: string,
@@ -27,7 +27,7 @@ export default class ColumnTypeBuilder {
     this.columnName = "";
   }
 
-  public string(name: string, length: number = 255): ColumnOptionsBuilder {
+  string(name: string, length: number = 255): ColumnOptionsBuilder {
     switch (this.sqlType) {
       case "mariadb":
       case "mysql":
@@ -57,7 +57,7 @@ export default class ColumnTypeBuilder {
     );
   }
 
-  public varchar(name: string, length: number = 255): ColumnOptionsBuilder {
+  varchar(name: string, length: number = 255): ColumnOptionsBuilder {
     switch (this.sqlType) {
       case "mariadb":
       case "mysql":
@@ -87,7 +87,7 @@ export default class ColumnTypeBuilder {
     );
   }
 
-  public uuid(name: string): ColumnOptionsBuilder {
+  uuid(name: string): ColumnOptionsBuilder {
     switch (this.sqlType) {
       case "postgres":
         this.columnName = name;
@@ -116,7 +116,7 @@ export default class ColumnTypeBuilder {
     );
   }
 
-  public tinytext(name: string): ColumnOptionsBuilder {
+  tinytext(name: string): ColumnOptionsBuilder {
     switch (this.sqlType) {
       case "mariadb":
       case "mysql":
@@ -144,7 +144,7 @@ export default class ColumnTypeBuilder {
     );
   }
 
-  public mediumtext(name: string): ColumnOptionsBuilder {
+  mediumtext(name: string): ColumnOptionsBuilder {
     switch (this.sqlType) {
       case "mariadb":
       case "mysql":
@@ -172,7 +172,7 @@ export default class ColumnTypeBuilder {
     );
   }
 
-  public longtext(name: string): ColumnOptionsBuilder {
+  longtext(name: string): ColumnOptionsBuilder {
     switch (this.sqlType) {
       case "mariadb":
       case "mysql":
@@ -200,7 +200,7 @@ export default class ColumnTypeBuilder {
     );
   }
 
-  public binary(name: string, length: number = 255): ColumnOptionsBuilder {
+  binary(name: string, length: number = 255): ColumnOptionsBuilder {
     switch (this.sqlType) {
       case "mariadb":
       case "mysql":
@@ -228,7 +228,7 @@ export default class ColumnTypeBuilder {
     );
   }
 
-  public enum(name: string, values: string[]): ColumnOptionsBuilder {
+  enum(name: string, values: string[]): ColumnOptionsBuilder {
     switch (this.sqlType) {
       case "mariadb":
       case "mysql":
@@ -260,7 +260,7 @@ export default class ColumnTypeBuilder {
     );
   }
 
-  public text(name: string): ColumnOptionsBuilder {
+  text(name: string): ColumnOptionsBuilder {
     switch (this.sqlType) {
       case "mariadb":
       case "mysql":
@@ -288,7 +288,7 @@ export default class ColumnTypeBuilder {
     );
   }
 
-  public char(name: string, length: number = 255): ColumnOptionsBuilder {
+  char(name: string, length: number = 255): ColumnOptionsBuilder {
     switch (this.sqlType) {
       case "mariadb":
       case "mysql":
@@ -316,7 +316,7 @@ export default class ColumnTypeBuilder {
     );
   }
 
-  public tinyint(name: string): ColumnOptionsBuilder {
+  tinyint(name: string): ColumnOptionsBuilder {
     switch (this.sqlType) {
       case "mariadb":
       case "mysql":
@@ -344,7 +344,7 @@ export default class ColumnTypeBuilder {
     );
   }
 
-  public smallint(name: string): ColumnOptionsBuilder {
+  smallint(name: string): ColumnOptionsBuilder {
     switch (this.sqlType) {
       case "mariadb":
       case "mysql":
@@ -372,7 +372,7 @@ export default class ColumnTypeBuilder {
     );
   }
 
-  public mediumint(name: string): ColumnOptionsBuilder {
+  mediumint(name: string): ColumnOptionsBuilder {
     switch (this.sqlType) {
       case "mariadb":
       case "mysql":
@@ -404,7 +404,7 @@ export default class ColumnTypeBuilder {
    * @description If using mysql, it will automatically add INT AUTO_INCREMENT
    * @param name
    */
-  public serial(name: string): ColumnOptionsBuilder {
+  serial(name: string): ColumnOptionsBuilder {
     if (this.sqlType === `mysql` || this.sqlType === `mariadb`) {
       this.columnName = name;
       this.partialQuery += `${name} INT AUTO_INCREMENT`;
@@ -445,7 +445,7 @@ export default class ColumnTypeBuilder {
    * @description If using sqlite, it will automatically be converted in INTEGER PRIMARY KEY AUTOINCREMENT
    * @param name
    */
-  public bigSerial(name: string): ColumnOptionsBuilder {
+  bigSerial(name: string): ColumnOptionsBuilder {
     if (this.sqlType === `mysql` || this.sqlType === `mariadb`) {
       this.columnName = name;
       this.partialQuery += `${name} BIGINT AUTO_INCREMENT`;
@@ -481,7 +481,7 @@ export default class ColumnTypeBuilder {
     );
   }
 
-  public integer(name: string, length?: number): ColumnOptionsBuilder {
+  integer(name: string, length?: number): ColumnOptionsBuilder {
     switch (this.sqlType) {
       case "mariadb":
       case "mysql":
@@ -509,7 +509,7 @@ export default class ColumnTypeBuilder {
     );
   }
 
-  public bigInteger(name: string): ColumnOptionsBuilder {
+  bigInteger(name: string): ColumnOptionsBuilder {
     switch (this.sqlType) {
       case "mariadb":
       case "mysql":
@@ -542,7 +542,7 @@ export default class ColumnTypeBuilder {
    * @param name
    * @returns ColumnOptionsBuilder
    */
-  public int(name: string): ColumnOptionsBuilder {
+  int(name: string): ColumnOptionsBuilder {
     return this.integer(name);
   }
 
@@ -551,11 +551,11 @@ export default class ColumnTypeBuilder {
    * @param name
    * @returns ColumnOptionsBuilder
    */
-  public bigint(name: string): ColumnOptionsBuilder {
+  bigint(name: string): ColumnOptionsBuilder {
     return this.bigInteger(name);
   }
 
-  public float(
+  float(
     name: string,
     options: {
       precision: number;
@@ -592,7 +592,7 @@ export default class ColumnTypeBuilder {
     );
   }
 
-  public decimal(
+  decimal(
     name: string,
     options: {
       precision: number;
@@ -629,7 +629,7 @@ export default class ColumnTypeBuilder {
     );
   }
 
-  public double(
+  double(
     name: string,
     options: {
       precision: number;
@@ -666,7 +666,7 @@ export default class ColumnTypeBuilder {
     );
   }
 
-  public boolean(name: string): ColumnOptionsBuilder {
+  boolean(name: string): ColumnOptionsBuilder {
     switch (this.sqlType) {
       case "mariadb":
       case "mysql":
@@ -698,7 +698,7 @@ export default class ColumnTypeBuilder {
     );
   }
 
-  public date(name: string, options?: DateOptions): ColumnOptionsBuilder {
+  date(name: string, options?: DateOptions): ColumnOptionsBuilder {
     if (this.sqlType === "sqlite") {
       logger.warn("sqlite does not support date columns, using text instead");
 
@@ -739,7 +739,7 @@ export default class ColumnTypeBuilder {
     );
   }
 
-  public timestamp(name: string, options?: DateOptions): ColumnOptionsBuilder {
+  timestamp(name: string, options?: DateOptions): ColumnOptionsBuilder {
     if (this.sqlType === "sqlite") {
       logger.warn(
         "sqlite does not support timestamp columns, using text instead",
@@ -785,7 +785,7 @@ export default class ColumnTypeBuilder {
    * @description EXPERIMENTAL
    * @param name
    */
-  public jsonb(name: string): ColumnOptionsBuilder {
+  jsonb(name: string): ColumnOptionsBuilder {
     this.columnName = name;
     switch (this.sqlType) {
       case "postgres":

@@ -4,7 +4,7 @@ export abstract class AbstractModel {
   /**
    * @description Extra columns for the model, all data retrieved from the database that is not part of the model will be stored here
    */
-  public extraColumns: { [key: string]: any };
+  extraColumns: { [key: string]: any };
 
   /**
    * @description Defines the case convention for the model

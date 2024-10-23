@@ -1,24 +1,24 @@
 class Migration_templates {
-  public basicMigrationTemplate(): string {
+  basicMigrationTemplate(): string {
     return `import { Migration } from 'hysteria-orm';
 
 export default class extends Migration {
-  public async up(): Promise<void> {
+  async up(): Promise<void> {
     // Your migration logic here
   }
 
-  public async down(): Promise<void> {
+  async down(): Promise<void> {
     // Your rollback logic here
   }
 }
 `;
   }
 
-  public selectAllFromMigrationsTemplate(): string {
+  selectAllFromMigrationsTemplate(): string {
     return `SELECT * FROM migrations;`;
   }
 
-  public migrationTableTemplateMysql(): string {
+  migrationTableTemplateMysql(): string {
     return `CREATE TABLE IF NOT EXISTS \`migrations\`(
     \`id\` INT NOT NULL AUTO_INCREMENT,
     \`name\` VARCHAR(255) NOT NULL,
@@ -28,7 +28,7 @@ export default class extends Migration {
 `;
   }
 
-  public migrationTableTemplatePg(): string {
+  migrationTableTemplatePg(): string {
     return `CREATE TABLE IF NOT EXISTS migrations (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
@@ -37,7 +37,7 @@ export default class extends Migration {
 `;
   }
 
-  public migrationTableTemplateSQLite(): string {
+  migrationTableTemplateSQLite(): string {
     const now = new Date().toISOString();
     return `CREATE TABLE IF NOT EXISTS migrations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

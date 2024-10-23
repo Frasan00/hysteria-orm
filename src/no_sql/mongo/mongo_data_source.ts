@@ -34,9 +34,6 @@ export class MongoDataSource extends DataSource {
 
   /**
    * @description Connects to the mongo database using the provided url and options
-   * @param url - url to connect to the mongo database
-   * @param options - options to connect to the mongo database
-   * @param cb - callback function executed after the connection is established
    * @returns
    */
   static async connect(
@@ -81,15 +78,43 @@ export class MongoDataSource extends DataSource {
     return session;
   }
 
+  /**
+   * @description Disconnects from the mongo database using the current connection established by the `connect` method
+   */
+  static async disconnect(): Promise<void> {
+    if (!this.instance) {
+      throw new Error("mongo database connection not established");
+    }
+
+    await this.instance.disconnect();
+  }
+
+  /**
+   * @description Disconnects from the mongo database
+   */
   async disconnect(): Promise<void> {
     await this.mongoClient.close();
     this.isConnected = false;
   }
 
   /**
+   * @description Closes the current connection to the mongo database
+   * @alias disconnect
+   */
+  async closeConnection(): Promise<void> {
+    await this.disconnect();
+  }
+
+  /**
    * @description Executes a callback function with the provided connection details
-   * @param connectionDetails
-   * @param cb
+   * @alias disconnect
+   */
+  static async closeConnection(): Promise<void> {
+    await this.disconnect();
+  }
+
+  /**
+   * @description Executes a callback function with the provided connection details
    */
   static async useConnection<T extends Collection>(
     this: typeof MongoDataSource,

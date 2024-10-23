@@ -82,6 +82,28 @@ const mysqlConfig: DataSourceInput = {
 
 // Config can be omitted, in that case envs will be used to enstablish the connection 
 const sql = await SqlDataSource.connect(mysqlConfig, () => console.log("Connected to the database!"));
+await sql.closeConnection();
+
+// You can also only use the static connection method without the need of a connection instance
+await SqlDataSource.connect(); // connects using envs
+await SqlDataSource.disconnect(); // disconnects the connection
+```
+
+# Use the connection
+```typescript
+import { SqlDataSource } from "hysteria-orm";
+
+// This is a singleton connection that can be used in the whole application
+const sql = await SqlDataSource.connect();
+
+// Raw query
+const rawQuery = await sql.rawQuery("SELECT * FROM USERS")
+
+// Get the raw driver connection
+const connection = sql.getRawConnection();
+
+// Start transactions
+const trx = await sql.startTransaction();
 ```
 
 
@@ -644,7 +666,7 @@ import { Migration } from "hysteria-orm";
 import { Post } from "../Models/Post";
 
 export default class extends Migration {
-    public up(): void {
+    up(): void {
         this.schema.createTable('posts', { ifNotExists: true })
             .newColumn().bigint('id').autoIncrement().primary()
             .newColumn().bigint('user_id').references('users', 'id')
@@ -668,7 +690,7 @@ export default class extends Migration {
         }
     }
 
-    public down(): void {
+    down(): void {
         this.schema.dropTable('posts');
         this.afterDown = async () => { /* After down logic here*/ }
     }
@@ -681,14 +703,14 @@ export default class extends Migration {
 import { Migration } from "hysteria-orm";
 
 export default class extends Migration {
-    public up(): void {
+    up(): void {
         this.schema.alterTable('users')
             .dropColumn('email')
             .addColumn('email', 'varchar', { length: 255, notNullable: true, unique: true, after: 'name' })
             .commit();
     }
 
-    public down(): void {
+    down(): void {
         this.schema.alterTable('users')
             .dropColumn('email')
             .addColumn('email', 'varchar', { length: 255, notNullable: true })

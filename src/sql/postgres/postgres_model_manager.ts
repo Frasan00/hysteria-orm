@@ -44,9 +44,7 @@ export class PostgresModelManager<T extends Model> extends ModelManager<T> {
    * @param {FindType} input - Optional query parameters for filtering, ordering, and pagination.
    * @returns Promise resolving to an array of models.
    */
-  public async find(
-    input?: FindType<T> | UnrestrictedFindType<T>,
-  ): Promise<T[]> {
+  async find(input?: FindType<T> | UnrestrictedFindType<T>): Promise<T[]> {
     try {
       if (!input) {
         return await this.query().many();
@@ -96,7 +94,7 @@ export class PostgresModelManager<T extends Model> extends ModelManager<T> {
    * @param {FindOneType} input - query parameters for filtering and selecting a single record.
    * @returns Promise resolving to a single model or null if not found.
    */
-  public async findOne(
+  async findOne(
     input: FindOneType<T> | UnrestrictedFindOneType<T>,
   ): Promise<T | null> {
     try {
@@ -131,7 +129,7 @@ export class PostgresModelManager<T extends Model> extends ModelManager<T> {
    * @param {string | number | boolean} value - PK value of the record to retrieve.
    * @returns Promise resolving to a single model or null if not found.
    */
-  public async findOneByPrimaryKey(
+  async findOneByPrimaryKey(
     value: string | number | boolean,
     throwErrorOnNull: boolean = false,
   ): Promise<T | null> {
@@ -160,7 +158,7 @@ export class PostgresModelManager<T extends Model> extends ModelManager<T> {
    * @param {MysqlTransaction} trx - MysqlTransaction to be used on the save operation.
    * @returns Promise resolving to the saved model or null if saving fails.
    */
-  public async insert(model: Partial<T>): Promise<T | null> {
+  async insert(model: Partial<T>): Promise<T | null> {
     this.model.beforeInsert(model as T);
     const { query, params } = this.sqlModelManagerUtils.parseInsert(
       model as T,
@@ -198,7 +196,7 @@ export class PostgresModelManager<T extends Model> extends ModelManager<T> {
    * @param {Transaction} trx - MysqlTransaction to be used on the save operation.
    * @returns Promise resolving to an array of saved models or null if saving fails.
    */
-  public async insertMany(models: Partial<T>[]): Promise<T[]> {
+  async insertMany(models: Partial<T>[]): Promise<T[]> {
     models.forEach((model) => this.model.beforeInsert(model as T));
     const { query, params } = this.sqlModelManagerUtils.parseMassiveInsert(
       models as T[],
@@ -237,7 +235,7 @@ export class PostgresModelManager<T extends Model> extends ModelManager<T> {
    * @param {Transaction} trx - Transaction to be used on the update operation.
    * @returns Promise resolving to the updated model or null if updating fails.
    */
-  public async updateRecord(model: T): Promise<T | null> {
+  async updateRecord(model: T): Promise<T | null> {
     const { table, primaryKey } = this.model;
     if (!primaryKey) {
       throw new Error(
@@ -279,7 +277,7 @@ export class PostgresModelManager<T extends Model> extends ModelManager<T> {
    * @param {Transaction} trx - Transaction to be used on the delete operation.
    * @returns Promise resolving to the deleted model or null if deleting fails.
    */
-  public async deleteRecord(model: T): Promise<T | null> {
+  async deleteRecord(model: T): Promise<T | null> {
     try {
       if (!this.model.primaryKey) {
         throw new Error(
@@ -309,7 +307,7 @@ export class PostgresModelManager<T extends Model> extends ModelManager<T> {
    *
    * @returns {MysqlQueryBuilder<Model>} - Instance of Mysql_query_builder.
    */
-  public query(): PostgresQueryBuilder<T> {
+  query(): PostgresQueryBuilder<T> {
     return new PostgresQueryBuilder<T>(
       this.model,
       this.model.table,

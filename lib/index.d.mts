@@ -699,9 +699,6 @@ declare abstract class QueryBuilder<T extends Model> extends WhereQueryBuilder<T
     protected selectTemplate: ReturnType<typeof selectTemplate>;
     /**
      * @description Constructs a Mysql_query_builder instance.
-     * @param model - The model class associated with the table.
-     * @param table - The name of the table.
-     * @param logs - A boolean indicating whether to log queries.
      */
     protected constructor(model: typeof Model, table: string, logs: boolean, sqlDataSource: SqlDataSource);
     /**
@@ -722,14 +719,11 @@ declare abstract class QueryBuilder<T extends Model> extends WhereQueryBuilder<T
     abstract many(options: ManyOptions$1): Promise<T[]>;
     /**
      * @description Updates records in the database.
-     * @param data
-     * @param trx
      * @returns The number of affected rows.
      */
     abstract update(data: Partial<T>, options?: UpdateOptions): Promise<number>;
     /**
      * @description soft Deletes Records from the database.
-     * @param options - The options for the soft delete, including the column to soft delete, the value to set the column to, and the transaction to run the query in.
      * @default column - 'deletedAt'
      * @default value - The current date and time.
      * @default ignoreBeforeDeleteHook - false
@@ -739,7 +733,6 @@ declare abstract class QueryBuilder<T extends Model> extends WhereQueryBuilder<T
     abstract softDelete(options?: SoftDeleteOptions<T>): Promise<number>;
     /**
      * @description Deletes Records from the database for the current query.
-     * @param trx - The transaction to run the query in.
      * @returns The number of affected rows.
      */
     abstract delete(options?: DeleteOptions): Promise<number>;
@@ -752,7 +745,6 @@ declare abstract class QueryBuilder<T extends Model> extends WhereQueryBuilder<T
     }): Promise<number>;
     /**
      * @description Executes the query and retrieves the sum of a column, it ignores all select, group by, order by, limit and offset clauses if they are present.
-     * @param column - The column to sum.
      * @returns A Promise resolving to the sum of the column.
      */
     abstract getSum(column: string, options: {
@@ -765,7 +757,6 @@ declare abstract class QueryBuilder<T extends Model> extends WhereQueryBuilder<T
     abstract paginate(page: number, limit: number, options?: ManyOptions$1): Promise<PaginatedData<T>>;
     /**
      * @description Adds a SELECT condition to the query.
-     * @param columns - The columns to select.
      * @returns The Mysql_query_builder instance for chaining.
      */
     abstract select(...columns: string[]): ModelQueryBuilder<T>;
@@ -773,46 +764,34 @@ declare abstract class QueryBuilder<T extends Model> extends WhereQueryBuilder<T
     abstract select(...columns: (SelectableType<T> | "*" | string)[]): ModelQueryBuilder<T>;
     /**
      * @description Adds a JOIN condition to the query.
-     * @param table
-     * @param primaryColumn
-     * @param foreignColumn
      */
     abstract join(table: string, primaryColumn: string, foreignColumn: string): ModelQueryBuilder<T>;
     /**
      * @description Adds a LEFT JOIN condition to the query.
-     * @param table
-     * @param primaryColumn
-     * @param foreignColumn
      */
     abstract leftJoin(table: string, primaryColumn: string, foreignColumn: string): ModelQueryBuilder<T>;
     /**
      * @description Adds a relation to the query.
-     * @param relations - The relations to add.
      */
     abstract addRelations(relations: RelationType<T>[]): ModelQueryBuilder<T>;
     /**
      * @description Adds a the selected dynamic columns from the model into the final model
-     * @param relations - The dynamic columns to add.
      */
     abstract addDynamicColumns(dynamicColumns: DynamicColumnType<T>[]): ModelQueryBuilder<T>;
     /**
      * @description Build more complex where conditions.
-     * @param cb
      */
     abstract whereBuilder(cb: (queryBuilder: ModelQueryBuilder<T>) => void): ModelQueryBuilder<T>;
     /**
      * @description Build more complex where conditions.
-     * @param cb
      */
     abstract andWhereBuilder(cb: (queryBuilder: ModelQueryBuilder<T>) => void): ModelQueryBuilder<T>;
     /**
      * @description Build more complex where conditions.
-     * @param cb
      */
     abstract orWhereBuilder(cb: (queryBuilder: ModelQueryBuilder<T>) => void): ModelQueryBuilder<T>;
     /**
      * @description Adds GROUP BY conditions to the query.
-     * @param columns - The columns to group by.
      * @returns The Mysql_query_builder instance for chaining.
      */
     abstract groupBy(...columns: SelectableType<T>[]): ModelQueryBuilder<T>;
@@ -820,14 +799,11 @@ declare abstract class QueryBuilder<T extends Model> extends WhereQueryBuilder<T
     abstract groupBy(...columns: (SelectableType<T> | string)[]): ModelQueryBuilder<T>;
     /**
      * @description Adds a raw GROUP BY condition to the query, only one raw GROUP BY condition is stackable, the last one will be used.
-     * @param query - The raw SQL GROUP BY condition.
      * @returns The Mysql_query_builder instance for chaining.
      */
     abstract groupByRaw(query: string): ModelQueryBuilder<T>;
     /**
      * @description Adds ORDER BY conditions to the query.
-     * @param column - The column to order by.
-     * @param order - The order direction, either "ASC" or "DESC".
      * @returns The Mysql_query_builder instance for chaining.
      */
     abstract orderBy(columns: SelectableType<T>[], order: "ASC" | "DESC"): ModelQueryBuilder<T>;
@@ -835,19 +811,16 @@ declare abstract class QueryBuilder<T extends Model> extends WhereQueryBuilder<T
     abstract orderBy(columns: (SelectableType<T> | string)[], order: "ASC" | "DESC"): ModelQueryBuilder<T>;
     /**
      * @description Adds a raw ORDER BY condition to the query, only one raw ORDER BY condition is stackable, the last one will be used.
-     * @param query - The raw SQL ORDER BY condition.
      * @returns The Mysql_query_builder instance for chaining.
      */
     abstract orderByRaw(query: string): ModelQueryBuilder<T>;
     /**
      * @description Adds a LIMIT condition to the query.
-     * @param limit - The maximum number of rows to return.
      * @returns The Mysql_query_builder instance for chaining.
      */
     abstract limit(limit: number): ModelQueryBuilder<T>;
     /**
      * @description Adds an OFFSET condition to the query.
-     * @param offset - The number of rows to skip.
      * @returns The Mysql_query_builder instance for chaining.
      */
     abstract offset(offset: number): ModelQueryBuilder<T>;
@@ -1324,36 +1297,28 @@ declare class SqlDataSource extends DataSource {
     static getInstance(): SqlDataSource;
     /**
      * @description Starts a transaction on the database and returns the transaction object
-     * @param model
-     * @returns {Promise<Transaction>} trx
      */
     startTransaction(driverSpecificOptions?: DriverSpecificOptions): Promise<Transaction>;
     /**
-     * @description Alias for startTransaction
-     * @returns {Promise<Transaction>} trx
+     * @description Alias for startTransaction {Promise<Transaction>} trx
      */
     beginTransaction(driverSpecificOptions?: DriverSpecificOptions): Promise<Transaction>;
     /**
-     * @description Alias for startTransaction
-     * @returns {Promise<Transaction>} trx
+     * @description Alias for startTransaction {Promise<Transaction>} trx
      */
     transaction(driverSpecificOptions?: DriverSpecificOptions): Promise<Transaction>;
     /**
      * @description Returns model manager for the provided model
-     * @param model
      */
     getModelManager<T extends Model>(model: {
         new (): T;
     } | typeof Model): ModelManager<T>;
     /**
      * @description Executes a callback function with the provided connection details
-     * @param connectionDetails
-     * @param cb
      */
     static useConnection(connectionDetails: SqlDataSourceInput, cb: (sqlDataSource: SqlDataSource) => Promise<void>): Promise<void>;
     /**
-     * @description Returns the current connection
-     * @returns {Promise<SqlConnectionType>} sqlConnection
+     * @description Returns the current connection {Promise<SqlConnectionType>} sqlConnection
      */
     getCurrentConnection(): SqlConnectionType;
     /**
@@ -1362,13 +1327,11 @@ declare class SqlDataSource extends DataSource {
     getRawConnection(driverSpecificOptions?: DriverSpecificOptions): Promise<SqlConnectionType>;
     /**
      * @description Closes the connection to the database
-     * @returns
      */
     closeConnection(): Promise<void>;
     /**
-    * @description Closes the main connection to the database established with SqlDataSource.connect() method
-    * @returns
-    */
+     * @description Closes the main connection to the database established with SqlDataSource.connect() method
+     */
     static closeConnection(): Promise<void>;
     /**
      * @description Disconnects the connection to the database
@@ -1382,16 +1345,10 @@ declare class SqlDataSource extends DataSource {
     static disconnect(): Promise<void>;
     /**
      * @description Executes a raw query on the database
-     * @param query
-     * @param params
-     * @returns
      */
     rawQuery(query: string, params?: any[]): Promise<any>;
     /**
      * @description Executes a raw query on the database with the base connection created with SqlDataSource.connect() method
-     * @param query
-     * @param params
-     * @returns
      */
     static rawQuery(query: string, params?: any[]): Promise<any>;
     private connectDriver;
@@ -2428,9 +2385,6 @@ declare class MongoDataSource extends DataSource {
     getCurrentConnection(): mongodb.MongoClient;
     /**
      * @description Connects to the mongo database using the provided url and options
-     * @param url - url to connect to the mongo database
-     * @param options - options to connect to the mongo database
-     * @param cb - callback function executed after the connection is established
      * @returns
      */
     static connect(url?: string, options?: MongoDataSourceInput["mongoOptions"] & {
@@ -2442,11 +2396,26 @@ declare class MongoDataSource extends DataSource {
      * @returns {mongodb.ClientSession}
      */
     startSession(): mongodb.ClientSession;
+    /**
+     * @description Disconnects from the mongo database using the current connection established by the `connect` method
+     */
+    static disconnect(): Promise<void>;
+    /**
+     * @description Disconnects from the mongo database
+     */
     disconnect(): Promise<void>;
     /**
+     * @description Closes the current connection to the mongo database
+     * @alias disconnect
+     */
+    closeConnection(): Promise<void>;
+    /**
      * @description Executes a callback function with the provided connection details
-     * @param connectionDetails
-     * @param cb
+     * @alias disconnect
+     */
+    static closeConnection(): Promise<void>;
+    /**
+     * @description Executes a callback function with the provided connection details
      */
     static useConnection<T extends Collection>(this: typeof MongoDataSource, connectionDetails: {
         url: string;
@@ -2473,173 +2442,140 @@ declare class StandaloneQueryBuilder {
     protected selectTemplate: ReturnType<typeof selectTemplate>;
     /**
      * @description Constructs a Mysql_query_builder instance.
-     * @param model - The model class associated with the table.
-     * @param table - The name of the table.
-     * @param logs - A boolean indicating whether to log queries.
      */
     constructor(dbType: SqlDataSourceType, table: string, modelCaseConvention?: CaseConvention, databaseCaseConvention?: CaseConvention, isNestedCondition?: boolean);
     select(...columns: string[]): StandaloneQueryBuilder;
+    /**
+     * @description Adds a JOIN condition to the query.
+     */
     join(relationTable: string, primaryColumn: string, foreignColumn: string): StandaloneQueryBuilder;
+    /**
+     * @description Adds a LEFT JOIN condition to the query.
+     */
     leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): StandaloneQueryBuilder;
+    /**
+     * @description Given a callback, it will execute the callback with a query builder instance.
+     */
     whereBuilder(cb: (queryBuilder: StandaloneQueryBuilder) => void): this;
+    /**
+     * @description Given a callback, it will execute the callback with a query builder instance.
+     */
     orWhereBuilder(cb: (queryBuilder: StandaloneQueryBuilder) => void): this;
+    /**
+     * @description Given a callback, it will execute the callback with a query builder instance.
+     */
     andWhereBuilder(cb: (queryBuilder: StandaloneQueryBuilder) => void): this;
     /**
      * @description Accepts a value and executes a callback only of the value is not null or undefined.
-     * @param {any} value
-     * @param callback
      */
     when(value: any, cb: (value: any, query: StandaloneQueryBuilder) => void): this;
     /**
      * @description Adds a WHERE condition to the query.
-     * @param column - The column to filter.
-     * @param operator - The comparison operator.
-     * @param value - The value to compare against.
      * @returns The query_builder instance for chaining.
      */
     where(column: string, operatorOrValue: WhereOperatorType$1 | BaseValues$1, value?: BaseValues$1): this;
     /**
      * @description Adds an AND WHERE condition to the query.
-     * @param column - The column to filter.
-     * @param operator - The comparison operator.
-     * @param value - The value to compare against.
      * @returns The query_builder instance for chaining.
      */
     andWhere(column: string, operatorOrValue: WhereOperatorType$1 | BaseValues$1, value?: BaseValues$1): this;
     /**
      * @description Adds an OR WHERE condition to the query.
-     * @param column - The column to filter.
-     * @param operator - The comparison operator.
-     * @param value - The value to compare against.
      * @returns The query_builder instance for chaining.
      */
     orWhere(column: string, operatorOrValue: WhereOperatorType$1 | BaseValues$1, value?: BaseValues$1): this;
     /**
      * @description Adds a WHERE BETWEEN condition to the query.
-     * @param column - The column to filter.
-     * @param min - The minimum value for the range.
-     * @param max - The maximum value for the range.
      * @returns The query_builder instance for chaining.
      */
     whereBetween(column: string, min: BaseValues$1, max: BaseValues$1): this;
     /**
      * @description Adds an AND WHERE BETWEEN condition to the query.
-     * @param column - The column to filter.
-     * @param min - The minimum value for the range.
-     * @param max - The maximum value for the range.
      * @returns The query_builder instance for chaining.
      */
     andWhereBetween(column: string, min: BaseValues$1, max: BaseValues$1): this;
     /**
      * @description Adds an OR WHERE BETWEEN condition to the query.
-     * @param column - The column to filter.
-     * @param min - The minimum value for the range.
-     * @param max - The maximum value for the range.
      * @returns The query_builder instance for chaining.
      */
     orWhereBetween(column: string, min: BaseValues$1, max: BaseValues$1): this;
     /**
      * @description Adds a WHERE NOT BETWEEN condition to the query.
-     * @param column - The column to filter.
-     * @param min - The minimum value for the range.
-     * @param max - The maximum value for the range.
      * @returns The query_builder instance for chaining.
      */
     whereNotBetween(column: string, min: BaseValues$1, max: BaseValues$1): this;
     /**
      * @description Adds an OR WHERE NOT BETWEEN condition to the query.
-     * @param column - The column to filter.
-     * @param min - The minimum value for the range.
-     * @param max - The maximum value for the range.
      * @returns The query_builder instance for chaining.
      */
     orWhereNotBetween(column: string, min: BaseValues$1, max: BaseValues$1): this;
     /**
      * @description Adds a WHERE IN condition to the query.
-     * @param column - The column to filter.
-     * @param values - An array of values to match against.
      * @returns The query_builder instance for chaining.
      */
     whereIn(column: string, values: BaseValues$1[]): this;
     /**
      * @description Adds an AND WHERE IN condition to the query.
-     * @param column - The column to filter.
-     * @param values - An array of values to match against.
      * @returns The query_builder instance for chaining.
      */
     andWhereIn(column: string, values: BaseValues$1[]): this;
     /**
      * @description Adds an OR WHERE IN condition to the query.
-     * @param column - The column to filter.
-     * @param values - An array of values to match against.
      * @returns The query_builder instance for chaining.
      */
     orWhereIn(column: string, values: BaseValues$1[]): this;
     /**
      * @description Adds a WHERE NOT IN condition to the query.
-     * @param column - The column to filter.
-     * @param values - An array of values to exclude.
      * @returns The query_builder instance for chaining.
      */
     whereNotIn(column: string, values: BaseValues$1[]): this;
     /**
      * @description Adds an OR WHERE NOT IN condition to the query.
-     * @param column - The column to filter.
-     * @param values - An array of values to exclude.
      * @returns The query_builder instance for chaining.
      */
     orWhereNotIn(column: string, values: BaseValues$1[]): this;
     /**
      * @description Adds a WHERE NULL condition to the query.
-     * @param column - The column to filter.
      * @returns The query_builder instance for chaining.
      */
     whereNull(column: string): this;
     /**
      * @description Adds an AND WHERE NULL condition to the query.
-     * @param column - The column to filter.
      * @returns The query_builder instance for chaining.
      */
     andWhereNull(column: string): this;
     /**
      * @description Adds an OR WHERE NULL condition to the query.
-     * @param column - The column to filter.
      * @returns The query_builder instance for chaining.
      */
     orWhereNull(column: string): this;
     /**
      * @description Adds a WHERE NOT NULL condition to the query.
-     * @param column - The column to filter.
      * @returns The query_builder instance for chaining.
      */
     whereNotNull(column: string): this;
     /**
      * @description Adds an AND WHERE NOT NULL condition to the query.
-     * @param column - The column to filter.
      * @returns The query_builder instance for chaining.
      */
     andWhereNotNull(column: string): this;
     /**
      * @description Adds an OR WHERE NOT NULL condition to the query.
-     * @param column - The column to filter.
      * @returns The query_builder instance for chaining.
      */
     orWhereNotNull(column: string): this;
     /**
      * @description Adds a raw WHERE condition to the query.
-     * @param query - The raw SQL WHERE condition.
      * @returns The query_builder instance for chaining.
      */
     rawWhere(query: string, queryParams?: any[]): this;
     /**
      * @description Adds a raw AND WHERE condition to the query.
-     * @param query - The raw SQL WHERE condition.
      * @returns The query_builder instance for chaining.
      */
     rawAndWhere(query: string, queryParams?: any[]): this;
     /**
      * @description Adds a raw OR WHERE condition to the query.
-     * @param query - The raw SQL WHERE condition.
      * @returns The query_builder instance for chaining.
      */
     rawOrWhere(query: string, queryParams?: any[]): this;

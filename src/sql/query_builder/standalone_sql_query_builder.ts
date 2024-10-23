@@ -1,20 +1,12 @@
-import { CaseConvention, convertCase } from "../../utils/case_utils";
+import { CaseConvention } from "../../utils/case_utils";
 import { Model } from "../models/model";
-import { getModelColumns } from "../models/model_decorators";
-import {
-  SelectableType,
-  RelationType,
-  DynamicColumnType,
-} from "../models/model_manager/model_manager_types";
 import joinTemplate from "../resources/query/JOIN";
 import selectTemplate from "../resources/query/SELECT";
 import whereTemplate, {
   BaseValues,
   WhereOperatorType,
 } from "../resources/query/WHERE";
-import { addDynamicColumnsToModel } from "../serializer";
 import { SqlDataSourceType } from "../sql_data_source";
-import { ModelQueryBuilder } from "./query_builder";
 
 export class StandaloneQueryBuilder {
   protected selectQuery: string;
@@ -37,11 +29,8 @@ export class StandaloneQueryBuilder {
 
   /**
    * @description Constructs a Mysql_query_builder instance.
-   * @param model - The model class associated with the table.
-   * @param table - The name of the table.
-   * @param logs - A boolean indicating whether to log queries.
    */
-  public constructor(
+  constructor(
     dbType: SqlDataSourceType,
     table: string,
     modelCaseConvention: CaseConvention = "camel",
@@ -68,14 +57,17 @@ export class StandaloneQueryBuilder {
     this.offsetQuery = "";
   }
 
-  public select(...columns: string[]): StandaloneQueryBuilder {
+  select(...columns: string[]): StandaloneQueryBuilder {
     this.selectQuery = this.selectTemplate.selectColumns(
       ...(columns as string[]),
     );
     return this;
   }
 
-  public join(
+  /**
+   * @description Adds a JOIN condition to the query.
+   */
+  join(
     relationTable: string,
     primaryColumn: string,
     foreignColumn: string,
@@ -90,7 +82,10 @@ export class StandaloneQueryBuilder {
     return this;
   }
 
-  public leftJoin(
+  /**
+   * @description Adds a LEFT JOIN condition to the query.
+   */
+  leftJoin(
     relationTable: string,
     primaryColumn: string,
     foreignColumn: string,
@@ -105,9 +100,10 @@ export class StandaloneQueryBuilder {
     return this;
   }
 
-  public whereBuilder(
-    cb: (queryBuilder: StandaloneQueryBuilder) => void,
-  ): this {
+  /**
+   * @description Given a callback, it will execute the callback with a query builder instance.
+   */
+  whereBuilder(cb: (queryBuilder: StandaloneQueryBuilder) => void): this {
     const queryBuilder = new StandaloneQueryBuilder(
       this.dbType,
       this.model.table,
@@ -138,9 +134,10 @@ export class StandaloneQueryBuilder {
     return this;
   }
 
-  public orWhereBuilder(
-    cb: (queryBuilder: StandaloneQueryBuilder) => void,
-  ): this {
+  /**
+   * @description Given a callback, it will execute the callback with a query builder instance.
+   */
+  orWhereBuilder(cb: (queryBuilder: StandaloneQueryBuilder) => void): this {
     const nestedBuilder = new StandaloneQueryBuilder(
       this.dbType,
       this.model.table,
@@ -174,9 +171,10 @@ export class StandaloneQueryBuilder {
     return this;
   }
 
-  public andWhereBuilder(
-    cb: (queryBuilder: StandaloneQueryBuilder) => void,
-  ): this {
+  /**
+   * @description Given a callback, it will execute the callback with a query builder instance.
+   */
+  andWhereBuilder(cb: (queryBuilder: StandaloneQueryBuilder) => void): this {
     const nestedBuilder = new StandaloneQueryBuilder(
       this.dbType,
       this.model.table,
@@ -210,10 +208,8 @@ export class StandaloneQueryBuilder {
 
   /**
    * @description Accepts a value and executes a callback only of the value is not null or undefined.
-   * @param {any} value
-   * @param callback
    */
-  public when(
+  when(
     value: any,
     cb: (value: any, query: StandaloneQueryBuilder) => void,
   ): this {
@@ -227,12 +223,9 @@ export class StandaloneQueryBuilder {
 
   /**
    * @description Adds a WHERE condition to the query.
-   * @param column - The column to filter.
-   * @param operator - The comparison operator.
-   * @param value - The value to compare against.
    * @returns The query_builder instance for chaining.
    */
-  public where(
+  where(
     column: string,
     operatorOrValue: WhereOperatorType | BaseValues,
     value?: BaseValues,
@@ -271,12 +264,9 @@ export class StandaloneQueryBuilder {
 
   /**
    * @description Adds an AND WHERE condition to the query.
-   * @param column - The column to filter.
-   * @param operator - The comparison operator.
-   * @param value - The value to compare against.
    * @returns The query_builder instance for chaining.
    */
-  public andWhere(
+  andWhere(
     column: string,
     operatorOrValue: WhereOperatorType | BaseValues,
     value?: BaseValues,
@@ -315,12 +305,9 @@ export class StandaloneQueryBuilder {
 
   /**
    * @description Adds an OR WHERE condition to the query.
-   * @param column - The column to filter.
-   * @param operator - The comparison operator.
-   * @param value - The value to compare against.
    * @returns The query_builder instance for chaining.
    */
-  public orWhere(
+  orWhere(
     column: string,
     operatorOrValue: WhereOperatorType | BaseValues,
     value?: BaseValues,
@@ -359,12 +346,9 @@ export class StandaloneQueryBuilder {
 
   /**
    * @description Adds a WHERE BETWEEN condition to the query.
-   * @param column - The column to filter.
-   * @param min - The minimum value for the range.
-   * @param max - The maximum value for the range.
    * @returns The query_builder instance for chaining.
    */
-  public whereBetween(column: string, min: BaseValues, max: BaseValues): this {
+  whereBetween(column: string, min: BaseValues, max: BaseValues): this {
     if (!this.whereQuery && !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereBetween(
         column as string,
@@ -388,16 +372,9 @@ export class StandaloneQueryBuilder {
 
   /**
    * @description Adds an AND WHERE BETWEEN condition to the query.
-   * @param column - The column to filter.
-   * @param min - The minimum value for the range.
-   * @param max - The maximum value for the range.
    * @returns The query_builder instance for chaining.
    */
-  public andWhereBetween(
-    column: string,
-    min: BaseValues,
-    max: BaseValues,
-  ): this {
+  andWhereBetween(column: string, min: BaseValues, max: BaseValues): this {
     if (!this.whereQuery && !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereBetween(
         column as string,
@@ -421,16 +398,9 @@ export class StandaloneQueryBuilder {
 
   /**
    * @description Adds an OR WHERE BETWEEN condition to the query.
-   * @param column - The column to filter.
-   * @param min - The minimum value for the range.
-   * @param max - The maximum value for the range.
    * @returns The query_builder instance for chaining.
    */
-  public orWhereBetween(
-    column: string,
-    min: BaseValues,
-    max: BaseValues,
-  ): this {
+  orWhereBetween(column: string, min: BaseValues, max: BaseValues): this {
     if (!this.whereQuery && !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereBetween(
         column as string,
@@ -454,16 +424,9 @@ export class StandaloneQueryBuilder {
 
   /**
    * @description Adds a WHERE NOT BETWEEN condition to the query.
-   * @param column - The column to filter.
-   * @param min - The minimum value for the range.
-   * @param max - The maximum value for the range.
    * @returns The query_builder instance for chaining.
    */
-  public whereNotBetween(
-    column: string,
-    min: BaseValues,
-    max: BaseValues,
-  ): this {
+  whereNotBetween(column: string, min: BaseValues, max: BaseValues): this {
     if (!this.whereQuery && !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereNotBetween(
         column as string,
@@ -487,16 +450,9 @@ export class StandaloneQueryBuilder {
 
   /**
    * @description Adds an OR WHERE NOT BETWEEN condition to the query.
-   * @param column - The column to filter.
-   * @param min - The minimum value for the range.
-   * @param max - The maximum value for the range.
    * @returns The query_builder instance for chaining.
    */
-  public orWhereNotBetween(
-    column: string,
-    min: BaseValues,
-    max: BaseValues,
-  ): this {
+  orWhereNotBetween(column: string, min: BaseValues, max: BaseValues): this {
     if (!this.whereQuery && !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereNotBetween(
         column as string,
@@ -520,11 +476,9 @@ export class StandaloneQueryBuilder {
 
   /**
    * @description Adds a WHERE IN condition to the query.
-   * @param column - The column to filter.
-   * @param values - An array of values to match against.
    * @returns The query_builder instance for chaining.
    */
-  public whereIn(column: string, values: BaseValues[]): this {
+  whereIn(column: string, values: BaseValues[]): this {
     if (!this.whereQuery && !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereIn(
         column as string,
@@ -546,11 +500,9 @@ export class StandaloneQueryBuilder {
 
   /**
    * @description Adds an AND WHERE IN condition to the query.
-   * @param column - The column to filter.
-   * @param values - An array of values to match against.
    * @returns The query_builder instance for chaining.
    */
-  public andWhereIn(column: string, values: BaseValues[]): this {
+  andWhereIn(column: string, values: BaseValues[]): this {
     if (!this.whereQuery && !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereIn(
         column as string,
@@ -572,11 +524,9 @@ export class StandaloneQueryBuilder {
 
   /**
    * @description Adds an OR WHERE IN condition to the query.
-   * @param column - The column to filter.
-   * @param values - An array of values to match against.
    * @returns The query_builder instance for chaining.
    */
-  public orWhereIn(column: string, values: BaseValues[]): this {
+  orWhereIn(column: string, values: BaseValues[]): this {
     if (!this.whereQuery && !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereIn(
         column as string,
@@ -598,11 +548,9 @@ export class StandaloneQueryBuilder {
 
   /**
    * @description Adds a WHERE NOT IN condition to the query.
-   * @param column - The column to filter.
-   * @param values - An array of values to exclude.
    * @returns The query_builder instance for chaining.
    */
-  public whereNotIn(column: string, values: BaseValues[]): this {
+  whereNotIn(column: string, values: BaseValues[]): this {
     if (!this.whereQuery && !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereNotIn(
         column as string,
@@ -624,11 +572,9 @@ export class StandaloneQueryBuilder {
 
   /**
    * @description Adds an OR WHERE NOT IN condition to the query.
-   * @param column - The column to filter.
-   * @param values - An array of values to exclude.
    * @returns The query_builder instance for chaining.
    */
-  public orWhereNotIn(column: string, values: BaseValues[]): this {
+  orWhereNotIn(column: string, values: BaseValues[]): this {
     if (!this.whereQuery && !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereNotIn(
         column as string,
@@ -650,10 +596,9 @@ export class StandaloneQueryBuilder {
 
   /**
    * @description Adds a WHERE NULL condition to the query.
-   * @param column - The column to filter.
    * @returns The query_builder instance for chaining.
    */
-  public whereNull(column: string): this {
+  whereNull(column: string): this {
     if (!this.whereQuery && !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereNull(column as string);
       this.whereQuery = query;
@@ -669,10 +614,9 @@ export class StandaloneQueryBuilder {
 
   /**
    * @description Adds an AND WHERE NULL condition to the query.
-   * @param column - The column to filter.
    * @returns The query_builder instance for chaining.
    */
-  public andWhereNull(column: string): this {
+  andWhereNull(column: string): this {
     if (!this.whereQuery && !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereNull(column as string);
       this.whereQuery = query;
@@ -688,10 +632,9 @@ export class StandaloneQueryBuilder {
 
   /**
    * @description Adds an OR WHERE NULL condition to the query.
-   * @param column - The column to filter.
    * @returns The query_builder instance for chaining.
    */
-  public orWhereNull(column: string): this {
+  orWhereNull(column: string): this {
     if (!this.whereQuery && !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereNull(column as string);
       this.whereQuery = query;
@@ -707,10 +650,9 @@ export class StandaloneQueryBuilder {
 
   /**
    * @description Adds a WHERE NOT NULL condition to the query.
-   * @param column - The column to filter.
    * @returns The query_builder instance for chaining.
    */
-  public whereNotNull(column: string): this {
+  whereNotNull(column: string): this {
     if (!this.whereQuery && !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereNotNull(
         column as string,
@@ -730,10 +672,9 @@ export class StandaloneQueryBuilder {
 
   /**
    * @description Adds an AND WHERE NOT NULL condition to the query.
-   * @param column - The column to filter.
    * @returns The query_builder instance for chaining.
    */
-  public andWhereNotNull(column: string): this {
+  andWhereNotNull(column: string): this {
     if (!this.whereQuery && !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereNotNull(
         column as string,
@@ -753,10 +694,9 @@ export class StandaloneQueryBuilder {
 
   /**
    * @description Adds an OR WHERE NOT NULL condition to the query.
-   * @param column - The column to filter.
    * @returns The query_builder instance for chaining.
    */
-  public orWhereNotNull(column: string): this {
+  orWhereNotNull(column: string): this {
     if (!this.whereQuery && !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereNotNull(
         column as string,
@@ -776,10 +716,9 @@ export class StandaloneQueryBuilder {
 
   /**
    * @description Adds a raw WHERE condition to the query.
-   * @param query - The raw SQL WHERE condition.
    * @returns The query_builder instance for chaining.
    */
-  public rawWhere(query: string, queryParams: any[] = []) {
+  rawWhere(query: string, queryParams: any[] = []) {
     if (!this.whereQuery && !this.isNestedCondition) {
       const { query: rawQuery, params } = this.whereTemplate.rawWhere(
         query,
@@ -801,10 +740,9 @@ export class StandaloneQueryBuilder {
 
   /**
    * @description Adds a raw AND WHERE condition to the query.
-   * @param query - The raw SQL WHERE condition.
    * @returns The query_builder instance for chaining.
    */
-  public rawAndWhere(query: string, queryParams: any[] = []) {
+  rawAndWhere(query: string, queryParams: any[] = []) {
     if (!this.whereQuery && !this.isNestedCondition) {
       const { query: rawQuery, params } = this.whereTemplate.rawWhere(
         query,
@@ -826,10 +764,9 @@ export class StandaloneQueryBuilder {
 
   /**
    * @description Adds a raw OR WHERE condition to the query.
-   * @param query - The raw SQL WHERE condition.
    * @returns The query_builder instance for chaining.
    */
-  public rawOrWhere(query: string, queryParams: any[] = []) {
+  rawOrWhere(query: string, queryParams: any[] = []) {
     if (!this.whereQuery && !this.isNestedCondition) {
       const { query: rawQuery, params } = this.whereTemplate.rawWhere(
         query,
@@ -849,37 +786,37 @@ export class StandaloneQueryBuilder {
     return this;
   }
 
-  public groupBy(...columns: string[]): this {
+  groupBy(...columns: string[]): this {
     this.groupByQuery = this.selectTemplate.groupBy(...(columns as string[]));
     return this;
   }
 
-  public groupByRaw(query: string): this {
+  groupByRaw(query: string): this {
     this.groupByQuery = ` GROUP BY ${query}`;
     return this;
   }
 
-  public orderBy(columns: string[], order: "ASC" | "DESC"): this {
+  orderBy(columns: string[], order: "ASC" | "DESC"): this {
     this.orderByQuery = this.selectTemplate.orderBy(columns as string[], order);
     return this;
   }
 
-  public orderByRaw(query: string): this {
+  orderByRaw(query: string): this {
     this.orderByQuery = ` ORDER BY ${query}`;
     return this;
   }
 
-  public limit(limit: number) {
+  limit(limit: number) {
     this.limitQuery = this.selectTemplate.limit(limit);
     return this;
   }
 
-  public offset(offset: number) {
+  offset(offset: number) {
     this.offsetQuery = this.selectTemplate.offset(offset);
     return this;
   }
 
-  public getCurrentQuery(dbType?: SqlDataSourceType): {
+  getCurrentQuery(dbType?: SqlDataSourceType): {
     query: string;
     params: any[];
   } {

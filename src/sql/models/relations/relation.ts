@@ -31,12 +31,12 @@ export function isRelationDefinition(
  */
 
 export abstract class Relation {
-  public abstract type: RelationEnum;
-  public model: typeof Model = Model;
-  public columnName: string = "";
-  public foreignKey?: string;
-  public relatedModel: string = "";
-  public options?: RelationOptions;
+  abstract type: RelationEnum;
+  model: typeof Model = Model;
+  columnName: string = "";
+  foreignKey?: string;
+  relatedModel: string = "";
+  options?: RelationOptions;
 
   protected constructor(
     model: typeof Model,

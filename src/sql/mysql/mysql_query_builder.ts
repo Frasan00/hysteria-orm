@@ -33,7 +33,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
   protected deleteTemplate: ReturnType<typeof deleteTemplate>;
   protected mysqlModelManagerUtils: SqlModelManagerUtils<T>;
 
-  public constructor(
+  constructor(
     model: typeof Model,
     table: string,
     mysqlConnection: mysql.Connection,
@@ -52,7 +52,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     );
   }
 
-  public async one(
+  async one(
     options: OneOptions = { throwErrorOnNull: false },
   ): Promise<T | null> {
     // hook query builder
@@ -78,46 +78,41 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
     query = query.trim();
     log(query, this.logs, this.params);
-    try {
-      const [rows] = await this.mysqlConnection.query<RowDataPacket[]>(
-        query,
-        this.params,
-      );
+    const [rows] = await this.mysqlConnection.query<RowDataPacket[]>(
+      query,
+      this.params,
+    );
 
-      if (!rows.length) {
-        if (options.throwErrorOnNull) {
-          throw new Error("ROW_NOT_FOUND");
-        }
-
-        return null;
+    if (!rows.length) {
+      if (options.throwErrorOnNull) {
+        throw new Error("ROW_NOT_FOUND");
       }
 
-      const modelInstance = getBaseModelInstance<T>();
-      await this.mergeRawPacketIntoModel(modelInstance, rows[0], this.model);
-      const relationModels =
-        await this.mysqlModelManagerUtils.parseQueryBuilderRelations(
-          [modelInstance],
-          this.model,
-          this.relations,
-          this.logs,
-        );
+      return null;
+    }
 
-      const model = (await parseDatabaseDataIntoModelResponse(
+    const modelInstance = getBaseModelInstance<T>();
+    await this.mergeRawPacketIntoModel(modelInstance, rows[0], this.model);
+    const relationModels =
+      await this.mysqlModelManagerUtils.parseQueryBuilderRelations(
         [modelInstance],
         this.model,
-        relationModels,
-      )) as T;
+        this.relations,
+        this.logs,
+      );
 
-      return !options.ignoreHooks?.includes("afterFetch")
-        ? ((await this.model.afterFetch([model]))[0] as T)
-        : model;
-    } catch (error) {
-      queryError(query);
-      throw new Error("query failed " + error);
-    }
+    const model = (await parseDatabaseDataIntoModelResponse(
+      [modelInstance],
+      this.model,
+      relationModels,
+    )) as T;
+
+    return !options.ignoreHooks?.includes("afterFetch")
+      ? ((await this.model.afterFetch([model]))[0] as T)
+      : model;
   }
 
-  public async oneOrFail(options?: {
+  async oneOrFail(options?: {
     ignoreHooks?: OneOptions["ignoreHooks"];
   }): Promise<T> {
     const model = await this.one({
@@ -127,7 +122,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return model as T;
   }
 
-  public async many(options: ManyOptions = {}): Promise<T[]> {
+  async many(options: ManyOptions = {}): Promise<T[]> {
     // hook query builder
     if (!options.ignoreHooks?.includes("beforeFetch")) {
       this.model.beforeFetch(this);
@@ -148,51 +143,46 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     query = query.trim();
 
     log(query, this.logs, this.params);
-    try {
-      const [rows] = await this.mysqlConnection.query<RowDataPacket[]>(
-        query,
-        this.params,
-      );
+    const [rows] = await this.mysqlConnection.query<RowDataPacket[]>(
+      query,
+      this.params,
+    );
 
-      const modelPromises = rows.map(async (row) => {
-        const modelInstance = getBaseModelInstance<T>();
-        await this.mergeRawPacketIntoModel(modelInstance, row, this.model);
+    const modelPromises = rows.map(async (row) => {
+      const modelInstance = getBaseModelInstance<T>();
+      await this.mergeRawPacketIntoModel(modelInstance, row, this.model);
 
-        return modelInstance as T;
-      });
+      return modelInstance as T;
+    });
 
-      const models = await Promise.all(modelPromises);
-      const relationModels =
-        await this.mysqlModelManagerUtils.parseQueryBuilderRelations(
-          models,
-          this.model,
-          this.relations,
-          this.logs,
-        );
-
-      const serializedModels = await parseDatabaseDataIntoModelResponse(
+    const models = await Promise.all(modelPromises);
+    const relationModels =
+      await this.mysqlModelManagerUtils.parseQueryBuilderRelations(
         models,
         this.model,
-        relationModels,
+        this.relations,
+        this.logs,
       );
-      if (!serializedModels) {
-        return [];
-      }
 
-      if (!options.ignoreHooks?.includes("afterFetch")) {
-        await this.model.afterFetch(serializedModels as T[]);
-      }
-
-      return (
-        Array.isArray(serializedModels) ? serializedModels : [serializedModels]
-      ) as T[];
-    } catch (error) {
-      queryError(query);
-      throw new Error("query failed " + error);
+    const serializedModels = await parseDatabaseDataIntoModelResponse(
+      models,
+      this.model,
+      relationModels,
+    );
+    if (!serializedModels) {
+      return [];
     }
+
+    if (!options.ignoreHooks?.includes("afterFetch")) {
+      await this.model.afterFetch(serializedModels as T[]);
+    }
+
+    return (
+      Array.isArray(serializedModels) ? serializedModels : [serializedModels]
+    ) as T[];
   }
 
-  public async softDelete(options?: SoftDeleteOptions<T>): Promise<number> {
+  async softDelete(options?: SoftDeleteOptions<T>): Promise<number> {
     const {
       column = "deletedAt",
       value = DateTime.local().toISO(),
@@ -212,20 +202,15 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     params = [...params, ...this.params];
 
     log(query, this.logs, params);
-    try {
-      const rows: any = await this.mysqlConnection.query(query, params);
-      if (!rows[0].affectedRows) {
-        return 0;
-      }
-
-      return rows[0].affectedRows;
-    } catch (error) {
-      queryError(query);
-      throw new Error("query failed " + error);
+    const rows: any = await this.mysqlConnection.query(query, params);
+    if (!rows[0].affectedRows) {
+      return 0;
     }
+
+    return rows[0].affectedRows;
   }
 
-  public async delete(options: DeleteOptions = {}): Promise<number> {
+  async delete(options: DeleteOptions = {}): Promise<number> {
     const { ignoreBeforeDeleteHook } = options || {};
     if (!ignoreBeforeDeleteHook) {
       this.model.beforeDelete(this);
@@ -241,24 +226,16 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     );
 
     log(query, this.logs, this.params);
-    try {
-      const rows: any = await this.mysqlConnection.query(query, this.params);
+    const rows: any = await this.mysqlConnection.query(query, this.params);
 
-      if (!rows[0].affectedRows) {
-        return 0;
-      }
-
-      return rows[0].affectedRows;
-    } catch (error) {
-      queryError(query);
-      throw new Error("query failed " + error);
+    if (!rows[0].affectedRows) {
+      return 0;
     }
+
+    return rows[0].affectedRows;
   }
 
-  public async update(
-    data: Partial<T>,
-    options?: UpdateOptions,
-  ): Promise<number> {
+  async update(data: Partial<T>, options?: UpdateOptions): Promise<number> {
     const { ignoreBeforeUpdateHook } = options || {};
     if (!ignoreBeforeUpdateHook) {
       this.model.beforeUpdate(this);
@@ -280,20 +257,15 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     params.push(...this.params);
 
     log(query, this.logs, params);
-    try {
-      const rows: any = await this.mysqlConnection.query(query, params);
-      if (!rows[0].affectedRows) {
-        return 0;
-      }
-
-      return rows[0].affectedRows;
-    } catch (error) {
-      queryError(query);
-      throw new Error("query failed " + error);
+    const rows: any = await this.mysqlConnection.query(query, params);
+    if (!rows[0].affectedRows) {
+      return 0;
     }
+
+    return rows[0].affectedRows;
   }
 
-  public whereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this {
+  whereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this {
     const queryBuilder = new MysqlQueryBuilder(
       this.model as typeof Model,
       this.table,
@@ -325,9 +297,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  public orWhereBuilder(
-    cb: (queryBuilder: MysqlQueryBuilder<T>) => void,
-  ): this {
+  orWhereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this {
     const nestedBuilder = new MysqlQueryBuilder(
       this.model as typeof Model,
       this.table,
@@ -362,9 +332,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  public andWhereBuilder(
-    cb: (queryBuilder: MysqlQueryBuilder<T>) => void,
-  ): this {
+  andWhereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this {
     const nestedBuilder = new MysqlQueryBuilder(
       this.model as typeof Model,
       this.table,
@@ -397,7 +365,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  public async getCount(
+  async getCount(
     options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<number> {
     if (options.ignoreHooks) {
@@ -412,9 +380,9 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return result ? +result.extraColumns.total : 0;
   }
 
-  public async getSum(column: SelectableType<T>): Promise<number>;
-  public async getSum(column: string): Promise<number>;
-  public async getSum(
+  async getSum(column: SelectableType<T>): Promise<number>;
+  async getSum(column: string): Promise<number>;
+  async getSum(
     column: SelectableType<T> | string,
     options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<number> {
@@ -431,7 +399,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return result ? +result.extraColumns.total : 0;
   }
 
-  public async paginate(
+  async paginate(
     page: number,
     limit: number,
     options?: ManyOptions,
@@ -464,9 +432,9 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
   }
 
   // SELECT
-  public select(...columns: string[]): MysqlQueryBuilder<T>;
-  public select(...columns: (SelectableType<T> | "*")[]): MysqlQueryBuilder<T>;
-  public select(
+  select(...columns: string[]): MysqlQueryBuilder<T>;
+  select(...columns: (SelectableType<T> | "*")[]): MysqlQueryBuilder<T>;
+  select(
     ...columns: (SelectableType<T> | "*" | string)[]
   ): MysqlQueryBuilder<T> {
     this.selectQuery = this.selectTemplate.selectColumns(
@@ -475,7 +443,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  public join(
+  join(
     relationTable: string,
     primaryColumn: string,
     foreignColumn: string,
@@ -490,7 +458,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  public leftJoin(
+  leftJoin(
     relationTable: string,
     primaryColumn: string,
     foreignColumn: string,
@@ -505,33 +473,33 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  public addRelations(relations: RelationType<T>[]): MysqlQueryBuilder<T> {
+  addRelations(relations: RelationType<T>[]): MysqlQueryBuilder<T> {
     this.relations = relations as string[];
     return this;
   }
 
-  public addDynamicColumns(
+  addDynamicColumns(
     dynamicColumns: DynamicColumnType<T>[],
   ): ModelQueryBuilder<T> {
     this.dynamicColumns = dynamicColumns as string[];
     return this;
   }
 
-  public groupBy(...columns: SelectableType<T>[]): this;
-  public groupBy(...columns: string[]): this;
-  public groupBy(...columns: (SelectableType<T> | string)[]): this {
+  groupBy(...columns: SelectableType<T>[]): this;
+  groupBy(...columns: string[]): this;
+  groupBy(...columns: (SelectableType<T> | string)[]): this {
     this.groupByQuery = this.selectTemplate.groupBy(...(columns as string[]));
     return this;
   }
 
-  public groupByRaw(query: string): this {
+  groupByRaw(query: string): this {
     this.groupByQuery = ` GROUP BY ${query}`;
     return this;
   }
 
-  public orderBy(columns: SelectableType<T>[], order: "ASC" | "DESC"): this;
-  public orderBy(columns: string[], order: "ASC" | "DESC"): this;
-  public orderBy(
+  orderBy(columns: SelectableType<T>[], order: "ASC" | "DESC"): this;
+  orderBy(columns: string[], order: "ASC" | "DESC"): this;
+  orderBy(
     columns: (SelectableType<T> | string)[],
     order: "ASC" | "DESC",
   ): this {
@@ -539,22 +507,22 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  public orderByRaw(query: string): this {
+  orderByRaw(query: string): this {
     this.orderByQuery = ` ORDER BY ${query}`;
     return this;
   }
 
-  public limit(limit: number) {
+  limit(limit: number) {
     this.limitQuery = this.selectTemplate.limit(limit);
     return this;
   }
 
-  public offset(offset: number) {
+  offset(offset: number) {
     this.offsetQuery = this.selectTemplate.offset(offset);
     return this;
   }
 
-  public copy(): ModelQueryBuilder<T> {
+  copy(): ModelQueryBuilder<T> {
     const queryBuilder = new MysqlQueryBuilder<T>(
       this.model as typeof Model,
       this.table,

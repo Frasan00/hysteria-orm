@@ -20,7 +20,7 @@ export default class SqlModelManagerUtils<T extends Model> {
     this.sqlConnection = sqlConnection;
   }
 
-  public parseInsert(
+  parseInsert(
     model: T,
     typeofModel: typeof Model,
     dbType: SqlDataSourceType,
@@ -33,7 +33,7 @@ export default class SqlModelManagerUtils<T extends Model> {
     return insert.insert(keys, values);
   }
 
-  public parseMassiveInsert(
+  parseMassiveInsert(
     models: T[],
     typeofModel: typeof Model,
     dbType: SqlDataSourceType,
@@ -48,7 +48,7 @@ export default class SqlModelManagerUtils<T extends Model> {
     return insert.insertMany(keys, values);
   }
 
-  public parseUpdate(
+  parseUpdate(
     model: T,
     typeofModel: typeof Model,
     dbType: SqlDataSourceType,
@@ -84,7 +84,7 @@ export default class SqlModelManagerUtils<T extends Model> {
     return filteredModel as T;
   }
 
-  public parseDelete(
+  parseDelete(
     table: string,
     column: string,
     value: string | number | boolean,
@@ -108,7 +108,7 @@ export default class SqlModelManagerUtils<T extends Model> {
   }
 
   // Parses and fills input relations directly into the model
-  public async parseQueryBuilderRelations(
+  async parseQueryBuilderRelations(
     models: T[],
     typeofModel: typeof Model,
     input: string[],

@@ -2,10 +2,10 @@ import { Model } from "../model";
 import { Relation, RelationEnum, RelationOptions } from "./relation";
 
 export class HasOne extends Relation {
-  public type: RelationEnum;
-  public foreignKey: string;
+  type: RelationEnum;
+  foreignKey: string;
 
-  public constructor(
+  constructor(
     relatedModel: typeof Model,
     columnName: string,
     foreignKey: string,

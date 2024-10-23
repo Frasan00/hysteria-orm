@@ -24,7 +24,7 @@ export class WhereQueryBuilder<T extends Model> {
    * @param logs - A boolean indicating whether to log queries.
    * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
    */
-  public constructor(
+  constructor(
     model: typeof Model,
     table: string,
     logs: boolean,
@@ -48,7 +48,7 @@ export class WhereQueryBuilder<T extends Model> {
    * @param {any} value
    * @param callback
    */
-  public when(
+  when(
     value: any,
     cb: (value: any, query: WhereQueryBuilder<T>) => void,
   ): this {
@@ -67,18 +67,14 @@ export class WhereQueryBuilder<T extends Model> {
    * @param value - The value to compare against.
    * @returns The query_builder instance for chaining.
    */
-  public where(
+  where(
     column: SelectableType<T>,
     operator: WhereOperatorType,
     value: BaseValues,
   ): this;
-  public where(
-    column: string,
-    operator: WhereOperatorType,
-    value: BaseValues,
-  ): this;
-  public where(column: SelectableType<T> | string, value: BaseValues): this;
-  public where(
+  where(column: string, operator: WhereOperatorType, value: BaseValues): this;
+  where(column: SelectableType<T> | string, value: BaseValues): this;
+  where(
     column: SelectableType<T> | string,
     operatorOrValue: WhereOperatorType | BaseValues,
     value?: BaseValues,
@@ -122,18 +118,18 @@ export class WhereQueryBuilder<T extends Model> {
    * @param value - The value to compare against.
    * @returns The query_builder instance for chaining.
    */
-  public andWhere(
+  andWhere(
     column: SelectableType<T>,
     operator: WhereOperatorType,
     value: BaseValues,
   ): this;
-  public andWhere(
+  andWhere(
     column: string,
     operator: WhereOperatorType,
     value: BaseValues,
   ): this;
-  public andWhere(column: SelectableType<T> | string, value: BaseValues): this;
-  public andWhere(
+  andWhere(column: SelectableType<T> | string, value: BaseValues): this;
+  andWhere(
     column: SelectableType<T> | string,
     operatorOrValue: WhereOperatorType | BaseValues,
     value?: BaseValues,
@@ -177,18 +173,14 @@ export class WhereQueryBuilder<T extends Model> {
    * @param value - The value to compare against.
    * @returns The query_builder instance for chaining.
    */
-  public orWhere(
+  orWhere(
     column: SelectableType<T>,
     operator: WhereOperatorType,
     value: BaseValues,
   ): this;
-  public orWhere(
-    column: string,
-    operator: WhereOperatorType,
-    value: BaseValues,
-  ): this;
-  public orWhere(column: SelectableType<T> | string, value: BaseValues): this;
-  public orWhere(
+  orWhere(column: string, operator: WhereOperatorType, value: BaseValues): this;
+  orWhere(column: SelectableType<T> | string, value: BaseValues): this;
+  orWhere(
     column: SelectableType<T> | string,
     operatorOrValue: WhereOperatorType | BaseValues,
     value?: BaseValues,
@@ -232,13 +224,13 @@ export class WhereQueryBuilder<T extends Model> {
    * @param max - The maximum value for the range.
    * @returns The query_builder instance for chaining.
    */
-  public whereBetween(
+  whereBetween(
     column: SelectableType<T>,
     min: BaseValues,
     max: BaseValues,
   ): this;
-  public whereBetween(column: string, min: BaseValues, max: BaseValues): this;
-  public whereBetween(
+  whereBetween(column: string, min: BaseValues, max: BaseValues): this;
+  whereBetween(
     column: SelectableType<T> | string,
     min: BaseValues,
     max: BaseValues,
@@ -271,17 +263,13 @@ export class WhereQueryBuilder<T extends Model> {
    * @param max - The maximum value for the range.
    * @returns The query_builder instance for chaining.
    */
-  public andWhereBetween(
+  andWhereBetween(
     column: SelectableType<T>,
     min: BaseValues,
     max: BaseValues,
   ): this;
-  public andWhereBetween(
-    column: string,
-    min: BaseValues,
-    max: BaseValues,
-  ): this;
-  public andWhereBetween(
+  andWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
+  andWhereBetween(
     column: SelectableType<T> | string,
     min: BaseValues,
     max: BaseValues,
@@ -314,13 +302,13 @@ export class WhereQueryBuilder<T extends Model> {
    * @param max - The maximum value for the range.
    * @returns The query_builder instance for chaining.
    */
-  public orWhereBetween(
+  orWhereBetween(
     column: SelectableType<T>,
     min: BaseValues,
     max: BaseValues,
   ): this;
-  public orWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
-  public orWhereBetween(
+  orWhereBetween(column: string, min: BaseValues, max: BaseValues): this;
+  orWhereBetween(
     column: SelectableType<T> | string,
     min: BaseValues,
     max: BaseValues,
@@ -353,17 +341,13 @@ export class WhereQueryBuilder<T extends Model> {
    * @param max - The maximum value for the range.
    * @returns The query_builder instance for chaining.
    */
-  public whereNotBetween(
+  whereNotBetween(
     column: SelectableType<T>,
     min: BaseValues,
     max: BaseValues,
   ): this;
-  public whereNotBetween(
-    column: string,
-    min: BaseValues,
-    max: BaseValues,
-  ): this;
-  public whereNotBetween(
+  whereNotBetween(column: string, min: BaseValues, max: BaseValues): this;
+  whereNotBetween(
     column: SelectableType<T> | string,
     min: BaseValues,
     max: BaseValues,
@@ -396,17 +380,13 @@ export class WhereQueryBuilder<T extends Model> {
    * @param max - The maximum value for the range.
    * @returns The query_builder instance for chaining.
    */
-  public orWhereNotBetween(
+  orWhereNotBetween(
     column: SelectableType<T>,
     min: BaseValues,
     max: BaseValues,
   ): this;
-  public orWhereNotBetween(
-    column: string,
-    min: BaseValues,
-    max: BaseValues,
-  ): this;
-  public orWhereNotBetween(
+  orWhereNotBetween(column: string, min: BaseValues, max: BaseValues): this;
+  orWhereNotBetween(
     column: SelectableType<T> | string,
     min: BaseValues,
     max: BaseValues,
@@ -438,12 +418,9 @@ export class WhereQueryBuilder<T extends Model> {
    * @param values - An array of values to match against.
    * @returns The query_builder instance for chaining.
    */
-  public whereIn(column: SelectableType<T>, values: BaseValues[]): this;
-  public whereIn(column: string, values: BaseValues[]): this;
-  public whereIn(
-    column: SelectableType<T> | string,
-    values: BaseValues[],
-  ): this {
+  whereIn(column: SelectableType<T>, values: BaseValues[]): this;
+  whereIn(column: string, values: BaseValues[]): this;
+  whereIn(column: SelectableType<T> | string, values: BaseValues[]): this {
     if (!this.whereQuery && !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereIn(
         column as string,
@@ -469,12 +446,9 @@ export class WhereQueryBuilder<T extends Model> {
    * @param values - An array of values to match against.
    * @returns The query_builder instance for chaining.
    */
-  public andWhereIn(column: SelectableType<T>, values: BaseValues[]): this;
-  public andWhereIn(column: string, values: BaseValues[]): this;
-  public andWhereIn(
-    column: SelectableType<T> | string,
-    values: BaseValues[],
-  ): this {
+  andWhereIn(column: SelectableType<T>, values: BaseValues[]): this;
+  andWhereIn(column: string, values: BaseValues[]): this;
+  andWhereIn(column: SelectableType<T> | string, values: BaseValues[]): this {
     if (!this.whereQuery && !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereIn(
         column as string,
@@ -500,12 +474,9 @@ export class WhereQueryBuilder<T extends Model> {
    * @param values - An array of values to match against.
    * @returns The query_builder instance for chaining.
    */
-  public orWhereIn(column: SelectableType<T>, values: BaseValues[]): this;
-  public orWhereIn(column: string, values: BaseValues[]): this;
-  public orWhereIn(
-    column: SelectableType<T> | string,
-    values: BaseValues[],
-  ): this {
+  orWhereIn(column: SelectableType<T>, values: BaseValues[]): this;
+  orWhereIn(column: string, values: BaseValues[]): this;
+  orWhereIn(column: SelectableType<T> | string, values: BaseValues[]): this {
     if (!this.whereQuery && !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereIn(
         column as string,
@@ -531,12 +502,9 @@ export class WhereQueryBuilder<T extends Model> {
    * @param values - An array of values to exclude.
    * @returns The query_builder instance for chaining.
    */
-  public whereNotIn(column: SelectableType<T>, values: BaseValues[]): this;
-  public whereNotIn(column: string, values: BaseValues[]): this;
-  public whereNotIn(
-    column: SelectableType<T> | string,
-    values: BaseValues[],
-  ): this {
+  whereNotIn(column: SelectableType<T>, values: BaseValues[]): this;
+  whereNotIn(column: string, values: BaseValues[]): this;
+  whereNotIn(column: SelectableType<T> | string, values: BaseValues[]): this {
     if (!this.whereQuery && !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereNotIn(
         column as string,
@@ -562,12 +530,9 @@ export class WhereQueryBuilder<T extends Model> {
    * @param values - An array of values to exclude.
    * @returns The query_builder instance for chaining.
    */
-  public orWhereNotIn(column: SelectableType<T>, values: BaseValues[]): this;
-  public orWhereNotIn(column: string, values: BaseValues[]): this;
-  public orWhereNotIn(
-    column: SelectableType<T> | string,
-    values: BaseValues[],
-  ): this {
+  orWhereNotIn(column: SelectableType<T>, values: BaseValues[]): this;
+  orWhereNotIn(column: string, values: BaseValues[]): this;
+  orWhereNotIn(column: SelectableType<T> | string, values: BaseValues[]): this {
     if (!this.whereQuery && !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereNotIn(
         column as string,
@@ -592,9 +557,9 @@ export class WhereQueryBuilder<T extends Model> {
    * @param column - The column to filter.
    * @returns The query_builder instance for chaining.
    */
-  public whereNull(column: SelectableType<T>): this;
-  public whereNull(column: string): this;
-  public whereNull(column: SelectableType<T> | string): this {
+  whereNull(column: SelectableType<T>): this;
+  whereNull(column: string): this;
+  whereNull(column: SelectableType<T> | string): this {
     if (!this.whereQuery && !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereNull(column as string);
       this.whereQuery = query;
@@ -613,9 +578,9 @@ export class WhereQueryBuilder<T extends Model> {
    * @param column - The column to filter.
    * @returns The query_builder instance for chaining.
    */
-  public andWhereNull(column: SelectableType<T>): this;
-  public andWhereNull(column: string): this;
-  public andWhereNull(column: SelectableType<T> | string): this {
+  andWhereNull(column: SelectableType<T>): this;
+  andWhereNull(column: string): this;
+  andWhereNull(column: SelectableType<T> | string): this {
     if (!this.whereQuery && !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereNull(column as string);
       this.whereQuery = query;
@@ -634,9 +599,9 @@ export class WhereQueryBuilder<T extends Model> {
    * @param column - The column to filter.
    * @returns The query_builder instance for chaining.
    */
-  public orWhereNull(column: SelectableType<T>): this;
-  public orWhereNull(column: string): this;
-  public orWhereNull(column: SelectableType<T> | string): this {
+  orWhereNull(column: SelectableType<T>): this;
+  orWhereNull(column: string): this;
+  orWhereNull(column: SelectableType<T> | string): this {
     if (!this.whereQuery && !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereNull(column as string);
       this.whereQuery = query;
@@ -655,9 +620,9 @@ export class WhereQueryBuilder<T extends Model> {
    * @param column - The column to filter.
    * @returns The query_builder instance for chaining.
    */
-  public whereNotNull(column: SelectableType<T>): this;
-  public whereNotNull(column: string): this;
-  public whereNotNull(column: SelectableType<T> | string): this {
+  whereNotNull(column: SelectableType<T>): this;
+  whereNotNull(column: string): this;
+  whereNotNull(column: SelectableType<T> | string): this {
     if (!this.whereQuery && !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereNotNull(
         column as string,
@@ -680,9 +645,9 @@ export class WhereQueryBuilder<T extends Model> {
    * @param column - The column to filter.
    * @returns The query_builder instance for chaining.
    */
-  public andWhereNotNull(column: SelectableType<T>): this;
-  public andWhereNotNull(column: string): this;
-  public andWhereNotNull(column: SelectableType<T> | string): this {
+  andWhereNotNull(column: SelectableType<T>): this;
+  andWhereNotNull(column: string): this;
+  andWhereNotNull(column: SelectableType<T> | string): this {
     if (!this.whereQuery && !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereNotNull(
         column as string,
@@ -705,9 +670,9 @@ export class WhereQueryBuilder<T extends Model> {
    * @param column - The column to filter.
    * @returns The query_builder instance for chaining.
    */
-  public orWhereNotNull(column: SelectableType<T>): this;
-  public orWhereNotNull(column: string): this;
-  public orWhereNotNull(column: SelectableType<T> | string): this {
+  orWhereNotNull(column: SelectableType<T>): this;
+  orWhereNotNull(column: string): this;
+  orWhereNotNull(column: SelectableType<T> | string): this {
     if (!this.whereQuery && !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereNotNull(
         column as string,
@@ -730,7 +695,7 @@ export class WhereQueryBuilder<T extends Model> {
    * @param query - The raw SQL WHERE condition.
    * @returns The query_builder instance for chaining.
    */
-  public rawWhere(query: string, queryParams: any[] = []) {
+  rawWhere(query: string, queryParams: any[] = []) {
     if (!this.whereQuery && !this.isNestedCondition) {
       const { query: rawQuery, params } = this.whereTemplate.rawWhere(
         query,
@@ -755,7 +720,7 @@ export class WhereQueryBuilder<T extends Model> {
    * @param query - The raw SQL WHERE condition.
    * @returns The query_builder instance for chaining.
    */
-  public rawAndWhere(query: string, queryParams: any[] = []) {
+  rawAndWhere(query: string, queryParams: any[] = []) {
     if (!this.whereQuery && !this.isNestedCondition) {
       const { query: rawQuery, params } = this.whereTemplate.rawWhere(
         query,
@@ -780,7 +745,7 @@ export class WhereQueryBuilder<T extends Model> {
    * @param query - The raw SQL WHERE condition.
    * @returns The query_builder instance for chaining.
    */
-  public rawOrWhere(query: string, queryParams: any[] = []) {
+  rawOrWhere(query: string, queryParams: any[] = []) {
     if (!this.whereQuery && !this.isNestedCondition) {
       const { query: rawQuery, params } = this.whereTemplate.rawWhere(
         query,

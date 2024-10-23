@@ -38,7 +38,7 @@ export default class ColumnOptionsBuilder {
   /**
    * @description Makes the column nullable
    */
-  public nullable(): ColumnOptionsBuilder {
+  nullable(): ColumnOptionsBuilder {
     this.partialQuery += " NULL";
     return new ColumnOptionsBuilder(
       this.table,
@@ -50,7 +50,7 @@ export default class ColumnOptionsBuilder {
     );
   }
 
-  public default(value: string | number | boolean): ColumnOptionsBuilder {
+  default(value: string | number | boolean): ColumnOptionsBuilder {
     this.partialQuery += ` DEFAULT ${value}`;
     return new ColumnOptionsBuilder(
       this.table,
@@ -65,7 +65,7 @@ export default class ColumnOptionsBuilder {
   /**
    * @description Makes the column unsigned allowing only positive values
    */
-  public unsigned(): ColumnOptionsBuilder {
+  unsigned(): ColumnOptionsBuilder {
     this.partialQuery += " UNSIGNED";
     return new ColumnOptionsBuilder(
       this.table,
@@ -80,7 +80,7 @@ export default class ColumnOptionsBuilder {
   /**
    * @description Makes the column not nullable
    */
-  public notNullable(): ColumnOptionsBuilder {
+  notNullable(): ColumnOptionsBuilder {
     this.partialQuery += " NOT NULL";
     return new ColumnOptionsBuilder(
       this.table,
@@ -95,7 +95,7 @@ export default class ColumnOptionsBuilder {
   /**
    * @description Makes the column the primary key
    */
-  public primary(): ColumnOptionsBuilder {
+  primary(): ColumnOptionsBuilder {
     switch (this.sqlType) {
       case "mysql":
       case "mariadb":
@@ -139,7 +139,7 @@ export default class ColumnOptionsBuilder {
   /**
    * @description Adds an unique constraint
    */
-  public unique(): ColumnOptionsBuilder {
+  unique(): ColumnOptionsBuilder {
     this.partialQuery += " UNIQUE";
     return new ColumnOptionsBuilder(
       this.table,
@@ -154,7 +154,7 @@ export default class ColumnOptionsBuilder {
   /**
    * @description Adds an auto increment - only for mysql
    */
-  public autoIncrement(): ColumnOptionsBuilder {
+  autoIncrement(): ColumnOptionsBuilder {
     switch (this.sqlType) {
       case "mysql":
       case "mariadb":
@@ -180,7 +180,7 @@ export default class ColumnOptionsBuilder {
    * @param table
    * @param column
    */
-  public references(
+  references(
     table: string,
     column: string,
     options?: { onDelete: string; onUpdate: string },
@@ -204,7 +204,7 @@ export default class ColumnOptionsBuilder {
   /**
    * @description Chains a new column creation
    */
-  public newColumn(): ColumnTypeBuilder {
+  newColumn(): ColumnTypeBuilder {
     this.partialQuery += ",\n";
     return new ColumnTypeBuilder(
       this.table,
@@ -217,7 +217,7 @@ export default class ColumnOptionsBuilder {
   /**
    * @description Commits the column creation - if omitted, the migration will be run empty
    */
-  public commit(): void {
+  commit(): void {
     if (this.columnReferences.length) {
       this.columnReferences.forEach((reference) => {
         switch (this.sqlType) {
