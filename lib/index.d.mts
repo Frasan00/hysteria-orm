@@ -60,6 +60,7 @@ type PaginatedData<T> = {
 declare class Transaction {
     sqlDataSource: SqlDataSource;
     sqlConnection: SqlConnectionType;
+    isActive: boolean;
     private readonly logs;
     constructor(sqlDataSource: SqlDataSource, logs?: boolean);
     startTransaction(): Promise<void>;
@@ -1296,7 +1297,14 @@ declare class SqlDataSource extends DataSource {
     static connect(input?: SqlDataSourceInput, cb?: () => Promise<void> | void): Promise<SqlDataSource>;
     static getInstance(): SqlDataSource;
     /**
+     * @description Executes a callback function with the provided connection details
+     * @description The callback automatically commits or rollbacks the transaction based on the result of the callback
+     * @description NOTE: trx must always be passed to single methods that are part of the transaction
+     */
+    useTransaction(cb: (trx: Transaction) => Promise<void>, driverSpecificOptions?: DriverSpecificOptions): Promise<void>;
+    /**
      * @description Starts a transaction on the database and returns the transaction object
+     * @description This creates a new connection to the database, you can customize the connection details using the driverSpecificOptions
      */
     startTransaction(driverSpecificOptions?: DriverSpecificOptions): Promise<Transaction>;
     /**

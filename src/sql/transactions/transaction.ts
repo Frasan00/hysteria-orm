@@ -12,11 +12,13 @@ import { log } from "../../utils/logger";
 export class Transaction {
   sqlDataSource: SqlDataSource;
   sqlConnection: SqlConnectionType;
+  isActive: boolean;
   private readonly logs: boolean;
 
   constructor(sqlDataSource: SqlDataSource, logs?: boolean) {
     this.sqlDataSource = sqlDataSource;
     this.sqlConnection = this.sqlDataSource.getCurrentConnection();
+    this.isActive = false;
     this.logs = logs || this.sqlDataSource.logs || false;
   }
 
@@ -46,6 +48,8 @@ export class Transaction {
         default:
           throw new Error("Invalid database type while beginning transaction");
       }
+
+      this.isActive = true;
     } catch (error) {
       await this.releaseConnection();
     }
@@ -73,10 +77,11 @@ export class Transaction {
             }
           });
           break;
-
         default:
           throw new Error("Invalid database type while committing transaction");
       }
+
+      this.isActive = false;
     } catch (error) {
       throw error;
     } finally {
@@ -112,6 +117,8 @@ export class Transaction {
             "Invalid database type while rolling back transaction",
           );
       }
+
+      this.isActive = false;
     } finally {
       await this.releaseConnection();
     }

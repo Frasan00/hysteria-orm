@@ -108,7 +108,36 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
+   * @description Executes a callback function with the provided connection details
+   * @description The callback automatically commits or rollbacks the transaction based on the result of the callback
+   * @description NOTE: trx must always be passed to single methods that are part of the transaction
+   */
+  async useTransaction(
+    cb: (trx: Transaction) => Promise<void>,
+    driverSpecificOptions?: DriverSpecificOptions,
+  ): Promise<void> {
+    const trx = await this.startTransaction(driverSpecificOptions);
+    try {
+      await cb(trx).then(async () => {
+        if (!trx.isActive) {
+          return;
+        }
+
+        await trx.commit();
+      });
+    } catch (error) {
+      if (!trx.isActive) {
+        return;
+      }
+
+      await trx.rollback();
+      throw error;
+    }
+  }
+
+  /**
    * @description Starts a transaction on the database and returns the transaction object
+   * @description This creates a new connection to the database, you can customize the connection details using the driverSpecificOptions
    */
   async startTransaction(
     driverSpecificOptions?: DriverSpecificOptions,

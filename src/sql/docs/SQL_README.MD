@@ -7,12 +7,15 @@
     - [Complete env example](#complete-env-example)
 - [Getting Started](#getting-started)
     - [Establishing a Connection](#establishing-a-connection)
+    - [Use the Established connection](#use-the-connection)
         - [use-connection](#use-connection)
     - [Create a Model](#create-a-model)
     - [Create a Model with Relationships](#create-a-model-with-relations-and-hooks)
     - [UUID](#model-with-uuid)
     - [Case Convention](#case-convention)
     - [Upsert](#Upsert-methods)
+    - [Create, Update and Delete (with transaction)](#create-update-and-delete-with-transaction)
+    - [Use Transaction](#use-transaction)
     - [Read (standard methods used for simple queries)](#read-standard-methods-used-for-simple-queries)
     - [Query Builder](#query-builder)
     - [Where Builder](#where-builder)
@@ -367,6 +370,19 @@ try{
     await trx.rollback();
     throw new Error(error);
 }
+```
+
+### Use Transaction
+```typescript
+import { SqlDataSource } from "hysteria-orm";
+import { User } from "./User";
+
+const sql = await SqlDataSource.connect();
+
+// At the end of the transaction the trx will be automatically committed, it's also automatically rolled back in case of an error
+await sql.useTransaction(async (trx) => {
+    const user = await User.query({ trx }).delete();
+});
 ```
 
 ### Read (standard methods used for simple queries)
