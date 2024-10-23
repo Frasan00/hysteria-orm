@@ -19,11 +19,9 @@ export async function getMigrationTable(
     case "mariadb":
     case "mysql":
       const mysqlConnection = sqlConnection as mysql.Connection;
-      log(MigrationTemplates.migrationTableTemplateMysql(), true);
       await mysqlConnection.query(
         MigrationTemplates.migrationTableTemplateMysql(),
       );
-      log(MigrationTemplates.selectAllFromMigrationsTemplate(), true);
       const result = await mysqlConnection.query(
         MigrationTemplates.selectAllFromMigrationsTemplate(),
       );
@@ -31,22 +29,18 @@ export async function getMigrationTable(
 
     case "postgres":
       const pgConnection = sqlConnection as pg.Client;
-      log(MigrationTemplates.migrationTableTemplatePg(), true);
       await pgConnection.query(MigrationTemplates.migrationTableTemplatePg());
-      log(MigrationTemplates.selectAllFromMigrationsTemplate(), true);
       const pgResult = await pgConnection.query(
         MigrationTemplates.selectAllFromMigrationsTemplate(),
       );
       return pgResult.rows as MigrationTableType[];
 
     case "sqlite":
-      log(MigrationTemplates.migrationTableTemplateSQLite(), true);
       await promisifySqliteQuery(
         MigrationTemplates.migrationTableTemplateSQLite(),
         [],
         sqlConnection as sqlite3.Database,
       );
-      log(MigrationTemplates.migrationTableTemplateSQLite(), true);
       const resultSqlite =
         (await promisifySqliteQuery<MigrationTableType[]>(
           MigrationTemplates.selectAllFromMigrationsTemplate(),

@@ -16,7 +16,7 @@ import { getMigrations, getMigrationTable } from "../migration_utils";
 
 dotenv.config();
 
-export async function runMigrationsSql(): Promise<void> {
+export async function runMigrationsSql(runUntil?: string): Promise<void> {
   const sql = await SqlDataSource.connect();
   const sqlConnection = sql.getCurrentConnection() as mysql2.Connection;
   try {
@@ -39,11 +39,33 @@ export async function runMigrationsSql(): Promise<void> {
       process.exit(0);
     }
 
+    if (runUntil) {
+      const runUntilIndex = pendingMigrations.findIndex(
+        (migration) => migration.migrationName === runUntil,
+      );
+
+      if (runUntilIndex === -1) {
+        throw new Error(`Migration ${runUntil} not found.`);
+      }
+
+      const filteredMigrations = pendingMigrations.slice(0, runUntilIndex + 1);
+      const migrationController = new MigrationController(
+        sql,
+        sqlConnection as mysql2.Connection,
+        "mysql",
+      );
+      await migrationController.upMigrations(filteredMigrations);
+      log(COMMIT_TRANSACTION, true);
+      await sqlConnection.commit();
+      return;
+    } 
+
     const migrationController = new MigrationController(
       sql,
       sqlConnection as mysql2.Connection,
       "mysql",
     );
+
     await migrationController.upMigrations(pendingMigrations);
 
     log(COMMIT_TRANSACTION, true);
@@ -51,8 +73,6 @@ export async function runMigrationsSql(): Promise<void> {
   } catch (error: any) {
     log(ROLLBACK_TRANSACTION, true);
     await sqlConnection.rollback();
-
-    console.error(error);
     throw error;
   } finally {
     await sql.closeConnection();

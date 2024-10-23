@@ -8,7 +8,7 @@ import logger from "../utils/logger";
 
 dotenv.config();
 
-export default async function runMigrationsConnector() {
+export default async function runMigrationsConnector(runUntil?: string) {
   const databaseType = process.env.DB_TYPE;
   if (!databaseType) {
     throw new Error("Run migrations error: DB_TYPE env not set");
@@ -18,13 +18,13 @@ export default async function runMigrationsConnector() {
   switch (databaseType) {
     case "mariadb":
     case "mysql":
-      await runMigrationsSql();
+      await runMigrationsSql(runUntil);
       break;
     case "postgres":
-      await runMigrationsPg();
+      await runMigrationsPg(runUntil);
       break;
     case "sqlite":
-      await runMigrationsSQLite();
+      await runMigrationsSQLite(runUntil);
       break;
     default:
       throw new Error(
@@ -36,7 +36,12 @@ export default async function runMigrationsConnector() {
   logger.info("Migrations ran successfully");
 }
 
-runMigrationsConnector()
+let arg = process.argv[2];
+if (arg && !arg.endsWith(".ts")) {
+  arg += ".ts";
+}
+
+runMigrationsConnector(arg)
   .then(() => {
     process.exit(0);
   })

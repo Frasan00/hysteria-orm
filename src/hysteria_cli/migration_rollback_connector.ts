@@ -8,20 +8,20 @@ import { migrationRollBackSqlite } from "./sqlite/rollback_migration";
 
 dotenv.config();
 
-export default async function rollbackMigrationConnector() {
+export default async function rollbackMigrationConnector(rollBackUntil?: string) {
   const databaseType = process.env.DB_TYPE;
   logger.info("Rolling back migrations for database type: " + databaseType);
 
   switch (databaseType) {
     case "mariadb":
     case "mysql":
-      await migrationRollBackSql();
+      await migrationRollBackSql(rollBackUntil);
       break;
     case "postgres":
-      await migrationRollBackPg();
+      await migrationRollBackPg(rollBackUntil);
       break;
     case "sqlite":
-      await migrationRollBackSqlite();
+      await migrationRollBackSqlite(rollBackUntil);
       break;
     default:
       throw new Error(
@@ -31,7 +31,12 @@ export default async function rollbackMigrationConnector() {
   }
 }
 
-rollbackMigrationConnector()
+let arg = process.argv[2];
+if (arg && !arg.endsWith(".ts")) {
+  arg += ".ts";
+}
+
+rollbackMigrationConnector(arg)
   .then(() => {
     logger.info("migrations rolled back successfully");
     process.exit(0);

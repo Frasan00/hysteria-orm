@@ -3,7 +3,6 @@
 const { Command } = require('commander');
 const { execSync } = require('child_process');
 const { resolve } = require('path');
-const moduleAlias = require('module-alias');
 
 const program = new Command();
 
@@ -19,6 +18,7 @@ program
       console.error('Error: migrations name is required.');
       process.exit(1);
     }
+
     execSync(`${resolve(`${process.cwd()}/node_modules/.bin/ts-node`)} -T ${migrationCreateConnectorPath} ${name}`, { stdio: 'inherit' });
   });
 

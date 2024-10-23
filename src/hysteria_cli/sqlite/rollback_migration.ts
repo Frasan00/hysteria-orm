@@ -4,23 +4,17 @@ import dotenv from "dotenv";
 import { MigrationTableType } from "../resources/migration_table_type";
 import { Migration } from "../../sql/migrations/migration";
 import { MigrationController } from "../../sql/migrations/migration_controller";
-import {
-  BEGIN_TRANSACTION,
-  COMMIT_TRANSACTION,
-  ROLLBACK_TRANSACTION,
-} from "../../sql/resources/query/TRANSACTION";
-import logger, { log } from "../../utils/logger";
+import logger from "../../utils/logger";
 import sqlite3 from "sqlite3";
 import { SqlDataSource } from "../../sql/sql_data_source";
 import {
   getMigrations,
   getMigrationTable,
-  promisifySqliteQuery,
 } from "../migration_utils";
 
 dotenv.config();
 
-export async function migrationRollBackSqlite(): Promise<void> {
+export async function migrationRollBackSqlite(rollBackUntil?: string): Promise<void> {
   const sql = await SqlDataSource.connect();
   const sqlConnection = sql.getCurrentConnection() as sqlite3.Database;
 
@@ -40,24 +34,32 @@ export async function migrationRollBackSqlite(): Promise<void> {
       process.exit(0);
     }
 
+    if (rollBackUntil) {
+      const rollBackUntilIndex = pendingMigrations.findIndex(
+        (migration) => migration.migrationName === rollBackUntil,
+      );
+
+      if (rollBackUntilIndex === -1) {
+        throw new Error(`Migration ${rollBackUntil} not found.`);
+      }
+
+      const filteredMigrations = pendingMigrations.slice(rollBackUntilIndex);
+      const migrationController = new MigrationController(
+        sql,
+        sqlConnection,
+        "sqlite",
+      );
+
+      await migrationController.downMigrations(filteredMigrations);
+      return;
+    }
+
     const migrationController = new MigrationController(
       sql,
       sqlConnection,
       "sqlite",
     );
-
-    log(BEGIN_TRANSACTION, true);
-    await promisifySqliteQuery(BEGIN_TRANSACTION, [], sqlConnection);
     await migrationController.downMigrations(pendingMigrations);
-
-    log(COMMIT_TRANSACTION, true);
-    await promisifySqliteQuery(COMMIT_TRANSACTION, [], sqlConnection);
-  } catch (error: any) {
-    console.error(error);
-    log(ROLLBACK_TRANSACTION, true);
-    await promisifySqliteQuery(ROLLBACK_TRANSACTION, [], sqlConnection).catch();
-
-    throw error;
   } finally {
     await sql.closeConnection();
   }

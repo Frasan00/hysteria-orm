@@ -16,7 +16,7 @@ import { getMigrations, getMigrationTable } from "../migration_utils";
 
 dotenv.config();
 
-export async function migrationRollBackSql(): Promise<void> {
+export async function migrationRollBackSql(rollBackUntil?: string): Promise<void> {
   const sql = await SqlDataSource.connect();
   const sqlConnection = sql.getCurrentConnection() as mysql2.Connection;
 
@@ -37,6 +37,28 @@ export async function migrationRollBackSql(): Promise<void> {
       process.exit(0);
     }
 
+    if (rollBackUntil) {
+      const rollBackUntilIndex = pendingMigrations.findIndex(
+        (migration) => migration.migrationName === rollBackUntil,
+      );
+
+      if (rollBackUntilIndex === -1) {
+        throw new Error(`Migration ${rollBackUntil} not found.`);
+      }
+
+      const filteredMigrations = pendingMigrations.slice(rollBackUntilIndex);
+      const migrationController: MigrationController = new MigrationController(
+        sql,
+        sqlConnection,
+        "mysql",
+      );
+
+      await migrationController.downMigrations(filteredMigrations);
+      log(COMMIT_TRANSACTION, true);
+      await sqlConnection.commit();
+      return;
+    }
+
     const migrationController: MigrationController = new MigrationController(
       sql,
       sqlConnection,
@@ -50,8 +72,6 @@ export async function migrationRollBackSql(): Promise<void> {
   } catch (error: any) {
     log(ROLLBACK_TRANSACTION, true);
     await sqlConnection.rollback();
-
-    console.error(error);
     throw error;
   } finally {
     await sql.closeConnection();

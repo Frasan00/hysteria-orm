@@ -16,7 +16,7 @@ import { getMigrationTable, getMigrations } from "../migration_utils";
 
 dotenv.config();
 
-export async function migrationRollBackPg(): Promise<void> {
+export async function migrationRollBackPg(rollBackUntil?: string): Promise<void> {
   const sql = await SqlDataSource.connect();
   const sqlConnection = sql.getCurrentConnection() as Client;
   try {
@@ -35,12 +35,34 @@ export async function migrationRollBackPg(): Promise<void> {
       process.exit(0);
     }
 
+    if (rollBackUntil) {
+      const rollBackUntilIndex = pendingMigrations.findIndex(
+        (migration) => migration.migrationName === rollBackUntil,
+      );
+
+      if (rollBackUntilIndex === -1) {
+        throw new Error(`Migration ${rollBackUntil} not found.`);
+      }
+
+      const filteredMigrations = pendingMigrations.slice(rollBackUntilIndex);
+      const migrationController = new MigrationController(
+        sql,
+        sqlConnection,
+        "postgres",
+      );
+
+      log(BEGIN_TRANSACTION, true);
+      await sqlConnection.query(BEGIN_TRANSACTION);
+      await migrationController.downMigrations(filteredMigrations);
+      await sqlConnection.query(COMMIT_TRANSACTION);
+      return;
+    }
+
     const migrationController = new MigrationController(
       sql,
       sqlConnection,
       "postgres",
     );
-
     log(BEGIN_TRANSACTION, true);
     await sqlConnection.query(BEGIN_TRANSACTION);
     await migrationController.downMigrations(pendingMigrations);
@@ -50,8 +72,6 @@ export async function migrationRollBackPg(): Promise<void> {
   } catch (error: any) {
     log(ROLLBACK_TRANSACTION, true);
     await sqlConnection.query(ROLLBACK_TRANSACTION);
-
-    console.error(error);
     throw error;
   } finally {
     await sql.closeConnection();

@@ -670,10 +670,12 @@ const { query, params } = userQueryBuilder
 - If the creation folder specified in the .env (or the default one database/migrations) it will be created automatically
 
 ## run:migrations
-- Runs all pending migrations
+- Runs all pending migrations <optional - migration_file_name>
+- If the migration file name is specified then migrations will be run until that migration
 
 ## rollback:migrations
-- Rollbacks all existing migrations
+- Rollbacks all existing migrations <optional - migration_file_name>
+- If the migration file name is specified then migrations will be rolled back from the last migration until that migration
 
 ## Create Table
 
