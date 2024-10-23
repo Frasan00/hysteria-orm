@@ -5,7 +5,6 @@
 - It's partially type safe by design, allowing you to have features like intellisense for you models interactions while maintaining the flexibility of shooting yourself in the foot!
 - The main characteristic Is that Models classes refer to the database repository allowing you to interact with It via static methods in a concise and minimal way. While Models instances do not have anything else but what you define as Columns(sql) or Properties(noSql) and are designed to be used directly in you typescript Logic without any overhead.
 
-// all links to all categories in the file
 - [Installation](#installation)
 - [Prerequisites](#prerequisites)
 - [Supported Databases](#supported-databases)
