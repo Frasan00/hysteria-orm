@@ -23,17 +23,17 @@ program
   });
 
 program
-  .command('run:migrations')
+  .command('run:migrations [runUntil]')
   .description('Run pending migrations')
-  .action(() => {
-    execSync(`${resolve(`${process.cwd()}/node_modules/.bin/ts-node`)} -T ${migrationRunConnectorPath}`, { stdio: 'inherit' });
+  .action((runUntil) => {
+    execSync(`${resolve(`${process.cwd()}/node_modules/.bin/ts-node`)} -T ${migrationRunConnectorPath} ${runUntil}`, { stdio: 'inherit' });
   });
 
 program
-  .command('rollback:migrations')
+  .command('rollback:migrations [rollbackUntil]')
   .description('Rollbacks every migration that has been run')
-  .action(() => {
-    execSync(`${resolve(`${process.cwd()}/node_modules/.bin/ts-node`)} -T ${migrationRollbackConnectorPath}`, { stdio: 'inherit' });
+  .action((rollbackUntil) => {
+    execSync(`${resolve(`${process.cwd()}/node_modules/.bin/ts-node`)} -T ${migrationRollbackConnectorPath} ${rollbackUntil}`, { stdio: 'inherit' });
   });
 
 program.parse(process.argv);
