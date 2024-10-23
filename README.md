@@ -180,7 +180,7 @@ node dist/index.js
 - Your js Model definition may look like this:
 ```javascript
 require('reflect-metadata');
-const { Model, SqlDataSource, column } =  require("/Users/francescosangiovanni/projects/hysteria-orm/lib/index.js");
+const { Model, SqlDataSource, column } =  require("hysteria-orm");
 
 class User extends Model {
   @column({ primaryKey: true })
