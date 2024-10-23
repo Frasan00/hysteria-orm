@@ -58,7 +58,7 @@ export async function runMigrationsSql(runUntil?: string): Promise<void> {
       log(COMMIT_TRANSACTION, true);
       await sqlConnection.commit();
       return;
-    } 
+    }
 
     const migrationController = new MigrationController(
       sql,

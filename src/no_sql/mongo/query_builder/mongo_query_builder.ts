@@ -251,7 +251,11 @@ export class MongoQueryBuilder<T extends Collection> {
     operator: BinaryOperatorType,
     value: BaseValues,
   ): this;
-  where(property: string, operator: BinaryOperatorType, value: BaseValues): this;
+  where(
+    property: string,
+    operator: BinaryOperatorType,
+    value: BaseValues,
+  ): this;
   where(property: SelectableType<T> | string, value: BaseValues): this;
   where(
     property: SelectableType<T> | string,

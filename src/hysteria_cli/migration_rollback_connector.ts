@@ -8,7 +8,9 @@ import { migrationRollBackSqlite } from "./sqlite/rollback_migration";
 
 dotenv.config();
 
-export default async function rollbackMigrationConnector(rollBackUntil?: string) {
+export default async function rollbackMigrationConnector(
+  rollBackUntil?: string,
+) {
   const databaseType = process.env.DB_TYPE;
   logger.info("Rolling back migrations for database type: " + databaseType);
 

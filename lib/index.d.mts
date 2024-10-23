@@ -474,6 +474,18 @@ declare const whereTemplate: (dbType: SqlDataSourceType, typeofModel: typeof Mod
         query: string;
         params: any[];
     };
+    whereRegex: (column: string, regex: RegExp) => {
+        query: string;
+        params: string[];
+    };
+    andWhereRegex: (column: string, regex: RegExp) => {
+        query: string;
+        params: string[];
+    };
+    orWhereRegex: (column: string, regex: RegExp) => {
+        query: string;
+        params: string[];
+    };
 };
 
 declare class WhereQueryBuilder<T extends Model> {
@@ -487,191 +499,135 @@ declare class WhereQueryBuilder<T extends Model> {
     protected isNestedCondition: boolean;
     /**
      * @description Constructs a query_builder instance.
-     * @param model - The model class associated with the table.
-     * @param table - The name of the table.
-     * @param logs - A boolean indicating whether to log queries.
-     * @param isNestedCondition - A boolean indicating whether the query is nested in another query.
      */
     constructor(model: typeof Model, table: string, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
     /**
      * @description Accepts a value and executes a callback only of the value is not null or undefined.
-     * @param {any} value
-     * @param callback
      */
     when(value: any, cb: (value: any, query: WhereQueryBuilder<T>) => void): this;
     /**
      * @description Adds a WHERE condition to the query.
-     * @param column - The column to filter.
-     * @param operator - The comparison operator.
-     * @param value - The value to compare against.
-     * @returns The query_builder instance for chaining.
      */
     where(column: SelectableType<T>, operator: BinaryOperatorType$1, value: BaseValues$1): this;
     where(column: string, operator: BinaryOperatorType$1, value: BaseValues$1): this;
     where(column: SelectableType<T> | string, value: BaseValues$1): this;
     /**
      * @description Adds an AND WHERE condition to the query.
-     * @param column - The column to filter.
-     * @param operator - The comparison operator.
-     * @param value - The value to compare against.
-     * @returns The query_builder instance for chaining.
      */
     andWhere(column: SelectableType<T>, operator: BinaryOperatorType$1, value: BaseValues$1): this;
     andWhere(column: string, operator: BinaryOperatorType$1, value: BaseValues$1): this;
     andWhere(column: SelectableType<T> | string, value: BaseValues$1): this;
     /**
      * @description Adds an OR WHERE condition to the query.
-     * @param column - The column to filter.
-     * @param operator - The comparison operator.
-     * @param value - The value to compare against.
-     * @returns The query_builder instance for chaining.
      */
     orWhere(column: SelectableType<T>, operator: BinaryOperatorType$1, value: BaseValues$1): this;
     orWhere(column: string, operator: BinaryOperatorType$1, value: BaseValues$1): this;
     orWhere(column: SelectableType<T> | string, value: BaseValues$1): this;
     /**
      * @description Adds a WHERE BETWEEN condition to the query.
-     * @param column - The column to filter.
-     * @param min - The minimum value for the range.
-     * @param max - The maximum value for the range.
-     * @returns The query_builder instance for chaining.
      */
     whereBetween(column: SelectableType<T>, min: BaseValues$1, max: BaseValues$1): this;
     whereBetween(column: string, min: BaseValues$1, max: BaseValues$1): this;
     /**
      * @description Adds an AND WHERE BETWEEN condition to the query.
-     * @param column - The column to filter.
-     * @param min - The minimum value for the range.
-     * @param max - The maximum value for the range.
-     * @returns The query_builder instance for chaining.
      */
     andWhereBetween(column: SelectableType<T>, min: BaseValues$1, max: BaseValues$1): this;
     andWhereBetween(column: string, min: BaseValues$1, max: BaseValues$1): this;
     /**
      * @description Adds an OR WHERE BETWEEN condition to the query.
-     * @param column - The column to filter.
-     * @param min - The minimum value for the range.
-     * @param max - The maximum value for the range.
-     * @returns The query_builder instance for chaining.
      */
     orWhereBetween(column: SelectableType<T>, min: BaseValues$1, max: BaseValues$1): this;
     orWhereBetween(column: string, min: BaseValues$1, max: BaseValues$1): this;
     /**
      * @description Adds a WHERE NOT BETWEEN condition to the query.
-     * @param column - The column to filter.
-     * @param min - The minimum value for the range.
-     * @param max - The maximum value for the range.
-     * @returns The query_builder instance for chaining.
      */
     whereNotBetween(column: SelectableType<T>, min: BaseValues$1, max: BaseValues$1): this;
     whereNotBetween(column: string, min: BaseValues$1, max: BaseValues$1): this;
     /**
      * @description Adds an OR WHERE NOT BETWEEN condition to the query.
-     * @param column - The column to filter.
-     * @param min - The minimum value for the range.
-     * @param max - The maximum value for the range.
-     * @returns The query_builder instance for chaining.
      */
     orWhereNotBetween(column: SelectableType<T>, min: BaseValues$1, max: BaseValues$1): this;
     orWhereNotBetween(column: string, min: BaseValues$1, max: BaseValues$1): this;
     /**
      * @description Adds a WHERE IN condition to the query.
-     * @param column - The column to filter.
-     * @param values - An array of values to match against.
-     * @returns The query_builder instance for chaining.
      */
     whereIn(column: SelectableType<T>, values: BaseValues$1[]): this;
     whereIn(column: string, values: BaseValues$1[]): this;
     /**
      * @description Adds an AND WHERE IN condition to the query.
-     * @param column - The column to filter.
-     * @param values - An array of values to match against.
-     * @returns The query_builder instance for chaining.
      */
     andWhereIn(column: SelectableType<T>, values: BaseValues$1[]): this;
     andWhereIn(column: string, values: BaseValues$1[]): this;
     /**
      * @description Adds an OR WHERE IN condition to the query.
-     * @param column - The column to filter.
-     * @param values - An array of values to match against.
-     * @returns The query_builder instance for chaining.
      */
     orWhereIn(column: SelectableType<T>, values: BaseValues$1[]): this;
     orWhereIn(column: string, values: BaseValues$1[]): this;
     /**
      * @description Adds a WHERE NOT IN condition to the query.
-     * @param column - The column to filter.
-     * @param values - An array of values to exclude.
-     * @returns The query_builder instance for chaining.
      */
     whereNotIn(column: SelectableType<T>, values: BaseValues$1[]): this;
     whereNotIn(column: string, values: BaseValues$1[]): this;
     /**
      * @description Adds an OR WHERE NOT IN condition to the query.
-     * @param column - The column to filter.
-     * @param values - An array of values to exclude.
-     * @returns The query_builder instance for chaining.
      */
     orWhereNotIn(column: SelectableType<T>, values: BaseValues$1[]): this;
     orWhereNotIn(column: string, values: BaseValues$1[]): this;
     /**
      * @description Adds a WHERE NULL condition to the query.
-     * @param column - The column to filter.
-     * @returns The query_builder instance for chaining.
      */
     whereNull(column: SelectableType<T>): this;
     whereNull(column: string): this;
     /**
      * @description Adds an AND WHERE NULL condition to the query.
-     * @param column - The column to filter.
-     * @returns The query_builder instance for chaining.
      */
     andWhereNull(column: SelectableType<T>): this;
     andWhereNull(column: string): this;
     /**
      * @description Adds an OR WHERE NULL condition to the query.
-     * @param column - The column to filter.
-     * @returns The query_builder instance for chaining.
      */
     orWhereNull(column: SelectableType<T>): this;
     orWhereNull(column: string): this;
     /**
      * @description Adds a WHERE NOT NULL condition to the query.
-     * @param column - The column to filter.
-     * @returns The query_builder instance for chaining.
      */
     whereNotNull(column: SelectableType<T>): this;
     whereNotNull(column: string): this;
     /**
      * @description Adds an AND WHERE NOT NULL condition to the query.
-     * @param column - The column to filter.
-     * @returns The query_builder instance for chaining.
      */
     andWhereNotNull(column: SelectableType<T>): this;
     andWhereNotNull(column: string): this;
     /**
      * @description Adds an OR WHERE NOT NULL condition to the query.
-     * @param column - The column to filter.
-     * @returns The query_builder instance for chaining.
      */
     orWhereNotNull(column: SelectableType<T>): this;
     orWhereNotNull(column: string): this;
     /**
+     * @description Adds a WHERE REGEXP condition to the query.
+     */
+    whereRegexp(column: SelectableType<T>, regexp: RegExp): this;
+    whereRegexp(column: string, regexp: RegExp): this;
+    /**
+     * @description Adds an AND WHERE REGEXP condition to the query.
+     */
+    andWhereRegexp(column: SelectableType<T>, regexp: RegExp): this;
+    andWhereRegexp(column: string, regexp: RegExp): this;
+    /**
+     * @description Adds an OR WHERE REGEXP condition to the query.
+     */
+    orWhereRegexp(column: SelectableType<T>, regexp: RegExp): this;
+    orWhereRegexp(column: string, regexp: RegExp): this;
+    /**
      * @description Adds a raw WHERE condition to the query.
-     * @param query - The raw SQL WHERE condition.
-     * @returns The query_builder instance for chaining.
      */
     rawWhere(query: string, queryParams?: any[]): this;
     /**
      * @description Adds a raw AND WHERE condition to the query.
-     * @param query - The raw SQL WHERE condition.
-     * @returns The query_builder instance for chaining.
      */
     rawAndWhere(query: string, queryParams?: any[]): this;
     /**
      * @description Adds a raw OR WHERE condition to the query.
-     * @param query - The raw SQL WHERE condition.
-     * @returns The query_builder instance for chaining.
      */
     rawOrWhere(query: string, queryParams?: any[]): this;
 }

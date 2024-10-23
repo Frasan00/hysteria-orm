@@ -622,6 +622,81 @@ const whereTemplate = (
       query: ` OR ${query}`,
       params,
     }),
+    whereRegex: (column: string, regex: RegExp) => {
+      switch (dbType) {
+        case "postgres":
+          return {
+            query: `\nWHERE ${convertCase(
+              column,
+              typeofModel.databaseCaseConvention,
+            )} ~ PLACEHOLDER`,
+            params: [regex.source],
+          };
+        case "mysql":
+        case "mariadb":
+          return {
+            query: `\nWHERE ${convertCase(
+              column,
+              typeofModel.databaseCaseConvention,
+            )} REGEXP PLACEHOLDER`,
+            params: [regex.source],
+          };
+        case "sqlite":
+          throw new Error("SQLite does not support REGEXP out of the box");
+        default:
+          throw new Error(`Unsupported database type: ${dbType}`);
+      }
+    },
+    andWhereRegex: (column: string, regex: RegExp) => {
+      switch (dbType) {
+        case "postgres":
+          return {
+            query: ` AND ${convertCase(
+              column,
+              typeofModel.databaseCaseConvention,
+            )} ~ PLACEHOLDER`,
+            params: [regex.source],
+          };
+        case "mysql":
+        case "mariadb":
+          return {
+            query: ` AND ${convertCase(
+              column,
+              typeofModel.databaseCaseConvention,
+            )} REGEXP PLACEHOLDER`,
+            params: [regex.source],
+          };
+        case "sqlite":
+          throw new Error("SQLite does not support REGEXP out of the box");
+        default:
+          throw new Error(`Unsupported database type: ${dbType}`);
+      }
+    },
+    orWhereRegex: (column: string, regex: RegExp) => {
+      switch (dbType) {
+        case "postgres":
+          return {
+            query: ` OR ${convertCase(
+              column,
+              typeofModel.databaseCaseConvention,
+            )} ~ PLACEHOLDER`,
+            params: [regex.source],
+          };
+        case "mysql":
+        case "mariadb":
+          return {
+            query: ` OR ${convertCase(
+              column,
+              typeofModel.databaseCaseConvention,
+            )} REGEXP PLACEHOLDER`,
+            params: [regex.source],
+          };
+        case "sqlite":
+          throw new Error("SQLite does not support REGEXP out of the box");
+        default:
+          throw new Error(`Unsupported database type: ${dbType}`);
+      }
+    },
   };
 };
 

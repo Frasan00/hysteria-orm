@@ -152,28 +152,27 @@ test("Find one user", async () => {
   expect(foundUser?.name).toBe("Eve");
 });
 
-// TODO: Fix this test with correct migrations for sqlite
-// test("Update a user", async () => {
-//   await User.insert({
-//     name: "Eve",
-//     email: "sdada",
-//     signupSource: "email",
-//     isActive: true,
-//   });
+test("Update a user", async () => {
+  await User.insert({
+    name: "Eve",
+    email: "sdada",
+    signupSource: "email",
+    isActive: true,
+  });
 
-//   const user = await User.query().where("name", "Eve").oneOrFail();
-//   user.name = "Eve Updated";
-//   const updatedUser = await User.updateRecord(user);
+  const user = await User.query().where("name", "Eve").oneOrFail();
+  user.name = "Eve Updated";
+  const updatedUser = await User.updateRecord(user);
 
-//   expect(updatedUser).not.toBeNull();
-//   expect(updatedUser?.name).toBe("Eve Updated");
+  expect(updatedUser).not.toBeNull();
+  expect(updatedUser?.name).toBe("Eve Updated");
 
-//   await User.query()
-//     .where("name", "Eve Updated")
-//     .update({ name: "Eve updated two" });
-//   const newUpdatedUser = await User.findOneByPrimaryKey(user.id);
-//   expect(newUpdatedUser?.name).toBe("Eve updated two");
-// });
+  await User.query()
+    .where("name", "Eve Updated")
+    .update({ name: "Eve updated two" });
+  const newUpdatedUser = await User.findOneByPrimaryKey(user.id);
+  expect(newUpdatedUser?.name).toBe("Eve updated two");
+});
 
 test("Delete a user", async () => {
   await User.insert({

@@ -16,7 +16,9 @@ import { getMigrationTable, getMigrations } from "../migration_utils";
 
 dotenv.config();
 
-export async function migrationRollBackPg(rollBackUntil?: string): Promise<void> {
+export async function migrationRollBackPg(
+  rollBackUntil?: string,
+): Promise<void> {
   const sql = await SqlDataSource.connect();
   const sqlConnection = sql.getCurrentConnection() as Client;
   try {

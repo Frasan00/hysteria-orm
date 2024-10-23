@@ -428,3 +428,16 @@ test("Very complex query", async () => {
     .offset(0)
     .one();
 });
+
+test("Regex", async () => {
+  await User.insert({
+    name: "Dave",
+    email: "test",
+    signupSource: "email",
+    isActive: true,
+  });
+
+  const users = await User.query().whereRegexp("name", /Dave/).many();
+  expect(users.length).toBe(1);
+  expect(users[0].name).toBe("Dave");
+});
