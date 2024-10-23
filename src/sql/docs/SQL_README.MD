@@ -36,7 +36,7 @@
 ## Features
 
 - **Simple Model Creation:** Define models that reflect your database schema with ease.
-- **Database Support:** Currently supports MySQL, MariaDB and PostgreSQL.
+- **Database Support:** Currently supports MySQL, MariaDB, PostgreSQL and SQLite.
 - **Fast relations retrieve:** O(n) Complexity for relation retrieve
 - **Simplicity:** Simple syntax to interact with your data
 
