@@ -5,6 +5,14 @@
 - It's partially type safe by design, allowing you to have features like intellisense for you models interactions while maintaining the flexibility of shooting yourself in the foot!
 - The main characteristic Is that Models classes refer to the database repository allowing you to interact with It via static methods in a concise and minimal way. While Models instances do not have anything else but what you define as Columns(sql) or Properties(noSql) and are designed to be used directly in you typescript Logic without any overhead.
 
+// all links to all categories in the file
+- [Installation](#installation)
+- [Prerequisites](#prerequisites)
+- [Supported Databases](#supported-databases)
+- [Env example with a config for each database](#env-example-with-a-config-for-each-database)
+- [TypeScript Configuration example](#typescript-configuration-example)
+- [Javascript](#javascript)
+- [Setup Example](#setup-example)
 
 ## Installation
 ```shell
@@ -52,6 +60,54 @@ yarn add ioredis
 - [Redis](src/no_sql/redis/docs/REDIS.MD)
 - [Mongo](src/no_sql/mongo/docs/MONGO.MD)
 
+### Env example with a config for each database
+```dotenv
+# POSTGRES
+DB_TYPE=postgres
+DB_HOST=127.0.0.1
+DB_USER=root
+DB_PASSWORD=root
+DB_DATABASE=test
+DB_PORT=5432
+DB_LOGS=true
+MIGRATION_PATH=./migrations # default is database/migrations
+
+# MYSQL
+DB_TYPE=mysql
+DB_HOST=127.0.0.1
+DB_USER=root
+DB_PASSWORD=root
+DB_DATABASE=test
+DB_PORT=3306
+DB_LOGS=true
+
+# MARIADB
+DB_TYPE=mariadb
+DB_HOST=127.0.0.1
+DB_USER=root
+DB_PASSWORD=root
+DB_DATABASE=test
+DB_PORT=3307
+DB_LOGS=true
+
+# SQLITE
+DB_TYPE=sqlite
+DB_DATABASE="./sqlite.db"
+DB_LOGS=true
+
+# REDIS
+DB_TYPE=redis
+DB_HOST=127.0.0.1
+DB_USER=default
+DB_PASSWORD=root
+DB_DATABASE=0
+DB_PORT=6379
+DB_LOGS=true
+
+# MONGO
+MONGO_URL=mongodb://root:root@localhost:27017
+```
+
 ### TypeScript Configuration example
 
 ```json 
@@ -73,6 +129,81 @@ yarn add ioredis
   },
   "include": ["src/**/*.ts", "test/**/*.ts"],
   "exclude": ["node_modules"]
+}
+```
+
+### Javascript
+## Hysteria ORM is written and designed for TypeScript, but It can be used in JavaScript with some configurations:
+1. Install the necessary dependencies:
+```shell
+npm install --save-dev reflect-metadata @babel/core @babel/cli @babel/preset-env @babel/plugin-proposal-decorators
+yarn add --dev reflect-metadata @babel/core @babel/cli @babel/preset-env @babel/plugin-proposal-decorators
+```
+
+2. Create a babel.config.js file in the root of your project with the following content:
+```javascript
+module.exports = {
+  presets: [
+    [
+      "@babel/preset-env",
+      {
+        targets: {
+          node: "current",
+        },
+      },
+    ],
+  ],
+  plugins: [
+    ["@babel/plugin-proposal-decorators", { legacy: true }],
+  ],
+};
+```
+
+3. Add a build script to your package.json file:
+```json
+{
+  "scripts": {
+    "build": "babel src --out-dir dist"
+  }
+}
+```
+
+4. Run the build script:
+```shell
+npm run build
+```
+
+5. Run your application:
+```shell
+node dist/index.js
+```
+
+- Your js Model definition may look like this:
+```javascript
+require('reflect-metadata');
+const { Model, SqlDataSource, column } =  require("/Users/francescosangiovanni/projects/hysteria-orm/lib/index.js");
+
+class User extends Model {
+  @column({ primaryKey: true })
+  id
+
+  @column()
+  name
+
+  @column()
+  email
+
+  @column()
+  signupSource
+
+  @column()
+  isActive
+
+  @column()
+  createdAt
+
+  @column()
+  updatedAt
 }
 ```
 
@@ -121,52 +252,4 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: root
     ports:
       - "27017:27017"
-```
-
-- Env example with a config for each database
-
-```dotenv
-# POSTGRES
-DB_TYPE=postgres
-DB_HOST=127.0.0.1
-DB_USER=root
-DB_PASSWORD=root
-DB_DATABASE=test
-DB_PORT=5432
-DB_LOGS=true
-
-# MYSQL
-DB_TYPE=mysql
-DB_HOST=127.0.0.1
-DB_USER=root
-DB_PASSWORD=root
-DB_DATABASE=test
-DB_PORT=3306
-DB_LOGS=true
-
-# MARIADB
-DB_TYPE=mariadb
-DB_HOST=127.0.0.1
-DB_USER=root
-DB_PASSWORD=root
-DB_DATABASE=test
-DB_PORT=3307
-DB_LOGS=true
-
-# SQLITE
-DB_TYPE=sqlite
-DB_DATABASE="./sqlite.db"
-DB_LOGS=true
-
-# REDIS
-DB_TYPE=redis
-DB_HOST=127.0.0.1
-DB_USER=default
-DB_PASSWORD=root
-DB_DATABASE=0
-DB_PORT=6379
-DB_LOGS=true
-
-# MONGO
-MONGO_URL=mongodb://root:root@localhost:27017
 ```
