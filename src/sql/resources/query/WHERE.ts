@@ -2,7 +2,7 @@ import { convertCase } from "../../../utils/case_utils";
 import { SqlDataSourceType } from "../../sql_data_source";
 import { Model } from "../../models/model";
 
-export type WhereOperatorType =
+export type BinaryOperatorType =
   | "="
   | "!="
   | "<>"
@@ -42,7 +42,7 @@ const whereTemplate = (
     where: (
       column: string,
       value: BaseValues,
-      operator: WhereOperatorType = "=",
+      operator: BinaryOperatorType = "=",
     ) => {
       let query = `\nWHERE ${convertCase(
         column,
@@ -74,7 +74,7 @@ const whereTemplate = (
     andWhere: (
       column: string,
       value: BaseValues,
-      operator: WhereOperatorType = "=",
+      operator: BinaryOperatorType = "=",
     ) => {
       let query = ` AND ${convertCase(
         column,
@@ -105,7 +105,7 @@ const whereTemplate = (
     orWhere: (
       column: string,
       value: BaseValues,
-      operator: WhereOperatorType = "=",
+      operator: BinaryOperatorType = "=",
     ) => {
       let query = ` OR ${convertCase(
         column,

@@ -362,19 +362,19 @@ declare class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     private promisifyQuery;
 }
 
-type WhereOperatorType$1 = "=" | "!=" | "<>" | ">" | "<" | ">=" | "<=" | "LIKE" | "ILIKE" | "NOT LIKE" | "NOT ILIKE" | "IN" | "NOT IN" | "BETWEEN" | "NOT BETWEEN";
+type BinaryOperatorType$1 = "=" | "!=" | "<>" | ">" | "<" | ">=" | "<=" | "LIKE" | "ILIKE" | "NOT LIKE" | "NOT ILIKE" | "IN" | "NOT IN" | "BETWEEN" | "NOT BETWEEN";
 type BaseValues$1 = string | number | boolean | object;
 declare const whereTemplate: (dbType: SqlDataSourceType, typeofModel: typeof Model) => {
     convertPlaceHolderToValue: (query: string, startIndex?: number) => string;
-    where: (column: string, value: BaseValues$1, operator?: WhereOperatorType$1) => {
+    where: (column: string, value: BaseValues$1, operator?: BinaryOperatorType$1) => {
         query: string;
         params: BaseValues$1[];
     };
-    andWhere: (column: string, value: BaseValues$1, operator?: WhereOperatorType$1) => {
+    andWhere: (column: string, value: BaseValues$1, operator?: BinaryOperatorType$1) => {
         query: string;
         params: BaseValues$1[];
     };
-    orWhere: (column: string, value: BaseValues$1, operator?: WhereOperatorType$1) => {
+    orWhere: (column: string, value: BaseValues$1, operator?: BinaryOperatorType$1) => {
         query: string;
         params: BaseValues$1[];
     };
@@ -506,8 +506,8 @@ declare class WhereQueryBuilder<T extends Model> {
      * @param value - The value to compare against.
      * @returns The query_builder instance for chaining.
      */
-    where(column: SelectableType<T>, operator: WhereOperatorType$1, value: BaseValues$1): this;
-    where(column: string, operator: WhereOperatorType$1, value: BaseValues$1): this;
+    where(column: SelectableType<T>, operator: BinaryOperatorType$1, value: BaseValues$1): this;
+    where(column: string, operator: BinaryOperatorType$1, value: BaseValues$1): this;
     where(column: SelectableType<T> | string, value: BaseValues$1): this;
     /**
      * @description Adds an AND WHERE condition to the query.
@@ -516,8 +516,8 @@ declare class WhereQueryBuilder<T extends Model> {
      * @param value - The value to compare against.
      * @returns The query_builder instance for chaining.
      */
-    andWhere(column: SelectableType<T>, operator: WhereOperatorType$1, value: BaseValues$1): this;
-    andWhere(column: string, operator: WhereOperatorType$1, value: BaseValues$1): this;
+    andWhere(column: SelectableType<T>, operator: BinaryOperatorType$1, value: BaseValues$1): this;
+    andWhere(column: string, operator: BinaryOperatorType$1, value: BaseValues$1): this;
     andWhere(column: SelectableType<T> | string, value: BaseValues$1): this;
     /**
      * @description Adds an OR WHERE condition to the query.
@@ -526,8 +526,8 @@ declare class WhereQueryBuilder<T extends Model> {
      * @param value - The value to compare against.
      * @returns The query_builder instance for chaining.
      */
-    orWhere(column: SelectableType<T>, operator: WhereOperatorType$1, value: BaseValues$1): this;
-    orWhere(column: string, operator: WhereOperatorType$1, value: BaseValues$1): this;
+    orWhere(column: SelectableType<T>, operator: BinaryOperatorType$1, value: BaseValues$1): this;
+    orWhere(column: string, operator: BinaryOperatorType$1, value: BaseValues$1): this;
     orWhere(column: SelectableType<T> | string, value: BaseValues$1): this;
     /**
      * @description Adds a WHERE BETWEEN condition to the query.
@@ -1939,7 +1939,7 @@ type ModelKeyOrAnySort<T> = {
 };
 
 type FetchHooks = "beforeFetch" | "afterFetch";
-type WhereOperatorType = "$eq" | "$ne" | "$gt" | "$gte" | "$lt" | "$lte";
+type BinaryOperatorType = "$eq" | "$ne" | "$gt" | "$gte" | "$lt" | "$lte";
 type BaseValues = string | number | boolean | Date | Array<string | number | boolean | Date>;
 type OneOptions = {
     throwErrorOnNull?: boolean;
@@ -1998,20 +1998,20 @@ declare class MongoQueryBuilder<T extends Collection> {
     /**
      * @description Adds a where clause to the query
      */
-    where(property: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
-    where(property: string, operator: WhereOperatorType, value: BaseValues): this;
+    where(property: SelectableType<T>, operator: BinaryOperatorType, value: BaseValues): this;
+    where(property: string, operator: BinaryOperatorType, value: BaseValues): this;
     where(property: SelectableType<T> | string, value: BaseValues): this;
     /**
      * @description Adds a where clause to the query - alias for where
      */
-    andWhere(property: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
-    andWhere(property: string, operator: WhereOperatorType, value: BaseValues): this;
+    andWhere(property: SelectableType<T>, operator: BinaryOperatorType, value: BaseValues): this;
+    andWhere(property: string, operator: BinaryOperatorType, value: BaseValues): this;
     andWhere(property: SelectableType<T> | string, value: BaseValues): this;
     /**
      * @description Adds an or where clause to the query
      */
-    orWhere(property: SelectableType<T>, operator: WhereOperatorType, value: BaseValues): this;
-    orWhere(property: string, operator: WhereOperatorType, value: BaseValues): this;
+    orWhere(property: SelectableType<T>, operator: BinaryOperatorType, value: BaseValues): this;
+    orWhere(property: string, operator: BinaryOperatorType, value: BaseValues): this;
     orWhere(property: SelectableType<T> | string, value: BaseValues): this;
     /**
      * @description Adds a where exists clause to the query
@@ -2481,17 +2481,17 @@ declare class StandaloneQueryBuilder {
      * @description Adds a WHERE condition to the query.
      * @returns The query_builder instance for chaining.
      */
-    where(column: string, operatorOrValue: WhereOperatorType$1 | BaseValues$1, value?: BaseValues$1): this;
+    where(column: string, operatorOrValue: BinaryOperatorType$1 | BaseValues$1, value?: BaseValues$1): this;
     /**
      * @description Adds an AND WHERE condition to the query.
      * @returns The query_builder instance for chaining.
      */
-    andWhere(column: string, operatorOrValue: WhereOperatorType$1 | BaseValues$1, value?: BaseValues$1): this;
+    andWhere(column: string, operatorOrValue: BinaryOperatorType$1 | BaseValues$1, value?: BaseValues$1): this;
     /**
      * @description Adds an OR WHERE condition to the query.
      * @returns The query_builder instance for chaining.
      */
-    orWhere(column: string, operatorOrValue: WhereOperatorType$1 | BaseValues$1, value?: BaseValues$1): this;
+    orWhere(column: string, operatorOrValue: BinaryOperatorType$1 | BaseValues$1, value?: BaseValues$1): this;
     /**
      * @description Adds a WHERE BETWEEN condition to the query.
      * @returns The query_builder instance for chaining.

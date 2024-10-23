@@ -13,7 +13,7 @@ import {
 import logger from "../../../utils/logger";
 
 export type FetchHooks = "beforeFetch" | "afterFetch";
-type WhereOperatorType = "$eq" | "$ne" | "$gt" | "$gte" | "$lt" | "$lte";
+type BinaryOperatorType = "$eq" | "$ne" | "$gt" | "$gte" | "$lt" | "$lte";
 type BaseValues =
   | string
   | number
@@ -248,21 +248,21 @@ export class MongoQueryBuilder<T extends Collection> {
    */
   where(
     property: SelectableType<T>,
-    operator: WhereOperatorType,
+    operator: BinaryOperatorType,
     value: BaseValues,
   ): this;
-  where(property: string, operator: WhereOperatorType, value: BaseValues): this;
+  where(property: string, operator: BinaryOperatorType, value: BaseValues): this;
   where(property: SelectableType<T> | string, value: BaseValues): this;
   where(
     property: SelectableType<T> | string,
-    operatorOrValue: WhereOperatorType | BaseValues,
+    operatorOrValue: BinaryOperatorType | BaseValues,
     value?: BaseValues,
   ): this {
-    let operator: WhereOperatorType = "$eq";
+    let operator: BinaryOperatorType = "$eq";
     let actualValue: BaseValues;
 
     if (typeof operatorOrValue === "string" && value !== undefined) {
-      operator = operatorOrValue as WhereOperatorType;
+      operator = operatorOrValue as BinaryOperatorType;
       actualValue = value;
     } else {
       actualValue = operatorOrValue as BaseValues;
@@ -293,25 +293,25 @@ export class MongoQueryBuilder<T extends Collection> {
    */
   andWhere(
     property: SelectableType<T>,
-    operator: WhereOperatorType,
+    operator: BinaryOperatorType,
     value: BaseValues,
   ): this;
   andWhere(
     property: string,
-    operator: WhereOperatorType,
+    operator: BinaryOperatorType,
     value: BaseValues,
   ): this;
   andWhere(property: SelectableType<T> | string, value: BaseValues): this;
   andWhere(
     property: SelectableType<T> | string,
-    operatorOrValue: WhereOperatorType | BaseValues,
+    operatorOrValue: BinaryOperatorType | BaseValues,
     value?: BaseValues,
   ): this {
-    let operator: WhereOperatorType = "$eq";
+    let operator: BinaryOperatorType = "$eq";
     let actualValue: BaseValues;
 
     if (typeof operatorOrValue === "string" && value !== undefined) {
-      operator = operatorOrValue as WhereOperatorType;
+      operator = operatorOrValue as BinaryOperatorType;
       actualValue = value;
     } else {
       actualValue = operatorOrValue as BaseValues;
@@ -341,25 +341,25 @@ export class MongoQueryBuilder<T extends Collection> {
    */
   orWhere(
     property: SelectableType<T>,
-    operator: WhereOperatorType,
+    operator: BinaryOperatorType,
     value: BaseValues,
   ): this;
   orWhere(
     property: string,
-    operator: WhereOperatorType,
+    operator: BinaryOperatorType,
     value: BaseValues,
   ): this;
   orWhere(property: SelectableType<T> | string, value: BaseValues): this;
   orWhere(
     property: SelectableType<T> | string,
-    operatorOrValue: WhereOperatorType | BaseValues,
+    operatorOrValue: BinaryOperatorType | BaseValues,
     value?: BaseValues,
   ): this {
-    let operator: WhereOperatorType = "$eq";
+    let operator: BinaryOperatorType = "$eq";
     let actualValue: BaseValues;
 
     if (typeof operatorOrValue === "string" && value !== undefined) {
-      operator = operatorOrValue as WhereOperatorType;
+      operator = operatorOrValue as BinaryOperatorType;
       actualValue = value;
     } else {
       actualValue = operatorOrValue as BaseValues;

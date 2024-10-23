@@ -2,7 +2,7 @@ import { Model } from "../models/model";
 import { SelectableType } from "../models/model_manager/model_manager_types";
 import whereTemplate, {
   BaseValues,
-  WhereOperatorType,
+  BinaryOperatorType,
 } from "../resources/query/WHERE";
 import { SqlDataSource } from "../sql_data_source";
 
@@ -69,21 +69,21 @@ export class WhereQueryBuilder<T extends Model> {
    */
   where(
     column: SelectableType<T>,
-    operator: WhereOperatorType,
+    operator: BinaryOperatorType,
     value: BaseValues,
   ): this;
-  where(column: string, operator: WhereOperatorType, value: BaseValues): this;
+  where(column: string, operator: BinaryOperatorType, value: BaseValues): this;
   where(column: SelectableType<T> | string, value: BaseValues): this;
   where(
     column: SelectableType<T> | string,
-    operatorOrValue: WhereOperatorType | BaseValues,
+    operatorOrValue: BinaryOperatorType | BaseValues,
     value?: BaseValues,
   ): this {
-    let operator: WhereOperatorType = "=";
+    let operator: BinaryOperatorType = "=";
     let actualValue: BaseValues;
 
     if (typeof operatorOrValue === "string" && value) {
-      operator = operatorOrValue as WhereOperatorType;
+      operator = operatorOrValue as BinaryOperatorType;
       actualValue = value;
     } else {
       actualValue = operatorOrValue as BaseValues;
@@ -120,25 +120,25 @@ export class WhereQueryBuilder<T extends Model> {
    */
   andWhere(
     column: SelectableType<T>,
-    operator: WhereOperatorType,
+    operator: BinaryOperatorType,
     value: BaseValues,
   ): this;
   andWhere(
     column: string,
-    operator: WhereOperatorType,
+    operator: BinaryOperatorType,
     value: BaseValues,
   ): this;
   andWhere(column: SelectableType<T> | string, value: BaseValues): this;
   andWhere(
     column: SelectableType<T> | string,
-    operatorOrValue: WhereOperatorType | BaseValues,
+    operatorOrValue: BinaryOperatorType | BaseValues,
     value?: BaseValues,
   ): this {
-    let operator: WhereOperatorType = "=";
+    let operator: BinaryOperatorType = "=";
     let actualValue: BaseValues;
 
     if (typeof operatorOrValue === "string" && value) {
-      operator = operatorOrValue as WhereOperatorType;
+      operator = operatorOrValue as BinaryOperatorType;
       actualValue = value;
     } else {
       actualValue = operatorOrValue as BaseValues;
@@ -175,21 +175,21 @@ export class WhereQueryBuilder<T extends Model> {
    */
   orWhere(
     column: SelectableType<T>,
-    operator: WhereOperatorType,
+    operator: BinaryOperatorType,
     value: BaseValues,
   ): this;
-  orWhere(column: string, operator: WhereOperatorType, value: BaseValues): this;
+  orWhere(column: string, operator: BinaryOperatorType, value: BaseValues): this;
   orWhere(column: SelectableType<T> | string, value: BaseValues): this;
   orWhere(
     column: SelectableType<T> | string,
-    operatorOrValue: WhereOperatorType | BaseValues,
+    operatorOrValue: BinaryOperatorType | BaseValues,
     value?: BaseValues,
   ): this {
-    let operator: WhereOperatorType = "=";
+    let operator: BinaryOperatorType = "=";
     let actualValue: BaseValues;
 
     if (typeof operatorOrValue === "string" && value) {
-      operator = operatorOrValue as WhereOperatorType;
+      operator = operatorOrValue as BinaryOperatorType;
       actualValue = value;
     } else {
       actualValue = operatorOrValue as BaseValues;

@@ -4,7 +4,7 @@ import joinTemplate from "../resources/query/JOIN";
 import selectTemplate from "../resources/query/SELECT";
 import whereTemplate, {
   BaseValues,
-  WhereOperatorType,
+  BinaryOperatorType,
 } from "../resources/query/WHERE";
 import { SqlDataSourceType } from "../sql_data_source";
 
@@ -227,14 +227,14 @@ export class StandaloneQueryBuilder {
    */
   where(
     column: string,
-    operatorOrValue: WhereOperatorType | BaseValues,
+    operatorOrValue: BinaryOperatorType | BaseValues,
     value?: BaseValues,
   ): this {
-    let operator: WhereOperatorType = "=";
+    let operator: BinaryOperatorType = "=";
     let actualValue: BaseValues;
 
     if (typeof operatorOrValue === "string" && value) {
-      operator = operatorOrValue as WhereOperatorType;
+      operator = operatorOrValue as BinaryOperatorType;
       actualValue = value;
     } else {
       actualValue = operatorOrValue as BaseValues;
@@ -268,14 +268,14 @@ export class StandaloneQueryBuilder {
    */
   andWhere(
     column: string,
-    operatorOrValue: WhereOperatorType | BaseValues,
+    operatorOrValue: BinaryOperatorType | BaseValues,
     value?: BaseValues,
   ): this {
-    let operator: WhereOperatorType = "=";
+    let operator: BinaryOperatorType = "=";
     let actualValue: BaseValues;
 
     if (typeof operatorOrValue === "string" && value) {
-      operator = operatorOrValue as WhereOperatorType;
+      operator = operatorOrValue as BinaryOperatorType;
       actualValue = value;
     } else {
       actualValue = operatorOrValue as BaseValues;
@@ -309,14 +309,14 @@ export class StandaloneQueryBuilder {
    */
   orWhere(
     column: string,
-    operatorOrValue: WhereOperatorType | BaseValues,
+    operatorOrValue: BinaryOperatorType | BaseValues,
     value?: BaseValues,
   ): this {
-    let operator: WhereOperatorType = "=";
+    let operator: BinaryOperatorType = "=";
     let actualValue: BaseValues;
 
     if (typeof operatorOrValue === "string" && value) {
-      operator = operatorOrValue as WhereOperatorType;
+      operator = operatorOrValue as BinaryOperatorType;
       actualValue = value;
     } else {
       actualValue = operatorOrValue as BaseValues;
