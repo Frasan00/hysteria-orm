@@ -53,7 +53,7 @@ yarn add ioredis
 1) Mysql
 2) MariaDB
 3) Postgres
-4) sqlite
+4) SQLite
 
 ### NoSQl
 - [Redis](src/no_sql/redis/docs/REDIS.MD)
@@ -132,7 +132,7 @@ MONGO_URL=mongodb://root:root@localhost:27017
 ```
 
 ### Javascript
-## Hysteria ORM is written and designed for TypeScript, but It can be used in JavaScript with some configurations:
+## Hysteria ORM is written and designed for TypeScript, but It can still be used in JavaScript with some configurations:
 1. Install the necessary dependencies:
 ```shell
 npm install --save-dev reflect-metadata @babel/core @babel/cli @babel/preset-env @babel/plugin-proposal-decorators
