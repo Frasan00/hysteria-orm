@@ -315,6 +315,63 @@ export class SqlDataSource extends DataSource {
     }
   }
 
+   /**
+   * @description Closes the main connection to the database established with SqlDataSource.connect() method
+   * @returns
+   */
+   public static async closeConnection(): Promise<void> {
+    const sqlDataSource = SqlDataSource.getInstance();
+    if (!sqlDataSource.isConnected) {
+      logger.warn("Connection already closed", sqlDataSource);
+      return;
+    }
+
+    logger.warn("Closing connection", sqlDataSource);
+    switch (sqlDataSource.type) {
+      case "mysql":
+      case "mariadb":
+        await (sqlDataSource.sqlConnection as mysql.Connection).end();
+        sqlDataSource.isConnected = false;
+        SqlDataSource.instance = null;
+        break;
+      case "postgres":
+        await (sqlDataSource.sqlConnection as pg.Client).end();
+        sqlDataSource.isConnected = false;
+        SqlDataSource.instance = null;
+        break;
+      case "sqlite":
+        await new Promise<void>((resolve, reject) => {
+          (sqlDataSource.sqlConnection as sqlite3.Database).close((err) => {
+            if (err) {
+              reject(err);
+            }
+            resolve();
+          });
+        });
+        sqlDataSource.isConnected = false;
+        SqlDataSource.instance = null;
+        break;
+      default:
+        throw new Error(`Unsupported datasource type: ${sqlDataSource.type}`);
+    }
+  }
+
+  /**
+   * @description Disconnects the connection to the database
+   * @alias closeConnection
+   */
+  async disconnect(): Promise<void> {
+    return this.closeConnection();
+  }
+
+  /**
+   * @description Disconnects the main connection to the database established with SqlDataSource.connect() method
+   * @alias closeMainConnection
+   */
+  static async disconnect(): Promise<void> {
+    return SqlDataSource.closeConnection();
+  }
+
   /**
    * @description Executes a raw query on the database
    * @param query

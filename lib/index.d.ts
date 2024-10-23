@@ -1366,6 +1366,21 @@ declare class SqlDataSource extends DataSource {
      */
     closeConnection(): Promise<void>;
     /**
+    * @description Closes the main connection to the database established with SqlDataSource.connect() method
+    * @returns
+    */
+    static closeConnection(): Promise<void>;
+    /**
+     * @description Disconnects the connection to the database
+     * @alias closeConnection
+     */
+    disconnect(): Promise<void>;
+    /**
+     * @description Disconnects the main connection to the database established with SqlDataSource.connect() method
+     * @alias closeMainConnection
+     */
+    static disconnect(): Promise<void>;
+    /**
      * @description Executes a raw query on the database
      * @param query
      * @param params
@@ -2651,6 +2666,20 @@ declare function property(): PropertyDecorator;
  * @returns
  */
 declare function dynamicProperty(propertyName: string): PropertyDecorator;
+/**
+ * @description Returns the propertys of the model, propertys must be decorated with the property decorator
+ * @param target Model
+ * @returns
+ */
+declare function getCollectionProperties(target: typeof Collection): string[];
+/**
+ * @description Returns every dynamicProperty definition
+ */
+declare function getMongoDynamicProperties(target: typeof Collection): {
+    propertyName: string;
+    functionName: string;
+    dynamicPropertyFn: (...args: any[]) => any;
+}[];
 
 declare const _default: {
     Model: typeof Model;
@@ -2671,4 +2700,4 @@ declare const _default: {
     dynamicColumn: typeof dynamicColumn;
 };
 
-export { type CaseConvention, Collection, type DataSourceInput, Migration, Model, type ModelQueryBuilder, MongoDataSource, type PaginatedData, type PaginationMetadata, RedisDataSource as Redis, type RedisGiveable, type RedisStorable, Relation, SqlDataSource, StandaloneQueryBuilder, belongsTo, column, _default as default, dynamicProperty, getModelColumns, getPrimaryKey, getRelations, hasMany, hasOne, property };
+export { type CaseConvention, Collection, type DataSourceInput, Migration, Model, type ModelQueryBuilder, MongoDataSource, type PaginatedData, type PaginationMetadata, RedisDataSource as Redis, type RedisGiveable, type RedisStorable, Relation, SqlDataSource, StandaloneQueryBuilder, belongsTo, column, _default as default, dynamicProperty, getCollectionProperties, getModelColumns, getMongoDynamicProperties, getPrimaryKey, getRelations, hasMany, hasOne, property };
