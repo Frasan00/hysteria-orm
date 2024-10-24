@@ -447,7 +447,7 @@ const user: User | null = await User.query()
 const users: User[] = await User.query()
     .where("name", "John Doe")
     .andWhere("email", "john@gmail.com")
-    .orderBy("name", "ASC")
+    .orderBy(["name"], "ASC")
     .limit(10)
     .many();
 
@@ -515,7 +515,6 @@ const user: User | null = await User.query().whereBuilder((queryBuilder) => {
 - This is not available for findOneByPrimaryKey method
 ```typescript
 const userFind = await User.find({ ignoreHooks: ["beforeFetch"] });
-const userOne = await User.query().one({ ignoreHooks: ["afterFetch"] });
 ```
 
 ### Aliases
