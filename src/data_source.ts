@@ -16,7 +16,7 @@ export type DataSourceType =
   | "mongo";
 
 /**
- * @description By default the connection details can be provided in the env.ts file, you can still override each prop with your actual connection details
+ * @description By default the connection details can be provided in the .env file, you can still override each prop with your actual connection details in the input
  */
 export interface DataSourceInput {
   type?: DataSourceType;
@@ -31,7 +31,7 @@ export interface DataSourceInput {
   readonly mongoOptions?: MongoClientOptions;
 
   /**
-   * @description Mongo specific option, sql databases won't use this
+   * @description Mongo specific option, sql databases won't use this property
    */
   readonly url?: string;
 }
