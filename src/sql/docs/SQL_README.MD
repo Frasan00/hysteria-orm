@@ -356,14 +356,14 @@ try{
     const newUser: User = await User.insert({
         name: "New User",
         email: "newUserEmaik@gmail.com"
-    }, trx);
+    }, { trx });
 
 // Update
     newUser.name = "John Doe Updated";
-    const updatedUser = await User.updateRecord(newUser, trx);
+    const updatedUser = await User.updateRecord(newUser, { trx });
 
 // Delete
-    await User.deleteRecord(updatedUser, trx);
+    await User.deleteRecord(updatedUser, { trx });
 
     await trx.commit();
 } catch (error) {
