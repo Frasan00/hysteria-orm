@@ -1,6 +1,10 @@
 import { CaseConvention } from "./utils/case_utils";
 
-export abstract class AbstractModel {
+/**
+ * @description The most basic class for all models for both SQL and NoSQL databases
+ * @internal Not meant to be used outside of the library
+ */
+export abstract class Entity {
   /**
    * @description Extra columns for the model, all data retrieved from the database that is not part of the model will be stored here
    */

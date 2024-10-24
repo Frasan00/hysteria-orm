@@ -1,4 +1,4 @@
-import { Model as AbstractModel } from "./model";
+import { Model as Entity } from "./model";
 import { BelongsTo } from "./relations/belongs_to";
 import { HasMany } from "./relations/has_many";
 import { HasOne } from "./relations/has_one";
@@ -7,7 +7,7 @@ import { RelationEnum, RelationOptions, Relation } from "./relations/relation";
 type LazyRelationEnum = {
   type: RelationEnum;
   columnName: string;
-  model: () => typeof AbstractModel;
+  model: () => typeof Entity;
   foreignKey: string;
   options?: RelationOptions;
 };
@@ -91,7 +91,7 @@ export function dynamicColumn(columnName: string): PropertyDecorator {
  * @param target Model
  * @returns
  */
-export function getModelColumns(target: typeof AbstractModel): string[] {
+export function getModelColumns(target: typeof Entity): string[] {
   return Reflect.getMetadata(COLUMN_METADATA_KEY, target.prototype) || [];
 }
 
@@ -100,7 +100,7 @@ export function getModelColumns(target: typeof AbstractModel): string[] {
  * @param target Model
  * @returns
  */
-export function getModelBooleanColumns(target: typeof AbstractModel): string[] {
+export function getModelBooleanColumns(target: typeof Entity): string[] {
   return (
     Reflect.getMetadata(BOOLEAN_COLUMN_METADATA_KEY, target.prototype) || []
   );
@@ -118,7 +118,7 @@ export function getModelBooleanColumns(target: typeof AbstractModel): string[] {
  * @returns
  */
 export function belongsTo(
-  model: () => typeof AbstractModel,
+  model: () => typeof Entity,
   foreignKey: string,
   options?: RelationOptions,
 ): PropertyDecorator {
@@ -144,7 +144,7 @@ export function belongsTo(
  * @returns
  */
 export function hasOne(
-  model: () => typeof AbstractModel,
+  model: () => typeof Entity,
   foreignKey: string,
   options?: RelationOptions,
 ): PropertyDecorator {
@@ -170,7 +170,7 @@ export function hasOne(
  * @returns
  */
 export function hasMany(
-  model: () => typeof AbstractModel,
+  model: () => typeof Entity,
   foreignKey: string,
   options?: RelationOptions,
 ): PropertyDecorator {
@@ -193,7 +193,7 @@ export function hasMany(
  * @param target Model
  * @returns
  */
-export function getRelations(target: typeof AbstractModel): Relation[] {
+export function getRelations(target: typeof Entity): Relation[] {
   const relations =
     Reflect.getMetadata(RELATION_METADATA_KEY, target.prototype) || [];
   return relations.map((relation: LazyRelationEnum) => {
@@ -216,14 +216,14 @@ export function getRelations(target: typeof AbstractModel): Relation[] {
  * @param target Model
  * @returns
  */
-export function getPrimaryKey(target: typeof AbstractModel): string {
+export function getPrimaryKey(target: typeof Entity): string {
   return Reflect.getMetadata(PRIMARY_KEY_METADATA_KEY, target.prototype);
 }
 
 /**
  * @description Returns every dynamicColumn definition
  */
-export function getDynamicColumns(target: typeof AbstractModel): {
+export function getDynamicColumns(target: typeof Entity): {
   columnName: string;
   functionName: string;
   dynamicColumnFn: (...args: any[]) => any;
