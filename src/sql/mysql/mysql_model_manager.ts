@@ -114,7 +114,6 @@ export class MysqlModelManager<T extends Model> extends ModelManager<T> {
       }
 
       return await query.one({
-        throwErrorOnNull: input.throwErrorOnNull || false,
         ignoreHooks: input.ignoreHooks || [],
       });
     } catch (error) {
@@ -144,9 +143,7 @@ export class MysqlModelManager<T extends Model> extends ModelManager<T> {
 
       return await this.query()
         .where(this.model.primaryKey as string, value)
-        .one({
-          throwErrorOnNull,
-        });
+        .one();
     } catch (error) {
       queryError(error);
       throw new Error("query failed " + error);

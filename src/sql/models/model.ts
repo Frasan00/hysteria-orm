@@ -101,7 +101,7 @@ export abstract class Model extends AbstractModel {
    */
   static async first<T extends Model>(
     this: new () => T | typeof Model,
-    options: OneOptions & BaseModelMethodOptions = { throwErrorOnNull: false },
+    options: OneOptions & BaseModelMethodOptions = {},
   ): Promise<T | null> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
@@ -119,6 +119,21 @@ export abstract class Model extends AbstractModel {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
     return modelManager.find(findOptions);
+  }
+
+  /**
+   * @description Finds a record for the given model or throws an error if it doesn't exist
+   */
+  static async findOneOrFail<T extends Model>(
+    this: new () => T | typeof Model,
+    findOneOptions: (FindOneType<T> | UnrestrictedFindOneType<T>) & {
+      customError?: Error;
+    },
+    options: BaseModelMethodOptions = {},
+  ): Promise<T | null> {
+    const typeofModel = this as unknown as typeof Model;
+    const modelManager = typeofModel.dispatchModelManager<T>(options);
+    return modelManager.findOneOrFail(findOneOptions);
   }
 
   /**

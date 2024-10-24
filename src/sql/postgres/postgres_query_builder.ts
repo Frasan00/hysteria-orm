@@ -65,9 +65,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  async one(
-    options: OneOptions = { throwErrorOnNull: false },
-  ): Promise<T | null> {
+  async one(options: OneOptions = {}): Promise<T | null> {
     // hook query builder
     if (!options.ignoreHooks?.includes("beforeFetch")) {
       this.model.beforeFetch(this);
@@ -94,10 +92,6 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     log(query, this.logs, this.params);
     const result = await this.pgClient.query(query, this.params);
     if (!result.rows[0]) {
-      if (options.throwErrorOnNull) {
-        throw new Error("ROW_NOT_FOUND");
-      }
-
       return null;
     }
 
@@ -127,13 +121,19 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
       : model;
   }
 
-  async oneOrFail(options?: {
-    ignoreHooks: OneOptions["ignoreHooks"];
-  }): Promise<T> {
+  async oneOrFail(options?: OneOptions & { customError: Error }): Promise<T> {
     const model = await this.one({
-      throwErrorOnNull: true,
       ignoreHooks: options?.ignoreHooks,
     });
+
+    if (!model) {
+      if (options?.customError) {
+        throw options.customError;
+      }
+
+      throw new Error("ROW_NOT_FOUND");
+    }
+
     return model as T;
   }
 

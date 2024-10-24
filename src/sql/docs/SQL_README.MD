@@ -417,6 +417,15 @@ const otherUser: User | null = await User.findOne({
         name: "John Doe"
     }
 });
+
+// Get one or fail
+const userOrFail: User = await User.findOneOrFail({
+    where: {
+        id: 1,
+        name: "John Doe"
+    },
+    customError: new Error("User not found")
+});
 ```
 
 ### Query-builder

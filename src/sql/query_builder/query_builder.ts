@@ -28,7 +28,6 @@ export type ModelQueryBuilder<T extends Model> =
 export type FetchHooks = "beforeFetch" | "afterFetch";
 
 export type OneOptions = {
-  throwErrorOnNull?: boolean;
   ignoreHooks?: FetchHooks[];
 };
 
@@ -84,11 +83,29 @@ export abstract class QueryBuilder<
   abstract one(options: OneOptions): Promise<T | null>;
 
   /**
+   * @description Executes the query and retrieves the first result.
+   * @alias one
+   */
+  async first(options: OneOptions): Promise<T | null> {
+    return this.one(options);
+  }
+
+  /**
    * @description Executes the query and retrieves the first result. Fail if no result is found.
    */
   abstract oneOrFail(options?: {
-    ignoreHooks?: OneOptions["ignoreHooks"];
+    ignoreHooks?: OneOptions["ignoreHooks"] & { customError?: Error };
   }): Promise<T>;
+
+  /**
+   * @description Executes the query and retrieves the first result. Fail if no result is found.
+   * @alias oneOrFail
+   */
+  async firstOrFail(options?: {
+    ignoreHooks?: OneOptions["ignoreHooks"] & { customError?: Error };
+  }): Promise<T> {
+    return this.oneOrFail(options);
+  }
 
   /**
    * @description Executes the query and retrieves multiple results.

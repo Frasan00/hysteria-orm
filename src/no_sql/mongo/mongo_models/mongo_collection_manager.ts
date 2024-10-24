@@ -59,6 +59,9 @@ export class CollectionManager<T extends Collection> {
       .collection(this.collection.collection);
   }
 
+  /**
+   * @description Finds all records that match the input
+   */
   async find(
     options?: MongoUnrestrictedFindManyOptions<T> | MongoFindManyOptions<T>,
   ): Promise<T[]> {
@@ -92,6 +95,9 @@ export class CollectionManager<T extends Collection> {
     return queryBuilder.many({ ignoreHooks: options.ignoreHooks });
   }
 
+  /**
+   * @description Finds the first record that matches the input
+   */
   async findOne(
     options: UnrestrictedMongoFindOneOptions<T> | MongoFindOneOptions<T>,
   ): Promise<T | null> {
@@ -109,8 +115,13 @@ export class CollectionManager<T extends Collection> {
     return queryBuilder.one({ ignoreHooks: options.ignoreHooks });
   }
 
+  /**
+   * @description Finds the first record that matches the input or throws an error
+   */
   async findOneOrFail(
-    options: UnrestrictedMongoFindOneOptions<T> | MongoFindOneOptions<T>,
+    options: (UnrestrictedMongoFindOneOptions<T> | MongoFindOneOptions<T>) & {
+      customError?: Error;
+    },
   ): Promise<T> {
     const queryBuilder = this.query<T>();
     if (!options) {
@@ -127,9 +138,21 @@ export class CollectionManager<T extends Collection> {
       });
     }
 
-    return queryBuilder.oneOrFail({ ignoreHooks: options.ignoreHooks });
+    const result = await queryBuilder.one({ ignoreHooks: options.ignoreHooks });
+    if (result === null) {
+      if (options.customError) {
+        throw options.customError;
+      }
+
+      throw new Error("ROW_NOT_FOUND");
+    }
+
+    return result;
   }
 
+  /**
+   * @description Starts a query builder chain
+   */
   query<T extends Collection>() {
     return new MongoQueryBuilder<T>(
       this.collection,
@@ -139,6 +162,9 @@ export class CollectionManager<T extends Collection> {
     );
   }
 
+  /**
+   * @description Finds a record by its primary key
+   */
   async insert(
     modelData: ModelKeyOrAny<T>,
     options: { ignoreHooks?: boolean } = {},
@@ -161,6 +187,9 @@ export class CollectionManager<T extends Collection> {
     return (await serializeCollection(this.collection, record)) as T;
   }
 
+  /**
+   * @description Creates multiple records
+   */
   async insertMany(
     modelData: ModelKeyOrAny<T>[],
     options: { ignoreHooks?: boolean } = {},
@@ -191,51 +220,49 @@ export class CollectionManager<T extends Collection> {
     );
   }
 
+  /**
+   * @description Updates a record
+   */
   async updateRecord(modelData: T): Promise<T> {
     const id = modelData.id;
     if (!id) {
       throw new Error("Cannot update record without an id");
     }
 
-    try {
-      const result = await this.collectionInstance.updateOne(
-        { _id: new mongodb.ObjectId(id) },
-        { $set: modelData },
-      );
+    const result = await this.collectionInstance.updateOne(
+      { _id: new mongodb.ObjectId(id) },
+      { $set: modelData },
+    );
 
-      if (result.modifiedCount === 0) {
-        throw new Error("The record could not be updated");
-      }
-
-      const updatedDocument = await this.collectionInstance.findOne(
-        {
-          _id: new mongodb.ObjectId(id),
-        },
-        { session: this.session },
-      );
-
-      return (await serializeCollection(this.collection, updatedDocument)) as T;
-    } catch (error) {
-      throw new Error("The record could not be updated, " + String(error));
+    if (result.modifiedCount === 0) {
+      throw new Error("The record could not be updated");
     }
+
+    const updatedDocument = await this.collectionInstance.findOne(
+      {
+        _id: new mongodb.ObjectId(id),
+      },
+      { session: this.session },
+    );
+
+    return (await serializeCollection(this.collection, updatedDocument)) as T;
   }
 
+  /**
+   * @description Deletes a record
+   */
   async deleteRecord(model: T): Promise<T> {
     const id = model.id;
     if (!id) {
       throw new Error("Cannot delete record without an id");
     }
 
-    try {
-      await this.collectionInstance.deleteOne(
-        {
-          _id: new mongodb.ObjectId(id),
-        },
-        { session: this.session },
-      );
-      return model;
-    } catch (error) {
-      throw new Error("The record could not be deleted, " + String(error));
-    }
+    await this.collectionInstance.deleteOne(
+      {
+        _id: new mongodb.ObjectId(id),
+      },
+      { session: this.session },
+    );
+    return model;
   }
 }

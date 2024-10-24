@@ -51,6 +51,26 @@ export abstract class ModelManager<T extends Model> {
   ): Promise<T | null>;
 
   /**
+   * @description Finds the first record that matches the input or throws an error
+   */
+  async findOneOrFail(
+    input: (FindOneType<T> | UnrestrictedFindOneType<T>) & {
+      customError?: Error;
+    },
+  ): Promise<T> {
+    const result = await this.findOne(input);
+    if (result === null) {
+      if (input.customError) {
+        throw input.customError;
+      }
+
+      throw new Error("ROW_NOT_FOUND");
+    }
+
+    return result;
+  }
+
+  /**
    * @description Finds a record by its primary key
    * @param value
    * @param throwErrorOnNull

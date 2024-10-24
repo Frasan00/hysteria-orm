@@ -138,7 +138,6 @@ type UnrestrictedFindOneType<T> = {
     ignoreHooks?: FetchHooks$1[];
     dynamicColumns?: DynamicColumnType<T>;
     where?: Record<string, any>;
-    throwErrorOnNull?: boolean;
 };
 type UnrestrictedFindType<T> = Omit<UnrestrictedFindOneType<T>, "throwErrorOnNull"> & {
     orderBy?: OrderByType;
@@ -154,7 +153,6 @@ type FindOneType<T> = {
     ignoreHooks?: FetchHooks$1[];
     useConnection?: SqlDataSource;
     trx?: Transaction;
-    throwErrorOnNull?: boolean;
 };
 type FindType<T> = Omit<FindOneType<T>, "throwErrorOnNull"> & {
     orderBy?: OrderByType;
@@ -230,8 +228,8 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     protected mysqlModelManagerUtils: SqlModelManagerUtils<T>;
     constructor(model: typeof Model, table: string, mysqlConnection: mysql.Connection, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
     one(options?: OneOptions$1): Promise<T | null>;
-    oneOrFail(options?: {
-        ignoreHooks?: OneOptions$1["ignoreHooks"];
+    oneOrFail(options?: OneOptions$1 & {
+        customError: Error;
     }): Promise<T>;
     many(options?: ManyOptions$1): Promise<T[]>;
     softDelete(options?: SoftDeleteOptions<T>): Promise<number>;
@@ -273,8 +271,8 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     select(...columns: string[]): PostgresQueryBuilder<T>;
     select(...columns: (SelectableType<T> | "*")[]): PostgresQueryBuilder<T>;
     one(options?: OneOptions$1): Promise<T | null>;
-    oneOrFail(options?: {
-        ignoreHooks: OneOptions$1["ignoreHooks"];
+    oneOrFail(options?: OneOptions$1 & {
+        customError: Error;
     }): Promise<T>;
     many(options?: ManyOptions$1): Promise<T[]>;
     update(data: Partial<T>, options?: UpdateOptions): Promise<number>;
@@ -326,8 +324,8 @@ declare class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     protected deleteTemplate: ReturnType<typeof deleteTemplate>;
     constructor(model: typeof Model, table: string, sqLiteConnection: sqlite3.Database, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
     one(options?: OneOptions$1): Promise<T | null>;
-    oneOrFail(options?: {
-        ignoreHooks: OneOptions$1["ignoreHooks"];
+    oneOrFail(options?: OneOptions$1 & {
+        customError: Error;
     }): Promise<T>;
     many(options?: ManyOptions$1): Promise<T[]>;
     update(data: Partial<T>, options?: UpdateOptions): Promise<number>;
@@ -638,7 +636,6 @@ declare class WhereQueryBuilder<T extends Model> {
 type ModelQueryBuilder<T extends Model> = MysqlQueryBuilder<T> | PostgresQueryBuilder<T> | SqlLiteQueryBuilder<T>;
 type FetchHooks$1 = "beforeFetch" | "afterFetch";
 type OneOptions$1 = {
-    throwErrorOnNull?: boolean;
     ignoreHooks?: FetchHooks$1[];
 };
 type ManyOptions$1 = {
@@ -664,10 +661,26 @@ declare abstract class QueryBuilder<T extends Model> extends WhereQueryBuilder<T
      */
     abstract one(options: OneOptions$1): Promise<T | null>;
     /**
+     * @description Executes the query and retrieves the first result.
+     * @alias one
+     */
+    first(options: OneOptions$1): Promise<T | null>;
+    /**
      * @description Executes the query and retrieves the first result. Fail if no result is found.
      */
     abstract oneOrFail(options?: {
-        ignoreHooks?: OneOptions$1["ignoreHooks"];
+        ignoreHooks?: OneOptions$1["ignoreHooks"] & {
+            customError?: Error;
+        };
+    }): Promise<T>;
+    /**
+     * @description Executes the query and retrieves the first result. Fail if no result is found.
+     * @alias oneOrFail
+     */
+    firstOrFail(options?: {
+        ignoreHooks?: OneOptions$1["ignoreHooks"] & {
+            customError?: Error;
+        };
     }): Promise<T>;
     /**
      * @description Executes the query and retrieves multiple results.
@@ -859,6 +872,12 @@ declare abstract class Model extends AbstractModel {
      */
     static find<T extends Model>(this: new () => T | typeof Model, findOptions?: FindType<T> | UnrestrictedFindType<T>, options?: BaseModelMethodOptions$1): Promise<T[]>;
     /**
+     * @description Finds a record for the given model or throws an error if it doesn't exist
+     */
+    static findOneOrFail<T extends Model>(this: new () => T | typeof Model, findOneOptions: (FindOneType<T> | UnrestrictedFindOneType<T>) & {
+        customError?: Error;
+    }, options?: BaseModelMethodOptions$1): Promise<T | null>;
+    /**
      * @description Finds a record for the given model
      */
     static findOne<T extends Model>(this: new () => T | typeof Model, findOneOptions: (FindOneType<T> | UnrestrictedFindOneType<T>) & BaseModelMethodOptions$1, options?: BaseModelMethodOptions$1): Promise<T | null>;
@@ -979,6 +998,12 @@ declare abstract class ModelManager$1<T extends Model> {
     abstract findOne(input: UnrestrictedFindOneType<T>): Promise<T | null>;
     abstract findOne(input: FindOneType<T>): Promise<T | null>;
     abstract findOne(input: FindOneType<T> | UnrestrictedFindOneType<T>): Promise<T | null>;
+    /**
+     * @description Finds the first record that matches the input or throws an error
+     */
+    findOneOrFail(input: (FindOneType<T> | UnrestrictedFindOneType<T>) & {
+        customError?: Error;
+    }): Promise<T>;
     /**
      * @description Finds a record by its primary key
      * @param value
@@ -1117,7 +1142,7 @@ declare class PostgresModelManager<T extends Model> extends ModelManager$1<T> {
      * @param {string | number | boolean} value - PK value of the record to retrieve.
      * @returns Promise resolving to a single model or null if not found.
      */
-    findOneByPrimaryKey(value: string | number | boolean, throwErrorOnNull?: boolean): Promise<T | null>;
+    findOneByPrimaryKey(value: string | number | boolean): Promise<T | null>;
     /**
      * Save a new model instance to the database.
      *
@@ -1188,7 +1213,7 @@ declare class SqliteModelManager<T extends Model> extends ModelManager$1<T> {
      * @param {string | number | boolean} value - PK of the record to retrieve, hooks will not have any effect, since it's a direct query for the PK.
      * @returns Promise resolving to a single model or null if not found.
      */
-    findOneByPrimaryKey(value: string | number | boolean, throwErrorOnNull?: boolean): Promise<T | null>;
+    findOneByPrimaryKey(value: string | number | boolean): Promise<T | null>;
     /**
      * Save a new model instance to the database.
      *
@@ -2321,17 +2346,43 @@ declare class CollectionManager<T extends Collection> {
     protected collectionInstance: mongodb.Collection;
     protected session?: mongodb.ClientSession;
     constructor(_collection: typeof Collection, mongoDataSource: MongoDataSource, session?: mongodb.ClientSession, logs?: boolean);
+    /**
+     * @description Finds all records that match the input
+     */
     find(options?: MongoUnrestrictedFindManyOptions<T> | MongoFindManyOptions<T>): Promise<T[]>;
+    /**
+     * @description Finds the first record that matches the input
+     */
     findOne(options: UnrestrictedMongoFindOneOptions<T> | MongoFindOneOptions<T>): Promise<T | null>;
-    findOneOrFail(options: UnrestrictedMongoFindOneOptions<T> | MongoFindOneOptions<T>): Promise<T>;
+    /**
+     * @description Finds the first record that matches the input or throws an error
+     */
+    findOneOrFail(options: (UnrestrictedMongoFindOneOptions<T> | MongoFindOneOptions<T>) & {
+        customError?: Error;
+    }): Promise<T>;
+    /**
+     * @description Starts a query builder chain
+     */
     query<T extends Collection>(): MongoQueryBuilder<T>;
+    /**
+     * @description Finds a record by its primary key
+     */
     insert(modelData: ModelKeyOrAny<T>, options?: {
         ignoreHooks?: boolean;
     }): Promise<T>;
+    /**
+     * @description Creates multiple records
+     */
     insertMany(modelData: ModelKeyOrAny<T>[], options?: {
         ignoreHooks?: boolean;
     }): Promise<T[]>;
+    /**
+     * @description Updates a record
+     */
     updateRecord(modelData: T): Promise<T>;
+    /**
+     * @description Deletes a record
+     */
     deleteRecord(model: T): Promise<T>;
 }
 

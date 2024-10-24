@@ -52,7 +52,6 @@ export type UnrestrictedFindOneType<T> = {
   ignoreHooks?: FetchHooks[];
   dynamicColumns?: DynamicColumnType<T>;
   where?: Record<string, any>;
-  throwErrorOnNull?: boolean;
 };
 
 export type UnrestrictedFindType<T> = Omit<
@@ -73,7 +72,6 @@ export type FindOneType<T> = {
   ignoreHooks?: FetchHooks[];
   useConnection?: SqlDataSource;
   trx?: Transaction;
-  throwErrorOnNull?: boolean;
 };
 
 export type FindType<T> = Omit<FindOneType<T>, "throwErrorOnNull"> & {

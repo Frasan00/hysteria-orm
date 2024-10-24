@@ -52,9 +52,7 @@ export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     );
   }
 
-  async one(
-    options: OneOptions = { throwErrorOnNull: false },
-  ): Promise<T | null> {
+  async one(options: OneOptions = {}): Promise<T | null> {
     // hook query builder
     if (!options.ignoreHooks?.includes("beforeFetch")) {
       this.model.beforeFetch(this);
@@ -84,9 +82,6 @@ export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     }
 
     const result = results[0];
-    if (options.throwErrorOnNull && !result) {
-      throw new Error("ERR_NOT_FOUND");
-    }
 
     const modelInstance = getBaseModelInstance<T>();
     await this.mergeRawPacketIntoModel(modelInstance, result, this.model);
@@ -109,13 +104,19 @@ export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
       : model;
   }
 
-  async oneOrFail(options?: {
-    ignoreHooks: OneOptions["ignoreHooks"];
-  }): Promise<T> {
+  async oneOrFail(options?: OneOptions & { customError: Error }): Promise<T> {
     const model = await this.one({
-      throwErrorOnNull: true,
       ignoreHooks: options?.ignoreHooks,
     });
+
+    if (!model) {
+      if (options?.customError) {
+        throw options.customError;
+      }
+
+      throw new Error("ROW_NOT_FOUND");
+    }
+
     return model as T;
   }
 

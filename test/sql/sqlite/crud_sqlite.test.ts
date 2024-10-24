@@ -416,3 +416,60 @@ test("Very complex query", async () => {
     .offset(0)
     .one();
 });
+
+test("Find one or fail", async () => {
+  await User.insert({
+    name: "Dave",
+    email: "test",
+    signupSource: "email",
+    isActive: true,
+  });
+
+  const user = await User.query().where("name", "Dave").oneOrFail();
+  expect(user).not.toBeNull();
+  expect(user.name).toBe("Dave");
+
+  try {
+    await User.query().where("name", "Dave2").oneOrFail();
+  } catch (error) {
+    expect(error).not.toBeNull();
+  }
+});
+
+test("First or fail", async () => {
+  await User.insert({
+    name: "Dave",
+    email: "test",
+    signupSource: "email",
+    isActive: true,
+  });
+
+  const user = await User.query().firstOrFail();
+  expect(user).not.toBeNull();
+  expect(user.name).toBe("Dave");
+
+  try {
+    await User.query().where("name", "Dave2").firstOrFail();
+  } catch (error) {
+    expect(error).not.toBeNull();
+  }
+});
+
+test("One or fail", async () => {
+  await User.insert({
+    name: "Dave",
+    email: "test",
+    signupSource: "email",
+    isActive: true,
+  });
+
+  const user = await User.query().oneOrFail();
+  expect(user).not.toBeNull();
+  expect(user.name).toBe("Dave");
+
+  try {
+    await User.query().where("name", "Dave2").oneOrFail();
+  } catch (error) {
+    expect(error).not.toBeNull();
+  }
+});
