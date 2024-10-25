@@ -78,7 +78,6 @@ export abstract class QueryBuilder<
 
   /**
    * @description Executes the query and retrieves the first result.
-   * @returns A Promise resolving to the first result or null.
    */
   abstract one(options: OneOptions): Promise<T | null>;
 
@@ -109,13 +108,11 @@ export abstract class QueryBuilder<
 
   /**
    * @description Executes the query and retrieves multiple results.
-   * @returns A Promise resolving to an array of results.
    */
   abstract many(options: ManyOptions): Promise<T[]>;
 
   /**
    * @description Updates records in the database.
-   * @returns The number of affected rows.
    */
   abstract update(data: Partial<T>, options?: UpdateOptions): Promise<number>;
 
@@ -125,25 +122,21 @@ export abstract class QueryBuilder<
    * @default value - The current date and time.
    * @default ignoreBeforeDeleteHook - false
    * @default trx - undefined
-   * @returns The number of affected rows.
    */
   abstract softDelete(options?: SoftDeleteOptions<T>): Promise<number>;
 
   /**
    * @description Deletes Records from the database for the current query.
-   * @returns The number of affected rows.
    */
   abstract delete(options?: DeleteOptions): Promise<number>;
 
   /**
    * @description Executes the query and retrieves the count of results, it ignores all select, group by, order by, limit and offset clauses if they are present.
-   * @returns A Promise resolving to the count of results.
    */
   abstract getCount(options: { ignoreHooks: boolean }): Promise<number>;
 
   /**
    * @description Executes the query and retrieves the sum of a column, it ignores all select, group by, order by, limit and offset clauses if they are present.
-   * @returns A Promise resolving to the sum of the column.
    */
   abstract getSum(
     column: string,
@@ -152,7 +145,6 @@ export abstract class QueryBuilder<
 
   /**
    * @description Executes the query and retrieves multiple results.
-   * @returns A Promise resolving to an array of results.
    */
   abstract paginate(
     page: number,
@@ -162,7 +154,6 @@ export abstract class QueryBuilder<
 
   /**
    * @description Adds a SELECT condition to the query.
-   * @returns The Mysql_query_builder instance for chaining.
    */
   abstract select(...columns: string[]): ModelQueryBuilder<T>;
   abstract select(
@@ -233,7 +224,6 @@ export abstract class QueryBuilder<
 
   /**
    * @description Adds GROUP BY conditions to the query.
-   * @returns The Mysql_query_builder instance for chaining.
    */
   abstract groupBy(...columns: SelectableType<T>[]): ModelQueryBuilder<T>;
   abstract groupBy(...columns: string[]): ModelQueryBuilder<T>;
@@ -243,52 +233,47 @@ export abstract class QueryBuilder<
 
   /**
    * @description Adds a raw GROUP BY condition to the query, only one raw GROUP BY condition is stackable, the last one will be used.
-   * @returns The Mysql_query_builder instance for chaining.
    */
   abstract groupByRaw(query: string): ModelQueryBuilder<T>;
 
   /**
    * @description Adds ORDER BY conditions to the query.
-   * @returns The Mysql_query_builder instance for chaining.
    */
   abstract orderBy(
-    columns: SelectableType<T>[],
+    column: SelectableType<T>,
     order: "ASC" | "DESC",
   ): ModelQueryBuilder<T>;
+  abstract orderBy(column: string, order: "ASC" | "DESC"): ModelQueryBuilder<T>;
   abstract orderBy(
-    columns: string[],
-    order: "ASC" | "DESC",
-  ): ModelQueryBuilder<T>;
-  abstract orderBy(
-    columns: (SelectableType<T> | string)[],
+    column: SelectableType<T> | string,
     order: "ASC" | "DESC",
   ): ModelQueryBuilder<T>;
 
   /**
    * @description Adds a raw ORDER BY condition to the query, only one raw ORDER BY condition is stackable, the last one will be used.
-   * @returns The Mysql_query_builder instance for chaining.
+   * @description ORDER BY is implicitly added to the query.
    */
   abstract orderByRaw(query: string): ModelQueryBuilder<T>;
 
   /**
    * @description Adds a LIMIT condition to the query.
-   * @returns The Mysql_query_builder instance for chaining.
    */
   abstract limit(limit: number): ModelQueryBuilder<T>;
 
   /**
    * @description Adds an OFFSET condition to the query.
-   * @returns The Mysql_query_builder instance for chaining.
    */
   abstract offset(offset: number): ModelQueryBuilder<T>;
 
   /**
    * @description Returns a copy of the query builder instance.
-   * @returns A copy of the query builder instance.
    */
   abstract copy(): ModelQueryBuilder<T>;
 
-  getCurrentQuery(): {
+  /**
+   * @description Returns the query and the parameters in an object.
+   */
+  toSql(): {
     query: string;
     params: any[];
   } {

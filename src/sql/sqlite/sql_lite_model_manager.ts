@@ -5,7 +5,7 @@ import {
   UnrestrictedFindOneType,
   UnrestrictedFindType,
 } from "../models/model_manager/model_manager_types";
-import { log, queryError } from "../../utils/logger";
+import { log } from "../../utils/logger";
 import { ModelManager } from "../models/model_manager/model_manager";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
@@ -64,7 +64,9 @@ export class SqliteModelManager<T extends Model> extends ModelManager<T> {
     }
 
     if (input.orderBy) {
-      query.orderBy(input.orderBy.columns, input.orderBy.type);
+      Object.entries(input.orderBy).forEach(([key, value]) => {
+        query.orderBy(key, value);
+      });
     }
 
     if (input.limit) {
@@ -76,7 +78,7 @@ export class SqliteModelManager<T extends Model> extends ModelManager<T> {
     }
 
     if (input.groupBy) {
-      query.groupBy(...input.groupBy);
+      query.groupBy(...(input.groupBy as string[]));
     }
 
     return await query.many({ ignoreHooks: input.ignoreHooks || [] });
@@ -91,24 +93,16 @@ export class SqliteModelManager<T extends Model> extends ModelManager<T> {
   async findOne(
     input: FindOneType<T> | UnrestrictedFindOneType<T>,
   ): Promise<T | null> {
-    const query = this.query();
-    if (input.select) {
-      query.select(...(input.select as string[]));
-    }
-
-    if (input.relations) {
-      query.addRelations(input.relations);
-    }
-
-    if (input.where) {
-      Object.entries(input.where).forEach(([key, value]) => {
-        query.where(key, value);
-      });
-    }
-
-    return await query.one({
-      ignoreHooks: input.ignoreHooks || [],
+    const results = await this.find({
+      ...input,
+      limit: 1,
     });
+
+    if (!results.length) {
+      return null;
+    }
+
+    return results[0];
   }
 
   /**

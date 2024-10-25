@@ -421,7 +421,7 @@ test("Very complex query", async () => {
     .where("name", "LIKE", "Dave")
     .join("posts", "users.id", "posts.user_id")
     .groupBy("users.id", "posts.id")
-    .orderBy(["deletedAt"], "ASC")
+    .orderBy("deletedAt", "ASC")
     .limit(10)
     .offset(0)
     .one();
@@ -495,4 +495,71 @@ test("One or fail", async () => {
   } catch (error) {
     expect(error).not.toBeNull();
   }
+});
+
+test("Order by", async () => {
+  await User.insertMany([
+    {
+      name: "Dave",
+      email: "test",
+      signupSource: "email",
+      isActive: true,
+    },
+    {
+      name: "Dave2",
+      email: "test2",
+      signupSource: "email",
+      isActive: true,
+    },
+  ]);
+
+  const users = await User.query().orderBy("name", "ASC").many();
+  expect(users.length).toBe(2);
+  expect(users[0].name).toBe("Dave");
+});
+
+test("Multi order by", async () => {
+  await User.insertMany([
+    {
+      name: "Dave",
+      email: "test",
+      signupSource: "email",
+      isActive: true,
+    },
+    {
+      name: "Dave2",
+      email: "test2",
+      signupSource: "email",
+      isActive: true,
+    },
+  ]);
+
+  const users = await User.query()
+    .orderBy("name", "ASC")
+    .orderBy("email", "ASC")
+    .many();
+  expect(users.length).toBe(2);
+  expect(users[0].name).toBe("Dave");
+  expect(users[1].name).toBe("Dave2");
+});
+
+test("Order by raw", async () => {
+  await User.insertMany([
+    {
+      name: "Dave",
+      email: "test",
+      signupSource: "email",
+      isActive: true,
+    },
+    {
+      name: "Dave2",
+      email: "test2",
+      signupSource: "email",
+      isActive: true,
+    },
+  ]);
+
+  const users = await User.query().orderByRaw("name DESC").many();
+  expect(users.length).toBe(2);
+  expect(users[0].name).toBe("Dave2");
 });

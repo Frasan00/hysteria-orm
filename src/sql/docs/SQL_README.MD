@@ -265,7 +265,7 @@ export class User extends Model {
 
     // It's suggested to add a precise retrieve order in the queries or in the hooks
     static beforeFetch(queryBuilder: ModelQueryBuilder<User>) {
-        queryBuilder.orderBy(["createdAt"], "ASC");
+        queryBuilder.orderBy("createdAt", "ASC");
     }
 
     // UUIDs must be created prior to database interaction using the beforeInsert hook
@@ -447,7 +447,7 @@ const user: User | null = await User.query()
 const users: User[] = await User.query()
     .where("name", "John Doe")
     .andWhere("email", "john@gmail.com")
-    .orderBy(["name"], "ASC")
+    .orderBy("name", "ASC")
     .limit(10)
     .many();
 
@@ -605,7 +605,7 @@ const users = await User.query()
     .select("users.*")
     .leftJoin("posts", "users.id", "posts.user_id")
     .where('users.id', 1)
-    .orderBy(['users.id'], "ASC")
+    .orderBy('users.id', "ASC")
     .many();
 ```
 
@@ -640,20 +640,20 @@ const { query, params } = userQueryBuilder
     builder.orWhere("signup_date", "2021-01-02");
     });
 })
-.getCurrentQuery();
+.toSql();
 
 // You can also specify case convention for model and database
 const userQueryBuilder = new StandaloneQueryBuilder("postgres", "users", "camel", "snake");
 const { query, params } = userQueryBuilder
 .whereBuilder((builder) => {
-    builder.where("id", 1);
-    builder.orWhere("name", "John");
-    builder.andWhereBuilder((builder) => {
-    builder.where("signup_date", "2021-01-01");
-    builder.orWhere("signup_date", "2021-01-02");
+        builder.where("id", 1);
+        builder.orWhere("name", "John");
+        builder.andWhereBuilder((builder) => {
+        builder.where("signup_date", "2021-01-01");
+        builder.orWhere("signup_date", "2021-01-02");
     });
 })
-.getCurrentQuery();
+.toSql();
 
 // Example of couple { query, params }
 

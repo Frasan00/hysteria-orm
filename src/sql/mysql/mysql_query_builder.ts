@@ -495,21 +495,34 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
   }
 
   groupByRaw(query: string): this {
+    query.replace("GROUP BY", "");
     this.groupByQuery = ` GROUP BY ${query}`;
     return this;
   }
 
-  orderBy(columns: SelectableType<T>[], order: "ASC" | "DESC"): this;
-  orderBy(columns: string[], order: "ASC" | "DESC"): this;
-  orderBy(
-    columns: (SelectableType<T> | string)[],
-    order: "ASC" | "DESC",
-  ): this {
-    this.orderByQuery = this.selectTemplate.orderBy(columns as string[], order);
+  orderBy(column: SelectableType<T>, order: "ASC" | "DESC"): this;
+  orderBy(column: string, order: "ASC" | "DESC"): this;
+  orderBy(column: SelectableType<T> | string, order: "ASC" | "DESC"): this {
+    const casedColumn = convertCase(
+      column as string,
+      this.model.databaseCaseConvention,
+    );
+
+    if (this.orderByQuery) {
+      this.orderByQuery += `, ${casedColumn as string} ${order}`;
+      return this;
+    }
+
+    this.orderByQuery = ` ORDER BY ${casedColumn as string} ${order}`;
     return this;
   }
 
   orderByRaw(query: string): this {
+    if (this.orderByQuery) {
+      this.orderByQuery += `, ${query}`;
+      return this;
+    }
+
     this.orderByQuery = ` ORDER BY ${query}`;
     return this;
   }

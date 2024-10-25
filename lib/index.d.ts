@@ -129,8 +129,7 @@ type DynamicColumnType<T> = {
     [k in keyof T]: T[k] extends (...args: any[]) => any ? k : never;
 }[keyof T];
 type OrderByType = {
-    columns: string[];
-    type: "ASC" | "DESC";
+    [key: string]: "ASC" | "DESC";
 };
 type UnrestrictedFindOneType<T> = {
     select?: string[];
@@ -138,16 +137,19 @@ type UnrestrictedFindOneType<T> = {
     ignoreHooks?: FetchHooks$1[];
     dynamicColumns?: DynamicColumnType<T>;
     where?: Record<string, any>;
-};
-type UnrestrictedFindType<T> = Omit<UnrestrictedFindOneType<T>, "throwErrorOnNull"> & {
     orderBy?: OrderByType;
     groupBy?: string[];
-    limit?: number;
     offset?: number;
+};
+type UnrestrictedFindType<T> = Omit<UnrestrictedFindOneType<T>, "throwErrorOnNull"> & {
+    limit?: number;
 };
 type FindOneType<T> = {
     select?: SelectableType<T>[];
+    offset?: number;
     relations?: RelationType<T>[];
+    orderBy?: OrderByType;
+    groupBy?: SelectableType<T>[];
     dynamicColumns?: DynamicColumnType<T>;
     where?: WhereType<T>;
     ignoreHooks?: FetchHooks$1[];
@@ -155,10 +157,7 @@ type FindOneType<T> = {
     trx?: Transaction;
 };
 type FindType<T> = Omit<FindOneType<T>, "throwErrorOnNull"> & {
-    orderBy?: OrderByType;
-    groupBy?: string[];
     limit?: number;
-    offset?: number;
 };
 
 declare class SqlModelManagerUtils<T extends Model> {
@@ -253,8 +252,8 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     groupBy(...columns: SelectableType<T>[]): this;
     groupBy(...columns: string[]): this;
     groupByRaw(query: string): this;
-    orderBy(columns: SelectableType<T>[], order: "ASC" | "DESC"): this;
-    orderBy(columns: string[], order: "ASC" | "DESC"): this;
+    orderBy(column: SelectableType<T>, order: "ASC" | "DESC"): this;
+    orderBy(column: string, order: "ASC" | "DESC"): this;
     orderByRaw(query: string): this;
     limit(limit: number): this;
     offset(offset: number): this;
@@ -294,8 +293,8 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     groupBy(...columns: SelectableType<T>[]): this;
     groupBy(...columns: string[]): this;
     groupByRaw(query: string): this;
-    orderBy(columns: SelectableType<T>[], order: "ASC" | "DESC"): this;
-    orderBy(columns: string[], order: "ASC" | "DESC"): this;
+    orderBy(column: SelectableType<T>, order: "ASC" | "DESC"): this;
+    orderBy(column: string, order: "ASC" | "DESC"): this;
     orderByRaw(query: string): this;
     limit(limit: number): this;
     offset(offset: number): this;
@@ -311,7 +310,7 @@ declare const selectTemplate: (dbType: SqlDataSourceType, typeofModel: typeof Mo
     selectCount: string;
     selectDistinct: (...columns: string[]) => string;
     selectSum: (column: string) => string;
-    orderBy: (columns: string[], order?: "ASC" | "DESC") => string;
+    _orderBy: (columns: string[], order?: "ASC" | "DESC") => string;
     groupBy: (...columns: string[]) => string;
     limit: (limit: number) => string;
     offset: (offset: number) => string;
@@ -350,8 +349,8 @@ declare class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     groupBy(...columns: SelectableType<T>[]): this;
     groupBy(...columns: string[]): this;
     groupByRaw(query: string): this;
-    orderBy(columns: SelectableType<T>[], order: "ASC" | "DESC"): this;
-    orderBy(columns: string[], order: "ASC" | "DESC"): this;
+    orderBy(column: SelectableType<T>, order: "ASC" | "DESC"): this;
+    orderBy(column: string, order: "ASC" | "DESC"): this;
     orderByRaw(query: string): this;
     limit(limit: number): this;
     offset(offset: number): this;
@@ -657,7 +656,6 @@ declare abstract class QueryBuilder<T extends Model> extends WhereQueryBuilder<T
     protected constructor(model: typeof Model, table: string, logs: boolean, sqlDataSource: SqlDataSource);
     /**
      * @description Executes the query and retrieves the first result.
-     * @returns A Promise resolving to the first result or null.
      */
     abstract one(options: OneOptions$1): Promise<T | null>;
     /**
@@ -684,12 +682,10 @@ declare abstract class QueryBuilder<T extends Model> extends WhereQueryBuilder<T
     }): Promise<T>;
     /**
      * @description Executes the query and retrieves multiple results.
-     * @returns A Promise resolving to an array of results.
      */
     abstract many(options: ManyOptions$1): Promise<T[]>;
     /**
      * @description Updates records in the database.
-     * @returns The number of affected rows.
      */
     abstract update(data: Partial<T>, options?: UpdateOptions): Promise<number>;
     /**
@@ -698,36 +694,30 @@ declare abstract class QueryBuilder<T extends Model> extends WhereQueryBuilder<T
      * @default value - The current date and time.
      * @default ignoreBeforeDeleteHook - false
      * @default trx - undefined
-     * @returns The number of affected rows.
      */
     abstract softDelete(options?: SoftDeleteOptions<T>): Promise<number>;
     /**
      * @description Deletes Records from the database for the current query.
-     * @returns The number of affected rows.
      */
     abstract delete(options?: DeleteOptions): Promise<number>;
     /**
      * @description Executes the query and retrieves the count of results, it ignores all select, group by, order by, limit and offset clauses if they are present.
-     * @returns A Promise resolving to the count of results.
      */
     abstract getCount(options: {
         ignoreHooks: boolean;
     }): Promise<number>;
     /**
      * @description Executes the query and retrieves the sum of a column, it ignores all select, group by, order by, limit and offset clauses if they are present.
-     * @returns A Promise resolving to the sum of the column.
      */
     abstract getSum(column: string, options: {
         ignoreHooks: boolean;
     }): Promise<number>;
     /**
      * @description Executes the query and retrieves multiple results.
-     * @returns A Promise resolving to an array of results.
      */
     abstract paginate(page: number, limit: number, options?: ManyOptions$1): Promise<PaginatedData<T>>;
     /**
      * @description Adds a SELECT condition to the query.
-     * @returns The Mysql_query_builder instance for chaining.
      */
     abstract select(...columns: string[]): ModelQueryBuilder<T>;
     abstract select(...columns: (SelectableType<T> | "*")[]): ModelQueryBuilder<T>;
@@ -736,6 +726,10 @@ declare abstract class QueryBuilder<T extends Model> extends WhereQueryBuilder<T
      * @description Adds a JOIN condition to the query.
      */
     abstract join(table: string, primaryColumn: string, foreignColumn: string): ModelQueryBuilder<T>;
+    /**
+     * @description Adds a raw JOIN condition to the query.
+     */
+    joinRaw(query: string): QueryBuilder<T>;
     /**
      * @description Adds a LEFT JOIN condition to the query.
      */
@@ -762,44 +756,41 @@ declare abstract class QueryBuilder<T extends Model> extends WhereQueryBuilder<T
     abstract orWhereBuilder(cb: (queryBuilder: ModelQueryBuilder<T>) => void): ModelQueryBuilder<T>;
     /**
      * @description Adds GROUP BY conditions to the query.
-     * @returns The Mysql_query_builder instance for chaining.
      */
     abstract groupBy(...columns: SelectableType<T>[]): ModelQueryBuilder<T>;
     abstract groupBy(...columns: string[]): ModelQueryBuilder<T>;
     abstract groupBy(...columns: (SelectableType<T> | string)[]): ModelQueryBuilder<T>;
     /**
      * @description Adds a raw GROUP BY condition to the query, only one raw GROUP BY condition is stackable, the last one will be used.
-     * @returns The Mysql_query_builder instance for chaining.
      */
     abstract groupByRaw(query: string): ModelQueryBuilder<T>;
     /**
      * @description Adds ORDER BY conditions to the query.
-     * @returns The Mysql_query_builder instance for chaining.
      */
-    abstract orderBy(columns: SelectableType<T>[], order: "ASC" | "DESC"): ModelQueryBuilder<T>;
-    abstract orderBy(columns: string[], order: "ASC" | "DESC"): ModelQueryBuilder<T>;
-    abstract orderBy(columns: (SelectableType<T> | string)[], order: "ASC" | "DESC"): ModelQueryBuilder<T>;
+    abstract orderBy(column: SelectableType<T>, order: "ASC" | "DESC"): ModelQueryBuilder<T>;
+    abstract orderBy(column: string, order: "ASC" | "DESC"): ModelQueryBuilder<T>;
+    abstract orderBy(column: SelectableType<T> | string, order: "ASC" | "DESC"): ModelQueryBuilder<T>;
     /**
      * @description Adds a raw ORDER BY condition to the query, only one raw ORDER BY condition is stackable, the last one will be used.
-     * @returns The Mysql_query_builder instance for chaining.
+     * @description ORDER BY is implicitly added to the query.
      */
     abstract orderByRaw(query: string): ModelQueryBuilder<T>;
     /**
      * @description Adds a LIMIT condition to the query.
-     * @returns The Mysql_query_builder instance for chaining.
      */
     abstract limit(limit: number): ModelQueryBuilder<T>;
     /**
      * @description Adds an OFFSET condition to the query.
-     * @returns The Mysql_query_builder instance for chaining.
      */
     abstract offset(offset: number): ModelQueryBuilder<T>;
     /**
      * @description Returns a copy of the query builder instance.
-     * @returns A copy of the query builder instance.
      */
     abstract copy(): ModelQueryBuilder<T>;
-    getCurrentQuery(): {
+    /**
+     * @description Returns the query and the parameters in an object.
+     */
+    toSql(): {
         query: string;
         params: any[];
     };
@@ -2463,6 +2454,10 @@ declare class StandaloneQueryBuilder {
     constructor(dbType: SqlDataSourceType, table: string, modelCaseConvention?: CaseConvention, databaseCaseConvention?: CaseConvention, isNestedCondition?: boolean);
     select(...columns: string[]): StandaloneQueryBuilder;
     /**
+     * @description Selects all columns from the table.
+     */
+    joinRaw(query: string): StandaloneQueryBuilder;
+    /**
      * @description Adds a JOIN condition to the query.
      */
     join(relationTable: string, primaryColumn: string, foreignColumn: string): StandaloneQueryBuilder;
@@ -2598,11 +2593,11 @@ declare class StandaloneQueryBuilder {
     rawOrWhere(query: string, queryParams?: any[]): this;
     groupBy(...columns: string[]): this;
     groupByRaw(query: string): this;
-    orderBy(columns: string[], order: "ASC" | "DESC"): this;
+    orderBy(columns: string, order: "ASC" | "DESC"): this;
     orderByRaw(query: string): this;
     limit(limit: number): this;
     offset(offset: number): this;
-    getCurrentQuery(dbType?: SqlDataSourceType): {
+    toSql(dbType?: SqlDataSourceType): {
         query: string;
         params: any[];
     };

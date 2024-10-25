@@ -65,6 +65,14 @@ export class StandaloneQueryBuilder {
   }
 
   /**
+   * @description Selects all columns from the table.
+   */
+  joinRaw(query: string): StandaloneQueryBuilder {
+    this.joinQuery += ` ${query} `;
+    return this;
+  }
+
+  /**
    * @description Adds a JOIN condition to the query.
    */
   join(
@@ -792,12 +800,18 @@ export class StandaloneQueryBuilder {
   }
 
   groupByRaw(query: string): this {
+    query.replace("GROUP BY", "");
     this.groupByQuery = ` GROUP BY ${query}`;
     return this;
   }
 
-  orderBy(columns: string[], order: "ASC" | "DESC"): this {
-    this.orderByQuery = this.selectTemplate.orderBy(columns as string[], order);
+  orderBy(columns: string, order: "ASC" | "DESC"): this {
+    if (!this.orderByQuery) {
+      this.orderByQuery = ` ORDER BY ${columns} ${order}`;
+      return this;
+    }
+
+    this.orderByQuery += `, ${columns} ${order}`;
     return this;
   }
 
@@ -816,7 +830,7 @@ export class StandaloneQueryBuilder {
     return this;
   }
 
-  getCurrentQuery(dbType?: SqlDataSourceType): {
+  toSql(dbType?: SqlDataSourceType): {
     query: string;
     params: any[];
   } {

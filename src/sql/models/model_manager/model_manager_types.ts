@@ -42,8 +42,7 @@ export type DynamicColumnType<T> = {
 }[keyof T];
 
 type OrderByType = {
-  columns: string[];
-  type: "ASC" | "DESC";
+  [key: string]: "ASC" | "DESC";
 };
 
 export type UnrestrictedFindOneType<T> = {
@@ -52,21 +51,24 @@ export type UnrestrictedFindOneType<T> = {
   ignoreHooks?: FetchHooks[];
   dynamicColumns?: DynamicColumnType<T>;
   where?: Record<string, any>;
+  orderBy?: OrderByType;
+  groupBy?: string[];
+  offset?: number;
 };
 
 export type UnrestrictedFindType<T> = Omit<
   UnrestrictedFindOneType<T>,
   "throwErrorOnNull"
 > & {
-  orderBy?: OrderByType;
-  groupBy?: string[];
   limit?: number;
-  offset?: number;
 };
 
 export type FindOneType<T> = {
   select?: SelectableType<T>[];
+  offset?: number;
   relations?: RelationType<T>[];
+  orderBy?: OrderByType;
+  groupBy?: SelectableType<T>[];
   dynamicColumns?: DynamicColumnType<T>;
   where?: WhereType<T>;
   ignoreHooks?: FetchHooks[];
@@ -75,8 +77,5 @@ export type FindOneType<T> = {
 };
 
 export type FindType<T> = Omit<FindOneType<T>, "throwErrorOnNull"> & {
-  orderBy?: OrderByType;
-  groupBy?: string[];
   limit?: number;
-  offset?: number;
 };

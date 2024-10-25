@@ -130,7 +130,7 @@ const selectTemplate = (
       `SELECT SUM(${escapeIdentifier(
         convertCase(column, typeofModel.databaseCaseConvention),
       )}) FROM ${table} `,
-    orderBy: (columns: string[], order: "ASC" | "DESC" = "ASC") => {
+    _orderBy: (columns: string[], order: "ASC" | "DESC" = "ASC") => {
       columns = columns.map((column) => {
         let tableName = "";
         let columnName = column;
