@@ -245,6 +245,7 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     paginate(page: number, limit: number, options?: ManyOptions$1): Promise<PaginatedData<T>>;
     select(...columns: string[]): MysqlQueryBuilder<T>;
     select(...columns: (SelectableType<T> | "*")[]): MysqlQueryBuilder<T>;
+    joinRaw(query: string): this;
     join(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlQueryBuilder<T>;
     leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlQueryBuilder<T>;
     addRelations(relations: RelationType<T>[]): MysqlQueryBuilder<T>;
@@ -257,8 +258,8 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     orderByRaw(query: string): this;
     limit(limit: number): this;
     offset(offset: number): this;
+    havingRaw(query: string): ModelQueryBuilder<T>;
     copy(): ModelQueryBuilder<T>;
-    protected groupFooterQuery(): string;
 }
 
 declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
@@ -286,6 +287,7 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     getSum(column: SelectableType<T>): Promise<number>;
     getSum(column: string): Promise<number>;
     paginate(page: number, limit: number, options?: ManyOptions$1): Promise<PaginatedData<T>>;
+    joinRaw(query: string): this;
     join(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresQueryBuilder<T>;
     leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresQueryBuilder<T>;
     addRelations(relations: RelationType<T>[]): PostgresQueryBuilder<T>;
@@ -298,8 +300,8 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     orderByRaw(query: string): this;
     limit(limit: number): this;
     offset(offset: number): this;
+    havingRaw(query: string): ModelQueryBuilder<T>;
     copy(): ModelQueryBuilder<T>;
-    protected groupFooterQuery(): string;
 }
 
 declare const selectTemplate: (dbType: SqlDataSourceType, typeofModel: typeof Model) => {
@@ -342,6 +344,7 @@ declare class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     paginate(page: number, limit: number, options?: ManyOptions$1): Promise<PaginatedData<T>>;
     select(...columns: string[]): SqlLiteQueryBuilder<T>;
     select(...columns: (SelectableType<T> | "*")[]): SqlLiteQueryBuilder<T>;
+    joinRaw(query: string): this;
     join(relationTable: string, primaryColumn: string, foreignColumn: string): SqlLiteQueryBuilder<T>;
     leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): SqlLiteQueryBuilder<T>;
     addRelations(relations: RelationType<T>[]): SqlLiteQueryBuilder<T>;
@@ -354,8 +357,8 @@ declare class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     orderByRaw(query: string): this;
     limit(limit: number): this;
     offset(offset: number): this;
+    havingRaw(query: string): ModelQueryBuilder<T>;
     copy(): ModelQueryBuilder<T>;
-    protected groupFooterQuery(): string;
     private promisifyQuery;
 }
 
@@ -650,6 +653,7 @@ declare abstract class QueryBuilder<T extends Model> extends WhereQueryBuilder<T
     protected orderByQuery: string;
     protected limitQuery: string;
     protected offsetQuery: string;
+    protected havingQuery: string;
     protected selectTemplate: ReturnType<typeof selectTemplate>;
     /**
      * @description Constructs a Mysql_query_builder instance.
@@ -730,7 +734,7 @@ declare abstract class QueryBuilder<T extends Model> extends WhereQueryBuilder<T
     /**
      * @description Adds a raw JOIN condition to the query.
      */
-    joinRaw(query: string): QueryBuilder<T>;
+    abstract joinRaw(query: string): QueryBuilder<T>;
     /**
      * @description Adds a LEFT JOIN condition to the query.
      */
@@ -784,6 +788,10 @@ declare abstract class QueryBuilder<T extends Model> extends WhereQueryBuilder<T
      * @description Adds an OFFSET condition to the query.
      */
     abstract offset(offset: number): ModelQueryBuilder<T>;
+    /**
+     * @description Adds a raw HAVING condition to the query, only one raw HAVING condition is stackable, the last one will be used.
+     */
+    abstract havingRaw(query: string): ModelQueryBuilder<T>;
     /**
      * @description Returns a copy of the query builder instance.
      */
@@ -854,6 +862,10 @@ declare abstract class Model extends Entity {
      * @description Constructor for the model, it's not meant to be used directly, it just initializes the $additionalColumns, it's advised to only use the static methods to interact with the database to save the model
      */
     constructor();
+    /**
+     * @description Returns all the records for the given model
+     */
+    static all<T extends Model>(this: new () => T | typeof Model, options?: BaseModelMethodOptions$1): Promise<T[]>;
     /**
      * @description Gives a query sqlInstance for the given model
      */
@@ -2443,6 +2455,7 @@ declare class StandaloneQueryBuilder {
     protected limitQuery: string;
     protected offsetQuery: string;
     protected whereQuery: string;
+    protected havingQuery: string;
     protected dbType: SqlDataSourceType;
     protected params: any[];
     protected model: typeof Model;
@@ -2598,6 +2611,9 @@ declare class StandaloneQueryBuilder {
     orderByRaw(query: string): this;
     limit(limit: number): this;
     offset(offset: number): this;
+    having(column: string, value: any): this;
+    having(column: string, operator: BinaryOperatorType$1, value: any): this;
+    havingRaw(query: string): this;
     toSql(dbType?: SqlDataSourceType): {
         query: string;
         params: any[];

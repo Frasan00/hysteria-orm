@@ -10,6 +10,7 @@ import { MysqlQueryBuilder } from "../mysql/mysql_query_builder";
 import { PaginatedData } from "../pagination";
 import { PostgresQueryBuilder } from "../postgres/postgres_query_builder";
 import selectTemplate from "../resources/query/SELECT";
+import { BinaryOperatorType } from "../resources/query/WHERE";
 import { addDynamicColumnsToModel } from "../serializer";
 import { SqlDataSource } from "../sql_data_source";
 import { SqlLiteQueryBuilder } from "../sqlite/sql_lite_query_builder";
@@ -47,6 +48,7 @@ export abstract class QueryBuilder<
   protected orderByQuery: string;
   protected limitQuery: string;
   protected offsetQuery: string;
+  protected havingQuery: string;
   protected selectTemplate: ReturnType<typeof selectTemplate>;
 
   /**
@@ -77,6 +79,7 @@ export abstract class QueryBuilder<
     this.orderByQuery = "";
     this.limitQuery = "";
     this.offsetQuery = "";
+    this.havingQuery = "";
   }
 
   /**
@@ -178,10 +181,7 @@ export abstract class QueryBuilder<
   /**
    * @description Adds a raw JOIN condition to the query.
    */
-  joinRaw(query: string): QueryBuilder<T> {
-    this.joinQuery += ` ${query} `;
-    return this;
-  }
+  abstract joinRaw(query: string): QueryBuilder<T>;
 
   /**
    * @description Adds a LEFT JOIN condition to the query.
@@ -269,6 +269,11 @@ export abstract class QueryBuilder<
   abstract offset(offset: number): ModelQueryBuilder<T>;
 
   /**
+   * @description Adds a raw HAVING condition to the query, only one raw HAVING condition is stackable, the last one will be used.
+   */
+  abstract havingRaw(query: string): ModelQueryBuilder<T>;
+
+  /**
    * @description Returns a copy of the query builder instance.
    */
   abstract copy(): ModelQueryBuilder<T>;
@@ -285,6 +290,7 @@ export abstract class QueryBuilder<
       this.joinQuery +
       this.whereQuery +
       this.groupByQuery +
+      this.havingQuery +
       this.orderByQuery +
       this.limitQuery +
       this.offsetQuery;
@@ -319,7 +325,11 @@ export abstract class QueryBuilder<
 
   protected groupFooterQuery(): string {
     return (
-      this.groupByQuery + this.orderByQuery + this.limitQuery + this.offsetQuery
+      this.groupByQuery +
+      this.havingQuery +
+      this.orderByQuery +
+      this.limitQuery +
+      this.offsetQuery
     );
   }
 

@@ -26,6 +26,7 @@ import { DateTime } from "luxon";
 import deleteTemplate from "../resources/query/DELETE";
 import updateTemplate from "../resources/query/UPDATE";
 import { UpdateOptions } from "../query_builder/update_query_builder_types";
+import { BinaryOperatorType } from "../resources/query/WHERE";
 
 export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
   protected sqLiteConnection: sqlite3.Database;
@@ -455,6 +456,11 @@ export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
+  joinRaw(query: string): this {
+    this.joinQuery += ` ${query} `;
+    return this;
+  }
+
   join(
     relationTable: string,
     primaryColumn: string,
@@ -547,6 +553,17 @@ export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
+  havingRaw(query: string): ModelQueryBuilder<T> {
+    query = query.replace("HAVING", "");
+    if (this.havingQuery) {
+      this.havingQuery += ` AND ${query}`;
+      return this;
+    }
+
+    this.havingQuery = ` HAVING ${query}`;
+    return this;
+  }
+
   copy(): ModelQueryBuilder<T> {
     const queryBuilder = new SqlLiteQueryBuilder<T>(
       this.model as typeof Model,
@@ -567,12 +584,6 @@ export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     queryBuilder.params = [...this.params];
     queryBuilder.relations = [...this.relations];
     return queryBuilder;
-  }
-
-  protected groupFooterQuery(): string {
-    return (
-      this.groupByQuery + this.orderByQuery + this.limitQuery + this.offsetQuery
-    );
   }
 
   private promisifyQuery<T>(query: string, params: any): Promise<T[]> {

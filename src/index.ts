@@ -34,13 +34,18 @@ import {
 } from "./no_sql/mongo/mongo_models/mongo_collection_decorators";
 import { User } from "../test/User";
 
-SqlDataSource.connect().then(async () => {
-  const a = await User.query()
-    .select("id", "name", "name as SuperName")
-    .first();
-  console.log(a);
+(async () => {
+  await SqlDataSource.connect();
+  await User.insert({
+    name: "test",
+    email: "test",
+    signupSource: "test",
+    isActive: true,
+  });
+
+  console.log(await User.all());
   await SqlDataSource.disconnect();
-});
+})();
 
 export default {
   // sql

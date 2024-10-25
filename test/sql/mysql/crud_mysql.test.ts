@@ -565,3 +565,28 @@ test("Order by raw", async () => {
   expect(users.length).toBe(2);
   expect(users[0].name).toBe("Dave2");
 });
+
+test("Having raw", async () => {
+  await User.insertMany([
+    {
+      name: "Dave",
+      email: "test",
+      signupSource: "email",
+      isActive: true,
+    },
+    {
+      name: "Dave2",
+      email: "test2",
+      signupSource: "email",
+      isActive: true,
+    },
+  ]);
+
+  const users = await User.query()
+    .select("name")
+    .groupBy("name")
+    .havingRaw("name = 'Dave'")
+    .many();
+  expect(users.length).toBe(1);
+  expect(users[0].name).toBe("Dave");
+});

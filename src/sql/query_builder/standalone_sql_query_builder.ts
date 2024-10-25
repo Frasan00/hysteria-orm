@@ -18,6 +18,7 @@ export class StandaloneQueryBuilder {
   protected limitQuery: string;
   protected offsetQuery: string;
   protected whereQuery: string = "";
+  protected havingQuery: string = "";
   protected dbType: SqlDataSourceType;
 
   protected params: any[] = [];
@@ -55,6 +56,8 @@ export class StandaloneQueryBuilder {
     this.orderByQuery = "";
     this.limitQuery = "";
     this.offsetQuery = "";
+    this.havingQuery = "";
+    this.params = [];
   }
 
   select(...columns: string[]): StandaloneQueryBuilder {
@@ -830,6 +833,44 @@ export class StandaloneQueryBuilder {
     return this;
   }
 
+  having(column: string, value: any): this;
+  having(column: string, operator: BinaryOperatorType, value: any): this;
+  having(
+    column: string,
+    operatorOrValue: BinaryOperatorType | BaseValues,
+    value?: BaseValues,
+  ): this {
+    let operator: BinaryOperatorType = "=";
+    let actualValue: BaseValues;
+
+    if (typeof operatorOrValue === "string" && value) {
+      operator = operatorOrValue as BinaryOperatorType;
+      actualValue = value;
+    } else {
+      actualValue = operatorOrValue as BaseValues;
+      operator = "=";
+    }
+
+    if (this.havingQuery) {
+      this.havingQuery += ` AND ${column} ${operator} ?`;
+    } else {
+      this.havingQuery = ` HAVING ${column} ${operator} ?`;
+    }
+
+    this.params.push(actualValue);
+    return this;
+  }
+
+  havingRaw(query: string): this {
+    if (this.havingQuery) {
+      this.havingQuery += ` AND ${query}`;
+    } else {
+      this.havingQuery = ` HAVING ${query}`;
+    }
+
+    return this;
+  }
+
   toSql(dbType?: SqlDataSourceType): {
     query: string;
     params: any[];
@@ -839,6 +880,7 @@ export class StandaloneQueryBuilder {
       this.joinQuery +
       this.whereQuery +
       this.groupByQuery +
+      this.havingQuery +
       this.orderByQuery +
       this.limitQuery +
       this.offsetQuery;

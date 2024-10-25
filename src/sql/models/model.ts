@@ -84,6 +84,18 @@ export abstract class Model extends Entity {
   }
 
   /**
+   * @description Returns all the records for the given model
+   */
+  static all<T extends Model>(
+    this: new () => T | typeof Model,
+    options: BaseModelMethodOptions = {},
+  ): Promise<T[]> {
+    const typeofModel = this as unknown as typeof Model;
+    const modelManager = typeofModel.dispatchModelManager<T>(options);
+    return modelManager.find();
+  }
+
+  /**
    * @description Gives a query sqlInstance for the given model
    */
   static query<T extends Model>(

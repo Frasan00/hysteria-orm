@@ -116,3 +116,36 @@ test("Join users and posts", async () => {
   expect(leftJoinedUsersAndPosts).not.toBeNull();
   expect(leftJoinedUsersAndPosts[0].$additionalColumns.title).toBe("Post 1");
 });
+
+test("Raw join users and posts", async () => {
+  const user = await User.insert({
+    name: "Bob",
+    email: "test",
+    signupSource: "test",
+    isActive: true,
+  });
+
+  if (!user) {
+    throw new Error("User not created");
+  }
+
+  const post1 = await Post.insert({
+    userId: user.id,
+    title: "Post 1",
+    content: "Content 1",
+  });
+
+  if (!post1) {
+    throw new Error("Posts not created");
+  }
+
+  const joinedUsersAndPosts = await User.query()
+    .select("posts.*", "users.email AS superUserEmail")
+    .joinRaw("JOIN posts ON users.id = posts.user_id")
+    .many();
+
+  expect(joinedUsersAndPosts).not.toBeNull();
+  expect(joinedUsersAndPosts.length).toBe(1);
+  expect(joinedUsersAndPosts[0].$additionalColumns.title).toBe("Post 1");
+  expect(joinedUsersAndPosts[0].$additionalColumns.superUserEmail).toBe("test");
+});
