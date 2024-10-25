@@ -896,7 +896,7 @@ declare abstract class Model extends Entity {
     /**
      * @description Updates a record to the database
      */
-    static updateRecord<T extends Model>(this: new () => T | typeof Model, modelsqlInstance: T, options?: BaseModelMethodOptions$1): Promise<T | null>;
+    static updateRecord<T extends Model>(this: new () => T | typeof Model, modelSqlInstance: T, options?: BaseModelMethodOptions$1): Promise<T | null>;
     /**
      * @description Finds the first record or creates a new one if it doesn't exist
      */
@@ -916,11 +916,11 @@ declare abstract class Model extends Entity {
     /**
      * @description Deletes a record to the database
      */
-    static deleteRecord<T extends Model>(this: new () => T | typeof Model, modelsqlInstance: T, options?: BaseModelMethodOptions$1): Promise<T | null>;
+    static deleteRecord<T extends Model>(this: new () => T | typeof Model, modelSqlInstance: T, options?: BaseModelMethodOptions$1): Promise<T | null>;
     /**
      * @description Soft Deletes a record to the database
      */
-    static softDelete<T extends Model>(this: new () => T | typeof Model, modelsqlInstance: T, options?: {
+    static softDelete<T extends Model>(this: new () => T | typeof Model, modelSqlInstance: T, options?: {
         column?: string;
         value?: string | number | boolean;
     } & BaseModelMethodOptions$1): Promise<T>;

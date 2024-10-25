@@ -36,8 +36,8 @@ export function getBaseModelInstance<T extends Model>(): T {
   return { extraColumns: {} } as T;
 }
 
-const tableMap = new WeakMap<typeof Model, string>();
-const primaryKeyMap = new WeakMap<typeof Model, string>();
+const tableMap = new Map<typeof Model, string>();
+const primaryKeyMap = new Map<typeof Model, string>();
 
 /**
  * @description Represents a Table in the Database
