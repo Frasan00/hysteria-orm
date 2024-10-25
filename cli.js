@@ -19,21 +19,21 @@ program
       process.exit(1);
     }
 
-    execSync(`${resolve(`${process.cwd()}/node_modules/.bin/ts-node`)} -T ${migrationCreateConnectorPath} ${name}`, { stdio: 'inherit' });
+    execSync(`${resolve(`${process.cwd()}/node_modules/hysteria-orm/.bin/ts-node`)} -T ${migrationCreateConnectorPath} ${name}`, { stdio: 'inherit' });
   });
 
 program
   .command('run:migrations [runUntil]')
   .description('Run pending migrations')
   .action((runUntil) => {
-    execSync(`${resolve(`${process.cwd()}/node_modules/.bin/ts-node`)} -T ${migrationRunConnectorPath} ${runUntil}`, { stdio: 'inherit' });
+    execSync(`${resolve(`${process.cwd()}/node_modules/hysteria-orm/.bin/ts-node`)} -T ${migrationRunConnectorPath} ${runUntil}`, { stdio: 'inherit' });
   });
 
 program
   .command('rollback:migrations [rollbackUntil]')
   .description('Rollbacks every migration that has been run')
   .action((rollbackUntil) => {
-    execSync(`${resolve(`${process.cwd()}/node_modules/.bin/ts-node`)} -T ${migrationRollbackConnectorPath} ${rollbackUntil}`, { stdio: 'inherit' });
+    execSync(`${resolve(`${process.cwd()}/node_modules/hysteria-orm/.bin/ts-node`)} -T ${migrationRollbackConnectorPath} ${rollbackUntil}`, { stdio: 'inherit' });
   });
 
 program
