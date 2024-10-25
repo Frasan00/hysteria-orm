@@ -168,7 +168,9 @@ export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     }
 
     if (!options.ignoreHooks?.includes("afterFetch")) {
-      await this.model.afterFetch(Array.isArray(serializedModels) ? serializedModels : [serializedModels]);
+      await this.model.afterFetch(
+        Array.isArray(serializedModels) ? serializedModels : [serializedModels],
+      );
     }
 
     return (

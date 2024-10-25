@@ -37,7 +37,7 @@ export default async function runMigrationsConnector(runUntil?: string) {
 }
 
 let arg: string | undefined = process.argv[2];
-if (arg === 'undefined') {
+if (arg === "undefined") {
   arg = undefined;
 }
 
