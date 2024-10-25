@@ -182,6 +182,14 @@ export abstract class QueryBuilder<
   ): ModelQueryBuilder<T>;
 
   /**
+   * @description Adds a raw JOIN condition to the query.
+   */
+  joinRaw(query: string): QueryBuilder<T> {
+    this.joinQuery += ` ${query} `;
+    return this;
+  }
+
+  /**
    * @description Adds a LEFT JOIN condition to the query.
    */
   abstract leftJoin(
