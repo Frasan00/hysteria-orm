@@ -74,7 +74,6 @@ function serializeModel<T extends Record<string, any>>(
         continue;
       }
 
-      // TODO: For now, non relation arrays are not supported
       if (Array.isArray(originalValue)) {
         continue;
       }

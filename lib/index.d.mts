@@ -9,7 +9,7 @@ export { RedisOptions } from 'ioredis';
 
 type DataSourceType = "mysql" | "postgres" | "mariadb" | "sqlite" | "mongo";
 /**
- * @description By default the connection details can be provided in the env.ts file, you can still override each prop with your actual connection details
+ * @description By default the connection details can be provided in the .env file, you can still override each prop with your actual connection details in the input
  */
 interface DataSourceInput {
     type?: DataSourceType;
@@ -23,7 +23,7 @@ interface DataSourceInput {
     readonly pgOptions?: pg.PoolConfig;
     readonly mongoOptions?: MongoClientOptions;
     /**
-     * @description Mongo specific option, sql databases won't use this
+     * @description Mongo specific option, sql databases won't use this property
      */
     readonly url?: string;
 }
