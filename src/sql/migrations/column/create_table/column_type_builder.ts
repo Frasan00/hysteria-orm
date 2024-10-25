@@ -407,7 +407,7 @@ export default class ColumnTypeBuilder {
   serial(name: string): ColumnOptionsBuilder {
     if (this.sqlType === `mysql` || this.sqlType === `mariadb`) {
       this.columnName = name;
-      this.partialQuery += `${name} INT AUTO_INCREMENT`;
+      this.partialQuery += `\`${name}\` INT AUTO_INCREMENT`;
       return new ColumnOptionsBuilder(
         this.table,
         this.queryStatements,
@@ -419,7 +419,7 @@ export default class ColumnTypeBuilder {
 
     if (this.sqlType === `sqlite`) {
       this.columnName = name;
-      this.partialQuery += `${name} INTEGER PRIMARY KEY AUTOINCREMENT`;
+      this.partialQuery += `"${name}" INTEGER PRIMARY KEY AUTOINCREMENT`;
       return new ColumnOptionsBuilder(
         this.table,
         this.queryStatements,
@@ -430,7 +430,7 @@ export default class ColumnTypeBuilder {
     }
 
     this.columnName = name;
-    this.partialQuery += `${name} SERIAL`;
+    this.partialQuery += `"${name}" SERIAL`;
     return new ColumnOptionsBuilder(
       this.table,
       this.queryStatements,
@@ -448,7 +448,7 @@ export default class ColumnTypeBuilder {
   bigSerial(name: string): ColumnOptionsBuilder {
     if (this.sqlType === `mysql` || this.sqlType === `mariadb`) {
       this.columnName = name;
-      this.partialQuery += `${name} BIGINT AUTO_INCREMENT`;
+      this.partialQuery += `\`${name}\` BIGINT AUTO_INCREMENT`;
       return new ColumnOptionsBuilder(
         this.table,
         this.queryStatements,
@@ -460,7 +460,7 @@ export default class ColumnTypeBuilder {
 
     if (this.sqlType === `sqlite`) {
       this.columnName = name;
-      this.partialQuery += `${name} INTEGER PRIMARY KEY AUTOINCREMENT`;
+      this.partialQuery += `"${name}" INTEGER PRIMARY KEY AUTOINCREMENT`;
       return new ColumnOptionsBuilder(
         this.table,
         this.queryStatements,
@@ -471,7 +471,7 @@ export default class ColumnTypeBuilder {
     }
 
     this.columnName = name;
-    this.partialQuery += `${name} BIGSERIAL`;
+    this.partialQuery += `"${name}" BIGSERIAL`;
     return new ColumnOptionsBuilder(
       this.table,
       this.queryStatements,
