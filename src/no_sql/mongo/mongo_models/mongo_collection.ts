@@ -16,7 +16,7 @@ import {
 } from "./mongo_collection_types";
 import { property } from "./mongo_collection_decorators";
 
-const collectionMap = new WeakMap<typeof Collection, string>();
+const collectionMap = new Map<typeof Collection, string>();
 
 export function getBaseCollectionInstance<T extends Collection>(): T {
   return { extraColumns: {} } as T;
