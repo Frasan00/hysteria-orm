@@ -210,12 +210,12 @@ export abstract class Model extends Entity {
    */
   static async updateRecord<T extends Model>(
     this: new () => T | typeof Model,
-    modelsqlInstance: T,
+    modelSqlInstance: T,
     options: BaseModelMethodOptions = {},
   ): Promise<T | null> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
-    return modelManager.updateRecord(modelsqlInstance);
+    return modelManager.updateRecord(modelSqlInstance);
   }
 
   /**
@@ -333,12 +333,12 @@ export abstract class Model extends Entity {
    */
   static async deleteRecord<T extends Model>(
     this: new () => T | typeof Model,
-    modelsqlInstance: T,
+    modelSqlInstance: T,
     options: BaseModelMethodOptions = {},
   ): Promise<T | null> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
-    return modelManager.deleteRecord(modelsqlInstance);
+    return modelManager.deleteRecord(modelSqlInstance);
   }
 
   /**
@@ -346,7 +346,7 @@ export abstract class Model extends Entity {
    */
   static async softDelete<T extends Model>(
     this: new () => T | typeof Model,
-    modelsqlInstance: T,
+    modelSqlInstance: T,
     options?: {
       column?: string;
       value?: string | number | boolean;
@@ -358,22 +358,22 @@ export abstract class Model extends Entity {
       value = DateTime.local().toISO(),
     } = options || {};
 
-    modelsqlInstance[column as keyof T] = value as T[keyof T];
+    modelSqlInstance[column as keyof T] = value as T[keyof T];
     const modelManager = typeofModel.dispatchModelManager<T>({
       trx: options?.trx,
       useConnection: options?.useConnection,
     });
-    await modelManager.updateRecord(modelsqlInstance);
+    await modelManager.updateRecord(modelSqlInstance);
 
     if (typeof value === "string") {
-      modelsqlInstance[column as keyof T] = DateTime.fromISO(
+      modelSqlInstance[column as keyof T] = DateTime.fromISO(
         value,
       ) as T[keyof T];
     }
 
-    modelsqlInstance[column as keyof T] = value as T[keyof T];
+    modelSqlInstance[column as keyof T] = value as T[keyof T];
     return (await parseDatabaseDataIntoModelResponse(
-      [modelsqlInstance],
+      [modelSqlInstance],
       typeofModel,
     )) as T;
   }
