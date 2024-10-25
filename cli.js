@@ -36,4 +36,11 @@ program
     execSync(`${resolve(`${process.cwd()}/node_modules/.bin/ts-node`)} -T ${migrationRollbackConnectorPath} ${rollbackUntil}`, { stdio: 'inherit' });
   });
 
+program
+  .command('refresh:migrations')
+  .description('Rollbacks every migration that has been run and then run the migrations')
+  .action(() => {
+    execSync(`${resolve(`${process.cwd()}/node_modules/.bin/ts-node`)} -T ${migrationRollbackConnectorPath} && ${resolve(`${process.cwd()}/node_modules/.bin/ts-node`)} -T ${migrationRunConnectorPath}`, { stdio: 'inherit' });
+  });
+
 program.parse(process.argv);

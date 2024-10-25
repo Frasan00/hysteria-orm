@@ -812,13 +812,5 @@ export default class ColumnTypeBuilder {
       this.sqlType,
       this.columnName,
     );
-
-    return new ColumnOptionsBuilder(
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
-    );
   }
 }

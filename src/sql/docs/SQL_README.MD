@@ -27,7 +27,7 @@
     - [Pagination](#pagination)
     - [Standalone Query Builder](#standalone-query-builder)
 - [Migrations](#migrations)
-    - [hysteria-cli for Migrations](#hysteria-cli-for-migrations)
+    - [hysteria-cli for Migrations](#hysteria-orm-cli-for-migrations)
     - [Create Table](#create-table)
     - [Alter Table](#alter-table)
 - [Experimental](#experimental)
@@ -670,8 +670,10 @@ const { query, params } = userQueryBuilder
 ## hysteria-orm-cli for Migrations
 
 1) (npm run | yarn run) hysteria create:migration <name>
-2) (npm run | yarn run) hysteria run:migrations
-3) (npm run | yarn run) hysteria rollback:migrations
+2) (npm run | yarn run) hysteria run:migrations [optional - migration_file_name]
+3) (npm run | yarn run) hysteria rollback:migrations [optional - migration_file_name]
+4) (npm run | yarn run) hysteria refresh:migrations
+
 
 ## create:migration <name>
 - Creates a migration in the migrations folder
@@ -684,6 +686,9 @@ const { query, params } = userQueryBuilder
 ## rollback:migrations
 - Rollbacks all existing migrations <optional - migration_file_name>
 - If the migration file name is specified then migrations will be rolled back from the last migration until that migration
+
+## refresh:migrations
+- Rollbacks all existing migrations and runs them again
 
 ## Create Table
 

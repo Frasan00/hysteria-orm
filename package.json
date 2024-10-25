@@ -19,7 +19,8 @@
     "test:index": "yarn build && ts-node --transpile-only src/index.ts",
     "create:migration": "yarn build && ts-node --transpile-only src/hysteria_cli/migration_create_connector.ts",
     "run:migrations": "yarn build && ts-node --transpile-only src/hysteria_cli/migration_run_connector.ts",
-    "rollback:migrations": "yarn build && ts-node --transpile-only src/hysteria_cli/migration_rollback_connector.ts"
+    "rollback:migrations": "yarn build && ts-node --transpile-only src/hysteria_cli/migration_rollback_connector.ts",
+    "refresh:migrations": "yarn rollback:migrations && yarn run:migrations"
   },
   "bin": {
     "hysteria": "./cli.js"
