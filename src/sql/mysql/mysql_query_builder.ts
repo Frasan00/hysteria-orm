@@ -174,7 +174,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     }
 
     if (!options.ignoreHooks?.includes("afterFetch")) {
-      await this.model.afterFetch(serializedModels as T[]);
+      await this.model.afterFetch(Array.isArray(serializedModels) ? serializedModels : [serializedModels]);
     }
 
     return (
