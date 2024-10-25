@@ -44,47 +44,42 @@ export class SqliteModelManager<T extends Model> extends ModelManager<T> {
    * @returns Promise resolving to an array of models.
    */
   async find(input?: FindType<T> | UnrestrictedFindType<T>): Promise<T[]> {
-    try {
-      if (!input) {
-        return await this.query().many();
-      }
-
-      const query = this.query();
-      if (input.select) {
-        query.select(...(input.select as string[]));
-      }
-
-      if (input.relations) {
-        query.addRelations(input.relations);
-      }
-
-      if (input.where) {
-        Object.entries(input.where).forEach(([key, value]) => {
-          query.where(key, value);
-        });
-      }
-
-      if (input.orderBy) {
-        query.orderBy(input.orderBy.columns, input.orderBy.type);
-      }
-
-      if (input.limit) {
-        query.limit(input.limit);
-      }
-
-      if (input.offset) {
-        query.offset(input.offset);
-      }
-
-      if (input.groupBy) {
-        query.groupBy(...input.groupBy);
-      }
-
-      return await query.many({ ignoreHooks: input.ignoreHooks || [] });
-    } catch (error) {
-      queryError(error);
-      throw new Error("query failed " + error);
+    if (!input) {
+      return await this.query().many();
     }
+
+    const query = this.query();
+    if (input.select) {
+      query.select(...(input.select as string[]));
+    }
+
+    if (input.relations) {
+      query.addRelations(input.relations);
+    }
+
+    if (input.where) {
+      Object.entries(input.where).forEach(([key, value]) => {
+        query.where(key, value);
+      });
+    }
+
+    if (input.orderBy) {
+      query.orderBy(input.orderBy.columns, input.orderBy.type);
+    }
+
+    if (input.limit) {
+      query.limit(input.limit);
+    }
+
+    if (input.offset) {
+      query.offset(input.offset);
+    }
+
+    if (input.groupBy) {
+      query.groupBy(...input.groupBy);
+    }
+
+    return await query.many({ ignoreHooks: input.ignoreHooks || [] });
   }
 
   /**
@@ -96,29 +91,24 @@ export class SqliteModelManager<T extends Model> extends ModelManager<T> {
   async findOne(
     input: FindOneType<T> | UnrestrictedFindOneType<T>,
   ): Promise<T | null> {
-    try {
-      const query = this.query();
-      if (input.select) {
-        query.select(...(input.select as string[]));
-      }
-
-      if (input.relations) {
-        query.addRelations(input.relations);
-      }
-
-      if (input.where) {
-        Object.entries(input.where).forEach(([key, value]) => {
-          query.where(key, value);
-        });
-      }
-
-      return await query.one({
-        ignoreHooks: input.ignoreHooks || [],
-      });
-    } catch (error) {
-      queryError(error);
-      throw new Error("query failed " + error);
+    const query = this.query();
+    if (input.select) {
+      query.select(...(input.select as string[]));
     }
+
+    if (input.relations) {
+      query.addRelations(input.relations);
+    }
+
+    if (input.where) {
+      Object.entries(input.where).forEach(([key, value]) => {
+        query.where(key, value);
+      });
+    }
+
+    return await query.one({
+      ignoreHooks: input.ignoreHooks || [],
+    });
   }
 
   /**
@@ -130,22 +120,15 @@ export class SqliteModelManager<T extends Model> extends ModelManager<T> {
   async findOneByPrimaryKey(
     value: string | number | boolean,
   ): Promise<T | null> {
-    try {
-      if (!this.model.primaryKey) {
-        throw new Error(
-          "Model " +
-            this.model.table +
-            " has no primary key to be retrieved by",
-        );
-      }
-
-      return await this.query()
-        .where(this.model.primaryKey as string, value)
-        .one();
-    } catch (error) {
-      queryError(error);
-      throw new Error("query failed " + error);
+    if (!this.model.primaryKey) {
+      throw new Error(
+        "Model " + this.model.table + " has no primary key to be retrieved by",
+      );
     }
+
+    return await this.query()
+      .where(this.model.primaryKey as string, value)
+      .one();
   }
 
   /**
@@ -157,28 +140,18 @@ export class SqliteModelManager<T extends Model> extends ModelManager<T> {
    */
   async insert(model: Partial<T>): Promise<T | null> {
     this.model.beforeInsert(model as T);
+
     const { query, params } = this.sqlModelManagerUtils.parseInsert(
       model as T,
       this.model,
       this.sqlDataSource.getDbType(),
     );
 
-    try {
-      const { query, params } = this.sqlModelManagerUtils.parseInsert(
-        model as T,
-        this.model,
-        this.sqlDataSource.getDbType(),
-      );
-
-      log(query, this.logs, params);
-      return (await this.promisifyQuery<T>(query, params, {
-        isCreate: true,
-        models: model as T,
-      })) as T;
-    } catch (error) {
-      queryError(error);
-      throw new Error("query failed " + error);
-    }
+    log(query, this.logs, params);
+    return (await this.promisifyQuery<T>(query, params, {
+      isCreate: true,
+      models: model as T,
+    })) as T;
   }
 
   /**
@@ -198,22 +171,11 @@ export class SqliteModelManager<T extends Model> extends ModelManager<T> {
       this.model,
       this.sqlDataSource.getDbType(),
     );
-
-    try {
-      const { query, params } = this.sqlModelManagerUtils.parseMassiveInsert(
-        models as T[],
-        this.model,
-        this.sqlDataSource.getDbType(),
-      );
-      log(query, this.logs, params);
-      return (await this.promisifyQuery<T[]>(query, params, {
-        isInsertMany: true,
-        models: models as T[],
-      })) as T[];
-    } catch (error) {
-      queryError(error);
-      throw new Error("query failed " + error);
-    }
+    log(query, this.logs, params);
+    return (await this.promisifyQuery<T[]>(query, params, {
+      isInsertMany: true,
+      models: models as T[],
+    })) as T[];
   }
 
   /**
@@ -231,23 +193,18 @@ export class SqliteModelManager<T extends Model> extends ModelManager<T> {
       );
     }
 
-    try {
-      const updateQuery = this.sqlModelManagerUtils.parseUpdate(
-        model,
-        this.model,
-        this.sqlDataSource.getDbType(),
-      );
+    const updateQuery = this.sqlModelManagerUtils.parseUpdate(
+      model,
+      this.model,
+      this.sqlDataSource.getDbType(),
+    );
 
-      log(updateQuery.query, this.logs, updateQuery.params);
-      await this.promisifyQuery<T>(updateQuery.query, updateQuery.params);
+    log(updateQuery.query, this.logs, updateQuery.params);
+    await this.promisifyQuery<T>(updateQuery.query, updateQuery.params);
 
-      return await this.findOneByPrimaryKey(
-        model[this.model.primaryKey as keyof T] as string | number,
-      );
-    } catch (error) {
-      queryError(error);
-      throw new Error("query failed " + error);
-    }
+    return await this.findOneByPrimaryKey(
+      model[this.model.primaryKey as keyof T] as string | number,
+    );
   }
 
   /**
@@ -258,27 +215,20 @@ export class SqliteModelManager<T extends Model> extends ModelManager<T> {
    * @returns Promise resolving to the deleted model or null if deleting fails.
    */
   async deleteRecord(model: T): Promise<T | null> {
-    try {
-      if (!this.model.primaryKey) {
-        throw new Error(
-          "Model " +
-            this.model.table +
-            " has no primary key to be deleted from",
-        );
-      }
-      const { query, params } = this.sqlModelManagerUtils.parseDelete(
-        this.model.table,
-        this.model.primaryKey,
-        model[this.model.primaryKey as keyof T] as string,
+    if (!this.model.primaryKey) {
+      throw new Error(
+        "Model " + this.model.table + " has no primary key to be deleted from",
       );
-
-      log(query, this.logs, params);
-      await this.promisifyQuery<T>(query, params);
-      return model;
-    } catch (error) {
-      queryError(error);
-      throw new Error("query failed " + error);
     }
+    const { query, params } = this.sqlModelManagerUtils.parseDelete(
+      this.model.table,
+      this.model.primaryKey,
+      model[this.model.primaryKey as keyof T] as string,
+    );
+
+    log(query, this.logs, params);
+    await this.promisifyQuery<T>(query, params);
+    return model;
   }
 
   /**

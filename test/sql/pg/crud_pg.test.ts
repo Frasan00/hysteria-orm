@@ -76,9 +76,7 @@ test("Find a user by primary key", async () => {
     throw new Error("User not created");
   }
 
-  const foundUser = await User.findOneByPrimaryKey(user.id, {
-    throwErrorOnNull: true,
-  });
+  const foundUser = await User.findOneByPrimaryKey(user.id);
   expect(foundUser).not.toBeNull();
   expect(foundUser?.name).toBe("Dave");
 });

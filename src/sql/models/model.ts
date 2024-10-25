@@ -156,13 +156,11 @@ export abstract class Model extends Entity {
   static async findOneByPrimaryKey<T extends Model>(
     this: new () => T | typeof Model,
     value: string | number | boolean,
-    options: { throwErrorOnNull: boolean } & BaseModelMethodOptions = {
-      throwErrorOnNull: false,
-    },
+    options: BaseModelMethodOptions = {},
   ): Promise<T | null> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
-    return modelManager.findOneByPrimaryKey(value, options.throwErrorOnNull);
+    return modelManager.findOneByPrimaryKey(value);
   }
 
   /**

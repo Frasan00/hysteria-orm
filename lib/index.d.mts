@@ -888,9 +888,7 @@ declare abstract class Model extends Entity {
     /**
      * @description Finds a record for the given model for the given id, "id" must be set in the model in order for it to work
      */
-    static findOneByPrimaryKey<T extends Model>(this: new () => T | typeof Model, value: string | number | boolean, options?: {
-        throwErrorOnNull: boolean;
-    } & BaseModelMethodOptions$1): Promise<T | null>;
+    static findOneByPrimaryKey<T extends Model>(this: new () => T | typeof Model, value: string | number | boolean, options?: BaseModelMethodOptions$1): Promise<T | null>;
     /**
      * @description Refreshes a model from the database, the model must have a primary key defined
      */
@@ -1075,7 +1073,7 @@ declare class MysqlModelManager<T extends Model> extends ModelManager$1<T> {
      * @param {string | number | boolean} value - PK of the record to retrieve, hooks will not have any effect, since it's a direct query for the PK.
      * @returns Promise resolving to a single model or null if not found.
      */
-    findOneByPrimaryKey(value: string | number | boolean, throwErrorOnNull?: boolean): Promise<T | null>;
+    findOneByPrimaryKey(value: string | number | boolean): Promise<T | null>;
     /**
      * Save a new model instance to the database.
      *
