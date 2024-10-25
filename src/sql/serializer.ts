@@ -17,6 +17,7 @@ export async function parseDatabaseDataIntoModelResponse<T extends Model>(
   models: T[],
   typeofModel: typeof Model,
   relationModels: { [relationName: string]: Model[] }[] = [],
+  modelSelectedColumns: string[] = [],
 ): Promise<T | T[] | null> {
   if (!models.length) {
     return null;
@@ -28,6 +29,7 @@ export async function parseDatabaseDataIntoModelResponse<T extends Model>(
     const serializedModel = serializeModel(model, typeofModel);
     processRelation(serializedModel, typeofModel, relations, relationModels);
     addNullModelColumns(typeofModel, serializedModel);
+    removeNonModelSelectedColumns(serializedModel, modelSelectedColumns);
 
     return serializedModel;
   });
@@ -43,13 +45,9 @@ function serializeModel<T extends Record<string, any>>(
   const booleanColumns = getModelBooleanColumns(typeofModel);
 
   for (const key in model) {
-    if (model[key] === undefined) {
-      delete (model as Partial<Model>)[key as keyof Model];
-    }
-
     if (model.hasOwnProperty(key)) {
-      if (key === "extraColumns") {
-        processExtraColumns(model, key, camelCaseModel, typeofModel);
+      if (key === "$additionalColumns") {
+        processAdditionalColumns(model, key, camelCaseModel, typeofModel);
         continue;
       }
 
@@ -109,7 +107,22 @@ function addNullModelColumns(
   });
 }
 
-function processExtraColumns(
+function removeNonModelSelectedColumns(
+  serializedModel: Record<string, any>,
+  modelSelectedColumns: string[],
+) {
+  if (!modelSelectedColumns.length || modelSelectedColumns.includes("*")) {
+    return;
+  }
+
+  Object.keys(serializedModel).forEach((key) => {
+    if (!modelSelectedColumns.includes(key) && key != "$additionalColumns") {
+      delete serializedModel[key];
+    }
+  });
+}
+
+function processAdditionalColumns(
   model: Record<string, any>,
   key: string,
   camelCaseModel: Record<string, any>,
@@ -119,7 +132,7 @@ function processExtraColumns(
     return;
   }
 
-  const extraColumns = Object.keys(model[key]).reduce(
+  const $additionalColumns = Object.keys(model[key]).reduce(
     (acc, objKey) => {
       acc[convertCase(objKey, typeofModel.modelCaseConvention)] =
         model[key][objKey];
@@ -128,7 +141,7 @@ function processExtraColumns(
     {} as Record<string, any>,
   );
 
-  camelCaseModel[key] = extraColumns;
+  camelCaseModel[key] = $additionalColumns;
 }
 
 function processRelation(

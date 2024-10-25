@@ -33,7 +33,7 @@ export function getBaseTableName(target: typeof Model): string {
 }
 
 export function getBaseModelInstance<T extends Model>(): T {
-  return { extraColumns: {} } as T;
+  return { $additionalColumns: {} } as T;
 }
 
 const tableMap = new Map<typeof Model, string>();
@@ -77,7 +77,7 @@ export abstract class Model extends Entity {
   }
 
   /**
-   * @description Constructor for the model, it's not meant to be used directly, it just initializes the extraColumns, it's advised to only use the static methods to interact with the Model sqlInstances
+   * @description Constructor for the model, it's not meant to be used directly, it just initializes the $additionalColumns, it's advised to only use the static methods to interact with the database to save the model
    */
   constructor() {
     super();

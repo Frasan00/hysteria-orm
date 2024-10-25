@@ -123,8 +123,8 @@ type OnlyRelations<T> = {
 type WhereType<T> = {
     [K in keyof T]?: string | number | boolean | Date | null;
 };
-type SelectableType<T> = ExcludeRelations<Omit<T, "extraColumns">>;
-type RelationType<T> = OnlyRelations<Omit<T, "extraColumns">>;
+type SelectableType<T> = ExcludeRelations<Omit<T, "$additionalColumns">>;
+type RelationType<T> = OnlyRelations<Omit<T, "$additionalColumns">>;
 type DynamicColumnType<T> = {
     [k in keyof T]: T[k] extends (...args: any[]) => any ? k : never;
 }[keyof T];
@@ -642,6 +642,7 @@ type ManyOptions$1 = {
 };
 declare abstract class QueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
     protected selectQuery: string;
+    protected modelSelectedColumns: string[];
     protected joinQuery: string;
     protected relations: string[];
     protected dynamicColumns: string[];
@@ -657,12 +658,12 @@ declare abstract class QueryBuilder<T extends Model> extends WhereQueryBuilder<T
     /**
      * @description Executes the query and retrieves the first result.
      */
-    abstract one(options: OneOptions$1): Promise<T | null>;
+    abstract one(options?: OneOptions$1): Promise<T | null>;
     /**
      * @description Executes the query and retrieves the first result.
      * @alias one
      */
-    first(options: OneOptions$1): Promise<T | null>;
+    first(options?: OneOptions$1): Promise<T | null>;
     /**
      * @description Executes the query and retrieves the first result. Fail if no result is found.
      */
@@ -808,7 +809,7 @@ declare abstract class Entity {
     /**
      * @description Extra columns for the model, all data retrieved from the database that is not part of the model will be stored here
      */
-    extraColumns: {
+    $additionalColumns: {
         [key: string]: any;
     };
     /**
@@ -850,7 +851,7 @@ declare abstract class Model extends Entity {
      */
     static get primaryKey(): string | undefined;
     /**
-     * @description Constructor for the model, it's not meant to be used directly, it just initializes the extraColumns, it's advised to only use the static methods to interact with the Model sqlInstances
+     * @description Constructor for the model, it's not meant to be used directly, it just initializes the $additionalColumns, it's advised to only use the static methods to interact with the database to save the model
      */
     constructor();
     /**

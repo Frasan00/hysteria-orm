@@ -97,6 +97,7 @@ export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
       [modelInstance],
       this.model,
       relationModels,
+      this.modelSelectedColumns,
     )) as T;
 
     return !options.ignoreHooks?.includes("afterFetch")
@@ -162,6 +163,7 @@ export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
       models,
       this.model,
       relationModels,
+      this.modelSelectedColumns,
     );
     if (!serializedModels) {
       return [];
@@ -385,7 +387,7 @@ export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
     this.select("COUNT(*) as total");
     const result = await this.one();
-    return result ? +result.extraColumns.total : 0;
+    return result ? +result.$additionalColumns.total : 0;
   }
 
   async getSum(column: SelectableType<T>): Promise<number>;
@@ -405,7 +407,7 @@ export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     column = convertCase(column as string, this.model.databaseCaseConvention);
     this.select(`SUM(${column as string}) as total`);
     const result = await this.one();
-    return result ? +result.extraColumns.total : 0;
+    return result ? +result.$additionalColumns.total : 0;
   }
 
   async paginate(
@@ -426,7 +428,7 @@ export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     const paginationMetadata = getPaginationMetadata(
       page,
       limit,
-      +total[0].extraColumns["total"] as number,
+      +total[0].$additionalColumns["total"] as number,
     );
     let data =
       (await parseDatabaseDataIntoModelResponse(models, this.model)) || [];
@@ -446,6 +448,7 @@ export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
   select(
     ...columns: (SelectableType<T> | "*" | string)[]
   ): SqlLiteQueryBuilder<T> {
+    this.modelSelectedColumns = columns as string[];
     this.selectQuery = this.selectTemplate.selectColumns(
       ...(columns as string[]),
     );

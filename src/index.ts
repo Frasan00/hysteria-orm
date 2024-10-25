@@ -32,6 +32,15 @@ import {
   getMongoDynamicProperties,
   getCollectionProperties,
 } from "./no_sql/mongo/mongo_models/mongo_collection_decorators";
+import { User } from "../test/User";
+
+SqlDataSource.connect().then(async () => {
+  const a = await User.query()
+    .select("id", "name", "name as SuperName")
+    .first();
+  console.log(a);
+  await SqlDataSource.disconnect();
+});
 
 export default {
   // sql

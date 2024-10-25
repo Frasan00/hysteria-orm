@@ -11,7 +11,7 @@ import {
 export async function serializeCollection<T extends Collection>(
   model: typeof Collection,
   data: any,
-  selectedColumns?: string[],
+  modelSelectedColumns?: string[],
   dynamicColumnsToAdd: string[] = [],
 ): Promise<T | null> {
   if (!data) {
@@ -20,12 +20,12 @@ export async function serializeCollection<T extends Collection>(
 
   const serializedModel = getBaseCollectionInstance<T>() as Record<string, any>;
   const collectionFields = getCollectionProperties(model);
-  if (!selectedColumns || !selectedColumns.length) {
-    selectedColumns = collectionFields;
+  if (!modelSelectedColumns || !modelSelectedColumns.length) {
+    modelSelectedColumns = collectionFields;
   }
 
-  if (!selectedColumns.includes("id")) {
-    selectedColumns.push("id");
+  if (!modelSelectedColumns.includes("id")) {
+    modelSelectedColumns.push("id");
   }
 
   for (const key in data) {
@@ -36,7 +36,7 @@ export async function serializeCollection<T extends Collection>(
 
     if (!collectionFields.includes(key)) {
       const casedKey = convertCase(key, model.modelCaseConvention);
-      serializedModel.extraColumns[casedKey] = data[key];
+      serializedModel.$additionalColumns[casedKey] = data[key];
       continue;
     }
 
@@ -44,11 +44,11 @@ export async function serializeCollection<T extends Collection>(
     serializedModel[casedKey] = data[key];
   }
 
-  if (!Object.keys(serializedModel.extraColumns).length) {
-    delete serializedModel.extraColumns;
+  if (!Object.keys(serializedModel.$additionalColumns).length) {
+    delete serializedModel.$additionalColumns;
   }
 
-  for (const column of selectedColumns) {
+  for (const column of modelSelectedColumns) {
     if (column === "id") {
       continue;
     }
@@ -67,14 +67,14 @@ export async function serializeCollection<T extends Collection>(
 export async function serializeCollections<T extends Collection>(
   model: typeof Collection,
   data: any[],
-  selectedColumns?: string[],
+  modelSelectedColumns?: string[],
   dynamicColumnsToAdd: string[] = [],
 ): Promise<T[]> {
   const promises = data.map(async (modelData: T) => {
     return await serializeCollection(
       model,
       modelData,
-      selectedColumns,
+      modelSelectedColumns,
       dynamicColumnsToAdd,
     );
   });

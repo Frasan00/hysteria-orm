@@ -105,7 +105,7 @@ test("Join users and posts", async () => {
     .many();
 
   expect(joinedUsersAndPosts).not.toBeNull();
-  expect(joinedUsersAndPosts[0].extraColumns.title).toBe("Post 1");
+  expect(joinedUsersAndPosts[0].$additionalColumns.title).toBe("Post 1");
 
   const leftJoinedUsersAndPosts = await User.query()
     .select("*")
@@ -114,5 +114,5 @@ test("Join users and posts", async () => {
     .many();
 
   expect(leftJoinedUsersAndPosts).not.toBeNull();
-  expect(leftJoinedUsersAndPosts[0].extraColumns.title).toBe("Post 1");
+  expect(leftJoinedUsersAndPosts[0].$additionalColumns.title).toBe("Post 1");
 });

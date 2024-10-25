@@ -117,8 +117,8 @@ test("Join users and posts", async () => {
 
   expect(joinedUsersAndPosts).not.toBeNull();
   expect(joinedUsersAndPosts.length).toBe(1);
-  expect(joinedUsersAndPosts[0].extraColumns.title).toBe("Post 1");
-  expect(joinedUsersAndPosts[0].extraColumns.superUserEmail).toBe(
+  expect(joinedUsersAndPosts[0].$additionalColumns.title).toBe("Post 1");
+  expect(joinedUsersAndPosts[0].$additionalColumns.superUserEmail).toBe(
     "bob-test@gmail.com",
   );
 
@@ -130,5 +130,5 @@ test("Join users and posts", async () => {
 
   expect(leftJoinedUsersAndPosts).not.toBeNull();
   expect(leftJoinedUsersAndPosts.length).toBe(1);
-  expect(leftJoinedUsersAndPosts[0].extraColumns.title).toBe("Post 1");
+  expect(leftJoinedUsersAndPosts[0].$additionalColumns.title).toBe("Post 1");
 });

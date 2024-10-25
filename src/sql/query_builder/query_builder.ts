@@ -39,6 +39,7 @@ export abstract class QueryBuilder<
   T extends Model,
 > extends WhereQueryBuilder<T> {
   protected selectQuery: string;
+  protected modelSelectedColumns: string[];
   protected joinQuery: string;
   protected relations: string[];
   protected dynamicColumns: string[];
@@ -68,6 +69,8 @@ export abstract class QueryBuilder<
       this.model,
     );
     this.joinQuery = "";
+    this.whereQuery = "";
+    this.modelSelectedColumns = [];
     this.relations = [];
     this.dynamicColumns = [];
     this.groupByQuery = "";
@@ -79,13 +82,13 @@ export abstract class QueryBuilder<
   /**
    * @description Executes the query and retrieves the first result.
    */
-  abstract one(options: OneOptions): Promise<T | null>;
+  abstract one(options?: OneOptions): Promise<T | null>;
 
   /**
    * @description Executes the query and retrieves the first result.
    * @alias one
    */
-  async first(options: OneOptions): Promise<T | null> {
+  async first(options?: OneOptions): Promise<T | null> {
     return this.one(options);
   }
 
@@ -336,7 +339,7 @@ export abstract class QueryBuilder<
         return;
       }
 
-      model.extraColumns[key] = value as string | number | boolean;
+      model.$additionalColumns[key] = value as string | number | boolean;
     });
 
     if (!this.dynamicColumns.length) {

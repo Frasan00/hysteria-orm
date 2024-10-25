@@ -519,7 +519,7 @@ const userFind = await User.find({ ignoreHooks: ["beforeFetch"] });
 
 ### Aliases
 
-- Aliases are available in the query builder, for example select('new as newName') will generate an alias in the extraColumns property that every model instances has
+- Aliases are available in the query builder, for example select('new as newName') will generate an alias in the $additionalColumns property that every model instances has
 ```typescript
 import { User } from "./User";
 

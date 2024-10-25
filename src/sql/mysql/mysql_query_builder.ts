@@ -99,6 +99,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
       [modelInstance],
       this.model,
       relationModels,
+      this.modelSelectedColumns,
     )) as T;
 
     return !options.ignoreHooks?.includes("afterFetch")
@@ -151,7 +152,6 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     const modelPromises = rows.map(async (row) => {
       const modelInstance = getBaseModelInstance<T>();
       await this.mergeRawPacketIntoModel(modelInstance, row, this.model);
-
       return modelInstance as T;
     });
 
@@ -168,6 +168,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
       models,
       this.model,
       relationModels,
+      this.modelSelectedColumns,
     );
     if (!serializedModels) {
       return [];
@@ -379,7 +380,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
     this.select("COUNT(*) as total");
     const result = await this.one();
-    return result ? +result.extraColumns.total : 0;
+    return result ? +result.$additionalColumns.total : 0;
   }
 
   async getSum(column: SelectableType<T>): Promise<number>;
@@ -398,7 +399,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     column = convertCase(column as string, this.model.databaseCaseConvention);
     this.select(`SUM(${column as string}) as total`);
     const result = await this.one();
-    return result ? +result.extraColumns.total : 0;
+    return result ? +result.$additionalColumns.total : 0;
   }
 
   async paginate(
@@ -419,7 +420,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     const paginationMetadata = getPaginationMetadata(
       page,
       limit,
-      +total[0].extraColumns["total"] as number,
+      +total[0].$additionalColumns["total"] as number,
     );
     let data =
       (await parseDatabaseDataIntoModelResponse(models, this.model)) || [];
@@ -439,9 +440,11 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
   select(
     ...columns: (SelectableType<T> | "*" | string)[]
   ): MysqlQueryBuilder<T> {
+    this.modelSelectedColumns = columns as string[];
     this.selectQuery = this.selectTemplate.selectColumns(
       ...(columns as string[]),
     );
+
     return this;
   }
 

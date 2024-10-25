@@ -19,7 +19,7 @@ import { property } from "./mongo_collection_decorators";
 const collectionMap = new Map<typeof Collection, string>();
 
 export function getBaseCollectionInstance<T extends Collection>(): T {
-  return { extraColumns: {} } as T;
+  return { $additionalColumns: {} } as T;
 }
 
 export class Collection extends Entity {

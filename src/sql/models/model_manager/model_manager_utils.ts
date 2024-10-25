@@ -126,50 +126,45 @@ export default class SqlModelManagerUtils<T extends Model> {
     const relationQueries: string[] = [];
     const relationMap: { [key: string]: string } = {};
 
-    try {
-      input.forEach((inputRelation: string) => {
-        const relation = this.getRelationFromModel(inputRelation, typeofModel);
-        const query = relationTemplates(
-          models,
-          relation,
-          inputRelation,
-          typeofModel,
-        );
-        relationQueries.push(query);
-        relationMap[inputRelation] = query;
-      });
-
-      relationQuery = relationQueries.join(" UNION ALL ");
-      log(relationQuery, logs);
-
-      let result = await this.getQueryResult(relationQuery);
-      result = Array.isArray(result) ? result : [result];
-      const resultMap: { [key: string]: any[] } = {};
-      result.forEach((row: any) => {
-        const relationName = row.relation_name;
-        delete row.relation_name;
-        if (!resultMap[relationName]) {
-          resultMap[relationName] = [];
-        }
-
-        resultMap[relationName].push(row);
-      });
-
-      // Ensure all input relations are included in the result
-      const resultArray: { [relationName: string]: any[] }[] = input.map(
-        (inputRelation) => {
-          const modelsForRelation = resultMap[inputRelation] || [];
-          return {
-            [inputRelation]: modelsForRelation,
-          };
-        },
+    input.forEach((inputRelation: string) => {
+      const relation = this.getRelationFromModel(inputRelation, typeofModel);
+      const query = relationTemplates(
+        models,
+        relation,
+        inputRelation,
+        typeofModel,
       );
+      relationQueries.push(query);
+      relationMap[inputRelation] = query;
+    });
 
-      return resultArray;
-    } catch (error) {
-      queryError("query Error: " + relationQuery + error);
-      throw new Error("Failed to parse relations " + error);
-    }
+    relationQuery = relationQueries.join(" UNION ALL ");
+    log(relationQuery, logs);
+
+    let result = await this.getQueryResult(relationQuery);
+    result = Array.isArray(result) ? result : [result];
+    const resultMap: { [key: string]: any[] } = {};
+    result.forEach((row: any) => {
+      const relationName = row.relation_name;
+      delete row.relation_name;
+      if (!resultMap[relationName]) {
+        resultMap[relationName] = [];
+      }
+
+      resultMap[relationName].push(row);
+    });
+
+    // Ensure all input relations are included in the result
+    const resultArray: { [relationName: string]: any[] }[] = input.map(
+      (inputRelation) => {
+        const modelsForRelation = resultMap[inputRelation] || [];
+        return {
+          [inputRelation]: modelsForRelation,
+        };
+      },
+    );
+
+    return resultArray;
   }
 
   private async getQueryResult(

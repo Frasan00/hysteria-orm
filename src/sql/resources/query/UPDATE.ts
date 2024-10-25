@@ -14,10 +14,10 @@ const updateTemplate = (
       primaryKey?: string,
       primaryKeyValue?: string | undefined,
     ) => {
-      if (columns.includes("extraColumns")) {
-        const extraColumnsIndex = columns.indexOf("extraColumns");
-        columns.splice(columns.indexOf("extraColumns"), 1);
-        values.splice(extraColumnsIndex, 1);
+      if (columns.includes("$additionalColumns")) {
+        const $additionalColumnsIndex = columns.indexOf("$additionalColumns");
+        columns.splice(columns.indexOf("$additionalColumns"), 1);
+        values.splice($additionalColumnsIndex, 1);
       }
 
       columns = columns.map((column) =>
