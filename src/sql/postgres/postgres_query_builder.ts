@@ -6,7 +6,7 @@ import {
   ManyOptions,
 } from "../query_builder/query_builder";
 import { Client } from "pg";
-import { log, queryError } from "../../utils/logger";
+import { log } from "../../utils/logger";
 import joinTemplate from "../resources/query/JOIN";
 import { PaginatedData, getPaginationMetadata } from "../pagination";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
