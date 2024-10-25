@@ -36,7 +36,11 @@ export default async function runMigrationsConnector(runUntil?: string) {
   logger.info("Migrations ran successfully");
 }
 
-let arg = process.argv[2];
+let arg: string | undefined = process.argv[2];
+if (arg === 'undefined') {
+  arg = undefined;
+}
+
 if (arg && !arg.endsWith(".ts")) {
   arg += ".ts";
 }
