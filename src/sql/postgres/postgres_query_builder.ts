@@ -4,6 +4,7 @@ import {
   QueryBuilder,
   ModelQueryBuilder,
   ManyOptions,
+  ModelInstanceType,
 } from "../query_builder/query_builder";
 import { Client } from "pg";
 import { log } from "../../utils/logger";
@@ -480,11 +481,12 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     this.joinQuery += join.leftJoin();
     return this;
   }
-
   with<O extends typeof Model>(
     relation: RelationType<T>,
     relatedModel?: O,
-    relatedModelQueryBuilder?: (queryBuilder: ModelQueryBuilder<any>) => void,
+    relatedModelQueryBuilder?: (
+      queryBuilder: ModelQueryBuilder<ModelInstanceType<O>>,
+    ) => void,
     ignoreHooks?: { beforeFetch?: boolean; afterFetch?: boolean },
   ): ModelQueryBuilder<T> {
     if (!relatedModelQueryBuilder) {
@@ -504,7 +506,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
       this.sqlDataSource,
     );
 
-    relatedModelQueryBuilder(queryBuilder);
+    relatedModelQueryBuilder(queryBuilder as ModelQueryBuilder<any>);
     if (!ignoreHooks?.beforeFetch) {
       relatedModel?.beforeFetch(queryBuilder);
     }

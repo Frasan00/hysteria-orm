@@ -244,7 +244,7 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     joinRaw(query: string): this;
     join(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlQueryBuilder<T>;
     leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlQueryBuilder<T>;
-    with<O extends typeof Model>(relation: RelationType<T>, relatedModel?: O, relatedModelQueryBuilder?: (queryBuilder: ModelQueryBuilder<any>) => void, ignoreHooks?: {
+    with<O extends typeof Model>(relation: RelationType<T>, relatedModel?: O, relatedModelQueryBuilder?: (queryBuilder: ModelQueryBuilder<ModelInstanceType<O>>) => void, ignoreHooks?: {
         beforeFetch?: boolean;
         afterFetch?: boolean;
     }): ModelQueryBuilder<T>;
@@ -289,7 +289,7 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     joinRaw(query: string): this;
     join(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresQueryBuilder<T>;
     leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresQueryBuilder<T>;
-    with<O extends typeof Model>(relation: RelationType<T>, relatedModel?: O, relatedModelQueryBuilder?: (queryBuilder: ModelQueryBuilder<any>) => void, ignoreHooks?: {
+    with<O extends typeof Model>(relation: RelationType<T>, relatedModel?: O, relatedModelQueryBuilder?: (queryBuilder: ModelQueryBuilder<ModelInstanceType<O>>) => void, ignoreHooks?: {
         beforeFetch?: boolean;
         afterFetch?: boolean;
     }): ModelQueryBuilder<T>;
@@ -349,7 +349,7 @@ declare class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     joinRaw(query: string): this;
     join(relationTable: string, primaryColumn: string, foreignColumn: string): SqlLiteQueryBuilder<T>;
     leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): SqlLiteQueryBuilder<T>;
-    with<O extends typeof Model>(relation: RelationType<T>, relatedModel?: O, relatedModelQueryBuilder?: (queryBuilder: ModelQueryBuilder<any>) => void, ignoreHooks?: {
+    with<O extends typeof Model>(relation: RelationType<T>, relatedModel?: O, relatedModelQueryBuilder?: (queryBuilder: ModelQueryBuilder<ModelInstanceType<O>>) => void, ignoreHooks?: {
         beforeFetch?: boolean;
         afterFetch?: boolean;
     }): ModelQueryBuilder<T>;
@@ -641,6 +641,7 @@ declare class WhereQueryBuilder<T extends Model> {
  * @description The abstract class for query builders for selecting data.
  */
 type ModelQueryBuilder<T extends Model> = MysqlQueryBuilder<T> | PostgresQueryBuilder<T> | SqlLiteQueryBuilder<T>;
+type ModelInstanceType<O> = O extends typeof Model ? InstanceType<O> : never;
 type FetchHooks$1 = "beforeFetch" | "afterFetch";
 type OneOptions$1 = {
     ignoreHooks?: FetchHooks$1[];
@@ -761,7 +762,7 @@ declare abstract class QueryBuilder<T extends Model> extends WhereQueryBuilder<T
     /**
      * @description Adds a relation to the final model.
      */
-    abstract with<O extends typeof Model>(relation: RelationType<T>, relatedModel?: O, relatedModelQueryBuilder?: (queryBuilder: ModelQueryBuilder<any>) => void, ignoreHooks?: {
+    abstract with<O extends typeof Model>(relation: RelationType<T>, relatedModel?: O, relatedModelQueryBuilder?: (queryBuilder: ModelQueryBuilder<ModelInstanceType<O>>) => void, ignoreHooks?: {
         beforeFetch?: boolean;
         afterFetch?: boolean;
     }): ModelQueryBuilder<T>;

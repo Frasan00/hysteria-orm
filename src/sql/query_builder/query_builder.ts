@@ -25,6 +25,10 @@ export type ModelQueryBuilder<T extends Model> =
   | PostgresQueryBuilder<T>
   | SqlLiteQueryBuilder<T>;
 
+export type ModelInstanceType<O> = O extends typeof Model
+  ? InstanceType<O>
+  : never;
+
 export type FetchHooks = "beforeFetch" | "afterFetch";
 
 export type OneOptions = {
@@ -212,7 +216,9 @@ export abstract class QueryBuilder<
   abstract with<O extends typeof Model>(
     relation: RelationType<T>,
     relatedModel?: O,
-    relatedModelQueryBuilder?: (queryBuilder: ModelQueryBuilder<any>) => void,
+    relatedModelQueryBuilder?: (
+      queryBuilder: ModelQueryBuilder<ModelInstanceType<O>>,
+    ) => void,
     ignoreHooks?: { beforeFetch?: boolean; afterFetch?: boolean },
   ): ModelQueryBuilder<T>;
 
