@@ -275,6 +275,7 @@ export class User extends Model {
 
 ### Relations
 - Relations are defined in the Model and can be retrieved with the addRelations method in the query builder or with the relations property in the standard methods
+- Relations are special standard queries that are not influenced by hooks defined in their classes
 - Supported relations are
     - has one - Has one record in relation with the related Model and the foreign key is in the related Model
     - belongs to - Belongs to one record in relation with the related Model and the foreign key is in the current Model
