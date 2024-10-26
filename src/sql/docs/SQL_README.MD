@@ -29,7 +29,6 @@
     - [Aliases](#aliases)
     - [Dynamic Columns](#dynamic-columns)
     - [Count And Sum](#count-and-sum)
-    - [Relations](#relations-retrieve)
     - [Join](#join)
     - [Pagination](#pagination)
     - [Standalone Query Builder](#standalone-query-builder)
@@ -274,7 +273,7 @@ export class User extends Model {
 ```
 
 ### Relations
-- Relations are defined in the Model and can be retrieved with the with method in the query builder or with the relations property in the standard methods
+- Relations are defined in the Model and can be retrieved with the `with` method in the query builder or with the relations property in the standard methods
 - Relations are special standard queries that are not influenced by hooks defined in their classes
 - Relation queries are made in O(n) complexity, even many to many relations are retrieved in a single query, but complexity may very based on the additional operations like hooks and dynamic columns
 - Supported relations are
@@ -693,38 +692,6 @@ import { User } from "./User";
 // You can specify if ignore hooks like beforeFetch
 const count = await User.query().getCount({ ignoreHooks: false }); // number
 const sum = await User.query().getSum("id"); // number
-```
-
-### Relations Retrieve
-
-- Relations can be retrieved both from Standard methods and the query builder
-- Those retrieves are especially fast since for each relation a single db query is made and the retrieve of each relation for each model is made in O(n)
-- Based on the relation type can be retrieved both a list (Has_many) or a single record (Belongs_to, Has_one)
-- Those are special queries that are not influenced by hooks defined in their classes
-
-```typescript
-import { User } from "./User";
-
-const user: User | null = await User.query()
-    .with('posts')
-    .one();
-
-const users: User[] = await User.find({
-    relations: ["profile"],
-});
-```
-
-### Join
-
-```typescript
-import { User } from "./User";
-
-const users = await User.query()
-    .select("users.*")
-    .leftJoin("posts", "users.id", "posts.user_id")
-    .where('users.id', 1)
-    .orderBy('users.id', "ASC")
-    .many();
 ```
 
 ### Pagination
