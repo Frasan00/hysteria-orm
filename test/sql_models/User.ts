@@ -10,6 +10,7 @@ import {
   manyToMany,
 } from "../../src/sql/models/model_decorators";
 import { Address } from "./Address";
+import { UserAddress } from "./UserAddress";
 
 export class User extends Model {
   static tableName: string = "users";
@@ -46,7 +47,7 @@ export class User extends Model {
   @hasOne(() => Post, "userId")
   declare post: Post;
 
-  @manyToMany(() => Address, "user_addresses", "userId")
+  @manyToMany(() => Address, () => UserAddress, "userId")
   declare addresses: Address[];
 
   static beforeFetch(queryBuilder: ModelQueryBuilder<User>): void {

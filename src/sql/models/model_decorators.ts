@@ -1,4 +1,4 @@
-import { Model as Entity } from "./model";
+import { Model } from "./model";
 import { BelongsTo } from "./relations/belongs_to";
 import { HasMany } from "./relations/has_many";
 import { HasOne } from "./relations/has_one";
@@ -8,7 +8,7 @@ import { RelationEnum, RelationOptions, Relation } from "./relations/relation";
 type LazyRelationEnum = {
   type: RelationEnum;
   columnName: string;
-  model: () => typeof Entity;
+  model: () => typeof Model;
   foreignKey: string;
   options?: RelationOptions;
 
@@ -91,14 +91,14 @@ export function dynamicColumn(columnName: string): PropertyDecorator {
 /**
  * @description Returns the columns of the model, columns must be decorated with the column decorator
  */
-export function getModelColumns(target: typeof Entity): string[] {
+export function getModelColumns(target: typeof Model): string[] {
   return Reflect.getMetadata(COLUMN_METADATA_KEY, target.prototype) || [];
 }
 
 /**
  * @description Returns the boolean columns of the model
  */
-export function getModelBooleanColumns(target: typeof Entity): string[] {
+export function getModelBooleanColumns(target: typeof Model): string[] {
   return (
     Reflect.getMetadata(BOOLEAN_COLUMN_METADATA_KEY, target.prototype) || []
   );
@@ -112,7 +112,7 @@ export function getModelBooleanColumns(target: typeof Entity): string[] {
  * @description Establishes a belongs to relation with the given model
  */
 export function belongsTo(
-  model: () => typeof Entity,
+  model: () => typeof Model,
   foreignKey: string,
   options?: RelationOptions,
 ): PropertyDecorator {
@@ -134,7 +134,7 @@ export function belongsTo(
  * @description Establishes a has one relation with the given model
  */
 export function hasOne(
-  model: () => typeof Entity,
+  model: () => typeof Model,
   foreignKey: string,
   options?: RelationOptions,
 ): PropertyDecorator {
@@ -156,7 +156,7 @@ export function hasOne(
  * @description Establishes a has many relation with the given model
  */
 export function hasMany(
-  model: () => typeof Entity,
+  model: () => typeof Model,
   foreignKey: string,
   options?: RelationOptions,
 ): PropertyDecorator {
@@ -178,12 +178,16 @@ export function hasMany(
  * @description Establishes a many to many relation with the given model
  */
 export function manyToMany(
-  model: () => typeof Entity,
-  throughModel: string,
+  model: () => typeof Model,
+  throughModel: (() => typeof Model) | string,
   foreignKey: string,
   options?: RelationOptions,
 ): PropertyDecorator {
   return (target: Object, propertyKey: string | symbol) => {
+    if (!(typeof throughModel === "string")) {
+      throughModel = throughModel().table;
+    }
+
     const relation: LazyRelationEnum = {
       type: RelationEnum.manyToMany,
       columnName: propertyKey as string,
@@ -204,7 +208,7 @@ export function manyToMany(
 /**
  * @description Returns the relations of the model
  */
-export function getRelations(target: typeof Entity): Relation[] {
+export function getRelations(target: typeof Model): Relation[] {
   const relations =
     Reflect.getMetadata(RELATION_METADATA_KEY, target.prototype) || [];
   return relations.map((relation: LazyRelationEnum) => {
@@ -237,14 +241,14 @@ export function getRelations(target: typeof Entity): Relation[] {
 /**
  * @description Returns the primary key of the model
  */
-export function getPrimaryKey(target: typeof Entity): string {
+export function getPrimaryKey(target: typeof Model): string {
   return Reflect.getMetadata(PRIMARY_KEY_METADATA_KEY, target.prototype);
 }
 
 /**
  * @description Returns every dynamicColumn definition
  */
-export function getDynamicColumns(target: typeof Entity): {
+export function getDynamicColumns(target: typeof Model): {
   columnName: string;
   functionName: string;
   dynamicColumnFn: (...args: any[]) => any;

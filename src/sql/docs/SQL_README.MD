@@ -10,8 +10,15 @@
     - [Use the Established connection](#use-the-connection)
         - [use-connection](#use-connection)
     - [Create a Model](#create-a-model)
-    - [Create a Model with Relationships](#create-a-model-with-relations-and-hooks)
+    - [Create a Model with Hooks](#create-a-model-with-hooks)
     - [UUID](#model-with-uuid)
+        - [Model definition](#model-definition)
+    - [Relations](#relations)
+        - [Has One](#has-one)
+        - [Belongs To](#belongs-to)
+        - [Has Many](#has-many)
+        - [Many To Many](#many-to-many)
+        - [In Relation definition you can also specify soft delete behavior](#in-relation-definition-you-can-also-specify-soft-delete-behavior)
     - [Case Convention](#case-convention)
     - [Upsert](#Upsert-methods)
     - [Create, Update and Delete (with transaction)](#create-update-and-delete-with-transaction)
@@ -183,7 +190,7 @@ export class User extends Model {
 }
 ```
 
-### Create a model with relations and hooks
+### Create a model with hooks
 
 ```typescript
 import "reflect-metadata";
@@ -214,20 +221,6 @@ export class User extends Model {
     @column()
     declare createdAt: DateTime;
 
-    // relations take as params (table, foreignKey)
-    @hasOne(() => Profile, "userId")
-    declare profile: Profile;
-
-    /* 
-    * You can pass a soft delete column with the relative type in order to remove those records while using query().addRelation method
-    * Date soft COLUMN will be queried as AND column IS NULL, boolean soft delete column will be queried COLUMN = false instead
-    */
-    @hasMany(() => Post, "userId", { softDeleteColumn: "deletedAt", softDeleteType: "date" })
-    declare posts: Post[];
-
-    // Many to many relations, params: (table, pivotTable, localForeignKey)
-    @manyToMany(() => Address, "user_address", "userId")
-
     // Hooks
     static beforeFetch(queryBuilder: ModelQueryBuilder<User>) {
         queryBuilder.whereNull("deletedAt");
@@ -249,10 +242,10 @@ export class User extends Model {
 }
 ```
 
-### Model with uuid
+### Model with UUID
 - All databases support uuid but there are some things to make them work
 
-##### UUID Model definition
+##### Model definition
 ```typescript
 import "reflect-metadata";
 import { Model, Has_one, Has_many, column, hasOne, ModelQueryBuilder } from "hysteria-orm";
@@ -278,6 +271,99 @@ export class User extends Model {
         data.id = crypto.randomUUID();
     }
 }
+```
+
+### Relations
+- Relations are defined in the Model and can be retrieved with the addRelations method in the query builder or with the relations property in the standard methods
+- Supported relations are
+    - has one - Has one record in relation with the related Model and the foreign key is in the related Model
+    - belongs to - Belongs to one record in relation with the related Model and the foreign key is in the current Model
+    - has many - Has many records in relation with the related Model and the foreign key is in the related Model
+    - many to many - Many to many records in relation with the related Model and the foreign key is in a join table that has the primary key of the two Models
+
+#### Has One
+```typescript
+import { Model, column, hasOne } from "hysteria-orm";
+import { Profile } from "./Profile";
+
+export class User extends Model {
+    @column({ primaryKey: true })
+    declare id: number;
+
+    @column()
+    declare name: string;
+
+    @hasOne(() => Profile, "userId")
+    declare profile: Profile;
+}
+```
+
+#### Belongs To
+```typescript
+import { Model, column, belongsTo } from "hysteria-orm";
+
+export class Profile extends Model {
+    @column({ primaryKey: true })
+    declare id: number;
+
+    @column()
+    declare userId: number;
+
+    @column()
+    declare bio: string;
+
+    @belongsTo(() => User, "userId")
+    declare user: User;
+}
+```
+
+#### Has Many
+```typescript
+import { Model, column, hasMany } from "hysteria-orm";
+import { Post } from "./Post";
+
+export class User extends Model {
+    @column({ primaryKey: true })
+    declare id: number;
+
+    @column()
+    declare name: string;
+
+    @hasMany(() => Post, "userId")
+    declare posts: Post[];
+}
+```
+
+#### Many To Many
+```typescript
+import { Model, column, manyToMany } from "hysteria-orm";
+import { Address } from "./Address";
+import { AddressUser } from "./AddressUser";
+
+export class User extends Model {
+    @column({ primaryKey: true })
+    declare id: number;
+
+    @column()
+    declare name: string;
+
+    // Many to many relations, params: (table, pivotTable, localForeignKey)
+    @manyToMany(() => Address, "user_addresses", "userId")
+    declare addresses: Address[];
+
+    // Can use a Model instance to define the pivot table
+    @manyToMany(() => Address, () => AddressUser, "userId")
+    declare addresses: Address[];
+}
+```
+
+#### In Relation definition you can also specify soft delete behavior
+```typescript
+@manyToMany(() => Address, () => AddressUser, "userId", {
+    softDeleteColumn: "deletedAt",;
+    softDeleteType: "date" | "boolean";
+})
+declare addresses: Address[];
 ```
 
 ### Case Convention
