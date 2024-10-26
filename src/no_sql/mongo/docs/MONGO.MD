@@ -129,6 +129,7 @@ const user = await User.find({
 const user = await User.findOne({
   where: { name: "Test Name" },
 });
+```
 
 ### QueryBuilder
 - The query builder is a class that you can use to build your queries, it has a lot of methods that you can use to build your queries.
