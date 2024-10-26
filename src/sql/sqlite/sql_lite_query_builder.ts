@@ -492,8 +492,9 @@ export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  with(
+  with<O extends typeof Model>(
     relation: RelationType<T>,
+    relatedModel?: O,
     relatedModelQueryBuilder?: (queryBuilder: ModelQueryBuilder<any>) => void,
   ): ModelQueryBuilder<T> {
     if (!relatedModelQueryBuilder) {
@@ -505,9 +506,8 @@ export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     }
 
     const queryBuilder = new SqlLiteQueryBuilder(
-      // Not useful for the relations query
-      {} as typeof Model,
-      "",
+      relatedModel as typeof Model,
+      relatedModel?.table || "",
       this.sqLiteConnection,
       this.logs,
       false,

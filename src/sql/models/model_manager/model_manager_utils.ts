@@ -146,7 +146,7 @@ export default class SqlModelManagerUtils<T extends Model> {
         continue;
       }
 
-      log(query, logs);
+      log(query, logs, params);
       let result = await this.getQueryResult(query, params);
       result = Array.isArray(result) ? result : [result];
 

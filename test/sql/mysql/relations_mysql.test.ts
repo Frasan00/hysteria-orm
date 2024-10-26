@@ -661,8 +661,8 @@ test(" test with relation query builder", async () => {
   );
 
   const usersWithAddresses = await User.query()
-    .with("addresses", (query: ModelQueryBuilder<Address>) => {
-      query.select("id", "street", "city").where("city", "City 1");
+    .with("addresses", Address, (query: ModelQueryBuilder<Address>) => {
+      query.select("id", "city", "street").where("city", "City 1");
     })
     .many();
 

@@ -481,8 +481,9 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  with(
+  with<O extends typeof Model>(
     relation: RelationType<T>,
+    relatedModel?: O,
     relatedModelQueryBuilder?: (queryBuilder: ModelQueryBuilder<any>) => void,
   ): ModelQueryBuilder<T> {
     if (!relatedModelQueryBuilder) {
@@ -494,9 +495,8 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     }
 
     const queryBuilder = new PostgresQueryBuilder(
-      // Not useful for the relations query
-      {} as typeof Model,
-      "",
+      relatedModel as typeof Model,
+      relatedModel?.table || "",
       this.pgClient,
       this.logs,
       false,

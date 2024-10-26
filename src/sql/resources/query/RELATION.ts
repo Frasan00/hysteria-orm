@@ -37,7 +37,9 @@ function getJsonAggregate(
 
   switch (dbType) {
     case "postgres":
-      return `json_agg(${column}) as ${aggregate}`;
+      return `json_agg(json_build_object(${modelColumns
+        .map((column) => `'${column}', ${aggregate}.${column}`)
+        .join(", ")})) as ${aggregate}`;
     case "mysql":
     case "mariadb":
       return `JSON_ARRAYAGG(JSON_OBJECT(${modelColumns
@@ -120,6 +122,7 @@ function relationTemplates<T extends Model>(
     offsetQuery,
     havingQuery,
   } = parseRelationQuery(relationQuery);
+  const params = relationQuery.params || [];
 
   const primaryKeyValues = models.map((model) => {
     const value =
@@ -157,11 +160,10 @@ function relationTemplates<T extends Model>(
       if (!foreignKeyValues.length) {
         return {
           query: "",
-          params: [],
+          params: params,
         };
       }
 
-      const params: any[] = [];
       const query = `SELECT ${selectQuery}, '${relationName}' as relation_name FROM ${relatedModel} 
 ${joinQuery} WHERE ${relatedModel}.${convertCase(
         foreignKey,
@@ -201,7 +203,6 @@ ${joinQuery} WHERE ${relatedModel}.${convertCase(
         };
       }
 
-      const belongsToParams: any[] = [];
       const belongsToQuery = `SELECT ${selectQuery}, '${relationName}' as relation_name FROM ${relatedModel} 
 ${joinQuery}  WHERE ${relatedModel}.${primaryKey} IN (${foreignKeyValues
         .map(({ value, type }) => convertValueToSQL(value, type))
@@ -212,7 +213,7 @@ ${joinQuery}  WHERE ${relatedModel}.${primaryKey} IN (${foreignKeyValues
 
       return {
         query: belongsToQuery,
-        params: belongsToParams,
+        params: params,
       };
 
     case RelationEnum.hasMany:
@@ -232,7 +233,6 @@ ${joinQuery}  WHERE ${relatedModel}.${primaryKey} IN (${foreignKeyValues
         };
       }
 
-      const hasManyParams: any[] = [];
       const hasManyQuery = `SELECT ${selectQuery}, '${relationName}' as relation_name FROM ${relatedModel} 
 ${joinQuery} 
 WHERE ${relatedModel}.${convertCase(
@@ -247,7 +247,7 @@ WHERE ${relatedModel}.${convertCase(
 
       return {
         query: hasManyQuery,
-        params: hasManyParams,
+        params: params,
       };
 
     case RelationEnum.manyToMany:
@@ -291,7 +291,6 @@ WHERE ${relatedModel}.${convertCase(
       const relatedModelForeignKey = relatedModelManyToManyRelation.foreignKey;
       const relatedModelColumns = getModelColumns(relation.model);
 
-      const manyToManyParams: any[] = [];
       const manyToManyQuery = `SELECT ${throughModel}.${convertCase(
         throughModelPrimaryKey,
         typeofModel.databaseCaseConvention,
@@ -317,24 +316,18 @@ ${joinQuery} WHERE ${throughModel}.${convertCase(
         typeofModel.databaseCaseConvention,
       )} IN (${primaryKeyValues
         .map(({ value, type }) => convertValueToSQL(value, type))
-        .join(", ")}) ${whereQuery} ${
-        groupByQuery ||
-        `GROUP BY ${throughModel}.${convertCase(
-          throughModelPrimaryKey,
-          typeofModel.databaseCaseConvention,
-        )}`
-      } ${havingQuery} ${
-        orderByQuery ||
-        `ORDER BY ${throughModel}.${convertCase(
-          throughModelPrimaryKey,
-          typeofModel.databaseCaseConvention,
-        )}`
-      } ${limitQuery} ${offsetQuery};
+        .join(", ")}) ${whereQuery} ${`GROUP BY ${throughModel}.${convertCase(
+        throughModelPrimaryKey,
+        typeofModel.databaseCaseConvention,
+      )} ${groupByQuery.replace("GROUP BY", "")}`} ${havingQuery} ${`ORDER BY ${throughModel}.${convertCase(
+        throughModelPrimaryKey,
+        typeofModel.databaseCaseConvention,
+      )} ${orderByQuery.replace("ORDER BY", "")}`} ${limitQuery} ${offsetQuery};
       `;
 
       return {
         query: manyToManyQuery,
-        params: manyToManyParams,
+        params: params,
       };
 
     default:

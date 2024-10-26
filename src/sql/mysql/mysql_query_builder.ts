@@ -26,6 +26,7 @@ import { DateTime } from "luxon";
 import deleteTemplate from "../resources/query/DELETE";
 import updateTemplate from "../resources/query/UPDATE";
 import { UpdateOptions } from "../query_builder/update_query_builder_types";
+import { Mode } from "fs";
 
 export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
   protected mysqlConnection: mysql.Connection;
@@ -485,8 +486,9 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  with(
+  with<O extends typeof Model>(
     relation: RelationType<T>,
+    relatedModel?: O,
     relatedModelQueryBuilder?: (queryBuilder: ModelQueryBuilder<any>) => void,
   ): ModelQueryBuilder<T> {
     if (!relatedModelQueryBuilder) {
@@ -498,9 +500,8 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     }
 
     const queryBuilder = new MysqlQueryBuilder(
-      // Not useful for the relations query
-      {} as typeof Model,
-      "",
+      relatedModel as typeof Model,
+      relatedModel?.table || "",
       this.mysqlConnection,
       this.logs,
       false,

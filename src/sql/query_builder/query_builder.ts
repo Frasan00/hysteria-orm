@@ -208,8 +208,9 @@ export abstract class QueryBuilder<
   /**
    * @description Adds a relation to the final model.
    */
-  abstract with(
+  abstract with<O extends typeof Model>(
     relation: RelationType<T>,
+    relatedModel?: O,
     relatedModelQueryBuilder?: (queryBuilder: ModelQueryBuilder<any>) => void,
   ): ModelQueryBuilder<T>;
 

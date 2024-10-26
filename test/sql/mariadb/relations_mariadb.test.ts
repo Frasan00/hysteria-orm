@@ -2,6 +2,7 @@ import { User } from "../../sql_models/User";
 import { Post } from "../../sql_models/Post";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { Address } from "../../sql_models/Address";
+import { ModelQueryBuilder } from "../../sql/query_builder/query_builder";
 
 let sql: SqlDataSource | null = null;
 beforeAll(async () => {
@@ -423,4 +424,81 @@ test(" test with 5 users and addresses in many to many relation", async () => {
   expect(addressesWithUsers[4].users).not.toBeNull();
   expect(addressesWithUsers[4].users.length).toBe(1);
   expect(addressesWithUsers[4].users[0].name).toBe("Eve");
+});
+
+test(" test with relation query builder", async () => {
+  const users = await User.insertMany([
+    {
+      name: "Alice",
+      email: "test",
+      signupSource: "test",
+      isActive: true,
+    },
+  ]);
+
+  if (!users.length) {
+    throw new Error("Users not created");
+  }
+
+  const addresses = await Address.insertMany([
+    {
+      street: "Street 1",
+      city: "City 1",
+      state: "State 1",
+    },
+    {
+      street: "Street 2",
+      city: "City 2",
+      state: "State 2",
+    },
+    {
+      street: "Street 3",
+      city: "City 3",
+      state: "State 3",
+    },
+    {
+      street: "Street 4",
+      city: "City 4",
+      state: "State 4",
+    },
+    {
+      street: "Street 5",
+      city: "City 5",
+      state: "State 5",
+    },
+  ]);
+
+  if (!addresses.length) {
+    throw new Error("Addresses not created");
+  }
+
+  await sql?.rawQuery(
+    "INSERT INTO user_addresses (user_id, address_id) VALUES (?, ?), (?, ?), (?, ?), (?, ?), (?, ?)",
+    [
+      users[0].id,
+      addresses[0].id,
+      users[0].id,
+      addresses[1].id,
+      users[0].id,
+      addresses[2].id,
+      users[0].id,
+      addresses[3].id,
+      users[0].id,
+      addresses[4].id,
+    ],
+  );
+
+  const usersWithAddresses = await User.query()
+    .with("addresses", Address, (query: ModelQueryBuilder<Address>) => {
+      query.select("id", "city", "street").where("city", "City 1");
+    })
+    .many();
+
+  expect(usersWithAddresses).not.toBeNull();
+  expect(usersWithAddresses.length).toBe(1);
+  expect(usersWithAddresses[0].addresses).not.toBeNull();
+  expect(usersWithAddresses[0].addresses.length).toBe(1);
+  expect(usersWithAddresses[0].addresses[0].street).toBe("Street 1");
+  expect(usersWithAddresses[0].addresses[0].city).toBe("City 1");
+  expect(usersWithAddresses[0].addresses[0].state).toBeUndefined();
 });
