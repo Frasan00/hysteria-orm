@@ -4,6 +4,7 @@ import {
   QueryBuilder,
   ModelQueryBuilder,
   ManyOptions,
+  ModelInstanceType,
 } from "../query_builder/query_builder";
 import { Client } from "pg";
 import { log } from "../../utils/logger";
@@ -27,7 +28,6 @@ import {
 import deleteTemplate from "../resources/query/DELETE";
 import updateTemplate from "../resources/query/UPDATE";
 import { UpdateOptions } from "../query_builder/update_query_builder_types";
-import { BinaryOperatorType } from "../resources/query/WHERE";
 
 export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   protected pgClient: Client;
@@ -481,9 +481,53 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     this.joinQuery += join.leftJoin();
     return this;
   }
+  with<O extends typeof Model>(
+    relation: RelationType<T>,
+    relatedModel?: O,
+    relatedModelQueryBuilder?: (
+      queryBuilder: ModelQueryBuilder<ModelInstanceType<O>>,
+    ) => void,
+    ignoreHooks?: { beforeFetch?: boolean; afterFetch?: boolean },
+  ): ModelQueryBuilder<T> {
+    if (!relatedModelQueryBuilder) {
+      this.relations.push({
+        relation: relation as string,
+      });
 
-  addRelations(relations: RelationType<T>[]): PostgresQueryBuilder<T> {
-    this.relations = relations as string[];
+      return this;
+    }
+
+    const queryBuilder = new PostgresQueryBuilder(
+      relatedModel as typeof Model,
+      relatedModel?.table || "",
+      this.pgClient,
+      this.logs,
+      false,
+      this.sqlDataSource,
+    );
+
+    relatedModelQueryBuilder(queryBuilder as ModelQueryBuilder<any>);
+    if (!ignoreHooks?.beforeFetch) {
+      relatedModel?.beforeFetch(queryBuilder);
+    }
+
+    this.relations.push({
+      relation: relation as string,
+      selectedColumns: queryBuilder.modelSelectedColumns,
+      whereQuery: this.whereTemplate.convertPlaceHolderToValue(
+        queryBuilder.whereQuery,
+      ),
+      params: queryBuilder.params,
+      joinQuery: queryBuilder.joinQuery,
+      groupByQuery: queryBuilder.groupByQuery,
+      orderByQuery: queryBuilder.orderByQuery,
+      limitQuery: queryBuilder.limitQuery,
+      offsetQuery: queryBuilder.offsetQuery,
+      havingQuery: queryBuilder.havingQuery,
+      dynamicColumns: queryBuilder.dynamicColumns,
+      ignoreAfterFetchHook: ignoreHooks?.afterFetch || false,
+    });
+
     return this;
   }
 

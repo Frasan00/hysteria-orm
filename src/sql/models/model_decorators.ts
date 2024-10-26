@@ -3,14 +3,13 @@ import { BelongsTo } from "./relations/belongs_to";
 import { HasMany } from "./relations/has_many";
 import { HasOne } from "./relations/has_one";
 import { ManyToMany } from "./relations/many_to_many";
-import { RelationEnum, RelationOptions, Relation } from "./relations/relation";
+import { RelationEnum, Relation } from "./relations/relation";
 
 type LazyRelationEnum = {
   type: RelationEnum;
   columnName: string;
   model: () => typeof Model;
   foreignKey: string;
-  options?: RelationOptions;
 
   // Only for many to many
   manyToManyOptions?: {
@@ -114,7 +113,6 @@ export function getModelBooleanColumns(target: typeof Model): string[] {
 export function belongsTo(
   model: () => typeof Model,
   foreignKey: string,
-  options?: RelationOptions,
 ): PropertyDecorator {
   return (target: Object, propertyKey: string | symbol) => {
     const relation = {
@@ -122,7 +120,6 @@ export function belongsTo(
       columnName: propertyKey as string,
       model,
       foreignKey,
-      options,
     };
     const relations = Reflect.getMetadata(RELATION_METADATA_KEY, target) || [];
     relations.push(relation);
@@ -136,7 +133,6 @@ export function belongsTo(
 export function hasOne(
   model: () => typeof Model,
   foreignKey: string,
-  options?: RelationOptions,
 ): PropertyDecorator {
   return (target: Object, propertyKey: string | symbol) => {
     const relation = {
@@ -144,7 +140,6 @@ export function hasOne(
       columnName: propertyKey as string,
       model,
       foreignKey,
-      options,
     };
     const relations = Reflect.getMetadata(RELATION_METADATA_KEY, target) || [];
     relations.push(relation);
@@ -158,7 +153,6 @@ export function hasOne(
 export function hasMany(
   model: () => typeof Model,
   foreignKey: string,
-  options?: RelationOptions,
 ): PropertyDecorator {
   return (target: Object, propertyKey: string | symbol) => {
     const relation = {
@@ -166,7 +160,6 @@ export function hasMany(
       columnName: propertyKey,
       model,
       foreignKey,
-      options,
     };
     const relations = Reflect.getMetadata(RELATION_METADATA_KEY, target) || [];
     relations.push(relation);
@@ -181,7 +174,6 @@ export function manyToMany(
   model: () => typeof Model,
   throughModel: (() => typeof Model) | string,
   foreignKey: string,
-  options?: RelationOptions,
 ): PropertyDecorator {
   return (target: Object, propertyKey: string | symbol) => {
     if (!(typeof throughModel === "string")) {
@@ -193,7 +185,6 @@ export function manyToMany(
       columnName: propertyKey as string,
       model,
       foreignKey,
-      options,
       manyToManyOptions: {
         throughModel,
       },
@@ -212,14 +203,14 @@ export function getRelations(target: typeof Model): Relation[] {
   const relations =
     Reflect.getMetadata(RELATION_METADATA_KEY, target.prototype) || [];
   return relations.map((relation: LazyRelationEnum) => {
-    const { type, model, columnName, foreignKey, options } = relation;
+    const { type, model, columnName, foreignKey } = relation;
     switch (type) {
       case RelationEnum.belongsTo:
-        return new BelongsTo(model(), columnName, foreignKey, options);
+        return new BelongsTo(model(), columnName, foreignKey);
       case RelationEnum.hasOne:
-        return new HasOne(model(), columnName, foreignKey, options);
+        return new HasOne(model(), columnName, foreignKey);
       case RelationEnum.hasMany:
-        return new HasMany(model(), columnName, foreignKey, options);
+        return new HasMany(model(), columnName, foreignKey);
       case RelationEnum.manyToMany:
         if (!relation.manyToManyOptions) {
           throw new Error("Many to many relation must have a through model");
@@ -230,7 +221,6 @@ export function getRelations(target: typeof Model): Relation[] {
           columnName,
           relation.manyToManyOptions.throughModel,
           relation.foreignKey,
-          options,
         );
       default:
         throw new Error(`Unknown relation type: ${type}`);

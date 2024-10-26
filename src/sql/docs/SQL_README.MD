@@ -18,7 +18,7 @@
         - [Belongs To](#belongs-to)
         - [Has Many](#has-many)
         - [Many To Many](#many-to-many)
-        - [In Relation definition you can also specify soft delete behavior](#in-relation-definition-you-can-also-specify-soft-delete-behavior)
+        - [Relation query Builder](#relation-query)
     - [Case Convention](#case-convention)
     - [Upsert](#Upsert-methods)
     - [Create, Update and Delete (with transaction)](#create-update-and-delete-with-transaction)
@@ -274,8 +274,9 @@ export class User extends Model {
 ```
 
 ### Relations
-- Relations are defined in the Model and can be retrieved with the addRelations method in the query builder or with the relations property in the standard methods
+- Relations are defined in the Model and can be retrieved with the with method in the query builder or with the relations property in the standard methods
 - Relations are special standard queries that are not influenced by hooks defined in their classes
+- Relation queries are made in O(n) complexity, even many to many relations are retrieved in a single query, but complexity may very based on the additional operations like hooks and dynamic columns
 - Supported relations are
     - has one - Has one record in relation with the related Model and the foreign key is in the related Model
     - belongs to - Belongs to one record in relation with the related Model and the foreign key is in the current Model
@@ -358,13 +359,38 @@ export class User extends Model {
 }
 ```
 
-#### In Relation definition you can also specify soft delete behavior
+#### Relation query
+- in the query builder, you can query the relations directly from the with method
+- The result is natturally affected by the target beforeFetch and afterFetch hooks, but they can be ignored with the ignoreHooks property
 ```typescript
-@manyToMany(() => Address, () => AddressUser, "userId", {
-    softDeleteColumn: "deletedAt",;
-    softDeleteType: "date" | "boolean";
-})
-declare addresses: Address[];
+import { ModelQueryBuilder } from "hysteria-orm";
+import { User } from "./User";
+import { Post } from "./Post";
+import { Address } from "./Address";
+
+const user: User | null = await User.query()
+    .with('post', Post, (query: ModelQueryBuilder<Post>) => {
+        query.where("title", "Post title");
+    })
+    .where("name", "John Doe")
+    .one();
+
+// you can also query on the join table
+const user: User | null = await User.query()
+    .with('address', Address, (query: ModelQueryBuilder<Address>) => {
+        query.where("street", "Main street")
+            .andWhere("user_addresses.primary", true);
+    })
+    .where("name", "John Doe")
+    .one();
+
+// You can also ignore hooks
+const user: User | null = await User.query()
+    .with('post', Post, (query: ModelQueryBuilder<Post>) => {
+        query.where("title", "Post title");
+    }, { beforeFetch: true, afterFetch: true })
+    .where("name", "John Doe")
+    .one();
 ```
 
 ### Case Convention
@@ -530,7 +556,7 @@ import { User } from "./User";
 
 // READ
 const user: User | null = await User.query()
-    .addRelations(['post'])
+    .with('post')
     .where("name", "John Doe")
     .andWhere("email", "john@gmail.com")
     .oneOrFail();
@@ -616,7 +642,7 @@ import { User } from "./User";
 
 const user: User | null = await User.query()
     .select('id', 'name as superName')
-    .addRelations(['post'])
+    .with('post')
     .where("name", "John Doe")
     .andWhere("email", "john@gmail.com")
     .one();
@@ -679,7 +705,7 @@ const sum = await User.query().getSum("id"); // number
 import { User } from "./User";
 
 const user: User | null = await User.query()
-    .addRelations(['posts'])
+    .with('posts')
     .one();
 
 const users: User[] = await User.find({
@@ -707,7 +733,7 @@ const users = await User.query()
 import { User } from "./User";
 
 const user: User | null = await User.query()
-    .addRelations(['post'])
+    .with('post')
     .where("name", "John Doe")
     .andWhere("email", "john@gmail.com")
     .paginate(1, 10); // page, for-page

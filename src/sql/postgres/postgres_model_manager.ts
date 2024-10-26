@@ -6,7 +6,7 @@ import {
   UnrestrictedFindType,
 } from "../models/model_manager/model_manager_types";
 import pg from "pg";
-import { log, queryError } from "../../utils/logger";
+import { log } from "../../utils/logger";
 import { ModelManager } from "../models/model_manager/model_manager";
 import { PostgresQueryBuilder } from "./postgres_query_builder";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
@@ -55,9 +55,10 @@ export class PostgresModelManager<T extends Model> extends ModelManager<T> {
     }
 
     if (input.relations) {
-      query.addRelations(input.relations);
+      input.relations.forEach((relation) => {
+        query.with(relation);
+      });
     }
-
     if (input.where) {
       Object.entries(input.where).forEach(([key, value]) => {
         query.where(key, value);

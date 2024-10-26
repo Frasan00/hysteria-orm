@@ -54,7 +54,7 @@ test("Create a new user with posts within a transaction", async () => {
 
     const userWithPosts = await User.query()
       .where("id", user.id)
-      .addRelations(["posts"])
+      .with("posts")
       .one();
     expect(userWithPosts).not.toBeNull();
     expect(userWithPosts?.posts).not.toBeNull();
@@ -101,7 +101,7 @@ test("Rollback transaction on error", async () => {
 
     const userWithPosts = await User.query()
       .where("email", "charlie-test@gmail.com")
-      .addRelations(["posts"])
+      .with("posts")
       .one();
     expect(userWithPosts).toBeNull();
   }

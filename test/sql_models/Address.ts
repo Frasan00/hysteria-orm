@@ -1,6 +1,11 @@
 import { User } from "./User";
 import { Model } from "../../src/sql/models/model";
-import { column, manyToMany } from "../../src/sql/models/model_decorators";
+import {
+  column,
+  dynamicColumn,
+  manyToMany,
+} from "../../src/sql/models/model_decorators";
+import { ModelQueryBuilder } from "../sql/query_builder/query_builder";
 
 export class Address extends Model {
   static tableName: string = "addresses";
@@ -18,4 +23,24 @@ export class Address extends Model {
 
   @manyToMany(() => User, "user_addresses", "addressId")
   declare users: User[];
+
+  @dynamicColumn("test")
+  async getTest() {
+    return "test";
+  }
+
+  static beforeFetch(queryBuilder: ModelQueryBuilder<Address>): void {
+    queryBuilder.rawWhere("1 = 1");
+  }
+
+  static async afterFetch(data: Model[]): Promise<Model[]> {
+    return data.map((address) => {
+      if (!address.$additionalColumns) {
+        address.$additionalColumns = {};
+      }
+
+      address.$additionalColumns["afterFetch"] = "test";
+      return address;
+    });
+  }
 }

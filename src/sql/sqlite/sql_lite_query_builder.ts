@@ -1,10 +1,11 @@
 import { getBaseModelInstance, Model } from "../models/model";
-import { log, queryError } from "../../utils/logger";
+import { log } from "../../utils/logger";
 import {
   OneOptions,
   QueryBuilder,
   ModelQueryBuilder,
   ManyOptions,
+  ModelInstanceType,
 } from "../query_builder/query_builder";
 import joinTemplate from "../resources/query/JOIN";
 import { getPaginationMetadata, PaginatedData } from "../pagination";
@@ -26,7 +27,6 @@ import { DateTime } from "luxon";
 import deleteTemplate from "../resources/query/DELETE";
 import updateTemplate from "../resources/query/UPDATE";
 import { UpdateOptions } from "../query_builder/update_query_builder_types";
-import { BinaryOperatorType } from "../resources/query/WHERE";
 
 export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
   protected sqLiteConnection: sqlite3.Database;
@@ -493,8 +493,53 @@ export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  addRelations(relations: RelationType<T>[]): SqlLiteQueryBuilder<T> {
-    this.relations = relations as string[];
+  with<O extends typeof Model>(
+    relation: RelationType<T>,
+    relatedModel?: O,
+    relatedModelQueryBuilder?: (
+      queryBuilder: ModelQueryBuilder<ModelInstanceType<O>>,
+    ) => void,
+    ignoreHooks?: { beforeFetch?: boolean; afterFetch?: boolean },
+  ): ModelQueryBuilder<T> {
+    if (!relatedModelQueryBuilder) {
+      this.relations.push({
+        relation: relation as string,
+      });
+
+      return this;
+    }
+
+    const queryBuilder = new SqlLiteQueryBuilder(
+      relatedModel as typeof Model,
+      relatedModel?.table || "",
+      this.sqLiteConnection,
+      this.logs,
+      false,
+      this.sqlDataSource,
+    );
+
+    relatedModelQueryBuilder(queryBuilder as ModelQueryBuilder<any>);
+    if (!ignoreHooks?.beforeFetch) {
+      relatedModel?.beforeFetch(queryBuilder);
+    }
+
+    this.relations.push({
+      relation: relation as string,
+      selectedColumns: queryBuilder.modelSelectedColumns,
+      whereQuery: this.whereTemplate.convertPlaceHolderToValue(
+        queryBuilder.whereQuery,
+      ),
+      params: queryBuilder.params,
+      joinQuery: queryBuilder.joinQuery,
+      groupByQuery: queryBuilder.groupByQuery,
+      orderByQuery: queryBuilder.orderByQuery,
+      limitQuery: queryBuilder.limitQuery,
+      offsetQuery: queryBuilder.offsetQuery,
+      havingQuery: queryBuilder.havingQuery,
+      dynamicColumns: queryBuilder.dynamicColumns,
+      ignoreAfterFetchHook: ignoreHooks?.afterFetch || false,
+    });
+
     return this;
   }
 

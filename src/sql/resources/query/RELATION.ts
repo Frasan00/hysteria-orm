@@ -4,6 +4,7 @@ import { Model } from "../../models/model";
 import { getModelColumns, getRelations } from "../../models/model_decorators";
 import { ManyToMany } from "../../models/relations/many_to_many";
 import { Relation, RelationEnum } from "../../models/relations/relation";
+import { RelationQueryBuilder } from "../../query_builder/query_builder";
 import { SqlDataSourceType } from "../../sql_data_source";
 
 function parseValueType(value: any): string {
@@ -22,6 +23,9 @@ function convertValueToSQL(value: any, type: string): string {
   }
 }
 
+/**
+ * TODO: MAKE THIS BETTER IN THE FUTURE
+ */
 function getJsonAggregate(
   column: string,
   aggregate: string,
@@ -30,38 +34,138 @@ function getJsonAggregate(
   typeofModel: typeof Model,
 ) {
   column = convertCase(column, typeofModel.databaseCaseConvention);
-  modelColumns = modelColumns.map((column) =>
-    convertCase(column, typeofModel.databaseCaseConvention),
+
+  const parsedColumns = modelColumns.map((column) => {
+    const functionAliasMatch = column.match(/^(\w+\([^()]+\))\s+as\s+(\w+)$/i);
+    const aliasMatch = column.match(/^(.+?)\s+as\s+(\w+)$/i);
+
+    if (functionAliasMatch) {
+      const func = functionAliasMatch[1];
+      const alias = functionAliasMatch[2];
+      return { expression: func, alias, isAggregate: true };
+    }
+
+    if (aliasMatch) {
+      const original = convertCase(
+        aliasMatch[1],
+        typeofModel.databaseCaseConvention,
+      );
+      const alias = aliasMatch[2];
+      return { expression: original, alias, isAggregate: false };
+    }
+
+    const original = convertCase(column, typeofModel.databaseCaseConvention);
+    return { expression: original, alias: column, isAggregate: false };
+  });
+
+  const aggregateColumns = parsedColumns.filter((column) => column.isAggregate);
+  const nonAggregateColumns = parsedColumns.filter(
+    (column) => !column.isAggregate,
   );
 
+  const buildJsonObject = nonAggregateColumns
+    .map(({ expression, alias }) => {
+      const hasDot = expression.includes(".");
+      const valueExpression = hasDot
+        ? expression
+        : `${aggregate}.${expression}`;
+      return `'${alias}', ${valueExpression}`;
+    })
+    .join(", ");
+
+  const aggregateExpressions = aggregateColumns
+    .map(({ expression, alias }) => `${expression} as "${alias}"`)
+    .join(", ");
+
+  let jsonAggregate = "";
   switch (dbType) {
     case "postgres":
-      return `json_agg(${column}) as ${aggregate}`;
+      jsonAggregate = `json_agg(json_build_object(${buildJsonObject})) as ${aggregate}`;
+      break;
     case "mysql":
     case "mariadb":
-      return `JSON_ARRAYAGG(JSON_OBJECT(${modelColumns
-        .map((column) => `'${column}', ${aggregate}.${column}`)
-        .join(", ")})) as ${aggregate}`;
+      jsonAggregate = `JSON_ARRAYAGG(JSON_OBJECT(${buildJsonObject})) as ${aggregate}`;
+      break;
     case "sqlite":
-      return `json_group_array(
-json_object(${modelColumns
-        .map((column) => `'${column}', ${aggregate}.${column}`)
-        .join(", ")})
+      jsonAggregate = `json_group_array(
+  json_object(${buildJsonObject})
 ) as ${aggregate}`;
+      break;
     default:
+      throw new Error(`Unsupported database type: ${dbType}`);
   }
+
+  return `${jsonAggregate}${aggregateExpressions ? ", " + aggregateExpressions : ""}`;
+}
+
+function parseRelationQuery(relationQuery: RelationQueryBuilder): {
+  selectQuery: string;
+  whereQuery: string;
+  joinQuery: string;
+  orderByQuery: string;
+  groupByQuery: string;
+  limitQuery: string;
+  offsetQuery: string;
+  havingQuery: string;
+} {
+  const selectQuery = relationQuery.selectedColumns?.join(", ") || "*";
+  const whereQuery = relationQuery.whereQuery
+    ? `${relationQuery.whereQuery.replace(/WHERE/g, "AND")}`
+    : "";
+  const joinQuery = relationQuery.joinQuery ? relationQuery.joinQuery : "";
+  const orderByQuery = relationQuery.orderByQuery
+    ? `ORDER BY ${relationQuery.orderByQuery}`
+    : "";
+  const groupByQuery = relationQuery.groupByQuery
+    ? `GROUP BY ${relationQuery.groupByQuery}`
+    : "";
+  const limitQuery = relationQuery.limitQuery
+    ? `LIMIT ${relationQuery.limitQuery}`
+    : "";
+  const offsetQuery = relationQuery.offsetQuery
+    ? `OFFSET ${relationQuery.offsetQuery}`
+    : "";
+  const havingQuery = relationQuery.havingQuery
+    ? `HAVING ${relationQuery.havingQuery}`
+    : "";
+
+  return {
+    selectQuery,
+    whereQuery,
+    joinQuery,
+    orderByQuery,
+    groupByQuery,
+    limitQuery,
+    offsetQuery,
+    havingQuery,
+  };
 }
 
 function relationTemplates<T extends Model>(
   models: T[],
   relation: Relation,
   relationName: string,
+  relationQuery: RelationQueryBuilder,
   typeofModel: typeof Model,
   dbType: SqlDataSourceType,
-) {
+): {
+  query: string;
+  params: any[];
+} {
   const primaryKey = relation.model.primaryKey;
   const foreignKey = relation.foreignKey as keyof T;
   const relatedModel = relation.relatedModel;
+  const {
+    selectQuery,
+    whereQuery,
+    joinQuery,
+    orderByQuery,
+    groupByQuery,
+    limitQuery,
+    offsetQuery,
+    havingQuery,
+  } = parseRelationQuery(relationQuery);
+  const params = relationQuery.params || [];
 
   const primaryKeyValues = models.map((model) => {
     const value =
@@ -78,18 +182,6 @@ function relationTemplates<T extends Model>(
       ];
     return { value, type: parseValueType(value) };
   });
-
-  const softDeleteColumn = relation.options?.softDeleteColumn;
-  const softDeleteQuery =
-    relation.options?.softDeleteType === "date"
-      ? ` AND ${relatedModel}.${convertCase(
-          softDeleteColumn,
-          typeofModel.databaseCaseConvention,
-        )} IS NULL`
-      : ` AND ${relatedModel}.${convertCase(
-          softDeleteColumn,
-          typeofModel.databaseCaseConvention,
-        )} = false`;
 
   switch (relation.type) {
     case RelationEnum.hasOne:
@@ -109,15 +201,27 @@ function relationTemplates<T extends Model>(
       }
 
       if (!foreignKeyValues.length) {
-        return ``;
+        return {
+          query: "",
+          params: params,
+        };
       }
 
-      return `SELECT *, '${relationName}' as relation_name FROM ${relatedModel} WHERE ${relatedModel}.${convertCase(
+      const query = `SELECT ${selectQuery}, '${relationName}' as relation_name FROM ${relatedModel} 
+${joinQuery} WHERE ${relatedModel}.${convertCase(
         foreignKey,
         typeofModel.databaseCaseConvention,
       )} IN (${primaryKeyValues
         .map(({ value, type }) => convertValueToSQL(value, type))
-        .join(", ")})${softDeleteColumn ? softDeleteQuery : ""};\n`;
+        .join(
+          ", ",
+        )}) ${whereQuery} ${groupByQuery} ${havingQuery} ${orderByQuery} ${limitQuery} ${offsetQuery};
+      `;
+
+      return {
+        query,
+        params,
+      };
 
     case RelationEnum.belongsTo:
       if (foreignKeyValues.some(({ value }) => !value)) {
@@ -136,12 +240,24 @@ function relationTemplates<T extends Model>(
       }
 
       if (!foreignKeyValues.length) {
-        return ``;
+        return {
+          query: "",
+          params: [],
+        };
       }
 
-      return `SELECT *, '${relationName}' as relation_name FROM ${relatedModel} WHERE ${relatedModel}.${primaryKey} IN (${foreignKeyValues
+      const belongsToQuery = `SELECT ${selectQuery}, '${relationName}' as relation_name FROM ${relatedModel} 
+${joinQuery}  WHERE ${relatedModel}.${primaryKey} IN (${foreignKeyValues
         .map(({ value, type }) => convertValueToSQL(value, type))
-        .join(", ")}) ${softDeleteColumn ? softDeleteQuery : ""};\n`;
+        .join(
+          ", ",
+        )}) ${whereQuery} ${groupByQuery} ${havingQuery} ${orderByQuery} ${limitQuery} ${offsetQuery};
+`;
+
+      return {
+        query: belongsToQuery,
+        params: params,
+      };
 
     case RelationEnum.hasMany:
       if (primaryKeyValues.some(({ value }) => !value)) {
@@ -154,15 +270,28 @@ function relationTemplates<T extends Model>(
       }
 
       if (!primaryKeyValues.length) {
-        return ``;
+        return {
+          query: "",
+          params: [],
+        };
       }
 
-      return `SELECT *, '${relationName}' as relation_name FROM ${relatedModel} WHERE ${relatedModel}.${convertCase(
+      const hasManyQuery = `SELECT ${selectQuery}, '${relationName}' as relation_name FROM ${relatedModel} 
+${joinQuery} 
+WHERE ${relatedModel}.${convertCase(
         foreignKey,
         typeofModel.databaseCaseConvention,
       )} IN (${primaryKeyValues
         .map(({ value, type }) => convertValueToSQL(value, type))
-        .join(", ")}) ${softDeleteColumn ? softDeleteQuery : ""};\n`;
+        .join(
+          ", ",
+        )}) ${whereQuery} ${groupByQuery} ${havingQuery} ${orderByQuery} ${limitQuery} ${offsetQuery};
+      `;
+
+      return {
+        query: hasManyQuery,
+        params: params,
+      };
 
     case RelationEnum.manyToMany:
       if (primaryKeyValues.some(({ value }) => !value)) {
@@ -175,7 +304,10 @@ function relationTemplates<T extends Model>(
       }
 
       if (!primaryKeyValues.length) {
-        return ``;
+        return {
+          query: "",
+          params: [],
+        };
       }
 
       const throughModel = (relation as ManyToMany).throughModel;
@@ -202,14 +334,16 @@ function relationTemplates<T extends Model>(
       const relatedModelForeignKey = relatedModelManyToManyRelation.foreignKey;
       const relatedModelColumns = getModelColumns(relation.model);
 
-      return `SELECT ${throughModel}.${convertCase(
+      const manyToManyQuery = `SELECT ${throughModel}.${convertCase(
         throughModelPrimaryKey,
         typeofModel.databaseCaseConvention,
       )} as ${primaryKey}, ${getJsonAggregate(
         `${relatedModelTable}.*`,
         relationName,
         dbType,
-        relatedModelColumns,
+        selectQuery === "*" || !selectQuery
+          ? relatedModelColumns
+          : selectQuery.split(", "),
         typeofModel,
       )}, '${relationName}' as relation_name
 FROM ${throughModel}
@@ -220,20 +354,25 @@ LEFT JOIN ${relatedModelTable} ON ${throughModel}.${convertCase(
         relatedModelPrimaryKey,
         typeofModel.databaseCaseConvention,
       )}
-WHERE ${throughModel}.${convertCase(
+${joinQuery} WHERE ${throughModel}.${convertCase(
         throughModelPrimaryKey,
         typeofModel.databaseCaseConvention,
       )} IN (${primaryKeyValues
         .map(({ value, type }) => convertValueToSQL(value, type))
-        .join(", ")}) ${softDeleteColumn ? softDeleteQuery : ""}
-GROUP BY ${throughModel}.${convertCase(
+        .join(", ")}) ${whereQuery} ${`GROUP BY ${throughModel}.${convertCase(
         throughModelPrimaryKey,
         typeofModel.databaseCaseConvention,
-      )}
-ORDER BY ${throughModel}.${convertCase(
+      )} ${groupByQuery.replace("GROUP BY", "")}`} ${havingQuery} ${`ORDER BY ${throughModel}.${convertCase(
         throughModelPrimaryKey,
         typeofModel.databaseCaseConvention,
-      )};\n`;
+      )} ${orderByQuery.replace("ORDER BY", "")}`} ${limitQuery} ${offsetQuery};
+      `;
+
+      return {
+        query: manyToManyQuery,
+        params: params,
+      };
+
     default:
       throw new Error(`Unknown relation type: ${relation.type}`);
   }

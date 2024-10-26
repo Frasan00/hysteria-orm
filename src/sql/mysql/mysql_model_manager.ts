@@ -1,5 +1,5 @@
 import mysql, { RowDataPacket } from "mysql2/promise";
-import { log, queryError } from "../../utils/logger";
+import { log } from "../../utils/logger";
 import { Model } from "../models/model";
 import { ModelManager } from "../models/model_manager/model_manager";
 import {
@@ -55,7 +55,9 @@ export class MysqlModelManager<T extends Model> extends ModelManager<T> {
     }
 
     if (input.relations) {
-      query.addRelations(input.relations);
+      input.relations.forEach((relation) => {
+        query.with(relation);
+      });
     }
 
     if (input.where) {

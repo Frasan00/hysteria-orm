@@ -10,7 +10,6 @@ import { MysqlQueryBuilder } from "../mysql/mysql_query_builder";
 import { PaginatedData } from "../pagination";
 import { PostgresQueryBuilder } from "../postgres/postgres_query_builder";
 import selectTemplate from "../resources/query/SELECT";
-import { BinaryOperatorType } from "../resources/query/WHERE";
 import { addDynamicColumnsToModel } from "../serializer";
 import { SqlDataSource } from "../sql_data_source";
 import { SqlLiteQueryBuilder } from "../sqlite/sql_lite_query_builder";
@@ -26,6 +25,10 @@ export type ModelQueryBuilder<T extends Model> =
   | PostgresQueryBuilder<T>
   | SqlLiteQueryBuilder<T>;
 
+export type ModelInstanceType<O> = O extends typeof Model
+  ? InstanceType<O>
+  : never;
+
 export type FetchHooks = "beforeFetch" | "afterFetch";
 
 export type OneOptions = {
@@ -36,13 +39,28 @@ export type ManyOptions = {
   ignoreHooks?: FetchHooks[];
 };
 
+export type RelationQueryBuilder = {
+  relation: string;
+  selectedColumns?: string[];
+  whereQuery?: string;
+  params?: any[];
+  joinQuery?: string;
+  groupByQuery?: string;
+  orderByQuery?: string;
+  limitQuery?: string;
+  offsetQuery?: string;
+  havingQuery?: string;
+  dynamicColumns?: string[];
+  ignoreAfterFetchHook?: boolean;
+};
+
 export abstract class QueryBuilder<
   T extends Model,
 > extends WhereQueryBuilder<T> {
   protected selectQuery: string;
   protected modelSelectedColumns: string[];
   protected joinQuery: string;
-  protected relations: string[];
+  protected relations: RelationQueryBuilder[];
   protected dynamicColumns: string[];
   protected groupByQuery: string;
   protected orderByQuery: string;
@@ -193,9 +211,16 @@ export abstract class QueryBuilder<
   ): ModelQueryBuilder<T>;
 
   /**
-   * @description Adds a relation to the query.
+   * @description Adds a relation to the final model.
    */
-  abstract addRelations(relations: RelationType<T>[]): ModelQueryBuilder<T>;
+  abstract with<O extends typeof Model>(
+    relation: RelationType<T>,
+    relatedModel?: O,
+    relatedModelQueryBuilder?: (
+      queryBuilder: ModelQueryBuilder<ModelInstanceType<O>>,
+    ) => void,
+    ignoreHooks?: { beforeFetch?: boolean; afterFetch?: boolean },
+  ): ModelQueryBuilder<T>;
 
   /**
    * @description Adds a the selected dynamic columns from the model into the final model
