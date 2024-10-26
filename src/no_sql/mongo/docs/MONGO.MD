@@ -142,7 +142,7 @@ import { User } from "./models/User";
 
 // Basic query
 const user = await User.query()
-  .where({ name: "Test Name" })
+  .where("name", "Test Name")
   .addDynamicProperty("test")
   .first();
 
@@ -159,12 +159,12 @@ const user = await User.insert({
 
 // Update
 const user = await User.query()
-  .where({ name: "Test Name" })
+  .where("name", "Test Name")
   .update({ name: "New Name" });
 
 // Delete
 const user = await User.query()
-  .where({ name: "Test Name" })
+  .where("name", "Test Name")
   .delete();
 
 // Update record
