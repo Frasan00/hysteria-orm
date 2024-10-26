@@ -150,6 +150,17 @@ export default class SqlModelManagerUtils<T extends Model> {
       let result = await this.getQueryResult(query, params);
       result = Array.isArray(result) ? result : [result];
 
+      // Dynamic columns are added to the model after the query
+      for (const row of result) {
+        if (inputRelation.dynamicColumns?.length) {
+          await (relation.model as any).addDynamicColumns(
+            row[row["relation_name"]],
+            inputRelation.dynamicColumns,
+          );
+        }
+      }
+
+      // Group the result by relation name
       result.forEach((row: any) => {
         const relationName = row.relation_name;
         delete row.relation_name;
@@ -161,6 +172,7 @@ export default class SqlModelManagerUtils<T extends Model> {
       });
     }
 
+    // Map the result to the expected format
     const resultArray: { [relationName: string]: any[] }[] = input.map(
       (inputRelation) => {
         const modelsForRelation = resultMap[inputRelation.relation] || [];

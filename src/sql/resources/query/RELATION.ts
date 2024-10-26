@@ -23,6 +23,9 @@ function convertValueToSQL(value: any, type: string): string {
   }
 }
 
+/**
+ * TODO: MAKE THIS BETTER IN THE FUTURE
+ */
 function getJsonAggregate(
   column: string,
   aggregate: string,
@@ -31,28 +34,68 @@ function getJsonAggregate(
   typeofModel: typeof Model,
 ) {
   column = convertCase(column, typeofModel.databaseCaseConvention);
-  modelColumns = modelColumns.map((column) =>
-    convertCase(column, typeofModel.databaseCaseConvention),
+
+  const parsedColumns = modelColumns.map((column) => {
+    const functionAliasMatch = column.match(/^(\w+\([^()]+\))\s+as\s+(\w+)$/i);
+    const aliasMatch = column.match(/^(.+?)\s+as\s+(\w+)$/i);
+
+    if (functionAliasMatch) {
+      const func = functionAliasMatch[1];
+      const alias = functionAliasMatch[2];
+      return { expression: func, alias, isAggregate: true };
+    }
+
+    if (aliasMatch) {
+      const original = convertCase(
+        aliasMatch[1],
+        typeofModel.databaseCaseConvention,
+      );
+      const alias = aliasMatch[2];
+      return { expression: original, alias, isAggregate: false };
+    }
+
+    const original = convertCase(column, typeofModel.databaseCaseConvention);
+    return { expression: original, alias: column, isAggregate: false };
+  });
+
+  const aggregateColumns = parsedColumns.filter((column) => column.isAggregate);
+  const nonAggregateColumns = parsedColumns.filter(
+    (column) => !column.isAggregate,
   );
 
+  const buildJsonObject = nonAggregateColumns
+    .map(({ expression, alias }) => {
+      const hasDot = expression.includes(".");
+      const valueExpression = hasDot
+        ? expression
+        : `${aggregate}.${expression}`;
+      return `'${alias}', ${valueExpression}`;
+    })
+    .join(", ");
+
+  const aggregateExpressions = aggregateColumns
+    .map(({ expression, alias }) => `${expression} as "${alias}"`)
+    .join(", ");
+
+  let jsonAggregate = "";
   switch (dbType) {
     case "postgres":
-      return `json_agg(json_build_object(${modelColumns
-        .map((column) => `'${column}', ${aggregate}.${column}`)
-        .join(", ")})) as ${aggregate}`;
+      jsonAggregate = `json_agg(json_build_object(${buildJsonObject})) as ${aggregate}`;
+      break;
     case "mysql":
     case "mariadb":
-      return `JSON_ARRAYAGG(JSON_OBJECT(${modelColumns
-        .map((column) => `'${column}', ${aggregate}.${column}`)
-        .join(", ")})) as ${aggregate}`;
+      jsonAggregate = `JSON_ARRAYAGG(JSON_OBJECT(${buildJsonObject})) as ${aggregate}`;
+      break;
     case "sqlite":
-      return `json_group_array(
-json_object(${modelColumns
-        .map((column) => `'${column}', ${aggregate}.${column}`)
-        .join(", ")})
+      jsonAggregate = `json_group_array(
+  json_object(${buildJsonObject})
 ) as ${aggregate}`;
+      break;
     default:
+      throw new Error(`Unsupported database type: ${dbType}`);
   }
+
+  return `${jsonAggregate}${aggregateExpressions ? ", " + aggregateExpressions : ""}`;
 }
 
 function parseRelationQuery(relationQuery: RelationQueryBuilder): {

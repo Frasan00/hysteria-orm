@@ -18,7 +18,7 @@
         - [Belongs To](#belongs-to)
         - [Has Many](#has-many)
         - [Many To Many](#many-to-many)
-        - [In Relation definition you can also specify soft delete behavior](#in-relation-definition-you-can-also-specify-soft-delete-behavior)
+        - [Relation query Builder](#relation-query)
     - [Case Convention](#case-convention)
     - [Upsert](#Upsert-methods)
     - [Create, Update and Delete (with transaction)](#create-update-and-delete-with-transaction)
@@ -358,13 +358,29 @@ export class User extends Model {
 }
 ```
 
-#### In Relation definition you can also specify soft delete behavior
+#### Relation query
+- in the query builder, you can query the relations directly from the with method
 ```typescript
-@manyToMany(() => Address, () => AddressUser, "userId", {
-    softDeleteColumn: "deletedAt",;
-    softDeleteType: "date" | "boolean";
-})
-declare addresses: Address[];
+import { ModelQueryBuilder } from "hysteria-orm";
+import { User } from "./User";
+import { Post } from "./Post";
+import { Address } from "./Address";
+
+const user: User | null = await User.query()
+    .with('post', Post, (query: ModelQueryBuilder<Post>) => {
+        query.where("title", "Post title");
+    })
+    .where("name", "John Doe")
+    .one();
+
+// you can also query on the join table
+const user: User | null = await User.query()
+    .with('address', Address, (query: ModelQueryBuilder<Address>) => {
+        query.where("street", "Main street")
+            .andWhere("user_addresses.primary", true);
+    })
+    .where("name", "John Doe")
+    .one();
 ```
 
 ### Case Convention

@@ -454,7 +454,20 @@ test(" test with relation query builder", async () => {
 
   const usersWithAddresses = await User.query()
     .with("addresses", Address, (query: ModelQueryBuilder<Address>) => {
-      query.select("id", "city", "street").where("city", "City 1");
+      query
+        .select(
+          "addresses.id",
+          "city",
+          "street",
+          "user_addresses.user_id as user_address_user_id",
+          "city as SUPER_CITY",
+          "SUM(1) as count",
+          "MAX(1) as max",
+          "addresses.id as test_id",
+          "SUM(addresses.id) as sumTest",
+        )
+        .where("city", "City 1")
+        .addDynamicColumns(["getTest"]);
     })
     .many();
 

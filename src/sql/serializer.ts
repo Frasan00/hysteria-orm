@@ -23,13 +23,18 @@ export async function parseDatabaseDataIntoModelResponse<T extends Model>(
     return null;
   }
 
+  const modelColumns = getModelColumns(typeofModel);
   const relations = getRelations(typeofModel);
 
   const serializedModels = models.map((model) => {
     const serializedModel = serializeModel(model, typeofModel);
     processRelation(serializedModel, typeofModel, relations, relationModels);
     addNullModelColumns(typeofModel, serializedModel);
-    removeNonModelSelectedColumns(serializedModel, modelSelectedColumns);
+    removeNonModelSelectedColumns(
+      serializedModel,
+      modelColumns,
+      modelSelectedColumns,
+    );
 
     return serializedModel;
   });
@@ -109,6 +114,7 @@ function addNullModelColumns(
 
 function removeNonModelSelectedColumns(
   serializedModel: Record<string, any>,
+  modelColumns: string[],
   modelSelectedColumns: string[],
 ) {
   if (!modelSelectedColumns.length || modelSelectedColumns.includes("*")) {
@@ -116,7 +122,11 @@ function removeNonModelSelectedColumns(
   }
 
   Object.keys(serializedModel).forEach((key) => {
-    if (!modelSelectedColumns.includes(key) && key != "$additionalColumns") {
+    if (
+      !modelSelectedColumns.includes(key) &&
+      key != "$additionalColumns" &&
+      modelColumns.includes(key)
+    ) {
       delete serializedModel[key];
     }
   });
