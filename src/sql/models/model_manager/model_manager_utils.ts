@@ -1,7 +1,7 @@
 import mysql from "mysql2/promise";
 import pg from "pg";
 import sqlite3 from "sqlite3";
-import { log, queryError } from "../../../utils/logger";
+import logger, { log, queryError } from "../../../utils/logger";
 import deleteTemplate from "../../resources/query/DELETE";
 import insertTemplate from "../../resources/query/INSERT";
 import relationTemplates from "../../resources/query/RELATION";
@@ -97,7 +97,9 @@ export default class SqlModelManagerUtils<T extends Model> {
     typeofModel: typeof Model,
   ): Relation {
     const relations = getRelations(typeofModel);
-    const relation = relations.find((r) => r.columnName === relationField);
+    const relation = relations.find(
+      (relation) => relation.columnName === relationField,
+    );
     if (!relation) {
       throw new Error(
         `Relation ${relationField} not found in model ${typeofModel}`,
@@ -107,11 +109,11 @@ export default class SqlModelManagerUtils<T extends Model> {
     return relation;
   }
 
-  // Parses and fills input relations directly into the model
   async parseQueryBuilderRelations(
     models: T[],
     typeofModel: typeof Model,
     input: string[],
+    dbType: SqlDataSourceType,
     logs: boolean,
   ): Promise<{ [relationName: string]: Model[] }[]> {
     if (!input.length) {
@@ -122,42 +124,49 @@ export default class SqlModelManagerUtils<T extends Model> {
       throw new Error(`Model ${typeofModel} does not have a primary key`);
     }
 
-    let relationQuery: string = "";
-    const relationQueries: string[] = [];
-    const relationMap: { [key: string]: string } = {};
+    const resultMap: { [key: string]: any[] } = {};
 
-    input.forEach((inputRelation: string) => {
+    for (const inputRelation of input) {
       const relation = this.getRelationFromModel(inputRelation, typeofModel);
       const query = relationTemplates(
         models,
         relation,
         inputRelation,
         typeofModel,
+        dbType,
       );
-      relationQueries.push(query);
-      relationMap[inputRelation] = query;
-    });
 
-    relationQuery = relationQueries.join(" UNION ALL ");
-    log(relationQuery, logs);
-
-    let result = await this.getQueryResult(relationQuery);
-    result = Array.isArray(result) ? result : [result];
-    const resultMap: { [key: string]: any[] } = {};
-    result.forEach((row: any) => {
-      const relationName = row.relation_name;
-      delete row.relation_name;
-      if (!resultMap[relationName]) {
-        resultMap[relationName] = [];
+      if (!query) {
+        resultMap[inputRelation] = [];
+        continue;
       }
 
-      resultMap[relationName].push(row);
-    });
+      log(query, logs);
+      let result = await this.getQueryResult(query);
+      result = Array.isArray(result) ? result : [result];
 
-    // Ensure all input relations are included in the result
+      result.forEach((row: any) => {
+        const relationName = row.relation_name;
+        delete row.relation_name;
+        if (!resultMap[relationName]) {
+          resultMap[relationName] = [];
+        }
+
+        resultMap[relationName].push(row);
+      });
+    }
+
     const resultArray: { [relationName: string]: any[] }[] = input.map(
       (inputRelation) => {
         const modelsForRelation = resultMap[inputRelation] || [];
+
+        // Some databases return JSON as string so we need to parse it
+        modelsForRelation.forEach((model) => {
+          if (typeof model[inputRelation] === "string") {
+            model.addresses = JSON.parse(model[inputRelation]);
+          }
+        });
+
         return {
           [inputRelation]: modelsForRelation,
         };

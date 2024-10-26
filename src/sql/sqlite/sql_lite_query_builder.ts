@@ -91,6 +91,7 @@ export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
         [modelInstance],
         this.model,
         this.relations,
+        "sqlite",
         this.logs,
       );
 
@@ -157,6 +158,7 @@ export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
         models,
         this.model,
         this.relations,
+        "sqlite",
         this.logs,
       );
 

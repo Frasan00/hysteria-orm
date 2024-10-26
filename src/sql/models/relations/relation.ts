@@ -14,6 +14,7 @@ export enum RelationEnum {
   hasOne = "hasOne", // One to One without foreign key
   belongsTo = "belongsTo", // One to One with foreign key
   hasMany = "hasMany",
+  manyToMany = "manyToMany",
 }
 
 export function isRelationDefinition(

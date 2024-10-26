@@ -1,13 +1,15 @@
 import { DateTime } from "luxon";
 import { Post } from "./Post";
-import { ModelQueryBuilder } from "./sql/query_builder/query_builder";
-import { Model } from "../src/sql/models/model";
+import { ModelQueryBuilder } from "../sql/query_builder/query_builder";
+import { Model } from "../../src/sql/models/model";
 import {
   column,
   hasMany,
   hasOne,
   dynamicColumn,
-} from "../src/sql/models/model_decorators";
+  manyToMany,
+} from "../../src/sql/models/model_decorators";
+import { Address } from "./Address";
 
 export class User extends Model {
   static tableName: string = "users";
@@ -43,6 +45,9 @@ export class User extends Model {
 
   @hasOne(() => Post, "userId")
   declare post: Post;
+
+  @manyToMany(() => Address, "user_addresses", "userId")
+  declare addresses: Address[];
 
   static beforeFetch(queryBuilder: ModelQueryBuilder<User>): void {
     queryBuilder.whereNull("deletedAt");

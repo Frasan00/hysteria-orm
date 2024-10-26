@@ -109,6 +109,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
         [modelInstance],
         this.model,
         this.relations,
+        "postgres",
         this.logs,
       );
 
@@ -177,6 +178,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
         models,
         this.model,
         this.relations,
+        "postgres",
         this.logs,
       );
 

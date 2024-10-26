@@ -7,6 +7,7 @@ import {
   getModelColumns,
   getDynamicColumns,
 } from "./models/model_decorators";
+import { ManyToMany } from "./models/relations/many_to_many";
 import {
   isRelationDefinition,
   Relation,
@@ -172,38 +173,57 @@ function processRelation(
     switch (relation.type) {
       case RelationEnum.belongsTo:
         const relatedModelMap = new Map<any, Model>();
+        const casedPrimaryKey = convertCase(
+          primaryKey,
+          typeofModel.databaseCaseConvention,
+        ) as keyof Model;
+
         relatedModels.forEach((model) => {
-          relatedModelMap.set(model[primaryKey as keyof Model], model);
+          relatedModelMap.set(model[casedPrimaryKey as keyof Model], model);
         });
 
         const retrievedRelatedModel = relatedModelMap.get(
           serializedModel[foreignKey as keyof Model],
         );
 
-        if (retrievedRelatedModel) {
-          serializedModel[relation.columnName] = serializeModel(
-            retrievedRelatedModel,
-            relation.model,
-          );
+        if (!retrievedRelatedModel) {
+          serializedModel[relation.columnName] = null;
+          return;
         }
+
+        serializedModel[relation.columnName] = serializeModel(
+          retrievedRelatedModel,
+          relation.model,
+        );
         break;
 
       case RelationEnum.hasOne:
         const relatedModelMapHasOne = new Map<any, Model>();
+        const casedForeignKey = convertCase(
+          foreignKey,
+          typeofModel.databaseCaseConvention,
+        ) as keyof Model;
+
         relatedModels.forEach((model) => {
-          relatedModelMapHasOne.set(model[foreignKey as keyof Model], model);
+          relatedModelMapHasOne.set(
+            model[casedForeignKey as keyof Model],
+            model,
+          );
         });
 
         const retrievedRelatedModelHasOne = relatedModelMapHasOne.get(
-          serializedModel[foreignKey as keyof Model],
+          serializedModel[primaryKey as keyof Model],
         );
 
-        if (retrievedRelatedModelHasOne) {
-          serializedModel[relation.columnName] = serializeModel(
-            retrievedRelatedModelHasOne,
-            relation.model,
-          );
+        if (!retrievedRelatedModelHasOne) {
+          serializedModel[relation.columnName] = null;
+          return;
         }
+
+        serializedModel[relation.columnName] = serializeModel(
+          retrievedRelatedModelHasOne,
+          relation.model,
+        );
         break;
 
       case RelationEnum.hasMany:
@@ -223,6 +243,30 @@ function processRelation(
         );
         break;
 
+      case RelationEnum.manyToMany:
+        // Create a map of related models keyed by their primary keys
+        const relatedModelMapManyToMany = new Map<any, Model>();
+        relatedModels.forEach((model) => {
+          relatedModelMapManyToMany.set(
+            model[primaryKey as keyof Model],
+            model,
+          );
+        });
+
+        const currentModelId = serializedModel[primaryKey as keyof Model];
+        const relatedModel = relatedModelMapManyToMany.get(currentModelId);
+
+        if (!relatedModel) {
+          serializedModel[relation.columnName] = [];
+          return;
+        }
+
+        serializedModel[relation.columnName] = relatedModel[
+          relation.columnName as keyof Model
+        ].map((relatedItem: Model) =>
+          serializeModel(relatedItem, relation.model),
+        );
+        break;
       default:
         throw new Error("Relation type not supported");
     }

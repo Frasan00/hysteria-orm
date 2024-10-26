@@ -1,7 +1,10 @@
 import { convertCase } from "../../../utils/case_utils";
 import logger from "../../../utils/logger";
 import { Model } from "../../models/model";
+import { getModelColumns, getRelations } from "../../models/model_decorators";
+import { ManyToMany } from "../../models/relations/many_to_many";
 import { Relation, RelationEnum } from "../../models/relations/relation";
+import { SqlDataSourceType } from "../../sql_data_source";
 
 function parseValueType(value: any): string {
   return typeof value;
@@ -19,11 +22,36 @@ function convertValueToSQL(value: any, type: string): string {
   }
 }
 
+function getJsonAggregate(
+  column: string,
+  aggregate: string,
+  dbType: SqlDataSourceType,
+  modelColumns: string[],
+) {
+  switch (dbType) {
+    case "postgres":
+      return `json_agg(${column}) as ${aggregate}`;
+    case "mysql":
+    case "mariadb":
+      return `JSON_ARRAYAGG(JSON_OBJECT(${modelColumns
+        .map((column) => `'${column}', ${aggregate}.${column}`)
+        .join(", ")})) as ${aggregate}`;
+    case "sqlite":
+      return `json_group_array(
+json_object(${modelColumns
+        .map((column) => `'${column}', ${aggregate}.${column}`)
+        .join(", ")})
+) as ${aggregate}`;
+    default:
+  }
+}
+
 function relationTemplates<T extends Model>(
   models: T[],
   relation: Relation,
   relationName: string,
   typeofModel: typeof Model,
+  dbType: SqlDataSourceType,
 ) {
   const primaryKey = relation.model.primaryKey;
   const foreignKey = relation.foreignKey as keyof T;
@@ -61,35 +89,10 @@ function relationTemplates<T extends Model>(
     case RelationEnum.hasOne:
       if (primaryKeyValues.some(({ value }) => !value)) {
         logger.error(
-          `Invalid primaryKey values for ${typeofModel.name}, ${primaryKeyValues
-            .map(({ value }) => value)
-            .join(", ")}`,
+          `Foreign key values are missing for has one relation: ${relationName} ${foreignKeyValues}`,
         );
         throw new Error(
-          `Invalid primaryKey values for ${typeofModel.name}, ${primaryKeyValues
-            .map(({ value }) => value)
-            .join(", ")}`,
-        );
-      }
-
-      return `SELECT *, '${relationName}' as relation_name FROM ${relatedModel} WHERE ${relatedModel}.${convertCase(
-        foreignKey,
-        typeofModel.databaseCaseConvention,
-      )} IN (${primaryKeyValues
-        .map(({ value, type }) => convertValueToSQL(value, type))
-        .join(", ")})${softDeleteColumn ? softDeleteQuery : ""};`;
-
-    case RelationEnum.belongsTo:
-      if (foreignKeyValues.some(({ value }) => !value)) {
-        logger.error(
-          `Invalid foreignKey values for ${relatedModel}, ${foreignKeyValues
-            .map(({ value }) => value)
-            .join(", ")}`,
-        );
-        throw new Error(
-          `Invalid foreignKey values for ${relatedModel}, ${foreignKeyValues
-            .map(({ value }) => value)
-            .join(", ")}`,
+          `Foreign key values are missing for has one relation: ${relationName} ${foreignKeyValues}`,
         );
       }
 
@@ -99,18 +102,8 @@ function relationTemplates<T extends Model>(
         );
       }
 
-      return `SELECT *, '${relationName}' as relation_name FROM ${relatedModel} WHERE ${relatedModel}.${primaryKey} IN (${foreignKeyValues
-        .map(({ value, type }) => convertValueToSQL(value, type))
-        .join(", ")}) ${softDeleteColumn ? softDeleteQuery : ""};`;
-
-    case RelationEnum.hasMany:
-      if (primaryKeyValues.some(({ value }) => !value)) {
-        logger.error(
-          `Invalid primaryKey values: ${primaryKeyValues.map(
-            ({ value }) => value,
-          )}`,
-        );
-        throw new Error("Invalid primaryKey values");
+      if (!foreignKeyValues.length) {
+        return ``;
       }
 
       return `SELECT *, '${relationName}' as relation_name FROM ${relatedModel} WHERE ${relatedModel}.${convertCase(
@@ -118,8 +111,118 @@ function relationTemplates<T extends Model>(
         typeofModel.databaseCaseConvention,
       )} IN (${primaryKeyValues
         .map(({ value, type }) => convertValueToSQL(value, type))
-        .join(", ")}) ${softDeleteColumn ? softDeleteQuery : ""};`;
+        .join(", ")})${softDeleteColumn ? softDeleteQuery : ""};\n`;
 
+    case RelationEnum.belongsTo:
+      if (foreignKeyValues.some(({ value }) => !value)) {
+        logger.error(
+          `Foreign key values are missing for belongs to relation: ${relationName} ${foreignKeyValues}`,
+        );
+        throw new Error(
+          `Foreign key values are missing for belongs to relation: ${relationName} ${foreignKeyValues}`,
+        );
+      }
+
+      if (!primaryKey) {
+        throw new Error(
+          `Related Model ${relatedModel} does not have a primary key`,
+        );
+      }
+
+      if (!foreignKeyValues.length) {
+        return ``;
+      }
+
+      return `SELECT *, '${relationName}' as relation_name FROM ${relatedModel} WHERE ${relatedModel}.${primaryKey} IN (${foreignKeyValues
+        .map(({ value, type }) => convertValueToSQL(value, type))
+        .join(", ")}) ${softDeleteColumn ? softDeleteQuery : ""};\n`;
+
+    case RelationEnum.hasMany:
+      if (primaryKeyValues.some(({ value }) => !value)) {
+        logger.error(
+          `Primary key values are missing for has many relation: ${relationName} ${primaryKeyValues}`,
+        );
+        throw new Error(
+          `Primary key values are missing for has many relation: ${relationName} ${primaryKeyValues}`,
+        );
+      }
+
+      if (!primaryKeyValues.length) {
+        return ``;
+      }
+
+      return `SELECT *, '${relationName}' as relation_name FROM ${relatedModel} WHERE ${relatedModel}.${convertCase(
+        foreignKey,
+        typeofModel.databaseCaseConvention,
+      )} IN (${primaryKeyValues
+        .map(({ value, type }) => convertValueToSQL(value, type))
+        .join(", ")}) ${softDeleteColumn ? softDeleteQuery : ""};\n`;
+
+    case RelationEnum.manyToMany:
+      if (primaryKeyValues.some(({ value }) => !value)) {
+        logger.error(
+          `Primary key values are missing for many to many relation: ${relationName} ${primaryKeyValues}`,
+        );
+        throw new Error(
+          `Primary key values are missing for many to many relation: ${relationName} ${primaryKeyValues}`,
+        );
+      }
+
+      if (!primaryKeyValues.length) {
+        return ``;
+      }
+
+      const throughModel = (relation as ManyToMany).throughModel;
+      const throughModelPrimaryKey = (relation as ManyToMany).foreignKey;
+      const relatedModelTable = (relation as ManyToMany).relatedModel;
+      const relatedModelPrimaryKey = (relation as ManyToMany).model.primaryKey;
+
+      const relatedModeRelations = getRelations(relation.model);
+      const relatedModelManyToManyRelation = relatedModeRelations.find(
+        (relation) =>
+          relation.type === RelationEnum.manyToMany &&
+          (relation as ManyToMany).throughModel === throughModel,
+      );
+
+      if (
+        !relatedModelManyToManyRelation ||
+        !relatedModelManyToManyRelation.foreignKey
+      ) {
+        throw new Error(
+          `Many to many relation not found for related model ${relatedModel} and through model ${throughModel}, the error is likely in the relation definition and was called by relation ${relationName} in model ${typeofModel.tableName}`,
+        );
+      }
+
+      const relatedModelForeignKey = relatedModelManyToManyRelation.foreignKey;
+      const relatedModelColumns = getModelColumns(relation.model);
+
+      return `SELECT ${throughModel}.${convertCase(
+        throughModelPrimaryKey,
+        typeofModel.databaseCaseConvention,
+      )} as ${primaryKey}, ${getJsonAggregate(
+        `${relatedModelTable}.*`,
+        relationName,
+        dbType,
+        relatedModelColumns,
+      )}, '${relationName}' as relation_name
+FROM ${throughModel}
+LEFT JOIN ${relatedModelTable} ON ${throughModel}.${convertCase(
+        relatedModelForeignKey,
+        typeofModel.databaseCaseConvention,
+      )} = ${relatedModelTable}.${convertCase(
+        relatedModelPrimaryKey,
+        typeofModel.databaseCaseConvention,
+      )}
+WHERE ${throughModel}.${convertCase(
+        throughModelPrimaryKey,
+        typeofModel.databaseCaseConvention,
+      )} IN (${primaryKeyValues
+        .map(({ value, type }) => convertValueToSQL(value, type))
+        .join(", ")}) ${softDeleteColumn ? softDeleteQuery : ""}
+GROUP BY ${throughModel}.${convertCase(
+        throughModelPrimaryKey,
+        typeofModel.databaseCaseConvention,
+      )};\n`;
     default:
       throw new Error(`Unknown relation type: ${relation.type}`);
   }

@@ -81,7 +81,8 @@ interface RelationOptions {
 declare enum RelationEnum {
     hasOne = "hasOne",// One to One without foreign key
     belongsTo = "belongsTo",// One to One with foreign key
-    hasMany = "hasMany"
+    hasMany = "hasMany",
+    manyToMany = "manyToMany"
 }
 /**
  * Main Model -> Related Model
@@ -182,7 +183,7 @@ declare class SqlModelManagerUtils<T extends Model> {
         params: any[];
     };
     private getRelationFromModel;
-    parseQueryBuilderRelations(models: T[], typeofModel: typeof Model, input: string[], logs: boolean): Promise<{
+    parseQueryBuilderRelations(models: T[], typeofModel: typeof Model, input: string[], dbType: SqlDataSourceType, logs: boolean): Promise<{
         [relationName: string]: Model[];
     }[]>;
     private getQueryResult;
@@ -1726,20 +1727,14 @@ interface ColumnOptions {
 }
 /**
  * @description Decorator to define a column in the model
- * @param options - Options for the column
- * @returns
  */
 declare function column(options?: ColumnOptions): PropertyDecorator;
 /**
  * @description Defines a dynamic calculated column that is not defined inside the Table, it must be added to a query in order to be retrieved
- * @param columnName that will be filled inside the dynamicColumn field
- * @returns
  */
 declare function dynamicColumn(columnName: string): PropertyDecorator;
 /**
  * @description Returns the columns of the model, columns must be decorated with the column decorator
- * @param target Model
- * @returns
  */
 declare function getModelColumns(target: typeof Model): string[];
 /**
@@ -1747,38 +1742,22 @@ declare function getModelColumns(target: typeof Model): string[];
  */
 /**
  * @description Establishes a belongs to relation with the given model
- * @param model - callback that returns the related model
- * @param foreignKey - the foreign key in the current model that defines the relation
- * @param options - Options for the relation
- * @returns
  */
 declare function belongsTo(model: () => typeof Model, foreignKey: string, options?: RelationOptions): PropertyDecorator;
 /**
  * @description Establishes a has one relation with the given model
- * @param model - callback that returns the related model
- * @param foreignKey - the foreign key in the relation model that defines the relation
- * @param options - Options for the relation
- * @returns
  */
 declare function hasOne(model: () => typeof Model, foreignKey: string, options?: RelationOptions): PropertyDecorator;
 /**
  * @description Establishes a has many relation with the given model
- * @param model - callback that returns the related model
- * @param foreignKey - the foreign key in the relation model that defines the relation
- * @param options - Options for the relation
- * @returns
  */
 declare function hasMany(model: () => typeof Model, foreignKey: string, options?: RelationOptions): PropertyDecorator;
 /**
  * @description Returns the relations of the model
- * @param target Model
- * @returns
  */
 declare function getRelations(target: typeof Model): Relation[];
 /**
  * @description Returns the primary key of the model
- * @param target Model
- * @returns
  */
 declare function getPrimaryKey(target: typeof Model): string;
 

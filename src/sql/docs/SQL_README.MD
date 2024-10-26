@@ -187,9 +187,10 @@ export class User extends Model {
 
 ```typescript
 import "reflect-metadata";
-import { Model, Has_one, Has_many, column, hasOne, ModelQueryBuilder } from "hysteria-orm";
+import { Model, Has_one, Has_many, column, hasOne, manyToMany, ModelQueryBuilder } from "hysteria-orm";
 import { Profile } from "./Profile";
 import { Post } from "./Post";
+import { Address } from "./Address";
 
 export class User extends Model {
     @column({ primaryKey: true })
@@ -223,6 +224,9 @@ export class User extends Model {
     */
     @hasMany(() => Post, "userId", { softDeleteColumn: "deletedAt", softDeleteType: "date" })
     declare posts: Post[];
+
+    // Many to many relations, params: (table, pivotTable, localForeignKey, relatedForeignKey)
+    @manyToMany(() => Address, "user_address", "userId", "addressId",)
 
     // Hooks
     static beforeFetch(queryBuilder: ModelQueryBuilder<User>) {

@@ -1,6 +1,6 @@
 import { DateTime } from "luxon";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
-import { User } from "../../User";
+import { User } from "../../sql_models/User";
 
 let sql: SqlDataSource | null = null;
 beforeAll(async () => {

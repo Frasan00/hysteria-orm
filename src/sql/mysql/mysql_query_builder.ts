@@ -93,6 +93,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
         [modelInstance],
         this.model,
         this.relations,
+        "mysql",
         this.logs,
       );
 
@@ -162,6 +163,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
         models,
         this.model,
         this.relations,
+        "mysql",
         this.logs,
       );
 

@@ -2,6 +2,7 @@ import { Model as Entity } from "./model";
 import { BelongsTo } from "./relations/belongs_to";
 import { HasMany } from "./relations/has_many";
 import { HasOne } from "./relations/has_one";
+import { ManyToMany } from "./relations/many_to_many";
 import { RelationEnum, RelationOptions, Relation } from "./relations/relation";
 
 type LazyRelationEnum = {
@@ -10,6 +11,11 @@ type LazyRelationEnum = {
   model: () => typeof Entity;
   foreignKey: string;
   options?: RelationOptions;
+
+  // Only for many to many
+  manyToManyOptions?: {
+    throughModel: string;
+  };
 };
 
 /**
@@ -29,8 +35,6 @@ const RELATION_METADATA_KEY = Symbol("relations");
 
 /**
  * @description Decorator to define a column in the model
- * @param options - Options for the column
- * @returns
  */
 export function column(
   options: ColumnOptions = { primaryKey: false, booleanColumn: false },
@@ -64,8 +68,6 @@ export function column(
 
 /**
  * @description Defines a dynamic calculated column that is not defined inside the Table, it must be added to a query in order to be retrieved
- * @param columnName that will be filled inside the dynamicColumn field
- * @returns
  */
 export function dynamicColumn(columnName: string): PropertyDecorator {
   return (target: Object, propertyKey: string | symbol) => {
@@ -88,8 +90,6 @@ export function dynamicColumn(columnName: string): PropertyDecorator {
 
 /**
  * @description Returns the columns of the model, columns must be decorated with the column decorator
- * @param target Model
- * @returns
  */
 export function getModelColumns(target: typeof Entity): string[] {
   return Reflect.getMetadata(COLUMN_METADATA_KEY, target.prototype) || [];
@@ -97,8 +97,6 @@ export function getModelColumns(target: typeof Entity): string[] {
 
 /**
  * @description Returns the boolean columns of the model
- * @param target Model
- * @returns
  */
 export function getModelBooleanColumns(target: typeof Entity): string[] {
   return (
@@ -112,10 +110,6 @@ export function getModelBooleanColumns(target: typeof Entity): string[] {
 
 /**
  * @description Establishes a belongs to relation with the given model
- * @param model - callback that returns the related model
- * @param foreignKey - the foreign key in the current model that defines the relation
- * @param options - Options for the relation
- * @returns
  */
 export function belongsTo(
   model: () => typeof Entity,
@@ -138,10 +132,6 @@ export function belongsTo(
 
 /**
  * @description Establishes a has one relation with the given model
- * @param model - callback that returns the related model
- * @param foreignKey - the foreign key in the relation model that defines the relation
- * @param options - Options for the relation
- * @returns
  */
 export function hasOne(
   model: () => typeof Entity,
@@ -164,10 +154,6 @@ export function hasOne(
 
 /**
  * @description Establishes a has many relation with the given model
- * @param model - callback that returns the related model
- * @param foreignKey - the foreign key in the relation model that defines the relation
- * @param options - Options for the relation
- * @returns
  */
 export function hasMany(
   model: () => typeof Entity,
@@ -189,9 +175,34 @@ export function hasMany(
 }
 
 /**
+ * @description Establishes a many to many relation with the given model
+ */
+export function manyToMany(
+  model: () => typeof Entity,
+  throughModel: string,
+  foreignKey: string,
+  options?: RelationOptions,
+): PropertyDecorator {
+  return (target: Object, propertyKey: string | symbol) => {
+    const relation: LazyRelationEnum = {
+      type: RelationEnum.manyToMany,
+      columnName: propertyKey as string,
+      model,
+      foreignKey,
+      options,
+      manyToManyOptions: {
+        throughModel,
+      },
+    };
+
+    const relations = Reflect.getMetadata(RELATION_METADATA_KEY, target) || [];
+    relations.push(relation);
+    Reflect.defineMetadata(RELATION_METADATA_KEY, relations, target);
+  };
+}
+
+/**
  * @description Returns the relations of the model
- * @param target Model
- * @returns
  */
 export function getRelations(target: typeof Entity): Relation[] {
   const relations =
@@ -205,6 +216,18 @@ export function getRelations(target: typeof Entity): Relation[] {
         return new HasOne(model(), columnName, foreignKey, options);
       case RelationEnum.hasMany:
         return new HasMany(model(), columnName, foreignKey, options);
+      case RelationEnum.manyToMany:
+        if (!relation.manyToManyOptions) {
+          throw new Error("Many to many relation must have a through model");
+        }
+
+        return new ManyToMany(
+          model(),
+          columnName,
+          relation.manyToManyOptions.throughModel,
+          relation.foreignKey,
+          options,
+        );
       default:
         throw new Error(`Unknown relation type: ${type}`);
     }
@@ -213,8 +236,6 @@ export function getRelations(target: typeof Entity): Relation[] {
 
 /**
  * @description Returns the primary key of the model
- * @param target Model
- * @returns
  */
 export function getPrimaryKey(target: typeof Entity): string {
   return Reflect.getMetadata(PRIMARY_KEY_METADATA_KEY, target.prototype);

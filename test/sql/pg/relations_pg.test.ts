@@ -1,5 +1,6 @@
-import { User } from "../../User";
-import { Post } from "../../Post";
+import { User } from "../../sql_models/User";
+import { Post } from "../../sql_models/Post";
+import { Address } from "../../sql_models/Address";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
 
 let sql: SqlDataSource | null = null;
@@ -164,4 +165,50 @@ test("Raw join users and posts", async () => {
   expect(joinedUsersAndPosts.length).toBe(1);
   expect(joinedUsersAndPosts[0].$additionalColumns.title).toBe("Post 1");
   expect(joinedUsersAndPosts[0].$additionalColumns.superUserEmail).toBe("test");
+});
+
+test("Create a new user with addresses", async () => {
+  const user = await User.insert({
+    name: "Alice",
+    email: "test",
+    signupSource: "test",
+    isActive: true,
+  });
+
+  if (!user) {
+    throw new Error("User not created");
+  }
+
+  const address1 = await Address.insert({
+    street: "Street 1",
+    city: "City 1",
+    state: "State 1",
+  });
+
+  if (!address1) {
+    throw new Error("Address not created");
+  }
+
+  const address2 = await Address.insert({
+    street: "Street 2",
+    city: "City 2",
+    state: "State 2",
+  });
+
+  if (!address2) {
+    throw new Error("Address not created");
+  }
+
+  await sql?.rawQuery(
+    "INSERT INTO user_addresses (user_id, address_id) VALUES ($1, $2), ($3, $4)",
+    [user.id, address1.id, user.id, address2.id],
+  );
+
+  const users = await User.query().addRelations(["addresses"]).many();
+  expect(users).not.toBeNull();
+  expect(users.length).toBe(1);
+  expect(users[0].addresses).not.toBeNull();
+  expect(users[0].addresses.length).toBe(2);
+  expect(users[0].addresses[0].street).toBe("Street 1");
+  expect(users[0].addresses[1].street).toBe("Street 2");
 });
