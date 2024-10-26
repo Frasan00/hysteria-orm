@@ -851,6 +851,10 @@ declare function hasOne(model: () => typeof Model, foreignKey: string): Property
  */
 declare function hasMany(model: () => typeof Model, foreignKey: string): PropertyDecorator;
 /**
+ * @description Establishes a many to many relation with the given model
+ */
+declare function manyToMany(model: () => typeof Model, throughModel: (() => typeof Model) | string, foreignKey: string): PropertyDecorator;
+/**
  * @description Returns the relations of the model
  */
 declare function getRelations(target: typeof Model): Relation[];
@@ -2679,6 +2683,7 @@ declare const _default: {
     belongsTo: typeof belongsTo;
     hasOne: typeof hasOne;
     hasMany: typeof hasMany;
+    manyToMany: typeof manyToMany;
     Relation: typeof Relation;
     SqlDataSource: typeof SqlDataSource;
     Migration: typeof Migration;
@@ -2692,4 +2697,4 @@ declare const _default: {
     dynamicColumn: typeof dynamicColumn;
 };
 
-export { type CaseConvention, Collection, type DataSourceInput, Migration, Model, type ModelQueryBuilder, MongoDataSource, type PaginatedData, type PaginationMetadata, RedisDataSource as Redis, type RedisGiveable, type RedisStorable, Relation, SqlDataSource, StandaloneQueryBuilder, belongsTo, column, _default as default, dynamicProperty, getCollectionProperties, getModelColumns, getMongoDynamicProperties, getPrimaryKey, getRelations, hasMany, hasOne, property };
+export { type CaseConvention, Collection, type DataSourceInput, Migration, Model, type ModelQueryBuilder, MongoDataSource, type PaginatedData, type PaginationMetadata, RedisDataSource as Redis, type RedisGiveable, type RedisStorable, Relation, SqlDataSource, StandaloneQueryBuilder, belongsTo, column, _default as default, dynamicProperty, getCollectionProperties, getModelColumns, getMongoDynamicProperties, getPrimaryKey, getRelations, hasMany, hasOne, manyToMany, property };
