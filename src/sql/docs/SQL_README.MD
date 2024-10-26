@@ -361,7 +361,7 @@ export class User extends Model {
 
 #### Relation query
 - in the query builder, you can query the relations directly from the with method
-- The result is natturally affected by the target beforeFetch and afterFetch hooks, but they can be ignored with the ignoreHooks property
+- The result is naturally affected by the target beforeFetch and afterFetch hooks, but they can be ignored with the ignoreHooks property
 ```typescript
 import { ModelQueryBuilder } from "hysteria-orm";
 import { User } from "./User";
