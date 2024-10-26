@@ -225,8 +225,8 @@ export class User extends Model {
     @hasMany(() => Post, "userId", { softDeleteColumn: "deletedAt", softDeleteType: "date" })
     declare posts: Post[];
 
-    // Many to many relations, params: (table, pivotTable, localForeignKey, relatedForeignKey)
-    @manyToMany(() => Address, "user_address", "userId", "addressId",)
+    // Many to many relations, params: (table, pivotTable, localForeignKey)
+    @manyToMany(() => Address, "user_address", "userId")
 
     // Hooks
     static beforeFetch(queryBuilder: ModelQueryBuilder<User>) {
