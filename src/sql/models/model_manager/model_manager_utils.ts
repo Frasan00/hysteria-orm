@@ -10,6 +10,7 @@ import { SqlDataSourceType, SqlConnectionType } from "../../sql_data_source";
 import { Model } from "../model";
 import { getRelations } from "../model_decorators";
 import { Relation } from "../relations/relation";
+import { RelationQueryBuilder } from "../../query_builder/query_builder";
 
 export default class SqlModelManagerUtils<T extends Model> {
   private dbType: SqlDataSourceType;
@@ -112,7 +113,7 @@ export default class SqlModelManagerUtils<T extends Model> {
   async parseQueryBuilderRelations(
     models: T[],
     typeofModel: typeof Model,
-    input: string[],
+    input: RelationQueryBuilder[],
     dbType: SqlDataSourceType,
     logs: boolean,
   ): Promise<{ [relationName: string]: Model[] }[]> {
@@ -127,22 +128,26 @@ export default class SqlModelManagerUtils<T extends Model> {
     const resultMap: { [key: string]: any[] } = {};
 
     for (const inputRelation of input) {
-      const relation = this.getRelationFromModel(inputRelation, typeofModel);
-      const query = relationTemplates(
+      const relation = this.getRelationFromModel(
+        inputRelation.relation,
+        typeofModel,
+      );
+      const { query, params } = relationTemplates(
         models,
         relation,
+        inputRelation.relation,
         inputRelation,
         typeofModel,
         dbType,
       );
 
       if (!query) {
-        resultMap[inputRelation] = [];
+        resultMap[inputRelation.relation] = [];
         continue;
       }
 
       log(query, logs);
-      let result = await this.getQueryResult(query);
+      let result = await this.getQueryResult(query, params);
       result = Array.isArray(result) ? result : [result];
 
       result.forEach((row: any) => {
@@ -158,17 +163,19 @@ export default class SqlModelManagerUtils<T extends Model> {
 
     const resultArray: { [relationName: string]: any[] }[] = input.map(
       (inputRelation) => {
-        const modelsForRelation = resultMap[inputRelation] || [];
+        const modelsForRelation = resultMap[inputRelation.relation] || [];
 
         // Some databases return JSON as string so we need to parse it
         modelsForRelation.forEach((model) => {
-          if (typeof model[inputRelation] === "string") {
-            model[inputRelation] = JSON.parse(model[inputRelation]);
+          if (typeof model[inputRelation.relation] === "string") {
+            model[inputRelation.relation] = JSON.parse(
+              model[inputRelation.relation],
+            );
           }
         });
 
         return {
-          [inputRelation]: modelsForRelation,
+          [inputRelation.relation]: modelsForRelation,
         };
       },
     );

@@ -27,7 +27,6 @@ import {
 import deleteTemplate from "../resources/query/DELETE";
 import updateTemplate from "../resources/query/UPDATE";
 import { UpdateOptions } from "../query_builder/update_query_builder_types";
-import { BinaryOperatorType } from "../resources/query/WHERE";
 
 export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   protected pgClient: Client;
@@ -482,8 +481,46 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  addRelations(relations: RelationType<T>[]): PostgresQueryBuilder<T> {
-    this.relations = relations as string[];
+  with(
+    relation: RelationType<T>,
+    relatedModelQueryBuilder?: (queryBuilder: ModelQueryBuilder<any>) => void,
+  ): ModelQueryBuilder<T> {
+    if (!relatedModelQueryBuilder) {
+      this.relations.push({
+        relation: relation as string,
+      });
+
+      return this;
+    }
+
+    const queryBuilder = new PostgresQueryBuilder(
+      // Not useful for the relations query
+      {} as typeof Model,
+      "",
+      this.pgClient,
+      this.logs,
+      false,
+      this.sqlDataSource,
+    );
+
+    relatedModelQueryBuilder(queryBuilder);
+
+    this.relations.push({
+      relation: relation as string,
+      selectedColumns: queryBuilder.modelSelectedColumns,
+      whereQuery: this.whereTemplate.convertPlaceHolderToValue(
+        queryBuilder.whereQuery,
+      ),
+      params: queryBuilder.params,
+      joinQuery: queryBuilder.joinQuery,
+      groupByQuery: queryBuilder.groupByQuery,
+      orderByQuery: queryBuilder.orderByQuery,
+      limitQuery: queryBuilder.limitQuery,
+      offsetQuery: queryBuilder.offsetQuery,
+      havingQuery: queryBuilder.havingQuery,
+      dynamicColumns: queryBuilder.dynamicColumns,
+    });
+
     return this;
   }
 

@@ -60,7 +60,7 @@ test("Create a new user with posts", async () => {
 
   const userWithPosts = await User.query()
     .where("id", user.id)
-    .addRelations(["posts"])
+    .with("posts")
     .one();
   expect(userWithPosts).not.toBeNull();
   expect(userWithPosts?.posts).not.toBeNull();
@@ -69,7 +69,7 @@ test("Create a new user with posts", async () => {
 
   const userWithPost = await User.query()
     .where("id", user.id)
-    .addRelations(["post"])
+    .with("post")
     .one();
   expect(userWithPost).not.toBeNull();
   expect(userWithPost?.post).not.toBeNull();
@@ -77,7 +77,7 @@ test("Create a new user with posts", async () => {
 
   const postWithUser = await Post.query()
     .where("id", post.id)
-    .addRelations(["user"])
+    .with("user")
     .one();
   expect(postWithUser).not.toBeNull();
   expect(postWithUser?.user).not.toBeNull();
@@ -198,7 +198,7 @@ test("Create a new user with addresses", async () => {
     [user.id, address1.id, user.id, address2.id],
   );
 
-  const users = await User.query().addRelations(["addresses"]).many();
+  const users = await User.query().with("addresses").many();
   expect(users).not.toBeNull();
   expect(users.length).toBe(1);
   expect(users[0].addresses).not.toBeNull();
@@ -231,7 +231,7 @@ test("posts with users", async () => {
     content: "Content 2",
   });
 
-  const usersWithPosts = await User.query().addRelations(["posts"]).many();
+  const usersWithPosts = await User.query().with("posts").many();
 
   expect(usersWithPosts).not.toBeNull();
   expect(usersWithPosts.length).toBe(1);
@@ -240,7 +240,7 @@ test("posts with users", async () => {
   expect(usersWithPosts[0].posts[0].title).toBe("Post 1");
   expect(usersWithPosts[0].posts[1].title).toBe("Post 2");
 
-  const postsWithUser = await Post.query().addRelations(["user"]).many();
+  const postsWithUser = await Post.query().with("user").many();
 
   expect(postsWithUser).not.toBeNull();
   expect(postsWithUser.length).toBe(2);
@@ -289,7 +289,7 @@ test("Create a new user with addresses", async () => {
     [user.id, address1.id, user.id, address2.id],
   );
 
-  const users = await User.query().addRelations(["addresses"]).many();
+  const users = await User.query().with("addresses").many();
   expect(users).not.toBeNull();
   expect(users.length).toBe(1);
   expect(users[0].addresses).not.toBeNull();
@@ -384,9 +384,7 @@ test(" test with 5 users and addresses in many to many relation", async () => {
     ],
   );
 
-  const usersWithAddresses = await User.query()
-    .addRelations(["addresses"])
-    .many();
+  const usersWithAddresses = await User.query().with("addresses").many();
 
   expect(usersWithAddresses).not.toBeNull();
   expect(usersWithAddresses.length).toBe(5);
@@ -406,9 +404,7 @@ test(" test with 5 users and addresses in many to many relation", async () => {
   expect(usersWithAddresses[4].addresses.length).toBe(1);
   expect(usersWithAddresses[4].addresses[0].street).toBe("Street 5");
 
-  const addressesWithUsers = await Address.query()
-    .addRelations(["users"])
-    .many();
+  const addressesWithUsers = await Address.query().with("users").many();
 
   expect(addressesWithUsers).not.toBeNull();
   expect(addressesWithUsers.length).toBe(5);

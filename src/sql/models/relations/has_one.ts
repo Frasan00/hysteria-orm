@@ -1,5 +1,5 @@
 import { Model } from "../model";
-import { Relation, RelationEnum, RelationOptions } from "./relation";
+import { Relation, RelationEnum } from "./relation";
 
 export class HasOne extends Relation {
   type: RelationEnum;
@@ -9,9 +9,8 @@ export class HasOne extends Relation {
     relatedModel: typeof Model,
     columnName: string,
     foreignKey: string,
-    options?: RelationOptions,
   ) {
-    super(relatedModel, columnName, options);
+    super(relatedModel, columnName);
     this.foreignKey = foreignKey;
     this.type = RelationEnum.hasOne;
   }

@@ -28,7 +28,6 @@ import {
 } from "./model_manager/model_manager_types";
 import { Transaction } from "../transactions/transaction";
 import { Entity } from "../../entity";
-import { RelationOptions } from "./relations/relation";
 
 export type BaseModelMethodOptions = {
   useConnection?: SqlDataSource;
@@ -507,9 +506,8 @@ export abstract class Model extends Entity {
     columnName: string,
     model: () => typeof Model,
     foreignKey: string,
-    options?: RelationOptions,
   ): void {
-    hasOne(model, foreignKey, options)(this.prototype, columnName);
+    hasOne(model, foreignKey)(this.prototype, columnName);
   }
 
   /**
@@ -520,9 +518,8 @@ export abstract class Model extends Entity {
     columnName: string,
     model: () => typeof Model,
     foreignKey: string,
-    options?: RelationOptions,
   ): void {
-    hasMany(model, foreignKey, options)(this.prototype, columnName);
+    hasMany(model, foreignKey)(this.prototype, columnName);
   }
 
   /**
@@ -533,9 +530,8 @@ export abstract class Model extends Entity {
     columnName: string,
     model: () => typeof Model,
     foreignKey: string,
-    options?: RelationOptions,
   ): void {
-    belongsTo(model, foreignKey, options)(this.prototype, columnName);
+    belongsTo(model, foreignKey)(this.prototype, columnName);
   }
 
   /**
@@ -547,14 +543,8 @@ export abstract class Model extends Entity {
     model: () => typeof Model,
     throughModel: string,
     foreignKey: string,
-    options?: RelationOptions,
   ): void {
-    manyToMany(
-      model,
-      throughModel,
-      foreignKey,
-      options,
-    )(this.prototype, columnName);
+    manyToMany(model, throughModel, foreignKey)(this.prototype, columnName);
   }
 
   /**

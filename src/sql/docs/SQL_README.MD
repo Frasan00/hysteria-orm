@@ -274,7 +274,7 @@ export class User extends Model {
 ```
 
 ### Relations
-- Relations are defined in the Model and can be retrieved with the addRelations method in the query builder or with the relations property in the standard methods
+- Relations are defined in the Model and can be retrieved with the with method in the query builder or with the relations property in the standard methods
 - Relations are special standard queries that are not influenced by hooks defined in their classes
 - Supported relations are
     - has one - Has one record in relation with the related Model and the foreign key is in the related Model
@@ -530,7 +530,7 @@ import { User } from "./User";
 
 // READ
 const user: User | null = await User.query()
-    .addRelations(['post'])
+    .with('post')
     .where("name", "John Doe")
     .andWhere("email", "john@gmail.com")
     .oneOrFail();
@@ -616,7 +616,7 @@ import { User } from "./User";
 
 const user: User | null = await User.query()
     .select('id', 'name as superName')
-    .addRelations(['post'])
+    .with('post')
     .where("name", "John Doe")
     .andWhere("email", "john@gmail.com")
     .one();
@@ -679,7 +679,7 @@ const sum = await User.query().getSum("id"); // number
 import { User } from "./User";
 
 const user: User | null = await User.query()
-    .addRelations(['posts'])
+    .with('posts')
     .one();
 
 const users: User[] = await User.find({
@@ -707,7 +707,7 @@ const users = await User.query()
 import { User } from "./User";
 
 const user: User | null = await User.query()
-    .addRelations(['post'])
+    .with('post')
     .where("name", "John Doe")
     .andWhere("email", "john@gmail.com")
     .paginate(1, 10); // page, for-page

@@ -1,5 +1,5 @@
 import { Model } from "../model";
-import { Relation, RelationEnum, RelationOptions } from "./relation";
+import { Relation, RelationEnum } from "./relation";
 
 export class ManyToMany extends Relation {
   type = RelationEnum.manyToMany;
@@ -12,9 +12,8 @@ export class ManyToMany extends Relation {
     columnName: string,
     throughModel: string,
     foreignKey: string,
-    options?: RelationOptions,
   ) {
-    super(model, "", options);
+    super(model, columnName);
     this.columnName = columnName;
     this.foreignKey = foreignKey;
     this.throughModel = throughModel;

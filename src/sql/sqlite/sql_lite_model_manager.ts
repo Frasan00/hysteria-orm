@@ -54,7 +54,9 @@ export class SqliteModelManager<T extends Model> extends ModelManager<T> {
     }
 
     if (input.relations) {
-      query.addRelations(input.relations);
+      input.relations.forEach((relation) => {
+        query.with(relation);
+      });
     }
 
     if (input.where) {

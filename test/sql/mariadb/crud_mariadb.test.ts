@@ -407,7 +407,7 @@ test("Very complex query", async () => {
       builder.where("isActive", true);
     })
     .orWhere("signupSource", "email")
-    .addRelations(["posts"])
+    .with("posts")
     .andWhereIn("name", ["Dave", "John", "Alice"])
     .addDynamicColumns(["getFirstUser"])
     .where("name", "LIKE", "Dave")

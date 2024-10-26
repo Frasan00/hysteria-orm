@@ -7,7 +7,6 @@ import {
   getModelColumns,
   getDynamicColumns,
 } from "./models/model_decorators";
-import { ManyToMany } from "./models/relations/many_to_many";
 import {
   isRelationDefinition,
   Relation,

@@ -74,10 +74,6 @@ declare class Transaction {
  * @property {string} softDeleteColumn - The column name for the soft delete column, if set, the relation will only return rows that have not been soft deleted
  * @property {string} softDeleteType - The type of the soft delete column
  */
-interface RelationOptions {
-    softDeleteColumn: string;
-    softDeleteType: "date" | "boolean";
-}
 declare enum RelationEnum {
     hasOne = "hasOne",// One to One without foreign key
     belongsTo = "belongsTo",// One to One with foreign key
@@ -93,26 +89,25 @@ declare abstract class Relation {
     columnName: string;
     foreignKey?: string;
     relatedModel: string;
-    options?: RelationOptions;
-    protected constructor(model: typeof Model, columnName: string, options?: RelationOptions);
+    protected constructor(model: typeof Model, columnName: string);
 }
 
 declare class BelongsTo extends Relation {
     type: RelationEnum;
     foreignKey: string;
-    constructor(relatedModel: typeof Model, columnName: string, foreignKey: string, options?: RelationOptions);
+    constructor(relatedModel: typeof Model, columnName: string, foreignKey: string);
 }
 
 declare class HasMany extends Relation {
     type: RelationEnum;
     foreignKey: string;
-    constructor(relatedModel: typeof Model, columnName: string, foreignKey: string, options?: RelationOptions);
+    constructor(relatedModel: typeof Model, columnName: string, foreignKey: string);
 }
 
 declare class HasOne extends Relation {
     type: RelationEnum;
     foreignKey: string;
-    constructor(relatedModel: typeof Model, columnName: string, foreignKey: string, options?: RelationOptions);
+    constructor(relatedModel: typeof Model, columnName: string, foreignKey: string);
 }
 
 type ExcludeRelations<T> = {
@@ -183,7 +178,7 @@ declare class SqlModelManagerUtils<T extends Model> {
         params: any[];
     };
     private getRelationFromModel;
-    parseQueryBuilderRelations(models: T[], typeofModel: typeof Model, input: string[], dbType: SqlDataSourceType, logs: boolean): Promise<{
+    parseQueryBuilderRelations(models: T[], typeofModel: typeof Model, input: RelationQueryBuilder[], dbType: SqlDataSourceType, logs: boolean): Promise<{
         [relationName: string]: Model[];
     }[]>;
     private getQueryResult;
@@ -249,7 +244,7 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     joinRaw(query: string): this;
     join(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlQueryBuilder<T>;
     leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlQueryBuilder<T>;
-    addRelations(relations: RelationType<T>[]): MysqlQueryBuilder<T>;
+    with(relation: RelationType<T>, relatedModelQueryBuilder?: (queryBuilder: ModelQueryBuilder<any>) => void): ModelQueryBuilder<T>;
     addDynamicColumns(dynamicColumns: DynamicColumnType<T>[]): ModelQueryBuilder<T>;
     groupBy(...columns: SelectableType<T>[]): this;
     groupBy(...columns: string[]): this;
@@ -291,7 +286,7 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     joinRaw(query: string): this;
     join(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresQueryBuilder<T>;
     leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresQueryBuilder<T>;
-    addRelations(relations: RelationType<T>[]): PostgresQueryBuilder<T>;
+    with(relation: RelationType<T>, relatedModelQueryBuilder?: (queryBuilder: ModelQueryBuilder<any>) => void): ModelQueryBuilder<T>;
     addDynamicColumns(dynamicColumns: DynamicColumnType<T>[]): ModelQueryBuilder<T>;
     groupBy(...columns: SelectableType<T>[]): this;
     groupBy(...columns: string[]): this;
@@ -348,7 +343,7 @@ declare class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     joinRaw(query: string): this;
     join(relationTable: string, primaryColumn: string, foreignColumn: string): SqlLiteQueryBuilder<T>;
     leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): SqlLiteQueryBuilder<T>;
-    addRelations(relations: RelationType<T>[]): SqlLiteQueryBuilder<T>;
+    with(relation: RelationType<T>, relatedModelQueryBuilder?: (queryBuilder: ModelQueryBuilder<any>) => void): ModelQueryBuilder<T>;
     addDynamicColumns(dynamicColumns: DynamicColumnType<T>[]): ModelQueryBuilder<T>;
     groupBy(...columns: SelectableType<T>[]): this;
     groupBy(...columns: string[]): this;
@@ -644,11 +639,24 @@ type OneOptions$1 = {
 type ManyOptions$1 = {
     ignoreHooks?: FetchHooks$1[];
 };
+type RelationQueryBuilder = {
+    relation: string;
+    selectedColumns?: string[];
+    whereQuery?: string;
+    params?: any[];
+    joinQuery?: string;
+    groupByQuery?: string;
+    orderByQuery?: string;
+    limitQuery?: string;
+    offsetQuery?: string;
+    havingQuery?: string;
+    dynamicColumns?: string[];
+};
 declare abstract class QueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
     protected selectQuery: string;
     protected modelSelectedColumns: string[];
     protected joinQuery: string;
-    protected relations: string[];
+    protected relations: RelationQueryBuilder[];
     protected dynamicColumns: string[];
     protected groupByQuery: string;
     protected orderByQuery: string;
@@ -741,9 +749,9 @@ declare abstract class QueryBuilder<T extends Model> extends WhereQueryBuilder<T
      */
     abstract leftJoin(table: string, primaryColumn: string, foreignColumn: string): ModelQueryBuilder<T>;
     /**
-     * @description Adds a relation to the query.
+     * @description Adds a relation to the final model.
      */
-    abstract addRelations(relations: RelationType<T>[]): ModelQueryBuilder<T>;
+    abstract with(relation: RelationType<T>, relatedModelQueryBuilder?: (queryBuilder: ModelQueryBuilder<any>) => void): ModelQueryBuilder<T>;
     /**
      * @description Adds a the selected dynamic columns from the model into the final model
      */
@@ -833,15 +841,15 @@ declare function getModelColumns(target: typeof Model): string[];
 /**
  * @description Establishes a belongs to relation with the given model
  */
-declare function belongsTo(model: () => typeof Model, foreignKey: string, options?: RelationOptions): PropertyDecorator;
+declare function belongsTo(model: () => typeof Model, foreignKey: string): PropertyDecorator;
 /**
  * @description Establishes a has one relation with the given model
  */
-declare function hasOne(model: () => typeof Model, foreignKey: string, options?: RelationOptions): PropertyDecorator;
+declare function hasOne(model: () => typeof Model, foreignKey: string): PropertyDecorator;
 /**
  * @description Establishes a has many relation with the given model
  */
-declare function hasMany(model: () => typeof Model, foreignKey: string, options?: RelationOptions): PropertyDecorator;
+declare function hasMany(model: () => typeof Model, foreignKey: string): PropertyDecorator;
 /**
  * @description Returns the relations of the model
  */
@@ -1019,22 +1027,22 @@ declare abstract class Model extends Entity {
      * @description Defines a dynamic column in the model, useful in javascript in order to not have to rely on decorators since are not supported without a transpiler like babel
      * @javascript
      */
-    static hasOne(columnName: string, model: () => typeof Model, foreignKey: string, options?: RelationOptions): void;
+    static hasOne(columnName: string, model: () => typeof Model, foreignKey: string): void;
     /**
      * @description Defines a dynamic column in the model, useful in javascript in order to not have to rely on decorators since are not supported without a transpiler like babel
      * @javascript
      */
-    static hasMany(columnName: string, model: () => typeof Model, foreignKey: string, options?: RelationOptions): void;
+    static hasMany(columnName: string, model: () => typeof Model, foreignKey: string): void;
     /**
      * @description Defines a dynamic column in the model, useful in javascript in order to not have to rely on decorators since are not supported without a transpiler like babel
      * @javascript
      */
-    static belongsTo(columnName: string, model: () => typeof Model, foreignKey: string, options?: RelationOptions): void;
+    static belongsTo(columnName: string, model: () => typeof Model, foreignKey: string): void;
     /**
      * @description Defines a dynamic column in the model, useful in javascript in order to not have to rely on decorators since are not supported without a transpiler like babel
      * @javascript
      */
-    static manyToMany(columnName: string, model: () => typeof Model, throughModel: string, foreignKey: string, options?: RelationOptions): void;
+    static manyToMany(columnName: string, model: () => typeof Model, throughModel: string, foreignKey: string): void;
     /**
      * @description Defines a dynamic column in the model, useful in javascript in order to not have to rely on decorators since are not supported without a transpiler like babel
      * @javascript
