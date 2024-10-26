@@ -8,7 +8,16 @@ import {
   addDynamicColumnsToModel,
 } from "../serializer";
 import { SqlDataSource, ModelManager } from "../sql_data_source";
-import { getPrimaryKey } from "./model_decorators";
+import {
+  belongsTo,
+  column,
+  ColumnOptions,
+  dynamicColumn,
+  getPrimaryKey,
+  hasMany,
+  hasOne,
+  manyToMany,
+} from "./model_decorators";
 import {
   FindType,
   UnrestrictedFindType,
@@ -19,6 +28,7 @@ import {
 } from "./model_manager/model_manager_types";
 import { Transaction } from "../transactions/transaction";
 import { Entity } from "../../entity";
+import { RelationOptions } from "./relations/relation";
 
 export type BaseModelMethodOptions = {
   useConnection?: SqlDataSource;
@@ -476,6 +486,83 @@ export abstract class Model extends Entity {
    */
   static async afterFetch(data: Model[]): Promise<Model[]> {
     return data;
+  }
+
+  // JS Static methods
+
+  /**
+   * @description Defines a column in the model, useful in javascript in order to not have to rely on decorators since are not supported without a transpiler like babel
+   * @javascript
+   */
+  static column(columnName: string, options: ColumnOptions = {}): void {
+    // take the column decorator and apply it automatically
+    column(options)(this.prototype, columnName);
+  }
+
+  /**
+   * @description Defines a dynamic column in the model, useful in javascript in order to not have to rely on decorators since are not supported without a transpiler like babel
+   * @javascript
+   */
+  static hasOne(
+    columnName: string,
+    model: () => typeof Model,
+    foreignKey: string,
+    options?: RelationOptions,
+  ): void {
+    hasOne(model, foreignKey, options)(this.prototype, columnName);
+  }
+
+  /**
+   * @description Defines a dynamic column in the model, useful in javascript in order to not have to rely on decorators since are not supported without a transpiler like babel
+   * @javascript
+   */
+  static hasMany(
+    columnName: string,
+    model: () => typeof Model,
+    foreignKey: string,
+    options?: RelationOptions,
+  ): void {
+    hasMany(model, foreignKey, options)(this.prototype, columnName);
+  }
+
+  /**
+   * @description Defines a dynamic column in the model, useful in javascript in order to not have to rely on decorators since are not supported without a transpiler like babel
+   * @javascript
+   */
+  static belongsTo(
+    columnName: string,
+    model: () => typeof Model,
+    foreignKey: string,
+    options?: RelationOptions,
+  ): void {
+    belongsTo(model, foreignKey, options)(this.prototype, columnName);
+  }
+
+  /**
+   * @description Defines a dynamic column in the model, useful in javascript in order to not have to rely on decorators since are not supported without a transpiler like babel
+   * @javascript
+   */
+  static manyToMany(
+    columnName: string,
+    model: () => typeof Model,
+    throughModel: string,
+    foreignKey: string,
+    options?: RelationOptions,
+  ): void {
+    manyToMany(
+      model,
+      throughModel,
+      foreignKey,
+      options,
+    )(this.prototype, columnName);
+  }
+
+  /**
+   * @description Defines a dynamic column in the model, useful in javascript in order to not have to rely on decorators since are not supported without a transpiler like babel
+   * @javascript
+   */
+  static dynamicColumn(columnName: string, func: () => any): void {
+    dynamicColumn(columnName)(this.prototype, func.name);
   }
 
   /**

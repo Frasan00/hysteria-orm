@@ -22,7 +22,7 @@ type LazyRelationEnum = {
  * columns
  */
 
-interface ColumnOptions {
+export interface ColumnOptions {
   booleanColumn?: boolean;
   primaryKey?: boolean;
 }

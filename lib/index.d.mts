@@ -808,6 +808,49 @@ declare abstract class QueryBuilder<T extends Model> extends WhereQueryBuilder<T
     protected mergeRawPacketIntoModel(model: T, row: any, typeofModel: typeof Model): Promise<void>;
 }
 
+/**
+ * columns
+ */
+interface ColumnOptions {
+    booleanColumn?: boolean;
+    primaryKey?: boolean;
+}
+/**
+ * @description Decorator to define a column in the model
+ */
+declare function column(options?: ColumnOptions): PropertyDecorator;
+/**
+ * @description Defines a dynamic calculated column that is not defined inside the Table, it must be added to a query in order to be retrieved
+ */
+declare function dynamicColumn(columnName: string): PropertyDecorator;
+/**
+ * @description Returns the columns of the model, columns must be decorated with the column decorator
+ */
+declare function getModelColumns(target: typeof Model): string[];
+/**
+ * relations
+ */
+/**
+ * @description Establishes a belongs to relation with the given model
+ */
+declare function belongsTo(model: () => typeof Model, foreignKey: string, options?: RelationOptions): PropertyDecorator;
+/**
+ * @description Establishes a has one relation with the given model
+ */
+declare function hasOne(model: () => typeof Model, foreignKey: string, options?: RelationOptions): PropertyDecorator;
+/**
+ * @description Establishes a has many relation with the given model
+ */
+declare function hasMany(model: () => typeof Model, foreignKey: string, options?: RelationOptions): PropertyDecorator;
+/**
+ * @description Returns the relations of the model
+ */
+declare function getRelations(target: typeof Model): Relation[];
+/**
+ * @description Returns the primary key of the model
+ */
+declare function getPrimaryKey(target: typeof Model): string;
+
 type CaseConvention = "camel" | "snake" | "none" | RegExp | ((column: string) => string);
 
 /**
@@ -967,6 +1010,36 @@ declare abstract class Model extends Entity {
      * @description Adds a afterFetch clause to the model, adding the ability to modify the data after fetching the data
      */
     static afterFetch(data: Model[]): Promise<Model[]>;
+    /**
+     * @description Defines a column in the model, useful in javascript in order to not have to rely on decorators since are not supported without a transpiler like babel
+     * @javascript
+     */
+    static column(columnName: string, options?: ColumnOptions): void;
+    /**
+     * @description Defines a dynamic column in the model, useful in javascript in order to not have to rely on decorators since are not supported without a transpiler like babel
+     * @javascript
+     */
+    static hasOne(columnName: string, model: () => typeof Model, foreignKey: string, options?: RelationOptions): void;
+    /**
+     * @description Defines a dynamic column in the model, useful in javascript in order to not have to rely on decorators since are not supported without a transpiler like babel
+     * @javascript
+     */
+    static hasMany(columnName: string, model: () => typeof Model, foreignKey: string, options?: RelationOptions): void;
+    /**
+     * @description Defines a dynamic column in the model, useful in javascript in order to not have to rely on decorators since are not supported without a transpiler like babel
+     * @javascript
+     */
+    static belongsTo(columnName: string, model: () => typeof Model, foreignKey: string, options?: RelationOptions): void;
+    /**
+     * @description Defines a dynamic column in the model, useful in javascript in order to not have to rely on decorators since are not supported without a transpiler like babel
+     * @javascript
+     */
+    static manyToMany(columnName: string, model: () => typeof Model, throughModel: string, foreignKey: string, options?: RelationOptions): void;
+    /**
+     * @description Defines a dynamic column in the model, useful in javascript in order to not have to rely on decorators since are not supported without a transpiler like babel
+     * @javascript
+     */
+    static dynamicColumn(columnName: string, func: () => any): void;
     /**
      * @description Establishes a connection to the database instantiated from the SqlDataSource.connect method, this is done automatically when using the static methods
      * @description This method is meant to be used only if you want to establish sql sqlInstance of the model directly
@@ -1719,49 +1792,6 @@ declare abstract class Migration {
 }
 
 /**
- * columns
- */
-interface ColumnOptions {
-    booleanColumn?: boolean;
-    primaryKey?: boolean;
-}
-/**
- * @description Decorator to define a column in the model
- */
-declare function column(options?: ColumnOptions): PropertyDecorator;
-/**
- * @description Defines a dynamic calculated column that is not defined inside the Table, it must be added to a query in order to be retrieved
- */
-declare function dynamicColumn(columnName: string): PropertyDecorator;
-/**
- * @description Returns the columns of the model, columns must be decorated with the column decorator
- */
-declare function getModelColumns(target: typeof Model): string[];
-/**
- * relations
- */
-/**
- * @description Establishes a belongs to relation with the given model
- */
-declare function belongsTo(model: () => typeof Model, foreignKey: string, options?: RelationOptions): PropertyDecorator;
-/**
- * @description Establishes a has one relation with the given model
- */
-declare function hasOne(model: () => typeof Model, foreignKey: string, options?: RelationOptions): PropertyDecorator;
-/**
- * @description Establishes a has many relation with the given model
- */
-declare function hasMany(model: () => typeof Model, foreignKey: string, options?: RelationOptions): PropertyDecorator;
-/**
- * @description Returns the relations of the model
- */
-declare function getRelations(target: typeof Model): Relation[];
-/**
- * @description Returns the primary key of the model
- */
-declare function getPrimaryKey(target: typeof Model): string;
-
-/**
  * @description The Redis_data_source class is a wrapper around the ioredis library that provides a simple interface to interact with a redis database
  */
 type RedisStorable = string | number | boolean | Buffer | Array<any> | Record<string, any>;
@@ -2295,6 +2325,16 @@ declare class Collection extends Entity {
      * @param data
      */
     static beforeDelete(queryBuilder: MongoQueryBuilder<any>): void;
+    /**
+     * @description Adds a property to the model, adding the ability to modify the data after fetching the data
+     * @javascript
+     */
+    static property(propertyName: string): void;
+    /**
+     * @description Adds a dynamic property to the model, adding the ability to modify the data after fetching the data
+     * @javascript
+     */
+    static dynamicProperty(columnName: string, func: () => any): void;
     /**
      * @description Adds a afterFetch clause to the model, adding the ability to modify the data after fetching the data
      * @param data

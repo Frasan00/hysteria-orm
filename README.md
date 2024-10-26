@@ -132,7 +132,7 @@ MONGO_URL=mongodb://root:root@localhost:27017
 ```
 
 ### Javascript
-## Hysteria ORM is written and designed for TypeScript, but It can still be used in JavaScript with some configurations:
+#### Hysteria ORM is written and designed for TypeScript, but It can still be used in JavaScript with some configurations:
 1. Install the necessary dependencies:
 ```shell
 npm install --save-dev reflect-metadata @babel/core @babel/cli @babel/preset-env @babel/plugin-proposal-decorators
@@ -203,6 +203,33 @@ class User extends Model {
 
   @column()
   updatedAt
+}
+```
+
+#### JS without decorators
+- If you don't want to use decorators, you can define your models like this:
+- Aside decorators, all other features are available in JavaScript
+
+```javascript
+import {Model, SqlDataSource, getModelColumns} from 'hysteria-orm';
+import Profile from './Profile';
+import Post from './Post';
+import Role from './Role';
+import Address from './Address';
+
+class User extends Model {
+  static {
+    this.column('id', { primaryKey: true });
+    this.column('name');
+    this.column('email');
+    this.column('signupSource');
+    this.column('isActive', { booleanColumn: true });
+
+    this.hasOne('profile', () => Profile, "userId");
+    this.hasMany('posts', () => Post, "userId");
+    this.belongsToMany('roles', () => Role, "roleId");
+    this.manyToMany('addresses', () => Address, "user_addresses", "userId");
+  }
 }
 ```
 

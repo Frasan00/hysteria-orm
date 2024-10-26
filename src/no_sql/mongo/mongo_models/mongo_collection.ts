@@ -14,7 +14,7 @@ import {
   BaseModelMethodOptions,
   ModelKeyOrAny,
 } from "./mongo_collection_types";
-import { property } from "./mongo_collection_decorators";
+import { dynamicProperty, property } from "./mongo_collection_decorators";
 
 const collectionMap = new Map<typeof Collection, string>();
 
@@ -291,6 +291,24 @@ export class Collection extends Entity {
    */
   static beforeDelete(queryBuilder: MongoQueryBuilder<any>): void {
     queryBuilder;
+  }
+
+  // JS Static methods
+
+  /**
+   * @description Adds a property to the model, adding the ability to modify the data after fetching the data
+   * @javascript
+   */
+  static property(propertyName: string): void {
+    property()(this.prototype, propertyName);
+  }
+
+  /**
+   * @description Adds a dynamic property to the model, adding the ability to modify the data after fetching the data
+   * @javascript
+   */
+  static dynamicProperty(columnName: string, func: () => any): void {
+    dynamicProperty(columnName)(this.prototype, func.name);
   }
 
   /**
