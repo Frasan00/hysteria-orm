@@ -298,33 +298,42 @@ export class SqliteModelManager<T extends Model> extends ModelManager<T> {
       const table = this.model.table;
       const finalResult: T[] = [];
       const sqLiteConnection = this.sqLiteConnection;
-      return new Promise<T[]>((resolve, reject) => {
-        models.forEach((model) => {
-          const { query, params } = this.sqlModelManagerUtils.parseInsert(
-            model as any,
-            this.model,
-            this.sqlDataSource.getDbType(),
-          );
+      return new Promise<T[]>(async (resolve, reject) => {
+        for (const model of models) {
+          try {
+            const { query, params } = this.sqlModelManagerUtils.parseInsert(
+              model as any,
+              this.model,
+              this.sqlDataSource.getDbType(),
+            );
 
-          this.sqLiteConnection.run(query, params, function (err: any) {
-            if (err) {
-              return reject(err);
-            }
+            await new Promise<void>((resolve, reject) => {
+              this.sqLiteConnection.run(query, params, function (err: any) {
+                if (err) {
+                  return reject(err);
+                }
 
-            const lastID = model[primaryKeyName as keyof T] || this.lastID;
-            const selectQuery = `SELECT * FROM ${table} WHERE ${primaryKeyName} = ?`;
-            sqLiteConnection.get(selectQuery, [lastID], (err: any, row: T) => {
-              if (err) {
-                return reject(err);
-              }
+                const lastID = model[primaryKeyName as keyof T] || this.lastID;
+                const selectQuery = `SELECT * FROM ${table} WHERE ${primaryKeyName} = ?`;
+                sqLiteConnection.get(
+                  selectQuery,
+                  [lastID],
+                  (err: any, row: T) => {
+                    if (err) {
+                      return reject(err);
+                    }
 
-              finalResult.push(row as T);
-              if (finalResult.length === models.length) {
-                resolve(finalResult);
-              }
+                    finalResult.push(row as T);
+                    resolve();
+                  },
+                );
+              });
             });
-          });
-        });
+          } catch (err) {
+            return reject(err);
+          }
+        }
+        resolve(finalResult);
       });
     }
 

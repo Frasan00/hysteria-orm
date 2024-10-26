@@ -244,7 +244,6 @@ function processRelation(
         break;
 
       case RelationEnum.manyToMany:
-        // Create a map of related models keyed by their primary keys
         const relatedModelMapManyToMany = new Map<any, Model>();
         relatedModels.forEach((model) => {
           relatedModelMapManyToMany.set(
@@ -261,10 +260,11 @@ function processRelation(
           return;
         }
 
-        serializedModel[relation.columnName] = relatedModel[
-          relation.columnName as keyof Model
-        ].map((relatedItem: Model) =>
-          serializeModel(relatedItem, relation.model),
+        const relatedColumnValue =
+          relatedModel[relation.columnName as keyof Model];
+
+        serializedModel[relation.columnName] = relatedColumnValue.map(
+          (relatedItem: Model) => serializeModel(relatedItem, relation.model),
         );
         break;
       default:

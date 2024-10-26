@@ -163,7 +163,7 @@ export default class SqlModelManagerUtils<T extends Model> {
         // Some databases return JSON as string so we need to parse it
         modelsForRelation.forEach((model) => {
           if (typeof model[inputRelation] === "string") {
-            model.addresses = JSON.parse(model[inputRelation]);
+            model[inputRelation] = JSON.parse(model[inputRelation]);
           }
         });
 

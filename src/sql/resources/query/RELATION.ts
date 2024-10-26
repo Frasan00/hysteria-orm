@@ -27,7 +27,13 @@ function getJsonAggregate(
   aggregate: string,
   dbType: SqlDataSourceType,
   modelColumns: string[],
+  typeofModel: typeof Model,
 ) {
+  column = convertCase(column, typeofModel.databaseCaseConvention);
+  modelColumns = modelColumns.map((column) =>
+    convertCase(column, typeofModel.databaseCaseConvention),
+  );
+
   switch (dbType) {
     case "postgres":
       return `json_agg(${column}) as ${aggregate}`;
@@ -204,6 +210,7 @@ function relationTemplates<T extends Model>(
         relationName,
         dbType,
         relatedModelColumns,
+        typeofModel,
       )}, '${relationName}' as relation_name
 FROM ${throughModel}
 LEFT JOIN ${relatedModelTable} ON ${throughModel}.${convertCase(
@@ -220,6 +227,10 @@ WHERE ${throughModel}.${convertCase(
         .map(({ value, type }) => convertValueToSQL(value, type))
         .join(", ")}) ${softDeleteColumn ? softDeleteQuery : ""}
 GROUP BY ${throughModel}.${convertCase(
+        throughModelPrimaryKey,
+        typeofModel.databaseCaseConvention,
+      )}
+ORDER BY ${throughModel}.${convertCase(
         throughModelPrimaryKey,
         typeofModel.databaseCaseConvention,
       )};\n`;

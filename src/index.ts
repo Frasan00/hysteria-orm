@@ -32,23 +32,6 @@ import {
   getMongoDynamicProperties,
   getCollectionProperties,
 } from "./no_sql/mongo/mongo_models/mongo_collection_decorators";
-import { User } from "../test/sql_models/User";
-
-(async () => {
-  await SqlDataSource.connect({
-    type: "postgres",
-    host: "localhost",
-    port: 5432,
-    username: "root",
-    password: "root",
-    database: "test",
-  });
-  const user = await User.query()
-    .addRelations(["addresses", "post", "posts"])
-    .many();
-  console.log(JSON.stringify(user, null, 2));
-  await SqlDataSource.disconnect();
-})();
 
 export default {
   // sql
