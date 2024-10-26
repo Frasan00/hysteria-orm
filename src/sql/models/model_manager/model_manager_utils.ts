@@ -160,6 +160,13 @@ export default class SqlModelManagerUtils<T extends Model> {
         }
       }
 
+      // after fetch hook
+      if (!inputRelation.ignoreAfterFetchHook) {
+        result = await (relation.model as any).afterFetch(
+          Array.isArray(result) ? result : [result],
+        );
+      }
+
       // Group the result by relation name
       result.forEach((row: any) => {
         const relationName = row.relation_name;

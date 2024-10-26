@@ -485,6 +485,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     relation: RelationType<T>,
     relatedModel?: O,
     relatedModelQueryBuilder?: (queryBuilder: ModelQueryBuilder<any>) => void,
+    ignoreHooks?: { beforeFetch?: boolean; afterFetch?: boolean },
   ): ModelQueryBuilder<T> {
     if (!relatedModelQueryBuilder) {
       this.relations.push({
@@ -504,6 +505,9 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     );
 
     relatedModelQueryBuilder(queryBuilder);
+    if (!ignoreHooks?.beforeFetch) {
+      relatedModel?.beforeFetch(queryBuilder);
+    }
 
     this.relations.push({
       relation: relation as string,
@@ -519,6 +523,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
       offsetQuery: queryBuilder.offsetQuery,
       havingQuery: queryBuilder.havingQuery,
       dynamicColumns: queryBuilder.dynamicColumns,
+      ignoreAfterFetchHook: ignoreHooks?.afterFetch || false,
     });
 
     return this;

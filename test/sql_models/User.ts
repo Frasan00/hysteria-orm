@@ -70,7 +70,3 @@ export class User extends Model {
     return await User.query().one();
   }
 }
-
-// User.query().with("addresses", (query: ModelQueryBuilder<Address>) => {
-//   query.where();
-// });

@@ -276,6 +276,7 @@ export class User extends Model {
 ### Relations
 - Relations are defined in the Model and can be retrieved with the with method in the query builder or with the relations property in the standard methods
 - Relations are special standard queries that are not influenced by hooks defined in their classes
+- Relation queries are made in O(n) complexity, even many to many relations are retrieved in a single query, but complexity may very based on the additional operations like hooks and dynamic columns
 - Supported relations are
     - has one - Has one record in relation with the related Model and the foreign key is in the related Model
     - belongs to - Belongs to one record in relation with the related Model and the foreign key is in the current Model
@@ -360,6 +361,7 @@ export class User extends Model {
 
 #### Relation query
 - in the query builder, you can query the relations directly from the with method
+- The result is natturally affected by the target beforeFetch and afterFetch hooks, but they can be ignored with the ignoreHooks property
 ```typescript
 import { ModelQueryBuilder } from "hysteria-orm";
 import { User } from "./User";
@@ -379,6 +381,14 @@ const user: User | null = await User.query()
         query.where("street", "Main street")
             .andWhere("user_addresses.primary", true);
     })
+    .where("name", "John Doe")
+    .one();
+
+// You can also ignore hooks
+const user: User | null = await User.query()
+    .with('post', Post, (query: ModelQueryBuilder<Post>) => {
+        query.where("title", "Post title");
+    }, { beforeFetch: true, afterFetch: true })
     .where("name", "John Doe")
     .one();
 ```

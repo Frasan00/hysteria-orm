@@ -244,7 +244,10 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     joinRaw(query: string): this;
     join(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlQueryBuilder<T>;
     leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlQueryBuilder<T>;
-    with<O extends typeof Model>(relation: RelationType<T>, relatedModel?: O, relatedModelQueryBuilder?: (queryBuilder: ModelQueryBuilder<any>) => void): ModelQueryBuilder<T>;
+    with<O extends typeof Model>(relation: RelationType<T>, relatedModel?: O, relatedModelQueryBuilder?: (queryBuilder: ModelQueryBuilder<any>) => void, ignoreHooks?: {
+        beforeFetch?: boolean;
+        afterFetch?: boolean;
+    }): ModelQueryBuilder<T>;
     addDynamicColumns(dynamicColumns: DynamicColumnType<T>[]): ModelQueryBuilder<T>;
     groupBy(...columns: SelectableType<T>[]): this;
     groupBy(...columns: string[]): this;
@@ -286,7 +289,10 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     joinRaw(query: string): this;
     join(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresQueryBuilder<T>;
     leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresQueryBuilder<T>;
-    with<O extends typeof Model>(relation: RelationType<T>, relatedModel?: O, relatedModelQueryBuilder?: (queryBuilder: ModelQueryBuilder<any>) => void): ModelQueryBuilder<T>;
+    with<O extends typeof Model>(relation: RelationType<T>, relatedModel?: O, relatedModelQueryBuilder?: (queryBuilder: ModelQueryBuilder<any>) => void, ignoreHooks?: {
+        beforeFetch?: boolean;
+        afterFetch?: boolean;
+    }): ModelQueryBuilder<T>;
     addDynamicColumns(dynamicColumns: DynamicColumnType<T>[]): ModelQueryBuilder<T>;
     groupBy(...columns: SelectableType<T>[]): this;
     groupBy(...columns: string[]): this;
@@ -343,7 +349,10 @@ declare class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     joinRaw(query: string): this;
     join(relationTable: string, primaryColumn: string, foreignColumn: string): SqlLiteQueryBuilder<T>;
     leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): SqlLiteQueryBuilder<T>;
-    with<O extends typeof Model>(relation: RelationType<T>, relatedModel?: O, relatedModelQueryBuilder?: (queryBuilder: ModelQueryBuilder<any>) => void): ModelQueryBuilder<T>;
+    with<O extends typeof Model>(relation: RelationType<T>, relatedModel?: O, relatedModelQueryBuilder?: (queryBuilder: ModelQueryBuilder<any>) => void, ignoreHooks?: {
+        beforeFetch?: boolean;
+        afterFetch?: boolean;
+    }): ModelQueryBuilder<T>;
     addDynamicColumns(dynamicColumns: DynamicColumnType<T>[]): ModelQueryBuilder<T>;
     groupBy(...columns: SelectableType<T>[]): this;
     groupBy(...columns: string[]): this;
@@ -651,6 +660,7 @@ type RelationQueryBuilder = {
     offsetQuery?: string;
     havingQuery?: string;
     dynamicColumns?: string[];
+    ignoreAfterFetchHook?: boolean;
 };
 declare abstract class QueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
     protected selectQuery: string;
@@ -751,7 +761,10 @@ declare abstract class QueryBuilder<T extends Model> extends WhereQueryBuilder<T
     /**
      * @description Adds a relation to the final model.
      */
-    abstract with<O extends typeof Model>(relation: RelationType<T>, relatedModel?: O, relatedModelQueryBuilder?: (queryBuilder: ModelQueryBuilder<any>) => void): ModelQueryBuilder<T>;
+    abstract with<O extends typeof Model>(relation: RelationType<T>, relatedModel?: O, relatedModelQueryBuilder?: (queryBuilder: ModelQueryBuilder<any>) => void, ignoreHooks?: {
+        beforeFetch?: boolean;
+        afterFetch?: boolean;
+    }): ModelQueryBuilder<T>;
     /**
      * @description Adds a the selected dynamic columns from the model into the final model
      */

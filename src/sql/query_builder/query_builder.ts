@@ -47,6 +47,7 @@ export type RelationQueryBuilder = {
   offsetQuery?: string;
   havingQuery?: string;
   dynamicColumns?: string[];
+  ignoreAfterFetchHook?: boolean;
 };
 
 export abstract class QueryBuilder<
@@ -212,6 +213,7 @@ export abstract class QueryBuilder<
     relation: RelationType<T>,
     relatedModel?: O,
     relatedModelQueryBuilder?: (queryBuilder: ModelQueryBuilder<any>) => void,
+    ignoreHooks?: { beforeFetch?: boolean; afterFetch?: boolean },
   ): ModelQueryBuilder<T>;
 
   /**
