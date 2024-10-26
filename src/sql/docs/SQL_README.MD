@@ -375,10 +375,11 @@ const user: User | null = await User.query()
     .where("name", "John Doe")
     .one();
 
-// you can also query on the join table
+// You can also query on the join table
+// In the select and where conditions, if the table is not specified, the related model table will be used 
 const user: User | null = await User.query()
     .with('address', Address, (query: ModelQueryBuilder<Address>) => {
-        query.where("street", "Main street")
+        query.where("street", "Main street") // will use address table for the query: addresses.street = 'Main street'
             .andWhere("user_addresses.primary", true);
     })
     .where("name", "John Doe")
