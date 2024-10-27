@@ -930,6 +930,8 @@ declare abstract class Model extends Entity {
     static get primaryKey(): string | undefined;
     /**
      * @description Constructor for the model, it's not meant to be used directly, it just initializes the $additionalColumns, it's advised to only use the static methods to interact with the database to save the model
+     * @description Using the constructor could lead to unexpected behavior, if you want to create a new record use the insert method
+     * @deprecated
      */
     constructor();
     /**
@@ -969,11 +971,11 @@ declare abstract class Model extends Entity {
     static refresh<T extends Model>(this: new () => T | typeof Model, model: T, options?: BaseModelMethodOptions$1): Promise<T | null>;
     /**
      * @description Saves a new record to the database
+     * @description $additionalColumns will be ignored if set in the modelData and won't be returned in the response
      */
     static insert<T extends Model>(this: new () => T | typeof Model, modelData: Partial<T>, options?: BaseModelMethodOptions$1): Promise<T | null>;
     /**
      * @description Saves multiple records to the database
-     * @description WHile using mysql, it will return records only if the primary key is auto incrementing integer, else it will always return []
      */
     static insertMany<T extends Model>(this: new () => T | typeof Model, modelsData: Partial<T>[], options?: BaseModelMethodOptions$1): Promise<T[]>;
     /**
@@ -1383,6 +1385,12 @@ declare class SqlDataSource extends DataSource {
      */
     static connect(input?: SqlDataSourceInput, cb?: () => Promise<void> | void): Promise<SqlDataSource>;
     static getInstance(): SqlDataSource;
+    /**
+     * @description Executes a callback function with the provided connection details using the main connection established with SqlDataSource.connect() method
+     * @description The callback automatically commits or rollbacks the transaction based on the result of the callback
+     * @description NOTE: trx must always be passed to single methods that are part of the transaction
+     */
+    static useTransaction(cb: (trx: Transaction) => Promise<void>, driverSpecificOptions?: DriverSpecificOptions): Promise<void>;
     /**
      * @description Executes a callback function with the provided connection details
      * @description The callback automatically commits or rollbacks the transaction based on the result of the callback
@@ -2700,6 +2708,7 @@ declare const _default: {
     manyToMany: typeof manyToMany;
     Relation: typeof Relation;
     SqlDataSource: typeof SqlDataSource;
+    Transaction: typeof Transaction;
     Migration: typeof Migration;
     getRelations: typeof getRelations;
     getModelColumns: typeof getModelColumns;
@@ -2711,4 +2720,4 @@ declare const _default: {
     dynamicColumn: typeof dynamicColumn;
 };
 
-export { type CaseConvention, Collection, type DataSourceInput, Migration, Model, type ModelQueryBuilder, MongoDataSource, type PaginatedData, type PaginationMetadata, RedisDataSource as Redis, type RedisGiveable, type RedisStorable, Relation, SqlDataSource, StandaloneQueryBuilder, belongsTo, column, _default as default, dynamicProperty, getCollectionProperties, getModelColumns, getMongoDynamicProperties, getPrimaryKey, getRelations, hasMany, hasOne, manyToMany, property };
+export { type CaseConvention, Collection, type DataSourceInput, Migration, Model, type ModelQueryBuilder, MongoDataSource, type PaginatedData, type PaginationMetadata, RedisDataSource as Redis, type RedisGiveable, type RedisStorable, Relation, SqlDataSource, StandaloneQueryBuilder, Transaction, belongsTo, column, _default as default, dynamicProperty, getCollectionProperties, getModelColumns, getMongoDynamicProperties, getPrimaryKey, getRelations, hasMany, hasOne, manyToMany, property };

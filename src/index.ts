@@ -33,6 +33,7 @@ import {
   getMongoDynamicProperties,
   getCollectionProperties,
 } from "./no_sql/mongo/mongo_models/mongo_collection_decorators";
+import { Transaction } from "./sql/transactions/transaction";
 
 export default {
   // sql
@@ -43,7 +44,8 @@ export default {
   hasMany,
   manyToMany,
   Relation,
-  SqlDataSource: SqlDataSource,
+  SqlDataSource,
+  Transaction,
   Migration,
   getRelations,
   getModelColumns,
@@ -73,6 +75,7 @@ export {
   ModelQueryBuilder,
   StandaloneQueryBuilder,
   Migration,
+  Transaction,
   CaseConvention,
   PaginatedData,
   PaginationMetadata,

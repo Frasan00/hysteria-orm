@@ -21,6 +21,12 @@ const insertTemplate = (
   const table = typeofModel.table;
   return {
     insert: (columns: string[], values: BaseValues[]) => {
+      if (columns.includes("$additionalColumns")) {
+        const $additionalColumnsIndex = columns.indexOf("$additionalColumns");
+        columns.splice(columns.indexOf("$additionalColumns"), 1);
+        values.splice($additionalColumnsIndex, 1);
+      }
+
       columns = columns.map((column) =>
         convertCase(column, typeofModel.databaseCaseConvention),
       );

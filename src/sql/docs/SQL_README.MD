@@ -490,14 +490,26 @@ try{
 ```
 
 ### Use Transaction
+- With the useTransaction method you can execute a block of code in a transaction
+- The transaction is automatically committed at the end of the block, it's also automatically rolled back in case of an error
 ```typescript
 import { SqlDataSource } from "hysteria-orm";
 import { User } from "./User";
 
 const sql = await SqlDataSource.connect();
 
-// At the end of the transaction the trx will be automatically committed, it's also automatically rolled back in case of an error
 await sql.useTransaction(async (trx) => {
+    const user = await User.query({ trx }).delete();
+});
+
+// With error
+await sql.useTransaction(async (trx) => {
+    const user = await User.query({ trx }).delete();
+    throw new Error("Error"); // Will rollback the transaction
+});
+
+// You can use useTransaction from the SqlDataSource static method, this will use the main connection established with the connect method
+await SqlDataSource.useTransaction(async (trx) => {
     const user = await User.query({ trx }).delete();
 });
 ```

@@ -87,6 +87,8 @@ export abstract class Model extends Entity {
 
   /**
    * @description Constructor for the model, it's not meant to be used directly, it just initializes the $additionalColumns, it's advised to only use the static methods to interact with the database to save the model
+   * @description Using the constructor could lead to unexpected behavior, if you want to create a new record use the insert method
+   * @deprecated
    */
   constructor() {
     super();
@@ -196,11 +198,20 @@ export abstract class Model extends Entity {
     const modelManager = typeofModel.dispatchModelManager<T>(options);
     const primaryKey = typeofModel.primaryKey as keyof T;
     const primaryKeyValue = model[primaryKey];
-    return modelManager.findOneByPrimaryKey(primaryKeyValue as string);
+    const refreshedModel = await modelManager.findOneByPrimaryKey(
+      primaryKeyValue as string,
+    );
+    if (!refreshedModel) {
+      return null;
+    }
+
+    refreshedModel.$additionalColumns = model.$additionalColumns;
+    return refreshedModel;
   }
 
   /**
    * @description Saves a new record to the database
+   * @description $additionalColumns will be ignored if set in the modelData and won't be returned in the response
    */
   static async insert<T extends Model>(
     this: new () => T | typeof Model,
@@ -214,7 +225,6 @@ export abstract class Model extends Entity {
 
   /**
    * @description Saves multiple records to the database
-   * @description WHile using mysql, it will return records only if the primary key is auto incrementing integer, else it will always return []
    */
   static async insertMany<T extends Model>(
     this: new () => T | typeof Model,
@@ -236,7 +246,13 @@ export abstract class Model extends Entity {
   ): Promise<T | null> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
-    return modelManager.updateRecord(modelSqlInstance);
+    const updatedModel = await modelManager.updateRecord(modelSqlInstance);
+    if (!updatedModel) {
+      return null;
+    }
+
+    updatedModel.$additionalColumns = modelSqlInstance.$additionalColumns;
+    return updatedModel;
   }
 
   /**
