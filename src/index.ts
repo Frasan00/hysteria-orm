@@ -34,6 +34,59 @@ import {
   getCollectionProperties,
 } from "./no_sql/mongo/mongo_models/mongo_collection_decorators";
 import { Transaction } from "./sql/transactions/transaction";
+import { User } from "../test/sql_models/User";
+import { Address } from "../test/sql_models/Address";
+import { UserAddress } from "../test/sql_models/UserAddress";
+
+(async () => {
+  await SqlDataSource.connect({
+    type: "postgres",
+    database: "test",
+    username: "root",
+    password: "root",
+    host: "localhost",
+  });
+
+  // await Address.query().delete();
+  // await User.query().delete();
+  // const user = await User.insert({
+  //   name: "test",
+  //   email: "test",
+  //   signupSource: "test",
+  //   isActive: true,
+  // });
+
+  // const address = await Address.insert({
+  //   street: "test",
+  //   city: "test",
+  //   state: "test",
+  // });
+
+  // const address2 = await Address.insert({
+  //   street: "test2",
+  //   city: "test2",
+  //   state: "test2",
+  // });
+
+  // await UserAddress.insertMany([
+  //   {
+  //     userId: user?.id as number,
+  //     addressId: address?.id as number,
+  //   },
+  //   {
+  //     userId: user?.id as number,
+  //     addressId: address2?.id as number,
+  //   },
+  // ]);
+
+  console.log(
+    await User.query()
+      .where("id", 2020)
+      .with("addresses", Address, (query) => query.limit(1))
+      .first(),
+  );
+  await SqlDataSource.disconnect();
+})();
 
 export default {
   // sql

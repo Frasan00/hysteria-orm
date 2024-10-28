@@ -903,6 +903,7 @@ declare abstract class Entity {
     constructor();
 }
 
+type ModelWithoutExtraColumns<T extends Model> = Omit<Partial<T>, "$additionalColumns">;
 type BaseModelMethodOptions$1 = {
     useConnection?: SqlDataSource;
     trx?: Transaction;
@@ -973,11 +974,11 @@ declare abstract class Model extends Entity {
      * @description Saves a new record to the database
      * @description $additionalColumns will be ignored if set in the modelData and won't be returned in the response
      */
-    static insert<T extends Model>(this: new () => T | typeof Model, modelData: Partial<T>, options?: BaseModelMethodOptions$1): Promise<T | null>;
+    static insert<T extends Model>(this: new () => T | typeof Model, modelData: ModelWithoutExtraColumns<T>, options?: BaseModelMethodOptions$1): Promise<T | null>;
     /**
      * @description Saves multiple records to the database
      */
-    static insertMany<T extends Model>(this: new () => T | typeof Model, modelsData: Partial<T>[], options?: BaseModelMethodOptions$1): Promise<T[]>;
+    static insertMany<T extends Model>(this: new () => T | typeof Model, modelsData: ModelWithoutExtraColumns<T>[], options?: BaseModelMethodOptions$1): Promise<T[]>;
     /**
      * @description Updates a record to the database
      */
@@ -985,17 +986,17 @@ declare abstract class Model extends Entity {
     /**
      * @description Finds the first record or creates a new one if it doesn't exist
      */
-    static firstOrCreate<T extends Model>(this: new () => T | typeof Model, searchCriteria: Partial<T>, createData: Partial<T>, options?: BaseModelMethodOptions$1): Promise<T>;
+    static firstOrCreate<T extends Model>(this: new () => T | typeof Model, searchCriteria: ModelWithoutExtraColumns<T>, createData: ModelWithoutExtraColumns<T>, options?: BaseModelMethodOptions$1): Promise<T>;
     /**
      * @description Updates or creates a new record
      */
-    static upsert<T extends Model>(this: new () => T | typeof Model, searchCriteria: Partial<T>, data: Partial<T>, options?: {
+    static upsert<T extends Model>(this: new () => T | typeof Model, searchCriteria: ModelWithoutExtraColumns<T>, data: ModelWithoutExtraColumns<T>, options?: {
         updateOnConflict?: boolean;
     } & BaseModelMethodOptions$1): Promise<T>;
     /**
      * @description Updates or creates multiple records
      */
-    static upsertMany<T extends Model>(this: new () => T | typeof Model, searchCriteria: SelectableType<T>[], data: Partial<T>[], options?: {
+    static upsertMany<T extends Model>(this: new () => T | typeof Model, searchCriteria: SelectableType<T>[], data: ModelWithoutExtraColumns<T>[], options?: {
         updateOnConflict?: boolean;
     } & BaseModelMethodOptions$1): Promise<T[]>;
     /**
