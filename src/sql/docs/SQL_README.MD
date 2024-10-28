@@ -360,6 +360,7 @@ export class User extends Model {
 
 #### Relation query
 - in the query builder, you can query the relations directly from the with method
+- Relation queries have to be contextualized, for example all order by or limit condition will be ignored in a has one relation query because it's can only be a single record for it's definition
 - The result is naturally affected by the target beforeFetch and afterFetch hooks, but they can be ignored with the ignoreHooks property
 ```typescript
 import { ModelQueryBuilder } from "hysteria-orm";

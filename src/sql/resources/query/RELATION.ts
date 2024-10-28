@@ -166,6 +166,10 @@ function relationTemplates<T extends Model>(
     havingQuery,
   } = parseRelationQuery(relationQuery);
   const params = relationQuery.params || [];
+  const extractedLimitValue = limitQuery.match(/\d+/)?.[0] as
+    | number
+    | undefined;
+  const extractedOffsetValue = offsetQuery.match(/\d+/)?.[0] || 0;
 
   const primaryKeyValues = models.map((model) => {
     const value =
@@ -213,9 +217,7 @@ ${joinQuery} WHERE ${relatedModel}.${convertCase(
         typeofModel.databaseCaseConvention,
       )} IN (${primaryKeyValues
         .map(({ value, type }) => convertValueToSQL(value, type))
-        .join(
-          ", ",
-        )}) ${whereQuery} ${groupByQuery} ${havingQuery} ${orderByQuery} ${limitQuery} ${offsetQuery};
+        .join(", ")}) ${whereQuery};
       `;
 
       return {
@@ -276,20 +278,24 @@ ${joinQuery}  WHERE ${relatedModel}.${primaryKey} IN (${foreignKeyValues
         };
       }
 
-      const hasManyQuery = `SELECT ${selectQuery}, '${relationName}' as relation_name FROM ${relatedModel} 
-${joinQuery} 
-WHERE ${relatedModel}.${convertCase(
-        foreignKey,
-        typeofModel.databaseCaseConvention,
-      )} IN (${primaryKeyValues
-        .map(({ value, type }) => convertValueToSQL(value, type))
-        .join(
-          ", ",
-        )}) ${whereQuery} ${groupByQuery} ${havingQuery} ${orderByQuery} ${limitQuery} ${offsetQuery};
-      `;
-
       return {
-        query: hasManyQuery,
+        query: generateHasManyQuery({
+          selectQuery,
+          relationName,
+          relatedModel,
+          foreignKey: foreignKey as string,
+          typeofModel,
+          primaryKeyValues,
+          joinQuery,
+          whereQuery,
+          groupByQuery,
+          havingQuery,
+          orderByQuery,
+          extractedOffsetValue: extractedOffsetValue as number,
+          extractedLimitValue: extractedLimitValue as number,
+          databaseType: dbType,
+        }),
+
         params: params,
       };
 
@@ -376,6 +382,69 @@ ${joinQuery} WHERE ${throughModel}.${convertCase(
     default:
       throw new Error(`Unknown relation type: ${relation.type}`);
   }
+}
+
+function generateHasManyQuery({
+  selectQuery,
+  relationName,
+  relatedModel,
+  foreignKey,
+  typeofModel,
+  primaryKeyValues,
+  joinQuery,
+  whereQuery,
+  groupByQuery,
+  havingQuery,
+  orderByQuery,
+  extractedOffsetValue,
+  extractedLimitValue,
+  databaseType,
+}: {
+  selectQuery: string;
+  relationName: string;
+  relatedModel: string;
+  foreignKey: string;
+  typeofModel: any;
+  primaryKeyValues: Array<{ value: any; type: string }>;
+  joinQuery: string;
+  whereQuery: string;
+  groupByQuery: string;
+  havingQuery: string;
+  orderByQuery: string;
+  extractedOffsetValue: number;
+  extractedLimitValue: number;
+  databaseType: string;
+}): string {
+  const foreignKeyConverted = convertCase(
+    foreignKey,
+    typeofModel.databaseCaseConvention,
+  );
+  const primaryKeyValuesSQL = primaryKeyValues
+    .map(({ value, type }) => convertValueToSQL(value, type))
+    .join(", ");
+
+  let rowNumberClause;
+  if (databaseType === "mysql" || databaseType === "mariadb") {
+    rowNumberClause = `ROW_NUMBER() OVER (PARTITION BY ${relatedModel}.${foreignKeyConverted} ORDER BY ${orderByQuery || `${relatedModel}.${foreignKeyConverted}`}) as row_num`;
+  } else {
+    rowNumberClause = `ROW_NUMBER() OVER (PARTITION BY ${relatedModel}.${foreignKeyConverted} ORDER BY ${orderByQuery || "1"}) as row_num`;
+  }
+
+  const hasManyQuery = `
+    WITH CTE AS (
+      SELECT ${selectQuery}, '${relationName}' as relation_name, 
+             ${rowNumberClause}
+      FROM ${relatedModel} 
+      ${joinQuery} 
+      WHERE ${relatedModel}.${foreignKeyConverted} IN (${primaryKeyValuesSQL}) 
+      ${whereQuery} ${groupByQuery} ${havingQuery}
+    )
+    SELECT * FROM CTE
+    WHERE row_num > ${extractedOffsetValue || 0}
+    ${extractedLimitValue ? `AND row_num <= (${extractedOffsetValue || 0} + ${extractedLimitValue})` : ""};
+  `;
+
+  return hasManyQuery;
 }
 
 export default relationTemplates;

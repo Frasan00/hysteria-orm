@@ -36,37 +36,38 @@ import {
 import { Transaction } from "./sql/transactions/transaction";
 import { User } from "../test/sql_models/User";
 import { Address } from "../test/sql_models/Address";
+import { Post } from "../test/sql_models/Post";
 import { UserAddress } from "../test/sql_models/UserAddress";
 
 (async () => {
   await SqlDataSource.connect({
-    type: "postgres",
+    type: "mysql",
     database: "test",
     username: "root",
     password: "root",
     host: "localhost",
   });
 
-  // await Address.query().delete();
-  // await User.query().delete();
-  // const user = await User.insert({
-  //   name: "test",
-  //   email: "test",
-  //   signupSource: "test",
-  //   isActive: true,
-  // });
+  await Post.query().delete();
+  await User.query().delete();
+  const user = await User.insert({
+    name: "test",
+    email: "test",
+    signupSource: "test",
+    isActive: true,
+  });
 
-  // const address = await Address.insert({
-  //   street: "test",
-  //   city: "test",
-  //   state: "test",
-  // });
+  const post = await Post.insert({
+    userId: user?.id as number,
+    title: "test",
+    content: "test",
+  });
 
-  // const address2 = await Address.insert({
-  //   street: "test2",
-  //   city: "test2",
-  //   state: "test2",
-  // });
+  const post2 = await Post.insert({
+    userId: user?.id as number,
+    title: "test2",
+    content: "test2",
+  });
 
   // await UserAddress.insertMany([
   //   {
@@ -81,8 +82,8 @@ import { UserAddress } from "../test/sql_models/UserAddress";
 
   console.log(
     await User.query()
-      .where("id", 2020)
-      .with("addresses", Address, (query) => query.limit(1))
+      .where("id", user?.id as number)
+      .with("posts", Post, (query) => query.limit(15))
       .first(),
   );
   await SqlDataSource.disconnect();
