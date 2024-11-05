@@ -109,9 +109,6 @@ function parseRelationQuery(relationQuery: RelationQueryBuilder): {
   havingQuery: string;
 } {
   const selectQuery = relationQuery.selectedColumns?.join(", ") || "*";
-  const whereQuery = relationQuery.whereQuery
-    ? `${relationQuery.whereQuery.replace(/WHERE/g, "AND")}`
-    : "";
   const joinQuery = relationQuery.joinQuery ? relationQuery.joinQuery : "";
   const orderByQuery = relationQuery.orderByQuery
     ? `ORDER BY ${relationQuery.orderByQuery}`
@@ -131,7 +128,7 @@ function parseRelationQuery(relationQuery: RelationQueryBuilder): {
 
   return {
     selectQuery,
-    whereQuery,
+    whereQuery: relationQuery.whereQuery || "",
     joinQuery,
     orderByQuery,
     groupByQuery,
@@ -340,39 +337,51 @@ ${joinQuery}  WHERE ${relatedModel}.${primaryKey} IN (${foreignKeyValues
       const relatedModelForeignKey = relatedModelManyToManyRelation.foreignKey;
       const relatedModelColumns = getModelColumns(relation.model);
 
-      const manyToManyQuery = `SELECT ${throughModel}.${convertCase(
-        throughModelPrimaryKey,
-        typeofModel.databaseCaseConvention,
-      )} as ${primaryKey}, ${getJsonAggregate(
-        `${relatedModelTable}.*`,
-        relationName,
-        dbType,
-        selectQuery === "*" || !selectQuery
-          ? relatedModelColumns
-          : selectQuery.split(", "),
-        typeofModel,
-      )}, '${relationName}' as relation_name
-FROM ${throughModel}
-LEFT JOIN ${relatedModelTable} ON ${throughModel}.${convertCase(
-        relatedModelForeignKey,
-        typeofModel.databaseCaseConvention,
-      )} = ${relatedModelTable}.${convertCase(
-        relatedModelPrimaryKey,
-        typeofModel.databaseCaseConvention,
-      )}
-${joinQuery} WHERE ${throughModel}.${convertCase(
-        throughModelPrimaryKey,
-        typeofModel.databaseCaseConvention,
-      )} IN (${primaryKeyValues
-        .map(({ value, type }) => convertValueToSQL(value, type))
-        .join(", ")}) ${whereQuery} ${`GROUP BY ${throughModel}.${convertCase(
-        throughModelPrimaryKey,
-        typeofModel.databaseCaseConvention,
-      )} ${groupByQuery.replace("GROUP BY", "")}`} ${havingQuery} ${`ORDER BY ${throughModel}.${convertCase(
-        throughModelPrimaryKey,
-        typeofModel.databaseCaseConvention,
-      )} ${orderByQuery.replace("ORDER BY", "")}`} ${limitQuery} ${offsetQuery};
-      `;
+      const manyToManyQuery = `WITH cta AS (
+        SELECT
+            ${selectQuery},
+            ROW_NUMBER() OVER (PARTITION BY ${throughModel}.${convertCase(
+              throughModelPrimaryKey,
+              typeofModel.databaseCaseConvention,
+            )}) AS rn
+        FROM
+            ${throughModel}
+        JOIN
+            ${relatedModelTable} ON ${throughModel}.${convertCase(
+              relatedModelForeignKey,
+              typeofModel.databaseCaseConvention,
+            )} = ${relatedModelTable}.${convertCase(
+              relatedModelPrimaryKey,
+              typeofModel.databaseCaseConvention,
+            )}
+        ${whereQuery}
+    )
+    SELECT
+        ${typeofModel.tableName}.${primaryKey},
+        '${relationName}' as relation_name,
+        (
+            SELECT (
+                SELECT
+                ${getJsonAggregate(
+                  `${relatedModelTable}.*`,
+                  "cta",
+                  dbType,
+                  selectQuery === "*" || !selectQuery
+                    ? relatedModelColumns
+                    : selectQuery.split(", "),
+                  typeofModel,
+                )}
+                FROM
+                    cta
+                WHERE
+                     ${typeofModel.tableName}.${primaryKey} IN (${primaryKeyValues.map(
+                       ({ value, type }) => convertValueToSQL(value, type),
+                     )})
+                    AND cta.rn >= ${extractedOffsetValue || 0} ${extractedLimitValue ? `AND cta.rn <= (${extractedOffsetValue || 0} + ${extractedLimitValue})` : ""}
+            )
+        ) AS ${relationName}
+    FROM
+        ${typeofModel.tableName}`;
 
       return {
         query: manyToManyQuery,

@@ -41,14 +41,15 @@ import { UserAddress } from "../test/sql_models/UserAddress";
 
 (async () => {
   await SqlDataSource.connect({
-    type: "mysql",
+    type: "postgres",
     database: "test",
     username: "root",
     password: "root",
     host: "localhost",
   });
 
-  await Post.query().delete();
+  await UserAddress.query().delete();
+  await Address.query().delete();
   await User.query().delete();
   const user = await User.insert({
     name: "test",
@@ -57,33 +58,50 @@ import { UserAddress } from "../test/sql_models/UserAddress";
     isActive: true,
   });
 
-  const post = await Post.insert({
-    userId: user?.id as number,
-    title: "test",
-    content: "test",
+  // const post = await Post.insert({
+  //   userId: user?.id as number,
+  //   title: "test",
+  //   content: "test",
+  // });
+
+  // const post2 = await Post.insert({
+  //   userId: user?.id as number,
+  //   title: "test2",
+  //   content: "test2",
+  // });
+
+  const address = await Address.insert({
+    street: "test",
+    city: "test",
+    state: "test",
   });
 
-  const post2 = await Post.insert({
-    userId: user?.id as number,
-    title: "test2",
-    content: "test2",
+  const address2 = await Address.insert({
+    street: "test2",
+    city: "test2",
+    state: "test2",
   });
 
-  // await UserAddress.insertMany([
-  //   {
-  //     userId: user?.id as number,
-  //     addressId: address?.id as number,
-  //   },
-  //   {
-  //     userId: user?.id as number,
-  //     addressId: address2?.id as number,
-  //   },
-  // ]);
+  const userAddresses = await UserAddress.insertMany([
+    {
+      userId: user?.id as number,
+      addressId: address?.id as number,
+    },
+    {
+      userId: user?.id as number,
+      addressId: address2?.id as number,
+    },
+  ]);
 
   console.log(
     await User.query()
       .where("id", user?.id as number)
-      .with("posts", Post, (query) => query.limit(15))
+      .with("addresses", Address, (query) =>
+        query
+          // .select("SUM(id) as total")
+          .where("user_addresses.id", userAddresses[0].id)
+          .limit(1),
+      )
       .first(),
   );
   await SqlDataSource.disconnect();
