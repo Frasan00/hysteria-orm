@@ -98,9 +98,13 @@ import { UserAddress } from "../test/sql_models/UserAddress";
       .where("id", user?.id as number)
       .with("addresses", Address, (query) =>
         query
-          // .select("SUM(id) as total")
-          .where("user_addresses.id", userAddresses[0].id)
-          .limit(1),
+          .select(
+            "addresses.id",
+            "street",
+            "state",
+            "SUM(addresses.id) as test",
+          )
+          .where("user_addresses.id", userAddresses[1].id),
       )
       .first(),
   );

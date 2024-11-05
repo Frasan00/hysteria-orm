@@ -360,26 +360,15 @@ ${joinQuery}  WHERE ${relatedModel}.${primaryKey} IN (${foreignKeyValues
         ${typeofModel.tableName}.${primaryKey},
         '${relationName}' as relation_name,
         (
-            SELECT (
-                SELECT
-                ${getJsonAggregate(
-                  `${relatedModelTable}.*`,
-                  "cta",
-                  dbType,
-                  selectQuery === "*" || !selectQuery
-                    ? relatedModelColumns
-                    : selectQuery.split(", "),
-                  typeofModel,
-                )}
-                FROM
-                    cta
-                WHERE
-                     ${typeofModel.tableName}.${primaryKey} IN (${primaryKeyValues.map(
-                       ({ value, type }) => convertValueToSQL(value, type),
-                     )})
-                    AND cta.rn >= ${extractedOffsetValue || 0} ${extractedLimitValue ? `AND cta.rn <= (${extractedOffsetValue || 0} + ${extractedLimitValue})` : ""}
-            )
-        ) AS ${relationName}
+            SELECT json_agg(cta)
+            FROM
+                cta
+            WHERE
+                 ${typeofModel.tableName}.${primaryKey} IN (${primaryKeyValues.map(
+                   ({ value, type }) => convertValueToSQL(value, type),
+                 )})
+            AND cta.rn >= ${extractedOffsetValue || 0} ${extractedLimitValue ? `AND cta.rn <= (${extractedOffsetValue || 0} + ${extractedLimitValue} - 1)` : ""}
+                    ) AS ${relationName}
     FROM
         ${typeofModel.tableName}`;
 
