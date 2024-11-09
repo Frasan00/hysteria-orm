@@ -11,7 +11,6 @@ import {
   getRelations,
   getModelColumns,
   getDateColumns,
-  getDateTimeColumns,
   getModelBooleanColumns,
   dynamicColumn,
 } from "./sql/models/model_decorators";
@@ -48,6 +47,7 @@ import { UserAddress } from "../test/sql_models/UserAddress";
     database: "test",
     username: "root",
     password: "root",
+    port: 3307,
     host: "localhost",
   });
 
@@ -139,7 +139,6 @@ export default {
   getModelColumns,
   getModelBooleanColumns,
   getDateColumns,
-  getDateTimeColumns,
   getPrimaryKey,
 
   // redis
@@ -175,7 +174,6 @@ export {
   getPrimaryKey,
   getModelBooleanColumns,
   getDateColumns,
-  getDateTimeColumns,
 
   // redis
   Redis,

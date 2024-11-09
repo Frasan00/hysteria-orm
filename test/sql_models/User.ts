@@ -1,4 +1,3 @@
-import { DateTime } from "luxon";
 import { Post } from "./Post";
 import { ModelQueryBuilder } from "../sql/query_builder/query_builder";
 import { Model } from "../../src/sql/models/model";
@@ -33,9 +32,9 @@ export class User extends Model {
   declare json: Record<string, any> | null;
 
   @column({
-    type: "dateTime",
+    type: "date",
   })
-  declare createdAt: DateTime;
+  declare createdAt: Date;
 
   @column({
     type: "date",
@@ -43,9 +42,9 @@ export class User extends Model {
   declare updatedAt: Date;
 
   @column({
-    type: "dateTime",
+    type: "date",
   })
-  declare deletedAt: DateTime | null;
+  declare deletedAt: Date | null;
 
   @hasMany(() => Post, "userId")
   declare posts: Post[];

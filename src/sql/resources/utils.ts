@@ -90,6 +90,7 @@ export function generateManyToManyQuery({
   if (limit) {
     limitOffsetClause += `LIMIT ${limit}`;
   }
+
   if (offset) {
     limitOffsetClause += ` OFFSET ${offset}`;
   }

@@ -160,7 +160,6 @@ await SqlDataSource.useConnection(
 ```typescript
 import "reflect-metadata";
 import { Model } from "hysteria-orm";
-import { DateTime } from "luxon"; // Both Date and Datetime from luxon are supported
 
 export class User extends Model {
     static tableName: string = "users"; // Default Class name lowercase, in snake case with a final "s" (given for granted that the Class is defined in Pascal Case)
@@ -185,7 +184,7 @@ export class User extends Model {
     declare json: Record<string, any>;
 
     @column()
-    declare createdAt: DateTime;
+    declare createdAt: Date;
 }
 ```
 
@@ -219,9 +218,9 @@ export class User extends Model {
 
     // Date columns will be automatically converted to selected type, if not specified they will not be parsed from the database driver
     @column({
-        type: "dateTime",
+        type: "Date",
     })
-    declare createdAt: DateTime;
+    declare createdAt: Date;
 
     @column({
         type: "date",
@@ -265,7 +264,7 @@ export class User extends Model {
     declare id: string;
 
     @column()
-    declare createdAt: DateTime;
+    declare createdAt: Date;
 
     // It's suggested to add a precise retrieve order in the queries or in the hooks
     static beforeFetch(queryBuilder: ModelQueryBuilder<User>) {
@@ -621,7 +620,7 @@ await User.query().where("name", "Eve updated two").delete();
 // BULK SOFT DELETE
 await User.query().where("name", "Eve updated two").softDelete({
     column: "deletedAt" // default,
-    value: string | number | boolean // default Datetime.local().toISO(),
+    value: string | number | boolean // default new Date().toISOString().slice(0, 19).replace('T', ' '), format is from date-fns
     // trx: optional
 });
 ```

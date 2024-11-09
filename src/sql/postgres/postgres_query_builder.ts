@@ -20,7 +20,6 @@ import "reflect-metadata";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { convertCase } from "../../utils/case_utils";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
-import { DateTime } from "luxon";
 import {
   DeleteOptions,
   SoftDeleteOptions,
@@ -261,7 +260,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   async softDelete(options?: SoftDeleteOptions<T>): Promise<number> {
     const {
       column = "deletedAt",
-      value = DateTime.local().toISO(),
+      value = new Date().toISOString().slice(0, 19).replace("T", " "),
       ignoreBeforeDeleteHook = false,
     } = options || {};
     if (!ignoreBeforeDeleteHook) {

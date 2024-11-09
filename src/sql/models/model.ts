@@ -1,5 +1,4 @@
 import "reflect-metadata";
-import { DateTime } from "luxon";
 import { convertCase } from "../../utils/case_utils";
 import { PaginatedData } from "../pagination";
 import { ModelQueryBuilder, OneOptions } from "../query_builder/query_builder";
@@ -28,6 +27,7 @@ import {
 } from "./model_manager/model_manager_types";
 import { Transaction } from "../transactions/transaction";
 import { Entity } from "../../entity";
+import { baseSoftDeleteDate } from "../../utils/date_utils";
 
 export type ModelWithoutExtraColumns<T extends Model> = Omit<
   Partial<T>,
@@ -397,7 +397,7 @@ export abstract class Model extends Entity {
     const typeofModel = this as unknown as typeof Model;
     const {
       column = "deletedAt" as SelectableType<T>,
-      value = DateTime.local().toISO(),
+      value = baseSoftDeleteDate(new Date()),
     } = options || {};
 
     modelSqlInstance[column as keyof T] = value as T[keyof T];
@@ -408,9 +408,7 @@ export abstract class Model extends Entity {
     await modelManager.updateRecord(modelSqlInstance);
 
     if (typeof value === "string") {
-      modelSqlInstance[column as keyof T] = DateTime.fromISO(
-        value,
-      ) as T[keyof T];
+      modelSqlInstance[column as keyof T] = new Date(value) as T[keyof T];
     }
 
     modelSqlInstance[column as keyof T] = value as T[keyof T];

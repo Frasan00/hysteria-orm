@@ -23,7 +23,7 @@ type LazyRelationEnum = {
 
 export interface ColumnOptions {
   primaryKey?: boolean;
-  type?: "boolean" | "date" | "dateTime";
+  type?: "boolean" | "date";
 }
 
 const COLUMN_METADATA_KEY = Symbol("columns");
@@ -32,7 +32,6 @@ const PRIMARY_KEY_METADATA_KEY = Symbol("primaryKey");
 const BOOLEAN_COLUMN_METADATA_KEY = Symbol("booleanColumns");
 const RELATION_METADATA_KEY = Symbol("relations");
 const DATE_COLUMN_METADATA_KEY = Symbol("dateColumns");
-const DATE_TIME_COLUMN_METADATA_KEY = Symbol("dateTimeColumns");
 
 /**
  * @description Decorator to define a column in the model
@@ -56,17 +55,6 @@ export function column(
         Reflect.getMetadata(DATE_COLUMN_METADATA_KEY, target) || [];
       dateColumns.push(propertyKey);
       Reflect.defineMetadata(DATE_COLUMN_METADATA_KEY, dateColumns, target);
-    }
-
-    if (options.type === "dateTime") {
-      const dateTimeColumns =
-        Reflect.getMetadata(DATE_TIME_COLUMN_METADATA_KEY, target) || [];
-      dateTimeColumns.push(propertyKey);
-      Reflect.defineMetadata(
-        DATE_TIME_COLUMN_METADATA_KEY,
-        dateTimeColumns,
-        target,
-      );
     }
 
     if (options.type === "boolean") {
@@ -270,10 +258,4 @@ export function getDynamicColumns(target: typeof Model): {
 
 export function getDateColumns(target: typeof Model): string[] {
   return Reflect.getMetadata(DATE_COLUMN_METADATA_KEY, target.prototype) || [];
-}
-
-export function getDateTimeColumns(target: typeof Model): string[] {
-  return (
-    Reflect.getMetadata(DATE_TIME_COLUMN_METADATA_KEY, target.prototype) || []
-  );
 }

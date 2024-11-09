@@ -23,7 +23,6 @@ import {
   DeleteOptions,
   SoftDeleteOptions,
 } from "../query_builder/delete_query_builder_type";
-import { DateTime } from "luxon";
 import deleteTemplate from "../resources/query/DELETE";
 import updateTemplate from "../resources/query/UPDATE";
 import { UpdateOptions } from "../query_builder/update_query_builder_types";
@@ -245,7 +244,7 @@ export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
   async softDelete(options?: SoftDeleteOptions<T>): Promise<number> {
     const {
       column = "deletedAt",
-      value = DateTime.local().toISO(),
+      value = new Date().toISOString().slice(0, 19).replace("T", " "),
       ignoreBeforeDeleteHook = false,
     } = options || {};
     if (!ignoreBeforeDeleteHook) {

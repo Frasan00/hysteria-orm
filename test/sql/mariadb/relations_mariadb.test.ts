@@ -3,6 +3,7 @@ import { Post } from "../../sql_models/Post";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { Address } from "../../sql_models/Address";
 import { ModelQueryBuilder } from "../../sql/query_builder/query_builder";
+import { UserAddress } from "../../sql_models/UserAddress";
 
 let sql: SqlDataSource | null = null;
 beforeAll(async () => {
@@ -11,7 +12,7 @@ beforeAll(async () => {
     database: "test",
     username: "root",
     password: "root",
-    host: "127.0.0.1",
+    host: "localhost",
     port: 3307,
     logs: true,
   });
@@ -24,14 +25,14 @@ afterAll(async () => {
 });
 
 beforeEach(async () => {
-  await sql?.rawQuery("TRUNCATE TABLE user_addresses");
+  await UserAddress.query().delete();
   await Post.query().delete();
   await User.query().delete();
   await Address.query().delete();
 });
 
 afterEach(async () => {
-  await sql?.rawQuery("TRUNCATE TABLE user_addresses");
+  await UserAddress.query().delete();
   await Post.query().delete();
   await User.query().delete();
   await Address.query().delete();
@@ -340,6 +341,7 @@ test(" test with 5 users and addresses in many to many relation", async () => {
   );
 
   const usersWithAddresses = await User.query().with("addresses").many();
+  console.log(JSON.stringify(usersWithAddresses, null, 2));
 
   expect(usersWithAddresses).not.toBeNull();
   expect(usersWithAddresses.length).toBe(5);

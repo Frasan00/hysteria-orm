@@ -3,7 +3,6 @@ import pg, { Client } from 'pg';
 import * as mongodb from 'mongodb';
 import { MongoClientOptions } from 'mongodb';
 import sqlite3 from 'sqlite3';
-import { DateTime } from 'luxon';
 import Redis, { RedisOptions } from 'ioredis';
 export { RedisOptions } from 'ioredis';
 
@@ -217,11 +216,12 @@ type UpdateOptions = {
 };
 
 declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
+    protected type: "mysql" | "mariadb";
     protected mysqlConnection: mysql.Connection;
     protected updateTemplate: ReturnType<typeof updateTemplate>;
     protected deleteTemplate: ReturnType<typeof deleteTemplate>;
     protected mysqlModelManagerUtils: SqlModelManagerUtils<T>;
-    constructor(model: typeof Model, table: string, mysqlConnection: mysql.Connection, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
+    constructor(type: "mysql" | "mariadb", model: typeof Model, table: string, mysqlConnection: mysql.Connection, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
     one(options?: OneOptions$1): Promise<T | null>;
     oneOrFail(options?: OneOptions$1 & {
         customError: Error;
@@ -835,7 +835,7 @@ declare abstract class QueryBuilder<T extends Model> extends WhereQueryBuilder<T
  */
 interface ColumnOptions {
     primaryKey?: boolean;
-    type?: "boolean" | "date" | "dateTime";
+    type?: "boolean" | "date";
 }
 /**
  * @description Decorator to define a column in the model
@@ -881,7 +881,6 @@ declare function getRelations(target: typeof Model): Relation[];
  */
 declare function getPrimaryKey(target: typeof Model): string;
 declare function getDateColumns(target: typeof Model): string[];
-declare function getDateTimeColumns(target: typeof Model): string[];
 
 type CaseConvention = "camel" | "snake" | "none" | RegExp | ((column: string) => string);
 
@@ -1156,6 +1155,7 @@ declare abstract class ModelManager$1<T extends Model> {
 }
 
 declare class MysqlModelManager<T extends Model> extends ModelManager$1<T> {
+    protected type: "mysql" | "mariadb";
     protected mysqlConnection: mysql.Connection;
     protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
     /**
@@ -1165,7 +1165,7 @@ declare class MysqlModelManager<T extends Model> extends ModelManager$1<T> {
      * @param {Connection} mysqlConnection - MySQL connection pool.
      * @param {boolean} logs - Flag to enable or disable logging.
      */
-    constructor(model: typeof Model, mysqlConnection: mysql.Connection, logs: boolean, sqlDataSource: SqlDataSource);
+    constructor(type: "mysql" | "mariadb", model: typeof Model, mysqlConnection: mysql.Connection, logs: boolean, sqlDataSource: SqlDataSource);
     /**
      * Find method to retrieve multiple records from the database based on the input conditions.
      *
@@ -1641,7 +1641,7 @@ declare class ColumnBuilderAlter {
     addDateColumn(columnName: string, type: "date" | "timestamp", options?: DateOptions & {
         afterColumn?: string;
         notNullable?: boolean;
-        default?: string | Date | DateTime;
+        default?: string | Date;
     }): ColumnBuilderAlter;
     /**
      * @description Add a new enum column to the table
@@ -2722,7 +2722,6 @@ declare const _default: {
     getModelColumns: typeof getModelColumns;
     getModelBooleanColumns: typeof getModelBooleanColumns;
     getDateColumns: typeof getDateColumns;
-    getDateTimeColumns: typeof getDateTimeColumns;
     getPrimaryKey: typeof getPrimaryKey;
     Redis: typeof RedisDataSource;
     MongoDataSource: typeof MongoDataSource;
@@ -2731,4 +2730,4 @@ declare const _default: {
     dynamicColumn: typeof dynamicColumn;
 };
 
-export { type CaseConvention, Collection, type DataSourceInput, Migration, Model, type ModelQueryBuilder, MongoDataSource, type PaginatedData, type PaginationMetadata, RedisDataSource as Redis, type RedisGiveable, type RedisStorable, Relation, SqlDataSource, StandaloneQueryBuilder, Transaction, belongsTo, column, _default as default, dynamicProperty, getCollectionProperties, getDateColumns, getDateTimeColumns, getModelBooleanColumns, getModelColumns, getMongoDynamicProperties, getPrimaryKey, getRelations, hasMany, hasOne, manyToMany, property };
+export { type CaseConvention, Collection, type DataSourceInput, Migration, Model, type ModelQueryBuilder, MongoDataSource, type PaginatedData, type PaginationMetadata, RedisDataSource as Redis, type RedisGiveable, type RedisStorable, Relation, SqlDataSource, StandaloneQueryBuilder, Transaction, belongsTo, column, _default as default, dynamicProperty, getCollectionProperties, getDateColumns, getModelBooleanColumns, getModelColumns, getMongoDynamicProperties, getPrimaryKey, getRelations, hasMany, hasOne, manyToMany, property };

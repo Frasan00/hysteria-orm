@@ -222,6 +222,7 @@ export class SqlDataSource extends DataSource {
       case "mysql":
       case "mariadb":
         return new MysqlModelManager<T>(
+          this.type,
           model as typeof Model,
           this.sqlConnection as mysql.Connection,
           this.logs,

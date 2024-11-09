@@ -23,6 +23,7 @@ const updateTemplate = (
       columns = columns.map((column) =>
         convertCase(column, typeofModel.databaseCaseConvention),
       );
+
       let setClause: string;
       let params: (any | null)[];
 
