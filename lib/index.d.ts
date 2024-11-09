@@ -834,8 +834,8 @@ declare abstract class QueryBuilder<T extends Model> extends WhereQueryBuilder<T
  * columns
  */
 interface ColumnOptions {
-    booleanColumn?: boolean;
     primaryKey?: boolean;
+    type?: "boolean" | "date" | "dateTime";
 }
 /**
  * @description Decorator to define a column in the model
@@ -849,6 +849,10 @@ declare function dynamicColumn(columnName: string): PropertyDecorator;
  * @description Returns the columns of the model, columns must be decorated with the column decorator
  */
 declare function getModelColumns(target: typeof Model): string[];
+/**
+ * @description Returns the boolean columns of the model
+ */
+declare function getModelBooleanColumns(target: typeof Model): string[];
 /**
  * relations
  */
@@ -876,6 +880,8 @@ declare function getRelations(target: typeof Model): Relation[];
  * @description Returns the primary key of the model
  */
 declare function getPrimaryKey(target: typeof Model): string;
+declare function getDateColumns(target: typeof Model): string[];
+declare function getDateTimeColumns(target: typeof Model): string[];
 
 type CaseConvention = "camel" | "snake" | "none" | RegExp | ((column: string) => string);
 
@@ -2711,8 +2717,12 @@ declare const _default: {
     SqlDataSource: typeof SqlDataSource;
     Transaction: typeof Transaction;
     Migration: typeof Migration;
+    StandaloneQueryBuilder: typeof StandaloneQueryBuilder;
     getRelations: typeof getRelations;
     getModelColumns: typeof getModelColumns;
+    getModelBooleanColumns: typeof getModelBooleanColumns;
+    getDateColumns: typeof getDateColumns;
+    getDateTimeColumns: typeof getDateTimeColumns;
     getPrimaryKey: typeof getPrimaryKey;
     Redis: typeof RedisDataSource;
     MongoDataSource: typeof MongoDataSource;
@@ -2721,4 +2731,4 @@ declare const _default: {
     dynamicColumn: typeof dynamicColumn;
 };
 
-export { type CaseConvention, Collection, type DataSourceInput, Migration, Model, type ModelQueryBuilder, MongoDataSource, type PaginatedData, type PaginationMetadata, RedisDataSource as Redis, type RedisGiveable, type RedisStorable, Relation, SqlDataSource, StandaloneQueryBuilder, Transaction, belongsTo, column, _default as default, dynamicProperty, getCollectionProperties, getModelColumns, getMongoDynamicProperties, getPrimaryKey, getRelations, hasMany, hasOne, manyToMany, property };
+export { type CaseConvention, Collection, type DataSourceInput, Migration, Model, type ModelQueryBuilder, MongoDataSource, type PaginatedData, type PaginationMetadata, RedisDataSource as Redis, type RedisGiveable, type RedisStorable, Relation, SqlDataSource, StandaloneQueryBuilder, Transaction, belongsTo, column, _default as default, dynamicProperty, getCollectionProperties, getDateColumns, getDateTimeColumns, getModelBooleanColumns, getModelColumns, getMongoDynamicProperties, getPrimaryKey, getRelations, hasMany, hasOne, manyToMany, property };

@@ -162,6 +162,51 @@ test("Raw join users and posts", async () => {
   expect(joinedUsersAndPosts[0].$additionalColumns.superUserEmail).toBe("test");
 });
 
+test("posts with users", async () => {
+  const user = await User.insert({
+    name: "Bob",
+    email: "test",
+    signupSource: "test",
+    isActive: true,
+  });
+
+  if (!user) {
+    throw new Error("User not created");
+  }
+
+  const post1 = await Post.insert({
+    userId: user.id,
+    title: "Post 1",
+    content: "Content 1",
+  });
+
+  const post2 = await Post.insert({
+    userId: user.id,
+    title: "Post 2",
+    content: "Content 2",
+  });
+
+  const usersWithPosts = await User.query().with("posts").many();
+
+  expect(usersWithPosts).not.toBeNull();
+  expect(usersWithPosts.length).toBe(1);
+  expect(usersWithPosts[0].posts).not.toBeNull();
+  expect(usersWithPosts[0].posts.length).toBe(2);
+  expect(usersWithPosts[0].posts[0].title).toBe("Post 1");
+  expect(usersWithPosts[0].posts[1].title).toBe("Post 2");
+
+  const postsWithUser = await Post.query().with("user").many();
+
+  expect(postsWithUser).not.toBeNull();
+  expect(postsWithUser.length).toBe(2);
+  expect(postsWithUser[0].user).not.toBeNull();
+  expect(postsWithUser[0].user.name).toBe("Bob");
+  expect(postsWithUser[0].user.email).toBe("test");
+  expect(postsWithUser[1].user).not.toBeNull();
+  expect(postsWithUser[1].user.name).toBe("Bob");
+  expect(postsWithUser[1].user.email).toBe("test");
+});
+
 test("Create a new user with addresses", async () => {
   const user = await User.insert({
     name: "Alice",
@@ -206,6 +251,133 @@ test("Create a new user with addresses", async () => {
   expect(users[0].addresses.length).toBe(2);
   expect(users[0].addresses[0].street).toBe("Street 1");
   expect(users[0].addresses[1].street).toBe("Street 2");
+});
+
+test(" test with 5 users and addresses in many to many relation", async () => {
+  const users = await User.insertMany([
+    {
+      name: "Alice",
+      email: "test",
+      signupSource: "test",
+      isActive: true,
+    },
+    {
+      name: "Bob",
+      email: "test",
+      signupSource: "test",
+      isActive: true,
+    },
+    {
+      name: "Charlie",
+      email: "test",
+      signupSource: "test",
+      isActive: true,
+    },
+    {
+      name: "David",
+      email: "test",
+      signupSource: "test",
+      isActive: true,
+    },
+    {
+      name: "Eve",
+      email: "test",
+      signupSource: "test",
+      isActive: true,
+    },
+  ]);
+
+  if (!users.length) {
+    throw new Error("Users not created");
+  }
+
+  const addresses = await Address.insertMany([
+    {
+      street: "Street 1",
+      city: "City 1",
+      state: "State 1",
+    },
+    {
+      street: "Street 2",
+      city: "City 2",
+      state: "State 2",
+    },
+    {
+      street: "Street 3",
+      city: "City 3",
+      state: "State 3",
+    },
+    {
+      street: "Street 4",
+      city: "City 4",
+      state: "State 4",
+    },
+    {
+      street: "Street 5",
+      city: "City 5",
+      state: "State 5",
+    },
+  ]);
+
+  if (!addresses.length) {
+    throw new Error("Addresses not created");
+  }
+
+  await sql?.rawQuery(
+    "INSERT INTO user_addresses (user_id, address_id) VALUES (?, ?), (?, ?), (?, ?), (?, ?), (?, ?)",
+    [
+      users[0].id,
+      addresses[0].id,
+      users[1].id,
+      addresses[1].id,
+      users[2].id,
+      addresses[2].id,
+      users[3].id,
+      addresses[3].id,
+      users[4].id,
+      addresses[4].id,
+    ],
+  );
+
+  const usersWithAddresses = await User.query().with("addresses").many();
+
+  expect(usersWithAddresses).not.toBeNull();
+  expect(usersWithAddresses.length).toBe(5);
+  expect(usersWithAddresses[0].addresses).not.toBeNull();
+  expect(usersWithAddresses[0].addresses.length).toBe(1);
+  expect(usersWithAddresses[0].addresses[0].street).toBe("Street 1");
+  expect(usersWithAddresses[1].addresses).not.toBeNull();
+  expect(usersWithAddresses[1].addresses.length).toBe(1);
+  expect(usersWithAddresses[1].addresses[0].street).toBe("Street 2");
+  expect(usersWithAddresses[2].addresses).not.toBeNull();
+  expect(usersWithAddresses[2].addresses.length).toBe(1);
+  expect(usersWithAddresses[2].addresses[0].street).toBe("Street 3");
+  expect(usersWithAddresses[3].addresses).not.toBeNull();
+  expect(usersWithAddresses[3].addresses.length).toBe(1);
+  expect(usersWithAddresses[3].addresses[0].street).toBe("Street 4");
+  expect(usersWithAddresses[4].addresses).not.toBeNull();
+  expect(usersWithAddresses[4].addresses.length).toBe(1);
+  expect(usersWithAddresses[4].addresses[0].street).toBe("Street 5");
+
+  const addressesWithUsers = await Address.query().with("users").many();
+
+  expect(addressesWithUsers).not.toBeNull();
+  expect(addressesWithUsers.length).toBe(5);
+  expect(addressesWithUsers[0].users).not.toBeNull();
+  expect(addressesWithUsers[0].users.length).toBe(1);
+  expect(addressesWithUsers[0].users[0].name).toBe("Alice");
+  expect(addressesWithUsers[1].users).not.toBeNull();
+  expect(addressesWithUsers[1].users.length).toBe(1);
+  expect(addressesWithUsers[1].users[0].name).toBe("Bob");
+  expect(addressesWithUsers[2].users).not.toBeNull();
+  expect(addressesWithUsers[2].users.length).toBe(1);
+  expect(addressesWithUsers[2].users[0].name).toBe("Charlie");
+  expect(addressesWithUsers[3].users).not.toBeNull();
+  expect(addressesWithUsers[3].users.length).toBe(1);
+  expect(addressesWithUsers[3].users[0].name).toBe("David");
+  expect(addressesWithUsers[4].users).not.toBeNull();
+  expect(addressesWithUsers[4].users.length).toBe(1);
+  expect(addressesWithUsers[4].users[0].name).toBe("Eve");
 });
 
 test("posts with users", async () => {
@@ -497,10 +669,10 @@ test(" test with relation query builder", async () => {
           "street",
           "user_addresses.user_id as user_address_user_id",
           "city as SUPER_CITY",
-          "SUM(1) as count",
-          "MAX(1) as max",
+          "SUM(1) OVER() as count",
+          "MAX(1) OVER() as max",
           "addresses.id as test_id",
-          "SUM(addresses.id) as sumTest",
+          "SUM(addresses.id) OVER() as sumTest",
         )
         .where("city", "City 1")
         .addDynamicColumns(["getTest"]);

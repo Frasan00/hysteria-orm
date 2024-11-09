@@ -390,7 +390,7 @@ test(" test with 5 users and addresses in many to many relation", async () => {
   expect(addressesWithUsers[4].users[0].name).toBe("Eve");
 });
 
-test(" test with relation query builder", async () => {
+test("test with relation query builder", async () => {
   const users = await User.insertMany([
     {
       name: "Alice",
@@ -461,10 +461,10 @@ test(" test with relation query builder", async () => {
           "street",
           "user_addresses.user_id as user_address_user_id",
           "city as SUPER_CITY",
-          "SUM(1) as count",
-          "MAX(1) as max",
+          "SUM(1) OVER() as count",
+          "MAX(1) OVER() as max",
           "addresses.id as test_id",
-          "SUM(addresses.id) as sumTest",
+          "SUM(addresses.id) OVER() as sumTest",
         )
         .where("city", "City 1")
         .addDynamicColumns(["getTest"]);

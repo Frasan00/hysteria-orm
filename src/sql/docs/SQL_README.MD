@@ -178,7 +178,7 @@ export class User extends Model {
     declare signupSource: string;
 
     // Only useful with mysql to convert tiny int directly into Boolean
-    @column({ booleanColumn: true })
+    @column({ type: "boolean" })
     declare isActive: boolean;
 
     @column()
@@ -217,8 +217,16 @@ export class User extends Model {
     @column()
     declare json: Record<string, any>;
 
-    @column()
+    // Date columns will be automatically converted to selected type, if not specified they will not be parsed from the database driver
+    @column({
+        type: "dateTime",
+    })
     declare createdAt: DateTime;
+
+    @column({
+        type: "date",
+    })
+    declare updatedAt: Date;
 
     // Hooks
     static beforeFetch(queryBuilder: ModelQueryBuilder<User>) {
@@ -336,6 +344,7 @@ export class User extends Model {
 ```
 
 #### Many To Many
+- Many to many is a special relation that requires a pivot table to be defined
 ```typescript
 import { Model, column, manyToMany } from "hysteria-orm";
 import { Address } from "./Address";
@@ -362,6 +371,7 @@ export class User extends Model {
 - in the query builder, you can query the relations directly from the with method
 - Relation queries have to be contextualized, for example all order by or limit condition will be ignored in a has one relation query because it's can only be a single record for it's definition
 - The result is naturally affected by the target beforeFetch and afterFetch hooks, but they can be ignored with the ignoreHooks property
+- In a many to many query in order to use functions in the select you must use the OVER() function
 ```typescript
 import { ModelQueryBuilder } from "hysteria-orm";
 import { User } from "./User";
@@ -392,6 +402,24 @@ const user: User | null = await User.query()
     }, { beforeFetch: true, afterFetch: true })
     .where("name", "John Doe")
     .one();
+
+// many to many query
+    await User.query()
+      .where("id", user?.id as number)
+      .with("addresses", Address, (query) =>
+        query
+          .select(
+            // You can select and filter on the pivot table or on the related table
+            "user_addresses.id as pivotId",
+            "addresses.id",
+            "street",
+            "state",
+            // Must use OVER() function in order to use functions in the select
+            "SUM(addresses.id) OVER() as total",
+          )
+          .where("user_addresses.id", 1)
+      )
+      .first(),
 ```
 
 ### Case Convention

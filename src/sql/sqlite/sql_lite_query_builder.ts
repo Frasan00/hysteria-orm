@@ -451,10 +451,12 @@ export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
   select(
     ...columns: (SelectableType<T> | "*" | string)[]
   ): SqlLiteQueryBuilder<T> {
-    this.modelSelectedColumns = columns as string[];
     this.selectQuery = this.selectTemplate.selectColumns(
       ...(columns as string[]),
     );
+    this.modelSelectedColumns = columns.map((column) =>
+      convertCase(column as string, this.model.databaseCaseConvention),
+    ) as string[];
     return this;
   }
 

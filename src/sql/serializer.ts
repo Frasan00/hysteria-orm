@@ -1,3 +1,4 @@
+import { DateTime } from "luxon";
 import { convertCase } from "../utils/case_utils";
 import { isNestedObject } from "../utils/json_utils";
 import { Model } from "./models/model";
@@ -6,6 +7,8 @@ import {
   getModelBooleanColumns,
   getModelColumns,
   getDynamicColumns,
+  getDateColumns,
+  getDateTimeColumns,
 } from "./models/model_decorators";
 import {
   isRelationDefinition,
@@ -48,6 +51,8 @@ function serializeModel<T extends Record<string, any>>(
 ): T {
   const camelCaseModel: Record<string, any> = {};
   const booleanColumns = getModelBooleanColumns(typeofModel);
+  const dateColumns = getDateColumns(typeofModel);
+  const dateTimeColumns = getDateTimeColumns(typeofModel);
 
   for (const key in model) {
     if (model.hasOwnProperty(key)) {
@@ -83,6 +88,21 @@ function serializeModel<T extends Record<string, any>>(
 
       if (booleanColumns.includes(camelCaseKey)) {
         camelCaseModel[camelCaseKey] = Boolean(originalValue);
+        continue;
+      }
+
+      if (dateColumns.includes(camelCaseKey)) {
+        camelCaseModel[camelCaseKey] = new Date(originalValue);
+        continue;
+      }
+
+      if (dateTimeColumns.includes(camelCaseKey)) {
+        if (typeof originalValue === "string") {
+          camelCaseModel[camelCaseKey] = DateTime.fromISO(originalValue);
+          continue;
+        }
+
+        camelCaseModel[camelCaseKey] = DateTime.fromJSDate(originalValue);
         continue;
       }
 

@@ -6,96 +6,14 @@ import { ManyToMany } from "../../models/relations/many_to_many";
 import { Relation, RelationEnum } from "../../models/relations/relation";
 import { RelationQueryBuilder } from "../../query_builder/query_builder";
 import { SqlDataSourceType } from "../../sql_data_source";
+import {
+  convertValueToSQL,
+  generateHasManyQuery,
+  generateManyToManyQuery,
+} from "../utils";
 
 function parseValueType(value: any): string {
   return typeof value;
-}
-
-function convertValueToSQL(value: any, type: string): string {
-  switch (type) {
-    case "string":
-      return `'${value}'`;
-    case "number":
-    case "boolean":
-      return `${value}`;
-    default:
-      throw new Error(`Unsupported value type: ${type}`);
-  }
-}
-
-/**
- * TODO: MAKE THIS BETTER IN THE FUTURE
- */
-function getJsonAggregate(
-  column: string,
-  aggregate: string,
-  dbType: SqlDataSourceType,
-  modelColumns: string[],
-  typeofModel: typeof Model,
-) {
-  column = convertCase(column, typeofModel.databaseCaseConvention);
-
-  const parsedColumns = modelColumns.map((column) => {
-    const functionAliasMatch = column.match(/^(\w+\([^()]+\))\s+as\s+(\w+)$/i);
-    const aliasMatch = column.match(/^(.+?)\s+as\s+(\w+)$/i);
-
-    if (functionAliasMatch) {
-      const func = functionAliasMatch[1];
-      const alias = functionAliasMatch[2];
-      return { expression: func, alias, isAggregate: true };
-    }
-
-    if (aliasMatch) {
-      const original = convertCase(
-        aliasMatch[1],
-        typeofModel.databaseCaseConvention,
-      );
-      const alias = aliasMatch[2];
-      return { expression: original, alias, isAggregate: false };
-    }
-
-    const original = convertCase(column, typeofModel.databaseCaseConvention);
-    return { expression: original, alias: column, isAggregate: false };
-  });
-
-  const aggregateColumns = parsedColumns.filter((column) => column.isAggregate);
-  const nonAggregateColumns = parsedColumns.filter(
-    (column) => !column.isAggregate,
-  );
-
-  const buildJsonObject = nonAggregateColumns
-    .map(({ expression, alias }) => {
-      const hasDot = expression.includes(".");
-      const valueExpression = hasDot
-        ? expression
-        : `${aggregate}.${expression}`;
-      return `'${alias}', ${valueExpression}`;
-    })
-    .join(", ");
-
-  const aggregateExpressions = aggregateColumns
-    .map(({ expression, alias }) => `${expression} as "${alias}"`)
-    .join(", ");
-
-  let jsonAggregate = "";
-  switch (dbType) {
-    case "postgres":
-      jsonAggregate = `json_agg(json_build_object(${buildJsonObject})) as ${aggregate}`;
-      break;
-    case "mysql":
-    case "mariadb":
-      jsonAggregate = `JSON_ARRAYAGG(JSON_OBJECT(${buildJsonObject})) as ${aggregate}`;
-      break;
-    case "sqlite":
-      jsonAggregate = `json_group_array(
-  json_object(${buildJsonObject})
-) as ${aggregate}`;
-      break;
-    default:
-      throw new Error(`Unsupported database type: ${dbType}`);
-  }
-
-  return `${jsonAggregate}${aggregateExpressions ? ", " + aggregateExpressions : ""}`;
 }
 
 function parseRelationQuery(relationQuery: RelationQueryBuilder): {
@@ -337,112 +255,49 @@ ${joinQuery}  WHERE ${relatedModel}.${primaryKey} IN (${foreignKeyValues
       const relatedModelForeignKey = relatedModelManyToManyRelation.foreignKey;
       const relatedModelColumns = getModelColumns(relation.model);
 
-      const manyToManyQuery = `WITH cta AS (
-        SELECT
-            ${selectQuery},
-            ROW_NUMBER() OVER (PARTITION BY ${throughModel}.${convertCase(
-              throughModelPrimaryKey,
-              typeofModel.databaseCaseConvention,
-            )}) AS rn
-        FROM
-            ${throughModel}
-        JOIN
-            ${relatedModelTable} ON ${throughModel}.${convertCase(
-              relatedModelForeignKey,
-              typeofModel.databaseCaseConvention,
-            )} = ${relatedModelTable}.${convertCase(
-              relatedModelPrimaryKey,
-              typeofModel.databaseCaseConvention,
-            )}
-        ${whereQuery}
-    )
-    SELECT
-        ${typeofModel.tableName}.${primaryKey},
-        '${relationName}' as relation_name,
-        (
-            SELECT json_agg(cta)
-            FROM
-                cta
-            WHERE
-                 ${typeofModel.tableName}.${primaryKey} IN (${primaryKeyValues.map(
-                   ({ value, type }) => convertValueToSQL(value, type),
-                 )})
-            AND cta.rn >= ${extractedOffsetValue || 0} ${extractedLimitValue ? `AND cta.rn <= (${extractedOffsetValue || 0} + ${extractedLimitValue} - 1)` : ""}
-                    ) AS ${relationName}
-    FROM
-        ${typeofModel.tableName}`;
-
       return {
-        query: manyToManyQuery,
+        query: generateManyToManyQuery({
+          dbType: dbType,
+          relationName: relationName,
+          leftTablePrimaryColumn: convertCase(
+            primaryKey,
+            typeofModel.databaseCaseConvention,
+          ),
+          rightTablePrimaryColumn: convertCase(
+            relatedModelPrimaryKey,
+            typeofModel.databaseCaseConvention,
+          ),
+          pivotLeftTableColumn: convertCase(
+            throughModelPrimaryKey,
+            typeofModel.databaseCaseConvention,
+          ),
+          pivotRightTableColumn: convertCase(
+            relatedModelForeignKey,
+            typeofModel.databaseCaseConvention,
+          ),
+          selectedColumns: relationQuery.selectedColumns?.length
+            ? relationQuery.selectedColumns
+            : relatedModelColumns.map((column) =>
+                convertCase(column, typeofModel.databaseCaseConvention),
+              ),
+          relatedModelColumns: relatedModelColumns.map((column) =>
+            convertCase(column, typeofModel.databaseCaseConvention),
+          ),
+          leftTable: typeofModel.tableName,
+          rightTable: relatedModelTable,
+          pivotTable: throughModel,
+          whereCondition: whereQuery,
+          orderBy: orderByQuery,
+          havingQuery: havingQuery,
+          limit: extractedLimitValue ? +extractedLimitValue : undefined,
+          offset: +extractedOffsetValue || 0,
+        }),
         params: params,
       };
 
     default:
       throw new Error(`Unknown relation type: ${relation.type}`);
   }
-}
-
-function generateHasManyQuery({
-  selectQuery,
-  relationName,
-  relatedModel,
-  foreignKey,
-  typeofModel,
-  primaryKeyValues,
-  joinQuery,
-  whereQuery,
-  groupByQuery,
-  havingQuery,
-  orderByQuery,
-  extractedOffsetValue,
-  extractedLimitValue,
-  databaseType,
-}: {
-  selectQuery: string;
-  relationName: string;
-  relatedModel: string;
-  foreignKey: string;
-  typeofModel: any;
-  primaryKeyValues: Array<{ value: any; type: string }>;
-  joinQuery: string;
-  whereQuery: string;
-  groupByQuery: string;
-  havingQuery: string;
-  orderByQuery: string;
-  extractedOffsetValue: number;
-  extractedLimitValue: number;
-  databaseType: string;
-}): string {
-  const foreignKeyConverted = convertCase(
-    foreignKey,
-    typeofModel.databaseCaseConvention,
-  );
-  const primaryKeyValuesSQL = primaryKeyValues
-    .map(({ value, type }) => convertValueToSQL(value, type))
-    .join(", ");
-
-  let rowNumberClause;
-  if (databaseType === "mysql" || databaseType === "mariadb") {
-    rowNumberClause = `ROW_NUMBER() OVER (PARTITION BY ${relatedModel}.${foreignKeyConverted} ORDER BY ${orderByQuery || `${relatedModel}.${foreignKeyConverted}`}) as row_num`;
-  } else {
-    rowNumberClause = `ROW_NUMBER() OVER (PARTITION BY ${relatedModel}.${foreignKeyConverted} ORDER BY ${orderByQuery || "1"}) as row_num`;
-  }
-
-  const hasManyQuery = `
-    WITH CTE AS (
-      SELECT ${selectQuery}, '${relationName}' as relation_name, 
-             ${rowNumberClause}
-      FROM ${relatedModel} 
-      ${joinQuery} 
-      WHERE ${relatedModel}.${foreignKeyConverted} IN (${primaryKeyValuesSQL}) 
-      ${whereQuery} ${groupByQuery} ${havingQuery}
-    )
-    SELECT * FROM CTE
-    WHERE row_num > ${extractedOffsetValue || 0}
-    ${extractedLimitValue ? `AND row_num <= (${extractedOffsetValue || 0} + ${extractedLimitValue})` : ""};
-  `;
-
-  return hasManyQuery;
 }
 
 export default relationTemplates;

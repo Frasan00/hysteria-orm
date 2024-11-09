@@ -60,10 +60,12 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   select(
     ...columns: (SelectableType<T> | "*" | string)[]
   ): PostgresQueryBuilder<T> {
-    this.modelSelectedColumns = columns as string[];
     this.selectQuery = this.selectTemplate.selectColumns(
       ...(columns as string[]),
     );
+    this.modelSelectedColumns = columns.map((column) =>
+      convertCase(column as string, this.model.databaseCaseConvention),
+    ) as string[];
     return this;
   }
 

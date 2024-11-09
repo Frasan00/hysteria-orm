@@ -10,6 +10,9 @@ import {
   column,
   getRelations,
   getModelColumns,
+  getDateColumns,
+  getDateTimeColumns,
+  getModelBooleanColumns,
   dynamicColumn,
 } from "./sql/models/model_decorators";
 import { Relation } from "./sql/models/relations/relation";
@@ -41,7 +44,7 @@ import { UserAddress } from "../test/sql_models/UserAddress";
 
 (async () => {
   await SqlDataSource.connect({
-    type: "postgres",
+    type: "mariadb",
     database: "test",
     username: "root",
     password: "root",
@@ -100,11 +103,19 @@ import { UserAddress } from "../test/sql_models/UserAddress";
         query
           .select(
             "addresses.id",
+            "user_addresses.id as pivotId",
             "street",
             "state",
-            "SUM(addresses.id) as test",
+            "COUNT(addresses.id) OVER() as total",
           )
           .where("user_addresses.id", userAddresses[1].id),
+      )
+      .first(),
+  );
+  console.log(
+    await Address.query()
+      .with("users", User, (query) =>
+        query.select("*").where("users.signupSource", "test"),
       )
       .first(),
   );
@@ -123,8 +134,12 @@ export default {
   SqlDataSource,
   Transaction,
   Migration,
+  StandaloneQueryBuilder,
   getRelations,
   getModelColumns,
+  getModelBooleanColumns,
+  getDateColumns,
+  getDateTimeColumns,
   getPrimaryKey,
 
   // redis
@@ -158,6 +173,9 @@ export {
   getRelations,
   getModelColumns,
   getPrimaryKey,
+  getModelBooleanColumns,
+  getDateColumns,
+  getDateTimeColumns,
 
   // redis
   Redis,
