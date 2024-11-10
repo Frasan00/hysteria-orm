@@ -6,6 +6,7 @@ import {
   getModelBooleanColumns,
   getModelColumns,
   getDynamicColumns,
+  getDateColumns,
 } from "./models/model_decorators";
 import {
   isRelationDefinition,
@@ -48,6 +49,7 @@ function serializeModel<T extends Record<string, any>>(
 ): T {
   const camelCaseModel: Record<string, any> = {};
   const booleanColumns = getModelBooleanColumns(typeofModel);
+  const dateColumns = getDateColumns(typeofModel);
 
   for (const key in model) {
     if (model.hasOwnProperty(key)) {
@@ -83,6 +85,11 @@ function serializeModel<T extends Record<string, any>>(
 
       if (booleanColumns.includes(camelCaseKey)) {
         camelCaseModel[camelCaseKey] = Boolean(originalValue);
+        continue;
+      }
+
+      if (dateColumns.includes(camelCaseKey)) {
+        camelCaseModel[camelCaseKey] = new Date(originalValue);
         continue;
       }
 
@@ -269,8 +276,11 @@ function processRelation(
           return;
         }
 
-        const relatedColumnValue =
+        let relatedColumnValue =
           relatedModel[relation.columnName as keyof Model];
+        relatedColumnValue = Array.isArray(relatedColumnValue)
+          ? relatedColumnValue
+          : [relatedColumnValue];
 
         serializedModel[relation.columnName] = relatedColumnValue.map(
           (relatedItem: Model) => serializeModel(relatedItem, relation.model),

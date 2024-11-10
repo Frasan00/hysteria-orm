@@ -14,6 +14,7 @@ import { SqlDataSource } from "../sql_data_source";
 import { MysqlQueryBuilder } from "./mysql_query_builder";
 
 export class MysqlModelManager<T extends Model> extends ModelManager<T> {
+  protected type: "mysql" | "mariadb";
   protected mysqlConnection: mysql.Connection;
   protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
 
@@ -25,15 +26,17 @@ export class MysqlModelManager<T extends Model> extends ModelManager<T> {
    * @param {boolean} logs - Flag to enable or disable logging.
    */
   constructor(
+    type: "mysql" | "mariadb",
     model: typeof Model,
     mysqlConnection: mysql.Connection,
     logs: boolean,
     sqlDataSource: SqlDataSource,
   ) {
     super(model, logs, sqlDataSource);
+    this.type = type;
     this.mysqlConnection = mysqlConnection;
     this.sqlModelManagerUtils = new SqlModelManagerUtils<T>(
-      "mysql",
+      this.type,
       mysqlConnection,
     );
   }
@@ -282,6 +285,7 @@ export class MysqlModelManager<T extends Model> extends ModelManager<T> {
    */
   query(): MysqlQueryBuilder<T> {
     return new MysqlQueryBuilder<T>(
+      this.type,
       this.model,
       this.model.table,
       this.mysqlConnection,

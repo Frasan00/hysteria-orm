@@ -3,7 +3,6 @@ import pg, { Client } from 'pg';
 import * as mongodb from 'mongodb';
 import { MongoClientOptions } from 'mongodb';
 import sqlite3 from 'sqlite3';
-import { DateTime } from 'luxon';
 import Redis, { RedisOptions } from 'ioredis';
 export { RedisOptions } from 'ioredis';
 
@@ -217,11 +216,12 @@ type UpdateOptions = {
 };
 
 declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
+    protected type: "mysql" | "mariadb";
     protected mysqlConnection: mysql.Connection;
     protected updateTemplate: ReturnType<typeof updateTemplate>;
     protected deleteTemplate: ReturnType<typeof deleteTemplate>;
     protected mysqlModelManagerUtils: SqlModelManagerUtils<T>;
-    constructor(model: typeof Model, table: string, mysqlConnection: mysql.Connection, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
+    constructor(type: "mysql" | "mariadb", model: typeof Model, table: string, mysqlConnection: mysql.Connection, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
     one(options?: OneOptions$1): Promise<T | null>;
     oneOrFail(options?: OneOptions$1 & {
         customError: Error;
@@ -834,8 +834,8 @@ declare abstract class QueryBuilder<T extends Model> extends WhereQueryBuilder<T
  * columns
  */
 interface ColumnOptions {
-    booleanColumn?: boolean;
     primaryKey?: boolean;
+    type?: "boolean" | "date";
 }
 /**
  * @description Decorator to define a column in the model
@@ -849,6 +849,10 @@ declare function dynamicColumn(columnName: string): PropertyDecorator;
  * @description Returns the columns of the model, columns must be decorated with the column decorator
  */
 declare function getModelColumns(target: typeof Model): string[];
+/**
+ * @description Returns the boolean columns of the model
+ */
+declare function getModelBooleanColumns(target: typeof Model): string[];
 /**
  * relations
  */
@@ -876,6 +880,7 @@ declare function getRelations(target: typeof Model): Relation[];
  * @description Returns the primary key of the model
  */
 declare function getPrimaryKey(target: typeof Model): string;
+declare function getDateColumns(target: typeof Model): string[];
 
 type CaseConvention = "camel" | "snake" | "none" | RegExp | ((column: string) => string);
 
@@ -903,6 +908,7 @@ declare abstract class Entity {
     constructor();
 }
 
+type ModelWithoutExtraColumns<T extends Model> = Omit<Partial<T>, "$additionalColumns">;
 type BaseModelMethodOptions$1 = {
     useConnection?: SqlDataSource;
     trx?: Transaction;
@@ -973,11 +979,11 @@ declare abstract class Model extends Entity {
      * @description Saves a new record to the database
      * @description $additionalColumns will be ignored if set in the modelData and won't be returned in the response
      */
-    static insert<T extends Model>(this: new () => T | typeof Model, modelData: Partial<T>, options?: BaseModelMethodOptions$1): Promise<T | null>;
+    static insert<T extends Model>(this: new () => T | typeof Model, modelData: ModelWithoutExtraColumns<T>, options?: BaseModelMethodOptions$1): Promise<T | null>;
     /**
      * @description Saves multiple records to the database
      */
-    static insertMany<T extends Model>(this: new () => T | typeof Model, modelsData: Partial<T>[], options?: BaseModelMethodOptions$1): Promise<T[]>;
+    static insertMany<T extends Model>(this: new () => T | typeof Model, modelsData: ModelWithoutExtraColumns<T>[], options?: BaseModelMethodOptions$1): Promise<T[]>;
     /**
      * @description Updates a record to the database
      */
@@ -985,17 +991,17 @@ declare abstract class Model extends Entity {
     /**
      * @description Finds the first record or creates a new one if it doesn't exist
      */
-    static firstOrCreate<T extends Model>(this: new () => T | typeof Model, searchCriteria: Partial<T>, createData: Partial<T>, options?: BaseModelMethodOptions$1): Promise<T>;
+    static firstOrCreate<T extends Model>(this: new () => T | typeof Model, searchCriteria: ModelWithoutExtraColumns<T>, createData: ModelWithoutExtraColumns<T>, options?: BaseModelMethodOptions$1): Promise<T>;
     /**
      * @description Updates or creates a new record
      */
-    static upsert<T extends Model>(this: new () => T | typeof Model, searchCriteria: Partial<T>, data: Partial<T>, options?: {
+    static upsert<T extends Model>(this: new () => T | typeof Model, searchCriteria: ModelWithoutExtraColumns<T>, data: ModelWithoutExtraColumns<T>, options?: {
         updateOnConflict?: boolean;
     } & BaseModelMethodOptions$1): Promise<T>;
     /**
      * @description Updates or creates multiple records
      */
-    static upsertMany<T extends Model>(this: new () => T | typeof Model, searchCriteria: SelectableType<T>[], data: Partial<T>[], options?: {
+    static upsertMany<T extends Model>(this: new () => T | typeof Model, searchCriteria: SelectableType<T>[], data: ModelWithoutExtraColumns<T>[], options?: {
         updateOnConflict?: boolean;
     } & BaseModelMethodOptions$1): Promise<T[]>;
     /**
@@ -1149,6 +1155,7 @@ declare abstract class ModelManager$1<T extends Model> {
 }
 
 declare class MysqlModelManager<T extends Model> extends ModelManager$1<T> {
+    protected type: "mysql" | "mariadb";
     protected mysqlConnection: mysql.Connection;
     protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
     /**
@@ -1158,7 +1165,7 @@ declare class MysqlModelManager<T extends Model> extends ModelManager$1<T> {
      * @param {Connection} mysqlConnection - MySQL connection pool.
      * @param {boolean} logs - Flag to enable or disable logging.
      */
-    constructor(model: typeof Model, mysqlConnection: mysql.Connection, logs: boolean, sqlDataSource: SqlDataSource);
+    constructor(type: "mysql" | "mariadb", model: typeof Model, mysqlConnection: mysql.Connection, logs: boolean, sqlDataSource: SqlDataSource);
     /**
      * Find method to retrieve multiple records from the database based on the input conditions.
      *
@@ -1449,11 +1456,11 @@ declare class SqlDataSource extends DataSource {
     /**
      * @description Executes a raw query on the database
      */
-    rawQuery(query: string, params?: any[]): Promise<any>;
+    rawQuery<T = any>(query: string, params?: any[]): Promise<T>;
     /**
      * @description Executes a raw query on the database with the base connection created with SqlDataSource.connect() method
      */
-    static rawQuery(query: string, params?: any[]): Promise<any>;
+    static rawQuery<T = any>(query: string, params?: any[]): Promise<T>;
     private connectDriver;
 }
 
@@ -1634,7 +1641,7 @@ declare class ColumnBuilderAlter {
     addDateColumn(columnName: string, type: "date" | "timestamp", options?: DateOptions & {
         afterColumn?: string;
         notNullable?: boolean;
-        default?: string | Date | DateTime;
+        default?: string | Date;
     }): ColumnBuilderAlter;
     /**
      * @description Add a new enum column to the table
@@ -2710,8 +2717,11 @@ declare const _default: {
     SqlDataSource: typeof SqlDataSource;
     Transaction: typeof Transaction;
     Migration: typeof Migration;
+    StandaloneQueryBuilder: typeof StandaloneQueryBuilder;
     getRelations: typeof getRelations;
     getModelColumns: typeof getModelColumns;
+    getModelBooleanColumns: typeof getModelBooleanColumns;
+    getDateColumns: typeof getDateColumns;
     getPrimaryKey: typeof getPrimaryKey;
     Redis: typeof RedisDataSource;
     MongoDataSource: typeof MongoDataSource;
@@ -2720,4 +2730,4 @@ declare const _default: {
     dynamicColumn: typeof dynamicColumn;
 };
 
-export { type CaseConvention, Collection, type DataSourceInput, Migration, Model, type ModelQueryBuilder, MongoDataSource, type PaginatedData, type PaginationMetadata, RedisDataSource as Redis, type RedisGiveable, type RedisStorable, Relation, SqlDataSource, StandaloneQueryBuilder, Transaction, belongsTo, column, _default as default, dynamicProperty, getCollectionProperties, getModelColumns, getMongoDynamicProperties, getPrimaryKey, getRelations, hasMany, hasOne, manyToMany, property };
+export { type CaseConvention, Collection, type DataSourceInput, Migration, Model, type ModelQueryBuilder, MongoDataSource, type PaginatedData, type PaginationMetadata, RedisDataSource as Redis, type RedisGiveable, type RedisStorable, Relation, SqlDataSource, StandaloneQueryBuilder, Transaction, belongsTo, column, _default as default, dynamicProperty, getCollectionProperties, getDateColumns, getModelBooleanColumns, getModelColumns, getMongoDynamicProperties, getPrimaryKey, getRelations, hasMany, hasOne, manyToMany, property };

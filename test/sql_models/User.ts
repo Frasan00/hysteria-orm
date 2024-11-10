@@ -1,4 +1,3 @@
-import { DateTime } from "luxon";
 import { Post } from "./Post";
 import { ModelQueryBuilder } from "../sql/query_builder/query_builder";
 import { Model } from "../../src/sql/models/model";
@@ -26,20 +25,26 @@ export class User extends Model {
   @column()
   declare signupSource: string;
 
-  @column({ booleanColumn: true })
+  @column({ type: "boolean" })
   declare isActive: boolean;
 
   @column()
   declare json: Record<string, any> | null;
 
-  @column()
-  declare createdAt: DateTime;
+  @column({
+    type: "date",
+  })
+  declare createdAt: Date;
 
-  @column()
-  declare updatedAt: DateTime;
+  @column({
+    type: "date",
+  })
+  declare updatedAt: Date;
 
-  @column()
-  declare deletedAt: DateTime | null;
+  @column({
+    type: "date",
+  })
+  declare deletedAt: Date | null;
 
   @hasMany(() => Post, "userId")
   declare posts: Post[];

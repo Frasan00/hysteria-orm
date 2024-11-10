@@ -42,7 +42,7 @@ export default class ColumnTypeBuilder {
 
       case "sqlite":
         this.columnName = name;
-        this.partialQuery += `\`${name}\` TEXT`;
+        this.partialQuery += `"${name}" TEXT`;
         break;
       default:
         throw new Error("Unsupported SQL type");
@@ -72,7 +72,7 @@ export default class ColumnTypeBuilder {
 
       case "sqlite":
         this.columnName = name;
-        this.partialQuery += `\`${name}\` TEXT`;
+        this.partialQuery += `"${name}" TEXT`;
         break;
       default:
         throw new Error("Unsupported SQL type");
@@ -129,7 +129,7 @@ export default class ColumnTypeBuilder {
         break;
       case "sqlite":
         this.columnName = name;
-        this.partialQuery += `\`${name}\` TEXT`;
+        this.partialQuery += `"${name}" TEXT`;
         break;
       default:
         throw new Error("Unsupported SQL type");
@@ -157,7 +157,7 @@ export default class ColumnTypeBuilder {
         break;
       case "sqlite":
         this.columnName = name;
-        this.partialQuery += `\`${name}\` TEXT`;
+        this.partialQuery += `"${name}" TEXT`;
         break;
       default:
         throw new Error("Unsupported SQL type");
@@ -185,7 +185,7 @@ export default class ColumnTypeBuilder {
         break;
       case "sqlite":
         this.columnName = name;
-        this.partialQuery += `\`${name}\` TEXT`;
+        this.partialQuery += `"${name}" TEXT`;
         break;
       default:
         throw new Error("Unsupported SQL type");
@@ -213,7 +213,7 @@ export default class ColumnTypeBuilder {
         break;
       case "sqlite":
         this.columnName = name;
-        this.partialQuery += `\`${name}\` BLOB(${length})`;
+        this.partialQuery += `"${name}" BLOB(${length})`;
         break;
       default:
         throw new Error("Unsupported SQL type");
@@ -237,7 +237,7 @@ export default class ColumnTypeBuilder {
         break;
       case "sqlite":
         this.columnName = name;
-        this.partialQuery += `\`${name}\` TEXT CHECK(${name} IN ('${values.join(
+        this.partialQuery += `"${name}" TEXT CHECK(${name} IN ('${values.join(
           "', '",
         )}'))`;
         break;
@@ -273,7 +273,7 @@ export default class ColumnTypeBuilder {
         break;
       case "sqlite":
         this.columnName = name;
-        this.partialQuery += `\`${name}\` TEXT`;
+        this.partialQuery += `"${name}" TEXT`;
         break;
       default:
         throw new Error("Unsupported SQL type");
@@ -301,7 +301,7 @@ export default class ColumnTypeBuilder {
         break;
       case "sqlite":
         this.columnName = name;
-        this.partialQuery += `\`${name}\` CHAR(${length})`;
+        this.partialQuery += `"${name}" CHAR(${length})`;
         break;
       default:
         throw new Error("Unsupported SQL type");
@@ -329,7 +329,7 @@ export default class ColumnTypeBuilder {
         break;
       case "sqlite":
         this.columnName = name;
-        this.partialQuery += `\`${name}\` TINYINT`;
+        this.partialQuery += `"${name}" TINYINT`;
         break;
       default:
         throw new Error("Unsupported SQL type");
@@ -357,7 +357,7 @@ export default class ColumnTypeBuilder {
         break;
       case "sqlite":
         this.columnName = name;
-        this.partialQuery += `\`${name}\` SMALLINT`;
+        this.partialQuery += `"${name}" SMALLINT`;
         break;
       default:
         throw new Error("Unsupported SQL type");
@@ -385,7 +385,7 @@ export default class ColumnTypeBuilder {
         break;
       case "sqlite":
         this.columnName = name;
-        this.partialQuery += `\`${name}\` MEDIUMINT`;
+        this.partialQuery += `"${name}" MEDIUMINT`;
         break;
       default:
         throw new Error("Unsupported SQL type");
@@ -494,7 +494,7 @@ export default class ColumnTypeBuilder {
         break;
       case "sqlite":
         this.columnName = name;
-        this.partialQuery += `\`${name}\` INTEGER ${length ? `(${length})` : ""}`;
+        this.partialQuery += `"${name}" INTEGER ${length ? `(${length})` : ""}`;
         break;
       default:
         throw new Error("Unsupported SQL type");
@@ -522,7 +522,7 @@ export default class ColumnTypeBuilder {
         break;
       case "sqlite":
         this.columnName = name;
-        this.partialQuery += `\`${name}\` BIGINT`;
+        this.partialQuery += `"${name}" BIGINT`;
         break;
       default:
         throw new Error("Unsupported SQL type");
@@ -577,7 +577,7 @@ export default class ColumnTypeBuilder {
         break;
       case "sqlite":
         this.columnName = name;
-        this.partialQuery += `\`${name}\` REAL`;
+        this.partialQuery += `"${name}" REAL`;
         break;
       default:
         throw new Error("Unsupported SQL type");
@@ -614,7 +614,7 @@ export default class ColumnTypeBuilder {
         break;
       case "sqlite":
         this.columnName = name;
-        this.partialQuery += `\`${name}\` DECIMAL(${options.precision}, ${options.scale})`;
+        this.partialQuery += `"${name}" DECIMAL(${options.precision}, ${options.scale})`;
         break;
       default:
         throw new Error("Unsupported SQL type");
@@ -651,7 +651,7 @@ export default class ColumnTypeBuilder {
         break;
       case "sqlite":
         this.columnName = name;
-        this.partialQuery += `\`${name}\` REAL`;
+        this.partialQuery += `"${name}" REAL`;
         break;
       default:
         throw new Error("Unsupported SQL type");

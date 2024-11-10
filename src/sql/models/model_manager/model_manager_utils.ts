@@ -1,7 +1,7 @@
 import mysql from "mysql2/promise";
 import pg from "pg";
 import sqlite3 from "sqlite3";
-import logger, { log, queryError } from "../../../utils/logger";
+import { log } from "../../../utils/logger";
 import deleteTemplate from "../../resources/query/DELETE";
 import insertTemplate from "../../resources/query/INSERT";
 import relationTemplates from "../../resources/query/RELATION";

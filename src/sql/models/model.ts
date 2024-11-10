@@ -1,5 +1,4 @@
 import "reflect-metadata";
-import { DateTime } from "luxon";
 import { convertCase } from "../../utils/case_utils";
 import { PaginatedData } from "../pagination";
 import { ModelQueryBuilder, OneOptions } from "../query_builder/query_builder";
@@ -28,6 +27,12 @@ import {
 } from "./model_manager/model_manager_types";
 import { Transaction } from "../transactions/transaction";
 import { Entity } from "../../entity";
+import { baseSoftDeleteDate } from "../../utils/date_utils";
+
+export type ModelWithoutExtraColumns<T extends Model> = Omit<
+  Partial<T>,
+  "$additionalColumns"
+>;
 
 export type BaseModelMethodOptions = {
   useConnection?: SqlDataSource;
@@ -215,12 +220,12 @@ export abstract class Model extends Entity {
    */
   static async insert<T extends Model>(
     this: new () => T | typeof Model,
-    modelData: Partial<T>,
+    modelData: ModelWithoutExtraColumns<T>,
     options: BaseModelMethodOptions = {},
   ): Promise<T | null> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
-    return modelManager.insert(modelData);
+    return modelManager.insert(modelData as T);
   }
 
   /**
@@ -228,12 +233,12 @@ export abstract class Model extends Entity {
    */
   static async insertMany<T extends Model>(
     this: new () => T | typeof Model,
-    modelsData: Partial<T>[],
+    modelsData: ModelWithoutExtraColumns<T>[],
     options: BaseModelMethodOptions = {},
   ): Promise<T[]> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
-    return modelManager.insertMany(modelsData);
+    return modelManager.insertMany(modelsData as T[]);
   }
 
   /**
@@ -260,8 +265,8 @@ export abstract class Model extends Entity {
    */
   static async firstOrCreate<T extends Model>(
     this: new () => T | typeof Model,
-    searchCriteria: Partial<T>,
-    createData: Partial<T>,
+    searchCriteria: ModelWithoutExtraColumns<T>,
+    createData: ModelWithoutExtraColumns<T>,
     options: BaseModelMethodOptions = {},
   ): Promise<T> {
     const typeofModel = this as unknown as typeof Model;
@@ -274,7 +279,7 @@ export abstract class Model extends Entity {
       return doesExist;
     }
 
-    return (await modelManager.insert(createData)) as T;
+    return (await modelManager.insert(createData as T)) as T;
   }
 
   /**
@@ -282,8 +287,8 @@ export abstract class Model extends Entity {
    */
   static async upsert<T extends Model>(
     this: new () => T | typeof Model,
-    searchCriteria: Partial<T>,
-    data: Partial<T>,
+    searchCriteria: ModelWithoutExtraColumns<T>,
+    data: ModelWithoutExtraColumns<T>,
     options: { updateOnConflict?: boolean } & BaseModelMethodOptions = {
       updateOnConflict: true,
     },
@@ -295,7 +300,7 @@ export abstract class Model extends Entity {
     });
 
     if (doesExist) {
-      data[typeofModel.primaryKey as keyof T] =
+      (data as T)[typeofModel.primaryKey as keyof T] =
         doesExist[typeofModel.primaryKey as keyof T];
 
       if (options.updateOnConflict) {
@@ -305,7 +310,7 @@ export abstract class Model extends Entity {
       return doesExist;
     }
 
-    return (await modelManager.insert(data)) as T;
+    return (await modelManager.insert(data as T)) as T;
   }
 
   /**
@@ -314,7 +319,7 @@ export abstract class Model extends Entity {
   static async upsertMany<T extends Model>(
     this: new () => T | typeof Model,
     searchCriteria: SelectableType<T>[],
-    data: Partial<T>[],
+    data: ModelWithoutExtraColumns<T>[],
     options: { updateOnConflict?: boolean } & BaseModelMethodOptions = {
       updateOnConflict: true,
     },
@@ -340,14 +345,14 @@ export abstract class Model extends Entity {
       const search = searchCriteria.reduce((acc, column) => {
         acc[column] = record[column];
         return acc;
-      }, {} as Partial<T>);
+      }, {} as ModelWithoutExtraColumns<T>);
 
       const doesExist = await modelManager.findOne({
         where: search,
       });
 
       if (doesExist) {
-        record[typeofModel.primaryKey as keyof T] =
+        (record as T)[typeofModel.primaryKey as keyof T] =
           doesExist[typeofModel.primaryKey as keyof T];
 
         if (options.updateOnConflict) {
@@ -359,7 +364,7 @@ export abstract class Model extends Entity {
         continue;
       }
 
-      results.push((await modelManager.insert(record)) as T);
+      results.push((await modelManager.insert(record as T)) as T);
     }
 
     return results;
@@ -392,7 +397,7 @@ export abstract class Model extends Entity {
     const typeofModel = this as unknown as typeof Model;
     const {
       column = "deletedAt" as SelectableType<T>,
-      value = DateTime.local().toISO(),
+      value = baseSoftDeleteDate(new Date()),
     } = options || {};
 
     modelSqlInstance[column as keyof T] = value as T[keyof T];
@@ -403,9 +408,7 @@ export abstract class Model extends Entity {
     await modelManager.updateRecord(modelSqlInstance);
 
     if (typeof value === "string") {
-      modelSqlInstance[column as keyof T] = DateTime.fromISO(
-        value,
-      ) as T[keyof T];
+      modelSqlInstance[column as keyof T] = new Date(value) as T[keyof T];
     }
 
     modelSqlInstance[column as keyof T] = value as T[keyof T];

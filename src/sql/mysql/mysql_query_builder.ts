@@ -23,19 +23,19 @@ import {
   DeleteOptions,
   SoftDeleteOptions,
 } from "../query_builder/delete_query_builder_type";
-import { DateTime } from "luxon";
 import deleteTemplate from "../resources/query/DELETE";
 import updateTemplate from "../resources/query/UPDATE";
 import { UpdateOptions } from "../query_builder/update_query_builder_types";
-import { Mode } from "fs";
 
 export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
+  protected type: "mysql" | "mariadb";
   protected mysqlConnection: mysql.Connection;
   protected updateTemplate: ReturnType<typeof updateTemplate>;
   protected deleteTemplate: ReturnType<typeof deleteTemplate>;
   protected mysqlModelManagerUtils: SqlModelManagerUtils<T>;
 
   constructor(
+    type: "mysql" | "mariadb",
     model: typeof Model,
     table: string,
     mysqlConnection: mysql.Connection,
@@ -44,12 +44,13 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     sqlDataSource: SqlDataSource,
   ) {
     super(model, table, logs, sqlDataSource);
+    this.type = type;
     this.mysqlConnection = mysqlConnection;
     this.updateTemplate = updateTemplate(sqlDataSource.getDbType(), this.model);
     this.deleteTemplate = deleteTemplate(table, sqlDataSource.getDbType());
     this.isNestedCondition = isNestedCondition;
     this.mysqlModelManagerUtils = new SqlModelManagerUtils<T>(
-      "mysql",
+      this.type,
       this.mysqlConnection,
     );
   }
@@ -94,7 +95,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
         [modelInstance],
         this.model,
         this.relations,
-        "mysql",
+        this.type,
         this.logs,
       );
 
@@ -164,7 +165,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
         models,
         this.model,
         this.relations,
-        "mysql",
+        this.type,
         this.logs,
       );
 
@@ -192,7 +193,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
   async softDelete(options?: SoftDeleteOptions<T>): Promise<number> {
     const {
       column = "deletedAt",
-      value = DateTime.local().toISO(),
+      value = new Date().toISOString().slice(0, 19).replace("T", " "),
       ignoreBeforeDeleteHook = false,
     } = options || {};
     if (!ignoreBeforeDeleteHook) {
@@ -274,6 +275,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
   whereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this {
     const queryBuilder = new MysqlQueryBuilder(
+      this.type,
       this.model as typeof Model,
       this.table,
       this.mysqlConnection,
@@ -306,6 +308,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
   orWhereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this {
     const nestedBuilder = new MysqlQueryBuilder(
+      this.type,
       this.model as typeof Model,
       this.table,
       this.mysqlConnection,
@@ -341,6 +344,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
   andWhereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this {
     const nestedBuilder = new MysqlQueryBuilder(
+      this.type,
       this.model as typeof Model,
       this.table,
       this.mysqlConnection,
@@ -444,7 +448,9 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
   select(
     ...columns: (SelectableType<T> | "*" | string)[]
   ): MysqlQueryBuilder<T> {
-    this.modelSelectedColumns = columns as string[];
+    this.modelSelectedColumns = columns.map((column) =>
+      convertCase(column as string, this.model.databaseCaseConvention),
+    ) as string[];
     this.selectQuery = this.selectTemplate.selectColumns(
       ...(columns as string[]),
     );
@@ -504,6 +510,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     }
 
     const queryBuilder = new MysqlQueryBuilder(
+      this.type,
       relatedModel as typeof Model,
       relatedModel?.table || "",
       this.mysqlConnection,
@@ -607,6 +614,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
   copy(): ModelQueryBuilder<T> {
     const queryBuilder = new MysqlQueryBuilder<T>(
+      this.type,
       this.model as typeof Model,
       this.table,
       this.mysqlConnection,

@@ -157,10 +157,7 @@ test("Soft delete a user", async () => {
     throw new Error("User not created");
   }
 
-  const softDeletedUser = await User.softDelete(user, {
-    column: "deletedAt",
-    value: DateTime.local().toString(),
-  });
+  const softDeletedUser = await User.softDelete(user);
   expect(softDeletedUser).not.toBeNull();
   expect(softDeletedUser.deletedAt).not.toBeNull();
 

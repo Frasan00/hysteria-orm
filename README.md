@@ -14,6 +14,10 @@
 - [Javascript](#javascript)
 - [Setup Example](#setup-example)
 
+## Known Issues
+- `npm run` not working with cli commands, use `yarn` instead
+- Many to many retrieve not working on mariadb due to database limitations
+
 ## Installation
 ```shell
     npm install hysteria-orm

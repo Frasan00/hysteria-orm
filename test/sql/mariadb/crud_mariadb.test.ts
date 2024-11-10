@@ -1,6 +1,6 @@
-import { DateTime } from "luxon";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { User } from "../../sql_models/User";
+import { DateTime } from "luxon";
 
 let sql: SqlDataSource | null = null;
 beforeAll(async () => {
@@ -206,7 +206,7 @@ test("Soft delete a user", async () => {
 
   const softDeletedUser = await User.softDelete(user, {
     column: "deletedAt",
-    value: DateTime.local().toISODate(),
+    value: new Date().toISOString().slice(0, 19).replace("T", " "),
   });
   expect(softDeletedUser).not.toBeNull();
   expect(softDeletedUser.deletedAt).not.toBeNull();

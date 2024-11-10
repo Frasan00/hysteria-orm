@@ -2,7 +2,7 @@ import { convertCase } from "../../../utils/case_utils";
 import { SqlDataSourceType } from "../../sql_data_source";
 import { Model } from "../../models/model";
 
-const commonSelectMethods = [
+const baseSelectMethods = [
   "*",
   "COUNT",
   "DISTINCT",
@@ -94,7 +94,7 @@ const selectTemplate = (
         }
 
         if (
-          commonSelectMethods.includes(columnName.toUpperCase()) ||
+          baseSelectMethods.includes(columnName.toUpperCase()) ||
           columnName.includes("(")
         ) {
           return alias ? `${columnName} AS ${alias}` : columnName;

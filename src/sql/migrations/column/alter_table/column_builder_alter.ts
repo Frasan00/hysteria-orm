@@ -1,4 +1,3 @@
-import { DateTime } from "luxon";
 import { SqlDataSourceType } from "../../../sql_data_source";
 import ColumnTypeBuilder, {
   DateOptions,
@@ -160,8 +159,6 @@ export default class ColumnBuilderAlter {
         query += ` DEFAULT '${options.default}'`;
       } else if (options.default instanceof Date) {
         query += ` DEFAULT '${options.default.toISOString()}'`;
-      } else if (options.default instanceof DateTime) {
-        query += ` DEFAULT '${options.default.toISO()}'`;
       } else if (typeof options.default === "object") {
         query += ` DEFAULT '${JSON.stringify(options.default)}'`;
       } else if (typeof options.default === null) {
@@ -219,7 +216,7 @@ export default class ColumnBuilderAlter {
     options?: DateOptions & {
       afterColumn?: string;
       notNullable?: boolean;
-      default?: string | Date | DateTime;
+      default?: string | Date;
     },
   ): ColumnBuilderAlter {
     let query = `ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${type}`;
@@ -267,7 +264,7 @@ export default class ColumnBuilderAlter {
       } else if (options.default instanceof Date) {
         query += ` DEFAULT '${options.default.toISOString()}'`;
       } else {
-        query += ` DEFAULT '${options.default.toISO()}'`;
+        throw new Error("Invalid default value");
       }
     }
 

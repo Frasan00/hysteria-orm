@@ -222,6 +222,7 @@ export class SqlDataSource extends DataSource {
       case "mysql":
       case "mariadb":
         return new MysqlModelManager<T>(
+          this.type,
           model as typeof Model,
           this.sqlConnection as mysql.Connection,
           this.logs,
@@ -424,7 +425,7 @@ export class SqlDataSource extends DataSource {
   /**
    * @description Executes a raw query on the database
    */
-  async rawQuery(query: string, params: any[] = []): Promise<any> {
+  async rawQuery<T = any>(query: string, params: any[] = []): Promise<T> {
     if (!this.isConnected) {
       throw new Error("sql database connection not established");
     }
@@ -437,14 +438,14 @@ export class SqlDataSource extends DataSource {
           this.sqlConnection as mysql.Connection
         ).execute(query, params);
 
-        return mysqlRows;
+        return mysqlRows as T;
       case "postgres":
         const { rows } = await (this.sqlConnection as pg.Client).query(
           query,
           params as any[],
         );
 
-        return rows;
+        return rows as T;
       case "sqlite":
         return new Promise((resolve, reject) => {
           (this.sqlConnection as sqlite3.Database).all(
@@ -455,7 +456,7 @@ export class SqlDataSource extends DataSource {
                 reject(err);
               }
 
-              resolve(rows);
+              resolve(rows as T);
             },
           );
         });
@@ -467,7 +468,10 @@ export class SqlDataSource extends DataSource {
   /**
    * @description Executes a raw query on the database with the base connection created with SqlDataSource.connect() method
    */
-  static async rawQuery(query: string, params: any[] = []): Promise<any> {
+  static async rawQuery<T = any>(
+    query: string,
+    params: any[] = [],
+  ): Promise<T> {
     const sqlDataSource = SqlDataSource.getInstance();
     if (!sqlDataSource || !sqlDataSource.isConnected) {
       throw new Error("sql database connection not established");
@@ -481,14 +485,14 @@ export class SqlDataSource extends DataSource {
           sqlDataSource.sqlConnection as mysql.Connection
         ).execute(query, params);
 
-        return mysqlRows;
+        return mysqlRows as T;
       case "postgres":
         const { rows } = await (sqlDataSource.sqlConnection as pg.Client).query(
           query,
           params,
         );
 
-        return rows;
+        return rows as T;
       case "sqlite":
         return new Promise((resolve, reject) => {
           (sqlDataSource.sqlConnection as sqlite3.Database).all(
@@ -499,7 +503,7 @@ export class SqlDataSource extends DataSource {
                 reject(err);
               }
 
-              resolve(rows);
+              resolve(rows as T);
             },
           );
         });
