@@ -468,7 +468,10 @@ export class SqlDataSource extends DataSource {
   /**
    * @description Executes a raw query on the database with the base connection created with SqlDataSource.connect() method
    */
-  static async rawQuery<T = any>(query: string, params: any[] = []): Promise<T> {
+  static async rawQuery<T = any>(
+    query: string,
+    params: any[] = [],
+  ): Promise<T> {
     const sqlDataSource = SqlDataSource.getInstance();
     if (!sqlDataSource || !sqlDataSource.isConnected) {
       throw new Error("sql database connection not established");

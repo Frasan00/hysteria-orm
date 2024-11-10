@@ -1456,11 +1456,11 @@ declare class SqlDataSource extends DataSource {
     /**
      * @description Executes a raw query on the database
      */
-    rawQuery(query: string, params?: any[]): Promise<any>;
+    rawQuery<T = any>(query: string, params?: any[]): Promise<T>;
     /**
      * @description Executes a raw query on the database with the base connection created with SqlDataSource.connect() method
      */
-    static rawQuery(query: string, params?: any[]): Promise<any>;
+    static rawQuery<T = any>(query: string, params?: any[]): Promise<T>;
     private connectDriver;
 }
 
