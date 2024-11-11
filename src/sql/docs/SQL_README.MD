@@ -89,7 +89,7 @@ const mysqlConfig: DataSourceInput = {
     logs: true, // query-logs (optional) - default: false
 }
 
-// Config can be omitted, in that case envs will be used to enstablish the connection 
+// Config can be omitted, in that case envs will be used to enstablish the connection
 const sql = await SqlDataSource.connect(mysqlConfig, () => console.log("Connected to the database!"));
 await sql.closeConnection();
 
@@ -385,7 +385,7 @@ const user: User | null = await User.query()
     .one();
 
 // You can also query on the join table
-// In the select and where conditions, if the table is not specified, the related model table will be used 
+// In the select and where conditions, if the table is not specified, the related model table will be used
 const user: User | null = await User.query()
     .with('address', Address, (query: ModelQueryBuilder<Address>) => {
         query.where("street", "Main street") // will use address table for the query: addresses.street = 'Main street'
@@ -702,7 +702,8 @@ export class User extends Model {
   @column({ primaryKey: true })
   declare id: string;
 
-  @column()
+  // Column that will be computed after the query
+  @column({ serialize: (value: any) => value.toUpperCase() })
   declare name: string;
 
   @column()
@@ -782,7 +783,7 @@ const { query, params } = userQueryBuilder
 
 // Example of couple { query, params }
 
-// query = SELECT * FROM users WHERE (id = $1 OR name = $2 AND signup_date = $3 OR signup_date = $4) 
+// query = SELECT * FROM users WHERE (id = $1 OR name = $2 AND signup_date = $3 OR signup_date = $4)
 // params = [ 1, 'John', '2021-01-01', '2021-01-02' ]
 ```
 

@@ -126,7 +126,7 @@ function relationTemplates<T extends Model>(
         };
       }
 
-      const query = `SELECT ${selectQuery}, '${relationName}' as relation_name FROM ${relatedModel} 
+      const query = `SELECT ${selectQuery}, '${relationName}' as relation_name FROM ${relatedModel}
 ${joinQuery} WHERE ${relatedModel}.${convertCase(
         foreignKey,
         typeofModel.databaseCaseConvention,
@@ -163,7 +163,7 @@ ${joinQuery} WHERE ${relatedModel}.${convertCase(
         };
       }
 
-      const belongsToQuery = `SELECT ${selectQuery}, '${relationName}' as relation_name FROM ${relatedModel} 
+      const belongsToQuery = `SELECT ${selectQuery}, '${relationName}' as relation_name FROM ${relatedModel}
 ${joinQuery}  WHERE ${relatedModel}.${primaryKey} IN (${foreignKeyValues
         .map(({ value, type }) => convertValueToSQL(value, type))
         .join(
@@ -253,7 +253,9 @@ ${joinQuery}  WHERE ${relatedModel}.${primaryKey} IN (${foreignKeyValues
       }
 
       const relatedModelForeignKey = relatedModelManyToManyRelation.foreignKey;
-      const relatedModelColumns = getModelColumns(relation.model);
+      const relatedModelColumns = getModelColumns(relation.model).map(
+        (column) => column.columnName,
+      );
 
       return {
         query: generateManyToManyQuery({

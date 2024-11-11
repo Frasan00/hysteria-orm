@@ -835,6 +835,7 @@ declare abstract class QueryBuilder<T extends Model> extends WhereQueryBuilder<T
  */
 interface ColumnOptions {
     primaryKey?: boolean;
+    serialize?: (value: any) => void;
     type?: "boolean" | "date";
 }
 /**
@@ -848,7 +849,10 @@ declare function dynamicColumn(columnName: string): PropertyDecorator;
 /**
  * @description Returns the columns of the model, columns must be decorated with the column decorator
  */
-declare function getModelColumns(target: typeof Model): string[];
+declare function getModelColumns(target: typeof Model): {
+    columnName: string;
+    serialize?: (value: any) => any;
+}[];
 /**
  * @description Returns the boolean columns of the model
  */

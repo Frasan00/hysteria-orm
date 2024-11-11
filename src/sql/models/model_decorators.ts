@@ -23,6 +23,7 @@ type LazyRelationEnum = {
 
 export interface ColumnOptions {
   primaryKey?: boolean;
+  serialize?: (value: any) => void;
   type?: "boolean" | "date";
 }
 
@@ -68,9 +69,14 @@ export function column(
       );
     }
 
+    const column = {
+      columnName: propertyKey,
+      serialize: options.serialize,
+    };
+
     const existingColumns =
       Reflect.getMetadata(COLUMN_METADATA_KEY, target) || [];
-    existingColumns.push(propertyKey);
+    existingColumns.push(column);
     Reflect.defineMetadata(COLUMN_METADATA_KEY, existingColumns, target);
   };
 }
@@ -100,7 +106,9 @@ export function dynamicColumn(columnName: string): PropertyDecorator {
 /**
  * @description Returns the columns of the model, columns must be decorated with the column decorator
  */
-export function getModelColumns(target: typeof Model): string[] {
+export function getModelColumns(
+  target: typeof Model,
+): { columnName: string; serialize?: (value: any) => any }[] {
   return Reflect.getMetadata(COLUMN_METADATA_KEY, target.prototype) || [];
 }
 

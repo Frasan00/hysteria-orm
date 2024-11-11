@@ -33,7 +33,7 @@ export async function parseDatabaseDataIntoModelResponse<T extends Model>(
     addNullModelColumns(typeofModel, serializedModel);
     removeNonModelSelectedColumns(
       serializedModel,
-      modelColumns,
+      modelColumns.map((column) => column.columnName),
       modelSelectedColumns,
     );
 
@@ -48,6 +48,7 @@ function serializeModel<T extends Record<string, any>>(
   typeofModel: typeof Model,
 ): T {
   const camelCaseModel: Record<string, any> = {};
+  const columns = getModelColumns(typeofModel);
   const booleanColumns = getModelBooleanColumns(typeofModel);
   const dateColumns = getDateColumns(typeofModel);
 
@@ -93,6 +94,12 @@ function serializeModel<T extends Record<string, any>>(
         continue;
       }
 
+      const modelColumn = columns.find((column) => column.columnName === key);
+      if (modelColumn && modelColumn.serialize) {
+        camelCaseModel[camelCaseKey] = modelColumn.serialize(originalValue);
+        continue;
+      }
+
       camelCaseModel[camelCaseKey] = originalValue;
     }
   }
@@ -111,7 +118,7 @@ function addNullModelColumns(
       typeofModel.modelCaseConvention,
     ) as string;
 
-    if (serializedModel.hasOwnProperty(column)) {
+    if (serializedModel.hasOwnProperty(column.columnName)) {
       return;
     }
 

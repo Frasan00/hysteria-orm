@@ -369,7 +369,7 @@ export abstract class QueryBuilder<
         key,
         typeofModel.modelCaseConvention,
       ) as string;
-      if (columns.includes(casedKey)) {
+      if (columns.map((column) => column.columnName).includes(casedKey)) {
         Object.assign(model, { [casedKey]: value });
         return;
       }
