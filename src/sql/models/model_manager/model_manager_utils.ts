@@ -148,7 +148,11 @@ export default class SqlModelManagerUtils<T extends Model> {
 
       log(query, logs, params);
       let result = await this.getQueryResult(query, params);
-      result = Array.isArray(result) ? result : [result];
+      if (!result) {
+        result = [];
+      } else if (!Array.isArray(result)) {
+        result = [result];
+      }
 
       // Dynamic columns are added to the model after the query
       for (const row of result) {

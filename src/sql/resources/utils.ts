@@ -107,6 +107,7 @@ export function generateManyToManyQuery({
         ) AS json_data
         FROM ${rightTable}
         JOIN ${pivotTable} ON ${pivotTable}.${pivotRightTableColumn} = ${rightTable}.${rightTablePrimaryColumn}
+        ${dbType === "mariadb" ? `JOIN ${leftTable} ON ${pivotTable}.${pivotLeftTableColumn} = ${leftTable}.${leftTablePrimaryColumn}` : ""}
         WHERE ${pivotTable}.${pivotLeftTableColumn} = ${leftTable}.${leftTablePrimaryColumn}`;
 
   if (whereCondition) {
@@ -178,11 +179,11 @@ export function generateHasManyQuery({
 
   const hasManyQuery = `
     WITH CTE AS (
-      SELECT ${selectQuery}, '${relationName}' as relation_name, 
+      SELECT ${selectQuery}, '${relationName}' as relation_name,
              ${rowNumberClause}
-      FROM ${relatedModel} 
-      ${joinQuery} 
-      WHERE ${relatedModel}.${foreignKeyConverted} IN (${primaryKeyValuesSQL}) 
+      FROM ${relatedModel}
+      ${joinQuery}
+      WHERE ${relatedModel}.${foreignKeyConverted} IN (${primaryKeyValuesSQL})
       ${whereQuery} ${groupByQuery} ${havingQuery}
     )
     SELECT * FROM CTE
