@@ -166,9 +166,7 @@ export default class SqlModelManagerUtils<T extends Model> {
 
       // after fetch hook
       if (!inputRelation.ignoreAfterFetchHook) {
-        result = await (relation.model as any).afterFetch(
-          Array.isArray(result) ? result : [result],
-        );
+        result = await (relation.model as any).afterFetch(result);
       }
 
       // Group the result by relation name

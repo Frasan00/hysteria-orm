@@ -36,24 +36,6 @@ import {
   getCollectionProperties,
 } from "./no_sql/mongo/mongo_models/mongo_collection_decorators";
 import { Transaction } from "./sql/transactions/transaction";
-import { User } from "../test/sql_models/User";
-
-(async () => {
-  await SqlDataSource.connect({
-    type: "postgres",
-    host: "localhost",
-    port: 5432,
-    username: "root",
-    password: "root",
-    database: "test",
-    logs: true,
-  });
-
-  const a = await User.find();
-  console.log(a);
-
-  await SqlDataSource.disconnect();
-})();
 
 export default {
   // sql

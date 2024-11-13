@@ -285,9 +285,13 @@ function processRelation(
 
         let relatedColumnValue =
           relatedModel[relation.columnName as keyof Model];
-        relatedColumnValue = Array.isArray(relatedColumnValue)
-          ? relatedColumnValue
-          : [relatedColumnValue];
+        if (!relatedColumnValue) {
+          relatedColumnValue = [];
+        }
+
+        if (!Array.isArray(relatedColumnValue)) {
+          relatedColumnValue = [relatedColumnValue];
+        }
 
         serializedModel[relation.columnName] = relatedColumnValue.map(
           (relatedItem: Model) => serializeModel(relatedItem, relation.model),
