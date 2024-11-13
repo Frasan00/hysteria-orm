@@ -68,9 +68,6 @@ export default class ColumnBuilderAlter {
 
   /**
    * @description Add a new column to the table
-   * @param columnName { string }
-   * @param {DataType} dataType
-   * @param {BaseOptions} options
    */
   addColumn(
     columnName: string,
@@ -207,8 +204,6 @@ export default class ColumnBuilderAlter {
 
   /**
    * @description Add a new date column to the table
-   * @param columnName { string }
-   * @param options { DateOptions }
    */
   addDateColumn(
     columnName: string,
@@ -291,9 +286,6 @@ export default class ColumnBuilderAlter {
 
   /**
    * @description Add a new enum column to the table
-   * @param columnName { string }
-   * @param values { string[] }
-   * @param options { afterColumn?: string; notNullable?: boolean }
    */
   addEnumColumn(
     columnName: string,
@@ -397,7 +389,6 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
 
   /**
    * @description Drops a column from the table
-   * @param columnName
    */
   dropColumn(columnName: string): ColumnBuilderAlter {
     switch (this.sqlType) {
@@ -422,8 +413,6 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
 
   /**
    * @description Renames a column
-   * @param oldColumnName
-   * @param newColumnName
    */
   renameColumn(
     oldColumnName: string,
@@ -520,8 +509,6 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
 
   /**
    * @description Renames a table
-   * @param oldtable
-   * @param newtable
    */
   renameTable(oldtable: string, newtable: string): ColumnBuilderAlter {
     switch (this.sqlType) {
@@ -546,8 +533,6 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
 
   /**
    * @description Set a default value
-   * @param columnName
-   * @param defaultValue
    */
   setDefaultValue(
     columnName: string,
@@ -575,7 +560,6 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
 
   /**
    * @description Drop a default value
-   * @param columnName
    */
   dropDefaultValue(columnName: string): ColumnBuilderAlter {
     switch (this.sqlType) {
@@ -599,8 +583,6 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
 
   /**
    * @description Add a foreign key
-   * @param columnName
-   * @param options
    */
   addForeignKey(columnName: string, options: AlterOptions): ColumnBuilderAlter {
     if (!options.references) {
@@ -650,7 +632,6 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
 
   /**
    * @description Drop a foreign key
-   * @param columnName
    */
   dropForeignKey(columnName: string): ColumnBuilderAlter {
     const fkName = `${this.table}_${columnName}_fk`;
