@@ -832,11 +832,16 @@ declare abstract class QueryBuilder<T extends Model> extends WhereQueryBuilder<T
 
 /**
  * columns
+ * @description Options for the column decorator
+ * @param primaryKey: boolean - If the column is the primary key
+ * @param serialize: (value: any) => any - Function to serialize the value after it is retrieved from the database
+ * @param prepare: (value: any) => any - Function to prepare the value before it is inserted or updated in the database
  */
 interface ColumnOptions {
     primaryKey?: boolean;
     serialize?: (value: any) => void;
-    type?: "boolean" | "date";
+    prepare?: (value: any) => void;
+    hidden?: boolean;
 }
 /**
  * @description Decorator to define a column in the model
@@ -852,11 +857,9 @@ declare function dynamicColumn(columnName: string): PropertyDecorator;
 declare function getModelColumns(target: typeof Model): {
     columnName: string;
     serialize?: (value: any) => any;
+    prepare?: (value: any) => any;
+    hidden?: boolean;
 }[];
-/**
- * @description Returns the boolean columns of the model
- */
-declare function getModelBooleanColumns(target: typeof Model): string[];
 /**
  * relations
  */
@@ -884,7 +887,6 @@ declare function getRelations(target: typeof Model): Relation[];
  * @description Returns the primary key of the model
  */
 declare function getPrimaryKey(target: typeof Model): string;
-declare function getDateColumns(target: typeof Model): string[];
 
 type CaseConvention = "camel" | "snake" | "none" | RegExp | ((column: string) => string);
 
@@ -1632,15 +1634,10 @@ declare class ColumnBuilderAlter {
     constructor(table: string, queryStatements: string[], partialQuery: string, sqlType: SqlDataSourceType);
     /**
      * @description Add a new column to the table
-     * @param columnName { string }
-     * @param {DataType} dataType
-     * @param {BaseOptions} options
      */
     addColumn(columnName: string, dataType: DataType, options?: BaseOptions): ColumnBuilderAlter;
     /**
      * @description Add a new date column to the table
-     * @param columnName { string }
-     * @param options { DateOptions }
      */
     addDateColumn(columnName: string, type: "date" | "timestamp", options?: DateOptions & {
         afterColumn?: string;
@@ -1649,9 +1646,6 @@ declare class ColumnBuilderAlter {
     }): ColumnBuilderAlter;
     /**
      * @description Add a new enum column to the table
-     * @param columnName { string }
-     * @param values { string[] }
-     * @param options { afterColumn?: string; notNullable?: boolean }
      */
     addEnumColumn(columnName: string, values: string[], options?: {
         afterColumn?: string;
@@ -1661,42 +1655,31 @@ declare class ColumnBuilderAlter {
     }): ColumnBuilderAlter;
     /**
      * @description Drops a column from the table
-     * @param columnName
      */
     dropColumn(columnName: string): ColumnBuilderAlter;
     /**
      * @description Renames a column
-     * @param oldColumnName
-     * @param newColumnName
      */
     renameColumn(oldColumnName: string, newColumnName: string): ColumnBuilderAlter;
     modifyColumnType(columnName: string, newDataType: string, options?: BaseOptions): ColumnBuilderAlter;
     /**
      * @description Renames a table
-     * @param oldtable
-     * @param newtable
      */
     renameTable(oldtable: string, newtable: string): ColumnBuilderAlter;
     /**
      * @description Set a default value
-     * @param columnName
-     * @param defaultValue
      */
     setDefaultValue(columnName: string, defaultValue: string): ColumnBuilderAlter;
     /**
      * @description Drop a default value
-     * @param columnName
      */
     dropDefaultValue(columnName: string): ColumnBuilderAlter;
     /**
      * @description Add a foreign key
-     * @param columnName
-     * @param options
      */
     addForeignKey(columnName: string, options: AlterOptions): ColumnBuilderAlter;
     /**
      * @description Drop a foreign key
-     * @param columnName
      */
     dropForeignKey(columnName: string): ColumnBuilderAlter;
     /**
@@ -2724,8 +2707,6 @@ declare const _default: {
     StandaloneQueryBuilder: typeof StandaloneQueryBuilder;
     getRelations: typeof getRelations;
     getModelColumns: typeof getModelColumns;
-    getModelBooleanColumns: typeof getModelBooleanColumns;
-    getDateColumns: typeof getDateColumns;
     getPrimaryKey: typeof getPrimaryKey;
     Redis: typeof RedisDataSource;
     MongoDataSource: typeof MongoDataSource;
@@ -2734,4 +2715,4 @@ declare const _default: {
     dynamicColumn: typeof dynamicColumn;
 };
 
-export { type CaseConvention, Collection, type DataSourceInput, Migration, Model, type ModelQueryBuilder, MongoDataSource, type PaginatedData, type PaginationMetadata, RedisDataSource as Redis, type RedisGiveable, type RedisStorable, Relation, SqlDataSource, StandaloneQueryBuilder, Transaction, belongsTo, column, _default as default, dynamicProperty, getCollectionProperties, getDateColumns, getModelBooleanColumns, getModelColumns, getMongoDynamicProperties, getPrimaryKey, getRelations, hasMany, hasOne, manyToMany, property };
+export { type CaseConvention, Collection, type DataSourceInput, Migration, Model, type ModelQueryBuilder, MongoDataSource, type PaginatedData, type PaginationMetadata, RedisDataSource as Redis, type RedisGiveable, type RedisStorable, Relation, SqlDataSource, StandaloneQueryBuilder, Transaction, belongsTo, column, _default as default, dynamicProperty, getCollectionProperties, getModelColumns, getMongoDynamicProperties, getPrimaryKey, getRelations, hasMany, hasOne, manyToMany, property };

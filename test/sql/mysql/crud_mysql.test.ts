@@ -587,3 +587,23 @@ test("Having raw", async () => {
   expect(users.length).toBe(1);
   expect(users[0].name).toBe("Dave");
 });
+
+test("Distinct", async () => {
+  await User.insertMany([
+    {
+      name: "Dave",
+      email: "test",
+      signupSource: "email",
+      isActive: true,
+    },
+    {
+      name: "Dave",
+      email: "test2",
+      signupSource: "email",
+      isActive: true,
+    },
+  ]);
+
+  const users = await User.query().select("DISTINCT(name)").many();
+  expect(users.length).toBe(1);
+});

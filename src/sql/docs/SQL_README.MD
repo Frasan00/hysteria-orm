@@ -9,6 +9,7 @@
     - [Establishing a Connection](#establishing-a-connection)
     - [Use the Established connection](#use-the-connection)
         - [use-connection](#use-connection)
+    - [Columns](#columns)
     - [Create a Model](#create-a-model)
     - [Create a Model with Hooks](#create-a-model-with-hooks)
     - [UUID](#model-with-uuid)
@@ -155,6 +156,32 @@ await SqlDataSource.useConnection(
 );
 ```
 
+### Columns
+- Columns are defined in the Model with the @column decorator
+- You can customize the column behavior with some options
+```typescript
+import { column } from "hysteria-orm";
+
+// Basic column
+column()
+declare name: string;
+
+// Primary key
+@column({ primaryKey: true })
+declare id: number;
+
+// hidden column
+@column({ hidden: true })
+declare password: string;
+
+// hooks
+@column({
+    serialize: (value: any) => value.toUpperCase(), // after fetch
+    prepare: (value: any) => value.toLowerCase(), // before insert or update
+})
+declare email: string;
+```
+
 ### Create a model
 
 ```typescript
@@ -176,8 +203,7 @@ export class User extends Model {
     @column()
     declare signupSource: string;
 
-    // Only useful with mysql to convert tiny int directly into Boolean
-    @column({ type: "boolean" })
+    @column()
     declare isActive: boolean;
 
     @column()
@@ -217,14 +243,10 @@ export class User extends Model {
     declare json: Record<string, any>;
 
     // Date columns will be automatically converted to selected type, if not specified they will not be parsed from the database driver
-    @column({
-        type: "Date",
-    })
+    @column()
     declare createdAt: Date;
 
-    @column({
-        type: "date",
-    })
+    @column()
     declare updatedAt: Date;
 
     // Hooks
@@ -702,7 +724,6 @@ export class User extends Model {
   @column({ primaryKey: true })
   declare id: string;
 
-  // Column that will be computed after the query
   @column({ serialize: (value: any) => value.toUpperCase() })
   declare name: string;
 

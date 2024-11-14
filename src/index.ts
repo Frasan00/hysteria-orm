@@ -10,8 +10,6 @@ import {
   column,
   getRelations,
   getModelColumns,
-  getDateColumns,
-  getModelBooleanColumns,
   dynamicColumn,
 } from "./sql/models/model_decorators";
 import { Relation } from "./sql/models/relations/relation";
@@ -52,8 +50,6 @@ export default {
   StandaloneQueryBuilder,
   getRelations,
   getModelColumns,
-  getModelBooleanColumns,
-  getDateColumns,
   getPrimaryKey,
 
   // redis
@@ -87,8 +83,6 @@ export {
   getRelations,
   getModelColumns,
   getPrimaryKey,
-  getModelBooleanColumns,
-  getDateColumns,
 
   // redis
   Redis,

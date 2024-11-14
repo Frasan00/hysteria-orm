@@ -1,12 +1,15 @@
 import { convertCase } from "../../../utils/case_utils";
 import { SqlDataSourceType } from "../../sql_data_source";
 import { Model } from "../../models/model";
+import { getModelColumns } from "../../models/model_decorators";
 
 const updateTemplate = (
   dbType: SqlDataSourceType,
   typeofModel: typeof Model,
 ) => {
   const table = typeofModel.table;
+  const modelColumns = getModelColumns(typeofModel);
+
   return {
     update: (
       columns: string[],
@@ -18,6 +21,16 @@ const updateTemplate = (
         const $additionalColumnsIndex = columns.indexOf("$additionalColumns");
         columns.splice(columns.indexOf("$additionalColumns"), 1);
         values.splice($additionalColumnsIndex, 1);
+      }
+
+      for (let i = 0; i < values.length; i++) {
+        const column = columns[i];
+        const modelColumn = modelColumns.find(
+          (modelColumn) => modelColumn.columnName === column,
+        );
+        if (modelColumn && modelColumn.prepare) {
+          values[i] = modelColumn.prepare(values[i]);
+        }
       }
 
       columns = columns.map((column) =>
@@ -46,8 +59,8 @@ const updateTemplate = (
 
       const primaryKeyPlaceholder =
         dbType === "postgres" ? `$${columns.length + 1}` : "?";
-      const query = `UPDATE ${table} 
-SET ${setClause} 
+      const query = `UPDATE ${table}
+SET ${setClause}
 WHERE ${primaryKey} = ${primaryKeyPlaceholder};`;
 
       return { query, params };
@@ -61,6 +74,22 @@ WHERE ${primaryKey} = ${primaryKeyPlaceholder};`;
       columns = columns.map((column) =>
         convertCase(column, typeofModel.databaseCaseConvention),
       );
+
+      if (columns.includes("$additionalColumns")) {
+        const $additionalColumnsIndex = columns.indexOf("$additionalColumns");
+        columns.splice(columns.indexOf("$additionalColumns"), 1);
+        values.splice($additionalColumnsIndex, 1);
+      }
+
+      for (let i = 0; i < values.length; i++) {
+        const column = columns[i];
+        const modelColumn = modelColumns.find(
+          (modelColumn) => modelColumn.columnName === column,
+        );
+        if (modelColumn && modelColumn.prepare) {
+          values[i] = modelColumn.prepare(values[i]);
+        }
+      }
 
       let setClause: string;
       const params: any[] = [];

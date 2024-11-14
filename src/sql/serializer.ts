@@ -3,10 +3,8 @@ import { isNestedObject } from "../utils/json_utils";
 import { Model } from "./models/model";
 import {
   getRelations,
-  getModelBooleanColumns,
   getModelColumns,
   getDynamicColumns,
-  getDateColumns,
 } from "./models/model_decorators";
 import {
   isRelationDefinition,
@@ -49,59 +47,52 @@ function serializeModel<T extends Record<string, any>>(
 ): T {
   const camelCaseModel: Record<string, any> = {};
   const columns = getModelColumns(typeofModel);
-  const booleanColumns = getModelBooleanColumns(typeofModel);
-  const dateColumns = getDateColumns(typeofModel);
+  const hiddenColumns = columns
+    .filter((column) => column.hidden)
+    .map((column) => column.columnName);
 
   for (const key in model) {
-    if (model.hasOwnProperty(key)) {
-      if (key === "$additionalColumns") {
-        processAdditionalColumns(model, key, camelCaseModel, typeofModel);
-        continue;
-      }
-
-      const originalValue = model[key];
-      // Include null values
-      if (originalValue == null) {
-        camelCaseModel[convertCase(key, typeofModel.modelCaseConvention)] =
-          originalValue;
-        continue;
-      }
-
-      if (isRelationDefinition(originalValue)) {
-        continue;
-      }
-
-      const camelCaseKey = convertCase(key, typeofModel.modelCaseConvention);
-      if (isNestedObject(originalValue) && !Array.isArray(originalValue)) {
-        camelCaseModel[camelCaseKey] = convertToModelCaseConvention(
-          originalValue,
-          typeofModel,
-        );
-        continue;
-      }
-
-      if (Array.isArray(originalValue)) {
-        continue;
-      }
-
-      if (booleanColumns.includes(camelCaseKey)) {
-        camelCaseModel[camelCaseKey] = Boolean(originalValue);
-        continue;
-      }
-
-      if (dateColumns.includes(camelCaseKey)) {
-        camelCaseModel[camelCaseKey] = new Date(originalValue);
-        continue;
-      }
-
-      const modelColumn = columns.find((column) => column.columnName === key);
-      if (modelColumn && modelColumn.serialize) {
-        camelCaseModel[camelCaseKey] = modelColumn.serialize(originalValue);
-        continue;
-      }
-
-      camelCaseModel[camelCaseKey] = originalValue;
+    if (!model.hasOwnProperty(key) || hiddenColumns.includes(key)) {
+      continue;
     }
+
+    if (key === "$additionalColumns") {
+      processAdditionalColumns(model, key, camelCaseModel, typeofModel);
+      continue;
+    }
+
+    const originalValue = model[key];
+    // Include null values
+    if (originalValue == null) {
+      camelCaseModel[convertCase(key, typeofModel.modelCaseConvention)] =
+        originalValue;
+      continue;
+    }
+
+    if (isRelationDefinition(originalValue)) {
+      continue;
+    }
+
+    const camelCaseKey = convertCase(key, typeofModel.modelCaseConvention);
+    if (isNestedObject(originalValue) && !Array.isArray(originalValue)) {
+      camelCaseModel[camelCaseKey] = convertToModelCaseConvention(
+        originalValue,
+        typeofModel,
+      );
+      continue;
+    }
+
+    if (Array.isArray(originalValue)) {
+      continue;
+    }
+
+    const modelColumn = columns.find((column) => column.columnName === key);
+    if (modelColumn && modelColumn.serialize) {
+      camelCaseModel[camelCaseKey] = modelColumn.serialize(originalValue);
+      continue;
+    }
+
+    camelCaseModel[camelCaseKey] = originalValue;
   }
 
   return camelCaseModel as T;

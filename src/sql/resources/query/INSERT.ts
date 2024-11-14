@@ -2,6 +2,7 @@ import { convertCase } from "../../../utils/case_utils";
 import { SqlDataSourceType } from "../../sql_data_source";
 import { isNestedObject } from "../../../utils/json_utils";
 import { Model } from "../../models/model";
+import { getModelColumns } from "../../models/model_decorators";
 
 type BaseValues = string | number | boolean | Date | null | object | undefined;
 
@@ -10,12 +11,24 @@ const insertTemplate = (
   typeofModel: typeof Model,
 ) => {
   const table = typeofModel.table;
+  const modelColumns = getModelColumns(typeofModel);
+
   return {
     insert: (columns: string[], values: BaseValues[]) => {
       if (columns.includes("$additionalColumns")) {
         const $additionalColumnsIndex = columns.indexOf("$additionalColumns");
         columns.splice(columns.indexOf("$additionalColumns"), 1);
         values.splice($additionalColumnsIndex, 1);
+      }
+
+      for (let i = 0; i < values.length; i++) {
+        const column = columns[i];
+        const modelColumn = modelColumns.find(
+          (modelColumn) => modelColumn.columnName === column,
+        );
+        if (modelColumn && modelColumn.prepare) {
+          values[i] = modelColumn.prepare(values[i]);
+        }
       }
 
       columns = columns.map((column) =>
@@ -63,6 +76,18 @@ VALUES (${placeholders}) RETURNING *;`;
       );
       let valueSets: string[];
       let params: BaseValues[] = [];
+
+      for (let i = 0; i < values.length; i++) {
+        for (let j = 0; j < values[i].length; j++) {
+          const column = columns[j];
+          const modelColumn = modelColumns.find(
+            (modelColumn) => modelColumn.columnName === column,
+          );
+          if (modelColumn && modelColumn.prepare) {
+            values[i][j] = modelColumn.prepare(values[i][j]);
+          }
+        }
+      }
 
       switch (dbType) {
         case "mysql":

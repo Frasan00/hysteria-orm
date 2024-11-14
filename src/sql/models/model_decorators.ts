@@ -19,20 +19,22 @@ type LazyRelationEnum = {
 
 /**
  * columns
+ * @description Options for the column decorator
+ * @param primaryKey: boolean - If the column is the primary key
+ * @param serialize: (value: any) => any - Function to serialize the value after it is retrieved from the database
+ * @param prepare: (value: any) => any - Function to prepare the value before it is inserted or updated in the database
  */
-
 export interface ColumnOptions {
   primaryKey?: boolean;
   serialize?: (value: any) => void;
-  type?: "boolean" | "date";
+  prepare?: (value: any) => void;
+  hidden?: boolean;
 }
 
 const COLUMN_METADATA_KEY = Symbol("columns");
 const DYNAMIC_COLUMN_METADATA_KEY = Symbol("dynamicColumns");
 const PRIMARY_KEY_METADATA_KEY = Symbol("primaryKey");
-const BOOLEAN_COLUMN_METADATA_KEY = Symbol("booleanColumns");
 const RELATION_METADATA_KEY = Symbol("relations");
-const DATE_COLUMN_METADATA_KEY = Symbol("dateColumns");
 
 /**
  * @description Decorator to define a column in the model
@@ -51,27 +53,11 @@ export function column(
       Reflect.defineMetadata(PRIMARY_KEY_METADATA_KEY, propertyKey, target);
     }
 
-    if (options.type === "date") {
-      const dateColumns =
-        Reflect.getMetadata(DATE_COLUMN_METADATA_KEY, target) || [];
-      dateColumns.push(propertyKey);
-      Reflect.defineMetadata(DATE_COLUMN_METADATA_KEY, dateColumns, target);
-    }
-
-    if (options.type === "boolean") {
-      const booleanColumns =
-        Reflect.getMetadata(BOOLEAN_COLUMN_METADATA_KEY, target) || [];
-      booleanColumns.push(propertyKey);
-      Reflect.defineMetadata(
-        BOOLEAN_COLUMN_METADATA_KEY,
-        booleanColumns,
-        target,
-      );
-    }
-
     const column = {
       columnName: propertyKey,
       serialize: options.serialize,
+      prepare: options.prepare,
+      hidden: options.hidden,
     };
 
     const existingColumns =
@@ -106,19 +92,13 @@ export function dynamicColumn(columnName: string): PropertyDecorator {
 /**
  * @description Returns the columns of the model, columns must be decorated with the column decorator
  */
-export function getModelColumns(
-  target: typeof Model,
-): { columnName: string; serialize?: (value: any) => any }[] {
+export function getModelColumns(target: typeof Model): {
+  columnName: string;
+  serialize?: (value: any) => any;
+  prepare?: (value: any) => any;
+  hidden?: boolean;
+}[] {
   return Reflect.getMetadata(COLUMN_METADATA_KEY, target.prototype) || [];
-}
-
-/**
- * @description Returns the boolean columns of the model
- */
-export function getModelBooleanColumns(target: typeof Model): string[] {
-  return (
-    Reflect.getMetadata(BOOLEAN_COLUMN_METADATA_KEY, target.prototype) || []
-  );
 }
 
 /**
@@ -262,8 +242,4 @@ export function getDynamicColumns(target: typeof Model): {
   dynamicColumnFn: (...args: any[]) => any;
 }[] {
   return Reflect.getMetadata(DYNAMIC_COLUMN_METADATA_KEY, target.prototype);
-}
-
-export function getDateColumns(target: typeof Model): string[] {
-  return Reflect.getMetadata(DATE_COLUMN_METADATA_KEY, target.prototype) || [];
 }

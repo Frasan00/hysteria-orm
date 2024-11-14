@@ -25,25 +25,22 @@ export class User extends Model {
   @column()
   declare signupSource: string;
 
-  @column({ type: "boolean" })
+  @column({
+    prepare: (value: boolean) => Boolean(value),
+    serialize: (value: boolean) => Boolean(value),
+  })
   declare isActive: boolean;
 
   @column()
   declare json: Record<string, any> | null;
 
-  @column({
-    type: "date",
-  })
+  @column()
   declare createdAt: Date;
 
-  @column({
-    type: "date",
-  })
+  @column()
   declare updatedAt: Date;
 
-  @column({
-    type: "date",
-  })
+  @column()
   declare deletedAt: Date | null;
 
   @hasMany(() => Post, "userId")
