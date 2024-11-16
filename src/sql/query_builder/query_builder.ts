@@ -188,6 +188,20 @@ export abstract class QueryBuilder<
   ): ModelQueryBuilder<T>;
 
   /**
+   * @description Adds a DISTINCT condition to the query.
+   */
+  abstract distinct(): ModelQueryBuilder<T>;
+
+  /**
+   * @description Adds a DISTINCT ON condition to the query.
+   */
+  abstract distinctOn(...columns: string[]): ModelQueryBuilder<T>;
+  abstract distinctOn(...columns: SelectableType<T>[]): ModelQueryBuilder<T>;
+  abstract distinctOn(
+    ...columns: (SelectableType<T> | string)[]
+  ): ModelQueryBuilder<T>;
+
+  /**
    * @description Adds a JOIN condition to the query.
    */
   abstract join(

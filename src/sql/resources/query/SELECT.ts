@@ -117,6 +117,20 @@ const selectTemplate = (
 
       return `SELECT ${columns.join(", ")} FROM ${table} `;
     },
+    distinct: `DISTINCT`,
+    distinctOn: (...columns: string[]) => {
+      if (dbType !== "postgres") {
+        throw new Error("DISTINCT ON is only supported in postgres");
+      }
+
+      columns = columns.map((column) =>
+        escapeIdentifier(
+          convertCase(column, typeofModel.databaseCaseConvention),
+        ),
+      ) as string[];
+
+      return `DISTINCT ON (${columns.join(", ")})`;
+    },
     selectCount: `SELECT COUNT(*) FROM ${table} `,
     selectDistinct: (...columns: string[]) => {
       columns = columns.map((column) =>

@@ -68,6 +68,29 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
+  distinct(): PostgresQueryBuilder<T> {
+    const distinct = this.selectTemplate.distinct;
+    this.selectQuery = this.selectQuery.replace(
+      /select/i,
+      `SELECT ${distinct}`,
+    );
+    return this;
+  }
+
+  distinctOn(...columns: string[]): PostgresQueryBuilder<T>;
+  distinctOn(...columns: SelectableType<T>[]): PostgresQueryBuilder<T>;
+  distinctOn(
+    ...columns: (string | SelectableType<T>)[]
+  ): PostgresQueryBuilder<T> {
+    const distinctOn = this.selectTemplate.distinctOn(...(columns as string[]));
+
+    this.selectQuery = this.selectQuery.replace(
+      /select/i,
+      `SELECT ${distinctOn}`,
+    );
+    return this;
+  }
+
   async one(options: OneOptions = {}): Promise<T | null> {
     // hook query builder
     if (!options.ignoreHooks?.includes("beforeFetch")) {

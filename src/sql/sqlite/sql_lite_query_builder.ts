@@ -459,6 +459,26 @@ export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
+  distinct(): SqlLiteQueryBuilder<T> {
+    const distinct = this.selectTemplate.distinct;
+    this.selectQuery = this.selectQuery.replace(
+      /select/i,
+      `SELECT ${distinct}`,
+    );
+    return this;
+  }
+
+  distinctOn(...columns: string[]): SqlLiteQueryBuilder<T>;
+  distinctOn(...columns: SelectableType<T>[]): SqlLiteQueryBuilder<T>;
+  distinctOn(
+    ...columns: (string | SelectableType<T>)[]
+  ): SqlLiteQueryBuilder<T>;
+  distinctOn(
+    ...columns: (string | SelectableType<T>)[]
+  ): SqlLiteQueryBuilder<T> {
+    throw new Error("DISTINCT ON is only supported in postgres");
+  }
+
   joinRaw(query: string): this {
     this.joinQuery += ` ${query} `;
     return this;

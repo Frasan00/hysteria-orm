@@ -612,6 +612,7 @@ const userOrFail: User = await User.findOneOrFail({
 - It's used to create more complex queries that are not supported by the standard methods
 - all select-where-relations-orderby columns are partially type safe, they can both be a specific column in the Model or a string
 - You can also use the query builder for bulk updates and deleted
+- Sql methods are available in the query builder, the results aliases will be available in the $additionalColumns property
 
 ```typescript
 import { User } from "./User";
@@ -630,6 +631,27 @@ const users: User[] = await User.query()
     .limit(10)
     .many();
 
+// SQL Methods
+// You can use sql methods directly in the query builder, the results will be available in the $additionalColumns property
+const user: User | null = await User.query()
+    .select("COUNT(*) as total")
+    .where("name", "John Doe")
+    .one();
+const userCount = user?.$additionalColumns?.total;
+
+// Distinct
+const distinctUsers: User[] = await User.query()
+    .select("name")
+    .distinct()
+    .where("name", "John Doe")
+    .many();
+
+// Distinct on (Postgres only)
+const distinctOnUsers: User[] = await User.query()
+    .select("name")
+    .distinctOn("name")
+    .where("name", "John Doe")
+    .many();
 
 // BULK UPDATE
 await User.query()

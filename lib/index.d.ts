@@ -241,6 +241,10 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     paginate(page: number, limit: number, options?: ManyOptions$1): Promise<PaginatedData<T>>;
     select(...columns: string[]): MysqlQueryBuilder<T>;
     select(...columns: (SelectableType<T> | "*")[]): MysqlQueryBuilder<T>;
+    distinct(): MysqlQueryBuilder<T>;
+    distinctOn(...columns: string[]): MysqlQueryBuilder<T>;
+    distinctOn(...columns: SelectableType<T>[]): MysqlQueryBuilder<T>;
+    distinctOn(...columns: (string | SelectableType<T>)[]): MysqlQueryBuilder<T>;
     joinRaw(query: string): this;
     join(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlQueryBuilder<T>;
     leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlQueryBuilder<T>;
@@ -269,6 +273,9 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     constructor(model: typeof Model, table: string, pgClient: Client, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
     select(...columns: string[]): PostgresQueryBuilder<T>;
     select(...columns: (SelectableType<T> | "*")[]): PostgresQueryBuilder<T>;
+    distinct(): PostgresQueryBuilder<T>;
+    distinctOn(...columns: string[]): PostgresQueryBuilder<T>;
+    distinctOn(...columns: SelectableType<T>[]): PostgresQueryBuilder<T>;
     one(options?: OneOptions$1): Promise<T | null>;
     oneOrFail(options?: OneOptions$1 & {
         customError: Error;
@@ -311,6 +318,8 @@ declare const selectTemplate: (dbType: SqlDataSourceType, typeofModel: typeof Mo
     selectById: (id: string) => string;
     selectByIds: (ids: string[]) => string;
     selectColumns: (...columns: string[]) => string;
+    distinct: string;
+    distinctOn: (...columns: string[]) => string;
     selectCount: string;
     selectDistinct: (...columns: string[]) => string;
     selectSum: (column: string) => string;
@@ -346,6 +355,10 @@ declare class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     paginate(page: number, limit: number, options?: ManyOptions$1): Promise<PaginatedData<T>>;
     select(...columns: string[]): SqlLiteQueryBuilder<T>;
     select(...columns: (SelectableType<T> | "*")[]): SqlLiteQueryBuilder<T>;
+    distinct(): SqlLiteQueryBuilder<T>;
+    distinctOn(...columns: string[]): SqlLiteQueryBuilder<T>;
+    distinctOn(...columns: SelectableType<T>[]): SqlLiteQueryBuilder<T>;
+    distinctOn(...columns: (string | SelectableType<T>)[]): SqlLiteQueryBuilder<T>;
     joinRaw(query: string): this;
     join(relationTable: string, primaryColumn: string, foreignColumn: string): SqlLiteQueryBuilder<T>;
     leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): SqlLiteQueryBuilder<T>;
@@ -747,6 +760,16 @@ declare abstract class QueryBuilder<T extends Model> extends WhereQueryBuilder<T
     abstract select(...columns: string[]): ModelQueryBuilder<T>;
     abstract select(...columns: (SelectableType<T> | "*")[]): ModelQueryBuilder<T>;
     abstract select(...columns: (SelectableType<T> | "*" | string)[]): ModelQueryBuilder<T>;
+    /**
+     * @description Adds a DISTINCT condition to the query.
+     */
+    abstract distinct(): ModelQueryBuilder<T>;
+    /**
+     * @description Adds a DISTINCT ON condition to the query.
+     */
+    abstract distinctOn(...columns: string[]): ModelQueryBuilder<T>;
+    abstract distinctOn(...columns: SelectableType<T>[]): ModelQueryBuilder<T>;
+    abstract distinctOn(...columns: (SelectableType<T> | string)[]): ModelQueryBuilder<T>;
     /**
      * @description Adds a JOIN condition to the query.
      */
