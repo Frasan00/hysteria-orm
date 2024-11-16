@@ -22,18 +22,15 @@ export async function parseDatabaseDataIntoModelResponse<T extends Model>(
     return null;
   }
 
-  const modelColumns = getModelColumns(typeofModel);
   const relations = getRelations(typeofModel);
 
   const serializedModels = models.map((model) => {
-    const serializedModel = serializeModel(model, typeofModel);
-    processRelation(serializedModel, typeofModel, relations, relationModels);
-    addNullModelColumns(typeofModel, serializedModel);
-    removeNonModelSelectedColumns(
-      serializedModel,
-      modelColumns.map((column) => column.columnName),
+    const serializedModel = serializeModel(
+      model,
+      typeofModel,
       modelSelectedColumns,
     );
+    processRelation(serializedModel, typeofModel, relations, relationModels);
 
     return serializedModel;
   });
@@ -44,27 +41,32 @@ export async function parseDatabaseDataIntoModelResponse<T extends Model>(
 function serializeModel<T extends Record<string, any>>(
   model: T,
   typeofModel: typeof Model,
+  modelSelectedColumns: string[] = [],
 ): T {
-  const camelCaseModel: Record<string, any> = {};
+  const casedModel: Record<string, any> = {};
   const columns = getModelColumns(typeofModel);
   const hiddenColumns = columns
     .filter((column) => column.hidden)
     .map((column) => column.columnName);
 
   for (const key in model) {
-    if (!model.hasOwnProperty(key) || hiddenColumns.includes(key)) {
+    if (key === "$additionalColumns") {
+      processAdditionalColumns(model, key, casedModel, typeofModel);
       continue;
     }
 
-    if (key === "$additionalColumns") {
-      processAdditionalColumns(model, key, camelCaseModel, typeofModel);
+    if (
+      !model.hasOwnProperty(key) ||
+      hiddenColumns.includes(key) ||
+      (modelSelectedColumns.length && !modelSelectedColumns.includes(key))
+    ) {
       continue;
     }
 
     const originalValue = model[key];
     // Include null values
     if (originalValue == null) {
-      camelCaseModel[convertCase(key, typeofModel.modelCaseConvention)] =
+      casedModel[convertCase(key, typeofModel.modelCaseConvention)] =
         originalValue;
       continue;
     }
@@ -75,7 +77,7 @@ function serializeModel<T extends Record<string, any>>(
 
     const camelCaseKey = convertCase(key, typeofModel.modelCaseConvention);
     if (isNestedObject(originalValue) && !Array.isArray(originalValue)) {
-      camelCaseModel[camelCaseKey] = convertToModelCaseConvention(
+      casedModel[camelCaseKey] = convertToModelCaseConvention(
         originalValue,
         typeofModel,
       );
@@ -88,59 +90,20 @@ function serializeModel<T extends Record<string, any>>(
 
     const modelColumn = columns.find((column) => column.columnName === key);
     if (modelColumn && modelColumn.serialize) {
-      camelCaseModel[camelCaseKey] = modelColumn.serialize(originalValue);
+      casedModel[camelCaseKey] = modelColumn.serialize(originalValue);
       continue;
     }
 
-    camelCaseModel[camelCaseKey] = originalValue;
+    casedModel[camelCaseKey] = originalValue;
   }
 
-  return camelCaseModel as T;
-}
-
-function addNullModelColumns(
-  typeofModel: typeof Model,
-  serializedModel: Record<string, any>,
-) {
-  const columns = getModelColumns(typeofModel);
-  columns.forEach((column) => {
-    const casedColumn = convertCase(
-      column,
-      typeofModel.modelCaseConvention,
-    ) as string;
-
-    if (serializedModel.hasOwnProperty(column.columnName)) {
-      return;
-    }
-
-    serializedModel[casedColumn] = null;
-  });
-}
-
-function removeNonModelSelectedColumns(
-  serializedModel: Record<string, any>,
-  modelColumns: string[],
-  modelSelectedColumns: string[],
-) {
-  if (!modelSelectedColumns.length || modelSelectedColumns.includes("*")) {
-    return;
-  }
-
-  Object.keys(serializedModel).forEach((key) => {
-    if (
-      !modelSelectedColumns.includes(key) &&
-      key != "$additionalColumns" &&
-      modelColumns.includes(key)
-    ) {
-      delete serializedModel[key];
-    }
-  });
+  return casedModel as T;
 }
 
 function processAdditionalColumns(
   model: Record<string, any>,
   key: string,
-  camelCaseModel: Record<string, any>,
+  casedModel: Record<string, any>,
   typeofModel: typeof Model,
 ) {
   if (!Object.keys(model[key]).length) {
@@ -156,7 +119,7 @@ function processAdditionalColumns(
     {} as Record<string, any>,
   );
 
-  camelCaseModel[key] = $additionalColumns;
+  casedModel[key] = $additionalColumns;
 }
 
 function processRelation(

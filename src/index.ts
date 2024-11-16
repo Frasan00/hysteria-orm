@@ -34,6 +34,53 @@ import {
   getCollectionProperties,
 } from "./no_sql/mongo/mongo_models/mongo_collection_decorators";
 import { Transaction } from "./sql/transactions/transaction";
+import { User } from "../test/sql_models/User";
+import { Address } from "../test/sql_models/Address";
+import { Post } from "../test/sql_models/Post";
+import { UserAddress } from "../test/sql_models/UserAddress";
+
+(async () => {
+  await SqlDataSource.connect({
+    type: "postgres",
+    database: "test",
+    username: "root",
+    password: "root",
+    port: 5432,
+    host: "localhost",
+  });
+
+  await UserAddress.query().delete();
+  await Address.query().delete();
+  await User.query().delete();
+
+  await User.insert({
+    name: "John Doe",
+    email: "test",
+    signupSource: "email",
+    isActive: true,
+  });
+
+  await User.insert({
+    name: "John Doe",
+    email: "test2",
+    signupSource: "email",
+    isActive: true,
+  });
+
+  await User.insert({
+    name: "John Doe",
+    email: "test3",
+    signupSource: "email",
+    isActive: true,
+  });
+
+  const distinctUsers = await User.query()
+    .select("DISTINCT ON (name) *")
+    .many();
+  console.log(distinctUsers);
+
+  await SqlDataSource.disconnect();
+})();
 
 export default {
   // sql
