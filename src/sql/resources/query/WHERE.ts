@@ -55,7 +55,7 @@ const whereTemplate = (
           case "mariadb":
           case "mysql":
           case "sqlite":
-            query = `\nWHERE JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) ${operator} ?`;
+            query = `\nWHERE JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) ${operator} PLACEHOLDER`;
             params = [value];
             break;
           case "postgres":

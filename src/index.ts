@@ -34,50 +34,6 @@ import {
   getCollectionProperties,
 } from "./no_sql/mongo/mongo_models/mongo_collection_decorators";
 import { Transaction } from "./sql/transactions/transaction";
-import { User } from "../test/sql_models/User";
-import { Address } from "../test/sql_models/Address";
-import { Post } from "../test/sql_models/Post";
-import { UserAddress } from "../test/sql_models/UserAddress";
-
-(async () => {
-  await SqlDataSource.connect({
-    type: "postgres",
-    database: "test",
-    username: "root",
-    password: "root",
-    port: 5432,
-    host: "localhost",
-  });
-
-  await User.query().delete();
-
-  const users = await User.insertMany([
-    {
-      name: "John Doe",
-      email: "test",
-      signupSource: "web",
-      isActive: true,
-      json: { a: 1, b: 2 },
-    },
-    {
-      name: "John Doe",
-      email: "test",
-      signupSource: "web",
-      isActive: true,
-      json: { a: 1, b: 2 },
-    },
-  ]);
-
-  await User.query()
-    .where("name", "John Doe")
-    .update({
-      json: { a: 2, b: 3 },
-    });
-
-  console.log(await User.query().many());
-
-  await SqlDataSource.disconnect();
-})();
 
 export default {
   // sql
