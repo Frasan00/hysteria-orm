@@ -261,6 +261,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
       this.whereQuery,
       this.joinQuery,
     );
+    console.log(query, params, this.params);
 
     params.push(...this.params);
 

@@ -1,6 +1,7 @@
 import { convertCase } from "../../../utils/case_utils";
 import { SqlDataSourceType } from "../../sql_data_source";
 import { Model } from "../../models/model";
+import { isNestedObject } from "../../../utils/json_utils";
 import { getModelColumns } from "../../models/model_decorators";
 
 const updateTemplate = (
@@ -32,6 +33,14 @@ const updateTemplate = (
           values[i] = modelColumn.prepare(values[i]);
         }
       }
+
+      values = values.map((value) => {
+        if (isNestedObject(value)) {
+          return JSON.stringify(value);
+        }
+
+        return value;
+      });
 
       columns = columns.map((column) =>
         convertCase(column, typeofModel.databaseCaseConvention),
@@ -100,6 +109,11 @@ WHERE ${primaryKey} = ${primaryKeyPlaceholder};`;
         case "mariadb":
           setClause = columns.map((column) => `\`${column}\` = ?`).join(", ");
           values.forEach((value) => {
+            if (isNestedObject(value)) {
+              params.push(JSON.stringify(value));
+              return;
+            }
+
             params.push(value ?? null);
           });
           break;
@@ -108,6 +122,11 @@ WHERE ${primaryKey} = ${primaryKeyPlaceholder};`;
             .map((column, index) => `"${column}" = $${index + 1}`)
             .join(", ");
           values.forEach((value) => {
+            if (isNestedObject(value)) {
+              params.push(JSON.stringify(value));
+              return;
+            }
+
             params.push(value ?? null);
           });
           break;

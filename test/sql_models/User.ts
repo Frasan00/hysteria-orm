@@ -56,16 +56,16 @@ export class User extends Model {
     queryBuilder.whereNull("deletedAt");
   }
 
-  static async afterFetch(data: User[]): Promise<User[]> {
-    if (!data.length) {
-      return data;
-    }
+  // static async afterFetch(data: User[]): Promise<User[]> {
+  //   if (!data.length) {
+  //     return data;
+  //   }
 
-    return data.map((user) => {
-      user.json = null;
-      return user;
-    });
-  }
+  //   return data.map((user) => {
+  //     user.json = null;
+  //     return user;
+  //   });
+  // }
 
   @dynamicColumn("firstUser")
   async getFirstUser() {

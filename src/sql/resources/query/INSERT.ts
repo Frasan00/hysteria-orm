@@ -39,8 +39,20 @@ const insertTemplate = (
 
       switch (dbType) {
         case "mysql":
-        case "sqlite":
         case "mariadb":
+          placeholders = columns
+            .map((_, index) => {
+              if (isNestedObject(values[index])) {
+                return `?`;
+              }
+              return `?`;
+            })
+            .join(", ");
+          params = values.map((value) =>
+            isNestedObject(value) ? JSON.stringify(value) : value,
+          );
+          break;
+        case "sqlite":
           placeholders = columns.map(() => "?").join(", ");
           params = values;
           break;
@@ -91,8 +103,17 @@ VALUES (${placeholders}) RETURNING *;`;
 
       switch (dbType) {
         case "mysql":
-        case "sqlite":
         case "mariadb":
+          valueSets = values.map((valueSet) => {
+            params.push(
+              ...valueSet.map((value) =>
+                isNestedObject(value) ? JSON.stringify(value) : value,
+              ),
+            );
+            return `(${valueSet.map(() => "?").join(", ")})`;
+          });
+          break;
+        case "sqlite":
           valueSets = values.map((valueSet) => {
             params.push(...valueSet);
             return `(${valueSet.map(() => "?").join(", ")})`;
