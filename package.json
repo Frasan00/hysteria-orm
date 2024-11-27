@@ -42,20 +42,20 @@
     "@types/mysql2": "github:types/mysql2",
     "@types/pg": "^8.11.10",
     "@types/sqlite3": "^3.1.11",
-    "luxon": "^3.5.0",
-    "mongodb": "^6.9.0",
-    "mysql2": "^3.11.4",
-    "pg": "^8.13.1",
-    "prettier": "^3.3.3",
-    "sqlite3": "^5.1.7",
-    "ioredis": "^5.4.1"
+    "prettier": "^3.3.3"
   },
   "dependencies": {
     "commander": "^12.1.0",
     "dotenv": "^16.4.5",
     "reflect-metadata": "^0.2.2",
     "ts-node": "^10.9.2",
-    "winston": "^3.15.0"
+    "winston": "^3.15.0",
+    "luxon": "^3.5.0",
+    "mongodb": "^6.9.0",
+    "mysql2": "^3.11.4",
+    "pg": "^8.13.1",
+    "sqlite3": "^5.1.7",
+    "ioredis": "^5.4.1"
   },
   "keywords": [
     "orm",
