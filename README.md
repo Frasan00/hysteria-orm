@@ -1,4 +1,5 @@
 # Hysteria ORM
+# Package is under development and not production ready by any means
 
 ## Philosophy
 - Hysteria ORM is an agnostic Object-Relational Mapping (ORM) library for TypeScript, designed to simplify interactions between your application and a SQL and NoSql databases.
@@ -22,7 +23,7 @@
 ## Installation
 ```shell
     npm install hysteria-orm
-    
+
     yarn add hysteria-orm
 ```
 
@@ -115,7 +116,7 @@ MONGO_URL=mongodb://root:root@localhost:27017
 
 ### TypeScript Configuration example
 
-```json 
+```json
 {
   "compilerOptions": {
     "esModuleInterop": true,
@@ -268,7 +269,7 @@ services:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: test
     ports:
-      - "3307:3306" 
+      - "3307:3306"
 
   redis:
     image: redis:6
