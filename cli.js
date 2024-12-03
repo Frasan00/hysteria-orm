@@ -10,6 +10,8 @@ const migrationCreateConnectorPath = resolve(process.cwd(), 'node_modules/hyster
 const migrationRunConnectorPath = resolve(process.cwd(), 'node_modules/hysteria-orm/src/hysteria_cli/migration_run_connector.ts');
 const migrationRollbackConnectorPath = resolve(process.cwd(), 'node_modules/hysteria-orm/src/hysteria_cli/migration_rollback_connector.ts');
 
+const tsNodePath = resolve(process.cwd(), 'node_modules/.bin/ts-node');
+
 program
   .command('create:migration <name>')
   .description('Create a new migration file, standard folder is database/migrations from the current directory you are now, you can change it in the env MIGRATION_PATH')
@@ -19,21 +21,21 @@ program
       process.exit(1);
     }
 
-    execSync(`${resolve(`${process.cwd()}/node_modules/hysteria-orm/.bin/ts-node`)} -T ${migrationCreateConnectorPath} ${name}`, { stdio: 'inherit' });
+    execSync(`${resolve(`${process.cwd()}/${tsNodePath}`)} -T ${migrationCreateConnectorPath} ${name}`, { stdio: 'inherit' });
   });
 
 program
   .command('run:migrations [runUntil]')
   .description('Run pending migrations')
   .action((runUntil) => {
-    execSync(`${resolve(`${process.cwd()}/node_modules/hysteria-orm/.bin/ts-node`)} -T ${migrationRunConnectorPath} ${runUntil}`, { stdio: 'inherit' });
+    execSync(`${resolve(`${process.cwd()}/${tsNodePath}`)} -T ${migrationRunConnectorPath} ${runUntil}`, { stdio: 'inherit' });
   });
 
 program
   .command('rollback:migrations [rollbackUntil]')
   .description('Rollbacks every migration that has been run')
   .action((rollbackUntil) => {
-    execSync(`${resolve(`${process.cwd()}/node_modules/hysteria-orm/.bin/ts-node`)} -T ${migrationRollbackConnectorPath} ${rollbackUntil}`, { stdio: 'inherit' });
+    execSync(`${resolve(`${process.cwd()}/${tsNodePath}`)} -T ${migrationRollbackConnectorPath} ${rollbackUntil}`, { stdio: 'inherit' });
   });
 
 program
