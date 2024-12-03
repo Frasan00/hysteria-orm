@@ -5,9 +5,9 @@ import { MigrationTableType } from "../resources/migration_table_type";
 import { Migration } from "../../sql/migrations/migration";
 import { MigrationController } from "../../sql/migrations/migration_controller";
 import logger from "../../utils/logger";
-import sqlite3 from "sqlite3";
 import { SqlDataSource } from "../../sql/sql_data_source";
 import { getMigrations, getMigrationTable } from "../migration_utils";
+import { SqliteConnectionInstance } from "../../sql/sql_data_source_types";
 
 dotenv.config();
 
@@ -15,7 +15,7 @@ export async function migrationRollBackSqlite(
   rollBackUntil?: string,
 ): Promise<void> {
   const sql = await SqlDataSource.connect();
-  const sqlConnection = sql.getCurrentConnection() as sqlite3.Database;
+  const sqlConnection = sql.getCurrentConnection() as SqliteConnectionInstance;
 
   try {
     const migrationTable: MigrationTableType[] =

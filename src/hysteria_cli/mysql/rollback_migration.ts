@@ -11,8 +11,8 @@ import {
 } from "../../sql/resources/query/TRANSACTION";
 import logger, { log } from "../../utils/logger";
 import { SqlDataSource } from "../../sql/sql_data_source";
-import * as mysql2 from "mysql2/promise";
 import { getMigrations, getMigrationTable } from "../migration_utils";
+import { MysqlConnectionInstance } from "../../sql/sql_data_source_types";
 
 dotenv.config();
 
@@ -20,7 +20,7 @@ export async function migrationRollBackSql(
   rollBackUntil?: string,
 ): Promise<void> {
   const sql = await SqlDataSource.connect();
-  const sqlConnection = sql.getCurrentConnection() as mysql2.Connection;
+  const sqlConnection = sql.getCurrentConnection() as MysqlConnectionInstance;
 
   try {
     log(BEGIN_TRANSACTION, true);

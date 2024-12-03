@@ -1,20 +1,28 @@
-import { PoolOptions } from "mysql2";
-import { PoolConfig } from "pg";
-import { MongoClientOptions } from "mongodb";
-import { RedisOptions } from "ioredis";
-
-export type DriverSpecificOptions = {
-  mysqlOptions?: PoolOptions;
-  pgOptions?: PoolConfig;
-  mongoOptions?: MongoClientOptions;
-  redisOptions: RedisOptions;
-};
-
 export type Mysql2Import = typeof import("mysql2/promise");
 export type PgImport = typeof import("pg");
 export type Sqlite3Import = typeof import("sqlite3");
 export type MongoClientImport = typeof import("mongodb");
 export type RedisImport = typeof import("ioredis");
+
+type ExcludeStringFromOptions<T> = T extends string ? never : T;
+
+export type MysqlCreateConnectionOptions = Parameters<
+  Mysql2Import["createConnection"]
+>[0];
+export type PgClientOptions = ExcludeStringFromOptions<
+  ConstructorParameters<PgImport["Client"]>[0]
+>;
+export type Sqlite3Options =
+  | ConstructorParameters<MongoClientImport["MongoClient"]>[0]
+  | ConstructorParameters<MongoClientImport["MongoClient"]>[1];
+export type RedisOptions = ConstructorParameters<RedisImport["default"]>; // TODO: This is not correct, but it's a start
+
+export type DriverSpecificOptions = {
+  mysqlOptions?: MysqlCreateConnectionOptions;
+  pgOptions?: PgClientOptions;
+  mongoOptions?: Sqlite3Options;
+  redisOptions?: RedisOptions;
+};
 
 export type DriverImport =
   | Mysql2Import

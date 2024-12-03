@@ -3,12 +3,13 @@ import path from "path";
 import { Migration } from "../sql/migrations/migration";
 import dotenv from "dotenv";
 import { MigrationTableType } from "./resources/migration_table_type";
-import { SqlConnectionType } from "../sql/sql_data_source";
-import mysql from "mysql2/promise";
-import pg from "pg";
-import sqlite3 from "sqlite3";
 import MigrationTemplates from "./resources/migration_templates";
-import { log } from "../utils/logger";
+import {
+  MysqlConnectionInstance,
+  PgClientInstance,
+  SqlConnectionType,
+  SqliteConnectionInstance,
+} from "../sql/sql_data_source_types";
 
 dotenv.config();
 
@@ -18,7 +19,7 @@ export async function getMigrationTable(
   switch (process.env.DB_TYPE) {
     case "mariadb":
     case "mysql":
-      const mysqlConnection = sqlConnection as mysql.Connection;
+      const mysqlConnection = sqlConnection as MysqlConnectionInstance;
       await mysqlConnection.query(
         MigrationTemplates.migrationTableTemplateMysql(),
       );
@@ -28,7 +29,7 @@ export async function getMigrationTable(
       return result[0] as MigrationTableType[];
 
     case "postgres":
-      const pgConnection = sqlConnection as pg.Client;
+      const pgConnection = sqlConnection as PgClientInstance;
       await pgConnection.query(MigrationTemplates.migrationTableTemplatePg());
       const pgResult = await pgConnection.query(
         MigrationTemplates.selectAllFromMigrationsTemplate(),
@@ -39,13 +40,13 @@ export async function getMigrationTable(
       await promisifySqliteQuery(
         MigrationTemplates.migrationTableTemplateSQLite(),
         [],
-        sqlConnection as sqlite3.Database,
+        sqlConnection as SqliteConnectionInstance,
       );
       const resultSqlite =
         (await promisifySqliteQuery<MigrationTableType[]>(
           MigrationTemplates.selectAllFromMigrationsTemplate(),
           [],
-          sqlConnection as sqlite3.Database,
+          sqlConnection as SqliteConnectionInstance,
         )) || [];
       return Array.isArray(resultSqlite) ? resultSqlite : [resultSqlite];
 
@@ -158,7 +159,7 @@ function findMigrationNames(): string[] {
 export async function promisifySqliteQuery<T>(
   query: string,
   params: any,
-  sqLiteConnection: sqlite3.Database,
+  sqLiteConnection: SqliteConnectionInstance,
 ): Promise<T> {
   return new Promise<T>((resolve, reject) => {
     sqLiteConnection.get<T>(query, params, (err, result) => {

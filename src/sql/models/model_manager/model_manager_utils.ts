@@ -1,6 +1,3 @@
-import mysql from "mysql2/promise";
-import pg from "pg";
-import sqlite3 from "sqlite3";
 import { log } from "../../../utils/logger";
 import deleteTemplate from "../../resources/query/DELETE";
 import insertTemplate from "../../resources/query/INSERT";
@@ -13,6 +10,9 @@ import { RelationQueryBuilder } from "../../query_builder/query_builder";
 import {
   SqlDataSourceType,
   SqlConnectionType,
+  MysqlConnectionInstance,
+  SqliteConnectionInstance,
+  PgClientInstance,
 } from "../../sql_data_source_types";
 
 export default class SqlModelManagerUtils<T extends Model> {
@@ -215,18 +215,18 @@ export default class SqlModelManagerUtils<T extends Model> {
       case "mysql":
       case "mariadb":
         const resultMysql = await (
-          this.sqlConnection as mysql.Connection
+          this.sqlConnection as MysqlConnectionInstance
         ).query(query, params);
         return resultMysql[0];
       case "postgres":
-        const resultPg = await (this.sqlConnection as pg.Client).query(
+        const resultPg = await (this.sqlConnection as PgClientInstance).query(
           query,
           params,
         );
         return resultPg.rows;
       case "sqlite":
         return await new Promise((resolve, reject) => {
-          (this.sqlConnection as sqlite3.Database).all(
+          (this.sqlConnection as SqliteConnectionInstance).all(
             query,
             params,
             (err, result) => {

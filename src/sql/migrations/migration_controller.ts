@@ -1,18 +1,22 @@
-import { Connection } from "mysql2/promise";
-import sqlite3 from "sqlite3";
-import { Client } from "pg";
-import { SqlDataSource, SqlDataSourceType } from "../sql_data_source";
+import { SqlDataSource } from "../sql_data_source";
 import { Migration } from "./migration";
 import { log } from "../../utils/logger";
+import {
+  MysqlConnectionInstance,
+  PgClientInstance,
+  SqlConnectionType,
+  SqlDataSourceType,
+  SqliteConnectionInstance,
+} from "../sql_data_source_types";
 
 export class MigrationController {
   protected sqlDataSource: SqlDataSource;
-  protected sqlConnection: Connection | Client | sqlite3.Database;
+  protected sqlConnection: SqlConnectionType;
   private sqlType: SqlDataSourceType;
 
   constructor(
     sqlDataSource: SqlDataSource,
-    sqlConnection: Connection | Client | sqlite3.Database,
+    sqlConnection: SqlConnectionType,
     sqlType: SqlDataSourceType,
   ) {
     this.sqlConnection = sqlConnection;
@@ -78,25 +82,29 @@ export class MigrationController {
     if (this.sqlType === "mysql" || this.sqlType === "mariadb") {
       text = text.replace(/PLACEHOLDER/g, "?");
       log(text, true, params);
-      await (this.sqlConnection as Connection).query(text, params);
+      await (this.sqlConnection as MysqlConnectionInstance).query(text, params);
       return;
     } else if (this.sqlType === "postgres") {
       let index = 1;
       text = text.replace(/PLACEHOLDER/g, () => `$${index++}`);
       log(text, true, params);
-      await (this.sqlConnection as Client).query(text, params);
+      await (this.sqlConnection as PgClientInstance).query(text, params);
       return;
     } else if (this.sqlType === "sqlite") {
       text = text.replace(/PLACEHOLDER/g, "?");
       log(text, true, params);
       await new Promise<void>((resolve, reject) => {
-        (this.sqlConnection as sqlite3.Database).run(text, params, (error) => {
-          if (error) {
-            reject(error);
-          } else {
-            resolve();
-          }
-        });
+        (this.sqlConnection as SqliteConnectionInstance).run(
+          text,
+          params,
+          (error) => {
+            if (error) {
+              reject(error);
+            } else {
+              resolve();
+            }
+          },
+        );
       });
       return;
     }

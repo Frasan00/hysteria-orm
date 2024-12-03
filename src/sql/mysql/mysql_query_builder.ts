@@ -1,4 +1,3 @@
-import mysql, { RowDataPacket } from "mysql2/promise";
 import { convertCase } from "../../utils/case_utils";
 import { log } from "../../utils/logger";
 import { Model, getBaseModelInstance } from "../models/model";
@@ -26,10 +25,11 @@ import {
 import deleteTemplate from "../resources/query/DELETE";
 import updateTemplate from "../resources/query/UPDATE";
 import { UpdateOptions } from "../query_builder/update_query_builder_types";
+import { MysqlConnectionInstance } from "../sql_data_source_types";
 
 export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
   protected type: "mysql" | "mariadb";
-  protected mysqlConnection: mysql.Connection;
+  protected mysqlConnection: MysqlConnectionInstance;
   protected updateTemplate: ReturnType<typeof updateTemplate>;
   protected deleteTemplate: ReturnType<typeof deleteTemplate>;
   protected mysqlModelManagerUtils: SqlModelManagerUtils<T>;
@@ -38,7 +38,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     type: "mysql" | "mariadb",
     model: typeof Model,
     table: string,
-    mysqlConnection: mysql.Connection,
+    mysqlConnection: MysqlConnectionInstance,
     logs: boolean,
     isNestedCondition = false,
     sqlDataSource: SqlDataSource,
@@ -79,10 +79,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
     query = query.trim();
     log(query, this.logs, this.params);
-    const [rows] = await this.mysqlConnection.query<RowDataPacket[]>(
-      query,
-      this.params,
-    );
+    const [rows] = await this.mysqlConnection.query<any[]>(query, this.params);
 
     if (!rows.length) {
       return null;
@@ -148,10 +145,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     query = query.trim();
 
     log(query, this.logs, this.params);
-    const [rows] = await this.mysqlConnection.query<RowDataPacket[]>(
-      query,
-      this.params,
-    );
+    const [rows] = await this.mysqlConnection.query<any[]>(query, this.params);
 
     const modelPromises = rows.map(async (row) => {
       const modelInstance = getBaseModelInstance<T>();

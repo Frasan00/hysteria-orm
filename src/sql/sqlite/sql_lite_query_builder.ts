@@ -18,7 +18,6 @@ import {
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { convertCase } from "../../utils/case_utils";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
-import sqlite3 from "sqlite3";
 import {
   DeleteOptions,
   SoftDeleteOptions,
@@ -26,9 +25,10 @@ import {
 import deleteTemplate from "../resources/query/DELETE";
 import updateTemplate from "../resources/query/UPDATE";
 import { UpdateOptions } from "../query_builder/update_query_builder_types";
+import { SqliteConnectionInstance } from "../sql_data_source_types";
 
 export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
-  protected sqLiteConnection: sqlite3.Database;
+  protected sqLiteConnection: SqliteConnectionInstance;
   protected sqliteModelManagerUtils: SqlModelManagerUtils<T>;
   protected updateTemplate: ReturnType<typeof updateTemplate>;
   protected deleteTemplate: ReturnType<typeof deleteTemplate>;
@@ -36,7 +36,7 @@ export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
   constructor(
     model: typeof Model,
     table: string,
-    sqLiteConnection: sqlite3.Database,
+    sqLiteConnection: SqliteConnectionInstance,
     logs: boolean,
     isNestedCondition = false,
     sqlDataSource: SqlDataSource,

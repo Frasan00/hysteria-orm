@@ -1,7 +1,12 @@
 import dotenv from "dotenv";
-import mysql from "mysql2/promise";
-import pg from "pg";
-import { MongoClientOptions } from "mongodb";
+import {
+  MongoClientImport,
+  Mysql2Import,
+  MysqlCreateConnectionOptions,
+  PgClientOptions,
+  PgImport,
+} from "./drivers/driver_constants";
+import { MongoOptions } from "mongodb";
 
 dotenv.config();
 
@@ -26,9 +31,9 @@ export interface DataSourceInput {
   readonly password?: string;
   readonly database?: string;
   readonly logs?: boolean;
-  readonly mysqlOptions?: mysql.PoolOptions;
-  readonly pgOptions?: pg.PoolConfig;
-  readonly mongoOptions?: MongoClientOptions;
+  readonly mysqlOptions?: MysqlCreateConnectionOptions;
+  readonly pgOptions?: PgClientOptions;
+  readonly mongoOptions?: MongoOptions;
 
   /**
    * @description Mongo specific option, sql databases won't use this property

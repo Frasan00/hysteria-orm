@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 import dotenv from "dotenv";
-import * as mysql2 from "mysql2/promise";
 import { MigrationTableType } from "../resources/migration_table_type";
 import { Migration } from "../../sql/migrations/migration";
 import { MigrationController } from "../../sql/migrations/migration_controller";
@@ -13,17 +12,18 @@ import {
 import logger, { log } from "../../utils/logger";
 import { SqlDataSource } from "../../sql/sql_data_source";
 import { getMigrations, getMigrationTable } from "../migration_utils";
+import { MysqlConnectionInstance } from "../../sql/sql_data_source_types";
 
 dotenv.config();
 
 export async function runMigrationsSql(runUntil?: string): Promise<void> {
   const sql = await SqlDataSource.connect();
-  const sqlConnection = sql.getCurrentConnection() as mysql2.Connection;
+  const sqlConnection = sql.getCurrentConnection() as MysqlConnectionInstance;
   try {
     log(BEGIN_TRANSACTION, true);
     await sqlConnection.beginTransaction();
     const migrationTable: MigrationTableType[] = await getMigrationTable(
-      sqlConnection as mysql2.Connection,
+      sqlConnection as MysqlConnectionInstance,
     );
     const migrations: Migration[] = await getMigrations();
     const pendingMigrations = migrations.filter(
@@ -51,7 +51,7 @@ export async function runMigrationsSql(runUntil?: string): Promise<void> {
       const filteredMigrations = pendingMigrations.slice(0, runUntilIndex + 1);
       const migrationController = new MigrationController(
         sql,
-        sqlConnection as mysql2.Connection,
+        sqlConnection as MysqlConnectionInstance,
         "mysql",
       );
       await migrationController.upMigrations(filteredMigrations);
@@ -62,7 +62,7 @@ export async function runMigrationsSql(runUntil?: string): Promise<void> {
 
     const migrationController = new MigrationController(
       sql,
-      sqlConnection as mysql2.Connection,
+      sqlConnection as MysqlConnectionInstance,
       "mysql",
     );
 

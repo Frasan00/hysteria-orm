@@ -9,11 +9,11 @@ import { log } from "../../utils/logger";
 import { ModelManager } from "../models/model_manager/model_manager";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
-import sqlite3 from "sqlite3";
 import { SqlLiteQueryBuilder } from "./sql_lite_query_builder";
+import { SqliteConnectionInstance } from "../sql_data_source_types";
 
 export class SqliteModelManager<T extends Model> extends ModelManager<T> {
-  protected sqLiteConnection: sqlite3.Database;
+  protected sqLiteConnection: SqliteConnectionInstance;
   protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
 
   /**
@@ -25,7 +25,7 @@ export class SqliteModelManager<T extends Model> extends ModelManager<T> {
    */
   constructor(
     model: typeof Model,
-    sqLiteConnection: sqlite3.Database,
+    sqLiteConnection: SqliteConnectionInstance,
     logs: boolean,
     sqlDataSource: SqlDataSource,
   ) {

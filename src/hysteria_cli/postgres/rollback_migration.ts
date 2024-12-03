@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 import dotenv from "dotenv";
-import { Client } from "pg";
 import { MigrationTableType } from "../resources/migration_table_type";
 import { Migration } from "../../sql/migrations/migration";
 import { MigrationController } from "../../sql/migrations/migration_controller";
@@ -13,6 +12,7 @@ import {
 import logger, { log } from "../../utils/logger";
 import { SqlDataSource } from "../../sql/sql_data_source";
 import { getMigrationTable, getMigrations } from "../migration_utils";
+import { PgClientInstance } from "../../sql/sql_data_source_types";
 
 dotenv.config();
 
@@ -20,7 +20,7 @@ export async function migrationRollBackPg(
   rollBackUntil?: string,
 ): Promise<void> {
   const sql = await SqlDataSource.connect();
-  const sqlConnection = sql.getCurrentConnection() as Client;
+  const sqlConnection = sql.getCurrentConnection() as PgClientInstance;
   try {
     const migrationTable: MigrationTableType[] =
       await getMigrationTable(sqlConnection);

@@ -5,16 +5,16 @@ import {
   UnrestrictedFindOneType,
   UnrestrictedFindType,
 } from "../models/model_manager/model_manager_types";
-import pg from "pg";
 import { log } from "../../utils/logger";
 import { ModelManager } from "../models/model_manager/model_manager";
 import { PostgresQueryBuilder } from "./postgres_query_builder";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
+import { PgClientInstance } from "../sql_data_source_types";
 
 export class PostgresModelManager<T extends Model> extends ModelManager<T> {
-  protected pgConnection: pg.Client;
+  protected pgConnection: PgClientInstance;
   protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
 
   /**
@@ -26,7 +26,7 @@ export class PostgresModelManager<T extends Model> extends ModelManager<T> {
    */
   constructor(
     model: typeof Model,
-    pgConnection: pg.Client,
+    pgConnection: PgClientInstance,
     logs: boolean,
     sqlDataSource: SqlDataSource,
   ) {

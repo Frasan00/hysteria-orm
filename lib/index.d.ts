@@ -1,14 +1,28 @@
-import * as mysql from 'mysql2/promise';
-import mysql__default from 'mysql2/promise';
-import * as pg from 'pg';
-import pg__default, { PoolConfig, Client } from 'pg';
-import * as mongodb from 'mongodb';
-import { MongoClientOptions } from 'mongodb';
-import Redis, { RedisOptions } from 'ioredis';
+import * as Redis from 'ioredis';
+import Redis__default, { RedisOptions as RedisOptions$1 } from 'ioredis';
 export { RedisOptions } from 'ioredis';
+import * as mongodb from 'mongodb';
+import { MongoOptions } from 'mongodb';
 import * as sqlite3 from 'sqlite3';
-import sqlite3__default from 'sqlite3';
-import { PoolOptions } from 'mysql2';
+import * as pg from 'pg';
+import * as mysql2_promise from 'mysql2/promise';
+
+type Mysql2Import = typeof mysql2_promise;
+type PgImport = typeof pg;
+type Sqlite3Import = typeof sqlite3;
+type MongoClientImport = typeof mongodb;
+type RedisImport = typeof Redis;
+type ExcludeStringFromOptions<T> = T extends string ? never : T;
+type MysqlCreateConnectionOptions = Parameters<Mysql2Import["createConnection"]>[0];
+type PgClientOptions = ExcludeStringFromOptions<ConstructorParameters<PgImport["Client"]>[0]>;
+type Sqlite3Options = ConstructorParameters<MongoClientImport["MongoClient"]>[0] | ConstructorParameters<MongoClientImport["MongoClient"]>[1];
+type RedisOptions = ConstructorParameters<RedisImport["default"]>;
+type DriverSpecificOptions = {
+    mysqlOptions?: MysqlCreateConnectionOptions;
+    pgOptions?: PgClientOptions;
+    mongoOptions?: Sqlite3Options;
+    redisOptions?: RedisOptions;
+};
 
 type DataSourceType = "mysql" | "postgres" | "mariadb" | "sqlite" | "mongo";
 /**
@@ -22,9 +36,9 @@ interface DataSourceInput {
     readonly password?: string;
     readonly database?: string;
     readonly logs?: boolean;
-    readonly mysqlOptions?: mysql__default.PoolOptions;
-    readonly pgOptions?: pg__default.PoolConfig;
-    readonly mongoOptions?: MongoClientOptions;
+    readonly mysqlOptions?: MysqlCreateConnectionOptions;
+    readonly pgOptions?: PgClientOptions;
+    readonly mongoOptions?: MongoOptions;
     /**
      * @description Mongo specific option, sql databases won't use this property
      */
@@ -59,16 +73,6 @@ type PaginatedData<T> = {
     paginationMetadata: PaginationMetadata;
     data: T[];
 };
-
-type DriverSpecificOptions = {
-    mysqlOptions?: PoolOptions;
-    pgOptions?: PoolConfig;
-    mongoOptions?: MongoClientOptions;
-    redisOptions: RedisOptions;
-};
-type Mysql2Import = typeof mysql;
-type PgImport = typeof pg;
-type Sqlite3Import = typeof sqlite3;
 
 declare abstract class ModelManager$1<T extends Model> {
     protected logs: boolean;
@@ -200,11 +204,11 @@ type UpdateOptions = {
 
 declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     protected type: "mysql" | "mariadb";
-    protected mysqlConnection: mysql__default.Connection;
+    protected mysqlConnection: MysqlConnectionInstance;
     protected updateTemplate: ReturnType<typeof updateTemplate>;
     protected deleteTemplate: ReturnType<typeof deleteTemplate>;
     protected mysqlModelManagerUtils: SqlModelManagerUtils<T>;
-    constructor(type: "mysql" | "mariadb", model: typeof Model, table: string, mysqlConnection: mysql__default.Connection, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
+    constructor(type: "mysql" | "mariadb", model: typeof Model, table: string, mysqlConnection: MysqlConnectionInstance, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
     one(options?: OneOptions$1): Promise<T | null>;
     oneOrFail(options?: OneOptions$1 & {
         customError: Error;
@@ -250,7 +254,7 @@ declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
 declare class MysqlModelManager<T extends Model> extends ModelManager$1<T> {
     protected type: "mysql" | "mariadb";
-    protected mysqlConnection: mysql__default.Connection;
+    protected mysqlConnection: MysqlConnectionInstance;
     protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
     /**
      * Constructor for MysqlModelManager class.
@@ -259,7 +263,7 @@ declare class MysqlModelManager<T extends Model> extends ModelManager$1<T> {
      * @param {Connection} mysqlConnection - MySQL connection pool.
      * @param {boolean} logs - Flag to enable or disable logging.
      */
-    constructor(type: "mysql" | "mariadb", model: typeof Model, mysqlConnection: mysql__default.Connection, logs: boolean, sqlDataSource: SqlDataSource);
+    constructor(type: "mysql" | "mariadb", model: typeof Model, mysqlConnection: MysqlConnectionInstance, logs: boolean, sqlDataSource: SqlDataSource);
     /**
      * Find method to retrieve multiple records from the database based on the input conditions.
      *
@@ -321,11 +325,11 @@ declare class MysqlModelManager<T extends Model> extends ModelManager$1<T> {
 }
 
 declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
-    protected pgClient: Client;
+    protected pgClient: PgClientInstance;
     protected postgresModelManagerUtils: SqlModelManagerUtils<T>;
     protected updateTemplate: ReturnType<typeof updateTemplate>;
     protected deleteTemplate: ReturnType<typeof deleteTemplate>;
-    constructor(model: typeof Model, table: string, pgClient: Client, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
+    constructor(model: typeof Model, table: string, pgClient: PgClientInstance, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
     select(...columns: string[]): PostgresQueryBuilder<T>;
     select(...columns: (SelectableType<T> | "*")[]): PostgresQueryBuilder<T>;
     distinct(): PostgresQueryBuilder<T>;
@@ -369,7 +373,7 @@ declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
 }
 
 declare class PostgresModelManager<T extends Model> extends ModelManager$1<T> {
-    protected pgConnection: pg__default.Client;
+    protected pgConnection: PgClientInstance;
     protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
     /**
      * Constructor for Postgres_model_manager class.
@@ -378,7 +382,7 @@ declare class PostgresModelManager<T extends Model> extends ModelManager$1<T> {
      * @param {Pool} pgConnection - PostgreSQL connection pool.
      * @param {boolean} logs - Flag to enable or disable logging.
      */
-    constructor(model: typeof Model, pgConnection: pg__default.Client, logs: boolean, sqlDataSource: SqlDataSource);
+    constructor(model: typeof Model, pgConnection: PgClientInstance, logs: boolean, sqlDataSource: SqlDataSource);
     /**
      * Find method to retrieve multiple records from the database based on the input conditions.
      *
@@ -440,11 +444,11 @@ declare class PostgresModelManager<T extends Model> extends ModelManager$1<T> {
 }
 
 declare class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
-    protected sqLiteConnection: sqlite3__default.Database;
+    protected sqLiteConnection: SqliteConnectionInstance;
     protected sqliteModelManagerUtils: SqlModelManagerUtils<T>;
     protected updateTemplate: ReturnType<typeof updateTemplate>;
     protected deleteTemplate: ReturnType<typeof deleteTemplate>;
-    constructor(model: typeof Model, table: string, sqLiteConnection: sqlite3__default.Database, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
+    constructor(model: typeof Model, table: string, sqLiteConnection: SqliteConnectionInstance, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
     one(options?: OneOptions$1): Promise<T | null>;
     oneOrFail(options?: OneOptions$1 & {
         customError: Error;
@@ -491,7 +495,7 @@ declare class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
 }
 
 declare class SqliteModelManager<T extends Model> extends ModelManager$1<T> {
-    protected sqLiteConnection: sqlite3__default.Database;
+    protected sqLiteConnection: SqliteConnectionInstance;
     protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
     /**
      * Constructor for SqLiteModelManager class.
@@ -500,7 +504,7 @@ declare class SqliteModelManager<T extends Model> extends ModelManager$1<T> {
      * @param {Pool} sqLiteConnection - sqlite connection.
      * @param {boolean} logs - Flag to enable or disable logging.
      */
-    constructor(model: typeof Model, sqLiteConnection: sqlite3__default.Database, logs: boolean, sqlDataSource: SqlDataSource);
+    constructor(model: typeof Model, sqLiteConnection: SqliteConnectionInstance, logs: boolean, sqlDataSource: SqlDataSource);
     /**
      * Find method to retrieve multiple records from the database based on the input conditions.
      *
@@ -1867,23 +1871,23 @@ type RedisStorable = string | number | boolean | Buffer | Array<any> | Record<st
 type RedisGiveable = string | number | boolean | Record<string, any> | Array<any> | null;
 declare class RedisDataSource {
     static isConnected: boolean;
-    protected static redisConnection: Redis;
+    protected static redisConnection: Redis__default;
     isConnected: boolean;
-    protected redisConnection: Redis;
-    constructor(input?: RedisOptions);
+    protected redisConnection: Redis__default;
+    constructor(input?: RedisOptions$1);
     /**
      * @description Connects to the redis database establishing a connection. If no connection details are provided, the default values from the env will be taken instead
      * @description The User input connection details will always come first
      * @description This is intended as a singleton connection to the redis database, if you need multiple connections, use the getConnection method
      * @param {RedisDataSourceInput} input - Details for the redis connection
      */
-    static connect(input?: RedisOptions): Promise<void>;
+    static connect(input?: RedisOptions$1): Promise<void>;
     /**
      * @description Establishes a connection to the redis database and returns the connection
      * @param input
      * @returns
      */
-    static getConnection(input?: RedisOptions): Promise<RedisDataSource>;
+    static getConnection(input?: RedisOptions$1): Promise<RedisDataSource>;
     /**
      * @description Sets a key-value pair in the redis database
      * @param {string} key - The key
@@ -1924,7 +1928,7 @@ declare class RedisDataSource {
      * @description Returns the raw redis connection that uses the ioredis library
      * @returns {Redis}
      */
-    static getRawConnection(): Redis;
+    static getRawConnection(): Redis__default;
     /**
      * @description Disconnects from the redis database
      * @returns {Promise<void>}
@@ -1970,7 +1974,7 @@ declare class RedisDataSource {
      * @description Returns the raw redis connection that uses the ioredis library
      * @returns {Redis}
      */
-    getRawConnection(): Redis;
+    getRawConnection(): Redis__default;
     /**
      * @description Disconnects from the redis database
      * @returns {Promise<void>}

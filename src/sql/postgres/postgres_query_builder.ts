@@ -6,7 +6,6 @@ import {
   ManyOptions,
   ModelInstanceType,
 } from "../query_builder/query_builder";
-import { Client } from "pg";
 import { log } from "../../utils/logger";
 import joinTemplate from "../resources/query/JOIN";
 import { PaginatedData, getPaginationMetadata } from "../pagination";
@@ -27,9 +26,10 @@ import {
 import deleteTemplate from "../resources/query/DELETE";
 import updateTemplate from "../resources/query/UPDATE";
 import { UpdateOptions } from "../query_builder/update_query_builder_types";
+import { PgClientInstance } from "../sql_data_source_types";
 
 export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
-  protected pgClient: Client;
+  protected pgClient: PgClientInstance;
   protected postgresModelManagerUtils: SqlModelManagerUtils<T>;
   protected updateTemplate: ReturnType<typeof updateTemplate>;
   protected deleteTemplate: ReturnType<typeof deleteTemplate>;
@@ -37,7 +37,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   constructor(
     model: typeof Model,
     table: string,
-    pgClient: Client,
+    pgClient: PgClientInstance,
     logs: boolean,
     isNestedCondition = false,
     sqlDataSource: SqlDataSource,
