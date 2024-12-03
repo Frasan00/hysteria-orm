@@ -1,10 +1,14 @@
-import mysql from 'mysql2/promise';
-import pg, { Client } from 'pg';
+import * as mysql from 'mysql2/promise';
+import mysql__default from 'mysql2/promise';
+import * as pg from 'pg';
+import pg__default, { PoolConfig, Client } from 'pg';
 import * as mongodb from 'mongodb';
 import { MongoClientOptions } from 'mongodb';
-import sqlite3 from 'sqlite3';
 import Redis, { RedisOptions } from 'ioredis';
 export { RedisOptions } from 'ioredis';
+import * as sqlite3 from 'sqlite3';
+import sqlite3__default from 'sqlite3';
+import { PoolOptions } from 'mysql2';
 
 type DataSourceType = "mysql" | "postgres" | "mariadb" | "sqlite" | "mongo";
 /**
@@ -18,8 +22,8 @@ interface DataSourceInput {
     readonly password?: string;
     readonly database?: string;
     readonly logs?: boolean;
-    readonly mysqlOptions?: mysql.PoolOptions;
-    readonly pgOptions?: pg.PoolConfig;
+    readonly mysqlOptions?: mysql__default.PoolOptions;
+    readonly pgOptions?: pg__default.PoolConfig;
     readonly mongoOptions?: MongoClientOptions;
     /**
      * @description Mongo specific option, sql databases won't use this property
@@ -55,6 +59,520 @@ type PaginatedData<T> = {
     paginationMetadata: PaginationMetadata;
     data: T[];
 };
+
+type DriverSpecificOptions = {
+    mysqlOptions?: PoolOptions;
+    pgOptions?: PoolConfig;
+    mongoOptions?: MongoClientOptions;
+    redisOptions: RedisOptions;
+};
+type Mysql2Import = typeof mysql;
+type PgImport = typeof pg;
+type Sqlite3Import = typeof sqlite3;
+
+declare abstract class ModelManager$1<T extends Model> {
+    protected logs: boolean;
+    protected sqlDataSource: SqlDataSource;
+    protected model: typeof Model;
+    protected modelInstance: T;
+    protected throwError: boolean;
+    /**
+     * @param model
+     * @param logs
+     * @param sqlDataSource Passed if a custom connection is provided
+     */
+    protected constructor(model: typeof Model, logs: boolean, sqlDataSource: SqlDataSource);
+    /**
+     * @description Finds all records that match the input
+     * @param input
+     */
+    abstract find(input?: FindType<T>): Promise<T[]>;
+    abstract find(input?: UnrestrictedFindType<T>): Promise<T[]>;
+    abstract find(input?: FindType<T> | UnrestrictedFindType<T>): Promise<T[]>;
+    /**
+     * @description Finds the first record that matches the input
+     * @param input
+     */
+    abstract findOne(input: UnrestrictedFindOneType<T>): Promise<T | null>;
+    abstract findOne(input: FindOneType<T>): Promise<T | null>;
+    abstract findOne(input: FindOneType<T> | UnrestrictedFindOneType<T>): Promise<T | null>;
+    /**
+     * @description Finds the first record that matches the input or throws an error
+     */
+    findOneOrFail(input: (FindOneType<T> | UnrestrictedFindOneType<T>) & {
+        customError?: Error;
+    }): Promise<T>;
+    /**
+     * @description Finds a record by its primary key
+     * @param value
+     * @param throwErrorOnNull
+     */
+    abstract findOneByPrimaryKey(value: string | number | boolean, throwErrorOnNull: boolean): Promise<T | null>;
+    /**
+     * @description Creates a new record
+     * @param model
+     * @param trx
+     */
+    abstract insert(model: Partial<T>): Promise<T | null>;
+    /**
+     * @description Creates multiple records
+     * @param model
+     * @param trx
+     */
+    abstract insertMany(model: Partial<T>[]): Promise<T[]>;
+    /**
+     * @description Updates a record
+     * @param model
+     * @param trx
+     */
+    abstract updateRecord(model: T): Promise<T | null>;
+    /**
+     * @description Deletes a record
+     * @param model
+     * @param trx
+     */
+    abstract deleteRecord(model: T): Promise<T | null>;
+    /**
+     * @description Returns a query builder
+     */
+    abstract query(): QueryBuilder<T>;
+}
+
+declare class SqlModelManagerUtils<T extends Model> {
+    private dbType;
+    private sqlConnection;
+    constructor(dbType: SqlDataSourceType, sqlConnection: SqlConnectionType);
+    parseInsert(model: T, typeofModel: typeof Model, dbType: SqlDataSourceType): {
+        query: string;
+        params: any[];
+    };
+    parseMassiveInsert(models: T[], typeofModel: typeof Model, dbType: SqlDataSourceType): {
+        query: string;
+        params: any[];
+    };
+    parseUpdate(model: T, typeofModel: typeof Model, dbType: SqlDataSourceType): {
+        query: string;
+        params: any[];
+    };
+    private filterRelationsAndMetadata;
+    parseDelete(table: string, column: string, value: string | number | boolean): {
+        query: string;
+        params: any[];
+    };
+    private getRelationFromModel;
+    parseQueryBuilderRelations(models: T[], typeofModel: typeof Model, input: RelationQueryBuilder[], dbType: SqlDataSourceType, logs: boolean): Promise<{
+        [relationName: string]: Model[];
+    }[]>;
+    private getQueryResult;
+}
+
+type DeleteOptions = {
+    ignoreBeforeDeleteHook?: boolean;
+};
+type SoftDeleteOptions<T> = {
+    column?: SelectableType<T>;
+    value?: string | number | boolean;
+    ignoreBeforeDeleteHook?: boolean;
+};
+
+declare const deleteTemplate: (table: string, dbType: SqlDataSourceType) => {
+    delete: (column: string, value: string | number | boolean | Date) => {
+        query: string;
+        params: (string | number | boolean | Date)[];
+    };
+    massiveDelete: (whereClause: string, joinClause?: string) => string;
+};
+
+declare const updateTemplate: (dbType: SqlDataSourceType, typeofModel: typeof Model) => {
+    update: (columns: string[], values: any[], primaryKey?: string, primaryKeyValue?: string | undefined) => {
+        query: string;
+        params: any[];
+    };
+    massiveUpdate: (columns: string[], values: any[], whereClause: string, joinClause?: string) => {
+        query: string;
+        params: any[];
+    };
+};
+
+type UpdateOptions = {
+    ignoreBeforeUpdateHook?: boolean;
+};
+
+declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
+    protected type: "mysql" | "mariadb";
+    protected mysqlConnection: mysql__default.Connection;
+    protected updateTemplate: ReturnType<typeof updateTemplate>;
+    protected deleteTemplate: ReturnType<typeof deleteTemplate>;
+    protected mysqlModelManagerUtils: SqlModelManagerUtils<T>;
+    constructor(type: "mysql" | "mariadb", model: typeof Model, table: string, mysqlConnection: mysql__default.Connection, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
+    one(options?: OneOptions$1): Promise<T | null>;
+    oneOrFail(options?: OneOptions$1 & {
+        customError: Error;
+    }): Promise<T>;
+    many(options?: ManyOptions$1): Promise<T[]>;
+    softDelete(options?: SoftDeleteOptions<T>): Promise<number>;
+    delete(options?: DeleteOptions): Promise<number>;
+    update(data: Partial<T>, options?: UpdateOptions): Promise<number>;
+    whereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this;
+    orWhereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this;
+    andWhereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this;
+    getCount(options?: {
+        ignoreHooks: boolean;
+    }): Promise<number>;
+    getSum(column: SelectableType<T>): Promise<number>;
+    getSum(column: string): Promise<number>;
+    paginate(page: number, limit: number, options?: ManyOptions$1): Promise<PaginatedData<T>>;
+    select(...columns: string[]): MysqlQueryBuilder<T>;
+    select(...columns: (SelectableType<T> | "*")[]): MysqlQueryBuilder<T>;
+    distinct(): MysqlQueryBuilder<T>;
+    distinctOn(...columns: string[]): MysqlQueryBuilder<T>;
+    distinctOn(...columns: SelectableType<T>[]): MysqlQueryBuilder<T>;
+    distinctOn(...columns: (string | SelectableType<T>)[]): MysqlQueryBuilder<T>;
+    joinRaw(query: string): this;
+    join(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlQueryBuilder<T>;
+    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlQueryBuilder<T>;
+    with<O extends typeof Model>(relation: RelationType<T>, relatedModel?: O, relatedModelQueryBuilder?: (queryBuilder: ModelQueryBuilder<ModelInstanceType<O>>) => void, ignoreHooks?: {
+        beforeFetch?: boolean;
+        afterFetch?: boolean;
+    }): ModelQueryBuilder<T>;
+    addDynamicColumns(dynamicColumns: DynamicColumnType<T>[]): ModelQueryBuilder<T>;
+    groupBy(...columns: SelectableType<T>[]): this;
+    groupBy(...columns: string[]): this;
+    groupByRaw(query: string): this;
+    orderBy(column: SelectableType<T>, order: "ASC" | "DESC"): this;
+    orderBy(column: string, order: "ASC" | "DESC"): this;
+    orderByRaw(query: string): this;
+    limit(limit: number): this;
+    offset(offset: number): this;
+    havingRaw(query: string): ModelQueryBuilder<T>;
+    copy(): ModelQueryBuilder<T>;
+}
+
+declare class MysqlModelManager<T extends Model> extends ModelManager$1<T> {
+    protected type: "mysql" | "mariadb";
+    protected mysqlConnection: mysql__default.Connection;
+    protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
+    /**
+     * Constructor for MysqlModelManager class.
+     *
+     * @param {typeof Model} model - Model constructor.
+     * @param {Connection} mysqlConnection - MySQL connection pool.
+     * @param {boolean} logs - Flag to enable or disable logging.
+     */
+    constructor(type: "mysql" | "mariadb", model: typeof Model, mysqlConnection: mysql__default.Connection, logs: boolean, sqlDataSource: SqlDataSource);
+    /**
+     * Find method to retrieve multiple records from the database based on the input conditions.
+     *
+     * @param {FindType} input - Optional query parameters for filtering, ordering, and pagination.
+     * @returns Promise resolving to an array of models.
+     */
+    find(input?: FindType<T> | UnrestrictedFindType<T>): Promise<T[]>;
+    /**
+     * Find a single record from the database based on the input conditions.
+     *
+     * @param {FindOneType} input - query parameters for filtering and selecting a single record.
+     * @returns Promise resolving to a single model or null if not found.
+     */
+    findOne(input: FindOneType<T> | UnrestrictedFindOneType<T>): Promise<T | null>;
+    /**
+     * Find a single record by its PK from the database.
+     *
+     * @param {string | number | boolean} value - PK of the record to retrieve, hooks will not have any effect, since it's a direct query for the PK.
+     * @returns Promise resolving to a single model or null if not found.
+     */
+    findOneByPrimaryKey(value: string | number | boolean): Promise<T | null>;
+    /**
+     * Save a new model instance to the database.
+     *
+     * @param {Model} model - Model instance to be saved.
+     * @param {TransactionType} trx - TransactionType to be used on the save operation.
+     * @returns Promise resolving to the saved model or null if saving fails.
+     */
+    insert(model: Partial<T>): Promise<T | null>;
+    /**
+     * Create multiple model instances in the database.
+     *
+     * @param {Model} model - Model instance to be saved.
+     * @param {TransactionType} trx - TransactionType to be used on the save operation.
+     * @returns Promise resolving to an array of saved models or null if saving fails.
+     */
+    insertMany(models: Partial<T>[]): Promise<T[]>;
+    /**
+     * Update an existing model instance in the database.
+     * @param {Model} model - Model instance to be updated.
+     * @param {TransactionType} trx - TransactionType to be used on the update operation.
+     * @returns Promise resolving to the updated model or null if updating fails.
+     */
+    updateRecord(model: T): Promise<T | null>;
+    /**
+     * @description Delete a record from the database from the given model.
+     *
+     * @param {Model} model - Model to delete.
+     * @param {TransactionType} trx - TransactionType to be used on the delete operation.
+     * @returns Promise resolving to the deleted model or null if deleting fails.
+     */
+    deleteRecord(model: T): Promise<T | null>;
+    /**
+     * Create and return a new instance of the Mysql_query_builder for building more complex SQL queries.
+     *
+     * @returns {Mysql_query_builder<Model>} - Instance of Mysql_query_builder.
+     */
+    query(): MysqlQueryBuilder<T>;
+}
+
+declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
+    protected pgClient: Client;
+    protected postgresModelManagerUtils: SqlModelManagerUtils<T>;
+    protected updateTemplate: ReturnType<typeof updateTemplate>;
+    protected deleteTemplate: ReturnType<typeof deleteTemplate>;
+    constructor(model: typeof Model, table: string, pgClient: Client, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
+    select(...columns: string[]): PostgresQueryBuilder<T>;
+    select(...columns: (SelectableType<T> | "*")[]): PostgresQueryBuilder<T>;
+    distinct(): PostgresQueryBuilder<T>;
+    distinctOn(...columns: string[]): PostgresQueryBuilder<T>;
+    distinctOn(...columns: SelectableType<T>[]): PostgresQueryBuilder<T>;
+    one(options?: OneOptions$1): Promise<T | null>;
+    oneOrFail(options?: OneOptions$1 & {
+        customError: Error;
+    }): Promise<T>;
+    many(options?: ManyOptions$1): Promise<T[]>;
+    update(data: Partial<T>, options?: UpdateOptions): Promise<number>;
+    delete(options?: DeleteOptions): Promise<number>;
+    softDelete(options?: SoftDeleteOptions<T>): Promise<number>;
+    whereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
+    orWhereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
+    andWhereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
+    getCount(options?: {
+        ignoreHooks: boolean;
+    }): Promise<number>;
+    getSum(column: SelectableType<T>): Promise<number>;
+    getSum(column: string): Promise<number>;
+    paginate(page: number, limit: number, options?: ManyOptions$1): Promise<PaginatedData<T>>;
+    joinRaw(query: string): this;
+    join(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresQueryBuilder<T>;
+    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresQueryBuilder<T>;
+    with<O extends typeof Model>(relation: RelationType<T>, relatedModel?: O, relatedModelQueryBuilder?: (queryBuilder: ModelQueryBuilder<ModelInstanceType<O>>) => void, ignoreHooks?: {
+        beforeFetch?: boolean;
+        afterFetch?: boolean;
+    }): ModelQueryBuilder<T>;
+    addDynamicColumns(dynamicColumns: DynamicColumnType<T>[]): ModelQueryBuilder<T>;
+    groupBy(...columns: SelectableType<T>[]): this;
+    groupBy(...columns: string[]): this;
+    groupByRaw(query: string): this;
+    orderBy(column: SelectableType<T>, order: "ASC" | "DESC"): this;
+    orderBy(column: string, order: "ASC" | "DESC"): this;
+    orderByRaw(query: string): this;
+    limit(limit: number): this;
+    offset(offset: number): this;
+    havingRaw(query: string): ModelQueryBuilder<T>;
+    copy(): ModelQueryBuilder<T>;
+}
+
+declare class PostgresModelManager<T extends Model> extends ModelManager$1<T> {
+    protected pgConnection: pg__default.Client;
+    protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
+    /**
+     * Constructor for Postgres_model_manager class.
+     *
+     * @param {typeof Model} model - Model constructor.
+     * @param {Pool} pgConnection - PostgreSQL connection pool.
+     * @param {boolean} logs - Flag to enable or disable logging.
+     */
+    constructor(model: typeof Model, pgConnection: pg__default.Client, logs: boolean, sqlDataSource: SqlDataSource);
+    /**
+     * Find method to retrieve multiple records from the database based on the input conditions.
+     *
+     * @param {FindType} input - Optional query parameters for filtering, ordering, and pagination.
+     * @returns Promise resolving to an array of models.
+     */
+    find(input?: FindType<T> | UnrestrictedFindType<T>): Promise<T[]>;
+    /**
+     * Find a single record from the database based on the input conditions.
+     *
+     * @param {FindOneType} input - query parameters for filtering and selecting a single record.
+     * @returns Promise resolving to a single model or null if not found.
+     */
+    findOne(input: FindOneType<T> | UnrestrictedFindOneType<T>): Promise<T | null>;
+    /**
+     * Find a single record by its PK from the database.
+     *
+     * @param {string | number | boolean} value - PK value of the record to retrieve.
+     * @returns Promise resolving to a single model or null if not found.
+     */
+    findOneByPrimaryKey(value: string | number | boolean): Promise<T | null>;
+    /**
+     * Save a new model instance to the database.
+     *
+     * @param {Model} model - Model instance to be saved.
+     * @param {MysqlTransaction} trx - MysqlTransaction to be used on the save operation.
+     * @returns Promise resolving to the saved model or null if saving fails.
+     */
+    insert(model: Partial<T>): Promise<T | null>;
+    /**
+     * Create multiple model instances in the database.
+     *
+     * @param {Model} models - Model instance to be saved.
+     * @param {Transaction} trx - MysqlTransaction to be used on the save operation.
+     * @returns Promise resolving to an array of saved models or null if saving fails.
+     */
+    insertMany(models: Partial<T>[]): Promise<T[]>;
+    /**
+     * Update an existing model instance in the database.
+     * @param {Model} model - Model instance to be updated.
+     * @param {Transaction} trx - Transaction to be used on the update operation.
+     * @returns Promise resolving to the updated model or null if updating fails.
+     */
+    updateRecord(model: T): Promise<T | null>;
+    /**
+     * @description Delete a record from the database from the given model.
+     *
+     * @param {Model} model - Model to delete.
+     * @param {Transaction} trx - Transaction to be used on the delete operation.
+     * @returns Promise resolving to the deleted model or null if deleting fails.
+     */
+    deleteRecord(model: T): Promise<T | null>;
+    /**
+     * Create and return a new instance of the Mysql_query_builder for building more complex SQL queries.
+     *
+     * @returns {MysqlQueryBuilder<Model>} - Instance of Mysql_query_builder.
+     */
+    query(): PostgresQueryBuilder<T>;
+}
+
+declare class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
+    protected sqLiteConnection: sqlite3__default.Database;
+    protected sqliteModelManagerUtils: SqlModelManagerUtils<T>;
+    protected updateTemplate: ReturnType<typeof updateTemplate>;
+    protected deleteTemplate: ReturnType<typeof deleteTemplate>;
+    constructor(model: typeof Model, table: string, sqLiteConnection: sqlite3__default.Database, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
+    one(options?: OneOptions$1): Promise<T | null>;
+    oneOrFail(options?: OneOptions$1 & {
+        customError: Error;
+    }): Promise<T>;
+    many(options?: ManyOptions$1): Promise<T[]>;
+    update(data: Partial<T>, options?: UpdateOptions): Promise<number>;
+    delete(options?: DeleteOptions): Promise<number>;
+    softDelete(options?: SoftDeleteOptions<T>): Promise<number>;
+    whereBuilder(cb: (queryBuilder: SqlLiteQueryBuilder<T>) => void): this;
+    orWhereBuilder(cb: (queryBuilder: SqlLiteQueryBuilder<T>) => void): this;
+    andWhereBuilder(cb: (queryBuilder: SqlLiteQueryBuilder<T>) => void): this;
+    raw<T>(query: string, params?: any[]): Promise<T[]>;
+    getCount(options?: {
+        ignoreHooks: boolean;
+    }): Promise<number>;
+    getSum(column: SelectableType<T>): Promise<number>;
+    getSum(column: string): Promise<number>;
+    paginate(page: number, limit: number, options?: ManyOptions$1): Promise<PaginatedData<T>>;
+    select(...columns: string[]): SqlLiteQueryBuilder<T>;
+    select(...columns: (SelectableType<T> | "*")[]): SqlLiteQueryBuilder<T>;
+    distinct(): SqlLiteQueryBuilder<T>;
+    distinctOn(...columns: string[]): SqlLiteQueryBuilder<T>;
+    distinctOn(...columns: SelectableType<T>[]): SqlLiteQueryBuilder<T>;
+    distinctOn(...columns: (string | SelectableType<T>)[]): SqlLiteQueryBuilder<T>;
+    joinRaw(query: string): this;
+    join(relationTable: string, primaryColumn: string, foreignColumn: string): SqlLiteQueryBuilder<T>;
+    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): SqlLiteQueryBuilder<T>;
+    with<O extends typeof Model>(relation: RelationType<T>, relatedModel?: O, relatedModelQueryBuilder?: (queryBuilder: ModelQueryBuilder<ModelInstanceType<O>>) => void, ignoreHooks?: {
+        beforeFetch?: boolean;
+        afterFetch?: boolean;
+    }): ModelQueryBuilder<T>;
+    addDynamicColumns(dynamicColumns: DynamicColumnType<T>[]): ModelQueryBuilder<T>;
+    groupBy(...columns: SelectableType<T>[]): this;
+    groupBy(...columns: string[]): this;
+    groupByRaw(query: string): this;
+    orderBy(column: SelectableType<T>, order: "ASC" | "DESC"): this;
+    orderBy(column: string, order: "ASC" | "DESC"): this;
+    orderByRaw(query: string): this;
+    limit(limit: number): this;
+    offset(offset: number): this;
+    havingRaw(query: string): ModelQueryBuilder<T>;
+    copy(): ModelQueryBuilder<T>;
+    private promisifyQuery;
+}
+
+declare class SqliteModelManager<T extends Model> extends ModelManager$1<T> {
+    protected sqLiteConnection: sqlite3__default.Database;
+    protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
+    /**
+     * Constructor for SqLiteModelManager class.
+     *
+     * @param {typeof Model} model - Model constructor.
+     * @param {Pool} sqLiteConnection - sqlite connection.
+     * @param {boolean} logs - Flag to enable or disable logging.
+     */
+    constructor(model: typeof Model, sqLiteConnection: sqlite3__default.Database, logs: boolean, sqlDataSource: SqlDataSource);
+    /**
+     * Find method to retrieve multiple records from the database based on the input conditions.
+     *
+     * @param {FindType} input - Optional query parameters for filtering, ordering, and pagination.
+     * @returns Promise resolving to an array of models.
+     */
+    find(input?: FindType<T> | UnrestrictedFindType<T>): Promise<T[]>;
+    /**
+     * Find a single record from the database based on the input conditions.
+     *
+     * @param {FindOneType} input - query parameters for filtering and selecting a single record.
+     * @returns Promise resolving to a single model or null if not found.
+     */
+    findOne(input: FindOneType<T> | UnrestrictedFindOneType<T>): Promise<T | null>;
+    /**
+     * Find a single record by its PK from the database.
+     *
+     * @param {string | number | boolean} value - PK of the record to retrieve, hooks will not have any effect, since it's a direct query for the PK.
+     * @returns Promise resolving to a single model or null if not found.
+     */
+    findOneByPrimaryKey(value: string | number | boolean): Promise<T | null>;
+    /**
+     * Save a new model instance to the database.
+     *
+     * @param {Model} model - Model instance to be saved.
+     * @param {SqliteTransaction} trx - SqliteTransaction to be used on the save operation.
+     * @returns Promise resolving to the saved model or null if saving fails.
+     */
+    insert(model: Partial<T>): Promise<T | null>;
+    /**
+     * Create multiple model instances in the database.
+     *
+     * @param {Model} model - Model instance to be saved.
+     * @param {SqliteTransaction} trx - SqliteTransaction to be used on the save operation.
+     * @returns Promise resolving to an array of saved models or null if saving fails.
+     */
+    insertMany(models: Partial<T>[]): Promise<T[]>;
+    /**
+     * Update an existing model instance in the database.
+     * @param {Model} model - Model instance to be updated.
+     * @param {SqliteTransaction} trx - SqliteTransaction to be used on the update operation.
+     * @returns Promise resolving to the updated model or null if updating fails.
+     */
+    updateRecord(model: T): Promise<T | null>;
+    /**
+     * @description Delete a record from the database from the given model.
+     *
+     * @param {Model} model - Model to delete.
+     * @param trx - SqliteTransaction to be used on the delete operation.
+     * @returns Promise resolving to the deleted model or null if deleting fails.
+     */
+    deleteRecord(model: T): Promise<T | null>;
+    /**
+     * Create and return a new instance of the Mysql_query_builder for building more complex SQL queries.
+     *
+     * @returns {MysqlQueryBuilder<Model>} - Instance of Mysql_query_builder.
+     */
+    query(): SqlLiteQueryBuilder<T>;
+    private promisifyQuery;
+}
+
+type SqlDriverSpecificOptions = Omit<DriverSpecificOptions, "mongoOptions" | "redisOptions">;
+type ModelManager<T extends Model> = MysqlModelManager<T> | PostgresModelManager<T> | SqliteModelManager<T>;
+type MysqlConnectionInstance = Awaited<ReturnType<Mysql2Import["createConnection"]>>;
+type PgClientInstance = InstanceType<PgImport["Client"]>;
+type SqliteConnectionInstance = InstanceType<Sqlite3Import["Database"]>;
+type SqlConnectionType = MysqlConnectionInstance | PgClientInstance | SqliteConnectionInstance;
+interface ISqlDataSourceInput extends DataSourceInput {
+    type: Exclude<DataSourceType, "mongo">;
+}
+type SqlDataSourceInput = Exclude<ISqlDataSourceInput, "mongoOptions">;
+type SqlDataSourceType = SqlDataSourceInput["type"];
 
 declare class Transaction {
     sqlDataSource: SqlDataSource;
@@ -155,164 +673,6 @@ type FindType<T> = Omit<FindOneType<T>, "throwErrorOnNull"> & {
     limit?: number;
 };
 
-declare class SqlModelManagerUtils<T extends Model> {
-    private dbType;
-    private sqlConnection;
-    constructor(dbType: SqlDataSourceType, sqlConnection: SqlConnectionType);
-    parseInsert(model: T, typeofModel: typeof Model, dbType: SqlDataSourceType): {
-        query: string;
-        params: any[];
-    };
-    parseMassiveInsert(models: T[], typeofModel: typeof Model, dbType: SqlDataSourceType): {
-        query: string;
-        params: any[];
-    };
-    parseUpdate(model: T, typeofModel: typeof Model, dbType: SqlDataSourceType): {
-        query: string;
-        params: any[];
-    };
-    private filterRelationsAndMetadata;
-    parseDelete(table: string, column: string, value: string | number | boolean): {
-        query: string;
-        params: any[];
-    };
-    private getRelationFromModel;
-    parseQueryBuilderRelations(models: T[], typeofModel: typeof Model, input: RelationQueryBuilder[], dbType: SqlDataSourceType, logs: boolean): Promise<{
-        [relationName: string]: Model[];
-    }[]>;
-    private getQueryResult;
-}
-
-type DeleteOptions = {
-    ignoreBeforeDeleteHook?: boolean;
-};
-type SoftDeleteOptions<T> = {
-    column?: SelectableType<T>;
-    value?: string | number | boolean;
-    ignoreBeforeDeleteHook?: boolean;
-};
-
-declare const deleteTemplate: (table: string, dbType: SqlDataSourceType) => {
-    delete: (column: string, value: string | number | boolean | Date) => {
-        query: string;
-        params: (string | number | boolean | Date)[];
-    };
-    massiveDelete: (whereClause: string, joinClause?: string) => string;
-};
-
-declare const updateTemplate: (dbType: SqlDataSourceType, typeofModel: typeof Model) => {
-    update: (columns: string[], values: any[], primaryKey?: string, primaryKeyValue?: string | undefined) => {
-        query: string;
-        params: any[];
-    };
-    massiveUpdate: (columns: string[], values: any[], whereClause: string, joinClause?: string) => {
-        query: string;
-        params: any[];
-    };
-};
-
-type UpdateOptions = {
-    ignoreBeforeUpdateHook?: boolean;
-};
-
-declare class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
-    protected type: "mysql" | "mariadb";
-    protected mysqlConnection: mysql.Connection;
-    protected updateTemplate: ReturnType<typeof updateTemplate>;
-    protected deleteTemplate: ReturnType<typeof deleteTemplate>;
-    protected mysqlModelManagerUtils: SqlModelManagerUtils<T>;
-    constructor(type: "mysql" | "mariadb", model: typeof Model, table: string, mysqlConnection: mysql.Connection, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
-    one(options?: OneOptions$1): Promise<T | null>;
-    oneOrFail(options?: OneOptions$1 & {
-        customError: Error;
-    }): Promise<T>;
-    many(options?: ManyOptions$1): Promise<T[]>;
-    softDelete(options?: SoftDeleteOptions<T>): Promise<number>;
-    delete(options?: DeleteOptions): Promise<number>;
-    update(data: Partial<T>, options?: UpdateOptions): Promise<number>;
-    whereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this;
-    orWhereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this;
-    andWhereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this;
-    getCount(options?: {
-        ignoreHooks: boolean;
-    }): Promise<number>;
-    getSum(column: SelectableType<T>): Promise<number>;
-    getSum(column: string): Promise<number>;
-    paginate(page: number, limit: number, options?: ManyOptions$1): Promise<PaginatedData<T>>;
-    select(...columns: string[]): MysqlQueryBuilder<T>;
-    select(...columns: (SelectableType<T> | "*")[]): MysqlQueryBuilder<T>;
-    distinct(): MysqlQueryBuilder<T>;
-    distinctOn(...columns: string[]): MysqlQueryBuilder<T>;
-    distinctOn(...columns: SelectableType<T>[]): MysqlQueryBuilder<T>;
-    distinctOn(...columns: (string | SelectableType<T>)[]): MysqlQueryBuilder<T>;
-    joinRaw(query: string): this;
-    join(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlQueryBuilder<T>;
-    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): MysqlQueryBuilder<T>;
-    with<O extends typeof Model>(relation: RelationType<T>, relatedModel?: O, relatedModelQueryBuilder?: (queryBuilder: ModelQueryBuilder<ModelInstanceType<O>>) => void, ignoreHooks?: {
-        beforeFetch?: boolean;
-        afterFetch?: boolean;
-    }): ModelQueryBuilder<T>;
-    addDynamicColumns(dynamicColumns: DynamicColumnType<T>[]): ModelQueryBuilder<T>;
-    groupBy(...columns: SelectableType<T>[]): this;
-    groupBy(...columns: string[]): this;
-    groupByRaw(query: string): this;
-    orderBy(column: SelectableType<T>, order: "ASC" | "DESC"): this;
-    orderBy(column: string, order: "ASC" | "DESC"): this;
-    orderByRaw(query: string): this;
-    limit(limit: number): this;
-    offset(offset: number): this;
-    havingRaw(query: string): ModelQueryBuilder<T>;
-    copy(): ModelQueryBuilder<T>;
-}
-
-declare class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
-    protected pgClient: Client;
-    protected postgresModelManagerUtils: SqlModelManagerUtils<T>;
-    protected updateTemplate: ReturnType<typeof updateTemplate>;
-    protected deleteTemplate: ReturnType<typeof deleteTemplate>;
-    constructor(model: typeof Model, table: string, pgClient: Client, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
-    select(...columns: string[]): PostgresQueryBuilder<T>;
-    select(...columns: (SelectableType<T> | "*")[]): PostgresQueryBuilder<T>;
-    distinct(): PostgresQueryBuilder<T>;
-    distinctOn(...columns: string[]): PostgresQueryBuilder<T>;
-    distinctOn(...columns: SelectableType<T>[]): PostgresQueryBuilder<T>;
-    one(options?: OneOptions$1): Promise<T | null>;
-    oneOrFail(options?: OneOptions$1 & {
-        customError: Error;
-    }): Promise<T>;
-    many(options?: ManyOptions$1): Promise<T[]>;
-    update(data: Partial<T>, options?: UpdateOptions): Promise<number>;
-    delete(options?: DeleteOptions): Promise<number>;
-    softDelete(options?: SoftDeleteOptions<T>): Promise<number>;
-    whereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
-    orWhereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
-    andWhereBuilder(cb: (queryBuilder: PostgresQueryBuilder<T>) => void): this;
-    getCount(options?: {
-        ignoreHooks: boolean;
-    }): Promise<number>;
-    getSum(column: SelectableType<T>): Promise<number>;
-    getSum(column: string): Promise<number>;
-    paginate(page: number, limit: number, options?: ManyOptions$1): Promise<PaginatedData<T>>;
-    joinRaw(query: string): this;
-    join(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresQueryBuilder<T>;
-    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): PostgresQueryBuilder<T>;
-    with<O extends typeof Model>(relation: RelationType<T>, relatedModel?: O, relatedModelQueryBuilder?: (queryBuilder: ModelQueryBuilder<ModelInstanceType<O>>) => void, ignoreHooks?: {
-        beforeFetch?: boolean;
-        afterFetch?: boolean;
-    }): ModelQueryBuilder<T>;
-    addDynamicColumns(dynamicColumns: DynamicColumnType<T>[]): ModelQueryBuilder<T>;
-    groupBy(...columns: SelectableType<T>[]): this;
-    groupBy(...columns: string[]): this;
-    groupByRaw(query: string): this;
-    orderBy(column: SelectableType<T>, order: "ASC" | "DESC"): this;
-    orderBy(column: string, order: "ASC" | "DESC"): this;
-    orderByRaw(query: string): this;
-    limit(limit: number): this;
-    offset(offset: number): this;
-    havingRaw(query: string): ModelQueryBuilder<T>;
-    copy(): ModelQueryBuilder<T>;
-}
-
 declare const selectTemplate: (dbType: SqlDataSourceType, typeofModel: typeof Model) => {
     selectAll: string;
     selectById: (id: string) => string;
@@ -328,57 +688,6 @@ declare const selectTemplate: (dbType: SqlDataSourceType, typeofModel: typeof Mo
     limit: (limit: number) => string;
     offset: (offset: number) => string;
 };
-
-declare class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
-    protected sqLiteConnection: sqlite3.Database;
-    protected sqliteModelManagerUtils: SqlModelManagerUtils<T>;
-    protected updateTemplate: ReturnType<typeof updateTemplate>;
-    protected deleteTemplate: ReturnType<typeof deleteTemplate>;
-    constructor(model: typeof Model, table: string, sqLiteConnection: sqlite3.Database, logs: boolean, isNestedCondition: boolean | undefined, sqlDataSource: SqlDataSource);
-    one(options?: OneOptions$1): Promise<T | null>;
-    oneOrFail(options?: OneOptions$1 & {
-        customError: Error;
-    }): Promise<T>;
-    many(options?: ManyOptions$1): Promise<T[]>;
-    update(data: Partial<T>, options?: UpdateOptions): Promise<number>;
-    delete(options?: DeleteOptions): Promise<number>;
-    softDelete(options?: SoftDeleteOptions<T>): Promise<number>;
-    whereBuilder(cb: (queryBuilder: SqlLiteQueryBuilder<T>) => void): this;
-    orWhereBuilder(cb: (queryBuilder: SqlLiteQueryBuilder<T>) => void): this;
-    andWhereBuilder(cb: (queryBuilder: SqlLiteQueryBuilder<T>) => void): this;
-    raw<T>(query: string, params?: any[]): Promise<T[]>;
-    getCount(options?: {
-        ignoreHooks: boolean;
-    }): Promise<number>;
-    getSum(column: SelectableType<T>): Promise<number>;
-    getSum(column: string): Promise<number>;
-    paginate(page: number, limit: number, options?: ManyOptions$1): Promise<PaginatedData<T>>;
-    select(...columns: string[]): SqlLiteQueryBuilder<T>;
-    select(...columns: (SelectableType<T> | "*")[]): SqlLiteQueryBuilder<T>;
-    distinct(): SqlLiteQueryBuilder<T>;
-    distinctOn(...columns: string[]): SqlLiteQueryBuilder<T>;
-    distinctOn(...columns: SelectableType<T>[]): SqlLiteQueryBuilder<T>;
-    distinctOn(...columns: (string | SelectableType<T>)[]): SqlLiteQueryBuilder<T>;
-    joinRaw(query: string): this;
-    join(relationTable: string, primaryColumn: string, foreignColumn: string): SqlLiteQueryBuilder<T>;
-    leftJoin(relationTable: string, primaryColumn: string, foreignColumn: string): SqlLiteQueryBuilder<T>;
-    with<O extends typeof Model>(relation: RelationType<T>, relatedModel?: O, relatedModelQueryBuilder?: (queryBuilder: ModelQueryBuilder<ModelInstanceType<O>>) => void, ignoreHooks?: {
-        beforeFetch?: boolean;
-        afterFetch?: boolean;
-    }): ModelQueryBuilder<T>;
-    addDynamicColumns(dynamicColumns: DynamicColumnType<T>[]): ModelQueryBuilder<T>;
-    groupBy(...columns: SelectableType<T>[]): this;
-    groupBy(...columns: string[]): this;
-    groupByRaw(query: string): this;
-    orderBy(column: SelectableType<T>, order: "ASC" | "DESC"): this;
-    orderBy(column: string, order: "ASC" | "DESC"): this;
-    orderByRaw(query: string): this;
-    limit(limit: number): this;
-    offset(offset: number): this;
-    havingRaw(query: string): ModelQueryBuilder<T>;
-    copy(): ModelQueryBuilder<T>;
-    private promisifyQuery;
-}
 
 type BinaryOperatorType$1 = "=" | "!=" | "<>" | ">" | "<" | ">=" | "<=" | "LIKE" | "ILIKE" | "NOT LIKE" | "NOT ILIKE" | "IN" | "NOT IN" | "BETWEEN" | "NOT BETWEEN";
 type BaseValues$1 = string | number | boolean | object;
@@ -1115,300 +1424,6 @@ declare abstract class Model extends Entity {
     private static dispatchModelManager;
 }
 
-declare abstract class ModelManager$1<T extends Model> {
-    protected logs: boolean;
-    protected sqlDataSource: SqlDataSource;
-    protected model: typeof Model;
-    protected modelInstance: T;
-    protected throwError: boolean;
-    /**
-     * @param model
-     * @param logs
-     * @param sqlDataSource Passed if a custom connection is provided
-     */
-    protected constructor(model: typeof Model, logs: boolean, sqlDataSource: SqlDataSource);
-    /**
-     * @description Finds all records that match the input
-     * @param input
-     */
-    abstract find(input?: FindType<T>): Promise<T[]>;
-    abstract find(input?: UnrestrictedFindType<T>): Promise<T[]>;
-    abstract find(input?: FindType<T> | UnrestrictedFindType<T>): Promise<T[]>;
-    /**
-     * @description Finds the first record that matches the input
-     * @param input
-     */
-    abstract findOne(input: UnrestrictedFindOneType<T>): Promise<T | null>;
-    abstract findOne(input: FindOneType<T>): Promise<T | null>;
-    abstract findOne(input: FindOneType<T> | UnrestrictedFindOneType<T>): Promise<T | null>;
-    /**
-     * @description Finds the first record that matches the input or throws an error
-     */
-    findOneOrFail(input: (FindOneType<T> | UnrestrictedFindOneType<T>) & {
-        customError?: Error;
-    }): Promise<T>;
-    /**
-     * @description Finds a record by its primary key
-     * @param value
-     * @param throwErrorOnNull
-     */
-    abstract findOneByPrimaryKey(value: string | number | boolean, throwErrorOnNull: boolean): Promise<T | null>;
-    /**
-     * @description Creates a new record
-     * @param model
-     * @param trx
-     */
-    abstract insert(model: Partial<T>): Promise<T | null>;
-    /**
-     * @description Creates multiple records
-     * @param model
-     * @param trx
-     */
-    abstract insertMany(model: Partial<T>[]): Promise<T[]>;
-    /**
-     * @description Updates a record
-     * @param model
-     * @param trx
-     */
-    abstract updateRecord(model: T): Promise<T | null>;
-    /**
-     * @description Deletes a record
-     * @param model
-     * @param trx
-     */
-    abstract deleteRecord(model: T): Promise<T | null>;
-    /**
-     * @description Returns a query builder
-     */
-    abstract query(): QueryBuilder<T>;
-}
-
-declare class MysqlModelManager<T extends Model> extends ModelManager$1<T> {
-    protected type: "mysql" | "mariadb";
-    protected mysqlConnection: mysql.Connection;
-    protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
-    /**
-     * Constructor for MysqlModelManager class.
-     *
-     * @param {typeof Model} model - Model constructor.
-     * @param {Connection} mysqlConnection - MySQL connection pool.
-     * @param {boolean} logs - Flag to enable or disable logging.
-     */
-    constructor(type: "mysql" | "mariadb", model: typeof Model, mysqlConnection: mysql.Connection, logs: boolean, sqlDataSource: SqlDataSource);
-    /**
-     * Find method to retrieve multiple records from the database based on the input conditions.
-     *
-     * @param {FindType} input - Optional query parameters for filtering, ordering, and pagination.
-     * @returns Promise resolving to an array of models.
-     */
-    find(input?: FindType<T> | UnrestrictedFindType<T>): Promise<T[]>;
-    /**
-     * Find a single record from the database based on the input conditions.
-     *
-     * @param {FindOneType} input - query parameters for filtering and selecting a single record.
-     * @returns Promise resolving to a single model or null if not found.
-     */
-    findOne(input: FindOneType<T> | UnrestrictedFindOneType<T>): Promise<T | null>;
-    /**
-     * Find a single record by its PK from the database.
-     *
-     * @param {string | number | boolean} value - PK of the record to retrieve, hooks will not have any effect, since it's a direct query for the PK.
-     * @returns Promise resolving to a single model or null if not found.
-     */
-    findOneByPrimaryKey(value: string | number | boolean): Promise<T | null>;
-    /**
-     * Save a new model instance to the database.
-     *
-     * @param {Model} model - Model instance to be saved.
-     * @param {TransactionType} trx - TransactionType to be used on the save operation.
-     * @returns Promise resolving to the saved model or null if saving fails.
-     */
-    insert(model: Partial<T>): Promise<T | null>;
-    /**
-     * Create multiple model instances in the database.
-     *
-     * @param {Model} model - Model instance to be saved.
-     * @param {TransactionType} trx - TransactionType to be used on the save operation.
-     * @returns Promise resolving to an array of saved models or null if saving fails.
-     */
-    insertMany(models: Partial<T>[]): Promise<T[]>;
-    /**
-     * Update an existing model instance in the database.
-     * @param {Model} model - Model instance to be updated.
-     * @param {TransactionType} trx - TransactionType to be used on the update operation.
-     * @returns Promise resolving to the updated model or null if updating fails.
-     */
-    updateRecord(model: T): Promise<T | null>;
-    /**
-     * @description Delete a record from the database from the given model.
-     *
-     * @param {Model} model - Model to delete.
-     * @param {TransactionType} trx - TransactionType to be used on the delete operation.
-     * @returns Promise resolving to the deleted model or null if deleting fails.
-     */
-    deleteRecord(model: T): Promise<T | null>;
-    /**
-     * Create and return a new instance of the Mysql_query_builder for building more complex SQL queries.
-     *
-     * @returns {Mysql_query_builder<Model>} - Instance of Mysql_query_builder.
-     */
-    query(): MysqlQueryBuilder<T>;
-}
-
-declare class PostgresModelManager<T extends Model> extends ModelManager$1<T> {
-    protected pgConnection: pg.Client;
-    protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
-    /**
-     * Constructor for Postgres_model_manager class.
-     *
-     * @param {typeof Model} model - Model constructor.
-     * @param {Pool} pgConnection - PostgreSQL connection pool.
-     * @param {boolean} logs - Flag to enable or disable logging.
-     */
-    constructor(model: typeof Model, pgConnection: pg.Client, logs: boolean, sqlDataSource: SqlDataSource);
-    /**
-     * Find method to retrieve multiple records from the database based on the input conditions.
-     *
-     * @param {FindType} input - Optional query parameters for filtering, ordering, and pagination.
-     * @returns Promise resolving to an array of models.
-     */
-    find(input?: FindType<T> | UnrestrictedFindType<T>): Promise<T[]>;
-    /**
-     * Find a single record from the database based on the input conditions.
-     *
-     * @param {FindOneType} input - query parameters for filtering and selecting a single record.
-     * @returns Promise resolving to a single model or null if not found.
-     */
-    findOne(input: FindOneType<T> | UnrestrictedFindOneType<T>): Promise<T | null>;
-    /**
-     * Find a single record by its PK from the database.
-     *
-     * @param {string | number | boolean} value - PK value of the record to retrieve.
-     * @returns Promise resolving to a single model or null if not found.
-     */
-    findOneByPrimaryKey(value: string | number | boolean): Promise<T | null>;
-    /**
-     * Save a new model instance to the database.
-     *
-     * @param {Model} model - Model instance to be saved.
-     * @param {MysqlTransaction} trx - MysqlTransaction to be used on the save operation.
-     * @returns Promise resolving to the saved model or null if saving fails.
-     */
-    insert(model: Partial<T>): Promise<T | null>;
-    /**
-     * Create multiple model instances in the database.
-     *
-     * @param {Model} models - Model instance to be saved.
-     * @param {Transaction} trx - MysqlTransaction to be used on the save operation.
-     * @returns Promise resolving to an array of saved models or null if saving fails.
-     */
-    insertMany(models: Partial<T>[]): Promise<T[]>;
-    /**
-     * Update an existing model instance in the database.
-     * @param {Model} model - Model instance to be updated.
-     * @param {Transaction} trx - Transaction to be used on the update operation.
-     * @returns Promise resolving to the updated model or null if updating fails.
-     */
-    updateRecord(model: T): Promise<T | null>;
-    /**
-     * @description Delete a record from the database from the given model.
-     *
-     * @param {Model} model - Model to delete.
-     * @param {Transaction} trx - Transaction to be used on the delete operation.
-     * @returns Promise resolving to the deleted model or null if deleting fails.
-     */
-    deleteRecord(model: T): Promise<T | null>;
-    /**
-     * Create and return a new instance of the Mysql_query_builder for building more complex SQL queries.
-     *
-     * @returns {MysqlQueryBuilder<Model>} - Instance of Mysql_query_builder.
-     */
-    query(): PostgresQueryBuilder<T>;
-}
-
-declare class SqliteModelManager<T extends Model> extends ModelManager$1<T> {
-    protected sqLiteConnection: sqlite3.Database;
-    protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
-    /**
-     * Constructor for SqLiteModelManager class.
-     *
-     * @param {typeof Model} model - Model constructor.
-     * @param {Pool} sqLiteConnection - sqlite connection.
-     * @param {boolean} logs - Flag to enable or disable logging.
-     */
-    constructor(model: typeof Model, sqLiteConnection: sqlite3.Database, logs: boolean, sqlDataSource: SqlDataSource);
-    /**
-     * Find method to retrieve multiple records from the database based on the input conditions.
-     *
-     * @param {FindType} input - Optional query parameters for filtering, ordering, and pagination.
-     * @returns Promise resolving to an array of models.
-     */
-    find(input?: FindType<T> | UnrestrictedFindType<T>): Promise<T[]>;
-    /**
-     * Find a single record from the database based on the input conditions.
-     *
-     * @param {FindOneType} input - query parameters for filtering and selecting a single record.
-     * @returns Promise resolving to a single model or null if not found.
-     */
-    findOne(input: FindOneType<T> | UnrestrictedFindOneType<T>): Promise<T | null>;
-    /**
-     * Find a single record by its PK from the database.
-     *
-     * @param {string | number | boolean} value - PK of the record to retrieve, hooks will not have any effect, since it's a direct query for the PK.
-     * @returns Promise resolving to a single model or null if not found.
-     */
-    findOneByPrimaryKey(value: string | number | boolean): Promise<T | null>;
-    /**
-     * Save a new model instance to the database.
-     *
-     * @param {Model} model - Model instance to be saved.
-     * @param {SqliteTransaction} trx - SqliteTransaction to be used on the save operation.
-     * @returns Promise resolving to the saved model or null if saving fails.
-     */
-    insert(model: Partial<T>): Promise<T | null>;
-    /**
-     * Create multiple model instances in the database.
-     *
-     * @param {Model} model - Model instance to be saved.
-     * @param {SqliteTransaction} trx - SqliteTransaction to be used on the save operation.
-     * @returns Promise resolving to an array of saved models or null if saving fails.
-     */
-    insertMany(models: Partial<T>[]): Promise<T[]>;
-    /**
-     * Update an existing model instance in the database.
-     * @param {Model} model - Model instance to be updated.
-     * @param {SqliteTransaction} trx - SqliteTransaction to be used on the update operation.
-     * @returns Promise resolving to the updated model or null if updating fails.
-     */
-    updateRecord(model: T): Promise<T | null>;
-    /**
-     * @description Delete a record from the database from the given model.
-     *
-     * @param {Model} model - Model to delete.
-     * @param trx - SqliteTransaction to be used on the delete operation.
-     * @returns Promise resolving to the deleted model or null if deleting fails.
-     */
-    deleteRecord(model: T): Promise<T | null>;
-    /**
-     * Create and return a new instance of the Mysql_query_builder for building more complex SQL queries.
-     *
-     * @returns {MysqlQueryBuilder<Model>} - Instance of Mysql_query_builder.
-     */
-    query(): SqlLiteQueryBuilder<T>;
-    private promisifyQuery;
-}
-
-type DriverSpecificOptions = {
-    mysqlOptions?: mysql.PoolOptions;
-    pgOptions?: pg.PoolConfig;
-};
-type ModelManager<T extends Model> = MysqlModelManager<T> | PostgresModelManager<T> | SqliteModelManager<T>;
-type SqlConnectionType = mysql.Connection | pg.Client | sqlite3.Database;
-interface ISqlDataSourceInput extends DataSourceInput {
-    type: Exclude<DataSourceType, "mongo">;
-}
-type SqlDataSourceInput = Exclude<ISqlDataSourceInput, "mongoOptions">;
-type SqlDataSourceType = SqlDataSourceInput["type"];
 declare class SqlDataSource extends DataSource {
     isConnected: boolean;
     protected sqlConnection: SqlConnectionType;
@@ -1426,26 +1441,26 @@ declare class SqlDataSource extends DataSource {
      * @description The callback automatically commits or rollbacks the transaction based on the result of the callback
      * @description NOTE: trx must always be passed to single methods that are part of the transaction
      */
-    static useTransaction(cb: (trx: Transaction) => Promise<void>, driverSpecificOptions?: DriverSpecificOptions): Promise<void>;
+    static useTransaction(cb: (trx: Transaction) => Promise<void>, driverSpecificOptions?: SqlDriverSpecificOptions): Promise<void>;
     /**
      * @description Executes a callback function with the provided connection details
      * @description The callback automatically commits or rollbacks the transaction based on the result of the callback
      * @description NOTE: trx must always be passed to single methods that are part of the transaction
      */
-    useTransaction(cb: (trx: Transaction) => Promise<void>, driverSpecificOptions?: DriverSpecificOptions): Promise<void>;
+    useTransaction(cb: (trx: Transaction) => Promise<void>, driverSpecificOptions?: SqlDriverSpecificOptions): Promise<void>;
     /**
      * @description Starts a transaction on the database and returns the transaction object
      * @description This creates a new connection to the database, you can customize the connection details using the driverSpecificOptions
      */
-    startTransaction(driverSpecificOptions?: DriverSpecificOptions): Promise<Transaction>;
+    startTransaction(driverSpecificOptions?: SqlDriverSpecificOptions): Promise<Transaction>;
     /**
      * @description Alias for startTransaction {Promise<Transaction>} trx
      */
-    beginTransaction(driverSpecificOptions?: DriverSpecificOptions): Promise<Transaction>;
+    beginTransaction(driverSpecificOptions?: SqlDriverSpecificOptions): Promise<Transaction>;
     /**
      * @description Alias for startTransaction {Promise<Transaction>} trx
      */
-    transaction(driverSpecificOptions?: DriverSpecificOptions): Promise<Transaction>;
+    transaction(driverSpecificOptions?: SqlDriverSpecificOptions): Promise<Transaction>;
     /**
      * @description Returns model manager for the provided model
      */
@@ -1463,7 +1478,7 @@ declare class SqlDataSource extends DataSource {
     /**
      * @description Returns separate raw sql connection
      */
-    getRawConnection(driverSpecificOptions?: DriverSpecificOptions): Promise<SqlConnectionType>;
+    getRawConnection(driverSpecificOptions?: SqlDriverSpecificOptions): Promise<SqlConnectionType>;
     /**
      * @description Closes the connection to the database
      */

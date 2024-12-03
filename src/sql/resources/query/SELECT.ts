@@ -1,6 +1,6 @@
 import { convertCase } from "../../../utils/case_utils";
-import { SqlDataSourceType } from "../../sql_data_source";
 import { Model } from "../../models/model";
+import { SqlDataSourceType } from "../../sql_data_source_types";
 
 const baseSelectMethods = [
   "*",

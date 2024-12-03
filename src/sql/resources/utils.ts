@@ -1,5 +1,5 @@
 import { convertCase } from "../../utils/case_utils";
-import { SqlDataSourceType } from "../sql_data_source";
+import { SqlDataSourceType } from "../sql_data_source_types";
 
 export function generateManyToManyQuery({
   dbType,

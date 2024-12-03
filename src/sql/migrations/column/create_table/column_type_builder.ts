@@ -1,5 +1,5 @@
 import logger from "../../../../utils/logger";
-import { SqlDataSourceType } from "../../../sql_data_source";
+import { SqlDataSourceType } from "../../../sql_data_source_types";
 import ColumnOptionsBuilder from "./column_options_builder";
 
 export type DateOptions = {

@@ -1,8 +1,8 @@
 import { convertCase } from "../../../utils/case_utils";
-import { SqlDataSourceType } from "../../sql_data_source";
 import { isNestedObject } from "../../../utils/json_utils";
 import { Model } from "../../models/model";
 import { getModelColumns } from "../../models/model_decorators";
+import { SqlDataSourceType } from "../../sql_data_source_types";
 
 type BaseValues = string | number | boolean | Date | null | object | undefined;
 

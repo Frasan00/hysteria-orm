@@ -6,7 +6,7 @@ import {
   parseDatabaseDataIntoModelResponse,
   addDynamicColumnsToModel,
 } from "../serializer";
-import { SqlDataSource, ModelManager } from "../sql_data_source";
+import { SqlDataSource } from "../sql_data_source";
 import {
   belongsTo,
   column,
@@ -28,6 +28,7 @@ import {
 import { Transaction } from "../transactions/transaction";
 import { Entity } from "../../entity";
 import { baseSoftDeleteDate } from "../../utils/date_utils";
+import { ModelManager } from "../sql_data_source_types";
 
 export type ModelWithoutExtraColumns<T extends Model> = Omit<
   Partial<T>,

@@ -1,4 +1,4 @@
-import { SqlDataSourceType } from "../../../sql_data_source";
+import { SqlDataSourceType } from "../../../sql_data_source_types";
 import ColumnTypeBuilder from "./column_type_builder";
 
 export default class ColumnBuilderConnector {

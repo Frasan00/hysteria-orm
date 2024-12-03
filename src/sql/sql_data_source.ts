@@ -1,33 +1,26 @@
-import { DataSourceInput, DataSourceType, DataSource } from "../data_source";
+import { DataSource } from "../data_source";
+import {
+  Mysql2Import,
+  PgImport,
+  Sqlite3Import,
+} from "../drivers/driver_constants";
+import { DriverFactory } from "../drivers/drivers_factory";
 import logger, { log } from "../utils/logger";
 import { Model } from "./models/model";
 import { MysqlModelManager } from "./mysql/mysql_model_manager";
 import { PostgresModelManager } from "./postgres/postgres_model_manager";
+import {
+  SqlConnectionType,
+  SqlDataSourceInput,
+  SqlDataSourceType,
+  SqlDriverSpecificOptions,
+  ModelManager,
+  MysqlConnectionInstance,
+  PgClientInstance,
+  SqliteConnectionInstance,
+} from "./sql_data_source_types";
 import { SqliteModelManager } from "./sqlite/sql_lite_model_manager";
 import { Transaction } from "./transactions/transaction";
-import pg from "pg";
-import mysql from "mysql2/promise";
-import sqlite3 from "sqlite3";
-
-type DriverSpecificOptions = {
-  mysqlOptions?: mysql.PoolOptions;
-  pgOptions?: pg.PoolConfig;
-};
-
-export type ModelManager<T extends Model> =
-  | MysqlModelManager<T>
-  | PostgresModelManager<T>
-  | SqliteModelManager<T>;
-
-export type SqlConnectionType = mysql.Connection | pg.Client | sqlite3.Database;
-
-export interface ISqlDataSourceInput extends DataSourceInput {
-  type: Exclude<DataSourceType, "mongo">;
-}
-
-export type SqlDataSourceInput = Exclude<ISqlDataSourceInput, "mongoOptions">;
-
-export type SqlDataSourceType = SqlDataSourceInput["type"];
 
 export class SqlDataSource extends DataSource {
   isConnected: boolean;
@@ -52,10 +45,12 @@ export class SqlDataSource extends DataSource {
     cb?: () => Promise<void> | void,
   ): Promise<SqlDataSource> {
     const sqlDataSource = new this(input);
+    const driver = await DriverFactory.getDriver(sqlDataSource.type);
     switch (sqlDataSource.type) {
       case "mysql":
       case "mariadb":
-        sqlDataSource.sqlConnection = await mysql.createConnection({
+        const mysqlDriver = driver.client as Mysql2Import;
+        sqlDataSource.sqlConnection = await mysqlDriver.createConnection({
           host: sqlDataSource.host,
           port: sqlDataSource.port,
           user: sqlDataSource.username,
@@ -66,7 +61,8 @@ export class SqlDataSource extends DataSource {
         break;
 
       case "postgres":
-        sqlDataSource.sqlConnection = new pg.Client({
+        const pgDriver = driver.client as PgImport;
+        sqlDataSource.sqlConnection = new pgDriver.Client({
           host: sqlDataSource.host,
           port: sqlDataSource.port,
           user: sqlDataSource.username,
@@ -74,10 +70,11 @@ export class SqlDataSource extends DataSource {
           database: sqlDataSource.database,
           ...input?.pgOptions,
         });
-        await (sqlDataSource.sqlConnection as pg.Client).connect();
+        await (sqlDataSource.sqlConnection as PgClientInstance).connect();
         break;
 
       case "sqlite":
+        const sqlite3 = driver.client as Sqlite3Import;
         sqlDataSource.sqlConnection = new sqlite3.Database(
           sqlDataSource.database,
           sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE,
@@ -114,7 +111,7 @@ export class SqlDataSource extends DataSource {
    */
   static async useTransaction(
     cb: (trx: Transaction) => Promise<void>,
-    driverSpecificOptions?: DriverSpecificOptions,
+    driverSpecificOptions?: SqlDriverSpecificOptions,
   ): Promise<void> {
     const trx = await this.getInstance().startTransaction(
       driverSpecificOptions,
@@ -144,7 +141,7 @@ export class SqlDataSource extends DataSource {
    */
   async useTransaction(
     cb: (trx: Transaction) => Promise<void>,
-    driverSpecificOptions?: DriverSpecificOptions,
+    driverSpecificOptions?: SqlDriverSpecificOptions,
   ): Promise<void> {
     const trx = await this.startTransaction(driverSpecificOptions);
     try {
@@ -170,7 +167,7 @@ export class SqlDataSource extends DataSource {
    * @description This creates a new connection to the database, you can customize the connection details using the driverSpecificOptions
    */
   async startTransaction(
-    driverSpecificOptions?: DriverSpecificOptions,
+    driverSpecificOptions?: SqlDriverSpecificOptions,
   ): Promise<Transaction> {
     const sqlDataSource = new SqlDataSource({
       type: this.type as SqlDataSourceType,
@@ -194,7 +191,7 @@ export class SqlDataSource extends DataSource {
    * @description Alias for startTransaction {Promise<Transaction>} trx
    */
   async beginTransaction(
-    driverSpecificOptions?: DriverSpecificOptions,
+    driverSpecificOptions?: SqlDriverSpecificOptions,
   ): Promise<Transaction> {
     return this.startTransaction(driverSpecificOptions);
   }
@@ -203,7 +200,7 @@ export class SqlDataSource extends DataSource {
    * @description Alias for startTransaction {Promise<Transaction>} trx
    */
   async transaction(
-    driverSpecificOptions?: DriverSpecificOptions,
+    driverSpecificOptions?: SqlDriverSpecificOptions,
   ): Promise<Transaction> {
     return this.startTransaction(driverSpecificOptions);
   }
@@ -224,21 +221,21 @@ export class SqlDataSource extends DataSource {
         return new MysqlModelManager<T>(
           this.type,
           model as typeof Model,
-          this.sqlConnection as mysql.Connection,
+          this.sqlConnection as MysqlConnectionInstance,
           this.logs,
           this,
         );
       case "postgres":
         return new PostgresModelManager<T>(
           model as typeof Model,
-          this.sqlConnection as pg.Client,
+          this.sqlConnection as PgClientInstance,
           this.logs,
           this,
         );
       case "sqlite":
         return new SqliteModelManager<T>(
           model as typeof Model,
-          this.sqlConnection as sqlite3.Database,
+          this.sqlConnection as SqliteConnectionInstance,
           this.logs,
           this,
         );
@@ -287,12 +284,14 @@ export class SqlDataSource extends DataSource {
    * @description Returns separate raw sql connection
    */
   async getRawConnection(
-    driverSpecificOptions?: DriverSpecificOptions,
+    driverSpecificOptions?: SqlDriverSpecificOptions,
   ): Promise<SqlConnectionType> {
     switch (this.type) {
       case "mysql":
       case "mariadb":
-        return await mysql.createConnection({
+        const mysqlDriver = (await DriverFactory.getDriver("mysql"))
+          .client as Mysql2Import;
+        return await mysqlDriver.createConnection({
           host: this.host,
           port: this.port,
           user: this.username,
@@ -301,6 +300,8 @@ export class SqlDataSource extends DataSource {
           ...driverSpecificOptions?.mysqlOptions,
         });
       case "postgres":
+        const pg = (await DriverFactory.getDriver("postgres"))
+          .client as PgImport;
         const client = new pg.Client({
           host: this.host,
           port: this.port,
@@ -313,6 +314,8 @@ export class SqlDataSource extends DataSource {
         return client;
 
       case "sqlite":
+        const sqlite3 = (await DriverFactory.getDriver("sqlite"))
+          .client as Sqlite3Import;
         return new sqlite3.Database(
           this.database,
           sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE,
@@ -340,18 +343,18 @@ export class SqlDataSource extends DataSource {
     switch (this.type) {
       case "mysql":
       case "mariadb":
-        await (this.sqlConnection as mysql.Connection).end();
+        await (this.sqlConnection as MysqlConnectionInstance).end();
         this.isConnected = false;
         SqlDataSource.instance = null;
         break;
       case "postgres":
-        await (this.sqlConnection as pg.Client).end();
+        await (this.sqlConnection as PgClientInstance).end();
         this.isConnected = false;
         SqlDataSource.instance = null;
         break;
       case "sqlite":
         await new Promise<void>((resolve, reject) => {
-          (this.sqlConnection as sqlite3.Database).close((err) => {
+          (this.sqlConnection as SqliteConnectionInstance).close((err) => {
             if (err) {
               reject(err);
             }
@@ -380,23 +383,25 @@ export class SqlDataSource extends DataSource {
     switch (sqlDataSource.type) {
       case "mysql":
       case "mariadb":
-        await (sqlDataSource.sqlConnection as mysql.Connection).end();
+        await (sqlDataSource.sqlConnection as MysqlConnectionInstance).end();
         sqlDataSource.isConnected = false;
         SqlDataSource.instance = null;
         break;
       case "postgres":
-        await (sqlDataSource.sqlConnection as pg.Client).end();
+        await (sqlDataSource.sqlConnection as PgClientInstance).end();
         sqlDataSource.isConnected = false;
         SqlDataSource.instance = null;
         break;
       case "sqlite":
         await new Promise<void>((resolve, reject) => {
-          (sqlDataSource.sqlConnection as sqlite3.Database).close((err) => {
-            if (err) {
-              reject(err);
-            }
-            resolve();
-          });
+          (sqlDataSource.sqlConnection as SqliteConnectionInstance).close(
+            (err) => {
+              if (err) {
+                reject(err);
+              }
+              resolve();
+            },
+          );
         });
         sqlDataSource.isConnected = false;
         SqlDataSource.instance = null;
@@ -435,12 +440,12 @@ export class SqlDataSource extends DataSource {
       case "mysql":
       case "mariadb":
         const [mysqlRows] = await (
-          this.sqlConnection as mysql.Connection
+          this.sqlConnection as MysqlConnectionInstance
         ).execute(query, params);
 
         return mysqlRows as T;
       case "postgres":
-        const { rows } = await (this.sqlConnection as pg.Client).query(
+        const { rows } = await (this.sqlConnection as PgClientInstance).query(
           query,
           params as any[],
         );
@@ -448,7 +453,7 @@ export class SqlDataSource extends DataSource {
         return rows as T;
       case "sqlite":
         return new Promise((resolve, reject) => {
-          (this.sqlConnection as sqlite3.Database).all(
+          (this.sqlConnection as SqliteConnectionInstance).all(
             query,
             params,
             (err, rows) => {
@@ -482,20 +487,19 @@ export class SqlDataSource extends DataSource {
       case "mysql":
       case "mariadb":
         const [mysqlRows] = await (
-          sqlDataSource.sqlConnection as mysql.Connection
+          sqlDataSource.sqlConnection as MysqlConnectionInstance
         ).execute(query, params);
 
         return mysqlRows as T;
       case "postgres":
-        const { rows } = await (sqlDataSource.sqlConnection as pg.Client).query(
-          query,
-          params,
-        );
+        const { rows } = await (
+          sqlDataSource.sqlConnection as PgClientInstance
+        ).query(query, params);
 
         return rows as T;
       case "sqlite":
         return new Promise((resolve, reject) => {
-          (sqlDataSource.sqlConnection as sqlite3.Database).all(
+          (sqlDataSource.sqlConnection as SqliteConnectionInstance).all(
             query,
             params,
             (err, rows) => {
@@ -513,11 +517,13 @@ export class SqlDataSource extends DataSource {
   }
 
   private async connectDriver(
-    driverSpecificOptions?: DriverSpecificOptions,
+    driverSpecificOptions?: SqlDriverSpecificOptions,
   ): Promise<void> {
     switch (this.type) {
       case "mysql":
       case "mariadb":
+        const mysql = (await DriverFactory.getDriver("mysql"))
+          .client as Mysql2Import;
         this.sqlConnection = await mysql.createConnection({
           host: this.host,
           port: this.port,
@@ -528,6 +534,8 @@ export class SqlDataSource extends DataSource {
         });
         break;
       case "postgres":
+        const pg = (await DriverFactory.getDriver("postgres"))
+          .client as PgImport;
         this.sqlConnection = new pg.Client({
           host: this.host,
           port: this.port,
@@ -536,9 +544,11 @@ export class SqlDataSource extends DataSource {
           database: this.database,
           ...driverSpecificOptions?.pgOptions,
         });
-        await (this.sqlConnection as pg.Client).connect();
+        await (this.sqlConnection as PgClientInstance).connect();
         break;
       case "sqlite":
+        const sqlite3 = (await DriverFactory.getDriver("sqlite"))
+          .client as Sqlite3Import;
         this.sqlConnection = new sqlite3.Database(
           this.database,
           sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE,

@@ -6,7 +6,7 @@ import whereTemplate, {
   BaseValues,
   BinaryOperatorType,
 } from "../resources/query/WHERE";
-import { SqlDataSourceType } from "../sql_data_source";
+import { SqlDataSourceType } from "../sql_data_source_types";
 
 export class StandaloneQueryBuilder {
   protected selectQuery: string;

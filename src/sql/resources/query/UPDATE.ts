@@ -1,8 +1,8 @@
 import { convertCase } from "../../../utils/case_utils";
-import { SqlDataSourceType } from "../../sql_data_source";
-import { Model } from "../../models/model";
 import { isNestedObject } from "../../../utils/json_utils";
+import { Model } from "../../models/model";
 import { getModelColumns } from "../../models/model_decorators";
+import { SqlDataSourceType } from "../../sql_data_source_types";
 
 const updateTemplate = (
   dbType: SqlDataSourceType,

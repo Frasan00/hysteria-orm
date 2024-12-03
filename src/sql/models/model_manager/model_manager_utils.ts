@@ -6,11 +6,14 @@ import deleteTemplate from "../../resources/query/DELETE";
 import insertTemplate from "../../resources/query/INSERT";
 import relationTemplates from "../../resources/query/RELATION";
 import updateTemplate from "../../resources/query/UPDATE";
-import { SqlDataSourceType, SqlConnectionType } from "../../sql_data_source";
 import { Model } from "../model";
 import { getRelations } from "../model_decorators";
 import { Relation } from "../relations/relation";
 import { RelationQueryBuilder } from "../../query_builder/query_builder";
+import {
+  SqlDataSourceType,
+  SqlConnectionType,
+} from "../../sql_data_source_types";
 
 export default class SqlModelManagerUtils<T extends Model> {
   private dbType: SqlDataSourceType;

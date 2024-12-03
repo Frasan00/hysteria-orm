@@ -5,7 +5,7 @@ import { getModelColumns, getRelations } from "../../models/model_decorators";
 import { ManyToMany } from "../../models/relations/many_to_many";
 import { Relation, RelationEnum } from "../../models/relations/relation";
 import { RelationQueryBuilder } from "../../query_builder/query_builder";
-import { SqlDataSourceType } from "../../sql_data_source";
+import { SqlDataSourceType } from "../../sql_data_source_types";
 import {
   convertValueToSQL,
   generateHasManyQuery,

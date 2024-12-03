@@ -1,9 +1,9 @@
 import dotenv from "dotenv";
 import createTableTemplate from "../../resources/migrations/CREATE_TABLE";
 import dropTableTemplate from "../../resources/migrations/DROP_TABLE";
-import { SqlDataSourceType } from "../../sql_data_source";
 import ColumnBuilderAlter from "../column/alter_table/column_builder_alter";
 import ColumnBuilderConnector from "../column/create_table/column_builder_connector";
+import { SqlDataSourceType } from "../../sql_data_source_types";
 
 dotenv.config();
 
