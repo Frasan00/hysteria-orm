@@ -32,7 +32,6 @@ describe("TestModel", () => {
   beforeAll(async () => {
     mongoDataSource = await MongoDataSource.connect(
       "mongodb://root:root@localhost:27017",
-      {},
     );
   });
 
