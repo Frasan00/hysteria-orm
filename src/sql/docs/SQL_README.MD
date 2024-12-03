@@ -837,6 +837,7 @@ const { query, params } = userQueryBuilder
 - Migrations cli starts from the current user location (process.cwd) and appends the path/to/migrations (default `database/migrations`), this can be customized with `MIGRATION_PATH` environment variable
 
 ## hysteria-orm-cli for Migrations
+- Must have ts-node installed in the project in order to run the cli
 
 1) (npm run | yarn run) hysteria create:migration <name>
 2) (npm run | yarn run) hysteria run:migrations [optional - migration_file_name]
