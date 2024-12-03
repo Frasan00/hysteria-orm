@@ -9,8 +9,7 @@ const program = new Command();
 const migrationCreateConnectorPath = resolve(process.cwd(), 'node_modules/hysteria-orm/src/hysteria_cli/migration_create_connector.ts');
 const migrationRunConnectorPath = resolve(process.cwd(), 'node_modules/hysteria-orm/src/hysteria_cli/migration_run_connector.ts');
 const migrationRollbackConnectorPath = resolve(process.cwd(), 'node_modules/hysteria-orm/src/hysteria_cli/migration_rollback_connector.ts');
-
-const tsNodePath = resolve(process.cwd(), 'node_modules/.bin/ts-node');
+const tsNodePath = 'node_modules/.bin/ts-node';
 
 program
   .command('create:migration <name>')
@@ -42,7 +41,7 @@ program
   .command('refresh:migrations')
   .description('Rollbacks every migration that has been run and then run the migrations')
   .action(() => {
-    execSync(`${resolve(`${process.cwd()}/node_modules/.bin/ts-node`)} -T ${migrationRollbackConnectorPath} && ${resolve(`${process.cwd()}/node_modules/.bin/ts-node`)} -T ${migrationRunConnectorPath}`, { stdio: 'inherit' });
+    execSync(`${resolve(`${process.cwd()}/${tsNodePath}`)} -T ${migrationRollbackConnectorPath} && ${resolve(`${process.cwd()}/${tsNodePath}`)} -T ${migrationRunConnectorPath}`, { stdio: 'inherit' });
   });
 
 program.parse(process.argv);
