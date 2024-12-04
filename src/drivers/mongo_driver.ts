@@ -28,6 +28,6 @@ export class MongoDriver extends Driver {
       throw new DriverNotFoundError("mongodb");
     }
 
-    return new MongoDriver(mongo.default, driverSpecificOptions);
+    return new MongoDriver(mongo, driverSpecificOptions);
   }
 }

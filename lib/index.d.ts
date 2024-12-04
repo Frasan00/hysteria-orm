@@ -15,12 +15,12 @@ type RedisImport = typeof Redis;
 type ExcludeStringFromOptions<T> = T extends string ? never : T;
 type MysqlCreateConnectionOptions = Parameters<Mysql2Import["createConnection"]>[0];
 type PgClientOptions = ExcludeStringFromOptions<ConstructorParameters<PgImport["Client"]>[0]>;
-type Sqlite3Options = ConstructorParameters<MongoClientImport["MongoClient"]>[0] | ConstructorParameters<MongoClientImport["MongoClient"]>[1];
+type MongoConnectionOptions = ConstructorParameters<MongoClientImport["MongoClient"]>[0] | ConstructorParameters<MongoClientImport["MongoClient"]>[1];
 type RedisOptions = ConstructorParameters<RedisImport["default"]>;
 type DriverSpecificOptions = {
     mysqlOptions?: MysqlCreateConnectionOptions;
     pgOptions?: PgClientOptions;
-    mongoOptions?: Sqlite3Options;
+    mongoOptions?: MongoConnectionOptions;
     redisOptions?: RedisOptions;
 };
 
@@ -1862,13 +1862,16 @@ declare abstract class Migration {
 }
 
 /**
- * @description The Redis_data_source class is a wrapper around the ioredis library that provides a simple interface to interact with a redis database
+ * @description The RedisStorable type is a type that can be stored in redis
  */
 type RedisStorable = string | number | boolean | Buffer | Array<any> | Record<string, any>;
 /**
- * @description The RedisGiveable type is a type that can be stored in the redis database
+ * @description The RedisGiveable type is a type that can be fetched from redis
  */
 type RedisGiveable = string | number | boolean | Record<string, any> | Array<any> | null;
+/**
+ * @description The RedisDataSource class is a wrapper around the ioredis library that provides a simple interface to interact with a redis database
+ */
 declare class RedisDataSource {
     static isConnected: boolean;
     protected static redisConnection: Redis__default;
@@ -1879,7 +1882,6 @@ declare class RedisDataSource {
      * @description Connects to the redis database establishing a connection. If no connection details are provided, the default values from the env will be taken instead
      * @description The User input connection details will always come first
      * @description This is intended as a singleton connection to the redis database, if you need multiple connections, use the getConnection method
-     * @param {RedisDataSourceInput} input - Details for the redis connection
      */
     static connect(input?: RedisOptions$1): Promise<void>;
     /**
@@ -2482,6 +2484,7 @@ declare class CollectionManager<T extends Collection> {
 }
 
 type MongoDataSourceInput = Exclude<DataSourceInput, "pgOptions" | "mysqlOptions">;
+type MongoClientInstance = InstanceType<MongoClientImport["MongoClient"]>;
 declare class MongoDataSource extends DataSource {
     url: string;
     isConnected: boolean;
@@ -2490,12 +2493,10 @@ declare class MongoDataSource extends DataSource {
     private constructor();
     /**
      * @description Returns the current connection to the mongo client to execute direct statements using the mongo client from `mongodb` package
-     * @returns {mongodb.MongoClient} - returns the current connection to the mongo database
      */
-    getCurrentConnection(): mongodb.MongoClient;
+    getCurrentConnection(): MongoClientInstance;
     /**
      * @description Connects to the mongo database using the provided url and options
-     * @returns
      */
     static connect(url?: string, options?: MongoDataSourceInput["mongoOptions"] & {
         logs?: boolean;
@@ -2503,9 +2504,8 @@ declare class MongoDataSource extends DataSource {
     static getInstance(): MongoDataSource;
     /**
      * @description Starts a new session and transaction using the current connection
-     * @returns {mongodb.ClientSession}
      */
-    startSession(): mongodb.ClientSession;
+    startSession(): InstanceType<MongoClientImport["ClientSession"]>;
     /**
      * @description Disconnects from the mongo database using the current connection established by the `connect` method
      */
@@ -2531,7 +2531,7 @@ declare class MongoDataSource extends DataSource {
         url: string;
         options?: MongoDataSourceInput["mongoOptions"];
     }, cb: (mongoDataSource: MongoDataSource) => Promise<void>): Promise<void>;
-    getModelManager<T extends Collection>(model: typeof Collection, mongoDataSource: MongoDataSource, session?: mongodb.ClientSession): CollectionManager<T>;
+    getModelManager<T extends Collection>(model: typeof Collection, mongoDataSource: MongoDataSource, session?: InstanceType<MongoClientImport["ClientSession"]>): CollectionManager<T>;
 }
 
 declare class StandaloneQueryBuilder {

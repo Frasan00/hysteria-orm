@@ -1,7 +1,7 @@
 import Redis, { RedisOptions } from "ioredis";
 
 /**
- * @description The Redis_data_source class is a wrapper around the ioredis library that provides a simple interface to interact with a redis database
+ * @description The RedisStorable type is a type that can be stored in redis
  */
 export type RedisStorable =
   | string
@@ -12,7 +12,7 @@ export type RedisStorable =
   | Record<string, any>;
 
 /**
- * @description The RedisGiveable type is a type that can be stored in the redis database
+ * @description The RedisGiveable type is a type that can be fetched from redis
  */
 export type RedisGiveable =
   | string
@@ -22,6 +22,9 @@ export type RedisGiveable =
   | Array<any>
   | null;
 
+/**
+ * @description The RedisDataSource class is a wrapper around the ioredis library that provides a simple interface to interact with a redis database
+ */
 export class RedisDataSource {
   static isConnected: boolean;
   protected static redisConnection: Redis;
@@ -45,7 +48,6 @@ export class RedisDataSource {
    * @description Connects to the redis database establishing a connection. If no connection details are provided, the default values from the env will be taken instead
    * @description The User input connection details will always come first
    * @description This is intended as a singleton connection to the redis database, if you need multiple connections, use the getConnection method
-   * @param {RedisDataSourceInput} input - Details for the redis connection
    */
   static async connect(input?: RedisOptions): Promise<void> {
     if (RedisDataSource.isConnected) {

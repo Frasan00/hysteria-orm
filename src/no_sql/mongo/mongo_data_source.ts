@@ -1,8 +1,9 @@
 import { DataSource, DataSourceInput } from "../../data_source";
-import * as mongodb from "mongodb";
 import { CollectionManager } from "./mongo_models/mongo_collection_manager";
 import dotenv from "dotenv";
 import { Collection } from "./mongo_models/mongo_collection";
+import { MongoClientImport } from "../../drivers/driver_constants";
+import { DriverFactory } from "../../drivers/drivers_factory";
 
 dotenv.config();
 
@@ -11,13 +12,15 @@ export type MongoDataSourceInput = Exclude<
   "pgOptions" | "mysqlOptions"
 >;
 
+type MongoClientInstance = InstanceType<MongoClientImport["MongoClient"]>;
+
 export class MongoDataSource extends DataSource {
   url: string;
   isConnected: boolean;
-  private mongoClient: mongodb.MongoClient;
+  private mongoClient: MongoClientInstance;
   private static instance: MongoDataSource | null = null;
 
-  private constructor(url: string, mongoClient: mongodb.MongoClient) {
+  private constructor(url: string, mongoClient: MongoClientInstance) {
     super({ type: "mongo" });
     this.url = url;
     this.isConnected = false;
@@ -26,15 +29,13 @@ export class MongoDataSource extends DataSource {
 
   /**
    * @description Returns the current connection to the mongo client to execute direct statements using the mongo client from `mongodb` package
-   * @returns {mongodb.MongoClient} - returns the current connection to the mongo database
    */
-  getCurrentConnection(): mongodb.MongoClient {
+  getCurrentConnection(): MongoClientInstance {
     return this.mongoClient;
   }
 
   /**
    * @description Connects to the mongo database using the provided url and options
-   * @returns
    */
   static async connect(
     url?: string,
@@ -50,7 +51,9 @@ export class MongoDataSource extends DataSource {
       }
     }
 
-    const mongoClient = new mongodb.MongoClient(url, options);
+    const driver = (await DriverFactory.getDriver("mongo"))
+      .client as MongoClientImport;
+    const mongoClient = new driver.MongoClient(url, options);
     await mongoClient.connect();
     this.instance = new MongoDataSource(url, mongoClient);
     this.instance.isConnected = true;
@@ -70,9 +73,8 @@ export class MongoDataSource extends DataSource {
 
   /**
    * @description Starts a new session and transaction using the current connection
-   * @returns {mongodb.ClientSession}
    */
-  startSession(): mongodb.ClientSession {
+  startSession(): InstanceType<MongoClientImport["ClientSession"]> {
     const session = this.mongoClient.startSession();
     session.startTransaction();
     return session;
@@ -124,7 +126,9 @@ export class MongoDataSource extends DataSource {
     },
     cb: (mongoDataSource: MongoDataSource) => Promise<void>,
   ): Promise<void> {
-    const mongoClient = new mongodb.MongoClient(
+    const driver = (await DriverFactory.getDriver("mongo"))
+      .client as MongoClientImport;
+    const mongoClient = new driver.MongoClient(
       connectionDetails.url,
       connectionDetails.options,
     );
@@ -140,7 +144,7 @@ export class MongoDataSource extends DataSource {
   getModelManager<T extends Collection>(
     model: typeof Collection,
     mongoDataSource: MongoDataSource,
-    session?: mongodb.ClientSession,
+    session?: InstanceType<MongoClientImport["ClientSession"]>,
   ): CollectionManager<T> {
     return new CollectionManager<T>(model, mongoDataSource, session, this.logs);
   }

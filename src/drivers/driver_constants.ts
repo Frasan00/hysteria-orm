@@ -12,7 +12,7 @@ export type MysqlCreateConnectionOptions = Parameters<
 export type PgClientOptions = ExcludeStringFromOptions<
   ConstructorParameters<PgImport["Client"]>[0]
 >;
-export type Sqlite3Options =
+export type MongoConnectionOptions =
   | ConstructorParameters<MongoClientImport["MongoClient"]>[0]
   | ConstructorParameters<MongoClientImport["MongoClient"]>[1];
 export type RedisOptions = ConstructorParameters<RedisImport["default"]>; // TODO: This is not correct, but it's a start
@@ -20,7 +20,7 @@ export type RedisOptions = ConstructorParameters<RedisImport["default"]>; // TOD
 export type DriverSpecificOptions = {
   mysqlOptions?: MysqlCreateConnectionOptions;
   pgOptions?: PgClientOptions;
-  mongoOptions?: Sqlite3Options;
+  mongoOptions?: MongoConnectionOptions;
   redisOptions?: RedisOptions;
 };
 

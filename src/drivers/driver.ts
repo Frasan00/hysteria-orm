@@ -1,6 +1,5 @@
 import { DataSourceType } from "../data_source";
 import { DriverImport, DriverSpecificOptions } from "./driver_constants";
-import { MysqlDriver } from "./mysql_driver";
 
 export abstract class Driver {
   abstract type: DataSourceType | "redis";
