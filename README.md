@@ -1,4 +1,5 @@
 # Hysteria ORM
+
 # Package is under development and not production ready by any means
 
 ## Philosophy
@@ -18,7 +19,7 @@
 
 ## Known Issues
 - `npm run` not working with cli commands, use `yarn` instead
-- Many to many retrieve not working on mariadb due to database limitations
+- Many to many retrieve not working on mariadb due to database limitations (may be fixed in the future)
 
 ## Installation
 ```shell
@@ -35,21 +36,37 @@
 ### Sql
 
 # postgres
+npm install pg
 yarn add pg
 
 # mysql or mariadb
+npm install mysql2
 yarn add mysql2
 
 # sqlite
+npm install sqlite3
 yarn add sqlite3
 
 ### NoSql
 
 # mongo
+npm install mongodb
 yarn add mongodb
 
 # redis
+npm install ioredis
 yarn add ioredis
+```
+
+- Driver versions used in the development
+```json
+{
+  "mysql2": "^3.11.5",
+  "pg": "^8.13.1",
+  "sqlite3": "^5.1.7",
+  "mongodb": "^6.11.0",
+  "ioredis": "^5.4.1"
+}
 ```
 
 ## Supported Databases

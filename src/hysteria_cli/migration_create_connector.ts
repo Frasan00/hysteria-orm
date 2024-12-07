@@ -19,7 +19,7 @@ function getOrCreateMigrationPath(): string {
   return currentPath;
 }
 
-export default function migration_create_connector(name: string) {
+export default function migrationCreateConnector(name: string) {
   const migrationFolderPath = getOrCreateMigrationPath();
 
   const timestamp = new Date().getTime();
@@ -37,4 +37,4 @@ if (!arg) {
   throw new Error("Please provide a name for the migration");
 }
 
-migration_create_connector(arg);
+migrationCreateConnector(arg);

@@ -8,5 +8,9 @@ export default defineConfig({
   splitting: false,
   sourcemap: true,
   clean: true,
+  shims: true,
+  banner: {
+    js: "#!/usr/bin/env node",
+  },
   outDir: "lib",
 });

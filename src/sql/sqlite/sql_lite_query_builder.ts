@@ -244,7 +244,7 @@ export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
   async softDelete(options?: SoftDeleteOptions<T>): Promise<number> {
     const {
       column = "deletedAt",
-      value = new Date().toISOString().slice(0, 19).replace("T", " "),
+      value = new Date().toISOString().slice(0, 19).replace("T", " "), // TODO: check if this is the correct format
       ignoreBeforeDeleteHook = false,
     } = options || {};
     if (!ignoreBeforeDeleteHook) {

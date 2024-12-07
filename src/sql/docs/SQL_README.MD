@@ -1,8 +1,8 @@
 # Hysteria ORM Sql Documentation
 
 - [Features](#features)
-- [Prerequisites](#prerequisites)
-    - [TypeScript Configuration](#typescript-configuration-example)
+- [Setup](#setup)
+    - [Driver installation](#driver-installation)
 - [Environment Variables](#environment-variables)
     - [Complete env example](#complete-env-example)
 - [Getting Started](#getting-started)
@@ -46,6 +46,22 @@
 - **Database Support:** Currently supports MySQL, MariaDB, PostgreSQL and SQLite.
 - **Fast relations retrieve:** O(n) Complexity for relation retrieve
 - **Simplicity:** Simple syntax to interact with your data
+
+## Setup
+### Driver installation
+- You must install the driver for your database in order to use the ORM
+- Supported drivers are:
+```bash
+### Mysql or MariaDB
+yarn add mysql2
+
+### Postgres
+yarn add pg
+
+### SQLite
+yarn add sqlite3
+```
+
 
 ## Environment Variables
 
