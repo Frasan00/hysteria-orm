@@ -1,5 +1,3 @@
-#!/usr/bin/env ts-node
-
 import dotenv from "dotenv";
 import path from "path";
 import MigrationTemplates from "./resources/migration_templates";
@@ -31,10 +29,3 @@ export default function migrationCreateConnector(name: string) {
 
   logger.info(`Migration created successfully at '${migrationFilePath}'.`);
 }
-
-const arg = process.argv[2];
-if (!arg) {
-  throw new Error("Please provide a name for the migration");
-}
-
-migrationCreateConnector(arg);

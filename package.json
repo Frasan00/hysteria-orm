@@ -1,6 +1,6 @@
 {
   "name": "hysteria-orm",
-  "version": "0.0.16",
+  "version": "0.0.17",
   "description": "Yet another orm for javascript and typescript no one asked about",
   "main": "./lib/index.js",
   "repository": "https://github.com/Frasan00/hysteria-orm.git",
@@ -38,7 +38,6 @@
     "ts-jest": "^29.2.5",
     "tsup": "^8.3.5",
     "luxon": "^3.5.0",
-    "ts-node": "^10.9.2",
     "typescript": "^5.7.2"
   },
   "dependencies": {
@@ -50,6 +49,7 @@
     "commander": "^12.1.0",
     "dotenv": "^16.4.7",
     "reflect-metadata": "^0.2.2",
+    "ts-node": "^10.9.2",
     "winston": "^3.17.0"
   },
   "keywords": [

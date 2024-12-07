@@ -10,6 +10,12 @@ import {
   SqlConnectionType,
   SqliteConnectionInstance,
 } from "../sql/sql_data_source_types";
+import logger from "../utils/logger";
+import { register } from 'ts-node';
+
+register({
+  transpileOnly: true,
+});
 
 dotenv.config();
 
@@ -82,23 +88,17 @@ export function getPendingMigrations(
   });
 }
 
-async function getAbsolutePath(migrationModulePath: string): Promise<string> {
-  const userCurrentDirectory = process.cwd();
-  return path.resolve(
-    userCurrentDirectory,
-    migrationModulePath.replace(/\.ts$/, ""),
-  );
-}
-
 async function loadMigrationModule(
   absolutePath: string,
 ): Promise<(new () => Migration) | null> {
   try {
-    const migrationModule = await import(absolutePath);
+    const migrationModule = require(absolutePath);
     if (migrationModule.default) {
       return migrationModule.default;
     }
-  } catch (_error) {}
+  } catch (error) {
+    logger.error(`Error loading migration module: ${String(error)}`);
+  }
 
   return null;
 }
@@ -109,24 +109,16 @@ async function findMigrationModule(
     ? process.env.MIGRATION_PATH + "/" + migrationName
     : "database/migrations/" + migrationName,
 ): Promise<new () => Migration> {
-  const absolutePath = await getAbsolutePath(migrationModulePath);
-  const migrationModule = await loadMigrationModule(absolutePath);
+  const migrationPath = process.cwd() + "/" + migrationModulePath;
+  const migrationModule = await loadMigrationModule(migrationPath);
 
-  if (migrationModule) {
-    return migrationModule;
-  }
-
-  const parentPath = path.resolve(path.dirname(absolutePath), "..");
-  if (parentPath === path.dirname(absolutePath)) {
+  if (!migrationModule) {
     throw new Error(
       "migrations module not found for migration: " + migrationName,
     );
   }
 
-  return findMigrationModule(
-    migrationName,
-    path.join(parentPath, path.basename(migrationModulePath)),
-  );
+  return migrationModule;
 }
 
 function findMigrationNames(): string[] {

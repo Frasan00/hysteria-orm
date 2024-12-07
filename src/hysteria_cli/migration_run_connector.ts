@@ -1,5 +1,3 @@
-#!/usr/bin/env ts-node
-
 import dotenv from "dotenv";
 import { runMigrationsPg } from "./postgres/run_migration";
 import { runMigrationsSql } from "./mysql/run_migration";
@@ -35,21 +33,3 @@ export default async function runMigrationsConnector(runUntil?: string) {
 
   logger.info("Migrations ran successfully");
 }
-
-let arg: string | undefined = process.argv[2];
-if (arg === "undefined") {
-  arg = undefined;
-}
-
-if (arg && !arg.endsWith(".ts")) {
-  arg += ".ts";
-}
-
-runMigrationsConnector(arg)
-  .then(() => {
-    process.exit(0);
-  })
-  .catch((error) => {
-    logger.error(error);
-    process.exit(1);
-  });

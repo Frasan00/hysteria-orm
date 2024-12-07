@@ -1,5 +1,3 @@
-#!/usr/bin/env ts-node
-
 import dotenv from "dotenv";
 import { migrationRollBackSql } from "./mysql/rollback_migration";
 import { migrationRollBackPg } from "./postgres/rollback_migration";
@@ -32,21 +30,3 @@ export default async function rollbackMigrationConnector(
       );
   }
 }
-
-let arg: string | undefined = process.argv[2];
-if (arg === "undefined") {
-  arg = undefined;
-}
-if (arg && !arg.endsWith(".ts")) {
-  arg += ".ts";
-}
-
-rollbackMigrationConnector(arg)
-  .then(() => {
-    logger.info("migrations rolled back successfully");
-    process.exit(0);
-  })
-  .catch((error) => {
-    logger.error(error);
-    process.exit(1);
-  });
