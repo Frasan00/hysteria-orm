@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 import { Command } from "commander";
 import migrationCreateConnector from "./hysteria_cli/migration_create_connector";
 import runMigrationsConnector from "./hysteria_cli/migration_run_connector";
@@ -26,8 +24,8 @@ program
   .description(
     "Run pending migrations, if runUntil is provided, it will run all migrations until the provided migration name",
   )
-  .action((runUntil: string) => {
-    runMigrationsConnector(runUntil);
+  .action(async (runUntil: string) => {
+    await runMigrationsConnector(runUntil);
   });
 
 program
@@ -35,8 +33,8 @@ program
   .description(
     "Rollbacks every migration that has been run, if rollbackUntil is provided, it will rollback all migrations until the provided migration name",
   )
-  .action((rollbackUntil: string) => {
-    rollbackMigrationsConnector(rollbackUntil);
+  .action(async (rollbackUntil: string) => {
+    await rollbackMigrationsConnector(rollbackUntil);
   });
 
 program

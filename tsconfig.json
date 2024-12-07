@@ -4,7 +4,7 @@
     "forceConsistentCasingInFileNames": true,
     "module": "commonjs",
     "outDir": "lib",
-    "rootDirs": ["src", "test"],
+    "rootDirs": ["src"],
     "skipLibCheck": true,
     "strict": true,
     "target": "ES2020",

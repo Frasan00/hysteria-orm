@@ -1,6 +1,6 @@
 {
   "name": "hysteria-orm",
-  "version": "0.0.15",
+  "version": "0.0.16",
   "description": "Yet another orm for javascript and typescript no one asked about",
   "main": "./lib/index.js",
   "repository": "https://github.com/Frasan00/hysteria-orm.git",
@@ -20,7 +20,7 @@
     "refresh:migrations": "yarn rollback:migrations && yarn run:migrations"
   },
   "bin": {
-    "hysteria": "lib/index.js"
+    "hysteria": "lib/cli.js"
   },
   "license": "MIT",
   "devDependencies": {
