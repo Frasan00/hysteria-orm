@@ -2,7 +2,7 @@ import { User } from "../../sql_models/User";
 import { Post } from "../../sql_models/Post";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { Address } from "../../sql_models/Address";
-import { ModelQueryBuilder } from "../../sql/query_builder/query_builder";
+import { ModelQueryBuilder } from "../../../src/sql/query_builder/query_builder";
 
 let sql: SqlDataSource | null = null;
 beforeAll(async () => {

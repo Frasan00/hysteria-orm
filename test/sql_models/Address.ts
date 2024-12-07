@@ -5,7 +5,7 @@ import {
   dynamicColumn,
   manyToMany,
 } from "../../src/sql/models/model_decorators";
-import { ModelQueryBuilder } from "../sql/query_builder/query_builder";
+import { ModelQueryBuilder } from "../../src/sql/query_builder/query_builder";
 
 export class Address extends Model {
   static tableName: string = "addresses";

@@ -1,5 +1,4 @@
 import { Post } from "./Post";
-import { ModelQueryBuilder } from "../sql/query_builder/query_builder";
 import { Model } from "../../src/sql/models/model";
 import {
   column,
@@ -10,6 +9,7 @@ import {
 } from "../../src/sql/models/model_decorators";
 import { Address } from "./Address";
 import { UserAddress } from "./UserAddress";
+import { ModelQueryBuilder } from "../../src/sql/query_builder/query_builder";
 
 export class User extends Model {
   static tableName: string = "users";
