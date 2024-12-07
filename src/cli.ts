@@ -3,6 +3,17 @@ import migrationCreateConnector from "./hysteria_cli/migration_create_connector"
 import runMigrationsConnector from "./hysteria_cli/migration_run_connector";
 import rollbackMigrationsConnector from "./hysteria_cli/migration_rollback_connector";
 
+try {
+  require.resolve("ts-node");
+  require.resolve("typescript");
+} catch (error) {
+  console.error(
+    "Error: ts-node and typescript are required to run the migrations CLI.",
+  );
+
+  process.exit(1);
+}
+
 const program = new Command();
 
 program
