@@ -11,11 +11,19 @@ import {
   SqliteConnectionInstance,
 } from "../sql/sql_data_source_types";
 import logger from "../utils/logger";
-import { register } from 'ts-node';
 
-register({
-  transpileOnly: true,
-});
+try {
+  require("typescript");
+  const register = require("ts-node").register;
+  register({
+    transpileOnly: true,
+  });
+} catch (error) {
+  logger.error(
+    "Error: ts-node and typescript must be installed to run migrations cli",
+  );
+  process.exit(1);
+}
 
 dotenv.config();
 
