@@ -13,7 +13,6 @@ import {
 import logger from "../utils/logger";
 
 try {
-  require("typescript");
   const register = require("ts-node").register;
   register({
     transpileOnly: true,
