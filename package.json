@@ -38,10 +38,10 @@
     "ts-jest": "^29.2.5",
     "tsup": "^8.3.5",
     "luxon": "^3.5.0",
-    "ts-node": "^10.9.2",
     "typescript": "^5.7.2"
   },
   "dependencies": {
+    "ts-node": "^10.9.2",
     "@types/ioredis": "^5.0.0",
     "@types/mongodb": "^4.0.7",
     "@types/mysql2": "github:types/mysql2",
