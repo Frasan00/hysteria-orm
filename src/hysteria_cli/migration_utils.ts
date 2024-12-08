@@ -10,9 +10,11 @@ import {
   SqlConnectionType,
   SqliteConnectionInstance,
 } from "../sql/sql_data_source_types";
-import { register } from 'ts-node';
+import { register } from "ts-node";
+import { createRequire } from "module";
 
 dotenv.config();
+const require = createRequire(import.meta.url);
 
 export async function getMigrationTable(
   sqlConnection: SqlConnectionType,
@@ -85,23 +87,23 @@ export function getPendingMigrations(
 }
 
 async function loadMigrationModule(
-  absolutePath: string,
+  pathToFile: string,
 ): Promise<new () => Migration> {
-  const isTs = absolutePath.endsWith(".ts");
+  const isTs = pathToFile.endsWith(".ts");
   if (isTs) {
     register({
       transpileOnly: true,
       compilerOptions: {
-        module: "esnext",
+        module: "commonjs",
         target: "es2020",
       },
     });
 
-    const migrationModule = await import(absolutePath);
+    const migrationModule = require(pathToFile);
     return migrationModule.default;
   }
 
-  const migrationModule = await import(absolutePath);
+  const migrationModule = await import(pathToFile);
   return migrationModule.default;
 }
 
