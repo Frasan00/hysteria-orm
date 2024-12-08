@@ -850,7 +850,6 @@ const { query, params } = userQueryBuilder
 - Migrations cli is an optional standalone program that can be used to create and run migrations
 - Migration cli should be used in the root of the project
 - Migrations cli starts from the current user location (process.cwd) and appends the path/to/migrations (default `database/migrations`), this can be customized with `MIGRATION_PATH` environment variable
-- Migration can be created both with .ts or .js extention, note: for typescript migrations you must have `typescript` installed in your project
 
 ## hysteria-orm-cli for Migrations
 - You can run the cli using `npx hysteria` (for npm) or `yarn run hysteria` (for yarn)
