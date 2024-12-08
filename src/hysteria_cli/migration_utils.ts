@@ -97,7 +97,7 @@ async function loadMigrationModule(
     transpileOnly: true,
   });
 
-  const migrationModule = require(absolutePath);
+  const migrationModule = await import(absolutePath);
   return migrationModule.default;
 }
 
