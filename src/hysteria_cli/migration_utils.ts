@@ -83,19 +83,13 @@ export function getPendingMigrations(
   });
 }
 
-async function loadMigrationModule(
-  absolutePath: string,
-): Promise<new () => Migration> {
-  const isJs = path.extname(absolutePath) === ".js";
-  if (isJs) {
-    const migrationModule = await import(absolutePath);
-    return migrationModule.default;
+async function loadMigrationModule(absolutePath: string): Promise<new () => Migration> {
+  const isTs = path.extname(absolutePath) === ".ts";
+  if (isTs) {
+    require('ts-node').register({
+      transpileOnly: true,
+    });
   }
-
-  const tsNode = require("ts-node");
-  tsNode.register({
-    transpileOnly: true,
-  });
 
   const migrationModule = await import(absolutePath);
   return migrationModule.default;
