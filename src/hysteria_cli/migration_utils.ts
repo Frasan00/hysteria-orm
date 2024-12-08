@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import path, { join } from "node:path";
+import path from "node:path";
 import { Migration } from "../sql/migrations/migration";
 import dotenv from "dotenv";
 import { MigrationTableType } from "./resources/migration_table_type";
@@ -10,6 +10,7 @@ import {
   SqlConnectionType,
   SqliteConnectionInstance,
 } from "../sql/sql_data_source_types";
+import { register } from 'ts-node';
 
 dotenv.config();
 
@@ -88,6 +89,14 @@ async function loadMigrationModule(
 ): Promise<new () => Migration> {
   const isTs = absolutePath.endsWith(".ts");
   if (isTs) {
+    register({
+      transpileOnly: true,
+      compilerOptions: {
+        module: "esnext",
+        target: "es2020",
+      },
+    });
+
     const migrationModule = await import(absolutePath);
     return migrationModule.default;
   }
@@ -95,7 +104,6 @@ async function loadMigrationModule(
   const migrationModule = await import(absolutePath);
   return migrationModule.default;
 }
-
 
 async function findMigrationModule(
   migrationName: string,
