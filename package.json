@@ -1,6 +1,6 @@
 {
   "name": "hysteria-orm",
-  "version": "0.0.32",
+  "version": "0.0.33",
   "description": "Yet another orm for javascript and typescript no one asked for",
   "main": "./lib/index.js",
   "repository": "https://github.com/Frasan00/hysteria-orm.git",
@@ -11,13 +11,8 @@
   "scripts": {
     "start": "yarn format && yarn build && node lib/index.js",
     "test": "yarn format && yarn build && node test_runner.js",
-    "test:complete": "yarn format && yarn build && sh roll_and_run_migrations.sh && node test_runner.js",
     "format": "prettier --write \"**/*.ts\"",
-    "build": "tsup",
-    "create:migration": "yarn build && ts-node --transpile-only src/hysteria_cli/migration_create_connector.ts",
-    "run:migrations": "yarn build && ts-node --transpile-only src/hysteria_cli/migration_run_connector.ts",
-    "rollback:migrations": "yarn build && ts-node --transpile-only src/hysteria_cli/migration_rollback_connector.ts",
-    "refresh:migrations": "yarn rollback:migrations && yarn run:migrations"
+    "build": "tsup"
   },
   "bin": {
     "hysteria": "lib/cli.js"

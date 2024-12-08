@@ -1,5 +1,5 @@
-import fs from "fs";
-import path from "path";
+import fs from "node:fs";
+import path from "node:path";
 import { Migration } from "../sql/migrations/migration";
 import dotenv from "dotenv";
 import { MigrationTableType } from "./resources/migration_table_type";
@@ -83,12 +83,16 @@ export function getPendingMigrations(
   });
 }
 
-async function loadMigrationModule(absolutePath: string): Promise<new () => Migration> {
-  const isTs = path.extname(absolutePath) === ".ts";
+async function loadMigrationModule(
+  absolutePath: string,
+): Promise<new () => Migration> {
+  const isTs = absolutePath.endsWith(".ts");
   if (isTs) {
-    require('ts-node').register({
-      transpileOnly: true,
-    });
+    const tsNode = await import("ts-node");
+    tsNode.register();
+
+    const migrationModule = require(absolutePath);
+    return migrationModule.default;
   }
 
   const migrationModule = await import(absolutePath);
