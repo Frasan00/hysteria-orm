@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import path from "node:path";
+import path, { join } from "node:path";
 import { Migration } from "../sql/migrations/migration";
 import dotenv from "dotenv";
 import { MigrationTableType } from "./resources/migration_table_type";
@@ -88,11 +88,6 @@ async function loadMigrationModule(
 ): Promise<new () => Migration> {
   const isTs = absolutePath.endsWith(".ts");
   if (isTs) {
-    const tsNode = await import("ts-node");
-    tsNode.register({
-      transpileOnly: true,
-    });
-
     const migrationModule = await import(absolutePath);
     return migrationModule.default;
   }
@@ -100,6 +95,7 @@ async function loadMigrationModule(
   const migrationModule = await import(absolutePath);
   return migrationModule.default;
 }
+
 
 async function findMigrationModule(
   migrationName: string,

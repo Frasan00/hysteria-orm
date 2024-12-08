@@ -3,6 +3,13 @@ import migrationCreateConnector from "./hysteria_cli/migration_create_connector"
 import runMigrationsConnector from "./hysteria_cli/migration_run_connector";
 import rollbackMigrationsConnector from "./hysteria_cli/migration_rollback_connector";
 
+require("ts-node").register({
+  transpileOnly: true,
+  compilerOptions: {
+    module: "commonjs",
+  },
+});
+
 const program = new Command();
 
 program
