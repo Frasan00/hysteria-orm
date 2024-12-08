@@ -10,13 +10,18 @@ program
   .description(
     "Create a new migration file, standard folder is database/migrations from the current directory you are now, you can change it in the env MIGRATION_PATH",
   )
-  .action((name: string) => {
+  .option(
+    "-j, --javascript",
+    "Generate a javascript file instead of a default typescript one",
+    false,
+  )
+  .action((name: string, option: { javascript: boolean }) => {
     if (!name) {
       console.error("Error: migrations name is required.");
       process.exit(1);
     }
 
-    migrationCreateConnector(name);
+    migrationCreateConnector(name, option.javascript);
   });
 
 program

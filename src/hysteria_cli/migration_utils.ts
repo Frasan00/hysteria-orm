@@ -10,12 +10,6 @@ import {
   SqlConnectionType,
   SqliteConnectionInstance,
 } from "../sql/sql_data_source_types";
-import logger from "../utils/logger";
-import { register } from "ts-node";
-
-register({
-  transpileOnly: true,
-});
 
 dotenv.config();
 
@@ -84,23 +78,26 @@ export function getPendingMigrations(
     const migrationEntry = migrationTable.find(
       (migration) => migration.name === migrationName,
     );
+
     return !migrationEntry;
   });
 }
 
 async function loadMigrationModule(
   absolutePath: string,
-): Promise<(new () => Migration) | null> {
-  try {
+): Promise<new () => Migration> {
+  const isJs = path.extname(absolutePath) === ".js";
+  if (isJs) {
     const migrationModule = require(absolutePath);
-    if (migrationModule.default) {
-      return migrationModule.default;
-    }
-  } catch (error) {
-    logger.error(`Error loading migration module: ${String(error)}`);
+    return migrationModule.default;
   }
 
-  return null;
+  const tsNode = require("ts-node");
+  tsNode.register({
+    transpileOnly: true,
+  });
+  const migrationModule = require(absolutePath);
+  return migrationModule.default;
 }
 
 async function findMigrationModule(

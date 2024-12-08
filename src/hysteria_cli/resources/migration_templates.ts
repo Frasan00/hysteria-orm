@@ -1,5 +1,19 @@
 class Migration_templates {
-  basicMigrationTemplate(): string {
+  basicMigrationTemplate(js: boolean = false): string {
+    if (js) {
+      return `import { Migration } from 'hysteria-orm';
+
+export default class extends Migration {
+  async up() {
+    // Your migration logic here
+  }
+
+  async down() {
+    // Your rollback logic here
+  }
+}
+`;
+    }
     return `import { Migration } from 'hysteria-orm';
 
 export default class extends Migration {

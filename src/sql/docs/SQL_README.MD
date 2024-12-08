@@ -848,20 +848,17 @@ const { query, params } = userQueryBuilder
 
 # Migrations
 - Migrations cli is an optional standalone program that can be used to create and run migrations
-- Migration Cli should be used in the root of the project
+- Migration cli should be used in the root of the project
 - Migrations cli starts from the current user location (process.cwd) and appends the path/to/migrations (default `database/migrations`), this can be customized with `MIGRATION_PATH` environment variable
+- Migration can be created both with .ts or .js extention, note: for typescript migrations you must have `typescript` installed in your project
 
 ## hysteria-orm-cli for Migrations
+- You can run the cli using `npm run` or `yarn run`
 
-1) (npm run | yarn run) hysteria create:migration <name>
-2) (npm run | yarn run) hysteria run:migrations [optional - migration_file_name]
-3) (npm run | yarn run) hysteria rollback:migrations [optional - migration_file_name]
-4) (npm run | yarn run) hysteria refresh:migrations
-
-
-## create:migration <name>
+## create:migration <name> [-j, --javascript]
 - Creates a migration in the migrations folder
-- If the creation folder specified in the .env (or the default one database/migrations) it will be created automatically
+- If the creation folder specified in the .env (or the default one `database/migrations`) it will be created automatically
+- By default this command generates a .ts file, you can generate a .js file with the flag -j
 
 ## run:migrations
 - Runs all pending migrations <optional - migration_file_name>
@@ -881,7 +878,7 @@ import { Migration } from "hysteria-orm";
 import { Post } from "../Models/Post";
 
 export default class extends Migration {
-    up(): void {
+    async up(): Promise<void> {
         this.schema.createTable('posts', { ifNotExists: true })
             .newColumn().bigint('id').autoIncrement().primary()
             .newColumn().bigint('user_id').references('users', 'id')
@@ -905,7 +902,7 @@ export default class extends Migration {
         }
     }
 
-    down(): void {
+    async down(): void {
         this.schema.dropTable('posts');
         this.afterDown = async () => { /* After down logic here*/ }
     }
@@ -918,14 +915,14 @@ export default class extends Migration {
 import { Migration } from "hysteria-orm";
 
 export default class extends Migration {
-    up(): void {
+    async up(): void {
         this.schema.alterTable('users')
             .dropColumn('email')
             .addColumn('email', 'varchar', { length: 255, notNullable: true, unique: true, after: 'name' })
             .commit();
     }
 
-    down(): void {
+    async down(): void {
         this.schema.alterTable('users')
             .dropColumn('email')
             .addColumn('email', 'varchar', { length: 255, notNullable: true })

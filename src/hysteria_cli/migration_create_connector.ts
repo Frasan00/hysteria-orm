@@ -17,15 +17,18 @@ function getOrCreateMigrationPath(): string {
   return currentPath;
 }
 
-export default function migrationCreateConnector(name: string) {
+export default function migrationCreateConnector(
+  name: string,
+  js: boolean = false,
+) {
   const migrationFolderPath = getOrCreateMigrationPath();
-
   const timestamp = new Date().getTime();
-  const migrationFileName = `${timestamp}_${name}.ts`;
+  const migrationFileName = !js
+    ? `${timestamp}_${name}.ts`
+    : `${timestamp}_${name}.js`;
   const migrationFilePath = path.join(migrationFolderPath, migrationFileName);
 
-  const migrationTemplate = MigrationTemplates.basicMigrationTemplate();
+  const migrationTemplate = MigrationTemplates.basicMigrationTemplate(js);
   fs.writeFileSync(migrationFilePath, migrationTemplate);
-
   logger.info(`Migration created successfully at '${migrationFilePath}'.`);
 }

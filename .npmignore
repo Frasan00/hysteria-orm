@@ -8,3 +8,4 @@ tsup.config.ts
 .nvmrc
 test/
 node_modules/
+yarn.lock
