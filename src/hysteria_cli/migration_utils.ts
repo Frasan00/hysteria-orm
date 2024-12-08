@@ -89,9 +89,11 @@ async function loadMigrationModule(
   const isTs = absolutePath.endsWith(".ts");
   if (isTs) {
     const tsNode = await import("ts-node");
-    tsNode.register();
+    tsNode.register({
+      transpileOnly: true,
+    });
 
-    const migrationModule = require(absolutePath);
+    const migrationModule = await import(absolutePath);
     return migrationModule.default;
   }
 
