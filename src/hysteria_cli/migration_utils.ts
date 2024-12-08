@@ -88,7 +88,7 @@ async function loadMigrationModule(
 ): Promise<new () => Migration> {
   const isJs = path.extname(absolutePath) === ".js";
   if (isJs) {
-    const migrationModule = require(absolutePath);
+    const migrationModule = await import(absolutePath);
     return migrationModule.default;
   }
 

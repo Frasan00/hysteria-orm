@@ -1,7 +1,7 @@
 {
   "name": "hysteria-orm",
-  "version": "0.0.27",
-  "description": "Yet another orm for javascript and typescript no one asked about",
+  "version": "0.0.28",
+  "description": "Yet another orm for javascript and typescript no one asked for",
   "main": "./lib/index.js",
   "repository": "https://github.com/Frasan00/hysteria-orm.git",
   "author": "Frasan00 <francesco.sangiovanni.7@gmail.com>",
