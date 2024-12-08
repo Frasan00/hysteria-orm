@@ -853,7 +853,7 @@ const { query, params } = userQueryBuilder
 - Migration can be created both with .ts or .js extention, note: for typescript migrations you must have `typescript` installed in your project
 
 ## hysteria-orm-cli for Migrations
-- You can run the cli using `npm run` or `yarn run`
+- You can run the cli using `npx hysteria` (for npm) or `yarn run hysteria` (for yarn)
 
 ## create:migration <name> [-j, --javascript]
 - Creates a migration in the migrations folder

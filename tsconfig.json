@@ -14,7 +14,7 @@
     "declaration": true,
   },
   "types": [
-    "@types/node",
+    "node",
     "@types/jest",
     "@types/pg",
     "@types/mongodb",

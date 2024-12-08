@@ -96,6 +96,7 @@ async function loadMigrationModule(
   tsNode.register({
     transpileOnly: true,
   });
+
   const migrationModule = require(absolutePath);
   return migrationModule.default;
 }
