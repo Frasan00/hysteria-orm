@@ -7,7 +7,7 @@
 - The structure of this ORM Is ispireed by some main Typescript orms like Typeorm and Lucid.
 - It's partially type safe by design, allowing you to have features like intellisense for you models interactions while maintaining the flexibility of shooting yourself in the foot!
 - The main characteristic Is that Models classes refer to the database repository allowing you to interact with It via static methods in a concise and minimal way. While Models instances do not have anything else but what you define as Columns(sql) or Properties(noSql) and are designed to be used directly in you typescript Logic without any overhead.
-- Only open source and free to use Databases are supported
+- Only open source and free to use Databases are and will be supported
 
 - [Installation](#installation)
 - [Prerequisites](#prerequisites)
@@ -18,7 +18,6 @@
 - [Setup Example](#setup-example)
 
 ## Known Issues
-- `npm run` not working with cli commands, use `yarn` instead
 - Many to many retrieve not working on mariadb due to database limitations (may be fixed in the future)
 
 ## Installation
@@ -58,7 +57,7 @@ npm install ioredis
 yarn add ioredis
 ```
 
-- Driver versions used in the development
+- Driver reference versions used in development
 ```json
 {
   "mysql2": "^3.11.5",
@@ -247,7 +246,7 @@ class User extends Model {
     this.column('name');
     this.column('email');
     this.column('signupSource');
-    this.column('isActive', { booleanColumn: true });
+    this.column('isActive');
 
     this.hasOne('profile', () => Profile, "userId");
     this.hasMany('posts', () => Post, "userId");

@@ -8,6 +8,7 @@ dotenv.config();
 
 export default async function rollbackMigrationConnector(
   rollBackUntil?: string,
+  tsconfigPath?: string,
 ) {
   const databaseType = process.env.DB_TYPE;
   logger.info("Rolling back migrations for database type: " + databaseType);
@@ -15,13 +16,13 @@ export default async function rollbackMigrationConnector(
   switch (databaseType) {
     case "mariadb":
     case "mysql":
-      await migrationRollBackSql(rollBackUntil);
+      await migrationRollBackSql(rollBackUntil, tsconfigPath);
       break;
     case "postgres":
-      await migrationRollBackPg(rollBackUntil);
+      await migrationRollBackPg(rollBackUntil, tsconfigPath);
       break;
     case "sqlite":
-      await migrationRollBackSqlite(rollBackUntil);
+      await migrationRollBackSqlite(rollBackUntil, tsconfigPath);
       break;
     default:
       throw new Error(

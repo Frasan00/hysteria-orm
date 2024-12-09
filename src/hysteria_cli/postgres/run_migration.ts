@@ -16,7 +16,7 @@ import { PgClientInstance } from "../../sql/sql_data_source_types";
 
 dotenv.config();
 
-export async function runMigrationsPg(runUntil?: string): Promise<void> {
+export async function runMigrationsPg(runUntil?: string, tsconfigPath?: string): Promise<void> {
   const sql = await SqlDataSource.connect();
   const sqlConnection = sql.getCurrentConnection() as PgClientInstance;
   try {
@@ -25,7 +25,7 @@ export async function runMigrationsPg(runUntil?: string): Promise<void> {
 
     const migrationTable: MigrationTableType[] =
       await getMigrationTable(sqlConnection);
-    const migrations: Migration[] = await getMigrations();
+    const migrations: Migration[] = await getMigrations(tsconfigPath);
     const pendingMigrations = migrations.filter(
       (migration) =>
         !migrationTable

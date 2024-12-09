@@ -58,12 +58,12 @@ export async function getMigrationTable(
   }
 }
 
-export async function getMigrations(): Promise<Migration[]> {
+export async function getMigrations(tsconfigPath?: string): Promise<Migration[]> {
   const migrationNames = findMigrationNames();
   const migrations: Migration[] = [];
 
   for (const migrationName of migrationNames) {
-    const migrationModule = await findMigrationModule(migrationName);
+    const migrationModule = await findMigrationModule(migrationName, tsconfigPath);
     const migration: Migration = new migrationModule();
     migration.migrationName = migrationName;
     migrations.push(migration);
@@ -88,16 +88,15 @@ export function getPendingMigrations(
 
 async function loadMigrationModule(
   pathToFile: string,
+  tsconfigPath?: string,
 ): Promise<new () => Migration> {
   const isTs = pathToFile.endsWith(".ts");
   if (isTs) {
-    register({
+    const a = register({
       transpileOnly: true,
-      compilerOptions: {
-        module: "commonjs",
-        target: "es2020",
-      },
+      project: tsconfigPath,
     });
+    console.log(a);
 
     const migrationModule = require(pathToFile);
     return migrationModule.default;
@@ -109,12 +108,13 @@ async function loadMigrationModule(
 
 async function findMigrationModule(
   migrationName: string,
+  tsconfigPath?: string,
   migrationModulePath: string = process.env.MIGRATION_PATH
     ? process.env.MIGRATION_PATH + "/" + migrationName
     : "database/migrations/" + migrationName,
 ): Promise<new () => Migration> {
   const migrationPath = process.cwd() + "/" + migrationModulePath;
-  const migrationModule = await loadMigrationModule(migrationPath);
+  const migrationModule = await loadMigrationModule(migrationPath, tsconfigPath);
 
   if (!migrationModule) {
     throw new Error(

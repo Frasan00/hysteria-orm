@@ -26,30 +26,33 @@ program
 
 program
   .command("run:migrations [runUntil]")
+  .option('-t, --tsconfig [path]', 'Path to tsconfig.json file', undefined)
   .description(
     "Run pending migrations, if runUntil is provided, it will run all migrations until the provided migration name",
   )
-  .action(async (runUntil: string) => {
-    await runMigrationsConnector(runUntil);
+  .action(async (runUntil: string, option?: { tsconfig?: string }) => {
+    await runMigrationsConnector(runUntil, option?.tsconfig);
   });
 
 program
   .command("rollback:migrations [rollbackUntil]")
+  .option('-t, --tsconfig [path]', 'Path to tsconfig.json file', undefined)
   .description(
     "Rollbacks every migration that has been run, if rollbackUntil is provided, it will rollback all migrations until the provided migration name",
   )
-  .action(async (rollbackUntil: string) => {
-    await rollbackMigrationsConnector(rollbackUntil);
+  .action(async (rollbackUntil: string, option?: { tsconfig?: string }) => {
+    await rollbackMigrationsConnector(rollbackUntil, option?.tsconfig);
   });
 
 program
   .command("refresh:migrations")
+  .option('-t, --tsconfig [path]', 'Path to tsconfig.json file', undefined)
   .description(
     "Rollbacks every migration that has been run and then run the migrations",
   )
-  .action(async () => {
-    await rollbackMigrationsConnector();
-    await runMigrationsConnector();
+  .action(async (option?: { tsconfig?: string }) => {
+    await rollbackMigrationsConnector(undefined, option?.tsconfig);
+    await runMigrationsConnector(undefined, option?.tsconfig);
   });
 
 program.parse(process.argv);

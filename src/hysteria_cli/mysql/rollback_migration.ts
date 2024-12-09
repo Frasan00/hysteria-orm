@@ -18,6 +18,7 @@ dotenv.config();
 
 export async function migrationRollBackSql(
   rollBackUntil?: string,
+  tsconfigPath?: string,
 ): Promise<void> {
   const sql = await SqlDataSource.connect();
   const sqlConnection = sql.getCurrentConnection() as MysqlConnectionInstance;
@@ -27,7 +28,7 @@ export async function migrationRollBackSql(
     await sqlConnection.beginTransaction();
     const migrationTable: MigrationTableType[] =
       await getMigrationTable(sqlConnection);
-    const migrations: Migration[] = await getMigrations();
+    const migrations: Migration[] = await getMigrations(tsconfigPath);
     const tableMigrations = migrationTable.map((migration) => migration.name);
     const pendingMigrations = migrations.filter((migration) =>
       tableMigrations.includes(migration.migrationName),

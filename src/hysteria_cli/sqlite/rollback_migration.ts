@@ -13,6 +13,7 @@ dotenv.config();
 
 export async function migrationRollBackSqlite(
   rollBackUntil?: string,
+  tsconfigPath?: string,
 ): Promise<void> {
   const sql = await SqlDataSource.connect();
   const sqlConnection = sql.getCurrentConnection() as SqliteConnectionInstance;
@@ -20,7 +21,7 @@ export async function migrationRollBackSqlite(
   try {
     const migrationTable: MigrationTableType[] =
       (await getMigrationTable(sqlConnection)) || [];
-    const migrations: Migration[] = await getMigrations();
+    const migrations: Migration[] = await getMigrations(tsconfigPath);
 
     const tableMigrations = migrationTable.map((migration) => migration.name);
     const pendingMigrations = migrations.filter((migration) =>
