@@ -92,11 +92,10 @@ async function loadMigrationModule(
 ): Promise<new () => Migration> {
   const isTs = pathToFile.endsWith(".ts");
   if (isTs) {
-    const a = register({
+    register({
       transpileOnly: true,
       project: tsconfigPath,
     });
-    console.log(a);
 
     const migrationModule = require(pathToFile);
     return migrationModule.default;
