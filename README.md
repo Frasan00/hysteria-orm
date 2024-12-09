@@ -109,7 +109,7 @@ DB_HOST=127.0.0.1
 DB_USER=root
 DB_PASSWORD=root
 DB_DATABASE=test
-DB_PORT=3307
+DB_PORT=3306
 DB_LOGS=true
 
 # SQLITE
@@ -118,16 +118,14 @@ DB_DATABASE="./sqlite.db"
 DB_LOGS=true
 
 # REDIS
-DB_TYPE=redis
-DB_HOST=127.0.0.1
-DB_USER=default
-DB_PASSWORD=root
-DB_DATABASE=0
-DB_PORT=6379
-DB_LOGS=true
+REDIS_HOST=127.0.0.1
+REDIS_USERNAME=default
+REDIS_PASSWORD=root
+REDIS_PORT=6379
 
 # MONGO
 MONGO_URL=mongodb://root:root@localhost:27017
+MONGO_LOGS=true
 ```
 
 ### TypeScript Configuration example

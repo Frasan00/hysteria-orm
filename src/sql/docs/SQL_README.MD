@@ -860,16 +860,19 @@ const { query, params } = userQueryBuilder
 - If the creation folder specified in the .env (or the default one `database/migrations`) it will be created automatically
 - By default this command generates a .ts file, you can generate a .js file with the flag -j
 
-## run:migrations
+## run:migrations [runUntil] [-t, --tsconfig]
 - Runs all pending migrations <optional - migration_file_name>
 - If the migration file name is specified then migrations will be run until that migration
+- If you are using typescript you can specify the path to the tsconfig file with the -t flag to resolve type errors
 
-## rollback:migrations
+## rollback:migrations [rollbackUntil] [-t, --tsconfig]
 - Rollbacks all existing migrations <optional - migration_file_name>
 - If the migration file name is specified then migrations will be rolled back from the last migration until that migration
+- If you are using typescript you can specify the path to the tsconfig file with the -t flag to resolve type errors
 
-## refresh:migrations
+## refresh:migrations [-t, --tsconfig]
 - Rollbacks all existing migrations and runs them again
+- If you are using typescript you can specify the path to the tsconfig file with the -t flag to resolve type errors
 
 ## Create Table
 
