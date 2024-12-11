@@ -234,7 +234,7 @@ export class User extends Model {
 
 ```typescript
 import "reflect-metadata";
-import { Model, Has_one, Has_many, column, hasOne, manyToMany, ModelQueryBuilder } from "hysteria-orm";
+import { Model, HasOne, HasMany, column, hasOne, manyToMany, ModelQueryBuilder } from "hysteria-orm";
 import { Profile } from "./Profile";
 import { Post } from "./Post";
 import { Address } from "./Address";
@@ -292,7 +292,7 @@ export class User extends Model {
 ##### Model definition
 ```typescript
 import "reflect-metadata";
-import { Model, Has_one, Has_many, column, hasOne, ModelQueryBuilder } from "hysteria-orm";
+import { Model, HasOne, HasMany, column, hasOne, ModelQueryBuilder } from "hysteria-orm";
 import { Profile } from "./Profile";
 import { Post } from "./Post";
 import crypto from "crypto";
