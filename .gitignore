@@ -151,3 +151,4 @@ docker-compose.yml
 
 **/database**
 roll_and_run_migrations.sh
+lib

@@ -9,7 +9,7 @@
     "lib"
   ],
   "scripts": {
-    "start": "yarn format && yarn build && node lib/index.js",
+    "start": "yarn format && ts-node src/index.ts",
     "test": "yarn format && yarn build && node test_runner.js",
     "format": "prettier --write \"**/*.ts\"",
     "lint": "standard",
