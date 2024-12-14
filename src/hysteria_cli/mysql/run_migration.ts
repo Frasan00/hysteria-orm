@@ -16,7 +16,10 @@ import { MysqlConnectionInstance } from "../../sql/sql_data_source_types";
 
 dotenv.config();
 
-export async function runMigrationsSql(runUntil?: string, tsconfigPath?: string): Promise<void> {
+export async function runMigrationsSql(
+  runUntil?: string,
+  tsconfigPath?: string,
+): Promise<void> {
   const sql = await SqlDataSource.connect();
   const sqlConnection = sql.getCurrentConnection() as MysqlConnectionInstance;
   try {

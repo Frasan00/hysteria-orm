@@ -26,7 +26,7 @@ program
 
 program
   .command("run:migrations [runUntil]")
-  .option('-t, --tsconfig [path]', 'Path to tsconfig.json file', undefined)
+  .option("-t, --tsconfig [path]", "Path to tsconfig.json file", undefined)
   .description(
     "Run pending migrations, if runUntil is provided, it will run all migrations until the provided migration name",
   )
@@ -36,7 +36,7 @@ program
 
 program
   .command("rollback:migrations [rollbackUntil]")
-  .option('-t, --tsconfig [path]', 'Path to tsconfig.json file', undefined)
+  .option("-t, --tsconfig [path]", "Path to tsconfig.json file", undefined)
   .description(
     "Rollbacks every migration that has been run, if rollbackUntil is provided, it will rollback all migrations until the provided migration name",
   )
@@ -46,7 +46,7 @@ program
 
 program
   .command("refresh:migrations")
-  .option('-t, --tsconfig [path]', 'Path to tsconfig.json file', undefined)
+  .option("-t, --tsconfig [path]", "Path to tsconfig.json file", undefined)
   .description(
     "Rollbacks every migration that has been run and then run the migrations",
   )

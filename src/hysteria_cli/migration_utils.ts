@@ -58,12 +58,17 @@ export async function getMigrationTable(
   }
 }
 
-export async function getMigrations(tsconfigPath?: string): Promise<Migration[]> {
+export async function getMigrations(
+  tsconfigPath?: string,
+): Promise<Migration[]> {
   const migrationNames = findMigrationNames();
   const migrations: Migration[] = [];
 
   for (const migrationName of migrationNames) {
-    const migrationModule = await findMigrationModule(migrationName, tsconfigPath);
+    const migrationModule = await findMigrationModule(
+      migrationName,
+      tsconfigPath,
+    );
     const migration: Migration = new migrationModule();
     migration.migrationName = migrationName;
     migrations.push(migration);
@@ -113,7 +118,10 @@ async function findMigrationModule(
     : "database/migrations/" + migrationName,
 ): Promise<new () => Migration> {
   const migrationPath = process.cwd() + "/" + migrationModulePath;
-  const migrationModule = await loadMigrationModule(migrationPath, tsconfigPath);
+  const migrationModule = await loadMigrationModule(
+    migrationPath,
+    tsconfigPath,
+  );
 
   if (!migrationModule) {
     throw new Error(
