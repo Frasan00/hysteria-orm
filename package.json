@@ -1,6 +1,6 @@
 {
   "name": "hysteria-orm",
-  "version": "0.0.40",
+  "version": "0.1.0",
   "description": "Yet another orm for javascript and typescript no one asked for",
   "main": "./lib/index.js",
   "repository": "https://github.com/Frasan00/hysteria-orm.git",
@@ -12,7 +12,9 @@
     "start": "yarn format && yarn build && node lib/index.js",
     "test": "yarn format && yarn build && node test_runner.js",
     "format": "prettier --write \"**/*.ts\"",
-    "build": "tsup"
+    "lint": "standard",
+    "build": "tsup --minify",
+    "build:dev": "tsup"
   },
   "bin": {
     "hysteria": "lib/cli.js"
