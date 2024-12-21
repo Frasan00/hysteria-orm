@@ -1,6 +1,6 @@
 {
   "name": "hysteria-orm",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Yet another orm for javascript and typescript no one asked for",
   "main": "./lib/index.js",
   "repository": "https://github.com/Frasan00/hysteria-orm.git",
