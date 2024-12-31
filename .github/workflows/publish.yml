@@ -26,23 +26,6 @@ jobs:
           node-version: '22.11.0'
           registry-url: 'https://registry.npmjs.org'
 
-      - name: Get tag version
-        id: get_version
-        run: echo "VERSION=${GITHUB_REF/refs\/tags\/v/}" >> $GITHUB_ENV
-
-      - name: Update package.json version
-        run: |
-          jq --arg version "$VERSION" '.version = $version' package.json > package.tmp.json
-          mv package.tmp.json package.json
-
-      - name: Commit and push version update
-        run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          git add package.json
-          git commit -m "chore: update package version to $VERSION"
-          git push origin main
-
       - name: Build package
         run: |
           yarn install --frozen-lockfile --non-interactive
