@@ -31,7 +31,7 @@ export type ManyOptions = {
 };
 
 export class MongoQueryBuilder<T extends Collection> {
-  protected dynamicPropertys: string[];
+  protected dynamicProperties: string[];
   protected idObject: mongodb.Filter<mongodb.BSON.Document>;
   protected selectObject?: Record<string, 1>;
   protected selectFields?: string[];
@@ -49,11 +49,11 @@ export class MongoQueryBuilder<T extends Collection> {
   constructor(
     model: typeof Collection,
     mongoDataSource: MongoDataSource,
-    session?: mongodb.ClientSession,
+    _session?: mongodb.ClientSession,
     logs: boolean = false,
   ) {
     this.model = model;
-    this.dynamicPropertys = [];
+    this.dynamicProperties = [];
     this.idObject = {};
     this.whereObject = {};
     this.logs = logs;
@@ -91,7 +91,7 @@ export class MongoQueryBuilder<T extends Collection> {
       this.model,
       result,
       this.selectFields,
-      this.dynamicPropertys,
+      this.dynamicProperties,
     );
 
     return !options.ignoreHooks?.includes("afterFetch")
@@ -137,7 +137,7 @@ export class MongoQueryBuilder<T extends Collection> {
       this.model,
       result,
       this.selectFields,
-      this.dynamicPropertys,
+      this.dynamicProperties,
     );
 
     return !options.ignoreHooks?.includes("afterFetch")
@@ -187,7 +187,7 @@ export class MongoQueryBuilder<T extends Collection> {
       this.model,
       updatedDocuments,
       this.selectFields,
-      this.dynamicPropertys,
+      this.dynamicProperties,
     );
   }
 
@@ -219,8 +219,8 @@ export class MongoQueryBuilder<T extends Collection> {
     });
   }
 
-  addDynamicProperty(dynamicPropertys: DynamicColumnType<T>[]): this {
-    this.dynamicPropertys = dynamicPropertys as string[];
+  addDynamicProperty(dynamicProperties: DynamicColumnType<T>[]): this {
+    this.dynamicProperties = dynamicProperties as string[];
     return this;
   }
 

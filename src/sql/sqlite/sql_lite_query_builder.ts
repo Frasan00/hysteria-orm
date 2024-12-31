@@ -1,30 +1,30 @@
-import { getBaseModelInstance, Model } from "../models/model";
+import { SqlDataSource } from "../../../src/sql/sql_data_source";
+import { convertCase } from "../../utils/case_utils";
 import { log } from "../../utils/logger";
-import {
-  OneOptions,
-  QueryBuilder,
-  ModelQueryBuilder,
-  ManyOptions,
-  ModelInstanceType,
-} from "../query_builder/query_builder";
-import joinTemplate from "../resources/query/JOIN";
-import { getPaginationMetadata, PaginatedData } from "../pagination";
-import { parseDatabaseDataIntoModelResponse } from "../serializer";
+import { getBaseModelInstance, Model } from "../models/model";
 import {
   DynamicColumnType,
   RelationType,
   SelectableType,
 } from "../models/model_manager/model_manager_types";
-import { SqlDataSource } from "../../../src/sql/sql_data_source";
-import { convertCase } from "../../utils/case_utils";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
+import { getPaginationMetadata, PaginatedData } from "../pagination";
 import {
   DeleteOptions,
   SoftDeleteOptions,
 } from "../query_builder/delete_query_builder_type";
-import deleteTemplate from "../resources/query/DELETE";
-import updateTemplate from "../resources/query/UPDATE";
+import {
+  ManyOptions,
+  ModelInstanceType,
+  ModelQueryBuilder,
+  OneOptions,
+  QueryBuilder,
+} from "../query_builder/query_builder";
 import { UpdateOptions } from "../query_builder/update_query_builder_types";
+import deleteTemplate from "../resources/query/DELETE";
+import joinTemplate from "../resources/query/JOIN";
+import updateTemplate from "../resources/query/UPDATE";
+import { parseDatabaseDataIntoModelResponse } from "../serializer";
 import { SqliteConnectionInstance } from "../sql_data_source_types";
 
 export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
@@ -389,7 +389,7 @@ export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
     this.select("COUNT(*) as total");
     const result = await this.one();
-    return result ? +result.$additionalColumns.total : 0;
+    return result ? +result.$additional.total : 0;
   }
 
   async getSum(column: SelectableType<T>): Promise<number>;
@@ -409,7 +409,7 @@ export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     column = convertCase(column as string, this.model.databaseCaseConvention);
     this.select(`SUM(${column as string}) as total`);
     const result = await this.one();
-    return result ? +result.$additionalColumns.total : 0;
+    return result ? +result.$additional.total : 0;
   }
 
   async paginate(
@@ -430,7 +430,7 @@ export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     const paginationMetadata = getPaginationMetadata(
       page,
       limit,
-      +total[0].$additionalColumns["total"] as number,
+      +total[0].$additional["total"] as number,
     );
     let data =
       (await parseDatabaseDataIntoModelResponse(models, this.model)) || [];

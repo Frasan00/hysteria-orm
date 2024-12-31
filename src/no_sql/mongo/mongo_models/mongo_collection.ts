@@ -2,24 +2,24 @@ import "reflect-metadata";
 import { Entity } from "../../../entity";
 import { MongoDataSource } from "../mongo_data_source";
 import { MongoQueryBuilder } from "../query_builder/mongo_query_builder";
+import { dynamicProperty, property } from "./mongo_collection_decorators";
 import {
+  CollectionManager,
   MongoFindManyOptions,
   MongoFindOneOptions,
-  CollectionManager,
   MongoUnrestrictedFindManyOptions,
   UnrestrictedMongoFindOneOptions,
 } from "./mongo_collection_manager";
 import {
-  getBaseCollectionName,
   BaseModelMethodOptions,
+  getBaseCollectionName,
   ModelKeyOrAny,
 } from "./mongo_collection_types";
-import { dynamicProperty, property } from "./mongo_collection_decorators";
 
 const collectionMap = new Map<typeof Collection, string>();
 
 export function getBaseCollectionInstance<T extends Collection>(): T {
-  return { $additionalColumns: {} } as T;
+  return { $additional: {} } as T;
 }
 
 export class Collection extends Entity {

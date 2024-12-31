@@ -2,9 +2,9 @@ import { convertCase } from "../utils/case_utils";
 import { isNestedObject } from "../utils/json_utils";
 import { Model } from "./models/model";
 import {
-  getRelations,
-  getModelColumns,
   getDynamicColumns,
+  getModelColumns,
+  getRelations,
 } from "./models/model_decorators";
 import {
   isRelationDefinition,
@@ -50,7 +50,7 @@ function serializeModel<T extends Record<string, any>>(
     .map((column) => column.columnName);
 
   for (const key in model) {
-    if (key === "$additionalColumns") {
+    if (key === "$additional") {
       processAdditionalColumns(model, key, casedModel, typeofModel);
       continue;
     }
@@ -110,7 +110,7 @@ function processAdditionalColumns(
     return;
   }
 
-  const $additionalColumns = Object.keys(model[key]).reduce(
+  const $additional = Object.keys(model[key]).reduce(
     (acc, objKey) => {
       acc[convertCase(objKey, typeofModel.modelCaseConvention)] =
         model[key][objKey];
@@ -119,7 +119,7 @@ function processAdditionalColumns(
     {} as Record<string, any>,
   );
 
-  casedModel[key] = $additionalColumns;
+  casedModel[key] = $additional;
 }
 
 function processRelation(

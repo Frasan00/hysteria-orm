@@ -1,11 +1,11 @@
-import { User } from "./User";
-import { Model } from "../../src/sql/models/model";
+import { Model } from "../../../src/sql/models/model";
 import {
   column,
   dynamicColumn,
   manyToMany,
-} from "../../src/sql/models/model_decorators";
-import { ModelQueryBuilder } from "../../src/sql/query_builder/query_builder";
+} from "../../../src/sql/models/model_decorators";
+import { ModelQueryBuilder } from "../../../src/sql/query_builder/query_builder";
+import { User } from "./User";
 
 export class Address extends Model {
   static tableName: string = "addresses";
@@ -35,11 +35,11 @@ export class Address extends Model {
 
   static async afterFetch(data: Model[]): Promise<Model[]> {
     return data.map((address) => {
-      if (!address.$additionalColumns) {
-        address.$additionalColumns = {};
+      if (!address.$additional) {
+        address.$additional = {};
       }
 
-      address.$additionalColumns["afterFetch"] = "test";
+      address.$additional["afterFetch"] = "test";
       return address;
     });
   }

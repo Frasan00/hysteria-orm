@@ -8,7 +8,7 @@ export abstract class Entity {
   /**
    * @description Extra columns for the model, all data retrieved from the database that is not part of the model will be stored here
    */
-  $additionalColumns: { [key: string]: any };
+  $additional: { [key: string]: any };
 
   /**
    * @description Defines the case convention for the model
@@ -23,6 +23,6 @@ export abstract class Entity {
   static databaseCaseConvention: CaseConvention = "snake";
 
   constructor() {
-    this.$additionalColumns = {};
+    this.$additional = {};
   }
 }

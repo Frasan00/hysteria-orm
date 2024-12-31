@@ -51,9 +51,9 @@ try {
 ```
 
 ### Model Configuration
-- The id property is handled automatically by the library, you don't need to define it, while using it you only refer to it as `id`m the library will handle the rest parsing it to `_id` for mongo.
-- You can use `@property` to define a property for the model, note that since it's a no-sql database, the database itself will not enforce the schema, so you can define any property you want.
-- You can use `@dynamicProperty` to define a dynamic property for the model, this will be a function that will be called when you try to access the property.
+- The id property is handled automatically by the library, you don't need to define it, while using it you only refer to it as `id` and the library will handle the rest parsing it to `_id` for mongo.
+- You can use the `@property` decorator to define a property for the model, note that since it's a no-sql database, the model definition itself will not enforce the schema, so you can define any property you want.
+- You can use the `@dynamicProperty` decorator to define a dynamic property for the model, this will be a function that will be called when you try to access the property.
 - Different from sql databases, mongo implementation at the moment does not support the relations between models.
 
 ```typescript
@@ -90,7 +90,7 @@ class User extends Collection {
 
   // Hooks - You can define hooks to be called before or after some actions
   static beforeFetch(queryBuilder: MongoQueryBuilder<any>): void {
-    queryBuilder.where({ name: "Test Name" });
+    queryBuilder.where('name', 'Test Name');
   }
 
   static afterFetch(data: any[]): Promise<Collection[]> {
@@ -135,7 +135,7 @@ const user = await User.findOne({
 - The query builder is a class that you can use to build your queries, it has a lot of methods that you can use to build your queries.
 - The query builder is chainable, so you can call multiple methods in a single line.
 - The query builder is partially type safe, it will infer the type of the model you are querying, but it will not infer the type of the properties you are querying, so you can use any property you want, but it will not be type checked.
-- Every property queried that does not exist in the model will be inserted in the `$additionalColumns` property that every collection has, so you can access it later if you want.
+- Every property queried that does not exist in the model will be inserted in the `$additional` property that every collection has, so you can access it later if you want.
 
 ```typescript
 import { User } from "./models/User";
@@ -147,10 +147,10 @@ const user = await User.query()
   .first();
 
 // Insert
-const user = await User.insert({ 
+const user = await User.insert({
   // Model defined properties are type checked
-  name: "Test Name", 
-  email: "john@gmail.com", 
+  name: "Test Name",
+  email: "john@gmail.com",
   age: 20,
 
   // You can also define any other property

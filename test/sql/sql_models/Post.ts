@@ -1,6 +1,6 @@
 import { User } from "./User";
-import { Model } from "../../src/sql/models/model";
-import { column, belongsTo } from "../../src/sql/models/model_decorators";
+import { Model } from "../../../src/sql/models/model";
+import { column, belongsTo } from "../../../src/sql/models/model_decorators";
 
 export class Post extends Model {
   @column({ primaryKey: true })

@@ -1,5 +1,5 @@
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
-import { User } from "../../sql_models/User";
+import { User } from "../sql_models/User";
 import { DateTime } from "luxon";
 
 let sql: SqlDataSource | null = null;

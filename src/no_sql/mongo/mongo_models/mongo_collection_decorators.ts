@@ -1,4 +1,3 @@
-import "reflect-metadata";
 import { Collection } from "./mongo_collection";
 
 const MONGO_PROPERTY_METADATA_KEY = Symbol("mongoProperties");
@@ -6,7 +5,6 @@ const MONGO_DYNAMIC_PROPERTY_METADATA_KEY = Symbol("mongoDynamicProperties");
 
 /**
  * @description Defines a property that will be used in the model
- * @returns
  */
 export function property(): PropertyDecorator {
   return (target: Object, propertyKey: string | symbol) => {
@@ -23,33 +21,29 @@ export function property(): PropertyDecorator {
 }
 
 /**
- * @description Defines a dynamic calculated property that is not defined inside the Table, it must be added to a query in order to be retrieved
- * @param propertyName that will be filled inside the dynamicProperty field
- * @returns
+ * @description Defines a dynamic property that will be used in the model that is not part of the model schema
  */
 export function dynamicProperty(propertyName: string): PropertyDecorator {
   return (target: Object, propertyKey: string | symbol) => {
-    const dynamicColumn = {
-      propertyName: propertyName,
+    const dynamicProperty = {
+      propertyName,
       functionName: propertyKey,
-      dynamicColumnFn: target.constructor.prototype[propertyKey],
+      dynamicPropertyFn: target.constructor.prototype[propertyKey],
     };
 
-    const existingColumns =
+    const existingDynamicProperties =
       Reflect.getMetadata(MONGO_DYNAMIC_PROPERTY_METADATA_KEY, target) || [];
-    existingColumns.push(dynamicColumn);
+    existingDynamicProperties.push(dynamicProperty);
     Reflect.defineMetadata(
       MONGO_DYNAMIC_PROPERTY_METADATA_KEY,
-      existingColumns,
+      existingDynamicProperties,
       target,
     );
   };
 }
 
 /**
- * @description Returns the propertys of the model, propertys must be decorated with the property decorator
- * @param target Model
- * @returns
+ * @description Returns the properties of the model, properties must be decorated with the property decorator
  */
 export function getCollectionProperties(target: typeof Collection): string[] {
   return (
@@ -60,13 +54,15 @@ export function getCollectionProperties(target: typeof Collection): string[] {
 /**
  * @description Returns every dynamicProperty definition
  */
-export function getMongoDynamicProperties(target: typeof Collection): {
+export function getCollectionDynamicProperties(target: typeof Collection): {
   propertyName: string;
-  functionName: string;
+  functionName: string | symbol;
   dynamicPropertyFn: (...args: any[]) => any;
 }[] {
-  return Reflect.getMetadata(
-    MONGO_DYNAMIC_PROPERTY_METADATA_KEY,
-    target.prototype,
+  return (
+    Reflect.getMetadata(
+      MONGO_DYNAMIC_PROPERTY_METADATA_KEY,
+      target.prototype,
+    ) || []
   );
 }

@@ -2,9 +2,9 @@ import { convertCase } from "../../utils/case_utils";
 import { Model } from "../models/model";
 import { getModelColumns } from "../models/model_decorators";
 import {
-  SelectableType,
-  RelationType,
   DynamicColumnType,
+  RelationType,
+  SelectableType,
 } from "../models/model_manager/model_manager_types";
 import { MysqlQueryBuilder } from "../mysql/mysql_query_builder";
 import { PaginatedData } from "../pagination";
@@ -388,7 +388,7 @@ export abstract class QueryBuilder<
         return;
       }
 
-      model.$additionalColumns[key] = value as string | number | boolean;
+      model.$additional[key] = value as string | number | boolean;
     });
 
     if (!this.dynamicColumns.length) {

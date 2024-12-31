@@ -628,7 +628,7 @@ const userOrFail: User = await User.findOneOrFail({
 - It's used to create more complex queries that are not supported by the standard methods
 - all select-where-relations-orderby columns are partially type safe, they can both be a specific column in the Model or a string
 - You can also use the query builder for bulk updates and deleted
-- Sql methods are available in the query builder, the results aliases will be available in the $additionalColumns property
+- Sql methods are available in the query builder, the results aliases will be available in the $additional property
 
 ```typescript
 import { User } from "./User";
@@ -648,12 +648,12 @@ const users: User[] = await User.query()
     .many();
 
 // SQL Methods
-// You can use sql methods directly in the query builder, the results will be available in the $additionalColumns property
+// You can use sql methods directly in the query builder, the results will be available in the $additional property
 const user: User | null = await User.query()
     .select("COUNT(*) as total")
     .where("name", "John Doe")
     .one();
-const userCount = user?.$additionalColumns?.total;
+const userCount = user?.$additional?.total;
 
 // Distinct
 const distinctUsers: User[] = await User.query()
@@ -736,7 +736,7 @@ const userFind = await User.find({ ignoreHooks: ["beforeFetch"] });
 
 ### Aliases
 
-- Aliases are available in the query builder, for example select('new as newName') will generate an alias in the $additionalColumns property that every model instances has
+- Aliases are available in the query builder, for example select('new as newName') will generate an alias in the $additional property that every model instances has
 ```typescript
 import { User } from "./User";
 

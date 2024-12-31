@@ -18,7 +18,7 @@
 - [Setup Example](#setup-example)
 
 ## Known Issues
-- Many to many retrieve not working on mariadb due to database limitations (may be fixed in the future)
+- [Known Issues](src/KNOWN_ISSUES.MD)
 
 ## Installation
 ```shell

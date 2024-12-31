@@ -1,5 +1,5 @@
-import { User } from "../../sql_models/User";
-import { Post } from "../../sql_models/Post";
+import { User } from "../sql_models/User";
+import { Post } from "../sql_models/Post";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
 
 let sql: SqlDataSource;

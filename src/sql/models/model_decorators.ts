@@ -20,9 +20,6 @@ type LazyRelationEnum = {
 /**
  * columns
  * @description Options for the column decorator
- * @param primaryKey: boolean - If the column is the primary key
- * @param serialize: (value: any) => any - Function to serialize the value after it is retrieved from the database
- * @param prepare: (value: any) => any - Function to prepare the value before it is inserted or updated in the database
  */
 export interface ColumnOptions {
   primaryKey?: boolean;

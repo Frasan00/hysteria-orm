@@ -1,15 +1,15 @@
 import { Post } from "./Post";
-import { Model } from "../../src/sql/models/model";
+import { Model } from "../../../src/sql/models/model";
 import {
   column,
   hasMany,
   hasOne,
   dynamicColumn,
   manyToMany,
-} from "../../src/sql/models/model_decorators";
+} from "../../../src/sql/models/model_decorators";
 import { Address } from "./Address";
 import { UserAddress } from "./UserAddress";
-import { ModelQueryBuilder } from "../../src/sql/query_builder/query_builder";
+import { ModelQueryBuilder } from "../../../src/sql/query_builder/query_builder";
 
 export class User extends Model {
   static tableName: string = "users";

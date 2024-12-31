@@ -1,30 +1,6 @@
-import {
-  property,
-  dynamicProperty,
-} from "../../src/no_sql/mongo/mongo_models/mongo_collection_decorators";
 import { MongoDataSource } from "../../src/no_sql/mongo/mongo_data_source";
-import { Collection } from "../../src/no_sql/mongo/mongo_models/mongo_collection";
 import { DateTime } from "luxon";
-
-class TestModel extends Collection {
-  @property()
-  declare name: string;
-
-  @property()
-  declare email: string;
-
-  @property()
-  declare userProfile: {
-    birthData: DateTime;
-    age: number;
-    preferredName: string;
-  };
-
-  @dynamicProperty("test")
-  getTest() {
-    return "test";
-  }
-}
+import { TestModel } from "./mongo_collections/test_collection";
 
 describe("TestModel", () => {
   let mongoDataSource: MongoDataSource;
@@ -70,8 +46,12 @@ describe("TestModel", () => {
       { name: "Test Name 2", email: "test2@example.com" },
     ]);
 
-    const foundModels = await TestModel.find();
+    const foundModels = await TestModel.find({
+      dynamicProperties: ["getTest"],
+    });
+    console.log(foundModels);
     expect(foundModels.length).toBe(2);
+    // expect(foundModels[0]["test"]).toBe("test");
   });
 
   test("should find one record", async () => {

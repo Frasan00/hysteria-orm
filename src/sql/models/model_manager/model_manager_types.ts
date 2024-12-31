@@ -35,8 +35,8 @@ export type WhereType<T> = {
   [K in keyof T]?: string | number | boolean | Date | null;
 };
 
-export type SelectableType<T> = ExcludeRelations<Omit<T, "$additionalColumns">>;
-export type RelationType<T> = OnlyRelations<Omit<T, "$additionalColumns">>;
+export type SelectableType<T> = ExcludeRelations<Omit<T, "$additional">>;
+export type RelationType<T> = OnlyRelations<Omit<T, "$additional">>;
 export type DynamicColumnType<T> = {
   [k in keyof T]: T[k] extends (...args: any[]) => any ? k : never;
 }[keyof T];

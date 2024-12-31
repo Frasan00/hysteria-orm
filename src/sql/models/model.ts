@@ -1,12 +1,16 @@
 import "reflect-metadata";
+import { Entity } from "../../entity";
 import { convertCase } from "../../utils/case_utils";
+import { baseSoftDeleteDate } from "../../utils/date_utils";
 import { PaginatedData } from "../pagination";
 import { ModelQueryBuilder, OneOptions } from "../query_builder/query_builder";
 import {
-  parseDatabaseDataIntoModelResponse,
   addDynamicColumnsToModel,
+  parseDatabaseDataIntoModelResponse,
 } from "../serializer";
 import { SqlDataSource } from "../sql_data_source";
+import { ModelManager } from "../sql_data_source_types";
+import { Transaction } from "../transactions/transaction";
 import {
   belongsTo,
   column,
@@ -18,21 +22,17 @@ import {
   manyToMany,
 } from "./model_decorators";
 import {
-  FindType,
-  UnrestrictedFindType,
-  FindOneType,
-  UnrestrictedFindOneType,
-  SelectableType,
   DynamicColumnType,
+  FindOneType,
+  FindType,
+  SelectableType,
+  UnrestrictedFindOneType,
+  UnrestrictedFindType,
 } from "./model_manager/model_manager_types";
-import { Transaction } from "../transactions/transaction";
-import { Entity } from "../../entity";
-import { baseSoftDeleteDate } from "../../utils/date_utils";
-import { ModelManager } from "../sql_data_source_types";
 
 export type ModelWithoutExtraColumns<T extends Model> = Omit<
   Partial<T>,
-  "$additionalColumns"
+  "$additional"
 >;
 
 export type BaseModelMethodOptions = {
@@ -48,7 +48,7 @@ export function getBaseTableName(target: typeof Model): string {
 }
 
 export function getBaseModelInstance<T extends Model>(): T {
-  return { $additionalColumns: {} } as T;
+  return { $additional: {} } as T;
 }
 
 const tableMap = new Map<typeof Model, string>();
@@ -92,7 +92,7 @@ export abstract class Model extends Entity {
   }
 
   /**
-   * @description Constructor for the model, it's not meant to be used directly, it just initializes the $additionalColumns, it's advised to only use the static methods to interact with the database to save the model
+   * @description Constructor for the model, it's not meant to be used directly, it just initializes the $additional, it's advised to only use the static methods to interact with the database to save the model
    * @description Using the constructor could lead to unexpected behavior, if you want to create a new record use the insert method
    * @deprecated
    */
@@ -211,13 +211,13 @@ export abstract class Model extends Entity {
       return null;
     }
 
-    refreshedModel.$additionalColumns = model.$additionalColumns;
+    refreshedModel.$additional = model.$additional;
     return refreshedModel;
   }
 
   /**
    * @description Saves a new record to the database
-   * @description $additionalColumns will be ignored if set in the modelData and won't be returned in the response
+   * @description $additional will be ignored if set in the modelData and won't be returned in the response
    */
   static async insert<T extends Model>(
     this: new () => T | typeof Model,
@@ -257,7 +257,7 @@ export abstract class Model extends Entity {
       return null;
     }
 
-    updatedModel.$additionalColumns = modelSqlInstance.$additionalColumns;
+    updatedModel.$additional = modelSqlInstance.$additional;
     return updatedModel;
   }
 

@@ -1,8 +1,8 @@
-import { User } from "../../sql_models/User";
-import { Post } from "../../sql_models/Post";
-import { SqlDataSource } from "../../../src/sql/sql_data_source";
-import { Address } from "../../sql_models/Address";
 import { ModelQueryBuilder } from "../../../src/sql/query_builder/query_builder";
+import { SqlDataSource } from "../../../src/sql/sql_data_source";
+import { Address } from "../sql_models/Address";
+import { Post } from "../sql_models/Post";
+import { User } from "../sql_models/User";
 
 let sql: SqlDataSource | null = null;
 beforeAll(async () => {
@@ -116,7 +116,7 @@ test("Join users and posts", async () => {
 
   expect(joinedUsersAndPosts).not.toBeNull();
   expect(joinedUsersAndPosts.length).toBe(1);
-  expect(joinedUsersAndPosts[0].$additionalColumns.title).toBe("Post 1");
+  expect(joinedUsersAndPosts[0].$additional.title).toBe("Post 1");
 
   const leftJoinedUsersAndPosts = await User.query()
     .select("*")
@@ -126,7 +126,7 @@ test("Join users and posts", async () => {
 
   expect(leftJoinedUsersAndPosts).not.toBeNull();
   expect(leftJoinedUsersAndPosts.length).toBe(1);
-  expect(leftJoinedUsersAndPosts[0].$additionalColumns.title).toBe("Post 1");
+  expect(leftJoinedUsersAndPosts[0].$additional.title).toBe("Post 1");
 });
 
 test("Raw join users and posts", async () => {
@@ -158,8 +158,8 @@ test("Raw join users and posts", async () => {
 
   expect(joinedUsersAndPosts).not.toBeNull();
   expect(joinedUsersAndPosts.length).toBe(1);
-  expect(joinedUsersAndPosts[0].$additionalColumns.title).toBe("Post 1");
-  expect(joinedUsersAndPosts[0].$additionalColumns.superUserEmail).toBe("test");
+  expect(joinedUsersAndPosts[0].$additional.title).toBe("Post 1");
+  expect(joinedUsersAndPosts[0].$additional.superUserEmail).toBe("test");
 });
 
 test("posts with users", async () => {

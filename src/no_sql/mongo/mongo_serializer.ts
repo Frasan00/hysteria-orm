@@ -1,80 +1,90 @@
 import { convertCase } from "../../utils/case_utils";
 import {
-  getBaseCollectionInstance,
   Collection,
+  getBaseCollectionInstance,
 } from "./mongo_models/mongo_collection";
 import {
-  getMongoDynamicProperties,
+  getCollectionDynamicProperties,
   getCollectionProperties,
 } from "./mongo_models/mongo_collection_decorators";
 
 export async function serializeCollection<T extends Collection>(
-  model: typeof Collection,
+  collection: typeof Collection,
   data: any,
-  modelSelectedColumns?: string[],
+  collectionSelectedProperties?: string[],
   dynamicColumnsToAdd: string[] = [],
 ): Promise<T | null> {
   if (!data) {
     return null;
   }
 
-  const serializedModel = getBaseCollectionInstance<T>() as Record<string, any>;
-  const collectionFields = getCollectionProperties(model);
-  if (!modelSelectedColumns || !modelSelectedColumns.length) {
-    modelSelectedColumns = collectionFields;
+  const serializedCollection = getBaseCollectionInstance<T>() as Record<
+    string,
+    any
+  >;
+  const collectionProperties = getCollectionProperties(collection);
+  if (!collectionSelectedProperties || !collectionSelectedProperties.length) {
+    collectionSelectedProperties = collectionProperties;
   }
 
-  if (!modelSelectedColumns.includes("id")) {
-    modelSelectedColumns.push("id");
+  if (!collectionSelectedProperties.includes("id")) {
+    collectionSelectedProperties.push("id");
   }
 
   for (const key in data) {
     if (key === "_id") {
-      serializedModel.id = data._id?.toString();
+      serializedCollection.id = data._id?.toString();
       continue;
     }
 
-    if (!collectionFields.includes(key)) {
-      const casedKey = convertCase(key, model.modelCaseConvention);
-      serializedModel.$additionalColumns[casedKey] = data[key];
+    if (!collectionProperties.includes(key)) {
+      const casedKey = convertCase(key, collection.modelCaseConvention);
+      serializedCollection.$additional[casedKey] = data[key];
       continue;
     }
 
-    const casedKey = convertCase(key, model.modelCaseConvention);
-    serializedModel[casedKey] = data[key];
+    const casedKey = convertCase(key, collection.modelCaseConvention);
+    serializedCollection[casedKey] = data[key];
   }
 
-  if (!Object.keys(serializedModel.$additionalColumns).length) {
-    delete serializedModel.$additionalColumns;
+  if (!Object.keys(serializedCollection.$additional).length) {
+    delete serializedCollection.$additional;
   }
 
-  for (const column of modelSelectedColumns) {
+  for (const column of collectionSelectedProperties) {
     if (column === "id") {
       continue;
     }
 
     if (!data.hasOwnProperty(column)) {
-      const casedKey = convertCase(column, model.modelCaseConvention);
-      serializedModel[casedKey] = null;
+      const casedKey = convertCase(column, collection.modelCaseConvention);
+      serializedCollection[casedKey] = null;
       continue;
     }
   }
 
-  await addDynamicColumnsToModel(model, serializedModel, dynamicColumnsToAdd);
-  return serializedModel as T;
+  if (dynamicColumnsToAdd.length) {
+    await addDynamicColumnsToModel(
+      collection,
+      serializedCollection,
+      dynamicColumnsToAdd,
+    );
+  }
+
+  return serializedCollection as T;
 }
 
 export async function serializeCollections<T extends Collection>(
   model: typeof Collection,
   data: any[],
-  modelSelectedColumns?: string[],
+  collectionSelectedProperties?: string[],
   dynamicColumnsToAdd: string[] = [],
 ): Promise<T[]> {
   const promises = data.map(async (modelData: T) => {
     return await serializeCollection(
       model,
       modelData,
-      modelSelectedColumns,
+      collectionSelectedProperties,
       dynamicColumnsToAdd,
     );
   });
@@ -84,11 +94,11 @@ export async function serializeCollections<T extends Collection>(
 }
 
 export async function addDynamicColumnsToModel(
-  typeofModel: typeof Collection,
+  typeofCollection: typeof Collection,
   model: Record<string, any>,
   dynamicColumnsToAdd: string[],
 ): Promise<void> {
-  const dynamicColumns = getMongoDynamicProperties(typeofModel);
+  const dynamicColumns = getCollectionDynamicProperties(typeofCollection);
   if (!dynamicColumns || !dynamicColumns.length) {
     return;
   }
@@ -102,7 +112,7 @@ export async function addDynamicColumnsToModel(
   >();
 
   for (const dynamicColumn of dynamicColumns) {
-    dynamicColumnMap.set(dynamicColumn.functionName, {
+    dynamicColumnMap.set(dynamicColumn.functionName as string, {
       columnName: dynamicColumn.propertyName,
       dynamicColumnFn: dynamicColumn.dynamicPropertyFn,
     });
@@ -110,12 +120,16 @@ export async function addDynamicColumnsToModel(
 
   const promises = dynamicColumnsToAdd.map(async (dynamicColumn: string) => {
     const dynamic = dynamicColumnMap.get(dynamicColumn);
+    if (!dynamic) {
+      return;
+    }
+
     const casedKey = convertCase(
       dynamic?.columnName,
-      typeofModel.modelCaseConvention,
+      typeofCollection.modelCaseConvention,
     );
 
-    Object.assign(model, { [casedKey]: await dynamic?.dynamicColumnFn() });
+    model[casedKey] = await dynamic.dynamicColumnFn(model);
   });
 
   await Promise.all(promises);

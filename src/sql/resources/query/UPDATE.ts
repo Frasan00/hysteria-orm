@@ -18,9 +18,9 @@ const updateTemplate = (
       primaryKey?: string,
       primaryKeyValue?: string | undefined,
     ) => {
-      if (columns.includes("$additionalColumns")) {
-        const $additionalColumnsIndex = columns.indexOf("$additionalColumns");
-        columns.splice(columns.indexOf("$additionalColumns"), 1);
+      if (columns.includes("$additional")) {
+        const $additionalColumnsIndex = columns.indexOf("$additional");
+        columns.splice(columns.indexOf("$additional"), 1);
         values.splice($additionalColumnsIndex, 1);
       }
 
@@ -84,9 +84,9 @@ WHERE ${primaryKey} = ${primaryKeyPlaceholder};`;
         convertCase(column, typeofModel.databaseCaseConvention),
       );
 
-      if (columns.includes("$additionalColumns")) {
-        const $additionalColumnsIndex = columns.indexOf("$additionalColumns");
-        columns.splice(columns.indexOf("$additionalColumns"), 1);
+      if (columns.includes("$additional")) {
+        const $additionalColumnsIndex = columns.indexOf("$additional");
+        columns.splice(columns.indexOf("$additional"), 1);
         values.splice($additionalColumnsIndex, 1);
       }
 

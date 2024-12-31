@@ -102,8 +102,13 @@ async function loadMigrationModule(
       project: tsconfigPath,
     });
 
-    const migrationModule = require(pathToFile);
-    return migrationModule.default;
+    try {
+      const migrationModule = require(pathToFile);
+      return migrationModule.default;
+    } catch (error) {
+      const migrationModule = await import(pathToFile);
+      return migrationModule.default;
+    }
   }
 
   const migrationModule = await import(pathToFile);

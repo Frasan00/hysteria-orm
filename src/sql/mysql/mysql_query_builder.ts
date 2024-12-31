@@ -2,29 +2,29 @@ import { convertCase } from "../../utils/case_utils";
 import { log } from "../../utils/logger";
 import { Model, getBaseModelInstance } from "../models/model";
 import {
-  SelectableType,
-  RelationType,
   DynamicColumnType,
+  RelationType,
+  SelectableType,
 } from "../models/model_manager/model_manager_types";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
 import { PaginatedData, getPaginationMetadata } from "../pagination";
 import {
-  QueryBuilder,
-  OneOptions,
-  ManyOptions,
-  ModelQueryBuilder,
-  ModelInstanceType,
-} from "../query_builder/query_builder";
-import joinTemplate from "../resources/query/JOIN";
-import { parseDatabaseDataIntoModelResponse } from "../serializer";
-import { SqlDataSource } from "../sql_data_source";
-import {
   DeleteOptions,
   SoftDeleteOptions,
 } from "../query_builder/delete_query_builder_type";
-import deleteTemplate from "../resources/query/DELETE";
-import updateTemplate from "../resources/query/UPDATE";
+import {
+  ManyOptions,
+  ModelInstanceType,
+  ModelQueryBuilder,
+  OneOptions,
+  QueryBuilder,
+} from "../query_builder/query_builder";
 import { UpdateOptions } from "../query_builder/update_query_builder_types";
+import deleteTemplate from "../resources/query/DELETE";
+import joinTemplate from "../resources/query/JOIN";
+import updateTemplate from "../resources/query/UPDATE";
+import { parseDatabaseDataIntoModelResponse } from "../serializer";
+import { SqlDataSource } from "../sql_data_source";
 import { MysqlConnectionInstance } from "../sql_data_source_types";
 
 export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
@@ -255,7 +255,6 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
       this.whereQuery,
       this.joinQuery,
     );
-    console.log(query, params, this.params);
 
     params.push(...this.params);
 
@@ -383,7 +382,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
     this.select("COUNT(*) as total");
     const result = await this.one();
-    return result ? +result.$additionalColumns.total : 0;
+    return result ? +result.$additional.total : 0;
   }
 
   async getSum(column: SelectableType<T>): Promise<number>;
@@ -402,7 +401,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     column = convertCase(column as string, this.model.databaseCaseConvention);
     this.select(`SUM(${column as string}) as total`);
     const result = await this.one();
-    return result ? +result.$additionalColumns.total : 0;
+    return result ? +result.$additional.total : 0;
   }
 
   async paginate(
@@ -423,7 +422,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     const paginationMetadata = getPaginationMetadata(
       page,
       limit,
-      +total[0].$additionalColumns["total"] as number,
+      +total[0].$additional["total"] as number,
     );
     let data =
       (await parseDatabaseDataIntoModelResponse(models, this.model)) || [];
