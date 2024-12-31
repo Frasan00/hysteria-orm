@@ -18,7 +18,7 @@
 - [Setup Example](#setup-example)
 
 ## Known Issues
-- [Known Issues](src/KNOWN_ISSUES.MD)
+- [Known Issues](KNOWN_ISSUES.MD)
 
 ## Installation
 ```shell
