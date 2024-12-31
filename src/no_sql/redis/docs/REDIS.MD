@@ -18,7 +18,7 @@ REDIS_PASSWORD=root
 ```typescript
 import { Redis } from "hysteria-orm";
 
-// You can use a Singleton redis class using it's static methods connecting weith the main class
+// You can use a Singleton redis class using it's static methods connecting with the main class
 await Redis.connect({
     host: "localhost",
     port: 6379,
@@ -57,7 +57,7 @@ export type RedisGiveable =
   | boolean
   | Record<string, any>
   | Array<any>
-  | null;  
+  | null;
 ```
 
 ```typescript
@@ -77,7 +77,7 @@ const objectValue = await Redis.get<{ key: string }>("key");
 await Redis.set("key", 1, 1000);
 const numberValue = await Redis.get<number>("key");
 
-// Booleam
+// Boolean
 await Redis.set("key", true, 1000);
 const booleanValue = await Redis.get<boolean>("key");
 
