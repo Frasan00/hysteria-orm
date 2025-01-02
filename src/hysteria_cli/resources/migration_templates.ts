@@ -14,6 +14,7 @@ export default class extends Migration {
 }
 `;
     }
+
     return `import { Migration } from 'hysteria-orm';
 
 export default class extends Migration {
@@ -27,6 +28,87 @@ export default class extends Migration {
 }
 `;
   }
+
+  createMigrationTemplate(js: boolean = false): string {
+    if (js) {
+      return `import { Migration } from 'hysteria-orm';
+
+export default class extends Migration {
+  async up() {
+    this.schema.createTable(
+      'table_name',
+      (table) => {
+        // Your create table logic here
+      },
+    );
+  }
+
+  async down() {
+    // Your rollback logic here
+  }
+}
+`;
+    }
+
+    return `import { Migration } from 'hysteria-orm';
+
+export default class extends Migration {
+  async up(): Promise<void> {
+    this.schema.createTable(
+      'table_name',
+      (table) => {
+        // Your create table logic here
+      },
+    );
+  }
+
+  async down(): Promise<void> {
+    // Your rollback logic here
+  }
+}
+`;
+  }
+
+  alterMigrationTemplate(js: boolean = false): string {
+    if (js) {
+      return `import { Migration } from 'hysteria-orm';
+
+export default class extends Migration {
+  async up() {
+    this.schema.alterTable(
+      'table_name',
+      (table) => {
+        // Your alter table logic here
+      },
+    );
+  }
+
+  async down() {
+    // Your rollback logic here
+  }
+}
+`;
+    }
+
+    return `import { Migration } from 'hysteria-orm';
+
+export default class extends Migration {
+  async up(): Promise<void> {
+    this.schema.alterTable(
+      'table_name',
+      (table) => {
+        // Your alter table logic here
+      },
+    );
+  }
+
+  async down(): Promise<void> {
+    // Your rollback logic here
+  }
+}
+`;
+  }
+
 
   selectAllFromMigrationsTemplate(): string {
     return `SELECT * FROM migrations;`;

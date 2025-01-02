@@ -1,17 +1,17 @@
 import { SqlDataSourceType } from "../../../sql_data_source_types";
 
 export abstract class ColumnBuilder {
+  table: string;
+  queryStatements: string[];
+  columnName: string;
+  sqlType: SqlDataSourceType;
   partialQuery: string;
-  protected table: string;
-  protected queryStatements: string[];
-  protected columnName: string;
-  protected columnReferences: {
+  columnReferences: {
     table: string;
     column: string;
     onDelete?: string;
     onUpdate?: string;
   }[];
-  protected sqlType: SqlDataSourceType;
 
   constructor(
     table: string,

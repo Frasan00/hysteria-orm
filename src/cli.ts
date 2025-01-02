@@ -15,13 +15,21 @@ program
     "Generate a javascript file instead of a default typescript one",
     false,
   )
-  .action((name: string, option: { javascript: boolean }) => {
+  .option("-a, --alter", "Generate a template for an alter table migration", false)
+  .option("-c, --create", "Generate a template for a create table migration", false)
+  .action((name: string, option: { javascript: boolean, alter: boolean, create: boolean }) => {
     if (!name) {
       console.error("Error: migrations name is required.");
       process.exit(1);
     }
 
-    migrationCreateConnector(name, option.javascript);
+    if (option.alter && option.create) {
+      console.error("Error: You can't use --alter and --create at the same time.");
+      process.exit(1);
+    }
+
+    const migrationMode = option.alter ? 'alter' : option.create ? 'create' : 'basic';
+    migrationCreateConnector(name, option.javascript, migrationMode);
   });
 
 program

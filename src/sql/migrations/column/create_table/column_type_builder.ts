@@ -42,11 +42,6 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
 
     return new ColumnOptionsBuilder(
       this,
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
     );
   }
 
@@ -81,11 +76,6 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
 
     return new ColumnOptionsBuilder(
       this,
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
     );
   }
 
@@ -111,11 +101,6 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
 
     return new ColumnOptionsBuilder(
       this,
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
     );
   }
 
@@ -141,11 +126,6 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
 
     return new ColumnOptionsBuilder(
       this,
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
     );
   }
 
@@ -171,11 +151,6 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
 
     return new ColumnOptionsBuilder(
       this,
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
     );
   }
 
@@ -201,11 +176,6 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
 
     return new ColumnOptionsBuilder(
       this,
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
     );
   }
 
@@ -235,11 +205,6 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
 
     return new ColumnOptionsBuilder(
       this,
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
     );
   }
 
@@ -265,11 +230,6 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
 
     return new ColumnOptionsBuilder(
       this,
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
     );
   }
 
@@ -295,11 +255,6 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
 
     return new ColumnOptionsBuilder(
       this,
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
     );
   }
 
@@ -325,11 +280,6 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
 
     return new ColumnOptionsBuilder(
       this,
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
     );
   }
 
@@ -355,11 +305,6 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
 
     return new ColumnOptionsBuilder(
       this,
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
     );
   }
 
@@ -385,11 +330,6 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
 
     return new ColumnOptionsBuilder(
       this,
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
     );
   }
 
@@ -404,11 +344,6 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
       this.partialQuery += ` \`${name}\` INT AUTO_INCREMENT`;
       return new ColumnOptionsBuilder(
         this,
-        this.table,
-        this.queryStatements,
-        this.partialQuery,
-        this.sqlType,
-        this.columnName,
       );
     }
 
@@ -417,11 +352,6 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
       this.partialQuery += ` "${name}" INTEGER PRIMARY KEY AUTOINCREMENT`;
       return new ColumnOptionsBuilder(
         this,
-        this.table,
-        this.queryStatements,
-        this.partialQuery,
-        this.sqlType,
-        this.columnName,
       );
     }
 
@@ -429,11 +359,6 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
     this.partialQuery += ` "${name}" SERIAL`;
     return new ColumnOptionsBuilder(
       this,
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
     );
   }
 
@@ -449,11 +374,6 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
       this.partialQuery += ` \`${name}\` BIGINT AUTO_INCREMENT`;
       return new ColumnOptionsBuilder(
         this,
-        this.table,
-        this.queryStatements,
-        this.partialQuery,
-        this.sqlType,
-        this.columnName,
       );
     }
 
@@ -462,11 +382,6 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
       this.partialQuery += ` "${name}" INTEGER PRIMARY KEY AUTOINCREMENT`;
       return new ColumnOptionsBuilder(
         this,
-        this.table,
-        this.queryStatements,
-        this.partialQuery,
-        this.sqlType,
-        this.columnName,
       );
     }
 
@@ -474,11 +389,6 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
     this.partialQuery += ` "${name}" BIGSERIAL`;
     return new ColumnOptionsBuilder(
       this,
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
     );
   }
 
@@ -504,11 +414,6 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
 
     return new ColumnOptionsBuilder(
       this,
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
     );
   }
 
@@ -534,11 +439,6 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
 
     return new ColumnOptionsBuilder(
       this,
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
     );
   }
 
@@ -593,11 +493,6 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
 
     return new ColumnOptionsBuilder(
       this,
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
     );
   }
 
@@ -632,11 +527,6 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
 
     return new ColumnOptionsBuilder(
       this,
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
     );
   }
 
@@ -671,11 +561,6 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
 
     return new ColumnOptionsBuilder(
       this,
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
     );
   }
 
@@ -705,11 +590,6 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
 
     return new ColumnOptionsBuilder(
       this,
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
     );
   }
 
@@ -722,11 +602,6 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
       this.partialQuery += ` ${name} TEXT`;
       return new ColumnOptionsBuilder(
         this,
-        this.table,
-        this.queryStatements,
-        this.partialQuery,
-        this.sqlType,
-        this.columnName,
       );
     }
 
@@ -749,11 +624,6 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
 
     return new ColumnOptionsBuilder(
       this,
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
     );
   }
 
@@ -768,11 +638,6 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
       this.partialQuery += ` ${name} TEXT`;
       return new ColumnOptionsBuilder(
         this,
-        this.table,
-        this.queryStatements,
-        this.partialQuery,
-        this.sqlType,
-        this.columnName,
       );
     }
 
@@ -794,11 +659,6 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
 
     return new ColumnOptionsBuilder(
       this,
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
     );
   }
 
@@ -829,11 +689,6 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
 
     return new ColumnOptionsBuilder(
       this,
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
     );
   }
 

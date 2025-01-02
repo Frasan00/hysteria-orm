@@ -8,25 +8,14 @@ export default class ColumnOptionsBuilder extends ColumnBuilder {
 
   constructor(
     columnTypeBuilder: ColumnTypeBuilder,
-    table: string,
-    queryStatements: string[],
-    partialQuery: string,
-    sqlType: SqlDataSourceType,
-    columnName: string = "",
-    columnReferences: {
-      table: string;
-      column: string;
-      onDelete?: string;
-      onUpdate?: string;
-    }[] = [],
   ) {
     super(
-      table,
-      queryStatements,
-      partialQuery,
-      sqlType,
-      columnName,
-      columnReferences,
+      columnTypeBuilder.table,
+      columnTypeBuilder.queryStatements,
+      columnTypeBuilder.partialQuery,
+      columnTypeBuilder.sqlType,
+      columnTypeBuilder.columnName,
+      columnTypeBuilder.columnReferences,
     );
     this.columnTypeBuilder = columnTypeBuilder;
   }
@@ -38,12 +27,6 @@ export default class ColumnOptionsBuilder extends ColumnBuilder {
     this.columnTypeBuilder.partialQuery += " NULL";
     return new ColumnOptionsBuilder(
       this.columnTypeBuilder,
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
-      this.columnReferences,
     );
   }
 
@@ -51,12 +34,6 @@ export default class ColumnOptionsBuilder extends ColumnBuilder {
     this.columnTypeBuilder.partialQuery += ` DEFAULT ${value},`;
     return new ColumnOptionsBuilder(
       this.columnTypeBuilder,
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
-      this.columnReferences,
     );
   }
 
@@ -67,12 +44,6 @@ export default class ColumnOptionsBuilder extends ColumnBuilder {
     this.columnTypeBuilder.partialQuery += " UNSIGNED";
     return new ColumnOptionsBuilder(
       this.columnTypeBuilder,
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
-      this.columnReferences,
     );
   }
 
@@ -83,12 +54,6 @@ export default class ColumnOptionsBuilder extends ColumnBuilder {
     this.columnTypeBuilder.partialQuery += " NOT NULL";
     return new ColumnOptionsBuilder(
       this.columnTypeBuilder,
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
-      this.columnReferences,
     );
   }
 
@@ -102,36 +67,18 @@ export default class ColumnOptionsBuilder extends ColumnBuilder {
         this.columnTypeBuilder.partialQuery += " PRIMARY KEY";
         return new ColumnOptionsBuilder(
           this.columnTypeBuilder,
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-          this.columnReferences,
         );
 
       case "postgres":
         this.columnTypeBuilder.partialQuery += " PRIMARY KEY";
         return new ColumnOptionsBuilder(
           this.columnTypeBuilder,
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-          this.columnReferences,
         );
 
       case "sqlite":
         this.columnTypeBuilder.partialQuery += " PRIMARY KEY";
         return new ColumnOptionsBuilder(
           this.columnTypeBuilder,
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
-          this.columnName,
-          this.columnReferences,
         );
 
       default:
@@ -146,12 +93,6 @@ export default class ColumnOptionsBuilder extends ColumnBuilder {
     this.columnTypeBuilder.partialQuery += " UNIQUE";
     return new ColumnOptionsBuilder(
       this.columnTypeBuilder,
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
-      this.columnReferences,
     );
   }
 
@@ -165,10 +106,6 @@ export default class ColumnOptionsBuilder extends ColumnBuilder {
         this.columnTypeBuilder.partialQuery += " AUTO_INCREMENT";
         return new ColumnOptionsBuilder(
           this.columnTypeBuilder,
-          this.table,
-          this.queryStatements,
-          this.partialQuery,
-          this.sqlType,
         );
 
       case "postgres":
@@ -190,20 +127,15 @@ export default class ColumnOptionsBuilder extends ColumnBuilder {
     column: string,
     options?: { onDelete: string; onUpdate: string },
   ): ColumnOptionsBuilder {
-    this.columnReferences?.push({
+    this.columnTypeBuilder.columnReferences?.push({
       table,
       column,
       onDelete: options?.onDelete,
       onUpdate: options?.onUpdate,
     });
+
     return new ColumnOptionsBuilder(
       this.columnTypeBuilder,
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-      this.columnName,
-      this.columnReferences,
     );
   }
 }

@@ -855,10 +855,11 @@ const { query, params } = userQueryBuilder
 ## hysteria-orm-cli for Migrations
 - You can run the cli using `npx hysteria` (for npm) or `yarn run hysteria` (for yarn)
 
-## create:migration <name> [-j, --javascript]
+## create:migration <name> [-j, --javascript] [-a, --alter] [-c, --create]
 - Creates a migration in the migrations folder
 - If the creation folder specified in the .env (or the default one `database/migrations`) it will be created automatically
 - By default this command generates a .ts file, you can generate a .js file with the flag -j
+- You can specify the mode of the migration with -c that spawns a create table migration and -a that spawns an alter table migration
 
 ## run:migrations [runUntil] [-t, --tsconfig]
 - Runs all pending migrations <optional - migration_file_name>
