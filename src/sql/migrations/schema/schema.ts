@@ -2,8 +2,10 @@ import dotenv from "dotenv";
 import createTableTemplate from "../../resources/migrations/CREATE_TABLE";
 import dropTableTemplate from "../../resources/migrations/DROP_TABLE";
 import ColumnBuilderAlter from "../column/alter_table/column_builder_alter";
-import ColumnBuilderConnector from "../column/create_table/column_builder_connector";
 import { SqlDataSourceType } from "../../sql_data_source_types";
+import ColumnTypeBuilder from "../column/create_table/column_type_builder";
+import { StandaloneQueryBuilder } from "../../standalone_query_builder/standalone_sql_query_builder";
+import { CaseConvention } from "../../../utils/case_utils";
 
 dotenv.config();
 
@@ -12,49 +14,82 @@ export default class Schema {
   sqlType: SqlDataSourceType;
 
   constructor(sqlType?: SqlDataSourceType) {
+    this.sqlType = (sqlType || process.env.DB_TYPE) as SqlDataSourceType;
+
+    if (!this.sqlType) {
+      throw new Error(`No DB_TYPE specified in the environment variables`);
+    }
+
     this.queryStatements = [];
-    this.sqlType = (sqlType ||
-      process.env.DB_TYPE ||
-      "mysql") as SqlDataSourceType;
+  }
+
+  /**
+   * @description Gets an instance of the query builder and adds it to the current migration
+   * @description Default database convention is snake case
+   */
+  useQueryBuilder(
+    table: string,
+    cb: (
+      queryBuilder: Omit<StandaloneQueryBuilder, "select" | "toSql">,
+    ) => string,
+    options?: {
+      databaseCaseConvention?: CaseConvention
+    }
+  ): void {
+    const standaloneQueryBuilder = new StandaloneQueryBuilder(
+      this.sqlType,
+      table,
+      'none',
+      options?.databaseCaseConvention || 'snake'
+    );
+
+    this.rawQuery(cb(standaloneQueryBuilder));
   }
 
   /**
    * @description Add raw query to the migration
-   * @param query
    */
   rawQuery(query: string): void {
     this.queryStatements.push(query);
   }
 
+  /**
+   * @description Create table constructor
+   */
   createTable(
     table: string,
+    cb: (table: ColumnTypeBuilder) => void,
     options?: { ifNotExists?: boolean },
-  ): ColumnBuilderConnector {
+  ): void {
     const partialQuery =
       options && options.ifNotExists
         ? createTableTemplate.createTableIfNotExists(table, this.sqlType)
         : createTableTemplate.createTable(table, this.sqlType);
 
-    return new ColumnBuilderConnector(
+    const tableBuilder = new ColumnTypeBuilder(
       table,
       this.queryStatements,
       partialQuery,
       this.sqlType,
     );
+
+    cb(tableBuilder);
+    tableBuilder.commit();
   }
 
   /**
-   * @description Alter table
-   * @param table
-   * @returns ColumnBuilderAlter
+   * @description Alter table constructor
    */
-  alterTable(table: string) {
-    return new ColumnBuilderAlter(
+  alterTable(table: string, cb: (table: ColumnBuilderAlter) => void): void {
+    const tableAlter = new ColumnBuilderAlter(
       table,
       this.queryStatements,
       "",
       this.sqlType,
     );
+
+    cb(tableAlter);
+    tableAlter.commit();
   }
 
   /**

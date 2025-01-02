@@ -1,4 +1,4 @@
-import { CaseConvention } from "../../utils/case_utils";
+import { CaseConvention, convertCase } from "../../utils/case_utils";
 import { Model } from "../models/model";
 import joinTemplate from "../resources/query/JOIN";
 import selectTemplate from "../resources/query/SELECT";
@@ -64,7 +64,66 @@ export class StandaloneQueryBuilder {
     this.selectQuery = this.selectTemplate.selectColumns(
       ...(columns as string[]),
     );
+
     return this;
+  }
+
+  /**
+   * @description Insert record into a table
+   */
+  insert(data: Record<string, any>): string {
+    const columns = Object.keys(data).map((key) => convertCase(key, this.model.databaseCaseConvention));
+    const values = Object.values(data);
+    return `INSERT INTO ${this.getDatabaseTableName(this.model.table)} (${columns.join(", ")}) VALUES (${columns
+      .map((_, index) => `${this.parseValueForDatabase(values[index])}`)
+      .join(", ")})`.trim();
+  }
+
+  /**
+   * @description Insert multiple records into a table
+   */
+  insertMany(data: Record<string, any>[]): string {
+    const columns = Object.keys(data[0]).map((key) => convertCase(key, this.model.databaseCaseConvention));
+    const values = data.map((record) => Object.values(record));
+    return `INSERT INTO ${this.getDatabaseTableName(this.model.table)} (${columns.join(", ")}) VALUES ${values
+      .map((record) => `(${record.map(value => this.parseValueForDatabase(value)).join(", ")})`)
+      .join(", ")}`.trim();
+  }
+
+  /**
+   * @description Updates records from a table
+   */
+  update(data: Record<string, any>): string {
+    const columns = Object.keys(data).map((key) => convertCase(key, this.model.databaseCaseConvention));
+    const values = Object.values(data);
+    this.whereQuery = this.convertPlaceHolderToValue(this.whereQuery);
+
+    return `UPDATE ${this.getDatabaseTableName(this.model.table)} SET ${columns
+      .map(
+        (key, index) => `${key} = ${this.parseValueForDatabase(values[index])}`,
+      )
+      .join(", ")} ${this.joinQuery} ${this.whereQuery}`.trim();
+  }
+
+  /**
+   * @description Deletes records from a table
+   */
+  delete(): string {
+    this.whereQuery = this.convertPlaceHolderToValue(this.whereQuery);
+    return `DELETE FROM ${this.getDatabaseTableName(this.model.table)} ${this.joinQuery} ${this.whereQuery}`.trim();
+  }
+
+  /**
+   * @description Soft deletes records from a table
+   */
+  softDelete(options?: { column?: string; value?: string | number }): string {
+    const column = options?.column || "deleted_at";
+    const value =
+      options?.value || new Date().toISOString().slice(0, 19).replace("T", " ");
+
+    this.whereQuery = this.convertPlaceHolderToValue(this.whereQuery);
+
+    return `UPDATE ${this.getDatabaseTableName(this.model.table)} SET ${convertCase(column, this.model.databaseCaseConvention)} = ${this.parseValueForDatabase(value)} ${this.joinQuery} ${this.whereQuery}`.trim();
   }
 
   /**
@@ -907,5 +966,78 @@ export class StandaloneQueryBuilder {
 
     const parsedQuery = parsePlaceHolders(dbType || this.dbType, query);
     return { query: parsedQuery, params: this.params };
+  }
+
+  private convertPlaceHolderToValue(query: string) {
+    let index = 0;
+    return query.replace(/PLACEHOLDER/g, () => {
+      const indexParam = this.parseValueForDatabase(this.params[index]);
+      index++;
+      return indexParam;
+    });
+  }
+
+  private parseValueForDatabase(value: any): string {
+    if (typeof value === "string") {
+      switch (this.dbType) {
+        case "mysql":
+        case "sqlite":
+        case "mariadb":
+          return `'${value}'`;
+        case "postgres":
+          return `'${value}'`;
+        default:
+          throw new Error("Unsupported database type");
+      }
+    }
+
+    if (typeof value === "number") {
+      return value.toString();
+    }
+
+    if (value === null) {
+      return "NULL";
+    }
+
+    if (typeof value === "boolean") {
+      switch(this.dbType) {
+        case "mysql":
+        case "sqlite":
+        case "mariadb":
+          return value ? "1" : "0";
+        case "postgres":
+          return value ? "TRUE" : "FALSE";
+        default:
+          throw new Error("Unsupported database type");
+      }
+    }
+
+    if (value instanceof Date) {
+      switch (this.dbType) {
+        case "mysql":
+        case "sqlite":
+        case "mariadb":
+          return `'${value.toISOString().slice(0, 19).replace("T", " ")}'`;
+        case "postgres":
+          return `'${value.toISOString().slice(0, 19).replace("T", " ")}'`;
+        default:
+          throw new Error("Unsupported database type");
+      }
+    }
+
+    return value;
+  }
+
+  private getDatabaseTableName(tableName: string): string {
+    switch (this.dbType) {
+      case "mysql":
+      case "sqlite":
+      case "mariadb":
+        return tableName;
+      case "postgres":
+        return `"${tableName}"`;
+      default:
+        throw new Error("Unsupported database type");
+    }
   }
 }

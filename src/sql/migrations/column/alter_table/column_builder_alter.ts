@@ -656,7 +656,7 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
   }
 
   /**
-   * @description Commits the changes - if omitted, the migration will be run empty
+   * @internal
    */
   commit(): void {
     this.queryStatements.push(this.partialQuery);

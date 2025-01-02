@@ -25,56 +25,51 @@ export class MigrationController {
   }
 
   async upMigrations(migrations: Migration[]): Promise<void> {
-    try {
-      for (const migration of migrations) {
-        await migration.up();
-        const statements = migration.schema.queryStatements;
-        for (const statement of statements) {
-          if (
-            !statement ||
-            statement === "" ||
-            statement === ";" ||
-            statement === ","
-          ) {
-            continue;
-          }
-          await this.localQuery(statement);
+    for (const migration of migrations) {
+      await migration.up();
+      const statements = migration.schema.queryStatements;
+      for (const statement of statements) {
+        if (
+          !statement ||
+          statement === "" ||
+          statement === ";" ||
+          statement === ","
+        ) {
+          continue;
         }
 
-        await this.addMigrationToMigrationTable(migration);
-        if (migration.afterUp) {
-          await migration.afterUp(this.sqlDataSource);
-        }
+        await this.localQuery(statement);
       }
-    } catch (error: any) {
-      throw error;
+
+      await this.addMigrationToMigrationTable(migration);
+      if (migration.afterUp) {
+        await migration.afterUp(this.sqlDataSource);
+      }
     }
   }
 
   async downMigrations(migrations: Migration[]): Promise<void> {
     migrations = migrations.reverse();
-    try {
-      for (const migration of migrations) {
-        await migration.down();
-        const statements = migration.schema.queryStatements;
-        for (const statement of statements) {
-          if (
-            !statement ||
-            statement === "" ||
-            statement === ";" ||
-            statement === ","
-          ) {
-            continue;
-          }
-          await this.localQuery(statement);
+    for (const migration of migrations) {
+      await migration.down();
+      const statements = migration.schema.queryStatements;
+      for (const statement of statements) {
+        if (
+          !statement ||
+          statement === "" ||
+          statement === ";" ||
+          statement === ","
+        ) {
+          continue;
         }
-        await this.deleteMigrationFromMigrationTable(migration);
-        if (migration.afterDown) {
-          await migration.afterDown(this.sqlDataSource);
-        }
+
+        await this.localQuery(statement);
       }
-    } catch (error: any) {
-      throw new Error(error);
+
+      await this.deleteMigrationFromMigrationTable(migration);
+      if (migration.afterDown) {
+        await migration.afterDown(this.sqlDataSource);
+      }
     }
   }
 

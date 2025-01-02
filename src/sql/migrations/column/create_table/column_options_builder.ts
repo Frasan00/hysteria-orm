@@ -1,20 +1,13 @@
 import { SqlDataSourceType } from "../../../sql_data_source_types";
+import { ColumnBuilder } from "./column_builder";
 import ColumnTypeBuilder from "./column_type_builder";
 
-export default class ColumnOptionsBuilder {
-  protected table: string;
-  protected queryStatements: string[];
-  protected partialQuery: string;
-  protected columnName: string;
-  protected columnReferences: {
-    table: string;
-    column: string;
-    onDelete?: string;
-    onUpdate?: string;
-  }[];
-  protected sqlType: SqlDataSourceType;
+// TODO: remove the other props from the class
+export default class ColumnOptionsBuilder extends ColumnBuilder {
+  protected columnTypeBuilder: ColumnTypeBuilder;
 
   constructor(
+    columnTypeBuilder: ColumnTypeBuilder,
     table: string,
     queryStatements: string[],
     partialQuery: string,
@@ -27,20 +20,24 @@ export default class ColumnOptionsBuilder {
       onUpdate?: string;
     }[] = [],
   ) {
-    this.table = table;
-    this.queryStatements = queryStatements;
-    this.partialQuery = partialQuery;
-    this.sqlType = sqlType;
-    this.columnName = columnName;
-    this.columnReferences = columnReferences;
+    super(
+      table,
+      queryStatements,
+      partialQuery,
+      sqlType,
+      columnName,
+      columnReferences,
+    );
+    this.columnTypeBuilder = columnTypeBuilder;
   }
 
   /**
    * @description Makes the column nullable
    */
   nullable(): ColumnOptionsBuilder {
-    this.partialQuery += " NULL";
+    this.columnTypeBuilder.partialQuery += " NULL";
     return new ColumnOptionsBuilder(
+      this.columnTypeBuilder,
       this.table,
       this.queryStatements,
       this.partialQuery,
@@ -51,8 +48,9 @@ export default class ColumnOptionsBuilder {
   }
 
   default(value: string | number | boolean): ColumnOptionsBuilder {
-    this.partialQuery += ` DEFAULT ${value}`;
+    this.columnTypeBuilder.partialQuery += ` DEFAULT ${value},`;
     return new ColumnOptionsBuilder(
+      this.columnTypeBuilder,
       this.table,
       this.queryStatements,
       this.partialQuery,
@@ -66,8 +64,9 @@ export default class ColumnOptionsBuilder {
    * @description Makes the column unsigned allowing only positive values
    */
   unsigned(): ColumnOptionsBuilder {
-    this.partialQuery += " UNSIGNED";
+    this.columnTypeBuilder.partialQuery += " UNSIGNED";
     return new ColumnOptionsBuilder(
+      this.columnTypeBuilder,
       this.table,
       this.queryStatements,
       this.partialQuery,
@@ -81,8 +80,9 @@ export default class ColumnOptionsBuilder {
    * @description Makes the column not nullable
    */
   notNullable(): ColumnOptionsBuilder {
-    this.partialQuery += " NOT NULL";
+    this.columnTypeBuilder.partialQuery += " NOT NULL";
     return new ColumnOptionsBuilder(
+      this.columnTypeBuilder,
       this.table,
       this.queryStatements,
       this.partialQuery,
@@ -99,8 +99,9 @@ export default class ColumnOptionsBuilder {
     switch (this.sqlType) {
       case "mysql":
       case "mariadb":
-        this.partialQuery += " PRIMARY KEY";
+        this.columnTypeBuilder.partialQuery += " PRIMARY KEY";
         return new ColumnOptionsBuilder(
+          this.columnTypeBuilder,
           this.table,
           this.queryStatements,
           this.partialQuery,
@@ -110,8 +111,9 @@ export default class ColumnOptionsBuilder {
         );
 
       case "postgres":
-        this.partialQuery += " PRIMARY KEY";
+        this.columnTypeBuilder.partialQuery += " PRIMARY KEY";
         return new ColumnOptionsBuilder(
+          this.columnTypeBuilder,
           this.table,
           this.queryStatements,
           this.partialQuery,
@@ -121,8 +123,9 @@ export default class ColumnOptionsBuilder {
         );
 
       case "sqlite":
-        this.partialQuery += " PRIMARY KEY";
+        this.columnTypeBuilder.partialQuery += " PRIMARY KEY";
         return new ColumnOptionsBuilder(
+          this.columnTypeBuilder,
           this.table,
           this.queryStatements,
           this.partialQuery,
@@ -140,8 +143,9 @@ export default class ColumnOptionsBuilder {
    * @description Adds an unique constraint
    */
   unique(): ColumnOptionsBuilder {
-    this.partialQuery += " UNIQUE";
+    this.columnTypeBuilder.partialQuery += " UNIQUE";
     return new ColumnOptionsBuilder(
+      this.columnTypeBuilder,
       this.table,
       this.queryStatements,
       this.partialQuery,
@@ -158,8 +162,9 @@ export default class ColumnOptionsBuilder {
     switch (this.sqlType) {
       case "mysql":
       case "mariadb":
-        this.partialQuery += " AUTO_INCREMENT";
+        this.columnTypeBuilder.partialQuery += " AUTO_INCREMENT";
         return new ColumnOptionsBuilder(
+          this.columnTypeBuilder,
           this.table,
           this.queryStatements,
           this.partialQuery,
@@ -192,6 +197,7 @@ export default class ColumnOptionsBuilder {
       onUpdate: options?.onUpdate,
     });
     return new ColumnOptionsBuilder(
+      this.columnTypeBuilder,
       this.table,
       this.queryStatements,
       this.partialQuery,
@@ -199,62 +205,5 @@ export default class ColumnOptionsBuilder {
       this.columnName,
       this.columnReferences,
     );
-  }
-
-  /**
-   * @description Chains a new column creation
-   */
-  newColumn(): ColumnTypeBuilder {
-    this.partialQuery += ",\n";
-    return new ColumnTypeBuilder(
-      this.table,
-      this.queryStatements,
-      this.partialQuery,
-      this.sqlType,
-    );
-  }
-
-  /**
-   * @description Commits the column creation - if omitted, the migration will be run empty
-   */
-  commit(): void {
-    if (this.columnReferences.length) {
-      this.columnReferences.forEach((reference) => {
-        switch (this.sqlType) {
-          case "mysql":
-          case "mariadb":
-            this.partialQuery += `,\nCONSTRAINT fk_${this.table}_${
-              this.columnName
-            } FOREIGN KEY (${this.columnName}) REFERENCES ${reference.table}(${
-              reference.column
-            }) ${reference.onDelete ? `ON DELETE ${reference.onDelete}` : ""} ${
-              reference.onUpdate ? `ON UPDATE ${reference.onUpdate}` : ""
-            }`;
-            break;
-          case "postgres":
-            this.partialQuery += `,\nCONSTRAINT fk_${this.table}_${
-              this.columnName
-            } FOREIGN KEY (${this.columnName}) REFERENCES ${reference.table}(${
-              reference.column
-            }) ${reference.onDelete ? `ON DELETE ${reference.onDelete}` : ""} ${
-              reference.onUpdate ? `ON UPDATE ${reference.onUpdate}` : ""
-            }`;
-            break;
-          case "sqlite":
-            this.partialQuery += `,\nFOREIGN KEY (${
-              this.columnName
-            }) REFERENCES ${reference.table}(${reference.column}) ${
-              reference.onDelete ? `ON DELETE ${reference.onDelete}` : ""
-            } ${reference.onUpdate ? `ON UPDATE ${reference.onUpdate}` : ""}`;
-            break;
-          default:
-            throw new Error("Unsupported SQL type");
-        }
-      });
-    }
-
-    this.partialQuery += "\n";
-    this.partialQuery += ");";
-    this.queryStatements.push(this.partialQuery);
   }
 }

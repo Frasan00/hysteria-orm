@@ -874,39 +874,56 @@ const { query, params } = userQueryBuilder
 - Rollbacks all existing migrations and runs them again
 - If you are using typescript you can specify the path to the tsconfig file with the -t flag to resolve type errors
 
+## Tsconfig
+- the default tsconfig if not tsconfig path is provided is:
+```json
+{
+    "compilerOptions": {
+        "module": "CommonJS",
+        "target": "ES2019",
+    },
+}
+```
+
 ## Create Table
 
 ```typescript
 import { Migration } from "hysteria-orm";
-import { Post } from "../Models/Post";
+import { User } from "../Models/Post";
 
 export default class extends Migration {
     async up(): Promise<void> {
-        this.schema.createTable('posts', { ifNotExists: true })
-            .newColumn().bigint('id').autoIncrement().primary()
-            .newColumn().bigint('user_id').references('users', 'id')
-            .newColumn().varchar('name', 255).notNullable()
-            .commit();
+        this.schema.createTable(
+        "users",
+        (table) => {
+            table.bigSerial("id").primary();
+            table.varchar("name", 255).notNullable();
+            table.varchar("email", 255).notNullable();
+            table.varchar("signup_source", 255).notNullable();
+            table.boolean("is_active").notNullable().default(true);
+            table.jsonb("json");
+            table.timestamp("created_at", { autoCreate: true });
+            table.timestamp("updated_at", { autoCreate: true });
+            table.timestamp("deleted_at").nullable();
+        },
+        { ifNotExists: true },
+        );
 
-        this.schema.rawQuery('CREATE INDEX posts_name_idx ON posts (name)');
+        this.schema.rawQuery('CREATE INDEX users_name_idx ON users (name)');
 
         // Hooks for after up and down migrations are executed immediately after the relative migration file is executed
         this.afterUp = async () => {
-            console.log('Creating user...')
             await User.insert({
                 name: 'John Doe',
                 email: 'john@gmail.com',
                 signupSource: 'web',
                 isActive: true,
             })
-
-            console.log('User created.')
-            console.log(await User.query().many())
         }
     }
 
     async down(): void {
-        this.schema.dropTable('posts');
+        this.schema.dropTable('users');
         this.afterDown = async () => { /* After down logic here*/ }
     }
 }
@@ -919,18 +936,45 @@ import { Migration } from "hysteria-orm";
 
 export default class extends Migration {
     async up(): void {
-        this.schema.alterTable('users')
-            .dropColumn('email')
-            .addColumn('email', 'varchar', { length: 255, notNullable: true, unique: true, after: 'name' })
-            .commit();
+        this.schema.alterTable("users", (table) => {
+            table.addColumn("age", "integer");
+            table.dropColumn("age");
+            table.modifyColumnType("name", "varchar(255)");
+            table.renameColumn("name", "full_name");
+        });
     }
 
     async down(): void {
-        this.schema.alterTable('users')
-            .dropColumn('email')
-            .addColumn('email', 'varchar', { length: 255, notNullable: true })
-            .commit();
+        this.schema.alterTable("users", (table) => {
+            table.dropColumn("age");
+            table.addColumn("age", "integer");
+            table.renameColumn("full_name", "name");
+            table.modifyColumnType("name", "varchar(255)");
+        });
     }
+}
+```
+
+## Migration Query Builder
+- You can use the standalone query builder in the migrations in order to make crud operations non model related
+```typescript
+export default class extends Migration {
+  public async up(): Promise<void> {
+    this.schema.useQueryBuilder("users", (qb) => {
+      return qb
+        .where("name", "John")
+        .update({ name: "John2" });
+    });
+
+    this.schema.useQueryBuilder("users", (qb) => {
+      return qb
+        .insert({ name: "John" });
+    });
+  }
+
+  public async down(): Promise<void> {
+    // Down logic here
+  }
 }
 ```
 
