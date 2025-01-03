@@ -49,7 +49,7 @@ describe("TestModel", () => {
     const foundModels = await TestModel.find({
       dynamicProperties: ["getTest"],
     });
-    console.log(foundModels);
+    // TODO: fix this test
     expect(foundModels.length).toBe(2);
     // expect(foundModels[0]["test"]).toBe("test");
   });

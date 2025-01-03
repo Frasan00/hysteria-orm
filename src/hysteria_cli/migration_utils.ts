@@ -10,11 +10,11 @@ import {
   SqlConnectionType,
   SqliteConnectionInstance,
 } from "../sql/sql_data_source_types";
-import { register } from "ts-node";
+import { register, RegisterOptions } from "ts-node";
 import { createRequire } from "module";
 
 dotenv.config();
-const require = createRequire(import.meta.url);
+const customRequire = createRequire(__filename);
 
 export async function getMigrationTable(
   sqlConnection: SqlConnectionType,
@@ -69,6 +69,7 @@ export async function getMigrations(
       migrationName,
       tsconfigPath,
     );
+
     const migration: Migration = new migrationModule();
     migration.migrationName = migrationName;
     migrations.push(migration);
@@ -96,23 +97,29 @@ async function loadMigrationModule(
   tsconfigPath?: string,
 ): Promise<new () => Migration> {
   const isTs = pathToFile.endsWith(".ts");
+  const tsNodeConfig: RegisterOptions = tsconfigPath
+    ? { project: tsconfigPath }
+    : {
+        compilerOptions: {
+          module: "CommonJS",
+          target: "ES2019",
+        },
+      };
+
   if (isTs) {
     register({
       transpileOnly: true,
-      project: tsconfigPath,
+      ...tsNodeConfig,
     });
-
-    try {
-      const migrationModule = require(pathToFile);
-      return migrationModule.default;
-    } catch (error) {
-      const migrationModule = await import(pathToFile);
-      return migrationModule.default;
-    }
   }
 
-  const migrationModule = await import(pathToFile);
-  return migrationModule.default;
+  try {
+    const migrationModule = customRequire(pathToFile);
+    return migrationModule.default || migrationModule;
+  } catch (error) {
+    const migrationModule = await import(pathToFile);
+    return migrationModule.default || migrationModule;
+  }
 }
 
 async function findMigrationModule(

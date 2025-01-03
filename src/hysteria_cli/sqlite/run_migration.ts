@@ -62,6 +62,6 @@ export async function runMigrationsSQLite(
 
     await migrationController.upMigrations(pendingMigrations);
   } finally {
-    await sql.closeConnection();
+    await sql.closeConnection().catch();
   }
 }

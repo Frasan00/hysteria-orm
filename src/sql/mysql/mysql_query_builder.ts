@@ -1,3 +1,4 @@
+import { execSql } from "../../sql_runner/sql_runner";
 import { convertCase } from "../../utils/case_utils";
 import { log } from "../../utils/logger";
 import { Model, getBaseModelInstance } from "../models/model";
@@ -78,8 +79,13 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     query += this.groupFooterQuery();
 
     query = query.trim();
-    log(query, this.logs, this.params);
-    const [rows] = await this.mysqlConnection.query<any[]>(query, this.params);
+    const [rows] = await execSql(
+      query,
+      this.params,
+      "mysql",
+      this.mysqlConnection,
+      this.logs,
+    );
 
     if (!rows.length) {
       return null;
@@ -144,10 +150,15 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     query = this.whereTemplate.convertPlaceHolderToValue(query);
     query = query.trim();
 
-    log(query, this.logs, this.params);
-    const [rows] = await this.mysqlConnection.query<any[]>(query, this.params);
+    const [rows] = await execSql(
+      query,
+      this.params,
+      "mysql",
+      this.mysqlConnection,
+      this.logs,
+    );
 
-    const modelPromises = rows.map(async (row) => {
+    const modelPromises = rows.map(async (row: any) => {
       const modelInstance = getBaseModelInstance<T>();
       await this.mergeRawPacketIntoModel(modelInstance, row, this.model);
       return modelInstance as T;

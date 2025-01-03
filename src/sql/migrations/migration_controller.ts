@@ -1,6 +1,7 @@
 import { SqlDataSource } from "../sql_data_source";
 import { Migration } from "./migration";
 import { log } from "../../utils/logger";
+import { format } from "sql-formatter";
 import {
   MysqlConnectionInstance,
   PgClientInstance,
@@ -8,6 +9,7 @@ import {
   SqlDataSourceType,
   SqliteConnectionInstance,
 } from "../sql_data_source_types";
+import { getSqlDialect } from "../../sql_runner/sql_runner";
 
 export class MigrationController {
   protected sqlDataSource: SqlDataSource;
@@ -25,60 +27,59 @@ export class MigrationController {
   }
 
   async upMigrations(migrations: Migration[]): Promise<void> {
-    try {
-      for (const migration of migrations) {
-        await migration.up();
-        const statements = migration.schema.queryStatements;
-        for (const statement of statements) {
-          if (
-            !statement ||
-            statement === "" ||
-            statement === ";" ||
-            statement === ","
-          ) {
-            continue;
-          }
-          await this.localQuery(statement);
+    for (const migration of migrations) {
+      await migration.up();
+      const statements = migration.schema.queryStatements;
+      for (const statement of statements) {
+        if (
+          !statement ||
+          statement === "" ||
+          statement === ";" ||
+          statement === ","
+        ) {
+          continue;
         }
 
-        await this.addMigrationToMigrationTable(migration);
-        if (migration.afterUp) {
-          await migration.afterUp(this.sqlDataSource);
-        }
+        await this.localQuery(statement);
       }
-    } catch (error: any) {
-      throw error;
+
+      await this.addMigrationToMigrationTable(migration);
+      if (migration.afterUp) {
+        await migration.afterUp(this.sqlDataSource);
+      }
     }
   }
 
   async downMigrations(migrations: Migration[]): Promise<void> {
     migrations = migrations.reverse();
-    try {
-      for (const migration of migrations) {
-        await migration.down();
-        const statements = migration.schema.queryStatements;
-        for (const statement of statements) {
-          if (
-            !statement ||
-            statement === "" ||
-            statement === ";" ||
-            statement === ","
-          ) {
-            continue;
-          }
-          await this.localQuery(statement);
+    for (const migration of migrations) {
+      await migration.down();
+      const statements = migration.schema.queryStatements;
+      for (const statement of statements) {
+        if (
+          !statement ||
+          statement === "" ||
+          statement === ";" ||
+          statement === ","
+        ) {
+          continue;
         }
-        await this.deleteMigrationFromMigrationTable(migration);
-        if (migration.afterDown) {
-          await migration.afterDown(this.sqlDataSource);
-        }
+
+        await this.localQuery(statement);
       }
-    } catch (error: any) {
-      throw new Error(error);
+
+      await this.deleteMigrationFromMigrationTable(migration);
+      if (migration.afterDown) {
+        await migration.afterDown(this.sqlDataSource);
+      }
     }
   }
 
   private async localQuery(text: string, params: any[] = []): Promise<void> {
+    text = format(text, {
+      language: getSqlDialect(this.sqlType),
+    });
+
     if (this.sqlType === "mysql" || this.sqlType === "mariadb") {
       text = text.replace(/PLACEHOLDER/g, "?");
       log(text, true, params);
