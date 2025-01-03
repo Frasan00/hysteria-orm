@@ -27,6 +27,7 @@ import joinTemplate from "../resources/query/JOIN";
 import updateTemplate from "../resources/query/UPDATE";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
 import { PgClientInstance } from "../sql_data_source_types";
+import { execSql } from "../../sql_runner/sql_runner";
 
 export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   protected pgClient: PgClientInstance;
@@ -115,8 +116,13 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     query += this.groupFooterQuery();
 
     query = query.trim();
-    log(query, this.logs, this.params);
-    const result = await this.pgClient.query(query, this.params);
+    const result = await execSql(
+      query,
+      this.params,
+      "postgres",
+      this.pgClient,
+      this.logs,
+    );
     if (!result.rows[0]) {
       return null;
     }
@@ -185,11 +191,16 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     query = this.whereTemplate.convertPlaceHolderToValue(query);
     query = query.trim();
 
-    log(query, this.logs, this.params);
-    const result = await this.pgClient.query(query, this.params);
+    const result = (await execSql(
+      query,
+      this.params,
+      "postgres",
+      this.pgClient,
+      this.logs,
+    )) as any;
     const rows = result.rows;
 
-    const modelPromises = rows.map(async (row) => {
+    const modelPromises = rows.map(async (row: any) => {
       const modelInstance = getBaseModelInstance<T>();
       await this.mergeRawPacketIntoModel(modelInstance, row, this.model);
 
@@ -248,8 +259,13 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
     params.push(...this.params);
 
-    log(query, this.logs, params);
-    const result = await this.pgClient.query<T>(query, params);
+    const result = (await execSql(
+      query,
+      params,
+      "postgres",
+      this.pgClient,
+      this.logs,
+    )) as any;
     if (!result.rows) {
       return 0;
     }
@@ -271,8 +287,13 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
       this.joinQuery,
     );
 
-    log(query, this.logs, this.params);
-    const result = await this.pgClient.query<T>(query, this.params);
+    const result = (await execSql(
+      query,
+      this.params,
+      "postgres",
+      this.pgClient,
+      this.logs,
+    )) as any;
     if (!result.rows) {
       return 0;
     }
@@ -299,8 +320,13 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
     params = [...params, ...this.params];
 
-    log(query, this.logs, params);
-    const result = await this.pgClient.query<T>(query, params);
+    const result = (await execSql(
+      query,
+      params,
+      "postgres",
+      this.pgClient,
+      this.logs,
+    )) as any;
     if (!result.rows) {
       return 0;
     }

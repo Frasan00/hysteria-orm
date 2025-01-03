@@ -1,7 +1,36 @@
 import logger from "../../../../utils/logger";
 import { SqlDataSourceType } from "../../../sql_data_source_types";
 import { ColumnBuilder } from "./column_builder";
-import ColumnOptionsBuilder from "./column_options_builder";
+
+export type ColumnConstraintsOptions = Omit<
+  ColumnTypeBuilder,
+  | "string"
+  | "varchar"
+  | "uuid"
+  | "tinytext"
+  | "mediumtext"
+  | "longtext"
+  | "binary"
+  | "enum"
+  | "text"
+  | "char"
+  | "tinyint"
+  | "smallint"
+  | "mediumint"
+  | "serial"
+  | "bigSerial"
+  | "integer"
+  | "bigInteger"
+  | "int"
+  | "bigint"
+  | "float"
+  | "decimal"
+  | "double"
+  | "boolean"
+  | "date"
+  | "timestamp"
+  | "jsonb"
+>;
 
 export type DateOptions = {
   autoCreate?: boolean;
@@ -18,7 +47,8 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
     super(table, queryStatements, partialQuery, sqlType);
   }
 
-  string(name: string, length: number = 255): ColumnOptionsBuilder {
+  // Types
+  string(name: string, length: number = 255): ColumnConstraintsOptions {
     this.checkLastComma();
     switch (this.sqlType) {
       case "mariadb":
@@ -40,20 +70,18 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
         throw new Error("Unsupported SQL type");
     }
 
-    return new ColumnOptionsBuilder(
-      this,
-    );
+    return this;
   }
 
   /**
    * @alias string
    */
-  varchar(name: string, length: number = 255): ColumnOptionsBuilder {
+  varchar(name: string, length: number = 255): ColumnConstraintsOptions {
     this.checkLastComma();
     return this.string(name, length);
   }
 
-  uuid(name: string): ColumnOptionsBuilder {
+  uuid(name: string): ColumnConstraintsOptions {
     this.checkLastComma();
     switch (this.sqlType) {
       case "postgres":
@@ -74,12 +102,10 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
         throw new Error("Unsupported SQL type");
     }
 
-    return new ColumnOptionsBuilder(
-      this,
-    );
+    return this;
   }
 
-  tinytext(name: string): ColumnOptionsBuilder {
+  tinytext(name: string): ColumnConstraintsOptions {
     this.checkLastComma();
     switch (this.sqlType) {
       case "mariadb":
@@ -99,12 +125,10 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
         throw new Error("Unsupported SQL type");
     }
 
-    return new ColumnOptionsBuilder(
-      this,
-    );
+    return this;
   }
 
-  mediumtext(name: string): ColumnOptionsBuilder {
+  mediumtext(name: string): ColumnConstraintsOptions {
     this.checkLastComma();
     switch (this.sqlType) {
       case "mariadb":
@@ -124,12 +148,10 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
         throw new Error("Unsupported SQL type");
     }
 
-    return new ColumnOptionsBuilder(
-      this,
-    );
+    return this;
   }
 
-  longtext(name: string): ColumnOptionsBuilder {
+  longtext(name: string): ColumnConstraintsOptions {
     this.checkLastComma();
     switch (this.sqlType) {
       case "mariadb":
@@ -149,12 +171,10 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
         throw new Error("Unsupported SQL type");
     }
 
-    return new ColumnOptionsBuilder(
-      this,
-    );
+    return this;
   }
 
-  binary(name: string, length: number = 255): ColumnOptionsBuilder {
+  binary(name: string, length: number = 255): ColumnConstraintsOptions {
     this.checkLastComma();
     switch (this.sqlType) {
       case "mariadb":
@@ -174,12 +194,10 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
         throw new Error("Unsupported SQL type");
     }
 
-    return new ColumnOptionsBuilder(
-      this,
-    );
+    return this;
   }
 
-  enum(name: string, values: string[]): ColumnOptionsBuilder {
+  enum(name: string, values: string[]): ColumnConstraintsOptions {
     this.checkLastComma();
     switch (this.sqlType) {
       case "mariadb":
@@ -203,12 +221,10 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
         throw new Error("Unsupported SQL type");
     }
 
-    return new ColumnOptionsBuilder(
-      this,
-    );
+    return this;
   }
 
-  text(name: string): ColumnOptionsBuilder {
+  text(name: string): ColumnConstraintsOptions {
     this.checkLastComma();
     switch (this.sqlType) {
       case "mariadb":
@@ -228,12 +244,10 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
         throw new Error("Unsupported SQL type");
     }
 
-    return new ColumnOptionsBuilder(
-      this,
-    );
+    return this;
   }
 
-  char(name: string, length: number = 255): ColumnOptionsBuilder {
+  char(name: string, length: number = 255): ColumnConstraintsOptions {
     this.checkLastComma();
     switch (this.sqlType) {
       case "mariadb":
@@ -253,12 +267,10 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
         throw new Error("Unsupported SQL type");
     }
 
-    return new ColumnOptionsBuilder(
-      this,
-    );
+    return this;
   }
 
-  tinyint(name: string): ColumnOptionsBuilder {
+  tinyint(name: string): ColumnConstraintsOptions {
     this.checkLastComma();
     switch (this.sqlType) {
       case "mariadb":
@@ -278,12 +290,10 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
         throw new Error("Unsupported SQL type");
     }
 
-    return new ColumnOptionsBuilder(
-      this,
-    );
+    return this;
   }
 
-  smallint(name: string): ColumnOptionsBuilder {
+  smallint(name: string): ColumnConstraintsOptions {
     this.checkLastComma();
     switch (this.sqlType) {
       case "mariadb":
@@ -303,12 +313,10 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
         throw new Error("Unsupported SQL type");
     }
 
-    return new ColumnOptionsBuilder(
-      this,
-    );
+    return this;
   }
 
-  mediumint(name: string): ColumnOptionsBuilder {
+  mediumint(name: string): ColumnConstraintsOptions {
     this.checkLastComma();
     switch (this.sqlType) {
       case "mariadb":
@@ -328,71 +336,55 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
         throw new Error("Unsupported SQL type");
     }
 
-    return new ColumnOptionsBuilder(
-      this,
-    );
+    return this;
   }
 
   /**
    * @description If using mysql, it will automatically add INT AUTO_INCREMENT
-   * @param name
    */
-  serial(name: string): ColumnOptionsBuilder {
+  serial(name: string): ColumnConstraintsOptions {
     this.checkLastComma();
     if (this.sqlType === `mysql` || this.sqlType === `mariadb`) {
       this.columnName = name;
       this.partialQuery += ` \`${name}\` INT AUTO_INCREMENT`;
-      return new ColumnOptionsBuilder(
-        this,
-      );
+      return this;
     }
 
     if (this.sqlType === `sqlite`) {
       this.columnName = name;
       this.partialQuery += ` "${name}" INTEGER PRIMARY KEY AUTOINCREMENT`;
-      return new ColumnOptionsBuilder(
-        this,
-      );
+      return this;
     }
 
     this.columnName = name;
     this.partialQuery += ` "${name}" SERIAL`;
-    return new ColumnOptionsBuilder(
-      this,
-    );
+    return this;
   }
 
   /**
    * @description If using mysql, it will automatically be converted in BIGINT AUTO_INCREMENT
    * @description If using sqlite, it will automatically be converted in INTEGER PRIMARY KEY AUTOINCREMENT
-   * @param name
    */
-  bigSerial(name: string): ColumnOptionsBuilder {
+  bigSerial(name: string): ColumnConstraintsOptions {
     this.checkLastComma();
     if (this.sqlType === `mysql` || this.sqlType === `mariadb`) {
       this.columnName = name;
       this.partialQuery += ` \`${name}\` BIGINT AUTO_INCREMENT`;
-      return new ColumnOptionsBuilder(
-        this,
-      );
+      return this;
     }
 
     if (this.sqlType === `sqlite`) {
       this.columnName = name;
       this.partialQuery += ` "${name}" INTEGER PRIMARY KEY AUTOINCREMENT`;
-      return new ColumnOptionsBuilder(
-        this,
-      );
+      return this;
     }
 
     this.columnName = name;
     this.partialQuery += ` "${name}" BIGSERIAL`;
-    return new ColumnOptionsBuilder(
-      this,
-    );
+    return this;
   }
 
-  integer(name: string, length?: number): ColumnOptionsBuilder {
+  integer(name: string, length?: number): ColumnConstraintsOptions {
     this.checkLastComma();
     switch (this.sqlType) {
       case "mariadb":
@@ -412,12 +404,10 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
         throw new Error("Unsupported SQL type");
     }
 
-    return new ColumnOptionsBuilder(
-      this,
-    );
+    return this;
   }
 
-  bigInteger(name: string): ColumnOptionsBuilder {
+  bigInteger(name: string): ColumnConstraintsOptions {
     this.checkLastComma();
     switch (this.sqlType) {
       case "mariadb":
@@ -437,27 +427,23 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
         throw new Error("Unsupported SQL type");
     }
 
-    return new ColumnOptionsBuilder(
-      this,
-    );
+    return this;
   }
 
   /**
    * @description Alias for integer
-   * @param name
    * @returns ColumnOptionsBuilder
    */
-  int(name: string): ColumnOptionsBuilder {
+  int(name: string): ColumnConstraintsOptions {
     this.checkLastComma();
     return this.integer(name);
   }
 
   /**
    * @description Alias for bigInteger
-   * @param name
    * @returns ColumnOptionsBuilder
    */
-  bigint(name: string): ColumnOptionsBuilder {
+  bigint(name: string): ColumnConstraintsOptions {
     this.checkLastComma();
     return this.bigInteger(name);
   }
@@ -471,7 +457,7 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
       precision: 10,
       scale: 2,
     },
-  ): ColumnOptionsBuilder {
+  ): ColumnConstraintsOptions {
     this.checkLastComma();
     switch (this.sqlType) {
       case "mariadb":
@@ -491,9 +477,7 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
         throw new Error("Unsupported SQL type");
     }
 
-    return new ColumnOptionsBuilder(
-      this,
-    );
+    return this;
   }
 
   decimal(
@@ -505,7 +489,7 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
       precision: 10,
       scale: 2,
     },
-  ): ColumnOptionsBuilder {
+  ): ColumnConstraintsOptions {
     this.checkLastComma();
     switch (this.sqlType) {
       case "mariadb":
@@ -525,9 +509,7 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
         throw new Error("Unsupported SQL type");
     }
 
-    return new ColumnOptionsBuilder(
-      this,
-    );
+    return this;
   }
 
   double(
@@ -539,7 +521,7 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
       precision: 10,
       scale: 2,
     },
-  ): ColumnOptionsBuilder {
+  ): ColumnConstraintsOptions {
     this.checkLastComma();
     switch (this.sqlType) {
       case "mariadb":
@@ -559,12 +541,10 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
         throw new Error("Unsupported SQL type");
     }
 
-    return new ColumnOptionsBuilder(
-      this,
-    );
+    return this;
   }
 
-  boolean(name: string): ColumnOptionsBuilder {
+  boolean(name: string): ColumnConstraintsOptions {
     this.checkLastComma();
     switch (this.sqlType) {
       case "mariadb":
@@ -588,21 +568,17 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
         throw new Error("Unsupported SQL type");
     }
 
-    return new ColumnOptionsBuilder(
-      this,
-    );
+    return this;
   }
 
-  date(name: string, options?: DateOptions): ColumnOptionsBuilder {
+  date(name: string, options?: DateOptions): ColumnConstraintsOptions {
     this.checkLastComma();
     if (this.sqlType === "sqlite") {
       logger.warn("sqlite does not support date columns, using text instead");
 
       this.columnName = name;
       this.partialQuery += ` ${name} TEXT`;
-      return new ColumnOptionsBuilder(
-        this,
-      );
+      return this;
     }
 
     this.columnName = name;
@@ -622,12 +598,10 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
       this.partialQuery += "  ON UPDATE CURRENT_DATE";
     }
 
-    return new ColumnOptionsBuilder(
-      this,
-    );
+    return this;
   }
 
-  timestamp(name: string, options?: DateOptions): ColumnOptionsBuilder {
+  timestamp(name: string, options?: DateOptions): ColumnConstraintsOptions {
     this.checkLastComma();
     if (this.sqlType === "sqlite") {
       logger.warn(
@@ -636,9 +610,7 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
 
       this.columnName = name;
       this.partialQuery += ` ${name} TEXT`;
-      return new ColumnOptionsBuilder(
-        this,
-      );
+      return this;
     }
 
     this.columnName = name;
@@ -657,16 +629,13 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
       this.partialQuery += "  ON UPDATE CURRENT_TIMESTAMP";
     }
 
-    return new ColumnOptionsBuilder(
-      this,
-    );
+    return this;
   }
 
   /**
    * @description EXPERIMENTAL
-   * @param name
    */
-  jsonb(name: string): ColumnOptionsBuilder {
+  jsonb(name: string): ColumnConstraintsOptions {
     this.checkLastComma();
     this.columnName = name;
     switch (this.sqlType) {
@@ -687,9 +656,106 @@ export default class ColumnTypeBuilder extends ColumnBuilder {
         throw new Error("Unsupported SQL type");
     }
 
-    return new ColumnOptionsBuilder(
-      this,
-    );
+    return this;
+  }
+
+  //  constaints for columns
+  /**
+   * @description Makes the column nullable
+   */
+  nullable(): ColumnConstraintsOptions {
+    this.partialQuery += " NULL";
+    return this;
+  }
+
+  default(value: string | number | boolean): ColumnConstraintsOptions {
+    this.partialQuery += ` DEFAULT ${value},`;
+    return this;
+  }
+
+  /**
+   * @description Makes the column unsigned allowing only positive values
+   */
+  unsigned(): ColumnConstraintsOptions {
+    this.partialQuery += " UNSIGNED";
+    return this;
+  }
+
+  /**
+   * @description Makes the column not nullable
+   */
+  notNullable(): ColumnConstraintsOptions {
+    this.partialQuery += " NOT NULL";
+    return this;
+  }
+
+  /**
+   * @description Makes the column the primary key
+   */
+  primary(): ColumnConstraintsOptions {
+    switch (this.sqlType) {
+      case "mysql":
+      case "mariadb":
+        this.partialQuery += " PRIMARY KEY";
+        return this;
+
+      case "postgres":
+        this.partialQuery += " PRIMARY KEY";
+        return this;
+
+      case "sqlite":
+        this.partialQuery += " PRIMARY KEY";
+        return this;
+
+      default:
+        throw new Error("Unsupported SQL type");
+    }
+  }
+
+  /**
+   * @description Adds an unique constraint
+   */
+  unique(): ColumnConstraintsOptions {
+    this.partialQuery += " UNIQUE";
+    return this;
+  }
+
+  /**
+   * @description Adds an auto increment - only for mysql
+   */
+  autoIncrement(): ColumnConstraintsOptions {
+    switch (this.sqlType) {
+      case "mysql":
+      case "mariadb":
+        this.partialQuery += " AUTO_INCREMENT";
+        return this;
+
+      case "postgres":
+        throw new Error("Auto Increment not supported for PostgreSQL");
+      case "sqlite":
+        throw new Error("Auto Increment not supported for sqlite");
+      default:
+        throw new Error("Unsupported SQL type");
+    }
+  }
+
+  /**
+   * @description Adds a foreign key with a specific constraint
+   */
+  references(
+    table: string,
+    column: string,
+    options?: { onDelete: string; onUpdate: string },
+  ): ColumnConstraintsOptions {
+    this.columnReferences?.push({
+      localColumn: this.columnName,
+      table,
+      column,
+      onDelete: options?.onDelete,
+      onUpdate: options?.onUpdate,
+    });
+
+    return this;
   }
 
   private checkLastComma(): void {

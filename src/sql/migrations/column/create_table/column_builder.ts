@@ -1,12 +1,13 @@
 import { SqlDataSourceType } from "../../../sql_data_source_types";
 
 export abstract class ColumnBuilder {
-  table: string;
-  queryStatements: string[];
-  columnName: string;
-  sqlType: SqlDataSourceType;
   partialQuery: string;
-  columnReferences: {
+  protected table: string;
+  protected queryStatements: string[];
+  protected columnName: string;
+  protected sqlType: SqlDataSourceType;
+  protected columnReferences: {
+    localColumn: string;
     table: string;
     column: string;
     onDelete?: string;
@@ -20,6 +21,7 @@ export abstract class ColumnBuilder {
     sqlType: SqlDataSourceType,
     columnName: string = "",
     columnReferences: {
+      localColumn: string;
       table: string;
       column: string;
       onDelete?: string;
@@ -35,40 +37,26 @@ export abstract class ColumnBuilder {
   }
 
   /**
+   * @description Not to be used directly. This method is used to commit the column to the query statements.
    * @internal
    */
   commit(): void {
     if (this.columnReferences.length) {
       this.columnReferences.forEach((reference) => {
+        const uniqueId = Math.floor(10000000 + Math.random() * 90000000);
         switch (this.sqlType) {
           case "mysql":
           case "mariadb":
-            this.partialQuery += `,\nCONSTRAINT fk_${this.table}_${
-              this.columnName
-            } FOREIGN KEY (${this.columnName}) REFERENCES ${reference.table}(${
-              reference.column
-            }) ${reference.onDelete ? `ON DELETE ${reference.onDelete}` : ""} ${
-              reference.onUpdate ? `ON UPDATE ${reference.onUpdate}` : ""
-            }`;
+            this.partialQuery += `,\n\tCONSTRAINT fk_${uniqueId}_${reference.localColumn} FOREIGN KEY (${reference.localColumn}) REFERENCES ${reference.table}(${reference.column})`;
             break;
           case "postgres":
-            this.partialQuery += `,\nCONSTRAINT fk_${this.table}_${
-              this.columnName
-            } FOREIGN KEY (${this.columnName}) REFERENCES ${reference.table}(${
-              reference.column
-            }) ${reference.onDelete ? `ON DELETE ${reference.onDelete}` : ""} ${
-              reference.onUpdate ? `ON UPDATE ${reference.onUpdate}` : ""
-            }`;
+            this.partialQuery += `,\n\tCONSTRAINT fk_${uniqueId}_${reference.localColumn} FOREIGN KEY (${reference.localColumn}) REFERENCES ${reference.table}(${reference.column})`;
             break;
           case "sqlite":
-            this.partialQuery += `,\nFOREIGN KEY (${
-              this.columnName
-            }) REFERENCES ${reference.table}(${reference.column}) ${
-              reference.onDelete ? `ON DELETE ${reference.onDelete}` : ""
-            } ${reference.onUpdate ? `ON UPDATE ${reference.onUpdate}` : ""}`;
+            this.partialQuery += `,\n\tCONSTRAINT fk_${uniqueId}_${reference.localColumn} FOREIGN KEY (${reference.localColumn}) REFERENCES ${reference.table}(${reference.column})`;
             break;
           default:
-            throw new Error("Unsupported SQL type");
+            break;
         }
       });
     }

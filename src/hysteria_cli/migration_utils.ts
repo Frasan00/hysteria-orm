@@ -14,7 +14,7 @@ import { register, RegisterOptions } from "ts-node";
 import { createRequire } from "module";
 
 dotenv.config();
-const require = createRequire(import.meta.url);
+const customRequire = createRequire(__filename);
 
 export async function getMigrationTable(
   sqlConnection: SqlConnectionType,
@@ -114,7 +114,7 @@ async function loadMigrationModule(
   }
 
   try {
-    const migrationModule = require(pathToFile);
+    const migrationModule = customRequire(pathToFile);
     return migrationModule.default || migrationModule;
   } catch (error) {
     const migrationModule = await import(pathToFile);

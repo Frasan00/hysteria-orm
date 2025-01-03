@@ -1,4 +1,6 @@
+import { format } from "sql-formatter";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
+import { execSql } from "../../sql_runner/sql_runner";
 import { convertCase } from "../../utils/case_utils";
 import { log } from "../../utils/logger";
 import { getBaseModelInstance, Model } from "../models/model";
@@ -74,7 +76,9 @@ export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     this.limit(1);
     query += this.groupFooterQuery();
 
-    query = query.trim();
+    query = format(query, {
+      language: "sqlite",
+    });
     log(query, this.logs, this.params);
     const results = await this.promisifyQuery<T>(query, this.params);
     if (!results.length) {
@@ -140,11 +144,13 @@ export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
     query += this.groupFooterQuery();
     query = this.whereTemplate.convertPlaceHolderToValue(query);
-    query = query.trim();
 
+    query = format(query, {
+      language: "sqlite",
+    });
     log(query, this.logs, this.params);
     const results = await this.promisifyQuery<T[]>(query, this.params);
-    const modelPromises = results.map(async (result) => {
+    const modelPromises = results.map(async (result: any) => {
       const modelInstance = getBaseModelInstance<T>();
       await this.mergeRawPacketIntoModel(modelInstance, result, this.model);
 

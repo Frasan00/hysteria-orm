@@ -6,7 +6,9 @@ import whereTemplate, {
   BaseValues,
   BinaryOperatorType,
 } from "../resources/query/WHERE";
+import { format } from "sql-formatter";
 import { SqlDataSourceType } from "../sql_data_source_types";
+import { getSqlDialect } from "../../sql_runner/sql_runner";
 
 export class StandaloneQueryBuilder {
   protected selectQuery: string;
@@ -72,37 +74,62 @@ export class StandaloneQueryBuilder {
    * @description Insert record into a table
    */
   insert(data: Record<string, any>): string {
-    const columns = Object.keys(data).map((key) => convertCase(key, this.model.databaseCaseConvention));
+    const columns = Object.keys(data).map((key) =>
+      convertCase(key, this.model.databaseCaseConvention),
+    );
     const values = Object.values(data);
-    return `INSERT INTO ${this.getDatabaseTableName(this.model.table)} (${columns.join(", ")}) VALUES (${columns
-      .map((_, index) => `${this.parseValueForDatabase(values[index])}`)
-      .join(", ")})`.trim();
+    return format(
+      `INSERT INTO ${this.getDatabaseTableName(this.model.table)} (${columns.join(", ")}) VALUES (${columns
+        .map((_, index) => `${this.parseValueForDatabase(values[index])}`)
+        .join(", ")})`.trim(),
+      {
+        language: getSqlDialect(this.dbType),
+      },
+    );
   }
 
   /**
    * @description Insert multiple records into a table
    */
   insertMany(data: Record<string, any>[]): string {
-    const columns = Object.keys(data[0]).map((key) => convertCase(key, this.model.databaseCaseConvention));
+    const columns = Object.keys(data[0]).map((key) =>
+      convertCase(key, this.model.databaseCaseConvention),
+    );
     const values = data.map((record) => Object.values(record));
-    return `INSERT INTO ${this.getDatabaseTableName(this.model.table)} (${columns.join(", ")}) VALUES ${values
-      .map((record) => `(${record.map(value => this.parseValueForDatabase(value)).join(", ")})`)
-      .join(", ")}`.trim();
+    return format(
+      `INSERT INTO ${this.getDatabaseTableName(this.model.table)} (${columns.join(", ")}) VALUES ${values
+        .map(
+          (record) =>
+            `(${record.map((value) => this.parseValueForDatabase(value)).join(", ")})`,
+        )
+        .join(", ")}`.trim(),
+      {
+        language: getSqlDialect(this.dbType),
+      },
+    );
   }
 
   /**
    * @description Updates records from a table
    */
   update(data: Record<string, any>): string {
-    const columns = Object.keys(data).map((key) => convertCase(key, this.model.databaseCaseConvention));
+    const columns = Object.keys(data).map((key) =>
+      convertCase(key, this.model.databaseCaseConvention),
+    );
     const values = Object.values(data);
     this.whereQuery = this.convertPlaceHolderToValue(this.whereQuery);
 
-    return `UPDATE ${this.getDatabaseTableName(this.model.table)} SET ${columns
-      .map(
-        (key, index) => `${key} = ${this.parseValueForDatabase(values[index])}`,
-      )
-      .join(", ")} ${this.joinQuery} ${this.whereQuery}`.trim();
+    return format(
+      `UPDATE ${this.getDatabaseTableName(this.model.table)} SET ${columns
+        .map(
+          (key, index) =>
+            `${key} = ${this.parseValueForDatabase(values[index])}`,
+        )
+        .join(", ")} ${this.joinQuery} ${this.whereQuery}`.trim(),
+      {
+        language: getSqlDialect(this.dbType),
+      },
+    );
   }
 
   /**
@@ -110,7 +137,12 @@ export class StandaloneQueryBuilder {
    */
   delete(): string {
     this.whereQuery = this.convertPlaceHolderToValue(this.whereQuery);
-    return `DELETE FROM ${this.getDatabaseTableName(this.model.table)} ${this.joinQuery} ${this.whereQuery}`.trim();
+    return format(
+      `DELETE FROM ${this.getDatabaseTableName(this.model.table)} ${this.joinQuery} ${this.whereQuery}`.trim(),
+      {
+        language: getSqlDialect(this.dbType),
+      },
+    );
   }
 
   /**
@@ -123,7 +155,12 @@ export class StandaloneQueryBuilder {
 
     this.whereQuery = this.convertPlaceHolderToValue(this.whereQuery);
 
-    return `UPDATE ${this.getDatabaseTableName(this.model.table)} SET ${convertCase(column, this.model.databaseCaseConvention)} = ${this.parseValueForDatabase(value)} ${this.joinQuery} ${this.whereQuery}`.trim();
+    return format(
+      `UPDATE ${this.getDatabaseTableName(this.model.table)} SET ${convertCase(column, this.model.databaseCaseConvention)} = ${this.parseValueForDatabase(value)} ${this.joinQuery} ${this.whereQuery}`.trim(),
+      {
+        language: getSqlDialect(this.dbType),
+      },
+    );
   }
 
   /**
@@ -965,7 +1002,12 @@ export class StandaloneQueryBuilder {
     }
 
     const parsedQuery = parsePlaceHolders(dbType || this.dbType, query);
-    return { query: parsedQuery, params: this.params };
+    return {
+      query: format(parsedQuery, {
+        language: getSqlDialect(this.dbType),
+      }),
+      params: this.params,
+    };
   }
 
   private convertPlaceHolderToValue(query: string) {
@@ -1000,7 +1042,7 @@ export class StandaloneQueryBuilder {
     }
 
     if (typeof value === "boolean") {
-      switch(this.dbType) {
+      switch (this.dbType) {
         case "mysql":
         case "sqlite":
         case "mariadb":
