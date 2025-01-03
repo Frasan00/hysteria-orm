@@ -691,17 +691,17 @@ await User.query().where("name", "Eve updated two").softDelete({
 ```typescript
 import { User } from "./User";
 
-const falseValue = false;
+const nullValue = null;
 const trueValue = 1;
 const user = await User.query()
 // Will enter here
 await User.query().when(trueValue, (value, query) => {
-    query.where("id", 1);
+    query.where("id", trueValue);
 })
 .one();
 
 // Won't enter here
-await User.query().when(falseValue, (value, query) => {
+await User.query().when(nullValue, (value, query) => {
     query.where("id", 1);
 })
 .one();
