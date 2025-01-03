@@ -115,7 +115,6 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     this.limit(1);
     query += this.groupFooterQuery();
 
-    query = query.trim();
     const result = await execSql(
       query,
       this.params,
@@ -189,7 +188,6 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
     query += this.groupFooterQuery();
     query = this.whereTemplate.convertPlaceHolderToValue(query);
-    query = query.trim();
 
     const result = (await execSql(
       query,

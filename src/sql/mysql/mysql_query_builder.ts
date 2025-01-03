@@ -78,7 +78,6 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     this.limit(1);
     query += this.groupFooterQuery();
 
-    query = query.trim();
     const [rows] = await execSql(
       query,
       this.params,
@@ -148,7 +147,6 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
     query += this.groupFooterQuery();
     query = this.whereTemplate.convertPlaceHolderToValue(query);
-    query = query.trim();
 
     const [rows] = await execSql(
       query,

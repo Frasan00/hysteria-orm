@@ -81,7 +81,7 @@ export class StandaloneQueryBuilder {
     return format(
       `INSERT INTO ${this.getDatabaseTableName(this.model.table)} (${columns.join(", ")}) VALUES (${columns
         .map((_, index) => `${this.parseValueForDatabase(values[index])}`)
-        .join(", ")})`.trim(),
+        .join(", ")})`,
       {
         language: getSqlDialect(this.dbType),
       },
@@ -102,7 +102,7 @@ export class StandaloneQueryBuilder {
           (record) =>
             `(${record.map((value) => this.parseValueForDatabase(value)).join(", ")})`,
         )
-        .join(", ")}`.trim(),
+        .join(", ")}`,
       {
         language: getSqlDialect(this.dbType),
       },
@@ -125,7 +125,7 @@ export class StandaloneQueryBuilder {
           (key, index) =>
             `${key} = ${this.parseValueForDatabase(values[index])}`,
         )
-        .join(", ")} ${this.joinQuery} ${this.whereQuery}`.trim(),
+        .join(", ")} ${this.joinQuery} ${this.whereQuery}`,
       {
         language: getSqlDialect(this.dbType),
       },
@@ -138,7 +138,7 @@ export class StandaloneQueryBuilder {
   delete(): string {
     this.whereQuery = this.convertPlaceHolderToValue(this.whereQuery);
     return format(
-      `DELETE FROM ${this.getDatabaseTableName(this.model.table)} ${this.joinQuery} ${this.whereQuery}`.trim(),
+      `DELETE FROM ${this.getDatabaseTableName(this.model.table)} ${this.joinQuery} ${this.whereQuery}`,
       {
         language: getSqlDialect(this.dbType),
       },
@@ -156,7 +156,7 @@ export class StandaloneQueryBuilder {
     this.whereQuery = this.convertPlaceHolderToValue(this.whereQuery);
 
     return format(
-      `UPDATE ${this.getDatabaseTableName(this.model.table)} SET ${convertCase(column, this.model.databaseCaseConvention)} = ${this.parseValueForDatabase(value)} ${this.joinQuery} ${this.whereQuery}`.trim(),
+      `UPDATE ${this.getDatabaseTableName(this.model.table)} SET ${convertCase(column, this.model.databaseCaseConvention)} = ${this.parseValueForDatabase(value)} ${this.joinQuery} ${this.whereQuery}`,
       {
         language: getSqlDialect(this.dbType),
       },

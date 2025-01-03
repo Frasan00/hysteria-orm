@@ -128,7 +128,7 @@ export function generateManyToManyQuery({
   FROM ${leftTable};
   `;
 
-  return query.trim();
+  return query;
 }
 
 export function generateHasManyQuery({
