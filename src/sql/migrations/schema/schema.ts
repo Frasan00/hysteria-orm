@@ -33,14 +33,14 @@ export default class Schema {
       queryBuilder: Omit<StandaloneQueryBuilder, "select" | "toSql">,
     ) => string,
     options?: {
-      databaseCaseConvention?: CaseConvention
-    }
+      databaseCaseConvention?: CaseConvention;
+    },
   ): void {
     const standaloneQueryBuilder = new StandaloneQueryBuilder(
       this.sqlType,
       table,
-      'none',
-      options?.databaseCaseConvention || 'snake'
+      "none",
+      options?.databaseCaseConvention || "snake",
     );
 
     this.rawQuery(cb(standaloneQueryBuilder));

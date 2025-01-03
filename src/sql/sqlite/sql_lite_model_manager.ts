@@ -11,6 +11,7 @@ import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
 import { SqlLiteQueryBuilder } from "./sql_lite_query_builder";
 import { SqliteConnectionInstance } from "../sql_data_source_types";
+import { format } from "sql-formatter";
 
 export class SqliteModelManager<T extends Model> extends ModelManager<T> {
   protected sqLiteConnection: SqliteConnectionInstance;
@@ -137,12 +138,16 @@ export class SqliteModelManager<T extends Model> extends ModelManager<T> {
   async insert(model: Partial<T>): Promise<T | null> {
     this.model.beforeInsert(model as T);
 
-    const { query, params } = this.sqlModelManagerUtils.parseInsert(
+    let { query, params } = this.sqlModelManagerUtils.parseInsert(
       model as T,
       this.model,
       this.sqlDataSource.getDbType(),
     );
 
+    // Seen the peculiar behavior of sqlite3 it does not use execSql method
+    query = format(query, {
+      language: "sqlite",
+    });
     log(query, this.logs, params);
     return (await this.promisifyQuery<T>(query, params, {
       isCreate: true,
@@ -162,11 +167,16 @@ export class SqliteModelManager<T extends Model> extends ModelManager<T> {
       this.model.beforeInsert(model as T);
     });
 
-    const { query, params } = this.sqlModelManagerUtils.parseMassiveInsert(
+    let { query, params } = this.sqlModelManagerUtils.parseMassiveInsert(
       models as T[],
       this.model,
       this.sqlDataSource.getDbType(),
     );
+
+    // Seen the peculiar behavior of sqlite3 it does not use execSql method
+    query = format(query, {
+      language: "sqlite",
+    });
     log(query, this.logs, params);
     return (await this.promisifyQuery<T[]>(query, params, {
       isInsertMany: true,
@@ -195,6 +205,9 @@ export class SqliteModelManager<T extends Model> extends ModelManager<T> {
       this.sqlDataSource.getDbType(),
     );
 
+    updateQuery.query = format(updateQuery.query, {
+      language: "sqlite",
+    });
     log(updateQuery.query, this.logs, updateQuery.params);
     await this.promisifyQuery<T>(updateQuery.query, updateQuery.params);
 
@@ -216,12 +229,13 @@ export class SqliteModelManager<T extends Model> extends ModelManager<T> {
         "Model " + this.model.table + " has no primary key to be deleted from",
       );
     }
-    const { query, params } = this.sqlModelManagerUtils.parseDelete(
+    let { query, params } = this.sqlModelManagerUtils.parseDelete(
       this.model.table,
       this.model.primaryKey,
       model[this.model.primaryKey as keyof T] as string,
     );
 
+    query = format(query);
     log(query, this.logs, params);
     await this.promisifyQuery<T>(query, params);
     return model;

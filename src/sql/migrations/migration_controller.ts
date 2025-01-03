@@ -1,6 +1,7 @@
 import { SqlDataSource } from "../sql_data_source";
 import { Migration } from "./migration";
 import { log } from "../../utils/logger";
+import { format } from "sql-formatter";
 import {
   MysqlConnectionInstance,
   PgClientInstance,
@@ -8,6 +9,7 @@ import {
   SqlDataSourceType,
   SqliteConnectionInstance,
 } from "../sql_data_source_types";
+import { getSqlDialect } from "../../sql_runner/sql_runner";
 
 export class MigrationController {
   protected sqlDataSource: SqlDataSource;
@@ -74,6 +76,10 @@ export class MigrationController {
   }
 
   private async localQuery(text: string, params: any[] = []): Promise<void> {
+    text = format(text, {
+      language: getSqlDialect(this.sqlType),
+    });
+
     if (this.sqlType === "mysql" || this.sqlType === "mariadb") {
       text = text.replace(/PLACEHOLDER/g, "?");
       log(text, true, params);

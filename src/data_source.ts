@@ -70,7 +70,7 @@ export abstract class DataSource {
     this.username = (input?.username || process.env.DB_USER) as string;
     this.password = (input?.password || process.env.DB_PASSWORD) as string;
     this.database = (input?.database || process.env.DB_DATABASE) as string;
-    this.logs = Boolean(input?.logs) || Boolean(process.env.DB_LOGS) || false;
+    this.logs = input?.logs || process.env.DB_LOGS === "true" || false;
 
     if (!this.port) {
       switch (this.type) {

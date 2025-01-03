@@ -109,7 +109,6 @@ export default class extends Migration {
 `;
   }
 
-
   selectAllFromMigrationsTemplate(): string {
     return `SELECT * FROM migrations;`;
   }

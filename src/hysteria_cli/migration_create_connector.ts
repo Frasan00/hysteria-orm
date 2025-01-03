@@ -20,7 +20,7 @@ function getOrCreateMigrationPath(): string {
 export default function migrationCreateConnector(
   name: string,
   js: boolean = false,
-  mode: 'alter' | 'create' | 'basic' = 'basic',
+  mode: "alter" | "create" | "basic" = "basic",
 ) {
   const migrationFolderPath = getOrCreateMigrationPath();
   const timestamp = new Date().getTime();
@@ -31,10 +31,10 @@ export default function migrationCreateConnector(
 
   let migrationTemplate: string;
   switch (mode) {
-    case 'alter':
+    case "alter":
       migrationTemplate = MigrationTemplates.createMigrationTemplate(js);
       break;
-    case 'create':
+    case "create":
       migrationTemplate = MigrationTemplates.createMigrationTemplate(js);
       break;
     default:

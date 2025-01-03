@@ -12,6 +12,7 @@ import { parseDatabaseDataIntoModelResponse } from "../serializer";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
 import { PgClientInstance } from "../sql_data_source_types";
+import { execSql } from "../../sql_runner/sql_runner";
 
 export class PostgresModelManager<T extends Model> extends ModelManager<T> {
   protected pgConnection: PgClientInstance;
@@ -19,10 +20,6 @@ export class PostgresModelManager<T extends Model> extends ModelManager<T> {
 
   /**
    * Constructor for Postgres_model_manager class.
-   *
-   * @param {typeof Model} model - Model constructor.
-   * @param {Pool} pgConnection - PostgreSQL connection pool.
-   * @param {boolean} logs - Flag to enable or disable logging.
    */
   constructor(
     model: typeof Model,
@@ -40,9 +37,6 @@ export class PostgresModelManager<T extends Model> extends ModelManager<T> {
 
   /**
    * Find method to retrieve multiple records from the database based on the input conditions.
-   *
-   * @param {FindType} input - Optional query parameters for filtering, ordering, and pagination.
-   * @returns Promise resolving to an array of models.
    */
   async find(input?: FindType<T> | UnrestrictedFindType<T>): Promise<T[]> {
     if (!input) {
@@ -88,9 +82,6 @@ export class PostgresModelManager<T extends Model> extends ModelManager<T> {
 
   /**
    * Find a single record from the database based on the input conditions.
-   *
-   * @param {FindOneType} input - query parameters for filtering and selecting a single record.
-   * @returns Promise resolving to a single model or null if not found.
    */
   async findOne(
     input: FindOneType<T> | UnrestrictedFindOneType<T>,
@@ -109,9 +100,6 @@ export class PostgresModelManager<T extends Model> extends ModelManager<T> {
 
   /**
    * Find a single record by its PK from the database.
-   *
-   * @param {string | number | boolean} value - PK value of the record to retrieve.
-   * @returns Promise resolving to a single model or null if not found.
    */
   async findOneByPrimaryKey(
     value: string | number | boolean,
@@ -129,10 +117,6 @@ export class PostgresModelManager<T extends Model> extends ModelManager<T> {
 
   /**
    * Save a new model instance to the database.
-   *
-   * @param {Model} model - Model instance to be saved.
-   * @param {MysqlTransaction} trx - MysqlTransaction to be used on the save operation.
-   * @returns Promise resolving to the saved model or null if saving fails.
    */
   async insert(model: Partial<T>): Promise<T | null> {
     this.model.beforeInsert(model as T);
@@ -141,8 +125,14 @@ export class PostgresModelManager<T extends Model> extends ModelManager<T> {
       this.model,
       this.sqlDataSource.getDbType(),
     );
-    log(query, this.logs, params);
-    const { rows } = await this.pgConnection.query(query, params);
+
+    const { rows } = await execSql(
+      query,
+      params,
+      "postgres",
+      this.pgConnection,
+      this.logs,
+    );
     const insertedModel = rows[0] as T;
     if (!insertedModel) {
       throw new Error(rows[0]);
@@ -159,10 +149,6 @@ export class PostgresModelManager<T extends Model> extends ModelManager<T> {
 
   /**
    * Create multiple model instances in the database.
-   *
-   * @param {Model} models - Model instance to be saved.
-   * @param {Transaction} trx - MysqlTransaction to be used on the save operation.
-   * @returns Promise resolving to an array of saved models or null if saving fails.
    */
   async insertMany(models: Partial<T>[]): Promise<T[]> {
     models.forEach((model) => this.model.beforeInsert(model as T));
@@ -173,8 +159,13 @@ export class PostgresModelManager<T extends Model> extends ModelManager<T> {
       this.sqlDataSource.getDbType(),
     );
 
-    log(query, this.logs, params);
-    const { rows } = await this.pgConnection.query(query, params);
+    const { rows } = await execSql(
+      query,
+      params,
+      "postgres",
+      this.pgConnection,
+      this.logs,
+    );
     const insertedModel = rows as T[];
     if (!insertedModel.length) {
       return [];
@@ -192,8 +183,6 @@ export class PostgresModelManager<T extends Model> extends ModelManager<T> {
 
   /**
    * Update an existing model instance in the database.
-   * @param {Model} model - Model instance to be updated.
-   * @param {Transaction} trx - Transaction to be used on the update operation.
    * @returns Promise resolving to the updated model or null if updating fails.
    */
   async updateRecord(model: T): Promise<T | null> {
@@ -209,8 +198,8 @@ export class PostgresModelManager<T extends Model> extends ModelManager<T> {
       this.model,
       this.sqlDataSource.getDbType(),
     );
-    log(query, this.logs, params);
-    await this.pgConnection.query(query, params);
+
+    await execSql(query, params, "postgres", this.pgConnection, this.logs);
     if (!primaryKey) {
       return null;
     }
@@ -222,10 +211,6 @@ export class PostgresModelManager<T extends Model> extends ModelManager<T> {
 
   /**
    * @description Delete a record from the database from the given model.
-   *
-   * @param {Model} model - Model to delete.
-   * @param {Transaction} trx - Transaction to be used on the delete operation.
-   * @returns Promise resolving to the deleted model or null if deleting fails.
    */
   async deleteRecord(model: T): Promise<T | null> {
     if (!this.model.primaryKey) {
@@ -240,8 +225,7 @@ export class PostgresModelManager<T extends Model> extends ModelManager<T> {
       model[this.model.primaryKey as keyof T] as string,
     );
 
-    log(query, this.logs, params);
-    await this.pgConnection.query(query, params);
+    await execSql(query, params, "postgres", this.pgConnection, this.logs);
     return model;
   }
 
