@@ -9,8 +9,8 @@ import {
 } from "./model_manager_types";
 
 export abstract class ModelManager<T extends Model> {
-  protected logs: boolean;
   protected sqlDataSource: SqlDataSource;
+  protected logs: boolean;
   protected model: typeof Model;
   protected modelInstance: T;
   protected throwError: boolean;

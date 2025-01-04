@@ -287,7 +287,7 @@ export class User extends Model {
 ```
 
 ### Model with UUID
-- All databases support uuid but there are some things to make them work
+- While using auto generated uuids in mysql and sqlite, it's necessary to create the uuids before the insert operation via hook or manually, else the insert operation will not work as intended
 
 ##### Model definition
 ```typescript

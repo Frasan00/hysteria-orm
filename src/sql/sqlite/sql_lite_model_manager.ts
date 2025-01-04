@@ -19,10 +19,6 @@ export class SqliteModelManager<T extends Model> extends ModelManager<T> {
 
   /**
    * Constructor for SqLiteModelManager class.
-   *
-   * @param {typeof Model} model - Model constructor.
-   * @param {Pool} sqLiteConnection - sqlite connection.
-   * @param {boolean} logs - Flag to enable or disable logging.
    */
   constructor(
     model: typeof Model,
@@ -40,9 +36,6 @@ export class SqliteModelManager<T extends Model> extends ModelManager<T> {
 
   /**
    * Find method to retrieve multiple records from the database based on the input conditions.
-   *
-   * @param {FindType} input - Optional query parameters for filtering, ordering, and pagination.
-   * @returns Promise resolving to an array of models.
    */
   async find(input?: FindType<T> | UnrestrictedFindType<T>): Promise<T[]> {
     if (!input) {
@@ -89,9 +82,6 @@ export class SqliteModelManager<T extends Model> extends ModelManager<T> {
 
   /**
    * Find a single record from the database based on the input conditions.
-   *
-   * @param {FindOneType} input - query parameters for filtering and selecting a single record.
-   * @returns Promise resolving to a single model or null if not found.
    */
   async findOne(
     input: FindOneType<T> | UnrestrictedFindOneType<T>,
@@ -110,9 +100,6 @@ export class SqliteModelManager<T extends Model> extends ModelManager<T> {
 
   /**
    * Find a single record by its PK from the database.
-   *
-   * @param {string | number | boolean} value - PK of the record to retrieve, hooks will not have any effect, since it's a direct query for the PK.
-   * @returns Promise resolving to a single model or null if not found.
    */
   async findOneByPrimaryKey(
     value: string | number | boolean,
@@ -130,12 +117,8 @@ export class SqliteModelManager<T extends Model> extends ModelManager<T> {
 
   /**
    * Save a new model instance to the database.
-   *
-   * @param {Model} model - Model instance to be saved.
-   * @param {SqliteTransaction} trx - SqliteTransaction to be used on the save operation.
-   * @returns Promise resolving to the saved model or null if saving fails.
    */
-  async insert(model: Partial<T>): Promise<T | null> {
+  async insert(model: Partial<T>): Promise<T> {
     this.model.beforeInsert(model as T);
 
     let { query, params } = this.sqlModelManagerUtils.parseInsert(
@@ -157,10 +140,6 @@ export class SqliteModelManager<T extends Model> extends ModelManager<T> {
 
   /**
    * Create multiple model instances in the database.
-   *
-   * @param {Model} model - Model instance to be saved.
-   * @param {SqliteTransaction} trx - SqliteTransaction to be used on the save operation.
-   * @returns Promise resolving to an array of saved models or null if saving fails.
    */
   async insertMany(models: Partial<T>[]): Promise<T[]> {
     models.forEach((model) => {
@@ -185,10 +164,6 @@ export class SqliteModelManager<T extends Model> extends ModelManager<T> {
   }
 
   /**
-   * Update an existing model instance in the database.
-   * @param {Model} model - Model instance to be updated.
-   * @param {SqliteTransaction} trx - SqliteTransaction to be used on the update operation.
-   * @returns Promise resolving to the updated model or null if updating fails.
    */
   async updateRecord(model: T): Promise<T | null> {
     if (!this.model.primaryKey) {
@@ -218,10 +193,6 @@ export class SqliteModelManager<T extends Model> extends ModelManager<T> {
 
   /**
    * @description Delete a record from the database from the given model.
-   *
-   * @param {Model} model - Model to delete.
-   * @param trx - SqliteTransaction to be used on the delete operation.
-   * @returns Promise resolving to the deleted model or null if deleting fails.
    */
   async deleteRecord(model: T): Promise<T | null> {
     if (!this.model.primaryKey) {
@@ -243,8 +214,6 @@ export class SqliteModelManager<T extends Model> extends ModelManager<T> {
 
   /**
    * Create and return a new instance of the Mysql_query_builder for building more complex SQL queries.
-   *
-   * @returns {MysqlQueryBuilder<Model>} - Instance of Mysql_query_builder.
    */
   query(): SqlLiteQueryBuilder<T> {
     return new SqlLiteQueryBuilder<T>(

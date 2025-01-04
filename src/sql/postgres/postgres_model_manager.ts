@@ -118,7 +118,7 @@ export class PostgresModelManager<T extends Model> extends ModelManager<T> {
   /**
    * Save a new model instance to the database.
    */
-  async insert(model: Partial<T>): Promise<T | null> {
+  async insert(model: Partial<T>): Promise<T> {
     this.model.beforeInsert(model as T);
     const { query, params } = this.sqlModelManagerUtils.parseInsert(
       model as T,

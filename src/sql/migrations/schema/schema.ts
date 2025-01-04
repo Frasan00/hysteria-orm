@@ -69,6 +69,7 @@ export default class Schema {
     const tableBuilder = new ColumnTypeBuilder(
       table,
       this.queryStatements,
+      [],
       partialQuery,
       this.sqlType,
     );

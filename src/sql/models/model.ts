@@ -223,7 +223,7 @@ export abstract class Model extends Entity {
     this: new () => T | typeof Model,
     modelData: ModelWithoutExtraColumns<T>,
     options: BaseModelMethodOptions = {},
-  ): Promise<T | null> {
+  ): Promise<T> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
     return modelManager.insert(modelData as T);

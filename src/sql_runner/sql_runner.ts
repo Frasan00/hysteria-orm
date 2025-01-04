@@ -4,10 +4,8 @@ import {
   PgClientInstance,
   SqlConnectionType,
   SqlDataSourceType,
-  SqliteConnectionInstance,
 } from "../sql/sql_data_source_types";
 import { log } from "../utils/logger";
-import { promisifySqliteQuery } from "../hysteria_cli/migration_utils";
 
 export function getSqlDialect(
   sqlType: SqlDataSourceType,

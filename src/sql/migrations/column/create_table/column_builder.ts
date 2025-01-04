@@ -2,6 +2,7 @@ import { SqlDataSourceType } from "../../../sql_data_source_types";
 
 export abstract class ColumnBuilder {
   partialQuery: string;
+  protected afterDefinitionQueries: string[];
   protected table: string;
   protected queryStatements: string[];
   protected columnName: string;
@@ -17,6 +18,7 @@ export abstract class ColumnBuilder {
   constructor(
     table: string,
     queryStatements: string[],
+    afterDefinitionQueries: string[],
     partialQuery: string,
     sqlType: SqlDataSourceType,
     columnName: string = "",
@@ -34,6 +36,7 @@ export abstract class ColumnBuilder {
     this.sqlType = sqlType;
     this.columnName = columnName;
     this.columnReferences = columnReferences;
+    this.afterDefinitionQueries = afterDefinitionQueries;
   }
 
   /**
@@ -64,5 +67,6 @@ export abstract class ColumnBuilder {
     this.partialQuery += "\n";
     this.partialQuery += ");";
     this.queryStatements.push(this.partialQuery);
+    this.queryStatements.push(...this.afterDefinitionQueries);
   }
 }

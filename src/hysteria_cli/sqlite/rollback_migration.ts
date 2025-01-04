@@ -21,6 +21,7 @@ export async function migrationRollBackSqlite(
   try {
     const migrationTable: MigrationTableType[] =
       (await getMigrationTable(sqlConnection)) || [];
+    console.log(migrationTable);
     const migrations: Migration[] = await getMigrations(tsconfigPath);
 
     const tableMigrations = migrationTable.map((migration) => migration.name);

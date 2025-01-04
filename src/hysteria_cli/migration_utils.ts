@@ -45,13 +45,14 @@ export async function getMigrationTable(
         [],
         sqlConnection as SqliteConnectionInstance,
       );
-      const resultSqlite =
-        (await promisifySqliteQuery<MigrationTableType[]>(
+
+      return (
+        (await promisifySqliteQuery<MigrationTableType>(
           MigrationTemplates.selectAllFromMigrationsTemplate(),
           [],
           sqlConnection as SqliteConnectionInstance,
-        )) || [];
-      return Array.isArray(resultSqlite) ? resultSqlite : [resultSqlite];
+        )) || []
+      );
 
     default:
       throw new Error("Unsupported database type");
@@ -175,13 +176,13 @@ export async function promisifySqliteQuery<T>(
   query: string,
   params: any,
   sqLiteConnection: SqliteConnectionInstance,
-): Promise<T> {
-  return new Promise<T>((resolve, reject) => {
-    sqLiteConnection.get<T>(query, params, (err, result) => {
+): Promise<T[]> {
+  return new Promise<T[]>((resolve, reject) => {
+    sqLiteConnection.all<T>(query, params, (err, results) => {
       if (err) {
         reject(err);
       }
-      resolve(result);
+      resolve(results);
     });
   });
 }
