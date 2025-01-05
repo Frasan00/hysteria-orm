@@ -20,6 +20,45 @@ beforeEach(async () => {
   await User.query().delete();
 });
 
+test("Insert a new user within a transaction from static method", async () => {
+  const trx = await SqlDataSource.startTransaction();
+  const user = await User.insert(
+    {
+      name: "Alice",
+      email: "test",
+      signupSource: "email",
+      isActive: true,
+    },
+    { trx },
+  );
+
+  expect(user).not.toBeNull();
+  await trx.commit();
+
+  const users = await User.query().many();
+  expect(users.length).toBe(1);
+});
+
+test('static "startTransaction" method with rollback', async () => {
+  const trx = await SqlDataSource.startTransaction();
+  expect(trx).not.toBeNull();
+  const user = await User.insert(
+    {
+      name: "Alice",
+      email: "test",
+      signupSource: "email",
+      isActive: true,
+    },
+    { trx },
+  );
+
+  expect(user).not.toBeNull();
+  await trx.rollback();
+
+  const users = await User.query().many();
+  expect(users.length).toBe(0);
+});
+
 test("Create a new user with posts within a transaction", async () => {
   const trx = await sql.startTransaction();
   try {

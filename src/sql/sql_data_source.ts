@@ -166,6 +166,34 @@ export class SqlDataSource extends DataSource {
    * @description Starts a transaction on the database and returns the transaction object
    * @description This creates a new connection to the database, you can customize the connection details using the driverSpecificOptions
    */
+  static startTransaction(
+    driverSpecificOptions?: SqlDriverSpecificOptions,
+  ): Promise<Transaction> {
+    return this.getInstance().startTransaction(driverSpecificOptions);
+  }
+
+  /**
+   * @description Alias for startTransaction {Promise<Transaction>} trx
+   */
+  static beginTransaction(
+    driverSpecificOptions?: SqlDriverSpecificOptions,
+  ): Promise<Transaction> {
+    return this.getInstance().startTransaction(driverSpecificOptions);
+  }
+
+  /**
+   * @description Alias for startTransaction {Promise<Transaction>} trx
+   */
+  static transaction(
+    driverSpecificOptions?: SqlDriverSpecificOptions,
+  ): Promise<Transaction> {
+    return this.getInstance().startTransaction(driverSpecificOptions);
+  }
+
+  /**
+   * @description Starts a transaction on the database and returns the transaction object
+   * @description This creates a new connection to the database, you can customize the connection details using the driverSpecificOptions
+   */
   async startTransaction(
     driverSpecificOptions?: SqlDriverSpecificOptions,
   ): Promise<Transaction> {

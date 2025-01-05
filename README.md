@@ -16,6 +16,7 @@
 - [TypeScript Configuration example](#typescript-configuration-example)
 - [Javascript](#javascript)
 - [Setup Example](#setup-example)
+- [logger](#logger)
 
 ## Known Issues
 - [Known Issues](KNOWN_ISSUES.MD)
@@ -299,4 +300,13 @@ services:
       MONGO_INITDB_ROOT_PASSWORD: root
     ports:
       - "27017:27017"
+```
+
+## Logger
+- Hysteria ORM uses the `winston` logger by default, you can use it in your application since it's exported from the package as your logger in your application.
+
+```typescript
+import { logger } from 'hysteria-orm';
+
+logger.info('Hello World');
 ```

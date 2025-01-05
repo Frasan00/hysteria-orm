@@ -22,11 +22,10 @@ const logFormat = winston.format.combine(
 );
 
 const consoleTransport = new winston.transports.Console();
-const fileTransport = new winston.transports.File({ filename: "logfile.log" });
 
 const logger = winston.createLogger({
   format: logFormat,
-  transports: [consoleTransport, fileTransport],
+  transports: [consoleTransport],
 });
 
 export function log(query: string, logs: boolean, params?: any[]) {

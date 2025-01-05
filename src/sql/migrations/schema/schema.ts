@@ -1,3 +1,5 @@
+import path from "node:path";
+import fs from "fs";
 import dotenv from "dotenv";
 import createTableTemplate from "../../resources/migrations/CREATE_TABLE";
 import dropTableTemplate from "../../resources/migrations/DROP_TABLE";
@@ -51,6 +53,29 @@ export default class Schema {
    */
   rawQuery(query: string): void {
     this.queryStatements.push(query);
+  }
+
+  /**
+   * @description Runs the sql in the given file, throws error if file does not exist or is not .sql or .txt
+   * @description IMPORTANT: migration cli is always intended to be run from the root of the project so choose the file path accordingly
+   */
+  runFile(filePath: string): void {
+    if (!fs.existsSync(filePath)) {
+      throw new Error(
+        `File ${filePath} does not exist or is not accessible, cannot run migration`,
+      );
+    }
+
+    const file = path.basename(filePath);
+    const fileExtension = path.extname(file);
+    if (fileExtension !== ".sql" && fileExtension !== ".txt") {
+      throw new Error(
+        `File ${file} is not a .sql or .txt file, cannot run migration`,
+      );
+    }
+
+    const query = fs.readFileSync(filePath, "utf-8");
+    this.rawQuery(query);
   }
 
   /**

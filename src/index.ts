@@ -33,8 +33,10 @@ import { SqlDataSource } from "./sql/sql_data_source";
 import { StandaloneQueryBuilder } from "./sql/standalone_query_builder/standalone_sql_query_builder";
 import { Transaction } from "./sql/transactions/transaction";
 import { CaseConvention } from "./utils/case_utils";
+import logger from "./utils/logger";
 
 export default {
+  logger,
   // sql
   Model,
   column,
@@ -62,6 +64,7 @@ export default {
 };
 
 export {
+  logger,
   belongsTo,
   CaseConvention,
   Collection,
