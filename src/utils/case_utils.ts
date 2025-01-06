@@ -5,28 +5,20 @@ export type CaseConvention =
   | RegExp
   | ((column: string) => string);
 
-function camelToSnakeCase(camelCase: any) {
-  if (typeof camelCase !== "string" || !camelCase) {
-    return camelCase;
+function toSnake(str: any) {
+  if (typeof str !== "string" || !str) {
+    return str;
   }
 
-  if (camelCase === camelCase.toLowerCase()) {
-    return camelCase;
-  }
-
-  return camelCase.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
+  return str.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
 }
 
-function fromSnakeToCamelCase(snake: any) {
-  if (typeof snake !== "string" || !snake) {
-    return snake;
+function toCamel(str: any) {
+  if (typeof str !== "string" || !str) {
+    return str;
   }
 
-  if (snake === snake.toUpperCase()) {
-    return snake;
-  }
-
-  return snake.replace(/(_\w)/g, (x) => x[1].toUpperCase());
+  return str.replace(/(_\w)/g, (x) => x[1].toUpperCase());
 }
 
 export function convertCase(value: any, to: CaseConvention) {
@@ -35,11 +27,11 @@ export function convertCase(value: any, to: CaseConvention) {
   }
 
   if (to === "snake") {
-    return camelToSnakeCase(value);
+    return toSnake(value);
   }
 
   if (to === "camel") {
-    return fromSnakeToCamelCase(value);
+    return toCamel(value);
   }
 
   if (to instanceof RegExp) {
