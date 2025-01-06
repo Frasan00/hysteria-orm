@@ -1048,6 +1048,12 @@ export default class extends Migration {
 
 ## Run SQL from cli
 - You can also run a raw sql query from the cli
+- Also, you can use the -f flag to run a file
+
+```bash
+npx hysteria run:sql "SELECT * FROM users"
+npx hysteria run:sql -f path/to/file.sql
+```
 
 # Experimental
 
