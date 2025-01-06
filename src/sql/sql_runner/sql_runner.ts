@@ -4,8 +4,8 @@ import {
   PgClientInstance,
   SqlConnectionType,
   SqlDataSourceType,
-} from "../sql/sql_data_source_types";
-import { log } from "../utils/logger";
+} from "../sql_data_source_types";
+import { log } from "../../utils/logger";
 
 export function getSqlDialect(
   sqlType: SqlDataSourceType,

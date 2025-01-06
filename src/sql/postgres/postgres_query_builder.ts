@@ -1,7 +1,6 @@
 import "reflect-metadata";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { convertCase } from "../../utils/case_utils";
-import { log } from "../../utils/logger";
 import { getBaseModelInstance, Model } from "../models/model";
 import {
   DynamicColumnType,
@@ -27,7 +26,7 @@ import joinTemplate from "../resources/query/JOIN";
 import updateTemplate from "../resources/query/UPDATE";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
 import { PgClientInstance } from "../sql_data_source_types";
-import { execSql } from "../../sql_runner/sql_runner";
+import { execSql } from "../sql_runner/sql_runner";
 
 export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   protected pgClient: PgClientInstance;

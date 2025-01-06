@@ -310,3 +310,18 @@ import { logger } from 'hysteria-orm';
 
 logger.info('Hello World');
 ```
+
+- You can also customize the hysteria logger by setting a custom logger with the following methods:
+  - info
+  - error
+  - warn
+
+```typescript
+import { logger } from 'hysteria-orm';
+
+logger.setCustomLogger({
+  info: (message) => console.log(message),
+  error: (message) => console.error(message),
+  warn: (message) => console.warn(message),
+});
+```

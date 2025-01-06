@@ -1,17 +1,17 @@
-import { execSql } from "../../sql_runner/sql_runner";
-import logger, { log } from "../../utils/logger";
+import { log } from "../../utils/logger";
 import { Model } from "../models/model";
 import { ModelManager } from "../models/model_manager/model_manager";
 import {
-  FindType,
-  UnrestrictedFindType,
   FindOneType,
+  FindType,
   UnrestrictedFindOneType,
+  UnrestrictedFindType,
 } from "../models/model_manager/model_manager_types";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
 import { SqlDataSource } from "../sql_data_source";
 import { MysqlConnectionInstance } from "../sql_data_source_types";
+import { execSql } from "../sql_runner/sql_runner";
 import { MysqlQueryBuilder } from "./mysql_query_builder";
 
 export class MysqlModelManager<T extends Model> extends ModelManager<T> {

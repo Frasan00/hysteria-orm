@@ -1,6 +1,7 @@
 // This file is used to enforce the order of test files to be run in a specific order.
 
 const { execSync } = require('child_process');
+const logger = require('./lib/index')
 
 const testFiles = [
     // relations

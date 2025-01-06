@@ -7,6 +7,12 @@ interface LogColors {
   [key: string]: string;
 }
 
+export type CustomLogger = {
+  info(message: string): void;
+  error(message: string): void;
+  warn(message: string): void;
+};
+
 const colors: LogColors = {
   info: "\x1b[32m",
   warn: "\x1b[33m",
@@ -17,7 +23,7 @@ const logFormat = winston.format.combine(
   winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
   winston.format.printf(({ level, message, timestamp }) => {
     const color = colors[level] || "\x1b[0m";
-    return `${timestamp} ${color}${level}\x1b[0m: ${color}${message}\x1b[0m`;
+    return `${timestamp} ${color}${level}\x1b[0m: \n${color}${message}\x1b[0m`;
   }),
 );
 
@@ -27,6 +33,35 @@ const logger = winston.createLogger({
   format: logFormat,
   transports: [consoleTransport],
 });
+
+class HysteriaLogger {
+  static loggerInstance: CustomLogger;
+
+  static {
+    this.loggerInstance = logger as CustomLogger;
+  }
+
+  static setCustomLogger(customLogger: CustomLogger) {
+    this.loggerInstance = customLogger as CustomLogger;
+  }
+
+  static info(message: string): void {
+    this.loggerInstance.info(message);
+  }
+
+  static error(message: string | Error): void {
+    if (message instanceof Error) {
+      this.loggerInstance.error(String(message));
+      return;
+    }
+
+    this.loggerInstance.error(message);
+  }
+
+  static warn(message: string): void {
+    this.loggerInstance.warn(message);
+  }
+}
 
 export function log(query: string, logs: boolean, params?: any[]) {
   if (!logs) {
@@ -61,11 +96,7 @@ export function log(query: string, logs: boolean, params?: any[]) {
     });
   }
 
-  logger.info("\n" + query);
+  HysteriaLogger.loggerInstance.info(query);
 }
 
-export function queryError(error: any) {
-  logger.error("query Failed ", error);
-}
-
-export default logger;
+export default HysteriaLogger;

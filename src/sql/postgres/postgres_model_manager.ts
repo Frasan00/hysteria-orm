@@ -1,18 +1,17 @@
+import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { Model } from "../models/model";
+import { ModelManager } from "../models/model_manager/model_manager";
 import {
   FindOneType,
   FindType,
   UnrestrictedFindOneType,
   UnrestrictedFindType,
 } from "../models/model_manager/model_manager_types";
-import { log } from "../../utils/logger";
-import { ModelManager } from "../models/model_manager/model_manager";
-import { PostgresQueryBuilder } from "./postgres_query_builder";
-import { parseDatabaseDataIntoModelResponse } from "../serializer";
-import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
+import { parseDatabaseDataIntoModelResponse } from "../serializer";
 import { PgClientInstance } from "../sql_data_source_types";
-import { execSql } from "../../sql_runner/sql_runner";
+import { execSql } from "../sql_runner/sql_runner";
+import { PostgresQueryBuilder } from "./postgres_query_builder";
 
 export class PostgresModelManager<T extends Model> extends ModelManager<T> {
   protected pgConnection: PgClientInstance;

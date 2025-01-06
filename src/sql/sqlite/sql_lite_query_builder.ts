@@ -1,6 +1,5 @@
 import { format } from "sql-formatter";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
-import { execSql } from "../../sql_runner/sql_runner";
 import { convertCase } from "../../utils/case_utils";
 import { log } from "../../utils/logger";
 import { getBaseModelInstance, Model } from "../models/model";

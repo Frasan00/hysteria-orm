@@ -1,4 +1,3 @@
-import { execSql } from "../../sql_runner/sql_runner";
 import { convertCase } from "../../utils/case_utils";
 import { log } from "../../utils/logger";
 import { Model, getBaseModelInstance } from "../models/model";
@@ -27,6 +26,7 @@ import updateTemplate from "../resources/query/UPDATE";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
 import { SqlDataSource } from "../sql_data_source";
 import { MysqlConnectionInstance } from "../sql_data_source_types";
+import { execSql } from "../sql_runner/sql_runner";
 
 export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
   protected type: "mysql" | "mariadb";

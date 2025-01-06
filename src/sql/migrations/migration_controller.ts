@@ -9,7 +9,7 @@ import {
   SqlDataSourceType,
   SqliteConnectionInstance,
 } from "../sql_data_source_types";
-import { getSqlDialect } from "../../sql_runner/sql_runner";
+import { getSqlDialect } from "../..//sql/sql_runner/sql_runner";
 
 export class MigrationController {
   protected sqlDataSource: SqlDataSource;
