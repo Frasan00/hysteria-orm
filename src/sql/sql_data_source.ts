@@ -363,11 +363,11 @@ export class SqlDataSource extends DataSource {
    */
   async closeConnection(): Promise<void> {
     if (!this.isConnected) {
-      logger.warn("Connection already closed " + String(this));
+      logger.warn("Connection already closed ");
       return;
     }
 
-    logger.warn("Closing connection" + String(this));
+    logger.warn("Closing connection");
     switch (this.type) {
       case "mysql":
       case "mariadb":
@@ -403,11 +403,11 @@ export class SqlDataSource extends DataSource {
   static async closeConnection(): Promise<void> {
     const sqlDataSource = SqlDataSource.getInstance();
     if (!sqlDataSource.isConnected) {
-      logger.warn("Connection already closed" + String(sqlDataSource));
+      logger.warn("Connection already closed");
       return;
     }
 
-    logger.warn("Closing connection" + String(sqlDataSource));
+    logger.warn("Closing connection");
     switch (sqlDataSource.type) {
       case "mysql":
       case "mariadb":

@@ -2,8 +2,44 @@ import { Command } from "commander";
 import migrationCreateConnector from "./hysteria_cli/migration_create_connector";
 import runMigrationsConnector from "./hysteria_cli/migration_run_connector";
 import rollbackMigrationsConnector from "./hysteria_cli/migration_rollback_connector";
+import runSqlConnector from "./hysteria_cli/run_sql_connector";
+import fs from "node:fs";
+import path from "node:path";
 
 const program = new Command();
+
+program.command("run:sql [sql]")
+  .option("-f, --file [path]", "Path to the sql file", undefined)
+  .description("Run a sql file or a sql query directly from the command line for the given connection defined in the env file")
+  .action(async (sql?: string, option?: { file?: string }) => {
+    let filePath = option?.file;
+    if (!sql && !filePath) {
+      console.error("Error: SQL query or file path is required.");
+      process.exit(1);
+    }
+
+    if (sql && filePath) {
+      console.error("Error: You can't provide both sql query and file path.");
+      process.exit(1);
+    }
+
+    if (sql) {
+      await runSqlConnector(sql);
+      return;
+    }
+
+    if (!filePath) {
+      throw new Error("No SQL statement or file provided");
+    }
+
+    filePath = path.resolve(filePath);
+    if (!fs.existsSync(filePath)) {
+      throw new Error(`File not found: ${filePath}`);
+    }
+
+    const sqlStatement = fs.readFileSync(filePath, "utf-8");
+    await runSqlConnector(sqlStatement);
+  });
 
 program
   .command("create:migration <name>")

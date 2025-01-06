@@ -39,7 +39,8 @@
     - [Create Table](#create-table)
     - [Alter Table](#alter-table)
     - [Migration Query Builder](#migration-query-builder)
-    - [Run SQL](#run-sql-file)
+    - [Run SQL](#run-sql-file-in-migrations)
+    - [Run SQL from cli](#run-sql-from-cli)
 - [Experimental](#experimental)
     - [json-support](#json-support-unstable-on-mysql)
 
@@ -1010,7 +1011,7 @@ export default class extends Migration {
 }
 ```
 
-## Run SQL file
+## Run SQL file in migrations
 - You can also run a .sql or .txt file in the migrations
 - Remember that the file path is relative to the current working directory you are in
 - As best practice, migration cli should be run in the root of the project
@@ -1044,6 +1045,9 @@ export default class extends Migration {
   }
 }
 ```
+
+## Run SQL from cli
+- You can also run a raw sql query from the cli
 
 # Experimental
 
