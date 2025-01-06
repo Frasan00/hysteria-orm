@@ -4,9 +4,7 @@ import { SqlDataSource } from "../sql/sql_data_source";
 
 dotenv.config();
 
-export default async function runSqlConnector(
-  sql: string
-) {
+export default async function runSqlConnector(sql: string) {
   const databaseType = process.env.DB_TYPE;
   if (!databaseType) {
     throw new Error("Run sql error: DB_TYPE env not set");

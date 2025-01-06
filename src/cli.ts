@@ -8,9 +8,12 @@ import path from "node:path";
 
 const program = new Command();
 
-program.command("run:sql [sql]")
+program
+  .command("run:sql [sql]")
   .option("-f, --file [path]", "Path to the sql file", undefined)
-  .description("Run a sql file or a sql query directly from the command line for the given connection defined in the env file")
+  .description(
+    "Run a sql file or a sql query directly from the command line for the given connection defined in the env file",
+  )
   .action(async (sql?: string, option?: { file?: string }) => {
     let filePath = option?.file;
     if (!sql && !filePath) {
