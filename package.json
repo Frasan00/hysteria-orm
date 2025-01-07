@@ -1,6 +1,6 @@
 {
   "name": "hysteria-orm",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "Yet another orm for javascript and typescript no one asked for",
   "main": "./lib/index.js",
   "repository": "https://github.com/Frasan00/hysteria-orm.git",
@@ -41,12 +41,14 @@
   },
   "dependencies": {
     "@types/ioredis": "^5.0.0",
+    "@types/lodash": "^4.17.14",
     "@types/mongodb": "^4.0.7",
     "@types/mysql2": "github:types/mysql2",
     "@types/pg": "^8.11.10",
     "@types/sqlite3": "^3.1.11",
     "commander": "^12.1.0",
     "dotenv": "^16.4.7",
+    "lodash": "^4.17.21",
     "pluralize": "^8.0.0",
     "reflect-metadata": "^0.2.2",
     "sql-formatter": "^15.4.8",

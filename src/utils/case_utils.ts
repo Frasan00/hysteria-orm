@@ -1,3 +1,5 @@
+import { snakeCase, camelCase } from "lodash";
+
 export type CaseConvention =
   | "camel"
   | "snake"
@@ -10,7 +12,10 @@ function toSnake(str: any) {
     return str;
   }
 
-  return str.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
+  return str
+    .replace(/([a-z])([A-Z])/g, "$1_$2")
+    .replace(/([A-Z])([A-Z][a-z])/g, "$1_$2")
+    .toLowerCase();
 }
 
 function toCamel(str: any) {
@@ -18,7 +23,9 @@ function toCamel(str: any) {
     return str;
   }
 
-  return str.replace(/(_\w)/g, (x) => x[1].toUpperCase());
+  return str.replace(/([-_][a-z])/g, (group) =>
+    group.toUpperCase().replace("-", "").replace("_", ""),
+  );
 }
 
 export function convertCase(value: any, to: CaseConvention) {

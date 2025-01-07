@@ -209,6 +209,7 @@ import "reflect-metadata";
 import { Model } from "hysteria-orm";
 
 export class User extends Model {
+    // Used only to set the table name, to retrieve the table name use User.table
     static tableName: string = "users"; // Default Class name lowercase, in snake case and in the plural form
 
     @column({ primaryKey: true })

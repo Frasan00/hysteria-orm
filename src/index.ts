@@ -35,6 +35,10 @@ import { Transaction } from "./sql/transactions/transaction";
 import { CaseConvention } from "./utils/case_utils";
 import logger, { CustomLogger } from "./utils/logger";
 
+class ILoveBox extends Model {}
+
+console.log("ILoveBox", ILoveBox.table);
+
 export default {
   // logger
   logger,

@@ -3,7 +3,6 @@ import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { Address } from "../sql_models/Address";
 import { Post } from "../sql_models/Post";
 import { User } from "../sql_models/User";
-import { logger } from "../../../src";
 
 let sql: SqlDataSource | null = null;
 beforeAll(async () => {
