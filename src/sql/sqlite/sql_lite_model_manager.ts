@@ -101,9 +101,7 @@ export class SqliteModelManager<T extends Model> extends ModelManager<T> {
   /**
    * Find a single record by its PK from the database.
    */
-  async findOneByPrimaryKey(
-    value: string | number | boolean,
-  ): Promise<T | null> {
+  async findOneByPrimaryKey(value: string | number): Promise<T | null> {
     if (!this.model.primaryKey) {
       throw new Error(
         "Model " + this.model.table + " has no primary key to be retrieved by",

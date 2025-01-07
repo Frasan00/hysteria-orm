@@ -21,7 +21,8 @@ export abstract class DataSource {
   logs!: boolean;
 
   protected constructor(input?: DataSourceInput) {
-    switch (input?.type) {
+    this.type = input?.type || (process.env.DB_TYPE as DataSourceType);
+    switch (this.type) {
       case "mongo":
         this.handleMongoSource(input as MongoDataSourceInput);
         break;
@@ -36,12 +37,12 @@ export abstract class DataSource {
         this.handleSqliteSource(input as SqliteDataSourceInput);
         break;
       default:
-        throw new Error("Invalid DataSource Type");
+        throw new Error(`Invalid database type: ${this.type}, please provide a valid database type in your input or in the .env file with the key DB_TYPE
+Valid database types are: [mongo, postgres, mysql, mariadb, sqlite]`);
     }
   }
 
   protected handlePostgresSource(input?: PostgresSqlDataSourceInput) {
-    this.type = (input?.type || process.env.DB_TYPE) as DataSourceType;
     this.host = (input?.host || process.env.DB_HOST) as string;
     this.port = +(input?.port as number) || +(process.env.DB_PORT as string);
     this.username = (input?.username || process.env.DB_USER) as string;
@@ -55,7 +56,6 @@ export abstract class DataSource {
   }
 
   protected handleMysqlSource(input?: MysqlSqlDataSourceInput) {
-    this.type = (input?.type || process.env.DB_TYPE) as DataSourceType;
     this.host = (input?.host || process.env.DB_HOST) as string;
     this.port = +(input?.port as number) || +(process.env.DB_PORT as string);
     this.username = (input?.username || process.env.DB_USER) as string;
@@ -69,14 +69,12 @@ export abstract class DataSource {
   }
 
   protected handleSqliteSource(input?: SqliteDataSourceInput) {
-    this.type = (input?.type || process.env.DB_TYPE) as DataSourceType;
     this.database = (input?.database || process.env.DB_DATABASE) as string;
     this.logs = input?.logs || process.env.DB_LOGS === "true" || false;
   }
 
   protected handleMongoSource(input?: MongoDataSourceInput) {
-    this.type = (input?.type || process.env.DB_TYPE) as DataSourceType;
-    this.url = input?.url || (process.env.DB_URL as string);
-    this.logs = input?.logs || process.env.DB_LOGS === "true" || false;
+    this.url = input?.url || (process.env.MONGO_URL as string);
+    this.logs = input?.logs || process.env.MONGO_LOGS === "true" || false;
   }
 }

@@ -125,6 +125,7 @@ REDIS_PASSWORD=root
 REDIS_PORT=6379
 
 # MONGO
+DB_TYPE=mongo
 MONGO_URL=mongodb://root:root@localhost:27017
 MONGO_LOGS=true
 ```

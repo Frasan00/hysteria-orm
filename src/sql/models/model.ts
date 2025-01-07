@@ -180,11 +180,11 @@ export abstract class Model extends Entity {
   }
 
   /**
-   * @description Finds a record for the given model for the given id, "id" must be set in the model in order for it to work
+   * @description Finds a record for the given model for the given value, the model must have a primary key defined else it will throw an error
    */
   static async findOneByPrimaryKey<T extends Model>(
     this: new () => T | typeof Model,
-    value: string | number | boolean,
+    value: string | number,
     options: BaseModelMethodOptions = {},
   ): Promise<T | null> {
     const typeofModel = this as unknown as typeof Model;

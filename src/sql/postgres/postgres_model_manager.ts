@@ -100,9 +100,7 @@ export class PostgresModelManager<T extends Model> extends ModelManager<T> {
   /**
    * Find a single record by its PK from the database.
    */
-  async findOneByPrimaryKey(
-    value: string | number | boolean,
-  ): Promise<T | null> {
+  async findOneByPrimaryKey(value: string | number): Promise<T | null> {
     if (!this.model.primaryKey) {
       throw new Error(
         "Model " + this.model.table + " has no primary key to be retrieved by",
@@ -204,7 +202,7 @@ export class PostgresModelManager<T extends Model> extends ModelManager<T> {
     }
 
     return await this.findOneByPrimaryKey(
-      model[primaryKey as keyof T] as string | number | boolean,
+      model[primaryKey as keyof T] as string | number,
     );
   }
 
