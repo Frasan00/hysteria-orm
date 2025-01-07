@@ -1,4 +1,8 @@
-import { DataSource } from "../data_source";
+import { DataSource } from "../data_source/data_source";
+import {
+  MysqlSqlDataSourceInput,
+  PostgresSqlDataSourceInput,
+} from "../data_source/data_source_types";
 import {
   Mysql2Import,
   PgImport,
@@ -11,13 +15,13 @@ import { MysqlModelManager } from "./mysql/mysql_model_manager";
 import { PostgresModelManager } from "./postgres/postgres_model_manager";
 import {
   SqlConnectionType,
-  SqlDataSourceInput,
   SqlDataSourceType,
   SqlDriverSpecificOptions,
   ModelManager,
   MysqlConnectionInstance,
   PgClientInstance,
   SqliteConnectionInstance,
+  SqlDataSourceInput,
 } from "./sql_data_source_types";
 import { SqliteModelManager } from "./sqlite/sql_lite_model_manager";
 import { Transaction } from "./transactions/transaction";
@@ -43,7 +47,17 @@ export class SqlDataSource extends DataSource {
   static async connect(
     input?: SqlDataSourceInput,
     cb?: () => Promise<void> | void,
+  ): Promise<SqlDataSource>;
+  static async connect(cb?: () => Promise<void> | void): Promise<SqlDataSource>;
+  static async connect(
+    input?: SqlDataSourceInput | (() => Promise<void> | void),
+    cb?: () => Promise<void> | void,
   ): Promise<SqlDataSource> {
+    if (typeof input === "function") {
+      cb = input;
+      input = undefined;
+    }
+
     const sqlDataSource = new this(input);
     const driver = await DriverFactory.getDriver(sqlDataSource.type);
     switch (sqlDataSource.type) {
@@ -56,7 +70,7 @@ export class SqlDataSource extends DataSource {
           user: sqlDataSource.username,
           password: sqlDataSource.password,
           database: sqlDataSource.database,
-          ...input?.mysqlOptions,
+          ...(input ? (input as MysqlSqlDataSourceInput).driverOptions : {}),
         });
         break;
 
@@ -68,7 +82,7 @@ export class SqlDataSource extends DataSource {
           user: sqlDataSource.username,
           password: sqlDataSource.password,
           database: sqlDataSource.database,
-          ...input?.pgOptions,
+          ...(input ? (input as PostgresSqlDataSourceInput).driverOptions : {}),
         });
         await (sqlDataSource.sqlConnection as PgClientInstance).connect();
         break;
@@ -281,8 +295,15 @@ export class SqlDataSource extends DataSource {
   ) {
     const customSqlInstance = new SqlDataSource(connectionDetails);
     await customSqlInstance.connectDriver({
-      mysqlOptions: connectionDetails.mysqlOptions,
-      pgOptions: connectionDetails.pgOptions,
+      mysqlOptions:
+        this.getInstance().getDbType() === "mysql" ||
+        this.getInstance().getDbType() === "mariadb"
+          ? (connectionDetails as MysqlSqlDataSourceInput).driverOptions
+          : undefined,
+      pgOptions:
+        this.getInstance().getDbType() === "postgres"
+          ? (connectionDetails as PostgresSqlDataSourceInput).driverOptions
+          : undefined,
     });
     customSqlInstance.isConnected = true;
     try {

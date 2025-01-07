@@ -1,5 +1,5 @@
 import { RedisOptions } from "ioredis";
-import { DataSourceInput } from "./data_source";
+import { DataSourceInput } from "./data_source/data_source_types";
 import { MongoDataSource } from "./no_sql/mongo/mongo_data_source";
 import { Collection } from "./no_sql/mongo/mongo_models/mongo_collection";
 import {

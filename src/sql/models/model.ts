@@ -4,6 +4,7 @@ import { convertCase } from "../../utils/case_utils";
 import { baseSoftDeleteDate } from "../../utils/date_utils";
 import { PaginatedData } from "../pagination";
 import { ModelQueryBuilder, OneOptions } from "../query_builder/query_builder";
+import { plural } from "pluralize";
 import {
   addDynamicColumnsToModel,
   parseDatabaseDataIntoModelResponse,
@@ -42,9 +43,8 @@ export type BaseModelMethodOptions = {
 
 export function getBaseTableName(target: typeof Model): string {
   const className = target.name;
-  return className.endsWith("s")
-    ? convertCase(className, "snake")
-    : convertCase(className, "snake") + "s";
+  const snakeCaseName = convertCase(className, "snake");
+  return plural(snakeCaseName);
 }
 
 export function getBaseModelInstance<T extends Model>(): T {

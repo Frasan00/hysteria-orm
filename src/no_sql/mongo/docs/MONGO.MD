@@ -60,7 +60,7 @@ try {
 import { Collection, property, dynamicProperty } from "hysteria-orm";
 
 class User extends Collection {
-  static collectionName: string = "users"; // If not defined, the class name in snake_case with a 's' at the end will be used
+  static collectionName: string = "users"; // If not defined, the class name in snake_case in the plural form will be used
   static databaseCaseConvention: CaseConvention = "snake"; // If not defined, it will use the snake case while interacting with the database
   static modelCaseConvention: CaseConvention = "camel"; // If not defined, it will use the camel case while interacting with the model
 

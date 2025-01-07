@@ -1,4 +1,7 @@
 import Redis, { RedisOptions } from "ioredis";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 /**
  * @description The RedisStorable type is a type that can be stored in redis

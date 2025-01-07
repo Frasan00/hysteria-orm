@@ -1,16 +1,12 @@
-import { DataSource, DataSourceInput } from "../../data_source";
+import { DataSource } from "../../data_source/data_source";
 import { CollectionManager } from "./mongo_models/mongo_collection_manager";
 import dotenv from "dotenv";
 import { Collection } from "./mongo_models/mongo_collection";
 import { MongoClientImport } from "../../drivers/driver_constants";
 import { DriverFactory } from "../../drivers/drivers_factory";
+import { MongoOptions } from "mongodb";
 
 dotenv.config();
-
-export type MongoDataSourceInput = Exclude<
-  DataSourceInput,
-  "pgOptions" | "mysqlOptions"
->;
 
 type MongoClientInstance = InstanceType<MongoClientImport["MongoClient"]>;
 
@@ -39,7 +35,7 @@ export class MongoDataSource extends DataSource {
    */
   static async connect(
     url?: string,
-    options?: MongoDataSourceInput["mongoOptions"] & { logs?: boolean },
+    options?: MongoOptions & { logs?: boolean },
     cb?: () => void,
   ): Promise<MongoDataSource> {
     if (!url) {
@@ -122,7 +118,7 @@ export class MongoDataSource extends DataSource {
     this: typeof MongoDataSource,
     connectionDetails: {
       url: string;
-      options?: MongoDataSourceInput["mongoOptions"];
+      options?: MongoOptions;
     },
     cb: (mongoDataSource: MongoDataSource) => Promise<void>,
   ): Promise<void> {

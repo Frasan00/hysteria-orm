@@ -1,4 +1,9 @@
-import { DataSourceInput, DataSourceType } from "../data_source";
+import {
+  DataSourceType,
+  MysqlSqlDataSourceInput,
+  PostgresSqlDataSourceInput,
+  SqliteDataSourceInput,
+} from "../data_source/data_source_types";
 import {
   DriverSpecificOptions,
   Mysql2Import,
@@ -31,10 +36,13 @@ export type SqlConnectionType =
   | PgClientInstance
   | SqliteConnectionInstance;
 
-export interface ISqlDataSourceInput extends DataSourceInput {
-  type: Exclude<DataSourceType, "mongo">;
-}
+export type SqlDataSourceInput = {
+  readonly type: Exclude<DataSourceType, "mongo">;
+  readonly logs?: boolean;
+} & (
+  | MysqlSqlDataSourceInput
+  | PostgresSqlDataSourceInput
+  | SqliteDataSourceInput
+);
 
-export type SqlDataSourceInput = Exclude<ISqlDataSourceInput, "mongoOptions">;
-
-export type SqlDataSourceType = SqlDataSourceInput["type"];
+export type SqlDataSourceType = Exclude<DataSourceType, "mongo">;

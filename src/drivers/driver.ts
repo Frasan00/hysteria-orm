@@ -1,4 +1,4 @@
-import { DataSourceType } from "../data_source";
+import { DataSourceType } from "../data_source/data_source_types";
 import { DriverImport, DriverSpecificOptions } from "./driver_constants";
 
 export abstract class Driver {

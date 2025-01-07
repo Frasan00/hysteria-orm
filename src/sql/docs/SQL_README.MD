@@ -115,7 +115,7 @@ const sql = await SqlDataSource.connect(mysqlConfig, () => console.log("Connecte
 await sql.closeConnection();
 
 // You can also only use the static connection method without the need of a connection instance
-await SqlDataSource.connect(); // connects using envs
+await SqlDataSource.connect(() => console.log("Connected to the database!"));
 await SqlDataSource.disconnect(); // disconnects the connection
 ```
 
@@ -209,7 +209,7 @@ import "reflect-metadata";
 import { Model } from "hysteria-orm";
 
 export class User extends Model {
-    static tableName: string = "users"; // Default Class name lowercase, in snake case with a final "s" (given for granted that the Class is defined in Pascal Case)
+    static tableName: string = "users"; // Default Class name lowercase, in snake case and in the plural form
 
     @column({ primaryKey: true })
     declare id: number;
