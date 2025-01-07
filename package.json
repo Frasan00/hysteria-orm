@@ -48,7 +48,6 @@
     "@types/sqlite3": "^3.1.11",
     "commander": "^12.1.0",
     "dotenv": "^16.4.7",
-    "lodash": "^4.17.21",
     "pluralize": "^8.0.0",
     "reflect-metadata": "^0.2.2",
     "sql-formatter": "^15.4.8",
