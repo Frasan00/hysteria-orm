@@ -99,8 +99,6 @@ const mysqlConfig: DataSourceInput = {
     password: PASSWORD,
     database: DATABASE,
     logs: true, // query-logs (optional) - default: false
-    pgOptions: {<Every pg client options>}
-    mysqlOptions: {<Every mysql2 createConnection option>}
 }
 
 // For sqlite it's only needed the DB_DATABASE env that should be yor DATABASE.db file
