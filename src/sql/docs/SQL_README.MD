@@ -181,7 +181,7 @@ await SqlDataSource.useConnection(
 import { column } from "hysteria-orm";
 
 // Basic column
-column()
+@column()
 declare name: string;
 
 // Primary key
