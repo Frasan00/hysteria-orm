@@ -109,25 +109,6 @@ test("When condition", async () => {
   expect(user?.name).toBe("Dave");
 });
 
-test("Dynamic column", async () => {
-  const user = await User.insert({
-    name: "Jack",
-    email: "Jack@gmail.com",
-    signupSource: "email",
-    isActive: true,
-  });
-
-  if (!user) {
-    throw new Error("User not created");
-  }
-
-  const dynamicColumnUser = await User.query()
-    .addDynamicColumns(["getFirstUser"])
-    .one();
-  expect(dynamicColumnUser).not.toBe(null);
-  expect(dynamicColumnUser?.id).not.toBe(null);
-});
-
 test("Find multiple users", async () => {
   const users = await User.find();
   expect(users.length).toBeGreaterThanOrEqual(0);
@@ -397,7 +378,6 @@ test("Very complex query", async () => {
     .orWhere("signupSource", "email")
     .with("posts")
     .andWhereIn("name", ["Dave", "John", "Alice"])
-    .addDynamicColumns(["getFirstUser"])
     .where("name", "LIKE", "Dave")
     .orWhere("email", "LIKE", "Dave")
     .andWhere("is_active", true)

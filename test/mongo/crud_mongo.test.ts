@@ -46,12 +46,8 @@ describe("TestModel", () => {
       { name: "Test Name 2", email: "test2@example.com" },
     ]);
 
-    const foundModels = await TestModel.find({
-      dynamicProperties: ["getTest"],
-    });
-    // TODO: fix this test
+    const foundModels = await TestModel.find();
     expect(foundModels.length).toBe(2);
-    // expect(foundModels[0]["test"]).toBe("test");
   });
 
   test("should find one record", async () => {

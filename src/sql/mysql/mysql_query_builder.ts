@@ -2,7 +2,6 @@ import { convertCase } from "../../utils/case_utils";
 import { log } from "../../utils/logger";
 import { Model, getBaseModelInstance } from "../models/model";
 import {
-  DynamicColumnType,
   RelationType,
   SelectableType,
 } from "../models/model_manager/model_manager_types";
@@ -21,7 +20,6 @@ import {
 } from "../query_builder/query_builder";
 import { UpdateOptions } from "../query_builder/update_query_builder_types";
 import deleteTemplate from "../resources/query/DELETE";
-import joinTemplate from "../resources/query/JOIN";
 import updateTemplate from "../resources/query/UPDATE";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
 import { SqlDataSource } from "../sql_data_source";
@@ -276,6 +274,72 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return rows[0].affectedRows;
   }
 
+  async getCount(
+    options: { ignoreHooks: boolean } = { ignoreHooks: false },
+  ): Promise<number> {
+    if (options.ignoreHooks) {
+      const [result]: any = await this.mysqlConnection.query(
+        `SELECT COUNT(*) as total from ${this.table}`,
+      );
+      return result[0].total;
+    }
+
+    this.select("COUNT(*) as total");
+    const result = await this.one();
+    return result ? +result.$additional.total : 0;
+  }
+
+  async getSum(column: SelectableType<T>): Promise<number>;
+  async getSum(column: string): Promise<number>;
+  async getSum(
+    column: SelectableType<T> | string,
+    options: { ignoreHooks: boolean } = { ignoreHooks: false },
+  ): Promise<number> {
+    if (options.ignoreHooks) {
+      const [result]: any = await this.mysqlConnection.query(
+        `SELECT SUM(${column as string}) as total from ${this.table}`,
+      );
+      return result[0].total;
+    }
+
+    column = convertCase(column as string, this.model.databaseCaseConvention);
+    this.select(`SUM(${column as string}) as total`);
+    const result = await this.one();
+    return result ? +result.$additional.total : 0;
+  }
+
+  async paginate(
+    page: number,
+    limit: number,
+    options?: ManyOptions,
+  ): Promise<PaginatedData<T>> {
+    this.limitQuery = this.selectTemplate.limit(limit);
+    this.offsetQuery = this.selectTemplate.offset((page - 1) * limit);
+
+    const originalSelectQuery = this.selectQuery;
+    this.select("COUNT(*) as total");
+    const total = await this.many(options);
+
+    this.selectQuery = originalSelectQuery;
+    const models = await this.many(options);
+
+    const paginationMetadata = getPaginationMetadata(
+      page,
+      limit,
+      +total[0].$additional["total"] as number,
+    );
+    let data =
+      (await parseDatabaseDataIntoModelResponse(models, this.model)) || [];
+    if (Array.isArray(data)) {
+      data = data.filter((model) => model !== null);
+    }
+
+    return {
+      paginationMetadata,
+      data: Array.isArray(data) ? data : [data],
+    } as PaginatedData<T>;
+  }
+
   whereBuilder(cb: (queryBuilder: MysqlQueryBuilder<T>) => void): this {
     const queryBuilder = new MysqlQueryBuilder(
       this.type,
@@ -379,139 +443,6 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return this;
   }
 
-  async getCount(
-    options: { ignoreHooks: boolean } = { ignoreHooks: false },
-  ): Promise<number> {
-    if (options.ignoreHooks) {
-      const [result]: any = await this.mysqlConnection.query(
-        `SELECT COUNT(*) as total from ${this.table}`,
-      );
-      return result[0].total;
-    }
-
-    this.select("COUNT(*) as total");
-    const result = await this.one();
-    return result ? +result.$additional.total : 0;
-  }
-
-  async getSum(column: SelectableType<T>): Promise<number>;
-  async getSum(column: string): Promise<number>;
-  async getSum(
-    column: SelectableType<T> | string,
-    options: { ignoreHooks: boolean } = { ignoreHooks: false },
-  ): Promise<number> {
-    if (options.ignoreHooks) {
-      const [result]: any = await this.mysqlConnection.query(
-        `SELECT SUM(${column as string}) as total from ${this.table}`,
-      );
-      return result[0].total;
-    }
-
-    column = convertCase(column as string, this.model.databaseCaseConvention);
-    this.select(`SUM(${column as string}) as total`);
-    const result = await this.one();
-    return result ? +result.$additional.total : 0;
-  }
-
-  async paginate(
-    page: number,
-    limit: number,
-    options?: ManyOptions,
-  ): Promise<PaginatedData<T>> {
-    this.limitQuery = this.selectTemplate.limit(limit);
-    this.offsetQuery = this.selectTemplate.offset((page - 1) * limit);
-
-    const originalSelectQuery = this.selectQuery;
-    this.select("COUNT(*) as total");
-    const total = await this.many(options);
-
-    this.selectQuery = originalSelectQuery;
-    const models = await this.many(options);
-
-    const paginationMetadata = getPaginationMetadata(
-      page,
-      limit,
-      +total[0].$additional["total"] as number,
-    );
-    let data =
-      (await parseDatabaseDataIntoModelResponse(models, this.model)) || [];
-    if (Array.isArray(data)) {
-      data = data.filter((model) => model !== null);
-    }
-
-    return {
-      paginationMetadata,
-      data: Array.isArray(data) ? data : [data],
-    } as PaginatedData<T>;
-  }
-
-  // SELECT
-  select(...columns: string[]): MysqlQueryBuilder<T>;
-  select(...columns: (SelectableType<T> | "*")[]): MysqlQueryBuilder<T>;
-  select(
-    ...columns: (SelectableType<T> | "*" | string)[]
-  ): MysqlQueryBuilder<T> {
-    this.modelSelectedColumns = columns.map((column) =>
-      convertCase(column as string, this.model.databaseCaseConvention),
-    ) as string[];
-    this.selectQuery = this.selectTemplate.selectColumns(
-      ...(columns as string[]),
-    );
-
-    return this;
-  }
-
-  distinct(): MysqlQueryBuilder<T> {
-    const distinct = this.selectTemplate.distinct;
-    this.selectQuery = this.selectQuery.replace(
-      /select/i,
-      `SELECT ${distinct}`,
-    );
-    return this;
-  }
-
-  distinctOn(...columns: string[]): MysqlQueryBuilder<T>;
-  distinctOn(...columns: SelectableType<T>[]): MysqlQueryBuilder<T>;
-  distinctOn(...columns: (string | SelectableType<T>)[]): MysqlQueryBuilder<T>;
-  distinctOn(...columns: (string | SelectableType<T>)[]): MysqlQueryBuilder<T> {
-    throw new Error("DISTINCT ON is only supported in postgres");
-  }
-
-  joinRaw(query: string): this {
-    this.joinQuery += ` ${query} `;
-    return this;
-  }
-
-  join(
-    relationTable: string,
-    primaryColumn: string,
-    foreignColumn: string,
-  ): MysqlQueryBuilder<T> {
-    const join = joinTemplate(
-      this.model,
-      relationTable,
-      primaryColumn,
-      foreignColumn,
-    );
-    this.joinQuery += join.innerJoin();
-    return this;
-  }
-
-  leftJoin(
-    relationTable: string,
-    primaryColumn: string,
-    foreignColumn: string,
-  ): MysqlQueryBuilder<T> {
-    const join = joinTemplate(
-      this.model,
-      relationTable,
-      primaryColumn,
-      foreignColumn,
-    );
-    this.joinQuery += join.leftJoin();
-    return this;
-  }
-
   with<O extends typeof Model>(
     relation: RelationType<T>,
     relatedModel?: O,
@@ -556,78 +487,9 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
       limitQuery: queryBuilder.limitQuery,
       offsetQuery: queryBuilder.offsetQuery,
       havingQuery: queryBuilder.havingQuery,
-      dynamicColumns: queryBuilder.dynamicColumns,
       ignoreAfterFetchHook: ignoreHooks?.afterFetch || false,
     });
 
-    return this;
-  }
-
-  addDynamicColumns(
-    dynamicColumns: DynamicColumnType<T>[],
-  ): ModelQueryBuilder<T> {
-    this.dynamicColumns = dynamicColumns as string[];
-    return this;
-  }
-
-  groupBy(...columns: SelectableType<T>[]): this;
-  groupBy(...columns: string[]): this;
-  groupBy(...columns: (SelectableType<T> | string)[]): this {
-    this.groupByQuery = this.selectTemplate.groupBy(...(columns as string[]));
-    return this;
-  }
-
-  groupByRaw(query: string): this {
-    query.replace("GROUP BY", "");
-    this.groupByQuery = ` GROUP BY ${query}`;
-    return this;
-  }
-
-  orderBy(column: SelectableType<T>, order: "ASC" | "DESC"): this;
-  orderBy(column: string, order: "ASC" | "DESC"): this;
-  orderBy(column: SelectableType<T> | string, order: "ASC" | "DESC"): this {
-    const casedColumn = convertCase(
-      column as string,
-      this.model.databaseCaseConvention,
-    );
-
-    if (this.orderByQuery) {
-      this.orderByQuery += `, ${casedColumn as string} ${order}`;
-      return this;
-    }
-
-    this.orderByQuery = ` ORDER BY ${casedColumn as string} ${order}`;
-    return this;
-  }
-
-  orderByRaw(query: string): this {
-    if (this.orderByQuery) {
-      this.orderByQuery += `, ${query}`;
-      return this;
-    }
-
-    this.orderByQuery = ` ORDER BY ${query}`;
-    return this;
-  }
-
-  limit(limit: number) {
-    this.limitQuery = this.selectTemplate.limit(limit);
-    return this;
-  }
-
-  offset(offset: number) {
-    this.offsetQuery = this.selectTemplate.offset(offset);
-    return this;
-  }
-
-  havingRaw(query: string): ModelQueryBuilder<T> {
-    query = query.replace("HAVING", "");
-    if (this.havingQuery) {
-      this.havingQuery += ` AND ${query}`;
-      return this;
-    }
-
-    this.havingQuery = ` HAVING ${query}`;
     return this;
   }
 

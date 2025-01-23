@@ -14,7 +14,6 @@ export class StandaloneQueryBuilder {
   protected selectQuery: string;
   protected joinQuery: string;
   protected relations: string[];
-  protected dynamicColumns: string[];
   protected groupByQuery: string;
   protected orderByQuery: string;
   protected limitQuery: string;
@@ -53,7 +52,6 @@ export class StandaloneQueryBuilder {
     this.whereQuery = "";
     this.joinQuery = "";
     this.relations = [];
-    this.dynamicColumns = [];
     this.groupByQuery = "";
     this.orderByQuery = "";
     this.limitQuery = "";

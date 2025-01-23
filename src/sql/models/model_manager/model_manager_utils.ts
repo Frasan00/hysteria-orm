@@ -157,16 +157,6 @@ export default class SqlModelManagerUtils<T extends Model> {
         result = [result];
       }
 
-      // Dynamic columns are added to the model after the query
-      for (const row of result) {
-        if (inputRelation.dynamicColumns?.length) {
-          await (relation.model as any).addDynamicColumns(
-            row[row["relation_name"]],
-            inputRelation.dynamicColumns,
-          );
-        }
-      }
-
       // after fetch hook
       if (!inputRelation.ignoreAfterFetchHook) {
         result = await (relation.model as any).afterFetch(result);

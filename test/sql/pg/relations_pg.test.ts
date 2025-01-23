@@ -466,8 +466,7 @@ test("test with relation query builder", async () => {
           "addresses.id as test_id",
           "SUM(addresses.id) OVER() as sumTest",
         )
-        .where("city", "City 1")
-        .addDynamicColumns(["getTest"]);
+        .where("city", "City 1");
     })
     .many();
 

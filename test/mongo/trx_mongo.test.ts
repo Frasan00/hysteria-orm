@@ -1,7 +1,4 @@
-import {
-  property,
-  dynamicProperty,
-} from "../../src/no_sql/mongo/mongo_models/mongo_collection_decorators";
+import { property } from "../../src/no_sql/mongo/mongo_models/mongo_collection_decorators";
 import { MongoDataSource } from "../../src/no_sql/mongo/mongo_data_source";
 import { Collection } from "../../src/no_sql/mongo/mongo_models/mongo_collection";
 
@@ -11,11 +8,6 @@ class TestModel extends Collection {
 
   @property()
   declare email: string;
-
-  @dynamicProperty("test")
-  getTest() {
-    return "test";
-  }
 }
 
 describe("TestModel", () => {

@@ -40,6 +40,18 @@ const joinTemplate = (
 
       return `\nLEFT JOIN ${relatedTable} ON ${relatedTable}.${foreignColumnConverted} = ${table}.${primaryColumnConverted} `;
     },
+    rightJoin: () => {
+      const foreignColumnConverted = convertCase(
+        foreignColumnName,
+        typeofModel.databaseCaseConvention,
+      );
+      const primaryColumnConverted = convertCase(
+        primaryColumnName,
+        typeofModel.databaseCaseConvention,
+      );
+
+      return `\nRIGHT JOIN ${relatedTable} ON ${relatedTable}.${foreignColumnConverted} = ${table}.${primaryColumnConverted} `;
+    },
   };
 };
 

@@ -7,6 +7,3 @@
 
 ## Migrations
 - Migration cli may not work with all `tsconfig.json` configurations
-
-## NoSql
-- Mongo dynamic columns are not recognized by the orm

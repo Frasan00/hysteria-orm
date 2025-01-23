@@ -5,10 +5,7 @@ import { baseSoftDeleteDate } from "../../utils/date_utils";
 import { PaginatedData } from "../pagination";
 import { ModelQueryBuilder, OneOptions } from "../query_builder/query_builder";
 import { plural } from "pluralize";
-import {
-  addDynamicColumnsToModel,
-  parseDatabaseDataIntoModelResponse,
-} from "../serializer";
+import { parseDatabaseDataIntoModelResponse } from "../serializer";
 import { SqlDataSource } from "../sql_data_source";
 import { ModelManager } from "../sql_data_source_types";
 import { Transaction } from "../transactions/transaction";
@@ -16,14 +13,12 @@ import {
   belongsTo,
   column,
   ColumnOptions,
-  dynamicColumn,
   getPrimaryKey,
   hasMany,
   hasOne,
   manyToMany,
 } from "./model_decorators";
 import {
-  DynamicColumnType,
   FindOneType,
   FindType,
   SelectableType,
@@ -420,50 +415,6 @@ export abstract class Model extends Entity {
   }
 
   /**
-   * @description Adds dynamic columns to the model that are not defined in the Table and are defined in the model
-   * @description It does not support custom connection or transaction
-   */
-  static async addDynamicColumns<T extends Model>(
-    this: new () => T | typeof Model,
-    data: T | T[] | PaginatedData<T>,
-    dynamicColumns: DynamicColumnType<T>[],
-  ): Promise<T | T[] | PaginatedData<T>> {
-    const typeofModel = this as unknown as typeof Model;
-    typeofModel.establishConnection();
-    if (Array.isArray(data)) {
-      for (const model of data) {
-        await addDynamicColumnsToModel(
-          typeofModel,
-          model,
-          dynamicColumns as string[],
-        );
-      }
-
-      return data as T[];
-    }
-
-    if (!Array.isArray(data)) {
-      await addDynamicColumnsToModel(
-        typeofModel,
-        data,
-        dynamicColumns as string[],
-      );
-
-      return data as T;
-    }
-
-    for (const model of (data as PaginatedData<T>).data) {
-      await addDynamicColumnsToModel(
-        typeofModel,
-        model,
-        dynamicColumns as string[],
-      );
-    }
-
-    return data as PaginatedData<T>;
-  }
-
-  /**
    * @description Merges the provided data with the sqlInstance
    */
   static combineProps<T extends Model>(sqlInstance: T, data: Partial<T>): void {
@@ -519,7 +470,7 @@ export abstract class Model extends Entity {
   }
 
   /**
-   * @description Defines a dynamic column in the model, useful in javascript in order to not have to rely on decorators since are not supported without a transpiler like babel
+   * @description Defines an hasOne relation
    * @javascript
    */
   static hasOne(
@@ -531,7 +482,7 @@ export abstract class Model extends Entity {
   }
 
   /**
-   * @description Defines a dynamic column in the model, useful in javascript in order to not have to rely on decorators since are not supported without a transpiler like babel
+   * @description Defines an hasMany
    * @javascript
    */
   static hasMany(
@@ -543,7 +494,7 @@ export abstract class Model extends Entity {
   }
 
   /**
-   * @description Defines a dynamic column in the model, useful in javascript in order to not have to rely on decorators since are not supported without a transpiler like babel
+   * @description Defines a belongsTo
    * @javascript
    */
   static belongsTo(
@@ -555,7 +506,7 @@ export abstract class Model extends Entity {
   }
 
   /**
-   * @description Defines a dynamic column in the model, useful in javascript in order to not have to rely on decorators since are not supported without a transpiler like babel
+   * @description Defines a many to many
    * @javascript
    */
   static manyToMany(
@@ -565,14 +516,6 @@ export abstract class Model extends Entity {
     foreignKey: string,
   ): void {
     manyToMany(model, throughModel, foreignKey)(this.prototype, columnName);
-  }
-
-  /**
-   * @description Defines a dynamic column in the model, useful in javascript in order to not have to rely on decorators since are not supported without a transpiler like babel
-   * @javascript
-   */
-  static dynamicColumn(columnName: string, func: () => any): void {
-    dynamicColumn(columnName)(this.prototype, func.name);
   }
 
   /**

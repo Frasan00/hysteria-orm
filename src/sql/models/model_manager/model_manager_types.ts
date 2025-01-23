@@ -37,9 +37,6 @@ export type WhereType<T> = {
 
 export type SelectableType<T> = ExcludeRelations<Omit<T, "$additional">>;
 export type RelationType<T> = OnlyRelations<Omit<T, "$additional">>;
-export type DynamicColumnType<T> = {
-  [k in keyof T]: T[k] extends (...args: any[]) => any ? k : never;
-}[keyof T];
 
 type OrderByType = {
   [key: string]: "ASC" | "DESC";
@@ -49,7 +46,6 @@ export type UnrestrictedFindOneType<T> = {
   select?: string[];
   relations?: RelationType<T>[];
   ignoreHooks?: FetchHooks[];
-  dynamicColumns?: DynamicColumnType<T>;
   where?: Record<string, any>;
   orderBy?: OrderByType;
   groupBy?: string[];
@@ -69,7 +65,6 @@ export type FindOneType<T> = {
   relations?: RelationType<T>[];
   orderBy?: OrderByType;
   groupBy?: SelectableType<T>[];
-  dynamicColumns?: DynamicColumnType<T>;
   where?: WhereType<T>;
   ignoreHooks?: FetchHooks[];
   useConnection?: SqlDataSource;

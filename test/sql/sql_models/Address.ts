@@ -1,9 +1,5 @@
 import { Model } from "../../../src/sql/models/model";
-import {
-  column,
-  dynamicColumn,
-  manyToMany,
-} from "../../../src/sql/models/model_decorators";
+import { column, manyToMany } from "../../../src/sql/models/model_decorators";
 import { ModelQueryBuilder } from "../../../src/sql/query_builder/query_builder";
 import { User } from "./User";
 
@@ -23,11 +19,6 @@ export class Address extends Model {
 
   @manyToMany(() => User, "user_addresses", "addressId")
   declare users: User[];
-
-  @dynamicColumn("test")
-  async getTest() {
-    return "test";
-  }
 
   static beforeFetch(queryBuilder: ModelQueryBuilder<Address>): void {
     queryBuilder.rawWhere("1 = 1");

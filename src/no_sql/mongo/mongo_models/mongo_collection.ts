@@ -2,7 +2,7 @@ import "reflect-metadata";
 import { Entity } from "../../../entity";
 import { MongoDataSource } from "../mongo_data_source";
 import { MongoQueryBuilder } from "../query_builder/mongo_query_builder";
-import { dynamicProperty, property } from "./mongo_collection_decorators";
+import { property } from "./mongo_collection_decorators";
 import {
   CollectionManager,
   MongoFindManyOptions,
@@ -301,14 +301,6 @@ export class Collection extends Entity {
    */
   static property(propertyName: string): void {
     property()(this.prototype, propertyName);
-  }
-
-  /**
-   * @description Adds a dynamic property to the model, adding the ability to modify the data after fetching the data
-   * @javascript
-   */
-  static dynamicProperty(columnName: string, func: () => any): void {
-    dynamicProperty(columnName)(this.prototype, func.name);
   }
 
   /**

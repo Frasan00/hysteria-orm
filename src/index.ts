@@ -3,8 +3,6 @@ import { DataSourceInput } from "./data_source/data_source_types";
 import { MongoDataSource } from "./no_sql/mongo/mongo_data_source";
 import { Collection } from "./no_sql/mongo/mongo_models/mongo_collection";
 import {
-  dynamicProperty,
-  getCollectionDynamicProperties,
   getCollectionProperties,
   property,
 } from "./no_sql/mongo/mongo_models/mongo_collection_decorators";
@@ -18,7 +16,6 @@ import { Model } from "./sql/models/model";
 import {
   belongsTo,
   column,
-  dynamicColumn,
   getModelColumns,
   getPrimaryKey,
   getRelations,
@@ -61,7 +58,6 @@ export default {
   MongoDataSource,
   Collection,
   property,
-  dynamicColumn,
 };
 
 export {
@@ -73,8 +69,6 @@ export {
   Collection,
   column,
   DataSourceInput,
-  dynamicProperty,
-  getCollectionDynamicProperties,
   getCollectionProperties,
   getModelColumns,
   getPrimaryKey,

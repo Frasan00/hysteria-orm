@@ -1,11 +1,7 @@
 import { convertCase } from "../utils/case_utils";
 import { isNestedObject } from "../utils/json_utils";
 import { Model } from "./models/model";
-import {
-  getDynamicColumns,
-  getModelColumns,
-  getRelations,
-} from "./models/model_decorators";
+import { getModelColumns, getRelations } from "./models/model_decorators";
 import {
   isRelationDefinition,
   Relation,
@@ -269,42 +265,4 @@ function convertToModelCaseConvention(
     },
     {} as Record<string, any>,
   );
-}
-
-export async function addDynamicColumnsToModel(
-  typeofModel: typeof Model,
-  model: Record<string, any>,
-  dynamicColumnsToAdd: string[],
-): Promise<void> {
-  const dynamicColumns = getDynamicColumns(typeofModel);
-  if (!dynamicColumns || !dynamicColumns.length) {
-    return;
-  }
-
-  const dynamicColumnMap = new Map<
-    string,
-    {
-      columnName: string;
-      dynamicColumnFn: (...args: any[]) => any;
-    }
-  >();
-
-  for (const dynamicColumn of dynamicColumns) {
-    dynamicColumnMap.set(dynamicColumn.functionName, {
-      columnName: dynamicColumn.columnName,
-      dynamicColumnFn: dynamicColumn.dynamicColumnFn,
-    });
-  }
-
-  const promises = dynamicColumnsToAdd.map(async (dynamicColumn: string) => {
-    const dynamic = dynamicColumnMap.get(dynamicColumn);
-    const casedKey = convertCase(
-      dynamic?.columnName,
-      typeofModel.modelCaseConvention,
-    );
-
-    Object.assign(model, { [casedKey]: await dynamic?.dynamicColumnFn() });
-  });
-
-  await Promise.all(promises);
 }

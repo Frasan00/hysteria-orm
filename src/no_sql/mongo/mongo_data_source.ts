@@ -35,7 +35,7 @@ export class MongoDataSource extends DataSource {
    */
   static async connect(
     url?: string,
-    options?: MongoOptions & { logs?: boolean },
+    options?: Partial<MongoOptions> & { logs?: boolean },
     cb?: () => void,
   ): Promise<MongoDataSource> {
     if (!url) {

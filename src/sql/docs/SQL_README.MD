@@ -29,7 +29,6 @@
     - [Query Builder](#query-builder)
     - [Where Builder](#where-builder)
     - [Aliases](#aliases)
-    - [Dynamic Columns](#dynamic-columns)
     - [Count And Sum](#count-and-sum)
     - [Join](#join)
     - [Pagination](#pagination)
@@ -323,7 +322,7 @@ export class User extends Model {
 ### Relations
 - Relations are defined in the Model and can be retrieved with the `with` method in the query builder or with the relations property in the standard methods
 - Relations are special standard queries that are not influenced by hooks defined in their classes
-- Relation queries are made in O(n) complexity, even many to many relations are retrieved in a single query, but complexity may very based on the additional operations like hooks and dynamic columns
+- Relation queries are made in O(n) complexity, even many to many relations are retrieved in a single query, but complexity may very based on the additional operations like hooks
 - Supported relations are
     - has one - Has one record in relation with the related Model and the foreign key is in the related Model
     - belongs to - Belongs to one record in relation with the related Model and the foreign key is in the current Model
@@ -777,41 +776,6 @@ const user: User | null = await User.query()
     .where("name", "John Doe")
     .andWhere("email", "john@gmail.com")
     .one();
-```
-
-### Dynamic Columns
-- For columns that are not in the Table that have to be computed dynamically you can use @dynamicColumn decorator
-- Those columns are meant to be made in the last part of a query as a final result
-```typescript
-import {
-  column,
-  dynamicColumn,
-} from "hysteria";
-import { Model } from "../../../src/sql/Models/Model";
-
-export class User extends Model {
-  @column({ primaryKey: true })
-  declare id: string;
-
-  @column({ serialize: (value: any) => value.toUpperCase() })
-  declare name: string;
-
-  @column()
-  declare email: string;
-
-  @dynamicColumn("test")
-  getTest() {
-    return "test";
-  }
-}
-
-// You can add dynamic columns in a query
-const model: User = await User.query().addDynamicColumns(["getTest"]).one();
-
-// Or inject them directly in a Model | Model[] | PaginatedModel
-const userWithDynamicColumn = await User.addDynamicColumns(user, [
-"getTest",
-]);
 ```
 
 ### Count and Sum

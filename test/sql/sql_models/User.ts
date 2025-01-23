@@ -4,7 +4,6 @@ import {
   column,
   hasMany,
   hasOne,
-  dynamicColumn,
   manyToMany,
 } from "../../../src/sql/models/model_decorators";
 import { Address } from "./Address";
@@ -66,9 +65,4 @@ export class User extends Model {
   //     return user;
   //   });
   // }
-
-  @dynamicColumn("firstUser")
-  async getFirstUser() {
-    return await User.query().one();
-  }
 }

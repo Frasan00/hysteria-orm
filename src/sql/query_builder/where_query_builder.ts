@@ -5,21 +5,17 @@ import whereTemplate, {
   BinaryOperatorType,
 } from "../resources/query/WHERE";
 import { SqlDataSource } from "../sql_data_source";
+import { JoinQueryBuilder } from "./join_query_builder";
 
-export class WhereQueryBuilder<T extends Model> {
-  protected sqlDataSource: SqlDataSource;
+export abstract class WhereQueryBuilder<
+  T extends Model,
+> extends JoinQueryBuilder<T> {
   protected whereQuery: string = "";
   protected params: BaseValues[] = [];
-  protected model: typeof Model;
   protected table: string;
-  protected logs: boolean;
-
   protected whereTemplate: ReturnType<typeof whereTemplate>;
   protected isNestedCondition = false;
 
-  /**
-   * @description Constructs a query_builder instance.
-   */
   constructor(
     model: typeof Model,
     table: string,
@@ -27,6 +23,7 @@ export class WhereQueryBuilder<T extends Model> {
     isNestedCondition = false,
     sqlDataSource: SqlDataSource,
   ) {
+    super(model, logs, sqlDataSource);
     this.model = model;
     this.sqlDataSource = sqlDataSource;
     this.logs = logs;
@@ -35,6 +32,7 @@ export class WhereQueryBuilder<T extends Model> {
       this.sqlDataSource.getDbType(),
       this.model,
     );
+
     this.params = [];
     this.isNestedCondition = isNestedCondition;
   }
@@ -42,10 +40,7 @@ export class WhereQueryBuilder<T extends Model> {
   /**
    * @description Accepts a value and executes a callback only of the value is not null or undefined.
    */
-  when(
-    value: any,
-    cb: (value: any, query: WhereQueryBuilder<T>) => void,
-  ): this {
+  when(value: any, cb: (value: any, query: this) => void): this {
     if (value === undefined || value === null) {
       return this;
     }

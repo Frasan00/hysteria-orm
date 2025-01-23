@@ -7,23 +7,18 @@ import {
   FetchHooks,
   MongoQueryBuilder,
 } from "../query_builder/mongo_query_builder";
-import {
-  DynamicColumnType,
-  SelectableType,
-} from "../../../sql/models/model_manager/model_manager_types";
+import { SelectableType } from "../../../sql/models/model_manager/model_manager_types";
 
 export type MongoFindOneOptions<T extends Collection> = {
   ignoreHooks?: FetchHooks[];
   select?: SelectableType<T>[];
   where?: ModelKeyOrAny<T>;
-  dynamicProperties?: DynamicColumnType<T>[];
 };
 
 export type UnrestrictedMongoFindOneOptions<T extends Collection> = {
   ignoreHooks?: FetchHooks[];
   select?: string[];
   where?: ModelKeyOrAny<T>;
-  dynamicProperties?: DynamicColumnType<T>[];
 };
 
 export type MongoFindManyOptions<T extends Collection> =
@@ -97,10 +92,6 @@ export class CollectionManager<T extends Collection> {
       queryBuilder.offset(options.offset);
     }
 
-    if (options.dynamicProperties) {
-      queryBuilder.addDynamicProperty(options.dynamicProperties);
-    }
-
     return queryBuilder.many({ ignoreHooks: options.ignoreHooks });
   }
 
@@ -119,10 +110,6 @@ export class CollectionManager<T extends Collection> {
       Object.entries(options.where).forEach(([key, value]) => {
         queryBuilder.where(key, value);
       });
-    }
-
-    if (options.dynamicProperties) {
-      queryBuilder.addDynamicProperty(options.dynamicProperties);
     }
 
     return queryBuilder.one({ ignoreHooks: options.ignoreHooks });
@@ -149,10 +136,6 @@ export class CollectionManager<T extends Collection> {
       Object.entries(options.where).forEach(([key, value]) => {
         queryBuilder.where(key, value);
       });
-    }
-
-    if (options.dynamicProperties) {
-      queryBuilder.addDynamicProperty(options.dynamicProperties);
     }
 
     const result = await queryBuilder.one({ ignoreHooks: options.ignoreHooks });

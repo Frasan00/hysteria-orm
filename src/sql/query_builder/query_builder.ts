@@ -1,8 +1,8 @@
+import { format } from "sql-formatter";
 import { convertCase } from "../../utils/case_utils";
 import { Model } from "../models/model";
 import { getModelColumns } from "../models/model_decorators";
 import {
-  DynamicColumnType,
   RelationType,
   SelectableType,
 } from "../models/model_manager/model_manager_types";
@@ -10,12 +10,12 @@ import { MysqlQueryBuilder } from "../mysql/mysql_query_builder";
 import { PaginatedData } from "../pagination";
 import { PostgresQueryBuilder } from "../postgres/postgres_query_builder";
 import selectTemplate from "../resources/query/SELECT";
-import { addDynamicColumnsToModel } from "../serializer";
 import { SqlDataSource } from "../sql_data_source";
 import { SqlLiteQueryBuilder } from "../sqlite/sql_lite_query_builder";
 import { DeleteOptions, SoftDeleteOptions } from "./delete_query_builder_type";
 import { UpdateOptions } from "./update_query_builder_types";
 import { WhereQueryBuilder } from "./where_query_builder";
+import { getSqlDialect } from "../sql_runner/sql_runner";
 
 /**
  * @description The abstract class for query builders for selecting data.
@@ -50,7 +50,6 @@ export type RelationQueryBuilder = {
   limitQuery?: string;
   offsetQuery?: string;
   havingQuery?: string;
-  dynamicColumns?: string[];
   ignoreAfterFetchHook?: boolean;
 };
 
@@ -59,9 +58,7 @@ export abstract class QueryBuilder<
 > extends WhereQueryBuilder<T> {
   protected selectQuery: string;
   protected modelSelectedColumns: string[];
-  protected joinQuery: string;
   protected relations: RelationQueryBuilder[];
-  protected dynamicColumns: string[];
   protected groupByQuery: string;
   protected orderByQuery: string;
   protected limitQuery: string;
@@ -69,9 +66,6 @@ export abstract class QueryBuilder<
   protected havingQuery: string;
   protected selectTemplate: ReturnType<typeof selectTemplate>;
 
-  /**
-   * @description Constructs a Mysql_query_builder instance.
-   */
   protected constructor(
     model: typeof Model,
     table: string,
@@ -80,19 +74,14 @@ export abstract class QueryBuilder<
   ) {
     super(model, table, logs, false, sqlDataSource);
     this.sqlDataSource = sqlDataSource;
-    this.selectQuery = selectTemplate(
-      this.sqlDataSource.getDbType(),
-      this.model,
-    ).selectAll;
     this.selectTemplate = selectTemplate(
       this.sqlDataSource.getDbType(),
       this.model,
     );
-    this.joinQuery = "";
+    this.selectQuery = this.selectTemplate.selectAll;
     this.whereQuery = "";
     this.modelSelectedColumns = [];
     this.relations = [];
-    this.dynamicColumns = [];
     this.groupByQuery = "";
     this.orderByQuery = "";
     this.limitQuery = "";
@@ -133,7 +122,7 @@ export abstract class QueryBuilder<
   /**
    * @description Executes the query and retrieves multiple results.
    */
-  abstract many(options: ManyOptions): Promise<T[]>;
+  abstract many(options?: ManyOptions): Promise<T[]>;
 
   /**
    * @description Updates records in the database.
@@ -179,50 +168,42 @@ export abstract class QueryBuilder<
   /**
    * @description Adds a SELECT condition to the query.
    */
-  abstract select(...columns: string[]): ModelQueryBuilder<T>;
-  abstract select(
-    ...columns: (SelectableType<T> | "*")[]
-  ): ModelQueryBuilder<T>;
-  abstract select(
-    ...columns: (SelectableType<T> | "*" | string)[]
-  ): ModelQueryBuilder<T>;
+  select(...columns: string[]): QueryBuilder<T>;
+  select(...columns: (SelectableType<T> | "*")[]): QueryBuilder<T>;
+  select(...columns: (SelectableType<T> | "*" | string)[]): QueryBuilder<T> {
+    this.selectQuery = this.selectTemplate.selectColumns(
+      ...(columns as string[]),
+    );
 
-  /**
-   * @description Adds a DISTINCT condition to the query.
-   */
-  abstract distinct(): ModelQueryBuilder<T>;
+    this.modelSelectedColumns = columns.map((column) =>
+      convertCase(column as string, this.model.databaseCaseConvention),
+    ) as string[];
 
-  /**
-   * @description Adds a DISTINCT ON condition to the query.
-   */
-  abstract distinctOn(...columns: string[]): ModelQueryBuilder<T>;
-  abstract distinctOn(...columns: SelectableType<T>[]): ModelQueryBuilder<T>;
-  abstract distinctOn(
-    ...columns: (SelectableType<T> | string)[]
-  ): ModelQueryBuilder<T>;
+    return this;
+  }
 
-  /**
-   * @description Adds a JOIN condition to the query.
-   */
-  abstract join(
-    table: string,
-    primaryColumn: string,
-    foreignColumn: string,
-  ): ModelQueryBuilder<T>;
+  distinct(): QueryBuilder<T> {
+    const distinct = this.selectTemplate.distinct;
+    this.selectQuery = this.selectQuery.replace(
+      /select/i,
+      `SELECT ${distinct}`,
+    );
 
-  /**
-   * @description Adds a raw JOIN condition to the query.
-   */
-  abstract joinRaw(query: string): QueryBuilder<T>;
+    return this;
+  }
 
-  /**
-   * @description Adds a LEFT JOIN condition to the query.
-   */
-  abstract leftJoin(
-    table: string,
-    primaryColumn: string,
-    foreignColumn: string,
-  ): ModelQueryBuilder<T>;
+  distinctOn(...columns: string[]): QueryBuilder<T>;
+  distinctOn(...columns: SelectableType<T>[]): QueryBuilder<T>;
+  distinctOn(...columns: (string | SelectableType<T>)[]): QueryBuilder<T> {
+    const distinctOn = this.selectTemplate.distinctOn(...(columns as string[]));
+
+    this.selectQuery = this.selectQuery.replace(
+      /select/i,
+      `SELECT ${distinctOn}`,
+    );
+
+    return this;
+  }
 
   /**
    * @description Adds a relation to the final model.
@@ -234,13 +215,6 @@ export abstract class QueryBuilder<
       queryBuilder: ModelQueryBuilder<ModelInstanceType<O>>,
     ) => void,
     ignoreHooks?: { beforeFetch?: boolean; afterFetch?: boolean },
-  ): ModelQueryBuilder<T>;
-
-  /**
-   * @description Adds a the selected dynamic columns from the model into the final model
-   */
-  abstract addDynamicColumns(
-    dynamicColumns: DynamicColumnType<T>[],
   ): ModelQueryBuilder<T>;
 
   /**
@@ -263,54 +237,6 @@ export abstract class QueryBuilder<
   abstract orWhereBuilder(
     cb: (queryBuilder: ModelQueryBuilder<T>) => void,
   ): ModelQueryBuilder<T>;
-
-  /**
-   * @description Adds GROUP BY conditions to the query.
-   */
-  abstract groupBy(...columns: SelectableType<T>[]): ModelQueryBuilder<T>;
-  abstract groupBy(...columns: string[]): ModelQueryBuilder<T>;
-  abstract groupBy(
-    ...columns: (SelectableType<T> | string)[]
-  ): ModelQueryBuilder<T>;
-
-  /**
-   * @description Adds a raw GROUP BY condition to the query, only one raw GROUP BY condition is stackable, the last one will be used.
-   */
-  abstract groupByRaw(query: string): ModelQueryBuilder<T>;
-
-  /**
-   * @description Adds ORDER BY conditions to the query.
-   */
-  abstract orderBy(
-    column: SelectableType<T>,
-    order: "ASC" | "DESC",
-  ): ModelQueryBuilder<T>;
-  abstract orderBy(column: string, order: "ASC" | "DESC"): ModelQueryBuilder<T>;
-  abstract orderBy(
-    column: SelectableType<T> | string,
-    order: "ASC" | "DESC",
-  ): ModelQueryBuilder<T>;
-
-  /**
-   * @description Adds a raw ORDER BY condition to the query, only one raw ORDER BY condition is stackable, the last one will be used.
-   * @description ORDER BY is implicitly added to the query.
-   */
-  abstract orderByRaw(query: string): ModelQueryBuilder<T>;
-
-  /**
-   * @description Adds a LIMIT condition to the query.
-   */
-  abstract limit(limit: number): ModelQueryBuilder<T>;
-
-  /**
-   * @description Adds an OFFSET condition to the query.
-   */
-  abstract offset(offset: number): ModelQueryBuilder<T>;
-
-  /**
-   * @description Adds a raw HAVING condition to the query, only one raw HAVING condition is stackable, the last one will be used.
-   */
-  abstract havingRaw(query: string): ModelQueryBuilder<T>;
 
   /**
    * @description Returns a copy of the query builder instance.
@@ -354,11 +280,11 @@ export abstract class QueryBuilder<
       }
     }
 
-    const parsedQuery = parsePlaceHolders(
-      this.sqlDataSource.getDbType(),
-      query,
-    );
+    let parsedQuery = parsePlaceHolders(this.sqlDataSource.getDbType(), query);
 
+    parsedQuery = format(parsedQuery, {
+      language: getSqlDialect(this.sqlDataSource.getDbType()),
+    });
     return { query: parsedQuery, params: this.params };
   }
 
@@ -390,11 +316,5 @@ export abstract class QueryBuilder<
 
       model.$additional[key] = value as string | number | boolean;
     });
-
-    if (!this.dynamicColumns.length) {
-      return;
-    }
-
-    await addDynamicColumnsToModel(this.model, model, this.dynamicColumns);
   }
 }

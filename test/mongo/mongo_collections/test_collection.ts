@@ -1,9 +1,6 @@
 import { DateTime } from "luxon";
 import { Collection } from "../../../src/no_sql/mongo/mongo_models/mongo_collection";
-import {
-  dynamicProperty,
-  property,
-} from "../../../src/no_sql/mongo/mongo_models/mongo_collection_decorators";
+import { property } from "../../../src/no_sql/mongo/mongo_models/mongo_collection_decorators";
 
 export class TestModel extends Collection {
   @property()
@@ -18,9 +15,4 @@ export class TestModel extends Collection {
     age: number;
     preferredName: string;
   };
-
-  @dynamicProperty("test")
-  async getTest() {
-    return "test";
-  }
 }

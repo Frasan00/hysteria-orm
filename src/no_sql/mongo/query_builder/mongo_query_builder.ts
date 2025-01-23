@@ -6,10 +6,7 @@ import {
   ModelKeyOrAnySort,
 } from "../mongo_models/mongo_collection_types";
 import { serializeCollection, serializeCollections } from "../mongo_serializer";
-import {
-  DynamicColumnType,
-  SelectableType,
-} from "../../../sql/models/model_manager/model_manager_types";
+import { SelectableType } from "../../../sql/models/model_manager/model_manager_types";
 import logger from "../../../utils/logger";
 
 export type FetchHooks = "beforeFetch" | "afterFetch";
@@ -31,7 +28,6 @@ export type ManyOptions = {
 };
 
 export class MongoQueryBuilder<T extends Collection> {
-  protected dynamicProperties: string[];
   protected idObject: mongodb.Filter<mongodb.BSON.Document>;
   protected selectObject?: Record<string, 1>;
   protected selectFields?: string[];
@@ -53,7 +49,6 @@ export class MongoQueryBuilder<T extends Collection> {
     logs: boolean = false,
   ) {
     this.model = model;
-    this.dynamicProperties = [];
     this.idObject = {};
     this.whereObject = {};
     this.logs = logs;
@@ -91,7 +86,6 @@ export class MongoQueryBuilder<T extends Collection> {
       this.model,
       result,
       this.selectFields,
-      this.dynamicProperties,
     );
 
     return !options.ignoreHooks?.includes("afterFetch")
@@ -137,7 +131,6 @@ export class MongoQueryBuilder<T extends Collection> {
       this.model,
       result,
       this.selectFields,
-      this.dynamicProperties,
     );
 
     return !options.ignoreHooks?.includes("afterFetch")
@@ -187,7 +180,6 @@ export class MongoQueryBuilder<T extends Collection> {
       this.model,
       updatedDocuments,
       this.selectFields,
-      this.dynamicProperties,
     );
   }
 
@@ -217,11 +209,6 @@ export class MongoQueryBuilder<T extends Collection> {
     return this.collection.countDocuments(this.whereObject, {
       session: this.session,
     });
-  }
-
-  addDynamicProperty(dynamicProperties: DynamicColumnType<T>[]): this {
-    this.dynamicProperties = dynamicProperties as string[];
-    return this;
   }
 
   /**

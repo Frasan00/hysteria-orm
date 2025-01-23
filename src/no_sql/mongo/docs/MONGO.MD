@@ -53,11 +53,10 @@ try {
 ### Model Configuration
 - The id property is handled automatically by the library, you don't need to define it, while using it you only refer to it as `id` and the library will handle the rest parsing it to `_id` for mongo.
 - You can use the `@property` decorator to define a property for the model, note that since it's a no-sql database, the model definition itself will not enforce the schema, so you can define any property you want.
-- You can use the `@dynamicProperty` decorator to define a dynamic property for the model, this will be a function that will be called when you try to access the property.
 - Different from sql databases, mongo implementation at the moment does not support the relations between models.
 
 ```typescript
-import { Collection, property, dynamicProperty } from "hysteria-orm";
+import { Collection, property } from "hysteria-orm";
 
 class User extends Collection {
   // Used only to set the collection name, to retrieve the table name use User.collection
@@ -83,11 +82,6 @@ class User extends Collection {
     age: number;
     preferredName: string;
   };
-
-  @dynamicProperty("test")
-  getTest() {
-    return "test";
-  }
 
   // Hooks - You can define hooks to be called before or after some actions
   static beforeFetch(queryBuilder: MongoQueryBuilder<any>): void {
@@ -144,7 +138,6 @@ import { User } from "./models/User";
 // Basic query
 const user = await User.query()
   .where("name", "Test Name")
-  .addDynamicProperty("test")
   .first();
 
 // Insert
