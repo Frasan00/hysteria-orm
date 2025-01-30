@@ -8,7 +8,7 @@
 - [DataSource Configuration](#datasource-configuration)
 - [Use Connection](#use-connection)
 - [Session](#session)
-- [Model Configuration](#model-configuration)
+- [Model Configuration](#collection-configuration)
 - [Base Find Methods](#base-find-methods)
 - [QueryBuilder](#querybuilder)
 
@@ -52,17 +52,18 @@ try {
 
 ### Model Configuration
 - The id property is handled automatically by the library, you don't need to define it, while using it you only refer to it as `id` and the library will handle the rest parsing it to `_id` for mongo.
-- You can use the `@property` decorator to define a property for the model, note that since it's a no-sql database, the model definition itself will not enforce the schema, so you can define any property you want.
+- You can use the `@property` decorator to define a property for the collection, note that since it's a no-sql database, the collection definition itself will not enforce the schema, so you can define any property you want.
 - Different from sql databases, mongo implementation at the moment does not support the relations between models.
 
 ```typescript
 import { Collection, property } from "hysteria-orm";
 
 class User extends Collection {
-  // Used only to set the collection name, to retrieve the table name use User.collection
-  static collection: string = "users"; // If not defined, the class name in snake_case in the plural form will be used
+  // setter for the collection name that can be retrieved with the static collection property
+  static _collection: string = "users"; // If not defined, the class name in snake_case in the plural form will be used
+
   static databaseCaseConvention: CaseConvention = "snake"; // If not defined, it will use the snake case while interacting with the database
-  static modelCaseConvention: CaseConvention = "camel"; // If not defined, it will use the camel case while interacting with the model
+  static modelCaseConvention: CaseConvention = "camel"; // If not defined, it will use the camel case while interacting with the collection
 
   @property()
   declare name: string;
@@ -104,7 +105,7 @@ class User extends Collection {
 
 ### Base Find Methods
 - The base find methods are methods that you can use to find data in the database, they are defined in the `Collection` class.
-- The base find methods are partially type safe, they will infer the type of the model you are querying, but they will not infer the type of the properties you are querying, so you can use any property you want, but it will not be type checked.
+- The base find methods are partially type safe, they will infer the type of the collection you are querying, but they will not infer the type of the properties you are querying, so you can use any property you want, but it will not be type checked.
 
 ```typescript
 import { User } from "./models/User";
@@ -129,8 +130,8 @@ const user = await User.findOne({
 ### QueryBuilder
 - The query builder is a class that you can use to build your queries, it has a lot of methods that you can use to build your queries.
 - The query builder is chainable, so you can call multiple methods in a single line.
-- The query builder is partially type safe, it will infer the type of the model you are querying, but it will not infer the type of the properties you are querying, so you can use any property you want, but it will not be type checked.
-- Every property queried that does not exist in the model will be inserted in the `$additional` property that every collection has, so you can access it later if you want.
+- The query builder is partially type safe, it will infer the type of the collection you are querying, but it will not infer the type of the properties you are querying, so you can use any property you want, but it will not be type checked.
+- Every property queried that does not exist in the collection will be inserted in the `$additional` property that every collection has, so you can access it later if you want.
 
 ```typescript
 import { User } from "./models/User";

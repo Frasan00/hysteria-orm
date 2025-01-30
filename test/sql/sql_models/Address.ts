@@ -4,7 +4,7 @@ import { ModelQueryBuilder } from "../../../src/sql/query_builder/query_builder"
 import { User } from "./User";
 
 export class Address extends Model {
-  static table: string = "addresses";
+  static _table: string = "addresses";
   @column({ primaryKey: true })
   declare id: number;
 

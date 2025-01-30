@@ -16,8 +16,6 @@ import {
   ModelKeyOrAny,
 } from "./mongo_collection_types";
 
-const collectionMap = new Map<typeof Collection, string>();
-
 export function getBaseCollectionInstance<T extends Collection>(): T {
   return { $additional: {} } as T;
 }
@@ -29,14 +27,17 @@ export class Collection extends Entity {
   static mongoInstance: MongoDataSource;
 
   /**
-   * @description Collection name for the model, if not set it will be the plural snake case of the model name given that is in PascalCase (es. User -> users)
+   * @description Used in order to override the table collection name
+   */
+  static _collection: string;
+
+  /**
+   * @description Table name for the collection, default will be the plural snake case of the collection name given that is in PascalCase (es. User -> users)
+   * @description If you want to override the table name, you can set the _table property in the collection
+   * @warning This is a getter you cannot override it, if you want to override it use the _table property
    */
   static get collection(): string {
-    if (!collectionMap.has(this)) {
-      collectionMap.set(this, getBaseCollectionName(this));
-    }
-
-    return collectionMap.get(this)!;
+    return this._collection || getBaseCollectionName(this);
   }
 
   /**

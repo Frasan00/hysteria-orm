@@ -58,14 +58,17 @@ export abstract class Model extends Entity {
   static sqlInstance: SqlDataSource;
 
   /**
-   * @description Table name for the model, if not set it will be the plural snake case of the model name given that is in PascalCase (es. User -> users)
+   * @description Used in order to override the table name for the model
+   */
+  static _table: string;
+
+  /**
+   * @description Table name for the model, default will be the plural snake case of the model name given that is in PascalCase (es. User -> users)
+   * @description If you want to override the table name, you can set the _table property in the model
+   * @warning This is a getter you cannot override it, if you want to override it use the _table property
    */
   static get table(): string {
-    if (!tableMap.has(this)) {
-      tableMap.set(this, getBaseTableName(this));
-    }
-
-    return tableMap.get(this)!;
+    return this._table || getBaseTableName(this);
   }
 
   /**
