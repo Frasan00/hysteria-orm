@@ -1,13 +1,13 @@
+import * as mongodb from "mongodb";
+import { ModelKey } from "../../../sql/models/model_manager/model_manager_types";
+import logger from "../../../utils/logger";
 import { MongoDataSource } from "../mongo_data_source";
 import { Collection } from "../mongo_models/mongo_collection";
-import * as mongodb from "mongodb";
 import {
   ModelKeyOrAny,
   ModelKeyOrAnySort,
 } from "../mongo_models/mongo_collection_types";
 import { serializeCollection, serializeCollections } from "../mongo_serializer";
-import { SelectableType } from "../../../sql/models/model_manager/model_manager_types";
-import logger from "../../../utils/logger";
 
 export type FetchHooks = "beforeFetch" | "afterFetch";
 type BinaryOperatorType = "$eq" | "$ne" | "$gt" | "$gte" | "$lt" | "$lte";
@@ -215,9 +215,9 @@ export class MongoQueryBuilder<T extends Collection> {
    * @description Only fetches the provided fields
    * @param fields - Fields to select
    */
-  select(fields: SelectableType<T>[]): this;
+  select(fields: ModelKey<T>[]): this;
   select(fields: string[]): this;
-  select(fields: (SelectableType<T> | string)[]): this {
+  select(fields: (ModelKey<T> | string)[]): this {
     this.selectFields = fields as string[];
     this.selectObject = fields.reduce(
       (acc, field) => {
@@ -234,7 +234,7 @@ export class MongoQueryBuilder<T extends Collection> {
    * @description Adds a where clause to the query
    */
   where(
-    property: SelectableType<T>,
+    property: ModelKey<T>,
     operator: BinaryOperatorType,
     value: BaseValues,
   ): this;
@@ -243,9 +243,9 @@ export class MongoQueryBuilder<T extends Collection> {
     operator: BinaryOperatorType,
     value: BaseValues,
   ): this;
-  where(property: SelectableType<T> | string, value: BaseValues): this;
+  where(property: ModelKey<T> | string, value: BaseValues): this;
   where(
-    property: SelectableType<T> | string,
+    property: ModelKey<T> | string,
     operatorOrValue: BinaryOperatorType | BaseValues,
     value?: BaseValues,
   ): this {
@@ -283,7 +283,7 @@ export class MongoQueryBuilder<T extends Collection> {
    * @description Adds a where clause to the query - alias for where
    */
   andWhere(
-    property: SelectableType<T>,
+    property: ModelKey<T>,
     operator: BinaryOperatorType,
     value: BaseValues,
   ): this;
@@ -292,9 +292,9 @@ export class MongoQueryBuilder<T extends Collection> {
     operator: BinaryOperatorType,
     value: BaseValues,
   ): this;
-  andWhere(property: SelectableType<T> | string, value: BaseValues): this;
+  andWhere(property: ModelKey<T> | string, value: BaseValues): this;
   andWhere(
-    property: SelectableType<T> | string,
+    property: ModelKey<T> | string,
     operatorOrValue: BinaryOperatorType | BaseValues,
     value?: BaseValues,
   ): this {
@@ -331,7 +331,7 @@ export class MongoQueryBuilder<T extends Collection> {
    * @description Adds an or where clause to the query
    */
   orWhere(
-    property: SelectableType<T>,
+    property: ModelKey<T>,
     operator: BinaryOperatorType,
     value: BaseValues,
   ): this;
@@ -340,9 +340,9 @@ export class MongoQueryBuilder<T extends Collection> {
     operator: BinaryOperatorType,
     value: BaseValues,
   ): this;
-  orWhere(property: SelectableType<T> | string, value: BaseValues): this;
+  orWhere(property: ModelKey<T> | string, value: BaseValues): this;
   orWhere(
-    property: SelectableType<T> | string,
+    property: ModelKey<T> | string,
     operatorOrValue: BinaryOperatorType | BaseValues,
     value?: BaseValues,
   ): this {
@@ -378,9 +378,9 @@ export class MongoQueryBuilder<T extends Collection> {
   /**
    * @description Adds a where exists clause to the query
    */
-  whereExists(property: SelectableType<T>): this;
+  whereExists(property: ModelKey<T>): this;
   whereExists(property: string): this;
-  whereExists(property: SelectableType<T> | string): this {
+  whereExists(property: ModelKey<T> | string): this {
     const condition = { [property as string]: { $exists: true } };
 
     if (!this.whereObject) {
@@ -400,9 +400,9 @@ export class MongoQueryBuilder<T extends Collection> {
   /**
    * @description Adds an and where exists clause to the query
    */
-  andWhereExists(property: SelectableType<T>): this;
+  andWhereExists(property: ModelKey<T>): this;
   andWhereExists(property: string): this;
-  andWhereExists(property: SelectableType<T> | string): this {
+  andWhereExists(property: ModelKey<T> | string): this {
     const condition = { [property as string]: { $exists: true } };
 
     if (!this.whereObject) {
@@ -422,9 +422,9 @@ export class MongoQueryBuilder<T extends Collection> {
   /**
    * @description Adds an or where exists clause to the query
    */
-  orWhereExists(property: SelectableType<T>): this;
+  orWhereExists(property: ModelKey<T>): this;
   orWhereExists(property: string): this;
-  orWhereExists(property: SelectableType<T> | string): this {
+  orWhereExists(property: ModelKey<T> | string): this {
     const condition = { [property as string]: { $exists: true } };
 
     if (!this.whereObject) {
@@ -444,9 +444,9 @@ export class MongoQueryBuilder<T extends Collection> {
   /**
    * @description Adds a where not exists clause to the query
    */
-  whereNotExists(property: SelectableType<T>): this;
+  whereNotExists(property: ModelKey<T>): this;
   whereNotExists(property: string): this;
-  whereNotExists(property: SelectableType<T> | string): this {
+  whereNotExists(property: ModelKey<T> | string): this {
     const condition = { [property as string]: { $exists: false } };
 
     if (!this.whereObject) {
@@ -466,9 +466,9 @@ export class MongoQueryBuilder<T extends Collection> {
   /**
    * @description Adds an and where not exists clause to the query
    */
-  andWhereNotExists(property: SelectableType<T>): this;
+  andWhereNotExists(property: ModelKey<T>): this;
   andWhereNotExists(property: string): this;
-  andWhereNotExists(property: SelectableType<T> | string): this {
+  andWhereNotExists(property: ModelKey<T> | string): this {
     const condition = { [property as string]: { $exists: false } };
 
     if (!this.whereObject) {
@@ -488,9 +488,9 @@ export class MongoQueryBuilder<T extends Collection> {
   /**
    * @description Adds an or where not exists clause to the query
    */
-  orWhereNotExists(property: SelectableType<T>): this;
+  orWhereNotExists(property: ModelKey<T>): this;
   orWhereNotExists(property: string): this;
-  orWhereNotExists(property: SelectableType<T> | string): this {
+  orWhereNotExists(property: ModelKey<T> | string): this {
     const condition = { [property as string]: { $exists: false } };
 
     if (!this.whereObject) {
@@ -510,9 +510,9 @@ export class MongoQueryBuilder<T extends Collection> {
   /**
    * @description Adds a where not clause to the query
    */
-  whereNot(property: SelectableType<T>, value: BaseValues): this;
+  whereNot(property: ModelKey<T>, value: BaseValues): this;
   whereNot(property: string, value: BaseValues): this;
-  whereNot(property: SelectableType<T> | string, value: BaseValues): this {
+  whereNot(property: ModelKey<T> | string, value: BaseValues): this {
     const condition = { [property as string]: { $ne: value } };
 
     if (!this.whereObject) {
@@ -532,9 +532,9 @@ export class MongoQueryBuilder<T extends Collection> {
   /**
    * @description Adds an and where not clause to the query
    */
-  andWhereNot(property: SelectableType<T>, value: BaseValues): this;
+  andWhereNot(property: ModelKey<T>, value: BaseValues): this;
   andWhereNot(property: string, value: BaseValues): this;
-  andWhereNot(property: SelectableType<T> | string, value: BaseValues): this {
+  andWhereNot(property: ModelKey<T> | string, value: BaseValues): this {
     const condition = { [property as string]: { $ne: value } };
 
     if (!this.whereObject) {
@@ -554,9 +554,9 @@ export class MongoQueryBuilder<T extends Collection> {
   /**
    * @description Adds an or where not clause to the query
    */
-  orWhereNot(property: SelectableType<T>, value: BaseValues): this;
+  orWhereNot(property: ModelKey<T>, value: BaseValues): this;
   orWhereNot(property: string, value: BaseValues): this;
-  orWhereNot(property: SelectableType<T> | string, value: BaseValues): this {
+  orWhereNot(property: ModelKey<T> | string, value: BaseValues): this {
     const condition = { [property as string]: { $ne: value } };
 
     if (!this.whereObject) {
@@ -576,9 +576,9 @@ export class MongoQueryBuilder<T extends Collection> {
   /**
    * @description Adds a where like clause to the query
    */
-  whereLike(property: SelectableType<T>, value: string): this;
+  whereLike(property: ModelKey<T>, value: string): this;
   whereLike(property: string, value: string): this;
-  whereLike(property: SelectableType<T> | string, value: string): this {
+  whereLike(property: ModelKey<T> | string, value: string): this {
     const condition = { [property as string]: { $regex: value } };
 
     if (!this.whereObject) {
@@ -598,9 +598,9 @@ export class MongoQueryBuilder<T extends Collection> {
   /**
    * @description Adds an and where like clause to the query
    */
-  andWhereLike(property: SelectableType<T>, value: string): this;
+  andWhereLike(property: ModelKey<T>, value: string): this;
   andWhereLike(property: string, value: string): this;
-  andWhereLike(property: SelectableType<T> | string, value: string): this {
+  andWhereLike(property: ModelKey<T> | string, value: string): this {
     const condition = { [property as string]: { $regex: value } };
 
     if (!this.whereObject) {
@@ -620,9 +620,9 @@ export class MongoQueryBuilder<T extends Collection> {
   /**
    * @description Adds an or where like clause to the query
    */
-  orWhereLike(property: SelectableType<T>, value: string): this;
+  orWhereLike(property: ModelKey<T>, value: string): this;
   orWhereLike(property: string, value: string): this;
-  orWhereLike(property: SelectableType<T> | string, value: string): this {
+  orWhereLike(property: ModelKey<T> | string, value: string): this {
     const condition = { [property as string]: { $regex: value } };
 
     if (!this.whereObject) {
@@ -642,9 +642,9 @@ export class MongoQueryBuilder<T extends Collection> {
   /**
    * @description Adds a where not like clause to the query
    */
-  whereNotLike(property: SelectableType<T>, value: string): this;
+  whereNotLike(property: ModelKey<T>, value: string): this;
   whereNotLike(property: string, value: string): this;
-  whereNotLike(property: SelectableType<T> | string, value: string): this {
+  whereNotLike(property: ModelKey<T> | string, value: string): this {
     const condition = { [property as string]: { $not: { $regex: value } } };
 
     if (!this.whereObject) {
@@ -664,9 +664,9 @@ export class MongoQueryBuilder<T extends Collection> {
   /**
    * @description Adds an and where not like clause to the query
    */
-  andWhereNotLike(property: SelectableType<T>, value: string): this;
+  andWhereNotLike(property: ModelKey<T>, value: string): this;
   andWhereNotLike(property: string, value: string): this;
-  andWhereNotLike(property: SelectableType<T> | string, value: string): this {
+  andWhereNotLike(property: ModelKey<T> | string, value: string): this {
     const condition = { [property as string]: { $not: { $regex: value } } };
 
     if (!this.whereObject) {
@@ -686,9 +686,9 @@ export class MongoQueryBuilder<T extends Collection> {
   /**
    * @description Adds an or where not like clause to the query
    */
-  orWhereNotLike(property: SelectableType<T>, value: string): this;
+  orWhereNotLike(property: ModelKey<T>, value: string): this;
   orWhereNotLike(property: string, value: string): this;
-  orWhereNotLike(property: SelectableType<T> | string, value: string): this {
+  orWhereNotLike(property: ModelKey<T> | string, value: string): this {
     const condition = { [property as string]: { $not: { $regex: value } } };
 
     if (!this.whereObject) {
@@ -708,9 +708,9 @@ export class MongoQueryBuilder<T extends Collection> {
   /**
    * @description Adds a where in clause to the query
    */
-  whereIn(property: SelectableType<T>, values: BaseValues[]): this;
+  whereIn(property: ModelKey<T>, values: BaseValues[]): this;
   whereIn(property: string, values: BaseValues[]): this;
-  whereIn(property: SelectableType<T> | string, values: BaseValues[]): this {
+  whereIn(property: ModelKey<T> | string, values: BaseValues[]): this {
     if (property === "id") {
       const valuesObject = values.map(
         (value) => new mongodb.ObjectId(value as string),
@@ -738,9 +738,9 @@ export class MongoQueryBuilder<T extends Collection> {
   /**
    * @description Adds an and where in clause to the query
    */
-  andWhereIn(property: SelectableType<T>, values: BaseValues[]): this;
+  andWhereIn(property: ModelKey<T>, values: BaseValues[]): this;
   andWhereIn(property: string, values: BaseValues[]): this;
-  andWhereIn(property: SelectableType<T> | string, values: BaseValues[]): this {
+  andWhereIn(property: ModelKey<T> | string, values: BaseValues[]): this {
     if (property === "id") {
       const valuesObject = values.map(
         (value) => new mongodb.ObjectId(value as string),
@@ -768,9 +768,9 @@ export class MongoQueryBuilder<T extends Collection> {
   /**
    * @description Adds an or where in clause to the query
    */
-  orWhereIn(property: SelectableType<T>, values: BaseValues[]): this;
+  orWhereIn(property: ModelKey<T>, values: BaseValues[]): this;
   orWhereIn(property: string, values: BaseValues[]): this;
-  orWhereIn(property: SelectableType<T> | string, values: BaseValues[]): this {
+  orWhereIn(property: ModelKey<T> | string, values: BaseValues[]): this {
     if (property === "id") {
       const valuesObject = values.map(
         (value) => new mongodb.ObjectId(value as string),
@@ -798,9 +798,9 @@ export class MongoQueryBuilder<T extends Collection> {
   /**
    * @description Adds a where not in clause to the query
    */
-  whereNotIn(property: SelectableType<T>, values: BaseValues[]): this;
+  whereNotIn(property: ModelKey<T>, values: BaseValues[]): this;
   whereNotIn(property: string, values: BaseValues[]): this;
-  whereNotIn(property: SelectableType<T> | string, values: BaseValues[]): this {
+  whereNotIn(property: ModelKey<T> | string, values: BaseValues[]): this {
     if (property === "id") {
       const valuesObject = values.map(
         (value) => new mongodb.ObjectId(value as string),
@@ -828,12 +828,9 @@ export class MongoQueryBuilder<T extends Collection> {
   /**
    * @description Adds an and where not in clause to the query
    */
-  andWhereNotIn(property: SelectableType<T>, values: BaseValues[]): this;
+  andWhereNotIn(property: ModelKey<T>, values: BaseValues[]): this;
   andWhereNotIn(property: string, values: BaseValues[]): this;
-  andWhereNotIn(
-    property: SelectableType<T> | string,
-    values: BaseValues[],
-  ): this {
+  andWhereNotIn(property: ModelKey<T> | string, values: BaseValues[]): this {
     if (property === "id") {
       const valuesObject = values.map(
         (value) => new mongodb.ObjectId(value as string),
@@ -861,12 +858,9 @@ export class MongoQueryBuilder<T extends Collection> {
   /**
    * @description Adds an or where not in clause to the query
    */
-  orWhereNotIn(property: SelectableType<T>, values: BaseValues[]): this;
+  orWhereNotIn(property: ModelKey<T>, values: BaseValues[]): this;
   orWhereNotIn(property: string, values: BaseValues[]): this;
-  orWhereNotIn(
-    property: SelectableType<T> | string,
-    values: BaseValues[],
-  ): this {
+  orWhereNotIn(property: ModelKey<T> | string, values: BaseValues[]): this {
     if (property === "id") {
       const valuesObject = values.map(
         (value) => new mongodb.ObjectId(value as string),
@@ -894,9 +888,9 @@ export class MongoQueryBuilder<T extends Collection> {
   /**
    * @description Adds a where null clause to the query
    */
-  whereNull(property: SelectableType<T>): this;
+  whereNull(property: ModelKey<T>): this;
   whereNull(property: string): this;
-  whereNull(property: SelectableType<T> | string): this {
+  whereNull(property: ModelKey<T> | string): this {
     if (property === "id") {
       logger.warn("Id cannot be null");
       return this;
@@ -921,9 +915,9 @@ export class MongoQueryBuilder<T extends Collection> {
   /**
    * @description Adds an and where null clause to the query
    */
-  andWhereNull(property: SelectableType<T>): this;
+  andWhereNull(property: ModelKey<T>): this;
   andWhereNull(property: string): this;
-  andWhereNull(property: SelectableType<T> | string): this {
+  andWhereNull(property: ModelKey<T> | string): this {
     if (property === "id") {
       logger.warn("Id cannot be null");
       return this;
@@ -948,9 +942,9 @@ export class MongoQueryBuilder<T extends Collection> {
   /**
    * @description Adds an or where null clause to the query
    */
-  orWhereNull(property: SelectableType<T>): this;
+  orWhereNull(property: ModelKey<T>): this;
   orWhereNull(property: string): this;
-  orWhereNull(property: SelectableType<T> | string): this {
+  orWhereNull(property: ModelKey<T> | string): this {
     if (property === "id") {
       logger.warn("Id cannot be null");
       return this;
@@ -975,9 +969,9 @@ export class MongoQueryBuilder<T extends Collection> {
   /**
    * @description Adds a where not null clause to the query
    */
-  whereNotNull(property: SelectableType<T>): this;
+  whereNotNull(property: ModelKey<T>): this;
   whereNotNull(property: string): this;
-  whereNotNull(property: SelectableType<T> | string): this {
+  whereNotNull(property: ModelKey<T> | string): this {
     if (property === "id") {
       logger.warn("Id cannot be null");
       return this;
@@ -1002,9 +996,9 @@ export class MongoQueryBuilder<T extends Collection> {
   /**
    * @description Adds an and where not null clause to the query
    */
-  andWhereNotNull(property: SelectableType<T>): this;
+  andWhereNotNull(property: ModelKey<T>): this;
   andWhereNotNull(property: string): this;
-  andWhereNotNull(property: SelectableType<T> | string): this {
+  andWhereNotNull(property: ModelKey<T> | string): this {
     if (property === "id") {
       logger.warn("Id cannot be null");
       return this;
@@ -1029,9 +1023,9 @@ export class MongoQueryBuilder<T extends Collection> {
   /**
    * @description Adds an or where not null clause to the query
    */
-  orWhereNotNull(property: SelectableType<T>): this;
+  orWhereNotNull(property: ModelKey<T>): this;
   orWhereNotNull(property: string): this;
-  orWhereNotNull(property: SelectableType<T> | string): this {
+  orWhereNotNull(property: ModelKey<T> | string): this {
     if (property === "id") {
       logger.warn("Id cannot be null");
       return this;
@@ -1056,13 +1050,10 @@ export class MongoQueryBuilder<T extends Collection> {
   /**
    * @description Adds a where between clause to the query
    */
-  whereBetween(
-    property: SelectableType<T>,
-    values: [BaseValues, BaseValues],
-  ): this;
+  whereBetween(property: ModelKey<T>, values: [BaseValues, BaseValues]): this;
   whereBetween(property: string, values: [BaseValues, BaseValues]): this;
   whereBetween(
-    property: SelectableType<T> | string,
+    property: ModelKey<T> | string,
     values: [BaseValues, BaseValues],
   ): this {
     if (property === "id") {
@@ -1095,12 +1086,12 @@ export class MongoQueryBuilder<T extends Collection> {
    * @description Adds an and where between clause to the query
    */
   andWhereBetween(
-    property: SelectableType<T>,
+    property: ModelKey<T>,
     values: [BaseValues, BaseValues],
   ): this;
   andWhereBetween(property: string, values: [BaseValues, BaseValues]): this;
   andWhereBetween(
-    property: SelectableType<T> | string,
+    property: ModelKey<T> | string,
     values: [BaseValues, BaseValues],
   ): this {
     if (property === "id") {
@@ -1132,13 +1123,10 @@ export class MongoQueryBuilder<T extends Collection> {
   /**
    * @description Adds an or where between clause to the query
    */
-  orWhereBetween(
-    property: SelectableType<T>,
-    values: [BaseValues, BaseValues],
-  ): this;
+  orWhereBetween(property: ModelKey<T>, values: [BaseValues, BaseValues]): this;
   orWhereBetween(property: string, values: [BaseValues, BaseValues]): this;
   orWhereBetween(
-    property: SelectableType<T> | string,
+    property: ModelKey<T> | string,
     values: [BaseValues, BaseValues],
   ): this {
     if (property === "id") {
@@ -1171,12 +1159,12 @@ export class MongoQueryBuilder<T extends Collection> {
    * @description Adds a where not between clause to the query
    */
   whereNotBetween(
-    property: SelectableType<T>,
+    property: ModelKey<T>,
     values: [BaseValues, BaseValues],
   ): this;
   whereNotBetween(property: string, values: [BaseValues, BaseValues]): this;
   whereNotBetween(
-    property: SelectableType<T> | string,
+    property: ModelKey<T> | string,
     values: [BaseValues, BaseValues],
   ): this {
     if (property === "id") {
@@ -1209,12 +1197,12 @@ export class MongoQueryBuilder<T extends Collection> {
    * @description Adds an and where not between clause to the query
    */
   andWhereNotBetween(
-    property: SelectableType<T>,
+    property: ModelKey<T>,
     values: [BaseValues, BaseValues],
   ): this;
   andWhereNotBetween(property: string, values: [BaseValues, BaseValues]): this;
   andWhereNotBetween(
-    property: SelectableType<T> | string,
+    property: ModelKey<T> | string,
     values: [BaseValues, BaseValues],
   ): this {
     if (property === "id") {
@@ -1247,12 +1235,12 @@ export class MongoQueryBuilder<T extends Collection> {
    * @description Adds an or where not between clause to the query
    */
   orWhereNotBetween(
-    property: SelectableType<T>,
+    property: ModelKey<T>,
     values: [BaseValues, BaseValues],
   ): this;
   orWhereNotBetween(property: string, values: [BaseValues, BaseValues]): this;
   orWhereNotBetween(
-    property: SelectableType<T> | string,
+    property: ModelKey<T> | string,
     values: [BaseValues, BaseValues],
   ): this {
     if (property === "id") {
@@ -1332,8 +1320,8 @@ export class MongoQueryBuilder<T extends Collection> {
    * @returns The current instance for chaining
    */
   sort(sortBy: 1 | -1): this;
-  sort(sortBy: SelectableType<T>): this;
-  sort(sortBy: SelectableType<T>[]): this;
+  sort(sortBy: ModelKey<T>): this;
+  sort(sortBy: ModelKey<T>[]): this;
   sort(sortBy: string): this;
   sort(sortBy: string[]): this;
   sort(sortBy: ModelKeyOrAnySort<T>): this;
@@ -1341,8 +1329,8 @@ export class MongoQueryBuilder<T extends Collection> {
     sortBy:
       | 1
       | -1
-      | SelectableType<T>
-      | SelectableType<T>[]
+      | ModelKey<T>
+      | ModelKey<T>[]
       | string
       | string[]
       | ModelKeyOrAnySort<T>,

@@ -248,7 +248,7 @@ ${joinQuery}  WHERE ${relatedModel}.${primaryKey} IN (${foreignKeyValues
         !relatedModelManyToManyRelation.foreignKey
       ) {
         throw new Error(
-          `Many to many relation not found for related model ${relatedModel} and through model ${throughModel}, the error is likely in the relation definition and was called by relation ${relationName} in model ${typeofModel.tableName}`,
+          `Many to many relation not found for related model ${relatedModel} and through model ${throughModel}, the error is likely in the relation definition and was called by relation ${relationName} in model ${typeofModel.table}`,
         );
       }
 
@@ -285,7 +285,7 @@ ${joinQuery}  WHERE ${relatedModel}.${primaryKey} IN (${foreignKeyValues
           relatedModelColumns: relatedModelColumns.map((column) =>
             convertCase(column, typeofModel.databaseCaseConvention),
           ),
-          leftTable: typeofModel.tableName,
+          leftTable: typeofModel.table,
           rightTable: relatedModelTable,
           pivotTable: throughModel,
           whereCondition: whereQuery,

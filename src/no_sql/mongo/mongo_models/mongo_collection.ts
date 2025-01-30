@@ -31,18 +31,9 @@ export class Collection extends Entity {
   /**
    * @description Collection name for the model, if not set it will be the plural snake case of the model name given that is in PascalCase (es. User -> users)
    */
-  static collectionName: string;
-
-  /**
-   * @description Static getter for collection;
-   * @internal
-   */
   static get collection(): string {
     if (!collectionMap.has(this)) {
-      collectionMap.set(
-        this,
-        this.collectionName || getBaseCollectionName(this),
-      );
+      collectionMap.set(this, getBaseCollectionName(this));
     }
 
     return collectionMap.get(this)!;

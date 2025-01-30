@@ -2,8 +2,8 @@ import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { convertCase } from "../../utils/case_utils";
 import { getBaseModelInstance, Model } from "../models/model";
 import {
-  RelationType,
-  SelectableType,
+  ModelKey,
+  ModelRelation,
 } from "../models/model_manager/model_manager_types";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
 import { getPaginationMetadata, PaginatedData } from "../pagination";
@@ -304,10 +304,10 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return result ? +result.$additional["total"] : 0;
   }
 
-  async getSum(column: SelectableType<T>): Promise<number>;
+  async getSum(column: ModelKey<T>): Promise<number>;
   async getSum(column: string): Promise<number>;
   async getSum(
-    column: SelectableType<T> | string,
+    column: ModelKey<T> | string,
     options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<number> {
     if (options.ignoreHooks) {
@@ -454,7 +454,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   }
 
   with<O extends typeof Model>(
-    relation: RelationType<T>,
+    relation: ModelRelation<T>,
     relatedModel?: O,
     relatedModelQueryBuilder?: (
       queryBuilder: ModelQueryBuilder<ModelInstanceType<O>>,

@@ -1,5 +1,3 @@
-import { snakeCase, camelCase } from "lodash";
-
 export type CaseConvention =
   | "camel"
   | "snake"

@@ -1,10 +1,9 @@
+import { plural } from "pluralize";
 import "reflect-metadata";
 import { Entity } from "../../entity";
 import { convertCase } from "../../utils/case_utils";
 import { baseSoftDeleteDate } from "../../utils/date_utils";
-import { PaginatedData } from "../pagination";
 import { ModelQueryBuilder, OneOptions } from "../query_builder/query_builder";
-import { plural } from "pluralize";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
 import { SqlDataSource } from "../sql_data_source";
 import { ModelManager } from "../sql_data_source_types";
@@ -21,7 +20,7 @@ import {
 import {
   FindOneType,
   FindType,
-  SelectableType,
+  ModelKey,
   UnrestrictedFindOneType,
   UnrestrictedFindType,
 } from "./model_manager/model_manager_types";
@@ -61,15 +60,9 @@ export abstract class Model extends Entity {
   /**
    * @description Table name for the model, if not set it will be the plural snake case of the model name given that is in PascalCase (es. User -> users)
    */
-  static tableName: string;
-
-  /**
-   * @description Static getter for table;
-   * @internal
-   */
   static get table(): string {
     if (!tableMap.has(this)) {
-      tableMap.set(this, this.tableName || getBaseTableName(this));
+      tableMap.set(this, getBaseTableName(this));
     }
 
     return tableMap.get(this)!;
@@ -154,7 +147,7 @@ export abstract class Model extends Entity {
       customError?: Error;
     },
     options: BaseModelMethodOptions = {},
-  ): Promise<T | null> {
+  ): Promise<T> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
     return modelManager.findOneOrFail(findOneOptions);
@@ -226,6 +219,7 @@ export abstract class Model extends Entity {
 
   /**
    * @description Saves multiple records to the database
+   * @description $additional will be ignored if set in the modelData and won't be returned in the response
    */
   static async insertMany<T extends Model>(
     this: new () => T | typeof Model,
@@ -239,6 +233,7 @@ export abstract class Model extends Entity {
 
   /**
    * @description Updates a record to the database
+   * @description If the record has a primary key, the record itself will be updated, else nothing will happen and null will be returned
    */
   static async updateRecord<T extends Model>(
     this: new () => T | typeof Model,
@@ -314,7 +309,7 @@ export abstract class Model extends Entity {
    */
   static async upsertMany<T extends Model>(
     this: new () => T | typeof Model,
-    searchCriteria: SelectableType<T>[],
+    searchCriteria: ModelKey<T>[],
     data: ModelWithoutExtraColumns<T>[],
     options: { updateOnConflict?: boolean } & BaseModelMethodOptions = {
       updateOnConflict: true,
@@ -392,7 +387,7 @@ export abstract class Model extends Entity {
   ): Promise<T> {
     const typeofModel = this as unknown as typeof Model;
     const {
-      column = "deletedAt" as SelectableType<T>,
+      column = "deletedAt" as ModelKey<T>,
       value = baseSoftDeleteDate(new Date()),
     } = options || {};
 

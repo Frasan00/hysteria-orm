@@ -1,6 +1,9 @@
 import { convertCase } from "../../utils/case_utils";
 import { Model } from "../models/model";
-import { SelectableType } from "../models/model_manager/model_manager_types";
+import {
+  ModelKey,
+  OrderByChoices,
+} from "../models/model_manager/model_manager_types";
 import selectTemplate from "../resources/query/SELECT";
 import { SqlDataSource } from "../sql_data_source";
 
@@ -37,9 +40,9 @@ export abstract class FooterQueryBuilder<T extends Model> {
     this.havingQuery = "";
   }
 
-  groupBy(...columns: SelectableType<T>[]): this;
+  groupBy(...columns: ModelKey<T>[]): this;
   groupBy(...columns: string[]): this;
-  groupBy(...columns: (SelectableType<T> | string)[]): this {
+  groupBy(...columns: (ModelKey<T> | string)[]): this {
     this.groupByQuery = this.selectTemplate.groupBy(...(columns as string[]));
     return this;
   }
@@ -50,9 +53,9 @@ export abstract class FooterQueryBuilder<T extends Model> {
     return this;
   }
 
-  orderBy(column: SelectableType<T>, order: "ASC" | "DESC"): this;
-  orderBy(column: string, order: "ASC" | "DESC"): this;
-  orderBy(column: SelectableType<T> | string, order: "ASC" | "DESC"): this {
+  orderBy(column: ModelKey<T>, order: OrderByChoices): this;
+  orderBy(column: string, order: OrderByChoices): this;
+  orderBy(column: ModelKey<T> | string, order: OrderByChoices): this {
     const casedColumn = convertCase(
       column as string,
       this.model.databaseCaseConvention,

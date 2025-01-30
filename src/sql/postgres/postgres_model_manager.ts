@@ -52,6 +52,7 @@ export class PostgresModelManager<T extends Model> extends ModelManager<T> {
         query.with(relation);
       });
     }
+
     if (input.where) {
       Object.entries(input.where).forEach(([key, value]) => {
         query.where(key, value);

@@ -35,16 +35,17 @@ export type WhereType<T> = {
   [K in keyof T]?: string | number | boolean | Date | null;
 };
 
-export type SelectableType<T> = ExcludeRelations<Omit<T, "$additional">>;
-export type RelationType<T> = OnlyRelations<Omit<T, "$additional">>;
+export type ModelKey<T> = ExcludeRelations<Omit<T, "$additional">>;
+export type ModelRelation<T> = OnlyRelations<Omit<T, "$additional">>;
 
-type OrderByType = {
-  [key: string]: "ASC" | "DESC";
+export type OrderByChoices = "ASC" | "DESC" | "asc" | "desc";
+export type OrderByType = {
+  [key: string]: OrderByChoices;
 };
 
 export type UnrestrictedFindOneType<T> = {
   select?: string[];
-  relations?: RelationType<T>[];
+  relations?: ModelRelation<T>[];
   ignoreHooks?: FetchHooks[];
   where?: Record<string, any>;
   orderBy?: OrderByType;
@@ -60,11 +61,11 @@ export type UnrestrictedFindType<T> = Omit<
 };
 
 export type FindOneType<T> = {
-  select?: SelectableType<T>[];
+  select?: ModelKey<T>[];
   offset?: number;
-  relations?: RelationType<T>[];
+  relations?: ModelRelation<T>[];
   orderBy?: OrderByType;
-  groupBy?: SelectableType<T>[];
+  groupBy?: ModelKey<T>[];
   where?: WhereType<T>;
   ignoreHooks?: FetchHooks[];
   useConnection?: SqlDataSource;

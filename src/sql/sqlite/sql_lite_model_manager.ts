@@ -1,17 +1,17 @@
+import { format } from "sql-formatter";
+import { SqlDataSource } from "../../../src/sql/sql_data_source";
+import { log } from "../../utils/logger";
 import { Model } from "../models/model";
+import { ModelManager } from "../models/model_manager/model_manager";
 import {
   FindOneType,
   FindType,
   UnrestrictedFindOneType,
   UnrestrictedFindType,
 } from "../models/model_manager/model_manager_types";
-import { log } from "../../utils/logger";
-import { ModelManager } from "../models/model_manager/model_manager";
-import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
-import { SqlLiteQueryBuilder } from "./sql_lite_query_builder";
 import { SqliteConnectionInstance } from "../sql_data_source_types";
-import { format } from "sql-formatter";
+import { SqlLiteQueryBuilder } from "./sql_lite_query_builder";
 
 export class SqliteModelManager<T extends Model> extends ModelManager<T> {
   protected sqLiteConnection: SqliteConnectionInstance;

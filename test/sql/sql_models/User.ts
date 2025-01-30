@@ -11,7 +11,7 @@ import { UserAddress } from "./UserAddress";
 import { ModelQueryBuilder } from "../../../src/sql/query_builder/query_builder";
 
 export class User extends Model {
-  static tableName: string = "users";
+  static table: string = "users";
   @column({ primaryKey: true })
   declare id: number;
 

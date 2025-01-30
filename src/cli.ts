@@ -64,10 +64,20 @@ program
     "Generate a template for a create table migration",
     false,
   )
+  .option(
+    "-t, --table <table>",
+    "Generate a template for a create table migration",
+    false,
+  )
   .action(
     (
       name: string,
-      option: { javascript: boolean; alter: boolean; create: boolean },
+      option: {
+        javascript: boolean;
+        alter: boolean;
+        create: boolean;
+        table: string;
+      },
     ) => {
       if (!name) {
         console.error("Error: migrations name is required.");
@@ -81,12 +91,25 @@ program
         process.exit(1);
       }
 
+      if (option.table && !(option.create || option.alter)) {
+        console.error(
+          "Error: You can't use --table without --create or --alter.",
+        );
+        process.exit(1);
+      }
+
       const migrationMode = option.alter
         ? "alter"
         : option.create
           ? "create"
           : "basic";
-      migrationCreateConnector(name, option.javascript, migrationMode);
+
+      migrationCreateConnector(
+        name,
+        option.javascript,
+        migrationMode,
+        option.table,
+      );
     },
   );
 

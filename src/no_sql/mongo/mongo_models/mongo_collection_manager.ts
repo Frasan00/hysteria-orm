@@ -1,17 +1,17 @@
-import { MongoDataSource } from "../mongo_data_source";
-import { Collection } from "./mongo_collection";
-import { serializeCollection } from "../mongo_serializer";
-import { ModelKeyOrAny, ModelKeyOrAnySort } from "./mongo_collection_types";
 import * as mongodb from "mongodb";
+import { ModelKey } from "../../../sql/models/model_manager/model_manager_types";
+import { MongoDataSource } from "../mongo_data_source";
+import { serializeCollection } from "../mongo_serializer";
 import {
   FetchHooks,
   MongoQueryBuilder,
 } from "../query_builder/mongo_query_builder";
-import { SelectableType } from "../../../sql/models/model_manager/model_manager_types";
+import { Collection } from "./mongo_collection";
+import { ModelKeyOrAny, ModelKeyOrAnySort } from "./mongo_collection_types";
 
 export type MongoFindOneOptions<T extends Collection> = {
   ignoreHooks?: FetchHooks[];
-  select?: SelectableType<T>[];
+  select?: ModelKey<T>[];
   where?: ModelKeyOrAny<T>;
 };
 

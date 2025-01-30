@@ -11,13 +11,13 @@ import {
 dotenv.config();
 
 export abstract class DataSource {
-  protected type!: DataSourceType;
-  protected host!: string;
-  protected port!: number;
-  protected username!: string;
-  protected password!: string;
-  protected database!: string;
-  protected url!: string;
+  declare type: DataSourceType;
+  declare host: string;
+  declare port: number;
+  declare username: string;
+  declare password: string;
+  declare database: string;
+  declare url: string;
   logs!: boolean;
 
   protected constructor(input?: DataSourceInput) {

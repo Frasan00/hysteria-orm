@@ -29,14 +29,14 @@ export default class extends Migration {
 `;
   }
 
-  createMigrationTemplate(js: boolean = false): string {
+  createMigrationTemplate(js: boolean = false, table: string): string {
     if (js) {
       return `import { Migration } from 'hysteria-orm';
 
 export default class extends Migration {
   async up() {
     this.schema.createTable(
-      'table_name',
+      '${table}',
       (table) => {
         // Your create table logic here
       },
@@ -55,7 +55,7 @@ export default class extends Migration {
 export default class extends Migration {
   async up(): Promise<void> {
     this.schema.createTable(
-      'table_name',
+      '${table}',
       (table) => {
         // Your create table logic here
       },
@@ -69,14 +69,14 @@ export default class extends Migration {
 `;
   }
 
-  alterMigrationTemplate(js: boolean = false): string {
+  alterMigrationTemplate(js: boolean = false, table: string): string {
     if (js) {
       return `import { Migration } from 'hysteria-orm';
 
 export default class extends Migration {
   async up() {
     this.schema.alterTable(
-      'table_name',
+      '${table}',
       (table) => {
         // Your alter table logic here
       },
@@ -95,7 +95,7 @@ export default class extends Migration {
 export default class extends Migration {
   async up(): Promise<void> {
     this.schema.alterTable(
-      'table_name',
+      '${table}',
       (table) => {
         // Your alter table logic here
       },

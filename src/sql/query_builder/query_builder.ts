@@ -3,19 +3,19 @@ import { convertCase } from "../../utils/case_utils";
 import { Model } from "../models/model";
 import { getModelColumns } from "../models/model_decorators";
 import {
-  RelationType,
-  SelectableType,
+  ModelKey,
+  ModelRelation,
 } from "../models/model_manager/model_manager_types";
 import { MysqlQueryBuilder } from "../mysql/mysql_query_builder";
 import { PaginatedData } from "../pagination";
 import { PostgresQueryBuilder } from "../postgres/postgres_query_builder";
 import selectTemplate from "../resources/query/SELECT";
 import { SqlDataSource } from "../sql_data_source";
+import { getSqlDialect } from "../sql_runner/sql_runner";
 import { SqlLiteQueryBuilder } from "../sqlite/sql_lite_query_builder";
 import { DeleteOptions, SoftDeleteOptions } from "./delete_query_builder_type";
 import { UpdateOptions } from "./update_query_builder_types";
 import { WhereQueryBuilder } from "./where_query_builder";
-import { getSqlDialect } from "../sql_runner/sql_runner";
 
 /**
  * @description The abstract class for query builders for selecting data.
@@ -169,8 +169,8 @@ export abstract class QueryBuilder<
    * @description Adds a SELECT condition to the query.
    */
   select(...columns: string[]): QueryBuilder<T>;
-  select(...columns: (SelectableType<T> | "*")[]): QueryBuilder<T>;
-  select(...columns: (SelectableType<T> | "*" | string)[]): QueryBuilder<T> {
+  select(...columns: (ModelKey<T> | "*")[]): QueryBuilder<T>;
+  select(...columns: (ModelKey<T> | "*" | string)[]): QueryBuilder<T> {
     this.selectQuery = this.selectTemplate.selectColumns(
       ...(columns as string[]),
     );
@@ -193,8 +193,8 @@ export abstract class QueryBuilder<
   }
 
   distinctOn(...columns: string[]): QueryBuilder<T>;
-  distinctOn(...columns: SelectableType<T>[]): QueryBuilder<T>;
-  distinctOn(...columns: (string | SelectableType<T>)[]): QueryBuilder<T> {
+  distinctOn(...columns: ModelKey<T>[]): QueryBuilder<T>;
+  distinctOn(...columns: (string | ModelKey<T>)[]): QueryBuilder<T> {
     const distinctOn = this.selectTemplate.distinctOn(...(columns as string[]));
 
     this.selectQuery = this.selectQuery.replace(
@@ -206,10 +206,11 @@ export abstract class QueryBuilder<
   }
 
   /**
-   * @description Adds a relation to the final model.
+   * @description Fills the relations in the model.
+   * @description Relation must be defined in the model.
    */
   abstract with<O extends typeof Model>(
-    relation: RelationType<T>,
+    relation: ModelRelation<T>,
     relatedModel?: O,
     relatedModelQueryBuilder?: (
       queryBuilder: ModelQueryBuilder<ModelInstanceType<O>>,
