@@ -31,30 +31,6 @@ import { StandaloneQueryBuilder } from "./sql/standalone_query_builder/standalon
 import { Transaction } from "./sql/transactions/transaction";
 import { CaseConvention } from "./utils/case_utils";
 import logger, { CustomLogger } from "./utils/logger";
-import atomic from "./sql/transactions/atomic";
-import { User } from "../test/sql/sql_models/User";
-
-class UserService {
-  @atomic()
-  async createUser(user: Partial<User>): Promise<User> {
-    const newUser = await User.insert(user);
-    return newUser;
-  }
-}
-
-(async () => {
-  await SqlDataSource.connect();
-  const userService = new UserService();
-  await userService.createUser({
-    name: "John Doe",
-    email: "test",
-    signupSource: "email",
-    isActive: true,
-  });
-
-  await SqlDataSource.closeConnection();
-})();
-
 
 export default {
   // logger
