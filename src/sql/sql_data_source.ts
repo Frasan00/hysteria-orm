@@ -106,7 +106,7 @@ export class SqlDataSource extends DataSource {
 
     sqlDataSource.isConnected = true;
     SqlDataSource.instance = sqlDataSource;
-    cb?.();
+    await cb?.();
     return sqlDataSource;
   }
 

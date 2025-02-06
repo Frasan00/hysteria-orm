@@ -535,7 +535,7 @@ export abstract class Model extends Entity {
   /**
    * @description Gives the correct model manager with the correct connection based on the options provided
    */
-  private static dispatchModelManager<T extends Model>(
+  protected static dispatchModelManager<T extends Model>(
     this: typeof Model,
     options?: BaseModelMethodOptions,
   ): ModelManager<T> {

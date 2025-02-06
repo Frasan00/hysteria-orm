@@ -1,0 +1,4 @@
+yarn format
+yarn build
+yarn test
+git add .

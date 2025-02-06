@@ -108,7 +108,7 @@ program
         name,
         option.javascript,
         migrationMode,
-        option.table,
+        option.table || name,
       );
     },
   );

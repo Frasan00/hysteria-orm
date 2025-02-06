@@ -36,7 +36,7 @@ export class MongoDataSource extends DataSource {
   static async connect(
     url?: string,
     options?: Partial<MongoOptions> & { logs?: boolean },
-    cb?: () => void,
+    cb?: () => Promise<void> | void,
   ): Promise<MongoDataSource> {
     if (!url) {
       url = process.env.MONGO_URL;
@@ -55,7 +55,7 @@ export class MongoDataSource extends DataSource {
     this.instance.isConnected = true;
     this.instance.logs =
       options?.logs || process.env.MONGO_LOGS === "true" || false;
-    cb?.();
+    await cb?.();
     return this.instance;
   }
 
