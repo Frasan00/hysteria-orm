@@ -10,3 +10,6 @@ test/
 node_modules/
 yarn.lock
 .github/
+.husky/
+.idea/
+.vscode/

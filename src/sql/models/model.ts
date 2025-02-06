@@ -1,5 +1,5 @@
-import { plural } from "pluralize";
 import "reflect-metadata";
+import { plural } from "pluralize";
 import { Entity } from "../../entity";
 import { convertCase } from "../../utils/case_utils";
 import { baseSoftDeleteDate } from "../../utils/date_utils";
@@ -45,7 +45,6 @@ export function getBaseModelInstance<T extends Model>(): T {
   return { $additional: {} } as T;
 }
 
-const tableMap = new Map<typeof Model, string>();
 const primaryKeyMap = new Map<typeof Model, string>();
 
 /**
