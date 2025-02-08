@@ -331,34 +331,29 @@ export abstract class Model extends Entity {
       );
     }
 
-    const results: T[] = [];
+    const results: T[] = await Promise.all(
+      data.map(async (record) => {
+        const search = searchCriteria.reduce((acc, column) => {
+          acc[column] = record[column];
+          return acc;
+        }, {} as ModelWithoutExtraColumns<T>);
 
-    for (let i = 0; i < data.length; i++) {
-      const record = data[i];
-      const search = searchCriteria.reduce((acc, column) => {
-        acc[column] = record[column];
-        return acc;
-      }, {} as ModelWithoutExtraColumns<T>);
+        const doesExist = await modelManager.findOne({ where: search });
 
-      const doesExist = await modelManager.findOne({
-        where: search,
-      });
+        if (doesExist) {
+          (record as T)[typeofModel.primaryKey as keyof T] =
+            doesExist[typeofModel.primaryKey as keyof T];
 
-      if (doesExist) {
-        (record as T)[typeofModel.primaryKey as keyof T] =
-          doesExist[typeofModel.primaryKey as keyof T];
+          if (options.updateOnConflict) {
+            return (await modelManager.updateRecord(record as T)) as T;
+          }
 
-        if (options.updateOnConflict) {
-          results.push((await modelManager.updateRecord(record as T)) as T);
-          continue;
+          return doesExist;
         }
 
-        results.push(doesExist);
-        continue;
-      }
-
-      results.push((await modelManager.insert(record as T)) as T);
-    }
+        return (await modelManager.insert(record as T)) as T;
+      }),
+    );
 
     return results;
   }

@@ -10,6 +10,7 @@ import {
   SqliteConnectionInstance,
 } from "../sql_data_source_types";
 import { getSqlDialect } from "../..//sql/sql_runner/sql_runner";
+import { logger } from "../..";
 
 export class MigrationController {
   protected sqlDataSource: SqlDataSource;
@@ -31,12 +32,10 @@ export class MigrationController {
       await migration.up();
       const statements = migration.schema.queryStatements;
       for (const statement of statements) {
-        if (
-          !statement ||
-          statement === "" ||
-          statement === ";" ||
-          statement === ","
-        ) {
+        if (!statement) {
+          logger.warn(
+            `Migration ${migration.migrationName} has an empty query statement`,
+          );
           continue;
         }
 
@@ -56,12 +55,10 @@ export class MigrationController {
       await migration.down();
       const statements = migration.schema.queryStatements;
       for (const statement of statements) {
-        if (
-          !statement ||
-          statement === "" ||
-          statement === ";" ||
-          statement === ","
-        ) {
+        if (!statement) {
+          logger.warn(
+            `Migration ${migration.migrationName} has an empty query statement`,
+          );
           continue;
         }
 

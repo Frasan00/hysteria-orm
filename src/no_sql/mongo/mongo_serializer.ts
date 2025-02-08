@@ -19,6 +19,7 @@ export async function serializeCollection<T extends Collection>(
     any
   >;
   const collectionProperties = getCollectionProperties(collection);
+
   if (!collectionSelectedProperties || !collectionSelectedProperties.length) {
     collectionSelectedProperties = collectionProperties;
   }
@@ -27,37 +28,47 @@ export async function serializeCollection<T extends Collection>(
     collectionSelectedProperties.push("id");
   }
 
-  for (const key in data) {
-    if (key === "_id") {
-      serializedCollection.id = data._id?.toString();
-      continue;
-    }
-
-    if (!collectionProperties.includes(key)) {
-      const casedKey = convertCase(key, collection.modelCaseConvention);
-      serializedCollection.$additional[casedKey] = data[key];
-      continue;
-    }
-
-    const casedKey = convertCase(key, collection.modelCaseConvention);
-    serializedCollection[casedKey] = data[key];
+  // Initialize $additional if needed
+  if (!serializedCollection.$additional) {
+    serializedCollection.$additional = {};
   }
+
+  // Process each key in data concurrently
+  await Promise.all(
+    Object.keys(data).map(async (key) => {
+      if (key === "_id") {
+        serializedCollection.id = data._id?.toString();
+        return;
+      }
+
+      if (!collectionProperties.includes(key)) {
+        const casedKey = convertCase(key, collection.modelCaseConvention);
+        serializedCollection.$additional[casedKey] = data[key];
+        return;
+      }
+
+      const casedKey = convertCase(key, collection.modelCaseConvention);
+      serializedCollection[casedKey] = data[key];
+    }),
+  );
 
   if (!Object.keys(serializedCollection.$additional).length) {
     delete serializedCollection.$additional;
   }
 
-  for (const column of collectionSelectedProperties) {
-    if (column === "id") {
-      continue;
-    }
+  // Process selected properties concurrently
+  await Promise.all(
+    collectionSelectedProperties.map(async (column) => {
+      if (column === "id") {
+        return;
+      }
 
-    if (!data.hasOwnProperty(column)) {
-      const casedKey = convertCase(column, collection.modelCaseConvention);
-      serializedCollection[casedKey] = null;
-      continue;
-    }
-  }
+      if (!data.hasOwnProperty(column)) {
+        const casedKey = convertCase(column, collection.modelCaseConvention);
+        serializedCollection[casedKey] = null;
+      }
+    }),
+  );
 
   return serializedCollection as T;
 }
@@ -67,14 +78,14 @@ export async function serializeCollections<T extends Collection>(
   data: any[],
   collectionSelectedProperties?: string[],
 ): Promise<T[]> {
-  const promises = data.map(async (modelData: T) => {
-    return await serializeCollection(
-      model,
-      modelData,
-      collectionSelectedProperties,
-    );
-  });
-
-  const serializedModels = await Promise.all(promises);
+  const serializedModels = await Promise.all(
+    data.map(async (modelData: T) => {
+      return await serializeCollection(
+        model,
+        modelData,
+        collectionSelectedProperties,
+      );
+    }),
+  );
   return serializedModels.filter((model) => model !== null) as T[];
 }

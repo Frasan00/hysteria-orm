@@ -128,58 +128,45 @@ export default class SqlModelManagerUtils<T extends Model> {
       throw new Error(`Model ${typeofModel} does not have a primary key`);
     }
 
-    const resultMap: { [key: string]: any[] } = {};
+    const resultArray = await Promise.all(
+      input.map(async (inputRelation) => {
+        const relation = this.getRelationFromModel(
+          inputRelation.relation,
+          typeofModel,
+        );
+        const { query, params } = relationTemplates(
+          models,
+          relation,
+          inputRelation.relation,
+          inputRelation,
+          typeofModel,
+          dbType,
+        );
 
-    for (const inputRelation of input) {
-      const relation = this.getRelationFromModel(
-        inputRelation.relation,
-        typeofModel,
-      );
-      const { query, params } = relationTemplates(
-        models,
-        relation,
-        inputRelation.relation,
-        inputRelation,
-        typeofModel,
-        dbType,
-      );
+        let modelsForRelation: any[] = [];
 
-      if (!query) {
-        resultMap[inputRelation.relation] = [];
-        continue;
-      }
+        if (query) {
+          log(query, logs, params);
+          let result = await this.getQueryResult(query, params);
+          if (!result) {
+            result = [];
+          } else if (!Array.isArray(result)) {
+            result = [result];
+          }
 
-      log(query, logs, params);
-      let result = await this.getQueryResult(query, params);
-      if (!result) {
-        result = [];
-      } else if (!Array.isArray(result)) {
-        result = [result];
-      }
+          if (!inputRelation.ignoreAfterFetchHook) {
+            result = await (relation.model as any).afterFetch(result);
+          }
 
-      // after fetch hook
-      if (!inputRelation.ignoreAfterFetchHook) {
-        result = await (relation.model as any).afterFetch(result);
-      }
-
-      // Group the result by relation name
-      result.forEach((row: any) => {
-        const relationName = row.relation_name;
-        delete row.relation_name;
-        if (!resultMap[relationName]) {
-          resultMap[relationName] = [];
+          // Group the result by relation name. Since we're processing one relation per iteration,
+          // simply collect all rows and remove the temporary relation_name key.
+          result.forEach((row: any) => {
+            delete row.relation_name;
+            modelsForRelation.push(row);
+          });
         }
 
-        resultMap[relationName].push(row);
-      });
-    }
-
-    // Map the result to the expected format
-    const resultArray: { [relationName: string]: any[] }[] = input.map(
-      (inputRelation) => {
-        const modelsForRelation = resultMap[inputRelation.relation] || [];
-
-        // Some databases return JSON as string so we need to parse it
+        // Some databases return JSON as string so we need to parse it.
         modelsForRelation.forEach((model) => {
           if (typeof model[inputRelation.relation] === "string") {
             model[inputRelation.relation] = JSON.parse(
@@ -191,7 +178,7 @@ export default class SqlModelManagerUtils<T extends Model> {
         return {
           [inputRelation.relation]: modelsForRelation,
         };
-      },
+      }),
     );
 
     return resultArray;
