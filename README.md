@@ -11,6 +11,7 @@
 
 - [Installation](#installation)
 - [Prerequisites](#prerequisites)
+- [Driver reference versions used in development](#driver-reference-versions-used-in-development)
 - [Supported Databases](#supported-databases)
 - [Env example with a config for each database](#env-example-with-a-config-for-each-database)
 - [TypeScript Configuration example](#typescript-configuration-example)
@@ -63,14 +64,34 @@ npm install ioredis
 yarn add ioredis
 ```
 
-- Driver reference versions used in development
+## Driver reference versions used in development
 ```json
+// Drivers
 {
   "mysql2": "^3.11.5",
   "pg": "^8.13.1",
   "sqlite3": "^5.1.7",
   "mongodb": "^6.11.0",
   "ioredis": "^5.4.1"
+}
+
+// Types
+{
+  "@types/jest": "^29.5.14",
+  "@types/luxon": "^3.4.2",
+  "@types/pluralize": "^0.0.33",
+  "@types/ioredis": "^5.0.0",
+  "@types/lodash": "^4.17.14",
+  "@types/mongodb": "^4.0.7",
+  "@types/mysql2": "github:types/mysql2",
+  "@types/pg": "^8.11.10",
+  "@types/sqlite3": "^3.1.11"
+}
+
+// Typescript
+{
+  "ts-node": "^10.9.2",
+  "typescript": "^5.7.2"
 }
 ```
 
