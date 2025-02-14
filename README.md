@@ -37,24 +37,29 @@
 
 # postgres
 npm install pg
+
 yarn add pg
 
 # mysql or mariadb
 npm install mysql2
+
 yarn add mysql2
 
 # sqlite
 npm install sqlite3
+
 yarn add sqlite3
 
 ### NoSql
 
 # mongo
 npm install mongodb
+
 yarn add mongodb
 
 # redis
 npm install ioredis
+
 yarn add ioredis
 ```
 

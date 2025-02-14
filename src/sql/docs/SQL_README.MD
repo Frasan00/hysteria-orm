@@ -56,12 +56,18 @@
 - Supported drivers are:
 ```bash
 ### Mysql or MariaDB
+npm install mysql2
+
 yarn add mysql2
 
 ### Postgres
+npm install pg
+
 yarn add pg
 
 ### SQLite
+npm install sqlite3
+
 yarn add sqlite3
 ```
 
@@ -846,6 +852,7 @@ const { query, params } = userQueryBuilder
 - Migration cli should be used in the root of the project
 - Migrations cli starts from the current user location (process.cwd) and appends the path/to/migrations (default `database/migrations`), this can be customized with `MIGRATION_PATH` environment variable
 - In order to run typescript migrations you need to have a `tsconfig.json` in the root of the project configured.
+- NOTE: you must have typescript and ts-node installed in your project in order to run typescript migrations.
 
 ## hysteria-orm-cli for Migrations
 - You can run the cli using `npx hysteria` (for npm) or `yarn run hysteria` (for yarn)

@@ -15,7 +15,7 @@ export type PgClientOptions = ExcludeStringFromOptions<
 export type MongoConnectionOptions =
   | ConstructorParameters<MongoClientImport["MongoClient"]>[0]
   | ConstructorParameters<MongoClientImport["MongoClient"]>[1];
-export type RedisOptions = ConstructorParameters<RedisImport["default"]>; // TODO: This is not correct, but it's a start
+export type RedisOptions = ConstructorParameters<RedisImport["default"]>;
 
 export type DriverSpecificOptions = {
   mysqlOptions?: MysqlCreateConnectionOptions;
