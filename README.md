@@ -304,7 +304,7 @@ services:
 ```
 
 ## Logger
-- Hysteria ORM uses the `winston` logger by default, you can use it in your application since it's exported from the package as your logger in your application.
+- Hysteria ORM uses a built in logger by default, you can use it in your application since it's exported from the package as your logger in your application.
 
 ```typescript
 import { logger } from 'hysteria-orm';

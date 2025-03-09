@@ -25,6 +25,7 @@ import deleteTemplate from "../resources/query/DELETE";
 import updateTemplate from "../resources/query/UPDATE";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
 import { SqliteConnectionInstance } from "../sql_data_source_types";
+import { convertPlaceHolderToValue } from "../../utils/placeholder";
 
 export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
   protected sqLiteConnection: SqliteConnectionInstance;
@@ -67,7 +68,7 @@ export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
       query += this.whereQuery;
     }
 
-    query = this.whereTemplate.convertPlaceHolderToValue(query);
+    query = convertPlaceHolderToValue("sqlite", query);
 
     // limit to 1
     this.limit(1);
@@ -140,7 +141,7 @@ export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     }
 
     query += this.groupFooterQuery();
-    query = this.whereTemplate.convertPlaceHolderToValue(query);
+    query = convertPlaceHolderToValue("sqlite", query);
 
     query = format(query, {
       language: "sqlite",
@@ -193,7 +194,8 @@ export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
     const columns = Object.keys(data);
     const values = Object.values(data);
-    this.whereQuery = this.whereTemplate.convertPlaceHolderToValue(
+    this.whereQuery = convertPlaceHolderToValue(
+      "sqlite",
       this.whereQuery,
       values.length + 1,
     );
@@ -224,9 +226,7 @@ export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
       this.model.beforeDelete(this);
     }
 
-    this.whereQuery = this.whereTemplate.convertPlaceHolderToValue(
-      this.whereQuery,
-    );
+    this.whereQuery = convertPlaceHolderToValue("sqlite", this.whereQuery);
     const query = this.deleteTemplate.massiveDelete(
       this.whereQuery,
       this.joinQuery,
@@ -480,9 +480,7 @@ export class SqlLiteQueryBuilder<T extends Model> extends QueryBuilder<T> {
     this.relations.push({
       relation: relation as string,
       selectedColumns: queryBuilder.modelSelectedColumns,
-      whereQuery: this.whereTemplate.convertPlaceHolderToValue(
-        queryBuilder.whereQuery,
-      ),
+      whereQuery: convertPlaceHolderToValue("sqlite", queryBuilder.whereQuery),
       params: queryBuilder.params,
       joinQuery: queryBuilder.joinQuery,
       groupByQuery: queryBuilder.groupByQuery,

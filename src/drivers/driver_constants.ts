@@ -7,11 +7,13 @@ export type RedisImport = typeof import("ioredis");
 type ExcludeStringFromOptions<T> = T extends string ? never : T;
 
 export type MysqlCreateConnectionOptions = Parameters<
-  Mysql2Import["createConnection"]
+  Mysql2Import["createPool"]
 >[0];
+
 export type PgClientOptions = ExcludeStringFromOptions<
-  ConstructorParameters<PgImport["Client"]>[0]
+  ConstructorParameters<PgImport["Pool"]>[0]
 >;
+
 export type MongoConnectionOptions =
   | ConstructorParameters<MongoClientImport["MongoClient"]>[0]
   | ConstructorParameters<MongoClientImport["MongoClient"]>[1];

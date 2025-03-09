@@ -1,16 +1,16 @@
-import { SqlDataSource } from "../sql_data_source";
-import { Migration } from "./migration";
-import { log } from "../../utils/logger";
 import { format } from "sql-formatter";
+import { logger } from "../..";
+import { getSqlDialect } from "../..//sql/sql_runner/sql_runner";
+import { log } from "../../utils/logger";
+import { SqlDataSource } from "../sql_data_source";
 import {
   MysqlConnectionInstance,
-  PgClientInstance,
+  PgPoolInstance,
   SqlConnectionType,
   SqlDataSourceType,
   SqliteConnectionInstance,
 } from "../sql_data_source_types";
-import { getSqlDialect } from "../..//sql/sql_runner/sql_runner";
-import { logger } from "../..";
+import { Migration } from "./migration";
 
 export class MigrationController {
   protected sqlDataSource: SqlDataSource;
@@ -86,7 +86,7 @@ export class MigrationController {
       let index = 1;
       text = text.replace(/PLACEHOLDER/g, () => `$${index++}`);
       log(text, true, params);
-      await (this.sqlConnection as PgClientInstance).query(text, params);
+      await (this.sqlConnection as PgPoolInstance).query(text, params);
       return;
     } else if (this.sqlType === "sqlite") {
       text = text.replace(/PLACEHOLDER/g, "?");

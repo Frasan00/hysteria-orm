@@ -1,5 +1,6 @@
 import { convertCase } from "../../utils/case_utils";
 import { log } from "../../utils/logger";
+import { convertPlaceHolderToValue } from "../../utils/placeholder";
 import { Model, getBaseModelInstance } from "../models/model";
 import {
   ModelKey,
@@ -69,8 +70,6 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     if (this.whereQuery) {
       query += this.whereQuery;
     }
-
-    query = this.whereTemplate.convertPlaceHolderToValue(query);
 
     // limit to 1
     this.limit(1);
@@ -144,7 +143,6 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     }
 
     query += this.groupFooterQuery();
-    query = this.whereTemplate.convertPlaceHolderToValue(query);
 
     const [rows] = await execSql(
       query,
@@ -210,8 +208,13 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
     params = [...params, ...this.params];
 
-    log(query, this.logs, params);
-    const rows: any = await this.mysqlConnection.query(query, params);
+    const rows: any = await execSql(
+      query,
+      params,
+      "mysql",
+      this.mysqlConnection,
+      this.logs,
+    );
     if (!rows[0].affectedRows) {
       return 0;
     }
@@ -225,18 +228,18 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
       this.model.beforeDelete(this);
     }
 
-    this.whereQuery = this.whereTemplate.convertPlaceHolderToValue(
-      this.whereQuery,
-    );
-
     const query = this.deleteTemplate.massiveDelete(
       this.whereQuery,
       this.joinQuery,
     );
 
-    log(query, this.logs, this.params);
-    const rows: any = await this.mysqlConnection.query(query, this.params);
-
+    const rows: any = await execSql(
+      query,
+      this.params,
+      "mysql",
+      this.mysqlConnection,
+      this.logs,
+    );
     if (!rows[0].affectedRows) {
       return 0;
     }
@@ -252,9 +255,6 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
     const columns = Object.keys(data);
     const values = Object.values(data);
-    this.whereQuery = this.whereTemplate.convertPlaceHolderToValue(
-      this.whereQuery,
-    );
 
     const { query, params } = this.updateTemplate.massiveUpdate(
       columns,
@@ -264,9 +264,19 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     );
 
     params.push(...this.params);
+    this.whereQuery = convertPlaceHolderToValue(
+      "mysql",
+      this.whereQuery,
+      this.params.length + 1,
+    );
 
-    log(query, this.logs, params);
-    const rows: any = await this.mysqlConnection.query(query, params);
+    const rows: any = await execSql(
+      query,
+      params,
+      "mysql",
+      this.mysqlConnection,
+      this.logs,
+    );
     if (!rows[0].affectedRows) {
       return 0;
     }
@@ -278,8 +288,12 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<number> {
     if (options.ignoreHooks) {
-      const [result]: any = await this.mysqlConnection.query(
+      const [result]: any = await execSql(
         `SELECT COUNT(*) as total from ${this.table}`,
+        [],
+        "mysql",
+        this.mysqlConnection,
+        this.logs,
       );
       return result[0].total;
     }
@@ -296,8 +310,12 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<number> {
     if (options.ignoreHooks) {
-      const [result]: any = await this.mysqlConnection.query(
+      const [result]: any = await execSql(
         `SELECT SUM(${column as string}) as total from ${this.table}`,
+        [],
+        "mysql",
+        this.mysqlConnection,
+        this.logs,
       );
       return result[0].total;
     }
@@ -477,9 +495,7 @@ export class MysqlQueryBuilder<T extends Model> extends QueryBuilder<T> {
     this.relations.push({
       relation: relation as string,
       selectedColumns: queryBuilder.modelSelectedColumns,
-      whereQuery: this.whereTemplate.convertPlaceHolderToValue(
-        queryBuilder.whereQuery,
-      ),
+      whereQuery: convertPlaceHolderToValue("mysql", queryBuilder.whereQuery),
       params: queryBuilder.params,
       joinQuery: queryBuilder.joinQuery,
       groupByQuery: queryBuilder.groupByQuery,

@@ -28,7 +28,7 @@ program
 
     if (sql) {
       await runSqlConnector(sql);
-      return;
+      process.exit(0);
     }
 
     if (!filePath) {
@@ -42,6 +42,7 @@ program
 
     const sqlStatement = fs.readFileSync(filePath, "utf-8");
     await runSqlConnector(sqlStatement);
+    process.exit(0);
   });
 
 program
@@ -110,6 +111,7 @@ program
         migrationMode,
         option.table || name,
       );
+      process.exit(0);
     },
   );
 
@@ -121,6 +123,7 @@ program
   )
   .action(async (runUntil: string, option?: { tsconfig?: string }) => {
     await runMigrationsConnector(runUntil, option?.tsconfig);
+    process.exit(0);
   });
 
 program
@@ -131,6 +134,7 @@ program
   )
   .action(async (rollbackUntil: string, option?: { tsconfig?: string }) => {
     await rollbackMigrationsConnector(rollbackUntil, option?.tsconfig);
+    process.exit(0);
   });
 
 program
@@ -142,6 +146,7 @@ program
   .action(async (option?: { tsconfig?: string }) => {
     await rollbackMigrationsConnector(undefined, option?.tsconfig);
     await runMigrationsConnector(undefined, option?.tsconfig);
+    process.exit(0);
   });
 
 program.parse(process.argv);

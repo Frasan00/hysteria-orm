@@ -39,3 +39,6 @@ testFiles.forEach((file) => {
         process.exit(1);
     }
 });
+
+console.log("All tests passed");
+process.exit(0);

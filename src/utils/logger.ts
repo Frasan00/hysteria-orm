@@ -1,48 +1,44 @@
-import winston from "winston";
-
-interface LogColors {
-  info: string;
-  warn: string;
-  error: string;
-  [key: string]: string;
-}
-
 export type CustomLogger = {
   info(message: string): void;
   error(message: string): void;
   warn(message: string): void;
 };
 
-const colors: LogColors = {
+const colors = {
   info: "\x1b[32m",
   warn: "\x1b[33m",
   error: "\x1b[31m",
+  reset: "\x1b[0m",
 };
 
-const logFormat = winston.format.combine(
-  winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
-  winston.format.printf(({ level, message, timestamp }) => {
-    const color = colors[level] || "\x1b[0m";
-    return `${timestamp} ${color}${level}\x1b[0m: \n${color}${message}\x1b[0m`;
-  }),
-);
+function getTimestamp(): string {
+  const now = new Date();
+  const pad = (n: number) => n.toString().padStart(2, "0");
 
-const consoleTransport = new winston.transports.Console();
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+}
 
-const logger = winston.createLogger({
-  format: logFormat,
-  transports: [consoleTransport],
-});
+function formatLogMessage(level: string, message: string): string {
+  const timestamp = getTimestamp();
+  const color = colors[level as keyof typeof colors] || colors.reset;
+  return `${timestamp} ${color}${level}${colors.reset}: \n${color}${message}${colors.reset}`;
+}
 
 class HysteriaLogger {
-  static loggerInstance: CustomLogger;
-
-  static {
-    this.loggerInstance = logger as CustomLogger;
-  }
+  static loggerInstance: CustomLogger = {
+    info(message: string): void {
+      console.log(formatLogMessage("info", message));
+    },
+    error(message: string): void {
+      console.error(formatLogMessage("error", message));
+    },
+    warn(message: string): void {
+      console.warn(formatLogMessage("warn", message));
+    },
+  };
 
   static setCustomLogger(customLogger: CustomLogger) {
-    this.loggerInstance = customLogger as CustomLogger;
+    this.loggerInstance = customLogger;
   }
 
   static info(message: string): void {
@@ -54,7 +50,6 @@ class HysteriaLogger {
       this.loggerInstance.error(String(message));
       return;
     }
-
     this.loggerInstance.error(message);
   }
 
@@ -73,17 +68,14 @@ export function log(query: string, logs: boolean, params?: any[]) {
       let formattedParam: any = null;
 
       if (typeof param === "string") {
-        // Format string parameters
         formattedParam = `'${param}'`;
       } else if (
         typeof param === "object" &&
         param !== null &&
         Object.keys(param).length > 0
       ) {
-        // Format object parameters
         formattedParam = `'${JSON.stringify(param)}'`;
       } else {
-        // Use the parameter as is for other types (e.g., numbers)
         formattedParam = param;
       }
 
@@ -97,6 +89,18 @@ export function log(query: string, logs: boolean, params?: any[]) {
   }
 
   HysteriaLogger.loggerInstance.info(query);
+}
+
+export function logMessage(
+  message: string,
+  type: "info" | "error" | "warn",
+  logs: boolean = false,
+) {
+  if (!logs) {
+    return;
+  }
+
+  HysteriaLogger.loggerInstance[type](message);
 }
 
 export default HysteriaLogger;

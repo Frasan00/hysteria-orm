@@ -9,12 +9,12 @@ import {
 } from "../models/model_manager/model_manager_types";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
-import { PgClientInstance } from "../sql_data_source_types";
+import { PgPoolClientInstance } from "../sql_data_source_types";
 import { execSql } from "../sql_runner/sql_runner";
 import { PostgresQueryBuilder } from "./postgres_query_builder";
 
 export class PostgresModelManager<T extends Model> extends ModelManager<T> {
-  protected pgConnection: PgClientInstance;
+  protected pgConnection: PgPoolClientInstance;
   protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
 
   /**
@@ -22,7 +22,7 @@ export class PostgresModelManager<T extends Model> extends ModelManager<T> {
    */
   constructor(
     model: typeof Model,
-    pgConnection: PgClientInstance,
+    pgConnection: PgPoolClientInstance,
     logs: boolean,
     sqlDataSource: SqlDataSource,
   ) {

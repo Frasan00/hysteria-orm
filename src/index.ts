@@ -32,6 +32,21 @@ import { Transaction } from "./sql/transactions/transaction";
 import { CaseConvention } from "./utils/case_utils";
 import logger, { CustomLogger } from "./utils/logger";
 
+(async () => {
+  await SqlDataSource.connect({
+    type: "postgres",
+    database: "postgres",
+    username: "postgres",
+    logs: true,
+  });
+
+  const result = await SqlDataSource.rawQuery(
+    "SELECT * FROM users WHERE id = $1",
+    [1],
+  );
+  console.log(result);
+})();
+
 export default {
   // logger
   logger,

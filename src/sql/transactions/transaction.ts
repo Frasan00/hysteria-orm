@@ -1,13 +1,13 @@
-import { SqlDataSource } from "../sql_data_source";
+import { log } from "../../utils/logger";
 import {
   BEGIN_TRANSACTION,
   COMMIT_TRANSACTION,
   ROLLBACK_TRANSACTION,
 } from "../resources/query/TRANSACTION";
-import { log } from "../../utils/logger";
+import { SqlDataSource } from "../sql_data_source";
 import {
   MysqlConnectionInstance,
-  PgClientInstance,
+  PgPoolClientInstance,
   SqlConnectionType,
   SqliteConnectionInstance,
 } from "../sql_data_source_types";
@@ -20,7 +20,7 @@ export class Transaction {
 
   constructor(sqlDataSource: SqlDataSource, logs?: boolean) {
     this.sqlDataSource = sqlDataSource;
-    this.sqlConnection = this.sqlDataSource.getCurrentConnection();
+    this.sqlConnection = this.sqlDataSource.getCurrentDriverConnection();
     this.isActive = false;
     this.logs = logs || this.sqlDataSource.logs || false;
   }
@@ -31,14 +31,14 @@ export class Transaction {
         case "mysql":
         case "mariadb":
           log(BEGIN_TRANSACTION, this.logs);
-          await (
-            this.sqlConnection as MysqlConnectionInstance
-          ).beginTransaction();
+          await (this.sqlConnection as MysqlConnectionInstance).query(
+            BEGIN_TRANSACTION,
+          );
           break;
 
         case "postgres":
           log(BEGIN_TRANSACTION, this.logs);
-          await (this.sqlConnection as PgClientInstance).query(
+          await (this.sqlConnection as PgPoolClientInstance).query(
             BEGIN_TRANSACTION,
           );
           break;
@@ -71,12 +71,14 @@ export class Transaction {
         case "mysql":
         case "mariadb":
           log(COMMIT_TRANSACTION, this.logs);
-          await (this.sqlConnection as MysqlConnectionInstance).commit();
+          await (this.sqlConnection as MysqlConnectionInstance).query(
+            COMMIT_TRANSACTION,
+          );
           break;
 
         case "postgres":
           log(COMMIT_TRANSACTION, this.logs);
-          await (this.sqlConnection as PgClientInstance).query(
+          await (this.sqlConnection as PgPoolClientInstance).query(
             COMMIT_TRANSACTION,
           );
           break;
@@ -110,12 +112,14 @@ export class Transaction {
         case "mysql":
         case "mariadb":
           log(ROLLBACK_TRANSACTION, this.logs);
-          await (this.sqlConnection as MysqlConnectionInstance).rollback();
+          await (this.sqlConnection as MysqlConnectionInstance).query(
+            ROLLBACK_TRANSACTION,
+          );
           break;
 
         case "postgres":
           log(ROLLBACK_TRANSACTION, this.logs);
-          await (this.sqlConnection as PgClientInstance).query(
+          await (this.sqlConnection as PgPoolClientInstance).query(
             ROLLBACK_TRANSACTION,
           );
           break;
@@ -152,11 +156,18 @@ export class Transaction {
         break;
 
       case "postgres":
-        await (this.sqlConnection as PgClientInstance).end();
+        (this.sqlConnection as PgPoolClientInstance).end();
         break;
 
       case "sqlite":
-        (this.sqlConnection as SqliteConnectionInstance).close();
+        await new Promise<void>((resolve, reject) => {
+          (this.sqlConnection as SqliteConnectionInstance).close((err) => {
+            if (err) {
+              reject(err);
+            }
+            resolve();
+          });
+        });
         break;
 
       default:

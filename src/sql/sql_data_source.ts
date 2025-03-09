@@ -1,39 +1,40 @@
 import { DataSource } from "../data_source/data_source";
-import {
-  MysqlSqlDataSourceInput,
-  PostgresSqlDataSourceInput,
-} from "../data_source/data_source_types";
-import {
-  Mysql2Import,
-  PgImport,
-  Sqlite3Import,
-} from "../drivers/driver_constants";
-import { DriverFactory } from "../drivers/drivers_factory";
 import logger, { log } from "../utils/logger";
 import { Model } from "./models/model";
 import { MysqlModelManager } from "./mysql/mysql_model_manager";
 import { PostgresModelManager } from "./postgres/postgres_model_manager";
+import { createSqlConnection } from "./sql_connection_utils";
 import {
-  SqlConnectionType,
-  SqlDataSourceType,
-  SqlDriverSpecificOptions,
+  ConnectionPolicies,
+  GetCurrentConnectionReturnType,
   ModelManager,
   MysqlConnectionInstance,
-  PgClientInstance,
-  SqliteConnectionInstance,
+  PgPoolClientInstance,
+  SqlConnectionType,
   SqlDataSourceInput,
+  SqlDataSourceType,
+  SqlDriverSpecificOptions,
+  SqliteConnectionInstance,
+  UseConnectionInput,
 } from "./sql_data_source_types";
 import { SqliteModelManager } from "./sqlite/sql_lite_model_manager";
 import { Transaction } from "./transactions/transaction";
 
 export class SqlDataSource extends DataSource {
-  isConnected: boolean;
-  protected sqlConnection!: SqlConnectionType;
+  declare private sqlConnection: SqlConnectionType;
   private static instance: SqlDataSource | null = null;
+  private sqlType: SqlDataSourceType;
+  retryPolicy: ConnectionPolicies["retry"];
+  isConnected: boolean;
 
   private constructor(input?: SqlDataSourceInput) {
     super(input);
     this.isConnected = false;
+    this.sqlType = input?.type as SqlDataSourceType;
+    this.retryPolicy = input?.connectionPolicies?.retry || {
+      maxRetries: 3,
+      delay: 1000,
+    };
   }
 
   getDbType(): SqlDataSourceType {
@@ -42,7 +43,8 @@ export class SqlDataSource extends DataSource {
 
   /**
    * @description Connects to the database establishing a connection. If no connection details are provided, the default values from the env will be taken instead
-   * @description The User input connection details will always come first
+   * @description The User input connection details will always override the values from the env file
+   * @description A SELECT 1 query is run to check if the connection is successful
    */
   static async connect(
     input?: SqlDataSourceInput,
@@ -59,53 +61,22 @@ export class SqlDataSource extends DataSource {
     }
 
     const sqlDataSource = new this(input);
-    const driver = await DriverFactory.getDriver(sqlDataSource.type);
-    switch (sqlDataSource.type) {
-      case "mysql":
-      case "mariadb":
-        const mysqlDriver = driver.client as Mysql2Import;
-        sqlDataSource.sqlConnection = await mysqlDriver.createConnection({
-          host: sqlDataSource.host,
-          port: sqlDataSource.port,
-          user: sqlDataSource.username,
-          password: sqlDataSource.password,
-          database: sqlDataSource.database,
-          ...(input ? (input as MysqlSqlDataSourceInput).driverOptions : {}),
-        });
-        break;
+    sqlDataSource.sqlConnection = await createSqlConnection(
+      sqlDataSource.sqlType,
+      {
+        type: sqlDataSource.sqlType,
+        host: sqlDataSource.host,
+        port: sqlDataSource.port,
+        username: sqlDataSource.username,
+        password: sqlDataSource.password,
+        database: sqlDataSource.database,
+        timezone: input?.timezone,
+      },
+    );
 
-      case "postgres":
-        const pgDriver = driver.client as PgImport;
-        sqlDataSource.sqlConnection = new pgDriver.Client({
-          host: sqlDataSource.host,
-          port: sqlDataSource.port,
-          user: sqlDataSource.username,
-          password: sqlDataSource.password,
-          database: sqlDataSource.database,
-          ...(input ? (input as PostgresSqlDataSourceInput).driverOptions : {}),
-        });
-        await (sqlDataSource.sqlConnection as PgClientInstance).connect();
-        break;
-
-      case "sqlite":
-        const sqlite3 = driver.client as Sqlite3Import;
-        sqlDataSource.sqlConnection = new sqlite3.Database(
-          sqlDataSource.database,
-          sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE,
-          (err) => {
-            if (err) {
-              throw new Error(`Error while connecting to sqlite: ${err}`);
-            }
-          },
-        );
-        break;
-
-      default:
-        throw new Error(`Unsupported data source type: ${sqlDataSource.type}`);
-    }
-
-    sqlDataSource.isConnected = true;
     SqlDataSource.instance = sqlDataSource;
+    sqlDataSource.isConnected = true;
+    sqlDataSource.addRetryConnectionListener(input?.connectionPolicies?.retry);
     await cb?.();
     return sqlDataSource;
   }
@@ -127,25 +98,7 @@ export class SqlDataSource extends DataSource {
     cb: (trx: Transaction) => Promise<void>,
     driverSpecificOptions?: SqlDriverSpecificOptions,
   ): Promise<void> {
-    const trx = await this.getInstance().startTransaction(
-      driverSpecificOptions,
-    );
-    try {
-      await cb(trx).then(async () => {
-        if (!trx.isActive) {
-          return;
-        }
-
-        await trx.commit();
-      });
-    } catch (error) {
-      if (!trx.isActive) {
-        return;
-      }
-
-      await trx.rollback();
-      throw error;
-    }
+    return this.getInstance().useTransaction(cb, driverSpecificOptions);
   }
 
   /**
@@ -222,7 +175,18 @@ export class SqlDataSource extends DataSource {
       ...driverSpecificOptions,
     });
 
-    await sqlDataSource.connectDriver();
+    sqlDataSource.sqlConnection = await createSqlConnection(
+      sqlDataSource.sqlType,
+      {
+        type: sqlDataSource.sqlType,
+        host: sqlDataSource.host,
+        port: sqlDataSource.port,
+        username: sqlDataSource.username,
+        password: sqlDataSource.password,
+        database: sqlDataSource.database,
+        ...driverSpecificOptions,
+      },
+    );
     sqlDataSource.isConnected = true;
     const mysqlTrx = new Transaction(sqlDataSource, this.logs);
     await mysqlTrx.startTransaction();
@@ -270,7 +234,7 @@ export class SqlDataSource extends DataSource {
       case "postgres":
         return new PostgresModelManager<T>(
           model as typeof Model,
-          this.sqlConnection as PgClientInstance,
+          this.sqlConnection as PgPoolClientInstance,
           this.logs,
           this,
         );
@@ -290,22 +254,21 @@ export class SqlDataSource extends DataSource {
    * @description Executes a callback function with the provided connection details
    */
   static async useConnection(
-    connectionDetails: SqlDataSourceInput,
+    connectionDetails: UseConnectionInput,
     cb: (sqlDataSource: SqlDataSource) => Promise<void>,
   ) {
     const customSqlInstance = new SqlDataSource(connectionDetails);
-    await customSqlInstance.connectDriver({
-      mysqlOptions:
-        this.getInstance().getDbType() === "mysql" ||
-        this.getInstance().getDbType() === "mariadb"
-          ? (connectionDetails as MysqlSqlDataSourceInput).driverOptions
-          : undefined,
-      pgOptions:
-        this.getInstance().getDbType() === "postgres"
-          ? (connectionDetails as PostgresSqlDataSourceInput).driverOptions
-          : undefined,
-    });
+    customSqlInstance.sqlConnection = await createSqlConnection(
+      customSqlInstance.sqlType,
+      {
+        ...connectionDetails,
+      },
+    );
     customSqlInstance.isConnected = true;
+    customSqlInstance.addRetryConnectionListener(
+      connectionDetails.connectionPolicies?.retry,
+    );
+
     try {
       await cb(customSqlInstance).then(async () => {
         if (!customSqlInstance.isConnected) {
@@ -323,60 +286,12 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
-   * @description Returns the current connection {Promise<SqlConnectionType>} sqlConnection
+   * @description Returns the current driver connection, you can pass a specific type to get the connection as that type
    */
-  getCurrentConnection(): SqlConnectionType {
-    return this.sqlConnection;
-  }
-
-  /**
-   * @description Returns separate raw sql connection
-   */
-  async getRawConnection(
-    driverSpecificOptions?: SqlDriverSpecificOptions,
-  ): Promise<SqlConnectionType> {
-    switch (this.type) {
-      case "mysql":
-      case "mariadb":
-        const mysqlDriver = (await DriverFactory.getDriver("mysql"))
-          .client as Mysql2Import;
-        return await mysqlDriver.createConnection({
-          host: this.host,
-          port: this.port,
-          user: this.username,
-          password: this.password,
-          database: this.database,
-          ...driverSpecificOptions?.mysqlOptions,
-        });
-      case "postgres":
-        const pg = (await DriverFactory.getDriver("postgres"))
-          .client as PgImport;
-        const client = new pg.Client({
-          host: this.host,
-          port: this.port,
-          user: this.username,
-          password: this.password,
-          database: this.database,
-          ...driverSpecificOptions?.pgOptions,
-        });
-        await client.connect();
-        return client;
-
-      case "sqlite":
-        const sqlite3 = (await DriverFactory.getDriver("sqlite"))
-          .client as Sqlite3Import;
-        return new sqlite3.Database(
-          this.database,
-          sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE,
-          (err) => {
-            if (err) {
-              throw new Error(`Error while connecting to sqlite: ${err}`);
-            }
-          },
-        );
-      default:
-        throw new Error(`Unsupported data source type: ${this.type}`);
-    }
+  getCurrentDriverConnection<T extends SqlDataSourceType = typeof this.sqlType>(
+    _specificType: T = this.sqlType as T,
+  ): GetCurrentConnectionReturnType<T> {
+    return this.sqlConnection as GetCurrentConnectionReturnType<T>;
   }
 
   /**
@@ -397,7 +312,7 @@ export class SqlDataSource extends DataSource {
         SqlDataSource.instance = null;
         break;
       case "postgres":
-        await (this.sqlConnection as PgClientInstance).end();
+        (this.sqlConnection as PgPoolClientInstance).end();
         this.isConnected = false;
         SqlDataSource.instance = null;
         break;
@@ -422,42 +337,7 @@ export class SqlDataSource extends DataSource {
    * @description Closes the main connection to the database established with SqlDataSource.connect() method
    */
   static async closeConnection(): Promise<void> {
-    const sqlDataSource = SqlDataSource.getInstance();
-    if (!sqlDataSource.isConnected) {
-      logger.warn("Connection already closed");
-      return;
-    }
-
-    logger.warn("Closing connection");
-    switch (sqlDataSource.type) {
-      case "mysql":
-      case "mariadb":
-        await (sqlDataSource.sqlConnection as MysqlConnectionInstance).end();
-        sqlDataSource.isConnected = false;
-        SqlDataSource.instance = null;
-        break;
-      case "postgres":
-        await (sqlDataSource.sqlConnection as PgClientInstance).end();
-        sqlDataSource.isConnected = false;
-        SqlDataSource.instance = null;
-        break;
-      case "sqlite":
-        await new Promise<void>((resolve, reject) => {
-          (sqlDataSource.sqlConnection as SqliteConnectionInstance).close(
-            (err) => {
-              if (err) {
-                reject(err);
-              }
-              resolve();
-            },
-          );
-        });
-        sqlDataSource.isConnected = false;
-        SqlDataSource.instance = null;
-        break;
-      default:
-        throw new Error(`Unsupported data source type: ${sqlDataSource.type}`);
-    }
+    return SqlDataSource.getInstance().closeConnection();
   }
 
   /**
@@ -470,7 +350,7 @@ export class SqlDataSource extends DataSource {
 
   /**
    * @description Disconnects the main connection to the database established with SqlDataSource.connect() method
-   * @alias closeMainConnection
+   * @alias closeConnection
    */
   static async disconnect(): Promise<void> {
     return SqlDataSource.closeConnection();
@@ -494,10 +374,9 @@ export class SqlDataSource extends DataSource {
 
         return mysqlRows as T;
       case "postgres":
-        const { rows } = await (this.sqlConnection as PgClientInstance).query(
-          query,
-          params as any[],
-        );
+        const { rows } = await (
+          this.sqlConnection as PgPoolClientInstance
+        ).query(query, params as any[]);
 
         return rows as T;
       case "sqlite":
@@ -526,90 +405,17 @@ export class SqlDataSource extends DataSource {
     query: string,
     params: any[] = [],
   ): Promise<T> {
-    const sqlDataSource = SqlDataSource.getInstance();
-    if (!sqlDataSource || !sqlDataSource.isConnected) {
-      throw new Error("sql database connection not established");
-    }
-
-    log(query, SqlDataSource.getInstance()?.logs ?? false, params);
-    switch (sqlDataSource.type) {
-      case "mysql":
-      case "mariadb":
-        const [mysqlRows] = await (
-          sqlDataSource.sqlConnection as MysqlConnectionInstance
-        ).execute(query, params);
-
-        return mysqlRows as T;
-      case "postgres":
-        const { rows } = await (
-          sqlDataSource.sqlConnection as PgClientInstance
-        ).query(query, params);
-
-        return rows as T;
-      case "sqlite":
-        return new Promise((resolve, reject) => {
-          (sqlDataSource.sqlConnection as SqliteConnectionInstance).all(
-            query,
-            params,
-            (err, rows) => {
-              if (err) {
-                reject(err);
-              }
-
-              resolve(rows as T);
-            },
-          );
-        });
-      default:
-        throw new Error(`Unsupported data source type: ${sqlDataSource.type}`);
-    }
+    return SqlDataSource.getInstance().rawQuery(query, params);
   }
 
-  private async connectDriver(
-    driverSpecificOptions?: SqlDriverSpecificOptions,
-  ): Promise<void> {
-    switch (this.type) {
-      case "mysql":
-      case "mariadb":
-        const mysql = (await DriverFactory.getDriver("mysql"))
-          .client as Mysql2Import;
-        this.sqlConnection = await mysql.createConnection({
-          host: this.host,
-          port: this.port,
-          user: this.username,
-          password: this.password,
-          database: this.database,
-          ...driverSpecificOptions?.mysqlOptions,
-        });
-        break;
-      case "postgres":
-        const pg = (await DriverFactory.getDriver("postgres"))
-          .client as PgImport;
-        this.sqlConnection = new pg.Client({
-          host: this.host,
-          port: this.port,
-          user: this.username,
-          password: this.password,
-          database: this.database,
-          ...driverSpecificOptions?.pgOptions,
-        });
-        await (this.sqlConnection as PgClientInstance).connect();
-        break;
-      case "sqlite":
-        const sqlite3 = (await DriverFactory.getDriver("sqlite"))
-          .client as Sqlite3Import;
-        this.sqlConnection = new sqlite3.Database(
-          this.database,
-          sqlite3.OPEN_READWRITE | sqlite3.OPEN_CREATE,
-          (err) => {
-            if (err) {
-              throw new Error(`Error while connecting to sqlite: ${err}`);
-            }
-          },
-        );
-        break;
-      default:
-        throw new Error(`Unsupported data source type: ${this.type}`);
-    }
+  private addRetryConnectionListener(
+    retryConfig: ConnectionPolicies["retry"],
+  ): void {
+    const maxRetries = retryConfig?.maxRetries ?? 3;
+    const delay = retryConfig?.delay ?? 1000;
+
+    this.getCurrentDriverConnection().addListener("error", async (err) => {
+      console.log(err);
+    });
   }
 }

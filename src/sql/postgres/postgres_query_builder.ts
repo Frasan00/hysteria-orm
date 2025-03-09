@@ -1,5 +1,6 @@
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { convertCase } from "../../utils/case_utils";
+import { convertPlaceHolderToValue } from "../../utils/placeholder";
 import { getBaseModelInstance, Model } from "../models/model";
 import {
   ModelKey,
@@ -22,11 +23,11 @@ import { UpdateOptions } from "../query_builder/update_query_builder_types";
 import deleteTemplate from "../resources/query/DELETE";
 import updateTemplate from "../resources/query/UPDATE";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
-import { PgClientInstance } from "../sql_data_source_types";
+import { PgPoolClientInstance } from "../sql_data_source_types";
 import { execSql } from "../sql_runner/sql_runner";
 
 export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
-  protected pgClient: PgClientInstance;
+  protected pgClient: PgPoolClientInstance;
   protected postgresModelManagerUtils: SqlModelManagerUtils<T>;
   protected updateTemplate: ReturnType<typeof updateTemplate>;
   protected deleteTemplate: ReturnType<typeof deleteTemplate>;
@@ -34,7 +35,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
   constructor(
     model: typeof Model,
     table: string,
-    pgClient: PgClientInstance,
+    pgClient: PgPoolClientInstance,
     logs: boolean,
     isNestedCondition = false,
     sqlDataSource: SqlDataSource,
@@ -67,8 +68,6 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
       query += this.whereQuery;
     }
 
-    query = this.whereTemplate.convertPlaceHolderToValue(query);
-
     // limit to 1
     this.limit(1);
     query += this.groupFooterQuery();
@@ -80,6 +79,7 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
       this.pgClient,
       this.logs,
     );
+
     if (!result.rows[0]) {
       return null;
     }
@@ -145,7 +145,6 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     }
 
     query += this.groupFooterQuery();
-    query = this.whereTemplate.convertPlaceHolderToValue(query);
 
     const result = (await execSql(
       query,
@@ -202,7 +201,8 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
     const columns = Object.keys(data);
     const values = Object.values(data);
-    this.whereQuery = this.whereTemplate.convertPlaceHolderToValue(
+    this.whereQuery = convertPlaceHolderToValue(
+      "postgres",
       this.whereQuery,
       values.length + 1,
     );
@@ -235,9 +235,6 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
       this.model.beforeDelete(this);
     }
 
-    this.whereQuery = this.whereTemplate.convertPlaceHolderToValue(
-      this.whereQuery,
-    );
     const query = this.deleteTemplate.massiveDelete(
       this.whereQuery,
       this.joinQuery,
@@ -294,8 +291,12 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<number> {
     if (options.ignoreHooks) {
-      const { rows } = await this.pgClient.query(
+      const { rows } = await execSql(
         `SELECT COUNT(*) as total from ${this.table}`,
+        [],
+        "postgres",
+        this.pgClient,
+        this.logs,
       );
       return +rows[0].total;
     }
@@ -311,8 +312,12 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<number> {
     if (options.ignoreHooks) {
-      const { rows } = await this.pgClient.query(
+      const { rows } = await execSql(
         `SELECT SUM(${column as string}) as total from ${this.table}`,
+        [],
+        "postgres",
+        this.pgClient,
+        this.logs,
       );
       return +rows[0].total || 0;
     }
@@ -486,7 +491,8 @@ export class PostgresQueryBuilder<T extends Model> extends QueryBuilder<T> {
     this.relations.push({
       relation: relation as string,
       selectedColumns: queryBuilder.modelSelectedColumns,
-      whereQuery: this.whereTemplate.convertPlaceHolderToValue(
+      whereQuery: convertPlaceHolderToValue(
+        "postgres",
         queryBuilder.whereQuery,
       ),
       params: queryBuilder.params,

@@ -26,19 +26,6 @@ const whereTemplate = (
   typeofModel: typeof Model,
 ) => {
   return {
-    convertPlaceHolderToValue: (query: string, startIndex: number = 1) => {
-      switch (dbType) {
-        case "mysql":
-        case "sqlite":
-        case "mariadb":
-          return query.replace(/PLACEHOLDER/g, () => "?");
-        case "postgres":
-          let index = startIndex;
-          return query.replace(/PLACEHOLDER/g, () => `$${index++}`);
-        default:
-          throw new Error("Unsupported database type");
-      }
-    },
     where: (
       column: string,
       value: BaseValues,

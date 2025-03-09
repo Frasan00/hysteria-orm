@@ -35,6 +35,17 @@ export interface PostgresSqlDataSourceInput extends CommonDataSourceInput {
   readonly driverOptions?: PgClientOptions;
 }
 
+export interface NotNullablePostgresSqlDataSourceInput
+  extends PostgresSqlDataSourceInput {
+  readonly type: "postgres";
+  readonly host: string;
+  readonly port: number;
+  readonly username: string;
+  readonly password: string;
+  readonly database: string;
+  readonly driverOptions: PgClientOptions;
+}
+
 export interface MysqlSqlDataSourceInput extends CommonDataSourceInput {
   readonly type: "mysql" | "mariadb";
   readonly host?: string;
@@ -45,9 +56,26 @@ export interface MysqlSqlDataSourceInput extends CommonDataSourceInput {
   readonly driverOptions?: MysqlCreateConnectionOptions;
 }
 
+export interface NotNullableMysqlSqlDataSourceInput
+  extends MysqlSqlDataSourceInput {
+  readonly type: "mysql" | "mariadb";
+  readonly host: string;
+  readonly port: number;
+  readonly username: string;
+  readonly password: string;
+  readonly database: string;
+  readonly driverOptions?: MysqlCreateConnectionOptions;
+}
+
 export interface SqliteDataSourceInput extends CommonDataSourceInput {
   readonly type: "sqlite";
   readonly database?: string;
+}
+
+export interface NotNullableSqliteDataSourceInput
+  extends SqliteDataSourceInput {
+  readonly type: "sqlite";
+  readonly database: string;
 }
 
 /**

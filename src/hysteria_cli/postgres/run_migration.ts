@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 import dotenv from "dotenv";
-import { MigrationTableType } from "../resources/migration_table_type";
 import { Migration } from "../../sql/migrations/migration";
 import { MigrationController } from "../../sql/migrations/migration_controller";
 import {
@@ -9,10 +8,11 @@ import {
   COMMIT_TRANSACTION,
   ROLLBACK_TRANSACTION,
 } from "../../sql/resources/query/TRANSACTION";
-import logger, { log } from "../../utils/logger";
 import { SqlDataSource } from "../../sql/sql_data_source";
+import { PgPoolInstance } from "../../sql/sql_data_source_types";
+import logger, { log } from "../../utils/logger";
 import { getMigrationTable, getMigrations } from "../migration_utils";
-import { PgClientInstance } from "../../sql/sql_data_source_types";
+import { MigrationTableType } from "../resources/migration_table_type";
 
 dotenv.config();
 
@@ -21,7 +21,7 @@ export async function runMigrationsPg(
   tsconfigPath?: string,
 ): Promise<void> {
   const sql = await SqlDataSource.connect();
-  const sqlConnection = sql.getCurrentConnection() as PgClientInstance;
+  const sqlConnection = sql.getCurrentConnection() as PgPoolInstance;
   try {
     log(BEGIN_TRANSACTION, true);
     await sqlConnection.query(BEGIN_TRANSACTION);

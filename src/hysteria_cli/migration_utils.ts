@@ -1,17 +1,17 @@
+import dotenv from "dotenv";
+import { createRequire } from "module";
 import fs from "node:fs";
 import path from "node:path";
+import { register, RegisterOptions } from "ts-node";
 import { Migration } from "../sql/migrations/migration";
-import dotenv from "dotenv";
-import { MigrationTableType } from "./resources/migration_table_type";
-import MigrationTemplates from "./resources/migration_templates";
 import {
   MysqlConnectionInstance,
-  PgClientInstance,
+  PgPoolInstance,
   SqlConnectionType,
   SqliteConnectionInstance,
 } from "../sql/sql_data_source_types";
-import { register, RegisterOptions } from "ts-node";
-import { createRequire } from "module";
+import { MigrationTableType } from "./resources/migration_table_type";
+import MigrationTemplates from "./resources/migration_templates";
 
 dotenv.config();
 const customRequire = createRequire(__filename);
@@ -32,7 +32,7 @@ export async function getMigrationTable(
       return result[0] as MigrationTableType[];
 
     case "postgres":
-      const pgConnection = sqlConnection as PgClientInstance;
+      const pgConnection = sqlConnection as PgPoolInstance;
       await pgConnection.query(MigrationTemplates.migrationTableTemplatePg());
       const pgResult = await pgConnection.query(
         MigrationTemplates.selectAllFromMigrationsTemplate(),

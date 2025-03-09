@@ -1,19 +1,19 @@
 import { log } from "../../../utils/logger";
+import { RelationQueryBuilder } from "../../query_builder/query_builder";
 import deleteTemplate from "../../resources/query/DELETE";
 import insertTemplate from "../../resources/query/INSERT";
 import relationTemplates from "../../resources/query/RELATION";
 import updateTemplate from "../../resources/query/UPDATE";
+import {
+  MysqlConnectionInstance,
+  PgPoolClientInstance,
+  SqlConnectionType,
+  SqlDataSourceType,
+  SqliteConnectionInstance,
+} from "../../sql_data_source_types";
 import { Model } from "../model";
 import { getRelations } from "../model_decorators";
 import { Relation } from "../relations/relation";
-import { RelationQueryBuilder } from "../../query_builder/query_builder";
-import {
-  SqlDataSourceType,
-  SqlConnectionType,
-  MysqlConnectionInstance,
-  SqliteConnectionInstance,
-  PgClientInstance,
-} from "../../sql_data_source_types";
 
 export default class SqlModelManagerUtils<T extends Model> {
   private dbType: SqlDataSourceType;
@@ -196,10 +196,9 @@ export default class SqlModelManagerUtils<T extends Model> {
         ).query(query, params);
         return resultMysql[0];
       case "postgres":
-        const resultPg = await (this.sqlConnection as PgClientInstance).query(
-          query,
-          params,
-        );
+        const resultPg = await (
+          this.sqlConnection as PgPoolClientInstance
+        ).query(query, params);
         return resultPg.rows;
       case "sqlite":
         return await new Promise((resolve, reject) => {
