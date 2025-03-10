@@ -1,177 +1,71 @@
-import { log } from "../../utils/logger";
+import { HysteriaError } from "../../errors/hysteria_error";
 import {
   BEGIN_TRANSACTION,
   COMMIT_TRANSACTION,
   ROLLBACK_TRANSACTION,
 } from "../resources/query/TRANSACTION";
 import { SqlDataSource } from "../sql_data_source";
-import {
-  MysqlConnectionInstance,
-  PgPoolClientInstance,
-  SqlConnectionType,
-  SqliteConnectionInstance,
-} from "../sql_data_source_types";
 
 export class Transaction {
   sqlDataSource: SqlDataSource;
-  sqlConnection: SqlConnectionType;
   isActive: boolean;
-  private readonly logs: boolean;
 
-  constructor(sqlDataSource: SqlDataSource, logs?: boolean) {
+  constructor(sqlDataSource: SqlDataSource) {
     this.sqlDataSource = sqlDataSource;
-    this.sqlConnection = this.sqlDataSource.getCurrentDriverConnection();
     this.isActive = false;
-    this.logs = logs || this.sqlDataSource.logs || false;
   }
 
   async startTransaction(): Promise<void> {
-    try {
-      switch (this.sqlDataSource.getDbType()) {
-        case "mysql":
-        case "mariadb":
-          log(BEGIN_TRANSACTION, this.logs);
-          await (this.sqlConnection as MysqlConnectionInstance).query(
-            BEGIN_TRANSACTION,
-          );
-          break;
-
-        case "postgres":
-          log(BEGIN_TRANSACTION, this.logs);
-          await (this.sqlConnection as PgPoolClientInstance).query(
-            BEGIN_TRANSACTION,
-          );
-          break;
-
-        case "sqlite":
-          log(BEGIN_TRANSACTION, this.logs);
-          (this.sqlConnection as SqliteConnectionInstance).run(
-            BEGIN_TRANSACTION,
-            (err) => {
-              if (err) {
-                throw new Error(err.message);
-              }
-            },
-          );
-          break;
-
-        default:
-          throw new Error("Invalid database type while beginning transaction");
-      }
-
-      this.isActive = true;
-    } catch (error) {
-      await this.releaseConnection();
-    }
+    await this.sqlDataSource.rawQuery(BEGIN_TRANSACTION);
+    this.isActive = true;
   }
 
   async commit(): Promise<void> {
+    if (!this.isActive) {
+      throw new HysteriaError("TRANSACTION::commit", "TRANSACTION_NOT_ACTIVE");
+    }
+
     try {
-      switch (this.sqlDataSource.getDbType()) {
-        case "mysql":
-        case "mariadb":
-          log(COMMIT_TRANSACTION, this.logs);
-          await (this.sqlConnection as MysqlConnectionInstance).query(
-            COMMIT_TRANSACTION,
-          );
-          break;
-
-        case "postgres":
-          log(COMMIT_TRANSACTION, this.logs);
-          await (this.sqlConnection as PgPoolClientInstance).query(
-            COMMIT_TRANSACTION,
-          );
-          break;
-
-        case "sqlite":
-          log(COMMIT_TRANSACTION, this.logs);
-          (this.sqlConnection as SqliteConnectionInstance).run(
-            COMMIT_TRANSACTION,
-            (err) => {
-              if (err) {
-                throw new Error(err.message);
-              }
-            },
-          );
-          break;
-        default:
-          throw new Error("Invalid database type while committing transaction");
-      }
-
-      this.isActive = false;
-    } catch (error) {
-      throw error;
+      await this.sqlDataSource.rawQuery(COMMIT_TRANSACTION);
     } finally {
       await this.releaseConnection();
+      this.isActive = false;
     }
   }
 
   async rollback(): Promise<void> {
+    if (!this.isActive) {
+      throw new HysteriaError(
+        "TRANSACTION::rollback",
+        "TRANSACTION_NOT_ACTIVE",
+      );
+    }
+
     try {
-      switch (this.sqlDataSource.getDbType()) {
-        case "mysql":
-        case "mariadb":
-          log(ROLLBACK_TRANSACTION, this.logs);
-          await (this.sqlConnection as MysqlConnectionInstance).query(
-            ROLLBACK_TRANSACTION,
-          );
-          break;
-
-        case "postgres":
-          log(ROLLBACK_TRANSACTION, this.logs);
-          await (this.sqlConnection as PgPoolClientInstance).query(
-            ROLLBACK_TRANSACTION,
-          );
-          break;
-
-        case "sqlite":
-          log(ROLLBACK_TRANSACTION, this.logs);
-          (this.sqlConnection as SqliteConnectionInstance).run(
-            ROLLBACK_TRANSACTION,
-            (err) => {
-              if (err) {
-                throw new Error(err.message);
-              }
-            },
-          );
-          break;
-
-        default:
-          throw new Error(
-            "Invalid database type while rolling back transaction",
-          );
-      }
-
-      this.isActive = false;
+      await this.sqlDataSource.rawQuery(ROLLBACK_TRANSACTION);
     } finally {
       await this.releaseConnection();
+      this.isActive = false;
     }
   }
 
-  private async releaseConnection(): Promise<void> {
-    switch (this.sqlDataSource.getDbType()) {
+  async releaseConnection(): Promise<void> {
+    switch (this.sqlDataSource.type) {
       case "mysql":
       case "mariadb":
-        await (this.sqlConnection as MysqlConnectionInstance).end();
+        await this.sqlDataSource.getCurrentDriverConnection("mysql").end();
         break;
-
       case "postgres":
-        (this.sqlConnection as PgPoolClientInstance).end();
+        await this.sqlDataSource.getCurrentDriverConnection("postgres").end();
         break;
-
       case "sqlite":
-        await new Promise<void>((resolve, reject) => {
-          (this.sqlConnection as SqliteConnectionInstance).close((err) => {
-            if (err) {
-              reject(err);
-            }
-            resolve();
-          });
-        });
+        await this.sqlDataSource.getCurrentDriverConnection("sqlite").close();
         break;
-
       default:
-        throw new Error("Invalid database type while releasing connection");
+        throw new HysteriaError(
+          "TRANSACTION::releaseConnection",
+          `UNSUPPORTED_DATABASE_TYPE_${this.sqlDataSource.type}`,
+        );
     }
   }
 }

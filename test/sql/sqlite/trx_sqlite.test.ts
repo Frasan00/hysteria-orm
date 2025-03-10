@@ -89,16 +89,16 @@ test("Create a new user with posts within a transaction", async () => {
       throw new Error("Post not created");
     }
 
-    await trx.commit();
-
-    const userWithPosts = await User.query()
+    const userWithPosts = await User.query({ trx })
       .where("id", user.id)
       .with("posts")
       .one();
+
     expect(userWithPosts).not.toBeNull();
     expect(userWithPosts?.posts).not.toBeNull();
     expect(userWithPosts?.posts.length).toBe(1);
     expect(userWithPosts?.posts[0].title).toBe("Post 2");
+    await trx.commit();
   } catch (error) {
     await trx.rollback();
     throw error;

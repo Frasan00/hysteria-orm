@@ -1,5 +1,5 @@
 import * as mongodb from "mongodb";
-import { ModelKey } from "../../../sql/models/model_manager/model_manager_types";
+import type { ModelKey } from "../../../sql/models/model_manager/model_manager_types";
 import logger from "../../../utils/logger";
 import { MongoDataSource } from "../mongo_data_source";
 import { Collection } from "../mongo_models/mongo_collection";

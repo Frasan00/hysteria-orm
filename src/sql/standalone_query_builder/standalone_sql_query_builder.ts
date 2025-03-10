@@ -7,7 +7,7 @@ import whereTemplate, {
   BinaryOperatorType,
 } from "../resources/query/WHERE";
 import { format } from "sql-formatter";
-import { SqlDataSourceType } from "../sql_data_source_types";
+import type { SqlDataSourceType } from "../sql_data_source_types";
 import { getSqlDialect } from "../sql_runner/sql_runner";
 
 export class StandaloneQueryBuilder {

@@ -1,4 +1,4 @@
-import { ModelQueryBuilder } from "../../../src/sql/query_builder/query_builder";
+import { ModelQueryBuilder } from "../../../src/sql/model_query_builder/model_query_builder";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { Address } from "../sql_models/Address";
 import { Post } from "../sql_models/Post";

@@ -1,6 +1,4 @@
-import { FetchHooks } from "../../query_builder/query_builder";
-import { SqlDataSource } from "../../sql_data_source";
-import { Transaction } from "../../transactions/transaction";
+import { FetchHooks } from "../../model_query_builder/model_query_builder_types";
 import { Model } from "../model";
 import { BelongsTo } from "../relations/belongs_to";
 import { HasMany } from "../relations/has_many";
@@ -68,8 +66,6 @@ export type FindOneType<T> = {
   groupBy?: ModelKey<T>[];
   where?: WhereType<T>;
   ignoreHooks?: FetchHooks[];
-  useConnection?: SqlDataSource;
-  trx?: Transaction;
 };
 
 export type FindType<T> = Omit<FindOneType<T>, "throwErrorOnNull"> & {

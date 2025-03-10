@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
 import { DataSourceInput } from "..";
-import {
+import type {
   DataSourceType,
   MongoDataSourceInput,
   PostgresSqlDataSourceInput,

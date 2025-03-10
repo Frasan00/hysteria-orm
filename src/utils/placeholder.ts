@@ -1,4 +1,4 @@
-import { SqlDataSourceType } from "../sql/sql_data_source_types";
+import type { SqlDataSourceType } from "../sql/sql_data_source_types";
 
 export const convertPlaceHolderToValue = (
   dbType: SqlDataSourceType,

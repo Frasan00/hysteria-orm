@@ -1,4 +1,4 @@
-import {
+import type {
   MysqlSqlDataSourceInput,
   PostgresSqlDataSourceInput,
 } from "../data_source/data_source_types";
@@ -15,7 +15,6 @@ import {
   SqlDataSourceInput,
   SqlDataSourceType,
 } from "./sql_data_source_types";
-import { execSql } from "./sql_runner/sql_runner";
 
 const getDriverConnection = async (type: SqlDataSourceType) => {
   const driver = (await DriverFactory.getDriver(type)).client;
@@ -42,7 +41,6 @@ export const createSqlConnection = async (
         ...mysqlInput?.driverOptions,
         timezone: timezone,
       });
-      await execSql("SELECT 1", [], type, mysqlPool);
       return mysqlPool;
     case "postgres":
       const pgInput = input as PostgresSqlDataSourceInput;
@@ -62,8 +60,6 @@ export const createSqlConnection = async (
         await client.query(query);
         logMessage(`Timezone set to: ${timezone}`, "info", input.logs);
       });
-
-      await execSql("SELECT 1", [], type, pgPool);
 
       return pgPool;
     case "sqlite":

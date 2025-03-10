@@ -1,11 +1,11 @@
 import { convertCase } from "../../../utils/case_utils";
 import logger from "../../../utils/logger";
+import type { RelationQueryBuilder } from "../../model_query_builder/model_query_builder_types";
 import { Model } from "../../models/model";
 import { getModelColumns, getRelations } from "../../models/model_decorators";
 import { ManyToMany } from "../../models/relations/many_to_many";
 import { Relation, RelationEnum } from "../../models/relations/relation";
-import { RelationQueryBuilder } from "../../query_builder/query_builder";
-import { SqlDataSourceType } from "../../sql_data_source_types";
+import type { SqlDataSourceType } from "../../sql_data_source_types";
 import {
   convertValueToSQL,
   generateHasManyQuery,

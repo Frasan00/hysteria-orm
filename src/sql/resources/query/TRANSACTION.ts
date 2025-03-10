@@ -1,3 +1,3 @@
-export const BEGIN_TRANSACTION = "BEGIN; \n";
-export const COMMIT_TRANSACTION = "COMMIT; \n";
-export const ROLLBACK_TRANSACTION = "ROLLBACK; \n";
+export const BEGIN_TRANSACTION = "BEGIN";
+export const COMMIT_TRANSACTION = "COMMIT";
+export const ROLLBACK_TRANSACTION = "ROLLBACK";

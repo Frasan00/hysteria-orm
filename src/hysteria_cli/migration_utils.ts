@@ -4,9 +4,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { register, RegisterOptions } from "ts-node";
 import { Migration } from "../sql/migrations/migration";
-import {
+import type {
   MysqlConnectionInstance,
-  PgPoolInstance,
+  PgPoolClientInstance,
   SqlConnectionType,
   SqliteConnectionInstance,
 } from "../sql/sql_data_source_types";
@@ -32,7 +32,7 @@ export async function getMigrationTable(
       return result[0] as MigrationTableType[];
 
     case "postgres":
-      const pgConnection = sqlConnection as PgPoolInstance;
+      const pgConnection = sqlConnection as PgPoolClientInstance;
       await pgConnection.query(MigrationTemplates.migrationTableTemplatePg());
       const pgResult = await pgConnection.query(
         MigrationTemplates.selectAllFromMigrationsTemplate(),

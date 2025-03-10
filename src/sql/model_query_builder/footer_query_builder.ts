@@ -1,6 +1,6 @@
 import { convertCase } from "../../utils/case_utils";
 import { Model } from "../models/model";
-import {
+import type {
   ModelKey,
   OrderByChoices,
 } from "../models/model_manager/model_manager_types";
@@ -19,20 +19,16 @@ export abstract class FooterQueryBuilder<T extends Model> {
   protected havingQuery: string;
   protected selectTemplate: ReturnType<typeof selectTemplate>;
 
-  protected constructor(
-    model: typeof Model,
-    logs: boolean,
-    sqlDataSource: SqlDataSource,
-  ) {
+  protected constructor(model: typeof Model, sqlDataSource: SqlDataSource) {
     this.model = model;
     this.sqlDataSource = sqlDataSource;
+    this.logs = this.sqlDataSource.logs;
     this.selectTemplate = selectTemplate(
       this.sqlDataSource.getDbType(),
       this.model,
     );
 
     this.joinQuery = "";
-    this.logs = logs;
     this.groupByQuery = "";
     this.orderByQuery = "";
     this.limitQuery = "";

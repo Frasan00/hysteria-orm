@@ -1,4 +1,4 @@
-import { SqlDataSourceType, Timezone } from "../sql/sql_data_source_types";
+import type { SqlDataSourceType, Timezone } from "../sql/sql_data_source_types";
 
 export function parseTimeZone(sqlType: SqlDataSourceType, timezone: Timezone) {
   if (sqlType === "postgres") {

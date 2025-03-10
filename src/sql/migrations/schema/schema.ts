@@ -1,10 +1,10 @@
+import type { SqlDataSourceType } from "../../sql_data_source_types";
 import path from "node:path";
 import fs from "fs";
 import dotenv from "dotenv";
 import createTableTemplate from "../../resources/migrations/CREATE_TABLE";
 import dropTableTemplate from "../../resources/migrations/DROP_TABLE";
 import ColumnBuilderAlter from "../column/alter_table/column_builder_alter";
-import { SqlDataSourceType } from "../../sql_data_source_types";
 import ColumnTypeBuilder from "../column/create_table/column_type_builder";
 import { StandaloneQueryBuilder } from "../../standalone_query_builder/standalone_sql_query_builder";
 import { CaseConvention } from "../../../utils/case_utils";

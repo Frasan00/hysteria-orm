@@ -1,5 +1,6 @@
+import { HysteriaError } from "../../errors/hysteria_error";
 import { convertCase } from "../../utils/case_utils";
-import { SqlDataSourceType } from "../sql_data_source_types";
+import type { SqlDataSourceType } from "../sql_data_source_types";
 
 export function generateManyToManyQuery({
   dbType,
@@ -58,7 +59,10 @@ export function generateManyToManyQuery({
       jsonAlias = "JSON(t.json_data)";
       break;
     default:
-      throw new Error("Unsupported database type");
+      throw new HysteriaError(
+        "generateManyToManyQuery",
+        `UNSUPPORTED_DATABASE_TYPE_${dbType}`,
+      );
   }
 
   // Prepare selected columns

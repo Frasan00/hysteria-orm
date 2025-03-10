@@ -1,4 +1,4 @@
-import { SqlDataSourceType } from "../../../sql_data_source_types";
+import type { SqlDataSourceType } from "../../../sql_data_source_types";
 
 export abstract class ColumnBuilder {
   partialQuery: string;

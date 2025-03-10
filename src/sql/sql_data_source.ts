@@ -1,13 +1,12 @@
 import { DataSource } from "../data_source/data_source";
-import logger, { log } from "../utils/logger";
+import { HysteriaError } from "../errors/hysteria_error";
+import logger from "../utils/logger";
 import { Model } from "./models/model";
-import { MysqlModelManager } from "./mysql/mysql_model_manager";
-import { PostgresModelManager } from "./postgres/postgres_model_manager";
+import { ModelManager } from "./models/model_manager/model_manager";
 import { createSqlConnection } from "./sql_connection_utils";
-import {
+import type {
   ConnectionPolicies,
   GetCurrentConnectionReturnType,
-  ModelManager,
   MysqlConnectionInstance,
   PgPoolClientInstance,
   SqlConnectionType,
@@ -17,7 +16,7 @@ import {
   SqliteConnectionInstance,
   UseConnectionInput,
 } from "./sql_data_source_types";
-import { SqliteModelManager } from "./sqlite/sql_lite_model_manager";
+import { execSql } from "./sql_runner/sql_runner";
 import { Transaction } from "./transactions/transaction";
 
 export class SqlDataSource extends DataSource {
@@ -25,11 +24,13 @@ export class SqlDataSource extends DataSource {
   private static instance: SqlDataSource | null = null;
   private sqlType: SqlDataSourceType;
   retryPolicy: ConnectionPolicies["retry"];
-  isConnected: boolean;
+
+  get isConnected(): boolean {
+    return !!this.sqlConnection;
+  }
 
   private constructor(input?: SqlDataSourceInput) {
     super(input);
-    this.isConnected = false;
     this.sqlType = input?.type as SqlDataSourceType;
     this.retryPolicy = input?.connectionPolicies?.retry || {
       maxRetries: 3,
@@ -47,20 +48,24 @@ export class SqlDataSource extends DataSource {
    * @description A SELECT 1 query is run to check if the connection is successful
    */
   static async connect(
-    input?: SqlDataSourceInput,
-    cb?: () => Promise<void> | void,
+    input: SqlDataSourceInput,
+    cb?: (sqlDataSource: SqlDataSource) => Promise<void> | void,
   ): Promise<SqlDataSource>;
-  static async connect(cb?: () => Promise<void> | void): Promise<SqlDataSource>;
   static async connect(
-    input?: SqlDataSourceInput | (() => Promise<void> | void),
-    cb?: () => Promise<void> | void,
+    cb?: (sqlDataSource: SqlDataSource) => Promise<void> | void,
+  ): Promise<SqlDataSource>;
+  static async connect(
+    inputOrCb?:
+      | SqlDataSourceInput
+      | ((sqlDataSource: SqlDataSource) => Promise<void> | void),
+    cb?: (sqlDataSource: SqlDataSource) => Promise<void> | void,
   ): Promise<SqlDataSource> {
-    if (typeof input === "function") {
-      cb = input;
-      input = undefined;
+    if (typeof inputOrCb === "function") {
+      cb = inputOrCb;
+      inputOrCb = undefined;
     }
 
-    const sqlDataSource = new this(input);
+    const sqlDataSource = new this(inputOrCb as SqlDataSourceInput);
     sqlDataSource.sqlConnection = await createSqlConnection(
       sqlDataSource.sqlType,
       {
@@ -70,20 +75,22 @@ export class SqlDataSource extends DataSource {
         username: sqlDataSource.username,
         password: sqlDataSource.password,
         database: sqlDataSource.database,
-        timezone: input?.timezone,
+        timezone: inputOrCb?.timezone,
       },
     );
 
+    await sqlDataSource.rawQuery("SELECT 1");
     SqlDataSource.instance = sqlDataSource;
-    sqlDataSource.isConnected = true;
-    sqlDataSource.addRetryConnectionListener(input?.connectionPolicies?.retry);
-    await cb?.();
+    await cb?.(sqlDataSource);
     return sqlDataSource;
   }
 
   static getInstance(): SqlDataSource {
     if (!SqlDataSource.instance) {
-      throw new Error("sql database connection not established");
+      throw new HysteriaError(
+        "SqlDataSource::getInstance",
+        "CONNECTION_NOT_ESTABLISHED",
+      );
     }
 
     return SqlDataSource.instance;
@@ -133,7 +140,7 @@ export class SqlDataSource extends DataSource {
    * @description Starts a transaction on the database and returns the transaction object
    * @description This creates a new connection to the database, you can customize the connection details using the driverSpecificOptions
    */
-  static startTransaction(
+  static async startTransaction(
     driverSpecificOptions?: SqlDriverSpecificOptions,
   ): Promise<Transaction> {
     return this.getInstance().startTransaction(driverSpecificOptions);
@@ -142,7 +149,7 @@ export class SqlDataSource extends DataSource {
   /**
    * @description Alias for startTransaction {Promise<Transaction>} trx
    */
-  static beginTransaction(
+  static async beginTransaction(
     driverSpecificOptions?: SqlDriverSpecificOptions,
   ): Promise<Transaction> {
     return this.getInstance().startTransaction(driverSpecificOptions);
@@ -151,7 +158,7 @@ export class SqlDataSource extends DataSource {
   /**
    * @description Alias for startTransaction {Promise<Transaction>} trx
    */
-  static transaction(
+  static async transaction(
     driverSpecificOptions?: SqlDriverSpecificOptions,
   ): Promise<Transaction> {
     return this.getInstance().startTransaction(driverSpecificOptions);
@@ -165,13 +172,12 @@ export class SqlDataSource extends DataSource {
     driverSpecificOptions?: SqlDriverSpecificOptions,
   ): Promise<Transaction> {
     const sqlDataSource = new SqlDataSource({
-      type: this.type as SqlDataSourceType,
+      type: this.sqlType,
       host: this.host,
       port: this.port,
       username: this.username,
       password: this.password,
       database: this.database,
-      logs: this.logs,
       ...driverSpecificOptions,
     });
 
@@ -187,10 +193,10 @@ export class SqlDataSource extends DataSource {
         ...driverSpecificOptions,
       },
     );
-    sqlDataSource.isConnected = true;
-    const mysqlTrx = new Transaction(sqlDataSource, this.logs);
-    await mysqlTrx.startTransaction();
-    return mysqlTrx;
+
+    const sqlTrx = new Transaction(sqlDataSource);
+    await sqlTrx.startTransaction();
+    return sqlTrx;
   }
 
   /**
@@ -218,36 +224,13 @@ export class SqlDataSource extends DataSource {
     model: { new (): T } | typeof Model,
   ): ModelManager<T> {
     if (!this.isConnected) {
-      throw new Error("sql database connection not established");
+      throw new HysteriaError(
+        "SqlDataSource::getModelManager",
+        "CONNECTION_NOT_ESTABLISHED",
+      );
     }
 
-    switch (this.type) {
-      case "mysql":
-      case "mariadb":
-        return new MysqlModelManager<T>(
-          this.type,
-          model as typeof Model,
-          this.sqlConnection as MysqlConnectionInstance,
-          this.logs,
-          this,
-        );
-      case "postgres":
-        return new PostgresModelManager<T>(
-          model as typeof Model,
-          this.sqlConnection as PgPoolClientInstance,
-          this.logs,
-          this,
-        );
-      case "sqlite":
-        return new SqliteModelManager<T>(
-          model as typeof Model,
-          this.sqlConnection as SqliteConnectionInstance,
-          this.logs,
-          this,
-        );
-      default:
-        throw new Error(`Unsupported data source type: ${this.type}`);
-    }
+    return new ModelManager(model as typeof Model, this);
   }
 
   /**
@@ -264,11 +247,7 @@ export class SqlDataSource extends DataSource {
         ...connectionDetails,
       },
     );
-    customSqlInstance.isConnected = true;
-    customSqlInstance.addRetryConnectionListener(
-      connectionDetails.connectionPolicies?.retry,
-    );
-
+    await customSqlInstance.rawQuery("SELECT 1");
     try {
       await cb(customSqlInstance).then(async () => {
         if (!customSqlInstance.isConnected) {
@@ -308,12 +287,10 @@ export class SqlDataSource extends DataSource {
       case "mysql":
       case "mariadb":
         await (this.sqlConnection as MysqlConnectionInstance).end();
-        this.isConnected = false;
         SqlDataSource.instance = null;
         break;
       case "postgres":
         (this.sqlConnection as PgPoolClientInstance).end();
-        this.isConnected = false;
         SqlDataSource.instance = null;
         break;
       case "sqlite":
@@ -325,11 +302,13 @@ export class SqlDataSource extends DataSource {
             resolve();
           });
         });
-        this.isConnected = false;
         SqlDataSource.instance = null;
         break;
       default:
-        throw new Error(`Unsupported data source type: ${this.type}`);
+        throw new HysteriaError(
+          "SqlDataSource::closeConnection",
+          `UNSUPPORTED_DATABASE_TYPE_${this.type}`,
+        );
     }
   }
 
@@ -361,41 +340,13 @@ export class SqlDataSource extends DataSource {
    */
   async rawQuery<T = any>(query: string, params: any[] = []): Promise<T> {
     if (!this.isConnected) {
-      throw new Error("sql database connection not established");
+      throw new HysteriaError(
+        "SqlDataSource::rawQuery",
+        "CONNECTION_NOT_ESTABLISHED",
+      );
     }
 
-    log(query, this.logs, params);
-    switch (this.type) {
-      case "mysql":
-      case "mariadb":
-        const [mysqlRows] = await (
-          this.sqlConnection as MysqlConnectionInstance
-        ).execute(query, params);
-
-        return mysqlRows as T;
-      case "postgres":
-        const { rows } = await (
-          this.sqlConnection as PgPoolClientInstance
-        ).query(query, params as any[]);
-
-        return rows as T;
-      case "sqlite":
-        return new Promise((resolve, reject) => {
-          (this.sqlConnection as SqliteConnectionInstance).all(
-            query,
-            params,
-            (err, rows) => {
-              if (err) {
-                reject(err);
-              }
-
-              resolve(rows as T);
-            },
-          );
-        });
-      default:
-        throw new Error(`Unsupported data source type: ${this.type}`);
-    }
+    return execSql(query, params, this);
   }
 
   /**
@@ -406,16 +357,5 @@ export class SqlDataSource extends DataSource {
     params: any[] = [],
   ): Promise<T> {
     return SqlDataSource.getInstance().rawQuery(query, params);
-  }
-
-  private addRetryConnectionListener(
-    retryConfig: ConnectionPolicies["retry"],
-  ): void {
-    const maxRetries = retryConfig?.maxRetries ?? 3;
-    const delay = retryConfig?.delay ?? 1000;
-
-    this.getCurrentDriverConnection().addListener("error", async (err) => {
-      console.log(err);
-    });
   }
 }

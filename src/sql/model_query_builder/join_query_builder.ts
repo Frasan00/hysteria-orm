@@ -11,16 +11,12 @@ export abstract class JoinQueryBuilder<
   protected sqlDataSource: SqlDataSource;
   protected logs: boolean;
 
-  protected constructor(
-    model: typeof Model,
-    logs: boolean,
-    sqlDataSource: SqlDataSource,
-  ) {
-    super(model, logs, sqlDataSource);
+  protected constructor(model: typeof Model, sqlDataSource: SqlDataSource) {
+    super(model, sqlDataSource);
     this.model = model;
     this.joinQuery = "";
     this.sqlDataSource = sqlDataSource;
-    this.logs = logs;
+    this.logs = this.sqlDataSource.logs;
   }
 
   joinRaw(query: string): this {

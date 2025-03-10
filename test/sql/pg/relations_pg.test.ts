@@ -1,4 +1,4 @@
-import { ModelQueryBuilder } from "../../../src/sql/query_builder/query_builder";
+import { ModelQueryBuilder } from "../../../src/sql/model_query_builder/model_query_builder";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { Address } from "../sql_models/Address";
 import { Post } from "../sql_models/Post";
@@ -453,7 +453,7 @@ test("test with relation query builder", async () => {
   );
 
   const usersWithAddresses = await User.query()
-    .with("addresses", Address, (query: ModelQueryBuilder<Address>) => {
+    .with("addresses", Address, (query) => {
       query
         .select(
           "addresses.id",

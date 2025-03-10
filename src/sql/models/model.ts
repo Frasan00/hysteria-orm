@@ -3,10 +3,9 @@ import { plural } from "pluralize";
 import { Entity } from "../../entity";
 import { convertCase } from "../../utils/case_utils";
 import { baseSoftDeleteDate } from "../../utils/date_utils";
-import { ModelQueryBuilder, OneOptions } from "../query_builder/query_builder";
+import { ModelQueryBuilder } from "../model_query_builder/model_query_builder";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
 import { SqlDataSource } from "../sql_data_source";
-import { ModelManager } from "../sql_data_source_types";
 import { Transaction } from "../transactions/transaction";
 import {
   belongsTo,
@@ -24,6 +23,9 @@ import {
   UnrestrictedFindOneType,
   UnrestrictedFindType,
 } from "./model_manager/model_manager_types";
+import { OneOptions } from "../model_query_builder/model_query_builder_types";
+import { ModelManager } from "./model_manager/model_manager";
+import { HysteriaError } from "../../errors/hysteria_error";
 
 export type ModelWithoutExtraColumns<T extends Model> = Omit<
   Partial<T>,
@@ -137,7 +139,7 @@ export abstract class Model extends Entity {
   ): Promise<T[]> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
-    return modelManager.find(findOptions);
+    return modelManager.find(findOptions as FindType<T>);
   }
 
   /**
@@ -152,7 +154,7 @@ export abstract class Model extends Entity {
   ): Promise<T> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
-    return modelManager.findOneOrFail(findOneOptions);
+    return modelManager.findOneOrFail(findOneOptions as FindOneType<T>);
   }
 
   /**
@@ -166,7 +168,7 @@ export abstract class Model extends Entity {
   ): Promise<T | null> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
-    return modelManager.findOne(findOneOptions);
+    return modelManager.findOne(findOneOptions as FindOneType<T>);
   }
 
   /**
@@ -365,7 +367,7 @@ export abstract class Model extends Entity {
     this: new () => T | typeof Model,
     modelSqlInstance: T,
     options: BaseModelMethodOptions = {},
-  ): Promise<T | null> {
+  ): Promise<void> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
     return modelManager.deleteRecord(modelSqlInstance);
@@ -397,13 +399,11 @@ export abstract class Model extends Entity {
 
     if (typeof value === "string") {
       modelSqlInstance[column as keyof T] = new Date(value) as T[keyof T];
+      return modelSqlInstance;
     }
 
     modelSqlInstance[column as keyof T] = value as T[keyof T];
-    return (await parseDatabaseDataIntoModelResponse(
-      [modelSqlInstance],
-      typeofModel,
-    )) as T;
+    return modelSqlInstance;
   }
 
   /**
@@ -425,7 +425,7 @@ export abstract class Model extends Entity {
   /**
    * @description Adds a beforeInsert clause to the model, adding the ability to modify the data after fetching the data
    */
-  static beforeInsert(data: any): void {
+  static async beforeInsert(data: any): Promise<void> {
     return data;
   }
 
@@ -518,8 +518,9 @@ export abstract class Model extends Entity {
   private static establishConnection(): void {
     const sql = SqlDataSource.getInstance();
     if (!sql) {
-      throw new Error(
-        "sql sqlInstance not initialized, did you defined it in SqlDataSource.connect static method?",
+      throw new HysteriaError(
+        "sqlInstance not initialized, did you defined it in SqlDataSource.connect static method?",
+        "CONNECTION_NOT_ESTABLISHED",
       );
     }
 
@@ -529,7 +530,7 @@ export abstract class Model extends Entity {
   /**
    * @description Gives the correct model manager with the correct connection based on the options provided
    */
-  protected static dispatchModelManager<T extends Model>(
+  private static dispatchModelManager<T extends Model>(
     this: typeof Model,
     options?: BaseModelMethodOptions,
   ): ModelManager<T> {

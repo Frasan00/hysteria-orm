@@ -1,4 +1,4 @@
-import { DataSourceType } from "../data_source/data_source_types";
+import type { DataSourceType } from "../data_source/data_source_types";
 import { Driver } from "./driver";
 import {
   Mysql2Import,

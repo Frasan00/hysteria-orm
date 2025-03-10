@@ -1,27 +1,23 @@
 import { log } from "../../../utils/logger";
-import { RelationQueryBuilder } from "../../query_builder/query_builder";
+import { RelationQueryBuilder } from "../../model_query_builder/model_query_builder_types";
 import deleteTemplate from "../../resources/query/DELETE";
 import insertTemplate from "../../resources/query/INSERT";
 import relationTemplates from "../../resources/query/RELATION";
 import updateTemplate from "../../resources/query/UPDATE";
-import {
-  MysqlConnectionInstance,
-  PgPoolClientInstance,
-  SqlConnectionType,
-  SqlDataSourceType,
-  SqliteConnectionInstance,
-} from "../../sql_data_source_types";
+import { SqlDataSource } from "../../sql_data_source";
+import { SqlDataSourceType } from "../../sql_data_source_types";
+import { execSql } from "../../sql_runner/sql_runner";
 import { Model } from "../model";
 import { getRelations } from "../model_decorators";
 import { Relation } from "../relations/relation";
 
 export default class SqlModelManagerUtils<T extends Model> {
   private dbType: SqlDataSourceType;
-  private sqlConnection: SqlConnectionType;
+  private sqlDataSource: SqlDataSource;
 
-  constructor(dbType: SqlDataSourceType, sqlConnection: SqlConnectionType) {
+  constructor(dbType: SqlDataSourceType, sqlDataSource: SqlDataSource) {
     this.dbType = dbType;
-    this.sqlConnection = sqlConnection;
+    this.sqlDataSource = sqlDataSource;
   }
 
   parseInsert(
@@ -48,7 +44,6 @@ export default class SqlModelManagerUtils<T extends Model> {
     const insert = insertTemplate(dbType, typeofModel);
     const keys = Object.keys(filteredModels[0]);
     const values = filteredModels.map((model) => Object.values(model));
-
     return insert.insertMany(keys, values);
   }
 
@@ -134,6 +129,7 @@ export default class SqlModelManagerUtils<T extends Model> {
           inputRelation.relation,
           typeofModel,
         );
+
         const { query, params } = relationTemplates(
           models,
           relation,
@@ -146,8 +142,12 @@ export default class SqlModelManagerUtils<T extends Model> {
         let modelsForRelation: any[] = [];
 
         if (query) {
-          log(query, logs, params);
-          let result = await this.getQueryResult(query, params);
+          let result = await execSql(query, params, this.sqlDataSource, "raw", {
+            sqlLiteOptions: {
+              typeofModel: typeofModel,
+            },
+          });
+
           if (!result) {
             result = [];
           } else if (!Array.isArray(result)) {
@@ -161,7 +161,10 @@ export default class SqlModelManagerUtils<T extends Model> {
           // Group the result by relation name. Since we're processing one relation per iteration,
           // simply collect all rows and remove the temporary relation_name key.
           result.forEach((row: any) => {
-            delete row.relation_name;
+            if (row.relation_name) {
+              delete row.relation_name;
+            }
+
             modelsForRelation.push(row);
           });
         }
@@ -182,40 +185,5 @@ export default class SqlModelManagerUtils<T extends Model> {
     );
 
     return resultArray;
-  }
-
-  private async getQueryResult(
-    query: string,
-    params: any[] = [],
-  ): Promise<any> {
-    switch (this.dbType) {
-      case "mysql":
-      case "mariadb":
-        const resultMysql = await (
-          this.sqlConnection as MysqlConnectionInstance
-        ).query(query, params);
-        return resultMysql[0];
-      case "postgres":
-        const resultPg = await (
-          this.sqlConnection as PgPoolClientInstance
-        ).query(query, params);
-        return resultPg.rows;
-      case "sqlite":
-        return await new Promise((resolve, reject) => {
-          (this.sqlConnection as SqliteConnectionInstance).all(
-            query,
-            params,
-            (err, result) => {
-              if (err) {
-                reject(err);
-              }
-
-              resolve(result);
-            },
-          );
-        });
-      default:
-        throw new Error(`Unsupported data source type: ${this.dbType}`);
-    }
   }
 }

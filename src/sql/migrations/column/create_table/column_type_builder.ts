@@ -1,5 +1,5 @@
 import logger from "../../../../utils/logger";
-import { SqlDataSourceType } from "../../../sql_data_source_types";
+import type { SqlDataSourceType } from "../../../sql_data_source_types";
 import { ColumnBuilder } from "./column_builder";
 
 export type ColumnConstraintsOptions = Omit<

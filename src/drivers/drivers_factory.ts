@@ -1,4 +1,4 @@
-import { DataSourceType } from "../data_source/data_source_types";
+import type { DataSourceType } from "../data_source/data_source_types";
 import { Driver } from "./driver";
 import { DriverSpecificOptions } from "./driver_constants";
 import { PgDriver } from "./pg_driver";

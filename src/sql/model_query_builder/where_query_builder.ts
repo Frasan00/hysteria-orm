@@ -1,5 +1,5 @@
 import { Model } from "../models/model";
-import { ModelKey } from "../models/model_manager/model_manager_types";
+import type { ModelKey } from "../models/model_manager/model_manager_types";
 import whereTemplate, {
   BaseValues,
   BinaryOperatorType,
@@ -18,16 +18,14 @@ export abstract class WhereQueryBuilder<
 
   constructor(
     model: typeof Model,
-    table: string,
-    logs: boolean,
     isNestedCondition = false,
     sqlDataSource: SqlDataSource,
   ) {
-    super(model, logs, sqlDataSource);
+    super(model, sqlDataSource);
     this.model = model;
     this.sqlDataSource = sqlDataSource;
-    this.logs = logs;
-    this.table = table;
+    this.logs = this.sqlDataSource.logs;
+    this.table = this.model.table;
     this.whereTemplate = whereTemplate(
       this.sqlDataSource.getDbType(),
       this.model,

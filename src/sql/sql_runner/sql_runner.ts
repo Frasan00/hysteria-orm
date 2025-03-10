@@ -2,16 +2,22 @@ import { format } from "sql-formatter";
 import { log, logMessage } from "../../utils/logger";
 import {
   ConnectionPolicies,
-  MysqlConnectionInstance,
-  PgPoolClientInstance,
-  SqlConnectionType,
   SqlDataSourceType,
 } from "../sql_data_source_types";
 import { convertPlaceHolderToValue } from "../../utils/placeholder";
+import { SqlDataSource } from "../sql_data_source";
+import { HysteriaError } from "../../errors/hysteria_error";
+import {
+  Returning,
+  SqlLiteOptions,
+  SqlRunnerReturnType,
+} from "./sql_runner_types";
+import { Model } from "../models/model";
+import { promisifySqliteQuery } from "./sql_runner_utils";
 
-export function getSqlDialect(
+export const getSqlDialect = (
   sqlType: SqlDataSourceType,
-): "mysql" | "postgresql" | "sqlite" | "mariadb" | "sql" {
+): "mysql" | "postgresql" | "sqlite" | "mariadb" | "sql" => {
   switch (sqlType) {
     case "mysql":
       return "mysql";
@@ -28,39 +34,79 @@ export function getSqlDialect(
     default:
       return "sql";
   }
-}
+};
 
-export async function execSql(
+export const execSql = async <M extends Model, T extends Returning>(
   query: string,
   params: any[],
-  sqlType: SqlDataSourceType,
-  sqlDriver: SqlConnectionType,
-  logs: boolean = false,
-): Promise<any> {
+  sqlDataSource: SqlDataSource,
+  returning: T = "raw" as T,
+  options?: {
+    sqlLiteOptions?: SqlLiteOptions<M>;
+  },
+): Promise<SqlRunnerReturnType<T>> => {
+  const sqlType = sqlDataSource.type as SqlDataSourceType;
   query = convertPlaceHolderToValue(sqlType, query);
   query = format(query, {
     language: getSqlDialect(sqlType),
   });
 
-  log(query, logs, params);
+  log(query, sqlDataSource.logs, params);
   switch (sqlType) {
-    // TODO; add sqlinstance here
     case "mysql":
     case "mariadb":
-      const mysqlConnection = sqlDriver as MysqlConnectionInstance;
-      return withRetry(() => mysqlConnection.query(query, params), {}, logs);
+      const mysqlDriver = sqlDataSource.getCurrentDriverConnection("mysql");
+      const [mysqlResult] = await withRetry(
+        () => mysqlDriver.query(query, params),
+        sqlDataSource.retryPolicy,
+        sqlDataSource.logs,
+      );
 
+      if (returning === "affectedRows") {
+        return (mysqlResult as { affectedRows: number })
+          .affectedRows as SqlRunnerReturnType<T>;
+      }
+
+      return mysqlResult as SqlRunnerReturnType<T>;
     case "postgres":
-      const pgConnection = sqlDriver as PgPoolClientInstance;
-      return withRetry(() => pgConnection.query(query, params), {}, logs);
+      const pgDriver = sqlDataSource.getCurrentDriverConnection("postgres");
+      const pgResult = await withRetry(
+        () => pgDriver.query(query, params),
+        sqlDataSource.retryPolicy,
+        sqlDataSource.logs,
+      );
 
+      if (returning === "raw") {
+        return pgResult.rows as SqlRunnerReturnType<T>;
+      }
+
+      return pgResult.rowCount as number as SqlRunnerReturnType<T>;
     case "sqlite":
-      throw new Error("Cannot use execSql with sqlite");
+      const result = await promisifySqliteQuery<M>(
+        query,
+        params,
+        sqlDataSource,
+        {
+          typeofModel: options?.sqlLiteOptions?.typeofModel,
+          mode: options?.sqlLiteOptions?.mode || "fetch",
+          models: options?.sqlLiteOptions?.models,
+        },
+      );
 
+      if (returning === "raw") {
+        return !Array.isArray(result)
+          ? ([result] as SqlRunnerReturnType<T>)
+          : (result as SqlRunnerReturnType<T>);
+      }
+
+      return result as SqlRunnerReturnType<T>;
     default:
-      throw new Error("Unsupported database type");
+      throw new HysteriaError(
+        "ExecSql",
+        `UNSUPPORTED_DATABASE_TYPE_${sqlType}`,
+      );
   }
-}
+};
 
 async function withRetry<T>(
   fn: () => Promise<T>,

@@ -1,4 +1,4 @@
-import { Post } from "./Post";
+import { ModelQueryBuilder } from "../../../src/sql/model_query_builder/model_query_builder";
 import { Model } from "../../../src/sql/models/model";
 import {
   column,
@@ -7,8 +7,8 @@ import {
   manyToMany,
 } from "../../../src/sql/models/model_decorators";
 import { Address } from "./Address";
+import { Post } from "./Post";
 import { UserAddress } from "./UserAddress";
-import { ModelQueryBuilder } from "../../../src/sql/query_builder/query_builder";
 
 export class User extends Model {
   static _table: string = "users";

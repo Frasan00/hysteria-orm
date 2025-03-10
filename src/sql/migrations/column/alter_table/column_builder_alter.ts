@@ -1,4 +1,4 @@
-import { SqlDataSourceType } from "../../../sql_data_source_types";
+import type { SqlDataSourceType } from "../../../sql_data_source_types";
 import ColumnTypeBuilder, {
   DateOptions,
 } from "../create_table/column_type_builder";

@@ -1,4 +1,4 @@
-import { ModelKey } from "../models/model_manager/model_manager_types";
+import type { ModelKey } from "../models/model_manager/model_manager_types";
 
 export type DeleteOptions = {
   ignoreBeforeDeleteHook?: boolean;

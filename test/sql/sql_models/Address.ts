@@ -1,6 +1,6 @@
+import { ModelQueryBuilder } from "../../../src/sql/model_query_builder/model_query_builder";
 import { Model } from "../../../src/sql/models/model";
 import { column, manyToMany } from "../../../src/sql/models/model_decorators";
-import { ModelQueryBuilder } from "../../../src/sql/query_builder/query_builder";
 import { User } from "./User";
 
 export class Address extends Model {
