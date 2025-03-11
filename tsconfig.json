@@ -26,6 +26,6 @@
     "@types/sqlite3",
     "@types/ioredis",
   ],
-  "include": ["src/**/*.ts", "test/**/*.ts"],
+  "include": ["src/**/*.ts", "test/**/*.ts", "tmp/address_with_bigint.ts", "tmp/address_with_uuid.ts", "tmp/post_with_bigint.ts", "tmp/post_with_uuid.ts", "tmp/user_addresses_with_bigibt.ts", "tmp/user_addresses_with_uuid.ts"],
   "exclude": ["node_modules", "lib"],
 }

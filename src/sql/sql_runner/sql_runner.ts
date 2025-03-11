@@ -82,24 +82,24 @@ export const execSql = async <M extends Model, T extends Returning>(
 
       return pgResult.rowCount as number as SqlRunnerReturnType<T>;
     case "sqlite":
-      const result = await promisifySqliteQuery<M>(
-        query,
-        params,
-        sqlDataSource,
-        {
-          typeofModel: options?.sqlLiteOptions?.typeofModel,
-          mode: options?.sqlLiteOptions?.mode || "fetch",
-          models: options?.sqlLiteOptions?.models,
-        },
+      const sqliteResult = await withRetry(
+        () =>
+          promisifySqliteQuery<M>(query, params, sqlDataSource, {
+            typeofModel: options?.sqlLiteOptions?.typeofModel,
+            mode: options?.sqlLiteOptions?.mode || "fetch",
+            models: options?.sqlLiteOptions?.models,
+          }),
+        sqlDataSource.retryPolicy,
+        sqlDataSource.logs,
       );
 
       if (returning === "raw") {
-        return !Array.isArray(result)
-          ? ([result] as SqlRunnerReturnType<T>)
-          : (result as SqlRunnerReturnType<T>);
+        return !Array.isArray(sqliteResult)
+          ? ([sqliteResult] as SqlRunnerReturnType<T>)
+          : (sqliteResult as SqlRunnerReturnType<T>);
       }
 
-      return result as SqlRunnerReturnType<T>;
+      return sqliteResult as SqlRunnerReturnType<T>;
     default:
       throw new HysteriaError(
         "ExecSql",

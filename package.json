@@ -11,13 +11,13 @@
   "scripts": {
     "start": "yarn format && yarn build:dev && node lib/index.js",
     "prepare": "husky install",
-    "test": "yarn format && yarn build && node test_runner.js",
+    "migrate": "yarn format && yarn build && node ./migration_runner.js",
+    "test": "yarn format && yarn build && yarn migrate && node test_runner.js",
     "format": "prettier --write \"**/*.ts\"",
     "lint": "standard",
     "build": "tsup --minify",
     "build:dev": "tsup",
-    "test:run": "yarn build && node lib/cli.js run:migrations",
-    "test:roll": "yarn build && node lib/cli.js rollback:migrations"
+    "test:fresh": "node lib/cli.js refresh:migrations"
   },
   "bin": {
     "hysteria": "lib/cli.js"
@@ -25,6 +25,7 @@
   "license": "MIT",
   "devDependencies": {
     "@adonisjs/eslint-config": "^1.3.0",
+    "@faker-js/faker": "^9.6.0",
     "@types/jest": "^29.5.14",
     "@types/luxon": "^3.4.2",
     "@types/pluralize": "^0.0.33",

@@ -22,6 +22,7 @@ import { Model } from "./sql/models/model";
 import {
   belongsTo,
   column,
+  dateColumn,
   getModelColumns,
   getPrimaryKey,
   getRelations,
@@ -40,6 +41,7 @@ export default {
   // sql
   Model,
   column,
+  dateColumn,
   belongsTo,
   hasOne,
   hasMany,
@@ -65,6 +67,7 @@ export {
   CaseConvention,
   Collection,
   column,
+  dateColumn,
   // logger
   CustomLogger,
   DataSourceInput,

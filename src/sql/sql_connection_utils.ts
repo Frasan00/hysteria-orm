@@ -73,7 +73,6 @@ export const createSqlConnection = async (
             throw new Error(`Error while connecting to sqlite: ${err}`);
           }
         },
-        // TODO: Add retry with execSql
       );
       await new Promise((resolve) =>
         sqlitePool.run("SELECT 1", (err) => {

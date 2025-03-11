@@ -45,4 +45,5 @@ export default function migrationCreateConnector(
 
   fs.writeFileSync(migrationFilePath, migrationTemplate);
   logger.info(`Migration created successfully at '${migrationFilePath}'.`);
+  process.exit(0);
 }

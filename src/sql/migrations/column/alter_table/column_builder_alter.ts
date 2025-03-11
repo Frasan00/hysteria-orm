@@ -37,6 +37,11 @@ type DataType =
   | "jsonb";
 
 type BaseOptions = {
+  /**
+   * @description The column to add the new column after
+   * @postgres does not support afterColumn and throw an error
+   * @sqlite does not support afterColumn and throw an error
+   */
   afterColumn?: string;
   references?: References;
   precision?: number;
@@ -417,6 +422,7 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
 
   /**
    * @description Renames a column
+   * @sqlite does not support renaming columns, will throw an error
    */
   renameColumn(
     oldColumnName: string,
@@ -425,13 +431,13 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
     switch (this.sqlType) {
       case "mariadb":
       case "mysql":
-        this.partialQuery = `ALTER TABLE ${this.table} CHANGE COLUMN ${oldColumnName} ${newColumnName}`;
+        this.partialQuery = `ALTER TABLE ${this.table} RENAME COLUMN \`${oldColumnName}\` TO \`${newColumnName}\``;
         break;
       case "postgres":
         this.partialQuery = `ALTER TABLE ${this.table} RENAME COLUMN ${oldColumnName} TO ${newColumnName}`;
         break;
       case "sqlite":
-        this.partialQuery = `ALTER TABLE ${this.table} RENAME COLUMN ${oldColumnName} TO ${newColumnName}`;
+        this.partialQuery = `ALTER TABLE ${this.table} RENAME COLUMN \`${oldColumnName}\` TO \`${newColumnName}\``;
         break;
       default:
         throw new Error("Unsupported database type");
@@ -537,6 +543,7 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
 
   /**
    * @description Set a default value
+   * @sqlite Sqlite does not support alter table default values
    */
   setDefaultValue(
     columnName: string,
@@ -551,8 +558,9 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
         this.partialQuery = `ALTER TABLE ${this.table} ALTER COLUMN ${columnName} SET DEFAULT ${defaultValue}`;
         break;
       case "sqlite":
-        this.partialQuery = `ALTER TABLE ${this.table} ALTER COLUMN ${columnName} SET DEFAULT ${defaultValue}`;
-        break;
+        throw new Error(
+          "SQLite does not support altering column default values directly. You need to recreate the table with the new default value.",
+        );
       default:
         throw new Error("Unsupported database type");
     }

@@ -202,8 +202,7 @@ declare email: string;
 ### Create a model
 
 ```typescript
-import "reflect-metadata";
-import { Model } from "hysteria-orm";
+import { Model, column, dateColumn } from "hysteria-orm";
 
 export class User extends Model {
     // setter for the table name that can be retrieved with the static table property
@@ -227,7 +226,8 @@ export class User extends Model {
     @column()
     declare json: Record<string, any>;
 
-    @column()
+    // Automatically handles Date parsing
+    @dateColumn()
     declare createdAt: Date;
 }
 ```

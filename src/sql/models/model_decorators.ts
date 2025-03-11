@@ -64,8 +64,16 @@ export function column(
 }
 
 /**
- * @description Returns the columns of the model, columns must be decorated with the column decorator
+ * @description Decorator to define a date column in the model, uses built in Date javascript object
  */
+export function dateColumn(options: ColumnOptions = {}): PropertyDecorator {
+  return column({
+    ...options,
+    prepare: (value: Date) => value.toISOString(),
+    serialize: (value: string) => new Date(value),
+  });
+}
+
 export function getModelColumns(target: typeof Model): {
   columnName: string;
   serialize?: (value: any) => any;

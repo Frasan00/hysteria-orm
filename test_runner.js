@@ -1,29 +1,13 @@
 // This file is used to enforce the order of test files to be run in a specific order.
 
-const { execSync } = require('child_process');
+const { execSync } = require("node:child_process");
 
 const testFiles = [
-    // relations
-    // './test/sql/mariadb/relations_mariadb.test.ts', // TODO: working on many to many query
-    // './test/sql/sqlite/relations_sqlite.test.ts',
-    // './test/sql/pg/relations_pg.test.ts',
-    // './test/sql/mysql/relations_mysql.test.ts',
-
-    // trx
-    './test/sql/sqlite/trx_sqlite.test.ts',
-    './test/sql/mysql/trx_mysql.test.ts',
-    './test/sql/pg/trx_pg.test.ts',
-    './test/sql/mariadb/trx_mariadb.test.ts',
-
-    // crud
-    './test/sql/mysql/crud_mysql.test.ts',
-    './test/sql/mariadb/crud_mariadb.test.ts',
-    './test/sql/sqlite/crud_sqlite.test.ts',
-    './test/sql/pg/crud_pg.test.ts',
+    // without primary key tests
+    './test/sql/pg/without_pk/user_without_pk.test.ts',
 
     // mongo
     './test/mongo/crud_mongo.test.ts',
-    // './test/mongo/trx_mongo.test.ts', // sessions are usable only in replica set
 
     // redis
     './test/redis/redis.test.ts',

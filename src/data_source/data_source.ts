@@ -1,5 +1,6 @@
 import dotenv from "dotenv";
 import { DataSourceInput } from "..";
+import { HysteriaError } from "../errors/hysteria_error";
 import type {
   DataSourceType,
   MongoDataSourceInput,
@@ -37,8 +38,11 @@ export abstract class DataSource {
         this.handleSqliteSource(input as SqliteDataSourceInput);
         break;
       default:
-        throw new Error(`Invalid database type: ${this.type}, please provide a valid database type in your input or in the .env file with the key DB_TYPE
-Valid database types are: [mongo, postgres, mysql, mariadb, sqlite]`);
+        throw new HysteriaError(
+          `Invalid database type: ${this.type}, please provide a valid database type in your input or in the .env file with the key DB_TYPE
+Valid database types are: [mongo, postgres, mysql, mariadb, sqlite]`,
+          `UNSUPPORTED_DATABASE_TYPE_${this.type}`,
+        );
     }
   }
 

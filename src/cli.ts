@@ -1,7 +1,7 @@
 import { Command } from "commander";
 import migrationCreateConnector from "./hysteria_cli/migration_create_connector";
-import runMigrationsConnector from "./hysteria_cli/migration_run_connector";
 import rollbackMigrationsConnector from "./hysteria_cli/migration_rollback_connector";
+import runMigrationsConnector from "./hysteria_cli/migration_run_connector";
 import runSqlConnector from "./hysteria_cli/run_sql_connector";
 import fs from "node:fs";
 import path from "node:path";
@@ -27,8 +27,13 @@ program
     }
 
     if (sql) {
-      await runSqlConnector(sql);
-      process.exit(0);
+      try {
+        await runSqlConnector(sql);
+        process.exit(0);
+      } catch (error) {
+        console.error(error);
+        process.exit(1);
+      }
     }
 
     if (!filePath) {
@@ -41,8 +46,13 @@ program
     }
 
     const sqlStatement = fs.readFileSync(filePath, "utf-8");
-    await runSqlConnector(sqlStatement);
-    process.exit(0);
+    try {
+      await runSqlConnector(sqlStatement);
+      process.exit(0);
+    } catch (error) {
+      console.error(error);
+      process.exit(1);
+    }
   });
 
 program
@@ -122,8 +132,13 @@ program
     "Run pending migrations, if runUntil is provided, it will run all migrations until the provided migration name",
   )
   .action(async (runUntil: string, option?: { tsconfig?: string }) => {
-    await runMigrationsConnector(runUntil, option?.tsconfig);
-    process.exit(0);
+    try {
+      await runMigrationsConnector(runUntil, option?.tsconfig);
+      process.exit(0);
+    } catch (error) {
+      console.error(error);
+      process.exit(1);
+    }
   });
 
 program
@@ -133,8 +148,13 @@ program
     "Rollbacks every migration that has been run, if rollbackUntil is provided, it will rollback all migrations until the provided migration name",
   )
   .action(async (rollbackUntil: string, option?: { tsconfig?: string }) => {
-    await rollbackMigrationsConnector(rollbackUntil, option?.tsconfig);
-    process.exit(0);
+    try {
+      await rollbackMigrationsConnector(rollbackUntil, option?.tsconfig);
+      process.exit(0);
+    } catch (error) {
+      console.error(error);
+      process.exit(1);
+    }
   });
 
 program
@@ -144,9 +164,14 @@ program
     "Rollbacks every migration that has been run and then run the migrations",
   )
   .action(async (option?: { tsconfig?: string }) => {
-    await rollbackMigrationsConnector(undefined, option?.tsconfig);
-    await runMigrationsConnector(undefined, option?.tsconfig);
-    process.exit(0);
+    try {
+      await rollbackMigrationsConnector(undefined, option?.tsconfig, false);
+      await runMigrationsConnector(undefined, option?.tsconfig, false);
+      process.exit(0);
+    } catch (error) {
+      console.error(error);
+      process.exit(1);
+    }
   });
 
 program.parse(process.argv);

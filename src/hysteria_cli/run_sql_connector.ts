@@ -11,7 +11,6 @@ export default async function runSqlConnector(sql: string): Promise<void> {
   }
 
   await SqlDataSource.connect();
-
   logger.info(`Running sql for ${databaseType}`);
   const result = await SqlDataSource.rawQuery(sql);
   logger.info("Sql ran successfully");

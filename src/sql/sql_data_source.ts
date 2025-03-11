@@ -31,7 +31,7 @@ export class SqlDataSource extends DataSource {
 
   private constructor(input?: SqlDataSourceInput) {
     super(input);
-    this.sqlType = input?.type as SqlDataSourceType;
+    this.sqlType = this.type as SqlDataSourceType;
     this.retryPolicy = input?.connectionPolicies?.retry || {
       maxRetries: 3,
       delay: 1000,
@@ -316,6 +316,11 @@ export class SqlDataSource extends DataSource {
    * @description Closes the main connection to the database established with SqlDataSource.connect() method
    */
   static async closeConnection(): Promise<void> {
+    if (!SqlDataSource.instance) {
+      logger.warn("Connection already closed");
+      return;
+    }
+
     return SqlDataSource.getInstance().closeConnection();
   }
 
