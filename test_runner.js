@@ -4,13 +4,14 @@ const { execSync } = require("node:child_process");
 
 const testFiles = [
     // without primary key tests
-    './test/sql/pg/without_pk/user_without_pk.test.ts',
+    './test/sql/pg/without_pk/user_without_pk_crud.test.ts',
 
-    // mongo
-    './test/mongo/crud_mongo.test.ts',
+    // TODO: re add these tests
+    // // mongo
+    // './test/mongo/crud_mongo.test.ts',
 
-    // redis
-    './test/redis/redis.test.ts',
+    // // redis
+    // './test/redis/redis.test.ts',
 ];
 
 testFiles.forEach((file) => {

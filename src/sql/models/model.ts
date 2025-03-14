@@ -236,23 +236,28 @@ export abstract class Model extends Entity {
   }
 
   /**
-   * @description Updates a record to the database
-   * @description If the record has a primary key, the record itself will be updated, else nothing will happen and null will be returned
+   * @description Updates a record, returns the updated record
+   * @description Model is retrieved from the database using the primary key regardless of any model hooks
+   * @description Can only be used if the model has a primary key, use a massive update if the model has no primary key
+   * @throws {HysteriaError} If the model has no primary key
    */
   static async updateRecord<T extends Model>(
     this: new () => T | typeof Model,
     modelSqlInstance: T,
     options: BaseModelMethodOptions = {},
-  ): Promise<T | null> {
-    const typeofModel = this as unknown as typeof Model;
-    const modelManager = typeofModel.dispatchModelManager<T>(options);
-    const updatedModel = await modelManager.updateRecord(modelSqlInstance);
-    if (!updatedModel) {
-      return null;
+  ): Promise<T> {
+    try {
+      const typeofModel = this as unknown as typeof Model;
+      const modelManager = typeofModel.dispatchModelManager<T>(options);
+      const updatedModel = await modelManager.updateRecord(modelSqlInstance);
+      updatedModel.$additional = modelSqlInstance.$additional;
+      return updatedModel;
+    } catch (error) {
+      throw new HysteriaError(
+        `${this.name}::updateRecord`,
+        "MODEL_HAS_NO_PRIMARY_KEY",
+      );
     }
-
-    updatedModel.$additional = modelSqlInstance.$additional;
-    return updatedModel;
   }
 
   /**

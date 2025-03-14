@@ -70,7 +70,7 @@ async function serializeModel<T extends Record<string, any>>(
       const originalValue = model[key];
 
       // Include null values
-      if (originalValue == null) {
+      if (originalValue === null) {
         casedModel[convertCase(key, typeofModel.modelCaseConvention)] =
           originalValue;
         return;
@@ -89,13 +89,19 @@ async function serializeModel<T extends Record<string, any>>(
         return;
       }
 
-      if (Array.isArray(originalValue)) {
-        return;
-      }
-
       const modelColumn = columns.find((column) => column.columnName === key);
       if (modelColumn && modelColumn.serialize) {
         casedModel[camelCaseKey] = modelColumn.serialize(originalValue);
+        return;
+      }
+
+      if (Array.isArray(originalValue)) {
+        casedModel[camelCaseKey] = originalValue;
+        return;
+      }
+
+      if (Buffer.isBuffer(originalValue)) {
+        casedModel[camelCaseKey] = originalValue.toString("base64");
         return;
       }
 

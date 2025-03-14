@@ -2,7 +2,69 @@ import { convertCase } from "../../../utils/case_utils";
 import { isNestedObject } from "../../../utils/json_utils";
 import { Model } from "../../models/model";
 import { getModelColumns } from "../../models/model_decorators";
-import { SqlDataSourceType } from "../../sql_data_source_types";
+import type { SqlDataSourceType } from "../../sql_data_source_types";
+
+const isArray = (value: any): value is Array<any> => Array.isArray(value);
+
+const formatValue = (value: any, dbType: SqlDataSourceType): any => {
+  if (value === undefined) return null;
+  if (value === null) return null;
+
+  if (isArray(value)) {
+    return JSON.stringify(value);
+  }
+
+  if (isNestedObject(value) && !Buffer.isBuffer(value)) {
+    return JSON.stringify(value);
+  }
+
+  if (value instanceof Date) {
+    if (dbType === "postgres") {
+      return value.toISOString();
+    }
+    return value;
+  }
+
+  if (typeof value === "bigint") {
+    return value.toString();
+  }
+
+  return value;
+};
+
+const getPlaceholder = (
+  value: any,
+  index: number,
+  dbType: SqlDataSourceType,
+): string => {
+  switch (dbType) {
+    case "mysql":
+    case "mariadb":
+      if (Buffer.isBuffer(value)) return "BINARY(?)";
+      if (value instanceof Date)
+        return "STR_TO_DATE(?, '%Y-%m-%dT%H:%i:%s.%fZ')";
+      return "?";
+    case "sqlite":
+      return "?";
+    case "postgres":
+      const typeCast = Buffer.isBuffer(value)
+        ? "bytea"
+        : isArray(value)
+          ? "array"
+          : isNestedObject(value)
+            ? "jsonb"
+            : typeof value === "boolean"
+              ? "boolean"
+              : typeof value === "bigint"
+                ? "bigint"
+                : value instanceof Date
+                  ? "timestamp"
+                  : "";
+      return typeCast ? `$${index + 1}::${typeCast}` : `$${index + 1}`;
+    default:
+      throw new Error("Unsupported database type");
+  }
+};
 
 const updateTemplate = (
   dbType: SqlDataSourceType,
@@ -34,33 +96,37 @@ const updateTemplate = (
         }
       }
 
-      values = values.map((value) => {
-        if (isNestedObject(value)) {
-          return JSON.stringify(value);
-        }
-
-        return value;
-      });
-
       columns = columns.map((column) =>
         convertCase(column, typeofModel.databaseCaseConvention),
       );
 
       let setClause: string;
-      let params: (any | null)[];
+      let params: any[];
 
       switch (dbType) {
         case "mysql":
         case "sqlite":
         case "mariadb":
-          setClause = columns.map((column) => `\`${column}\` = ?`).join(", ");
-          params = [...values, primaryKeyValue];
+          setClause = columns
+            .map((column, index) => {
+              return `${column} = ${getPlaceholder(values[index], index, dbType)}`;
+            })
+            .join(", ");
+          params = [
+            ...values.map((v) => formatValue(v, dbType)),
+            primaryKeyValue,
+          ];
           break;
         case "postgres":
           setClause = columns
-            .map((column, index) => `"${column}" = $${index + 1}`)
+            .map((column, index) => {
+              return `${column} = ${getPlaceholder(values[index], index, dbType)}`;
+            })
             .join(", ");
-          params = [...values, primaryKeyValue];
+          params = [
+            ...values.map((v) => formatValue(v, dbType)),
+            primaryKeyValue,
+          ];
           break;
         default:
           throw new Error("Unsupported database type");
@@ -74,6 +140,7 @@ WHERE ${primaryKey} = ${primaryKeyPlaceholder};`;
 
       return { query, params };
     },
+
     massiveUpdate: (
       columns: string[],
       values: any[],
@@ -107,27 +174,23 @@ WHERE ${primaryKey} = ${primaryKeyPlaceholder};`;
         case "mysql":
         case "sqlite":
         case "mariadb":
-          setClause = columns.map((column) => `\`${column}\` = ?`).join(", ");
+          setClause = columns
+            .map((column, index) => {
+              return `${column} = ${getPlaceholder(values[index], index, dbType)}`;
+            })
+            .join(", ");
           values.forEach((value) => {
-            if (isNestedObject(value)) {
-              params.push(JSON.stringify(value));
-              return;
-            }
-
-            params.push(value ?? null);
+            params.push(formatValue(value, dbType));
           });
           break;
         case "postgres":
           setClause = columns
-            .map((column, index) => `"${column}" = $${index + 1}`)
+            .map((column, index) => {
+              return `${column} = ${getPlaceholder(values[index], index, dbType)}`;
+            })
             .join(", ");
           values.forEach((value) => {
-            if (isNestedObject(value)) {
-              params.push(JSON.stringify(value));
-              return;
-            }
-
-            params.push(value ?? null);
+            params.push(formatValue(value, dbType));
           });
           break;
         default:

@@ -4,7 +4,63 @@ import { Model } from "../../models/model";
 import { getModelColumns } from "../../models/model_decorators";
 import type { SqlDataSourceType } from "../../sql_data_source_types";
 
-type BaseValues = string | number | boolean | Date | null | object | undefined;
+type BaseValues =
+  | string
+  | number
+  | boolean
+  | Date
+  | null
+  | object
+  | undefined
+  | Buffer
+  | bigint
+  | Array<any>;
+
+const isArray = (value: any): value is Array<any> => Array.isArray(value);
+
+const getPostgresTypeCast = (value: BaseValues): string => {
+  if (Buffer.isBuffer(value)) return "bytea";
+  if (isArray(value)) return "array";
+  if (isNestedObject(value)) return "jsonb";
+  if (typeof value === "boolean") return "boolean";
+  if (typeof value === "bigint") return "bigint";
+  if (value instanceof Date) return "timestamp";
+  return "";
+};
+
+const formatValue = (
+  value: BaseValues,
+  dbType: SqlDataSourceType,
+): BaseValues => {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  if (isArray(value)) {
+    if (dbType === "postgres") {
+      return JSON.stringify(value);
+    }
+
+    return JSON.stringify(value);
+  }
+
+  if (isNestedObject(value) && !Buffer.isBuffer(value)) {
+    return JSON.stringify(value);
+  }
+
+  if (value instanceof Date) {
+    if (dbType === "postgres") {
+      return value.toISOString();
+    }
+    return value;
+  }
+
+  if (typeof value === "bigint") {
+    return value.toString();
+  }
+
+  return value;
+};
 
 const insertTemplate = (
   dbType: SqlDataSourceType,
@@ -26,6 +82,7 @@ const insertTemplate = (
         const modelColumn = modelColumns.find(
           (modelColumn) => modelColumn.columnName === column,
         );
+
         if (modelColumn && modelColumn.prepare) {
           values[i] = modelColumn.prepare(values[i]);
         }
@@ -42,32 +99,34 @@ const insertTemplate = (
         case "mariadb":
           placeholders = columns
             .map((_, index) => {
-              if (isNestedObject(values[index])) {
+              const value = values[index];
+              if (Buffer.isBuffer(value)) {
+                return `BINARY(?)`;
+              }
+              if (isArray(value) || isNestedObject(value)) {
                 return `?`;
+              }
+              if (value instanceof Date) {
+                return `STR_TO_DATE(?, '%Y-%m-%dT%H:%i:%s.%fZ')`;
               }
               return `?`;
             })
             .join(", ");
-          params = values.map((value) =>
-            isNestedObject(value) ? JSON.stringify(value) : value,
-          );
+          params = values.map((value) => formatValue(value, dbType));
           break;
         case "sqlite":
           placeholders = columns.map(() => "?").join(", ");
-          params = values;
+          params = values.map((value) => formatValue(value, dbType));
           break;
         case "postgres":
           placeholders = columns
             .map((_, index) => {
-              if (isNestedObject(values[index])) {
-                return `$${index + 1}::jsonb`;
-              }
-              return `$${index + 1}`;
+              const value = values[index];
+              const typeCast = getPostgresTypeCast(value);
+              return typeCast ? `$${index + 1}::${typeCast}` : `$${index + 1}`;
             })
             .join(", ");
-          params = values.map((value) =>
-            isNestedObject(value) ? JSON.stringify(value) : value,
-          );
+          params = values.map((value) => formatValue(value, dbType));
           break;
         default:
           throw new Error("Unsupported database type");
@@ -105,33 +164,36 @@ VALUES (${placeholders}) RETURNING *;`;
         case "mysql":
         case "mariadb":
           valueSets = values.map((valueSet) => {
-            params.push(
-              ...valueSet.map((value) =>
-                isNestedObject(value) ? JSON.stringify(value) : value,
-              ),
-            );
-            return `(${valueSet.map(() => "?").join(", ")})`;
+            params.push(...valueSet.map((value) => formatValue(value, dbType)));
+            return `(${valueSet
+              .map((value) => {
+                if (Buffer.isBuffer(value)) {
+                  return "BINARY(?)";
+                }
+                if (value instanceof Date) {
+                  return "STR_TO_DATE(?, '%Y-%m-%dT%H:%i:%s.%fZ')";
+                }
+                return "?";
+              })
+              .join(", ")})`;
           });
           break;
         case "sqlite":
           valueSets = values.map((valueSet) => {
-            params.push(...valueSet);
+            params.push(...valueSet.map((value) => formatValue(value, dbType)));
             return `(${valueSet.map(() => "?").join(", ")})`;
           });
           break;
         case "postgres":
           valueSets = values.map((valueSet, rowIndex) => {
-            params.push(
-              ...valueSet.map((value) =>
-                isNestedObject(value) ? JSON.stringify(value) : value,
-              ),
-            );
+            params.push(...valueSet.map((value) => formatValue(value, dbType)));
             return `(${valueSet
               .map((value, colIndex) => {
-                if (isNestedObject(value)) {
-                  return `$${rowIndex * columns.length + colIndex + 1}::jsonb`;
-                }
-                return `$${rowIndex * columns.length + colIndex + 1}`;
+                const typeCast = getPostgresTypeCast(value);
+                const paramIndex = rowIndex * columns.length + colIndex + 1;
+                return typeCast
+                  ? `$${paramIndex}::${typeCast}`
+                  : `$${paramIndex}`;
               })
               .join(", ")})`;
           });

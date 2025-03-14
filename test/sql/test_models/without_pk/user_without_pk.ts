@@ -11,6 +11,8 @@ export enum UserStatus {
 }
 
 export class UserWithoutPk extends Model {
+  static _table = "users_without_pk";
+
   @column()
   declare name: string;
 
@@ -76,14 +78,14 @@ export class UserWithoutPk extends Model {
   }
 
   static beforeUpdate(queryBuilder: ModelQueryBuilder<UserWithoutPk>): void {
-    queryBuilder.whereNull("users.deleted_at");
+    queryBuilder.whereNull("users_without_pk.deleted_at");
   }
 
   static beforeDelete(queryBuilder: ModelQueryBuilder<UserWithoutPk>): void {
-    queryBuilder.whereNull("users.deleted_at");
+    queryBuilder.whereNull("users_without_pk.deleted_at");
   }
 
   static beforeFetch(queryBuilder: ModelQueryBuilder<UserWithoutPk>): void {
-    queryBuilder.whereNull("users.deleted_at");
+    queryBuilder.whereNull("users_without_pk.deleted_at");
   }
 }
