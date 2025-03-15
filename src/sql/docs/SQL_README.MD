@@ -20,6 +20,7 @@
         - [Has Many](#has-many)
         - [Many To Many](#many-to-many)
         - [Relation query Builder](#relation-query)
+    - [Model Factory] (#model-factory)
     - [Case Convention](#case-convention)
     - [Upsert](#Upsert-methods)
     - [Transactions](#transactions)
@@ -459,6 +460,26 @@ const user: User | null = await User.query()
           .where("user_addresses.id", 1)
       )
       .first(),
+```
+
+### Model Factory
+- You can use model factory to generate instances of your models with standard data
+- Can be useful combine fake data libraries to generate unique models
+
+```typescript
+import { createModelFactory } = "hysteria-orm";
+
+// General data definition
+const userFactory = createModelFactory<User>(User, {
+  name: "John Doe",
+  email: "john.doe@example.com",
+});
+
+// create one
+const user = await userFactory.create(1); // model
+
+// create many
+const users = await userFactory.create(10); // array
 ```
 
 ### Case Convention

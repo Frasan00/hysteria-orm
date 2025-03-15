@@ -1,4 +1,5 @@
 import { Migration } from "../../../src/sql/migrations/migration";
+import crypto from "node:crypto";
 
 export default class extends Migration {
   async up() {
@@ -13,6 +14,26 @@ export default class extends Migration {
       table.timestamp("created_at", { autoCreate: true });
       table.timestamp("updated_at", { autoCreate: true, autoUpdate: true });
       table.timestamp("deleted_at").default("NULL").nullable();
+    });
+
+    const id = crypto.randomUUID();
+    this.schema.useQueryBuilder("posts_with_uuid", (queryBuilder) => {
+      return queryBuilder.insert({
+        id: id,
+        title: "Hello World",
+        content: "This is a test post",
+        shortDescription: "This is a test post",
+      });
+    });
+
+    this.schema.useQueryBuilder("posts_with_uuid", (queryBuilder) => {
+      return queryBuilder.where("id", id).update({
+        title: "Hello World Updated",
+      });
+    });
+
+    this.schema.useQueryBuilder("posts_with_uuid", (queryBuilder) => {
+      return queryBuilder.where("id", id).delete();
     });
   }
 

@@ -34,6 +34,7 @@ import { SqlDataSource } from "./sql/sql_data_source";
 import { StandaloneQueryBuilder } from "./sql/standalone_query_builder/standalone_sql_query_builder";
 import logger, { CustomLogger } from "./utils/logger";
 import { ModelQueryBuilder } from "./sql/model_query_builder/model_query_builder";
+import { createModelFactory } from "./sql/models/model_factory";
 
 export default {
   // logger
@@ -99,4 +100,7 @@ export {
   SqlDataSource,
   StandaloneQueryBuilder,
   Transaction,
+
+  // factory
+  createModelFactory,
 };
