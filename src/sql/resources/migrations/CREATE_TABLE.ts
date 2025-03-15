@@ -1,3 +1,4 @@
+import { HysteriaError } from "../../../errors/hysteria_error";
 import type { SqlDataSourceType } from "../../sql_data_source_types";
 
 const createTableTemplate = {
@@ -11,7 +12,10 @@ const createTableTemplate = {
       case "sqlite":
         return `CREATE TABLE IF NOT EXISTS "${table}" (\n`;
       default:
-        throw new Error("Unsupported database type");
+        throw new HysteriaError(
+          "CreateTableTemplate::createTableIfNotExists",
+          `UNSUPPORTED_DATABASE_TYPE_${dbType}`,
+        );
     }
   },
   createTable: (table: string, dbType: SqlDataSourceType) => {
@@ -24,7 +28,10 @@ const createTableTemplate = {
       case "sqlite":
         return `CREATE TABLE "${table}" (\n`;
       default:
-        throw new Error("Unsupported database type");
+        throw new HysteriaError(
+          "CreateTableTemplate::createTable",
+          `UNSUPPORTED_DATABASE_TYPE_${dbType}`,
+        );
     }
   },
   createTableEnd: "\n);",

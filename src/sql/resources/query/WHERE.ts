@@ -1,3 +1,4 @@
+import { HysteriaError } from "../../../errors/hysteria_error";
 import { convertCase } from "../../../utils/case_utils";
 import { Model } from "../../models/model";
 import { SqlDataSourceType } from "../../sql_data_source_types";
@@ -49,7 +50,10 @@ const whereTemplate = (
             query = `\nWHERE ${column}::jsonb ${operator} PLACEHOLDER::jsonb`;
             break;
           default:
-            throw new Error(`Unsupported database type: ${dbType}`);
+            throw new HysteriaError(
+              "WhereTemplate::where",
+              `UNSUPPORTED_DATABASE_TYPE_${dbType}`,
+            );
         }
       }
 
@@ -80,7 +84,10 @@ const whereTemplate = (
             query = ` AND ${column}::jsonb ${operator} PLACEHOLDER::jsonb`;
             break;
           default:
-            throw new Error(`Unsupported database type: ${dbType}`);
+            throw new HysteriaError(
+              "WhereTemplate::andWhere",
+              `UNSUPPORTED_DATABASE_TYPE_${dbType}`,
+            );
         }
       }
 
@@ -111,7 +118,10 @@ const whereTemplate = (
             query = ` OR ${column}::jsonb ${operator} PLACEHOLDER::jsonb`;
             break;
           default:
-            throw new Error(`Unsupported database type: ${dbType}`);
+            throw new HysteriaError(
+              "WhereTemplate::orWhere",
+              `UNSUPPORTED_DATABASE_TYPE_${dbType}`,
+            );
         }
       }
 
@@ -138,7 +148,10 @@ const whereTemplate = (
             query = `\nWHERE ${column}::jsonb != PLACEHOLDER::jsonb`;
             break;
           default:
-            throw new Error(`Unsupported database type: ${dbType}`);
+            throw new HysteriaError(
+              "WhereTemplate::whereNot",
+              `UNSUPPORTED_DATABASE_TYPE_${dbType}`,
+            );
         }
       }
 
@@ -165,7 +178,10 @@ const whereTemplate = (
             query = ` AND ${column}::jsonb != PLACEHOLDER::jsonb`;
             break;
           default:
-            throw new Error(`Unsupported database type: ${dbType}`);
+            throw new HysteriaError(
+              "WhereTemplate::andWhereNot",
+              `UNSUPPORTED_DATABASE_TYPE_${dbType}`,
+            );
         }
       }
 
@@ -192,7 +208,10 @@ const whereTemplate = (
             query = ` OR ${column}::jsonb != PLACEHOLDER::jsonb`;
             break;
           default:
-            throw new Error(`Unsupported database type: ${dbType}`);
+            throw new HysteriaError(
+              "WhereTemplate::orWhereNot",
+              `UNSUPPORTED_DATABASE_TYPE_${dbType}`,
+            );
         }
       }
 
@@ -219,7 +238,10 @@ const whereTemplate = (
             query = `\nWHERE ${column}::jsonb BETWEEN PLACEHOLDER::jsonb AND PLACEHOLDER::jsonb`;
             break;
           default:
-            throw new Error(`Unsupported database type: ${dbType}`);
+            throw new HysteriaError(
+              "WhereTemplate::whereBetween",
+              `UNSUPPORTED_DATABASE_TYPE_${dbType}`,
+            );
         }
       }
 
@@ -246,7 +268,10 @@ const whereTemplate = (
             query = ` AND ${column}::jsonb BETWEEN PLACEHOLDER::jsonb AND PLACEHOLDER::jsonb`;
             break;
           default:
-            throw new Error(`Unsupported database type: ${dbType}`);
+            throw new HysteriaError(
+              "WhereTemplate::andWhereBetween",
+              `UNSUPPORTED_DATABASE_TYPE_${dbType}`,
+            );
         }
       }
 
@@ -273,7 +298,10 @@ const whereTemplate = (
             query = ` OR ${column}::jsonb BETWEEN PLACEHOLDER::jsonb AND PLACEHOLDER::jsonb`;
             break;
           default:
-            throw new Error(`Unsupported database type: ${dbType}`);
+            throw new HysteriaError(
+              "WhereTemplate::orWhereBetween",
+              `UNSUPPORTED_DATABASE_TYPE_${dbType}`,
+            );
         }
       }
 
@@ -300,7 +328,10 @@ const whereTemplate = (
             query = `\nWHERE ${column}::jsonb NOT BETWEEN PLACEHOLDER::jsonb AND PLACEHOLDER::jsonb`;
             break;
           default:
-            throw new Error(`Unsupported database type: ${dbType}`);
+            throw new HysteriaError(
+              "WhereTemplate::whereNotBetween",
+              `UNSUPPORTED_DATABASE_TYPE_${dbType}`,
+            );
         }
       }
 
@@ -327,7 +358,10 @@ const whereTemplate = (
             query = ` AND ${column}::jsonb NOT BETWEEN PLACEHOLDER::jsonb AND PLACEHOLDER::jsonb`;
             break;
           default:
-            throw new Error(`Unsupported database type: ${dbType}`);
+            throw new HysteriaError(
+              "WhereTemplate::andWhereNotBetween",
+              `UNSUPPORTED_DATABASE_TYPE_${dbType}`,
+            );
         }
       }
 
@@ -354,7 +388,10 @@ const whereTemplate = (
             query = ` OR ${column}::jsonb NOT BETWEEN PLACEHOLDER::jsonb AND PLACEHOLDER::jsonb`;
             break;
           default:
-            throw new Error(`Unsupported database type: ${dbType}`);
+            throw new HysteriaError(
+              "WhereTemplate::orWhereNotBetween",
+              `UNSUPPORTED_DATABASE_TYPE_${dbType}`,
+            );
         }
       }
 
@@ -386,7 +423,10 @@ const whereTemplate = (
             )}::jsonb IN (${values.map((_) => "PLACEHOLDER").join(", ")})`;
             break;
           default:
-            throw new Error(`Unsupported database type: ${dbType}`);
+            throw new HysteriaError(
+              "WhereTemplate::whereIn",
+              `UNSUPPORTED_DATABASE_TYPE_${dbType}`,
+            );
         }
       }
 
@@ -418,7 +458,10 @@ const whereTemplate = (
             )}::jsonb IN (${values.map((_) => "PLACEHOLDER").join(", ")})`;
             break;
           default:
-            throw new Error(`Unsupported database type: ${dbType}`);
+            throw new HysteriaError(
+              "WhereTemplate::andWhereIn",
+              `UNSUPPORTED_DATABASE_TYPE_${dbType}`,
+            );
         }
       }
 
@@ -450,7 +493,10 @@ const whereTemplate = (
             )}::jsonb IN (${values.map((_) => "PLACEHOLDER").join(", ")})`;
             break;
           default:
-            throw new Error(`Unsupported database type: ${dbType}`);
+            throw new HysteriaError(
+              "WhereTemplate::orWhereIn",
+              `UNSUPPORTED_DATABASE_TYPE_${dbType}`,
+            );
         }
       }
 
@@ -482,7 +528,10 @@ const whereTemplate = (
             )}::jsonb NOT IN (${values.map((_) => "PLACEHOLDER").join(", ")})`;
             break;
           default:
-            throw new Error(`Unsupported database type: ${dbType}`);
+            throw new HysteriaError(
+              "WhereTemplate::whereNotIn",
+              `UNSUPPORTED_DATABASE_TYPE_${dbType}`,
+            );
         }
       }
 
@@ -514,7 +563,10 @@ const whereTemplate = (
             )}::jsonb NOT IN (${values.map((_) => "PLACEHOLDER").join(", ")})`;
             break;
           default:
-            throw new Error(`Unsupported database type: ${dbType}`);
+            throw new HysteriaError(
+              "WhereTemplate::andWhereNotIn",
+              `UNSUPPORTED_DATABASE_TYPE_${dbType}`,
+            );
         }
       }
 
@@ -546,7 +598,10 @@ const whereTemplate = (
             )}::jsonb NOT IN (${values.map((_) => "PLACEHOLDER").join(", ")})`;
             break;
           default:
-            throw new Error(`Unsupported database type: ${dbType}`);
+            throw new HysteriaError(
+              "WhereTemplate::orWhereNotIn",
+              `UNSUPPORTED_DATABASE_TYPE_${dbType}`,
+            );
         }
       }
 
@@ -629,9 +684,15 @@ const whereTemplate = (
             params: [regex.source],
           };
         case "sqlite":
-          throw new Error("SQLite does not support REGEXP out of the box");
+          throw new HysteriaError(
+            "WhereTemplate::whereRegex",
+            "REGEXP_NOT_SUPPORTED_IN_SQLITE",
+          );
         default:
-          throw new Error(`Unsupported database type: ${dbType}`);
+          throw new HysteriaError(
+            "WhereTemplate::whereRegex",
+            `UNSUPPORTED_DATABASE_TYPE_${dbType}`,
+          );
       }
     },
     andWhereRegex: (column: string, regex: RegExp) => {
@@ -654,9 +715,15 @@ const whereTemplate = (
             params: [regex.source],
           };
         case "sqlite":
-          throw new Error("SQLite does not support REGEXP out of the box");
+          throw new HysteriaError(
+            "WhereTemplate::andWhereRegex",
+            "REGEXP_NOT_SUPPORTED_IN_SQLITE",
+          );
         default:
-          throw new Error(`Unsupported database type: ${dbType}`);
+          throw new HysteriaError(
+            "WhereTemplate::andWhereRegex",
+            `UNSUPPORTED_DATABASE_TYPE_${dbType}`,
+          );
       }
     },
     orWhereRegex: (column: string, regex: RegExp) => {
@@ -679,9 +746,15 @@ const whereTemplate = (
             params: [regex.source],
           };
         case "sqlite":
-          throw new Error("SQLite does not support REGEXP out of the box");
+          throw new HysteriaError(
+            "WhereTemplate::orWhereRegex",
+            "REGEXP_NOT_SUPPORTED_IN_SQLITE",
+          );
         default:
-          throw new Error(`Unsupported database type: ${dbType}`);
+          throw new HysteriaError(
+            "WhereTemplate::orWhereRegex",
+            `UNSUPPORTED_DATABASE_TYPE_${dbType}`,
+          );
       }
     },
   };

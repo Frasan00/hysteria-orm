@@ -6,6 +6,7 @@ import { MongoDriver } from "./mongo_driver";
 import { MysqlDriver } from "./mysql_driver";
 import { RedisDriver } from "./redis_driver";
 import { Sqlite3Driver } from "./sqlite3_driver";
+import { HysteriaError } from "../errors/hysteria_error";
 
 export class DriverFactory {
   static async getDriver(
@@ -25,8 +26,9 @@ export class DriverFactory {
       case "redis":
         return RedisDriver.createDriver(driverSpecificOptions);
       default:
-        throw new Error(
-          `Driver ${client} not found, il likely not installed, try running npm install ${client}`,
+        throw new HysteriaError(
+          `DriverFactory::getDriver Driver ${client} not found, il likely not installed, try running npm install ${client}`,
+          "DRIVER_NOT_FOUND",
         );
     }
   }

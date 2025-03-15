@@ -1,3 +1,4 @@
+import { HysteriaError } from "../../../errors/hysteria_error";
 import { convertCase } from "../../../utils/case_utils";
 import { isNestedObject } from "../../../utils/json_utils";
 import { Model } from "../../models/model";
@@ -16,16 +17,23 @@ type BaseValues =
   | bigint
   | Array<any>;
 
-const isArray = (value: any): value is Array<any> => Array.isArray(value);
-
 const getPostgresTypeCast = (value: BaseValues): string => {
-  if (Buffer.isBuffer(value)) return "bytea";
-  if (isArray(value)) return "array";
-  if (isNestedObject(value)) return "jsonb";
-  if (typeof value === "boolean") return "boolean";
-  if (typeof value === "bigint") return "bigint";
-  if (value instanceof Date) return "timestamp";
-  return "";
+  switch (true) {
+    case Buffer.isBuffer(value):
+      return "bytea";
+    case Array.isArray(value):
+      return "array";
+    case isNestedObject(value):
+      return "jsonb";
+    case typeof value === "boolean":
+      return "boolean";
+    case typeof value === "bigint":
+      return "bigint";
+    case value instanceof Date:
+      return "timestamp";
+    default:
+      return "";
+  }
 };
 
 const formatValue = (
@@ -36,7 +44,7 @@ const formatValue = (
     return null;
   }
 
-  if (isArray(value)) {
+  if (Array.isArray(value)) {
     if (dbType === "postgres") {
       return JSON.stringify(value);
     }
@@ -77,11 +85,16 @@ const insertTemplate = (
         values.splice($additionalColumnsIndex, 1);
       }
 
+      const modelColumnsMap = new Map(
+        modelColumns.map((modelColumn) => [
+          modelColumn.columnName,
+          modelColumn,
+        ]),
+      );
+
       for (let i = 0; i < values.length; i++) {
         const column = columns[i];
-        const modelColumn = modelColumns.find(
-          (modelColumn) => modelColumn.columnName === column,
-        );
+        const modelColumn = modelColumnsMap.get(column);
 
         if (modelColumn && modelColumn.prepare) {
           values[i] = modelColumn.prepare(values[i]);
@@ -103,7 +116,7 @@ const insertTemplate = (
               if (Buffer.isBuffer(value)) {
                 return `BINARY(?)`;
               }
-              if (isArray(value) || isNestedObject(value)) {
+              if (Array.isArray(value) || isNestedObject(value)) {
                 return `?`;
               }
               if (value instanceof Date) {
@@ -129,7 +142,10 @@ const insertTemplate = (
           params = values.map((value) => formatValue(value, dbType));
           break;
         default:
-          throw new Error("Unsupported database type");
+          throw new HysteriaError(
+            "InsertTemplate::insert",
+            `UNSUPPORTED_DATABASE_TYPE_${dbType}`,
+          );
       }
 
       const query =
@@ -148,12 +164,17 @@ VALUES (${placeholders}) RETURNING *;`;
       let valueSets: string[];
       let params: BaseValues[] = [];
 
+      const modelColumnsMap = new Map(
+        modelColumns.map((modelColumn) => [
+          modelColumn.columnName,
+          modelColumn,
+        ]),
+      );
+
       for (let i = 0; i < values.length; i++) {
         for (let j = 0; j < values[i].length; j++) {
           const column = columns[j];
-          const modelColumn = modelColumns.find(
-            (modelColumn) => modelColumn.columnName === column,
-          );
+          const modelColumn = modelColumnsMap.get(column);
           if (modelColumn && modelColumn.prepare) {
             values[i][j] = modelColumn.prepare(values[i][j]);
           }
@@ -199,7 +220,10 @@ VALUES (${placeholders}) RETURNING *;`;
           });
           break;
         default:
-          throw new Error("Unsupported database type");
+          throw new HysteriaError(
+            "InsertTemplate::insertMany",
+            `UNSUPPORTED_DATABASE_TYPE_${dbType}`,
+          );
       }
 
       const query =

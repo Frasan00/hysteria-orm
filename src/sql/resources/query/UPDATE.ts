@@ -1,35 +1,33 @@
+import { HysteriaError } from "../../../errors/hysteria_error";
 import { convertCase } from "../../../utils/case_utils";
 import { isNestedObject } from "../../../utils/json_utils";
 import { Model } from "../../models/model";
 import { getModelColumns } from "../../models/model_decorators";
 import type { SqlDataSourceType } from "../../sql_data_source_types";
 
-const isArray = (value: any): value is Array<any> => Array.isArray(value);
-
 const formatValue = (value: any, dbType: SqlDataSourceType): any => {
-  if (value === undefined) return null;
-  if (value === null) return null;
-
-  if (isArray(value)) {
-    return JSON.stringify(value);
+  switch (true) {
+    case value === undefined:
+    case value === null:
+      return null;
+    case Array.isArray(value):
+      return JSON.stringify(value);
+    case isNestedObject(value) && !Buffer.isBuffer(value):
+      return JSON.stringify(value);
+    case Buffer.isBuffer(value):
+      return "bytea";
+    case value instanceof Date:
+      switch (dbType) {
+        case "postgres":
+          return value.toISOString();
+        default:
+          return value;
+      }
+    case typeof value === "bigint":
+      return value.toString();
+    default:
+      return value;
   }
-
-  if (isNestedObject(value) && !Buffer.isBuffer(value)) {
-    return JSON.stringify(value);
-  }
-
-  if (value instanceof Date) {
-    if (dbType === "postgres") {
-      return value.toISOString();
-    }
-    return value;
-  }
-
-  if (typeof value === "bigint") {
-    return value.toString();
-  }
-
-  return value;
 };
 
 const getPlaceholder = (
@@ -49,7 +47,7 @@ const getPlaceholder = (
     case "postgres":
       const typeCast = Buffer.isBuffer(value)
         ? "bytea"
-        : isArray(value)
+        : Array.isArray(value)
           ? "array"
           : isNestedObject(value)
             ? "jsonb"
@@ -62,7 +60,10 @@ const getPlaceholder = (
                   : "";
       return typeCast ? `$${index + 1}::${typeCast}` : `$${index + 1}`;
     default:
-      throw new Error("Unsupported database type");
+      throw new HysteriaError(
+        "UpdateTemplate::getPlaceholder",
+        `UNSUPPORTED_DATABASE_TYPE_${dbType}`,
+      );
   }
 };
 
@@ -86,11 +87,17 @@ const updateTemplate = (
         values.splice($additionalColumnsIndex, 1);
       }
 
+      const modelColumnsMap = new Map(
+        modelColumns.map((modelColumn) => [
+          modelColumn.columnName,
+          modelColumn,
+        ]),
+      );
+
       for (let i = 0; i < values.length; i++) {
         const column = columns[i];
-        const modelColumn = modelColumns.find(
-          (modelColumn) => modelColumn.columnName === column,
-        );
+        const modelColumn = modelColumnsMap.get(column);
+
         if (modelColumn && modelColumn.prepare) {
           values[i] = modelColumn.prepare(values[i]);
         }
@@ -129,7 +136,10 @@ const updateTemplate = (
           ];
           break;
         default:
-          throw new Error("Unsupported database type");
+          throw new HysteriaError(
+            "UpdateTemplate::update",
+            `UNSUPPORTED_DATABASE_TYPE_${dbType}`,
+          );
       }
 
       const primaryKeyPlaceholder =
@@ -157,11 +167,16 @@ WHERE ${primaryKey} = ${primaryKeyPlaceholder};`;
         values.splice($additionalColumnsIndex, 1);
       }
 
+      const modelColumnsMap = new Map(
+        modelColumns.map((modelColumn) => [
+          modelColumn.columnName,
+          modelColumn,
+        ]),
+      );
+
       for (let i = 0; i < values.length; i++) {
         const column = columns[i];
-        const modelColumn = modelColumns.find(
-          (modelColumn) => modelColumn.columnName === column,
-        );
+        const modelColumn = modelColumnsMap.get(column);
         if (modelColumn && modelColumn.prepare) {
           values[i] = modelColumn.prepare(values[i]);
         }
@@ -194,7 +209,10 @@ WHERE ${primaryKey} = ${primaryKeyPlaceholder};`;
           });
           break;
         default:
-          throw new Error("Unsupported database type");
+          throw new HysteriaError(
+            "UpdateTemplate::massiveUpdate",
+            `UNSUPPORTED_DATABASE_TYPE_${dbType}`,
+          );
       }
 
       const query = `UPDATE ${table} ${joinClause}

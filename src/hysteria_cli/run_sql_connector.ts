@@ -1,13 +1,17 @@
 import dotenv from "dotenv";
 import logger from "../utils/logger";
 import { SqlDataSource } from "../sql/sql_data_source";
+import { HysteriaError } from "../errors/hysteria_error";
 
 dotenv.config();
 
 export default async function runSqlConnector(sql: string): Promise<void> {
   const databaseType = process.env.DB_TYPE;
   if (!databaseType) {
-    throw new Error("Run sql error: DB_TYPE env not set");
+    throw new HysteriaError(
+      "RunSqlConnector::runSqlConnector DB_TYPE env not set",
+      "ENV_NOT_SET",
+    );
   }
 
   await SqlDataSource.connect();

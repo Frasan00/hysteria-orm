@@ -15,6 +15,7 @@ import {
   getBaseCollectionName,
   ModelKeyOrAny,
 } from "./mongo_collection_types";
+import { HysteriaError } from "../../../errors/hysteria_error";
 
 export function getBaseCollectionInstance<T extends Collection>(): T {
   return { $additional: {} } as T;
@@ -211,8 +212,9 @@ export class Collection extends Entity {
   private static establishConnection(): void {
     const mongo = MongoDataSource.getInstance();
     if (!mongo) {
-      throw new Error(
-        "mongo mongoInstance not initialized, did you defined it in MongoDataSource.connect static method?",
+      throw new HysteriaError(
+        "Collection::establishConnection",
+        "CONNECTION_NOT_ESTABLISHED",
       );
     }
 

@@ -1,3 +1,4 @@
+import { HysteriaError } from "../../../errors/hysteria_error";
 import type { SqlDataSourceType } from "../../sql_data_source_types";
 
 const deleteTemplate = (table: string, dbType: SqlDataSourceType) => {
@@ -14,7 +15,10 @@ const deleteTemplate = (table: string, dbType: SqlDataSourceType) => {
           baseQuery = baseQuery.replace("PLACEHOLDER", "$1");
           break;
         default:
-          throw new Error("Unsupported database type");
+          throw new HysteriaError(
+            "DeleteTemplate::delete",
+            `UNSUPPORTED_DATABASE_TYPE_${dbType}`,
+          );
       }
 
       return { query: baseQuery, params: [value] };

@@ -8,6 +8,7 @@ import {
 } from "../query_builder/mongo_query_builder";
 import { Collection } from "./mongo_collection";
 import { ModelKeyOrAny, ModelKeyOrAnySort } from "./mongo_collection_types";
+import { HysteriaError } from "../../../errors/hysteria_error";
 
 export type MongoFindOneOptions<T extends Collection> = {
   ignoreHooks?: FetchHooks[];
@@ -144,7 +145,10 @@ export class CollectionManager<T extends Collection> {
         throw options.customError;
       }
 
-      throw new Error("ROW_NOT_FOUND");
+      throw new HysteriaError(
+        "CollectionManager::findOneOrFail No record found",
+        "ROW_NOT_FOUND",
+      );
     }
 
     return result;
@@ -226,7 +230,10 @@ export class CollectionManager<T extends Collection> {
   async updateRecord(modelData: T): Promise<T> {
     const id = modelData.id;
     if (!id) {
-      throw new Error("Cannot update record without an id");
+      throw new HysteriaError(
+        "CollectionManager::updateRecord",
+        "ROW_NOT_FOUND",
+      );
     }
 
     const result = await this.collectionInstance.updateOne(
@@ -235,7 +242,10 @@ export class CollectionManager<T extends Collection> {
     );
 
     if (result.modifiedCount === 0) {
-      throw new Error("The record could not be updated");
+      throw new HysteriaError(
+        "CollectionManager::updateRecord",
+        "ROW_NOT_FOUND",
+      );
     }
 
     const updatedDocument = await this.collectionInstance.findOne(
@@ -254,7 +264,10 @@ export class CollectionManager<T extends Collection> {
   async deleteRecord(model: T): Promise<T> {
     const id = model.id;
     if (!id) {
-      throw new Error("Cannot delete record without an id");
+      throw new HysteriaError(
+        "CollectionManager::deleteRecord",
+        "ROW_NOT_FOUND",
+      );
     }
 
     await this.collectionInstance.deleteOne(

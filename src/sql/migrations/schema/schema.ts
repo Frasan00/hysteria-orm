@@ -8,6 +8,7 @@ import ColumnBuilderAlter from "../column/alter_table/column_builder_alter";
 import ColumnTypeBuilder from "../column/create_table/column_type_builder";
 import { StandaloneQueryBuilder } from "../../standalone_query_builder/standalone_sql_query_builder";
 import { CaseConvention } from "../../../utils/case_utils";
+import { HysteriaError } from "../../../errors/hysteria_error";
 
 dotenv.config();
 
@@ -19,7 +20,7 @@ export default class Schema {
     this.sqlType = (sqlType || process.env.DB_TYPE) as SqlDataSourceType;
 
     if (!this.sqlType) {
-      throw new Error(`No DB_TYPE specified in the environment variables`);
+      throw new HysteriaError("Schema::constructor", "ENV_NOT_SET");
     }
 
     this.queryStatements = [];
@@ -61,17 +62,16 @@ export default class Schema {
    */
   runFile(filePath: string): void {
     if (!fs.existsSync(filePath)) {
-      throw new Error(
-        `File ${filePath} does not exist or is not accessible, cannot run migration`,
+      throw new HysteriaError(
+        "Schema::runFile",
+        `FILE_NOT_FOUND_OR_NOT_ACCESSIBLE`,
       );
     }
 
     const file = path.basename(filePath);
     const fileExtension = path.extname(file);
     if (fileExtension !== ".sql" && fileExtension !== ".txt") {
-      throw new Error(
-        `File ${file} is not a .sql or .txt file, cannot run migration`,
-      );
+      throw new HysteriaError("Schema::runFile", `FILE_NOT_A_SQL_OR_TXT_FILE`);
     }
 
     const query = fs.readFileSync(filePath, "utf-8");
@@ -147,7 +147,10 @@ export default class Schema {
         this.rawQuery(`ALTER TABLE "${oldtable}" RENAME TO "${newtable}"`);
         break;
       default:
-        throw new Error("Unsupported database type");
+        throw new HysteriaError(
+          "Schema::renameTable",
+          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`,
+        );
     }
   }
 
@@ -169,7 +172,10 @@ export default class Schema {
         this.rawQuery(`DELETE FROM "${table}"`);
         break;
       default:
-        throw new Error("Unsupported database type");
+        throw new HysteriaError(
+          "Schema::renameTable",
+          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`,
+        );
     }
   }
 
@@ -211,7 +217,10 @@ export default class Schema {
         );
         break;
       default:
-        throw new Error("Unsupported database type");
+        throw new HysteriaError(
+          "Schema::renameTable",
+          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`,
+        );
     }
   }
 
@@ -234,7 +243,10 @@ export default class Schema {
         this.rawQuery(`DROP INDEX ${indexName}`);
         break;
       default:
-        throw new Error("Unsupported database type");
+        throw new HysteriaError(
+          "Schema::renameTable",
+          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`,
+        );
     }
   }
 
@@ -265,7 +277,10 @@ export default class Schema {
         );
         break;
       default:
-        throw new Error("Unsupported database type");
+        throw new HysteriaError(
+          "Schema::renameTable",
+          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`,
+        );
     }
   }
 
@@ -287,7 +302,10 @@ export default class Schema {
         this.rawQuery(`ALTER TABLE "${table}" DROP PRIMARY KEY`);
         break;
       default:
-        throw new Error("Unsupported database type");
+        throw new HysteriaError(
+          "Schema::renameTable",
+          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`,
+        );
     }
   }
 
@@ -327,7 +345,10 @@ export default class Schema {
         );
         break;
       default:
-        throw new Error("Unsupported database type");
+        throw new HysteriaError(
+          "Schema::renameTable",
+          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`,
+        );
     }
   }
 
@@ -356,7 +377,10 @@ export default class Schema {
         );
         break;
       default:
-        throw new Error("Unsupported database type");
+        throw new HysteriaError(
+          "Schema::renameTable",
+          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`,
+        );
     }
   }
 
@@ -396,7 +420,10 @@ export default class Schema {
         );
         break;
       default:
-        throw new Error("Unsupported database type");
+        throw new HysteriaError(
+          "Schema::renameTable",
+          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`,
+        );
     }
   }
 
@@ -423,7 +450,10 @@ export default class Schema {
         );
         break;
       default:
-        throw new Error("Unsupported database type");
+        throw new HysteriaError(
+          "Schema::renameTable",
+          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`,
+        );
     }
   }
 }

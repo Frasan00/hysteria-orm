@@ -1,3 +1,4 @@
+import { HysteriaError } from "../../../../errors/hysteria_error";
 import type { SqlDataSourceType } from "../../../sql_data_source_types";
 import ColumnTypeBuilder, {
   DateOptions,
@@ -155,7 +156,10 @@ export default class ColumnBuilderAlter {
         columnsBuilder.jsonb(columnName);
         break;
       default:
-        throw new Error("Unsupported data type");
+        throw new HysteriaError(
+          "ColumnBuilderAlter::addColumn",
+          `UNSUPPORTED_DATA_TYPE_${dataType}`,
+        );
     }
 
     query += columnsBuilder.partialQuery;
@@ -197,11 +201,20 @@ export default class ColumnBuilderAlter {
           query += ` AFTER ${options.afterColumn}`;
           break;
         case "postgres":
-          throw new Error("Postgres does not support AFTER in ALTER COLUMN");
+          throw new HysteriaError(
+            "ColumnBuilderAlter::addColumn::afterColumn",
+            "NOT_SUPPORTED_IN_POSTGRES",
+          );
         case "sqlite":
-          throw new Error("Sqlite does not support AFTER in ALTER COLUMN");
+          throw new HysteriaError(
+            "ColumnBuilderAlter::addColumn::afterColumn",
+            "NOT_SUPPORTED_IN_SQLITE",
+          );
         default:
-          throw new Error("Unsupported database type");
+          throw new HysteriaError(
+            "ColumnBuilderAlter::addColumn",
+            `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`,
+          );
       }
     }
 
@@ -237,7 +250,10 @@ export default class ColumnBuilderAlter {
           query += " DEFAULT CURRENT_TIMESTAMP";
           break;
         default:
-          throw new Error("Unsupported database type");
+          throw new HysteriaError(
+            "ColumnBuilderAlter::addDateColumn",
+            `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`,
+          );
       }
     }
 
@@ -254,7 +270,10 @@ export default class ColumnBuilderAlter {
           query += " ON UPDATE CURRENT_TIMESTAMP";
           break;
         default:
-          throw new Error("Unsupported database type");
+          throw new HysteriaError(
+            "ColumnBuilderAlter::addDateColumn",
+            `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`,
+          );
       }
     }
 
@@ -268,7 +287,10 @@ export default class ColumnBuilderAlter {
       } else if (options.default instanceof Date) {
         query += ` DEFAULT '${options.default.toISOString()}'`;
       } else {
-        throw new Error("Invalid default value");
+        throw new HysteriaError(
+          "ColumnBuilderAlter::addDateColumn::default",
+          "INVALID_DEFAULT_VALUE",
+        );
       }
     }
 
@@ -279,11 +301,20 @@ export default class ColumnBuilderAlter {
           query += ` AFTER ${options.afterColumn}`;
           break;
         case "postgres":
-          throw new Error("Postgres does not support AFTER in ALTER COLUMN");
+          throw new HysteriaError(
+            "ColumnBuilderAlter::addDateColumn::afterColumn",
+            "NOT_SUPPORTED_IN_POSTGRES",
+          );
         case "sqlite":
-          throw new Error("Sqlite does not support AFTER in ALTER COLUMN");
+          throw new HysteriaError(
+            "ColumnBuilderAlter::addDateColumn::afterColumn",
+            "NOT_SUPPORTED_IN_SQLITE",
+          );
         default:
-          throw new Error("Unsupported database type");
+          throw new HysteriaError(
+            "ColumnBuilderAlter::addDateColumn::afterColumn",
+            `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`,
+          );
       }
     }
 
@@ -361,7 +392,10 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
         } CHECK (${columnName} IN (${parsedValuesSqlite.join(", ")}))`;
         break;
       default:
-        throw new Error("Unsupported database type");
+        throw new HysteriaError(
+          "ColumnBuilderAlter::addEnumColumn",
+          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`,
+        );
     }
 
     if (options?.notNullable && this.sqlType !== "sqlite") {
@@ -383,11 +417,20 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
           this.partialQuery += ` AFTER ${options.afterColumn}`;
           break;
         case "postgres":
-          throw new Error("Postgres does not support AFTER in AFTER COLUMN");
+          throw new HysteriaError(
+            "ColumnBuilderAlter::addEnumColumn::afterColumn",
+            "NOT_SUPPORTED_IN_POSTGRES",
+          );
         case "sqlite":
-          throw new Error("Sqlite does not support AFTER in AFTER COLUMN");
+          throw new HysteriaError(
+            "ColumnBuilderAlter::addEnumColumn::afterColumn",
+            "NOT_SUPPORTED_IN_SQLITE",
+          );
         default:
-          throw new Error("Unsupported database type");
+          throw new HysteriaError(
+            "ColumnBuilderAlter::addEnumColumn",
+            `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`,
+          );
       }
     }
 
@@ -412,7 +455,10 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
         this.partialQuery = `ALTER TABLE ${this.table} DROP COLUMN ${columnName}`;
         break;
       default:
-        throw new Error("Unsupported database type");
+        throw new HysteriaError(
+          "ColumnBuilderAlter::dropColumn",
+          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`,
+        );
     }
 
     this.queryStatements.push(this.partialQuery);
@@ -440,7 +486,10 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
         this.partialQuery = `ALTER TABLE ${this.table} RENAME COLUMN \`${oldColumnName}\` TO \`${newColumnName}\``;
         break;
       default:
-        throw new Error("Unsupported database type");
+        throw new HysteriaError(
+          "ColumnBuilderAlter::renameColumn",
+          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`,
+        );
     }
 
     this.queryStatements.push(this.partialQuery);
@@ -470,9 +519,15 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
         }`;
         break;
       case "sqlite":
-        throw new Error("Sqlite does not support modifying column types");
+        throw new HysteriaError(
+          "ColumnBuilderAlter::modifyColumnType",
+          "NOT_SUPPORTED_IN_SQLITE",
+        );
       default:
-        throw new Error("Unsupported database type");
+        throw new HysteriaError(
+          "ColumnBuilderAlter::modifyColumnType",
+          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`,
+        );
     }
 
     if (options?.notNullable) {
@@ -506,9 +561,15 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
           this.partialQuery += ` AFTER ${options.afterColumn}`;
           break;
         case "postgres":
-          throw new Error("Postgres does not support AFTER in ALTER COLUMN");
+          throw new HysteriaError(
+            "ColumnBuilderAlter::modifyColumnType::afterColumn",
+            "NOT_SUPPORTED_IN_POSTGRES",
+          );
         default:
-          throw new Error("Unsupported database type");
+          throw new HysteriaError(
+            "ColumnBuilderAlter::modifyColumnType",
+            `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`,
+          );
       }
     }
 
@@ -533,7 +594,10 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
         this.partialQuery = `ALTER TABLE ${oldtable} RENAME TO ${newtable}`;
         break;
       default:
-        throw new Error("Unsupported database type");
+        throw new HysteriaError(
+          "ColumnBuilderAlter::renameTable",
+          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`,
+        );
     }
 
     this.queryStatements.push(this.partialQuery);
@@ -547,8 +611,12 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
    */
   setDefaultValue(
     columnName: string,
-    defaultValue: string,
+    defaultValue: string | number | boolean | null,
   ): ColumnBuilderAlter {
+    if (defaultValue === null) {
+      defaultValue = "NULL";
+    }
+
     switch (this.sqlType) {
       case "mariadb":
       case "mysql":
@@ -558,11 +626,15 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
         this.partialQuery = `ALTER TABLE ${this.table} ALTER COLUMN ${columnName} SET DEFAULT ${defaultValue}`;
         break;
       case "sqlite":
-        throw new Error(
-          "SQLite does not support altering column default values directly. You need to recreate the table with the new default value.",
+        throw new HysteriaError(
+          "ColumnBuilderAlter::setDefaultValue",
+          "NOT_SUPPORTED_IN_SQLITE",
         );
       default:
-        throw new Error("Unsupported database type");
+        throw new HysteriaError(
+          "ColumnBuilderAlter::setDefaultValue",
+          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`,
+        );
     }
 
     this.queryStatements.push(this.partialQuery);
@@ -583,9 +655,15 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
         this.partialQuery = `ALTER TABLE ${this.table} ALTER COLUMN ${columnName} DROP DEFAULT`;
         break;
       case "sqlite":
-        throw new Error("Sqlite does not support dropping default values");
+        throw new HysteriaError(
+          "ColumnBuilderAlter::dropDefaultValue",
+          "NOT_SUPPORTED_IN_SQLITE",
+        );
       default:
-        throw new Error("Unsupported database type");
+        throw new HysteriaError(
+          "ColumnBuilderAlter::dropDefaultValue",
+          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`,
+        );
     }
 
     this.queryStatements.push(this.partialQuery);
@@ -598,8 +676,9 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
    */
   addForeignKey(columnName: string, options: AlterOptions): ColumnBuilderAlter {
     if (!options.references) {
-      throw new Error(
-        "References option must be provided to add a foreign key",
+      throw new HysteriaError(
+        "ColumnBuilderAlter::addForeignKey",
+        "REFERENCES_OPTION_REQUIRED",
       );
     }
 
@@ -634,7 +713,10 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
         } ON UPDATE ${options.references.onUpdate || "NO ACTION"}`;
         break;
       default:
-        throw new Error("Unsupported database type");
+        throw new HysteriaError(
+          "ColumnBuilderAlter::addForeignKey",
+          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`,
+        );
     }
 
     this.queryStatements.push(this.partialQuery);
@@ -659,7 +741,10 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
         this.partialQuery = `ALTER TABLE ${this.table} DROP CONSTRAINT ${fkName}`;
         break;
       default:
-        throw new Error("Unsupported database type");
+        throw new HysteriaError(
+          "ColumnBuilderAlter::dropForeignKey",
+          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`,
+        );
     }
 
     this.queryStatements.push(this.partialQuery);

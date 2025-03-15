@@ -561,8 +561,9 @@ export class ModelQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
           let index = startIndex;
           return query.replace(/PLACEHOLDER/g, () => `$${index++}`);
         default:
-          throw new Error(
-            "Unsupported database type, did you forget to set the dbType in the function params?",
+          throw new HysteriaError(
+            "Autogenerator::parsePlaceHolders",
+            `UNSUPPORTED_DATABASE_TYPE_ERROR}`,
           );
       }
     }

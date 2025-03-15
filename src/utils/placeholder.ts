@@ -1,3 +1,4 @@
+import { HysteriaError } from "../errors/hysteria_error";
 import type { SqlDataSourceType } from "../sql/sql_data_source_types";
 
 export const convertPlaceHolderToValue = (
@@ -14,6 +15,9 @@ export const convertPlaceHolderToValue = (
       let index = startIndex;
       return query.replace(/PLACEHOLDER/g, () => `$${index++}`);
     default:
-      throw new Error("Unsupported database type");
+      throw new HysteriaError(
+        "convertPlaceHolderToValue",
+        `UNSUPPORTED_DATABASE_TYPE_${dbType}`,
+      );
   }
 };

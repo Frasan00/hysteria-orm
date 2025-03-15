@@ -27,6 +27,7 @@ afterEach(async () => {
 
 test("should create an user", async () => {
   const user = await UserFactory.userWithoutPk(1);
+  console.log(JSON.stringify(user, null, 2));
   expect(user).not.toHaveProperty("id");
   expect(user).toHaveProperty("name");
   expect(user).toHaveProperty("email");

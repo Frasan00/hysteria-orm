@@ -206,6 +206,9 @@ export function convertValueToSQL(value: any, type: string): string {
     case "boolean":
       return `${value}`;
     default:
-      throw new Error(`Unsupported value type: ${type}`);
+      throw new HysteriaError(
+        "convertValueToSQL",
+        `UNSUPPORTED_DATABASE_TYPE_${type}`,
+      );
   }
 }

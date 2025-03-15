@@ -1,5 +1,7 @@
 import Redis, { RedisOptions } from "ioredis";
 import dotenv from "dotenv";
+import { HysteriaError } from "../../errors/hysteria_error";
+import { logger } from "../..";
 
 dotenv.config();
 
@@ -70,7 +72,10 @@ export class RedisDataSource {
       await RedisDataSource.redisConnection.ping();
       RedisDataSource.isConnected = true;
     } catch (error) {
-      throw new Error(`Failed to connect to Redis: ${error}`);
+      throw new HysteriaError(
+        "RedisDataSource::connect",
+        "CONNECTION_NOT_ESTABLISHED",
+      );
     }
   }
 
@@ -116,7 +121,7 @@ export class RedisDataSource {
 
       await RedisDataSource.redisConnection.set(key, value);
     } catch (error) {
-      throw new Error(`Failed to set key-value pair in Redis: ${error}`);
+      throw new HysteriaError("RedisDataSource::set", "SET_FAILED");
     }
   }
 
@@ -130,7 +135,7 @@ export class RedisDataSource {
       const value = await RedisDataSource.redisConnection.get(key);
       return RedisDataSource.getValue<T>(value);
     } catch (error) {
-      throw new Error(`Failed to get value from Redis: ${error}`);
+      throw new HysteriaError("RedisDataSource::get", "SET_FAILED");
     }
   }
 
@@ -141,7 +146,7 @@ export class RedisDataSource {
     try {
       return await RedisDataSource.redisConnection.getBuffer(key);
     } catch (error) {
-      throw new Error(`Failed to get value from Redis: ${error}`);
+      throw new HysteriaError("RedisDataSource::getBuffer", "GET_FAILED");
     }
   }
 
@@ -157,7 +162,7 @@ export class RedisDataSource {
       await RedisDataSource.redisConnection.del(key);
       return RedisDataSource.getValue<T>(value);
     } catch (error) {
-      throw new Error(`Failed to get value from Redis: ${error}`);
+      throw new HysteriaError("RedisDataSource::getAndDelete", "GET_FAILED");
     }
   }
 
@@ -170,7 +175,7 @@ export class RedisDataSource {
     try {
       await RedisDataSource.redisConnection.del(key);
     } catch (error) {
-      throw new Error(`Failed to delete key from Redis: ${error}`);
+      throw new HysteriaError("RedisDataSource::delete", "DELETE_FAILED");
     }
   }
 
@@ -182,7 +187,7 @@ export class RedisDataSource {
     try {
       await RedisDataSource.redisConnection.flushall();
     } catch (error) {
-      throw new Error(`Failed to flush Redis database: ${error}`);
+      throw new HysteriaError("RedisDataSource::flushAll", "FLUSH_FAILED");
     }
   }
 
@@ -192,7 +197,10 @@ export class RedisDataSource {
    */
   static getRawConnection(): Redis {
     if (!RedisDataSource.isConnected || !RedisDataSource.redisConnection) {
-      throw new Error("redis connection not established");
+      throw new HysteriaError(
+        "RedisDataSource::getRawConnection",
+        "CONNECTION_NOT_ESTABLISHED",
+      );
     }
 
     return RedisDataSource.redisConnection;
@@ -207,7 +215,10 @@ export class RedisDataSource {
       await RedisDataSource.redisConnection.quit();
       RedisDataSource.isConnected = false;
     } catch (error) {
-      throw new Error(`Failed to disconnect from Redis: ${error}`);
+      throw new HysteriaError(
+        "RedisDataSource::disconnect",
+        "DISCONNECT_FAILED",
+      );
     }
   }
 
@@ -241,7 +252,7 @@ export class RedisDataSource {
 
       await this.redisConnection.set(key, value);
     } catch (error) {
-      throw new Error(`Failed to set key-value pair in Redis: ${error}`);
+      throw new HysteriaError("RedisDataSource::set", "SET_FAILED");
     }
   }
 
@@ -255,7 +266,7 @@ export class RedisDataSource {
       const value = await this.redisConnection.get(key);
       return RedisDataSource.getValue<T>(value);
     } catch (error) {
-      throw new Error(`Failed to get value from Redis: ${error}`);
+      throw new HysteriaError("RedisDataSource::get", "GET_FAILED");
     }
   }
 
@@ -266,7 +277,7 @@ export class RedisDataSource {
     try {
       return await this.redisConnection.getBuffer(key);
     } catch (error) {
-      throw new Error(`Failed to get value from Redis: ${error}`);
+      throw new HysteriaError("RedisDataSource::getBuffer", "GET_FAILED");
     }
   }
 
@@ -282,7 +293,7 @@ export class RedisDataSource {
       await this.redisConnection.del(key);
       return RedisDataSource.getValue<T>(value);
     } catch (error) {
-      throw new Error(`Failed to get value from Redis: ${error}`);
+      throw new HysteriaError("RedisDataSource::getAndDelete", "GET_FAILED");
     }
   }
 
@@ -295,7 +306,7 @@ export class RedisDataSource {
     try {
       await this.redisConnection.del(key);
     } catch (error) {
-      throw new Error(`Failed to delete key from Redis: ${error}`);
+      throw new HysteriaError("RedisDataSource::delete", "DELETE_FAILED");
     }
   }
 
@@ -307,7 +318,7 @@ export class RedisDataSource {
     try {
       await this.redisConnection.flushall();
     } catch (error) {
-      throw new Error(`Failed to flush Redis database: ${error}`);
+      throw new HysteriaError("RedisDataSource::flushAll", "FLUSH_FAILED");
     }
   }
 
@@ -317,7 +328,10 @@ export class RedisDataSource {
    */
   getRawConnection(): Redis {
     if (!this.isConnected || !this.redisConnection) {
-      throw new Error("redis connection not established");
+      throw new HysteriaError(
+        "RedisDataSource::getRawConnection",
+        "CONNECTION_NOT_ESTABLISHED",
+      );
     }
 
     return this.redisConnection;
@@ -327,12 +341,19 @@ export class RedisDataSource {
    * @description Disconnects from the redis database
    * @returns {Promise<void>}
    */
-  async disconnect(): Promise<void> {
+  async disconnect(forceError?: boolean): Promise<void> {
     try {
       await this.redisConnection.quit();
       this.isConnected = false;
     } catch (error) {
-      throw new Error(`Failed to disconnect from Redis: ${error}`);
+      if (forceError) {
+        throw new HysteriaError(
+          "RedisDataSource::disconnect",
+          "DISCONNECT_FAILED",
+        );
+      }
+
+      logger.warn("RedisDataSource::disconnect DISCONNECT_FAILED");
     }
   }
 

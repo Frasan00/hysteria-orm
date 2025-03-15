@@ -5,6 +5,7 @@ import { Collection } from "./mongo_models/mongo_collection";
 import { MongoClientImport } from "../../drivers/driver_constants";
 import { DriverFactory } from "../../drivers/drivers_factory";
 import { MongoOptions } from "mongodb";
+import { HysteriaError } from "../../errors/hysteria_error";
 
 dotenv.config();
 
@@ -41,8 +42,9 @@ export class MongoDataSource extends DataSource {
     if (!url) {
       url = process.env.MONGO_URL;
       if (!url) {
-        throw new Error(
-          "url is required to connect to mongo database and was not provided in the options nor the environment variables",
+        throw new HysteriaError(
+          "MongoDataSource::connect url is required to connect to mongo database and was not provided in the options nor the environment variables",
+          "REQUIRED_VALUE_NOT_SET",
         );
       }
     }
@@ -61,7 +63,10 @@ export class MongoDataSource extends DataSource {
 
   static getInstance(): MongoDataSource {
     if (!MongoDataSource.instance) {
-      throw new Error("mongo database connection not established");
+      throw new HysteriaError(
+        "MongoDataSource::getInstance mongo database connection not established",
+        "CONNECTION_NOT_ESTABLISHED",
+      );
     }
 
     return MongoDataSource.instance;
@@ -81,7 +86,10 @@ export class MongoDataSource extends DataSource {
    */
   static async disconnect(): Promise<void> {
     if (!this.instance) {
-      throw new Error("mongo database connection not established");
+      throw new HysteriaError(
+        "MongoDataSource::disconnect mongo database connection not established",
+        "CONNECTION_NOT_ESTABLISHED",
+      );
     }
 
     await this.instance.disconnect();

@@ -1,3 +1,4 @@
+import { HysteriaError } from "../../../errors/hysteria_error";
 import { log } from "../../../utils/logger";
 import { RelationQueryBuilder } from "../../model_query_builder/model_query_builder_types";
 import deleteTemplate from "../../resources/query/DELETE";
@@ -100,8 +101,9 @@ export default class SqlModelManagerUtils<T extends Model> {
       (relation) => relation.columnName === relationField,
     );
     if (!relation) {
-      throw new Error(
-        `Relation ${relationField} not found in model ${typeofModel}`,
+      throw new HysteriaError(
+        "SqlModelManagerUtils::getRelationFromModel",
+        `RELATION_NOT_FOUND_IN_MODEL_${relationField}`,
       );
     }
 
@@ -120,7 +122,10 @@ export default class SqlModelManagerUtils<T extends Model> {
     }
 
     if (!typeofModel.primaryKey) {
-      throw new Error(`Model ${typeofModel} does not have a primary key`);
+      throw new HysteriaError(
+        "SqlModelManagerUtils::parseQueryBuilderRelations",
+        "MODEL_HAS_NO_PRIMARY_KEY",
+      );
     }
 
     const resultArray = await Promise.all(

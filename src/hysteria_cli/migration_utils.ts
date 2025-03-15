@@ -12,6 +12,7 @@ import type {
 } from "../sql/sql_data_source_types";
 import { MigrationTableType } from "./resources/migration_table_type";
 import MigrationTemplates from "./resources/migration_templates";
+import { HysteriaError } from "../errors/hysteria_error";
 
 dotenv.config();
 const customRequire = createRequire(__filename);
@@ -55,7 +56,10 @@ export async function getMigrationTable(
       );
 
     default:
-      throw new Error("Unsupported database type");
+      throw new HysteriaError(
+        "MigrationUtils::getMigrationTable Unsupported database type",
+        "DEVELOPMENT_ERROR",
+      );
   }
 }
 
@@ -137,8 +141,10 @@ async function findMigrationModule(
   );
 
   if (!migrationModule) {
-    throw new Error(
-      "migrations module not found for migration: " + migrationName,
+    throw new HysteriaError(
+      "MigrationUtils::findMigrationModule migrations module not found for migration: " +
+        migrationName,
+      "MIGRATION_MODULE_NOT_FOUND",
     );
   }
 
@@ -162,12 +168,16 @@ function findMigrationNames(): string[] {
       return migrationFiles;
     }
 
-    throw new Error(
-      "No database migration files found on path: " + fullPathToMigrationPath,
+    throw new HysteriaError(
+      "MigrationUtils::findMigrationNames No database migration files found on path: " +
+        fullPathToMigrationPath,
+      "MIGRATION_MODULE_NOT_FOUND",
     );
   } catch (error) {
-    throw new Error(
-      "No database migration files found on path: " + fullPathToMigrationPath,
+    throw new HysteriaError(
+      "MigrationUtils::findMigrationNames No database migration files found on path: " +
+        fullPathToMigrationPath,
+      "MIGRATION_MODULE_NOT_FOUND",
     );
   }
 }

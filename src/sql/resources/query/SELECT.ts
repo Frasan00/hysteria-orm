@@ -1,6 +1,7 @@
 import type { SqlDataSourceType } from "../../sql_data_source_types";
 import { convertCase } from "../../../utils/case_utils";
 import { Model } from "../../models/model";
+import { HysteriaError } from "../../../errors/hysteria_error";
 
 const baseSelectMethods = [
   "*",
@@ -66,7 +67,10 @@ const selectTemplate = (
       case "postgres":
         return `"${identifier.replace(/"/g, '""')}"`;
       default:
-        throw new Error("Unsupported database type");
+        throw new HysteriaError(
+          "SelectTemplate::escapeIdentifier",
+          `UNSUPPORTED_DATABASE_TYPE_${dbType}`,
+        );
     }
   };
 
@@ -120,7 +124,10 @@ const selectTemplate = (
     distinct: `DISTINCT`,
     distinctOn: (...columns: string[]) => {
       if (dbType !== "postgres") {
-        throw new Error("DISTINCT ON is only supported in postgres");
+        throw new HysteriaError(
+          "SelectTemplate::distinctOn",
+          `DISTINCT_ON_NOT_SUPPORTED_IN_${dbType}`,
+        );
       }
 
       columns = columns.map((column) =>

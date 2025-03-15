@@ -1,3 +1,4 @@
+import { HysteriaError } from "../../../errors/hysteria_error";
 import type { SqlDataSourceType } from "../../sql_data_source_types";
 
 export const dropColumnForce = (table: string, dbType: SqlDataSourceType) => {
@@ -12,6 +13,9 @@ SET FOREIGN_KEY_CHECKS = 1;`;
     case "sqlite":
       return `DROP TABLE IF EXISTS "${table}";`;
     default:
-      throw new Error("Unsupported database type");
+      throw new HysteriaError(
+        "DropColumnTemplate::dropColumn",
+        `UNSUPPORTED_DATABASE_TYPE_${dbType}`,
+      );
   }
 };

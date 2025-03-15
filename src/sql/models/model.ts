@@ -332,9 +332,9 @@ export abstract class Model extends Entity {
         searchCriteria.every((column) => column in record),
       )
     ) {
-      throw new Error(
-        "Conflict columns are not present in the data, please make sure to include them in the data, " +
-          searchCriteria.join(", "),
+      throw new HysteriaError(
+        "Model::upsertMany",
+        "CONFLICT_COLUMNS_NOT_PRESENT_IN_DATA",
       );
     }
 

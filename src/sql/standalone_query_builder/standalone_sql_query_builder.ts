@@ -9,6 +9,7 @@ import whereTemplate, {
 import { format } from "sql-formatter";
 import type { SqlDataSourceType } from "../sql_data_source_types";
 import { getSqlDialect } from "../sql_runner/sql_runner";
+import { HysteriaError } from "../../errors/hysteria_error";
 
 export class StandaloneQueryBuilder {
   protected selectQuery: string;
@@ -993,8 +994,9 @@ export class StandaloneQueryBuilder {
           let index = startIndex;
           return query.replace(/PLACEHOLDER/g, () => `$${index++}`);
         default:
-          throw new Error(
-            "Unsupported database type, did you forget to set the dbType in the function params?",
+          throw new HysteriaError(
+            "StandaloneSqlQueryBuilder::toSql",
+            `UNSUPPORTED_DATABASE_TYPE_${dbType}`,
           );
       }
     }
@@ -1027,7 +1029,10 @@ export class StandaloneQueryBuilder {
         case "postgres":
           return `'${value}'`;
         default:
-          throw new Error("Unsupported database type");
+          throw new HysteriaError(
+            "StandaloneSqlQueryBuilder::parseValueForDatabase",
+            `UNSUPPORTED_DATABASE_TYPE_${this.dbType}`,
+          );
       }
     }
 
@@ -1048,7 +1053,10 @@ export class StandaloneQueryBuilder {
         case "postgres":
           return value ? "TRUE" : "FALSE";
         default:
-          throw new Error("Unsupported database type");
+          throw new HysteriaError(
+            "StandaloneSqlQueryBuilder::parseValueForDatabase",
+            `UNSUPPORTED_DATABASE_TYPE_${this.dbType}`,
+          );
       }
     }
 
@@ -1061,7 +1069,10 @@ export class StandaloneQueryBuilder {
         case "postgres":
           return `'${value.toISOString().slice(0, 19).replace("T", " ")}'`;
         default:
-          throw new Error("Unsupported database type");
+          throw new HysteriaError(
+            "StandaloneSqlQueryBuilder::parseValueForDatabase",
+            `UNSUPPORTED_DATABASE_TYPE_${this.dbType}`,
+          );
       }
     }
 
@@ -1077,7 +1088,10 @@ export class StandaloneQueryBuilder {
       case "postgres":
         return `"${tableName}"`;
       default:
-        throw new Error("Unsupported database type");
+        throw new HysteriaError(
+          "StandaloneSqlQueryBuilder::getDatabaseTableName",
+          `UNSUPPORTED_DATABASE_TYPE_${this.dbType}`,
+        );
     }
   }
 }

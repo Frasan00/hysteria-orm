@@ -1,3 +1,4 @@
+import { HysteriaError } from "../../../errors/hysteria_error";
 import { convertCase } from "../../../utils/case_utils";
 import logger from "../../../utils/logger";
 import type { RelationQueryBuilder } from "../../model_query_builder/model_query_builder_types";
@@ -108,14 +109,16 @@ function relationTemplates<T extends Model>(
         logger.error(
           `Foreign key values are missing for has one relation: ${relationName} ${foreignKeyValues}`,
         );
-        throw new Error(
-          `Foreign key values are missing for has one relation: ${relationName} ${foreignKeyValues}`,
+        throw new HysteriaError(
+          "RelationTemplate::hasOne",
+          `FOREIGN_KEY_VALUES_MISSING_FOR_HAS_ONE_RELATION_${relationName}`,
         );
       }
 
       if (!primaryKey) {
-        throw new Error(
-          `Related Model ${relatedModel} does not have a primary key`,
+        throw new HysteriaError(
+          "RelationTemplate::hasOne",
+          `RELATED_MODEL_DOES_NOT_HAVE_A_PRIMARY_KEY_${relatedModel}`,
         );
       }
 
@@ -145,14 +148,16 @@ ${joinQuery} WHERE ${relatedModel}.${convertCase(
         logger.error(
           `Foreign key values are missing for belongs to relation: ${relationName} ${foreignKeyValues}`,
         );
-        throw new Error(
-          `Foreign key values are missing for belongs to relation: ${relationName} ${foreignKeyValues}`,
+        throw new HysteriaError(
+          "RelationTemplate::belongsTo",
+          `FOREIGN_KEY_VALUES_MISSING_FOR_BELONGS_TO_RELATION_${relationName}`,
         );
       }
 
       if (!primaryKey) {
-        throw new Error(
-          `Related Model ${relatedModel} does not have a primary key`,
+        throw new HysteriaError(
+          "RelationTemplate::belongsTo",
+          `RELATED_MODEL_DOES_NOT_HAVE_A_PRIMARY_KEY_${relatedModel}`,
         );
       }
 
@@ -181,8 +186,9 @@ ${joinQuery}  WHERE ${relatedModel}.${primaryKey} IN (${foreignKeyValues
         logger.error(
           `Primary key values are missing for has many relation: ${relationName} ${primaryKeyValues}`,
         );
-        throw new Error(
-          `Primary key values are missing for has many relation: ${relationName} ${primaryKeyValues}`,
+        throw new HysteriaError(
+          "RelationTemplate::hasMany",
+          `PRIMARY_KEY_VALUES_MISSING_FOR_HAS_MANY_RELATION_${relationName}`,
         );
       }
 
@@ -219,8 +225,9 @@ ${joinQuery}  WHERE ${relatedModel}.${primaryKey} IN (${foreignKeyValues
         logger.error(
           `Primary key values are missing for many to many relation: ${relationName} ${primaryKeyValues}`,
         );
-        throw new Error(
-          `Primary key values are missing for many to many relation: ${relationName} ${primaryKeyValues}`,
+        throw new HysteriaError(
+          "RelationTemplate::manyToMany",
+          `PRIMARY_KEY_VALUES_MISSING_FOR_MANY_TO_MANY_RELATION_${relationName}`,
         );
       }
 
@@ -247,8 +254,9 @@ ${joinQuery}  WHERE ${relatedModel}.${primaryKey} IN (${foreignKeyValues
         !relatedModelManyToManyRelation ||
         !relatedModelManyToManyRelation.foreignKey
       ) {
-        throw new Error(
-          `Many to many relation not found for related model ${relatedModel} and through model ${throughModel}, the error is likely in the relation definition and was called by relation ${relationName} in model ${typeofModel.table}`,
+        throw new HysteriaError(
+          "RelationTemplate::manyToMany",
+          `MANY_TO_MANY_RELATION_NOT_FOUND_FOR_RELATED_MODEL_${relatedModel}`,
         );
       }
 
@@ -298,7 +306,10 @@ ${joinQuery}  WHERE ${relatedModel}.${primaryKey} IN (${foreignKeyValues
       };
 
     default:
-      throw new Error(`Unknown relation type: ${relation.type}`);
+      throw new HysteriaError(
+        "RelationTemplate::relationTemplates",
+        `UNKNOWN_RELATION_TYPE_${relation.type}`,
+      );
   }
 }
 

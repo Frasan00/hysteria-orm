@@ -8,6 +8,7 @@ import {
   ModelKeyOrAnySort,
 } from "../mongo_models/mongo_collection_types";
 import { serializeCollection, serializeCollections } from "../mongo_serializer";
+import { HysteriaError } from "../../../errors/hysteria_error";
 
 export type FetchHooks = "beforeFetch" | "afterFetch";
 type BinaryOperatorType = "$eq" | "$ne" | "$gt" | "$gte" | "$lt" | "$lte";
@@ -98,7 +99,7 @@ export class MongoQueryBuilder<T extends Collection> {
   ): Promise<T> {
     const result = await this.one(options);
     if (!result) {
-      throw new Error("ROW_NOT_FOUND");
+      throw new HysteriaError("MongoQueryBuilder::oneOrFail", "ROW_NOT_FOUND");
     }
 
     return result;

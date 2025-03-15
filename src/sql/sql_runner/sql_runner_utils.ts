@@ -1,3 +1,4 @@
+import { HysteriaError } from "../../errors/hysteria_error";
 import { Model } from "../models/model";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
 import { SqlDataSource } from "../sql_data_source";
@@ -48,8 +49,9 @@ export const promisifySqliteQuery = <T extends Model>(
     }
 
     if (!Array.isArray(options.models)) {
-      throw new Error(
-        "Models should be an array when massive creating on sqlite",
+      throw new HysteriaError(
+        "SqlRunnerUtils::massiveInsert models should be an array, report to the maintainers.",
+        "DEVELOPMENT_ERROR",
       );
     }
 

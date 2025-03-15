@@ -542,7 +542,7 @@ try {
     await trx.commit();
 } catch (error) {
     await trx.rollback();
-    throw new Error(error);
+    throw error;
 }
 
 // Using connection
@@ -553,7 +553,7 @@ try {
     await trx.commit();
 } catch (error) {
     await trx.rollback();
-    throw new Error(error);
+    throw error;
 }
 
 ```
@@ -581,7 +581,7 @@ try{
     await trx.commit();
 } catch (error) {
     await trx.rollback();
-    throw new Error(error);
+    throw error;
 }
 ```
 

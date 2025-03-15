@@ -8,6 +8,7 @@ import {
   Sqlite3Import,
 } from "../drivers/driver_constants";
 import { DriverFactory } from "../drivers/drivers_factory";
+import { HysteriaError } from "../errors/hysteria_error";
 import { log, logMessage } from "../utils/logger";
 import { parseTimeZone } from "../utils/timezone";
 import {
@@ -70,14 +71,20 @@ export const createSqlConnection = async (
         sqliteDriver.OPEN_READWRITE | sqliteDriver.OPEN_CREATE,
         (err) => {
           if (err) {
-            throw new Error(`Error while connecting to sqlite: ${err}`);
+            throw new HysteriaError(
+              "SqliteDataSource::createSqlConnection",
+              "CONNECTION_NOT_ESTABLISHED",
+            );
           }
         },
       );
       await new Promise((resolve) =>
         sqlitePool.run("SELECT 1", (err) => {
           if (err) {
-            throw new Error(`Error while connecting to sqlite: ${err}`);
+            throw new HysteriaError(
+              "SqliteDataSource::createSqlConnection",
+              "CONNECTION_NOT_ESTABLISHED",
+            );
           }
 
           resolve(true);
@@ -85,6 +92,9 @@ export const createSqlConnection = async (
       );
       return sqlitePool;
     default:
-      throw new Error(`Unsupported data source type: ${type}`);
+      throw new HysteriaError(
+        "SqlConnectionUtils::createSqlConnection",
+        `UNSUPPORTED_DATABASE_TYPE_${type}`,
+      );
   }
 };

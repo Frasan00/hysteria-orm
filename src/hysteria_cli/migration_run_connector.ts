@@ -47,7 +47,8 @@ export default async function runMigrationsConnector(
       );
 
       if (runUntilIndex === -1) {
-        throw new Error(`Migration ${runUntil} not found.`);
+        console.error(`Migration ${runUntil} not found.`);
+        process.exit(1);
       }
 
       const filteredMigrations = pendingMigrations.slice(0, runUntilIndex + 1);

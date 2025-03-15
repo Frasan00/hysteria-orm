@@ -37,12 +37,14 @@ program
     }
 
     if (!filePath) {
-      throw new Error("No SQL statement or file provided");
+      console.error("Error: No SQL statement or file provided");
+      process.exit(1);
     }
 
     filePath = path.resolve(filePath);
     if (!fs.existsSync(filePath)) {
-      throw new Error(`File not found: ${filePath}`);
+      console.error(`File not found: ${filePath}`);
+      process.exit(1);
     }
 
     const sqlStatement = fs.readFileSync(filePath, "utf-8");

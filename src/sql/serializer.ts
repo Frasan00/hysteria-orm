@@ -1,3 +1,4 @@
+import { HysteriaError } from "../errors/hysteria_error";
 import { convertCase } from "../utils/case_utils";
 import { isNestedObject } from "../utils/json_utils";
 import { Model } from "./models/model";
@@ -92,11 +93,6 @@ async function serializeModel<T extends Record<string, any>>(
       const modelColumn = columns.find((column) => column.columnName === key);
       if (modelColumn && modelColumn.serialize) {
         casedModel[camelCaseKey] = modelColumn.serialize(originalValue);
-        return;
-      }
-
-      if (Array.isArray(originalValue)) {
-        casedModel[camelCaseKey] = originalValue;
         return;
       }
 
@@ -271,7 +267,10 @@ async function processRelations(
         }
 
         default:
-          throw new Error("Relation type not supported");
+          throw new HysteriaError(
+            "Serializer::processRelations",
+            `RELATION_TYPE_NOT_SUPPORTED_${relation.type}`,
+          );
       }
     }),
   );

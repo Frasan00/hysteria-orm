@@ -1,3 +1,4 @@
+import { HysteriaError } from "../../../errors/hysteria_error";
 import type { SqlDataSourceType } from "../../sql_data_source_types";
 
 const dropTableTemplate = (
@@ -20,7 +21,10 @@ const dropTableTemplate = (
         ? `DROP TABLE IF EXISTS "${table}"`
         : `DROP TABLE "${table}"`;
     default:
-      throw new Error("Unsupported database type");
+      throw new HysteriaError(
+        "DropTableTemplate::dropTable",
+        `UNSUPPORTED_DATABASE_TYPE_${dbType}`,
+      );
   }
 };
 

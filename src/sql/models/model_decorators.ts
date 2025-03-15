@@ -1,3 +1,4 @@
+import { HysteriaError } from "../../errors/hysteria_error";
 import { Model } from "./model";
 import { BelongsTo } from "./relations/belongs_to";
 import { HasMany } from "./relations/has_many";
@@ -44,7 +45,10 @@ export function column(
     if (options.primaryKey) {
       const primaryKey = Reflect.getMetadata(PRIMARY_KEY_METADATA_KEY, target);
       if (primaryKey) {
-        throw new Error("Multiple primary keys are not allowed");
+        throw new HysteriaError(
+          "ModelDecorator::column",
+          "MULTIPLE_PRIMARY_KEYS_NOT_ALLOWED",
+        );
       }
       Reflect.defineMetadata(PRIMARY_KEY_METADATA_KEY, propertyKey, target);
     }
@@ -193,7 +197,10 @@ export function getRelations(target: typeof Model): Relation[] {
         return new HasMany(model(), columnName, foreignKey);
       case RelationEnum.manyToMany:
         if (!relation.manyToManyOptions) {
-          throw new Error("Many to many relation must have a through model");
+          throw new HysteriaError(
+            "ModelDecorator::getRelations",
+            "MANY_TO_MANY_RELATION_MUST_HAVE_A_THROUGH_MODEL",
+          );
         }
 
         return new ManyToMany(
@@ -203,7 +210,10 @@ export function getRelations(target: typeof Model): Relation[] {
           relation.foreignKey,
         );
       default:
-        throw new Error(`Unknown relation type: ${type}`);
+        throw new HysteriaError(
+          "ModelDecorator::getRelations",
+          `UNKNOWN_RELATION_TYPE_${type}`,
+        );
     }
   });
 }
