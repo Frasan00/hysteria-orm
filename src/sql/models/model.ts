@@ -4,7 +4,6 @@ import { Entity } from "../../entity";
 import { convertCase } from "../../utils/case_utils";
 import { baseSoftDeleteDate } from "../../utils/date_utils";
 import { ModelQueryBuilder } from "../model_query_builder/model_query_builder";
-import { parseDatabaseDataIntoModelResponse } from "../serializer";
 import { SqlDataSource } from "../sql_data_source";
 import { Transaction } from "../transactions/transaction";
 import {
@@ -210,6 +209,7 @@ export abstract class Model extends Entity {
   /**
    * @description Saves a new record to the database
    * @description $additional will be ignored if set in the modelData and won't be returned in the response
+   * @warning If not using postgres and the model has no primary key, the model will be saved, but it won't be possible to retrieve it so at that point it will be returned as null, this is not typed as Model | null for type safety reasons
    */
   static async insert<T extends Model>(
     this: new () => T | typeof Model,
@@ -224,6 +224,7 @@ export abstract class Model extends Entity {
   /**
    * @description Saves multiple records to the database
    * @description $additional will be ignored if set in the modelData and won't be returned in the response
+   * @warning If not using postgres and the model has no primary key, the models will be saved, but it won't be possible to retrieve them so at that point they will be returned as an empty array
    */
   static async insertMany<T extends Model>(
     this: new () => T | typeof Model,
@@ -409,6 +410,15 @@ export abstract class Model extends Entity {
 
     modelSqlInstance[column as keyof T] = value as T[keyof T];
     return modelSqlInstance;
+  }
+
+  static async truncate<T extends Model>(
+    this: new () => T | typeof Model,
+    options: BaseModelMethodOptions = {},
+  ): Promise<void> {
+    const typeofModel = this as unknown as typeof Model;
+    const modelManager = typeofModel.dispatchModelManager<T>(options);
+    return modelManager.truncate();
   }
 
   /**

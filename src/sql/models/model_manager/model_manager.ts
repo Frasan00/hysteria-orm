@@ -299,8 +299,14 @@ export class ModelManager<T extends Model> {
   }
 
   /**
-   * @description Returns a query builder instance
+   * @description Truncates the table
    */
+  async truncate(): Promise<void> {
+    await execSql(`TRUNCATE TABLE ${this.model.table}`, [], this.sqlDataSource);
+  }
+
+  /**
+   * @description Returns a query builder instance */
   query(): ModelQueryBuilder<T> {
     return new ModelQueryBuilder<T>(this.model, this.sqlDataSource);
   }
@@ -313,6 +319,15 @@ export class ModelManager<T extends Model> {
     models: T[],
     returnType: O,
   ): Promise<O extends "one" ? T : T[]> {
+    if (!this.model.primaryKey) {
+      if (returnType === "one") {
+        return null as unknown as O extends "one" ? T : T[];
+      }
+
+      const emptyArray: T[] = [];
+      return emptyArray as O extends "one" ? T : T[];
+    }
+
     // UUID and before fetch defined primary keys
     if (this.model.primaryKey && models[0][this.model.primaryKey as keyof T]) {
       const idsToFetchList = models.map(

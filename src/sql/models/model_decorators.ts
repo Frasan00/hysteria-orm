@@ -69,11 +69,15 @@ export function column(
 
 /**
  * @description Decorator to define a date column in the model, uses built in Date javascript object
+ * @description This will automatically convert the date to the correct format for the database
+ * @description the format is YYYY-MM-DD HH:MM:SS
+ * @description This will also automatically convert the date to the correct format when fetching from the database
  */
 export function dateColumn(options: ColumnOptions = {}): PropertyDecorator {
   return column({
     ...options,
-    prepare: (value: Date) => value.toISOString(),
+    prepare: (value: Date) =>
+      value.toISOString().slice(0, 19).replace("T", " "),
     serialize: (value: string) => new Date(value),
   });
 }

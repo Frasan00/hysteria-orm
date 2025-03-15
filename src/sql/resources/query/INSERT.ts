@@ -60,6 +60,9 @@ const formatValue = (
     if (dbType === "postgres") {
       return value.toISOString();
     }
+    if (dbType === "mysql" || dbType === "mariadb") {
+      return value.toISOString().slice(0, 19).replace("T", " ");
+    }
     return value;
   }
 
@@ -118,9 +121,6 @@ const insertTemplate = (
               }
               if (Array.isArray(value) || isNestedObject(value)) {
                 return `?`;
-              }
-              if (value instanceof Date) {
-                return `STR_TO_DATE(?, '%Y-%m-%dT%H:%i:%s.%fZ')`;
               }
               return `?`;
             })
@@ -190,9 +190,6 @@ VALUES (${placeholders}) RETURNING *;`;
               .map((value) => {
                 if (Buffer.isBuffer(value)) {
                   return "BINARY(?)";
-                }
-                if (value instanceof Date) {
-                  return "STR_TO_DATE(?, '%Y-%m-%dT%H:%i:%s.%fZ')";
                 }
                 return "?";
               })

@@ -10,7 +10,6 @@ beforeAll(async () => {
   await SqlDataSource.connect({
     type: "postgres",
     host: "localhost",
-    port: 5432,
     username: "root",
     password: "root",
     database: "test",
@@ -27,7 +26,6 @@ afterEach(async () => {
 
 test("should create an user", async () => {
   const user = await UserFactory.userWithoutPk(1);
-  console.log(JSON.stringify(user, null, 2));
   expect(user).not.toHaveProperty("id");
   expect(user).toHaveProperty("name");
   expect(user).toHaveProperty("email");
@@ -145,4 +143,44 @@ test("should handle different user statuses", async () => {
     where: { status: UserStatus.inactive },
   });
   expect(inactiveUsers).toHaveLength(1);
+});
+
+test("should firstOrCreate (read) an user", async () => {
+  const existingUser = await UserFactory.userWithoutPk(1);
+
+  const foundUser = await UserWithoutPk.firstOrCreate(
+    { email: existingUser.email },
+    { name: "Different Name", email: existingUser.email },
+  );
+
+  const newUser = await UserWithoutPk.findOne({
+    where: { email: existingUser.email },
+  });
+
+  const allUsers = await UserWithoutPk.find();
+  expect(foundUser).not.toHaveProperty("id");
+  expect(newUser).not.toBeNull();
+  expect(newUser?.email).toBe(existingUser.email);
+  expect(allUsers).toHaveLength(1);
+});
+
+test("should firstOrCreate (create) an user", async () => {
+  const foundUser = await UserWithoutPk.firstOrCreate(
+    { email: "" },
+    { ...UserFactory.getCommonUserData() },
+  );
+
+  const allUsers = await UserWithoutPk.find();
+  expect(foundUser).not.toHaveProperty("id");
+  expect(allUsers).toHaveLength(1);
+});
+
+test("should truncate the table", async () => {
+  await UserFactory.userWithoutPk(10);
+  const allUsers = await UserWithoutPk.find();
+  expect(allUsers).toHaveLength(10);
+
+  await UserWithoutPk.truncate();
+  const allUsersAfterTruncate = await UserWithoutPk.find();
+  expect(allUsersAfterTruncate).toHaveLength(0);
 });
