@@ -56,6 +56,7 @@ export class Transaction {
         await this.sqlDataSource.getCurrentDriverConnection("mysql").end();
         break;
       case "postgres":
+      case "cockroachdb":
         await this.sqlDataSource.getCurrentDriverConnection("postgres").end();
         break;
       case "sqlite":

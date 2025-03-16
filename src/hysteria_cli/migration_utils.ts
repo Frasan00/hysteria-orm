@@ -3,6 +3,7 @@ import { createRequire } from "module";
 import fs from "node:fs";
 import path from "node:path";
 import { register, RegisterOptions } from "ts-node";
+import { HysteriaError } from "../errors/hysteria_error";
 import { Migration } from "../sql/migrations/migration";
 import type {
   MysqlConnectionInstance,
@@ -12,7 +13,6 @@ import type {
 } from "../sql/sql_data_source_types";
 import { MigrationTableType } from "./resources/migration_table_type";
 import MigrationTemplates from "./resources/migration_templates";
-import { HysteriaError } from "../errors/hysteria_error";
 
 dotenv.config();
 const customRequire = createRequire(__filename);
@@ -33,6 +33,7 @@ export async function getMigrationTable(
       return result[0] as MigrationTableType[];
 
     case "postgres":
+    case "cockroachdb":
       const pgConnection = sqlConnection as PgPoolClientInstance;
       await pgConnection.query(MigrationTemplates.migrationTableTemplatePg());
       const pgResult = await pgConnection.query(

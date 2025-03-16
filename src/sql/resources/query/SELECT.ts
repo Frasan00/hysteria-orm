@@ -1,7 +1,7 @@
-import type { SqlDataSourceType } from "../../sql_data_source_types";
+import { HysteriaError } from "../../../errors/hysteria_error";
 import { convertCase } from "../../../utils/case_utils";
 import { Model } from "../../models/model";
-import { HysteriaError } from "../../../errors/hysteria_error";
+import type { SqlDataSourceType } from "../../sql_data_source_types";
 
 const baseSelectMethods = [
   "*",
@@ -65,6 +65,7 @@ const selectTemplate = (
       case "mariadb":
         return `\`${identifier.replace(/`/g, "``")}\``;
       case "postgres":
+      case "cockroachdb":
         return `"${identifier.replace(/"/g, '""')}"`;
       default:
         throw new HysteriaError(

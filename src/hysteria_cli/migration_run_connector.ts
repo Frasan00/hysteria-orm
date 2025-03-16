@@ -1,16 +1,16 @@
 import dotenv from "dotenv";
-import logger from "../utils/logger";
-import { SqlDataSource } from "../sql/sql_data_source";
+import { Migration } from "../sql/migrations/migration";
+import { MigrationController } from "../sql/migrations/migration_controller";
 import {
   BEGIN_TRANSACTION,
   COMMIT_TRANSACTION,
   ROLLBACK_TRANSACTION,
 } from "../sql/resources/query/TRANSACTION";
-import { MigrationTableType } from "./resources/migration_table_type";
-import { Migration } from "../sql/migrations/migration";
-import { getMigrations, getMigrationTable } from "./migration_utils";
-import { MigrationController } from "../sql/migrations/migration_controller";
+import { SqlDataSource } from "../sql/sql_data_source";
 import { SqlDataSourceType } from "../sql/sql_data_source_types";
+import logger from "../utils/logger";
+import { getMigrations, getMigrationTable } from "./migration_utils";
+import { MigrationTableType } from "./resources/migration_table_type";
 
 dotenv.config();
 

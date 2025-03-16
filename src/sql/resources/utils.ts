@@ -43,6 +43,7 @@ export function generateManyToManyQuery({
 
   switch (dbType) {
     case "postgres":
+    case "cockroachdb":
       jsonAggFunction = "json_agg";
       jsonObjectFunction = "json_build_object";
       jsonAlias = "t.json_data";

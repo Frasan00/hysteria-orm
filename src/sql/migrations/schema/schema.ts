@@ -1,14 +1,14 @@
-import type { SqlDataSourceType } from "../../sql_data_source_types";
-import path from "node:path";
-import fs from "fs";
 import dotenv from "dotenv";
+import fs from "fs";
+import path from "node:path";
+import { HysteriaError } from "../../../errors/hysteria_error";
+import { CaseConvention } from "../../../utils/case_utils";
 import createTableTemplate from "../../resources/migrations/CREATE_TABLE";
 import dropTableTemplate from "../../resources/migrations/DROP_TABLE";
+import type { SqlDataSourceType } from "../../sql_data_source_types";
+import { StandaloneQueryBuilder } from "../../standalone_query_builder/standalone_sql_query_builder";
 import ColumnBuilderAlter from "../column/alter_table/column_builder_alter";
 import ColumnTypeBuilder from "../column/create_table/column_type_builder";
-import { StandaloneQueryBuilder } from "../../standalone_query_builder/standalone_sql_query_builder";
-import { CaseConvention } from "../../../utils/case_utils";
-import { HysteriaError } from "../../../errors/hysteria_error";
 
 dotenv.config();
 
@@ -141,6 +141,7 @@ export default class Schema {
         this.rawQuery(`RENAME TABLE \`${oldtable}\` TO \`${newtable}\``);
         break;
       case "postgres":
+      case "cockroachdb":
         this.rawQuery(`ALTER TABLE "${oldtable}" RENAME TO "${newtable}"`);
         break;
       case "sqlite":
@@ -166,6 +167,7 @@ export default class Schema {
         this.rawQuery(`TRUNCATE TABLE \`${table}\``);
         break;
       case "postgres":
+      case "cockroachdb":
         this.rawQuery(`TRUNCATE TABLE "${table}"`);
         break;
       case "sqlite":
@@ -203,6 +205,7 @@ export default class Schema {
         );
         break;
       case "postgres":
+      case "cockroachdb":
         this.rawQuery(
           `CREATE ${
             unique ? "UNIQUE" : ""
@@ -237,6 +240,7 @@ export default class Schema {
         this.rawQuery(`DROP INDEX \`${indexName}\` ON \`${table}\``);
         break;
       case "postgres":
+      case "cockroachdb":
         this.rawQuery(`DROP INDEX ${indexName}`);
         break;
       case "sqlite":
@@ -267,6 +271,7 @@ export default class Schema {
         );
         break;
       case "postgres":
+      case "cockroachdb":
         this.rawQuery(
           `ALTER TABLE "${table}" ADD PRIMARY KEY (${columns.join(", ")})`,
         );
@@ -296,6 +301,7 @@ export default class Schema {
         this.rawQuery(`ALTER TABLE \`${table}\` DROP PRIMARY KEY`);
         break;
       case "postgres":
+      case "cockroachdb":
         this.rawQuery(`ALTER TABLE "${table}" DROP CONSTRAINT PRIMARY KEY`);
         break;
       case "sqlite":
@@ -331,6 +337,7 @@ export default class Schema {
         );
         break;
       case "postgres":
+      case "cockroachdb":
         this.rawQuery(
           `ALTER TABLE "${table}" ADD CONSTRAINT ${constraintName} FOREIGN KEY (${columns.join(
             ", ",
@@ -367,6 +374,7 @@ export default class Schema {
         );
         break;
       case "postgres":
+      case "cockroachdb":
         this.rawQuery(
           `ALTER TABLE "${table}" DROP CONSTRAINT ${constraintName}`,
         );
@@ -413,6 +421,7 @@ export default class Schema {
         );
         break;
       case "postgres":
+      case "cockroachdb":
         this.rawQuery(
           `ALTER TABLE "${table}" ADD CONSTRAINT ${constraintName} UNIQUE (${columns.join(
             ", ",
@@ -440,6 +449,7 @@ export default class Schema {
         this.rawQuery(`ALTER TABLE \`${table}\` DROP INDEX ${constraintName}`);
         break;
       case "postgres":
+      case "cockroachdb":
         this.rawQuery(
           `ALTER TABLE "${table}" DROP CONSTRAINT ${constraintName}`,
         );

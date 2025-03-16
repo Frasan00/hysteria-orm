@@ -1,32 +1,32 @@
 import { format } from "sql-formatter";
+import { HysteriaError } from "../../errors/hysteria_error";
 import { convertCase } from "../../utils/case_utils";
+import { convertPlaceHolderToValue } from "../../utils/placeholder";
 import { getBaseModelInstance, Model } from "../models/model";
 import { getModelColumns } from "../models/model_decorators";
 import type {
   ModelKey,
   ModelRelation,
 } from "../models/model_manager/model_manager_types";
-import type { UpdateOptions } from "./update_query_builder_types";
+import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
 import { getPaginationMetadata, PaginatedData } from "../pagination";
+import deleteTemplate from "../resources/query/DELETE";
 import selectTemplate from "../resources/query/SELECT";
+import updateTemplate from "../resources/query/UPDATE";
+import { parseDatabaseDataIntoModelResponse } from "../serializer";
 import { SqlDataSource } from "../sql_data_source";
+import { SqlDataSourceType } from "../sql_data_source_types";
 import { execSql, getSqlDialect } from "../sql_runner/sql_runner";
 import { DeleteOptions, SoftDeleteOptions } from "./delete_query_builder_type";
-import { WhereQueryBuilder } from "./where_query_builder";
 import type {
-  RelationQueryBuilder,
-  OneOptions,
+  FetchHooks,
   ManyOptions,
   ModelInstanceType,
-  FetchHooks,
+  OneOptions,
+  RelationQueryBuilder,
 } from "./model_query_builder_types";
-import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
-import { SqlDataSourceType } from "../sql_data_source_types";
-import { parseDatabaseDataIntoModelResponse } from "../serializer";
-import { HysteriaError } from "../../errors/hysteria_error";
-import { convertPlaceHolderToValue } from "../../utils/placeholder";
-import deleteTemplate from "../resources/query/DELETE";
-import updateTemplate from "../resources/query/UPDATE";
+import type { UpdateOptions } from "./update_query_builder_types";
+import { WhereQueryBuilder } from "./where_query_builder";
 
 export class ModelQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
   protected selectTemplate: ReturnType<typeof selectTemplate>;
@@ -558,6 +558,7 @@ export class ModelQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
         case "mariadb":
           return query.replace(/PLACEHOLDER/g, () => "?");
         case "postgres":
+        case "cockroachdb":
           let index = startIndex;
           return query.replace(/PLACEHOLDER/g, () => `$${index++}`);
         default:

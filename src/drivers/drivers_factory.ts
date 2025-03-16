@@ -1,12 +1,12 @@
 import type { DataSourceType } from "../data_source/data_source_types";
+import { HysteriaError } from "../errors/hysteria_error";
 import { Driver } from "./driver";
 import { DriverSpecificOptions } from "./driver_constants";
-import { PgDriver } from "./pg_driver";
 import { MongoDriver } from "./mongo_driver";
 import { MysqlDriver } from "./mysql_driver";
+import { PgDriver } from "./pg_driver";
 import { RedisDriver } from "./redis_driver";
 import { Sqlite3Driver } from "./sqlite3_driver";
-import { HysteriaError } from "../errors/hysteria_error";
 
 export class DriverFactory {
   static async getDriver(
@@ -18,6 +18,7 @@ export class DriverFactory {
       case "mariadb":
         return MysqlDriver.createDriver(driverSpecificOptions);
       case "postgres":
+      case "cockroachdb":
         return PgDriver.createDriver(driverSpecificOptions);
       case "sqlite":
         return Sqlite3Driver.createDriver(driverSpecificOptions);

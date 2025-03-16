@@ -12,6 +12,7 @@ const deleteTemplate = (table: string, dbType: SqlDataSourceType) => {
           baseQuery = baseQuery.replace("PLACEHOLDER", "?");
           break;
         case "postgres":
+        case "cockroachdb":
           baseQuery = baseQuery.replace("PLACEHOLDER", "$1");
           break;
         default:

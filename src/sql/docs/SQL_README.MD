@@ -57,12 +57,15 @@
 - Supported drivers are:
 ```bash
 ### Mysql or MariaDB
+npm install mysql2
 yarn add mysql2
 
-### Postgres
+### Postgres or cockroachdb
+npm install pg
 yarn add pg
 
 ### SQLite
+npm install sqlite3
 yarn add sqlite3
 ```
 
@@ -75,7 +78,7 @@ yarn add sqlite3
 ### Complete env example
 ```dotenv
 MIGRATION_PATH=database/migrations # default /database/migrations, this env always referees to the root of the project
-DB_TYPE=# mysql | postgres | mariadb | sqlite
+DB_TYPE=# mysql | postgres | mariadb | sqlite | cockroachdb
 DB_HOST=127.0.0.1
 DB_USER=root
 DB_PASSWORD=root
@@ -84,20 +87,21 @@ DB_PORT=3306 # default 3306 for Mysql and mariadb and 5432 for Postgres
 DB_LOGS=true # default false
 ```
 
-## Getting Started
+# Getting Started
 
 ### Establishing a Connection
 
 ```typescript
-import { Sql_data_source, DataSourceInput } from "hysteria-orm";
+import { SqlDataSource, DataSourceInput } from "hysteria-orm";
 
 const mysqlConfig: DataSourceInput = {
-    type: 'mysql' | 'postgres' | 'mariadb' | 'sqlite',
+    type: 'mysql' | 'postgres' | 'mariadb' | 'cockroachdb',
     host: HOST,
     port: PORT,
     username: USERNAME,
     password: PASSWORD,
     database: DATABASE,
+    driverOptions: <Current Driver Specific Options>
     logs: true, // query-logs (optional) - default: false
 }
 

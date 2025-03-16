@@ -8,6 +8,7 @@ const createTableTemplate = {
       case "mariadb":
         return `CREATE TABLE IF NOT EXISTS \`${table}\` (\n`;
       case "postgres":
+      case "cockroachdb":
         return `CREATE TABLE IF NOT EXISTS "${table}" (\n`;
       case "sqlite":
         return `CREATE TABLE IF NOT EXISTS "${table}" (\n`;
@@ -24,6 +25,7 @@ const createTableTemplate = {
       case "mariadb":
         return `CREATE TABLE \`${table}\` (\n`;
       case "postgres":
+      case "cockroachdb":
         return `CREATE TABLE "${table}" (\n`;
       case "sqlite":
         return `CREATE TABLE "${table}" (\n`;

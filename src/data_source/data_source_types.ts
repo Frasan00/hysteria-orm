@@ -8,6 +8,7 @@ import {
  * @description Creates a datasource for the selected database type with the provided credentials
  */
 export type DataSourceType =
+  | "cockroachdb"
   | "mysql"
   | "postgres"
   | "mariadb"
@@ -26,7 +27,7 @@ export interface MongoDataSourceInput extends CommonDataSourceInput {
 }
 
 export interface PostgresSqlDataSourceInput extends CommonDataSourceInput {
-  readonly type?: "postgres";
+  readonly type?: "postgres" | "cockroachdb";
   readonly host?: string;
   readonly port?: number;
   readonly username?: string;
@@ -37,7 +38,7 @@ export interface PostgresSqlDataSourceInput extends CommonDataSourceInput {
 
 export interface NotNullablePostgresSqlDataSourceInput
   extends PostgresSqlDataSourceInput {
-  readonly type: "postgres";
+  readonly type: "postgres" | "cockroachdb";
   readonly host: string;
   readonly port: number;
   readonly username: string;

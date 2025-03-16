@@ -98,6 +98,7 @@ class ColumnConstraintsBuilder implements ColumnConstraints {
       case "mysql":
       case "mariadb":
       case "postgres":
+      case "cockroachdb":
       case "sqlite":
         this.builder.appendToQuery(" PRIMARY KEY");
         return this;
@@ -121,6 +122,7 @@ class ColumnConstraintsBuilder implements ColumnConstraints {
         this.builder.appendToQuery(" AUTO_INCREMENT");
         return this;
       case "postgres":
+      case "cockroachdb":
         throw new HysteriaError(
           "ColumnConstraintsBuilder::autoIncrement",
           "NOT_SUPPORTED_IN_POSTGRESQL",
@@ -204,6 +206,7 @@ export default class ColumnTypeBuilder
         break;
 
       case "postgres":
+      case "cockroachdb":
         this.columnName = name;
         this.partialQuery += ` "${name}" VARCHAR(${length})`;
         break;
@@ -237,6 +240,7 @@ export default class ColumnTypeBuilder
     this.checkLastComma();
     switch (this.sqlType) {
       case "postgres":
+      case "cockroachdb":
         this.queryStatements.push(
           `CREATE EXTENSION IF NOT EXISTS "uuid-ossp";`,
         );
@@ -272,6 +276,7 @@ export default class ColumnTypeBuilder
     this.checkLastComma();
     switch (this.sqlType) {
       case "postgres":
+      case "cockroachdb":
         this.queryStatements.push(
           `CREATE EXTENSION IF NOT EXISTS "uuid-ossp";`,
         );
@@ -308,6 +313,7 @@ export default class ColumnTypeBuilder
         this.partialQuery += ` \`${name}\` TINYTEXT`;
         break;
       case "postgres":
+      case "cockroachdb":
         this.columnName = name;
         this.partialQuery += ` "${name}" TEXT`;
         break;
@@ -334,6 +340,7 @@ export default class ColumnTypeBuilder
         this.partialQuery += ` \`${name}\` MEDIUMTEXT`;
         break;
       case "postgres":
+      case "cockroachdb":
         this.columnName = name;
         this.partialQuery += ` "${name}" TEXT`;
         break;
@@ -360,6 +367,7 @@ export default class ColumnTypeBuilder
         this.partialQuery += ` \`${name}\` LONGTEXT`;
         break;
       case "postgres":
+      case "cockroachdb":
         this.columnName = name;
         this.partialQuery += ` "${name}" TEXT`;
         break;
@@ -390,6 +398,7 @@ export default class ColumnTypeBuilder
         this.partialQuery += ` \`${name}\` BINARY(${length})`;
         break;
       case "postgres":
+      case "cockroachdb":
         this.columnName = name;
         this.partialQuery += ` "${name}" BYTEA`;
         break;
@@ -422,6 +431,7 @@ export default class ColumnTypeBuilder
         )}'))`;
         break;
       case "postgres":
+      case "cockroachdb":
         this.columnName = name;
         this.partialQuery += ` "${name}" VARCHAR(255) CHECK(${name} IN ('${values.join(
           "', '",
@@ -446,6 +456,7 @@ export default class ColumnTypeBuilder
         this.partialQuery += ` \`${name}\` TEXT`;
         break;
       case "postgres":
+      case "cockroachdb":
         this.columnName = name;
         this.partialQuery += ` "${name}" TEXT`;
         break;
@@ -472,6 +483,7 @@ export default class ColumnTypeBuilder
         this.partialQuery += ` \`${name}\` CHAR(${length})`;
         break;
       case "postgres":
+      case "cockroachdb":
         this.columnName = name;
         this.partialQuery += ` "${name}" CHAR(${length})`;
         break;
@@ -497,6 +509,7 @@ export default class ColumnTypeBuilder
     this.checkLastComma();
     switch (this.sqlType) {
       case "postgres":
+      case "cockroachdb":
         this.columnName = name;
         this.partialQuery += ` "${name}" TEXT[]`;
         break;
@@ -519,6 +532,7 @@ export default class ColumnTypeBuilder
         this.partialQuery += ` \`${name}\` TINYINT`;
         break;
       case "postgres":
+      case "cockroachdb":
         this.columnName = name;
         this.partialQuery += ` "${name}" SMALLINT`;
         break;
@@ -545,6 +559,7 @@ export default class ColumnTypeBuilder
         this.partialQuery += ` \`${name}\` SMALLINT`;
         break;
       case "postgres":
+      case "cockroachdb":
         this.columnName = name;
         this.partialQuery += ` "${name}" SMALLINT`;
         break;
@@ -571,6 +586,7 @@ export default class ColumnTypeBuilder
         this.partialQuery += ` \`${name}\` MEDIUMINT`;
         break;
       case "postgres":
+      case "cockroachdb":
         this.columnName = name;
         this.partialQuery += ` "${name}" INTEGER`;
         break;
@@ -643,6 +659,7 @@ export default class ColumnTypeBuilder
         this.partialQuery += ` \`${name}\` INT ${length ? `(${length})` : ""}`;
         break;
       case "postgres":
+      case "cockroachdb":
         this.columnName = name;
         this.partialQuery += ` "${name}" INTEGER ${length ? `(${length})` : ""}`;
         break;
@@ -669,6 +686,7 @@ export default class ColumnTypeBuilder
         this.partialQuery += ` \`${name}\` BIGINT`;
         break;
       case "postgres":
+      case "cockroachdb":
         this.columnName = name;
         this.partialQuery += ` "${name}" BIGINT`;
         break;
@@ -726,6 +744,7 @@ export default class ColumnTypeBuilder
         this.partialQuery += ` \`${name}\` FLOAT(${options.precision}, ${options.scale})`;
         break;
       case "postgres":
+      case "cockroachdb":
         this.columnName = name;
         this.partialQuery += ` "${name}" REAL`;
         break;
@@ -761,6 +780,7 @@ export default class ColumnTypeBuilder
         this.partialQuery += ` \`${name}\` DECIMAL(${options.precision}, ${options.scale})`;
         break;
       case "postgres":
+      case "cockroachdb":
         this.columnName = name;
         this.partialQuery += ` "${name}" DECIMAL(${options.precision}, ${options.scale})`;
         break;
@@ -800,6 +820,7 @@ export default class ColumnTypeBuilder
         this.partialQuery += ` \`${name}\` DOUBLE(${options.precision}, ${options.scale})`;
         break;
       case "postgres":
+      case "cockroachdb":
         this.columnName = name;
         this.partialQuery += ` "${name}" DOUBLE PRECISION`;
         break;
@@ -831,6 +852,7 @@ export default class ColumnTypeBuilder
         break;
 
       case "postgres":
+      case "cockroachdb":
         this.columnName = name;
         this.partialQuery += ` "${name}" BOOLEAN`;
         break;
@@ -889,6 +911,7 @@ export default class ColumnTypeBuilder
     if (options && options.autoUpdate) {
       switch (this.sqlType) {
         case "postgres":
+        case "cockroachdb":
           this.afterDefinitionQueries.push(
             `CREATE OR REPLACE FUNCTION update_date_column() RETURNS TRIGGER AS $$
             BEGIN
@@ -944,7 +967,7 @@ export default class ColumnTypeBuilder
     }
 
     if (options && options.autoUpdate) {
-      if (this.sqlType === "postgres") {
+      if (this.sqlType === "postgres" || this.sqlType === "cockroachdb") {
         this.afterDefinitionQueries.push(
           `CREATE OR REPLACE FUNCTION update_timestamp_column() RETURNS TRIGGER AS $$
           BEGIN
@@ -976,6 +999,7 @@ export default class ColumnTypeBuilder
     this.columnName = name;
     switch (this.sqlType) {
       case "postgres":
+      case "cockroachdb":
         this.partialQuery += ` ${name} JSONB`;
         break;
       case "mariadb":

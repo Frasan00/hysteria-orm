@@ -1,12 +1,12 @@
 import dotenv from "dotenv";
 import { HysteriaError } from "../errors/hysteria_error";
 import type {
+  DataSourceInput,
   DataSourceType,
   MongoDataSourceInput,
-  PostgresSqlDataSourceInput,
   MysqlSqlDataSourceInput,
+  PostgresSqlDataSourceInput,
   SqliteDataSourceInput,
-  DataSourceInput,
 } from "./data_source_types";
 
 dotenv.config();
@@ -27,6 +27,9 @@ export abstract class DataSource {
       case "mongo":
         this.handleMongoSource(input as MongoDataSourceInput);
         break;
+      case "cockroachdb":
+        this.handleCockroachdbSource(input as PostgresSqlDataSourceInput);
+        break;
       case "postgres":
         this.handlePostgresSource(input as PostgresSqlDataSourceInput);
         break;
@@ -43,6 +46,19 @@ export abstract class DataSource {
 Valid database types are: [mongo, postgres, mysql, mariadb, sqlite]`,
           `UNSUPPORTED_DATABASE_TYPE_${this.type}`,
         );
+    }
+  }
+
+  protected handleCockroachdbSource(input?: PostgresSqlDataSourceInput) {
+    this.host = (input?.host || process.env.DB_HOST) as string;
+    this.port = +(input?.port as number) || +(process.env.DB_PORT as string);
+    this.username = (input?.username || process.env.DB_USER) as string;
+    this.password = (input?.password || process.env.DB_PASSWORD) as string;
+    this.database = (input?.database || process.env.DB_DATABASE) as string;
+    this.logs = input?.logs || process.env.DB_LOGS === "true" || false;
+
+    if (!this.port) {
+      this.port = 26257;
     }
   }
 

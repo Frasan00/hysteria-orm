@@ -19,6 +19,7 @@ const formatValue = (value: any, dbType: SqlDataSourceType): any => {
     case value instanceof Date:
       switch (dbType) {
         case "postgres":
+        case "cockroachdb":
           return value.toISOString();
         default:
           return value;
@@ -45,6 +46,7 @@ const getPlaceholder = (
     case "sqlite":
       return "?";
     case "postgres":
+    case "cockroachdb":
       const typeCast = Buffer.isBuffer(value)
         ? "bytea"
         : Array.isArray(value)
@@ -125,6 +127,7 @@ const updateTemplate = (
           ];
           break;
         case "postgres":
+        case "cockroachdb":
           setClause = columns
             .map((column, index) => {
               return `${column} = ${getPlaceholder(values[index], index, dbType)}`;
@@ -143,7 +146,9 @@ const updateTemplate = (
       }
 
       const primaryKeyPlaceholder =
-        dbType === "postgres" ? `$${columns.length + 1}` : "?";
+        dbType === "postgres" || dbType === "cockroachdb"
+          ? `$${columns.length + 1}`
+          : "?";
       const query = `UPDATE ${table}
 SET ${setClause}
 WHERE ${primaryKey} = ${primaryKeyPlaceholder};`;
@@ -199,6 +204,7 @@ WHERE ${primaryKey} = ${primaryKeyPlaceholder};`;
           });
           break;
         case "postgres":
+        case "cockroachdb":
           setClause = columns
             .map((column, index) => {
               return `${column} = ${getPlaceholder(values[index], index, dbType)}`;

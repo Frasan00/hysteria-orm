@@ -290,6 +290,7 @@ export class SqlDataSource extends DataSource {
         SqlDataSource.instance = null;
         break;
       case "postgres":
+      case "cockroachdb":
         (this.sqlConnection as PgPoolClientInstance).end();
         SqlDataSource.instance = null;
         break;

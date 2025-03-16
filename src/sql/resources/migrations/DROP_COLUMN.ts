@@ -9,6 +9,7 @@ export const dropColumnForce = (table: string, dbType: SqlDataSourceType) => {
 DROP TABLE IF EXISTS \`${table}\`;
 SET FOREIGN_KEY_CHECKS = 1;`;
     case "postgres":
+    case "cockroachdb":
       return `DROP TABLE IF EXISTS "${table}" CASCADE;`;
     case "sqlite":
       return `DROP TABLE IF EXISTS "${table}";`;

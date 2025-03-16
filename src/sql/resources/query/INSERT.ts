@@ -45,7 +45,7 @@ const formatValue = (
   }
 
   if (Array.isArray(value)) {
-    if (dbType === "postgres") {
+    if (dbType === "postgres" || dbType === "cockroachdb") {
       return JSON.stringify(value);
     }
 
@@ -57,7 +57,7 @@ const formatValue = (
   }
 
   if (value instanceof Date) {
-    if (dbType === "postgres") {
+    if (dbType === "postgres" || dbType === "cockroachdb") {
       return value.toISOString();
     }
     if (dbType === "mysql" || dbType === "mariadb") {
@@ -132,6 +132,7 @@ const insertTemplate = (
           params = values.map((value) => formatValue(value, dbType));
           break;
         case "postgres":
+        case "cockroachdb":
           placeholders = columns
             .map((_, index) => {
               const value = values[index];
@@ -149,7 +150,7 @@ const insertTemplate = (
       }
 
       const query =
-        dbType !== "postgres"
+        dbType !== "postgres" && dbType !== "cockroachdb"
           ? `INSERT INTO ${table} (${columns.join(", ")})
 VALUES (${placeholders});`
           : `INSERT INTO ${table} (${columns.join(", ")})
@@ -203,6 +204,7 @@ VALUES (${placeholders}) RETURNING *;`;
           });
           break;
         case "postgres":
+        case "cockroachdb":
           valueSets = values.map((valueSet, rowIndex) => {
             params.push(...valueSet.map((value) => formatValue(value, dbType)));
             return `(${valueSet
@@ -224,7 +226,7 @@ VALUES (${placeholders}) RETURNING *;`;
       }
 
       const query =
-        dbType !== "postgres"
+        dbType !== "postgres" && dbType !== "cockroachdb"
           ? `INSERT INTO ${table} (${columns.join(", ")})
 VALUES ${valueSets.join(", ")};`
           : `INSERT INTO ${table} (${columns.join(", ")})

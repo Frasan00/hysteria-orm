@@ -76,7 +76,8 @@ yarn add ioredis
 1) Mysql
 2) MariaDB
 3) Postgres
-4) SQLite
+4) cockroachDB
+5) SQLite
 
 ### NoSQl
 - [Redis](src/no_sql/redis/docs/REDIS.MD)

@@ -47,6 +47,7 @@ const whereTemplate = (
             params = [value];
             break;
           case "postgres":
+          case "cockroachdb":
             query = `\nWHERE ${column}::jsonb ${operator} PLACEHOLDER::jsonb`;
             break;
           default:
@@ -81,6 +82,7 @@ const whereTemplate = (
             query = ` AND JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) ${operator} PLACEHOLDER`;
             break;
           case "postgres":
+          case "cockroachdb":
             query = ` AND ${column}::jsonb ${operator} PLACEHOLDER::jsonb`;
             break;
           default:
@@ -115,6 +117,7 @@ const whereTemplate = (
             query = ` OR JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) ${operator} PLACEHOLDER`;
             break;
           case "postgres":
+          case "cockroachdb":
             query = ` OR ${column}::jsonb ${operator} PLACEHOLDER::jsonb`;
             break;
           default:
@@ -145,6 +148,7 @@ const whereTemplate = (
             query = `\nWHERE JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) != PLACEHOLDER`;
             break;
           case "postgres":
+          case "cockroachdb":
             query = `\nWHERE ${column}::jsonb != PLACEHOLDER::jsonb`;
             break;
           default:
@@ -175,6 +179,7 @@ const whereTemplate = (
             query = ` AND JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) != PLACEHOLDER`;
             break;
           case "postgres":
+          case "cockroachdb":
             query = ` AND ${column}::jsonb != PLACEHOLDER::jsonb`;
             break;
           default:
@@ -205,6 +210,7 @@ const whereTemplate = (
             query = ` OR JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) != PLACEHOLDER`;
             break;
           case "postgres":
+          case "cockroachdb":
             query = ` OR ${column}::jsonb != PLACEHOLDER::jsonb`;
             break;
           default:
@@ -235,6 +241,7 @@ const whereTemplate = (
             query = `\nWHERE JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) BETWEEN PLACEHOLDER AND PLACEHOLDER`;
             break;
           case "postgres":
+          case "cockroachdb":
             query = `\nWHERE ${column}::jsonb BETWEEN PLACEHOLDER::jsonb AND PLACEHOLDER::jsonb`;
             break;
           default:
@@ -265,6 +272,7 @@ const whereTemplate = (
             query = ` AND JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) BETWEEN PLACEHOLDER AND PLACEHOLDER`;
             break;
           case "postgres":
+          case "cockroachdb":
             query = ` AND ${column}::jsonb BETWEEN PLACEHOLDER::jsonb AND PLACEHOLDER::jsonb`;
             break;
           default:
@@ -295,6 +303,7 @@ const whereTemplate = (
             query = ` OR JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) BETWEEN PLACEHOLDER AND PLACEHOLDER`;
             break;
           case "postgres":
+          case "cockroachdb":
             query = ` OR ${column}::jsonb BETWEEN PLACEHOLDER::jsonb AND PLACEHOLDER::jsonb`;
             break;
           default:
@@ -325,6 +334,7 @@ const whereTemplate = (
             query = `\nWHERE JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) NOT BETWEEN PLACEHOLDER AND PLACEHOLDER`;
             break;
           case "postgres":
+          case "cockroachdb":
             query = `\nWHERE ${column}::jsonb NOT BETWEEN PLACEHOLDER::jsonb AND PLACEHOLDER::jsonb`;
             break;
           default:
@@ -355,6 +365,7 @@ const whereTemplate = (
             query = ` AND JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) NOT BETWEEN PLACEHOLDER AND PLACEHOLDER`;
             break;
           case "postgres":
+          case "cockroachdb":
             query = ` AND ${column}::jsonb NOT BETWEEN PLACEHOLDER::jsonb AND PLACEHOLDER::jsonb`;
             break;
           default:
@@ -385,6 +396,7 @@ const whereTemplate = (
             query = ` OR JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) NOT BETWEEN PLACEHOLDER AND PLACEHOLDER`;
             break;
           case "postgres":
+          case "cockroachdb":
             query = ` OR ${column}::jsonb NOT BETWEEN PLACEHOLDER::jsonb AND PLACEHOLDER::jsonb`;
             break;
           default:
@@ -417,6 +429,7 @@ const whereTemplate = (
               .join(", ")})`;
             break;
           case "postgres":
+          case "cockroachdb":
             query = `\nWHERE ${convertCase(
               column,
               typeofModel.databaseCaseConvention,
@@ -452,6 +465,7 @@ const whereTemplate = (
               .join(", ")})`;
             break;
           case "postgres":
+          case "cockroachdb":
             query = ` AND ${convertCase(
               column,
               typeofModel.databaseCaseConvention,
@@ -487,6 +501,7 @@ const whereTemplate = (
               .join(", ")})`;
             break;
           case "postgres":
+          case "cockroachdb":
             query = ` OR ${convertCase(
               column,
               typeofModel.databaseCaseConvention,
@@ -522,6 +537,7 @@ const whereTemplate = (
               .join(", ")})`;
             break;
           case "postgres":
+          case "cockroachdb":
             query = `\nWHERE ${convertCase(
               column,
               typeofModel.databaseCaseConvention,
@@ -557,6 +573,7 @@ const whereTemplate = (
               .join(", ")})`;
             break;
           case "postgres":
+          case "cockroachdb":
             query = ` AND ${convertCase(
               column,
               typeofModel.databaseCaseConvention,
@@ -592,6 +609,7 @@ const whereTemplate = (
               .join(", ")})`;
             break;
           case "postgres":
+          case "cockroachdb":
             query = ` OR ${convertCase(
               column,
               typeofModel.databaseCaseConvention,
@@ -667,6 +685,7 @@ const whereTemplate = (
     whereRegex: (column: string, regex: RegExp) => {
       switch (dbType) {
         case "postgres":
+        case "cockroachdb":
           return {
             query: `\nWHERE ${convertCase(
               column,
@@ -698,6 +717,7 @@ const whereTemplate = (
     andWhereRegex: (column: string, regex: RegExp) => {
       switch (dbType) {
         case "postgres":
+        case "cockroachdb":
           return {
             query: ` AND ${convertCase(
               column,
@@ -729,6 +749,7 @@ const whereTemplate = (
     orWhereRegex: (column: string, regex: RegExp) => {
       switch (dbType) {
         case "postgres":
+        case "cockroachdb":
           return {
             query: ` OR ${convertCase(
               column,

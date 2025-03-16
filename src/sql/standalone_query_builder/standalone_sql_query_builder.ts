@@ -1,3 +1,5 @@
+import { format } from "sql-formatter";
+import { HysteriaError } from "../../errors/hysteria_error";
 import { CaseConvention, convertCase } from "../../utils/case_utils";
 import { Model } from "../models/model";
 import joinTemplate from "../resources/query/JOIN";
@@ -6,10 +8,8 @@ import whereTemplate, {
   BaseValues,
   BinaryOperatorType,
 } from "../resources/query/WHERE";
-import { format } from "sql-formatter";
 import type { SqlDataSourceType } from "../sql_data_source_types";
 import { getSqlDialect } from "../sql_runner/sql_runner";
-import { HysteriaError } from "../../errors/hysteria_error";
 
 export class StandaloneQueryBuilder {
   protected selectQuery: string;
@@ -991,6 +991,7 @@ export class StandaloneQueryBuilder {
         case "mariadb":
           return query.replace(/PLACEHOLDER/g, () => "?");
         case "postgres":
+        case "cockroachdb":
           let index = startIndex;
           return query.replace(/PLACEHOLDER/g, () => `$${index++}`);
         default:
@@ -1027,6 +1028,7 @@ export class StandaloneQueryBuilder {
         case "mariadb":
           return `'${value}'`;
         case "postgres":
+        case "cockroachdb":
           return `'${value}'`;
         default:
           throw new HysteriaError(
@@ -1051,6 +1053,7 @@ export class StandaloneQueryBuilder {
         case "mariadb":
           return value ? "1" : "0";
         case "postgres":
+        case "cockroachdb":
           return value ? "TRUE" : "FALSE";
         default:
           throw new HysteriaError(
@@ -1067,6 +1070,7 @@ export class StandaloneQueryBuilder {
         case "mariadb":
           return `'${value.toISOString().slice(0, 19).replace("T", " ")}'`;
         case "postgres":
+        case "cockroachdb":
           return `'${value.toISOString().slice(0, 19).replace("T", " ")}'`;
         default:
           throw new HysteriaError(
@@ -1086,6 +1090,7 @@ export class StandaloneQueryBuilder {
       case "mariadb":
         return tableName;
       case "postgres":
+      case "cockroachdb":
         return `"${tableName}"`;
       default:
         throw new HysteriaError(

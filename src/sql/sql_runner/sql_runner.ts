@@ -1,18 +1,18 @@
 import { format } from "sql-formatter";
+import { HysteriaError } from "../../errors/hysteria_error";
 import { log, logMessage } from "../../utils/logger";
+import { convertPlaceHolderToValue } from "../../utils/placeholder";
+import { Model } from "../models/model";
+import { SqlDataSource } from "../sql_data_source";
 import {
   ConnectionPolicies,
   SqlDataSourceType,
 } from "../sql_data_source_types";
-import { convertPlaceHolderToValue } from "../../utils/placeholder";
-import { SqlDataSource } from "../sql_data_source";
-import { HysteriaError } from "../../errors/hysteria_error";
 import {
   Returning,
   SqlLiteOptions,
   SqlRunnerReturnType,
 } from "./sql_runner_types";
-import { Model } from "../models/model";
 import { promisifySqliteQuery } from "./sql_runner_utils";
 
 export const getSqlDialect = (
@@ -26,6 +26,7 @@ export const getSqlDialect = (
       return "mariadb";
 
     case "postgres":
+    case "cockroachdb":
       return "postgresql";
 
     case "sqlite":
@@ -69,6 +70,7 @@ export const execSql = async <M extends Model, T extends Returning>(
 
       return mysqlResult as SqlRunnerReturnType<T>;
     case "postgres":
+    case "cockroachdb":
       const pgDriver = sqlDataSource.getCurrentDriverConnection("postgres");
       const pgResult = await withRetry(
         () => pgDriver.query(query, params),

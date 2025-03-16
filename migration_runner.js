@@ -32,11 +32,18 @@ const pgConfig = {
   database: "test",
 };
 
+const cockroachdbConfig = {
+  type: "cockroachdb",
+  host: "localhost",
+  user: "root",
+  port: 26257,
+  password: "root",
+  database: "test",
+};
 const sqliteConfig = {
   type: "sqlite",
   database: "./sqlite.db",
 };
-
 
 migrations.forEach((migration) => {
   // MySQL
@@ -50,6 +57,10 @@ migrations.forEach((migration) => {
   // PostgreSQL
   const pgEnv = `MIGRATION_PATH=${migration} DB_TYPE=${pgConfig.type} DB_HOST=${pgConfig.host} DB_USER=${pgConfig.user} DB_PASSWORD=${pgConfig.password} DB_DATABASE=${pgConfig.database}`;
   execSync(`${pgEnv} yarn test:fresh --verbose`, { stdio: 'inherit' });
+
+  // CockroachDB
+  const cockroachdbEnv = `MIGRATION_PATH=${migration} DB_TYPE=${cockroachdbConfig.type} DB_HOST=${cockroachdbConfig.host} DB_USER=${cockroachdbConfig.user} DB_PASSWORD=${cockroachdbConfig.password} DB_DATABASE=${cockroachdbConfig.database}`;
+  execSync(`${cockroachdbEnv} yarn test:fresh --verbose`, { stdio: 'inherit' });
 
   // SQLite
   const sqliteEnv = `MIGRATION_PATH=${migration.replace("migrations", "migrations_sqlite")} DB_TYPE=${sqliteConfig.type} DB_DATABASE=${sqliteConfig.database}`;

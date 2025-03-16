@@ -13,6 +13,7 @@ const dropTableTemplate = (
         ? `DROP TABLE IF EXISTS \`${table}\``
         : `DROP TABLE \`${table}\``;
     case "postgres":
+    case "cockroachdb":
       return ifExists
         ? `DROP TABLE IF EXISTS "${table}"`
         : `DROP TABLE "${table}"`;

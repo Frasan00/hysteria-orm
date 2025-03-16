@@ -53,6 +53,7 @@ export abstract class ColumnBuilder {
             this.partialQuery += `,\n\tCONSTRAINT fk_${uniqueId}_${reference.localColumn} FOREIGN KEY (${reference.localColumn}) REFERENCES ${reference.table}(${reference.column})`;
             break;
           case "postgres":
+          case "cockroachdb":
             this.partialQuery += `,\n\tCONSTRAINT fk_${uniqueId}_${reference.localColumn} FOREIGN KEY (${reference.localColumn}) REFERENCES ${reference.table}(${reference.column})`;
             break;
           case "sqlite":

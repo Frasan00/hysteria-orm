@@ -89,6 +89,8 @@ export type GetCurrentConnectionReturnType<T = SqlDataSourceType> =
       ? MysqlConnectionInstance
       : T extends "postgres"
         ? PgPoolClientInstance
-        : T extends "sqlite"
-          ? SqliteConnectionInstance
-          : never;
+        : T extends "cockroachdb"
+          ? PgPoolClientInstance
+          : T extends "sqlite"
+            ? SqliteConnectionInstance
+            : never;

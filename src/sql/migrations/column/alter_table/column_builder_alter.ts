@@ -201,6 +201,7 @@ export default class ColumnBuilderAlter {
           query += ` AFTER ${options.afterColumn}`;
           break;
         case "postgres":
+        case "cockroachdb":
           throw new HysteriaError(
             "ColumnBuilderAlter::addColumn::afterColumn",
             "NOT_SUPPORTED_IN_POSTGRES",
@@ -244,6 +245,7 @@ export default class ColumnBuilderAlter {
           query += " DEFAULT CURRENT_TIMESTAMP";
           break;
         case "postgres":
+        case "cockroachdb":
           query += " DEFAULT CURRENT_TIMESTAMP";
           break;
         case "sqlite":
@@ -264,6 +266,7 @@ export default class ColumnBuilderAlter {
           query += " ON UPDATE CURRENT_TIMESTAMP";
           break;
         case "postgres":
+        case "cockroachdb":
           query += " ON UPDATE CURRENT_TIMESTAMP";
           break;
         case "sqlite":
@@ -301,6 +304,7 @@ export default class ColumnBuilderAlter {
           query += ` AFTER ${options.afterColumn}`;
           break;
         case "postgres":
+        case "cockroachdb":
           throw new HysteriaError(
             "ColumnBuilderAlter::addDateColumn::afterColumn",
             "NOT_SUPPORTED_IN_POSTGRES",
@@ -373,6 +377,22 @@ END $$;
 ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
       `;
         break;
+      case "cockroachdb":
+        const enumTypeNameCockroach = `${this.table}_${columnName}_enum`;
+        const parsedValuesCockroach = values.map((value) => {
+          if (typeof value === "number") {
+            return value;
+          } else if (typeof value === "boolean") {
+            return value ? 1 : 0;
+          } else if (typeof value === "string") {
+            return `'${value}'`;
+          }
+        });
+        this.partialQuery = `
+CREATE TYPE IF NOT EXISTS ${enumTypeNameCockroach} AS ENUM(${parsedValuesCockroach.join(", ")});
+ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeNameCockroach}
+      `;
+        break;
       case "sqlite":
         const parsedValuesSqlite = values.map((value) => {
           if (typeof value === "number") {
@@ -417,6 +437,7 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
           this.partialQuery += ` AFTER ${options.afterColumn}`;
           break;
         case "postgres":
+        case "cockroachdb":
           throw new HysteriaError(
             "ColumnBuilderAlter::addEnumColumn::afterColumn",
             "NOT_SUPPORTED_IN_POSTGRES",
@@ -449,6 +470,7 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
         this.partialQuery = `ALTER TABLE ${this.table} DROP COLUMN ${columnName}`;
         break;
       case "postgres":
+      case "cockroachdb":
         this.partialQuery = `ALTER TABLE ${this.table} DROP COLUMN ${columnName}`;
         break;
       case "sqlite":
@@ -480,6 +502,7 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
         this.partialQuery = `ALTER TABLE ${this.table} RENAME COLUMN \`${oldColumnName}\` TO \`${newColumnName}\``;
         break;
       case "postgres":
+      case "cockroachdb":
         this.partialQuery = `ALTER TABLE ${this.table} RENAME COLUMN ${oldColumnName} TO ${newColumnName}`;
         break;
       case "sqlite":
@@ -512,6 +535,7 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
         }`;
         break;
       case "postgres":
+      case "cockroachdb":
         this.partialQuery = `ALTER TABLE ${
           this.table
         } ALTER COLUMN ${columnName} TYPE ${newDataType}${
@@ -561,6 +585,7 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
           this.partialQuery += ` AFTER ${options.afterColumn}`;
           break;
         case "postgres":
+        case "cockroachdb":
           throw new HysteriaError(
             "ColumnBuilderAlter::modifyColumnType::afterColumn",
             "NOT_SUPPORTED_IN_POSTGRES",
@@ -588,6 +613,7 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
         this.partialQuery = `RENAME TABLE ${oldtable} TO ${newtable}`;
         break;
       case "postgres":
+      case "cockroachdb":
         this.partialQuery = `ALTER TABLE ${oldtable} RENAME TO ${newtable}`;
         break;
       case "sqlite":
@@ -623,6 +649,7 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
         this.partialQuery = `ALTER TABLE ${this.table} ALTER COLUMN ${columnName} SET DEFAULT ${defaultValue}`;
         break;
       case "postgres":
+      case "cockroachdb":
         this.partialQuery = `ALTER TABLE ${this.table} ALTER COLUMN ${columnName} SET DEFAULT ${defaultValue}`;
         break;
       case "sqlite":
@@ -652,6 +679,7 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
         this.partialQuery = `ALTER TABLE ${this.table} ALTER COLUMN ${columnName} DROP DEFAULT`;
         break;
       case "postgres":
+      case "cockroachdb":
         this.partialQuery = `ALTER TABLE ${this.table} ALTER COLUMN ${columnName} DROP DEFAULT`;
         break;
       case "sqlite":
@@ -695,6 +723,7 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
         } ON UPDATE ${options.references.onUpdate || "NO ACTION"}`;
         break;
       case "postgres":
+      case "cockroachdb":
         this.partialQuery = `ALTER TABLE ${
           this.table
         } ADD CONSTRAINT ${fkName} FOREIGN KEY (${columnName}) REFERENCES ${
@@ -735,6 +764,7 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
         this.partialQuery = `ALTER TABLE ${this.table} DROP FOREIGN KEY ${fkName}`;
         break;
       case "postgres":
+      case "cockroachdb":
         this.partialQuery = `ALTER TABLE ${this.table} DROP CONSTRAINT ${fkName}`;
         break;
       case "sqlite":

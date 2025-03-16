@@ -12,6 +12,7 @@ export const convertPlaceHolderToValue = (
     case "mariadb":
       return query.replace(/PLACEHOLDER/g, () => "?");
     case "postgres":
+    case "cockroachdb":
       let index = startIndex;
       return query.replace(/PLACEHOLDER/g, () => `$${index++}`);
     default:

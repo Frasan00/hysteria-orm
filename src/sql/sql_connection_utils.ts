@@ -44,6 +44,7 @@ export const createSqlConnection = async (
       });
       return mysqlPool;
     case "postgres":
+    case "cockroachdb":
       const pgInput = input as PostgresSqlDataSourceInput;
       const pgDriver = driver as PgImport;
       const pgPool = new pgDriver.Pool({
