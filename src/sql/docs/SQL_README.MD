@@ -867,6 +867,7 @@ const { query, params } = userQueryBuilder
 - Migration cli should be used in the root of the project
 - Migrations cli starts from the current user location (process.cwd) and appends the path/to/migrations (default `database/migrations`), this can be customized with `MIGRATION_PATH` environment variable
 - In order to run typescript migrations you need to have a `tsconfig.json` in the root of the project configured.
+- By default the migration queries are hidden, you can use --verbose in order to get all the query logs
 
 ## hysteria-orm-cli for Migrations
 - You can run the cli using `npx hysteria` (for npm) or `yarn run hysteria` (for yarn)
@@ -878,17 +879,17 @@ const { query, params } = userQueryBuilder
 - You can specify the mode of the migration with -c that spawns a create table migration and -a that spawns an alter table migration
 - If specifing a mode for the migration, you can specify a table name with --table
 
-## run:migrations [runUntil] [-t, --tsconfig]
+## run:migrations [runUntil] [-t, --tsconfig] [-v, --verbose]
 - Runs all pending migrations <optional - migration_file_name>
 - If the migration file name is specified then migrations will be run until that migration
 - If you are using typescript you can specify the path to the tsconfig file with the -t flag to resolve type errors
 
-## rollback:migrations [rollbackUntil] [-t, --tsconfig]
+## rollback:migrations [rollbackUntil] [-t, --tsconfig] [-v, --verbose]
 - Rollbacks all existing migrations <optional - migration_file_name>
 - If the migration file name is specified then migrations will be rolled back from the last migration until that migration
 - If you are using typescript you can specify the path to the tsconfig file with the -t flag to resolve type errors
 
-## refresh:migrations [-t, --tsconfig]
+## refresh:migrations [-t, --tsconfig] [-v, --verbose]
 - Rollbacks all existing migrations and runs them again
 - If you are using typescript you can specify the path to the tsconfig file with the -t flag to resolve type errors
 

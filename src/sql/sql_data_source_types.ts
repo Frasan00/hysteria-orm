@@ -13,7 +13,6 @@ import {
   PgImport,
   Sqlite3Import,
 } from "../drivers/driver_constants";
-import { Model } from "./models/model";
 
 export type SqlDriverSpecificOptions = Omit<
   DriverSpecificOptions,

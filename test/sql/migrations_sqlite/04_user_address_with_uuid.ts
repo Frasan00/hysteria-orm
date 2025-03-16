@@ -7,12 +7,6 @@ export default class extends Migration {
       table.uuid("user_id").references("users_with_uuid", "id");
       table.uuid("address_id").references("address_with_uuid", "id");
 
-      table.varchar("street", 1000);
-      table.varchar("city", 1000);
-      table.varchar("state", 1000);
-      table.varchar("zip", 1000);
-      table.varchar("country", 1000);
-
       table.timestamp("created_at");
       table.timestamp("updated_at");
       table.timestamp("deleted_at").default("NULL").nullable();

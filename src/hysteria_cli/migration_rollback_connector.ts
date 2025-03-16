@@ -10,11 +10,13 @@ import {
 import { Migration } from "../sql/migrations/migration";
 import { getMigrations, getMigrationTable } from "./migration_utils";
 import { MigrationController } from "../sql/migrations/migration_controller";
+import { SqlDataSourceType } from "../sql/sql_data_source_types";
 
 dotenv.config();
 
 export default async function rollbackMigrationConnector(
   rollBackUntil?: string,
+  verbose: boolean = false,
   tsconfigPath?: string,
   shouldExit: boolean = true,
 ) {
@@ -22,7 +24,10 @@ export default async function rollbackMigrationConnector(
     "Rolling back migrations for database type: " + process.env.DB_TYPE,
   );
 
-  await SqlDataSource.connect();
+  await SqlDataSource.connect({
+    type: process.env.DB_TYPE as SqlDataSourceType,
+    logs: verbose,
+  });
   await SqlDataSource.rawQuery(BEGIN_TRANSACTION);
   try {
     const migrationTable: MigrationTableType[] = await getMigrationTable(

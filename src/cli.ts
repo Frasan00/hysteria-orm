@@ -130,45 +130,70 @@ program
 program
   .command("run:migrations [runUntil]")
   .option("-t, --tsconfig [path]", "Path to tsconfig.json file", undefined)
+  .option("-v, --verbose", "Verbose mode with all query logs", false)
   .description(
     "Run pending migrations, if runUntil is provided, it will run all migrations until the provided migration name",
   )
-  .action(async (runUntil: string, option?: { tsconfig?: string }) => {
-    try {
-      await runMigrationsConnector(runUntil, option?.tsconfig);
-      process.exit(0);
-    } catch (error) {
-      console.error(error);
-      process.exit(1);
-    }
-  });
+  .action(
+    async (
+      runUntil: string,
+      option?: { tsconfig?: string; verbose: boolean },
+    ) => {
+      const verbose = option?.verbose || false;
+      try {
+        await runMigrationsConnector(runUntil, verbose, option?.tsconfig);
+        process.exit(0);
+      } catch (error) {
+        console.error(error);
+        process.exit(1);
+      }
+    },
+  );
 
 program
   .command("rollback:migrations [rollbackUntil]")
   .option("-t, --tsconfig [path]", "Path to tsconfig.json file", undefined)
+  .option("-v, --verbose", "Verbose mode with all query logs", false)
   .description(
     "Rollbacks every migration that has been run, if rollbackUntil is provided, it will rollback all migrations until the provided migration name",
   )
-  .action(async (rollbackUntil: string, option?: { tsconfig?: string }) => {
-    try {
-      await rollbackMigrationsConnector(rollbackUntil, option?.tsconfig);
-      process.exit(0);
-    } catch (error) {
-      console.error(error);
-      process.exit(1);
-    }
-  });
+  .action(
+    async (
+      rollbackUntil: string,
+      option?: { tsconfig?: string; verbose: boolean },
+    ) => {
+      const verbose = option?.verbose || false;
+      try {
+        await rollbackMigrationsConnector(
+          rollbackUntil,
+          verbose,
+          option?.tsconfig,
+        );
+        process.exit(0);
+      } catch (error) {
+        console.error(error);
+        process.exit(1);
+      }
+    },
+  );
 
 program
   .command("refresh:migrations")
   .option("-t, --tsconfig [path]", "Path to tsconfig.json file", undefined)
+  .option("-v, --verbose", "Verbose mode with all query logs", false)
   .description(
     "Rollbacks every migration that has been run and then run the migrations",
   )
-  .action(async (option?: { tsconfig?: string }) => {
+  .action(async (option?: { tsconfig?: string; verbose: boolean }) => {
+    const verbose = option?.verbose || false;
     try {
-      await rollbackMigrationsConnector(undefined, option?.tsconfig, false);
-      await runMigrationsConnector(undefined, option?.tsconfig, false);
+      await rollbackMigrationsConnector(
+        undefined,
+        verbose,
+        option?.tsconfig,
+        false,
+      );
+      await runMigrationsConnector(undefined, verbose, option?.tsconfig);
       process.exit(0);
     } catch (error) {
       console.error(error);

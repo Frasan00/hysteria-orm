@@ -1,5 +1,4 @@
 import dotenv from "dotenv";
-import { DataSourceInput } from "..";
 import { HysteriaError } from "../errors/hysteria_error";
 import type {
   DataSourceType,
@@ -7,6 +6,7 @@ import type {
   PostgresSqlDataSourceInput,
   MysqlSqlDataSourceInput,
   SqliteDataSourceInput,
+  DataSourceInput,
 } from "./data_source_types";
 
 dotenv.config();
@@ -19,7 +19,7 @@ export abstract class DataSource {
   declare password: string;
   declare database: string;
   declare url: string;
-  logs!: boolean;
+  declare logs: boolean;
 
   protected constructor(input?: DataSourceInput) {
     this.type = input?.type || (process.env.DB_TYPE as DataSourceType);

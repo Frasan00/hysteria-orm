@@ -51,7 +51,7 @@ export type RedisStorable =
   | Record<string, any>;
 
 // Retrievable types
-export type RedisGiveable =
+export type RedisFetchable =
   | string
   | number
   | boolean
@@ -65,7 +65,7 @@ import { Redis } from "hysteria-orm";
 
 // Key, value, expiresIn (in milliseconds)
 await Redis.set("key", "value", 1000);
-// You can specify the type to infer to you variable based on the RedisGiveable types
+// You can specify the type to infer to you variable based on the RedisFetchable types
 const value = await Redis.get<string>("key"); // string
 const nullableValue = await Redis.get<string | null>("key"); // string | null
 

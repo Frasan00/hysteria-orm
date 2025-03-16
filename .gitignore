@@ -153,3 +153,4 @@ docker-compose.yml
 roll_and_run_migrations.sh
 lib
 tmp
+docker

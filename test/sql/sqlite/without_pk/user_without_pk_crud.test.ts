@@ -1,4 +1,4 @@
-import { SqlDataSource } from "../../../../src";
+import { SqlDataSource } from "../../../../src/sql/sql_data_source";
 import { UserFactory } from "../../test_models/factory/user_factory";
 import { UserWithoutPk } from "../../test_models/without_pk/user_without_pk";
 
@@ -10,6 +10,7 @@ beforeAll(async () => {
     username: "root",
     password: "root",
     database: "test",
+    logs: true,
   });
 });
 

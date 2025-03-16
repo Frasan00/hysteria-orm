@@ -1,7 +1,7 @@
-import Redis, { RedisOptions } from "ioredis";
 import dotenv from "dotenv";
+import Redis, { RedisOptions } from "ioredis";
 import { HysteriaError } from "../../errors/hysteria_error";
-import { logger } from "../..";
+import logger from "../../utils/logger";
 
 dotenv.config();
 
@@ -17,9 +17,9 @@ export type RedisStorable =
   | Record<string, any>;
 
 /**
- * @description The RedisGiveable type is a type that can be fetched from redis
+ * @description The RedisFetchable type is a type that can be fetched from redis
  */
-export type RedisGiveable =
+export type RedisFetchable =
   | string
   | number
   | boolean
@@ -95,8 +95,7 @@ export class RedisDataSource {
    * @description Sets a key-value pair in the redis database
    * @param {string} key - The key
    * @param {string} value - The value
-   * @param {number} expirationTime - The expiration time in milliseconds
-   * @returns {Promise<void>}
+   * @param {number} expirationTime - The expiration time in milliseconds to maintain node standard
    */
   static async set(
     key: string,
@@ -130,7 +129,7 @@ export class RedisDataSource {
    * @param {string} key - The key
    * @returns {Promise<string>}
    */
-  static async get<T = RedisGiveable>(key: string): Promise<T | null> {
+  static async get<T = RedisFetchable>(key: string): Promise<T | null> {
     try {
       const value = await RedisDataSource.redisConnection.get(key);
       return RedisDataSource.getValue<T>(value);
@@ -156,7 +155,9 @@ export class RedisDataSource {
    * @returns {Promise
    * <T | null>}
    */
-  static async getAndDelete<T = RedisGiveable>(key: string): Promise<T | null> {
+  static async getAndDelete<T = RedisFetchable>(
+    key: string,
+  ): Promise<T | null> {
     try {
       const value = await RedisDataSource.redisConnection.get(key);
       await RedisDataSource.redisConnection.del(key);
@@ -261,7 +262,7 @@ export class RedisDataSource {
    * @param {string} key - The key
    * @returns {Promise<string>}
    */
-  async get<T = RedisGiveable>(key: string): Promise<T | null> {
+  async get<T = RedisFetchable>(key: string): Promise<T | null> {
     try {
       const value = await this.redisConnection.get(key);
       return RedisDataSource.getValue<T>(value);
@@ -287,7 +288,7 @@ export class RedisDataSource {
    * @returns {Promise
    * <T | null>}
    */
-  async getAndDelete<T = RedisGiveable>(key: string): Promise<T | null> {
+  async getAndDelete<T = RedisFetchable>(key: string): Promise<T | null> {
     try {
       const value = await this.redisConnection.get(key);
       await this.redisConnection.del(key);
@@ -357,7 +358,9 @@ export class RedisDataSource {
     }
   }
 
-  protected static getValue<T = RedisGiveable>(value: string | null): T | null {
+  protected static getValue<T = RedisFetchable>(
+    value: string | null,
+  ): T | null {
     if (!value) {
       return null;
     }

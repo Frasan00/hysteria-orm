@@ -2,8 +2,8 @@ import { FactoryReturnType } from "../../../test/sql/test_models/factory/factory
 import { Model } from "./model";
 
 class ModelFactory<M extends Model> {
-  protected typeofModel: typeof Model;
-  protected modelData: Partial<M>;
+  typeofModel: typeof Model;
+  modelData: Partial<M>;
 
   /**
    * @description Constructor for the model factory

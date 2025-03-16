@@ -7,7 +7,6 @@
 - The structure of this ORM Is ispireed by some main Typescript orms like Typeorm and Lucid.
 - It's partially type safe by design, allowing you to have features like intellisense for you models interactions while maintaining the flexibility of shooting yourself in the foot!
 - The main characteristic Is that Models classes refer to the database repository allowing you to interact with It via static methods in a concise and minimal way. While Models instances do not have anything else but what you define as Columns(sql) or Properties(noSql) and are designed to be used directly in you typescript Logic without any overhead.
-- Only open source and free to use Databases are and will be supported
 
 - [Installation](#installation)
 - [Prerequisites](#prerequisites)

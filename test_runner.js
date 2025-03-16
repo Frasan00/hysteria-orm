@@ -9,12 +9,11 @@ const testFiles = [
     './test/sql/pg/without_pk/user_without_pk_crud.test.ts',
     './test/sql/sqlite/without_pk/user_without_pk_crud.test.ts',
 
-    // TODO: re add these tests
-    // // mongo
-    // './test/mongo/crud_mongo.test.ts',
+    // mongo
+    './test/mongo/crud_mongo.test.ts',
 
-    // // redis
-    // './test/redis/redis.test.ts',
+    // redis
+    './test/redis/redis.test.ts',
 ];
 
 testFiles.forEach((file) => {

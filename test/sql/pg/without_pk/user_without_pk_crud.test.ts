@@ -1,4 +1,4 @@
-import { SqlDataSource } from "../../../../src";
+import { SqlDataSource } from "../../../../src/sql/sql_data_source";
 import { HysteriaError } from "../../../../src/errors/hysteria_error";
 import { UserFactory } from "../../test_models/factory/user_factory";
 import {
@@ -13,6 +13,7 @@ beforeAll(async () => {
     username: "root",
     password: "root",
     database: "test",
+    logs: true,
   });
 });
 
@@ -27,6 +28,7 @@ afterEach(async () => {
 test("should create an user", async () => {
   const user = await UserFactory.userWithoutPk(1);
   expect(user).not.toHaveProperty("id");
+  expect(user).not.toHaveProperty("password");
   expect(user).toHaveProperty("name");
   expect(user).toHaveProperty("email");
 });
@@ -183,4 +185,17 @@ test("should truncate the table", async () => {
   await UserWithoutPk.truncate();
   const allUsersAfterTruncate = await UserWithoutPk.find();
   expect(allUsersAfterTruncate).toHaveLength(0);
+});
+
+test("should update user via bulk update", async () => {
+  const user = await UserFactory.userWithoutPk(1);
+  await UserWithoutPk.query().update({
+    name: "John Doe",
+  });
+
+  const allUsers = await UserWithoutPk.find();
+  expect(allUsers).toHaveLength(1);
+  expect(allUsers[0].name).toBe("John Doe");
+  expect(allUsers[0].updatedAt).not.toBe(allUsers[0].createdAt);
+  expect(allUsers[0].updatedAt).not.toBe(user.updatedAt);
 });

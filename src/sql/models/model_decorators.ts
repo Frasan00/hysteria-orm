@@ -6,7 +6,7 @@ import { HasOne } from "./relations/has_one";
 import { ManyToMany } from "./relations/many_to_many";
 import { RelationEnum, Relation } from "./relations/relation";
 
-type LazyRelationEnum = {
+type LazyRelationType = {
   type: RelationEnum;
   columnName: string;
   model: () => typeof Model;
@@ -168,7 +168,7 @@ export function manyToMany(
       throughModel = throughModel().table;
     }
 
-    const relation: LazyRelationEnum = {
+    const relation: LazyRelationType = {
       type: RelationEnum.manyToMany,
       columnName: propertyKey as string,
       model,
@@ -190,7 +190,7 @@ export function manyToMany(
 export function getRelations(target: typeof Model): Relation[] {
   const relations =
     Reflect.getMetadata(RELATION_METADATA_KEY, target.prototype) || [];
-  return relations.map((relation: LazyRelationEnum) => {
+  return relations.map((relation: LazyRelationType) => {
     const { type, model, columnName, foreignKey } = relation;
     switch (type) {
       case RelationEnum.belongsTo:

@@ -46,8 +46,6 @@ export function getBaseModelInstance<T extends Model>(): T {
   return { $additional: {} } as T;
 }
 
-const primaryKeyMap = new Map<typeof Model, string>();
-
 /**
  * @description Represents a Table in the Database
  */
@@ -75,11 +73,7 @@ export abstract class Model extends Entity {
    * @description Getter for the primary key of the model
    */
   static get primaryKey(): string | undefined {
-    if (!primaryKeyMap.has(this)) {
-      primaryKeyMap.set(this, getPrimaryKey(this));
-    }
-
-    return primaryKeyMap.get(this)!;
+    return getPrimaryKey(this);
   }
 
   /**

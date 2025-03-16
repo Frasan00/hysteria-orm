@@ -14,3 +14,6 @@ yarn.lock
 .husky/
 .idea/
 .vscode/
+docker/
+docker-compose.yaml
+docker-compose.yml

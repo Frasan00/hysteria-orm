@@ -154,4 +154,11 @@ describe("RedisDataSource", () => {
     const deletedArrayValue = await redisInstance.get<number[]>("key");
     expect(deletedArrayValue).toBe(null);
   });
+
+  test("should expire key and get null", async () => {
+    await redisInstance.set("key", "value", 1000);
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+    const value = await redisInstance.get<string>("key");
+    expect(value).toBe(null);
+  });
 });

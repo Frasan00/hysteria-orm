@@ -10,19 +10,24 @@ import { MigrationTableType } from "./resources/migration_table_type";
 import { Migration } from "../sql/migrations/migration";
 import { getMigrations, getMigrationTable } from "./migration_utils";
 import { MigrationController } from "../sql/migrations/migration_controller";
+import { SqlDataSourceType } from "../sql/sql_data_source_types";
 
 dotenv.config();
 
 export default async function runMigrationsConnector(
   runUntil?: string,
+  verbose: boolean = false,
   tsconfigPath?: string,
   shouldExit: boolean = true,
 ) {
   logger.info("Running migrations for database type: " + process.env.DB_TYPE);
 
-  await SqlDataSource.connect();
+  await SqlDataSource.connect({
+    type: process.env.DB_TYPE as SqlDataSourceType,
+    logs: verbose,
+  });
+  await SqlDataSource.rawQuery(BEGIN_TRANSACTION);
   try {
-    await SqlDataSource.rawQuery(BEGIN_TRANSACTION);
     const migrationTable: MigrationTableType[] = await getMigrationTable(
       SqlDataSource.getInstance().getCurrentDriverConnection(),
     );
