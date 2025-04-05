@@ -1,13 +1,11 @@
 import { DataSource } from "../../data_source/data_source";
 import { CollectionManager } from "./mongo_models/mongo_collection_manager";
-import dotenv from "dotenv";
-import { Collection } from "./mongo_models/mongo_collection";
+
+import { MongoOptions } from "mongodb";
 import { MongoClientImport } from "../../drivers/driver_constants";
 import { DriverFactory } from "../../drivers/drivers_factory";
-import { MongoOptions } from "mongodb";
 import { HysteriaError } from "../../errors/hysteria_error";
-
-dotenv.config();
+import { Collection } from "./mongo_models/mongo_collection";
 
 type MongoClientInstance = InstanceType<MongoClientImport["MongoClient"]>;
 

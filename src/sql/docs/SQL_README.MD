@@ -36,6 +36,7 @@
     - [Standalone Query Builder](#standalone-query-builder)
 - [Migrations](#migrations)
     - [hysteria-cli for Migrations](#hysteria-orm-cli-for-migrations)
+    - [Run Migrations Programmatically](#run-migrations-programmatically)
     - [Create Table](#create-table)
     - [Alter Table](#alter-table)
     - [Migration Query Builder](#migration-query-builder)
@@ -1008,28 +1009,37 @@ const { query, params } = userQueryBuilder
 - Migrations can both be defined in ts and js, if using ts `ts-node` and `typescript` must be installed as dependencies
 - By default the migration queries are hidden, you can use --verbose in order to get all the query logs
 
+## Run Migrations Programmatically
+- You can also run migrations from you code using the `defineMigrator` method
+```typescript
+import { defineMigrator } from "hysteria-orm";
+
+const migrator = defineMigrator('./database/migrations', true) // path to migrations, debugger
+await migrator.migrate('up');
+```
+
 ## hysteria-orm-cli for Migrations
 - You can run the cli using `npx hysteria` (for npm) or `yarn run hysteria` (for yarn)
 
-## create:migration <name> [-j, --javascript] [-a, --alter] [-c, --create] [-t, --table <string>]
+### create:migration <name> [-j, --javascript] [-a, --alter] [-c, --create] [-t, --table <string>]
 - Creates a migration in the migrations folder
 - If the creation folder specified in the .env (or the default one `database/migrations`) it will be created automatically
 - By default this command generates a .ts file, you can generate a .js file with the flag -j
 - You can specify the mode of the migration with -c that spawns a create table migration and -a that spawns an alter table migration
 - If specifing a mode for the migration, you can specify a table name with --table
 
-## run:migrations [runUntil][-v, --verbose]
+### run:migrations [runUntil][-v, --verbose]
 - Runs all pending migrations <optional - migration_file_name>
 - If the migration file name is specified then migrations will be run until that migration
 
-## rollback:migrations [rollbackUntil][-v, --verbose]
+### rollback:migrations [rollbackUntil][-v, --verbose]
 - Rollbacks all existing migrations <optional - migration_file_name>
 - If the migration file name is specified then migrations will be rolled back from the last migration until that migration
 
-## refresh:migrations[-v, --verbose]
+### refresh:migrations[-v, --verbose]
 - Rollbacks all existing migrations and runs them again
 
-## Create Table
+### Create Table
 
 ```typescript
 import { Migration } from "hysteria-orm";
@@ -1073,7 +1083,7 @@ export default class extends Migration {
 }
 ```
 
-## Alter Table
+### Alter Table
 
 ```typescript
 import { Migration } from "hysteria-orm";
@@ -1099,7 +1109,7 @@ export default class extends Migration {
 }
 ```
 
-## Run SQL file in migrations
+### Run SQL file in migrations
 - You can also run a .sql or .txt file in the migrations
 - Remember that the file path is relative to the current working directory you are in
 - As best practice, migration cli should be run in the root of the project

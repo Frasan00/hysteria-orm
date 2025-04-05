@@ -1,10 +1,7 @@
-import dotenv from "dotenv";
-import path from "path";
-import MigrationTemplates from "./resources/migration_templates";
 import fs from "fs";
+import path from "path";
 import logger from "../utils/logger";
-
-dotenv.config();
+import MigrationTemplates from "./resources/migration_templates";
 
 function getOrCreateMigrationPath(): string {
   let migrationPath = process.env.MIGRATION_PATH || "database/migrations";

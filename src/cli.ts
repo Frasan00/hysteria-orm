@@ -6,6 +6,9 @@ import migrationCreateConnector from "./hysteria_cli/migration_create_connector"
 import rollbackMigrationsConnector from "./hysteria_cli/migration_rollback_connector";
 import runMigrationsConnector from "./hysteria_cli/migration_run_connector";
 import runSqlConnector from "./hysteria_cli/run_sql_connector";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 try {
   register("ts-node/esm", import.meta.url);

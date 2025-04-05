@@ -6,6 +6,7 @@ import {
 } from "./no_sql/mongo/mongo_models/mongo_collection_decorators";
 import { RedisDataSource as Redis } from "./no_sql/redis/redis_data_source";
 import { Migration } from "./sql/migrations/migration";
+import { defineMigrator } from "./sql/migrations/migrator";
 import { ModelQueryBuilder } from "./sql/model_query_builder/model_query_builder";
 import { Model } from "./sql/models/model";
 import {
@@ -23,6 +24,9 @@ import { createModelFactory } from "./sql/models/model_factory";
 import { QueryBuilder } from "./sql/query_builder/query_builder";
 import { SqlDataSource } from "./sql/sql_data_source";
 import logger from "./utils/logger";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 export default {
   // decorators
@@ -45,6 +49,7 @@ export default {
 
   // migrations
   Migration,
+  defineMigrator,
 
   // sql
   Model,

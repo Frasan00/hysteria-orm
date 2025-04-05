@@ -1,4 +1,3 @@
-import dotenv from "dotenv";
 import { HysteriaError } from "../errors/hysteria_error";
 import type {
   DataSourceInput,
@@ -8,8 +7,6 @@ import type {
   PostgresSqlDataSourceInput,
   SqliteDataSourceInput,
 } from "./data_source_types";
-
-dotenv.config();
 
 export abstract class DataSource {
   declare type: DataSourceType;

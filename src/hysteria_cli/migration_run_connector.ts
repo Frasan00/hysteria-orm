@@ -1,4 +1,3 @@
-import dotenv from "dotenv";
 import { Migration } from "../sql/migrations/migration";
 import { Migrator } from "../sql/migrations/migrator";
 import {
@@ -11,8 +10,6 @@ import { SqlDataSourceType } from "../sql/sql_data_source_types";
 import logger from "../utils/logger";
 import { getMigrations, getMigrationTable } from "./migration_utils";
 import { MigrationTableType } from "./resources/migration_table_type";
-
-dotenv.config();
 
 export default async function runMigrationsConnector(
   runUntil?: string,

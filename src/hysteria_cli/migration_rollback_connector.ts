@@ -1,4 +1,3 @@
-import dotenv from "dotenv";
 import { Migration } from "../sql/migrations/migration";
 import { Migrator } from "../sql/migrations/migrator";
 import {
@@ -12,9 +11,7 @@ import logger from "../utils/logger";
 import { getMigrations, getMigrationTable } from "./migration_utils";
 import { MigrationTableType } from "./resources/migration_table_type";
 
-dotenv.config();
-
-export default async function rollbackMigrationConnector(
+export default async function rollbackMigrationsConnector(
   rollBackUntil?: string,
   verbose: boolean = false,
   shouldExit: boolean = true,
