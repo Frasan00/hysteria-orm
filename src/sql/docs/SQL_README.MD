@@ -804,14 +804,149 @@ const user: User | null = await User.query()
 ```
 
 ### Count and Sum
+- Methods can be used directly inside the `select` method, but there are two utils for `count` and `sum` in order to get directly the number from the query
 
 - Quick count and sum methods
 ```typescript
 import { User } from "./User";
 
+
 // You can specify if ignore hooks like beforeFetch
-const count = await User.query().getCount({ ignoreHooks: false }); // number
+const count = await User.query().getCount("id", { ignoreHooks: false }); // number
 const sum = await User.query().getSum("id"); // number
+```
+
+### Join
+- Hysteria ORM provides powerful join capabilities to connect related tables in your queries
+- Joins can be performed using table names or model classes
+- The ORM supports various join types: INNER JOIN, LEFT JOIN, and RIGHT JOIN
+- Join methods are chainable and can be combined with other query builder methods
+
+#### Basic Join Syntax
+```typescript
+import { User } from "./User";
+import { Post } from "./Post";
+
+// Basic join with table name
+const users = await User.query()
+  .join("posts", "userId", "id")
+  .where("name", "John Doe")
+  .many();
+
+// Join with model class
+const users = await User.query()
+  .join(Post, "userId", "id")
+  .where("name", "John Doe")
+  .many();
+```
+
+#### Join Types
+
+##### Inner Join
+- Returns records that have matching values in both tables
+
+```typescript
+// Using table name
+const users = await User.query()
+  .innerJoin("posts", "userId", "id")
+  .where("name", "John Doe")
+  .many();
+
+// Using model class
+const users = await User.query()
+  .innerJoin(Post, "userId", "id")
+  .where("name", "John Doe")
+  .many();
+```
+
+##### Left Join
+- Returns all records from the left table and matching records from the right table
+
+```typescript
+// Using table name
+const users = await User.query()
+  .leftJoin("posts", "userId", "id")
+  .where("name", "John Doe")
+  .many();
+
+// Using model class
+const users = await User.query()
+  .leftJoin(Post, "userId", "id")
+  .where("name", "John Doe")
+  .many();
+```
+
+##### Right Join
+- Returns all records from the right table and matching records from the left table
+
+```typescript
+// Using table name
+const users = await User.query()
+  .rightJoin("posts", "userId", "id")
+  .where("name", "John Doe")
+  .many();
+
+// Using model class
+const users = await User.query()
+  .rightJoin(Post, "userId", "id")
+  .where("name", "John Doe")
+  .many();
+```
+
+#### Simplified Join Syntax
+- When using the `join` method without specifying the primary column, it defaults to the model's primary key
+- This simplifies the join syntax for common scenarios
+
+```typescript
+// Without specifying primary column (uses model's primary key)
+const users = await User.query()
+  .join("posts", "userId")
+  .where("name", "John Doe")
+  .many();
+
+// With model class
+const users = await User.query()
+  .join(Post, "userId")
+  .where("name", "John Doe")
+  .many();
+```
+
+#### Raw Join
+- For complex join scenarios, you can use the `joinRaw` method to write custom join SQL
+
+```typescript
+const users = await User.query()
+  .joinRaw("JOIN posts ON posts.user_id = users.id AND posts.status = 'published'")
+  .where("name", "John Doe")
+  .many();
+```
+
+#### Clearing Joins
+- You can clear all joins from the query using the `clearJoin` method
+
+```typescript
+const query = User.query()
+  .join("posts", "userId", "id")
+  .where("name", "John Doe");
+
+// Clear joins and continue building the query
+query.clearJoin()
+  .where("email", "john@example.com")
+  .many();
+```
+
+#### Combining Joins with Other Query Methods
+- Joins can be combined with other query builder methods for complex queries
+
+```typescript
+const users = await User.query()
+  .select("users.id", "users.name", "posts.title as postTitle")
+  .join("posts", "userId", "id")
+  .where("users.name", "John Doe")
+  .andWhere("posts.status", "published")
+  .orderBy("users.createdAt", "DESC")
+  .limit(10)
+  .many();
 ```
 
 ### Pagination

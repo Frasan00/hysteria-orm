@@ -160,9 +160,10 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
    * @description Executes the query and retrieves the count of results, it ignores all select, group by, order by, limit and offset clauses if they are present.
    */
   async getCount(
+    column: string = "*",
     options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<number> {
-    this.select("COUNT(*) as total");
+    this.select(`COUNT(${column}) as total`);
     const ignoredHooks: FetchHooks[] = options.ignoreHooks
       ? ["beforeFetch", "afterFetch"]
       : [];
