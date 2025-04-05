@@ -13,7 +13,7 @@ export default class extends Migration {
         scale: 2,
       });
       table.char("gender", 1);
-      table.binary("image");
+      table.binary("image").nullable();
       table.float("height");
       table.longtext("description");
       table.tinytext("short_description");
@@ -48,15 +48,5 @@ export default class extends Migration {
     });
 
     this.schema.dropTable("users_with_uuid");
-  }
-
-  async afterUp(): Promise<void> {
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    console.log("after up resolved");
-  }
-
-  async afterDown(): Promise<void> {
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    console.log("after down resolved");
   }
 }

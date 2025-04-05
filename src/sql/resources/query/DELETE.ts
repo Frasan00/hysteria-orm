@@ -1,9 +1,13 @@
 import { HysteriaError } from "../../../errors/hysteria_error";
 import type { SqlDataSourceType } from "../../sql_data_source_types";
 
-const deleteTemplate = (table: string, dbType: SqlDataSourceType) => {
+const deleteTemplate = (dbType: SqlDataSourceType) => {
   return {
-    delete: (column: string, value: string | number | boolean | Date) => {
+    delete: (
+      table: string,
+      column: string,
+      value: string | number | boolean | Date,
+    ) => {
       let baseQuery = `DELETE FROM ${table} WHERE ${column} = PLACEHOLDER`;
       switch (dbType) {
         case "mariadb":
@@ -24,7 +28,11 @@ const deleteTemplate = (table: string, dbType: SqlDataSourceType) => {
 
       return { query: baseQuery, params: [value] };
     },
-    massiveDelete: (whereClause: string, joinClause: string = "") => {
+    massiveDelete: (
+      table: string,
+      whereClause: string,
+      joinClause: string = "",
+    ) => {
       return `DELETE FROM ${table} ${joinClause} ${whereClause}`;
     },
   };

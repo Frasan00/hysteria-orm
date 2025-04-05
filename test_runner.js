@@ -1,6 +1,6 @@
 // This file is used to enforce the order of test files to be run in a specific order.
 
-const { execSync } = require("node:child_process");
+import { execSync } from "node:child_process";
 
 const testFiles = [
     // without primary key tests

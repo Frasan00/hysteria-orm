@@ -199,3 +199,21 @@ test("should update user via bulk update", async () => {
   expect(allUsers[0].updatedAt).not.toBe(allUsers[0].createdAt);
   expect(allUsers[0].updatedAt).not.toBe(user.updatedAt);
 });
+
+test("should commit under global transaction", async () => {
+  await SqlDataSource.startGlobalTransaction();
+  await UserFactory.userWithoutPk(1);
+  await SqlDataSource.commitGlobalTransaction();
+
+  const allUsers = await UserWithoutPk.find();
+  expect(allUsers).toHaveLength(1);
+});
+
+test("should rollback under global transaction", async () => {
+  await SqlDataSource.startGlobalTransaction();
+  await UserFactory.userWithoutPk(1);
+  await SqlDataSource.rollbackGlobalTransaction();
+
+  const allUsers = await UserWithoutPk.find();
+  expect(allUsers).toHaveLength(0);
+});

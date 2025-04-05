@@ -1,8 +1,15 @@
 import { DataSource } from "../data_source/data_source";
 import { HysteriaError } from "../errors/hysteria_error";
+import { CaseConvention } from "../utils/case_utils";
 import logger from "../utils/logger";
 import { Model } from "./models/model";
 import { ModelManager } from "./models/model_manager/model_manager";
+import { QueryBuilder } from "./query_builder/query_builder";
+import {
+  BEGIN_TRANSACTION,
+  COMMIT_TRANSACTION,
+  ROLLBACK_TRANSACTION,
+} from "./resources/query/TRANSACTION";
 import { createSqlConnection } from "./sql_connection_utils";
 import type {
   ConnectionPolicies,
@@ -23,30 +30,13 @@ export class SqlDataSource extends DataSource {
   declare private sqlConnection: SqlConnectionType;
   private static instance: SqlDataSource | null = null;
   private sqlType: SqlDataSourceType;
+  private inGlobalTransaction: boolean = false;
+  /**
+   * @description The retry policy for the database connection
+   */
   retryPolicy: ConnectionPolicies["retry"];
 
-  get isConnected(): boolean {
-    return !!this.sqlConnection;
-  }
-
-  private constructor(input?: SqlDataSourceInput) {
-    super(input);
-    this.sqlType = this.type as SqlDataSourceType;
-    this.retryPolicy = input?.connectionPolicies?.retry || {
-      maxRetries: 3,
-      delay: 1000,
-    };
-  }
-
-  getDbType(): SqlDataSourceType {
-    return this.type as SqlDataSourceType;
-  }
-
-  /**
-   * @description Connects to the database establishing a connection. If no connection details are provided, the default values from the env will be taken instead
-   * @description The User input connection details will always override the values from the env file
-   * @description A SELECT 1 query is run to check if the connection is successful
-   */
+  // Static Methods
   static async connect(
     input: SqlDataSourceInput,
     cb?: (sqlDataSource: SqlDataSource) => Promise<void> | void,
@@ -85,6 +75,10 @@ export class SqlDataSource extends DataSource {
     return sqlDataSource;
   }
 
+  /**
+   * @description Returns the instance of the SqlDataSource
+   * @throws {HysteriaError} If the connection is not established
+   */
   static getInstance(): SqlDataSource {
     if (!SqlDataSource.instance) {
       throw new HysteriaError(
@@ -96,11 +90,21 @@ export class SqlDataSource extends DataSource {
     return SqlDataSource.instance;
   }
 
-  /**
-   * @description Executes a callback function with the provided connection details using the main connection established with SqlDataSource.connect() method
-   * @description The callback automatically commits or rollbacks the transaction based on the result of the callback
-   * @description NOTE: trx must always be passed to single methods that are part of the transaction
-   */
+  static query(
+    table: string,
+    modelCaseConvention: CaseConvention = "camel",
+    databaseCaseConvention: CaseConvention = "snake",
+  ): QueryBuilder {
+    return new QueryBuilder(
+      {
+        modelCaseConvention,
+        databaseCaseConvention,
+        table: table,
+      } as typeof Model,
+      this.getInstance(),
+    );
+  }
+
   static async useTransaction(
     cb: (trx: Transaction) => Promise<void>,
     driverSpecificOptions?: SqlDriverSpecificOptions,
@@ -109,9 +113,153 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
-   * @description Executes a callback function with the provided connection details
-   * @description The callback automatically commits or rollbacks the transaction based on the result of the callback
-   * @description NOTE: trx must always be passed to single methods that are part of the transaction
+   * @description Starts a global transaction on the database
+   */
+  static async startGlobalTransaction(): Promise<void> {
+    await this.getInstance().rawQuery(BEGIN_TRANSACTION);
+  }
+
+  /**
+   * @description Commits a global transaction on the database
+   */
+  static async commitGlobalTransaction(): Promise<void> {
+    await this.getInstance().rawQuery(COMMIT_TRANSACTION);
+  }
+
+  /**
+   * @description Rolls back a global transaction on the database
+   */
+  static async rollbackGlobalTransaction(): Promise<void> {
+    await this.getInstance().rawQuery(ROLLBACK_TRANSACTION);
+  }
+
+  /**
+   * @description Starts a transaction on the database and returns a Transaction instance
+   */
+  static async startTransaction(
+    driverSpecificOptions?: SqlDriverSpecificOptions,
+  ): Promise<Transaction> {
+    return this.getInstance().startTransaction(driverSpecificOptions);
+  }
+
+  /**
+   * @alias startTransaction
+   */
+  static async beginTransaction(
+    driverSpecificOptions?: SqlDriverSpecificOptions,
+  ): Promise<Transaction> {
+    return this.getInstance().startTransaction(driverSpecificOptions);
+  }
+
+  /**
+   * @alias startTransaction
+   */
+  static async transaction(
+    driverSpecificOptions?: SqlDriverSpecificOptions,
+  ): Promise<Transaction> {
+    return this.getInstance().startTransaction(driverSpecificOptions);
+  }
+
+  /**
+   * @description Creates a new SqlDataSource instance with a custom connection and executes a callback with the new instance
+   */
+  static async useConnection(
+    connectionDetails: UseConnectionInput,
+    cb: (sqlDataSource: SqlDataSource) => Promise<void>,
+  ): Promise<void> {
+    const customSqlInstance = new SqlDataSource(connectionDetails);
+    customSqlInstance.sqlConnection = await createSqlConnection(
+      customSqlInstance.sqlType,
+      {
+        ...connectionDetails,
+      },
+    );
+    await customSqlInstance.rawQuery("SELECT 1");
+    try {
+      await cb(customSqlInstance).then(async () => {
+        if (!customSqlInstance.isConnected) {
+          return;
+        }
+
+        await customSqlInstance.closeConnection();
+      });
+    } catch (error) {
+      if (customSqlInstance.isConnected) {
+        await customSqlInstance.closeConnection();
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * @description Closes the current connection
+   */
+  static async closeConnection(): Promise<void> {
+    if (!SqlDataSource.instance) {
+      logger.warn("Connection already closed");
+      return;
+    }
+
+    return SqlDataSource.getInstance().closeConnection();
+  }
+
+  /**
+   * @alias closeConnection
+   */
+  static async disconnect(): Promise<void> {
+    return SqlDataSource.closeConnection();
+  }
+
+  /**
+   * @description Executes a raw query on the database
+   */
+  static async rawQuery<T = any>(
+    query: string,
+    params: any[] = [],
+  ): Promise<T> {
+    return SqlDataSource.getInstance().rawQuery(query, params);
+  }
+
+  // Instance Methods
+  private constructor(input?: SqlDataSourceInput) {
+    super(input);
+    this.sqlType = this.type as SqlDataSourceType;
+    this.retryPolicy = input?.connectionPolicies?.retry || {
+      maxRetries: 3,
+      delay: 1000,
+    };
+  }
+
+  get isConnected(): boolean {
+    return !!this.sqlConnection;
+  }
+
+  /**
+   * @description Returns the type of the database
+   */
+  getDbType(): SqlDataSourceType {
+    return this.type as SqlDataSourceType;
+  }
+
+  /**
+   * @description Returns a QueryBuilder instance
+   */
+  query(
+    table: string,
+    modelCaseConvention: CaseConvention = "camel",
+    databaseCaseConvention: CaseConvention = "snake",
+  ): QueryBuilder {
+    return new QueryBuilder(
+      {
+        modelCaseConvention,
+        databaseCaseConvention,
+        table: table,
+      } as typeof Model,
+      this,
+    );
+  }
+  /**
+   * @description Starts a transaction on the database and executes a callback with the transaction instance, automatically committing or rolling back the transaction based on the callback's success or failure
    */
   async useTransaction(
     cb: (trx: Transaction) => Promise<void>,
@@ -137,36 +285,50 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
-   * @description Starts a transaction on the database and returns the transaction object
-   * @description This creates a new connection to the database, you can customize the connection details using the driverSpecificOptions
+   * @description Starts a global transaction on the database
    */
-  static async startTransaction(
-    driverSpecificOptions?: SqlDriverSpecificOptions,
-  ): Promise<Transaction> {
-    return this.getInstance().startTransaction(driverSpecificOptions);
+  async startGlobalTransaction(): Promise<void> {
+    if (this.inGlobalTransaction) {
+      throw new HysteriaError(
+        "SqlDataSource::startGlobalTransaction",
+        "GLOBAL_TRANSACTION_ALREADY_STARTED",
+      );
+    }
+
+    await this.rawQuery(BEGIN_TRANSACTION);
+    this.inGlobalTransaction = true;
   }
 
   /**
-   * @description Alias for startTransaction {Promise<Transaction>} trx
+   * @description Commits a global transaction on the database
    */
-  static async beginTransaction(
-    driverSpecificOptions?: SqlDriverSpecificOptions,
-  ): Promise<Transaction> {
-    return this.getInstance().startTransaction(driverSpecificOptions);
+  async commitGlobalTransaction(): Promise<void> {
+    if (!this.inGlobalTransaction) {
+      throw new HysteriaError(
+        "SqlDataSource::commitGlobalTransaction",
+        "GLOBAL_TRANSACTION_NOT_STARTED",
+      );
+    }
+    await this.rawQuery(COMMIT_TRANSACTION);
+    this.inGlobalTransaction = false;
   }
 
   /**
-   * @description Alias for startTransaction {Promise<Transaction>} trx
+   * @description Rolls back a global transaction on the database
    */
-  static async transaction(
-    driverSpecificOptions?: SqlDriverSpecificOptions,
-  ): Promise<Transaction> {
-    return this.getInstance().startTransaction(driverSpecificOptions);
+  async rollbackGlobalTransaction(): Promise<void> {
+    if (!this.inGlobalTransaction) {
+      throw new HysteriaError(
+        "SqlDataSource::rollbackGlobalTransaction",
+        "GLOBAL_TRANSACTION_NOT_STARTED",
+      );
+    }
+    await this.rawQuery(ROLLBACK_TRANSACTION);
+    this.inGlobalTransaction = false;
   }
 
   /**
-   * @description Starts a transaction on the database and returns the transaction object
-   * @description This creates a new connection to the database, you can customize the connection details using the driverSpecificOptions
+   * @description Starts a transaction on the database and returns a Transaction instance
    */
   async startTransaction(
     driverSpecificOptions?: SqlDriverSpecificOptions,
@@ -200,7 +362,7 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
-   * @description Alias for startTransaction {Promise<Transaction>} trx
+   * @alias startTransaction
    */
   async beginTransaction(
     driverSpecificOptions?: SqlDriverSpecificOptions,
@@ -209,7 +371,7 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
-   * @description Alias for startTransaction {Promise<Transaction>} trx
+   * @alias startTransaction
    */
   async transaction(
     driverSpecificOptions?: SqlDriverSpecificOptions,
@@ -218,7 +380,7 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
-   * @description Returns model manager for the provided model
+   * @description Returns a ModelManager instance for the given model, it's advised to use Model static methods instead
    */
   getModelManager<T extends Model>(
     model: { new (): T } | typeof Model,
@@ -234,38 +396,11 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
-   * @description Executes a callback function with the provided connection details
-   */
-  static async useConnection(
-    connectionDetails: UseConnectionInput,
-    cb: (sqlDataSource: SqlDataSource) => Promise<void>,
-  ) {
-    const customSqlInstance = new SqlDataSource(connectionDetails);
-    customSqlInstance.sqlConnection = await createSqlConnection(
-      customSqlInstance.sqlType,
-      {
-        ...connectionDetails,
-      },
-    );
-    await customSqlInstance.rawQuery("SELECT 1");
-    try {
-      await cb(customSqlInstance).then(async () => {
-        if (!customSqlInstance.isConnected) {
-          return;
-        }
-
-        await customSqlInstance.closeConnection();
-      });
-    } catch (error) {
-      if (customSqlInstance.isConnected) {
-        await customSqlInstance.closeConnection();
-      }
-      throw error;
-    }
-  }
-
-  /**
-   * @description Returns the current driver connection, you can pass a specific type to get the connection as that type
+   * @description Returns the current raw driver connection, you can specify the type of connection you want to get to have better type safety
+   * @example
+   * const mysqlConnection = sqlDataSource.getCurrentDriverConnection("mysql"); // mysql2 connection
+   * const pgConnection = sqlDataSource.getCurrentDriverConnection("postgres"); // pg connection
+   * const sqliteConnection = sqlDataSource.getCurrentDriverConnection("sqlite"); // sqlite3 connection
    */
   getCurrentDriverConnection<T extends SqlDataSourceType = typeof this.sqlType>(
     _specificType: T = this.sqlType as T,
@@ -274,7 +409,7 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
-   * @description Closes the connection to the database
+   * @description Closes the current connection
    */
   async closeConnection(): Promise<void> {
     if (!this.isConnected) {
@@ -314,31 +449,10 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
-   * @description Closes the main connection to the database established with SqlDataSource.connect() method
-   */
-  static async closeConnection(): Promise<void> {
-    if (!SqlDataSource.instance) {
-      logger.warn("Connection already closed");
-      return;
-    }
-
-    return SqlDataSource.getInstance().closeConnection();
-  }
-
-  /**
-   * @description Disconnects the connection to the database
    * @alias closeConnection
    */
   async disconnect(): Promise<void> {
     return this.closeConnection();
-  }
-
-  /**
-   * @description Disconnects the main connection to the database established with SqlDataSource.connect() method
-   * @alias closeConnection
-   */
-  static async disconnect(): Promise<void> {
-    return SqlDataSource.closeConnection();
   }
 
   /**
@@ -353,15 +467,5 @@ export class SqlDataSource extends DataSource {
     }
 
     return execSql(query, params, this);
-  }
-
-  /**
-   * @description Executes a raw query on the database with the base connection created with SqlDataSource.connect() method
-   */
-  static async rawQuery<T = any>(
-    query: string,
-    params: any[] = [],
-  ): Promise<T> {
-    return SqlDataSource.getInstance().rawQuery(query, params);
   }
 }

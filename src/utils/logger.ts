@@ -59,7 +59,7 @@ class HysteriaLogger {
 }
 
 export function log(query: string, logs: boolean, params?: any[]) {
-  if (!logs) {
+  if (!logs || query === "SELECT\n  1") {
     return;
   }
 

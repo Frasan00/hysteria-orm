@@ -1,6 +1,6 @@
 import dotenv from "dotenv";
 import { Migration } from "../sql/migrations/migration";
-import { MigrationController } from "../sql/migrations/migration_controller";
+import { Migrator } from "../sql/migrations/migrator";
 import {
   BEGIN_TRANSACTION,
   COMMIT_TRANSACTION,
@@ -57,21 +57,16 @@ export default async function runMigrationsConnector(
       }
 
       const filteredMigrations = pendingMigrations.slice(0, runUntilIndex + 1);
-      const migrationController = new MigrationController(
-        SqlDataSource.getInstance(),
-      );
-      await migrationController.upMigrations(filteredMigrations);
+      const migrator = new Migrator();
+      await migrator.upMigrations(filteredMigrations);
       await SqlDataSource.rawQuery(COMMIT_TRANSACTION);
       logger.info("Migrations ran successfully");
       shouldExit && process.exit(0);
       return;
     }
 
-    const migrationController = new MigrationController(
-      SqlDataSource.getInstance(),
-    );
-
-    await migrationController.upMigrations(pendingMigrations);
+    const migrator = new Migrator();
+    await migrator.upMigrations(pendingMigrations);
 
     await SqlDataSource.rawQuery(COMMIT_TRANSACTION);
   } catch (error: any) {

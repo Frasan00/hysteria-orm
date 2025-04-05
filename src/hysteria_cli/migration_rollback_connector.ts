@@ -1,16 +1,16 @@
 import dotenv from "dotenv";
-import logger from "../utils/logger";
-import { SqlDataSource } from "../sql/sql_data_source";
-import { MigrationTableType } from "./resources/migration_table_type";
+import { Migration } from "../sql/migrations/migration";
+import { Migrator } from "../sql/migrations/migrator";
 import {
   BEGIN_TRANSACTION,
   COMMIT_TRANSACTION,
   ROLLBACK_TRANSACTION,
 } from "../sql/resources/query/TRANSACTION";
-import { Migration } from "../sql/migrations/migration";
-import { getMigrations, getMigrationTable } from "./migration_utils";
-import { MigrationController } from "../sql/migrations/migration_controller";
+import { SqlDataSource } from "../sql/sql_data_source";
 import { SqlDataSourceType } from "../sql/sql_data_source_types";
+import logger from "../utils/logger";
+import { getMigrations, getMigrationTable } from "./migration_utils";
+import { MigrationTableType } from "./resources/migration_table_type";
 
 dotenv.config();
 
@@ -57,22 +57,17 @@ export default async function rollbackMigrationConnector(
       }
 
       const filteredMigrations = pendingMigrations.slice(rollBackUntilIndex);
-      const migrationController: MigrationController = new MigrationController(
-        SqlDataSource.getInstance(),
-      );
+      const migrator = new Migrator();
 
-      await migrationController.downMigrations(filteredMigrations);
+      await migrator.downMigrations(filteredMigrations);
       await SqlDataSource.rawQuery(COMMIT_TRANSACTION);
       logger.info("Migrations rolled back successfully");
       shouldExit && process.exit(0);
       return;
     }
 
-    const migrationController: MigrationController = new MigrationController(
-      SqlDataSource.getInstance(),
-    );
-
-    await migrationController.downMigrations(pendingMigrations);
+    const migrator = new Migrator();
+    await migrator.downMigrations(pendingMigrations);
 
     await SqlDataSource.rawQuery(COMMIT_TRANSACTION);
   } catch (error: any) {

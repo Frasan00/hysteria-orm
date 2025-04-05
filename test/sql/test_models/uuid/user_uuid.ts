@@ -42,9 +42,6 @@ export class UserWithUuid extends Model {
   declare gender: string;
 
   @column()
-  declare image: Buffer;
-
-  @column()
   declare height: number;
 
   @column()
@@ -83,14 +80,14 @@ export class UserWithUuid extends Model {
   }
 
   static beforeUpdate(queryBuilder: ModelQueryBuilder<UserWithUuid>): void {
-    queryBuilder.whereNull("users.deleted_at");
+    queryBuilder.whereNull("users_with_uuid.deleted_at");
   }
 
   static beforeDelete(queryBuilder: ModelQueryBuilder<UserWithUuid>): void {
-    queryBuilder.whereNull("users.deleted_at");
+    queryBuilder.whereNull("users_with_uuid.deleted_at");
   }
 
   static beforeFetch(queryBuilder: ModelQueryBuilder<UserWithUuid>): void {
-    queryBuilder.whereNull("users.deleted_at");
+    queryBuilder.whereNull("users_with_uuid.deleted_at");
   }
 }

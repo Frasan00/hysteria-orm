@@ -5,6 +5,8 @@ import runMigrationsConnector from "./hysteria_cli/migration_run_connector";
 import runSqlConnector from "./hysteria_cli/run_sql_connector";
 import fs from "node:fs";
 import path from "node:path";
+import { register } from "node:module";
+register("ts-node/esm", import.meta.url);
 
 const program = new Command();
 

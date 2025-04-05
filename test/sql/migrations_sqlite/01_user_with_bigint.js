@@ -2,8 +2,8 @@ import { Migration } from "../../../src/sql/migrations/migration";
 
 export default class extends Migration {
   async up() {
-    this.schema.createTable("users_with_uuid", (table) => {
-      table.uuid("id").primary();
+    this.schema.createTable("users_with_bigint", (table) => {
+      table.bigSerial("id");
       table.string("name");
       table.string("email").unique();
       table.string("password");
@@ -13,7 +13,7 @@ export default class extends Migration {
         scale: 2,
       });
       table.char("gender", 1);
-      table.binary("image");
+      table.binary("image").nullable();
       table.float("height");
       table.longtext("description");
       table.tinytext("short_description");
@@ -26,10 +26,15 @@ export default class extends Migration {
       table.timestamp("updated_at");
       table.timestamp("deleted_at").default("NULL").nullable();
     });
+
+    this.afterMigration = async () => {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      return;
+    };
   }
 
   async down() {
-    this.schema.alterTable("users_with_uuid", (table) => {
+    this.schema.alterTable("users_with_bigint", (table) => {
       table.addEnumColumn("status_2", ["active", "inactive"]);
       table.addDateColumn("birth_date_2", "timestamp");
       table.addColumn("is_admin", "boolean", {
@@ -38,16 +43,6 @@ export default class extends Migration {
       });
     });
 
-    this.schema.dropTable("users_with_uuid");
-  }
-
-  async afterUp(): Promise<void> {
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    console.log("after up resolved");
-  }
-
-  async afterDown(): Promise<void> {
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    console.log("after down resolved");
+    this.schema.dropTable("users_with_bigint");
   }
 }

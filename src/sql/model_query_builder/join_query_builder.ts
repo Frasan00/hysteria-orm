@@ -6,17 +6,16 @@ import { FooterQueryBuilder } from "./footer_query_builder";
 export abstract class JoinQueryBuilder<
   T extends Model,
 > extends FooterQueryBuilder<T> {
-  protected model: typeof Model;
   protected joinQuery: string;
-  protected sqlDataSource: SqlDataSource;
-  protected logs: boolean;
 
   protected constructor(model: typeof Model, sqlDataSource: SqlDataSource) {
     super(model, sqlDataSource);
-    this.model = model;
     this.joinQuery = "";
-    this.sqlDataSource = sqlDataSource;
-    this.logs = this.sqlDataSource.logs;
+  }
+
+  clearJoin(): this {
+    this.joinQuery = "";
+    return this;
   }
 
   joinRaw(query: string): this {

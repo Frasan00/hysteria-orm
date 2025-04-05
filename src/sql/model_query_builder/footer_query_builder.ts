@@ -8,32 +8,55 @@ import selectTemplate from "../resources/query/SELECT";
 import { SqlDataSource } from "../sql_data_source";
 
 export abstract class FooterQueryBuilder<T extends Model> {
-  protected model: typeof Model;
-  protected joinQuery: string;
   protected sqlDataSource: SqlDataSource;
-  protected logs: boolean;
+  protected model: typeof Model;
   protected groupByQuery: string;
   protected orderByQuery: string;
   protected limitQuery: string;
   protected offsetQuery: string;
   protected havingQuery: string;
   protected selectTemplate: ReturnType<typeof selectTemplate>;
+  protected logs: boolean;
 
   protected constructor(model: typeof Model, sqlDataSource: SqlDataSource) {
     this.model = model;
     this.sqlDataSource = sqlDataSource;
-    this.logs = this.sqlDataSource.logs;
     this.selectTemplate = selectTemplate(
       this.sqlDataSource.getDbType(),
       this.model,
     );
 
-    this.joinQuery = "";
     this.groupByQuery = "";
     this.orderByQuery = "";
     this.limitQuery = "";
     this.offsetQuery = "";
     this.havingQuery = "";
+    this.logs = this.sqlDataSource.logs;
+  }
+
+  clearGroupBy(): this {
+    this.groupByQuery = "";
+    return this;
+  }
+
+  clearOrderBy(): this {
+    this.orderByQuery = "";
+    return this;
+  }
+
+  clearLimit(): this {
+    this.limitQuery = "";
+    return this;
+  }
+
+  clearOffset(): this {
+    this.offsetQuery = "";
+    return this;
+  }
+
+  clearHaving(): this {
+    this.havingQuery = "";
+    return this;
   }
 
   groupBy(...columns: ModelKey<T>[]): this;

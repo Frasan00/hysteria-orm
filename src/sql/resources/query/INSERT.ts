@@ -4,6 +4,7 @@ import { isNestedObject } from "../../../utils/json_utils";
 import { Model } from "../../models/model";
 import { getModelColumns } from "../../models/model_decorators";
 import type { SqlDataSourceType } from "../../sql_data_source_types";
+import { formatValue } from "./query_utils";
 
 type BaseValues =
   | string
@@ -36,49 +37,18 @@ const getPostgresTypeCast = (value: BaseValues): string => {
   }
 };
 
-const formatValue = (
-  value: BaseValues,
-  dbType: SqlDataSourceType,
-): BaseValues => {
-  if (value === undefined || value === null) {
-    return null;
-  }
-
-  if (Array.isArray(value)) {
-    if (dbType === "postgres" || dbType === "cockroachdb") {
-      return JSON.stringify(value);
-    }
-
-    return JSON.stringify(value);
-  }
-
-  if (isNestedObject(value) && !Buffer.isBuffer(value)) {
-    return JSON.stringify(value);
-  }
-
-  if (value instanceof Date) {
-    if (dbType === "postgres" || dbType === "cockroachdb") {
-      return value.toISOString();
-    }
-    if (dbType === "mysql" || dbType === "mariadb") {
-      return value.toISOString().slice(0, 19).replace("T", " ");
-    }
-    return value;
-  }
-
-  if (typeof value === "bigint") {
-    return value.toString();
-  }
-
-  return value;
-};
-
 const insertTemplate = (
   dbType: SqlDataSourceType,
   typeofModel: typeof Model,
 ) => {
   const table = typeofModel.table;
-  const modelColumns = getModelColumns(typeofModel);
+  let modelColumns: ReturnType<typeof getModelColumns> = [];
+
+  try {
+    modelColumns = getModelColumns(typeofModel);
+  } catch (error) {
+    modelColumns = [];
+  }
 
   return {
     insert: (columns: string[], values: BaseValues[]) => {

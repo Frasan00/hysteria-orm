@@ -18,13 +18,10 @@ export abstract class WhereQueryBuilder<
 
   constructor(
     model: typeof Model,
-    isNestedCondition = false,
     sqlDataSource: SqlDataSource,
+    isNestedCondition = false,
   ) {
     super(model, sqlDataSource);
-    this.model = model;
-    this.sqlDataSource = sqlDataSource;
-    this.logs = this.sqlDataSource.logs;
     this.table = this.model.table;
     this.whereTemplate = whereTemplate(
       this.sqlDataSource.getDbType(),
@@ -33,6 +30,12 @@ export abstract class WhereQueryBuilder<
 
     this.params = [];
     this.isNestedCondition = isNestedCondition;
+  }
+
+  clearWhere(): this {
+    this.whereQuery = "";
+    this.params = [];
+    return this;
   }
 
   /**

@@ -15,6 +15,14 @@ export class UserWithBigint extends Model {
 
   @column({
     primaryKey: true,
+    // Postgres returns bigint as string, so we need to convert it to number
+    serialize: (value: string | number) => {
+      if (typeof value === "string") {
+        return +value;
+      }
+
+      return value;
+    },
   })
   declare id: number;
 
@@ -40,9 +48,6 @@ export class UserWithBigint extends Model {
 
   @column()
   declare gender: string;
-
-  @column()
-  declare image: Buffer;
 
   @column()
   declare height: number;
@@ -83,14 +88,14 @@ export class UserWithBigint extends Model {
   }
 
   static beforeUpdate(queryBuilder: ModelQueryBuilder<UserWithBigint>): void {
-    queryBuilder.whereNull("users.deleted_at");
+    queryBuilder.whereNull("users_with_bigint.deleted_at");
   }
 
   static beforeDelete(queryBuilder: ModelQueryBuilder<UserWithBigint>): void {
-    queryBuilder.whereNull("users.deleted_at");
+    queryBuilder.whereNull("users_with_bigint.deleted_at");
   }
 
   static beforeFetch(queryBuilder: ModelQueryBuilder<UserWithBigint>): void {
-    queryBuilder.whereNull("users.deleted_at");
+    queryBuilder.whereNull("users_with_bigint.deleted_at");
   }
 }

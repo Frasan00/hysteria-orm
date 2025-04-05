@@ -1,11 +1,21 @@
 import "reflect-metadata";
-import { plural } from "pluralize";
+import type { ModelQueryBuilder } from "../model_query_builder/model_query_builder";
+import type { Transaction } from "../transactions/transaction";
+import type {
+  FindOneType,
+  FindType,
+  ModelKey,
+  UnrestrictedFindOneType,
+  UnrestrictedFindType,
+} from "./model_manager/model_manager_types";
+import type { OneOptions } from "../model_query_builder/model_query_builder_types";
+import type { ModelManager } from "./model_manager/model_manager";
+
+import plural from "pluralize";
 import { Entity } from "../../entity";
 import { convertCase } from "../../utils/case_utils";
 import { baseSoftDeleteDate } from "../../utils/date_utils";
-import { ModelQueryBuilder } from "../model_query_builder/model_query_builder";
 import { SqlDataSource } from "../sql_data_source";
-import { Transaction } from "../transactions/transaction";
 import {
   belongsTo,
   column,
@@ -15,15 +25,6 @@ import {
   hasOne,
   manyToMany,
 } from "./model_decorators";
-import {
-  FindOneType,
-  FindType,
-  ModelKey,
-  UnrestrictedFindOneType,
-  UnrestrictedFindType,
-} from "./model_manager/model_manager_types";
-import { OneOptions } from "../model_query_builder/model_query_builder_types";
-import { ModelManager } from "./model_manager/model_manager";
 import { HysteriaError } from "../../errors/hysteria_error";
 
 export type ModelWithoutExtraColumns<T extends Model> = Omit<
@@ -106,7 +107,7 @@ export abstract class Model extends Entity {
   ): ModelQueryBuilder<T> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
-    return modelManager.query();
+    return modelManager.query() as ModelQueryBuilder<T>;
   }
 
   /**
@@ -248,22 +249,41 @@ export abstract class Model extends Entity {
       updatedModel.$additional = modelSqlInstance.$additional;
       return updatedModel;
     } catch (error) {
-      throw new HysteriaError(
-        `${this.name}::updateRecord`,
-        "MODEL_HAS_NO_PRIMARY_KEY",
-      );
+      if (
+        error instanceof HysteriaError &&
+        error.message === "MODEL_HAS_NO_PRIMARY_KEY"
+      ) {
+        throw new HysteriaError(
+          `${this.name}::updateRecord`,
+          "MODEL_HAS_NO_PRIMARY_KEY",
+        );
+      }
+
+      throw error;
     }
   }
 
   /**
    * @description Finds the first record or creates a new one if it doesn't exist
+   * @returns {Promise<T | { isNew: boolean; model: T }>}
    */
-  static async firstOrCreate<T extends Model>(
+  static async firstOrCreate<T extends Model, O extends boolean = false>(
     this: new () => T | typeof Model,
     searchCriteria: ModelWithoutExtraColumns<T>,
     createData: ModelWithoutExtraColumns<T>,
-    options: BaseModelMethodOptions = {},
-  ): Promise<T> {
+    options: BaseModelMethodOptions & { fullResponse?: O } = {},
+  ): Promise<
+    O extends true
+      ? {
+          isNew: boolean;
+          model: T;
+        }
+      : T
+  > {
+    if (!options.fullResponse) {
+      options.fullResponse = false as O;
+    }
+
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
     const doesExist = await modelManager.findOne({
@@ -271,10 +291,25 @@ export abstract class Model extends Entity {
     });
 
     if (doesExist) {
-      return doesExist;
+      if (options.fullResponse) {
+        return {
+          isNew: false,
+          model: doesExist,
+        } as O extends true ? { isNew: boolean; model: T } : T;
+      }
+
+      return doesExist as O extends true ? { isNew: boolean; model: T } : T;
     }
 
-    return (await modelManager.insert(createData as T)) as T;
+    const newModel = await modelManager.insert(createData as T);
+    if (options.fullResponse) {
+      return {
+        isNew: true,
+        model: newModel,
+      } as O extends true ? { isNew: boolean; model: T } : T;
+    }
+
+    return newModel as O extends true ? { isNew: boolean; model: T } : T;
   }
 
   /**
@@ -408,11 +443,12 @@ export abstract class Model extends Entity {
 
   static async truncate<T extends Model>(
     this: new () => T | typeof Model,
+    force: boolean = false,
     options: BaseModelMethodOptions = {},
   ): Promise<void> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
-    return modelManager.truncate();
+    return modelManager.truncate(force);
   }
 
   /**

@@ -20,8 +20,8 @@ import {
   manyToMany,
 } from "./sql/models/model_decorators";
 import { createModelFactory } from "./sql/models/model_factory";
+import { QueryBuilder } from "./sql/query_builder/query_builder";
 import { SqlDataSource } from "./sql/sql_data_source";
-import { StandaloneQueryBuilder } from "./sql/standalone_query_builder/standalone_sql_query_builder";
 import logger from "./utils/logger";
 
 export default {
@@ -34,7 +34,6 @@ export default {
   hasMany,
   hasOne,
   manyToMany,
-
   // logger
   logger,
 
@@ -50,16 +49,14 @@ export default {
   // sql
   Model,
   ModelQueryBuilder,
+  SqlDataSource,
+  QueryBuilder,
 
   // mongo
   MongoDataSource,
 
   // redis
   Redis,
-
-  // sql
-  SqlDataSource,
-  StandaloneQueryBuilder,
 
   // factory
   createModelFactory,

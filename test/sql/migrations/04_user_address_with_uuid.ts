@@ -16,14 +16,4 @@ export default class extends Migration {
   async down() {
     this.schema.dropTable("user_address_with_uuid");
   }
-
-  async afterUp(): Promise<void> {
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    console.log("after up resolved");
-  }
-
-  async afterDown(): Promise<void> {
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    console.log("after down resolved");
-  }
 }

@@ -3,7 +3,7 @@ import { Migration } from "../../../src/sql/migrations/migration";
 export default class extends Migration {
   async up() {
     this.schema.createTable("users_with_bigint", (table) => {
-      table.bigInteger("id").primary();
+      table.bigSerial("id").primary();
       table.string("name");
       table.string("email").unique();
       table.string("password");
@@ -13,7 +13,7 @@ export default class extends Migration {
         scale: 2,
       });
       table.char("gender", 1);
-      table.binary("image");
+      table.binary("image").nullable();
       table.float("height");
       table.longtext("description");
       table.tinytext("short_description");
@@ -26,6 +26,11 @@ export default class extends Migration {
       table.timestamp("updated_at", { autoCreate: true, autoUpdate: true });
       table.timestamp("deleted_at").default("NULL").nullable();
     });
+
+    this.afterMigration = async () => {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      return;
+    };
   }
 
   async down() {
@@ -48,15 +53,10 @@ export default class extends Migration {
     });
 
     this.schema.dropTable("users_with_bigint");
-  }
 
-  async afterUp(): Promise<void> {
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    console.log("after up resolved");
-  }
-
-  async afterDown(): Promise<void> {
-    await new Promise((resolve) => setTimeout(resolve, 100));
-    console.log("after down resolved");
+    this.afterMigration = async () => {
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      return;
+    };
   }
 }

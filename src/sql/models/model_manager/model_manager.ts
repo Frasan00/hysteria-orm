@@ -56,7 +56,7 @@ export class ModelManager<T extends Model> {
 
     if (input.relations) {
       input.relations.forEach((relation) => {
-        query.with(relation);
+        query.withRelation(relation);
       });
     }
 
@@ -301,13 +301,18 @@ export class ModelManager<T extends Model> {
   /**
    * @description Truncates the table
    */
-  async truncate(): Promise<void> {
-    await execSql(`TRUNCATE TABLE ${this.model.table}`, [], this.sqlDataSource);
+  async truncate(force: boolean = false): Promise<void> {
+    await execSql(
+      `TRUNCATE TABLE ${this.model.table} ${force ? "CASCADE" : ""}`,
+      [],
+      this.sqlDataSource,
+    );
   }
 
   /**
-   * @description Returns a query builder instance */
-  query(): ModelQueryBuilder<T> {
+   * @description Returns a query builder instance
+   */
+  query(): Omit<ModelQueryBuilder<T>, "insert" | "insertMany"> {
     return new ModelQueryBuilder<T>(this.model, this.sqlDataSource);
   }
 
@@ -346,7 +351,10 @@ export class ModelManager<T extends Model> {
         ) as O extends "one" ? T : T[];
       }
 
-      return fetchedModels as O extends "one" ? T : T[];
+      return (await parseDatabaseDataIntoModelResponse(
+        fetchedModels,
+        this.model,
+      )) as O extends "one" ? T : T[];
     }
 
     // standard auto increment primary keys
@@ -365,6 +373,9 @@ export class ModelManager<T extends Model> {
         : T[];
     }
 
-    return fetchedModels as O extends "one" ? T : T[];
+    return (await parseDatabaseDataIntoModelResponse(
+      fetchedModels,
+      this.model,
+    )) as O extends "one" ? T : T[];
   }
 }
