@@ -17,7 +17,6 @@ dotenv.config();
 export default async function runMigrationsConnector(
   runUntil?: string,
   verbose: boolean = false,
-  tsconfigPath?: string,
   shouldExit: boolean = true,
 ) {
   logger.info("Running migrations for database type: " + process.env.DB_TYPE);
@@ -31,7 +30,7 @@ export default async function runMigrationsConnector(
     const migrationTable: MigrationTableType[] = await getMigrationTable(
       SqlDataSource.getInstance().getCurrentDriverConnection(),
     );
-    const migrations: Migration[] = await getMigrations(tsconfigPath);
+    const migrations: Migration[] = await getMigrations();
     const pendingMigrations = migrations.filter(
       (migration) =>
         !migrationTable

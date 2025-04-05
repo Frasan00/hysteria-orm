@@ -1,12 +1,15 @@
 import { Command } from "commander";
+import fs from "node:fs";
+import { register } from "node:module";
+import path from "node:path";
 import migrationCreateConnector from "./hysteria_cli/migration_create_connector";
 import rollbackMigrationsConnector from "./hysteria_cli/migration_rollback_connector";
 import runMigrationsConnector from "./hysteria_cli/migration_run_connector";
 import runSqlConnector from "./hysteria_cli/run_sql_connector";
-import fs from "node:fs";
-import path from "node:path";
-import { register } from "node:module";
-register("ts-node/esm", import.meta.url);
+
+try {
+  register("ts-node/esm", import.meta.url);
+} catch (error) {}
 
 const program = new Command();
 
@@ -131,71 +134,49 @@ program
 
 program
   .command("run:migrations [runUntil]")
-  .option("-t, --tsconfig [path]", "Path to tsconfig.json file", undefined)
   .option("-v, --verbose", "Verbose mode with all query logs", false)
   .description(
     "Run pending migrations, if runUntil is provided, it will run all migrations until the provided migration name",
   )
-  .action(
-    async (
-      runUntil: string,
-      option?: { tsconfig?: string; verbose: boolean },
-    ) => {
-      const verbose = option?.verbose || false;
-      try {
-        await runMigrationsConnector(runUntil, verbose, option?.tsconfig);
-        process.exit(0);
-      } catch (error) {
-        console.error(error);
-        process.exit(1);
-      }
-    },
-  );
+  .action(async (runUntil: string, option?: { verbose: boolean }) => {
+    const verbose = option?.verbose || false;
+    try {
+      await runMigrationsConnector(runUntil, verbose);
+      process.exit(0);
+    } catch (error) {
+      console.error(error);
+      process.exit(1);
+    }
+  });
 
 program
   .command("rollback:migrations [rollbackUntil]")
-  .option("-t, --tsconfig [path]", "Path to tsconfig.json file", undefined)
   .option("-v, --verbose", "Verbose mode with all query logs", false)
   .description(
     "Rollbacks every migration that has been run, if rollbackUntil is provided, it will rollback all migrations until the provided migration name",
   )
-  .action(
-    async (
-      rollbackUntil: string,
-      option?: { tsconfig?: string; verbose: boolean },
-    ) => {
-      const verbose = option?.verbose || false;
-      try {
-        await rollbackMigrationsConnector(
-          rollbackUntil,
-          verbose,
-          option?.tsconfig,
-        );
-        process.exit(0);
-      } catch (error) {
-        console.error(error);
-        process.exit(1);
-      }
-    },
-  );
+  .action(async (rollbackUntil: string, option?: { verbose: boolean }) => {
+    const verbose = option?.verbose || false;
+    try {
+      await rollbackMigrationsConnector(rollbackUntil, verbose);
+      process.exit(0);
+    } catch (error) {
+      console.error(error);
+      process.exit(1);
+    }
+  });
 
 program
   .command("refresh:migrations")
-  .option("-t, --tsconfig [path]", "Path to tsconfig.json file", undefined)
   .option("-v, --verbose", "Verbose mode with all query logs", false)
   .description(
     "Rollbacks every migration that has been run and then run the migrations",
   )
-  .action(async (option?: { tsconfig?: string; verbose: boolean }) => {
+  .action(async (option?: { verbose: boolean }) => {
     const verbose = option?.verbose || false;
     try {
-      await rollbackMigrationsConnector(
-        undefined,
-        verbose,
-        option?.tsconfig,
-        false,
-      );
-      await runMigrationsConnector(undefined, verbose, option?.tsconfig);
+      await rollbackMigrationsConnector(undefined, verbose, false);
+      await runMigrationsConnector(undefined, verbose);
       process.exit(0);
     } catch (error) {
       console.error(error);

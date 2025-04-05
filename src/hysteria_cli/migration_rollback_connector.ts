@@ -17,7 +17,6 @@ dotenv.config();
 export default async function rollbackMigrationConnector(
   rollBackUntil?: string,
   verbose: boolean = false,
-  tsconfigPath?: string,
   shouldExit: boolean = true,
 ) {
   logger.info(
@@ -33,7 +32,7 @@ export default async function rollbackMigrationConnector(
     const migrationTable: MigrationTableType[] = await getMigrationTable(
       SqlDataSource.getInstance().getCurrentDriverConnection(),
     );
-    const migrations: Migration[] = await getMigrations(tsconfigPath);
+    const migrations: Migration[] = await getMigrations();
     const tableMigrations = migrationTable.map((migration) => migration.name);
     const pendingMigrations = migrations.filter((migration) =>
       tableMigrations.includes(migration.migrationName),
@@ -58,7 +57,6 @@ export default async function rollbackMigrationConnector(
 
       const filteredMigrations = pendingMigrations.slice(rollBackUntilIndex);
       const migrator = new Migrator();
-
       await migrator.downMigrations(filteredMigrations);
       await SqlDataSource.rawQuery(COMMIT_TRANSACTION);
       logger.info("Migrations rolled back successfully");

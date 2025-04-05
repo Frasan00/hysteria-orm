@@ -8,13 +8,9 @@ import type { Model } from "../models/model";
 import { ModelKey } from "../models/model_manager/model_manager_types";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
 import deleteTemplate from "../resources/query/DELETE";
-import joinTemplate from "../resources/query/JOIN";
 import selectTemplate from "../resources/query/SELECT";
 import updateTemplate from "../resources/query/UPDATE";
-import whereTemplate, {
-  BaseValues,
-  BinaryOperatorType,
-} from "../resources/query/WHERE";
+import { BaseValues, BinaryOperatorType } from "../resources/query/WHERE";
 import { SqlDataSource } from "../sql_data_source";
 import type { SqlDataSourceType } from "../sql_data_source_types";
 import { execSql, getSqlDialect } from "../sql_runner/sql_runner";
@@ -27,7 +23,6 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
   protected selectTemplate: ReturnType<typeof selectTemplate>;
   protected updateTemplate: ReturnType<typeof updateTemplate>;
   protected deleteTemplate: ReturnType<typeof deleteTemplate>;
-  protected whereTemplate: ReturnType<typeof whereTemplate>;
   protected isNestedCondition = false;
 
   constructor(
@@ -45,15 +40,7 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
     this.selectTemplate = selectTemplate(this.dbType, this.model);
     this.updateTemplate = updateTemplate(this.dbType, this.model);
     this.deleteTemplate = deleteTemplate(this.dbType);
-    this.whereTemplate = whereTemplate(this.dbType, this.model);
     this.selectQuery = this.selectTemplate.selectAll;
-    this.whereQuery = "";
-    this.joinQuery = "";
-    this.groupByQuery = "";
-    this.orderByQuery = "";
-    this.limitQuery = "";
-    this.offsetQuery = "";
-    this.havingQuery = "";
     this.params = [];
   }
 
@@ -284,50 +271,6 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
         mode: "affectedRows",
       },
     });
-  }
-
-  /**
-   * @description Adds a raw JOIN condition to the query.
-   */
-  joinRaw(query: string): this {
-    this.joinQuery += ` ${query} `;
-    return this;
-  }
-
-  /**
-   * @description Adds an INNER JOIN condition to the query.
-   */
-  join(
-    relationTable: string,
-    primaryColumn: string,
-    foreignColumn: string,
-  ): this {
-    const join = joinTemplate(
-      { ...this.model, table: this.table } as typeof Model,
-      relationTable,
-      primaryColumn,
-      foreignColumn,
-    );
-    this.joinQuery += join.innerJoin();
-    return this;
-  }
-
-  /**
-   * @description Adds a LEFT JOIN condition to the query.
-   */
-  leftJoin(
-    relationTable: string,
-    primaryColumn: string,
-    foreignColumn: string,
-  ): this {
-    const join = joinTemplate(
-      { ...this.model, table: this.table } as typeof Model,
-      relationTable,
-      primaryColumn,
-      foreignColumn,
-    );
-    this.joinQuery += join.leftJoin();
-    return this;
   }
 
   /**
