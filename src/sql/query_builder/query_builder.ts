@@ -3,17 +3,20 @@ import { HysteriaError } from "../../errors/hysteria_error";
 import { convertCase } from "../../utils/case_utils";
 import { convertPlaceHolderToValue } from "../../utils/placeholder";
 import { SoftDeleteOptions } from "../model_query_builder/delete_query_builder_type";
-import { WhereQueryBuilder } from "../model_query_builder/where_query_builder";
+import {
+  WhereQueryBuilder,
+  WhereQueryBuilderWithOnlyWhereConditions,
+} from "../model_query_builder/where_query_builder";
 import type { Model } from "../models/model";
 import { ModelKey } from "../models/model_manager/model_manager_types";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
 import deleteTemplate from "../resources/query/DELETE";
 import selectTemplate from "../resources/query/SELECT";
 import updateTemplate from "../resources/query/UPDATE";
-import { BaseValues, BinaryOperatorType } from "../resources/query/WHERE";
 import { SqlDataSource } from "../sql_data_source";
 import type { SqlDataSourceType } from "../sql_data_source_types";
 import { execSql, getSqlDialect } from "../sql_runner/sql_runner";
+import { BinaryOperatorType, BaseValues } from "../resources/query/WHERE";
 
 export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
   protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
@@ -276,9 +279,11 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
   /**
    * @description Given a callback, it will execute the callback with a query builder instance.
    */
-  whereBuilder(cb: (queryBuilder: this) => void): this {
+  whereBuilder(
+    cb: (queryBuilder: WhereQueryBuilderWithOnlyWhereConditions<T>) => void,
+  ): this {
     const queryBuilder = new QueryBuilder(this.model, this.sqlDataSource);
-    cb(queryBuilder as this);
+    cb(queryBuilder as WhereQueryBuilderWithOnlyWhereConditions<T>);
     queryBuilder.isNestedCondition = true;
 
     let whereCondition = queryBuilder.whereQuery.trim();
@@ -305,9 +310,11 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
   /**
    * @description Given a callback, it will execute the callback with a query builder instance.
    */
-  orWhereBuilder(cb: (queryBuilder: this) => void): this {
+  orWhereBuilder(
+    cb: (queryBuilder: WhereQueryBuilderWithOnlyWhereConditions<T>) => void,
+  ): this {
     const nestedBuilder = new QueryBuilder(this.model, this.sqlDataSource);
-    cb(nestedBuilder as this);
+    cb(nestedBuilder as WhereQueryBuilderWithOnlyWhereConditions<T>);
     nestedBuilder.isNestedCondition = true;
 
     let nestedCondition = nestedBuilder.whereQuery.trim();
@@ -337,9 +344,11 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
   /**
    * @description Given a callback, it will execute the callback with a query builder instance.
    */
-  andWhereBuilder(cb: (queryBuilder: this) => void): this {
+  andWhereBuilder(
+    cb: (queryBuilder: WhereQueryBuilderWithOnlyWhereConditions<T>) => void,
+  ): this {
     const nestedBuilder = new QueryBuilder(this.model, this.sqlDataSource);
-    cb(nestedBuilder as this);
+    cb(nestedBuilder as WhereQueryBuilderWithOnlyWhereConditions<T>);
     nestedBuilder.isNestedCondition = true;
 
     let nestedCondition = nestedBuilder.whereQuery.trim();
@@ -360,44 +369,6 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
 
     this.whereQuery += ` AND ${nestedCondition}`;
     this.params.push(...nestedBuilder.params);
-
-    return this;
-  }
-
-  having(column: string, value: any): this;
-  having(column: string, operator: BinaryOperatorType, value: any): this;
-  having(
-    column: string,
-    operatorOrValue: BinaryOperatorType | BaseValues,
-    value?: BaseValues,
-  ): this {
-    let operator: BinaryOperatorType = "=";
-    let actualValue: BaseValues;
-
-    if (typeof operatorOrValue === "string" && value) {
-      operator = operatorOrValue as BinaryOperatorType;
-      actualValue = value;
-    } else {
-      actualValue = operatorOrValue as BaseValues;
-      operator = "=";
-    }
-
-    if (this.havingQuery) {
-      this.havingQuery += ` AND ${column} ${operator} ?`;
-    } else {
-      this.havingQuery = ` HAVING ${column} ${operator} ?`;
-    }
-
-    this.params.push(actualValue);
-    return this;
-  }
-
-  havingRaw(query: string): this {
-    if (this.havingQuery) {
-      this.havingQuery += ` AND ${query}`;
-    } else {
-      this.havingQuery = ` HAVING ${query}`;
-    }
 
     return this;
   }
@@ -460,6 +431,7 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
     queryBuilder.limitQuery = this.limitQuery;
     queryBuilder.offsetQuery = this.offsetQuery;
     queryBuilder.params = [...this.params];
+    queryBuilder.havingQuery = this.havingQuery;
     return queryBuilder as this;
   }
 

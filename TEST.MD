@@ -1,12 +1,9 @@
 # Testing Guide
 
-This document outlines the setup and execution of tests for the Hysteria ORM project.
-
 ## Prerequisites
 
 - Docker and Docker Compose installed
 - Node.js (nvm) and Yarn package manager
-- SQLite3
 
 ## Database Setup
 
@@ -58,33 +55,27 @@ services:
 
 ## Setup Instructions
 
-1. Create the SQLite database file:
-   ```bash
-   touch sqlite.db
-   ```
-
-2. Install project dependencies:
+1. Install project dependencies:
    ```bash
    yarn install
    ```
 
-3. Start the required databases using Docker Compose:
+2. Start the required databases using Docker Compose:
    ```bash
    docker compose up -d
    ```
 
-4. setup nvm with .nvmrc
+3. setup nvm with .nvmrc
   ```bash
   nvm use
   ```
 
-5. Run the test suite:
+4. Run the test suite:
    ```bash
-   yarn test
+   yarn test:with:migrations
    ```
 
 ## Notes
 
-- The SQLite database file is required for SQLite-specific tests
 - All database credentials are set to default values for testing purposes, do not change them
 - Ensure all required ports are available before starting the containers

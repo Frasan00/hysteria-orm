@@ -38,6 +38,7 @@ const cockroachdbConfig = {
   password: "root",
   database: "test",
 };
+
 const sqliteConfig = {
   type: "sqlite",
   database: "./sqlite.db",

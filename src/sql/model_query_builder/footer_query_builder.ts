@@ -14,7 +14,6 @@ export abstract class FooterQueryBuilder<T extends Model> {
   protected orderByQuery: string;
   protected limitQuery: string;
   protected offsetQuery: string;
-  protected havingQuery: string;
   protected selectTemplate: ReturnType<typeof selectTemplate>;
   protected logs: boolean;
 
@@ -30,7 +29,6 @@ export abstract class FooterQueryBuilder<T extends Model> {
     this.orderByQuery = "";
     this.limitQuery = "";
     this.offsetQuery = "";
-    this.havingQuery = "";
     this.logs = this.sqlDataSource.logs;
   }
 
@@ -51,11 +49,6 @@ export abstract class FooterQueryBuilder<T extends Model> {
 
   clearOffset(): this {
     this.offsetQuery = "";
-    return this;
-  }
-
-  clearHaving(): this {
-    this.havingQuery = "";
     return this;
   }
 
@@ -106,17 +99,6 @@ export abstract class FooterQueryBuilder<T extends Model> {
 
   offset(offset: number): this {
     this.offsetQuery = this.selectTemplate.offset(offset);
-    return this;
-  }
-
-  havingRaw(query: string): this {
-    query = query.replace("HAVING", "");
-    if (this.havingQuery) {
-      this.havingQuery += ` AND ${query}`;
-      return this;
-    }
-
-    this.havingQuery = ` HAVING ${query}`;
     return this;
   }
 }

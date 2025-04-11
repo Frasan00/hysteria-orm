@@ -16,7 +16,7 @@
     "prepare": "husky install",
     "migrate": "node ./migration_runner.js",
     "test": "node test_runner.js",
-    "test:with:migrations": "yarn format && yarn build && yarn migrate && node test_runner.js",
+    "test:with:migrations": "touch sqlite.db && yarn format && yarn build && yarn migrate && node test_runner.js",
     "format": "prettier --write \"**/*.ts\"",
     "build": "tsup --minify",
     "build:dev": "tsup",

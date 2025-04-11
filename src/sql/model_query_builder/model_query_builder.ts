@@ -173,6 +173,86 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
   }
 
   /**
+   * @description Executes the query and retrieves the maximum value of a column, it ignores all select, group by, order by, limit and offset clauses if they are present.
+   */
+  async getMax(
+    column: string,
+    options: { ignoreHooks: boolean } = { ignoreHooks: false },
+  ): Promise<number> {
+    this.select(`MAX(${column}) as total`);
+    const ignoredHooks: FetchHooks[] = options.ignoreHooks
+      ? ["beforeFetch", "afterFetch"]
+      : [];
+
+    const result = await this.one({ ignoreHooks: ignoredHooks });
+    return result ? +result.$additional.total : 0;
+  }
+
+  /**
+   * @description Executes the query and retrieves the minimum value of a column, it ignores all select, group by, order by, limit and offset clauses if they are present.
+   */
+  async getMin(
+    column: string,
+    options: { ignoreHooks: boolean } = { ignoreHooks: false },
+  ): Promise<number> {
+    this.select(`MIN(${column}) as total`);
+    const ignoredHooks: FetchHooks[] = options.ignoreHooks
+      ? ["beforeFetch", "afterFetch"]
+      : [];
+
+    const result = await this.one({ ignoreHooks: ignoredHooks });
+    return result ? +result.$additional.total : 0;
+  }
+
+  /**
+   * @description Executes the query and retrieves the average value of a column, it ignores all select, group by, order by, limit and offset clauses if they are present.
+   */
+  async getAvg(
+    column: string,
+    options: { ignoreHooks: boolean } = { ignoreHooks: false },
+  ): Promise<number> {
+    this.select(`AVG(${column}) as total`);
+    const ignoredHooks: FetchHooks[] = options.ignoreHooks
+      ? ["beforeFetch", "afterFetch"]
+      : [];
+
+    const result = await this.one({ ignoreHooks: ignoredHooks });
+    return result ? +result.$additional.total : 0;
+  }
+
+  /**
+   * @description Executes the query and retrieves the median value of a column, it ignores all select, group by, order by, limit and offset clauses if they are present.
+   */
+  async getMedian(
+    column: string,
+    options: { ignoreHooks: boolean } = { ignoreHooks: false },
+  ): Promise<number> {
+    this.select(`MEDIAN(${column}) as total`);
+    const ignoredHooks: FetchHooks[] = options.ignoreHooks
+      ? ["beforeFetch", "afterFetch"]
+      : [];
+
+    const result = await this.one({ ignoreHooks: ignoredHooks });
+    return result ? +result.$additional.total : 0;
+  }
+
+  /**
+   * @description Executes the query and retrieves the mode value of a column, it ignores all select, group by, order by, limit and offset clauses if they are present.
+   */
+  async getMode(
+    column: string,
+    options: { ignoreHooks: boolean } = { ignoreHooks: false },
+  ): Promise<number> {
+    this.select(`MODE(${column}) as total`);
+    const ignoredHooks: FetchHooks[] = options.ignoreHooks
+      ? ["beforeFetch", "afterFetch"]
+      : [];
+
+    const result = await this.one({ ignoreHooks: ignoredHooks });
+    return result ? +result.$additional.total : 0;
+  }
+
+  /**
    * @description Executes the query and retrieves the sum of a column, it ignores all select, group by, order by, limit and offset clauses if they are present.
    */
   async getSum(

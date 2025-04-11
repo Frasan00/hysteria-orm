@@ -3,6 +3,9 @@
 import { execSync } from "node:child_process";
 
 const testFiles = [
+    // query builder
+    './test/sql/query_builder/query_builder.test.ts',
+
     // without primary key tests
     './test/sql/cockroachdb/without_pk/user_without_pk_crud.test.ts',
     './test/sql/maria/without_pk/user_without_pk_crud.test.ts',

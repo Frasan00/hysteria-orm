@@ -33,6 +33,24 @@ test("should create a post", async () => {
   expect(post.title).toBe("Hello World");
 });
 
+test("should create multiple posts", async () => {
+  await sql.query("posts_with_uuid").insertMany([
+    { id: crypto.randomUUID(), title: "Hello World" },
+    { id: crypto.randomUUID(), title: "Hello World 2" },
+  ]);
+
+  const posts = await sql
+    .query("posts_with_uuid")
+    .orderBy("title", "asc")
+    .many();
+  expect(posts).toBeDefined();
+  expect(posts.length).toBe(2);
+  expect(posts[0].id).toBeDefined();
+  expect(posts[1].id).toBeDefined();
+  expect(posts[0].title).toBe("Hello World");
+  expect(posts[1].title).toBe("Hello World 2");
+});
+
 test("should update a post", async () => {
   const post = await sql.query("posts_with_uuid").insert({
     id: crypto.randomUUID(),

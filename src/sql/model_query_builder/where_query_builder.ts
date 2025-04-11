@@ -7,10 +7,38 @@ import whereTemplate, {
 import { SqlDataSource } from "../sql_data_source";
 import { JoinQueryBuilder } from "./join_query_builder";
 
+export type WhereQueryBuilderWithOnlyWhereConditions<T extends Model> = Omit<
+  WhereQueryBuilder<T>,
+  | "limit"
+  | "offset"
+  | "orderBy"
+  | "groupBy"
+  | "having"
+  | "havingRaw"
+  | "andHavingRaw"
+  | "orHavingRaw"
+  | "toSql"
+  | "groupByRaw"
+  | "when"
+  | "clearJoin"
+  | "clearOrderBy"
+  | "clearGroupBy"
+  | "clearHaving"
+  | "clearLimit"
+  | "clearWhere"
+  | "clearOffset"
+  | "join"
+  | "leftJoin"
+  | "rightJoin"
+  | "innerJoin"
+  | "joinRaw"
+>;
+
 export abstract class WhereQueryBuilder<
   T extends Model,
 > extends JoinQueryBuilder<T> {
   protected whereQuery: string = "";
+  protected havingQuery: string = "";
   protected params: BaseValues[] = [];
   protected table: string;
   protected whereTemplate: ReturnType<typeof whereTemplate>;
@@ -35,6 +63,11 @@ export abstract class WhereQueryBuilder<
   clearWhere(): this {
     this.whereQuery = "";
     this.params = [];
+    return this;
+  }
+
+  clearHaving(): this {
+    this.havingQuery = "";
     return this;
   }
 
@@ -65,36 +98,11 @@ export abstract class WhereQueryBuilder<
     operatorOrValue: BinaryOperatorType | BaseValues,
     value?: BaseValues,
   ): this {
-    let operator: BinaryOperatorType = "=";
-    let actualValue: BaseValues;
-
-    if (typeof operatorOrValue === "string" && value) {
-      operator = operatorOrValue as BinaryOperatorType;
-      actualValue = value;
-    } else {
-      actualValue = operatorOrValue as BaseValues;
-      operator = "=";
-    }
-
-    if (this.whereQuery || this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.andWhere(
-        column as string,
-        actualValue,
-        operator,
-      );
-      this.whereQuery += query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.where(
-      column as string,
-      actualValue,
-      operator,
+    return this.andWhere(
+      column as ModelKey<T>,
+      operatorOrValue as BinaryOperatorType,
+      value as BaseValues,
     );
-    this.whereQuery = query;
-    this.params.push(...params);
-    return this;
   }
 
   /**
@@ -127,23 +135,23 @@ export abstract class WhereQueryBuilder<
       operator = "=";
     }
 
-    if (!this.whereQuery && !this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.where(
+    if (this.whereQuery || this.isNestedCondition) {
+      const { query, params } = this.whereTemplate.andWhere(
         column as string,
         actualValue,
         operator,
       );
-      this.whereQuery = query;
+      this.whereQuery += query;
       this.params.push(...params);
       return this;
     }
 
-    const { query, params } = this.whereTemplate.andWhere(
+    const { query, params } = this.whereTemplate.where(
       column as string,
       actualValue,
       operator,
     );
-    this.whereQuery += query;
+    this.whereQuery = query;
     this.params.push(...params);
     return this;
   }
@@ -209,25 +217,7 @@ export abstract class WhereQueryBuilder<
     min: BaseValues,
     max: BaseValues,
   ): this {
-    if (!this.whereQuery && !this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.whereBetween(
-        column as string,
-        min,
-        max,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.andWhereBetween(
-      column as string,
-      min,
-      max,
-    );
-    this.whereQuery += query;
-    this.params.push(...params);
-    return this;
+    return this.andWhereBetween(column as ModelKey<T>, min, max);
   }
 
   /**
@@ -302,6 +292,23 @@ export abstract class WhereQueryBuilder<
     min: BaseValues,
     max: BaseValues,
   ): this {
+    return this.andWhereNotBetween(column as ModelKey<T>, min, max);
+  }
+
+  /**
+   * @description Adds an AND WHERE NOT BETWEEN condition to the query.
+   */
+  andWhereNotBetween(
+    column: ModelKey<T>,
+    min: BaseValues,
+    max: BaseValues,
+  ): this;
+  andWhereNotBetween(column: string, min: BaseValues, max: BaseValues): this;
+  andWhereNotBetween(
+    column: ModelKey<T> | string,
+    min: BaseValues,
+    max: BaseValues,
+  ): this {
     if (!this.whereQuery && !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereNotBetween(
         column as string,
@@ -364,23 +371,7 @@ export abstract class WhereQueryBuilder<
   whereIn(column: ModelKey<T>, values: BaseValues[]): this;
   whereIn(column: string, values: BaseValues[]): this;
   whereIn(column: ModelKey<T> | string, values: BaseValues[]): this {
-    if (!this.whereQuery && !this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.whereIn(
-        column as string,
-        values,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.andWhereIn(
-      column as string,
-      values,
-    );
-    this.whereQuery += query;
-    this.params.push(...params);
-    return this;
+    return this.andWhereIn(column as ModelKey<T>, values);
   }
 
   /**
@@ -439,6 +430,15 @@ export abstract class WhereQueryBuilder<
   whereNotIn(column: ModelKey<T>, values: BaseValues[]): this;
   whereNotIn(column: string, values: BaseValues[]): this;
   whereNotIn(column: ModelKey<T> | string, values: BaseValues[]): this {
+    return this.andWhereNotIn(column as ModelKey<T>, values);
+  }
+
+  /**
+   * @description Adds an OR WHERE NOT IN condition to the query.
+   */
+  andWhereNotIn(column: ModelKey<T>, values: BaseValues[]): this;
+  andWhereNotIn(column: string, values: BaseValues[]): this;
+  andWhereNotIn(column: ModelKey<T> | string, values: BaseValues[]): this {
     if (!this.whereQuery && !this.isNestedCondition) {
       const { query, params } = this.whereTemplate.whereNotIn(
         column as string,
@@ -489,17 +489,7 @@ export abstract class WhereQueryBuilder<
   whereNull(column: ModelKey<T>): this;
   whereNull(column: string): this;
   whereNull(column: ModelKey<T> | string): this {
-    if (!this.whereQuery && !this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.whereNull(column as string);
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.andWhereNull(column as string);
-    this.whereQuery += query;
-    this.params.push(...params);
-    return this;
+    return this.andWhereNull(column as ModelKey<T>);
   }
 
   /**
@@ -546,21 +536,7 @@ export abstract class WhereQueryBuilder<
   whereNotNull(column: ModelKey<T>): this;
   whereNotNull(column: string): this;
   whereNotNull(column: ModelKey<T> | string): this {
-    if (!this.whereQuery && !this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.whereNotNull(
-        column as string,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.andWhereNotNull(
-      column as string,
-    );
-    this.whereQuery += query;
-    this.params.push(...params);
-    return this;
+    return this.andWhereNotNull(column as ModelKey<T>);
   }
 
   /**
@@ -615,23 +591,7 @@ export abstract class WhereQueryBuilder<
   whereRegexp(column: ModelKey<T>, regexp: RegExp): this;
   whereRegexp(column: string, regexp: RegExp): this;
   whereRegexp(column: ModelKey<T> | string, regexp: RegExp): this {
-    if (!this.whereQuery && !this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.whereRegex(
-        column as string,
-        regexp,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.andWhereRegex(
-      column as string,
-      regexp,
-    );
-    this.whereQuery += query;
-    this.params.push(...params);
-    return this;
+    return this.andWhereRegexp(column as ModelKey<T>, regexp);
   }
 
   /**
@@ -688,23 +648,7 @@ export abstract class WhereQueryBuilder<
    * @description Adds a raw WHERE condition to the query.
    */
   rawWhere(query: string, queryParams: any[] = []) {
-    if (!this.whereQuery && !this.isNestedCondition) {
-      const { query: rawQuery, params } = this.whereTemplate.rawWhere(
-        query,
-        queryParams,
-      );
-      this.whereQuery = rawQuery;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query: rawQuery, params } = this.whereTemplate.rawAndWhere(
-      query,
-      queryParams,
-    );
-    this.whereQuery += rawQuery;
-    this.params.push(...params);
-    return this;
+    return this.rawAndWhere(query, queryParams);
   }
 
   /**
@@ -750,6 +694,91 @@ export abstract class WhereQueryBuilder<
     );
     this.whereQuery += rawQuery;
     this.params.push(...params);
+    return this;
+  }
+
+  /**
+   * @description Adds a HAVING condition to the query.
+   */
+  having(column: string, value: any): this;
+  having(column: string, operator: BinaryOperatorType, value: any): this;
+  having(
+    column: string,
+    operatorOrValue: BinaryOperatorType | BaseValues,
+    value?: BaseValues,
+  ): this {
+    return this.andHaving(column, operatorOrValue as BinaryOperatorType, value);
+  }
+
+  /**
+   * @description Adds an AND HAVING condition to the query.
+   */
+  andHaving(column: string, value: any): this;
+  andHaving(column: string, operator: BinaryOperatorType, value: any): this;
+  andHaving(
+    column: string,
+    operatorOrValue: BinaryOperatorType | BaseValues,
+    value?: BaseValues,
+  ): this {
+    return this.having(column, operatorOrValue as BinaryOperatorType, value);
+  }
+
+  /**
+   * @description Adds an OR HAVING condition to the query.
+   */
+  orHaving(column: string, value: any): this;
+  orHaving(column: string, operator: BinaryOperatorType, value: any): this;
+  orHaving(
+    column: string,
+    operatorOrValue: BinaryOperatorType | BaseValues,
+    value?: BaseValues,
+  ): this {
+    let operator: BinaryOperatorType = "=";
+    let actualValue: BaseValues;
+
+    if (typeof operatorOrValue === "string" && value) {
+      operator = operatorOrValue as BinaryOperatorType;
+      actualValue = value;
+    } else {
+      actualValue = operatorOrValue as BaseValues;
+      operator = "=";
+    }
+
+    this.havingQuery += ` OR ${column} ${operator} ?`;
+    this.params.push(actualValue);
+    return this;
+  }
+
+  /**
+   * @description Adds a raw HAVING condition to the query.
+   */
+  havingRaw(query: string): this {
+    return this.andHavingRaw(query);
+  }
+
+  /**
+   * @description Adds a raw OR HAVING condition to the query.
+   */
+  andHavingRaw(query: string): this {
+    if (this.havingQuery) {
+      this.havingQuery += ` AND ${query}`;
+    } else {
+      this.havingQuery = ` HAVING ${query}`;
+    }
+
+    return this;
+  }
+
+  /**
+   * @description Adds a raw OR HAVING condition to the query.
+   */
+  orHavingRaw(query: string): this {
+    if (this.havingQuery) {
+      this.havingQuery += ` OR ${query}`;
+    } else {
+      this.havingQuery = ` HAVING ${query}`;
+    }
+
     return this;
   }
 }
