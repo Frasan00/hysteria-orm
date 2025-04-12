@@ -6,14 +6,14 @@ import dropTableTemplate from "../../resources/migrations/DROP_TABLE";
 import type { SqlDataSourceType } from "../../sql_data_source_types";
 import ColumnBuilderAlter from "../column/alter_table/column_builder_alter";
 import ColumnTypeBuilder from "../column/create_table/column_type_builder";
-import { SqlDataSource } from "../../sql_data_source";
+import { env } from "../../../env/env";
 
 export default class Schema {
   queryStatements: string[];
   sqlType: SqlDataSourceType;
 
   constructor(sqlType?: SqlDataSourceType) {
-    this.sqlType = (sqlType || process.env.DB_TYPE) as SqlDataSourceType;
+    this.sqlType = (sqlType || env.DB_TYPE) as SqlDataSourceType;
 
     if (!this.sqlType) {
       throw new HysteriaError("Schema::constructor", "ENV_NOT_SET");

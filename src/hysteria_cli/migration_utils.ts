@@ -10,11 +10,12 @@ import type {
 } from "../sql/sql_data_source_types";
 import { MigrationTableType } from "./resources/migration_table_type";
 import MigrationTemplates from "./resources/migration_templates";
+import { env } from "../env/env";
 
 export async function getMigrationTable(
   sqlConnection: SqlConnectionType,
 ): Promise<MigrationTableType[]> {
-  switch (process.env.DB_TYPE) {
+  switch (env.DB_TYPE) {
     case "mariadb":
     case "mysql":
       const mysqlConnection = sqlConnection as MysqlConnectionInstance;
@@ -116,8 +117,8 @@ async function loadMigrationModule(
 
 async function findMigrationModule(
   migrationName: string,
-  migrationModulePath: string = process.env.MIGRATION_PATH
-    ? process.env.MIGRATION_PATH + "/" + migrationName
+  migrationModulePath: string = env.MIGRATION_PATH
+    ? env.MIGRATION_PATH + "/" + migrationName
     : "database/migrations/" + migrationName,
 ): Promise<new () => Migration> {
   const migrationPath = path.resolve(process.cwd(), migrationModulePath);
@@ -137,7 +138,7 @@ async function findMigrationModule(
 function findMigrationNames(): string[] {
   const currentUserDirectory = process.cwd();
   const migrationPath = path.resolve(
-    process.env.MIGRATION_PATH || "database/migrations",
+    env.MIGRATION_PATH || "database/migrations",
   );
 
   const fullPathToMigrationPath = path.resolve(

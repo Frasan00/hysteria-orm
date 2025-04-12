@@ -2,11 +2,11 @@ import fs from "fs";
 import path from "path";
 import logger from "../utils/logger";
 import MigrationTemplates from "./resources/migration_templates";
+import { env } from "../env/env";
 
 function getOrCreateMigrationPath(): string {
-  let migrationPath = process.env.MIGRATION_PATH || "database/migrations";
-  let currentPath = path.resolve(process.cwd(), migrationPath);
-
+  const migrationPath = env.MIGRATION_PATH;
+  const currentPath = path.resolve(process.cwd(), migrationPath);
   if (!fs.existsSync(currentPath)) {
     fs.mkdirSync(currentPath, { recursive: true });
   }

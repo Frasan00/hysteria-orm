@@ -6,6 +6,7 @@ import { MongoClientImport } from "../../drivers/driver_constants";
 import { DriverFactory } from "../../drivers/drivers_factory";
 import { HysteriaError } from "../../errors/hysteria_error";
 import { Collection } from "./mongo_models/mongo_collection";
+import { env } from "../../env/env";
 
 type MongoClientInstance = InstanceType<MongoClientImport["MongoClient"]>;
 
@@ -38,7 +39,7 @@ export class MongoDataSource extends DataSource {
     cb?: () => Promise<void> | void,
   ): Promise<MongoDataSource> {
     if (!url) {
-      url = process.env.MONGO_URL;
+      url = env.MONGO_URL;
       if (!url) {
         throw new HysteriaError(
           "MongoDataSource::connect url is required to connect to mongo database and was not provided in the options nor the environment variables",
@@ -53,8 +54,7 @@ export class MongoDataSource extends DataSource {
     await mongoClient.connect();
     this.instance = new MongoDataSource(url, mongoClient);
     this.instance.isConnected = true;
-    this.instance.logs =
-      options?.logs || process.env.MONGO_LOGS === "true" || false;
+    this.instance.logs = options?.logs || env.MONGO_LOGS || false;
     await cb?.();
     return this.instance;
   }

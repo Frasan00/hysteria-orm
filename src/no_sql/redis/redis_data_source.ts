@@ -1,6 +1,7 @@
 import Redis, { RedisOptions } from "ioredis";
 import { HysteriaError } from "../../errors/hysteria_error";
 import logger from "../../utils/logger";
+import { env } from "../../env/env";
 
 /**
  * @description The RedisStorable type is a type that can be stored in redis
@@ -35,13 +36,14 @@ export class RedisDataSource {
 
   constructor(input?: RedisOptions) {
     this.isConnected = false;
-    const port = input?.port || +(process.env.REDIS_PORT as string) || 6379;
+    const port = input?.port || +(env.REDIS_PORT as string) || 6379;
 
     this.redisConnection = new Redis({
-      host: input?.host || process.env.REDIS_HOST,
-      username: input?.username || process.env.REDIS_USERNAME,
+      host: input?.host || env.REDIS_HOST,
+      username: input?.username || env.REDIS_USERNAME,
       port: port,
-      password: input?.password || process.env.REDIS_PASSWORD,
+      db: input?.db || +(env.REDIS_DATABASE as string) || 0,
+      password: input?.password || env.REDIS_PASSWORD,
       ...input,
     });
   }
@@ -56,12 +58,12 @@ export class RedisDataSource {
       return;
     }
 
-    const port = input?.port || +(process.env.REDIS_PORT as string) || 6379;
+    const port = input?.port || +(env.REDIS_PORT as string) || 6379;
     RedisDataSource.redisConnection = new Redis({
-      host: input?.host || process.env.REDIS_HOST,
-      username: input?.username || process.env.REDIS_USERNAME,
+      host: input?.host || env.REDIS_HOST,
+      username: input?.username || env.REDIS_USERNAME,
       port: port,
-      password: input?.password || process.env.REDIS_PASSWORD,
+      password: input?.password || env.REDIS_PASSWORD,
       ...input,
     });
 

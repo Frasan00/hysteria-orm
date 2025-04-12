@@ -7,6 +7,7 @@ import type {
   PostgresSqlDataSourceInput,
   SqliteDataSourceInput,
 } from "./data_source_types";
+import { env } from "../env/env";
 
 export abstract class DataSource {
   declare type: DataSourceType;
@@ -19,7 +20,7 @@ export abstract class DataSource {
   declare logs: boolean;
 
   protected constructor(input?: DataSourceInput) {
-    this.type = input?.type || (process.env.DB_TYPE as DataSourceType);
+    this.type = input?.type || (env.DB_TYPE as DataSourceType);
     switch (this.type) {
       case "mongo":
         this.handleMongoSource(input as MongoDataSourceInput);
@@ -47,12 +48,12 @@ Valid database types are: [mongo, postgres, cockroachdb, mysql, mariadb, sqlite]
   }
 
   protected handleCockroachdbSource(input?: PostgresSqlDataSourceInput) {
-    this.host = (input?.host || process.env.DB_HOST) as string;
-    this.port = +(input?.port as number) || +(process.env.DB_PORT as string);
-    this.username = (input?.username || process.env.DB_USER) as string;
-    this.password = (input?.password || process.env.DB_PASSWORD) as string;
-    this.database = (input?.database || process.env.DB_DATABASE) as string;
-    this.logs = input?.logs || process.env.DB_LOGS === "true" || false;
+    this.host = (input?.host || env.DB_HOST) as string;
+    this.port = +(input?.port as number) || +(env.DB_PORT as string);
+    this.username = (input?.username || env.DB_USER) as string;
+    this.password = (input?.password || env.DB_PASSWORD) as string;
+    this.database = (input?.database || env.DB_DATABASE) as string;
+    this.logs = input?.logs || env.DB_LOGS || false;
 
     if (!this.port) {
       this.port = 26257;
@@ -60,12 +61,12 @@ Valid database types are: [mongo, postgres, cockroachdb, mysql, mariadb, sqlite]
   }
 
   protected handlePostgresSource(input?: PostgresSqlDataSourceInput) {
-    this.host = (input?.host || process.env.DB_HOST) as string;
-    this.port = +(input?.port as number) || +(process.env.DB_PORT as string);
-    this.username = (input?.username || process.env.DB_USER) as string;
-    this.password = (input?.password || process.env.DB_PASSWORD) as string;
-    this.database = (input?.database || process.env.DB_DATABASE) as string;
-    this.logs = input?.logs || process.env.DB_LOGS === "true" || false;
+    this.host = (input?.host || env.DB_HOST) as string;
+    this.port = +(input?.port as number) || +(env.DB_PORT as string);
+    this.username = (input?.username || env.DB_USER) as string;
+    this.password = (input?.password || env.DB_PASSWORD) as string;
+    this.database = (input?.database || env.DB_DATABASE) as string;
+    this.logs = input?.logs || env.DB_LOGS || false;
 
     if (!this.port) {
       this.port = 5432;
@@ -73,12 +74,12 @@ Valid database types are: [mongo, postgres, cockroachdb, mysql, mariadb, sqlite]
   }
 
   protected handleMysqlSource(input?: MysqlSqlDataSourceInput) {
-    this.host = (input?.host || process.env.DB_HOST) as string;
-    this.port = +(input?.port as number) || +(process.env.DB_PORT as string);
-    this.username = (input?.username || process.env.DB_USER) as string;
-    this.password = (input?.password || process.env.DB_PASSWORD) as string;
-    this.database = (input?.database || process.env.DB_DATABASE) as string;
-    this.logs = input?.logs || process.env.DB_LOGS === "true" || false;
+    this.host = (input?.host || env.DB_HOST) as string;
+    this.port = +(input?.port as number) || +(env.DB_PORT as string);
+    this.username = (input?.username || env.DB_USER) as string;
+    this.password = (input?.password || env.DB_PASSWORD) as string;
+    this.database = (input?.database || env.DB_DATABASE) as string;
+    this.logs = input?.logs || env.DB_LOGS || false;
 
     if (!this.port) {
       this.port = 3306;
@@ -86,12 +87,12 @@ Valid database types are: [mongo, postgres, cockroachdb, mysql, mariadb, sqlite]
   }
 
   protected handleSqliteSource(input?: SqliteDataSourceInput) {
-    this.database = (input?.database || process.env.DB_DATABASE) as string;
-    this.logs = input?.logs || process.env.DB_LOGS === "true" || false;
+    this.database = (input?.database || env.DB_DATABASE) as string;
+    this.logs = input?.logs || env.DB_LOGS || false;
   }
 
   protected handleMongoSource(input?: MongoDataSourceInput) {
-    this.url = input?.url || (process.env.MONGO_URL as string);
-    this.logs = input?.logs || process.env.MONGO_LOGS === "true" || false;
+    this.url = input?.url || (env.MONGO_URL as string);
+    this.logs = input?.logs || env.MONGO_LOGS || false;
   }
 }

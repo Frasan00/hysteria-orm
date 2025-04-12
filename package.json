@@ -53,7 +53,6 @@
     "@types/pg": "^8.11.10",
     "@types/sqlite3": "^3.1.11",
     "commander": "^12.1.0",
-    "dotenv": "^16.4.7",
     "pluralize": "^8.0.0",
     "reflect-metadata": "^0.2.2",
     "sql-formatter": "^15.4.8"

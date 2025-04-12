@@ -1,3 +1,4 @@
+import { env } from "../env/env";
 import { Migration } from "../sql/migrations/migration";
 import { Migrator } from "../sql/migrations/migrator";
 import {
@@ -16,12 +17,10 @@ export default async function rollbackMigrationsConnector(
   verbose: boolean = false,
   shouldExit: boolean = true,
 ) {
-  logger.info(
-    "Rolling back migrations for database type: " + process.env.DB_TYPE,
-  );
+  logger.info("Rolling back migrations for database type: " + env.DB_TYPE);
 
   await SqlDataSource.connect({
-    type: process.env.DB_TYPE as SqlDataSourceType,
+    type: env.DB_TYPE as SqlDataSourceType,
     logs: verbose,
   });
   await SqlDataSource.rawQuery(BEGIN_TRANSACTION);

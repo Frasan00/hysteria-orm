@@ -1,3 +1,4 @@
+import { env } from "../../env/env";
 import rollbackMigrationsConnector from "../../hysteria_cli/migration_rollback_connector";
 import runMigrationsConnector from "../../hysteria_cli/migration_run_connector";
 import logger from "../../utils/logger";
@@ -85,7 +86,7 @@ export class ClientMigrator {
   }
 
   async migrate(direction: "up" | "down"): Promise<void> {
-    process.env.MIGRATION_PATH = this.migrationPath;
+    env.MIGRATION_PATH = this.migrationPath;
     if (direction === "up") {
       return runMigrationsConnector(undefined, this.verbose, true);
     }

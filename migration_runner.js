@@ -1,7 +1,4 @@
 import { execSync } from "node:child_process";
-import dotenv from "dotenv";
-
-dotenv.config();
 
 const migrations = ["./test/sql/migrations"];
 
