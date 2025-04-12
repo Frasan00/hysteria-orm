@@ -76,9 +76,20 @@ export function column(
 export function dateColumn(options: ColumnOptions = {}): PropertyDecorator {
   return column({
     ...options,
-    prepare: (value: Date) =>
-      value.toISOString().slice(0, 19).replace("T", " "),
-    serialize: (value: string) => new Date(value),
+    prepare: (value: Date | string) => {
+      if (typeof value === "string") {
+        return new Date(value);
+      }
+
+      return value;
+    },
+    serialize: (value: string | Date) => {
+      if (typeof value === "string") {
+        return new Date(value);
+      }
+
+      return value;
+    },
   });
 }
 

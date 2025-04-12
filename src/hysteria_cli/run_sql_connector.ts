@@ -1,9 +1,6 @@
-import dotenv from "dotenv";
-import logger from "../utils/logger";
-import { SqlDataSource } from "../sql/sql_data_source";
 import { HysteriaError } from "../errors/hysteria_error";
-
-dotenv.config();
+import { SqlDataSource } from "../sql/sql_data_source";
+import logger from "../utils/logger";
 
 export default async function runSqlConnector(sql: string): Promise<void> {
   const databaseType = process.env.DB_TYPE;

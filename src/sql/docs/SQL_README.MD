@@ -29,6 +29,7 @@
     - [Read (standard methods used for simple queries)](#read-standard-methods-used-for-simple-queries)
     - [Query Builder](#query-builder)
     - [Where Builder](#where-builder)
+    - [Where Sub Query](#where-sub-query)
     - [Aliases](#aliases)
     - [Count And Sum](#count-and-sum)
     - [Join](#join)
@@ -36,6 +37,7 @@
     - [Standalone Query Builder](#standalone-query-builder)
 - [Migrations](#migrations)
     - [hysteria-cli for Migrations](#hysteria-orm-cli-for-migrations)
+    - [Run Migrations Programmatically](#run-migrations-programmatically)
     - [Create Table](#create-table)
     - [Alter Table](#alter-table)
     - [Migration Query Builder](#migration-query-builder)
@@ -762,24 +764,44 @@ await User.query().when(nullValue, (value, query) => {
 .one();
 ```
 
+### Where Sub Query
+- You can create a where condition that uses the result of a SubQuery
 
-### Where Builder
-
-- Used to build complex logic conditions
 ```typescript
 import { User } from "./User";
 
-const user: User | null = await User.query().whereBuilder((queryBuilder) => {
-    queryBuilder.andWhereBuilder((innerQueryBuilder) => {
-        innerQueryBuilder.where('department', 'sales');
-        innerQueryBuilder.where('hired_date', '>=', '2020-01-01');
+const users = await UserWithUuid.query()
+.where("name", "John")
+.orWhere("name", "Alice")
+.whereBuilder((qb) => {
+    qb.where("age", 12)
+    .orWhere("name", "John")
+    .orWhereSubQuery("id", "IN", (qb) => {
+        qb.select("id").from("users").where("name", "Alice");
     });
-    queryBuilder.orWhereBuilder((innerQuery) => {
-        innerQuery.where('department', 'engineering');
-        innerQuery.where('hired_date', '>=', '2022-01-01');
+})
+```
+
+### Where Builder
+- Used to build complex logic conditions, everything inside the whereBuilder callback will be wrapped in parenthesis
+
+```typescript
+import { User } from "./User";
+
+const user: User | null = await User.query()
+    .whereBuilder((queryBuilder) => {
+        queryBuilder.andWhereBuilder((innerQueryBuilder) => {
+            innerQueryBuilder
+                .where('department', 'sales')
+                .where('hired_date', '>=', '2020-01-01');
+        })
+        .orWhereBuilder((innerQuery) => {
+            innerQuery
+                .where('department', 'engineering')
+                .where('hired_date', '>=', '2022-01-01');
+        })
+        .where('is_active', true);
     });
-    queryBuilder.where('is_active', true);
-});
 ```
 
 ## Ignore Hooks
@@ -791,7 +813,7 @@ const userFind = await User.find({ ignoreHooks: ["beforeFetch"] });
 
 ### Aliases
 
-- Aliases are available in the query builder, for example select('new as newName') will generate an alias in the $additional property that every model instances has
+- Aliases are available directly integrated in the select method, for example select('new as newName') will generate an alias in the `$additional` property that every model instances has
 ```typescript
 import { User } from "./User";
 
@@ -801,17 +823,153 @@ const user: User | null = await User.query()
     .where("name", "John Doe")
     .andWhere("email", "john@gmail.com")
     .one();
+
+user.$additional.superName;
 ```
 
 ### Count and Sum
+- Methods can be used directly inside the `select` method, but there are two utils for `count` and `sum` in order to get directly the number from the query
 
 - Quick count and sum methods
 ```typescript
 import { User } from "./User";
 
 // You can specify if ignore hooks like beforeFetch
-const count = await User.query().getCount({ ignoreHooks: false }); // number
+const count = await User.query().getCount("id", { ignoreHooks: false }); // number
 const sum = await User.query().getSum("id"); // number
+```
+
+### Join
+- Hysteria ORM provides powerful join capabilities to connect related tables in your queries
+- Joins can be performed using table names or model classes
+- The ORM supports various join types: INNER JOIN, LEFT JOIN, and RIGHT JOIN
+- Join methods are chainable and can be combined with other query builder methods
+
+#### Basic Join Syntax
+```typescript
+import { User } from "./User";
+import { Post } from "./Post";
+
+// Basic join with table name
+const users = await User.query()
+  .join("posts", "userId", "id")
+  .where("name", "John Doe")
+  .many();
+
+// Join with model class
+const users = await User.query()
+  .join(Post, "userId", "id")
+  .where("name", "John Doe")
+  .many();
+```
+
+#### Join Types
+
+##### Inner Join
+- Returns records that have matching values in both tables
+
+```typescript
+// Using table name
+const users = await User.query()
+  .innerJoin("posts", "userId", "id")
+  .where("name", "John Doe")
+  .many();
+
+// Using model class
+const users = await User.query()
+  .innerJoin(Post, "userId", "id")
+  .where("name", "John Doe")
+  .many();
+```
+
+##### Left Join
+- Returns all records from the left table and matching records from the right table
+
+```typescript
+// Using table name
+const users = await User.query()
+  .leftJoin("posts", "userId", "id")
+  .where("name", "John Doe")
+  .many();
+
+// Using model class
+const users = await User.query()
+  .leftJoin(Post, "userId", "id")
+  .where("name", "John Doe")
+  .many();
+```
+
+##### Right Join
+- Returns all records from the right table and matching records from the left table
+
+```typescript
+// Using table name
+const users = await User.query()
+  .rightJoin("posts", "userId", "id")
+  .where("name", "John Doe")
+  .many();
+
+// Using model class
+const users = await User.query()
+  .rightJoin(Post, "userId", "id")
+  .where("name", "John Doe")
+  .many();
+```
+
+#### Simplified Join Syntax
+- When using the `join` method without specifying the primary column, it defaults to the model's primary key
+- This simplifies the join syntax for common scenarios
+
+```typescript
+// Without specifying primary column (uses model's primary key)
+const users = await User.query()
+  .join("posts", "userId")
+  .where("name", "John Doe")
+  .many();
+
+// With model class
+const users = await User.query()
+  .join(Post, "userId")
+  .where("name", "John Doe")
+  .many();
+```
+
+#### Raw Join
+- For complex join scenarios, you can use the `joinRaw` method to write custom join SQL
+
+```typescript
+const users = await User.query()
+  .joinRaw("JOIN posts ON posts.user_id = users.id AND posts.status = 'published'")
+  .where("name", "John Doe")
+  .many();
+```
+
+#### Clearing Joins
+- You can clear all joins from the query using the `clearJoin` method
+
+```typescript
+const query = User.query()
+  .join("posts", "userId", "id")
+  .where("name", "John Doe");
+
+// Clear joins and continue building the query
+query.clearJoin()
+  .where("email", "john@example.com")
+  .many();
+```
+
+#### Combining Joins with Other Query Methods
+- Joins can be combined with other query builder methods for complex queries
+
+```typescript
+const users = await User.query()
+  .select("users.id", "users.name", "posts.title as postTitle")
+  .join("posts", "userId", "id")
+  .where("users.name", "John Doe")
+  .andWhere("posts.status", "published")
+  .orderBy("users.createdAt", "DESC")
+  .limit(10)
+  .many();
 ```
 
 ### Pagination
@@ -828,37 +986,21 @@ const user: User | null = await User.query()
 ```
 
 ### Standalone Query Builder
-- You may not want an ORM overhead in you project, but using raw query can be not scalable and difficult to maintain
-- In this case you can use the StandaloneQueryBuilder that does not need a connection to a database and only returns the query and the params for the selected database
-- You can then use the query and the params directly on the database driver
-
+- You can use a query builder that does not rely on a Model
 ```typescript
-import { StandaloneQueryBuilder } from "hysteria-orm";
+import { SqlDataSource } from "hysteria-orm"
 
-const userQueryBuilder = new StandaloneQueryBuilder("mysql", "users");
-const { query, params } = userQueryBuilder
-.whereBuilder((builder) => {
-    builder.where("id", 1);
-    builder.orWhere("name", "John");
-    builder.andWhereBuilder((builder) => {
-    builder.where("signup_date", "2021-01-01");
-    builder.orWhere("signup_date", "2021-01-02");
-    });
-})
-.toSql();
-
-// You can also specify case convention for model and database
-const userQueryBuilder = new StandaloneQueryBuilder("postgres", "users", "camel", "snake");
-const { query, params } = userQueryBuilder
-.whereBuilder((builder) => {
+const { query, params } = SqlDataSource
+    .query()
+    .whereBuilder((builder) => {
         builder.where("id", 1);
         builder.orWhere("name", "John");
         builder.andWhereBuilder((builder) => {
-        builder.where("signup_date", "2021-01-01");
-        builder.orWhere("signup_date", "2021-01-02");
-    });
-})
-.toSql();
+            builder.where("signup_date", "2021-01-01");
+            builder.orWhere("signup_date", "2021-01-02");
+        });
+    })
+    .unWrap();
 
 // Example of couple { query, params }
 
@@ -870,45 +1012,40 @@ const { query, params } = userQueryBuilder
 - Migrations cli is an optional standalone program that can be used to create and run migrations
 - Migration cli should be used in the root of the project
 - Migrations cli starts from the current user location (process.cwd) and appends the path/to/migrations (default `database/migrations`), this can be customized with `MIGRATION_PATH` environment variable
-- In order to run typescript migrations you need to have a `tsconfig.json` in the root of the project configured.
+- Migrations can both be defined in ts and js, if using ts `ts-node` and `typescript` must be installed as dependencies
 - By default the migration queries are hidden, you can use --verbose in order to get all the query logs
+
+## Run Migrations Programmatically
+- You can also run migrations from you code using the `defineMigrator` method
+```typescript
+import { defineMigrator } from "hysteria-orm";
+
+const migrator = defineMigrator('./database/migrations', true) // path to migrations, debugger
+await migrator.migrate('up');
+```
 
 ## hysteria-orm-cli for Migrations
 - You can run the cli using `npx hysteria` (for npm) or `yarn run hysteria` (for yarn)
 
-## create:migration <name> [-j, --javascript] [-a, --alter] [-c, --create] [-t, --table <string>]
+### create:migration <name> [-j, --javascript] [-a, --alter] [-c, --create] [-t, --table <string>]
 - Creates a migration in the migrations folder
 - If the creation folder specified in the .env (or the default one `database/migrations`) it will be created automatically
 - By default this command generates a .ts file, you can generate a .js file with the flag -j
 - You can specify the mode of the migration with -c that spawns a create table migration and -a that spawns an alter table migration
 - If specifing a mode for the migration, you can specify a table name with --table
 
-## run:migrations [runUntil] [-t, --tsconfig] [-v, --verbose]
+### run:migrations [runUntil][-v, --verbose]
 - Runs all pending migrations <optional - migration_file_name>
 - If the migration file name is specified then migrations will be run until that migration
-- If you are using typescript you can specify the path to the tsconfig file with the -t flag to resolve type errors
 
-## rollback:migrations [rollbackUntil] [-t, --tsconfig] [-v, --verbose]
+### rollback:migrations [rollbackUntil][-v, --verbose]
 - Rollbacks all existing migrations <optional - migration_file_name>
 - If the migration file name is specified then migrations will be rolled back from the last migration until that migration
-- If you are using typescript you can specify the path to the tsconfig file with the -t flag to resolve type errors
 
-## refresh:migrations [-t, --tsconfig] [-v, --verbose]
+### refresh:migrations[-v, --verbose]
 - Rollbacks all existing migrations and runs them again
-- If you are using typescript you can specify the path to the tsconfig file with the -t flag to resolve type errors
 
-## Tsconfig
-- the default tsconfig if not tsconfig path is provided is:
-```json
-{
-    "compilerOptions": {
-        "module": "CommonJS",
-        "target": "ES2019",
-    },
-}
-```
-
-## Create Table
+### Create Table
 
 ```typescript
 import { Migration } from "hysteria-orm";
@@ -926,7 +1063,7 @@ export default class extends Migration {
             table.boolean("is_active").notNullable().default(true);
             table.jsonb("json");
             table.timestamp("created_at", { autoCreate: true });
-            table.timestamp("updated_at", { autoCreate: true });
+            table.timestamp("updated_at", { autoCreate: true, autoUpdate: true });
             table.timestamp("deleted_at").nullable();
         },
         { ifNotExists: true },
@@ -952,7 +1089,7 @@ export default class extends Migration {
 }
 ```
 
-## Alter Table
+### Alter Table
 
 ```typescript
 import { Migration } from "hysteria-orm";
@@ -978,30 +1115,7 @@ export default class extends Migration {
 }
 ```
 
-## Migration Query Builder
-- You can use the standalone query builder in the migrations in order to make crud operations non model related
-```typescript
-export default class extends Migration {
-  public async up(): Promise<void> {
-    this.schema.useQueryBuilder("users", (qb) => {
-      return qb
-        .where("name", "John")
-        .update({ name: "John2" });
-    });
-
-    this.schema.useQueryBuilder("users", (qb) => {
-      return qb
-        .insert({ name: "John" });
-    });
-  }
-
-  public async down(): Promise<void> {
-    // Down logic here
-  }
-}
-```
-
-## Run SQL file in migrations
+### Run SQL file in migrations
 - You can also run a .sql or .txt file in the migrations
 - Remember that the file path is relative to the current working directory you are in
 - As best practice, migration cli should be run in the root of the project

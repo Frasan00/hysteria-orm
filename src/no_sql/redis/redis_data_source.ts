@@ -1,9 +1,6 @@
-import dotenv from "dotenv";
 import Redis, { RedisOptions } from "ioredis";
 import { HysteriaError } from "../../errors/hysteria_error";
 import logger from "../../utils/logger";
-
-dotenv.config();
 
 /**
  * @description The RedisStorable type is a type that can be stored in redis

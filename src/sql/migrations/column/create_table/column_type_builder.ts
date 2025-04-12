@@ -913,7 +913,7 @@ export default class ColumnTypeBuilder
         case "postgres":
         case "cockroachdb":
           this.afterDefinitionQueries.push(
-            `CREATE OR REPLACE FUNCTION update_date_column() RETURNS TRIGGER AS $$
+            `CREATE OR REPLACE FUNCTION ${this.table}_${name}_update_date_column() RETURNS TRIGGER AS $$
             BEGIN
               NEW.${name} = now();
               RETURN NEW;
@@ -932,6 +932,7 @@ export default class ColumnTypeBuilder
   /**
    * @description Creates a timestamp column
    * @sqlite Sqlite does not support auto updating a timestamp column nor date columns in general, TEXT will be used instead
+   * @postgres CockroachDB does not support auto updating a timestamp column, a function will be created instead for this purpose
    */
   timestamp(name: string, options?: DateOptions): ColumnConstraints {
     this.checkLastComma();
@@ -969,7 +970,7 @@ export default class ColumnTypeBuilder
     if (options && options.autoUpdate) {
       if (this.sqlType === "postgres" || this.sqlType === "cockroachdb") {
         this.afterDefinitionQueries.push(
-          `CREATE OR REPLACE FUNCTION update_timestamp_column() RETURNS TRIGGER AS $$
+          `CREATE OR REPLACE FUNCTION ${this.table}_${name}_auto_update() RETURNS TRIGGER AS $$
           BEGIN
             NEW.${name} = now();
             RETURN NEW;

@@ -1,35 +1,9 @@
 import { HysteriaError } from "../../../errors/hysteria_error";
 import { convertCase } from "../../../utils/case_utils";
-import { isNestedObject } from "../../../utils/json_utils";
 import { Model } from "../../models/model";
 import { getModelColumns } from "../../models/model_decorators";
 import type { SqlDataSourceType } from "../../sql_data_source_types";
-
-const formatValue = (value: any, dbType: SqlDataSourceType): any => {
-  switch (true) {
-    case value === undefined:
-    case value === null:
-      return null;
-    case Array.isArray(value):
-      return JSON.stringify(value);
-    case isNestedObject(value) && !Buffer.isBuffer(value):
-      return JSON.stringify(value);
-    case Buffer.isBuffer(value):
-      return "bytea";
-    case value instanceof Date:
-      switch (dbType) {
-        case "postgres":
-        case "cockroachdb":
-          return value.toISOString();
-        default:
-          return value;
-      }
-    case typeof value === "bigint":
-      return value.toString();
-    default:
-      return value;
-  }
-};
+import { formatValue } from "./query_utils";
 
 const getPlaceholder = (
   value: any,
@@ -51,7 +25,9 @@ const getPlaceholder = (
         ? "bytea"
         : Array.isArray(value)
           ? "array"
-          : isNestedObject(value)
+          : typeof value === "object" &&
+              value !== null &&
+              !(value instanceof Date)
             ? "jsonb"
             : typeof value === "boolean"
               ? "boolean"
@@ -74,7 +50,13 @@ const updateTemplate = (
   typeofModel: typeof Model,
 ) => {
   const table = typeofModel.table;
-  const modelColumns = getModelColumns(typeofModel);
+  let modelColumns: ReturnType<typeof getModelColumns> = [];
+
+  try {
+    modelColumns = getModelColumns(typeofModel);
+  } catch (error) {
+    modelColumns = [];
+  }
 
   return {
     update: (

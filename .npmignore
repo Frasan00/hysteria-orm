@@ -17,3 +17,5 @@ yarn.lock
 docker/
 docker-compose.yaml
 docker-compose.yml
+scripts/
+scripts/init_cockroachdb.sh

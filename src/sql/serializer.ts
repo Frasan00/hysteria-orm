@@ -96,11 +96,6 @@ async function serializeModel<T extends Record<string, any>>(
         return;
       }
 
-      if (Buffer.isBuffer(originalValue)) {
-        casedModel[camelCaseKey] = originalValue.toString("base64");
-        return;
-      }
-
       casedModel[camelCaseKey] = originalValue;
     }),
   );

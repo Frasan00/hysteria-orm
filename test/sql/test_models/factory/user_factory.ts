@@ -100,7 +100,6 @@ export class UserFactory {
       description: faker.lorem.paragraph(),
       shortDescription: faker.lorem.sentence(),
       birthDate: faker.date.birthdate(),
-      image: Buffer.from(faker.image.url()),
     };
   }
 }

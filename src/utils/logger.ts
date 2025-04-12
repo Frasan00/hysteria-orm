@@ -1,3 +1,5 @@
+import { bindParamsIntoQuery } from "./query";
+
 export type CustomLogger = {
   info(message: string): void;
   error(message: string): void;
@@ -59,33 +61,12 @@ class HysteriaLogger {
 }
 
 export function log(query: string, logs: boolean, params?: any[]) {
-  if (!logs) {
+  if (!logs || query.replace(/\s/g, "").replace(/\n/g, "") === "SELECT1") {
     return;
   }
 
   if (params && params.length) {
-    params.forEach((param, index) => {
-      let formattedParam: any = null;
-
-      if (typeof param === "string") {
-        formattedParam = `'${param}'`;
-      } else if (
-        typeof param === "object" &&
-        param !== null &&
-        Object.keys(param).length > 0
-      ) {
-        formattedParam = `'${JSON.stringify(param)}'`;
-      } else {
-        formattedParam = param;
-      }
-
-      // Replace MySQL-style placeholders
-      query = query.replace(/\?/, formattedParam);
-
-      // Replace PostgreSQL-style placeholders
-      const pgPlaceholder = new RegExp(`\\$${index + 1}`, "g");
-      query = query.replace(pgPlaceholder, formattedParam);
-    });
+    query = bindParamsIntoQuery(query, params);
   }
 
   HysteriaLogger.loggerInstance.info(query);

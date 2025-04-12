@@ -29,8 +29,8 @@ export default class SqlModelManagerUtils<T extends Model> {
     const filteredModel = this.filterRelationsAndMetadata(model);
     const keys = Object.keys(filteredModel);
     const values = Object.values(filteredModel);
-    const insert = insertTemplate(dbType, typeofModel);
 
+    const insert = insertTemplate(dbType, typeofModel);
     return insert.insert(keys, values);
   }
 
@@ -89,7 +89,7 @@ export default class SqlModelManagerUtils<T extends Model> {
     column: string,
     value: string | number | boolean,
   ): { query: string; params: any[] } {
-    return deleteTemplate(table, this.dbType).delete(column, value);
+    return deleteTemplate(this.dbType).delete(table, column, value);
   }
 
   private getRelationFromModel(

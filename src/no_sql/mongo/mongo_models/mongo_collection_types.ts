@@ -2,7 +2,8 @@ import { convertCase } from "../../../utils/case_utils";
 import { MongoDataSource } from "../mongo_data_source";
 import { Collection } from "./mongo_collection";
 import * as mongodb from "mongodb";
-import { plural } from "pluralize";
+import pkg from "pluralize";
+const { plural } = pkg;
 
 export function getBaseCollectionName(target: typeof Collection): string {
   const className = target.name;

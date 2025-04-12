@@ -1,13 +1,17 @@
 {
   "compilerOptions": {
-    "module": "esnext",
-    "target": "esnext",
+    "target": "ES2020",
+    "module": "ESNext",
     "moduleResolution": "node",
+    "allowJs": true,
+    "allowSyntheticDefaultImports": true,
+    "skipDefaultLibCheck": true,
+    "sourceMap": true,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "outDir": "lib",
-    "rootDirs": ["src"],
+    "rootDirs": ["src", "test"],
     "skipLibCheck": true,
     "strict": true,
     "experimentalDecorators": true,
@@ -16,6 +20,7 @@
   },
   "ts-node": {
     "esm": true,
+    "experimentalSpecifierResolution": "node"
   },
   "types": [
     "node",
@@ -26,6 +31,6 @@
     "@types/sqlite3",
     "@types/ioredis",
   ],
-  "include": ["src/**/*.ts", "test/**/*.ts", "tmp/address_with_bigint.ts", "tmp/address_with_uuid.ts", "tmp/post_with_bigint.ts", "tmp/post_with_uuid.ts", "tmp/user_addresses_with_bigibt.ts", "tmp/user_addresses_with_uuid.ts"],
-  "exclude": ["node_modules", "lib"],
+  "include": ["src/**/*.ts", "test/**/*.ts", "test/sql/migrations_sqlite/04_user_address_with_uuid.js", "test/sql/migrations_sqlite/04_user_address_with_bigint.js", "test/sql/migrations_sqlite/03_address_with_uuid.js", "test/sql/migrations_sqlite/03_address_with_bigint.js", "test/sql/migrations_sqlite/02_post_with_uuid.js", "test/sql/migrations_sqlite/02_post_with_bigint.js", "test/sql/migrations_sqlite/01_user_without_pk.js", "test/sql/migrations_sqlite/01_user_with_uuid.js", "test/sql/migrations_sqlite/01_user_with_bigint.js"],
+  "exclude": ["node_modules", "lib"]
 }

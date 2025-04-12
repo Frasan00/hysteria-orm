@@ -37,9 +37,6 @@ export class UserWithoutPk extends Model {
   declare gender: string;
 
   @column()
-  declare image: Buffer;
-
-  @column()
   declare height: number;
 
   @column()

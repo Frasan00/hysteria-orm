@@ -123,7 +123,10 @@ async function withRetry<T>(
     try {
       return await fn();
     } catch (err: any) {
-      if (!Object.hasOwn(err, "code") || err.code !== "ECONNREFUSED") {
+      if (
+        !Object.prototype.hasOwnProperty.call(err, "code") ||
+        err.code !== "ECONNREFUSED"
+      ) {
         throw err;
       }
 

@@ -76,7 +76,7 @@ const selectTemplate = (
   };
 
   return {
-    selectAll: `SELECT * FROM ${table} `,
+    selectAll: (fromTable?: string) => `SELECT * FROM ${fromTable ?? table} `,
     selectById: (id: string) => `SELECT * FROM ${table} WHERE id = ${id}`,
     selectByIds: (ids: string[]) => {
       ids = ids.map((id) => escapeIdentifier(id) as string);

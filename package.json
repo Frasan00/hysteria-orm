@@ -1,8 +1,11 @@
 {
   "name": "hysteria-orm",
   "version": "0.3.2",
+  "license": "MIT",
   "description": "Yet another orm for javascript and typescript no one asked for",
   "main": "./lib/index.js",
+  "types": "./lib/index.d.ts",
+  "type": "module",
   "repository": "https://github.com/Frasan00/hysteria-orm.git",
   "author": "Frasan00 <francesco.sangiovanni.7@gmail.com>",
   "files": [
@@ -11,19 +14,18 @@
   "scripts": {
     "start": "yarn format && yarn build:dev && node lib/index.js",
     "prepare": "husky install",
-    "migrate": "yarn format && yarn build && node ./migration_runner.js",
-    "test": "yarn format && yarn build && node test_runner.js",
-    "test:with:migrations": "yarn format && yarn build && yarn migrate && node test_runner.js",
+    "migrate": "node ./migration_runner.js",
+    "test": "node test_runner.js",
+    "test:with:migrations": "touch sqlite.db && yarn format && yarn build && yarn migrate && node test_runner.js",
     "format": "prettier --write \"**/*.ts\"",
-    "lint": "standard",
     "build": "tsup --minify",
     "build:dev": "tsup",
     "test:fresh": "node lib/cli.js refresh:migrations"
+
   },
   "bin": {
     "hysteria": "lib/cli.js"
   },
-  "license": "MIT",
   "devDependencies": {
     "@adonisjs/eslint-config": "^1.3.0",
     "@faker-js/faker": "^9.6.0",
@@ -41,7 +43,9 @@
     "sqlite3": "^5.1.7",
     "standard": "^17.1.2",
     "ts-jest": "^29.2.5",
-    "tsup": "^8.3.5"
+    "tsup": "^8.3.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.2"
   },
   "dependencies": {
     "@types/ioredis": "^5.0.0",
@@ -53,9 +57,7 @@
     "dotenv": "^16.4.7",
     "pluralize": "^8.0.0",
     "reflect-metadata": "^0.2.2",
-    "sql-formatter": "^15.4.8",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.7.2"
+    "sql-formatter": "^15.4.8"
   },
   "keywords": [
     "orm",

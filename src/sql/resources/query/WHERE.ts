@@ -670,16 +670,64 @@ const whereTemplate = (
       )} IS NOT NULL`,
       params: [],
     }),
-    rawWhere: (query: string, params: any[]) => ({
-      query: `\nWHERE ${query}`,
+    rawWhere: (
+      query: string,
+      params: any[],
+      operator?: string,
+      isSubQuery: boolean = false,
+    ) => ({
+      query: isSubQuery
+        ? `WHERE ${operator} (${query})`
+        : `\nWHERE ${operator} ${query}`,
       params,
     }),
-    rawAndWhere: (query: string, params: any[]) => ({
-      query: ` AND ${query}`,
+    rawAndWhere: (
+      query: string,
+      params: any[],
+      operator?: string,
+      isSubQuery: boolean = false,
+    ) => ({
+      query: isSubQuery
+        ? ` AND ${operator} (${query})`
+        : ` AND ${operator} ${query}`,
       params,
     }),
-    rawOrWhere: (query: string, params: any[]) => ({
-      query: ` OR ${query}`,
+    rawOrWhere: (
+      query: string,
+      params: any[],
+      operator?: string,
+      isSubQuery: boolean = false,
+    ) => ({
+      query: isSubQuery
+        ? ` OR ${operator} (${query})`
+        : ` OR ${operator} ${query}`,
+      params,
+    }),
+    whereSubQuery: (
+      column: string,
+      query: string,
+      params: any[],
+      operator: string = "=",
+    ) => ({
+      query: `\nWHERE ${column} ${operator} (${query})`,
+      params,
+    }),
+    andWhereSubQuery: (
+      column: string,
+      query: string,
+      params: any[],
+      operator: string = "=",
+    ) => ({
+      query: ` AND ${column} ${operator} (${query})`,
+      params,
+    }),
+    orWhereSubQuery: (
+      column: string,
+      query: string,
+      params: any[],
+      operator: string = "=",
+    ) => ({
+      query: ` OR ${column} ${operator} (${query})`,
       params,
     }),
     whereRegex: (column: string, regex: RegExp) => {
