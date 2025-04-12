@@ -49,7 +49,7 @@ program
       process.exit(1);
     }
 
-    filePath = path.resolve(filePath);
+    filePath = path.resolve(process.cwd(), filePath);
     if (!fs.existsSync(filePath)) {
       console.error(`File not found: ${filePath}`);
       process.exit(1);

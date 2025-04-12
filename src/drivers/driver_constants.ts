@@ -35,7 +35,7 @@ export type DriverImport =
 
 export class DriverNotFoundError extends Error {
   constructor(driverName: string) {
-    super(driverName);
-    this.name = `Driver ${driverName} not found, it's likely not installed, try running npm install ${driverName}`;
+    super("");
+    this.message = `Driver '${driverName}' not found, it's likely not installed, try running 'npm install ${driverName}'`;
   }
 }

@@ -46,7 +46,7 @@ export class ModelManager<T extends Model> {
   async find(input?: UnrestrictedFindType<T>): Promise<T[]>;
   async find(input?: FindType<T> | UnrestrictedFindType<T>): Promise<T[]> {
     if (!input) {
-      return await this.query().many();
+      return this.query().many();
     }
 
     const query = this.query();
@@ -150,6 +150,7 @@ export class ModelManager<T extends Model> {
   /**
    * @description Finds a record by its primary key
    * @description Ignores all model hooks
+   * @throws {HysteriaError} if the model has no primary key
    */
   async findOneByPrimaryKey(value: string | number): Promise<T | null> {
     if (!this.model.primaryKey) {
@@ -302,8 +303,9 @@ export class ModelManager<T extends Model> {
    * @description Truncates the table
    */
   async truncate(force: boolean = false): Promise<void> {
+    const forceClause = force ? "CASCADE" : "";
     await execSql(
-      `TRUNCATE TABLE ${this.model.table} ${force ? "CASCADE" : ""}`,
+      `TRUNCATE TABLE ${this.model.table} ${forceClause}`,
       [],
       this.sqlDataSource,
     );

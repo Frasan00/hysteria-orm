@@ -441,6 +441,9 @@ export abstract class Model extends Entity {
     return modelSqlInstance;
   }
 
+  /**
+   * @description Truncates the table for the given model
+   */
   static async truncate<T extends Model>(
     this: new () => T | typeof Model,
     force: boolean = false,
@@ -452,7 +455,7 @@ export abstract class Model extends Entity {
   }
 
   /**
-   * @description Merges the provided data with the sqlInstance
+   * @description Merges the provided data with the model instance
    */
   static combineProps<T extends Model>(sqlInstance: T, data: Partial<T>): void {
     for (const key in data) {
@@ -502,7 +505,6 @@ export abstract class Model extends Entity {
    * @javascript
    */
   static column(columnName: string, options: ColumnOptions = {}): void {
-    // take the column decorator and apply it automatically
     column(options)(this.prototype, columnName);
   }
 

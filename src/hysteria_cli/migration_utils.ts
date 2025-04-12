@@ -90,7 +90,20 @@ export function getPendingMigrations(
 async function loadMigrationModule(
   pathToFile: string,
 ): Promise<new () => Migration> {
-  const migrationModule = await import(pathToFile);
+  const migrationModule = await import(pathToFile).catch((error) => {
+    if (
+      error instanceof TypeError &&
+      error.message.includes(`Unknown file extension ".ts"`)
+    ) {
+      throw new HysteriaError(
+        "MigrationUtils::loadMigrationModule\nMust have `ts-node` installed to run typescript migrations\nTypescript Migrations are meant to be used only in development environment that has `ts-node` installed\n It's advised to build typescript migrations into javascript if in production",
+        "MIGRATION_MODULE_REQUIRES_TS_NODE",
+      );
+    }
+
+    throw error;
+  });
+
   if (!migrationModule.default) {
     throw new HysteriaError(
       "MigrationUtils::loadMigrationModule Migration module does not have a default export",

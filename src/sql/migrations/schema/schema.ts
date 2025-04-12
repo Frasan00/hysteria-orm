@@ -1,7 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
 import { HysteriaError } from "../../../errors/hysteria_error";
-import { CaseConvention } from "../../../utils/case_utils";
 import createTableTemplate from "../../resources/migrations/CREATE_TABLE";
 import dropTableTemplate from "../../resources/migrations/DROP_TABLE";
 import type { SqlDataSourceType } from "../../sql_data_source_types";
@@ -100,20 +99,14 @@ export default class Schema {
   }
 
   /**
-   * @description Drop table
-   * @param table
-   * @param ifExists
-   * @returns void
+   * @description Drop table in the database
    */
   dropTable(table: string, ifExists: boolean = false): void {
     this.rawQuery(dropTableTemplate(table, ifExists, this.sqlType));
   }
 
   /**
-   * @description Rename table
-   * @param oldtable
-   * @param newtable
-   * @returns void
+   * @description Rename table in the database
    */
   renameTable(oldtable: string, newtable: string): void {
     switch (this.sqlType) {
@@ -138,8 +131,6 @@ export default class Schema {
 
   /**
    * @description Truncate table
-   * @param table
-   * @returns void
    */
   truncateTable(table: string): void {
     switch (this.sqlType) {
@@ -156,7 +147,7 @@ export default class Schema {
         break;
       default:
         throw new HysteriaError(
-          "Schema::renameTable",
+          "Schema::truncateTable",
           `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`
         );
     }
@@ -164,18 +155,14 @@ export default class Schema {
 
   /**
    * @description Create index on table
-   * @param table
-   * @param indexName
-   * @param columns
-   * @param unique
-   * @returns void
    */
   createIndex(
     table: string,
-    indexName: string,
     columns: string[],
+    indexName?: string,
     unique: boolean = false
   ): void {
+    indexName = indexName || `${table}_${columns.join("_")}_index`;
     switch (this.sqlType) {
       case "mysql":
       case "mariadb":
@@ -202,7 +189,7 @@ export default class Schema {
         break;
       default:
         throw new HysteriaError(
-          "Schema::renameTable",
+          "Schema::createIndex",
           `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`
         );
     }
@@ -210,14 +197,19 @@ export default class Schema {
 
   /**
    * @description Drop index on table
-   * @param table
-   * @param indexName
-   * @returns void
+   * @mysql requires table name for index drop
    */
-  dropIndex(table: string, indexName: string): void {
+  dropIndex(indexName: string, table?: string): void {
     switch (this.sqlType) {
       case "mysql":
       case "mariadb":
+        if (!table) {
+          throw new HysteriaError(
+            "Schema::dropIndex",
+            "MYSQL_REQUIRES_TABLE_NAME_FOR_INDEX_DROP"
+          );
+        }
+
         this.rawQuery(`DROP INDEX \`${indexName}\` ON \`${table}\``);
         break;
       case "postgres":
@@ -229,7 +221,7 @@ export default class Schema {
         break;
       default:
         throw new HysteriaError(
-          "Schema::renameTable",
+          "Schema::dropIndex",
           `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`
         );
     }
@@ -237,11 +229,6 @@ export default class Schema {
 
   /**
    * @description Adds a primary key to a table
-   * @param table
-   * @param columnName
-   * @param type
-   * @param options
-   * @returns void
    */
   addPrimaryKey(table: string, columns: string[]): void {
     switch (this.sqlType) {
@@ -272,8 +259,6 @@ export default class Schema {
 
   /**
    * @description Drops a primary key from a table
-   * @param table
-   * @returns void
    */
   dropPrimaryKey(table: string): void {
     switch (this.sqlType) {
@@ -298,23 +283,25 @@ export default class Schema {
 
   /**
    * @description Adds a foreign key to a table
-   * @param table
-   * @param constraintName
-   * @param columns
-   * @returns void
    */
   addConstraint(
     table: string,
-    constraintName: string,
-    columns: string[]
+    columns: string[],
+    foreignTable: string,
+    foreignColumns: string[],
+    constraintName?: string
   ): void {
+    if (!constraintName) {
+      constraintName = `${table}_${columns.join("_")}_fk`;
+    }
+
     switch (this.sqlType) {
       case "mysql":
       case "mariadb":
         this.rawQuery(
           `ALTER TABLE \`${table}\` ADD CONSTRAINT ${constraintName} FOREIGN KEY (${columns.join(
             ", "
-          )}) REFERENCES ${columns[0].split("_")[0]}s(id)`
+          )}) REFERENCES \`${foreignTable}\` (${foreignColumns.join(", ")})`
         );
         break;
       case "postgres":
@@ -322,14 +309,14 @@ export default class Schema {
         this.rawQuery(
           `ALTER TABLE "${table}" ADD CONSTRAINT ${constraintName} FOREIGN KEY (${columns.join(
             ", "
-          )}) REFERENCES ${columns[0].split("_")[0]}s(id)`
+          )}) REFERENCES \`${foreignTable}\` (${foreignColumns.join(", ")})`
         );
         break;
       case "sqlite":
         this.rawQuery(
           `ALTER TABLE "${table}" ADD CONSTRAINT ${constraintName} FOREIGN KEY (${columns.join(
             ", "
-          )}) REFERENCES ${columns[0].split("_")[0]}s(id)`
+          )}) REFERENCES \`${foreignTable}\` (${foreignColumns.join(", ")})`
         );
         break;
       default:
@@ -342,9 +329,6 @@ export default class Schema {
 
   /**
    * @description Drops a cosntraint from a table
-   * @param table
-   * @param constraintName
-   * @returns void
    */
   dropConstraint(table: string, constraintName: string): void {
     switch (this.sqlType) {
@@ -375,16 +359,16 @@ export default class Schema {
 
   /**
    * @description Adds a unique constraint to a table
-   * @param table
-   * @param constraintName
-   * @param columns
-   * @returns void
    */
-  addUniqueConstraint(
+  unique(
     table: string,
-    constraintName: string,
-    columns: string[]
+    columns: string[],
+    constraintName?: string
   ): void {
+    if (!constraintName) {
+      constraintName = `${table}_${columns.join("_")}_unique`;
+    }
+
     switch (this.sqlType) {
       case "mysql":
       case "mariadb":
@@ -419,11 +403,8 @@ export default class Schema {
 
   /**
    * @description Drops a unique constraint from a table
-   * @param table
-   * @param constraintName
-   * @returns void
    */
-  dropUniqueConstraint(table: string, constraintName: string): void {
+  dropUnique(table: string, constraintName: string): void {
     switch (this.sqlType) {
       case "mysql":
       case "mariadb":
