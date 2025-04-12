@@ -2,27 +2,27 @@ import { format } from "sql-formatter";
 import { HysteriaError } from "../../errors/hysteria_error";
 import { convertCase } from "../../utils/case_utils";
 import { convertPlaceHolderToValue } from "../../utils/placeholder";
+import { bindParamsIntoQuery } from "../../utils/query";
 import { SoftDeleteOptions } from "../model_query_builder/delete_query_builder_type";
-import {
-  WhereQueryBuilder,
-  WhereQueryBuilderWithOnlyWhereConditions,
-} from "../model_query_builder/where_query_builder";
+import { WhereQueryBuilder } from "../model_query_builder/where_query_builder";
 import type { Model } from "../models/model";
 import { ModelKey } from "../models/model_manager/model_manager_types";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
 import deleteTemplate from "../resources/query/DELETE";
 import selectTemplate from "../resources/query/SELECT";
 import updateTemplate from "../resources/query/UPDATE";
+import { BinaryOperatorType } from "../resources/query/WHERE";
 import { SqlDataSource } from "../sql_data_source";
 import type { SqlDataSourceType } from "../sql_data_source_types";
 import { execSql, getSqlDialect } from "../sql_runner/sql_runner";
-import { BinaryOperatorType, BaseValues } from "../resources/query/WHERE";
+import { QueryBuilderWithOnlyWhereConditions } from "./query_builder_types";
 
 export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
   protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
   protected modelSelectedColumns: string[] = [];
   protected dbType: SqlDataSourceType;
   protected selectQuery: string;
+  protected fromTable: string;
   protected selectTemplate: ReturnType<typeof selectTemplate>;
   protected updateTemplate: ReturnType<typeof updateTemplate>;
   protected deleteTemplate: ReturnType<typeof deleteTemplate>;
@@ -40,10 +40,11 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
       this.sqlDataSource,
     );
     this.table = model.table || "";
+    this.fromTable = this.table;
     this.selectTemplate = selectTemplate(this.dbType, this.model);
     this.updateTemplate = updateTemplate(this.dbType, this.model);
     this.deleteTemplate = deleteTemplate(this.dbType);
-    this.selectQuery = this.selectTemplate.selectAll;
+    this.selectQuery = this.selectTemplate.selectAll();
     this.params = [];
   }
 
@@ -131,7 +132,7 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
   }
 
   clearSelect(): this {
-    this.selectQuery = this.selectTemplate.selectAll;
+    this.selectQuery = this.selectTemplate.selectAll();
     return this;
   }
 
@@ -155,6 +156,18 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
       `SELECT ${distinctOn}`,
     );
 
+    return this;
+  }
+
+  /**
+   * @description Sets the table to select from, by default the table is the model table
+   */
+  from(table: string): this {
+    this.fromTable = table;
+    this.selectQuery = this.selectQuery.replace(
+      /FROM\s+(\w+)/i,
+      `FROM ${table}`,
+    );
     return this;
   }
 
@@ -277,45 +290,169 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
   }
 
   /**
-   * @description Given a callback, it will execute the callback with a query builder instance.
+   * @description Can be used to build a more complex where condition with parenthesis that wraps the where condition defined in the callback
+   * @alias andWhereSubQuery
    */
-  whereBuilder(
-    cb: (queryBuilder: WhereQueryBuilderWithOnlyWhereConditions<T>) => void,
+  whereSubQuery(column: string, subQuery: QueryBuilder<T>): this;
+  whereSubQuery(column: string, cb: (subQuery: QueryBuilder<T>) => void): this;
+  whereSubQuery(
+    column: string,
+    operator: BinaryOperatorType,
+    subQuery: QueryBuilder<T>,
+  ): this;
+  whereSubQuery(
+    column: string,
+    operator: BinaryOperatorType,
+    cb: (subQuery: QueryBuilder<T>) => void,
+  ): this;
+  whereSubQuery(
+    column: string,
+    subQueryOrCbOrOperator:
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void)
+      | BinaryOperatorType,
+    subQueryOrCb?: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
   ): this {
-    const queryBuilder = new QueryBuilder(this.model, this.sqlDataSource);
-    cb(queryBuilder as WhereQueryBuilderWithOnlyWhereConditions<T>);
-    queryBuilder.isNestedCondition = true;
+    return this.andWhereSubQuery(
+      column,
+      subQueryOrCbOrOperator as BinaryOperatorType,
+      subQueryOrCb as QueryBuilder<T>,
+    );
+  }
 
-    let whereCondition = queryBuilder.whereQuery.trim();
-    if (whereCondition.startsWith("AND")) {
-      whereCondition = whereCondition.substring(4); // 'AND '.length === 4 has to be removed from the beginning of the where condition
-    } else if (whereCondition.startsWith("OR")) {
-      whereCondition = whereCondition.substring(3); // 'OR '.length === 3 has to be removed from the beginning of the where condition
+  /**
+   * @description Can be used to build a more complex where condition with parenthesis that wraps the where condition defined in the callback
+   */
+  andWhereSubQuery(column: string, subQuery: QueryBuilder<T>): this;
+  andWhereSubQuery(
+    column: string,
+    cb: (subQuery: QueryBuilder<T>) => void,
+  ): this;
+  andWhereSubQuery(
+    column: string,
+    operator: BinaryOperatorType,
+    subQuery: QueryBuilder<T>,
+  ): this;
+  andWhereSubQuery(
+    column: string,
+    operator: BinaryOperatorType,
+    cb: (subQuery: QueryBuilder<T>) => void,
+  ): this;
+  andWhereSubQuery(
+    column: string,
+    subQueryOrCbOrOperator:
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void)
+      | BinaryOperatorType,
+    subQueryOrCb?: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+  ): this {
+    let operator: BinaryOperatorType = "=";
+    let subQuery: QueryBuilder<T>;
+
+    if (typeof subQueryOrCbOrOperator === "string") {
+      operator = subQueryOrCbOrOperator as BinaryOperatorType;
+      if (typeof subQueryOrCb === "function") {
+        subQuery = new QueryBuilder(this.model, this.sqlDataSource);
+        subQueryOrCb(subQuery);
+        return this.processSubQuery(column, subQuery, operator, "and");
+      }
+      if (subQueryOrCb instanceof QueryBuilder) {
+        subQuery = subQueryOrCb;
+        return this.processSubQuery(column, subQuery, operator, "and");
+      }
+      return this;
     }
 
-    whereCondition = "(" + whereCondition + ")";
-
-    if (!this.whereQuery) {
-      this.whereQuery = this.isNestedCondition
-        ? whereCondition
-        : `WHERE ${whereCondition}`;
-    } else {
-      this.whereQuery += ` AND ${whereCondition}`;
+    if (typeof subQueryOrCbOrOperator === "function") {
+      subQuery = new QueryBuilder(this.model, this.sqlDataSource);
+      subQueryOrCbOrOperator(subQuery);
+      return this.processSubQuery(column, subQuery, operator, "and");
     }
 
-    this.params.push(...queryBuilder.params);
+    if (subQueryOrCbOrOperator instanceof QueryBuilder) {
+      subQuery = subQueryOrCbOrOperator;
+      return this.processSubQuery(column, subQuery, operator, "and");
+    }
+
     return this;
   }
 
   /**
-   * @description Given a callback, it will execute the callback with a query builder instance.
+   * @description Can be used to build a more complex where condition with parenthesis that wraps the where condition defined in the callback
    */
-  orWhereBuilder(
-    cb: (queryBuilder: WhereQueryBuilderWithOnlyWhereConditions<T>) => void,
+  orWhereSubQuery(column: string, subQuery: QueryBuilder<T>): this;
+  orWhereSubQuery(
+    column: string,
+    cb: (subQuery: QueryBuilder<T>) => void,
+  ): this;
+  orWhereSubQuery(
+    column: string,
+    operator: BinaryOperatorType,
+    subQuery: QueryBuilder<T>,
+  ): this;
+  orWhereSubQuery(
+    column: string,
+    operator: BinaryOperatorType,
+    cb: (subQuery: QueryBuilder<T>) => void,
+  ): this;
+  orWhereSubQuery(
+    column: string,
+    subQueryOrCbOrOperator:
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void)
+      | BinaryOperatorType,
+    subQueryOrCb?: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
   ): this {
+    let operator: BinaryOperatorType = "=";
+    let subQuery: QueryBuilder<T>;
+
+    if (typeof subQueryOrCbOrOperator === "string") {
+      operator = subQueryOrCbOrOperator as BinaryOperatorType;
+      if (typeof subQueryOrCb === "function") {
+        subQuery = new QueryBuilder(this.model, this.sqlDataSource);
+        subQueryOrCb(subQuery);
+        return this.processSubQuery(column, subQuery, operator, "or");
+      }
+      if (subQueryOrCb instanceof QueryBuilder) {
+        subQuery = subQueryOrCb;
+        return this.processSubQuery(column, subQuery, operator, "or");
+      }
+      return this;
+    }
+
+    if (typeof subQueryOrCbOrOperator === "function") {
+      subQuery = new QueryBuilder(this.model, this.sqlDataSource);
+      subQueryOrCbOrOperator(subQuery);
+      return this.processSubQuery(column, subQuery, operator, "or");
+    }
+
+    if (subQueryOrCbOrOperator instanceof QueryBuilder) {
+      subQuery = subQueryOrCbOrOperator;
+      return this.processSubQuery(column, subQuery, operator, "or");
+    }
+
+    return this;
+  }
+
+  /**
+   * @description Can be used to build a more complex where condition with parenthesis that wraps the where condition defined in the callback
+   * @alias andWhereBuilder
+   */
+  whereBuilder(
+    cb: (queryBuilder: QueryBuilderWithOnlyWhereConditions<T>) => void,
+  ): this {
+    return this.andWhereBuilder(
+      cb as (queryBuilder: QueryBuilderWithOnlyWhereConditions<T>) => void,
+    );
+  }
+
+  /**
+   * @description Can be used to build a more complex where condition with parenthesis that wraps the where condition defined in the callback
+   */
+  andWhereBuilder(cb: (queryBuilder: QueryBuilder<T>) => void): this {
     const nestedBuilder = new QueryBuilder(this.model, this.sqlDataSource);
-    cb(nestedBuilder as WhereQueryBuilderWithOnlyWhereConditions<T>);
     nestedBuilder.isNestedCondition = true;
+    cb(nestedBuilder as QueryBuilder<T>);
 
     let nestedCondition = nestedBuilder.whereQuery.trim();
     if (nestedCondition.startsWith("AND")) {
@@ -325,7 +462,37 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
     }
 
     nestedCondition = `(${nestedCondition})`;
+    if (!this.whereQuery) {
+      this.whereQuery = this.isNestedCondition
+        ? nestedCondition
+        : `WHERE ${nestedCondition}`;
 
+      this.params.push(...nestedBuilder.params);
+      return this;
+    }
+
+    this.whereQuery += ` AND ${nestedCondition}`;
+    this.params.push(...nestedBuilder.params);
+
+    return this;
+  }
+
+  /**
+   * @description Can be used to build a more complex where condition with parenthesis that wraps the where condition defined in the callback
+   */
+  orWhereBuilder(cb: (queryBuilder: QueryBuilder<T>) => void): this {
+    const nestedBuilder = new QueryBuilder(this.model, this.sqlDataSource);
+    nestedBuilder.isNestedCondition = true;
+    cb(nestedBuilder as QueryBuilder<T>);
+
+    let nestedCondition = nestedBuilder.whereQuery.trim();
+    if (nestedCondition.startsWith("AND")) {
+      nestedCondition = nestedCondition.substring(4);
+    } else if (nestedCondition.startsWith("OR")) {
+      nestedCondition = nestedCondition.substring(3);
+    }
+
+    nestedCondition = `(${nestedCondition})`;
     if (!this.whereQuery) {
       this.whereQuery = this.isNestedCondition
         ? nestedCondition
@@ -342,38 +509,18 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
   }
 
   /**
-   * @description Given a callback, it will execute the callback with a query builder instance.
+   * @description Returns the query with the parameters bound to the query, mainly used for debugging
    */
-  andWhereBuilder(
-    cb: (queryBuilder: WhereQueryBuilderWithOnlyWhereConditions<T>) => void,
-  ): this {
-    const nestedBuilder = new QueryBuilder(this.model, this.sqlDataSource);
-    cb(nestedBuilder as WhereQueryBuilderWithOnlyWhereConditions<T>);
-    nestedBuilder.isNestedCondition = true;
-
-    let nestedCondition = nestedBuilder.whereQuery.trim();
-    if (nestedCondition.startsWith("AND")) {
-      nestedCondition = nestedCondition.substring(4);
-    } else if (nestedCondition.startsWith("OR")) {
-      nestedCondition = nestedCondition.substring(3);
-    }
-
-    if (!this.whereQuery) {
-      this.whereQuery = this.isNestedCondition
-        ? nestedCondition
-        : `WHERE ${nestedCondition}`;
-
-      this.params.push(...nestedBuilder.params);
-      return this;
-    }
-
-    this.whereQuery += ` AND ${nestedCondition}`;
-    this.params.push(...nestedBuilder.params);
-
-    return this;
+  toQuery(dbType?: SqlDataSourceType): string {
+    // Already formatted
+    const { query, params } = this.unWrap(dbType);
+    return bindParamsIntoQuery(query, params);
   }
 
-  toSql(dbType?: SqlDataSourceType): {
+  /**
+   * @description Returns the query and the params
+   */
+  unWrap(dbType: SqlDataSourceType = this.dbType): {
     query: string;
     params: any[];
   } {
@@ -381,11 +528,7 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
       this.selectQuery +
       this.joinQuery +
       this.whereQuery +
-      this.groupByQuery +
-      this.havingQuery +
-      this.orderByQuery +
-      this.limitQuery +
-      this.offsetQuery;
+      this.groupFooterQuery();
 
     function parsePlaceHolders(
       dbType: SqlDataSourceType,
@@ -403,13 +546,13 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
           return query.replace(/PLACEHOLDER/g, () => `$${index++}`);
         default:
           throw new HysteriaError(
-            "StandaloneSqlQueryBuilder::toSql",
+            "StandaloneSqlQueryBuilder::unWrap",
             `UNSUPPORTED_DATABASE_TYPE_${dbType}`,
           );
       }
     }
 
-    const parsedQuery = parsePlaceHolders(dbType || this.dbType, query);
+    const parsedQuery = parsePlaceHolders(dbType, query);
     return {
       query: format(parsedQuery, {
         language: getSqlDialect(this.dbType),
@@ -532,5 +675,54 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
           `UNSUPPORTED_DATABASE_TYPE_${this.dbType}`,
         );
     }
+  }
+
+  private processSubQuery(
+    column: string,
+    subQuery: QueryBuilder<T>,
+    operator: BinaryOperatorType,
+    type: "and" | "or",
+  ): this {
+    const { query, params } = subQuery.unWrapRaw();
+    if (this.whereQuery || this.isNestedCondition) {
+      const whereQuery = this.whereTemplate[`${type}WhereSubQuery`](
+        column,
+        query,
+        params,
+        operator,
+      );
+      this.whereQuery += whereQuery.query;
+      this.params.push(...whereQuery.params);
+      return this;
+    }
+
+    const whereQuery = this.whereTemplate.whereSubQuery(
+      column,
+      query,
+      params,
+      operator,
+    );
+    this.whereQuery = whereQuery.query;
+    this.params.push(...whereQuery.params);
+    return this;
+  }
+
+  /**
+   * @description Returns the query and the params without replacing the PLACEHOLDER with the specific database driver placeholder
+   */
+  private unWrapRaw(): {
+    query: string;
+    params: any[];
+  } {
+    return {
+      query: format(
+        this.selectQuery +
+          this.joinQuery +
+          this.whereQuery +
+          this.groupFooterQuery(),
+        { language: getSqlDialect(this.dbType) },
+      ),
+      params: this.params,
+    };
   }
 }

@@ -7,33 +7,6 @@ import whereTemplate, {
 import { SqlDataSource } from "../sql_data_source";
 import { JoinQueryBuilder } from "./join_query_builder";
 
-export type WhereQueryBuilderWithOnlyWhereConditions<T extends Model> = Omit<
-  WhereQueryBuilder<T>,
-  | "limit"
-  | "offset"
-  | "orderBy"
-  | "groupBy"
-  | "having"
-  | "havingRaw"
-  | "andHavingRaw"
-  | "orHavingRaw"
-  | "toSql"
-  | "groupByRaw"
-  | "when"
-  | "clearJoin"
-  | "clearOrderBy"
-  | "clearGroupBy"
-  | "clearHaving"
-  | "clearLimit"
-  | "clearWhere"
-  | "clearOffset"
-  | "join"
-  | "leftJoin"
-  | "rightJoin"
-  | "innerJoin"
-  | "joinRaw"
->;
-
 export abstract class WhereQueryBuilder<
   T extends Model,
 > extends JoinQueryBuilder<T> {
@@ -647,18 +620,30 @@ export abstract class WhereQueryBuilder<
   /**
    * @description Adds a raw WHERE condition to the query.
    */
-  rawWhere(query: string, queryParams: any[] = []) {
-    return this.rawAndWhere(query, queryParams);
+  rawWhere(
+    query: string,
+    queryParams: any[] = [],
+    operator?: string,
+    isSubQuery: boolean = false,
+  ) {
+    return this.rawAndWhere(query, queryParams, operator, isSubQuery);
   }
 
   /**
    * @description Adds a raw AND WHERE condition to the query.
    */
-  rawAndWhere(query: string, queryParams: any[] = []) {
+  rawAndWhere(
+    query: string,
+    queryParams: any[] = [],
+    operator?: string,
+    isSubQuery: boolean = false,
+  ) {
     if (!this.whereQuery && !this.isNestedCondition) {
       const { query: rawQuery, params } = this.whereTemplate.rawWhere(
         query,
         queryParams,
+        operator,
+        isSubQuery,
       );
       this.whereQuery = rawQuery;
       this.params.push(...params);
@@ -668,6 +653,8 @@ export abstract class WhereQueryBuilder<
     const { query: rawQuery, params } = this.whereTemplate.rawAndWhere(
       query,
       queryParams,
+      operator,
+      isSubQuery,
     );
     this.whereQuery += rawQuery;
     this.params.push(...params);
@@ -677,11 +664,18 @@ export abstract class WhereQueryBuilder<
   /**
    * @description Adds a raw OR WHERE condition to the query.
    */
-  rawOrWhere(query: string, queryParams: any[] = []) {
+  rawOrWhere(
+    query: string,
+    queryParams: any[] = [],
+    operator?: string,
+    isSubQuery: boolean = false,
+  ) {
     if (!this.whereQuery && !this.isNestedCondition) {
       const { query: rawQuery, params } = this.whereTemplate.rawWhere(
         query,
         queryParams,
+        operator,
+        isSubQuery,
       );
       this.whereQuery = rawQuery;
       this.params.push(...params);
@@ -691,6 +685,8 @@ export abstract class WhereQueryBuilder<
     const { query: rawQuery, params } = this.whereTemplate.rawOrWhere(
       query,
       queryParams,
+      operator,
+      isSubQuery,
     );
     this.whereQuery += rawQuery;
     this.params.push(...params);

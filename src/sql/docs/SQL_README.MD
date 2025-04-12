@@ -973,15 +973,15 @@ import { StandaloneQueryBuilder } from "hysteria-orm";
 
 const userQueryBuilder = new StandaloneQueryBuilder("mysql", "users");
 const { query, params } = userQueryBuilder
-.whereBuilder((builder) => {
-    builder.where("id", 1);
-    builder.orWhere("name", "John");
-    builder.andWhereBuilder((builder) => {
-    builder.where("signup_date", "2021-01-01");
-    builder.orWhere("signup_date", "2021-01-02");
-    });
-})
-.toSql();
+    .whereBuilder((builder) => {
+        builder.where("id", 1);
+        builder.orWhere("name", "John");
+        builder.andWhereBuilder((builder) => {
+        builder.where("signup_date", "2021-01-01");
+        builder.orWhere("signup_date", "2021-01-02");
+        });
+    })
+    .unWrap();
 
 // You can also specify case convention for model and database
 const userQueryBuilder = new StandaloneQueryBuilder("postgres", "users", "camel", "snake");
