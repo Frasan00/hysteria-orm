@@ -29,6 +29,7 @@
     - [Read (standard methods used for simple queries)](#read-standard-methods-used-for-simple-queries)
     - [Query Builder](#query-builder)
     - [Where Builder](#where-builder)
+    - [Where Sub Query](#where-sub-query)
     - [Aliases](#aliases)
     - [Count And Sum](#count-and-sum)
     - [Join](#join)
@@ -763,24 +764,44 @@ await User.query().when(nullValue, (value, query) => {
 .one();
 ```
 
+### Where Sub Query
+- You can create a where condition that uses the result of a SubQuery
 
-### Where Builder
-
-- Used to build complex logic conditions
 ```typescript
 import { User } from "./User";
 
-const user: User | null = await User.query().whereBuilder((queryBuilder) => {
-    queryBuilder.andWhereBuilder((innerQueryBuilder) => {
-        innerQueryBuilder.where('department', 'sales');
-        innerQueryBuilder.where('hired_date', '>=', '2020-01-01');
+const users = await UserWithUuid.query()
+.where("name", "John")
+.orWhere("name", "Alice")
+.whereBuilder((qb) => {
+    qb.where("age", 12)
+    .orWhere("name", "John")
+    .orWhereSubQuery("id", "IN", (qb) => {
+        qb.select("id").from("users").where("name", "Alice");
     });
-    queryBuilder.orWhereBuilder((innerQuery) => {
-        innerQuery.where('department', 'engineering');
-        innerQuery.where('hired_date', '>=', '2022-01-01');
+})
+```
+
+### Where Builder
+- Used to build complex logic conditions, everything inside the whereBuilder callback will be wrapped in parenthesis
+
+```typescript
+import { User } from "./User";
+
+const user: User | null = await User.query()
+    .whereBuilder((queryBuilder) => {
+        queryBuilder.andWhereBuilder((innerQueryBuilder) => {
+            innerQueryBuilder
+                .where('department', 'sales')
+                .where('hired_date', '>=', '2020-01-01');
+        })
+        .orWhereBuilder((innerQuery) => {
+            innerQuery
+                .where('department', 'engineering')
+                .where('hired_date', '>=', '2022-01-01');
+        })
+        .where('is_active', true);
     });
-    queryBuilder.where('is_active', true);
-});
 ```
 
 ## Ignore Hooks
@@ -792,7 +813,7 @@ const userFind = await User.find({ ignoreHooks: ["beforeFetch"] });
 
 ### Aliases
 
-- Aliases are available in the query builder, for example select('new as newName') will generate an alias in the $additional property that every model instances has
+- Aliases are available directly integrated in the select method, for example select('new as newName') will generate an alias in the `$additional` property that every model instances has
 ```typescript
 import { User } from "./User";
 
@@ -802,6 +823,8 @@ const user: User | null = await User.query()
     .where("name", "John Doe")
     .andWhere("email", "john@gmail.com")
     .one();
+
+user.$additional.superName;
 ```
 
 ### Count and Sum
@@ -810,7 +833,6 @@ const user: User | null = await User.query()
 - Quick count and sum methods
 ```typescript
 import { User } from "./User";
-
 
 // You can specify if ignore hooks like beforeFetch
 const count = await User.query().getCount("id", { ignoreHooks: false }); // number
@@ -964,37 +986,21 @@ const user: User | null = await User.query()
 ```
 
 ### Standalone Query Builder
-- You may not want an ORM overhead in you project, but using raw query can be not scalable and difficult to maintain
-- In this case you can use the StandaloneQueryBuilder that does not need a connection to a database and only returns the query and the params for the selected database
-- You can then use the query and the params directly on the database driver
-
+- You can use a query builder that does not rely on a Model
 ```typescript
-import { StandaloneQueryBuilder } from "hysteria-orm";
+import { SqlDataSource } from "hysteria-orm"
 
-const userQueryBuilder = new StandaloneQueryBuilder("mysql", "users");
-const { query, params } = userQueryBuilder
+const { query, params } = SqlDataSource
+    .query()
     .whereBuilder((builder) => {
         builder.where("id", 1);
         builder.orWhere("name", "John");
         builder.andWhereBuilder((builder) => {
-        builder.where("signup_date", "2021-01-01");
-        builder.orWhere("signup_date", "2021-01-02");
+            builder.where("signup_date", "2021-01-01");
+            builder.orWhere("signup_date", "2021-01-02");
         });
     })
     .unWrap();
-
-// You can also specify case convention for model and database
-const userQueryBuilder = new StandaloneQueryBuilder("postgres", "users", "camel", "snake");
-const { query, params } = userQueryBuilder
-.whereBuilder((builder) => {
-        builder.where("id", 1);
-        builder.orWhere("name", "John");
-        builder.andWhereBuilder((builder) => {
-        builder.where("signup_date", "2021-01-01");
-        builder.orWhere("signup_date", "2021-01-02");
-    });
-})
-.toSql();
 
 // Example of couple { query, params }
 
