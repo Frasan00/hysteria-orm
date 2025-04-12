@@ -1,6 +1,7 @@
 import path from "path";
 import { fileURLToPath } from "url";
 import Schema from "./schema/schema";
+import { SqlDataSource } from "../sql_data_source";
 
 export abstract class Migration {
   migrationName: string = path.basename(fileURLToPath(import.meta.url));
@@ -19,5 +20,5 @@ export abstract class Migration {
   /**
    * @description This method is called after the migration has been run
    */
-  async afterMigration?(): Promise<void>;
+  async afterMigration?(sqlDataSource: SqlDataSource): Promise<void>;
 }

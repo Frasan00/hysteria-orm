@@ -771,14 +771,14 @@ await User.query().when(nullValue, (value, query) => {
 import { User } from "./User";
 
 const users = await UserWithUuid.query()
-.where("name", "John")
-.orWhere("name", "Alice")
-.whereBuilder((qb) => {
-    qb.where("age", 12)
-    .orWhere("name", "John")
-    .orWhereSubQuery("id", "IN", (qb) => {
-        qb.select("id").from("users").where("name", "Alice");
-    });
+    .where("name", "John")
+    .orWhere("name", "Alice")
+    .whereBuilder((qb) => {
+        qb.where("age", 12)
+        .orWhere("name", "John")
+        .orWhereSubQuery("id", "IN", (qb) => {
+            qb.select("id").from("users").where("name", "Alice");
+        });
 })
 ```
 
@@ -856,7 +856,7 @@ const users = await User.query()
   .where("name", "John Doe")
   .many();
 
-// Join with model class
+// Join with model class (type safe on Post columns)
 const users = await User.query()
   .join(Post, "userId", "id")
   .where("name", "John Doe")
@@ -1012,7 +1012,7 @@ const { query, params } = SqlDataSource
 - Migrations cli is an optional standalone program that can be used to create and run migrations
 - Migration cli should be used in the root of the project
 - Migrations cli starts from the current user location (process.cwd) and appends the path/to/migrations (default `database/migrations`), this can be customized with `MIGRATION_PATH` environment variable
-- Migrations can both be defined in ts and js, if using ts `ts-node` and `typescript` must be installed as dependencies
+- Migrations can both be defined in ts and js, if using ts migrations, `ts-node` and `typescript` must be installed as dependencies in the node_modules
 - By default the migration queries are hidden, you can use --verbose in order to get all the query logs
 
 ## Run Migrations Programmatically
@@ -1072,19 +1072,20 @@ export default class extends Migration {
         this.schema.rawQuery('CREATE INDEX users_name_idx ON users (name)');
 
         // Hooks for after up and down migrations are executed immediately after the relative migration file is executed
-        this.afterUp = async () => {
-            await User.insert({
-                name: 'John Doe',
-                email: 'john@gmail.com',
-                signupSource: 'web',
-                isActive: true,
-            })
+        this.afterMigration = async (sqlDataSource) => {
+            await sqlDataSource.query("users", "camel", "snake").insert({
+                name: "John Doe",
+                email: "john.doe@example.com",
+                signup_source: "google",
+                is_active: true,
+                json: {},
+            });
         }
     }
 
     async down(): void {
         this.schema.dropTable('users');
-        this.afterDown = async () => { /* After down logic here*/ }
+        this.afterMigration = async (_sqlDataSource) => { /* After down logic here*/ }
     }
 }
 ```

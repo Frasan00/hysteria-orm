@@ -27,7 +27,56 @@ export default class extends Migration {
       table.timestamp("deleted_at").default("NULL").nullable();
     });
 
-    this.afterMigration = async () => {
+    this.afterMigration = async (sqlDataSource) => {
+      await sqlDataSource.query("users_with_bigint", "camel", "snake").insert({
+        name: "John Doe",
+        email: "john.doe@example.com",
+        password: "password",
+        age: 25,
+        salary: 100000,
+        gender: "M",
+        height: 180,
+        description: "John Doe is a software engineer",
+        short_description: "John Doe is a software engineer",
+        weight: 80,
+        birth_date: new Date("1990-01-01"),
+        json: {
+          name: "John Doe",
+          email: "john.doe@example.com",
+        },
+        is_active: true,
+        status: "active",
+      });
+
+      const all = await sqlDataSource
+        .query("users_with_bigint", "camel", "snake")
+        .many();
+      if (!all.length) {
+        throw new Error(
+          "Migration 01_user_with_bigint failed, no records found",
+        );
+      }
+
+      await sqlDataSource.query("users_with_bigint", "camel", "snake").update({
+        name: "Jane Doe",
+      });
+
+      const all2 = await sqlDataSource
+        .query("users_with_bigint", "camel", "snake")
+        .many();
+      if (all2.length !== 1) {
+        throw new Error("Migration 01_user_with_bigint failed, records found");
+      }
+
+      await sqlDataSource.query("users_with_bigint", "camel", "snake").delete();
+
+      const all3 = await sqlDataSource
+        .query("users_with_bigint", "camel", "snake")
+        .many();
+      if (all3.length) {
+        throw new Error("Migration 01_user_with_bigint failed, records found");
+      }
+
       await new Promise((resolve) => setTimeout(resolve, 100));
       return;
     };

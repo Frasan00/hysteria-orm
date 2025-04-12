@@ -23,13 +23,6 @@ export default class Schema {
   }
 
   /**
-   * @description Gets an instance of the query builder
-   */
-  query(table: string): ReturnType<typeof SqlDataSource.query> {
-    return SqlDataSource.query(table, "none", "snake");
-  }
-
-  /**
    * @description Add raw query to the migration
    */
   rawQuery(query: string): void {
@@ -44,7 +37,7 @@ export default class Schema {
     if (!fs.existsSync(filePath)) {
       throw new HysteriaError(
         "Schema::runFile",
-        `FILE_NOT_FOUND_OR_NOT_ACCESSIBLE`
+        `FILE_NOT_FOUND_OR_NOT_ACCESSIBLE`,
       );
     }
 
@@ -64,7 +57,7 @@ export default class Schema {
   createTable(
     table: string,
     cb: (table: ColumnTypeBuilder) => void,
-    options?: { ifNotExists?: boolean }
+    options?: { ifNotExists?: boolean },
   ): void {
     const partialQuery =
       options && options.ifNotExists
@@ -76,7 +69,7 @@ export default class Schema {
       this.queryStatements,
       [],
       partialQuery,
-      this.sqlType
+      this.sqlType,
     );
 
     cb(tableBuilder);
@@ -91,7 +84,7 @@ export default class Schema {
       table,
       this.queryStatements,
       "",
-      this.sqlType
+      this.sqlType,
     );
 
     cb(tableAlter);
@@ -124,7 +117,7 @@ export default class Schema {
       default:
         throw new HysteriaError(
           "Schema::renameTable",
-          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`
+          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`,
         );
     }
   }
@@ -148,7 +141,7 @@ export default class Schema {
       default:
         throw new HysteriaError(
           "Schema::truncateTable",
-          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`
+          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`,
         );
     }
   }
@@ -160,7 +153,7 @@ export default class Schema {
     table: string,
     columns: string[],
     indexName?: string,
-    unique: boolean = false
+    unique: boolean = false,
   ): void {
     indexName = indexName || `${table}_${columns.join("_")}_index`;
     switch (this.sqlType) {
@@ -169,7 +162,7 @@ export default class Schema {
         this.rawQuery(
           `CREATE ${
             unique ? "UNIQUE" : ""
-          } INDEX ${indexName} ON \`${table}\` (${columns.join(", ")})`
+          } INDEX ${indexName} ON \`${table}\` (${columns.join(", ")})`,
         );
         break;
       case "postgres":
@@ -177,20 +170,20 @@ export default class Schema {
         this.rawQuery(
           `CREATE ${
             unique ? "UNIQUE" : ""
-          } INDEX ${indexName} ON "${table}" (${columns.join(", ")})`
+          } INDEX ${indexName} ON "${table}" (${columns.join(", ")})`,
         );
         break;
       case "sqlite":
         this.rawQuery(
           `CREATE ${
             unique ? "UNIQUE" : ""
-          } INDEX ${indexName} ON "${table}" (${columns.join(", ")})`
+          } INDEX ${indexName} ON "${table}" (${columns.join(", ")})`,
         );
         break;
       default:
         throw new HysteriaError(
           "Schema::createIndex",
-          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`
+          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`,
         );
     }
   }
@@ -206,7 +199,7 @@ export default class Schema {
         if (!table) {
           throw new HysteriaError(
             "Schema::dropIndex",
-            "MYSQL_REQUIRES_TABLE_NAME_FOR_INDEX_DROP"
+            "MYSQL_REQUIRES_TABLE_NAME_FOR_INDEX_DROP",
           );
         }
 
@@ -222,7 +215,7 @@ export default class Schema {
       default:
         throw new HysteriaError(
           "Schema::dropIndex",
-          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`
+          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`,
         );
     }
   }
@@ -235,24 +228,24 @@ export default class Schema {
       case "mysql":
       case "mariadb":
         this.rawQuery(
-          `ALTER TABLE \`${table}\` ADD PRIMARY KEY (${columns.join(", ")})`
+          `ALTER TABLE \`${table}\` ADD PRIMARY KEY (${columns.join(", ")})`,
         );
         break;
       case "postgres":
       case "cockroachdb":
         this.rawQuery(
-          `ALTER TABLE "${table}" ADD PRIMARY KEY (${columns.join(", ")})`
+          `ALTER TABLE "${table}" ADD PRIMARY KEY (${columns.join(", ")})`,
         );
         break;
       case "sqlite":
         this.rawQuery(
-          `ALTER TABLE "${table}" ADD PRIMARY KEY (${columns.join(", ")})`
+          `ALTER TABLE "${table}" ADD PRIMARY KEY (${columns.join(", ")})`,
         );
         break;
       default:
         throw new HysteriaError(
           "Schema::renameTable",
-          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`
+          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`,
         );
     }
   }
@@ -276,7 +269,7 @@ export default class Schema {
       default:
         throw new HysteriaError(
           "Schema::renameTable",
-          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`
+          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`,
         );
     }
   }
@@ -289,7 +282,7 @@ export default class Schema {
     columns: string[],
     foreignTable: string,
     foreignColumns: string[],
-    constraintName?: string
+    constraintName?: string,
   ): void {
     if (!constraintName) {
       constraintName = `${table}_${columns.join("_")}_fk`;
@@ -300,29 +293,29 @@ export default class Schema {
       case "mariadb":
         this.rawQuery(
           `ALTER TABLE \`${table}\` ADD CONSTRAINT ${constraintName} FOREIGN KEY (${columns.join(
-            ", "
-          )}) REFERENCES \`${foreignTable}\` (${foreignColumns.join(", ")})`
+            ", ",
+          )}) REFERENCES \`${foreignTable}\` (${foreignColumns.join(", ")})`,
         );
         break;
       case "postgres":
       case "cockroachdb":
         this.rawQuery(
           `ALTER TABLE "${table}" ADD CONSTRAINT ${constraintName} FOREIGN KEY (${columns.join(
-            ", "
-          )}) REFERENCES \`${foreignTable}\` (${foreignColumns.join(", ")})`
+            ", ",
+          )}) REFERENCES \`${foreignTable}\` (${foreignColumns.join(", ")})`,
         );
         break;
       case "sqlite":
         this.rawQuery(
           `ALTER TABLE "${table}" ADD CONSTRAINT ${constraintName} FOREIGN KEY (${columns.join(
-            ", "
-          )}) REFERENCES \`${foreignTable}\` (${foreignColumns.join(", ")})`
+            ", ",
+          )}) REFERENCES \`${foreignTable}\` (${foreignColumns.join(", ")})`,
         );
         break;
       default:
         throw new HysteriaError(
           "Schema::renameTable",
-          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`
+          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`,
         );
     }
   }
@@ -335,24 +328,24 @@ export default class Schema {
       case "mysql":
       case "mariadb":
         this.rawQuery(
-          `ALTER TABLE \`${table}\` DROP FOREIGN KEY ${constraintName}`
+          `ALTER TABLE \`${table}\` DROP FOREIGN KEY ${constraintName}`,
         );
         break;
       case "postgres":
       case "cockroachdb":
         this.rawQuery(
-          `ALTER TABLE "${table}" DROP CONSTRAINT ${constraintName}`
+          `ALTER TABLE "${table}" DROP CONSTRAINT ${constraintName}`,
         );
         break;
       case "sqlite":
         this.rawQuery(
-          `ALTER TABLE "${table}" DROP CONSTRAINT ${constraintName}`
+          `ALTER TABLE "${table}" DROP CONSTRAINT ${constraintName}`,
         );
         break;
       default:
         throw new HysteriaError(
           "Schema::renameTable",
-          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`
+          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`,
         );
     }
   }
@@ -360,11 +353,7 @@ export default class Schema {
   /**
    * @description Adds a unique constraint to a table
    */
-  unique(
-    table: string,
-    columns: string[],
-    constraintName?: string
-  ): void {
+  unique(table: string, columns: string[], constraintName?: string): void {
     if (!constraintName) {
       constraintName = `${table}_${columns.join("_")}_unique`;
     }
@@ -374,29 +363,29 @@ export default class Schema {
       case "mariadb":
         this.rawQuery(
           `ALTER TABLE \`${table}\` ADD CONSTRAINT ${constraintName} UNIQUE (${columns.join(
-            ", "
-          )})`
+            ", ",
+          )})`,
         );
         break;
       case "sqlite":
         this.rawQuery(
           `ALTER TABLE \`${table}\` ADD CONSTRAINT ${constraintName} UNIQUE (${columns.join(
-            ", "
-          )})`
+            ", ",
+          )})`,
         );
         break;
       case "postgres":
       case "cockroachdb":
         this.rawQuery(
           `ALTER TABLE "${table}" ADD CONSTRAINT ${constraintName} UNIQUE (${columns.join(
-            ", "
-          )})`
+            ", ",
+          )})`,
         );
         break;
       default:
         throw new HysteriaError(
           "Schema::renameTable",
-          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`
+          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`,
         );
     }
   }
@@ -413,18 +402,18 @@ export default class Schema {
       case "postgres":
       case "cockroachdb":
         this.rawQuery(
-          `ALTER TABLE "${table}" DROP CONSTRAINT ${constraintName}`
+          `ALTER TABLE "${table}" DROP CONSTRAINT ${constraintName}`,
         );
         break;
       case "sqlite":
         this.rawQuery(
-          `ALTER TABLE "${table}" DROP CONSTRAINT ${constraintName}`
+          `ALTER TABLE "${table}" DROP CONSTRAINT ${constraintName}`,
         );
         break;
       default:
         throw new HysteriaError(
           "Schema::renameTable",
-          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`
+          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`,
         );
     }
   }

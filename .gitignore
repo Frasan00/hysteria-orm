@@ -142,7 +142,6 @@ TODO
 run.sh
 stop.sh
 .eslintrc.js
-/migrations
 /database
 +.log
 /src/**/*.js
@@ -156,4 +155,3 @@ tmp
 docker
 dist
 buildcache
-migrations

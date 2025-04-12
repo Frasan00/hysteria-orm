@@ -1,3 +1,11 @@
+import type { ClientMigrator } from "./sql/migrations/migrator";
+import type {
+  RedisFetchable,
+  RedisStorable,
+} from "./no_sql/redis/redis_data_source";
+import type { DataSourceInput } from "./data_source/data_source_types";
+
+import { HysteriaError } from "./errors/hysteria_error";
 import { MongoDataSource } from "./no_sql/mongo/mongo_data_source";
 import { Collection } from "./no_sql/mongo/mongo_models/mongo_collection";
 import {
@@ -23,36 +31,58 @@ import {
 import { createModelFactory } from "./sql/models/model_factory";
 import { QueryBuilder } from "./sql/query_builder/query_builder";
 import { SqlDataSource } from "./sql/sql_data_source";
-import { UserWithUuid } from "../test/sql/test_models/uuid/user_uuid";
 import logger from "./utils/logger";
 import dotenv from "dotenv";
 
 dotenv.config();
 
-(async () => {
-  await SqlDataSource.connect({
-    type: "postgres",
-    host: "localhost",
-    port: 5432,
-    username: "root",
-    password: "root",
-    database: "test",
-    logs: true,
-  });
-  const users = await UserWithUuid.query()
-    .where("name", "1")
-    .orWhere("name", "2")
-    .whereBuilder((qb) => {
-      qb.where("name", "1")
-        .orWhere("name", "2")
-        .orWhereSubQuery("id", "IN", (qb) => {
-          qb.select("id").from("users").where("name", "1");
-        });
-    })
-    .toQuery();
-  console.log(users);
-  await SqlDataSource.disconnect();
-})();
+export {
+  // DataSource
+  DataSourceInput,
+
+  // decorators
+  belongsTo,
+  Collection,
+  column,
+  property,
+  dateColumn,
+  hasMany,
+  hasOne,
+  manyToMany,
+  // logger
+  logger,
+
+  // utils
+  getCollectionProperties,
+  getModelColumns,
+  getPrimaryKey,
+  getRelations,
+
+  // migrations
+  Migration,
+  defineMigrator,
+  ClientMigrator,
+
+  // sql
+  Model,
+  ModelQueryBuilder,
+  SqlDataSource,
+  QueryBuilder,
+
+  // mongo
+  MongoDataSource,
+
+  // redis
+  Redis,
+  RedisFetchable,
+  RedisStorable,
+
+  // factory
+  createModelFactory,
+
+  // Errors
+  HysteriaError,
+};
 
 export default {
   // decorators
@@ -91,4 +121,7 @@ export default {
 
   // factory
   createModelFactory,
+
+  // Errors
+  HysteriaError,
 };
