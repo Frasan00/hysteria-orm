@@ -27,6 +27,14 @@ export default class extends Migration {
       table.timestamp("deleted_at").default("NULL").nullable();
     });
 
+    this.schema.alterTable("users_with_bigint", (table) => {
+      table.addColumn("test", "integer", {
+        notNullable: true,
+        default: 1,
+      });
+      table.dropColumn("test");
+    });
+
     this.afterMigration = async (sqlDataSource) => {
       await sqlDataSource.query("users_with_bigint", "camel", "snake").insert({
         name: "John Doe",

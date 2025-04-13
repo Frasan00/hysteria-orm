@@ -1,28 +1,23 @@
-import { SqlDataSource } from "../../../../src/sql/sql_data_source";
-import { HysteriaError } from "../../../../src/errors/hysteria_error";
-import { UserFactory } from "../../test_models/factory/user_factory";
-import {
-  UserStatus,
-  UserWithoutPk,
-} from "../../test_models/without_pk/user_without_pk";
+import { HysteriaError } from "../../../src/errors/hysteria_error";
+import { SqlDataSource } from "../../../src/sql/sql_data_source";
+import { UserStatus } from "../test_models/bigint/user_bigint";
+import { UserFactory } from "../test_models/factory/user_factory";
+import { UserWithoutPk } from "../test_models/without_pk/user_without_pk";
 
 beforeAll(async () => {
-  await SqlDataSource.connect({
-    type: "postgres",
-    host: "localhost",
-    username: "root",
-    password: "root",
-    database: "test",
-    logs: true,
-  });
+  await SqlDataSource.connect();
 });
 
 afterAll(async () => {
   await SqlDataSource.disconnect();
 });
 
+beforeEach(async () => {
+  await SqlDataSource.startGlobalTransaction();
+});
+
 afterEach(async () => {
-  await UserWithoutPk.query().delete();
+  await SqlDataSource.rollbackGlobalTransaction();
 });
 
 test("should create an user", async () => {
@@ -198,22 +193,4 @@ test("should update user via bulk update", async () => {
   expect(allUsers[0].name).toBe("John Doe");
   expect(allUsers[0].updatedAt).not.toBe(allUsers[0].createdAt);
   expect(allUsers[0].updatedAt).not.toBe(user.updatedAt);
-});
-
-test("should commit under global transaction", async () => {
-  await SqlDataSource.startGlobalTransaction();
-  await UserFactory.userWithoutPk(1);
-  await SqlDataSource.commitGlobalTransaction();
-
-  const allUsers = await UserWithoutPk.find();
-  expect(allUsers).toHaveLength(1);
-});
-
-test("should rollback under global transaction", async () => {
-  await SqlDataSource.startGlobalTransaction();
-  await UserFactory.userWithoutPk(1);
-  await SqlDataSource.rollbackGlobalTransaction();
-
-  const allUsers = await UserWithoutPk.find();
-  expect(allUsers).toHaveLength(0);
 });

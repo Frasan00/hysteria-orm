@@ -51,7 +51,7 @@ const insertTemplate = (
   }
 
   return {
-    insert: (columns: string[], values: BaseValues[]) => {
+    insert: (columns: string[], values: BaseValues[], returning?: string[]) => {
       if (columns.includes("$additional")) {
         const $additionalColumnsIndex = columns.indexOf("$additional");
         columns.splice(columns.indexOf("$additional"), 1);
@@ -124,11 +124,15 @@ const insertTemplate = (
           ? `INSERT INTO ${table} (${columns.join(", ")})
 VALUES (${placeholders});`
           : `INSERT INTO ${table} (${columns.join(", ")})
-VALUES (${placeholders}) RETURNING *;`;
+VALUES (${placeholders}) RETURNING ${returning ? returning.join(", ") : "*"};`;
 
       return { query, params };
     },
-    insertMany: (columns: string[], values: BaseValues[][]) => {
+    insertMany: (
+      columns: string[],
+      values: BaseValues[][],
+      returning?: string[],
+    ) => {
       columns = columns.map((column) =>
         convertCase(column, typeofModel.databaseCaseConvention),
       );
@@ -200,7 +204,7 @@ VALUES (${placeholders}) RETURNING *;`;
           ? `INSERT INTO ${table} (${columns.join(", ")})
 VALUES ${valueSets.join(", ")};`
           : `INSERT INTO ${table} (${columns.join(", ")})
-VALUES ${valueSets.join(", ")} RETURNING *;`;
+VALUES ${valueSets.join(", ")} RETURNING ${returning ? returning.join(", ") : "*"};`;
 
       return { query, params };
     },

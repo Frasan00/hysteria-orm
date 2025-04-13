@@ -1,8 +1,10 @@
 import { Model } from "../../../../src/sql/models/model";
 import {
+  belongsTo,
   column,
   dateColumn,
 } from "../../../../src/sql/models/model_decorators";
+import { UserWithUuid } from "./user_uuid";
 export class PostWithUuid extends Model {
   static _table = "posts_with_uuid";
 
@@ -10,6 +12,9 @@ export class PostWithUuid extends Model {
     primaryKey: true,
   })
   declare id: string;
+
+  @column()
+  declare userId: string;
 
   @column()
   declare title: string;
@@ -28,4 +33,7 @@ export class PostWithUuid extends Model {
 
   @dateColumn()
   declare deletedAt: Date | null;
+
+  @belongsTo(() => UserWithUuid, "userId")
+  declare user: UserWithUuid;
 }

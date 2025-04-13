@@ -16,9 +16,6 @@ export class Migrator {
       const statements = migration.schema.queryStatements;
       for (const statement of statements) {
         if (!statement) {
-          logger.warn(
-            `Migration ${migration.migrationName} has an empty query statement:\n${statement}`,
-          );
           continue;
         }
 
@@ -40,9 +37,6 @@ export class Migrator {
       const statements = migration.schema.queryStatements;
       for (const statement of statements) {
         if (!statement) {
-          logger.warn(
-            `Migration ${migration.migrationName} has an empty query statement:\n${statement}`,
-          );
           continue;
         }
 

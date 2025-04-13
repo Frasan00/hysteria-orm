@@ -66,6 +66,7 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
     return execSql(query, this.params, this.sqlDataSource, "raw", {
       sqlLiteOptions: {
         typeofModel: this.model,
+        mode: "fetch",
       },
     });
   }
@@ -173,14 +174,19 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
 
   /**
    * @description Insert record into a table
+   * @param returning - The columns to return from the query, only supported by postgres and cockroachdb - default is "*"
    * @returns raw driver response
    */
-  async insert<T = any>(data: Record<string, any>): Promise<T> {
+  async insert<T = any>(
+    data: Record<string, any>,
+    returning?: string[],
+  ): Promise<T> {
     const model = data as any;
     const { query, params } = this.sqlModelManagerUtils.parseInsert(
       model,
       { ...this.model, table: this.table } as typeof Model,
       this.dbType,
+      returning,
     );
 
     const rows = await execSql(query, params, this.sqlDataSource, "raw", {
@@ -196,14 +202,19 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
 
   /**
    * @description Insert multiple records into a table
+   * @param returning - The columns to return from the query, only supported by postgres and cockroachdb - default is "*"
    * @returns raw driver response
    */
-  async insertMany<T = any>(data: Record<string, any>[]): Promise<T[]> {
+  async insertMany<T = any>(
+    data: Record<string, any>[],
+    returning?: string[],
+  ): Promise<T[]> {
     const models = data as any[];
     const { query, params } = this.sqlModelManagerUtils.parseMassiveInsert(
       models,
       { ...this.model, table: this.table } as typeof Model,
       this.dbType,
+      returning,
     );
 
     return execSql(query, params, this.sqlDataSource, "raw", {

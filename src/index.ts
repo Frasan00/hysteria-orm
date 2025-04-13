@@ -32,9 +32,6 @@ import { createModelFactory } from "./sql/models/model_factory";
 import { QueryBuilder } from "./sql/query_builder/query_builder";
 import { SqlDataSource } from "./sql/sql_data_source";
 import logger from "./utils/logger";
-import { env } from "./env/env";
-
-console.log(env);
 
 export {
   // DataSource

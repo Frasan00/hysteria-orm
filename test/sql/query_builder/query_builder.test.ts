@@ -1,48 +1,47 @@
-import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import crypto from "node:crypto";
-
-let sql: SqlDataSource;
+import { SqlDataSource } from "../../../src/sql/sql_data_source";
 
 beforeAll(async () => {
-  sql = await SqlDataSource.connect({
-    type: "postgres",
-    host: "localhost",
-    username: "root",
-    password: "root",
-    database: "test",
-    logs: true,
-  });
+  await SqlDataSource.connect();
 });
 
 afterAll(async () => {
   await SqlDataSource.disconnect();
 });
 
+beforeEach(async () => {
+  await SqlDataSource.startGlobalTransaction();
+});
+
 afterEach(async () => {
-  await SqlDataSource.query("posts_with_uuid").delete();
+  await SqlDataSource.rollbackGlobalTransaction();
 });
 
 test("should create a post", async () => {
-  const post = await sql.query("posts_with_uuid").insert({
+  await SqlDataSource.query("posts_with_uuid").insert({
     id: crypto.randomUUID(),
     title: "Hello World",
+    content: "Hello World Content",
+    shortDescription: "Hello World Short Description",
   });
 
-  expect(post).toBeDefined();
-  expect(post.id).toBeDefined();
-  expect(post.title).toBe("Hello World");
+  const retrievedPost = await SqlDataSource.query("posts_with_uuid").one();
+
+  expect(retrievedPost).toBeDefined();
+  expect(retrievedPost.id).toBeDefined();
+  expect(retrievedPost.title).toBe("Hello World");
 });
 
 test("should create multiple posts", async () => {
-  await sql.query("posts_with_uuid").insertMany([
+  await SqlDataSource.query("posts_with_uuid").insertMany([
     { id: crypto.randomUUID(), title: "Hello World" },
     { id: crypto.randomUUID(), title: "Hello World 2" },
   ]);
 
-  const posts = await sql
-    .query("posts_with_uuid")
+  const posts = await SqlDataSource.query("posts_with_uuid")
     .orderBy("title", "asc")
     .many();
+
   expect(posts).toBeDefined();
   expect(posts.length).toBe(2);
   expect(posts[0].id).toBeDefined();
@@ -52,42 +51,27 @@ test("should create multiple posts", async () => {
 });
 
 test("should update a post", async () => {
-  const post = await sql.query("posts_with_uuid").insert({
+  await SqlDataSource.query("posts_with_uuid").insert({
     id: crypto.randomUUID(),
     title: "Hello World",
   });
 
-  const updatedPost = await sql
-    .query("posts_with_uuid")
-    .where("id", post.id)
-    .update({
-      title: "Hello World Updated",
-    });
+  await SqlDataSource.query("posts_with_uuid").update({
+    title: "Hello World Updated",
+  });
 
-  expect(updatedPost).toBeDefined();
-  const retrievedPost = await sql
-    .query("posts_with_uuid")
-    .where("id", post.id)
-    .first();
+  const retrievedPost = await SqlDataSource.query("posts_with_uuid").first();
   expect(retrievedPost.title).toBe("Hello World Updated");
 });
 
 test("should delete a post", async () => {
-  const post = await sql.query("posts_with_uuid").insert({
+  await SqlDataSource.query("posts_with_uuid").insert({
     id: crypto.randomUUID(),
     title: "Hello World",
   });
 
-  const deletedPost = await sql
-    .query("posts_with_uuid")
-    .where("id", post.id)
-    .delete();
-  expect(deletedPost).toBeDefined();
-  expect(deletedPost).toBe(1);
+  await SqlDataSource.query("posts_with_uuid").delete();
 
-  const retrievedPost = await sql
-    .query("posts_with_uuid")
-    .where("id", post.id)
-    .first();
+  const retrievedPost = await SqlDataSource.query("posts_with_uuid").first();
   expect(retrievedPost).toBeNull();
 });

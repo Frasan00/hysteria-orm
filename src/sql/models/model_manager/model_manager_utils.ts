@@ -25,19 +25,21 @@ export default class SqlModelManagerUtils<T extends Model> {
     model: T,
     typeofModel: typeof Model,
     dbType: SqlDataSourceType,
+    returning?: string[],
   ): { query: string; params: any[] } {
     const filteredModel = this.filterRelationsAndMetadata(model);
     const keys = Object.keys(filteredModel);
     const values = Object.values(filteredModel);
 
     const insert = insertTemplate(dbType, typeofModel);
-    return insert.insert(keys, values);
+    return insert.insert(keys, values, returning);
   }
 
   parseMassiveInsert(
     models: T[],
     typeofModel: typeof Model,
     dbType: SqlDataSourceType,
+    returning?: string[],
   ): { query: string; params: any[] } {
     const filteredModels = models.map((m) =>
       this.filterRelationsAndMetadata(m),
@@ -45,7 +47,7 @@ export default class SqlModelManagerUtils<T extends Model> {
     const insert = insertTemplate(dbType, typeofModel);
     const keys = Object.keys(filteredModels[0]);
     const values = filteredModels.map((model) => Object.values(model));
-    return insert.insertMany(keys, values);
+    return insert.insertMany(keys, values, returning);
   }
 
   parseUpdate(

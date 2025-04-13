@@ -10,7 +10,42 @@ export const promisifySqliteQuery = <T extends Model>(
   sqlDataSource: SqlDataSource,
   options: SqlLiteOptions<T>,
 ): Promise<number | T | T[]> => {
+  const isTransactional = ["begin", "commit", "rollback"].includes(
+    query.trim().toLowerCase(),
+  );
+
   const sqliteDriver = sqlDataSource.getCurrentDriverConnection("sqlite");
+  if (isTransactional) {
+    return new Promise<number>((resolve, reject) => {
+      sqliteDriver.run(query, params, function (this: any, err) {
+        if (err) {
+          reject(err);
+        }
+        resolve(this.changes);
+      });
+    });
+  }
+
+  if (options.mode === "fetch") {
+    return new Promise<T[]>((resolve, reject) => {
+      sqliteDriver.all(query, params, (err, rows) => {
+        if (err) {
+          reject(err);
+        }
+
+        if (!rows) {
+          resolve([] as T[]);
+        }
+
+        if (!Array.isArray(rows)) {
+          resolve([rows as T]);
+        }
+
+        resolve(rows as T[]);
+      });
+    });
+  }
+
   const typeofModel = options?.typeofModel;
   if (!typeofModel) {
     return new Promise<number>((resolve, reject) => {
@@ -18,7 +53,7 @@ export const promisifySqliteQuery = <T extends Model>(
         if (err) {
           reject(new Error(err.message));
         } else {
-          resolve(this.change as number);
+          resolve(this.changes as number);
         }
       });
     });
@@ -34,8 +69,23 @@ export const promisifySqliteQuery = <T extends Model>(
             return reject(err);
           }
 
+          if (!primaryKeyName) {
+            return resolve({} as T);
+          }
+
           const currentModel = options.models as T;
-          const lastID = currentModel[primaryKeyName as keyof T] || this.lastID;
+          const lastID =
+            currentModel?.[primaryKeyName as keyof T] || this.lastID;
+
+          if (!lastID) {
+            return reject(
+              new HysteriaError(
+                "SqlRunnerUtils::promisifySqliteQuery",
+                "MODEL_HAS_NO_PRIMARY_KEY",
+              ),
+            );
+          }
+
           const selectQuery = `SELECT * FROM ${table} WHERE ${primaryKeyName} = ?`;
           sqliteDriver.get(selectQuery, [lastID], (err: any, row: T) => {
             if (err) {
@@ -72,6 +122,19 @@ export const promisifySqliteQuery = <T extends Model>(
               }
 
               const lastID = model[primaryKeyName as keyof T] || this.lastID;
+              if (!primaryKeyName) {
+                return resolve();
+              }
+
+              if (!lastID) {
+                return reject(
+                  new HysteriaError(
+                    "SqlRunnerUtils::promisifySqliteQuery",
+                    "MODEL_HAS_NO_PRIMARY_KEY",
+                  ),
+                );
+              }
+
               const selectQuery = `SELECT * FROM ${table} WHERE ${primaryKeyName} = ?`;
               sqliteDriver.get(selectQuery, [lastID], (err: any, row: T) => {
                 if (err) {
@@ -88,26 +151,6 @@ export const promisifySqliteQuery = <T extends Model>(
         }
       }
       resolve(finalResult);
-    });
-  }
-
-  if (options.mode === "fetch") {
-    return new Promise<T[]>((resolve, reject) => {
-      sqliteDriver.all(query, params, (err, rows) => {
-        if (err) {
-          reject(err);
-        }
-
-        if (!rows) {
-          resolve([] as T[]);
-        }
-
-        if (!Array.isArray(rows)) {
-          resolve([rows as T]);
-        }
-
-        resolve(rows as T[]);
-      });
     });
   }
 

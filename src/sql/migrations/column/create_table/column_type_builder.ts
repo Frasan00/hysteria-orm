@@ -11,7 +11,7 @@ export type DateOptions = {
 
 export interface ColumnConstraints {
   nullable(): ColumnConstraints;
-  default(value: string | number | boolean): ColumnConstraints;
+  default(value: string | number | boolean | null): ColumnConstraints;
   unsigned(): ColumnConstraints;
   notNullable(): ColumnConstraints;
   primary(): ColumnConstraints;

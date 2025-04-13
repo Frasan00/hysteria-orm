@@ -14,9 +14,9 @@
   "scripts": {
     "start": "yarn format && yarn build:dev && node lib/index.js",
     "prepare": "husky install",
-    "migrate": "node ./migration_runner.js",
-    "test": "node test_runner.js",
-    "test:with:migrations": "rm -rf sqlite.db && touch sqlite.db && yarn format && yarn build && yarn migrate && node test_runner.js",
+    "migrate": "node ./test/migration_runner.js",
+    "test": "node ./test/test_runner.js",
+    "test:with:migrations": "rm -rf sqlite.db && touch sqlite.db && yarn format && yarn build && yarn migrate && node ./test/test_runner.js",
     "format": "prettier --write \"**/*.ts\"",
     "build": "tsup --minify",
     "build:dev": "tsup",

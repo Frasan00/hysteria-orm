@@ -1,45 +1,13 @@
 import { execSync } from "node:child_process";
+import {
+  mysqlConfig,
+  mariadbConfig,
+  pgConfig,
+  cockroachdbConfig,
+  sqliteConfig,
+} from "./test_environments.js";
 
 const migrations = ["./test/sql/migrations"];
-
-const mysqlConfig = {
-  type: "mysql",
-  host: "localhost",
-  user: "root",
-  password: "root",
-  database: "test",
-};
-
-const mariadbConfig = {
-  type: "mariadb",
-  host: "localhost",
-  user: "root",
-  port: 3307,
-  password: "root",
-  database: "test",
-};
-
-const pgConfig = {
-  type: "postgres",
-  host: "localhost",
-  user: "root",
-  password: "root",
-  database: "test",
-};
-
-const cockroachdbConfig = {
-  type: "cockroachdb",
-  host: "localhost",
-  user: "root",
-  port: 26257,
-  password: "root",
-  database: "test",
-};
-
-const sqliteConfig = {
-  type: "sqlite",
-  database: "./sqlite.db",
-};
 
 migrations.forEach((migration) => {
   // PostgreSQL

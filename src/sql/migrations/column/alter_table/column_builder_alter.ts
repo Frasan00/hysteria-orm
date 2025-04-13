@@ -7,13 +7,14 @@ import ColumnTypeBuilder, {
 type References = {
   table: string;
   column: string;
+  constraintName?: string;
   onDelete?: string;
   onUpdate?: string;
 };
 
 type AlterOptions = {
   afterColumn?: string;
-  references?: References;
+  references: References;
 };
 
 type DataType =
@@ -40,8 +41,8 @@ type DataType =
 type BaseOptions = {
   /**
    * @description The column to add the new column after
-   * @postgres does not support afterColumn and throw an error
-   * @sqlite does not support afterColumn and throw an error
+   * @postgres does not support afterColumn and will throw an error
+   * @sqlite does not support afterColumn and will throw an error
    */
   afterColumn?: string;
   references?: References;
@@ -221,6 +222,13 @@ export default class ColumnBuilderAlter {
 
     this.partialQuery = query;
     this.queryStatements.push(this.partialQuery);
+
+    if (options?.references) {
+      this.addForeignKey(columnName, {
+        references: options.references,
+        constraintName: options.references.constraintName,
+      });
+    }
     this.partialQuery = "";
     return this;
   }
@@ -701,16 +709,15 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeNameCockroach}
 
   /**
    * @description Add a foreign key
+   * @default constraintName is the name of the constraint to add, if not provided, it will be generated using the table name and column name
    */
-  addForeignKey(columnName: string, options: AlterOptions): ColumnBuilderAlter {
-    if (!options.references) {
-      throw new HysteriaError(
-        "ColumnBuilderAlter::addForeignKey",
-        "REFERENCES_OPTION_REQUIRED",
-      );
-    }
-
-    const fkName = `${this.table}_${columnName}_fk`;
+  addForeignKey(
+    columnName: string,
+    options: AlterOptions & {
+      constraintName?: string;
+    },
+  ): ColumnBuilderAlter {
+    const fkName = options.constraintName || `${this.table}_${columnName}_fk`;
     switch (this.sqlType) {
       case "mariadb":
       case "mysql":
@@ -724,18 +731,14 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeNameCockroach}
         break;
       case "postgres":
       case "cockroachdb":
-        this.partialQuery = `ALTER TABLE ${
-          this.table
-        } ADD CONSTRAINT ${fkName} FOREIGN KEY (${columnName}) REFERENCES ${
+        this.partialQuery = `ALTER TABLE ${this.table} ADD CONSTRAINT ${fkName} FOREIGN KEY (${columnName}) REFERENCES ${
           options.references.table
         }(${options.references.column}) ON DELETE ${
           options.references.onDelete || "NO ACTION"
         } ON UPDATE ${options.references.onUpdate || "NO ACTION"}`;
         break;
       case "sqlite":
-        this.partialQuery = `ALTER TABLE ${
-          this.table
-        } ADD CONSTRAINT ${fkName} FOREIGN KEY (${columnName}) REFERENCES ${
+        this.partialQuery = `ALTER TABLE ${this.table} ADD CONSTRAINT ${fkName} FOREIGN KEY (${columnName}) REFERENCES ${
           options.references.table
         }(${options.references.column}) ON DELETE ${
           options.references.onDelete || "NO ACTION"
@@ -755,9 +758,13 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeNameCockroach}
 
   /**
    * @description Drop a foreign key
+   * @default constraintName is the name of the constraint to drop, if not provided, it will be generated using the table name and column name
    */
-  dropForeignKey(columnName: string): ColumnBuilderAlter {
-    const fkName = `${this.table}_${columnName}_fk`;
+  dropForeignKey(
+    columnName: string,
+    constraintName?: string,
+  ): ColumnBuilderAlter {
+    const fkName = constraintName || `${this.table}_${columnName}_fk`;
     switch (this.sqlType) {
       case "mariadb":
       case "mysql":
