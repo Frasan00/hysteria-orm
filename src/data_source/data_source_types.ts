@@ -40,11 +40,11 @@ export interface NotNullablePostgresSqlDataSourceInput
   extends PostgresSqlDataSourceInput {
   readonly type: "postgres" | "cockroachdb";
   readonly host: string;
-  readonly port: number;
   readonly username: string;
   readonly password: string;
   readonly database: string;
-  readonly driverOptions: PgClientOptions;
+  readonly port?: number;
+  readonly driverOptions?: PgClientOptions;
 }
 
 export interface MysqlSqlDataSourceInput extends CommonDataSourceInput {
@@ -61,10 +61,10 @@ export interface NotNullableMysqlSqlDataSourceInput
   extends MysqlSqlDataSourceInput {
   readonly type: "mysql" | "mariadb";
   readonly host: string;
-  readonly port: number;
   readonly username: string;
   readonly password: string;
   readonly database: string;
+  readonly port?: number;
   readonly driverOptions?: MysqlCreateConnectionOptions;
 }
 

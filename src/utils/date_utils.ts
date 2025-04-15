@@ -1,4 +1,4 @@
-export function baseSoftDeleteDate(date: Date): string {
+export const baseSoftDeleteDate = (date: Date = new Date()): string => {
   const pad = (n: number) => n.toString().padStart(2, "0");
 
   const year = date.getUTCFullYear();
@@ -9,4 +9,4 @@ export function baseSoftDeleteDate(date: Date): string {
   const seconds = pad(date.getUTCSeconds());
 
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-}
+};

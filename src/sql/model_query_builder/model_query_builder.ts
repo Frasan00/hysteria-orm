@@ -3,7 +3,10 @@ import { convertCase } from "../../utils/case_utils";
 import { convertPlaceHolderToValue } from "../../utils/placeholder";
 import { getBaseModelInstance, Model } from "../models/model";
 import { getModelColumns } from "../models/model_decorators";
-import type { ModelRelation } from "../models/model_manager/model_manager_types";
+import type {
+  ModelKey,
+  ModelRelation,
+} from "../models/model_manager/model_manager_types";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
 import { getPaginationMetadata, PaginatedData } from "../pagination";
 import { QueryBuilder } from "../query_builder/query_builder";
@@ -83,13 +86,12 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
     !options.ignoreHooks?.includes("beforeFetch") &&
       this.model.beforeFetch(this);
     const rows = await super.many();
-    const modelPromises = rows.map(async (row: any) => {
+    const models = rows.map((row) => {
       const modelInstance = getBaseModelInstance<T>();
-      await this.mergeRawPacketIntoModel(modelInstance, row, this.model);
-      return modelInstance as T;
+      this.mergeRawPacketIntoModel(modelInstance, row, this.model);
+      return modelInstance;
     });
 
-    const models = await Promise.all(modelPromises);
     const relationModels =
       await this.sqlModelManagerUtils.parseQueryBuilderRelations(
         models,
@@ -300,6 +302,20 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
     } as PaginatedData<T>;
   }
 
+  override select(...columns: string[]): this;
+  override select(...columns: (ModelKey<T> | "*")[]): this;
+  override select(...columns: (ModelKey<T> | "*" | string)[]): this {
+    this.selectQuery = this.selectTemplate.selectColumns(
+      ...(columns as string[]),
+    );
+
+    this.modelSelectedColumns = columns.map((column) =>
+      convertCase(column as string, this.model.databaseCaseConvention),
+    ) as string[];
+
+    return this;
+  }
+
   /**
    * @description Fills the relations in the model in the serialised response.
    * @description Relation must be defined in the model.
@@ -355,7 +371,7 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return queryBuilder;
   }
 
-  protected async mergeRawPacketIntoModel(
+  protected mergeRawPacketIntoModel(
     model: T,
     row: any,
     typeofModel: typeof Model,

@@ -10,19 +10,22 @@ import {
 } from "./test_environments.js";
 
 const sqlEnvironments = [
+  cockroachdbConfig,
+  pgConfig,
   sqliteConfig,
   mysqlConfig,
   mariadbConfig,
-  pgConfig,
-  cockroachdbConfig,
 ];
 
 const sqlTests = [
+  // use connection
+  "./test/sql/use_connection/use_connection.test.ts",
+
   // query builder
   "./test/sql/query_builder/query_builder.test.ts",
 
   // without primary key tests
-  // "./test/sql/without_pk/user_without_pk_crud.test.ts",
+  "./test/sql/without_pk/user_without_pk_crud.test.ts",
 ];
 
 sqlTests.forEach((file) => {

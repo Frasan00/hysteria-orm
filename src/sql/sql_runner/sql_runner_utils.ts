@@ -33,12 +33,8 @@ export const promisifySqliteQuery = <T extends Model>(
           reject(err);
         }
 
-        if (!rows) {
+        if (!rows.length) {
           resolve([] as T[]);
-        }
-
-        if (!Array.isArray(rows)) {
-          resolve([rows as T]);
         }
 
         resolve(rows as T[]);
@@ -70,7 +66,13 @@ export const promisifySqliteQuery = <T extends Model>(
           }
 
           if (!primaryKeyName) {
-            return resolve({} as T);
+            const returnModel =
+              options.models &&
+              Array.isArray(options.models) &&
+              options.models.length
+                ? options.models[0]
+                : null;
+            resolve(returnModel as T);
           }
 
           const currentModel = options.models as T;
@@ -106,7 +108,7 @@ export const promisifySqliteQuery = <T extends Model>(
     }
 
     const models = options.models as T[];
-    const finalResult: T[] = [];
+    let finalResult: T[] = [];
     return new Promise<T[]>(async (resolve, reject) => {
       for (const model of models) {
         try {
@@ -123,7 +125,8 @@ export const promisifySqliteQuery = <T extends Model>(
 
               const lastID = model[primaryKeyName as keyof T] || this.lastID;
               if (!primaryKeyName) {
-                return resolve();
+                finalResult = options.models as T[];
+                resolve();
               }
 
               if (!lastID) {

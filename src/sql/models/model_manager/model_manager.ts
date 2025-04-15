@@ -167,6 +167,8 @@ export class ModelManager<T extends Model> {
 
   /**
    * @description Creates a new record in the database
+   * @mysql If no Primary Key is present in the model definition, the exact input will be returned
+   * @sqlite If no Primary Key is present in the model definition, the exact input will be returned
    */
   async insert(model: Partial<T>): Promise<T> {
     await this.model.beforeInsert(model as T);
@@ -204,6 +206,8 @@ export class ModelManager<T extends Model> {
 
   /**
    * @description Creates multiple records in the database
+   * @mysql If no Primary Key is present in the model definition, the exact input will be returned
+   * @sqlite If no Primary Key is present in the model definition, the exact input will be returned
    */
   async insertMany(models: Partial<T>[]): Promise<T[]> {
     await Promise.all(
@@ -300,18 +304,6 @@ export class ModelManager<T extends Model> {
   }
 
   /**
-   * @description Truncates the table
-   */
-  async truncate(force: boolean = false): Promise<void> {
-    const forceClause = force ? "CASCADE" : "";
-    await execSql(
-      `TRUNCATE TABLE ${this.model.table} ${forceClause}`,
-      [],
-      this.sqlDataSource,
-    );
-  }
-
-  /**
    * @description Returns a query builder instance
    */
   query(): Omit<ModelQueryBuilder<T>, "insert" | "insertMany"> {
@@ -328,11 +320,11 @@ export class ModelManager<T extends Model> {
   ): Promise<O extends "one" ? T : T[]> {
     if (!this.model.primaryKey) {
       if (returnType === "one") {
-        return null as unknown as O extends "one" ? T : T[];
+        const returnModel = models.length ? models[0] : null;
+        return returnModel as O extends "one" ? T : T[];
       }
 
-      const emptyArray: T[] = [];
-      return emptyArray as O extends "one" ? T : T[];
+      return models as O extends "one" ? T : T[];
     }
 
     // UUID and before fetch defined primary keys

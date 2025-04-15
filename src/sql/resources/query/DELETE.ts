@@ -35,6 +35,31 @@ const deleteTemplate = (dbType: SqlDataSourceType) => {
     ) => {
       return `DELETE FROM ${table} ${joinClause} ${whereClause}`;
     },
+    truncate: (table: string, force: boolean): string[] => {
+      const queries: string[] = [];
+      switch (dbType) {
+        case "sqlite":
+          queries.push(`DELETE FROM ${table};`);
+          break;
+        case "mariadb":
+        case "mysql":
+          force && queries.push(`SET FOREIGN_KEY_CHECKS = 0;`);
+          queries.push(`TRUNCATE TABLE ${table}`);
+          force && queries.push(`SET FOREIGN_KEY_CHECKS = 1;`);
+          break;
+        case "postgres":
+        case "cockroachdb":
+          queries.push(`TRUNCATE TABLE ${table} ${force ? " CASCADE " : ""}`);
+          break;
+        default:
+          throw new HysteriaError(
+            "DeleteTemplate::delete",
+            `UNSUPPORTED_DATABASE_TYPE_${dbType}`,
+          );
+      }
+
+      return queries;
+    },
   };
 };
 

@@ -36,7 +36,7 @@ export default class extends Migration {
     });
 
     this.afterMigration = async (sqlDataSource) => {
-      await sqlDataSource.query("users_with_bigint", "camel", "snake").insert({
+      await sqlDataSource.query("users_with_bigint").insert({
         name: "John Doe",
         email: "john.doe@example.com",
         password: "password",
@@ -56,31 +56,25 @@ export default class extends Migration {
         status: "active",
       });
 
-      const all = await sqlDataSource
-        .query("users_with_bigint", "camel", "snake")
-        .many();
+      const all = await sqlDataSource.query("users_with_bigint").many();
       if (!all.length) {
         throw new Error(
           "Migration 01_user_with_bigint failed, no records found",
         );
       }
 
-      await sqlDataSource.query("users_with_bigint", "camel", "snake").update({
+      await sqlDataSource.query("users_with_bigint").update({
         name: "Jane Doe",
       });
 
-      const all2 = await sqlDataSource
-        .query("users_with_bigint", "camel", "snake")
-        .many();
+      const all2 = await sqlDataSource.query("users_with_bigint").many();
       if (all2.length !== 1) {
         throw new Error("Migration 01_user_with_bigint failed, records found");
       }
 
-      await sqlDataSource.query("users_with_bigint", "camel", "snake").delete();
+      await sqlDataSource.query("users_with_bigint").delete();
 
-      const all3 = await sqlDataSource
-        .query("users_with_bigint", "camel", "snake")
-        .many();
+      const all3 = await sqlDataSource.query("users_with_bigint").many();
       if (all3.length) {
         throw new Error("Migration 01_user_with_bigint failed, records found");
       }

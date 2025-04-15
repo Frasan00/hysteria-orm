@@ -91,9 +91,28 @@ export function getPendingMigrations(
 async function loadMigrationModule(
   pathToFile: string,
 ): Promise<new () => Migration> {
-  const migrationModule = await import(pathToFile).catch((error) => {
+  try {
+    const migrationModule = await import(pathToFile);
+    if (!migrationModule.default) {
+      throw new HysteriaError(
+        "MigrationUtils::loadMigrationModule Migration module does not have a default export",
+        "MIGRATION_MODULE_NOT_FOUND",
+      );
+    }
+
+    return migrationModule.default;
+  } catch (error: any) {
+    if (typeof error === "string") {
+      throw error;
+    }
+
+    console.log(error instanceof TypeError);
     if (
+      error &&
+      typeof error === "object" &&
+      Object.values(error).length &&
       error instanceof TypeError &&
+      Object.prototype.hasOwnProperty.call(error, "message") &&
       error.message.includes(`Unknown file extension ".ts"`)
     ) {
       throw new HysteriaError(
@@ -103,16 +122,7 @@ async function loadMigrationModule(
     }
 
     throw error;
-  });
-
-  if (!migrationModule.default) {
-    throw new HysteriaError(
-      "MigrationUtils::loadMigrationModule Migration module does not have a default export",
-      "MIGRATION_MODULE_NOT_FOUND",
-    );
   }
-
-  return migrationModule.default;
 }
 
 async function findMigrationModule(

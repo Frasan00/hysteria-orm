@@ -1,6 +1,5 @@
 import { format } from "sql-formatter";
 import { HysteriaError } from "../../errors/hysteria_error";
-import { convertCase } from "../../utils/case_utils";
 import { convertPlaceHolderToValue } from "../../utils/placeholder";
 import { bindParamsIntoQuery } from "../../utils/query";
 import { SoftDeleteOptions } from "../model_query_builder/delete_query_builder_type";
@@ -113,9 +112,6 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
   }
 
   /**
-   * @description Selects columns from a table, all columns are selected by default
-   */
-  /**
    * @description Adds a SELECT condition to the query.
    */
   select(...columns: string[]): this;
@@ -124,10 +120,6 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
     this.selectQuery = this.selectTemplate.selectColumns(
       ...(columns as string[]),
     );
-
-    this.modelSelectedColumns = columns.map((column) =>
-      convertCase(column as string, this.model.databaseCaseConvention),
-    ) as string[];
 
     return this;
   }
@@ -197,7 +189,7 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
       },
     });
 
-    return rows[0];
+    return Array.isArray(rows) && rows.length ? rows[0] : rows;
   }
 
   /**
@@ -251,6 +243,23 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
     return execSql(query, params, this.sqlDataSource, "affectedRows", {
       sqlLiteOptions: { typeofModel: this.model, mode: "affectedRows" },
     });
+  }
+
+  /**
+   * @description Truncates the table
+   * @param options
+   * @param force - forces the truncate ignoring checks
+   * @restartAutoIncrement restarts from zero auto increment tables
+   */
+  async truncate(options?: { force?: boolean }): Promise<void> {
+    const truncateQueries = deleteTemplate(this.dbType).truncate(
+      this.fromTable,
+      options?.force || false,
+    );
+
+    for (const truncateQuery of truncateQueries) {
+      await execSql(truncateQuery, [], this.sqlDataSource);
+    }
   }
 
   /**

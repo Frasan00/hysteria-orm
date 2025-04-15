@@ -736,8 +736,8 @@ await User.query().where("name", "Eve updated two").delete();
 
 // BULK SOFT DELETE
 await User.query().where("name", "Eve updated two").softDelete({
-    column: "deletedAt" // default,
-    value: string | number | boolean // default new Date().toISOString().slice(0, 19).replace('T', ' '), format is from date-fns
+    column: "deletedAt", // default, can be changed from the static property if every model `softDeleteColumn`
+    value: string | number | boolean // default `${year}-${month}-${day} ${hours}:${minutes}:${seconds}` timestamp
     // trx: optional
 });
 ```

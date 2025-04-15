@@ -22,8 +22,14 @@ afterEach(async () => {
 
 test("should create an user", async () => {
   const user = await UserFactory.userWithoutPk(1);
+  const retrievedUser = await UserWithoutPk.findOne({
+    where: {
+      email: user.email,
+    },
+  });
+
+  expect(retrievedUser).not.toBeNull();
   expect(user).not.toHaveProperty("id");
-  expect(user).not.toHaveProperty("password");
   expect(user).toHaveProperty("name");
   expect(user).toHaveProperty("email");
 });
@@ -177,7 +183,7 @@ test("should truncate the table", async () => {
   const allUsers = await UserWithoutPk.find();
   expect(allUsers).toHaveLength(10);
 
-  await UserWithoutPk.truncate();
+  await UserWithoutPk.truncate({ force: true });
   const allUsersAfterTruncate = await UserWithoutPk.find();
   expect(allUsersAfterTruncate).toHaveLength(0);
 });

@@ -90,21 +90,31 @@ export class SqlDataSource extends DataSource {
     return SqlDataSource.instance;
   }
 
+  /**
+   * @description Returns a QueryBuilder instance
+   * @description Query builder from the SqlDataSource instance returns raw data from the database, the data is not parsed or serialized in any way
+   * @description Column names are converted to the case convention specified in the options when interacting with the database but won't be converted when serializing or parsing the data
+   * @description Use Models to have type safety and serialization
+   */
   static query(
     table: string,
-    modelCaseConvention: CaseConvention = "camel",
-    databaseCaseConvention: CaseConvention = "snake",
+    options?: {
+      databaseCaseConvention?: CaseConvention;
+    },
   ): QueryBuilder {
     return new QueryBuilder(
       {
-        modelCaseConvention,
-        databaseCaseConvention,
+        modelCaseConvention: "camel",
+        databaseCaseConvention: options?.databaseCaseConvention || "snake",
         table: table,
       } as typeof Model,
       this.getInstance(),
     );
   }
 
+  /**
+   * @description Starts a transaction on the database and executes a callback with the transaction instance, automatically committing or rolling back the transaction based on the callback's success or failure
+   */
   static async useTransaction(
     cb: (trx: Transaction) => Promise<void>,
     driverSpecificOptions?: SqlDriverSpecificOptions,
@@ -230,6 +240,9 @@ export class SqlDataSource extends DataSource {
     };
   }
 
+  /**
+   * @description Returns true if the connection is established
+   */
   get isConnected(): boolean {
     return !!this.sqlConnection;
   }
@@ -243,21 +256,26 @@ export class SqlDataSource extends DataSource {
 
   /**
    * @description Returns a QueryBuilder instance
+   * @description Query builder from the SqlDataSource instance uses raw data from the database so the data is not parsed or serialized in any way
+   * @description Column names are converted to the case convention specified in the options when interacting with the database but won't be converted when serializing or parsing the data
+   * @description Use Models to have type safety and serialization
    */
   query(
     table: string,
-    modelCaseConvention: CaseConvention = "camel",
-    databaseCaseConvention: CaseConvention = "snake",
+    options?: {
+      databaseCaseConvention?: CaseConvention;
+    },
   ): QueryBuilder {
     return new QueryBuilder(
       {
-        modelCaseConvention,
-        databaseCaseConvention,
+        modelCaseConvention: "camel",
+        databaseCaseConvention: options?.databaseCaseConvention || "snake",
         table: table,
       } as typeof Model,
       this,
     );
   }
+
   /**
    * @description Starts a transaction on the database and executes a callback with the transaction instance, automatically committing or rolling back the transaction based on the callback's success or failure
    */
@@ -285,7 +303,7 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
-   * @description Starts a global transaction on the database
+   * @description Starts a global transaction on the database on the main connection
    */
   async startGlobalTransaction(): Promise<void> {
     if (this.inGlobalTransaction) {
@@ -300,7 +318,7 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
-   * @description Commits a global transaction on the database
+   * @description Commits a global transaction on the database on the main connection
    */
   async commitGlobalTransaction(): Promise<void> {
     if (!this.inGlobalTransaction) {
@@ -314,7 +332,7 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
-   * @description Rolls back a global transaction on the database
+   * @description Rolls back a global transaction on the database on the main connection
    */
   async rollbackGlobalTransaction(): Promise<void> {
     if (!this.inGlobalTransaction) {
@@ -323,6 +341,7 @@ export class SqlDataSource extends DataSource {
         "GLOBAL_TRANSACTION_NOT_STARTED",
       );
     }
+
     await this.rawQuery(ROLLBACK_TRANSACTION);
     this.inGlobalTransaction = false;
   }
