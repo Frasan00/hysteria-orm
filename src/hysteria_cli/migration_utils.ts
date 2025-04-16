@@ -102,11 +102,6 @@ async function loadMigrationModule(
 
     return migrationModule.default;
   } catch (error: any) {
-    if (typeof error === "string") {
-      throw error;
-    }
-
-    console.log(error instanceof TypeError);
     if (
       error &&
       typeof error === "object" &&

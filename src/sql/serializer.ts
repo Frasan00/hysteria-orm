@@ -20,6 +20,10 @@ export async function parseDatabaseDataIntoModelResponse<T extends Model>(
   }
 
   const relations = getRelations(typeofModel);
+  // At this point `modelSelectedColumns` are in database convention
+  modelSelectedColumns = modelSelectedColumns.map((databaseColumn) =>
+    convertCase(databaseColumn, typeofModel.modelCaseConvention),
+  );
 
   const serializedModels = await Promise.all(
     models.map(async (model) => {

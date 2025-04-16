@@ -8,7 +8,7 @@ import type { Model } from "../models/model";
 import { ModelKey } from "../models/model_manager/model_manager_types";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
 import deleteTemplate from "../resources/query/DELETE";
-import selectTemplate from "../resources/query/SELECT";
+import selectTemplate, { UnionCallBack } from "../resources/query/SELECT";
 import updateTemplate from "../resources/query/UPDATE";
 import { BinaryOperatorType } from "../resources/query/WHERE";
 import { SqlDataSource } from "../sql_data_source";
@@ -21,6 +21,7 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
   protected modelSelectedColumns: string[] = [];
   protected dbType: SqlDataSourceType;
   protected selectQuery: string;
+  protected unionQuery: string;
   protected fromTable: string;
   protected selectTemplate: ReturnType<typeof selectTemplate>;
   protected updateTemplate: ReturnType<typeof updateTemplate>;
@@ -43,7 +44,8 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
     this.selectTemplate = selectTemplate(this.dbType, this.model);
     this.updateTemplate = updateTemplate(this.dbType, this.model);
     this.deleteTemplate = deleteTemplate(this.dbType);
-    this.selectQuery = this.selectTemplate.selectAll();
+    this.selectQuery = this.selectTemplate.selectAll(this.fromTable);
+    this.unionQuery = "";
     this.params = [];
   }
 
@@ -53,7 +55,9 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
   async many(): Promise<T[]> {
     let query: string = "";
     if (this.joinQuery && !this.selectQuery) {
-      this.selectQuery = this.selectTemplate.selectColumns(`${this.table}.*`);
+      this.selectQuery = this.selectTemplate.selectColumns(this.fromTable, [
+        `*`,
+      ]);
     }
     query = this.selectQuery + this.joinQuery;
 
@@ -62,6 +66,11 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
     }
 
     query += this.groupFooterQuery();
+
+    if (this.unionQuery) {
+      query = `${query} ${this.unionQuery}`;
+    }
+
     return execSql(query, this.params, this.sqlDataSource, "raw", {
       sqlLiteOptions: {
         typeofModel: this.model,
@@ -112,20 +121,68 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
   }
 
   /**
+   * @description Adds a UNION to the query.
+   */
+  union(cb: UnionCallBack<T>): this;
+  union(queryBuilder: QueryBuilder<any>): this;
+  union(queryBuilderOrCb: UnionCallBack<T> | QueryBuilder<any>): this {
+    const queryBuilder =
+      queryBuilderOrCb instanceof QueryBuilder
+        ? queryBuilderOrCb
+        : queryBuilderOrCb(new QueryBuilder(this.model, this.sqlDataSource));
+
+    const { query, params } = queryBuilder.unWrap();
+    this.unionQuery = `${this.unionQuery} UNION ${query}`;
+    this.params = [...this.params, ...params];
+    return this;
+  }
+
+  /**
+   * @description Adds a UNION ALL to the query.
+   */
+  unionAll(cb: UnionCallBack<T>): this;
+  unionAll(queryBuilder: QueryBuilder<any>): this;
+  unionAll(queryBuilderOrCb: UnionCallBack<T> | QueryBuilder<any>): this {
+    const queryBuilder =
+      queryBuilderOrCb instanceof QueryBuilder
+        ? queryBuilderOrCb
+        : queryBuilderOrCb(new QueryBuilder(this.model, this.sqlDataSource));
+
+    const { query, params } = queryBuilder.unWrap();
+    this.unionQuery = `${this.unionQuery} UNION ALL ${query}`;
+    this.params = [...this.params, ...params];
+    return this;
+  }
+
+  /**
    * @description Adds a SELECT condition to the query.
    */
   select(...columns: string[]): this;
   select(...columns: (ModelKey<T> | "*")[]): this;
   select(...columns: (ModelKey<T> | "*" | string)[]): this {
     this.selectQuery = this.selectTemplate.selectColumns(
-      ...(columns as string[]),
+      this.fromTable,
+      columns as string[],
     );
 
     return this;
   }
 
+  /**
+   * @description Adds a raw select statement to the query, overriding the previous select statements
+   * @description It appends a FROM clause if not contained in the statement
+   */
+  rawSelect(statement: string): this {
+    if (!statement.toLowerCase().includes("from")) {
+      statement += ` FROM ${this.fromTable}`;
+    }
+
+    this.selectQuery = statement;
+    return this;
+  }
+
   clearSelect(): this {
-    this.selectQuery = this.selectTemplate.selectAll();
+    this.selectQuery = this.selectTemplate.selectAll(this.fromTable);
     return this;
   }
 
@@ -153,14 +210,15 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
   }
 
   /**
-   * @description Sets the table to select from, by default the table is the model table
+   * @description Sets the table to select from, by default is the table defined in the Model
    */
   from(table: string): this {
     this.fromTable = table;
     this.selectQuery = this.selectQuery.replace(
       /FROM\s+(\w+)/i,
-      `FROM ${table}`,
+      `FROM ${this.fromTable}`,
     );
+
     return this;
   }
 

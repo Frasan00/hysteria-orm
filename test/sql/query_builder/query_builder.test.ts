@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
+import { env } from "../../../src/env/env";
 
 beforeAll(async () => {
   await SqlDataSource.connect();
@@ -17,7 +18,7 @@ afterEach(async () => {
   await SqlDataSource.rollbackGlobalTransaction();
 });
 
-describe("Query Builder with uuid", () => {
+describe(`[${env.DB_TYPE}] Query Builder with uuid`, () => {
   test("should create a post", async () => {
     await SqlDataSource.query("posts_with_uuid").insert({
       id: crypto.randomUUID(),
@@ -113,7 +114,7 @@ describe("Query Builder with uuid", () => {
   });
 });
 
-describe("Query Builder with a model without a primary key", () => {
+describe(`[${env.DB_TYPE}] Query Builder with a model without a primary key`, () => {
   test("should create a user", async () => {
     await SqlDataSource.query("users_without_pk").insert({
       name: "John Doe",

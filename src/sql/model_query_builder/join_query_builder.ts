@@ -1,3 +1,4 @@
+import { HysteriaError } from "../../errors/hysteria_error";
 import { Model } from "../models/model";
 import { ModelKey } from "../models/model_manager/model_manager_types";
 import joinTemplate from "../resources/query/JOIN";
@@ -26,9 +27,9 @@ export abstract class JoinQueryBuilder<
 
   /**
    * @alias join
-   *  @param relationTable - The table to join
+   * @param relationTable - The table to join
    * @param referencingColumn - The column to reference from the relation table
-   * @param primaryColumn - The primary column of the current model
+   * @param primaryColumn - The primary column of the current model, default is caller model primary key if using A Model, if using a Raw Query Builder you must provide the key for the primary table, default is caller model primary key if using A Model, if using a Raw Query Builder you must provide the key for the primary table
    */
   innerJoin(
     relationTable: string,
@@ -50,7 +51,7 @@ export abstract class JoinQueryBuilder<
     referencingColumnOrPrimaryColumn: string | ModelKey<R> | ModelKey<T>,
     primaryColumn?: string | ModelKey<T>,
   ): this {
-    this.innerJoin(
+    this.join(
       typeof relationTable === "string" ? relationTable : relationTable.table,
       referencingColumnOrPrimaryColumn as string,
       primaryColumn as string,
@@ -63,7 +64,7 @@ export abstract class JoinQueryBuilder<
    * @description Join a table with the current model
    * @param relationTable - The table to join
    * @param referencingColumn - The column to reference from the relation table
-   * @param primaryColumn - The primary column of the current model
+   * @param primaryColumn - The primary column of the current model, default is caller model primary key if using A Model, if using a Raw Query Builder you must provide the key for the primary table
    */
   join(
     relationTable: string,
@@ -86,6 +87,13 @@ export abstract class JoinQueryBuilder<
     primaryColumn?: string | ModelKey<T>,
   ): this {
     if (!primaryColumn) {
+      if (!this.model.primaryKey) {
+        throw new HysteriaError(
+          "JoinQueryBuilder::join",
+          "MODEL_HAS_NO_PRIMARY_KEY",
+        );
+      }
+
       primaryColumn = this.model.primaryKey as string;
     }
 
@@ -104,7 +112,7 @@ export abstract class JoinQueryBuilder<
    * @description Join a table with the current model
    * @param relationTable - The table to join
    * @param referencingColumn - The column to reference from the relation table
-   * @param primaryColumn - The primary column of the current model
+   * @param primaryColumn - The primary column of the current model, default is caller model primary key if using A Model, if using a Raw Query Builder you must provide the key for the primary table
    */
   leftJoin(
     relationTable: string,
@@ -127,6 +135,13 @@ export abstract class JoinQueryBuilder<
     primaryColumn?: string | ModelKey<T>,
   ): this {
     if (!primaryColumn) {
+      if (!this.model.primaryKey) {
+        throw new HysteriaError(
+          "JoinQueryBuilder::join",
+          "MODEL_HAS_NO_PRIMARY_KEY",
+        );
+      }
+
       primaryColumn = this.model.primaryKey as string;
     }
 
@@ -145,7 +160,7 @@ export abstract class JoinQueryBuilder<
    * @description Join a table with the current model
    * @param relationTable - The table to join
    * @param referencingColumn - The column to reference from the relation table
-   * @param primaryColumn - The primary column of the current model
+   * @param primaryColumn - The primary column of the current model, default is caller model primary key if using A Model, if using a Raw Query Builder you must provide the key for the primary table
    */
   rightJoin(
     relationTable: string,
@@ -168,6 +183,13 @@ export abstract class JoinQueryBuilder<
     primaryColumn?: string | ModelKey<T>,
   ): this {
     if (!primaryColumn) {
+      if (!this.model.primaryKey) {
+        throw new HysteriaError(
+          "JoinQueryBuilder::join",
+          "MODEL_HAS_NO_PRIMARY_KEY",
+        );
+      }
+
       primaryColumn = this.model.primaryKey as string;
     }
 

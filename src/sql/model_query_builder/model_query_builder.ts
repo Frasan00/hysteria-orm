@@ -167,11 +167,12 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
   ): Promise<number> {
     this.select(`COUNT(${column}) as total`);
     const ignoredHooks: FetchHooks[] = options.ignoreHooks
-      ? ["beforeFetch", "afterFetch"]
+      ? ["beforeFetch"]
       : [];
 
     const result = await this.one({ ignoreHooks: ignoredHooks });
     return result ? +result.$additional.total : 0;
+    return 0;
   }
 
   /**
@@ -223,38 +224,6 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
   }
 
   /**
-   * @description Executes the query and retrieves the median value of a column, it ignores all select, group by, order by, limit and offset clauses if they are present.
-   */
-  async getMedian(
-    column: string,
-    options: { ignoreHooks: boolean } = { ignoreHooks: false },
-  ): Promise<number> {
-    this.select(`MEDIAN(${column}) as total`);
-    const ignoredHooks: FetchHooks[] = options.ignoreHooks
-      ? ["beforeFetch", "afterFetch"]
-      : [];
-
-    const result = await this.one({ ignoreHooks: ignoredHooks });
-    return result ? +result.$additional.total : 0;
-  }
-
-  /**
-   * @description Executes the query and retrieves the mode value of a column, it ignores all select, group by, order by, limit and offset clauses if they are present.
-   */
-  async getMode(
-    column: string,
-    options: { ignoreHooks: boolean } = { ignoreHooks: false },
-  ): Promise<number> {
-    this.select(`MODE(${column}) as total`);
-    const ignoredHooks: FetchHooks[] = options.ignoreHooks
-      ? ["beforeFetch", "afterFetch"]
-      : [];
-
-    const result = await this.one({ ignoreHooks: ignoredHooks });
-    return result ? +result.$additional.total : 0;
-  }
-
-  /**
    * @description Executes the query and retrieves the sum of a column, it ignores all select, group by, order by, limit and offset clauses if they are present.
    */
   async getSum(
@@ -271,24 +240,24 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
   }
 
   /**
-   * @description Executes the query and retrieves multiple results.
+   * @description Executes the query and retrieves multiple paginated results.
    */
   async paginate(
     page: number,
-    limit: number,
+    perPage: number,
     options: ManyOptions = {},
   ): Promise<PaginatedData<T>> {
-    this.limitQuery = this.selectTemplate.limit(limit);
-    this.offsetQuery = this.selectTemplate.offset((page - 1) * limit);
+    this.limitQuery = this.selectTemplate.limit(perPage);
+    this.offsetQuery = this.selectTemplate.offset((page - 1) * perPage);
 
     const originalSelectQuery = this.selectQuery;
-    this.select("COUNT(*) as total");
+    this.select(`COUNT(*) as total`);
     const total = await this.getCount();
 
     this.selectQuery = originalSelectQuery;
     const models = await this.many(options);
 
-    const paginationMetadata = getPaginationMetadata(page, limit, total);
+    const paginationMetadata = getPaginationMetadata(page, perPage, total);
 
     let data =
       (await parseDatabaseDataIntoModelResponse(models, this.model)) || [];
@@ -306,7 +275,8 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
   override select(...columns: (ModelKey<T> | "*")[]): this;
   override select(...columns: (ModelKey<T> | "*" | string)[]): this {
     this.selectQuery = this.selectTemplate.selectColumns(
-      ...(columns as string[]),
+      this.fromTable,
+      columns as string[],
     );
 
     this.modelSelectedColumns = columns.map((column) =>
@@ -317,7 +287,7 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
   }
 
   /**
-   * @description Fills the relations in the model in the serialised response.
+   * @description Fills the relations in the model in the serialized response.
    * @description Relation must be defined in the model.
    */
   withRelation<O extends typeof Model>(

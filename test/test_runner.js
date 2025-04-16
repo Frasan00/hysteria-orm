@@ -12,9 +12,9 @@ import {
 const sqlEnvironments = [
   cockroachdbConfig,
   pgConfig,
-  sqliteConfig,
   mysqlConfig,
   mariadbConfig,
+  sqliteConfig,
 ];
 
 const sqlTests = [

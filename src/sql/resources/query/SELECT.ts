@@ -1,7 +1,12 @@
 import { HysteriaError } from "../../../errors/hysteria_error";
 import { convertCase } from "../../../utils/case_utils";
 import { Model } from "../../models/model";
+import { QueryBuilder } from "../../query_builder/query_builder";
 import type { SqlDataSourceType } from "../../sql_data_source_types";
+
+export type UnionCallBack<T extends Model> = (
+  queryBuilder: QueryBuilder<T>,
+) => QueryBuilder<T>;
 
 const baseSelectMethods = [
   "*",
@@ -76,51 +81,51 @@ const selectTemplate = (
   };
 
   return {
-    selectAll: (fromTable?: string) => `SELECT * FROM ${fromTable ?? table} `,
-    selectById: (id: string) => `SELECT * FROM ${table} WHERE id = ${id}`,
-    selectByIds: (ids: string[]) => {
+    selectAll: (fromTable: string = table) =>
+      `SELECT ${fromTable}.* FROM ${fromTable} `,
+    selectById: (fromTable: string = table, id: string) =>
+      `SELECT ${fromTable}.* FROM ${table} WHERE id = ${id}`,
+    selectByIds: (fromTable: string = table, ids: string[]) => {
       ids = ids.map((id) => escapeIdentifier(id) as string);
-      return `SELECT * FROM ${table} WHERE id IN (${ids.join(", ")})`;
+      return `SELECT * FROM ${fromTable} WHERE id IN (${ids.join(", ")})`;
     },
-    selectColumns: (...columns: string[]) => {
+    selectColumns: (fromTable: string = table, columns: string[]) => {
       columns = columns.map((column) => {
         const columnCase = typeofModel.databaseCaseConvention;
-        let tableName = "";
         let columnName = column;
+        const isFunction =
+          baseSelectMethods.includes(columnName.toUpperCase()) ||
+          (columnName.includes("(") && columnName.includes(")"));
+        let tableName = "";
         let alias = "";
 
         if (column.toUpperCase().includes(" AS ")) {
           [columnName, alias] = column.split(/ AS /i);
+          alias = convertCase(alias.trim(), columnCase);
         }
-        alias = convertCase(alias, columnCase);
+
+        if (isFunction) {
+          return alias ? `${columnName} AS ${alias}` : columnName;
+        }
 
         if (columnName.includes(".")) {
           [tableName, columnName] = columnName.split(".");
         }
 
-        if (
-          baseSelectMethods.includes(columnName.toUpperCase()) ||
-          columnName.includes("(")
-        ) {
-          return alias ? `${columnName} AS ${alias}` : columnName;
-        }
+        const processedColumnName = !column.includes("*")
+          ? (escapeIdentifier(
+              convertCase(columnName.trim(), columnCase),
+            ) as string)
+          : column;
 
-        let finalColumn = columnName;
-        if (!alias) {
-          const processedColumnName = escapeIdentifier(
-            convertCase(columnName, columnCase),
-          ) as string;
-          finalColumn = tableName
-            ? `${tableName}.${processedColumnName}`
-            : processedColumnName;
-        } else if (tableName) {
-          finalColumn = `${tableName}.${columnName}`;
+        let finalColumn = processedColumnName;
+        if (tableName) {
+          finalColumn = `${tableName}.${processedColumnName}`;
         }
 
         return alias ? `${finalColumn} AS ${alias}` : finalColumn;
       });
-
-      return `SELECT ${columns.join(", ")} FROM ${table} `;
+      return `SELECT ${columns.join(", ")} FROM ${fromTable} `;
     },
     distinct: `DISTINCT`,
     distinctOn: (...columns: string[]) => {
@@ -139,19 +144,20 @@ const selectTemplate = (
 
       return `DISTINCT ON (${columns.join(", ")})`;
     },
-    selectCount: `SELECT COUNT(*) FROM ${table} `,
-    selectDistinct: (...columns: string[]) => {
+    selectCount: (fromTable: string = table) =>
+      `SELECT COUNT(*) FROM ${fromTable} `,
+    selectDistinct: (fromTable: string = table, columns: string[]) => {
       columns = columns.map((column) =>
         escapeIdentifier(
           convertCase(column, typeofModel.databaseCaseConvention),
         ),
       ) as string[];
-      return `SELECT DISTINCT ${columns.join(", ")} FROM ${table} `;
+      return `SELECT DISTINCT ${columns.join(", ")} FROM ${fromTable} `;
     },
-    selectSum: (column: string) =>
+    selectSum: (fromTable: string = table, column: string) =>
       `SELECT SUM(${escapeIdentifier(
         convertCase(column, typeofModel.databaseCaseConvention),
-      )}) FROM ${table} `,
+      )}) FROM ${fromTable} `,
     _orderBy: (columns: string[], order: "ASC" | "DESC" = "ASC") => {
       columns = columns.map((column) => {
         let tableName = "";
