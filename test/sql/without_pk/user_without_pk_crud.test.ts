@@ -26,12 +26,25 @@ describe(`[${env.DB_TYPE}] Select`, () => {
     await UserFactory.userWithoutPk(2);
     const users = await UserWithoutPk.query().many();
     expect(users.length).toBe(2);
+    expect(users[0].name).not.toBeUndefined();
+    expect(users[1].name).not.toBeUndefined();
   });
 
   test("Select all", async () => {
     await UserFactory.userWithoutPk(2);
     const users = await UserWithoutPk.query().select("*").many();
     expect(users.length).toBe(2);
+    expect(users[0].name).not.toBeUndefined();
+    expect(users[1].name).not.toBeUndefined();
+  });
+
+  test("Pagination", async () => {
+    await UserFactory.userWithoutPk(10);
+    const users = await UserWithoutPk.query().paginate(1, 5);
+    expect(users.data.length).toBe(5);
+    expect(users.paginationMetadata.total).toBe(10);
+    expect(users.paginationMetadata.currentPage).toBe(1);
+    expect(users.paginationMetadata.lastPage).toBe(2);
   });
 
   test("Multiple columns select", async () => {

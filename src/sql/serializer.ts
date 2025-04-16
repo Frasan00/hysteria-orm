@@ -21,9 +21,16 @@ export async function parseDatabaseDataIntoModelResponse<T extends Model>(
 
   const relations = getRelations(typeofModel);
   // At this point `modelSelectedColumns` are in database convention
-  modelSelectedColumns = modelSelectedColumns.map((databaseColumn) =>
-    convertCase(databaseColumn, typeofModel.modelCaseConvention),
-  );
+  modelSelectedColumns = modelSelectedColumns
+    .map((databaseColumn) => {
+      // If contains . it means it's something like user.name, so split it and return the last part since it was something useful for the query but at this point we want what to retrieve
+      if (databaseColumn.includes(".")) {
+        databaseColumn = databaseColumn.split(".").pop() as string;
+      }
+
+      return convertCase(databaseColumn, typeofModel.modelCaseConvention);
+    })
+    .filter((column) => column !== "*");
 
   const serializedModels = await Promise.all(
     models.map(async (model) => {

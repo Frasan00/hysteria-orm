@@ -83,16 +83,10 @@ const selectTemplate = (
   return {
     selectAll: (fromTable: string = table) =>
       `SELECT ${fromTable}.* FROM ${fromTable} `,
-    selectById: (fromTable: string = table, id: string) =>
-      `SELECT ${fromTable}.* FROM ${table} WHERE id = ${id}`,
-    selectByIds: (fromTable: string = table, ids: string[]) => {
-      ids = ids.map((id) => escapeIdentifier(id) as string);
-      return `SELECT * FROM ${fromTable} WHERE id IN (${ids.join(", ")})`;
-    },
     selectColumns: (fromTable: string = table, columns: string[]) => {
       columns = columns.map((column) => {
         const columnCase = typeofModel.databaseCaseConvention;
-        let columnName = column;
+        let columnName = column.trim();
         const isFunction =
           baseSelectMethods.includes(columnName.toUpperCase()) ||
           (columnName.includes("(") && columnName.includes(")"));

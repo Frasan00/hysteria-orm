@@ -241,29 +241,24 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
   /**
    * @description Executes the query and retrieves multiple paginated results.
+   * @description Overrides the limit and offset clauses in order to paginate the results.
    */
   async paginate(
     page: number,
     perPage: number,
     options: ManyOptions = {},
   ): Promise<PaginatedData<T>> {
-    this.limitQuery = this.selectTemplate.limit(perPage);
-    this.offsetQuery = this.selectTemplate.offset((page - 1) * perPage);
-
     const originalSelectQuery = this.selectQuery;
-    this.select(`COUNT(*) as total`);
     const total = await this.getCount();
-
     this.selectQuery = originalSelectQuery;
-    const models = await this.many(options);
+    const models = await this.limit(perPage)
+      .offset((page - 1) * perPage)
+      .many(options);
 
     const paginationMetadata = getPaginationMetadata(page, perPage, total);
 
-    let data =
+    const data =
       (await parseDatabaseDataIntoModelResponse(models, this.model)) || [];
-    if (Array.isArray(data)) {
-      data = data.filter((model) => model !== null);
-    }
 
     return {
       paginationMetadata,
@@ -274,14 +269,14 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
   override select(...columns: string[]): this;
   override select(...columns: (ModelKey<T> | "*")[]): this;
   override select(...columns: (ModelKey<T> | "*" | string)[]): this {
-    this.selectQuery = this.selectTemplate.selectColumns(
-      this.fromTable,
-      columns as string[],
-    );
+    this.modelSelectedColumns = [
+      ...this.modelSelectedColumns,
+      ...(columns as string[]),
+    ];
 
-    this.modelSelectedColumns = columns.map((column) =>
-      convertCase(column as string, this.model.databaseCaseConvention),
-    ) as string[];
+    this.selectQuery = this.selectTemplate.selectColumns(this.fromTable, [
+      ...this.modelSelectedColumns,
+    ]);
 
     return this;
   }

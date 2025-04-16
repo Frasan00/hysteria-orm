@@ -156,14 +156,19 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
 
   /**
    * @description Adds a SELECT condition to the query.
+   * @description Can be stacked multiple times
    */
   select(...columns: string[]): this;
   select(...columns: (ModelKey<T> | "*")[]): this;
   select(...columns: (ModelKey<T> | "*" | string)[]): this {
-    this.selectQuery = this.selectTemplate.selectColumns(
-      this.fromTable,
-      columns as string[],
-    );
+    this.modelSelectedColumns = [
+      ...this.modelSelectedColumns,
+      ...(columns as string[]),
+    ];
+
+    this.selectQuery = this.selectTemplate.selectColumns(this.fromTable, [
+      ...this.modelSelectedColumns,
+    ]);
 
     return this;
   }
@@ -643,8 +648,11 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
    * @description Returns a copy of the query builder instance.
    */
   copy(): this {
-    const queryBuilder = new QueryBuilder(this.model, this.sqlDataSource);
+    const queryBuilder = new QueryBuilder<T>(this.model, this.sqlDataSource);
     queryBuilder.selectQuery = this.selectQuery;
+    queryBuilder.modelSelectedColumns = [...this.modelSelectedColumns];
+    queryBuilder.unionQuery = this.unionQuery;
+    queryBuilder.fromTable = this.fromTable;
     queryBuilder.whereQuery = this.whereQuery;
     queryBuilder.joinQuery = this.joinQuery;
     queryBuilder.groupByQuery = this.groupByQuery;

@@ -31,7 +31,7 @@
     - [Where Builder](#where-builder)
     - [Where Sub Query](#where-sub-query)
     - [Aliases](#aliases)
-    - [Count And Sum](#count-and-sum)
+    - [SQL Functions](#sql-functions)
     - [Join](#join)
     - [Pagination](#pagination)
     - [Standalone Query Builder](#standalone-query-builder)
@@ -827,7 +827,7 @@ const user: User | null = await User.query()
 user.$additional.superName;
 ```
 
-### Count and Sum
+### SQL Functions
 - Methods can be used directly inside the `select` method, but there are two utils for `count` and `sum` in order to get directly the number from the query
 
 - Quick count and sum methods
@@ -919,6 +919,7 @@ const users = await User.query()
 #### Simplified Join Syntax
 - When using the `join` method without specifying the primary column, it defaults to the model's primary key
 - This simplifies the join syntax for common scenarios
+- While using Raw Query Builder is always advised to specify primary column and foreign column
 
 ```typescript
 // Without specifying primary column (uses model's primary key)
