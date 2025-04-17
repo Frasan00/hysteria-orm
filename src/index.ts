@@ -31,6 +31,7 @@ import {
 import { createModelFactory } from "./sql/models/model_factory";
 import { QueryBuilder } from "./sql/query_builder/query_builder";
 import { SqlDataSource } from "./sql/sql_data_source";
+import { withPerformance } from "./utils/performance";
 import logger from "./utils/logger";
 
 export {
@@ -54,6 +55,7 @@ export {
   getModelColumns,
   getPrimaryKey,
   getRelations,
+  withPerformance,
 
   // migrations
   Migration,

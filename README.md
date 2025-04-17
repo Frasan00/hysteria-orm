@@ -3,6 +3,7 @@
 # Package is under development and not production ready by any means
 
 ## Philosophy
+
 - Hysteria ORM is an agnostic Object-Relational Mapping (ORM) library for TypeScript, designed to simplify interactions between your application and a SQL and NoSql databases.
 - The structure of this ORM Is ispireed by some main Typescript orms like Typeorm and Lucid.
 - It's partially type safe by design, allowing you to have features like intellisense for you models interactions while maintaining the flexibility of shooting yourself in the foot!
@@ -15,12 +16,15 @@
 - [TypeScript Configuration example](#typescript-configuration-example)
 - [Javascript](#javascript)
 - [Setup Example](#setup-example)
+- [Performance]
 - [logger](#logger)
 
 ## Known Issues
+
 - [Known Issues](KNOWN_ISSUES.MD)
 
 ## Installation
+
 ```shell
     npm install hysteria-orm
 
@@ -31,6 +35,7 @@
 
 - A JavaScript runtime environment (e.g., Node.js, deno or bun).
 - The driver for you database, supported drivers are:
+
 ```bash
 ### Sql
 
@@ -58,6 +63,7 @@ yarn add ioredis
 ```
 
 - Driver reference versions used in development
+
 ```json
 {
   "mysql2": "^3.11.5",
@@ -71,19 +77,24 @@ yarn add ioredis
 ## Supported Databases
 
 ### Sql
+
 [Documentation For Sql Databases](src/sql/docs/SQL_README.MD)
+
 - Sql supported databases are
-1) Mysql
-2) MariaDB
-3) Postgres
-4) cockroachDB
-5) SQLite
+
+1. Mysql
+2. MariaDB
+3. Postgres
+4. cockroachDB
+5. SQLite
 
 ### NoSQl
+
 - [Redis](src/no_sql/redis/docs/REDIS.MD)
 - [Mongo](src/no_sql/mongo/docs/MONGO.MD)
 
 ### Env example with a config for each database
+
 ```dotenv
 # POSTGRES
 DB_TYPE=postgres
@@ -148,7 +159,7 @@ MONGO_LOGS=true
     "declaration": true,
     // Must set decorators support
     "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
+    "emitDecoratorMetadata": true
   },
   "include": ["src/**/*.ts", "test/**/*.ts"],
   "exclude": ["node_modules"]
@@ -156,14 +167,18 @@ MONGO_LOGS=true
 ```
 
 ### Javascript
+
 #### Hysteria ORM is written and designed for TypeScript, but It can still be used in JavaScript with some configurations:
+
 1. Install the necessary dependencies:
+
 ```shell
 npm install --save-dev reflect-metadata @babel/core @babel/cli @babel/preset-env @babel/plugin-proposal-decorators
 yarn add --dev reflect-metadata @babel/core @babel/cli @babel/preset-env @babel/plugin-proposal-decorators
 ```
 
 2. Create a babel.config.js file in the root of your project with the following content:
+
 ```javascript
 module.exports = {
   presets: [
@@ -176,13 +191,12 @@ module.exports = {
       },
     ],
   ],
-  plugins: [
-    ["@babel/plugin-proposal-decorators", { legacy: true }],
-  ],
+  plugins: [["@babel/plugin-proposal-decorators", { legacy: true }]],
 };
 ```
 
 3. Add a build script to your package.json file:
+
 ```json
 {
   "scripts": {
@@ -192,72 +206,77 @@ module.exports = {
 ```
 
 4. Run the build script:
+
 ```shell
 npm run build
 ```
 
 5. Run your application:
+
 ```shell
 node dist/index.js
 ```
 
 - Your js Model definition may look like this:
+
 ```javascript
-require('reflect-metadata');
-const { Model, SqlDataSource, column } =  require("hysteria-orm");
+require("reflect-metadata");
+const { Model, SqlDataSource, column } = require("hysteria-orm");
 
 class User extends Model {
   @column({ primaryKey: true })
-  id
+  id;
 
   @column()
-  name
+  name;
 
   @column()
-  email
+  email;
 
   @column()
-  signupSource
+  signupSource;
 
   @column()
-  isActive
+  isActive;
 
   @column()
-  createdAt
+  createdAt;
 
   @column()
-  updatedAt
+  updatedAt;
 }
 ```
 
 #### JS without decorators
+
 - If you don't want to use decorators, you can define your models like this:
 - Aside decorators, all other features are available in JavaScript
 
 ```javascript
-import {Model, SqlDataSource, getModelColumns} from 'hysteria-orm';
-import Profile from './Profile';
-import Post from './Post';
-import Role from './Role';
-import Address from './Address';
+import { Model, SqlDataSource, getModelColumns } from "hysteria-orm";
+import Profile from "./Profile";
+import Post from "./Post";
+import Role from "./Role";
+import Address from "./Address";
 
 class User extends Model {
   static {
-    this.column('id', { primaryKey: true });
-    this.column('name');
-    this.column('email');
-    this.column('signupSource');
-    this.column('isActive');
+    this.column("id", { primaryKey: true });
+    this.column("name");
+    this.column("email");
+    this.column("signupSource");
+    this.column("isActive");
 
-    this.hasOne('profile', () => Profile, "userId");
-    this.hasMany('posts', () => Post, "userId");
-    this.belongsToMany('roles', () => Role, "roleId");
-    this.manyToMany('addresses', () => Address, "user_addresses", "userId");
+    this.hasOne("profile", () => Profile, "userId");
+    this.hasMany("posts", () => Post, "userId");
+    this.belongsToMany("roles", () => Role, "roleId");
+    this.manyToMany("addresses", () => Address, "user_addresses", "userId");
   }
 }
 ```
 
 ## Setup Example
+
 - Docker compose example with the database versions used in the development
 
 ```yml
@@ -304,13 +323,27 @@ services:
       - "27017:27017"
 ```
 
+## Performance
+
+- There is a built in tool for performance insight of async functions like queries or other I/O functions that may take a long time
+
+```typescript
+const testAsync = async (): Promise<number> =>
+  await new Promise<number>((res) => setTimeout(() => res(2), 2000));
+
+// Can return seconds or milliseconds for the performance insight, and fix the decimal part to a specific part
+const [performance, result] = await withPerformance(testAsync, "seconds", 3); // ["2.xxx", 2]
+const [performance2, result2] = await withPerformance(testAsync, "millis", 4); // ["2000.xxxx", 2]
+```
+
 ## Logger
+
 - Hysteria ORM uses a built in logger by default, you can use it in your application since it's exported from the package as your logger in your application.
 
 ```typescript
-import { logger } from 'hysteria-orm';
+import { logger } from "hysteria-orm";
 
-logger.info('Hello World');
+logger.info("Hello World");
 ```
 
 - You can also customize the hysteria logger by setting a custom logger with the following methods:
@@ -319,7 +352,7 @@ logger.info('Hello World');
   - warn
 
 ```typescript
-import { logger } from 'hysteria-orm';
+import { logger } from "hysteria-orm";
 
 logger.setCustomLogger({
   info: (message) => console.log(message),
