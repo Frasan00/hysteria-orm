@@ -68,13 +68,11 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
     }
 
     query += this.selectQuery + this.joinQuery;
-
     if (this.whereQuery) {
       query += this.whereQuery;
     }
 
     query += this.groupFooterQuery();
-
     if (this.unionQuery) {
       query = `${query} ${this.unionQuery}`;
     }
@@ -231,7 +229,6 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
   distinctOn(...columns: string[]): this;
   distinctOn(...columns: (string | ModelKey<T>)[]): this {
     const distinctOn = this.selectTemplate.distinctOn(...(columns as string[]));
-
     this.selectQuery = this.selectQuery.replace(
       /select/i,
       `SELECT ${distinctOn}`,

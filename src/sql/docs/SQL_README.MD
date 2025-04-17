@@ -33,6 +33,8 @@
     - [Aliases](#aliases)
     - [SQL Functions](#sql-functions)
     - [Join](#join)
+    - [CTE](#common-table-expressions-cte)
+    - [union](#union-and-union-all)
     - [Pagination](#pagination)
     - [Standalone Query Builder](#standalone-query-builder)
 - [Migrations](#migrations)
@@ -970,6 +972,58 @@ const users = await User.query()
   .andWhere("posts.status", "published")
   .orderBy("users.createdAt", "DESC")
   .limit(10)
+  .many();
+```
+
+### Union and Union All
+- The query builder supports `UNION` and `UNION ALL` operations to combine results from multiple queries
+- UNION removes duplicate rows while UNION ALL keeps all rows including duplicates
+- Both operations can be used with either a query builder instance or a callback function
+
+```typescript
+import { User } from "./User";
+
+// Using UNION with a query builder instance
+const users = await User.query()
+  .select("name")
+  .union(User.query().select("name"))
+  .many();
+
+// Using UNION ALL with a callback function
+const users2 = await User.query()
+  .select("name")
+  .unionAll((queryBuilder) => queryBuilder.select("name"))
+  .many();
+```
+
+### Common Table Expressions (CTE)
+- CTEs allow you to create temporary result sets that can be referenced within a query
+- Hysteria ORM supports both normal and recursive CTEs
+- CTEs can be used to simplify complex queries and improve readability
+
+#### Normal CTE
+```typescript
+import { User } from "./User";
+
+const users = await User.query()
+  .with("normal", (cteBuilder) =>
+    cteBuilder
+      .newCte("users_cte", (cteBuilder) => cteBuilder.select("name"))
+      .newCte("users_cte2", (cteBuilder) => cteBuilder.select("age"))
+  )
+  .many();
+```
+
+#### Recursive CTE
+```typescript
+import { User } from "./User";
+
+const users = await User.query()
+  .with("recursive", (cteBuilder) =>
+    cteBuilder
+      .newCte("users_cte", (cteBuilder) => cteBuilder.select("name"))
+      .newCte("users_cte2", (cteBuilder) => cteBuilder.select("age"))
+  )
   .many();
 ```
 
