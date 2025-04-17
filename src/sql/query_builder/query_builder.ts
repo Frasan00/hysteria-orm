@@ -15,12 +15,15 @@ import { SqlDataSource } from "../sql_data_source";
 import type { SqlDataSourceType } from "../sql_data_source_types";
 import { execSql, getSqlDialect } from "../sql_runner/sql_runner";
 import { QueryBuilderWithOnlyWhereConditions } from "./query_builder_types";
+import { WithClauseType } from "./cte_types";
+import { CteBuilder } from "./cte_builder";
 
 export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
   protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
   protected modelSelectedColumns: string[] = [];
   protected dbType: SqlDataSourceType;
   protected selectQuery: string;
+  protected withQuery?: string;
   protected unionQuery: string;
   protected fromTable: string;
   protected selectTemplate: ReturnType<typeof selectTemplate>;
@@ -54,12 +57,17 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
    */
   async many(): Promise<T[]> {
     let query: string = "";
+    if (this.withQuery) {
+      query += `${this.withQuery}\n`;
+    }
+
     if (this.joinQuery && !this.selectQuery) {
       this.selectQuery = this.selectTemplate.selectColumns(this.fromTable, [
         `*`,
       ]);
     }
-    query = this.selectQuery + this.joinQuery;
+
+    query += this.selectQuery + this.joinQuery;
 
     if (this.whereQuery) {
       query += this.whereQuery;
@@ -155,6 +163,23 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
   }
 
   /**
+   * @description Creates a CTE with the provided type that has the query builder as the query
+   * @description For the moment, with is only taken into account when making a select query
+   * @returns The CTE query builder, you can chain other methods after calling this method in order to interact with the CTE
+   */
+  with(
+    type: WithClauseType,
+    cb: (cteBuilder: CteBuilder<T>) => CteBuilder<T>,
+  ): Omit<this, "with"> {
+    const cteBuilder = new CteBuilder<T>(type, this.model, this.sqlDataSource);
+    cb(cteBuilder);
+    const { query, params } = cteBuilder.unWrap();
+    this.withQuery = query;
+    this.params = [...this.params, ...params];
+    return this;
+  }
+
+  /**
    * @description Adds a SELECT condition to the query.
    * @description Can be stacked multiple times
    */
@@ -187,6 +212,7 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
   }
 
   clearSelect(): this {
+    this.modelSelectedColumns = [];
     this.selectQuery = this.selectTemplate.selectAll(this.fromTable);
     return this;
   }

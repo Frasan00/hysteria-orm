@@ -23,6 +23,11 @@ export async function parseDatabaseDataIntoModelResponse<T extends Model>(
   // At this point `modelSelectedColumns` are in database convention
   modelSelectedColumns = modelSelectedColumns
     .map((databaseColumn) => {
+      // If alias, skip because it will be added in $additional
+      if (databaseColumn.toLowerCase().includes("as")) {
+        return;
+      }
+
       // If contains . it means it's something like user.name, so split it and return the last part since it was something useful for the query but at this point we want what to retrieve
       if (databaseColumn.includes(".")) {
         databaseColumn = databaseColumn.split(".").pop() as string;
