@@ -65,7 +65,7 @@ program
 program
   .command("create:migration <name>")
   .description(
-    "Create a new migration file, standard folder is database/migrations from the current directory you are now, you can change it in the env MIGRATION_PATH",
+    "Create a new migration file, standard folder is migrations from the current directory you are now, you can change it in the env MIGRATION_PATH",
   )
   .option(
     "-j, --javascript",

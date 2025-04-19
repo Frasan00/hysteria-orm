@@ -9,7 +9,7 @@ const envBase: Env = {
   DB_PASSWORD: process.env.DB_PASSWORD,
   DB_DATABASE: process.env.DB_DATABASE,
   DB_LOGS: process.env.DB_LOGS === "true",
-  MIGRATION_PATH: process.env.MIGRATION_PATH || "database/migrations",
+  MIGRATION_PATH: process.env.MIGRATION_PATH || "migrations",
 
   REDIS_HOST: process.env.REDIS_HOST,
   REDIS_PORT: process.env.REDIS_PORT,
@@ -50,7 +50,7 @@ const fillEnvWithDatabaseEnvs = (): Env => {
           envBase.DB_DATABASE ||= trimmedValue;
           break;
         case "MIGRATION_PATH":
-          envBase.MIGRATION_PATH ||= trimmedValue || "database/migrations";
+          envBase.MIGRATION_PATH ||= trimmedValue || "migrations";
           break;
 
         case "REDIS_HOST":

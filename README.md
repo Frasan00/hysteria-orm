@@ -104,7 +104,7 @@ DB_PASSWORD=root
 DB_DATABASE=test
 DB_PORT=5432
 DB_LOGS=true
-MIGRATION_PATH=./migrations # default is database/migrations
+MIGRATION_PATH=./migrations # default is migrations
 
 # MYSQL
 DB_TYPE=mysql

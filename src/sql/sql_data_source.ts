@@ -25,6 +25,7 @@ import type {
 } from "./sql_data_source_types";
 import { execSql } from "./sql_runner/sql_runner";
 import { Transaction } from "./transactions/transaction";
+import { StartTransactionOptions } from "./transactions/transaction_types";
 
 export class SqlDataSource extends DataSource {
   declare private sqlConnection: SqlConnectionType;
@@ -117,9 +118,9 @@ export class SqlDataSource extends DataSource {
    */
   static async useTransaction(
     cb: (trx: Transaction) => Promise<void>,
-    driverSpecificOptions?: SqlDriverSpecificOptions,
+    options?: StartTransactionOptions,
   ): Promise<void> {
-    return this.getInstance().useTransaction(cb, driverSpecificOptions);
+    return this.getInstance().useTransaction(cb, options);
   }
 
   /**
@@ -147,27 +148,27 @@ export class SqlDataSource extends DataSource {
    * @description Starts a transaction on the database and returns a Transaction instance
    */
   static async startTransaction(
-    driverSpecificOptions?: SqlDriverSpecificOptions,
+    options?: StartTransactionOptions,
   ): Promise<Transaction> {
-    return this.getInstance().startTransaction(driverSpecificOptions);
+    return this.getInstance().startTransaction(options);
   }
 
   /**
    * @alias startTransaction
    */
   static async beginTransaction(
-    driverSpecificOptions?: SqlDriverSpecificOptions,
+    options?: StartTransactionOptions,
   ): Promise<Transaction> {
-    return this.getInstance().startTransaction(driverSpecificOptions);
+    return this.getInstance().startTransaction(options);
   }
 
   /**
    * @alias startTransaction
    */
   static async transaction(
-    driverSpecificOptions?: SqlDriverSpecificOptions,
+    options?: StartTransactionOptions,
   ): Promise<Transaction> {
-    return this.getInstance().startTransaction(driverSpecificOptions);
+    return this.getInstance().startTransaction(options);
   }
 
   /**
@@ -281,9 +282,9 @@ export class SqlDataSource extends DataSource {
    */
   async useTransaction(
     cb: (trx: Transaction) => Promise<void>,
-    driverSpecificOptions?: SqlDriverSpecificOptions,
+    options?: StartTransactionOptions,
   ): Promise<void> {
-    const trx = await this.startTransaction(driverSpecificOptions);
+    const trx = await this.startTransaction(options);
     try {
       await cb(trx).then(async () => {
         if (!trx.isActive) {
@@ -350,7 +351,7 @@ export class SqlDataSource extends DataSource {
    * @description Starts a transaction on the database and returns a Transaction instance
    */
   async startTransaction(
-    driverSpecificOptions?: SqlDriverSpecificOptions,
+    options?: StartTransactionOptions,
   ): Promise<Transaction> {
     const sqlDataSource = new SqlDataSource({
       type: this.sqlType,
@@ -359,7 +360,7 @@ export class SqlDataSource extends DataSource {
       username: this.username,
       password: this.password,
       database: this.database,
-      ...driverSpecificOptions,
+      ...options?.driverSpecificOptions,
     });
 
     sqlDataSource.sqlConnection = await createSqlConnection(
@@ -371,11 +372,11 @@ export class SqlDataSource extends DataSource {
         username: sqlDataSource.username,
         password: sqlDataSource.password,
         database: sqlDataSource.database,
-        ...driverSpecificOptions,
+        ...options?.driverSpecificOptions,
       },
     );
 
-    const sqlTrx = new Transaction(sqlDataSource);
+    const sqlTrx = new Transaction(sqlDataSource, options?.isolationLevel);
     await sqlTrx.startTransaction();
     return sqlTrx;
   }
@@ -384,18 +385,16 @@ export class SqlDataSource extends DataSource {
    * @alias startTransaction
    */
   async beginTransaction(
-    driverSpecificOptions?: SqlDriverSpecificOptions,
+    options?: StartTransactionOptions,
   ): Promise<Transaction> {
-    return this.startTransaction(driverSpecificOptions);
+    return this.startTransaction(options);
   }
 
   /**
    * @alias startTransaction
    */
-  async transaction(
-    driverSpecificOptions?: SqlDriverSpecificOptions,
-  ): Promise<Transaction> {
-    return this.startTransaction(driverSpecificOptions);
+  async transaction(options?: StartTransactionOptions): Promise<Transaction> {
+    return this.startTransaction(options);
   }
 
   /**

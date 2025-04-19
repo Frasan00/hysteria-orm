@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { env } from "../env/env";
 import { HysteriaError } from "../errors/hysteria_error";
 import { Migration } from "../sql/migrations/migration";
 import type {
@@ -10,7 +11,6 @@ import type {
 } from "../sql/sql_data_source_types";
 import { MigrationTableType } from "./resources/migration_table_type";
 import MigrationTemplates from "./resources/migration_templates";
-import { env } from "../env/env";
 
 export async function getMigrationTable(
   sqlConnection: SqlConnectionType,
@@ -124,7 +124,7 @@ async function findMigrationModule(
   migrationName: string,
   migrationModulePath: string = env.MIGRATION_PATH
     ? env.MIGRATION_PATH + "/" + migrationName
-    : "database/migrations/" + migrationName,
+    : "migrations/" + migrationName,
 ): Promise<new () => Migration> {
   const migrationPath = path.resolve(process.cwd(), migrationModulePath);
   const migrationModule = await loadMigrationModule(migrationPath);
@@ -142,9 +142,7 @@ async function findMigrationModule(
 
 function findMigrationNames(): string[] {
   const currentUserDirectory = process.cwd();
-  const migrationPath = path.resolve(
-    env.MIGRATION_PATH || "database/migrations",
-  );
+  const migrationPath = path.resolve(env.MIGRATION_PATH || "migrations");
 
   const fullPathToMigrationPath = path.resolve(
     currentUserDirectory,

@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { HysteriaError } from "../../errors/hysteria_error";
 import {
   BEGIN_TRANSACTION,
@@ -5,18 +6,44 @@ import {
   ROLLBACK_TRANSACTION,
 } from "../resources/query/TRANSACTION";
 import { SqlDataSource } from "../sql_data_source";
+import { TransactionIsolationLevel } from "./transaction_types";
 
 export class Transaction {
   sqlDataSource: SqlDataSource;
   isActive: boolean;
+  transactionId: string;
+  isolationLevel?: TransactionIsolationLevel;
 
-  constructor(sqlDataSource: SqlDataSource) {
+  constructor(
+    sqlDataSource: SqlDataSource,
+    isolationLevel?: TransactionIsolationLevel,
+  ) {
     this.sqlDataSource = sqlDataSource;
     this.isActive = false;
+    this.transactionId = crypto.randomUUID();
+    this.isolationLevel = isolationLevel;
   }
 
   async startTransaction(): Promise<void> {
-    await this.sqlDataSource.rawQuery(BEGIN_TRANSACTION);
+    const isolationQuery = this.getIsolationLevelQuery();
+
+    if (!isolationQuery) {
+      await this.sqlDataSource.rawQuery(BEGIN_TRANSACTION);
+      this.isActive = true;
+      return;
+    }
+
+    if (
+      this.sqlDataSource.type === "mysql" ||
+      this.sqlDataSource.type === "mariadb"
+    ) {
+      await this.sqlDataSource.rawQuery(isolationQuery);
+      await this.sqlDataSource.rawQuery(BEGIN_TRANSACTION);
+      this.isActive = true;
+      return;
+    }
+
+    await this.sqlDataSource.rawQuery(`${BEGIN_TRANSACTION} ${isolationQuery}`);
     this.isActive = true;
   }
 
@@ -68,5 +95,44 @@ export class Transaction {
           `UNSUPPORTED_DATABASE_TYPE_${this.sqlDataSource.type}`,
         );
     }
+  }
+
+  private getIsolationLevelQuery(): string {
+    if (!this.isolationLevel) {
+      return "";
+    }
+
+    if (
+      this.sqlDataSource.type === "sqlite" &&
+      this.isolationLevel !== "SERIALIZABLE"
+    ) {
+      throw new HysteriaError(
+        "TRANSACTION::getIsolationLevelQuery",
+        "SQLITE_ONLY_SUPPORTS_SERIALIZABLE_ISOLATION_LEVEL",
+      );
+    }
+
+    if (
+      this.sqlDataSource.type === "mysql" ||
+      this.sqlDataSource.type === "mariadb"
+    ) {
+      return `SET TRANSACTION ISOLATION LEVEL ${this.isolationLevel}`;
+    }
+
+    if (
+      this.sqlDataSource.type === "postgres" ||
+      this.sqlDataSource.type === "cockroachdb"
+    ) {
+      return `ISOLATION LEVEL ${this.isolationLevel}`;
+    }
+
+    if (this.sqlDataSource.type === "sqlite") {
+      return "";
+    }
+
+    throw new HysteriaError(
+      "TRANSACTION::getIsolationLevelQuery",
+      `UNSUPPORTED_DATABASE_TYPE_${this.sqlDataSource.type}`,
+    );
   }
 }

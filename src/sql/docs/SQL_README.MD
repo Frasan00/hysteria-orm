@@ -81,7 +81,7 @@ yarn add sqlite3
 
 ### Complete env example
 ```dotenv
-MIGRATION_PATH=database/migrations # default /database/migrations, this env always referees to the root of the project
+MIGRATION_PATH=migrations # default /migrations, this env always referees to the root of the project
 DB_TYPE=# mysql | postgres | mariadb | sqlite | cockroachdb
 DB_HOST=127.0.0.1
 DB_USER=root
@@ -1066,7 +1066,7 @@ const { query, params } = SqlDataSource
 # Migrations
 - Migrations cli is an optional standalone program that can be used to create and run migrations
 - Migration cli should be used in the root of the project
-- Migrations cli starts from the current user location (process.cwd) and appends the path/to/migrations (default `database/migrations`), this can be customized with `MIGRATION_PATH` environment variable
+- Migrations cli starts from the current user location (process.cwd) and appends the path/to/migrations (default `migrations`), this can be customized with `MIGRATION_PATH` environment variable
 - Migrations can both be defined in ts and js, if using ts migrations, `ts-node` and `typescript` must be installed as dependencies in the node_modules
 - By default the migration queries are hidden, you can use --verbose in order to get all the query logs
 
@@ -1075,7 +1075,7 @@ const { query, params } = SqlDataSource
 ```typescript
 import { defineMigrator } from "hysteria-orm";
 
-const migrator = defineMigrator('./database/migrations', true) // path to migrations, debugger
+const migrator = defineMigrator('./migrations', true) // path to migrations, debugger
 await migrator.migrate('up');
 ```
 
@@ -1084,7 +1084,7 @@ await migrator.migrate('up');
 
 ### create:migration <name> [-j, --javascript] [-a, --alter] [-c, --create] [-t, --table <string>]
 - Creates a migration in the migrations folder
-- If the creation folder specified in the .env (or the default one `database/migrations`) it will be created automatically
+- If the creation folder specified in the .env (or the default one `migrations`) it will be created automatically
 - By default this command generates a .ts file, you can generate a .js file with the flag -j
 - You can specify the mode of the migration with -c that spawns a create table migration and -a that spawns an alter table migration
 - If specifing a mode for the migration, you can specify a table name with --table
