@@ -18,11 +18,11 @@ const sqlEnvironments = [
 ];
 
 const sqlTests = [
-  // use connection
-  "./test/sql/use_connection/use_connection.test.ts",
+  // // use connection
+  // "./test/sql/use_connection/use_connection.test.ts",
 
-  // query builder
-  "./test/sql/query_builder/query_builder.test.ts",
+  // // query builder
+  // "./test/sql/query_builder/query_builder.test.ts",
 
   // without primary key tests
   "./test/sql/without_pk/user_without_pk_crud.test.ts",

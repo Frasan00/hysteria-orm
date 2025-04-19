@@ -2,6 +2,7 @@ import { HysteriaError } from "../../errors/hysteria_error";
 import { Model } from "../models/model";
 import { ModelKey } from "../models/model_manager/model_manager_types";
 import joinTemplate from "../resources/query/JOIN";
+import { BinaryOperatorType } from "../resources/query/WHERE";
 import { SqlDataSource } from "../sql_data_source";
 import { FooterQueryBuilder } from "./footer_query_builder";
 
@@ -29,32 +30,57 @@ export abstract class JoinQueryBuilder<
    * @alias join
    * @param relationTable - The table to join
    * @param referencingColumn - The column to reference from the relation table
-   * @param primaryColumn - The primary column of the current model, default is caller model primary key if using A Model, if using a Raw Query Builder you must provide the key for the primary table, default is caller model primary key if using A Model, if using a Raw Query Builder you must provide the key for the primary table
+   * @param primaryColumn - The primary column of the current model, default is caller model primary key if using A Model, if using a Raw Query Builder you must provide the key for the primary table
+   * @param operator - The comparison operator to use in the ON clause (default: "=")
    */
   innerJoin(
     relationTable: string,
     referencingColumn: string,
     primaryColumn: string,
+    operator?: BinaryOperatorType,
   ): this;
-  innerJoin(relationTable: string, referencingColumn: string): this;
+  innerJoin(
+    relationTable: string,
+    referencingColumn: string,
+    primaryColumn?: string,
+    operator?: BinaryOperatorType,
+  ): this;
   innerJoin<R extends typeof Model>(
     relationModel: R,
     referencingColumn: ModelKey<InstanceType<R>>,
     primaryColumn: ModelKey<T>,
+    operator?: BinaryOperatorType,
   ): this;
   innerJoin<R extends typeof Model>(
     relationModel: R,
     referencingColumn: ModelKey<InstanceType<R>>,
+    primaryColumn?: ModelKey<T>,
+    operator?: BinaryOperatorType,
   ): this;
   innerJoin<R extends typeof Model>(
     relationTable: string | R,
     referencingColumnOrPrimaryColumn: string | ModelKey<R> | ModelKey<T>,
     primaryColumn?: string | ModelKey<T>,
+    operator?: BinaryOperatorType,
   ): this {
+    let primaryColumnValue: string | ModelKey<T> | undefined = primaryColumn;
+    let op: BinaryOperatorType | undefined = operator;
+
+    if (!primaryColumnValue) {
+      if (!this.model.primaryKey) {
+        throw new HysteriaError(
+          "JoinQueryBuilder::join",
+          "MODEL_HAS_NO_PRIMARY_KEY",
+        );
+      }
+      primaryColumnValue = this.model.primaryKey as string;
+    }
+
     this.join(
       typeof relationTable === "string" ? relationTable : relationTable.table,
       referencingColumnOrPrimaryColumn as string,
-      primaryColumn as string,
+      primaryColumnValue as string,
+      op,
     );
 
     return this;
@@ -65,43 +91,57 @@ export abstract class JoinQueryBuilder<
    * @param relationTable - The table to join
    * @param referencingColumn - The column to reference from the relation table
    * @param primaryColumn - The primary column of the current model, default is caller model primary key if using A Model, if using a Raw Query Builder you must provide the key for the primary table
+   * @param operator - The comparison operator to use in the ON clause (default: "=")
    */
   join(
     relationTable: string,
     referencingColumn: string,
     primaryColumn: string,
+    operator?: BinaryOperatorType,
   ): this;
-  join(relationTable: string, referencingColumn: string): this;
+  join(
+    relationTable: string,
+    referencingColumn: string,
+    primaryColumn?: string,
+    operator?: BinaryOperatorType,
+  ): this;
   join<R extends typeof Model>(
     relationModel: R,
     referencingColumn: ModelKey<InstanceType<R>>,
     primaryColumn: ModelKey<T>,
+    operator?: BinaryOperatorType,
   ): this;
   join<R extends typeof Model>(
     relationModel: R,
     referencingColumn: ModelKey<InstanceType<R>>,
+    primaryColumn?: ModelKey<T>,
+    operator?: BinaryOperatorType,
   ): this;
   join<R extends typeof Model>(
     relationTable: string | R,
     referencingColumnOrPrimaryColumn: string | ModelKey<R> | ModelKey<T>,
     primaryColumn?: string | ModelKey<T>,
+    operator?: BinaryOperatorType,
   ): this {
-    if (!primaryColumn) {
+    let primaryColumnValue: string | ModelKey<T> | undefined = primaryColumn;
+    let op: BinaryOperatorType | undefined = operator;
+
+    if (!primaryColumnValue) {
       if (!this.model.primaryKey) {
         throw new HysteriaError(
           "JoinQueryBuilder::join",
           "MODEL_HAS_NO_PRIMARY_KEY",
         );
       }
-
-      primaryColumn = this.model.primaryKey as string;
+      primaryColumnValue = this.model.primaryKey as string;
     }
 
     const join = joinTemplate(
       this.model,
       typeof relationTable === "string" ? relationTable : relationTable.table,
-      primaryColumn as string,
+      primaryColumnValue as string,
       referencingColumnOrPrimaryColumn as string,
+      op || "=",
     );
 
     this.joinQuery += join.innerJoin();
@@ -113,43 +153,57 @@ export abstract class JoinQueryBuilder<
    * @param relationTable - The table to join
    * @param referencingColumn - The column to reference from the relation table
    * @param primaryColumn - The primary column of the current model, default is caller model primary key if using A Model, if using a Raw Query Builder you must provide the key for the primary table
+   * @param operator - The comparison operator to use in the ON clause (default: "=")
    */
   leftJoin(
     relationTable: string,
     referencingColumn: string,
     primaryColumn: string,
+    operator?: BinaryOperatorType,
   ): this;
-  leftJoin(relationTable: string, referencingColumn: string): this;
+  leftJoin(
+    relationTable: string,
+    referencingColumn: string,
+    primaryColumn?: string,
+    operator?: BinaryOperatorType,
+  ): this;
   leftJoin<R extends typeof Model>(
     relationModel: R,
     referencingColumn: ModelKey<InstanceType<R>>,
     primaryColumn: ModelKey<T>,
+    operator?: BinaryOperatorType,
   ): this;
   leftJoin<R extends typeof Model>(
     relationModel: R,
     referencingColumn: ModelKey<InstanceType<R>>,
+    primaryColumn?: ModelKey<T>,
+    operator?: BinaryOperatorType,
   ): this;
   leftJoin<R extends typeof Model>(
     relationTable: string | R,
     referencingColumnOrPrimaryColumn: string | ModelKey<R> | ModelKey<T>,
     primaryColumn?: string | ModelKey<T>,
+    operator?: BinaryOperatorType,
   ): this {
-    if (!primaryColumn) {
+    let primaryColumnValue: string | ModelKey<T> | undefined = primaryColumn;
+    let op: BinaryOperatorType | undefined = operator;
+
+    if (!primaryColumnValue) {
       if (!this.model.primaryKey) {
         throw new HysteriaError(
           "JoinQueryBuilder::join",
           "MODEL_HAS_NO_PRIMARY_KEY",
         );
       }
-
-      primaryColumn = this.model.primaryKey as string;
+      primaryColumnValue = this.model.primaryKey as string;
     }
 
     const join = joinTemplate(
       this.model,
       typeof relationTable === "string" ? relationTable : relationTable.table,
-      primaryColumn as string,
+      primaryColumnValue as string,
       referencingColumnOrPrimaryColumn as string,
+      op || "=",
     );
 
     this.joinQuery += join.leftJoin();
@@ -161,43 +215,57 @@ export abstract class JoinQueryBuilder<
    * @param relationTable - The table to join
    * @param referencingColumn - The column to reference from the relation table
    * @param primaryColumn - The primary column of the current model, default is caller model primary key if using A Model, if using a Raw Query Builder you must provide the key for the primary table
+   * @param operator - The comparison operator to use in the ON clause (default: "=")
    */
   rightJoin(
     relationTable: string,
     referencingColumn: string,
     primaryColumn: string,
+    operator?: BinaryOperatorType,
   ): this;
-  rightJoin(relationTable: string, referencingColumn: string): this;
+  rightJoin(
+    relationTable: string,
+    referencingColumn: string,
+    primaryColumn?: string,
+    operator?: BinaryOperatorType,
+  ): this;
   rightJoin<R extends typeof Model>(
     relationModel: R,
     referencingColumn: ModelKey<InstanceType<R>>,
     primaryColumn: ModelKey<T>,
+    operator?: BinaryOperatorType,
   ): this;
   rightJoin<R extends typeof Model>(
     relationModel: R,
     referencingColumn: ModelKey<InstanceType<R>>,
+    primaryColumn?: ModelKey<T>,
+    operator?: BinaryOperatorType,
   ): this;
   rightJoin<R extends typeof Model>(
     relationTable: string | R,
     referencingColumnOrPrimaryColumn: string | ModelKey<R> | ModelKey<T>,
     primaryColumn?: string | ModelKey<T>,
+    operator?: BinaryOperatorType,
   ): this {
-    if (!primaryColumn) {
+    let primaryColumnValue: string | ModelKey<T> | undefined = primaryColumn;
+    let op: BinaryOperatorType | undefined = operator;
+
+    if (!primaryColumnValue) {
       if (!this.model.primaryKey) {
         throw new HysteriaError(
           "JoinQueryBuilder::join",
           "MODEL_HAS_NO_PRIMARY_KEY",
         );
       }
-
-      primaryColumn = this.model.primaryKey as string;
+      primaryColumnValue = this.model.primaryKey as string;
     }
 
     const join = joinTemplate(
       this.model,
       typeof relationTable === "string" ? relationTable : relationTable.table,
-      primaryColumn as string,
+      primaryColumnValue as string,
       referencingColumnOrPrimaryColumn as string,
+      op || "=",
     );
 
     this.joinQuery += join.rightJoin();

@@ -854,7 +854,7 @@ import { Post } from "./Post";
 
 // Basic join with table name
 const users = await User.query()
-  .join("posts", "userId", "id")
+  .join("posts", "userId", "id", "=")
   .where("name", "John Doe")
   .many();
 

@@ -102,6 +102,17 @@ describe(`[${env.DB_TYPE}] Select`, () => {
     expect(Object.keys(users[1]).length).toBe(1);
   });
 
+  test("Custom From alias", async () => {
+    await UserFactory.userWithoutPk(2);
+    const users = await UserWithoutPk.query()
+      .select("u1.name")
+      .from("users_without_pk u1")
+      .where("u1.name", "!=", "impossible_name")
+      .many({ ignoreHooks: ["beforeFetch"] });
+
+    expect(users).toHaveLength(2);
+  });
+
   test("Union", async () => {
     await UserFactory.userWithoutPk(2);
     const users = await UserWithoutPk.query()

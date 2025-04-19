@@ -142,16 +142,16 @@ TODO
 run.sh
 stop.sh
 .eslintrc.js
-/database
 +.log
 /src/**/*.js
 docker-compose.yaml
 docker-compose.yml
 
-**/database**
 roll_and_run_migrations.sh
 lib
 tmp
 docker
 dist
 buildcache
+# under development
+website/
