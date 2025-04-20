@@ -2,12 +2,23 @@ import { defineConfig } from "tsup";
 
 export default defineConfig({
   entry: ["src/index.ts", "src/cli.ts"],
-  format: ["cjs", "esm"],
-  external: ["luxon", "ioredis", "pg", "mysql2", "sqlite3", "mongodb"],
+  format: ["esm", "cjs"],
   dts: true,
-  splitting: false,
   sourcemap: true,
   clean: true,
-  shims: true,
+  minify: true,
+  treeshake: true,
+  splitting: false,
   outDir: "lib",
+  external: [
+    "commander",
+    "pluralize",
+    "reflect-metadata",
+    "sql-formatter",
+    "ioredis",
+    "mongodb",
+    "mysql2",
+    "pg",
+    "sqlite3",
+  ],
 });

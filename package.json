@@ -3,9 +3,18 @@
   "version": "0.3.2",
   "license": "MIT",
   "description": "Yet another orm for Javascript and Typescript no one asked for",
-  "main": "./lib/index.js",
+  "main": "./lib/index.cjs",
+  "module": "./lib/index.js",
   "types": "./lib/index.d.ts",
   "type": "module",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "require": "./lib/index.cjs",
+      "import": "./lib/index.js"
+    }
+  },
+  "sideEffects": false,
   "repository": "https://github.com/Frasan00/hysteria-orm.git",
   "author": "Frasan00 <francesco.sangiovanni.7@gmail.com>",
   "files": [
@@ -56,6 +65,38 @@
     "pluralize": "^8.0.0",
     "reflect-metadata": "^0.2.2",
     "sql-formatter": "^15.4.8"
+  },
+  "peerDependencies": {
+    "ioredis": "^5.0.0",
+    "mongodb": "^6.0.0",
+    "mysql2": "^3.0.0",
+    "pg": "^8.0.0",
+    "sqlite3": "^5.0.0",
+    "typescript": "^5.0.0",
+    "ts-node": "^10.0.0"
+  },
+  "peerDependenciesMeta": {
+    "ioredis": {
+      "optional": true
+    },
+    "mongodb": {
+      "optional": true
+    },
+    "mysql2": {
+      "optional": true
+    },
+    "pg": {
+      "optional": true
+    },
+    "sqlite3": {
+      "optional": true
+    },
+    "ts-node": {
+      "optional": true
+    },
+    "typescript": {
+      "optional": true
+    }
   },
   "keywords": [
     "orm",

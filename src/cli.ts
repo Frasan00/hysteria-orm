@@ -69,7 +69,7 @@ program
   )
   .option(
     "-j, --javascript",
-    "Generate a javascript file instead of a default typescript one",
+    "Generate a javascript migration file instead of a default typescript one",
     false,
   )
   .option(
@@ -84,7 +84,7 @@ program
   )
   .option(
     "-t, --table <table>",
-    "Generate a template for a create table migration",
+    "Specifies the target table name for the migration",
     false,
   )
   .action(
