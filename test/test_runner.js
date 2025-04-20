@@ -18,6 +18,9 @@ const sqlEnvironments = [
 ];
 
 const sqlTests = [
+  // transaction
+  "./test/sql/transaction/transaction.test.ts",
+
   // use connection
   "./test/sql/use_connection/use_connection.test.ts",
 

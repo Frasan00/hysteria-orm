@@ -8,6 +8,10 @@ export default {
     transform: {
         '^.+\\.tsx?$': ['ts-jest', {
             useESM: true,
+            tsconfig: 'tsconfig.json',
+            diagnostics: {
+                ignoreCodes: [1343]
+            }
         }]
     },
     extensionsToTreatAsEsm: ['.ts'],

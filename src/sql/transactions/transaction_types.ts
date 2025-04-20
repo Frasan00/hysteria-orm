@@ -10,3 +10,7 @@ export type StartTransactionOptions = {
   driverSpecificOptions?: SqlDriverSpecificOptions;
   isolationLevel?: TransactionIsolationLevel;
 };
+
+export type TransactionExecutionOptions = {
+  throwErrorOnInactiveTransaction?: boolean;
+};

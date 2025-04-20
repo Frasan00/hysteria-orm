@@ -6,8 +6,15 @@ import {
   ROLLBACK_TRANSACTION,
 } from "../resources/query/TRANSACTION";
 import { SqlDataSource } from "../sql_data_source";
-import { TransactionIsolationLevel } from "./transaction_types";
+import {
+  TransactionExecutionOptions,
+  TransactionIsolationLevel,
+} from "./transaction_types";
+import logger from "../../utils/logger";
 
+/**
+ * @description Transaction class, not meant to be used directly, use SqlDataSource.startTransaction() instead
+ */
 export class Transaction {
   sqlDataSource: SqlDataSource;
   isActive: boolean;
@@ -47,9 +54,22 @@ export class Transaction {
     this.isActive = true;
   }
 
-  async commit(): Promise<void> {
+  /**
+   * @description Commit the transaction
+   * @throws {HysteriaError} if the transaction is not active and options.throwErrorOnInactiveTransaction is true
+   * @logs if the transaction is not active and options.throwErrorOnInactiveTransaction is false
+   */
+  async commit(options?: TransactionExecutionOptions): Promise<void> {
     if (!this.isActive) {
-      throw new HysteriaError("TRANSACTION::commit", "TRANSACTION_NOT_ACTIVE");
+      if (options?.throwErrorOnInactiveTransaction) {
+        throw new HysteriaError(
+          "TRANSACTION::commit",
+          "TRANSACTION_NOT_ACTIVE",
+        );
+      }
+
+      logger.warn("Transaction::commit - TRANSACTION_NOT_ACTIVE");
+      return;
     }
 
     try {
@@ -60,12 +80,22 @@ export class Transaction {
     }
   }
 
-  async rollback(): Promise<void> {
+  /**
+   * @description Rollback the transaction
+   * @throws {HysteriaError} if the transaction is not active and options.throwErrorOnInactiveTransaction is true
+   * @logs if the transaction is not active and options.throwErrorOnInactiveTransaction is false
+   */
+  async rollback(options?: TransactionExecutionOptions): Promise<void> {
     if (!this.isActive) {
-      throw new HysteriaError(
-        "TRANSACTION::rollback",
-        "TRANSACTION_NOT_ACTIVE",
-      );
+      if (options?.throwErrorOnInactiveTransaction) {
+        throw new HysteriaError(
+          "TRANSACTION::rollback",
+          "TRANSACTION_NOT_ACTIVE",
+        );
+      }
+
+      logger.warn("Transaction::rollback - TRANSACTION_NOT_ACTIVE");
+      return;
     }
 
     try {

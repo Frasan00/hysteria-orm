@@ -144,8 +144,6 @@ stop.sh
 .eslintrc.js
 +.log
 /src/**/*.js
-docker-compose.yaml
-docker-compose.yml
 
 roll_and_run_migrations.sh
 lib
