@@ -22,8 +22,8 @@ export default class extends Migration {
       table.jsonb("json");
       table.boolean("is_active");
       table.enum("status", ["active", "inactive"]);
-      table.timestamp("created_at", { autoCreate: true });
-      table.timestamp("updated_at", { autoCreate: true, autoUpdate: true });
+      table.timestamp("created_at");
+      table.timestamp("updated_at");
       table.timestamp("deleted_at").default("NULL").nullable();
     });
   }

@@ -1,10 +1,16 @@
 import { HysteriaError } from "../../errors/hysteria_error";
+import {
+  DateFormat,
+  Timezone,
+  getDate,
+  parseDate,
+} from "../../utils/date_utils";
 import { Model } from "./model";
 import { BelongsTo } from "./relations/belongs_to";
 import { HasMany } from "./relations/has_many";
 import { HasOne } from "./relations/has_one";
 import { ManyToMany } from "./relations/many_to_many";
-import { RelationEnum, Relation } from "./relations/relation";
+import { Relation, RelationEnum } from "./relations/relation";
 
 type LazyRelationType = {
   type: RelationEnum;
@@ -17,6 +23,13 @@ type LazyRelationType = {
     throughModel: string;
   };
 };
+
+type DateColumnOptions = {
+  format?: DateFormat;
+  timezone?: Timezone;
+  autoUpdate?: boolean;
+  autoCreate?: boolean;
+} & ColumnOptions;
 
 /**
  * columns
@@ -68,27 +81,53 @@ export function column(
 }
 
 /**
- * @description Decorator to define a date column in the model, uses built in Date javascript object
+ * @description Decorator to define a date column in the model
  * @description This will automatically convert the date to the correct format for the database
- * @description the format is YYYY-MM-DD HH:MM:SS
- * @description This will also automatically convert the date to the correct format when fetching from the database
+ * @description Supports both ISO format (YYYY-MM-DD HH:mm:ss) and Unix timestamp
+ * @description Handles timezone conversion between UTC and local time
+ * @description Can automatically update/create timestamps
+ * @param options Configuration options for the date column
+ * @param options.format The format to store dates in ('ISO' or 'TIMESTAMP')
+ * @param options.timezone The timezone to use ('UTC' or 'LOCAL')
+ * @param options.autoUpdate Whether to automatically update the timestamp on record updates
+ * @param options.autoCreate Whether to automatically set the timestamp on record creation
  */
-export function dateColumn(options: ColumnOptions = {}): PropertyDecorator {
+export function dateColumn(options: DateColumnOptions = {}): PropertyDecorator {
+  const {
+    format = "ISO",
+    timezone = "UTC",
+    autoUpdate = false,
+    autoCreate = false,
+    ...rest
+  } = options;
+
   return column({
-    ...options,
+    ...rest,
     prepare: (value: Date | string) => {
-      if (typeof value === "string") {
-        return new Date(value);
+      if (!value) {
+        if (autoCreate) {
+          return getDate(new Date(), format, timezone);
+        }
+
+        return null;
+      }
+
+      if (autoUpdate) {
+        return getDate(parseDate(value)!, format, timezone);
       }
 
       return value;
     },
     serialize: (value: string | Date) => {
-      if (typeof value === "string") {
-        return new Date(value);
+      if (value === undefined) {
+        return;
       }
 
-      return value;
+      if (value === null) {
+        return null;
+      }
+
+      return parseDate(value);
     },
   });
 }

@@ -14,8 +14,7 @@ const getPlaceholder = (
     case "mysql":
     case "mariadb":
       if (Buffer.isBuffer(value)) return "BINARY(?)";
-      if (value instanceof Date)
-        return "STR_TO_DATE(?, '%Y-%m-%dT%H:%i:%s.%fZ')";
+      if (value instanceof Date) return "?";
       return "?";
     case "sqlite":
       return "?";
@@ -34,7 +33,7 @@ const getPlaceholder = (
               : typeof value === "bigint"
                 ? "bigint"
                 : value instanceof Date
-                  ? "timestamp"
+                  ? "timestamp with time zone"
                   : "";
       return typeCast ? `$${index + 1}::${typeCast}` : `$${index + 1}`;
     default:

@@ -4,8 +4,6 @@ import type { SqlDataSourceType } from "../../../sql_data_source_types";
 import { ColumnBuilder } from "./column_builder";
 
 export type DateOptions = {
-  autoCreate?: boolean;
-  autoUpdate?: boolean;
   timezone?: string;
 };
 
@@ -887,44 +885,12 @@ export default class ColumnTypeBuilder
 
       this.columnName = name;
       this.partialQuery += ` ${name} TEXT`;
-      if (options && options.autoCreate) {
-        this.partialQuery += "  DEFAULT CURRENT_DATE";
-      }
-
-      if (options && options.autoUpdate) {
-        throw new HysteriaError(
-          "ColumnTypeBuilder::date",
-          "NOT_SUPPORTED_IN_SQLITE",
-        );
-      }
 
       return this.constraintsBuilder;
     }
 
     this.columnName = name;
     this.partialQuery += ` ${name} DATE`;
-
-    if (options && options.autoCreate) {
-      this.partialQuery += "  DEFAULT CURRENT_DATE";
-    }
-
-    if (options && options.autoUpdate) {
-      switch (this.sqlType) {
-        case "postgres":
-        case "cockroachdb":
-          this.afterDefinitionQueries.push(
-            `CREATE OR REPLACE FUNCTION ${this.table}_${name}_update_date_column() RETURNS TRIGGER AS $$
-            BEGIN
-              NEW.${name} = now();
-              RETURN NEW;
-            END;
-            $$ language 'plpgsql';`,
-          );
-          break;
-        default:
-          this.partialQuery += "  ON UPDATE CURRENT_TIMESTAMP";
-      }
-    }
 
     return this.constraintsBuilder;
   }
@@ -943,16 +909,6 @@ export default class ColumnTypeBuilder
 
       this.columnName = name;
       this.partialQuery += ` ${name} TEXT`;
-      if (options && options.autoCreate) {
-        this.partialQuery += "  DEFAULT CURRENT_TIMESTAMP";
-      }
-
-      if (options && options.autoUpdate) {
-        throw new HysteriaError(
-          "ColumnTypeBuilder::timestamp",
-          "NOT_SUPPORTED_IN_SQLITE",
-        );
-      }
 
       if (options && options.timezone) {
         this.partialQuery += ` ${options.timezone}`;
@@ -963,26 +919,6 @@ export default class ColumnTypeBuilder
 
     this.columnName = name;
     this.partialQuery += ` ${name} TIMESTAMP`;
-    if (options && options.autoCreate) {
-      this.partialQuery += "  DEFAULT CURRENT_TIMESTAMP";
-    }
-
-    if (options && options.autoUpdate) {
-      if (this.sqlType === "postgres" || this.sqlType === "cockroachdb") {
-        this.afterDefinitionQueries.push(
-          `CREATE OR REPLACE FUNCTION ${this.table}_${name}_auto_update() RETURNS TRIGGER AS $$
-          BEGIN
-            NEW.${name} = now();
-            RETURN NEW;
-          END;
-          $$ language 'plpgsql';`,
-        );
-      }
-
-      if (this.sqlType === "mysql" || this.sqlType === "mariadb") {
-        this.partialQuery += "  ON UPDATE CURRENT_TIMESTAMP";
-      }
-    }
 
     if (options && options.timezone) {
       this.partialQuery += ` ${options.timezone}`;

@@ -12,19 +12,6 @@ export const formatValue = (value: any, dbType: SqlDataSourceType): any => {
       return JSON.stringify(value);
     case isNestedObject(value) && !Buffer.isBuffer(value):
       return JSON.stringify(value);
-    case value instanceof Date:
-      switch (dbType) {
-        case "postgres":
-        case "cockroachdb":
-          return value.toISOString();
-        case "mysql":
-        case "mariadb":
-          return value.toISOString().slice(0, 19).replace("T", " ");
-        case "sqlite":
-          return value.toISOString();
-        default:
-          return value;
-      }
     case typeof value === "bigint":
       return value.toString();
     default:

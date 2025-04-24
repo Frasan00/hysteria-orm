@@ -10,8 +10,8 @@ export default class extends Migration {
       table.text("content");
       table.tinytext("short_description");
 
-      table.timestamp("created_at", { autoCreate: true });
-      table.timestamp("updated_at", { autoCreate: true, autoUpdate: true });
+      table.timestamp("created_at");
+      table.timestamp("updated_at");
       table.timestamp("deleted_at").default("NULL").nullable();
     });
   }

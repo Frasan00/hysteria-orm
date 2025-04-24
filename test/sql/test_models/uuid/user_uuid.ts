@@ -1,10 +1,10 @@
+import crypto from "node:crypto";
 import { ModelQueryBuilder } from "../../../../src/sql/model_query_builder/model_query_builder";
 import { Model } from "../../../../src/sql/models/model";
 import {
   column,
   dateColumn,
 } from "../../../../src/sql/models/model_decorators";
-import crypto from "node:crypto";
 
 export enum UserStatus {
   active = "active",
@@ -63,13 +63,13 @@ export class UserWithUuid extends Model {
   @column()
   declare json: Record<string, any> | null;
 
-  @dateColumn()
+  @dateColumn({})
   declare birthDate: Date;
 
-  @dateColumn()
+  @dateColumn({ autoCreate: true })
   declare createdAt: Date;
 
-  @dateColumn()
+  @dateColumn({ autoCreate: true, autoUpdate: true })
   declare updatedAt: Date;
 
   @dateColumn()

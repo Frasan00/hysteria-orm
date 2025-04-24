@@ -246,48 +246,6 @@ export default class ColumnBuilderAlter {
     },
   ): ColumnBuilderAlter {
     let query = `ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${type}`;
-    if (options?.autoCreate) {
-      switch (this.sqlType) {
-        case "mariadb":
-        case "mysql":
-          query += " DEFAULT CURRENT_TIMESTAMP";
-          break;
-        case "postgres":
-        case "cockroachdb":
-          query += " DEFAULT CURRENT_TIMESTAMP";
-          break;
-        case "sqlite":
-          query += " DEFAULT CURRENT_TIMESTAMP";
-          break;
-        default:
-          throw new HysteriaError(
-            "ColumnBuilderAlter::addDateColumn",
-            `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`,
-          );
-      }
-    }
-
-    if (options?.autoUpdate) {
-      switch (this.sqlType) {
-        case "mariadb":
-        case "mysql":
-          query += " ON UPDATE CURRENT_TIMESTAMP";
-          break;
-        case "postgres":
-        case "cockroachdb":
-          query += " ON UPDATE CURRENT_TIMESTAMP";
-          break;
-        case "sqlite":
-          query += " ON UPDATE CURRENT_TIMESTAMP";
-          break;
-        default:
-          throw new HysteriaError(
-            "ColumnBuilderAlter::addDateColumn",
-            `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`,
-          );
-      }
-    }
-
     if (options?.notNullable) {
       query += " NOT NULL";
     }

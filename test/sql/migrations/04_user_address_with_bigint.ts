@@ -7,8 +7,8 @@ export default class extends Migration {
       table.bigInteger("user_id").references("users_with_bigint", "id");
       table.bigInteger("address_id").references("address_with_bigint", "id");
 
-      table.timestamp("created_at", { autoCreate: true });
-      table.timestamp("updated_at", { autoCreate: true, autoUpdate: true });
+      table.timestamp("created_at");
+      table.timestamp("updated_at");
       table.timestamp("deleted_at").default(null).nullable();
     });
 
