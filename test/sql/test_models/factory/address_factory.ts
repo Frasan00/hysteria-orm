@@ -9,9 +9,8 @@ export class AddressFactory {
   ): Promise<FactoryReturnType<T, AddressWithBigint>> {
     const addressData = AddressFactory.getCommonAddressData();
     if (howMany === 1) {
-      return AddressWithBigint.insert(addressData) as FactoryReturnType<
-        T,
-        AddressWithBigint
+      return AddressWithBigint.insert(addressData) as Promise<
+        FactoryReturnType<T, AddressWithBigint>
       >;
     }
 
@@ -20,7 +19,7 @@ export class AddressFactory {
       array.map(() => ({
         ...addressData,
       })),
-    ) as FactoryReturnType<T, AddressWithBigint>;
+    ) as Promise<FactoryReturnType<T, AddressWithBigint>>;
   }
 
   static async addressWithUuid<T extends number>(
@@ -28,9 +27,8 @@ export class AddressFactory {
   ): Promise<FactoryReturnType<T, AddressWithUuid>> {
     const addressData = AddressFactory.getCommonAddressData();
     if (howMany === 1) {
-      return AddressWithUuid.insert(addressData) as FactoryReturnType<
-        T,
-        AddressWithUuid
+      return AddressWithUuid.insert(addressData) as Promise<
+        FactoryReturnType<T, AddressWithUuid>
       >;
     }
 
@@ -39,7 +37,7 @@ export class AddressFactory {
       array.map(() => ({
         ...addressData,
       })),
-    ) as FactoryReturnType<T, AddressWithUuid>;
+    ) as Promise<FactoryReturnType<T, AddressWithUuid>>;
   }
 
   static getCommonAddressData(): Partial<Omit<AddressWithUuid, "id">> {

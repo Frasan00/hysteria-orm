@@ -10,10 +10,10 @@ import {
 } from "./test_environments.js";
 
 const sqlEnvironments = [
-  cockroachdbConfig,
-  pgConfig,
   mysqlConfig,
+  pgConfig,
   mariadbConfig,
+  cockroachdbConfig,
   sqliteConfig,
 ];
 
@@ -29,6 +29,13 @@ const sqlTests = [
 
   // without primary key tests
   "./test/sql/without_pk/user_without_pk_crud.test.ts",
+
+  // uuid
+  "./test/sql/uuid_pk/join.test.ts",
+  "./test/sql/uuid_pk/crud.test.ts",
+
+  // bigint join test
+  "./test/sql/bigint_pk/join.test.ts",
 ];
 
 sqlTests.forEach((file) => {

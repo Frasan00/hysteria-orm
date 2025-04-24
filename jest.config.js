@@ -16,4 +16,5 @@ export default {
     },
     extensionsToTreatAsEsm: ['.ts'],
     moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
+    maxWorkers: 1,
 };

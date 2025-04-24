@@ -73,7 +73,8 @@ export abstract class JoinQueryBuilder<
           "MODEL_HAS_NO_PRIMARY_KEY",
         );
       }
-      primaryColumnValue = this.model.primaryKey as string;
+
+      primaryColumnValue = `${this.model.table}.${this.model.primaryKey}`;
     }
 
     this.join(
@@ -133,7 +134,7 @@ export abstract class JoinQueryBuilder<
           "MODEL_HAS_NO_PRIMARY_KEY",
         );
       }
-      primaryColumnValue = this.model.primaryKey as string;
+      primaryColumnValue = `${this.model.table}.${this.model.primaryKey}`;
     }
 
     const join = joinTemplate(
@@ -195,7 +196,7 @@ export abstract class JoinQueryBuilder<
           "MODEL_HAS_NO_PRIMARY_KEY",
         );
       }
-      primaryColumnValue = this.model.primaryKey as string;
+      primaryColumnValue = `${this.model.table}.${this.model.primaryKey}`;
     }
 
     const join = joinTemplate(
@@ -257,7 +258,7 @@ export abstract class JoinQueryBuilder<
           "MODEL_HAS_NO_PRIMARY_KEY",
         );
       }
-      primaryColumnValue = this.model.primaryKey as string;
+      primaryColumnValue = `${this.model.table}.${this.model.primaryKey}`;
     }
 
     const join = joinTemplate(

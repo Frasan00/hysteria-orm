@@ -86,6 +86,23 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
   }
 
   /**
+   * @description Executes the query and retrieves a single column from the results.
+   * @param key - The column to retrieve from the results, must be a Model Column
+   */
+  async pluck<O = any>(
+    key: ModelKey<T>,
+    options: { removeFalsy?: boolean } = {},
+  ): Promise<O[]> {
+    const result = await this.many();
+    const plucked = result.map((item) => item[key] as O);
+    if (options.removeFalsy) {
+      return plucked.filter((value) => Boolean(value));
+    }
+
+    return plucked;
+  }
+
+  /**
    * @description Executes the query and retrieves a single result.
    */
   async one(): Promise<T | null> {

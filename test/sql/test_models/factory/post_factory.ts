@@ -1,36 +1,38 @@
 import { faker } from "@faker-js/faker";
-import { FactoryReturnType } from "./factory_types";
-import { PostWithUuid } from "../uuid/post_uuid";
 import { PostWithBigint } from "../bigint/post_bigint";
+import { PostWithUuid } from "../uuid/post_uuid";
+import { FactoryReturnType } from "./factory_types";
 
 export class PostFactory {
   static async postWithBigint<T extends number>(
+    userId: number,
     howMany: T,
   ): Promise<FactoryReturnType<T, PostWithBigint>> {
     const postData = PostFactory.getCommonPostData();
     if (howMany === 1) {
-      return PostWithBigint.insert(postData) as FactoryReturnType<
-        T,
-        PostWithBigint
-      >;
+      return PostWithBigint.insert({
+        ...postData,
+        userId,
+      }) as Promise<FactoryReturnType<T, PostWithBigint>>;
     }
 
     const array = Array.from({ length: howMany });
     return PostWithBigint.insertMany(
       array.map(() => ({
         ...postData,
+        userId,
       })),
-    ) as FactoryReturnType<T, PostWithBigint>;
+    ) as Promise<FactoryReturnType<T, PostWithBigint>>;
   }
 
   static async postWithUuid<T extends number>(
+    userId: string,
     howMany: T,
   ): Promise<FactoryReturnType<T, PostWithUuid>> {
     const postData = PostFactory.getCommonPostData();
     if (howMany === 1) {
-      return PostWithUuid.insert(postData) as FactoryReturnType<
-        T,
-        PostWithUuid
+      return PostWithUuid.insert({ ...postData, userId }) as Promise<
+        FactoryReturnType<T, PostWithUuid>
       >;
     }
 
@@ -38,11 +40,12 @@ export class PostFactory {
     return PostWithUuid.insertMany(
       array.map(() => ({
         ...postData,
+        userId,
       })),
-    ) as FactoryReturnType<T, PostWithUuid>;
+    ) as Promise<FactoryReturnType<T, PostWithUuid>>;
   }
 
-  static getCommonPostData(): Partial<Omit<PostWithUuid, "id">> {
+  static getCommonPostData(): Record<string, string> {
     return {
       title: faker.lorem.sentence(),
       content: faker.lorem.paragraph(),

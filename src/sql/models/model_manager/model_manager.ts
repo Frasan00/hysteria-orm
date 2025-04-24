@@ -192,7 +192,7 @@ export class ModelManager<T extends Model> {
 
     const insertedModel = rows[0] as T;
     if (!insertedModel) {
-      throw new HysteriaError(this.model.name + "::insert", "INSERT_FAILED");
+      return model as T;
     }
 
     const result = (await parseDatabaseDataIntoModelResponse(

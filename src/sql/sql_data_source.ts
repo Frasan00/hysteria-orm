@@ -5,11 +5,6 @@ import logger from "../utils/logger";
 import { Model } from "./models/model";
 import { ModelManager } from "./models/model_manager/model_manager";
 import { QueryBuilder } from "./query_builder/query_builder";
-import {
-  BEGIN_TRANSACTION,
-  COMMIT_TRANSACTION,
-  ROLLBACK_TRANSACTION,
-} from "./resources/query/TRANSACTION";
 import { createSqlConnection } from "./sql_connection_utils";
 import type {
   ConnectionPolicies,
@@ -19,19 +14,21 @@ import type {
   SqlConnectionType,
   SqlDataSourceInput,
   SqlDataSourceType,
-  SqlDriverSpecificOptions,
   SqliteConnectionInstance,
   UseConnectionInput,
 } from "./sql_data_source_types";
 import { execSql } from "./sql_runner/sql_runner";
 import { Transaction } from "./transactions/transaction";
-import { StartTransactionOptions } from "./transactions/transaction_types";
+import {
+  StartTransactionOptions,
+  TransactionExecutionOptions,
+} from "./transactions/transaction_types";
 
 export class SqlDataSource extends DataSource {
   declare private sqlConnection: SqlConnectionType;
   private static instance: SqlDataSource | null = null;
+  private globalTransaction: Transaction | null = null;
   private sqlType: SqlDataSourceType;
-  private inGlobalTransaction: boolean = false;
   /**
    * @description The retry policy for the database connection
    */
@@ -126,22 +123,26 @@ export class SqlDataSource extends DataSource {
   /**
    * @description Starts a global transaction on the database
    */
-  static async startGlobalTransaction(): Promise<void> {
-    await this.getInstance().rawQuery(BEGIN_TRANSACTION);
+  static async startGlobalTransaction(
+    options?: StartTransactionOptions,
+  ): Promise<Transaction> {
+    return this.getInstance().startGlobalTransaction(options);
   }
 
   /**
    * @description Commits a global transaction on the database
+   * @throws {HysteriaError} If the global transaction is not started
    */
   static async commitGlobalTransaction(): Promise<void> {
-    await this.getInstance().rawQuery(COMMIT_TRANSACTION);
+    await this.getInstance().commitGlobalTransaction();
   }
 
   /**
    * @description Rolls back a global transaction on the database
+   * @throws {HysteriaError} If the global transaction is not started
    */
   static async rollbackGlobalTransaction(): Promise<void> {
-    await this.getInstance().rawQuery(ROLLBACK_TRANSACTION);
+    await this.getInstance().rollbackGlobalTransaction();
   }
 
   /**
@@ -306,45 +307,54 @@ export class SqlDataSource extends DataSource {
   /**
    * @description Starts a global transaction on the database on the main connection
    */
-  async startGlobalTransaction(): Promise<void> {
-    if (this.inGlobalTransaction) {
-      throw new HysteriaError(
-        "SqlDataSource::startGlobalTransaction",
-        "GLOBAL_TRANSACTION_ALREADY_STARTED",
-      );
-    }
-
-    await this.rawQuery(BEGIN_TRANSACTION);
-    this.inGlobalTransaction = true;
+  async startGlobalTransaction(
+    options?: StartTransactionOptions,
+  ): Promise<Transaction> {
+    this.globalTransaction = new Transaction(this, options?.isolationLevel);
+    await this.globalTransaction.startTransaction();
+    return this.globalTransaction;
   }
 
   /**
    * @description Commits a global transaction on the database on the main connection
+   * @throws {HysteriaError} If the global transaction is not started
    */
-  async commitGlobalTransaction(): Promise<void> {
-    if (!this.inGlobalTransaction) {
+  async commitGlobalTransaction(
+    options?: Omit<TransactionExecutionOptions, "endConnection">,
+  ): Promise<void> {
+    if (!this.globalTransaction) {
       throw new HysteriaError(
         "SqlDataSource::commitGlobalTransaction",
         "GLOBAL_TRANSACTION_NOT_STARTED",
       );
     }
-    await this.rawQuery(COMMIT_TRANSACTION);
-    this.inGlobalTransaction = false;
+
+    await this.globalTransaction?.commit({
+      throwErrorOnInactiveTransaction: options?.throwErrorOnInactiveTransaction,
+      endConnection: false,
+    });
+    this.globalTransaction = null;
   }
 
   /**
-   * @description Rolls back a global transaction on the database on the main connection
+   * @description Rolls back a global transaction on the database on the main connection, it doesn't end the connection since it's the main connection
+   * @throws {HysteriaError} If the global transaction is not started and options.throwErrorOnInactiveTransaction is true
    */
-  async rollbackGlobalTransaction(): Promise<void> {
-    if (!this.inGlobalTransaction) {
+  async rollbackGlobalTransaction(
+    options?: Omit<TransactionExecutionOptions, "endConnection">,
+  ): Promise<void> {
+    if (!this.globalTransaction) {
       throw new HysteriaError(
         "SqlDataSource::rollbackGlobalTransaction",
         "GLOBAL_TRANSACTION_NOT_STARTED",
       );
     }
 
-    await this.rawQuery(ROLLBACK_TRANSACTION);
-    this.inGlobalTransaction = false;
+    await this.globalTransaction?.rollback({
+      throwErrorOnInactiveTransaction: options?.throwErrorOnInactiveTransaction,
+      endConnection: false,
+    });
+    this.globalTransaction = null;
   }
 
   /**
@@ -485,5 +495,13 @@ export class SqlDataSource extends DataSource {
     }
 
     return execSql(query, params, this);
+  }
+
+  static get isInGlobalTransaction(): boolean {
+    return !!this.instance?.globalTransaction;
+  }
+
+  get isInGlobalTransaction(): boolean {
+    return !!this.globalTransaction;
   }
 }

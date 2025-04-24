@@ -12,7 +12,7 @@ export class UserAddressFactory {
       return UserAddressWithUuid.insert({
         userId,
         addressId,
-      }) as FactoryReturnType<T, UserAddressWithUuid>;
+      }) as Promise<FactoryReturnType<T, UserAddressWithUuid>>;
     }
 
     const array = Array.from({ length: howMany });
@@ -21,7 +21,7 @@ export class UserAddressFactory {
         userId,
         addressId,
       })),
-    ) as FactoryReturnType<T, UserAddressWithUuid>;
+    ) as Promise<FactoryReturnType<T, UserAddressWithUuid>>;
   }
 
   static async userAddressWithBigint<T extends number>(
@@ -33,7 +33,7 @@ export class UserAddressFactory {
       return UserAddressWithBigint.insert({
         userId,
         addressId,
-      }) as FactoryReturnType<T, UserAddressWithBigint>;
+      }) as Promise<FactoryReturnType<T, UserAddressWithBigint>>;
     }
 
     const array = Array.from({ length: howMany });
@@ -42,6 +42,6 @@ export class UserAddressFactory {
         userId,
         addressId,
       })),
-    ) as FactoryReturnType<T, UserAddressWithBigint>;
+    ) as Promise<FactoryReturnType<T, UserAddressWithBigint>>;
   }
 }

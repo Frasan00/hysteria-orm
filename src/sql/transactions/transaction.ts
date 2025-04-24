@@ -60,6 +60,7 @@ export class Transaction {
    * @logs if the transaction is not active and options.throwErrorOnInactiveTransaction is false
    */
   async commit(options?: TransactionExecutionOptions): Promise<void> {
+    const endConnection = options?.endConnection ?? true;
     if (!this.isActive) {
       if (options?.throwErrorOnInactiveTransaction) {
         throw new HysteriaError(
@@ -75,7 +76,9 @@ export class Transaction {
     try {
       await this.sqlDataSource.rawQuery(COMMIT_TRANSACTION);
     } finally {
-      await this.releaseConnection();
+      if (endConnection) {
+        await this.releaseConnection();
+      }
       this.isActive = false;
     }
   }
@@ -86,6 +89,7 @@ export class Transaction {
    * @logs if the transaction is not active and options.throwErrorOnInactiveTransaction is false
    */
   async rollback(options?: TransactionExecutionOptions): Promise<void> {
+    const endConnection = options?.endConnection ?? true;
     if (!this.isActive) {
       if (options?.throwErrorOnInactiveTransaction) {
         throw new HysteriaError(
@@ -101,7 +105,9 @@ export class Transaction {
     try {
       await this.sqlDataSource.rawQuery(ROLLBACK_TRANSACTION);
     } finally {
-      await this.releaseConnection();
+      if (endConnection) {
+        await this.releaseConnection();
+      }
       this.isActive = false;
     }
   }

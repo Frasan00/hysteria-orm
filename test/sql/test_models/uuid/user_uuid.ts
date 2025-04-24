@@ -4,6 +4,7 @@ import {
   column,
   dateColumn,
 } from "../../../../src/sql/models/model_decorators";
+import crypto from "node:crypto";
 
 export enum UserStatus {
   active = "active",
@@ -75,6 +76,7 @@ export class UserWithUuid extends Model {
   declare deletedAt: Date | null;
 
   static async beforeInsert(data: UserWithUuid): Promise<void> {
+    data.id = crypto.randomUUID();
     data.createdAt = new Date();
     data.updatedAt = new Date();
   }

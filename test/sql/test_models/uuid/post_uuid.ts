@@ -5,6 +5,8 @@ import {
   dateColumn,
 } from "../../../../src/sql/models/model_decorators";
 import { UserWithUuid } from "./user_uuid";
+import crypto from "node:crypto";
+
 export class PostWithUuid extends Model {
   static _table = "posts_with_uuid";
 
@@ -36,4 +38,8 @@ export class PostWithUuid extends Model {
 
   @belongsTo(() => UserWithUuid, "userId")
   declare user: UserWithUuid;
+
+  static async beforeInsert(data: PostWithUuid): Promise<void> {
+    data.id = crypto.randomUUID();
+  }
 }

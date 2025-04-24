@@ -9,9 +9,14 @@
   "type": "module",
   "exports": {
     ".": {
-      "types": "./lib/index.d.ts",
       "require": "./lib/index.cjs",
-      "import": "./lib/index.js"
+      "import": "./lib/index.js",
+      "types": "./lib/index.d.ts"
+    },
+    "./cli": {
+      "require": "./lib/cli.cjs",
+      "import": "./lib/cli.js",
+      "types": "./lib/cli.d.ts"
     }
   },
   "sideEffects": false,
@@ -25,10 +30,11 @@
     "prepare": "husky install",
     "migrate": "node ./test/migration_runner.js",
     "test": "node ./test/test_runner.js",
-    "test:with:migrations": "rm -rf sqlite.db && touch sqlite.db && yarn format && yarn build && yarn migrate && node ./test/test_runner.js",
+    "test:with:migrations": "rm -rf sqlite.db && touch sqlite.db && yarn format && yarn build:prod && yarn migrate && node ./test/test_runner.js",
     "format": "prettier --write \"**/*.ts\"",
-    "build": "tsup --minify",
-    "build:dev": "tsup",
+    "build": "yarn build:prod",
+    "build:prod": "tsup --minify --format esm --dts --clean",
+    "build:dev": "tsup --sourcemap --format esm --dts",
     "test:fresh": "node lib/cli.js refresh:migrations"
   },
   "bin": {

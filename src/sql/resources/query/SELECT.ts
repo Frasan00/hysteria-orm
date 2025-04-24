@@ -104,6 +104,10 @@ const selectTemplate = (
 
         if (columnName.includes(".")) {
           [tableName, columnName] = columnName.split(".");
+          // If the column already has a table name, don't add it again
+          return alias
+            ? `${tableName}.${columnName} AS ${alias}`
+            : `${tableName}.${columnName}`;
         }
 
         const processedColumnName = !column.includes("*")
@@ -112,12 +116,9 @@ const selectTemplate = (
             ) as string)
           : column;
 
-        let finalColumn = processedColumnName;
-        if (tableName) {
-          finalColumn = `${tableName}.${processedColumnName}`;
-        }
-
-        return alias ? `${finalColumn} AS ${alias}` : finalColumn;
+        return alias
+          ? `${processedColumnName} AS ${alias}`
+          : processedColumnName;
       });
       return `SELECT ${columns.join(", ")} FROM ${fromTable} `;
     },

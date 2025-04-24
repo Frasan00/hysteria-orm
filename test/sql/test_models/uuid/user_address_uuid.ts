@@ -3,6 +3,8 @@ import {
   column,
   dateColumn,
 } from "../../../../src/sql/models/model_decorators";
+import crypto from "node:crypto";
+
 export class UserAddressWithUuid extends Model {
   static _table = "user_address_with_uuid";
 
@@ -25,4 +27,8 @@ export class UserAddressWithUuid extends Model {
 
   @dateColumn()
   declare deletedAt: Date | null;
+
+  static async beforeInsert(data: UserAddressWithUuid): Promise<void> {
+    data.id = crypto.randomUUID();
+  }
 }

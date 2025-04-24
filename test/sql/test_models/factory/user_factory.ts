@@ -13,9 +13,8 @@ export class UserFactory {
   ): Promise<FactoryReturnType<T, UserWithoutPk>> {
     const userData = UserFactory.getCommonUserData(status, isActive, jsonData);
     if (howMany === 1) {
-      return UserWithoutPk.insert(userData) as FactoryReturnType<
-        T,
-        UserWithoutPk
+      return UserWithoutPk.insert(userData) as Promise<
+        FactoryReturnType<T, UserWithoutPk>
       >;
     }
 
@@ -27,7 +26,7 @@ export class UserFactory {
         email: faker.internet.email(),
         password: faker.internet.password(),
       })),
-    ) as FactoryReturnType<T, UserWithoutPk>;
+    ) as Promise<FactoryReturnType<T, UserWithoutPk>>;
   }
 
   static async userWithUuid<T extends number>(
@@ -38,9 +37,8 @@ export class UserFactory {
   ): Promise<FactoryReturnType<T, UserWithUuid>> {
     const userData = UserFactory.getCommonUserData(status, isActive, jsonData);
     if (howMany === 1) {
-      return UserWithUuid.insert(userData) as FactoryReturnType<
-        T,
-        UserWithUuid
+      return UserWithUuid.insert(userData) as Promise<
+        FactoryReturnType<T, UserWithUuid>
       >;
     }
 
@@ -52,7 +50,7 @@ export class UserFactory {
         email: faker.internet.email(),
         password: faker.internet.password(),
       })),
-    ) as FactoryReturnType<T, UserWithUuid>;
+    ) as Promise<FactoryReturnType<T, UserWithUuid>>;
   }
 
   static async userWithBigint<T extends number>(
@@ -63,9 +61,8 @@ export class UserFactory {
   ): Promise<FactoryReturnType<T, UserWithBigint>> {
     const userData = UserFactory.getCommonUserData(status, isActive, jsonData);
     if (howMany === 1) {
-      return UserWithBigint.insert(userData) as FactoryReturnType<
-        T,
-        UserWithBigint
+      return UserWithBigint.insert(userData) as Promise<
+        FactoryReturnType<T, UserWithBigint>
       >;
     }
 
@@ -77,7 +74,7 @@ export class UserFactory {
         email: faker.internet.email(),
         password: faker.internet.password(),
       })),
-    ) as FactoryReturnType<T, UserWithBigint>;
+    ) as Promise<FactoryReturnType<T, UserWithBigint>>;
   }
 
   static getCommonUserData(

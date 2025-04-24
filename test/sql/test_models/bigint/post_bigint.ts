@@ -16,6 +16,7 @@ export class PostWithBigint extends Model {
 
   @column()
   declare userId: number;
+
   @column()
   declare title: string;
 

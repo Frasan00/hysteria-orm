@@ -35,7 +35,8 @@ export async function parseDatabaseDataIntoModelResponse<T extends Model>(
 
       return convertCase(databaseColumn, typeofModel.modelCaseConvention);
     })
-    .filter((column) => column !== "*");
+    .filter((column) => column !== "*" && column)
+    .filter(Boolean);
 
   const serializedModels = await Promise.all(
     models.map(async (model) => {

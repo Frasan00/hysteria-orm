@@ -12,7 +12,7 @@ export default class extends Migration {
 
       table.timestamp("created_at", { autoCreate: true });
       table.timestamp("updated_at", { autoCreate: true, autoUpdate: true });
-      table.timestamp("deleted_at").default("NULL").nullable();
+      table.timestamp("deleted_at").default(null).nullable();
     });
   }
 

@@ -25,7 +25,9 @@ class ModelFactory<M extends Model> {
     };
 
     if (howMany === 1) {
-      return insertModel.insert(this.modelData) as FactoryReturnType<T, M>;
+      return insertModel.insert(this.modelData) as Promise<
+        FactoryReturnType<T, M>
+      >;
     }
 
     const array = Array.from({ length: howMany });
@@ -33,7 +35,7 @@ class ModelFactory<M extends Model> {
       array.map(() => ({
         ...this.modelData,
       })),
-    ) as FactoryReturnType<T, M>;
+    ) as Promise<FactoryReturnType<T, M>>;
   }
 }
 
