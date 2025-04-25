@@ -1,9 +1,6 @@
-import { Model } from "../../../../src/sql/models/model";
-import {
-  column,
-  dateColumn,
-} from "../../../../src/sql/models/model_decorators";
 import crypto from "node:crypto";
+import { Model } from "../../../../src/sql/models/model";
+import { column } from "../../../../src/sql/models/model_decorators";
 
 export class AddressWithUuid extends Model {
   static _table = "address_with_uuid";
@@ -28,13 +25,18 @@ export class AddressWithUuid extends Model {
   @column()
   declare country: string;
 
-  @dateColumn()
+  @column.date({
+    autoCreate: true,
+  })
   declare createdAt: Date;
 
-  @dateColumn()
+  @column.date({
+    autoCreate: true,
+    autoUpdate: true,
+  })
   declare updatedAt: Date;
 
-  @dateColumn()
+  @column.date()
   declare deletedAt: Date | null;
 
   static async beforeInsert(data: AddressWithUuid): Promise<void> {

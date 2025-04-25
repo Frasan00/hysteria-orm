@@ -2,8 +2,6 @@ import { format } from "sql-formatter";
 import { HysteriaError } from "../../errors/hysteria_error";
 import { convertPlaceHolderToValue } from "../../utils/placeholder";
 import { bindParamsIntoQuery } from "../../utils/query";
-import { SoftDeleteOptions } from "../model_query_builder/delete_query_builder_type";
-import { WhereQueryBuilder } from "../model_query_builder/where_query_builder";
 import type { Model } from "../models/model";
 import { ModelKey } from "../models/model_manager/model_manager_types";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
@@ -14,9 +12,12 @@ import { BinaryOperatorType } from "../resources/query/WHERE";
 import { SqlDataSource } from "../sql_data_source";
 import type { SqlDataSourceType } from "../sql_data_source_types";
 import { execSql, getSqlDialect } from "../sql_runner/sql_runner";
+import { CteBuilder } from "./cte/cte_builder";
+import { WithClauseType } from "./cte/cte_types";
+import { SoftDeleteOptions } from "./delete_query_builder_type";
 import { QueryBuilderWithOnlyWhereConditions } from "./query_builder_types";
-import { WithClauseType } from "./cte_types";
-import { CteBuilder } from "./cte_builder";
+import { WhereQueryBuilder } from "./where_query_builder";
+import { baseSoftDeleteDate } from "../../utils/date_utils";
 
 export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
   protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
@@ -387,14 +388,12 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
   /**
    * @description Soft deletes records from a table
    * @default column - 'deletedAt'
-   * @default value - The current date and time.
+   * @default value - The current date and time in UTC timezone in the format "YYYY-MM-DD HH:mm:ss"
    * @returns the number of affected rows
    */
   async softDelete(options: SoftDeleteOptions<T> = {}): Promise<number> {
-    const {
-      column = "deletedAt",
-      value = new Date().toISOString().slice(0, 19).replace("T", " "),
-    } = options || {};
+    const { column = "deletedAt", value = baseSoftDeleteDate() } =
+      options || {};
 
     let { query, params } = this.updateTemplate.massiveUpdate(
       [column as string],

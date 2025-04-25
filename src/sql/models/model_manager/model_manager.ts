@@ -5,7 +5,9 @@ import { parseDatabaseDataIntoModelResponse } from "../../serializer";
 import { SqlDataSource } from "../../sql_data_source";
 import { SqlDataSourceType } from "../../sql_data_source_types";
 import { execSql } from "../../sql_runner/sql_runner";
-import { Model, getBaseModelInstance } from "../model";
+import { Model } from "../model";
+import { getModelColumns } from "../model_decorators";
+import { getBaseModelInstance } from "../model_utils";
 import {
   FindOneType,
   FindType,
@@ -172,6 +174,8 @@ export class ModelManager<T extends Model> {
    */
   async insert(model: Partial<T>): Promise<T> {
     await this.model.beforeInsert(model as T);
+    await this.sqlModelManagerUtils.handlePrepare(this.model, model as T);
+
     const { query, params } = this.sqlModelManagerUtils.parseInsert(
       model as T,
       this.model,
@@ -211,7 +215,10 @@ export class ModelManager<T extends Model> {
    */
   async insertMany(models: Partial<T>[]): Promise<T[]> {
     await Promise.all(
-      models.map((model) => this.model.beforeInsert(model as T)),
+      models.map((model) => {
+        this.model.beforeInsert(model as T);
+        this.sqlModelManagerUtils.handlePrepare(this.model, model as T);
+      }),
     );
 
     const { query, params } = this.sqlModelManagerUtils.parseMassiveInsert(
@@ -253,6 +260,11 @@ export class ModelManager<T extends Model> {
    * @description Can only be used if the model has a primary key, use a massive update if the model has no primary key
    */
   async updateRecord(model: T): Promise<T> {
+    await this.sqlModelManagerUtils.handlePrepare(
+      this.model,
+      model as T,
+      "update",
+    );
     const { primaryKey } = this.model;
     if (!primaryKey) {
       throw new HysteriaError(

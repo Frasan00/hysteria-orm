@@ -1,10 +1,6 @@
-import crypto from "node:crypto";
 import { ModelQueryBuilder } from "../../../../src/sql/model_query_builder/model_query_builder";
 import { Model } from "../../../../src/sql/models/model";
-import {
-  column,
-  dateColumn,
-} from "../../../../src/sql/models/model_decorators";
+import { column } from "../../../../src/sql/models/model_decorators";
 
 export enum UserStatus {
   active = "active",
@@ -14,7 +10,7 @@ export enum UserStatus {
 export class UserWithUuid extends Model {
   static _table = "users_with_uuid";
 
-  @column({
+  @column.uuid({
     primaryKey: true,
   })
   declare id: string;
@@ -54,32 +50,23 @@ export class UserWithUuid extends Model {
   @column()
   declare shortDescription: string;
 
-  @column({
-    prepare: (value: boolean) => Boolean(value),
-    serialize: (value: boolean) => Boolean(value),
-  })
+  @column.boolean()
   declare isActive: boolean;
 
-  @column()
+  @column.json()
   declare json: Record<string, any> | null;
 
-  @dateColumn({})
+  @column.date()
   declare birthDate: Date;
 
-  @dateColumn({ autoCreate: true })
+  @column.date({ autoCreate: true })
   declare createdAt: Date;
 
-  @dateColumn({ autoCreate: true, autoUpdate: true })
+  @column.date({ autoCreate: true, autoUpdate: true })
   declare updatedAt: Date;
 
-  @dateColumn()
+  @column.date()
   declare deletedAt: Date | null;
-
-  static async beforeInsert(data: UserWithUuid): Promise<void> {
-    data.id = crypto.randomUUID();
-    data.createdAt = new Date();
-    data.updatedAt = new Date();
-  }
 
   static beforeUpdate(queryBuilder: ModelQueryBuilder<UserWithUuid>): void {
     queryBuilder.whereNull("users_with_uuid.deleted_at");

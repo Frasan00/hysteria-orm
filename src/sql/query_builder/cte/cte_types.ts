@@ -1,5 +1,5 @@
-import { Model } from "../models/model";
-import { QueryBuilder } from "./query_builder";
+import { Model } from "../../models/model";
+import { QueryBuilder } from "../query_builder";
 
 export type CteCallback<T extends Model> = (
   queryBuilder: QueryBuilder<T>,

@@ -1,9 +1,6 @@
 import { ModelQueryBuilder } from "../../../../src/sql/model_query_builder/model_query_builder";
 import { Model } from "../../../../src/sql/models/model";
-import {
-  column,
-  dateColumn,
-} from "../../../../src/sql/models/model_decorators";
+import { column } from "../../../../src/sql/models/model_decorators";
 
 export enum UserStatus {
   active = "active",
@@ -61,25 +58,30 @@ export class UserWithBigint extends Model {
   @column()
   declare shortDescription: string;
 
-  @column({
-    prepare: (value: boolean) => Boolean(value),
-    serialize: (value: boolean) => Boolean(value),
-  })
+  @column.boolean()
   declare isActive: boolean;
 
-  @column()
+  @column.json()
   declare json: Record<string, any> | null;
 
-  @dateColumn()
+  @column.date({
+    autoCreate: true,
+  })
   declare birthDate: Date;
 
-  @dateColumn()
+  @column.date({
+    autoCreate: true,
+    autoUpdate: true,
+  })
   declare createdAt: Date;
 
-  @dateColumn()
+  @column.date({
+    autoCreate: true,
+    autoUpdate: true,
+  })
   declare updatedAt: Date;
 
-  @dateColumn()
+  @column.date()
   declare deletedAt: Date | null;
 
   static async beforeInsert(data: any): Promise<void> {

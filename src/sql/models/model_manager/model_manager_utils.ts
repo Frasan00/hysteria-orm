@@ -1,5 +1,4 @@
 import { HysteriaError } from "../../../errors/hysteria_error";
-import { log } from "../../../utils/logger";
 import { RelationQueryBuilder } from "../../model_query_builder/model_query_builder_types";
 import deleteTemplate from "../../resources/query/DELETE";
 import insertTemplate from "../../resources/query/INSERT";
@@ -9,7 +8,7 @@ import { SqlDataSource } from "../../sql_data_source";
 import { SqlDataSourceType } from "../../sql_data_source_types";
 import { execSql } from "../../sql_runner/sql_runner";
 import { Model } from "../model";
-import { getRelations } from "../model_decorators";
+import { getModelColumns, getRelations } from "../model_decorators";
 import { Relation } from "../relations/relation";
 
 export default class SqlModelManagerUtils<T extends Model> {
@@ -192,5 +191,60 @@ export default class SqlModelManagerUtils<T extends Model> {
     );
 
     return resultArray;
+  }
+
+  /**
+   * @description Prepares a model for insertion executing the prepare function of each column
+   * @internal
+   */
+  async handlePrepare(
+    typeofModel: typeof Model,
+    model: T,
+    mode: "insert" | "update" = "insert",
+  ) {
+    const modelColumns = getModelColumns(typeofModel);
+    if (mode === "insert") {
+      const modelColumnsWithPrepare = modelColumns.filter(
+        (modelColumn) => modelColumn.prepare,
+      );
+
+      await Promise.all(
+        // We only add columns that have a prepare function for the insert mode
+        modelColumnsWithPrepare.map(async (modelColumn) => {
+          model[modelColumn.columnName as keyof T] =
+            await modelColumn.prepare?.(
+              model[modelColumn.columnName as keyof T],
+            );
+        }),
+      );
+    }
+
+    const autoUpdatedColumns = modelColumns.filter(
+      (modelColumn) => modelColumn.autoUpdate,
+    );
+
+    const autoUpdatedColumnsMap = new Map(
+      autoUpdatedColumns.map((modelColumn) => [
+        modelColumn.columnName,
+        modelColumn,
+      ]),
+    );
+
+    const modelPayloadColumns = Object.keys(model);
+    await Promise.all(
+      // If the column is in the autoUpdatedColumnsMap, we set the value to null and apply the prepare function, else we just apply the prepare function only if provided, the whole process is skipped if the column is not in the autoUpdatedColumnsMap and not provided in the model payload
+      modelPayloadColumns.map(async (modelKey) => {
+        if (autoUpdatedColumnsMap.has(modelKey)) {
+          model[modelKey as keyof T] ||= null as any; // If provided we use the value from the model payload, else we set it to null and then fetch it to the prepare function
+        }
+
+        const isAutoUpdatedColumn = autoUpdatedColumnsMap.has(modelKey);
+        model[modelKey as keyof T] = await (isAutoUpdatedColumn
+          ? autoUpdatedColumnsMap
+              .get(modelKey)
+              ?.prepare?.(model[modelKey as keyof T])
+          : model[modelKey as keyof T]);
+      }),
+    );
   }
 }

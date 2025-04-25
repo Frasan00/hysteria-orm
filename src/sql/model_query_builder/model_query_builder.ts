@@ -1,7 +1,8 @@
 import { HysteriaError } from "../../errors/hysteria_error";
 import { convertCase } from "../../utils/case_utils";
 import { convertPlaceHolderToValue } from "../../utils/placeholder";
-import { getBaseModelInstance, Model } from "../models/model";
+import { getBaseModelInstance } from "../models/model_utils";
+import { Model } from "../models/model";
 import { getModelColumns } from "../models/model_decorators";
 import type {
   ModelKey,
@@ -9,10 +10,14 @@ import type {
 } from "../models/model_manager/model_manager_types";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
 import { getPaginationMetadata, PaginatedData } from "../pagination";
+import {
+  DeleteOptions,
+  SoftDeleteOptions,
+} from "../query_builder/delete_query_builder_type";
 import { QueryBuilder } from "../query_builder/query_builder";
+import type { UpdateOptions } from "../query_builder/update_query_builder_types";
 import { parseDatabaseDataIntoModelResponse } from "../serializer";
 import { SqlDataSource } from "../sql_data_source";
-import { DeleteOptions, SoftDeleteOptions } from "./delete_query_builder_type";
 import type {
   FetchHooks,
   ManyOptions,
@@ -20,7 +25,6 @@ import type {
   OneOptions,
   RelationQueryBuilder,
 } from "./model_query_builder_types";
-import type { UpdateOptions } from "./update_query_builder_types";
 
 export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
   protected sqlModelManagerUtils: SqlModelManagerUtils<T>;

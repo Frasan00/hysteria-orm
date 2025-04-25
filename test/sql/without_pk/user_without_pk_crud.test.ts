@@ -411,6 +411,7 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
     });
 
     const allUsers = await UserWithoutPk.find();
+    console.log(allUsers);
     expect(allUsers).toHaveLength(1);
     expect(allUsers[0].name).toBe("John Doe");
     expect(allUsers[0].updatedAt).not.toBe(allUsers[0].createdAt);

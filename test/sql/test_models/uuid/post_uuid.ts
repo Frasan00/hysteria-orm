@@ -1,11 +1,7 @@
-import { Model } from "../../../../src/sql/models/model";
-import {
-  belongsTo,
-  column,
-  dateColumn,
-} from "../../../../src/sql/models/model_decorators";
-import { UserWithUuid } from "./user_uuid";
 import crypto from "node:crypto";
+import { Model } from "../../../../src/sql/models/model";
+import { belongsTo, column } from "../../../../src/sql/models/model_decorators";
+import { UserWithUuid } from "./user_uuid";
 
 export class PostWithUuid extends Model {
   static _table = "posts_with_uuid";
@@ -27,13 +23,18 @@ export class PostWithUuid extends Model {
   @column()
   declare shortDescription: string;
 
-  @dateColumn()
+  @column.date({
+    autoCreate: true,
+  })
   declare createdAt: Date;
 
-  @dateColumn()
+  @column.date({
+    autoCreate: true,
+    autoUpdate: true,
+  })
   declare updatedAt: Date;
 
-  @dateColumn()
+  @column.date()
   declare deletedAt: Date | null;
 
   @belongsTo(() => UserWithUuid, "userId")

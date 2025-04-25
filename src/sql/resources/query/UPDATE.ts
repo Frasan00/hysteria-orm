@@ -13,8 +13,9 @@ const getPlaceholder = (
   switch (dbType) {
     case "mysql":
     case "mariadb":
-      if (Buffer.isBuffer(value)) return "BINARY(?)";
-      if (value instanceof Date) return "?";
+      if (Buffer.isBuffer(value)) {
+        return "BINARY(?)";
+      }
       return "?";
     case "sqlite":
       return "?";
@@ -32,9 +33,7 @@ const getPlaceholder = (
               ? "boolean"
               : typeof value === "bigint"
                 ? "bigint"
-                : value instanceof Date
-                  ? "timestamp with time zone"
-                  : "";
+                : "";
       return typeCast ? `$${index + 1}::${typeCast}` : `$${index + 1}`;
     default:
       throw new HysteriaError(
@@ -80,7 +79,6 @@ const updateTemplate = (
       for (let i = 0; i < values.length; i++) {
         const column = columns[i];
         const modelColumn = modelColumnsMap.get(column);
-
         if (modelColumn && modelColumn.prepare) {
           values[i] = modelColumn.prepare(values[i]);
         }

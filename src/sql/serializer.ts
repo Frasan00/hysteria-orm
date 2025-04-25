@@ -109,7 +109,7 @@ async function serializeModel<T extends Record<string, any>>(
 
       const modelColumn = columns.find((column) => column.columnName === key);
       if (modelColumn && modelColumn.serialize) {
-        casedModel[camelCaseKey] = modelColumn.serialize(originalValue);
+        casedModel[camelCaseKey] = await modelColumn.serialize(originalValue);
         return;
       }
 

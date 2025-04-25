@@ -30,8 +30,6 @@ const getPostgresTypeCast = (value: BaseValues): string => {
       return "boolean";
     case typeof value === "bigint":
       return "bigint";
-    case value instanceof Date:
-      return "timestamp";
     default:
       return "";
   }
@@ -68,9 +66,9 @@ const insertTemplate = (
       for (let i = 0; i < values.length; i++) {
         const column = columns[i];
         const modelColumn = modelColumnsMap.get(column);
-
         if (modelColumn && modelColumn.prepare) {
-          values[i] = modelColumn.prepare(values[i]);
+          const preparedValue = modelColumn.prepare(values[i]);
+          values[i] = preparedValue;
         }
       }
 
@@ -133,9 +131,6 @@ VALUES (${placeholders}) RETURNING ${returning ? returning.join(", ") : "*"};`;
       values: BaseValues[][],
       returning?: string[],
     ) => {
-      columns = columns.map((column) =>
-        convertCase(column, typeofModel.databaseCaseConvention),
-      );
       let valueSets: string[];
       let params: BaseValues[] = [];
 
@@ -151,11 +146,15 @@ VALUES (${placeholders}) RETURNING ${returning ? returning.join(", ") : "*"};`;
           const column = columns[j];
           const modelColumn = modelColumnsMap.get(column);
           if (modelColumn && modelColumn.prepare) {
-            values[i][j] = modelColumn.prepare(values[i][j]);
+            const preparedValue = modelColumn.prepare(values[i][j]);
+            values[i][j] = preparedValue;
           }
         }
       }
 
+      columns = columns.map((column) =>
+        convertCase(column, typeofModel.databaseCaseConvention),
+      );
       switch (dbType) {
         case "mysql":
         case "mariadb":

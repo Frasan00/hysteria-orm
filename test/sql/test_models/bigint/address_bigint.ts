@@ -1,8 +1,5 @@
 import { Model } from "../../../../src/sql/models/model";
-import {
-  column,
-  dateColumn,
-} from "../../../../src/sql/models/model_decorators";
+import { column } from "../../../../src/sql/models/model_decorators";
 export class AddressWithBigint extends Model {
   static _table = "address_with_bigint";
 
@@ -26,12 +23,17 @@ export class AddressWithBigint extends Model {
   @column()
   declare country: string;
 
-  @dateColumn()
+  @column.date({
+    autoCreate: true,
+  })
   declare createdAt: Date;
 
-  @dateColumn()
+  @column.date({
+    autoCreate: true,
+    autoUpdate: true,
+  })
   declare updatedAt: Date;
 
-  @dateColumn()
+  @column.date()
   declare deletedAt: Date | null;
 }

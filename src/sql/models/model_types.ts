@@ -1,0 +1,13 @@
+import { SqlDataSource } from "../sql_data_source";
+import { Transaction } from "../transactions/transaction";
+import { Model } from "./model";
+
+export type ModelWithoutExtraColumns<T extends Model> = Omit<
+  Partial<T>,
+  "$additional"
+>;
+
+export type BaseModelMethodOptions = {
+  useConnection?: SqlDataSource;
+  trx?: Transaction;
+};

@@ -20,7 +20,6 @@ import { Model } from "./sql/models/model";
 import {
   belongsTo,
   column,
-  dateColumn,
   getModelColumns,
   getPrimaryKey,
   getRelations,
@@ -43,7 +42,6 @@ export {
   Collection,
   column,
   property,
-  dateColumn,
   hasMany,
   hasOne,
   manyToMany,
@@ -89,7 +87,6 @@ export default {
   Collection,
   column,
   property,
-  dateColumn,
   hasMany,
   hasOne,
   manyToMany,

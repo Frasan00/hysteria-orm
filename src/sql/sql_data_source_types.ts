@@ -13,6 +13,7 @@ import {
   PgImport,
   Sqlite3Import,
 } from "../drivers/driver_constants";
+import { Timezone } from "../utils/date_utils";
 
 export type SqlDriverSpecificOptions = Omit<
   DriverSpecificOptions,
@@ -43,7 +44,7 @@ export type ConnectionPolicies = {
 
 type FixedTimeZone = `+${number}:${number}` | `-${number}:${number}`;
 type CountryTimezone = `${string}/${string}`;
-export type Timezone = "UTC" | "LOCAL" | FixedTimeZone | CountryTimezone;
+export type DatabaseTimezone = Timezone | FixedTimeZone | CountryTimezone;
 
 /**
  * @description The input type for the SqlDataSource constructor
@@ -58,7 +59,7 @@ export type SqlDataSourceInput = {
   /**
    * @description The timezone to use for the sql data source, default is "UTC"
    */
-  readonly timezone?: Timezone;
+  readonly timezone?: DatabaseTimezone;
   /**
    * @description The connection policies to use for the sql data source that are not configured in the driverOptions
    */
@@ -72,7 +73,7 @@ export type SqlDataSourceInput = {
 export type UseConnectionInput = {
   readonly type: Exclude<DataSourceType, "mongo">;
   readonly logs?: boolean;
-  readonly timezone?: Timezone;
+  readonly timezone?: DatabaseTimezone;
   readonly connectionPolicies?: ConnectionPolicies;
 } & (
   | NotNullableMysqlSqlDataSourceInput

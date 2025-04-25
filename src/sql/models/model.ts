@@ -1,6 +1,5 @@
 import "reflect-metadata";
 import type { ModelQueryBuilder } from "../model_query_builder/model_query_builder";
-import type { Transaction } from "../transactions/transaction";
 import type {
   FindOneType,
   FindType,
@@ -10,10 +9,12 @@ import type {
 } from "./model_manager/model_manager_types";
 import type { OneOptions } from "../model_query_builder/model_query_builder_types";
 import type { ModelManager } from "./model_manager/model_manager";
+import type {
+  BaseModelMethodOptions,
+  ModelWithoutExtraColumns,
+} from "./model_types";
 
-import plural from "pluralize";
 import { Entity } from "../../entity";
-import { convertCase } from "../../utils/case_utils";
 import { baseSoftDeleteDate } from "../../utils/date_utils";
 import { SqlDataSource } from "../sql_data_source";
 import {
@@ -26,26 +27,7 @@ import {
   manyToMany,
 } from "./model_decorators";
 import { HysteriaError } from "../../errors/hysteria_error";
-
-export type ModelWithoutExtraColumns<T extends Model> = Omit<
-  Partial<T>,
-  "$additional"
->;
-
-export type BaseModelMethodOptions = {
-  useConnection?: SqlDataSource;
-  trx?: Transaction;
-};
-
-export function getBaseTableName(target: typeof Model): string {
-  const className = target.name;
-  const snakeCaseName = convertCase(className, "snake");
-  return plural(snakeCaseName);
-}
-
-export function getBaseModelInstance<T extends Model>(): T {
-  return { $additional: {} } as T;
-}
+import { getBaseTableName } from "./model_utils";
 
 /**
  * @description Represents a Table in the Database
@@ -58,6 +40,7 @@ export abstract class Model extends Entity {
 
   /**
    * @description The value used to soft delete a record, default is the current date and time
+   * @default format: "YYYY-MM-DD HH:mm:ss" in UTC timezone
    */
   static softDeleteValue = baseSoftDeleteDate();
 
@@ -324,6 +307,8 @@ export abstract class Model extends Entity {
 
   /**
    * @description Updates or creates a new record
+   * @warning Model must have a primary key defined
+   * @throws {HysteriaError} If the model has no primary key
    */
   static async upsert<T extends Model>(
     this: new () => T | typeof Model,
@@ -355,6 +340,8 @@ export abstract class Model extends Entity {
 
   /**
    * @description Updates or creates multiple records
+   * @warning Model must have a primary key defined
+   * @throws {HysteriaError} If the model has no primary key
    */
   static async upsertMany<T extends Model>(
     this: new () => T | typeof Model,
@@ -420,20 +407,24 @@ export abstract class Model extends Entity {
 
   /**
    * @description Soft Deletes a record to the database
+   * @description default column: deletedAt
+   * @description default value: The current date and time in UTC timezone in the format "YYYY-MM-DD HH:mm:ss"
+   * @description You can override the column and value by providing the column and value on the static properties of the model `softDeleteColumn` and `softDeleteValue`
    */
   static async softDelete<T extends Model>(
     this: new () => T | typeof Model,
     modelSqlInstance: T,
-    options?: {
-      column?: string;
-      value?: string | number | boolean;
-    } & BaseModelMethodOptions,
+    softDeleteOptions?: {
+      column?: ModelKey<T>;
+      value?: string | number | boolean | Date;
+    },
+    options?: BaseModelMethodOptions,
   ): Promise<T> {
     const typeofModel = this as unknown as typeof Model;
     const {
       column = typeofModel.softDeleteColumn as ModelKey<T>,
       value = typeofModel.softDeleteValue,
-    } = options || {};
+    } = softDeleteOptions || {};
 
     modelSqlInstance[column as keyof T] = value as T[keyof T];
     const modelManager = typeofModel.dispatchModelManager<T>({

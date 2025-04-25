@@ -1,9 +1,5 @@
 import { Model } from "../../../../src/sql/models/model";
-import {
-  belongsTo,
-  column,
-  dateColumn,
-} from "../../../../src/sql/models/model_decorators";
+import { belongsTo, column } from "../../../../src/sql/models/model_decorators";
 import { UserWithBigint } from "./user_bigint";
 
 export class PostWithBigint extends Model {
@@ -26,13 +22,18 @@ export class PostWithBigint extends Model {
   @column()
   declare shortDescription: string;
 
-  @dateColumn()
+  @column.date({
+    autoCreate: true,
+  })
   declare createdAt: Date;
 
-  @dateColumn()
+  @column.date({
+    autoCreate: true,
+    autoUpdate: true,
+  })
   declare updatedAt: Date;
 
-  @dateColumn()
+  @column.date()
   declare deletedAt: Date | null;
 
   @belongsTo(() => UserWithBigint, "userId")

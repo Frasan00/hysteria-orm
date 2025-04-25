@@ -1,6 +1,12 @@
-import type { SqlDataSourceType, Timezone } from "../sql/sql_data_source_types";
+import type {
+  DatabaseTimezone,
+  SqlDataSourceType,
+} from "../sql/sql_data_source_types";
 
-export function parseTimeZone(sqlType: SqlDataSourceType, timezone: Timezone) {
+export function parseTimeZone(
+  sqlType: SqlDataSourceType,
+  timezone: DatabaseTimezone,
+) {
   if (sqlType === "postgres" || sqlType === "cockroachdb") {
     if (timezone === "LOCAL") {
       return "localtime";

@@ -5,6 +5,7 @@ import {
   getDate,
   parseDate,
 } from "../../utils/date_utils";
+import crypto from "node:crypto";
 import { Model } from "./model";
 import { BelongsTo } from "./relations/belongs_to";
 import { HasMany } from "./relations/has_many";
@@ -25,9 +26,25 @@ type LazyRelationType = {
 };
 
 type DateColumnOptions = {
+  /**
+   * @description The format to store dates in ('ISO' or 'TIMESTAMP')
+   * @default "ISO"
+   */
   format?: DateFormat;
+  /**
+   * @description The timezone to use ('UTC' or 'LOCAL')
+   * @default "UTC"
+   */
   timezone?: Timezone;
+  /**
+   * @description Whether to automatically update the timestamp on record updates, uses timezone and format from the dateColumn options
+   * @default false
+   */
   autoUpdate?: boolean;
+  /**
+   * @description Whether to automatically set the timestamp on record creation, uses timezone and format from the dateColumn options
+   * @default false
+   */
   autoCreate?: boolean;
 } & ColumnOptions;
 
@@ -36,10 +53,40 @@ type DateColumnOptions = {
  * @description Options for the column decorator
  */
 export interface ColumnOptions {
+  /**
+   * @description Whether the column is the primary key, composite primary keys are not supported
+   * @warning Only one primary key is allowed per model
+   * @throws {HysteriaError} if more than one primary key is defined
+   * @default false
+   */
   primaryKey?: boolean;
-  serialize?: (value: any) => void;
-  prepare?: (value: any) => void;
+  /**
+   * @description Called on the value returned from the database before it is returned from the model
+   */
+  serialize?: (value: any) => any | Promise<any>;
+  /**
+   * @description Called on the value before it is inserted or updated in the database
+   * @warning This will not be called on massive update operations since it's not possible to know which values are being updated, so you must pass the value you want to update in the payload
+   */
+  prepare?: (value: any) => any | Promise<any>;
+  /**
+   * @description Whether the column is returned in the serialization output
+   * @default false
+   */
   hidden?: boolean;
+  /**
+   * @description If true, the prepare function will always be called on update regardless of whether the value has been provided in the update payload
+   * @default false
+   */
+  autoUpdate?: boolean;
+}
+
+export interface ColumnType {
+  columnName: string;
+  serialize?: (value: any) => any | Promise<any>;
+  prepare?: (value: any) => any | Promise<any>;
+  hidden?: boolean;
+  autoUpdate?: boolean;
 }
 
 const COLUMN_METADATA_KEY = Symbol("columns");
@@ -54,8 +101,9 @@ export function column(
     primaryKey: false,
   },
 ): PropertyDecorator {
+  const isPrimaryKey = options?.primaryKey ?? false;
   return (target: Object, propertyKey: string | symbol) => {
-    if (options.primaryKey) {
+    if (isPrimaryKey) {
       const primaryKey = Reflect.getMetadata(PRIMARY_KEY_METADATA_KEY, target);
       if (primaryKey) {
         throw new HysteriaError(
@@ -63,14 +111,16 @@ export function column(
           "MULTIPLE_PRIMARY_KEYS_NOT_ALLOWED",
         );
       }
+
       Reflect.defineMetadata(PRIMARY_KEY_METADATA_KEY, propertyKey, target);
     }
 
-    const column = {
-      columnName: propertyKey,
+    const column: ColumnType = {
+      columnName: propertyKey as string,
       serialize: options.serialize,
       prepare: options.prepare,
       hidden: options.hidden,
+      autoUpdate: options.autoUpdate,
     };
 
     const existingColumns =
@@ -78,6 +128,40 @@ export function column(
     existingColumns.push(column);
     Reflect.defineMetadata(COLUMN_METADATA_KEY, existingColumns, target);
   };
+}
+
+column.date = dateColumn;
+column.boolean = booleanColumn;
+column.json = jsonColumn;
+column.uuid = uuidColumn;
+
+/**
+ * @description Decorator to define a uuid column in the model
+ * @description This will automatically generate a uuid if no value is provided
+ */
+function uuidColumn(options: ColumnOptions = {}): PropertyDecorator {
+  return column({
+    ...options,
+    prepare: (value) => {
+      if (!value) {
+        return crypto.randomUUID();
+      }
+
+      return value;
+    },
+  });
+}
+
+/**
+ * @description Decorator to define a boolean column in the model
+ * @description This will automatically convert the boolean to the correct format for the database, useful for mysql since it stores booleans as tinyint(1)
+ */
+function booleanColumn(options: ColumnOptions = {}): PropertyDecorator {
+  return column({
+    ...options,
+    serialize: (value) => Boolean(value),
+    prepare: (value) => Boolean(value),
+  });
 }
 
 /**
@@ -92,7 +176,7 @@ export function column(
  * @param options.autoUpdate Whether to automatically update the timestamp on record updates
  * @param options.autoCreate Whether to automatically set the timestamp on record creation
  */
-export function dateColumn(options: DateColumnOptions = {}): PropertyDecorator {
+function dateColumn(options: DateColumnOptions = {}): PropertyDecorator {
   const {
     format = "ISO",
     timezone = "UTC",
@@ -103,6 +187,7 @@ export function dateColumn(options: DateColumnOptions = {}): PropertyDecorator {
 
   return column({
     ...rest,
+    autoUpdate,
     prepare: (value: Date | string) => {
       if (!value) {
         if (autoCreate) {
@@ -127,8 +212,21 @@ export function dateColumn(options: DateColumnOptions = {}): PropertyDecorator {
         return null;
       }
 
-      return parseDate(value);
+      return value;
     },
+  });
+}
+
+/**
+ * @description Decorator to define a json column in the model
+ * @description This will automatically convert the json to the correct format for the database
+ * @throws json parse error if the value from the database is not valid json
+ */
+function jsonColumn(options: ColumnOptions = {}): PropertyDecorator {
+  return column({
+    ...options,
+    serialize: (value) => JSON.parse(value),
+    prepare: (value) => JSON.stringify(value),
   });
 }
 
@@ -137,6 +235,7 @@ export function getModelColumns(target: typeof Model): {
   serialize?: (value: any) => any;
   prepare?: (value: any) => any;
   hidden?: boolean;
+  autoUpdate?: boolean;
 }[] {
   return Reflect.getMetadata(COLUMN_METADATA_KEY, target.prototype) || [];
 }

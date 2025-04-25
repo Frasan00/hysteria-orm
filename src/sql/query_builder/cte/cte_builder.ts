@@ -1,8 +1,8 @@
-import { HysteriaError } from "../../errors/hysteria_error";
-import { Model } from "../models/model";
-import { SqlDataSource } from "../sql_data_source";
-import { CteCallback, CteMap, WithClauseType } from "./cte_types";
-import { QueryBuilder } from "./query_builder";
+import { HysteriaError } from "../../../errors/hysteria_error";
+import { Model } from "../../models/model";
+import { SqlDataSource } from "../../sql_data_source";
+import { CteCallback, CteMap, WithClauseType } from "../cte/cte_types";
+import { QueryBuilder } from "../query_builder";
 
 /**
  * @description A builder for CTEs
