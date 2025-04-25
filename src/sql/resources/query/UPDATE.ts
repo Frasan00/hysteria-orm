@@ -48,13 +48,10 @@ const updateTemplate = (
   typeofModel: typeof Model,
 ) => {
   const table = typeofModel.table;
-  let modelColumns: ReturnType<typeof getModelColumns> = [];
-
-  try {
-    modelColumns = getModelColumns(typeofModel);
-  } catch (error) {
-    modelColumns = [];
-  }
+  const modelColumns = getModelColumns(typeofModel);
+  const modelColumnsMap = new Map(
+    modelColumns.map((modelColumn) => [modelColumn.columnName, modelColumn]),
+  );
 
   return {
     update: (
@@ -84,8 +81,10 @@ const updateTemplate = (
         }
       }
 
-      columns = columns.map((column) =>
-        convertCase(column, typeofModel.databaseCaseConvention),
+      columns = columns.map(
+        (column) =>
+          modelColumnsMap.get(column)?.databaseName ??
+          convertCase(column, typeofModel.databaseCaseConvention),
       );
 
       let setClause: string;
@@ -141,8 +140,10 @@ WHERE ${primaryKey} = ${primaryKeyPlaceholder};`;
       whereClause: string,
       joinClause: string = "",
     ) => {
-      columns = columns.map((column) =>
-        convertCase(column, typeofModel.databaseCaseConvention),
+      columns = columns.map(
+        (column) =>
+          modelColumnsMap.get(column)?.databaseName ??
+          convertCase(column, typeofModel.databaseCaseConvention),
       );
 
       if (columns.includes("$additional")) {
@@ -150,13 +151,6 @@ WHERE ${primaryKey} = ${primaryKeyPlaceholder};`;
         columns.splice(columns.indexOf("$additional"), 1);
         values.splice($additionalColumnsIndex, 1);
       }
-
-      const modelColumnsMap = new Map(
-        modelColumns.map((modelColumn) => [
-          modelColumn.columnName,
-          modelColumn,
-        ]),
-      );
 
       for (let i = 0; i < values.length; i++) {
         const column = columns[i];

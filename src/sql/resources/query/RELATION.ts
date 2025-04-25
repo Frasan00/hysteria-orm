@@ -87,19 +87,30 @@ function relationTemplates<T extends Model>(
     | undefined;
   const extractedOffsetValue = offsetQuery.match(/\d+/)?.[0] || 0;
 
+  const modelColumns = getModelColumns(typeofModel);
+  const modelColumnsMap = new Map(
+    modelColumns.map((modelColumn) => [modelColumn.columnName, modelColumn]),
+  );
+
+  const mappedPrimaryKey =
+    modelColumnsMap.get(
+      convertCase(primaryKey, typeofModel.modelCaseConvention) || "",
+    )?.databaseName ??
+    convertCase(primaryKey, typeofModel.databaseCaseConvention);
+
+  const mappedForeignKey =
+    modelColumnsMap.get(
+      convertCase(foreignKey, typeofModel.modelCaseConvention) || "",
+    )?.databaseName ??
+    convertCase(foreignKey, typeofModel.databaseCaseConvention);
+
   const primaryKeyValues = models.map((model) => {
-    const value =
-      model[
-        convertCase(primaryKey, typeofModel.modelCaseConvention) as keyof T
-      ];
+    const value = model[mappedPrimaryKey as keyof T];
     return { value, type: parseValueType(value) };
   });
 
   const foreignKeyValues = models.map((model) => {
-    const value =
-      model[
-        convertCase(foreignKey, typeofModel.modelCaseConvention) as keyof T
-      ];
+    const value = model[mappedForeignKey as keyof T];
     return { value, type: parseValueType(value) };
   });
 
@@ -130,10 +141,7 @@ function relationTemplates<T extends Model>(
       }
 
       const query = `SELECT ${selectQuery}, '${relationName}' as relation_name FROM ${relatedModel}
-${joinQuery} WHERE ${relatedModel}.${convertCase(
-        foreignKey,
-        typeofModel.databaseCaseConvention,
-      )} IN (${primaryKeyValues
+${joinQuery} WHERE ${relatedModel}.${mappedForeignKey} IN (${primaryKeyValues
         .map(({ value, type }) => convertValueToSQL(value, type))
         .join(", ")}) ${whereQuery};
       `;
@@ -265,18 +273,21 @@ ${joinQuery}  WHERE ${relatedModel}.${primaryKey} IN (${foreignKeyValues
         (column) => column.columnName,
       );
 
+      const mappedRelatedModelPrimaryKey =
+        modelColumnsMap.get(
+          convertCase(
+            relatedModelPrimaryKey,
+            typeofModel.modelCaseConvention,
+          ) || "",
+        )?.databaseName ??
+        convertCase(relatedModelPrimaryKey, typeofModel.databaseCaseConvention);
+
       return {
         query: generateManyToManyQuery({
           dbType: dbType,
           relationName: relationName,
-          leftTablePrimaryColumn: convertCase(
-            primaryKey,
-            typeofModel.databaseCaseConvention,
-          ),
-          rightTablePrimaryColumn: convertCase(
-            relatedModelPrimaryKey,
-            typeofModel.databaseCaseConvention,
-          ),
+          leftTablePrimaryColumn: mappedPrimaryKey,
+          rightTablePrimaryColumn: mappedRelatedModelPrimaryKey,
           pivotLeftTableColumn: convertCase(
             throughModelPrimaryKey,
             typeofModel.databaseCaseConvention,
@@ -287,11 +298,15 @@ ${joinQuery}  WHERE ${relatedModel}.${primaryKey} IN (${foreignKeyValues
           ),
           selectedColumns: relationQuery.selectedColumns?.length
             ? relationQuery.selectedColumns
-            : relatedModelColumns.map((column) =>
-                convertCase(column, typeofModel.databaseCaseConvention),
+            : relatedModelColumns.map(
+                (column) =>
+                  modelColumnsMap.get(column)?.databaseName ??
+                  convertCase(column, typeofModel.databaseCaseConvention),
               ),
-          relatedModelColumns: relatedModelColumns.map((column) =>
-            convertCase(column, typeofModel.databaseCaseConvention),
+          relatedModelColumns: relatedModelColumns.map(
+            (column) =>
+              modelColumnsMap.get(column)?.databaseName ??
+              convertCase(column, typeofModel.databaseCaseConvention),
           ),
           leftTable: typeofModel.table,
           rightTable: relatedModelTable,

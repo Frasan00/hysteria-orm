@@ -1,6 +1,7 @@
 import { HysteriaError } from "../../../errors/hysteria_error";
 import { convertCase } from "../../../utils/case_utils";
 import { Model } from "../../models/model";
+import { getModelColumns } from "../../models/model_decorators";
 import { SqlDataSourceType } from "../../sql_data_source_types";
 
 export type BinaryOperatorType =
@@ -26,16 +27,18 @@ const whereTemplate = (
   dbType: SqlDataSourceType,
   typeofModel: typeof Model,
 ) => {
+  const modelColumns = getModelColumns(typeofModel);
+  const modelColumnsMap = new Map(
+    modelColumns.map((modelColumn) => [modelColumn.columnName, modelColumn]),
+  );
+
   return {
     where: (
       column: string,
       value: BaseValues,
       operator: BinaryOperatorType = "=",
     ) => {
-      let query = `\nWHERE ${convertCase(
-        column,
-        typeofModel.databaseCaseConvention,
-      )} ${operator} PLACEHOLDER`;
+      let query = `\nWHERE ${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)} ${operator} PLACEHOLDER`;
       let params = [value];
 
       if (typeof value === "object" && value !== null) {
@@ -43,12 +46,12 @@ const whereTemplate = (
           case "mariadb":
           case "mysql":
           case "sqlite":
-            query = `\nWHERE JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) ${operator} PLACEHOLDER`;
+            query = `\nWHERE JSON_UNQUOTE(JSON_EXTRACT(${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)}, '$')) ${operator} PLACEHOLDER`;
             params = [value];
             break;
           case "postgres":
           case "cockroachdb":
-            query = `\nWHERE ${column}::jsonb ${operator} PLACEHOLDER::jsonb`;
+            query = `\nWHERE ${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)}::jsonb ${operator} PLACEHOLDER::jsonb`;
             break;
           default:
             throw new HysteriaError(
@@ -68,10 +71,7 @@ const whereTemplate = (
       value: BaseValues,
       operator: BinaryOperatorType = "=",
     ) => {
-      let query = ` AND ${convertCase(
-        column,
-        typeofModel.databaseCaseConvention,
-      )} ${operator} PLACEHOLDER`;
+      let query = ` AND ${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)} ${operator} PLACEHOLDER`;
       let params = [value];
 
       if (typeof value === "object" && value !== null) {
@@ -79,11 +79,11 @@ const whereTemplate = (
           case "mariadb":
           case "mysql":
           case "sqlite":
-            query = ` AND JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) ${operator} PLACEHOLDER`;
+            query = ` AND JSON_UNQUOTE(JSON_EXTRACT(${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)}, '$')) ${operator} PLACEHOLDER`;
             break;
           case "postgres":
           case "cockroachdb":
-            query = ` AND ${column}::jsonb ${operator} PLACEHOLDER::jsonb`;
+            query = ` AND ${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)}::jsonb ${operator} PLACEHOLDER::jsonb`;
             break;
           default:
             throw new HysteriaError(
@@ -103,10 +103,7 @@ const whereTemplate = (
       value: BaseValues,
       operator: BinaryOperatorType = "=",
     ) => {
-      let query = ` OR ${convertCase(
-        column,
-        typeofModel.databaseCaseConvention,
-      )} ${operator} PLACEHOLDER`;
+      let query = ` OR ${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)} ${operator} PLACEHOLDER`;
       let params = [value];
 
       if (typeof value === "object" && value !== null) {
@@ -114,7 +111,7 @@ const whereTemplate = (
           case "mariadb":
           case "mysql":
           case "sqlite":
-            query = ` OR JSON_UNQUOTE(JSON_EXTRACT(${column}, '$')) ${operator} PLACEHOLDER`;
+            query = ` OR JSON_UNQUOTE(JSON_EXTRACT(${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)}, '$')) ${operator} PLACEHOLDER`;
             break;
           case "postgres":
           case "cockroachdb":
@@ -134,10 +131,7 @@ const whereTemplate = (
       };
     },
     whereNot: (column: string, value: BaseValues) => {
-      let query = `\nWHERE ${convertCase(
-        column,
-        typeofModel.databaseCaseConvention,
-      )} != PLACEHOLDER`;
+      let query = `\nWHERE ${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)} != PLACEHOLDER`;
       let params = [value];
 
       if (typeof value === "object" && value !== null) {
@@ -165,10 +159,7 @@ const whereTemplate = (
       };
     },
     andWhereNot: (column: string, value: BaseValues) => {
-      let query = ` AND ${convertCase(
-        column,
-        typeofModel.databaseCaseConvention,
-      )} != PLACEHOLDER`;
+      let query = ` AND ${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)} != PLACEHOLDER`;
       let params = [value];
 
       if (typeof value === "object" && value !== null) {
@@ -196,10 +187,7 @@ const whereTemplate = (
       };
     },
     orWhereNot: (column: string, value: BaseValues) => {
-      let query = ` OR ${convertCase(
-        column,
-        typeofModel.databaseCaseConvention,
-      )} != PLACEHOLDER`;
+      let query = ` OR ${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)} != PLACEHOLDER`;
       let params = [value];
 
       if (typeof value === "object" && value !== null) {
@@ -227,10 +215,7 @@ const whereTemplate = (
       };
     },
     whereBetween: (column: string, min: BaseValues, max: BaseValues) => {
-      let query = `\nWHERE ${convertCase(
-        column,
-        typeofModel.databaseCaseConvention,
-      )} BETWEEN PLACEHOLDER AND PLACEHOLDER`;
+      let query = `\nWHERE ${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)} BETWEEN PLACEHOLDER AND PLACEHOLDER`;
       let params = [min, max];
 
       if (typeof min === "object" && min !== null) {
@@ -258,10 +243,7 @@ const whereTemplate = (
       };
     },
     andWhereBetween: (column: string, min: BaseValues, max: BaseValues) => {
-      let query = ` AND ${convertCase(
-        column,
-        typeofModel.databaseCaseConvention,
-      )} BETWEEN PLACEHOLDER AND PLACEHOLDER`;
+      let query = ` AND ${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)} BETWEEN PLACEHOLDER AND PLACEHOLDER`;
       let params = [min, max];
 
       if (typeof min === "object" && min !== null) {
@@ -289,10 +271,7 @@ const whereTemplate = (
       };
     },
     orWhereBetween: (column: string, min: BaseValues, max: BaseValues) => {
-      let query = ` OR ${convertCase(
-        column,
-        typeofModel.databaseCaseConvention,
-      )} BETWEEN PLACEHOLDER AND PLACEHOLDER`;
+      let query = ` OR ${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)} BETWEEN PLACEHOLDER AND PLACEHOLDER`;
       let params = [min, max];
 
       if (typeof min === "object" && min !== null) {
@@ -320,10 +299,7 @@ const whereTemplate = (
       };
     },
     whereNotBetween: (column: string, min: BaseValues, max: BaseValues) => {
-      let query = `\nWHERE ${convertCase(
-        column,
-        typeofModel.databaseCaseConvention,
-      )} NOT BETWEEN PLACEHOLDER AND PLACEHOLDER`;
+      let query = `\nWHERE ${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)} NOT BETWEEN PLACEHOLDER AND PLACEHOLDER`;
       let params = [min, max];
 
       if (typeof min === "object" && min !== null) {
@@ -351,10 +327,7 @@ const whereTemplate = (
       };
     },
     andWhereNotBetween: (column: string, min: BaseValues, max: BaseValues) => {
-      let query = ` AND ${convertCase(
-        column,
-        typeofModel.databaseCaseConvention,
-      )} NOT BETWEEN PLACEHOLDER AND PLACEHOLDER`;
+      let query = ` AND ${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)} NOT BETWEEN PLACEHOLDER AND PLACEHOLDER`;
       let params = [min, max];
 
       if (typeof min === "object" && min !== null) {
@@ -382,10 +355,7 @@ const whereTemplate = (
       };
     },
     orWhereNotBetween: (column: string, min: BaseValues, max: BaseValues) => {
-      let query = ` OR ${convertCase(
-        column,
-        typeofModel.databaseCaseConvention,
-      )} NOT BETWEEN PLACEHOLDER AND PLACEHOLDER`;
+      let query = ` OR ${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)} NOT BETWEEN PLACEHOLDER AND PLACEHOLDER`;
       let params = [min, max];
 
       if (typeof min === "object" && min !== null) {
@@ -413,10 +383,7 @@ const whereTemplate = (
       };
     },
     whereIn: (column: string, values: BaseValues[]) => {
-      let query = `\nWHERE ${convertCase(
-        column,
-        typeofModel.databaseCaseConvention,
-      )} IN (${values.map((_) => "PLACEHOLDER").join(", ")})`;
+      let query = `\nWHERE ${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)} IN (${values.map((_) => "PLACEHOLDER").join(", ")})`;
       let params = values;
 
       if (values[0] && typeof values[0] === "object") {
@@ -430,10 +397,7 @@ const whereTemplate = (
             break;
           case "postgres":
           case "cockroachdb":
-            query = `\nWHERE ${convertCase(
-              column,
-              typeofModel.databaseCaseConvention,
-            )}::jsonb IN (${values.map((_) => "PLACEHOLDER").join(", ")})`;
+            query = `\nWHERE ${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)}::jsonb IN (${values.map((_) => "PLACEHOLDER").join(", ")})`;
             break;
           default:
             throw new HysteriaError(
@@ -449,10 +413,7 @@ const whereTemplate = (
       };
     },
     andWhereIn: (column: string, values: BaseValues[]) => {
-      let query = ` AND ${convertCase(
-        column,
-        typeofModel.databaseCaseConvention,
-      )} IN (${values.map((_) => "PLACEHOLDER").join(", ")})`;
+      let query = ` AND ${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)} IN (${values.map((_) => "PLACEHOLDER").join(", ")})`;
       let params = values;
 
       if (values[0] && typeof values[0] === "object") {
@@ -466,10 +427,7 @@ const whereTemplate = (
             break;
           case "postgres":
           case "cockroachdb":
-            query = ` AND ${convertCase(
-              column,
-              typeofModel.databaseCaseConvention,
-            )}::jsonb IN (${values.map((_) => "PLACEHOLDER").join(", ")})`;
+            query = ` AND ${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)}::jsonb IN (${values.map((_) => "PLACEHOLDER").join(", ")})`;
             break;
           default:
             throw new HysteriaError(
@@ -485,10 +443,7 @@ const whereTemplate = (
       };
     },
     orWhereIn: (column: string, values: BaseValues[]) => {
-      let query = ` OR ${convertCase(
-        column,
-        typeofModel.databaseCaseConvention,
-      )} IN (${values.map((_) => "PLACEHOLDER").join(", ")})`;
+      let query = ` OR ${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)} IN (${values.map((_) => "PLACEHOLDER").join(", ")})`;
       let params = values;
 
       if (values[0] && typeof values[0] === "object") {
@@ -502,10 +457,7 @@ const whereTemplate = (
             break;
           case "postgres":
           case "cockroachdb":
-            query = ` OR ${convertCase(
-              column,
-              typeofModel.databaseCaseConvention,
-            )}::jsonb IN (${values.map((_) => "PLACEHOLDER").join(", ")})`;
+            query = ` OR ${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)}::jsonb IN (${values.map((_) => "PLACEHOLDER").join(", ")})`;
             break;
           default:
             throw new HysteriaError(
@@ -521,10 +473,7 @@ const whereTemplate = (
       };
     },
     whereNotIn: (column: string, values: BaseValues[]) => {
-      let query = `\nWHERE ${convertCase(
-        column,
-        typeofModel.databaseCaseConvention,
-      )} NOT IN (${values.map((_) => "PLACEHOLDER").join(", ")})`;
+      let query = `\nWHERE ${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)} NOT IN (${values.map((_) => "PLACEHOLDER").join(", ")})`;
       let params = values;
 
       if (values[0] && typeof values[0] === "object") {
@@ -538,10 +487,7 @@ const whereTemplate = (
             break;
           case "postgres":
           case "cockroachdb":
-            query = `\nWHERE ${convertCase(
-              column,
-              typeofModel.databaseCaseConvention,
-            )}::jsonb NOT IN (${values.map((_) => "PLACEHOLDER").join(", ")})`;
+            query = `\nWHERE ${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)}::jsonb NOT IN (${values.map((_) => "PLACEHOLDER").join(", ")})`;
             break;
           default:
             throw new HysteriaError(
@@ -557,10 +503,7 @@ const whereTemplate = (
       };
     },
     andWhereNotIn: (column: string, values: BaseValues[]) => {
-      let query = ` AND ${convertCase(
-        column,
-        typeofModel.databaseCaseConvention,
-      )} NOT IN (${values.map((_) => "PLACEHOLDER").join(", ")})`;
+      let query = ` AND ${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)} NOT IN (${values.map((_) => "PLACEHOLDER").join(", ")})`;
       let params = values;
 
       if (values[0] && typeof values[0] === "object") {
@@ -574,10 +517,7 @@ const whereTemplate = (
             break;
           case "postgres":
           case "cockroachdb":
-            query = ` AND ${convertCase(
-              column,
-              typeofModel.databaseCaseConvention,
-            )}::jsonb NOT IN (${values.map((_) => "PLACEHOLDER").join(", ")})`;
+            query = ` AND ${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)}::jsonb NOT IN (${values.map((_) => "PLACEHOLDER").join(", ")})`;
             break;
           default:
             throw new HysteriaError(
@@ -593,10 +533,7 @@ const whereTemplate = (
       };
     },
     orWhereNotIn: (column: string, values: BaseValues[]) => {
-      let query = ` OR ${convertCase(
-        column,
-        typeofModel.databaseCaseConvention,
-      )} NOT IN (${values.map((_) => "PLACEHOLDER").join(", ")})`;
+      let query = ` OR ${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)} NOT IN (${values.map((_) => "PLACEHOLDER").join(", ")})`;
       let params = values;
 
       if (values[0] && typeof values[0] === "object") {
@@ -610,10 +547,7 @@ const whereTemplate = (
             break;
           case "postgres":
           case "cockroachdb":
-            query = ` OR ${convertCase(
-              column,
-              typeofModel.databaseCaseConvention,
-            )}::jsonb NOT IN (${values.map((_) => "PLACEHOLDER").join(", ")})`;
+            query = ` OR ${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)}::jsonb NOT IN (${values.map((_) => "PLACEHOLDER").join(", ")})`;
             break;
           default:
             throw new HysteriaError(
@@ -629,45 +563,27 @@ const whereTemplate = (
       };
     },
     whereNull: (column: string) => ({
-      query: `\nWHERE ${convertCase(
-        column,
-        typeofModel.databaseCaseConvention,
-      )} IS NULL`,
+      query: `\nWHERE ${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)} IS NULL`,
       params: [],
     }),
     andWhereNull: (column: string) => ({
-      query: ` AND ${convertCase(
-        column,
-        typeofModel.databaseCaseConvention,
-      )} IS NULL`,
+      query: ` AND ${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)} IS NULL`,
       params: [],
     }),
     orWhereNull: (column: string) => ({
-      query: ` OR ${convertCase(
-        column,
-        typeofModel.databaseCaseConvention,
-      )} IS NULL`,
+      query: ` OR ${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)} IS NULL`,
       params: [],
     }),
     whereNotNull: (column: string) => ({
-      query: `\nWHERE ${convertCase(
-        column,
-        typeofModel.databaseCaseConvention,
-      )} IS NOT NULL`,
+      query: `\nWHERE ${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)} IS NOT NULL`,
       params: [],
     }),
     andWhereNotNull: (column: string) => ({
-      query: ` AND ${convertCase(
-        column,
-        typeofModel.databaseCaseConvention,
-      )} IS NOT NULL`,
+      query: ` AND ${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)} IS NOT NULL`,
       params: [],
     }),
     orWhereNotNull: (column: string) => ({
-      query: ` OR ${convertCase(
-        column,
-        typeofModel.databaseCaseConvention,
-      )} IS NOT NULL`,
+      query: ` OR ${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)} IS NOT NULL`,
       params: [],
     }),
     rawWhere: (
@@ -735,19 +651,13 @@ const whereTemplate = (
         case "postgres":
         case "cockroachdb":
           return {
-            query: `\nWHERE ${convertCase(
-              column,
-              typeofModel.databaseCaseConvention,
-            )} ~ PLACEHOLDER`,
+            query: `\nWHERE ${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)} ~ PLACEHOLDER`,
             params: [regex.source],
           };
         case "mysql":
         case "mariadb":
           return {
-            query: `\nWHERE ${convertCase(
-              column,
-              typeofModel.databaseCaseConvention,
-            )} REGEXP PLACEHOLDER`,
+            query: `\nWHERE ${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)} REGEXP PLACEHOLDER`,
             params: [regex.source],
           };
         case "sqlite":
@@ -767,19 +677,13 @@ const whereTemplate = (
         case "postgres":
         case "cockroachdb":
           return {
-            query: ` AND ${convertCase(
-              column,
-              typeofModel.databaseCaseConvention,
-            )} ~ PLACEHOLDER`,
+            query: ` AND ${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)} ~ PLACEHOLDER`,
             params: [regex.source],
           };
         case "mysql":
         case "mariadb":
           return {
-            query: ` AND ${convertCase(
-              column,
-              typeofModel.databaseCaseConvention,
-            )} REGEXP PLACEHOLDER`,
+            query: ` AND ${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)} REGEXP PLACEHOLDER`,
             params: [regex.source],
           };
         case "sqlite":
@@ -799,19 +703,13 @@ const whereTemplate = (
         case "postgres":
         case "cockroachdb":
           return {
-            query: ` OR ${convertCase(
-              column,
-              typeofModel.databaseCaseConvention,
-            )} ~ PLACEHOLDER`,
+            query: ` OR ${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)} ~ PLACEHOLDER`,
             params: [regex.source],
           };
         case "mysql":
         case "mariadb":
           return {
-            query: ` OR ${convertCase(
-              column,
-              typeofModel.databaseCaseConvention,
-            )} REGEXP PLACEHOLDER`,
+            query: ` OR ${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)} REGEXP PLACEHOLDER`,
             params: [regex.source],
           };
         case "sqlite":

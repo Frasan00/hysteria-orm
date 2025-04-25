@@ -98,11 +98,12 @@ export class SqlDataSource extends DataSource {
     table: string,
     options?: {
       databaseCaseConvention?: CaseConvention;
+      modelCaseConvention?: CaseConvention;
     },
   ): QueryBuilder {
     return new QueryBuilder(
       {
-        modelCaseConvention: "camel",
+        modelCaseConvention: options?.modelCaseConvention || "none",
         databaseCaseConvention: options?.databaseCaseConvention || "snake",
         table: table,
       } as typeof Model,

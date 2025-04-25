@@ -2,7 +2,11 @@ import { HysteriaError } from "../errors/hysteria_error";
 import { convertCase } from "../utils/case_utils";
 import { isNestedObject } from "../utils/json_utils";
 import { Model } from "./models/model";
-import { getModelColumns, getRelations } from "./models/model_decorators";
+import {
+  ColumnType,
+  getModelColumns,
+  getRelations,
+} from "./models/model_decorators";
 import {
   isRelationDefinition,
   Relation,
@@ -19,6 +23,11 @@ export async function parseDatabaseDataIntoModelResponse<T extends Model>(
     return null;
   }
 
+  const modelColumns = getModelColumns(typeofModel);
+  const modelColumnsMap = new Map<string, ColumnType>(
+    modelColumns.map((modelColumn) => [modelColumn.databaseName, modelColumn]),
+  );
+
   const relations = getRelations(typeofModel);
   // At this point `modelSelectedColumns` are in database convention
   modelSelectedColumns = modelSelectedColumns
@@ -33,7 +42,10 @@ export async function parseDatabaseDataIntoModelResponse<T extends Model>(
         databaseColumn = databaseColumn.split(".").pop() as string;
       }
 
-      return convertCase(databaseColumn, typeofModel.modelCaseConvention);
+      return (
+        modelColumnsMap.get(databaseColumn)?.columnName ??
+        convertCase(databaseColumn, typeofModel.modelCaseConvention)
+      );
     })
     .filter((column) => column !== "*" && column)
     .filter(Boolean);
@@ -43,6 +55,7 @@ export async function parseDatabaseDataIntoModelResponse<T extends Model>(
       const serializedModel = await serializeModel(
         model,
         typeofModel,
+        modelColumnsMap,
         modelSelectedColumns,
       );
 
@@ -62,6 +75,7 @@ export async function parseDatabaseDataIntoModelResponse<T extends Model>(
 async function serializeModel<T extends Record<string, any>>(
   model: T,
   typeofModel: typeof Model,
+  modelColumnsMap: Map<string | undefined, ColumnType>,
   modelSelectedColumns: string[] = [],
 ): Promise<T> {
   const casedModel: Record<string, any> = {};
@@ -89,8 +103,10 @@ async function serializeModel<T extends Record<string, any>>(
 
       // Include null values
       if (originalValue === null) {
-        casedModel[convertCase(key, typeofModel.modelCaseConvention)] =
-          originalValue;
+        casedModel[
+          modelColumnsMap.get(key)?.columnName ??
+            convertCase(key, typeofModel.modelCaseConvention)
+        ] = originalValue;
         return;
       }
 
@@ -189,9 +205,15 @@ async function processRelations(
             return;
           }
 
+          const relationModelColumns = getModelColumns(relation.model);
+          const relationModelColumnsMap = new Map<string, ColumnType>(
+            relationModelColumns.map((column) => [column.databaseName, column]),
+          );
+
           serializedModel[relation.columnName] = await serializeModel(
             retrievedRelatedModel,
             relation.model,
+            relationModelColumnsMap,
           );
           break;
         }
@@ -216,9 +238,15 @@ async function processRelations(
             return;
           }
 
+          const relationModelColumns = getModelColumns(relation.model);
+          const relationModelColumnsMap = new Map<string, ColumnType>(
+            relationModelColumns.map((column) => [column.databaseName, column]),
+          );
+
           serializedModel[relation.columnName] = await serializeModel(
             retrievedRelatedModelHasOne,
             relation.model,
+            relationModelColumnsMap,
           );
           break;
         }
@@ -234,9 +262,19 @@ async function processRelations(
               ] === serializedModel[primaryKey as keyof Model],
           );
 
+          const relationModelColumns = getModelColumns(relation.model);
+          const relationModelColumnsMap = new Map<string, ColumnType>(
+            relationModelColumns.map((column) => [column.databaseName, column]),
+          );
+
           serializedModel[relation.columnName] = await Promise.all(
             retrievedRelatedModels.map(
-              async (model) => await serializeModel(model, relation.model),
+              async (model) =>
+                await serializeModel(
+                  model,
+                  relation.model,
+                  relationModelColumnsMap,
+                ),
             ),
           );
           break;
@@ -269,10 +307,19 @@ async function processRelations(
             relatedColumnValue = [relatedColumnValue];
           }
 
+          const relationModelColumns = getModelColumns(relation.model);
+          const relationModelColumnsMap = new Map<string, ColumnType>(
+            relationModelColumns.map((column) => [column.databaseName, column]),
+          );
+
           serializedModel[relation.columnName] = await Promise.all(
             relatedColumnValue.map(
               async (relatedItem: Model) =>
-                await serializeModel(relatedItem, relation.model),
+                await serializeModel(
+                  relatedItem,
+                  relation.model,
+                  relationModelColumnsMap,
+                ),
             ),
           );
           break;

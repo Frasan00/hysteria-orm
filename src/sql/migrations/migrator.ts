@@ -79,6 +79,10 @@ export class ClientMigrator {
     this.verbose = verbose;
   }
 
+  /**
+   * @description Runs programmatic migrations up or down
+   * @param direction - The direction to migrate, either "up" or "down"
+   */
   async migrate(direction: "up" | "down"): Promise<void> {
     env.MIGRATION_PATH = this.migrationPath;
     if (direction === "up") {

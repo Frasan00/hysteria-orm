@@ -1,6 +1,7 @@
 import { HysteriaError } from "../../../errors/hysteria_error";
 import { convertCase } from "../../../utils/case_utils";
 import { Model } from "../../models/model";
+import { getModelColumns } from "../../models/model_decorators";
 import { QueryBuilder } from "../../query_builder/query_builder";
 import type { SqlDataSourceType } from "../../sql_data_source_types";
 
@@ -80,12 +81,16 @@ const selectTemplate = (
     }
   };
 
+  const modelColumns = getModelColumns(typeofModel);
+  const modelColumnsMap = new Map(
+    modelColumns.map((modelColumn) => [modelColumn.columnName, modelColumn]),
+  );
+
   return {
     selectAll: (fromTable: string = table) =>
       `SELECT ${fromTable}.* FROM ${fromTable} `,
     selectColumns: (fromTable: string = table, columns: string[]) => {
       columns = columns.map((column) => {
-        const columnCase = typeofModel.databaseCaseConvention;
         let columnName = column.trim();
         const isFunction =
           baseSelectMethods.includes(columnName.toUpperCase()) ||
@@ -95,7 +100,9 @@ const selectTemplate = (
 
         if (column.toUpperCase().includes(" AS ")) {
           [columnName, alias] = column.split(/ AS /i);
-          alias = convertCase(alias.trim(), columnCase);
+          alias =
+            modelColumnsMap.get(alias.trim())?.databaseName ??
+            convertCase(alias.trim(), typeofModel.databaseCaseConvention);
         }
 
         if (isFunction) {
@@ -112,7 +119,11 @@ const selectTemplate = (
 
         const processedColumnName = !column.includes("*")
           ? (escapeIdentifier(
-              convertCase(columnName.trim(), columnCase),
+              modelColumnsMap.get(columnName.trim())?.databaseName ??
+                convertCase(
+                  columnName.trim(),
+                  typeofModel.databaseCaseConvention,
+                ),
             ) as string)
           : column;
 
@@ -133,7 +144,8 @@ const selectTemplate = (
 
       columns = columns.map((column) =>
         escapeIdentifier(
-          convertCase(column, typeofModel.databaseCaseConvention),
+          modelColumnsMap.get(column)?.databaseName ??
+            convertCase(column, typeofModel.databaseCaseConvention),
         ),
       ) as string[];
 
@@ -144,14 +156,16 @@ const selectTemplate = (
     selectDistinct: (fromTable: string = table, columns: string[]) => {
       columns = columns.map((column) =>
         escapeIdentifier(
-          convertCase(column, typeofModel.databaseCaseConvention),
+          modelColumnsMap.get(column)?.databaseName ??
+            convertCase(column, typeofModel.databaseCaseConvention),
         ),
       ) as string[];
       return `SELECT DISTINCT ${columns.join(", ")} FROM ${fromTable} `;
     },
     selectSum: (fromTable: string = table, column: string) =>
       `SELECT SUM(${escapeIdentifier(
-        convertCase(column, typeofModel.databaseCaseConvention),
+        modelColumnsMap.get(column)?.databaseName ??
+          convertCase(column, typeofModel.databaseCaseConvention),
       )}) FROM ${fromTable} `,
     _orderBy: (columns: string[], order: "ASC" | "DESC" = "ASC") => {
       columns = columns.map((column) => {
@@ -162,10 +176,9 @@ const selectTemplate = (
           [tableName, columnName] = column.split(".");
         }
 
-        const processedColumnName = convertCase(
-          columnName,
-          typeofModel.databaseCaseConvention,
-        );
+        const processedColumnName =
+          modelColumnsMap.get(columnName)?.databaseName ??
+          convertCase(columnName, typeofModel.databaseCaseConvention);
 
         return tableName
           ? `${tableName}.${processedColumnName}`
@@ -183,10 +196,9 @@ const selectTemplate = (
           [tableName, columnName] = column.split(".");
         }
 
-        const processedColumnName = convertCase(
-          columnName,
-          typeofModel.databaseCaseConvention,
-        );
+        const processedColumnName =
+          modelColumnsMap.get(columnName)?.databaseName ??
+          convertCase(columnName, typeofModel.databaseCaseConvention);
 
         return tableName
           ? `${tableName}.${processedColumnName}`

@@ -40,13 +40,10 @@ const insertTemplate = (
   typeofModel: typeof Model,
 ) => {
   const table = typeofModel.table;
-  let modelColumns: ReturnType<typeof getModelColumns> = [];
-
-  try {
-    modelColumns = getModelColumns(typeofModel);
-  } catch (error) {
-    modelColumns = [];
-  }
+  const modelColumns = getModelColumns(typeofModel);
+  const modelColumnsMap = new Map(
+    modelColumns.map((modelColumn) => [modelColumn.columnName, modelColumn]),
+  );
 
   return {
     insert: (columns: string[], values: BaseValues[], returning?: string[]) => {
@@ -72,8 +69,10 @@ const insertTemplate = (
         }
       }
 
-      columns = columns.map((column) =>
-        convertCase(column, typeofModel.databaseCaseConvention),
+      columns = columns.map(
+        (column) =>
+          modelColumnsMap.get(column)?.databaseName ??
+          convertCase(column, typeofModel.databaseCaseConvention),
       );
       let placeholders: string;
       let params: BaseValues[];
@@ -134,13 +133,6 @@ VALUES (${placeholders}) RETURNING ${returning ? returning.join(", ") : "*"};`;
       let valueSets: string[];
       let params: BaseValues[] = [];
 
-      const modelColumnsMap = new Map(
-        modelColumns.map((modelColumn) => [
-          modelColumn.columnName,
-          modelColumn,
-        ]),
-      );
-
       for (let i = 0; i < values.length; i++) {
         for (let j = 0; j < values[i].length; j++) {
           const column = columns[j];
@@ -152,8 +144,10 @@ VALUES (${placeholders}) RETURNING ${returning ? returning.join(", ") : "*"};`;
         }
       }
 
-      columns = columns.map((column) =>
-        convertCase(column, typeofModel.databaseCaseConvention),
+      columns = columns.map(
+        (column) =>
+          modelColumnsMap.get(column)?.databaseName ??
+          convertCase(column, typeofModel.databaseCaseConvention),
       );
       switch (dbType) {
         case "mysql":

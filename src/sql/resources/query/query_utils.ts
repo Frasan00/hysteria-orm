@@ -1,7 +1,7 @@
 import { isNestedObject } from "../../../utils/json_utils";
 import { SqlDataSourceType } from "../../sql_data_source_types";
 
-export const formatValue = (value: any, dbType: SqlDataSourceType): any => {
+export const formatValue = (value: any, _dbType: SqlDataSourceType): any => {
   switch (true) {
     case value === undefined:
     case value === null:

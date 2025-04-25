@@ -1,5 +1,6 @@
 import { convertCase } from "../../../utils/case_utils";
 import { Model } from "../../models/model";
+import { getModelColumns } from "../../models/model_decorators";
 import { BinaryOperatorType } from "./WHERE";
 
 const joinTemplate = (
@@ -17,14 +18,17 @@ const joinTemplate = (
     ? primaryColumn.split(".").pop()
     : primaryColumn;
 
-  const foreignColumnConverted = convertCase(
-    foreignColumnName,
-    typeofModel.databaseCaseConvention,
+  const modelColumns = getModelColumns(typeofModel);
+  const modelColumnsMap = new Map(
+    modelColumns.map((modelColumn) => [modelColumn.columnName, modelColumn]),
   );
-  const primaryColumnConverted = convertCase(
-    primaryColumnName,
-    typeofModel.databaseCaseConvention,
-  );
+
+  const foreignColumnConverted =
+    modelColumnsMap.get(foreignColumnName || "")?.databaseName ??
+    convertCase(foreignColumnName, typeofModel.databaseCaseConvention);
+  const primaryColumnConverted =
+    modelColumnsMap.get(primaryColumnName || "")?.databaseName ??
+    convertCase(primaryColumnName, typeofModel.databaseCaseConvention);
 
   return {
     innerJoin: () =>

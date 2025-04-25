@@ -12,6 +12,7 @@ export abstract class Entity {
 
   /**
    * @description Defines the case convention for the model
+   * @description Useful in raw queries, better to leave it as none in Model definition so it will respect the exact column name from the model, else it will convert the column name to the case convention you choose (default is camel case)
    * @type {CaseConvention}
    */
   static modelCaseConvention: CaseConvention = "camel";

@@ -12,6 +12,7 @@ import { HasMany } from "./relations/has_many";
 import { HasOne } from "./relations/has_one";
 import { ManyToMany } from "./relations/many_to_many";
 import { Relation, RelationEnum } from "./relations/relation";
+import { convertCase } from "../../utils/case_utils";
 
 type LazyRelationType = {
   type: RelationEnum;
@@ -79,10 +80,16 @@ export interface ColumnOptions {
    * @default false
    */
   autoUpdate?: boolean;
+  /**
+   * @description The name of the column in the database, can be used to specify the column name in the database
+   * @default The name of the property following the model case convention
+   */
+  databaseName?: string;
 }
 
 export interface ColumnType {
   columnName: string;
+  databaseName: string;
   serialize?: (value: any) => any | Promise<any>;
   prepare?: (value: any) => any | Promise<any>;
   hidden?: boolean;
@@ -103,6 +110,7 @@ export function column(
 ): PropertyDecorator {
   const isPrimaryKey = options?.primaryKey ?? false;
   return (target: Object, propertyKey: string | symbol) => {
+    const targetModel = target.constructor as typeof Model;
     if (isPrimaryKey) {
       const primaryKey = Reflect.getMetadata(PRIMARY_KEY_METADATA_KEY, target);
       if (primaryKey) {
@@ -115,12 +123,17 @@ export function column(
       Reflect.defineMetadata(PRIMARY_KEY_METADATA_KEY, propertyKey, target);
     }
 
+    const databaseName =
+      options.databaseName ??
+      convertCase(propertyKey as string, targetModel.databaseCaseConvention);
+
     const column: ColumnType = {
       columnName: propertyKey as string,
       serialize: options.serialize,
       prepare: options.prepare,
       hidden: options.hidden,
       autoUpdate: options.autoUpdate,
+      databaseName,
     };
 
     const existingColumns =
@@ -230,14 +243,12 @@ function jsonColumn(options: ColumnOptions = {}): PropertyDecorator {
   });
 }
 
-export function getModelColumns(target: typeof Model): {
-  columnName: string;
-  serialize?: (value: any) => any;
-  prepare?: (value: any) => any;
-  hidden?: boolean;
-  autoUpdate?: boolean;
-}[] {
-  return Reflect.getMetadata(COLUMN_METADATA_KEY, target.prototype) || [];
+export function getModelColumns(target: typeof Model): ColumnType[] {
+  try {
+    return Reflect.getMetadata(COLUMN_METADATA_KEY, target.prototype) || [];
+  } catch (error) {
+    return [];
+  }
 }
 
 /**
