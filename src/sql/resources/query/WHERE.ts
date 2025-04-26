@@ -43,9 +43,11 @@ const whereTemplate = (
 
       if (typeof value === "object" && value !== null) {
         switch (dbType) {
+          case "sqlite":
+            query = `\nWHERE JSON_EXTRACT(${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)}, '$') ${operator} PLACEHOLDER`;
+            break;
           case "mariadb":
           case "mysql":
-          case "sqlite":
             query = `\nWHERE JSON_UNQUOTE(JSON_EXTRACT(${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)}, '$')) ${operator} PLACEHOLDER`;
             params = [value];
             break;

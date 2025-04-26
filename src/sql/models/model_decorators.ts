@@ -238,8 +238,20 @@ function dateColumn(options: DateColumnOptions = {}): PropertyDecorator {
 function jsonColumn(options: ColumnOptions = {}): PropertyDecorator {
   return column({
     ...options,
-    serialize: (value) => JSON.parse(value),
-    prepare: (value) => JSON.stringify(value),
+    serialize: (value) => {
+      if (typeof value === "string") {
+        return JSON.parse(value);
+      }
+
+      return value;
+    },
+    prepare: (value) => {
+      if (!(typeof value === "string")) {
+        return JSON.stringify(value);
+      }
+
+      return value;
+    },
   });
 }
 

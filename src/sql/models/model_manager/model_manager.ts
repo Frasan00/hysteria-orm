@@ -199,12 +199,12 @@ export class ModelManager<T extends Model> {
       return model as T;
     }
 
+    this.model.afterFetch([insertedModel]);
     const result = (await parseDatabaseDataIntoModelResponse(
       [insertedModel],
       this.model,
     )) as T;
 
-    this.model.afterFetch([result]);
     return result;
   }
 
@@ -236,7 +236,7 @@ export class ModelManager<T extends Model> {
     });
 
     if (this.sqlType === "mysql" || this.sqlType === "mariadb") {
-      return this.handleMysqlInsert(rows, models as T[], "many");
+      return (await this.handleMysqlInsert(rows, models as T[], "many")) || [];
     }
 
     const insertedModels = rows as T[];
@@ -244,14 +244,13 @@ export class ModelManager<T extends Model> {
       return [];
     }
 
-    const insertModelPromise = insertedModels.map(
-      async (model) =>
-        (await parseDatabaseDataIntoModelResponse([model], this.model)) as T,
-    );
+    this.model.afterFetch(insertedModels);
 
-    const results = await Promise.all(insertModelPromise);
-    this.model.afterFetch(results);
-    return results;
+    const results = await parseDatabaseDataIntoModelResponse(
+      insertedModels,
+      this.model,
+    );
+    return (results || []) as T[];
   }
 
   /**
@@ -329,14 +328,24 @@ export class ModelManager<T extends Model> {
     rows: any,
     models: T[],
     returnType: O,
-  ): Promise<O extends "one" ? T : T[]> {
+  ): Promise<O extends "one" ? T : T[] | null> {
     if (!this.model.primaryKey) {
       if (returnType === "one") {
         const returnModel = models.length ? models[0] : null;
-        return returnModel as O extends "one" ? T : T[];
+        if (!returnModel) {
+          return null as O extends "one" ? T : T[] | null;
+        }
+
+        return (await parseDatabaseDataIntoModelResponse(
+          [returnModel],
+          this.model,
+        )) as O extends "one" ? T : T[];
       }
 
-      return models as O extends "one" ? T : T[];
+      return (await parseDatabaseDataIntoModelResponse(
+        models,
+        this.model,
+      )) as O extends "one" ? T : T[];
     }
 
     // UUID and before fetch defined primary keys
@@ -357,10 +366,7 @@ export class ModelManager<T extends Model> {
         ) as O extends "one" ? T : T[];
       }
 
-      return (await parseDatabaseDataIntoModelResponse(
-        fetchedModels,
-        this.model,
-      )) as O extends "one" ? T : T[];
+      return fetchedModels as O extends "one" ? T : T[];
     }
 
     // standard auto increment primary keys
@@ -379,9 +385,6 @@ export class ModelManager<T extends Model> {
         : T[];
     }
 
-    return (await parseDatabaseDataIntoModelResponse(
-      fetchedModels,
-      this.model,
-    )) as O extends "one" ? T : T[];
+    return fetchedModels as O extends "one" ? T : T[];
   }
 }

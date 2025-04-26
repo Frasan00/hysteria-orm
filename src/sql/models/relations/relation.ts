@@ -16,6 +16,10 @@ export enum RelationEnum {
 export function isRelationDefinition(
   originalValue: any,
 ): originalValue is Relation {
+  if (!originalValue || typeof originalValue !== "object") {
+    return false;
+  }
+
   return (
     originalValue.hasOwnProperty("type") &&
     originalValue.hasOwnProperty("relatedModel") &&

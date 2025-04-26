@@ -48,13 +48,10 @@ export class UserWithoutPk extends Model {
   @column()
   declare shortDescription: string;
 
-  @column({
-    prepare: (value: boolean) => Boolean(value),
-    serialize: (value: boolean) => Boolean(value),
-  })
+  @column.boolean()
   declare isActive: boolean;
 
-  @column()
+  @column.json()
   declare json: Record<string, any> | null;
 
   @column.date()

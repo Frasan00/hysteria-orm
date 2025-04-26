@@ -10,11 +10,11 @@ import {
 } from "./test_environments.js";
 
 const sqlEnvironments = [
-  sqliteConfig,
   mysqlConfig,
+  sqliteConfig,
   pgConfig,
-  mariadbConfig,
   cockroachdbConfig,
+  mariadbConfig,
 ];
 
 const sqlTests = [
@@ -28,6 +28,7 @@ const sqlTests = [
   "./test/sql/query_builder/query_builder.test.ts",
 
   // without primary key tests
+  "./test/sql/without_pk/user_without_pk_json.test.ts",
   "./test/sql/without_pk/user_without_pk_crud.test.ts",
 
   // uuid

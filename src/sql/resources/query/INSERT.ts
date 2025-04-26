@@ -86,9 +86,7 @@ const insertTemplate = (
               if (Buffer.isBuffer(value)) {
                 return `BINARY(?)`;
               }
-              if (Array.isArray(value) || isNestedObject(value)) {
-                return `?`;
-              }
+
               return `?`;
             })
             .join(", ");
