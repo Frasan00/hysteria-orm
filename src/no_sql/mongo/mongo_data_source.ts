@@ -36,7 +36,7 @@ export class MongoDataSource extends DataSource {
   static async connect(
     url?: string,
     options?: Partial<MongoOptions> & { logs?: boolean },
-    cb?: () => Promise<void> | void,
+    cb?: (mongoDataSource: MongoDataSource) => Promise<void> | void,
   ): Promise<MongoDataSource> {
     if (!url) {
       url = env.MONGO_URL;
@@ -55,7 +55,7 @@ export class MongoDataSource extends DataSource {
     this.instance = new MongoDataSource(url, mongoClient);
     this.instance.isConnected = true;
     this.instance.logs = options?.logs || env.MONGO_LOGS || false;
-    await cb?.();
+    await cb?.(this.instance);
     return this.instance;
   }
 
@@ -120,7 +120,7 @@ export class MongoDataSource extends DataSource {
   /**
    * @description Executes a callback function with the provided connection details
    */
-  static async useConnection<T extends Collection>(
+  static async useConnection(
     this: typeof MongoDataSource,
     connectionDetails: {
       url: string;
@@ -141,6 +141,24 @@ export class MongoDataSource extends DataSource {
     );
     await cb(mongoDataSource);
     await mongoClient.close();
+  }
+
+  static query(collection: string) {
+    return this.getInstance().query(collection);
+  }
+
+  query(collection: string) {
+    if (!this.isConnected) {
+      throw new HysteriaError(
+        "MongoDataSource::query",
+        "CONNECTION_NOT_ESTABLISHED",
+      );
+    }
+
+    return this.getModelManager(
+      { _collection: collection } as typeof Collection,
+      this,
+    ).query();
   }
 
   getModelManager<T extends Collection>(

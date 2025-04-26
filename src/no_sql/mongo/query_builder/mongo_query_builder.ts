@@ -1,4 +1,5 @@
 import * as mongodb from "mongodb";
+import { HysteriaError } from "../../../errors/hysteria_error";
 import type { ModelKey } from "../../../sql/models/model_manager/model_manager_types";
 import logger from "../../../utils/logger";
 import { MongoDataSource } from "../mongo_data_source";
@@ -8,7 +9,6 @@ import {
   ModelKeyOrAnySort,
 } from "../mongo_models/mongo_collection_types";
 import { serializeCollection, serializeCollections } from "../mongo_serializer";
-import { HysteriaError } from "../../../errors/hysteria_error";
 
 export type FetchHooks = "beforeFetch" | "afterFetch";
 type BinaryOperatorType = "$eq" | "$ne" | "$gt" | "$gte" | "$lt" | "$lte";
@@ -137,6 +137,81 @@ export class MongoQueryBuilder<T extends Collection> {
     return !options.ignoreHooks?.includes("afterFetch")
       ? ((await this.model.afterFetch(serializedModels)) as T[])
       : (serializedModels as T[]);
+  }
+
+  /**
+   * @description Inserts a new document into the collection
+   * @param options.returning - If true, the inserted document will be returned, else only the inserted id from mongodb will be returned
+   */
+  async insert<O extends ModelKeyOrAny<T>>(
+    modelData: O,
+    options: { ignoreHooks?: boolean; returning?: boolean } = {},
+  ): Promise<O & { id: string }> {
+    if (!options.ignoreHooks) {
+      this.model.beforeInsert(modelData);
+    }
+
+    const result = await this.collection.insertOne(modelData, {
+      session: this.session,
+    });
+
+    if (!options.returning) {
+      return {
+        id: result.insertedId.toString(),
+      } as O & { id: string };
+    }
+
+    const insertedDocument = await this.collection.findOne({
+      _id: result.insertedId,
+    });
+
+    return (await serializeCollection(
+      this.model,
+      insertedDocument,
+      this.selectFields,
+    )) as O & { id: string };
+  }
+
+  /**
+   * @description Inserts multiple documents into the collection
+   * @param modelData
+   * @param options
+   * @returns
+   */
+  async insertMany<O extends ModelKeyOrAny<T>>(
+    modelData: O[],
+    options: { ignoreHooks?: boolean; returning?: boolean } = {},
+  ): Promise<(O & { id: string })[]> {
+    if (!options.ignoreHooks) {
+      this.model.beforeInsert(modelData);
+    }
+
+    const result = await this.collection.insertMany(modelData, {
+      session: this.session,
+    });
+
+    if (!options.returning) {
+      return Object.values(result.insertedIds).map(
+        (id) =>
+          ({
+            id: id.toString(),
+          }) as O & { id: string },
+      ) as (O & { id: string })[];
+    }
+
+    const insertedDocuments = await this.collection
+      .find({
+        _id: {
+          $in: Object.values(result.insertedIds),
+        },
+      })
+      .toArray();
+
+    return (await serializeCollections(
+      this.model,
+      insertedDocuments,
+      this.selectFields,
+    )) as (O & { id: string })[];
   }
 
   /**
