@@ -1,104 +1,33 @@
-import { HysteriaError } from "../../errors/hysteria_error";
-import {
-  DateFormat,
-  Timezone,
-  getDate,
-  parseDate,
-} from "../../utils/date_utils";
+import type {
+  ColumnOptions,
+  ColumnType,
+  SymmetricEncryptionOptions,
+  AsymmetricEncryptionOptions,
+  DateColumnOptions,
+  LazyRelationType,
+} from "./model_decorators_types";
 import crypto from "node:crypto";
-import { Model } from "./model";
-import { BelongsTo } from "./relations/belongs_to";
-import { HasMany } from "./relations/has_many";
-import { HasOne } from "./relations/has_one";
-import { ManyToMany } from "./relations/many_to_many";
-import { Relation, RelationEnum } from "./relations/relation";
-import { convertCase } from "../../utils/case_utils";
-
-type LazyRelationType = {
-  type: RelationEnum;
-  columnName: string;
-  model: () => typeof Model;
-  foreignKey: string;
-
-  // Only for many to many
-  manyToManyOptions?: {
-    throughModel: string;
-  };
-};
-
-type DateColumnOptions = {
-  /**
-   * @description The format to store dates in ('ISO' or 'TIMESTAMP')
-   * @default "ISO"
-   */
-  format?: DateFormat;
-  /**
-   * @description The timezone to use ('UTC' or 'LOCAL')
-   * @default "UTC"
-   */
-  timezone?: Timezone;
-  /**
-   * @description Whether to automatically update the timestamp on record updates, uses timezone and format from the dateColumn options
-   * @default false
-   */
-  autoUpdate?: boolean;
-  /**
-   * @description Whether to automatically set the timestamp on record creation, uses timezone and format from the dateColumn options
-   * @default false
-   */
-  autoCreate?: boolean;
-} & ColumnOptions;
-
-/**
- * columns
- * @description Options for the column decorator
- */
-export interface ColumnOptions {
-  /**
-   * @description Whether the column is the primary key, composite primary keys are not supported
-   * @warning Only one primary key is allowed per model
-   * @throws {HysteriaError} if more than one primary key is defined
-   * @default false
-   */
-  primaryKey?: boolean;
-  /**
-   * @description Called on the value returned from the database before it is returned from the model
-   */
-  serialize?: (value: any) => any | Promise<any>;
-  /**
-   * @description Called on the value before it is inserted or updated in the database
-   * @warning This will not be called on massive update operations since it's not possible to know which values are being updated, so you must pass the value you want to update in the payload
-   */
-  prepare?: (value: any) => any | Promise<any>;
-  /**
-   * @description Whether the column is returned in the serialization output
-   * @default false
-   */
-  hidden?: boolean;
-  /**
-   * @description If true, the prepare function will always be called on update regardless of whether the value has been provided in the update payload
-   * @default false
-   */
-  autoUpdate?: boolean;
-  /**
-   * @description The name of the column in the database, can be used to specify the column name in the database
-   * @default The name of the property following the model case convention
-   */
-  databaseName?: string;
-}
-
-export interface ColumnType {
-  columnName: string;
-  databaseName: string;
-  serialize?: (value: any) => any | Promise<any>;
-  prepare?: (value: any) => any | Promise<any>;
-  hidden?: boolean;
-  autoUpdate?: boolean;
-}
-
-const COLUMN_METADATA_KEY = Symbol("columns");
-const PRIMARY_KEY_METADATA_KEY = Symbol("primaryKey");
-const RELATION_METADATA_KEY = Symbol("relations");
+import { HysteriaError } from "../../../errors/hysteria_error";
+import { convertCase } from "../../../utils/case_utils";
+import { getDate, parseDate } from "../../../utils/date_utils";
+import {
+  decryptAsymmetric,
+  decryptSymmetric,
+  encryptAsymmetric,
+  encryptSymmetric,
+} from "../../../utils/encryption";
+import { generateULID } from "../../../utils/ulid";
+import { Model } from "../model";
+import { BelongsTo } from "../relations/belongs_to";
+import { HasMany } from "../relations/has_many";
+import { HasOne } from "../relations/has_one";
+import { ManyToMany } from "../relations/many_to_many";
+import { Relation, RelationEnum } from "../relations/relation";
+import {
+  PRIMARY_KEY_METADATA_KEY,
+  COLUMN_METADATA_KEY,
+  RELATION_METADATA_KEY,
+} from "./model_decorators_constants";
 
 /**
  * @description Decorator to define a column in the model
@@ -147,12 +76,19 @@ column.date = dateColumn;
 column.boolean = booleanColumn;
 column.json = jsonColumn;
 column.uuid = uuidColumn;
+column.ulid = ulidColumn;
+column.encryption = {
+  symmetric,
+  asymmetric,
+};
 
 /**
  * @description Decorator to define a uuid column in the model
  * @description This will automatically generate a uuid if no value is provided
  */
-function uuidColumn(options: ColumnOptions = {}): PropertyDecorator {
+function uuidColumn(
+  options: Omit<ColumnOptions, "prepare"> = {},
+): PropertyDecorator {
   return column({
     ...options,
     prepare: (value) => {
@@ -166,10 +102,85 @@ function uuidColumn(options: ColumnOptions = {}): PropertyDecorator {
 }
 
 /**
+ * @description Decorator to define a ulid column in the model
+ * @description This will automatically generate a ulid if no value is provided
+ */
+function ulidColumn(
+  options: Omit<ColumnOptions, "prepare"> = {},
+): PropertyDecorator {
+  return column({
+    ...options,
+    prepare: (value) => {
+      if (!value) {
+        return generateULID();
+      }
+
+      return value;
+    },
+  });
+}
+
+/**
+ * @description Decorator to define a symmetric encrypted column in the model with a key
+ * @description This will automatically encrypt the value before it is inserted or updated in the database and decrypt it when it is retrieved from the database
+ * @description If no value is provided, the value will be returned as is
+ */
+function symmetric(
+  options: Omit<SymmetricEncryptionOptions, "prepare" | "serialize">,
+): PropertyDecorator {
+  return column({
+    ...options,
+    prepare: (value) => {
+      if (!value) {
+        return value;
+      }
+
+      return encryptSymmetric(options.key, value);
+    },
+    serialize: (value) => {
+      if (!value) {
+        return value;
+      }
+
+      return decryptSymmetric(options.key, value);
+    },
+  });
+}
+
+/**
+ * @description Decorator to define a asymmetric encrypted column in the model with public and private keys
+ * @description This will automatically encrypt the value before it is inserted or updated in the database and decrypt it when it is retrieved from the database
+ * @description If no value is provided, the value will be returned as is
+ */
+function asymmetric(
+  options: Omit<AsymmetricEncryptionOptions, "prepare" | "serialize">,
+): PropertyDecorator {
+  return column({
+    ...options,
+    prepare: (value) => {
+      if (!value) {
+        return value;
+      }
+
+      return encryptAsymmetric(options.publicKey, value);
+    },
+    serialize: (value) => {
+      if (!value) {
+        return value;
+      }
+
+      return decryptAsymmetric(options.privateKey, value);
+    },
+  });
+}
+
+/**
  * @description Decorator to define a boolean column in the model
  * @description This will automatically convert the boolean to the correct format for the database, useful for mysql since it stores booleans as tinyint(1)
  */
-function booleanColumn(options: ColumnOptions = {}): PropertyDecorator {
+function booleanColumn(
+  options: Omit<ColumnOptions, "prepare" | "serialize"> = {},
+): PropertyDecorator {
   return column({
     ...options,
     serialize: (value) => Boolean(value),
@@ -189,7 +200,9 @@ function booleanColumn(options: ColumnOptions = {}): PropertyDecorator {
  * @param options.autoUpdate Whether to automatically update the timestamp on record updates
  * @param options.autoCreate Whether to automatically set the timestamp on record creation
  */
-function dateColumn(options: DateColumnOptions = {}): PropertyDecorator {
+function dateColumn(
+  options: Omit<DateColumnOptions, "prepare" | "serialize"> = {},
+): PropertyDecorator {
   const {
     format = "ISO",
     timezone = "UTC",
@@ -235,7 +248,9 @@ function dateColumn(options: DateColumnOptions = {}): PropertyDecorator {
  * @description This will automatically convert the json to the correct format for the database
  * @throws json parse error if the value from the database is not valid json
  */
-function jsonColumn(options: ColumnOptions = {}): PropertyDecorator {
+function jsonColumn(
+  options: Omit<ColumnOptions, "prepare" | "serialize"> = {},
+): PropertyDecorator {
   return column({
     ...options,
     serialize: (value) => {

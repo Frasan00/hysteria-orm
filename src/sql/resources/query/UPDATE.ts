@@ -1,7 +1,7 @@
 import { HysteriaError } from "../../../errors/hysteria_error";
 import { convertCase } from "../../../utils/case_utils";
+import { getModelColumns } from "../../models/decorators/model_decorators";
 import { Model } from "../../models/model";
-import { getModelColumns } from "../../models/model_decorators";
 import type { SqlDataSourceType } from "../../sql_data_source_types";
 import { formatValue } from "./query_utils";
 

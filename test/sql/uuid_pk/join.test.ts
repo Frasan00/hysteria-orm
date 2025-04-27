@@ -1,6 +1,6 @@
 import { env } from "../../../src/env/env";
-import { getModelColumns } from "../../../src/sql/models/model_decorators";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
+import { getModelColumns } from "../../../src/sql/models/decorators/model_decorators";
 import { PostFactory } from "../test_models/factory/post_factory";
 import { UserFactory } from "../test_models/factory/user_factory";
 import { PostWithUuid } from "../test_models/uuid/post_uuid";

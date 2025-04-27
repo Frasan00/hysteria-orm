@@ -1,6 +1,6 @@
 import { env } from "../../../src/env/env";
-import { getModelColumns } from "../../../src/sql/models/model_decorators";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
+import { getModelColumns } from "../../../src/sql/models/decorators/model_decorators";
 import { PostWithBigint } from "../test_models/bigint/post_bigint";
 import { UserWithBigint } from "../test_models/bigint/user_bigint";
 import { PostFactory } from "../test_models/factory/post_factory";

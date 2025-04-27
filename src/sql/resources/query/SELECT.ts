@@ -1,7 +1,7 @@
 import { HysteriaError } from "../../../errors/hysteria_error";
 import { convertCase } from "../../../utils/case_utils";
+import { getModelColumns } from "../../models/decorators/model_decorators";
 import { Model } from "../../models/model";
-import { getModelColumns } from "../../models/model_decorators";
 import { QueryBuilder } from "../../query_builder/query_builder";
 import type { SqlDataSourceType } from "../../sql_data_source_types";
 
@@ -87,6 +87,30 @@ const selectTemplate = (
   );
 
   return {
+    selectJson: (
+      fromTable: string = table,
+      column: string,
+      searchObject: Record<string, any>,
+    ) => {
+      const jsonPath = Object.entries(searchObject)
+        .map(([key, value]) => `'$.${key}' = '${value}'`)
+        .join(" AND ");
+
+      switch (dbType) {
+        case "mysql":
+        case "sqlite":
+        case "mariadb":
+          return `JSON_EXTRACT(${column}, '$.${jsonPath}')`;
+        case "postgres":
+        case "cockroachdb":
+          return `jsonb_extract_path_text(${column}, '${jsonPath}')`;
+        default:
+          throw new HysteriaError(
+            "SelectTemplate::selectJson",
+            `UNSUPPORTED_DATABASE_TYPE_${dbType}`,
+          );
+      }
+    },
     selectAll: (fromTable: string = table) =>
       `SELECT ${fromTable}.* FROM ${fromTable} `,
     selectColumns: (fromTable: string = table, columns: string[]) => {

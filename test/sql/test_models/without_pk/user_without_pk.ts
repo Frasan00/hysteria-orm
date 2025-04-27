@@ -1,11 +1,13 @@
 import { ModelQueryBuilder } from "../../../../src/sql/model_query_builder/model_query_builder";
 import { Model } from "../../../../src/sql/models/model";
-import { column } from "../../../../src/sql/models/model_decorators";
-
+import { column } from "../../../../src/sql/models/decorators/model_decorators";
+import { generateKeyPair } from "../../../../src/utils/encryption";
 export enum UserStatus {
   active = "active",
   inactive = "inactive",
 }
+
+const { publicKey, privateKey } = generateKeyPair();
 
 export class UserWithoutPk extends Model {
   static _table = "users_without_pk";
@@ -42,7 +44,10 @@ export class UserWithoutPk extends Model {
   @column()
   declare weight: number;
 
-  @column()
+  @column.encryption.asymmetric({
+    publicKey,
+    privateKey,
+  })
   declare description: string;
 
   @column()

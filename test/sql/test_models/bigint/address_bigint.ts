@@ -1,5 +1,5 @@
+import { column } from "../../../../src/sql/models/decorators/model_decorators";
 import { Model } from "../../../../src/sql/models/model";
-import { column } from "../../../../src/sql/models/model_decorators";
 export class AddressWithBigint extends Model {
   static _table = "address_with_bigint";
 

@@ -1,6 +1,6 @@
 import { ModelQueryBuilder } from "../../../../src/sql/model_query_builder/model_query_builder";
+import { column } from "../../../../src/sql/models/decorators/model_decorators";
 import { Model } from "../../../../src/sql/models/model";
-import { column } from "../../../../src/sql/models/model_decorators";
 
 export enum UserStatus {
   active = "active",
@@ -44,7 +44,9 @@ export class UserWithUuid extends Model {
   @column()
   declare weight: number;
 
-  @column()
+  @column.encryption.symmetric({
+    key: "symmetricKey",
+  })
   declare description: string;
 
   @column()

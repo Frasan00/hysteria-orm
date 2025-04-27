@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
+import { column } from "../../../../src/sql/models/decorators/model_decorators";
 import { Model } from "../../../../src/sql/models/model";
-import { column } from "../../../../src/sql/models/model_decorators";
 
 export class UserAddressWithUuid extends Model {
   static _table = "user_address_with_uuid";

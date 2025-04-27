@@ -1,5 +1,7 @@
 import "reflect-metadata";
 import type { ModelQueryBuilder } from "../model_query_builder/model_query_builder";
+import type { OneOptions } from "../model_query_builder/model_query_builder_types";
+import type { ModelManager } from "./model_manager/model_manager";
 import type {
   FindOneType,
   FindType,
@@ -7,27 +9,25 @@ import type {
   UnrestrictedFindOneType,
   UnrestrictedFindType,
 } from "./model_manager/model_manager_types";
-import type { OneOptions } from "../model_query_builder/model_query_builder_types";
-import type { ModelManager } from "./model_manager/model_manager";
 import type {
   BaseModelMethodOptions,
   ModelWithoutExtraColumns,
 } from "./model_types";
 
 import { Entity } from "../../entity";
+import { HysteriaError } from "../../errors/hysteria_error";
 import { baseSoftDeleteDate } from "../../utils/date_utils";
 import { SqlDataSource } from "../sql_data_source";
 import {
   belongsTo,
   column,
-  ColumnOptions,
   getPrimaryKey,
   hasMany,
   hasOne,
   manyToMany,
-} from "./model_decorators";
-import { HysteriaError } from "../../errors/hysteria_error";
+} from "./decorators/model_decorators";
 import { getBaseTableName } from "./model_utils";
+import { ColumnOptions } from "./decorators/model_decorators_types";
 
 /**
  * @description Represents a Table in the Database

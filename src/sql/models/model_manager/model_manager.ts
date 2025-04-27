@@ -6,7 +6,6 @@ import { SqlDataSource } from "../../sql_data_source";
 import { SqlDataSourceType } from "../../sql_data_source_types";
 import { execSql } from "../../sql_runner/sql_runner";
 import { Model } from "../model";
-import { getModelColumns } from "../model_decorators";
 import { getBaseModelInstance } from "../model_utils";
 import {
   FindOneType,

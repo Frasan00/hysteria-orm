@@ -1,14 +1,14 @@
 import { HysteriaError } from "../../errors/hysteria_error";
 import { convertCase } from "../../utils/case_utils";
 import { convertPlaceHolderToValue } from "../../utils/placeholder";
-import { getBaseModelInstance } from "../models/model_utils";
+import { getModelColumns } from "../models/decorators/model_decorators";
 import { Model } from "../models/model";
-import { getModelColumns } from "../models/model_decorators";
 import type {
   ModelKey,
   ModelRelation,
 } from "../models/model_manager/model_manager_types";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
+import { getBaseModelInstance } from "../models/model_utils";
 import { getPaginationMetadata, PaginatedData } from "../pagination";
 import {
   DeleteOptions,

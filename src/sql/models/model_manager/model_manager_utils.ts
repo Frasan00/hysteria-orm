@@ -7,8 +7,8 @@ import updateTemplate from "../../resources/query/UPDATE";
 import { SqlDataSource } from "../../sql_data_source";
 import { SqlDataSourceType } from "../../sql_data_source_types";
 import { execSql } from "../../sql_runner/sql_runner";
+import { getModelColumns, getRelations } from "../decorators/model_decorators";
 import { Model } from "../model";
-import { getModelColumns, getRelations } from "../model_decorators";
 import { Relation } from "../relations/relation";
 
 export default class SqlModelManagerUtils<T extends Model> {

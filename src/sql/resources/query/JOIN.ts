@@ -1,6 +1,6 @@
 import { convertCase } from "../../../utils/case_utils";
+import { getModelColumns } from "../../models/decorators/model_decorators";
 import { Model } from "../../models/model";
-import { getModelColumns } from "../../models/model_decorators";
 import { BinaryOperatorType } from "./WHERE";
 
 const joinTemplate = (

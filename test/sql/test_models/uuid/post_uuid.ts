@@ -1,6 +1,9 @@
 import crypto from "node:crypto";
+import {
+  belongsTo,
+  column,
+} from "../../../../src/sql/models/decorators/model_decorators";
 import { Model } from "../../../../src/sql/models/model";
-import { belongsTo, column } from "../../../../src/sql/models/model_decorators";
 import { UserWithUuid } from "./user_uuid";
 
 export class PostWithUuid extends Model {

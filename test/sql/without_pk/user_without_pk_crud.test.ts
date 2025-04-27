@@ -244,6 +244,8 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
     expect(retrievedUser).not.toBeNull();
     expect(user).not.toHaveProperty("id");
     expect(user).toHaveProperty("name");
+    expect(user).toHaveProperty("description");
+    expect(user).toHaveProperty("shortDescription");
     expect(user).toHaveProperty("email");
   });
 
@@ -325,7 +327,6 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
 
   test("should handle firstOrCreate operation", async () => {
     const existingUser = await UserFactory.userWithoutPk(1);
-
     const foundUser = await UserWithoutPk.firstOrCreate(
       { email: existingUser.email },
       { name: "Different Name", email: existingUser.email },
@@ -336,7 +337,11 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
 
     const newUser = await UserWithoutPk.firstOrCreate(
       { email: "new@example.com" },
-      { name: "New User", email: "new@example.com", status: UserStatus.active },
+      {
+        ...UserFactory.getCommonUserData(),
+        name: "New User",
+        email: "new@example.com",
+      },
     );
 
     expect(newUser.name).toBe("New User");
@@ -411,7 +416,6 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
     });
 
     const allUsers = await UserWithoutPk.find();
-    console.log(allUsers);
     expect(allUsers).toHaveLength(1);
     expect(allUsers[0].name).toBe("John Doe");
     expect(allUsers[0].updatedAt).not.toBe(allUsers[0].createdAt);

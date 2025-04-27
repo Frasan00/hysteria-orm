@@ -232,7 +232,8 @@ export default class ColumnTypeBuilder
   }
 
   /**
-   * @description Generates a UUID
+   * @description UUID column
+   * @example `${string}-${string}-${string}-${string}-${string}`
    */
   uuid(name: string): ColumnConstraints {
     this.checkLastComma();
@@ -263,6 +264,17 @@ export default class ColumnTypeBuilder
         );
     }
 
+    return this.constraintsBuilder;
+  }
+
+  /**
+   * @description Generates a ULID (Universally Unique Lexicographically Sortable Identifier)
+   * @description This is a 26 character string that is lexicographically sortable and unique
+   * @example `01J3G7Z06000000000000000`
+   */
+  ulid(name: string): ColumnConstraints {
+    this.checkLastComma();
+    this.string(name, 26);
     return this.constraintsBuilder;
   }
 

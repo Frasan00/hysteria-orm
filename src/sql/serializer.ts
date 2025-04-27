@@ -1,12 +1,12 @@
 import { HysteriaError } from "../errors/hysteria_error";
 import { convertCase } from "../utils/case_utils";
 import { isNestedObject } from "../utils/json_utils";
-import { Model } from "./models/model";
 import {
-  ColumnType,
   getModelColumns,
   getRelations,
-} from "./models/model_decorators";
+} from "./models/decorators/model_decorators";
+import { ColumnType } from "./models/decorators/model_decorators_types";
+import { Model } from "./models/model";
 import {
   isRelationDefinition,
   Relation,

@@ -1,5 +1,8 @@
 import { Model } from "../../../../src/sql/models/model";
-import { belongsTo, column } from "../../../../src/sql/models/model_decorators";
+import {
+  belongsTo,
+  column,
+} from "../../../../src/sql/models/decorators/model_decorators";
 import { UserWithBigint } from "./user_bigint";
 
 export class PostWithBigint extends Model {
