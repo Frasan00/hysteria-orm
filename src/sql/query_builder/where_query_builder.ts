@@ -6,10 +6,11 @@ import whereTemplate, {
 } from "../resources/query/WHERE";
 import { SqlDataSource } from "../sql_data_source";
 import { JoinQueryBuilder } from "./join_query_builder";
+import { SelectQueryBuilder } from "./select_query_builder";
 
 export abstract class WhereQueryBuilder<
   T extends Model,
-> extends JoinQueryBuilder<T> {
+> extends SelectQueryBuilder<T> {
   protected whereQuery: string = "";
   protected havingQuery: string = "";
   protected params: BaseValues[] = [];

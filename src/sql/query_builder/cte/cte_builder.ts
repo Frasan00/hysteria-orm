@@ -1,7 +1,7 @@
 import { HysteriaError } from "../../../errors/hysteria_error";
 import { Model } from "../../models/model";
 import { SqlDataSource } from "../../sql_data_source";
-import { CteCallback, CteMap, WithClauseType } from "../cte/cte_types";
+import { CteCallback, CteMap } from "../cte/cte_types";
 import { QueryBuilder } from "../query_builder";
 
 /**
@@ -11,11 +11,11 @@ import { QueryBuilder } from "../query_builder";
 export class CteBuilder<T extends Model> {
   private model: typeof Model;
   private sqlDataSource: SqlDataSource;
-  private clause: WithClauseType;
+  private clause: string;
   private cteMap: CteMap;
 
   constructor(
-    clause: WithClauseType,
+    clause: string,
     ...params: ConstructorParameters<typeof QueryBuilder>
   ) {
     this.model = params[0];

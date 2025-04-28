@@ -6,7 +6,7 @@ import type { Model } from "../models/model";
 import { ModelKey } from "../models/model_manager/model_manager_types";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
 import deleteTemplate from "../resources/query/DELETE";
-import selectTemplate, { UnionCallBack } from "../resources/query/SELECT";
+import { UnionCallBack } from "../resources/query/SELECT";
 import updateTemplate from "../resources/query/UPDATE";
 import { BinaryOperatorType } from "../resources/query/WHERE";
 import { SqlDataSource } from "../sql_data_source";
@@ -21,13 +21,7 @@ import { baseSoftDeleteDate } from "../../utils/date_utils";
 
 export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
   protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
-  protected modelSelectedColumns: string[] = [];
-  protected dbType: SqlDataSourceType;
-  protected selectQuery: string;
-  protected withQuery?: string;
   protected unionQuery: string;
-  protected fromTable: string;
-  protected selectTemplate: ReturnType<typeof selectTemplate>;
   protected updateTemplate: ReturnType<typeof updateTemplate>;
   protected deleteTemplate: ReturnType<typeof deleteTemplate>;
   protected isNestedCondition = false;
@@ -43,12 +37,8 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
       this.dbType,
       this.sqlDataSource,
     );
-    this.table = model.table || "";
-    this.fromTable = this.table;
-    this.selectTemplate = selectTemplate(this.dbType, this.model);
     this.updateTemplate = updateTemplate(this.dbType, this.model);
     this.deleteTemplate = deleteTemplate(this.dbType);
-    this.selectQuery = this.selectTemplate.selectAll(this.fromTable);
     this.unionQuery = "";
     this.params = [];
   }
@@ -186,85 +176,20 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
   with(
     type: WithClauseType,
     cb: (cteBuilder: CteBuilder<T>) => CteBuilder<T>,
+  ): Omit<this, "with">;
+  with(
+    type: string,
+    cb: (cteBuilder: CteBuilder<T>) => CteBuilder<T>,
+  ): Omit<this, "with">;
+  with(
+    type: WithClauseType | string,
+    cb: (cteBuilder: CteBuilder<T>) => CteBuilder<T>,
   ): Omit<this, "with"> {
     const cteBuilder = new CteBuilder<T>(type, this.model, this.sqlDataSource);
     cb(cteBuilder);
     const { query, params } = cteBuilder.unWrap();
     this.withQuery = query;
     this.params = [...this.params, ...params];
-    return this;
-  }
-
-  /**
-   * @description Adds a SELECT condition to the query.
-   * @description Can be stacked multiple times
-   */
-  select(...columns: string[]): this;
-  select(...columns: (ModelKey<T> | "*")[]): this;
-  select(...columns: (ModelKey<T> | "*" | string)[]): this {
-    this.modelSelectedColumns = [
-      ...this.modelSelectedColumns,
-      ...(columns as string[]),
-    ];
-
-    this.selectQuery = this.selectTemplate.selectColumns(this.fromTable, [
-      ...this.modelSelectedColumns,
-    ]);
-
-    return this;
-  }
-
-  /**
-   * @description Adds a raw select statement to the query, overriding the previous select statements
-   * @description It appends a FROM clause if not contained in the statement
-   */
-  rawSelect(statement: string): this {
-    if (!statement.toLowerCase().includes("from")) {
-      statement += ` FROM ${this.fromTable}`;
-    }
-
-    this.selectQuery = statement;
-    return this;
-  }
-
-  clearSelect(): this {
-    this.modelSelectedColumns = [];
-    this.selectQuery = this.selectTemplate.selectAll(this.fromTable);
-    return this;
-  }
-
-  distinct(): this {
-    const distinct = this.selectTemplate.distinct;
-    this.selectQuery = this.selectQuery.replace(
-      /select/i,
-      `SELECT ${distinct}`,
-    );
-
-    return this;
-  }
-
-  distinctOn(...columns: ModelKey<T>[]): this;
-  distinctOn(...columns: string[]): this;
-  distinctOn(...columns: (string | ModelKey<T>)[]): this {
-    const distinctOn = this.selectTemplate.distinctOn(...(columns as string[]));
-    this.selectQuery = this.selectQuery.replace(
-      /select/i,
-      `SELECT ${distinctOn}`,
-    );
-
-    return this;
-  }
-
-  /**
-   * @description Sets the table to select from, by default is the table defined in the Model
-   */
-  from(table: string): this {
-    this.fromTable = table;
-    this.selectQuery = this.selectQuery.replace(
-      /FROM\s+(\w+)/i,
-      `FROM ${this.fromTable}`,
-    );
-
     return this;
   }
 
@@ -280,7 +205,7 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
     const model = data as any;
     const { query, params } = this.sqlModelManagerUtils.parseInsert(
       model,
-      { ...this.model, table: this.table } as typeof Model,
+      { ...this.model, table: this.fromTable } as typeof Model,
       this.dbType,
       returning,
     );
@@ -308,7 +233,7 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
     const models = data as any[];
     const { query, params } = this.sqlModelManagerUtils.parseMassiveInsert(
       models,
-      { ...this.model, table: this.table } as typeof Model,
+      { ...this.model, table: this.fromTable } as typeof Model,
       this.dbType,
       returning,
     );
@@ -372,7 +297,7 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
    */
   async delete(): Promise<number> {
     const query = this.deleteTemplate.massiveDelete(
-      this.table,
+      this.fromTable,
       this.whereQuery,
       this.joinQuery,
     );

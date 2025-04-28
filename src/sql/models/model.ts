@@ -159,6 +159,42 @@ export abstract class Model extends Entity {
   }
 
   /**
+   * @description Finds records for the given column and value
+   */
+  static async findBy<T extends Model>(
+    this: new () => T | typeof Model,
+    column: ModelKey<T>,
+    value: string | number | boolean | Date | null,
+    options: BaseModelMethodOptions = {},
+  ): Promise<T[]> {
+    const typeofModel = this as unknown as typeof Model;
+    const modelManager = typeofModel.dispatchModelManager<T>(options);
+    return modelManager.find({
+      where: {
+        [column]: value,
+      },
+    });
+  }
+
+  /**
+   * @description Finds the first record for the given column and value
+   */
+  static async findOneBy<T extends Model>(
+    this: new () => T | typeof Model,
+    column: ModelKey<T>,
+    value: string | number | boolean | Date | null,
+    options: BaseModelMethodOptions = {},
+  ): Promise<T | null> {
+    const typeofModel = this as unknown as typeof Model;
+    const modelManager = typeofModel.dispatchModelManager<T>(options);
+    return modelManager.findOne({
+      where: {
+        [column]: value,
+      },
+    });
+  }
+
+  /**
    * @description Finds a record for the given model for the given value, the model must have a primary key defined else it will throw an error
    */
   static async findOneByPrimaryKey<T extends Model>(

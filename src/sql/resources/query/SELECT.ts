@@ -92,24 +92,32 @@ const selectTemplate = (
       column: string,
       searchObject: Record<string, any>,
     ) => {
-      const jsonPath = Object.entries(searchObject)
-        .map(([key, value]) => `'$.${key}' = '${value}'`)
+      const conditions = Object.entries(searchObject)
+        .map(([key, value]) => {
+          const escapedValue =
+            typeof value === "string"
+              ? `'${value.replace(/'/g, "''")}'`
+              : value;
+          const jsonPath = `$.${key}`;
+
+          switch (dbType) {
+            case "mysql":
+            case "sqlite":
+            case "mariadb":
+              return `JSON_EXTRACT(${column}, '${jsonPath}') = ${escapedValue}`;
+            case "postgres":
+            case "cockroachdb":
+              return `${column}->>'${key}' = ${escapedValue}`;
+            default:
+              throw new HysteriaError(
+                "SelectTemplate::selectJson",
+                `UNSUPPORTED_DATABASE_TYPE_${dbType}`,
+              );
+          }
+        })
         .join(" AND ");
 
-      switch (dbType) {
-        case "mysql":
-        case "sqlite":
-        case "mariadb":
-          return `JSON_EXTRACT(${column}, '$.${jsonPath}')`;
-        case "postgres":
-        case "cockroachdb":
-          return `jsonb_extract_path_text(${column}, '${jsonPath}')`;
-        default:
-          throw new HysteriaError(
-            "SelectTemplate::selectJson",
-            `UNSUPPORTED_DATABASE_TYPE_${dbType}`,
-          );
-      }
+      return `(${conditions})`;
     },
     selectAll: (fromTable: string = table) =>
       `SELECT ${fromTable}.* FROM ${fromTable} `,
@@ -185,31 +193,6 @@ const selectTemplate = (
         ),
       ) as string[];
       return `SELECT DISTINCT ${columns.join(", ")} FROM ${fromTable} `;
-    },
-    selectSum: (fromTable: string = table, column: string) =>
-      `SELECT SUM(${escapeIdentifier(
-        modelColumnsMap.get(column)?.databaseName ??
-          convertCase(column, typeofModel.databaseCaseConvention),
-      )}) FROM ${fromTable} `,
-    _orderBy: (columns: string[], order: "ASC" | "DESC" = "ASC") => {
-      columns = columns.map((column) => {
-        let tableName = "";
-        let columnName = column;
-
-        if (column.includes(".")) {
-          [tableName, columnName] = column.split(".");
-        }
-
-        const processedColumnName =
-          modelColumnsMap.get(columnName)?.databaseName ??
-          convertCase(columnName, typeofModel.databaseCaseConvention);
-
-        return tableName
-          ? `${tableName}.${processedColumnName}`
-          : processedColumnName;
-      }) as string[];
-
-      return ` ORDER BY ${columns.join(", ")} ${order}`;
     },
     groupBy: (...columns: string[]) => {
       columns = columns.map((column) => {
