@@ -1,4 +1,4 @@
-import { Model } from "../models/model";
+import { Model } from "../../models/model";
 
 export type ModelInstanceType<O> = O extends typeof Model
   ? InstanceType<O>

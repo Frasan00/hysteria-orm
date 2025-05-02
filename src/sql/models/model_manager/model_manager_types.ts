@@ -1,4 +1,4 @@
-import { FetchHooks } from "../../model_query_builder/model_query_builder_types";
+import { FetchHooks } from "../model_query_builder/model_query_builder_types";
 import { Model } from "../model";
 import { BelongsTo } from "../relations/belongs_to";
 import { HasMany } from "../relations/has_many";

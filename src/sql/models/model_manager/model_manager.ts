@@ -1,6 +1,6 @@
 import { HysteriaError } from "../../../errors/hysteria_error";
-import { ModelQueryBuilder } from "../../model_query_builder/model_query_builder";
-import { FetchHooks } from "../../model_query_builder/model_query_builder_types";
+import { ModelQueryBuilder } from "../model_query_builder/model_query_builder";
+import { FetchHooks } from "../model_query_builder/model_query_builder_types";
 import { parseDatabaseDataIntoModelResponse } from "../../serializer";
 import { SqlDataSource } from "../../sql_data_source";
 import { SqlDataSourceType } from "../../sql_data_source_types";

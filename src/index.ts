@@ -15,7 +15,6 @@ import {
 import { RedisDataSource as Redis } from "./no_sql/redis/redis_data_source";
 import { Migration } from "./sql/migrations/migration";
 import { defineMigrator } from "./sql/migrations/migrator";
-import { ModelQueryBuilder } from "./sql/model_query_builder/model_query_builder";
 import {
   belongsTo,
   column,
@@ -34,6 +33,7 @@ import logger from "./utils/logger";
 import { withPerformance } from "./utils/performance";
 import { generateULID } from "./utils/ulid";
 import { generateKeyPair } from "./utils/encryption";
+import { ModelQueryBuilder } from "./sql/models/model_query_builder/model_query_builder";
 
 export {
   // decorators

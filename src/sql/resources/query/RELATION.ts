@@ -1,12 +1,12 @@
 import { HysteriaError } from "../../../errors/hysteria_error";
 import { convertCase } from "../../../utils/case_utils";
 import logger from "../../../utils/logger";
-import type { RelationQueryBuilder } from "../../model_query_builder/model_query_builder_types";
 import {
   getModelColumns,
   getRelations,
 } from "../../models/decorators/model_decorators";
 import { Model } from "../../models/model";
+import { RelationQueryBuilder } from "../../models/model_query_builder/model_query_builder_types";
 import { ManyToMany } from "../../models/relations/many_to_many";
 import { Relation, RelationEnum } from "../../models/relations/relation";
 import type { SqlDataSourceType } from "../../sql_data_source_types";

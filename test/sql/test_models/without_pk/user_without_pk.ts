@@ -1,7 +1,7 @@
-import { ModelQueryBuilder } from "../../../../src/sql/model_query_builder/model_query_builder";
-import { Model } from "../../../../src/sql/models/model";
 import { column } from "../../../../src/sql/models/decorators/model_decorators";
+import { Model } from "../../../../src/sql/models/model";
 import { generateKeyPair } from "../../../../src/utils/encryption";
+import { ModelQueryBuilder } from "../../models/model_query_builder/model_query_builder";
 export enum UserStatus {
   active = "active",
   inactive = "inactive",

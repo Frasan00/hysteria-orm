@@ -1,10 +1,10 @@
-import { ModelQueryBuilder } from "../../../../src/sql/model_query_builder/model_query_builder";
 import {
   column,
   hasMany,
   hasOne,
 } from "../../../../src/sql/models/decorators/model_decorators";
 import { Model } from "../../../../src/sql/models/model";
+import { ModelQueryBuilder } from "../../models/model_query_builder/model_query_builder";
 import { PostWithUuid } from "./post_uuid";
 
 export enum UserStatus {

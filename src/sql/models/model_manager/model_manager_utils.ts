@@ -1,5 +1,5 @@
 import { HysteriaError } from "../../../errors/hysteria_error";
-import { RelationQueryBuilder } from "../../model_query_builder/model_query_builder_types";
+import { RelationQueryBuilder } from "../model_query_builder/model_query_builder_types";
 import deleteTemplate from "../../resources/query/DELETE";
 import insertTemplate from "../../resources/query/INSERT";
 import relationTemplates from "../../resources/query/RELATION";

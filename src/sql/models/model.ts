@@ -1,6 +1,6 @@
 import "reflect-metadata";
-import type { ModelQueryBuilder } from "../model_query_builder/model_query_builder";
-import type { OneOptions } from "../model_query_builder/model_query_builder_types";
+import type { ModelQueryBuilder } from "./model_query_builder/model_query_builder";
+import type { OneOptions } from "./model_query_builder/model_query_builder_types";
 import type { ModelManager } from "./model_manager/model_manager";
 import type {
   FindOneType,
