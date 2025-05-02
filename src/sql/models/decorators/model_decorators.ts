@@ -1,11 +1,3 @@
-import type {
-  ColumnOptions,
-  ColumnType,
-  SymmetricEncryptionOptions,
-  AsymmetricEncryptionOptions,
-  DateColumnOptions,
-  LazyRelationType,
-} from "./model_decorators_types";
 import crypto from "node:crypto";
 import { HysteriaError } from "../../../errors/hysteria_error";
 import { convertCase } from "../../../utils/case_utils";
@@ -18,16 +10,26 @@ import {
 } from "../../../utils/encryption";
 import { generateULID } from "../../../utils/ulid";
 import { Model } from "../model";
+import { ModelKey } from "../model_manager/model_manager_types";
 import { BelongsTo } from "../relations/belongs_to";
 import { HasMany } from "../relations/has_many";
 import { HasOne } from "../relations/has_one";
 import { ManyToMany } from "../relations/many_to_many";
 import { Relation, RelationEnum } from "../relations/relation";
 import {
-  PRIMARY_KEY_METADATA_KEY,
   COLUMN_METADATA_KEY,
+  PRIMARY_KEY_METADATA_KEY,
   RELATION_METADATA_KEY,
+  getDefaultForeignKey,
 } from "./model_decorators_constants";
+import type {
+  AsymmetricEncryptionOptions,
+  ColumnOptions,
+  ColumnType,
+  DateColumnOptions,
+  LazyRelationType,
+  SymmetricEncryptionOptions,
+} from "./model_decorators_types";
 
 /**
  * @description Decorator to define a column in the model
@@ -284,18 +286,25 @@ export function getModelColumns(target: typeof Model): ColumnType[] {
 
 /**
  * @description Establishes a belongs to relation with the given model
+ * @default foreignKey by default will be the singular of the model that establishes the relation name plus "_id"
+ * @example Post that has a user will have foreignKey "post_id"
  */
 export function belongsTo(
   model: () => typeof Model,
-  foreignKey: string,
+  foreignKey?: string,
 ): PropertyDecorator {
   return (target: Object, propertyKey: string | symbol) => {
+    foreignKey ||= getDefaultForeignKey(
+      (target.constructor as typeof Model).table,
+    );
+
     const relation = {
       type: RelationEnum.belongsTo,
       columnName: propertyKey as string,
       model,
       foreignKey,
     };
+
     const relations = Reflect.getMetadata(RELATION_METADATA_KEY, target) || [];
     relations.push(relation);
     Reflect.defineMetadata(RELATION_METADATA_KEY, relations, target);
@@ -304,10 +313,12 @@ export function belongsTo(
 
 /**
  * @description Establishes a has one relation with the given model
+ * @default foreignKey by default will be the singular of the model name plus "_id"
+ * @example User will have foreignKey "user_id"
  */
-export function hasOne(
-  model: () => typeof Model,
-  foreignKey: string,
+export function hasOne<T extends typeof Model>(
+  model: () => T,
+  foreignKey?: ModelKey<InstanceType<T>>,
 ): PropertyDecorator {
   return (target: Object, propertyKey: string | symbol) => {
     const relation = {
@@ -324,10 +335,12 @@ export function hasOne(
 
 /**
  * @description Establishes a has many relation with the given model
+ * @default foreignKey by default will be the singular of the model name plus "_id"
+ * @example User will have foreignKey "user_id"
  */
 export function hasMany(
   model: () => typeof Model,
-  foreignKey: string,
+  foreignKey?: string,
 ): PropertyDecorator {
   return (target: Object, propertyKey: string | symbol) => {
     const relation = {
@@ -336,6 +349,7 @@ export function hasMany(
       model,
       foreignKey,
     };
+
     const relations = Reflect.getMetadata(RELATION_METADATA_KEY, target) || [];
     relations.push(relation);
     Reflect.defineMetadata(RELATION_METADATA_KEY, relations, target);
@@ -348,7 +362,7 @@ export function hasMany(
 export function manyToMany(
   model: () => typeof Model,
   throughModel: (() => typeof Model) | string,
-  foreignKey: string,
+  foreignKey?: string,
 ): PropertyDecorator {
   return (target: Object, propertyKey: string | symbol) => {
     if (!(typeof throughModel === "string")) {
@@ -379,13 +393,18 @@ export function getRelations(target: typeof Model): Relation[] {
     Reflect.getMetadata(RELATION_METADATA_KEY, target.prototype) || [];
   return relations.map((relation: LazyRelationType) => {
     const { type, model, columnName, foreignKey } = relation;
+
+    const lazyLoadedModel = model();
+    const loadedForeignKey =
+      relation.foreignKey ?? getDefaultForeignKey(lazyLoadedModel.table);
+
     switch (type) {
       case RelationEnum.belongsTo:
-        return new BelongsTo(model(), columnName, foreignKey);
+        return new BelongsTo(lazyLoadedModel, columnName, loadedForeignKey);
       case RelationEnum.hasOne:
-        return new HasOne(model(), columnName, foreignKey);
+        return new HasOne(lazyLoadedModel, columnName, loadedForeignKey);
       case RelationEnum.hasMany:
-        return new HasMany(model(), columnName, foreignKey);
+        return new HasMany(lazyLoadedModel, columnName, loadedForeignKey);
       case RelationEnum.manyToMany:
         if (!relation.manyToManyOptions) {
           throw new HysteriaError(
@@ -398,7 +417,7 @@ export function getRelations(target: typeof Model): Relation[] {
           model(),
           columnName,
           relation.manyToManyOptions.throughModel,
-          relation.foreignKey,
+          loadedForeignKey,
         );
       default:
         throw new HysteriaError(

@@ -335,6 +335,9 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
         this.dbType,
         queryBuilder.whereQuery,
       ),
+      withRelations: queryBuilder.relations.map(
+        (relation) => relation.relation,
+      ),
       params: queryBuilder.params,
       joinQuery: queryBuilder.joinQuery,
       groupByQuery: queryBuilder.groupByQuery,

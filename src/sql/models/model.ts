@@ -552,7 +552,7 @@ export abstract class Model extends Entity {
   static hasOne(
     columnName: string,
     model: () => typeof Model,
-    foreignKey: string,
+    foreignKey?: ModelKey<InstanceType<typeof Model>>,
   ): void {
     hasOne(model, foreignKey)(this.prototype, columnName);
   }
@@ -564,7 +564,7 @@ export abstract class Model extends Entity {
   static hasMany(
     columnName: string,
     model: () => typeof Model,
-    foreignKey: string,
+    foreignKey?: ModelKey<InstanceType<typeof Model>>,
   ): void {
     hasMany(model, foreignKey)(this.prototype, columnName);
   }

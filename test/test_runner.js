@@ -32,6 +32,8 @@ const sqlTests = [
   "./test/sql/without_pk/user_without_pk_crud.test.ts",
 
   // uuid
+  // "./test/sql/uuid_pk/relations.test.ts",
+
   "./test/sql/uuid_pk/join.test.ts",
   "./test/sql/uuid_pk/crud.test.ts",
 

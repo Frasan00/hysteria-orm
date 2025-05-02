@@ -1,6 +1,11 @@
 import { ModelQueryBuilder } from "../../../../src/sql/model_query_builder/model_query_builder";
-import { column } from "../../../../src/sql/models/decorators/model_decorators";
+import {
+  column,
+  hasMany,
+  hasOne,
+} from "../../../../src/sql/models/decorators/model_decorators";
 import { Model } from "../../../../src/sql/models/model";
+import { PostWithUuid } from "./post_uuid";
 
 export enum UserStatus {
   active = "active",
@@ -69,6 +74,12 @@ export class UserWithUuid extends Model {
 
   @column.date()
   declare deletedAt: Date | null;
+
+  @hasOne(() => PostWithUuid, "userId")
+  declare post: PostWithUuid;
+
+  @hasMany(() => PostWithUuid, "userId")
+  declare posts: PostWithUuid[];
 
   static beforeUpdate(queryBuilder: ModelQueryBuilder<UserWithUuid>): void {
     queryBuilder.whereNull("users_with_uuid.deleted_at");
