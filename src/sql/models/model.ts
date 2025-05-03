@@ -588,10 +588,13 @@ export abstract class Model extends Entity {
   static manyToMany(
     columnName: string,
     model: () => typeof Model,
-    throughModel: string,
-    foreignKey: string,
+    joinTableData: {
+      throughModel: string;
+      throughModelForeignKey: string;
+      relatedModelForeignKey: string;
+    },
   ): void {
-    manyToMany(model, throughModel, foreignKey)(this.prototype, columnName);
+    manyToMany(model, joinTableData)(this.prototype, columnName);
   }
 
   /**

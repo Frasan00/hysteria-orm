@@ -87,38 +87,6 @@ const selectTemplate = (
   );
 
   return {
-    selectJson: (
-      fromTable: string = table,
-      column: string,
-      searchObject: Record<string, any>,
-    ) => {
-      const conditions = Object.entries(searchObject)
-        .map(([key, value]) => {
-          const escapedValue =
-            typeof value === "string"
-              ? `'${value.replace(/'/g, "''")}'`
-              : value;
-          const jsonPath = `$.${key}`;
-
-          switch (dbType) {
-            case "mysql":
-            case "sqlite":
-            case "mariadb":
-              return `JSON_EXTRACT(${column}, '${jsonPath}') = ${escapedValue}`;
-            case "postgres":
-            case "cockroachdb":
-              return `${column}->>'${key}' = ${escapedValue}`;
-            default:
-              throw new HysteriaError(
-                "SelectTemplate::selectJson",
-                `UNSUPPORTED_DATABASE_TYPE_${dbType}`,
-              );
-          }
-        })
-        .join(" AND ");
-
-      return `(${conditions})`;
-    },
     selectAll: (fromTable: string = table) =>
       `SELECT ${fromTable}.* FROM ${fromTable} `,
     selectColumns: (fromTable: string = table, columns: string[]) => {
@@ -143,10 +111,25 @@ const selectTemplate = (
 
         if (columnName.includes(".")) {
           [tableName, columnName] = columnName.split(".");
-          // If the column already has a table name, don't add it again
+          if (columnName.trim() === "*") {
+            return alias ? `${tableName}.* AS ${alias}` : `${tableName}.*`;
+          }
+
+          const processedColumnName = escapeIdentifier(
+            modelColumnsMap.get(columnName.trim())?.databaseName ??
+              convertCase(
+                columnName.trim(),
+                typeofModel.databaseCaseConvention,
+              ),
+          );
+
           return alias
-            ? `${tableName}.${columnName} AS ${alias}`
-            : `${tableName}.${columnName}`;
+            ? `${tableName}.${processedColumnName} AS ${alias}`
+            : `${tableName}.${processedColumnName}`;
+        }
+
+        if (columnName.trim() === "*") {
+          return alias ? `* AS ${alias}` : "*";
         }
 
         const processedColumnName = !column.includes("*")

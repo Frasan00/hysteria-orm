@@ -2,10 +2,13 @@ import {
   column,
   hasMany,
   hasOne,
+  manyToMany,
 } from "../../../../src/sql/models/decorators/model_decorators";
 import { Model } from "../../../../src/sql/models/model";
 import { ModelQueryBuilder } from "../../models/model_query_builder/model_query_builder";
+import { AddressWithUuid } from "./address_uuid";
 import { PostWithUuid } from "./post_uuid";
+import { UserAddressWithUuid } from "./user_address_uuid";
 
 export enum UserStatus {
   active = "active",
@@ -80,6 +83,13 @@ export class UserWithUuid extends Model {
 
   @hasMany(() => PostWithUuid, "userId")
   declare posts: PostWithUuid[];
+
+  @manyToMany(() => AddressWithUuid, {
+    throughModel: () => UserAddressWithUuid,
+    throughModelForeignKey: "userId",
+    relatedModelForeignKey: "addressId",
+  })
+  declare addresses: AddressWithUuid[];
 
   static beforeUpdate(queryBuilder: ModelQueryBuilder<UserWithUuid>): void {
     queryBuilder.whereNull("users_with_uuid.deleted_at");

@@ -1,6 +1,11 @@
 import crypto from "node:crypto";
-import { column } from "../../../../src/sql/models/decorators/model_decorators";
+import {
+  column,
+  manyToMany,
+} from "../../../../src/sql/models/decorators/model_decorators";
 import { Model } from "../../../../src/sql/models/model";
+import { UserWithUuid } from "./user_uuid";
+import { UserAddressWithUuid } from "./user_address_uuid";
 
 export class AddressWithUuid extends Model {
   static _table = "address_with_uuid";
@@ -38,6 +43,13 @@ export class AddressWithUuid extends Model {
 
   @column.date()
   declare deletedAt: Date | null;
+
+  @manyToMany(() => UserWithUuid, {
+    throughModel: "user_address_with_uuid",
+    throughModelForeignKey: "address_id",
+    relatedModelForeignKey: "user_id",
+  })
+  declare users: UserWithUuid[];
 
   static async beforeInsert(data: AddressWithUuid): Promise<void> {
     data.id = crypto.randomUUID();

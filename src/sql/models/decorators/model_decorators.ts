@@ -287,7 +287,7 @@ export function getModelColumns(target: typeof Model): ColumnType[] {
 /**
  * @description Establishes a belongs to relation with the given model
  * @default foreignKey by default will be the singular of the model that establishes the relation name plus "_id"
- * @example Post that has a user will have foreignKey "post_id"
+ * @example Post that has a user will have foreignKey "user_id" on the  model
  */
 export function belongsTo(
   model: () => typeof Model,
@@ -314,13 +314,17 @@ export function belongsTo(
 /**
  * @description Establishes a has one relation with the given model
  * @default foreignKey by default will be the singular of the model name plus "_id"
- * @example User will have foreignKey "user_id"
+ * @example User will have foreignKey "user_id" on the Post model
  */
 export function hasOne<T extends typeof Model>(
   model: () => T,
   foreignKey?: ModelKey<InstanceType<T>>,
 ): PropertyDecorator {
   return (target: Object, propertyKey: string | symbol) => {
+    foreignKey ||= getDefaultForeignKey(model().table) as ModelKey<
+      InstanceType<T>
+    >;
+
     const relation = {
       type: RelationEnum.hasOne,
       columnName: propertyKey as string,
@@ -336,13 +340,17 @@ export function hasOne<T extends typeof Model>(
 /**
  * @description Establishes a has many relation with the given model
  * @default foreignKey by default will be the singular of the model name plus "_id"
- * @example User will have foreignKey "user_id"
+ * @example User will have foreignKey "user_id" on the Post model
  */
-export function hasMany(
-  model: () => typeof Model,
-  foreignKey?: string,
+export function hasMany<T extends typeof Model>(
+  model: () => T,
+  foreignKey?: ModelKey<InstanceType<T>>,
 ): PropertyDecorator {
   return (target: Object, propertyKey: string | symbol) => {
+    foreignKey ||= getDefaultForeignKey(model().table) as ModelKey<
+      InstanceType<T>
+    >;
+
     const relation = {
       type: RelationEnum.hasMany,
       columnName: propertyKey,
@@ -358,13 +366,20 @@ export function hasMany(
 
 /**
  * @description Establishes a many to many relation with the given model
+ * @default foreignKey by default will be the singular of the model that establishes the relation name plus "_id"
+ * @example User will have foreignKey "user_id" on the Join table
  */
-export function manyToMany(
+export function manyToMany<R extends typeof Model>(
   model: () => typeof Model,
-  throughModel: (() => typeof Model) | string,
-  foreignKey?: string,
+  joinTableData: {
+    throughModel: (() => R) | string;
+    throughModelForeignKey: string;
+    relatedModelForeignKey: string;
+  },
 ): PropertyDecorator {
   return (target: Object, propertyKey: string | symbol) => {
+    let { throughModel, throughModelForeignKey, relatedModelForeignKey } =
+      joinTableData;
     if (!(typeof throughModel === "string")) {
       throughModel = throughModel().table;
     }
@@ -373,9 +388,12 @@ export function manyToMany(
       type: RelationEnum.manyToMany,
       columnName: propertyKey as string,
       model,
-      foreignKey,
+      foreignKey: throughModelForeignKey,
       manyToManyOptions: {
-        throughModel,
+        primaryModel: (target.constructor as typeof Model).table,
+        throughModel: throughModel,
+        throughModelForeignKey: throughModelForeignKey,
+        relatedModelForeignKey: relatedModelForeignKey,
       },
     };
 
@@ -395,16 +413,13 @@ export function getRelations(target: typeof Model): Relation[] {
     const { type, model, columnName, foreignKey } = relation;
 
     const lazyLoadedModel = model();
-    const loadedForeignKey =
-      relation.foreignKey ?? getDefaultForeignKey(lazyLoadedModel.table);
-
     switch (type) {
       case RelationEnum.belongsTo:
-        return new BelongsTo(lazyLoadedModel, columnName, loadedForeignKey);
+        return new BelongsTo(lazyLoadedModel, columnName, foreignKey);
       case RelationEnum.hasOne:
-        return new HasOne(lazyLoadedModel, columnName, loadedForeignKey);
+        return new HasOne(lazyLoadedModel, columnName, foreignKey);
       case RelationEnum.hasMany:
-        return new HasMany(lazyLoadedModel, columnName, loadedForeignKey);
+        return new HasMany(lazyLoadedModel, columnName, foreignKey);
       case RelationEnum.manyToMany:
         if (!relation.manyToManyOptions) {
           throw new HysteriaError(
@@ -413,12 +428,15 @@ export function getRelations(target: typeof Model): Relation[] {
           );
         }
 
-        return new ManyToMany(
-          model(),
-          columnName,
-          relation.manyToManyOptions.throughModel,
-          loadedForeignKey,
-        );
+        const relatedModel = model();
+        return new ManyToMany(relatedModel, columnName, {
+          primaryModel: relation.manyToManyOptions.primaryModel,
+          throughModel: relation.manyToManyOptions.throughModel,
+          throughModelForeignKey:
+            relation.manyToManyOptions.throughModelForeignKey,
+          relatedModelForeignKey:
+            relation.manyToManyOptions.relatedModelForeignKey,
+        });
       default:
         throw new HysteriaError(
           "ModelDecorator::getRelations",

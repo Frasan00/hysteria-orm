@@ -6,11 +6,14 @@ export type LazyRelationType = {
   type: RelationEnum;
   columnName: string;
   model: () => typeof Model;
-  foreignKey?: string;
+  foreignKey: string;
 
   // Only for many to many
   manyToManyOptions?: {
+    primaryModel: string;
     throughModel: string;
+    throughModelForeignKey: string;
+    relatedModelForeignKey: string;
   };
 };
 

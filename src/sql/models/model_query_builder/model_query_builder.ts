@@ -17,6 +17,8 @@ import { QueryBuilder } from "../../query_builder/query_builder";
 import type { UpdateOptions } from "../../query_builder/update_query_builder_types";
 import { parseDatabaseDataIntoModelResponse } from "../../serializer";
 import { SqlDataSource } from "../../sql_data_source";
+import { ColumnType } from "../decorators/model_decorators_types";
+import { ManyToMany } from "../relations/many_to_many";
 import { Relation, RelationEnum } from "../relations/relation";
 import type {
   FetchHooks,
@@ -30,6 +32,8 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
   protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
   protected relationQueryBuilders: ModelQueryBuilder<any>[];
   protected modelSelectedColumns: string[];
+  private modelColumnsMap: Map<string, ColumnType>;
+  private modelColumnsDatabaseNames: Map<string, string>;
 
   constructor(model: typeof Model, sqlDataSource: SqlDataSource) {
     super(model, sqlDataSource);
@@ -39,6 +43,16 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
     );
     this.relationQueryBuilders = [];
     this.modelSelectedColumns = [];
+    this.modelColumnsMap = new Map<string, ColumnType>();
+    this.modelColumnsDatabaseNames = new Map<string, string>();
+    const modelColumns = getModelColumns(this.model);
+    modelColumns.forEach((column) => {
+      this.modelColumnsMap.set(column.databaseName, column);
+      this.modelColumnsDatabaseNames.set(
+        column.databaseName,
+        column.columnName,
+      );
+    });
   }
 
   /**
@@ -333,6 +347,8 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
   /**
    * @description Fills the relations in the model in the serialized response. Relation must be defined in the model.
+   * @warning Many to many relations have special behavior, since they require a join, a join clause will always be added to the query.
+   * @warning Many to many relations uses the model foreign key for mapping in the `$additional` property, this property will be removed from the model after the relation is filled.
    */
   withRelation<O extends typeof Model>(
     relation: ModelRelation<T>,
@@ -381,29 +397,11 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
         .map(async (relationQueryBuilder) => {
           const relationModel = relationQueryBuilder.relation.model;
           type RelationModel = InstanceType<typeof relationModel>;
-          const filterValues = this.getFilterValuesFromModelsForRelation(
+          const relatedModels = await this.getRelatedModelsForRelation(
+            relationQueryBuilder,
             relationQueryBuilder.relation,
             models,
           );
-
-          if (
-            !relationModel.primaryKey &&
-            relationQueryBuilder.relation.type === RelationEnum.belongsTo
-          ) {
-            throw new HysteriaError(
-              this.model.name + "::processRelationsRecursively",
-              `RELATED_MODEL_DOES_NOT_HAVE_A_PRIMARY_KEY_${relationModel.name}`,
-            );
-          }
-
-          const relatedModels = await relationQueryBuilder
-            .whereIn(
-              relationQueryBuilder.relation.type === RelationEnum.belongsTo
-                ? relationModel.primaryKey!
-                : (relationQueryBuilder.relation.foreignKey as string),
-              filterValues,
-            )
-            .many();
 
           this.mapRelatedModelsToModels<RelationModel>(
             relationQueryBuilder.relation,
@@ -526,10 +524,119 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
         break;
       case RelationEnum.manyToMany:
+        if (!this.model.primaryKey || !relation.model.primaryKey) {
+          throw new HysteriaError(
+            this.model.name + "::mapRelatedModelsToModels::manyToMany",
+            "MODEL_HAS_NO_PRIMARY_KEY",
+          );
+        }
+
+        const manyToManyRelation = relation as ManyToMany;
+        const relatedModelsMapManyToMany = new Map<string, R[]>();
+        const relatedPrimaryKey = manyToManyRelation.throughModelForeignKey;
+        const casedRelatedPrimaryKey =
+          this.modelColumnsMap.get(relatedPrimaryKey) ||
+          this.modelColumnsDatabaseNames.get(relatedPrimaryKey) ||
+          convertCase(relatedPrimaryKey, this.model.modelCaseConvention);
+
+        relatedModels.forEach((relatedModel) => {
+          const foreignKeyValue =
+            relatedModel.$additional[casedRelatedPrimaryKey];
+          if (!foreignKeyValue) return;
+
+          const foreignKeyStr = String(foreignKeyValue);
+          if (!relatedModelsMapManyToMany.has(foreignKeyStr)) {
+            relatedModelsMapManyToMany.set(foreignKeyStr, []);
+          }
+
+          if (
+            relatedModel.$additional &&
+            relatedModel.$additional[casedRelatedPrimaryKey] &&
+            !this.modelSelectedColumns.includes(casedRelatedPrimaryKey)
+          ) {
+            delete relatedModel.$additional[casedRelatedPrimaryKey];
+          }
+
+          if (Object.keys(relatedModel.$additional).length === 0) {
+            delete (relatedModel as any).$additional;
+          }
+
+          relatedModelsMapManyToMany.get(foreignKeyStr)!.push(relatedModel);
+        });
+
+        modelsToFillWithRelations.forEach((modelToFillWithRelation) => {
+          const primaryKeyValue =
+            modelToFillWithRelation[this.model.primaryKey as keyof T];
+          if (!primaryKeyValue) {
+            modelToFillWithRelation[relation.columnName as keyof T] =
+              [] as T[keyof T];
+            return;
+          }
+
+          const relatedModelsList =
+            relatedModelsMapManyToMany.get(String(primaryKeyValue)) || [];
+          modelToFillWithRelation[relation.columnName as keyof T] =
+            relatedModelsList as T[keyof T];
+        });
+
         break;
       default:
         throw new HysteriaError(
           this.model.name + "::mapRelatedModelsToModels",
+          "UNSUPPORTED_RELATION_TYPE",
+        );
+    }
+  }
+
+  protected async getRelatedModelsForRelation(
+    relationQueryBuilder: ModelQueryBuilder<any>,
+    relation: Relation,
+    models: T[],
+  ): Promise<T[]> {
+    const filterValues = this.getFilterValuesFromModelsForRelation(
+      relation,
+      models,
+    );
+
+    switch (relation.type) {
+      case RelationEnum.belongsTo:
+      case RelationEnum.hasMany:
+      case RelationEnum.hasOne:
+        return relationQueryBuilder
+          .whereIn(
+            relationQueryBuilder.relation.type === RelationEnum.belongsTo
+              ? relation.model.primaryKey!
+              : (relation.foreignKey as string),
+            filterValues,
+          )
+          .many();
+      case RelationEnum.manyToMany:
+        if (!this.model.primaryKey || !relation.model.primaryKey) {
+          throw new HysteriaError(
+            this.model.name + "::getRelatedModelsForRelation",
+            "MODEL_HAS_NO_PRIMARY_KEY",
+          );
+        }
+
+        const manyToManyRelation = relation as ManyToMany;
+        return relationQueryBuilder
+          .select(
+            `${relation.model.table}.*`,
+            `${manyToManyRelation.throughModel}.${manyToManyRelation.throughModelForeignKey} as ${manyToManyRelation.throughModelForeignKey}`,
+          )
+          .leftJoin(
+            manyToManyRelation.throughModel,
+            `${manyToManyRelation.relatedModel}.${manyToManyRelation.model.primaryKey}`,
+            `${manyToManyRelation.throughModel}.${manyToManyRelation.relatedModelForeignKey}`,
+          )
+          .whereIn(
+            `${manyToManyRelation.throughModel}.${manyToManyRelation.throughModelForeignKey}`,
+            filterValues,
+          )
+          .many();
+      default:
+        throw new HysteriaError(
+          this.model.name + "::getRelatedModelsForRelation",
           "UNSUPPORTED_RELATION_TYPE",
         );
     }

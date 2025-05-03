@@ -10,13 +10,12 @@ const joinTemplate = (
   foreignColumn: string,
   operator: BinaryOperatorType = "=",
 ) => {
-  const table = typeofModel.table;
-  const foreignColumnName = foreignColumn.includes(".")
-    ? foreignColumn.split(".").pop()
-    : foreignColumn;
-  const primaryColumnName = primaryColumn.includes(".")
-    ? primaryColumn.split(".").pop()
-    : primaryColumn;
+  const [foreignTableName, foreignColumnName] = foreignColumn.includes(".")
+    ? foreignColumn.split(".")
+    : [relatedTable, foreignColumn];
+  const [primaryTableName, primaryColumnName] = primaryColumn.includes(".")
+    ? primaryColumn.split(".")
+    : [typeofModel.table, primaryColumn];
 
   const modelColumns = getModelColumns(typeofModel);
   const modelColumnsMap = new Map(
@@ -32,11 +31,11 @@ const joinTemplate = (
 
   return {
     innerJoin: () =>
-      `\nINNER JOIN ${relatedTable} ON ${relatedTable}.${foreignColumnConverted} ${operator} ${table}.${primaryColumnConverted} `,
+      `\nINNER JOIN ${relatedTable} ON ${foreignTableName}.${foreignColumnConverted} ${operator} ${primaryTableName}.${primaryColumnConverted} `,
     leftJoin: () =>
-      `\nLEFT JOIN ${relatedTable} ON ${relatedTable}.${foreignColumnConverted} ${operator} ${table}.${primaryColumnConverted} `,
+      `\nLEFT JOIN ${relatedTable} ON ${foreignTableName}.${foreignColumnConverted} ${operator} ${primaryTableName}.${primaryColumnConverted} `,
     rightJoin: () =>
-      `\nRIGHT JOIN ${relatedTable} ON ${relatedTable}.${foreignColumnConverted} ${operator} ${table}.${primaryColumnConverted} `,
+      `\nRIGHT JOIN ${relatedTable} ON ${foreignTableName}.${foreignColumnConverted} ${operator} ${primaryTableName}.${primaryColumnConverted} `,
   };
 };
 
