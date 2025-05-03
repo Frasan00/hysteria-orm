@@ -1,6 +1,5 @@
 import { HysteriaError } from "../../../errors/hysteria_error";
 import { convertCase } from "../../../utils/case_utils";
-import { convertPlaceHolderToValue } from "../../../utils/placeholder";
 import { getModelColumns } from "../../models/decorators/model_decorators";
 import { Model } from "../../models/model";
 import type {
@@ -18,17 +17,18 @@ import { QueryBuilder } from "../../query_builder/query_builder";
 import type { UpdateOptions } from "../../query_builder/update_query_builder_types";
 import { parseDatabaseDataIntoModelResponse } from "../../serializer";
 import { SqlDataSource } from "../../sql_data_source";
+import { Relation, RelationEnum } from "../relations/relation";
 import type {
   FetchHooks,
   ManyOptions,
-  ModelInstanceType,
   OneOptions,
-  RelationQueryBuilder,
 } from "./model_query_builder_types";
+import type { RelationQueryBuilderType } from "./relation_query_builder/relation_query_builder_types";
 
 export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
+  declare relation: Relation;
   protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
-  protected relations: RelationQueryBuilder[];
+  protected relationQueryBuilders: ModelQueryBuilder<any>[];
   protected modelSelectedColumns: string[];
 
   constructor(model: typeof Model, sqlDataSource: SqlDataSource) {
@@ -37,8 +37,40 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
       this.dbType,
       sqlDataSource,
     );
-    this.relations = [];
+    this.relationQueryBuilders = [];
     this.modelSelectedColumns = [];
+  }
+
+  /**
+   * @description Returns true if the query builder is a relation query builder, this changes the behavior of the query builder like limit, offset, etc.
+   * @internal
+   */
+  protected get isRelationQueryBuilder(): boolean {
+    return !!this.relation;
+  }
+
+  /**
+   * @description Creates a new ModelQueryBuilder instance from a model.
+   */
+  static from(
+    model: typeof Model,
+    sqlDataSource: SqlDataSource,
+  ): ModelQueryBuilder<InstanceType<typeof model>> {
+    return new ModelQueryBuilder(model, sqlDataSource);
+  }
+
+  /**
+   * @description Creates a new ModelQueryBuilder instance from a query builder.
+   */
+  static fromQueryBuilder(
+    queryBuilder: QueryBuilder<any>,
+    sqlDataSource: SqlDataSource,
+  ): ModelQueryBuilder<InstanceType<typeof queryBuilder.model>> {
+    const modelQueryBuilder = new ModelQueryBuilder(
+      queryBuilder.model,
+      sqlDataSource,
+    );
+    return modelQueryBuilder;
   }
 
   /**
@@ -96,19 +128,13 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
       return modelInstance;
     });
 
-    const relationModels =
-      await this.sqlModelManagerUtils.parseQueryBuilderRelations(
-        models,
-        this.model,
-        this.relations,
-        this.dbType,
-        this.logs,
-      );
+    if (!models.length) {
+      return [];
+    }
 
     const serializedModels = await parseDatabaseDataIntoModelResponse(
       models,
       this.model,
-      relationModels,
       this.modelSelectedColumns,
     );
 
@@ -116,15 +142,18 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
       return [];
     }
 
+    const serializedModelsArray = Array.isArray(serializedModels)
+      ? serializedModels
+      : [serializedModels];
     if (!options.ignoreHooks?.includes("afterFetch")) {
-      await this.model.afterFetch(
-        Array.isArray(serializedModels) ? serializedModels : [serializedModels],
-      );
+      await this.model.afterFetch(serializedModelsArray);
     }
 
-    return (
-      Array.isArray(serializedModels) ? serializedModels : [serializedModels]
-    ) as T[];
+    if (this.relationQueryBuilders.length) {
+      await this.processRelationsRecursively(serializedModelsArray);
+    }
+
+    return serializedModelsArray;
   }
 
   /**
@@ -303,51 +332,31 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
   }
 
   /**
-   * @description Fills the relations in the model in the serialized response.
-   * @description Relation must be defined in the model.
+   * @description Fills the relations in the model in the serialized response. Relation must be defined in the model.
    */
   withRelation<O extends typeof Model>(
     relation: ModelRelation<T>,
-    relatedModel?: O,
-    relatedModelQueryBuilder?: (
-      queryBuilder: ModelQueryBuilder<ModelInstanceType<O>>,
-    ) => void,
-    ignoreHooks?: { beforeFetch?: boolean; afterFetch?: boolean },
-  ): ModelQueryBuilder<T> {
-    if (!relatedModelQueryBuilder) {
-      this.relations.push({
-        relation: relation as string,
-      });
+    _relatedModel?: O,
+    cb?: (queryBuilder: RelationQueryBuilderType<InstanceType<O>>) => void,
+  ): this {
+    const modelRelation = this.sqlModelManagerUtils.getRelationFromModel(
+      relation as string,
+      this.model,
+    );
 
-      return this;
-    }
+    const relationQueryBuilder = new ModelQueryBuilder<InstanceType<O>>(
+      modelRelation.model,
+      this.sqlDataSource,
+    );
 
-    const queryBuilder = new ModelQueryBuilder(this.model, this.sqlDataSource);
-    relatedModelQueryBuilder(queryBuilder as ModelQueryBuilder<any>);
-    if (!ignoreHooks?.beforeFetch) {
-      relatedModel?.beforeFetch(queryBuilder);
-    }
+    relationQueryBuilder.relation = modelRelation;
+    cb?.(relationQueryBuilder);
+    this.relationQueryBuilders.push(relationQueryBuilder);
+    return this;
+  }
 
-    this.relations.push({
-      relation: relation as string,
-      selectedColumns: queryBuilder.modelSelectedColumns,
-      whereQuery: convertPlaceHolderToValue(
-        this.dbType,
-        queryBuilder.whereQuery,
-      ),
-      withRelations: queryBuilder.relations.map(
-        (relation) => relation.relation,
-      ),
-      params: queryBuilder.params,
-      joinQuery: queryBuilder.joinQuery,
-      groupByQuery: queryBuilder.groupByQuery,
-      orderByQuery: queryBuilder.orderByQuery,
-      limitQuery: queryBuilder.limitQuery,
-      offsetQuery: queryBuilder.offsetQuery,
-      havingQuery: queryBuilder.havingQuery,
-      ignoreAfterFetchHook: ignoreHooks?.afterFetch || false,
-    });
-
+  clearRelations(): this {
+    this.relationQueryBuilders = [];
     return this;
   }
 
@@ -356,8 +365,208 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
    */
   override copy(): this {
     const queryBuilder = super.copy();
-    queryBuilder.relations = [...this.relations];
+    queryBuilder.relationQueryBuilders = [...this.relationQueryBuilders];
     return queryBuilder;
+  }
+
+  /**
+   * @description Recursively processes all relations, including nested ones
+   */
+  protected async processRelationsRecursively(models: T[]): Promise<void> {
+    await Promise.all(
+      this.relationQueryBuilders
+        .filter(
+          (relationQueryBuilder) => relationQueryBuilder.isRelationQueryBuilder,
+        )
+        .map(async (relationQueryBuilder) => {
+          const relationModel = relationQueryBuilder.relation.model;
+          type RelationModel = InstanceType<typeof relationModel>;
+          const filterValues = this.getFilterValuesFromModelsForRelation(
+            relationQueryBuilder.relation,
+            models,
+          );
+
+          if (
+            !relationModel.primaryKey &&
+            relationQueryBuilder.relation.type === RelationEnum.belongsTo
+          ) {
+            throw new HysteriaError(
+              this.model.name + "::processRelationsRecursively",
+              `RELATED_MODEL_DOES_NOT_HAVE_A_PRIMARY_KEY_${relationModel.name}`,
+            );
+          }
+
+          const relatedModels = await relationQueryBuilder
+            .whereIn(
+              relationQueryBuilder.relation.type === RelationEnum.belongsTo
+                ? relationModel.primaryKey!
+                : (relationQueryBuilder.relation.foreignKey as string),
+              filterValues,
+            )
+            .many();
+
+          this.mapRelatedModelsToModels<RelationModel>(
+            relationQueryBuilder.relation,
+            models,
+            relatedModels,
+          );
+        }),
+    );
+  }
+
+  protected mapRelatedModelsToModels<R extends Model>(
+    relation: Relation,
+    modelsToFillWithRelations: T[],
+    relatedModels: R[],
+  ): void {
+    switch (relation.type) {
+      case RelationEnum.hasOne:
+        if (!this.model.primaryKey) {
+          throw new HysteriaError(
+            this.model.name + "::mapRelatedModelsToModels::hasOne",
+            "MODEL_HAS_NO_PRIMARY_KEY",
+          );
+        }
+
+        const relatedModelsMap = new Map<string, R>();
+
+        relatedModels.forEach((relatedModel) => {
+          const foreignKeyValue = relatedModel[relation.foreignKey as keyof R];
+          if (foreignKeyValue) {
+            relatedModelsMap.set(String(foreignKeyValue), relatedModel);
+          }
+        });
+
+        modelsToFillWithRelations.forEach((modelToFillWithRelation) => {
+          const primaryKeyValue =
+            modelToFillWithRelation[this.model.primaryKey as keyof T];
+          if (!primaryKeyValue) {
+            modelToFillWithRelation[relation.columnName as keyof T] =
+              null as T[keyof T];
+            return;
+          }
+
+          const relatedModel = relatedModelsMap.get(String(primaryKeyValue));
+          modelToFillWithRelation[relation.columnName as keyof T] =
+            (relatedModel || null) as T[keyof T];
+        });
+
+        break;
+      case RelationEnum.belongsTo:
+        const relatedModelsByKey = new Map<string, R>();
+
+        relatedModels.forEach((relatedModel) => {
+          if (!relation.model.primaryKey) {
+            throw new HysteriaError(
+              this.model.name + "::mapRelatedModelsToModels::belongsTo",
+              `RELATED_MODEL_DOES_NOT_HAVE_A_PRIMARY_KEY_${relation.model.name}` as const,
+            );
+          }
+
+          const primaryKeyValue =
+            relatedModel[relation.model.primaryKey as keyof R];
+          if (primaryKeyValue) {
+            relatedModelsByKey.set(String(primaryKeyValue), relatedModel);
+          }
+        });
+
+        modelsToFillWithRelations.forEach((modelToFillWithRelation) => {
+          const foreignKeyValue =
+            modelToFillWithRelation[relation.foreignKey as keyof T];
+          if (!foreignKeyValue) {
+            modelToFillWithRelation[relation.columnName as keyof T] =
+              null as T[keyof T];
+            return;
+          }
+
+          const relatedModel = relatedModelsByKey.get(String(foreignKeyValue));
+          modelToFillWithRelation[relation.columnName as keyof T] =
+            (relatedModel || null) as T[keyof T];
+        });
+
+        break;
+      case RelationEnum.hasMany:
+        if (!this.model.primaryKey) {
+          throw new HysteriaError(
+            this.model.name + "::mapRelatedModelsToModels::hasMany",
+            "MODEL_HAS_NO_PRIMARY_KEY",
+          );
+        }
+
+        const relatedModelsGroupedByForeignKey = new Map<string, R[]>();
+
+        relatedModels.forEach((relatedModel) => {
+          const foreignKeyValue = relatedModel[relation.foreignKey as keyof R];
+          if (!foreignKeyValue) return;
+
+          const foreignKeyStr = String(foreignKeyValue);
+          if (!relatedModelsGroupedByForeignKey.has(foreignKeyStr)) {
+            relatedModelsGroupedByForeignKey.set(foreignKeyStr, []);
+          }
+
+          relatedModelsGroupedByForeignKey
+            .get(foreignKeyStr)!
+            .push(relatedModel);
+        });
+
+        modelsToFillWithRelations.forEach((modelToFillWithRelation) => {
+          const primaryKeyValue =
+            modelToFillWithRelation[this.model.primaryKey as keyof T];
+          if (!primaryKeyValue) {
+            modelToFillWithRelation[relation.columnName as keyof T] =
+              [] as T[keyof T];
+            return;
+          }
+
+          const relatedModelsList =
+            relatedModelsGroupedByForeignKey.get(String(primaryKeyValue)) || [];
+          modelToFillWithRelation[relation.columnName as keyof T] =
+            relatedModelsList as T[keyof T];
+        });
+
+        break;
+      case RelationEnum.manyToMany:
+        break;
+      default:
+        throw new HysteriaError(
+          this.model.name + "::mapRelatedModelsToModels",
+          "UNSUPPORTED_RELATION_TYPE",
+        );
+    }
+  }
+
+  protected getFilterValuesFromModelsForRelation(
+    relation: Relation,
+    models: T[],
+  ): any[] {
+    switch (relation.type) {
+      case RelationEnum.hasMany:
+      case RelationEnum.hasOne:
+        if (!this.model.primaryKey) {
+          throw new HysteriaError(
+            this.model.name + "::getFilterValuesFromModelsForRelation",
+            "MODEL_HAS_NO_PRIMARY_KEY",
+          );
+        }
+
+        return models.map((model) => model[this.model.primaryKey as keyof T]);
+      case RelationEnum.belongsTo:
+        return models.map((model) => model[relation.foreignKey as keyof T]);
+      case RelationEnum.manyToMany:
+        if (!this.model.primaryKey) {
+          throw new HysteriaError(
+            this.model.name + "::getFilterValuesFromModelsForRelation",
+            "MODEL_HAS_NO_PRIMARY_KEY",
+          );
+        }
+
+        return models.map((model) => model[this.model.primaryKey as keyof T]);
+      default:
+        throw new HysteriaError(
+          this.model.name + "::getFilterValuesFromModelsForRelation",
+          "UNSUPPORTED_RELATION_TYPE",
+        );
+    }
   }
 
   protected mergeRawPacketIntoModel(
@@ -371,6 +580,7 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
         key,
         typeofModel.modelCaseConvention,
       ) as string;
+
       if (columns.map((column) => column.columnName).includes(casedKey)) {
         Object.assign(model, { [casedKey]: value });
         return;

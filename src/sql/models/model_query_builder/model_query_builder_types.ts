@@ -13,18 +13,3 @@ export type OneOptions = {
 export type ManyOptions = {
   ignoreHooks?: FetchHooks[];
 };
-
-export type RelationQueryBuilder = {
-  relation: string;
-  selectedColumns?: string[];
-  withRelations?: string[];
-  whereQuery?: string;
-  params?: any[];
-  joinQuery?: string;
-  groupByQuery?: string;
-  orderByQuery?: string;
-  limitQuery?: string;
-  offsetQuery?: string;
-  havingQuery?: string;
-  ignoreAfterFetchHook?: boolean;
-};

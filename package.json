@@ -7,18 +7,6 @@
   "module": "./lib/index.js",
   "types": "./lib/index.d.ts",
   "type": "module",
-  "exports": {
-    ".": {
-      "require": "./lib/index.cjs",
-      "import": "./lib/index.js",
-      "types": "./lib/index.d.ts"
-    },
-    "./cli": {
-      "require": "./lib/cli.cjs",
-      "import": "./lib/cli.js",
-      "types": "./lib/cli.d.ts"
-    }
-  },
   "sideEffects": false,
   "repository": "https://github.com/Frasan00/hysteria-orm.git",
   "author": "Frasan00 <francesco.sangiovanni.7@gmail.com>",

@@ -34,6 +34,7 @@ import { withPerformance } from "./utils/performance";
 import { generateULID } from "./utils/ulid";
 import { generateKeyPair } from "./utils/encryption";
 import { ModelQueryBuilder } from "./sql/models/model_query_builder/model_query_builder";
+import type { RelationQueryBuilderType } from "./sql/models/model_query_builder/relation_query_builder/relation_query_builder_types";
 
 export {
   // decorators
@@ -64,6 +65,7 @@ export {
   // sql
   Model,
   ModelQueryBuilder,
+  RelationQueryBuilderType,
   // mongo
   MongoDataSource,
   property,

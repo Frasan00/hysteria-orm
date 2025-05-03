@@ -1,22 +1,16 @@
-import { HysteriaError } from "../errors/hysteria_error";
 import { convertCase } from "../utils/case_utils";
 import { isNestedObject } from "../utils/json_utils";
-import {
-  getModelColumns,
-  getRelations,
-} from "./models/decorators/model_decorators";
+import { getModelColumns } from "./models/decorators/model_decorators";
 import { ColumnType } from "./models/decorators/model_decorators_types";
 import { Model } from "./models/model";
-import {
-  isRelationDefinition,
-  Relation,
-  RelationEnum,
-} from "./models/relations/relation";
+import { isRelationDefinition } from "./models/relations/relation";
 
+/**
+ * @description Main serializer function
+ */
 export async function parseDatabaseDataIntoModelResponse<T extends Model>(
   models: T[],
   typeofModel: typeof Model,
-  relationModels: { [relationName: string]: Model[] }[] = [],
   modelSelectedColumns: string[] = [],
 ): Promise<T | T[] | null> {
   if (!models.length) {
@@ -28,7 +22,6 @@ export async function parseDatabaseDataIntoModelResponse<T extends Model>(
     modelColumns.map((modelColumn) => [modelColumn.databaseName, modelColumn]),
   );
 
-  const relations = getRelations(typeofModel);
   // At this point `modelSelectedColumns` are in database convention
   modelSelectedColumns = modelSelectedColumns
     .map((databaseColumn) => {
@@ -59,12 +52,6 @@ export async function parseDatabaseDataIntoModelResponse<T extends Model>(
         modelSelectedColumns,
       );
 
-      await processRelations(
-        serializedModel,
-        typeofModel,
-        relations,
-        relationModels,
-      );
       return serializedModel;
     }),
   );
@@ -157,182 +144,6 @@ function processAdditionalColumns(
   );
 
   casedModel[key] = $additional;
-}
-
-async function processRelations(
-  serializedModel: Record<string, any>,
-  typeofModel: typeof Model,
-  relations: Relation[],
-  relationModels: { [relationName: string]: Model[] }[],
-): Promise<void> {
-  await Promise.all(
-    relations.map(async (relation: Relation) => {
-      const relationModel = relationModels.find(
-        (relationModel) => relationModel[relation.columnName],
-      );
-      if (!relationModel) {
-        return;
-      }
-
-      const relatedModels = relationModel[relation.columnName];
-      const foreignKey = convertCase(
-        relation.foreignKey,
-        typeofModel.modelCaseConvention,
-      ) as string;
-      const primaryKey = convertCase(
-        typeofModel.primaryKey,
-        typeofModel.modelCaseConvention,
-      ) as string;
-
-      switch (relation.type) {
-        case RelationEnum.belongsTo: {
-          const relatedModelMap = new Map<any, Model>();
-          const casedPrimaryKey = convertCase(
-            primaryKey,
-            typeofModel.databaseCaseConvention,
-          ) as keyof Model;
-
-          relatedModels.forEach((model) => {
-            relatedModelMap.set(model[casedPrimaryKey], model);
-          });
-
-          const retrievedRelatedModel = relatedModelMap.get(
-            serializedModel[foreignKey as keyof Model],
-          );
-
-          if (!retrievedRelatedModel) {
-            serializedModel[relation.columnName] = null;
-            return;
-          }
-
-          const relationModelColumns = getModelColumns(relation.model);
-          const relationModelColumnsMap = new Map<string, ColumnType>(
-            relationModelColumns.map((column) => [column.databaseName, column]),
-          );
-
-          serializedModel[relation.columnName] = await serializeModel(
-            retrievedRelatedModel,
-            relation.model,
-            relationModelColumnsMap,
-          );
-          break;
-        }
-
-        case RelationEnum.hasOne: {
-          const relatedModelMapHasOne = new Map<any, Model>();
-          const casedForeignKey = convertCase(
-            foreignKey,
-            typeofModel.databaseCaseConvention,
-          ) as keyof Model;
-
-          relatedModels.forEach((model) => {
-            relatedModelMapHasOne.set(model[casedForeignKey], model);
-          });
-
-          const retrievedRelatedModelHasOne = relatedModelMapHasOne.get(
-            serializedModel[primaryKey as keyof Model],
-          );
-
-          if (!retrievedRelatedModelHasOne) {
-            serializedModel[relation.columnName] = null;
-            return;
-          }
-
-          const relationModelColumns = getModelColumns(relation.model);
-          const relationModelColumnsMap = new Map<string, ColumnType>(
-            relationModelColumns.map((column) => [column.databaseName, column]),
-          );
-
-          serializedModel[relation.columnName] = await serializeModel(
-            retrievedRelatedModelHasOne,
-            relation.model,
-            relationModelColumnsMap,
-          );
-          break;
-        }
-
-        case RelationEnum.hasMany: {
-          const retrievedRelatedModels = relatedModels.filter(
-            (item) =>
-              item[
-                convertCase(
-                  foreignKey,
-                  typeofModel.databaseCaseConvention,
-                ) as keyof Model
-              ] === serializedModel[primaryKey as keyof Model],
-          );
-
-          const relationModelColumns = getModelColumns(relation.model);
-          const relationModelColumnsMap = new Map<string, ColumnType>(
-            relationModelColumns.map((column) => [column.databaseName, column]),
-          );
-
-          serializedModel[relation.columnName] = await Promise.all(
-            retrievedRelatedModels.map(
-              async (model) =>
-                await serializeModel(
-                  model,
-                  relation.model,
-                  relationModelColumnsMap,
-                ),
-            ),
-          );
-          break;
-        }
-
-        case RelationEnum.manyToMany: {
-          const relatedModelMapManyToMany = new Map<any, Model>();
-          relatedModels.forEach((model) => {
-            relatedModelMapManyToMany.set(
-              model[primaryKey as keyof Model],
-              model,
-            );
-          });
-
-          const currentModelId = serializedModel[primaryKey as keyof Model];
-          const relatedModel = relatedModelMapManyToMany.get(currentModelId);
-
-          if (!relatedModel) {
-            serializedModel[relation.columnName] = [];
-            return;
-          }
-
-          let relatedColumnValue =
-            relatedModel[relation.columnName as keyof Model];
-          if (!relatedColumnValue) {
-            relatedColumnValue = [];
-          }
-
-          if (!Array.isArray(relatedColumnValue)) {
-            relatedColumnValue = [relatedColumnValue];
-          }
-
-          const relationModelColumns = getModelColumns(relation.model);
-          const relationModelColumnsMap = new Map<string, ColumnType>(
-            relationModelColumns.map((column) => [column.databaseName, column]),
-          );
-
-          serializedModel[relation.columnName] = await Promise.all(
-            relatedColumnValue.map(
-              async (relatedItem: Model) =>
-                await serializeModel(
-                  relatedItem,
-                  relation.model,
-                  relationModelColumnsMap,
-                ),
-            ),
-          );
-          break;
-        }
-
-        default:
-          throw new HysteriaError(
-            "Serializer::processRelations",
-            `RELATION_TYPE_NOT_SUPPORTED_${relation.type}`,
-          );
-      }
-    }),
-  );
 }
 
 function convertToModelCaseConvention(

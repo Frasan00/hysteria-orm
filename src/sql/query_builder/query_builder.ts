@@ -1,5 +1,6 @@
 import { format } from "sql-formatter";
 import { HysteriaError } from "../../errors/hysteria_error";
+import { baseSoftDeleteDate } from "../../utils/date_utils";
 import { convertPlaceHolderToValue } from "../../utils/placeholder";
 import { bindParamsIntoQuery } from "../../utils/query";
 import type { Model } from "../models/model";
@@ -17,9 +18,9 @@ import { WithClauseType } from "./cte/cte_types";
 import { SoftDeleteOptions } from "./delete_query_builder_type";
 import { QueryBuilderWithOnlyWhereConditions } from "./query_builder_types";
 import { WhereQueryBuilder } from "./where_query_builder";
-import { baseSoftDeleteDate } from "../../utils/date_utils";
 
 export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
+  model: typeof Model;
   protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
   protected unionQuery: string;
   protected updateTemplate: ReturnType<typeof updateTemplate>;
@@ -37,6 +38,7 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
       this.dbType,
       this.sqlDataSource,
     );
+    this.model = model;
     this.updateTemplate = updateTemplate(this.dbType, this.model);
     this.deleteTemplate = deleteTemplate(this.dbType);
     this.unionQuery = "";
@@ -586,11 +588,11 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
         case "mysql":
         case "sqlite":
         case "mariadb":
-          return query.replace(/PLACEHOLDER/g, () => "?");
+          return query.replace(/\$PLACEHOLDER/g, () => "?");
         case "postgres":
         case "cockroachdb":
           let index = startIndex;
-          return query.replace(/PLACEHOLDER/g, () => `$${index++}`);
+          return query.replace(/\$PLACEHOLDER/g, () => `$${index++}`);
         default:
           throw new HysteriaError(
             "StandaloneSqlQueryBuilder::unWrap",
@@ -630,7 +632,7 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
 
   protected convertPlaceHolderToValue(query: string) {
     let index = 0;
-    return query.replace(/PLACEHOLDER/g, () => {
+    return query.replace(/\$PLACEHOLDER/g, () => {
       const indexParam = this.parseValueForDatabase(this.params[index]);
       index++;
       return indexParam;
@@ -758,7 +760,7 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
   }
 
   /**
-   * @description Returns the query and the params without replacing the PLACEHOLDER with the specific database driver placeholder
+   * @description Returns the query and the params without replacing the $PLACEHOLDER with the specific database driver placeholder
    */
   private unWrapRaw(): {
     query: string;

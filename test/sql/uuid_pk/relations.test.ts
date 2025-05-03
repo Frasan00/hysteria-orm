@@ -37,9 +37,33 @@ describe(`[${env.DB_TYPE}] uuid pk relations`, () => {
     const userWithLoadedPosts = await UserWithUuid.query()
       .withRelation("post")
       .many();
+
     for (const user of userWithLoadedPosts) {
       expect(user.id).toBe(user.post.userId);
     }
+  });
+
+  test("uuid HasMany relation with filtering on the relation", async () => {
+    const user = await UserFactory.userWithUuid(1);
+    const posts: PostWithUuid[] = [];
+    for (let i = 0; i < 3; i++) {
+      const post = await PostFactory.postWithUuid(user.id, 1);
+      posts.push(post);
+    }
+
+    expect(user).toBeDefined();
+    expect(posts).toHaveLength(3);
+
+    const userWithLoadedPosts = await UserWithUuid.query()
+      .where("id", user.id)
+      .withRelation("posts", PostWithUuid, (qb) =>
+        qb.where("title", posts[0].title),
+      )
+      .one();
+
+    expect(userWithLoadedPosts).toBeDefined();
+    expect(userWithLoadedPosts?.posts).toHaveLength(1);
+    expect(userWithLoadedPosts?.posts[0].title).toBe(posts[0].title);
   });
 
   test("uuid HasOne relation nested with a belongs to relation", async () => {
@@ -63,7 +87,7 @@ describe(`[${env.DB_TYPE}] uuid pk relations`, () => {
     }
   });
 
-  test("uuid HasMany relation", async () => {
+  test("uuid with multiple nested relations", async () => {
     const users = await UserFactory.userWithUuid(3);
     const posts = [];
     for (const user of users) {
@@ -75,12 +99,49 @@ describe(`[${env.DB_TYPE}] uuid pk relations`, () => {
     expect(posts).toHaveLength(3);
 
     const userWithLoadedPosts = await UserWithUuid.query()
-      .withRelation("posts")
+      .withRelation("post", PostWithUuid, (qb) =>
+        qb.withRelation("user", UserWithUuid, (qb2) =>
+          qb2.withRelation("post", PostWithUuid, (qb3) =>
+            qb3.withRelation("user", UserWithUuid),
+          ),
+        ),
+      )
       .many();
+
+    // add expect tests for the nested relations
     for (const user of userWithLoadedPosts) {
-      for (const post of user.posts) {
-        expect(post.userId).toBe(user.id);
-      }
+      expect(user.id).toBe(user.post.user.id);
+      expect(user.post.user.id).toBe(user.id);
+      expect(user.post.user.post.user.id).toBe(user.id);
+    }
+  });
+
+  test("uuid HasMany relation", async () => {
+    const user = await UserFactory.userWithUuid(1);
+    const posts = [];
+    for (let i = 0; i < 3; i++) {
+      const post = await PostFactory.postWithUuid(user.id, 1);
+      posts.push(post);
+    }
+
+    expect(user).toBeDefined();
+    expect(posts).toHaveLength(3);
+
+    const userWithLoadedPosts = (await UserWithUuid.query()
+      .where("id", user.id)
+      .withRelation("posts")
+      .one()) as UserWithUuid;
+
+    expect(userWithLoadedPosts).toBeDefined();
+    expect(userWithLoadedPosts.posts).toHaveLength(3);
+    for (const post of userWithLoadedPosts.posts) {
+      expect(post.userId).toBe(user.id);
+    }
+
+    expect(userWithLoadedPosts).toBeDefined();
+    expect(userWithLoadedPosts.posts).toHaveLength(3);
+    for (const post of userWithLoadedPosts.posts) {
+      expect(post.userId).toBe(user.id);
     }
   });
 });

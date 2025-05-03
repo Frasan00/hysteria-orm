@@ -1,19 +1,16 @@
 import { HysteriaError } from "../../../errors/hysteria_error";
-import { RelationQueryBuilder } from "../model_query_builder/model_query_builder_types";
 import deleteTemplate from "../../resources/query/DELETE";
 import insertTemplate from "../../resources/query/INSERT";
-import relationTemplates from "../../resources/query/RELATION";
 import updateTemplate from "../../resources/query/UPDATE";
 import { SqlDataSource } from "../../sql_data_source";
 import { SqlDataSourceType } from "../../sql_data_source_types";
-import { execSql } from "../../sql_runner/sql_runner";
 import { getModelColumns, getRelations } from "../decorators/model_decorators";
 import { Model } from "../model";
 import { Relation } from "../relations/relation";
 
 export default class SqlModelManagerUtils<T extends Model> {
-  private dbType: SqlDataSourceType;
-  private sqlDataSource: SqlDataSource;
+  protected dbType: SqlDataSourceType;
+  protected sqlDataSource: SqlDataSource;
 
   constructor(dbType: SqlDataSourceType, sqlDataSource: SqlDataSource) {
     this.dbType = dbType;
@@ -93,7 +90,7 @@ export default class SqlModelManagerUtils<T extends Model> {
     return deleteTemplate(this.dbType).delete(table, column, value);
   }
 
-  private getRelationFromModel(
+  getRelationFromModel(
     relationField: string,
     typeofModel: typeof Model,
   ): Relation {
@@ -101,6 +98,7 @@ export default class SqlModelManagerUtils<T extends Model> {
     const relation = relations.find(
       (relation) => relation.columnName === relationField,
     );
+
     if (!relation) {
       throw new HysteriaError(
         "SqlModelManagerUtils::getRelationFromModel",
@@ -109,88 +107,6 @@ export default class SqlModelManagerUtils<T extends Model> {
     }
 
     return relation;
-  }
-
-  async parseQueryBuilderRelations(
-    models: T[],
-    typeofModel: typeof Model,
-    input: RelationQueryBuilder[],
-    dbType: SqlDataSourceType,
-    logs: boolean,
-  ): Promise<{ [relationName: string]: Model[] }[]> {
-    if (!input.length) {
-      return [];
-    }
-
-    if (!typeofModel.primaryKey) {
-      throw new HysteriaError(
-        "SqlModelManagerUtils::parseQueryBuilderRelations",
-        "MODEL_HAS_NO_PRIMARY_KEY",
-      );
-    }
-
-    const resultArray = await Promise.all(
-      input.map(async (inputRelation) => {
-        const relation = this.getRelationFromModel(
-          inputRelation.relation,
-          typeofModel,
-        );
-
-        const { query, params } = relationTemplates(
-          models,
-          relation,
-          inputRelation.relation,
-          inputRelation,
-          typeofModel,
-          dbType,
-        );
-
-        let modelsForRelation: any[] = [];
-
-        if (query) {
-          let result = await execSql(query, params, this.sqlDataSource, "raw", {
-            sqlLiteOptions: {
-              typeofModel: typeofModel,
-            },
-          });
-
-          if (!result) {
-            result = [];
-          } else if (!Array.isArray(result)) {
-            result = [result];
-          }
-
-          if (!inputRelation.ignoreAfterFetchHook) {
-            result = await (relation.model as any).afterFetch(result);
-          }
-
-          // Group the result by relation name. Since we're processing one relation per iteration,
-          // simply collect all rows and remove the temporary relation_name key.
-          result.forEach((row: any) => {
-            if (row.relation_name) {
-              delete row.relation_name;
-            }
-
-            modelsForRelation.push(row);
-          });
-        }
-
-        // Some databases return JSON as string so we need to parse it.
-        modelsForRelation.forEach((model) => {
-          if (typeof model[inputRelation.relation] === "string") {
-            model[inputRelation.relation] = JSON.parse(
-              model[inputRelation.relation],
-            );
-          }
-        });
-
-        return {
-          [inputRelation.relation]: modelsForRelation,
-        };
-      }),
-    );
-
-    return resultArray;
   }
 
   /**

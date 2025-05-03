@@ -10,11 +10,11 @@ export const convertPlaceHolderToValue = (
     case "mysql":
     case "sqlite":
     case "mariadb":
-      return query.replace(/PLACEHOLDER/g, () => "?");
+      return query.replace(/\$PLACEHOLDER/g, () => "?");
     case "postgres":
     case "cockroachdb":
       let index = startIndex;
-      return query.replace(/PLACEHOLDER/g, () => `$${index++}`);
+      return query.replace(/\$PLACEHOLDER/g, () => `$${index++}`);
     default:
       throw new HysteriaError(
         "convertPlaceHolderToValue",

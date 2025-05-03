@@ -28,9 +28,8 @@ export function isRelationDefinition(
 }
 
 /**
- * Main Model -> Related Model
+ * Main Relation Class
  */
-
 export abstract class Relation {
   abstract type: RelationEnum;
   model: typeof Model = Model;

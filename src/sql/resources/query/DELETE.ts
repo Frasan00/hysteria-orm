@@ -8,16 +8,16 @@ const deleteTemplate = (dbType: SqlDataSourceType) => {
       column: string,
       value: string | number | boolean | Date,
     ) => {
-      let baseQuery = `DELETE FROM ${table} WHERE ${column} = PLACEHOLDER`;
+      let baseQuery = `DELETE FROM ${table} WHERE ${column} = $PLACEHOLDER`;
       switch (dbType) {
         case "mariadb":
         case "sqlite":
         case "mysql":
-          baseQuery = baseQuery.replace("PLACEHOLDER", "?");
+          baseQuery = baseQuery.replace("$PLACEHOLDER", "?");
           break;
         case "postgres":
         case "cockroachdb":
-          baseQuery = baseQuery.replace("PLACEHOLDER", "$1");
+          baseQuery = baseQuery.replace("$PLACEHOLDER", "$1");
           break;
         default:
           throw new HysteriaError(
