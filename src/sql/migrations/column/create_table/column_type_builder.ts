@@ -910,7 +910,6 @@ export default class ColumnTypeBuilder
   /**
    * @description Creates a timestamp column
    * @sqlite Sqlite does not support auto updating a timestamp column nor date columns in general, TEXT will be used instead
-   * @postgres CockroachDB does not support auto updating a timestamp column, a function will be created instead for this purpose
    */
   timestamp(name: string, options?: DateOptions): ColumnConstraints {
     this.checkLastComma();
@@ -930,7 +929,7 @@ export default class ColumnTypeBuilder
     }
 
     this.columnName = name;
-    this.partialQuery += ` ${name} TIMESTAMP`;
+    this.partialQuery += ` ${name} ${this.sqlType === "postgres" || this.sqlType === "cockroachdb" ? "TIMESTAMP WITH TIME ZONE" : "TIMESTAMP"}`;
 
     if (options && options.timezone) {
       this.partialQuery += ` ${options.timezone}`;

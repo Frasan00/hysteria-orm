@@ -1,7 +1,7 @@
 import { faker } from "@faker-js/faker";
-import { FactoryReturnType } from "./factory_types";
 import { AddressWithBigint } from "../bigint/address_bigint";
 import { AddressWithUuid } from "../uuid/address_uuid";
+import { FactoryReturnType } from "./factory_types";
 
 export class AddressFactory {
   static async addressWithBigint<T extends number>(
@@ -40,7 +40,13 @@ export class AddressFactory {
     ) as Promise<FactoryReturnType<T, AddressWithUuid>>;
   }
 
-  static getCommonAddressData(): Partial<Omit<AddressWithUuid, "id">> {
+  static getCommonAddressData(): {
+    street: string;
+    city: string;
+    state: string;
+    zip: string;
+    country: string;
+  } {
     return {
       street: faker.location.street(),
       city: faker.location.city(),

@@ -263,6 +263,7 @@ export class ModelManager<T extends Model> {
       model as T,
       "update",
     );
+
     const { primaryKey } = this.model;
     if (!primaryKey) {
       throw new HysteriaError(

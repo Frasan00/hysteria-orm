@@ -65,19 +65,19 @@ export const promisifySqliteQuery = <T extends Model>(
             return reject(err);
           }
 
+          const inputModel =
+            options.models &&
+            Array.isArray(options.models) &&
+            options.models.length
+              ? options.models[0]
+              : null;
+
           if (!primaryKeyName) {
-            const returnModel =
-              options.models &&
-              Array.isArray(options.models) &&
-              options.models.length
-                ? options.models[0]
-                : null;
-            resolve(returnModel as T);
+            resolve(inputModel as T);
+            return;
           }
 
-          const currentModel = options.models as T;
-          const lastID =
-            currentModel?.[primaryKeyName as keyof T] || this.lastID;
+          const lastID = inputModel?.[primaryKeyName as keyof T] || this.lastID;
 
           if (!lastID) {
             return reject(
@@ -110,14 +110,14 @@ export const promisifySqliteQuery = <T extends Model>(
     const models = options.models as T[];
     let finalResult: T[] = [];
     return new Promise<T[]>(async (resolve, reject) => {
-      for (const model of models) {
-        try {
+      try {
+        const insertPromises = models.map(async (model) => {
           const { query, params } = new SqlModelManagerUtils(
             sqlDataSource.getDbType(),
             sqlDataSource,
           ).parseInsert(model as Model, typeofModel, sqlDataSource.getDbType());
 
-          await new Promise<void>((resolve, reject) => {
+          return new Promise<T>((resolve, reject) => {
             sqliteDriver.run(query, params, function (err: any) {
               if (err) {
                 return reject(err);
@@ -125,8 +125,8 @@ export const promisifySqliteQuery = <T extends Model>(
 
               const lastID = model[primaryKeyName as keyof T] || this.lastID;
               if (!primaryKeyName) {
-                finalResult = options.models as T[];
-                resolve();
+                resolve(model as T);
+                return;
               }
 
               if (!lastID) {
@@ -144,16 +144,17 @@ export const promisifySqliteQuery = <T extends Model>(
                   return reject(err);
                 }
 
-                finalResult.push(row as T);
-                resolve();
+                resolve(row as T);
               });
             });
           });
-        } catch (err) {
-          return reject(err);
-        }
+        });
+
+        finalResult = await Promise.all(insertPromises);
+        resolve(finalResult);
+      } catch (err) {
+        reject(err);
       }
-      resolve(finalResult);
     });
   }
 

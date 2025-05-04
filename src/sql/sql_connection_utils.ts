@@ -57,7 +57,7 @@ export const createSqlConnection = async (
       });
 
       pgPool.on("connect", async (client) => {
-        const query = `SET TIME ZONE '${timezone}'`;
+        const query = `SET TIME ZONE '${timezone}'; SET timezone = 'UTC';`;
         log(query, input.logs || false);
         await client.query(query);
         logMessage(`Timezone set to: ${timezone}`, "info", input.logs);

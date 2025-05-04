@@ -42,7 +42,6 @@ export default class extends Migration {
       });
       table.addColumn("is_admin", "boolean", {
         default: false,
-
         autoIncrement: false,
       });
     });

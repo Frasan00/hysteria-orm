@@ -10,11 +10,11 @@ import {
 } from "./test_environments.js";
 
 const sqlEnvironments = [
+  sqliteConfig,
   pgConfig,
   mysqlConfig,
-  sqliteConfig,
-  cockroachdbConfig,
   mariadbConfig,
+  cockroachdbConfig,
 ];
 
 const sqlTests = [
@@ -31,14 +31,15 @@ const sqlTests = [
   "./test/sql/without_pk/user_without_pk_json.test.ts",
   "./test/sql/without_pk/user_without_pk_crud.test.ts",
 
-  // uuid
-  "./test/sql/uuid_pk/relations.test.ts",
-
-  "./test/sql/uuid_pk/join.test.ts",
-  "./test/sql/uuid_pk/crud.test.ts",
-
   // bigint join test
+  "./test/sql/bigint_pk/crud.test.ts",
+  "./test/sql/bigint_pk/relations.test.ts",
   "./test/sql/bigint_pk/join.test.ts",
+
+  // uuid
+  "./test/sql/uuid_pk/crud.test.ts",
+  "./test/sql/uuid_pk/relations.test.ts",
+  "./test/sql/uuid_pk/join.test.ts",
 ];
 
 sqlTests.forEach((file) => {

@@ -40,8 +40,7 @@ export async function parseDatabaseDataIntoModelResponse<T extends Model>(
         convertCase(databaseColumn, typeofModel.modelCaseConvention)
       );
     })
-    .filter((column) => column !== "*" && column)
-    .filter(Boolean);
+    .filter((column) => column !== "*" && column);
 
   const serializedModels = await Promise.all(
     models.map(async (model) => {
@@ -101,24 +100,31 @@ async function serializeModel<T extends Record<string, any>>(
         return;
       }
 
-      const camelCaseKey = convertCase(key, typeofModel.modelCaseConvention);
+      const casedKey = convertCase(key, typeofModel.modelCaseConvention);
       if (isNestedObject(originalValue) && !Array.isArray(originalValue)) {
-        casedModel[camelCaseKey] = convertToModelCaseConvention(
+        casedModel[casedKey] = convertToModelCaseConvention(
           originalValue,
           typeofModel,
         );
         return;
       }
 
-      const modelColumn = columns.find((column) => column.columnName === key);
+      const modelColumn = modelColumnsMap.get(key);
       if (modelColumn && modelColumn.serialize) {
-        casedModel[camelCaseKey] = await modelColumn.serialize(originalValue);
+        casedModel[casedKey] = await modelColumn.serialize(originalValue);
         return;
       }
 
-      casedModel[camelCaseKey] = originalValue;
+      casedModel[casedKey] = originalValue;
     }),
   );
+
+  // Fill model with modelSelectedColumns as null if not present in the model
+  modelSelectedColumns.forEach((column) => {
+    if (!casedModel[column]) {
+      casedModel[column] = null;
+    }
+  });
 
   return casedModel as T;
 }

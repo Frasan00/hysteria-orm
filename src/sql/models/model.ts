@@ -269,11 +269,14 @@ export abstract class Model extends Entity {
   static async updateRecord<T extends Model>(
     this: new () => T | typeof Model,
     modelSqlInstance: T,
+    updatePayload?: Partial<T>,
     options: BaseModelMethodOptions = {},
   ): Promise<T> {
     try {
       const typeofModel = this as unknown as typeof Model;
       const modelManager = typeofModel.dispatchModelManager<T>(options);
+      updatePayload &&
+        typeofModel.combineProps(modelSqlInstance, updatePayload);
       const updatedModel = await modelManager.updateRecord(modelSqlInstance);
       updatedModel.$additional = modelSqlInstance.$additional;
       return updatedModel;
@@ -541,20 +544,16 @@ export abstract class Model extends Entity {
    * @description Defines a column in the model, useful in javascript in order to not have to rely on decorators since are not supported without a transpiler like babel
    * @javascript
    */
-  static column(columnName: string, options: ColumnOptions = {}): void {
-    column(options)(this.prototype, columnName);
+  static column(columnName: string, ...args: Parameters<typeof column>): void {
+    column(...args)(this.prototype, columnName);
   }
 
   /**
    * @description Defines an hasOne relation
    * @javascript
    */
-  static hasOne(
-    columnName: string,
-    model: () => typeof Model,
-    foreignKey?: ModelKey<InstanceType<typeof Model>>,
-  ): void {
-    hasOne(model, foreignKey)(this.prototype, columnName);
+  static hasOne(columnName: string, ...args: Parameters<typeof hasOne>): void {
+    hasOne(...args)(this.prototype, columnName);
   }
 
   /**
@@ -563,10 +562,9 @@ export abstract class Model extends Entity {
    */
   static hasMany(
     columnName: string,
-    model: () => typeof Model,
-    foreignKey?: ModelKey<InstanceType<typeof Model>>,
+    ...args: Parameters<typeof hasMany>
   ): void {
-    hasMany(model, foreignKey)(this.prototype, columnName);
+    hasMany(...args)(this.prototype, columnName);
   }
 
   /**
@@ -575,10 +573,9 @@ export abstract class Model extends Entity {
    */
   static belongsTo(
     columnName: string,
-    model: () => typeof Model,
-    foreignKey: string,
+    ...args: Parameters<typeof belongsTo>
   ): void {
-    belongsTo(model, foreignKey)(this.prototype, columnName);
+    belongsTo(...args)(this.prototype, columnName);
   }
 
   /**
@@ -587,14 +584,9 @@ export abstract class Model extends Entity {
    */
   static manyToMany(
     columnName: string,
-    model: () => typeof Model,
-    joinTableData: {
-      throughModel: string;
-      throughModelForeignKey: string;
-      relatedModelForeignKey: string;
-    },
+    ...args: Parameters<typeof manyToMany>
   ): void {
-    manyToMany(model, joinTableData)(this.prototype, columnName);
+    manyToMany(...args)(this.prototype, columnName);
   }
 
   /**

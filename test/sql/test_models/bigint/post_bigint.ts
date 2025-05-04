@@ -8,12 +8,12 @@ import { UserWithBigint } from "./user_bigint";
 export class PostWithBigint extends Model {
   static _table = "posts_with_bigint";
 
-  @column({
+  @column.integer({
     primaryKey: true,
   })
   declare id: number;
 
-  @column()
+  @column.integer()
   declare userId: number;
 
   @column()

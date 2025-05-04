@@ -1,5 +1,6 @@
 import { DateFormat, Timezone } from "../../../utils/date_utils";
 import { Model } from "../model";
+import { ModelKey } from "../model_manager/model_manager_types";
 import { RelationEnum } from "../relations/relation";
 
 export type LazyRelationType = {
@@ -103,4 +104,25 @@ export type ColumnType = {
   prepare?: (value: any) => any | Promise<any>;
   hidden?: boolean;
   autoUpdate?: boolean;
+};
+
+type ThroughModelCallback<T extends typeof Model> = () => T;
+type ThroughModelString = string;
+export type ThroughModel<T extends typeof Model> =
+  | ThroughModelCallback<T>
+  | ThroughModelString;
+
+type ExtractModelFromTM<TM extends ThroughModel<any>> =
+  TM extends ThroughModelCallback<infer T> ? T : never;
+
+export type ManyToManyOptions<
+  T extends typeof Model,
+  TM extends ThroughModel<T>,
+> = {
+  throughModelForeignKey?: TM extends ThroughModelString
+    ? string
+    : ModelKey<InstanceType<ExtractModelFromTM<TM>>>;
+  relatedModelForeignKey?: TM extends ThroughModelString
+    ? string
+    : ModelKey<InstanceType<ExtractModelFromTM<TM>>>;
 };

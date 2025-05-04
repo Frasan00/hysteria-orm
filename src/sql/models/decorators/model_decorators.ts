@@ -28,7 +28,9 @@ import type {
   ColumnType,
   DateColumnOptions,
   LazyRelationType,
+  ManyToManyOptions,
   SymmetricEncryptionOptions,
+  ThroughModel,
 } from "./model_decorators_types";
 
 /**
@@ -79,10 +81,42 @@ column.boolean = booleanColumn;
 column.json = jsonColumn;
 column.uuid = uuidColumn;
 column.ulid = ulidColumn;
+column.integer = integerColumn;
 column.encryption = {
   symmetric,
   asymmetric,
 };
+
+/**
+ * @description Decorator to define a integer column in the model, this will automatically convert the integer to the correct format for the database
+ * @description Useful in databases like postgres where the integer is returned as a string by the driver
+ */
+function integerColumn(
+  options: Omit<ColumnOptions, "serialize"> = {},
+): PropertyDecorator {
+  return column({
+    ...options,
+    serialize: (value) => {
+      if (value === undefined) {
+        return;
+      }
+
+      if (value === null) {
+        return null;
+      }
+
+      if (typeof value === "number") {
+        return value;
+      }
+
+      if (typeof value === "string") {
+        return +value;
+      }
+
+      return Number(value);
+    },
+  });
+}
 
 /**
  * @description Decorator to define a uuid column in the model
@@ -216,7 +250,7 @@ function dateColumn(
   return column({
     ...rest,
     autoUpdate,
-    prepare: (value: Date | string) => {
+    prepare: (value?: Date | string | null): string | null | undefined => {
       if (!value) {
         if (autoCreate) {
           return getDate(new Date(), format, timezone);
@@ -226,12 +260,16 @@ function dateColumn(
       }
 
       if (autoUpdate) {
-        return getDate(parseDate(value)!, format, timezone);
+        return getDate(new Date(), format, timezone);
       }
 
-      return value;
+      if (typeof value === "string") {
+        return value;
+      }
+
+      return getDate(value, format, timezone);
     },
-    serialize: (value: string | Date) => {
+    serialize: (value?: Date | string | null): Date | null | undefined => {
       if (value === undefined) {
         return;
       }
@@ -240,7 +278,7 @@ function dateColumn(
         return null;
       }
 
-      return value;
+      return parseDate(value, format, timezone);
     },
   });
 }
@@ -289,8 +327,8 @@ export function getModelColumns(target: typeof Model): ColumnType[] {
  * @default foreignKey by default will be the singular of the model that establishes the relation name plus "_id"
  * @example Post that has a user will have foreignKey "user_id" on the  model
  */
-export function belongsTo(
-  model: () => typeof Model,
+export function belongsTo<R extends typeof Model>(
+  model: () => R,
   foreignKey?: string,
 ): PropertyDecorator {
   return (target: Object, propertyKey: string | symbol) => {
@@ -367,33 +405,38 @@ export function hasMany<T extends typeof Model>(
 /**
  * @description Establishes a many to many relation with the given model
  * @default foreignKey by default will be the singular of the model that establishes the relation name plus "_id"
- * @example User will have foreignKey "user_id" on the Join table
+ * @param model The model that establishes the relation
+ * @param throughModel The model that is used to join the two models
+ * @param throughModelKeys The keys of the through model
+ * @param throughModelKeys.throughModelForeignKey The foreign key of the through model from the primary model (where you are defining the many to many relation)
+ * @param throughModelKeys.relatedModelForeignKey The foreign key of the through model from the related model (the model you are joining to)
+ * @example User will have foreignKey "user_id" on the Join table by default
  */
-export function manyToMany<R extends typeof Model>(
-  model: () => typeof Model,
-  joinTableData: {
-    throughModel: (() => R) | string;
-    throughModelForeignKey: string;
-    relatedModelForeignKey: string;
-  },
+export function manyToMany<
+  R extends typeof Model,
+  T extends typeof Model,
+  TM extends ThroughModel<T>,
+>(
+  model: () => R,
+  throughModel: TM,
+  throughModelKeys: ManyToManyOptions<T, TM>,
 ): PropertyDecorator {
   return (target: Object, propertyKey: string | symbol) => {
-    let { throughModel, throughModelForeignKey, relatedModelForeignKey } =
-      joinTableData;
-    if (!(typeof throughModel === "string")) {
-      throughModel = throughModel().table;
-    }
+    const { throughModelForeignKey, relatedModelForeignKey } = throughModelKeys;
+    const throughModelTable =
+      typeof throughModel === "string" ? throughModel : throughModel().table;
 
+    const primaryModel = (target.constructor as typeof Model).table;
     const relation: LazyRelationType = {
       type: RelationEnum.manyToMany,
       columnName: propertyKey as string,
       model,
-      foreignKey: throughModelForeignKey,
+      foreignKey: throughModelForeignKey as string,
       manyToManyOptions: {
-        primaryModel: (target.constructor as typeof Model).table,
-        throughModel: throughModel,
-        throughModelForeignKey: throughModelForeignKey,
-        relatedModelForeignKey: relatedModelForeignKey,
+        primaryModel: primaryModel,
+        throughModel: throughModelTable,
+        throughModelForeignKey: throughModelForeignKey as string,
+        relatedModelForeignKey: relatedModelForeignKey as string,
       },
     };
 
@@ -433,9 +476,11 @@ export function getRelations(target: typeof Model): Relation[] {
           primaryModel: relation.manyToManyOptions.primaryModel,
           throughModel: relation.manyToManyOptions.throughModel,
           throughModelForeignKey:
-            relation.manyToManyOptions.throughModelForeignKey,
+            relation.manyToManyOptions.throughModelForeignKey ??
+            getDefaultForeignKey(relation.manyToManyOptions.primaryModel),
           relatedModelForeignKey:
-            relation.manyToManyOptions.relatedModelForeignKey,
+            relation.manyToManyOptions.relatedModelForeignKey ??
+            getDefaultForeignKey(relation.manyToManyOptions.primaryModel),
         });
       default:
         throw new HysteriaError(

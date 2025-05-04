@@ -7,7 +7,6 @@ import type {
   ModelRelation,
 } from "../../models/model_manager/model_manager_types";
 import SqlModelManagerUtils from "../../models/model_manager/model_manager_utils";
-import { getBaseModelInstance } from "../../models/model_utils";
 import { getPaginationMetadata, PaginatedData } from "../../pagination";
 import {
   DeleteOptions,
@@ -134,9 +133,7 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
       this.model.beforeFetch(this);
     const rows = await super.many();
     const models = rows.map((row) => {
-      const modelInstance = getBaseModelInstance<T>();
-      this.mergeRawPacketIntoModel(modelInstance, row, this.model);
-      return modelInstance;
+      return this.addAdditionalColumnsToModel(row, this.model);
     });
 
     if (!models.length) {
@@ -144,7 +141,7 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
     }
 
     const serializedModels = await parseDatabaseDataIntoModelResponse(
-      models,
+      models as T[],
       this.model,
       this.modelSelectedColumns,
     );
@@ -673,24 +670,22 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
     }
   }
 
-  protected mergeRawPacketIntoModel(
-    model: T,
+  protected addAdditionalColumnsToModel(
     row: any,
     typeofModel: typeof Model,
-  ) {
-    const columns = getModelColumns(this.model);
+  ): Record<string, any> {
+    const model: Record<string, any> = {};
+    const $additional: Record<string, any> = {};
     Object.entries(row).forEach(([key, value]) => {
-      const casedKey = convertCase(
-        key,
-        typeofModel.modelCaseConvention,
-      ) as string;
-
-      if (columns.map((column) => column.columnName).includes(casedKey)) {
-        Object.assign(model, { [casedKey]: value });
+      if (key === "$additional" || this.modelColumnsDatabaseNames.get(key)) {
+        model[key] = value;
         return;
       }
 
-      model.$additional[key] = value as string | number | boolean;
+      $additional[convertCase(key, typeofModel.modelCaseConvention)] = value;
     });
+
+    model.$additional = $additional;
+    return model;
   }
 }

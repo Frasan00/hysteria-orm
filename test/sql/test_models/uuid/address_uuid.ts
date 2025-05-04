@@ -44,10 +44,9 @@ export class AddressWithUuid extends Model {
   @column.date()
   declare deletedAt: Date | null;
 
-  @manyToMany(() => UserWithUuid, {
-    throughModel: "user_address_with_uuid",
-    throughModelForeignKey: "address_id",
-    relatedModelForeignKey: "user_id",
+  @manyToMany(() => UserWithUuid, () => UserAddressWithUuid, {
+    throughModelForeignKey: "addressId",
+    relatedModelForeignKey: "userId",
   })
   declare users: UserWithUuid[];
 

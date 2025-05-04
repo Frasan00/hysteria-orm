@@ -1,9 +1,15 @@
-import { column } from "../../../../src/sql/models/decorators/model_decorators";
+import {
+  column,
+  manyToMany,
+} from "../../../../src/sql/models/decorators/model_decorators";
 import { Model } from "../../../../src/sql/models/model";
+import { UserAddressWithBigint } from "./user_address_bigint";
+import { UserWithBigint } from "./user_bigint";
+
 export class AddressWithBigint extends Model {
   static _table = "address_with_bigint";
 
-  @column({
+  @column.integer({
     primaryKey: true,
   })
   declare id: number;
@@ -36,4 +42,10 @@ export class AddressWithBigint extends Model {
 
   @column.date()
   declare deletedAt: Date | null;
+
+  @manyToMany(() => UserWithBigint, () => UserAddressWithBigint, {
+    throughModelForeignKey: "addressId",
+    relatedModelForeignKey: "userId",
+  })
+  declare users: UserWithBigint[];
 }

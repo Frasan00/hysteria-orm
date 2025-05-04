@@ -1,6 +1,14 @@
-import { column } from "../../../../src/sql/models/decorators/model_decorators";
+import {
+  column,
+  hasMany,
+  hasOne,
+  manyToMany,
+} from "../../../../src/sql/models/decorators/model_decorators";
 import { Model } from "../../../../src/sql/models/model";
 import { ModelQueryBuilder } from "../../models/model_query_builder/model_query_builder";
+import { AddressWithBigint } from "./address_bigint";
+import { PostWithBigint } from "./post_bigint";
+import { UserAddressWithBigint } from "./user_address_bigint";
 
 export enum UserStatus {
   active = "active",
@@ -10,16 +18,8 @@ export enum UserStatus {
 export class UserWithBigint extends Model {
   static _table = "users_with_bigint";
 
-  @column({
+  @column.integer({
     primaryKey: true,
-    // Postgres returns bigint as string, so we need to convert it to number
-    serialize: (value: string | number) => {
-      if (typeof value === "string") {
-        return +value;
-      }
-
-      return value;
-    },
   })
   declare id: number;
 
@@ -64,14 +64,11 @@ export class UserWithBigint extends Model {
   @column.json()
   declare json: Record<string, any> | null;
 
-  @column.date({
-    autoCreate: true,
-  })
-  declare birthDate: Date;
+  @column.date()
+  declare birthDate: Date | null;
 
   @column.date({
     autoCreate: true,
-    autoUpdate: true,
   })
   declare createdAt: Date;
 
@@ -84,10 +81,17 @@ export class UserWithBigint extends Model {
   @column.date()
   declare deletedAt: Date | null;
 
-  static async beforeInsert(data: any): Promise<void> {
-    data.createdAt = new Date();
-    data.updatedAt = new Date();
-  }
+  @hasOne(() => PostWithBigint, "userId")
+  declare post: PostWithBigint;
+
+  @hasMany(() => PostWithBigint, "userId")
+  declare posts: PostWithBigint[];
+
+  @manyToMany(() => AddressWithBigint, () => UserAddressWithBigint, {
+    throughModelForeignKey: "userId",
+    relatedModelForeignKey: "addressId",
+  })
+  declare addresses: AddressWithBigint[];
 
   static beforeUpdate(queryBuilder: ModelQueryBuilder<UserWithBigint>): void {
     queryBuilder.whereNull("users_with_bigint.deleted_at");

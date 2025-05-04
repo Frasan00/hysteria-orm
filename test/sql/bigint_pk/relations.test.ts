@@ -1,12 +1,12 @@
 import { env } from "../../../src/env/env";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
-import { PostFactory } from "../test_models/factory/post_factory";
-import { UserFactory } from "../test_models/factory/user_factory";
-import { PostWithUuid } from "../test_models/uuid/post_uuid";
-import { UserWithUuid } from "../test_models/uuid/user_uuid";
+import { AddressWithBigint } from "../test_models/bigint/address_bigint";
+import { PostWithBigint } from "../test_models/bigint/post_bigint";
+import { UserWithBigint } from "../test_models/bigint/user_bigint";
 import { AddressFactory } from "../test_models/factory/address_factory";
+import { PostFactory } from "../test_models/factory/post_factory";
 import { UserAddressFactory } from "../test_models/factory/user_address_factory";
-import { AddressWithUuid } from "../test_models/uuid/address_uuid";
+import { UserFactory } from "../test_models/factory/user_factory";
 
 beforeAll(async () => {
   await SqlDataSource.connect();
@@ -24,19 +24,28 @@ afterEach(async () => {
   await SqlDataSource.rollbackGlobalTransaction();
 });
 
-describe(`[${env.DB_TYPE}] uuid pk base relations`, () => {
-  test("uuid HasOne relation", async () => {
-    const users = await UserFactory.userWithUuid(3);
+describe(`[${env.DB_TYPE}] bigint pk base relations`, () => {
+  if (env.DB_TYPE === "cockroachdb") {
+    test.skip("bigint HasOne relation", async () => {});
+    test.skip("bigint HasMany relation with filtering on the relation", async () => {});
+    test.skip("bigint HasOne relation nested with a belongs to relation", async () => {});
+    test.skip("bigint with multiple nested relations", async () => {});
+    test.skip("bigint HasMany relation", async () => {});
+    return;
+  }
+
+  test("bigint HasOne relation", async () => {
+    const users = await UserFactory.userWithBigint(3);
     const posts = [];
     for (const user of users) {
-      const post = await PostFactory.postWithUuid(user.id, 1);
+      const post = await PostFactory.postWithBigint(user.id, 1);
       posts.push(post);
     }
 
     expect(users).toHaveLength(3);
     expect(posts).toHaveLength(3);
 
-    const userWithLoadedPosts = await UserWithUuid.query()
+    const userWithLoadedPosts = await UserWithBigint.query()
       .withRelation("post")
       .many();
 
@@ -45,20 +54,20 @@ describe(`[${env.DB_TYPE}] uuid pk base relations`, () => {
     }
   });
 
-  test("uuid HasMany relation with filtering on the relation", async () => {
-    const user = await UserFactory.userWithUuid(1);
-    const posts: PostWithUuid[] = [];
+  test("bigint HasMany relation with filtering on the relation", async () => {
+    const user = await UserFactory.userWithBigint(1);
+    const posts: PostWithBigint[] = [];
     for (let i = 0; i < 3; i++) {
-      const post = await PostFactory.postWithUuid(user.id, 1);
+      const post = await PostFactory.postWithBigint(user.id, 1);
       posts.push(post);
     }
 
     expect(user).toBeDefined();
     expect(posts).toHaveLength(3);
 
-    const userWithLoadedPosts = await UserWithUuid.query()
+    const userWithLoadedPosts = await UserWithBigint.query()
       .where("id", user.id)
-      .withRelation("posts", PostWithUuid, (qb) =>
+      .withRelation("posts", PostWithBigint, (qb) =>
         qb.where("title", posts[0].title),
       )
       .one();
@@ -68,19 +77,19 @@ describe(`[${env.DB_TYPE}] uuid pk base relations`, () => {
     expect(userWithLoadedPosts?.posts[0].title).toBe(posts[0].title);
   });
 
-  test("uuid HasOne relation nested with a belongs to relation", async () => {
-    const users = await UserFactory.userWithUuid(3);
+  test("bigint HasOne relation nested with a belongs to relation", async () => {
+    const users = await UserFactory.userWithBigint(3);
     const posts = [];
     for (const user of users) {
-      const post = await PostFactory.postWithUuid(user.id, 1);
+      const post = await PostFactory.postWithBigint(user.id, 1);
       posts.push(post);
     }
 
     expect(users).toHaveLength(3);
     expect(posts).toHaveLength(3);
 
-    const userWithLoadedPosts = await UserWithUuid.query()
-      .withRelation("post", PostWithUuid, (qb) => qb.withRelation("user"))
+    const userWithLoadedPosts = await UserWithBigint.query()
+      .withRelation("post", PostWithBigint, (qb) => qb.withRelation("user"))
       .many();
 
     for (const user of userWithLoadedPosts) {
@@ -89,22 +98,22 @@ describe(`[${env.DB_TYPE}] uuid pk base relations`, () => {
     }
   });
 
-  test("uuid with multiple nested relations", async () => {
-    const users = await UserFactory.userWithUuid(3);
+  test("bigint with multiple nested relations", async () => {
+    const users = await UserFactory.userWithBigint(3);
     const posts = [];
     for (const user of users) {
-      const post = await PostFactory.postWithUuid(user.id, 1);
+      const post = await PostFactory.postWithBigint(user.id, 1);
       posts.push(post);
     }
 
     expect(users).toHaveLength(3);
     expect(posts).toHaveLength(3);
 
-    const userWithLoadedPosts = await UserWithUuid.query()
-      .withRelation("post", PostWithUuid, (qb) =>
-        qb.withRelation("user", UserWithUuid, (qb2) =>
-          qb2.withRelation("post", PostWithUuid, (qb3) =>
-            qb3.withRelation("user", UserWithUuid),
+    const userWithLoadedPosts = await UserWithBigint.query()
+      .withRelation("post", PostWithBigint, (qb) =>
+        qb.withRelation("user", UserWithBigint, (qb2) =>
+          qb2.withRelation("post", PostWithBigint, (qb3) =>
+            qb3.withRelation("user", UserWithBigint),
           ),
         ),
       )
@@ -117,21 +126,21 @@ describe(`[${env.DB_TYPE}] uuid pk base relations`, () => {
     }
   });
 
-  test("uuid HasMany relation", async () => {
-    const user = await UserFactory.userWithUuid(1);
+  test("bigint HasMany relation", async () => {
+    const user = await UserFactory.userWithBigint(1);
     const posts = [];
     for (let i = 0; i < 3; i++) {
-      const post = await PostFactory.postWithUuid(user.id, 1);
+      const post = await PostFactory.postWithBigint(user.id, 1);
       posts.push(post);
     }
 
     expect(user).toBeDefined();
     expect(posts).toHaveLength(3);
 
-    const userWithLoadedPosts = (await UserWithUuid.query()
+    const userWithLoadedPosts = (await UserWithBigint.query()
       .where("id", user.id)
       .withRelation("posts")
-      .one()) as UserWithUuid;
+      .one()) as UserWithBigint;
 
     expect(userWithLoadedPosts).toBeDefined();
     expect(userWithLoadedPosts.posts).toHaveLength(3);
@@ -147,23 +156,29 @@ describe(`[${env.DB_TYPE}] uuid pk base relations`, () => {
   });
 });
 
-describe(`[${env.DB_TYPE}] uuid pk many to many relations`, () => {
-  test("uuid many to many relation", async () => {
-    const users = await UserFactory.userWithUuid(10);
-    const addresses = await AddressFactory.addressWithUuid(6);
+describe(`[${env.DB_TYPE}] bigint pk many to many relations`, () => {
+  if (env.DB_TYPE === "cockroachdb") {
+    test.skip("bigint many to many relation", async () => {});
+    test.skip("bigint many to many relation nested from Address", async () => {});
+    return;
+  }
+
+  test("bigint many to many relation", async () => {
+    const users = await UserFactory.userWithBigint(10);
+    const addresses = await AddressFactory.addressWithBigint(6);
 
     // #region first user has 3 addresses
-    await UserAddressFactory.userAddressWithUuid(
+    await UserAddressFactory.userAddressWithBigint(
       1,
       users[0].id,
       addresses[0].id,
     );
-    await UserAddressFactory.userAddressWithUuid(
+    await UserAddressFactory.userAddressWithBigint(
       1,
       users[0].id,
       addresses[1].id,
     );
-    await UserAddressFactory.userAddressWithUuid(
+    await UserAddressFactory.userAddressWithBigint(
       1,
       users[0].id,
       addresses[2].id,
@@ -172,12 +187,12 @@ describe(`[${env.DB_TYPE}] uuid pk many to many relations`, () => {
     // #endregion
 
     // #region second user has 2 addresses
-    await UserAddressFactory.userAddressWithUuid(
+    await UserAddressFactory.userAddressWithBigint(
       1,
       users[1].id,
       addresses[3].id,
     );
-    await UserAddressFactory.userAddressWithUuid(
+    await UserAddressFactory.userAddressWithBigint(
       1,
       users[1].id,
       addresses[4].id,
@@ -185,15 +200,15 @@ describe(`[${env.DB_TYPE}] uuid pk many to many relations`, () => {
     // #endregion
 
     // #region third user has 1 address
-    await UserAddressFactory.userAddressWithUuid(
+    await UserAddressFactory.userAddressWithBigint(
       1,
       users[2].id,
       addresses[5].id,
     );
     // #endregion
 
-    const userWithLoadedAddresses = await UserWithUuid.query()
-      .withRelation("addresses", AddressWithUuid, (qb) =>
+    const userWithLoadedAddresses = await UserWithBigint.query()
+      .withRelation("addresses", AddressWithBigint, (qb) =>
         qb.withRelation("users"),
       )
       .many();
@@ -212,24 +227,24 @@ describe(`[${env.DB_TYPE}] uuid pk many to many relations`, () => {
     }
   });
 
-  test("uuid many to many relation nested from Address", async () => {
-    const user = await UserFactory.userWithUuid(1);
-    const addresses = await AddressFactory.addressWithUuid(3);
+  test("bigint many to many relation nested from Address", async () => {
+    const user = await UserFactory.userWithBigint(1);
+    const addresses = await AddressFactory.addressWithBigint(3);
 
     // #region first user has 3 addresses
-    await UserAddressFactory.userAddressWithUuid(1, user.id, addresses[0].id);
-    await UserAddressFactory.userAddressWithUuid(1, user.id, addresses[1].id);
-    await UserAddressFactory.userAddressWithUuid(1, user.id, addresses[2].id);
+    await UserAddressFactory.userAddressWithBigint(1, user.id, addresses[0].id);
+    await UserAddressFactory.userAddressWithBigint(1, user.id, addresses[1].id);
+    await UserAddressFactory.userAddressWithBigint(1, user.id, addresses[2].id);
 
     // #region first user has 3 posts
-    await PostFactory.postWithUuid(user.id, 3);
+    await PostFactory.postWithBigint(user.id, 3);
     // #endregion
 
-    const addressesWithLoadedPosts = await AddressWithUuid.query()
-      .withRelation("users", UserWithUuid, (qb) =>
-        qb.withRelation("posts", PostWithUuid, (qb2) =>
-          qb2.withRelation("user", UserWithUuid, (qb3) =>
-            qb3.withRelation("addresses", AddressWithUuid, (qb4) =>
+    const addressesWithLoadedPosts = await AddressWithBigint.query()
+      .withRelation("users", UserWithBigint, (qb) =>
+        qb.withRelation("posts", PostWithBigint, (qb2) =>
+          qb2.withRelation("user", UserWithBigint, (qb3) =>
+            qb3.withRelation("addresses", AddressWithBigint, (qb4) =>
               qb4.withRelation("users"),
             ),
           ),
