@@ -45,6 +45,32 @@ describe(`[${env.DB_TYPE}] uuid pk base relations`, () => {
     }
   });
 
+  test("uuid HasOne relation with column selection on relation", async () => {
+    const users = await UserFactory.userWithUuid(3);
+    const posts = [];
+    for (const user of users) {
+      const post = await PostFactory.postWithUuid(user.id, 1);
+      posts.push(post);
+    }
+
+    expect(users).toHaveLength(3);
+    expect(posts).toHaveLength(3);
+
+    const userWithLoadedPosts = await UserWithUuid.query()
+      .withRelation("post", PostWithUuid, (qb) =>
+        qb.select("posts_with_uuid.userId", "title"),
+      )
+      .many();
+
+    for (const user of userWithLoadedPosts) {
+      expect(user.id).toBe(user.post.userId);
+      expect(user.post.title).toBe(
+        userWithLoadedPosts.find((u) => u.id === user.id)?.post.title,
+      );
+      expect(user.post.id).toBeUndefined();
+    }
+  });
+
   test("uuid HasMany relation with filtering on the relation", async () => {
     const user = await UserFactory.userWithUuid(1);
     const posts: PostWithUuid[] = [];

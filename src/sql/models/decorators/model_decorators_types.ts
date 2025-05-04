@@ -81,7 +81,7 @@ export type ColumnOptions = {
    */
   prepare?: (value: any) => any | Promise<any>;
   /**
-   * @description Whether the column is returned in the serialization output
+   * @description Whether the column is returned in the serialization output, this column will always be undefined
    * @default false
    */
   hidden?: boolean;

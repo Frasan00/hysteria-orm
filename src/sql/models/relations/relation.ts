@@ -13,20 +13,6 @@ export enum RelationEnum {
   manyToMany = "manyToMany",
 }
 
-export function isRelationDefinition(
-  originalValue: any,
-): originalValue is Relation {
-  if (!originalValue || typeof originalValue !== "object") {
-    return false;
-  }
-
-  return (
-    originalValue.hasOwnProperty("type") &&
-    originalValue.hasOwnProperty("relatedModel") &&
-    originalValue.hasOwnProperty("foreignKey")
-  );
-}
-
 /**
  * Main Relation Class
  */

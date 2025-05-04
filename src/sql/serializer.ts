@@ -1,9 +1,7 @@
 import { convertCase } from "../utils/case_utils";
-import { isNestedObject } from "../utils/json_utils";
 import { getModelColumns } from "./models/decorators/model_decorators";
 import { ColumnType } from "./models/decorators/model_decorators_types";
 import { Model } from "./models/model";
-import { isRelationDefinition } from "./models/relations/relation";
 
 /**
  * @description Main serializer function
@@ -19,7 +17,7 @@ export async function parseDatabaseDataIntoModelResponse<T extends Model>(
 
   const modelColumns = getModelColumns(typeofModel);
   const modelColumnsMap = new Map<string, ColumnType>(
-    modelColumns.map((modelColumn) => [modelColumn.databaseName, modelColumn]),
+    modelColumns.map((modelColumn) => [modelColumn.columnName, modelColumn]),
   );
 
   // At this point `modelSelectedColumns` are in database convention
@@ -47,6 +45,7 @@ export async function parseDatabaseDataIntoModelResponse<T extends Model>(
       const serializedModel = await serializeModel(
         model,
         typeofModel,
+        modelColumns,
         modelColumnsMap,
         modelSelectedColumns,
       );
@@ -61,61 +60,53 @@ export async function parseDatabaseDataIntoModelResponse<T extends Model>(
 async function serializeModel<T extends Record<string, any>>(
   model: T,
   typeofModel: typeof Model,
-  modelColumnsMap: Map<string | undefined, ColumnType>,
+  modelColumns: ColumnType[],
+  modelColumnsMap: Map<string, ColumnType>,
   modelSelectedColumns: string[] = [],
 ): Promise<T> {
   const casedModel: Record<string, any> = {};
-  const columns = getModelColumns(typeofModel);
-  const hiddenColumns = columns
+  const hiddenColumns = modelColumns
     .filter((column) => column.hidden)
     .map((column) => column.columnName);
 
+  const databaseColumnsMap = new Map<string, ColumnType>(
+    modelColumns.map((modelColumn) => [modelColumn.databaseName, modelColumn]),
+  );
+
   await Promise.all(
     Object.keys(model).map(async (key) => {
-      if (key === "$additional") {
+      const databaseValue = model[key];
+      const modelKey =
+        databaseColumnsMap.get(key)?.columnName ??
+        convertCase(key, typeofModel.modelCaseConvention);
+
+      if (modelKey === "$additional") {
         processAdditionalColumns(model, key, casedModel, typeofModel);
         return;
       }
 
       if (
-        !model.hasOwnProperty(key) ||
-        hiddenColumns.includes(key) ||
-        (modelSelectedColumns.length && !modelSelectedColumns.includes(key))
+        !modelColumnsMap.has(modelKey) || // Handled in the $additional property
+        hiddenColumns.includes(modelKey) ||
+        (modelSelectedColumns.length &&
+          !modelSelectedColumns.includes(modelKey))
       ) {
         return;
       }
 
-      const originalValue = model[key];
-
       // Include null values
-      if (originalValue === null) {
-        casedModel[
-          modelColumnsMap.get(key)?.columnName ??
-            convertCase(key, typeofModel.modelCaseConvention)
-        ] = originalValue;
+      if (databaseValue === null) {
+        casedModel[modelKey] = null;
         return;
       }
 
-      if (isRelationDefinition(originalValue)) {
-        return;
-      }
-
-      const casedKey = convertCase(key, typeofModel.modelCaseConvention);
-      if (isNestedObject(originalValue) && !Array.isArray(originalValue)) {
-        casedModel[casedKey] = convertToModelCaseConvention(
-          originalValue,
-          typeofModel,
-        );
-        return;
-      }
-
-      const modelColumn = modelColumnsMap.get(key);
+      const modelColumn = modelColumnsMap.get(modelKey);
       if (modelColumn && modelColumn.serialize) {
-        casedModel[casedKey] = await modelColumn.serialize(originalValue);
+        casedModel[modelKey] = await modelColumn.serialize(databaseValue);
         return;
       }
 
-      casedModel[casedKey] = originalValue;
+      casedModel[modelKey] = databaseValue;
     }),
   );
 
