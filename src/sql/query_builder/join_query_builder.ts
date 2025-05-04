@@ -10,6 +10,7 @@ export abstract class JoinQueryBuilder<
   T extends Model,
 > extends FooterQueryBuilder<T> {
   protected joinQuery: string;
+  protected joinsToReplaceInRawQueryRegex = /JOIN|LEFT JOIN|RIGHT JOIN/i;
 
   protected constructor(model: typeof Model, sqlDataSource: SqlDataSource) {
     super(model, sqlDataSource);
@@ -22,7 +23,17 @@ export abstract class JoinQueryBuilder<
   }
 
   joinRaw(query: string): this {
-    this.joinQuery += ` ${query} `;
+    this.joinQuery += `JOIN ${query.replace(this.joinsToReplaceInRawQueryRegex, "").trim()} `;
+    return this;
+  }
+
+  leftJoinRaw(query: string): this {
+    this.joinQuery += `LEFT JOIN ${query.replace(this.joinsToReplaceInRawQueryRegex, "").trim()} `;
+    return this;
+  }
+
+  rightJoinRaw(query: string): this {
+    this.joinQuery += `RIGHT JOIN ${query.replace(this.joinsToReplaceInRawQueryRegex, "").trim()} `;
     return this;
   }
 

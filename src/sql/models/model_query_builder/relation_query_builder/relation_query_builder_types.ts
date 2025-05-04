@@ -16,4 +16,12 @@ export type RelationQueryBuilderType<T extends Model> = Omit<
   | "update"
   | "delete"
   | "softDelete"
+  | "getSum"
+  | "getAvg"
+  | "getMin"
+  | "getMax"
+  | "getCount"
+  | "getMin"
+  | "getMax"
+  | "getCount"
 >;

@@ -18,6 +18,7 @@ import type { UpdateOptions } from "../../query_builder/update_query_builder_typ
 import { parseDatabaseDataIntoModelResponse } from "../../serializer";
 import { SqlDataSource } from "../../sql_data_source";
 import { ColumnType } from "../decorators/model_decorators_types";
+import { BaseModelMethodOptions } from "../model_types";
 import { ManyToMany } from "../relations/many_to_many";
 import { Relation, RelationEnum } from "../relations/relation";
 import type {
@@ -34,6 +35,8 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
   protected modelSelectedColumns: string[];
   private modelColumnsMap: Map<string, ColumnType>;
   private modelColumnsDatabaseNames: Map<string, string>;
+  protected limitValue?: number;
+  protected offsetValue?: number;
 
   constructor(model: typeof Model, sqlDataSource: SqlDataSource) {
     super(model, sqlDataSource);
@@ -64,27 +67,21 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
   }
 
   /**
-   * @description Creates a new ModelQueryBuilder instance from a model.
+   * @description Creates a new ModelQueryBuilder instance from a model. Will use the main connection to the database by default.
    */
   static from(
     model: typeof Model,
-    sqlDataSource: SqlDataSource,
+    options: BaseModelMethodOptions = {},
   ): ModelQueryBuilder<InstanceType<typeof model>> {
-    return new ModelQueryBuilder(model, sqlDataSource);
-  }
+    if (options.useConnection) {
+      return new ModelQueryBuilder(model, options.useConnection);
+    }
 
-  /**
-   * @description Creates a new ModelQueryBuilder instance from a query builder.
-   */
-  static fromQueryBuilder(
-    queryBuilder: QueryBuilder<any>,
-    sqlDataSource: SqlDataSource,
-  ): ModelQueryBuilder<InstanceType<typeof queryBuilder.model>> {
-    const modelQueryBuilder = new ModelQueryBuilder(
-      queryBuilder.model,
-      sqlDataSource,
-    );
-    return modelQueryBuilder;
+    if (options.trx) {
+      return new ModelQueryBuilder(model, options.trx.sqlDataSource);
+    }
+
+    return new ModelQueryBuilder(model, model.sqlInstance);
   }
 
   /**
