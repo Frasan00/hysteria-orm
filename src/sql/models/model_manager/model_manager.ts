@@ -1,11 +1,11 @@
 import { HysteriaError } from "../../../errors/hysteria_error";
-import { ModelQueryBuilder } from "../model_query_builder/model_query_builder";
-import { FetchHooks } from "../model_query_builder/model_query_builder_types";
-import { parseDatabaseDataIntoModelResponse } from "../../serializer";
+import { serializeModel } from "../../serializer";
 import { SqlDataSource } from "../../sql_data_source";
 import { SqlDataSourceType } from "../../sql_data_source_types";
 import { execSql } from "../../sql_runner/sql_runner";
 import { Model } from "../model";
+import { ModelQueryBuilder } from "../model_query_builder/model_query_builder";
+import { FetchHooks } from "../model_query_builder/model_query_builder_types";
 import { getBaseModelInstance } from "../model_utils";
 import {
   FindOneType,
@@ -199,10 +199,7 @@ export class ModelManager<T extends Model> {
     }
 
     this.model.afterFetch([insertedModel]);
-    const result = (await parseDatabaseDataIntoModelResponse(
-      [insertedModel],
-      this.model,
-    )) as T;
+    const result = (await serializeModel([insertedModel], this.model)) as T;
 
     return result;
   }
@@ -245,10 +242,7 @@ export class ModelManager<T extends Model> {
 
     this.model.afterFetch(insertedModels);
 
-    const results = await parseDatabaseDataIntoModelResponse(
-      insertedModels,
-      this.model,
-    );
+    const results = await serializeModel(insertedModels, this.model);
     return (results || []) as T[];
   }
 
@@ -336,16 +330,15 @@ export class ModelManager<T extends Model> {
           return null as O extends "one" ? T : T[] | null;
         }
 
-        return (await parseDatabaseDataIntoModelResponse(
+        return (await serializeModel(
           [returnModel],
           this.model,
         )) as O extends "one" ? T : T[];
       }
 
-      return (await parseDatabaseDataIntoModelResponse(
-        models,
-        this.model,
-      )) as O extends "one" ? T : T[];
+      return (await serializeModel(models, this.model)) as O extends "one"
+        ? T
+        : T[];
     }
 
     // UUID and before fetch defined primary keys

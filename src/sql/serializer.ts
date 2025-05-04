@@ -6,7 +6,7 @@ import { Model } from "./models/model";
 /**
  * @description Main serializer function
  */
-export async function parseDatabaseDataIntoModelResponse<T extends Model>(
+export async function serializeModel<T extends Model>(
   models: T[],
   typeofModel: typeof Model,
   modelSelectedColumns: string[] = [],
@@ -42,7 +42,7 @@ export async function parseDatabaseDataIntoModelResponse<T extends Model>(
 
   const serializedModels = await Promise.all(
     models.map(async (model) => {
-      const serializedModel = await serializeModel(
+      const serializedModel = await parseDatabaseDataIntoModelResponse(
         model,
         typeofModel,
         modelColumns,
@@ -57,7 +57,9 @@ export async function parseDatabaseDataIntoModelResponse<T extends Model>(
   return serializedModels.length === 1 ? serializedModels[0] : serializedModels;
 }
 
-async function serializeModel<T extends Record<string, any>>(
+async function parseDatabaseDataIntoModelResponse<
+  T extends Record<string, any>,
+>(
   model: T,
   typeofModel: typeof Model,
   modelColumns: ColumnType[],

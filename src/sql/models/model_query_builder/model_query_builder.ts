@@ -14,7 +14,7 @@ import {
 } from "../../query_builder/delete_query_builder_type";
 import { QueryBuilder } from "../../query_builder/query_builder";
 import type { UpdateOptions } from "../../query_builder/update_query_builder_types";
-import { parseDatabaseDataIntoModelResponse } from "../../serializer";
+import { serializeModel } from "../../serializer";
 import { SqlDataSource } from "../../sql_data_source";
 import { ColumnType } from "../decorators/model_decorators_types";
 import { BaseModelMethodOptions } from "../model_types";
@@ -140,7 +140,7 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
       return [];
     }
 
-    const serializedModels = await parseDatabaseDataIntoModelResponse(
+    const serializedModels = await serializeModel(
       models as T[],
       this.model,
       this.modelSelectedColumns,
@@ -315,12 +315,9 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
     const paginationMetadata = getPaginationMetadata(page, perPage, total);
 
-    const data =
-      (await parseDatabaseDataIntoModelResponse(models, this.model)) || [];
-
     return {
       paginationMetadata,
-      data: Array.isArray(data) ? data : [data],
+      data: models,
     } as PaginatedData<T>;
   }
 
