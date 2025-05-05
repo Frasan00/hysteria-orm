@@ -21,6 +21,7 @@ import {
   QueryBuilderWithOnlyWhereConditions,
 } from "./query_builder_types";
 import { WhereQueryBuilder } from "./where_query_builder";
+import type { NumberModelKey } from "../models/model_types";
 
 export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
   model: typeof Model;
@@ -165,6 +166,48 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
     this.unionQuery = `${this.unionQuery} UNION ALL ${query}`;
     this.params = [...this.params, ...params];
     return this;
+  }
+
+  /**
+   * @description Increments the value of a column by a given amount, column must be of a numeric type in order to be incremented
+   * @typeSafe - In typescript, only numeric columns of the model will be accepted if using a Model
+   * @default value + 1
+   */
+  async increment(
+    column: NumberModelKey<T>,
+    value: number = 1,
+  ): Promise<number> {
+    const { query } = this.updateTemplate.increment(
+      column as string,
+      value,
+      this.whereQuery,
+      this.joinQuery,
+    );
+
+    return execSql(query, this.params, this.sqlDataSource, "affectedRows", {
+      sqlLiteOptions: { typeofModel: this.model, mode: "affectedRows" },
+    });
+  }
+
+  /**
+   * @description Decrements the value of a column by a given amount, column must be of a numeric type in order to be decremented
+   * @typeSafe - In typescript, only numeric columns of the model will be accepted if using a Model
+   * @default value - 1
+   */
+  async decrement(
+    column: NumberModelKey<T>,
+    value: number = 1,
+  ): Promise<number> {
+    const { query } = this.updateTemplate.decrement(
+      column as string,
+      value,
+      this.whereQuery,
+      this.joinQuery,
+    );
+
+    return execSql(query, this.params, this.sqlDataSource, "affectedRows", {
+      sqlLiteOptions: { typeofModel: this.model, mode: "affectedRows" },
+    });
   }
 
   /**

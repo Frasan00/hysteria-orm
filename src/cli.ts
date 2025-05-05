@@ -2,10 +2,10 @@ import { Command } from "commander";
 import fs from "node:fs";
 import { register } from "node:module";
 import path from "node:path";
-import migrationCreateConnector from "./hysteria_cli/migration_create_connector";
-import rollbackMigrationsConnector from "./hysteria_cli/migration_rollback_connector";
-import runMigrationsConnector from "./hysteria_cli/migration_run_connector";
-import runSqlConnector from "./hysteria_cli/run_sql_connector";
+import migrationCreateConnector from "./cli/migration_create_connector";
+import rollbackMigrationsConnector from "./cli/migration_rollback_connector";
+import runMigrationsConnector from "./cli/migration_run_connector";
+import runSqlConnector from "./cli/run_sql_connector";
 
 try {
   register("ts-node/esm", import.meta.url);

@@ -1,6 +1,6 @@
 import { env } from "../../env/env";
-import rollbackMigrationsConnector from "../../hysteria_cli/migration_rollback_connector";
-import runMigrationsConnector from "../../hysteria_cli/migration_run_connector";
+import runMigrationsConnector from "../../cli/migration_run_connector";
+import rollbackMigrationsConnector from "../../cli/migration_rollback_connector";
 import logger from "../../utils/logger";
 import { SqlDataSource } from "../sql_data_source";
 import { Migration } from "./migration";

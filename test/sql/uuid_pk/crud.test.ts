@@ -28,6 +28,26 @@ describe(`[${env.DB_TYPE}] Select`, () => {
     expect(users[1]).not.toBeUndefined();
   });
 
+  test("increment", async () => {
+    const user = await UserFactory.userWithUuid(1);
+    const originalAge = user.age;
+    await UserWithUuid.query().increment("age", 1);
+
+    const updatedUser = await UserWithUuid.query().first();
+
+    expect(Number(updatedUser?.age)).toBe(Number(originalAge) + 1);
+  });
+
+  test("decrement", async () => {
+    const user = await UserFactory.userWithUuid(1);
+    const originalAge = user.age;
+    await UserWithUuid.query().decrement("age", 1);
+
+    const updatedUser = await UserWithUuid.query().first();
+
+    expect(Number(updatedUser?.age)).toBe(Number(originalAge) - 1);
+  });
+
   test("Select all without `select` method call (default behavior)", async () => {
     await UserFactory.userWithUuid(2);
     const users = await UserWithUuid.query().many();

@@ -7,6 +7,10 @@ export type ModelWithoutExtraColumns<T extends Model> = Omit<
   "$additional"
 >;
 
+export type NumberModelKey<T extends Model> = {
+  [K in keyof T]: T[K] extends number | bigint ? K : never;
+}[keyof T];
+
 export type BaseModelMethodOptions = {
   useConnection?: SqlDataSource;
   trx?: Transaction;

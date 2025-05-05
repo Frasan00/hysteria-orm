@@ -6,6 +6,8 @@ import { ModelQueryBuilder } from "../model_query_builder";
  */
 export type RelationQueryBuilderType<T extends Model> = Omit<
   ModelQueryBuilder<T>,
+  | "increment"
+  | "decrement"
   | "first"
   | "firstOrFail"
   | "paginate"

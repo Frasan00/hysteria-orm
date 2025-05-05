@@ -54,6 +54,28 @@ const updateTemplate = (
   );
 
   return {
+    increment: (
+      column: string,
+      value: number = 1,
+      whereClause: string,
+      joinClause: string = "",
+    ) => {
+      const query = `UPDATE ${table} ${joinClause}
+SET ${column} = ${column} + ${value} ${whereClause}`;
+      return { query, params: [] };
+    },
+
+    decrement: (
+      column: string,
+      value: number = 1,
+      whereClause: string,
+      joinClause: string = "",
+    ) => {
+      const query = `UPDATE ${table} ${joinClause}
+SET ${column} = ${column} - ${value} ${whereClause}`;
+      return { query, params: [] };
+    },
+
     update: (
       columns: string[],
       values: any[],

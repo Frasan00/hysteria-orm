@@ -9,7 +9,7 @@ services:
       - "3306:3306"
 
   postgres:
-    image: postgres:13
+    image: postgres:16.8
     container_name: "hysteria-postgres"
     environment:
       POSTGRES_USER: root
