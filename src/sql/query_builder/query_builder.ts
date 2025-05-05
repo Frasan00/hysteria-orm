@@ -16,7 +16,10 @@ import { execSql, getSqlDialect } from "../sql_runner/sql_runner";
 import { CteBuilder } from "./cte/cte_builder";
 import { WithClauseType } from "./cte/cte_types";
 import { SoftDeleteOptions } from "./delete_query_builder_type";
-import { QueryBuilderWithOnlyWhereConditions } from "./query_builder_types";
+import {
+  PluckReturnType,
+  QueryBuilderWithOnlyWhereConditions,
+} from "./query_builder_types";
 import { WhereQueryBuilder } from "./where_query_builder";
 
 export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
@@ -81,18 +84,12 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
   /**
    * @description Executes the query and retrieves a single column from the results.
    * @param key - The column to retrieve from the results, must be a Model Column
+   * @param options - The options to pass to the method
+   * @param options.removeFalsy - If true, the method will remove falsy values filtering the array for truthy values - Applies Boolean constructor to each value
    */
-  async pluck<O = any>(
-    key: ModelKey<T>,
-    options: { removeFalsy?: boolean } = {},
-  ): Promise<O[]> {
+  async pluck<K extends ModelKey<T>>(key: K): Promise<PluckReturnType<T, K>> {
     const result = await this.many();
-    const plucked = result.map((item) => item[key] as O);
-    if (options.removeFalsy) {
-      return plucked.filter((value) => Boolean(value));
-    }
-
-    return plucked;
+    return result.map((item) => item[key]) as PluckReturnType<T, K>;
   }
 
   /**

@@ -1,6 +1,12 @@
 import { PickMethods } from "../../utils/types";
 import { Model } from "../models/model";
+import { ModelKey } from "../models/model_manager/model_manager_types";
 import { QueryBuilder } from "./query_builder";
+
+export type PluckReturnType<
+  T extends Model,
+  K extends ModelKey<T>,
+> = T[K] extends infer U ? U[] : never;
 
 export type QueryBuilderWithOnlyWhereConditions<T extends Model> = PickMethods<
   QueryBuilder<T>,

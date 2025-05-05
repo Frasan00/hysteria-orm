@@ -13,6 +13,7 @@ import {
   SoftDeleteOptions,
 } from "../../query_builder/delete_query_builder_type";
 import { QueryBuilder } from "../../query_builder/query_builder";
+import { PluckReturnType } from "../../query_builder/query_builder_types";
 import type { UpdateOptions } from "../../query_builder/update_query_builder_types";
 import { serializeModel } from "../../serializer";
 import { SqlDataSource } from "../../sql_data_source";
@@ -162,23 +163,6 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
     }
 
     return serializedModelsArray;
-  }
-
-  /**
-   * @description Executes the query and retrieves a single column from the results.
-   * @param key - The column to retrieve from the results, must be a Model Column
-   */
-  async pluck<O = any>(
-    key: ModelKey<T>,
-    options: ManyOptions & { removeFalsy?: boolean } = {},
-  ): Promise<O[]> {
-    const result = await this.many(options);
-    const plucked = result.map((item) => item[key] as O);
-    if (options.removeFalsy) {
-      return plucked.filter((value) => Boolean(value));
-    }
-
-    return plucked;
   }
 
   /**

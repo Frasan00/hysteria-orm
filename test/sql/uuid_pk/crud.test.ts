@@ -22,7 +22,7 @@ afterEach(async () => {
 describe(`[${env.DB_TYPE}] Select`, () => {
   test("pluck", async () => {
     await UserFactory.userWithUuid(2);
-    const users = await UserWithUuid.query().pluck<string>("name");
+    const users = await UserWithUuid.query().pluck("name");
     expect(users.length).toBe(2);
     expect(users[0]).not.toBeUndefined();
     expect(users[1]).not.toBeUndefined();
