@@ -4,7 +4,7 @@ import { Model } from "./model";
 
 export type ModelWithoutExtraColumns<T extends Model> = Omit<
   Partial<T>,
-  "$additional"
+  "$annotations"
 >;
 
 export type NumberModelKey<T extends Model> = {

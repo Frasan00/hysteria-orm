@@ -1,6 +1,6 @@
 import { env } from "../../../src/env/env";
-import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { getModelColumns } from "../../../src/sql/models/decorators/model_decorators";
+import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { PostFactory } from "../test_models/factory/post_factory";
 import { UserFactory } from "../test_models/factory/user_factory";
 import { PostWithUuid } from "../test_models/uuid/post_uuid";
@@ -49,9 +49,9 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
       .many();
 
     expect(postsWithUsers).toHaveLength(3);
-    expect(postsWithUsers[0].$additional.userName).toBeDefined();
-    expect(postsWithUsers[1].$additional.userName).toBeDefined();
-    expect(postsWithUsers[2].$additional.userName).toBeDefined();
+    expect(postsWithUsers[0].$annotations.userName).toBeDefined();
+    expect(postsWithUsers[1].$annotations.userName).toBeDefined();
+    expect(postsWithUsers[2].$annotations.userName).toBeDefined();
 
     const columns = getModelColumns(PostWithUuid);
     expect(Object.keys(postsWithUsers[0]).length - 1).toEqual(columns.length); // ignore additional
@@ -83,7 +83,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
       .many();
 
     expect(postsWithUsers).toHaveLength(3);
-    expect(postsWithUsers[0].$additional.userName).toBeDefined();
+    expect(postsWithUsers[0].$annotations.userName).toBeDefined();
   });
 
   test("uuid pk simple right join", async () => {
@@ -112,7 +112,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
       .many();
 
     expect(postsWithUsers).toHaveLength(3);
-    expect(postsWithUsers[0].$additional.userName).toBeDefined();
+    expect(postsWithUsers[0].$annotations.userName).toBeDefined();
   });
 
   test("uuid pk simple Model join", async () => {
@@ -137,7 +137,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
       .many();
 
     expect(postsWithUsers).toHaveLength(3);
-    expect(postsWithUsers[0].$additional.userName).toBeDefined();
+    expect(postsWithUsers[0].$annotations.userName).toBeDefined();
   });
 
   test("uuid pk simple Model left join", async () => {
@@ -162,7 +162,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
       .many();
 
     expect(postsWithUsers).toHaveLength(3);
-    expect(postsWithUsers[0].$additional.userName).toBeDefined();
+    expect(postsWithUsers[0].$annotations.userName).toBeDefined();
   });
 
   test("uuid pk join with a custom operator", async () => {

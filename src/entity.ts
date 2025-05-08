@@ -6,9 +6,10 @@ import { CaseConvention } from "./utils/case_utils";
  */
 export abstract class Entity {
   /**
-   * @description Extra columns for the model, all data retrieved from the database that is not part of the model will be stored here
+   * @description Annotations for the model, all data retrieved from the database, example aliases, that are not part of the model will be stored here
+   * @description This property is present in all models, it will exist after a query, can be removed by calling the clearAnnotations method
    */
-  $additional: { [key: string]: any };
+  $annotations: { [key: string]: any };
 
   /**
    * @description Defines the case convention for the model
@@ -24,6 +25,6 @@ export abstract class Entity {
   static databaseCaseConvention: CaseConvention = "snake";
 
   constructor() {
-    this.$additional = {};
+    this.$annotations = {};
   }
 }

@@ -1,5 +1,6 @@
 import "reflect-metadata";
 import { Entity } from "../../../entity";
+import { HysteriaError } from "../../../errors/hysteria_error";
 import { MongoDataSource } from "../mongo_data_source";
 import { MongoQueryBuilder } from "../query_builder/mongo_query_builder";
 import { property } from "./mongo_collection_decorators";
@@ -15,10 +16,9 @@ import {
   getBaseCollectionName,
   ModelKeyOrAny,
 } from "./mongo_collection_types";
-import { HysteriaError } from "../../../errors/hysteria_error";
 
 export function getBaseCollectionInstance<T extends Collection>(): T {
-  return { $additional: {} } as T;
+  return { $annotations: {} } as T;
 }
 
 export class Collection extends Entity {

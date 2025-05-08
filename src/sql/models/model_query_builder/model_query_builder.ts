@@ -13,7 +13,6 @@ import {
   SoftDeleteOptions,
 } from "../../query_builder/delete_query_builder_type";
 import { QueryBuilder } from "../../query_builder/query_builder";
-import { PluckReturnType } from "../../query_builder/query_builder_types";
 import type { UpdateOptions } from "../../query_builder/update_query_builder_types";
 import { serializeModel } from "../../serializer";
 import { SqlDataSource } from "../../sql_data_source";
@@ -213,7 +212,7 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
       : [];
 
     const result = await this.one({ ignoreHooks: ignoredHooks });
-    return result ? +result.$additional.total : 0;
+    return result ? +result.$annotations.total : 0;
     return 0;
   }
 
@@ -230,7 +229,7 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
       : [];
 
     const result = await this.one({ ignoreHooks: ignoredHooks });
-    return result ? +result.$additional.total : 0;
+    return result ? +result.$annotations.total : 0;
   }
 
   /**
@@ -246,7 +245,7 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
       : [];
 
     const result = await this.one({ ignoreHooks: ignoredHooks });
-    return result ? +result.$additional.total : 0;
+    return result ? +result.$annotations.total : 0;
   }
 
   /**
@@ -262,7 +261,7 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
       : [];
 
     const result = await this.one({ ignoreHooks: ignoredHooks });
-    return result ? +result.$additional.total : 0;
+    return result ? +result.$annotations.total : 0;
   }
 
   /**
@@ -278,7 +277,7 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
       : [];
 
     const result = await this.one({ ignoreHooks: ignoredHooks });
-    return result ? +result.$additional.total : 0;
+    return result ? +result.$annotations.total : 0;
   }
 
   /**
@@ -323,7 +322,7 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
   /**
    * @description Fills the relations in the model in the serialized response. Relation must be defined in the model.
    * @warning Many to many relations have special behavior, since they require a join, a join clause will always be added to the query.
-   * @warning Many to many relations uses the model foreign key for mapping in the `$additional` property, this property will be removed from the model after the relation is filled.
+   * @warning Many to many relations uses the model foreign key for mapping in the `$annotations` property, this property will be removed from the model after the relation is filled.
    */
   withRelation<O extends typeof Model>(
     relation: ModelRelation<T>,
@@ -516,7 +515,7 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
         relatedModels.forEach((relatedModel) => {
           const foreignKeyValue =
-            relatedModel.$additional[casedRelatedPrimaryKey];
+            relatedModel.$annotations[casedRelatedPrimaryKey];
           if (!foreignKeyValue) return;
 
           const foreignKeyStr = String(foreignKeyValue);
@@ -525,15 +524,15 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
           }
 
           if (
-            relatedModel.$additional &&
-            relatedModel.$additional[casedRelatedPrimaryKey] &&
+            relatedModel.$annotations &&
+            relatedModel.$annotations[casedRelatedPrimaryKey] &&
             !this.modelSelectedColumns.includes(casedRelatedPrimaryKey)
           ) {
-            delete relatedModel.$additional[casedRelatedPrimaryKey];
+            delete relatedModel.$annotations[casedRelatedPrimaryKey];
           }
 
-          if (Object.keys(relatedModel.$additional).length === 0) {
-            delete (relatedModel as any).$additional;
+          if (Object.keys(relatedModel.$annotations).length === 0) {
+            delete (relatedModel as any).$annotations;
           }
 
           relatedModelsMapManyToMany.get(foreignKeyStr)!.push(relatedModel);
@@ -656,17 +655,17 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
     typeofModel: typeof Model,
   ): Record<string, any> {
     const model: Record<string, any> = {};
-    const $additional: Record<string, any> = {};
+    const $annotations: Record<string, any> = {};
     Object.entries(row).forEach(([key, value]) => {
-      if (key === "$additional" || this.modelColumnsDatabaseNames.get(key)) {
+      if (key === "$annotations" || this.modelColumnsDatabaseNames.get(key)) {
         model[key] = value;
         return;
       }
 
-      $additional[convertCase(key, typeofModel.modelCaseConvention)] = value;
+      $annotations[convertCase(key, typeofModel.modelCaseConvention)] = value;
     });
 
-    model.$additional = $additional;
+    model.$annotations = $annotations;
     return model;
   }
 }

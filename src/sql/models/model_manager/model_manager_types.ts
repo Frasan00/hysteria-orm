@@ -1,5 +1,5 @@
-import { FetchHooks } from "../model_query_builder/model_query_builder_types";
 import { Model } from "../model";
+import { FetchHooks } from "../model_query_builder/model_query_builder_types";
 import { BelongsTo } from "../relations/belongs_to";
 import { HasMany } from "../relations/has_many";
 import { HasOne } from "../relations/has_one";
@@ -33,8 +33,8 @@ export type WhereType<T> = {
   [K in keyof T]?: string | number | boolean | Date | null;
 };
 
-export type ModelKey<T> = ExcludeRelations<Omit<T, "$additional">>;
-export type ModelRelation<T> = OnlyRelations<Omit<T, "$additional">>;
+export type ModelKey<T> = ExcludeRelations<Omit<T, "$annotations">>;
+export type ModelRelation<T> = OnlyRelations<Omit<T, "$annotations">>;
 
 export type OrderByChoices = "ASC" | "DESC" | "asc" | "desc";
 export type OrderByType = {

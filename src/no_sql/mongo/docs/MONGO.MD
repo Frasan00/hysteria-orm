@@ -131,7 +131,7 @@ const user = await User.findOne({
 - The query builder is a class that you can use to build your queries, it has a lot of methods that you can use to build your queries.
 - The query builder is chainable, so you can call multiple methods in a single line.
 - The query builder is partially type safe, it will infer the type of the collection you are querying, but it will not infer the type of the properties you are querying, so you can use any property you want, but it will not be type checked.
-- Every property queried that does not exist in the collection will be inserted in the `$additional` property that every collection has, so you can access it later if you want.
+- Every property queried that does not exist in the collection will be inserted in the `$annotations` property that every collection has, so you can access it later if you want.
 
 ```typescript
 import { User } from "./models/User";

@@ -30,12 +30,14 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
   protected updateTemplate: ReturnType<typeof updateTemplate>;
   protected deleteTemplate: ReturnType<typeof deleteTemplate>;
   protected isNestedCondition = false;
+  protected lockForUpdateQuery: string;
 
   constructor(
     model: typeof Model,
     sqlDataSource: SqlDataSource = SqlDataSource.getInstance(),
   ) {
     super(model, sqlDataSource, false);
+    this.lockForUpdateQuery = "";
     this.dbType = sqlDataSource.getDbType();
     this.isNestedCondition = false;
     this.sqlModelManagerUtils = new SqlModelManagerUtils<T>(
@@ -72,6 +74,10 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
     query += this.groupFooterQuery();
     if (this.unionQuery) {
       query = `${query} ${this.unionQuery}`;
+    }
+
+    if (this.lockForUpdateQuery) {
+      query += this.lockForUpdateQuery;
     }
 
     return execSql(query, this.params, this.sqlDataSource, "raw", {
@@ -132,6 +138,33 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
    */
   async firstOrFail(): Promise<T> {
     return this.oneOrFail();
+  }
+
+  /**
+   * @description Locks the table for update
+   * @param skipLocked - If true, the query will skip locked rows
+   * @throws {HysteriaError} - If the database type does not support skipping locked rows (es. sqlite)
+   */
+  lockForUpdate(skipLocked: boolean = false): this {
+    this.lockForUpdateQuery = this.selectTemplate.lockForUpdate();
+    if (skipLocked) {
+      this.lockForUpdateQuery += this.selectTemplate.skipLocked();
+    }
+
+    return this;
+  }
+
+  /**
+   * @description Locks the table for share
+   * @param skipLocked - If true, the query will skip locked rows
+   * @throws {HysteriaError} - If the database type does not support skipping locked rows on forShare (es. sqlite, mysql, mariadb)
+   */
+  forShare(skipLocked: boolean = false): this {
+    this.lockForUpdateQuery = this.selectTemplate.forShare();
+    if (skipLocked) {
+      this.lockForUpdateQuery += this.selectTemplate.skipLocked();
+    }
+    return this;
   }
 
   /**

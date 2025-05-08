@@ -1,6 +1,6 @@
+import { env } from "../../../src/env/env";
 import { HysteriaError } from "../../../src/errors/hysteria_error";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
-import { env } from "../../../src/env/env";
 import { UserStatus } from "../test_models/bigint/user_bigint";
 import { UserFactory } from "../test_models/factory/user_factory";
 import { UserWithoutPk } from "../test_models/without_pk/user_without_pk";
@@ -94,11 +94,11 @@ describe(`[${env.DB_TYPE}] Select`, () => {
       .many();
 
     expect(users.length).toBe(2);
-    expect(users[0].$additional.testAge).not.toBeUndefined();
-    expect(users[1].$additional.testBirth).not.toBeUndefined();
-    expect(users[0].$additional.testAge).not.toBeUndefined();
-    expect(users[1].$additional.testBirth).not.toBeUndefined();
-    expect(Object.keys(users[0]).length).toBe(1); // $additional
+    expect(users[0].$annotations.testAge).not.toBeUndefined();
+    expect(users[1].$annotations.testBirth).not.toBeUndefined();
+    expect(users[0].$annotations.testAge).not.toBeUndefined();
+    expect(users[1].$annotations.testBirth).not.toBeUndefined();
+    expect(Object.keys(users[0]).length).toBe(1); // $annotations
     expect(Object.keys(users[1]).length).toBe(1);
   });
 

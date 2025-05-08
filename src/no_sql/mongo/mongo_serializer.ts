@@ -28,9 +28,9 @@ export async function serializeCollection<T extends Collection>(
     collectionSelectedProperties.push("id");
   }
 
-  // Initialize $additional if needed
-  if (!serializedCollection.$additional) {
-    serializedCollection.$additional = {};
+  // Initialize $annotations if needed
+  if (!serializedCollection.$annotations) {
+    serializedCollection.$annotations = {};
   }
 
   // Process each key in data concurrently
@@ -43,7 +43,7 @@ export async function serializeCollection<T extends Collection>(
 
       if (!collectionProperties.includes(key)) {
         const casedKey = convertCase(key, collection.modelCaseConvention);
-        serializedCollection.$additional[casedKey] = data[key];
+        serializedCollection.$annotations[casedKey] = data[key];
         return;
       }
 
@@ -52,8 +52,8 @@ export async function serializeCollection<T extends Collection>(
     }),
   );
 
-  if (!Object.keys(serializedCollection.$additional).length) {
-    delete serializedCollection.$additional;
+  if (!Object.keys(serializedCollection.$annotations).length) {
+    delete serializedCollection.$annotations;
   }
 
   // Process selected properties concurrently

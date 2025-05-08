@@ -20,6 +20,37 @@ afterEach(async () => {
 });
 
 describe(`[${env.DB_TYPE}] Select`, () => {
+  test("lockForUpdate", async () => {
+    if (env.DB_TYPE === "sqlite") {
+      console.log("Sqlite does not support lockForUpdate");
+      return;
+    }
+
+    await UserFactory.userWithUuid(2);
+    const users = await UserWithUuid.query().lockForUpdate().many();
+    expect(users.length).toBe(2);
+    expect(users[0]).not.toBeUndefined();
+    expect(users[1]).not.toBeUndefined();
+
+    const users2 = await UserWithUuid.query().lockForUpdate(true).many();
+    expect(users2.length).toBe(2);
+    expect(users2[0]).not.toBeUndefined();
+    expect(users2[1]).not.toBeUndefined();
+  });
+
+  test("forShare", async () => {
+    if (env.DB_TYPE === "sqlite") {
+      console.log("Sqlite does not support lockForUpdate");
+      return;
+    }
+
+    await UserFactory.userWithUuid(2);
+    const users = await UserWithUuid.query().forShare().many();
+    expect(users.length).toBe(2);
+    expect(users[0]).not.toBeUndefined();
+    expect(users[1]).not.toBeUndefined();
+  });
+
   test("pluck", async () => {
     await UserFactory.userWithUuid(2);
     const users = await UserWithUuid.query().pluck("name");
@@ -120,11 +151,11 @@ describe(`[${env.DB_TYPE}] Select`, () => {
       .many();
 
     expect(users.length).toBe(2);
-    expect(users[0].$additional.testAge).not.toBeUndefined();
-    expect(users[1].$additional.testBirth).not.toBeUndefined();
-    expect(users[0].$additional.testAge).not.toBeUndefined();
-    expect(users[1].$additional.testBirth).not.toBeUndefined();
-    expect(Object.keys(users[0]).length).toBe(1); // $additional
+    expect(users[0].$annotations.testAge).not.toBeUndefined();
+    expect(users[1].$annotations.testBirth).not.toBeUndefined();
+    expect(users[0].$annotations.testAge).not.toBeUndefined();
+    expect(users[1].$annotations.testBirth).not.toBeUndefined();
+    expect(Object.keys(users[0]).length).toBe(1); // $annotations
     expect(Object.keys(users[1]).length).toBe(1);
   });
 });

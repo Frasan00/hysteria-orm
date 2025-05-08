@@ -1,7 +1,7 @@
 import { env } from "../../../src/env/env";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
-import { UserFactory } from "../test_models/factory/user_factory";
 import { UserStatus, UserWithBigint } from "../test_models/bigint/user_bigint";
+import { UserFactory } from "../test_models/factory/user_factory";
 
 beforeAll(async () => {
   await SqlDataSource.connect();
@@ -20,6 +20,37 @@ afterEach(async () => {
 });
 
 describe(`[${env.DB_TYPE}] Select`, () => {
+  test("lockForUpdate", async () => {
+    if (env.DB_TYPE === "sqlite") {
+      console.log("Sqlite does not support lockForUpdate");
+      return;
+    }
+
+    await UserFactory.userWithBigint(2);
+    const users = await UserWithBigint.query().lockForUpdate().many();
+    expect(users.length).toBe(2);
+    expect(users[0]).not.toBeUndefined();
+    expect(users[1]).not.toBeUndefined();
+
+    const users2 = await UserWithBigint.query().lockForUpdate(true).many();
+    expect(users2.length).toBe(2);
+    expect(users2[0]).not.toBeUndefined();
+    expect(users2[1]).not.toBeUndefined();
+  });
+
+  test("forShare", async () => {
+    if (env.DB_TYPE === "sqlite") {
+      console.log("Sqlite does not support lockForUpdate");
+      return;
+    }
+
+    await UserFactory.userWithBigint(2);
+    const users = await UserWithBigint.query().forShare().many();
+    expect(users.length).toBe(2);
+    expect(users[0]).not.toBeUndefined();
+    expect(users[1]).not.toBeUndefined();
+  });
+
   test("pluck", async () => {
     await UserFactory.userWithBigint(2);
     const users = await UserWithBigint.query().pluck("name");
@@ -121,11 +152,11 @@ describe(`[${env.DB_TYPE}] Select`, () => {
       .many();
 
     expect(users.length).toBe(2);
-    expect(users[0].$additional.testAge).not.toBeUndefined();
-    expect(users[1].$additional.testBirth).not.toBeUndefined();
-    expect(users[0].$additional.testAge).not.toBeUndefined();
-    expect(users[1].$additional.testBirth).not.toBeUndefined();
-    expect(Object.keys(users[0]).length).toBe(1); // $additional
+    expect(users[0].$annotations.testAge).not.toBeUndefined();
+    expect(users[1].$annotations.testBirth).not.toBeUndefined();
+    expect(users[0].$annotations.testAge).not.toBeUndefined();
+    expect(users[1].$annotations.testBirth).not.toBeUndefined();
+    expect(Object.keys(users[0]).length).toBe(1); // $annotations
     expect(Object.keys(users[1]).length).toBe(1);
   });
 });

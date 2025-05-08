@@ -203,6 +203,49 @@ const selectTemplate = (
     offset: (offset: number) => {
       return ` OFFSET ${offset}`;
     },
+    skipLocked: () => {
+      switch (dbType) {
+        case "mysql":
+        case "mariadb":
+        case "postgres":
+        case "cockroachdb":
+          return " SKIP LOCKED ";
+        default:
+          throw new HysteriaError(
+            "SelectTemplate::skipLocked",
+            `SKIP_LOCKED_NOT_SUPPORTED_IN_${dbType}`,
+          );
+      }
+    },
+    forShare: () => {
+      switch (dbType) {
+        case "mysql":
+        case "mariadb":
+          return " LOCK IN SHARE MODE ";
+        case "postgres":
+        case "cockroachdb":
+          return " FOR SHARE";
+        default:
+          throw new HysteriaError(
+            "SelectTemplate::forShare",
+            `FOR_SHARE_NOT_SUPPORTED_IN_${dbType}`,
+          );
+      }
+    },
+    lockForUpdate: () => {
+      switch (dbType) {
+        case "mysql":
+        case "mariadb":
+        case "postgres":
+        case "cockroachdb":
+          return " FOR UPDATE ";
+        default:
+          throw new HysteriaError(
+            "SelectTemplate::lockForUpdate",
+            `LOCK_FOR_UPDATE_NOT_SUPPORTED_${dbType}`,
+          );
+      }
+    },
   };
 };
 

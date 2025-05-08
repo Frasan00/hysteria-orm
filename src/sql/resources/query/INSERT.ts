@@ -47,9 +47,9 @@ const insertTemplate = (
 
   return {
     insert: (columns: string[], values: BaseValues[], returning?: string[]) => {
-      if (columns.includes("$additional")) {
-        const $additionalColumnsIndex = columns.indexOf("$additional");
-        columns.splice(columns.indexOf("$additional"), 1);
+      if (columns.includes("$annotations")) {
+        const $additionalColumnsIndex = columns.indexOf("$annotations");
+        columns.splice(columns.indexOf("$annotations"), 1);
         values.splice($additionalColumnsIndex, 1);
       }
 

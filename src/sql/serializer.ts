@@ -23,7 +23,7 @@ export async function serializeModel<T extends Model>(
   // At this point `modelSelectedColumns` are in database convention
   modelSelectedColumns = modelSelectedColumns
     .map((databaseColumn) => {
-      // If alias, skip because it will be added in $additional
+      // If alias, skip because it will be added in $annotations
       if (databaseColumn.toLowerCase().includes("as")) {
         return;
       }
@@ -82,13 +82,13 @@ async function parseDatabaseDataIntoModelResponse<
         databaseColumnsMap.get(key)?.columnName ??
         convertCase(key, typeofModel.modelCaseConvention);
 
-      if (modelKey === "$additional") {
+      if (modelKey === "$annotations") {
         processAdditionalColumns(model, key, casedModel, typeofModel);
         return;
       }
 
       if (
-        !modelColumnsMap.has(modelKey) || // Handled in the $additional property
+        !modelColumnsMap.has(modelKey) || // Handled in the $annotations property
         hiddenColumns.includes(modelKey) ||
         (modelSelectedColumns.length &&
           !modelSelectedColumns.includes(modelKey))
@@ -132,7 +132,7 @@ function processAdditionalColumns(
     return;
   }
 
-  const $additional = Object.keys(model[key]).reduce(
+  const $annotations = Object.keys(model[key]).reduce(
     (acc, objKey) => {
       acc[convertCase(objKey, typeofModel.modelCaseConvention)] =
         model[key][objKey];
@@ -142,7 +142,7 @@ function processAdditionalColumns(
     {} as Record<string, any>,
   );
 
-  casedModel[key] = $additional;
+  casedModel[key] = $annotations;
 }
 
 function convertToModelCaseConvention(

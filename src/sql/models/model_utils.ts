@@ -9,5 +9,5 @@ export function getBaseTableName(target: typeof Model): string {
 }
 
 export function getBaseModelInstance<T extends Model>(): T {
-  return { $additional: {} } as T;
+  return { $annotations: {} } as T;
 }

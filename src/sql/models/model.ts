@@ -1,6 +1,4 @@
 import "reflect-metadata";
-import type { ModelQueryBuilder } from "./model_query_builder/model_query_builder";
-import type { OneOptions } from "./model_query_builder/model_query_builder_types";
 import type { ModelManager } from "./model_manager/model_manager";
 import type {
   FindOneType,
@@ -9,6 +7,8 @@ import type {
   UnrestrictedFindOneType,
   UnrestrictedFindType,
 } from "./model_manager/model_manager_types";
+import type { ModelQueryBuilder } from "./model_query_builder/model_query_builder";
+import type { OneOptions } from "./model_query_builder/model_query_builder_types";
 import type {
   BaseModelMethodOptions,
   ModelWithoutExtraColumns,
@@ -27,7 +27,6 @@ import {
   manyToMany,
 } from "./decorators/model_decorators";
 import { getBaseTableName } from "./model_utils";
-import { ColumnOptions } from "./decorators/model_decorators_types";
 
 /**
  * @description Represents a Table in the Database
@@ -71,7 +70,7 @@ export abstract class Model extends Entity {
   }
 
   /**
-   * @description Constructor for the model, it's not meant to be used directly, it just initializes the $additional, it's advised to only use the static methods to interact with the database to save the model
+   * @description Constructor for the model, it's not meant to be used directly, it just initializes the $annotations, it's advised to only use the static methods to interact with the database to save the model
    * @description Using the constructor could lead to unexpected behavior, if you want to create a new record use the insert method
    * @deprecated
    */
@@ -226,13 +225,13 @@ export abstract class Model extends Entity {
       return null;
     }
 
-    refreshedModel.$additional = model.$additional;
+    refreshedModel.$annotations = model.$annotations;
     return refreshedModel;
   }
 
   /**
    * @description Saves a new record to the database
-   * @description $additional will be ignored if set in the modelData and won't be returned in the response
+   * @description $annotations will be ignored if set in the modelData and won't be returned in the response
    * @warning If not using postgres and the model has no primary key, the model will be saved, but it won't be possible to retrieve it so at that point it will be returned as null, this is not typed as Model | null for type safety reasons
    */
   static async insert<T extends Model>(
@@ -247,7 +246,7 @@ export abstract class Model extends Entity {
 
   /**
    * @description Saves multiple records to the database
-   * @description $additional will be ignored if set in the modelData and won't be returned in the response
+   * @description $annotations will be ignored if set in the modelData and won't be returned in the response
    * @warning If not using postgres and the model has no primary key, the models will be saved, but it won't be possible to retrieve them so at that point they will be returned as an empty array
    */
   static async insertMany<T extends Model>(
@@ -278,7 +277,7 @@ export abstract class Model extends Entity {
       updatePayload &&
         typeofModel.combineProps(modelSqlInstance, updatePayload);
       const updatedModel = await modelManager.updateRecord(modelSqlInstance);
-      updatedModel.$additional = modelSqlInstance.$additional;
+      updatedModel.$annotations = modelSqlInstance.$annotations;
       return updatedModel;
     } catch (error) {
       if (
