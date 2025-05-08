@@ -1,4 +1,55 @@
-class Migration_templates {
+import { SqlDataSourceType } from "../../sql/sql_data_source_types";
+
+class MigrationTemplates {
+  parseGetAllTables(
+    dbType: SqlDataSourceType,
+    database: string,
+    result: any,
+  ): string[] {
+    switch (dbType) {
+      case "mysql":
+      case "mariadb":
+        const extractedNames = Object.values(result).map(
+          (row: any) => row[`Tables_in_${database}`],
+        );
+        return extractedNames;
+      case "cockroachdb":
+      case "postgres":
+        return result.map((row: any) => row.table_name);
+      default:
+        throw new Error(`Unsupported database type: ${dbType}`);
+    }
+  }
+
+  getAllTablesTemplate(dbType: SqlDataSourceType, database: string): string {
+    switch (dbType) {
+      case "mysql":
+      case "mariadb":
+        return `SHOW TABLES FROM ${database};`;
+      case "cockroachdb":
+      case "postgres":
+        return `SELECT table_name
+FROM information_schema.tables
+WHERE table_catalog = '${database}'
+  AND table_schema = 'public'
+  AND table_type = 'BASE TABLE';`;
+      default:
+        throw new Error(`Unsupported database type: ${dbType}`);
+    }
+  }
+
+  dropAllTablesTemplate(dbType: SqlDataSourceType, tables: string[]): string {
+    switch (dbType) {
+      case "mysql":
+      case "mariadb":
+      case "cockroachdb":
+      case "postgres":
+        return `DROP TABLE IF EXISTS ${tables.join(", ")} CASCADE;`;
+      default:
+        throw new Error(`Unsupported database type: ${dbType}`);
+    }
+  }
+
   basicMigrationTemplate(js: boolean = false): string {
     if (js) {
       return `import { Migration } from 'hysteria-orm';
@@ -142,4 +193,4 @@ export default class extends Migration {
   }
 }
 
-export default new Migration_templates();
+export default new MigrationTemplates();

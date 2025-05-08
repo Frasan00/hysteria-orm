@@ -6,6 +6,7 @@ import migrationCreateConnector from "./cli/migration_create_connector";
 import rollbackMigrationsConnector from "./cli/migration_rollback_connector";
 import runMigrationsConnector from "./cli/migration_run_connector";
 import runSqlConnector from "./cli/run_sql_connector";
+import dropAllTablesConnector from "./cli/drop_all_tables_connector";
 
 try {
   register("ts-node/esm", import.meta.url);
@@ -169,13 +170,23 @@ program
 program
   .command("refresh:migrations")
   .option("-v, --verbose", "Verbose mode with all query logs", false)
+  .option(
+    "-d, --drop",
+    "Drop all tables in the database before running the migrations instead of running the down migrations",
+    false,
+  )
   .description(
     "Rollbacks every migration that has been run and then run the migrations",
   )
-  .action(async (option?: { verbose: boolean }) => {
+  .action(async (option?: { verbose: boolean; drop: boolean }) => {
     const verbose = option?.verbose || false;
+    const drop = option?.drop || false;
+
     try {
-      await rollbackMigrationsConnector(undefined, verbose, false);
+      drop
+        ? await dropAllTablesConnector(verbose, false)
+        : await rollbackMigrationsConnector(undefined, verbose, false);
+
       await runMigrationsConnector(undefined, verbose);
       process.exit(0);
     } catch (error) {
