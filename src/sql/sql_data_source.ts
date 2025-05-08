@@ -91,20 +91,14 @@ export class SqlDataSource extends DataSource {
   /**
    * @description Returns a QueryBuilder instance
    * @description Query builder from the SqlDataSource instance returns raw data from the database, the data is not parsed or serialized in any way
-   * @description Column names are converted to the case convention specified in the options when interacting with the database but won't be converted when serializing or parsing the data
+   * @description Optimal for performance-critical operations
    * @description Use Models to have type safety and serialization
    */
-  static query(
-    table: string,
-    options?: {
-      databaseCaseConvention?: CaseConvention;
-      modelCaseConvention?: CaseConvention;
-    },
-  ): QueryBuilder {
+  static query(table: string): QueryBuilder {
     return new QueryBuilder(
       {
-        modelCaseConvention: options?.modelCaseConvention || "none",
-        databaseCaseConvention: options?.databaseCaseConvention || "snake",
+        modelCaseConvention: "none",
+        databaseCaseConvention: "none",
         table: table,
       } as typeof Model,
       this.getInstance(),
@@ -260,19 +254,14 @@ export class SqlDataSource extends DataSource {
   /**
    * @description Returns a QueryBuilder instance
    * @description Query builder from the SqlDataSource instance uses raw data from the database so the data is not parsed or serialized in any way
-   * @description Column names are converted to the case convention specified in the options when interacting with the database but won't be converted when serializing or parsing the data
+   * @description Optimal for performance-critical operations
    * @description Use Models to have type safety and serialization
    */
-  query(
-    table: string,
-    options?: {
-      databaseCaseConvention?: CaseConvention;
-    },
-  ): QueryBuilder {
+  query(table: string): QueryBuilder {
     return new QueryBuilder(
       {
-        modelCaseConvention: "camel",
-        databaseCaseConvention: options?.databaseCaseConvention || "snake",
+        modelCaseConvention: "none",
+        databaseCaseConvention: "none",
         table: table,
       } as typeof Model,
       this,

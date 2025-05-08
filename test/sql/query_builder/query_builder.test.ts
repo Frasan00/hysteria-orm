@@ -24,7 +24,7 @@ describe(`[${env.DB_TYPE}] Query Builder with uuid`, () => {
       id: crypto.randomUUID(),
       title: "Hello World",
       content: "Hello World Content",
-      shortDescription: "Hello World Short Description",
+      short_description: "Hello World Short Description",
     });
 
     const retrievedPost = await SqlDataSource.query("posts_with_uuid").one();
@@ -84,7 +84,9 @@ describe(`[${env.DB_TYPE}] Query Builder with uuid`, () => {
       title: "Hello World",
     });
 
-    await SqlDataSource.query("posts_with_uuid").softDelete();
+    await SqlDataSource.query("posts_with_uuid").softDelete({
+      column: "deleted_at",
+    });
 
     const retrievedPost = await SqlDataSource.query("posts_with_uuid")
       .whereNull("deleted_at")
@@ -174,7 +176,9 @@ describe(`[${env.DB_TYPE}] Query Builder with a model without a primary key`, ()
       name: "John Doe",
     });
 
-    await SqlDataSource.query("users_without_pk").softDelete();
+    await SqlDataSource.query("users_without_pk").softDelete({
+      column: "deleted_at",
+    });
 
     const retrievedUser = await SqlDataSource.query("users_without_pk")
       .whereNull("deleted_at")

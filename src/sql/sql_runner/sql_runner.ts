@@ -121,7 +121,7 @@ async function withRetry<T>(
 
   async function attempt(): Promise<T> {
     try {
-      return await fn();
+      return fn();
     } catch (err: any) {
       if (
         !Object.prototype.hasOwnProperty.call(err, "code") ||
