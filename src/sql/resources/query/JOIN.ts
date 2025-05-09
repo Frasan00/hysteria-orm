@@ -36,6 +36,10 @@ const joinTemplate = (
       `\nLEFT JOIN ${relatedTable} ON ${foreignTableName}.${foreignColumnConverted} ${operator} ${primaryTableName}.${primaryColumnConverted} `,
     rightJoin: () =>
       `\nRIGHT JOIN ${relatedTable} ON ${foreignTableName}.${foreignColumnConverted} ${operator} ${primaryTableName}.${primaryColumnConverted} `,
+    fullJoin: () =>
+      `\nFULL OUTER JOIN ${relatedTable} ON ${foreignTableName}.${foreignColumnConverted} ${operator} ${primaryTableName}.${primaryColumnConverted} `,
+    crossJoin: () => `\nCROSS JOIN ${relatedTable} `,
+    naturalJoin: () => `\nNATURAL JOIN ${relatedTable} `,
   };
 };
 
