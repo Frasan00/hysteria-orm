@@ -6,14 +6,19 @@ import { execSql } from "../../sql_runner/sql_runner";
 import { Model } from "../model";
 import { ModelQueryBuilder } from "../model_query_builder/model_query_builder";
 import { FetchHooks } from "../model_query_builder/model_query_builder_types";
+import { ModelWithoutExtraColumns } from "../model_types";
 import { getBaseModelInstance } from "../model_utils";
 import {
   FindOneType,
   FindType,
+  InsertOptions,
+  ModelKey,
   ModelRelation,
   OrderByChoices,
   UnrestrictedFindOneType,
   UnrestrictedFindType,
+  UpdateOptions,
+  UpsertOptions,
 } from "./model_manager_types";
 import SqlModelManagerUtils from "./model_manager_utils";
 
@@ -63,6 +68,11 @@ export class ModelManager<T extends Model> {
 
     if (input.where) {
       Object.entries(input.where).forEach(([key, value]) => {
+        if (Array.isArray(value)) {
+          query.whereIn(key, value);
+          return;
+        }
+
         query.where(key, value);
       });
     }
@@ -153,7 +163,10 @@ export class ModelManager<T extends Model> {
    * @description Ignores all model hooks
    * @throws {HysteriaError} if the model has no primary key
    */
-  async findOneByPrimaryKey(value: string | number): Promise<T | null> {
+  async findOneByPrimaryKey(
+    value: string | number,
+    returning?: ModelKey<T>[],
+  ): Promise<T | null> {
     if (!this.model.primaryKey) {
       throw new HysteriaError(
         this.model.name + "::findOneByPrimaryKey",
@@ -162,23 +175,23 @@ export class ModelManager<T extends Model> {
     }
 
     return this.query()
+      .select(...(returning ?? ["*"]))
       .where(this.model.primaryKey as string, value)
       .one({ ignoreHooks: ["afterFetch", "beforeFetch"] });
   }
 
   /**
    * @description Creates a new record in the database
-   * @mysql If no Primary Key is present in the model definition, the exact input will be returned
-   * @sqlite If no Primary Key is present in the model definition, the exact input will be returned
    */
-  async insert(model: Partial<T>): Promise<T> {
-    await this.model.beforeInsert(model as T);
+  async insert(model: Partial<T>, options: InsertOptions<T> = {}): Promise<T> {
+    !options.ignoreHooks && (await this.model.beforeInsert(model as T));
     await this.sqlModelManagerUtils.handlePrepare(this.model, model as T);
 
     const { query, params } = this.sqlModelManagerUtils.parseInsert(
       model as T,
       this.model,
       this.sqlType,
+      (options.returning as string[]) || [],
     );
 
     const rows = await execSql(query, params, this.sqlDataSource, "raw", {
@@ -190,7 +203,12 @@ export class ModelManager<T extends Model> {
     });
 
     if (this.sqlType === "mysql" || this.sqlType === "mariadb") {
-      return this.handleMysqlInsert(rows, [model as T], "one");
+      return this.handleMysqlInsert(
+        rows,
+        [model as T],
+        "one",
+        options.returning as string[],
+      );
     }
 
     const insertedModel = rows[0] as T;
@@ -206,13 +224,14 @@ export class ModelManager<T extends Model> {
 
   /**
    * @description Creates multiple records in the database
-   * @mysql If no Primary Key is present in the model definition, the exact input will be returned
-   * @sqlite If no Primary Key is present in the model definition, the exact input will be returned
    */
-  async insertMany(models: Partial<T>[]): Promise<T[]> {
+  async insertMany(
+    models: Partial<T>[],
+    options: InsertOptions<T> = {},
+  ): Promise<T[]> {
     await Promise.all(
       models.map((model) => {
-        this.model.beforeInsert(model as T);
+        !options.ignoreHooks && this.model.beforeInsert(model as T);
         this.sqlModelManagerUtils.handlePrepare(this.model, model as T);
       }),
     );
@@ -221,6 +240,7 @@ export class ModelManager<T extends Model> {
       models as T[],
       this.model,
       this.sqlType,
+      (options.returning as string[]) || [],
     );
 
     const rows = await execSql(query, params, this.sqlDataSource, "raw", {
@@ -232,7 +252,14 @@ export class ModelManager<T extends Model> {
     });
 
     if (this.sqlType === "mysql" || this.sqlType === "mariadb") {
-      return (await this.handleMysqlInsert(rows, models as T[], "many")) || [];
+      return (
+        (await this.handleMysqlInsert(
+          rows,
+          models as T[],
+          "many",
+          options.returning as string[],
+        )) || []
+      );
     }
 
     const insertedModels = rows as T[];
@@ -246,12 +273,57 @@ export class ModelManager<T extends Model> {
     return (results || []) as T[];
   }
 
+  async upsertMany(
+    conflictColumns: string[],
+    columnsToUpdate: string[],
+    data: ModelWithoutExtraColumns<T>[],
+    options: UpsertOptions<T> = {
+      updateOnConflict: true,
+    },
+  ): Promise<T[]> {
+    await Promise.all(
+      data.map((model) => {
+        !options.ignoreHooks && this.model.beforeInsert(model as T);
+        this.sqlModelManagerUtils.handlePrepare(this.model, model as T);
+      }),
+    );
+
+    let { query, params } = this.sqlModelManagerUtils.parseMassiveInsert(
+      data as T[],
+      this.model,
+      this.sqlType,
+    );
+
+    const { query: onDuplicateQuery, params: onDuplicateParams } =
+      this.sqlModelManagerUtils.parseOnDuplicate(
+        this.sqlType,
+        this.model,
+        options.updateOnConflict || true ? "update" : "ignore",
+        conflictColumns,
+        columnsToUpdate,
+        options.returning as string[],
+      );
+
+    query = `${query.replace(";", " ").replace(/RETURNING.*$/, "")} ${onDuplicateQuery}`;
+    params = [...params, ...onDuplicateParams];
+
+    const rows = await execSql(query, params, this.sqlDataSource, "raw", {
+      sqlLiteOptions: {
+        typeofModel: this.model,
+        mode: "raw",
+        models: data as T[],
+      },
+    });
+
+    return rows as T[];
+  }
+
   /**
    * @description Updates a record, returns the updated record
    * @description Model is retrieved from the database using the primary key regardless of any model hooks
    * @description Can only be used if the model has a primary key, use a massive update if the model has no primary key
    */
-  async updateRecord(model: T): Promise<T> {
+  async updateRecord(model: T, options: UpdateOptions<T> = {}): Promise<T> {
     await this.sqlModelManagerUtils.handlePrepare(
       this.model,
       model as T,
@@ -275,6 +347,7 @@ export class ModelManager<T extends Model> {
     await execSql(query, params, this.sqlDataSource);
     const updatedModel = await this.findOneByPrimaryKey(
       model[this.model.primaryKey as keyof T] as string,
+      options.returning as ModelKey<T>[],
     );
 
     if (!updatedModel) {
@@ -322,6 +395,7 @@ export class ModelManager<T extends Model> {
     rows: any,
     models: T[],
     returnType: O,
+    retuning?: string[],
   ): Promise<O extends "one" ? T : T[] | null> {
     if (!this.model.primaryKey) {
       if (returnType === "one") {
@@ -349,6 +423,7 @@ export class ModelManager<T extends Model> {
 
       const primaryKeyList = idsToFetchList.map((key) => `'${key}'`).join(",");
       const fetchedModels = await this.query()
+        .select(...(retuning ?? "*"))
         .whereIn(this.model.primaryKey as string, idsToFetchList)
         .orderByRaw(`FIELD(${this.model.primaryKey}, ${primaryKeyList})`)
         .many();
@@ -369,6 +444,7 @@ export class ModelManager<T extends Model> {
     );
 
     const fetchedModels = await this.query()
+      .select(...(retuning || "*"))
       .whereIn(this.model.primaryKey as string, idsToFetchList)
       .many();
 

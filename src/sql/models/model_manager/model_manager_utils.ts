@@ -46,6 +46,23 @@ export default class SqlModelManagerUtils<T extends Model> {
     return insert.insertMany(keys, values, returning);
   }
 
+  parseOnDuplicate(
+    dbType: SqlDataSourceType,
+    typeofModel: typeof Model,
+    mode: "update" | "ignore",
+    conflictColumns: string[],
+    columnsToUpdate: string[],
+    returning?: string[],
+  ): { query: string; params: any[] } {
+    const insert = insertTemplate(dbType, typeofModel);
+    return insert.onDuplicate(
+      mode,
+      conflictColumns,
+      columnsToUpdate,
+      returning,
+    );
+  }
+
   parseUpdate(
     model: T,
     typeofModel: typeof Model,

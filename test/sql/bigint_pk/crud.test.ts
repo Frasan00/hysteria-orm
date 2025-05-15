@@ -354,3 +354,140 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
     expect(allUsers[0].updatedAt).not.toBe(user.updatedAt);
   });
 });
+
+describe(`[${env.DB_TYPE}] upsert`, () => {
+  test("should upsert an user with insert and updateOnConflict", async () => {
+    const insertedUser = await UserWithBigint.upsert(
+      { email: "test@test.com" },
+      { name: "John Doe", email: "test@test.com" },
+    );
+
+    console.log(insertedUser);
+    expect(insertedUser.name).toBe("John Doe");
+    expect(insertedUser.email).toBe("test@test.com");
+  });
+
+  test("should upsert an user with update and updateOnConflict", async () => {
+    if (env.DB_TYPE === "cockroachdb") {
+      console.log("CockroachDB breaks on bigint pk update");
+      return;
+    }
+
+    const user = await UserFactory.userWithBigint(1);
+    const updatedUser = await UserWithBigint.upsert(
+      { email: user.email },
+      { name: "John Doe", email: user.email },
+    );
+    expect(updatedUser.name).toBe("John Doe");
+    expect(updatedUser.email).toBe(user.email);
+  });
+
+  test("should upsert an user with insert and ignoreOnConflict", async () => {
+    const insertedUser = await UserWithBigint.upsert(
+      { email: "test@test.com" },
+      { name: "John Doe", email: "test@test.com" },
+      { updateOnConflict: false },
+    );
+    expect(insertedUser.name).toBe("John Doe");
+    expect(insertedUser.email).toBe("test@test.com");
+  });
+
+  test("should upsert an user with update and ignoreOnConflict", async () => {
+    const user = await UserFactory.userWithBigint(1);
+    const updatedUser = await UserWithBigint.upsert(
+      { email: user.email },
+      { name: "John Doe", email: user.email },
+      { updateOnConflict: false },
+    );
+    expect(updatedUser.name).toBe(user.name);
+    expect(updatedUser.email).toBe(user.email);
+  });
+
+  test("should upsert many users with insert and updateOnConflict with returning", async () => {
+    const insertedUser = await UserWithBigint.upsert(
+      { email: "test@test.com" },
+      { name: "John Doe", email: "test@test.com" },
+      { updateOnConflict: true, returning: ["name"] },
+    );
+    expect(insertedUser.name).toBe("John Doe");
+    if (env.DB_TYPE !== "sqlite") {
+      expect(insertedUser.email).not.toBeDefined();
+    }
+  });
+
+  test("should upsert an user with update and updateOnConflict with returning", async () => {
+    if (env.DB_TYPE === "cockroachdb") {
+      console.log("CockroachDB breaks on bigint pk update");
+      return;
+    }
+
+    const user = await UserFactory.userWithBigint(1);
+    const updatedUser = await UserWithBigint.upsert(
+      { email: user.email },
+      { name: "John Doe", email: user.email },
+      { updateOnConflict: true, returning: ["name"] },
+    );
+    expect(updatedUser.name).toBe("John Doe");
+    expect(updatedUser.email).not.toBeDefined();
+  });
+});
+
+describe(`[${env.DB_TYPE}] upsertMany`, () => {
+  test("should upsert many users with insert and updateOnConflict", async () => {
+    const insertedUsers = await UserWithBigint.upsertMany(
+      ["email"],
+      [
+        { email: "test@test.com", name: "John Doe" },
+        { email: "test2@test.com", name: "John Doe 2" },
+      ],
+    );
+
+    expect(insertedUsers).toHaveLength(2);
+    expect(insertedUsers[0].name).toMatch(/John Doe|John Doe 2/);
+    expect(insertedUsers[0].email).toMatch(/test@test.com|test2@test.com/);
+    expect(insertedUsers[1].name).toMatch(/John Doe|John Doe 2/);
+    expect(insertedUsers[1].email).toMatch(/test@test.com|test2@test.com/);
+  });
+
+  test("should upsert many users with update and updateOnConflict", async () => {
+    const users = await UserFactory.userWithBigint(2);
+    const updatedUsers = await UserWithBigint.upsertMany(
+      ["email"],
+      [
+        { email: users[0].email, name: "John Doe", isActive: true },
+        { email: users[1].email, name: "John Doe 2", isActive: false },
+      ],
+    );
+
+    expect(updatedUsers).toHaveLength(2);
+    expect(updatedUsers[0].name).toMatch(/John Doe|John Doe 2/);
+    expect(updatedUsers[0].email).toMatch(
+      new RegExp(`${users[0].email}|${users[1].email}`),
+    );
+    expect(updatedUsers[1].name).toMatch(/John Doe|John Doe 2/);
+    expect(updatedUsers[1].email).toMatch(
+      new RegExp(`${users[0].email}|${users[1].email}`),
+    );
+  });
+
+  test("should upsert many users with insert and updateOnConflict with returning", async () => {
+    const insertedUsers = await UserWithBigint.upsertMany(
+      ["email"],
+      [
+        { email: "test@test.com", name: "John Doe" },
+        { email: "test2@test.com", name: "John Doe 2" },
+      ],
+      { updateOnConflict: true, returning: ["name"] },
+    );
+
+    expect(insertedUsers).toHaveLength(2);
+    expect(insertedUsers[0].name).toMatch(/John Doe|John Doe 2/);
+    if (env.DB_TYPE !== "sqlite") {
+      expect(insertedUsers[0].email).not.toBeDefined();
+    }
+    expect(insertedUsers[1].name).toMatch(/John Doe|John Doe 2/);
+    if (env.DB_TYPE !== "sqlite") {
+      expect(insertedUsers[1].email).not.toBeDefined();
+    }
+  });
+});

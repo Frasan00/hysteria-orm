@@ -3,12 +3,13 @@ import type { ModelManager } from "./model_manager/model_manager";
 import type {
   FindOneType,
   FindType,
+  InsertOptions,
   ModelKey,
   UnrestrictedFindOneType,
   UnrestrictedFindType,
+  UpsertOptions,
 } from "./model_manager/model_manager_types";
 import type { ModelQueryBuilder } from "./model_query_builder/model_query_builder";
-import type { OneOptions } from "./model_query_builder/model_query_builder_types";
 import type {
   BaseModelMethodOptions,
   ModelWithoutExtraColumns,
@@ -27,6 +28,8 @@ import {
   manyToMany,
 } from "./decorators/model_decorators";
 import { getBaseTableName } from "./model_utils";
+import { serializeModel } from "../serializer";
+import { databasesWithReturning } from "../sql_runner/sql_runner_constants";
 
 /**
  * @description Represents a Table in the Database
@@ -87,7 +90,9 @@ export abstract class Model extends Entity {
   ): Promise<T[]> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
-    return await modelManager.find();
+    return await modelManager.find({
+      ignoreHooks: options.ignoreHooks ? ["afterFetch", "beforeFetch"] : [],
+    });
   }
 
   /**
@@ -95,7 +100,7 @@ export abstract class Model extends Entity {
    */
   static query<T extends Model>(
     this: new () => T | typeof Model,
-    options: BaseModelMethodOptions = {},
+    options?: Omit<BaseModelMethodOptions, "ignoreHooks">,
   ): ModelQueryBuilder<T> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
@@ -108,11 +113,13 @@ export abstract class Model extends Entity {
    */
   static async first<T extends Model>(
     this: new () => T | typeof Model,
-    options: OneOptions & BaseModelMethodOptions = {},
+    options?: BaseModelMethodOptions,
   ): Promise<T | null> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
-    return modelManager.query().one(options);
+    return modelManager.query().one({
+      ignoreHooks: options?.ignoreHooks ? ["afterFetch", "beforeFetch"] : [],
+    });
   }
 
   /**
@@ -121,7 +128,7 @@ export abstract class Model extends Entity {
   static async find<T extends Model>(
     this: new () => T | typeof Model,
     findOptions?: FindType<T> | UnrestrictedFindType<T>,
-    options: BaseModelMethodOptions = {},
+    options?: Omit<BaseModelMethodOptions, "ignoreHooks">,
   ): Promise<T[]> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
@@ -136,7 +143,7 @@ export abstract class Model extends Entity {
     findOneOptions: (FindOneType<T> | UnrestrictedFindOneType<T>) & {
       customError?: Error;
     },
-    options: BaseModelMethodOptions = {},
+    options?: Omit<BaseModelMethodOptions, "ignoreHooks">,
   ): Promise<T> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
@@ -150,7 +157,7 @@ export abstract class Model extends Entity {
     this: new () => T | typeof Model,
     findOneOptions: (FindOneType<T> | UnrestrictedFindOneType<T>) &
       BaseModelMethodOptions,
-    options: BaseModelMethodOptions = {},
+    options?: Omit<BaseModelMethodOptions, "ignoreHooks">,
   ): Promise<T | null> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
@@ -169,6 +176,7 @@ export abstract class Model extends Entity {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
     return modelManager.find({
+      ignoreHooks: options.ignoreHooks ? ["afterFetch", "beforeFetch"] : [],
       where: {
         [column]: value,
       },
@@ -187,6 +195,7 @@ export abstract class Model extends Entity {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
     return modelManager.findOne({
+      ignoreHooks: options.ignoreHooks ? ["afterFetch", "beforeFetch"] : [],
       where: {
         [column]: value,
       },
@@ -199,7 +208,7 @@ export abstract class Model extends Entity {
   static async findOneByPrimaryKey<T extends Model>(
     this: new () => T | typeof Model,
     value: string | number,
-    options: BaseModelMethodOptions = {},
+    options: Omit<BaseModelMethodOptions, "ignoreHooks"> = {},
   ): Promise<T | null> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
@@ -212,7 +221,7 @@ export abstract class Model extends Entity {
   static async refresh<T extends Model>(
     this: new () => T | typeof Model,
     model: T,
-    options: BaseModelMethodOptions = {},
+    options: Omit<BaseModelMethodOptions, "ignoreHooks"> = {},
   ): Promise<T | null> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
@@ -233,30 +242,46 @@ export abstract class Model extends Entity {
    * @description Saves a new record to the database
    * @description $annotations will be ignored if set in the modelData and won't be returned in the response
    * @warning If not using postgres and the model has no primary key, the model will be saved, but it won't be possible to retrieve it so at that point it will be returned as null, this is not typed as Model | null for type safety reasons
+   * @mysql If no Primary Key is present in the model definition, the exact input model will be returned
+   * @sqlite If no Primary Key is present in the model definition, the exact input will be returned
+   * @sqlite Returning Not supported and won't have effect
    */
   static async insert<T extends Model>(
     this: new () => T | typeof Model,
     modelData: ModelWithoutExtraColumns<T>,
-    options: BaseModelMethodOptions = {},
+    options: BaseModelMethodOptions & InsertOptions<T> = {},
   ): Promise<T> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
-    return modelManager.insert(modelData as T);
+    return modelManager.insert(modelData as T, {
+      ignoreHooks: options.ignoreHooks,
+      returning: options.returning,
+    });
   }
 
   /**
    * @description Saves multiple records to the database
    * @description $annotations will be ignored if set in the modelData and won't be returned in the response
    * @warning If not using postgres and the model has no primary key, the models will be saved, but it won't be possible to retrieve them so at that point they will be returned as an empty array
+   * @mysql If no Primary Key is present in the model definition, the exact input model will be returned
+   * @sqlite If no Primary Key is present in the model definition, the exact input will be returned
+   * @sqlite Returning Not supported and won't have effect
    */
   static async insertMany<T extends Model>(
     this: new () => T | typeof Model,
     modelsData: ModelWithoutExtraColumns<T>[],
-    options: BaseModelMethodOptions = {},
+    options: BaseModelMethodOptions & InsertOptions<T> = {},
   ): Promise<T[]> {
+    if (!modelsData.length) {
+      return [];
+    }
+
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
-    return modelManager.insertMany(modelsData as T[]);
+    return modelManager.insertMany(modelsData as T[], {
+      ignoreHooks: options.ignoreHooks,
+      returning: options.returning,
+    });
   }
 
   /**
@@ -269,7 +294,7 @@ export abstract class Model extends Entity {
     this: new () => T | typeof Model,
     modelSqlInstance: T,
     updatePayload?: Partial<T>,
-    options: BaseModelMethodOptions = {},
+    options: Omit<BaseModelMethodOptions, "ignoreHooks"> = {},
   ): Promise<T> {
     try {
       const typeofModel = this as unknown as typeof Model;
@@ -302,7 +327,9 @@ export abstract class Model extends Entity {
     this: new () => T | typeof Model,
     searchCriteria: ModelWithoutExtraColumns<T>,
     createData: ModelWithoutExtraColumns<T>,
-    options: BaseModelMethodOptions & { fullResponse?: O } = {},
+    options: Omit<BaseModelMethodOptions, "ignoreHooks"> & {
+      fullResponse?: O;
+    } = {},
   ): Promise<
     O extends true
       ? {
@@ -345,20 +372,19 @@ export abstract class Model extends Entity {
 
   /**
    * @description Updates or creates a new record
-   * @warning Model must have a primary key defined
-   * @throws {HysteriaError} If the model has no primary key
    */
   static async upsert<T extends Model>(
     this: new () => T | typeof Model,
     searchCriteria: ModelWithoutExtraColumns<T>,
     data: ModelWithoutExtraColumns<T>,
-    options: { updateOnConflict?: boolean } & BaseModelMethodOptions = {
+    options: UpsertOptions<T> & BaseModelMethodOptions = {
       updateOnConflict: true,
     },
   ): Promise<T> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
     const doesExist = await modelManager.findOne({
+      ignoreHooks: options.ignoreHooks ? ["afterFetch", "beforeFetch"] : [],
       where: searchCriteria,
     });
 
@@ -367,34 +393,42 @@ export abstract class Model extends Entity {
         doesExist[typeofModel.primaryKey as keyof T];
 
       if (options.updateOnConflict) {
-        return (await modelManager.updateRecord(data as T)) as T;
+        return (await modelManager.updateRecord(data as T, {
+          returning: options.returning ?? (["*"] as ModelKey<T>[]),
+        })) as T;
       }
 
       return doesExist;
     }
 
-    return (await modelManager.insert(data as T)) as T;
+    return (await modelManager.insert(data as T, {
+      ignoreHooks: options.ignoreHooks,
+      returning: options.returning ?? (["*"] as ModelKey<T>[]),
+    })) as T;
   }
 
   /**
    * @description Updates or creates multiple records
-   * @warning Model must have a primary key defined
-   * @throws {HysteriaError} If the model has no primary key
+   * @param {updateOnConflict} If true, the record will be updated if it exists, otherwise it will be ignored
    */
   static async upsertMany<T extends Model>(
     this: new () => T | typeof Model,
-    searchCriteria: ModelKey<T>[],
+    conflictColumns: ModelKey<T>[],
     data: ModelWithoutExtraColumns<T>[],
-    options: { updateOnConflict?: boolean } & BaseModelMethodOptions = {
+    options: UpsertOptions<T> & BaseModelMethodOptions = {
       updateOnConflict: true,
     },
   ): Promise<T[]> {
+    if (!data.length) {
+      return [];
+    }
+
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
 
     if (
       !data.every((record) =>
-        searchCriteria.every((column) => column in record),
+        conflictColumns.every((column) => column in record),
       )
     ) {
       throw new HysteriaError(
@@ -403,31 +437,52 @@ export abstract class Model extends Entity {
       );
     }
 
-    const results: T[] = await Promise.all(
-      data.map(async (record) => {
-        const search = searchCriteria.reduce((acc, column) => {
-          acc[column] = record[column];
-          return acc;
-        }, {} as ModelWithoutExtraColumns<T>);
-
-        const doesExist = await modelManager.findOne({ where: search });
-
-        if (doesExist) {
-          (record as T)[typeofModel.primaryKey as keyof T] =
-            doesExist[typeofModel.primaryKey as keyof T];
-
-          if (options.updateOnConflict) {
-            return (await modelManager.updateRecord(record as T)) as T;
-          }
-
-          return doesExist;
-        }
-
-        return (await modelManager.insert(record as T)) as T;
-      }),
+    const columnsToUpdate = Object.keys(data[0]);
+    const upsertResult = await modelManager.upsertMany(
+      conflictColumns as string[],
+      columnsToUpdate,
+      data,
+      {
+        ignoreHooks: options.ignoreHooks,
+        returning: options.returning,
+        updateOnConflict: options.updateOnConflict || true,
+      },
     );
 
-    return results;
+    const dbType = typeofModel.sqlInstance.getDbType();
+    if (databasesWithReturning.includes(dbType)) {
+      return (await serializeModel(
+        upsertResult,
+        typeofModel,
+        options.returning as string[],
+      )) as T[];
+    }
+
+    const lookupQuery = modelManager.query();
+
+    if (options.returning?.length) {
+      lookupQuery.select(...options.returning);
+    }
+
+    const conflictMap = new Map<string, any>();
+    conflictColumns.forEach((column) => {
+      data.forEach((record) => {
+        conflictMap.set(column as string, [
+          ...(conflictMap.get(column as string) || []),
+          record[column as keyof ModelWithoutExtraColumns<T>],
+        ]);
+      });
+    });
+
+    lookupQuery.whereBuilder((query) => {
+      conflictColumns.forEach((column) => {
+        query.orWhereIn(column, conflictMap.get(column as string) || []);
+      });
+    });
+
+    return lookupQuery.many({
+      ignoreHooks: options.ignoreHooks ? ["afterFetch", "beforeFetch"] : [],
+    });
   }
 
   /**
@@ -436,7 +491,7 @@ export abstract class Model extends Entity {
   static async deleteRecord<T extends Model>(
     this: new () => T | typeof Model,
     modelSqlInstance: T,
-    options: BaseModelMethodOptions = {},
+    options?: Omit<BaseModelMethodOptions, "ignoreHooks">,
   ): Promise<void> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
@@ -456,7 +511,7 @@ export abstract class Model extends Entity {
       column?: ModelKey<T>;
       value?: string | number | boolean | Date;
     },
-    options?: BaseModelMethodOptions,
+    options?: Omit<BaseModelMethodOptions, "ignoreHooks">,
   ): Promise<T> {
     const typeofModel = this as unknown as typeof Model;
     const {

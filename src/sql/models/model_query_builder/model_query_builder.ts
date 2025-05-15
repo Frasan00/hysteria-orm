@@ -13,6 +13,7 @@ import {
   SoftDeleteOptions,
 } from "../../query_builder/delete_query_builder_type";
 import { QueryBuilder } from "../../query_builder/query_builder";
+import { PluckReturnType } from "../../query_builder/query_builder_types";
 import type { UpdateOptions } from "../../query_builder/update_query_builder_types";
 import { serializeModel } from "../../serializer";
 import { SqlDataSource } from "../../sql_data_source";

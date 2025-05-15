@@ -11,6 +11,7 @@ lerna-debug.log*
 sqlite.db
 .DS_Store
 stashes
+sqlite.db-journal
 
 temp_index.txt
 

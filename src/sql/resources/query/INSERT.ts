@@ -119,7 +119,7 @@ const insertTemplate = (
           ? `INSERT INTO ${table} (${columns.join(", ")})
 VALUES (${placeholders});`
           : `INSERT INTO ${table} (${columns.join(", ")})
-VALUES (${placeholders}) RETURNING ${returning ? returning.join(", ") : "*"};`;
+VALUES (${placeholders}) RETURNING ${returning && returning.length > 0 ? returning.join(", ") : "*"};`;
 
       return { query, params };
     },
@@ -195,9 +195,78 @@ VALUES (${placeholders}) RETURNING ${returning ? returning.join(", ") : "*"};`;
           ? `INSERT INTO ${table} (${columns.join(", ")})
 VALUES ${valueSets.join(", ")};`
           : `INSERT INTO ${table} (${columns.join(", ")})
-VALUES ${valueSets.join(", ")} RETURNING ${returning ? returning.join(", ") : "*"};`;
+VALUES ${valueSets.join(", ")} RETURNING ${returning && returning.length > 0 ? returning.join(", ") : "*"};`;
 
       return { query, params };
+    },
+    onDuplicate(
+      mode: "update" | "ignore",
+      conflictColumns: string[],
+      columnsToUpdate: string[],
+      returning?: string[],
+    ): { query: string; params: any[] } {
+      conflictColumns = conflictColumns.map((column) =>
+        convertCase(column, typeofModel.databaseCaseConvention),
+      );
+      columnsToUpdate = columnsToUpdate.map((column) =>
+        convertCase(column, typeofModel.databaseCaseConvention),
+      );
+
+      switch (dbType) {
+        case "postgres":
+        case "cockroachdb":
+          if (mode === "ignore") {
+            return {
+              query: `ON CONFLICT (${conflictColumns.join(", ")}) DO NOTHING`,
+              params: [],
+            };
+          }
+
+          const updateSet = columnsToUpdate
+            .map((column) => `${column} = EXCLUDED.${column}`)
+            .join(", ");
+
+          return {
+            query: `ON CONFLICT (${conflictColumns.join(", ")}) DO UPDATE SET ${updateSet} RETURNING ${returning && returning.length > 0 ? returning.join(", ") : "*"}`,
+            params: [],
+          };
+        case "mysql":
+        case "mariadb":
+          if (mode === "ignore") {
+            return {
+              query: `ON DUPLICATE KEY IGNORE`,
+              params: [],
+            };
+          }
+
+          const mysqlUpdateSet = columnsToUpdate
+            .map((column) => `${column} = new.${column}`)
+            .join(", ");
+          return {
+            query: ` AS new ON DUPLICATE KEY UPDATE ${mysqlUpdateSet}`,
+            params: [],
+          };
+        case "sqlite":
+          if (mode === "ignore") {
+            return {
+              query: `ON CONFLICT (${conflictColumns.join(", ")}) DO NOTHING`,
+              params: [],
+            };
+          }
+
+          const sqliteUpdateSet = columnsToUpdate
+            .map((column) => `${column} = excluded.${column}`)
+            .join(", ");
+          return {
+            query: `ON CONFLICT (${conflictColumns.join(", ")}) DO UPDATE SET ${sqliteUpdateSet}`,
+            params: [],
+          };
+        default:
+          throw new HysteriaError(
+            "InsertTemplate::onDuplicate",
+            `UNSUPPORTED_DATABASE_TYPE_${dbType}`,
+          );
+      }
     },
   };
 };

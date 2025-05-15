@@ -4,6 +4,21 @@ import { BelongsTo } from "../relations/belongs_to";
 import { HasMany } from "../relations/has_many";
 import { HasOne } from "../relations/has_one";
 
+export type UpsertOptions<T extends Model> = {
+  ignoreHooks?: boolean;
+  updateOnConflict?: boolean;
+  returning?: ModelKey<T>[];
+};
+
+export type InsertOptions<T extends Model> = {
+  ignoreHooks?: boolean;
+  returning?: ModelKey<T>[];
+};
+
+export type UpdateOptions<T extends Model> = {
+  returning?: ModelKey<T>[];
+};
+
 type ExcludeRelations<T> = {
   [K in keyof T]: T[K] extends
     | (Model[] | HasMany)

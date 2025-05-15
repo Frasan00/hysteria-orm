@@ -14,4 +14,5 @@ export type NumberModelKey<T extends Model> = {
 export type BaseModelMethodOptions = {
   useConnection?: SqlDataSource;
   trx?: Transaction;
+  ignoreHooks?: boolean;
 };

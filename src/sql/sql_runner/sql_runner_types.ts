@@ -7,6 +7,6 @@ export type SqlRunnerReturnType<T extends Returning> = T extends "raw"
 
 export type SqlLiteOptions<T extends Model> = {
   typeofModel?: typeof Model;
-  mode?: "insertMany" | "insertOne" | "affectedRows" | "fetch";
+  mode?: "insertMany" | "insertOne" | "affectedRows" | "fetch" | "raw";
   models?: T | T[];
 };

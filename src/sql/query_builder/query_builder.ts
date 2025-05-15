@@ -170,9 +170,17 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
   /**
    * @description Adds a UNION to the query.
    */
+  union(query: string, params?: any[]): this;
   union(cb: UnionCallBack<T>): this;
   union(queryBuilder: QueryBuilder<any>): this;
-  union(queryBuilderOrCb: UnionCallBack<T> | QueryBuilder<any>): this {
+  union(
+    queryBuilderOrCb: UnionCallBack<any> | QueryBuilder<any> | string,
+  ): this {
+    if (typeof queryBuilderOrCb === "string") {
+      this.unionQuery = `${this.unionQuery} UNION ${queryBuilderOrCb}`;
+      return this;
+    }
+
     const queryBuilder =
       queryBuilderOrCb instanceof QueryBuilder
         ? queryBuilderOrCb
@@ -187,9 +195,17 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
   /**
    * @description Adds a UNION ALL to the query.
    */
+  unionAll(query: string, params?: any[]): this;
   unionAll(cb: UnionCallBack<T>): this;
   unionAll(queryBuilder: QueryBuilder<any>): this;
-  unionAll(queryBuilderOrCb: UnionCallBack<T> | QueryBuilder<any>): this {
+  unionAll(
+    queryBuilderOrCb: UnionCallBack<any> | QueryBuilder<any> | string,
+  ): this {
+    if (typeof queryBuilderOrCb === "string") {
+      this.unionQuery = `${this.unionQuery} UNION ALL ${queryBuilderOrCb}`;
+      return this;
+    }
+
     const queryBuilder =
       queryBuilderOrCb instanceof QueryBuilder
         ? queryBuilderOrCb
@@ -305,6 +321,10 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
     data: Record<string, any>[],
     returning?: string[],
   ): Promise<T[]> {
+    if (!data.length) {
+      return [];
+    }
+
     const models = data as any[];
     const { query, params } = this.sqlModelManagerUtils.parseMassiveInsert(
       models,
