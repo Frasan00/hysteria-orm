@@ -90,6 +90,10 @@ const selectTemplate = (
     selectAll: (fromTable: string = table) =>
       `SELECT ${fromTable}.* FROM ${fromTable} `,
     selectColumns: (fromTable: string = table, columns: string[]) => {
+      if (!columns.length) {
+        columns = ["*"];
+      }
+
       columns = columns.map((column) => {
         let columnName = column.trim();
         const isFunction =

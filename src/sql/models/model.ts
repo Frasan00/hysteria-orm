@@ -18,7 +18,9 @@ import type {
 import { Entity } from "../../entity";
 import { HysteriaError } from "../../errors/hysteria_error";
 import { baseSoftDeleteDate } from "../../utils/date_utils";
+import { serializeModel } from "../serializer";
 import { SqlDataSource } from "../sql_data_source";
+import { databasesWithReturning } from "../sql_runner/sql_runner_constants";
 import {
   belongsTo,
   column,
@@ -28,8 +30,6 @@ import {
   manyToMany,
 } from "./decorators/model_decorators";
 import { getBaseTableName } from "./model_utils";
-import { serializeModel } from "../serializer";
-import { databasesWithReturning } from "../sql_runner/sql_runner_constants";
 
 /**
  * @description Represents a Table in the Database
@@ -427,9 +427,10 @@ export abstract class Model extends Entity {
     const modelManager = typeofModel.dispatchModelManager<T>(options);
 
     if (
-      !data.every((record) =>
-        conflictColumns.every((column) => column in record),
-      )
+      !data.every((record) => {
+        const recordKeys = new Set(Object.keys(record));
+        return conflictColumns.every((col) => recordKeys.has(col as string));
+      })
     ) {
       throw new HysteriaError(
         "Model::upsertMany",
@@ -459,7 +460,6 @@ export abstract class Model extends Entity {
     }
 
     const lookupQuery = modelManager.query();
-
     if (options.returning?.length) {
       lookupQuery.select(...options.returning);
     }

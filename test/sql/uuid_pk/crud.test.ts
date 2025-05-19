@@ -20,6 +20,22 @@ afterEach(async () => {
 });
 
 describe(`[${env.DB_TYPE}] Select`, () => {
+  test("remove annotations", async () => {
+    await UserFactory.userWithUuid(2);
+    const user = await UserWithUuid.query()
+      .select("COUNT(*) as count")
+      .removeAnnotations()
+      .first();
+
+    expect(user?.$annotations).toBeUndefined();
+
+    const user2 = await UserWithUuid.query()
+      .select("COUNT(*) as count")
+      .first();
+
+    expect(user2?.$annotations).not.toBeUndefined();
+  });
+
   test("lockForUpdate", async () => {
     if (env.DB_TYPE === "sqlite") {
       console.log("Sqlite does not support lockForUpdate");

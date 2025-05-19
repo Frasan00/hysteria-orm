@@ -11,6 +11,7 @@ export const parseDatabaseDataIntoModelResponse = async <
   modelColumns: ColumnType[],
   modelColumnsMap: Map<string, ColumnType>,
   modelSelectedColumns: string[] = [],
+  mustRemoveAnnotations: boolean = false,
 ): Promise<T> => {
   const casedModel: Record<string, any> = {};
   const hiddenColumns = modelColumns
@@ -28,7 +29,7 @@ export const parseDatabaseDataIntoModelResponse = async <
         databaseColumnsMap.get(key)?.columnName ??
         convertCase(key, typeofModel.modelCaseConvention);
 
-      if (modelKey === "$annotations") {
+      if (modelKey === "$annotations" && !mustRemoveAnnotations) {
         processAdditionalColumns(model, key, casedModel, typeofModel);
         return;
       }
@@ -98,6 +99,7 @@ export const serializeModel = async <T extends Model>(
   models: T[],
   typeofModel: typeof Model,
   modelSelectedColumns: string[] = [],
+  mustRemoveAnnotations: boolean = false,
 ): Promise<T | T[] | null> => {
   if (!models.length) {
     return null;
@@ -136,6 +138,7 @@ export const serializeModel = async <T extends Model>(
         modelColumns,
         modelColumnsMap,
         modelSelectedColumns,
+        mustRemoveAnnotations,
       );
 
       return serializedModel;

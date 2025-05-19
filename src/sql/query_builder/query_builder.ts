@@ -31,6 +31,7 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
   protected deleteTemplate: ReturnType<typeof deleteTemplate>;
   protected isNestedCondition = false;
   protected lockForUpdateQuery: string;
+  protected mustRemoveAnnotations: boolean = false;
 
   constructor(
     model: typeof Model,

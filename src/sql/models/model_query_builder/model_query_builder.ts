@@ -13,7 +13,6 @@ import {
   SoftDeleteOptions,
 } from "../../query_builder/delete_query_builder_type";
 import { QueryBuilder } from "../../query_builder/query_builder";
-import { PluckReturnType } from "../../query_builder/query_builder_types";
 import type { UpdateOptions } from "../../query_builder/update_query_builder_types";
 import { serializeModel } from "../../serializer";
 import { SqlDataSource } from "../../sql_data_source";
@@ -85,6 +84,24 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
   }
 
   /**
+   * @description Removes annotations from the serialized model, by default, annotations are maintained in the serialized model
+   * @description Annotations are defined from the SQL methods used in the select statements and can be retrieved here `$annotations`
+   */
+  removeAnnotations(): this {
+    this.mustRemoveAnnotations = true;
+    return this;
+  }
+
+  /**
+   * @description This options will add to the final serialized model the annotations
+   * @description Annotations are defined from the SQL methods used in the select statements and can be retrieved here `$annotations`
+   */
+  clearRemoveAnnotations(): this {
+    this.mustRemoveAnnotations = true;
+    return this;
+  }
+
+  /**
    * @description Executes the query and retrieves the first result.
    */
   async one(options: OneOptions = {}): Promise<T | null> {
@@ -145,6 +162,7 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
       models as T[],
       this.model,
       this.modelSelectedColumns,
+      this.mustRemoveAnnotations,
     );
 
     if (!serializedModels) {
@@ -188,7 +206,6 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
   ): Promise<number> {
     const { ignoreBeforeDeleteHook = false } = options || {};
     !ignoreBeforeDeleteHook && this.model.beforeDelete(this);
-
     return super.softDelete(options);
   }
 
@@ -214,7 +231,6 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
     const result = await this.one({ ignoreHooks: ignoredHooks });
     return result ? +result.$annotations.total : 0;
-    return 0;
   }
 
   /**
