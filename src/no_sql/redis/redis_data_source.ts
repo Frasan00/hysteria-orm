@@ -49,6 +49,22 @@ export class RedisDataSource {
   }
 
   /**
+   * @description Returns the raw ioredis connection
+   * @returns {Redis}
+   */
+  static get ioredis() {
+    return this.redisConnection;
+  }
+
+  /**
+   * @description Returns the raw ioredis connection
+   * @returns {Redis}
+   */
+  get ioredis() {
+    return this.redisConnection;
+  }
+
+  /**
    * @description Connects to the redis database establishing a connection. If no connection details are provided, the default values from the env will be taken instead
    * @description The User input connection details will always come first
    * @description This is intended as a singleton connection to the redis database, if you need multiple connections, use the getConnection method
@@ -94,7 +110,7 @@ export class RedisDataSource {
    * @description Sets a key-value pair in the redis database
    * @param {string} key - The key
    * @param {string} value - The value
-   * @param {number} expirationTime - The expiration time in milliseconds to maintain node standard
+   * @param {number} expirationTime - The expiration time in milliseconds
    */
   static async set(
     key: string,
@@ -154,15 +170,13 @@ export class RedisDataSource {
    * @returns {Promise
    * <T | null>}
    */
-  static async getAndDelete<T = RedisFetchable>(
-    key: string,
-  ): Promise<T | null> {
+  static async consume<T = RedisFetchable>(key: string): Promise<T | null> {
     try {
       const value = await RedisDataSource.redisConnection.get(key);
       await RedisDataSource.redisConnection.del(key);
       return RedisDataSource.getValue<T>(value);
     } catch (error) {
-      throw new HysteriaError("RedisDataSource::getAndDelete", "GET_FAILED");
+      throw new HysteriaError("RedisDataSource::consume", "GET_FAILED");
     }
   }
 
@@ -189,21 +203,6 @@ export class RedisDataSource {
     } catch (error) {
       throw new HysteriaError("RedisDataSource::flushAll", "FLUSH_FAILED");
     }
-  }
-
-  /**
-   * @description Returns the raw redis connection that uses the ioredis library
-   * @returns {Redis}
-   */
-  static getRawConnection(): Redis {
-    if (!RedisDataSource.isConnected || !RedisDataSource.redisConnection) {
-      throw new HysteriaError(
-        "RedisDataSource::getRawConnection",
-        "CONNECTION_NOT_ESTABLISHED",
-      );
-    }
-
-    return RedisDataSource.redisConnection;
   }
 
   /**
@@ -287,13 +286,13 @@ export class RedisDataSource {
    * @returns {Promise
    * <T | null>}
    */
-  async getAndDelete<T = RedisFetchable>(key: string): Promise<T | null> {
+  async consume<T = RedisFetchable>(key: string): Promise<T | null> {
     try {
       const value = await this.redisConnection.get(key);
       await this.redisConnection.del(key);
       return RedisDataSource.getValue<T>(value);
     } catch (error) {
-      throw new HysteriaError("RedisDataSource::getAndDelete", "GET_FAILED");
+      throw new HysteriaError("RedisDataSource::consume", "GET_FAILED");
     }
   }
 
@@ -320,21 +319,6 @@ export class RedisDataSource {
     } catch (error) {
       throw new HysteriaError("RedisDataSource::flushAll", "FLUSH_FAILED");
     }
-  }
-
-  /**
-   * @description Returns the raw redis connection that uses the ioredis library
-   * @returns {Redis}
-   */
-  getRawConnection(): Redis {
-    if (!this.isConnected || !this.redisConnection) {
-      throw new HysteriaError(
-        "RedisDataSource::getRawConnection",
-        "CONNECTION_NOT_ESTABLISHED",
-      );
-    }
-
-    return this.redisConnection;
   }
 
   /**
@@ -373,7 +357,7 @@ export class RedisDataSource {
       return Boolean(value) as T;
     }
 
-    if (Number(value)) {
+    if (!Number.isNaN(Number(value))) {
       return Number(value) as T;
     }
 
