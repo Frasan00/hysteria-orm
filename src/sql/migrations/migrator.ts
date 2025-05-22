@@ -4,6 +4,7 @@ import rollbackMigrationsConnector from "../../cli/migration_rollback_connector"
 import logger from "../../utils/logger";
 import { SqlDataSource } from "../sql_data_source";
 import { Migration } from "./migration";
+import { SqlDataSourceInput } from "../sql_data_source_types";
 
 /**
  * @description Used internally from the CLI
@@ -72,11 +73,14 @@ export class Migrator {
  */
 export class ClientMigrator {
   protected migrationPath: string;
-  protected verbose: boolean;
+  protected sqlDataSourceInput?: Partial<SqlDataSourceInput>;
 
-  constructor(migrationPath: string, verbose: boolean = false) {
+  constructor(
+    migrationPath: string = env.MIGRATION_PATH || "migrations",
+    sqlDataSourceInput?: Partial<SqlDataSourceInput>,
+  ) {
     this.migrationPath = migrationPath;
-    this.verbose = verbose;
+    this.sqlDataSourceInput = sqlDataSourceInput;
   }
 
   /**
@@ -86,19 +90,31 @@ export class ClientMigrator {
   async migrate(direction: "up" | "down"): Promise<void> {
     env.MIGRATION_PATH = this.migrationPath;
     if (direction === "up") {
-      return runMigrationsConnector(undefined, this.verbose, true);
+      return runMigrationsConnector(
+        undefined,
+        this.sqlDataSourceInput,
+        true,
+        this.migrationPath,
+      );
     }
 
-    return rollbackMigrationsConnector(undefined, this.verbose, true);
+    return rollbackMigrationsConnector(
+      undefined,
+      this.sqlDataSourceInput,
+      true,
+      this.migrationPath,
+    );
   }
 }
 
 /**
  * @description Defines a programmatic migrator, can be used to run migrations programmatically
+ * @param migrationPath - The path to the migrations
+ * @param sqlDataSourceInput - The sql data source input, if not provided, env variables will be used
  */
 export const defineMigrator = (
   migrationPath: string,
-  verbose: boolean = false,
+  sqlDataSourceInput?: Partial<SqlDataSourceInput>,
 ): ClientMigrator => {
-  return new ClientMigrator(migrationPath, verbose);
+  return new ClientMigrator(migrationPath, sqlDataSourceInput);
 };

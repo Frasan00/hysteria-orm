@@ -5,13 +5,16 @@ import {
   ROLLBACK_TRANSACTION,
 } from "../sql/resources/query/TRANSACTION";
 import { SqlDataSource } from "../sql/sql_data_source";
-import { SqlDataSourceType } from "../sql/sql_data_source_types";
+import {
+  SqlDataSourceInput,
+  SqlDataSourceType,
+} from "../sql/sql_data_source_types";
 import logger from "../utils/logger";
 import MigrationTemplates from "./resources/migration_templates";
 import fs from "fs/promises";
 
 export default async function dropAllTablesConnector(
-  verbose: boolean = false,
+  sqlDataSourceInput?: Partial<SqlDataSourceInput>,
   shouldExit: boolean = true,
 ) {
   if (!env.DB_TYPE) {
@@ -27,8 +30,8 @@ export default async function dropAllTablesConnector(
   logger.info("Dropping all tables for database type: " + env.DB_TYPE);
   await SqlDataSource.connect({
     type: env.DB_TYPE as SqlDataSourceType,
-    logs: verbose,
-  });
+    ...sqlDataSourceInput,
+  } as SqlDataSourceInput);
 
   if (env.DB_TYPE === "sqlite") {
     await fs.rm(env.DB_DATABASE as string, { recursive: true, force: true });

@@ -7,28 +7,32 @@ import {
   ROLLBACK_TRANSACTION,
 } from "../sql/resources/query/TRANSACTION";
 import { SqlDataSource } from "../sql/sql_data_source";
-import { SqlDataSourceType } from "../sql/sql_data_source_types";
+import {
+  SqlDataSourceInput,
+  SqlDataSourceType,
+} from "../sql/sql_data_source_types";
 import logger from "../utils/logger";
 import { getMigrations, getMigrationTable } from "./migration_utils";
 import { MigrationTableType } from "./resources/migration_table_type";
 
 export default async function runMigrationsConnector(
   runUntil?: string,
-  verbose: boolean = false,
+  sqlDataSourceInput?: Partial<SqlDataSourceInput>,
   shouldExit: boolean = true,
+  migrationPath?: string,
 ) {
   logger.info("Running migrations for database type: " + env.DB_TYPE);
 
   await SqlDataSource.connect({
     type: env.DB_TYPE as SqlDataSourceType,
-    logs: verbose,
-  });
+    ...sqlDataSourceInput,
+  } as SqlDataSourceInput);
   await SqlDataSource.rawQuery(BEGIN_TRANSACTION);
   try {
     const migrationTable: MigrationTableType[] = await getMigrationTable(
       SqlDataSource.getInstance().getCurrentDriverConnection(),
     );
-    const migrations: Migration[] = await getMigrations();
+    const migrations: Migration[] = await getMigrations(migrationPath);
     const pendingMigrations = migrations.filter(
       (migration) =>
         !migrationTable

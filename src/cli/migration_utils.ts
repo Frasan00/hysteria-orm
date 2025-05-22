@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import path from "node:path";
+import path, { join } from "node:path";
 import { env } from "../env/env";
 import { HysteriaError } from "../errors/hysteria_error";
 import { Migration } from "../sql/migrations/migration";
@@ -59,13 +59,17 @@ export async function getMigrationTable(
   }
 }
 
-export async function getMigrations(): Promise<Migration[]> {
-  const migrationNames = findMigrationNames();
+export async function getMigrations(
+  migrationPath?: string,
+): Promise<Migration[]> {
+  const migrationNames = findMigrationNames(migrationPath);
   const migrations: Migration[] = [];
 
   for (const migrationName of migrationNames) {
-    const migrationModule = await findMigrationModule(migrationName);
-
+    const migrationModule = await findMigrationModule(
+      migrationName,
+      migrationPath,
+    );
     const migration: Migration = new migrationModule();
     migration.migrationName = migrationName;
     migrations.push(migration);
@@ -122,10 +126,9 @@ async function loadMigrationModule(
 
 async function findMigrationModule(
   migrationName: string,
-  migrationModulePath: string = env.MIGRATION_PATH
-    ? env.MIGRATION_PATH + "/" + migrationName
-    : "migrations/" + migrationName,
+  migrationModulePath: string = env.MIGRATION_PATH || "migrations",
 ): Promise<new () => Migration> {
+  migrationModulePath = join(migrationModulePath, migrationName);
   const migrationPath = path.resolve(process.cwd(), migrationModulePath);
   const migrationModule = await loadMigrationModule(migrationPath);
 
@@ -140,9 +143,11 @@ async function findMigrationModule(
   return migrationModule;
 }
 
-function findMigrationNames(): string[] {
+function findMigrationNames(inputMigrationPath?: string): string[] {
   const currentUserDirectory = process.cwd();
-  const migrationPath = path.resolve(env.MIGRATION_PATH || "migrations");
+  const migrationPath = path.resolve(
+    inputMigrationPath || env.MIGRATION_PATH || "migrations",
+  );
 
   const fullPathToMigrationPath = path.resolve(
     currentUserDirectory,
