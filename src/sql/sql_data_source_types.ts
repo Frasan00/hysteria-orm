@@ -1,3 +1,4 @@
+import { FormatOptionsWithLanguage } from "sql-formatter";
 import type {
   DataSourceType,
   MysqlSqlDataSourceInput,
@@ -34,6 +35,7 @@ export type SqlConnectionType =
 
 /**
  * @description The connection policies for the sql data source
+ * @default By default, the connection policies are not set, so no query will be retried
  */
 export type ConnectionPolicies = {
   retry?: {
@@ -64,6 +66,10 @@ export type SqlDataSourceInput = {
    * @description The connection policies to use for the sql data source that are not configured in the driverOptions
    */
   readonly connectionPolicies?: ConnectionPolicies;
+  /**
+   * @description The query format options to use for the sql data source, it tells how the sql queries should be formatted before being executed and logged
+   */
+  readonly queryFormatOptions?: FormatOptionsWithLanguage;
 } & (
   | MysqlSqlDataSourceInput
   | PostgresSqlDataSourceInput
@@ -75,6 +81,7 @@ export type UseConnectionInput = {
   readonly logs?: boolean;
   readonly timezone?: DatabaseTimezone;
   readonly connectionPolicies?: ConnectionPolicies;
+  readonly queryFormatOptions?: FormatOptionsWithLanguage;
 } & (
   | NotNullableMysqlSqlDataSourceInput
   | NotNullablePostgresSqlDataSourceInput

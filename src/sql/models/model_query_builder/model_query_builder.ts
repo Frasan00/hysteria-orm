@@ -224,7 +224,7 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
     column: string = "*",
     options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<number> {
-    this.select(`COUNT(${column}) as total`);
+    this.annotate("count", column, "total");
     const ignoredHooks: FetchHooks[] = options.ignoreHooks
       ? ["beforeFetch"]
       : [];
@@ -240,7 +240,7 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
     column: string,
     options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<number> {
-    this.select(`MAX(${column}) as total`);
+    this.annotate("max", column, "total");
     const ignoredHooks: FetchHooks[] = options.ignoreHooks
       ? ["beforeFetch", "afterFetch"]
       : [];
@@ -256,7 +256,7 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
     column: string,
     options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<number> {
-    this.select(`MIN(${column}) as total`);
+    this.annotate("min", column, "total");
     const ignoredHooks: FetchHooks[] = options.ignoreHooks
       ? ["beforeFetch", "afterFetch"]
       : [];
@@ -272,7 +272,7 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
     column: string,
     options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<number> {
-    this.select(`AVG(${column}) as total`);
+    this.annotate("avg", column, "total");
     const ignoredHooks: FetchHooks[] = options.ignoreHooks
       ? ["beforeFetch", "afterFetch"]
       : [];
@@ -288,7 +288,7 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
     column: string,
     options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<number> {
-    this.select(`SUM(${column}) as total`);
+    this.annotate("sum", column, "total");
     const ignoredHooks: FetchHooks[] = options.ignoreHooks
       ? ["beforeFetch", "afterFetch"]
       : [];
@@ -329,7 +329,7 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
       ...(columns as string[]),
     ];
 
-    this.selectQuery = this.selectTemplate.selectColumns(this.fromTable, [
+    this.selectQuery = this.selectTemplate.selectColumns([
       ...this.modelSelectedColumns,
     ]);
 
@@ -611,9 +611,10 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
 
         const manyToManyRelation = relation as ManyToMany;
         return relationQueryBuilder
-          .select(
-            `${relation.model.table}.*`,
-            `${manyToManyRelation.throughModel}.${manyToManyRelation.throughModelForeignKey} as ${manyToManyRelation.throughModelForeignKey}`,
+          .select(`${relation.model.table}.*`)
+          .annotate(
+            manyToManyRelation.throughModelForeignKey,
+            manyToManyRelation.throughModelForeignKey,
           )
           .leftJoin(
             manyToManyRelation.throughModel,

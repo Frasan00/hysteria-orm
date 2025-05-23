@@ -30,7 +30,7 @@ export const parseDatabaseDataIntoModelResponse = async <
         convertCase(key, typeofModel.modelCaseConvention);
 
       if (modelKey === "$annotations" && !mustRemoveAnnotations) {
-        processAdditionalColumns(model, key, casedModel, typeofModel);
+        processAnnotations(model, key, casedModel, typeofModel);
         return;
       }
 
@@ -69,7 +69,7 @@ export const parseDatabaseDataIntoModelResponse = async <
   return casedModel as T;
 };
 
-export const processAdditionalColumns = (
+export const processAnnotations = (
   model: Record<string, any>,
   key: string,
   casedModel: Record<string, any>,

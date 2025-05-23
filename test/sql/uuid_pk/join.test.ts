@@ -35,7 +35,8 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
     expect(posts).toHaveLength(3);
 
     const postsWithUsers = await PostWithUuid.query()
-      .select("posts_with_uuid.*", "users_with_uuid.name as userName")
+      .select("posts_with_uuid.*")
+      .annotate("users_with_uuid.name", "userName")
       .leftJoin(
         "users_with_uuid",
         "users_with_uuid.id",
@@ -69,7 +70,8 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
     expect(posts).toHaveLength(3);
 
     const postsWithUsers = await PostWithUuid.query()
-      .select("posts_with_uuid.*", "users_with_uuid.name as userName")
+      .select("posts_with_uuid.*")
+      .annotate("users_with_uuid.name", "userName")
       .leftJoin(
         "users_with_uuid",
         "users_with_uuid.id",
@@ -98,7 +100,8 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
     expect(posts).toHaveLength(3);
 
     const postsWithUsers = await PostWithUuid.query()
-      .select("posts_with_uuid.*", "users_with_uuid.name as userName")
+      .select("posts_with_uuid.*")
+      .annotate("users_with_uuid.name", "userName")
       .rightJoin(
         "users_with_uuid",
         "users_with_uuid.id",
@@ -127,7 +130,8 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
     expect(posts).toHaveLength(3);
 
     const postsWithUsers = await PostWithUuid.query()
-      .select("posts_with_uuid.*", "users_with_uuid.name as userName")
+      .select("posts_with_uuid.*")
+      .annotate("users_with_uuid.name", "userName")
       .join(UserWithUuid, "id", "userId")
       .whereIn(
         "posts_with_uuid.id",
@@ -152,7 +156,8 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
     expect(posts).toHaveLength(3);
 
     const postsWithUsers = await PostWithUuid.query()
-      .select("posts_with_uuid.*", "users_with_uuid.name as userName")
+      .select("posts_with_uuid.*")
+      .annotate("users_with_uuid.name", "userName")
       .leftJoin(UserWithUuid, "id", "userId")
       .whereIn(
         "posts_with_uuid.id",
@@ -177,7 +182,8 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
     expect(posts).toHaveLength(3);
 
     const postsWithUsers = PostWithUuid.query()
-      .select("posts_with_uuid.*", "users_with_uuid.name as userName")
+      .select("posts_with_uuid.*")
+      .annotate("users_with_uuid.name", "userName")
       .join(UserWithUuid, "id", "userId", ">")
       .whereIn(
         "posts_with_uuid.id",

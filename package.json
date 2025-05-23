@@ -17,7 +17,7 @@
     "start": "yarn format && yarn build:dev && node lib/index.js",
     "prepare": "husky install",
     "migrate": "node ./test/migration_runner.js",
-    "test": "node ./test/test_runner.js",
+    "test": "clear && node ./test/test_runner.js",
     "test:with:migrations": "rm -rf sqlite.db && touch sqlite.db && yarn format && yarn build:prod && yarn migrate && node ./test/test_runner.js",
     "format": "prettier --write \"**/*.ts\"",
     "build": "yarn build:prod",

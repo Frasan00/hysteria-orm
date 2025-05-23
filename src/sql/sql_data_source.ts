@@ -1,3 +1,4 @@
+import { FormatOptionsWithLanguage } from "sql-formatter";
 import { DataSource } from "../data_source/data_source";
 import { HysteriaError } from "../errors/hysteria_error";
 import { CaseConvention } from "../utils/case_utils";
@@ -17,7 +18,7 @@ import type {
   SqliteConnectionInstance,
   UseConnectionInput,
 } from "./sql_data_source_types";
-import { execSql } from "./sql_runner/sql_runner";
+import { execSql, getSqlDialect } from "./sql_runner/sql_runner";
 import { Transaction } from "./transactions/transaction";
 import {
   StartTransactionOptions,
@@ -33,6 +34,7 @@ export class SqlDataSource extends DataSource {
    * @description The retry policy for the database connection
    */
   retryPolicy: ConnectionPolicies["retry"];
+  queryFormatOptions: FormatOptionsWithLanguage;
 
   // Static Methods
   static async connect(
@@ -232,8 +234,14 @@ export class SqlDataSource extends DataSource {
     super(input);
     this.sqlType = this.type as SqlDataSourceType;
     this.retryPolicy = input?.connectionPolicies?.retry || {
-      maxRetries: 3,
-      delay: 1000,
+      maxRetries: 0,
+      delay: 0,
+    };
+    this.queryFormatOptions = input?.queryFormatOptions || {
+      language: getSqlDialect(this.sqlType),
+      keywordCase: "lower",
+      dataTypeCase: "lower",
+      functionCase: "lower",
     };
   }
 

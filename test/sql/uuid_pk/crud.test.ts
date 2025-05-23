@@ -23,14 +23,14 @@ describe(`[${env.DB_TYPE}] Select`, () => {
   test("remove annotations", async () => {
     await UserFactory.userWithUuid(2);
     const user = await UserWithUuid.query()
-      .select("COUNT(*) as count")
+      .annotate("COUNT(*)", "count")
       .removeAnnotations()
       .first();
 
     expect(user?.$annotations).toBeUndefined();
 
     const user2 = await UserWithUuid.query()
-      .select("COUNT(*) as count")
+      .annotate("COUNT(*)", "count")
       .first();
 
     expect(user2?.$annotations).not.toBeUndefined();
@@ -163,7 +163,8 @@ describe(`[${env.DB_TYPE}] Select`, () => {
   test("Multiple columns select with aliases", async () => {
     await UserFactory.userWithUuid(2);
     const users = await UserWithUuid.query()
-      .select("age as test_age", "birthDate as test_birth")
+      .annotate("age", "testAge")
+      .annotate("birthDate", "testBirth")
       .many();
 
     expect(users.length).toBe(2);

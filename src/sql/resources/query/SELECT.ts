@@ -9,55 +9,45 @@ export type UnionCallBack<T extends Model> = (
   queryBuilder: QueryBuilder<T>,
 ) => QueryBuilder<T>;
 
-const baseSelectMethods = [
-  "*",
-  "COUNT",
-  "DISTINCT",
-  "CONCAT",
-  "GROUP_CONCAT",
-  "AVG",
-  "MAX",
-  "MIN",
-  "SUM",
-  "AS",
-  "CONVERT",
-  "CAST",
-  "CONVERT_TZ",
-  "DATE_FORMAT",
-  "CURDATE",
-  "CURRENT_DATE",
-  "CURRENT_TIME",
-  "CURRENT_TIMESTAMP",
-  "CURTIME",
-  "DAYNAME",
-  "DAYOFMONTH",
-  "DAYOFWEEK",
-  "DAYOFYEAR",
-  "EXTRACT",
-  "HOUR",
-  "LOCALTIME",
-  "LOCALTIMESTAMP",
-  "MICROSECOND",
-  "MINUTE",
-  "MONTH",
-  "QUARTER",
-  "SECOND",
-  "STR_TO_DATE",
-  "TIME",
-  "TIMESTAMP",
-  "WEEK",
-  "YEAR",
-  "NOW",
-  "UTC_DATE",
-  "UTC_TIME",
-  "UTC_TIMESTAMP",
-  "DATE_ADD",
-  "DATE_SUB",
-  "DATE",
-  "DATEDIFF",
-  "DATE_FORMAT",
-  "DISTINCTROW",
-];
+export type SqlMethod =
+  // Aggregates
+  | "sum"
+  | "avg"
+  | "max"
+  | "min"
+  | "count"
+  // String
+  | "concat"
+  | "substring"
+  | "upper"
+  | "lower"
+  | "trim"
+  | "replace"
+  | "length"
+  // Date/Time
+  | "date"
+  | "year"
+  | "month"
+  | "day"
+  | "hour"
+  | "minute"
+  | "second"
+  | "extract"
+  | "now"
+  | "current_date"
+  | "current_time"
+  | "current_timestamp"
+  // Type conversion
+  | "cast"
+  | "convert"
+  // Other
+  | "coalesce"
+  | "ifnull"
+  | "nullif"
+  | "abs"
+  | "round"
+  | "floor"
+  | "ceil";
 
 const selectTemplate = (
   dbType: SqlDataSourceType,
@@ -65,6 +55,10 @@ const selectTemplate = (
 ) => {
   const table = typeofModel.table;
   const escapeIdentifier = (identifier: string) => {
+    if (identifier.includes("*")) {
+      return identifier;
+    }
+
     switch (dbType) {
       case "mysql":
       case "sqlite":
@@ -87,36 +81,43 @@ const selectTemplate = (
   );
 
   return {
+    annotate: (column: string, alias: string, method?: string) => {
+      let statement: string;
+
+      if (column.includes(".")) {
+        const [tableName, columnName] = column.split(".");
+        const escapedTable = escapeIdentifier(tableName);
+        const escapedColumn = escapeIdentifier(
+          convertCase(columnName, typeofModel.databaseCaseConvention),
+        );
+        statement = `${escapedTable}.${escapedColumn}`;
+      } else {
+        statement = escapeIdentifier(
+          convertCase(column, typeofModel.databaseCaseConvention),
+        );
+      }
+
+      if (method) {
+        statement = `${method}(${statement})`;
+      }
+
+      return ` ${statement} AS ${escapeIdentifier(alias)}`;
+    },
     selectAll: (fromTable: string = table) =>
       `SELECT ${fromTable}.* FROM ${fromTable} `,
-    selectColumns: (fromTable: string = table, columns: string[]) => {
+    selectColumns: (columns: string[]) => {
       if (!columns.length) {
         columns = ["*"];
       }
 
       columns = columns.map((column) => {
         let columnName = column.trim();
-        const isFunction =
-          baseSelectMethods.includes(columnName.toUpperCase()) ||
-          (columnName.includes("(") && columnName.includes(")"));
         let tableName = "";
-        let alias = "";
-
-        if (column.toUpperCase().includes(" AS ")) {
-          [columnName, alias] = column.split(/ AS /i);
-          alias =
-            modelColumnsMap.get(alias.trim())?.databaseName ??
-            convertCase(alias.trim(), typeofModel.databaseCaseConvention);
-        }
-
-        if (isFunction) {
-          return alias ? `${columnName} AS ${alias}` : columnName;
-        }
 
         if (columnName.includes(".")) {
           [tableName, columnName] = columnName.split(".");
           if (columnName.trim() === "*") {
-            return alias ? `${tableName}.* AS ${alias}` : `${tableName}.*`;
+            return `${tableName}.*`;
           }
 
           const processedColumnName = escapeIdentifier(
@@ -127,30 +128,22 @@ const selectTemplate = (
               ),
           );
 
-          return alias
-            ? `${tableName}.${processedColumnName} AS ${alias}`
-            : `${tableName}.${processedColumnName}`;
+          return `${tableName}.${processedColumnName}`;
         }
 
         if (columnName.trim() === "*") {
-          return alias ? `* AS ${alias}` : "*";
+          return "*";
         }
 
-        const processedColumnName = !column.includes("*")
-          ? (escapeIdentifier(
-              modelColumnsMap.get(columnName.trim())?.databaseName ??
-                convertCase(
-                  columnName.trim(),
-                  typeofModel.databaseCaseConvention,
-                ),
-            ) as string)
-          : column;
+        const processedColumnName = escapeIdentifier(
+          modelColumnsMap.get(columnName.trim())?.databaseName ??
+            convertCase(columnName.trim(), typeofModel.databaseCaseConvention),
+        );
 
-        return alias
-          ? `${processedColumnName} AS ${alias}`
-          : processedColumnName;
+        return processedColumnName;
       });
-      return `SELECT ${columns.join(", ")} FROM ${fromTable} `;
+
+      return `SELECT ${columns.join(", ")} `;
     },
     distinct: `DISTINCT`,
     distinctOn: (...columns: string[]) => {

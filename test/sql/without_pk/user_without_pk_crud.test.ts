@@ -1,9 +1,11 @@
 import { env } from "../../../src/env/env";
-import { HysteriaError } from "../../../src/errors/hysteria_error";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
-import { UserStatus } from "../test_models/bigint/user_bigint";
+import { HysteriaError } from "../../../src/errors/hysteria_error";
 import { UserFactory } from "../test_models/factory/user_factory";
-import { UserWithoutPk } from "../test_models/without_pk/user_without_pk";
+import {
+  UserStatus,
+  UserWithoutPk,
+} from "../test_models/without_pk/user_without_pk";
 
 beforeAll(async () => {
   await SqlDataSource.connect();
@@ -22,6 +24,50 @@ afterEach(async () => {
 });
 
 describe(`[${env.DB_TYPE}] Select`, () => {
+  test("Raw select with select clause", async () => {
+    await UserFactory.userWithoutPk(2);
+    const user = await UserWithoutPk.query()
+      .selectRaw("count(*) as count")
+      .first();
+    expect(user).not.toBeUndefined();
+    expect(Number.parseInt(user?.$annotations.count)).toBe(2);
+  });
+
+  test("Annotate", async () => {
+    await UserFactory.userWithoutPk(2);
+    const user = await UserWithoutPk.query()
+      .annotate("max", "age", "maxAge")
+      .first();
+
+    expect(user).not.toBeUndefined();
+    expect(user?.$annotations.maxAge).toBeDefined();
+  });
+
+  test("Select before annotate", async () => {
+    await UserFactory.userWithoutPk(2);
+    const user = await UserWithoutPk.query()
+      .select("name")
+      .annotate("age", "superAge")
+      .first();
+
+    expect(user).not.toBeUndefined();
+    expect(user?.name).toBeDefined();
+    expect(user?.$annotations.superAge).toBeDefined();
+  });
+
+  test("Select before selectRaw", async () => {
+    await UserFactory.userWithoutPk(2);
+    const user = await UserWithoutPk.query()
+      .select("name")
+      .selectRaw("name as result") // pg transform to lower case by default if not escaped with double quotes
+      .first();
+
+    expect(user).not.toBeUndefined();
+    expect(user?.name).toBeDefined();
+    console.log("user", user);
+    expect(user?.$annotations.result).toBeDefined();
+  });
+
   test("Select all without `select` method call (default behavior)", async () => {
     await UserFactory.userWithoutPk(2);
     const users = await UserWithoutPk.query().many();
@@ -90,14 +136,15 @@ describe(`[${env.DB_TYPE}] Select`, () => {
   test("Multiple columns select with aliases", async () => {
     await UserFactory.userWithoutPk(2);
     const users = await UserWithoutPk.query()
-      .select("age as test_age", "birthDate as test_birth")
+      .annotate("age", "result")
+      .annotate("birthDate", "result2")
       .many();
 
     expect(users.length).toBe(2);
-    expect(users[0].$annotations.testAge).not.toBeUndefined();
-    expect(users[1].$annotations.testBirth).not.toBeUndefined();
-    expect(users[0].$annotations.testAge).not.toBeUndefined();
-    expect(users[1].$annotations.testBirth).not.toBeUndefined();
+    expect(users[0].$annotations.result).not.toBeUndefined();
+    expect(users[1].$annotations.result2).not.toBeUndefined();
+    expect(users[0].$annotations.result).not.toBeUndefined();
+    expect(users[1].$annotations.result2).not.toBeUndefined();
     expect(Object.keys(users[0]).length).toBe(1); // $annotations
     expect(Object.keys(users[1]).length).toBe(1);
   });

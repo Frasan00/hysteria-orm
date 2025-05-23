@@ -44,13 +44,14 @@ export const execSql = async <M extends Model, T extends Returning>(
   returning: T = "raw" as T,
   options?: {
     sqlLiteOptions?: SqlLiteOptions<M>;
+    shouldFormat?: boolean;
   },
 ): Promise<SqlRunnerReturnType<T>> => {
   const sqlType = sqlDataSource.type as SqlDataSourceType;
   query = convertPlaceHolderToValue(sqlType, query);
-  query = format(query, {
-    language: getSqlDialect(sqlType),
-  });
+  if (options?.shouldFormat || true) {
+    query = format(query, sqlDataSource.queryFormatOptions);
+  }
 
   log(query, sqlDataSource.logs, params);
   switch (sqlType) {

@@ -2,17 +2,18 @@ import { format } from "sql-formatter";
 import { HysteriaError } from "../../errors/hysteria_error";
 import { baseSoftDeleteDate } from "../../utils/date_utils";
 import { convertPlaceHolderToValue } from "../../utils/placeholder";
-import { bindParamsIntoQuery } from "../../utils/query";
+import { bindParamsIntoQuery, parsePlaceHolders } from "../../utils/query";
 import type { Model } from "../models/model";
 import { ModelKey } from "../models/model_manager/model_manager_types";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
+import type { NumberModelKey } from "../models/model_types";
 import deleteTemplate from "../resources/query/DELETE";
 import { UnionCallBack } from "../resources/query/SELECT";
 import updateTemplate from "../resources/query/UPDATE";
 import { BinaryOperatorType } from "../resources/query/WHERE";
 import { SqlDataSource } from "../sql_data_source";
 import type { SqlDataSourceType } from "../sql_data_source_types";
-import { execSql, getSqlDialect } from "../sql_runner/sql_runner";
+import { execSql } from "../sql_runner/sql_runner";
 import { CteBuilder } from "./cte/cte_builder";
 import { WithClauseType } from "./cte/cte_types";
 import { SoftDeleteOptions } from "./delete_query_builder_type";
@@ -21,7 +22,6 @@ import {
   QueryBuilderWithOnlyWhereConditions,
 } from "./query_builder_types";
 import { WhereQueryBuilder } from "./where_query_builder";
-import type { NumberModelKey } from "../models/model_types";
 
 export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
   model: typeof Model;
@@ -56,44 +56,19 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
    * @description Executes the query and retrieves multiple results.
    */
   async many(): Promise<T[]> {
-    let query: string = "";
-    if (this.withQuery) {
-      query += `${this.withQuery}\n`;
-    }
-
-    if (this.joinQuery && !this.selectQuery) {
-      this.selectQuery = this.selectTemplate.selectColumns(this.fromTable, [
-        `*`,
-      ]);
-    }
-
-    query += this.selectQuery + this.joinQuery;
-    if (this.whereQuery) {
-      query += this.whereQuery;
-    }
-
-    query += this.groupFooterQuery();
-    if (this.unionQuery) {
-      query = `${query} ${this.unionQuery}`;
-    }
-
-    if (this.lockForUpdateQuery) {
-      query += this.lockForUpdateQuery;
-    }
-
-    return execSql(query, this.params, this.sqlDataSource, "raw", {
+    const { query, params } = this.unWrap();
+    return execSql(query, params, this.sqlDataSource, "raw", {
       sqlLiteOptions: {
         typeofModel: this.model,
         mode: "fetch",
       },
+      shouldFormat: false, // Already formatted by the `unWrap` method
     });
   }
 
   /**
    * @description Executes the query and retrieves a single column from the results.
    * @param key - The column to retrieve from the results, must be a Model Column
-   * @param options - The options to pass to the method
-   * @param options.removeFalsy - If true, the method will remove falsy values filtering the array for truthy values - Applies Boolean constructor to each value
    */
   async pluck<K extends ModelKey<T>>(key: K): Promise<PluckReturnType<T, K>> {
     const result = await this.many();
@@ -652,7 +627,7 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
   }
 
   /**
-   * @description Returns the query with the parameters bound to the query, mainly used for debugging
+   * @description Returns the query with the parameters bound to the query
    */
   toQuery(dbType?: SqlDataSourceType): string {
     // Already formatted
@@ -661,45 +636,46 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
   }
 
   /**
-   * @description Returns the query and the params
+   * @description Returns the query with database driver placeholders and the params
    */
   unWrap(dbType: SqlDataSourceType = this.dbType): {
     query: string;
     params: any[];
   } {
-    const query =
-      this.selectQuery +
-      this.joinQuery +
-      this.whereQuery +
-      this.groupFooterQuery();
+    let query: string = "";
+    if (this.withQuery) {
+      query += `${this.withQuery}\n`;
+    }
 
-    function parsePlaceHolders(
-      dbType: SqlDataSourceType,
-      query: string,
-      startIndex: number = 1,
-    ): string {
-      switch (dbType) {
-        case "mysql":
-        case "sqlite":
-        case "mariadb":
-          return query.replace(/\$PLACEHOLDER/g, () => "?");
-        case "postgres":
-        case "cockroachdb":
-          let index = startIndex;
-          return query.replace(/\$PLACEHOLDER/g, () => `$${index++}`);
-        default:
-          throw new HysteriaError(
-            "StandaloneSqlQueryBuilder::unWrap",
-            `UNSUPPORTED_DATABASE_TYPE_${dbType}`,
-          );
-      }
+    if (!this.selectQuery) {
+      this.selectQuery = this.selectTemplate.selectColumns([`*`]);
+    }
+
+    query += this.selectQuery;
+    if (!this.selectQuery.toLowerCase().includes("from")) {
+      query += ` FROM ${this.fromTable} `;
+    }
+
+    query += this.joinQuery;
+    query += this.whereQuery;
+    query += this.groupByQuery;
+    query += this.havingQuery;
+
+    if (this.unionQuery) {
+      query = `${query} ${this.unionQuery}`;
+    }
+
+    query += this.orderByQuery;
+    query += this.limitQuery;
+    query += this.offsetQuery;
+
+    if (this.lockForUpdateQuery) {
+      query += this.lockForUpdateQuery;
     }
 
     const parsedQuery = parsePlaceHolders(dbType, query);
     return {
-      query: format(parsedQuery, {
-        language: getSqlDialect(this.dbType),
-      }),
+      query: format(parsedQuery, this.sqlDataSource.queryFormatOptions),
       params: this.params,
     };
   }
@@ -721,6 +697,8 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
     queryBuilder.offsetQuery = this.offsetQuery;
     queryBuilder.params = [...this.params];
     queryBuilder.havingQuery = this.havingQuery;
+    queryBuilder.lockForUpdateQuery = this.lockForUpdateQuery;
+    queryBuilder.withQuery = this.withQuery;
     return queryBuilder as this;
   }
 
@@ -796,16 +774,6 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
     return value;
   }
 
-  protected groupFooterQuery(): string {
-    return (
-      this.groupByQuery +
-      this.havingQuery +
-      this.orderByQuery +
-      this.limitQuery +
-      this.offsetQuery
-    );
-  }
-
   protected getDatabaseTableName(tableName: string): string {
     switch (this.dbType) {
       case "mysql":
@@ -855,19 +823,33 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
 
   /**
    * @description Returns the query and the params without replacing the $PLACEHOLDER with the specific database driver placeholder
+   * @internal
    */
   private unWrapRaw(): {
     query: string;
     params: any[];
   } {
+    let query =
+      this.selectQuery +
+      this.joinQuery +
+      this.whereQuery +
+      this.groupByQuery +
+      this.havingQuery;
+
+    if (this.unionQuery) {
+      query = `(${query}) ${this.unionQuery}`;
+    }
+
+    query += this.orderByQuery;
+    query += this.limitQuery;
+    query += this.offsetQuery;
+
+    if (this.lockForUpdateQuery) {
+      query += this.lockForUpdateQuery;
+    }
+
     return {
-      query: format(
-        this.selectQuery +
-          this.joinQuery +
-          this.whereQuery +
-          this.groupFooterQuery(),
-        { language: getSqlDialect(this.dbType) },
-      ),
+      query: format(query, this.sqlDataSource.queryFormatOptions),
       params: this.params,
     };
   }

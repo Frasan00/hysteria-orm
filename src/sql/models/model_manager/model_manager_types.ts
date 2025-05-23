@@ -51,7 +51,7 @@ export type WhereType<T> = {
 export type ModelKey<T> = ExcludeRelations<Omit<T, "$annotations">>;
 export type ModelRelation<T> = OnlyRelations<Omit<T, "$annotations">>;
 
-export type OrderByChoices = "ASC" | "DESC" | "asc" | "desc";
+export type OrderByChoices = "asc" | "desc" | "asc" | "desc";
 export type OrderByType = {
   [key: string]: OrderByChoices;
 };

@@ -318,7 +318,7 @@ export class User extends Model {
 
     // It's suggested to add a precise retrieve order in the queries or in the hooks
     static beforeFetch(queryBuilder: ModelQueryBuilder<User>) {
-        queryBuilder.orderBy("createdAt", "ASC");
+        queryBuilder.orderBy("createdAt", "asc");
     }
 
     // UUIDs must be created prior to database interaction using the beforeInsert hook
@@ -655,7 +655,7 @@ const filteredUsers: User[] = await User.find({
         name: "John Doe"
     },
     orderBy: {
-        name: "ASC"
+        name: "asc"
     },
     limit: 10,
     offset: 0
@@ -702,7 +702,7 @@ const user: User | null = await User.query()
 const users: User[] = await User.query()
     .where("name", "John Doe")
     .andWhere("email", "john@gmail.com")
-    .orderBy("name", "ASC")
+    .orderBy("name", "asc")
     .limit(10)
     .many();
 
@@ -970,7 +970,7 @@ const users = await User.query()
   .join("posts", "userId", "id")
   .where("users.name", "John Doe")
   .andWhere("posts.status", "published")
-  .orderBy("users.createdAt", "DESC")
+  .orderBy("users.createdAt", "desc")
   .limit(10)
   .many();
 ```
