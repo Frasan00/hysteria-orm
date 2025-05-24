@@ -22,6 +22,7 @@ import {
   QueryBuilderWithOnlyWhereConditions,
 } from "./query_builder_types";
 import { WhereQueryBuilder } from "./where_query_builder";
+import { getPaginationMetadata, PaginatedData } from "../pagination";
 
 export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
   model: typeof Model;
@@ -233,6 +234,72 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
     return execSql(query, this.params, this.sqlDataSource, "affectedRows", {
       sqlLiteOptions: { typeofModel: this.model, mode: "affectedRows" },
     });
+  }
+
+  /**
+   * @description Executes the query and retrieves the count of results, it ignores all select, group by, order by, limit and offset clauses if they are present.
+   */
+  async getCount(column: string = "*"): Promise<number> {
+    this.annotate("count", column, "total");
+    const result = await this.one();
+    return result ? +(result as any).total : 0;
+  }
+
+  /**
+   * @description Executes the query and retrieves the maximum value of a column, it ignores all select, group by, order by, limit and offset clauses if they are present.
+   */
+  async getMax(column: string): Promise<number> {
+    this.annotate("max", column, "total");
+    const result = await this.one();
+    return result ? +(result as any).total : 0;
+  }
+
+  /**
+   * @description Executes the query and retrieves the minimum value of a column, it ignores all select, group by, order by, limit and offset clauses if they are present.
+   */
+  async getMin(column: string): Promise<number> {
+    this.annotate("min", column, "total");
+    const result = await this.one();
+    return result ? +(result as any).total : 0;
+  }
+
+  /**
+   * @description Executes the query and retrieves the average value of a column, it ignores all select, group by, order by, limit and offset clauses if they are present.
+   */
+  async getAvg(column: string): Promise<number> {
+    this.annotate("avg", column, "total");
+    const result = await this.one();
+    return result ? +(result as any).total : 0;
+  }
+
+  /**
+   * @description Executes the query and retrieves the sum of a column, it ignores all select, group by, order by, limit and offset clauses if they are present.
+   */
+  async getSum(column: string): Promise<number> {
+    this.annotate("sum", column, "total");
+    const result = await this.one();
+    return result ? +(result as any).total : 0;
+  }
+
+  /**
+   * @description Executes the query and retrieves multiple paginated results.
+   * @description Overrides the limit and offset clauses in order to paginate the results.
+   */
+  async paginate(page: number, perPage: number): Promise<PaginatedData<T>> {
+    const originalSelectQuery = this.selectQuery;
+    const total = await this.getCount("*");
+
+    this.selectQuery = originalSelectQuery;
+    const models = await this.limit(perPage)
+      .offset((page - 1) * perPage)
+      .many();
+
+    const paginationMetadata = getPaginationMetadata(page, perPage, total);
+
+    return {
+      paginationMetadata,
+      data: models,
+    } as PaginatedData<T>;
   }
 
   /**

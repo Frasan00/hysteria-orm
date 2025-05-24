@@ -75,7 +75,7 @@ export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
 
   /**
    * @description Annotates a column with a SQL method or a simple alias
-   * @description The result will be available in the $annotations property of the model
+   * @description If using a model, the result will be available in the $annotations property of the model, else it will be available in the result of the query
    * @example
    * ```ts
    * const user = await User.query().annotate("max", "id", "maxId").first(); // max(id) as maxId

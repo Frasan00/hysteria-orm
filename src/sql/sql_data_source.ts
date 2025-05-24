@@ -1,13 +1,13 @@
 import { FormatOptionsWithLanguage } from "sql-formatter";
 import { DataSource } from "../data_source/data_source";
 import { HysteriaError } from "../errors/hysteria_error";
-import { CaseConvention } from "../utils/case_utils";
 import logger from "../utils/logger";
 import { Model } from "./models/model";
 import { ModelManager } from "./models/model_manager/model_manager";
 import { QueryBuilder } from "./query_builder/query_builder";
 import { createSqlConnection } from "./sql_connection_utils";
 import type {
+  CacheOptions,
   ConnectionPolicies,
   GetCurrentConnectionReturnType,
   MysqlConnectionInstance,
@@ -30,11 +30,13 @@ export class SqlDataSource extends DataSource {
   private static instance: SqlDataSource | null = null;
   private globalTransaction: Transaction | null = null;
   private sqlType: SqlDataSourceType;
+
   /**
    * @description The retry policy for the database connection
    */
   retryPolicy: ConnectionPolicies["retry"];
   queryFormatOptions: FormatOptionsWithLanguage;
+  cacheOptions: CacheOptions;
 
   // Static Methods
   static async connect(
@@ -242,6 +244,10 @@ export class SqlDataSource extends DataSource {
       keywordCase: "lower",
       dataTypeCase: "lower",
       functionCase: "lower",
+    };
+    this.cacheOptions = input?.cacheOptions || {
+      type: "memory",
+      ttl: 0,
     };
   }
 

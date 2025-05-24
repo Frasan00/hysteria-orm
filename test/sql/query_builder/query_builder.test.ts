@@ -19,6 +19,60 @@ afterEach(async () => {
 });
 
 describe(`[${env.DB_TYPE}] Query Builder with uuid`, () => {
+  test("should select a post", async () => {
+    await SqlDataSource.query("posts_with_uuid").insert({
+      id: crypto.randomUUID(),
+      title: "Hello World",
+    });
+
+    const retrievedPost = await SqlDataSource.query("posts_with_uuid").one();
+
+    expect(retrievedPost).toBeDefined();
+    expect(retrievedPost.id).toBeDefined();
+    expect(retrievedPost.title).toBe("Hello World");
+  });
+
+  test("should select a post with a custom alias", async () => {
+    await SqlDataSource.query("posts_with_uuid").insert({
+      id: crypto.randomUUID(),
+      title: "Hello World",
+    });
+
+    const retrievedPost = await SqlDataSource.query("posts_with_uuid")
+      .annotate("title", "postTitle")
+      .one();
+
+    expect(retrievedPost).toBeDefined();
+    expect(retrievedPost.postTitle).toBe("Hello World");
+  });
+
+  test("should select posts with pagination", async () => {
+    await SqlDataSource.query("posts_with_uuid").insertMany([
+      { id: crypto.randomUUID(), title: "Hello World" },
+      { id: crypto.randomUUID(), title: "Hello World 2" },
+    ]);
+
+    const posts = await SqlDataSource.query("posts_with_uuid").paginate(1, 1);
+
+    expect(posts).toBeDefined();
+    expect(posts.data.length).toBe(1);
+    expect(posts.data[0].id).toBeDefined();
+    expect(posts.paginationMetadata.total).toBe(2);
+    expect(posts.paginationMetadata.currentPage).toBe(1);
+    expect(posts.paginationMetadata.perPage).toBe(1);
+    expect(posts.paginationMetadata.hasMorePages).toBe(true);
+  });
+
+  test("should get post count", async () => {
+    await SqlDataSource.query("posts_with_uuid").insertMany([
+      { id: crypto.randomUUID(), title: "Hello World" },
+      { id: crypto.randomUUID(), title: "Hello World 2" },
+    ]);
+
+    const count = await SqlDataSource.query("posts_with_uuid").getCount();
+    expect(count).toBe(2);
+  });
+
   test("should create a post", async () => {
     await SqlDataSource.query("posts_with_uuid").insert({
       id: crypto.randomUUID(),

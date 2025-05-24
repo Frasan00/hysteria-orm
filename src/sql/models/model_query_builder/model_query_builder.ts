@@ -217,10 +217,7 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return super.delete();
   }
 
-  /**
-   * @description Executes the query and retrieves the count of results, it ignores all select, group by, order by, limit and offset clauses if they are present.
-   */
-  async getCount(
+  override async getCount(
     column: string = "*",
     options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<number> {
@@ -233,10 +230,7 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return result ? +result.$annotations.total : 0;
   }
 
-  /**
-   * @description Executes the query and retrieves the maximum value of a column, it ignores all select, group by, order by, limit and offset clauses if they are present.
-   */
-  async getMax(
+  override async getMax(
     column: string,
     options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<number> {
@@ -249,10 +243,7 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return result ? +result.$annotations.total : 0;
   }
 
-  /**
-   * @description Executes the query and retrieves the minimum value of a column, it ignores all select, group by, order by, limit and offset clauses if they are present.
-   */
-  async getMin(
+  override async getMin(
     column: string,
     options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<number> {
@@ -265,10 +256,7 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return result ? +result.$annotations.total : 0;
   }
 
-  /**
-   * @description Executes the query and retrieves the average value of a column, it ignores all select, group by, order by, limit and offset clauses if they are present.
-   */
-  async getAvg(
+  override async getAvg(
     column: string,
     options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<number> {
@@ -281,10 +269,7 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return result ? +result.$annotations.total : 0;
   }
 
-  /**
-   * @description Executes the query and retrieves the sum of a column, it ignores all select, group by, order by, limit and offset clauses if they are present.
-   */
-  async getSum(
+  override async getSum(
     column: string,
     options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<number> {
@@ -297,21 +282,22 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return result ? +result.$annotations.total : 0;
   }
 
-  /**
-   * @description Executes the query and retrieves multiple paginated results.
-   * @description Overrides the limit and offset clauses in order to paginate the results.
-   */
-  async paginate(
+  override async paginate(
     page: number,
     perPage: number,
-    options: ManyOptions = {},
+    options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<PaginatedData<T>> {
     const originalSelectQuery = this.selectQuery;
-    const total = await this.getCount();
+    const total = await this.getCount("*", {
+      ignoreHooks: options.ignoreHooks,
+    });
+
     this.selectQuery = originalSelectQuery;
     const models = await this.limit(perPage)
       .offset((page - 1) * perPage)
-      .many(options);
+      .many({
+        ignoreHooks: options.ignoreHooks ? ["beforeFetch", "afterFetch"] : [],
+      });
 
     const paginationMetadata = getPaginationMetadata(page, perPage, total);
 
