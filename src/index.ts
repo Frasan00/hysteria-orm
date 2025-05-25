@@ -6,7 +6,7 @@ import type {
 import type { ClientMigrator } from "./sql/migrations/migrator";
 
 import { HysteriaError } from "./errors/hysteria_error";
-import { MongoDataSource } from "./no_sql/mongo/mongo_data_source";
+import { MongoDataSource as mongo } from "./no_sql/mongo/mongo_data_source";
 import { Collection } from "./no_sql/mongo/mongo_models/mongo_collection";
 import {
   getCollectionProperties,
@@ -28,7 +28,7 @@ import {
 import { Model } from "./sql/models/model";
 import { createModelFactory } from "./sql/models/model_factory";
 import { QueryBuilder } from "./sql/query_builder/query_builder";
-import { SqlDataSource } from "./sql/sql_data_source";
+import { SqlDataSource as sql } from "./sql/sql_data_source";
 import logger from "./utils/logger";
 import { withPerformance } from "./utils/performance";
 import { generateULID } from "./utils/ulid";
@@ -67,14 +67,14 @@ export {
   ModelQueryBuilder,
   RelationQueryBuilderType,
   // mongo
-  MongoDataSource,
+  mongo,
   property,
   QueryBuilder,
   // redis
   Redis,
   RedisFetchable,
   RedisStorable,
-  SqlDataSource,
+  sql,
   withPerformance,
   generateKeyPair,
 };
@@ -104,11 +104,11 @@ export default {
   // sql
   Model,
   ModelQueryBuilder,
-  SqlDataSource,
+  sql,
   QueryBuilder,
 
   // mongo
-  MongoDataSource,
+  mongo,
 
   // redis
   Redis,

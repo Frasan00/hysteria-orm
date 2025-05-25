@@ -7,7 +7,6 @@ import { ModelManager } from "./models/model_manager/model_manager";
 import { QueryBuilder } from "./query_builder/query_builder";
 import { createSqlConnection } from "./sql_connection_utils";
 import type {
-  CacheOptions,
   ConnectionPolicies,
   GetCurrentConnectionReturnType,
   MysqlConnectionInstance,
@@ -36,9 +35,21 @@ export class SqlDataSource extends DataSource {
    */
   retryPolicy: ConnectionPolicies["retry"];
   queryFormatOptions: FormatOptionsWithLanguage;
-  cacheOptions: CacheOptions;
 
   // Static Methods
+
+  /**
+   * @description Establishes the default connection used by default by all the Models, if not configuration is passed, env variables will be used instead
+   * @description You can continue to use the global sql class exported by hysteria after the connectionwithout having to rely on the return of this function
+   * @example
+   * ```ts
+   * import { sql } from "hysteria-orm";
+   * const connection = await sql.connect();
+   * // You can use both connection and sql from now own, since `sql` will use the default connection after being connected
+   * connection.query();
+   * sql.query();
+   * ```
+   */
   static async connect(
     input: SqlDataSourceInput,
     cb?: (sqlDataSource: SqlDataSource) => Promise<void> | void,
@@ -75,6 +86,77 @@ export class SqlDataSource extends DataSource {
     SqlDataSource.instance = sqlDataSource;
     await cb?.(sqlDataSource);
     return sqlDataSource;
+  }
+
+  /**
+   * @description Get's another database connection and return it, this won't be marked as the default connection used by the Models, for that use the static method `connect`
+   */
+  static async connectToAnotherSource(
+    input: SqlDataSourceInput,
+    cb?: (sqlDataSource: SqlDataSource) => Promise<void> | void,
+  ): Promise<SqlDataSource>;
+  static async connectToAnotherSource(
+    cb?: (sqlDataSource: SqlDataSource) => Promise<void> | void,
+  ): Promise<SqlDataSource>;
+  static async connectToAnotherSource(
+    inputOrCb?:
+      | SqlDataSourceInput
+      | ((sqlDataSource: SqlDataSource) => Promise<void> | void),
+    cb?: (sqlDataSource: SqlDataSource) => Promise<void> | void,
+  ): Promise<SqlDataSource> {
+    if (typeof inputOrCb === "function") {
+      cb = inputOrCb;
+      inputOrCb = undefined;
+    }
+
+    const sqlDataSource = new this(inputOrCb as SqlDataSourceInput);
+    sqlDataSource.sqlConnection = await createSqlConnection(
+      sqlDataSource.sqlType,
+      {
+        type: sqlDataSource.sqlType,
+        host: sqlDataSource.host,
+        port: sqlDataSource.port,
+        username: sqlDataSource.username,
+        password: sqlDataSource.password,
+        database: sqlDataSource.database,
+        timezone: inputOrCb?.timezone,
+      },
+    );
+
+    await sqlDataSource.rawQuery("SELECT 1");
+    await cb?.(sqlDataSource);
+    return sqlDataSource;
+  }
+
+  /**
+   * @description Creates a new connection and executes a callback with the new instance, the connection is automatically closed after the callback is executed, so it's lifespan is only inside the callback
+   */
+  static async useConnection(
+    connectionDetails: UseConnectionInput,
+    cb: (sqlDataSource: SqlDataSource) => Promise<void>,
+  ): Promise<void> {
+    const customSqlInstance = new SqlDataSource(connectionDetails);
+    customSqlInstance.sqlConnection = await createSqlConnection(
+      customSqlInstance.sqlType,
+      {
+        ...connectionDetails,
+      },
+    );
+    await customSqlInstance.rawQuery("SELECT 1");
+    try {
+      await cb(customSqlInstance).then(async () => {
+        if (!customSqlInstance.isConnected) {
+          return;
+        }
+
+        await customSqlInstance.closeConnection();
+      });
+    } catch (error) {
+      if (customSqlInstance.isConnected) {
+        await customSqlInstance.closeConnection();
+      }
+      throw error;
+    }
   }
 
   /**
@@ -172,37 +254,6 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
-   * @description Creates a new SqlDataSource instance with a custom connection and executes a callback with the new instance
-   */
-  static async useConnection(
-    connectionDetails: UseConnectionInput,
-    cb: (sqlDataSource: SqlDataSource) => Promise<void>,
-  ): Promise<void> {
-    const customSqlInstance = new SqlDataSource(connectionDetails);
-    customSqlInstance.sqlConnection = await createSqlConnection(
-      customSqlInstance.sqlType,
-      {
-        ...connectionDetails,
-      },
-    );
-    await customSqlInstance.rawQuery("SELECT 1");
-    try {
-      await cb(customSqlInstance).then(async () => {
-        if (!customSqlInstance.isConnected) {
-          return;
-        }
-
-        await customSqlInstance.closeConnection();
-      });
-    } catch (error) {
-      if (customSqlInstance.isConnected) {
-        await customSqlInstance.closeConnection();
-      }
-      throw error;
-    }
-  }
-
-  /**
    * @description Closes the current connection
    */
   static async closeConnection(): Promise<void> {
@@ -244,10 +295,6 @@ export class SqlDataSource extends DataSource {
       keywordCase: "lower",
       dataTypeCase: "lower",
       functionCase: "lower",
-    };
-    this.cacheOptions = input?.cacheOptions || {
-      type: "memory",
-      ttl: 0,
     };
   }
 
