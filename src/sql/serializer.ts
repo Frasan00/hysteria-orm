@@ -89,6 +89,10 @@ export const processAnnotations = (
     {} as Record<string, any>,
   );
 
+  if (!Object.keys($annotations).length) {
+    return;
+  }
+
   casedModel[key] = $annotations;
 };
 

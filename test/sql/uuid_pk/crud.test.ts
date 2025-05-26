@@ -23,14 +23,14 @@ describe(`[${env.DB_TYPE}] Select`, () => {
   test("remove annotations", async () => {
     await UserFactory.userWithUuid(2);
     const user = await UserWithUuid.query()
-      .annotate("COUNT(*)", "count")
+      .annotate("count", "id", "count")
       .removeAnnotations()
       .first();
 
-    expect(user?.$annotations).toBeUndefined();
+    expect((user as any)?.$annotations).toBeUndefined();
 
     const user2 = await UserWithUuid.query()
-      .annotate("COUNT(*)", "count")
+      .annotate("count", "id", "count")
       .first();
 
     expect(user2?.$annotations).not.toBeUndefined();

@@ -35,6 +35,8 @@ import { getBaseTableName } from "./model_utils";
  * @description Represents a Table in the Database
  */
 export abstract class Model extends Entity {
+  declare "*": any;
+
   /**
    * @description The column used to soft delete a record, default is deletedAt
    */
@@ -234,7 +236,6 @@ export abstract class Model extends Entity {
       return null;
     }
 
-    refreshedModel.$annotations = model.$annotations;
     return refreshedModel;
   }
 
@@ -302,7 +303,6 @@ export abstract class Model extends Entity {
       updatePayload &&
         typeofModel.combineProps(modelSqlInstance, updatePayload);
       const updatedModel = await modelManager.updateRecord(modelSqlInstance);
-      updatedModel.$annotations = modelSqlInstance.$annotations;
       return updatedModel;
     } catch (error) {
       if (
@@ -344,9 +344,9 @@ export abstract class Model extends Entity {
 
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
-    const doesExist = await modelManager.findOne({
+    const doesExist = (await modelManager.findOne({
       where: searchCriteria,
-    });
+    })) as T;
 
     if (doesExist) {
       if (options.fullResponse) {
@@ -359,7 +359,7 @@ export abstract class Model extends Entity {
       return doesExist as O extends true ? { isNew: boolean; model: T } : T;
     }
 
-    const newModel = await modelManager.insert(createData as T);
+    const newModel = (await modelManager.insert(createData as T)) as T;
     if (options.fullResponse) {
       return {
         isNew: true,
@@ -469,7 +469,7 @@ export abstract class Model extends Entity {
       data.forEach((record) => {
         conflictMap.set(column as string, [
           ...(conflictMap.get(column as string) || []),
-          record[column as keyof ModelWithoutExtraColumns<T>],
+          record[column as keyof Model],
         ]);
       });
     });

@@ -47,6 +47,7 @@ const insertTemplate = (
 
   return {
     insert: (columns: string[], values: BaseValues[], returning?: string[]) => {
+      columns = columns.filter((column) => column !== "*");
       if (columns.includes("$annotations")) {
         const $additionalColumnsIndex = columns.indexOf("$annotations");
         columns.splice(columns.indexOf("$annotations"), 1);
@@ -128,6 +129,13 @@ VALUES (${placeholders}) RETURNING ${returning && returning.length > 0 ? returni
       values: BaseValues[][],
       returning?: string[],
     ) => {
+      if (columns.includes("$annotations")) {
+        const $additionalColumnsIndex = columns.indexOf("$annotations");
+        columns.splice(columns.indexOf("$annotations"), 1);
+        values.splice($additionalColumnsIndex, 1);
+      }
+
+      columns = columns.filter((column) => column !== "*");
       let valueSets: string[];
       let params: BaseValues[] = [];
 

@@ -83,7 +83,10 @@ export abstract class JoinQueryBuilder<
   ): this;
   innerJoin<R extends typeof Model>(
     relationTable: string | R,
-    referencingColumnOrPrimaryColumn: string | ModelKey<R> | ModelKey<T>,
+    referencingColumnOrPrimaryColumn:
+      | string
+      | ModelKey<InstanceType<R>>
+      | ModelKey<T>,
     primaryColumn?: string | ModelKey<T>,
     operator?: BinaryOperatorType,
   ): this {
@@ -144,7 +147,10 @@ export abstract class JoinQueryBuilder<
   ): this;
   join<R extends typeof Model>(
     relationTable: string | R,
-    referencingColumnOrPrimaryColumn: string | ModelKey<R> | ModelKey<T>,
+    referencingColumnOrPrimaryColumn:
+      | string
+      | ModelKey<InstanceType<R>>
+      | ModelKey<T>,
     primaryColumn?: string | ModelKey<T>,
     operator?: BinaryOperatorType,
   ): this {
@@ -206,7 +212,10 @@ export abstract class JoinQueryBuilder<
   ): this;
   leftJoin<R extends typeof Model>(
     relationTable: string | R,
-    referencingColumnOrPrimaryColumn: string | ModelKey<R> | ModelKey<T>,
+    referencingColumnOrPrimaryColumn:
+      | string
+      | ModelKey<InstanceType<R>>
+      | ModelKey<T>,
     primaryColumn?: string | ModelKey<T>,
     operator?: BinaryOperatorType,
   ): this {
@@ -268,7 +277,10 @@ export abstract class JoinQueryBuilder<
   ): this;
   rightJoin<R extends typeof Model>(
     relationTable: string | R,
-    referencingColumnOrPrimaryColumn: string | ModelKey<R> | ModelKey<T>,
+    referencingColumnOrPrimaryColumn:
+      | string
+      | ModelKey<InstanceType<R>>
+      | ModelKey<T>,
     primaryColumn?: string | ModelKey<T>,
     operator?: BinaryOperatorType,
   ): this {
@@ -330,7 +342,10 @@ export abstract class JoinQueryBuilder<
   ): this;
   fullJoin<R extends typeof Model>(
     relationTable: string | R,
-    referencingColumnOrPrimaryColumn: string | ModelKey<R> | ModelKey<T>,
+    referencingColumnOrPrimaryColumn:
+      | string
+      | ModelKey<InstanceType<R>>
+      | ModelKey<T>,
     primaryColumn?: string | ModelKey<T>,
     operator?: BinaryOperatorType,
   ): this {

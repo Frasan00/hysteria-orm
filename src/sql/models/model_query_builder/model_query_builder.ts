@@ -14,6 +14,7 @@ import {
 } from "../../query_builder/delete_query_builder_type";
 import { QueryBuilder } from "../../query_builder/query_builder";
 import type { UpdateOptions } from "../../query_builder/update_query_builder_types";
+import { SqlMethod } from "../../resources/query/SELECT";
 import { serializeModel } from "../../serializer";
 import { SqlDataSource } from "../../sql_data_source";
 import { ColumnType } from "../decorators/model_decorators_types";
@@ -21,13 +22,18 @@ import { BaseModelMethodOptions } from "../model_types";
 import { ManyToMany } from "../relations/many_to_many";
 import { Relation, RelationEnum } from "../relations/relation";
 import type {
+  AnnotatedModel,
+  CommonSqlMethodReturnType,
   FetchHooks,
   ManyOptions,
   OneOptions,
 } from "./model_query_builder_types";
 import type { RelationQueryBuilderType } from "./relation_query_builder/relation_query_builder_types";
 
-export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
+export class ModelQueryBuilder<
+  T extends Model,
+  A extends Record<string, any> = {},
+> extends QueryBuilder<T> {
   declare relation: Relation;
   protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
   protected relationQueryBuilders: ModelQueryBuilder<any>[];
@@ -84,27 +90,9 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
   }
 
   /**
-   * @description Removes annotations from the serialized model, by default, annotations are maintained in the serialized model
-   * @description Annotations are defined from the SQL methods used in the select statements and can be retrieved here `$annotations`
-   */
-  removeAnnotations(): this {
-    this.mustRemoveAnnotations = true;
-    return this;
-  }
-
-  /**
-   * @description This options will add to the final serialized model the annotations
-   * @description Annotations are defined from the SQL methods used in the select statements and can be retrieved here `$annotations`
-   */
-  clearRemoveAnnotations(): this {
-    this.mustRemoveAnnotations = true;
-    return this;
-  }
-
-  /**
    * @description Executes the query and retrieves the first result.
    */
-  async one(options: OneOptions = {}): Promise<T | null> {
+  async one(options: OneOptions = {}): Promise<AnnotatedModel<T, A> | null> {
     const result = await this.limit(1).many(options);
     if (!result || !result.length) {
       return null;
@@ -116,7 +104,7 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
   /**
    * @alias one
    */
-  async first(options?: OneOptions): Promise<T | null> {
+  async first(options?: OneOptions): Promise<AnnotatedModel<T, A> | null> {
     return this.one(options);
   }
 
@@ -125,13 +113,13 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
    */
   async oneOrFail(options?: {
     ignoreHooks?: OneOptions["ignoreHooks"] & { customError?: Error };
-  }): Promise<T> {
+  }): Promise<AnnotatedModel<T, A>> {
     const model = await this.one(options);
     if (!model) {
       throw new HysteriaError(this.model.name + "::oneOrFail", "ROW_NOT_FOUND");
     }
 
-    return model;
+    return model as AnnotatedModel<T, A>;
   }
 
   /**
@@ -139,14 +127,16 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
    */
   async firstOrFail(options?: {
     ignoreHooks?: OneOptions["ignoreHooks"] & { customError?: Error };
-  }): Promise<T> {
+  }): Promise<AnnotatedModel<T, A>> {
     return this.oneOrFail(options);
   }
 
   /**
    * @description Executes the query and retrieves multiple results.
    */
-  override async many(options: ManyOptions = {}): Promise<T[]> {
+  override async many(
+    options: ManyOptions = {},
+  ): Promise<AnnotatedModel<T, A>[]> {
     !options.ignoreHooks?.includes("beforeFetch") &&
       this.model.beforeFetch(this);
     const rows = await super.many();
@@ -180,7 +170,7 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
       await this.processRelationsRecursively(serializedModelsArray);
     }
 
-    return serializedModelsArray;
+    return serializedModelsArray as AnnotatedModel<T, A>[];
   }
 
   /**
@@ -226,8 +216,15 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
       ? ["beforeFetch"]
       : [];
 
-    const result = await this.one({ ignoreHooks: ignoredHooks });
-    return result ? +result.$annotations.total : 0;
+    const result = (await this.one({
+      ignoreHooks: ignoredHooks,
+    })) as { $annotations: { total: number } } | null;
+
+    if (!result) {
+      return 0;
+    }
+
+    return +result.$annotations.total;
   }
 
   override async getMax(
@@ -239,8 +236,15 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
       ? ["beforeFetch", "afterFetch"]
       : [];
 
-    const result = await this.one({ ignoreHooks: ignoredHooks });
-    return result ? +result.$annotations.total : 0;
+    const result = (await this.one({ ignoreHooks: ignoredHooks })) as {
+      $annotations: { total: number };
+    } | null;
+
+    if (!result) {
+      return 0;
+    }
+
+    return +result.$annotations.total;
   }
 
   override async getMin(
@@ -252,8 +256,15 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
       ? ["beforeFetch", "afterFetch"]
       : [];
 
-    const result = await this.one({ ignoreHooks: ignoredHooks });
-    return result ? +result.$annotations.total : 0;
+    const result = (await this.one({ ignoreHooks: ignoredHooks })) as {
+      $annotations: { total: number };
+    } | null;
+
+    if (!result) {
+      return 0;
+    }
+
+    return +result.$annotations.total;
   }
 
   override async getAvg(
@@ -265,8 +276,15 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
       ? ["beforeFetch", "afterFetch"]
       : [];
 
-    const result = await this.one({ ignoreHooks: ignoredHooks });
-    return result ? +result.$annotations.total : 0;
+    const result = (await this.one({ ignoreHooks: ignoredHooks })) as {
+      $annotations: { total: number };
+    } | null;
+
+    if (!result) {
+      return 0;
+    }
+
+    return +result.$annotations.total;
   }
 
   override async getSum(
@@ -278,8 +296,15 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
       ? ["beforeFetch", "afterFetch"]
       : [];
 
-    const result = await this.one({ ignoreHooks: ignoredHooks });
-    return result ? +result.$annotations.total : 0;
+    const result = (await this.one({ ignoreHooks: ignoredHooks })) as {
+      $annotations: { total: number };
+    } | null;
+
+    if (!result) {
+      return 0;
+    }
+
+    return +result.$annotations.total;
   }
 
   override async paginate(
@@ -304,12 +329,12 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
     return {
       paginationMetadata,
       data: models,
-    } as PaginatedData<T>;
+    } as PaginatedData<AnnotatedModel<T, A>>;
   }
 
   override select(...columns: string[]): this;
-  override select(...columns: (ModelKey<T> | "*")[]): this;
-  override select(...columns: (ModelKey<T> | "*" | string)[]): this {
+  override select(...columns: ModelKey<T>[]): this;
+  override select(...columns: (ModelKey<T> | string)[]): this {
     this.modelSelectedColumns = [
       ...this.modelSelectedColumns,
       ...(columns as string[]),
@@ -319,6 +344,90 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
       ...this.modelSelectedColumns,
     ]);
 
+    return this;
+  }
+
+  /**
+   * @description Annotates a column with a SQL method or a simple alias
+   * @description If using a model, the result will be available in the $annotations property of the model, else it will be available in the result of the query
+   * @example
+   * ```ts
+   * const user = await User.query().annotate("max", "id", "maxId").first(); // max(id) as maxId
+   * const user = await User.query().annotate("id", "superId").first(); // id as superId
+   * ```
+   */
+  // @ts-expect-error
+  override annotate<K extends string, V = any>(
+    column: string,
+    alias: K,
+  ): ModelQueryBuilder<T, A & { [P in K]: V }>;
+  // @ts-expect-error
+  override annotate<
+    K extends string,
+    S extends SqlMethod,
+    V = CommonSqlMethodReturnType<S>,
+  >(
+    sqlMethod: S,
+    column: string,
+    alias: K,
+  ): ModelQueryBuilder<T, A & { [P in K]: V }>;
+  // @ts-expect-error
+  override annotate<
+    K extends string,
+    S extends SqlMethod,
+    V = CommonSqlMethodReturnType<S>,
+  >(
+    sqlMethod: S,
+    column: string,
+    alias: K,
+  ): ModelQueryBuilder<T, A & { [P in K]: V }>;
+  // @ts-expect-error
+  override annotate<
+    K extends string,
+    S extends SqlMethod,
+    V = CommonSqlMethodReturnType<S>,
+  >(
+    sqlMethodOrColumn: string | S,
+    columnOrAlias: string,
+    maybeAlias?: string,
+  ): ModelQueryBuilder<T, A & { [P in K]: V }> {
+    let sqlMethod: string | undefined;
+    let column: string;
+    let alias: string;
+
+    if (maybeAlias) {
+      sqlMethod = sqlMethodOrColumn as string;
+      column = columnOrAlias;
+      alias = maybeAlias as string;
+    } else {
+      sqlMethod = undefined;
+      column = sqlMethodOrColumn as string;
+      alias = columnOrAlias as string;
+    }
+
+    const annotationStatement = this.selectTemplate.annotate(
+      column,
+      alias,
+      sqlMethod,
+    );
+
+    if (!this.selectQuery) {
+      this.selectQuery = `SELECT ${annotationStatement}`;
+    } else {
+      this.selectQuery = this.selectQuery + `, ${annotationStatement}`;
+      if (!this.selectQuery.toLowerCase().includes("select")) {
+        this.selectQuery = `SELECT ${this.selectQuery}`;
+      }
+    }
+
+    return this;
+  }
+
+  /**
+   * @description Removes annotations from the serialized model, by default, annotations are maintained in the serialized model if `annotate` is used
+   */
+  removeAnnotations(): ModelQueryBuilder<T, {}> {
+    this.mustRemoveAnnotations = true;
     return this;
   }
 
@@ -517,8 +626,9 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
           convertCase(relatedPrimaryKey, this.model.modelCaseConvention);
 
         relatedModels.forEach((relatedModel) => {
-          const foreignKeyValue =
-            relatedModel.$annotations[casedRelatedPrimaryKey];
+          const foreignKeyValue = (relatedModel as any).$annotations[
+            casedRelatedPrimaryKey
+          ];
           if (!foreignKeyValue) return;
 
           const foreignKeyStr = String(foreignKeyValue);
@@ -527,14 +637,14 @@ export class ModelQueryBuilder<T extends Model> extends QueryBuilder<T> {
           }
 
           if (
-            relatedModel.$annotations &&
-            relatedModel.$annotations[casedRelatedPrimaryKey] &&
+            (relatedModel as any).$annotations &&
+            (relatedModel as any).$annotations[casedRelatedPrimaryKey] &&
             !this.modelSelectedColumns.includes(casedRelatedPrimaryKey)
           ) {
-            delete relatedModel.$annotations[casedRelatedPrimaryKey];
+            delete (relatedModel as any).$annotations[casedRelatedPrimaryKey];
           }
 
-          if (Object.keys(relatedModel.$annotations).length === 0) {
+          if (Object.keys((relatedModel as any).$annotations).length === 0) {
             delete (relatedModel as any).$annotations;
           }
 

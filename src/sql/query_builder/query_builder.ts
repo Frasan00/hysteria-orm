@@ -242,7 +242,7 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
   async getCount(column: string = "*"): Promise<number> {
     this.annotate("count", column, "total");
     const result = await this.one();
-    return result ? +(result as any).total : 0;
+    return result ? +result["total" as keyof typeof result] : 0;
   }
 
   /**
@@ -251,7 +251,7 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
   async getMax(column: string): Promise<number> {
     this.annotate("max", column, "total");
     const result = await this.one();
-    return result ? +(result as any).total : 0;
+    return result ? +result["total" as keyof typeof result] : 0;
   }
 
   /**
@@ -260,7 +260,7 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
   async getMin(column: string): Promise<number> {
     this.annotate("min", column, "total");
     const result = await this.one();
-    return result ? +(result as any).total : 0;
+    return result ? +result["total" as keyof typeof result] : 0;
   }
 
   /**
@@ -269,7 +269,7 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
   async getAvg(column: string): Promise<number> {
     this.annotate("avg", column, "total");
     const result = await this.one();
-    return result ? +(result as any).total : 0;
+    return result ? +result["total" as keyof typeof result] : 0;
   }
 
   /**
@@ -278,7 +278,7 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
   async getSum(column: string): Promise<number> {
     this.annotate("sum", column, "total");
     const result = await this.one();
-    return result ? +(result as any).total : 0;
+    return result ? +result["total" as keyof typeof result] : 0;
   }
 
   /**
@@ -332,13 +332,9 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
    * @param returning - The columns to return from the query, only supported by postgres and cockroachdb - default is "*"
    * @returns raw driver response
    */
-  async insert<T = any>(
-    data: Record<string, any>,
-    returning?: string[],
-  ): Promise<T> {
-    const model = data as any;
+  async insert(data: Record<string, any>, returning?: string[]): Promise<T> {
     const { query, params } = this.sqlModelManagerUtils.parseInsert(
-      model,
+      data as T,
       { ...this.model, table: this.fromTable } as typeof Model,
       this.dbType,
       returning,
@@ -348,7 +344,7 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
       sqlLiteOptions: {
         typeofModel: this.model,
         mode: "insertOne",
-        models: [model],
+        models: [data as T],
       },
     });
 
@@ -360,7 +356,7 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
    * @param returning - The columns to return from the query, only supported by postgres and cockroachdb - default is "*"
    * @returns raw driver response
    */
-  async insertMany<T = any>(
+  async insertMany(
     data: Record<string, any>[],
     returning?: string[],
   ): Promise<T[]> {
@@ -368,9 +364,8 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
       return [];
     }
 
-    const models = data as any[];
     const { query, params } = this.sqlModelManagerUtils.parseMassiveInsert(
-      models,
+      data as T[],
       { ...this.model, table: this.fromTable } as typeof Model,
       this.dbType,
       returning,
@@ -380,7 +375,7 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
       sqlLiteOptions: {
         typeofModel: this.model,
         mode: "insertMany",
-        models: models,
+        models: data as T[],
       },
     });
   }

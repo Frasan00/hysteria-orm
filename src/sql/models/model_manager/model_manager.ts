@@ -175,7 +175,7 @@ export class ModelManager<T extends Model> {
     }
 
     return this.query()
-      .select(...(returning ?? ["*"]))
+      .select(...(returning || []))
       .where(this.model.primaryKey as string, value)
       .one({ ignoreHooks: ["afterFetch", "beforeFetch"] });
   }

@@ -5,6 +5,8 @@ import * as mongodb from "mongodb";
 import pkg from "pluralize";
 const { plural } = pkg;
 
+export type MongoCollectionKey<T> = T extends Collection ? T : never;
+
 export function getBaseCollectionName(target: typeof Collection): string {
   const className = target.name;
   const snakeCaseName = convertCase(className, "snake");

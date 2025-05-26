@@ -1,11 +1,11 @@
-import type { ModelKey } from "../models/model_manager/model_manager_types";
+import { MongoCollectionKey } from "../../no_sql/mongo/mongo_models/mongo_collection_types";
 
 export type DeleteOptions = {
   ignoreBeforeDeleteHook?: boolean;
 };
 
 export type SoftDeleteOptions<T> = {
-  column?: ModelKey<T>;
+  column?: MongoCollectionKey<T>;
   value?: string | number | boolean;
   ignoreBeforeDeleteHook?: boolean;
 };

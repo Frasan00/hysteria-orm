@@ -82,6 +82,7 @@ SET ${column} = ${column} - ${value} ${whereClause}`;
       primaryKey?: string,
       primaryKeyValue?: string | undefined,
     ) => {
+      columns = columns.filter((column) => column !== "*");
       if (columns.includes("$annotations")) {
         const $additionalColumnsIndex = columns.indexOf("$annotations");
         columns.splice(columns.indexOf("$annotations"), 1);
@@ -168,11 +169,7 @@ WHERE ${primaryKey} = ${primaryKeyPlaceholder};`;
           convertCase(column, typeofModel.databaseCaseConvention),
       );
 
-      if (columns.includes("$annotations")) {
-        const $additionalColumnsIndex = columns.indexOf("$annotations");
-        columns.splice(columns.indexOf("$annotations"), 1);
-        values.splice($additionalColumnsIndex, 1);
-      }
+      columns = columns.filter((column) => column !== "*");
 
       for (let i = 0; i < values.length; i++) {
         const column = columns[i];

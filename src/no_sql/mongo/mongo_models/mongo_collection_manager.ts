@@ -1,5 +1,4 @@
 import * as mongodb from "mongodb";
-import { ModelKey } from "../../../sql/models/model_manager/model_manager_types";
 import { MongoDataSource } from "../mongo_data_source";
 import { serializeCollection } from "../mongo_serializer";
 import {
@@ -7,12 +6,16 @@ import {
   MongoQueryBuilder,
 } from "../query_builder/mongo_query_builder";
 import { Collection } from "./mongo_collection";
-import { ModelKeyOrAny, ModelKeyOrAnySort } from "./mongo_collection_types";
+import {
+  MongoCollectionKey,
+  ModelKeyOrAny,
+  ModelKeyOrAnySort,
+} from "./mongo_collection_types";
 import { HysteriaError } from "../../../errors/hysteria_error";
 
 export type MongoFindOneOptions<T extends Collection> = {
   ignoreHooks?: FetchHooks[];
-  select?: ModelKey<T>[];
+  select?: MongoCollectionKey<T>[];
   where?: ModelKeyOrAny<T>;
 };
 

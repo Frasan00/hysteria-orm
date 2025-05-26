@@ -48,15 +48,16 @@ export type WhereType<T> = {
   [K in keyof T]?: string | number | boolean | Date | null;
 };
 
-export type ModelKey<T> = ExcludeRelations<Omit<T, "$annotations">>;
-export type ModelRelation<T> = OnlyRelations<Omit<T, "$annotations">>;
+export type ModelKey<T extends Model> = ExcludeRelations<T>;
+
+export type ModelRelation<T extends Model> = OnlyRelations<T>;
 
 export type OrderByChoices = "asc" | "desc" | "asc" | "desc";
 export type OrderByType = {
   [key: string]: OrderByChoices;
 };
 
-export type UnrestrictedFindOneType<T> = {
+export type UnrestrictedFindOneType<T extends Model> = {
   select?: string[];
   relations?: ModelRelation<T>[];
   ignoreHooks?: FetchHooks[];
@@ -66,14 +67,14 @@ export type UnrestrictedFindOneType<T> = {
   offset?: number;
 };
 
-export type UnrestrictedFindType<T> = Omit<
+export type UnrestrictedFindType<T extends Model> = Omit<
   UnrestrictedFindOneType<T>,
   "throwErrorOnNull"
 > & {
   limit?: number;
 };
 
-export type FindOneType<T> = {
+export type FindOneType<T extends Model> = {
   select?: ModelKey<T>[];
   offset?: number;
   relations?: ModelRelation<T>[];
@@ -83,6 +84,9 @@ export type FindOneType<T> = {
   ignoreHooks?: FetchHooks[];
 };
 
-export type FindType<T> = Omit<FindOneType<T>, "throwErrorOnNull"> & {
+export type FindType<T extends Model> = Omit<
+  FindOneType<T>,
+  "throwErrorOnNull"
+> & {
   limit?: number;
 };

@@ -30,7 +30,7 @@ describe(`[${env.DB_TYPE}] Select`, () => {
       .selectRaw("count(*) as count")
       .first();
     expect(user).not.toBeUndefined();
-    expect(Number.parseInt(user?.$annotations.count)).toBe(2);
+    expect(Number.parseInt((user as any)?.$annotations.count)).toBe(2);
   });
 
   test("Annotate", async () => {
@@ -65,7 +65,7 @@ describe(`[${env.DB_TYPE}] Select`, () => {
     expect(user).not.toBeUndefined();
     expect(user?.name).toBeDefined();
     console.log("user", user);
-    expect(user?.$annotations.result).toBeDefined();
+    expect((user as any)?.$annotations.result).toBeDefined();
   });
 
   test("Select all without `select` method call (default behavior)", async () => {
