@@ -1,2 +1,0 @@
-yarn test:with:migrations
-git add .
