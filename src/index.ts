@@ -12,7 +12,7 @@ import {
   getCollectionProperties,
   property,
 } from "./no_sql/mongo/mongo_models/mongo_collection_decorators";
-import { RedisDataSource as Redis } from "./no_sql/redis/redis_data_source";
+import { RedisDataSource as redis } from "./no_sql/redis/redis_data_source";
 import { Migration } from "./sql/migrations/migration";
 import { defineMigrator } from "./sql/migrations/migrator";
 import {
@@ -71,7 +71,7 @@ export {
   property,
   QueryBuilder,
   // redis
-  Redis,
+  redis,
   RedisFetchable,
   RedisStorable,
   sql,
@@ -111,7 +111,7 @@ export default {
   mongo,
 
   // redis
-  Redis,
+  redis,
 
   // factory
   createModelFactory,
