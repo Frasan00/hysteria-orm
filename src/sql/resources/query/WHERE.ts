@@ -385,6 +385,13 @@ const whereTemplate = (
       };
     },
     whereIn: (column: string, values: BaseValues[]) => {
+      if (!values.length) {
+        return {
+          query: `\nWHERE 1 = 0`,
+          params: [],
+        };
+      }
+
       let query = `\nWHERE ${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)} IN (${values.map((_) => "$PLACEHOLDER").join(", ")})`;
       let params = values;
 
@@ -415,6 +422,13 @@ const whereTemplate = (
       };
     },
     andWhereIn: (column: string, values: BaseValues[]) => {
+      if (!values.length) {
+        return {
+          query: ` AND 1 = 0`,
+          params: [],
+        };
+      }
+
       let query = ` AND ${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)} IN (${values.map((_) => "$PLACEHOLDER").join(", ")})`;
       let params = values;
 
@@ -445,6 +459,13 @@ const whereTemplate = (
       };
     },
     orWhereIn: (column: string, values: BaseValues[]) => {
+      if (!values.length) {
+        return {
+          query: ` OR 1 = 0`,
+          params: [],
+        };
+      }
+
       let query = ` OR ${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)} IN (${values.map((_) => "$PLACEHOLDER").join(", ")})`;
       let params = values;
 
@@ -475,6 +496,13 @@ const whereTemplate = (
       };
     },
     whereNotIn: (column: string, values: BaseValues[]) => {
+      if (!values.length) {
+        return {
+          query: `\nWHERE 1 = 1`,
+          params: [],
+        };
+      }
+
       let query = `\nWHERE ${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)} NOT IN (${values.map((_) => "$PLACEHOLDER").join(", ")})`;
       let params = values;
 
@@ -505,6 +533,13 @@ const whereTemplate = (
       };
     },
     andWhereNotIn: (column: string, values: BaseValues[]) => {
+      if (!values.length) {
+        return {
+          query: ` AND 1 = 1`,
+          params: [],
+        };
+      }
+
       let query = ` AND ${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)} NOT IN (${values.map((_) => "$PLACEHOLDER").join(", ")})`;
       let params = values;
 
@@ -535,6 +570,13 @@ const whereTemplate = (
       };
     },
     orWhereNotIn: (column: string, values: BaseValues[]) => {
+      if (!values.length) {
+        return {
+          query: ` OR 1 = 1`,
+          params: [],
+        };
+      }
+
       let query = ` OR ${modelColumnsMap.get(column)?.databaseName ?? convertCase(column, typeofModel.databaseCaseConvention)} NOT IN (${values.map((_) => "$PLACEHOLDER").join(", ")})`;
       let params = values;
 
@@ -595,8 +637,8 @@ const whereTemplate = (
       isSubQuery: boolean = false,
     ) => ({
       query: isSubQuery
-        ? `WHERE ${operator} (${query})`
-        : `\nWHERE ${operator} ${query}`,
+        ? `WHERE${operator ? ` ${operator}` : ""} (${query})`
+        : `\nWHERE${operator ? ` ${operator}` : ""} ${query}`,
       params,
     }),
     rawAndWhere: (
@@ -606,8 +648,8 @@ const whereTemplate = (
       isSubQuery: boolean = false,
     ) => ({
       query: isSubQuery
-        ? ` AND ${operator} (${query})`
-        : ` AND ${operator} ${query}`,
+        ? ` AND${operator ? ` ${operator}` : ""} (${query})`
+        : ` AND${operator ? ` ${operator}` : ""} ${query}`,
       params,
     }),
     rawOrWhere: (
@@ -617,8 +659,8 @@ const whereTemplate = (
       isSubQuery: boolean = false,
     ) => ({
       query: isSubQuery
-        ? ` OR ${operator} (${query})`
-        : ` OR ${operator} ${query}`,
+        ? ` OR${operator ? ` ${operator}` : ""} (${query})`
+        : ` OR${operator ? ` ${operator}` : ""} ${query}`,
       params,
     }),
     whereSubQuery: (

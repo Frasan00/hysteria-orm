@@ -7,6 +7,7 @@ import type { Model } from "../models/model";
 import { ModelKey } from "../models/model_manager/model_manager_types";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
 import type { NumberModelKey } from "../models/model_types";
+import { getPaginationMetadata, PaginatedData } from "../pagination";
 import deleteTemplate from "../resources/query/DELETE";
 import { UnionCallBack } from "../resources/query/SELECT";
 import updateTemplate from "../resources/query/UPDATE";
@@ -22,7 +23,6 @@ import {
   QueryBuilderWithOnlyWhereConditions,
 } from "./query_builder_types";
 import { WhereQueryBuilder } from "./where_query_builder";
-import { getPaginationMetadata, PaginatedData } from "../pagination";
 
 export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
   model: typeof Model;
@@ -51,6 +51,13 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
     this.deleteTemplate = deleteTemplate(this.dbType);
     this.unionQuery = "";
     this.params = [];
+  }
+
+  /**
+   * @description Executes the query and returns true if the query returns at least one result, false otherwise.
+   */
+  async exists(): Promise<boolean> {
+    return !!(await this.one());
   }
 
   /**

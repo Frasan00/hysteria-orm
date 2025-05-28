@@ -47,13 +47,27 @@ export abstract class WhereQueryBuilder<
 
   /**
    * @description Accepts a value and executes a callback only of the value is not null or undefined.
+   * @warning The value is not checked for truthiness but existence, it is only checked for undefined or null. So false, 0, "", etc. will be considered truthy.
    */
-  when(value: any, cb: (value: any, query: this) => void): this {
+  strictWhen(value: any, cb: (query: this) => void): this {
     if (value === undefined || value === null) {
       return this;
     }
 
-    cb(value, this);
+    cb(this);
+    return this;
+  }
+
+  /**
+   * @description Accepts a value and executes a callback only of the value is not falsy.
+   * @warning The value is checked for truthiness, so false, 0, "", etc. will be considered falsy.
+   */
+  when(value: any, cb: (query: this) => void): this {
+    if (!value) {
+      return this;
+    }
+
+    cb(this);
     return this;
   }
 
@@ -341,6 +355,7 @@ export abstract class WhereQueryBuilder<
 
   /**
    * @description Adds a WHERE IN condition to the query.
+   * @warning If the values array is empty, it will add an impossible condition.
    */
   whereIn(column: ModelKey<T>, values: BaseValues[]): this;
   whereIn(column: string, values: BaseValues[]): this;
@@ -350,6 +365,7 @@ export abstract class WhereQueryBuilder<
 
   /**
    * @description Adds an AND WHERE IN condition to the query.
+   * @warning If the values array is empty, it will add an impossible condition.
    */
   andWhereIn(column: ModelKey<T>, values: BaseValues[]): this;
   andWhereIn(column: string, values: BaseValues[]): this;
@@ -375,6 +391,7 @@ export abstract class WhereQueryBuilder<
 
   /**
    * @description Adds an OR WHERE IN condition to the query.
+   * @warning If the values array is empty, it will add an impossible condition.
    */
   orWhereIn(column: ModelKey<T>, values: BaseValues[]): this;
   orWhereIn(column: string, values: BaseValues[]): this;
@@ -400,6 +417,7 @@ export abstract class WhereQueryBuilder<
 
   /**
    * @description Adds a WHERE NOT IN condition to the query.
+   * @warning If the values array is empty, it not add anything to the query.
    */
   whereNotIn(column: ModelKey<T>, values: BaseValues[]): this;
   whereNotIn(column: string, values: BaseValues[]): this;
@@ -409,6 +427,7 @@ export abstract class WhereQueryBuilder<
 
   /**
    * @description Adds an OR WHERE NOT IN condition to the query.
+   * @warning If the values array is empty, it will add an obvious condition.
    */
   andWhereNotIn(column: ModelKey<T>, values: BaseValues[]): this;
   andWhereNotIn(column: string, values: BaseValues[]): this;
@@ -434,6 +453,7 @@ export abstract class WhereQueryBuilder<
 
   /**
    * @description Adds an OR WHERE NOT IN condition to the query.
+   * @warning If the values array is empty, it will add an obvious condition.
    */
   orWhereNotIn(column: ModelKey<T>, values: BaseValues[]): this;
   orWhereNotIn(column: string, values: BaseValues[]): this;

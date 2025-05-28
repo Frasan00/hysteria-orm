@@ -35,7 +35,7 @@ import { getBaseTableName } from "./model_utils";
  * @description Represents a Table in the Database
  */
 export abstract class Model extends Entity {
-  declare "*": any;
+  declare "*": string;
 
   /**
    * @description The column used to soft delete a record, default is deletedAt

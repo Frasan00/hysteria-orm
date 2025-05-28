@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
-import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { env } from "../../../src/env/env";
+import { SqlDataSource } from "../../../src/sql/sql_data_source";
 
 beforeAll(async () => {
   await SqlDataSource.connect();
@@ -19,6 +19,16 @@ afterEach(async () => {
 });
 
 describe(`[${env.DB_TYPE}] Query Builder with uuid`, () => {
+  test("should select a post with exists", async () => {
+    await SqlDataSource.query("posts_with_uuid").insert({
+      id: crypto.randomUUID(),
+      title: "Hello World",
+    });
+
+    const exists = await SqlDataSource.query("posts_with_uuid").exists();
+    expect(exists).toBe(true);
+  });
+
   test("should select a post", async () => {
     await SqlDataSource.query("posts_with_uuid").insert({
       id: crypto.randomUUID(),
@@ -258,5 +268,369 @@ describe(`[${env.DB_TYPE}] Query Builder with a model without a primary key`, ()
 
     const retrievedUser = await SqlDataSource.query("users_without_pk").first();
     expect(retrievedUser).toBeNull();
+  });
+});
+
+describe(`[${env.DB_TYPE}] Where query builder tests`, () => {
+  test("when does not enter the callback", async () => {
+    await SqlDataSource.query("users_without_pk").insert({
+      name: "John Doe",
+    });
+
+    const falseCondition = false;
+    const users = await SqlDataSource.query("users_without_pk")
+      .where("name", "TEST")
+      .when(falseCondition, (qb) => qb.clearWhere().where("name", "John Doe"))
+      .many();
+
+    expect(users).toBeDefined();
+    expect(users.length).toBe(0);
+  });
+
+  test("when enters the callback", async () => {
+    await SqlDataSource.query("users_without_pk").insert({
+      name: "John Doe",
+    });
+
+    const trueCondition = true;
+    const users = await SqlDataSource.query("users_without_pk")
+      .where("name", "TEST")
+      .when(trueCondition, (qb) => qb.clearWhere().where("name", "John Doe"))
+      .many();
+
+    expect(users).toBeDefined();
+    expect(users.length).toBe(1);
+    expect(users[0].name).toBe("John Doe");
+  });
+
+  test("strict when does not enter the callback", async () => {
+    await SqlDataSource.query("users_without_pk").insert({
+      name: "John Doe",
+    });
+
+    const falseCondition = null;
+    const users = await SqlDataSource.query("users_without_pk")
+      .where("name", "TEST")
+      .strictWhen(falseCondition, (qb) =>
+        qb.clearWhere().where("name", "John Doe"),
+      )
+      .many();
+
+    expect(users).toBeDefined();
+    expect(users.length).toBe(0);
+  });
+
+  test("strict when enters the callback", async () => {
+    await SqlDataSource.query("users_without_pk").insert({
+      name: "John Doe",
+    });
+
+    const trueCondition = true;
+    const users = await SqlDataSource.query("users_without_pk")
+      .where("name", "TEST")
+      .strictWhen(trueCondition, (qb) =>
+        qb.clearWhere().where("name", "John Doe"),
+      )
+      .many();
+
+    expect(users).toBeDefined();
+    expect(users.length).toBe(1);
+    expect(users[0].name).toBe("John Doe");
+  });
+});
+
+describe(`[${env.DB_TYPE}] Where query builder (users_without_pk only)`, () => {
+  beforeEach(async () => {
+    await SqlDataSource.query("users_without_pk").insertMany([
+      { name: "Alice" },
+      { name: "Bob" },
+      { name: "Charlie" },
+      { name: null },
+    ]);
+  });
+
+  afterEach(async () => {
+    await SqlDataSource.query("users_without_pk").truncate();
+  });
+
+  test("whereIn returns correct users", async () => {
+    const users = await SqlDataSource.query("users_without_pk")
+      .whereIn("name", ["Alice", "Charlie"])
+      .many();
+    expect(users.length).toBe(2);
+    expect(users.map((u) => u.name).sort()).toEqual(["Alice", "Charlie"]);
+  });
+
+  test("whereNotIn returns correct users", async () => {
+    await SqlDataSource.query("users_without_pk").insert({
+      name: "Bob",
+    });
+
+    const users = await SqlDataSource.query("users_without_pk")
+      .whereNotIn("name", ["Alice", "Charlie"])
+      .many();
+
+    expect(users[0].name).toBe("Bob");
+  });
+
+  test("whereBetween returns no users (string col)", async () => {
+    const users = await SqlDataSource.query("users_without_pk")
+      .whereBetween("name", "A", "B")
+      .many();
+    expect(Array.isArray(users)).toBe(true);
+  });
+
+  test("whereNull returns correct users", async () => {
+    const users = await SqlDataSource.query("users_without_pk")
+      .whereNull("name")
+      .many();
+    expect(users.length).toBe(1);
+    expect(users[0].name).toBeNull();
+  });
+
+  test("whereNotNull returns correct users", async () => {
+    const users = await SqlDataSource.query("users_without_pk")
+      .whereNotNull("name")
+      .many();
+    expect(users.length).toBe(3);
+    expect(users.every((u) => u.name !== null)).toBe(true);
+  });
+
+  test("whereRegexp returns correct users", async () => {
+    if (env.DB_TYPE === "sqlite") {
+      return;
+    }
+
+    const users = await SqlDataSource.query("users_without_pk")
+      .whereRegexp("name", /^A/)
+      .many();
+    expect(users.length).toBe(1);
+    expect(users[0].name).toBe("Alice");
+  });
+
+  test("rawWhere returns correct users", async () => {
+    const users = await SqlDataSource.query("users_without_pk")
+      .rawWhere("name = 'Bob'")
+      .many();
+    expect(users.length).toBe(1);
+    expect(users[0].name).toBe("Bob");
+  });
+
+  test("orWhere returns correct users", async () => {
+    const users = await SqlDataSource.query("users_without_pk")
+      .where("name", "Alice")
+      .orWhere("name", "Bob")
+      .many();
+    expect(users.length).toBe(2);
+    expect(users.map((u) => u.name).sort()).toEqual(["Alice", "Bob"]);
+  });
+
+  test("andWhere chaining returns correct users", async () => {
+    const users = await SqlDataSource.query("users_without_pk")
+      .where("name", "Alice")
+      .andWhere("name", "Alice")
+      .many();
+    expect(users.length).toBe(1);
+    expect(users[0].name).toBe("Alice");
+  });
+
+  test("where with falsy/empty values", async () => {
+    const users = await SqlDataSource.query("users_without_pk")
+      .where("name", "")
+      .many();
+    expect(users.length).toBe(0);
+  });
+
+  test("whereIn with empty array returns no users", async () => {
+    const users = await SqlDataSource.query("users_without_pk")
+      .whereIn("name", [])
+      .many();
+    expect(users.length).toBe(0);
+  });
+
+  test("whereNotIn with empty array returns all users", async () => {
+    const users = await SqlDataSource.query("users_without_pk")
+      .whereNotIn("name", [])
+      .many();
+
+    expect(users.length).toBe(4);
+  });
+});
+
+describe(`[${env.DB_TYPE}] Where query builder advanced tests (users_without_pk only)`, () => {
+  beforeEach(async () => {
+    await SqlDataSource.query("users_without_pk").insertMany([
+      { name: "Alice" },
+      { name: "Bob" },
+      { name: "Charlie" },
+      { name: null },
+    ]);
+  });
+
+  test("whereIn empty combined with another where returns no users", async () => {
+    const users = await SqlDataSource.query("users_without_pk")
+      .whereIn("name", [])
+      .where("name", "Alice")
+      .many();
+    expect(users.length).toBe(0);
+  });
+
+  test("whereNotIn empty combined with another where returns filtered users", async () => {
+    const users = await SqlDataSource.query("users_without_pk")
+      .whereNotIn("name", [])
+      .where("name", "Alice")
+      .many();
+    expect(users.length).toBe(1);
+    expect(users[0].name).toBe("Alice");
+  });
+
+  test("nested whereBuilder with whereIn empty returns no users", async () => {
+    const users = await SqlDataSource.query("users_without_pk")
+      .whereBuilder((qb) => {
+        qb.whereIn("name", []);
+        qb.where("name", "Alice");
+      })
+      .many();
+    expect(users.length).toBe(0);
+  });
+
+  test("nested whereBuilder with whereNotIn empty returns filtered users", async () => {
+    const users = await SqlDataSource.query("users_without_pk")
+      .whereBuilder((qb) => {
+        qb.whereNotIn("name", []);
+        qb.where("name", "Alice");
+      })
+      .many();
+    expect(users.length).toBe(1);
+    expect(users[0].name).toBe("Alice");
+  });
+
+  test("deeply nested whereBuilder with whereIn empty returns no users", async () => {
+    const users = await SqlDataSource.query("users_without_pk")
+      .whereBuilder((qb) => {
+        qb.where("name", "Alice");
+        qb.whereBuilder((qb2) => {
+          qb2.whereIn("name", []);
+          qb2.where("name", "Bob");
+        });
+      })
+      .many();
+    expect(users.length).toBe(0);
+  });
+
+  test("deeply nested whereBuilder with whereNotIn empty and valid where returns filtered users", async () => {
+    const users = await SqlDataSource.query("users_without_pk")
+      .whereBuilder((qb) => {
+        qb.where("name", "Alice");
+        qb.whereBuilder((qb2) => {
+          qb2.whereNotIn("name", []);
+          qb2.where("name", "Alice");
+        });
+      })
+      .many();
+    expect(users.length).toBe(1);
+    expect(users[0].name).toBe("Alice");
+  });
+
+  test("whereBuilder with both whereIn and whereNotIn empty returns no users", async () => {
+    const users = await SqlDataSource.query("users_without_pk")
+      .whereBuilder((qb) => {
+        qb.whereIn("name", []);
+        qb.whereNotIn("name", []);
+      })
+      .many();
+    expect(users.length).toBe(0);
+  });
+
+  test("whereBuilder with whereIn empty and orWhere with valid value returns Alice", async () => {
+    const users = await SqlDataSource.query("users_without_pk")
+      .whereBuilder((qb) => {
+        qb.whereIn("name", []);
+        qb.orWhere("name", "Alice");
+      })
+      .many();
+
+    expect(users.length).toBe(1); // Alice
+  });
+
+  test("whereBuilder with whereIn empty and orWhere with valid value returns no users", async () => {
+    const users = await SqlDataSource.query("users_without_pk")
+      .whereBuilder((qb) => {
+        qb.whereIn("name", []);
+        qb.andWhere("name", "Alice");
+      })
+      .many();
+
+    expect(users.length).toBe(0);
+  });
+
+  test("whereBuilder with whereNotIn empty and orWhere with valid value returns users matching orWhere", async () => {
+    const users = await SqlDataSource.query("users_without_pk")
+      .whereBuilder((qb) => {
+        qb.whereNotIn("name", []);
+      })
+      .many();
+    expect(users.length).toBe(4);
+  });
+
+  test("multiple nested whereBuilders with mixed empty and non-empty whereIn/whereNotIn", async () => {
+    const users = await SqlDataSource.query("users_without_pk")
+      .whereBuilder((qb) => {
+        qb.whereBuilder((qb2) => {
+          qb2.whereIn("name", []);
+        });
+        qb.whereBuilder((qb3) => {
+          qb3.whereNotIn("name", []);
+          qb3.where("name", "Bob");
+        });
+      })
+      .many();
+    // The first nested whereBuilder returns no users, so the whole AND returns no users
+    expect(users.length).toBe(0);
+  });
+
+  test("orWhereBuilder with whereIn empty and whereNotIn empty returns all users", async () => {
+    const users = await SqlDataSource.query("users_without_pk")
+      .orWhereBuilder((qb) => {
+        qb.whereIn("name", []);
+      })
+      .orWhereBuilder((qb) => {
+        qb.whereNotIn("name", []);
+      })
+      .many();
+    // whereIn([]) returns no users, but orWhere with whereNotIn([]) returns all users
+    expect(users.length).toBe(4);
+  });
+
+  test("orWhereBuilder with whereIn empty and orWhere with valid value returns users matching orWhere", async () => {
+    const users = await SqlDataSource.query("users_without_pk")
+      .orWhereBuilder((qb) => {
+        qb.whereIn("name", []);
+      })
+      .orWhere("name", "Alice")
+      .many();
+    expect(users.length).toBe(1);
+    expect(users[0].name).toBe("Alice");
+  });
+
+  test("whereBuilder with whereIn non-empty and whereNotIn empty returns filtered users", async () => {
+    const users = await SqlDataSource.query("users_without_pk")
+      .whereBuilder((qb) => {
+        qb.whereIn("name", ["Alice", "Bob"]);
+        qb.whereNotIn("name", []);
+      })
+      .many();
+    expect(users.length).toBe(2);
+    expect(users.map((u) => u.name).sort()).toEqual(["Alice", "Bob"]);
+  });
+
+  test("whereBuilder with whereIn empty and whereNotIn non-empty returns no users", async () => {
+    const users = await SqlDataSource.query("users_without_pk")
+      .whereBuilder((qb) => {
+        qb.whereIn("name", []);
+        qb.whereNotIn("name", ["Alice"]);
+      })
+      .many();
+    expect(users.length).toBe(0);
   });
 });

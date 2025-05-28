@@ -31,4 +31,6 @@ export type RelationQueryBuilderType<T extends Model> = Omit<
   | "getMin"
   | "getMax"
   | "getCount"
+  | "annotate"
+  | "removeAnnotations"
 >;
