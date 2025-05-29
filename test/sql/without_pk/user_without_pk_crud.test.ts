@@ -64,7 +64,6 @@ describe(`[${env.DB_TYPE}] Select`, () => {
 
     expect(user).not.toBeUndefined();
     expect(user?.name).toBeDefined();
-    console.log("user", user);
     expect((user as any)?.$annotations.result).toBeDefined();
   });
 

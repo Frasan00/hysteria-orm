@@ -21,18 +21,28 @@ export default async function runMigrationsConnector(
   shouldExit: boolean = true,
   migrationPath?: string,
 ) {
-  logger.info("Running migrations for database type: " + env.DB_TYPE);
+  const dbType = sqlDataSourceInput?.type || env.DB_TYPE;
+  if (!dbType) {
+    logger.error("DB_TYPE is not set could not run migrations");
+    process.exit(1);
+  }
+
+  logger.info("Running migrations for database type: " + dbType);
 
   await SqlDataSource.connect({
-    type: env.DB_TYPE as SqlDataSourceType,
+    type: dbType as SqlDataSourceType,
     ...sqlDataSourceInput,
   } as SqlDataSourceInput);
   await SqlDataSource.rawQuery(BEGIN_TRANSACTION);
   try {
     const migrationTable: MigrationTableType[] = await getMigrationTable(
+      dbType as SqlDataSourceType,
       SqlDataSource.getInstance().getCurrentDriverConnection(),
     );
-    const migrations: Migration[] = await getMigrations(migrationPath);
+    const migrations: Migration[] = await getMigrations(
+      dbType as SqlDataSourceType,
+      migrationPath,
+    );
     const pendingMigrations = migrations.filter(
       (migration) =>
         !migrationTable

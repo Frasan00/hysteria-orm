@@ -17,57 +17,60 @@ export default async function dropAllTablesConnector(
   sqlDataSourceInput?: Partial<SqlDataSourceInput>,
   shouldExit: boolean = true,
 ) {
-  if (!env.DB_TYPE) {
+  const dbType = sqlDataSourceInput?.type || env.DB_TYPE;
+  const dbDatabase = sqlDataSourceInput?.database || env.DB_DATABASE;
+  if (!dbType) {
     logger.error("DB_TYPE is not set could not drop all tables");
     process.exit(1);
   }
 
-  if (!env.DB_DATABASE) {
+  if (!dbDatabase) {
     logger.error("DB_DATABASE is not set could not drop all tables");
     process.exit(1);
   }
 
-  logger.info("Dropping all tables for database type: " + env.DB_TYPE);
+  logger.info("Dropping all tables for database type: " + dbType);
   await SqlDataSource.connect({
-    type: env.DB_TYPE as SqlDataSourceType,
+    type: dbType as SqlDataSourceType,
+    database: dbDatabase,
     ...sqlDataSourceInput,
   } as SqlDataSourceInput);
 
-  if (env.DB_TYPE === "sqlite") {
-    await fs.rm(env.DB_DATABASE as string, { recursive: true, force: true });
+  if (dbType === "sqlite") {
+    await fs.rm(dbDatabase as string, { recursive: true, force: true });
     logger.info("Sqlite database dropped successfully");
-    await fs.writeFile(env.DB_DATABASE as string, "");
+    await fs.writeFile(dbDatabase as string, "");
     logger.info("Sqlite database recreated successfully");
     shouldExit && process.exit(0);
     return;
   }
 
   const templates = MigrationTemplates.getAllTablesTemplate(
-    env.DB_TYPE as SqlDataSourceType,
-    env.DB_DATABASE as string,
+    dbType as SqlDataSourceType,
+    dbDatabase as string,
   );
 
   const tables: string[] = await SqlDataSource.rawQuery(templates);
   const parsedTables = MigrationTemplates.parseGetAllTables(
-    env.DB_TYPE as SqlDataSourceType,
-    env.DB_DATABASE as string,
+    dbType as SqlDataSourceType,
+    dbDatabase as string,
     tables,
   );
 
   const dropAllTablesTemplate = MigrationTemplates.dropAllTablesTemplate(
-    env.DB_TYPE as SqlDataSourceType,
+    dbType as SqlDataSourceType,
     parsedTables,
   );
 
   await SqlDataSource.rawQuery(BEGIN_TRANSACTION);
   try {
-    if (env.DB_TYPE === "mysql" || env.DB_TYPE === "mariadb") {
+    if (dbType === "mysql" || dbType === "mariadb") {
       await SqlDataSource.rawQuery(`SET FOREIGN_KEY_CHECKS = 0;`);
     }
 
     await SqlDataSource.rawQuery(dropAllTablesTemplate);
 
-    if (env.DB_TYPE === "mysql" || env.DB_TYPE === "mariadb") {
+    if (dbType === "mysql" || dbType === "mariadb") {
       await SqlDataSource.rawQuery(`SET FOREIGN_KEY_CHECKS = 1;`);
     }
 

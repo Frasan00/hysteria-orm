@@ -27,5 +27,5 @@ migrations.forEach((migration) => {
 
   // SQLite
   const sqliteEnv = `MIGRATION_PATH=${migration.replace("migrations", "migrations_sqlite")} DB_TYPE=${sqliteConfig.type} DB_DATABASE=${sqliteConfig.database}`;
-  execSync(`${sqliteEnv} yarn test:fresh --verbose`, { stdio: "inherit" });
+  execSync(`${sqliteEnv} yarn test:fresh --verbose --force`, { stdio: "inherit" });
 });

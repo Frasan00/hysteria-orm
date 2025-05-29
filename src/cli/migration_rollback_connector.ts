@@ -21,18 +21,28 @@ export default async function rollbackMigrationsConnector(
   shouldExit: boolean = true,
   migrationPath?: string,
 ) {
-  logger.info("Rolling back migrations for database type: " + env.DB_TYPE);
+  const dbType = sqlDataSourceInput?.type || env.DB_TYPE;
+  if (!dbType) {
+    logger.error("DB_TYPE is not set could not rollback migrations");
+    process.exit(1);
+  }
+
+  logger.info("Rolling back migrations for database type: " + dbType);
 
   await SqlDataSource.connect({
-    type: env.DB_TYPE as SqlDataSourceType,
+    type: dbType as SqlDataSourceType,
     ...sqlDataSourceInput,
   } as SqlDataSourceInput);
   await SqlDataSource.rawQuery(BEGIN_TRANSACTION);
   try {
     const migrationTable: MigrationTableType[] = await getMigrationTable(
+      dbType as SqlDataSourceType,
       SqlDataSource.getInstance().getCurrentDriverConnection(),
     );
-    const migrations: Migration[] = await getMigrations(migrationPath);
+    const migrations: Migration[] = await getMigrations(
+      dbType as SqlDataSourceType,
+      migrationPath,
+    );
     const tableMigrations = migrationTable.map((migration) => migration.name);
     const pendingMigrations = migrations.filter((migration) =>
       tableMigrations.includes(migration.migrationName),

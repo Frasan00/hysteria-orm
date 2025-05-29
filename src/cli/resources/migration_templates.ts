@@ -39,6 +39,10 @@ WHERE table_catalog = '${database}'
   }
 
   dropAllTablesTemplate(dbType: SqlDataSourceType, tables: string[]): string {
+    if (!tables.length) {
+      return "SELECT 1;";
+    }
+
     switch (dbType) {
       case "mysql":
       case "mariadb":

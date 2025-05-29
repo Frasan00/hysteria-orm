@@ -7,15 +7,17 @@ import type {
   MysqlConnectionInstance,
   PgPoolClientInstance,
   SqlConnectionType,
+  SqlDataSourceType,
   SqliteConnectionInstance,
 } from "../sql/sql_data_source_types";
 import { MigrationTableType } from "./resources/migration_table_type";
 import MigrationTemplates from "./resources/migration_templates";
 
 export async function getMigrationTable(
+  dbType: SqlDataSourceType,
   sqlConnection: SqlConnectionType,
 ): Promise<MigrationTableType[]> {
-  switch (env.DB_TYPE) {
+  switch (dbType) {
     case "mariadb":
     case "mysql":
       const mysqlConnection = sqlConnection as MysqlConnectionInstance;
@@ -60,6 +62,7 @@ export async function getMigrationTable(
 }
 
 export async function getMigrations(
+  dbType: SqlDataSourceType,
   migrationPath?: string,
 ): Promise<Migration[]> {
   const migrationNames = findMigrationNames(migrationPath);
@@ -70,7 +73,7 @@ export async function getMigrations(
       migrationName,
       migrationPath,
     );
-    const migration: Migration = new migrationModule();
+    const migration: Migration = new migrationModule(dbType || env.DB_TYPE);
     migration.migrationName = migrationName;
     migrations.push(migration);
   }
@@ -94,7 +97,7 @@ export function getPendingMigrations(
 
 async function loadMigrationModule(
   pathToFile: string,
-): Promise<new () => Migration> {
+): Promise<new (dbType: SqlDataSourceType) => Migration> {
   try {
     const migrationModule = await import(pathToFile);
     if (!migrationModule.default) {
@@ -127,7 +130,7 @@ async function loadMigrationModule(
 async function findMigrationModule(
   migrationName: string,
   migrationModulePath: string = env.MIGRATION_PATH || "migrations",
-): Promise<new () => Migration> {
+): Promise<new (dbType: SqlDataSourceType) => Migration> {
   migrationModulePath = join(migrationModulePath, migrationName);
   const migrationPath = path.resolve(process.cwd(), migrationModulePath);
   const migrationModule = await loadMigrationModule(migrationPath);

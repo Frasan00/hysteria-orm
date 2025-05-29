@@ -367,6 +367,16 @@ export class ModelQueryBuilder<
     S extends SqlMethod,
     V = CommonSqlMethodReturnType<S>,
   >(
+    sqlMethod: string,
+    column: string,
+    alias: K,
+  ): ModelQueryBuilder<T, A & { [P in K]: V }>;
+  // @ts-expect-error
+  override annotate<
+    K extends string,
+    S extends SqlMethod,
+    V = CommonSqlMethodReturnType<S>,
+  >(
     sqlMethod: S,
     column: string,
     alias: K,
