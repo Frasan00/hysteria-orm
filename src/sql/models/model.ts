@@ -323,7 +323,7 @@ export abstract class Model extends Entity {
    * @description Finds the first record or creates a new one if it doesn't exist
    * @returns {Promise<T | { isNew: boolean; model: T }>}
    */
-  static async firstOrCreate<T extends Model, O extends boolean = false>(
+  static async firstOrInsert<T extends Model, O extends boolean = false>(
     this: new () => T | typeof Model,
     searchCriteria: ModelWithoutExtraColumns<T>,
     createData: ModelWithoutExtraColumns<T>,

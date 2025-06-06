@@ -1,6 +1,6 @@
 import { env } from "../../../src/env/env";
-import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { HysteriaError } from "../../../src/errors/hysteria_error";
+import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { UserFactory } from "../test_models/factory/user_factory";
 import {
   UserStatus,
@@ -371,9 +371,9 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
     ).rejects.toThrow();
   });
 
-  test("should handle firstOrCreate operation", async () => {
+  test("should handle firstOrInsert operation", async () => {
     const existingUser = await UserFactory.userWithoutPk(1);
-    const foundUser = await UserWithoutPk.firstOrCreate(
+    const foundUser = await UserWithoutPk.firstOrInsert(
       { email: existingUser.email },
       { name: "Different Name", email: existingUser.email },
     );
@@ -381,7 +381,7 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
     expect(foundUser.name).toBe(existingUser.name);
     expect(foundUser.email).toBe(existingUser.email);
 
-    const newUser = await UserWithoutPk.firstOrCreate(
+    const newUser = await UserWithoutPk.firstOrInsert(
       { email: "new@example.com" },
       {
         ...UserFactory.getCommonUserData(),
@@ -415,10 +415,10 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
     expect(inactiveUsers).toHaveLength(1);
   });
 
-  test("should firstOrCreate (read) an user", async () => {
+  test("should firstOrInsert (read) an user", async () => {
     const existingUser = await UserFactory.userWithoutPk(1);
 
-    const foundUser = await UserWithoutPk.firstOrCreate(
+    const foundUser = await UserWithoutPk.firstOrInsert(
       { email: existingUser.email },
       { name: "Different Name", email: existingUser.email },
     );
@@ -434,8 +434,8 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
     expect(allUsers).toHaveLength(1);
   });
 
-  test("should firstOrCreate (create) an user", async () => {
-    const foundUser = await UserWithoutPk.firstOrCreate(
+  test("should firstOrInsert (create) an user", async () => {
+    const foundUser = await UserWithoutPk.firstOrInsert(
       { email: "" },
       { ...UserFactory.getCommonUserData() },
     );

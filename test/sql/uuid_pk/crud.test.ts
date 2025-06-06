@@ -271,10 +271,10 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
     ).rejects.toThrow();
   });
 
-  test("should handle firstOrCreate operation", async () => {
+  test("should handle firstOrInsert operation", async () => {
     const existingUser = await UserFactory.userWithUuid(1);
 
-    const foundUser = await UserWithUuid.firstOrCreate(
+    const foundUser = await UserWithUuid.firstOrInsert(
       { email: existingUser.email },
       { name: "Different Name", email: existingUser.email },
     );
@@ -282,7 +282,7 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
     expect(foundUser.name).toBe(existingUser.name);
     expect(foundUser.email).toBe(existingUser.email);
 
-    const newUser = await UserWithUuid.firstOrCreate(
+    const newUser = await UserWithUuid.firstOrInsert(
       { email: "new@example.com" },
       { name: "New User", email: "new@example.com", status: UserStatus.active },
     );
@@ -309,10 +309,10 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
     expect(inactiveUsers).toHaveLength(1);
   });
 
-  test("should firstOrCreate (read) an user", async () => {
+  test("should firstOrInsert (read) an user", async () => {
     const existingUser = await UserFactory.userWithUuid(1);
 
-    const foundUser = await UserWithUuid.firstOrCreate(
+    const foundUser = await UserWithUuid.firstOrInsert(
       { email: existingUser.email },
       { name: "Different Name", email: existingUser.email },
     );
@@ -328,8 +328,8 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
     expect(allUsers).toHaveLength(1);
   });
 
-  test("should firstOrCreate (create) an user", async () => {
-    const foundUser = await UserWithUuid.firstOrCreate(
+  test("should firstOrInsert (create) an user", async () => {
+    const foundUser = await UserWithUuid.firstOrInsert(
       { email: "" },
       { ...UserFactory.getCommonUserData() },
     );
