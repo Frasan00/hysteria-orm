@@ -21,4 +21,7 @@ export default defineConfig({
     "pg",
     "sqlite3",
   ],
+  banner: {
+    js: "#!/usr/bin/env node",
+  },
 });
