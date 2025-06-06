@@ -101,4 +101,14 @@ export class UserWithUuid extends Model {
   static beforeFetch(queryBuilder: ModelQueryBuilder<UserWithUuid>): void {
     queryBuilder.whereNull("users_with_uuid.deleted_at");
   }
+
+  static afterFetch(data: UserWithUuid): UserWithUuid {
+    return data;
+  }
+
+  static beforeInsert(data: UserWithUuid): void {
+    const originalName = data.name;
+    data.name = originalName.toUpperCase();
+    data.name = originalName;
+  }
 }

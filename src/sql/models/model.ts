@@ -560,37 +560,41 @@ export abstract class Model extends Entity {
   /**
    * @description Adds a beforeFetch clause to the model, adding the ability to modify the query before fetching the data
    */
-  static beforeFetch(queryBuilder: ModelQueryBuilder<any>): void {
-    queryBuilder;
-  }
+  static beforeFetch?(queryBuilder: ModelQueryBuilder<any>): void;
 
   /**
-   * @description Adds a beforeInsert clause to the model, adding the ability to modify the data after fetching the data
+   * @description Adds a beforeInsert clause to the model, adding the ability to modify the data before inserting the data
+   * @param {Model} data The single model to be inserted, in insertMany the hook will be called for each model
+   * @example
+   * ```typescript
+   * static async beforeInsert?(data: User): Promise<void> {
+   *   data.name = data.name.toUpperCase();
+   * }
+   * ```
    */
-  static async beforeInsert(data: any): Promise<void> {
-    return data;
-  }
+  static beforeInsert?(data: any): Promise<void> | void;
 
   /**
    * @description Adds a beforeUpdate clause to the model, adding the ability to modify the query before updating the data
    */
-  static beforeUpdate(queryBuilder: ModelQueryBuilder<any>): void {
-    queryBuilder;
-  }
+  static beforeUpdate?(queryBuilder: ModelQueryBuilder<any>): void;
 
   /**
    * @description Adds a beforeDelete clause to the model, adding the ability to modify the query before deleting the data
    */
-  static beforeDelete(queryBuilder: ModelQueryBuilder<any>): void {
-    queryBuilder;
-  }
+  static beforeDelete?(queryBuilder: ModelQueryBuilder<any>): void;
 
   /**
    * @description Adds a afterFetch clause to the model, adding the ability to modify the data after fetching the data
+   * @param {Model} data The single model to be fetched, in queries that return multiple models the hook will be called for each model
+   * @example
+   * ```typescript
+   * static async afterFetch?(data: User): Promise<User> {
+   *   return data;
+   * }
+   * ```
    */
-  static async afterFetch(data: Model[]): Promise<Model[]> {
-    return data;
-  }
+  static afterFetch?(data: any): Promise<any> | any;
 
   // JS Static methods
 

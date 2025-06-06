@@ -184,7 +184,7 @@ export class ModelManager<T extends Model> {
    * @description Creates a new record in the database
    */
   async insert(model: Partial<T>, options: InsertOptions<T> = {}): Promise<T> {
-    !options.ignoreHooks && (await this.model.beforeInsert(model as T));
+    !options.ignoreHooks && (await this.model.beforeInsert?.(model as T));
     await this.sqlModelManagerUtils.handlePrepare(this.model, model as T);
 
     const { query, params } = this.sqlModelManagerUtils.parseInsert(
@@ -216,7 +216,7 @@ export class ModelManager<T extends Model> {
       return model as T;
     }
 
-    this.model.afterFetch([insertedModel]);
+    this.model.afterFetch?.([insertedModel]);
     const result = (await serializeModel([insertedModel], this.model)) as T;
 
     return result;
@@ -231,7 +231,7 @@ export class ModelManager<T extends Model> {
   ): Promise<T[]> {
     await Promise.all(
       models.map((model) => {
-        !options.ignoreHooks && this.model.beforeInsert(model as T);
+        !options.ignoreHooks && this.model.beforeInsert?.(model as T);
         this.sqlModelManagerUtils.handlePrepare(this.model, model as T);
       }),
     );
@@ -267,7 +267,7 @@ export class ModelManager<T extends Model> {
       return [];
     }
 
-    this.model.afterFetch(insertedModels);
+    this.model.afterFetch?.(insertedModels);
 
     const results = await serializeModel(insertedModels, this.model);
     return (results || []) as T[];
@@ -283,7 +283,7 @@ export class ModelManager<T extends Model> {
   ): Promise<T[]> {
     await Promise.all(
       data.map((model) => {
-        !options.ignoreHooks && this.model.beforeInsert(model as T);
+        !options.ignoreHooks && this.model.beforeInsert?.(model as T);
         this.sqlModelManagerUtils.handlePrepare(this.model, model as T);
       }),
     );

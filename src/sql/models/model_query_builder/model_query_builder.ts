@@ -138,7 +138,7 @@ export class ModelQueryBuilder<
     options: ManyOptions = {},
   ): Promise<AnnotatedModel<T, A>[]> {
     !options.ignoreHooks?.includes("beforeFetch") &&
-      this.model.beforeFetch(this);
+      this.model.beforeFetch?.(this);
     const rows = await super.many();
     const models = rows.map((row) => {
       return this.addAdditionalColumnsToModel(row, this.model);
@@ -163,7 +163,7 @@ export class ModelQueryBuilder<
       ? serializedModels
       : [serializedModels];
     if (!options.ignoreHooks?.includes("afterFetch")) {
-      await this.model.afterFetch(serializedModelsArray);
+      await this.model.afterFetch?.(serializedModelsArray);
     }
 
     if (this.relationQueryBuilders.length) {
@@ -180,7 +180,7 @@ export class ModelQueryBuilder<
     data: Partial<T>,
     options: UpdateOptions = {},
   ): Promise<number> {
-    options.ignoreBeforeUpdateHook && this.model.beforeUpdate(this);
+    options.ignoreBeforeUpdateHook && this.model.beforeUpdate?.(this);
     return super.update(data);
   }
 
@@ -195,7 +195,7 @@ export class ModelQueryBuilder<
     options: SoftDeleteOptions<T> = {},
   ): Promise<number> {
     const { ignoreBeforeDeleteHook = false } = options || {};
-    !ignoreBeforeDeleteHook && this.model.beforeDelete(this);
+    !ignoreBeforeDeleteHook && this.model.beforeDelete?.(this);
     return super.softDelete(options);
   }
 
@@ -203,7 +203,7 @@ export class ModelQueryBuilder<
    * @description Deletes Records from the database for the current query.
    */
   async delete(options: DeleteOptions = {}): Promise<number> {
-    options.ignoreBeforeDeleteHook && this.model.beforeDelete(this);
+    options.ignoreBeforeDeleteHook && this.model.beforeDelete?.(this);
     return super.delete();
   }
 

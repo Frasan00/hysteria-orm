@@ -91,14 +91,14 @@ export class SqlDataSource extends DataSource {
   /**
    * @description Get's another database connection and return it, this won't be marked as the default connection used by the Models, for that use the static method `connect`
    */
-  static async connectToAnotherSource(
+  static async connectToSecondarySource(
     input: SqlDataSourceInput,
     cb?: (sqlDataSource: SqlDataSource) => Promise<void> | void,
   ): Promise<SqlDataSource>;
-  static async connectToAnotherSource(
+  static async connectToSecondarySource(
     cb?: (sqlDataSource: SqlDataSource) => Promise<void> | void,
   ): Promise<SqlDataSource>;
-  static async connectToAnotherSource(
+  static async connectToSecondarySource(
     inputOrCb?:
       | SqlDataSourceInput
       | ((sqlDataSource: SqlDataSource) => Promise<void> | void),
