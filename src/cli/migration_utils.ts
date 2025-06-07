@@ -12,6 +12,17 @@ import type {
 } from "../sql/sql_data_source_types";
 import { MigrationTableType } from "./resources/migration_table_type";
 import MigrationTemplates from "./resources/migration_templates";
+import { pathToFileURL } from "url";
+
+const tryImportFile = async (filePath: string) => {
+  const filePathUrl = pathToFileURL(filePath);
+  const fileUrl = filePathUrl.href;
+  try {
+    return await import(fileUrl);
+  } catch (error) {
+    return require(filePath);
+  }
+};
 
 export async function getMigrationTable(
   dbType: SqlDataSourceType,
@@ -98,36 +109,15 @@ export function getPendingMigrations(
 async function loadMigrationModule(
   pathToFile: string,
 ): Promise<new (dbType: SqlDataSourceType) => Migration> {
-  try {
-    const migrationModule = await import(pathToFile).catch(() => {
-      return require(pathToFile);
-    });
-
-    if (!migrationModule.default) {
-      throw new HysteriaError(
-        "MigrationUtils::loadMigrationModule Migration module does not have a default export",
-        "MIGRATION_MODULE_NOT_FOUND",
-      );
-    }
-
-    return migrationModule.default;
-  } catch (error: any) {
-    if (
-      error &&
-      typeof error === "object" &&
-      Object.values(error).length &&
-      error instanceof TypeError &&
-      Object.prototype.hasOwnProperty.call(error, "message") &&
-      error.message.includes(`Unknown file extension ".ts"`)
-    ) {
-      throw new HysteriaError(
-        "MigrationUtils::loadMigrationModule\nMust have `ts-node` installed to run typescript migrations\nTypescript Migrations are meant to be used only in development environment that has `ts-node` installed\n It's advised to build typescript migrations into javascript if in production",
-        "MIGRATION_MODULE_REQUIRES_TS_NODE",
-      );
-    }
-
-    throw error;
+  const migrationModule = await tryImportFile(pathToFile);
+  if (!migrationModule.default) {
+    throw new HysteriaError(
+      "MigrationUtils::loadMigrationModule Migration module does not have a default export",
+      "MIGRATION_MODULE_NOT_FOUND",
+    );
   }
+
+  return migrationModule.default;
 }
 
 async function findMigrationModule(
