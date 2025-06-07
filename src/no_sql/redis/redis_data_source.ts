@@ -1,7 +1,8 @@
-import Redis, { RedisOptions } from "ioredis";
+import type { RedisOptions, Redis } from "ioredis";
 import { HysteriaError } from "../../errors/hysteria_error";
 import logger from "../../utils/logger";
 import { env } from "../../env/env";
+import { DriverNotFoundError } from "../../drivers/driver_constants";
 
 /**
  * @description The RedisStorable type is a type that can be stored in redis
@@ -30,22 +31,13 @@ export type RedisFetchable =
  */
 export class RedisDataSource {
   static isConnected: boolean;
-  protected static redisConnection: Redis;
+  protected static redisDataSourceInstance: RedisDataSource;
   isConnected: boolean;
-  protected redisConnection: Redis;
+  protected ioRedisConnection: Redis;
 
-  constructor(input?: RedisOptions) {
+  constructor(ioRedisConnection: Redis) {
     this.isConnected = false;
-    const port = input?.port || +(env.REDIS_PORT as string) || 6379;
-
-    this.redisConnection = new Redis({
-      host: input?.host || env.REDIS_HOST,
-      username: input?.username || env.REDIS_USERNAME,
-      port: port,
-      db: input?.db || +(env.REDIS_DATABASE as string) || 0,
-      password: input?.password || env.REDIS_PASSWORD,
-      ...input,
-    });
+    this.ioRedisConnection = ioRedisConnection;
   }
 
   /**
@@ -53,7 +45,7 @@ export class RedisDataSource {
    * @returns {Redis}
    */
   static get ioredis() {
-    return this.redisConnection;
+    return this.redisDataSourceInstance.ioRedisConnection;
   }
 
   /**
@@ -61,7 +53,7 @@ export class RedisDataSource {
    * @returns {Redis}
    */
   get ioredis() {
-    return this.redisConnection;
+    return this.ioRedisConnection;
   }
 
   /**
@@ -70,22 +62,29 @@ export class RedisDataSource {
    * @description This is intended as a singleton connection to the redis database, if you need multiple connections, use the getConnection method
    */
   static async connect(input?: RedisOptions): Promise<void> {
-    if (RedisDataSource.isConnected) {
+    if (this.isConnected) {
       return;
     }
 
     const port = input?.port || +(env.REDIS_PORT as string) || 6379;
-    RedisDataSource.redisConnection = new Redis({
-      host: input?.host || env.REDIS_HOST,
-      username: input?.username || env.REDIS_USERNAME,
-      port: port,
-      password: input?.password || env.REDIS_PASSWORD,
-      ...input,
+    const redisImport = await import("ioredis").catch(() => {
+      throw new DriverNotFoundError("ioredis");
     });
 
+    this.redisDataSourceInstance = new RedisDataSource(
+      new redisImport.default({
+        host: input?.host || env.REDIS_HOST,
+        username: input?.username || env.REDIS_USERNAME,
+        port: port,
+        password: input?.password || env.REDIS_PASSWORD,
+        ...input,
+      }),
+    );
+
     try {
-      await RedisDataSource.redisConnection.ping();
-      RedisDataSource.isConnected = true;
+      await this.redisDataSourceInstance.ioRedisConnection.ping();
+      this.redisDataSourceInstance.isConnected = true;
+      this.isConnected = true;
     } catch (error) {
       throw new HysteriaError(
         "RedisDataSource::connect",
@@ -100,8 +99,20 @@ export class RedisDataSource {
    * @returns
    */
   static async getConnection(input?: RedisOptions): Promise<RedisDataSource> {
-    const connection = new RedisDataSource(input);
-    await connection.redisConnection.ping();
+    const ioRedis = await import("ioredis").catch(() => {
+      throw new DriverNotFoundError("ioredis");
+    });
+
+    const ioRedisConnection = new ioRedis.default({
+      host: input?.host || env.REDIS_HOST,
+      username: input?.username || env.REDIS_USERNAME,
+      port: input?.port || +(env.REDIS_PORT as string) || 6379,
+      password: input?.password || env.REDIS_PASSWORD,
+      ...input,
+    });
+
+    const connection = new RedisDataSource(ioRedisConnection);
+    await connection.ioRedisConnection.ping();
     connection.isConnected = true;
     return connection;
   }
@@ -129,11 +140,15 @@ export class RedisDataSource {
 
     try {
       if (expirationTime) {
-        await RedisDataSource.redisConnection.setex(key, expirationTime, value);
+        await this.redisDataSourceInstance.ioRedisConnection.setex(
+          key,
+          expirationTime,
+          value,
+        );
         return;
       }
 
-      await RedisDataSource.redisConnection.set(key, value);
+      await this.redisDataSourceInstance.ioRedisConnection.set(key, value);
     } catch (error) {
       throw new HysteriaError("RedisDataSource::set", "SET_FAILED");
     }
@@ -146,8 +161,9 @@ export class RedisDataSource {
    */
   static async get<T = RedisFetchable>(key: string): Promise<T | null> {
     try {
-      const value = await RedisDataSource.redisConnection.get(key);
-      return RedisDataSource.getValue<T>(value);
+      const value =
+        await this.redisDataSourceInstance.ioRedisConnection.get(key);
+      return this.getValue<T>(value);
     } catch (error) {
       throw new HysteriaError("RedisDataSource::get", "SET_FAILED");
     }
@@ -158,7 +174,9 @@ export class RedisDataSource {
    */
   static async getBuffer(key: string): Promise<Buffer | null> {
     try {
-      return await RedisDataSource.redisConnection.getBuffer(key);
+      return await this.redisDataSourceInstance.ioRedisConnection.getBuffer(
+        key,
+      );
     } catch (error) {
       throw new HysteriaError("RedisDataSource::getBuffer", "GET_FAILED");
     }
@@ -172,9 +190,10 @@ export class RedisDataSource {
    */
   static async consume<T = RedisFetchable>(key: string): Promise<T | null> {
     try {
-      const value = await RedisDataSource.redisConnection.get(key);
-      await RedisDataSource.redisConnection.del(key);
-      return RedisDataSource.getValue<T>(value);
+      const value =
+        await this.redisDataSourceInstance.ioRedisConnection.get(key);
+      await this.redisDataSourceInstance.ioRedisConnection.del(key);
+      return this.getValue<T>(value);
     } catch (error) {
       throw new HysteriaError("RedisDataSource::consume", "GET_FAILED");
     }
@@ -187,7 +206,7 @@ export class RedisDataSource {
    */
   static async delete(key: string): Promise<void> {
     try {
-      await RedisDataSource.redisConnection.del(key);
+      await this.redisDataSourceInstance.ioRedisConnection.del(key);
     } catch (error) {
       throw new HysteriaError("RedisDataSource::delete", "DELETE_FAILED");
     }
@@ -199,7 +218,7 @@ export class RedisDataSource {
    */
   static async flushAll(): Promise<void> {
     try {
-      await RedisDataSource.redisConnection.flushall();
+      await this.redisDataSourceInstance.ioRedisConnection.flushall();
     } catch (error) {
       throw new HysteriaError("RedisDataSource::flushAll", "FLUSH_FAILED");
     }
@@ -211,8 +230,8 @@ export class RedisDataSource {
    */
   static async disconnect(): Promise<void> {
     try {
-      await RedisDataSource.redisConnection.quit();
-      RedisDataSource.isConnected = false;
+      await this.redisDataSourceInstance.ioRedisConnection.quit();
+      this.redisDataSourceInstance.isConnected = false;
     } catch (error) {
       throw new HysteriaError(
         "RedisDataSource::disconnect",
@@ -245,11 +264,11 @@ export class RedisDataSource {
 
     try {
       if (expirationTime) {
-        await this.redisConnection.setex(key, expirationTime, value);
+        await this.ioRedisConnection.setex(key, expirationTime, value);
         return;
       }
 
-      await this.redisConnection.set(key, value);
+      await this.ioRedisConnection.set(key, value);
     } catch (error) {
       throw new HysteriaError("RedisDataSource::set", "SET_FAILED");
     }
@@ -262,7 +281,7 @@ export class RedisDataSource {
    */
   async get<T = RedisFetchable>(key: string): Promise<T | null> {
     try {
-      const value = await this.redisConnection.get(key);
+      const value = await this.ioRedisConnection.get(key);
       return RedisDataSource.getValue<T>(value);
     } catch (error) {
       throw new HysteriaError("RedisDataSource::get", "GET_FAILED");
@@ -274,7 +293,7 @@ export class RedisDataSource {
    */
   async getBuffer(key: string): Promise<Buffer | null> {
     try {
-      return await this.redisConnection.getBuffer(key);
+      return await this.ioRedisConnection.getBuffer(key);
     } catch (error) {
       throw new HysteriaError("RedisDataSource::getBuffer", "GET_FAILED");
     }
@@ -288,8 +307,8 @@ export class RedisDataSource {
    */
   async consume<T = RedisFetchable>(key: string): Promise<T | null> {
     try {
-      const value = await this.redisConnection.get(key);
-      await this.redisConnection.del(key);
+      const value = await this.ioRedisConnection.get(key);
+      await this.ioRedisConnection.del(key);
       return RedisDataSource.getValue<T>(value);
     } catch (error) {
       throw new HysteriaError("RedisDataSource::consume", "GET_FAILED");
@@ -303,7 +322,7 @@ export class RedisDataSource {
    */
   async delete(key: string): Promise<void> {
     try {
-      await this.redisConnection.del(key);
+      await this.ioRedisConnection.del(key);
     } catch (error) {
       throw new HysteriaError("RedisDataSource::delete", "DELETE_FAILED");
     }
@@ -315,7 +334,7 @@ export class RedisDataSource {
    */
   async flushAll(): Promise<void> {
     try {
-      await this.redisConnection.flushall();
+      await this.ioRedisConnection.flushall();
     } catch (error) {
       throw new HysteriaError("RedisDataSource::flushAll", "FLUSH_FAILED");
     }
@@ -327,7 +346,7 @@ export class RedisDataSource {
    */
   async disconnect(forceError?: boolean): Promise<void> {
     try {
-      await this.redisConnection.quit();
+      await this.ioRedisConnection.quit();
       this.isConnected = false;
     } catch (error) {
       if (forceError) {
