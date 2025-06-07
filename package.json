@@ -1,10 +1,9 @@
 {
   "name": "hysteria-orm",
-  "version": "0.5.6",
+  "version": "0.6.0",
   "license": "MIT",
   "description": "Yet another orm for Javascript and Typescript no one asked for",
   "type": "module",
-  "sideEffects": false,
   "repository": "https://github.com/Frasan00/hysteria-orm.git",
   "author": "Frasan00 <francesco.sangiovanni.7@gmail.com>",
   "scripts": {
@@ -73,7 +72,6 @@
     "mysql2": "^3.14.1",
     "pg": "^8.16.0",
     "sqlite3": "^5.1.7",
-    "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
   },
   "peerDependenciesMeta": {
@@ -90,9 +88,6 @@
       "optional": true
     },
     "sqlite3": {
-      "optional": true
-    },
-    "ts-node": {
       "optional": true
     },
     "typescript": {

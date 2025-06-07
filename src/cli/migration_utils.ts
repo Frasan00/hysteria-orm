@@ -1,5 +1,7 @@
 import fs from "node:fs";
 import path, { join } from "node:path";
+import ts from "typescript";
+import { pathToFileURL } from "url";
 import { env } from "../env/env";
 import { HysteriaError } from "../errors/hysteria_error";
 import { Migration } from "../sql/migrations/migration";
@@ -12,16 +14,42 @@ import type {
 } from "../sql/sql_data_source_types";
 import { MigrationTableType } from "./resources/migration_table_type";
 import MigrationTemplates from "./resources/migration_templates";
-import { pathToFileURL } from "url";
 
-const tryImportFile = async (filePath: string) => {
-  const filePathUrl = pathToFileURL(filePath);
-  const fileUrl = filePathUrl.href;
-  try {
-    return await import(fileUrl);
-  } catch (error) {
-    return require(filePath);
+const importMigrationFile = async (
+  filePath: string,
+  transpiledMigrationFolder: string,
+) => {
+  const isTs = filePath.endsWith(".ts");
+  if (isTs) {
+    // If ts file, transpile to js and write to tmp transpiled folder
+    const transpiled = ts.transpileModule(fs.readFileSync(filePath, "utf8"), {
+      compilerOptions: {
+        module: ts.ModuleKind.ESNext,
+        target: ts.ScriptTarget.ES2020,
+        moduleResolution: ts.ModuleResolutionKind.NodeNext,
+        noEmitOnError: true,
+        noEmit: true,
+        strict: true,
+        skipLibCheck: true,
+      },
+    });
+
+    if (!fs.existsSync(transpiledMigrationFolder)) {
+      fs.mkdirSync(transpiledMigrationFolder, { recursive: true });
+    }
+
+    const transpiledFilePath = path.resolve(
+      transpiledMigrationFolder,
+      path.basename(filePath),
+    );
+
+    const jsFilePath = transpiledFilePath.replace(".ts", ".js");
+    fs.writeFileSync(jsFilePath, transpiled.outputText);
+    filePath = jsFilePath;
   }
+
+  const fileUrl = pathToFileURL(filePath).href;
+  return import(fileUrl);
 };
 
 export async function getMigrationTable(
@@ -109,15 +137,38 @@ export function getPendingMigrations(
 async function loadMigrationModule(
   pathToFile: string,
 ): Promise<new (dbType: SqlDataSourceType) => Migration> {
-  const migrationModule = await tryImportFile(pathToFile);
-  if (!migrationModule.default) {
-    throw new HysteriaError(
-      "MigrationUtils::loadMigrationModule Migration module does not have a default export",
-      "MIGRATION_MODULE_NOT_FOUND",
-    );
-  }
+  const transpiledMigrationFolder = path.resolve(
+    path.dirname(pathToFile),
+    "transpiled",
+  );
 
-  return migrationModule.default;
+  try {
+    const migrationModule = await importMigrationFile(
+      pathToFile,
+      transpiledMigrationFolder,
+    );
+
+    // Cleanup
+    if (fs.existsSync(transpiledMigrationFolder)) {
+      fs.rmSync(transpiledMigrationFolder, { recursive: true });
+    }
+
+    if (!migrationModule.default) {
+      throw new HysteriaError(
+        "MigrationUtils::loadMigrationModule Migration module does not have a default export",
+        "MIGRATION_MODULE_NOT_FOUND",
+      );
+    }
+
+    return migrationModule.default;
+  } catch (error) {
+    // Cleanup
+    if (fs.existsSync(transpiledMigrationFolder)) {
+      fs.rmSync(transpiledMigrationFolder, { recursive: true });
+    }
+
+    throw error;
+  }
 }
 
 async function findMigrationModule(
@@ -151,8 +202,16 @@ function findMigrationNames(inputMigrationPath?: string): string[] {
   );
 
   try {
-    const migrationFiles = fs.readdirSync(fullPathToMigrationPath);
-    if (migrationFiles.length > 0) {
+    const migrationFiles = fs
+      .readdirSync(fullPathToMigrationPath)
+      .filter((file) => {
+        const ext = path.extname(file);
+        const fullFilePath = path.join(fullPathToMigrationPath, file);
+        const isFile = fs.statSync(fullFilePath).isFile();
+        return isFile && (ext === ".ts" || ext === ".js");
+      });
+
+    if (migrationFiles.length) {
       return migrationFiles;
     }
 

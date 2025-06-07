@@ -1,4 +1,4 @@
-import { Migration } from "../../../src/sql/migrations/migration";
+import { Migration } from "../../../lib/index.js";
 
 export default class extends Migration {
   async up() {

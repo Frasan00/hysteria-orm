@@ -7,21 +7,6 @@ import runMigrationsConnector from "./cli/migration_run_connector";
 import runSqlConnector from "./cli/run_sql_connector";
 import dropAllTablesConnector from "./cli/drop_all_tables_connector";
 import { SqlDataSourceType } from "./sql/sql_data_source_types";
-import { register } from "node:module";
-
-const registerModule = (commonjs: boolean) => {
-  if (commonjs) {
-    try {
-      register("ts-node/register", import.meta.url);
-    } catch (error) {}
-
-    return;
-  }
-
-  try {
-    register("ts-node/esm", import.meta.url);
-  } catch (error) {}
-};
 
 type BaseSqlDataSourceCommandOptions = {
   type?: SqlDataSourceType;
@@ -184,17 +169,12 @@ program
   .option("-u, --username [username]", "Username to connect to", undefined)
   .option("-p, --password [password]", "Password to connect to", undefined)
   .option(
-    "-c, --commonjs",
-    "Use commonjs for the migrations instead of esm",
-    false,
-  )
-  .option(
     "-m, --migration-path [migrationPath]",
     "Path to the migrations",
     undefined,
   )
   .description(
-    "Run pending migrations, if runUntil is provided, it will run all migrations until the provided migration name, use --commonjs to use commonjs for the migrations instead of esm",
+    "Run pending migrations, if runUntil is provided, it will run all migrations until the provided migration name",
   )
   .action(
     async (
@@ -202,10 +182,8 @@ program
       option?: {
         verbose: boolean;
         migrationPath: string;
-        commonjs: boolean;
       } & BaseSqlDataSourceCommandOptions,
     ) => {
-      registerModule(option?.commonjs || false);
       const sqlDataSourceInput = {
         type: option?.type,
         host: option?.host,
@@ -239,17 +217,12 @@ program
   .option("-u, --username [username]", "Username to connect to", undefined)
   .option("-p, --password [password]", "Password to connect to", undefined)
   .option(
-    "-c, --commonjs",
-    "Use commonjs for the migrations instead of esm",
-    false,
-  )
-  .option(
     "-m, --migration-path [migrationPath]",
     "Path to the migrations",
     undefined,
   )
   .description(
-    "Rollbacks every migration that has been run, if rollbackUntil is provided, it will rollback all migrations until the provided migration name, use --commonjs to use commonjs for the migrations instead of esm",
+    "Rollbacks every migration that has been run, if rollbackUntil is provided, it will rollback all migrations until the provided migration name",
   )
   .action(
     async (
@@ -257,10 +230,8 @@ program
       option?: {
         verbose: boolean;
         migrationPath: string;
-        commonjs: boolean;
       } & BaseSqlDataSourceCommandOptions,
     ) => {
-      registerModule(option?.commonjs || false);
       const sqlDataSourceInput = {
         type: option?.type,
         host: option?.host,
@@ -298,13 +269,8 @@ program
   .option("-u, --username [username]", "Username to connect to", undefined)
   .option("-p, --password [password]", "Password to connect to", undefined)
   .option("-m, --migration-path [path]", "Path to the migrations", undefined)
-  .option(
-    "-c, --commonjs",
-    "Use commonjs for the migrations instead of esm",
-    false,
-  )
   .description(
-    "Rollbacks every migration that has been run and then run the migrations, use --commonjs to use commonjs for the migrations instead of esm",
+    "Rollbacks every migration that has been run and then run the migrations",
   )
   .action(
     async (
@@ -312,10 +278,8 @@ program
         verbose: boolean;
         force: boolean;
         migrationPath: string;
-        commonjs: boolean;
       } & BaseSqlDataSourceCommandOptions,
     ) => {
-      registerModule(option?.commonjs || false);
       const force = option?.force || false;
       const sqlDataSourceInput = {
         type: option?.type,
