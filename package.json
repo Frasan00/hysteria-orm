@@ -3,16 +3,10 @@
   "version": "0.5.1",
   "license": "MIT",
   "description": "Yet another orm for Javascript and Typescript no one asked for",
-  "main": "./lib/index.cjs",
-  "module": "./lib/index.js",
-  "types": "./lib/index.d.ts",
   "type": "module",
   "sideEffects": false,
   "repository": "https://github.com/Frasan00/hysteria-orm.git",
   "author": "Frasan00 <francesco.sangiovanni.7@gmail.com>",
-  "files": [
-    "lib"
-  ],
   "scripts": {
     "start": "yarn format && yarn build:dev && node lib/index.js",
     "prepare": "husky install",
@@ -21,9 +15,19 @@
     "test:with:migrations": "rm -rf sqlite.db && touch sqlite.db && yarn format && yarn build:prod && yarn migrate && node ./test/test_runner.js",
     "format": "prettier --write \"**/*.ts\"",
     "build": "yarn build:prod",
-    "build:prod": "tsup --minify --format esm --dts --clean",
-    "build:dev": "tsup --sourcemap --format esm --dts",
+    "build:prod": "tsup --minify",
+    "build:dev": "tsup",
     "test:fresh": "node lib/cli.js refresh:migrations"
+  },
+  "main": "./lib/index.js",
+  "module": "./lib/index.js",
+  "types": "./lib/index.d.ts",
+  "exports": {
+    ".": {
+      "require": "./lib/index.js",
+      "import": "./lib/index.mjs",
+      "types": "./lib/index.d.ts"
+    }
   },
   "bin": {
     "hysteria": "lib/cli.js"
