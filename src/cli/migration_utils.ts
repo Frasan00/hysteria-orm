@@ -99,7 +99,10 @@ async function loadMigrationModule(
   pathToFile: string,
 ): Promise<new (dbType: SqlDataSourceType) => Migration> {
   try {
-    const migrationModule = await import(pathToFile);
+    const migrationModule = await import(pathToFile).catch(() => {
+      return require(pathToFile);
+    });
+
     if (!migrationModule.default) {
       throw new HysteriaError(
         "MigrationUtils::loadMigrationModule Migration module does not have a default export",

@@ -1,6 +1,6 @@
 {
   "name": "hysteria-orm",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "license": "MIT",
   "description": "Yet another orm for Javascript and Typescript no one asked for",
   "type": "module",
@@ -24,9 +24,8 @@
   "types": "./lib/index.d.ts",
   "exports": {
     ".": {
-      "require": "./lib/index.js",
-      "import": "./lib/index.mjs",
-      "types": "./lib/index.d.ts"
+      "require": "./lib/index.cjs",
+      "import": "./lib/index.js"
     }
   },
   "bin": {
