@@ -408,8 +408,8 @@ export function hasMany<T extends typeof Model>(
  * @param model The model that establishes the relation
  * @param throughModel The model that is used to join the two models
  * @param throughModelKeys The keys of the through model
- * @param throughModelKeys.throughModelForeignKey The foreign key of the through model from the primary model (where you are defining the many to many relation)
- * @param throughModelKeys.relatedModelForeignKey The foreign key of the through model from the related model (the model you are joining to)
+ * @param throughModelKeys.leftForeignKey The foreign key of the through model from the primary model (where you are defining the many to many relation)
+ * @param throughModelKeys.rightForeignKey The foreign key of the through model from the related model (the model you are joining to)
  * @example User will have foreignKey "user_id" on the Join table by default
  */
 export function manyToMany<
@@ -422,7 +422,7 @@ export function manyToMany<
   throughModelKeys: ManyToManyOptions<T, TM>,
 ): PropertyDecorator {
   return (target: Object, propertyKey: string | symbol) => {
-    const { throughModelForeignKey, relatedModelForeignKey } = throughModelKeys;
+    const { leftForeignKey, rightForeignKey } = throughModelKeys;
     const throughModelTable =
       typeof throughModel === "string" ? throughModel : throughModel().table;
 
@@ -431,12 +431,12 @@ export function manyToMany<
       type: RelationEnum.manyToMany,
       columnName: propertyKey as string,
       model,
-      foreignKey: throughModelForeignKey as string,
+      foreignKey: leftForeignKey as string,
       manyToManyOptions: {
         primaryModel: primaryModel,
         throughModel: throughModelTable,
-        throughModelForeignKey: throughModelForeignKey as string,
-        relatedModelForeignKey: relatedModelForeignKey as string,
+        leftForeignKey: leftForeignKey as string,
+        rightForeignKey: rightForeignKey as string,
       },
     };
 
@@ -475,11 +475,11 @@ export function getRelations(target: typeof Model): Relation[] {
         return new ManyToMany(relatedModel, columnName, {
           primaryModel: relation.manyToManyOptions.primaryModel,
           throughModel: relation.manyToManyOptions.throughModel,
-          throughModelForeignKey:
-            relation.manyToManyOptions.throughModelForeignKey ??
+          leftForeignKey:
+            relation.manyToManyOptions.leftForeignKey ??
             getDefaultForeignKey(relation.manyToManyOptions.primaryModel),
-          relatedModelForeignKey:
-            relation.manyToManyOptions.relatedModelForeignKey ??
+          rightForeignKey:
+            relation.manyToManyOptions.rightForeignKey ??
             getDefaultForeignKey(relation.manyToManyOptions.primaryModel),
         });
       default:

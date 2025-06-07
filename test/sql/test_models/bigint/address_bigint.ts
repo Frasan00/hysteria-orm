@@ -44,8 +44,8 @@ export class AddressWithBigint extends Model {
   declare deletedAt: Date | null;
 
   @manyToMany(() => UserWithBigint, () => UserAddressWithBigint, {
-    throughModelForeignKey: "addressId",
-    relatedModelForeignKey: "userId",
+    leftForeignKey: "addressId",
+    rightForeignKey: "userId",
   })
   declare users: UserWithBigint[];
 }

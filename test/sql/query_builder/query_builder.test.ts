@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { env } from "../../../src/env/env";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
+import { UserWithoutPk } from "../test_models/without_pk/user_without_pk";
 
 beforeAll(async () => {
   await SqlDataSource.connect();
@@ -633,4 +634,179 @@ describe(`[${env.DB_TYPE}] Where query builder advanced tests (users_without_pk 
       .many();
     expect(users.length).toBe(0);
   });
+
+  test("whereSubQuery returns correct users", async () => {
+    const users = await SqlDataSource.query("users_without_pk")
+      .whereSubQuery("name", (qb) =>
+        qb.select("name").from("users_without_pk").where("name", "Alice"),
+      )
+      .many();
+    expect(users.length).toBe(1);
+    expect(users[0].name).toBe("Alice");
+  });
 });
+
+describe(`[${env.DB_TYPE}] Query Builder: whereSubQuery + whereBuilder integration`, () => {
+  beforeEach(async () => {
+    await SqlDataSource.query("users_without_pk").insertMany([
+      { name: "Alice", age: 25 },
+      { name: "Bob", age: 30 },
+      { name: "Charlie", age: 35 },
+      { name: "David", age: 40 },
+      { name: null, age: null },
+    ]);
+  });
+
+  afterEach(async () => {
+    await SqlDataSource.query("users_without_pk").truncate();
+  });
+
+  test("whereBuilder with whereSubQuery inside", async () => {
+    const users = await SqlDataSource.query("users_without_pk")
+      .whereBuilder((qb) => {
+        qb.where("age", ">", 25);
+        qb.whereSubQuery("name", (subQb) =>
+          subQb
+            .select("name")
+            .from("users_without_pk")
+            .where("age", ">", 30)
+            .limit(1),
+        );
+      })
+      .many();
+
+    expect(users.length).toBeDefined();
+  });
+
+  test("whereSubQuery with whereBuilder inside subquery", async () => {
+    const users = await SqlDataSource.query("users_without_pk")
+      .whereSubQuery("name", (subQb) => {
+        subQb.select("name").from("users_without_pk");
+        subQb
+          .whereBuilder((qb) => {
+            qb.where("age", ">", 30);
+            qb.orWhere("name", "Alice");
+          })
+          .limit(1);
+      })
+      .many();
+
+    expect(users.length).toBeDefined();
+  });
+
+  test("whereBuilder with multiple whereSubQuery and orWhere", async () => {
+    const users = await SqlDataSource.query("users_without_pk")
+      .whereBuilder((qb) => {
+        qb.orWhereSubQuery("name", (subQb) =>
+          subQb.select("name").from("users_without_pk").where("age", "<", 30),
+        );
+      })
+      .many();
+
+    expect(users.length).toBeDefined();
+  });
+
+  test("deeply nested whereBuilder and whereSubQuery", async () => {
+    const users = await SqlDataSource.query("users_without_pk")
+      .whereBuilder((qb) => {
+        qb.whereBuilder((qb2) => {
+          qb2.whereSubQuery("age", ">", (subQb) =>
+            subQb
+              .select("age")
+              .from("users_without_pk")
+              .where("name", "Charlie"),
+          );
+        });
+        qb.where("name", "David");
+      })
+      .many();
+
+    expect(users.length).toBeDefined();
+  });
+});
+
+// describe(`[${env.DB_TYPE}] with performance`, () => {
+//   beforeEach(async () => {
+//     await SqlDataSource.query("users_without_pk").insertMany([
+//       { name: "Alice", age: 25 },
+//       { name: "Bob", age: 30 },
+//       { name: "Charlie", age: 35 },
+//       { name: "David", age: 40 },
+//       { name: null, age: null },
+//     ]);
+//   });
+
+//   afterEach(async () => {
+//     await SqlDataSource.query("users_without_pk").truncate();
+//   });
+
+//   test("existsWithPerformance", async () => {
+//     const users = await SqlDataSource.query("users_without_pk")
+//       .where("name", "Alice")
+//       .existsWithPerformance();
+
+//     expect(users.data).toBe(true);
+//     expect(users.time).toBeDefined();
+//   });
+
+//   test("manyWithPerformance", async () => {
+//     const users =
+//       await SqlDataSource.query("users_without_pk").manyWithPerformance();
+
+//     expect(users.data).toBeDefined();
+//     expect(users.time).toBeDefined();
+//   });
+
+//   test("oneWithPerformance", async () => {
+//     const user = await SqlDataSource.query("users_without_pk")
+//       .where("name", "Alice")
+//       .oneWithPerformance();
+
+//     expect(user.data).toBeDefined();
+//     expect(user.time).toBeDefined();
+//   });
+
+//   test("oneOrFailWithPerformance", async () => {
+//     const user = await SqlDataSource.query("users_without_pk")
+//       .where("name", "Alice")
+//       .oneOrFailWithPerformance();
+
+//     expect(user.data).toBeDefined();
+//     expect(user.time).toBeDefined();
+//   });
+
+//   test("oneOrFailWithPerformance with ModelQueryBuilder", async () => {
+//     const user = await UserWithoutPk.query().oneOrFailWithPerformance();
+//     expect(user.data).toBeDefined();
+//     expect(user.time).toBeDefined();
+//   });
+
+//   test("oneOrFailWithPerformance with ModelQueryBuilder and custom return type", async () => {
+//     const user = await UserWithoutPk.query().oneOrFailWithPerformance(
+//       {},
+//       "seconds"
+//     );
+
+//     expect(user.data).toBeDefined();
+//     expect(user.time).toBeDefined();
+//   });
+
+//   test("paginateWithPerformance", async () => {
+//     const users = await SqlDataSource.query("users_without_pk").paginateWithPerformance(1, 10);
+
+//     expect(users.data).toBeDefined();
+//     expect(users.time).toBeDefined();
+//   });
+
+//   test("paginateWithPerformance with ModelQueryBuilder", async () => {
+//     const users = await UserWithoutPk.query().paginateWithPerformance(1, 10);
+//     expect(users.data).toBeDefined();
+//     expect(users.time).toBeDefined();
+//   });
+
+//   test("paginateWithPerformance with ModelQueryBuilder and custom return type", async () => {
+//     const users = await UserWithoutPk.query().paginateWithPerformance(1, 10, {}, "seconds");
+//     expect(users.data).toBeDefined();
+//     expect(users.time).toBeDefined();
+//   });
+// });

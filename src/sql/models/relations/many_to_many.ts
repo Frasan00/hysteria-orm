@@ -14,7 +14,7 @@ export class ManyToMany extends Relation {
   /**
    * @description The foreign key of the related model in the through table
    */
-  relatedModelForeignKey: string;
+  rightForeignKey: string;
   /**
    * @description The table that joins the two models
    */
@@ -22,7 +22,7 @@ export class ManyToMany extends Relation {
   /**
    * @description The foreign key of the primary model in the through table
    */
-  throughModelForeignKey: string;
+  leftForeignKey: string;
 
   constructor(
     model: typeof Model,
@@ -30,15 +30,15 @@ export class ManyToMany extends Relation {
     data: {
       primaryModel: string;
       throughModel: string;
-      throughModelForeignKey: string;
-      relatedModelForeignKey: string;
+      leftForeignKey: string;
+      rightForeignKey: string;
     },
   ) {
     super(model, columnName);
     this.primaryModel = data.primaryModel;
     this.relatedModel = model.table;
     this.throughModel = data.throughModel;
-    this.throughModelForeignKey = data.throughModelForeignKey;
-    this.relatedModelForeignKey = data.relatedModelForeignKey;
+    this.leftForeignKey = data.leftForeignKey;
+    this.rightForeignKey = data.rightForeignKey;
   }
 }

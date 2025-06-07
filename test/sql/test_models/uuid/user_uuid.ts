@@ -85,8 +85,8 @@ export class UserWithUuid extends Model {
   declare posts: PostWithUuid[];
 
   @manyToMany(() => AddressWithUuid, () => UserAddressWithUuid, {
-    throughModelForeignKey: "userId",
-    relatedModelForeignKey: "addressId",
+    leftForeignKey: "userId",
+    rightForeignKey: "addressId",
   })
   declare addresses: AddressWithUuid[];
 

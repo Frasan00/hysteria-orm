@@ -163,7 +163,7 @@ describe(`[${env.DB_TYPE}] Select`, () => {
     await UserFactory.userWithoutPk(2);
     const users = await UserWithoutPk.query()
       .select("name")
-      .union(UserWithoutPk.query().select("name")) // without duplicates
+      .union((qb) => qb.select("name")) // without duplicates
       .many();
 
     expect(users.length).toBe(2);
@@ -180,7 +180,7 @@ describe(`[${env.DB_TYPE}] Select`, () => {
     await UserFactory.userWithoutPk(2);
     const users = await UserWithoutPk.query()
       .select("name")
-      .unionAll(UserWithoutPk.query().select("name"))
+      .unionAll((qb) => qb.select("name"))
       .many();
 
     expect(users.length).toBe(4); // with duplicates
@@ -269,9 +269,7 @@ describe(`[${env.DB_TYPE}] Select`, () => {
       )
       .select("users_cte.salary")
       .from("users_cte")
-      .unionAll(
-        UserWithoutPk.query().select("users_cte2.age").from("users_cte2"),
-      )
+      .unionAll((qb) => qb.select("users_cte2.age").from("users_cte2"))
       .many({ ignoreHooks: ["beforeFetch"] });
 
     expect(users.length).toBe(4);

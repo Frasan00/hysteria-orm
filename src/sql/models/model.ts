@@ -12,7 +12,7 @@ import type {
 import type { ModelQueryBuilder } from "./model_query_builder/model_query_builder";
 import type {
   BaseModelMethodOptions,
-  ModelWithoutExtraColumns,
+  ModelDataWithOnlyColumns,
 } from "./model_types";
 
 import { Entity } from "../../entity";
@@ -35,7 +35,7 @@ import { getBaseTableName } from "./model_utils";
  * @description Represents a Table in the Database
  */
 export abstract class Model extends Entity {
-  declare "*": string;
+  declare private "*": string;
 
   /**
    * @description The column used to soft delete a record, default is deletedAt
@@ -249,7 +249,7 @@ export abstract class Model extends Entity {
    */
   static async insert<T extends Model>(
     this: new () => T | typeof Model,
-    modelData: ModelWithoutExtraColumns<T>,
+    modelData: Partial<ModelDataWithOnlyColumns<T>>,
     options: BaseModelMethodOptions & InsertOptions<T> = {},
   ): Promise<T> {
     const typeofModel = this as unknown as typeof Model;
@@ -270,7 +270,7 @@ export abstract class Model extends Entity {
    */
   static async insertMany<T extends Model>(
     this: new () => T | typeof Model,
-    modelsData: ModelWithoutExtraColumns<T>[],
+    modelsData: Partial<ModelDataWithOnlyColumns<T>>[],
     options: BaseModelMethodOptions & InsertOptions<T> = {},
   ): Promise<T[]> {
     if (!modelsData.length) {
@@ -293,15 +293,15 @@ export abstract class Model extends Entity {
    */
   static async updateRecord<T extends Model>(
     this: new () => T | typeof Model,
-    modelSqlInstance: T,
-    updatePayload?: Partial<T>,
+    modelSqlInstance: Partial<T>,
+    updatePayload?: ModelDataWithOnlyColumns<T>,
     options: Omit<BaseModelMethodOptions, "ignoreHooks"> = {},
   ): Promise<T> {
     try {
       const typeofModel = this as unknown as typeof Model;
       const modelManager = typeofModel.dispatchModelManager<T>(options);
       updatePayload &&
-        typeofModel.combineProps(modelSqlInstance, updatePayload);
+        typeofModel.combineProps(modelSqlInstance, updatePayload as Partial<T>);
       const updatedModel = await modelManager.updateRecord(modelSqlInstance);
       return updatedModel;
     } catch (error) {
@@ -325,8 +325,8 @@ export abstract class Model extends Entity {
    */
   static async firstOrInsert<T extends Model, O extends boolean = false>(
     this: new () => T | typeof Model,
-    searchCriteria: ModelWithoutExtraColumns<T>,
-    createData: ModelWithoutExtraColumns<T>,
+    searchCriteria: Partial<ModelDataWithOnlyColumns<T>>,
+    createData: Partial<ModelDataWithOnlyColumns<T>>,
     options: Omit<BaseModelMethodOptions, "ignoreHooks"> & {
       fullResponse?: O;
     } = {},
@@ -375,8 +375,8 @@ export abstract class Model extends Entity {
    */
   static async upsert<T extends Model>(
     this: new () => T | typeof Model,
-    searchCriteria: ModelWithoutExtraColumns<T>,
-    data: ModelWithoutExtraColumns<T>,
+    searchCriteria: Partial<ModelDataWithOnlyColumns<T>>,
+    data: Partial<ModelDataWithOnlyColumns<T>>,
     options: UpsertOptions<T> & BaseModelMethodOptions = {
       updateOnConflict: true,
     },
@@ -414,7 +414,7 @@ export abstract class Model extends Entity {
   static async upsertMany<T extends Model>(
     this: new () => T | typeof Model,
     conflictColumns: ModelKey<T>[],
-    data: ModelWithoutExtraColumns<T>[],
+    data: Partial<ModelDataWithOnlyColumns<T>>[],
     options: UpsertOptions<T> & BaseModelMethodOptions = {
       updateOnConflict: true,
     },
@@ -442,7 +442,7 @@ export abstract class Model extends Entity {
     const upsertResult = await modelManager.upsertMany(
       conflictColumns as string[],
       columnsToUpdate,
-      data,
+      data as ModelDataWithOnlyColumns<T>[],
       {
         ignoreHooks: options.ignoreHooks,
         returning: options.returning,
@@ -469,7 +469,7 @@ export abstract class Model extends Entity {
       data.forEach((record) => {
         conflictMap.set(column as string, [
           ...(conflictMap.get(column as string) || []),
-          record[column as keyof Model],
+          record[column as unknown as keyof ModelDataWithOnlyColumns<T>],
         ]);
       });
     });
@@ -551,7 +551,10 @@ export abstract class Model extends Entity {
   /**
    * @description Merges the provided data with the model instance
    */
-  static combineProps<T extends Model>(sqlInstance: T, data: Partial<T>): void {
+  static combineProps<T extends Model>(
+    sqlInstance: Partial<T>,
+    data: Partial<T>,
+  ): void {
     for (const key in data) {
       Object.assign(sqlInstance, { [key]: data[key] });
     }

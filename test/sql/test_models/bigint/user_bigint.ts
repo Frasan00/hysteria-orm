@@ -88,8 +88,8 @@ export class UserWithBigint extends Model {
   declare posts: PostWithBigint[];
 
   @manyToMany(() => AddressWithBigint, () => UserAddressWithBigint, {
-    throughModelForeignKey: "userId",
-    relatedModelForeignKey: "addressId",
+    leftForeignKey: "userId",
+    rightForeignKey: "addressId",
   })
   declare addresses: AddressWithBigint[];
 

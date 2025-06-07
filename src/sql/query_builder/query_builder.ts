@@ -2,7 +2,7 @@ import { format } from "sql-formatter";
 import { HysteriaError } from "../../errors/hysteria_error";
 import { baseSoftDeleteDate } from "../../utils/date_utils";
 import { convertPlaceHolderToValue } from "../../utils/placeholder";
-import { bindParamsIntoQuery, parsePlaceHolders } from "../../utils/query";
+import { bindParamsIntoQuery } from "../../utils/query";
 import type { Model } from "../models/model";
 import { ModelKey } from "../models/model_manager/model_manager_types";
 import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
@@ -14,7 +14,7 @@ import updateTemplate from "../resources/query/UPDATE";
 import { BinaryOperatorType } from "../resources/query/WHERE";
 import { SqlDataSource } from "../sql_data_source";
 import type { SqlDataSourceType } from "../sql_data_source_types";
-import { execSql } from "../sql_runner/sql_runner";
+import { execSql, getSqlDialect } from "../sql_runner/sql_runner";
 import { CteBuilder } from "./cte/cte_builder";
 import { WithClauseType } from "./cte/cte_types";
 import { SoftDeleteOptions } from "./delete_query_builder_type";
@@ -23,6 +23,7 @@ import {
   QueryBuilderWithOnlyWhereConditions,
 } from "./query_builder_types";
 import { WhereQueryBuilder } from "./where_query_builder";
+import { withPerformance } from "../../utils/performance";
 
 export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
   model: typeof Model;
@@ -61,16 +62,115 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
   }
 
   /**
+   * @description Executes the query and returns true if the query returns at least one result, false otherwise.
+   * @description Returns the time that took to execute the query
+   */
+  async existsWithPerformance(
+    returnType: "millis" | "seconds" = "millis",
+  ): Promise<{
+    data: boolean;
+    time: number;
+  }> {
+    const [time, data] = await withPerformance(
+      this.exists.bind(this),
+      returnType,
+    );
+    return { data, time: Number(time) };
+  }
+
+  /**
+   * @description Makes a many query and returns the time that took to execute that query
+   */
+  async manyWithPerformance(
+    returnType: "millis" | "seconds" = "millis",
+  ): Promise<{
+    data: T[];
+    time: number;
+  }> {
+    const [time, data] = await withPerformance(
+      this.many.bind(this),
+      returnType,
+    );
+    return {
+      data,
+      time: Number(time),
+    };
+  }
+
+  /**
+   * @description Makes a one query and returns the time that took to execute that query
+   */
+  async oneWithPerformance(
+    returnType: "millis" | "seconds" = "millis",
+  ): Promise<{
+    data: T | null;
+    time: number;
+  }> {
+    const [time, data] = await withPerformance(this.one.bind(this), returnType);
+    return {
+      data,
+      time: Number(time),
+    };
+  }
+
+  /**
+   * @alias oneWithPerformance
+   */
+  async firstWithPerformance(returnType: "millis" | "seconds" = "millis") {
+    return this.oneWithPerformance(returnType);
+  }
+
+  /**
+   * @alias oneOrFailWithPerformance
+   */
+  async firstOrFailWithPerformance(
+    returnType: "millis" | "seconds" = "millis",
+  ) {
+    return this.oneOrFailWithPerformance(returnType);
+  }
+
+  async paginateWithPerformance(
+    page: number,
+    perPage: number,
+    returnType: "millis" | "seconds" = "millis",
+  ) {
+    const [time, data] = await withPerformance(
+      this.paginate.bind(this, page, perPage),
+      returnType,
+    );
+
+    return {
+      data,
+      time: Number(time),
+    };
+  }
+
+  /**
+   * @description Makes a one or fail query and returns the time that took to execute that query
+   */
+  async oneOrFailWithPerformance(returnType: "millis" | "seconds" = "millis") {
+    const [time, data] = await withPerformance(
+      this.oneOrFail.bind(this),
+      returnType,
+    );
+    return {
+      data,
+      time: Number(time),
+    };
+  }
+
+  /**
    * @description Executes the query and retrieves multiple results.
    */
   async many(): Promise<T[]> {
-    const { query, params } = this.unWrap();
+    let { query, params } = this.unWrap(false);
+    query = convertPlaceHolderToValue(this.dbType, query);
     return execSql(query, params, this.sqlDataSource, "raw", {
       sqlLiteOptions: {
         typeofModel: this.model,
         mode: "fetch",
       },
-      shouldFormat: false, // Already formatted by the `unWrap` method
+      shouldFormat: true,
     });
   }
 
@@ -156,10 +256,7 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
    */
   union(query: string, params?: any[]): this;
   union(cb: UnionCallBack<T>): this;
-  union(queryBuilder: QueryBuilder<any>): this;
-  union(
-    queryBuilderOrCb: UnionCallBack<any> | QueryBuilder<any> | string,
-  ): this {
+  union(queryBuilderOrCb: UnionCallBack<any> | string): this {
     if (typeof queryBuilderOrCb === "string") {
       this.unionQuery = `${this.unionQuery} UNION ${queryBuilderOrCb}`;
       return this;
@@ -543,6 +640,7 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
         subQueryOrCb(subQuery);
         return this.processSubQuery(column, subQuery, operator, "and");
       }
+
       if (subQueryOrCb instanceof QueryBuilder) {
         subQuery = subQueryOrCb;
         return this.processSubQuery(column, subQuery, operator, "and");
@@ -698,16 +796,18 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
   /**
    * @description Returns the query with the parameters bound to the query
    */
-  toQuery(dbType?: SqlDataSourceType): string {
-    // Already formatted
-    const { query, params } = this.unWrap(dbType);
+  toQuery(dbType: SqlDataSourceType = this.dbType || "mysql"): string {
+    const { query, params } = this.unWrap(true, dbType);
     return bindParamsIntoQuery(query, params);
   }
 
   /**
    * @description Returns the query with database driver placeholders and the params
    */
-  unWrap(dbType: SqlDataSourceType = this.dbType): {
+  unWrap(
+    shouldFormat: boolean = false,
+    dbType: SqlDataSourceType = this.dbType,
+  ): {
     query: string;
     params: any[];
   } {
@@ -742,9 +842,15 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
       query += this.lockForUpdateQuery;
     }
 
-    const parsedQuery = parsePlaceHolders(dbType, query);
+    const formattedQuery = shouldFormat
+      ? format(query, {
+          ...this.sqlDataSource.queryFormatOptions,
+          language: getSqlDialect(dbType as SqlDataSourceType),
+        })
+      : query;
+
     return {
-      query: format(parsedQuery, this.sqlDataSource.queryFormatOptions),
+      query: formattedQuery,
       params: this.params,
     };
   }
@@ -769,15 +875,6 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
     queryBuilder.lockForUpdateQuery = this.lockForUpdateQuery;
     queryBuilder.withQuery = this.withQuery;
     return queryBuilder as this;
-  }
-
-  protected convertPlaceHolderToValue(query: string) {
-    let index = 0;
-    return query.replace(/\$PLACEHOLDER/g, () => {
-      const indexParam = this.parseValueForDatabase(this.params[index]);
-      index++;
-      return indexParam;
-    });
   }
 
   protected parseValueForDatabase(value: any): string {
@@ -866,7 +963,7 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
     operator: BinaryOperatorType,
     type: "and" | "or",
   ): this {
-    const { query, params } = subQuery.unWrapRaw();
+    const { query, params } = subQuery.unWrapRaw(false, this.dbType);
     if (this.whereQuery || this.isNestedCondition) {
       const whereQuery = this.whereTemplate[`${type}WhereSubQuery`](
         column,
@@ -874,8 +971,9 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
         params,
         operator,
       );
+
       this.whereQuery += whereQuery.query;
-      this.params.push(...whereQuery.params);
+      this.params.push(...params);
       return this;
     }
 
@@ -885,8 +983,9 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
       params,
       operator,
     );
+
     this.whereQuery = whereQuery.query;
-    this.params.push(...whereQuery.params);
+    this.params.push(...params);
     return this;
   }
 
@@ -894,10 +993,17 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
    * @description Returns the query and the params without replacing the $PLACEHOLDER with the specific database driver placeholder
    * @internal
    */
-  private unWrapRaw(): {
+  private unWrapRaw(
+    shouldFormat: boolean = false,
+    dbType: SqlDataSourceType = this.dbType,
+  ): {
     query: string;
     params: any[];
   } {
+    if (this.fromTable && !this.selectQuery.toLowerCase().includes("from")) {
+      this.selectQuery = this.selectQuery + ` FROM ${this.fromTable} `;
+    }
+
     let query =
       this.selectQuery +
       this.joinQuery +
@@ -917,8 +1023,15 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
       query += this.lockForUpdateQuery;
     }
 
+    const formattedQuery = shouldFormat
+      ? format(query, {
+          ...this.sqlDataSource.queryFormatOptions,
+          language: getSqlDialect(dbType as SqlDataSourceType),
+        })
+      : query;
+
     return {
-      query: format(query, this.sqlDataSource.queryFormatOptions),
+      query: formattedQuery,
       params: this.params,
     };
   }

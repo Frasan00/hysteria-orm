@@ -294,6 +294,7 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
     const activeUsers = await UserWithBigint.find({
       where: { status: UserStatus.active },
     });
+
     expect(activeUsers).toHaveLength(1);
 
     const inactiveUsers = await UserWithBigint.find({

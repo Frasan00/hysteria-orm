@@ -18,7 +18,7 @@ export interface ColumnConstraints {
   references(
     table: string,
     column: string,
-    options?: { onDelete: string; onUpdate: string },
+    options?: { onDelete?: string; onUpdate?: string },
   ): ColumnConstraints;
 }
 

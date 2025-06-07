@@ -1,5 +1,6 @@
 import { HysteriaError } from "../../../errors/hysteria_error";
 import { convertCase } from "../../../utils/case_utils";
+import { withPerformance } from "../../../utils/performance";
 import { getModelColumns } from "../../models/decorators/model_decorators";
 import { Model } from "../../models/model";
 import type {
@@ -18,7 +19,10 @@ import { SqlMethod } from "../../resources/query/SELECT";
 import { serializeModel } from "../../serializer";
 import { SqlDataSource } from "../../sql_data_source";
 import { ColumnType } from "../decorators/model_decorators_types";
-import { BaseModelMethodOptions } from "../model_types";
+import {
+  BaseModelMethodOptions,
+  ModelDataWithOnlyColumns,
+} from "../model_types";
 import { ManyToMany } from "../relations/many_to_many";
 import { Relation, RelationEnum } from "../relations/relation";
 import type {
@@ -174,10 +178,127 @@ export class ModelQueryBuilder<
   }
 
   /**
+   * @description Executes the query and returns true if the query returns at least one result, false otherwise.
+   * @description Returns the time that took to execute the query
+   */
+  // @ts-expect-error
+  override async manyWithPerformance(
+    options: ManyOptions = {},
+    returnType: "millis" | "seconds" = "millis",
+  ): Promise<{
+    data: AnnotatedModel<T, A>[];
+    time: number;
+  }> {
+    const [time, data] = await withPerformance(
+      this.many.bind(this, options),
+      returnType,
+    );
+
+    return { data, time: Number(time) };
+  }
+
+  /**
+   * @description Executes the query and returns true if the query returns at least one result, false otherwise.
+   * @description Returns the time that took to execute the query
+   */
+  // @ts-expect-error
+  override async oneWithPerformance(
+    options: OneOptions = {},
+    returnType: "millis" | "seconds" = "millis",
+  ): Promise<{
+    data: AnnotatedModel<T, A> | null;
+    time: number;
+  }> {
+    const [time, data] = await withPerformance(
+      this.one.bind(this, options),
+      returnType,
+    );
+
+    return { data, time: Number(time) };
+  }
+
+  /**
+   * @description Executes the query and returns true if the query returns at least one result, false otherwise.
+   * @description Returns the time that took to execute the query
+   */
+  // @ts-expect-error
+  override async oneOrFailWithPerformance(
+    options: OneOptions = {},
+    returnType: "millis" | "seconds" = "millis",
+  ): Promise<{
+    data: AnnotatedModel<T, A>;
+    time: number;
+  }> {
+    const [time, data] = await withPerformance(
+      this.oneOrFail.bind(this, options),
+      returnType,
+    );
+
+    return { data, time: Number(time) };
+  }
+
+  /**
+   * @alias oneOrFailWithPerformance
+   */
+  // @ts-expect-error
+  override async firstOrFailWithPerformance(
+    options: OneOptions = {},
+    returnType: "millis" | "seconds" = "millis",
+  ): Promise<{
+    data: AnnotatedModel<T, A>;
+    time: number;
+  }> {
+    return this.oneOrFailWithPerformance(options, returnType);
+  }
+
+  /**
+   * @alias oneWithPerformance
+   */
+  // @ts-expect-error
+  override async firstWithPerformance(
+    options: OneOptions = {},
+    returnType: "millis" | "seconds" = "millis",
+  ): Promise<{
+    data: AnnotatedModel<T, A> | null;
+    time: number;
+  }> {
+    return this.oneWithPerformance(options, returnType);
+  }
+
+  /**
+   * @description Executes the query and returns the paginated data.
+   * @description Returns the time that took to execute the query
+   */
+  // @ts-expect-error
+  override async paginateWithPerformance(
+    page: number,
+    perPage: number,
+    options?: { ignoreHooks?: boolean },
+    returnType: "millis" | "seconds" = "millis",
+  ): Promise<{
+    data: PaginatedData<AnnotatedModel<T, A>>;
+    time: number;
+  }> {
+    const { ignoreHooks = false } = options || {};
+    const [time, data] = await withPerformance(
+      this.paginate.bind(this, page, perPage, { ignoreHooks }),
+      returnType,
+    );
+
+    return {
+      data: {
+        paginationMetadata: data.paginationMetadata,
+        data: data.data as AnnotatedModel<T, A>[],
+      },
+      time: Number(time),
+    };
+  }
+
+  /**
    * @description Updates records in the database for the current query.
    */
   override async update(
-    data: Partial<T>,
+    data: Partial<ModelDataWithOnlyColumns<T>>,
     options: UpdateOptions = {},
   ): Promise<number> {
     options.ignoreBeforeUpdateHook && this.model.beforeUpdate?.(this);
@@ -333,7 +454,7 @@ export class ModelQueryBuilder<
   }
 
   override select(...columns: string[]): this;
-  override select(...columns: ModelKey<T>[]): this;
+  override select(...columns: (ModelKey<T> | "*")[]): this;
   override select(...columns: (ModelKey<T> | string)[]): this {
     this.modelSelectedColumns = [
       ...this.modelSelectedColumns,
@@ -629,7 +750,7 @@ export class ModelQueryBuilder<
 
         const manyToManyRelation = relation as ManyToMany;
         const relatedModelsMapManyToMany = new Map<string, R[]>();
-        const relatedPrimaryKey = manyToManyRelation.throughModelForeignKey;
+        const relatedPrimaryKey = manyToManyRelation.leftForeignKey;
         const casedRelatedPrimaryKey =
           this.modelColumnsMap.get(relatedPrimaryKey) ||
           this.modelColumnsDatabaseNames.get(relatedPrimaryKey) ||
@@ -719,16 +840,16 @@ export class ModelQueryBuilder<
         return relationQueryBuilder
           .select(`${relation.model.table}.*`)
           .annotate(
-            manyToManyRelation.throughModelForeignKey,
-            manyToManyRelation.throughModelForeignKey,
+            manyToManyRelation.leftForeignKey,
+            manyToManyRelation.leftForeignKey,
           )
           .leftJoin(
             manyToManyRelation.throughModel,
             `${manyToManyRelation.relatedModel}.${manyToManyRelation.model.primaryKey}`,
-            `${manyToManyRelation.throughModel}.${manyToManyRelation.relatedModelForeignKey}`,
+            `${manyToManyRelation.throughModel}.${manyToManyRelation.rightForeignKey}`,
           )
           .whereIn(
-            `${manyToManyRelation.throughModel}.${manyToManyRelation.throughModelForeignKey}`,
+            `${manyToManyRelation.throughModel}.${manyToManyRelation.leftForeignKey}`,
             filterValues,
           )
           .many();

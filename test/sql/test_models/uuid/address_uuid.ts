@@ -4,8 +4,8 @@ import {
   manyToMany,
 } from "../../../../src/sql/models/decorators/model_decorators";
 import { Model } from "../../../../src/sql/models/model";
-import { UserWithUuid } from "./user_uuid";
 import { UserAddressWithUuid } from "./user_address_uuid";
+import { UserWithUuid } from "./user_uuid";
 
 export class AddressWithUuid extends Model {
   static _table = "address_with_uuid";
@@ -45,8 +45,8 @@ export class AddressWithUuid extends Model {
   declare deletedAt: Date | null;
 
   @manyToMany(() => UserWithUuid, () => UserAddressWithUuid, {
-    throughModelForeignKey: "addressId",
-    relatedModelForeignKey: "userId",
+    leftForeignKey: "addressId",
+    rightForeignKey: "userId",
   })
   declare users: UserWithUuid[];
 

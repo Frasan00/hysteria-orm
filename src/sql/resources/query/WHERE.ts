@@ -12,14 +12,10 @@ export type BinaryOperatorType =
   | "<"
   | ">="
   | "<="
-  | "LIKE"
-  | "ILIKE"
-  | "NOT LIKE"
-  | "NOT ILIKE"
-  | "IN"
-  | "NOT IN"
-  | "BETWEEN"
-  | "NOT BETWEEN";
+  | "like"
+  | "not like"
+  | "ilike"
+  | "not ilike";
 
 export type BaseValues = string | number | boolean | object;
 

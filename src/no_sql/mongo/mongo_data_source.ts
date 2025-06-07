@@ -1,7 +1,7 @@
+import type { MongoOptions } from "mongodb";
+
 import { DataSource } from "../../data_source/data_source";
 import { CollectionManager } from "./mongo_models/mongo_collection_manager";
-
-import { MongoOptions } from "mongodb";
 import { MongoClientImport } from "../../drivers/driver_constants";
 import { DriverFactory } from "../../drivers/drivers_factory";
 import { HysteriaError } from "../../errors/hysteria_error";
@@ -11,8 +11,8 @@ import { env } from "../../env/env";
 type MongoClientInstance = InstanceType<MongoClientImport["MongoClient"]>;
 
 export class MongoDataSource extends DataSource {
-  url: string;
-  isConnected: boolean;
+  declare url: string;
+  declare isConnected: boolean;
   private mongoClient: MongoClientInstance;
   private static instance: MongoDataSource | null = null;
 

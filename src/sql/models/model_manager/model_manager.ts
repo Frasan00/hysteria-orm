@@ -6,7 +6,7 @@ import { execSql } from "../../sql_runner/sql_runner";
 import { Model } from "../model";
 import { ModelQueryBuilder } from "../model_query_builder/model_query_builder";
 import { FetchHooks } from "../model_query_builder/model_query_builder_types";
-import { ModelWithoutExtraColumns } from "../model_types";
+import { ModelDataWithOnlyColumns } from "../model_types";
 import { getBaseModelInstance } from "../model_utils";
 import {
   FindOneType,
@@ -276,7 +276,7 @@ export class ModelManager<T extends Model> {
   async upsertMany(
     conflictColumns: string[],
     columnsToUpdate: string[],
-    data: ModelWithoutExtraColumns<T>[],
+    data: ModelDataWithOnlyColumns<T>[],
     options: UpsertOptions<T> = {
       updateOnConflict: true,
     },
@@ -323,7 +323,10 @@ export class ModelManager<T extends Model> {
    * @description Model is retrieved from the database using the primary key regardless of any model hooks
    * @description Can only be used if the model has a primary key, use a massive update if the model has no primary key
    */
-  async updateRecord(model: T, options: UpdateOptions<T> = {}): Promise<T> {
+  async updateRecord(
+    model: Partial<T>,
+    options: UpdateOptions<T> = {},
+  ): Promise<T> {
     await this.sqlModelManagerUtils.handlePrepare(
       this.model,
       model as T,
@@ -339,7 +342,7 @@ export class ModelManager<T extends Model> {
     }
 
     const { query, params } = this.sqlModelManagerUtils.parseUpdate(
-      model,
+      model as T,
       this.model,
       this.sqlType,
     );

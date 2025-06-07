@@ -13,8 +13,8 @@ export type LazyRelationType = {
   manyToManyOptions?: {
     primaryModel: string;
     throughModel: string;
-    throughModelForeignKey: string;
-    relatedModelForeignKey: string;
+    leftForeignKey: string;
+    rightForeignKey: string;
   };
 };
 
@@ -119,10 +119,19 @@ export type ManyToManyOptions<
   T extends typeof Model,
   TM extends ThroughModel<T>,
 > = {
-  throughModelForeignKey?: TM extends ThroughModelString
+  /**
+   * @description The foreign key of current model on the Pivot table
+   * @example If the current model is User and the through model is UserAddress, the leftForeignKey will be "userId"
+   */
+  leftForeignKey?: TM extends ThroughModelString
     ? string
     : ModelKey<InstanceType<ExtractModelFromTM<TM>>>;
-  relatedModelForeignKey?: TM extends ThroughModelString
+
+  /**
+   * @description The foreign key of the related model on the Pivot table
+   * @example If the current model is User and the through model is UserAddress, the rightForeignKey will be "addressId"
+   */
+  rightForeignKey?: TM extends ThroughModelString
     ? string
     : ModelKey<InstanceType<ExtractModelFromTM<TM>>>;
 };

@@ -1,6 +1,6 @@
 {
   "name": "hysteria-orm",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "license": "MIT",
   "description": "Yet another orm for Javascript and Typescript no one asked for",
   "type": "module",
@@ -60,11 +60,9 @@
   "dependencies": {
     "commander": "^14.0.0",
     "dayjs": "^1.11.13",
-    "pino": "^9.7.0",
-    "pino-pretty": "^13.0.0",
     "pluralize": "^8.0.0",
     "reflect-metadata": "^0.2.2",
-    "sql-formatter": "^15.6.2"
+    "sql-formatter": "^15.6.3"
   },
   "peerDependencies": {
     "ioredis": "^5.6.1",

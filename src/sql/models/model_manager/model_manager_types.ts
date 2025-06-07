@@ -19,7 +19,7 @@ export type UpdateOptions<T extends Model> = {
   returning?: ModelKey<T>[];
 };
 
-type ExcludeRelations<T> = {
+export type ExcludeRelations<T> = {
   [K in keyof T]: T[K] extends
     | (Model[] | HasMany)
     | (Model | HasMany)
@@ -32,7 +32,7 @@ type ExcludeRelations<T> = {
     : K;
 }[keyof T];
 
-type OnlyRelations<T> = {
+export type OnlyRelations<T> = {
   [K in keyof T]: T[K] extends
     | (Model[] | HasMany)
     | (Model | HasMany)
@@ -48,7 +48,19 @@ export type WhereType<T> = {
   [K in keyof T]?: string | number | boolean | Date | null;
 };
 
-export type ModelKey<T extends Model> = ExcludeRelations<T>;
+export type ModelKey<T extends Model> = {
+  [K in keyof T]: T[K] extends
+    | (Model[] | HasMany)
+    | (Model | HasMany)
+    | (Model | BelongsTo)
+    | (Model[] | BelongsTo)
+    | (Model | HasOne)
+    | (Model[] | HasOne)
+    ? never
+    : K extends "*"
+      ? never
+      : K;
+}[keyof T];
 
 export type ModelRelation<T extends Model> = OnlyRelations<T>;
 

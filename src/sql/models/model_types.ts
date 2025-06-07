@@ -1,10 +1,11 @@
 import { SqlDataSource } from "../sql_data_source";
 import { Transaction } from "../transactions/transaction";
 import { Model } from "./model";
+import { ExcludeRelations } from "./model_manager/model_manager_types";
 
-export type ModelWithoutExtraColumns<T extends Model> = Omit<
-  Partial<T>,
-  "$annotations"
+export type ModelDataWithOnlyColumns<T extends Model> = Pick<
+  T,
+  ExcludeRelations<Omit<T, "*">>
 >;
 
 export type NumberModelKey<T extends Model> = {

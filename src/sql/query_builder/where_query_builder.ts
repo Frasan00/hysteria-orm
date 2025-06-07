@@ -5,7 +5,6 @@ import whereTemplate, {
   BinaryOperatorType,
 } from "../resources/query/WHERE";
 import { SqlDataSource } from "../sql_data_source";
-import { JoinQueryBuilder } from "./join_query_builder";
 import { SelectQueryBuilder } from "./select_query_builder";
 
 export abstract class WhereQueryBuilder<
