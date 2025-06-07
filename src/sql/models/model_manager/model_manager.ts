@@ -79,7 +79,7 @@ export class ModelManager<T extends Model> {
 
     if (input.orderBy) {
       Object.entries(input.orderBy).forEach(([key, value]) => {
-        query.orderBy(key, value);
+        query.orderBy(key as ModelKey<T>, value as OrderByChoices);
       });
     }
 
