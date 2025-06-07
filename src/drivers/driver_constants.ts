@@ -13,9 +13,9 @@ export type PgClientOptions = ExcludeStringFromOptions<
   ConstructorParameters<PgImport["Pool"]>[0]
 >;
 
-export type MongoConnectionOptions =
-  | ConstructorParameters<MongoClientImport["MongoClient"]>[0]
-  | ConstructorParameters<MongoClientImport["MongoClient"]>[1];
+export type MongoConnectionOptions = NonNullable<
+  ConstructorParameters<MongoClientImport["MongoClient"]>[1]
+>;
 
 export type DriverSpecificOptions = {
   mysqlOptions?: MysqlCreateConnectionOptions;

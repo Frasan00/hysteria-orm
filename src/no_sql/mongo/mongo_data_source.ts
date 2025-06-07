@@ -1,8 +1,6 @@
-import type { MongoOptions } from "mongodb";
-
+import type { MongoClientImport, MongoConnectionOptions } from "../../drivers/driver_constants";
 import { DataSource } from "../../data_source/data_source";
 import { CollectionManager } from "./mongo_models/mongo_collection_manager";
-import { MongoClientImport } from "../../drivers/driver_constants";
 import { DriverFactory } from "../../drivers/drivers_factory";
 import { HysteriaError } from "../../errors/hysteria_error";
 import { Collection } from "./mongo_models/mongo_collection";
@@ -35,7 +33,7 @@ export class MongoDataSource extends DataSource {
    */
   static async connect(
     url?: string,
-    options?: Partial<MongoOptions> & { logs?: boolean },
+    options?: Partial<MongoConnectionOptions> & { logs?: boolean },
     cb?: (mongoDataSource: MongoDataSource) => Promise<void> | void,
   ): Promise<MongoDataSource> {
     if (!url) {
@@ -124,7 +122,7 @@ export class MongoDataSource extends DataSource {
     this: typeof MongoDataSource,
     connectionDetails: {
       url: string;
-      options?: MongoOptions;
+      options?: MongoConnectionOptions;
     },
     cb: (mongoDataSource: MongoDataSource) => Promise<void>,
   ): Promise<void> {

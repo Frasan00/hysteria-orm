@@ -4,6 +4,11 @@ import type {
   RedisStorable,
 } from "./no_sql/redis/redis_data_source";
 import type { ClientMigrator } from "./sql/migrations/migrator";
+import type { ModelQueryBuilder } from "./sql/models/model_query_builder/model_query_builder";
+import type { RelationQueryBuilderType } from "./sql/models/model_query_builder/relation_query_builder/relation_query_builder_types";
+import type { MongoDataSource } from "./no_sql/mongo/mongo_data_source";
+import type { RedisDataSource } from "./no_sql/redis/redis_data_source";
+import type { SqlDataSource } from "./sql/sql_data_source";
 
 import { HysteriaError } from "./errors/hysteria_error";
 import { MongoDataSource as mongo } from "./no_sql/mongo/mongo_data_source";
@@ -33,8 +38,6 @@ import logger from "./utils/logger";
 import { withPerformance } from "./utils/performance";
 import { generateULID } from "./utils/ulid";
 import { generateKeyPair } from "./utils/encryption";
-import { ModelQueryBuilder } from "./sql/models/model_query_builder/model_query_builder";
-import type { RelationQueryBuilderType } from "./sql/models/model_query_builder/relation_query_builder/relation_query_builder_types";
 
 export {
   // decorators
@@ -77,6 +80,10 @@ export {
   sql,
   withPerformance,
   generateKeyPair,
+  // types
+  MongoDataSource,
+  RedisDataSource,
+  SqlDataSource,
 };
 
 export default {
@@ -103,7 +110,6 @@ export default {
 
   // sql
   Model,
-  ModelQueryBuilder,
   sql,
   QueryBuilder,
 
