@@ -1,14 +1,6 @@
 import { defineConfig } from "tsup";
 
-const external = [
-  "commander",
-  "pluralize",
-  "reflect-metadata",
-  "sql-formatter",
-  "ioredis",
-  "pino",
-  "pino-pretty",
-];
+const external = ["ioredis", "mongodb", "pg", "mysql2", "sqlite3"];
 
 export default defineConfig([
   {

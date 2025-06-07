@@ -1,4 +1,3 @@
-import * as mongodb from "mongodb";
 import { MongoDataSource } from "../mongo_data_source";
 import { serializeCollection } from "../mongo_serializer";
 import {
@@ -12,6 +11,7 @@ import {
   ModelKeyOrAnySort,
 } from "./mongo_collection_types";
 import { HysteriaError } from "../../../errors/hysteria_error";
+import { MongoClientImport } from "../../../drivers/driver_constants";
 
 export type MongoFindOneOptions<T extends Collection> = {
   ignoreHooks?: FetchHooks[];
@@ -42,15 +42,15 @@ export type MongoUnrestrictedFindManyOptions<T extends Collection> =
 export class CollectionManager<T extends Collection> {
   protected logs: boolean;
   protected collection: typeof Collection;
-  protected mongoClient: mongodb.MongoClient;
+  protected mongoClient: ReturnType<MongoDataSource["getCurrentConnection"]>;
   protected mongoDataSource: MongoDataSource;
-  protected collectionInstance: mongodb.Collection;
-  protected session?: mongodb.ClientSession;
+  protected collectionInstance: MongoClientImport["Collection"]["prototype"];
+  protected session?: ReturnType<MongoDataSource["startSession"]>;
 
   constructor(
     _collection: typeof Collection,
     mongoDataSource: MongoDataSource,
-    session?: mongodb.ClientSession,
+    session?: ReturnType<MongoDataSource["startSession"]>,
     logs: boolean = false,
   ) {
     this.logs = logs;
@@ -180,9 +180,7 @@ export class CollectionManager<T extends Collection> {
       this.collection.beforeInsert(modelData);
     }
 
-    const result = await this.collectionInstance.insertOne(
-      modelData as mongodb.OptionalId<mongodb.BSON.Document>,
-    );
+    const result = await this.collectionInstance.insertOne(modelData as any);
     const insertedId = result.insertedId;
     const record = await this.collectionInstance.findOne(
       {
@@ -207,9 +205,7 @@ export class CollectionManager<T extends Collection> {
       });
     }
 
-    const result = await this.collectionInstance.insertMany(
-      modelData as mongodb.OptionalId<mongodb.BSON.Document>[],
-    );
+    const result = await this.collectionInstance.insertMany(modelData as any);
     const insertedIds = result.insertedIds;
     const insertedDocuments = await this.collectionInstance
       .find(
@@ -220,7 +216,7 @@ export class CollectionManager<T extends Collection> {
       )
       .toArray();
 
-    return await Promise.all(
+    return Promise.all(
       insertedDocuments.map(async (document) => {
         return (await serializeCollection(this.collection, document)) as T;
       }),
@@ -239,8 +235,9 @@ export class CollectionManager<T extends Collection> {
       );
     }
 
+    const mongo = await import("mongodb");
     const result = await this.collectionInstance.updateOne(
-      { _id: new mongodb.ObjectId(id) },
+      { _id: new mongo.ObjectId(id) },
       { $set: modelData },
     );
 
@@ -253,7 +250,7 @@ export class CollectionManager<T extends Collection> {
 
     const updatedDocument = await this.collectionInstance.findOne(
       {
-        _id: new mongodb.ObjectId(id),
+        _id: new mongo.ObjectId(id),
       },
       { session: this.session },
     );
@@ -273,9 +270,10 @@ export class CollectionManager<T extends Collection> {
       );
     }
 
+    const mongo = await import("mongodb");
     await this.collectionInstance.deleteOne(
       {
-        _id: new mongodb.ObjectId(id),
+        _id: new mongo.ObjectId(id),
       },
       { session: this.session },
     );

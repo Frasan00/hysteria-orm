@@ -1,14 +1,14 @@
-import * as mongodb from "mongodb";
 import { HysteriaError } from "../../../errors/hysteria_error";
 import logger from "../../../utils/logger";
 import { MongoDataSource } from "../mongo_data_source";
 import { Collection } from "../mongo_models/mongo_collection";
-import {
+import type {
   ModelKeyOrAny,
   ModelKeyOrAnySort,
 } from "../mongo_models/mongo_collection_types";
 import { serializeCollection, serializeCollections } from "../mongo_serializer";
-import { MongoCollectionKey } from "../mongo_models/mongo_collection_types";
+import type { MongoCollectionKey } from "../mongo_models/mongo_collection_types";
+import type { MongoClientImport } from "../../../drivers/driver_constants";
 
 export type FetchHooks = "beforeFetch" | "afterFetch";
 type BinaryOperatorType = "$eq" | "$ne" | "$gt" | "$gte" | "$lt" | "$lte";
@@ -29,24 +29,24 @@ export type ManyOptions = {
 };
 
 export class MongoQueryBuilder<T extends Collection> {
-  protected idObject: mongodb.Filter<mongodb.BSON.Document>;
+  protected idObject: MongoClientImport["Collection"]["prototype"]["find"]["prototype"]["filter"];
   protected selectObject?: Record<string, 1>;
   protected selectFields?: string[];
-  protected whereObject: mongodb.Filter<mongodb.BSON.Document>;
-  protected sortObject?: mongodb.Sort;
+  protected whereObject: MongoClientImport["Collection"]["prototype"]["find"]["prototype"]["filter"];
+  protected sortObject?: MongoClientImport["Collection"]["prototype"]["find"]["prototype"]["sort"];
   protected limitNumber?: number;
   protected offsetNumber?: number;
   protected mongoDataSource: MongoDataSource;
-  protected collection: mongodb.Collection;
+  protected collection: MongoClientImport["Collection"]["prototype"];
   protected model: typeof Collection;
   protected logs: boolean;
 
-  protected session?: mongodb.ClientSession;
+  protected session?: ReturnType<MongoDataSource["startSession"]>;
 
   constructor(
     model: typeof Collection,
     mongoDataSource: MongoDataSource,
-    _session?: mongodb.ClientSession,
+    _session?: ReturnType<MongoDataSource["startSession"]>,
     logs: boolean = false,
   ) {
     this.model = model;
@@ -69,9 +69,10 @@ export class MongoQueryBuilder<T extends Collection> {
       this.model.beforeFetch(this);
     }
 
-    const queryPayload: mongodb.Filter<mongodb.BSON.Document> = {
-      ...this.whereObject,
-    };
+    const queryPayload: MongoClientImport["Collection"]["prototype"]["find"]["prototype"]["filter"] =
+      {
+        ...this.whereObject,
+      };
 
     if (Object.keys(this.idObject).length) {
       queryPayload._id = this.idObject;
@@ -110,9 +111,10 @@ export class MongoQueryBuilder<T extends Collection> {
       this.model.beforeFetch(this);
     }
 
-    const queryPayload: mongodb.Filter<mongodb.BSON.Document> = {
-      ...this.whereObject,
-    };
+    const queryPayload: MongoClientImport["Collection"]["prototype"]["find"]["prototype"]["filter"] =
+      {
+        ...this.whereObject,
+      };
 
     if (Object.keys(this.idObject).length) {
       queryPayload._id = this.idObject;
@@ -336,8 +338,9 @@ export class MongoQueryBuilder<T extends Collection> {
       operator = "$eq";
     }
 
+    const mongo = require("mongodb");
     if (property === "id") {
-      this.idObject = { $eq: new mongodb.ObjectId(actualValue as string) };
+      this.idObject = { $eq: new mongo.ObjectId(actualValue as string) };
       return this;
     }
 
@@ -385,9 +388,10 @@ export class MongoQueryBuilder<T extends Collection> {
       operator = "$eq";
     }
 
+    const mongo = require("mongodb");
     const condition = { [property as string]: { [operator]: actualValue } };
     if (property === "id") {
-      this.idObject = { $eq: new mongodb.ObjectId(actualValue as string) };
+      this.idObject = { $eq: new mongo.ObjectId(actualValue as string) };
       return this;
     }
 
@@ -433,9 +437,10 @@ export class MongoQueryBuilder<T extends Collection> {
       operator = "$eq";
     }
 
+    const mongo = require("mongodb");
     const condition = { [property as string]: { [operator]: actualValue } };
     if (property === "id") {
-      this.idObject = { $eq: new mongodb.ObjectId(actualValue as string) };
+      this.idObject = { $eq: new mongo.ObjectId(actualValue as string) };
       return this;
     }
 
@@ -802,9 +807,10 @@ export class MongoQueryBuilder<T extends Collection> {
     property: MongoCollectionKey<T> | string,
     values: BaseValues[],
   ): this {
+    const mongo = require("mongodb");
     if (property === "id") {
       const valuesObject = values.map(
-        (value) => new mongodb.ObjectId(value as string),
+        (value) => new mongo.ObjectId(value as string),
       );
       this.idObject = { $in: valuesObject };
       return this;
@@ -835,9 +841,10 @@ export class MongoQueryBuilder<T extends Collection> {
     property: MongoCollectionKey<T> | string,
     values: BaseValues[],
   ): this {
+    const mongo = require("mongodb");
     if (property === "id") {
       const valuesObject = values.map(
-        (value) => new mongodb.ObjectId(value as string),
+        (value) => new mongo.ObjectId(value as string),
       );
       this.idObject = { $in: valuesObject };
       return this;
@@ -868,9 +875,10 @@ export class MongoQueryBuilder<T extends Collection> {
     property: MongoCollectionKey<T> | string,
     values: BaseValues[],
   ): this {
+    const mongo = require("mongodb");
     if (property === "id") {
       const valuesObject = values.map(
-        (value) => new mongodb.ObjectId(value as string),
+        (value) => new mongo.ObjectId(value as string),
       );
       this.idObject = { $in: valuesObject };
       return this;
@@ -901,9 +909,10 @@ export class MongoQueryBuilder<T extends Collection> {
     property: MongoCollectionKey<T> | string,
     values: BaseValues[],
   ): this {
+    const mongo = require("mongodb");
     if (property === "id") {
       const valuesObject = values.map(
-        (value) => new mongodb.ObjectId(value as string),
+        (value) => new mongo.ObjectId(value as string),
       );
       this.idObject = { $nin: valuesObject };
       return this;
@@ -934,9 +943,10 @@ export class MongoQueryBuilder<T extends Collection> {
     property: MongoCollectionKey<T> | string,
     values: BaseValues[],
   ): this {
+    const mongo = require("mongodb");
     if (property === "id") {
       const valuesObject = values.map(
-        (value) => new mongodb.ObjectId(value as string),
+        (value) => new mongo.ObjectId(value as string),
       );
       this.idObject = { $nin: valuesObject };
       return this;
@@ -967,9 +977,10 @@ export class MongoQueryBuilder<T extends Collection> {
     property: MongoCollectionKey<T> | string,
     values: BaseValues[],
   ): this {
+    const mongo = require("mongodb");
     if (property === "id") {
       const valuesObject = values.map(
-        (value) => new mongodb.ObjectId(value as string),
+        (value) => new mongo.ObjectId(value as string),
       );
       this.idObject = { $nin: valuesObject };
       return this;
@@ -1165,9 +1176,10 @@ export class MongoQueryBuilder<T extends Collection> {
     property: MongoCollectionKey<T> | string,
     values: [BaseValues, BaseValues],
   ): this {
+    const mongo = require("mongodb");
     if (property === "id") {
       const valuesObject = values.map(
-        (value) => new mongodb.ObjectId(value as string),
+        (value) => new mongo.ObjectId(value as string),
       );
       this.idObject = { $nin: valuesObject };
       return this;
@@ -1203,9 +1215,10 @@ export class MongoQueryBuilder<T extends Collection> {
     property: MongoCollectionKey<T> | string,
     values: [BaseValues, BaseValues],
   ): this {
+    const mongo = require("mongodb");
     if (property === "id") {
       const valuesObject = values.map(
-        (value) => new mongodb.ObjectId(value as string),
+        (value) => new mongo.ObjectId(value as string),
       );
       this.idObject = { $nin: valuesObject };
       return this;
@@ -1241,9 +1254,10 @@ export class MongoQueryBuilder<T extends Collection> {
     property: MongoCollectionKey<T> | string,
     values: [BaseValues, BaseValues],
   ): this {
+    const mongo = require("mongodb");
     if (property === "id") {
       const valuesObject = values.map(
-        (value) => new mongodb.ObjectId(value as string),
+        (value) => new mongo.ObjectId(value as string),
       );
       this.idObject = { $nin: valuesObject };
       return this;
@@ -1279,9 +1293,10 @@ export class MongoQueryBuilder<T extends Collection> {
     property: MongoCollectionKey<T> | string,
     values: [BaseValues, BaseValues],
   ): this {
+    const mongo = require("mongodb");
     if (property === "id") {
       const valuesObject = values.map(
-        (value) => new mongodb.ObjectId(value as string),
+        (value) => new mongo.ObjectId(value as string),
       );
       this.idObject = { $nin: valuesObject };
       return this;
@@ -1317,9 +1332,10 @@ export class MongoQueryBuilder<T extends Collection> {
     property: MongoCollectionKey<T> | string,
     values: [BaseValues, BaseValues],
   ): this {
+    const mongo = require("mongodb");
     if (property === "id") {
       const valuesObject = values.map(
-        (value) => new mongodb.ObjectId(value as string),
+        (value) => new mongo.ObjectId(value as string),
       );
       this.idObject = { $nin: valuesObject };
       return this;
@@ -1355,9 +1371,10 @@ export class MongoQueryBuilder<T extends Collection> {
     property: MongoCollectionKey<T> | string,
     values: [BaseValues, BaseValues],
   ): this {
+    const mongo = require("mongodb");
     if (property === "id") {
       const valuesObject = values.map(
-        (value) => new mongodb.ObjectId(value as string),
+        (value) => new mongo.ObjectId(value as string),
       );
       this.idObject = { $nin: valuesObject };
       return this;
@@ -1384,7 +1401,9 @@ export class MongoQueryBuilder<T extends Collection> {
   /**
    * @description Gives the possibility to add a raw where clause using the mongodb.Filter type
    */
-  rawWhere(whereObject: mongodb.Filter<mongodb.BSON.Document>): this {
+  rawWhere(
+    whereObject: MongoClientImport["Collection"]["prototype"]["find"]["prototype"]["filter"],
+  ): this {
     this.whereObject = {
       ...this.whereObject,
       ...whereObject,
@@ -1395,7 +1414,9 @@ export class MongoQueryBuilder<T extends Collection> {
   /**
    * @description Gives the possibility to add a raw where clause using the mongodb.Filter type
    */
-  andRawWhere(whereObject: mongodb.Filter<mongodb.BSON.Document>): this {
+  andRawWhere(
+    whereObject: MongoClientImport["Collection"]["prototype"]["find"]["prototype"]["filter"],
+  ): this {
     this.whereObject = {
       ...this.whereObject,
       ...whereObject,
@@ -1407,7 +1428,9 @@ export class MongoQueryBuilder<T extends Collection> {
   /**
    * @description Gives the possibility to add a raw where clause using the mongodb.Filter type
    */
-  orRawWhere(whereObject: mongodb.Filter<mongodb.BSON.Document>): this {
+  orRawWhere(
+    whereObject: MongoClientImport["Collection"]["prototype"]["find"]["prototype"]["filter"],
+  ): this {
     if (!this.whereObject.$or) {
       this.whereObject.$or = [];
     }
@@ -1422,7 +1445,9 @@ export class MongoQueryBuilder<T extends Collection> {
    * @returns
    */
   sortById(sortBy: 1 | -1): this {
-    this.sortObject = { _id: sortBy as mongodb.SortDirection };
+    this.sortObject = {
+      _id: sortBy as MongoClientImport["Collection"]["prototype"]["find"]["prototype"]["sort"],
+    };
     return this;
   }
 
@@ -1448,7 +1473,9 @@ export class MongoQueryBuilder<T extends Collection> {
       | ModelKeyOrAnySort<T>,
   ): this {
     if (typeof sortBy === "number") {
-      this.sortObject = { _id: sortBy as mongodb.SortDirection };
+      this.sortObject = {
+        _id: sortBy as MongoClientImport["Collection"]["prototype"]["find"]["prototype"]["sort"],
+      };
       return this;
     }
 
@@ -1463,15 +1490,20 @@ export class MongoQueryBuilder<T extends Collection> {
           acc[sort] = 1;
           return acc;
         }
-        const key = Object.keys(sort)[0] as keyof mongodb.Sort;
-        const value = Object.values(sort)[0] as mongodb.SortDirection;
-        acc[key] = +value;
+        const key = Object.keys(
+          sort,
+        )[0] as keyof MongoClientImport["Collection"]["prototype"]["find"]["prototype"]["sort"];
+        const value = Object.values(
+          sort,
+        )[0] as MongoClientImport["Collection"]["prototype"]["find"]["prototype"]["sort"];
+        acc[key as string] = +value;
         return acc;
-      }, {}) as mongodb.Sort;
+      }, {}) as MongoClientImport["Collection"]["prototype"]["find"]["prototype"]["sort"];
       return this;
     }
 
-    this.sortObject = sortBy as mongodb.Sort;
+    this.sortObject =
+      sortBy as MongoClientImport["Collection"]["prototype"]["find"]["prototype"]["sort"];
     return this;
   }
 
