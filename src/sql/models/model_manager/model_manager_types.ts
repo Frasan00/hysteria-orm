@@ -45,7 +45,7 @@ export type OnlyRelations<T> = {
 }[keyof T];
 
 export type WhereType<T> = {
-  [K in keyof T]?: string | number | boolean | Date | null;
+  [K in keyof T]?: T[K];
 };
 
 export type ModelKey<T extends Model> = {
@@ -64,9 +64,11 @@ export type ModelKey<T extends Model> = {
 
 export type ModelRelation<T extends Model> = OnlyRelations<T>;
 
-export type OrderByChoices = "asc" | "desc" | "asc" | "desc";
-export type OrderByType = {
-  [key: string]: OrderByChoices;
+export type OrderByChoices = "asc" | "desc";
+export type OrderByType<T extends Model> = {
+  [K in keyof T]?: OrderByChoices;
+} & {
+  [K in string]?: OrderByChoices;
 };
 
 export type UnrestrictedFindOneType<T extends Model> = {
@@ -74,7 +76,7 @@ export type UnrestrictedFindOneType<T extends Model> = {
   relations?: ModelRelation<T>[];
   ignoreHooks?: FetchHooks[];
   where?: Record<string, any>;
-  orderBy?: OrderByType;
+  orderBy?: OrderByType<T>;
   groupBy?: string[];
   offset?: number;
 };
@@ -90,7 +92,7 @@ export type FindOneType<T extends Model> = {
   select?: ModelKey<T>[];
   offset?: number;
   relations?: ModelRelation<T>[];
-  orderBy?: OrderByType;
+  orderBy?: OrderByType<T>;
   groupBy?: ModelKey<T>[];
   where?: WhereType<T>;
   ignoreHooks?: FetchHooks[];
