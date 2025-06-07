@@ -1,4 +1,7 @@
-import type { MongoClientImport, MongoConnectionOptions } from "../../drivers/driver_constants";
+import type {
+  MongoClientImport,
+  MongoConnectionOptions,
+} from "../../drivers/driver_constants";
 import { DataSource } from "../../data_source/data_source";
 import { CollectionManager } from "./mongo_models/mongo_collection_manager";
 import { DriverFactory } from "../../drivers/drivers_factory";

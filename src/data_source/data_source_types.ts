@@ -1,7 +1,7 @@
-import { MongoOptions } from "mongodb";
 import {
   PgClientOptions,
   MysqlCreateConnectionOptions,
+  MongoConnectionOptions,
 } from "../drivers/driver_constants";
 
 /**
@@ -22,7 +22,7 @@ export interface CommonDataSourceInput {
 
 export interface MongoDataSourceInput extends CommonDataSourceInput {
   readonly type: "mongo";
-  readonly mongoOptions?: MongoOptions;
+  readonly mongoOptions?: MongoConnectionOptions;
   readonly url?: string;
 }
 
