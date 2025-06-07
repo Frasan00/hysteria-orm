@@ -44,17 +44,6 @@ export type ConnectionPolicies = {
   };
 };
 
-export type CacheOptions = {
-  /**
-   * @description The type of cache to use, currently only memory and redis are supported
-   */
-  type: "memory" | "redis";
-  /**
-   * @description The ttl for the cache in milliseconds, if not set, the cache will never expire
-   */
-  ttl?: number;
-};
-
 type FixedTimeZone = `+${number}:${number}` | `-${number}:${number}`;
 type CountryTimezone = `${string}/${string}`;
 export type DatabaseTimezone = Timezone | FixedTimeZone | CountryTimezone;
@@ -81,10 +70,6 @@ export type SqlDataSourceInput = {
    * @description The query format options to use for the sql data source, it tells how the sql queries should be formatted before being executed and logged
    */
   readonly queryFormatOptions?: FormatOptionsWithLanguage;
-  /**
-   * @description The cache options to use for the sql data source, it tells if and how the sql queries should be cached
-   */
-  readonly cacheOptions?: CacheOptions;
 } & (
   | MysqlSqlDataSourceInput
   | PostgresSqlDataSourceInput

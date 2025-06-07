@@ -527,6 +527,19 @@ export class SqlDataSource extends DataSource {
     }
   }
 
+  async getConnectionDetails(): Promise<SqlDataSourceInput> {
+    return {
+      type: this.getDbType(),
+      host: this.host,
+      port: this.port,
+      username: this.username,
+      password: this.password,
+      database: this.database,
+      connectionPolicies: this.retryPolicy as ConnectionPolicies,
+      queryFormatOptions: this.queryFormatOptions,
+    };
+  }
+
   /**
    * @alias closeConnection
    */

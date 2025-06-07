@@ -73,26 +73,42 @@ export class Migrator {
  */
 export class ClientMigrator {
   protected migrationPath: string;
-  protected sqlDataSourceInput?: Partial<SqlDataSourceInput>;
+  protected sqlDataSourceInput?: Partial<SqlDataSourceInput> | SqlDataSource;
 
   constructor(
     migrationPath: string = env.MIGRATION_PATH || "migrations",
-    sqlDataSourceInput?: Partial<SqlDataSourceInput>,
+    sqlDataSourceInput?: Partial<SqlDataSourceInput> | SqlDataSource,
   ) {
     this.migrationPath = migrationPath;
     this.sqlDataSourceInput = sqlDataSourceInput;
   }
 
   /**
+   * @description Runs programmatic migrations up
+   */
+  async up(): Promise<void> {
+    return this.migrate("up");
+  }
+
+  /**
+   * @description Runs programmatic migrations down
+   */
+  async down(): Promise<void> {
+    return this.migrate("down");
+  }
+
+  /**
    * @description Runs programmatic migrations up or down
    * @param direction - The direction to migrate, either "up" or "down"
    */
-  async migrate(direction: "up" | "down"): Promise<void> {
+  private async migrate(direction: "up" | "down"): Promise<void> {
     env.MIGRATION_PATH = this.migrationPath;
     if (direction === "up") {
       return runMigrationsConnector(
         undefined,
-        this.sqlDataSourceInput,
+        this.sqlDataSourceInput instanceof SqlDataSource
+          ? await this.sqlDataSourceInput.getConnectionDetails()
+          : this.sqlDataSourceInput,
         true,
         this.migrationPath,
       );
@@ -100,7 +116,9 @@ export class ClientMigrator {
 
     return rollbackMigrationsConnector(
       undefined,
-      this.sqlDataSourceInput,
+      this.sqlDataSourceInput instanceof SqlDataSource
+        ? await this.sqlDataSourceInput.getConnectionDetails()
+        : this.sqlDataSourceInput,
       true,
       this.migrationPath,
     );
@@ -114,7 +132,7 @@ export class ClientMigrator {
  */
 export const defineMigrator = (
   migrationPath: string,
-  sqlDataSourceInput?: Partial<SqlDataSourceInput>,
+  sqlDataSourceInput?: Partial<SqlDataSourceInput> | SqlDataSource,
 ): ClientMigrator => {
   return new ClientMigrator(migrationPath, sqlDataSourceInput);
 };
