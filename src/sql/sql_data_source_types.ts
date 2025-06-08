@@ -53,7 +53,7 @@ export type DatabaseTimezone = Timezone | FixedTimeZone | CountryTimezone;
  * @description The connectionPolicies object is used to configure the connection policies for the sql data source
  */
 export type SqlDataSourceInput = {
-  readonly type: Exclude<DataSourceType, "mongo">;
+  readonly type?: Exclude<DataSourceType, "mongo">;
   /**
    * @description Whether to log the sql queries and other debug information
    */

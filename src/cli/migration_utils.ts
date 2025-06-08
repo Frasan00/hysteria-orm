@@ -1,6 +1,5 @@
 import fs from "node:fs";
 import path, { join } from "node:path";
-import ts from "typescript";
 import { pathToFileURL } from "url";
 import { env } from "../env/env";
 import { HysteriaError } from "../errors/hysteria_error";
@@ -14,6 +13,7 @@ import type {
 } from "../sql/sql_data_source_types";
 import { MigrationTableType } from "./resources/migration_table_type";
 import MigrationTemplates from "./resources/migration_templates";
+import { createRequire } from "node:module";
 
 const importMigrationFile = async (
   filePath: string,
@@ -21,16 +21,30 @@ const importMigrationFile = async (
 ) => {
   const isTs = filePath.endsWith(".ts");
   if (isTs) {
-    // If ts file, transpile to js and write to tmp transpiled folder
+    const ts = await import("typescript").catch(() => {
+      throw new HysteriaError(
+        "MigrationUtils::importMigrationFile In order to use TypeScript migrations, you must have `typeScript` installed in your project. Please install it with `npm install typescript --save-dev`, if you're in a production environment, it's recommended to transpile your migrations to JavaScript before running the application.",
+        "MIGRATION_MODULE_NOT_FOUND",
+      );
+    });
+
     const transpiled = ts.transpileModule(fs.readFileSync(filePath, "utf8"), {
       compilerOptions: {
         module: ts.ModuleKind.ESNext,
         target: ts.ScriptTarget.ES2020,
         moduleResolution: ts.ModuleResolutionKind.NodeNext,
-        noEmitOnError: true,
-        noEmit: true,
+        declaration: false,
+        esModuleInterop: true,
+        allowSyntheticDefaultImports: true,
+        resolveJsonModule: true,
+        forceConsistentCasingInFileNames: true,
         strict: true,
         skipLibCheck: true,
+        noEmitOnError: true,
+        noEmit: true,
+        noUnusedLocals: false,
+        noUnusedParameters: false,
+        noFallthroughCasesInSwitch: false,
       },
     });
 
@@ -48,8 +62,24 @@ const importMigrationFile = async (
     filePath = jsFilePath;
   }
 
-  const fileUrl = pathToFileURL(filePath).href;
-  return import(fileUrl);
+  try {
+    const fileUrl = pathToFileURL(filePath).href;
+    return import(fileUrl);
+  } catch (error) {
+    const require = createRequire(import.meta.url);
+    try {
+      const module = require(filePath);
+      return {
+        default: module.default || module,
+        ...module,
+      };
+    } catch (requireError) {
+      throw new HysteriaError(
+        `MigrationUtils::importMigrationFile Failed to import migration file: ${filePath}. Both ESM and CommonJS imports failed.`,
+        "MIGRATION_MODULE_NOT_FOUND",
+      );
+    }
+  }
 };
 
 export async function getMigrationTable(

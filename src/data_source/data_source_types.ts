@@ -38,7 +38,7 @@ export interface PostgresSqlDataSourceInput extends CommonDataSourceInput {
 
 export interface NotNullablePostgresSqlDataSourceInput
   extends PostgresSqlDataSourceInput {
-  readonly type: "postgres" | "cockroachdb";
+  readonly type?: "postgres" | "cockroachdb";
   readonly host: string;
   readonly username: string;
   readonly password: string;
@@ -48,7 +48,7 @@ export interface NotNullablePostgresSqlDataSourceInput
 }
 
 export interface MysqlSqlDataSourceInput extends CommonDataSourceInput {
-  readonly type: "mysql" | "mariadb";
+  readonly type?: "mysql" | "mariadb";
   readonly host?: string;
   readonly port?: number;
   readonly username?: string;
@@ -59,7 +59,7 @@ export interface MysqlSqlDataSourceInput extends CommonDataSourceInput {
 
 export interface NotNullableMysqlSqlDataSourceInput
   extends MysqlSqlDataSourceInput {
-  readonly type: "mysql" | "mariadb";
+  readonly type?: "mysql" | "mariadb";
   readonly host: string;
   readonly username: string;
   readonly password: string;
@@ -69,13 +69,13 @@ export interface NotNullableMysqlSqlDataSourceInput
 }
 
 export interface SqliteDataSourceInput extends CommonDataSourceInput {
-  readonly type: "sqlite";
+  readonly type?: "sqlite";
   readonly database?: string;
 }
 
 export interface NotNullableSqliteDataSourceInput
   extends SqliteDataSourceInput {
-  readonly type: "sqlite";
+  readonly type?: "sqlite";
   readonly database: string;
 }
 
