@@ -353,6 +353,122 @@ export abstract class WhereQueryBuilder<
   }
 
   /**
+   * @description Adds a WHERE LIKE condition to the query.
+   */
+  whereLike(column: ModelKey<T>, value: string): this;
+  whereLike(column: string, value: string): this;
+  whereLike(column: ModelKey<T> | string, value: string): this {
+    return this.andWhereLike(column as ModelKey<T>, value);
+  }
+
+  /**
+   * @description Adds an AND WHERE LIKE condition to the query.
+   */
+  andWhereLike(column: ModelKey<T>, value: string): this;
+  andWhereLike(column: string, value: string): this;
+  andWhereLike(column: ModelKey<T> | string, value: string): this {
+    this.where(column as string, "like", value);
+    return this;
+  }
+
+  /**
+   * @description Adds an OR WHERE LIKE condition to the query.
+   */
+  orWhereLike(column: ModelKey<T>, value: string): this;
+  orWhereLike(column: string, value: string): this;
+  orWhereLike(column: ModelKey<T> | string, value: string): this {
+    this.orWhere(column as string, "like", value);
+    return this;
+  }
+
+  /**
+   * @description Adds a WHERE ILIKE condition to the query.
+   */
+  whereILike(column: ModelKey<T>, value: string): this;
+  whereILike(column: string, value: string): this;
+  whereILike(column: ModelKey<T> | string, value: string): this {
+    return this.andWhereILike(column as ModelKey<T>, value);
+  }
+
+  /**
+   * @description Adds an AND WHERE ILIKE condition to the query.
+   */
+  andWhereILike(column: ModelKey<T>, value: string): this;
+  andWhereILike(column: string, value: string): this;
+  andWhereILike(column: ModelKey<T> | string, value: string): this {
+    this.where(column as string, "ilike", value);
+    return this;
+  }
+
+  /**
+   * @description Adds an OR WHERE ILIKE condition to the query.
+   */
+  orWhereILike(column: ModelKey<T>, value: string): this;
+  orWhereILike(column: string, value: string): this;
+  orWhereILike(column: ModelKey<T> | string, value: string): this {
+    this.orWhere(column as string, "ilike", value);
+    return this;
+  }
+
+  /**
+   * @description Adds a WHERE NOT LIKE condition to the query.
+   */
+  whereNotLike(column: ModelKey<T>, value: string): this;
+  whereNotLike(column: string, value: string): this;
+  whereNotLike(column: ModelKey<T> | string, value: string): this {
+    return this.andWhereNotLike(column as ModelKey<T>, value);
+  }
+
+  /**
+   * @description Adds an AND WHERE NOT LIKE condition to the query.
+   */
+  andWhereNotLike(column: ModelKey<T>, value: string): this;
+  andWhereNotLike(column: string, value: string): this;
+  andWhereNotLike(column: ModelKey<T> | string, value: string): this {
+    this.where(column as string, "not like", value);
+    return this;
+  }
+
+  /**
+   * @description Adds an OR WHERE NOT LIKE condition to the query.
+   */
+  orWhereNotLike(column: ModelKey<T>, value: string): this;
+  orWhereNotLike(column: string, value: string): this;
+  orWhereNotLike(column: ModelKey<T> | string, value: string): this {
+    this.orWhere(column as string, "not like", value);
+    return this;
+  }
+
+  /**
+   * @description Adds a WHERE NOT ILIKE condition to the query.
+   */
+  whereNotILike(column: ModelKey<T>, value: string): this;
+  whereNotILike(column: string, value: string): this;
+  whereNotILike(column: ModelKey<T> | string, value: string): this {
+    return this.andWhereNotILike(column as ModelKey<T>, value);
+  }
+
+  /**
+   * @description Adds an AND WHERE NOT ILIKE condition to the query.
+   */
+  andWhereNotILike(column: ModelKey<T>, value: string): this;
+  andWhereNotILike(column: string, value: string): this;
+  andWhereNotILike(column: ModelKey<T> | string, value: string): this {
+    this.where(column as string, "not ilike", value);
+    return this;
+  }
+
+  /**
+   * @description Adds an OR WHERE NOT ILIKE condition to the query.
+   */
+  orWhereNotILike(column: ModelKey<T>, value: string): this;
+  orWhereNotILike(column: string, value: string): this;
+  orWhereNotILike(column: ModelKey<T> | string, value: string): this {
+    this.orWhere(column as string, "not ilike", value);
+    return this;
+  }
+
+  /**
    * @description Adds a WHERE IN condition to the query.
    * @warning If the values array is empty, it will add an impossible condition.
    */

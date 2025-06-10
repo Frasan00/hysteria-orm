@@ -1,5 +1,7 @@
+import { Mutex } from "async-mutex";
 import crypto from "node:crypto";
 import { HysteriaError } from "../../errors/hysteria_error";
+import logger from "../../utils/logger";
 import {
   BEGIN_TRANSACTION,
   COMMIT_TRANSACTION,
@@ -10,16 +12,17 @@ import {
   TransactionExecutionOptions,
   TransactionIsolationLevel,
 } from "./transaction_types";
-import logger from "../../utils/logger";
 
 /**
- * @description Transaction class, not meant to be used directly, use SqlDataSource.startTransaction() instead
+ * @description Transaction class, not meant to be used directly, use sql.startTransaction() instead
  */
 export class Transaction {
   sqlDataSource: SqlDataSource;
   isActive: boolean;
   transactionId: string;
   isolationLevel?: TransactionIsolationLevel;
+  private _connectionReleased = false;
+  private _mutex = new Mutex();
 
   constructor(
     sqlDataSource: SqlDataSource,
@@ -33,25 +36,30 @@ export class Transaction {
 
   async startTransaction(): Promise<void> {
     const isolationQuery = this.getIsolationLevelQuery();
-
-    if (!isolationQuery) {
-      await this.sqlDataSource.rawQuery(BEGIN_TRANSACTION);
+    try {
+      if (!isolationQuery) {
+        await this.sqlDataSource.rawQuery(BEGIN_TRANSACTION);
+        this.isActive = true;
+        return;
+      }
+      if (
+        this.sqlDataSource.type === "mysql" ||
+        this.sqlDataSource.type === "mariadb"
+      ) {
+        await this.sqlDataSource.rawQuery(isolationQuery);
+        await this.sqlDataSource.rawQuery(BEGIN_TRANSACTION);
+        this.isActive = true;
+        return;
+      }
+      await this.sqlDataSource.rawQuery(
+        `${BEGIN_TRANSACTION} ${isolationQuery}`,
+      );
       this.isActive = true;
-      return;
+    } catch (error: any) {
+      this.isActive = false;
+      logger.error(error);
+      throw error;
     }
-
-    if (
-      this.sqlDataSource.type === "mysql" ||
-      this.sqlDataSource.type === "mariadb"
-    ) {
-      await this.sqlDataSource.rawQuery(isolationQuery);
-      await this.sqlDataSource.rawQuery(BEGIN_TRANSACTION);
-      this.isActive = true;
-      return;
-    }
-
-    await this.sqlDataSource.rawQuery(`${BEGIN_TRANSACTION} ${isolationQuery}`);
-    this.isActive = true;
   }
 
   /**
@@ -60,27 +68,30 @@ export class Transaction {
    * @logs if the transaction is not active and options.throwErrorOnInactiveTransaction is false
    */
   async commit(options?: TransactionExecutionOptions): Promise<void> {
-    const endConnection = options?.endConnection ?? true;
-    if (!this.isActive) {
-      if (options?.throwErrorOnInactiveTransaction) {
-        throw new HysteriaError(
-          "TRANSACTION::commit",
-          "TRANSACTION_NOT_ACTIVE",
-        );
+    return this._mutex.runExclusive(async () => {
+      const endConnection = options?.endConnection ?? true;
+      if (!this.isActive) {
+        if (options?.throwErrorOnInactiveTransaction) {
+          throw new HysteriaError(
+            "TRANSACTION::commit",
+            "TRANSACTION_NOT_ACTIVE",
+          );
+        }
+        logger.warn("Transaction::commit - TRANSACTION_NOT_ACTIVE");
+        return;
       }
-
-      logger.warn("Transaction::commit - TRANSACTION_NOT_ACTIVE");
-      return;
-    }
-
-    try {
-      await this.sqlDataSource.rawQuery(COMMIT_TRANSACTION);
-    } finally {
-      if (endConnection) {
-        await this.releaseConnection();
+      try {
+        await this.sqlDataSource.rawQuery(COMMIT_TRANSACTION);
+      } catch (error: any) {
+        logger.error(error);
+        throw error;
+      } finally {
+        if (endConnection) {
+          await this.releaseConnection();
+        }
+        this.isActive = false;
       }
-      this.isActive = false;
-    }
+    });
   }
 
   /**
@@ -89,47 +100,66 @@ export class Transaction {
    * @logs if the transaction is not active and options.throwErrorOnInactiveTransaction is false
    */
   async rollback(options?: TransactionExecutionOptions): Promise<void> {
-    const endConnection = options?.endConnection ?? true;
-    if (!this.isActive) {
-      if (options?.throwErrorOnInactiveTransaction) {
-        throw new HysteriaError(
-          "TRANSACTION::rollback",
-          "TRANSACTION_NOT_ACTIVE",
-        );
+    return this._mutex.runExclusive(async () => {
+      const endConnection = options?.endConnection ?? true;
+      if (!this.isActive) {
+        if (options?.throwErrorOnInactiveTransaction) {
+          throw new HysteriaError(
+            "TRANSACTION::rollback",
+            "TRANSACTION_NOT_ACTIVE",
+          );
+        }
+        logger.warn("Transaction::rollback - TRANSACTION_NOT_ACTIVE");
+        return;
       }
-
-      logger.warn("Transaction::rollback - TRANSACTION_NOT_ACTIVE");
-      return;
-    }
-
-    try {
-      await this.sqlDataSource.rawQuery(ROLLBACK_TRANSACTION);
-    } finally {
-      if (endConnection) {
-        await this.releaseConnection();
+      try {
+        await this.sqlDataSource.rawQuery(ROLLBACK_TRANSACTION);
+      } catch (error: any) {
+        logger.error(error);
+        throw error;
+      } finally {
+        if (endConnection) {
+          await this.releaseConnection();
+        }
+        this.isActive = false;
       }
-      this.isActive = false;
-    }
+    });
   }
 
+  /**
+   * @description Release the connection, does nothing if the connection is already released
+   */
   async releaseConnection(): Promise<void> {
-    switch (this.sqlDataSource.type) {
-      case "mysql":
-      case "mariadb":
-        await this.sqlDataSource.getCurrentDriverConnection("mysql").end();
-        break;
-      case "postgres":
-      case "cockroachdb":
-        await this.sqlDataSource.getCurrentDriverConnection("postgres").end();
-        break;
-      case "sqlite":
-        await this.sqlDataSource.getCurrentDriverConnection("sqlite").close();
-        break;
-      default:
-        throw new HysteriaError(
-          "TRANSACTION::releaseConnection",
-          `UNSUPPORTED_DATABASE_TYPE_${this.sqlDataSource.type}`,
-        );
+    if (this._connectionReleased) return;
+    this._connectionReleased = true;
+    try {
+      switch (this.sqlDataSource.type) {
+        case "mysql":
+        case "mariadb":
+          await this.sqlDataSource.getCurrentDriverConnection("mysql").end();
+          break;
+        case "postgres":
+        case "cockroachdb":
+          await this.sqlDataSource.getCurrentDriverConnection("postgres").end();
+          break;
+        case "sqlite":
+          await new Promise<void>((resolve, reject) => {
+            this.sqlDataSource
+              .getCurrentDriverConnection("sqlite")
+              .close((err) => {
+                if (err) reject(err);
+                else resolve();
+              });
+          });
+          break;
+        default:
+          throw new HysteriaError(
+            "TRANSACTION::releaseConnection",
+            `UNSUPPORTED_DATABASE_TYPE_${this.sqlDataSource.type}`,
+          );
+      }
+    } catch (error: any) {
+      logger.error(error);
     }
   }
 
