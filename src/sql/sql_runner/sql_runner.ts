@@ -45,6 +45,7 @@ export const execSql = async <M extends Model, T extends Returning>(
   options?: {
     sqlLiteOptions?: SqlLiteOptions<M>;
     shouldFormat?: boolean;
+    shouldNotLog?: boolean;
   },
 ): Promise<SqlRunnerReturnType<T>> => {
   const sqlType = sqlDataSource.type as SqlDataSourceType;
@@ -53,7 +54,10 @@ export const execSql = async <M extends Model, T extends Returning>(
     query = format(query, sqlDataSource.queryFormatOptions);
   }
 
-  log(query, sqlDataSource.logs, params);
+  if (!options?.shouldNotLog) {
+    log(query, sqlDataSource.logs, params);
+  }
+
   switch (sqlType) {
     case "mysql":
     case "mariadb":

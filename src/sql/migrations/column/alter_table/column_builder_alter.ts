@@ -1,5 +1,6 @@
 import { HysteriaError } from "../../../../errors/hysteria_error";
 import type { SqlDataSourceType } from "../../../sql_data_source_types";
+import { enQuoteColumnName } from "../column_options";
 import ColumnTypeBuilder, {
   DateOptions,
 } from "../create_table/column_type_builder";
@@ -77,6 +78,8 @@ export default class ColumnBuilderAlter {
 
   /**
    * @description Add a new column to the table
+   * @throws {HysteriaError} postgres if afterColumn is provided
+   * @throws {HysteriaError} sqlite if afterColumn is provided
    */
   addColumn(
     columnName: string,
@@ -249,7 +252,8 @@ export default class ColumnBuilderAlter {
       default?: string | Date;
     },
   ): ColumnBuilderAlter {
-    let query = `ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${type}`;
+    const quotedColumnName = enQuoteColumnName(columnName, this.sqlType);
+    let query = `ALTER TABLE ${this.table} ADD COLUMN ${quotedColumnName} ${type}`;
     if (options?.notNullable) {
       query += " NOT NULL";
     }
@@ -311,6 +315,7 @@ export default class ColumnBuilderAlter {
       unique?: boolean;
     },
   ): ColumnBuilderAlter {
+    const quotedColumnName = enQuoteColumnName(columnName, this.sqlType);
     switch (this.sqlType) {
       case "mariadb":
       case "mysql":
@@ -325,7 +330,7 @@ export default class ColumnBuilderAlter {
         });
         this.partialQuery = `ALTER TABLE ${
           this.table
-        } ADD COLUMN ${columnName} ENUM(${parsedValues.join(", ")})`;
+        } ADD COLUMN ${quotedColumnName} ENUM(${parsedValues.join(", ")})`;
         break;
       case "postgres":
         const enumTypeName = `${this.table}_${columnName}_enum`;
@@ -344,7 +349,7 @@ DO $$ BEGIN
     CREATE TYPE ${enumTypeName} AS ENUM(${parsedValuesPg.join(", ")});
   END IF;
 END $$;
-ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
+ALTER TABLE ${this.table} ADD COLUMN ${quotedColumnName} ${enumTypeName}
       `;
         break;
       case "cockroachdb":
@@ -360,7 +365,7 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeName}
         });
         this.partialQuery = `
 CREATE TYPE IF NOT EXISTS ${enumTypeNameCockroach} AS ENUM(${parsedValuesCockroach.join(", ")});
-ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeNameCockroach}
+ALTER TABLE ${this.table} ADD COLUMN ${quotedColumnName} ${enumTypeNameCockroach}
       `;
         break;
       case "sqlite":
@@ -375,11 +380,11 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeNameCockroach}
         });
         this.partialQuery = `ALTER TABLE ${
           this.table
-        } ADD COLUMN ${columnName} TEXT ${
+        } ADD COLUMN ${quotedColumnName} TEXT ${
           options?.notNullable ? "NOT NULL" : ""
         } DEFAULT ${
           options?.default ? `'${options.default}'` : "NULL"
-        } CHECK (${columnName} IN (${parsedValuesSqlite.join(", ")}))`;
+        } CHECK (${quotedColumnName} IN (${parsedValuesSqlite.join(", ")}))`;
         break;
       default:
         throw new HysteriaError(
@@ -434,17 +439,18 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeNameCockroach}
    * @description Drops a column from the table
    */
   dropColumn(columnName: string): ColumnBuilderAlter {
+    const quotedColumnName = enQuoteColumnName(columnName, this.sqlType);
     switch (this.sqlType) {
       case "mariadb":
       case "mysql":
-        this.partialQuery = `ALTER TABLE ${this.table} DROP COLUMN ${columnName}`;
+        this.partialQuery = `ALTER TABLE ${this.table} DROP COLUMN ${quotedColumnName}`;
         break;
       case "postgres":
       case "cockroachdb":
-        this.partialQuery = `ALTER TABLE ${this.table} DROP COLUMN ${columnName}`;
+        this.partialQuery = `ALTER TABLE ${this.table} DROP COLUMN ${quotedColumnName}`;
         break;
       case "sqlite":
-        this.partialQuery = `ALTER TABLE ${this.table} DROP COLUMN ${columnName}`;
+        this.partialQuery = `ALTER TABLE ${this.table} DROP COLUMN ${quotedColumnName}`;
         break;
       default:
         throw new HysteriaError(
@@ -466,17 +472,19 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeNameCockroach}
     oldColumnName: string,
     newColumnName: string,
   ): ColumnBuilderAlter {
+    const quotedOldColumnName = enQuoteColumnName(oldColumnName, this.sqlType);
+    const quotedNewColumnName = enQuoteColumnName(newColumnName, this.sqlType);
     switch (this.sqlType) {
       case "mariadb":
       case "mysql":
-        this.partialQuery = `ALTER TABLE ${this.table} RENAME COLUMN \`${oldColumnName}\` TO \`${newColumnName}\``;
+        this.partialQuery = `ALTER TABLE ${this.table} RENAME COLUMN ${quotedOldColumnName} TO ${quotedNewColumnName}`;
         break;
       case "postgres":
       case "cockroachdb":
-        this.partialQuery = `ALTER TABLE ${this.table} RENAME COLUMN ${oldColumnName} TO ${newColumnName}`;
+        this.partialQuery = `ALTER TABLE ${this.table} RENAME COLUMN ${quotedOldColumnName} TO ${quotedNewColumnName}`;
         break;
       case "sqlite":
-        this.partialQuery = `ALTER TABLE ${this.table} RENAME COLUMN \`${oldColumnName}\` TO \`${newColumnName}\``;
+        this.partialQuery = `ALTER TABLE ${this.table} RENAME COLUMN ${quotedOldColumnName} TO ${quotedNewColumnName}`;
         break;
       default:
         throw new HysteriaError(
@@ -495,12 +503,13 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeNameCockroach}
     newDataType: string,
     options?: BaseOptions,
   ): ColumnBuilderAlter {
+    const quotedColumnName = enQuoteColumnName(columnName, this.sqlType);
     switch (this.sqlType) {
       case "mariadb":
       case "mysql":
         this.partialQuery = `ALTER TABLE ${
           this.table
-        } MODIFY COLUMN ${columnName} ${newDataType}${
+        } MODIFY COLUMN ${quotedColumnName} ${newDataType}${
           options && options.length ? `(${options.length})` : ""
         }`;
         break;
@@ -609,6 +618,7 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeNameCockroach}
     columnName: string,
     defaultValue: string | number | boolean | null,
   ): ColumnBuilderAlter {
+    const quotedColumnName = enQuoteColumnName(columnName, this.sqlType);
     if (defaultValue === null) {
       defaultValue = "NULL";
     }
@@ -616,11 +626,11 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeNameCockroach}
     switch (this.sqlType) {
       case "mariadb":
       case "mysql":
-        this.partialQuery = `ALTER TABLE ${this.table} ALTER COLUMN ${columnName} SET DEFAULT ${defaultValue}`;
+        this.partialQuery = `ALTER TABLE ${this.table} ALTER COLUMN ${quotedColumnName} SET DEFAULT ${defaultValue}`;
         break;
       case "postgres":
       case "cockroachdb":
-        this.partialQuery = `ALTER TABLE ${this.table} ALTER COLUMN ${columnName} SET DEFAULT ${defaultValue}`;
+        this.partialQuery = `ALTER TABLE ${this.table} ALTER COLUMN ${quotedColumnName} SET DEFAULT ${defaultValue}`;
         break;
       case "sqlite":
         throw new HysteriaError(
@@ -643,14 +653,15 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeNameCockroach}
    * @description Drop a default value
    */
   dropDefaultValue(columnName: string): ColumnBuilderAlter {
+    const quotedColumnName = enQuoteColumnName(columnName, this.sqlType);
     switch (this.sqlType) {
       case "mariadb":
       case "mysql":
-        this.partialQuery = `ALTER TABLE ${this.table} ALTER COLUMN ${columnName} DROP DEFAULT`;
+        this.partialQuery = `ALTER TABLE ${this.table} ALTER COLUMN ${quotedColumnName} DROP DEFAULT`;
         break;
       case "postgres":
       case "cockroachdb":
-        this.partialQuery = `ALTER TABLE ${this.table} ALTER COLUMN ${columnName} DROP DEFAULT`;
+        this.partialQuery = `ALTER TABLE ${this.table} ALTER COLUMN ${quotedColumnName} DROP DEFAULT`;
         break;
       case "sqlite":
         throw new HysteriaError(
@@ -679,13 +690,14 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeNameCockroach}
       constraintName?: string;
     },
   ): ColumnBuilderAlter {
+    const quotedColumnName = enQuoteColumnName(columnName, this.sqlType);
     const fkName = options.constraintName || `${this.table}_${columnName}_fk`;
     switch (this.sqlType) {
       case "mariadb":
       case "mysql":
         this.partialQuery = `ALTER TABLE ${
           this.table
-        } ADD CONSTRAINT ${fkName} FOREIGN KEY (${columnName}) REFERENCES ${
+        } ADD CONSTRAINT ${fkName} FOREIGN KEY (${quotedColumnName}) REFERENCES ${
           options.references.table
         }(${options.references.column}) ON DELETE ${
           options.references.onDelete || "NO ACTION"
@@ -693,14 +705,14 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeNameCockroach}
         break;
       case "postgres":
       case "cockroachdb":
-        this.partialQuery = `ALTER TABLE ${this.table} ADD CONSTRAINT ${fkName} FOREIGN KEY (${columnName}) REFERENCES ${
+        this.partialQuery = `ALTER TABLE ${this.table} ADD CONSTRAINT ${fkName} FOREIGN KEY (${quotedColumnName}) REFERENCES ${
           options.references.table
         }(${options.references.column}) ON DELETE ${
           options.references.onDelete || "NO ACTION"
         } ON UPDATE ${options.references.onUpdate || "NO ACTION"}`;
         break;
       case "sqlite":
-        this.partialQuery = `ALTER TABLE ${this.table} ADD CONSTRAINT ${fkName} FOREIGN KEY (${columnName}) REFERENCES ${
+        this.partialQuery = `ALTER TABLE ${this.table} ADD CONSTRAINT ${fkName} FOREIGN KEY (${quotedColumnName}) REFERENCES ${
           options.references.table
         }(${options.references.column}) ON DELETE ${
           options.references.onDelete || "NO ACTION"
@@ -733,6 +745,8 @@ ALTER TABLE ${this.table} ADD COLUMN ${columnName} ${enumTypeNameCockroach}
         this.partialQuery = `ALTER TABLE ${this.table} DROP FOREIGN KEY ${fkName}`;
         break;
       case "postgres":
+        this.partialQuery = `ALTER TABLE ${this.table} DROP CONSTRAINT ${fkName}`;
+        break;
       case "cockroachdb":
         this.partialQuery = `ALTER TABLE ${this.table} DROP CONSTRAINT ${fkName}`;
         break;

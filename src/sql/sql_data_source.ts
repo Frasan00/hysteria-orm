@@ -82,7 +82,7 @@ export class SqlDataSource extends DataSource {
       },
     );
 
-    await sqlDataSource.rawQuery("SELECT 1");
+    await sqlDataSource.testConnectionQuery("SELECT 1");
     SqlDataSource.instance = sqlDataSource;
     await cb?.(sqlDataSource);
     return sqlDataSource;
@@ -123,7 +123,7 @@ export class SqlDataSource extends DataSource {
       },
     );
 
-    await sqlDataSource.rawQuery("SELECT 1");
+    await sqlDataSource.testConnectionQuery("SELECT 1");
     await cb?.(sqlDataSource);
     return sqlDataSource;
   }
@@ -142,7 +142,7 @@ export class SqlDataSource extends DataSource {
         ...connectionDetails,
       },
     );
-    await customSqlInstance.rawQuery("SELECT 1");
+    await customSqlInstance.testConnectionQuery("SELECT 1");
     try {
       await cb(customSqlInstance).then(async () => {
         if (!customSqlInstance.isConnected) {
@@ -559,6 +559,12 @@ export class SqlDataSource extends DataSource {
     }
 
     return execSql(query, params, this);
+  }
+
+  private async testConnectionQuery(query: string): Promise<void> {
+    await execSql(query, [], this, "raw", {
+      shouldNotLog: true,
+    });
   }
 
   static get isInGlobalTransaction(): boolean {
