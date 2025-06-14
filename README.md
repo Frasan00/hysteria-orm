@@ -12,4 +12,4 @@ To get started, follow the official installation guide:
 
 ---
 
-For more details, visit the [full documentation](https://frasan00.github.io/hysteria-orm/).
+For more details, visit the [full documentation](https://frasan00.github.io/hysteria-orm/docs/getting-started/philosophy).
