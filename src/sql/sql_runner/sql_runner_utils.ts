@@ -33,7 +33,7 @@ export const promisifySqliteQuery = <T extends Model>(
           reject(err);
         }
 
-        if (!rows.length) {
+        if (!rows || !rows.length) {
           resolve([] as T[]);
         }
 

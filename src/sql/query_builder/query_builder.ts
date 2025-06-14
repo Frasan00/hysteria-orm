@@ -22,10 +22,10 @@ import {
   PluckReturnType,
   QueryBuilderWithOnlyWhereConditions,
 } from "./query_builder_types";
-import { WhereQueryBuilder } from "./where_query_builder";
 import { withPerformance } from "../../utils/performance";
+import { JsonQueryBuilder } from "./json_query_builder";
 
-export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
+export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   model: typeof Model;
   protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
   protected unionQuery: string;
@@ -39,7 +39,7 @@ export class QueryBuilder<T extends Model = any> extends WhereQueryBuilder<T> {
     model: typeof Model,
     sqlDataSource: SqlDataSource = SqlDataSource.getInstance(),
   ) {
-    super(model, sqlDataSource, false);
+    super(model, sqlDataSource);
     this.lockForUpdateQuery = "";
     this.dbType = sqlDataSource.getDbType();
     this.isNestedCondition = false;

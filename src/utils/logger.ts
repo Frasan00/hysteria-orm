@@ -73,7 +73,31 @@ class HysteriaLogger {
   }
 }
 
-export function log(query: string, logs: Boolean, params?: any[]) {
+function formatParams(params: any[]): string {
+  return params
+    .map((param) => {
+      if (typeof param === "object") {
+        return JSON.stringify(param);
+      }
+
+      if (typeof param === "string") {
+        return `'${param}'`;
+      }
+
+      if (typeof param === "number") {
+        return param;
+      }
+
+      if (typeof param === "boolean") {
+        return param ? "true" : "false";
+      }
+
+      return param;
+    })
+    .join(", ");
+}
+
+export function log(query: string, logs: boolean, params?: any[]) {
   if (!logs) {
     return;
   }
@@ -92,7 +116,7 @@ export function log(query: string, logs: Boolean, params?: any[]) {
     },
   });
 
-  const logMessage = `${query} [${params}]`;
+  const logMessage = `${query} [${formatParams(params || [])}]`;
   HysteriaLogger.loggerInstance.info(logMessage);
 }
 
