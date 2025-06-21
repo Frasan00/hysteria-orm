@@ -4,6 +4,7 @@ import { pathToFileURL } from "url";
 import { env } from "../env/env";
 import { HysteriaError } from "../errors/hysteria_error";
 import { Migration } from "../sql/migrations/migration";
+import crypto from "node:crypto";
 import type {
   MysqlConnectionInstance,
   PgPoolClientInstance,
@@ -169,7 +170,7 @@ async function loadMigrationModule(
 ): Promise<new (dbType: SqlDataSourceType) => Migration> {
   const transpiledMigrationFolder = path.resolve(
     path.dirname(pathToFile),
-    "transpiled",
+    `transpiled_${Date.now()}_${crypto.randomUUID()}`,
   );
 
   try {
