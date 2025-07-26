@@ -34,6 +34,7 @@ type DataType =
   | "mediumint"
   | "integer"
   | "bigint"
+  | "vector"
   | "float"
   | "decimal"
   | "double"
@@ -56,6 +57,7 @@ type BaseOptions = {
   notNullable?: boolean;
   autoIncrement?: boolean;
   length?: number;
+  dimensions?: number;
 };
 
 export default class ColumnBuilderAlter {
@@ -130,6 +132,9 @@ export default class ColumnBuilderAlter {
         break;
       case "bigint":
         columnsBuilder.bigint(columnName);
+        break;
+      case "vector":
+        columnsBuilder.vector(columnName, options?.dimensions || 1536);
         break;
       case "float":
         const { precision: floatPrecision = 10, scale: floatScale = 2 } =

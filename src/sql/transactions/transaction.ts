@@ -6,7 +6,7 @@ import {
   BEGIN_TRANSACTION,
   COMMIT_TRANSACTION,
   ROLLBACK_TRANSACTION,
-} from "../resources/query/TRANSACTION";
+} from "../ast/transaction";
 import { SqlDataSource } from "../sql_data_source";
 import {
   TransactionExecutionOptions,

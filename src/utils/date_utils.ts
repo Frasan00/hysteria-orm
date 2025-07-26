@@ -67,7 +67,6 @@ export const parseDate = (
 
   try {
     const parsed = format ? dayjs(value, format) : dayjs(value);
-
     if (!parsed.isValid()) {
       throw new HysteriaError("DateUtils::parseDate", "INVALID_DATE_STRING");
     }

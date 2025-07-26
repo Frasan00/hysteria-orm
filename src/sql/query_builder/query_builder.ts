@@ -1,57 +1,70 @@
 import { format } from "sql-formatter";
 import { HysteriaError } from "../../errors/hysteria_error";
 import { baseSoftDeleteDate } from "../../utils/date_utils";
-import { convertPlaceHolderToValue } from "../../utils/placeholder";
+import { withPerformance } from "../../utils/performance";
 import { bindParamsIntoQuery } from "../../utils/query";
+import { AstParser } from "../ast/parser";
+import { UnionNode, WithNode } from "../ast/query/node";
+import { DeleteNode } from "../ast/query/node/delete";
+import { FromNode } from "../ast/query/node/from";
+import { InsertNode } from "../ast/query/node/insert";
+import { LockNode } from "../ast/query/node/lock/lock";
+import { SelectNode } from "../ast/query/node/select/basic_select";
+import { UnionCallBack } from "../ast/query/node/select/select_types";
+import { TruncateNode } from "../ast/query/node/truncate";
+import { UpdateNode } from "../ast/query/node/update";
+import { WhereGroupNode } from "../ast/query/node/where/where_group";
+import {
+  SubqueryOperatorType,
+  WhereSubqueryNode,
+} from "../ast/query/node/where/where_subquery";
+import { QueryNode } from "../ast/query/query";
+import { InterpreterUtils } from "../interpreter/interpreter_utils";
 import type { Model } from "../models/model";
 import { ModelKey } from "../models/model_manager/model_manager_types";
-import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
 import type { NumberModelKey } from "../models/model_types";
 import { getPaginationMetadata, PaginatedData } from "../pagination";
-import deleteTemplate from "../resources/query/DELETE";
-import { UnionCallBack } from "../resources/query/SELECT";
-import updateTemplate from "../resources/query/UPDATE";
-import { BinaryOperatorType } from "../resources/query/WHERE";
 import { SqlDataSource } from "../sql_data_source";
 import type { SqlDataSourceType } from "../sql_data_source_types";
 import { execSql, getSqlDialect } from "../sql_runner/sql_runner";
 import { CteBuilder } from "./cte/cte_builder";
 import { WithClauseType } from "./cte/cte_types";
 import { SoftDeleteOptions } from "./delete_query_builder_type";
+import { JsonQueryBuilder } from "./json_query_builder";
 import {
   PluckReturnType,
   QueryBuilderWithOnlyWhereConditions,
 } from "./query_builder_types";
-import { withPerformance } from "../../utils/performance";
-import { JsonQueryBuilder } from "./json_query_builder";
 
 export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   model: typeof Model;
-  protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
-  protected unionQuery: string;
-  protected updateTemplate: ReturnType<typeof updateTemplate>;
-  protected deleteTemplate: ReturnType<typeof deleteTemplate>;
+  protected astParser: AstParser;
+  protected unionNodes: UnionNode[];
+  protected withNodes: WithNode[];
+  protected lockQueryNodes: LockNode[];
   protected isNestedCondition = false;
-  protected lockForUpdateQuery: string;
   protected mustRemoveAnnotations: boolean = false;
+  protected interpreterUtils: InterpreterUtils;
 
   constructor(
     model: typeof Model,
     sqlDataSource: SqlDataSource = SqlDataSource.getInstance(),
   ) {
     super(model, sqlDataSource);
-    this.lockForUpdateQuery = "";
     this.dbType = sqlDataSource.getDbType();
     this.isNestedCondition = false;
-    this.sqlModelManagerUtils = new SqlModelManagerUtils<T>(
-      this.dbType,
-      this.sqlDataSource,
-    );
     this.model = model;
-    this.updateTemplate = updateTemplate(this.dbType, this.model);
-    this.deleteTemplate = deleteTemplate(this.dbType);
-    this.unionQuery = "";
-    this.params = [];
+    this.unionNodes = [];
+    this.lockQueryNodes = [];
+    this.withNodes = [];
+    this.astParser = new AstParser(this.model, this.dbType);
+    this.interpreterUtils = new InterpreterUtils(this.model);
+  }
+
+  protected get fromTable(): string {
+    this.fromNode ||= new FromNode(this.model.table);
+    const { sql: table } = this.astParser.parse([this.fromNode]);
+    return table.replace(/^FROM /i, "");
   }
 
   /**
@@ -163,14 +176,12 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    * @description Executes the query and retrieves multiple results.
    */
   async many(): Promise<T[]> {
-    let { query, params } = this.unWrap(false);
-    query = convertPlaceHolderToValue(this.dbType, query);
-    return execSql(query, params, this.sqlDataSource, "raw", {
+    const { sql, bindings } = this.unWrap();
+    return execSql(sql, bindings, this.sqlDataSource, "raw", {
       sqlLiteOptions: {
         typeofModel: this.model,
         mode: "fetch",
       },
-      shouldFormat: true,
     });
   }
 
@@ -227,38 +238,37 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   /**
    * @description Locks the table for update
    * @param skipLocked - If true, the query will skip locked rows
-   * @throws {HysteriaError} - If the database type does not support skipping locked rows (es. sqlite)
+   * @sqlite does not support skipping locked rows, it will be ignored
    */
-  lockForUpdate(skipLocked: boolean = false): this {
-    this.lockForUpdateQuery = this.selectTemplate.lockForUpdate();
-    if (skipLocked) {
-      this.lockForUpdateQuery += this.selectTemplate.skipLocked();
-    }
-
+  lockForUpdate(
+    options: { skipLocked?: boolean; noWait?: boolean } = {},
+  ): this {
+    this.lockQueryNodes.push(
+      new LockNode("for_update", options.skipLocked, options.noWait),
+    );
     return this;
   }
 
   /**
    * @description Locks the table for share
    * @param skipLocked - If true, the query will skip locked rows
-   * @throws {HysteriaError} - If the database type does not support skipping locked rows on forShare (es. sqlite, mysql, mariadb)
+   * @sqlite does not support skipping locked rows, it will be ignored
    */
-  forShare(skipLocked: boolean = false): this {
-    this.lockForUpdateQuery = this.selectTemplate.forShare();
-    if (skipLocked) {
-      this.lockForUpdateQuery += this.selectTemplate.skipLocked();
-    }
+  forShare(options: { skipLocked?: boolean; noWait?: boolean } = {}): this {
+    this.lockQueryNodes.push(
+      new LockNode("for_share", options.skipLocked, options.noWait),
+    );
     return this;
   }
 
   /**
    * @description Adds a UNION to the query.
    */
-  union(query: string, params?: any[]): this;
+  union(query: string, bindings?: any[]): this;
   union(cb: UnionCallBack<T>): this;
   union(queryBuilderOrCb: UnionCallBack<any> | string): this {
     if (typeof queryBuilderOrCb === "string") {
-      this.unionQuery = `${this.unionQuery} UNION ${queryBuilderOrCb}`;
+      this.unionNodes.push(new UnionNode(queryBuilderOrCb));
       return this;
     }
 
@@ -267,23 +277,22 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
         ? queryBuilderOrCb
         : queryBuilderOrCb(new QueryBuilder(this.model, this.sqlDataSource));
 
-    const { query, params } = queryBuilder.unWrap();
-    this.unionQuery = `${this.unionQuery} UNION ${query}`;
-    this.params = [...this.params, ...params];
+    const nodes = queryBuilder.extractQueryNodes();
+    this.unionNodes.push(new UnionNode(nodes));
     return this;
   }
 
   /**
    * @description Adds a UNION ALL to the query.
    */
-  unionAll(query: string, params?: any[]): this;
+  unionAll(query: string, bindings?: any[]): this;
   unionAll(cb: UnionCallBack<T>): this;
   unionAll(queryBuilder: QueryBuilder<any>): this;
   unionAll(
     queryBuilderOrCb: UnionCallBack<any> | QueryBuilder<any> | string,
   ): this {
     if (typeof queryBuilderOrCb === "string") {
-      this.unionQuery = `${this.unionQuery} UNION ALL ${queryBuilderOrCb}`;
+      this.unionNodes.push(new UnionNode(queryBuilderOrCb, true));
       return this;
     }
 
@@ -292,9 +301,8 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
         ? queryBuilderOrCb
         : queryBuilderOrCb(new QueryBuilder(this.model, this.sqlDataSource));
 
-    const { query, params } = queryBuilder.unWrap();
-    this.unionQuery = `${this.unionQuery} UNION ALL ${query}`;
-    this.params = [...this.params, ...params];
+    const nodes = queryBuilder.extractQueryNodes();
+    this.unionNodes.push(new UnionNode(nodes, true));
     return this;
   }
 
@@ -302,19 +310,24 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    * @description Increments the value of a column by a given amount, column must be of a numeric type in order to be incremented
    * @typeSafe - In typescript, only numeric columns of the model will be accepted if using a Model
    * @default value + 1
+   * @returns the number of affected rows
    */
   async increment(
     column: NumberModelKey<T>,
     value: number = 1,
   ): Promise<number> {
-    const { query } = this.updateTemplate.increment(
-      column as string,
-      value,
-      this.whereQuery,
-      this.joinQuery,
-    );
+    const { sql, bindings } = this.astParser.parse([
+      new UpdateNode(
+        `${this.fromTable} set ${column as string} = ${column as string} + ${value}`,
+        [],
+        [],
+        true,
+      ),
+      ...this.whereNodes,
+      ...this.joinNodes,
+    ]);
 
-    return execSql(query, this.params, this.sqlDataSource, "affectedRows", {
+    return execSql(sql, bindings, this.sqlDataSource, "affectedRows", {
       sqlLiteOptions: { typeofModel: this.model, mode: "affectedRows" },
     });
   }
@@ -323,19 +336,24 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    * @description Decrements the value of a column by a given amount, column must be of a numeric type in order to be decremented
    * @typeSafe - In typescript, only numeric columns of the model will be accepted if using a Model
    * @default value - 1
+   * @returns the number of affected rows
    */
   async decrement(
     column: NumberModelKey<T>,
     value: number = 1,
   ): Promise<number> {
-    const { query } = this.updateTemplate.decrement(
-      column as string,
-      value,
-      this.whereQuery,
-      this.joinQuery,
-    );
+    const { sql, bindings } = this.astParser.parse([
+      new UpdateNode(
+        `${this.fromTable} set ${column as string} = ${column as string} - ${value}`,
+        [],
+        [],
+        true,
+      ),
+      ...this.whereNodes,
+      ...this.joinNodes,
+    ]);
 
-    return execSql(query, this.params, this.sqlDataSource, "affectedRows", {
+    return execSql(sql, bindings, this.sqlDataSource, "affectedRows", {
       sqlLiteOptions: { typeofModel: this.model, mode: "affectedRows" },
     });
   }
@@ -390,11 +408,16 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    * @description Overrides the limit and offset clauses in order to paginate the results.
    */
   async paginate(page: number, perPage: number): Promise<PaginatedData<T>> {
-    const originalSelectQuery = this.selectQuery;
+    const originalSelectNodesSql = this.astParser.parse(
+      this.selectNodes.length ? this.selectNodes : [new SelectNode("*")],
+    ).sql;
     const total = await this.getCount("*");
 
-    this.selectQuery = originalSelectQuery;
-    const models = await this.limit(perPage)
+    this.clearSelect();
+    const models = await this.selectRaw(
+      originalSelectNodesSql.replace(/select/i, ""),
+    )
+      .limit(perPage)
       .offset((page - 1) * perPage)
       .many();
 
@@ -425,9 +448,12 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   ): Omit<this, "with"> {
     const cteBuilder = new CteBuilder<T>(type, this.model, this.sqlDataSource);
     cb(cteBuilder);
-    const { query, params } = cteBuilder.unWrap();
-    this.withQuery = query;
-    this.params = [...this.params, ...params];
+    cteBuilder.cteMap.forEach((queryBuilder, alias) => {
+      this.withNodes.push(
+        new WithNode(type, alias, queryBuilder.extractQueryNodes()),
+      );
+    });
+
     return this;
   }
 
@@ -437,14 +463,23 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    * @returns raw driver response
    */
   async insert(data: Record<string, any>, returning?: string[]): Promise<T> {
-    const { query, params } = this.sqlModelManagerUtils.parseInsert(
-      data as T,
-      { ...this.model, table: this.fromTable } as typeof Model,
-      this.dbType,
-      returning,
+    const { columns: preparedColumns, values: preparedValues } =
+      this.interpreterUtils.prepareColumns(
+        Object.keys(data),
+        Object.values(data),
+        "insert",
+      );
+
+    const insertObject = Object.fromEntries(
+      preparedColumns.map((column, index) => [column, preparedValues[index]]),
     );
 
-    const rows = await execSql(query, params, this.sqlDataSource, "raw", {
+    const { sql, bindings } = this.astParser.parse([
+      new InsertNode(this.fromTable, [insertObject], returning),
+      ...this.joinNodes,
+    ]);
+
+    const rows = await execSql(sql, bindings, this.sqlDataSource, "raw", {
       sqlLiteOptions: {
         typeofModel: this.model,
         mode: "insertOne",
@@ -468,18 +503,29 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
       return [];
     }
 
-    const { query, params } = this.sqlModelManagerUtils.parseMassiveInsert(
-      data as T[],
-      { ...this.model, table: this.fromTable } as typeof Model,
-      this.dbType,
-      returning,
-    );
+    const models = data.map((model) => {
+      const { columns: preparedColumns, values: preparedValues } =
+        this.interpreterUtils.prepareColumns(
+          Object.keys(model),
+          Object.values(model),
+          "insert",
+        );
 
-    return execSql(query, params, this.sqlDataSource, "raw", {
+      return Object.fromEntries(
+        preparedColumns.map((column, index) => [column, preparedValues[index]]),
+      );
+    });
+
+    const { sql, bindings } = this.astParser.parse([
+      new InsertNode(this.fromTable, models, returning),
+      ...this.joinNodes,
+    ]);
+
+    return execSql(sql, bindings, this.sqlDataSource, "raw", {
       sqlLiteOptions: {
         typeofModel: this.model,
         mode: "insertMany",
-        models: data as T[],
+        models: models as T[],
       },
     });
   }
@@ -489,43 +535,33 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    * @returns the number of affected rows
    */
   async update(data: Record<string, any>): Promise<number> {
-    const columns = Object.keys(data);
-    const values = Object.values(data);
-    this.whereQuery = convertPlaceHolderToValue(
-      this.dbType,
-      this.whereQuery,
-      values.length + 1,
+    const rawColumns = Object.keys(data);
+    const rawValues = Object.values(data);
+
+    const { columns, values } = this.interpreterUtils.prepareColumns(
+      rawColumns,
+      rawValues,
+      "update",
     );
 
-    const { query, params } = this.updateTemplate.massiveUpdate(
-      columns,
-      values,
-      this.whereQuery,
-      this.joinQuery,
-    );
+    const { sql, bindings } = this.astParser.parse([
+      new UpdateNode(this.fromTable, columns, values),
+      ...this.whereNodes,
+      ...this.joinNodes,
+    ]);
 
-    params.push(...this.params);
-
-    return execSql(query, params, this.sqlDataSource, "affectedRows", {
+    return execSql(sql, bindings, this.sqlDataSource, "affectedRows", {
       sqlLiteOptions: { typeofModel: this.model, mode: "affectedRows" },
     });
   }
 
   /**
-   * @description Truncates the table
-   * @param options
-   * @param force - forces the truncate ignoring checks
-   * @restartAutoIncrement restarts from zero auto increment tables
+   * @description Deletes all records from a table
    */
-  async truncate(options?: { force?: boolean }): Promise<void> {
-    const truncateQueries = deleteTemplate(this.dbType).truncate(
-      this.fromTable,
-      options?.force || false,
-    );
-
-    for (const truncateQuery of truncateQueries) {
-      await execSql(truncateQuery, [], this.sqlDataSource);
-    }
+  async truncate(): Promise<void> {
+    const truncateNode = new TruncateNode(this.fromTable);
+    const { sql, bindings } = this.astParser.parse([truncateNode]);
+    await execSql(sql, bindings, this.sqlDataSource);
   }
 
   /**
@@ -533,13 +569,14 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    * @returns the number of affected rows
    */
   async delete(): Promise<number> {
-    const query = this.deleteTemplate.massiveDelete(
-      this.fromTable,
-      this.whereQuery,
-      this.joinQuery,
-    );
+    const deleteNode = new DeleteNode(this.fromTable);
+    const { sql, bindings } = this.astParser.parse([
+      deleteNode,
+      ...this.whereNodes,
+      ...this.joinNodes,
+    ]);
 
-    return execSql(query, this.params, this.sqlDataSource, "affectedRows", {
+    return execSql(sql, bindings, this.sqlDataSource, "affectedRows", {
       sqlLiteOptions: {
         typeofModel: this.model,
         mode: "affectedRows",
@@ -557,15 +594,15 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     const { column = "deletedAt", value = baseSoftDeleteDate() } =
       options || {};
 
-    let { query, params } = this.updateTemplate.massiveUpdate(
-      [column as string],
-      [value],
-      this.whereQuery,
-      this.joinQuery,
-    );
+    const { sql, bindings } = this.astParser.parse([
+      new UpdateNode(this.fromTable, [column as string], [value]),
+      ...this.whereNodes,
+      ...this.joinNodes,
+    ]);
 
-    params = [...params, ...this.params];
-    return execSql(query, params, this.sqlDataSource, "affectedRows", {
+    this.interpreterUtils.prepareColumns([column as string], [value], "update");
+
+    return execSql(sql, bindings, this.sqlDataSource, "affectedRows", {
       sqlLiteOptions: {
         typeofModel: this.model,
         mode: "affectedRows",
@@ -581,12 +618,12 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   whereSubQuery(column: string, cb: (subQuery: QueryBuilder<T>) => void): this;
   whereSubQuery(
     column: string,
-    operator: BinaryOperatorType,
+    operator: SubqueryOperatorType,
     subQuery: QueryBuilder<T>,
   ): this;
   whereSubQuery(
     column: string,
-    operator: BinaryOperatorType,
+    operator: SubqueryOperatorType,
     cb: (subQuery: QueryBuilder<T>) => void,
   ): this;
   whereSubQuery(
@@ -594,12 +631,12 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     subQueryOrCbOrOperator:
       | QueryBuilder<T>
       | ((subQuery: QueryBuilder<T>) => void)
-      | BinaryOperatorType,
+      | SubqueryOperatorType,
     subQueryOrCb?: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
   ): this {
     return this.andWhereSubQuery(
       column,
-      subQueryOrCbOrOperator as BinaryOperatorType,
+      subQueryOrCbOrOperator as SubqueryOperatorType,
       subQueryOrCb as QueryBuilder<T>,
     );
   }
@@ -614,12 +651,12 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   ): this;
   andWhereSubQuery(
     column: string,
-    operator: BinaryOperatorType,
+    operator: SubqueryOperatorType,
     subQuery: QueryBuilder<T>,
   ): this;
   andWhereSubQuery(
     column: string,
-    operator: BinaryOperatorType,
+    operator: SubqueryOperatorType,
     cb: (subQuery: QueryBuilder<T>) => void,
   ): this;
   andWhereSubQuery(
@@ -627,23 +664,39 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     subQueryOrCbOrOperator:
       | QueryBuilder<T>
       | ((subQuery: QueryBuilder<T>) => void)
-      | BinaryOperatorType,
+      | SubqueryOperatorType,
     subQueryOrCb?: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
   ): this {
-    let operator: BinaryOperatorType = "=";
+    let operator: SubqueryOperatorType = "in";
     let subQuery: QueryBuilder<T>;
 
     if (typeof subQueryOrCbOrOperator === "string") {
-      operator = subQueryOrCbOrOperator as BinaryOperatorType;
+      operator = subQueryOrCbOrOperator as SubqueryOperatorType;
       if (typeof subQueryOrCb === "function") {
         subQuery = new QueryBuilder(this.model, this.sqlDataSource);
         subQueryOrCb(subQuery);
-        return this.processSubQuery(column, subQuery, operator, "and");
+        this.whereNodes.push(
+          new WhereSubqueryNode(
+            column,
+            operator,
+            subQuery.extractQueryNodes(),
+            "and",
+          ),
+        );
+        return this;
       }
 
       if (subQueryOrCb instanceof QueryBuilder) {
         subQuery = subQueryOrCb;
-        return this.processSubQuery(column, subQuery, operator, "and");
+        this.whereNodes.push(
+          new WhereSubqueryNode(
+            column,
+            operator,
+            subQuery.extractQueryNodes(),
+            "and",
+          ),
+        );
+        return this;
       }
       return this;
     }
@@ -651,12 +704,28 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     if (typeof subQueryOrCbOrOperator === "function") {
       subQuery = new QueryBuilder(this.model, this.sqlDataSource);
       subQueryOrCbOrOperator(subQuery);
-      return this.processSubQuery(column, subQuery, operator, "and");
+      this.whereNodes.push(
+        new WhereSubqueryNode(
+          column,
+          operator,
+          subQuery.extractQueryNodes(),
+          "and",
+        ),
+      );
+      return this;
     }
 
     if (subQueryOrCbOrOperator instanceof QueryBuilder) {
       subQuery = subQueryOrCbOrOperator;
-      return this.processSubQuery(column, subQuery, operator, "and");
+      this.whereNodes.push(
+        new WhereSubqueryNode(
+          column,
+          operator,
+          subQuery.extractQueryNodes(),
+          "and",
+        ),
+      );
+      return this;
     }
 
     return this;
@@ -672,12 +741,12 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   ): this;
   orWhereSubQuery(
     column: string,
-    operator: BinaryOperatorType,
+    operator: SubqueryOperatorType,
     subQuery: QueryBuilder<T>,
   ): this;
   orWhereSubQuery(
     column: string,
-    operator: BinaryOperatorType,
+    operator: SubqueryOperatorType,
     cb: (subQuery: QueryBuilder<T>) => void,
   ): this;
   orWhereSubQuery(
@@ -685,22 +754,38 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     subQueryOrCbOrOperator:
       | QueryBuilder<T>
       | ((subQuery: QueryBuilder<T>) => void)
-      | BinaryOperatorType,
+      | SubqueryOperatorType,
     subQueryOrCb?: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
   ): this {
-    let operator: BinaryOperatorType = "=";
+    let operator: SubqueryOperatorType = "in";
     let subQuery: QueryBuilder<T>;
 
     if (typeof subQueryOrCbOrOperator === "string") {
-      operator = subQueryOrCbOrOperator as BinaryOperatorType;
+      operator = subQueryOrCbOrOperator as SubqueryOperatorType;
       if (typeof subQueryOrCb === "function") {
         subQuery = new QueryBuilder(this.model, this.sqlDataSource);
         subQueryOrCb(subQuery);
-        return this.processSubQuery(column, subQuery, operator, "or");
+        this.whereNodes.push(
+          new WhereSubqueryNode(
+            column,
+            operator,
+            subQuery.extractQueryNodes(),
+            "or",
+          ),
+        );
+        return this;
       }
       if (subQueryOrCb instanceof QueryBuilder) {
         subQuery = subQueryOrCb;
-        return this.processSubQuery(column, subQuery, operator, "or");
+        this.whereNodes.push(
+          new WhereSubqueryNode(
+            column,
+            operator,
+            subQuery.extractQueryNodes(),
+            "or",
+          ),
+        );
+        return this;
       }
       return this;
     }
@@ -708,12 +793,28 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     if (typeof subQueryOrCbOrOperator === "function") {
       subQuery = new QueryBuilder(this.model, this.sqlDataSource);
       subQueryOrCbOrOperator(subQuery);
-      return this.processSubQuery(column, subQuery, operator, "or");
+      this.whereNodes.push(
+        new WhereSubqueryNode(
+          column,
+          operator,
+          subQuery.extractQueryNodes(),
+          "or",
+        ),
+      );
+      return this;
     }
 
     if (subQueryOrCbOrOperator instanceof QueryBuilder) {
       subQuery = subQueryOrCbOrOperator;
-      return this.processSubQuery(column, subQuery, operator, "or");
+      this.whereNodes.push(
+        new WhereSubqueryNode(
+          column,
+          operator,
+          subQuery.extractQueryNodes(),
+          "or",
+        ),
+      );
+      return this;
     }
 
     return this;
@@ -739,25 +840,8 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     nestedBuilder.isNestedCondition = true;
     cb(nestedBuilder as QueryBuilder<T>);
 
-    let nestedCondition = nestedBuilder.whereQuery.trim();
-    if (nestedCondition.startsWith("AND")) {
-      nestedCondition = nestedCondition.substring(4);
-    } else if (nestedCondition.startsWith("OR")) {
-      nestedCondition = nestedCondition.substring(3);
-    }
-
-    nestedCondition = `(${nestedCondition})`;
-    if (!this.whereQuery) {
-      this.whereQuery = this.isNestedCondition
-        ? nestedCondition
-        : `WHERE ${nestedCondition}`;
-
-      this.params.push(...nestedBuilder.params);
-      return this;
-    }
-
-    this.whereQuery += ` AND ${nestedCondition}`;
-    this.params.push(...nestedBuilder.params);
+    const whereGroupNode = new WhereGroupNode(nestedBuilder.whereNodes, "and");
+    this.whereNodes.push(whereGroupNode);
 
     return this;
   }
@@ -770,25 +854,8 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     nestedBuilder.isNestedCondition = true;
     cb(nestedBuilder as QueryBuilder<T>);
 
-    let nestedCondition = nestedBuilder.whereQuery.trim();
-    if (nestedCondition.startsWith("AND")) {
-      nestedCondition = nestedCondition.substring(4);
-    } else if (nestedCondition.startsWith("OR")) {
-      nestedCondition = nestedCondition.substring(3);
-    }
-
-    nestedCondition = `(${nestedCondition})`;
-    if (!this.whereQuery) {
-      this.whereQuery = this.isNestedCondition
-        ? nestedCondition
-        : `WHERE ${nestedCondition}`;
-
-      this.params.push(...nestedBuilder.params);
-      return this;
-    }
-
-    this.whereQuery += ` OR ${nestedCondition}`;
-    this.params.push(...nestedBuilder.params);
+    const whereGroupNode = new WhereGroupNode(nestedBuilder.whereNodes, "or");
+    this.whereNodes.push(whereGroupNode);
 
     return this;
   }
@@ -797,61 +864,34 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    * @description Returns the query with the parameters bound to the query
    */
   toQuery(dbType: SqlDataSourceType = this.dbType || "mysql"): string {
-    const { query, params } = this.unWrap(true, dbType);
-    return bindParamsIntoQuery(query, params);
+    const { sql, bindings } = this.unWrap(dbType);
+    return bindParamsIntoQuery(sql, bindings);
   }
 
   /**
    * @description Returns the query with database driver placeholders and the params
    */
   unWrap(
-    shouldFormat: boolean = false,
     dbType: SqlDataSourceType = this.dbType,
-  ): {
-    query: string;
-    params: any[];
-  } {
-    let query: string = "";
-    if (this.withQuery) {
-      query += `${this.withQuery}\n`;
+  ): ReturnType<typeof AstParser.prototype.parse> {
+    if (!this.selectNodes.length) {
+      this.selectNodes = [new SelectNode(`*`)];
     }
 
-    if (!this.selectQuery) {
-      this.selectQuery = this.selectTemplate.selectColumns([`*`]);
-    }
+    const { sql, bindings } = this.astParser.parse(this.extractQueryNodes());
 
-    query += this.selectQuery;
-    if (!this.selectQuery.toLowerCase().includes("from")) {
-      query += ` FROM ${this.fromTable} `;
-    }
+    const formattedQuery = format(sql, {
+      ...this.sqlDataSource.queryFormatOptions,
+      language: getSqlDialect(dbType as SqlDataSourceType),
+    });
 
-    query += this.joinQuery;
-    query += this.whereQuery;
-    query += this.groupByQuery;
-    query += this.havingQuery;
-
-    if (this.unionQuery) {
-      query = `${query} ${this.unionQuery}`;
-    }
-
-    query += this.orderByQuery;
-    query += this.limitQuery;
-    query += this.offsetQuery;
-
-    if (this.lockForUpdateQuery) {
-      query += this.lockForUpdateQuery;
-    }
-
-    const formattedQuery = shouldFormat
-      ? format(query, {
-          ...this.sqlDataSource.queryFormatOptions,
-          language: getSqlDialect(dbType as SqlDataSourceType),
-        })
-      : query;
+    const finalQuery = this.withQuery
+      ? `${this.withQuery} ${formattedQuery}`
+      : formattedQuery;
 
     return {
-      query: formattedQuery,
-      params: this.params,
+      sql: finalQuery,
+      bindings: [...(bindings || [])],
     };
   }
 
@@ -860,21 +900,57 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    */
   copy(): this {
     const queryBuilder = new QueryBuilder<T>(this.model, this.sqlDataSource);
-    queryBuilder.selectQuery = this.selectQuery;
-    queryBuilder.modelSelectedColumns = [...this.modelSelectedColumns];
-    queryBuilder.unionQuery = this.unionQuery;
-    queryBuilder.fromTable = this.fromTable;
-    queryBuilder.whereQuery = this.whereQuery;
-    queryBuilder.joinQuery = this.joinQuery;
-    queryBuilder.groupByQuery = this.groupByQuery;
-    queryBuilder.orderByQuery = this.orderByQuery;
-    queryBuilder.limitQuery = this.limitQuery;
-    queryBuilder.offsetQuery = this.offsetQuery;
-    queryBuilder.params = [...this.params];
-    queryBuilder.havingQuery = this.havingQuery;
-    queryBuilder.lockForUpdateQuery = this.lockForUpdateQuery;
+    queryBuilder.selectNodes = [...this.selectNodes];
+    queryBuilder.fromNode = this.fromNode;
+    queryBuilder.joinNodes = [...this.joinNodes];
+    queryBuilder.whereNodes = [...this.whereNodes];
+    queryBuilder.groupByNodes = [...this.groupByNodes];
+    queryBuilder.havingNodes = [...this.havingNodes];
+    queryBuilder.orderByNodes = [...this.orderByNodes];
+    queryBuilder.limitNode = this.limitNode;
+    queryBuilder.offsetNode = this.offsetNode;
     queryBuilder.withQuery = this.withQuery;
+    queryBuilder.lockQueryNodes = [...this.lockQueryNodes];
+    queryBuilder.unionNodes = [...this.unionNodes];
+    queryBuilder.withNodes = [...this.withNodes];
     return queryBuilder as this;
+  }
+
+  protected clearLockQuery(): this {
+    this.lockQueryNodes = [];
+    return this;
+  }
+
+  protected clearUnionQuery(): this {
+    this.unionNodes = [];
+    return this;
+  }
+
+  protected clearWithQuery(): this {
+    this.withNodes = [];
+    return this;
+  }
+
+  protected extractQueryNodes(): QueryNode[] {
+    this.fromNode ||= new FromNode(this.fromTable);
+    if (!this.selectNodes.length) {
+      this.selectNodes = [new SelectNode(`*`)];
+    }
+
+    return [
+      ...this.withNodes,
+      ...this.selectNodes,
+      this.fromNode,
+      ...this.joinNodes,
+      ...this.whereNodes,
+      ...this.groupByNodes,
+      ...this.havingNodes,
+      ...this.orderByNodes,
+      this.limitNode,
+      this.offsetNode,
+      ...this.lockQueryNodes,
+      ...this.unionNodes,
+    ].filter(Boolean) as QueryNode[];
   }
 
   protected parseValueForDatabase(value: any): string {
@@ -938,101 +1014,5 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     }
 
     return value;
-  }
-
-  protected getDatabaseTableName(tableName: string): string {
-    switch (this.dbType) {
-      case "mysql":
-      case "sqlite":
-      case "mariadb":
-        return tableName;
-      case "postgres":
-      case "cockroachdb":
-        return `"${tableName}"`;
-      default:
-        throw new HysteriaError(
-          "StandaloneSqlQueryBuilder::getDatabaseTableName",
-          `UNSUPPORTED_DATABASE_TYPE_${this.dbType}`,
-        );
-    }
-  }
-
-  private processSubQuery(
-    column: string,
-    subQuery: QueryBuilder<T>,
-    operator: BinaryOperatorType,
-    type: "and" | "or",
-  ): this {
-    const { query, params } = subQuery.unWrapRaw(false, this.dbType);
-    if (this.whereQuery || this.isNestedCondition) {
-      const whereQuery = this.whereTemplate[`${type}WhereSubQuery`](
-        column,
-        query,
-        params,
-        operator,
-      );
-
-      this.whereQuery += whereQuery.query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const whereQuery = this.whereTemplate.whereSubQuery(
-      column,
-      query,
-      params,
-      operator,
-    );
-
-    this.whereQuery = whereQuery.query;
-    this.params.push(...params);
-    return this;
-  }
-
-  /**
-   * @description Returns the query and the params without replacing the $PLACEHOLDER with the specific database driver placeholder
-   * @internal
-   */
-  private unWrapRaw(
-    shouldFormat: boolean = false,
-    dbType: SqlDataSourceType = this.dbType,
-  ): {
-    query: string;
-    params: any[];
-  } {
-    if (this.fromTable && !this.selectQuery.toLowerCase().includes("from")) {
-      this.selectQuery = this.selectQuery + ` FROM ${this.fromTable} `;
-    }
-
-    let query =
-      this.selectQuery +
-      this.joinQuery +
-      this.whereQuery +
-      this.groupByQuery +
-      this.havingQuery;
-
-    if (this.unionQuery) {
-      query = `(${query}) ${this.unionQuery}`;
-    }
-
-    query += this.orderByQuery;
-    query += this.limitQuery;
-    query += this.offsetQuery;
-
-    if (this.lockForUpdateQuery) {
-      query += this.lockForUpdateQuery;
-    }
-
-    const formattedQuery = shouldFormat
-      ? format(query, {
-          ...this.sqlDataSource.queryFormatOptions,
-          language: getSqlDialect(dbType as SqlDataSourceType),
-        })
-      : query;
-
-    return {
-      query: formattedQuery,
-      params: this.params,
-    };
   }
 }

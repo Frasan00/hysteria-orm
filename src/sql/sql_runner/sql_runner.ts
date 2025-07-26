@@ -1,7 +1,5 @@
-import { format } from "sql-formatter";
 import { HysteriaError } from "../../errors/hysteria_error";
 import { log, logMessage } from "../../utils/logger";
-import { convertPlaceHolderToValue } from "../../utils/placeholder";
 import { Model } from "../models/model";
 import { SqlDataSource } from "../sql_data_source";
 import {
@@ -44,16 +42,10 @@ export const execSql = async <M extends Model, T extends Returning>(
   returning: T = "raw" as T,
   options?: {
     sqlLiteOptions?: SqlLiteOptions<M>;
-    shouldFormat?: boolean;
     shouldNotLog?: boolean;
   },
 ): Promise<SqlRunnerReturnType<T>> => {
   const sqlType = sqlDataSource.type as SqlDataSourceType;
-  query = convertPlaceHolderToValue(sqlType, query);
-  if (options?.shouldFormat || true) {
-    query = format(query, sqlDataSource.queryFormatOptions);
-  }
-
   if (!options?.shouldNotLog) {
     log(query, sqlDataSource.logs, params);
   }

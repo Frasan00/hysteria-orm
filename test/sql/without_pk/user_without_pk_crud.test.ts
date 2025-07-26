@@ -448,7 +448,7 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
     const allUsers = await UserWithoutPk.find();
     expect(allUsers).toHaveLength(10);
 
-    await UserWithoutPk.truncate({ force: true });
+    await UserWithoutPk.truncate();
     const allUsersAfterTruncate = await UserWithoutPk.find();
     expect(allUsersAfterTruncate).toHaveLength(0);
   });

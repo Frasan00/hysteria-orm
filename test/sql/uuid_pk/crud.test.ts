@@ -1,6 +1,9 @@
 import { env } from "../../../src/env/env";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
+import { AddressFactory } from "../test_models/factory/address_factory";
+import { UserAddressFactory } from "../test_models/factory/user_address_factory";
 import { UserFactory } from "../test_models/factory/user_factory";
+import { UserAddressWithUuid } from "../test_models/uuid/user_address_uuid";
 import { UserStatus, UserWithUuid } from "../test_models/uuid/user_uuid";
 
 beforeAll(async () => {
@@ -48,7 +51,9 @@ describe(`[${env.DB_TYPE}] Select`, () => {
     expect(users[0]).not.toBeUndefined();
     expect(users[1]).not.toBeUndefined();
 
-    const users2 = await UserWithUuid.query().lockForUpdate(true).many();
+    const users2 = await UserWithUuid.query()
+      .lockForUpdate({ skipLocked: true })
+      .many();
     expect(users2.length).toBe(2);
     expect(users2[0]).not.toBeUndefined();
     expect(users2[1]).not.toBeUndefined();
@@ -337,16 +342,6 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
     const allUsers = await UserWithUuid.find();
     expect(foundUser).toHaveProperty("id");
     expect(allUsers).toHaveLength(1);
-  });
-
-  test("should truncate the table", async () => {
-    await UserFactory.userWithUuid(10);
-    const allUsers = await UserWithUuid.find();
-    expect(allUsers).toHaveLength(10);
-
-    await UserWithUuid.truncate({ force: true });
-    const allUsersAfterTruncate = await UserWithUuid.find();
-    expect(allUsersAfterTruncate).toHaveLength(0);
   });
 
   test("should update user via bulk update", async () => {

@@ -1,20 +1,21 @@
-import { Model } from "../models/model";
-import type { ModelKey } from "../models/model_manager/model_manager_types";
-import whereTemplate, {
+import { HavingNode } from "../ast/query/node/having";
+import type {
   BaseValues,
   BinaryOperatorType,
-} from "../resources/query/WHERE";
+} from "../ast/query/node/where/where";
+import { WhereNode } from "../ast/query/node/where/where";
+import { WhereGroupNode } from "../ast/query/node/where/where_group";
+import { WhereSubqueryNode } from "../ast/query/node/where/where_subquery";
+import { Model } from "../models/model";
+import type { ModelKey } from "../models/model_manager/model_manager_types";
 import { SqlDataSource } from "../sql_data_source";
 import { SelectQueryBuilder } from "./select_query_builder";
 
 export abstract class WhereQueryBuilder<
   T extends Model,
 > extends SelectQueryBuilder<T> {
-  protected whereQuery: string = "";
-  protected havingQuery: string = "";
-  protected params: BaseValues[] = [];
-  protected table: string;
-  protected whereTemplate: ReturnType<typeof whereTemplate>;
+  protected whereNodes: (WhereNode | WhereGroupNode | WhereSubqueryNode)[];
+  protected havingNodes: HavingNode[];
   protected isNestedCondition = false;
 
   constructor(
@@ -23,24 +24,18 @@ export abstract class WhereQueryBuilder<
     isNestedCondition = false,
   ) {
     super(model, sqlDataSource);
-    this.table = this.model.table;
-    this.whereTemplate = whereTemplate(
-      this.sqlDataSource.getDbType(),
-      this.model,
-    );
-
-    this.params = [];
+    this.whereNodes = [];
+    this.havingNodes = [];
     this.isNestedCondition = isNestedCondition;
   }
 
   clearWhere(): this {
-    this.whereQuery = "";
-    this.params = [];
+    this.whereNodes = [];
     return this;
   }
 
   clearHaving(): this {
-    this.havingQuery = "";
+    this.havingNodes = [];
     return this;
   }
 
@@ -122,24 +117,9 @@ export abstract class WhereQueryBuilder<
       operator = "=";
     }
 
-    if (this.whereQuery || this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.andWhere(
-        column as string,
-        actualValue,
-        operator,
-      );
-      this.whereQuery += query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.where(
-      column as string,
-      actualValue,
-      operator,
+    this.whereNodes.push(
+      new WhereNode(column as string, "and", false, operator, actualValue),
     );
-    this.whereQuery = query;
-    this.params.push(...params);
     return this;
   }
 
@@ -173,24 +153,9 @@ export abstract class WhereQueryBuilder<
       operator = "=";
     }
 
-    if (!this.whereQuery && !this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.where(
-        column as string,
-        actualValue,
-        operator,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.orWhere(
-      column as string,
-      actualValue,
-      operator,
+    this.whereNodes.push(
+      new WhereNode(column as string, "or", false, operator, actualValue),
     );
-    this.whereQuery += query;
-    this.params.push(...params);
     return this;
   }
 
@@ -217,24 +182,9 @@ export abstract class WhereQueryBuilder<
     min: BaseValues,
     max: BaseValues,
   ): this {
-    if (!this.whereQuery && !this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.whereBetween(
-        column as string,
-        min,
-        max,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.andWhereBetween(
-      column as string,
-      min,
-      max,
+    this.whereNodes.push(
+      new WhereNode(column as string, "and", false, "between", [min, max]),
     );
-    this.whereQuery += query;
-    this.params.push(...params);
     return this;
   }
 
@@ -248,24 +198,9 @@ export abstract class WhereQueryBuilder<
     min: BaseValues,
     max: BaseValues,
   ): this {
-    if (!this.whereQuery && !this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.whereBetween(
-        column as string,
-        min,
-        max,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.orWhereBetween(
-      column as string,
-      min,
-      max,
+    this.whereNodes.push(
+      new WhereNode(column as string, "or", false, "between", [min, max]),
     );
-    this.whereQuery += query;
-    this.params.push(...params);
     return this;
   }
 
@@ -296,24 +231,9 @@ export abstract class WhereQueryBuilder<
     min: BaseValues,
     max: BaseValues,
   ): this {
-    if (!this.whereQuery && !this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.whereNotBetween(
-        column as string,
-        min,
-        max,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.andWhereNotBetween(
-      column as string,
-      min,
-      max,
+    this.whereNodes.push(
+      new WhereNode(column as string, "and", true, "between", [min, max]),
     );
-    this.whereQuery += query;
-    this.params.push(...params);
     return this;
   }
 
@@ -331,24 +251,9 @@ export abstract class WhereQueryBuilder<
     min: BaseValues,
     max: BaseValues,
   ): this {
-    if (!this.whereQuery && !this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.whereNotBetween(
-        column as string,
-        min,
-        max,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.orWhereNotBetween(
-      column as string,
-      min,
-      max,
+    this.whereNodes.push(
+      new WhereNode(column as string, "or", true, "between", [min, max]),
     );
-    this.whereQuery += query;
-    this.params.push(...params);
     return this;
   }
 
@@ -470,7 +375,7 @@ export abstract class WhereQueryBuilder<
 
   /**
    * @description Adds a WHERE IN condition to the query.
-   * @warning If the values array is empty, it will add an impossible condition.
+   * @warning If the array is empty, it will add an impossible condition.
    */
   whereIn(column: ModelKey<T>, values: BaseValues[]): this;
   whereIn(column: string, values: BaseValues[]): this;
@@ -480,59 +385,43 @@ export abstract class WhereQueryBuilder<
 
   /**
    * @description Adds an AND WHERE IN condition to the query.
-   * @warning If the values array is empty, it will add an impossible condition.
+   * @warning If the array is empty, it will add an impossible condition.
    */
   andWhereIn(column: ModelKey<T>, values: BaseValues[]): this;
   andWhereIn(column: string, values: BaseValues[]): this;
   andWhereIn(column: ModelKey<T> | string, values: BaseValues[]): this {
-    if (!this.whereQuery && !this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.whereIn(
-        column as string,
-        values,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
+    if (!values.length) {
+      this.whereNodes.push(new WhereNode("false", "and", true, "=", [], true));
       return this;
     }
 
-    const { query, params } = this.whereTemplate.andWhereIn(
-      column as string,
-      values,
+    this.whereNodes.push(
+      new WhereNode(column as string, "and", false, "in", values),
     );
-    this.whereQuery += query;
-    this.params.push(...params);
     return this;
   }
 
   /**
    * @description Adds an OR WHERE IN condition to the query.
-   * @warning If the values array is empty, it will add an impossible condition.
+   * @warning If the array is empty, it will add an impossible condition.
    */
   orWhereIn(column: ModelKey<T>, values: BaseValues[]): this;
   orWhereIn(column: string, values: BaseValues[]): this;
   orWhereIn(column: ModelKey<T> | string, values: BaseValues[]): this {
-    if (!this.whereQuery && !this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.whereIn(
-        column as string,
-        values,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
+    if (!values.length) {
+      this.whereNodes.push(new WhereNode("false", "or", true, "=", [], true));
       return this;
     }
 
-    const { query, params } = this.whereTemplate.orWhereIn(
-      column as string,
-      values,
+    this.whereNodes.push(
+      new WhereNode(column as string, "or", false, "in", values),
     );
-    this.whereQuery += query;
-    this.params.push(...params);
     return this;
   }
 
   /**
    * @description Adds a WHERE NOT IN condition to the query.
-   * @warning If the values array is empty, it not add anything to the query.
+   * @warning If the array is empty, it will add an obvious condition to make it true.
    */
   whereNotIn(column: ModelKey<T>, values: BaseValues[]): this;
   whereNotIn(column: string, values: BaseValues[]): this;
@@ -542,53 +431,37 @@ export abstract class WhereQueryBuilder<
 
   /**
    * @description Adds an OR WHERE NOT IN condition to the query.
-   * @warning If the values array is empty, it will add an obvious condition.
+   * @warning If the array is empty, it will add an obvious condition to make it true.
    */
   andWhereNotIn(column: ModelKey<T>, values: BaseValues[]): this;
   andWhereNotIn(column: string, values: BaseValues[]): this;
   andWhereNotIn(column: ModelKey<T> | string, values: BaseValues[]): this {
-    if (!this.whereQuery && !this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.whereNotIn(
-        column as string,
-        values,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
+    if (!values.length) {
+      this.whereNodes.push(new WhereNode("true", "and", true, "=", [], true));
       return this;
     }
 
-    const { query, params } = this.whereTemplate.andWhereNotIn(
-      column as string,
-      values,
+    this.whereNodes.push(
+      new WhereNode(column as string, "and", true, "in", values),
     );
-    this.whereQuery += query;
-    this.params.push(...params);
     return this;
   }
 
   /**
    * @description Adds an OR WHERE NOT IN condition to the query.
-   * @warning If the values array is empty, it will add an obvious condition.
+   * @warning If the array is empty, it will add an obvious condition to make it true.
    */
   orWhereNotIn(column: ModelKey<T>, values: BaseValues[]): this;
   orWhereNotIn(column: string, values: BaseValues[]): this;
   orWhereNotIn(column: ModelKey<T> | string, values: BaseValues[]): this {
-    if (!this.whereQuery && !this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.whereNotIn(
-        column as string,
-        values,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
+    if (!values.length) {
+      this.whereNodes.push(new WhereNode("true", "or", true, "=", [], true));
       return this;
     }
 
-    const { query, params } = this.whereTemplate.orWhereNotIn(
-      column as string,
-      values,
+    this.whereNodes.push(
+      new WhereNode(column as string, "or", true, "in", values),
     );
-    this.whereQuery += query;
-    this.params.push(...params);
     return this;
   }
 
@@ -607,16 +480,9 @@ export abstract class WhereQueryBuilder<
   andWhereNull(column: ModelKey<T>): this;
   andWhereNull(column: string): this;
   andWhereNull(column: ModelKey<T> | string): this {
-    if (!this.whereQuery && !this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.whereNull(column as string);
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.andWhereNull(column as string);
-    this.whereQuery += query;
-    this.params.push(...params);
+    this.whereNodes.push(
+      new WhereNode(column as string, "and", false, "is null", undefined),
+    );
     return this;
   }
 
@@ -626,16 +492,9 @@ export abstract class WhereQueryBuilder<
   orWhereNull(column: ModelKey<T>): this;
   orWhereNull(column: string): this;
   orWhereNull(column: ModelKey<T> | string): this {
-    if (!this.whereQuery && !this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.whereNull(column as string);
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.orWhereNull(column as string);
-    this.whereQuery += query;
-    this.params.push(...params);
+    this.whereNodes.push(
+      new WhereNode(column as string, "or", false, "is null", undefined),
+    );
     return this;
   }
 
@@ -654,20 +513,9 @@ export abstract class WhereQueryBuilder<
   andWhereNotNull(column: ModelKey<T>): this;
   andWhereNotNull(column: string): this;
   andWhereNotNull(column: ModelKey<T> | string): this {
-    if (!this.whereQuery && !this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.whereNotNull(
-        column as string,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.andWhereNotNull(
-      column as string,
+    this.whereNodes.push(
+      new WhereNode(column as string, "and", false, "is not null", undefined),
     );
-    this.whereQuery += query;
-    this.params.push(...params);
     return this;
   }
 
@@ -677,20 +525,9 @@ export abstract class WhereQueryBuilder<
   orWhereNotNull(column: ModelKey<T>): this;
   orWhereNotNull(column: string): this;
   orWhereNotNull(column: ModelKey<T> | string): this {
-    if (!this.whereQuery && !this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.whereNotNull(
-        column as string,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query, params } = this.whereTemplate.orWhereNotNull(
-      column as string,
+    this.whereNodes.push(
+      new WhereNode(column as string, "or", false, "is not null", undefined),
     );
-    this.whereQuery += query;
-    this.params.push(...params);
     return this;
   }
 
@@ -709,22 +546,19 @@ export abstract class WhereQueryBuilder<
   andWhereRegexp(column: ModelKey<T>, regexp: RegExp): this;
   andWhereRegexp(column: string, regexp: RegExp): this;
   andWhereRegexp(column: ModelKey<T> | string, regexp: RegExp): this {
-    if (!this.whereQuery && !this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.whereRegex(
-        column as string,
-        regexp,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
+    const isPg =
+      this.sqlDataSource.getDbType() === "postgres" ||
+      this.sqlDataSource.getDbType() === "cockroachdb";
 
-    const { query, params } = this.whereTemplate.andWhereRegex(
-      column as string,
-      regexp,
+    this.whereNodes.push(
+      new WhereNode(
+        column as string,
+        "and",
+        false,
+        isPg ? ("~" as BinaryOperatorType) : "regexp",
+        regexp.source,
+      ),
     );
-    this.whereQuery += query;
-    this.params.push(...params);
     return this;
   }
 
@@ -734,98 +568,94 @@ export abstract class WhereQueryBuilder<
   orWhereRegexp(column: ModelKey<T>, regexp: RegExp): this;
   orWhereRegexp(column: string, regexp: RegExp): this;
   orWhereRegexp(column: ModelKey<T> | string, regexp: RegExp): this {
-    if (!this.whereQuery && !this.isNestedCondition) {
-      const { query, params } = this.whereTemplate.whereRegex(
-        column as string,
-        regexp,
-      );
-      this.whereQuery = query;
-      this.params.push(...params);
-      return this;
-    }
+    const isPg =
+      this.sqlDataSource.getDbType() === "postgres" ||
+      this.sqlDataSource.getDbType() === "cockroachdb";
 
-    const { query, params } = this.whereTemplate.orWhereRegex(
-      column as string,
-      regexp,
+    this.whereNodes.push(
+      new WhereNode(
+        column as string,
+        "or",
+        false,
+        isPg ? ("~" as BinaryOperatorType) : "regexp",
+        regexp.source,
+      ),
     );
-    this.whereQuery += query;
-    this.params.push(...params);
+    return this;
+  }
+
+  whereNotRegexp(column: ModelKey<T>, regexp: RegExp): this;
+  whereNotRegexp(column: string, regexp: RegExp): this;
+  whereNotRegexp(column: ModelKey<T> | string, regexp: RegExp): this {
+    const isPg = this.sqlDataSource.getDbType() === "postgres";
+    this.whereNodes.push(
+      new WhereNode(
+        column as string,
+        "and",
+        true,
+        isPg ? ("~" as BinaryOperatorType) : "regexp",
+        regexp.source,
+      ),
+    );
+    return this;
+  }
+
+  andWhereNotRegexp(column: ModelKey<T>, regexp: RegExp): this;
+  andWhereNotRegexp(column: string, regexp: RegExp): this;
+  andWhereNotRegexp(column: ModelKey<T> | string, regexp: RegExp): this {
+    const isPg = this.sqlDataSource.getDbType() === "postgres";
+    this.whereNodes.push(
+      new WhereNode(
+        column as string,
+        "and",
+        true,
+        isPg ? ("~" as BinaryOperatorType) : "regexp",
+        regexp.source,
+      ),
+    );
+    return this;
+  }
+
+  orWhereNotRegexp(column: ModelKey<T>, regexp: RegExp): this;
+  orWhereNotRegexp(column: string, regexp: RegExp): this;
+  orWhereNotRegexp(column: ModelKey<T> | string, regexp: RegExp): this {
+    const isPg = this.sqlDataSource.getDbType() === "postgres";
+    this.whereNodes.push(
+      new WhereNode(
+        column as string,
+        "or",
+        true,
+        isPg ? ("~" as BinaryOperatorType) : "regexp",
+        regexp.source,
+      ),
+    );
     return this;
   }
 
   /**
    * @description Adds a raw WHERE condition to the query.
    */
-  rawWhere(
-    query: string,
-    queryParams: any[] = [],
-    operator?: string,
-    isSubQuery: boolean = false,
-  ) {
-    return this.rawAndWhere(query, queryParams, operator, isSubQuery);
+  rawWhere(query: string, queryParams: any[] = []) {
+    return this.rawAndWhere(query, queryParams);
   }
 
   /**
    * @description Adds a raw AND WHERE condition to the query.
    */
-  rawAndWhere(
-    query: string,
-    queryParams: any[] = [],
-    operator?: string,
-    isSubQuery: boolean = false,
-  ) {
-    if (!this.whereQuery && !this.isNestedCondition) {
-      const { query: rawQuery, params } = this.whereTemplate.rawWhere(
-        query,
-        queryParams,
-        operator,
-        isSubQuery,
-      );
-      this.whereQuery = rawQuery;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query: rawQuery, params } = this.whereTemplate.rawAndWhere(
-      query,
-      queryParams,
-      operator,
-      isSubQuery,
+  rawAndWhere(query: string, queryParams: any[] = []) {
+    this.whereNodes.push(
+      new WhereNode(query, "and", false, "=", queryParams, true),
     );
-    this.whereQuery += rawQuery;
-    this.params.push(...params);
     return this;
   }
 
   /**
    * @description Adds a raw OR WHERE condition to the query.
    */
-  rawOrWhere(
-    query: string,
-    queryParams: any[] = [],
-    operator?: string,
-    isSubQuery: boolean = false,
-  ) {
-    if (!this.whereQuery && !this.isNestedCondition) {
-      const { query: rawQuery, params } = this.whereTemplate.rawWhere(
-        query,
-        queryParams,
-        operator,
-        isSubQuery,
-      );
-      this.whereQuery = rawQuery;
-      this.params.push(...params);
-      return this;
-    }
-
-    const { query: rawQuery, params } = this.whereTemplate.rawOrWhere(
-      query,
-      queryParams,
-      operator,
-      isSubQuery,
+  rawOrWhere(query: string, queryParams: any[] = []) {
+    this.whereNodes.push(
+      new WhereNode(query, "or", false, "=", queryParams, true),
     );
-    this.whereQuery += rawQuery;
-    this.params.push(...params);
     return this;
   }
 
@@ -876,8 +706,9 @@ export abstract class WhereQueryBuilder<
       operator = "=";
     }
 
-    this.havingQuery += ` OR ${column} ${operator} ?`;
-    this.params.push(actualValue);
+    this.havingNodes.push(
+      new HavingNode(column, "or", false, operator as any, actualValue as any),
+    );
     return this;
   }
 
@@ -892,11 +723,7 @@ export abstract class WhereQueryBuilder<
    * @description Adds a raw OR HAVING condition to the query.
    */
   andHavingRaw(query: string): this {
-    if (this.havingQuery) {
-      this.havingQuery += ` AND ${query}`;
-    } else {
-      this.havingQuery = ` HAVING ${query}`;
-    }
+    this.havingNodes.push(new HavingNode(query, "and", false, "=", [], true));
 
     return this;
   }
@@ -905,11 +732,7 @@ export abstract class WhereQueryBuilder<
    * @description Adds a raw OR HAVING condition to the query.
    */
   orHavingRaw(query: string): this {
-    if (this.havingQuery) {
-      this.havingQuery += ` OR ${query}`;
-    } else {
-      this.havingQuery = ` HAVING ${query}`;
-    }
+    this.havingNodes.push(new HavingNode(query, "or", false, "=", [], true));
 
     return this;
   }

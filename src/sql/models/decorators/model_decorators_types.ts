@@ -74,12 +74,12 @@ export type ColumnOptions = {
   /**
    * @description Called on the value returned from the database before it is returned from the model
    */
-  serialize?: (value: any) => any | Promise<any>;
+  serialize?: (value: any) => any;
   /**
    * @description Called on the value before it is inserted or updated in the database
    * @warning This will not be called on massive update operations since it's not possible to know which values are being updated, so you must pass the value you want to update in the payload
    */
-  prepare?: (value: any) => any | Promise<any>;
+  prepare?: (value: any) => any;
   /**
    * @description Whether the column is returned in the serialization output, this column will always be undefined
    * @default false
@@ -100,8 +100,8 @@ export type ColumnOptions = {
 export type ColumnType = {
   columnName: string;
   databaseName: string;
-  serialize?: (value: any) => any | Promise<any>;
-  prepare?: (value: any) => any | Promise<any>;
+  serialize?: (value: any) => any;
+  prepare?: (value: any) => any;
   hidden?: boolean;
   autoUpdate?: boolean;
 };

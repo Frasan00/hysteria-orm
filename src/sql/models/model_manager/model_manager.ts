@@ -1,4 +1,11 @@
 import { HysteriaError } from "../../../errors/hysteria_error";
+import { AstParser } from "../../ast/parser";
+import { DeleteNode } from "../../ast/query/node/delete";
+import { InsertNode } from "../../ast/query/node/insert";
+import { OnDuplicateNode } from "../../ast/query/node/on_duplicate";
+import { UpdateNode } from "../../ast/query/node/update";
+import { WhereNode } from "../../ast/query/node/where";
+import { InterpreterUtils } from "../../interpreter/interpreter_utils";
 import { serializeModel } from "../../serializer";
 import { SqlDataSource } from "../../sql_data_source";
 import { SqlDataSourceType } from "../../sql_data_source_types";
@@ -17,18 +24,17 @@ import {
   OrderByChoices,
   UnrestrictedFindOneType,
   UnrestrictedFindType,
-  UpdateOptions,
   UpsertOptions,
 } from "./model_manager_types";
-import SqlModelManagerUtils from "./model_manager_utils";
 
 export class ModelManager<T extends Model> {
   protected sqlDataSource: SqlDataSource;
-  protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
   protected sqlType: SqlDataSourceType;
   protected logs: boolean;
   protected model: typeof Model;
   protected modelInstance: T;
+  protected astParser: AstParser;
+  protected interpreterUtils: InterpreterUtils;
 
   /**
    * @description Constructor for ModelManager class.
@@ -39,10 +45,8 @@ export class ModelManager<T extends Model> {
     this.sqlDataSource = sqlDataSource;
     this.logs = this.sqlDataSource.logs;
     this.sqlType = this.sqlDataSource.getDbType();
-    this.sqlModelManagerUtils = new SqlModelManagerUtils<T>(
-      this.sqlType,
-      this.sqlDataSource,
-    );
+    this.astParser = new AstParser(this.model, this.sqlType);
+    this.interpreterUtils = new InterpreterUtils(this.model);
   }
 
   /**
@@ -185,16 +189,29 @@ export class ModelManager<T extends Model> {
    */
   async insert(model: Partial<T>, options: InsertOptions<T> = {}): Promise<T> {
     !options.ignoreHooks && (await this.model.beforeInsert?.(model as T));
-    await this.sqlModelManagerUtils.handlePrepare(this.model, model as T);
+    const { columns: preparedColumns, values: preparedValues } =
+      this.interpreterUtils.prepareColumns(
+        Object.keys(model),
+        Object.values(model),
+        "insert",
+      );
 
-    const { query, params } = this.sqlModelManagerUtils.parseInsert(
-      model as T,
-      this.model,
-      this.sqlType,
-      (options.returning as string[]) || [],
-    );
+    const insertObject: Record<string, any> = {};
+    preparedColumns.forEach((column, index) => {
+      const value = preparedValues[index];
+      insertObject[column] = value;
+      (model as any)[column] ??= value;
+    });
 
-    const rows = await execSql(query, params, this.sqlDataSource, "raw", {
+    const { sql, bindings } = this.astParser.parse([
+      new InsertNode(
+        this.model.table,
+        [insertObject],
+        options.returning as string[],
+      ),
+    ]);
+
+    const rows = await execSql(sql, bindings, this.sqlDataSource, "raw", {
       sqlLiteOptions: {
         typeofModel: this.model,
         mode: "insertOne",
@@ -218,7 +235,6 @@ export class ModelManager<T extends Model> {
 
     this.model.afterFetch?.([insertedModel]);
     const result = (await serializeModel([insertedModel], this.model)) as T;
-
     return result;
   }
 
@@ -229,21 +245,35 @@ export class ModelManager<T extends Model> {
     models: Partial<T>[],
     options: InsertOptions<T> = {},
   ): Promise<T[]> {
-    await Promise.all(
-      models.map((model) => {
-        !options.ignoreHooks && this.model.beforeInsert?.(model as T);
-        this.sqlModelManagerUtils.handlePrepare(this.model, model as T);
-      }),
-    );
+    const insertObjects: Record<string, any>[] = [];
+    for (const model of models) {
+      !options.ignoreHooks && this.model.beforeInsert?.(model as T);
+      const { columns: preparedColumns, values: preparedValues } =
+        this.interpreterUtils.prepareColumns(
+          Object.keys(model),
+          Object.values(model),
+          "insert",
+        );
 
-    const { query, params } = this.sqlModelManagerUtils.parseMassiveInsert(
-      models as T[],
-      this.model,
-      this.sqlType,
-      (options.returning as string[]) || [],
-    );
+      const insertObject: Record<string, any> = {};
+      preparedColumns.forEach((column, index) => {
+        const value = preparedValues[index];
+        insertObject[column] = value;
+        (model as any)[column] ??= value;
+      });
 
-    const rows = await execSql(query, params, this.sqlDataSource, "raw", {
+      insertObjects.push(insertObject);
+    }
+
+    const { sql, bindings } = this.astParser.parse([
+      new InsertNode(
+        this.model.table,
+        insertObjects,
+        options.returning as string[],
+      ),
+    ]);
+
+    const rows = await execSql(sql, bindings, this.sqlDataSource, "raw", {
       sqlLiteOptions: {
         typeofModel: this.model,
         mode: "insertMany",
@@ -281,33 +311,40 @@ export class ModelManager<T extends Model> {
       updateOnConflict: true,
     },
   ): Promise<T[]> {
+    const insertObjects: Record<string, any>[] = [];
     await Promise.all(
       data.map((model) => {
         !options.ignoreHooks && this.model.beforeInsert?.(model as T);
-        this.sqlModelManagerUtils.handlePrepare(this.model, model as T);
+        const { columns: preparedColumns, values: preparedValues } =
+          this.interpreterUtils.prepareColumns(
+            Object.keys(model),
+            Object.values(model),
+            "insert",
+          );
+
+        const insertObject = Object.fromEntries(
+          preparedColumns.map((column, index) => [
+            column,
+            preparedValues[index],
+          ]),
+        );
+
+        insertObjects.push(insertObject);
       }),
     );
 
-    let { query, params } = this.sqlModelManagerUtils.parseMassiveInsert(
-      data as T[],
-      this.model,
-      this.sqlType,
-    );
-
-    const { query: onDuplicateQuery, params: onDuplicateParams } =
-      this.sqlModelManagerUtils.parseOnDuplicate(
-        this.sqlType,
-        this.model,
-        options.updateOnConflict || true ? "update" : "ignore",
+    let { sql, bindings } = this.astParser.parse([
+      new InsertNode(this.model.table, insertObjects, undefined, true),
+      new OnDuplicateNode(
+        this.model.table,
         conflictColumns,
         columnsToUpdate,
+        options.updateOnConflict || true ? "update" : "ignore",
         options.returning as string[],
-      );
+      ),
+    ]);
 
-    query = `${query.replace(";", " ").replace(/RETURNING.*$/, "")} ${onDuplicateQuery}`;
-    params = [...params, ...onDuplicateParams];
-
-    const rows = await execSql(query, params, this.sqlDataSource, "raw", {
+    const rows = await execSql(sql, bindings, this.sqlDataSource, "raw", {
       sqlLiteOptions: {
         typeofModel: this.model,
         mode: "raw",
@@ -325,13 +362,14 @@ export class ModelManager<T extends Model> {
    */
   async updateRecord(
     model: Partial<T>,
-    options: UpdateOptions<T> = {},
+    options?: { returning?: ModelKey<T>[] },
   ): Promise<T> {
-    await this.sqlModelManagerUtils.handlePrepare(
-      this.model,
-      model as T,
-      "update",
-    );
+    const { columns: preparedColumns, values: preparedValues } =
+      this.interpreterUtils.prepareColumns(
+        Object.keys(model),
+        Object.values(model),
+        "update",
+      );
 
     const { primaryKey } = this.model;
     if (!primaryKey) {
@@ -341,16 +379,14 @@ export class ModelManager<T extends Model> {
       );
     }
 
-    const { query, params } = this.sqlModelManagerUtils.parseUpdate(
-      model as T,
-      this.model,
-      this.sqlType,
-    );
+    const { sql, bindings } = this.astParser.parse([
+      new UpdateNode(this.model.table, preparedColumns, preparedValues),
+    ]);
 
-    await execSql(query, params, this.sqlDataSource);
+    await execSql(sql, bindings, this.sqlDataSource);
     const updatedModel = await this.findOneByPrimaryKey(
       model[this.model.primaryKey as keyof T] as string,
-      options.returning as ModelKey<T>[],
+      options?.returning ?? undefined,
     );
 
     if (!updatedModel) {
@@ -375,13 +411,20 @@ export class ModelManager<T extends Model> {
       );
     }
 
-    const { query, params } = this.sqlModelManagerUtils.parseDelete(
-      this.model.table,
-      this.model.primaryKey,
+    const whereNode = new WhereNode(
+      this.model.primaryKey as string,
+      "and",
+      false,
+      "=",
       model[this.model.primaryKey as keyof T] as string,
     );
 
-    await execSql(query, params, this.sqlDataSource);
+    const { sql, bindings } = this.astParser.parse([
+      new DeleteNode(this.model.table),
+      whereNode,
+    ]);
+
+    await execSql(sql, bindings, this.sqlDataSource);
   }
 
   /**

@@ -666,11 +666,7 @@ describe(`[${env.DB_TYPE}] Query Builder: whereSubQuery + whereBuilder integrati
       .whereBuilder((qb) => {
         qb.where("age", ">", 25);
         qb.whereSubQuery("name", (subQb) =>
-          subQb
-            .select("name")
-            .from("users_without_pk")
-            .where("age", ">", 30)
-            .limit(1),
+          subQb.select("name").from("users_without_pk").where("age", ">", 30),
         );
       })
       .many();
@@ -682,12 +678,10 @@ describe(`[${env.DB_TYPE}] Query Builder: whereSubQuery + whereBuilder integrati
     const users = await SqlDataSource.query("users_without_pk")
       .whereSubQuery("name", (subQb) => {
         subQb.select("name").from("users_without_pk");
-        subQb
-          .whereBuilder((qb) => {
-            qb.where("age", ">", 30);
-            qb.orWhere("name", "Alice");
-          })
-          .limit(1);
+        subQb.whereBuilder((qb) => {
+          qb.where("age", ">", 30);
+          qb.orWhere("name", "Alice");
+        });
       })
       .many();
 

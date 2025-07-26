@@ -9,6 +9,7 @@ export type DateOptions = {
 };
 
 export interface ColumnConstraints {
+  custom(statement: string): ColumnConstraints;
   nullable(): ColumnConstraints;
   default(value: string | number | boolean | null): ColumnConstraints;
   unsigned(): ColumnConstraints;
@@ -63,10 +64,16 @@ export interface IColumnTypeBuilder {
   ): ColumnConstraints;
   timestamp(name: string, options?: DateOptions): ColumnConstraints;
   jsonb(name: string): ColumnConstraints;
+  vector(name: string, dimensions: number): ColumnConstraints;
 }
 
 class ColumnConstraintsBuilder implements ColumnConstraints {
   constructor(private builder: ColumnTypeBuilder) {}
+
+  custom(statement: string): ColumnConstraints {
+    this.builder.appendToQuery(statement);
+    return this;
+  }
 
   nullable(): ColumnConstraints {
     this.builder.appendToQuery(" NULL");
@@ -992,6 +999,19 @@ export default class ColumnTypeBuilder
           `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`,
         );
     }
+
+    return this.constraintsBuilder;
+  }
+
+  /**
+   * @description Creates a vector column
+   * @postgres Only available in postgres 16+
+   */
+  vector(name: string, dimensions: number): ColumnConstraints {
+    this.checkLastComma();
+    const quotedName = enQuoteColumnName(name, this.sqlType);
+    this.columnName = name;
+    this.partialQuery += ` ${quotedName} VECTOR(${dimensions})`;
 
     return this.constraintsBuilder;
   }

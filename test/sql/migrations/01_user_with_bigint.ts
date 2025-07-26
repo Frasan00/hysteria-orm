@@ -48,10 +48,10 @@ export default class extends Migration {
         short_description: "John Doe is a software engineer",
         weight: 80,
         birth_date: new Date("1990-01-01"),
-        json: {
+        json: JSON.stringify({
           name: "John Doe",
           email: "john.doe@example.com",
-        },
+        }),
         is_active: true,
         status: "active",
       });

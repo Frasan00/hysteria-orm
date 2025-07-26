@@ -1,6 +1,7 @@
 import { HysteriaError } from "../../../errors/hysteria_error";
 import { convertCase } from "../../../utils/case_utils";
 import { withPerformance } from "../../../utils/performance";
+import { SelectNode } from "../../ast/query/node/select/basic_select";
 import { getModelColumns } from "../../models/decorators/model_decorators";
 import { Model } from "../../models/model";
 import type {
@@ -15,7 +16,7 @@ import {
 } from "../../query_builder/delete_query_builder_type";
 import { QueryBuilder } from "../../query_builder/query_builder";
 import type { UpdateOptions } from "../../query_builder/update_query_builder_types";
-import { SqlMethod } from "../../resources/query/SELECT";
+import type { SqlMethod } from "../../ast/query/node/select/select_types";
 import { serializeModel } from "../../serializer";
 import { SqlDataSource } from "../../sql_data_source";
 import { ColumnType } from "../decorators/model_decorators_types";
@@ -433,12 +434,12 @@ export class ModelQueryBuilder<
     perPage: number,
     options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<PaginatedData<T>> {
-    const originalSelectQuery = this.selectQuery;
+    const originalSelectNodes = this.selectNodes;
     const total = await this.getCount("*", {
       ignoreHooks: options.ignoreHooks,
     });
 
-    this.selectQuery = originalSelectQuery;
+    this.selectNodes = originalSelectNodes;
     const models = await this.limit(perPage)
       .offset((page - 1) * perPage)
       .many({
@@ -461,9 +462,9 @@ export class ModelQueryBuilder<
       ...(columns as string[]),
     ];
 
-    this.selectQuery = this.selectTemplate.selectColumns([
-      ...this.modelSelectedColumns,
-    ]);
+    this.selectNodes = this.selectNodes.concat(
+      columns.map((column) => new SelectNode(column as string)),
+    );
 
     return this;
   }
@@ -536,20 +537,9 @@ export class ModelQueryBuilder<
       alias = columnOrAlias as string;
     }
 
-    const annotationStatement = this.selectTemplate.annotate(
-      column,
-      alias,
-      sqlMethod,
+    this.selectNodes = this.selectNodes.concat(
+      new SelectNode(column, alias, sqlMethod),
     );
-
-    if (!this.selectQuery) {
-      this.selectQuery = `SELECT ${annotationStatement}`;
-    } else {
-      this.selectQuery = this.selectQuery + `, ${annotationStatement}`;
-      if (!this.selectQuery.toLowerCase().includes("select")) {
-        this.selectQuery = `SELECT ${this.selectQuery}`;
-      }
-    }
 
     return this;
   }

@@ -1,104 +1,98 @@
-import { convertCase } from "../../utils/case_utils";
+import { GroupByNode } from "../ast/query/node/group_by/group_by";
+import { LimitNode } from "../ast/query/node/limit/limit";
+import { OffsetNode } from "../ast/query/node/offset/offset";
+import { OrderByNode } from "../ast/query/node/order_by/order_by";
+import { getModelColumns } from "../models/decorators/model_decorators";
+import { ColumnType } from "../models/decorators/model_decorators_types";
 import { Model } from "../models/model";
 import type {
   ModelKey,
   OrderByChoices,
 } from "../models/model_manager/model_manager_types";
-import selectTemplate from "../resources/query/SELECT";
 import { SqlDataSource } from "../sql_data_source";
 
 export abstract class FooterQueryBuilder<T extends Model> {
   protected sqlDataSource: SqlDataSource;
   protected model: typeof Model;
-  protected groupByQuery: string;
-  protected orderByQuery: string;
-  protected limitQuery: string;
-  protected offsetQuery: string;
-  protected selectTemplate: ReturnType<typeof selectTemplate>;
+  protected groupByNodes: GroupByNode[];
+  protected orderByNodes: OrderByNode[];
+  protected limitNode: LimitNode | null;
+  protected offsetNode: OffsetNode | null;
+  protected modelColumns: ColumnType[];
+  protected modelColumnsMap: Map<string, ColumnType>;
   protected logs: boolean;
 
   protected constructor(model: typeof Model, sqlDataSource: SqlDataSource) {
     this.model = model;
     this.sqlDataSource = sqlDataSource;
-    this.selectTemplate = selectTemplate(
-      this.sqlDataSource.getDbType(),
-      this.model,
-    );
-
-    this.groupByQuery = "";
-    this.orderByQuery = "";
-    this.limitQuery = "";
-    this.offsetQuery = "";
+    this.groupByNodes = [];
+    this.orderByNodes = [];
+    this.limitNode = null;
+    this.offsetNode = null;
     this.logs = this.sqlDataSource.logs;
+    this.modelColumns = getModelColumns(this.model);
+    this.modelColumnsMap = new Map(
+      this.modelColumns.map((modelColumn) => [
+        modelColumn.columnName,
+        modelColumn,
+      ]),
+    );
   }
 
   clearGroupBy(): this {
-    this.groupByQuery = "";
+    this.groupByNodes = [];
     return this;
   }
 
   clearOrderBy(): this {
-    this.orderByQuery = "";
+    this.orderByNodes = [];
     return this;
   }
 
   clearLimit(): this {
-    this.limitQuery = "";
+    this.limitNode = null;
     return this;
   }
 
   clearOffset(): this {
-    this.offsetQuery = "";
+    this.offsetNode = null;
     return this;
   }
 
   groupBy(...columns: ModelKey<T>[]): this;
   groupBy(...columns: string[]): this;
   groupBy(...columns: (ModelKey<T> | string)[]): this {
-    this.groupByQuery = this.selectTemplate.groupBy(...(columns as string[]));
+    columns.forEach((column) => {
+      this.groupByNodes.push(new GroupByNode(column as string));
+    });
+
     return this;
   }
 
   groupByRaw(query: string): this {
-    query.replace("GROUP BY", "");
-    this.groupByQuery = ` GROUP BY ${query}`;
+    this.groupByNodes.push(new GroupByNode(query, true));
     return this;
   }
 
   orderBy(column: ModelKey<T>, order: OrderByChoices): this;
   orderBy(column: string, order: OrderByChoices): this;
   orderBy(column: ModelKey<T> | string, order: OrderByChoices): this {
-    const casedColumn = convertCase(
-      column as string,
-      this.model.databaseCaseConvention,
-    );
-
-    if (this.orderByQuery) {
-      this.orderByQuery += `, ${casedColumn as string} ${order}`;
-      return this;
-    }
-
-    this.orderByQuery = ` ORDER BY ${casedColumn as string} ${order}`;
+    this.orderByNodes.push(new OrderByNode(column as string, order));
     return this;
   }
 
   orderByRaw(query: string): this {
-    if (this.orderByQuery) {
-      this.orderByQuery += `, ${query}`;
-      return this;
-    }
-
-    this.orderByQuery = ` ORDER BY ${query}`;
+    this.orderByNodes.push(new OrderByNode(query, "asc", true));
     return this;
   }
 
   limit(limit: number): this {
-    this.limitQuery = this.selectTemplate.limit(limit);
+    this.limitNode = new LimitNode(limit);
     return this;
   }
 
   offset(offset: number): this {
-    this.offsetQuery = this.selectTemplate.offset(offset);
+    this.offsetNode = new OffsetNode(offset);
     return this;
   }
 }

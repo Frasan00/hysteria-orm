@@ -1,6 +1,8 @@
 import { HysteriaError } from "../../errors/hysteria_error";
+import { AstParser } from "../ast/parser";
+import { InsertNode } from "../ast/query/node/insert";
+import { InterpreterUtils } from "../interpreter/interpreter_utils";
 import { Model } from "../models/model";
-import SqlModelManagerUtils from "../models/model_manager/model_manager_utils";
 import { SqlDataSource } from "../sql_data_source";
 import { SqlLiteOptions } from "./sql_runner_types";
 
@@ -112,10 +114,30 @@ export const promisifySqliteQuery = <T extends Model>(
     return new Promise<T[]>(async (resolve, reject) => {
       try {
         const insertPromises = models.map(async (model) => {
-          const { query, params } = new SqlModelManagerUtils(
+          const interpreterUtils = new InterpreterUtils(typeofModel);
+
+          const { columns: preparedColumns, values: preparedValues } =
+            interpreterUtils.prepareColumns(
+              Object.keys(model),
+              Object.values(model),
+              "insert",
+            );
+
+          const preparedModel = Object.fromEntries(
+            preparedColumns.map((column, index) => [
+              column,
+              preparedValues[index],
+            ]),
+          );
+
+          const astParser = new AstParser(
+            typeofModel,
             sqlDataSource.getDbType(),
-            sqlDataSource,
-          ).parseInsert(model as Model, typeofModel, sqlDataSource.getDbType());
+          );
+
+          const { sql: query, bindings: params } = astParser.parse([
+            new InsertNode(typeofModel.table, [preparedModel]),
+          ]);
 
           return new Promise<T>((resolve, reject) => {
             sqliteDriver.run(query, params, function (err: any) {

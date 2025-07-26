@@ -395,7 +395,7 @@ export abstract class Model extends Entity {
 
       if (options.updateOnConflict) {
         return (await modelManager.updateRecord(data as T, {
-          returning: options.returning ?? (["*"] as ModelKey<T>[]),
+          returning: options.returning as ModelKey<T>[] | undefined,
         })) as T;
       }
 
@@ -541,12 +541,11 @@ export abstract class Model extends Entity {
    */
   static async truncate<T extends Model>(
     this: new () => T | typeof Model,
-    truncateOptions?: { force?: boolean },
     options: BaseModelMethodOptions = {},
   ): Promise<void> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
-    return modelManager.query().truncate(truncateOptions);
+    return modelManager.query().truncate();
   }
 
   /**
