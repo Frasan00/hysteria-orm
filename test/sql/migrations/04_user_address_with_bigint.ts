@@ -3,9 +3,12 @@ import { Migration } from "../../../../lib/index.js";
 export default class extends Migration {
   async up() {
     this.schema.createTable("user_address_with_bigint", (table) => {
-      table.bigSerial("id").primary();
-      table.bigInteger("user_id").references("users_with_bigint", "id");
-      table.bigInteger("address_id").references("address_with_bigint", "id");
+      table.bigint("id").primaryKey().increment();
+      table.bigint("user_id").foreignKey("users_with_bigint.id").notNullable();
+      table
+        .bigint("address_id")
+        .foreignKey("address_with_bigint.id")
+        .notNullable();
 
       table.timestamp("created_at");
       table.timestamp("updated_at");
@@ -13,25 +16,14 @@ export default class extends Migration {
     });
 
     this.schema.alterTable("user_address_with_bigint", (table) => {
-      table.addColumn("test_bigint", "bigint", {
-        notNullable: true,
-      });
+      table.addColumn((col) => col.bigint("test_bigint").notNullable());
 
-      table.addForeignKey("test_bigint", {
-        references: {
-          table: "users_with_bigint",
-          column: "id",
-          constraintName: "user_address_with_bigint_test_bigint_fk",
-          onDelete: "CASCADE",
-          onUpdate: "CASCADE",
-        },
-      });
-
-      table.dropForeignKey(
-        "test_bigint",
-        "user_address_with_bigint_test_bigint_fk",
+      table.alterColumn((col) =>
+        col.bigint("test_bigint").foreignKey("users_with_bigint.id"),
       );
-
+      table.alterColumn((col) =>
+        col.bigint("test_bigint").foreignKey("users_with_bigint.id"),
+      );
       table.dropColumn("test_bigint");
     });
   }

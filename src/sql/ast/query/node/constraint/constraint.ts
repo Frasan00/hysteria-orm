@@ -1,0 +1,48 @@
+import { QueryNode } from "../../query";
+
+export type ConstraintType =
+  | "primary_key"
+  | "foreign_key"
+  | "unique"
+  | "not_null"
+  | "default";
+
+export class ConstraintNode extends QueryNode {
+  constraintType: ConstraintType;
+  columns?: string[];
+  references?: { table: string; columns: string[] };
+  constraintName?: string;
+  onDelete?: "cascade" | "restrict" | "set null" | "no action";
+  onUpdate?: "cascade" | "restrict" | "set null" | "no action";
+  defaultValue?: string;
+  checkExpression?: string;
+  chainsWith = " ";
+  canKeywordBeSeenMultipleTimes = true;
+  folder = "constraint";
+  file = "constraint";
+
+  constructor(
+    constraintType: ConstraintType,
+    args: {
+      columns?: string[];
+      references?: { table: string; columns: string[] };
+      constraintName?: string;
+      onDelete?: "cascade" | "restrict" | "set null" | "no action";
+      onUpdate?: "cascade" | "restrict" | "set null" | "no action";
+      defaultValue?: string;
+      checkExpression?: string;
+    } = {},
+    isRawValue: boolean = false,
+  ) {
+    super("");
+    this.constraintType = constraintType;
+    this.columns = args.columns;
+    this.references = args.references;
+    this.constraintName = args.constraintName;
+    this.onDelete = args.onDelete;
+    this.onUpdate = args.onUpdate;
+    this.defaultValue = args.defaultValue;
+    this.checkExpression = args.checkExpression;
+    this.isRawValue = isRawValue;
+  }
+}

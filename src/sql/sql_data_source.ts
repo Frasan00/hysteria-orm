@@ -183,8 +183,8 @@ export class SqlDataSource extends DataSource {
   static query(table: string): QueryBuilder {
     return new QueryBuilder(
       {
-        modelCaseConvention: "none",
-        databaseCaseConvention: "none",
+        modelCaseConvention: "preserve",
+        databaseCaseConvention: "preserve",
         table: table,
       } as typeof Model,
       this.getInstance(),
@@ -321,8 +321,8 @@ export class SqlDataSource extends DataSource {
   query(table: string): QueryBuilder {
     return new QueryBuilder(
       {
-        modelCaseConvention: "none",
-        databaseCaseConvention: "none",
+        modelCaseConvention: "preserve",
+        databaseCaseConvention: "preserve",
         table: table,
       } as typeof Model,
       this,

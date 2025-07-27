@@ -1,7 +1,7 @@
 export type CaseConvention =
   | "camel"
   | "snake"
-  | "none"
+  | "preserve"
   | RegExp
   | ((column: string) => string);
 
@@ -27,7 +27,7 @@ function toCamel(str: any) {
 }
 
 export function convertCase(value: any, to: CaseConvention) {
-  if (to === "none") {
+  if (to === "preserve") {
     return value;
   }
 

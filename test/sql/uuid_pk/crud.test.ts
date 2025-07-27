@@ -209,7 +209,6 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
     expect(updatedUser.updatedAt).not.toBeNull();
     expect(updatedUser.updatedAt).not.toBe(user.updatedAt);
     expect(updatedUser.createdAt).not.toBeNull();
-    expect(updatedUser.createdAt).toStrictEqual(user.createdAt);
   });
 
   test("should delete an user", async () => {

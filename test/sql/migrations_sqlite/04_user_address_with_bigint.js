@@ -3,13 +3,28 @@ import { Migration } from "../../../lib/index.js";
 export default class extends Migration {
   async up() {
     this.schema.createTable("user_address_with_bigint", (table) => {
-      table.bigSerial("id");
-      table.bigInteger("user_id").references("users_with_bigint", "id");
-      table.bigInteger("address_id").references("address_with_bigint", "id");
+      table.bigint("id").primaryKey().increment();
+      table.bigint("user_id").foreignKey("users_with_bigint.id").notNullable();
+      table
+        .bigint("address_id")
+        .foreignKey("address_with_bigint.id")
+        .notNullable();
 
       table.timestamp("created_at");
       table.timestamp("updated_at");
-      table.timestamp("deleted_at").default("NULL").nullable();
+      table.timestamp("deleted_at").default(null).nullable();
+    });
+
+    this.schema.alterTable("user_address_with_bigint", (table) => {
+      table.addColumn((col) => col.bigint("test_bigint").notNullable());
+
+      table.alterColumn((col) =>
+        col.bigint("test_bigint").foreignKey("users_with_bigint.id"),
+      );
+      table.alterColumn((col) =>
+        col.bigint("test_bigint").foreignKey("users_with_bigint.id"),
+      );
+      table.dropColumn("test_bigint");
     });
   }
 

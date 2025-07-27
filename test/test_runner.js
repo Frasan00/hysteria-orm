@@ -18,27 +18,27 @@ const sqlEnvironments = [
 ];
 
 const sqlTests = [
-  // // edge cases
-  // "./test/sql/edge_cases/query_builder_complex_edge_cases.test.ts",
-  // "./test/sql/edge_cases/model_serialization_edge_cases.test.ts",
+  // use connection
+  "./test/sql/use_connection/use_connection.test.ts",
 
-  // // transaction
-  // "./test/sql/transaction/transaction.test.ts",
+  // edge cases
+  "./test/sql/edge_cases/query_builder_complex_edge_cases.test.ts",
+  "./test/sql/edge_cases/model_serialization_edge_cases.test.ts",
 
-  // // use connection
-  // "./test/sql/use_connection/use_connection.test.ts",
+  // transaction
+  "./test/sql/transaction/transaction.test.ts",
 
-  // // query builder
-  // "./test/sql/query_builder/query_builder.test.ts",
+  // query builder
+  "./test/sql/query_builder/query_builder.test.ts",
 
-  // // without primary key tests
-  // "./test/sql/without_pk/user_without_pk_json.test.ts",
-  // "./test/sql/without_pk/user_without_pk_crud.test.ts",
+  // without primary key tests
+  "./test/sql/without_pk/user_without_pk_json.test.ts",
+  "./test/sql/without_pk/user_without_pk_crud.test.ts",
 
-  // // bigint join test
-  // "./test/sql/bigint_pk/relations.test.ts",
-  // "./test/sql/bigint_pk/crud.test.ts",
-  // "./test/sql/bigint_pk/join.test.ts",
+  // bigint join test
+  "./test/sql/bigint_pk/relations.test.ts",
+  "./test/sql/bigint_pk/crud.test.ts",
+  "./test/sql/bigint_pk/join.test.ts",
 
   // uuid
   "./test/sql/uuid_pk/relations.test.ts",

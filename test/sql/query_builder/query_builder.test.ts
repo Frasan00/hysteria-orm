@@ -1,7 +1,6 @@
 import crypto from "node:crypto";
 import { env } from "../../../src/env/env";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
-import { UserWithoutPk } from "../test_models/without_pk/user_without_pk";
 
 beforeAll(async () => {
   await SqlDataSource.connect();
@@ -101,8 +100,18 @@ describe(`[${env.DB_TYPE}] Query Builder with uuid`, () => {
 
   test("should create multiple posts", async () => {
     await SqlDataSource.query("posts_with_uuid").insertMany([
-      { id: crypto.randomUUID(), title: "Hello World" },
-      { id: crypto.randomUUID(), title: "Hello World 2" },
+      {
+        id: crypto.randomUUID(),
+        title: "Hello World",
+      },
+      {
+        id: crypto.randomUUID(),
+        title: "Hello World 2",
+      },
+      {
+        id: crypto.randomUUID(),
+        title: "Hello World 3",
+      },
     ]);
 
     const posts = await SqlDataSource.query("posts_with_uuid")
@@ -110,11 +119,13 @@ describe(`[${env.DB_TYPE}] Query Builder with uuid`, () => {
       .many();
 
     expect(posts).toBeDefined();
-    expect(posts.length).toBe(2);
+    expect(posts.length).toBe(3);
     expect(posts[0].id).toBeDefined();
     expect(posts[1].id).toBeDefined();
+    expect(posts[2].id).toBeDefined();
     expect(posts[0].title).toBe("Hello World");
     expect(posts[1].title).toBe("Hello World 2");
+    expect(posts[2].title).toBe("Hello World 3");
   });
 
   test("should update a post", async () => {
