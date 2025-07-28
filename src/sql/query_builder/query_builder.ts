@@ -28,7 +28,6 @@ import { SqlDataSource } from "../sql_data_source";
 import type { SqlDataSourceType } from "../sql_data_source_types";
 import { execSql, getSqlDialect } from "../sql_runner/sql_runner";
 import { CteBuilder } from "./cte/cte_builder";
-import { WithClauseType } from "./cte/cte_types";
 import { SoftDeleteOptions } from "./delete_query_builder_type";
 import { JsonQueryBuilder } from "./json_query_builder";
 import {
@@ -435,25 +434,55 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    * @returns The CTE query builder, you can chain other methods after calling this method in order to interact with the CTE
    */
   with(
-    type: WithClauseType,
-    cb: (cteBuilder: CteBuilder<T>) => CteBuilder<T>,
-  ): Omit<this, "with">;
-  with(
     type: string,
     cb: (cteBuilder: CteBuilder<T>) => CteBuilder<T>,
   ): Omit<this, "with">;
+  with(cb: (cteBuilder: CteBuilder<T>) => CteBuilder<T>): Omit<this, "with">;
   with(
-    type: WithClauseType | string,
-    cb: (cteBuilder: CteBuilder<T>) => CteBuilder<T>,
+    typeOrCb: string | ((cteBuilder: CteBuilder<T>) => CteBuilder<T>),
+    maybeCb?: (cteBuilder: CteBuilder<T>) => CteBuilder<T>,
   ): Omit<this, "with"> {
+    let type = "";
+    if (typeof typeOrCb === "function") {
+      maybeCb = typeOrCb;
+    } else {
+      type = typeOrCb;
+    }
+
     const cteBuilder = new CteBuilder<T>(type, this.model, this.sqlDataSource);
-    cb(cteBuilder);
+    maybeCb?.(cteBuilder);
     cteBuilder.cteMap.forEach((queryBuilder, alias) => {
       this.withNodes.push(
         new WithNode(type, alias, queryBuilder.extractQueryNodes()),
       );
     });
 
+    return this;
+  }
+
+  withRecursive(
+    cb: (cteBuilder: CteBuilder<T>) => CteBuilder<T>,
+  ): Omit<this, "withRecursive"> {
+    const cteBuilder = new CteBuilder<T>(
+      "recursive",
+      this.model,
+      this.sqlDataSource,
+    );
+
+    cb(cteBuilder);
+    return this;
+  }
+
+  withAggregate(
+    cb: (cteBuilder: CteBuilder<T>) => CteBuilder<T>,
+  ): Omit<this, "withAggregate"> {
+    const cteBuilder = new CteBuilder<T>(
+      "aggregate",
+      this.model,
+      this.sqlDataSource,
+    );
+
+    cb(cteBuilder);
     return this;
   }
 
