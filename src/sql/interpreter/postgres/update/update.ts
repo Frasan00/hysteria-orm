@@ -1,4 +1,5 @@
 import { AstParser } from "../../../ast/parser";
+import { RawNode } from "../../../ast/query/node/raw/raw_node";
 import { UpdateNode } from "../../../ast/query/node/update";
 import { QueryNode } from "../../../ast/query/query";
 import { Model } from "../../../models/model";
@@ -30,18 +31,26 @@ class PostgresUpdateInterpreter implements Interpreter {
       };
     }
 
+    let rawNodeCount = 0;
+    const finalBindings: any[] = [];
     const setClause = updateNode.columns
       .map((column, index) => {
-        const idx = updateNode.currParamIndex + index;
+        const idx = updateNode.currParamIndex + index - rawNodeCount;
         const value = updateNode.values[index];
 
+        if (value instanceof RawNode) {
+          rawNodeCount++;
+          return `${interpreterUtils.formatStringColumn("postgres", column)} = ${value.rawValue}`;
+        }
+
+        finalBindings.push(value);
         return `${interpreterUtils.formatStringColumn("postgres", column)} = $${idx}${this.formatTypeCast(value)}`;
       })
       .join(", ");
 
     return {
       sql: `${formattedTable} SET ${setClause}`,
-      bindings: updateNode.values,
+      bindings: finalBindings,
     };
   }
 

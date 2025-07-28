@@ -10,8 +10,8 @@ export default class extends Migration {
         .foreignKey("address_with_bigint.id")
         .notNullable();
 
-      table.timestamp("created_at");
-      table.timestamp("updated_at");
+      table.timestamp("created_at", { withTimezone: true });
+      table.timestamp("updated_at", { withTimezone: true });
       table.timestamp("deleted_at").default(null).nullable();
     });
 

@@ -60,9 +60,18 @@ class SqliteColumnTypeInterpreter implements Interpreter {
 
     if (dt === "bytea" || dt === "blob" || dt === "binary") {
       return { sql: `${columnName} blob`, bindings: [] };
+    } else if (dt === "integer" || dt === "int") {
+      if (colNode.autoIncrement) {
+        return { sql: `${columnName} serial`, bindings: [] };
+      }
+
+      return { sql: `${columnName} integer`, bindings: [] };
     }
 
-    return { sql: `${columnName} ${dt}`, bindings: [] };
+    return {
+      sql: `${columnName} ${dt} ${colNode.length ? `(${colNode.length})` : ""}`,
+      bindings: [],
+    };
   }
 }
 

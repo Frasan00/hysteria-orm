@@ -23,6 +23,7 @@ import {
   StartTransactionOptions,
   TransactionExecutionOptions,
 } from "./transactions/transaction_types";
+import { RawNode } from "./ast/query/node/raw/raw_node";
 
 export class SqlDataSource extends DataSource {
   declare private sqlConnection: SqlConnectionType;
@@ -280,6 +281,13 @@ export class SqlDataSource extends DataSource {
     params: any[] = [],
   ): Promise<T> {
     return SqlDataSource.getInstance().rawQuery(query, params);
+  }
+
+  /**
+   * @description Adds a raw statement to an operation like select or update
+   */
+  static rawStatement(value: string) {
+    return SqlDataSource.getInstance().rawStatement(value);
   }
 
   // Instance Methods
@@ -559,6 +567,21 @@ export class SqlDataSource extends DataSource {
     }
 
     return execSql(query, params, this);
+  }
+
+  /**
+  * @description Adds a raw statement to an operation like update
+  * ```ts
+  *await sql.query("test").update({
+  *    test: "test",
+  *    test2: "test2",
+  *    rawTest: SqlDataSource.rawStatement("rawTest"), // This will be taken as literal sql statement and not a string value
+  *    test3: "test3",
+  });
+   * ```
+   */
+  rawStatement(value: string) {
+    return new RawNode(value);
   }
 
   private async testConnectionQuery(query: string): Promise<void> {

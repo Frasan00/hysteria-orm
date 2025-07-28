@@ -17,10 +17,13 @@ const sqlEnvironments = [
   cockroachdbConfig,
 ];
 
-const sqlTests = [
-  // use connection
-  "./test/sql/use_connection/use_connection.test.ts",
+// use connection
+execSync(
+  `jest --config=jest.config.js --detectOpenHandles ./test/sql/use_connection/use_connection.test.ts`,
+  { stdio: "inherit" }
+);
 
+const sqlTests = [
   // edge cases
   "./test/sql/edge_cases/query_builder_complex_edge_cases.test.ts",
   "./test/sql/edge_cases/model_serialization_edge_cases.test.ts",

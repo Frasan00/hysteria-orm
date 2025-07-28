@@ -1,4 +1,5 @@
 import { AstParser } from "../../../ast/parser";
+import { RawNode } from "../../../ast/query/node/raw/raw_node";
 import { UpdateNode } from "../../../ast/query/node/update";
 import { QueryNode } from "../../../ast/query/query";
 import { Model } from "../../../models/model";
@@ -30,15 +31,22 @@ class MysqlUpdateInterpreter implements Interpreter {
       };
     }
 
+    const finalBindings: any[] = [];
     const setClause = updateNode.columns
-      .map((column) => {
+      .map((column, index) => {
+        const value = updateNode.values[index];
+        if (value instanceof RawNode) {
+          return `${interpreterUtils.formatStringColumn("mysql", column)} = ${value.rawValue}`;
+        }
+
+        finalBindings.push(value);
         return `${interpreterUtils.formatStringColumn("mysql", column)} = ?`;
       })
       .join(", ");
 
     return {
       sql: `${formattedTable} SET ${setClause}`,
-      bindings: updateNode.values,
+      bindings: finalBindings,
     };
   }
 }

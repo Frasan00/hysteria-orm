@@ -7,8 +7,8 @@ export default class extends Migration {
       table.uuid("user_id").foreignKey("users_with_uuid.id").notNullable();
       table.uuid("address_id").foreignKey("address_with_uuid.id").notNullable();
 
-      table.timestamp("created_at");
-      table.timestamp("updated_at");
+      table.timestamp("created_at", { withTimezone: true });
+      table.timestamp("updated_at", { withTimezone: true });
       table.timestamp("deleted_at").default(null).nullable();
     });
   }

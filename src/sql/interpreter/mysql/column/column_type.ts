@@ -76,7 +76,10 @@ class MysqlColumnTypeInterpreter implements Interpreter {
       return { sql: `${columnName} text`, bindings: [] };
     }
 
-    return { sql: `${columnName} ${dt}`, bindings: [] };
+    return {
+      sql: `${columnName} ${dt} ${colNode.length ? `(${colNode.length})` : ""}`,
+      bindings: [],
+    };
   }
 }
 

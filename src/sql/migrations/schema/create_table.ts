@@ -87,13 +87,23 @@ export class CreateTableBuilder extends BaseBuilder {
     return this.build(node);
   }
 
-  datetime(name: string, withTimezone: boolean = false): ConstraintBuilder {
-    const node = new ColumnTypeNode(name, "datetime", { withTimezone });
+  datetime(
+    name: string,
+    options?: { withTimezone?: boolean },
+  ): ConstraintBuilder {
+    const node = new ColumnTypeNode(name, "datetime", {
+      withTimezone: options?.withTimezone ?? false,
+    });
     return this.build(node);
   }
 
-  timestamp(name: string, withTimezone: boolean = false): ConstraintBuilder {
-    const node = new ColumnTypeNode(name, "timestamp", { withTimezone });
+  timestamp(
+    name: string,
+    options?: { withTimezone?: boolean },
+  ): ConstraintBuilder {
+    const node = new ColumnTypeNode(name, "timestamp", {
+      withTimezone: options?.withTimezone ?? false,
+    });
     return this.build(node);
   }
 

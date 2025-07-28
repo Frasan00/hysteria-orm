@@ -11,8 +11,8 @@ export default class extends Migration {
       table.varchar("zip", 1000);
       table.varchar("country", 1000);
 
-      table.timestamp("created_at");
-      table.timestamp("updated_at");
+      table.timestamp("created_at", { withTimezone: true });
+      table.timestamp("updated_at", { withTimezone: true });
       table.timestamp("deleted_at").default(null).nullable();
     });
   }

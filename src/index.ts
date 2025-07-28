@@ -43,23 +43,3 @@ export { HysteriaError } from "./errors/hysteria_error";
 
 // Mongo
 export { Collection } from "./no_sql/mongo/mongo_models/mongo_collection";
-
-// import { Migration } from "./sql/migrations/migration";
-
-// export class TestMigration extends Migration {
-//   async up() {
-//     this.schema.alterTable("users", (table) => {
-//       table.addColumn((col) => col.varchar("name", 255));
-//       table.alterColumn((col) => col.varchar("name", 255));
-//       table.createIndex("name", ["name"]);
-//     });
-//   }
-
-//   async down(): Promise<void> {}
-// }
-
-// (async () => {
-//   const a = new TestMigration("postgres");
-//   await a.up();
-//   console.log(a.schema.queryStatements);
-// })();

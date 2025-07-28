@@ -81,10 +81,14 @@ class PostgresColumnTypeInterpreter implements Interpreter {
       if (colNode.autoIncrement) {
         return { sql: `${columnName} serial`, bindings: [] };
       }
+
       return { sql: `${columnName} integer`, bindings: [] };
     }
 
-    return { sql: `${columnName} ${dt}`, bindings: [] };
+    return {
+      sql: `${columnName} ${dt} ${colNode.length ? `(${colNode.length})` : ""}`,
+      bindings: [],
+    };
   }
 }
 
