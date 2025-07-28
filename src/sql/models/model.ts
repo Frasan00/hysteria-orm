@@ -2,6 +2,7 @@ import "reflect-metadata";
 import type { ModelManager } from "./model_manager/model_manager";
 import type {
   FindOneType,
+  FindReturnType,
   FindType,
   InsertOptions,
   ModelKey,
@@ -93,9 +94,9 @@ export abstract class Model extends Entity {
   ): Promise<T[]> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
-    return await modelManager.find({
+    return (await modelManager.find({
       ignoreHooks: options.ignoreHooks ? ["afterFetch", "beforeFetch"] : [],
-    });
+    })) as T[];
   }
 
   /**
@@ -128,94 +129,109 @@ export abstract class Model extends Entity {
   /**
    * @description Finds records for the given model
    */
-  static async find<T extends Model>(
+  static async find<T extends Model, S extends ModelKey<T>[] = never[]>(
     this: new () => T | typeof Model,
-    findOptions?: FindType<T> | UnrestrictedFindType<T>,
+    findOptions?: FindType<T, S> | UnrestrictedFindType<T, S>,
     options?: Omit<BaseModelMethodOptions, "ignoreHooks">,
-  ): Promise<T[]> {
+  ): Promise<FindReturnType<T, S>[]> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
-    return modelManager.find(findOptions as FindType<T>);
+    return (await modelManager.find(
+      findOptions as FindType<T, S>,
+    )) as FindReturnType<T, S>[];
   }
 
   /**
    * @description Finds a record for the given model or throws an error if it doesn't exist
    */
-  static async findOneOrFail<T extends Model>(
+  static async findOneOrFail<
+    T extends Model,
+    S extends ModelKey<T>[] = never[],
+  >(
     this: new () => T | typeof Model,
-    findOneOptions: (FindOneType<T> | UnrestrictedFindOneType<T>) & {
+    findOneOptions: (FindOneType<T, S> | UnrestrictedFindOneType<T, S>) & {
       customError?: Error;
     },
     options?: Omit<BaseModelMethodOptions, "ignoreHooks">,
-  ): Promise<T> {
+  ): Promise<FindReturnType<T, S>> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
-    return modelManager.findOneOrFail(findOneOptions as FindOneType<T>);
+    return (await modelManager.findOneOrFail(
+      findOneOptions as FindOneType<T, S>,
+    )) as FindReturnType<T, S>;
   }
 
   /**
    * @description Finds a record for the given model
    */
-  static async findOne<T extends Model>(
+  static async findOne<T extends Model, S extends ModelKey<T>[] = never[]>(
     this: new () => T | typeof Model,
-    findOneOptions: (FindOneType<T> | UnrestrictedFindOneType<T>) &
+    findOneOptions: (FindOneType<T, S> | UnrestrictedFindOneType<T, S>) &
       BaseModelMethodOptions,
     options?: Omit<BaseModelMethodOptions, "ignoreHooks">,
-  ): Promise<T | null> {
+  ): Promise<FindReturnType<T, S> | null> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
-    return modelManager.findOne(findOneOptions as FindOneType<T>);
+    return (await modelManager.findOne(
+      findOneOptions as FindOneType<T, S>,
+    )) as FindReturnType<T, S> | null;
   }
 
   /**
    * @description Finds records for the given column and value
    */
-  static async findBy<T extends Model>(
+  static async findBy<T extends Model, S extends ModelKey<T>[] = never[]>(
     this: new () => T | typeof Model,
-    column: ModelKey<T>,
+    column: S,
     value: string | number | boolean | Date | null,
     options: BaseModelMethodOptions = {},
-  ): Promise<T[]> {
+  ): Promise<FindReturnType<T, S>[]> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
-    return modelManager.find({
+    return (await modelManager.find({
       ignoreHooks: options.ignoreHooks ? ["afterFetch", "beforeFetch"] : [],
       where: {
-        [column as keyof T]: value as T[keyof T],
+        [column as unknown as keyof T]: value as T[keyof T],
       } as WhereType<T>,
-    });
+    })) as FindReturnType<T, S>[];
   }
 
   /**
    * @description Finds the first record for the given column and value
    */
-  static async findOneBy<T extends Model>(
+  static async findOneBy<T extends Model, S extends ModelKey<T>[] = never[]>(
     this: new () => T | typeof Model,
     column: ModelKey<T>,
     value: string | number | boolean | Date | null,
     options: BaseModelMethodOptions = {},
-  ): Promise<T | null> {
+  ): Promise<FindReturnType<T, S> | null> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
-    return modelManager.findOne({
+    return (await modelManager.findOne({
       ignoreHooks: options.ignoreHooks ? ["afterFetch", "beforeFetch"] : [],
       where: {
         [column as keyof T]: value as T[keyof T],
       } as WhereType<T>,
-    });
+    })) as FindReturnType<T, S> | null;
   }
 
   /**
    * @description Finds a record for the given model for the given value, the model must have a primary key defined else it will throw an error
    */
-  static async findOneByPrimaryKey<T extends Model>(
+  static async findOneByPrimaryKey<
+    T extends Model,
+    S extends ModelKey<T>[] = never[],
+  >(
     this: new () => T | typeof Model,
     value: string | number,
     options: Omit<BaseModelMethodOptions, "ignoreHooks"> = {},
-  ): Promise<T | null> {
+  ): Promise<FindReturnType<T, S> | null> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
-    return modelManager.findOneByPrimaryKey(value);
+    return (await modelManager.findOneByPrimaryKey(value)) as FindReturnType<
+      T,
+      S
+    > | null;
   }
 
   /**
@@ -395,7 +411,7 @@ export abstract class Model extends Entity {
 
       if (options.updateOnConflict) {
         return (await modelManager.updateRecord(data as T, {
-          returning: options.returning ?? (["*"] as ModelKey<T>[]),
+          returning: options.returning as ModelKey<T>[] | undefined,
         })) as T;
       }
 
@@ -541,12 +557,11 @@ export abstract class Model extends Entity {
    */
   static async truncate<T extends Model>(
     this: new () => T | typeof Model,
-    truncateOptions?: { force?: boolean },
     options: BaseModelMethodOptions = {},
   ): Promise<void> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
-    return modelManager.query().truncate(truncateOptions);
+    return modelManager.query().truncate();
   }
 
   /**

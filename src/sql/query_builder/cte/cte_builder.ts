@@ -11,8 +11,7 @@ import { QueryBuilder } from "../query_builder";
 export class CteBuilder<T extends Model> {
   private model: typeof Model;
   private sqlDataSource: SqlDataSource;
-  private clause: string;
-  private cteMap: CteMap;
+  cteMap: CteMap;
 
   constructor(
     clause: string,
@@ -20,7 +19,6 @@ export class CteBuilder<T extends Model> {
   ) {
     this.model = params[0];
     this.sqlDataSource = params[1] || SqlDataSource.getInstance();
-    this.clause = clause;
     this.cteMap = new Map();
   }
 
@@ -32,32 +30,5 @@ export class CteBuilder<T extends Model> {
     cb(queryBuilder);
     this.cteMap.set(alias, queryBuilder);
     return this;
-  }
-
-  /**
-   * @description Returns the final WITH clause
-   * @throws Must call at least one `newCte` method or this class will throw an error
-   */
-  unWrap(): { query: string; params: any[] } {
-    if (this.cteMap.size === 0) {
-      throw new HysteriaError(
-        "CteBuilder::toQuery",
-        "MUST_CALL_BUILD_CTE_AT_LEAST_ONCE",
-      );
-    }
-
-    const params: any[] = [];
-
-    const query = `WITH ${this.clause === "normal" ? "" : `${this.clause} `} ${Array.from(
-      this.cteMap.entries(),
-    )
-      .map(([alias, queryBuilder]) => {
-        const { query, params: queryParams } = queryBuilder.unWrap();
-        params.push(...queryParams);
-        return `${alias} AS (${query})`;
-      })
-      .join(", ")}`;
-
-    return { query, params };
   }
 }

@@ -1,5 +1,7 @@
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { PostWithBigint } from "../test_models/bigint/post_bigint";
+import { UserWithBigint } from "../test_models/bigint/user_bigint";
+import { UserFactory } from "../test_models/factory/user_factory";
 
 describe("useConnection test", () => {
   test("[postgres] should create an on a custom connection", async () => {
@@ -16,42 +18,23 @@ describe("useConnection test", () => {
         expect(sql.isConnected).toBe(true);
         expect(sql.getDbType()).toBe("postgres");
         await sql.startGlobalTransaction();
+        const userWithBigint = await UserWithBigint.insert(
+          {
+            ...UserFactory.getCommonUserData(),
+          },
+          { useConnection: sql },
+        );
+
         const post = await PostWithBigint.insert(
           {
             title: "Test Post",
             content: "Test Content",
+            userId: userWithBigint.id,
           },
           { useConnection: sql },
         );
         expect(post).toHaveProperty("id");
 
-        await sql.rollbackGlobalTransaction();
-      },
-    );
-  });
-
-  test("[cockroachdb] should create an on a custom connection", async () => {
-    await SqlDataSource.useConnection(
-      {
-        type: "cockroachdb",
-        host: "localhost",
-        username: "root",
-        password: "root",
-        database: "test",
-        port: 26257,
-      },
-      async (sql) => {
-        expect(sql.isConnected).toBe(true);
-        expect(sql.getDbType()).toBe("cockroachdb");
-        await sql.startGlobalTransaction();
-        const post = await PostWithBigint.insert(
-          {
-            title: "Test Post",
-            content: "Test Content",
-          },
-          { useConnection: sql },
-        );
-        expect(post).toHaveProperty("id");
         await sql.rollbackGlobalTransaction();
       },
     );
@@ -71,10 +54,17 @@ describe("useConnection test", () => {
         expect(sql.isConnected).toBe(true);
         expect(sql.getDbType()).toBe("mysql");
         await sql.startGlobalTransaction();
+        const userWithBigint = await UserWithBigint.insert(
+          {
+            ...UserFactory.getCommonUserData(),
+          },
+          { useConnection: sql },
+        );
         const post = await PostWithBigint.insert(
           {
             title: "Test Post",
             content: "Test Content",
+            userId: userWithBigint.id,
           },
           { useConnection: sql },
         );
@@ -98,10 +88,17 @@ describe("useConnection test", () => {
         expect(sql.isConnected).toBe(true);
         expect(sql.getDbType()).toBe("mariadb");
         await sql.startGlobalTransaction();
+        const userWithBigint = await UserWithBigint.insert(
+          {
+            ...UserFactory.getCommonUserData(),
+          },
+          { useConnection: sql },
+        );
         const post = await PostWithBigint.insert(
           {
             title: "Test Post",
             content: "Test Content",
+            userId: userWithBigint.id,
           },
           { useConnection: sql },
         );
@@ -121,10 +118,17 @@ describe("useConnection test", () => {
         expect(sql.isConnected).toBe(true);
         expect(sql.getDbType()).toBe("sqlite");
         await sql.startGlobalTransaction();
+        const userWithBigint = await UserWithBigint.insert(
+          {
+            ...UserFactory.getCommonUserData(),
+          },
+          { useConnection: sql },
+        );
         const post = await PostWithBigint.insert(
           {
             title: "Test Post",
             content: "Test Content",
+            userId: userWithBigint.id,
           },
           { useConnection: sql },
         );

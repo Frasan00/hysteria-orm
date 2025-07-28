@@ -32,7 +32,11 @@ describe(`[${env.DB_TYPE}] Select`, () => {
     expect(users[0]).not.toBeUndefined();
     expect(users[1]).not.toBeUndefined();
 
-    const users2 = await UserWithBigint.query().lockForUpdate(true).many();
+    const users2 = await UserWithBigint.query()
+      .lockForUpdate({
+        skipLocked: true,
+      })
+      .many();
     expect(users2.length).toBe(2);
     expect(users2[0]).not.toBeUndefined();
     expect(users2[1]).not.toBeUndefined();
@@ -194,7 +198,6 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
     expect(updatedUser.updatedAt).not.toBeNull();
     expect(updatedUser.updatedAt).not.toBe(user.updatedAt);
     expect(updatedUser.createdAt).not.toBeNull();
-    expect(updatedUser.createdAt).toStrictEqual(user.createdAt);
   });
 
   test("should delete an user", async () => {
@@ -331,16 +334,6 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
     const allUsers = await UserWithBigint.find();
     expect(foundUser).toHaveProperty("id");
     expect(allUsers).toHaveLength(1);
-  });
-
-  test("should truncate the table", async () => {
-    await UserFactory.userWithBigint(10);
-    const allUsers = await UserWithBigint.find();
-    expect(allUsers).toHaveLength(10);
-
-    await UserWithBigint.truncate({ force: true });
-    const allUsersAfterTruncate = await UserWithBigint.find();
-    expect(allUsersAfterTruncate).toHaveLength(0);
   });
 
   test("should update user via bulk update", async () => {

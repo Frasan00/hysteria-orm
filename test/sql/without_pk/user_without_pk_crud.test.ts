@@ -236,7 +236,7 @@ describe(`[${env.DB_TYPE}] Select`, () => {
   test("Normal CTE", async () => {
     await UserFactory.userWithoutPk(2);
     const users = await UserWithoutPk.query()
-      .with("normal", (cteBuilder) =>
+      .with((cteBuilder) =>
         cteBuilder
           .newCte("users_cte", (cteBuilder) => cteBuilder.select("name"))
           .newCte("users_cte2", (cteBuilder) => cteBuilder.select("age")),
@@ -249,7 +249,7 @@ describe(`[${env.DB_TYPE}] Select`, () => {
   test("CTE with recursive", async () => {
     await UserFactory.userWithoutPk(2);
     const users = await UserWithoutPk.query()
-      .with("recursive", (cteBuilder) =>
+      .withRecursive((cteBuilder) =>
         cteBuilder
           .newCte("users_cte", (cteBuilder) => cteBuilder.select("name"))
           .newCte("users_cte2", (cteBuilder) => cteBuilder.select("age")),
@@ -262,7 +262,7 @@ describe(`[${env.DB_TYPE}] Select`, () => {
   test("CTE with UNION", async () => {
     await UserFactory.userWithoutPk(2);
     const users = await UserWithoutPk.query()
-      .with("normal", (cteBuilder) =>
+      .with((cteBuilder) =>
         cteBuilder
           .newCte("users_cte", (cteBuilder) => cteBuilder.select("salary"))
           .newCte("users_cte2", (cteBuilder) => cteBuilder.select("age")),
@@ -448,7 +448,7 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
     const allUsers = await UserWithoutPk.find();
     expect(allUsers).toHaveLength(10);
 
-    await UserWithoutPk.truncate({ force: true });
+    await UserWithoutPk.truncate();
     const allUsersAfterTruncate = await UserWithoutPk.find();
     expect(allUsersAfterTruncate).toHaveLength(0);
   });

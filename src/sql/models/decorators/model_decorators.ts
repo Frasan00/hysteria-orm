@@ -76,6 +76,7 @@ export function column(
   };
 }
 
+column.primary = primaryKeyColumn;
 column.date = dateColumn;
 column.boolean = booleanColumn;
 column.json = jsonColumn;
@@ -86,6 +87,15 @@ column.encryption = {
   symmetric,
   asymmetric,
 };
+
+function primaryKeyColumn(
+  options: Omit<ColumnOptions, "primaryKey"> = {},
+): PropertyDecorator {
+  return column({
+    ...options,
+    primaryKey: true,
+  });
+}
 
 /**
  * @description Decorator to define a integer column in the model, this will automatically convert the integer to the correct format for the database

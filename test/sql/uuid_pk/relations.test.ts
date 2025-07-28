@@ -1,12 +1,12 @@
 import { env } from "../../../src/env/env";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
+import { AddressFactory } from "../test_models/factory/address_factory";
 import { PostFactory } from "../test_models/factory/post_factory";
+import { UserAddressFactory } from "../test_models/factory/user_address_factory";
 import { UserFactory } from "../test_models/factory/user_factory";
+import { AddressWithUuid } from "../test_models/uuid/address_uuid";
 import { PostWithUuid } from "../test_models/uuid/post_uuid";
 import { UserWithUuid } from "../test_models/uuid/user_uuid";
-import { AddressFactory } from "../test_models/factory/address_factory";
-import { UserAddressFactory } from "../test_models/factory/user_address_factory";
-import { AddressWithUuid } from "../test_models/uuid/address_uuid";
 
 beforeAll(async () => {
   await SqlDataSource.connect();
@@ -37,6 +37,10 @@ describe(`[${env.DB_TYPE}] uuid pk base relations`, () => {
     expect(posts).toHaveLength(3);
 
     const userWithLoadedPosts = await UserWithUuid.query()
+      .whereIn(
+        "id",
+        users.map((u) => u.id),
+      )
       .withRelation("post")
       .many();
 
@@ -57,6 +61,10 @@ describe(`[${env.DB_TYPE}] uuid pk base relations`, () => {
     expect(posts).toHaveLength(3);
 
     const userWithLoadedPosts = await UserWithUuid.query()
+      .whereIn(
+        "id",
+        users.map((u) => u.id),
+      )
       .withRelation("post", PostWithUuid, (qb) =>
         qb.select("posts_with_uuid.userId", "title"),
       )
@@ -106,6 +114,10 @@ describe(`[${env.DB_TYPE}] uuid pk base relations`, () => {
     expect(posts).toHaveLength(3);
 
     const userWithLoadedPosts = await UserWithUuid.query()
+      .whereIn(
+        "id",
+        users.map((u) => u.id),
+      )
       .withRelation("post", PostWithUuid, (qb) => qb.withRelation("user"))
       .many();
 
@@ -127,6 +139,10 @@ describe(`[${env.DB_TYPE}] uuid pk base relations`, () => {
     expect(posts).toHaveLength(3);
 
     const userWithLoadedPosts = await UserWithUuid.query()
+      .whereIn(
+        "id",
+        users.map((u) => u.id),
+      )
       .withRelation("post", PostWithUuid, (qb) =>
         qb.withRelation("user", UserWithUuid, (qb2) =>
           qb2.withRelation("post", PostWithUuid, (qb3) =>
@@ -219,6 +235,10 @@ describe(`[${env.DB_TYPE}] uuid pk many to many relations`, () => {
     // #endregion
 
     const userWithLoadedAddresses = await UserWithUuid.query()
+      .whereIn(
+        "id",
+        users.map((u) => u.id),
+      )
       .withRelation("addresses", AddressWithUuid, (qb) =>
         qb.withRelation("users"),
       )
@@ -252,6 +272,10 @@ describe(`[${env.DB_TYPE}] uuid pk many to many relations`, () => {
     // #endregion
 
     const addressesWithLoadedPosts = await AddressWithUuid.query()
+      .whereIn(
+        "id",
+        addresses.map((a) => a.id),
+      )
       .withRelation("users", UserWithUuid, (qb) =>
         qb.withRelation("posts", PostWithUuid, (qb2) =>
           qb2.withRelation("user", UserWithUuid, (qb3) =>

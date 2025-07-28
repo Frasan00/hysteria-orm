@@ -1,13 +1,13 @@
 import type { DataSourceType } from "../data_source/data_source_types";
 import { Driver } from "./driver";
 import {
-  DriverSpecificOptions,
   DriverNotFoundError,
+  DriverSpecificOptions,
   Sqlite3Import,
 } from "./driver_constants";
 
 export class Sqlite3Driver extends Driver {
-  override type: DataSourceType | "redis" = "postgres";
+  override type: DataSourceType | "redis" = "sqlite";
   override client: Sqlite3Import;
 
   constructor(
