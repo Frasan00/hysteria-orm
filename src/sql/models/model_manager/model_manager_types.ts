@@ -71,8 +71,11 @@ export type OrderByType<T extends Model> = {
   [K in string]?: OrderByChoices;
 };
 
-export type UnrestrictedFindOneType<T extends Model> = {
-  select?: string[];
+export type UnrestrictedFindOneType<
+  T extends Model,
+  S extends ModelKey<T>[] = any[],
+> = {
+  select?: S;
   relations?: ModelRelation<T>[];
   ignoreHooks?: FetchHooks[];
   where?: Record<string, any>;
@@ -81,15 +84,15 @@ export type UnrestrictedFindOneType<T extends Model> = {
   offset?: number;
 };
 
-export type UnrestrictedFindType<T extends Model> = Omit<
-  UnrestrictedFindOneType<T>,
-  "throwErrorOnNull"
-> & {
+export type UnrestrictedFindType<
+  T extends Model,
+  S extends ModelKey<T>[] = any[],
+> = Omit<UnrestrictedFindOneType<T, S>, "throwErrorOnNull"> & {
   limit?: number;
 };
 
-export type FindOneType<T extends Model> = {
-  select?: ModelKey<T>[];
+export type FindOneType<T extends Model, S extends ModelKey<T>[] = any[]> = {
+  select?: S;
   offset?: number;
   relations?: ModelRelation<T>[];
   orderBy?: OrderByType<T>;
@@ -98,9 +101,18 @@ export type FindOneType<T extends Model> = {
   ignoreHooks?: FetchHooks[];
 };
 
-export type FindType<T extends Model> = Omit<
-  FindOneType<T>,
+export type FindType<T extends Model, S extends ModelKey<T>[] = any[]> = Omit<
+  FindOneType<T, S>,
   "throwErrorOnNull"
 > & {
   limit?: number;
 };
+
+export type FindReturnType<
+  T extends Model,
+  S extends ModelKey<T>[] = any[],
+> = S extends readonly any[]
+  ? S[number] extends never
+    ? T
+    : { [K in S[number] & keyof T]: T[K] }
+  : T;
