@@ -1,5 +1,5 @@
+import { SqlMethod } from "../../ast/query/node/select/select_types";
 import { Model } from "../../models/model";
-import { SqlMethod } from "../../resources/query/SELECT";
 
 export type ModelInstanceType<O> = O extends typeof Model
   ? InstanceType<O>

@@ -4,13 +4,21 @@ import rollbackMigrationsConnector from "../../cli/migration_rollback_connector"
 import logger from "../../utils/logger";
 import { SqlDataSource } from "../sql_data_source";
 import { Migration } from "./migration";
-import { SqlDataSourceInput } from "../sql_data_source_types";
+import {
+  SqlDataSourceInput,
+  SqlDataSourceType,
+} from "../sql_data_source_types";
+import { format } from "sql-formatter";
+import { getSqlDialect } from "../sql_runner/sql_runner";
 
 /**
  * @description Used internally from the CLI
  */
 export class Migrator {
   async upMigrations(migrations: Migration[]): Promise<void> {
+    const queryFormatOptions = SqlDataSource.getInstance().queryFormatOptions;
+    const dbType = SqlDataSource.getInstance().getDbType() as SqlDataSourceType;
+
     for (const migration of migrations) {
       logger.info(`Running migration ${migration.migrationName}`);
       await migration.up();
@@ -20,7 +28,12 @@ export class Migrator {
           continue;
         }
 
-        await SqlDataSource.rawQuery(statement);
+        const formattedQuery = format(statement, {
+          ...queryFormatOptions,
+          language: getSqlDialect(dbType),
+        });
+
+        await SqlDataSource.rawQuery(formattedQuery);
       }
 
       await this.addMigrationToMigrationTable(migration);
@@ -32,6 +45,9 @@ export class Migrator {
 
   async downMigrations(migrations: Migration[]): Promise<void> {
     migrations = migrations.reverse();
+    const queryFormatOptions = SqlDataSource.getInstance().queryFormatOptions;
+    const dbType = SqlDataSource.getInstance().getDbType() as SqlDataSourceType;
+
     for (const migration of migrations) {
       logger.info(`Rolling back migration ${migration.migrationName}`);
       await migration.down();
@@ -41,7 +57,12 @@ export class Migrator {
           continue;
         }
 
-        await SqlDataSource.rawQuery(statement);
+        const formattedQuery = format(statement, {
+          ...queryFormatOptions,
+          language: getSqlDialect(dbType),
+        });
+
+        await SqlDataSource.rawQuery(formattedQuery);
       }
 
       await this.deleteMigrationFromMigrationTable(migration);

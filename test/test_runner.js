@@ -17,6 +17,12 @@ const sqlEnvironments = [
   cockroachdbConfig,
 ];
 
+// use connection
+execSync(
+  `jest --config=jest.config.js --detectOpenHandles ./test/sql/use_connection/use_connection.test.ts`,
+  { stdio: "inherit" }
+);
+
 const sqlTests = [
   // edge cases
   "./test/sql/edge_cases/query_builder_complex_edge_cases.test.ts",
@@ -24,9 +30,6 @@ const sqlTests = [
 
   // transaction
   "./test/sql/transaction/transaction.test.ts",
-
-  // use connection
-  "./test/sql/use_connection/use_connection.test.ts",
 
   // query builder
   "./test/sql/query_builder/query_builder.test.ts",
@@ -36,8 +39,8 @@ const sqlTests = [
   "./test/sql/without_pk/user_without_pk_crud.test.ts",
 
   // bigint join test
-  "./test/sql/bigint_pk/crud.test.ts",
   "./test/sql/bigint_pk/relations.test.ts",
+  "./test/sql/bigint_pk/crud.test.ts",
   "./test/sql/bigint_pk/join.test.ts",
 
   // uuid

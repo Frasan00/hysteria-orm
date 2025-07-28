@@ -6,8 +6,3 @@ export type CteCallback<T extends Model> = (
 ) => QueryBuilder<T>;
 
 export type CteMap = Map<string, QueryBuilder<any>>;
-
-/**
- * @description The type of CTE to create
- */
-export type WithClauseType = "recursive" | "normal";

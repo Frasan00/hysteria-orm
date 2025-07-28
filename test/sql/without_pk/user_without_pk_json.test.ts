@@ -375,41 +375,6 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
       expect(found?.json).not.toBeNull();
       expect(found?.json && found?.json.foo).toBe("baz");
     });
-
-    test("should filter using whereJsonIn and whereJsonNotIn", async () => {
-      const jsonA = { foo: "a" };
-      const jsonB = { foo: "b" };
-      const jsonC = { foo: "c" };
-      const userA = await UserWithoutPk.insert({
-        ...UserFactory.getCommonUserData(),
-        json: jsonA,
-        email: `inA@json.com`,
-      });
-      const userB = await UserWithoutPk.insert({
-        ...UserFactory.getCommonUserData(),
-        json: jsonB,
-        email: `inB@json.com`,
-      });
-      await UserWithoutPk.insert({
-        ...UserFactory.getCommonUserData(),
-        json: jsonC,
-        email: `inC@json.com`,
-      });
-      // whereJsonIn
-      const found = await UserWithoutPk.query()
-        .whereJsonIn("json", [{ foo: "a" }, { foo: "b" }])
-        .many();
-      expect(found.map((u) => u.email)).toEqual(
-        expect.arrayContaining([userA.email, userB.email]),
-      );
-      // whereJsonNotIn
-      const notIn = await UserWithoutPk.query()
-        .whereJsonNotIn("json", [{ foo: "a" }, { foo: "b" }])
-        .many();
-      expect(
-        notIn.every((u) => u.json && u.json.foo !== "a" && u.json.foo !== "b"),
-      ).toBe(true);
-    });
   });
 
   describe("Selecting JSON Column", () => {

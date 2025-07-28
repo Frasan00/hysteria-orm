@@ -10,13 +10,14 @@
     "start": "yarn format && yarn build:dev && node lib/index.js",
     "prepare": "husky install",
     "migrate": "node ./test/migration_runner.js",
-    "test": "clear && node ./test/test_runner.js",
+    "test": "reset && node ./test/test_runner.js",
     "test:with:migrations": "rm -rf sqlite.db && touch sqlite.db && yarn format && yarn build:prod && yarn migrate && node ./test/test_runner.js",
     "format": "prettier --write \"**/*.ts\"",
-    "build": "yarn build:prod",
-    "build:prod": "tsup --minify",
+    "build": "yarn generate:interpreter:map && yarn build:prod",
+    "build:prod": "yarn generate:interpreter:map && tsup --minify",
     "build:dev": "tsup",
-    "test:fresh": "node lib/cli.js refresh:migrations"
+    "test:fresh": "node lib/cli.js refresh:migrations",
+    "generate:interpreter:map": "node generate_interpreter_map.js"
   },
   "main": "./lib/index.js",
   "module": "./lib/index.js",
@@ -55,6 +56,7 @@
     "ts-jest": "^29.3.4",
     "ts-node": "^10.9.2",
     "tsup": "^8.5.0",
+    "tsx": "^4.20.3",
     "typescript": "^5.8.3"
   },
   "dependencies": {

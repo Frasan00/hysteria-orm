@@ -1,6 +1,11 @@
+import { convertCase } from "../../utils/case_utils";
+import { DistinctNode } from "../ast/query/node/distinct/distinct";
+import { DistinctOnNode } from "../ast/query/node/distinct/distinct_on";
+import { FromNode } from "../ast/query/node/from/from";
+import { SelectNode } from "../ast/query/node/select/basic_select";
 import { Model } from "../models/model";
 import { ModelKey } from "../models/model_manager/model_manager_types";
-import selectTemplate, { SqlMethod } from "../resources/query/SELECT";
+import { SqlMethod } from "../ast/query/node/select/select_types";
 import { SqlDataSource } from "../sql_data_source";
 import { SqlDataSourceType } from "../sql_data_source_types";
 import { JoinQueryBuilder } from "./join_query_builder";
@@ -8,17 +13,19 @@ import { JoinQueryBuilder } from "./join_query_builder";
 export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
   protected dbType: SqlDataSourceType;
   protected modelSelectedColumns: string[] = [];
-  protected selectQuery: string;
   protected withQuery?: string;
-  protected fromTable: string;
-  protected selectTemplate: ReturnType<typeof selectTemplate>;
+  protected fromNode: FromNode;
+  protected distinctNode: DistinctNode | null;
+  protected distinctOnNodes: DistinctOnNode[];
+  protected selectNodes: SelectNode[];
 
   constructor(model: typeof Model, sqlDataSource: SqlDataSource) {
     super(model, sqlDataSource);
     this.dbType = sqlDataSource.getDbType();
-    this.selectTemplate = selectTemplate(this.dbType, this.model);
-    this.fromTable = this.model.table || "";
-    this.selectQuery = "";
+    this.fromNode = new FromNode(this.model.table || "");
+    this.distinctNode = null;
+    this.distinctOnNodes = [];
+    this.selectNodes = [];
   }
 
   /**
@@ -39,9 +46,13 @@ export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
       ...(columns as string[]),
     ];
 
-    this.selectQuery = this.selectTemplate.selectColumns([
-      ...this.modelSelectedColumns,
-    ]);
+    const casedColumns = columns.map((column) =>
+      convertCase(column as string, this.model.databaseCaseConvention),
+    );
+
+    casedColumns.forEach((column) => {
+      this.selectNodes.push(new SelectNode(column));
+    });
 
     return this;
   }
@@ -50,17 +61,9 @@ export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
    * @description Adds a raw select statement to the query
    */
   selectRaw(statement: string): this {
-    if (!this.selectQuery) {
-      this.selectQuery = `SELECT ${statement}`;
-      return this;
-    }
-
-    this.selectQuery += `, ${statement}`;
-
-    if (!this.selectQuery.toLowerCase().includes("select")) {
-      this.selectQuery = `SELECT ${this.selectQuery}`;
-    }
-
+    this.selectNodes.push(
+      new SelectNode(statement, undefined, undefined, true),
+    );
     return this;
   }
 
@@ -69,7 +72,7 @@ export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
    */
   clearSelect(): this {
     this.modelSelectedColumns = [];
-    this.selectQuery = this.selectTemplate.selectAll(this.fromTable);
+    this.selectNodes = [];
     return this;
   }
 
@@ -105,22 +108,9 @@ export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
       alias = columnOrAlias;
     }
 
-    const annotationStatement = this.selectTemplate.annotate(
-      column,
-      alias,
-      sqlMethod,
-    );
+    this.selectNodes.push(new SelectNode(column, alias, sqlMethod));
 
-    if (!this.selectQuery) {
-      this.selectQuery = `SELECT ${annotationStatement}`;
-      return this;
-    }
-
-    this.selectQuery += `, ${annotationStatement}`;
-
-    if (!this.selectQuery.toLowerCase().includes("select")) {
-      this.selectQuery = `SELECT ${this.selectQuery}`;
-    }
+    this.selectNodes.push(new SelectNode(column, alias, sqlMethod));
 
     return this;
   }
@@ -130,12 +120,17 @@ export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
    * @description Can be used on non select queries too, it will only specify the table name (es. INSERT INTO $table)
    */
   from(table: string): this {
-    this.fromTable = table;
-    this.selectQuery = this.selectQuery.replace(
-      /(?:FROM|INTO|UPDATE)\s+([a-zA-Z0-9_]+)/i,
-      `FROM ${this.fromTable}`,
-    );
+    this.fromNode = new FromNode(table);
+    return this;
+  }
 
+  /**
+   * @description Sets the table to select from, by default is the table defined in the Model
+   * @description Better naming convention for non select queries
+   * @alias from
+   */
+  table(table: string): this {
+    this.fromNode = new FromNode(table);
     return this;
   }
 
@@ -143,28 +138,18 @@ export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
    * @description Adds a DISTINCT clause to the query
    */
   distinct(): this {
-    const distinct = this.selectTemplate.distinct;
-    this.selectQuery = this.selectQuery.replace(
-      /select/i,
-      `SELECT ${distinct}`,
-    );
-
+    this.distinctNode = new DistinctNode();
     return this;
   }
 
   /**
    * @description Adds a DISTINCT ON clause to the query
-   * @postgresql Only
+   * @postgresql Only usable with PostgreSQL
    */
   distinctOn(...columns: ModelKey<T>[]): this;
   distinctOn(...columns: string[]): this;
   distinctOn(...columns: (string | ModelKey<T>)[]): this {
-    const distinctOn = this.selectTemplate.distinctOn(...(columns as string[]));
-    this.selectQuery = this.selectQuery.replace(
-      /select/i,
-      `SELECT ${distinctOn}`,
-    );
-
+    this.distinctOnNodes.push(new DistinctOnNode(columns as string[]));
     return this;
   }
 }

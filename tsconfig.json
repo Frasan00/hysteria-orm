@@ -30,6 +30,6 @@
   "ts-node": {
     "experimentalSpecifierResolution": "node"
   },
-  "include": ["src/**/*.ts", "test/**/*.ts", "test/sql/migrations_sqlite/04_user_address_with_uuid.js", "test/sql/migrations_sqlite/04_user_address_with_bigint.js", "test/sql/migrations_sqlite/03_address_with_uuid.js", "test/sql/migrations_sqlite/03_address_with_bigint.js", "test/sql/migrations_sqlite/02_post_with_uuid.js", "test/sql/migrations_sqlite/02_post_with_bigint.js", "test/sql/migrations_sqlite/01_user_without_pk.js", "test/sql/migrations_sqlite/01_user_with_uuid.js", "test/sql/migrations_sqlite/01_user_with_bigint.js"],
+  "include": ["src/**/*.ts", "test/**/*.ts", "test/sql/migrations_sqlite/04_user_address_with_uuid.js", "test/sql/migrations_sqlite/04_user_address_with_bigint.js", "test/sql/migrations_sqlite/03_address_with_uuid.js", "test/sql/migrations_sqlite/03_address_with_bigint.js", "test/sql/migrations_sqlite/02_post_with_uuid.js", "test/sql/migrations_sqlite/02_post_with_bigint.js", "test/sql/migrations_sqlite/01_user_without_pk.js", "test/sql/migrations_sqlite/01_user_with_uuid.js", "test/sql/migrations_sqlite/01_user_with_bigint.js", "test/sql/migrations_sqlite/03_address_with_uuid copy.js"],
   "exclude": ["node_modules", "lib"],
 }

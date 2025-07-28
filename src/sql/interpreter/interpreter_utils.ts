@@ -1,0 +1,153 @@
+import { convertCase } from "../../utils/case_utils";
+import { getModelColumns } from "../models/decorators/model_decorators";
+import { ColumnType } from "../models/decorators/model_decorators_types";
+import { Model } from "../models/model";
+import { SqlDataSourceType } from "../sql_data_source_types";
+
+export class InterpreterUtils {
+  private readonly modelColumnsMap: Map<string, ColumnType>;
+
+  constructor(private readonly model: typeof Model) {
+    const modelColumns = getModelColumns(model);
+    this.modelColumnsMap = new Map(
+      modelColumns.map((modelColumn) => [modelColumn.columnName, modelColumn]),
+    );
+  }
+
+  formatStringColumn(dbType: SqlDataSourceType, column: string): string {
+    if (column === "*") {
+      return "*";
+    }
+
+    const hasTable = column.includes(".");
+    if (hasTable) {
+      const [table, foundColumn] = column.split(".");
+
+      if (foundColumn === "*") {
+        switch (dbType) {
+          case "mysql":
+          case "mariadb":
+            return `\`${table}\`.*`;
+          case "postgres":
+          case "cockroachdb":
+          case "sqlite":
+            return `"${table}".*`;
+          default:
+            throw new Error(`Unsupported database type: ${dbType}`);
+        }
+      }
+
+      const casedColumn =
+        this.modelColumnsMap.get(foundColumn)?.databaseName ??
+        convertCase(foundColumn, this.model.databaseCaseConvention);
+
+      switch (dbType) {
+        case "mysql":
+        case "mariadb":
+          return `\`${table}\`.\`${casedColumn}\``;
+        case "postgres":
+        case "cockroachdb":
+        case "sqlite":
+          return `"${table}"."${casedColumn}"`;
+        default:
+          throw new Error(`Unsupported database type: ${dbType}`);
+      }
+    }
+
+    const casedColumn =
+      this.modelColumnsMap.get(column)?.databaseName ??
+      convertCase(column, this.model.databaseCaseConvention);
+
+    switch (dbType) {
+      case "mysql":
+      case "mariadb":
+        return `\`${casedColumn}\``;
+      case "postgres":
+      case "cockroachdb":
+      case "sqlite":
+        return `"${casedColumn}"`;
+      default:
+        throw new Error(`Unsupported database type: ${dbType}`);
+    }
+  }
+
+  formatStringTable(dbType: SqlDataSourceType, table: string): string {
+    switch (dbType) {
+      case "mysql":
+        return `\`${table}\``;
+      case "postgres":
+      case "cockroachdb":
+      case "sqlite":
+        return `"${table}"`;
+      default:
+        return table;
+    }
+  }
+
+  prepareColumns(
+    columns: string[],
+    values: any[],
+    mode: "insert" | "update" = "insert",
+  ): { columns: string[]; values: any[] } {
+    if (!columns.length) {
+      return { columns, values };
+    }
+
+    const filteredColumns: string[] = [];
+    const filteredValues: any[] = [];
+
+    for (let i = 0; i < columns.length; i++) {
+      const column = columns[i];
+      const value = values[i];
+
+      if (column === "*" || column === "$annotations") {
+        continue;
+      }
+
+      filteredColumns.push(column);
+      filteredValues.push(value);
+    }
+
+    for (let i = 0; i < filteredColumns.length; i++) {
+      const column = filteredColumns[i];
+      const value = filteredValues[i];
+
+      const modelColumn = this.modelColumnsMap.get(column);
+
+      let preparedValue = value;
+      if (modelColumn) {
+        if (mode === "insert" && modelColumn.prepare) {
+          preparedValue = modelColumn.prepare(value);
+        } else if (mode === "update") {
+          preparedValue = modelColumn.prepare?.(value) ?? value;
+        }
+      }
+
+      filteredValues[i] = preparedValue;
+    }
+
+    for (const column of this.modelColumnsMap.keys()) {
+      if (!filteredColumns.includes(column)) {
+        const modelColumn = this.modelColumnsMap.get(column);
+        if (!modelColumn) {
+          continue;
+        }
+
+        if (
+          mode === "insert" &&
+          column === (this.model as typeof Model).primaryKey &&
+          !modelColumn.prepare
+        ) {
+          continue;
+        }
+
+        if (mode === "insert" || modelColumn.autoUpdate) {
+          filteredColumns.push(column);
+          filteredValues.push(modelColumn.prepare?.(undefined) ?? undefined);
+        }
+      }
+    }
+
+    return { columns: filteredColumns, values: filteredValues };
+  }
+}
