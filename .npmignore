@@ -21,3 +21,7 @@ scripts/
 scripts/init_cockroachdb.sh
 website/
 generate_interpreter_map.js
+KNOWN_ISSUES.MD
+LICENSE
+TEST.MD
+*.db
