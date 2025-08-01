@@ -235,6 +235,28 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   }
 
   /**
+   * @description Selects a subquery, subquery must return a single column
+   */
+  selectSubQuery(
+    cbOrQueryBuilder: ((subQuery: QueryBuilder<T>) => void) | QueryBuilder<any>,
+    alias: string,
+  ): this {
+    if (typeof cbOrQueryBuilder === "function") {
+      const subQuery = new QueryBuilder<T>(this.model, this.sqlDataSource);
+      cbOrQueryBuilder(subQuery);
+      this.selectNodes.push(
+        new SelectNode(subQuery.extractQueryNodes(), alias),
+      );
+      return this;
+    }
+
+    this.selectNodes.push(
+      new SelectNode(cbOrQueryBuilder.extractQueryNodes(), alias),
+    );
+    return this;
+  }
+
+  /**
    * @description Locks the table for update
    * @param skipLocked - If true, the query will skip locked rows
    * @sqlite does not support skipping locked rows, it will be ignored
@@ -954,24 +976,12 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   }
 
   /**
-   * @description Returns a copy of the query builder instance.
+   * @description Returns a deep copy of the query builder instance.
    */
   copy(): this {
-    const queryBuilder = new QueryBuilder<T>(this.model, this.sqlDataSource);
-    queryBuilder.selectNodes = [...this.selectNodes];
-    queryBuilder.fromNode = this.fromNode;
-    queryBuilder.joinNodes = [...this.joinNodes];
-    queryBuilder.whereNodes = [...this.whereNodes];
-    queryBuilder.groupByNodes = [...this.groupByNodes];
-    queryBuilder.havingNodes = [...this.havingNodes];
-    queryBuilder.orderByNodes = [...this.orderByNodes];
-    queryBuilder.limitNode = this.limitNode;
-    queryBuilder.offsetNode = this.offsetNode;
-    queryBuilder.withQuery = this.withQuery;
-    queryBuilder.lockQueryNodes = [...this.lockQueryNodes];
-    queryBuilder.unionNodes = [...this.unionNodes];
-    queryBuilder.withNodes = [...this.withNodes];
-    return queryBuilder as this;
+    const clone = Object.create(Object.getPrototypeOf(this));
+    Object.assign(clone, structuredClone(this));
+    return clone as this;
   }
 
   protected clearLockQuery(): this {
@@ -1009,68 +1019,5 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
       ...this.lockQueryNodes,
       ...this.unionNodes,
     ].filter(Boolean) as QueryNode[];
-  }
-
-  protected parseValueForDatabase(value: any): string {
-    if (typeof value === "string") {
-      switch (this.dbType) {
-        case "mysql":
-        case "sqlite":
-        case "mariadb":
-          return `'${value}'`;
-        case "postgres":
-        case "cockroachdb":
-          return `'${value}'`;
-        default:
-          throw new HysteriaError(
-            "StandaloneSqlQueryBuilder::parseValueForDatabase",
-            `UNSUPPORTED_DATABASE_TYPE_${this.dbType}`,
-          );
-      }
-    }
-
-    if (typeof value === "number") {
-      return value.toString();
-    }
-
-    if (value === null) {
-      return "NULL";
-    }
-
-    if (typeof value === "boolean") {
-      switch (this.dbType) {
-        case "mysql":
-        case "sqlite":
-        case "mariadb":
-          return value ? "1" : "0";
-        case "postgres":
-        case "cockroachdb":
-          return value ? "TRUE" : "FALSE";
-        default:
-          throw new HysteriaError(
-            "StandaloneSqlQueryBuilder::parseValueForDatabase",
-            `UNSUPPORTED_DATABASE_TYPE_${this.dbType}`,
-          );
-      }
-    }
-
-    if (value instanceof Date) {
-      switch (this.dbType) {
-        case "mysql":
-        case "sqlite":
-        case "mariadb":
-          return `'${value.toISOString().slice(0, 19).replace("T", " ")}'`;
-        case "postgres":
-        case "cockroachdb":
-          return `'${value.toISOString().slice(0, 19).replace("T", " ")}'`;
-        default:
-          throw new HysteriaError(
-            "StandaloneSqlQueryBuilder::parseValueForDatabase",
-            `UNSUPPORTED_DATABASE_TYPE_${this.dbType}`,
-          );
-      }
-    }
-
-    return value;
   }
 }

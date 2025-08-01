@@ -18,34 +18,60 @@ class MysqlSelectInterpreter implements Interpreter {
       };
     }
 
-    const columnSql = this.formatColumn(
+    const columnResult = this.formatColumn(
       selectNode.column,
       selectNode.sqlFunction,
     );
     const aliasSql = this.formatAlias(selectNode.alias);
     return {
-      sql: `${columnSql}${aliasSql}`,
-      bindings: [],
+      sql: `${columnResult.sql}${aliasSql}`,
+      bindings: columnResult.bindings,
     };
   }
 
   private formatColumn(
     column: string | QueryNode | QueryNode[],
     sqlFunction?: string,
-  ): string {
+  ): ReturnType<typeof AstParser.prototype.parse> {
     if (typeof column === "string") {
       const col = new InterpreterUtils(this.model).formatStringColumn(
         "mysql",
         column,
       );
+      let sql = col;
       if (sqlFunction) {
-        return `${sqlFunction.toLowerCase()}(${col})`;
+        sql = `${sqlFunction.toLowerCase()}(${col})`;
       }
-      return col;
+      return {
+        sql,
+        bindings: [],
+      };
+    }
+
+    if (Array.isArray(column) && column.length > 0) {
+      const astParser = new AstParser(this.model, "mysql" as SqlDataSourceType);
+      const result = astParser.parse(column);
+      let sql = `(${result.sql})`;
+      if (sqlFunction) {
+        sql = `${sqlFunction.toLowerCase()}${sql}`;
+      }
+      return {
+        sql,
+        bindings: result.bindings,
+      };
     }
 
     if (!Array.isArray(column)) {
-      column = [column];
+      const astParser = new AstParser(this.model, "mysql" as SqlDataSourceType);
+      const result = astParser.parse([column]);
+      let sql = `(${result.sql})`;
+      if (sqlFunction) {
+        sql = `${sqlFunction.toLowerCase()}${sql}`;
+      }
+      return {
+        sql,
+        bindings: result.bindings,
+      };
     }
 
     const formattedColumns = column.map((col) => {
@@ -69,7 +95,10 @@ class MysqlSelectInterpreter implements Interpreter {
       return sql;
     });
 
-    return formattedColumns.join(", ");
+    return {
+      sql: formattedColumns.join(", "),
+      bindings: [],
+    };
   }
 
   private formatAlias(alias?: string): string {

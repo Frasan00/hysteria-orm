@@ -1,9 +1,9 @@
 import { AstParser } from "../../../ast/parser";
 import type { SelectNode } from "../../../ast/query/node/select/basic_select";
 import { QueryNode } from "../../../ast/query/query";
+import { Model } from "../../../models/model";
 import { SqlDataSourceType } from "../../../sql_data_source_types";
 import type { Interpreter } from "../../interpreter";
-import { Model } from "../../../models/model";
 import { InterpreterUtils } from "../../interpreter_utils";
 
 class PostgresSelectInterpreter implements Interpreter {
@@ -18,34 +18,66 @@ class PostgresSelectInterpreter implements Interpreter {
       };
     }
 
-    const columnSql = this.formatColumn(
+    const columnResult = this.formatColumn(
       selectNode.column,
       selectNode.sqlFunction,
     );
     const aliasSql = this.formatAlias(selectNode.alias);
     return {
-      sql: `${columnSql}${aliasSql}`,
-      bindings: [],
+      sql: `${columnResult.sql}${aliasSql}`,
+      bindings: columnResult.bindings,
     };
   }
 
   private formatColumn(
     column: string | QueryNode | QueryNode[],
     sqlFunction?: string,
-  ): string {
+  ): ReturnType<typeof AstParser.prototype.parse> {
     if (typeof column === "string") {
       const col = new InterpreterUtils(this.model).formatStringColumn(
         "postgres",
         column,
       );
+      let sql = col;
       if (sqlFunction) {
-        return `${sqlFunction.toLowerCase()}(${col})`;
+        sql = `${sqlFunction.toLowerCase()}(${col})`;
       }
-      return col;
+      return {
+        sql,
+        bindings: [],
+      };
+    }
+
+    if (Array.isArray(column) && column.length > 0) {
+      const astParser = new AstParser(
+        this.model,
+        "postgres" as SqlDataSourceType,
+      );
+      const result = astParser.parse(column);
+      let sql = `(${result.sql})`;
+      if (sqlFunction) {
+        sql = `${sqlFunction.toLowerCase()}${sql}`;
+      }
+      return {
+        sql,
+        bindings: result.bindings,
+      };
     }
 
     if (!Array.isArray(column)) {
-      column = [column];
+      const astParser = new AstParser(
+        this.model,
+        "postgres" as SqlDataSourceType,
+      );
+      const result = astParser.parse([column]);
+      let sql = `(${result.sql})`;
+      if (sqlFunction) {
+        sql = `${sqlFunction.toLowerCase()}${sql}`;
+      }
+      return {
+        sql,
+        bindings: result.bindings,
+      };
     }
 
     const formattedColumns = column.map((col) => {
@@ -72,7 +104,10 @@ class PostgresSelectInterpreter implements Interpreter {
       return sql;
     });
 
-    return formattedColumns.join(", ");
+    return {
+      sql: formattedColumns.join(", "),
+      bindings: [],
+    };
   }
 
   private formatAlias(alias?: string): string {

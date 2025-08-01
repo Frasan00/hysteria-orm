@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { env } from "../../../src/env/env";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
+import { UserWithoutPk } from "../test_models/without_pk/user_without_pk";
 
 beforeAll(async () => {
   await SqlDataSource.connect();
@@ -761,90 +762,115 @@ describe(`[${env.DB_TYPE}] Query Builder: whereSubQuery + whereBuilder integrati
 
     expect(users.length).toBeDefined();
   });
+
+  test("should select a user with a subquery", async () => {
+    const retrievedUser = await SqlDataSource.query("users_without_pk")
+      .select("name")
+      .selectSubQuery((subq) => {
+        subq
+          .select("name")
+          .from("users_without_pk")
+          .where("name", "Alice")
+          .limit(1);
+      }, "user_name")
+      .where("name", "Alice")
+      .one();
+
+    expect(retrievedUser).toBeDefined();
+    expect(retrievedUser.name).toBeDefined();
+    expect(retrievedUser.user_name).toBe("Alice");
+  });
 });
 
-// describe(`[${env.DB_TYPE}] with performance`, () => {
-//   beforeEach(async () => {
-//     await SqlDataSource.query("users_without_pk").insertMany([
-//       { name: "Alice", age: 25 },
-//       { name: "Bob", age: 30 },
-//       { name: "Charlie", age: 35 },
-//       { name: "David", age: 40 },
-//       { name: null, age: null },
-//     ]);
-//   });
+describe(`[${env.DB_TYPE}] with performance`, () => {
+  beforeEach(async () => {
+    await SqlDataSource.query("users_without_pk").insertMany([
+      { name: "Alice", age: 25 },
+      { name: "Bob", age: 30 },
+      { name: "Charlie", age: 35 },
+      { name: "David", age: 40 },
+      { name: null, age: null },
+    ]);
+  });
 
-//   afterEach(async () => {
-//     await SqlDataSource.query("users_without_pk").truncate();
-//   });
+  afterEach(async () => {
+    await SqlDataSource.query("users_without_pk").truncate();
+  });
 
-//   test("existsWithPerformance", async () => {
-//     const users = await SqlDataSource.query("users_without_pk")
-//       .where("name", "Alice")
-//       .existsWithPerformance();
+  test("existsWithPerformance", async () => {
+    const users = await SqlDataSource.query("users_without_pk")
+      .where("name", "Alice")
+      .existsWithPerformance();
 
-//     expect(users.data).toBe(true);
-//     expect(users.time).toBeDefined();
-//   });
+    expect(users.data).toBe(true);
+    expect(users.time).toBeDefined();
+  });
 
-//   test("manyWithPerformance", async () => {
-//     const users =
-//       await SqlDataSource.query("users_without_pk").manyWithPerformance();
+  test("manyWithPerformance", async () => {
+    const users =
+      await SqlDataSource.query("users_without_pk").manyWithPerformance();
 
-//     expect(users.data).toBeDefined();
-//     expect(users.time).toBeDefined();
-//   });
+    expect(users.data).toBeDefined();
+    expect(users.time).toBeDefined();
+  });
 
-//   test("oneWithPerformance", async () => {
-//     const user = await SqlDataSource.query("users_without_pk")
-//       .where("name", "Alice")
-//       .oneWithPerformance();
+  test("oneWithPerformance", async () => {
+    const user = await SqlDataSource.query("users_without_pk")
+      .where("name", "Alice")
+      .oneWithPerformance();
 
-//     expect(user.data).toBeDefined();
-//     expect(user.time).toBeDefined();
-//   });
+    expect(user.data).toBeDefined();
+    expect(user.time).toBeDefined();
+  });
 
-//   test("oneOrFailWithPerformance", async () => {
-//     const user = await SqlDataSource.query("users_without_pk")
-//       .where("name", "Alice")
-//       .oneOrFailWithPerformance();
+  test("oneOrFailWithPerformance", async () => {
+    const user = await SqlDataSource.query("users_without_pk")
+      .where("name", "Alice")
+      .oneOrFailWithPerformance();
 
-//     expect(user.data).toBeDefined();
-//     expect(user.time).toBeDefined();
-//   });
+    expect(user.data).toBeDefined();
+    expect(user.time).toBeDefined();
+  });
 
-//   test("oneOrFailWithPerformance with ModelQueryBuilder", async () => {
-//     const user = await UserWithoutPk.query().oneOrFailWithPerformance();
-//     expect(user.data).toBeDefined();
-//     expect(user.time).toBeDefined();
-//   });
+  test("oneOrFailWithPerformance with ModelQueryBuilder", async () => {
+    const user = await UserWithoutPk.query().oneOrFailWithPerformance();
+    expect(user.data).toBeDefined();
+    expect(user.time).toBeDefined();
+  });
 
-//   test("oneOrFailWithPerformance with ModelQueryBuilder and custom return type", async () => {
-//     const user = await UserWithoutPk.query().oneOrFailWithPerformance(
-//       {},
-//       "seconds"
-//     );
+  test("oneOrFailWithPerformance with ModelQueryBuilder and custom return type", async () => {
+    const user = await UserWithoutPk.query().oneOrFailWithPerformance(
+      {},
+      "seconds",
+    );
 
-//     expect(user.data).toBeDefined();
-//     expect(user.time).toBeDefined();
-//   });
+    expect(user.data).toBeDefined();
+    expect(user.time).toBeDefined();
+  });
 
-//   test("paginateWithPerformance", async () => {
-//     const users = await SqlDataSource.query("users_without_pk").paginateWithPerformance(1, 10);
+  test("paginateWithPerformance", async () => {
+    const users = await SqlDataSource.query(
+      "users_without_pk",
+    ).paginateWithPerformance(1, 10);
 
-//     expect(users.data).toBeDefined();
-//     expect(users.time).toBeDefined();
-//   });
+    expect(users.data).toBeDefined();
+    expect(users.time).toBeDefined();
+  });
 
-//   test("paginateWithPerformance with ModelQueryBuilder", async () => {
-//     const users = await UserWithoutPk.query().paginateWithPerformance(1, 10);
-//     expect(users.data).toBeDefined();
-//     expect(users.time).toBeDefined();
-//   });
+  test("paginateWithPerformance with ModelQueryBuilder", async () => {
+    const users = await UserWithoutPk.query().paginateWithPerformance(1, 10);
+    expect(users.data).toBeDefined();
+    expect(users.time).toBeDefined();
+  });
 
-//   test("paginateWithPerformance with ModelQueryBuilder and custom return type", async () => {
-//     const users = await UserWithoutPk.query().paginateWithPerformance(1, 10, {}, "seconds");
-//     expect(users.data).toBeDefined();
-//     expect(users.time).toBeDefined();
-//   });
-// });
+  test("paginateWithPerformance with ModelQueryBuilder and custom return type", async () => {
+    const users = await UserWithoutPk.query().paginateWithPerformance(
+      1,
+      10,
+      {},
+      "seconds",
+    );
+    expect(users.data).toBeDefined();
+    expect(users.time).toBeDefined();
+  });
+});

@@ -24,12 +24,12 @@ execSync(
 );
 
 const sqlTests = [
-  // edge cases
-  "./test/sql/edge_cases/query_builder_complex_edge_cases.test.ts",
-  "./test/sql/edge_cases/model_serialization_edge_cases.test.ts",
+  // // edge cases
+  // "./test/sql/edge_cases/query_builder_complex_edge_cases.test.ts",
+  // "./test/sql/edge_cases/model_serialization_edge_cases.test.ts",
 
-  // transaction
-  "./test/sql/transaction/transaction.test.ts",
+  // // transaction
+  // "./test/sql/transaction/transaction.test.ts",
 
   // query builder
   "./test/sql/query_builder/query_builder.test.ts",

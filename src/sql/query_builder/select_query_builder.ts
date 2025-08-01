@@ -77,6 +77,30 @@ export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
   }
 
   /**
+   * @description Clears the FROM clause
+   */
+  clearFrom(): this {
+    this.fromNode = new FromNode(this.model.table || "");
+    return this;
+  }
+
+  /**
+   * @description Clears the DISTINCT clause
+   */
+  clearDistinct(): this {
+    this.distinctNode = null;
+    return this;
+  }
+
+  /**
+   * @description Clears the DISTINCT ON clause
+   */
+  clearDistinctOn(): this {
+    this.distinctOnNodes = [];
+    return this;
+  }
+
+  /**
    * @description Annotates a column with a SQL method or a simple alias
    * @description If using a model, the result will be available in the $annotations property of the model, else it will be available in the result of the query
    * @example
@@ -107,8 +131,6 @@ export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
       column = sqlMethodOrColumn as string;
       alias = columnOrAlias;
     }
-
-    this.selectNodes.push(new SelectNode(column, alias, sqlMethod));
 
     this.selectNodes.push(new SelectNode(column, alias, sqlMethod));
 
