@@ -29,6 +29,39 @@ describe(`[${env.DB_TYPE}] Query Builder with uuid`, () => {
     expect(exists).toBe(true);
   });
 
+  test("should handle from with an alias", async () => {
+    await SqlDataSource.query("posts_with_uuid").insert({
+      id: crypto.randomUUID(),
+      title: "Hello World",
+    });
+
+    const retrievedPost = await SqlDataSource.query("posts_with_uuid")
+      .from("posts_with_uuid", "p")
+      .where("p.title", "Hello World")
+      .one();
+
+    expect(retrievedPost).toBeDefined();
+    expect(retrievedPost.title).toBe("Hello World");
+  });
+
+  test("should handle from with a callback and an alias", async () => {
+    await SqlDataSource.query("posts_with_uuid").insert({
+      id: crypto.randomUUID(),
+      title: "Hello World",
+    });
+
+    const retrievedPost = await SqlDataSource.query("posts_with_uuid")
+      .from((qb) => {
+        qb.select("title")
+          .from("posts_with_uuid", "p")
+          .where("p.title", "Hello World");
+      }, "p")
+      .one();
+
+    expect(retrievedPost).toBeDefined();
+    expect(retrievedPost.title).toBe("Hello World");
+  });
+
   test("should select a post", async () => {
     await SqlDataSource.query("posts_with_uuid").insert({
       id: crypto.randomUUID(),

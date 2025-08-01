@@ -428,6 +428,35 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     } as PaginatedData<T>;
   }
 
+  from(table: string, alias?: string): this;
+  from(cb: (qb: QueryBuilder<T>) => void, alias: string): this;
+  from(
+    tableOrCb: string | ((qb: QueryBuilder<T>) => void),
+    maybeAlias?: string,
+  ): this {
+    if (typeof tableOrCb === "function") {
+      if (!maybeAlias) {
+        throw new HysteriaError(
+          "QueryBuilder::from",
+          "MISSING_ALIAS_FOR_SUBQUERY",
+        );
+      }
+
+      const subQueryBuilder = new QueryBuilder<T>(
+        this.model,
+        this.sqlDataSource,
+      );
+
+      tableOrCb(subQueryBuilder);
+      const subQueryNodes = subQueryBuilder.extractQueryNodes();
+      this.fromNode = new FromNode(subQueryNodes, maybeAlias);
+      return this;
+    }
+
+    this.fromNode = new FromNode(tableOrCb, maybeAlias);
+    return this;
+  }
+
   /**
    * @description Creates a CTE with the provided type that has the query builder as the query
    * @description For the moment, with is only taken into account when making a select query

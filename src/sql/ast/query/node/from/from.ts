@@ -6,9 +6,11 @@ export class FromNode extends QueryNode {
   canKeywordBeSeenMultipleTimes = false;
   folder = "from";
   file = "from";
+  alias?: string;
 
-  constructor(table: string | QueryNode | QueryNode[]) {
+  constructor(table: string | QueryNode | QueryNode[], alias?: string) {
     super("from");
     this.table = table;
+    this.alias = alias;
   }
 }
