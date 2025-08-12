@@ -1,4 +1,5 @@
 import { SqlDataSource } from "../sql_data_source";
+import { AugmentedSqlDataSource } from "../sql_data_source_types";
 import { Transaction } from "../transactions/transaction";
 import { Model } from "./model";
 import { ExcludeRelations } from "./model_manager/model_manager_types";
@@ -13,7 +14,7 @@ export type NumberModelKey<T extends Model> = {
 }[keyof T];
 
 export type BaseModelMethodOptions = {
-  useConnection?: SqlDataSource;
+  useConnection?: SqlDataSource | AugmentedSqlDataSource;
   trx?: Transaction;
   ignoreHooks?: boolean;
 };

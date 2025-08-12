@@ -429,16 +429,25 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    * @description Overrides the limit and offset clauses in order to paginate the results.
    */
   async paginate(page: number, perPage: number): Promise<PaginatedData<T>> {
-    const originalSelectNodesSql = this.astParser.parse(
-      this.selectNodes.length ? this.selectNodes : [new SelectNode("*")],
-    ).sql;
-    const total = await this.getCount("*");
+    if (typeof page !== "number" || typeof perPage !== "number") {
+      throw new HysteriaError(
+        "QueryBuilder::paginate",
+        "INVALID_PAGINATION_PARAMETERS",
+      );
+    }
 
-    this.clearSelect();
-    const models = await this.selectRaw(
-      originalSelectNodesSql.replace(/select/i, ""),
-    )
-      .limit(perPage)
+    // Only filters are applied for the count query
+    const countQueryBuilder = new QueryBuilder<T>(
+      this.model,
+      this.sqlDataSource,
+    );
+    countQueryBuilder.fromNode = this.fromNode;
+    countQueryBuilder.joinNodes = [...this.joinNodes];
+    countQueryBuilder.whereNodes = [...this.whereNodes];
+    const total = await countQueryBuilder.getCount("*");
+
+    // Original query is used to get the models with pagination data
+    const models = await this.limit(perPage)
       .offset((page - 1) * perPage)
       .many();
 

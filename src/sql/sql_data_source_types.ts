@@ -15,6 +15,8 @@ import {
   Sqlite3Import,
 } from "../drivers/driver_constants";
 import { Timezone } from "../utils/date_utils";
+import { Model } from "./models/model";
+import { SqlDataSource } from "./sql_data_source";
 
 export type SqlDriverSpecificOptions = Omit<
   DriverSpecificOptions,
@@ -48,11 +50,15 @@ type FixedTimeZone = `+${number}:${number}` | `-${number}:${number}`;
 type CountryTimezone = `${string}/${string}`;
 export type DatabaseTimezone = Timezone | FixedTimeZone | CountryTimezone;
 
+export type SqlDataSourceModel = typeof Model;
+
 /**
  * @description The input type for the SqlDataSource constructor
  * @description The connectionPolicies object is used to configure the connection policies for the sql data source
  */
-export type SqlDataSourceInput = {
+export type SqlDataSourceInput<
+  T extends Record<string, SqlDataSourceModel> = {},
+> = {
   readonly type?: Exclude<DataSourceType, "mongo">;
   /**
    * @description Whether to log the sql queries and other debug information
@@ -70,18 +76,27 @@ export type SqlDataSourceInput = {
    * @description The query format options to use for the sql data source, it tells how the sql queries should be formatted before being executed and logged
    */
   readonly queryFormatOptions?: FormatOptionsWithLanguage;
+
+  /**
+   * @description The models to use for the sql data source, if used models will be registered in the sql data source instance and will be available for the models to use
+   * @description Models can still be used as standalone entities, but they won't be available for the sql data source instance
+   */
+  readonly models?: T;
 } & (
   | MysqlSqlDataSourceInput
   | PostgresSqlDataSourceInput
   | SqliteDataSourceInput
 );
 
-export type UseConnectionInput = {
+export type UseConnectionInput<
+  T extends Record<string, SqlDataSourceModel> = {},
+> = {
   readonly type: Exclude<DataSourceType, "mongo">;
   readonly logs?: boolean;
   readonly timezone?: DatabaseTimezone;
   readonly connectionPolicies?: ConnectionPolicies;
   readonly queryFormatOptions?: FormatOptionsWithLanguage;
+  readonly models?: T;
 } & (
   | NotNullableMysqlSqlDataSourceInput
   | NotNullablePostgresSqlDataSourceInput
@@ -102,3 +117,9 @@ export type GetCurrentConnectionReturnType<T = SqlDataSourceType> =
           : T extends "sqlite"
             ? SqliteConnectionInstance
             : never;
+
+export type AugmentedSqlDataSource<
+  T extends Record<string, SqlDataSourceModel> = {},
+> = SqlDataSource & {
+  [key in keyof T]: T[key];
+};

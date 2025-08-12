@@ -26,12 +26,18 @@ import { databasesWithReturning } from "../sql_runner/sql_runner_constants";
 import {
   belongsTo,
   column,
+  getModelColumns,
   getPrimaryKey,
+  getRelationsMetadata,
   hasMany,
   hasOne,
   manyToMany,
 } from "./decorators/model_decorators";
 import { getBaseTableName } from "./model_utils";
+import {
+  ColumnType,
+  LazyRelationType,
+} from "./decorators/model_decorators_types";
 
 /**
  * @description Represents a Table in the Database
@@ -614,6 +620,20 @@ export abstract class Model extends Entity {
    * ```
    */
   static afterFetch?(data: any): Promise<any> | any;
+
+  /**
+   * @description Returns the columns of the model
+   */
+  static getModelColumns(this: typeof Model): ColumnType[] {
+    return getModelColumns(this);
+  }
+
+  /**
+   * @description Returns the relations of the model
+   */
+  static getModelRelations(this: typeof Model): LazyRelationType[] {
+    return getRelationsMetadata(this);
+  }
 
   // JS Static methods
 

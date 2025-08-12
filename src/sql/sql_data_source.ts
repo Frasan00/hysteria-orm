@@ -1,18 +1,22 @@
 import { FormatOptionsWithLanguage } from "sql-formatter";
 import { DataSource } from "../data_source/data_source";
 import { HysteriaError } from "../errors/hysteria_error";
+import { generateOpenApiModelWithMetadata } from "../openapi/openapi";
 import logger from "../utils/logger";
+import { RawNode } from "./ast/query/node/raw/raw_node";
 import { Model } from "./models/model";
 import { ModelManager } from "./models/model_manager/model_manager";
 import { QueryBuilder } from "./query_builder/query_builder";
 import { createSqlConnection } from "./sql_connection_utils";
 import type {
+  AugmentedSqlDataSource,
   ConnectionPolicies,
   GetCurrentConnectionReturnType,
   MysqlConnectionInstance,
   PgPoolClientInstance,
   SqlConnectionType,
   SqlDataSourceInput,
+  SqlDataSourceModel,
   SqlDataSourceType,
   SqliteConnectionInstance,
   UseConnectionInput,
@@ -23,13 +27,16 @@ import {
   StartTransactionOptions,
   TransactionExecutionOptions,
 } from "./transactions/transaction_types";
-import { RawNode } from "./ast/query/node/raw/raw_node";
 
+/**
+ * @description The SqlDataSource class is the main class for interacting with the database, it's used to create connections, execute queries, and manage transactions
+ */
 export class SqlDataSource extends DataSource {
-  declare private sqlConnection: SqlConnectionType;
+  declare private sqlConnection: SqlConnectionType | null;
   private static instance: SqlDataSource | null = null;
   private globalTransaction: Transaction | null = null;
   private sqlType: SqlDataSourceType;
+  private models: Record<string, SqlDataSourceModel> = {};
 
   /**
    * @description The retry policy for the database connection
@@ -40,8 +47,9 @@ export class SqlDataSource extends DataSource {
   // Static Methods
 
   /**
-   * @description Establishes the default connection used by default by all the Models, if not configuration is passed, env variables will be used instead
-   * @description You can continue to use the global sql class exported by hysteria after the connectionwithout having to rely on the return of this function
+   * @description Establishes the default singleton connection used by default by all the Models, if not configuration is passed, env variables will be used instead
+   * @description You can continue to use the global sql class exported by hysteria after the connection without having to rely on the return of this function
+   * @throws {HysteriaError} If using models in input, and the model key is already used by the sql data source instance e.g. a model called `connect` is already used by the sql data source instance and will throw an error
    * @example
    * ```ts
    * import { sql } from "hysteria-orm";
@@ -49,27 +57,39 @@ export class SqlDataSource extends DataSource {
    * // You can use both connection and sql from now own, since `sql` will use the default connection after being connected
    * connection.query();
    * sql.query();
+   *
+   * // Models will use the default connection after being connected
+   * User.query(); // Will use the default connection
    * ```
    */
-  static async connect(
-    input: SqlDataSourceInput,
-    cb?: (sqlDataSource: SqlDataSource) => Promise<void> | void,
+  static async connect<T extends Record<string, SqlDataSourceModel> = {}>(
+    input: SqlDataSourceInput<T>,
+    cb?: (sqlDataSource: AugmentedSqlDataSource<T>) => Promise<void> | void,
+  ): Promise<AugmentedSqlDataSource<T>>;
+  static async connect<T extends Record<string, SqlDataSourceModel> = {}>(
+    cb?: (sqlDataSource: AugmentedSqlDataSource<T>) => Promise<void> | void,
   ): Promise<SqlDataSource>;
-  static async connect(
-    cb?: (sqlDataSource: SqlDataSource) => Promise<void> | void,
-  ): Promise<SqlDataSource>;
-  static async connect(
+  static async connect<T extends Record<string, SqlDataSourceModel> = {}>(
     inputOrCb?:
-      | SqlDataSourceInput
-      | ((sqlDataSource: SqlDataSource) => Promise<void> | void),
-    cb?: (sqlDataSource: SqlDataSource) => Promise<void> | void,
-  ): Promise<SqlDataSource> {
+      | SqlDataSourceInput<T>
+      | ((sqlDataSource: AugmentedSqlDataSource<T>) => Promise<void> | void),
+    cb?: (sqlDataSource: AugmentedSqlDataSource<T>) => Promise<void> | void,
+  ): Promise<AugmentedSqlDataSource<T>> {
     if (typeof inputOrCb === "function") {
       cb = inputOrCb;
       inputOrCb = undefined;
     }
 
-    const sqlDataSource = new this(inputOrCb as SqlDataSourceInput);
+    const sqlDataSource = new this(inputOrCb as SqlDataSourceInput<T>);
+    if (inputOrCb?.models) {
+      const sanitizeModelKeys = sqlDataSource.sanitizeModelKeys(
+        inputOrCb?.models || {},
+      );
+
+      Object.assign(sqlDataSource, sanitizeModelKeys);
+    }
+
+    sqlDataSource.models = inputOrCb?.models || {};
     sqlDataSource.sqlConnection = await createSqlConnection(
       sqlDataSource.sqlType,
       {
@@ -85,32 +105,58 @@ export class SqlDataSource extends DataSource {
 
     await sqlDataSource.testConnectionQuery("SELECT 1");
     SqlDataSource.instance = sqlDataSource;
-    await cb?.(sqlDataSource);
-    return sqlDataSource;
+
+    await cb?.(sqlDataSource as AugmentedSqlDataSource<T>);
+    return sqlDataSource as AugmentedSqlDataSource<T>;
   }
 
   /**
    * @description Get's another database connection and return it, this won't be marked as the default connection used by the Models, for that use the static method `connect`
+   * @description By default not used by the Models, you have to pass it as a parameter to the Models to use it
+   * @throws {HysteriaError} If using models in input, and the model key is already used by the sql data source instance e.g. a model called `connect` is already used by the sql data source instance and will throw an error
+   * @example
+   * ```ts
+   * const anotherSql = await Sql.connectToSecondarySource({
+   *    ...connectionData
+   * });
+   *
+   * const user = await User.query({ useConnection: anotherSql }).many();
+   * ```
    */
-  static async connectToSecondarySource(
-    input: SqlDataSourceInput,
-    cb?: (sqlDataSource: SqlDataSource) => Promise<void> | void,
+  static async connectToSecondarySource<
+    T extends Record<string, SqlDataSourceModel> = {},
+  >(
+    input: SqlDataSourceInput<T>,
+    cb?: (sqlDataSource: AugmentedSqlDataSource<T>) => Promise<void> | void,
+  ): Promise<AugmentedSqlDataSource<T>>;
+  static async connectToSecondarySource<
+    T extends Record<string, SqlDataSourceModel> = {},
+  >(
+    cb?: (sqlDataSource: AugmentedSqlDataSource<T>) => Promise<void> | void,
   ): Promise<SqlDataSource>;
-  static async connectToSecondarySource(
-    cb?: (sqlDataSource: SqlDataSource) => Promise<void> | void,
-  ): Promise<SqlDataSource>;
-  static async connectToSecondarySource(
+  static async connectToSecondarySource<
+    T extends Record<string, SqlDataSourceModel> = {},
+  >(
     inputOrCb?:
-      | SqlDataSourceInput
-      | ((sqlDataSource: SqlDataSource) => Promise<void> | void),
-    cb?: (sqlDataSource: SqlDataSource) => Promise<void> | void,
-  ): Promise<SqlDataSource> {
+      | SqlDataSourceInput<T>
+      | ((sqlDataSource: AugmentedSqlDataSource<T>) => Promise<void> | void),
+    cb?: (sqlDataSource: AugmentedSqlDataSource<T>) => Promise<void> | void,
+  ): Promise<AugmentedSqlDataSource<T>> {
     if (typeof inputOrCb === "function") {
       cb = inputOrCb;
       inputOrCb = undefined;
     }
 
     const sqlDataSource = new this(inputOrCb as SqlDataSourceInput);
+    if (inputOrCb?.models) {
+      const sanitizeModelKeys = sqlDataSource.sanitizeModelKeys(
+        inputOrCb.models,
+      );
+
+      Object.assign(sqlDataSource, sanitizeModelKeys);
+    }
+
+    sqlDataSource.models = inputOrCb?.models || {};
     sqlDataSource.sqlConnection = await createSqlConnection(
       sqlDataSource.sqlType,
       {
@@ -125,37 +171,63 @@ export class SqlDataSource extends DataSource {
     );
 
     await sqlDataSource.testConnectionQuery("SELECT 1");
-    await cb?.(sqlDataSource);
-    return sqlDataSource;
+    SqlDataSource.instance = sqlDataSource;
+
+    await cb?.(sqlDataSource as AugmentedSqlDataSource<T>);
+    return sqlDataSource as AugmentedSqlDataSource<T>;
   }
 
   /**
    * @description Creates a new connection and executes a callback with the new instance, the connection is automatically closed after the callback is executed, so it's lifespan is only inside the callback
+   * @description By default not used by the Models, you have to pass it as a parameter to the Models to use it
+   * @throws {HysteriaError} If using models in input, and the model key is already used by the sql data source instance e.g. a model called `connect` is already used by the sql data source instance and will throw an error
+   * @example
+   * ```ts
+   * await Sql.useConnection({
+   *    ...connectionData
+   * }, (sql) => {
+   *    const user = await User.query({ useConnection: sql }).many();
+   * });
+   * ```
    */
-  static async useConnection(
-    connectionDetails: UseConnectionInput,
-    cb: (sqlDataSource: SqlDataSource) => Promise<void>,
+  static async useConnection<T extends Record<string, SqlDataSourceModel> = {}>(
+    connectionDetails: UseConnectionInput<T>,
+    cb: (sqlDataSource: AugmentedSqlDataSource<T>) => Promise<void>,
   ): Promise<void> {
     const customSqlInstance = new SqlDataSource(connectionDetails);
+    if (connectionDetails.models) {
+      const sanitizeModelKeys = customSqlInstance.sanitizeModelKeys(
+        connectionDetails.models,
+      );
+
+      Object.assign(customSqlInstance, sanitizeModelKeys);
+    }
+
+    customSqlInstance.models = connectionDetails.models || {};
     customSqlInstance.sqlConnection = await createSqlConnection(
       customSqlInstance.sqlType,
       {
         ...connectionDetails,
       },
     );
-    await customSqlInstance.testConnectionQuery("SELECT 1");
-    try {
-      await cb(customSqlInstance).then(async () => {
-        if (!customSqlInstance.isConnected) {
-          return;
-        }
 
-        await customSqlInstance.closeConnection();
-      });
+    await customSqlInstance.testConnectionQuery("SELECT 1");
+
+    try {
+      await cb(customSqlInstance as AugmentedSqlDataSource<T>).then(
+        async () => {
+          if (!customSqlInstance.isConnected) {
+            return;
+          }
+
+          await customSqlInstance.closeConnection();
+        },
+      );
     } catch (error) {
       if (customSqlInstance.isConnected) {
         await customSqlInstance.closeConnection();
       }
+
       throw error;
     }
   }
@@ -509,12 +581,12 @@ export class SqlDataSource extends DataSource {
       case "mysql":
       case "mariadb":
         await (this.sqlConnection as MysqlConnectionInstance).end();
-        SqlDataSource.instance = null;
+        this.sqlConnection = null;
         break;
       case "postgres":
       case "cockroachdb":
         (this.sqlConnection as PgPoolClientInstance).end();
-        SqlDataSource.instance = null;
+        this.sqlConnection = null;
         break;
       case "sqlite":
         await new Promise<void>((resolve, reject) => {
@@ -525,7 +597,7 @@ export class SqlDataSource extends DataSource {
             resolve();
           });
         });
-        SqlDataSource.instance = null;
+        this.sqlConnection = null;
         break;
       default:
         throw new HysteriaError(
@@ -570,24 +642,58 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
-  * @description Adds a raw statement to an operation like update
-  * ```ts
-  *await sql.query("test").update({
-  *    test: "test",
-  *    test2: "test2",
-  *    rawTest: SqlDataSource.rawStatement("rawTest"), // This will be taken as literal sql statement and not a string value
-  *    test3: "test3",
-  });
+   * @description Adds a raw statement to an operation like update
+   * ```ts
+   *await sql.query("test").update({
+   *    test: "test",
+   *    test2: "test2",
+   *    rawTest: SqlDataSource.rawStatement("rawTest"), // This will be taken as literal sql statement and not a string value
+   *    test3: "test3",
+   *});
    * ```
    */
   rawStatement(value: string) {
     return new RawNode(value);
   }
 
+  /**
+   * @description Models provided inside the connection method will always be used for openapi schema generation
+   */
+  getModelOpenApiSchema() {
+    return generateOpenApiModelWithMetadata(
+      Object.values(this.models) as unknown as (new () => Model)[],
+    );
+  }
+
   private async testConnectionQuery(query: string): Promise<void> {
     await execSql(query, [], this, "raw", {
       shouldNotLog: true,
     });
+  }
+
+  private sanitizeModelKeys(
+    models: Record<string, SqlDataSourceModel>,
+  ): Record<string, SqlDataSourceModel> {
+    const instanceKeys = Object.getOwnPropertyNames(this);
+    const staticKeys = Object.getOwnPropertyNames(this.constructor);
+    const allKeys = [...instanceKeys, ...staticKeys];
+
+    if (Object.keys(models).some((key) => allKeys.includes(key))) {
+      throw new HysteriaError(
+        "SqlDataSource::sanitizeModelKeys",
+        "DUPLICATE_MODEL_KEYS_WHILE_INSTANTIATING_MODELS",
+        new Error(
+          `Duplicate model keys while instantiating models inside the connection: ${Object.keys(
+            models,
+          )
+            .filter((key) => allKeys.includes(key))
+            .map((key) => `"${key}"`)
+            .join(", ")}`,
+        ),
+      );
+    }
+
+    return models;
   }
 
   static get isInGlobalTransaction(): boolean {

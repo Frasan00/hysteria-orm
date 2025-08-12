@@ -9,7 +9,9 @@ export type LazyRelationType = {
   model: () => typeof Model;
   foreignKey: string;
 
-  // Only for many to many
+  /**
+   * @description Only for many to many relations
+   */
   manyToManyOptions?: {
     primaryModel: string;
     throughModel: string;
@@ -95,6 +97,11 @@ export type ColumnOptions = {
    * @default The name of the property following the model case convention
    */
   databaseName?: string;
+
+  /**
+   * @description The description of the column in the database, can be used to specify the column description in the OpenAPI schema
+   */
+  openApiDescription?: string;
 };
 
 export type ColumnType = {
@@ -104,6 +111,7 @@ export type ColumnType = {
   prepare?: (value: any) => any;
   hidden?: boolean;
   autoUpdate?: boolean;
+  openApiDescription?: string;
 };
 
 type ThroughModelCallback<T extends typeof Model> = () => T;

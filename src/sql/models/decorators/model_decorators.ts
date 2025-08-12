@@ -67,6 +67,7 @@ export function column(
       hidden: options.hidden,
       autoUpdate: options.autoUpdate,
       databaseName,
+      openApiDescription: options.openApiDescription,
     };
 
     const existingColumns =
@@ -454,6 +455,10 @@ export function manyToMany<
     relations.push(relation);
     Reflect.defineMetadata(RELATION_METADATA_KEY, relations, target);
   };
+}
+
+export function getRelationsMetadata(target: typeof Model): LazyRelationType[] {
+  return Reflect.getMetadata(RELATION_METADATA_KEY, target.prototype) || [];
 }
 
 /**
