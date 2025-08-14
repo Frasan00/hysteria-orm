@@ -1,12 +1,17 @@
 import { Command } from "commander";
 import fs from "node:fs";
 import path from "node:path";
+import { logger } from ".";
+import dropAllTablesConnector from "./cli/drop_all_tables_connector";
 import migrationCreateConnector from "./cli/migration_create_connector";
 import rollbackMigrationsConnector from "./cli/migration_rollback_connector";
 import runMigrationsConnector from "./cli/migration_run_connector";
 import runSqlConnector from "./cli/run_sql_connector";
-import dropAllTablesConnector from "./cli/drop_all_tables_connector";
 import { SqlDataSourceType } from "./sql/sql_data_source_types";
+import { InitTemplates } from "./cli/resources/init_templates";
+
+const databaseTypes = ["sqlite", "mysql", "postgres", "mariadb", "cockroachdb"];
+const allDatabaseTypes = databaseTypes.concat("mongodb", "redis");
 
 type BaseSqlDataSourceCommandOptions = {
   type?: SqlDataSourceType;
@@ -19,13 +24,72 @@ type BaseSqlDataSourceCommandOptions = {
 const program = new Command();
 
 program
+  .command("init")
+  .option(
+    "-t, --type [type]",
+    `Type of the database to connect to, available types: ${allDatabaseTypes.join(", ")}`,
+    undefined,
+  )
+  .description(
+    "Initialize the hysteria-orm with standard configuration, it will create a database if not exists and a migrations folder inside it if not exists, it will also create a index.ts file in the database folder",
+  )
+  .action(async (option: { type: SqlDataSourceType }) => {
+    if (!option.type) {
+      logger.error("Database type is required");
+      process.exit(1);
+    }
+
+    if (!allDatabaseTypes.includes(option.type)) {
+      logger.error(
+        `Invalid database type: ${option.type}, available types: ${allDatabaseTypes.join(", ")}`,
+      );
+      process.exit(1);
+    }
+
+    logger.info("Initializing hysteria-orm with standard configuration");
+    logger.info(
+      `Database type: ${option.type || "not specified (will use env DB_TYPE)"}`,
+    );
+
+    const template = InitTemplates.initTemplate(option.type);
+    if (!fs.existsSync("database")) {
+      fs.mkdirSync("database", { recursive: true });
+    } else {
+      logger.info("database folder already exists, skipping");
+    }
+
+    if (!fs.existsSync("database/index.ts")) {
+      fs.writeFileSync("database/index.ts", template);
+    } else {
+      logger.info("database/index.ts file already exists, skipping");
+    }
+
+    if (
+      databaseTypes.includes(option.type) &&
+      !fs.existsSync("database/migrations")
+    ) {
+      fs.mkdirSync("database/migrations", { recursive: true });
+    } else {
+      logger.info(
+        "database/migrations folder already exists or is not a sql database, skipping",
+      );
+    }
+
+    logger.info("Initialization completed successfully");
+  });
+
+program
   .command("run:sql [sql]")
   .option("-f, --file [path]", "Path to the sql file", undefined)
   .option("-h, --host [host]", "Host to connect to", undefined)
   .option("-d, --database [database]", "Database to connect to", undefined)
   .option("-u, --username [username]", "Username to connect to", undefined)
   .option("-p, --password [password]", "Password to connect to", undefined)
-  .option("-t, --type [type]", "Type of the database to connect to", undefined)
+  .option(
+    "-t, --type [type]",
+    `Type of the database to connect to, available types: ${databaseTypes.join(", ")}`,
+    undefined,
+  )
   .description(
     "Run a sql file or a sql query directly from the command line for the given connection defined in the env file",
   )
@@ -34,6 +98,8 @@ program
       sql?: string,
       option?: { file?: string } & BaseSqlDataSourceCommandOptions,
     ) => {
+      logger.info("Starting SQL execution");
+
       const sqlDataSourceInput = {
         type: option?.type,
         host: option?.host,
@@ -44,16 +110,17 @@ program
 
       let filePath = option?.file;
       if (!sql && !filePath) {
-        console.error("Error: SQL query or file path is required.");
+        logger.error("SQL query or file path is required");
         process.exit(1);
       }
 
       if (sql && filePath) {
-        console.error("Error: You can't provide both sql query and file path.");
+        logger.error("Cannot provide both sql query and file path");
         process.exit(1);
       }
 
       if (sql) {
+        logger.info("Executing SQL query directly from command line");
         try {
           await runSqlConnector(sql, {
             host: option?.host,
@@ -61,30 +128,36 @@ program
             username: option?.username,
             password: option?.password,
           });
+          logger.info("SQL execution completed successfully");
           process.exit(0);
         } catch (error) {
-          console.error(error);
+          logger.error(`SQL execution failed: ${error}`);
           process.exit(1);
         }
       }
 
       if (!filePath) {
-        console.error("Error: No SQL statement or file provided");
+        logger.error("No SQL statement or file provided");
         process.exit(1);
       }
 
+      logger.info(`Reading SQL from file: ${filePath}`);
       filePath = path.resolve(process.cwd(), filePath);
       if (!fs.existsSync(filePath)) {
-        console.error(`File not found: ${filePath}`);
+        logger.error(`File not found: ${filePath}`);
         process.exit(1);
       }
 
       const sqlStatement = fs.readFileSync(filePath, "utf-8");
+      logger.info(
+        `SQL file loaded successfully (${sqlStatement.length} characters)`,
+      );
       try {
         await runSqlConnector(sqlStatement, sqlDataSourceInput);
+        logger.info("SQL file execution completed successfully");
         process.exit(0);
       } catch (error) {
-        console.error(error);
+        logger.error(`SQL file execution failed: ${error}`);
         process.exit(1);
       }
     },
@@ -125,22 +198,23 @@ program
         table: string;
       },
     ) => {
+      logger.info(`Creating migration: ${name}`);
+      logger.info(
+        `Migration options: javascript=${option.javascript}, alter=${option.alter}, create=${option.create}, table=${option.table || "not specified"}`,
+      );
+
       if (!name) {
-        console.error("Error: migrations name is required.");
+        logger.error("Migration name is required");
         process.exit(1);
       }
 
       if (option.alter && option.create) {
-        console.error(
-          "Error: You can't use --alter and --create at the same time.",
-        );
+        logger.error("Cannot use --alter and --create at the same time");
         process.exit(1);
       }
 
       if (option.table && !(option.create || option.alter)) {
-        console.error(
-          "Error: You can't use --table without --create or --alter.",
-        );
+        logger.error("Cannot use --table without --create or --alter");
         process.exit(1);
       }
 
@@ -150,20 +224,24 @@ program
           ? "create"
           : "basic";
 
+      logger.info(`Migration mode: ${migrationMode}`);
       migrationCreateConnector(
         name,
         option.javascript,
         migrationMode,
         option.table || name,
       );
-      process.exit(0);
     },
   );
 
 program
   .command("run:migrations [runUntil]")
   .option("-v, --verbose", "Verbose mode with all query logs", false)
-  .option("-t, --type [type]", "Type of the database to connect to", undefined)
+  .option(
+    "-t, --type [type]",
+    `Type of the database to connect to, available types: ${databaseTypes.join(", ")}`,
+    undefined,
+  )
   .option("-h, --host [host]", "Host to connect to", undefined)
   .option("-d, --database [database]", "Database to connect to", undefined)
   .option("-u, --username [username]", "Username to connect to", undefined)
@@ -211,7 +289,11 @@ program
 program
   .command("rollback:migrations [rollbackUntil]")
   .option("-v, --verbose", "Verbose mode with all query logs", false)
-  .option("-t, --type [type]", "Type of the database to connect to", undefined)
+  .option(
+    "-t, --type [type]",
+    `Type of the database to connect to, available types: ${databaseTypes.join(", ")}`,
+    undefined,
+  )
   .option("-h, --host [host]", "Host to connect to", undefined)
   .option("-d, --database [database]", "Database to connect to", undefined)
   .option("-u, --username [username]", "Username to connect to", undefined)
@@ -263,7 +345,11 @@ program
     "Drop all tables in the database before running the migrations instead of running the down migrations",
     false,
   )
-  .option("-t, --type [type]", "Type of the database to connect to", undefined)
+  .option(
+    "-t, --type [type]",
+    `Type of the database to connect to, available types: ${databaseTypes.join(", ")}`,
+    undefined,
+  )
   .option("-h, --host [host]", "Host to connect to", undefined)
   .option("-d, --database [database]", "Database to connect to", undefined)
   .option("-u, --username [username]", "Username to connect to", undefined)

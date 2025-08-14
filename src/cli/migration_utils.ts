@@ -204,7 +204,7 @@ async function loadMigrationModule(
 
 async function findMigrationModule(
   migrationName: string,
-  migrationModulePath: string = env.MIGRATION_PATH || "migrations",
+  migrationModulePath: string = env.MIGRATION_PATH || "database/migrations",
 ): Promise<new (dbType: SqlDataSourceType) => Migration> {
   migrationModulePath = join(migrationModulePath, migrationName);
   const migrationPath = path.resolve(process.cwd(), migrationModulePath);
@@ -224,7 +224,7 @@ async function findMigrationModule(
 function findMigrationNames(inputMigrationPath?: string): string[] {
   const currentUserDirectory = process.cwd();
   const migrationPath = path.resolve(
-    inputMigrationPath || env.MIGRATION_PATH || "migrations",
+    inputMigrationPath || env.MIGRATION_PATH || "database/migrations",
   );
 
   const fullPathToMigrationPath = path.resolve(

@@ -97,7 +97,7 @@ export class ClientMigrator {
   protected sqlDataSourceInput?: Partial<SqlDataSourceInput> | SqlDataSource;
 
   constructor(
-    migrationPath: string = env.MIGRATION_PATH || "migrations",
+    migrationPath: string = env.MIGRATION_PATH || "database/migrations",
     sqlDataSourceInput?: Partial<SqlDataSourceInput> | SqlDataSource,
   ) {
     this.migrationPath = migrationPath;
