@@ -1,5 +1,6 @@
 import { Model } from "../model";
 import { FetchHooks } from "../model_query_builder/model_query_builder_types";
+import { ModelWithoutRelations } from "../model_types";
 import { BelongsTo } from "../relations/belongs_to";
 import { HasMany } from "../relations/has_many";
 import { HasOne } from "../relations/has_one";
@@ -74,9 +75,10 @@ export type OrderByType<T extends Model> = {
 export type UnrestrictedFindOneType<
   T extends Model,
   S extends ModelKey<T>[] = any[],
+  R extends ModelRelation<T>[] = never[],
 > = {
   select?: S;
-  relations?: ModelRelation<T>[];
+  relations?: R;
   ignoreHooks?: FetchHooks[];
   where?: Record<string, any>;
   orderBy?: OrderByType<T>;
@@ -87,32 +89,41 @@ export type UnrestrictedFindOneType<
 export type UnrestrictedFindType<
   T extends Model,
   S extends ModelKey<T>[] = any[],
-> = Omit<UnrestrictedFindOneType<T, S>, "throwErrorOnNull"> & {
+  R extends ModelRelation<T>[] = never[],
+> = Omit<UnrestrictedFindOneType<T, S, R>, "throwErrorOnNull"> & {
   limit?: number;
 };
 
-export type FindOneType<T extends Model, S extends ModelKey<T>[] = any[]> = {
+export type FindOneType<
+  T extends Model,
+  S extends ModelKey<T>[] = any[],
+  R extends ModelRelation<T>[] = never[],
+> = {
   select?: S;
   offset?: number;
-  relations?: ModelRelation<T>[];
+  relations?: R;
   orderBy?: OrderByType<T>;
   groupBy?: ModelKey<T>[];
   where?: WhereType<T>;
   ignoreHooks?: FetchHooks[];
 };
 
-export type FindType<T extends Model, S extends ModelKey<T>[] = any[]> = Omit<
-  FindOneType<T, S>,
-  "throwErrorOnNull"
-> & {
+export type FindType<
+  T extends Model,
+  S extends ModelKey<T>[] = any[],
+  R extends ModelRelation<T>[] = never[],
+> = Omit<FindOneType<T, S, R>, "throwErrorOnNull"> & {
   limit?: number;
 };
 
 export type FindReturnType<
   T extends Model,
   S extends ModelKey<T>[] = any[],
+  R extends ModelRelation<T>[] = never[],
 > = S extends readonly any[]
   ? S[number] extends never
-    ? T
-    : { [K in S[number] & keyof T]: T[K] }
-  : T;
+    ? ModelWithoutRelations<T> & { [K in R[number] & keyof T]: T[K] }
+    : { [K in S[number] & keyof T]: T[K] } & {
+        [K in R[number] & keyof T]: T[K];
+      }
+  : ModelWithoutRelations<T> & { [K in R[number] & keyof T]: T[K] };

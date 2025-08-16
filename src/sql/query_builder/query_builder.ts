@@ -34,6 +34,7 @@ import {
   PluckReturnType,
   QueryBuilderWithOnlyWhereConditions,
 } from "./query_builder_types";
+import { AnnotatedModel } from "../models/model_query_builder/model_query_builder_types";
 
 export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   model: typeof Model;
@@ -96,7 +97,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   async manyWithPerformance(
     returnType: "millis" | "seconds" = "millis",
   ): Promise<{
-    data: T[];
+    data: AnnotatedModel<T, {}>[];
     time: number;
   }> {
     const [time, data] = await withPerformance(
@@ -115,7 +116,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   async oneWithPerformance(
     returnType: "millis" | "seconds" = "millis",
   ): Promise<{
-    data: T | null;
+    data: AnnotatedModel<T, {}> | null;
     time: number;
   }> {
     const [time, data] = await withPerformance(this.one.bind(this), returnType);
@@ -174,7 +175,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   /**
    * @description Executes the query and retrieves multiple results.
    */
-  async many(): Promise<T[]> {
+  async many(): Promise<AnnotatedModel<T, {}>[]> {
     const { sql, bindings } = this.unWrap();
     return execSql(sql, bindings, this.sqlDataSource, "raw", {
       sqlLiteOptions: {
@@ -189,15 +190,17 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    * @param key - The column to retrieve from the results, must be a Model Column
    */
   async pluck<K extends ModelKey<T>>(key: K): Promise<PluckReturnType<T, K>> {
-    const result = await this.many();
-    return result.map((item) => item[key]) as PluckReturnType<T, K>;
+    const result = (await this.many()) as T[];
+    return result.map(
+      (item) => item[key as keyof typeof item],
+    ) as PluckReturnType<T, K>;
   }
 
   /**
    * @description Executes the query and retrieves a single result.
    */
-  async one(): Promise<T | null> {
-    const result = await this.limit(1).many();
+  async one(): Promise<AnnotatedModel<T, {}> | null> {
+    const result = (await this.limit(1).many()) as AnnotatedModel<T, {}>[];
     if (!result || !result.length) {
       return null;
     }
@@ -208,14 +211,14 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   /**
    * @alias one
    */
-  async first(): Promise<T | null> {
+  async first(): Promise<AnnotatedModel<T, {}> | null> {
     return this.one();
   }
 
   /**
    * @description Executes the query and retrieves the first result. Fail if no result is found.
    */
-  async oneOrFail(): Promise<T> {
+  async oneOrFail(): Promise<AnnotatedModel<T, {}>> {
     const model = await this.one();
     if (!model) {
       throw new HysteriaError(
@@ -230,7 +233,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   /**
    * @alias oneOrFail
    */
-  async firstOrFail(): Promise<T> {
+  async firstOrFail(): Promise<AnnotatedModel<T, {}>> {
     return this.oneOrFail();
   }
 

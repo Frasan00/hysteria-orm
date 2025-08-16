@@ -62,3 +62,7 @@ export type QueryBuilderWithOnlyWhereConditions<T extends Model> = PickMethods<
   | "andWhereNotBetween"
   | "orWhereNotBetween"
 >;
+
+export type RelationRetrieveMethod<P extends any> = P extends any[]
+  ? "many"
+  : "one";

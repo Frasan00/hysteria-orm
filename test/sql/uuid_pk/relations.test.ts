@@ -41,11 +41,11 @@ describe(`[${env.DB_TYPE}] uuid pk base relations`, () => {
         "id",
         users.map((u) => u.id),
       )
-      .withRelation("post")
+      .withRelation("post", (qb) => qb.select("userId"))
       .many();
 
     for (const user of userWithLoadedPosts) {
-      expect(user.id).toBe(user.post.userId);
+      expect(user.id).toBe(user.post?.userId);
     }
   });
 
@@ -65,17 +65,17 @@ describe(`[${env.DB_TYPE}] uuid pk base relations`, () => {
         "id",
         users.map((u) => u.id),
       )
-      .withRelation("post", PostWithUuid, (qb) =>
+      .withRelation("post", (qb) =>
         qb.select("posts_with_uuid.userId", "title"),
       )
       .many();
 
     for (const user of userWithLoadedPosts) {
-      expect(user.id).toBe(user.post.userId);
-      expect(user.post.title).toBe(
-        userWithLoadedPosts.find((u) => u.id === user.id)?.post.title,
+      expect(user.id).toBe(user.post?.userId);
+      expect(user.post?.title).toBe(
+        userWithLoadedPosts.find((u) => u.id === user.id)?.post?.title,
       );
-      expect(user.post.id).toBeUndefined();
+      expect(user.post?.id).toBeUndefined();
     }
   });
 
@@ -92,9 +92,7 @@ describe(`[${env.DB_TYPE}] uuid pk base relations`, () => {
 
     const userWithLoadedPosts = await UserWithUuid.query()
       .where("id", user.id)
-      .withRelation("posts", PostWithUuid, (qb) =>
-        qb.where("title", posts[0].title),
-      )
+      .withRelation("posts", (qb) => qb.where("title", posts[0].title))
       .one();
 
     expect(userWithLoadedPosts).toBeDefined();
@@ -118,12 +116,12 @@ describe(`[${env.DB_TYPE}] uuid pk base relations`, () => {
         "id",
         users.map((u) => u.id),
       )
-      .withRelation("post", PostWithUuid, (qb) => qb.withRelation("user"))
+      .withRelation("post", (qb) => qb.withRelation("user"))
       .many();
 
     for (const user of userWithLoadedPosts) {
-      expect(user.id).toBe(user.post.userId);
-      expect(user.post.user.id).toBe(user.id);
+      expect(user.id).toBe(user.post?.userId);
+      expect(user.post?.user?.id).toBe(user.id);
     }
   });
 
@@ -143,19 +141,17 @@ describe(`[${env.DB_TYPE}] uuid pk base relations`, () => {
         "id",
         users.map((u) => u.id),
       )
-      .withRelation("post", PostWithUuid, (qb) =>
-        qb.withRelation("user", UserWithUuid, (qb2) =>
-          qb2.withRelation("post", PostWithUuid, (qb3) =>
-            qb3.withRelation("user", UserWithUuid),
-          ),
+      .withRelation("post", (qb) =>
+        qb.withRelation("user", (qb2) =>
+          qb2.withRelation("post", (qb3) => qb3.withRelation("user")),
         ),
       )
       .many();
 
     for (const user of userWithLoadedPosts) {
-      expect(user.id).toBe(user.post.user.id);
-      expect(user.post.user.id).toBe(user.id);
-      expect(user.post.user.post.user.id).toBe(user.id);
+      expect(user.id).toBe(user.post?.user?.id);
+      expect(user.post?.user?.id).toBe(user.id);
+      expect(user.post?.user?.post?.user?.id).toBe(user.id);
     }
   });
 
@@ -170,20 +166,20 @@ describe(`[${env.DB_TYPE}] uuid pk base relations`, () => {
     expect(user).toBeDefined();
     expect(posts).toHaveLength(3);
 
-    const userWithLoadedPosts = (await UserWithUuid.query()
+    const userWithLoadedPosts = await UserWithUuid.query()
       .where("id", user.id)
       .withRelation("posts")
-      .one()) as UserWithUuid;
+      .one();
 
     expect(userWithLoadedPosts).toBeDefined();
-    expect(userWithLoadedPosts.posts).toHaveLength(3);
-    for (const post of userWithLoadedPosts.posts) {
+    expect(userWithLoadedPosts?.posts).toHaveLength(3);
+    for (const post of userWithLoadedPosts?.posts || []) {
       expect(post.userId).toBe(user.id);
     }
 
     expect(userWithLoadedPosts).toBeDefined();
-    expect(userWithLoadedPosts.posts).toHaveLength(3);
-    for (const post of userWithLoadedPosts.posts) {
+    expect(userWithLoadedPosts?.posts).toHaveLength(3);
+    for (const post of userWithLoadedPosts?.posts || []) {
       expect(post.userId).toBe(user.id);
     }
   });
@@ -239,9 +235,7 @@ describe(`[${env.DB_TYPE}] uuid pk many to many relations`, () => {
         "id",
         users.map((u) => u.id),
       )
-      .withRelation("addresses", AddressWithUuid, (qb) =>
-        qb.withRelation("users"),
-      )
+      .withRelation("addresses", (qb) => qb.withRelation("users"))
       .many();
 
     expect(userWithLoadedAddresses).toHaveLength(10);
@@ -276,12 +270,10 @@ describe(`[${env.DB_TYPE}] uuid pk many to many relations`, () => {
         "id",
         addresses.map((a) => a.id),
       )
-      .withRelation("users", UserWithUuid, (qb) =>
-        qb.withRelation("posts", PostWithUuid, (qb2) =>
-          qb2.withRelation("user", UserWithUuid, (qb3) =>
-            qb3.withRelation("addresses", AddressWithUuid, (qb4) =>
-              qb4.withRelation("users"),
-            ),
+      .withRelation("users", (qb) =>
+        qb.withRelation("posts", (qb2) =>
+          qb2.withRelation("user", (qb3) =>
+            qb3.withRelation("addresses", (qb4) => qb4.withRelation("users")),
           ),
         ),
       )
@@ -289,10 +281,12 @@ describe(`[${env.DB_TYPE}] uuid pk many to many relations`, () => {
 
     expect(addressesWithLoadedPosts).toHaveLength(3);
     expect(addressesWithLoadedPosts[0].users).toHaveLength(1);
-    expect(addressesWithLoadedPosts[0].users[0].posts).toHaveLength(3);
-    expect(addressesWithLoadedPosts[0].users[0].posts[0].user.id).toBe(user.id);
+    expect(addressesWithLoadedPosts[0].users[0]?.posts).toHaveLength(3);
+    expect(addressesWithLoadedPosts[0].users[0]?.posts[0]?.user?.id).toBe(
+      user.id,
+    );
     expect(
-      addressesWithLoadedPosts[0].users[0].posts[0].user.addresses,
+      addressesWithLoadedPosts[0].users[0]?.posts[0]?.user?.addresses,
     ).toHaveLength(3);
   });
 });

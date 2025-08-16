@@ -1,5 +1,7 @@
 import { SqlMethod } from "../../ast/query/node/select/select_types";
 import { Model } from "../../models/model";
+import { ModelRelation } from "../model_manager/model_manager_types";
+import { ModelWithoutRelations } from "../model_types";
 
 export type ModelInstanceType<O> = O extends typeof Model
   ? InstanceType<O>
@@ -15,9 +17,11 @@ export type ManyOptions = {
   ignoreHooks?: FetchHooks[];
 };
 
-export type AnnotatedModel<T extends Model, A> = keyof A extends never
-  ? T
-  : T & { $annotations: { [K in keyof A]: A[K] } };
+export type AnnotatedModel<T extends Model, A, R = {}> = keyof A extends never
+  ? ModelWithoutRelations<T> & R
+  : ModelWithoutRelations<T> & { $annotations: { [K in keyof A]: A[K] } } & {
+      [K in keyof R]: R[K];
+    };
 
 export type CommonSqlMethodReturnType<T extends SqlMethod> =
   // Aggregates
@@ -36,3 +40,14 @@ export type CommonSqlMethodReturnType<T extends SqlMethod> =
             ? number
             : // Fallback
               any;
+
+export type RelatedInstance<
+  M extends Model,
+  K extends ModelRelation<M>,
+> = M[K] extends (infer R)[]
+  ? R extends Model
+    ? R
+    : never
+  : M[K] extends Model
+    ? M[K]
+    : never;

@@ -1,25 +1,27 @@
+import { Model } from "./models/model";
+import { AnnotatedModel } from "./models/model_query_builder/model_query_builder_types";
+
 export type PaginationMetadata = {
   perPage: number;
   currentPage: number;
   firstPage: number;
   isEmpty: boolean;
   total: number;
-  hasTotal: boolean;
   lastPage: number;
   hasMorePages: boolean;
   hasPages: boolean;
 };
 
-export type PaginatedData<T> = {
+export type PaginatedData<T extends Model, A = any, R = {}> = {
   paginationMetadata: PaginationMetadata;
-  data: T[];
+  data: AnnotatedModel<T, A, R>[];
 };
 
 export function getPaginationMetadata(
   page: number,
   limit: number,
   total: number,
-) {
+): PaginationMetadata {
   return {
     total: total,
     perPage: limit,

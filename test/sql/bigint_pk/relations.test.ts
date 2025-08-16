@@ -50,7 +50,7 @@ describe(`[${env.DB_TYPE}] bigint pk base relations`, () => {
       .many();
 
     for (const user of userWithLoadedPosts) {
-      expect(user.id).toBe(user.post.userId);
+      expect(user.id).toBe(user.post?.userId);
     }
   });
 
@@ -67,9 +67,7 @@ describe(`[${env.DB_TYPE}] bigint pk base relations`, () => {
 
     const userWithLoadedPosts = await UserWithBigint.query()
       .where("id", user.id)
-      .withRelation("posts", PostWithBigint, (qb) =>
-        qb.where("title", posts[0].title),
-      )
+      .withRelation("posts", (qb) => qb.where("title", posts[0].title))
       .one();
 
     expect(userWithLoadedPosts).toBeDefined();
@@ -89,12 +87,12 @@ describe(`[${env.DB_TYPE}] bigint pk base relations`, () => {
     expect(posts).toHaveLength(3);
 
     const userWithLoadedPosts = await UserWithBigint.query()
-      .withRelation("post", PostWithBigint, (qb) => qb.withRelation("user"))
+      .withRelation("post", (qb) => qb.withRelation("user"))
       .many();
 
     for (const user of userWithLoadedPosts) {
-      expect(user.id).toBe(user.post.userId);
-      expect(user.post.user.id).toBe(user.id);
+      expect(user.id).toBe(user.post?.userId);
+      expect(user.post?.user?.id).toBe(user.id);
     }
   });
 
@@ -110,19 +108,17 @@ describe(`[${env.DB_TYPE}] bigint pk base relations`, () => {
     expect(posts).toHaveLength(3);
 
     const userWithLoadedPosts = await UserWithBigint.query()
-      .withRelation("post", PostWithBigint, (qb) =>
-        qb.withRelation("user", UserWithBigint, (qb2) =>
-          qb2.withRelation("post", PostWithBigint, (qb3) =>
-            qb3.withRelation("user", UserWithBigint),
-          ),
+      .withRelation("post", (qb) =>
+        qb.withRelation("user", (qb2) =>
+          qb2.withRelation("post", (qb3) => qb3.withRelation("user")),
         ),
       )
       .many();
 
     for (const user of userWithLoadedPosts) {
-      expect(user.id).toBe(user.post.user.id);
-      expect(user.post.user.id).toBe(user.id);
-      expect(user.post.user.post.user.id).toBe(user.id);
+      expect(user.id).toBe(user.post?.user?.id);
+      expect(user.post?.user?.id).toBe(user.id);
+      expect(user.post?.user?.post?.user?.id).toBe(user.id);
     }
   });
 
@@ -208,9 +204,7 @@ describe(`[${env.DB_TYPE}] bigint pk many to many relations`, () => {
     // #endregion
 
     const userWithLoadedAddresses = await UserWithBigint.query()
-      .withRelation("addresses", AddressWithBigint, (qb) =>
-        qb.withRelation("users"),
-      )
+      .withRelation("addresses", (qb) => qb.withRelation("users"))
       .many();
 
     expect(userWithLoadedAddresses).toHaveLength(10);
@@ -241,12 +235,10 @@ describe(`[${env.DB_TYPE}] bigint pk many to many relations`, () => {
     // #endregion
 
     const addressesWithLoadedPosts = await AddressWithBigint.query()
-      .withRelation("users", UserWithBigint, (qb) =>
-        qb.withRelation("posts", PostWithBigint, (qb2) =>
-          qb2.withRelation("user", UserWithBigint, (qb3) =>
-            qb3.withRelation("addresses", AddressWithBigint, (qb4) =>
-              qb4.withRelation("users"),
-            ),
+      .withRelation("users", (qb) =>
+        qb.withRelation("posts", (qb2) =>
+          qb2.withRelation("user", (qb3) =>
+            qb3.withRelation("addresses", (qb4) => qb4.withRelation("users")),
           ),
         ),
       )
@@ -254,10 +246,12 @@ describe(`[${env.DB_TYPE}] bigint pk many to many relations`, () => {
 
     expect(addressesWithLoadedPosts).toHaveLength(3);
     expect(addressesWithLoadedPosts[0].users).toHaveLength(1);
-    expect(addressesWithLoadedPosts[0].users[0].posts).toHaveLength(3);
-    expect(addressesWithLoadedPosts[0].users[0].posts[0].user.id).toBe(user.id);
+    expect(addressesWithLoadedPosts[0].users[0]?.posts).toHaveLength(3);
+    expect(addressesWithLoadedPosts[0].users[0]?.posts[0]?.user?.id).toBe(
+      user.id,
+    );
     expect(
-      addressesWithLoadedPosts[0].users[0].posts[0].user.addresses,
+      addressesWithLoadedPosts[0].users[0]?.posts[0]?.user?.addresses,
     ).toHaveLength(3);
   });
 });

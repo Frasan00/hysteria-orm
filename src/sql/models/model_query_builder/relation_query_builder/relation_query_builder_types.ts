@@ -4,8 +4,12 @@ import { ModelQueryBuilder } from "../model_query_builder";
 /**
  * @description Due to query limitations some query builder methods may not be available in a RelationQueryBuilder
  */
-export type RelationQueryBuilderType<T extends Model> = Omit<
-  ModelQueryBuilder<T>,
+export type RelationQueryBuilderType<
+  T extends Model,
+  A extends Record<string, any> = {},
+  R extends Record<string, any> = {},
+> = Omit<
+  ModelQueryBuilder<T, A, R>,
   | "increment"
   | "decrement"
   | "first"
@@ -31,6 +35,4 @@ export type RelationQueryBuilderType<T extends Model> = Omit<
   | "getMin"
   | "getMax"
   | "getCount"
-  | "annotate"
-  | "removeAnnotations"
 >;

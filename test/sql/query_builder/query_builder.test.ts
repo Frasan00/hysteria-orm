@@ -39,7 +39,7 @@ describe(`[${env.DB_TYPE}] Query Builder with uuid`, () => {
     const retrievedPost = await SqlDataSource.query("posts_with_uuid")
       .from("posts_with_uuid", "p")
       .where("p.title", "Hello World")
-      .one();
+      .oneOrFail();
 
     expect(retrievedPost).toBeDefined();
     expect(retrievedPost.title).toBe("Hello World");
@@ -57,7 +57,7 @@ describe(`[${env.DB_TYPE}] Query Builder with uuid`, () => {
           .from("posts_with_uuid", "p")
           .where("p.title", "Hello World");
       }, "p")
-      .one();
+      .oneOrFail();
 
     expect(retrievedPost).toBeDefined();
     expect(retrievedPost.title).toBe("Hello World");
@@ -69,7 +69,8 @@ describe(`[${env.DB_TYPE}] Query Builder with uuid`, () => {
       title: "Hello World",
     });
 
-    const retrievedPost = await SqlDataSource.query("posts_with_uuid").one();
+    const retrievedPost =
+      await SqlDataSource.query("posts_with_uuid").oneOrFail();
 
     expect(retrievedPost).toBeDefined();
     expect(retrievedPost.id).toBeDefined();
@@ -84,7 +85,7 @@ describe(`[${env.DB_TYPE}] Query Builder with uuid`, () => {
 
     const retrievedPost = await SqlDataSource.query("posts_with_uuid")
       .annotate("title", "postTitle")
-      .one();
+      .oneOrFail();
 
     expect(retrievedPost).toBeDefined();
     expect(retrievedPost.postTitle).toBe("Hello World");
@@ -125,7 +126,8 @@ describe(`[${env.DB_TYPE}] Query Builder with uuid`, () => {
       short_description: "Hello World Short Description",
     });
 
-    const retrievedPost = await SqlDataSource.query("posts_with_uuid").one();
+    const retrievedPost =
+      await SqlDataSource.query("posts_with_uuid").oneOrFail();
 
     expect(retrievedPost).toBeDefined();
     expect(retrievedPost.id).toBeDefined();
@@ -172,7 +174,8 @@ describe(`[${env.DB_TYPE}] Query Builder with uuid`, () => {
       title: "Hello World Updated",
     });
 
-    const retrievedPost = await SqlDataSource.query("posts_with_uuid").first();
+    const retrievedPost =
+      await SqlDataSource.query("posts_with_uuid").firstOrFail();
     expect(retrievedPost.title).toBe("Hello World Updated");
   });
 
@@ -207,7 +210,7 @@ describe(`[${env.DB_TYPE}] Query Builder with uuid`, () => {
       "posts_with_uuid",
     )
       .whereNotNull("deleted_at")
-      .one();
+      .oneOrFail();
 
     expect(retrievedPostWithDeletedAt).toBeDefined();
     expect(retrievedPostWithDeletedAt.deleted_at).toBeDefined();
@@ -232,7 +235,8 @@ describe(`[${env.DB_TYPE}] Query Builder with a model without a primary key`, ()
       name: "John Doe",
     });
 
-    const retrievedUser = await SqlDataSource.query("users_without_pk").first();
+    const retrievedUser =
+      await SqlDataSource.query("users_without_pk").firstOrFail();
 
     expect(retrievedUser).toBeDefined();
     expect(retrievedUser.id).not.toBeDefined();
@@ -266,7 +270,8 @@ describe(`[${env.DB_TYPE}] Query Builder with a model without a primary key`, ()
       name: "Jane Doe",
     });
 
-    const retrievedUser = await SqlDataSource.query("users_without_pk").first();
+    const retrievedUser =
+      await SqlDataSource.query("users_without_pk").firstOrFail();
     expect(retrievedUser.name).toBe("Jane Doe");
   });
 
@@ -302,7 +307,7 @@ describe(`[${env.DB_TYPE}] Query Builder with a model without a primary key`, ()
       .one();
 
     expect(retrievedUserWithDeletedAt).toBeDefined();
-    expect(retrievedUserWithDeletedAt.deleted_at).toBeDefined();
+    expect(retrievedUserWithDeletedAt?.deleted_at).toBeDefined();
   });
 
   test("should truncate the table", async () => {
@@ -777,8 +782,8 @@ describe(`[${env.DB_TYPE}] Query Builder: whereSubQuery + whereBuilder integrati
       .one();
 
     expect(retrievedUser).toBeDefined();
-    expect(retrievedUser.name).toBeDefined();
-    expect(retrievedUser.user_name).toBe("Alice");
+    expect(retrievedUser?.name).toBeDefined();
+    expect(retrievedUser?.user_name).toBe("Alice");
   });
 });
 

@@ -12,8 +12,8 @@ import { SqlDataSourceType } from "../../sql_data_source_types";
 import { execSql } from "../../sql_runner/sql_runner";
 import { Model } from "../model";
 import { ModelQueryBuilder } from "../model_query_builder/model_query_builder";
-import { FetchHooks } from "../model_query_builder/model_query_builder_types";
-import { ModelDataWithOnlyColumns } from "../model_types";
+import { AnnotatedModel } from "../model_query_builder/model_query_builder_types";
+import { ModelWithoutRelations } from "../model_types";
 import { getBaseModelInstance } from "../model_utils";
 import {
   FindOneType,
@@ -52,9 +52,20 @@ export class ModelManager<T extends Model> {
   /**
    * @description Finds all records that match the input
    */
-  async find(input?: FindType<T>): Promise<T[]>;
-  async find(input?: UnrestrictedFindType<T>): Promise<T[]>;
-  async find(input?: FindType<T> | UnrestrictedFindType<T>): Promise<T[]> {
+  async find<
+    S extends ModelKey<T>[] = never[],
+    R extends ModelRelation<T>[] = never[],
+  >(input?: FindType<T, S, R>): Promise<AnnotatedModel<T, {}>[]>;
+  async find<
+    S extends ModelKey<T>[] = never[],
+    R extends ModelRelation<T>[] = never[],
+  >(input?: UnrestrictedFindType<T, S, R>): Promise<AnnotatedModel<T, {}>[]>;
+  async find<
+    S extends ModelKey<T>[] = never[],
+    R extends ModelRelation<T>[] = never[],
+  >(
+    input?: FindType<T, S, R> | UnrestrictedFindType<T, S, R>,
+  ): Promise<AnnotatedModel<T, {}>[]> {
     if (!input) {
       return this.query().many();
     }
@@ -105,21 +116,32 @@ export class ModelManager<T extends Model> {
   /**
    * @description Finds the first record that matches the input
    */
-  async findOne(input: UnrestrictedFindOneType<T>): Promise<T | null>;
-  async findOne(input: FindOneType<T>): Promise<T | null>;
-  async findOne(
-    input: FindOneType<T> | UnrestrictedFindOneType<T>,
-  ): Promise<T | null> {
+  async findOne<
+    S extends ModelKey<T>[] = never[],
+    R extends ModelRelation<T>[] = never[],
+  >(
+    input: UnrestrictedFindOneType<T, S, R>,
+  ): Promise<AnnotatedModel<T, {}> | null>;
+  async findOne<
+    S extends ModelKey<T>[] = never[],
+    R extends ModelRelation<T>[] = never[],
+  >(input: FindOneType<T, S, R>): Promise<AnnotatedModel<T, {}> | null>;
+  async findOne<
+    S extends ModelKey<T>[] = never[],
+    R extends ModelRelation<T>[] = never[],
+  >(
+    input: FindOneType<T, S, R> | UnrestrictedFindOneType<T, S, R>,
+  ): Promise<AnnotatedModel<T, {}> | null> {
     const results = await this.find({
-      groupBy: input.groupBy as string[],
-      orderBy: input.orderBy as Record<string, OrderByChoices>,
-      relations: input.relations as ModelRelation<T>[],
-      select: input.select as string[],
-      where: input.where as Record<string, any>,
-      ignoreHooks: input.ignoreHooks as FetchHooks[],
+      groupBy: input.groupBy,
+      orderBy: input.orderBy,
+      relations: input.relations,
+      select: input.select,
+      where: input.where,
+      ignoreHooks: input.ignoreHooks,
       offset: input.offset,
       limit: 1,
-    });
+    } as FindType<T, S, R>);
 
     if (!results.length) {
       return null;
@@ -131,22 +153,31 @@ export class ModelManager<T extends Model> {
   /**
    * @description Finds the first record that matches the input or throws an error
    */
-  async findOneOrFail(input: FindOneType<T>): Promise<T>;
-  async findOneOrFail(input: UnrestrictedFindOneType<T>): Promise<T>;
-  async findOneOrFail(
-    input: (FindOneType<T> | UnrestrictedFindOneType<T>) & {
+  async findOneOrFail<
+    S extends ModelKey<T>[] = never[],
+    R extends ModelRelation<T>[] = never[],
+  >(input: FindOneType<T, S, R>): Promise<AnnotatedModel<T, {}>>;
+  async findOneOrFail<
+    S extends ModelKey<T>[] = never[],
+    R extends ModelRelation<T>[] = never[],
+  >(input: UnrestrictedFindOneType<T, S, R>): Promise<AnnotatedModel<T, {}>>;
+  async findOneOrFail<
+    S extends ModelKey<T>[] = never[],
+    R extends ModelRelation<T>[] = never[],
+  >(
+    input: (FindOneType<T, S, R> | UnrestrictedFindOneType<T, S, R>) & {
       customError?: Error;
     },
-  ): Promise<T> {
+  ): Promise<AnnotatedModel<T, {}>> {
     const result = await this.findOne({
-      groupBy: input.groupBy as string[],
-      orderBy: input.orderBy as Record<string, OrderByChoices>,
-      relations: input.relations as ModelRelation<T>[],
-      select: input.select as string[],
-      where: input.where as Record<string, any>,
-      ignoreHooks: input.ignoreHooks as FetchHooks[],
+      groupBy: input.groupBy,
+      orderBy: input.orderBy,
+      relations: input.relations,
+      select: input.select,
+      where: input.where,
+      ignoreHooks: input.ignoreHooks,
       offset: input.offset,
-    });
+    } as FindOneType<T, S, R>);
 
     if (result === null) {
       if (input.customError) {
@@ -170,7 +201,7 @@ export class ModelManager<T extends Model> {
   async findOneByPrimaryKey(
     value: string | number,
     returning?: ModelKey<T>[],
-  ): Promise<T | null> {
+  ): Promise<AnnotatedModel<T, {}> | null> {
     if (!this.model.primaryKey) {
       throw new HysteriaError(
         this.model.name + "::findOneByPrimaryKey",
@@ -187,7 +218,10 @@ export class ModelManager<T extends Model> {
   /**
    * @description Creates a new record in the database
    */
-  async insert(model: Partial<T>, options: InsertOptions<T> = {}): Promise<T> {
+  async insert(
+    model: Partial<T>,
+    options: InsertOptions<T> = {},
+  ): Promise<AnnotatedModel<T, {}>> {
     !options.ignoreHooks && (await this.model.beforeInsert?.(model as T));
     const { columns: preparedColumns, values: preparedValues } =
       this.interpreterUtils.prepareColumns(
@@ -244,7 +278,7 @@ export class ModelManager<T extends Model> {
   async insertMany(
     models: Partial<T>[],
     options: InsertOptions<T> = {},
-  ): Promise<T[]> {
+  ): Promise<AnnotatedModel<T, {}>[]> {
     const insertObjects: Record<string, any>[] = [];
     for (const model of models) {
       !options.ignoreHooks && this.model.beforeInsert?.(model as T);
@@ -306,11 +340,11 @@ export class ModelManager<T extends Model> {
   async upsertMany(
     conflictColumns: string[],
     columnsToUpdate: string[],
-    data: ModelDataWithOnlyColumns<T>[],
+    data: ModelWithoutRelations<T>[],
     options: UpsertOptions<T> = {
       updateOnConflict: true,
     },
-  ): Promise<T[]> {
+  ): Promise<AnnotatedModel<T, {}>[]> {
     const insertObjects: Record<string, any>[] = [];
     await Promise.all(
       data.map((model) => {
@@ -363,7 +397,7 @@ export class ModelManager<T extends Model> {
   async updateRecord(
     model: Partial<T>,
     options?: { returning?: ModelKey<T>[] },
-  ): Promise<T> {
+  ): Promise<AnnotatedModel<T, {}>> {
     const { columns: preparedColumns, values: preparedValues } =
       this.interpreterUtils.prepareColumns(
         Object.keys(model),

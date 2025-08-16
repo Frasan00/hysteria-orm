@@ -6,6 +6,7 @@ import type {
   FindType,
   InsertOptions,
   ModelKey,
+  ModelRelation,
   UnrestrictedFindOneType,
   UnrestrictedFindType,
   UpsertOptions,
@@ -14,7 +15,7 @@ import type {
 import type { ModelQueryBuilder } from "./model_query_builder/model_query_builder";
 import type {
   BaseModelMethodOptions,
-  ModelDataWithOnlyColumns,
+  ModelWithoutRelations,
 } from "./model_types";
 
 import { Entity } from "../../entity";
@@ -33,11 +34,12 @@ import {
   hasOne,
   manyToMany,
 } from "./decorators/model_decorators";
-import { getBaseTableName } from "./model_utils";
 import {
   ColumnType,
   LazyRelationType,
 } from "./decorators/model_decorators_types";
+import { AnnotatedModel } from "./model_query_builder/model_query_builder_types";
+import { getBaseTableName } from "./model_utils";
 
 /**
  * @description Represents a Table in the Database
@@ -97,12 +99,12 @@ export abstract class Model extends Entity {
   static async all<T extends Model>(
     this: new () => T | typeof Model,
     options: BaseModelMethodOptions = {},
-  ): Promise<T[]> {
+  ): Promise<AnnotatedModel<T, {}>[]> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
     return (await modelManager.find({
       ignoreHooks: options.ignoreHooks ? ["afterFetch", "beforeFetch"] : [],
-    })) as T[];
+    })) as AnnotatedModel<T, {}>[];
   }
 
   /**
@@ -124,7 +126,7 @@ export abstract class Model extends Entity {
   static async first<T extends Model>(
     this: new () => T | typeof Model,
     options?: BaseModelMethodOptions,
-  ): Promise<T | null> {
+  ): Promise<AnnotatedModel<T, {}> | null> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
     return modelManager.query().one({
@@ -135,16 +137,20 @@ export abstract class Model extends Entity {
   /**
    * @description Finds records for the given model
    */
-  static async find<T extends Model, S extends ModelKey<T>[] = never[]>(
+  static async find<
+    T extends Model,
+    S extends ModelKey<T>[] = never[],
+    R extends ModelRelation<T>[] = never[],
+  >(
     this: new () => T | typeof Model,
-    findOptions?: FindType<T, S> | UnrestrictedFindType<T, S>,
+    findOptions?: FindType<T, S, R> | UnrestrictedFindType<T, S, R>,
     options?: Omit<BaseModelMethodOptions, "ignoreHooks">,
-  ): Promise<FindReturnType<T, S>[]> {
+  ): Promise<FindReturnType<T, S, R>[]> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
     return (await modelManager.find(
-      findOptions as FindType<T, S>,
-    )) as FindReturnType<T, S>[];
+      findOptions as FindType<T, S, R>,
+    )) as FindReturnType<T, S, R>[];
   }
 
   /**
@@ -153,45 +159,57 @@ export abstract class Model extends Entity {
   static async findOneOrFail<
     T extends Model,
     S extends ModelKey<T>[] = never[],
+    R extends ModelRelation<T>[] = never[],
   >(
     this: new () => T | typeof Model,
-    findOneOptions: (FindOneType<T, S> | UnrestrictedFindOneType<T, S>) & {
+    findOneOptions: (
+      | FindOneType<T, S, R>
+      | UnrestrictedFindOneType<T, S, R>
+    ) & {
       customError?: Error;
     },
     options?: Omit<BaseModelMethodOptions, "ignoreHooks">,
-  ): Promise<FindReturnType<T, S>> {
+  ): Promise<FindReturnType<T, S, R>> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
     return (await modelManager.findOneOrFail(
-      findOneOptions as FindOneType<T, S>,
-    )) as FindReturnType<T, S>;
+      findOneOptions as FindOneType<T, S, R>,
+    )) as FindReturnType<T, S, R>;
   }
 
   /**
    * @description Finds a record for the given model
    */
-  static async findOne<T extends Model, S extends ModelKey<T>[] = never[]>(
+  static async findOne<
+    T extends Model,
+    S extends ModelKey<T>[] = never[],
+    R extends ModelRelation<T>[] = never[],
+  >(
     this: new () => T | typeof Model,
-    findOneOptions: (FindOneType<T, S> | UnrestrictedFindOneType<T, S>) &
+    findOneOptions: (FindOneType<T, S, R> | UnrestrictedFindOneType<T, S, R>) &
       BaseModelMethodOptions,
     options?: Omit<BaseModelMethodOptions, "ignoreHooks">,
-  ): Promise<FindReturnType<T, S> | null> {
+  ): Promise<FindReturnType<T, S, R> | null> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
     return (await modelManager.findOne(
-      findOneOptions as FindOneType<T, S>,
-    )) as FindReturnType<T, S> | null;
+      findOneOptions as FindOneType<T, S, R>,
+    )) as FindReturnType<T, S, R> | null;
   }
 
   /**
    * @description Finds records for the given column and value
    */
-  static async findBy<T extends Model, S extends ModelKey<T>[] = never[]>(
+  static async findBy<
+    T extends Model,
+    S extends ModelKey<T>[] = never[],
+    R extends ModelRelation<T>[] = never[],
+  >(
     this: new () => T | typeof Model,
     column: S,
     value: string | number | boolean | Date | null,
     options: BaseModelMethodOptions = {},
-  ): Promise<FindReturnType<T, S>[]> {
+  ): Promise<FindReturnType<T, S, R>[]> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
     return (await modelManager.find({
@@ -199,18 +217,22 @@ export abstract class Model extends Entity {
       where: {
         [column as unknown as keyof T]: value as T[keyof T],
       } as WhereType<T>,
-    })) as FindReturnType<T, S>[];
+    })) as FindReturnType<T, S, R>[];
   }
 
   /**
    * @description Finds the first record for the given column and value
    */
-  static async findOneBy<T extends Model, S extends ModelKey<T>[] = never[]>(
+  static async findOneBy<
+    T extends Model,
+    S extends ModelKey<T>[] = never[],
+    R extends ModelRelation<T>[] = never[],
+  >(
     this: new () => T | typeof Model,
     column: ModelKey<T>,
     value: string | number | boolean | Date | null,
     options: BaseModelMethodOptions = {},
-  ): Promise<FindReturnType<T, S> | null> {
+  ): Promise<FindReturnType<T, S, R> | null> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
     return (await modelManager.findOne({
@@ -218,7 +240,7 @@ export abstract class Model extends Entity {
       where: {
         [column as keyof T]: value as T[keyof T],
       } as WhereType<T>,
-    })) as FindReturnType<T, S> | null;
+    })) as FindReturnType<T, S, R> | null;
   }
 
   /**
@@ -227,16 +249,18 @@ export abstract class Model extends Entity {
   static async findOneByPrimaryKey<
     T extends Model,
     S extends ModelKey<T>[] = never[],
+    R extends ModelRelation<T>[] = never[],
   >(
     this: new () => T | typeof Model,
     value: string | number,
     options: Omit<BaseModelMethodOptions, "ignoreHooks"> = {},
-  ): Promise<FindReturnType<T, S> | null> {
+  ): Promise<FindReturnType<T, S, R> | null> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
     return (await modelManager.findOneByPrimaryKey(value)) as FindReturnType<
       T,
-      S
+      S,
+      R
     > | null;
   }
 
@@ -247,7 +271,7 @@ export abstract class Model extends Entity {
     this: new () => T | typeof Model,
     model: T,
     options: Omit<BaseModelMethodOptions, "ignoreHooks"> = {},
-  ): Promise<T | null> {
+  ): Promise<AnnotatedModel<T, {}> | null> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
     const primaryKey = typeofModel.primaryKey as keyof T;
@@ -272,9 +296,9 @@ export abstract class Model extends Entity {
    */
   static async insert<T extends Model>(
     this: new () => T | typeof Model,
-    modelData: Partial<ModelDataWithOnlyColumns<T>>,
+    modelData: Partial<ModelWithoutRelations<T>>,
     options: BaseModelMethodOptions & InsertOptions<T> = {},
-  ): Promise<T> {
+  ): Promise<AnnotatedModel<T, {}>> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
     return modelManager.insert(modelData as T, {
@@ -293,9 +317,9 @@ export abstract class Model extends Entity {
    */
   static async insertMany<T extends Model>(
     this: new () => T | typeof Model,
-    modelsData: Partial<ModelDataWithOnlyColumns<T>>[],
+    modelsData: Partial<ModelWithoutRelations<T>>[],
     options: BaseModelMethodOptions & InsertOptions<T> = {},
-  ): Promise<T[]> {
+  ): Promise<AnnotatedModel<T, {}>[]> {
     if (!modelsData.length) {
       return [];
     }
@@ -317,9 +341,9 @@ export abstract class Model extends Entity {
   static async updateRecord<T extends Model>(
     this: new () => T | typeof Model,
     modelSqlInstance: Partial<T>,
-    updatePayload?: ModelDataWithOnlyColumns<T>,
+    updatePayload?: ModelWithoutRelations<T>,
     options: Omit<BaseModelMethodOptions, "ignoreHooks"> = {},
-  ): Promise<T> {
+  ): Promise<AnnotatedModel<T, {}>> {
     try {
       const typeofModel = this as unknown as typeof Model;
       const modelManager = typeofModel.dispatchModelManager<T>(options);
@@ -344,12 +368,11 @@ export abstract class Model extends Entity {
 
   /**
    * @description Finds the first record or creates a new one if it doesn't exist
-   * @returns {Promise<T | { isNew: boolean; model: T }>}
    */
   static async firstOrInsert<T extends Model, O extends boolean = false>(
     this: new () => T | typeof Model,
-    searchCriteria: Partial<ModelDataWithOnlyColumns<T>>,
-    createData: Partial<ModelDataWithOnlyColumns<T>>,
+    searchCriteria: Partial<ModelWithoutRelations<T>>,
+    createData: Partial<ModelWithoutRelations<T>>,
     options: Omit<BaseModelMethodOptions, "ignoreHooks"> & {
       fullResponse?: O;
     } = {},
@@ -398,12 +421,12 @@ export abstract class Model extends Entity {
    */
   static async upsert<T extends Model>(
     this: new () => T | typeof Model,
-    searchCriteria: Partial<ModelDataWithOnlyColumns<T>>,
-    data: Partial<ModelDataWithOnlyColumns<T>>,
+    searchCriteria: Partial<ModelWithoutRelations<T>>,
+    data: Partial<ModelWithoutRelations<T>>,
     options: UpsertOptions<T> & BaseModelMethodOptions = {
       updateOnConflict: true,
     },
-  ): Promise<T> {
+  ): Promise<AnnotatedModel<T, {}>> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
     const doesExist = await modelManager.findOne({
@@ -413,7 +436,7 @@ export abstract class Model extends Entity {
 
     if (doesExist) {
       (data as T)[typeofModel.primaryKey as keyof T] =
-        doesExist[typeofModel.primaryKey as keyof T];
+        doesExist[typeofModel.primaryKey as keyof ModelWithoutRelations<T>];
 
       if (options.updateOnConflict) {
         return (await modelManager.updateRecord(data as T, {
@@ -437,11 +460,11 @@ export abstract class Model extends Entity {
   static async upsertMany<T extends Model>(
     this: new () => T | typeof Model,
     conflictColumns: ModelKey<T>[],
-    data: Partial<ModelDataWithOnlyColumns<T>>[],
+    data: Partial<ModelWithoutRelations<T>>[],
     options: UpsertOptions<T> & BaseModelMethodOptions = {
       updateOnConflict: true,
     },
-  ): Promise<T[]> {
+  ): Promise<AnnotatedModel<T, {}>[]> {
     if (!data.length) {
       return [];
     }
@@ -465,7 +488,7 @@ export abstract class Model extends Entity {
     const upsertResult = await modelManager.upsertMany(
       conflictColumns as string[],
       columnsToUpdate,
-      data as ModelDataWithOnlyColumns<T>[],
+      data as ModelWithoutRelations<T>[],
       {
         ignoreHooks: options.ignoreHooks,
         returning: options.returning,
@@ -476,10 +499,10 @@ export abstract class Model extends Entity {
     const dbType = typeofModel.sqlInstance.getDbType();
     if (databasesWithReturning.includes(dbType)) {
       return (await serializeModel(
-        upsertResult,
+        upsertResult as T[],
         typeofModel,
         options.returning as string[],
-      )) as T[];
+      )) as unknown as AnnotatedModel<T, {}>[];
     }
 
     const lookupQuery = modelManager.query();
@@ -492,7 +515,7 @@ export abstract class Model extends Entity {
       data.forEach((record) => {
         conflictMap.set(column as string, [
           ...(conflictMap.get(column as string) || []),
-          record[column as unknown as keyof ModelDataWithOnlyColumns<T>],
+          record[column as unknown as keyof ModelWithoutRelations<T>],
         ]);
       });
     });
@@ -535,7 +558,7 @@ export abstract class Model extends Entity {
       value?: string | number | boolean | Date;
     },
     options?: Omit<BaseModelMethodOptions, "ignoreHooks">,
-  ): Promise<T> {
+  ): Promise<AnnotatedModel<T, {}>> {
     const typeofModel = this as unknown as typeof Model;
     const {
       column = typeofModel.softDeleteColumn as ModelKey<T>,
@@ -551,11 +574,11 @@ export abstract class Model extends Entity {
 
     if (typeof value === "string") {
       modelSqlInstance[column as keyof T] = new Date(value) as T[keyof T];
-      return modelSqlInstance;
+      return modelSqlInstance as AnnotatedModel<T, {}>;
     }
 
     modelSqlInstance[column as keyof T] = value as T[keyof T];
-    return modelSqlInstance;
+    return modelSqlInstance as AnnotatedModel<T, {}>;
   }
 
   /**

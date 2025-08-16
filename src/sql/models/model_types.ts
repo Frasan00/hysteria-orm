@@ -4,7 +4,7 @@ import { Transaction } from "../transactions/transaction";
 import { Model } from "./model";
 import { ExcludeRelations } from "./model_manager/model_manager_types";
 
-export type ModelDataWithOnlyColumns<T extends Model> = Pick<
+export type ModelWithoutRelations<T extends Model> = Pick<
   T,
   ExcludeRelations<Omit<T, "*">>
 >;

@@ -2,6 +2,7 @@ import { HysteriaError } from "../../../errors/hysteria_error";
 import { convertCase } from "../../../utils/case_utils";
 import { withPerformance } from "../../../utils/performance";
 import { SelectNode } from "../../ast/query/node/select/basic_select";
+import type { SqlMethod } from "../../ast/query/node/select/select_types";
 import { getModelColumns } from "../../models/decorators/model_decorators";
 import { Model } from "../../models/model";
 import type {
@@ -15,15 +16,12 @@ import {
   SoftDeleteOptions,
 } from "../../query_builder/delete_query_builder_type";
 import { QueryBuilder } from "../../query_builder/query_builder";
+import { RelationRetrieveMethod } from "../../query_builder/query_builder_types";
 import type { UpdateOptions } from "../../query_builder/update_query_builder_types";
-import type { SqlMethod } from "../../ast/query/node/select/select_types";
 import { serializeModel } from "../../serializer";
 import { SqlDataSource } from "../../sql_data_source";
 import { ColumnType } from "../decorators/model_decorators_types";
-import {
-  BaseModelMethodOptions,
-  ModelDataWithOnlyColumns,
-} from "../model_types";
+import { BaseModelMethodOptions, ModelWithoutRelations } from "../model_types";
 import { ManyToMany } from "../relations/many_to_many";
 import { Relation, RelationEnum } from "../relations/relation";
 import type {
@@ -32,12 +30,14 @@ import type {
   FetchHooks,
   ManyOptions,
   OneOptions,
+  RelatedInstance,
 } from "./model_query_builder_types";
 import type { RelationQueryBuilderType } from "./relation_query_builder/relation_query_builder_types";
 
 export class ModelQueryBuilder<
   T extends Model,
   A extends Record<string, any> = {},
+  R extends Record<string, any> = {},
 > extends QueryBuilder<T> {
   declare relation: Relation;
   protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
@@ -97,7 +97,7 @@ export class ModelQueryBuilder<
   /**
    * @description Executes the query and retrieves the first result.
    */
-  async one(options: OneOptions = {}): Promise<AnnotatedModel<T, A> | null> {
+  async one(options: OneOptions = {}): Promise<AnnotatedModel<T, A, R> | null> {
     const result = await this.limit(1).many(options);
     if (!result || !result.length) {
       return null;
@@ -109,7 +109,7 @@ export class ModelQueryBuilder<
   /**
    * @alias one
    */
-  async first(options?: OneOptions): Promise<AnnotatedModel<T, A> | null> {
+  async first(options?: OneOptions): Promise<AnnotatedModel<T, A, R> | null> {
     return this.one(options);
   }
 
@@ -118,13 +118,13 @@ export class ModelQueryBuilder<
    */
   async oneOrFail(options?: {
     ignoreHooks?: OneOptions["ignoreHooks"] & { customError?: Error };
-  }): Promise<AnnotatedModel<T, A>> {
+  }): Promise<AnnotatedModel<T, A, R>> {
     const model = await this.one(options);
     if (!model) {
       throw new HysteriaError(this.model.name + "::oneOrFail", "ROW_NOT_FOUND");
     }
 
-    return model as AnnotatedModel<T, A>;
+    return model as AnnotatedModel<T, A, R>;
   }
 
   /**
@@ -132,7 +132,7 @@ export class ModelQueryBuilder<
    */
   async firstOrFail(options?: {
     ignoreHooks?: OneOptions["ignoreHooks"] & { customError?: Error };
-  }): Promise<AnnotatedModel<T, A>> {
+  }): Promise<AnnotatedModel<T, A, R>> {
     return this.oneOrFail(options);
   }
 
@@ -141,7 +141,7 @@ export class ModelQueryBuilder<
    */
   override async many(
     options: ManyOptions = {},
-  ): Promise<AnnotatedModel<T, A>[]> {
+  ): Promise<AnnotatedModel<T, A, R>[]> {
     !options.ignoreHooks?.includes("beforeFetch") &&
       this.model.beforeFetch?.(this);
     const rows = await super.many();
@@ -175,7 +175,7 @@ export class ModelQueryBuilder<
       await this.processRelationsRecursively(serializedModelsArray);
     }
 
-    return serializedModelsArray as AnnotatedModel<T, A>[];
+    return serializedModelsArray as unknown as AnnotatedModel<T, A, R>[];
   }
 
   /**
@@ -187,7 +187,7 @@ export class ModelQueryBuilder<
     options: ManyOptions = {},
     returnType: "millis" | "seconds" = "millis",
   ): Promise<{
-    data: AnnotatedModel<T, A>[];
+    data: AnnotatedModel<T, A, R>[];
     time: number;
   }> {
     const [time, data] = await withPerformance(
@@ -207,7 +207,7 @@ export class ModelQueryBuilder<
     options: OneOptions = {},
     returnType: "millis" | "seconds" = "millis",
   ): Promise<{
-    data: AnnotatedModel<T, A> | null;
+    data: AnnotatedModel<T, A, R> | null;
     time: number;
   }> {
     const [time, data] = await withPerformance(
@@ -227,7 +227,7 @@ export class ModelQueryBuilder<
     options: OneOptions = {},
     returnType: "millis" | "seconds" = "millis",
   ): Promise<{
-    data: AnnotatedModel<T, A>;
+    data: AnnotatedModel<T, A, R>;
     time: number;
   }> {
     const [time, data] = await withPerformance(
@@ -246,7 +246,7 @@ export class ModelQueryBuilder<
     options: OneOptions = {},
     returnType: "millis" | "seconds" = "millis",
   ): Promise<{
-    data: AnnotatedModel<T, A>;
+    data: AnnotatedModel<T, A, R>;
     time: number;
   }> {
     return this.oneOrFailWithPerformance(options, returnType);
@@ -260,7 +260,7 @@ export class ModelQueryBuilder<
     options: OneOptions = {},
     returnType: "millis" | "seconds" = "millis",
   ): Promise<{
-    data: AnnotatedModel<T, A> | null;
+    data: AnnotatedModel<T, A, R> | null;
     time: number;
   }> {
     return this.oneWithPerformance(options, returnType);
@@ -277,7 +277,7 @@ export class ModelQueryBuilder<
     options?: { ignoreHooks?: boolean },
     returnType: "millis" | "seconds" = "millis",
   ): Promise<{
-    data: PaginatedData<AnnotatedModel<T, A>>;
+    data: PaginatedData<T, A, R>;
     time: number;
   }> {
     const { ignoreHooks = false } = options || {};
@@ -289,7 +289,7 @@ export class ModelQueryBuilder<
     return {
       data: {
         paginationMetadata: data.paginationMetadata,
-        data: data.data as AnnotatedModel<T, A>[],
+        data: data.data,
       },
       time: Number(time),
     };
@@ -299,7 +299,7 @@ export class ModelQueryBuilder<
    * @description Updates records in the database for the current query.
    */
   override async update(
-    data: Partial<ModelDataWithOnlyColumns<T>>,
+    data: Partial<ModelWithoutRelations<T>>,
     options: UpdateOptions = {},
   ): Promise<number> {
     options.ignoreBeforeUpdateHook && this.model.beforeUpdate?.(this);
@@ -433,7 +433,7 @@ export class ModelQueryBuilder<
     page: number,
     perPage: number,
     options: { ignoreHooks: boolean } = { ignoreHooks: false },
-  ): Promise<PaginatedData<T>> {
+  ): Promise<PaginatedData<T, A, R>> {
     const originalSelectNodes = this.selectNodes;
     const total = await this.getCount("*", {
       ignoreHooks: options.ignoreHooks,
@@ -451,7 +451,7 @@ export class ModelQueryBuilder<
     return {
       paginationMetadata,
       data: models,
-    } as PaginatedData<AnnotatedModel<T, A>>;
+    };
   }
 
   override select(...columns: string[]): this;
@@ -556,26 +556,113 @@ export class ModelQueryBuilder<
    * @description Fills the relations in the model in the serialized response. Relation must be defined in the model.
    * @warning Many to many relations have special behavior, since they require a join, a join clause will always be added to the query.
    * @warning Many to many relations uses the model foreign key for mapping in the `$annotations` property, this property will be removed from the model after the relation is filled.
+   * @limitations It is not possible to limit or offset the number of related models fetched for each record
    */
-  withRelation<O extends typeof Model>(
-    relation: ModelRelation<T>,
-    _relatedModel?: O,
-    cb?: (queryBuilder: RelationQueryBuilderType<InstanceType<O>>) => void,
-  ): this {
+  withRelation<
+    RelationKey extends ModelRelation<T>,
+    IA extends Record<string, any> = {},
+    IR extends Record<string, any> = {},
+  >(
+    relation: RelationKey,
+    cb: (
+      queryBuilder: RelationQueryBuilderType<RelatedInstance<T, RelationKey>>,
+    ) => RelationQueryBuilderType<RelatedInstance<T, RelationKey>, IA, IR>,
+  ): ModelQueryBuilder<
+    T,
+    A,
+    R & {
+      [K in RelationKey]: Awaited<
+        ReturnType<
+          ModelQueryBuilder<
+            RelatedInstance<T, K>,
+            IA,
+            IR
+          >[RelationRetrieveMethod<T[K]>]
+        >
+      >;
+    }
+  >;
+
+  withRelation<RelationKey extends ModelRelation<T>>(
+    relation: RelationKey,
+    cb?: (
+      queryBuilder: RelationQueryBuilderType<RelatedInstance<T, RelationKey>>,
+    ) => void,
+  ): ModelQueryBuilder<
+    T,
+    A,
+    R & {
+      [K in RelationKey]: Awaited<
+        ReturnType<
+          ModelQueryBuilder<
+            RelatedInstance<T, K>,
+            {},
+            {}
+          >[RelationRetrieveMethod<T[K]>]
+        >
+      >;
+    }
+  >;
+  withRelation<
+    RelationKey extends ModelRelation<T>,
+    IA extends Record<string, any> = {},
+    IR extends Record<string, any> = {},
+  >(
+    relation: RelationKey,
+    cb?: (
+      queryBuilder: RelationQueryBuilderType<RelatedInstance<T, RelationKey>>,
+    ) => RelationQueryBuilderType<
+      RelatedInstance<T, RelationKey>,
+      IA,
+      IR
+    > | void,
+  ): ModelQueryBuilder<
+    T,
+    A,
+    R & {
+      [K in RelationKey]: Awaited<
+        ReturnType<
+          ModelQueryBuilder<
+            RelatedInstance<T, K>,
+            IA,
+            IR
+          >[RelationRetrieveMethod<T[K]>]
+        >
+      >;
+    }
+  > {
     const modelRelation = this.sqlModelManagerUtils.getRelationFromModel(
       relation as string,
       this.model,
     );
 
-    const relationQueryBuilder = new ModelQueryBuilder<InstanceType<O>>(
-      modelRelation.model,
-      this.sqlDataSource,
-    );
+    const relationQueryBuilder = new ModelQueryBuilder<
+      RelatedInstance<T, RelationKey>
+    >(modelRelation.model, this.sqlDataSource);
 
     relationQueryBuilder.relation = modelRelation;
-    cb?.(relationQueryBuilder);
+    cb?.(
+      relationQueryBuilder as unknown as RelationQueryBuilderType<
+        RelatedInstance<T, RelationKey>
+      >,
+    );
     this.relationQueryBuilders.push(relationQueryBuilder);
-    return this;
+
+    return this as unknown as ModelQueryBuilder<
+      T,
+      A,
+      R & {
+        [K in RelationKey]: Awaited<
+          ReturnType<
+            ModelQueryBuilder<
+              RelatedInstance<T, K>,
+              IA,
+              IR
+            >[RelationRetrieveMethod<T[K]>]
+          >
+        >;
+      }
+    >;
   }
 
   clearRelations(): this {
