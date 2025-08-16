@@ -66,3 +66,21 @@ export type QueryBuilderWithOnlyWhereConditions<T extends Model> = PickMethods<
 export type RelationRetrieveMethod<P extends any> = P extends any[]
   ? "many"
   : "one";
+
+export type SelectableColumn<T extends string = string> =
+  T extends `${infer Table}.${infer Column}.${string}`
+    ? never // Reject multiple dots
+    : T extends `${string} ${string}`
+      ? never // Reject spaces
+      : T extends `.${string}` | `${string}.`
+        ? never // Reject leading/trailing dots
+        : T extends `${string}-${string}`
+          ? never // Reject hyphens
+          : T extends `${string}.${string}`
+            ? T // Accept table.column format
+            : T;
+
+/**
+ * @description A column that can be used in a join statement e.g. `users.id`
+ */
+export type JoinableColumn = `${string}.${string}`;

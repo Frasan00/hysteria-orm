@@ -14,3 +14,32 @@ export function convertValueToSQL(value: any, type: string): string {
       );
   }
 }
+
+export function stripIdentifierQuotes(identifier: string): string {
+  return identifier.replace(/^[`"]|[`"]$/g, "");
+}
+
+export function remapSelectedColumnToFromAlias(
+  column: string,
+  fromAlias: string,
+  modelTable: string,
+): string {
+  if (!column.includes(".")) {
+    const cleanCol = stripIdentifierQuotes(column);
+    return `${fromAlias}.${cleanCol}`;
+  }
+
+  let [table, col] = column.split(".");
+  table = stripIdentifierQuotes(table);
+  col = stripIdentifierQuotes(col);
+
+  if (table !== modelTable) {
+    return column;
+  }
+
+  if (col === "*") {
+    return `${fromAlias}.*`;
+  }
+
+  return `${fromAlias}.${col}`;
+}

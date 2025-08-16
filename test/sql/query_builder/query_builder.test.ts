@@ -459,9 +459,9 @@ describe(`[${env.DB_TYPE}] Where query builder (users_without_pk only)`, () => {
     expect(users[0].name).toBe("Alice");
   });
 
-  test("rawWhere returns correct users", async () => {
+  test("whereRaw returns correct users", async () => {
     const users = await SqlDataSource.query("users_without_pk")
-      .rawWhere("name = 'Bob'")
+      .whereRaw("name = 'Bob'")
       .many();
     expect(users.length).toBe(1);
     expect(users[0].name).toBe("Bob");

@@ -24,15 +24,6 @@ afterEach(async () => {
 });
 
 describe(`[${env.DB_TYPE}] Select`, () => {
-  test("Raw select with select clause", async () => {
-    await UserFactory.userWithoutPk(2);
-    const user = await UserWithoutPk.query()
-      .selectRaw("count(*) as count")
-      .first();
-    expect(user).not.toBeUndefined();
-    expect(Number.parseInt((user as any)?.$annotations.count)).toBe(2);
-  });
-
   test("Annotate", async () => {
     await UserFactory.userWithoutPk(2);
     const user = await UserWithoutPk.query()
@@ -53,18 +44,6 @@ describe(`[${env.DB_TYPE}] Select`, () => {
     expect(user).not.toBeUndefined();
     expect(user?.name).toBeDefined();
     expect(user?.$annotations.superAge).toBeDefined();
-  });
-
-  test("Select before selectRaw", async () => {
-    await UserFactory.userWithoutPk(2);
-    const user = await UserWithoutPk.query()
-      .select("name")
-      .selectRaw("name as result") // pg transform to lower case by default if not escaped with double quotes
-      .first();
-
-    expect(user).not.toBeUndefined();
-    expect(user?.name).toBeDefined();
-    expect((user as any)?.$annotations.result).toBeDefined();
   });
 
   test("Select all without `select` method call (default behavior)", async () => {

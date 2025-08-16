@@ -3,16 +3,18 @@ import { DistinctNode } from "../ast/query/node/distinct/distinct";
 import { DistinctOnNode } from "../ast/query/node/distinct/distinct_on";
 import { FromNode } from "../ast/query/node/from/from";
 import { SelectNode } from "../ast/query/node/select/basic_select";
+import { SqlMethod } from "../ast/query/node/select/select_types";
 import { Model } from "../models/model";
 import { ModelKey } from "../models/model_manager/model_manager_types";
-import { SqlMethod } from "../ast/query/node/select/select_types";
 import { SqlDataSource } from "../sql_data_source";
 import { SqlDataSourceType } from "../sql_data_source_types";
 import { JoinQueryBuilder } from "./join_query_builder";
+import { SelectableColumn } from "./query_builder_types";
 
 export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
   protected dbType: SqlDataSourceType;
   protected modelSelectedColumns: string[] = [];
+  protected modelAnnotatedColumns: string[] = [];
   protected withQuery?: string;
   protected fromNode: FromNode;
   protected distinctNode: DistinctNode | null;
@@ -38,9 +40,11 @@ export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
    * const user = await User.query().select("name", "users.age").first(); // SELECT name, users.age FROM users
    * ```
    */
-  select(...columns: string[]): this;
+  select<S extends string>(...columns: SelectableColumn<S>[]): this;
   select(...columns: (ModelKey<T> | "*")[]): this;
-  select(...columns: (ModelKey<T> | "*" | string)[]): this {
+  select<S extends string>(
+    ...columns: (ModelKey<T> | "*" | SelectableColumn<S>)[]
+  ): this {
     this.modelSelectedColumns = [
       ...this.modelSelectedColumns,
       ...(columns as string[]),
@@ -59,6 +63,7 @@ export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
 
   /**
    * @description Adds a raw select statement to the query
+   * @warning For models, only annotated columns are available and will be added to the `$annotations` property of the model. Everything else will be ignored, if you need a query like `selectRaw` you can use the `QueryBuilder` instead.
    */
   selectRaw(statement: string): this {
     this.selectNodes.push(
@@ -133,6 +138,7 @@ export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
     }
 
     this.selectNodes.push(new SelectNode(column, alias, sqlMethod));
+    this.modelAnnotatedColumns.push(alias);
 
     return this;
   }
@@ -169,8 +175,10 @@ export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
    * @postgresql Only usable with PostgreSQL
    */
   distinctOn(...columns: ModelKey<T>[]): this;
-  distinctOn(...columns: string[]): this;
-  distinctOn(...columns: (string | ModelKey<T>)[]): this {
+  distinctOn<S extends string>(...columns: SelectableColumn<S>[]): this;
+  distinctOn<S extends string>(
+    ...columns: (ModelKey<T> | SelectableColumn<S>)[]
+  ): this {
     this.distinctOnNodes.push(new DistinctOnNode(columns as string[]));
     return this;
   }

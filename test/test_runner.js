@@ -17,12 +17,6 @@ const sqlEnvironments = [
   cockroachdbConfig,
 ];
 
-// use connection
-execSync(
-  `jest --config=jest.config.js --detectOpenHandles ./test/sql/use_connection/use_connection.test.ts`,
-  { stdio: "inherit" }
-);
-
 const sqlTests = [
   // edge cases
   "./test/sql/edge_cases/query_builder_complex_edge_cases.test.ts",
@@ -64,6 +58,12 @@ sqlTests.forEach((file) => {
     }
   });
 });
+
+// use connection
+execSync(
+  `jest --config=jest.config.js --detectOpenHandles ./test/sql/use_connection/use_connection.test.ts`,
+  { stdio: "inherit" }
+);
 
 // mongo
 execSync(

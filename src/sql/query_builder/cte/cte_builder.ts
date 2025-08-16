@@ -1,4 +1,3 @@
-import { HysteriaError } from "../../../errors/hysteria_error";
 import { Model } from "../../models/model";
 import { SqlDataSource } from "../../sql_data_source";
 import { CteCallback, CteMap } from "../cte/cte_types";
@@ -14,7 +13,7 @@ export class CteBuilder<T extends Model> {
   cteMap: CteMap;
 
   constructor(
-    clause: string,
+    _clause: string,
     ...params: ConstructorParameters<typeof QueryBuilder>
   ) {
     this.model = params[0];

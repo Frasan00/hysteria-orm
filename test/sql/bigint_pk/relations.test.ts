@@ -54,6 +54,36 @@ describe(`[${env.DB_TYPE}] bigint pk base relations`, () => {
     }
   });
 
+  test("bigint HasOne relation with column selection on relation", async () => {
+    const users = await UserFactory.userWithBigint(3);
+    const posts = [];
+    for (const user of users) {
+      const post = await PostFactory.postWithBigint(user.id, 1);
+      posts.push(post);
+    }
+
+    expect(users).toHaveLength(3);
+    expect(posts).toHaveLength(3);
+
+    const userWithLoadedPosts = await UserWithBigint.query()
+      .whereIn(
+        "id",
+        users.map((u) => u.id),
+      )
+      .withRelation("post", (qb) =>
+        qb.select("posts_with_bigint.userId", "title"),
+      )
+      .many();
+
+    for (const user of userWithLoadedPosts) {
+      expect(user.id).toBe(user.post?.userId);
+      expect(user.post?.title).toBe(
+        userWithLoadedPosts.find((u) => u.id === user.id)?.post?.title,
+      );
+      expect(user.post?.id).toBeUndefined();
+    }
+  });
+
   test("bigint HasMany relation with filtering on the relation", async () => {
     const user = await UserFactory.userWithBigint(1);
     const posts: PostWithBigint[] = [];
@@ -253,5 +283,153 @@ describe(`[${env.DB_TYPE}] bigint pk many to many relations`, () => {
     expect(
       addressesWithLoadedPosts[0].users[0]?.posts[0]?.user?.addresses,
     ).toHaveLength(3);
+  });
+});
+
+describe(`[${env.DB_TYPE}] bigint pk relations with limit and offset has many`, () => {
+  if (env.DB_TYPE === "cockroachdb") {
+    test.skip("bigint HasMany relation with limit and offset", async () => {});
+    test.skip("bigint HasMany relation with limit", async () => {});
+    test.skip("bigint HasMany relation with offset", async () => {});
+    return;
+  }
+
+  test("bigint HasMany relation with limit and offset", async () => {
+    const user = await UserFactory.userWithBigint(1);
+    const user2 = await UserFactory.userWithBigint(1);
+    await PostFactory.postWithBigint(user.id, 10);
+    await PostFactory.postWithBigint(user2.id, 10);
+
+    const userWithLoadedPosts = await UserWithBigint.query()
+      .withRelation("posts", (qb) =>
+        qb
+          .select("id", "title", "userId")
+          .orderBy("id", "asc")
+          .orderByRaw("title asc")
+          .limit(3)
+          .offset(1),
+      )
+      .many();
+
+    expect(userWithLoadedPosts).toHaveLength(2);
+    expect(userWithLoadedPosts[0].posts).toHaveLength(3);
+    expect(userWithLoadedPosts[1].posts).toHaveLength(3);
+  });
+
+  test("bigint HasMany relation with limit", async () => {
+    const user = await UserFactory.userWithBigint(1);
+    const user2 = await UserFactory.userWithBigint(1);
+    await PostFactory.postWithBigint(user.id, 10);
+    await PostFactory.postWithBigint(user2.id, 10);
+
+    const userWithLoadedPosts = await UserWithBigint.query()
+      .withRelation("posts", (qb) =>
+        qb
+          .select("id", "title", "userId")
+          .orderBy("id", "asc")
+          .orderByRaw("title asc")
+          .limit(3),
+      )
+      .many();
+
+    expect(userWithLoadedPosts).toHaveLength(2);
+    expect(userWithLoadedPosts[0].posts).toHaveLength(3);
+    expect(userWithLoadedPosts[1].posts).toHaveLength(3);
+  });
+
+  test("bigint HasMany relation with offset", async () => {
+    const user = await UserFactory.userWithBigint(1);
+    const user2 = await UserFactory.userWithBigint(1);
+    await PostFactory.postWithBigint(user.id, 10);
+    await PostFactory.postWithBigint(user2.id, 10);
+
+    const userWithLoadedPosts = await UserWithBigint.query()
+      .withRelation("posts", (qb) =>
+        qb
+          .select("id", "title", "userId")
+          .orderBy("id", "asc")
+          .orderByRaw("title asc")
+          .offset(9),
+      )
+      .many();
+
+    expect(userWithLoadedPosts).toHaveLength(2);
+    expect(userWithLoadedPosts[0].posts).toHaveLength(1);
+    expect(userWithLoadedPosts[1].posts).toHaveLength(1);
+  });
+});
+
+describe(`[${env.DB_TYPE}] bigint pk relations with limit and offset many to many`, () => {
+  if (env.DB_TYPE === "cockroachdb") {
+    test.skip("bigint ManyToMany relation with limit and offset", async () => {});
+    test.skip("bigint ManyToMany relation with limit", async () => {});
+    test.skip("bigint ManyToMany relation with offset", async () => {});
+    return;
+  }
+
+  test("bigint ManyToMany relation with limit and offset", async () => {
+    const user = await UserFactory.userWithBigint(1);
+    const user2 = await UserFactory.userWithBigint(1);
+    const addresses = await AddressFactory.addressWithBigint(10);
+
+    for (const address of addresses) {
+      await UserAddressFactory.userAddressWithBigint(1, user.id, address.id);
+      await UserAddressFactory.userAddressWithBigint(1, user2.id, address.id);
+    }
+
+    const usersWithAddresses = await UserWithBigint.query()
+      .withRelation("addresses", (qb) =>
+        qb.orderBy("address_with_bigint.id", "asc").limit(3).offset(1),
+      )
+      .many();
+
+    expect(usersWithAddresses).toHaveLength(2);
+    expect(usersWithAddresses[0].addresses).toHaveLength(3);
+    expect(usersWithAddresses[1].addresses).toHaveLength(3);
+    expect(usersWithAddresses[0].addresses[0].id).toBeDefined();
+  });
+
+  test("bigint ManyToMany relation with limit", async () => {
+    const user = await UserFactory.userWithBigint(1);
+    const user2 = await UserFactory.userWithBigint(1);
+    const addresses = await AddressFactory.addressWithBigint(10);
+
+    for (const address of addresses) {
+      await UserAddressFactory.userAddressWithBigint(1, user.id, address.id);
+      await UserAddressFactory.userAddressWithBigint(1, user2.id, address.id);
+    }
+
+    const usersWithAddresses = await UserWithBigint.query()
+      .withRelation("addresses", (qb) =>
+        qb.orderBy("address_with_bigint.id", "asc").limit(3),
+      )
+      .many();
+
+    expect(usersWithAddresses).toHaveLength(2);
+    expect(usersWithAddresses[0].addresses).toHaveLength(3);
+    expect(usersWithAddresses[1].addresses).toHaveLength(3);
+    expect(usersWithAddresses[0].addresses[0].id).toBeDefined();
+  });
+
+  test("bigint ManyToMany relation with offset", async () => {
+    const user = await UserFactory.userWithBigint(1);
+    const user2 = await UserFactory.userWithBigint(1);
+    const addresses = await AddressFactory.addressWithBigint(10);
+
+    for (const address of addresses) {
+      await UserAddressFactory.userAddressWithBigint(1, user.id, address.id);
+      await UserAddressFactory.userAddressWithBigint(1, user2.id, address.id);
+    }
+
+    const usersWithAddresses = await UserWithBigint.query()
+      .withRelation("addresses", (qb) =>
+        qb.orderBy("address_with_bigint.id", "asc").offset(9),
+      )
+      .many();
+
+    expect(usersWithAddresses).toHaveLength(2);
+    expect(usersWithAddresses[0].addresses).toHaveLength(1);
+    expect(usersWithAddresses[1].addresses).toHaveLength(1);
+    expect(usersWithAddresses[0].addresses[0].id).toBeDefined();
   });
 });

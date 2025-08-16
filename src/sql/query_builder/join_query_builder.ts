@@ -5,6 +5,7 @@ import { Model } from "../models/model";
 import { ModelKey } from "../models/model_manager/model_manager_types";
 import { SqlDataSource } from "../sql_data_source";
 import { FooterQueryBuilder } from "./footer_query_builder";
+import { JoinableColumn } from "./query_builder_types";
 
 export abstract class JoinQueryBuilder<
   T extends Model,
@@ -83,20 +84,20 @@ export abstract class JoinQueryBuilder<
   /**
    * @alias join
    * @param relationTable - The table to join
-   * @param referencingColumn - The column to reference from the relation table
-   * @param primaryColumn - The primary column of the current model, default is caller model primary key if using A Model, if using a Raw Query Builder you must provide the key for the primary table
+   * @param referencingColumn - The column to reference from the relation table, must be in the format of `table.column`
+   * @param primaryColumn - The primary column of the current model, default is caller model primary key if using a Model, if using a Raw Query Builder you must provide the key for the primary table, must be in the format of `table.column`
    * @param operator - The comparison operator to use in the ON clause (default: "=")
    */
   innerJoin(
     relationTable: string,
-    referencingColumn: string,
-    primaryColumn: string,
+    referencingColumn: JoinableColumn,
+    primaryColumn: JoinableColumn,
     operator?: BinaryOperatorType,
   ): this;
   innerJoin(
     relationTable: string,
-    referencingColumn: string,
-    primaryColumn?: string,
+    referencingColumn: JoinableColumn,
+    primaryColumn?: JoinableColumn,
     operator?: BinaryOperatorType,
   ): this;
   innerJoin<R extends typeof Model>(
@@ -114,10 +115,10 @@ export abstract class JoinQueryBuilder<
   innerJoin<R extends typeof Model>(
     relationTable: string | R,
     referencingColumnOrPrimaryColumn:
-      | string
+      | JoinableColumn
       | ModelKey<InstanceType<R>>
       | ModelKey<T>,
-    primaryColumn?: string | ModelKey<T>,
+    primaryColumn?: JoinableColumn | ModelKey<T>,
     operator?: BinaryOperatorType,
   ): this {
     let primaryColumnValue: string | ModelKey<T> | undefined = primaryColumn;
@@ -136,8 +137,8 @@ export abstract class JoinQueryBuilder<
 
     this.join(
       typeof relationTable === "string" ? relationTable : relationTable.table,
-      referencingColumnOrPrimaryColumn as string,
-      primaryColumnValue as string,
+      referencingColumnOrPrimaryColumn as JoinableColumn,
+      primaryColumnValue as JoinableColumn,
       op,
     );
 
@@ -147,20 +148,20 @@ export abstract class JoinQueryBuilder<
   /**
    * @description Join a table with the current model
    * @param relationTable - The table to join
-   * @param referencingColumn - The column to reference from the relation table
-   * @param primaryColumn - The primary column of the current model, default is caller model primary key if using A Model, if using a Raw Query Builder you must provide the key for the primary table
+   * @param referencingColumn - The column to reference from the relation table, must be in the format of `table.column`
+   * @param primaryColumn - The primary column of the current model, default is caller model primary key if using a Model, if using a Raw Query Builder you must provide the key for the primary table, must be in the format of `table.column`
    * @param operator - The comparison operator to use in the ON clause (default: "=")
    */
   join(
     relationTable: string,
-    referencingColumn: string,
-    primaryColumn: string,
+    referencingColumn: JoinableColumn,
+    primaryColumn: JoinableColumn,
     operator?: BinaryOperatorType,
   ): this;
   join(
     relationTable: string,
-    referencingColumn: string,
-    primaryColumn?: string,
+    referencingColumn: JoinableColumn,
+    primaryColumn?: JoinableColumn,
     operator?: BinaryOperatorType,
   ): this;
   join<R extends typeof Model>(
@@ -178,10 +179,10 @@ export abstract class JoinQueryBuilder<
   join<R extends typeof Model>(
     relationTable: string | R,
     referencingColumnOrPrimaryColumn:
-      | string
+      | JoinableColumn
       | ModelKey<InstanceType<R>>
       | ModelKey<T>,
-    primaryColumn?: string | ModelKey<T>,
+    primaryColumn?: JoinableColumn | ModelKey<T>,
     operator?: BinaryOperatorType,
   ): this {
     let primaryColumnValue: string | ModelKey<T> | undefined = primaryColumn;
@@ -214,20 +215,20 @@ export abstract class JoinQueryBuilder<
   /**
    * @description Join a table with the current model
    * @param relationTable - The table to join
-   * @param referencingColumn - The column to reference from the relation table
-   * @param primaryColumn - The primary column of the current model, default is caller model primary key if using A Model, if using a Raw Query Builder you must provide the key for the primary table
+   * @param referencingColumn - The column to reference from the relation table, must be in the format of `table.column`
+   * @param primaryColumn - The primary column of the current model, default is caller model primary key if using a Model, if using a Raw Query Builder you must provide the key for the primary table, must be in the format of `table.column`
    * @param operator - The comparison operator to use in the ON clause (default: "=")
    */
   leftJoin(
     relationTable: string,
-    referencingColumn: string,
-    primaryColumn: string,
+    referencingColumn: JoinableColumn,
+    primaryColumn: JoinableColumn,
     operator?: BinaryOperatorType,
   ): this;
   leftJoin(
     relationTable: string,
-    referencingColumn: string,
-    primaryColumn?: string,
+    referencingColumn: JoinableColumn,
+    primaryColumn?: JoinableColumn,
     operator?: BinaryOperatorType,
   ): this;
   leftJoin<R extends typeof Model>(
@@ -245,10 +246,10 @@ export abstract class JoinQueryBuilder<
   leftJoin<R extends typeof Model>(
     relationTable: string | R,
     referencingColumnOrPrimaryColumn:
-      | string
+      | JoinableColumn
       | ModelKey<InstanceType<R>>
       | ModelKey<T>,
-    primaryColumn?: string | ModelKey<T>,
+    primaryColumn?: JoinableColumn | ModelKey<T>,
     operator?: BinaryOperatorType,
   ): this {
     let primaryColumnValue: string | ModelKey<T> | undefined = primaryColumn;
@@ -287,23 +288,23 @@ export abstract class JoinQueryBuilder<
    */
   rightJoin(
     relationTable: string,
-    referencingColumnOrPrimaryColumn: string,
-    primaryColumn: string,
+    referencingColumnOrPrimaryColumn: JoinableColumn,
+    primaryColumn: JoinableColumn,
     operator?: BinaryOperatorType,
   ): this;
   rightJoin(
     relationTable: string,
-    referencingColumnOrPrimaryColumn: string,
-    primaryColumn?: string,
+    referencingColumnOrPrimaryColumn: JoinableColumn,
+    primaryColumn?: JoinableColumn,
     operator?: BinaryOperatorType,
   ): this;
   rightJoin<R extends typeof Model>(
     relationTable: string | R,
     referencingColumnOrPrimaryColumn:
       | ModelKey<InstanceType<R>>
-      | string
+      | JoinableColumn
       | ModelKey<T>,
-    primaryColumn?: ModelKey<T> | string,
+    primaryColumn?: JoinableColumn | ModelKey<T>,
     operator?: BinaryOperatorType,
   ): this {
     let primaryColumnValue: string | ModelKey<T> | undefined = primaryColumn;
@@ -342,23 +343,23 @@ export abstract class JoinQueryBuilder<
    */
   fullJoin(
     relationTable: string,
-    referencingColumnOrPrimaryColumn: string,
-    primaryColumn: string,
+    referencingColumnOrPrimaryColumn: JoinableColumn,
+    primaryColumn: JoinableColumn,
     operator?: BinaryOperatorType,
   ): this;
   fullJoin(
     relationTable: string,
-    referencingColumnOrPrimaryColumn: string,
-    primaryColumn?: string,
+    referencingColumnOrPrimaryColumn: JoinableColumn,
+    primaryColumn?: JoinableColumn,
     operator?: BinaryOperatorType,
   ): this;
   fullJoin<R extends typeof Model>(
     relationTable: string | R,
     referencingColumnOrPrimaryColumn:
       | ModelKey<InstanceType<R>>
-      | string
+      | JoinableColumn
       | ModelKey<T>,
-    primaryColumn?: ModelKey<T> | string,
+    primaryColumn?: JoinableColumn | ModelKey<T>,
     operator?: BinaryOperatorType,
   ): this {
     let primaryColumnValue: string | ModelKey<T> | undefined = primaryColumn;

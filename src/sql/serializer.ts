@@ -11,6 +11,7 @@ export const parseDatabaseDataIntoModelResponse = async <
   modelColumns: ColumnType[],
   modelColumnsMap: Map<string, ColumnType>,
   modelSelectedColumns: string[] = [],
+  modelAnnotatedColumns: string[] = [],
   mustRemoveAnnotations: boolean = false,
 ): Promise<T> => {
   const casedModel: Record<string, any> = {};
@@ -30,7 +31,13 @@ export const parseDatabaseDataIntoModelResponse = async <
         convertCase(key, typeofModel.modelCaseConvention);
 
       if (modelKey === "$annotations" && !mustRemoveAnnotations) {
-        processAnnotations(model, key, casedModel, typeofModel);
+        processAnnotations(
+          model,
+          key,
+          casedModel,
+          typeofModel,
+          modelAnnotatedColumns,
+        );
         return;
       }
 
@@ -74,6 +81,7 @@ export const processAnnotations = (
   key: string,
   casedModel: Record<string, any>,
   typeofModel: typeof Model,
+  modelAnnotatedColumns: string[] = [],
 ) => {
   if (!Object.keys(model[key]).length) {
     return;
@@ -81,6 +89,10 @@ export const processAnnotations = (
 
   const $annotations = Object.keys(model[key]).reduce(
     (acc, objKey) => {
+      if (!modelAnnotatedColumns.includes(objKey)) {
+        return acc;
+      }
+
       acc[convertCase(objKey, typeofModel.modelCaseConvention)] =
         model[key][objKey];
 
@@ -103,6 +115,7 @@ export const serializeModel = async <T extends Model>(
   models: T[],
   typeofModel: typeof Model,
   modelSelectedColumns: string[] = [],
+  modelAnnotatedColumns: string[] = [],
   mustRemoveAnnotations: boolean = false,
 ): Promise<T | T[] | null> => {
   if (!models.length) {
@@ -142,6 +155,7 @@ export const serializeModel = async <T extends Model>(
         modelColumns,
         modelColumnsMap,
         modelSelectedColumns,
+        modelAnnotatedColumns,
         mustRemoveAnnotations,
       );
 

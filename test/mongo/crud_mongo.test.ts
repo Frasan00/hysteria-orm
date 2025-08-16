@@ -1,5 +1,5 @@
-import { MongoDataSource } from "../../src/no_sql/mongo/mongo_data_source";
 import { DateTime } from "luxon";
+import { MongoDataSource } from "../../src/no_sql/mongo/mongo_data_source";
 import { TestModel } from "./mongo_collections/test_collection";
 
 describe("TestModel", () => {
@@ -183,7 +183,7 @@ describe("TestModel", () => {
       ]);
 
       const foundModels = await TestModel.query()
-        .rawWhere({
+        .whereRaw({
           email: { $exists: false },
         })
         .many();

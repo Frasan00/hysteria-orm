@@ -290,3 +290,137 @@ describe(`[${env.DB_TYPE}] uuid pk many to many relations`, () => {
     ).toHaveLength(3);
   });
 });
+
+describe(`[${env.DB_TYPE}] uuid pk relations with limit and offset has many`, () => {
+  test("uuid HasMany relation with limit and offset", async () => {
+    const user = await UserFactory.userWithUuid(1);
+    const user2 = await UserFactory.userWithUuid(1);
+    await PostFactory.postWithUuid(user.id, 10);
+    await PostFactory.postWithUuid(user2.id, 10);
+
+    const userWithLoadedPosts = await UserWithUuid.query()
+      .withRelation("posts", (qb) =>
+        qb
+          .select("id", "title", "userId")
+          .orderBy("id", "asc")
+          .orderByRaw("title asc")
+          .limit(3)
+          .offset(1),
+      )
+      .many();
+
+    expect(userWithLoadedPosts).toHaveLength(2);
+    expect(userWithLoadedPosts[0].posts).toHaveLength(3);
+    expect(userWithLoadedPosts[1].posts).toHaveLength(3);
+  });
+
+  test("uuid HasMany relation with limit", async () => {
+    const user = await UserFactory.userWithUuid(1);
+    const user2 = await UserFactory.userWithUuid(1);
+    await PostFactory.postWithUuid(user.id, 10);
+    await PostFactory.postWithUuid(user2.id, 10);
+
+    const userWithLoadedPosts = await UserWithUuid.query()
+      .withRelation("posts", (qb) =>
+        qb
+          .select("id", "title", "userId")
+          .orderBy("id", "asc")
+          .orderByRaw("title asc")
+          .limit(3),
+      )
+      .many();
+
+    expect(userWithLoadedPosts).toHaveLength(2);
+    expect(userWithLoadedPosts[0].posts).toHaveLength(3);
+    expect(userWithLoadedPosts[1].posts).toHaveLength(3);
+  });
+
+  test("uuid HasMany relation with offset", async () => {
+    const user = await UserFactory.userWithUuid(1);
+    const user2 = await UserFactory.userWithUuid(1);
+    await PostFactory.postWithUuid(user.id, 10);
+    await PostFactory.postWithUuid(user2.id, 10);
+
+    const userWithLoadedPosts = await UserWithUuid.query()
+      .withRelation("posts", (qb) =>
+        qb
+          .select("id", "title", "userId")
+          .orderBy("id", "asc")
+          .orderByRaw("title asc")
+          .offset(9),
+      )
+      .many();
+
+    expect(userWithLoadedPosts).toHaveLength(2);
+    expect(userWithLoadedPosts[0].posts).toHaveLength(1);
+    expect(userWithLoadedPosts[1].posts).toHaveLength(1);
+  });
+});
+
+describe(`[${env.DB_TYPE}] uuid pk relations with limit and offset many to many`, () => {
+  test("uuid ManyToMany relation with limit and offset", async () => {
+    const user = await UserFactory.userWithUuid(1);
+    const user2 = await UserFactory.userWithUuid(1);
+    const addresses = await AddressFactory.addressWithUuid(10);
+
+    for (const address of addresses) {
+      await UserAddressFactory.userAddressWithUuid(1, user.id, address.id);
+      await UserAddressFactory.userAddressWithUuid(1, user2.id, address.id);
+    }
+
+    const usersWithAddresses = await UserWithUuid.query()
+      .withRelation("addresses", (qb) =>
+        qb.orderBy("address_with_uuid.id", "asc").limit(3).offset(1),
+      )
+      .many();
+
+    expect(usersWithAddresses).toHaveLength(2);
+    expect(usersWithAddresses[0].addresses).toHaveLength(3);
+    expect(usersWithAddresses[1].addresses).toHaveLength(3);
+    expect(usersWithAddresses[0].addresses[0].id).toBeDefined();
+  });
+
+  test("uuid ManyToMany relation with limit", async () => {
+    const user = await UserFactory.userWithUuid(1);
+    const user2 = await UserFactory.userWithUuid(1);
+    const addresses = await AddressFactory.addressWithUuid(10);
+
+    for (const address of addresses) {
+      await UserAddressFactory.userAddressWithUuid(1, user.id, address.id);
+      await UserAddressFactory.userAddressWithUuid(1, user2.id, address.id);
+    }
+
+    const usersWithAddresses = await UserWithUuid.query()
+      .withRelation("addresses", (qb) =>
+        qb.orderBy("address_with_uuid.id", "asc").limit(3),
+      )
+      .many();
+
+    expect(usersWithAddresses).toHaveLength(2);
+    expect(usersWithAddresses[0].addresses).toHaveLength(3);
+    expect(usersWithAddresses[1].addresses).toHaveLength(3);
+    expect(usersWithAddresses[0].addresses[0].id).toBeDefined();
+  });
+
+  test("uuid ManyToMany relation with offset", async () => {
+    const user = await UserFactory.userWithUuid(1);
+    const user2 = await UserFactory.userWithUuid(1);
+    const addresses = await AddressFactory.addressWithUuid(10);
+
+    for (const address of addresses) {
+      await UserAddressFactory.userAddressWithUuid(1, user.id, address.id);
+      await UserAddressFactory.userAddressWithUuid(1, user2.id, address.id);
+    }
+
+    const usersWithAddresses = await UserWithUuid.query()
+      .withRelation("addresses", (qb) =>
+        qb.orderBy("address_with_uuid.id", "asc").offset(9),
+      )
+      .many();
+
+    expect(usersWithAddresses).toHaveLength(2);
+    expect(usersWithAddresses[0].addresses).toHaveLength(1);
+    expect(usersWithAddresses[1].addresses).toHaveLength(1);
+    expect(usersWithAddresses[0].addresses[0].id).toBeDefined();
+  });
+});

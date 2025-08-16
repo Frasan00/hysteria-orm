@@ -10,6 +10,7 @@ import type {
   OrderByChoices,
 } from "../models/model_manager/model_manager_types";
 import { SqlDataSource } from "../sql_data_source";
+import { SelectableColumn } from "./query_builder_types";
 
 export abstract class FooterQueryBuilder<T extends Model> {
   protected sqlDataSource: SqlDataSource;
@@ -60,8 +61,8 @@ export abstract class FooterQueryBuilder<T extends Model> {
   }
 
   groupBy(...columns: ModelKey<T>[]): this;
-  groupBy(...columns: string[]): this;
-  groupBy(...columns: (ModelKey<T> | string)[]): this {
+  groupBy<S extends string>(...columns: SelectableColumn<S>[]): this;
+  groupBy(...columns: (ModelKey<T> | SelectableColumn<string>)[]): this {
     columns.forEach((column) => {
       this.groupByNodes.push(new GroupByNode(column as string));
     });
@@ -75,8 +76,14 @@ export abstract class FooterQueryBuilder<T extends Model> {
   }
 
   orderBy(column: ModelKey<T>, order: OrderByChoices): this;
-  orderBy(column: string, order: OrderByChoices): this;
-  orderBy(column: ModelKey<T> | string, order: OrderByChoices): this {
+  orderBy<S extends string>(
+    column: SelectableColumn<S>,
+    order: OrderByChoices,
+  ): this;
+  orderBy(
+    column: ModelKey<T> | SelectableColumn<string>,
+    order: OrderByChoices,
+  ): this {
     this.orderByNodes.push(new OrderByNode(column as string, order));
     return this;
   }

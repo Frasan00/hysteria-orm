@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { HysteriaError } from "../../../errors/hysteria_error";
 import { convertCase } from "../../../utils/case_utils";
 import { withPerformance } from "../../../utils/performance";
@@ -18,6 +19,7 @@ import {
 import { QueryBuilder } from "../../query_builder/query_builder";
 import { RelationRetrieveMethod } from "../../query_builder/query_builder_types";
 import type { UpdateOptions } from "../../query_builder/update_query_builder_types";
+import { remapSelectedColumnToFromAlias } from "../../resources/utils";
 import { serializeModel } from "../../serializer";
 import { SqlDataSource } from "../../sql_data_source";
 import { ColumnType } from "../decorators/model_decorators_types";
@@ -157,6 +159,7 @@ export class ModelQueryBuilder<
       models as T[],
       this.model,
       this.modelSelectedColumns,
+      this.modelAnnotatedColumns,
       this.mustRemoveAnnotations,
     );
 
@@ -540,6 +543,7 @@ export class ModelQueryBuilder<
     this.selectNodes = this.selectNodes.concat(
       new SelectNode(column, alias, sqlMethod),
     );
+    this.modelAnnotatedColumns.push(alias);
 
     return this;
   }
@@ -549,6 +553,7 @@ export class ModelQueryBuilder<
    */
   removeAnnotations(): ModelQueryBuilder<T, {}> {
     this.mustRemoveAnnotations = true;
+    this.modelAnnotatedColumns = [];
     return this;
   }
 
@@ -556,7 +561,7 @@ export class ModelQueryBuilder<
    * @description Fills the relations in the model in the serialized response. Relation must be defined in the model.
    * @warning Many to many relations have special behavior, since they require a join, a join clause will always be added to the query.
    * @warning Many to many relations uses the model foreign key for mapping in the `$annotations` property, this property will be removed from the model after the relation is filled.
-   * @limitations It is not possible to limit or offset the number of related models fetched for each record
+   * @warning Foreign keys should always be selected in the relation query builder, otherwise the relation will not be filled.
    */
   withRelation<
     RelationKey extends ModelRelation<T>,
@@ -582,7 +587,6 @@ export class ModelQueryBuilder<
       >;
     }
   >;
-
   withRelation<RelationKey extends ModelRelation<T>>(
     relation: RelationKey,
     cb?: (
@@ -834,26 +838,22 @@ export class ModelQueryBuilder<
           convertCase(relatedPrimaryKey, this.model.modelCaseConvention);
 
         relatedModels.forEach((relatedModel) => {
-          const foreignKeyValue = (relatedModel as any).$annotations[
-            casedRelatedPrimaryKey
-          ];
-          if (!foreignKeyValue) return;
+          const annotations = (relatedModel as any).$annotations || {};
+          const foreignKeyValue = annotations[casedRelatedPrimaryKey];
+          if (foreignKeyValue === undefined || foreignKeyValue === null) {
+            return;
+          }
 
           const foreignKeyStr = String(foreignKeyValue);
           if (!relatedModelsMapManyToMany.has(foreignKeyStr)) {
             relatedModelsMapManyToMany.set(foreignKeyStr, []);
           }
 
-          if (
-            (relatedModel as any).$annotations &&
-            (relatedModel as any).$annotations[casedRelatedPrimaryKey] &&
-            !this.modelSelectedColumns.includes(casedRelatedPrimaryKey)
-          ) {
-            delete (relatedModel as any).$annotations[casedRelatedPrimaryKey];
-          }
-
-          if (Object.keys((relatedModel as any).$annotations).length === 0) {
-            delete (relatedModel as any).$annotations;
+          if (!this.modelAnnotatedColumns.includes(casedRelatedPrimaryKey)) {
+            delete annotations[casedRelatedPrimaryKey];
+            if (!Object.keys(annotations).length) {
+              delete (relatedModel as any).$annotations;
+            }
           }
 
           relatedModelsMapManyToMany.get(foreignKeyStr)!.push(relatedModel);
@@ -895,7 +895,6 @@ export class ModelQueryBuilder<
 
     switch (relation.type) {
       case RelationEnum.belongsTo:
-      case RelationEnum.hasMany:
       case RelationEnum.hasOne:
         return relationQueryBuilder
           .whereIn(
@@ -904,6 +903,67 @@ export class ModelQueryBuilder<
               : (relation.foreignKey as string),
             filterValues,
           )
+          .many();
+      case RelationEnum.hasMany:
+        const limit = relationQueryBuilder.limitNode?.limit;
+        const offset = relationQueryBuilder.offsetNode?.offset;
+        if (!limit && !offset) {
+          return relationQueryBuilder
+            .whereIn(
+              relationQueryBuilder.relation.type === RelationEnum.belongsTo
+                ? relation.model.primaryKey!
+                : (relation.foreignKey as string),
+              filterValues,
+            )
+            .many();
+        }
+
+        const rn = crypto.randomBytes(6).toString("hex");
+        const withTableName = `${relation.model.table}_cte_${rn}`;
+        const orderByClause = relationQueryBuilder.orderByNodes
+          .map((orderByNode) => {
+            if (orderByNode.isRawValue) {
+              return orderByNode.column;
+            }
+
+            return `${this.interpreterUtils.formatStringColumn(this.dbType, orderByNode.column)} ${orderByNode.direction}`;
+          })
+          .join(", ") || ["1"];
+
+        relationQueryBuilder.clearLimit();
+        relationQueryBuilder.clearOffset();
+
+        const qb = relationQueryBuilder.with((cteBuilder) =>
+          cteBuilder.newCte(withTableName, (cteBuilder) =>
+            cteBuilder
+              .select(...relationQueryBuilder.modelSelectedColumns)
+              .selectRaw(
+                `ROW_NUMBER() OVER (PARTITION BY ${this.interpreterUtils.formatStringColumn(this.dbType, relation.foreignKey!)} ORDER BY ${orderByClause}) as rn_${rn}`,
+              )
+              .whereIn(relation.foreignKey as string, filterValues),
+          ),
+        );
+
+        if (limit) {
+          qb.whereRaw(`rn_${rn} <= ${limit + (offset || 0)}`);
+        }
+
+        if (offset) {
+          qb.whereRaw(`rn_${rn} > ${offset}`);
+        }
+
+        const outerSelectedColumnsHasMany =
+          relationQueryBuilder.modelSelectedColumns.map((column) =>
+            remapSelectedColumnToFromAlias(
+              column,
+              withTableName,
+              relationQueryBuilder.model.table,
+            ),
+          );
+
+        return qb
+          .select(...outerSelectedColumnsHasMany)
+          .from(withTableName)
           .many();
       case RelationEnum.manyToMany:
         if (!this.model.primaryKey || !relation.model.primaryKey) {
@@ -914,21 +974,102 @@ export class ModelQueryBuilder<
         }
 
         const manyToManyRelation = relation as ManyToMany;
-        return relationQueryBuilder
-          .select(`${relation.model.table}.*`)
+        const m2mLimit = relationQueryBuilder.limitNode?.limit;
+        const m2mOffset = relationQueryBuilder.offsetNode?.offset;
+        const m2mSelectedColumns = relationQueryBuilder.modelSelectedColumns
+          .length
+          ? relationQueryBuilder.modelSelectedColumns.map((column) =>
+              column.includes(".")
+                ? column
+                : `${relation.model.table}.${column}`,
+            )
+          : [`${relation.model.table}.*`];
+
+        if (!m2mLimit && !m2mOffset) {
+          return relationQueryBuilder
+            .select(...m2mSelectedColumns)
+            .annotate(
+              `${manyToManyRelation.throughModel}.${manyToManyRelation.leftForeignKey}`,
+              manyToManyRelation.leftForeignKey,
+            )
+            .leftJoin(
+              manyToManyRelation.throughModel,
+              `${manyToManyRelation.relatedModel}.${manyToManyRelation.model.primaryKey}`,
+              `${manyToManyRelation.throughModel}.${manyToManyRelation.rightForeignKey}`,
+            )
+            .whereIn(
+              `${manyToManyRelation.throughModel}.${manyToManyRelation.leftForeignKey}`,
+              filterValues,
+            )
+            .many();
+        }
+
+        const rnM2m = crypto.randomBytes(6).toString("hex");
+        const withTableNameM2m = `${relation.model.table}_cte_${rnM2m}`;
+        const orderByClauseM2m = relationQueryBuilder.orderByNodes
+          .map((orderByNode) => {
+            if (orderByNode.isRawValue) {
+              return orderByNode.column;
+            }
+
+            const column = orderByNode.column.includes(".")
+              ? orderByNode.column
+              : `${relation.model.table}.${orderByNode.column}`;
+            return `${this.interpreterUtils.formatStringColumn(this.dbType, column)} ${orderByNode.direction}`;
+          })
+          .join(", ") || ["1"];
+
+        relationQueryBuilder.clearLimit();
+        relationQueryBuilder.clearOffset();
+        relationQueryBuilder.clearOrderBy();
+
+        const cteLeftForeignKey = `${crypto.randomBytes(6).toString("hex")}_left_foreign_key`;
+        const qbM2m = relationQueryBuilder.with((cteBuilder) =>
+          cteBuilder.newCte(withTableNameM2m, (innerQb) =>
+            innerQb
+              .select(...m2mSelectedColumns)
+              .annotate(
+                `${manyToManyRelation.throughModel}.${manyToManyRelation.leftForeignKey}`,
+                cteLeftForeignKey,
+              )
+              .selectRaw(
+                `ROW_NUMBER() OVER (PARTITION BY ${manyToManyRelation.throughModel}.${this.interpreterUtils.formatStringColumn(this.dbType, manyToManyRelation.leftForeignKey)} ORDER BY ${orderByClauseM2m}) as rn_${rnM2m}`,
+              )
+              .leftJoin(
+                manyToManyRelation.throughModel,
+                `${manyToManyRelation.relatedModel}.${manyToManyRelation.model.primaryKey}`,
+                `${manyToManyRelation.throughModel}.${manyToManyRelation.rightForeignKey}`,
+              )
+              .whereIn(
+                `${manyToManyRelation.throughModel}.${manyToManyRelation.leftForeignKey}`,
+                filterValues,
+              ),
+          ),
+        );
+
+        if (m2mLimit) {
+          qbM2m.whereRaw(`rn_${rnM2m} <= ${m2mLimit + (m2mOffset || 0)}`);
+        }
+
+        if (m2mOffset) {
+          qbM2m.whereRaw(`rn_${rnM2m} > ${m2mOffset}`);
+        }
+
+        const outerSelectedColumns = m2mSelectedColumns.map((column) =>
+          remapSelectedColumnToFromAlias(
+            column,
+            withTableNameM2m,
+            relationQueryBuilder.model.table,
+          ),
+        );
+
+        return qbM2m
+          .select(...outerSelectedColumns)
           .annotate(
+            `${withTableNameM2m}.${cteLeftForeignKey}`,
             manyToManyRelation.leftForeignKey,
-            manyToManyRelation.leftForeignKey,
           )
-          .leftJoin(
-            manyToManyRelation.throughModel,
-            `${manyToManyRelation.relatedModel}.${manyToManyRelation.model.primaryKey}`,
-            `${manyToManyRelation.throughModel}.${manyToManyRelation.rightForeignKey}`,
-          )
-          .whereIn(
-            `${manyToManyRelation.throughModel}.${manyToManyRelation.leftForeignKey}`,
-            filterValues,
-          )
+          .from(withTableNameM2m)
           .many();
       default:
         throw new HysteriaError(

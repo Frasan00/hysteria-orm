@@ -1,3 +1,4 @@
+import type { MongoClientImport } from "../../../drivers/driver_constants";
 import { HysteriaError } from "../../../errors/hysteria_error";
 import logger from "../../../utils/logger";
 import { MongoDataSource } from "../mongo_data_source";
@@ -5,10 +6,9 @@ import { Collection } from "../mongo_models/mongo_collection";
 import type {
   ModelKeyOrAny,
   ModelKeyOrAnySort,
+  MongoCollectionKey,
 } from "../mongo_models/mongo_collection_types";
 import { serializeCollection, serializeCollections } from "../mongo_serializer";
-import type { MongoCollectionKey } from "../mongo_models/mongo_collection_types";
-import type { MongoClientImport } from "../../../drivers/driver_constants";
 
 export type FetchHooks = "beforeFetch" | "afterFetch";
 type BinaryOperatorType = "$eq" | "$ne" | "$gt" | "$gte" | "$lt" | "$lte";
@@ -1401,7 +1401,7 @@ export class MongoQueryBuilder<T extends Collection> {
   /**
    * @description Gives the possibility to add a raw where clause using the mongodb.Filter type
    */
-  rawWhere(
+  whereRaw(
     whereObject: MongoClientImport["Collection"]["prototype"]["find"]["prototype"]["filter"],
   ): this {
     this.whereObject = {
