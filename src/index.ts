@@ -13,6 +13,8 @@ export { Model } from "./sql/models/model";
 export { createModelFactory } from "./sql/models/model_factory";
 export type { ModelQueryBuilder } from "./sql/models/model_query_builder/model_query_builder";
 export type { RelationQueryBuilderType } from "./sql/models/model_query_builder/relation_query_builder/relation_query_builder_types";
+export type * from "./sql/models/model_query_builder/model_query_builder_types";
+export type { ModelWithoutRelations } from "./sql/models/model_types";
 
 // DataSources
 export type { DataSourceInput } from "./data_source/data_source_types";

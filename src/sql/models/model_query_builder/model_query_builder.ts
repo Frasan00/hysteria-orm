@@ -17,7 +17,10 @@ import {
   SoftDeleteOptions,
 } from "../../query_builder/delete_query_builder_type";
 import { QueryBuilder } from "../../query_builder/query_builder";
-import { RelationRetrieveMethod } from "../../query_builder/query_builder_types";
+import {
+  RelationRetrieveMethod,
+  SelectableColumn,
+} from "../../query_builder/query_builder_types";
 import type { UpdateOptions } from "../../query_builder/update_query_builder_types";
 import { remapSelectedColumnToFromAlias } from "../../resources/utils";
 import { serializeModel } from "../../serializer";
@@ -457,9 +460,11 @@ export class ModelQueryBuilder<
     };
   }
 
-  override select(...columns: string[]): this;
+  override select<S extends string>(...columns: SelectableColumn<S>[]): this;
   override select(...columns: (ModelKey<T> | "*")[]): this;
-  override select(...columns: (ModelKey<T> | string)[]): this {
+  override select<S extends string>(
+    ...columns: (ModelKey<T> | "*" | SelectableColumn<S>)[]
+  ): this {
     this.modelSelectedColumns = [
       ...this.modelSelectedColumns,
       ...(columns as string[]),
