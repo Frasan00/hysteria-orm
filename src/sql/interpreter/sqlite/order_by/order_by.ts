@@ -1,8 +1,8 @@
 import { AstParser } from "../../../ast/parser";
 import type { OrderByNode } from "../../../ast/query/node/order_by/order_by";
 import { QueryNode } from "../../../ast/query/query";
-import type { Interpreter } from "../../interpreter";
 import { Model } from "../../../models/model";
+import type { Interpreter } from "../../interpreter";
 import { InterpreterUtils } from "../../interpreter_utils";
 
 class SqliteOrderByInterpreter implements Interpreter {
@@ -27,15 +27,6 @@ class SqliteOrderByInterpreter implements Interpreter {
       sql: `${columnSql} ${directionSql}`,
       bindings: [],
     };
-  }
-
-  private formatColumn(column: string): string {
-    const hasTable = column.includes(".");
-    if (hasTable) {
-      const [table, foundColumn] = column.split(".");
-      return `"${table}"."${foundColumn}"`;
-    }
-    return `"${column}"`;
   }
 }
 

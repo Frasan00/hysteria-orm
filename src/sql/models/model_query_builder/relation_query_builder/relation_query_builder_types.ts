@@ -17,8 +17,6 @@ export type RelationQueryBuilderType<
   | "paginate"
   | "pluck"
   | "truncate"
-  | "limit"
-  | "offset"
   | "many"
   | "one"
   | "oneOrFail"

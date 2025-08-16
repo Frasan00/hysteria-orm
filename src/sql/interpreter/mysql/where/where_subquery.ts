@@ -38,7 +38,7 @@ class MysqlWhereSubqueryInterpreter implements Interpreter {
   private handleStringSubquery(
     subqueryNode: WhereSubqueryNode,
   ): ReturnType<typeof AstParser.prototype.parse> {
-    const sql = `${new InterpreterUtils(this.model).formatStringColumn("mysql", subqueryNode.column)} ${subqueryNode.operator} (${subqueryNode.subquery})`;
+    const sql = `${subqueryNode.column} ${subqueryNode.operator} (${subqueryNode.subquery})`;
     return { sql: sql.trim(), bindings: [] };
   }
 
@@ -51,7 +51,7 @@ class MysqlWhereSubqueryInterpreter implements Interpreter {
       subqueryNode.currParamIndex,
     );
 
-    const sql = `${new InterpreterUtils(this.model).formatStringColumn("mysql", subqueryNode.column)} ${subqueryNode.operator} (${subquerySql})`;
+    const sql = `${subqueryNode.column} ${subqueryNode.operator} (${subquerySql})`;
     return { sql: sql.trim(), bindings: subqueryBindings };
   }
 
@@ -64,7 +64,7 @@ class MysqlWhereSubqueryInterpreter implements Interpreter {
       subqueryNode.currParamIndex,
     );
 
-    const sql = `${new InterpreterUtils(this.model).formatStringColumn("mysql", subqueryNode.column)} ${subqueryNode.operator} (${subquerySql})`;
+    const sql = `${subqueryNode.column} ${subqueryNode.operator} (${subquerySql})`;
     return { sql: sql.trim(), bindings: subqueryBindings };
   }
 }

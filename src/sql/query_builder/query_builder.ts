@@ -704,22 +704,29 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
 
   /**
    * @description Can be used to build a more complex where condition with parenthesis that wraps the where condition defined in the callback
+   * @param {string} columnOrValue can be both a column or a literal value like "posts.id" or 5
    * @alias andWhereSubQuery
    */
-  whereSubQuery(column: string, subQuery: QueryBuilder<T>): this;
-  whereSubQuery(column: string, cb: (subQuery: QueryBuilder<T>) => void): this;
   whereSubQuery(
-    column: string,
+    columnOrValue: string | number | boolean,
+    subQuery: QueryBuilder<T>,
+  ): this;
+  whereSubQuery(
+    columnOrValue: string | number | boolean,
+    cb: (subQuery: QueryBuilder<T>) => void,
+  ): this;
+  whereSubQuery(
+    columnOrValue: string | number | boolean,
     operator: SubqueryOperatorType,
     subQuery: QueryBuilder<T>,
   ): this;
   whereSubQuery(
-    column: string,
+    columnOrValue: string | number | boolean,
     operator: SubqueryOperatorType,
     cb: (subQuery: QueryBuilder<T>) => void,
   ): this;
   whereSubQuery(
-    column: string,
+    columnOrValue: string | number | boolean,
     subQueryOrCbOrOperator:
       | QueryBuilder<T>
       | ((subQuery: QueryBuilder<T>) => void)
@@ -727,7 +734,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     subQueryOrCb?: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
   ): this {
     return this.andWhereSubQuery(
-      column,
+      columnOrValue.toString(),
       subQueryOrCbOrOperator as SubqueryOperatorType,
       subQueryOrCb as QueryBuilder<T>,
     );
@@ -735,24 +742,28 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
 
   /**
    * @description Can be used to build a more complex where condition with parenthesis that wraps the where condition defined in the callback
+   * @param {string} columnOrValue can be both a column or a literal value like "posts.id" or 5
    */
-  andWhereSubQuery(column: string, subQuery: QueryBuilder<T>): this;
   andWhereSubQuery(
-    column: string,
+    columnOrValue: string | number | boolean,
+    subQuery: QueryBuilder<T>,
+  ): this;
+  andWhereSubQuery(
+    columnOrValue: string | number | boolean,
     cb: (subQuery: QueryBuilder<T>) => void,
   ): this;
   andWhereSubQuery(
-    column: string,
+    columnOrValue: string | number | boolean,
     operator: SubqueryOperatorType,
     subQuery: QueryBuilder<T>,
   ): this;
   andWhereSubQuery(
-    column: string,
+    columnOrValue: string | number | boolean,
     operator: SubqueryOperatorType,
     cb: (subQuery: QueryBuilder<T>) => void,
   ): this;
   andWhereSubQuery(
-    column: string,
+    columnOrValue: string | number | boolean,
     subQueryOrCbOrOperator:
       | QueryBuilder<T>
       | ((subQuery: QueryBuilder<T>) => void)
@@ -769,7 +780,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
         subQueryOrCb(subQuery);
         this.whereNodes.push(
           new WhereSubqueryNode(
-            column,
+            columnOrValue.toString(),
             operator,
             subQuery.extractQueryNodes(),
             "and",
@@ -782,7 +793,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
         subQuery = subQueryOrCb;
         this.whereNodes.push(
           new WhereSubqueryNode(
-            column,
+            columnOrValue.toString(),
             operator,
             subQuery.extractQueryNodes(),
             "and",
@@ -798,7 +809,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
       subQueryOrCbOrOperator(subQuery);
       this.whereNodes.push(
         new WhereSubqueryNode(
-          column,
+          columnOrValue.toString(),
           operator,
           subQuery.extractQueryNodes(),
           "and",
@@ -811,7 +822,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
       subQuery = subQueryOrCbOrOperator;
       this.whereNodes.push(
         new WhereSubqueryNode(
-          column,
+          columnOrValue.toString(),
           operator,
           subQuery.extractQueryNodes(),
           "and",
@@ -825,24 +836,28 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
 
   /**
    * @description Can be used to build a more complex where condition with parenthesis that wraps the where condition defined in the callback
+   * @param {string} columnOrValue can be both a column or a literal value like "posts.id" or 5
    */
-  orWhereSubQuery(column: string, subQuery: QueryBuilder<T>): this;
   orWhereSubQuery(
-    column: string,
+    columnOrValue: string | number | boolean | number | boolean,
+    subQuery: QueryBuilder<T>,
+  ): this;
+  orWhereSubQuery(
+    columnOrValue: string | number | boolean,
     cb: (subQuery: QueryBuilder<T>) => void,
   ): this;
   orWhereSubQuery(
-    column: string,
+    columnOrValue: string | number | boolean,
     operator: SubqueryOperatorType,
     subQuery: QueryBuilder<T>,
   ): this;
   orWhereSubQuery(
-    column: string,
+    columnOrValue: string | number | boolean,
     operator: SubqueryOperatorType,
     cb: (subQuery: QueryBuilder<T>) => void,
   ): this;
   orWhereSubQuery(
-    column: string,
+    columnOrValue: string | number | boolean,
     subQueryOrCbOrOperator:
       | QueryBuilder<T>
       | ((subQuery: QueryBuilder<T>) => void)
@@ -859,7 +874,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
         subQueryOrCb(subQuery);
         this.whereNodes.push(
           new WhereSubqueryNode(
-            column,
+            columnOrValue.toString(),
             operator,
             subQuery.extractQueryNodes(),
             "or",
@@ -871,7 +886,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
         subQuery = subQueryOrCb;
         this.whereNodes.push(
           new WhereSubqueryNode(
-            column,
+            columnOrValue.toString(),
             operator,
             subQuery.extractQueryNodes(),
             "or",
@@ -887,7 +902,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
       subQueryOrCbOrOperator(subQuery);
       this.whereNodes.push(
         new WhereSubqueryNode(
-          column,
+          columnOrValue.toString(),
           operator,
           subQuery.extractQueryNodes(),
           "or",
@@ -900,7 +915,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
       subQuery = subQueryOrCbOrOperator;
       this.whereNodes.push(
         new WhereSubqueryNode(
-          column,
+          columnOrValue.toString(),
           operator,
           subQuery.extractQueryNodes(),
           "or",

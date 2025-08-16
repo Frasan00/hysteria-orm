@@ -38,7 +38,7 @@ class PostgresWhereSubqueryInterpreter implements Interpreter {
   private handleStringSubquery(
     subqueryNode: WhereSubqueryNode,
   ): ReturnType<typeof AstParser.prototype.parse> {
-    const sql = `${new InterpreterUtils(this.model).formatStringColumn("postgres", subqueryNode.column)} ${subqueryNode.operator} (${subqueryNode.subquery})`;
+    const sql = `${subqueryNode.column} ${subqueryNode.operator} (${subqueryNode.subquery})`;
     return { sql: sql.trim(), bindings: [] };
   }
 
@@ -54,7 +54,7 @@ class PostgresWhereSubqueryInterpreter implements Interpreter {
       subqueryNode.currParamIndex,
     );
 
-    const sql = `${new InterpreterUtils(this.model).formatStringColumn("postgres", subqueryNode.column)} ${subqueryNode.operator} (${subquerySql})`;
+    const sql = `${subqueryNode.column} ${subqueryNode.operator} (${subquerySql})`;
     return { sql: sql.trim(), bindings: subqueryBindings };
   }
 
@@ -70,7 +70,7 @@ class PostgresWhereSubqueryInterpreter implements Interpreter {
       subqueryNode.currParamIndex,
     );
 
-    const sql = `${new InterpreterUtils(this.model).formatStringColumn("postgres", subqueryNode.column)} ${subqueryNode.operator} (${subquerySql})`;
+    const sql = `${subqueryNode.column} ${subqueryNode.operator} (${subquerySql})`;
     return { sql: sql.trim(), bindings: subqueryBindings };
   }
 }
