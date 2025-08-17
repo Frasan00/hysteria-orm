@@ -8,7 +8,7 @@ import { UserAddressWithUuid } from "./user_address_uuid";
 import { UserWithUuid } from "./user_uuid";
 
 export class AddressWithUuid extends Model {
-  static _table = "address_with_uuid";
+  static table = "address_with_uuid";
 
   @column({
     primaryKey: true,

@@ -36,8 +36,8 @@ export class Collection extends Entity {
 
   /**
    * @description Table name for the collection, default will be the plural snake case of the collection name given that is in PascalCase (es. User -> users)
-   * @description If you want to override the table name, you can set the _table property in the collection
-   * @warning This is a getter you cannot override it, if you want to override it use the _table property
+   * @description If you want to override the table name, you can set the table property in the collection
+   * @warning This is a getter you cannot override it, if you want to override it use the table property
    */
   static get collection(): string {
     return this._collection || getBaseCollectionName(this);

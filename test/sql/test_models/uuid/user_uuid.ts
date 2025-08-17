@@ -16,7 +16,7 @@ export enum UserStatus {
 }
 
 export class UserWithUuid extends Model {
-  static _table = "users_with_uuid";
+  static table = "users_with_uuid";
 
   @column.uuid({
     primaryKey: true,

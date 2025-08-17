@@ -1,12 +1,12 @@
-import { Model } from "../../../../src/sql/models/model";
 import {
   belongsTo,
   column,
 } from "../../../../src/sql/models/decorators/model_decorators";
+import { Model } from "../../../../src/sql/models/model";
 import { UserWithBigint } from "./user_bigint";
 
 export class PostWithBigint extends Model {
-  static _table = "posts_with_bigint";
+  static table = "posts_with_bigint";
 
   @column.integer({
     primaryKey: true,

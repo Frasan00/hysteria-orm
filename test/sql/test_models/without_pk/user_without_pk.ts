@@ -8,7 +8,7 @@ export enum UserStatus {
 }
 
 export class UserWithoutPk extends Model {
-  static _table = "users_without_pk";
+  static table = "users_without_pk";
 
   @column()
   declare name: string;

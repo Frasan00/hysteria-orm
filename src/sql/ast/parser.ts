@@ -67,7 +67,29 @@ export class AstParser {
         if (isNestedCondition) {
           sqlParts.push(`${sqlStatement.sql}${chainWith}`);
         } else {
-          sqlParts.push(`${node.keyword} ${sqlStatement.sql}${chainWith}`);
+          let keywordToEmit = node.keyword;
+          if (node.folder === "with") {
+            let j = i;
+            let hasRecursive = false;
+            while (
+              j < filteredNodes.length &&
+              filteredNodes[j].keyword === node.keyword
+            ) {
+              const candidate = filteredNodes[j] as any;
+              if (
+                candidate.folder === "with" &&
+                candidate.clause === "recursive"
+              ) {
+                hasRecursive = true;
+                break;
+              }
+              j++;
+            }
+            if (hasRecursive) {
+              keywordToEmit = `${keywordToEmit} recursive`;
+            }
+          }
+          sqlParts.push(`${keywordToEmit} ${sqlStatement.sql}${chainWith}`);
         }
         currentSqlKeyword = node.keyword;
       } else {

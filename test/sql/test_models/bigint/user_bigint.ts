@@ -16,7 +16,7 @@ export enum UserStatus {
 }
 
 export class UserWithBigint extends Model {
-  static _table = "users_with_bigint";
+  static table = "users_with_bigint";
 
   @column.integer({
     primaryKey: true,

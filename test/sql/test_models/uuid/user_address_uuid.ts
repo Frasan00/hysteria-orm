@@ -3,7 +3,7 @@ import { column } from "../../../../src/sql/models/decorators/model_decorators";
 import { Model } from "../../../../src/sql/models/model";
 
 export class UserAddressWithUuid extends Model {
-  static _table = "user_address_with_uuid";
+  static table = "user_address_with_uuid";
 
   @column({
     primaryKey: true,

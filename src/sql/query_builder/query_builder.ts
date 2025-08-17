@@ -22,19 +22,18 @@ import { QueryNode } from "../ast/query/query";
 import { InterpreterUtils } from "../interpreter/interpreter_utils";
 import type { Model } from "../models/model";
 import { ModelKey } from "../models/model_manager/model_manager_types";
+import { AnnotatedModel } from "../models/model_query_builder/model_query_builder_types";
 import type { NumberModelKey } from "../models/model_types";
 import { getPaginationMetadata, PaginatedData } from "../pagination";
 import { SqlDataSource } from "../sql_data_source";
 import type { SqlDataSourceType } from "../sql_data_source_types";
 import { execSql, getSqlDialect } from "../sql_runner/sql_runner";
-import { CteBuilder } from "./cte/cte_builder";
 import { SoftDeleteOptions } from "./delete_query_builder_type";
 import { JsonQueryBuilder } from "./json_query_builder";
 import {
   PluckReturnType,
   QueryBuilderWithOnlyWhereConditions,
 } from "./query_builder_types";
-import { AnnotatedModel } from "../models/model_query_builder/model_query_builder_types";
 
 export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   model: typeof Model;
@@ -492,60 +491,56 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   }
 
   /**
-   * @description Creates a CTE with the provided type that has the query builder as the query
-   * @description For the moment, with is only taken into account when making a select query
-   * @returns The CTE query builder, you can chain other methods after calling this method in order to interact with the CTE
+   * @description Adds a CTE to the query using a callback to build the subquery.
    */
-  with(
-    type: string,
-    cb: (cteBuilder: CteBuilder<T>) => CteBuilder<T>,
-  ): Omit<this, "with">;
-  with(cb: (cteBuilder: CteBuilder<T>) => CteBuilder<T>): Omit<this, "with">;
-  with(
-    typeOrCb: string | ((cteBuilder: CteBuilder<T>) => CteBuilder<T>),
-    maybeCb?: (cteBuilder: CteBuilder<T>) => CteBuilder<T>,
-  ): Omit<this, "with"> {
-    let type = "";
-    if (typeof typeOrCb === "function") {
-      maybeCb = typeOrCb;
-    } else {
-      type = typeOrCb;
+  with(alias: string, cb: (qb: QueryBuilder<T>) => void): this {
+    const subQuery = new QueryBuilder<T>(this.model, this.sqlDataSource);
+    cb(subQuery);
+    const nodes = subQuery.extractQueryNodes();
+    this.withNodes.push(new WithNode("normal", alias, nodes));
+    return this;
+  }
+
+  /**
+   * @description Adds a recursive CTE to the query using a callback to build the subquery.
+   */
+  withRecursive(alias: string, cb: (qb: QueryBuilder<T>) => void): this {
+    const subQuery = new QueryBuilder<T>(this.model, this.sqlDataSource);
+    cb(subQuery);
+    const nodes = subQuery.extractQueryNodes();
+    this.withNodes.push(new WithNode("recursive", alias, nodes));
+    return this;
+  }
+
+  /**
+   * @description Adds a materialized CTE to the query using a callback to build the subquery.
+   * @postgres only
+   * @throws HysteriaError if the database type is not postgres
+   */
+  withMaterialized(alias: string, cb: (qb: QueryBuilder<T>) => void): this {
+    if (this.dbType !== "postgres" && this.dbType !== "cockroachdb") {
+      throw new HysteriaError(
+        "QueryBuilder::withMaterialized",
+        "MATERIALIZED_CTE_NOT_SUPPORTED",
+        new Error("MATERIALIZED CTE is only supported by postgres"),
+      );
     }
 
-    const cteBuilder = new CteBuilder<T>(type, this.model, this.sqlDataSource);
-    maybeCb?.(cteBuilder);
-    cteBuilder.cteMap.forEach((queryBuilder, alias) => {
-      this.withNodes.push(
-        new WithNode(type, alias, queryBuilder.extractQueryNodes()),
-      );
-    });
-
+    const subQuery = new QueryBuilder<T>(this.model, this.sqlDataSource);
+    cb(subQuery);
+    const nodes = subQuery.extractQueryNodes();
+    this.withNodes.push(new WithNode("materialized", alias, nodes));
     return this;
   }
 
-  withRecursive(
-    cb: (cteBuilder: CteBuilder<T>) => CteBuilder<T>,
-  ): Omit<this, "withRecursive"> {
-    const cteBuilder = new CteBuilder<T>(
-      "recursive",
-      this.model,
-      this.sqlDataSource,
-    );
-
-    cb(cteBuilder);
-    return this;
-  }
-
-  withAggregate(
-    cb: (cteBuilder: CteBuilder<T>) => CteBuilder<T>,
-  ): Omit<this, "withAggregate"> {
-    const cteBuilder = new CteBuilder<T>(
-      "aggregate",
-      this.model,
-      this.sqlDataSource,
-    );
-
-    cb(cteBuilder);
+  /**
+   * @description Adds a aggregate CTE to the query using a callback to build the subquery.
+   */
+  withAggregate(alias: string, cb: (qb: QueryBuilder<T>) => void): this {
+    const subQuery = new QueryBuilder<T>(this.model, this.sqlDataSource);
+    cb(subQuery);
+    const nodes = subQuery.extractQueryNodes();
+    this.withNodes.push(new WithNode("aggregate", alias, nodes));
     return this;
   }
 

@@ -2,7 +2,7 @@ import { column } from "../../../../src/sql/models/decorators/model_decorators";
 import { Model } from "../../../../src/sql/models/model";
 
 export class UserAddressWithBigint extends Model {
-  static _table = "user_address_with_bigint";
+  static table = "user_address_with_bigint";
 
   @column.integer({
     primaryKey: true,

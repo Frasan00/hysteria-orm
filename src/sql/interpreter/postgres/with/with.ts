@@ -21,8 +21,11 @@ class PostgresWithInterpreter implements Interpreter {
       withNode.currParamIndex,
     );
 
+    const materializedClause =
+      withNode.clause === "materialized" ? " materialized" : "";
+
     return {
-      sql: `${withNode.alias} as (${ast.sql})`,
+      sql: `${withNode.alias} as${materializedClause} (${ast.sql})`,
       bindings: ast.bindings,
     };
   }

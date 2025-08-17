@@ -215,11 +215,8 @@ describe(`[${env.DB_TYPE}] Select`, () => {
   test("Normal CTE", async () => {
     await UserFactory.userWithoutPk(2);
     const users = await UserWithoutPk.query()
-      .with((cteBuilder) =>
-        cteBuilder
-          .newCte("users_cte", (cteBuilder) => cteBuilder.select("name"))
-          .newCte("users_cte2", (cteBuilder) => cteBuilder.select("age")),
-      )
+      .with("users_cte", (qb) => qb.select("name"))
+      .with("users_cte2", (qb) => qb.select("age"))
       .many();
 
     expect(users.length).toBe(2);
@@ -228,11 +225,37 @@ describe(`[${env.DB_TYPE}] Select`, () => {
   test("CTE with recursive", async () => {
     await UserFactory.userWithoutPk(2);
     const users = await UserWithoutPk.query()
-      .withRecursive((cteBuilder) =>
-        cteBuilder
-          .newCte("users_cte", (cteBuilder) => cteBuilder.select("name"))
-          .newCte("users_cte2", (cteBuilder) => cteBuilder.select("age")),
-      )
+      .withRecursive("users_cte", (qb) => qb.select("name"))
+      .withRecursive("users_cte2", (qb) => qb.select("age"))
+      .many();
+
+    expect(users.length).toBe(2);
+  });
+
+  test("CTE with materialized", async () => {
+    if (env.DB_TYPE !== "postgres") {
+      return;
+    }
+
+    await UserFactory.userWithoutPk(2);
+    const users = await UserWithoutPk.query()
+      .withMaterialized("users_cte", (qb) => qb.select("name"))
+      .withMaterialized("users_cte2", (qb) => qb.select("age"))
+      .many();
+
+    expect(users.length).toBe(2);
+  });
+
+  test("One for each cte", async () => {
+    if (env.DB_TYPE !== "postgres") {
+      return;
+    }
+
+    await UserFactory.userWithoutPk(2);
+    const users = await UserWithoutPk.query()
+      .with("users_cte", (qb) => qb.select("name"))
+      .withRecursive("users_cte2", (qb) => qb.select("age"))
+      .withMaterialized("users_cte3", (qb) => qb.select("age"))
       .many();
 
     expect(users.length).toBe(2);
@@ -241,11 +264,8 @@ describe(`[${env.DB_TYPE}] Select`, () => {
   test("CTE with UNION", async () => {
     await UserFactory.userWithoutPk(2);
     const users = await UserWithoutPk.query()
-      .with((cteBuilder) =>
-        cteBuilder
-          .newCte("users_cte", (cteBuilder) => cteBuilder.select("salary"))
-          .newCte("users_cte2", (cteBuilder) => cteBuilder.select("age")),
-      )
+      .with("users_cte", (qb) => qb.select("salary"))
+      .with("users_cte2", (qb) => qb.select("age"))
       .select("users_cte.salary")
       .from("users_cte")
       .unionAll((qb) => qb.select("users_cte2.age").from("users_cte2"))

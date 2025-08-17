@@ -14,7 +14,7 @@ export class WithNode extends QueryNode {
       clause = "";
     }
 
-    super(`with ${clause} `);
+    super("with");
     this.alias = alias;
     this.body = body;
     this.clause = clause;

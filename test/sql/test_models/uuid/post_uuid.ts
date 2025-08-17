@@ -7,7 +7,7 @@ import { Model } from "../../../../src/sql/models/model";
 import { UserWithUuid } from "./user_uuid";
 
 export class PostWithUuid extends Model {
-  static _table = "posts_with_uuid";
+  static table = "posts_with_uuid";
 
   @column({
     primaryKey: true,

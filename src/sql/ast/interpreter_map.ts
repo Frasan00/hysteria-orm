@@ -115,6 +115,32 @@ import sqlite_where_where_subquery from '../interpreter/sqlite/where/where_subqu
 import sqlite_with_with from '../interpreter/sqlite/with/with';
 
 export const interpreterMap = {
+  mssql: {
+    delete: {
+    },
+    from: {
+    },
+    group_by: {
+    },
+    insert: {
+    },
+    on_duplicate: {
+    },
+    order_by: {
+    },
+    select: {
+    },
+    truncate: {
+    },
+    union: {
+    },
+    update: {
+    },
+    where: {
+    },
+    with: {
+    },
+  },
   mysql: {
     alter_table: {
       add_column: mysql_alter_table_add_column,

@@ -7,7 +7,7 @@ import { UserAddressWithBigint } from "./user_address_bigint";
 import { UserWithBigint } from "./user_bigint";
 
 export class AddressWithBigint extends Model {
-  static _table = "address_with_bigint";
+  static table = "address_with_bigint";
 
   @column.integer({
     primaryKey: true,

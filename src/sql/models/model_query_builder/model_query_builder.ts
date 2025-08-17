@@ -938,15 +938,13 @@ export class ModelQueryBuilder<
         relationQueryBuilder.clearLimit();
         relationQueryBuilder.clearOffset();
 
-        const qb = relationQueryBuilder.with((cteBuilder) =>
-          cteBuilder.newCte(withTableName, (cteBuilder) =>
-            cteBuilder
-              .select(...relationQueryBuilder.modelSelectedColumns)
-              .selectRaw(
-                `ROW_NUMBER() OVER (PARTITION BY ${this.interpreterUtils.formatStringColumn(this.dbType, relation.foreignKey!)} ORDER BY ${orderByClause}) as rn_${rn}`,
-              )
-              .whereIn(relation.foreignKey as string, filterValues),
-          ),
+        const qb = relationQueryBuilder.with(withTableName, (cteQb) =>
+          cteQb
+            .select(...relationQueryBuilder.modelSelectedColumns)
+            .selectRaw(
+              `ROW_NUMBER() OVER (PARTITION BY ${this.interpreterUtils.formatStringColumn(this.dbType, relation.foreignKey!)} ORDER BY ${orderByClause}) as rn_${rn}`,
+            )
+            .whereIn(relation.foreignKey as string, filterValues),
         );
 
         if (limit) {
@@ -1029,27 +1027,25 @@ export class ModelQueryBuilder<
         relationQueryBuilder.clearOrderBy();
 
         const cteLeftForeignKey = `${crypto.randomBytes(6).toString("hex")}_left_foreign_key`;
-        const qbM2m = relationQueryBuilder.with((cteBuilder) =>
-          cteBuilder.newCte(withTableNameM2m, (innerQb) =>
-            innerQb
-              .select(...m2mSelectedColumns)
-              .annotate(
-                `${manyToManyRelation.throughModel}.${manyToManyRelation.leftForeignKey}`,
-                cteLeftForeignKey,
-              )
-              .selectRaw(
-                `ROW_NUMBER() OVER (PARTITION BY ${manyToManyRelation.throughModel}.${this.interpreterUtils.formatStringColumn(this.dbType, manyToManyRelation.leftForeignKey)} ORDER BY ${orderByClauseM2m}) as rn_${rnM2m}`,
-              )
-              .leftJoin(
-                manyToManyRelation.throughModel,
-                `${manyToManyRelation.relatedModel}.${manyToManyRelation.model.primaryKey}`,
-                `${manyToManyRelation.throughModel}.${manyToManyRelation.rightForeignKey}`,
-              )
-              .whereIn(
-                `${manyToManyRelation.throughModel}.${manyToManyRelation.leftForeignKey}`,
-                filterValues,
-              ),
-          ),
+        const qbM2m = relationQueryBuilder.with(withTableNameM2m, (innerQb) =>
+          innerQb
+            .select(...m2mSelectedColumns)
+            .annotate(
+              `${manyToManyRelation.throughModel}.${manyToManyRelation.leftForeignKey}`,
+              cteLeftForeignKey,
+            )
+            .selectRaw(
+              `ROW_NUMBER() OVER (PARTITION BY ${manyToManyRelation.throughModel}.${this.interpreterUtils.formatStringColumn(this.dbType, manyToManyRelation.leftForeignKey)} ORDER BY ${orderByClauseM2m}) as rn_${rnM2m}`,
+            )
+            .leftJoin(
+              manyToManyRelation.throughModel,
+              `${manyToManyRelation.relatedModel}.${manyToManyRelation.model.primaryKey}`,
+              `${manyToManyRelation.throughModel}.${manyToManyRelation.rightForeignKey}`,
+            )
+            .whereIn(
+              `${manyToManyRelation.throughModel}.${manyToManyRelation.leftForeignKey}`,
+              filterValues,
+            ),
         );
 
         if (m2mLimit) {
