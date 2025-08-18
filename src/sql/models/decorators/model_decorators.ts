@@ -84,6 +84,7 @@ column.json = jsonColumn;
 column.uuid = uuidColumn;
 column.ulid = ulidColumn;
 column.integer = integerColumn;
+column.float = floatColumn;
 column.encryption = {
   symmetric,
   asymmetric,
@@ -95,6 +96,33 @@ function primaryKeyColumn(
   return column({
     ...options,
     primaryKey: true,
+  });
+}
+
+function floatColumn(
+  options: Omit<ColumnOptions, "serialize"> = {},
+): PropertyDecorator {
+  return column({
+    ...options,
+    serialize: (value) => {
+      if (value === undefined) {
+        return;
+      }
+
+      if (value === null) {
+        return null;
+      }
+
+      if (typeof value === "number") {
+        return value;
+      }
+
+      if (typeof value === "string") {
+        return +value;
+      }
+
+      return Number.parseFloat(value);
+    },
   });
 }
 
@@ -124,7 +152,7 @@ function integerColumn(
         return +value;
       }
 
-      return Number(value);
+      return Number.parseInt(value);
     },
   });
 }

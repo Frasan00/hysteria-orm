@@ -356,7 +356,13 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
-   * @description Adds a raw statement to an operation like select or update
+   * @description Adds a raw statement to an operation like where or update, those raw values won't be used as bindings and will be used as the are
+   * @example
+   * ```ts
+   * import { sql } from "hysteria-orm";
+   *
+   * await User.query().where("name", sql.rawStatement("LOWER(name)"));
+   * ```
    */
   static rawStatement(value: string) {
     return SqlDataSource.getInstance().rawStatement(value);
@@ -642,14 +648,12 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
-   * @description Adds a raw statement to an operation like update
+   * @description Adds a raw statement to an operation like where or update, those raw values won't be used as bindings and will be used as the are
+   * @example
    * ```ts
-   *await sql.query("test").update({
-   *    test: "test",
-   *    test2: "test2",
-   *    rawTest: SqlDataSource.rawStatement("rawTest"), // This will be taken as literal sql statement and not a string value
-   *    test3: "test3",
-   *});
+   * import { sql } from "hysteria-orm";
+   *
+   * await User.query().where("name", sql.rawStatement("LOWER(name)"));
    * ```
    */
   rawStatement(value: string) {

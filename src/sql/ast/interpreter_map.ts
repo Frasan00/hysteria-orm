@@ -28,6 +28,7 @@ import mysql_lock_lock from '../interpreter/mysql/lock/lock';
 import mysql_offset_offset from '../interpreter/mysql/offset/offset';
 import mysql_on_duplicate_on_duplicate from '../interpreter/mysql/on_duplicate/on_duplicate';
 import mysql_order_by_order_by from '../interpreter/mysql/order_by/order_by';
+import mysql_raw_raw from '../interpreter/mysql/raw/raw';
 import mysql_select_select from '../interpreter/mysql/select/select';
 import mysql_truncate_truncate from '../interpreter/mysql/truncate/truncate';
 import mysql_union_union from '../interpreter/mysql/union/union';
@@ -67,6 +68,7 @@ import postgres_lock_lock from '../interpreter/postgres/lock/lock';
 import postgres_offset_offset from '../interpreter/postgres/offset/offset';
 import postgres_on_duplicate_on_duplicate from '../interpreter/postgres/on_duplicate/on_duplicate';
 import postgres_order_by_order_by from '../interpreter/postgres/order_by/order_by';
+import postgres_raw_raw from '../interpreter/postgres/raw/raw';
 import postgres_select_select from '../interpreter/postgres/select/select';
 import postgres_truncate_truncate from '../interpreter/postgres/truncate/truncate';
 import postgres_union_union from '../interpreter/postgres/union/union';
@@ -104,6 +106,7 @@ import sqlite_lock_lock from '../interpreter/sqlite/lock/lock';
 import sqlite_offset_offset from '../interpreter/sqlite/offset/offset';
 import sqlite_on_duplicate_on_duplicate from '../interpreter/sqlite/on_duplicate/on_duplicate';
 import sqlite_order_by_order_by from '../interpreter/sqlite/order_by/order_by';
+import sqlite_raw_raw from '../interpreter/sqlite/raw/raw';
 import sqlite_select_select from '../interpreter/sqlite/select/select';
 import sqlite_truncate_truncate from '../interpreter/sqlite/truncate/truncate';
 import sqlite_union_union from '../interpreter/sqlite/union/union';
@@ -208,6 +211,9 @@ export const interpreterMap = {
     order_by: {
       order_by: mysql_order_by_order_by,
     },
+    raw: {
+      raw: mysql_raw_raw,
+    },
     select: {
       select: mysql_select_select,
     },
@@ -297,6 +303,9 @@ export const interpreterMap = {
     order_by: {
       order_by: postgres_order_by_order_by,
     },
+    raw: {
+      raw: postgres_raw_raw,
+    },
     select: {
       select: postgres_select_select,
     },
@@ -383,6 +392,9 @@ export const interpreterMap = {
     },
     order_by: {
       order_by: sqlite_order_by_order_by,
+    },
+    raw: {
+      raw: sqlite_raw_raw,
     },
     select: {
       select: sqlite_select_select,

@@ -77,7 +77,7 @@ export class ModelManager<T extends Model> {
 
     if (input.relations) {
       input.relations.forEach((relation) => {
-        query.withRelation(relation);
+        query.load(relation);
       });
     }
 

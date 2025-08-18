@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { env } from "../../../src/env/env";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { AddressFactory } from "../test_models/factory/address_factory";
@@ -41,7 +42,7 @@ describe(`[${env.DB_TYPE}] uuid pk base relations`, () => {
         "id",
         users.map((u) => u.id),
       )
-      .withRelation("post", (qb) => qb.select("userId"))
+      .load("post", (qb) => qb.select("userId"))
       .many();
 
     for (const user of userWithLoadedPosts) {
@@ -65,9 +66,7 @@ describe(`[${env.DB_TYPE}] uuid pk base relations`, () => {
         "id",
         users.map((u) => u.id),
       )
-      .withRelation("post", (qb) =>
-        qb.select("posts_with_uuid.userId", "title"),
-      )
+      .load("post", (qb) => qb.select("posts_with_uuid.userId", "title"))
       .many();
 
     for (const user of userWithLoadedPosts) {
@@ -92,7 +91,7 @@ describe(`[${env.DB_TYPE}] uuid pk base relations`, () => {
 
     const userWithLoadedPosts = await UserWithUuid.query()
       .where("id", user.id)
-      .withRelation("posts", (qb) => qb.where("title", posts[0].title))
+      .load("posts", (qb) => qb.where("title", posts[0].title))
       .one();
 
     expect(userWithLoadedPosts).toBeDefined();
@@ -116,7 +115,7 @@ describe(`[${env.DB_TYPE}] uuid pk base relations`, () => {
         "id",
         users.map((u) => u.id),
       )
-      .withRelation("post", (qb) => qb.withRelation("user"))
+      .load("post", (qb) => qb.load("user"))
       .many();
 
     for (const user of userWithLoadedPosts) {
@@ -141,10 +140,8 @@ describe(`[${env.DB_TYPE}] uuid pk base relations`, () => {
         "id",
         users.map((u) => u.id),
       )
-      .withRelation("post", (qb) =>
-        qb.withRelation("user", (qb2) =>
-          qb2.withRelation("post", (qb3) => qb3.withRelation("user")),
-        ),
+      .load("post", (qb) =>
+        qb.load("user", (qb2) => qb2.load("post", (qb3) => qb3.load("user"))),
       )
       .many();
 
@@ -168,7 +165,7 @@ describe(`[${env.DB_TYPE}] uuid pk base relations`, () => {
 
     const userWithLoadedPosts = await UserWithUuid.query()
       .where("id", user.id)
-      .withRelation("posts")
+      .load("posts")
       .one();
 
     expect(userWithLoadedPosts).toBeDefined();
@@ -235,7 +232,7 @@ describe(`[${env.DB_TYPE}] uuid pk many to many relations`, () => {
         "id",
         users.map((u) => u.id),
       )
-      .withRelation("addresses", (qb) => qb.withRelation("users"))
+      .load("addresses", (qb) => qb.load("users"))
       .many();
 
     expect(userWithLoadedAddresses).toHaveLength(10);
@@ -270,10 +267,10 @@ describe(`[${env.DB_TYPE}] uuid pk many to many relations`, () => {
         "id",
         addresses.map((a) => a.id),
       )
-      .withRelation("users", (qb) =>
-        qb.withRelation("posts", (qb2) =>
-          qb2.withRelation("user", (qb3) =>
-            qb3.withRelation("addresses", (qb4) => qb4.withRelation("users")),
+      .load("users", (qb) =>
+        qb.load("posts", (qb2) =>
+          qb2.load("user", (qb3) =>
+            qb3.load("addresses", (qb4) => qb4.load("users")),
           ),
         ),
       )
@@ -299,7 +296,7 @@ describe(`[${env.DB_TYPE}] uuid pk relations with limit and offset has many`, ()
     await PostFactory.postWithUuid(user2.id, 10);
 
     const userWithLoadedPosts = await UserWithUuid.query()
-      .withRelation("posts", (qb) =>
+      .load("posts", (qb) =>
         qb
           .select("id", "title", "userId")
           .orderBy("id", "asc")
@@ -321,7 +318,7 @@ describe(`[${env.DB_TYPE}] uuid pk relations with limit and offset has many`, ()
     await PostFactory.postWithUuid(user2.id, 10);
 
     const userWithLoadedPosts = await UserWithUuid.query()
-      .withRelation("posts", (qb) =>
+      .load("posts", (qb) =>
         qb
           .select("id", "title", "userId")
           .orderBy("id", "asc")
@@ -342,7 +339,7 @@ describe(`[${env.DB_TYPE}] uuid pk relations with limit and offset has many`, ()
     await PostFactory.postWithUuid(user2.id, 10);
 
     const userWithLoadedPosts = await UserWithUuid.query()
-      .withRelation("posts", (qb) =>
+      .load("posts", (qb) =>
         qb
           .select("id", "title", "userId")
           .orderBy("id", "asc")
@@ -369,7 +366,7 @@ describe(`[${env.DB_TYPE}] uuid pk relations with limit and offset many to many`
     }
 
     const usersWithAddresses = await UserWithUuid.query()
-      .withRelation("addresses", (qb) =>
+      .load("addresses", (qb) =>
         qb.orderBy("address_with_uuid.id", "asc").limit(3).offset(1),
       )
       .many();
@@ -391,7 +388,7 @@ describe(`[${env.DB_TYPE}] uuid pk relations with limit and offset many to many`
     }
 
     const usersWithAddresses = await UserWithUuid.query()
-      .withRelation("addresses", (qb) =>
+      .load("addresses", (qb) =>
         qb.orderBy("address_with_uuid.id", "asc").limit(3),
       )
       .many();
@@ -413,7 +410,7 @@ describe(`[${env.DB_TYPE}] uuid pk relations with limit and offset many to many`
     }
 
     const usersWithAddresses = await UserWithUuid.query()
-      .withRelation("addresses", (qb) =>
+      .load("addresses", (qb) =>
         qb.orderBy("address_with_uuid.id", "asc").offset(9),
       )
       .many();
@@ -422,5 +419,37 @@ describe(`[${env.DB_TYPE}] uuid pk relations with limit and offset many to many`
     expect(usersWithAddresses[0].addresses).toHaveLength(1);
     expect(usersWithAddresses[1].addresses).toHaveLength(1);
     expect(usersWithAddresses[0].addresses[0].id).toBeDefined();
+  });
+});
+
+describe(`[${env.DB_TYPE}] uuid pk sync many to many`, () => {
+  test("uuid sync many to many", async () => {
+    const user = await UserFactory.userWithUuid(1);
+    const addresses = await AddressFactory.addressWithUuid(10);
+
+    await UserWithUuid.sync("addresses", user, addresses, () => ({
+      id: crypto.randomUUID(),
+    }));
+
+    const userWithAddresses = await UserWithUuid.query()
+      .where("id", user.id)
+      .load("addresses")
+      .one();
+
+    expect(userWithAddresses).toBeDefined();
+    expect(userWithAddresses?.addresses).toHaveLength(10);
+
+    const addressesWithUsers = await AddressWithUuid.query()
+      .whereIn(
+        "id",
+        addresses.map((a) => a.id),
+      )
+      .load("users")
+      .many();
+
+    expect(addressesWithUsers).toHaveLength(10);
+    for (const address of addressesWithUsers) {
+      expect(address.users).toHaveLength(1);
+    }
   });
 });

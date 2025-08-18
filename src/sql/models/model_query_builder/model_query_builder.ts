@@ -4,6 +4,8 @@ import { convertCase } from "../../../utils/case_utils";
 import { withPerformance } from "../../../utils/performance";
 import { SelectNode } from "../../ast/query/node/select/basic_select";
 import type { SqlMethod } from "../../ast/query/node/select/select_types";
+import { BaseValues, BinaryOperatorType } from "../../ast/query/node/where";
+import { InterpreterUtils } from "../../interpreter/interpreter_utils";
 import { getModelColumns } from "../../models/decorators/model_decorators";
 import { Model } from "../../models/model";
 import type {
@@ -56,9 +58,11 @@ export class ModelQueryBuilder<
   constructor(model: typeof Model, sqlDataSource: SqlDataSource) {
     super(model, sqlDataSource);
     this.sqlModelManagerUtils = new SqlModelManagerUtils<T>(
+      model,
       this.dbType,
       sqlDataSource,
     );
+
     this.relationQueryBuilders = [];
     this.modelSelectedColumns = [];
     this.modelColumnsMap = new Map<string, ColumnType>();
@@ -568,7 +572,7 @@ export class ModelQueryBuilder<
    * @warning Many to many relations uses the model foreign key for mapping in the `$annotations` property, this property will be removed from the model after the relation is filled.
    * @warning Foreign keys should always be selected in the relation query builder, otherwise the relation will not be filled.
    */
-  withRelation<
+  load<
     RelationKey extends ModelRelation<T>,
     IA extends Record<string, any> = {},
     IR extends Record<string, any> = {},
@@ -592,7 +596,7 @@ export class ModelQueryBuilder<
       >;
     }
   >;
-  withRelation<RelationKey extends ModelRelation<T>>(
+  load<RelationKey extends ModelRelation<T>>(
     relation: RelationKey,
     cb?: (
       queryBuilder: RelationQueryBuilderType<RelatedInstance<T, RelationKey>>,
@@ -612,7 +616,7 @@ export class ModelQueryBuilder<
       >;
     }
   >;
-  withRelation<
+  load<
     RelationKey extends ModelRelation<T>,
     IA extends Record<string, any> = {},
     IR extends Record<string, any> = {},
@@ -640,10 +644,8 @@ export class ModelQueryBuilder<
       >;
     }
   > {
-    const modelRelation = this.sqlModelManagerUtils.getRelationFromModel(
-      relation as string,
-      this.model,
-    );
+    const modelRelation =
+      this.sqlModelManagerUtils.getRelationFromModel(relation);
 
     const relationQueryBuilder = new ModelQueryBuilder<
       RelatedInstance<T, RelationKey>
@@ -679,6 +681,426 @@ export class ModelQueryBuilder<
     return this;
   }
 
+  // #region Relation filters
+
+  /**
+   * @description Checks if the relation exists in the models and has the given filters, if no callback is provided, it only check if there is at least one record for the relation
+   * @warning All select statements are ignored, since we're only checking if the relation exists, a "select 1" will be added to the Query
+   */
+  havingRelated<RelationKey extends ModelRelation<T>>(
+    relation: RelationKey,
+    cb?: (
+      queryBuilder: ModelQueryBuilder<RelatedInstance<T, RelationKey>>,
+    ) => void,
+  ): this;
+  havingRelated<RelationKey extends ModelRelation<T>>(
+    relation: RelationKey,
+    operatorOrValue?: BinaryOperatorType | BaseValues,
+    maybeValue?: BaseValues,
+  ): this;
+  havingRelated<RelationKey extends ModelRelation<T>>(
+    relation: RelationKey,
+    cbOrOperatorOrValue?:
+      | ((
+          queryBuilder: ModelQueryBuilder<RelatedInstance<T, RelationKey>>,
+        ) => void)
+      | BinaryOperatorType
+      | BaseValues,
+    maybeValue?: BaseValues,
+  ): this {
+    return this.andHavingRelated(
+      relation,
+      cbOrOperatorOrValue as any,
+      maybeValue,
+    );
+  }
+
+  /**
+   * @description Checks if the relation exists in the models and has the given filters, if no callback is provided, it only check if there is at least one record for the relation
+   * @warning All select statements are ignored, since we're only checking if the relation exists, a "select 1" will be added to the Query
+   */
+  andHavingRelated<RelationKey extends ModelRelation<T>>(
+    relation: RelationKey,
+    cb?: (
+      queryBuilder: ModelQueryBuilder<RelatedInstance<T, RelationKey>>,
+    ) => void,
+  ): this;
+  andHavingRelated<RelationKey extends ModelRelation<T>>(
+    relation: RelationKey,
+    operatorOrValue?: BinaryOperatorType | BaseValues,
+    maybeValue?: BaseValues,
+  ): this;
+  andHavingRelated<RelationKey extends ModelRelation<T>>(
+    relation: RelationKey,
+    cbOrOperatorOrValue?:
+      | ((
+          queryBuilder: ModelQueryBuilder<RelatedInstance<T, RelationKey>>,
+        ) => void)
+      | BinaryOperatorType
+      | BaseValues,
+    maybeValue?: BaseValues,
+  ): this {
+    let actualValue: BaseValues | undefined;
+    let actualOperator: BinaryOperatorType | undefined;
+    let cb:
+      | ((
+          queryBuilder: ModelQueryBuilder<RelatedInstance<T, RelationKey>>,
+        ) => void)
+      | undefined;
+
+    if (typeof cbOrOperatorOrValue === "function") {
+      cb = cbOrOperatorOrValue as (
+        queryBuilder: ModelQueryBuilder<RelatedInstance<T, RelationKey>>,
+      ) => void;
+    } else if (
+      typeof cbOrOperatorOrValue === "string" &&
+      maybeValue !== undefined
+    ) {
+      actualOperator = cbOrOperatorOrValue as BinaryOperatorType;
+      actualValue = maybeValue;
+    } else if (cbOrOperatorOrValue !== undefined) {
+      actualValue = cbOrOperatorOrValue as BaseValues;
+      actualOperator = "=";
+    }
+
+    const modelRelation =
+      this.sqlModelManagerUtils.getRelationFromModel(relation);
+    const modelQueryBuilder = new ModelQueryBuilder<
+      RelatedInstance<T, RelationKey>
+    >(modelRelation.model, this.sqlDataSource);
+    modelQueryBuilder.relation = modelRelation;
+
+    const relationQueryBuilder = this.getRelatedModelsQueryForRelation(
+      modelQueryBuilder,
+      modelRelation,
+      [],
+    );
+
+    // We clear where in order to apply having relation filter, since we're passing an empty array, by default will be a false condition so we need to clear it
+    relationQueryBuilder.clearWhere();
+    relationQueryBuilder.clearSelect();
+    relationQueryBuilder.selectRaw("1");
+
+    cb?.(
+      relationQueryBuilder as unknown as ModelQueryBuilder<
+        RelatedInstance<T, RelationKey>
+      >,
+    );
+
+    this.applyHavingRelatedFilter(
+      relationQueryBuilder,
+      modelRelation,
+      actualOperator,
+      actualValue,
+    );
+
+    this.whereExists(
+      relationQueryBuilder as unknown as (
+        queryBuilder: QueryBuilder<T>,
+      ) => void | QueryBuilder<T>,
+    );
+
+    return this;
+  }
+
+  /**
+   * @description Checks if the relation exists in the models and has the given filters, if no callback is provided, it only check if there is at least one record for the relation,
+   * @warning All select statements are ignored, since we're only checking if the relation exists, a "select 1" will be added to the Query
+   */
+  orHavingRelated<RelationKey extends ModelRelation<T>>(
+    relation: RelationKey,
+    cb?: (
+      queryBuilder: ModelQueryBuilder<RelatedInstance<T, RelationKey>>,
+    ) => void,
+  ): this;
+  orHavingRelated<RelationKey extends ModelRelation<T>>(
+    relation: RelationKey,
+    operatorOrValue?: BinaryOperatorType | BaseValues,
+    maybeValue?: BaseValues,
+  ): this;
+  orHavingRelated<RelationKey extends ModelRelation<T>>(
+    relation: RelationKey,
+    cbOrOperatorOrValue?:
+      | ((
+          queryBuilder: ModelQueryBuilder<RelatedInstance<T, RelationKey>>,
+        ) => void)
+      | BinaryOperatorType
+      | BaseValues,
+    maybeValue?: BaseValues,
+  ): this {
+    let actualValue: BaseValues | undefined;
+    let actualOperator: BinaryOperatorType | undefined;
+    let cb:
+      | ((
+          queryBuilder: ModelQueryBuilder<RelatedInstance<T, RelationKey>>,
+        ) => void)
+      | undefined;
+
+    if (typeof cbOrOperatorOrValue === "function") {
+      cb = cbOrOperatorOrValue as (
+        queryBuilder: ModelQueryBuilder<RelatedInstance<T, RelationKey>>,
+      ) => void;
+    } else if (
+      typeof cbOrOperatorOrValue === "string" &&
+      maybeValue !== undefined
+    ) {
+      actualOperator = cbOrOperatorOrValue as BinaryOperatorType;
+      actualValue = maybeValue;
+    } else if (cbOrOperatorOrValue !== undefined) {
+      actualValue = cbOrOperatorOrValue as BaseValues;
+      actualOperator = "=";
+    }
+
+    const modelRelation =
+      this.sqlModelManagerUtils.getRelationFromModel(relation);
+    const modelQueryBuilder = new ModelQueryBuilder<
+      RelatedInstance<T, RelationKey>
+    >(modelRelation.model, this.sqlDataSource);
+    modelQueryBuilder.relation = modelRelation;
+
+    const relationQueryBuilder = this.getRelatedModelsQueryForRelation(
+      modelQueryBuilder,
+      modelRelation,
+      [],
+    );
+
+    // We clear where in order to apply having relation filter, since we're passing an empty array, by default will be a false condition so we need to clear it
+    relationQueryBuilder.clearWhere();
+    relationQueryBuilder.clearSelect();
+    relationQueryBuilder.selectRaw("1");
+
+    cb?.(
+      relationQueryBuilder as unknown as ModelQueryBuilder<
+        RelatedInstance<T, RelationKey>
+      >,
+    );
+
+    this.applyHavingRelatedFilter(
+      relationQueryBuilder,
+      modelRelation,
+      actualOperator,
+      actualValue,
+    );
+
+    this.orWhereExists(
+      relationQueryBuilder as unknown as (
+        queryBuilder: QueryBuilder<T>,
+      ) => void | QueryBuilder<T>,
+    );
+
+    return this;
+  }
+
+  /**
+   * @description Checks if the relation does not exist in the models and has the given filters, if no callback is provided, it only check if there is no record for the Relation
+   * @warning All select statements are ignored, since we're only checking if the relation exists, a "select 1" will be added to the Query
+   */
+  notHavingRelated<RelationKey extends ModelRelation<T>>(
+    relation: RelationKey,
+    cb?: (
+      queryBuilder: ModelQueryBuilder<RelatedInstance<T, RelationKey>>,
+    ) => void,
+  ): this;
+  notHavingRelated<RelationKey extends ModelRelation<T>>(
+    relation: RelationKey,
+    operatorOrValue?: BinaryOperatorType | BaseValues,
+    maybeValue?: BaseValues,
+  ): this;
+  notHavingRelated<RelationKey extends ModelRelation<T>>(
+    relation: RelationKey,
+    cbOrOperatorOrValue?:
+      | ((
+          queryBuilder: ModelQueryBuilder<RelatedInstance<T, RelationKey>>,
+        ) => void)
+      | BinaryOperatorType
+      | BaseValues,
+    maybeValue?: BaseValues,
+  ): this {
+    return this.andNotHavingRelated(
+      relation,
+      cbOrOperatorOrValue as any,
+      maybeValue,
+    );
+  }
+
+  /**
+   * @description Checks if the relation does not exist in the models and has the given filters, if no callback is provided, it only check if there is no record for the relation
+   * @warning All select statements are ignored, since we're only checking if the relation exists, a "select 1" will be added to the Query
+   */
+  andNotHavingRelated<RelationKey extends ModelRelation<T>>(
+    relation: RelationKey,
+    cb?: (
+      queryBuilder: ModelQueryBuilder<RelatedInstance<T, RelationKey>>,
+    ) => void,
+  ): this;
+  andNotHavingRelated<RelationKey extends ModelRelation<T>>(
+    relation: RelationKey,
+    operatorOrValue?: BinaryOperatorType | BaseValues,
+    maybeValue?: BaseValues,
+  ): this;
+  andNotHavingRelated<RelationKey extends ModelRelation<T>>(
+    relation: RelationKey,
+    cbOrOperatorOrValue?:
+      | ((
+          queryBuilder: ModelQueryBuilder<RelatedInstance<T, RelationKey>>,
+        ) => void)
+      | BinaryOperatorType
+      | BaseValues,
+    maybeValue?: BaseValues,
+  ): this {
+    let actualValue: BaseValues | undefined;
+    let actualOperator: BinaryOperatorType | undefined;
+    let cb:
+      | ((
+          queryBuilder: ModelQueryBuilder<RelatedInstance<T, RelationKey>>,
+        ) => void)
+      | undefined;
+
+    if (typeof cbOrOperatorOrValue === "function") {
+      cb = cbOrOperatorOrValue as (
+        queryBuilder: ModelQueryBuilder<RelatedInstance<T, RelationKey>>,
+      ) => void;
+    } else if (
+      typeof cbOrOperatorOrValue === "string" &&
+      maybeValue !== undefined
+    ) {
+      actualOperator = cbOrOperatorOrValue as BinaryOperatorType;
+      actualValue = maybeValue;
+    } else if (cbOrOperatorOrValue !== undefined) {
+      actualValue = cbOrOperatorOrValue as BaseValues;
+      actualOperator = "=";
+    }
+
+    const modelRelation =
+      this.sqlModelManagerUtils.getRelationFromModel(relation);
+    const modelQueryBuilder = new ModelQueryBuilder<
+      RelatedInstance<T, RelationKey>
+    >(modelRelation.model, this.sqlDataSource);
+    modelQueryBuilder.relation = modelRelation;
+
+    const relationQueryBuilder = this.getRelatedModelsQueryForRelation(
+      modelQueryBuilder,
+      modelRelation,
+      [],
+    );
+
+    // We clear where in order to apply having relation filter, since we're passing an empty array, by default will be a false condition so we need to clear it
+    relationQueryBuilder.clearWhere();
+    relationQueryBuilder.clearSelect();
+    relationQueryBuilder.selectRaw("1");
+
+    cb?.(
+      relationQueryBuilder as unknown as ModelQueryBuilder<
+        RelatedInstance<T, RelationKey>
+      >,
+    );
+
+    this.applyHavingRelatedFilter(
+      relationQueryBuilder,
+      modelRelation,
+      actualOperator,
+      actualValue,
+    );
+
+    this.whereNotExists(
+      relationQueryBuilder as unknown as (
+        queryBuilder: QueryBuilder<T>,
+      ) => void | QueryBuilder<T>,
+    );
+
+    return this;
+  }
+
+  /**
+   * @description Checks if the relation does not exist in the models and has the given filters, if no callback is provided, it only check if there is no record for the Relation
+   * @warning All select statements are ignored, since we're only checking if the relation exists, a "select 1" will be added to the Query
+   */
+  orNotHavingRelated<RelationKey extends ModelRelation<T>>(
+    relation: RelationKey,
+    cb?: (
+      queryBuilder: ModelQueryBuilder<RelatedInstance<T, RelationKey>>,
+    ) => void,
+  ): this;
+  orNotHavingRelated<RelationKey extends ModelRelation<T>>(
+    relation: RelationKey,
+    operatorOrValue?: BinaryOperatorType | BaseValues,
+    maybeValue?: BaseValues,
+  ): this;
+  orNotHavingRelated<RelationKey extends ModelRelation<T>>(
+    relation: RelationKey,
+    cbOrOperatorOrValue?:
+      | ((
+          queryBuilder: ModelQueryBuilder<RelatedInstance<T, RelationKey>>,
+        ) => void)
+      | BinaryOperatorType
+      | BaseValues,
+    maybeValue?: BaseValues,
+  ): this {
+    let actualValue: BaseValues | undefined;
+    let actualOperator: BinaryOperatorType | undefined;
+    let cb:
+      | ((
+          queryBuilder: ModelQueryBuilder<RelatedInstance<T, RelationKey>>,
+        ) => void)
+      | undefined;
+
+    if (typeof cbOrOperatorOrValue === "function") {
+      cb = cbOrOperatorOrValue as (
+        queryBuilder: ModelQueryBuilder<RelatedInstance<T, RelationKey>>,
+      ) => void;
+    } else if (
+      typeof cbOrOperatorOrValue === "string" &&
+      maybeValue !== undefined
+    ) {
+      actualOperator = cbOrOperatorOrValue as BinaryOperatorType;
+      actualValue = maybeValue;
+    } else if (cbOrOperatorOrValue !== undefined) {
+      actualValue = cbOrOperatorOrValue as BaseValues;
+      actualOperator = "=";
+    }
+
+    const modelRelation =
+      this.sqlModelManagerUtils.getRelationFromModel(relation);
+    const modelQueryBuilder = new ModelQueryBuilder<
+      RelatedInstance<T, RelationKey>
+    >(modelRelation.model, this.sqlDataSource);
+    modelQueryBuilder.relation = modelRelation;
+
+    const relationQueryBuilder = this.getRelatedModelsQueryForRelation(
+      modelQueryBuilder,
+      modelRelation,
+      [],
+    );
+
+    // We clear where in order to apply having relation filter, since we're passing an empty array, by default will be a false condition so we need to clear it
+    relationQueryBuilder.clearWhere();
+    relationQueryBuilder.clearSelect();
+    relationQueryBuilder.selectRaw("1");
+
+    cb?.(
+      relationQueryBuilder as unknown as ModelQueryBuilder<
+        RelatedInstance<T, RelationKey>
+      >,
+    );
+
+    this.applyHavingRelatedFilter(
+      relationQueryBuilder,
+      modelRelation,
+      actualOperator,
+      actualValue,
+    );
+
+    this.orWhereNotExists(
+      relationQueryBuilder as unknown as (
+        queryBuilder: QueryBuilder<T>,
+      ) => void | QueryBuilder<T>,
+    );
+
+    return this;
+  }
+
+  // #endregion
+
   /**
    * @description Returns a copy of the query builder instance.
    */
@@ -698,15 +1120,13 @@ export class ModelQueryBuilder<
           (relationQueryBuilder) => relationQueryBuilder.isRelationQueryBuilder,
         )
         .map(async (relationQueryBuilder) => {
-          const relationModel = relationQueryBuilder.relation.model;
-          type RelationModel = InstanceType<typeof relationModel>;
           const relatedModels = await this.getRelatedModelsForRelation(
             relationQueryBuilder,
             relationQueryBuilder.relation,
             models,
           );
 
-          this.mapRelatedModelsToModels<RelationModel>(
+          this.mapRelatedModelsToModels(
             relationQueryBuilder.relation,
             models,
             relatedModels,
@@ -715,7 +1135,7 @@ export class ModelQueryBuilder<
     );
   }
 
-  protected mapRelatedModelsToModels<R extends Model>(
+  protected mapRelatedModelsToModels<R extends ModelWithoutRelations<T>>(
     relation: Relation,
     modelsToFillWithRelations: T[],
     relatedModels: R[],
@@ -892,7 +1312,19 @@ export class ModelQueryBuilder<
     relationQueryBuilder: ModelQueryBuilder<any>,
     relation: Relation,
     models: T[],
-  ): Promise<T[]> {
+  ): Promise<ModelWithoutRelations<T>[]> {
+    return this.getRelatedModelsQueryForRelation(
+      relationQueryBuilder,
+      relation,
+      models,
+    ).many();
+  }
+
+  protected getRelatedModelsQueryForRelation(
+    relationQueryBuilder: ModelQueryBuilder<any>,
+    relation: Relation,
+    models: T[],
+  ): ModelQueryBuilder<T> {
     const filterValues = this.getFilterValuesFromModelsForRelation(
       relation,
       models,
@@ -901,26 +1333,22 @@ export class ModelQueryBuilder<
     switch (relation.type) {
       case RelationEnum.belongsTo:
       case RelationEnum.hasOne:
-        return relationQueryBuilder
-          .whereIn(
-            relationQueryBuilder.relation.type === RelationEnum.belongsTo
-              ? relation.model.primaryKey!
-              : (relation.foreignKey as string),
-            filterValues,
-          )
-          .many();
+        return relationQueryBuilder.whereIn(
+          relationQueryBuilder.relation.type === RelationEnum.belongsTo
+            ? relation.model.primaryKey!
+            : (relation.foreignKey as string),
+          filterValues,
+        );
       case RelationEnum.hasMany:
         const limit = relationQueryBuilder.limitNode?.limit;
         const offset = relationQueryBuilder.offsetNode?.offset;
         if (!limit && !offset) {
-          return relationQueryBuilder
-            .whereIn(
-              relationQueryBuilder.relation.type === RelationEnum.belongsTo
-                ? relation.model.primaryKey!
-                : (relation.foreignKey as string),
-              filterValues,
-            )
-            .many();
+          return relationQueryBuilder.whereIn(
+            relationQueryBuilder.relation.type === RelationEnum.belongsTo
+              ? relation.model.primaryKey!
+              : (relation.foreignKey as string),
+            filterValues,
+          );
         }
 
         const rn = crypto.randomBytes(6).toString("hex");
@@ -964,10 +1392,7 @@ export class ModelQueryBuilder<
             ),
           );
 
-        return qb
-          .select(...outerSelectedColumnsHasMany)
-          .from(withTableName)
-          .many();
+        return qb.select(...outerSelectedColumnsHasMany).from(withTableName);
       case RelationEnum.manyToMany:
         if (!this.model.primaryKey || !relation.model.primaryKey) {
           throw new HysteriaError(
@@ -977,6 +1402,10 @@ export class ModelQueryBuilder<
         }
 
         const manyToManyRelation = relation as ManyToMany;
+        if (!models.length) {
+          return relationQueryBuilder;
+        }
+
         const m2mLimit = relationQueryBuilder.limitNode?.limit;
         const m2mOffset = relationQueryBuilder.offsetNode?.offset;
         const m2mSelectedColumns = relationQueryBuilder.modelSelectedColumns
@@ -1003,8 +1432,7 @@ export class ModelQueryBuilder<
             .whereIn(
               `${manyToManyRelation.throughModel}.${manyToManyRelation.leftForeignKey}`,
               filterValues,
-            )
-            .many();
+            );
         }
 
         const rnM2m = crypto.randomBytes(6).toString("hex");
@@ -1070,8 +1498,7 @@ export class ModelQueryBuilder<
             `${withTableNameM2m}.${cteLeftForeignKey}`,
             manyToManyRelation.leftForeignKey,
           )
-          .from(withTableNameM2m)
-          .many();
+          .from(withTableNameM2m);
       default:
         throw new HysteriaError(
           this.model.name + "::getRelatedModelsForRelation",
@@ -1109,6 +1536,121 @@ export class ModelQueryBuilder<
       default:
         throw new HysteriaError(
           this.model.name + "::getFilterValuesFromModelsForRelation",
+          "UNSUPPORTED_RELATION_TYPE",
+        );
+    }
+  }
+
+  protected applyHavingRelatedFilter(
+    relationQueryBuilder: ModelQueryBuilder<any>,
+    relation: Relation,
+    operator?: BinaryOperatorType,
+    value?: BaseValues,
+  ): void {
+    const relatedInterpreter = new InterpreterUtils(relation.model);
+    const outerInterpreter = new InterpreterUtils(this.model);
+    const dbType = this.dbType;
+
+    switch (relation.type) {
+      case RelationEnum.hasOne:
+      case RelationEnum.hasMany: {
+        if (!this.model.primaryKey || !relation.foreignKey) {
+          throw new HysteriaError(
+            this.model.name + "::applyHavingRelatedFilter",
+            "MODEL_HAS_NO_PRIMARY_KEY",
+          );
+        }
+
+        const left = relatedInterpreter.formatStringColumn(
+          dbType,
+          `${relation.model.table}.${relation.foreignKey}`,
+        );
+
+        const right = outerInterpreter.formatStringColumn(
+          dbType,
+          `${this.model.table}.${this.model.primaryKey}`,
+        );
+
+        relationQueryBuilder.whereRaw(`${left} = ${right}`);
+
+        if (operator && typeof value === "number") {
+          relationQueryBuilder
+            .groupByRaw(left)
+            .andHavingRaw(`count(*) ${operator} ${value}`);
+        }
+        return;
+      }
+      case RelationEnum.belongsTo: {
+        if (!relation.model.primaryKey || !relation.foreignKey) {
+          throw new HysteriaError(
+            this.model.name + "::applyHavingRelatedFilter",
+            `RELATED_MODEL_DOES_NOT_HAVE_A_PRIMARY_KEY_${relation.model.name}` as const,
+          );
+        }
+
+        const left = relatedInterpreter.formatStringColumn(
+          dbType,
+          `${relation.model.table}.${relation.model.primaryKey}`,
+        );
+        const right = outerInterpreter.formatStringColumn(
+          dbType,
+          `${this.model.table}.${relation.foreignKey}`,
+        );
+
+        relationQueryBuilder.whereRaw(`${left} = ${right}`);
+
+        if (operator && typeof value === "number") {
+          relationQueryBuilder
+            .groupByRaw(left)
+            .andHavingRaw(`count(*) ${operator} ${value}`);
+        }
+        return;
+      }
+      case RelationEnum.manyToMany: {
+        const m2m = relation as ManyToMany;
+        if (!this.model.primaryKey || !relation.model.primaryKey) {
+          throw new HysteriaError(
+            this.model.name + "::applyHavingRelatedFilter",
+            "MODEL_HAS_NO_PRIMARY_KEY",
+          );
+        }
+
+        const hasThroughJoin = relationQueryBuilder.joinNodes?.some(
+          (jn) =>
+            !jn.isRawValue &&
+            jn.table === m2m.throughModel &&
+            jn.type === "left",
+        );
+
+        if (!hasThroughJoin) {
+          relationQueryBuilder.leftJoin(
+            m2m.throughModel,
+            `${m2m.relatedModel}.${relation.model.primaryKey}`,
+            `${m2m.throughModel}.${m2m.rightForeignKey}`,
+          );
+        }
+
+        const throughLeft = outerInterpreter.formatStringColumn(
+          dbType,
+          `${m2m.throughModel}.${m2m.leftForeignKey}`,
+        );
+        const outerPk = outerInterpreter.formatStringColumn(
+          dbType,
+          `${this.model.table}.${this.model.primaryKey}`,
+        );
+
+        relationQueryBuilder.whereRaw(`${throughLeft} = ${outerPk}`);
+
+        if (operator && typeof value === "number") {
+          relationQueryBuilder
+            .groupByRaw(throughLeft)
+            .andHavingRaw(`count(*) ${operator} ${value}`);
+        }
+        return;
+      }
+      default:
+        throw new HysteriaError(
+          this.model.name + "::applyHavingRelatedFilter",
           "UNSUPPORTED_RELATION_TYPE",
         );
     }

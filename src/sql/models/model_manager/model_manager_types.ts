@@ -4,6 +4,7 @@ import { ModelWithoutRelations } from "../model_types";
 import { BelongsTo } from "../relations/belongs_to";
 import { HasMany } from "../relations/has_many";
 import { HasOne } from "../relations/has_one";
+import { ManyToMany } from "../relations/many_to_many";
 
 export type UpsertOptions<T extends Model> = {
   ignoreHooks?: boolean;
@@ -28,21 +29,19 @@ export type ExcludeRelations<T> = {
     | (Model[] | BelongsTo)
     | (Model | HasOne)
     | (Model[] | HasOne)
+    | (Model | ManyToMany)
+    | (Model[] | ManyToMany)
     | ((...args: any[]) => any)
     ? never
     : K;
 }[keyof T];
 
 export type OnlyRelations<T> = {
-  [K in keyof T]: T[K] extends
-    | (Model[] | HasMany)
-    | (Model | HasMany)
-    | (Model | BelongsTo)
-    | (Model[] | BelongsTo)
-    | (Model | HasOne)
-    | (Model[] | HasOne)
-    ? K
-    : never;
+  [K in keyof T]: T[K] extends Model[] | Model ? K : never;
+}[keyof T];
+
+export type OnlyM2MRelations<T> = {
+  [K in keyof T]: K extends string ? (T[K] extends Model[] ? K : never) : never;
 }[keyof T];
 
 export type WhereType<T> = {

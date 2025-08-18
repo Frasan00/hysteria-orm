@@ -21,7 +21,10 @@ import {
 import { QueryNode } from "../ast/query/query";
 import { InterpreterUtils } from "../interpreter/interpreter_utils";
 import type { Model } from "../models/model";
-import { ModelKey } from "../models/model_manager/model_manager_types";
+import {
+  ModelKey,
+  ModelRelation,
+} from "../models/model_manager/model_manager_types";
 import { AnnotatedModel } from "../models/model_query_builder/model_query_builder_types";
 import type { NumberModelKey } from "../models/model_types";
 import { getPaginationMetadata, PaginatedData } from "../pagination";
@@ -534,17 +537,6 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   }
 
   /**
-   * @description Adds a aggregate CTE to the query using a callback to build the subquery.
-   */
-  withAggregate(alias: string, cb: (qb: QueryBuilder<T>) => void): this {
-    const subQuery = new QueryBuilder<T>(this.model, this.sqlDataSource);
-    cb(subQuery);
-    const nodes = subQuery.extractQueryNodes();
-    this.withNodes.push(new WithNode("aggregate", alias, nodes));
-    return this;
-  }
-
-  /**
    * @description Insert record into a table
    * @param returning - The columns to return from the query, only supported by postgres and cockroachdb - default is "*"
    * @returns raw driver response
@@ -958,6 +950,136 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
 
     const whereGroupNode = new WhereGroupNode(nestedBuilder.whereNodes, "or");
     this.whereNodes.push(whereGroupNode);
+
+    return this;
+  }
+
+  /**
+   * @description Adds a AND WHERE EXISTS condition to the query. By default uses the same table, you can use the `from` method to change the table.
+   */
+  whereExists(
+    cbOrQueryBuilder: (queryBuilder: QueryBuilder<T>) => void | QueryBuilder<T>,
+  ): this {
+    return this.andWhereExists(cbOrQueryBuilder);
+  }
+
+  /**
+   * @description Adds a AND WHERE EXISTS condition to the query. By default uses the same table, you can use the `from` method to change the table.
+   */
+  andWhereExists(
+    cbOrQueryBuilder: (queryBuilder: QueryBuilder<T>) => void | QueryBuilder<T>,
+  ): this {
+    const nestedBuilder =
+      cbOrQueryBuilder instanceof QueryBuilder
+        ? cbOrQueryBuilder
+        : new QueryBuilder(this.model, this.sqlDataSource);
+
+    nestedBuilder.isNestedCondition = true;
+    if (typeof cbOrQueryBuilder === "function") {
+      cbOrQueryBuilder(nestedBuilder as QueryBuilder<T>);
+    }
+
+    this.whereNodes.push(
+      new WhereSubqueryNode(
+        "",
+        "exists",
+        nestedBuilder.extractQueryNodes(),
+        "and",
+      ),
+    );
+
+    return this;
+  }
+
+  /**
+   * @description Adds a OR WHERE EXISTS condition to the query. By default uses the same table, you can use the `from` method to change the table.
+   */
+  orWhereExists(
+    cbOrQueryBuilder: (queryBuilder: QueryBuilder<T>) => void | QueryBuilder<T>,
+  ): this {
+    const nestedBuilder =
+      cbOrQueryBuilder instanceof QueryBuilder
+        ? cbOrQueryBuilder
+        : new QueryBuilder(this.model, this.sqlDataSource);
+
+    nestedBuilder.isNestedCondition = true;
+    if (typeof cbOrQueryBuilder === "function") {
+      cbOrQueryBuilder(nestedBuilder as QueryBuilder<T>);
+    }
+
+    this.whereNodes.push(
+      new WhereSubqueryNode(
+        "",
+        "exists",
+        nestedBuilder.extractQueryNodes(),
+        "or",
+      ),
+    );
+
+    return this;
+  }
+
+  /**
+   * @description Adds a WHERE NOT EXISTS condition to the query. By default uses the same table, you can use the `from` method to change the table.
+   */
+  whereNotExists(
+    cbOrQueryBuilder: (queryBuilder: QueryBuilder<T>) => void | QueryBuilder<T>,
+  ): this {
+    return this.andWhereNotExists(cbOrQueryBuilder);
+  }
+
+  /**
+   * @description Adds a WHERE NOT EXISTS condition to the query. By default uses the same table, you can use the `from` method to change the table.
+   */
+  andWhereNotExists(
+    cbOrQueryBuilder: (queryBuilder: QueryBuilder<T>) => void | QueryBuilder<T>,
+  ): this {
+    const nestedBuilder =
+      cbOrQueryBuilder instanceof QueryBuilder
+        ? cbOrQueryBuilder
+        : new QueryBuilder(this.model, this.sqlDataSource);
+
+    nestedBuilder.isNestedCondition = true;
+    if (typeof cbOrQueryBuilder === "function") {
+      cbOrQueryBuilder(nestedBuilder as QueryBuilder<T>);
+    }
+
+    this.whereNodes.push(
+      new WhereSubqueryNode(
+        "",
+        "not exists",
+        nestedBuilder.extractQueryNodes(),
+        "and",
+      ),
+    );
+
+    return this;
+  }
+
+  /**
+   * @description Adds a WHERE NOT EXISTS condition to the query. By default uses the same table, you can use the `from` method to change the table.
+   */
+  orWhereNotExists(
+    cbOrQueryBuilder: (queryBuilder: QueryBuilder<T>) => void | QueryBuilder<T>,
+  ): this {
+    const nestedBuilder =
+      cbOrQueryBuilder instanceof QueryBuilder
+        ? cbOrQueryBuilder
+        : new QueryBuilder(this.model, this.sqlDataSource);
+
+    nestedBuilder.isNestedCondition = true;
+    if (typeof cbOrQueryBuilder === "function") {
+      cbOrQueryBuilder(nestedBuilder as QueryBuilder<T>);
+    }
+
+    this.whereNodes.push(
+      new WhereSubqueryNode(
+        "",
+        "not exists",
+        nestedBuilder.extractQueryNodes(),
+        "or",
+      ),
+    );
 
     return this;
   }

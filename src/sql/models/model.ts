@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import type { ModelManager } from "./model_manager/model_manager";
+import { ModelManager } from "./model_manager/model_manager";
 import type {
   FindOneType,
   FindReturnType,
@@ -7,6 +7,7 @@ import type {
   InsertOptions,
   ModelKey,
   ModelRelation,
+  OnlyM2MRelations,
   UnrestrictedFindOneType,
   UnrestrictedFindType,
   UpsertOptions,
@@ -20,6 +21,7 @@ import type {
 
 import { Entity } from "../../entity";
 import { HysteriaError } from "../../errors/hysteria_error";
+import { CaseConvention, convertCase } from "../../utils/case_utils";
 import { baseSoftDeleteDate } from "../../utils/date_utils";
 import { serializeModel } from "../serializer";
 import { SqlDataSource } from "../sql_data_source";
@@ -29,6 +31,7 @@ import {
   column,
   getModelColumns,
   getPrimaryKey,
+  getRelations,
   getRelationsMetadata,
   hasMany,
   hasOne,
@@ -40,6 +43,8 @@ import {
 } from "./decorators/model_decorators_types";
 import { AnnotatedModel } from "./model_query_builder/model_query_builder_types";
 import { getBaseTableName } from "./model_utils";
+import { ManyToMany } from "./relations/many_to_many";
+import { RelationEnum } from "./relations/relation";
 
 /**
  * @description Represents a Table in the Database
@@ -340,6 +345,91 @@ export abstract class Model extends Entity {
       ignoreHooks: options.ignoreHooks,
       returning: options.returning,
     });
+  }
+
+  /**
+   * @description Syncs in the through table the given models for the given relation
+   * @param relation The many to many relation to sync, this is not type safe since many to many relations defined at a decorator level
+   * @param leftModel The source (left) model instance to synchronize in the many-to-many relation.
+   * @param rightModels The target (right) model instances to associate with the left model in the join table.
+   * @param joinTableCustomData Optional function that returns custom data for each join table row (receives rightModel and index)
+   * @param options.caseConvention Optional. Controls naming convention for left/right foreign keys in the join table. Defaults to the left model's convention; set to `none` to disable.
+   * @warning Use only when the join table contains no business logic beyond foreign keys. For business logic, define and use a dedicated join model.
+   * @warning This method does not trigger hooks on the join table, even if a Model exists. Use the join model's `insertMany` for hook support.
+   * @throws {HysteriaError} If the specified relation does not exist on the model.
+   * @throws {HysteriaError} If the specified relation is not a many-to-many relation.
+   */
+  static async sync<T extends Model, R extends OnlyM2MRelations<T>>(
+    this: new () => T | typeof Model,
+    relation: R,
+    leftModel: T,
+    rightModels: T[R] extends any[] ? T[R] : T[R][],
+    joinTableCustomData?: (
+      rightModel: T[R] extends any[] ? T[R][number] : T[R],
+      index: number,
+    ) => Record<string, any>,
+    options: BaseModelMethodOptions & { caseConvention?: CaseConvention } = {},
+  ): Promise<void> {
+    if (!Array.isArray(rightModels)) {
+      rightModels = [rightModels] as T[R] extends any[] ? T[R] : T[R][];
+    }
+
+    if (!rightModels.length) {
+      return;
+    }
+
+    const typeofModel = this as unknown as typeof Model;
+    const modelRelations = getRelations(typeofModel);
+    const m2mRelation = modelRelations.find(
+      (r) => r.columnName === relation,
+    ) as ManyToMany;
+
+    if (!m2mRelation) {
+      throw new HysteriaError(
+        `${typeofModel.name}::sync`,
+        "RELATION_NOT_FOUND",
+      );
+    }
+
+    if (m2mRelation.type !== RelationEnum.manyToMany) {
+      throw new HysteriaError(
+        `${typeofModel.name}::sync`,
+        "RELATION_NOT_MANY_TO_MANY",
+      );
+    }
+
+    const casedLeftForeignKey = convertCase(
+      m2mRelation.leftForeignKey,
+      options.caseConvention || typeofModel.databaseCaseConvention,
+    );
+
+    const casedRightForeignKey = convertCase(
+      m2mRelation.rightForeignKey,
+      options.caseConvention || typeofModel.databaseCaseConvention,
+    );
+
+    const joinTableModelsToInsert = rightModels.map((rightModel, index) => ({
+      [casedLeftForeignKey]: leftModel[typeofModel.primaryKey as keyof T],
+      [casedRightForeignKey]:
+        rightModel[m2mRelation.model.primaryKey as keyof T],
+      ...(joinTableCustomData ? joinTableCustomData(rightModel, index) : {}),
+    }));
+
+    class ThroughModel extends Model {
+      static databaseCaseConvention: CaseConvention = "preserve";
+      static modelCaseConvention: CaseConvention = "preserve";
+
+      static get table() {
+        return m2mRelation.throughModel;
+      }
+    }
+
+    const throughModelManager =
+      ThroughModel.dispatchModelManager<InstanceType<typeof ThroughModel>>(
+        options,
+      );
+
+    await throughModelManager.insertMany(joinTableModelsToInsert);
   }
 
   /**

@@ -18,6 +18,10 @@ const sqlEnvironments = [
 ];
 
 const sqlTests = [
+  // having related
+  "./test/sql/bigint_pk/having_related.test.ts",
+  "./test/sql/uuid_pk/having_related.test.ts",
+
   // edge cases
   "./test/sql/edge_cases/query_builder_complex_edge_cases.test.ts",
   "./test/sql/edge_cases/model_serialization_edge_cases.test.ts",
@@ -46,6 +50,13 @@ const sqlTests = [
 
 sqlTests.forEach((file) => {
   sqlEnvironments.forEach((environment) => {
+    if (file.includes("bigint_pk") && environment.type === "cockroachdb") {
+      console.log(
+        `Skipping ${file} on ${environment.type} since it's using bigint pk`
+      );
+      return;
+    }
+
     console.log(`Running ${file} on ${environment.type}`);
     try {
       execSync(

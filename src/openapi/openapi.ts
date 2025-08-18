@@ -7,7 +7,7 @@ import { Model } from "../sql/models/model";
 import { OpenApiModelPropertyType, OpenApiModelType } from "./openapi_types";
 
 /**
- * Detects column type from decorator metadata and serialize/prepare functions
+ * Detects column type from decorator metadata and serialize/prepare functions in best effort
  */
 const detectColumnType = (column: ColumnType): OpenApiModelPropertyType => {
   const baseType: OpenApiModelPropertyType = {

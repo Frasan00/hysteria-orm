@@ -1,6 +1,7 @@
 import { QueryNode } from "../../query";
+import { RawNode } from "../raw/raw_node";
 
-export type BaseValues = string | number | boolean | undefined | null;
+export type BaseValues = string | number | boolean | undefined | null | RawNode;
 
 export type BinaryOperatorType =
   | "="
