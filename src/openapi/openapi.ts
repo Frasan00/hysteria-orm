@@ -1,7 +1,3 @@
-import {
-  getModelColumns,
-  getPrimaryKey,
-} from "../sql/models/decorators/model_decorators";
 import { ColumnType } from "../sql/models/decorators/model_decorators_types";
 import { Model } from "../sql/models/model";
 import { OpenApiModelPropertyType, OpenApiModelType } from "./openapi_types";
@@ -111,7 +107,7 @@ const isColumnRequired = (
 const generateColumnProperties = (
   model: typeof Model,
 ): Record<string, OpenApiModelPropertyType> => {
-  const columns = getModelColumns(model);
+  const columns = model.getColumns();
   const properties: Record<string, OpenApiModelPropertyType> = {};
 
   for (const column of columns) {
@@ -129,8 +125,8 @@ const generateColumnProperties = (
  * Gets required fields based on column metadata and TypeScript types
  */
 const getRequiredFields = (model: typeof Model): string[] => {
-  const columns = getModelColumns(model);
-  const primaryKey = getPrimaryKey(model);
+  const columns = model.getColumns();
+  const primaryKey = model.primaryKey;
   const required: string[] = [];
 
   for (const column of columns) {

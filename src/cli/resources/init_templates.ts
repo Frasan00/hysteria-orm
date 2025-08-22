@@ -12,7 +12,7 @@ export class InitTemplates {
     return `
 import { ${importType} } from "hysteria-orm";
 
-export const db = await ${importType}.connect({
+const db = await ${importType}.connect({
   type: "${type}",
   database: "${database}"${
     type === "sqlite"
@@ -28,6 +28,8 @@ export const db = await ${importType}.connect({
     console.error(err);
     process.exit(1);
   });
+
+export default db;
 `;
   }
 
@@ -40,10 +42,12 @@ export const db = await ${importType}.connect({
       return `
 import { ${importType} } from "hysteria-orm";
 
-export const db = await ${importType}.connect(${config}).catch((err) => {
+const db = await ${importType}.connect(${config}).catch((err) => {
   console.error(err);
   process.exit(1);
-});`;
+});
+
+export default db;`;
     }
 
     return "";

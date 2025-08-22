@@ -1,25 +1,18 @@
 import { Command } from "commander";
 import fs from "node:fs";
 import path from "node:path";
-import { logger } from ".";
+import { logger, SqlDataSource } from ".";
 import dropAllTablesConnector from "./cli/drop_all_tables_connector";
 import migrationCreateConnector from "./cli/migration_create_connector";
 import rollbackMigrationsConnector from "./cli/migration_rollback_connector";
 import runMigrationsConnector from "./cli/migration_run_connector";
+import { InitTemplates } from "./cli/resources/init_templates";
 import runSqlConnector from "./cli/run_sql_connector";
 import { SqlDataSourceType } from "./sql/sql_data_source_types";
-import { InitTemplates } from "./cli/resources/init_templates";
+import { importTsUniversal } from "./utils/importer";
 
 const databaseTypes = ["sqlite", "mysql", "postgres", "mariadb", "cockroachdb"];
 const allDatabaseTypes = databaseTypes.concat("mongodb", "redis");
-
-type BaseSqlDataSourceCommandOptions = {
-  type?: SqlDataSourceType;
-  host?: string;
-  database?: string;
-  username?: string;
-  password?: string;
-};
 
 const program = new Command();
 
@@ -81,32 +74,21 @@ program
 program
   .command("run:sql [sql]")
   .option("-f, --file [path]", "Path to the sql file", undefined)
-  .option("-h, --host [host]", "Host to connect to", undefined)
-  .option("-d, --database [database]", "Database to connect to", undefined)
-  .option("-u, --username [username]", "Username to connect to", undefined)
-  .option("-p, --password [password]", "Password to connect to", undefined)
   .option(
-    "-t, --type [type]",
-    `Type of the database to connect to, available types: ${databaseTypes.join(", ")}`,
+    "-d, --datasource [path]",
+    "Path to SqlDataSource (default export)",
     undefined,
   )
   .description(
     "Run a sql file or a sql query directly from the command line for the given connection defined in the env file",
   )
   .action(
-    async (
-      sql?: string,
-      option?: { file?: string } & BaseSqlDataSourceCommandOptions,
-    ) => {
+    async (sql?: string, option?: { file?: string; datasource?: string }) => {
       logger.info("Starting SQL execution");
-
-      const sqlDataSourceInput = {
-        type: option?.type,
-        host: option?.host,
-        database: option?.database,
-        username: option?.username,
-        password: option?.password,
-      };
+      if (!option?.datasource) {
+        logger.error("SqlDataSource file path is required (-d|--datasource)");
+        process.exit(1);
+      }
 
       let filePath = option?.file;
       if (!sql && !filePath) {
@@ -119,15 +101,15 @@ program
         process.exit(1);
       }
 
+      const resolvedPath = path.resolve(process.cwd(), option.datasource);
+      const { default: sqlDs } = await importTsUniversal<{
+        default: SqlDataSource;
+      }>(resolvedPath);
+
       if (sql) {
         logger.info("Executing SQL query directly from command line");
         try {
-          await runSqlConnector(sql, {
-            host: option?.host,
-            database: option?.database,
-            username: option?.username,
-            password: option?.password,
-          });
+          await runSqlConnector(sql, sqlDs);
           logger.info("SQL execution completed successfully");
           process.exit(0);
         } catch (error) {
@@ -153,7 +135,7 @@ program
         `SQL file loaded successfully (${sqlStatement.length} characters)`,
       );
       try {
-        await runSqlConnector(sqlStatement, sqlDataSourceInput);
+        await runSqlConnector(sqlStatement, sqlDs);
         logger.info("SQL file execution completed successfully");
         process.exit(0);
       } catch (error) {
@@ -236,16 +218,16 @@ program
 
 program
   .command("run:migrations [runUntil]")
-  .option("-v, --verbose", "Verbose mode with all query logs", false)
   .option(
-    "-t, --type [type]",
-    `Type of the database to connect to, available types: ${databaseTypes.join(", ")}`,
+    "-c, --tsconfig [tsconfigPath]",
+    "Path to the tsconfig.json file, defaults to ./tsconfig.json",
     undefined,
   )
-  .option("-h, --host [host]", "Host to connect to", undefined)
-  .option("-d, --database [database]", "Database to connect to", undefined)
-  .option("-u, --username [username]", "Username to connect to", undefined)
-  .option("-p, --password [password]", "Password to connect to", undefined)
+  .option(
+    "-d, --datasource [path]",
+    "Path to SqlDataSource (default export)",
+    undefined,
+  )
   .option(
     "-m, --migration-path [migrationPath]",
     "Path to the migrations",
@@ -258,25 +240,26 @@ program
     async (
       runUntil: string,
       option?: {
-        verbose: boolean;
         migrationPath: string;
-      } & BaseSqlDataSourceCommandOptions,
+        tsconfigPath: string;
+        datasource?: string;
+      },
     ) => {
-      const sqlDataSourceInput = {
-        type: option?.type,
-        host: option?.host,
-        database: option?.database,
-        username: option?.username,
-        password: option?.password,
-        logs: option?.verbose,
-      };
+      if (!option?.datasource) {
+        logger.error("SqlDataSource file path is required (-d|--datasource)");
+        process.exit(1);
+      }
+      const { default: sqlDs } = await importTsUniversal<{
+        default: SqlDataSource;
+      }>(path.resolve(process.cwd(), option.datasource), option?.tsconfigPath);
 
       try {
         await runMigrationsConnector(
+          sqlDs,
           runUntil,
-          sqlDataSourceInput,
           true,
           option?.migrationPath,
+          option?.tsconfigPath,
         );
         process.exit(0);
       } catch (error) {
@@ -288,16 +271,16 @@ program
 
 program
   .command("rollback:migrations [rollbackUntil]")
-  .option("-v, --verbose", "Verbose mode with all query logs", false)
   .option(
-    "-t, --type [type]",
-    `Type of the database to connect to, available types: ${databaseTypes.join(", ")}`,
+    "-c, --tsconfig [tsconfigPath]",
+    "Path to the tsconfig.json file, defaults to ./tsconfig.json",
     undefined,
   )
-  .option("-h, --host [host]", "Host to connect to", undefined)
-  .option("-d, --database [database]", "Database to connect to", undefined)
-  .option("-u, --username [username]", "Username to connect to", undefined)
-  .option("-p, --password [password]", "Password to connect to", undefined)
+  .option(
+    "-d, --datasource [path]",
+    "Path to SqlDataSource (default export)",
+    undefined,
+  )
   .option(
     "-m, --migration-path [migrationPath]",
     "Path to the migrations",
@@ -310,24 +293,25 @@ program
     async (
       rollbackUntil: string,
       option?: {
-        verbose: boolean;
         migrationPath: string;
-      } & BaseSqlDataSourceCommandOptions,
+        tsconfigPath: string;
+        datasource?: string;
+      },
     ) => {
-      const sqlDataSourceInput = {
-        type: option?.type,
-        host: option?.host,
-        database: option?.database,
-        username: option?.username,
-        password: option?.password,
-        logs: option?.verbose,
-      };
+      if (!option?.datasource) {
+        logger.error("SqlDataSource file path is required (-d|--datasource)");
+        process.exit(1);
+      }
+      const { default: sqlDs } = await importTsUniversal<{
+        default: SqlDataSource;
+      }>(path.resolve(process.cwd(), option.datasource), option?.tsconfigPath);
       try {
         await rollbackMigrationsConnector(
+          sqlDs,
           rollbackUntil,
-          sqlDataSourceInput,
           true,
           option?.migrationPath,
+          option?.tsconfigPath,
         );
         process.exit(0);
       } catch (error) {
@@ -339,58 +323,58 @@ program
 
 program
   .command("refresh:migrations")
-  .option("-v, --verbose", "Verbose mode with all query logs", false)
   .option(
     "-f, --force",
     "Drop all tables in the database before running the migrations instead of running the down migrations",
     false,
   )
   .option(
-    "-t, --type [type]",
-    `Type of the database to connect to, available types: ${databaseTypes.join(", ")}`,
+    "-c, --tsconfig [tsconfigPath]",
+    "Path to the tsconfig.json file, defaults to ./tsconfig.json",
     undefined,
   )
-  .option("-h, --host [host]", "Host to connect to", undefined)
-  .option("-d, --database [database]", "Database to connect to", undefined)
-  .option("-u, --username [username]", "Username to connect to", undefined)
-  .option("-p, --password [password]", "Password to connect to", undefined)
+  .option(
+    "-d, --datasource [path]",
+    "Path to SqlDataSource (default export)",
+    undefined,
+  )
   .option("-m, --migration-path [path]", "Path to the migrations", undefined)
   .description(
     "Rollbacks every migration that has been run and then run the migrations",
   )
   .action(
-    async (
-      option?: {
-        verbose: boolean;
-        force: boolean;
-        migrationPath: string;
-      } & BaseSqlDataSourceCommandOptions,
-    ) => {
+    async (option?: {
+      force: boolean;
+      migrationPath: string;
+      tsconfigPath: string;
+      datasource?: string;
+    }) => {
       const force = option?.force || false;
-      const sqlDataSourceInput = {
-        type: option?.type,
-        host: option?.host,
-        database: option?.database,
-        username: option?.username,
-        password: option?.password,
-        logs: option?.verbose,
-      };
+      if (!option?.datasource) {
+        logger.error("SqlDataSource file path is required (-d|--datasource)");
+        process.exit(1);
+      }
+      const { default: sqlDs } = await importTsUniversal<{
+        default: SqlDataSource;
+      }>(path.resolve(process.cwd(), option.datasource), option?.tsconfigPath);
 
       try {
         force
-          ? await dropAllTablesConnector(sqlDataSourceInput, false)
+          ? await dropAllTablesConnector(sqlDs, false)
           : await rollbackMigrationsConnector(
+              sqlDs,
               undefined,
-              sqlDataSourceInput,
               false,
               option?.migrationPath,
+              option?.tsconfigPath,
             );
 
         await runMigrationsConnector(
+          sqlDs,
           undefined,
-          sqlDataSourceInput,
           true,
           option?.migrationPath,
+          option?.tsconfigPath,
         );
         process.exit(0);
       } catch (error) {

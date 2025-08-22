@@ -2,10 +2,10 @@
 
 import { execSync } from "node:child_process";
 import {
-  mysqlConfig,
-  mariadbConfig,
-  pgConfig,
   cockroachdbConfig,
+  mariadbConfig,
+  mysqlConfig,
+  pgConfig,
   sqliteConfig,
 } from "./test_environments.js";
 

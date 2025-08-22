@@ -4,7 +4,6 @@ import { pathToFileURL } from "url";
 import { env } from "../env/env";
 import { HysteriaError } from "../errors/hysteria_error";
 import { Migration } from "../sql/migrations/migration";
-import crypto from "node:crypto";
 import type {
   MysqlConnectionInstance,
   PgPoolClientInstance,
@@ -15,52 +14,33 @@ import type {
 import { MigrationTableType } from "./resources/migration_table_type";
 import MigrationTemplates from "./resources/migration_templates";
 import { createRequire } from "node:module";
+import { importTsUniversal } from "../utils/importer";
 
-const importMigrationFile = async (
-  filePath: string,
-  transpiledMigrationFolder: string,
-) => {
+const importMigrationFile = async (filePath: string, tsconfigPath?: string) => {
   const isTs = filePath.endsWith(".ts");
   if (isTs) {
-    const ts = await import("typescript").catch(() => {
+    await import("typescript").catch(() => {
       throw new HysteriaError(
         "MigrationUtils::importMigrationFile In order to use TypeScript migrations, you must have `typeScript` installed in your project. Please install it with `npm install typescript --save-dev`, if you're in a production environment, it's recommended to transpile your migrations to JavaScript before running the application.",
         "MIGRATION_MODULE_NOT_FOUND",
       );
     });
 
-    const transpiled = ts.transpileModule(fs.readFileSync(filePath, "utf8"), {
-      compilerOptions: {
-        module: ts.ModuleKind.ESNext,
-        target: ts.ScriptTarget.ES2020,
-        moduleResolution: ts.ModuleResolutionKind.NodeNext,
-        declaration: false,
-        esModuleInterop: true,
-        allowSyntheticDefaultImports: true,
-        resolveJsonModule: true,
-        forceConsistentCasingInFileNames: true,
-        strict: true,
-        skipLibCheck: true,
-        noEmitOnError: true,
-        noEmit: true,
-        noUnusedLocals: false,
-        noUnusedParameters: false,
-        noFallthroughCasesInSwitch: false,
-      },
+    await import("esbuild").catch(() => {
+      throw new HysteriaError(
+        "MigrationUtils::importMigrationFile In order to use TypeScript migrations, you must have `esbuild` installed in your project. Please install it with `npm install esbuild --save-dev`, if you're in a production environment, it's recommended to transpile your migrations to JavaScript before running the application.",
+        "MIGRATION_MODULE_NOT_FOUND",
+      );
     });
 
-    if (!fs.existsSync(transpiledMigrationFolder)) {
-      fs.mkdirSync(transpiledMigrationFolder, { recursive: true });
-    }
+    await import("bundle-require").catch(() => {
+      throw new HysteriaError(
+        "MigrationUtils::importMigrationFile In order to use TypeScript migrations, you must have `bundle-require` installed in your project. Please install it with `npm install bundle-require --save-dev`, if you're in a production environment, it's recommended to transpile your migrations to JavaScript before running the application.",
+        "MIGRATION_MODULE_NOT_FOUND",
+      );
+    });
 
-    const transpiledFilePath = path.resolve(
-      transpiledMigrationFolder,
-      path.basename(filePath),
-    );
-
-    const jsFilePath = transpiledFilePath.replace(".ts", ".js");
-    fs.writeFileSync(jsFilePath, transpiled.outputText);
-    filePath = jsFilePath;
+    return importTsUniversal(filePath, tsconfigPath);
   }
 
   try {
@@ -134,6 +114,7 @@ export async function getMigrationTable(
 export async function getMigrations(
   dbType: SqlDataSourceType,
   migrationPath?: string,
+  tsconfigPath?: string,
 ): Promise<Migration[]> {
   const migrationNames = findMigrationNames(migrationPath);
   const migrations: Migration[] = [];
@@ -142,7 +123,9 @@ export async function getMigrations(
     const migrationModule = await findMigrationModule(
       migrationName,
       migrationPath,
+      tsconfigPath,
     );
+
     const migration: Migration = new migrationModule(dbType || env.DB_TYPE);
     migration.migrationName = migrationName;
     migrations.push(migration);
@@ -167,48 +150,30 @@ export function getPendingMigrations(
 
 async function loadMigrationModule(
   pathToFile: string,
+  tsconfigPath?: string,
 ): Promise<new (dbType: SqlDataSourceType) => Migration> {
-  const transpiledMigrationFolder = path.resolve(
-    path.dirname(pathToFile),
-    `transpiled_${Date.now()}_${crypto.randomUUID()}`,
-  );
-
-  try {
-    const migrationModule = await importMigrationFile(
-      pathToFile,
-      transpiledMigrationFolder,
+  const migrationModule = await importMigrationFile(pathToFile, tsconfigPath);
+  if (!migrationModule.default) {
+    throw new HysteriaError(
+      "MigrationUtils::loadMigrationModule Migration module does not have a default export",
+      "MIGRATION_MODULE_NOT_FOUND",
     );
-
-    // Cleanup
-    if (fs.existsSync(transpiledMigrationFolder)) {
-      fs.rmSync(transpiledMigrationFolder, { recursive: true });
-    }
-
-    if (!migrationModule.default) {
-      throw new HysteriaError(
-        "MigrationUtils::loadMigrationModule Migration module does not have a default export",
-        "MIGRATION_MODULE_NOT_FOUND",
-      );
-    }
-
-    return migrationModule.default;
-  } catch (error) {
-    // Cleanup
-    if (fs.existsSync(transpiledMigrationFolder)) {
-      fs.rmSync(transpiledMigrationFolder, { recursive: true });
-    }
-
-    throw error;
   }
+
+  return migrationModule.default;
 }
 
 async function findMigrationModule(
   migrationName: string,
   migrationModulePath: string = env.MIGRATION_PATH || "database/migrations",
+  tsconfigPath?: string,
 ): Promise<new (dbType: SqlDataSourceType) => Migration> {
   migrationModulePath = join(migrationModulePath, migrationName);
   const migrationPath = path.resolve(process.cwd(), migrationModulePath);
-  const migrationModule = await loadMigrationModule(migrationPath);
+  const migrationModule = await loadMigrationModule(
+    migrationPath,
+    tsconfigPath,
+  );
 
   if (!migrationModule) {
     throw new HysteriaError(

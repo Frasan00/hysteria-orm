@@ -91,7 +91,11 @@ export default class Schema {
       nodes,
       options?.ifNotExists,
     );
-    this.rawQuery(astParser.parse([createTableNode]).sql);
+    const frag = astParser.parse([createTableNode]).sql;
+    const stmt = frag.startsWith("create table")
+      ? frag
+      : `create table ${frag}`;
+    this.rawQuery(stmt);
   }
 
   /**
@@ -239,7 +243,7 @@ export default class Schema {
       modelCaseConvention: "preserve",
     } as typeof Model);
 
-    this.rawQuery(`alter table ${astParser.parse([alterNode]).sql}`);
+    this.rawQuery(astParser.parse([alterNode]).sql);
   }
 
   /**
@@ -264,6 +268,7 @@ export default class Schema {
     foreignTable: string,
     foreignColumns: string[],
     constraintName?: string,
+    options?: { onDelete?: string; onUpdate?: string },
   ): void {
     if (!constraintName) {
       constraintName = `${table}_${columns.join("_")}_fk`;
@@ -273,6 +278,8 @@ export default class Schema {
       columns,
       references: { table: foreignTable, columns: foreignColumns },
       constraintName,
+      onDelete: options?.onDelete as any,
+      onUpdate: options?.onUpdate as any,
     });
 
     const alterNode = new AlterTableNode(table, [
@@ -283,7 +290,7 @@ export default class Schema {
       databaseCaseConvention: "preserve",
       modelCaseConvention: "preserve",
     } as typeof Model);
-    this.rawQuery(`alter table ${astParser.parse([alterNode]).sql}`);
+    this.rawQuery(astParser.parse([alterNode]).sql);
   }
 
   /**

@@ -2,7 +2,6 @@ import { GroupByNode } from "../ast/query/node/group_by/group_by";
 import { LimitNode } from "../ast/query/node/limit/limit";
 import { OffsetNode } from "../ast/query/node/offset/offset";
 import { OrderByNode } from "../ast/query/node/order_by/order_by";
-import { getModelColumns } from "../models/decorators/model_decorators";
 import { ColumnType } from "../models/decorators/model_decorators_types";
 import { Model } from "../models/model";
 import type {
@@ -31,7 +30,9 @@ export abstract class FooterQueryBuilder<T extends Model> {
     this.limitNode = null;
     this.offsetNode = null;
     this.logs = this.sqlDataSource.logs;
-    this.modelColumns = getModelColumns(this.model);
+    const getColumnsFn = (this.model as any)?.getColumns;
+    this.modelColumns =
+      typeof getColumnsFn === "function" ? getColumnsFn.call(this.model) : [];
     this.modelColumnsMap = new Map(
       this.modelColumns.map((modelColumn) => [
         modelColumn.columnName,

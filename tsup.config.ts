@@ -1,6 +1,21 @@
 import { defineConfig } from "tsup";
 
-const external = ["ioredis", "mongodb", "pg", "mysql2", "sqlite3"];
+const external = [
+  "ioredis",
+  "mongodb",
+  "pg",
+  "mysql2",
+  "sqlite3",
+  "bundle-require",
+  "esbuild",
+  "sql-formatter",
+  "sql-highlight",
+  "reflect-metadata",
+  "pluralize",
+  "dayjs",
+  "async-mutex",
+  "commander",
+];
 
 export default defineConfig([
   {

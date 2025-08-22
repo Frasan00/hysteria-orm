@@ -1,5 +1,4 @@
 import { convertCase } from "../utils/case_utils";
-import { getModelColumns } from "./models/decorators/model_decorators";
 import { ColumnType } from "./models/decorators/model_decorators_types";
 import { Model } from "./models/model";
 
@@ -122,7 +121,7 @@ export const serializeModel = async <T extends Model>(
     return null;
   }
 
-  const modelColumns = getModelColumns(typeofModel);
+  const modelColumns = typeofModel.getColumns();
   const modelColumnsMap = new Map<string, ColumnType>(
     modelColumns.map((modelColumn) => [modelColumn.columnName, modelColumn]),
   );

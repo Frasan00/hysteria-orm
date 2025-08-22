@@ -1,23 +1,29 @@
-import { env } from "../../env/env";
-import runMigrationsConnector from "../../cli/migration_run_connector";
+import { format } from "sql-formatter";
 import rollbackMigrationsConnector from "../../cli/migration_rollback_connector";
+import runMigrationsConnector from "../../cli/migration_run_connector";
+import { env } from "../../env/env";
 import logger from "../../utils/logger";
 import { SqlDataSource } from "../sql_data_source";
-import { Migration } from "./migration";
 import {
   SqlDataSourceInput,
   SqlDataSourceType,
 } from "../sql_data_source_types";
-import { format } from "sql-formatter";
 import { getSqlDialect } from "../sql_runner/sql_runner";
+import { Migration } from "./migration";
 
 /**
  * @description Used internally from the CLI
  */
 export class Migrator {
+  private sql: SqlDataSource;
+
+  constructor(sql?: SqlDataSource) {
+    this.sql = sql || SqlDataSource.getInstance();
+  }
+
   async upMigrations(migrations: Migration[]): Promise<void> {
-    const queryFormatOptions = SqlDataSource.getInstance().queryFormatOptions;
-    const dbType = SqlDataSource.getInstance().getDbType() as SqlDataSourceType;
+    const queryFormatOptions = this.sql.queryFormatOptions;
+    const dbType = this.sql.getDbType() as SqlDataSourceType;
 
     for (const migration of migrations) {
       logger.info(`Running migration ${migration.migrationName}`);
@@ -33,20 +39,20 @@ export class Migrator {
           language: getSqlDialect(dbType),
         });
 
-        await SqlDataSource.rawQuery(formattedQuery);
+        await this.sql.rawQuery(formattedQuery);
       }
 
       await this.addMigrationToMigrationTable(migration);
       if (migration.afterMigration) {
-        await migration.afterMigration(SqlDataSource.getInstance());
+        await migration.afterMigration(this.sql);
       }
     }
   }
 
   async downMigrations(migrations: Migration[]): Promise<void> {
     migrations = migrations.reverse();
-    const queryFormatOptions = SqlDataSource.getInstance().queryFormatOptions;
-    const dbType = SqlDataSource.getInstance().getDbType() as SqlDataSourceType;
+    const queryFormatOptions = this.sql.queryFormatOptions;
+    const dbType = this.sql.getDbType() as SqlDataSourceType;
 
     for (const migration of migrations) {
       logger.info(`Rolling back migration ${migration.migrationName}`);
@@ -62,12 +68,12 @@ export class Migrator {
           language: getSqlDialect(dbType),
         });
 
-        await SqlDataSource.rawQuery(formattedQuery);
+        await this.sql.rawQuery(formattedQuery);
       }
 
       await this.deleteMigrationFromMigrationTable(migration);
       if (migration.afterMigration) {
-        await migration.afterMigration(SqlDataSource.getInstance());
+        await migration.afterMigration(this.sql);
       }
     }
   }
@@ -79,13 +85,17 @@ export class Migrator {
       .replace("T", " ")
       .replace(/\.\d{3}Z$/, "");
 
-    const insertMigrationSql = `INSERT INTO migrations (name, timestamp) VALUES ('${migration.migrationName}', '${timestamp}')`;
-    await SqlDataSource.rawQuery(insertMigrationSql);
+    await this.sql.query("migrations").insert({
+      name: migration.migrationName,
+      timestamp,
+    });
   }
 
   private async deleteMigrationFromMigrationTable(migration: Migration) {
-    const deleteMigrationSql = `DELETE FROM migrations WHERE name = '${migration.migrationName}'`;
-    await SqlDataSource.rawQuery(deleteMigrationSql);
+    await this.sql
+      .query("migrations")
+      .where("name", migration.migrationName)
+      .delete();
   }
 }
 
@@ -124,22 +134,25 @@ export class ClientMigrator {
    */
   private async migrate(direction: "up" | "down"): Promise<void> {
     env.MIGRATION_PATH = this.migrationPath;
+    const sqlDataSource =
+      this.sqlDataSourceInput instanceof SqlDataSource
+        ? this.sqlDataSourceInput
+        : await SqlDataSource.connect({
+            ...this.sqlDataSourceInput,
+          });
+
     if (direction === "up") {
       return runMigrationsConnector(
+        sqlDataSource,
         undefined,
-        this.sqlDataSourceInput instanceof SqlDataSource
-          ? await this.sqlDataSourceInput.getConnectionDetails()
-          : this.sqlDataSourceInput,
         true,
         this.migrationPath,
       );
     }
 
     return rollbackMigrationsConnector(
+      sqlDataSource,
       undefined,
-      this.sqlDataSourceInput instanceof SqlDataSource
-        ? await this.sqlDataSourceInput.getConnectionDetails()
-        : this.sqlDataSourceInput,
       true,
       this.migrationPath,
     );

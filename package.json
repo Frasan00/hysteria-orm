@@ -1,6 +1,6 @@
 {
   "name": "hysteria-orm",
-  "version": "0.8.7",
+  "version": "0.8.8",
   "license": "MIT",
   "description": "Yet another orm for Javascript and Typescript no one asked for",
   "type": "module",
@@ -19,18 +19,23 @@
     "test:fresh": "node lib/cli.js refresh:migrations",
     "generate:interpreter:map": "node generate_interpreter_map.js"
   },
-  "main": "./lib/index.js",
+  "main": "./lib/index.cjs",
   "module": "./lib/index.js",
   "types": "./lib/index.d.ts",
   "exports": {
     ".": {
-      "require": "./lib/index.cjs",
-      "import": "./lib/index.js"
+      "types": "./lib/index.d.ts",
+      "import": "./lib/index.js",
+      "require": "./lib/index.cjs"
     }
   },
   "bin": {
-    "hysteria": "lib/cli.js"
+    "hysteria": "lib/cli.js",
+    "hysteria-cjs": "lib/cli.cjs"
   },
+  "files": [
+    "lib/**"
+  ],
   "devDependencies": {
     "@adonisjs/eslint-config": "^2.1.2",
     "@faker-js/faker": "^9.9.0",
@@ -43,6 +48,7 @@
     "@types/pino": "^7.0.5",
     "@types/pluralize": "^0.0.33",
     "@types/sqlite3": "^5.1.0",
+    "bundle-require": "^5.1.0",
     "husky": "^9.1.7",
     "ioredis": "^5.7.0",
     "jest": "^30.0.5",
@@ -93,6 +99,12 @@
       "optional": true
     },
     "typescript": {
+      "optional": true
+    },
+    "bundle-require": {
+      "optional": true
+    },
+    "esbuild": {
       "optional": true
     }
   },

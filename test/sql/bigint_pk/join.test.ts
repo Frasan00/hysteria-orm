@@ -1,5 +1,4 @@
 import { env } from "../../../src/env/env";
-import { getModelColumns } from "../../../src/sql/models/decorators/model_decorators";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { PostWithBigint } from "../test_models/bigint/post_bigint";
 import { UserWithBigint } from "../test_models/bigint/user_bigint";
@@ -58,7 +57,7 @@ describe(`[${env.DB_TYPE}] bigint pk join`, () => {
     expect(postsWithUsers[1].$annotations.userName).toBeDefined();
     expect(postsWithUsers[2].$annotations.userName).toBeDefined();
 
-    const columns = getModelColumns(PostWithBigint);
+    const columns = PostWithBigint.getColumns();
     expect(Object.keys(postsWithUsers[0]).length - 1).toEqual(columns.length); // ignore additional
   });
 

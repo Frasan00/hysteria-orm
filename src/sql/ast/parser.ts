@@ -53,7 +53,11 @@ export class AstParser {
       const isLastOfType = !nextNode || nextNode.keyword !== node.keyword;
       const chainWith = isLastOfType ? "" : nextNode.chainsWith;
 
-      if (node.folder === "lock" || node.folder === "on_duplicate") {
+      if (
+        node.folder === "lock" ||
+        node.folder === "on_duplicate" ||
+        node.folder === "schema"
+      ) {
         sqlParts.push(`${sqlStatement.sql}${chainWith}`);
         allBindings.push(...sqlStatement.bindings);
         currentSqlKeyword = node.keyword;

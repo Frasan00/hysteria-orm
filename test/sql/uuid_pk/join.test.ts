@@ -1,5 +1,4 @@
 import { env } from "../../../src/env/env";
-import { getModelColumns } from "../../../src/sql/models/decorators/model_decorators";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { PostFactory } from "../test_models/factory/post_factory";
 import { UserFactory } from "../test_models/factory/user_factory";
@@ -54,7 +53,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
     expect(postsWithUsers[1].$annotations.userName).toBeDefined();
     expect(postsWithUsers[2].$annotations.userName).toBeDefined();
 
-    const columns = getModelColumns(PostWithUuid);
+    const columns = PostWithUuid.getColumns();
     expect(Object.keys(postsWithUsers[0]).length - 1).toEqual(columns.length); // ignore additional
   });
 

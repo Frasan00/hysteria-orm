@@ -3,10 +3,20 @@ import { DataSource } from "../data_source/data_source";
 import { HysteriaError } from "../errors/hysteria_error";
 import { generateOpenApiModelWithMetadata } from "../openapi/openapi";
 import logger from "../utils/logger";
+import { AstParser } from "./ast/parser";
 import { RawNode } from "./ast/query/node/raw/raw_node";
+import { ForeignKeyInfoNode } from "./ast/query/node/schema";
+import { IndexInfoNode } from "./ast/query/node/schema/index_info";
+import { TableInfoNode } from "./ast/query/node/schema/table_info";
 import { Model } from "./models/model";
 import { ModelManager } from "./models/model_manager/model_manager";
 import { QueryBuilder } from "./query_builder/query_builder";
+import type {
+  TableColumnInfo,
+  TableForeignKeyInfo,
+  TableIndexInfo,
+  TableSchemaInfo,
+} from "./schema_introspection_types";
 import { createSqlConnection } from "./sql_connection_utils";
 import type {
   AugmentedSqlDataSource,
@@ -27,6 +37,7 @@ import {
   StartTransactionOptions,
   TransactionExecutionOptions,
 } from "./transactions/transaction_types";
+import Schema from "./migrations/schema/schema";
 
 /**
  * @description The SqlDataSource class is the main class for interacting with the database, it's used to create connections, execute queries, and manage transactions
@@ -416,6 +427,24 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
+   * @description Alters a table on the database, return the queries to be executed in order to alter the table
+   */
+  alterTable(...args: Parameters<Schema["alterTable"]>): string[] {
+    const schema = new Schema(this.getDbType());
+    schema.alterTable(...args);
+    return schema.queryStatements;
+  }
+
+  /**
+   * @description Creates a table on the database, return the query to be executed to create the table
+   */
+  createTable(...args: Parameters<Schema["createTable"]>): string {
+    const schema = new Schema(this.getDbType());
+    schema.createTable(...args);
+    return schema.queryStatements[0] || "";
+  }
+
+  /**
    * @description Starts a transaction on the database and executes a callback with the transaction instance, automatically committing or rolling back the transaction based on the callback's success or failure
    */
   async useTransaction(
@@ -661,6 +690,184 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
+   * @description Introspects table columns metadata
+   */
+  async getTableInfo(table: string): Promise<TableColumnInfo[]> {
+    const ast = new AstParser(
+      {
+        table,
+        databaseCaseConvention: "preserve",
+        modelCaseConvention: "preserve",
+      } as typeof Model,
+      this.getDbType(),
+    );
+
+    const sql = ast.parse([new TableInfoNode(table)]).sql;
+    const rows: any[] = await this.rawQuery(sql);
+    const db = this.getDbType();
+    if (db === "sqlite") {
+      return rows.map((r: any) => ({
+        name: r.name,
+        dataType: (r.type || "").toLowerCase(),
+        isNullable: r.notnull === 0,
+        defaultValue: r.dflt_value ?? null,
+      }));
+    }
+
+    return rows.map((r: any) => ({
+      name: String(r.column_name || r.COLUMN_NAME || r.name || ""),
+      dataType: String(
+        r.data_type || r.DATA_TYPE || r.type || "",
+      ).toLowerCase(),
+      isNullable:
+        String(
+          r.is_nullable || r.IS_NULLABLE || r.notnull === 0 ? "YES" : "NO",
+        ).toLowerCase() !== "no",
+      defaultValue:
+        r.column_default ??
+        r.COLUMN_DEFAULT ??
+        r.defaultValue ??
+        r.dflt_value ??
+        null,
+      length: r.char_length != null ? Number(r.char_length) : null,
+      precision:
+        r.numeric_precision != null ? Number(r.numeric_precision) : null,
+      scale: r.numeric_scale != null ? Number(r.numeric_scale) : null,
+    }));
+  }
+
+  /**
+   * @description Introspects table indexes metadata using AST-driven queries
+   */
+  async getIndexInfo(table: string): Promise<TableIndexInfo[]> {
+    const ast = new AstParser(
+      {
+        table,
+        databaseCaseConvention: "preserve",
+        modelCaseConvention: "preserve",
+      } as typeof Model,
+      this.getDbType(),
+    );
+
+    const sql = ast.parse([new IndexInfoNode(table)]).sql;
+    const db = this.getDbType();
+    const rows: any[] = await this.rawQuery(sql);
+    if (db === "mysql" || db === "mariadb") {
+      const map = new Map<
+        string,
+        { name: string; columns: string[]; isUnique: boolean }
+      >();
+      for (const r of rows) {
+        const key = r.Key_name;
+        const isUnique = r.Non_unique === 0;
+        const arr = map.get(key) || {
+          name: key,
+          columns: [] as string[],
+          isUnique,
+        };
+        arr.columns.push(r.Column_name);
+        map.set(key, arr);
+      }
+      return Array.from(map.values());
+    }
+
+    if (db === "postgres" || db === "cockroachdb") {
+      const map = new Map<
+        string,
+        { name: string; columns: string[]; isUnique: boolean }
+      >();
+      for (const r of rows) {
+        const key = r.index_name;
+        const isUnique = !!r.is_unique;
+        const arr = map.get(key) || {
+          name: key,
+          columns: [] as string[],
+          isUnique,
+        };
+        arr.columns.push(r.column_name);
+        map.set(key, arr);
+      }
+      return Array.from(map.values());
+    }
+
+    // sqlite: PRAGMA index_list returns name, unique; need per-index columns via PRAGMA index_info(name)
+    const result: TableIndexInfo[] = [];
+    for (const r of rows) {
+      const name = r.name;
+      const isUnique = !!r.unique;
+      const colsRows: any[] = await this.rawQuery(`PRAGMA index_info(${name})`);
+      const columns = colsRows.map((cr) => cr.name);
+      result.push({ name, columns, isUnique });
+    }
+    return result;
+  }
+
+  async getTableSchema(table: string): Promise<TableSchemaInfo> {
+    const [columns, indexes, foreignKeys] = await Promise.all([
+      this.getTableInfo(table),
+      this.getIndexInfo(table),
+      this.getForeignKeyInfo(table),
+    ]);
+
+    return { columns, indexes, foreignKeys };
+  }
+
+  async getForeignKeyInfo(table: string): Promise<TableForeignKeyInfo[]> {
+    const ast = new AstParser(
+      {
+        table,
+        databaseCaseConvention: "preserve",
+        modelCaseConvention: "preserve",
+      } as typeof Model,
+      this.getDbType(),
+    );
+
+    const sql = ast.parse([new ForeignKeyInfoNode(table)]).sql;
+    const rows: any[] = await this.rawQuery(sql);
+
+    const db = this.getDbType();
+    if (db === "sqlite") {
+      const grouped = new Map<number, TableForeignKeyInfo>();
+      for (const r of rows) {
+        const id = Number(r.id);
+        const fk = grouped.get(id) || {
+          name: undefined,
+          columns: [] as string[],
+          referencedTable: String(r.table),
+          referencedColumns: [] as string[],
+          onDelete: r.on_delete ?? null,
+          onUpdate: r.on_update ?? null,
+        };
+
+        fk.columns.push(String(r.from));
+        fk.referencedColumns.push(String(r.to));
+        grouped.set(id, fk);
+      }
+      return Array.from(grouped.values());
+    }
+
+    const map = new Map<string, TableForeignKeyInfo>();
+    for (const row of rows) {
+      const name = String(row.name || "");
+      const key = name || `${row.referenced_table}_${row.column_name}`;
+      const fk = map.get(key) || {
+        name: name || undefined,
+        columns: [] as string[],
+        referencedTable: String(row.referenced_table),
+        referencedColumns: [] as string[],
+        onDelete: row.on_delete ?? null,
+        onUpdate: row.on_update ?? null,
+      };
+
+      fk.columns.push(String(row.column_name));
+      fk.referencedColumns.push(String(row.referenced_column));
+      map.set(key, fk);
+    }
+
+    return Array.from(map.values());
+  }
+
+  /**
    * @description Models provided inside the connection method will always be used for openapi schema generation
    */
   getModelOpenApiSchema() {
@@ -706,5 +913,12 @@ export class SqlDataSource extends DataSource {
 
   get isInGlobalTransaction(): boolean {
     return !!this.globalTransaction;
+  }
+
+  /**
+   * @description Returns the models registered on this SqlDataSource instance (as provided in connect input)
+   */
+  getRegisteredModels(): Record<string, typeof Model> {
+    return this.models as Record<string, typeof Model>;
   }
 }

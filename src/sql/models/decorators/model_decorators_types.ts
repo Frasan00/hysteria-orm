@@ -143,3 +143,8 @@ export type ManyToManyOptions<
     ? string
     : ModelKey<InstanceType<ExtractModelFromTM<TM>>>;
 };
+
+export type IndexType = {
+  columns: string[];
+  name: string;
+};

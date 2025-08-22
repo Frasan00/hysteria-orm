@@ -6,7 +6,6 @@ import { SelectNode } from "../../ast/query/node/select/basic_select";
 import type { SqlMethod } from "../../ast/query/node/select/select_types";
 import { BaseValues, BinaryOperatorType } from "../../ast/query/node/where";
 import { InterpreterUtils } from "../../interpreter/interpreter_utils";
-import { getModelColumns } from "../../models/decorators/model_decorators";
 import { Model } from "../../models/model";
 import type {
   ModelKey,
@@ -67,7 +66,7 @@ export class ModelQueryBuilder<
     this.modelSelectedColumns = [];
     this.modelColumnsMap = new Map<string, ColumnType>();
     this.modelColumnsDatabaseNames = new Map<string, string>();
-    const modelColumns = getModelColumns(this.model);
+    const modelColumns = this.model.getColumns();
     modelColumns.forEach((column) => {
       this.modelColumnsMap.set(column.databaseName, column);
       this.modelColumnsDatabaseNames.set(
@@ -97,7 +96,7 @@ export class ModelQueryBuilder<
     }
 
     if (options.trx) {
-      return new ModelQueryBuilder(model, options.trx.sqlDataSource);
+      return new ModelQueryBuilder(model, options.trx.sql);
     }
 
     return new ModelQueryBuilder(model, model.sqlInstance);

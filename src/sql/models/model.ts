@@ -23,12 +23,18 @@ import { Entity } from "../../entity";
 import { HysteriaError } from "../../errors/hysteria_error";
 import { CaseConvention, convertCase } from "../../utils/case_utils";
 import { baseSoftDeleteDate } from "../../utils/date_utils";
+import type {
+  TableColumnInfo,
+  TableIndexInfo,
+  TableSchemaInfo,
+} from "../schema_introspection_types";
 import { serializeModel } from "../serializer";
 import { SqlDataSource } from "../sql_data_source";
 import { databasesWithReturning } from "../sql_runner/sql_runner_constants";
 import {
   belongsTo,
   column,
+  getIndexes,
   getModelColumns,
   getPrimaryKey,
   getRelations,
@@ -39,6 +45,7 @@ import {
 } from "./decorators/model_decorators";
 import {
   ColumnType,
+  IndexType,
   LazyRelationType,
 } from "./decorators/model_decorators_types";
 import { AnnotatedModel } from "./model_query_builder/model_query_builder_types";
@@ -694,6 +701,33 @@ export abstract class Model extends Entity {
   }
 
   /**
+   * @description Returns the table info for the model form the database
+   */
+  static async getTableInfo(): Promise<TableColumnInfo[]> {
+    const typeofModel = this as unknown as typeof Model;
+    typeofModel.establishConnection();
+    return typeofModel.sqlInstance.getTableInfo(typeofModel.table);
+  }
+
+  /**
+   * @description Returns the index info for the model form the database
+   */
+  static async getIndexInfo(): Promise<TableIndexInfo[]> {
+    const typeofModel = this as unknown as typeof Model;
+    typeofModel.establishConnection();
+    return typeofModel.sqlInstance.getIndexInfo(typeofModel.table);
+  }
+
+  /**
+   * @description Returns the table schema for the model form the database
+   */
+  static async getTableSchema(): Promise<TableSchemaInfo> {
+    const typeofModel = this as unknown as typeof Model;
+    typeofModel.establishConnection();
+    return typeofModel.sqlInstance.getTableSchema(typeofModel.table);
+  }
+
+  /**
    * @description Merges the provided data with the model instance
    */
   static combineProps<T extends Model>(
@@ -747,15 +781,22 @@ export abstract class Model extends Entity {
   /**
    * @description Returns the columns of the model
    */
-  static getModelColumns(this: typeof Model): ColumnType[] {
+  static getColumns(): ColumnType[] {
     return getModelColumns(this);
   }
 
   /**
    * @description Returns the relations of the model
    */
-  static getModelRelations(this: typeof Model): LazyRelationType[] {
+  static getRelations(): LazyRelationType[] {
     return getRelationsMetadata(this);
+  }
+
+  /**
+   * @description Returns the indexes metadata of the model
+   */
+  static getIndexes(): IndexType[] {
+    return getIndexes(this);
   }
 
   // JS Static methods
@@ -840,7 +881,7 @@ export abstract class Model extends Entity {
     }
 
     if (options?.trx) {
-      return options.trx.sqlDataSource.getModelManager<T>(
+      return options.trx.sql.getModelManager<T>(
         this as unknown as typeof Model,
       );
     }

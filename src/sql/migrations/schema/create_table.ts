@@ -42,6 +42,18 @@ export class CreateTableBuilder extends BaseBuilder {
     return this.build(node);
   }
 
+  longtext(name: string): ConstraintBuilder {
+    return this.text(name, "longtext");
+  }
+
+  mediumtext(name: string): ConstraintBuilder {
+    return this.text(name, "mediumtext");
+  }
+
+  tinytext(name: string): ConstraintBuilder {
+    return this.text(name, "tinytext");
+  }
+
   uuid(name: string): ConstraintBuilder {
     const node = new ColumnTypeNode(name, "uuid");
     return this.build(node);

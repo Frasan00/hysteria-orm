@@ -7,27 +7,26 @@ export {
   hasOne,
   manyToMany,
 } from "./sql/models/decorators/model_decorators";
+export * from "./sql/models/decorators/model_decorators_types";
 
 // Models & Factories
 export { Model } from "./sql/models/model";
 export { createModelFactory } from "./sql/models/model_factory";
-export type { ModelQueryBuilder } from "./sql/models/model_query_builder/model_query_builder";
-export type { RelationQueryBuilderType } from "./sql/models/model_query_builder/relation_query_builder/relation_query_builder_types";
-export type * from "./sql/models/model_query_builder/model_query_builder_types";
-export type { ModelWithoutRelations } from "./sql/models/model_types";
+export * from "./sql/models/model_query_builder/model_query_builder";
+export * from "./sql/models/model_query_builder/relation_query_builder/relation_query_builder_types";
+export * from "./sql/models/model_query_builder/model_query_builder_types";
+export * from "./sql/models/model_types";
 
 // DataSources
-export type { DataSourceInput } from "./data_source/data_source_types";
+export * from "./data_source/data_source_types";
 export { MongoDataSource as mongo } from "./no_sql/mongo/mongo_data_source";
-export type { MongoDataSource } from "./no_sql/mongo/mongo_data_source";
+export * from "./no_sql/mongo/mongo_data_source";
 export { RedisDataSource as redis } from "./no_sql/redis/redis_data_source";
-export type {
-  RedisDataSource,
+export {
   RedisFetchable,
   RedisStorable,
 } from "./no_sql/redis/redis_data_source";
 export { SqlDataSource as sql } from "./sql/sql_data_source";
-export type { SqlDataSource } from "./sql/sql_data_source";
 
 // Migrations
 export { Migration } from "./sql/migrations/migration";

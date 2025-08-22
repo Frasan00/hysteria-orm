@@ -18,6 +18,7 @@ import { ManyToMany } from "../relations/many_to_many";
 import { Relation, RelationEnum } from "../relations/relation";
 import {
   COLUMN_METADATA_KEY,
+  INDEX_METADATA_KEY,
   PRIMARY_KEY_METADATA_KEY,
   RELATION_METADATA_KEY,
   getDefaultForeignKey,
@@ -27,11 +28,76 @@ import type {
   ColumnOptions,
   ColumnType,
   DateColumnOptions,
+  IndexType,
   LazyRelationType,
   ManyToManyOptions,
   SymmetricEncryptionOptions,
   ThroughModel,
 } from "./model_decorators_types";
+
+/**
+ * @description Class decorator to define indexes on the model
+ * @description If no indexName is provided, the index name will be the model name plus the columns joined by underscores
+ * @example User will have an index named "user_name_index" on the "name" column
+ * @example User will have an index named "user_name_email_index" on the "name" and "email" columns
+ * ```ts
+ * @index(["name", "email"], "user_name_email_index")
+ * class User extends Model {
+ *   @column()
+ *   name!: string;
+ * }
+ *
+ * @index(["name", "email"])
+ * class User extends Model {
+ *   @column()
+ *   name!: string;
+ * }
+ * ```
+ */
+export function index(
+  indexes: string | string[],
+  indexName?: string,
+): ClassDecorator {
+  return (target: Function) => {
+    const newIndexes = Array.isArray(indexes) ? indexes : [indexes];
+    const existingIndexes =
+      Reflect.getMetadata(INDEX_METADATA_KEY, target.prototype) || [];
+    existingIndexes.push({
+      columns: newIndexes,
+      name: indexName ?? `${target.name}_${newIndexes.join("_")}_index`,
+    });
+    Reflect.defineMetadata(
+      INDEX_METADATA_KEY,
+      existingIndexes,
+      target.prototype,
+    );
+  };
+}
+
+/**
+ * @description Property decorator to define an index on a specific property
+ * @description This is an alternative to the class-level index decorator
+ * @example
+ * ```ts
+ * class User extends Model {
+ *   @index("name")
+ *   @column()
+ *   name!: string;
+ * }
+ * ```
+ */
+export function indexProperty(indexName?: string): PropertyDecorator {
+  return (target: Object, propertyKey: string | symbol) => {
+    const existingIndexes =
+      Reflect.getMetadata(INDEX_METADATA_KEY, target) || [];
+    existingIndexes.push({
+      columns: [String(propertyKey)],
+      name:
+        indexName ?? `${target.constructor.name}_${String(propertyKey)}_index`,
+    });
+    Reflect.defineMetadata(INDEX_METADATA_KEY, existingIndexes, target);
+  };
+}
 
 /**
  * @description Decorator to define a column in the model
@@ -371,9 +437,7 @@ export function belongsTo<R extends typeof Model>(
   foreignKey?: string,
 ): PropertyDecorator {
   return (target: Object, propertyKey: string | symbol) => {
-    foreignKey ||= getDefaultForeignKey(
-      (target.constructor as typeof Model).table,
-    );
+    foreignKey ||= getDefaultForeignKey(model().table);
 
     const relation = {
       type: RelationEnum.belongsTo,
@@ -398,9 +462,9 @@ export function hasOne<T extends typeof Model>(
   foreignKey?: ModelKey<InstanceType<T>>,
 ): PropertyDecorator {
   return (target: Object, propertyKey: string | symbol) => {
-    foreignKey ||= getDefaultForeignKey(model().table) as ModelKey<
-      InstanceType<T>
-    >;
+    foreignKey ||= getDefaultForeignKey(
+      (target.constructor as typeof Model).table,
+    ) as ModelKey<InstanceType<T>>;
 
     const relation = {
       type: RelationEnum.hasOne,
@@ -424,9 +488,9 @@ export function hasMany<T extends typeof Model>(
   foreignKey?: ModelKey<InstanceType<T>>,
 ): PropertyDecorator {
   return (target: Object, propertyKey: string | symbol) => {
-    foreignKey ||= getDefaultForeignKey(model().table) as ModelKey<
-      InstanceType<T>
-    >;
+    foreignKey ||= getDefaultForeignKey(
+      (target.constructor as typeof Model).table,
+    ) as ModelKey<InstanceType<T>>;
 
     const relation = {
       type: RelationEnum.hasMany,
@@ -466,16 +530,20 @@ export function manyToMany<
       typeof throughModel === "string" ? throughModel : throughModel().table;
 
     const primaryModel = (target.constructor as typeof Model).table;
+    const resolvedLeftFk =
+      (leftForeignKey as string | undefined) ??
+      getDefaultForeignKey(primaryModel);
     const relation: LazyRelationType = {
       type: RelationEnum.manyToMany,
       columnName: propertyKey as string,
       model,
-      foreignKey: leftForeignKey as string,
+      foreignKey: resolvedLeftFk,
       manyToManyOptions: {
         primaryModel: primaryModel,
         throughModel: throughModelTable,
-        leftForeignKey: leftForeignKey as string,
-        rightForeignKey: rightForeignKey as string,
+        leftForeignKey: resolvedLeftFk,
+        rightForeignKey:
+          (rightForeignKey as string) ?? getDefaultForeignKey(model().table),
       },
     };
 
@@ -523,7 +591,7 @@ export function getRelations(target: typeof Model): Relation[] {
             getDefaultForeignKey(relation.manyToManyOptions.primaryModel),
           rightForeignKey:
             relation.manyToManyOptions.rightForeignKey ??
-            getDefaultForeignKey(relation.manyToManyOptions.primaryModel),
+            getDefaultForeignKey(relatedModel.table),
         });
       default:
         throw new HysteriaError(
@@ -539,4 +607,8 @@ export function getRelations(target: typeof Model): Relation[] {
  */
 export function getPrimaryKey(target: typeof Model): string {
   return Reflect.getMetadata(PRIMARY_KEY_METADATA_KEY, target.prototype);
+}
+
+export function getIndexes(target: typeof Model): IndexType[] {
+  return Reflect.getMetadata(INDEX_METADATA_KEY, target.prototype) || [];
 }
