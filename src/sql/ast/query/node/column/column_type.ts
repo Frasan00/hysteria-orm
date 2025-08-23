@@ -13,6 +13,7 @@ export class ColumnTypeNode extends QueryNode {
   canKeywordBeSeenMultipleTimes = true;
   folder = "column";
   file = "column_type";
+  isRawValue = false;
 
   constructor(
     column: string,
@@ -24,8 +25,8 @@ export class ColumnTypeNode extends QueryNode {
       enumValues?: readonly string[];
       withTimezone?: boolean;
       autoIncrement?: boolean;
+      isRawValue?: boolean;
     } = {},
-    isRawValue: boolean = false,
   ) {
     super("");
     this.column = column;
@@ -36,6 +37,6 @@ export class ColumnTypeNode extends QueryNode {
     this.enumValues = opts.enumValues;
     this.withTimezone = opts.withTimezone;
     this.autoIncrement = opts.autoIncrement;
-    this.isRawValue = isRawValue;
+    this.isRawValue = opts.isRawValue ?? false;
   }
 }

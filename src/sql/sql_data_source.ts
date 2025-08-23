@@ -276,6 +276,20 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
+   * @description Creates a table on the database, return the query to be executed to create the table
+   */
+  static createTable(...args: Parameters<Schema["createTable"]>): string {
+    return this.getInstance().createTable(...args);
+  }
+
+  /**
+   * @description Alters a table on the database, return the queries to be executed in order to alter the table
+   */
+  static alterTable(...args: Parameters<Schema["alterTable"]>): string[] {
+    return this.getInstance().alterTable(...args);
+  }
+
+  /**
    * @description Starts a transaction on the database and executes a callback with the transaction instance, automatically committing or rolling back the transaction based on the callback's success or failure
    */
   static async useTransaction(

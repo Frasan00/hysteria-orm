@@ -1,15 +1,16 @@
 import { Command } from "commander";
 import fs from "node:fs";
 import path from "node:path";
-import { logger, SqlDataSource } from ".";
 import dropAllTablesConnector from "./cli/drop_all_tables_connector";
 import migrationCreateConnector from "./cli/migration_create_connector";
 import rollbackMigrationsConnector from "./cli/migration_rollback_connector";
 import runMigrationsConnector from "./cli/migration_run_connector";
 import { InitTemplates } from "./cli/resources/init_templates";
 import runSqlConnector from "./cli/run_sql_connector";
+import { SqlDataSource } from "./sql/sql_data_source";
 import { SqlDataSourceType } from "./sql/sql_data_source_types";
 import { importTsUniversal } from "./utils/importer";
+import logger from "./utils/logger";
 
 const databaseTypes = ["sqlite", "mysql", "postgres", "mariadb", "cockroachdb"];
 const allDatabaseTypes = databaseTypes.concat("mongodb", "redis");

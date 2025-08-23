@@ -22,7 +22,7 @@ export * from "./data_source/data_source_types";
 export { MongoDataSource as mongo } from "./no_sql/mongo/mongo_data_source";
 export * from "./no_sql/mongo/mongo_data_source";
 export { RedisDataSource as redis } from "./no_sql/redis/redis_data_source";
-export {
+export type {
   RedisFetchable,
   RedisStorable,
 } from "./no_sql/redis/redis_data_source";

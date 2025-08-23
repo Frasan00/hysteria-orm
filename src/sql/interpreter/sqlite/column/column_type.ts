@@ -23,6 +23,8 @@ class SqliteColumnTypeInterpreter implements Interpreter {
       return { sql: `${columnName} text`, bindings: [] };
     } else if (dt === "uuid") {
       return { sql: `${columnName} varchar(36)`, bindings: [] };
+    } else if (dt === "ulid") {
+      return { sql: `${columnName} varchar(26)`, bindings: [] };
     }
 
     if (dt.includes("text")) {
@@ -34,6 +36,12 @@ class SqliteColumnTypeInterpreter implements Interpreter {
           bindings: [],
         };
       }
+      return { sql: `${columnName} integer`, bindings: [] };
+    } else if (dt === "tinyint") {
+      return { sql: `${columnName} integer`, bindings: [] };
+    } else if (dt === "smallint") {
+      return { sql: `${columnName} integer`, bindings: [] };
+    } else if (dt === "mediumint") {
       return { sql: `${columnName} integer`, bindings: [] };
     }
 
@@ -48,7 +56,13 @@ class SqliteColumnTypeInterpreter implements Interpreter {
       };
     }
 
-    if (dt === "date" || dt === "datetime" || dt === "timestamp") {
+    if (
+      dt === "date" ||
+      dt === "datetime" ||
+      dt === "timestamp" ||
+      dt === "time" ||
+      dt === "year"
+    ) {
       return { sql: `${columnName} text`, bindings: [] };
     } else if (dt === "boolean") {
       return { sql: `${columnName} integer`, bindings: [] };

@@ -26,6 +26,8 @@ class MysqlColumnTypeInterpreter implements Interpreter {
       return { sql: `${columnName} varchar(${len})`, bindings: [] };
     } else if (dt === "uuid") {
       return { sql: `${columnName} varchar(36)`, bindings: [] };
+    } else if (dt === "ulid") {
+      return { sql: `${columnName} varchar(26)`, bindings: [] };
     } else if (
       dt === "longtext" ||
       dt === "mediumtext" ||
@@ -39,6 +41,12 @@ class MysqlColumnTypeInterpreter implements Interpreter {
         sqlType += " auto_increment";
       }
       return { sql: `${columnName} ${sqlType}`, bindings: [] };
+    } else if (dt === "tinyint") {
+      return { sql: `${columnName} tinyint`, bindings: [] };
+    } else if (dt === "smallint") {
+      return { sql: `${columnName} smallint`, bindings: [] };
+    } else if (dt === "mediumint") {
+      return { sql: `${columnName} mediumint`, bindings: [] };
     } else if (dt === "bigint") {
       let sqlType = `bigint`;
       if (colNode.autoIncrement) {
@@ -49,6 +57,8 @@ class MysqlColumnTypeInterpreter implements Interpreter {
       return { sql: `${columnName} float`, bindings: [] };
     } else if (dt === "double") {
       return { sql: `${columnName} double`, bindings: [] };
+    } else if (dt === "real") {
+      return { sql: `${columnName} double`, bindings: [] };
     } else if (dt === "decimal") {
       const precision = colNode.precision ?? 10;
       const scale = colNode.scale ?? 0;
@@ -56,15 +66,38 @@ class MysqlColumnTypeInterpreter implements Interpreter {
         sql: `${columnName} decimal(${precision}, ${scale})`,
         bindings: [],
       };
+    } else if (dt === "numeric") {
+      const precision = colNode.precision ?? 10;
+      const scale = colNode.scale ?? 0;
+      return {
+        sql: `${columnName} numeric(${precision}, ${scale})`,
+        bindings: [],
+      };
     } else if (dt === "date") {
       return { sql: `${columnName} date`, bindings: [] };
+    } else if (dt === "time") {
+      const p =
+        typeof colNode.precision === "number" ? `(${colNode.precision})` : "";
+      return { sql: `${columnName} time${p}`.trimEnd(), bindings: [] };
     } else if (dt === "datetime") {
-      return { sql: `${columnName} datetime`, bindings: [] };
+      const p =
+        typeof colNode.precision === "number" ? `(${colNode.precision})` : "";
+      return { sql: `${columnName} datetime${p}`.trimEnd(), bindings: [] };
     } else if (dt === "timestamp") {
-      return { sql: `${columnName} timestamp`, bindings: [] };
+      const p =
+        typeof colNode.precision === "number" ? `(${colNode.precision})` : "";
+      return { sql: `${columnName} timestamp${p}`.trimEnd(), bindings: [] };
+    } else if (dt === "year") {
+      return { sql: `${columnName} year`, bindings: [] };
     } else if (dt === "boolean") {
       return { sql: `${columnName} boolean`, bindings: [] };
-    } else if (dt === "bytea" || dt === "binary" || dt === "blob") {
+    } else if (dt === "varbinary") {
+      const len = colNode.length ?? 255;
+      return { sql: `${columnName} varbinary(${len})`, bindings: [] };
+    } else if (dt === "binary") {
+      const len = colNode.length ?? 255;
+      return { sql: `${columnName} binary(${len})`, bindings: [] };
+    } else if (dt === "bytea" || dt === "blob") {
       return { sql: `${columnName} blob`, bindings: [] };
     } else if (dt === "json" || dt === "jsonb") {
       return { sql: `${columnName} json`, bindings: [] };
