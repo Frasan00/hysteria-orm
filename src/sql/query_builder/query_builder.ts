@@ -175,6 +175,49 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   }
 
   /**
+   * @description Chunks the query into smaller queries, it returns a generator of the chunks
+   * @description It will continue to yield chunks until the query returns no results
+   * @description Useful for large queries that need to be processed in chunks
+   * @param chunkSize - The size of the chunk
+   * @returns a generator of the chunks
+   * @example
+   * const chunks = await queryBuilder.chunk(100);
+   * // first chunk
+   * const firstChunk = await chunks.next();
+   * console.log(firstChunk.value);
+   * // second chunk
+   * const secondChunk = await chunks.next();
+   * console.log(secondChunk.value);
+   * // third chunk
+   * const thirdChunk = await chunks.next();
+   * console.log(thirdChunk.value);
+   *
+   * @example
+   * const chunkSize = 3;
+   * const chunks: any[][] = [];
+   * for await (const chunk of SqlDataSource.query("users_without_pk")
+   *   .orderBy("name", "asc")
+   *   .chunk(chunkSize)) {
+   *   chunks.push(chunk);
+   * }
+   *
+   * console.log(chunks);
+   */
+  async *chunk(chunkSize: number) {
+    let offset = 0;
+
+    while (true) {
+      const models = await this.limit(chunkSize).offset(offset).many();
+      if (!models.length) {
+        break;
+      }
+
+      yield models;
+      offset += models.length;
+    }
+  }
+
+  /**
    * @description Executes the query and retrieves multiple results.
    */
   async many(): Promise<AnnotatedModel<T, {}>[]> {

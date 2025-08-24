@@ -102,9 +102,6 @@ export class ModelQueryBuilder<
     return new ModelQueryBuilder(model, model.sqlInstance);
   }
 
-  /**
-   * @description Executes the query and retrieves the first result.
-   */
   async one(options: OneOptions = {}): Promise<AnnotatedModel<T, A, R> | null> {
     const result = await this.limit(1).many(options);
     if (!result || !result.length) {
@@ -114,16 +111,10 @@ export class ModelQueryBuilder<
     return result[0];
   }
 
-  /**
-   * @alias one
-   */
   async first(options?: OneOptions): Promise<AnnotatedModel<T, A, R> | null> {
     return this.one(options);
   }
 
-  /**
-   * @description Executes the query and retrieves the first result. Fail if no result is found.
-   */
   async oneOrFail(options?: {
     ignoreHooks?: OneOptions["ignoreHooks"] & { customError?: Error };
   }): Promise<AnnotatedModel<T, A, R>> {
@@ -135,18 +126,12 @@ export class ModelQueryBuilder<
     return model as AnnotatedModel<T, A, R>;
   }
 
-  /**
-   * @alias oneOrFail
-   */
   async firstOrFail(options?: {
     ignoreHooks?: OneOptions["ignoreHooks"] & { customError?: Error };
   }): Promise<AnnotatedModel<T, A, R>> {
     return this.oneOrFail(options);
   }
 
-  /**
-   * @description Executes the query and retrieves multiple results.
-   */
   override async many(
     options: ManyOptions = {},
   ): Promise<AnnotatedModel<T, A, R>[]> {
@@ -187,10 +172,22 @@ export class ModelQueryBuilder<
     return serializedModelsArray as unknown as AnnotatedModel<T, A, R>[];
   }
 
-  /**
-   * @description Executes the query and returns true if the query returns at least one result, false otherwise.
-   * @description Returns the time that took to execute the query
-   */
+  override async *chunk(
+    chunkSize: number,
+  ): AsyncGenerator<AnnotatedModel<T, A, R>[]> {
+    let offset = 0;
+
+    while (true) {
+      const models = await this.limit(chunkSize).offset(offset).many();
+      if (!models.length) {
+        break;
+      }
+
+      yield models;
+      offset += models.length;
+    }
+  }
+
   // @ts-expect-error
   override async manyWithPerformance(
     options: ManyOptions = {},
@@ -207,10 +204,6 @@ export class ModelQueryBuilder<
     return { data, time: Number(time) };
   }
 
-  /**
-   * @description Executes the query and returns true if the query returns at least one result, false otherwise.
-   * @description Returns the time that took to execute the query
-   */
   // @ts-expect-error
   override async oneWithPerformance(
     options: OneOptions = {},
@@ -227,10 +220,6 @@ export class ModelQueryBuilder<
     return { data, time: Number(time) };
   }
 
-  /**
-   * @description Executes the query and returns true if the query returns at least one result, false otherwise.
-   * @description Returns the time that took to execute the query
-   */
   // @ts-expect-error
   override async oneOrFailWithPerformance(
     options: OneOptions = {},
@@ -247,9 +236,6 @@ export class ModelQueryBuilder<
     return { data, time: Number(time) };
   }
 
-  /**
-   * @alias oneOrFailWithPerformance
-   */
   // @ts-expect-error
   override async firstOrFailWithPerformance(
     options: OneOptions = {},
@@ -261,9 +247,6 @@ export class ModelQueryBuilder<
     return this.oneOrFailWithPerformance(options, returnType);
   }
 
-  /**
-   * @alias oneWithPerformance
-   */
   // @ts-expect-error
   override async firstWithPerformance(
     options: OneOptions = {},
@@ -275,10 +258,6 @@ export class ModelQueryBuilder<
     return this.oneWithPerformance(options, returnType);
   }
 
-  /**
-   * @description Executes the query and returns the paginated data.
-   * @description Returns the time that took to execute the query
-   */
   // @ts-expect-error
   override async paginateWithPerformance(
     page: number,
@@ -304,9 +283,6 @@ export class ModelQueryBuilder<
     };
   }
 
-  /**
-   * @description Updates records in the database for the current query.
-   */
   override async update(
     data: Partial<ModelWithoutRelations<T>>,
     options: UpdateOptions = {},
@@ -315,13 +291,6 @@ export class ModelQueryBuilder<
     return super.update(data);
   }
 
-  /**
-   * @description soft Deletes Records from the database.
-   * @default column - 'deletedAt'
-   * @default value - The current date and time.
-   * @default ignoreBeforeDeleteHook - false
-   * @default trx - undefined
-   */
   override async softDelete(
     options: SoftDeleteOptions<T> = {},
   ): Promise<number> {
@@ -330,9 +299,6 @@ export class ModelQueryBuilder<
     return super.softDelete(options);
   }
 
-  /**
-   * @description Deletes Records from the database for the current query.
-   */
   async delete(options: DeleteOptions = {}): Promise<number> {
     options.ignoreBeforeDeleteHook && this.model.beforeDelete?.(this);
     return super.delete();
@@ -675,6 +641,9 @@ export class ModelQueryBuilder<
     >;
   }
 
+  /**
+   * @description Clears the relations from the query builder
+   */
   clearRelations(): this {
     this.relationQueryBuilders = [];
     return this;

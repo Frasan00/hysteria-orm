@@ -522,10 +522,10 @@ export function manyToMany<
 >(
   model: () => R,
   throughModel: TM,
-  throughModelKeys: ManyToManyOptions<T, TM>,
+  throughModelKeys?: ManyToManyOptions<T, TM>,
 ): PropertyDecorator {
   return (target: Object, propertyKey: string | symbol) => {
-    const { leftForeignKey, rightForeignKey } = throughModelKeys;
+    const { leftForeignKey, rightForeignKey } = throughModelKeys || {};
     const throughModelTable =
       typeof throughModel === "string" ? throughModel : throughModel().table;
 

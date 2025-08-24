@@ -879,3 +879,61 @@ describe(`[${env.DB_TYPE}] with performance`, () => {
     expect(users.time).toBeDefined();
   });
 });
+
+describe(`[${env.DB_TYPE}] Query Builder chunk method`, () => {
+  beforeEach(async () => {
+    await SqlDataSource.query("users_without_pk").insertMany([
+      { name: "User 1", age: 21 },
+      { name: "User 2", age: 22 },
+      { name: "User 3", age: 23 },
+      { name: "User 4", age: 24 },
+      { name: "User 5", age: 25 },
+      { name: "User 6", age: 26 },
+      { name: "User 7", age: 27 },
+    ]);
+  });
+
+  afterEach(async () => {
+    await SqlDataSource.query("users_without_pk").truncate();
+  });
+
+  test("should properly iterate through chunks", async () => {
+    const chunkSize = 3;
+    const chunks: any[][] = [];
+
+    for await (const chunk of SqlDataSource.query("users_without_pk")
+      .orderBy("name", "asc")
+      .chunk(chunkSize)) {
+      chunks.push(chunk);
+    }
+
+    expect(chunks.length).toBe(3);
+    expect(chunks[0].length).toBe(3);
+    expect(chunks[1].length).toBe(3);
+    expect(chunks[2].length).toBe(1);
+
+    expect(chunks[0][0].name).toBe("User 1");
+    expect(chunks[1][0].name).toBe("User 4");
+    expect(chunks[2][0].name).toBe("User 7");
+  });
+
+  test("should properly iterate through chunks with next", async () => {
+    const chunkSize = 3;
+
+    const chunksIterator = SqlDataSource.query("users_without_pk")
+      .orderBy("name", "asc")
+      .chunk(chunkSize);
+
+    const firstChunk = await chunksIterator.next();
+    const secondChunk = await chunksIterator.next();
+    const thirdChunk = await chunksIterator.next();
+
+    expect(firstChunk.value?.length).toBe(3);
+    expect(secondChunk.value?.length).toBe(3);
+    expect(thirdChunk.value?.length).toBe(1);
+
+    expect(firstChunk.value?.[0].name).toBe("User 1");
+    expect(secondChunk.value?.[0].name).toBe("User 4");
+    expect(thirdChunk.value?.[0].name).toBe("User 7");
+  });
+});
