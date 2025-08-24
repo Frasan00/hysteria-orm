@@ -174,11 +174,12 @@ export class ModelQueryBuilder<
 
   override async *chunk(
     chunkSize: number,
+    options: ManyOptions = {},
   ): AsyncGenerator<AnnotatedModel<T, A, R>[]> {
     let offset = 0;
 
     while (true) {
-      const models = await this.limit(chunkSize).offset(offset).many();
+      const models = await this.limit(chunkSize).offset(offset).many(options);
       if (!models.length) {
         break;
       }
