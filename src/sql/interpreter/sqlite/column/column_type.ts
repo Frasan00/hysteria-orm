@@ -2,6 +2,7 @@ import { AstParser } from "../../../ast/parser";
 import { ColumnTypeNode } from "../../../ast/query/node/column";
 import { QueryNode } from "../../../ast/query/query";
 import { Model } from "../../../models/model";
+import { getColumnValue } from "../../../resources/utils";
 import type { Interpreter } from "../../interpreter";
 import { InterpreterUtils } from "../../interpreter_utils";
 
@@ -15,7 +16,10 @@ class SqliteColumnTypeInterpreter implements Interpreter {
     }
 
     const utils = new InterpreterUtils(this.model);
-    const columnName = utils.formatStringColumn("sqlite", colNode.column);
+    const columnName = utils.formatStringColumn(
+      "sqlite",
+      getColumnValue(colNode.column),
+    );
     const dt = colNode.dataType.toLowerCase();
 
     if (dt === "char" || dt === "varchar") {
@@ -30,12 +34,6 @@ class SqliteColumnTypeInterpreter implements Interpreter {
     if (dt.includes("text")) {
       return { sql: `${columnName} text`, bindings: [] };
     } else if (dt === "integer" || dt === "bigint" || dt === "int") {
-      if (colNode.autoIncrement) {
-        return {
-          sql: `${columnName} integer primary key autoincrement`,
-          bindings: [],
-        };
-      }
       return { sql: `${columnName} integer`, bindings: [] };
     } else if (dt === "tinyint") {
       return { sql: `${columnName} integer`, bindings: [] };
@@ -70,9 +68,14 @@ class SqliteColumnTypeInterpreter implements Interpreter {
       return { sql: `${columnName} text`, bindings: [] };
     } else if (dt === "enum") {
       return { sql: `${columnName} text`, bindings: [] };
-    }
-
-    if (dt === "bytea" || dt === "blob" || dt === "binary") {
+    } else if (
+      dt === "bytea" ||
+      dt === "blob" ||
+      dt === "binary" ||
+      dt === "longblob" ||
+      dt === "mediumblob" ||
+      dt === "tinyblob"
+    ) {
       return { sql: `${columnName} blob`, bindings: [] };
     } else if (dt === "integer" || dt === "int") {
       if (colNode.autoIncrement) {

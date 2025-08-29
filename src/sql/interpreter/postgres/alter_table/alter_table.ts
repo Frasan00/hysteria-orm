@@ -15,7 +15,7 @@ class PostgresAlterTableInterpreter implements Interpreter {
     const tableName = utils.formatStringTable("postgres", atNode.table);
 
     if (!atNode.children || !atNode.children.length) {
-      return { sql: `${tableName}`, bindings: [] };
+      return { sql: "", bindings: [] };
     }
 
     const astParser = new AstParser(
@@ -25,27 +25,9 @@ class PostgresAlterTableInterpreter implements Interpreter {
     const parts: string[] = [];
     const bindings: any[] = [];
 
-    let awaitingConstraints = false;
     for (const child of atNode.children) {
       const { sql, bindings: childBindings } = astParser.parse([child]);
-
-      if (child.file === "add_column") {
-        // Start a new add column clause and allow following constraints to merge.
-        parts.push(sql);
-        awaitingConstraints = true;
-      } else if (child.file === "add_constraint" && awaitingConstraints) {
-        // Merge constraint into the previously added column definition, stripping the leading "add" keyword.
-        const last = parts.pop() ?? "";
-        // Remove leading spaces and the first "add" keyword (with any subsequent whitespace)
-        const cleanedSql = sql.replace(/^\s*add\s+/i, "").trimStart();
-        parts.push(`${last} ${cleanedSql}`);
-        // Keep awaitingConstraints = true to merge additional consecutive constraints.
-      } else {
-        // Any other node finishes the add column merging context.
-        parts.push(sql);
-        awaitingConstraints = false;
-      }
-
+      parts.push(sql.trim());
       bindings.push(...childBindings);
     }
 

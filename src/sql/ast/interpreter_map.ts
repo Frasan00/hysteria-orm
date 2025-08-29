@@ -5,9 +5,13 @@ import mysql_alter_table_alter_column_type from '../interpreter/mysql/alter_tabl
 import mysql_alter_table_alter_table from '../interpreter/mysql/alter_table/alter_table';
 import mysql_alter_table_drop_column from '../interpreter/mysql/alter_table/drop_column';
 import mysql_alter_table_drop_constraint from '../interpreter/mysql/alter_table/drop_constraint';
+import mysql_alter_table_drop_default from '../interpreter/mysql/alter_table/drop_default';
+import mysql_alter_table_drop_not_null from '../interpreter/mysql/alter_table/drop_not_null';
 import mysql_alter_table_drop_primary_key from '../interpreter/mysql/alter_table/drop_primary_key';
 import mysql_alter_table_rename_column from '../interpreter/mysql/alter_table/rename_column';
 import mysql_alter_table_rename_table from '../interpreter/mysql/alter_table/rename_table';
+import mysql_alter_table_set_default from '../interpreter/mysql/alter_table/set_default';
+import mysql_alter_table_set_not_null from '../interpreter/mysql/alter_table/set_not_null';
 import mysql_column_column_type from '../interpreter/mysql/column/column_type';
 import mysql_constraint_after from '../interpreter/mysql/constraint/after';
 import mysql_constraint_constraint from '../interpreter/mysql/constraint/constraint';
@@ -31,6 +35,7 @@ import mysql_order_by_order_by from '../interpreter/mysql/order_by/order_by';
 import mysql_raw_raw from '../interpreter/mysql/raw/raw';
 import mysql_schema_foreign_key_info from '../interpreter/mysql/schema/foreign_key_info';
 import mysql_schema_index_info from '../interpreter/mysql/schema/index_info';
+import mysql_schema_primary_key_info from '../interpreter/mysql/schema/primary_key_info';
 import mysql_schema_table_info from '../interpreter/mysql/schema/table_info';
 import mysql_select_select from '../interpreter/mysql/select/select';
 import mysql_truncate_truncate from '../interpreter/mysql/truncate/truncate';
@@ -48,9 +53,13 @@ import postgres_alter_table_alter_column_type from '../interpreter/postgres/alte
 import postgres_alter_table_alter_table from '../interpreter/postgres/alter_table/alter_table';
 import postgres_alter_table_drop_column from '../interpreter/postgres/alter_table/drop_column';
 import postgres_alter_table_drop_constraint from '../interpreter/postgres/alter_table/drop_constraint';
+import postgres_alter_table_drop_default from '../interpreter/postgres/alter_table/drop_default';
+import postgres_alter_table_drop_not_null from '../interpreter/postgres/alter_table/drop_not_null';
 import postgres_alter_table_drop_primary_key from '../interpreter/postgres/alter_table/drop_primary_key';
 import postgres_alter_table_rename_column from '../interpreter/postgres/alter_table/rename_column';
 import postgres_alter_table_rename_table from '../interpreter/postgres/alter_table/rename_table';
+import postgres_alter_table_set_default from '../interpreter/postgres/alter_table/set_default';
+import postgres_alter_table_set_not_null from '../interpreter/postgres/alter_table/set_not_null';
 import postgres_column_column_type from '../interpreter/postgres/column/column_type';
 import postgres_constraint_after from '../interpreter/postgres/constraint/after';
 import postgres_constraint_constraint from '../interpreter/postgres/constraint/constraint';
@@ -74,6 +83,7 @@ import postgres_order_by_order_by from '../interpreter/postgres/order_by/order_b
 import postgres_raw_raw from '../interpreter/postgres/raw/raw';
 import postgres_schema_foreign_key_info from '../interpreter/postgres/schema/foreign_key_info';
 import postgres_schema_index_info from '../interpreter/postgres/schema/index_info';
+import postgres_schema_primary_key_info from '../interpreter/postgres/schema/primary_key_info';
 import postgres_schema_table_info from '../interpreter/postgres/schema/table_info';
 import postgres_select_select from '../interpreter/postgres/select/select';
 import postgres_truncate_truncate from '../interpreter/postgres/truncate/truncate';
@@ -90,8 +100,13 @@ import sqlite_alter_table_alter_column_type from '../interpreter/sqlite/alter_ta
 import sqlite_alter_table_alter_table from '../interpreter/sqlite/alter_table/alter_table';
 import sqlite_alter_table_drop_column from '../interpreter/sqlite/alter_table/drop_column';
 import sqlite_alter_table_drop_constraint from '../interpreter/sqlite/alter_table/drop_constraint';
+import sqlite_alter_table_drop_default from '../interpreter/sqlite/alter_table/drop_default';
+import sqlite_alter_table_drop_not_null from '../interpreter/sqlite/alter_table/drop_not_null';
+import sqlite_alter_table_drop_primary_key from '../interpreter/sqlite/alter_table/drop_primary_key';
 import sqlite_alter_table_rename_column from '../interpreter/sqlite/alter_table/rename_column';
 import sqlite_alter_table_rename_table from '../interpreter/sqlite/alter_table/rename_table';
+import sqlite_alter_table_set_default from '../interpreter/sqlite/alter_table/set_default';
+import sqlite_alter_table_set_not_null from '../interpreter/sqlite/alter_table/set_not_null';
 import sqlite_column_column_type from '../interpreter/sqlite/column/column_type';
 import sqlite_constraint_after from '../interpreter/sqlite/constraint/after';
 import sqlite_constraint_constraint from '../interpreter/sqlite/constraint/constraint';
@@ -115,6 +130,7 @@ import sqlite_order_by_order_by from '../interpreter/sqlite/order_by/order_by';
 import sqlite_raw_raw from '../interpreter/sqlite/raw/raw';
 import sqlite_schema_foreign_key_info from '../interpreter/sqlite/schema/foreign_key_info';
 import sqlite_schema_index_info from '../interpreter/sqlite/schema/index_info';
+import sqlite_schema_primary_key_info from '../interpreter/sqlite/schema/primary_key_info';
 import sqlite_schema_table_info from '../interpreter/sqlite/schema/table_info';
 import sqlite_select_select from '../interpreter/sqlite/select/select';
 import sqlite_truncate_truncate from '../interpreter/sqlite/truncate/truncate';
@@ -127,32 +143,6 @@ import sqlite_where_where_subquery from '../interpreter/sqlite/where/where_subqu
 import sqlite_with_with from '../interpreter/sqlite/with/with';
 
 export const interpreterMap = {
-  mssql: {
-    delete: {
-    },
-    from: {
-    },
-    group_by: {
-    },
-    insert: {
-    },
-    on_duplicate: {
-    },
-    order_by: {
-    },
-    select: {
-    },
-    truncate: {
-    },
-    union: {
-    },
-    update: {
-    },
-    where: {
-    },
-    with: {
-    },
-  },
   mysql: {
     alter_table: {
       add_column: mysql_alter_table_add_column,
@@ -162,9 +152,13 @@ export const interpreterMap = {
       alter_table: mysql_alter_table_alter_table,
       drop_column: mysql_alter_table_drop_column,
       drop_constraint: mysql_alter_table_drop_constraint,
+      drop_default: mysql_alter_table_drop_default,
+      drop_not_null: mysql_alter_table_drop_not_null,
       drop_primary_key: mysql_alter_table_drop_primary_key,
       rename_column: mysql_alter_table_rename_column,
       rename_table: mysql_alter_table_rename_table,
+      set_default: mysql_alter_table_set_default,
+      set_not_null: mysql_alter_table_set_not_null,
     },
     column: {
       column_type: mysql_column_column_type,
@@ -226,6 +220,7 @@ export const interpreterMap = {
     schema: {
       foreign_key_info: mysql_schema_foreign_key_info,
       index_info: mysql_schema_index_info,
+      primary_key_info: mysql_schema_primary_key_info,
       table_info: mysql_schema_table_info,
     },
     select: {
@@ -259,9 +254,13 @@ export const interpreterMap = {
       alter_table: postgres_alter_table_alter_table,
       drop_column: postgres_alter_table_drop_column,
       drop_constraint: postgres_alter_table_drop_constraint,
+      drop_default: postgres_alter_table_drop_default,
+      drop_not_null: postgres_alter_table_drop_not_null,
       drop_primary_key: postgres_alter_table_drop_primary_key,
       rename_column: postgres_alter_table_rename_column,
       rename_table: postgres_alter_table_rename_table,
+      set_default: postgres_alter_table_set_default,
+      set_not_null: postgres_alter_table_set_not_null,
     },
     column: {
       column_type: postgres_column_column_type,
@@ -323,6 +322,7 @@ export const interpreterMap = {
     schema: {
       foreign_key_info: postgres_schema_foreign_key_info,
       index_info: postgres_schema_index_info,
+      primary_key_info: postgres_schema_primary_key_info,
       table_info: postgres_schema_table_info,
     },
     select: {
@@ -355,8 +355,13 @@ export const interpreterMap = {
       alter_table: sqlite_alter_table_alter_table,
       drop_column: sqlite_alter_table_drop_column,
       drop_constraint: sqlite_alter_table_drop_constraint,
+      drop_default: sqlite_alter_table_drop_default,
+      drop_not_null: sqlite_alter_table_drop_not_null,
+      drop_primary_key: sqlite_alter_table_drop_primary_key,
       rename_column: sqlite_alter_table_rename_column,
       rename_table: sqlite_alter_table_rename_table,
+      set_default: sqlite_alter_table_set_default,
+      set_not_null: sqlite_alter_table_set_not_null,
     },
     column: {
       column_type: sqlite_column_column_type,
@@ -418,6 +423,7 @@ export const interpreterMap = {
     schema: {
       foreign_key_info: sqlite_schema_foreign_key_info,
       index_info: sqlite_schema_index_info,
+      primary_key_info: sqlite_schema_primary_key_info,
       table_info: sqlite_schema_table_info,
     },
     select: {

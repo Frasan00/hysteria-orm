@@ -2,6 +2,7 @@ import { AstParser } from "../../../ast/parser";
 import { ColumnTypeNode } from "../../../ast/query/node/column";
 import { QueryNode } from "../../../ast/query/query";
 import { Model } from "../../../models/model";
+import { getColumnValue } from "../../../resources/utils";
 import type { Interpreter } from "../../interpreter";
 import { InterpreterUtils } from "../../interpreter_utils";
 
@@ -15,7 +16,10 @@ class MysqlColumnTypeInterpreter implements Interpreter {
     }
 
     const utils = new InterpreterUtils(this.model);
-    const columnName = utils.formatStringColumn("mysql", colNode.column);
+    const columnName = utils.formatStringColumn(
+      "mysql",
+      getColumnValue(colNode.column),
+    );
     const dt = colNode.dataType.toLowerCase();
 
     if (dt === "char") {

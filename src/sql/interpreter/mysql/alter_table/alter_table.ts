@@ -15,28 +15,41 @@ class MysqlAlterTableInterpreter implements Interpreter {
     const tableName = utils.formatStringTable("mysql", atNode.table);
 
     if (!atNode.children || !atNode.children.length) {
-      return { sql: `${tableName}`, bindings: [] };
+      return { sql: "", bindings: [] };
     }
 
     const astParser = new AstParser(this.model, "mysql" as SqlDataSourceType);
     const parts: string[] = [];
     const bindings: any[] = [];
 
-    let awaitingConstraints = false;
     for (const child of atNode.children) {
       const { sql, bindings: childBindings } = astParser.parse([child]);
 
       if (child.file === "add_column") {
         parts.push(sql);
-        awaitingConstraints = true;
-      } else if (child.file === "add_constraint" && awaitingConstraints) {
-        const last = parts.pop() ?? "";
-        const cleanedSql = sql.replace(/^\s*add\s+/i, "").trimStart();
-        parts.push(`${last} ${cleanedSql}`);
-        // keep awaitingConstraints true for multiple constraints
+      } else if (
+        child.file === "add_constraint" ||
+        child.folder === "constraint"
+      ) {
+        const last = parts[parts.length - 1] ?? "";
+        const isExtendingAddColumn = /^\s*add\s+column\b/i.test(last);
+        const isNamedTableConstraint = /^\s*add\s+constraint\b/i.test(sql);
+        if (isExtendingAddColumn && !isNamedTableConstraint) {
+          const cleaned = sql.replace(/^\s*add\s+/i, "").trimStart();
+          parts[parts.length - 1] = `${last} ${cleaned}`;
+        } else {
+          const ensured = /^\s*add\b/i.test(sql) ? sql : `add ${sql}`;
+          parts.push(ensured);
+        }
+      } else if (
+        child.file === "set_default" ||
+        child.file === "drop_default" ||
+        child.file === "set_not_null" ||
+        child.file === "drop_not_null"
+      ) {
+        parts.push(sql);
       } else {
         parts.push(sql);
-        awaitingConstraints = false;
       }
 
       bindings.push(...childBindings);
@@ -44,7 +57,10 @@ class MysqlAlterTableInterpreter implements Interpreter {
 
     const stmt = parts.join(", ");
     const ifExists = atNode.ifExists ? "if exists " : "";
-    const finalSql = `${ifExists}${tableName} ${stmt}`;
+    const dropIndexPattern = /^\s*drop\s+index\b/i;
+    const finalSql = dropIndexPattern.test(stmt)
+      ? stmt
+      : `${ifExists}${tableName} ${stmt}`;
     return { sql: finalSql, bindings };
   }
 }

@@ -49,6 +49,10 @@ export class AstParser {
       interpreter.model = this.model;
       const sqlStatement = interpreter.toSql(node);
 
+      if (!sqlStatement.sql || !sqlStatement.sql.trim().length) {
+        continue;
+      }
+
       const nextNode = filteredNodes[i + 1];
       const isLastOfType = !nextNode || nextNode.keyword !== node.keyword;
       const chainWith = isLastOfType ? "" : nextNode.chainsWith;

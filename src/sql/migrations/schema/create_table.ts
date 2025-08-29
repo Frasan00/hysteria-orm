@@ -1,19 +1,38 @@
 import { ColumnTypeNode } from "../../ast/query/node/column";
 import { QueryNode } from "../../ast/query/query";
+import { SqlDataSourceType } from "../../sql_data_source_types";
 import { BaseBuilder } from "./base_builder";
 import { ConstraintBuilder } from "./constraint_builder";
 
 export class CreateTableBuilder extends BaseBuilder {
   private tableName?: string;
+  private namedConstraints: QueryNode[];
+  private context: "alter_table" | "create_table" = "create_table";
+  private sqlType: SqlDataSourceType;
 
-  constructor(nodes: QueryNode[], tableName?: string) {
+  constructor(
+    sqlType: SqlDataSourceType,
+    nodes: QueryNode[],
+    tableName?: string,
+    context?: "alter_table" | "create_table",
+  ) {
     super(nodes);
     this.tableName = tableName;
+    this.namedConstraints = [];
+    this.context = context ?? "create_table";
+    this.sqlType = sqlType;
   }
 
   private build(node: ColumnTypeNode): ConstraintBuilder {
     this.nodes.push(node);
-    return new ConstraintBuilder(this.nodes, node, this.tableName);
+    return new ConstraintBuilder(
+      this.sqlType,
+      this.nodes,
+      node,
+      this.tableName,
+      this.namedConstraints,
+      this.context,
+    );
   }
 
   // #region string
@@ -453,4 +472,8 @@ export class CreateTableBuilder extends BaseBuilder {
   }
 
   // #endregion
+
+  getNamedConstraints(): QueryNode[] {
+    return this.namedConstraints;
+  }
 }

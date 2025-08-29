@@ -14,18 +14,6 @@ export default class extends Migration {
       table.timestamp("updated_at");
       table.timestamp("deleted_at").default(null).nullable();
     });
-
-    this.schema.alterTable("user_address_with_bigint", (table) => {
-      table.addColumn((col) => col.bigint("test_bigint").notNullable());
-
-      table.alterColumn((col) =>
-        col.bigint("test_bigint").foreignKey("users_with_bigint.id"),
-      );
-      table.alterColumn((col) =>
-        col.bigint("test_bigint").foreignKey("users_with_bigint.id"),
-      );
-      table.dropColumn("test_bigint");
-    });
   }
 
   async down() {

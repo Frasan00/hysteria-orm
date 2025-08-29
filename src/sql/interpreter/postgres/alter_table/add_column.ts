@@ -10,7 +10,22 @@ class PgAddColumnInterpreter implements Interpreter {
   toSql(node: QueryNode) {
     const acNode = node as AddColumnNode;
     const ast = new AstParser(this.model, "postgres" as SqlDataSourceType);
-    const { sql } = ast.parse([acNode.column]);
+    let { sql } = ast.parse([acNode.column]);
+
+    const inlineConstraints = (acNode as any).inlineConstraints;
+    if (inlineConstraints && inlineConstraints.length) {
+      const constraintParts: string[] = [];
+
+      for (const constraint of inlineConstraints) {
+        const { sql: constraintSql } = ast.parse([constraint]);
+        constraintParts.push(constraintSql);
+      }
+
+      if (constraintParts.length) {
+        sql += ` ${constraintParts.join(" ")}`;
+      }
+    }
+
     return { sql: `add column ${sql}`, bindings: [] };
   }
 }

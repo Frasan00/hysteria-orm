@@ -1,12 +1,6 @@
 // Decorators
-export { property } from "./no_sql/mongo/mongo_models/mongo_collection_decorators";
-export {
-  belongsTo,
-  column,
-  hasMany,
-  hasOne,
-  manyToMany,
-} from "./sql/models/decorators/model_decorators";
+export * from "./no_sql/mongo/mongo_models/mongo_collection_decorators";
+export * from "./sql/models/decorators/model_decorators";
 export * from "./sql/models/decorators/model_decorators_types";
 
 // Models & Factories

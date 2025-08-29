@@ -155,3 +155,4 @@ buildcache
 # under development
 website/
 database/
+src/test.ts

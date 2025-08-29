@@ -2,6 +2,7 @@ import { AstParser } from "../../../ast/parser";
 import { ConstraintNode } from "../../../ast/query/node/constraint";
 import { QueryNode } from "../../../ast/query/query";
 import { Model } from "../../../models/model";
+import { getColumnValue } from "../../../resources/utils";
 import type { Interpreter } from "../../interpreter";
 import { InterpreterUtils } from "../../interpreter_utils";
 
@@ -16,21 +17,37 @@ class SqliteConstraintInterpreter implements Interpreter {
       : "";
 
     if (cNode.constraintType === "primary_key") {
-      const cols = (cNode.columns ?? [])
-        .map((c) => utils.formatStringColumn("sqlite", c))
-        .join(", ");
-      return { sql: `${prefix}primary key (${cols})`, bindings: [] };
+      const autoIncrement = Boolean((cNode as any).autoIncrement);
+      const columnType = ((cNode as any).columnType || "").toLowerCase();
+      if (
+        autoIncrement &&
+        (columnType === "integer" || columnType === "bigint")
+      ) {
+        return { sql: `${prefix}primary key autoincrement`, bindings: [] };
+      }
+      return { sql: `${prefix}primary key`, bindings: [] };
     }
 
     if (cNode.constraintType === "unique") {
-      const cols = (cNode.columns ?? [])
-        .map((c) => utils.formatStringColumn("sqlite", c))
-        .join(", ");
-      return { sql: `${prefix}unique (${cols})`, bindings: [] };
+      if (cNode.columns && cNode.columns.length) {
+        const cols = cNode.columns
+          .map((c) => utils.formatStringColumn("sqlite", getColumnValue(c)))
+          .join(", ");
+
+        if (!cNode.constraintName) {
+          return { sql: `unique`, bindings: [] };
+        }
+        return { sql: `${prefix}unique (${cols})`, bindings: [] };
+      }
+      return { sql: `unique`, bindings: [] };
     }
 
     if (cNode.constraintType === "not_null") {
       return { sql: `not null`, bindings: [] };
+    }
+
+    if (cNode.constraintType === "null") {
+      return { sql: `null`, bindings: [] };
     }
 
     if (cNode.constraintType === "default") {
@@ -41,11 +58,11 @@ class SqliteConstraintInterpreter implements Interpreter {
       if (val === "TRUE" || val === "FALSE") {
         return { sql: `default ${val.toLowerCase()}`, bindings: [] };
       }
-      if (typeof val === "string") {
-        val = `'${val}'`;
-      }
       if (val === null) {
         return { sql: `default null`, bindings: [] };
+      }
+      if (typeof val === "string") {
+        val = `'${val}'`;
       }
       return { sql: `default ${val}`, bindings: [] };
     }
@@ -55,14 +72,14 @@ class SqliteConstraintInterpreter implements Interpreter {
         return { sql: "", bindings: [] };
       }
       const cols = (cNode.columns ?? [])
-        .map((c) => utils.formatStringColumn("sqlite", c))
+        .map((c) => utils.formatStringColumn("sqlite", getColumnValue(c)))
         .join(", ");
       const refTable = utils.formatStringTable(
         "sqlite",
         cNode.references.table,
       );
       const refCols = cNode.references.columns
-        .map((c) => utils.formatStringColumn("sqlite", c))
+        .map((c) => utils.formatStringColumn("sqlite", getColumnValue(c)))
         .join(", ");
       let sql = `${prefix}foreign key (${cols}) references ${refTable}(${refCols})`;
       if (cNode.onDelete) {

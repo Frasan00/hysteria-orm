@@ -13,7 +13,43 @@ class MysqlAlterColumnTypeInterpreter implements Interpreter {
     const { sql } = ast.parse([a.newType]);
     const [, ...rest] = sql.trim().split(/\s+/);
     const typeSql = rest.join(" ");
-    return { sql: `modify column \`${a.column}\` ${typeSql}`, bindings: [] };
+
+    // Generate type change SQL
+    let resultSql = `modify column \`${a.column}\` ${typeSql}`;
+
+    // Add constraint modifications
+    if (a.options.nullable !== undefined) {
+      const nullableSql = a.options.nullable ? "" : " not null";
+      resultSql += nullableSql;
+    }
+
+    if (a.options.dropDefault) {
+      resultSql += " drop default";
+    } else if (a.options.default !== undefined) {
+      let defaultValue = a.options.default;
+      if (defaultValue === null) {
+        defaultValue = "null";
+      } else if (typeof defaultValue === "string") {
+        if (defaultValue === "NULL") {
+          defaultValue = "null";
+        } else if (defaultValue === "TRUE" || defaultValue === "FALSE") {
+          defaultValue = defaultValue.toLowerCase();
+        } else {
+          defaultValue = `'${defaultValue}'`;
+        }
+      }
+      resultSql += ` default ${defaultValue}`;
+    }
+
+    if (a.options.unique !== undefined) {
+      if (a.options.unique) {
+        resultSql += " unique";
+      }
+      // MySQL doesn't support dropping unique constraint in modify column
+      // It would need a separate ALTER TABLE statement
+    }
+
+    return { sql: resultSql, bindings: [] };
   }
 }
 export default new MysqlAlterColumnTypeInterpreter();

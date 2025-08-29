@@ -19,11 +19,16 @@ export default class extends Migration {
       table.addColumn((col) => col.bigint("test_bigint").notNullable());
 
       table.alterColumn((col) =>
-        col.bigint("test_bigint").foreignKey("users_with_bigint.id"),
+        col.bigint("test_bigint").foreignKey("users_with_bigint.id", {
+          constraintName: "test_bigint_fk",
+        }),
       );
+      table.dropConstraint("test_bigint_fk");
+
       table.alterColumn((col) =>
         col.bigint("test_bigint").foreignKey("users_with_bigint.id"),
       );
+      table.dropForeignKey("test_bigint", "id");
       table.dropColumn("test_bigint");
     });
   }

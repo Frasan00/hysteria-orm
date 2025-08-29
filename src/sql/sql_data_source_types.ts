@@ -82,6 +82,17 @@ export type SqlDataSourceInput<
    * @description Models can still be used as standalone entities, but they won't be available for the sql data source instance
    */
   readonly models?: T;
+
+  /**
+   * @description Whether to sync the schema of the database with the models metadata
+   * @description Manual or auto generated migrations are always suggested instead of using this option
+   * @warning !! DO NOT USE THIS OPTION IN PRODUCTION !!
+   * @warning This will drop and recreate all the indexes and constraints, use with caution
+   * @warning Data Loss is highly likely if you use this option, renames are always implemented as drop and add, use with caution
+   * @sqlite Since sqlite is very limited in alter statements, it's not recommended to use this option with sqlite
+   * @default false
+   */
+  readonly syncModels?: boolean;
 } & (
   | MysqlSqlDataSourceInput
   | PostgresSqlDataSourceInput

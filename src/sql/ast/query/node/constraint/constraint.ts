@@ -5,12 +5,13 @@ export type ConstraintType =
   | "foreign_key"
   | "unique"
   | "not_null"
+  | "null"
   | "default";
 
 export class ConstraintNode extends QueryNode {
   constraintType: ConstraintType;
-  columns?: string[];
-  references?: { table: string; columns: string[] };
+  columns?: (string | (() => string))[];
+  references?: { table: string; columns: (string | (() => string))[] };
   constraintName?: string;
   onDelete?: "cascade" | "restrict" | "set null" | "no action";
   onUpdate?: "cascade" | "restrict" | "set null" | "no action";

@@ -29,48 +29,40 @@ class SqliteCreateTableInterpreter implements Interpreter {
         const last = parts.pop() ?? "";
         let inlineConstraintSql = sql;
 
-        if (/foreign key/i.test(inlineConstraintSql)) {
-          inlineConstraintSql = inlineConstraintSql.replace(
-            /constraint\s+"[^"]+"\s*/i,
-            "",
-          );
-
-          inlineConstraintSql = inlineConstraintSql.replace(
-            /foreign key\s*\([^)]*\)\s*/i,
-            "",
-          );
-        }
-
-        if (/constraint\s+"[^"]+"\s+primary key/i.test(inlineConstraintSql)) {
-          inlineConstraintSql = inlineConstraintSql.replace(
-            /constraint\s+"[^"]+"\s+primary key\s*\([^)]*\)/i,
-            "primary key",
-          );
-        } else if (/constraint\s+"[^"]+"\s+unique/i.test(inlineConstraintSql)) {
-          inlineConstraintSql = inlineConstraintSql.replace(
-            /constraint\s+"[^"]+"\s+unique\s*\([^)]*\)/i,
-            "unique",
-          );
-        }
-
         if (
-          /primary key/i.test(last) &&
+          /not null/i.test(inlineConstraintSql) ||
+          /null/i.test(inlineConstraintSql) ||
+          /default/i.test(inlineConstraintSql) ||
           /primary key/i.test(inlineConstraintSql)
         ) {
-          parts.push(last.trim());
-        } else {
           let combined = `${last} ${inlineConstraintSql}`.trim();
           combined = combined.replace(
             /(references\s+"[^"]+"\s*\([^)]*\))\s+not null/i,
             "not null $1",
           );
+
           parts.push(combined);
+          bindings.push(...childBindings);
+          continue;
         }
-      } else {
-        parts.push(sql);
+
+        parts.push(last);
+        parts.push(inlineConstraintSql);
+        bindings.push(...childBindings);
+        continue;
       }
 
+      parts.push(sql);
       bindings.push(...childBindings);
+    }
+
+    for (const constraint of ctNode.namedConstraints) {
+      const { sql, bindings: constraintBindings } = astParser.parse([
+        constraint,
+      ]);
+
+      parts.push(sql);
+      bindings.push(...constraintBindings);
     }
 
     const columnsSql = parts.join(", ");

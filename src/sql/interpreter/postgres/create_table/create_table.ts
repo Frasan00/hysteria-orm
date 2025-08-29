@@ -29,30 +29,49 @@ class PostgresCreateTableInterpreter implements Interpreter {
 
     for (const child of ctNode.children) {
       const { sql, bindings: childBindings } = astParser.parse([child]);
+
       if (child.folder === "constraint") {
         const last = parts.pop() ?? "";
-
         let inlineConstraintSql = sql;
-        if (/\bforeign key\b/i.test(inlineConstraintSql)) {
-          inlineConstraintSql = inlineConstraintSql.replace(
-            /foreign key\s*\([^)]*\)\s*/i,
-            "",
+
+        // Handle inline constraints: not null, null, and default
+        if (
+          /not null/i.test(inlineConstraintSql) ||
+          /null/i.test(inlineConstraintSql) ||
+          /default/i.test(inlineConstraintSql)
+        ) {
+          let combined = `${last} ${inlineConstraintSql}`.trim();
+          combined = combined.replace(
+            /(references\s+"[^"]+"\s*\([^)]*\))\s+not null/i,
+            "not null $1",
           );
+          parts.push(combined);
+          bindings.push(...childBindings);
+          continue;
         }
 
-        parts.push(`${last} ${inlineConstraintSql}`.trim());
-      } else {
-        parts.push(sql);
+        parts.push(last);
+        parts.push(inlineConstraintSql);
+        bindings.push(...childBindings);
+        continue;
       }
 
+      parts.push(sql);
       bindings.push(...childBindings);
     }
 
-    const columnsSql = parts.join(", ");
+    for (const constraint of ctNode.namedConstraints) {
+      const { sql, bindings: constraintBindings } = astParser.parse([
+        constraint,
+      ]);
 
+      parts.push(sql);
+      bindings.push(...constraintBindings);
+    }
+
+    const columnsSql = parts.join(", ");
     const ifNotExists = ctNode.ifNotExists ? "if not exists " : "";
     const finalSql = `${ifNotExists}${tableName} (${columnsSql})`;
-
     return { sql: finalSql, bindings };
   }
 }
