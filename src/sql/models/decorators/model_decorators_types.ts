@@ -1,6 +1,6 @@
 import { DateFormat, Timezone } from "../../../utils/date_utils";
-import { OnUpdateOrDelete } from "../../migrations/schema/schema_types";
 import { CreateTableBuilder } from "../../migrations/schema/create_table";
+import { OnUpdateOrDelete } from "../../migrations/schema/schema_types";
 import { Model } from "../model";
 import { ModelKey } from "../model_manager/model_manager_types";
 import { RelationEnum } from "../relations/relation";
@@ -8,11 +8,6 @@ import { RelationEnum } from "../relations/relation";
 type ColumnDataType =
   | Exclude<keyof CreateTableBuilder, "enum" | "rawColumn" | "custom">
   | readonly string[];
-
-type ColumnConstraints = {
-  nullable?: boolean;
-  default?: string | number | null | boolean;
-};
 
 export type ColumnDataTypeOptionWithLength = {
   type?:
@@ -174,17 +169,26 @@ export type ColumnOptions = {
    * @default The name of the property following the model case convention
    */
   databaseName?: string;
-
   /**
    * @description The description of the column in the database, can be used to specify the column description in the OpenAPI schema
    */
   openApiDescription?: string;
-
   /**
-   * @description Column constraints type in the database for automatic migrations
+   * @description Whether the column can be null in the database
+   * @migration Only affects auto-generated migrations
    */
-  constraints?: ColumnConstraints;
-} & ColumnDataTypeOption;
+  nullable?: boolean;
+  /**
+   * @description The default value for the column in the database
+   * @migration Only affects auto-generated migrations
+   */
+  default?: string | number | null | boolean;
+} &
+  /**
+   * @description The data type of the column
+   * @migration Only affects auto-generated migrations
+   */
+  ColumnDataTypeOption;
 
 export type ColumnType = {
   columnName: string;
@@ -195,7 +199,6 @@ export type ColumnType = {
   autoUpdate?: boolean;
   isPrimary: boolean;
   openApiDescription?: string;
-
   /** Database specific data for migrations, must be provided or it'll be ignored for auto-generated migrations */
   primaryKeyConstraintName?: string;
   type?: ColumnDataType;
@@ -203,7 +206,10 @@ export type ColumnType = {
   precision?: number;
   scale?: number;
   withTimezone?: boolean;
-  constraints?: ColumnConstraints;
+  constraints?: {
+    nullable?: boolean;
+    default?: string | number | null | boolean;
+  };
 };
 
 type ThroughModelCallback<T extends typeof Model> = () => T;

@@ -171,14 +171,11 @@ export function column(
           "MULTIPLE_PRIMARY_KEYS_NOT_ALLOWED",
         );
       }
-
       Reflect.defineMetadata(PRIMARY_KEY_METADATA_KEY, propertyKey, target);
     }
-
     const databaseName =
       options.databaseName ??
       convertCase(propertyKey as string, targetModel.databaseCaseConvention);
-
     const column: ColumnType = {
       columnName: propertyKey as string,
       serialize: options.serialize,
@@ -195,14 +192,16 @@ export function column(
       databaseName,
       openApiDescription: options.openApiDescription,
       type: options.type,
-      constraints: options.constraints,
       length: (options as ColumnDataTypeOptionWithLength)?.length,
       precision: (options as ColumnDataTypeOptionWithPrecision)?.precision,
       scale: (options as ColumnDataTypeOptionWithScaleAndPrecision)?.scale,
       withTimezone: (options as ColumnDataTypeOptionWithDatePrecision)
         ?.withTimezone,
+      constraints: {
+        nullable: options.nullable,
+        default: options.default,
+      },
     };
-
     const existingColumns =
       Reflect.getMetadata(COLUMN_METADATA_KEY, target) || [];
     existingColumns.push(column);
