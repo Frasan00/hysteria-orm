@@ -7,7 +7,10 @@ class PostgresDropIndexInterpreter implements Interpreter {
   declare model: typeof Model;
   toSql(node: QueryNode) {
     const di = node as DropIndexNode;
-    return { sql: `"${di.indexName}"`, bindings: [] };
+    return {
+      sql: `"${di.indexName}" ${di.cascade ? "cascade" : ""}`,
+      bindings: [],
+    };
   }
 }
 export default new PostgresDropIndexInterpreter();

@@ -12,6 +12,11 @@ export async function importTsUniversal<T = any>(
   const { mod } = await bundleRequire({
     filepath,
     format: "esm",
+    preserveTemporaryFile: false,
+    esbuildOptions: {
+      keepNames: true,
+      sourcemap: true,
+    },
     tsconfig: tsconfigPath ?? "./tsconfig.json",
     external: [
       "ioredis",

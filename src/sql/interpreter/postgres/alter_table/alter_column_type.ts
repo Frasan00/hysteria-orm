@@ -13,7 +13,45 @@ class PgAlterColumnTypeInterpreter implements Interpreter {
     const { sql } = ast.parse([a.newType]);
     const [, ...restTokens] = sql.trim().split(/\s+/);
     const typeSql = restTokens.join(" ");
-    return { sql: `alter column "${a.column}" type ${typeSql}`, bindings: [] };
+
+    // Generate type change SQL
+    let resultSql = `alter column "${a.column}" type ${typeSql}`;
+
+    // Add constraint modifications
+    if (a.options.nullable !== undefined) {
+      const nullableSql = a.options.nullable
+        ? `alter column "${a.column}" drop not null`
+        : `alter column "${a.column}" set not null`;
+      resultSql += `, ${nullableSql}`;
+    }
+
+    if (a.options.dropDefault) {
+      resultSql += `, alter column "${a.column}" drop default`;
+    } else if (a.options.default !== undefined) {
+      let defaultValue = a.options.default;
+      if (defaultValue === null) {
+        defaultValue = "null";
+      } else if (typeof defaultValue === "string") {
+        if (defaultValue === "NULL") {
+          defaultValue = "null";
+        } else if (defaultValue === "TRUE" || defaultValue === "FALSE") {
+          defaultValue = defaultValue.toLowerCase();
+        } else {
+          defaultValue = `'${defaultValue}'`;
+        }
+      }
+      resultSql += `, alter column "${a.column}" set default ${defaultValue}`;
+    }
+
+    if (a.options.unique !== undefined) {
+      if (a.options.unique) {
+        resultSql += `, add constraint "unique_${a.column}" unique ("${a.column}")`;
+      } else {
+        resultSql += `, drop constraint "unique_${a.column}"`;
+      }
+    }
+
+    return { sql: resultSql, bindings: [] };
   }
 }
 export default new PgAlterColumnTypeInterpreter();

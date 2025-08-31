@@ -2,6 +2,7 @@ import { AstParser } from "../../../ast/parser";
 import { ColumnTypeNode } from "../../../ast/query/node/column";
 import { QueryNode } from "../../../ast/query/query";
 import { Model } from "../../../models/model";
+import { getColumnValue } from "../../../resources/utils";
 import type { Interpreter } from "../../interpreter";
 import { InterpreterUtils } from "../../interpreter_utils";
 
@@ -15,7 +16,10 @@ class PostgresColumnTypeInterpreter implements Interpreter {
     }
 
     const utils = new InterpreterUtils(this.model);
-    const columnName = utils.formatStringColumn("postgres", colNode.column);
+    const columnName = utils.formatStringColumn(
+      "postgres",
+      getColumnValue(colNode.column),
+    );
 
     const dt = colNode.dataType.toLowerCase();
 
@@ -82,7 +86,10 @@ class PostgresColumnTypeInterpreter implements Interpreter {
       dt === "bytea" ||
       dt === "binary" ||
       dt === "varbinary" ||
-      dt === "blob"
+      dt === "blob" ||
+      dt === "longblob" ||
+      dt === "mediumblob" ||
+      dt === "tinyblob"
     ) {
       return { sql: `${columnName} bytea`, bindings: [] };
     } else if (dt === "json") {

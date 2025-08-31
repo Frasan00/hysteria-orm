@@ -5,8 +5,10 @@ import dropAllTablesConnector from "./cli/drop_all_tables_connector";
 import migrationCreateConnector from "./cli/migration_create_connector";
 import rollbackMigrationsConnector from "./cli/migration_rollback_connector";
 import runMigrationsConnector from "./cli/migration_run_connector";
+import { GenerateMigrationTemplate } from "./cli/resources/generate_migration_template";
 import { InitTemplates } from "./cli/resources/init_templates";
 import runSqlConnector from "./cli/run_sql_connector";
+import { SchemaDiff } from "./sql/migrations/schema_diff/schema_diff";
 import { SqlDataSource } from "./sql/sql_data_source";
 import { SqlDataSourceType } from "./sql/sql_data_source_types";
 import { importTsUniversal } from "./utils/importer";
@@ -306,6 +308,7 @@ program
       const { default: sqlDs } = await importTsUniversal<{
         default: SqlDataSource;
       }>(path.resolve(process.cwd(), option.datasource), option?.tsconfigPath);
+
       try {
         await rollbackMigrationsConnector(
           sqlDs,
@@ -376,6 +379,112 @@ program
           true,
           option?.migrationPath,
           option?.tsconfigPath,
+        );
+        process.exit(0);
+      } catch (error) {
+        console.error(error);
+        process.exit(1);
+      }
+    },
+  );
+
+program
+  .command("generate:migrations")
+  .description(
+    "Generate a migration file based on the database schema and the models metadata, not supported for sqlite",
+  )
+  .option(
+    "-c, --tsconfig [tsconfigPath]",
+    "Path to the tsconfig.json file, defaults to ./tsconfig.json",
+    undefined,
+  )
+  .option(
+    "-d, --datasource [path]",
+    "Path to SqlDataSource (default export)",
+    undefined,
+  )
+  .option(
+    "-f, --dry [path]",
+    "Does not create a migration file but only outputs sql statements",
+    undefined,
+  )
+  .option(
+    "-j, --javascript",
+    "Generate a javascript migration file instead of a default typescript one",
+    false,
+  )
+  .option("-m, --migration-path [path]", "Path to the migrations", undefined)
+  .option("-n, --name [name]", "Name of the migration", undefined)
+  .action(
+    async (option?: {
+      tsconfigPath: string;
+      datasource?: string;
+      migrationPath: string;
+      javascript: boolean;
+      name: string;
+      dry?: boolean;
+    }) => {
+      if (!option?.datasource) {
+        logger.error("SqlDataSource file path is required (-d|--datasource)");
+        process.exit(1);
+      }
+
+      if (!option?.migrationPath) {
+        option.migrationPath = path.resolve(
+          process.cwd(),
+          "database/migrations",
+        );
+      }
+
+      if (!option?.name) {
+        option.name = `auto_generated_migration`;
+      }
+
+      option.name = `${Date.now()}_${option.name}`;
+
+      const { default: sqlDs } = await importTsUniversal<{
+        default: SqlDataSource;
+      }>(path.resolve(process.cwd(), option.datasource), option?.tsconfigPath);
+
+      if (sqlDs.getDbType() === "sqlite") {
+        logger.error(
+          "generate:migrations with sqlite is not supported, it's suggested to use manual migrations instead",
+        );
+        process.exit(1);
+      }
+
+      try {
+        const diff = await SchemaDiff.makeDiff(sqlDs);
+        const sqlStatements = diff.getSqlStatements();
+        if (!sqlStatements.length) {
+          logger.info(
+            `No new changes detected between database schema and models metadata`,
+          );
+          process.exit(0);
+        }
+
+        if (option.dry) {
+          for (const sql of sqlStatements) {
+            console.log(sql);
+          }
+
+          process.exit(0);
+        }
+
+        if (!fs.existsSync(option?.migrationPath)) {
+          fs.mkdirSync(option?.migrationPath, { recursive: true });
+        }
+
+        const template =
+          await GenerateMigrationTemplate.generate(sqlStatements);
+
+        const extension = option?.javascript ? ".js" : ".ts";
+        fs.writeFileSync(
+          `${option?.migrationPath}/${option?.name}${extension}`,
+          template,
+        );
+        logger.info(
+          `Migration file created successfully: ${option?.name}${extension}`,
         );
         process.exit(0);
       } catch (error) {

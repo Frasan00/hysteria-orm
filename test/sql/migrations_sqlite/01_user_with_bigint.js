@@ -26,19 +26,18 @@ export default class extends Migration {
 
     this.schema.alterTable("users_with_bigint", (table) => {
       table.addColumn((col) => col.integer("test").notNullable().default(1));
-      table.alterColumn((col) =>
-        col.varchar("test").notNullable().default("test"),
-      );
       table.renameColumn("test", "test_2");
       table.dropColumn("test_2");
     });
 
-    this.schema.createIndex("users_with_bigint", ["name"], "test_index");
+    this.schema.createIndex("users_with_bigint", ["name"], {
+      constraintName: "test_index",
+    });
     this.schema.dropIndex("test_index", "users_with_bigint");
     this.schema.renameTable("users_with_bigint", "users_with_bigint_renamed");
     this.schema.renameTable("users_with_bigint_renamed", "users_with_bigint");
     this.schema.rawQuery(
-      "ALTER TABLE users_with_bigint ADD COLUMN test_2 INTEGER",
+      "ALTER TABLE users_with_bigint ADD COLUMN test_2 INTEGER"
     );
     this.schema.rawQuery("ALTER TABLE users_with_bigint DROP COLUMN test_2");
 
@@ -66,7 +65,7 @@ export default class extends Migration {
       const all = await sqlDataSource.query("users_with_bigint").many();
       if (!all.length) {
         throw new Error(
-          "Migration 01_user_with_bigint failed, no records found",
+          "Migration 01_user_with_bigint failed, no records found"
         );
       }
 

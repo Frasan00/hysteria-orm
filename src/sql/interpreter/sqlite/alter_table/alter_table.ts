@@ -15,7 +15,7 @@ class SqliteAlterTableInterpreter implements Interpreter {
     const tableName = utils.formatStringTable("sqlite", atNode.table);
 
     if (!atNode.children || !atNode.children.length) {
-      return { sql: `${tableName}`, bindings: [] };
+      return { sql: "", bindings: [] };
     }
 
     const astParser = new AstParser(this.model, "sqlite" as SqlDataSourceType);
@@ -25,7 +25,7 @@ class SqliteAlterTableInterpreter implements Interpreter {
     let awaitingConstraints = false;
     for (const child of atNode.children) {
       const { sql, bindings: childBindings } = astParser.parse([child]);
-      if (!sql) {
+      if (!sql || !sql.trim()) {
         continue;
       }
 
@@ -36,6 +36,18 @@ class SqliteAlterTableInterpreter implements Interpreter {
         const last = parts.pop() ?? "";
         const cleanedSql = sql.replace(/^\s*add\s+/i, "").trimStart();
         parts.push(`${last} ${cleanedSql}`);
+      } else if (
+        child.file === "set_not_null" ||
+        child.file === "drop_not_null"
+      ) {
+        // SQLite doesn't support these operations, skip them
+        continue;
+      } else if (
+        child.file === "set_default" ||
+        child.file === "drop_default"
+      ) {
+        // SQLite doesn't support these operations, skip them
+        continue;
       } else {
         parts.push(sql);
         awaitingConstraints = false;
@@ -46,6 +58,11 @@ class SqliteAlterTableInterpreter implements Interpreter {
 
     const stmt = parts.join(", ");
     const ifExists = atNode.ifExists ? "if exists " : "";
+
+    if (!stmt.trim()) {
+      return { sql: "", bindings: [] };
+    }
+
     const finalSql = `${ifExists}${tableName} ${stmt}`;
     return { sql: finalSql, bindings };
   }

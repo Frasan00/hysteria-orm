@@ -9,8 +9,11 @@ import {
   encryptSymmetric,
 } from "../../../utils/encryption";
 import { generateULID } from "../../../utils/ulid";
+import { OnUpdateOrDelete } from "../../migrations/schema/schema_types";
+import { getColumnValue } from "../../resources/utils";
 import { Model } from "../model";
 import { ModelKey } from "../model_manager/model_manager_types";
+import { ModelQueryBuilder } from "../model_query_builder/model_query_builder";
 import { BelongsTo } from "../relations/belongs_to";
 import { HasMany } from "../relations/has_many";
 import { HasOne } from "../relations/has_one";
@@ -21,10 +24,19 @@ import {
   INDEX_METADATA_KEY,
   PRIMARY_KEY_METADATA_KEY,
   RELATION_METADATA_KEY,
+  UNIQUE_METADATA_KEY,
+  getDefaultFkConstraintName,
   getDefaultForeignKey,
+  getDefaultIndexName,
+  getDefaultPrimaryKeyConstraintName,
+  getDefaultUniqueConstraintName,
 } from "./model_decorators_constants";
 import type {
   AsymmetricEncryptionOptions,
+  ColumnDataTypeOptionWithDatePrecision,
+  ColumnDataTypeOptionWithLength,
+  ColumnDataTypeOptionWithPrecision,
+  ColumnDataTypeOptionWithScaleAndPrecision,
   ColumnOptions,
   ColumnType,
   DateColumnOptions,
@@ -33,7 +45,14 @@ import type {
   ManyToManyOptions,
   SymmetricEncryptionOptions,
   ThroughModel,
+  UniqueType,
 } from "./model_decorators_types";
+
+export type BaseModelRelationType = {
+  onDelete?: OnUpdateOrDelete;
+  onUpdate?: OnUpdateOrDelete;
+  constraintName?: string;
+};
 
 /**
  * @description Class decorator to define indexes on the model
@@ -64,7 +83,12 @@ export function index(
       Reflect.getMetadata(INDEX_METADATA_KEY, target.prototype) || [];
     existingIndexes.push({
       columns: newIndexes,
-      name: indexName ?? `${target.name}_${newIndexes.join("_")}_index`,
+      name:
+        indexName ??
+        getDefaultIndexName(
+          (target as typeof Model).table,
+          newIndexes.join("_"),
+        ),
     });
     Reflect.defineMetadata(
       INDEX_METADATA_KEY,
@@ -74,28 +98,57 @@ export function index(
   };
 }
 
+export function unique(
+  columns: string | string[],
+  constraintName?: string,
+): ClassDecorator {
+  return (target: Function) => {
+    const newColumns = Array.isArray(columns) ? columns : [columns];
+    const existingUniques =
+      Reflect.getMetadata(UNIQUE_METADATA_KEY, target.prototype) || [];
+    existingUniques.push({
+      columns: newColumns,
+      name:
+        constraintName ??
+        getDefaultUniqueConstraintName(
+          (target as typeof Model).table,
+          newColumns.join("_"),
+        ),
+    });
+    Reflect.defineMetadata(
+      UNIQUE_METADATA_KEY,
+      existingUniques,
+      target.prototype,
+    );
+  };
+}
+
 /**
- * @description Property decorator to define an index on a specific property
- * @description This is an alternative to the class-level index decorator
+ * @description Decorator to define a view on the model
+ * @description This will automatically create a view on the database with the given statement
+ * @description Since a view is intended to get data from other tables, a migration is not necessary
  * @example
  * ```ts
+ * @view((query) => {
+ *   query.select("*").from("users");
+ * })
  * class User extends Model {
- *   @index("name")
  *   @column()
  *   name!: string;
  * }
  * ```
  */
-export function indexProperty(indexName?: string): PropertyDecorator {
-  return (target: Object, propertyKey: string | symbol) => {
-    const existingIndexes =
-      Reflect.getMetadata(INDEX_METADATA_KEY, target) || [];
-    existingIndexes.push({
-      columns: [String(propertyKey)],
-      name:
-        indexName ?? `${target.constructor.name}_${String(propertyKey)}_index`,
-    });
-    Reflect.defineMetadata(INDEX_METADATA_KEY, existingIndexes, target);
+export function view(
+  statement: (query: ModelQueryBuilder<any>) => void,
+): ClassDecorator {
+  return (target: Function) => {
+    const targetClass = target as typeof Model;
+    const originalQuery = targetClass.query;
+    targetClass.query = function (...args: Parameters<typeof originalQuery>) {
+      const query = originalQuery.bind(this).call(this, ...args);
+      statement(query);
+      return query;
+    } as typeof originalQuery;
   };
 }
 
@@ -118,24 +171,37 @@ export function column(
           "MULTIPLE_PRIMARY_KEYS_NOT_ALLOWED",
         );
       }
-
       Reflect.defineMetadata(PRIMARY_KEY_METADATA_KEY, propertyKey, target);
     }
-
     const databaseName =
       options.databaseName ??
       convertCase(propertyKey as string, targetModel.databaseCaseConvention);
-
     const column: ColumnType = {
       columnName: propertyKey as string,
       serialize: options.serialize,
       prepare: options.prepare,
       hidden: options.hidden,
+      isPrimary: isPrimaryKey,
+      primaryKeyConstraintName:
+        options.primaryKeyConstraintName ??
+        getDefaultPrimaryKeyConstraintName(
+          targetModel.table,
+          propertyKey as string,
+        ),
       autoUpdate: options.autoUpdate,
       databaseName,
       openApiDescription: options.openApiDescription,
+      type: options.type,
+      length: (options as ColumnDataTypeOptionWithLength)?.length,
+      precision: (options as ColumnDataTypeOptionWithPrecision)?.precision,
+      scale: (options as ColumnDataTypeOptionWithScaleAndPrecision)?.scale,
+      withTimezone: (options as ColumnDataTypeOptionWithDatePrecision)
+        ?.withTimezone,
+      constraints: {
+        nullable: options.nullable,
+        default: options.default,
+      },
     };
-
     const existingColumns =
       Reflect.getMetadata(COLUMN_METADATA_KEY, target) || [];
     existingColumns.push(column);
@@ -160,7 +226,7 @@ function primaryKeyColumn(
   options: Omit<ColumnOptions, "primaryKey"> = {},
 ): PropertyDecorator {
   return column({
-    ...options,
+    ...(options as ColumnOptions),
     primaryKey: true,
   });
 }
@@ -169,7 +235,8 @@ function floatColumn(
   options: Omit<ColumnOptions, "serialize"> = {},
 ): PropertyDecorator {
   return column({
-    ...options,
+    type: "float",
+    ...(options as ColumnOptions),
     serialize: (value) => {
       if (value === undefined) {
         return;
@@ -195,12 +262,14 @@ function floatColumn(
 /**
  * @description Decorator to define a integer column in the model, this will automatically convert the integer to the correct format for the database
  * @description Useful in databases like postgres where the integer is returned as a string by the driver
+ * @description Defaults type to integer for migration generation
  */
 function integerColumn(
   options: Omit<ColumnOptions, "serialize"> = {},
 ): PropertyDecorator {
   return column({
-    ...options,
+    type: "integer",
+    ...(options as ColumnOptions),
     serialize: (value) => {
       if (value === undefined) {
         return;
@@ -226,12 +295,14 @@ function integerColumn(
 /**
  * @description Decorator to define a uuid column in the model
  * @description This will automatically generate a uuid if no value is provided
+ * @description Defaults type to uuid for migration generation
  */
 function uuidColumn(
   options: Omit<ColumnOptions, "prepare"> = {},
 ): PropertyDecorator {
   return column({
-    ...options,
+    type: "uuid",
+    ...(options as ColumnOptions),
     prepare: (value) => {
       if (!value) {
         return crypto.randomUUID();
@@ -245,12 +316,14 @@ function uuidColumn(
 /**
  * @description Decorator to define a ulid column in the model
  * @description This will automatically generate a ulid if no value is provided
+ * @description Defaults type to ulid for migration generation
  */
 function ulidColumn(
   options: Omit<ColumnOptions, "prepare"> = {},
 ): PropertyDecorator {
   return column({
-    ...options,
+    type: "ulid",
+    ...(options as ColumnOptions),
     prepare: (value) => {
       if (!value) {
         return generateULID();
@@ -270,7 +343,7 @@ function symmetric(
   options: Omit<SymmetricEncryptionOptions, "prepare" | "serialize">,
 ): PropertyDecorator {
   return column({
-    ...options,
+    ...(options as ColumnOptions),
     prepare: (value) => {
       if (!value) {
         return value;
@@ -297,7 +370,7 @@ function asymmetric(
   options: Omit<AsymmetricEncryptionOptions, "prepare" | "serialize">,
 ): PropertyDecorator {
   return column({
-    ...options,
+    ...(options as ColumnOptions),
     prepare: (value) => {
       if (!value) {
         return value;
@@ -318,12 +391,14 @@ function asymmetric(
 /**
  * @description Decorator to define a boolean column in the model
  * @description This will automatically convert the boolean to the correct format for the database, useful for mysql since it stores booleans as tinyint(1)
+ * @description Defaults type to boolean for migration generation
  */
 function booleanColumn(
   options: Omit<ColumnOptions, "prepare" | "serialize"> = {},
 ): PropertyDecorator {
   return column({
-    ...options,
+    type: "boolean",
+    ...(options as ColumnOptions),
     serialize: (value) => Boolean(value),
     prepare: (value) => Boolean(value),
   });
@@ -353,7 +428,8 @@ function dateColumn(
   } = options;
 
   return column({
-    ...rest,
+    type: "datetime",
+    ...(rest as ColumnOptions),
     autoUpdate,
     prepare: (value?: Date | string | null): string | null | undefined => {
       if (!value) {
@@ -392,12 +468,14 @@ function dateColumn(
  * @description Decorator to define a json column in the model
  * @description This will automatically convert the json to the correct format for the database
  * @throws json parse error if the value from the database is not valid json
+ * @description Defaults type to jsonb for migration generation
  */
 function jsonColumn(
   options: Omit<ColumnOptions, "prepare" | "serialize"> = {},
 ): PropertyDecorator {
   return column({
-    ...options,
+    type: "jsonb",
+    ...(options as ColumnOptions),
     serialize: (value) => {
       if (typeof value === "string") {
         return JSON.parse(value);
@@ -435,15 +513,28 @@ export function getModelColumns(target: typeof Model): ColumnType[] {
 export function belongsTo<R extends typeof Model>(
   model: () => R,
   foreignKey?: string,
+  options?: BaseModelRelationType,
 ): PropertyDecorator {
   return (target: Object, propertyKey: string | symbol) => {
-    foreignKey ||= getDefaultForeignKey(model().table);
+    const fallbackForeignKey = () => getDefaultForeignKey(model().table);
+    const fallbackConstraintName = () => {
+      const targetTable = (target.constructor as typeof Model).table;
+      const fkColumn = foreignKey || fallbackForeignKey();
+      return getDefaultFkConstraintName(
+        targetTable,
+        fkColumn,
+        propertyKey as string,
+      );
+    };
 
-    const relation = {
+    const relation: LazyRelationType = {
       type: RelationEnum.belongsTo,
       columnName: propertyKey as string,
       model,
-      foreignKey,
+      foreignKey: foreignKey ? String(foreignKey) : fallbackForeignKey,
+      constraintName: options?.constraintName ?? fallbackConstraintName,
+      onUpdate: options?.onUpdate,
+      onDelete: options?.onDelete,
     };
 
     const relations = Reflect.getMetadata(RELATION_METADATA_KEY, target) || [];
@@ -460,18 +551,22 @@ export function belongsTo<R extends typeof Model>(
 export function hasOne<T extends typeof Model>(
   model: () => T,
   foreignKey?: ModelKey<InstanceType<T>>,
+  options?: Omit<BaseModelRelationType, "constraintName">,
 ): PropertyDecorator {
   return (target: Object, propertyKey: string | symbol) => {
-    foreignKey ||= getDefaultForeignKey(
-      (target.constructor as typeof Model).table,
-    ) as ModelKey<InstanceType<T>>;
+    const fallbackForeignKey = () =>
+      getDefaultForeignKey((target.constructor as typeof Model).table);
 
-    const relation = {
+    const relation: LazyRelationType = {
       type: RelationEnum.hasOne,
       columnName: propertyKey as string,
       model,
-      foreignKey,
+      constraintName: "None",
+      foreignKey: foreignKey ? String(foreignKey) : fallbackForeignKey,
+      onDelete: options?.onDelete,
+      onUpdate: options?.onUpdate,
     };
+
     const relations = Reflect.getMetadata(RELATION_METADATA_KEY, target) || [];
     relations.push(relation);
     Reflect.defineMetadata(RELATION_METADATA_KEY, relations, target);
@@ -486,17 +581,20 @@ export function hasOne<T extends typeof Model>(
 export function hasMany<T extends typeof Model>(
   model: () => T,
   foreignKey?: ModelKey<InstanceType<T>>,
+  options?: Omit<BaseModelRelationType, "constraintName">,
 ): PropertyDecorator {
   return (target: Object, propertyKey: string | symbol) => {
-    foreignKey ||= getDefaultForeignKey(
-      (target.constructor as typeof Model).table,
-    ) as ModelKey<InstanceType<T>>;
+    const fallbackForeignKey = () =>
+      getDefaultForeignKey((target.constructor as typeof Model).table);
 
-    const relation = {
+    const relation: LazyRelationType = {
       type: RelationEnum.hasMany,
-      columnName: propertyKey,
+      columnName: propertyKey as string,
       model,
-      foreignKey,
+      constraintName: "None",
+      foreignKey: foreignKey ? String(foreignKey) : fallbackForeignKey,
+      onDelete: options?.onDelete,
+      onUpdate: options?.onUpdate,
     };
 
     const relations = Reflect.getMetadata(RELATION_METADATA_KEY, target) || [];
@@ -523,27 +621,43 @@ export function manyToMany<
   model: () => R,
   throughModel: TM,
   throughModelKeys?: ManyToManyOptions<T, TM>,
+  options?: BaseModelRelationType,
 ): PropertyDecorator {
   return (target: Object, propertyKey: string | symbol) => {
-    const { leftForeignKey, rightForeignKey } = throughModelKeys || {};
+    const { leftForeignKey, rightForeignKey } = throughModelKeys ?? {};
     const throughModelTable =
-      typeof throughModel === "string" ? throughModel : throughModel().table;
+      typeof throughModel === "string"
+        ? throughModel
+        : () => throughModel().table;
 
     const primaryModel = (target.constructor as typeof Model).table;
-    const resolvedLeftFk =
-      (leftForeignKey as string | undefined) ??
-      getDefaultForeignKey(primaryModel);
+    const fallbackLeftForeignKey = () => getDefaultForeignKey(primaryModel);
+    const fallbackRightForeignKey = () => getDefaultForeignKey(model().table);
+    const fallbackConstraintName = () =>
+      getDefaultFkConstraintName(
+        getColumnValue(throughModelTable),
+        leftForeignKey ? String(leftForeignKey) : fallbackLeftForeignKey(),
+      );
+
     const relation: LazyRelationType = {
       type: RelationEnum.manyToMany,
       columnName: propertyKey as string,
       model,
-      foreignKey: resolvedLeftFk,
+      constraintName: options?.constraintName ?? fallbackConstraintName,
+      foreignKey: leftForeignKey
+        ? String(leftForeignKey)
+        : fallbackLeftForeignKey,
+      onDelete: options?.onDelete,
+      onUpdate: options?.onUpdate,
       manyToManyOptions: {
         primaryModel: primaryModel,
         throughModel: throughModelTable,
-        leftForeignKey: resolvedLeftFk,
-        rightForeignKey:
-          (rightForeignKey as string) ?? getDefaultForeignKey(model().table),
+        leftForeignKey: leftForeignKey
+          ? String(leftForeignKey)
+          : fallbackLeftForeignKey,
+        rightForeignKey: rightForeignKey
+          ? String(rightForeignKey)
+          : fallbackRightForeignKey,
       },
     };
 
@@ -566,14 +680,16 @@ export function getRelations(target: typeof Model): Relation[] {
   return relations.map((relation: LazyRelationType) => {
     const { type, model, columnName, foreignKey } = relation;
 
+    const resolvedForeignKey = getColumnValue(foreignKey);
+
     const lazyLoadedModel = model();
     switch (type) {
       case RelationEnum.belongsTo:
-        return new BelongsTo(lazyLoadedModel, columnName, foreignKey);
+        return new BelongsTo(lazyLoadedModel, columnName, resolvedForeignKey);
       case RelationEnum.hasOne:
-        return new HasOne(lazyLoadedModel, columnName, foreignKey);
+        return new HasOne(lazyLoadedModel, columnName, resolvedForeignKey);
       case RelationEnum.hasMany:
-        return new HasMany(lazyLoadedModel, columnName, foreignKey);
+        return new HasMany(lazyLoadedModel, columnName, resolvedForeignKey);
       case RelationEnum.manyToMany:
         if (!relation.manyToManyOptions) {
           throw new HysteriaError(
@@ -585,13 +701,13 @@ export function getRelations(target: typeof Model): Relation[] {
         const relatedModel = model();
         return new ManyToMany(relatedModel, columnName, {
           primaryModel: relation.manyToManyOptions.primaryModel,
-          throughModel: relation.manyToManyOptions.throughModel,
-          leftForeignKey:
-            relation.manyToManyOptions.leftForeignKey ??
-            getDefaultForeignKey(relation.manyToManyOptions.primaryModel),
-          rightForeignKey:
-            relation.manyToManyOptions.rightForeignKey ??
-            getDefaultForeignKey(relatedModel.table),
+          throughModel: getColumnValue(relation.manyToManyOptions.throughModel),
+          leftForeignKey: getColumnValue(
+            relation.manyToManyOptions.leftForeignKey,
+          ),
+          rightForeignKey: getColumnValue(
+            relation.manyToManyOptions.rightForeignKey,
+          ),
         });
       default:
         throw new HysteriaError(
@@ -611,4 +727,8 @@ export function getPrimaryKey(target: typeof Model): string {
 
 export function getIndexes(target: typeof Model): IndexType[] {
   return Reflect.getMetadata(INDEX_METADATA_KEY, target.prototype) || [];
+}
+
+export function getUniques(target: typeof Model): UniqueType[] {
+  return Reflect.getMetadata(UNIQUE_METADATA_KEY, target.prototype) || [];
 }

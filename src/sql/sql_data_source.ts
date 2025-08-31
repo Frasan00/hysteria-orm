@@ -7,7 +7,10 @@ import { AstParser } from "./ast/parser";
 import { RawNode } from "./ast/query/node/raw/raw_node";
 import { ForeignKeyInfoNode } from "./ast/query/node/schema";
 import { IndexInfoNode } from "./ast/query/node/schema/index_info";
+import { PrimaryKeyInfoNode } from "./ast/query/node/schema/primary_key_info";
 import { TableInfoNode } from "./ast/query/node/schema/table_info";
+import Schema from "./migrations/schema/schema";
+import { normalizeColumnType } from "./migrations/schema_diff/type_normalizer";
 import { Model } from "./models/model";
 import { ModelManager } from "./models/model_manager/model_manager";
 import { QueryBuilder } from "./query_builder/query_builder";
@@ -15,6 +18,7 @@ import type {
   TableColumnInfo,
   TableForeignKeyInfo,
   TableIndexInfo,
+  TablePrimaryKeyInfo,
   TableSchemaInfo,
 } from "./schema_introspection_types";
 import { createSqlConnection } from "./sql_connection_utils";
@@ -37,7 +41,7 @@ import {
   StartTransactionOptions,
   TransactionExecutionOptions,
 } from "./transactions/transaction_types";
-import Schema from "./migrations/schema/schema";
+import { SchemaDiff } from "./migrations/schema_diff/schema_diff";
 
 /**
  * @description The SqlDataSource class is the main class for interacting with the database, it's used to create connections, execute queries, and manage transactions
@@ -118,6 +122,10 @@ export class SqlDataSource extends DataSource {
     SqlDataSource.instance = sqlDataSource;
 
     await cb?.(sqlDataSource as AugmentedSqlDataSource<T>);
+    if (inputOrCb?.syncModels) {
+      await sqlDataSource.syncSchema();
+    }
+
     return sqlDataSource as AugmentedSqlDataSource<T>;
   }
 
@@ -185,6 +193,10 @@ export class SqlDataSource extends DataSource {
     SqlDataSource.instance = sqlDataSource;
 
     await cb?.(sqlDataSource as AugmentedSqlDataSource<T>);
+    if (inputOrCb?.syncModels) {
+      await sqlDataSource.syncSchema();
+    }
+
     return sqlDataSource as AugmentedSqlDataSource<T>;
   }
 
@@ -684,6 +696,36 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
+   * @description Syncs the schema of the database with the models metadata
+   * @warning This will drop and recreate all the indexes and constraints, use with caution
+   */
+  async syncSchema(): Promise<void> {
+    if (this.sqlType === "sqlite") {
+      logger.warn("Syncing schema with SQLite is not supported, skipping...");
+
+      return;
+    }
+
+    const diff = await SchemaDiff.makeDiff(this);
+    const sqlStatements = diff.getSqlStatements();
+    if (!sqlStatements.length) {
+      logger.info(
+        `No new changes detected between database schema and models metadata`,
+      );
+      return;
+    }
+
+    logger.info(
+      `Generated ${sqlStatements.length} SQL statements to sync schema`,
+    );
+    for (const sql of sqlStatements) {
+      await this.rawQuery(sql);
+    }
+
+    logger.info(`Synced schema with ${sqlStatements.length} SQL statements`);
+  }
+
+  /**
    * @description Executes a raw query on the database
    */
   async rawQuery<T = any>(query: string, params: any[] = []): Promise<T> {
@@ -711,16 +753,17 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
-   * @description Retrieves informations from the database for the given table
+   * @description Retrieves information from the database for the given table
    */
   async getTableSchema(table: string): Promise<TableSchemaInfo> {
-    const [columns, indexes, foreignKeys] = await Promise.all([
+    const [columns, indexes, foreignKeys, primaryKey] = await Promise.all([
       this.getTableInfo(table),
       this.getIndexInfo(table),
       this.getForeignKeyInfo(table),
+      this.getPrimaryKeyInfo(table),
     ]);
 
-    return { columns, indexes, foreignKeys };
+    return { columns, indexes, foreignKeys, primaryKey };
   }
 
   /**
@@ -746,37 +789,86 @@ export class SqlDataSource extends DataSource {
     );
 
     const sql = ast.parse([new TableInfoNode(table)]).sql;
-    const rows: any[] = await this.rawQuery(sql);
+    let rows: any[] = [];
+    try {
+      rows = await this.rawQuery(sql);
+    } catch (err: any) {
+      if (this.isTableMissingError(err)) {
+        return [];
+      }
+      throw err;
+    }
     const db = this.getDbType();
     if (db === "sqlite") {
-      return rows.map((r: any) => ({
-        name: r.name,
-        dataType: (r.type || "").toLowerCase(),
-        isNullable: r.notnull === 0,
-        defaultValue: r.dflt_value ?? null,
-      }));
+      return rows.map((r: any) => {
+        const rawType = String(r.type || "").toLowerCase();
+        const dataType = normalizeColumnType(db, rawType);
+        return {
+          name: r.name,
+          dataType,
+          isNullable: r.notnull === 0,
+          defaultValue: r.dflt_value ?? null,
+          withTimezone: null,
+        };
+      });
     }
 
-    return rows.map((r: any) => ({
-      name: String(r.column_name || r.COLUMN_NAME || r.name || ""),
-      dataType: String(
+    return rows.map((r: any) => {
+      const name = String(r.column_name || r.COLUMN_NAME || r.name || "");
+      const rawType = String(
         r.data_type || r.DATA_TYPE || r.type || "",
-      ).toLowerCase(),
-      isNullable:
-        String(
-          r.is_nullable || r.IS_NULLABLE || r.notnull === 0 ? "YES" : "NO",
-        ).toLowerCase() !== "no",
-      defaultValue:
+      ).toLowerCase();
+      const dataType = normalizeColumnType(db, rawType);
+      const rawNullable =
+        r.is_nullable !== undefined
+          ? r.is_nullable
+          : r.IS_NULLABLE !== undefined
+            ? r.IS_NULLABLE
+            : undefined;
+      const isNullable = (() => {
+        if (typeof rawNullable === "string") {
+          return rawNullable.toLowerCase() !== "no";
+        }
+        if (typeof rawNullable === "boolean") {
+          return rawNullable;
+        }
+        if (r.notnull !== undefined) {
+          return r.notnull === 0;
+        }
+        return true;
+      })();
+
+      const defaultValue =
         r.column_default ??
         r.COLUMN_DEFAULT ??
         r.defaultValue ??
         r.dflt_value ??
-        null,
-      length: r.char_length != null ? Number(r.char_length) : null,
-      precision:
-        r.numeric_precision != null ? Number(r.numeric_precision) : null,
-      scale: r.numeric_scale != null ? Number(r.numeric_scale) : null,
-    }));
+        null;
+      const length = r.char_length != null ? Number(r.char_length) : null;
+      const precision =
+        r.numeric_precision != null ? Number(r.numeric_precision) : null;
+      const scale = r.numeric_scale != null ? Number(r.numeric_scale) : null;
+      const withTimezone =
+        r.timezone != null
+          ? Boolean(r.timezone)
+          : typeof r.datetime_precision === "number"
+            ? /with time zone/.test(
+                String(r.column_type || r.udt_name || "").toLowerCase(),
+              )
+            : /with time zone/.test(
+                String(r.column_type || r.udt_name || "").toLowerCase(),
+              );
+      return {
+        name,
+        dataType,
+        isNullable,
+        defaultValue,
+        length,
+        precision,
+        scale,
+        withTimezone,
+      };
+    });
   }
 
   /**
@@ -794,7 +886,15 @@ export class SqlDataSource extends DataSource {
 
     const sql = ast.parse([new IndexInfoNode(table)]).sql;
     const db = this.getDbType();
-    const rows: any[] = await this.rawQuery(sql);
+    let rows: any[] = [];
+    try {
+      rows = await this.rawQuery(sql);
+    } catch (err: any) {
+      if (this.isTableMissingError(err)) {
+        return [];
+      }
+      throw err;
+    }
     if (db === "mysql" || db === "mariadb") {
       const map = new Map<
         string,
@@ -856,7 +956,15 @@ export class SqlDataSource extends DataSource {
     );
 
     const sql = ast.parse([new ForeignKeyInfoNode(table)]).sql;
-    const rows: any[] = await this.rawQuery(sql);
+    let rows: any[] = [];
+    try {
+      rows = await this.rawQuery(sql);
+    } catch (err: any) {
+      if (this.isTableMissingError(err)) {
+        return [];
+      }
+      throw err;
+    }
 
     const db = this.getDbType();
     if (db === "sqlite") {
@@ -900,6 +1008,45 @@ export class SqlDataSource extends DataSource {
     return Array.from(map.values());
   }
 
+  /**
+   * @description Introspects table primary key from the database
+   */
+  async getPrimaryKeyInfo(
+    table: string,
+  ): Promise<TablePrimaryKeyInfo | undefined> {
+    const ast = new AstParser(
+      {
+        table,
+        databaseCaseConvention: "preserve",
+        modelCaseConvention: "preserve",
+      } as typeof Model,
+      this.getDbType(),
+    );
+
+    const sql = ast.parse([new PrimaryKeyInfoNode(table)]).sql;
+    let rows: any[] = [];
+    try {
+      rows = await this.rawQuery(sql);
+    } catch (err: any) {
+      if (this.isTableMissingError(err)) {
+        return undefined;
+      }
+      throw err;
+    }
+
+    if (!rows.length) {
+      return undefined;
+    }
+
+    const columns = rows.map((row) => String(row.column_name));
+    const name = rows[0].name;
+
+    return {
+      name: name || undefined,
+      columns,
+    };
+  }
+
   private async testConnectionQuery(query: string): Promise<void> {
     await execSql(query, [], this, "raw", {
       shouldNotLog: true,
@@ -929,6 +1076,27 @@ export class SqlDataSource extends DataSource {
     }
 
     return models;
+  }
+
+  private isTableMissingError(error: any): boolean {
+    const db = this.getDbType();
+    if (!error) {
+      return false;
+    }
+
+    if (db === "mysql" || db === "mariadb") {
+      return error.code === "ER_NO_SUCH_TABLE" || error.errno === 1146;
+    }
+
+    if (db === "postgres" || db === "cockroachdb") {
+      return error.code === "42P01"; // undefined_table
+    }
+
+    if (db === "sqlite") {
+      return /no such table/i.test(String(error.message || ""));
+    }
+
+    return false;
   }
 
   static get isInGlobalTransaction(): boolean {

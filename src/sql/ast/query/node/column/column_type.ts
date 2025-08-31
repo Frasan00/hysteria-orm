@@ -1,7 +1,7 @@
 import { QueryNode } from "../../query";
 
 export class ColumnTypeNode extends QueryNode {
-  column: string;
+  column: string | (() => string);
   dataType: string;
   length?: number;
   precision?: number;

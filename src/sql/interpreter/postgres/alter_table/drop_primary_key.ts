@@ -4,8 +4,9 @@ import type { Interpreter } from "../../interpreter";
 
 class PgDropPrimaryKeyInterpreter implements Interpreter {
   declare model: typeof Model;
-  toSql(node: QueryNode) {
-    return { sql: `drop constraint primary key`, bindings: [] };
+  toSql(_node: QueryNode) {
+    // Not available in postgres
+    return { sql: ``, bindings: [] };
   }
 }
 export default new PgDropPrimaryKeyInterpreter();

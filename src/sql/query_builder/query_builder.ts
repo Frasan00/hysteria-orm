@@ -178,6 +178,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    * @description Chunks the query into smaller queries, it returns a generator of the chunks
    * @description It will continue to yield chunks until the query returns no results
    * @description Useful for large queries that need to be processed in chunks
+   * @warning overrides limit and offset set before in the query builder
    * @param chunkSize - The size of the chunk
    * @returns a generator of the chunks
    * @example
@@ -194,10 +195,9 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    *
    * @example
    * const chunkSize = 3;
-   * const chunks: any[][] = [];
-   * for await (const chunk of SqlDataSource.query("users_without_pk")
-   *   .orderBy("name", "asc")
-   *   .chunk(chunkSize)) {
+   * const chunks = [];
+   * const query = sql.query("users").orderBy("name", "asc");
+   * for await (const chunk of sql.chunk(chunkSize)) {
    *   chunks.push(chunk);
    * }
    *
@@ -212,8 +212,8 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
         break;
       }
 
-      yield models;
       offset += models.length;
+      yield models;
     }
   }
 

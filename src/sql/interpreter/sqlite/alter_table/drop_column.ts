@@ -10,4 +10,5 @@ class SqliteDropColumnInterpreter implements Interpreter {
     return { sql: `drop column "${d.column}"`, bindings: [] };
   }
 }
+
 export default new SqliteDropColumnInterpreter();

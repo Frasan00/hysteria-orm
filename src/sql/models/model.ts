@@ -39,6 +39,7 @@ import {
   getPrimaryKey,
   getRelations,
   getRelationsMetadata,
+  getUniques,
   hasMany,
   hasOne,
   manyToMany,
@@ -47,6 +48,7 @@ import {
   ColumnType,
   IndexType,
   LazyRelationType,
+  UniqueType,
 } from "./decorators/model_decorators_types";
 import { AnnotatedModel } from "./model_query_builder/model_query_builder_types";
 import { getBaseTableName } from "./model_utils";
@@ -797,6 +799,10 @@ export abstract class Model extends Entity {
    */
   static getIndexes(): IndexType[] {
     return getIndexes(this);
+  }
+
+  static getUniques(): UniqueType[] {
+    return getUniques(this);
   }
 
   // JS Static methods

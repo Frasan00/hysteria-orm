@@ -6,6 +6,7 @@ export type TableColumnInfo = {
   length?: number | null;
   precision?: number | null;
   scale?: number | null;
+  withTimezone?: boolean | null;
 };
 
 export type TableIndexInfo = {
@@ -14,10 +15,16 @@ export type TableIndexInfo = {
   isUnique: boolean;
 };
 
+export type TablePrimaryKeyInfo = {
+  name?: string;
+  columns: string[];
+};
+
 export type TableSchemaInfo = {
   columns: TableColumnInfo[];
   indexes: TableIndexInfo[];
   foreignKeys: TableForeignKeyInfo[];
+  primaryKey?: TablePrimaryKeyInfo;
 };
 
 export type TableForeignKeyInfo = {

@@ -936,4 +936,44 @@ describe(`[${env.DB_TYPE}] Query Builder chunk method`, () => {
     expect(secondChunk.value?.[0].name).toBe("User 4");
     expect(thirdChunk.value?.[0].name).toBe("User 7");
   });
+
+  test("should properly iterate through chunks with model", async () => {
+    const chunkSize = 3;
+    const chunks = [];
+
+    for await (const chunk of UserWithoutPk.query()
+      .orderBy("name", "asc")
+      .chunk(chunkSize)) {
+      chunks.push(chunk);
+    }
+
+    expect(chunks.length).toBe(3);
+    expect(chunks[0].length).toBe(3);
+    expect(chunks[1].length).toBe(3);
+    expect(chunks[2].length).toBe(1);
+
+    expect(chunks[0][0].name).toBe("User 1");
+    expect(chunks[1][0].name).toBe("User 4");
+    expect(chunks[2][0].name).toBe("User 7");
+  });
+
+  test("should properly iterate through chunks with next with model", async () => {
+    const chunkSize = 3;
+
+    const chunksIterator = UserWithoutPk.query()
+      .orderBy("name", "asc")
+      .chunk(chunkSize);
+
+    const firstChunk = await chunksIterator.next();
+    const secondChunk = await chunksIterator.next();
+    const thirdChunk = await chunksIterator.next();
+
+    expect(firstChunk.value?.length).toBe(3);
+    expect(secondChunk.value?.length).toBe(3);
+    expect(thirdChunk.value?.length).toBe(1);
+
+    expect(firstChunk.value?.[0].name).toBe("User 1");
+    expect(secondChunk.value?.[0].name).toBe("User 4");
+    expect(thirdChunk.value?.[0].name).toBe("User 7");
+  });
 });

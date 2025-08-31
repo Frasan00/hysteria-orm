@@ -43,3 +43,7 @@ export function remapSelectedColumnToFromAlias(
 
   return `${fromAlias}.${col}`;
 }
+
+export function getColumnValue(column: string | (() => string)) {
+  return typeof column === "function" ? column() : column;
+}

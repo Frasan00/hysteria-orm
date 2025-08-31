@@ -35,7 +35,9 @@ export default class extends Migration {
       table.dropColumn("test_2");
     });
 
-    this.schema.createIndex("users_with_bigint", ["name"], "test_index");
+    this.schema.createIndex("users_with_bigint", ["name"], {
+      constraintName: "test_index",
+    });
     this.schema.dropIndex("test_index", "users_with_bigint");
     this.schema.renameTable("users_with_bigint", "users_with_bigint_renamed");
     this.schema.renameTable("users_with_bigint_renamed", "users_with_bigint");

@@ -1,22 +1,90 @@
 import { DateFormat, Timezone } from "../../../utils/date_utils";
+import { CreateTableBuilder } from "../../migrations/schema/create_table";
+import { OnUpdateOrDelete } from "../../migrations/schema/schema_types";
 import { Model } from "../model";
 import { ModelKey } from "../model_manager/model_manager_types";
 import { RelationEnum } from "../relations/relation";
 
+type ColumnDataType =
+  | Exclude<keyof CreateTableBuilder, "enum" | "rawColumn" | "custom">
+  | readonly string[];
+
+export type ColumnDataTypeOptionWithLength = {
+  type?:
+    | "char"
+    | "varchar"
+    | "string"
+    | "uuid"
+    | "ulid"
+    | "varbinary"
+    | "integer"
+    | "tinyint"
+    | "smallint"
+    | "mediumint"
+    | "bigint";
+  length?: number;
+};
+
+export type ColumnDataTypeOptionWithEnum = {
+  type?: readonly string[];
+};
+
+export type ColumnDataTypeOptionWithPrecision = {
+  type?: "float" | "double" | "real";
+  precision?: number;
+};
+
+export type ColumnDataTypeOptionWithScaleAndPrecision = {
+  type?: "decimal" | "numeric";
+  precision?: number;
+  scale?: number;
+};
+
+export type ColumnDataTypeOptionWithText = {
+  type?: "text" | "longtext" | "mediumtext" | "tinytext";
+};
+
+export type ColumnDataTypeOptionWithBinary = {
+  type?: "binary" | "blob" | "tinyblob" | "mediumblob" | "longblob";
+};
+
+export type ColumnDataTypeOptionWithDatePrecision = {
+  type?: "date" | "time" | "datetime" | "timestamp";
+  precision?: number;
+  withTimezone?: boolean;
+};
+
+export type ColumnDataTypeOptionSimple = {
+  type?: "year" | "boolean" | "json" | "jsonb";
+};
+
+export type ColumnDataTypeOption =
+  | ColumnDataTypeOptionWithLength
+  | ColumnDataTypeOptionWithPrecision
+  | ColumnDataTypeOptionWithScaleAndPrecision
+  | ColumnDataTypeOptionWithText
+  | ColumnDataTypeOptionWithBinary
+  | ColumnDataTypeOptionWithDatePrecision
+  | ColumnDataTypeOptionWithEnum
+  | ColumnDataTypeOptionSimple;
+
 export type LazyRelationType = {
-  type: RelationEnum;
+  type?: RelationEnum;
   columnName: string;
   model: () => typeof Model;
-  foreignKey: string;
+  foreignKey: string | (() => string);
+  constraintName: string | (() => string);
+  onDelete?: OnUpdateOrDelete;
+  onUpdate?: OnUpdateOrDelete;
 
   /**
    * @description Only for many to many relations
    */
   manyToManyOptions?: {
     primaryModel: string;
-    throughModel: string;
-    leftForeignKey: string;
-    rightForeignKey: string;
+    throughModel: string | (() => string);
+    leftForeignKey: string | (() => string);
+    rightForeignKey: string | (() => string);
   };
 };
 
@@ -74,6 +142,10 @@ export type ColumnOptions = {
    */
   primaryKey?: boolean;
   /**
+   * @description The name of the primary key constraint in the database for automatic migrations
+   */
+  primaryKeyConstraintName?: string;
+  /**
    * @description Called on the value returned from the database before it is returned from the model
    */
   serialize?: (value: any) => any;
@@ -97,12 +169,26 @@ export type ColumnOptions = {
    * @default The name of the property following the model case convention
    */
   databaseName?: string;
-
   /**
    * @description The description of the column in the database, can be used to specify the column description in the OpenAPI schema
    */
   openApiDescription?: string;
-};
+  /**
+   * @description Whether the column can be null in the database
+   * @migration Only affects auto-generated migrations
+   */
+  nullable?: boolean;
+  /**
+   * @description The default value for the column in the database
+   * @migration Only affects auto-generated migrations
+   */
+  default?: string | number | null | boolean;
+} &
+  /**
+   * @description The data type of the column
+   * @migration Only affects auto-generated migrations
+   */
+  ColumnDataTypeOption;
 
 export type ColumnType = {
   columnName: string;
@@ -111,7 +197,19 @@ export type ColumnType = {
   prepare?: (value: any) => any;
   hidden?: boolean;
   autoUpdate?: boolean;
+  isPrimary: boolean;
   openApiDescription?: string;
+  /** Database specific data for migrations, must be provided or it'll be ignored for auto-generated migrations */
+  primaryKeyConstraintName?: string;
+  type?: ColumnDataType;
+  length?: number;
+  precision?: number;
+  scale?: number;
+  withTimezone?: boolean;
+  constraints?: {
+    nullable?: boolean;
+    default?: string | number | null | boolean;
+  };
 };
 
 type ThroughModelCallback<T extends typeof Model> = () => T;
@@ -145,6 +243,11 @@ export type ManyToManyOptions<
 };
 
 export type IndexType = {
+  columns: string[];
+  name: string;
+};
+
+export type UniqueType = {
   columns: string[];
   name: string;
 };
