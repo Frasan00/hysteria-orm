@@ -181,9 +181,16 @@ export class CreateTableBuilder extends BaseBuilder {
    * @postgres BIGINT (with optional BIGSERIAL for auto_increment)
    * @sqlite INTEGER
    */
-  bigint(name: string, length: number = 255): ConstraintBuilder {
+  biginteger(name: string, length: number = 255): ConstraintBuilder {
     const node = new ColumnTypeNode(name, "bigint", { length });
     return this.build(node);
+  }
+
+  /**
+   * @alias biginteger
+   */
+  bigint(name: string, length: number = 255): ConstraintBuilder {
+    return this.biginteger(name, length);
   }
 
   /**
@@ -247,6 +254,35 @@ export class CreateTableBuilder extends BaseBuilder {
   ): ConstraintBuilder {
     const node = new ColumnTypeNode(name, "numeric", { precision, scale });
     return this.build(node);
+  }
+
+  // #endregion
+
+  // #region incremental integers
+  /**
+   * @description Short for integer.increment
+   * @mysql INTEGER (with auto_increment)
+   * @postgres INTEGER (with SERIAL for auto_increment)
+   * @sqlite INTEGER (with autoincrement)
+   */
+  increment(
+    name: string,
+    length: number = 255,
+  ): Omit<ConstraintBuilder, "increment"> {
+    return this.integer(name, length).increment();
+  }
+
+  /**
+   * @description Short for biginteger.increment
+   * @mysql BIGINT (with auto_increment)
+   * @postgres BIGINT (with BIGSERIAL for auto_increment)
+   * @sqlite INTEGER
+   */
+  bigIncrement(
+    name: string,
+    length: number = 255,
+  ): Omit<ConstraintBuilder, "increment"> {
+    return this.biginteger(name, length).increment();
   }
 
   // #endregion

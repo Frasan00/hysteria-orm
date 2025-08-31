@@ -82,11 +82,25 @@ program
     "Path to SqlDataSource (default export)",
     undefined,
   )
+  .option("-o, --out [query]", "File path to save the query result", undefined)
+  .option(
+    "-t, --tsconfig [tsconfigPath]",
+    "Path to the tsconfig.json file, defaults to ./tsconfig.json",
+    undefined,
+  )
   .description(
     "Run a sql file or a sql query directly from the command line for the given connection defined in the env file",
   )
   .action(
-    async (sql?: string, option?: { file?: string; datasource?: string }) => {
+    async (
+      sql?: string,
+      option?: {
+        file?: string;
+        datasource?: string;
+        out?: string;
+        tsconfigPath?: string;
+      },
+    ) => {
       logger.info("Starting SQL execution");
       if (!option?.datasource) {
         logger.error("SqlDataSource file path is required (-d|--datasource)");
@@ -107,12 +121,12 @@ program
       const resolvedPath = path.resolve(process.cwd(), option.datasource);
       const { default: sqlDs } = await importTsUniversal<{
         default: SqlDataSource;
-      }>(resolvedPath);
+      }>(resolvedPath, option?.tsconfigPath);
 
       if (sql) {
         logger.info("Executing SQL query directly from command line");
         try {
-          await runSqlConnector(sql, sqlDs);
+          await runSqlConnector(sql, sqlDs, option?.out);
           logger.info("SQL execution completed successfully");
           process.exit(0);
         } catch (error) {
@@ -138,7 +152,7 @@ program
         `SQL file loaded successfully (${sqlStatement.length} characters)`,
       );
       try {
-        await runSqlConnector(sqlStatement, sqlDs);
+        await runSqlConnector(sqlStatement, sqlDs, option?.out);
         logger.info("SQL file execution completed successfully");
         process.exit(0);
       } catch (error) {
