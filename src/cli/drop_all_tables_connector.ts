@@ -4,7 +4,7 @@ import {
   COMMIT_TRANSACTION,
   ROLLBACK_TRANSACTION,
 } from "../sql/ast/transaction";
-import { createSqlConnection } from "../sql/sql_connection_utils";
+import { createSqlPool } from "../sql/sql_connection_utils";
 import { type SqlDataSource } from "../sql/sql_data_source";
 import { SqlDataSourceType } from "../sql/sql_data_source_types";
 import logger from "../utils/logger";
@@ -35,11 +35,8 @@ export default async function dropAllTablesConnector(
     await fs.writeFile(dbDatabase as string, "");
     logger.info("Sqlite database recreated successfully");
 
-    const details = await sql.getConnectionDetails();
-    (sql as any).sqlConnection = await createSqlConnection(
-      sql.getDbType(),
-      details,
-    );
+    const details = sql.getConnectionDetails();
+    sql.sqlPool = await createSqlPool(sql.getDbType(), details);
 
     if (shouldExit) {
       await sql.closeConnection();

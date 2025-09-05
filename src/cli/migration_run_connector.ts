@@ -25,7 +25,7 @@ export default async function runMigrationsConnector(
   try {
     const migrationTable: MigrationTableType[] = await getMigrationTable(
       dbType as SqlDataSourceType,
-      sql.getCurrentDriverConnection(),
+      sql.getPoolConnection(),
     );
     const migrations: Migration[] = await getMigrations(
       dbType as SqlDataSourceType,

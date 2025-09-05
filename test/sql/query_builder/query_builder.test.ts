@@ -813,7 +813,7 @@ describe(`[${env.DB_TYPE}] with performance`, () => {
 
   test("manyWithPerformance", async () => {
     const users =
-      await SqlDataSource.query("users_without_pk").manyWithPerformance();
+      await SqlDataSource.query("users_without_pk").performance.many();
 
     expect(users.data).toBeDefined();
     expect(users.time).toBeDefined();
@@ -822,7 +822,7 @@ describe(`[${env.DB_TYPE}] with performance`, () => {
   test("oneWithPerformance", async () => {
     const user = await SqlDataSource.query("users_without_pk")
       .where("name", "Alice")
-      .oneWithPerformance();
+      .performance.one();
 
     expect(user.data).toBeDefined();
     expect(user.time).toBeDefined();
@@ -831,20 +831,20 @@ describe(`[${env.DB_TYPE}] with performance`, () => {
   test("oneOrFailWithPerformance", async () => {
     const user = await SqlDataSource.query("users_without_pk")
       .where("name", "Alice")
-      .oneOrFailWithPerformance();
+      .performance.oneOrFail();
 
     expect(user.data).toBeDefined();
     expect(user.time).toBeDefined();
   });
 
   test("oneOrFailWithPerformance with ModelQueryBuilder", async () => {
-    const user = await UserWithoutPk.query().oneOrFailWithPerformance();
+    const user = await UserWithoutPk.query().performance.oneOrFail();
     expect(user.data).toBeDefined();
     expect(user.time).toBeDefined();
   });
 
   test("oneOrFailWithPerformance with ModelQueryBuilder and custom return type", async () => {
-    const user = await UserWithoutPk.query().oneOrFailWithPerformance(
+    const user = await UserWithoutPk.query().performance.oneOrFail(
       {},
       "seconds",
     );
@@ -856,20 +856,20 @@ describe(`[${env.DB_TYPE}] with performance`, () => {
   test("paginateWithPerformance", async () => {
     const users = await SqlDataSource.query(
       "users_without_pk",
-    ).paginateWithPerformance(1, 10);
+    ).performance.paginate(1, 10);
 
     expect(users.data).toBeDefined();
     expect(users.time).toBeDefined();
   });
 
   test("paginateWithPerformance with ModelQueryBuilder", async () => {
-    const users = await UserWithoutPk.query().paginateWithPerformance(1, 10);
+    const users = await UserWithoutPk.query().performance.paginate(1, 10);
     expect(users.data).toBeDefined();
     expect(users.time).toBeDefined();
   });
 
   test("paginateWithPerformance with ModelQueryBuilder and custom return type", async () => {
-    const users = await UserWithoutPk.query().paginateWithPerformance(
+    const users = await UserWithoutPk.query().performance.paginate(
       1,
       10,
       {},
@@ -975,5 +975,61 @@ describe(`[${env.DB_TYPE}] Query Builder chunk method`, () => {
     expect(firstChunk.value?.[0].name).toBe("User 1");
     expect(secondChunk.value?.[0].name).toBe("User 4");
     expect(thirdChunk.value?.[0].name).toBe("User 7");
+  });
+});
+
+describe(`[${env.DB_TYPE}] Query Builder stream method`, () => {
+  beforeEach(async () => {
+    await SqlDataSource.query("users_without_pk").insertMany([
+      { name: "User 1", age: 21 },
+      { name: "User 2", age: 22 },
+      { name: "User 3", age: 23 },
+    ]);
+  });
+
+  afterEach(async () => {
+    await SqlDataSource.query("users_without_pk").truncate();
+  });
+
+  test("should properly stream results with event listeners", async () => {
+    const users: any[] = [];
+    const stream = await SqlDataSource.query("users_without_pk")
+      .orderBy("name", "asc")
+      .stream();
+
+    await new Promise<void>((resolve, reject) => {
+      stream.on("data", (user) => {
+        users.push(user);
+      });
+
+      stream.on("end", () => {
+        resolve();
+      });
+
+      stream.on("error", (error) => {
+        reject(error);
+      });
+    });
+
+    expect(users.length).toBe(3);
+    expect(users[0].name).toBe("User 1");
+    expect(users[1].name).toBe("User 2");
+    expect(users[2].name).toBe("User 3");
+  });
+
+  test("should properly stream results with async iteration", async () => {
+    const users: any[] = [];
+    const stream = await SqlDataSource.query("users_without_pk")
+      .orderBy("name", "asc")
+      .stream();
+
+    for await (const user of stream) {
+      users.push(user);
+    }
+
+    expect(users.length).toBe(3);
+    expect(users[0].name).toBe("User 1");
+    expect(users[1].name).toBe("User 2");
+    expect(users[2].name).toBe("User 3");
   });
 });

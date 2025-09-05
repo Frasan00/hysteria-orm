@@ -9,25 +9,24 @@ import {
 } from "../drivers/driver_constants";
 import { DriverFactory } from "../drivers/drivers_factory";
 import { HysteriaError } from "../errors/hysteria_error";
-import { log, logMessage } from "../utils/logger";
-import { parseTimeZone } from "../utils/timezone";
 import {
-  SqlConnectionType,
+  GetConnectionReturnType,
   SqlDataSourceInput,
   SqlDataSourceType,
+  SqlPoolType,
 } from "./sql_data_source_types";
+import { SqlDataSource } from "./sql_data_source";
 
 const getDriverConnection = async (type: SqlDataSourceType) => {
   const driver = (await DriverFactory.getDriver(type)).client;
   return driver;
 };
 
-export const createSqlConnection = async (
+export const createSqlPool = async (
   type: SqlDataSourceType,
-  input: SqlDataSourceInput,
-): Promise<SqlConnectionType> => {
+  input?: SqlDataSourceInput,
+): Promise<SqlPoolType> => {
   const driver = await getDriverConnection(type);
-  const timezone = parseTimeZone(type, input.timezone || "UTC");
   switch (type) {
     case "mariadb":
     case "mysql":
@@ -40,7 +39,6 @@ export const createSqlConnection = async (
         password: mysqlInput.password,
         database: mysqlInput.database,
         ...mysqlInput?.driverOptions,
-        timezone: timezone,
       });
       return mysqlPool;
     case "postgres":
@@ -56,24 +54,17 @@ export const createSqlConnection = async (
         ...pgInput?.driverOptions,
       });
 
-      pgPool.on("connect", async (client) => {
-        const query = `SET TIME ZONE '${timezone}'; SET timezone = 'UTC';`;
-        log(query, input.logs || false);
-        await client.query(query);
-        logMessage(`Timezone set to: ${timezone}`, "info", input.logs);
-      });
-
       return pgPool;
     case "sqlite":
       const sqliteDriver = driver as Sqlite3Import;
-      const database = input.database as string;
+      const database = input?.database as string;
       const sqlitePool = new sqliteDriver.Database(
         database,
         sqliteDriver.OPEN_READWRITE | sqliteDriver.OPEN_CREATE,
         (err) => {
           if (err) {
             throw new HysteriaError(
-              "SqliteDataSource::createSqlConnection",
+              "SqliteDataSource::createSqlPool",
               "CONNECTION_NOT_ESTABLISHED",
             );
           }
@@ -83,7 +74,7 @@ export const createSqlConnection = async (
         sqlitePool.run("SELECT 1", (err) => {
           if (err) {
             throw new HysteriaError(
-              "SqliteDataSource::createSqlConnection",
+              "SqliteDataSource::createSqlPool",
               "CONNECTION_NOT_ESTABLISHED",
             );
           }
@@ -92,6 +83,27 @@ export const createSqlConnection = async (
         }),
       );
       return sqlitePool;
+    default:
+      throw new HysteriaError(
+        "SqlConnectionUtils::createSqlPool",
+        `UNSUPPORTED_DATABASE_TYPE_${type}`,
+      );
+  }
+};
+
+export const createSqlConnection = async (
+  type: SqlDataSourceType,
+  sqlDataSource: SqlDataSource,
+): Promise<GetConnectionReturnType> => {
+  switch (type) {
+    case "mariadb":
+    case "mysql":
+      return sqlDataSource.getConnection("mysql");
+    case "postgres":
+    case "cockroachdb":
+      return sqlDataSource.getConnection("postgres");
+    case "sqlite":
+      return sqlDataSource.getConnection("sqlite");
     default:
       throw new HysteriaError(
         "SqlConnectionUtils::createSqlConnection",

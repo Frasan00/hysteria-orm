@@ -1,4 +1,5 @@
 export type Mysql2Import = typeof import("mysql2/promise");
+export type Mysql2SyncImport = typeof import("mysql2");
 export type PgImport = typeof import("pg");
 export type Sqlite3Import = typeof import("sqlite3");
 export type MongoClientImport = typeof import("mongodb");

@@ -1,9 +1,14 @@
+import { PassThrough } from "node:stream";
+import { DriverNotFoundError } from "../../drivers/driver_constants";
 import { HysteriaError } from "../../errors/hysteria_error";
 import { log, logMessage } from "../../utils/logger";
 import { Model } from "../models/model";
+import { AnnotatedModel } from "../models/model_query_builder/model_query_builder_types";
+import { StreamOptions } from "../query_builder/query_builder_types";
 import { SqlDataSource } from "../sql_data_source";
 import {
   ConnectionPolicies,
+  GetConnectionReturnType,
   SqlDataSourceType,
 } from "../sql_data_source_types";
 import {
@@ -11,7 +16,7 @@ import {
   SqlLiteOptions,
   SqlRunnerReturnType,
 } from "./sql_runner_types";
-import { promisifySqliteQuery } from "./sql_runner_utils";
+import { promisifySqliteQuery, SQLiteStream } from "./sql_runner_utils";
 
 export const getSqlDialect = (
   sqlType: SqlDataSourceType,
@@ -43,6 +48,7 @@ export const execSql = async <M extends Model, T extends Returning>(
   options?: {
     sqlLiteOptions?: SqlLiteOptions<M>;
     shouldNotLog?: boolean;
+    customConnection?: GetConnectionReturnType;
   },
 ): Promise<SqlRunnerReturnType<T>> => {
   const sqlType = sqlDataSource.type as SqlDataSourceType;
@@ -53,7 +59,10 @@ export const execSql = async <M extends Model, T extends Returning>(
   switch (sqlType) {
     case "mysql":
     case "mariadb":
-      const mysqlDriver = sqlDataSource.getCurrentDriverConnection("mysql");
+      const mysqlDriver =
+        (options?.customConnection as GetConnectionReturnType<"mysql">) ??
+        sqlDataSource.getPoolConnection("mysql");
+
       const [mysqlResult] = await withRetry(
         () => mysqlDriver.query(query, params),
         sqlDataSource.retryPolicy,
@@ -68,7 +77,10 @@ export const execSql = async <M extends Model, T extends Returning>(
       return mysqlResult as SqlRunnerReturnType<T>;
     case "postgres":
     case "cockroachdb":
-      const pgDriver = sqlDataSource.getCurrentDriverConnection("postgres");
+      const pgDriver =
+        (options?.customConnection as GetConnectionReturnType<"postgres">) ??
+        sqlDataSource.getPoolConnection("postgres");
+
       const pgResult = await withRetry(
         () => pgDriver.query(query, params),
         sqlDataSource.retryPolicy,
@@ -102,6 +114,186 @@ export const execSql = async <M extends Model, T extends Returning>(
     default:
       throw new HysteriaError(
         "ExecSql",
+        `UNSUPPORTED_DATABASE_TYPE_${sqlType}`,
+      );
+  }
+};
+
+export const execSqlStreaming = async <
+  M extends Model,
+  T extends "generator" | "stream" = "generator",
+  A extends Record<string, any> = {},
+  R extends Record<string, any> = {},
+>(
+  query: string,
+  params: any[],
+  sqlDataSource: SqlDataSource,
+  options: StreamOptions = {},
+  events: {
+    onData?: (
+      passThrough: PassThrough & AsyncGenerator<AnnotatedModel<M, A, R>>,
+      row: any,
+    ) => void | Promise<void>;
+  },
+): Promise<PassThrough & AsyncGenerator<AnnotatedModel<M, A, R>>> => {
+  const sqlType = sqlDataSource.type as SqlDataSourceType;
+
+  switch (sqlType) {
+    case "mariadb":
+    case "mysql": {
+      const pool = sqlDataSource.getPoolConnection("mysql");
+      const conn = await pool.getConnection();
+      const passThrough = new PassThrough({
+        objectMode: options.objectMode ?? true,
+        highWaterMark: options.highWaterMark,
+      }) as PassThrough & AsyncGenerator<AnnotatedModel<M, A, R>>;
+
+      const rawConn = conn.connection as any;
+      const mysqlStream = rawConn.query(query, params).stream({
+        highWaterMark: options.highWaterMark,
+        objectMode: options.objectMode ?? true,
+      });
+
+      let pending = 0;
+      let ended = false;
+      let hasError = false;
+
+      const tryRelease = () => {
+        try {
+          conn.release();
+        } catch {}
+      };
+
+      mysqlStream.on("data", (row: any) => {
+        if (events.onData) {
+          pending++;
+          Promise.resolve(events.onData(passThrough, row))
+            .then(() => {
+              pending--;
+              if (ended && pending === 0 && !hasError) {
+                tryRelease();
+                passThrough.end();
+              }
+            })
+            .catch((err: any) => {
+              hasError = true;
+              tryRelease();
+              passThrough.destroy(err);
+            });
+          return;
+        }
+
+        passThrough.write(row);
+      });
+
+      mysqlStream.on("end", () => {
+        ended = true;
+        if (pending === 0 && !hasError) {
+          tryRelease();
+          passThrough.end();
+        }
+      });
+
+      mysqlStream.on("error", (err: any) => {
+        hasError = true;
+        tryRelease();
+        passThrough.destroy(err);
+      });
+
+      passThrough.on("close", () => {
+        tryRelease();
+      });
+
+      return passThrough;
+    }
+
+    case "cockroachdb":
+    case "postgres": {
+      const pgDriver = sqlDataSource.getPoolConnection("postgres");
+      const pgQueryStreamDriver = await import("pg-query-stream").catch(() => {
+        throw new DriverNotFoundError("pg-query-stream");
+      });
+
+      const passThrough = new PassThrough({
+        objectMode: options.objectMode || true,
+        highWaterMark: options.highWaterMark,
+      }) as PassThrough & AsyncGenerator<AnnotatedModel<M, A, R>>;
+
+      const client = await pgDriver.connect();
+      const streamQuery = new pgQueryStreamDriver.default(query, params, {
+        highWaterMark: options.highWaterMark,
+        rowMode: options.rowMode,
+        batchSize: options.batchSize,
+        types: options.types,
+      });
+
+      const pgStream = client.query(streamQuery);
+
+      let pending = 0;
+      let ended = false;
+      let hasError = false;
+
+      const tryRelease = (err?: any) => {
+        try {
+          client.release(err);
+        } catch {}
+      };
+
+      pgStream.on("data", (row: any) => {
+        if (events.onData) {
+          pending++;
+          Promise.resolve(events.onData(passThrough, row))
+            .then(() => {
+              pending--;
+              if (ended && pending === 0 && !hasError) {
+                tryRelease();
+                passThrough.end();
+              }
+            })
+            .catch((err: any) => {
+              hasError = true;
+              tryRelease(err);
+              passThrough.destroy(err);
+            });
+          return;
+        }
+
+        passThrough.write(row);
+      });
+
+      pgStream.on("end", () => {
+        ended = true;
+        if (pending === 0 && !hasError) {
+          tryRelease();
+          passThrough.end();
+        }
+      });
+
+      pgStream.on("error", (err: any) => {
+        hasError = true;
+        tryRelease(err);
+        passThrough.destroy(err);
+      });
+
+      return passThrough;
+    }
+
+    case "sqlite": {
+      const sqliteDriver = sqlDataSource.getPoolConnection("sqlite");
+      const stream = new SQLiteStream(sqliteDriver, query, params, {
+        onData: events.onData as (
+          _passThrough: any,
+          row: any,
+        ) => void | Promise<void>,
+      });
+
+      return stream as unknown as PassThrough &
+        AsyncGenerator<AnnotatedModel<M, A, R>>;
+    }
+
+    default:
+      throw new HysteriaError(
+        "ExecSqlStreaming",
         `UNSUPPORTED_DATABASE_TYPE_${sqlType}`,
       );
   }

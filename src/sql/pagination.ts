@@ -12,7 +12,11 @@ export type PaginationMetadata = {
   hasPages: boolean;
 };
 
-export type PaginatedData<T extends Model, A = any, R = {}> = {
+export type PaginatedData<
+  T extends Model,
+  A extends object = {},
+  R extends object = {},
+> = {
   paginationMetadata: PaginationMetadata;
   data: AnnotatedModel<T, A, R>[];
 };

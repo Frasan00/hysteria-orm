@@ -16,11 +16,8 @@ export * from "./data_source/data_source_types";
 export { MongoDataSource as mongo } from "./no_sql/mongo/mongo_data_source";
 export * from "./no_sql/mongo/mongo_data_source";
 export { RedisDataSource as redis } from "./no_sql/redis/redis_data_source";
-export type {
-  RedisFetchable,
-  RedisStorable,
-} from "./no_sql/redis/redis_data_source";
 export { SqlDataSource as sql } from "./sql/sql_data_source";
+export * from "./sql/sql_data_source_types";
 
 // Migrations
 export { Migration } from "./sql/migrations/migration";
@@ -32,12 +29,19 @@ export { QueryBuilder } from "./sql/query_builder/query_builder";
 
 // Utils
 export { default as logger } from "./utils/logger";
+export { withPerformance } from "./utils/performance";
 
 // Errors
 export { HysteriaError } from "./errors/hysteria_error";
 
 // Mongo
 export { Collection } from "./no_sql/mongo/mongo_models/mongo_collection";
+
+// Redis
+export type {
+  RedisFetchable,
+  RedisStorable,
+} from "./no_sql/redis/redis_data_source";
 
 // OpenAPI
 export * from "./openapi/openapi";

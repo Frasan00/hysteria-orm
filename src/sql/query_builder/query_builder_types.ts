@@ -84,3 +84,23 @@ export type SelectableColumn<T extends string = string> =
  * @description A column that can be used in a join statement e.g. `users.id`
  */
 export type JoinableColumn = `${string}.${string}`;
+
+/**
+ * @description Options for streaming queries
+ * @sqlite Ignores the options below
+ */
+export type StreamOptions = {
+  highWaterMark?: number;
+
+  /** Postgres only */
+  rowMode?: "array";
+
+  /** Postgres only */
+  batchSize?: number;
+
+  /** Postgres only */
+  types?: any;
+
+  /** Mysql only */
+  objectMode?: boolean;
+};

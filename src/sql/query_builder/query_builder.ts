@@ -1,3 +1,4 @@
+import { PassThrough } from "node:stream";
 import { format } from "sql-formatter";
 import { HysteriaError } from "../../errors/hysteria_error";
 import { baseSoftDeleteDate } from "../../utils/date_utils";
@@ -21,21 +22,23 @@ import {
 import { QueryNode } from "../ast/query/query";
 import { InterpreterUtils } from "../interpreter/interpreter_utils";
 import type { Model } from "../models/model";
-import {
-  ModelKey,
-  ModelRelation,
-} from "../models/model_manager/model_manager_types";
+import { ModelKey } from "../models/model_manager/model_manager_types";
 import { AnnotatedModel } from "../models/model_query_builder/model_query_builder_types";
 import type { NumberModelKey } from "../models/model_types";
 import { getPaginationMetadata, PaginatedData } from "../pagination";
 import { SqlDataSource } from "../sql_data_source";
 import type { SqlDataSourceType } from "../sql_data_source_types";
-import { execSql, getSqlDialect } from "../sql_runner/sql_runner";
+import {
+  execSql,
+  execSqlStreaming,
+  getSqlDialect,
+} from "../sql_runner/sql_runner";
 import { SoftDeleteOptions } from "./delete_query_builder_type";
 import { JsonQueryBuilder } from "./json_query_builder";
 import {
   PluckReturnType,
   QueryBuilderWithOnlyWhereConditions,
+  StreamOptions,
 } from "./query_builder_types";
 
 export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
@@ -47,6 +50,17 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   protected isNestedCondition = false;
   protected mustRemoveAnnotations: boolean = false;
   protected interpreterUtils: InterpreterUtils;
+
+  /* Performance methods that return the time that took to execute the query with the result */
+  performance = {
+    many: this.manyWithPerformance.bind(this),
+    one: this.oneWithPerformance.bind(this),
+    oneOrFail: this.oneOrFailWithPerformance.bind(this),
+    first: this.firstWithPerformance.bind(this),
+    firstOrFail: this.firstOrFailWithPerformance.bind(this),
+    paginate: this.paginateWithPerformance.bind(this),
+    exists: this.existsWithPerformance.bind(this),
+  };
 
   constructor(
     model: typeof Model,
@@ -96,10 +110,10 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   /**
    * @description Makes a many query and returns the time that took to execute that query
    */
-  async manyWithPerformance(
+  private async manyWithPerformance(
     returnType: "millis" | "seconds" = "millis",
   ): Promise<{
-    data: AnnotatedModel<T, {}>[];
+    data: AnnotatedModel<T, any, any>[];
     time: number;
   }> {
     const [time, data] = await withPerformance(
@@ -115,10 +129,10 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   /**
    * @description Makes a one query and returns the time that took to execute that query
    */
-  async oneWithPerformance(
+  private async oneWithPerformance(
     returnType: "millis" | "seconds" = "millis",
   ): Promise<{
-    data: AnnotatedModel<T, {}> | null;
+    data: AnnotatedModel<T, any, any> | null;
     time: number;
   }> {
     const [time, data] = await withPerformance(this.one.bind(this), returnType);
@@ -131,20 +145,22 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   /**
    * @alias oneWithPerformance
    */
-  async firstWithPerformance(returnType: "millis" | "seconds" = "millis") {
+  private async firstWithPerformance(
+    returnType: "millis" | "seconds" = "millis",
+  ) {
     return this.oneWithPerformance(returnType);
   }
 
   /**
    * @alias oneOrFailWithPerformance
    */
-  async firstOrFailWithPerformance(
+  private async firstOrFailWithPerformance(
     returnType: "millis" | "seconds" = "millis",
   ) {
     return this.oneOrFailWithPerformance(returnType);
   }
 
-  async paginateWithPerformance(
+  private async paginateWithPerformance(
     page: number,
     perPage: number,
     returnType: "millis" | "seconds" = "millis",
@@ -163,7 +179,9 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   /**
    * @description Makes a one or fail query and returns the time that took to execute that query
    */
-  async oneOrFailWithPerformance(returnType: "millis" | "seconds" = "millis") {
+  private async oneOrFailWithPerformance(
+    returnType: "millis" | "seconds" = "millis",
+  ) {
     const [time, data] = await withPerformance(
       this.oneOrFail.bind(this),
       returnType,
@@ -172,6 +190,103 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
       data,
       time: Number(time),
     };
+  }
+
+  /**
+   * @description Executes the query and retrieves multiple results.
+   */
+  async many(): Promise<AnnotatedModel<T, any, any>[]> {
+    const { sql, bindings } = this.unWrap();
+    return execSql(sql, bindings, this.sqlDataSource, "raw", {
+      sqlLiteOptions: {
+        typeofModel: this.model,
+        mode: "fetch",
+      },
+    });
+  }
+
+  /**
+   * @description Executes the query and retrieves a single column from the results.
+   * @param key - The column to retrieve from the results, must be a Model Column
+   */
+  async pluck<K extends ModelKey<T>>(key: K): Promise<PluckReturnType<T, K>> {
+    const result = (await this.many()) as T[];
+    return result.map(
+      (item) => item[key as keyof typeof item],
+    ) as PluckReturnType<T, K>;
+  }
+
+  /**
+   * @description Executes the query and retrieves a single result.
+   */
+  async one(): Promise<AnnotatedModel<T, any, any> | null> {
+    const result = (await this.limit(1).many()) as AnnotatedModel<T, {}>[];
+    if (!result || !result.length) {
+      return null;
+    }
+
+    return result[0];
+  }
+
+  /**
+   * @alias one
+   */
+  async first(): Promise<AnnotatedModel<T, any, any> | null> {
+    return this.one();
+  }
+
+  /**
+   * @description Executes the query and retrieves the first result. Fail if no result is found.
+   */
+  async oneOrFail(): Promise<AnnotatedModel<T, any, any>> {
+    const model = await this.one();
+    if (!model) {
+      throw new HysteriaError(
+        "SqlDataSource::query::oneOrFail",
+        "ROW_NOT_FOUND",
+      );
+    }
+
+    return model;
+  }
+
+  /**
+   * @alias oneOrFail
+   */
+  async firstOrFail(): Promise<AnnotatedModel<T, any, any>> {
+    return this.oneOrFail();
+  }
+
+  /**
+   * @description Executes the query and returns a node readable stream.
+   * @description If used by a model query builder, it will serialize the models and apply the hooks and relations.
+   * @postgres needs the pg-query-stream package in order to work
+   * @warning Cannot and won't be used inside a transaction and will always pick a new connection from the pool, using it in a transaction is technically possible but not recommended since the transaction can probably starve since it'll be waiting for the stream to finish
+   * @throws If using postgres and the `pg-query-stream` package is not installed
+   */
+  async stream<M extends Model = T>(
+    options: StreamOptions = {},
+    cb?: (
+      stream: PassThrough & AsyncGenerator<AnnotatedModel<M, any, any>>,
+    ) => void | Promise<void>,
+  ): Promise<PassThrough & AsyncGenerator<AnnotatedModel<M, {}, {}>>> {
+    const { sql, bindings } = this.unWrap();
+    const stream = await execSqlStreaming(
+      sql,
+      bindings,
+      this.sqlDataSource,
+      options,
+      {
+        onData: (passThrough, row) => {
+          passThrough.write(row);
+        },
+      },
+    );
+
+    await cb?.(
+      stream as PassThrough & AsyncGenerator<AnnotatedModel<M, {}, {}>>,
+    );
+    return stream as PassThrough & AsyncGenerator<AnnotatedModel<M, {}, {}>>;
   }
 
   /**
@@ -215,71 +330,6 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
       offset += models.length;
       yield models;
     }
-  }
-
-  /**
-   * @description Executes the query and retrieves multiple results.
-   */
-  async many(): Promise<AnnotatedModel<T, {}>[]> {
-    const { sql, bindings } = this.unWrap();
-    return execSql(sql, bindings, this.sqlDataSource, "raw", {
-      sqlLiteOptions: {
-        typeofModel: this.model,
-        mode: "fetch",
-      },
-    });
-  }
-
-  /**
-   * @description Executes the query and retrieves a single column from the results.
-   * @param key - The column to retrieve from the results, must be a Model Column
-   */
-  async pluck<K extends ModelKey<T>>(key: K): Promise<PluckReturnType<T, K>> {
-    const result = (await this.many()) as T[];
-    return result.map(
-      (item) => item[key as keyof typeof item],
-    ) as PluckReturnType<T, K>;
-  }
-
-  /**
-   * @description Executes the query and retrieves a single result.
-   */
-  async one(): Promise<AnnotatedModel<T, {}> | null> {
-    const result = (await this.limit(1).many()) as AnnotatedModel<T, {}>[];
-    if (!result || !result.length) {
-      return null;
-    }
-
-    return result[0];
-  }
-
-  /**
-   * @alias one
-   */
-  async first(): Promise<AnnotatedModel<T, {}> | null> {
-    return this.one();
-  }
-
-  /**
-   * @description Executes the query and retrieves the first result. Fail if no result is found.
-   */
-  async oneOrFail(): Promise<AnnotatedModel<T, {}>> {
-    const model = await this.one();
-    if (!model) {
-      throw new HysteriaError(
-        "SqlDataSource::query::oneOrFail",
-        "ROW_NOT_FOUND",
-      );
-    }
-
-    return model;
-  }
-
-  /**
-   * @alias oneOrFail
-   */
-  async firstOrFail(): Promise<AnnotatedModel<T, {}>> {
-    return this.oneOrFail();
   }
 
   /**

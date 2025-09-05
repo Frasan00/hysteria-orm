@@ -1,3 +1,4 @@
+import { Mysql2Import } from "../../drivers/driver_constants";
 import { SqlDriverSpecificOptions } from "../sql_data_source_types";
 
 export type TransactionIsolationLevel =

@@ -14,9 +14,10 @@ import {
   PgImport,
   Sqlite3Import,
 } from "../drivers/driver_constants";
-import { Timezone } from "../utils/date_utils";
 import { Model } from "./models/model";
 import { SqlDataSource } from "./sql_data_source";
+import type { PoolConnection } from "mysql2/promise";
+import type { PoolClient } from "pg";
 
 export type SqlDriverSpecificOptions = Omit<
   DriverSpecificOptions,
@@ -30,7 +31,7 @@ export type PgPoolClientInstance = InstanceType<PgImport["Pool"]>;
 
 export type SqliteConnectionInstance = InstanceType<Sqlite3Import["Database"]>;
 
-export type SqlConnectionType =
+export type SqlPoolType =
   | MysqlConnectionInstance
   | PgPoolClientInstance
   | SqliteConnectionInstance;
@@ -45,10 +46,6 @@ export type ConnectionPolicies = {
     delay?: number;
   };
 };
-
-type FixedTimeZone = `+${number}:${number}` | `-${number}:${number}`;
-type CountryTimezone = `${string}/${string}`;
-export type DatabaseTimezone = Timezone | FixedTimeZone | CountryTimezone;
 
 export type SqlDataSourceModel = typeof Model;
 
@@ -65,10 +62,6 @@ export type SqlDataSourceInput<
    */
   readonly logs?: boolean;
   /**
-   * @description The timezone to use for the sql data source, default is "UTC"
-   */
-  readonly timezone?: DatabaseTimezone;
-  /**
    * @description The connection policies to use for the sql data source that are not configured in the driverOptions
    */
   readonly connectionPolicies?: ConnectionPolicies;
@@ -81,7 +74,7 @@ export type SqlDataSourceInput<
    * @description The models to use for the sql data source, if used models will be registered in the sql data source instance and will be available for the models to use
    * @description Models can still be used as standalone entities, but they won't be available for the sql data source instance
    */
-  readonly models?: T;
+  models?: T;
 
   /**
    * @description Whether to sync the schema of the database with the models metadata
@@ -92,7 +85,12 @@ export type SqlDataSourceInput<
    * @sqlite Since sqlite is very limited in alter statements, it's not recommended to use this option with sqlite
    * @default false
    */
-  readonly syncModels?: boolean;
+  syncModels?: boolean;
+
+  /**
+   * @description The driver specific options to use for the sql data source, it's used to configure the driver specific options for the sql data source
+   */
+  driverOptions?: SqlDriverSpecificOptions;
 } & (
   | MysqlSqlDataSourceInput
   | PostgresSqlDataSourceInput
@@ -104,10 +102,10 @@ export type UseConnectionInput<
 > = {
   readonly type: Exclude<DataSourceType, "mongo">;
   readonly logs?: boolean;
-  readonly timezone?: DatabaseTimezone;
   readonly connectionPolicies?: ConnectionPolicies;
   readonly queryFormatOptions?: FormatOptionsWithLanguage;
   readonly models?: T;
+  readonly driverOptions?: SqlDriverSpecificOptions;
 } & (
   | NotNullableMysqlSqlDataSourceInput
   | NotNullablePostgresSqlDataSourceInput
@@ -116,7 +114,7 @@ export type UseConnectionInput<
 
 export type SqlDataSourceType = Exclude<DataSourceType, "mongo">;
 
-export type GetCurrentConnectionReturnType<T = SqlDataSourceType> =
+export type GetPoolConnectionReturnType<T = SqlDataSourceType> =
   T extends "mysql"
     ? MysqlConnectionInstance
     : T extends "mariadb"
@@ -128,6 +126,18 @@ export type GetCurrentConnectionReturnType<T = SqlDataSourceType> =
           : T extends "sqlite"
             ? SqliteConnectionInstance
             : never;
+
+export type GetConnectionReturnType<T = SqlDataSourceType> = T extends "mysql"
+  ? PoolConnection
+  : T extends "mariadb"
+    ? PoolConnection
+    : T extends "postgres"
+      ? PoolClient
+      : T extends "cockroachdb"
+        ? PoolClient
+        : T extends "sqlite"
+          ? InstanceType<Sqlite3Import["Database"]>
+          : never;
 
 export type AugmentedSqlDataSource<
   T extends Record<string, SqlDataSourceModel> = {},

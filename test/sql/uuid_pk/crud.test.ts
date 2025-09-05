@@ -1,9 +1,6 @@
 import { env } from "../../../src/env/env";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
-import { AddressFactory } from "../test_models/factory/address_factory";
-import { UserAddressFactory } from "../test_models/factory/user_address_factory";
 import { UserFactory } from "../test_models/factory/user_factory";
-import { UserAddressWithUuid } from "../test_models/uuid/user_address_uuid";
 import { UserStatus, UserWithUuid } from "../test_models/uuid/user_uuid";
 
 beforeAll(async () => {
@@ -355,5 +352,57 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
     expect(allUsers[0].name).toBe("John Doe");
     expect(allUsers[0].updatedAt).not.toBe(allUsers[0].createdAt);
     expect(allUsers[0].updatedAt).not.toBe(user.updatedAt);
+  });
+});
+
+describe(`[${env.DB_TYPE}] Stream`, () => {
+  test("should properly stream results with event listeners", async () => {
+    const users: UserWithUuid[] = [];
+    await UserFactory.userWithUuid(3);
+    const stream = await UserWithUuid.query().orderBy("name", "asc").stream();
+
+    await new Promise<void>((resolve, reject) => {
+      stream.on("data", (user) => {
+        users.push(user);
+      });
+
+      stream.on("end", () => {
+        resolve();
+      });
+
+      stream.on("error", (error) => {
+        reject(error);
+      });
+    });
+
+    expect(users.length).toBe(3);
+    expect(users[0].name).not.toBeUndefined();
+    expect(users[1].name).not.toBeUndefined();
+    expect(users[2].name).not.toBeUndefined();
+  });
+
+  test("should properly stream results with async iteration", async () => {
+    const users: any[] = [];
+    await UserFactory.userWithUuid(3);
+    const stream = await UserWithUuid.query()
+      .select("*")
+      .load("post")
+      .annotate("birthDate", "birthDate")
+      .orderBy("name", "asc")
+      .stream();
+
+    for await (const user of stream) {
+      users.push(user as unknown as UserWithUuid);
+    }
+
+    expect(users.length).toBe(3);
+    expect(users[0].name).not.toBeUndefined();
+    expect(users[1].name).not.toBeUndefined();
+    expect(users[2].name).not.toBeUndefined();
+    expect(users[0].birthDate).not.toBeUndefined();
+    expect(users[1].birthDate).not.toBeUndefined();
+    expect(users[2].birthDate).not.toBeUndefined();
+    expect(users[0].post).not.toBeUndefined();
+    expect(users[0].$annotations.birthDate).not.toBeUndefined();
   });
 });

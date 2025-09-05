@@ -17,11 +17,13 @@ export type ManyOptions = {
   ignoreHooks?: FetchHooks[];
 };
 
-export type AnnotatedModel<T extends Model, A, R = {}> = keyof A extends never
+export type AnnotatedModel<
+  T extends Model,
+  A extends object = {},
+  R extends object = {},
+> = [keyof A] extends [never]
   ? ModelWithoutRelations<T> & R
-  : ModelWithoutRelations<T> & { $annotations: { [K in keyof A]: A[K] } } & {
-      [K in keyof R]: R[K];
-    };
+  : ModelWithoutRelations<T> & { $annotations: A } & R;
 
 export type CommonSqlMethodReturnType<T extends SqlMethod> =
   // Aggregates

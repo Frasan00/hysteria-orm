@@ -16,7 +16,7 @@ class ModelFactory<M extends Model> {
   /**
    * @description Create a model
    * @param howMany - The number of models to create
-   * @returns The created model(s)
+   * @returns The created model(s) where howMany = 1 returns a single model and howMany !== 1 returns an array of models
    */
   async create<T extends number>(howMany: T): Promise<FactoryReturnType<T, M>> {
     const insertModel = this.typeofModel as {

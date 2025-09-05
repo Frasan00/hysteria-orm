@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { createRequire } from "node:module";
 import path, { join } from "node:path";
 import { pathToFileURL } from "url";
 import { env } from "../env/env";
@@ -7,14 +8,13 @@ import { Migration } from "../sql/migrations/migration";
 import type {
   MysqlConnectionInstance,
   PgPoolClientInstance,
-  SqlConnectionType,
   SqlDataSourceType,
   SqliteConnectionInstance,
+  SqlPoolType,
 } from "../sql/sql_data_source_types";
+import { importTsUniversal } from "../utils/importer";
 import { MigrationTableType } from "./resources/migration_table_type";
 import MigrationTemplates from "./resources/migration_templates";
-import { createRequire } from "node:module";
-import { importTsUniversal } from "../utils/importer";
 
 const importMigrationFile = async (filePath: string, tsconfigPath?: string) => {
   const isTs = filePath.endsWith(".ts");
@@ -65,7 +65,7 @@ const importMigrationFile = async (filePath: string, tsconfigPath?: string) => {
 
 export async function getMigrationTable(
   dbType: SqlDataSourceType,
-  sqlConnection: SqlConnectionType,
+  sqlConnection: SqlPoolType,
 ): Promise<MigrationTableType[]> {
   switch (dbType) {
     case "mariadb":

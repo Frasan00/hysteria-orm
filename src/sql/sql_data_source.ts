@@ -10,6 +10,7 @@ import { IndexInfoNode } from "./ast/query/node/schema/index_info";
 import { PrimaryKeyInfoNode } from "./ast/query/node/schema/primary_key_info";
 import { TableInfoNode } from "./ast/query/node/schema/table_info";
 import Schema from "./migrations/schema/schema";
+import { SchemaDiff } from "./migrations/schema_diff/schema_diff";
 import { normalizeColumnType } from "./migrations/schema_diff/type_normalizer";
 import { Model } from "./models/model";
 import { ModelManager } from "./models/model_manager/model_manager";
@@ -21,18 +22,19 @@ import type {
   TablePrimaryKeyInfo,
   TableSchemaInfo,
 } from "./schema_introspection_types";
-import { createSqlConnection } from "./sql_connection_utils";
+import { createSqlPool } from "./sql_connection_utils";
 import type {
   AugmentedSqlDataSource,
   ConnectionPolicies,
-  GetCurrentConnectionReturnType,
+  GetConnectionReturnType,
+  GetPoolConnectionReturnType,
   MysqlConnectionInstance,
   PgPoolClientInstance,
-  SqlConnectionType,
   SqlDataSourceInput,
   SqlDataSourceModel,
   SqlDataSourceType,
   SqliteConnectionInstance,
+  SqlPoolType,
   UseConnectionInput,
 } from "./sql_data_source_types";
 import { execSql, getSqlDialect } from "./sql_runner/sql_runner";
@@ -41,23 +43,24 @@ import {
   StartTransactionOptions,
   TransactionExecutionOptions,
 } from "./transactions/transaction_types";
-import { SchemaDiff } from "./migrations/schema_diff/schema_diff";
 
 /**
  * @description The SqlDataSource class is the main class for interacting with the database, it's used to create connections, execute queries, and manage transactions
  */
 export class SqlDataSource extends DataSource {
-  declare private sqlConnection: SqlConnectionType | null;
   private static instance: SqlDataSource | null = null;
   private globalTransaction: Transaction | null = null;
   private sqlType: SqlDataSourceType;
   private models: Record<string, SqlDataSourceModel> = {};
+
+  declare sqlPool: SqlPoolType | null;
 
   /**
    * @description The retry policy for the database connection
    */
   retryPolicy: ConnectionPolicies["retry"];
   queryFormatOptions: FormatOptionsWithLanguage;
+  inputDetails: SqlDataSourceInput;
 
   // Static Methods
 
@@ -95,7 +98,7 @@ export class SqlDataSource extends DataSource {
       inputOrCb = undefined;
     }
 
-    const sqlDataSource = new this(inputOrCb as SqlDataSourceInput<T>);
+    const sqlDataSource = new SqlDataSource(inputOrCb as SqlDataSourceInput<T>);
     if (inputOrCb?.models) {
       const sanitizeModelKeys = sqlDataSource.sanitizeModelKeys(
         inputOrCb?.models || {},
@@ -105,18 +108,20 @@ export class SqlDataSource extends DataSource {
     }
 
     sqlDataSource.models = inputOrCb?.models || {};
-    sqlDataSource.sqlConnection = await createSqlConnection(
-      sqlDataSource.sqlType,
-      {
-        type: sqlDataSource.sqlType,
-        host: sqlDataSource.host,
-        port: sqlDataSource.port,
-        username: sqlDataSource.username,
-        password: sqlDataSource.password,
-        database: sqlDataSource.database,
-        timezone: inputOrCb?.timezone,
-      },
-    );
+    sqlDataSource.sqlPool = await createSqlPool(sqlDataSource.sqlType, {
+      type: sqlDataSource.sqlType,
+      host: sqlDataSource.host,
+      port: sqlDataSource.port,
+      username: sqlDataSource.username,
+      password: sqlDataSource.password,
+      database: sqlDataSource.database,
+      connectionPolicies: sqlDataSource.retryPolicy as ConnectionPolicies,
+      queryFormatOptions: sqlDataSource.queryFormatOptions,
+      driverOptions: sqlDataSource.inputDetails.driverOptions,
+      logs: sqlDataSource.logs,
+      models: sqlDataSource.models,
+      syncModels: inputOrCb?.syncModels,
+    } as SqlDataSourceInput<T>);
 
     await sqlDataSource.testConnectionQuery("SELECT 1");
     SqlDataSource.instance = sqlDataSource;
@@ -166,7 +171,8 @@ export class SqlDataSource extends DataSource {
       inputOrCb = undefined;
     }
 
-    const sqlDataSource = new this(inputOrCb as SqlDataSourceInput);
+    const sqlDataSource = new SqlDataSource(inputOrCb as SqlDataSourceInput);
+
     if (inputOrCb?.models) {
       const sanitizeModelKeys = sqlDataSource.sanitizeModelKeys(
         inputOrCb.models,
@@ -176,18 +182,20 @@ export class SqlDataSource extends DataSource {
     }
 
     sqlDataSource.models = inputOrCb?.models || {};
-    sqlDataSource.sqlConnection = await createSqlConnection(
-      sqlDataSource.sqlType,
-      {
-        type: sqlDataSource.sqlType,
-        host: sqlDataSource.host,
-        port: sqlDataSource.port,
-        username: sqlDataSource.username,
-        password: sqlDataSource.password,
-        database: sqlDataSource.database,
-        timezone: inputOrCb?.timezone,
-      },
-    );
+    sqlDataSource.sqlPool = await createSqlPool(sqlDataSource.sqlType, {
+      type: sqlDataSource.sqlType,
+      host: sqlDataSource.host,
+      port: sqlDataSource.port,
+      username: sqlDataSource.username,
+      password: sqlDataSource.password,
+      database: sqlDataSource.database,
+      connectionPolicies: sqlDataSource.retryPolicy as ConnectionPolicies,
+      queryFormatOptions: sqlDataSource.queryFormatOptions,
+      driverOptions: sqlDataSource.inputDetails.driverOptions,
+      logs: sqlDataSource.logs,
+      models: sqlDataSource.models,
+      syncModels: inputOrCb?.syncModels,
+    } as SqlDataSourceInput<T>);
 
     await sqlDataSource.testConnectionQuery("SELECT 1");
     SqlDataSource.instance = sqlDataSource;
@@ -227,12 +235,19 @@ export class SqlDataSource extends DataSource {
     }
 
     customSqlInstance.models = connectionDetails.models || {};
-    customSqlInstance.sqlConnection = await createSqlConnection(
-      customSqlInstance.sqlType,
-      {
-        ...connectionDetails,
-      },
-    );
+    customSqlInstance.sqlPool = await createSqlPool(customSqlInstance.sqlType, {
+      type: customSqlInstance.sqlType,
+      host: customSqlInstance.host,
+      port: customSqlInstance.port,
+      username: customSqlInstance.username,
+      password: customSqlInstance.password,
+      database: customSqlInstance.database,
+      connectionPolicies: customSqlInstance.retryPolicy as ConnectionPolicies,
+      queryFormatOptions: customSqlInstance.queryFormatOptions,
+      driverOptions: customSqlInstance.inputDetails.driverOptions,
+      logs: customSqlInstance.logs,
+      models: connectionDetails.models,
+    } as SqlDataSourceInput<T>);
 
     await customSqlInstance.testConnectionQuery("SELECT 1");
 
@@ -426,13 +441,41 @@ export class SqlDataSource extends DataSource {
       dataTypeCase: "lower",
       functionCase: "lower",
     };
+    this.inputDetails = input || {};
   }
 
   /**
    * @description Returns true if the connection is established
    */
   get isConnected(): boolean {
-    return !!this.sqlConnection;
+    return !!this.sqlPool;
+  }
+
+  clone(): this {
+    const safeClone = <T>(value: T): T => {
+      if (typeof (globalThis as any).structuredClone === "function") {
+        return (globalThis as any).structuredClone(value);
+      }
+      return JSON.parse(JSON.stringify(value));
+    };
+
+    const cloned = new SqlDataSource(this.inputDetails) as this;
+    delete cloned.inputDetails.models;
+
+    cloned.sqlPool = this.sqlPool;
+    cloned.models = this.models;
+    cloned.sqlType = this.sqlType;
+    cloned.retryPolicy = safeClone(this.retryPolicy);
+    cloned.queryFormatOptions = safeClone(this.queryFormatOptions);
+    cloned.logs = this.logs;
+    cloned.type = this.type;
+    cloned.host = this.host;
+    cloned.port = this.port;
+    cloned.username = this.username;
+    cloned.password = this.password;
+    cloned.database = this.database;
+    cloned.url = this.url;
+    return cloned;
   }
 
   /**
@@ -460,7 +503,7 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
-   * @description Alters a table on the database, return the queries to be executed in order to alter the table
+   * @description Return the query to alter the given table schema
    */
   alterTable(...args: Parameters<Schema["alterTable"]>): string[] {
     const schema = new Schema(this.getDbType());
@@ -469,7 +512,7 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
-   * @description Creates a table on the database, return the query to be executed to create the table
+   * @description Return the query to create the given table schema
    */
   createTable(...args: Parameters<Schema["createTable"]>): string {
     const schema = new Schema(this.getDbType());
@@ -504,18 +547,23 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
-   * @description Starts a global transaction on the database on the main connection
+   * @description Starts a global transaction on the database on the main connection pool, intended to for testing purposes only, don't use it in production
    */
   async startGlobalTransaction(
     options?: StartTransactionOptions,
   ): Promise<Transaction> {
-    this.globalTransaction = new Transaction(this, options?.isolationLevel);
+    this.globalTransaction = new Transaction(
+      this,
+      this.sqlPool as GetConnectionReturnType,
+      options?.isolationLevel,
+    );
+
     await this.globalTransaction.startTransaction();
     return this.globalTransaction;
   }
 
   /**
-   * @description Commits a global transaction on the database on the main connection
+   * @description Commits a global transaction on the database on the main connection pool, intended to for testing purposes only, don't use it in production
    * @throws {HysteriaError} If the global transaction is not started
    */
   async commitGlobalTransaction(
@@ -536,7 +584,7 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
-   * @description Rolls back a global transaction on the database on the main connection, it doesn't end the connection since it's the main connection
+   * @description Rolls back a global transaction on the database on the main connection pool, intended to for testing purposes only, don't use it in production
    * @throws {HysteriaError} If the global transaction is not started and options.throwErrorOnInactiveTransaction is true
    */
   async rollbackGlobalTransaction(
@@ -557,35 +605,21 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
-   * @description Starts a transaction on the database and returns a Transaction instance
+   * @description Get's a connection from the pool and starts a transaction on the database and returns a Transaction instance
+   * @param options.isolationLevel The isolation level to use for the transaction
+   * @param options.throwErrorOnInactiveTransaction Whether to throw an error if the transaction is not active
+   * @param options.endConnection Whether to end the connection after the transaction is committed or rolled back (Default is true, better to leave it this way)
+   * @sqlite ignores the isolation level
    */
   async startTransaction(
     options?: StartTransactionOptions,
   ): Promise<Transaction> {
-    const sqlDataSource = new SqlDataSource({
-      type: this.sqlType,
-      host: this.host,
-      port: this.port,
-      username: this.username,
-      password: this.password,
-      database: this.database,
-      ...options?.driverSpecificOptions,
-    });
-
-    sqlDataSource.sqlConnection = await createSqlConnection(
-      sqlDataSource.sqlType,
-      {
-        type: sqlDataSource.sqlType,
-        host: sqlDataSource.host,
-        port: sqlDataSource.port,
-        username: sqlDataSource.username,
-        password: sqlDataSource.password,
-        database: sqlDataSource.database,
-        ...options?.driverSpecificOptions,
-      },
+    const sqlTrx = new Transaction(
+      this,
+      await this.getConnection(),
+      options?.isolationLevel,
     );
 
-    const sqlTrx = new Transaction(sqlDataSource, options?.isolationLevel);
     await sqlTrx.startTransaction();
     return sqlTrx;
   }
@@ -625,14 +659,43 @@ export class SqlDataSource extends DataSource {
   /**
    * @description Returns the current raw driver connection, you can specify the type of connection you want to get to have better type safety
    * @example
-   * const mysqlConnection = sqlDataSource.getCurrentDriverConnection("mysql"); // mysql2 connection
-   * const pgConnection = sqlDataSource.getCurrentDriverConnection("postgres"); // pg connection
-   * const sqliteConnection = sqlDataSource.getCurrentDriverConnection("sqlite"); // sqlite3 connection
+   * const mysqlConnection = sqlDataSource.getPoolConnection("mysql"); // mysql2 Pool
+   * const pgConnection = sqlDataSource.getPoolConnection("postgres"); // pg Pool
+   * const sqliteConnection = sqlDataSource.getPoolConnection("sqlite"); // sqlite3 Database
    */
-  getCurrentDriverConnection<T extends SqlDataSourceType = typeof this.sqlType>(
+  getPoolConnection<T extends SqlDataSourceType = typeof this.sqlType>(
     _specificType: T = this.sqlType as T,
-  ): GetCurrentConnectionReturnType<T> {
-    return this.sqlConnection as GetCurrentConnectionReturnType<T>;
+  ): GetPoolConnectionReturnType<T> {
+    return this.sqlPool as GetPoolConnectionReturnType<T>;
+  }
+
+  /**
+   * @description Returns the current raw driver connection, you can specify the type of connection you want to get to have better type safety
+   * @example
+   * const mysqlConnection = sqlDataSource.getConnection("mysql"); // mysql2 PoolConnection
+   * const pgConnection = sqlDataSource.getConnection("postgres"); // pg PoolClient
+   * const sqliteConnection = sqlDataSource.getConnection("sqlite"); // sqlite3 Database
+   */
+  async getConnection<T extends SqlDataSourceType = typeof this.sqlType>(
+    _specificType: T = this.sqlType as T,
+  ): Promise<GetConnectionReturnType<T>> {
+    switch (this.sqlType) {
+      case "mysql":
+      case "mariadb":
+        const mysqlPool = this.sqlPool as MysqlConnectionInstance;
+        return (await mysqlPool.getConnection()) as GetConnectionReturnType<T>;
+      case "postgres":
+      case "cockroachdb":
+        const pgPool = this.sqlPool as PgPoolClientInstance;
+        return (await pgPool.connect()) as GetConnectionReturnType<T>;
+      case "sqlite":
+        return this.sqlPool as GetConnectionReturnType<T>;
+      default:
+        throw new HysteriaError(
+          "SqlDataSource::getConnection",
+          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`,
+        );
+    }
   }
 
   /**
@@ -648,24 +711,24 @@ export class SqlDataSource extends DataSource {
     switch (this.type) {
       case "mysql":
       case "mariadb":
-        await (this.sqlConnection as MysqlConnectionInstance).end();
-        this.sqlConnection = null;
+        await (this.sqlPool as MysqlConnectionInstance).end();
+        this.sqlPool = null;
         break;
       case "postgres":
       case "cockroachdb":
-        (this.sqlConnection as PgPoolClientInstance).end();
-        this.sqlConnection = null;
+        (this.sqlPool as PgPoolClientInstance).end();
+        this.sqlPool = null;
         break;
       case "sqlite":
         await new Promise<void>((resolve, reject) => {
-          (this.sqlConnection as SqliteConnectionInstance).close((err) => {
+          (this.sqlPool as SqliteConnectionInstance).close((err) => {
             if (err) {
               reject(err);
             }
             resolve();
           });
         });
-        this.sqlConnection = null;
+        this.sqlPool = null;
         break;
       default:
         throw new HysteriaError(
@@ -675,7 +738,7 @@ export class SqlDataSource extends DataSource {
     }
   }
 
-  async getConnectionDetails(): Promise<SqlDataSourceInput> {
+  getConnectionDetails(): SqlDataSourceInput {
     return {
       type: this.getDbType(),
       host: this.host,

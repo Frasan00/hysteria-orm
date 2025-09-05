@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { PassThrough } from "node:stream";
 import { HysteriaError } from "../../../errors/hysteria_error";
 import { convertCase } from "../../../utils/case_utils";
 import { withPerformance } from "../../../utils/performance";
@@ -21,11 +22,13 @@ import { QueryBuilder } from "../../query_builder/query_builder";
 import {
   RelationRetrieveMethod,
   SelectableColumn,
+  StreamOptions,
 } from "../../query_builder/query_builder_types";
 import type { UpdateOptions } from "../../query_builder/update_query_builder_types";
 import { remapSelectedColumnToFromAlias } from "../../resources/utils";
 import { serializeModel } from "../../serializer";
 import { SqlDataSource } from "../../sql_data_source";
+import { execSqlStreaming } from "../../sql_runner/sql_runner";
 import { ColumnType } from "../decorators/model_decorators_types";
 import { BaseModelMethodOptions, ModelWithoutRelations } from "../model_types";
 import { ManyToMany } from "../relations/many_to_many";
@@ -53,6 +56,17 @@ export class ModelQueryBuilder<
   private modelColumnsDatabaseNames: Map<string, string>;
   protected limitValue?: number;
   protected offsetValue?: number;
+
+  // @ts-expect-error
+  override performance = {
+    many: this.manyWithPerformance.bind(this),
+    one: this.oneWithPerformance.bind(this),
+    oneOrFail: this.oneOrFailWithPerformance.bind(this),
+    first: this.firstWithPerformance.bind(this),
+    firstOrFail: this.firstOrFailWithPerformance.bind(this),
+    paginate: this.paginateWithPerformance.bind(this),
+    exists: this.existsWithPerformance.bind(this),
+  };
 
   constructor(model: typeof Model, sqlDataSource: SqlDataSource) {
     super(model, sqlDataSource);
@@ -190,7 +204,55 @@ export class ModelQueryBuilder<
   }
 
   // @ts-expect-error
-  override async manyWithPerformance(
+  override async stream(
+    options: ManyOptions & StreamOptions = {},
+    cb?: (
+      stream: PassThrough & AsyncGenerator<AnnotatedModel<T, A, R>>,
+    ) => void | Promise<void>,
+  ): Promise<PassThrough & AsyncGenerator<AnnotatedModel<T, A, R>>> {
+    !options.ignoreHooks?.includes("beforeFetch") &&
+      this.model.beforeFetch?.(this);
+
+    const { sql, bindings } = this.unWrap();
+    const stream = await execSqlStreaming(
+      sql,
+      bindings,
+      this.sqlDataSource,
+      options,
+      {
+        onData: async (passThrough, row) => {
+          const model = this.addAdditionalColumnsToModel(row, this.model);
+          const serializedModel = await serializeModel(
+            [model] as T[],
+            this.model,
+            this.modelSelectedColumns,
+            this.modelAnnotatedColumns,
+            this.mustRemoveAnnotations,
+          );
+
+          if (!serializedModel) {
+            return;
+          }
+
+          if (!options.ignoreHooks?.includes("afterFetch")) {
+            await this.model.afterFetch?.([serializedModel] as unknown as T[]);
+          }
+
+          if (this.relationQueryBuilders.length) {
+            await this.processRelationsRecursively([serializedModel as T]);
+          }
+
+          passThrough.write(serializedModel);
+        },
+      },
+    );
+
+    await cb?.(stream as PassThrough & AsyncGenerator<AnnotatedModel<T, A, R>>);
+    return stream as PassThrough & AsyncGenerator<AnnotatedModel<T, A, R>>;
+  }
+
+  // @ts-expect-error
+  private async manyWithPerformance(
     options: ManyOptions = {},
     returnType: "millis" | "seconds" = "millis",
   ): Promise<{
@@ -206,7 +268,7 @@ export class ModelQueryBuilder<
   }
 
   // @ts-expect-error
-  override async oneWithPerformance(
+  private async oneWithPerformance(
     options: OneOptions = {},
     returnType: "millis" | "seconds" = "millis",
   ): Promise<{
@@ -222,7 +284,7 @@ export class ModelQueryBuilder<
   }
 
   // @ts-expect-error
-  override async oneOrFailWithPerformance(
+  private async oneOrFailWithPerformance(
     options: OneOptions = {},
     returnType: "millis" | "seconds" = "millis",
   ): Promise<{
@@ -238,7 +300,7 @@ export class ModelQueryBuilder<
   }
 
   // @ts-expect-error
-  override async firstOrFailWithPerformance(
+  private async firstOrFailWithPerformance(
     options: OneOptions = {},
     returnType: "millis" | "seconds" = "millis",
   ): Promise<{
@@ -249,7 +311,7 @@ export class ModelQueryBuilder<
   }
 
   // @ts-expect-error
-  override async firstWithPerformance(
+  private async firstWithPerformance(
     options: OneOptions = {},
     returnType: "millis" | "seconds" = "millis",
   ): Promise<{
@@ -260,7 +322,7 @@ export class ModelQueryBuilder<
   }
 
   // @ts-expect-error
-  override async paginateWithPerformance(
+  private async paginateWithPerformance(
     page: number,
     perPage: number,
     options?: { ignoreHooks?: boolean },
@@ -460,7 +522,7 @@ export class ModelQueryBuilder<
   override annotate<K extends string, V = any>(
     column: string,
     alias: K,
-  ): ModelQueryBuilder<T, A & { [P in K]: V }>;
+  ): ModelQueryBuilder<T, A & { [P in K]: V }, R>;
   // @ts-expect-error
   override annotate<
     K extends string,
@@ -470,7 +532,7 @@ export class ModelQueryBuilder<
     sqlMethod: string,
     column: string,
     alias: K,
-  ): ModelQueryBuilder<T, A & { [P in K]: V }>;
+  ): ModelQueryBuilder<T, A & { [P in K]: V }, R>;
   // @ts-expect-error
   override annotate<
     K extends string,
@@ -480,7 +542,7 @@ export class ModelQueryBuilder<
     sqlMethod: S,
     column: string,
     alias: K,
-  ): ModelQueryBuilder<T, A & { [P in K]: V }>;
+  ): ModelQueryBuilder<T, A & { [P in K]: V }, R>;
   // @ts-expect-error
   override annotate<
     K extends string,
@@ -490,7 +552,8 @@ export class ModelQueryBuilder<
     sqlMethod: S,
     column: string,
     alias: K,
-  ): ModelQueryBuilder<T, A & { [P in K]: V }>;
+  ): ModelQueryBuilder<T, A & { [P in K]: V }, R>;
+
   // @ts-expect-error
   override annotate<
     K extends string,
@@ -500,7 +563,7 @@ export class ModelQueryBuilder<
     sqlMethodOrColumn: string | S,
     columnOrAlias: string,
     maybeAlias?: string,
-  ): ModelQueryBuilder<T, A & { [P in K]: V }> {
+  ): ModelQueryBuilder<T, A & { [P in K]: V }, R> {
     let sqlMethod: string | undefined;
     let column: string;
     let alias: string;

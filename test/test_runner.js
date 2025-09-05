@@ -1,4 +1,4 @@
-// This file is used to enforce the order of test files to be run in a specific order.
+// This file is used to enforce the order of test files to be run in a specific order and one by one.
 
 import { execSync } from "node:child_process";
 import {
@@ -60,7 +60,7 @@ sqlTests.forEach((file) => {
     console.log(`Running ${file} on ${environment.type}`);
     try {
       execSync(
-        `DB_LOGS=true DB_TYPE=${environment.type} DB_HOST=${environment.host} DB_USER=${environment.user} DB_PASSWORD=${environment.password} DB_DATABASE=${environment.database} jest --config=jest.config.js --detectOpenHandles ${file}`,
+        `DB_LOGS=true DB_TYPE=${environment.type} DB_HOST=${environment.host} DB_USER=${environment.user} DB_PASSWORD=${environment.password} DB_DATABASE=${environment.database} npx jest --config=jest.config.js --detectOpenHandles ${file}`,
         { stdio: "inherit" }
       );
     } catch (error) {

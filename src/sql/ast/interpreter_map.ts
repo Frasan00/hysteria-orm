@@ -160,6 +160,8 @@ export const interpreterMap = {
       set_default: mysql_alter_table_set_default,
       set_not_null: mysql_alter_table_set_not_null,
     },
+    case_when: {
+    },
     column: {
       column_type: mysql_column_column_type,
     },
@@ -262,6 +264,8 @@ export const interpreterMap = {
       set_default: postgres_alter_table_set_default,
       set_not_null: postgres_alter_table_set_not_null,
     },
+    case_when: {
+    },
     column: {
       column_type: postgres_column_column_type,
     },
@@ -362,6 +366,8 @@ export const interpreterMap = {
       rename_table: sqlite_alter_table_rename_table,
       set_default: sqlite_alter_table_set_default,
       set_not_null: sqlite_alter_table_set_not_null,
+    },
+    case_when: {
     },
     column: {
       column_type: sqlite_column_column_type,
