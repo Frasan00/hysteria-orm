@@ -195,19 +195,35 @@ describe(`[${env.DB_TYPE}] Select`, () => {
     expect(userCountIgnoringHooks).toBe(11);
     expect(userCountIgnoringHooks2).toBe(11);
 
-    const userMaxAge = await UserWithoutPk.query().getMax("age");
+    const userMaxAge = await UserWithoutPk.query()
+      .select("age")
+      .orderBy("age", "asc")
+      .groupBy("age")
+      .getMax("age");
     expect(userMaxAge).toBeGreaterThan(0);
     expect(userMaxAge).toBeLessThan(1000);
 
-    const userAgeMin = await UserWithoutPk.query().getMin("age");
+    const userAgeMin = await UserWithoutPk.query()
+      .select("age")
+      .orderBy("age", "asc")
+      .groupBy("age")
+      .getMin("age");
     expect(userAgeMin).toBeGreaterThan(0);
     expect(userAgeMin).toBeLessThan(1000);
 
-    const userAgeAvg = await UserWithoutPk.query().getAvg("age");
+    const userAgeAvg = await UserWithoutPk.query()
+      .select("age")
+      .orderBy("age", "asc")
+      .groupBy("age")
+      .getAvg("age");
     expect(userAgeAvg).toBeGreaterThan(0);
     expect(userAgeAvg).toBeLessThan(1000);
 
-    const userAgeSum = await UserWithoutPk.query().getSum("age");
+    const userAgeSum = await UserWithoutPk.query()
+      .select("age")
+      .orderBy("age", "asc")
+      .groupBy("age")
+      .getSum("age");
     expect(userAgeSum).toBeGreaterThan(0);
     expect(userAgeSum).toBeLessThan(1000);
   });
@@ -463,5 +479,36 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
     expect(allUsers[0].name).toBe("John Doe");
     expect(allUsers[0].updatedAt).not.toBe(allUsers[0].createdAt);
     expect(allUsers[0].updatedAt).not.toBe(user.updatedAt);
+  });
+});
+
+describe(`[${env.DB_TYPE}] Query Builder Paginate With Cursor`, () => {
+  test("should paginate with cursor", async () => {
+    await UserWithoutPk.insertMany([
+      { name: "User 1", age: 21 },
+      { name: "User 2", age: 22 },
+      { name: "User 3", age: 23 },
+      { name: "User 4", age: 24 },
+      { name: "User 5", age: 25 },
+      { name: "User 6", age: 26 },
+      { name: "User 7", age: 27 },
+      { name: "User 8", age: 28 },
+      { name: "User 9", age: 29 },
+      { name: "User 10", age: 30 },
+    ]);
+
+    const [users, cursor] = await UserWithoutPk.query().paginateWithCursor(5, {
+      discriminator: "age",
+    });
+    expect(users.data.length).toBe(5);
+    expect(users.paginationMetadata.total).toBe(10);
+
+    const [users2] = await UserWithoutPk.query().paginateWithCursor(
+      5,
+      { discriminator: "age" },
+      cursor,
+    );
+    expect(users2.data.length).toBe(5);
+    expect(users2.paginationMetadata.total).toBe(10);
   });
 });

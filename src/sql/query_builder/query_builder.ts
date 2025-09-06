@@ -25,7 +25,13 @@ import type { Model } from "../models/model";
 import { ModelKey } from "../models/model_manager/model_manager_types";
 import { AnnotatedModel } from "../models/model_query_builder/model_query_builder_types";
 import type { NumberModelKey } from "../models/model_types";
-import { getPaginationMetadata, PaginatedData } from "../pagination";
+import {
+  CursorPaginatedData,
+  getCursorPaginationMetadata,
+  getPaginationMetadata,
+  PaginatedData,
+} from "../pagination";
+import { deepCloneNode } from "../resources/utils";
 import { SqlDataSource } from "../sql_data_source";
 import type { SqlDataSourceType } from "../sql_data_source_types";
 import {
@@ -36,6 +42,8 @@ import {
 import { SoftDeleteOptions } from "./delete_query_builder_type";
 import { JsonQueryBuilder } from "./json_query_builder";
 import {
+  Cursor,
+  PaginateWithCursorOptions,
   PluckReturnType,
   QueryBuilderWithOnlyWhereConditions,
   StreamOptions,
@@ -59,6 +67,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     first: this.firstWithPerformance.bind(this),
     firstOrFail: this.firstOrFailWithPerformance.bind(this),
     paginate: this.paginateWithPerformance.bind(this),
+    paginateWithCursor: this.paginateWithCursorWithPerformance.bind(this),
     exists: this.existsWithPerformance.bind(this),
   };
 
@@ -105,91 +114,6 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
       returnType,
     );
     return { data, time: Number(time) };
-  }
-
-  /**
-   * @description Makes a many query and returns the time that took to execute that query
-   */
-  private async manyWithPerformance(
-    returnType: "millis" | "seconds" = "millis",
-  ): Promise<{
-    data: AnnotatedModel<T, any, any>[];
-    time: number;
-  }> {
-    const [time, data] = await withPerformance(
-      this.many.bind(this),
-      returnType,
-    );
-    return {
-      data,
-      time: Number(time),
-    };
-  }
-
-  /**
-   * @description Makes a one query and returns the time that took to execute that query
-   */
-  private async oneWithPerformance(
-    returnType: "millis" | "seconds" = "millis",
-  ): Promise<{
-    data: AnnotatedModel<T, any, any> | null;
-    time: number;
-  }> {
-    const [time, data] = await withPerformance(this.one.bind(this), returnType);
-    return {
-      data,
-      time: Number(time),
-    };
-  }
-
-  /**
-   * @alias oneWithPerformance
-   */
-  private async firstWithPerformance(
-    returnType: "millis" | "seconds" = "millis",
-  ) {
-    return this.oneWithPerformance(returnType);
-  }
-
-  /**
-   * @alias oneOrFailWithPerformance
-   */
-  private async firstOrFailWithPerformance(
-    returnType: "millis" | "seconds" = "millis",
-  ) {
-    return this.oneOrFailWithPerformance(returnType);
-  }
-
-  private async paginateWithPerformance(
-    page: number,
-    perPage: number,
-    returnType: "millis" | "seconds" = "millis",
-  ) {
-    const [time, data] = await withPerformance(
-      this.paginate.bind(this, page, perPage),
-      returnType,
-    );
-
-    return {
-      data,
-      time: Number(time),
-    };
-  }
-
-  /**
-   * @description Makes a one or fail query and returns the time that took to execute that query
-   */
-  private async oneOrFailWithPerformance(
-    returnType: "millis" | "seconds" = "millis",
-  ) {
-    const [time, data] = await withPerformance(
-      this.oneOrFail.bind(this),
-      returnType,
-    );
-    return {
-      data,
-      time: Number(time),
-    };
   }
 
   /**
@@ -330,6 +254,55 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
       offset += models.length;
       yield models;
     }
+  }
+
+  /**
+   * @description Executes the query and retrieves multiple paginated results.
+   * @description Overrides the limit and offset clauses in order to paginate the results.
+   * @description Allows to avoid offset clause that can be inefficient for large datasets
+   * @description If using a model query builder, primary key is used as discriminator by default
+   * @param options - The options for the paginate with cursor
+   * @param options.discriminator - The discriminator to use for the paginate with Cursor pagination
+   * @param options.operator - The operator to use for the paginate with Cursor pagination
+   * @param options.orderBy - The order by to use for the paginate with Cursor pagination
+   * @param cursor - The cursor to use for the paginate with Cursor pagination
+   * @warning If no order by clause is present in the query, the query will add an order by clause to the query `orderBy(discriminator, "asc")`
+   * @returns the pagination metadata and the cursor for the next page
+   */
+  async paginateWithCursor<K extends ModelKey<T>>(
+    limit: number,
+    options: PaginateWithCursorOptions<T, K>,
+    cursor?: Cursor<T, K>,
+  ): Promise<[CursorPaginatedData<T>, Cursor<T, K>]> {
+    const countQueryBuilder = this.copy();
+
+    if (!this.orderByNodes.length) {
+      this.orderBy(options.discriminator, options.orderBy || "asc");
+    }
+
+    if (cursor) {
+      this.where(cursor.key, options.operator || ">", cursor.value);
+    }
+
+    this.limit(limit);
+
+    const data = await this.many();
+    const count = await countQueryBuilder.getCount();
+
+    const lastItem = data[data.length - 1];
+    const lastItemValue = lastItem ? lastItem[options.discriminator] : null;
+    const paginationMetadata = getCursorPaginationMetadata(limit, count);
+
+    return [
+      {
+        paginationMetadata: paginationMetadata,
+        data,
+      },
+      {
+        key: options.discriminator,
+        value: lastItemValue,
+      },
+    ];
   }
 
   /**
@@ -481,6 +454,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    * @description Executes the query and retrieves the count of results, it ignores all select, group by, order by, limit and offset clauses if they are present.
    */
   async getCount(column: string = "*"): Promise<number> {
+    this.clearForFunctions();
     this.annotate("count", column, "total");
     const result = await this.one();
     return result ? +result["total" as keyof typeof result] : 0;
@@ -490,6 +464,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    * @description Executes the query and retrieves the maximum value of a column, it ignores all select, group by, order by, limit and offset clauses if they are present.
    */
   async getMax(column: string): Promise<number> {
+    this.clearForFunctions();
     this.annotate("max", column, "total");
     const result = await this.one();
     return result ? +result["total" as keyof typeof result] : 0;
@@ -499,6 +474,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    * @description Executes the query and retrieves the minimum value of a column, it ignores all select, group by, order by, limit and offset clauses if they are present.
    */
   async getMin(column: string): Promise<number> {
+    this.clearForFunctions();
     this.annotate("min", column, "total");
     const result = await this.one();
     return result ? +result["total" as keyof typeof result] : 0;
@@ -508,6 +484,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    * @description Executes the query and retrieves the average value of a column, it ignores all select, group by, order by, limit and offset clauses if they are present.
    */
   async getAvg(column: string): Promise<number> {
+    this.clearForFunctions();
     this.annotate("avg", column, "total");
     const result = await this.one();
     return result ? +result["total" as keyof typeof result] : 0;
@@ -517,6 +494,11 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    * @description Executes the query and retrieves the sum of a column, it ignores all select, group by, order by, limit and offset clauses if they are present.
    */
   async getSum(column: string): Promise<number> {
+    this.clearSelect();
+    this.clearGroupBy();
+    this.clearOrderBy();
+    this.clearLimit();
+    this.clearOffset();
     this.annotate("sum", column, "total");
     const result = await this.one();
     return result ? +result["total" as keyof typeof result] : 0;
@@ -534,14 +516,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
       );
     }
 
-    // Only filters are applied for the count query
-    const countQueryBuilder = new QueryBuilder<T>(
-      this.model,
-      this.sqlDataSource,
-    );
-    countQueryBuilder.fromNode = this.fromNode;
-    countQueryBuilder.joinNodes = [...this.joinNodes];
-    countQueryBuilder.whereNodes = [...this.whereNodes];
+    const countQueryBuilder = this.copy();
     const total = await countQueryBuilder.getCount("*");
 
     // Original query is used to get the models with pagination data
@@ -1197,10 +1172,23 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
 
     const { sql, bindings } = this.astParser.parse(this.extractQueryNodes());
 
-    const formattedQuery = format(sql, {
-      ...this.sqlDataSource.queryFormatOptions,
-      language: getSqlDialect(dbType as SqlDataSourceType),
-    });
+    let formattedQuery: string;
+    try {
+      formattedQuery = format(sql, {
+        ...this.sqlDataSource.queryFormatOptions,
+        language: getSqlDialect(dbType as SqlDataSourceType),
+      });
+    } catch (err) {
+      // Retry without language
+      try {
+        formattedQuery = format(sql, {
+          ...this.sqlDataSource.queryFormatOptions,
+        });
+      } catch (err) {
+        // Ultimate fallback
+        formattedQuery = sql;
+      }
+    }
 
     const finalQuery = this.withQuery
       ? `${this.withQuery} ${formattedQuery}`
@@ -1216,9 +1204,41 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    * @description Returns a deep copy of the query builder instance.
    */
   copy(): this {
-    const clone = Object.create(Object.getPrototypeOf(this));
-    Object.assign(clone, structuredClone(this));
-    return clone as this;
+    const qb = new QueryBuilder<T>(this.model, this.sqlDataSource) as any;
+
+    // select / from / distinct (from SelectQueryBuilder)
+    qb.dbType = this.dbType;
+    qb.modelSelectedColumns = deepCloneNode((this as any).modelSelectedColumns);
+    qb.modelAnnotatedColumns = deepCloneNode(
+      (this as any).modelAnnotatedColumns,
+    );
+    qb.distinctNode = deepCloneNode((this as any).distinctNode);
+    qb.distinctOnNodes = deepCloneNode((this as any).distinctOnNodes);
+    qb.selectNodes = deepCloneNode(this.selectNodes);
+    qb.withQuery = deepCloneNode((this as any).withQuery);
+
+    // join / where / group / having / order
+    qb.joinNodes = deepCloneNode(this.joinNodes);
+    qb.whereNodes = deepCloneNode(this.whereNodes);
+    qb.groupByNodes = deepCloneNode(this.groupByNodes);
+    qb.havingNodes = deepCloneNode(this.havingNodes);
+    qb.orderByNodes = deepCloneNode(this.orderByNodes);
+
+    // locks / unions / withs
+    qb.lockQueryNodes = deepCloneNode(this.lockQueryNodes);
+    qb.unionNodes = deepCloneNode(this.unionNodes);
+    qb.withNodes = deepCloneNode(this.withNodes);
+
+    // from / limit / offset / flags
+    qb.fromNode = deepCloneNode(this.fromNode);
+    qb.limitNode = deepCloneNode(this.limitNode);
+    qb.offsetNode = deepCloneNode(this.offsetNode);
+
+    // flags
+    qb.isNestedCondition = this.isNestedCondition;
+    qb.mustRemoveAnnotations = this.mustRemoveAnnotations;
+
+    return qb as this;
   }
 
   protected clearLockQuery(): this {
@@ -1256,5 +1276,116 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
       ...this.lockQueryNodes,
       ...this.unionNodes,
     ].filter(Boolean) as QueryNode[];
+  }
+
+  protected clearForFunctions(): this {
+    this.clearSelect();
+    this.clearGroupBy();
+    this.clearOrderBy();
+    this.clearLimit();
+    this.clearOffset();
+    return this;
+  }
+
+  /**
+   * @description Makes a many query and returns the time that took to execute that query
+   */
+  private async manyWithPerformance(
+    returnType: "millis" | "seconds" = "millis",
+  ): Promise<{
+    data: AnnotatedModel<T, any, any>[];
+    time: number;
+  }> {
+    const [time, data] = await withPerformance(
+      this.many.bind(this),
+      returnType,
+    );
+    return {
+      data,
+      time: Number(time),
+    };
+  }
+
+  /**
+   * @description Makes a one query and returns the time that took to execute that query
+   */
+  private async oneWithPerformance(
+    returnType: "millis" | "seconds" = "millis",
+  ): Promise<{
+    data: AnnotatedModel<T, any, any> | null;
+    time: number;
+  }> {
+    const [time, data] = await withPerformance(this.one.bind(this), returnType);
+    return {
+      data,
+      time: Number(time),
+    };
+  }
+
+  /**
+   * @alias oneWithPerformance
+   */
+  private async firstWithPerformance(
+    returnType: "millis" | "seconds" = "millis",
+  ) {
+    return this.oneWithPerformance(returnType);
+  }
+
+  /**
+   * @alias oneOrFailWithPerformance
+   */
+  private async firstOrFailWithPerformance(
+    returnType: "millis" | "seconds" = "millis",
+  ) {
+    return this.oneOrFailWithPerformance(returnType);
+  }
+
+  private async paginateWithPerformance(
+    page: number,
+    perPage: number,
+    returnType: "millis" | "seconds" = "millis",
+  ) {
+    const [time, data] = await withPerformance(
+      this.paginate.bind(this, page, perPage),
+      returnType,
+    );
+
+    return {
+      data,
+      time: Number(time),
+    };
+  }
+
+  private async paginateWithCursorWithPerformance(
+    page: number,
+    options: PaginateWithCursorOptions<T, ModelKey<T>>,
+    cursor?: Cursor<T, ModelKey<T>>,
+    returnType: "millis" | "seconds" = "millis",
+  ) {
+    const [time, data] = await withPerformance(
+      this.paginateWithCursor.bind(this, page, options, cursor),
+      returnType,
+    );
+
+    return {
+      data,
+      time: Number(time),
+    };
+  }
+
+  /**
+   * @description Makes a one or fail query and returns the time that took to execute that query
+   */
+  private async oneOrFailWithPerformance(
+    returnType: "millis" | "seconds" = "millis",
+  ) {
+    const [time, data] = await withPerformance(
+      this.oneOrFail.bind(this),
+      returnType,
+    );
+    return {
+      data,
+      time: Number(time),
+    };
   }
 }

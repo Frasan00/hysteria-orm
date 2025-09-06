@@ -114,7 +114,10 @@ describe(`[${env.DB_TYPE}] Query Builder with uuid`, () => {
       { id: crypto.randomUUID(), title: "Hello World 2" },
     ]);
 
-    const count = await SqlDataSource.query("posts_with_uuid").getCount();
+    const count = await SqlDataSource.query("posts_with_uuid")
+      // Should not affect the count query
+      .groupBy("not_exists")
+      .getCount();
     expect(count).toBe(2);
   });
 
@@ -1031,5 +1034,91 @@ describe(`[${env.DB_TYPE}] Query Builder stream method`, () => {
     expect(users[0].name).toBe("User 1");
     expect(users[1].name).toBe("User 2");
     expect(users[2].name).toBe("User 3");
+  });
+});
+
+describe(`[${env.DB_TYPE}] Query Builder copy method`, () => {
+  beforeEach(async () => {
+    await SqlDataSource.query("users_without_pk").insertMany([
+      { name: "User 1", age: 21 },
+      { name: "User 2", age: 22 },
+      { name: "User 3", age: 23 },
+    ]);
+  });
+
+  afterEach(async () => {
+    await SqlDataSource.query("users_without_pk").truncate();
+  });
+
+  test("should properly copy the query builder", async () => {
+    const queryBuilder = SqlDataSource.query("users_without_pk")
+      .select("name")
+      .where("age", ">", 20)
+      .andWhere("age", "<", 25)
+      .join("posts", "posts.user_id", "users_without_pk.id")
+      .groupBy("name")
+      .having("name", "User 1")
+      .orderBy("name", "asc")
+      .offset(10)
+      .unionAll(SqlDataSource.query("posts").select("name"))
+      .with("posts", (qb) => qb.select("name").from("posts"))
+      .lockForUpdate()
+      .forShare()
+      .withRecursive("posts", (qb) => qb.select("name").from("posts"))
+      .limit(1);
+
+    const copiedQueryBuilder = queryBuilder.copy();
+    expect(copiedQueryBuilder).toBeDefined();
+    expect(copiedQueryBuilder.toQuery()).toBe(queryBuilder.toQuery());
+  });
+
+  test("copy should not affect the original query builder", async () => {
+    const queryBuilder = SqlDataSource.query("users_without_pk").select("name");
+    const copiedQueryBuilder = queryBuilder.copy().limit(1);
+    const users = await queryBuilder.many();
+    const copiedUsers = await copiedQueryBuilder.many();
+
+    expect(users.length).toBe(3);
+    expect(copiedUsers.length).toBe(1);
+  });
+});
+
+describe(`[${env.DB_TYPE}] Query Builder paginateWithCursor method`, () => {
+  beforeEach(async () => {
+    await SqlDataSource.query("users_without_pk").insertMany([
+      { name: "User 1", age: 21 },
+      { name: "User 2", age: 22 },
+      { name: "User 3", age: 23 },
+    ]);
+  });
+
+  afterEach(async () => {
+    await SqlDataSource.query("users_without_pk").truncate();
+  });
+
+  test("should properly paginate results with cursor", async () => {
+    const toBeChecked1 = env.DB_TYPE === "cockroachdb" ? "21" : 21;
+    const [users, cursor] = await SqlDataSource.query("users_without_pk")
+      .select("name", "age")
+      .paginateWithCursor(1, { discriminator: "age" });
+    expect(users.data.length).toBe(1);
+    expect(cursor.key).toBe("age");
+    expect(cursor.value).toBe(toBeChecked1);
+
+    const toBeChecked2 = env.DB_TYPE === "cockroachdb" ? "22" : 22;
+    const [users2, cursor2] = await SqlDataSource.query("users_without_pk")
+      .select("name", "age")
+      .paginateWithCursor(1, { discriminator: "age" }, cursor);
+    expect(users2.data.length).toBe(1);
+    expect(cursor2.key).toBe("age");
+    expect(cursor2.value).toBe(toBeChecked2);
+
+    const toBeChecked3 = env.DB_TYPE === "cockroachdb" ? "23" : 23;
+    const [users3, cursor3] = await SqlDataSource.query("users_without_pk")
+      .select("name", "age")
+      .paginateWithCursor(1, { discriminator: "age" }, cursor2);
+    expect(users3.data.length).toBe(1);
+    expect(cursor3.key).toBe("age");
+    expect(cursor3.value).toBe(toBeChecked3);
   });
 });

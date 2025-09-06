@@ -13,19 +13,28 @@ import type {
   ModelRelation,
 } from "../../models/model_manager/model_manager_types";
 import SqlModelManagerUtils from "../../models/model_manager/model_manager_utils";
-import { getPaginationMetadata, PaginatedData } from "../../pagination";
+import {
+  CursorPaginatedData,
+  getPaginationMetadata,
+  PaginatedData,
+} from "../../pagination";
 import {
   DeleteOptions,
   SoftDeleteOptions,
 } from "../../query_builder/delete_query_builder_type";
 import { QueryBuilder } from "../../query_builder/query_builder";
 import {
+  Cursor,
+  PaginateWithCursorOptions,
   RelationRetrieveMethod,
   SelectableColumn,
   StreamOptions,
 } from "../../query_builder/query_builder_types";
 import type { UpdateOptions } from "../../query_builder/update_query_builder_types";
-import { remapSelectedColumnToFromAlias } from "../../resources/utils";
+import {
+  deepCloneNode,
+  remapSelectedColumnToFromAlias,
+} from "../../resources/utils";
 import { serializeModel } from "../../serializer";
 import { SqlDataSource } from "../../sql_data_source";
 import { execSqlStreaming } from "../../sql_runner/sql_runner";
@@ -66,6 +75,7 @@ export class ModelQueryBuilder<
     firstOrFail: this.firstOrFailWithPerformance.bind(this),
     paginate: this.paginateWithPerformance.bind(this),
     exists: this.existsWithPerformance.bind(this),
+    paginateWithCursor: this.paginateWithCursorWithPerformance.bind(this),
   };
 
   constructor(model: typeof Model, sqlDataSource: SqlDataSource) {
@@ -251,6 +261,29 @@ export class ModelQueryBuilder<
     return stream as PassThrough & AsyncGenerator<AnnotatedModel<T, A, R>>;
   }
 
+  override async paginateWithCursor<K extends ModelKey<T>>(
+    page: number,
+    options?: PaginateWithCursorOptions<T, K>,
+    cursor?: Cursor<T, K>,
+  ): Promise<[CursorPaginatedData<T, A, R>, Cursor<T, K>]> {
+    if (!options) {
+      if (!this.model.primaryKey) {
+        throw new HysteriaError(
+          this.model.name + "::paginateWithCursor",
+          "PRIMARY_KEY_NOT_FOUND",
+        );
+      }
+
+      options = {
+        discriminator: this.model.primaryKey as K,
+      };
+    }
+
+    return super.paginateWithCursor(page, options, cursor) as Promise<
+      [CursorPaginatedData<T, A, R>, Cursor<T, K>]
+    >;
+  }
+
   // @ts-expect-error
   private async manyWithPerformance(
     options: ManyOptions = {},
@@ -346,6 +379,26 @@ export class ModelQueryBuilder<
     };
   }
 
+  private async paginateWithCursorWithPerformance(
+    page: number,
+    options: PaginateWithCursorOptions<T, ModelKey<T>>,
+    cursor?: Cursor<T, ModelKey<T>>,
+    returnType: "millis" | "seconds" = "millis",
+  ): Promise<{
+    data: [CursorPaginatedData<T, A, R>, Cursor<T, ModelKey<T>>];
+    time: number;
+  }> {
+    const [time, data] = await withPerformance(
+      this.paginateWithCursor.bind(this, page, options, cursor),
+      returnType,
+    );
+
+    return {
+      data: data as [CursorPaginatedData<T, A, R>, Cursor<T, ModelKey<T>>],
+      time: Number(time),
+    };
+  }
+
   override async update(
     data: Partial<ModelWithoutRelations<T>>,
     options: UpdateOptions = {},
@@ -371,6 +424,7 @@ export class ModelQueryBuilder<
     column: string = "*",
     options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<number> {
+    this.clearForFunctions();
     this.annotate("count", column, "total");
     const ignoredHooks: FetchHooks[] = options.ignoreHooks
       ? ["beforeFetch"]
@@ -391,6 +445,7 @@ export class ModelQueryBuilder<
     column: string,
     options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<number> {
+    this.clearForFunctions();
     this.annotate("max", column, "total");
     const ignoredHooks: FetchHooks[] = options.ignoreHooks
       ? ["beforeFetch", "afterFetch"]
@@ -411,6 +466,7 @@ export class ModelQueryBuilder<
     column: string,
     options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<number> {
+    this.clearForFunctions();
     this.annotate("min", column, "total");
     const ignoredHooks: FetchHooks[] = options.ignoreHooks
       ? ["beforeFetch", "afterFetch"]
@@ -431,6 +487,7 @@ export class ModelQueryBuilder<
     column: string,
     options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<number> {
+    this.clearForFunctions();
     this.annotate("avg", column, "total");
     const ignoredHooks: FetchHooks[] = options.ignoreHooks
       ? ["beforeFetch", "afterFetch"]
@@ -451,6 +508,7 @@ export class ModelQueryBuilder<
     column: string,
     options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<number> {
+    this.clearForFunctions();
     this.annotate("sum", column, "total");
     const ignoredHooks: FetchHooks[] = options.ignoreHooks
       ? ["beforeFetch", "afterFetch"]
@@ -1138,7 +1196,9 @@ export class ModelQueryBuilder<
    */
   override copy(): this {
     const queryBuilder = super.copy();
-    queryBuilder.relationQueryBuilders = [...this.relationQueryBuilders];
+    queryBuilder.relationQueryBuilders = deepCloneNode(
+      this.relationQueryBuilders,
+    );
     return queryBuilder;
   }
 

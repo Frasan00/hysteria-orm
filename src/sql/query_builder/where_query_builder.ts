@@ -869,11 +869,27 @@ export abstract class WhereQueryBuilder<
     operatorOrValue: BinaryOperatorType | BaseValues,
     value?: BaseValues,
   ): this {
-    return this.having(
-      column as ModelKey<T>,
-      operatorOrValue as BinaryOperatorType,
-      value,
+    let operator: BinaryOperatorType = "=";
+    let actualValue: BaseValues;
+
+    if (typeof operatorOrValue === "string" && value) {
+      operator = operatorOrValue as BinaryOperatorType;
+      actualValue = value as BaseValues;
+    } else {
+      actualValue = operatorOrValue as BaseValues;
+      operator = "=";
+    }
+
+    this.havingNodes.push(
+      new HavingNode(
+        column as string,
+        "and",
+        false,
+        operator as any,
+        actualValue as any,
+      ),
     );
+    return this;
   }
 
   /**

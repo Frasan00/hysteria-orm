@@ -104,3 +104,17 @@ export type StreamOptions = {
   /** Mysql only */
   objectMode?: boolean;
 };
+
+export type Cursor<T extends Model, K extends ModelKey<T>> = {
+  key: K;
+  value: string | number;
+};
+
+export type PaginateWithCursorOptions<
+  T extends Model,
+  K extends ModelKey<T>,
+> = {
+  discriminator: K;
+  operator?: "<" | ">";
+  orderBy?: "asc" | "desc";
+};
