@@ -494,11 +494,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    * @description Executes the query and retrieves the sum of a column, it ignores all select, group by, order by, limit and offset clauses if they are present.
    */
   async getSum(column: string): Promise<number> {
-    this.clearSelect();
-    this.clearGroupBy();
-    this.clearOrderBy();
-    this.clearLimit();
-    this.clearOffset();
+    this.clearForFunctions();
     this.annotate("sum", column, "total");
     const result = await this.one();
     return result ? +result["total" as keyof typeof result] : 0;
