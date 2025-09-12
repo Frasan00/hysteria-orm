@@ -1,9 +1,10 @@
 {
   "name": "hysteria-orm",
-  "version": "9.0.1",
+  "version": "9.0.2",
   "license": "MIT",
   "description": "Yet another orm for Javascript and Typescript no one asked for",
   "type": "module",
+  "homepage": "https://github.com/Frasan00/hysteria-orm",
   "repository": "https://github.com/Frasan00/hysteria-orm.git",
   "author": "Frasan00 <francesco.sangiovanni.7@gmail.com>",
   "scripts": {
@@ -17,7 +18,10 @@
     "build:prod": "yarn generate:interpreter:map && tsup --minify",
     "build:dev": "tsup",
     "test:fresh": "node lib/cli.js refresh:migrations",
-    "generate:interpreter:map": "node generate_interpreter_map.js"
+    "generate:interpreter:map": "node generate_interpreter_map.js",
+    "generate:migrations": "yarn build && node lib/cli.js generate:migrations -d database/index.ts",
+    "run:migrations": "yarn build && node lib/cli.js run:migrations -d database/index.ts",
+    "refresh:migrations": "yarn build && node lib/cli.js refresh:migrations -d database/index.ts"
   },
   "main": "./lib/index.cjs",
   "module": "./lib/index.js",

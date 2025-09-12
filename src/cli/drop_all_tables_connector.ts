@@ -13,6 +13,7 @@ import MigrationTemplates from "./resources/migration_templates";
 export default async function dropAllTablesConnector(
   sql: SqlDataSource,
   shouldExit: boolean = true,
+  transactional?: boolean,
 ) {
   const dbType = sql.getDbType();
   const dbDatabase = sql.database;
@@ -63,7 +64,10 @@ export default async function dropAllTablesConnector(
     parsedTables,
   );
 
-  await sql.rawQuery(BEGIN_TRANSACTION);
+  if (transactional) {
+    await sql.rawQuery(BEGIN_TRANSACTION);
+  }
+
   try {
     if (dbType === "mysql" || dbType === "mariadb") {
       await sql.rawQuery(`SET FOREIGN_KEY_CHECKS = 0;`);
@@ -75,9 +79,13 @@ export default async function dropAllTablesConnector(
       await sql.rawQuery(`SET FOREIGN_KEY_CHECKS = 1;`);
     }
 
-    await sql.rawQuery(COMMIT_TRANSACTION);
+    if (transactional) {
+      await sql.rawQuery(COMMIT_TRANSACTION);
+    }
   } catch (error: any) {
-    await sql.rawQuery(ROLLBACK_TRANSACTION);
+    if (transactional) {
+      await sql.rawQuery(ROLLBACK_TRANSACTION);
+    }
     logger.error(error);
     process.exit(1);
   } finally {

@@ -17,11 +17,11 @@ export default async function runMigrationsConnector(
   shouldExit: boolean = true,
   migrationPath?: string,
   tsconfigPath?: string,
+  transactional?: boolean,
 ) {
   const dbType = sql.getDbType();
   logger.info("Running migrations for database type: " + dbType);
 
-  await sql.rawQuery(BEGIN_TRANSACTION);
   try {
     const migrationTable: MigrationTableType[] = await getMigrationTable(
       dbType as SqlDataSourceType,
@@ -59,18 +59,37 @@ export default async function runMigrationsConnector(
 
       const filteredMigrations = pendingMigrations.slice(0, runUntilIndex + 1);
       const migrator = new Migrator(sql);
+
+      if (transactional) {
+        await sql.rawQuery(BEGIN_TRANSACTION);
+      }
+
       await migrator.upMigrations(filteredMigrations);
-      await sql.rawQuery(COMMIT_TRANSACTION);
+
+      if (transactional) {
+        await sql.rawQuery(COMMIT_TRANSACTION);
+      }
+
       logger.info("Migrations ran successfully");
       shouldExit && process.exit(0);
       return;
     }
 
     const migrator = new Migrator(sql);
+    if (transactional) {
+      await sql.rawQuery(BEGIN_TRANSACTION);
+    }
+
     await migrator.upMigrations(pendingMigrations);
-    await sql.rawQuery(COMMIT_TRANSACTION);
+
+    if (transactional) {
+      await sql.rawQuery(COMMIT_TRANSACTION);
+    }
   } catch (error: any) {
-    await sql.rawQuery(ROLLBACK_TRANSACTION);
+    if (transactional) {
+      await sql.rawQuery(ROLLBACK_TRANSACTION);
+    }
+
     logger.error(error);
     process.exit(1);
   } finally {

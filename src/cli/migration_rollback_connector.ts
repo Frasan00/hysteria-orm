@@ -17,11 +17,11 @@ export default async function rollbackMigrationsConnector(
   shouldExit: boolean = true,
   migrationPath?: string,
   tsconfigPath?: string,
+  transactional?: boolean,
 ) {
   const dbType = sql.getDbType();
   logger.info("Rolling back migrations for database type: " + dbType);
 
-  await sql.rawQuery(BEGIN_TRANSACTION);
   try {
     const migrationTable: MigrationTableType[] = await getMigrationTable(
       dbType as SqlDataSourceType,
@@ -59,19 +59,37 @@ export default async function rollbackMigrationsConnector(
 
       const filteredMigrations = pendingMigrations.slice(rollBackUntilIndex);
       const migrator = new Migrator(sql);
+
+      if (transactional) {
+        await sql.rawQuery(BEGIN_TRANSACTION);
+      }
+
       await migrator.downMigrations(filteredMigrations);
-      await sql.rawQuery(COMMIT_TRANSACTION);
+
+      if (transactional) {
+        await sql.rawQuery(COMMIT_TRANSACTION);
+      }
+
       logger.info("Migrations rolled back successfully");
       shouldExit && process.exit(0);
       return;
     }
 
     const migrator = new Migrator(sql);
+    if (transactional) {
+      await sql.rawQuery(BEGIN_TRANSACTION);
+    }
+
     await migrator.downMigrations(pendingMigrations);
 
-    await sql.rawQuery(COMMIT_TRANSACTION);
+    if (transactional) {
+      await sql.rawQuery(COMMIT_TRANSACTION);
+    }
   } catch (error: any) {
-    await sql.rawQuery(ROLLBACK_TRANSACTION);
+    if (transactional) {
+      await sql.rawQuery(ROLLBACK_TRANSACTION);
+    }
+
     logger.error(error);
     process.exit(1);
   } finally {

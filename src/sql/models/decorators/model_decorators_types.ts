@@ -85,6 +85,7 @@ export type LazyRelationType = {
     throughModel: string | (() => string);
     leftForeignKey: string | (() => string);
     rightForeignKey: string | (() => string);
+    wasModelProvided: boolean;
   };
 };
 

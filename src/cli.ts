@@ -250,6 +250,11 @@ program
     "Path to the migrations",
     undefined,
   )
+  .option(
+    "-t, --transactional",
+    "Runs all the pending migrations in a single transaction, this does not apply to mysql since it does not support transactions inside schema changes",
+    true,
+  )
   .description(
     "Run pending migrations, if runUntil is provided, it will run all migrations until the provided migration name",
   )
@@ -260,6 +265,7 @@ program
         migrationPath: string;
         tsconfigPath: string;
         datasource?: string;
+        transactional: boolean;
       },
     ) => {
       if (!option?.datasource) {
@@ -277,6 +283,7 @@ program
           true,
           option?.migrationPath,
           option?.tsconfigPath,
+          option?.transactional,
         );
         process.exit(0);
       } catch (error) {
@@ -303,6 +310,11 @@ program
     "Path to the migrations",
     undefined,
   )
+  .option(
+    "-t, --transactional",
+    "Runs all the pending migrations in a single transaction, this does not apply to mysql since it does not support transactions inside schema changes",
+    true,
+  )
   .description(
     "Rollbacks every migration that has been run, if rollbackUntil is provided, it will rollback all migrations until the provided migration name",
   )
@@ -313,6 +325,7 @@ program
         migrationPath: string;
         tsconfigPath: string;
         datasource?: string;
+        transactional: boolean;
       },
     ) => {
       if (!option?.datasource) {
@@ -330,6 +343,7 @@ program
           true,
           option?.migrationPath,
           option?.tsconfigPath,
+          option?.transactional,
         );
         process.exit(0);
       } catch (error) {
@@ -356,6 +370,11 @@ program
     "Path to SqlDataSource (default export)",
     undefined,
   )
+  .option(
+    "-t, --transactional",
+    "Runs all the pending migrations in a single transaction, this does not apply to mysql since it does not support transactions inside schema changes",
+    true,
+  )
   .option("-m, --migration-path [path]", "Path to the migrations", undefined)
   .description(
     "Rollbacks every migration that has been run and then run the migrations",
@@ -366,6 +385,7 @@ program
       migrationPath: string;
       tsconfigPath: string;
       datasource?: string;
+      transactional: boolean;
     }) => {
       const force = option?.force || false;
       if (!option?.datasource) {
@@ -378,13 +398,14 @@ program
 
       try {
         force
-          ? await dropAllTablesConnector(sqlDs, false)
+          ? await dropAllTablesConnector(sqlDs, false, option?.transactional)
           : await rollbackMigrationsConnector(
               sqlDs,
               undefined,
               false,
               option?.migrationPath,
               option?.tsconfigPath,
+              option?.transactional,
             );
 
         await runMigrationsConnector(
@@ -393,6 +414,7 @@ program
           true,
           option?.migrationPath,
           option?.tsconfigPath,
+          option?.transactional,
         );
         process.exit(0);
       } catch (error) {

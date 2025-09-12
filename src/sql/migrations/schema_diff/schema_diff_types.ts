@@ -51,14 +51,14 @@ type UniqueToDrop = {
   name: string;
 };
 
-type RelationsToAdd = {
+export type RelationsToAdd = {
   table: string;
   relation: LazyRelationType;
   onDelete?: OnUpdateOrDelete;
   onUpdate?: OnUpdateOrDelete;
 };
 
-type RelationsToDrop = {
+export type RelationsToDrop = {
   table: string;
   relation: TableForeignKeyInfo;
 };

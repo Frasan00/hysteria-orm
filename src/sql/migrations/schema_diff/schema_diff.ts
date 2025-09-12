@@ -20,6 +20,7 @@ import { MigrationOperationGenerator } from "./migration_operation_generator";
 import {
   ExecutionPhase,
   GenerateTableDiffReturnType,
+  RelationsToAdd,
 } from "./schema_diff_types";
 import { normalizeColumnType } from "./type_normalizer";
 
@@ -56,7 +57,10 @@ export class SchemaDiff {
       diff.models.map(async (model) => {
         const databaseData = await diff.sql.getTableSchema(model.table);
         const modelData = {
-          columns: model.getColumns(),
+          // Ignore columns that don't declare a type
+          columns: model
+            .getColumns()
+            .filter((c) => c?.type !== undefined && c?.type !== null),
           indexes: model.getIndexes(),
           relations: model.getRelations(),
         };
@@ -91,46 +95,7 @@ export class SchemaDiff {
           }
 
           for (const relation of modelData.relations) {
-            if (
-              relation.type !== RelationEnum.belongsTo &&
-              relation.type !== RelationEnum.manyToMany
-            ) {
-              continue;
-            }
-
-            if (
-              relation.type === RelationEnum.manyToMany &&
-              relation.manyToManyOptions
-            ) {
-              const throughTable = getColumnValue(
-                relation.manyToManyOptions.throughModel,
-              );
-
-              // Only add the left side (this model)
-              diff.data.relationsToAdd.push({
-                table: throughTable,
-                relation: {
-                  type: RelationEnum.belongsTo,
-                  model: () => model,
-                  columnName: getColumnValue(
-                    relation.manyToManyOptions.leftForeignKey,
-                  ),
-                  foreignKey: relation.manyToManyOptions.leftForeignKey,
-                  constraintName: relation.constraintName
-                    ? getColumnValue(relation.constraintName)
-                    : getDefaultFkConstraintName(
-                        throughTable,
-                        getColumnValue(
-                          relation.manyToManyOptions.leftForeignKey,
-                        ),
-                        model.table,
-                      ),
-                  onDelete: relation.onDelete,
-                  onUpdate: relation.onUpdate,
-                },
-                onDelete: relation.onDelete,
-                onUpdate: relation.onUpdate,
-              });
+            if (relation.type !== RelationEnum.belongsTo) {
               continue;
             }
 
@@ -157,11 +122,12 @@ export class SchemaDiff {
 
         // Columns to add
         for (const column of modelData.columns) {
-          if (
-            !databaseData.columns
-              .map((dbColumn) => dbColumn.name)
-              .includes(column.databaseName)
-          ) {
+          const existsInDb = databaseData.columns.some(
+            (dbColumn) =>
+              dbColumn.name === column.databaseName ||
+              dbColumn.name === column.columnName,
+          );
+          if (!existsInDb) {
             diff.data.columnsToAdd.push({
               table: model.table,
               column: column,
@@ -171,11 +137,12 @@ export class SchemaDiff {
 
         // Columns to drop
         for (const column of databaseData.columns) {
-          if (
-            !modelData.columns
-              .map((modelColumn) => modelColumn.databaseName)
-              .includes(column.name)
-          ) {
+          const existsInModel = modelData.columns.some(
+            (modelColumn) =>
+              modelColumn.databaseName === column.name ||
+              modelColumn.columnName === column.name,
+          );
+          if (!existsInModel) {
             diff.data.columnsToDrop.push({
               table: model.table,
               column: column.name,
@@ -250,7 +217,9 @@ export class SchemaDiff {
         // Columns to modify
         for (const column of modelData.columns) {
           const dbColumn = databaseData.columns.find(
-            (dbCol) => dbCol.name === column.databaseName,
+            (dbCol) =>
+              dbCol.name === column.databaseName ||
+              dbCol.name === column.columnName,
           );
 
           if (!dbColumn) {
@@ -323,8 +292,16 @@ export class SchemaDiff {
             continue;
           }
 
+          const expectedName = getColumnValue(relation.constraintName);
+          if (
+            expectedName &&
+            databaseData.foreignKeys.some((fk) => fk.name === expectedName)
+          ) {
+            continue;
+          }
+
           const dbRelation = databaseData.foreignKeys.find((fk) =>
-            diff.areRelationsEqual(fk, relation),
+            diff.relationMatchesDbRelation(model, relation, fk),
           );
 
           if (!dbRelation) {
@@ -338,13 +315,44 @@ export class SchemaDiff {
         }
 
         // Relations to drop
+        const modelExpectedFkNames = new Set(
+          modelData.relations
+            .filter((rel) => rel.type === RelationEnum.belongsTo)
+            .map((rel) => {
+              const srcCol = getColumnValue(rel.foreignKey) || rel.columnName;
+              const mc = model
+                .getColumns()
+                .find((c) => c.columnName === srcCol);
+              const srcDb = mc?.databaseName || srcCol;
+              return (
+                getColumnValue(rel.constraintName) ||
+                getDefaultFkConstraintName(
+                  model.table,
+                  srcDb,
+                  rel.model().table,
+                )
+              );
+            }),
+        );
+
         for (const dbRelation of databaseData.foreignKeys) {
-          const modelRelation = modelData.relations.find(
-            (rel) =>
-              (rel.type === RelationEnum.belongsTo ||
-                rel.type === RelationEnum.manyToMany) &&
-              diff.areRelationsEqual(dbRelation, rel),
-          );
+          if (dbRelation.name && modelExpectedFkNames.has(dbRelation.name)) {
+            continue;
+          }
+
+          const modelRelation = modelData.relations.find((rel) => {
+            if (
+              rel.type !== RelationEnum.belongsTo &&
+              rel.type !== RelationEnum.manyToMany
+            ) {
+              return false;
+            }
+            return diff.relationMatchesDbRelation(
+              model,
+              rel as any,
+              dbRelation,
+            );
+          });
 
           if (!modelRelation) {
             diff.data.relationsToDrop.push({
@@ -364,7 +372,7 @@ export class SchemaDiff {
           }
 
           const dbRelation = databaseData.foreignKeys.find((fk) =>
-            diff.areRelationsEqual(fk, modelRelation),
+            diff.relationMatchesDbRelation(model, modelRelation, fk),
           );
 
           if (
@@ -421,6 +429,10 @@ export class SchemaDiff {
         }
       }),
     );
+
+    await diff.processManyToMany();
+
+    await diff.removeFkChurnByName();
 
     return diff;
   }
@@ -577,6 +589,74 @@ export class SchemaDiff {
     }
 
     return baseCondition;
+  }
+
+  private relationMatchesDbRelation(
+    model: typeof Model,
+    modelRelation: LazyRelationType,
+    dbRelation: TableForeignKeyInfo,
+  ): boolean {
+    let relatedModel: typeof Model | undefined;
+    const mr: any = modelRelation as any;
+    if (mr && mr.model) {
+      if (typeof mr.model === "function" && mr.model.table) {
+        relatedModel = mr.model as typeof Model;
+      } else if (typeof mr.model === "function") {
+        try {
+          const v = mr.model();
+          if (v && v.table) {
+            relatedModel = v as typeof Model;
+          }
+        } catch (_) {}
+      }
+    }
+
+    if (!relatedModel) {
+      return false;
+    }
+    const expectedReferencedTable =
+      modelRelation.type === RelationEnum.belongsTo
+        ? relatedModel.table
+        : modelRelation.type === RelationEnum.manyToMany &&
+            modelRelation.manyToManyOptions
+          ? getColumnValue(modelRelation.manyToManyOptions.throughModel)
+          : undefined;
+
+    if (
+      expectedReferencedTable &&
+      dbRelation.referencedTable !== expectedReferencedTable
+    ) {
+      return false;
+    }
+
+    const fkName = getColumnValue(modelRelation.constraintName);
+    if (fkName && dbRelation.name && fkName !== dbRelation.name) {
+      return false;
+    }
+
+    const modelColumns = model.getColumns();
+    const relationType = (mr.type as RelationEnum) || RelationEnum.belongsTo;
+    let localColumn =
+      relationType === RelationEnum.belongsTo
+        ? getColumnValue(mr.foreignKey)
+        : mr.columnName;
+    const mc = modelColumns.find((c) => c.columnName === localColumn);
+    if (mc) {
+      localColumn = mc.databaseName;
+    }
+
+    const referencedPkName = relatedModel.primaryKey || "id";
+    const relatedPk = relatedModel
+      .getColumns()
+      .find((c) => c.columnName === referencedPkName);
+    const referencedColumn = relatedPk?.databaseName || referencedPkName;
+
+    return (
+      dbRelation.columns.length === 1 &&
+      dbRelation.columns[0] === localColumn &&
+      dbRelation.referencedColumns.length === 1 &&
+      dbRelation.referencedColumns[0] === referencedColumn
+    );
   }
 
   private arePrimaryKeysEqual(
@@ -755,5 +835,437 @@ export class SchemaDiff {
       return v.toLowerCase();
     }
     return v;
+  }
+
+  private async processManyToMany(): Promise<void> {
+    const processed = new Set<string>();
+    for (const model of this.models) {
+      const relations = model.getRelations();
+      for (const relation of relations) {
+        if (
+          relation.type !== RelationEnum.manyToMany ||
+          !relation.manyToManyOptions
+        ) {
+          continue;
+        }
+        if (relation.manyToManyOptions.wasModelProvided) {
+          continue;
+        }
+
+        const throughTable = getColumnValue(
+          relation.manyToManyOptions.throughModel,
+        );
+        if (processed.has(throughTable)) {
+          continue;
+        }
+        processed.add(throughTable);
+
+        const leftModel = this.models.find(
+          (m) => m.table === relation?.manyToManyOptions?.primaryModel,
+        );
+        const rightModel = relation.model();
+        if (!leftModel || !rightModel) {
+          continue;
+        }
+
+        const leftPkName = leftModel.primaryKey || "id";
+        const rightPkName = rightModel.primaryKey || "id";
+        const leftPk = leftModel
+          .getColumns()
+          .find((c) => c.columnName === leftPkName);
+        const rightPk = rightModel
+          .getColumns()
+          .find((c) => c.columnName === rightPkName);
+        if (!leftPk || !rightPk) {
+          continue;
+        }
+
+        const leftFkName =
+          getColumnValue(relation.manyToManyOptions.leftForeignKey) ||
+          leftPkName;
+        const rightFkName =
+          getColumnValue(relation.manyToManyOptions.rightForeignKey) ||
+          rightPkName;
+
+        const dbThrough = await this.sql.getTableSchema(throughTable);
+        if (!dbThrough.columns.length) {
+          this.data.tablesToAdd.push({
+            table: throughTable,
+            columns: [
+              this.clonePkAsColumn(leftPk, leftFkName),
+              this.clonePkAsColumn(rightPk, rightFkName),
+            ],
+          });
+
+          this.pushM2mFkRelations({
+            throughTable,
+            leftModel,
+            rightModel,
+            leftFkName,
+            rightFkName,
+            onDelete: relation.onDelete,
+            onUpdate: relation.onUpdate,
+            constraintName: undefined,
+          });
+          continue;
+        }
+
+        const leftExpected = this.clonePkAsColumn(leftPk, leftFkName);
+        const rightExpected = this.clonePkAsColumn(rightPk, rightFkName);
+        const leftDbCol = dbThrough.columns.find((c) => c.name === leftFkName);
+        const rightDbCol = dbThrough.columns.find(
+          (c) => c.name === rightFkName,
+        );
+        const leftColOk = leftDbCol
+          ? this.areColumnsEqual(leftDbCol, leftExpected, dbThrough.indexes)
+          : false;
+        const rightColOk = rightDbCol
+          ? this.areColumnsEqual(rightDbCol, rightExpected, dbThrough.indexes)
+          : false;
+
+        // Drop old FK-bound columns that do not match the expected names
+        for (const fk of dbThrough.foreignKeys) {
+          const isLeft = fk.referencedTable === leftModel.table;
+          const isRight = fk.referencedTable === rightModel.table;
+          if (!isLeft && !isRight) {
+            continue;
+          }
+          const expectedName = isLeft ? leftFkName : rightFkName;
+          const actualName = fk.columns[0];
+          if (actualName && actualName !== expectedName) {
+            this.data.relationsToDrop.push({
+              table: throughTable,
+              relation: fk,
+            });
+            if (actualName !== leftFkName && actualName !== rightFkName) {
+              this.data.columnsToDrop.push({
+                table: throughTable,
+                column: actualName,
+              });
+            }
+          }
+        }
+
+        // Add missing columns (dedup when both sides are the same name)
+        const pendingAddColumns: Record<string, ColumnType> = {};
+        if (!leftColOk) {
+          pendingAddColumns[leftExpected.databaseName] = leftExpected;
+        }
+        if (!rightColOk) {
+          pendingAddColumns[rightExpected.databaseName] =
+            pendingAddColumns[rightExpected.databaseName] || rightExpected;
+        }
+        for (const name of Object.keys(pendingAddColumns)) {
+          this.data.columnsToAdd.push({
+            table: throughTable,
+            column: pendingAddColumns[name],
+          });
+        }
+
+        const leftExpectedRel = this.buildBelongsToRelation(
+          throughTable,
+          () => leftModel,
+          leftFkName,
+          leftPkName,
+          undefined,
+          relation.onDelete,
+          relation.onUpdate,
+        );
+        const rightExpectedRel = this.buildBelongsToRelation(
+          throughTable,
+          relation.model,
+          rightFkName,
+          rightPkName,
+          undefined,
+          relation.onDelete,
+          relation.onUpdate,
+        );
+
+        const leftDbFk = dbThrough.foreignKeys.find(
+          (fk) =>
+            fk.referencedTable === leftModel.table &&
+            fk.columns.length === 1 &&
+            fk.columns[0] === leftFkName,
+        );
+        const rightDbFk = dbThrough.foreignKeys.find(
+          (fk) =>
+            fk.referencedTable === rightModel.table &&
+            fk.columns.length === 1 &&
+            fk.columns[0] === rightFkName,
+        );
+        if (!leftDbFk) {
+          const conflictLeft = dbThrough.foreignKeys.find(
+            (fk) => fk.referencedTable === leftModel.table,
+          );
+          if (conflictLeft) {
+            this.data.relationsToDrop.push({
+              table: throughTable,
+              relation: conflictLeft,
+            });
+          }
+          this.data.relationsToAdd.push(leftExpectedRel as RelationsToAdd);
+        }
+        if (!rightDbFk) {
+          const conflictRight = dbThrough.foreignKeys.find(
+            (fk) => fk.referencedTable === rightModel.table,
+          );
+          if (conflictRight) {
+            this.data.relationsToDrop.push({
+              table: throughTable,
+              relation: conflictRight,
+            });
+          }
+          this.data.relationsToAdd.push(rightExpectedRel as RelationsToAdd);
+        }
+      }
+    }
+  }
+
+  private async removeFkChurnByName(): Promise<void> {
+    const tablesNeedingCheck = new Set<string>();
+    for (const rel of this.data.relationsToAdd) {
+      tablesNeedingCheck.add(rel.table);
+    }
+    for (const rel of this.data.relationsToDrop) {
+      tablesNeedingCheck.add(rel.table);
+    }
+
+    const tableToDbFks = new Map<string, Set<string>>();
+    for (const table of tablesNeedingCheck) {
+      const schema = await this.sql.getTableSchema(table);
+      const names = new Set(
+        (schema.foreignKeys || [])
+          .map((fk) => fk.name)
+          .filter(Boolean) as string[],
+      );
+      tableToDbFks.set(table, names);
+    }
+
+    const modelExpectedByTable = new Map<string, Set<string>>();
+    for (const model of this.models) {
+      const rels = model.getRelations();
+      const expected = new Set<string>();
+      for (const rel of rels) {
+        if (rel.type !== RelationEnum.belongsTo) {
+          continue;
+        }
+        const srcColRaw = (rel as any).foreignKey || rel.columnName;
+        const mc = model.getColumns().find((c) => c.columnName === srcColRaw);
+        const srcDb = mc?.databaseName || srcColRaw;
+        const name =
+          getColumnValue((rel as any).constraintName) ||
+          getDefaultFkConstraintName(model.table, srcDb, rel.model().table);
+        expected.add(name);
+      }
+      modelExpectedByTable.set(model.table, expected);
+    }
+
+    this.data.relationsToAdd = await Promise.all(
+      this.data.relationsToAdd.map(async (r) => {
+        const dbSchema = await this.sql.getTableSchema(r.table);
+        const model = this.models.find((m) => m.table === r.table);
+        const modelCols = model?.getColumns() || [];
+
+        let sourceCol = (r.relation as any).columnName;
+        if (r.relation.type === RelationEnum.belongsTo) {
+          const fkModelCol = modelCols.find(
+            (c) => c.columnName === (r.relation as any).foreignKey,
+          );
+          sourceCol =
+            fkModelCol?.databaseName || (r.relation as any).foreignKey;
+        } else {
+          const mc = modelCols.find((c) => c.columnName === sourceCol);
+          sourceCol = mc?.databaseName || sourceCol;
+        }
+
+        let referencedTable = r.table;
+        let referencedCol = (r.relation as any).foreignKey;
+        if (r.relation.type === RelationEnum.belongsTo) {
+          const relModel = r.relation.model();
+          referencedTable = relModel.table;
+          const pkName = relModel.primaryKey || "id";
+          const pkCol = relModel
+            .getColumns()
+            .find((c) => c.columnName === pkName);
+          referencedCol = pkCol?.databaseName || pkName;
+        }
+
+        const candidateCols = new Set<string>(
+          [sourceCol, (r.relation as any).columnName].filter(
+            Boolean,
+          ) as string[],
+        );
+        const existsStructurally = dbSchema.foreignKeys.some((fk) => {
+          if (fk.columns.length !== 1 || fk.referencedColumns.length !== 1) {
+            return false;
+          }
+          const colMatch = candidateCols.has(fk.columns[0]);
+          const refTableMatch = fk.referencedTable === referencedTable;
+          const refColMatch = fk.referencedColumns[0] === referencedCol;
+          return colMatch && refTableMatch && refColMatch;
+        });
+
+        const expectedName =
+          getColumnValue((r.relation as any).constraintName) ||
+          getDefaultFkConstraintName(r.table, sourceCol, referencedTable);
+        const dbFks = tableToDbFks.get(r.table) || new Set<string>();
+
+        if (existsStructurally || (expectedName && dbFks.has(expectedName))) {
+          return null;
+        }
+
+        if (
+          r.relation.type === RelationEnum.manyToMany &&
+          r.relation.manyToManyOptions
+        ) {
+          const through = getColumnValue(
+            r.relation.manyToManyOptions.throughModel,
+          );
+          const leftKey = getColumnValue(
+            r.relation.manyToManyOptions.leftForeignKey,
+          );
+          const rightKey = getColumnValue(
+            r.relation.manyToManyOptions.rightForeignKey,
+          );
+          const leftMatch =
+            r.table === through &&
+            r.relation.columnName === leftKey &&
+            r.relation.model().table === model?.table;
+          const rightMatch =
+            r.table === through &&
+            r.relation.columnName === rightKey &&
+            r.relation.model().table !== model?.table;
+
+          const dbThrough = await this.sql.getTableSchema(through);
+          const leftOk = dbThrough.foreignKeys.some(
+            (fk) =>
+              fk.columns.length === 1 &&
+              fk.columns[0] === leftKey &&
+              fk.referencedTable === (model?.table || ""),
+          );
+          const rightOk = dbThrough.foreignKeys.some(
+            (fk) =>
+              fk.columns.length === 1 &&
+              fk.columns[0] === rightKey &&
+              fk.referencedTable === r.relation.model().table,
+          );
+          if ((leftMatch && leftOk) || (rightMatch && rightOk)) {
+            return null;
+          }
+        }
+
+        return r;
+      }),
+    ).then((arr) => arr.filter(Boolean) as typeof this.data.relationsToAdd);
+
+    this.data.relationsToDrop = await Promise.all(
+      this.data.relationsToDrop.map(async (r) => {
+        const model = this.models.find((m) => m.table === r.table);
+        if (!model) {
+          return r;
+        }
+        const rels = model.getRelations();
+        const modelCols = model.getColumns();
+        const matches = rels.some((rel: any) => {
+          if (rel.type !== RelationEnum.belongsTo) {
+            return false;
+          }
+          const mc = modelCols.find((c) => c.columnName === rel.foreignKey);
+          const srcCol = mc?.databaseName || rel.foreignKey;
+          const relModel = rel.model();
+          const pkName = relModel.primaryKey || "id";
+          const pkCol = relModel
+            .getColumns()
+            .find((c: any) => c.columnName === pkName);
+          const refCol = pkCol?.databaseName || pkName;
+          return (
+            r.relation.columns.length === 1 &&
+            r.relation.columns[0] === srcCol &&
+            r.relation.referencedTable === relModel.table &&
+            r.relation.referencedColumns.length === 1 &&
+            r.relation.referencedColumns[0] === refCol
+          );
+        });
+        return matches ? null : r;
+      }),
+    ).then((arr) => arr.filter(Boolean) as typeof this.data.relationsToDrop);
+  }
+
+  private clonePkAsColumn(pk: ColumnType, columnName: string): ColumnType {
+    return {
+      columnName,
+      databaseName: columnName,
+      isPrimary: false,
+      type: pk.type,
+      length: pk.length,
+      precision: pk.precision,
+      scale: pk.scale,
+      withTimezone: pk.withTimezone,
+      constraints: { nullable: false },
+    } as ColumnType;
+  }
+
+  private pushM2mFkRelations(input: {
+    throughTable: string;
+    leftModel: typeof Model;
+    rightModel: typeof Model;
+    leftFkName: string;
+    rightFkName: string;
+    onDelete?: string;
+    onUpdate?: string;
+    constraintName?: string | (() => string);
+  }): void {
+    const leftRelation = this.buildBelongsToRelation(
+      input.throughTable,
+      () => input.leftModel,
+      input.leftFkName,
+      input.leftModel.primaryKey || "id",
+      input.constraintName,
+      input.onDelete,
+      input.onUpdate,
+    );
+    const rightRelation = this.buildBelongsToRelation(
+      input.throughTable,
+      () => input.rightModel,
+      input.rightFkName,
+      input.rightModel.primaryKey || "id",
+      input.constraintName,
+      input.onDelete,
+      input.onUpdate,
+    );
+    this.data.relationsToAdd.push(leftRelation as RelationsToAdd);
+    this.data.relationsToAdd.push(rightRelation as RelationsToAdd);
+  }
+
+  private buildBelongsToRelation(
+    table: string,
+    relatedModel: () => typeof Model,
+    sourceColumnName: string,
+    relatedPkName: string,
+    constraintName?: string | (() => string),
+    onDelete?: string,
+    onUpdate?: string,
+  ) {
+    const constraint = constraintName
+      ? getColumnValue(constraintName)
+      : getDefaultFkConstraintName(
+          table,
+          sourceColumnName,
+          relatedModel().table,
+        );
+    return {
+      table,
+      relation: {
+        type: RelationEnum.belongsTo,
+        model: relatedModel,
+        columnName: sourceColumnName,
+        foreignKey: sourceColumnName,
+        constraintName: constraint,
+        onDelete: onDelete,
+        onUpdate: onUpdate,
+      },
+      onDelete,
+      onUpdate,
+    } as const;
   }
 }

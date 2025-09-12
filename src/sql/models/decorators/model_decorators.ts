@@ -509,21 +509,28 @@ export function getModelColumns(target: typeof Model): ColumnType[] {
  * @description Establishes a belongs to relation with the given model
  * @default foreignKey by default will be the singular of the model that establishes the relation name plus "_id"
  * @example Post that has a user will have foreignKey "user_id" on the  model
+ * ```typescript
+ * belongsTo<typeof Post>(() => User, 'userId')
+ * ```
  */
-export function belongsTo<R extends typeof Model>(
+export function belongsTo<
+  M extends typeof Model = any,
+  R extends typeof Model = any,
+>(
   model: () => R,
-  foreignKey?: string,
+  foreignKey?: ModelKey<InstanceType<M>>,
   options?: BaseModelRelationType,
 ): PropertyDecorator {
   return (target: Object, propertyKey: string | symbol) => {
-    const fallbackForeignKey = () => getDefaultForeignKey(model().table);
+    const fallbackForeignKey = () =>
+      getDefaultForeignKey(model().table as string);
     const fallbackConstraintName = () => {
       const targetTable = (target.constructor as typeof Model).table;
       const fkColumn = foreignKey || fallbackForeignKey();
       return getDefaultFkConstraintName(
         targetTable,
-        fkColumn,
-        propertyKey as string,
+        fkColumn as string,
+        model().table,
       );
     };
 
@@ -551,7 +558,6 @@ export function belongsTo<R extends typeof Model>(
 export function hasOne<T extends typeof Model>(
   model: () => T,
   foreignKey?: ModelKey<InstanceType<T>>,
-  options?: Omit<BaseModelRelationType, "constraintName">,
 ): PropertyDecorator {
   return (target: Object, propertyKey: string | symbol) => {
     const fallbackForeignKey = () =>
@@ -563,8 +569,6 @@ export function hasOne<T extends typeof Model>(
       model,
       constraintName: "None",
       foreignKey: foreignKey ? String(foreignKey) : fallbackForeignKey,
-      onDelete: options?.onDelete,
-      onUpdate: options?.onUpdate,
     };
 
     const relations = Reflect.getMetadata(RELATION_METADATA_KEY, target) || [];
@@ -581,7 +585,6 @@ export function hasOne<T extends typeof Model>(
 export function hasMany<T extends typeof Model>(
   model: () => T,
   foreignKey?: ModelKey<InstanceType<T>>,
-  options?: Omit<BaseModelRelationType, "constraintName">,
 ): PropertyDecorator {
   return (target: Object, propertyKey: string | symbol) => {
     const fallbackForeignKey = () =>
@@ -593,8 +596,6 @@ export function hasMany<T extends typeof Model>(
       model,
       constraintName: "None",
       foreignKey: foreignKey ? String(foreignKey) : fallbackForeignKey,
-      onDelete: options?.onDelete,
-      onUpdate: options?.onUpdate,
     };
 
     const relations = Reflect.getMetadata(RELATION_METADATA_KEY, target) || [];
@@ -625,6 +626,7 @@ export function manyToMany<
 ): PropertyDecorator {
   return (target: Object, propertyKey: string | symbol) => {
     const { leftForeignKey, rightForeignKey } = throughModelKeys ?? {};
+    const wasModelProvided = typeof throughModel !== "string";
     const throughModelTable =
       typeof throughModel === "string"
         ? throughModel
@@ -658,6 +660,7 @@ export function manyToMany<
         rightForeignKey: rightForeignKey
           ? String(rightForeignKey)
           : fallbackRightForeignKey,
+        wasModelProvided,
       },
     };
 

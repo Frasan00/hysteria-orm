@@ -54,7 +54,37 @@ export class MigrationOperationGenerator {
     // Handle column modifications (mixed operations)
     operations.push(...this.generateColumnModificationOperations(changes));
 
-    return operations;
+    const fkKey = (op: MigrationOperation) =>
+      op.table && op.constraint ? `${op.table}::${op.constraint}` : undefined;
+    const addSet = new Set(
+      operations
+        .filter((o) => o.type === OperationType.ADD_FOREIGN_KEY)
+        .map((o) => fkKey(o))
+        .filter(Boolean) as string[],
+    );
+    const dropSet = new Set(
+      operations
+        .filter((o) => o.type === OperationType.DROP_FOREIGN_KEY)
+        .map((o) => fkKey(o))
+        .filter(Boolean) as string[],
+    );
+    const churn = new Set<string>([...addSet].filter((k) => dropSet.has(k)));
+    const filtered = operations.filter((o) => {
+      const key = fkKey(o);
+      if (!key) {
+        return true;
+      }
+      if (
+        churn.has(key) &&
+        (o.type === OperationType.ADD_FOREIGN_KEY ||
+          o.type === OperationType.DROP_FOREIGN_KEY)
+      ) {
+        return false;
+      }
+      return true;
+    });
+
+    return filtered;
   }
 
   /**
@@ -211,14 +241,18 @@ export class MigrationOperationGenerator {
 
     // 3. Add FOREIGN KEY constraints
     for (const relation of changes.relationsToAdd) {
+      if (relation.relation.type === RelationEnum.manyToMany) {
+        continue;
+      }
+
       const addForeignKeySql = this.generateAddRelationViaAlter(relation);
-      const constraintName = getColumnValue(relation.relation.constraintName);
+      const effectiveConstraintName = this.computeFkConstraintName(relation);
 
       operations.push({
         type: OperationType.ADD_FOREIGN_KEY,
         phase: ExecutionPhase.CONSTRAINT_CREATION,
         table: relation.table,
-        constraint: constraintName,
+        constraint: effectiveConstraintName,
         data: relation,
         dependencies: this.getForeignKeyDependencies(relation) as any,
         sqlStatements: addForeignKeySql,
@@ -227,9 +261,14 @@ export class MigrationOperationGenerator {
 
     // 4. Add UNIQUE constraints (after drops)
     for (const uq of changes.uniquesToAdd || []) {
+      const model = this.models.find((m) => m.table === uq.table);
+      const columns = (uq.columns || []).map((col) => {
+        const mc = model?.getColumns().find((c) => c.columnName === col);
+        return mc?.databaseName || col;
+      });
       const addUqSql = this.sql.alterTable(uq.table, (t) => {
         t.addConstraint("unique", {
-          columns: uq.columns,
+          columns,
           constraintName: uq.name || "mandatory",
         });
       });
@@ -259,6 +298,52 @@ export class MigrationOperationGenerator {
     }
 
     return operations;
+  }
+
+  private computeFkConstraintName(relationData: {
+    table: string;
+    relation: LazyRelationType;
+  }): string | undefined {
+    // If explicitly provided, use it
+    const explicit = getColumnValue(relationData.relation.constraintName);
+    if (explicit) {
+      return explicit;
+    }
+
+    // Determine referenced table
+    let referencesTable = relationData.table;
+    if (relationData.relation.type === RelationEnum.belongsTo) {
+      referencesTable = relationData.relation.model().table;
+    } else if (
+      relationData.relation.type === RelationEnum.manyToMany &&
+      relationData.relation.manyToManyOptions
+    ) {
+      referencesTable = getColumnValue(
+        relationData.relation.manyToManyOptions.throughModel,
+      );
+    }
+
+    // Determine source column database name
+    const model = this.models.find((m) => m.table === relationData.table);
+    const modelColumns = model?.getColumns() || [];
+    let sourceColumnName = relationData.relation.columnName;
+    if (relationData.relation.type === RelationEnum.belongsTo) {
+      const fkModelCol = modelColumns.find(
+        (c) => c.columnName === relationData.relation.foreignKey,
+      );
+      sourceColumnName =
+        fkModelCol?.databaseName ||
+        (relationData.relation.foreignKey as string);
+    } else {
+      const mc = modelColumns.find((c) => c.columnName === sourceColumnName);
+      sourceColumnName = mc?.databaseName || sourceColumnName;
+    }
+
+    return getDefaultFkConstraintName(
+      relationData.table,
+      sourceColumnName,
+      referencesTable,
+    );
   }
 
   /**
@@ -335,7 +420,11 @@ export class MigrationOperationGenerator {
     if (model) {
       const sourceColumn = model
         .getColumns()
-        .find((c: ColumnType) => c.columnName === relation.relation.columnName);
+        .find(
+          (c: ColumnType) =>
+            c.columnName === relation.relation.columnName ||
+            c.databaseName === relation.relation.columnName,
+        );
       if (sourceColumn) {
         dependencies.push(
           `column.${relation.table}.${sourceColumn.databaseName}`,
@@ -498,7 +587,10 @@ export class MigrationOperationGenerator {
     const indexDef = model
       ?.getIndexes()
       .find((idx) => idx.name === indexData.index);
-    const cols = indexDef?.columns || [];
+    const cols = (indexDef?.columns || []).map((col) => {
+      const mc = model?.getColumns().find((c) => c.columnName === col);
+      return mc?.databaseName || col;
+    });
 
     const schema = new Schema(this.sql.getDbType());
     schema.createIndex(indexData.table, cols, {
@@ -538,7 +630,10 @@ export class MigrationOperationGenerator {
       }
     }
 
-    let constraintName = getColumnValue(relationData.relation.constraintName);
+    const constraintName =
+      typeof relationData.relation.constraintName === "string"
+        ? (relationData.relation.constraintName as string)
+        : undefined;
     let foreignKeyColumn = getColumnValue(referencesColumn);
 
     if (relationData.relation.type === RelationEnum.belongsTo) {
@@ -672,7 +767,7 @@ export class MigrationOperationGenerator {
         getDefaultFkConstraintName(
           relationData.table,
           sourceColumnName,
-          foreignKeyColumn,
+          referencesTable,
         );
 
       t.addConstraint("foreign_key", {
