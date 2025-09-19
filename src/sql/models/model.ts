@@ -677,7 +677,7 @@ export abstract class Model extends Entity {
     modelSqlInstance[column as keyof T] = value as T[keyof T];
     const modelManager = typeofModel.dispatchModelManager<T>({
       trx: options?.trx,
-      useConnection: options?.useConnection,
+      connection: options?.connection,
     });
     await modelManager.updateRecord(modelSqlInstance);
 
@@ -880,8 +880,8 @@ export abstract class Model extends Entity {
     this: typeof Model,
     options?: BaseModelMethodOptions,
   ): ModelManager<T> {
-    if (options?.useConnection) {
-      return options.useConnection.getModelManager<T>(
+    if (options?.connection) {
+      return options.connection.getModelManager<T>(
         this as unknown as typeof Model,
       );
     }

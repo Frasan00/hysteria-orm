@@ -58,13 +58,13 @@ describe(`[${env.DB_TYPE}] Query Builder with embedded models`, () => {
         name: "John",
       },
       {
-        useConnection: anotherSql,
+        connection: anotherSql,
       },
     );
 
     const user = await anotherSql.userWithoutPk
       .query({
-        useConnection: anotherSql,
+        connection: anotherSql,
       })
       .first();
     expect(user).toBeDefined();
@@ -94,13 +94,13 @@ describe(`[${env.DB_TYPE}] Query Builder with embedded models`, () => {
             name: "John",
           },
           {
-            useConnection: sql,
+            connection: sql,
           },
         );
 
         const user = await sql.userWithoutPk
           .query({
-            useConnection: sql,
+            connection: sql,
           })
           .first();
         expect(user).toBeDefined();

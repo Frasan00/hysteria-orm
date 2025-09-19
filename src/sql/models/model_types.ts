@@ -14,7 +14,31 @@ export type NumberModelKey<T extends Model> = {
 }[keyof T];
 
 export type BaseModelMethodOptions = {
-  useConnection?: SqlDataSource | AugmentedSqlDataSource;
+  /**
+   * @description The connection to use for the model, by default the main connection will be used
+   * @description The main connection is the one created by the `sql.connect` method
+   * @example
+   * ```ts
+   * import { sql } from "hysteria-orm";
+   * const customConnection = await sql.connectToSecondarySource({
+   *   type: "postgres",
+   *   host: "localhost",
+   *   username: "root",
+   *   password: "root",
+   *   database: "test",
+   *   port: 5432,
+   * });
+   *
+   * const user = await User.query({ connection: customConnection }).first();
+   * ```
+   */
+  connection?: SqlDataSource | AugmentedSqlDataSource;
+  /**
+   * @description The transaction instance to use for the model
+   */
   trx?: Transaction;
+  /**
+   * @description Whether to ignore the hooks for the model
+   */
   ignoreHooks?: boolean;
 };

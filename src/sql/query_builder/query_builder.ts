@@ -42,6 +42,7 @@ import {
   PluckReturnType,
   StreamOptions,
 } from "./query_builder_types";
+import logger from "../../utils/logger";
 
 export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   model: typeof Model;
@@ -53,7 +54,9 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   protected mustRemoveAnnotations: boolean = false;
   protected interpreterUtils: InterpreterUtils;
 
-  /* Performance methods that return the time that took to execute the query with the result */
+  /**
+   * @description Performance methods that return the time that took to execute the query with the result
+   */
   performance = {
     many: this.manyWithPerformance.bind(this),
     one: this.oneWithPerformance.bind(this),
@@ -500,9 +503,8 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    */
   async paginate(page: number, perPage: number): Promise<PaginatedData<T>> {
     if (typeof page !== "number" || typeof perPage !== "number") {
-      throw new HysteriaError(
-        "QueryBuilder::paginate",
-        "INVALID_PAGINATION_PARAMETERS",
+      logger.warn(
+        `${this.model.name}::paginate Non numeric values provided to \`paginate\``,
       );
     }
 
@@ -522,6 +524,9 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     } as PaginatedData<T>;
   }
 
+  /**
+   * @description Overrides the from clause in the query.
+   */
   from(table: string, alias?: string): this;
   from(cb: (qb: QueryBuilder<T>) => void, alias: string): this;
   from(

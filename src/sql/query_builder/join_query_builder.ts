@@ -82,6 +82,39 @@ export abstract class JoinQueryBuilder<
   }
 
   /**
+   * @description Join a table with the current model, join clause is not necessary and will be added automatically
+   */
+  fullJoinRaw(query: string): this {
+    this.joinNodes.push(
+      new JoinNode(query, "", "", "full", { operator: "=" }, true),
+    );
+
+    return this;
+  }
+
+  /**
+   * @description Join a table with the current model, join clause is not necessary and will be added automatically
+   */
+  crossJoinRaw(query: string): this {
+    this.joinNodes.push(
+      new JoinNode(query, "", "", "cross", { operator: "=" }, true),
+    );
+
+    return this;
+  }
+
+  /**
+   * @description Join a table with the current model, join clause is not necessary and will be added automatically
+   */
+  naturalJoinRaw(query: string): this {
+    this.joinNodes.push(
+      new JoinNode(query, "", "", "natural", { operator: "=" }, true),
+    );
+
+    return this;
+  }
+
+  /**
    * @alias join
    * @param relationTable - The table to join
    * @param referencingColumn - The column to reference from the relation table, must be in the format of `table.column`

@@ -28,6 +28,7 @@ export default defineConfig([
     treeshake: true,
     splitting: false,
     outDir: "lib",
+    skipNodeModulesBundle: true,
     external,
   },
   {
@@ -41,6 +42,7 @@ export default defineConfig([
     splitting: false,
     outDir: "lib",
     external,
+    skipNodeModulesBundle: true,
     banner: {
       js: "#!/usr/bin/env node",
     },

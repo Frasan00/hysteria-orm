@@ -37,6 +37,9 @@ const sqlTests = [
   "./test/sql/without_pk/user_without_pk_json.test.ts",
   "./test/sql/without_pk/user_without_pk_crud.test.ts",
 
+  // join edge cases
+  "./test/sql/query_builder/join_edge_cases.test.ts",
+
   // bigint join test
   "./test/sql/bigint_pk/relations.test.ts",
   "./test/sql/bigint_pk/crud.test.ts",

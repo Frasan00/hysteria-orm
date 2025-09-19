@@ -115,8 +115,8 @@ export class ModelQueryBuilder<
     model: typeof Model,
     options: BaseModelMethodOptions = {},
   ): ModelQueryBuilder<InstanceType<typeof model>> {
-    if (options.useConnection) {
-      return new ModelQueryBuilder(model, options.useConnection);
+    if (options.connection) {
+      return new ModelQueryBuilder(model, options.connection);
     }
 
     if (options.trx) {

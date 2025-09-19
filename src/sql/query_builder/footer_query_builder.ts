@@ -1,3 +1,4 @@
+import logger from "../../utils/logger";
 import { GroupByNode } from "../ast/query/node/group_by/group_by";
 import { LimitNode } from "../ast/query/node/limit/limit";
 import { OffsetNode } from "../ast/query/node/offset/offset";
@@ -41,26 +42,41 @@ export abstract class FooterQueryBuilder<T extends Model> {
     );
   }
 
+  /**
+   * @description Clears the group by query
+   */
   clearGroupBy(): this {
     this.groupByNodes = [];
     return this;
   }
 
+  /**
+   * @description Clears the order by query
+   */
   clearOrderBy(): this {
     this.orderByNodes = [];
     return this;
   }
 
+  /**
+   * @description Clears the limit query
+   */
   clearLimit(): this {
     this.limitNode = null;
     return this;
   }
 
+  /**
+   * @description Clears the offset query
+   */
   clearOffset(): this {
     this.offsetNode = null;
     return this;
   }
 
+  /**
+   * @description Adds a group by query
+   */
   groupBy(...columns: ModelKey<T>[]): this;
   groupBy<S extends string>(...columns: SelectableColumn<S>[]): this;
   groupBy(...columns: (ModelKey<T> | SelectableColumn<string>)[]): this {
@@ -71,11 +87,17 @@ export abstract class FooterQueryBuilder<T extends Model> {
     return this;
   }
 
+  /**
+   * @description Adds a raw group by query, GROUP BY clause is not necessary and will be added automatically
+   */
   groupByRaw(query: string): this {
     this.groupByNodes.push(new GroupByNode(query, true));
     return this;
   }
 
+  /**
+   * @description Adds an order by query
+   */
   orderBy(column: ModelKey<T>, order: OrderByChoices): this;
   orderBy<S extends string>(
     column: SelectableColumn<S>,
@@ -89,17 +111,38 @@ export abstract class FooterQueryBuilder<T extends Model> {
     return this;
   }
 
+  /**
+   * @description Adds a raw order by query, ORDER BY clause is not necessary and will be added automatically
+   */
   orderByRaw(query: string): this {
     this.orderByNodes.push(new OrderByNode(query, "asc", true));
     return this;
   }
 
+  /**
+   * @description Adds a limit query
+   */
   limit(limit: number): this {
+    if (typeof limit !== "number") {
+      logger.warn(
+        `${this.model.name}::limit Non numeric value provided to \`limit\``,
+      );
+    }
+
     this.limitNode = new LimitNode(limit);
     return this;
   }
 
+  /**
+   * @description Adds an offset query
+   */
   offset(offset: number): this {
+    if (typeof offset !== "number") {
+      logger.warn(
+        `${this.model.name}::offset Non numeric value provided to \`offset\``,
+      );
+    }
+
     this.offsetNode = new OffsetNode(offset);
     return this;
   }

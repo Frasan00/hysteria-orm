@@ -137,7 +137,7 @@ export class SqlDataSource extends DataSource {
    *    ...connectionData
    * });
    *
-   * const user = await User.query({ useConnection: anotherSql }).many();
+   * const user = await User.query({ connection: anotherSql }).many();
    * ```
    */
   static async connectToSecondarySource<
@@ -206,7 +206,7 @@ export class SqlDataSource extends DataSource {
    * await Sql.useConnection({
    *    ...connectionData
    * }, (sql) => {
-   *    const user = await User.query({ useConnection: sql }).many();
+   *    const user = await User.query({ connection: sql }).many();
    * });
    * ```
    */
@@ -654,7 +654,8 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
-   * @description Returns a ModelManager instance for the given model, it's advised to use Model static methods instead
+   * @description Returns a ModelManager instance for the given model, it's advised to use Model static methods instead.
+   * @description This is intended to use only if you do not want to use active record pattern
    */
   getModelManager<T extends Model>(
     model: { new (): T } | typeof Model,
@@ -670,7 +671,8 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
-   * @description Returns the current raw driver connection, you can specify the type of connection you want to get to have better type safety
+   * @description Returns the current raw driver Pool, you can specify the type of connection you want to get to have better type safety
+   * @throws {HysteriaError} If the connection pool is not established
    * @example
    * const mysqlConnection = sql.getPool("mysql"); // mysql2 Pool
    * const pgConnection = sql.getPool("postgres"); // pg Pool
@@ -679,11 +681,19 @@ export class SqlDataSource extends DataSource {
   getPool<T extends SqlDataSourceType = typeof this.sqlType>(
     _specificType: T = this.sqlType as T,
   ): getPoolReturnType<T> {
+    if (!this.sqlPool) {
+      throw new HysteriaError(
+        "SqlDataSource::getPool",
+        "CONNECTION_NOT_ESTABLISHED",
+      );
+    }
+
     return this.sqlPool as getPoolReturnType<T>;
   }
 
   /**
    * @description Returns a connection from the pool, you can specify the type of connection you want to get to have better type safety
+   * @throws {HysteriaError} If the connection is not established
    * @example
    * const mysqlConnection = sql.getConnection("mysql"); // mysql2 PoolConnection
    * const pgConnection = sql.getConnection("postgres"); // pg PoolClient
@@ -692,6 +702,13 @@ export class SqlDataSource extends DataSource {
   async getConnection<T extends SqlDataSourceType = typeof this.sqlType>(
     _specificType: T = this.sqlType as T,
   ): Promise<GetConnectionReturnType<T>> {
+    if (!this.isConnected || !this.sqlPool) {
+      throw new HysteriaError(
+        "SqlDataSource::getConnection",
+        "CONNECTION_NOT_ESTABLISHED",
+      );
+    }
+
     switch (this.sqlType) {
       case "mysql":
       case "mariadb":
@@ -775,9 +792,12 @@ export class SqlDataSource extends DataSource {
   /**
    * @description Syncs the schema of the database with the models metadata
    * @warning This will drop and recreate all the indexes and constraints, use with caution and not in production environments
-   * @sqlite Not supported
+   * @param options.transactional Whether to use a transaction to sync the schema, if true it will use a transaction for the entire sync operation, defaults to false
+   * @sqlite Not supported but won't throw an error
    */
-  async syncSchema(): Promise<void> {
+  async syncSchema(options?: { transactional: boolean }): Promise<void> {
+    options = options || { transactional: false };
+
     if (this.sqlType === "sqlite") {
       logger.warn("Syncing schema with SQLite is not supported, skipping...");
       return;
@@ -795,10 +815,21 @@ export class SqlDataSource extends DataSource {
     logger.info(
       `Generated ${sqlStatements.length} SQL statements to sync schema`,
     );
-    for (const sql of sqlStatements) {
-      await this.rawQuery(sql);
+
+    if (!options?.transactional) {
+      for (const sql of sqlStatements) {
+        await this.rawQuery(sql);
+      }
+
+      logger.info(`Synced schema with ${sqlStatements.length} SQL statements`);
+      return;
     }
 
+    await this.useTransaction(async (trx) => {
+      for (const sql of sqlStatements) {
+        await trx.sql.rawQuery(sql);
+      }
+    });
     logger.info(`Synced schema with ${sqlStatements.length} SQL statements`);
   }
 
@@ -845,6 +876,7 @@ export class SqlDataSource extends DataSource {
 
   /**
    * @description Models provided inside the connection method will always be used for openapi schema generation
+   * @experimental
    */
   getModelOpenApiSchema() {
     return generateOpenApiModelWithMetadata(
