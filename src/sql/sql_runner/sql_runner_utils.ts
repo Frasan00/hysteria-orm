@@ -130,7 +130,7 @@ export const promisifySqliteQuery = <T extends Model>(
   ].includes(query.trim().toLowerCase());
 
   const sqliteDriver =
-    options.customConnection ?? sqlDataSource.getPoolConnection("sqlite");
+    options.customConnection ?? sqlDataSource.getPool("sqlite");
 
   if (isTransactional) {
     return new Promise<number>((resolve, reject) => {

@@ -24,6 +24,7 @@ export class MysqlDriver extends Driver {
     const mysql2 = await import("mysql2/promise").catch(() => {
       throw new DriverNotFoundError("mysql2");
     });
+
     if (!mysql2) {
       throw new DriverNotFoundError("mysql");
     }

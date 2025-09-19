@@ -1,6 +1,6 @@
 {
   "name": "hysteria-orm",
-  "version": "9.0.2",
+  "version": "9.0.3",
   "license": "MIT",
   "description": "Yet another orm for Javascript and Typescript no one asked for",
   "type": "module",

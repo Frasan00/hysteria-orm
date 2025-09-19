@@ -1,3 +1,5 @@
+import type { PoolConnection } from "mysql2/promise";
+import type { PoolClient } from "pg";
 import { FormatOptionsWithLanguage } from "sql-formatter";
 import type {
   DataSourceType,
@@ -16,8 +18,6 @@ import {
 } from "../drivers/driver_constants";
 import { Model } from "./models/model";
 import { SqlDataSource } from "./sql_data_source";
-import type { PoolConnection } from "mysql2/promise";
-import type { PoolClient } from "pg";
 
 export type SqlDriverSpecificOptions = Omit<
   DriverSpecificOptions,
@@ -64,28 +64,17 @@ export type SqlDataSourceInput<
   /**
    * @description The connection policies to use for the sql data source that are not configured in the driverOptions
    */
-  readonly connectionPolicies?: ConnectionPolicies;
+  connectionPolicies?: ConnectionPolicies;
   /**
    * @description The query format options to use for the sql data source, it tells how the sql queries should be formatted before being executed and logged
    */
-  readonly queryFormatOptions?: FormatOptionsWithLanguage;
+  queryFormatOptions?: FormatOptionsWithLanguage;
 
   /**
    * @description The models to use for the sql data source, if used models will be registered in the sql data source instance and will be available for the models to use
    * @description Models can still be used as standalone entities, but they won't be available for the sql data source instance
    */
   models?: T;
-
-  /**
-   * @description Whether to sync the schema of the database with the models metadata
-   * @description Manual or auto generated migrations are always suggested instead of using this option
-   * @warning !! DO NOT USE THIS OPTION IN PRODUCTION !!
-   * @warning This will drop and recreate all the indexes and constraints, use with caution
-   * @warning Data Loss is highly likely if you use this option, renames are always implemented as drop and add, use with caution
-   * @sqlite Since sqlite is very limited in alter statements, it's not recommended to use this option with sqlite
-   * @default false
-   */
-  syncModels?: boolean;
 
   /**
    * @description The driver specific options to use for the sql data source, it's used to configure the driver specific options for the sql data source
@@ -102,10 +91,10 @@ export type UseConnectionInput<
 > = {
   readonly type: Exclude<DataSourceType, "mongo">;
   readonly logs?: boolean;
-  readonly connectionPolicies?: ConnectionPolicies;
-  readonly queryFormatOptions?: FormatOptionsWithLanguage;
   readonly models?: T;
   readonly driverOptions?: SqlDriverSpecificOptions;
+  connectionPolicies?: ConnectionPolicies;
+  queryFormatOptions?: FormatOptionsWithLanguage;
 } & (
   | NotNullableMysqlSqlDataSourceInput
   | NotNullablePostgresSqlDataSourceInput
@@ -114,18 +103,17 @@ export type UseConnectionInput<
 
 export type SqlDataSourceType = Exclude<DataSourceType, "mongo">;
 
-export type GetPoolConnectionReturnType<T = SqlDataSourceType> =
-  T extends "mysql"
+export type getPoolReturnType<T = SqlDataSourceType> = T extends "mysql"
+  ? MysqlConnectionInstance
+  : T extends "mariadb"
     ? MysqlConnectionInstance
-    : T extends "mariadb"
-      ? MysqlConnectionInstance
-      : T extends "postgres"
+    : T extends "postgres"
+      ? PgPoolClientInstance
+      : T extends "cockroachdb"
         ? PgPoolClientInstance
-        : T extends "cockroachdb"
-          ? PgPoolClientInstance
-          : T extends "sqlite"
-            ? SqliteConnectionInstance
-            : never;
+        : T extends "sqlite"
+          ? SqliteConnectionInstance
+          : never;
 
 export type GetConnectionReturnType<T = SqlDataSourceType> = T extends "mysql"
   ? PoolConnection

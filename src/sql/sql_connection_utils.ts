@@ -70,18 +70,6 @@ export const createSqlPool = async (
           }
         },
       );
-      await new Promise((resolve) =>
-        sqlitePool.run("SELECT 1", (err) => {
-          if (err) {
-            throw new HysteriaError(
-              "SqliteDataSource::createSqlPool",
-              "CONNECTION_NOT_ESTABLISHED",
-            );
-          }
-
-          resolve(true);
-        }),
-      );
       return sqlitePool;
     default:
       throw new HysteriaError(

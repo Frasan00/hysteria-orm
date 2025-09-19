@@ -5,10 +5,13 @@ import type {
 } from "../ast/query/node/where/where";
 import { WhereNode } from "../ast/query/node/where/where";
 import { WhereGroupNode } from "../ast/query/node/where/where_group";
+import type { SubqueryOperatorType } from "../ast/query/node/where/where_subquery";
 import { WhereSubqueryNode } from "../ast/query/node/where/where_subquery";
 import { Model } from "../models/model";
 import type { ModelKey } from "../models/model_manager/model_manager_types";
 import { SqlDataSource } from "../sql_data_source";
+import { QueryBuilder } from "./query_builder";
+import type { WhereOnlyQueryBuilder } from "./query_builder_types";
 import { SelectableColumn } from "./query_builder_types";
 import { SelectQueryBuilder } from "./select_query_builder";
 
@@ -55,7 +58,7 @@ export abstract class WhereQueryBuilder<
 
   /**
    * @description Accepts a value and executes a callback only of the value is not falsy.
-   * @warning The value is checked for truthiness, so false, 0, "", etc. will be considered falsy.
+   * @warning The value is checked for truthiness, so false, 0, "", etc. will be considered falsy. Use strictWhen for null or undefined only cases.
    */
   when(value: any, cb: (query: this) => void): this {
     if (!value) {
@@ -79,17 +82,73 @@ export abstract class WhereQueryBuilder<
     operator: BinaryOperatorType,
     value: BaseValues,
   ): this;
+  where(cb: (queryBuilder: WhereOnlyQueryBuilder<T>) => void): this;
+  where(
+    column: ModelKey<T> | SelectableColumn<string>,
+    subQuery: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+  ): this;
+  where(
+    column: ModelKey<T> | SelectableColumn<string>,
+    operator: SubqueryOperatorType,
+    subQuery: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+  ): this;
   where(
     column: ModelKey<T> | SelectableColumn<string>,
     value: BaseValues,
   ): this;
   where(
-    column: ModelKey<T> | SelectableColumn<string>,
-    operatorOrValue: BinaryOperatorType | BaseValues,
-    value?: BaseValues,
+    columnOrCb:
+      | ModelKey<T>
+      | SelectableColumn<string>
+      | ((queryBuilder: WhereQueryBuilder<T>) => void),
+    operatorOrValue?:
+      | BinaryOperatorType
+      | BaseValues
+      | SubqueryOperatorType
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void),
+    value?:
+      | BaseValues
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void),
   ): this {
+    if (typeof columnOrCb === "function") {
+      return this.andWhereGroup(
+        columnOrCb as (qb: WhereQueryBuilder<T>) => void,
+      );
+    }
+
+    if (typeof operatorOrValue === "function" && value === undefined) {
+      return this.andWhereSubQuery(
+        columnOrCb as string,
+        "in",
+        operatorOrValue as (subQuery: QueryBuilder<T>) => void,
+      );
+    }
+
+    if (operatorOrValue instanceof QueryBuilder && value === undefined) {
+      return this.andWhereSubQuery(
+        columnOrCb as string,
+        "in",
+        operatorOrValue as QueryBuilder<T>,
+      );
+    }
+
+    if (
+      typeof operatorOrValue === "string" &&
+      (operatorOrValue as string) !== "=" &&
+      value !== undefined &&
+      (value instanceof QueryBuilder || typeof value === "function")
+    ) {
+      return this.andWhereSubQuery(
+        columnOrCb as string,
+        operatorOrValue as SubqueryOperatorType,
+        value as QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+      );
+    }
+
     return this.andWhere(
-      column as ModelKey<T>,
+      columnOrCb as ModelKey<T>,
       operatorOrValue as BinaryOperatorType,
       value as BaseValues,
     );
@@ -112,24 +171,85 @@ export abstract class WhereQueryBuilder<
     column: ModelKey<T> | SelectableColumn<string>,
     value: BaseValues,
   ): this;
+  andWhere(cb: (queryBuilder: WhereOnlyQueryBuilder<T>) => void): this;
+  andWhere(
+    column: ModelKey<T> | SelectableColumn<string>,
+    subQuery: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+  ): this;
+  andWhere(
+    column: ModelKey<T> | SelectableColumn<string>,
+    operator: SubqueryOperatorType,
+    subQuery: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+  ): this;
   andWhere<S extends string>(
-    column: ModelKey<T> | SelectableColumn<S>,
-    operatorOrValue: BinaryOperatorType | BaseValues,
-    value?: BaseValues,
+    columnOrCb:
+      | ModelKey<T>
+      | SelectableColumn<S>
+      | ((queryBuilder: WhereQueryBuilder<T>) => void),
+    operatorOrValue?:
+      | BinaryOperatorType
+      | BaseValues
+      | SubqueryOperatorType
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void),
+    value?:
+      | BaseValues
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void),
   ): this {
+    if (typeof columnOrCb === "function") {
+      return this.andWhereGroup(
+        columnOrCb as (qb: WhereQueryBuilder<T>) => void,
+      );
+    }
+
+    if (typeof operatorOrValue === "function" && value === undefined) {
+      return this.andWhereSubQuery(
+        columnOrCb as string,
+        "in",
+        operatorOrValue as (subQuery: QueryBuilder<T>) => void,
+      );
+    }
+
+    if (operatorOrValue instanceof QueryBuilder && value === undefined) {
+      return this.andWhereSubQuery(
+        columnOrCb as string,
+        "in",
+        operatorOrValue as QueryBuilder<T>,
+      );
+    }
+
+    if (
+      typeof operatorOrValue === "string" &&
+      (operatorOrValue as string) !== "=" &&
+      value !== undefined &&
+      (value instanceof QueryBuilder || typeof value === "function")
+    ) {
+      return this.andWhereSubQuery(
+        columnOrCb as string,
+        operatorOrValue as SubqueryOperatorType,
+        value as QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+      );
+    }
+
     let operator: BinaryOperatorType = "=";
     let actualValue: BaseValues;
 
-    if (typeof operatorOrValue === "string" && value) {
+    if (
+      typeof operatorOrValue === "string" &&
+      value !== undefined &&
+      !(value instanceof QueryBuilder) &&
+      typeof value !== "function"
+    ) {
       operator = operatorOrValue as BinaryOperatorType;
-      actualValue = value;
+      actualValue = value as BaseValues;
     } else {
       actualValue = operatorOrValue as BaseValues;
       operator = "=";
     }
 
     this.whereNodes.push(
-      new WhereNode(column as string, "and", false, operator, actualValue),
+      new WhereNode(columnOrCb as string, "and", false, operator, actualValue),
     );
     return this;
   }
@@ -151,24 +271,352 @@ export abstract class WhereQueryBuilder<
     column: ModelKey<T> | SelectableColumn<S>,
     value: BaseValues,
   ): this;
+  orWhere(cb: (queryBuilder: WhereOnlyQueryBuilder<T>) => void): this;
+  orWhere(
+    column: ModelKey<T> | SelectableColumn<string>,
+    subQuery: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+  ): this;
+  orWhere(
+    column: ModelKey<T> | SelectableColumn<string>,
+    operator: SubqueryOperatorType,
+    subQuery: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+  ): this;
   orWhere<S extends string>(
-    column: ModelKey<T> | SelectableColumn<S>,
-    operatorOrValue: BinaryOperatorType | BaseValues,
-    value?: BaseValues,
+    columnOrCb:
+      | ModelKey<T>
+      | SelectableColumn<S>
+      | ((queryBuilder: WhereQueryBuilder<T>) => void),
+    operatorOrValue?:
+      | BinaryOperatorType
+      | BaseValues
+      | SubqueryOperatorType
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void),
+    value?:
+      | BaseValues
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void),
   ): this {
+    if (typeof columnOrCb === "function") {
+      return this.orWhereGroup(
+        columnOrCb as (qb: WhereQueryBuilder<T>) => void,
+      );
+    }
+
+    if (typeof operatorOrValue === "function" && value === undefined) {
+      return this.orWhereSubQuery(
+        columnOrCb as string,
+        "in",
+        operatorOrValue as (subQuery: QueryBuilder<T>) => void,
+      );
+    }
+
+    if (operatorOrValue instanceof QueryBuilder && value === undefined) {
+      return this.orWhereSubQuery(
+        columnOrCb as string,
+        "in",
+        operatorOrValue as QueryBuilder<T>,
+      );
+    }
+
+    if (
+      typeof operatorOrValue === "string" &&
+      (operatorOrValue as string) !== "=" &&
+      value !== undefined &&
+      (value instanceof QueryBuilder || typeof value === "function")
+    ) {
+      return this.orWhereSubQuery(
+        columnOrCb as string,
+        operatorOrValue as SubqueryOperatorType,
+        value as QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+      );
+    }
+
     let operator: BinaryOperatorType = "=";
     let actualValue: BaseValues;
 
-    if (typeof operatorOrValue === "string" && value) {
+    if (
+      typeof operatorOrValue === "string" &&
+      value !== undefined &&
+      !(value instanceof QueryBuilder) &&
+      typeof value !== "function"
+    ) {
       operator = operatorOrValue as BinaryOperatorType;
-      actualValue = value;
+      actualValue = value as BaseValues;
     } else {
       actualValue = operatorOrValue as BaseValues;
       operator = "=";
     }
 
     this.whereNodes.push(
-      new WhereNode(column as string, "or", false, operator, actualValue),
+      new WhereNode(columnOrCb as string, "or", false, operator, actualValue),
+    );
+    return this;
+  }
+
+  /**
+   * @description Adds a negated WHERE condition to the query.
+   */
+  whereNot(
+    column: ModelKey<T>,
+    operator: BinaryOperatorType,
+    value: BaseValues,
+  ): this;
+  whereNot<S extends string>(
+    column: SelectableColumn<S>,
+    operator: BinaryOperatorType,
+    value: BaseValues,
+  ): this;
+  whereNot(
+    column: ModelKey<T> | SelectableColumn<string>,
+    value: BaseValues,
+  ): this;
+  whereNot(
+    column: ModelKey<T> | SelectableColumn<string>,
+    subQuery: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+  ): this;
+  whereNot(
+    column: ModelKey<T> | SelectableColumn<string>,
+    operator: SubqueryOperatorType,
+    subQuery: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+  ): this;
+  whereNot<S extends string>(
+    column: ModelKey<T> | SelectableColumn<S>,
+    operatorOrValue:
+      | BinaryOperatorType
+      | BaseValues
+      | SubqueryOperatorType
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void),
+    value?:
+      | BaseValues
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void),
+  ): this {
+    if (typeof operatorOrValue === "function" && value === undefined) {
+      return this.andWhereSubQuery(
+        column as string,
+        "not in",
+        operatorOrValue as (subQuery: QueryBuilder<T>) => void,
+      );
+    }
+
+    if (operatorOrValue instanceof QueryBuilder && value === undefined) {
+      return this.andWhereSubQuery(
+        column as string,
+        "not in",
+        operatorOrValue as QueryBuilder<T>,
+      );
+    }
+
+    if (
+      typeof operatorOrValue === "string" &&
+      value !== undefined &&
+      (value instanceof QueryBuilder || typeof value === "function")
+    ) {
+      return this.andWhereSubQuery(
+        column as string,
+        operatorOrValue as SubqueryOperatorType,
+        value as QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+      );
+    }
+
+    let operator: BinaryOperatorType = "=";
+    let actualValue: BaseValues;
+
+    if (
+      typeof operatorOrValue === "string" &&
+      value !== undefined &&
+      !(value instanceof QueryBuilder) &&
+      typeof value !== "function"
+    ) {
+      operator = operatorOrValue as BinaryOperatorType;
+      actualValue = value as BaseValues;
+    } else {
+      actualValue = operatorOrValue as BaseValues;
+      operator = "=";
+    }
+
+    this.whereNodes.push(
+      new WhereNode(column as string, "and", true, operator, actualValue),
+    );
+    return this;
+  }
+
+  /**
+   * @description Adds a negated AND WHERE condition to the query.
+   */
+  andWhereNot(
+    column: ModelKey<T>,
+    operator: BinaryOperatorType,
+    value: BaseValues,
+  ): this;
+  andWhereNot<S extends string>(
+    column: SelectableColumn<S>,
+    operator: BinaryOperatorType,
+    value: BaseValues,
+  ): this;
+  andWhereNot(
+    column: ModelKey<T> | SelectableColumn<string>,
+    value: BaseValues,
+  ): this;
+  andWhereNot(
+    column: ModelKey<T> | SelectableColumn<string>,
+    subQuery: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+  ): this;
+  andWhereNot(
+    column: ModelKey<T> | SelectableColumn<string>,
+    operator: SubqueryOperatorType,
+    subQuery: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+  ): this;
+  andWhereNot<S extends string>(
+    column: ModelKey<T> | SelectableColumn<S>,
+    operatorOrValue:
+      | BinaryOperatorType
+      | BaseValues
+      | SubqueryOperatorType
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void),
+    value?:
+      | BaseValues
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void),
+  ): this {
+    if (typeof operatorOrValue === "function" && value === undefined) {
+      return this.andWhereSubQuery(
+        column as string,
+        "not in",
+        operatorOrValue as (subQuery: QueryBuilder<T>) => void,
+      );
+    }
+
+    if (operatorOrValue instanceof QueryBuilder && value === undefined) {
+      return this.andWhereSubQuery(
+        column as string,
+        "not in",
+        operatorOrValue as QueryBuilder<T>,
+      );
+    }
+
+    if (
+      typeof operatorOrValue === "string" &&
+      value !== undefined &&
+      (value instanceof QueryBuilder || typeof value === "function")
+    ) {
+      return this.andWhereSubQuery(
+        column as string,
+        operatorOrValue as SubqueryOperatorType,
+        value as QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+      );
+    }
+
+    let operator: BinaryOperatorType = "=";
+    let actualValue: BaseValues;
+
+    if (
+      typeof operatorOrValue === "string" &&
+      value !== undefined &&
+      !(value instanceof QueryBuilder) &&
+      typeof value !== "function"
+    ) {
+      operator = operatorOrValue as BinaryOperatorType;
+      actualValue = value as BaseValues;
+    } else {
+      actualValue = operatorOrValue as BaseValues;
+      operator = "=";
+    }
+
+    this.whereNodes.push(
+      new WhereNode(column as string, "and", true, operator, actualValue),
+    );
+    return this;
+  }
+
+  /**
+   * @description Adds a negated OR WHERE condition to the query.
+   */
+  orWhereNot(
+    column: ModelKey<T>,
+    operator: BinaryOperatorType,
+    value: BaseValues,
+  ): this;
+  orWhereNot<S extends string>(
+    column: SelectableColumn<S>,
+    operator: BinaryOperatorType,
+    value: BaseValues,
+  ): this;
+  orWhereNot(
+    column: ModelKey<T> | SelectableColumn<string>,
+    value: BaseValues,
+  ): this;
+  orWhereNot(
+    column: ModelKey<T> | SelectableColumn<string>,
+    subQuery: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+  ): this;
+  orWhereNot(
+    column: ModelKey<T> | SelectableColumn<string>,
+    operator: SubqueryOperatorType,
+    subQuery: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+  ): this;
+  orWhereNot<S extends string>(
+    column: ModelKey<T> | SelectableColumn<S>,
+    operatorOrValue:
+      | BinaryOperatorType
+      | BaseValues
+      | SubqueryOperatorType
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void),
+    value?:
+      | BaseValues
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void),
+  ): this {
+    if (typeof operatorOrValue === "function" && value === undefined) {
+      return this.orWhereSubQuery(
+        column as string,
+        "not in",
+        operatorOrValue as (subQuery: QueryBuilder<T>) => void,
+      );
+    }
+
+    if (operatorOrValue instanceof QueryBuilder && value === undefined) {
+      return this.orWhereSubQuery(
+        column as string,
+        "not in",
+        operatorOrValue as QueryBuilder<T>,
+      );
+    }
+
+    if (
+      typeof operatorOrValue === "string" &&
+      value !== undefined &&
+      (value instanceof QueryBuilder || typeof value === "function")
+    ) {
+      return this.orWhereSubQuery(
+        column as string,
+        operatorOrValue as SubqueryOperatorType,
+        value as QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+      );
+    }
+
+    let operator: BinaryOperatorType = "=";
+    let actualValue: BaseValues;
+
+    if (
+      typeof operatorOrValue === "string" &&
+      value !== undefined &&
+      !(value instanceof QueryBuilder) &&
+      typeof value !== "function"
+    ) {
+      operator = operatorOrValue as BinaryOperatorType;
+      actualValue = value as BaseValues;
+    } else {
+      actualValue = operatorOrValue as BaseValues;
+      operator = "=";
+    }
+
+    this.whereNodes.push(
+      new WhereNode(column as string, "or", true, operator, actualValue),
     );
     return this;
   }
@@ -493,7 +941,7 @@ export abstract class WhereQueryBuilder<
     column: ModelKey<T> | SelectableColumn<string>,
     values: BaseValues[],
   ): this {
-    return this.andWhereIn(column as ModelKey<T>, values);
+    return this.andWhereIn(column as ModelKey<T>, values as any);
   }
 
   /**
@@ -507,17 +955,30 @@ export abstract class WhereQueryBuilder<
   ): this;
   andWhereIn(
     column: ModelKey<T> | SelectableColumn<string>,
-    values: BaseValues[],
+    values:
+      | BaseValues[]
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void),
   ): this {
-    if (!values.length) {
-      this.whereNodes.push(new WhereNode("false", "and", true, "=", [], true));
+    if (Array.isArray(values)) {
+      if (!values.length) {
+        this.whereNodes.push(
+          new WhereNode("false", "and", true, "=", [], true),
+        );
+        return this;
+      }
+
+      this.whereNodes.push(
+        new WhereNode(column as string, "and", false, "in", values),
+      );
       return this;
     }
 
-    this.whereNodes.push(
-      new WhereNode(column as string, "and", false, "in", values),
+    return this.andWhereSubQuery(
+      column as string,
+      "in",
+      values as QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
     );
-    return this;
   }
 
   /**
@@ -531,17 +992,28 @@ export abstract class WhereQueryBuilder<
   ): this;
   orWhereIn(
     column: ModelKey<T> | SelectableColumn<string>,
-    values: BaseValues[],
+    values:
+      | BaseValues[]
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void),
   ): this {
-    if (!values.length) {
-      this.whereNodes.push(new WhereNode("false", "or", true, "=", [], true));
+    if (Array.isArray(values)) {
+      if (!values.length) {
+        this.whereNodes.push(new WhereNode("false", "or", true, "=", [], true));
+        return this;
+      }
+
+      this.whereNodes.push(
+        new WhereNode(column as string, "or", false, "in", values),
+      );
       return this;
     }
 
-    this.whereNodes.push(
-      new WhereNode(column as string, "or", false, "in", values),
+    return this.orWhereSubQuery(
+      column as string,
+      "in",
+      values as QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
     );
-    return this;
   }
 
   /**
@@ -571,17 +1043,28 @@ export abstract class WhereQueryBuilder<
   ): this;
   andWhereNotIn(
     column: ModelKey<T> | SelectableColumn<string>,
-    values: BaseValues[],
+    values:
+      | BaseValues[]
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void),
   ): this {
-    if (!values.length) {
-      this.whereNodes.push(new WhereNode("true", "and", true, "=", [], true));
+    if (Array.isArray(values)) {
+      if (!values.length) {
+        this.whereNodes.push(new WhereNode("true", "and", true, "=", [], true));
+        return this;
+      }
+
+      this.whereNodes.push(
+        new WhereNode(column as string, "and", true, "in", values),
+      );
       return this;
     }
 
-    this.whereNodes.push(
-      new WhereNode(column as string, "and", true, "in", values),
+    return this.andWhereSubQuery(
+      column as string,
+      "not in",
+      values as QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
     );
-    return this;
   }
 
   /**
@@ -595,17 +1078,28 @@ export abstract class WhereQueryBuilder<
   ): this;
   orWhereNotIn(
     column: ModelKey<T> | SelectableColumn<string>,
-    values: BaseValues[],
+    values:
+      | BaseValues[]
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void),
   ): this {
-    if (!values.length) {
-      this.whereNodes.push(new WhereNode("true", "or", true, "=", [], true));
+    if (Array.isArray(values)) {
+      if (!values.length) {
+        this.whereNodes.push(new WhereNode("true", "or", true, "=", [], true));
+        return this;
+      }
+
+      this.whereNodes.push(
+        new WhereNode(column as string, "or", true, "in", values),
+      );
       return this;
     }
 
-    this.whereNodes.push(
-      new WhereNode(column as string, "or", true, "in", values),
+    return this.orWhereSubQuery(
+      column as string,
+      "not in",
+      values as QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
     );
-    return this;
   }
 
   /**
@@ -812,6 +1306,136 @@ export abstract class WhereQueryBuilder<
   }
 
   /**
+   * @description Adds a AND WHERE EXISTS condition to the query. By default uses the same table, you can use the `from` method to change the table.
+   */
+  whereExists(
+    cbOrQueryBuilder: (queryBuilder: QueryBuilder<T>) => void | QueryBuilder<T>,
+  ): this {
+    return this.andWhereExists(cbOrQueryBuilder);
+  }
+
+  /**
+   * @description Adds a AND WHERE EXISTS condition to the query. By default uses the same table, you can use the `from` method to change the table.
+   */
+  andWhereExists(
+    cbOrQueryBuilder: (queryBuilder: QueryBuilder<T>) => void | QueryBuilder<T>,
+  ): this {
+    const nestedBuilder =
+      cbOrQueryBuilder instanceof QueryBuilder
+        ? cbOrQueryBuilder
+        : new QueryBuilder(this.model, this.sqlDataSource);
+
+    (nestedBuilder as WhereQueryBuilder<T>).isNestedCondition = true;
+    if (typeof cbOrQueryBuilder === "function") {
+      cbOrQueryBuilder(nestedBuilder as QueryBuilder<T>);
+    }
+
+    this.whereNodes.push(
+      new WhereSubqueryNode(
+        "",
+        "exists",
+        nestedBuilder.extractQueryNodes(),
+        "and",
+      ),
+    );
+
+    return this;
+  }
+
+  /**
+   * @description Adds a OR WHERE EXISTS condition to the query. By default uses the same table, you can use the `from` method to change the table.
+   */
+  orWhereExists(
+    cbOrQueryBuilder: (queryBuilder: QueryBuilder<T>) => void | QueryBuilder<T>,
+  ): this {
+    const nestedBuilder =
+      cbOrQueryBuilder instanceof QueryBuilder
+        ? cbOrQueryBuilder
+        : new QueryBuilder(this.model, this.sqlDataSource);
+
+    (nestedBuilder as WhereQueryBuilder<T>).isNestedCondition = true;
+    if (typeof cbOrQueryBuilder === "function") {
+      cbOrQueryBuilder(nestedBuilder as QueryBuilder<T>);
+    }
+
+    this.whereNodes.push(
+      new WhereSubqueryNode(
+        "",
+        "exists",
+        nestedBuilder.extractQueryNodes(),
+        "or",
+      ),
+    );
+
+    return this;
+  }
+
+  /**
+   * @description Adds a WHERE NOT EXISTS condition to the query. By default uses the same table, you can use the `from` method to change the table.
+   */
+  whereNotExists(
+    cbOrQueryBuilder: (queryBuilder: QueryBuilder<T>) => void | QueryBuilder<T>,
+  ): this {
+    return this.andWhereNotExists(cbOrQueryBuilder);
+  }
+
+  /**
+   * @description Adds a WHERE NOT EXISTS condition to the query. By default uses the same table, you can use the `from` method to change the table.
+   */
+  andWhereNotExists(
+    cbOrQueryBuilder: (queryBuilder: QueryBuilder<T>) => void | QueryBuilder<T>,
+  ): this {
+    const nestedBuilder =
+      cbOrQueryBuilder instanceof QueryBuilder
+        ? cbOrQueryBuilder
+        : new QueryBuilder(this.model, this.sqlDataSource);
+
+    (nestedBuilder as WhereQueryBuilder<T>).isNestedCondition = true;
+    if (typeof cbOrQueryBuilder === "function") {
+      cbOrQueryBuilder(nestedBuilder as QueryBuilder<T>);
+    }
+
+    this.whereNodes.push(
+      new WhereSubqueryNode(
+        "",
+        "not exists",
+        nestedBuilder.extractQueryNodes(),
+        "and",
+      ),
+    );
+
+    return this;
+  }
+
+  /**
+   * @description Adds a WHERE NOT EXISTS condition to the query. By default uses the same table, you can use the `from` method to change the table.
+   */
+  orWhereNotExists(
+    cbOrQueryBuilder: (queryBuilder: QueryBuilder<T>) => void | QueryBuilder<T>,
+  ): this {
+    const nestedBuilder =
+      cbOrQueryBuilder instanceof QueryBuilder
+        ? cbOrQueryBuilder
+        : new QueryBuilder(this.model, this.sqlDataSource);
+
+    (nestedBuilder as WhereQueryBuilder<T>).isNestedCondition = true;
+    if (typeof cbOrQueryBuilder === "function") {
+      cbOrQueryBuilder(nestedBuilder as QueryBuilder<T>);
+    }
+
+    this.whereNodes.push(
+      new WhereSubqueryNode(
+        "",
+        "not exists",
+        nestedBuilder.extractQueryNodes(),
+        "or",
+      ),
+    );
+
+    return this;
+  }
+
+  /**
    * @description Adds a raw WHERE condition to the query.
    */
   whereRaw(query: string, queryParams: any[] = []) {
@@ -947,6 +1571,77 @@ export abstract class WhereQueryBuilder<
   orHavingRaw(query: string): this {
     this.havingNodes.push(new HavingNode(query, "or", false, "=", [], true));
 
+    return this;
+  }
+
+  private buildSubQuery(
+    subQueryOrCb: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+  ): QueryBuilder<T> {
+    if (subQueryOrCb instanceof QueryBuilder) {
+      return subQueryOrCb;
+    }
+    const subQuery = new QueryBuilder(this.model, this.sqlDataSource);
+    (subQueryOrCb as (qb: QueryBuilder<T>) => void)(subQuery);
+    return subQuery;
+  }
+
+  private andWhereSubQuery(
+    column: string,
+    operator: SubqueryOperatorType,
+    subQueryOrCb: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+  ): this {
+    const subQuery = this.buildSubQuery(subQueryOrCb);
+    this.whereNodes.push(
+      new WhereSubqueryNode(
+        column,
+        operator,
+        (subQuery as any).extractQueryNodes(),
+        "and",
+      ),
+    );
+    return this;
+  }
+
+  private orWhereSubQuery(
+    column: string,
+    operator: SubqueryOperatorType,
+    subQueryOrCb: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+  ): this {
+    const subQuery = this.buildSubQuery(subQueryOrCb);
+    this.whereNodes.push(
+      new WhereSubqueryNode(
+        column,
+        operator,
+        (subQuery as any).extractQueryNodes(),
+        "or",
+      ),
+    );
+    return this;
+  }
+
+  private andWhereGroup(
+    cb: (queryBuilder: WhereQueryBuilder<T>) => void,
+  ): this {
+    const nestedBuilder = new QueryBuilder(this.model, this.sqlDataSource);
+    (nestedBuilder as any).isNestedCondition = true;
+    cb(nestedBuilder as unknown as WhereQueryBuilder<T>);
+    const whereGroupNode = new WhereGroupNode(
+      (nestedBuilder as any).whereNodes,
+      "and",
+    );
+    this.whereNodes.push(whereGroupNode);
+    return this;
+  }
+
+  private orWhereGroup(cb: (queryBuilder: WhereQueryBuilder<T>) => void): this {
+    const nestedBuilder = new QueryBuilder(this.model, this.sqlDataSource);
+    (nestedBuilder as any).isNestedCondition = true;
+    cb(nestedBuilder as unknown as WhereQueryBuilder<T>);
+    const whereGroupNode = new WhereGroupNode(
+      (nestedBuilder as any).whereNodes,
+      "or",
+    );
+    this.whereNodes.push(whereGroupNode);
     return this;
   }
 }

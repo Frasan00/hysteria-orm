@@ -789,7 +789,7 @@ export class SchemaDiff {
           // Parse and re-stringify to normalize JSON format
           const parsed = JSON.parse(v);
           return JSON.stringify(parsed);
-        } catch (e) {
+        } catch (_) {
           // If parsing fails, continue with regular normalization
         }
       }

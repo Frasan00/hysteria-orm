@@ -1,4 +1,4 @@
-import crypto from "crypto";
+import crypto from "node:crypto";
 
 /**
  * Hashes a given value using SHA-256 algorithm
@@ -6,15 +6,14 @@ import crypto from "crypto";
  * @param salt - Optional salt to add to the hash
  * @returns Promise<string> - The hashed value in hexadecimal format
  */
-export async function hash(value: string, salt?: string): Promise<string> {
+export const hashString = (value: string, salt?: string): string => {
   const hashInstance = crypto.createHash("sha256");
 
-  // If salt is provided, prepend it to the value
   const valueToHash = salt ? salt + value : value;
 
   hashInstance.update(valueToHash);
   return hashInstance.digest("hex");
-}
+};
 
 /**
  * Verifies if a given value matches a hash
@@ -28,6 +27,6 @@ export async function verifyHash(
   hash: string,
   salt?: string,
 ): Promise<boolean> {
-  const hashedValue = await hash(value, salt);
+  const hashedValue = hashString(value, salt);
   return hashedValue === hash;
 }

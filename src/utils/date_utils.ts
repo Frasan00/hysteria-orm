@@ -72,7 +72,7 @@ export const parseDate = (
     }
 
     return timezone === "UTC" ? parsed.utc().toDate() : parsed.local().toDate();
-  } catch (error: unknown) {
+  } catch (_) {
     throw new HysteriaError("DateUtils::parseDate", "FAILED_TO_PARSE_DATE");
   }
 };

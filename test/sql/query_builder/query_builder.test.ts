@@ -538,9 +538,9 @@ describe(`[${env.DB_TYPE}] Where query builder advanced tests (users_without_pk 
     expect(users[0].name).toBe("Alice");
   });
 
-  test("nested whereBuilder with whereIn empty returns no users", async () => {
+  test("nested where with callback and whereIn empty returns no users", async () => {
     const users = await SqlDataSource.query("users_without_pk")
-      .whereBuilder((qb) => {
+      .where((qb) => {
         qb.whereIn("name", []);
         qb.where("name", "Alice");
       })
@@ -548,9 +548,9 @@ describe(`[${env.DB_TYPE}] Where query builder advanced tests (users_without_pk 
     expect(users.length).toBe(0);
   });
 
-  test("nested whereBuilder with whereNotIn empty returns filtered users", async () => {
+  test("nested where with callback and whereNotIn empty returns filtered users", async () => {
     const users = await SqlDataSource.query("users_without_pk")
-      .whereBuilder((qb) => {
+      .where((qb) => {
         qb.whereNotIn("name", []);
         qb.where("name", "Alice");
       })
@@ -559,11 +559,11 @@ describe(`[${env.DB_TYPE}] Where query builder advanced tests (users_without_pk 
     expect(users[0].name).toBe("Alice");
   });
 
-  test("deeply nested whereBuilder with whereIn empty returns no users", async () => {
+  test("deeply nested where with callback and whereIn empty returns no users", async () => {
     const users = await SqlDataSource.query("users_without_pk")
-      .whereBuilder((qb) => {
+      .where((qb) => {
         qb.where("name", "Alice");
-        qb.whereBuilder((qb2) => {
+        qb.where((qb2) => {
           qb2.whereIn("name", []);
           qb2.where("name", "Bob");
         });
@@ -572,11 +572,11 @@ describe(`[${env.DB_TYPE}] Where query builder advanced tests (users_without_pk 
     expect(users.length).toBe(0);
   });
 
-  test("deeply nested whereBuilder with whereNotIn empty and valid where returns filtered users", async () => {
+  test("deeply nested where with callbacks and whereNotIn empty and valid where returns filtered users", async () => {
     const users = await SqlDataSource.query("users_without_pk")
-      .whereBuilder((qb) => {
+      .where((qb) => {
         qb.where("name", "Alice");
-        qb.whereBuilder((qb2) => {
+        qb.where((qb2) => {
           qb2.whereNotIn("name", []);
           qb2.where("name", "Alice");
         });
@@ -586,9 +586,9 @@ describe(`[${env.DB_TYPE}] Where query builder advanced tests (users_without_pk 
     expect(users[0].name).toBe("Alice");
   });
 
-  test("whereBuilder with both whereIn and whereNotIn empty returns no users", async () => {
+  test("where with callback having both whereIn and whereNotIn empty returns no users", async () => {
     const users = await SqlDataSource.query("users_without_pk")
-      .whereBuilder((qb) => {
+      .where((qb) => {
         qb.whereIn("name", []);
         qb.whereNotIn("name", []);
       })
@@ -596,9 +596,9 @@ describe(`[${env.DB_TYPE}] Where query builder advanced tests (users_without_pk 
     expect(users.length).toBe(0);
   });
 
-  test("whereBuilder with whereIn empty and orWhere with valid value returns Alice", async () => {
+  test("where with callback having whereIn empty and orWhere with valid value returns Alice", async () => {
     const users = await SqlDataSource.query("users_without_pk")
-      .whereBuilder((qb) => {
+      .where((qb) => {
         qb.whereIn("name", []);
         qb.orWhere("name", "Alice");
       })
@@ -607,9 +607,9 @@ describe(`[${env.DB_TYPE}] Where query builder advanced tests (users_without_pk 
     expect(users.length).toBe(1); // Alice
   });
 
-  test("whereBuilder with whereIn empty and orWhere with valid value returns no users", async () => {
+  test("where with callback having whereIn empty and andWhere with valid value returns no users", async () => {
     const users = await SqlDataSource.query("users_without_pk")
-      .whereBuilder((qb) => {
+      .where((qb) => {
         qb.whereIn("name", []);
         qb.andWhere("name", "Alice");
       })
@@ -618,22 +618,22 @@ describe(`[${env.DB_TYPE}] Where query builder advanced tests (users_without_pk 
     expect(users.length).toBe(0);
   });
 
-  test("whereBuilder with whereNotIn empty and orWhere with valid value returns users matching orWhere", async () => {
+  test("where with callback having whereNotIn empty returns all users", async () => {
     const users = await SqlDataSource.query("users_without_pk")
-      .whereBuilder((qb) => {
+      .where((qb) => {
         qb.whereNotIn("name", []);
       })
       .many();
     expect(users.length).toBe(4);
   });
 
-  test("multiple nested whereBuilders with mixed empty and non-empty whereIn/whereNotIn", async () => {
+  test("multiple nested where callbacks with mixed empty and non-empty whereIn/whereNotIn", async () => {
     const users = await SqlDataSource.query("users_without_pk")
-      .whereBuilder((qb) => {
-        qb.whereBuilder((qb2) => {
+      .where((qb) => {
+        qb.where((qb2) => {
           qb2.whereIn("name", []);
         });
-        qb.whereBuilder((qb3) => {
+        qb.where((qb3) => {
           qb3.whereNotIn("name", []);
           qb3.where("name", "Bob");
         });
@@ -643,12 +643,12 @@ describe(`[${env.DB_TYPE}] Where query builder advanced tests (users_without_pk 
     expect(users.length).toBe(0);
   });
 
-  test("orWhereBuilder with whereIn empty and whereNotIn empty returns all users", async () => {
+  test("chained OR where callbacks: whereIn empty then whereNotIn empty returns all users", async () => {
     const users = await SqlDataSource.query("users_without_pk")
-      .orWhereBuilder((qb) => {
+      .orWhere((qb) => {
         qb.whereIn("name", []);
       })
-      .orWhereBuilder((qb) => {
+      .orWhere((qb) => {
         qb.whereNotIn("name", []);
       })
       .many();
@@ -656,9 +656,9 @@ describe(`[${env.DB_TYPE}] Where query builder advanced tests (users_without_pk 
     expect(users.length).toBe(4);
   });
 
-  test("orWhereBuilder with whereIn empty and orWhere with valid value returns users matching orWhere", async () => {
+  test("orWhere with callback whereIn empty then orWhere with valid value returns users matching orWhere", async () => {
     const users = await SqlDataSource.query("users_without_pk")
-      .orWhereBuilder((qb) => {
+      .orWhere((qb) => {
         qb.whereIn("name", []);
       })
       .orWhere("name", "Alice")
@@ -667,9 +667,9 @@ describe(`[${env.DB_TYPE}] Where query builder advanced tests (users_without_pk 
     expect(users[0].name).toBe("Alice");
   });
 
-  test("whereBuilder with whereIn non-empty and whereNotIn empty returns filtered users", async () => {
+  test("where callbacks with whereIn non-empty and whereNotIn empty returns filtered users", async () => {
     const users = await SqlDataSource.query("users_without_pk")
-      .whereBuilder((qb) => {
+      .where((qb) => {
         qb.whereIn("name", ["Alice", "Bob"]);
         qb.whereNotIn("name", []);
       })
@@ -678,9 +678,9 @@ describe(`[${env.DB_TYPE}] Where query builder advanced tests (users_without_pk 
     expect(users.map((u) => u.name).sort()).toEqual(["Alice", "Bob"]);
   });
 
-  test("whereBuilder with whereIn empty and whereNotIn non-empty returns no users", async () => {
+  test("where callbacks with whereIn empty and whereNotIn non-empty returns no users", async () => {
     const users = await SqlDataSource.query("users_without_pk")
-      .whereBuilder((qb) => {
+      .where((qb) => {
         qb.whereIn("name", []);
         qb.whereNotIn("name", ["Alice"]);
       })
@@ -688,14 +688,32 @@ describe(`[${env.DB_TYPE}] Where query builder advanced tests (users_without_pk 
     expect(users.length).toBe(0);
   });
 
-  test("whereSubQuery returns correct users", async () => {
+  test("where with subquery returns correct users", async () => {
     const users = await SqlDataSource.query("users_without_pk")
-      .whereSubQuery("name", (qb) =>
+      .where("name", (qb) =>
         qb.select("name").from("users_without_pk").where("name", "Alice"),
       )
       .many();
     expect(users.length).toBe(1);
     expect(users[0].name).toBe("Alice");
+  });
+
+  test("whereNot returns users not equal to value", async () => {
+    const users = await SqlDataSource.query("users_without_pk")
+      .whereNot("name", "Alice")
+      .many();
+    expect(users.every((u) => u.name !== "Alice")).toBe(true);
+  });
+
+  test("orWhereNot with callback group returns expected users", async () => {
+    const users = await SqlDataSource.query("users_without_pk")
+      .where((qb) => {
+        qb.where("name", "Alice");
+      })
+      .orWhereNot("name", "Charlie")
+      .many();
+
+    expect(users.length).toBeGreaterThan(0);
   });
 });
 
@@ -714,11 +732,11 @@ describe(`[${env.DB_TYPE}] Query Builder: whereSubQuery + whereBuilder integrati
     await SqlDataSource.query("users_without_pk").truncate();
   });
 
-  test("whereBuilder with whereSubQuery inside", async () => {
+  test("nested where callback with subquery inside", async () => {
     const users = await SqlDataSource.query("users_without_pk")
-      .whereBuilder((qb) => {
+      .where((qb) => {
         qb.where("age", ">", 25);
-        qb.whereSubQuery("name", (subQb) =>
+        qb.where("name", (subQb) =>
           subQb.select("name").from("users_without_pk").where("age", ">", 30),
         );
       })
@@ -727,11 +745,11 @@ describe(`[${env.DB_TYPE}] Query Builder: whereSubQuery + whereBuilder integrati
     expect(users.length).toBeDefined();
   });
 
-  test("whereSubQuery with whereBuilder inside subquery", async () => {
+  test("where with subquery having nested where callbacks inside", async () => {
     const users = await SqlDataSource.query("users_without_pk")
-      .whereSubQuery("name", (subQb) => {
+      .where("name", (subQb) => {
         subQb.select("name").from("users_without_pk");
-        subQb.whereBuilder((qb) => {
+        subQb.where((qb) => {
           qb.where("age", ">", 30);
           qb.orWhere("name", "Alice");
         });
@@ -741,10 +759,10 @@ describe(`[${env.DB_TYPE}] Query Builder: whereSubQuery + whereBuilder integrati
     expect(users.length).toBeDefined();
   });
 
-  test("whereBuilder with multiple whereSubQuery and orWhere", async () => {
+  test("where with callback having orWhere subquery", async () => {
     const users = await SqlDataSource.query("users_without_pk")
-      .whereBuilder((qb) => {
-        qb.orWhereSubQuery("name", (subQb) =>
+      .where((qb) => {
+        qb.orWhere("name", (subQb) =>
           subQb.select("name").from("users_without_pk").where("age", "<", 30),
         );
       })
@@ -753,11 +771,11 @@ describe(`[${env.DB_TYPE}] Query Builder: whereSubQuery + whereBuilder integrati
     expect(users.length).toBeDefined();
   });
 
-  test("deeply nested whereBuilder and whereSubQuery", async () => {
+  test("deeply nested where callbacks and subqueries", async () => {
     const users = await SqlDataSource.query("users_without_pk")
-      .whereBuilder((qb) => {
-        qb.whereBuilder((qb2) => {
-          qb2.whereSubQuery("age", ">", (subQb) =>
+      .where((qb) => {
+        qb.where((qb2) => {
+          qb2.where("age", ">", (subQb) =>
             subQb
               .select("age")
               .from("users_without_pk")

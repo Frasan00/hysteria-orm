@@ -23,7 +23,6 @@ class SqliteColumnTypeInterpreter implements Interpreter {
     const dt = colNode.dataType.toLowerCase();
 
     if (dt === "char" || dt === "varchar") {
-      const len = colNode.length ?? 255;
       return { sql: `${columnName} text`, bindings: [] };
     } else if (dt === "uuid") {
       return { sql: `${columnName} varchar(36)`, bindings: [] };

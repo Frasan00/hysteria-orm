@@ -1,4 +1,4 @@
-import { randomBytes } from "crypto";
+import { randomBytes } from "node:crypto";
 
 const ENCODING = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 const ENCODING_LEN = ENCODING.length;
@@ -11,7 +11,7 @@ const RANDOM_LEN = 16;
 const encodeTime = (now: number, length: number): string => {
   let str = "";
   for (let i = 0; i < length; i++) {
-    let mod = now % ENCODING_LEN;
+    const mod = now % ENCODING_LEN;
     str = ENCODING.charAt(mod) + str;
     now = (now - mod) / ENCODING_LEN;
   }

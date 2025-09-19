@@ -18,7 +18,6 @@ class MysqlWhereInterpreter implements Interpreter {
       };
     }
 
-    const idx = whereNode.currParamIndex;
     let sql = "";
     let bindings: any[] = [];
 

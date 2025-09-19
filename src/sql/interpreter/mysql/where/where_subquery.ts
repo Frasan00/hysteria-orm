@@ -4,7 +4,6 @@ import { QueryNode } from "../../../ast/query/query";
 import { Model } from "../../../models/model";
 import type { SqlDataSourceType } from "../../../sql_data_source_types";
 import type { Interpreter } from "../../interpreter";
-import { InterpreterUtils } from "../../interpreter_utils";
 
 class MysqlWhereSubqueryInterpreter implements Interpreter {
   declare model: typeof Model;

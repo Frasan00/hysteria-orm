@@ -17,7 +17,6 @@ class SqliteWhereJsonInterpreter implements Interpreter {
       };
     }
 
-    const idx = whereJsonNode.currParamIndex;
     let sql = "";
     let bindings: any[] = [];
 

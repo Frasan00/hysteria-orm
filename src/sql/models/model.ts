@@ -629,7 +629,7 @@ export abstract class Model extends Entity {
       });
     });
 
-    lookupQuery.whereBuilder((query) => {
+    lookupQuery.where((query) => {
       conflictColumns.forEach((column) => {
         query.orWhereIn(column, conflictMap.get(column as string) || []);
       });

@@ -90,7 +90,7 @@ class PostgresConstraintInterpreter implements Interpreter {
       const refCols = cNode.references.columns
         .map((c) => utils.formatStringColumn("postgres", getColumnValue(c)))
         .join(", ");
-      let sqlPrefix = cNode.constraintName
+      const sqlPrefix = cNode.constraintName
         ? `constraint "${cNode.constraintName}" `
         : "";
       let sql = `${sqlPrefix}foreign key (${cols}) references ${refTable}(${refCols})`;

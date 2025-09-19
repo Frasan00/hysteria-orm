@@ -122,7 +122,7 @@ export abstract class JoinQueryBuilder<
     operator?: BinaryOperatorType,
   ): this {
     let primaryColumnValue: string | ModelKey<T> | undefined = primaryColumn;
-    let op: BinaryOperatorType | undefined = operator;
+    const op: BinaryOperatorType | undefined = operator;
 
     if (!primaryColumnValue) {
       if (!this.model.primaryKey) {
@@ -186,7 +186,7 @@ export abstract class JoinQueryBuilder<
     operator?: BinaryOperatorType,
   ): this {
     let primaryColumnValue: string | ModelKey<T> | undefined = primaryColumn;
-    let op: BinaryOperatorType | undefined = operator;
+    const op: BinaryOperatorType | undefined = operator;
 
     if (!primaryColumnValue) {
       if (!this.model.primaryKey) {
@@ -253,7 +253,7 @@ export abstract class JoinQueryBuilder<
     operator?: BinaryOperatorType,
   ): this {
     let primaryColumnValue: string | ModelKey<T> | undefined = primaryColumn;
-    let op: BinaryOperatorType | undefined = operator;
+    const op: BinaryOperatorType | undefined = operator;
 
     if (!primaryColumnValue) {
       if (!this.model.primaryKey) {
@@ -308,7 +308,7 @@ export abstract class JoinQueryBuilder<
     operator?: BinaryOperatorType,
   ): this {
     let primaryColumnValue: string | ModelKey<T> | undefined = primaryColumn;
-    let op: BinaryOperatorType | undefined = operator;
+    const op: BinaryOperatorType | undefined = operator;
 
     if (!primaryColumnValue) {
       if (!this.model.primaryKey) {
@@ -363,7 +363,7 @@ export abstract class JoinQueryBuilder<
     operator?: BinaryOperatorType,
   ): this {
     let primaryColumnValue: string | ModelKey<T> | undefined = primaryColumn;
-    let op: BinaryOperatorType | undefined = operator;
+    const op: BinaryOperatorType | undefined = operator;
 
     if (!primaryColumnValue) {
       if (!this.model.primaryKey) {

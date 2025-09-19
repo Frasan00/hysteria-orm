@@ -22,7 +22,7 @@ export class Migrator {
   }
 
   async upMigrations(migrations: Migration[]): Promise<void> {
-    const queryFormatOptions = this.sql.queryFormatOptions;
+    const queryFormatOptions = this.sql.inputDetails.queryFormatOptions;
     const dbType = this.sql.getDbType() as SqlDataSourceType;
 
     for (const migration of migrations) {
@@ -51,7 +51,7 @@ export class Migrator {
 
   async downMigrations(migrations: Migration[]): Promise<void> {
     migrations = migrations.reverse();
-    const queryFormatOptions = this.sql.queryFormatOptions;
+    const queryFormatOptions = this.sql.inputDetails.queryFormatOptions;
     const dbType = this.sql.getDbType() as SqlDataSourceType;
 
     for (const migration of migrations) {
@@ -104,11 +104,11 @@ export class Migrator {
  */
 export class ClientMigrator {
   protected migrationPath: string;
-  protected sqlDataSourceInput?: Partial<SqlDataSourceInput> | SqlDataSource;
+  protected sqlDataSourceInput?: SqlDataSource["inputDetails"] | SqlDataSource;
 
   constructor(
     migrationPath: string = env.MIGRATION_PATH || "database/migrations",
-    sqlDataSourceInput?: Partial<SqlDataSourceInput> | SqlDataSource,
+    sqlDataSourceInput?: SqlDataSource["inputDetails"] | SqlDataSource,
   ) {
     this.migrationPath = migrationPath;
     this.sqlDataSourceInput = sqlDataSourceInput;
@@ -138,7 +138,7 @@ export class ClientMigrator {
       this.sqlDataSourceInput instanceof SqlDataSource
         ? this.sqlDataSourceInput
         : await SqlDataSource.connect({
-            ...this.sqlDataSourceInput,
+            ...(this.sqlDataSourceInput as SqlDataSourceInput),
           });
 
     if (direction === "up") {
@@ -166,7 +166,7 @@ export class ClientMigrator {
  */
 export const defineMigrator = (
   migrationPath: string,
-  sqlDataSourceInput?: Partial<SqlDataSourceInput> | SqlDataSource,
+  sqlDataSourceInput?: SqlDataSource["inputDetails"] | SqlDataSource,
 ): ClientMigrator => {
   return new ClientMigrator(migrationPath, sqlDataSourceInput);
 };

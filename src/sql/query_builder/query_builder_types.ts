@@ -1,66 +1,62 @@
-import { PickMethods } from "../../utils/types";
-import { Model } from "../models/model";
-import { ModelKey } from "../models/model_manager/model_manager_types";
-import { QueryBuilder } from "./query_builder";
+import type { Model } from "../models/model";
+import type { ModelKey } from "../models/model_manager/model_manager_types";
+import type { WhereQueryBuilder } from "./where_query_builder";
 
 export type PluckReturnType<
   T extends Model,
   K extends ModelKey<T>,
 > = T[K] extends infer U ? U[] : never;
 
-export type QueryBuilderWithOnlyWhereConditions<T extends Model> = PickMethods<
-  QueryBuilder<T>,
+export type WhereOnlyQueryBuilder<T extends Model> = Pick<
+  WhereQueryBuilder<T>,
   | "where"
   | "andWhere"
   | "orWhere"
-  | "whereSubQuery"
-  | "andWhereSubQuery"
-  | "orWhereSubQuery"
-  | "whereBuilder"
-  | "andWhereBuilder"
-  | "orWhereBuilder"
+  | "whereNot"
+  | "andWhereNot"
+  | "orWhereNot"
   | "whereIn"
   | "andWhereIn"
   | "orWhereIn"
   | "whereNotIn"
   | "andWhereNotIn"
   | "orWhereNotIn"
-  | "whereNull"
-  | "andWhereNull"
-  | "orWhereNull"
-  | "whereNotNull"
-  | "andWhereNotNull"
-  | "orWhereNotNull"
-  | "whereRegexp"
-  | "andWhereRegexp"
-  | "orWhereRegexp"
   | "whereBetween"
   | "andWhereBetween"
   | "orWhereBetween"
   | "whereNotBetween"
   | "andWhereNotBetween"
   | "orWhereNotBetween"
-  | "whereIn"
-  | "andWhereIn"
-  | "orWhereIn"
-  | "whereNotIn"
-  | "andWhereNotIn"
-  | "orWhereNotIn"
   | "whereNull"
   | "andWhereNull"
   | "orWhereNull"
   | "whereNotNull"
   | "andWhereNotNull"
   | "orWhereNotNull"
+  | "whereLike"
+  | "andWhereLike"
+  | "orWhereLike"
+  | "whereILike"
+  | "andWhereILike"
+  | "orWhereILike"
+  | "whereNotLike"
+  | "andWhereNotLike"
+  | "orWhereNotLike"
+  | "whereNotILike"
+  | "andWhereNotILike"
+  | "orWhereNotILike"
   | "whereRegexp"
   | "andWhereRegexp"
   | "orWhereRegexp"
-  | "whereBetween"
-  | "andWhereBetween"
-  | "orWhereBetween"
-  | "whereNotBetween"
-  | "andWhereNotBetween"
-  | "orWhereNotBetween"
+  | "whereNotRegexp"
+  | "andWhereNotRegexp"
+  | "orWhereNotRegexp"
+  | "whereRaw"
+  | "andWhereRaw"
+  | "orWhereRaw"
+  | "whereExists"
+  | "orWhereExists"
+  | "andWhereExists"
 >;
 
 export type RelationRetrieveMethod<P extends any> = P extends any[]

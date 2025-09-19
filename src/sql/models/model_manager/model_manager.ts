@@ -367,7 +367,7 @@ export class ModelManager<T extends Model> {
       }),
     );
 
-    let { sql, bindings } = this.astParser.parse([
+    const { sql, bindings } = this.astParser.parse([
       new InsertNode(this.model.table, insertObjects, undefined, true),
       new OnDuplicateNode(
         this.model.table,

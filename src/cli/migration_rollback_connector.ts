@@ -25,7 +25,7 @@ export default async function rollbackMigrationsConnector(
   try {
     const migrationTable: MigrationTableType[] = await getMigrationTable(
       dbType as SqlDataSourceType,
-      sql.getPoolConnection(),
+      sql.getPool(),
     );
     const migrations: Migration[] = await getMigrations(
       dbType as SqlDataSourceType,

@@ -4,7 +4,7 @@ import type { Interpreter } from "../../interpreter";
 
 class MysqlSetNotNullInterpreter implements Interpreter {
   declare model: typeof Model;
-  toSql(node: QueryNode) {
+  toSql(_node: QueryNode) {
     // MySQL doesn't support standalone set not null operations
     return { sql: "", bindings: [] };
   }

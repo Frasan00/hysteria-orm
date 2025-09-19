@@ -61,11 +61,11 @@ export const execSql = async <M extends Model, T extends Returning>(
     case "mariadb":
       const mysqlDriver =
         (options?.customConnection as GetConnectionReturnType<"mysql">) ??
-        sqlDataSource.getPoolConnection("mysql");
+        sqlDataSource.getPool("mysql");
 
       const [mysqlResult] = await withRetry(
         () => mysqlDriver.query(query, params),
-        sqlDataSource.retryPolicy,
+        sqlDataSource.inputDetails.connectionPolicies?.retry,
         sqlDataSource.logs,
       );
 
@@ -79,11 +79,11 @@ export const execSql = async <M extends Model, T extends Returning>(
     case "cockroachdb":
       const pgDriver =
         (options?.customConnection as GetConnectionReturnType<"postgres">) ??
-        sqlDataSource.getPoolConnection("postgres");
+        sqlDataSource.getPool("postgres");
 
       const pgResult = await withRetry(
         () => pgDriver.query(query, params),
-        sqlDataSource.retryPolicy,
+        sqlDataSource.inputDetails.connectionPolicies?.retry,
         sqlDataSource.logs,
       );
 
@@ -100,7 +100,7 @@ export const execSql = async <M extends Model, T extends Returning>(
             mode: options?.sqlLiteOptions?.mode || "fetch",
             models: options?.sqlLiteOptions?.models,
           }),
-        sqlDataSource.retryPolicy,
+        sqlDataSource.inputDetails.connectionPolicies?.retry,
         sqlDataSource.logs,
       );
 
@@ -141,7 +141,7 @@ export const execSqlStreaming = async <
   switch (sqlType) {
     case "mariadb":
     case "mysql": {
-      const pool = sqlDataSource.getPoolConnection("mysql");
+      const pool = sqlDataSource.getPool("mysql");
       const conn = await pool.getConnection();
       const passThrough = new PassThrough({
         objectMode: options.objectMode ?? true,
@@ -209,7 +209,7 @@ export const execSqlStreaming = async <
 
     case "cockroachdb":
     case "postgres": {
-      const pgDriver = sqlDataSource.getPoolConnection("postgres");
+      const pgDriver = sqlDataSource.getPool("postgres");
       const pgQueryStreamDriver = await import("pg-query-stream").catch(() => {
         throw new DriverNotFoundError("pg-query-stream");
       });
@@ -279,7 +279,7 @@ export const execSqlStreaming = async <
     }
 
     case "sqlite": {
-      const sqliteDriver = sqlDataSource.getPoolConnection("sqlite");
+      const sqliteDriver = sqlDataSource.getPool("sqlite");
       const stream = new SQLiteStream(sqliteDriver, query, params, {
         onData: events.onData as (
           _passThrough: any,

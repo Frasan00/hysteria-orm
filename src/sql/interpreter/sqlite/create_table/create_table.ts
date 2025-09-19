@@ -27,7 +27,7 @@ class SqliteCreateTableInterpreter implements Interpreter {
 
       if (child.folder === "constraint") {
         const last = parts.pop() ?? "";
-        let inlineConstraintSql = sql;
+        const inlineConstraintSql = sql;
 
         if (
           /not null/i.test(inlineConstraintSql) ||

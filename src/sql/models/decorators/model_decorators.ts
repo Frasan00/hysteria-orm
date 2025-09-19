@@ -25,8 +25,8 @@ import {
   PRIMARY_KEY_METADATA_KEY,
   RELATION_METADATA_KEY,
   UNIQUE_METADATA_KEY,
-  getDefaultFkConstraintName,
   getDefaultForeignKey,
+  getDefaultFkConstraintName,
   getDefaultIndexName,
   getDefaultPrimaryKeyConstraintName,
   getDefaultUniqueConstraintName,
@@ -496,7 +496,7 @@ function jsonColumn(
 export function getModelColumns(target: typeof Model): ColumnType[] {
   try {
     return Reflect.getMetadata(COLUMN_METADATA_KEY, target.prototype) || [];
-  } catch (error) {
+  } catch (_) {
     return [];
   }
 }

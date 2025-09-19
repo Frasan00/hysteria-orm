@@ -49,7 +49,7 @@ export class Transaction {
           .sqlConnection as GetConnectionReturnType<"mysql">;
         try {
           await mysqlConnection.beginTransaction();
-        } catch (err) {
+        } catch (_) {
           // Global transactions use the pool connection, so we can't use the beginTransaction method and fallback to raw query
           await execSql("START TRANSACTION", [], this.sql, "raw", {
             customConnection: this.sqlConnection,
@@ -114,7 +114,7 @@ export class Transaction {
 
           try {
             await mysqlConnection.commit();
-          } catch (err) {
+          } catch (_) {
             // Global transactions use the pool connection, so we can't use the commit method and fallback to raw query
             await execSql("COMMIT", [], this.sql, "raw", {
               customConnection: this.sqlConnection,
@@ -170,7 +170,7 @@ export class Transaction {
             .sqlConnection as GetConnectionReturnType<"mysql">;
           try {
             await mysqlConnection.rollback();
-          } catch (err) {
+          } catch (_) {
             // Global transactions use the pool connection, so we can't use the rollback method and fallback to raw query
             await execSql("ROLLBACK", [], this.sql, "raw", {
               customConnection: this.sqlConnection,

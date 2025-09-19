@@ -4,7 +4,7 @@ import type { Interpreter } from "../../interpreter";
 
 class SqliteAfterConstraintInterpreter implements Interpreter {
   declare model: typeof Model;
-  toSql(node: QueryNode) {
+  toSql(_node: QueryNode) {
     return { sql: "", bindings: [] };
   }
 }

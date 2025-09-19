@@ -14,11 +14,6 @@ import { SelectNode } from "../ast/query/node/select/basic_select";
 import { UnionCallBack } from "../ast/query/node/select/select_types";
 import { TruncateNode } from "../ast/query/node/truncate";
 import { UpdateNode } from "../ast/query/node/update";
-import { WhereGroupNode } from "../ast/query/node/where/where_group";
-import {
-  SubqueryOperatorType,
-  WhereSubqueryNode,
-} from "../ast/query/node/where/where_subquery";
 import { QueryNode } from "../ast/query/query";
 import { InterpreterUtils } from "../interpreter/interpreter_utils";
 import type { Model } from "../models/model";
@@ -45,7 +40,6 @@ import {
   Cursor,
   PaginateWithCursorOptions,
   PluckReturnType,
-  QueryBuilderWithOnlyWhereConditions,
   StreamOptions,
 } from "./query_builder_types";
 
@@ -754,401 +748,6 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   }
 
   /**
-   * @description Can be used to build a more complex where condition with parenthesis that wraps the where condition defined in the callback
-   * @param {string} columnOrValue can be both a column or a literal value like "posts.id" or 5
-   * @alias andWhereSubQuery
-   */
-  whereSubQuery(
-    columnOrValue: string | number | boolean,
-    subQuery: QueryBuilder<T>,
-  ): this;
-  whereSubQuery(
-    columnOrValue: string | number | boolean,
-    cb: (subQuery: QueryBuilder<T>) => void,
-  ): this;
-  whereSubQuery(
-    columnOrValue: string | number | boolean,
-    operator: SubqueryOperatorType,
-    subQuery: QueryBuilder<T>,
-  ): this;
-  whereSubQuery(
-    columnOrValue: string | number | boolean,
-    operator: SubqueryOperatorType,
-    cb: (subQuery: QueryBuilder<T>) => void,
-  ): this;
-  whereSubQuery(
-    columnOrValue: string | number | boolean,
-    subQueryOrCbOrOperator:
-      | QueryBuilder<T>
-      | ((subQuery: QueryBuilder<T>) => void)
-      | SubqueryOperatorType,
-    subQueryOrCb?: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
-  ): this {
-    return this.andWhereSubQuery(
-      columnOrValue.toString(),
-      subQueryOrCbOrOperator as SubqueryOperatorType,
-      subQueryOrCb as QueryBuilder<T>,
-    );
-  }
-
-  /**
-   * @description Can be used to build a more complex where condition with parenthesis that wraps the where condition defined in the callback
-   * @param {string} columnOrValue can be both a column or a literal value like "posts.id" or 5
-   */
-  andWhereSubQuery(
-    columnOrValue: string | number | boolean,
-    subQuery: QueryBuilder<T>,
-  ): this;
-  andWhereSubQuery(
-    columnOrValue: string | number | boolean,
-    cb: (subQuery: QueryBuilder<T>) => void,
-  ): this;
-  andWhereSubQuery(
-    columnOrValue: string | number | boolean,
-    operator: SubqueryOperatorType,
-    subQuery: QueryBuilder<T>,
-  ): this;
-  andWhereSubQuery(
-    columnOrValue: string | number | boolean,
-    operator: SubqueryOperatorType,
-    cb: (subQuery: QueryBuilder<T>) => void,
-  ): this;
-  andWhereSubQuery(
-    columnOrValue: string | number | boolean,
-    subQueryOrCbOrOperator:
-      | QueryBuilder<T>
-      | ((subQuery: QueryBuilder<T>) => void)
-      | SubqueryOperatorType,
-    subQueryOrCb?: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
-  ): this {
-    let operator: SubqueryOperatorType = "in";
-    let subQuery: QueryBuilder<T>;
-
-    if (typeof subQueryOrCbOrOperator === "string") {
-      operator = subQueryOrCbOrOperator as SubqueryOperatorType;
-      if (typeof subQueryOrCb === "function") {
-        subQuery = new QueryBuilder(this.model, this.sqlDataSource);
-        subQueryOrCb(subQuery);
-        this.whereNodes.push(
-          new WhereSubqueryNode(
-            columnOrValue.toString(),
-            operator,
-            subQuery.extractQueryNodes(),
-            "and",
-          ),
-        );
-        return this;
-      }
-
-      if (subQueryOrCb instanceof QueryBuilder) {
-        subQuery = subQueryOrCb;
-        this.whereNodes.push(
-          new WhereSubqueryNode(
-            columnOrValue.toString(),
-            operator,
-            subQuery.extractQueryNodes(),
-            "and",
-          ),
-        );
-        return this;
-      }
-      return this;
-    }
-
-    if (typeof subQueryOrCbOrOperator === "function") {
-      subQuery = new QueryBuilder(this.model, this.sqlDataSource);
-      subQueryOrCbOrOperator(subQuery);
-      this.whereNodes.push(
-        new WhereSubqueryNode(
-          columnOrValue.toString(),
-          operator,
-          subQuery.extractQueryNodes(),
-          "and",
-        ),
-      );
-      return this;
-    }
-
-    if (subQueryOrCbOrOperator instanceof QueryBuilder) {
-      subQuery = subQueryOrCbOrOperator;
-      this.whereNodes.push(
-        new WhereSubqueryNode(
-          columnOrValue.toString(),
-          operator,
-          subQuery.extractQueryNodes(),
-          "and",
-        ),
-      );
-      return this;
-    }
-
-    return this;
-  }
-
-  /**
-   * @description Can be used to build a more complex where condition with parenthesis that wraps the where condition defined in the callback
-   * @param {string} columnOrValue can be both a column or a literal value like "posts.id" or 5
-   */
-  orWhereSubQuery(
-    columnOrValue: string | number | boolean | number | boolean,
-    subQuery: QueryBuilder<T>,
-  ): this;
-  orWhereSubQuery(
-    columnOrValue: string | number | boolean,
-    cb: (subQuery: QueryBuilder<T>) => void,
-  ): this;
-  orWhereSubQuery(
-    columnOrValue: string | number | boolean,
-    operator: SubqueryOperatorType,
-    subQuery: QueryBuilder<T>,
-  ): this;
-  orWhereSubQuery(
-    columnOrValue: string | number | boolean,
-    operator: SubqueryOperatorType,
-    cb: (subQuery: QueryBuilder<T>) => void,
-  ): this;
-  orWhereSubQuery(
-    columnOrValue: string | number | boolean,
-    subQueryOrCbOrOperator:
-      | QueryBuilder<T>
-      | ((subQuery: QueryBuilder<T>) => void)
-      | SubqueryOperatorType,
-    subQueryOrCb?: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
-  ): this {
-    let operator: SubqueryOperatorType = "in";
-    let subQuery: QueryBuilder<T>;
-
-    if (typeof subQueryOrCbOrOperator === "string") {
-      operator = subQueryOrCbOrOperator as SubqueryOperatorType;
-      if (typeof subQueryOrCb === "function") {
-        subQuery = new QueryBuilder(this.model, this.sqlDataSource);
-        subQueryOrCb(subQuery);
-        this.whereNodes.push(
-          new WhereSubqueryNode(
-            columnOrValue.toString(),
-            operator,
-            subQuery.extractQueryNodes(),
-            "or",
-          ),
-        );
-        return this;
-      }
-      if (subQueryOrCb instanceof QueryBuilder) {
-        subQuery = subQueryOrCb;
-        this.whereNodes.push(
-          new WhereSubqueryNode(
-            columnOrValue.toString(),
-            operator,
-            subQuery.extractQueryNodes(),
-            "or",
-          ),
-        );
-        return this;
-      }
-      return this;
-    }
-
-    if (typeof subQueryOrCbOrOperator === "function") {
-      subQuery = new QueryBuilder(this.model, this.sqlDataSource);
-      subQueryOrCbOrOperator(subQuery);
-      this.whereNodes.push(
-        new WhereSubqueryNode(
-          columnOrValue.toString(),
-          operator,
-          subQuery.extractQueryNodes(),
-          "or",
-        ),
-      );
-      return this;
-    }
-
-    if (subQueryOrCbOrOperator instanceof QueryBuilder) {
-      subQuery = subQueryOrCbOrOperator;
-      this.whereNodes.push(
-        new WhereSubqueryNode(
-          columnOrValue.toString(),
-          operator,
-          subQuery.extractQueryNodes(),
-          "or",
-        ),
-      );
-      return this;
-    }
-
-    return this;
-  }
-
-  /**
-   * @description Can be used to build a more complex where condition with parenthesis that wraps the where condition defined in the callback
-   * @alias andWhereBuilder
-   */
-  whereBuilder(
-    cb: (queryBuilder: QueryBuilderWithOnlyWhereConditions<T>) => void,
-  ): this {
-    return this.andWhereBuilder(
-      cb as (queryBuilder: QueryBuilderWithOnlyWhereConditions<T>) => void,
-    );
-  }
-
-  /**
-   * @description Can be used to build a more complex where condition with parenthesis that wraps the where condition defined in the callback
-   */
-  andWhereBuilder(cb: (queryBuilder: QueryBuilder<T>) => void): this {
-    const nestedBuilder = new QueryBuilder(this.model, this.sqlDataSource);
-    nestedBuilder.isNestedCondition = true;
-    cb(nestedBuilder as QueryBuilder<T>);
-
-    const whereGroupNode = new WhereGroupNode(nestedBuilder.whereNodes, "and");
-    this.whereNodes.push(whereGroupNode);
-
-    return this;
-  }
-
-  /**
-   * @description Can be used to build a more complex where condition with parenthesis that wraps the where condition defined in the callback
-   */
-  orWhereBuilder(cb: (queryBuilder: QueryBuilder<T>) => void): this {
-    const nestedBuilder = new QueryBuilder(this.model, this.sqlDataSource);
-    nestedBuilder.isNestedCondition = true;
-    cb(nestedBuilder as QueryBuilder<T>);
-
-    const whereGroupNode = new WhereGroupNode(nestedBuilder.whereNodes, "or");
-    this.whereNodes.push(whereGroupNode);
-
-    return this;
-  }
-
-  /**
-   * @description Adds a AND WHERE EXISTS condition to the query. By default uses the same table, you can use the `from` method to change the table.
-   */
-  whereExists(
-    cbOrQueryBuilder: (queryBuilder: QueryBuilder<T>) => void | QueryBuilder<T>,
-  ): this {
-    return this.andWhereExists(cbOrQueryBuilder);
-  }
-
-  /**
-   * @description Adds a AND WHERE EXISTS condition to the query. By default uses the same table, you can use the `from` method to change the table.
-   */
-  andWhereExists(
-    cbOrQueryBuilder: (queryBuilder: QueryBuilder<T>) => void | QueryBuilder<T>,
-  ): this {
-    const nestedBuilder =
-      cbOrQueryBuilder instanceof QueryBuilder
-        ? cbOrQueryBuilder
-        : new QueryBuilder(this.model, this.sqlDataSource);
-
-    nestedBuilder.isNestedCondition = true;
-    if (typeof cbOrQueryBuilder === "function") {
-      cbOrQueryBuilder(nestedBuilder as QueryBuilder<T>);
-    }
-
-    this.whereNodes.push(
-      new WhereSubqueryNode(
-        "",
-        "exists",
-        nestedBuilder.extractQueryNodes(),
-        "and",
-      ),
-    );
-
-    return this;
-  }
-
-  /**
-   * @description Adds a OR WHERE EXISTS condition to the query. By default uses the same table, you can use the `from` method to change the table.
-   */
-  orWhereExists(
-    cbOrQueryBuilder: (queryBuilder: QueryBuilder<T>) => void | QueryBuilder<T>,
-  ): this {
-    const nestedBuilder =
-      cbOrQueryBuilder instanceof QueryBuilder
-        ? cbOrQueryBuilder
-        : new QueryBuilder(this.model, this.sqlDataSource);
-
-    nestedBuilder.isNestedCondition = true;
-    if (typeof cbOrQueryBuilder === "function") {
-      cbOrQueryBuilder(nestedBuilder as QueryBuilder<T>);
-    }
-
-    this.whereNodes.push(
-      new WhereSubqueryNode(
-        "",
-        "exists",
-        nestedBuilder.extractQueryNodes(),
-        "or",
-      ),
-    );
-
-    return this;
-  }
-
-  /**
-   * @description Adds a WHERE NOT EXISTS condition to the query. By default uses the same table, you can use the `from` method to change the table.
-   */
-  whereNotExists(
-    cbOrQueryBuilder: (queryBuilder: QueryBuilder<T>) => void | QueryBuilder<T>,
-  ): this {
-    return this.andWhereNotExists(cbOrQueryBuilder);
-  }
-
-  /**
-   * @description Adds a WHERE NOT EXISTS condition to the query. By default uses the same table, you can use the `from` method to change the table.
-   */
-  andWhereNotExists(
-    cbOrQueryBuilder: (queryBuilder: QueryBuilder<T>) => void | QueryBuilder<T>,
-  ): this {
-    const nestedBuilder =
-      cbOrQueryBuilder instanceof QueryBuilder
-        ? cbOrQueryBuilder
-        : new QueryBuilder(this.model, this.sqlDataSource);
-
-    nestedBuilder.isNestedCondition = true;
-    if (typeof cbOrQueryBuilder === "function") {
-      cbOrQueryBuilder(nestedBuilder as QueryBuilder<T>);
-    }
-
-    this.whereNodes.push(
-      new WhereSubqueryNode(
-        "",
-        "not exists",
-        nestedBuilder.extractQueryNodes(),
-        "and",
-      ),
-    );
-
-    return this;
-  }
-
-  /**
-   * @description Adds a WHERE NOT EXISTS condition to the query. By default uses the same table, you can use the `from` method to change the table.
-   */
-  orWhereNotExists(
-    cbOrQueryBuilder: (queryBuilder: QueryBuilder<T>) => void | QueryBuilder<T>,
-  ): this {
-    const nestedBuilder =
-      cbOrQueryBuilder instanceof QueryBuilder
-        ? cbOrQueryBuilder
-        : new QueryBuilder(this.model, this.sqlDataSource);
-
-    nestedBuilder.isNestedCondition = true;
-    if (typeof cbOrQueryBuilder === "function") {
-      cbOrQueryBuilder(nestedBuilder as QueryBuilder<T>);
-    }
-
-    this.whereNodes.push(
-      new WhereSubqueryNode(
-        "",
-        "not exists",
-        nestedBuilder.extractQueryNodes(),
-        "or",
-      ),
-    );
-
-    return this;
-  }
-
-  /**
    * @description Returns the query with the parameters bound to the query
    */
   toQuery(dbType: SqlDataSourceType = this.dbType || "mysql"): string {
@@ -1171,16 +770,16 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     let formattedQuery: string;
     try {
       formattedQuery = format(sql, {
-        ...this.sqlDataSource.queryFormatOptions,
+        ...this.sqlDataSource.inputDetails.queryFormatOptions,
         language: getSqlDialect(dbType as SqlDataSourceType),
       });
-    } catch (err) {
+    } catch (_) {
       // Retry without language
       try {
         formattedQuery = format(sql, {
-          ...this.sqlDataSource.queryFormatOptions,
+          ...this.sqlDataSource.inputDetails.queryFormatOptions,
         });
-      } catch (err) {
+      } catch (_) {
         // Ultimate fallback
         formattedQuery = sql;
       }
@@ -1252,7 +851,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     return this;
   }
 
-  protected extractQueryNodes(): QueryNode[] {
+  extractQueryNodes(): QueryNode[] {
     this.fromNode ||= new FromNode(this.fromTable);
     if (!this.selectNodes.length) {
       this.selectNodes = [new SelectNode(`*`)];

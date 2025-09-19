@@ -55,7 +55,7 @@ class SqliteInsertInterpreter implements Interpreter {
       valuesClauses.push(`(${placeholders})`);
     }
 
-    let sql = `${formattedTable} (${formattedColumns}) VALUES ${valuesClauses.join(", ")}`;
+    const sql = `${formattedTable} (${formattedColumns}) VALUES ${valuesClauses.join(", ")}`;
 
     return {
       sql,

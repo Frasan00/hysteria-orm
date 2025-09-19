@@ -1,4 +1,3 @@
-import { FormatOptionsWithLanguage } from "sql-formatter";
 import { DataSource } from "../data_source/data_source";
 import { HysteriaError } from "../errors/hysteria_error";
 import { generateOpenApiModelWithMetadata } from "../openapi/openapi";
@@ -27,7 +26,7 @@ import type {
   AugmentedSqlDataSource,
   ConnectionPolicies,
   GetConnectionReturnType,
-  GetPoolConnectionReturnType,
+  getPoolReturnType,
   MysqlConnectionInstance,
   PgPoolClientInstance,
   SqlDataSourceInput,
@@ -56,10 +55,8 @@ export class SqlDataSource extends DataSource {
   declare sqlPool: SqlPoolType | null;
 
   /**
-   * @description The retry policy for the database connection
+   * @description Options provided in the sql data source initialization
    */
-  retryPolicy: ConnectionPolicies["retry"];
-  queryFormatOptions: FormatOptionsWithLanguage;
   inputDetails: SqlDataSourceInput;
 
   // Static Methods
@@ -115,22 +112,18 @@ export class SqlDataSource extends DataSource {
       username: sqlDataSource.username,
       password: sqlDataSource.password,
       database: sqlDataSource.database,
-      connectionPolicies: sqlDataSource.retryPolicy as ConnectionPolicies,
-      queryFormatOptions: sqlDataSource.queryFormatOptions,
+      connectionPolicies: sqlDataSource.inputDetails
+        .connectionPolicies as ConnectionPolicies,
+      queryFormatOptions: sqlDataSource.inputDetails.queryFormatOptions,
       driverOptions: sqlDataSource.inputDetails.driverOptions,
       logs: sqlDataSource.logs,
       models: sqlDataSource.models,
-      syncModels: inputOrCb?.syncModels,
     } as SqlDataSourceInput<T>);
 
     await sqlDataSource.testConnectionQuery("SELECT 1");
     SqlDataSource.instance = sqlDataSource;
 
     await cb?.(sqlDataSource as AugmentedSqlDataSource<T>);
-    if (inputOrCb?.syncModels) {
-      await sqlDataSource.syncSchema();
-    }
-
     return sqlDataSource as AugmentedSqlDataSource<T>;
   }
 
@@ -189,22 +182,18 @@ export class SqlDataSource extends DataSource {
       username: sqlDataSource.username,
       password: sqlDataSource.password,
       database: sqlDataSource.database,
-      connectionPolicies: sqlDataSource.retryPolicy as ConnectionPolicies,
-      queryFormatOptions: sqlDataSource.queryFormatOptions,
+      connectionPolicies: sqlDataSource.inputDetails
+        .connectionPolicies as ConnectionPolicies,
+      queryFormatOptions: sqlDataSource.inputDetails.queryFormatOptions,
       driverOptions: sqlDataSource.inputDetails.driverOptions,
       logs: sqlDataSource.logs,
       models: sqlDataSource.models,
-      syncModels: inputOrCb?.syncModels,
     } as SqlDataSourceInput<T>);
 
     await sqlDataSource.testConnectionQuery("SELECT 1");
     SqlDataSource.instance = sqlDataSource;
 
     await cb?.(sqlDataSource as AugmentedSqlDataSource<T>);
-    if (inputOrCb?.syncModels) {
-      await sqlDataSource.syncSchema();
-    }
-
     return sqlDataSource as AugmentedSqlDataSource<T>;
   }
 
@@ -225,7 +214,9 @@ export class SqlDataSource extends DataSource {
     connectionDetails: UseConnectionInput<T>,
     cb: (sqlDataSource: AugmentedSqlDataSource<T>) => Promise<void>,
   ): Promise<void> {
-    const customSqlInstance = new SqlDataSource(connectionDetails);
+    const customSqlInstance = new SqlDataSource(
+      connectionDetails as SqlDataSourceInput,
+    );
     if (connectionDetails.models) {
       const sanitizeModelKeys = customSqlInstance.sanitizeModelKeys(
         connectionDetails.models,
@@ -242,8 +233,9 @@ export class SqlDataSource extends DataSource {
       username: customSqlInstance.username,
       password: customSqlInstance.password,
       database: customSqlInstance.database,
-      connectionPolicies: customSqlInstance.retryPolicy as ConnectionPolicies,
-      queryFormatOptions: customSqlInstance.queryFormatOptions,
+      connectionPolicies: customSqlInstance.inputDetails
+        .connectionPolicies as ConnectionPolicies,
+      queryFormatOptions: customSqlInstance.inputDetails.queryFormatOptions,
       driverOptions: customSqlInstance.inputDetails.driverOptions,
       logs: customSqlInstance.logs,
       models: connectionDetails.models,
@@ -431,17 +423,34 @@ export class SqlDataSource extends DataSource {
   private constructor(input?: SqlDataSourceInput) {
     super(input);
     this.sqlType = this.type as SqlDataSourceType;
-    this.retryPolicy = input?.connectionPolicies?.retry || {
-      maxRetries: 0,
-      delay: 0,
+    this.inputDetails = input || {
+      connectionPolicies: {
+        retry: {
+          maxRetries: 0,
+          delay: 0,
+        },
+      },
+      queryFormatOptions: {
+        language: getSqlDialect(this.sqlType),
+        keywordCase: "lower",
+        dataTypeCase: "lower",
+        functionCase: "lower",
+      },
     };
-    this.queryFormatOptions = input?.queryFormatOptions || {
+
+    this.inputDetails.connectionPolicies = input?.connectionPolicies || {
+      retry: {
+        maxRetries: 0,
+        delay: 0,
+      },
+    };
+
+    this.inputDetails.queryFormatOptions = input?.queryFormatOptions || {
       language: getSqlDialect(this.sqlType),
       keywordCase: "lower",
       dataTypeCase: "lower",
       functionCase: "lower",
     };
-    this.inputDetails = input || {};
   }
 
   /**
@@ -465,8 +474,12 @@ export class SqlDataSource extends DataSource {
     cloned.sqlPool = this.sqlPool;
     cloned.models = this.models;
     cloned.sqlType = this.sqlType;
-    cloned.retryPolicy = safeClone(this.retryPolicy);
-    cloned.queryFormatOptions = safeClone(this.queryFormatOptions);
+    cloned.inputDetails.connectionPolicies = safeClone(
+      this.inputDetails.connectionPolicies,
+    );
+    cloned.inputDetails.queryFormatOptions = safeClone(
+      this.inputDetails.queryFormatOptions,
+    );
     cloned.logs = this.logs;
     cloned.type = this.type;
     cloned.host = this.host;
@@ -659,22 +672,22 @@ export class SqlDataSource extends DataSource {
   /**
    * @description Returns the current raw driver connection, you can specify the type of connection you want to get to have better type safety
    * @example
-   * const mysqlConnection = sqlDataSource.getPoolConnection("mysql"); // mysql2 Pool
-   * const pgConnection = sqlDataSource.getPoolConnection("postgres"); // pg Pool
-   * const sqliteConnection = sqlDataSource.getPoolConnection("sqlite"); // sqlite3 Database
+   * const mysqlConnection = sql.getPool("mysql"); // mysql2 Pool
+   * const pgConnection = sql.getPool("postgres"); // pg Pool
+   * const sqliteConnection = sql.getPool("sqlite"); // sqlite3 Database
    */
-  getPoolConnection<T extends SqlDataSourceType = typeof this.sqlType>(
+  getPool<T extends SqlDataSourceType = typeof this.sqlType>(
     _specificType: T = this.sqlType as T,
-  ): GetPoolConnectionReturnType<T> {
-    return this.sqlPool as GetPoolConnectionReturnType<T>;
+  ): getPoolReturnType<T> {
+    return this.sqlPool as getPoolReturnType<T>;
   }
 
   /**
-   * @description Returns the current raw driver connection, you can specify the type of connection you want to get to have better type safety
+   * @description Returns a connection from the pool, you can specify the type of connection you want to get to have better type safety
    * @example
-   * const mysqlConnection = sqlDataSource.getConnection("mysql"); // mysql2 PoolConnection
-   * const pgConnection = sqlDataSource.getConnection("postgres"); // pg PoolClient
-   * const sqliteConnection = sqlDataSource.getConnection("sqlite"); // sqlite3 Database
+   * const mysqlConnection = sql.getConnection("mysql"); // mysql2 PoolConnection
+   * const pgConnection = sql.getConnection("postgres"); // pg PoolClient
+   * const sqliteConnection = sql.getConnection("sqlite"); // sqlite3 Database
    */
   async getConnection<T extends SqlDataSourceType = typeof this.sqlType>(
     _specificType: T = this.sqlType as T,
@@ -746,8 +759,9 @@ export class SqlDataSource extends DataSource {
       username: this.username,
       password: this.password,
       database: this.database,
-      connectionPolicies: this.retryPolicy as ConnectionPolicies,
-      queryFormatOptions: this.queryFormatOptions,
+      connectionPolicies: this.inputDetails
+        .connectionPolicies as ConnectionPolicies,
+      queryFormatOptions: this.inputDetails.queryFormatOptions,
     };
   }
 
@@ -760,12 +774,12 @@ export class SqlDataSource extends DataSource {
 
   /**
    * @description Syncs the schema of the database with the models metadata
-   * @warning This will drop and recreate all the indexes and constraints, use with caution
+   * @warning This will drop and recreate all the indexes and constraints, use with caution and not in production environments
+   * @sqlite Not supported
    */
   async syncSchema(): Promise<void> {
     if (this.sqlType === "sqlite") {
       logger.warn("Syncing schema with SQLite is not supported, skipping...");
-
       return;
     }
 

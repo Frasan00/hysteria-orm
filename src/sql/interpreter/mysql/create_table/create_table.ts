@@ -27,7 +27,7 @@ class MysqlCreateTableInterpreter implements Interpreter {
 
       if (child.folder === "constraint") {
         const last = parts.pop() ?? "";
-        let inlineConstraintSql = sql;
+        const inlineConstraintSql = sql;
 
         // Handle inline constraints: not null, null, and default
         if (

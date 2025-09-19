@@ -791,7 +791,7 @@ export class MigrationOperationGenerator {
       ...operation,
       sqlStatements: operation.sqlStatements.map((statement) =>
         format(statement, {
-          ...this.sql.queryFormatOptions,
+          ...this.sql.inputDetails.queryFormatOptions,
         })
           .replace(/\n/g, " ")
           .replace(/\s+/g, " "),
