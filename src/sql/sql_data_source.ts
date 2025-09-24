@@ -2,6 +2,7 @@ import { DataSource } from "../data_source/data_source";
 import { HysteriaError } from "../errors/hysteria_error";
 import { generateOpenApiModelWithMetadata } from "../openapi/openapi";
 import logger from "../utils/logger";
+import { isTableMissingError } from "../utils/query";
 import { AstParser } from "./ast/parser";
 import { RawNode } from "./ast/query/node/raw/raw_node";
 import { ForeignKeyInfoNode } from "./ast/query/node/schema";
@@ -52,7 +53,16 @@ export class SqlDataSource extends DataSource {
   private sqlType: SqlDataSourceType;
   private models: Record<string, SqlDataSourceModel> = {};
 
+  /**
+   * @description The pool of connections for the database
+   */
   declare sqlPool: SqlPoolType | null;
+
+  /**
+   * @description Only used in transaction context to specify the connection, not meant to be used directly
+   * @private
+   */
+  sqlConnection: GetConnectionReturnType<SqlDataSourceType> | null = null;
 
   /**
    * @description Options provided in the sql data source initialization
@@ -284,13 +294,19 @@ export class SqlDataSource extends DataSource {
    * @description Use Models to have type safety and serialization
    */
   static query(table: string): QueryBuilder {
+    const instance = this.getInstance();
+    const sqlForQueryBuilder =
+      instance.isInGlobalTransaction && instance.globalTransaction?.isActive
+        ? instance.globalTransaction.sql
+        : instance;
+
     return new QueryBuilder(
       {
         modelCaseConvention: "preserve",
         databaseCaseConvention: "preserve",
         table: table,
       } as typeof Model,
-      this.getInstance(),
+      sqlForQueryBuilder,
     );
   }
 
@@ -344,7 +360,7 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
-   * @description Starts a transaction on the database and returns a Transaction instance
+   * @description Starts a transaction on a dedicated connection from the pool and returns a Transaction instance
    */
   static async startTransaction(
     options?: StartTransactionOptions,
@@ -386,7 +402,8 @@ export class SqlDataSource extends DataSource {
       return;
     }
 
-    return this.getInstance().closeConnection();
+    await this.instance.closeConnection();
+    this.instance = null;
   }
 
   /**
@@ -403,7 +420,13 @@ export class SqlDataSource extends DataSource {
     query: string,
     params: any[] = [],
   ): Promise<T> {
-    return this.getInstance().rawQuery(query, params);
+    const instance = this.getInstance();
+    const sqlForRawQuery =
+      instance.isInGlobalTransaction && instance.globalTransaction?.isActive
+        ? instance.globalTransaction.sql
+        : instance;
+
+    return (sqlForRawQuery as SqlDataSource).rawQuery(query, params);
   }
 
   /**
@@ -457,37 +480,29 @@ export class SqlDataSource extends DataSource {
    * @description Returns true if the connection is established
    */
   get isConnected(): boolean {
-    return !!this.sqlPool;
+    return !!this.sqlPool || !!this.sqlConnection;
   }
 
-  clone(): this {
-    const safeClone = <T>(value: T): T => {
-      if (typeof (globalThis as any).structuredClone === "function") {
-        return (globalThis as any).structuredClone(value);
-      }
-      return JSON.parse(JSON.stringify(value));
-    };
-
+  /**
+   * @description Clones the SqlDataSource instance
+   * @returns A new SqlDataSource instance with the same input details
+   */
+  async clone(): Promise<this> {
     const cloned = new SqlDataSource(this.inputDetails) as this;
-    delete cloned.inputDetails.models;
-
-    cloned.sqlPool = this.sqlPool;
-    cloned.models = this.models;
-    cloned.sqlType = this.sqlType;
-    cloned.inputDetails.connectionPolicies = safeClone(
-      this.inputDetails.connectionPolicies,
-    );
-    cloned.inputDetails.queryFormatOptions = safeClone(
-      this.inputDetails.queryFormatOptions,
-    );
-    cloned.logs = this.logs;
-    cloned.type = this.type;
-    cloned.host = this.host;
-    cloned.port = this.port;
-    cloned.username = this.username;
-    cloned.password = this.password;
-    cloned.database = this.database;
-    cloned.url = this.url;
+    cloned.sqlPool = await createSqlPool(cloned.sqlType, {
+      type: cloned.sqlType,
+      host: cloned.host,
+      port: cloned.port,
+      username: cloned.username,
+      password: cloned.password,
+      database: cloned.database,
+      connectionPolicies: cloned.inputDetails
+        .connectionPolicies as ConnectionPolicies,
+      queryFormatOptions: cloned.inputDetails.queryFormatOptions,
+      driverOptions: cloned.inputDetails.driverOptions,
+      logs: cloned.logs,
+      models: cloned.models,
+    } as SqlDataSourceInput);
     return cloned;
   }
 
@@ -505,13 +520,18 @@ export class SqlDataSource extends DataSource {
    * @description Use Models to have type safety and serialization
    */
   query(table: string): QueryBuilder {
+    const sqlForQueryBuilder =
+      this.isInGlobalTransaction && this.globalTransaction?.isActive
+        ? this.globalTransaction.sql
+        : this;
+
     return new QueryBuilder(
       {
         modelCaseConvention: "preserve",
         databaseCaseConvention: "preserve",
         table: table,
       } as typeof Model,
-      this,
+      sqlForQueryBuilder,
     );
   }
 
@@ -565,12 +585,9 @@ export class SqlDataSource extends DataSource {
   async startGlobalTransaction(
     options?: StartTransactionOptions,
   ): Promise<Transaction> {
-    this.globalTransaction = new Transaction(
-      this,
-      this.sqlPool as GetConnectionReturnType,
-      options?.isolationLevel,
-    );
-
+    const cloned = await this.clone();
+    cloned.sqlConnection = await cloned.getConnection();
+    this.globalTransaction = new Transaction(cloned, options?.isolationLevel);
     await this.globalTransaction.startTransaction();
     return this.globalTransaction;
   }
@@ -580,7 +597,7 @@ export class SqlDataSource extends DataSource {
    * @throws {HysteriaError} If the global transaction is not started
    */
   async commitGlobalTransaction(
-    options?: Omit<TransactionExecutionOptions, "endConnection">,
+    options?: TransactionExecutionOptions,
   ): Promise<void> {
     if (!this.globalTransaction) {
       throw new HysteriaError(
@@ -589,9 +606,8 @@ export class SqlDataSource extends DataSource {
       );
     }
 
-    await this.globalTransaction?.commit({
+    await this.globalTransaction.commit({
       throwErrorOnInactiveTransaction: options?.throwErrorOnInactiveTransaction,
-      endConnection: false,
     });
     this.globalTransaction = null;
   }
@@ -601,18 +617,17 @@ export class SqlDataSource extends DataSource {
    * @throws {HysteriaError} If the global transaction is not started and options.throwErrorOnInactiveTransaction is true
    */
   async rollbackGlobalTransaction(
-    options?: Omit<TransactionExecutionOptions, "endConnection">,
+    options?: TransactionExecutionOptions,
   ): Promise<void> {
     if (!this.globalTransaction) {
-      throw new HysteriaError(
-        "SqlDataSource::rollbackGlobalTransaction",
-        "GLOBAL_TRANSACTION_NOT_STARTED",
+      logger.warn(
+        "SqlDataSource::rollbackGlobalTransaction - GLOBAL_TRANSACTION_NOT_STARTED",
       );
+      return;
     }
 
-    await this.globalTransaction?.rollback({
+    await this.globalTransaction.rollback({
       throwErrorOnInactiveTransaction: options?.throwErrorOnInactiveTransaction,
-      endConnection: false,
     });
     this.globalTransaction = null;
   }
@@ -627,12 +642,9 @@ export class SqlDataSource extends DataSource {
   async startTransaction(
     options?: StartTransactionOptions,
   ): Promise<Transaction> {
-    const sqlTrx = new Transaction(
-      this,
-      await this.getConnection(),
-      options?.isolationLevel,
-    );
-
+    const cloned = await this.clone();
+    cloned.sqlConnection = await cloned.getConnection();
+    const sqlTrx = new Transaction(cloned, options?.isolationLevel);
     await sqlTrx.startTransaction();
     return sqlTrx;
   }
@@ -664,6 +676,13 @@ export class SqlDataSource extends DataSource {
       throw new HysteriaError(
         "SqlDataSource::getModelManager",
         "CONNECTION_NOT_ESTABLISHED",
+      );
+    }
+
+    if (this.globalTransaction?.isActive) {
+      return new ModelManager(
+        model as typeof Model,
+        this.globalTransaction.sql,
       );
     }
 
@@ -702,7 +721,11 @@ export class SqlDataSource extends DataSource {
   async getConnection<T extends SqlDataSourceType = typeof this.sqlType>(
     _specificType: T = this.sqlType as T,
   ): Promise<GetConnectionReturnType<T>> {
-    if (!this.isConnected || !this.sqlPool) {
+    if (this.sqlConnection) {
+      return this.sqlConnection as GetConnectionReturnType<T>;
+    }
+
+    if (!this.sqlPool) {
       throw new HysteriaError(
         "SqlDataSource::getConnection",
         "CONNECTION_NOT_ESTABLISHED",
@@ -730,6 +753,7 @@ export class SqlDataSource extends DataSource {
 
   /**
    * @description Closes the current connection
+   * @description If there is an active global transaction, it will be rolled back
    */
   async closeConnection(): Promise<void> {
     if (!this.isConnected) {
@@ -737,17 +761,27 @@ export class SqlDataSource extends DataSource {
       return;
     }
 
+    try {
+      if (this.globalTransaction?.isActive) {
+        await this.rollbackGlobalTransaction({
+          throwErrorOnInactiveTransaction: false,
+        });
+      }
+    } catch (err: any) {
+      logger.warn(
+        "SqlDataSource::closeConnection - Error while rolling back global transaction",
+      );
+    }
+
     logger.warn("Closing connection");
     switch (this.type) {
       case "mysql":
       case "mariadb":
         await (this.sqlPool as MysqlConnectionInstance).end();
-        this.sqlPool = null;
         break;
       case "postgres":
       case "cockroachdb":
-        (this.sqlPool as PgPoolClientInstance).end();
-        this.sqlPool = null;
+        await (this.sqlPool as PgPoolClientInstance).end();
         break;
       case "sqlite":
         await new Promise<void>((resolve, reject) => {
@@ -758,7 +792,6 @@ export class SqlDataSource extends DataSource {
             resolve();
           });
         });
-        this.sqlPool = null;
         break;
       default:
         throw new HysteriaError(
@@ -766,6 +799,9 @@ export class SqlDataSource extends DataSource {
           `UNSUPPORTED_DATABASE_TYPE_${this.type}`,
         );
     }
+
+    this.sqlPool = null;
+    this.sqlConnection = null;
   }
 
   getConnectionDetails(): SqlDataSourceInput {
@@ -844,7 +880,7 @@ export class SqlDataSource extends DataSource {
       );
     }
 
-    return execSql(query, params, this);
+    return execSql(query, params, this, "raw");
   }
 
   /**
@@ -902,7 +938,7 @@ export class SqlDataSource extends DataSource {
     try {
       rows = await this.rawQuery(sql);
     } catch (err: any) {
-      if (this.isTableMissingError(err)) {
+      if (isTableMissingError(this.getDbType(), err)) {
         return [];
       }
       throw err;
@@ -999,7 +1035,7 @@ export class SqlDataSource extends DataSource {
     try {
       rows = await this.rawQuery(sql);
     } catch (err: any) {
-      if (this.isTableMissingError(err)) {
+      if (isTableMissingError(this.getDbType(), err)) {
         return [];
       }
       throw err;
@@ -1069,7 +1105,7 @@ export class SqlDataSource extends DataSource {
     try {
       rows = await this.rawQuery(sql);
     } catch (err: any) {
-      if (this.isTableMissingError(err)) {
+      if (isTableMissingError(this.getDbType(), err)) {
         return [];
       }
       throw err;
@@ -1137,7 +1173,7 @@ export class SqlDataSource extends DataSource {
     try {
       rows = await this.rawQuery(sql);
     } catch (err: any) {
-      if (this.isTableMissingError(err)) {
+      if (isTableMissingError(this.getDbType(), err)) {
         return undefined;
       }
       throw err;
@@ -1185,27 +1221,6 @@ export class SqlDataSource extends DataSource {
     }
 
     return models;
-  }
-
-  private isTableMissingError(error: any): boolean {
-    const db = this.getDbType();
-    if (!error) {
-      return false;
-    }
-
-    if (db === "mysql" || db === "mariadb") {
-      return error.code === "ER_NO_SUCH_TABLE" || error.errno === 1146;
-    }
-
-    if (db === "postgres" || db === "cockroachdb") {
-      return error.code === "42P01"; // undefined_table
-    }
-
-    if (db === "sqlite") {
-      return /no such table/i.test(String(error.message || ""));
-    }
-
-    return false;
   }
 
   static get isInGlobalTransaction(): boolean {

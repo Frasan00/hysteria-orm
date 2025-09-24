@@ -255,3 +255,91 @@ describe(`[${env.DB_TYPE}] Transaction`, () => {
     ).resolves.not.toThrow(HysteriaError);
   });
 });
+
+describe(`[${env.DB_TYPE}] Raw transaction from transaction sql instance should work`, () => {
+  test("Simple transaction", async () => {
+    const trx = await SqlDataSource.startTransaction();
+    await trx.sql.rawQuery("SELECT 1");
+    await trx.commit();
+  });
+
+  test("Insert with commit via query builder", async () => {
+    const trx = await SqlDataSource.startTransaction();
+    await trx.sql.query(UserWithoutPk.table).insert({
+      email: "test@test.com",
+    });
+
+    await trx.commit();
+
+    const retrievedUsers = await UserWithoutPk.query().many();
+    expect(retrievedUsers.length).toBe(1);
+    expect(retrievedUsers[0].email).toBe("test@test.com");
+  });
+
+  test("Insert with rollback via query builder", async () => {
+    const trx = await SqlDataSource.startTransaction();
+    await trx.sql.query(UserWithoutPk.table).insert({
+      email: "test@test.com",
+    });
+
+    // standard connection should not have this transaction data
+    // We avoid mid transaction testing for cockroachdb since it's serializable MVCC may cause issues
+    if (env.DB_TYPE !== "cockroachdb") {
+      const usersFromStandardConnection = await UserWithoutPk.query().many();
+      expect(usersFromStandardConnection.length).toBe(0);
+    }
+
+    await trx.rollback();
+
+    const retrievedUsers = await UserWithoutPk.query().many();
+    expect(retrievedUsers.length).toBe(0);
+  });
+
+  test("Insert many with commit via model manager", async () => {
+    const trx = await SqlDataSource.startTransaction();
+    const modelManager = trx.sql.getModelManager(UserWithoutPk);
+    await modelManager.insertMany([
+      { email: "test@test.com" },
+      { email: "test2@test.com" },
+    ]);
+
+    // standard connection should not have this transaction data
+    if (env.DB_TYPE !== "cockroachdb") {
+      const usersFromStandardConnection = await UserWithoutPk.query().many();
+      expect(usersFromStandardConnection.length).toBe(0);
+    }
+
+    await trx.commit();
+
+    const retrievedUsers = await UserWithoutPk.query().many();
+    expect(retrievedUsers.length).toBe(2);
+    expect(retrievedUsers[0].email).toBe("test@test.com");
+    expect(retrievedUsers[1].email).toBe("test2@test.com");
+  });
+
+  test("Insert many with rollback via model manager", async () => {
+    const trx = await SqlDataSource.startTransaction();
+    const modelManager = trx.sql.getModelManager(UserWithoutPk);
+    await modelManager.insertMany([
+      { email: "test@test.com" },
+      { email: "test2@test.com" },
+    ]);
+
+    // standard connection should not have this transaction data
+    if (env.DB_TYPE !== "cockroachdb") {
+      const usersFromStandardConnection = await UserWithoutPk.query().many();
+      expect(usersFromStandardConnection.length).toBe(0);
+    }
+
+    await trx.rollback();
+  });
+
+  test("Update with commit via query builder", async () => {
+    const trx = await SqlDataSource.startTransaction();
+    await trx.sql.query(UserWithoutPk.table).update({
+      email: "test@test.com",
+    });
+
+    await trx.commit();
+  });
+});

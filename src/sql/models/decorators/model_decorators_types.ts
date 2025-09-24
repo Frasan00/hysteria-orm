@@ -1,3 +1,4 @@
+import { OpenApiModelPropertyType } from "../../../openapi/openapi_types";
 import { DateFormat, Timezone } from "../../../utils/date_utils";
 import { CreateTableBuilder } from "../../migrations/schema/create_table";
 import { OnUpdateOrDelete } from "../../migrations/schema/schema_types";
@@ -171,9 +172,9 @@ export type ColumnOptions = {
    */
   databaseName?: string;
   /**
-   * @description The description of the column in the database, can be used to specify the column description in the OpenAPI schema
+   * @description Custom OpenAPI schema for the column, if omitted, the column type will be inferred from the other options in best effort
    */
-  openApiDescription?: string;
+  openApi?: OpenApiModelPropertyType;
   /**
    * @description Whether the column can be null in the database
    * @migration Only affects auto-generated migrations
@@ -199,7 +200,7 @@ export type ColumnType = {
   hidden?: boolean;
   autoUpdate?: boolean;
   isPrimary: boolean;
-  openApiDescription?: string;
+  openApi?: OpenApiModelPropertyType;
   /** Database specific data for migrations, must be provided or it'll be ignored for auto-generated migrations */
   primaryKeyConstraintName?: string;
   type?: ColumnDataType;

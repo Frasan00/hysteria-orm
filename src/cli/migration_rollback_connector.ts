@@ -1,12 +1,8 @@
-import {
-  BEGIN_TRANSACTION,
-  COMMIT_TRANSACTION,
-  ROLLBACK_TRANSACTION,
-} from "../sql/ast/transaction";
 import { Migration } from "../sql/migrations/migration";
 import { Migrator } from "../sql/migrations/migrator";
 import { type SqlDataSource } from "../sql/sql_data_source";
 import { SqlDataSourceType } from "../sql/sql_data_source_types";
+import { Transaction } from "../sql/transactions/transaction";
 import logger from "../utils/logger";
 import { getMigrations, getMigrationTable } from "./migration_utils";
 import { MigrationTableType } from "./resources/migration_table_type";
@@ -20,6 +16,7 @@ export default async function rollbackMigrationsConnector(
   transactional?: boolean,
 ) {
   const dbType = sql.getDbType();
+  let trx: Transaction | null = null;
   logger.info("Rolling back migrations for database type: " + dbType);
 
   try {
@@ -58,16 +55,17 @@ export default async function rollbackMigrationsConnector(
       }
 
       const filteredMigrations = pendingMigrations.slice(rollBackUntilIndex);
-      const migrator = new Migrator(sql);
 
       if (transactional) {
-        await sql.rawQuery(BEGIN_TRANSACTION);
+        trx = await sql.startTransaction();
+        sql = trx.sql;
       }
 
+      const migrator = new Migrator(sql);
       await migrator.downMigrations(filteredMigrations);
 
       if (transactional) {
-        await sql.rawQuery(COMMIT_TRANSACTION);
+        await trx?.commit();
       }
 
       logger.info("Migrations rolled back successfully");
@@ -77,17 +75,18 @@ export default async function rollbackMigrationsConnector(
 
     const migrator = new Migrator(sql);
     if (transactional) {
-      await sql.rawQuery(BEGIN_TRANSACTION);
+      trx = await sql.startTransaction();
+      sql = trx.sql;
     }
 
     await migrator.downMigrations(pendingMigrations);
 
     if (transactional) {
-      await sql.rawQuery(COMMIT_TRANSACTION);
+      await trx?.commit();
     }
   } catch (error: any) {
     if (transactional) {
-      await sql.rawQuery(ROLLBACK_TRANSACTION);
+      await trx?.rollback();
     }
 
     logger.error(error);

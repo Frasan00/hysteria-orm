@@ -939,7 +939,10 @@ export abstract class WhereQueryBuilder<
   ): this;
   whereIn(
     column: ModelKey<T> | SelectableColumn<string>,
-    values: BaseValues[],
+    values:
+      | BaseValues[]
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void),
   ): this {
     return this.andWhereIn(column as ModelKey<T>, values as any);
   }
@@ -1027,9 +1030,12 @@ export abstract class WhereQueryBuilder<
   ): this;
   whereNotIn(
     column: ModelKey<T> | SelectableColumn<string>,
-    values: BaseValues[],
+    values:
+      | BaseValues[]
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void),
   ): this {
-    return this.andWhereNotIn(column as ModelKey<T>, values);
+    return this.andWhereNotIn(column as ModelKey<T>, values as any);
   }
 
   /**

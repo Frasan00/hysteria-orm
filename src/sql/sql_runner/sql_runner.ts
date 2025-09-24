@@ -48,7 +48,6 @@ export const execSql = async <M extends Model, T extends Returning>(
   options?: {
     sqlLiteOptions?: SqlLiteOptions<M>;
     shouldNotLog?: boolean;
-    customConnection?: GetConnectionReturnType;
   },
 ): Promise<SqlRunnerReturnType<T>> => {
   const sqlType = sqlDataSource.type as SqlDataSourceType;
@@ -60,7 +59,7 @@ export const execSql = async <M extends Model, T extends Returning>(
     case "mysql":
     case "mariadb":
       const mysqlDriver =
-        (options?.customConnection as GetConnectionReturnType<"mysql">) ??
+        (sqlDataSource.sqlConnection as GetConnectionReturnType<"mysql">) ??
         sqlDataSource.getPool("mysql");
 
       const [mysqlResult] = await withRetry(
@@ -78,7 +77,7 @@ export const execSql = async <M extends Model, T extends Returning>(
     case "postgres":
     case "cockroachdb":
       const pgDriver =
-        (options?.customConnection as GetConnectionReturnType<"postgres">) ??
+        (sqlDataSource.sqlConnection as GetConnectionReturnType<"postgres">) ??
         sqlDataSource.getPool("postgres");
 
       const pgResult = await withRetry(
@@ -142,7 +141,9 @@ export const execSqlStreaming = async <
     case "mariadb":
     case "mysql": {
       const pool = sqlDataSource.getPool("mysql");
-      const conn = await pool.getConnection();
+      const conn =
+        (sqlDataSource.sqlConnection as GetConnectionReturnType<"mysql">) ??
+        (await pool.getConnection());
       const passThrough = new PassThrough({
         objectMode: options.objectMode ?? true,
         highWaterMark: options.highWaterMark,
@@ -209,7 +210,10 @@ export const execSqlStreaming = async <
 
     case "cockroachdb":
     case "postgres": {
-      const pgDriver = sqlDataSource.getPool("postgres");
+      const pgDriver =
+        (sqlDataSource.sqlConnection as GetConnectionReturnType<"postgres">) ??
+        (await sqlDataSource.getPool("postgres").connect());
+
       const pgQueryStreamDriver = await import("pg-query-stream").catch(() => {
         throw new DriverNotFoundError("pg-query-stream");
       });
@@ -219,7 +223,6 @@ export const execSqlStreaming = async <
         highWaterMark: options.highWaterMark,
       }) as PassThrough & AsyncGenerator<AnnotatedModel<M, A, R>>;
 
-      const client = await pgDriver.connect();
       const streamQuery = new pgQueryStreamDriver.default(query, params, {
         highWaterMark: options.highWaterMark,
         rowMode: options.rowMode,
@@ -227,7 +230,7 @@ export const execSqlStreaming = async <
         types: options.types,
       });
 
-      const pgStream = client.query(streamQuery);
+      const pgStream = pgDriver.query(streamQuery);
 
       let pending = 0;
       let ended = false;
@@ -235,7 +238,7 @@ export const execSqlStreaming = async <
 
       const tryRelease = (err?: any) => {
         try {
-          client.release(err);
+          pgDriver.release(err);
         } catch {}
       };
 
@@ -279,7 +282,9 @@ export const execSqlStreaming = async <
     }
 
     case "sqlite": {
-      const sqliteDriver = sqlDataSource.getPool("sqlite");
+      const sqliteDriver =
+        (sqlDataSource.sqlConnection as GetConnectionReturnType<"sqlite">) ??
+        sqlDataSource.getPool("sqlite");
       const stream = new SQLiteStream(sqliteDriver, query, params, {
         onData: events.onData as (
           _passThrough: any,
@@ -301,12 +306,12 @@ export const execSqlStreaming = async <
 
 async function withRetry<T>(
   fn: () => Promise<T>,
-  retryConfig: ConnectionPolicies["retry"] = { maxRetries: 3, delay: 1000 },
+  retryConfig: ConnectionPolicies["retry"] = { maxRetries: 0, delay: 0 },
   logs: boolean = false,
 ): Promise<T> {
   let retries = 0;
-  const maxRetries = retryConfig.maxRetries || 3;
-  const delay = retryConfig.delay || 1000;
+  const maxRetries = retryConfig.maxRetries || 0;
+  const delay = retryConfig.delay || 0;
 
   async function attempt(): Promise<T> {
     try {
@@ -326,6 +331,7 @@ async function withRetry<T>(
           "info",
           logs,
         );
+
         await new Promise((resolve) => setTimeout(resolve, delay));
         return attempt();
       }

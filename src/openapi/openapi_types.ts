@@ -5,7 +5,7 @@ export type OpenApiModelType = {
 };
 
 export type OpenApiModelPropertyType = {
-  type: "string" | "number" | "boolean" | "array" | "object" | "null";
+  type: string;
   items?: OpenApiModelType;
   enum?: string[];
   format?: string;

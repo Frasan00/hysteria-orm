@@ -398,7 +398,7 @@ export class ModelManager<T extends Model> {
     model: Partial<T>,
     options?: { returning?: ModelKey<T>[] },
   ): Promise<AnnotatedModel<T, {}>> {
-    const { columns: preparedColumns, values: preparedValues } =
+    let { columns: preparedColumns, values: preparedValues } =
       this.interpreterUtils.prepareColumns(
         Object.keys(model),
         Object.values(model),
@@ -413,11 +413,24 @@ export class ModelManager<T extends Model> {
       );
     }
 
+    // Primary key is filtered out of the prepared columns and values
+    preparedColumns = preparedColumns.filter((column) => column !== primaryKey);
+    preparedValues = preparedValues.filter(
+      (value) => value !== model[primaryKey as keyof T],
+    );
+
     const { sql, bindings } = this.astParser.parse([
       new UpdateNode(this.model.table, preparedColumns, preparedValues),
+      new WhereNode(
+        primaryKey as string,
+        "and",
+        false,
+        "=",
+        model[primaryKey as keyof T] as string,
+      ),
     ]);
 
-    await execSql(sql, bindings, this.sqlDataSource);
+    await execSql(sql, bindings, this.sqlDataSource, "raw");
     const updatedModel = await this.findOneByPrimaryKey(
       model[this.model.primaryKey as keyof T] as string,
       options?.returning ?? undefined,
@@ -458,7 +471,7 @@ export class ModelManager<T extends Model> {
       whereNode,
     ]);
 
-    await execSql(sql, bindings, this.sqlDataSource);
+    await execSql(sql, bindings, this.sqlDataSource, "raw");
   }
 
   /**

@@ -3,15 +3,31 @@ import { Model } from "../sql/models/model";
 import { OpenApiModelPropertyType, OpenApiModelType } from "./openapi_types";
 
 /**
- * Detects column type from decorator metadata and serialize/prepare functions in best effort
+ * @description Detects column type from decorator metadata and serialize/prepare functions in best effort
+ * @description By default it tries to cover the base serialization of the base columns types like column.integer, column.boolean etc.
  */
 const detectColumnType = (column: ColumnType): OpenApiModelPropertyType => {
   const baseType: OpenApiModelPropertyType = {
-    type: "string",
-    description: column.openApiDescription || `Property: ${column.columnName}`,
+    type: column.openApi?.type || "string",
+    description:
+      column.openApi?.description ?? `Property: ${column.columnName}`,
   };
 
-  if (column.serialize && column.serialize.toString().includes("parseDate")) {
+  // if type was provided in the openApi options, we just use it as is
+  if (column.openApi?.type) {
+    return {
+      ...baseType,
+      type: column.openApi.type,
+    };
+  }
+
+  if (
+    (column.serialize && column.serialize.toString().includes("parseDate")) ||
+    column.type === "date" ||
+    column.type === "datetime" ||
+    column.type === "timestamp" ||
+    column.type === "time"
+  ) {
     return {
       ...baseType,
       type: "string",
@@ -19,7 +35,10 @@ const detectColumnType = (column: ColumnType): OpenApiModelPropertyType => {
     };
   }
 
-  if (column.serialize && column.serialize.toString().includes("Boolean(")) {
+  if (
+    (column.serialize && column.serialize.toString().includes("Boolean(")) ||
+    column.type === "boolean"
+  ) {
     return {
       ...baseType,
       type: "boolean",
@@ -28,7 +47,15 @@ const detectColumnType = (column: ColumnType): OpenApiModelPropertyType => {
 
   if (
     (column.serialize && column.serialize.toString().includes("+value")) ||
-    (column.serialize && column.serialize.toString().includes("Number("))
+    (column.serialize && column.serialize.toString().includes("Number(")) ||
+    (column.serialize &&
+      column.serialize.toString().includes("Number.parseInt")) ||
+    (column.serialize &&
+      column.serialize.toString().includes("Number.parseFloat")) ||
+    column.type === "integer" ||
+    column.type === "float" ||
+    column.type === "decimal" ||
+    column.type === "numeric"
   ) {
     return {
       ...baseType,
@@ -36,14 +63,21 @@ const detectColumnType = (column: ColumnType): OpenApiModelPropertyType => {
     };
   }
 
-  if (column.serialize && column.serialize.toString().includes("JSON.parse")) {
+  if (
+    (column.serialize && column.serialize.toString().includes("JSON.parse")) ||
+    column.type === "json" ||
+    column.type === "jsonb"
+  ) {
     return {
       ...baseType,
       type: "object",
     };
   }
 
-  if (column.prepare && column.prepare.toString().includes("randomUUID")) {
+  if (
+    (column.prepare && column.prepare.toString().includes("randomUUID")) ||
+    column.type === "uuid"
+  ) {
     return {
       ...baseType,
       type: "string",
@@ -51,11 +85,38 @@ const detectColumnType = (column: ColumnType): OpenApiModelPropertyType => {
     };
   }
 
-  if (column.prepare && column.prepare.toString().includes("generateULID")) {
+  if (
+    (column.prepare && column.prepare.toString().includes("generateULID")) ||
+    column.type === "ulid"
+  ) {
     return {
       ...baseType,
       type: "string",
       format: "ulid",
+    };
+  }
+
+  if (
+    column.type === "blob" ||
+    column.type === "binary" ||
+    column.type === "varbinary" ||
+    column.type === "tinyblob" ||
+    column.type === "mediumblob" ||
+    column.type === "longblob"
+  ) {
+    return {
+      ...baseType,
+      type: "string",
+      format: "binary",
+    };
+  }
+
+  if (Array.isArray(column.type)) {
+    return {
+      ...baseType,
+      type: "string",
+      format: "enum",
+      enum: column.type,
     };
   }
 
@@ -67,13 +128,9 @@ const detectColumnType = (column: ColumnType): OpenApiModelPropertyType => {
  */
 const isColumnRequired = (
   column: ColumnType,
-  primaryKey: string | undefined,
+  _primaryKey: string | undefined,
   model: typeof Model,
 ): boolean => {
-  if (column.columnName === primaryKey) {
-    return true;
-  }
-
   if (column.hidden) {
     return false;
   }

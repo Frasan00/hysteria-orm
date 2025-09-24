@@ -1,14 +1,10 @@
 import fs from "fs/promises";
-import {
-  BEGIN_TRANSACTION,
-  COMMIT_TRANSACTION,
-  ROLLBACK_TRANSACTION,
-} from "../sql/ast/transaction";
 import { createSqlPool } from "../sql/sql_connection_utils";
 import { type SqlDataSource } from "../sql/sql_data_source";
 import { SqlDataSourceType } from "../sql/sql_data_source_types";
 import logger from "../utils/logger";
 import MigrationTemplates from "./resources/migration_templates";
+import { Transaction } from "../sql/transactions/transaction";
 
 export default async function dropAllTablesConnector(
   sql: SqlDataSource,
@@ -64,8 +60,10 @@ export default async function dropAllTablesConnector(
     parsedTables,
   );
 
+  let trx: Transaction | null = null;
   if (transactional) {
-    await sql.rawQuery(BEGIN_TRANSACTION);
+    trx = await sql.startTransaction();
+    sql = trx.sql;
   }
 
   try {
@@ -80,12 +78,13 @@ export default async function dropAllTablesConnector(
     }
 
     if (transactional) {
-      await sql.rawQuery(COMMIT_TRANSACTION);
+      await trx?.commit();
     }
   } catch (error: any) {
     if (transactional) {
-      await sql.rawQuery(ROLLBACK_TRANSACTION);
+      await trx?.rollback();
     }
+
     logger.error(error);
     process.exit(1);
   } finally {

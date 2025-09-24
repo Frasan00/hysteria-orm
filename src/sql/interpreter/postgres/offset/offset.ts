@@ -10,9 +10,10 @@ class PostgresOffsetInterpreter implements Interpreter {
   toSql(node: QueryNode): ReturnType<typeof AstParser.prototype.parse> {
     const offsetNode = node as OffsetNode;
 
+    const idx = offsetNode.currParamIndex;
     return {
-      sql: `${offsetNode.offset}`,
-      bindings: [],
+      sql: `$${idx}`,
+      bindings: [offsetNode.offset],
     };
   }
 }

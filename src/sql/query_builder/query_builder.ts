@@ -182,7 +182,6 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    * @description Executes the query and returns a node readable stream.
    * @description If used by a model query builder, it will serialize the models and apply the hooks and relations.
    * @postgres needs the pg-query-stream package in order to work
-   * @warning Cannot and won't be used inside a transaction and will always pick a new connection from the pool, using it in a transaction is technically possible but not recommended since the transaction can probably starve since it'll be waiting for the stream to finish
    * @throws If using postgres and the `pg-query-stream` package is not installed
    */
   async stream<M extends Model = T>(
@@ -703,7 +702,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   async truncate(): Promise<void> {
     const truncateNode = new TruncateNode(this.fromTable);
     const { sql, bindings } = this.astParser.parse([truncateNode]);
-    await execSql(sql, bindings, this.sqlDataSource);
+    await execSql(sql, bindings, this.sqlDataSource, "raw");
   }
 
   /**

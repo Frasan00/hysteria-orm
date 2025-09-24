@@ -190,7 +190,7 @@ export function column(
         ),
       autoUpdate: options.autoUpdate,
       databaseName,
-      openApiDescription: options.openApiDescription,
+      openApi: options.openApi,
       type: options.type,
       length: (options as ColumnDataTypeOptionWithLength)?.length,
       precision: (options as ColumnDataTypeOptionWithPrecision)?.precision,

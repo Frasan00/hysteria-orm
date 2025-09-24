@@ -19,8 +19,4 @@ export type TransactionExecutionOptions = {
    * @description If true, the transaction will throw an error if it is inactive
    */
   throwErrorOnInactiveTransaction?: boolean;
-  /**
-   * @description If true, the transaction will end after the execution - default is true
-   */
-  endConnection?: boolean;
 };

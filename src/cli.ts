@@ -14,8 +14,14 @@ import { SqlDataSourceType } from "./sql/sql_data_source_types";
 import { importTsUniversal } from "./utils/importer";
 import logger from "./utils/logger";
 
-const databaseTypes = ["sqlite", "mysql", "postgres", "mariadb", "cockroachdb"];
-const allDatabaseTypes = databaseTypes.concat("mongodb", "redis");
+const sqlDatabaseTypes = [
+  "sqlite",
+  "mysql",
+  "postgres",
+  "mariadb",
+  "cockroachdb",
+];
+const allDatabaseTypes = sqlDatabaseTypes.concat("mongodb", "redis");
 
 const program = new Command();
 
@@ -61,7 +67,7 @@ program
     }
 
     if (
-      databaseTypes.includes(option.type) &&
+      sqlDatabaseTypes.includes(option.type) &&
       !fs.existsSync("database/migrations")
     ) {
       fs.mkdirSync("database/migrations", { recursive: true });
