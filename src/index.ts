@@ -19,6 +19,11 @@ export { RedisDataSource as redis } from "./no_sql/redis/redis_data_source";
 export { SqlDataSource as sql } from "./sql/sql_data_source";
 export * from "./sql/sql_data_source_types";
 
+// Transactions
+export type { Transaction } from "./sql/transactions/transaction";
+export type { TransactionExecutionOptions } from "./sql/transactions/transaction_types";
+export type { StartTransactionOptions } from "./sql/transactions/transaction_types";
+
 // Migrations
 export { Migration } from "./sql/migrations/migration";
 export { defineMigrator } from "./sql/migrations/migrator";
@@ -26,6 +31,7 @@ export type { ClientMigrator } from "./sql/migrations/migrator";
 
 // Query Builder
 export { QueryBuilder } from "./sql/query_builder/query_builder";
+export { ModelQueryBuilder } from "./sql/models/model_query_builder/model_query_builder";
 
 // Utils
 export { default as logger } from "./utils/logger";

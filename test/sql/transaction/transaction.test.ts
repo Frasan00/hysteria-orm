@@ -343,3 +343,124 @@ describe(`[${env.DB_TYPE}] Raw transaction from transaction sql instance should 
     await trx.commit();
   });
 });
+
+describe(`[${env.DB_TYPE}] Nested transactions with savePoints`, () => {
+  test("Simple transaction", async () => {
+    const trx = await SqlDataSource.startTransaction();
+    await trx.sql.rawQuery("SELECT 1");
+    const nestedTrx = await trx.nestedTransaction();
+    await nestedTrx.sql.rawQuery("SELECT 2");
+    await nestedTrx.commit();
+    await trx.commit();
+  });
+
+  test("Nested transaction with insert", async () => {
+    const trx = await SqlDataSource.startTransaction();
+    await trx.sql.rawQuery("SELECT 1");
+    const nestedTrx = await trx.nestedTransaction();
+    await nestedTrx.sql.query(UserWithoutPk.table).insert({
+      email: "test@test.com",
+    });
+
+    const lookupQuery = await nestedTrx.sql
+      .query(UserWithoutPk.table)
+      .where("email", "test@test.com")
+      .one();
+
+    await nestedTrx.commit();
+    await trx.commit();
+
+    expect(lookupQuery).toBeDefined();
+    expect(lookupQuery.email).toBe("test@test.com");
+  });
+
+  test("Multi-level nesting commit chain", async () => {
+    const outer = await SqlDataSource.startTransaction();
+    const lvl1 = await outer.nestedTransaction();
+    const lvl2 = await lvl1.nestedTransaction();
+
+    await lvl2.sql
+      .query(UserWithoutPk.table)
+      .insert({ email: "nest2@test.com" });
+
+    await lvl2.commit();
+    await lvl1.commit();
+
+    // Before outer commit, data should not be visible from default connection (except cockroachdb caveat)
+    if (env.DB_TYPE !== "cockroachdb") {
+      const midUsers = await UserWithoutPk.query().many();
+      expect(midUsers.length).toBe(0);
+    }
+
+    await outer.commit();
+
+    const users = await UserWithoutPk.query().many();
+    expect(users.length).toBe(1);
+    expect(users[0].email).toBe("nest2@test.com");
+  });
+
+  test("Inner rollback, outer commit persists outer work only", async () => {
+    const outer = await SqlDataSource.startTransaction();
+    await outer.sql
+      .query(UserWithoutPk.table)
+      .insert({ email: "outer@test.com" });
+
+    const inner = await outer.nestedTransaction();
+    await inner.sql
+      .query(UserWithoutPk.table)
+      .insert({ email: "inner@test.com" });
+
+    await inner.rollback(); // rollback savepoint
+
+    // Inner changes should not be visible; outer still uncommitted
+    if (env.DB_TYPE !== "cockroachdb") {
+      const midUsers = await UserWithoutPk.query().many();
+      expect(midUsers.length).toBe(0);
+    }
+
+    await outer.commit();
+
+    const users = await UserWithoutPk.query().many();
+    expect(users.length).toBe(1);
+    expect(users[0].email).toBe("outer@test.com");
+  });
+
+  test("Nested rollback then continue outer", async () => {
+    const outer = await SqlDataSource.startTransaction();
+    const inner = await outer.nestedTransaction();
+    await inner.sql
+      .query(UserWithoutPk.table)
+      .insert({ email: "inner-rollback@test.com" });
+    await inner.rollback();
+
+    // Continue working on outer
+    await outer.sql
+      .query(UserWithoutPk.table)
+      .insert({ email: "outer-commit@test.com" });
+
+    await outer.commit();
+
+    const users = await UserWithoutPk.query().many();
+    expect(users.length).toBe(1);
+    expect(users[0].email).toBe("outer-commit@test.com");
+  });
+
+  test("Nested inactive error behavior on rollback/commit", async () => {
+    const outer = await SqlDataSource.startTransaction();
+    const inner = await outer.nestedTransaction();
+    await inner.sql.rawQuery("SELECT 1");
+    await inner.commit();
+
+    // After commit, inner is inactive: rollback with throw flag should reject
+    await expect(
+      inner.rollback({ throwErrorOnInactiveTransaction: true }),
+    ).rejects.toBeInstanceOf(HysteriaError);
+
+    // And commit with throw flag should also reject
+    await expect(
+      inner.commit({ throwErrorOnInactiveTransaction: true }),
+    ).rejects.toBeInstanceOf(HysteriaError);
+
+    await outer.rollback();
+  });
+});

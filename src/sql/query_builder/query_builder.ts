@@ -1,9 +1,8 @@
 import { PassThrough } from "node:stream";
-import { format } from "sql-formatter";
 import { HysteriaError } from "../../errors/hysteria_error";
 import { baseSoftDeleteDate } from "../../utils/date_utils";
 import { withPerformance } from "../../utils/performance";
-import { bindParamsIntoQuery } from "../../utils/query";
+import { bindParamsIntoQuery, formatQuery } from "../../utils/query";
 import { AstParser } from "../ast/parser";
 import { UnionNode, WithNode } from "../ast/query/node";
 import { DeleteNode } from "../ast/query/node/delete";
@@ -29,11 +28,7 @@ import {
 import { deepCloneNode } from "../resources/utils";
 import { SqlDataSource } from "../sql_data_source";
 import type { SqlDataSourceType } from "../sql_data_source_types";
-import {
-  execSql,
-  execSqlStreaming,
-  getSqlDialect,
-} from "../sql_runner/sql_runner";
+import { execSql, execSqlStreaming } from "../sql_runner/sql_runner";
 import { SoftDeleteOptions } from "./delete_query_builder_type";
 import { JsonQueryBuilder } from "./json_query_builder";
 import {
@@ -735,13 +730,17 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     const { column = "deletedAt", value = baseSoftDeleteDate() } =
       options || {};
 
+    const { columns, values } = this.interpreterUtils.prepareColumns(
+      [column as string],
+      [value],
+      "update",
+    );
+
     const { sql, bindings } = this.astParser.parse([
-      new UpdateNode(this.fromTable, [column as string], [value]),
+      new UpdateNode(this.fromTable, columns, values),
       ...this.whereNodes,
       ...this.joinNodes,
     ]);
-
-    this.interpreterUtils.prepareColumns([column as string], [value], "update");
 
     return execSql(sql, bindings, this.sqlDataSource, "affectedRows", {
       sqlLiteOptions: {
@@ -771,23 +770,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
 
     const { sql, bindings } = this.astParser.parse(this.extractQueryNodes());
 
-    let formattedQuery: string;
-    try {
-      formattedQuery = format(sql, {
-        ...this.sqlDataSource.inputDetails.queryFormatOptions,
-        language: getSqlDialect(dbType as SqlDataSourceType),
-      });
-    } catch (_) {
-      // Retry without language
-      try {
-        formattedQuery = format(sql, {
-          ...this.sqlDataSource.inputDetails.queryFormatOptions,
-        });
-      } catch (_) {
-        // Ultimate fallback
-        formattedQuery = sql;
-      }
-    }
+    const formattedQuery = formatQuery(this.sqlDataSource, sql);
 
     const finalQuery = this.withQuery
       ? `${this.withQuery} ${formattedQuery}`

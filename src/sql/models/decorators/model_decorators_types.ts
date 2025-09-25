@@ -174,7 +174,7 @@ export type ColumnOptions = {
   /**
    * @description Custom OpenAPI schema for the column, if omitted, the column type will be inferred from the other options in best effort
    */
-  openApi?: OpenApiModelPropertyType;
+  openApi?: OpenApiModelPropertyType & { required: boolean };
   /**
    * @description Whether the column can be null in the database
    * @migration Only affects auto-generated migrations
@@ -200,7 +200,7 @@ export type ColumnType = {
   hidden?: boolean;
   autoUpdate?: boolean;
   isPrimary: boolean;
-  openApi?: OpenApiModelPropertyType;
+  openApi?: OpenApiModelPropertyType & { required?: boolean };
   /** Database specific data for migrations, must be provided or it'll be ignored for auto-generated migrations */
   primaryKeyConstraintName?: string;
   type?: ColumnDataType;

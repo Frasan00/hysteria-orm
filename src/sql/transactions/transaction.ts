@@ -5,8 +5,8 @@ import { HysteriaError } from "../../errors/hysteria_error";
 import logger from "../../utils/logger";
 import { SqlDataSource } from "../sql_data_source";
 import { GetConnectionReturnType } from "../sql_data_source_types";
-import { execSql } from "../sql_runner/sql_runner";
 import {
+  StartTransactionOptions,
   TransactionExecutionOptions,
   TransactionIsolationLevel,
 } from "./transaction_types";
@@ -16,7 +16,25 @@ import {
  */
 export class Transaction {
   /**
-   * @description The sql data source instance that the transaction is running on
+   * @description The sql data source instance that the transaction is running on here you can both query or execute raw queries
+   * @example
+   * ```ts
+   * import { sql } from "hysteria-orm";
+   * import { User } from "./models/user";
+   *
+   * // Raw queries
+   * const trx = await sql.startTransaction();
+   * await trx.rawQuery("SELECT * FROM users");
+   *
+   * // Model manager
+   * const modelManager = trx.sql.getModelManager(User);
+   * await modelManager.insert({ name: "John Doe" });
+   *
+   * // Query builder
+   * await trx.query(User.table).insert({ name: "John Doe" });
+   *
+   * await trx.commit();
+   * ```
    */
   sql: SqlDataSource;
   /**
@@ -28,23 +46,68 @@ export class Transaction {
    */
   transactionId: string;
 
-  private isolationLevel?: TransactionIsolationLevel;
   private connectionReleased = false;
+  private isolationLevel?: TransactionIsolationLevel;
+  private isNested: boolean;
+  private nestingDepth: number;
 
-  constructor(sql: SqlDataSource, isolationLevel?: TransactionIsolationLevel) {
+  constructor(
+    sql: SqlDataSource,
+    isolationLevel?: TransactionIsolationLevel,
+    isNested = false,
+    nestingDepth = 0,
+  ) {
     this.sql = sql;
     this.isActive = false;
     this.transactionId = crypto.randomBytes(16).toString("hex");
     this.isolationLevel = isolationLevel;
+    this.isNested = isNested;
+    this.nestingDepth = nestingDepth;
+  }
+
+  /**
+   * @description Creates a new transaction with the same isolation level (if not provided) and same connection, it automatically handles save points
+   */
+  async nestedTransaction(
+    options?: Omit<StartTransactionOptions, "driverSpecificOptions">,
+  ): Promise<Transaction> {
+    const trx = new Transaction(
+      this.sql,
+      options?.isolationLevel || this.isolationLevel,
+      true,
+      this.nestingDepth + 1,
+    );
+
+    await trx.startTransaction();
+    return trx;
   }
 
   async startTransaction(): Promise<void> {
     const levelQuery = this.getIsolationLevelQuery();
+    // Nested transactions use SAVEPOINTs and do not begin a new transaction
+    if (this.isNested) {
+      const savepoint = this.getSavePointName();
+      switch (this.sql.type) {
+        case "mysql":
+        case "mariadb":
+        case "postgres":
+        case "cockroachdb":
+          await this.sql.rawQuery(`SAVEPOINT ${savepoint}`);
+          this.isActive = true;
+          return;
+        case "sqlite":
+          await this.sql.rawQuery(`SAVEPOINT ${savepoint}`);
+          this.isActive = true;
+          return;
+      }
+    }
+
+    // Top-level transaction handling
     switch (this.sql.type) {
       case "mysql":
       case "mariadb":
         if (levelQuery) {
-          await execSql(levelQuery, [], this.sql, "raw");
+          await this.sql.rawQuery(levelQuery);
         }
 
         const mysqlConnection = this.sql
@@ -55,19 +118,19 @@ export class Transaction {
         break;
       case "postgres":
       case "cockroachdb":
-        await execSql("BEGIN TRANSACTION", [], this.sql, "raw");
+        await this.sql.rawQuery("BEGIN TRANSACTION");
         if (levelQuery) {
-          await execSql(levelQuery, [], this.sql, "raw");
+          await this.sql.rawQuery(levelQuery);
         }
 
         this.isActive = true;
         break;
       case "sqlite":
         if (levelQuery) {
-          await execSql(levelQuery, [], this.sql, "raw");
+          await this.sql.rawQuery(levelQuery);
         }
 
-        await execSql("BEGIN TRANSACTION", [], this.sql, "raw");
+        await this.sql.rawQuery("BEGIN TRANSACTION");
         this.isActive = true;
         break;
     }
@@ -91,6 +154,22 @@ export class Transaction {
     }
 
     try {
+      // Nested transactions should release their savepoint and keep the outer transaction/connection
+      if (this.isNested) {
+        const savepoint = this.getSavePointName();
+        switch (this.sql.type) {
+          case "mysql":
+          case "mariadb":
+          case "postgres":
+          case "cockroachdb":
+          case "sqlite":
+            await this.sql.rawQuery(`RELEASE SAVEPOINT ${savepoint}`);
+            break;
+        }
+        this.isActive = false;
+        return;
+      }
+
       switch (this.sql.type) {
         case "mysql":
         case "mariadb":
@@ -100,10 +179,10 @@ export class Transaction {
           break;
         case "postgres":
         case "cockroachdb":
-          await execSql("COMMIT", [], this.sql, "raw");
+          await this.sql.rawQuery("COMMIT");
           break;
         case "sqlite":
-          await execSql("COMMIT", [], this.sql, "raw");
+          await this.sql.rawQuery("COMMIT");
           break;
       }
     } catch (error: any) {
@@ -134,6 +213,29 @@ export class Transaction {
     }
 
     try {
+      // Nested transactions should rollback to their savepoint and keep the outer transaction/connection
+      if (this.isNested) {
+        const savepoint = this.getSavePointName();
+        switch (this.sql.type) {
+          case "mysql":
+          case "mariadb":
+          case "postgres":
+          case "cockroachdb":
+            await this.sql.rawQuery(`ROLLBACK TO SAVEPOINT ${savepoint}`);
+            break;
+          case "sqlite":
+            await this.sql.rawQuery(`ROLLBACK TO ${savepoint}`);
+            break;
+          default:
+            throw new HysteriaError(
+              "TRANSACTION::rollback",
+              `UNSUPPORTED_DATABASE_TYPE_${this.sql.type}`,
+            );
+        }
+        this.isActive = false;
+        return;
+      }
+
       switch (this.sql.type) {
         case "mysql":
         case "mariadb":
@@ -143,10 +245,10 @@ export class Transaction {
           break;
         case "postgres":
         case "cockroachdb":
-          await execSql("ROLLBACK", [], this.sql, "raw");
+          await this.sql.rawQuery("ROLLBACK");
           break;
         case "sqlite":
-          await execSql("ROLLBACK", [], this.sql, "raw");
+          await this.sql.rawQuery("ROLLBACK");
           break;
         default:
           throw new HysteriaError(
@@ -231,5 +333,10 @@ export class Transaction {
       "TRANSACTION::getIsolationLevelQuery",
       `UNSUPPORTED_DATABASE_TYPE_${this.sql.type}`,
     );
+  }
+
+  private getSavePointName(): string {
+    const shortId = this.transactionId.slice(0, 8).toUpperCase();
+    return `sp_${this.nestingDepth}_${shortId}`;
   }
 }

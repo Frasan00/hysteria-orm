@@ -10,7 +10,6 @@ import { MigrationTableType } from "./resources/migration_table_type";
 export default async function runMigrationsConnector(
   sql: SqlDataSource,
   runUntil?: string,
-  shouldExit: boolean = true,
   migrationPath?: string,
   tsconfigPath?: string,
   transactional?: boolean,
@@ -39,8 +38,6 @@ export default async function runMigrationsConnector(
 
     if (!pendingMigrations.length) {
       logger.info("No pending migrations.");
-      await sql.closeConnection();
-      shouldExit && process.exit(0);
       return;
     }
 
@@ -51,7 +48,7 @@ export default async function runMigrationsConnector(
 
       if (runUntilIndex === -1) {
         console.error(`Migration ${runUntil} not found.`);
-        process.exit(1);
+        return;
       }
 
       const filteredMigrations = pendingMigrations.slice(0, runUntilIndex + 1);
@@ -69,7 +66,6 @@ export default async function runMigrationsConnector(
       }
 
       logger.info("Migrations ran successfully");
-      shouldExit && process.exit(0);
       return;
     }
 
@@ -89,14 +85,8 @@ export default async function runMigrationsConnector(
       await trx?.rollback();
     }
 
-    logger.error(error);
-    process.exit(1);
-  } finally {
-    if (shouldExit) {
-      await sql.closeConnection();
-    }
+    throw error;
   }
 
   logger.info("Migrations ran successfully");
-  shouldExit && process.exit(0);
 }

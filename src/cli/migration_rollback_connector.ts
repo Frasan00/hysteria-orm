@@ -10,7 +10,6 @@ import { MigrationTableType } from "./resources/migration_table_type";
 export default async function rollbackMigrationsConnector(
   sql: SqlDataSource,
   rollBackUntil?: string,
-  shouldExit: boolean = true,
   migrationPath?: string,
   tsconfigPath?: string,
   transactional?: boolean,
@@ -37,10 +36,6 @@ export default async function rollbackMigrationsConnector(
 
     if (pendingMigrations.length === 0) {
       logger.info("No pending migrations.");
-      if (shouldExit) {
-        await sql.closeConnection();
-        process.exit(0);
-      }
       return;
     }
 
@@ -51,7 +46,7 @@ export default async function rollbackMigrationsConnector(
 
       if (rollBackUntilIndex === -1) {
         logger.error(`Rollback until migration not found: ${rollBackUntil}`);
-        process.exit(1);
+        return;
       }
 
       const filteredMigrations = pendingMigrations.slice(rollBackUntilIndex);
@@ -69,7 +64,6 @@ export default async function rollbackMigrationsConnector(
       }
 
       logger.info("Migrations rolled back successfully");
-      shouldExit && process.exit(0);
       return;
     }
 
@@ -89,14 +83,8 @@ export default async function rollbackMigrationsConnector(
       await trx?.rollback();
     }
 
-    logger.error(error);
-    process.exit(1);
-  } finally {
-    if (shouldExit) {
-      await sql.closeConnection();
-    }
+    throw error;
   }
 
   logger.info("Migrations rolled back successfully");
-  shouldExit && process.exit(0);
 }

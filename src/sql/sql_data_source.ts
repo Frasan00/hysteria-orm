@@ -2,7 +2,11 @@ import { DataSource } from "../data_source/data_source";
 import { HysteriaError } from "../errors/hysteria_error";
 import { generateOpenApiModelWithMetadata } from "../openapi/openapi";
 import logger from "../utils/logger";
-import { isTableMissingError } from "../utils/query";
+import {
+  formatQuery,
+  getSqlDialect,
+  isTableMissingError,
+} from "../utils/query";
 import { AstParser } from "./ast/parser";
 import { RawNode } from "./ast/query/node/raw/raw_node";
 import { ForeignKeyInfoNode } from "./ast/query/node/schema";
@@ -33,11 +37,12 @@ import type {
   SqlDataSourceInput,
   SqlDataSourceModel,
   SqlDataSourceType,
+  SqlDriverSpecificOptions,
   SqliteConnectionInstance,
   SqlPoolType,
   UseConnectionInput,
 } from "./sql_data_source_types";
-import { execSql, getSqlDialect } from "./sql_runner/sql_runner";
+import { execSql } from "./sql_runner/sql_runner";
 import { Transaction } from "./transactions/transaction";
 import {
   StartTransactionOptions,
@@ -487,7 +492,7 @@ export class SqlDataSource extends DataSource {
    * @description Clones the SqlDataSource instance
    * @returns A new SqlDataSource instance with the same input details
    */
-  async clone(): Promise<this> {
+  async clone(driverSpecificOptions?: SqlDriverSpecificOptions): Promise<this> {
     const cloned = new SqlDataSource(this.inputDetails) as this;
     cloned.sqlPool = await createSqlPool(cloned.sqlType, {
       type: cloned.sqlType,
@@ -499,7 +504,7 @@ export class SqlDataSource extends DataSource {
       connectionPolicies: cloned.inputDetails
         .connectionPolicies as ConnectionPolicies,
       queryFormatOptions: cloned.inputDetails.queryFormatOptions,
-      driverOptions: cloned.inputDetails.driverOptions,
+      driverOptions: driverSpecificOptions || cloned.inputDetails.driverOptions,
       logs: cloned.logs,
       models: cloned.models,
     } as SqlDataSourceInput);
@@ -585,7 +590,7 @@ export class SqlDataSource extends DataSource {
   async startGlobalTransaction(
     options?: StartTransactionOptions,
   ): Promise<Transaction> {
-    const cloned = await this.clone();
+    const cloned = await this.clone(options?.driverSpecificOptions);
     cloned.sqlConnection = await cloned.getConnection();
     this.globalTransaction = new Transaction(cloned, options?.isolationLevel);
     await this.globalTransaction.startTransaction();
@@ -642,7 +647,7 @@ export class SqlDataSource extends DataSource {
   async startTransaction(
     options?: StartTransactionOptions,
   ): Promise<Transaction> {
-    const cloned = await this.clone();
+    const cloned = await this.clone(options?.driverSpecificOptions);
     cloned.sqlConnection = await cloned.getConnection();
     const sqlTrx = new Transaction(cloned, options?.isolationLevel);
     await sqlTrx.startTransaction();
@@ -880,7 +885,8 @@ export class SqlDataSource extends DataSource {
       );
     }
 
-    return execSql(query, params, this, "raw");
+    const formattedQuery = formatQuery(this, query);
+    return execSql(formattedQuery, params, this, "raw");
   }
 
   /**

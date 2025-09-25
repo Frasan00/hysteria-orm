@@ -7,7 +7,9 @@ import { OpenApiModelPropertyType, OpenApiModelType } from "./openapi_types";
  * @description By default it tries to cover the base serialization of the base columns types like column.integer, column.boolean etc.
  */
 const detectColumnType = (column: ColumnType): OpenApiModelPropertyType => {
+  const { required, ...rest } = column.openApi || {};
   const baseType: OpenApiModelPropertyType = {
+    ...rest,
     type: column.openApi?.type || "string",
     description:
       column.openApi?.description ?? `Property: ${column.columnName}`,
@@ -115,7 +117,6 @@ const detectColumnType = (column: ColumnType): OpenApiModelPropertyType => {
     return {
       ...baseType,
       type: "string",
-      format: "enum",
       enum: column.type,
     };
   }
@@ -126,36 +127,8 @@ const detectColumnType = (column: ColumnType): OpenApiModelPropertyType => {
 /**
  * Determines if a column is required based on metadata and TypeScript type
  */
-const isColumnRequired = (
-  column: ColumnType,
-  _primaryKey: string | undefined,
-  model: typeof Model,
-): boolean => {
-  if (column.hidden) {
-    return false;
-  }
-
-  if (column.autoUpdate) {
-    return false;
-  }
-
-  if (column.prepare && column.prepare.toString().includes("autoCreate")) {
-    return false;
-  }
-
-  try {
-    const prototype = model.prototype;
-    const descriptor = Object.getOwnPropertyDescriptor(
-      prototype,
-      column.columnName,
-    );
-
-    if (descriptor && (descriptor.get || descriptor.set)) {
-      return false;
-    }
-  } catch (error) {}
-
-  return true;
+const isColumnRequired = (column: ColumnType): boolean => {
+  return column.openApi?.required ?? false;
 };
 
 /**
@@ -183,16 +156,15 @@ const generateColumnProperties = (
  */
 const getRequiredFields = (model: typeof Model): string[] => {
   const columns = model.getColumns();
-  const primaryKey = model.primaryKey;
   const required: string[] = [];
 
   for (const column of columns) {
-    if (isColumnRequired(column, primaryKey, model)) {
+    if (isColumnRequired(column)) {
       required.push(column.columnName);
     }
   }
 
-  return required;
+  return required || [];
 };
 
 /**
@@ -205,7 +177,7 @@ const generateModelSchema = (model: typeof Model): OpenApiModelType => {
   return {
     type: "object",
     properties,
-    required: required.length > 0 ? required : undefined,
+    required: required.length ? required : [],
   };
 };
 

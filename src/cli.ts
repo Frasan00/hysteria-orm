@@ -286,14 +286,16 @@ program
         await runMigrationsConnector(
           sqlDs,
           runUntil,
-          true,
           option?.migrationPath,
           option?.tsconfigPath,
           option?.transactional,
         );
+
+        await sqlDs.closeConnection();
         process.exit(0);
       } catch (error) {
         console.error(error);
+        await sqlDs.closeConnection();
         process.exit(1);
       }
     },
@@ -346,14 +348,16 @@ program
         await rollbackMigrationsConnector(
           sqlDs,
           rollbackUntil,
-          true,
           option?.migrationPath,
           option?.tsconfigPath,
           option?.transactional,
         );
+
+        await sqlDs.closeConnection();
         process.exit(0);
       } catch (error) {
         console.error(error);
+        await sqlDs.closeConnection();
         process.exit(1);
       }
     },
@@ -408,7 +412,6 @@ program
           : await rollbackMigrationsConnector(
               sqlDs,
               undefined,
-              false,
               option?.migrationPath,
               option?.tsconfigPath,
               option?.transactional,
@@ -417,14 +420,16 @@ program
         await runMigrationsConnector(
           sqlDs,
           undefined,
-          true,
           option?.migrationPath,
           option?.tsconfigPath,
           option?.transactional,
         );
+
+        await sqlDs.closeConnection();
         process.exit(0);
       } catch (error) {
         console.error(error);
+        await sqlDs.closeConnection();
         process.exit(1);
       }
     },
@@ -446,9 +451,9 @@ program
     undefined,
   )
   .option(
-    "-f, --dry [path]",
+    "-f, --dry",
     "Does not create a migration file but only outputs sql statements",
-    undefined,
+    false,
   )
   .option(
     "-j, --javascript",
@@ -528,9 +533,12 @@ program
         logger.info(
           `Migration file created successfully: ${option?.name}${extension}`,
         );
+
+        await sqlDs.closeConnection();
         process.exit(0);
       } catch (error) {
         console.error(error);
+        await sqlDs.closeConnection();
         process.exit(1);
       }
     },

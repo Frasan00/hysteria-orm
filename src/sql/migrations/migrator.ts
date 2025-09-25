@@ -1,14 +1,9 @@
-import { format } from "sql-formatter";
 import rollbackMigrationsConnector from "../../cli/migration_rollback_connector";
 import runMigrationsConnector from "../../cli/migration_run_connector";
 import { env } from "../../env/env";
 import logger from "../../utils/logger";
 import { SqlDataSource } from "../sql_data_source";
-import {
-  SqlDataSourceInput,
-  SqlDataSourceType,
-} from "../sql_data_source_types";
-import { getSqlDialect } from "../sql_runner/sql_runner";
+import { SqlDataSourceInput } from "../sql_data_source_types";
 import { Migration } from "./migration";
 
 /**
@@ -22,9 +17,6 @@ export class Migrator {
   }
 
   async upMigrations(migrations: Migration[]): Promise<void> {
-    const queryFormatOptions = this.sql.inputDetails.queryFormatOptions;
-    const dbType = this.sql.getDbType() as SqlDataSourceType;
-
     for (const migration of migrations) {
       logger.info(`Running migration ${migration.migrationName}`);
       await migration.up();
@@ -34,12 +26,7 @@ export class Migrator {
           continue;
         }
 
-        const formattedQuery = format(statement, {
-          ...queryFormatOptions,
-          language: getSqlDialect(dbType),
-        });
-
-        await this.sql.rawQuery(formattedQuery);
+        await this.sql.rawQuery(statement);
       }
 
       await this.addMigrationToMigrationTable(migration);
@@ -51,9 +38,6 @@ export class Migrator {
 
   async downMigrations(migrations: Migration[]): Promise<void> {
     migrations = migrations.reverse();
-    const queryFormatOptions = this.sql.inputDetails.queryFormatOptions;
-    const dbType = this.sql.getDbType() as SqlDataSourceType;
-
     for (const migration of migrations) {
       logger.info(`Rolling back migration ${migration.migrationName}`);
       await migration.down();
@@ -63,12 +47,7 @@ export class Migrator {
           continue;
         }
 
-        const formattedQuery = format(statement, {
-          ...queryFormatOptions,
-          language: getSqlDialect(dbType),
-        });
-
-        await this.sql.rawQuery(formattedQuery);
+        await this.sql.rawQuery(statement);
       }
 
       await this.deleteMigrationFromMigrationTable(migration);
@@ -145,7 +124,6 @@ export class ClientMigrator {
       return runMigrationsConnector(
         sqlDataSource,
         undefined,
-        true,
         this.migrationPath,
       );
     }
@@ -153,7 +131,6 @@ export class ClientMigrator {
     return rollbackMigrationsConnector(
       sqlDataSource,
       undefined,
-      true,
       this.migrationPath,
     );
   }

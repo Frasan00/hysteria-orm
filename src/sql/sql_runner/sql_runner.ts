@@ -18,28 +18,6 @@ import {
 } from "./sql_runner_types";
 import { promisifySqliteQuery, SQLiteStream } from "./sql_runner_utils";
 
-export const getSqlDialect = (
-  sqlType: SqlDataSourceType,
-): "mysql" | "postgresql" | "sqlite" | "mariadb" | "sql" => {
-  switch (sqlType) {
-    case "mysql":
-      return "mysql";
-
-    case "mariadb":
-      return "mariadb";
-
-    case "postgres":
-    case "cockroachdb":
-      return "postgresql";
-
-    case "sqlite":
-      return "sqlite";
-
-    default:
-      return "sql";
-  }
-};
-
 export const execSql = async <M extends Model, T extends Returning>(
   query: string,
   params: any[],

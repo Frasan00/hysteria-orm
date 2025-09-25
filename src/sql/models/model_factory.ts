@@ -1,5 +1,6 @@
 import { FactoryReturnType } from "../../../test/sql/test_models/factory/factory_types";
 import { Model } from "./model";
+import { ModelWithoutRelations } from "./model_types";
 
 class ModelFactory<M extends Model> {
   typeofModel: typeof Model;
@@ -11,6 +12,16 @@ class ModelFactory<M extends Model> {
   constructor(typeofModel: typeof Model, modelData: Partial<M>) {
     this.typeofModel = typeofModel;
     this.modelData = modelData;
+  }
+
+  /**
+   * @description Merges the provided data with the model data
+   */
+  merge(modelData: Partial<ModelWithoutRelations<M>>) {
+    this.modelData = {
+      ...this.modelData,
+      ...modelData,
+    };
   }
 
   /**
@@ -41,7 +52,7 @@ class ModelFactory<M extends Model> {
 
 export const createModelFactory = <M extends Model>(
   typeofModel: typeof Model,
-  modelData: Partial<M>,
+  modelData: Partial<ModelWithoutRelations<M>>,
 ) => {
-  return new ModelFactory<M>(typeofModel, modelData);
+  return new ModelFactory<M>(typeofModel, modelData as M);
 };

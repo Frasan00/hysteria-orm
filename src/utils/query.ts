@@ -1,4 +1,28 @@
+import { format } from "sql-formatter";
+import { SqlDataSource } from "../sql/sql_data_source";
 import { SqlDataSourceType } from "../sql/sql_data_source_types";
+
+export const getSqlDialect = (
+  sqlType: SqlDataSourceType,
+): "mysql" | "postgresql" | "sqlite" | "mariadb" | "sql" => {
+  switch (sqlType) {
+    case "mysql":
+      return "mysql";
+
+    case "mariadb":
+      return "mariadb";
+
+    case "postgres":
+    case "cockroachdb":
+      return "postgresql";
+
+    case "sqlite":
+      return "sqlite";
+
+    default:
+      return "sql";
+  }
+};
 
 const formatParam = (param: any): string => {
   if (param === null || param === undefined) {
@@ -75,4 +99,27 @@ export const isTableMissingError = (
   }
 
   return false;
+};
+
+export const formatQuery = (sql: SqlDataSource, query: string): string => {
+  const dbType = sql.getDbType();
+  let formattedQuery: string;
+  try {
+    formattedQuery = format(query, {
+      ...sql.inputDetails.queryFormatOptions,
+      language: getSqlDialect(dbType as SqlDataSourceType),
+    });
+  } catch (_) {
+    // Retry without language
+    try {
+      formattedQuery = format(query, {
+        ...sql.inputDetails.queryFormatOptions,
+      });
+    } catch (_) {
+      // Ultimate fallback
+      formattedQuery = query;
+    }
+  }
+
+  return formattedQuery;
 };
