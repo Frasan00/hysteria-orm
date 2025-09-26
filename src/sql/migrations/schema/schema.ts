@@ -20,6 +20,7 @@ import { QueryNode } from "../../ast/query/query";
 import {
   getDefaultFkConstraintName,
   getDefaultIndexName,
+  getDefaultUniqueConstraintName,
 } from "../../models/decorators/model_decorators_constants";
 import { Model } from "../../models/model";
 import type { SqlDataSourceType } from "../../sql_data_source_types";
@@ -54,7 +55,7 @@ export default class Schema {
 
   /**
    * @description Runs the sql in the given file, throws error if file does not exist or is not .sql or .txt
-   * @description IMPORTANT: migration cli is always intended to be run from the root of the project so choose the file path accordingly
+   * @description File is splitted by semicolons and each statement is executed separately and in order
    */
   runFile(filePath: string): void {
     if (!fs.existsSync(filePath)) {
@@ -71,7 +72,15 @@ export default class Schema {
     }
 
     const query = fs.readFileSync(filePath, "utf-8");
-    this.rawQuery(query);
+
+    const statements = query
+      .split(";")
+      .map((stmt) => stmt.trim())
+      .filter((stmt) => stmt.length > 0 && !stmt.startsWith("--"));
+
+    for (const statement of statements) {
+      this.rawQuery(statement);
+    }
   }
 
   /**
@@ -253,6 +262,37 @@ export default class Schema {
   }
 
   /**
+   * @description Adds a UNIQUE constraint to a table
+   */
+  addUnique(
+    table: string,
+    columns: string[] | string,
+    options?: CommonConstraintOptions,
+  ): void {
+    const cols = Array.isArray(columns) ? columns : [columns];
+    const constraintName =
+      options?.constraintName ??
+      getDefaultUniqueConstraintName(table, cols.join("_"));
+
+    const constraint = new ConstraintNode("unique", {
+      columns: cols,
+      constraintName,
+    });
+
+    const alterNode = new AlterTableNode(table, [
+      new AddConstraintNode(constraint),
+    ]);
+
+    const astParser = this.generateAstInstance({
+      table,
+      databaseCaseConvention: "preserve",
+      modelCaseConvention: "preserve",
+    } as typeof Model);
+
+    this.rawQuery(astParser.parse([alterNode]).sql);
+  }
+
+  /**
    * @description Drops a foreign key from a table, uses a standard constraint name pattern: fk_${table}_${leftColumn}_${rightColumn}
    * @description If a custom constraint name was used to generate the foreign key, use `dropConstraint` instead
    */
@@ -262,6 +302,33 @@ export default class Schema {
       leftColumn,
       rightColumn,
     );
+
+    const dropNode = new DropConstraintNode(constraintName);
+    const alterNode = new AlterTableNode(table, [dropNode]);
+
+    const astParser = this.generateAstInstance({
+      table,
+      databaseCaseConvention: "preserve",
+      modelCaseConvention: "preserve",
+    } as typeof Model);
+
+    this.rawQuery(astParser.parse([alterNode]).sql);
+  }
+
+  /**
+   * @description Drops a UNIQUE constraint from a table
+   * @description If no constraintName is provided, it computes the default name using columns
+   */
+  dropUnique(
+    table: string,
+    columnsOrConstraintName: string | string[],
+    options?: CommonConstraintOptions,
+  ): void {
+    const computedName = Array.isArray(columnsOrConstraintName)
+      ? getDefaultUniqueConstraintName(table, columnsOrConstraintName.join("_"))
+      : getDefaultUniqueConstraintName(table, columnsOrConstraintName);
+
+    const constraintName = options?.constraintName ?? computedName;
 
     const dropNode = new DropConstraintNode(constraintName);
     const alterNode = new AlterTableNode(table, [dropNode]);

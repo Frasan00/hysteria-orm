@@ -15,7 +15,7 @@ const detectColumnType = (column: ColumnType): OpenApiModelPropertyType => {
       column.openApi?.description ?? `Property: ${column.columnName}`,
   };
 
-  // if type was provided in the openApi options, we just use it as is
+  // if an explicit openApi.type was provided, we honor it
   if (column.openApi?.type) {
     return {
       ...baseType,
@@ -23,8 +23,17 @@ const detectColumnType = (column: ColumnType): OpenApiModelPropertyType => {
     };
   }
 
+  // enum (array of allowed string values)
+  if (Array.isArray(column.type)) {
+    return {
+      ...baseType,
+      type: "string",
+      enum: column.type as string[],
+    };
+  }
+
+  // dates / times
   if (
-    (column.serialize && column.serialize.toString().includes("parseDate")) ||
     column.type === "date" ||
     column.type === "datetime" ||
     column.type === "timestamp" ||
@@ -37,49 +46,73 @@ const detectColumnType = (column: ColumnType): OpenApiModelPropertyType => {
     };
   }
 
-  if (
-    (column.serialize && column.serialize.toString().includes("Boolean(")) ||
-    column.type === "boolean"
-  ) {
+  // boolean
+  if (column.type === "boolean") {
     return {
       ...baseType,
       type: "boolean",
     };
   }
 
+  // integer-like types
   if (
-    (column.serialize && column.serialize.toString().includes("+value")) ||
-    (column.serialize && column.serialize.toString().includes("Number(")) ||
-    (column.serialize &&
-      column.serialize.toString().includes("Number.parseInt")) ||
-    (column.serialize &&
-      column.serialize.toString().includes("Number.parseFloat")) ||
     column.type === "integer" ||
-    column.type === "float" ||
-    column.type === "decimal" ||
-    column.type === "numeric"
+    column.type === "tinyint" ||
+    column.type === "smallint" ||
+    column.type === "mediumint" ||
+    column.type === "increment"
   ) {
+    return {
+      ...baseType,
+      type: "integer",
+      format: "int32",
+    };
+  }
+
+  // big integers
+  if (column.type === "biginteger" || column.type === "bigIncrement") {
+    return {
+      ...baseType,
+      type: "integer",
+      format: "int64",
+    };
+  }
+
+  // floating / decimal numbers
+  if (column.type === "float" || column.type === "real") {
+    return {
+      ...baseType,
+      type: "number",
+      format: "float",
+    };
+  }
+
+  if (column.type === "double") {
+    return {
+      ...baseType,
+      type: "number",
+      format: "double",
+    };
+  }
+
+  if (column.type === "decimal" || column.type === "numeric") {
+    // decimals can be represented as numbers but some APIs prefer strings for precision
     return {
       ...baseType,
       type: "number",
     };
   }
 
-  if (
-    (column.serialize && column.serialize.toString().includes("JSON.parse")) ||
-    column.type === "json" ||
-    column.type === "jsonb"
-  ) {
+  // JSON
+  if (column.type === "json" || column.type === "jsonb") {
     return {
       ...baseType,
       type: "object",
     };
   }
 
-  if (
-    (column.prepare && column.prepare.toString().includes("randomUUID")) ||
-    column.type === "uuid"
-  ) {
+  // UUID / ULID
+  if (column.type === "uuid") {
     return {
       ...baseType,
       type: "string",
@@ -87,10 +120,7 @@ const detectColumnType = (column: ColumnType): OpenApiModelPropertyType => {
     };
   }
 
-  if (
-    (column.prepare && column.prepare.toString().includes("generateULID")) ||
-    column.type === "ulid"
-  ) {
+  if (column.type === "ulid") {
     return {
       ...baseType,
       type: "string",
@@ -98,6 +128,23 @@ const detectColumnType = (column: ColumnType): OpenApiModelPropertyType => {
     };
   }
 
+  // text / string-like
+  if (
+    column.type === "string" ||
+    column.type === "char" ||
+    column.type === "varchar" ||
+    column.type === "text" ||
+    column.type === "longtext" ||
+    column.type === "mediumtext" ||
+    column.type === "tinytext"
+  ) {
+    return {
+      ...baseType,
+      type: "string",
+    };
+  }
+
+  // binary / blob
   if (
     column.type === "blob" ||
     column.type === "binary" ||
@@ -113,14 +160,16 @@ const detectColumnType = (column: ColumnType): OpenApiModelPropertyType => {
     };
   }
 
-  if (Array.isArray(column.type)) {
+  // year
+  if (column.type === "year") {
     return {
       ...baseType,
-      type: "string",
-      enum: column.type,
+      type: "integer",
+      format: "int32",
     };
   }
 
+  // fallback to baseType
   return baseType;
 };
 

@@ -11,6 +11,9 @@ export * from "./sql/models/model_query_builder/relation_query_builder/relation_
 export * from "./sql/models/model_query_builder/model_query_builder_types";
 export * from "./sql/models/model_types";
 
+// Mixins
+export * from "./sql/models/mixins/index";
+
 // DataSources
 export * from "./data_source/data_source_types";
 export { MongoDataSource as mongo } from "./no_sql/mongo/mongo_data_source";

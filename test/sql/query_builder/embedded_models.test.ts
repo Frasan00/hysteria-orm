@@ -1,6 +1,6 @@
 import { env } from "../../../src/env/env";
-import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { HysteriaError } from "../../../src/errors/hysteria_error";
+import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { AugmentedSqlDataSource } from "../sql_data_source_types";
 import { UserWithoutPk } from "../test_models/without_pk/user_without_pk";
 
@@ -110,5 +110,27 @@ describe(`[${env.DB_TYPE}] Query Builder with embedded models`, () => {
         await sql.closeConnection();
       },
     );
+  });
+});
+
+describe(`[${env.DB_TYPE}] Query Builder with embedded models with cloned connection`, () => {
+  test("Embedding should work with cloned connection", async () => {
+    const clonedSql = await sql.clone({ shouldRecreatePool: true });
+    await clonedSql.startGlobalTransaction();
+    await clonedSql.userWithoutPk.insert(
+      {
+        name: "John",
+      },
+      { connection: clonedSql },
+    );
+
+    const user = await clonedSql.userWithoutPk
+      .query({ connection: clonedSql })
+      .first();
+    expect(user).toBeDefined();
+    expect(user?.name).toBe("John");
+
+    await clonedSql.rollbackGlobalTransaction();
+    await clonedSql.closeConnection();
   });
 });

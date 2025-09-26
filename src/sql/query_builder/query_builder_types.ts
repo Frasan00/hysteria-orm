@@ -1,5 +1,6 @@
 import type { Model } from "../models/model";
 import type { ModelKey } from "../models/model_manager/model_manager_types";
+import { JsonQueryBuilder } from "./json_query_builder";
 import type { WhereQueryBuilder } from "./where_query_builder";
 
 export type PluckReturnType<
@@ -57,7 +58,28 @@ export type WhereOnlyQueryBuilder<T extends Model> = Pick<
   | "whereExists"
   | "orWhereExists"
   | "andWhereExists"
->;
+> &
+  Pick<
+    JsonQueryBuilder<T>,
+    | "whereJson"
+    | "andWhereJson"
+    | "orWhereJson"
+    | "whereJsonContains"
+    | "andWhereJsonContains"
+    | "orWhereJsonContains"
+    | "whereJsonNotContains"
+    | "andWhereJsonNotContains"
+    | "orWhereJsonNotContains"
+    | "whereJsonNotContains"
+    | "andWhereJsonNotContains"
+    | "orWhereJsonNotContains"
+    | "whereJsonRaw"
+    | "andWhereJsonRaw"
+    | "orWhereJsonRaw"
+    | "whereJsonNotContains"
+    | "andWhereJsonNotContains"
+    | "orWhereJsonNotContains"
+  >;
 
 export type RelationRetrieveMethod<P extends any> = P extends any[]
   ? "many"

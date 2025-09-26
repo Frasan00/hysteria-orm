@@ -103,6 +103,14 @@ export type UseConnectionInput<
 
 export type SqlDataSourceType = Exclude<DataSourceType, "mongo">;
 
+export type SqlCloneOptions = {
+  /**
+   * @description Whether to recreate the pool of connections for the given driver, by default it's false
+   * @warning If false, the pool of connections will be reused from the caller instance
+   */
+  shouldRecreatePool?: boolean;
+};
+
 export type getPoolReturnType<T = SqlDataSourceType> = T extends "mysql"
   ? MysqlConnectionInstance
   : T extends "mariadb"
@@ -130,5 +138,43 @@ export type GetConnectionReturnType<T = SqlDataSourceType> = T extends "mysql"
 export type AugmentedSqlDataSource<
   T extends Record<string, SqlDataSourceModel> = {},
 > = SqlDataSource & {
+  [key in keyof T]: T[key];
+};
+
+export type SqlDataSourceWithoutTransaction<
+  T extends Record<string, SqlDataSourceModel> = {},
+> = Pick<
+  SqlDataSource,
+  | "sqlPool"
+  | "sqlConnection"
+  | "inputDetails"
+  | "isConnected"
+  | "getDbType"
+  | "clone"
+  | "getModelManager"
+  | "getPool"
+  | "getConnection"
+  | "closeConnection"
+  | "getConnectionDetails"
+  | "disconnect"
+  | "syncSchema"
+  | "rawQuery"
+  | "rawStatement"
+  | "getTableSchema"
+  | "getModelOpenApiSchema"
+  | "getTableInfo"
+  | "getIndexInfo"
+  | "getForeignKeyInfo"
+  | "getPrimaryKeyInfo"
+  | "registeredModels"
+  | "type"
+  | "host"
+  | "port"
+  | "username"
+  | "password"
+  | "database"
+  | "logs"
+  | "query"
+> & {
   [key in keyof T]: T[key];
 };

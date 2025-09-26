@@ -17,6 +17,8 @@ export default class extends Migration {
       t.timestamp("deleted_at").default(null).nullable();
     });
 
+    await this.schema.runFile("test/sql/test.sql");
+
     // CockroachDB doesn't support multiple alter table statements
     if (this.dbType === "cockroachdb") {
       this.schema.dropTable(table);
@@ -60,6 +62,9 @@ export default class extends Migration {
     });
     this.schema.dropIndex("idx_name_test", table);
 
+    this.schema.addUnique(table, ["name"]);
+    this.schema.dropUnique(table, ["name"]);
+
     this.schema.renameTable(table, `${table}_renamed`);
     this.schema.renameTable(`${table}_renamed`, table);
 
@@ -77,5 +82,8 @@ export default class extends Migration {
     this.schema.dropTable(tablePk);
   }
 
-  async down() {}
+  async down() {
+    this.schema.dropTable("temp_test", true);
+    this.schema.dropTable("__test_methods_pk", true);
+  }
 }

@@ -100,7 +100,7 @@ export abstract class WhereQueryBuilder<
     columnOrCb:
       | ModelKey<T>
       | SelectableColumn<string>
-      | ((queryBuilder: WhereQueryBuilder<T>) => void),
+      | ((queryBuilder: WhereOnlyQueryBuilder<T>) => void),
     operatorOrValue?:
       | BinaryOperatorType
       | BaseValues
@@ -114,7 +114,7 @@ export abstract class WhereQueryBuilder<
   ): this {
     if (typeof columnOrCb === "function") {
       return this.andWhereGroup(
-        columnOrCb as (qb: WhereQueryBuilder<T>) => void,
+        columnOrCb as unknown as (qb: WhereQueryBuilder<T>) => void,
       );
     }
 

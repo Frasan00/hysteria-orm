@@ -1055,7 +1055,7 @@ describe(`[${env.DB_TYPE}] Query Builder stream method`, () => {
   });
 });
 
-describe(`[${env.DB_TYPE}] Query Builder copy method`, () => {
+describe(`[${env.DB_TYPE}] Query Builder clone method`, () => {
   beforeEach(async () => {
     await SqlDataSource.query("users_without_pk").insertMany([
       { name: "User 1", age: 21 },
@@ -1068,7 +1068,7 @@ describe(`[${env.DB_TYPE}] Query Builder copy method`, () => {
     await SqlDataSource.query("users_without_pk").truncate();
   });
 
-  test("should properly copy the query builder", async () => {
+  test("should properly clone the query builder", async () => {
     const queryBuilder = SqlDataSource.query("users_without_pk")
       .select("name")
       .where("age", ">", 20)
@@ -1085,14 +1085,14 @@ describe(`[${env.DB_TYPE}] Query Builder copy method`, () => {
       .withRecursive("posts", (qb) => qb.select("name").from("posts"))
       .limit(1);
 
-    const copiedQueryBuilder = queryBuilder.copy();
+    const copiedQueryBuilder = queryBuilder.clone();
     expect(copiedQueryBuilder).toBeDefined();
     expect(copiedQueryBuilder.toQuery()).toBe(queryBuilder.toQuery());
   });
 
   test("copy should not affect the original query builder", async () => {
     const queryBuilder = SqlDataSource.query("users_without_pk").select("name");
-    const copiedQueryBuilder = queryBuilder.copy().limit(1);
+    const copiedQueryBuilder = queryBuilder.clone().limit(1);
     const users = await queryBuilder.many();
     const copiedUsers = await copiedQueryBuilder.many();
 

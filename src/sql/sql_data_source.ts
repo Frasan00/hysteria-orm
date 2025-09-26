@@ -34,10 +34,10 @@ import type {
   getPoolReturnType,
   MysqlConnectionInstance,
   PgPoolClientInstance,
+  SqlCloneOptions,
   SqlDataSourceInput,
   SqlDataSourceModel,
   SqlDataSourceType,
-  SqlDriverSpecificOptions,
   SqliteConnectionInstance,
   SqlPoolType,
   UseConnectionInput,
@@ -46,7 +46,9 @@ import { execSql } from "./sql_runner/sql_runner";
 import { Transaction } from "./transactions/transaction";
 import {
   StartTransactionOptions,
+  StartTransactionReturnType,
   TransactionExecutionOptions,
+  TransactionOptionsOrCallback,
 } from "./transactions/transaction_types";
 
 /**
@@ -57,6 +59,7 @@ export class SqlDataSource extends DataSource {
   private globalTransaction: Transaction | null = null;
   private sqlType: SqlDataSourceType;
   private models: Record<string, SqlDataSourceModel> = {};
+  private ownsPool: boolean = false;
 
   /**
    * @description The pool of connections for the database
@@ -111,6 +114,7 @@ export class SqlDataSource extends DataSource {
     }
 
     const sqlDataSource = new SqlDataSource(inputOrCb as SqlDataSourceInput<T>);
+
     if (inputOrCb?.models) {
       const sanitizeModelKeys = sqlDataSource.sanitizeModelKeys(
         inputOrCb?.models || {},
@@ -135,6 +139,7 @@ export class SqlDataSource extends DataSource {
       models: sqlDataSource.models,
     } as SqlDataSourceInput<T>);
 
+    sqlDataSource.ownsPool = true;
     await sqlDataSource.testConnectionQuery("SELECT 1");
     SqlDataSource.instance = sqlDataSource;
 
@@ -204,6 +209,7 @@ export class SqlDataSource extends DataSource {
       logs: sqlDataSource.logs,
       models: sqlDataSource.models,
     } as SqlDataSourceInput<T>);
+    sqlDataSource.ownsPool = true;
 
     await sqlDataSource.testConnectionQuery("SELECT 1");
     SqlDataSource.instance = sqlDataSource;
@@ -232,6 +238,7 @@ export class SqlDataSource extends DataSource {
     const customSqlInstance = new SqlDataSource(
       connectionDetails as SqlDataSourceInput,
     );
+
     if (connectionDetails.models) {
       const sanitizeModelKeys = customSqlInstance.sanitizeModelKeys(
         connectionDetails.models,
@@ -256,6 +263,7 @@ export class SqlDataSource extends DataSource {
       models: connectionDetails.models,
     } as SqlDataSourceInput<T>);
 
+    customSqlInstance.ownsPool = true;
     await customSqlInstance.testConnectionQuery("SELECT 1");
 
     try {
@@ -311,7 +319,7 @@ export class SqlDataSource extends DataSource {
         databaseCaseConvention: "preserve",
         table: table,
       } as typeof Model,
-      sqlForQueryBuilder,
+      sqlForQueryBuilder as SqlDataSource,
     );
   }
 
@@ -327,16 +335,6 @@ export class SqlDataSource extends DataSource {
    */
   static alterTable(...args: Parameters<Schema["alterTable"]>): string[] {
     return this.getInstance().alterTable(...args);
-  }
-
-  /**
-   * @description Starts a transaction on the database and executes a callback with the transaction instance, automatically committing or rolling back the transaction based on the callback's success or failure
-   */
-  static async useTransaction(
-    cb: (trx: Transaction) => Promise<void>,
-    options?: StartTransactionOptions,
-  ): Promise<void> {
-    return this.getInstance().useTransaction(cb, options);
   }
 
   /**
@@ -366,29 +364,60 @@ export class SqlDataSource extends DataSource {
 
   /**
    * @description Starts a transaction on a dedicated connection from the pool and returns a Transaction instance
+   * @param cb if a callback is provided, it will execute the callback and commit or rollback the transaction based on the callback's success or failure
+   * @param options.isolationLevel The isolation level to use for the transaction
+   * @param options.throwErrorOnInactiveTransaction Whether to throw an error if the transaction is not active
+   * @param options.endConnection Whether to end the connection after the transaction is committed or rolled back (Default is true, better to leave it this way)
+   * @sqlite ignores the isolation level
    */
   static async startTransaction(
     options?: StartTransactionOptions,
-  ): Promise<Transaction> {
-    return this.getInstance().startTransaction(options);
-  }
-
-  /**
-   * @alias startTransaction
-   */
-  static async beginTransaction(
+  ): Promise<Transaction>;
+  static async startTransaction(
+    cb: (trx: Transaction) => Promise<void>,
     options?: StartTransactionOptions,
-  ): Promise<Transaction> {
-    return this.getInstance().startTransaction(options);
+  ): Promise<void>;
+  static async startTransaction<T extends TransactionOptionsOrCallback>(
+    optionsOrCb?: T,
+    maybeOptions?: StartTransactionOptions,
+  ): Promise<StartTransactionReturnType<T>> {
+    return this.getInstance().startTransaction(
+      optionsOrCb as any,
+      maybeOptions,
+    ) as unknown as StartTransactionReturnType<T>;
   }
 
   /**
    * @alias startTransaction
+   * @param cb if a callback is provided, it will execute the callback and commit or rollback the transaction based on the callback's success or failure
+   * @param options.isolationLevel The isolation level to use for the transaction
+   * @param options.throwErrorOnInactiveTransaction Whether to throw an error if the transaction is not active
+   * @param options.endConnection Whether to end the connection after the transaction is committed or rolled back (Default is true, better to leave it this way)
+   * @sqlite ignores the isolation level
    */
   static async transaction(
     options?: StartTransactionOptions,
-  ): Promise<Transaction> {
-    return this.getInstance().startTransaction(options);
+  ): Promise<Transaction>;
+  static async transaction(
+    cb: (trx: Transaction) => Promise<void>,
+    options?: StartTransactionOptions,
+  ): Promise<void>;
+  static async transaction(
+    optionsOrCb?:
+      | StartTransactionOptions
+      | ((trx: Transaction) => Promise<void>),
+    maybeOptions?: StartTransactionOptions,
+  ): Promise<StartTransactionReturnType<TransactionOptionsOrCallback>>;
+  static async transaction<T extends TransactionOptionsOrCallback>(
+    optionsOrCb?: T,
+    maybeOptions?: StartTransactionOptions,
+  ): Promise<StartTransactionReturnType<T>> {
+    const options =
+      typeof optionsOrCb === "function" ? maybeOptions : optionsOrCb;
+    return this.getInstance().startTransaction(
+      optionsOrCb as any,
+      options as any,
+    ) as unknown as StartTransactionReturnType<T>;
   }
 
   /**
@@ -431,7 +460,7 @@ export class SqlDataSource extends DataSource {
         ? instance.globalTransaction.sql
         : instance;
 
-    return (sqlForRawQuery as SqlDataSource).rawQuery(query, params);
+    return sqlForRawQuery.rawQuery(query, params);
   }
 
   /**
@@ -490,24 +519,48 @@ export class SqlDataSource extends DataSource {
 
   /**
    * @description Clones the SqlDataSource instance
+   * @param options.shouldRecreatePool Whether to recreate the pool of connections for the given driver, by default it's false
+   * @sqlite ignores the shouldRecreatePool option
    * @returns A new SqlDataSource instance with the same input details
    */
-  async clone(driverSpecificOptions?: SqlDriverSpecificOptions): Promise<this> {
+  async clone(options?: SqlCloneOptions): Promise<this> {
     const cloned = new SqlDataSource(this.inputDetails) as this;
-    cloned.sqlPool = await createSqlPool(cloned.sqlType, {
-      type: cloned.sqlType,
-      host: cloned.host,
-      port: cloned.port,
-      username: cloned.username,
-      password: cloned.password,
-      database: cloned.database,
-      connectionPolicies: cloned.inputDetails
-        .connectionPolicies as ConnectionPolicies,
-      queryFormatOptions: cloned.inputDetails.queryFormatOptions,
-      driverOptions: driverSpecificOptions || cloned.inputDetails.driverOptions,
-      logs: cloned.logs,
-      models: cloned.models,
-    } as SqlDataSourceInput);
+    const mustCreateNewPool =
+      cloned.sqlType === "sqlite" || !!options?.shouldRecreatePool;
+    if (mustCreateNewPool) {
+      cloned.sqlPool = await createSqlPool(cloned.sqlType, {
+        type: cloned.sqlType,
+        host: cloned.host,
+        port: cloned.port,
+        username: cloned.username,
+        password: cloned.password,
+        database: cloned.database,
+        connectionPolicies: cloned.inputDetails
+          .connectionPolicies as ConnectionPolicies,
+        queryFormatOptions: cloned.inputDetails.queryFormatOptions,
+        driverOptions: cloned.inputDetails.driverOptions,
+        logs: cloned.logs,
+        models: cloned.models,
+      } as SqlDataSourceInput);
+
+      cloned.ownsPool = true;
+
+      if (Object.keys(this.models).length) {
+        const sanitizeModelKeys = cloned.sanitizeModelKeys(this.models);
+        Object.assign(cloned, sanitizeModelKeys);
+      }
+
+      return cloned;
+    }
+
+    cloned.sqlPool = this.sqlPool;
+    cloned.ownsPool = false;
+
+    if (Object.keys(this.models).length) {
+      const sanitizeModelKeys = cloned.sanitizeModelKeys(this.models);
+      Object.assign(cloned, sanitizeModelKeys);
+    }
+
     return cloned;
   }
 
@@ -536,7 +589,7 @@ export class SqlDataSource extends DataSource {
         databaseCaseConvention: "preserve",
         table: table,
       } as typeof Model,
-      sqlForQueryBuilder,
+      sqlForQueryBuilder as SqlDataSource,
     );
   }
 
@@ -559,38 +612,12 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
-   * @description Starts a transaction on the database and executes a callback with the transaction instance, automatically committing or rolling back the transaction based on the callback's success or failure
-   */
-  async useTransaction(
-    cb: (trx: Transaction) => Promise<void>,
-    options?: StartTransactionOptions,
-  ): Promise<void> {
-    const trx = await this.startTransaction(options);
-    try {
-      await cb(trx).then(async () => {
-        if (!trx.isActive) {
-          return;
-        }
-
-        await trx.commit();
-      });
-    } catch (error) {
-      if (!trx.isActive) {
-        return;
-      }
-
-      await trx.rollback();
-      throw error;
-    }
-  }
-
-  /**
    * @description Starts a global transaction on the database on the main connection pool, intended to for testing purposes only, don't use it in production
    */
   async startGlobalTransaction(
     options?: StartTransactionOptions,
   ): Promise<Transaction> {
-    const cloned = await this.clone(options?.driverSpecificOptions);
+    const cloned = await this.clone();
     cloned.sqlConnection = await cloned.getConnection();
     this.globalTransaction = new Transaction(cloned, options?.isolationLevel);
     await this.globalTransaction.startTransaction();
@@ -638,7 +665,8 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
-   * @description Get's a connection from the pool and starts a transaction on the database and returns a Transaction instance
+   * @description Get's a connection from the pool and starts a transaction on the database and returns an already started transaction instance
+   * @param cb if a callback is provided, it will execute the callback and commit or rollback the transaction based on the callback's success or failure
    * @param options.isolationLevel The isolation level to use for the transaction
    * @param options.throwErrorOnInactiveTransaction Whether to throw an error if the transaction is not active
    * @param options.endConnection Whether to end the connection after the transaction is committed or rolled back (Default is true, better to leave it this way)
@@ -646,28 +674,63 @@ export class SqlDataSource extends DataSource {
    */
   async startTransaction(
     options?: StartTransactionOptions,
-  ): Promise<Transaction> {
-    const cloned = await this.clone(options?.driverSpecificOptions);
+  ): Promise<Transaction>;
+  async startTransaction(
+    cb: (trx: Transaction) => Promise<void>,
+    options?: StartTransactionOptions,
+  ): Promise<void>;
+  async startTransaction<T extends TransactionOptionsOrCallback>(
+    optionsOrCb?:
+      | StartTransactionOptions
+      | ((trx: Transaction) => Promise<void>),
+    maybeOptions?: StartTransactionOptions,
+  ): Promise<StartTransactionReturnType<T>> {
+    const options =
+      typeof optionsOrCb === "function" ? maybeOptions : optionsOrCb;
+    const cloned = await this.clone();
     cloned.sqlConnection = await cloned.getConnection();
     const sqlTrx = new Transaction(cloned, options?.isolationLevel);
     await sqlTrx.startTransaction();
-    return sqlTrx;
+
+    if (typeof optionsOrCb === "function") {
+      try {
+        await optionsOrCb(sqlTrx);
+        await sqlTrx.commit({
+          throwErrorOnInactiveTransaction: false,
+        });
+        return undefined as StartTransactionReturnType<T>;
+      } catch (error) {
+        await sqlTrx.rollback({
+          throwErrorOnInactiveTransaction: false,
+        });
+        throw error;
+      }
+    }
+
+    return sqlTrx as StartTransactionReturnType<T>;
   }
 
   /**
    * @alias startTransaction
+   * @description Get's a connection from the pool and starts a transaction on the database and returns an already started transaction instance
+   * @param cb if a callback is provided, it will execute the callback and commit or rollback the transaction based on the callback's success or failure
+   * @param options.isolationLevel The isolation level to use for the transaction
+   * @param options.throwErrorOnInactiveTransaction Whether to throw an error if the transaction is not active
+   * @param options.endConnection Whether to end the connection after the transaction is committed or rolled back (Default is true, better to leave it this way)
+   * @sqlite ignores the isolation level
    */
-  async beginTransaction(
+  async transaction(options?: StartTransactionOptions): Promise<Transaction>;
+  async transaction(
+    cb: (trx: Transaction) => Promise<void>,
     options?: StartTransactionOptions,
-  ): Promise<Transaction> {
-    return this.startTransaction(options);
-  }
-
-  /**
-   * @alias startTransaction
-   */
-  async transaction(options?: StartTransactionOptions): Promise<Transaction> {
-    return this.startTransaction(options);
+  ): Promise<void>;
+  async transaction(
+    optionsOrCb?:
+      | StartTransactionOptions
+      | ((trx: Transaction) => Promise<void>),
+    maybeOptions?: StartTransactionOptions,
+  ): Promise<Transaction | void> {
+    return this.startTransaction(optionsOrCb as any, maybeOptions);
   }
 
   /**
@@ -687,7 +750,7 @@ export class SqlDataSource extends DataSource {
     if (this.globalTransaction?.isActive) {
       return new ModelManager(
         model as typeof Model,
-        this.globalTransaction.sql,
+        this.globalTransaction.sql as SqlDataSource,
       );
     }
 
@@ -762,7 +825,12 @@ export class SqlDataSource extends DataSource {
    */
   async closeConnection(): Promise<void> {
     if (!this.isConnected) {
-      logger.warn("Connection already closed ");
+      logger.warn("Connection already closed or not established");
+      return;
+    }
+
+    if (!this.ownsPool) {
+      this.sqlConnection = null;
       return;
     }
 
@@ -866,7 +934,7 @@ export class SqlDataSource extends DataSource {
       return;
     }
 
-    await this.useTransaction(async (trx) => {
+    await this.transaction(async (trx) => {
       for (const sql of sqlStatements) {
         await trx.sql.rawQuery(sql);
       }

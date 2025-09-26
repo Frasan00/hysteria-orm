@@ -1,6 +1,7 @@
 import { PassThrough } from "node:stream";
 import { HysteriaError } from "../../errors/hysteria_error";
 import { baseSoftDeleteDate } from "../../utils/date_utils";
+import logger from "../../utils/logger";
 import { withPerformance } from "../../utils/performance";
 import { bindParamsIntoQuery, formatQuery } from "../../utils/query";
 import { AstParser } from "../ast/parser";
@@ -37,7 +38,6 @@ import {
   PluckReturnType,
   StreamOptions,
 } from "./query_builder_types";
-import logger from "../../utils/logger";
 
 export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   model: typeof Model;
@@ -265,7 +265,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     options: PaginateWithCursorOptions<T, K>,
     cursor?: Cursor<T, K>,
   ): Promise<[CursorPaginatedData<T>, Cursor<T, K>]> {
-    const countQueryBuilder = this.copy();
+    const countQueryBuilder = this.clone();
 
     if (!this.orderByNodes.length) {
       this.orderBy(options.discriminator, options.orderBy || "asc");
@@ -502,7 +502,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
       );
     }
 
-    const countQueryBuilder = this.copy();
+    const countQueryBuilder = this.clone();
     const total = await countQueryBuilder.getCount("*");
 
     // Original query is used to get the models with pagination data
@@ -783,9 +783,9 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   }
 
   /**
-   * @description Returns a deep copy of the query builder instance.
+   * @description Returns a deep clone of the query builder instance.
    */
-  copy(): this {
+  clone(): this {
     const qb = new QueryBuilder<T>(this.model, this.sqlDataSource) as any;
 
     // select / from / distinct (from SelectQueryBuilder)

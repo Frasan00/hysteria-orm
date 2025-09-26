@@ -120,7 +120,7 @@ export class ModelQueryBuilder<
     }
 
     if (options.trx) {
-      return new ModelQueryBuilder(model, options.trx.sql);
+      return new ModelQueryBuilder(model, options.trx.sql as SqlDataSource);
     }
 
     return new ModelQueryBuilder(model, model.sqlInstance);
@@ -1194,8 +1194,8 @@ export class ModelQueryBuilder<
   /**
    * @description Returns a copy of the query builder instance.
    */
-  override copy(): this {
-    const queryBuilder = super.copy();
+  override clone(): this {
+    const queryBuilder = super.clone();
     queryBuilder.relationQueryBuilders = deepCloneNode(
       this.relationQueryBuilders,
     );

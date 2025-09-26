@@ -4,9 +4,13 @@ import crypto from "node:crypto";
 import { HysteriaError } from "../../errors/hysteria_error";
 import logger from "../../utils/logger";
 import { SqlDataSource } from "../sql_data_source";
-import { GetConnectionReturnType } from "../sql_data_source_types";
 import {
-  StartTransactionOptions,
+  GetConnectionReturnType,
+  SqlDataSourceWithoutTransaction,
+} from "../sql_data_source_types";
+import {
+  NestedTransactionCallback,
+  NestedTransactionReturnType,
   TransactionExecutionOptions,
   TransactionIsolationLevel,
 } from "./transaction_types";
@@ -36,7 +40,7 @@ export class Transaction {
    * await trx.commit();
    * ```
    */
-  sql: SqlDataSource;
+  sql: SqlDataSourceWithoutTransaction;
   /**
    * @description Whether the transaction is active
    */
@@ -66,22 +70,41 @@ export class Transaction {
   }
 
   /**
-   * @description Creates a new transaction with the same isolation level (if not provided) and same connection, it automatically handles save points
+   * @description Creates a new transaction with the same isolation level and same connection using save points
+   * @description If a callback is provided, it will execute the callback and commit or rollback the nested transaction save points based on the callback's success or failure
    */
+  async nestedTransaction(): Promise<Transaction>;
   async nestedTransaction(
-    options?: Omit<StartTransactionOptions, "driverSpecificOptions">,
-  ): Promise<Transaction> {
+    cb: (trx: Transaction) => Promise<void>,
+  ): Promise<void>;
+  async nestedTransaction<T extends NestedTransactionCallback | undefined>(
+    cb?: T,
+  ): Promise<NestedTransactionReturnType<T>> {
     const trx = new Transaction(
-      this.sql,
-      options?.isolationLevel || this.isolationLevel,
+      this.sql as SqlDataSource,
+      this.isolationLevel,
       true,
       this.nestingDepth + 1,
     );
 
     await trx.startTransaction();
-    return trx;
+
+    if (cb) {
+      try {
+        await cb(trx);
+        await trx.commit();
+      } catch (error) {
+        await trx.rollback();
+        throw error;
+      }
+    }
+
+    return trx as NestedTransactionReturnType<T>;
   }
 
+  /**
+   * @description Starts a transaction, automatically handled from the sql data source instance in the `startTransaction` method
+   */
   async startTransaction(): Promise<void> {
     const levelQuery = this.getIsolationLevelQuery();
     // Nested transactions use SAVEPOINTs and do not begin a new transaction
