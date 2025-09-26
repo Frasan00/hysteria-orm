@@ -762,7 +762,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    * @description Returns the query with database driver placeholders and the params
    */
   unWrap(
-    dbType: SqlDataSourceType = this.dbType,
+    _dbType: SqlDataSourceType = this.dbType,
   ): ReturnType<typeof AstParser.prototype.parse> {
     if (!this.selectNodes.length) {
       this.selectNodes = [new SelectNode(`*`)];
@@ -790,14 +790,12 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
 
     // select / from / distinct (from SelectQueryBuilder)
     qb.dbType = this.dbType;
-    qb.modelSelectedColumns = deepCloneNode((this as any).modelSelectedColumns);
-    qb.modelAnnotatedColumns = deepCloneNode(
-      (this as any).modelAnnotatedColumns,
-    );
-    qb.distinctNode = deepCloneNode((this as any).distinctNode);
-    qb.distinctOnNodes = deepCloneNode((this as any).distinctOnNodes);
+    qb.modelSelectedColumns = deepCloneNode(this.modelSelectedColumns);
+    qb.modelAnnotatedColumns = deepCloneNode(this.modelAnnotatedColumns);
+    qb.distinctNode = deepCloneNode(this.distinctNode);
+    qb.distinctOnNode = deepCloneNode(this.distinctOnNode);
     qb.selectNodes = deepCloneNode(this.selectNodes);
-    qb.withQuery = deepCloneNode((this as any).withQuery);
+    qb.withQuery = deepCloneNode(this.withQuery);
 
     // join / where / group / having / order
     qb.joinNodes = deepCloneNode(this.joinNodes);
@@ -806,7 +804,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     qb.havingNodes = deepCloneNode(this.havingNodes);
     qb.orderByNodes = deepCloneNode(this.orderByNodes);
 
-    // locks / unions / withs
+    // locks / unions / with
     qb.lockQueryNodes = deepCloneNode(this.lockQueryNodes);
     qb.unionNodes = deepCloneNode(this.unionNodes);
     qb.withNodes = deepCloneNode(this.withNodes);
@@ -846,6 +844,8 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
 
     return [
       ...this.withNodes,
+      this.distinctNode,
+      this.distinctOnNode,
       ...this.selectNodes,
       this.fromNode,
       ...this.joinNodes,

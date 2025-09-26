@@ -26,7 +26,21 @@ export class AstParser {
       };
     }
 
-    const filteredNodes = nodes.filter((node) => node !== null);
+    const distinctOnNode = nodes.find(
+      (node): node is QueryNode & { columns: string[] } =>
+        !!node && node.folder === "distinctOn",
+    );
+    const distinctNode =
+      !distinctOnNode &&
+      nodes.find(
+        (node): node is QueryNode => !!node && node.folder === "distinct",
+      );
+    const filteredNodes = nodes.filter(
+      (node): node is QueryNode =>
+        node !== null &&
+        node.folder !== "distinct" &&
+        node.folder !== "distinctOn",
+    );
     const sqlParts: string[] = [];
     const allBindings: any[] = [];
     let currentSqlKeyword: string | null = null;
@@ -97,7 +111,22 @@ export class AstParser {
               keywordToEmit = `${keywordToEmit} recursive`;
             }
           }
-          sqlParts.push(`${keywordToEmit} ${sqlStatement.sql}${chainWith}`);
+          if (keywordToEmit === "select") {
+            if (distinctOnNode) {
+              const columns = Array.isArray((distinctOnNode as any).columns)
+                ? (distinctOnNode as any).columns.join(", ")
+                : "";
+              sqlParts.push(
+                `select distinct on (${columns}) ${sqlStatement.sql}${chainWith}`,
+              );
+            } else if (distinctNode) {
+              sqlParts.push(`select distinct ${sqlStatement.sql}${chainWith}`);
+            } else {
+              sqlParts.push(`select ${sqlStatement.sql}${chainWith}`);
+            }
+          } else {
+            sqlParts.push(`${keywordToEmit} ${sqlStatement.sql}${chainWith}`);
+          }
         }
         currentSqlKeyword = node.keyword;
       } else {

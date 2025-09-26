@@ -20,6 +20,33 @@ afterEach(async () => {
 });
 
 describe(`[${env.DB_TYPE}] Query Builder with uuid`, () => {
+  test("should support distinct and distinctOn", async () => {
+    await SqlDataSource.query("posts_with_uuid").insertMany([
+      { id: crypto.randomUUID(), title: "Hello" },
+      { id: crypto.randomUUID(), title: "Hello" },
+      { id: crypto.randomUUID(), title: "World" },
+    ]);
+
+    const all = await SqlDataSource.query("posts_with_uuid")
+      .select("title")
+      .many();
+    expect(all.length).toBeGreaterThanOrEqual(3);
+
+    const distinct = await SqlDataSource.query("posts_with_uuid")
+      .select("title")
+      .distinct()
+      .many();
+    expect(distinct.length).toBeLessThan(all.length);
+
+    if (env.DB_TYPE === "postgres" || env.DB_TYPE === "cockroachdb") {
+      const distinctOn = await SqlDataSource.query("posts_with_uuid")
+        .select("title")
+        .distinctOn("title")
+        .many();
+      expect(distinctOn.length).toBeGreaterThan(0);
+    }
+  });
+
   test("should select a post with exists", async () => {
     await SqlDataSource.query("posts_with_uuid").insert({
       id: crypto.randomUUID(),

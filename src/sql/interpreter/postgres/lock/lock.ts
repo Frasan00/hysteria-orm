@@ -21,7 +21,7 @@ export class PostgresLockInterpreter implements Interpreter {
     }
 
     if (lockNode.noWait) {
-      sql += " no wait";
+      sql += " nowait";
     }
     return {
       sql,

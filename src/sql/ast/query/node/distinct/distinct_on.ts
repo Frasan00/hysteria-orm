@@ -4,11 +4,11 @@ export class DistinctOnNode extends QueryNode {
   columns: string[];
   chainsWith = " ";
   canKeywordBeSeenMultipleTimes = false;
-  folder = "distinct";
+  folder = "distinctOn";
   file = "distinct_on";
 
   constructor(columns: string[]) {
-    super("distinct on");
+    super("select");
     this.columns = columns;
   }
 }

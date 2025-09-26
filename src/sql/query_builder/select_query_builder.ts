@@ -18,7 +18,7 @@ export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
   protected withQuery?: string;
   protected fromNode: FromNode;
   protected distinctNode: DistinctNode | null;
-  protected distinctOnNodes: DistinctOnNode[];
+  protected distinctOnNode: DistinctOnNode | null;
   protected selectNodes: SelectNode[];
 
   constructor(model: typeof Model, sqlDataSource: SqlDataSource) {
@@ -26,7 +26,7 @@ export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
     this.dbType = sqlDataSource.getDbType();
     this.fromNode = new FromNode(this.model.table || "");
     this.distinctNode = null;
-    this.distinctOnNodes = [];
+    this.distinctOnNode = null;
     this.selectNodes = [];
   }
 
@@ -101,7 +101,7 @@ export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
    * @description Clears the DISTINCT ON clause
    */
   clearDistinctOn(): this {
-    this.distinctOnNodes = [];
+    this.distinctOnNode = null;
     return this;
   }
 
@@ -171,7 +171,8 @@ export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
   }
 
   /**
-   * @description Adds a DISTINCT ON clause to the query
+   * @description Adds a DISTINCT ON clause to the query, does not stack, only the last one will be used
+   * @warning Cannot use both DISTINCT and DISTINCT ON in the same query, only the DISTINCT ON will be used
    * @postgresql Only usable with PostgreSQL
    */
   distinctOn(...columns: ModelKey<T>[]): this;
@@ -179,7 +180,7 @@ export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
   distinctOn<S extends string>(
     ...columns: (ModelKey<T> | SelectableColumn<S>)[]
   ): this {
-    this.distinctOnNodes.push(new DistinctOnNode(columns as string[]));
+    this.distinctOnNode = new DistinctOnNode(columns as string[]);
     return this;
   }
 }
