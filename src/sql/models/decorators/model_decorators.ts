@@ -47,6 +47,7 @@ import type {
   ThroughModel,
   UniqueType,
 } from "./model_decorators_types";
+import { Reflect } from "../../../lib/reflect_metadata";
 
 export type BaseModelRelationType = {
   onDelete?: OnUpdateOrDelete;
@@ -80,7 +81,10 @@ export function index(
   return (target: Function) => {
     const newIndexes = Array.isArray(indexes) ? indexes : [indexes];
     const existingIndexes =
-      Reflect.getMetadata(INDEX_METADATA_KEY, target.prototype) || [];
+      Reflect.getMetadata<{ columns: string[]; name: string }[]>(
+        INDEX_METADATA_KEY,
+        target.prototype,
+      ) || [];
     existingIndexes.push({
       columns: newIndexes,
       name:
@@ -105,7 +109,10 @@ export function unique(
   return (target: Function) => {
     const newColumns = Array.isArray(columns) ? columns : [columns];
     const existingUniques =
-      Reflect.getMetadata(UNIQUE_METADATA_KEY, target.prototype) || [];
+      Reflect.getMetadata<{ columns: string[]; name: string }[]>(
+        UNIQUE_METADATA_KEY,
+        target.prototype,
+      ) || [];
     existingUniques.push({
       columns: newColumns,
       name:
@@ -203,7 +210,7 @@ export function column(
       },
     };
     const existingColumns =
-      Reflect.getMetadata(COLUMN_METADATA_KEY, target) || [];
+      Reflect.getMetadata<ColumnType[]>(COLUMN_METADATA_KEY, target) || [];
     existingColumns.push(column);
     Reflect.defineMetadata(COLUMN_METADATA_KEY, existingColumns, target);
   };
@@ -544,7 +551,9 @@ export function belongsTo<
       onDelete: options?.onDelete,
     };
 
-    const relations = Reflect.getMetadata(RELATION_METADATA_KEY, target) || [];
+    const relations =
+      Reflect.getMetadata<LazyRelationType[]>(RELATION_METADATA_KEY, target) ||
+      [];
     relations.push(relation);
     Reflect.defineMetadata(RELATION_METADATA_KEY, relations, target);
   };
@@ -571,7 +580,9 @@ export function hasOne<T extends typeof Model>(
       foreignKey: foreignKey ? String(foreignKey) : fallbackForeignKey,
     };
 
-    const relations = Reflect.getMetadata(RELATION_METADATA_KEY, target) || [];
+    const relations =
+      Reflect.getMetadata<LazyRelationType[]>(RELATION_METADATA_KEY, target) ||
+      [];
     relations.push(relation);
     Reflect.defineMetadata(RELATION_METADATA_KEY, relations, target);
   };
@@ -598,7 +609,9 @@ export function hasMany<T extends typeof Model>(
       foreignKey: foreignKey ? String(foreignKey) : fallbackForeignKey,
     };
 
-    const relations = Reflect.getMetadata(RELATION_METADATA_KEY, target) || [];
+    const relations =
+      Reflect.getMetadata<LazyRelationType[]>(RELATION_METADATA_KEY, target) ||
+      [];
     relations.push(relation);
     Reflect.defineMetadata(RELATION_METADATA_KEY, relations, target);
   };
@@ -664,7 +677,9 @@ export function manyToMany<
       },
     };
 
-    const relations = Reflect.getMetadata(RELATION_METADATA_KEY, target) || [];
+    const relations =
+      Reflect.getMetadata<LazyRelationType[]>(RELATION_METADATA_KEY, target) ||
+      [];
     relations.push(relation);
     Reflect.defineMetadata(RELATION_METADATA_KEY, relations, target);
   };
@@ -679,7 +694,10 @@ export function getRelationsMetadata(target: typeof Model): LazyRelationType[] {
  */
 export function getRelations(target: typeof Model): Relation[] {
   const relations =
-    Reflect.getMetadata(RELATION_METADATA_KEY, target.prototype) || [];
+    Reflect.getMetadata<LazyRelationType[]>(
+      RELATION_METADATA_KEY,
+      target.prototype,
+    ) || [];
   return relations.map((relation: LazyRelationType) => {
     const { type, model, columnName, foreignKey } = relation;
 
@@ -724,8 +742,11 @@ export function getRelations(target: typeof Model): Relation[] {
 /**
  * @description Returns the primary key of the model
  */
-export function getPrimaryKey(target: typeof Model): string {
-  return Reflect.getMetadata(PRIMARY_KEY_METADATA_KEY, target.prototype);
+export function getPrimaryKey(target: typeof Model): string | undefined {
+  return Reflect.getMetadata<string>(
+    PRIMARY_KEY_METADATA_KEY,
+    target.prototype,
+  );
 }
 
 export function getIndexes(target: typeof Model): IndexType[] {

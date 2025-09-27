@@ -1,4 +1,3 @@
-import "reflect-metadata";
 import { ModelManager } from "./model_manager/model_manager";
 import type {
   FindOneType,

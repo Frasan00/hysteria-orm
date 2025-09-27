@@ -1,4 +1,3 @@
-import "reflect-metadata";
 import { Entity } from "../../../entity";
 import { HysteriaError } from "../../../errors/hysteria_error";
 import { MongoDataSource } from "../mongo_data_source";

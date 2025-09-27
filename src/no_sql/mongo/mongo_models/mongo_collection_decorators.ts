@@ -1,4 +1,5 @@
 import { Collection } from "./mongo_collection";
+import { Reflect } from "../../../lib/reflect_metadata";
 
 const MONGO_PROPERTY_METADATA_KEY = Symbol("mongoProperties");
 
@@ -8,7 +9,10 @@ const MONGO_PROPERTY_METADATA_KEY = Symbol("mongoProperties");
 export function property(): PropertyDecorator {
   return (target: Object, propertyKey: string | symbol) => {
     const existingProperties =
-      Reflect.getMetadata(MONGO_PROPERTY_METADATA_KEY, target) || [];
+      Reflect.getMetadata<(string | symbol)[]>(
+        MONGO_PROPERTY_METADATA_KEY,
+        target,
+      ) || [];
 
     existingProperties.push(propertyKey);
     Reflect.defineMetadata(
