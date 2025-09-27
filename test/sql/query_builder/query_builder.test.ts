@@ -1167,3 +1167,157 @@ describe(`[${env.DB_TYPE}] Query Builder paginateWithCursor method`, () => {
     expect(cursor3.value).toBe(toBeChecked3);
   });
 });
+
+describe(`[${env.DB_TYPE}] Additional Query Builder methods`, () => {
+  afterEach(async () => {
+    await SqlDataSource.query("posts_with_uuid").truncate();
+    await SqlDataSource.query("users_without_pk").truncate();
+  });
+
+  test("pluck returns single column array", async () => {
+    await SqlDataSource.query("posts_with_uuid").insertMany([
+      { id: crypto.randomUUID(), title: "T1" },
+      { id: crypto.randomUUID(), title: "T2" },
+    ]);
+
+    const titles = await SqlDataSource.query("posts_with_uuid").pluck("title");
+    expect(Array.isArray(titles)).toBe(true);
+    expect(titles.length).toBeGreaterThanOrEqual(2);
+    expect(titles).toEqual(expect.arrayContaining(["T1", "T2"]));
+  });
+
+  test("increment and decrement modify numeric columns", async () => {
+    await SqlDataSource.query("users_without_pk").insert({
+      name: "Counter",
+      age: 10,
+    });
+
+    const inc = await SqlDataSource.query("users_without_pk").increment(
+      "age" as any,
+      5,
+    );
+    expect(typeof inc).toBe("number");
+
+    const userAfterInc =
+      await SqlDataSource.query("users_without_pk").firstOrFail();
+    if (env.DB_TYPE === "cockroachdb") {
+      expect(userAfterInc.age).toBe("15");
+    } else {
+      expect(userAfterInc.age).toBe(15);
+    }
+
+    const dec = await SqlDataSource.query("users_without_pk").decrement(
+      "age" as any,
+      3,
+    );
+    expect(typeof dec).toBe("number");
+
+    const userAfterDec =
+      await SqlDataSource.query("users_without_pk").firstOrFail();
+
+    if (env.DB_TYPE === "cockroachdb") {
+      expect(userAfterDec.age).toBe("12");
+    } else {
+      expect(userAfterDec.age).toBe(12);
+    }
+  });
+
+  test("aggregate helpers return correct values", async () => {
+    await SqlDataSource.query("users_without_pk").insertMany([
+      { name: "A", age: 1 },
+      { name: "B", age: 2 },
+      { name: "C", age: 3 },
+    ]);
+
+    const max = await SqlDataSource.query("users_without_pk").getMax("age");
+    const min = await SqlDataSource.query("users_without_pk").getMin("age");
+    const avg = await SqlDataSource.query("users_without_pk").getAvg("age");
+    const sum = await SqlDataSource.query("users_without_pk").getSum("age");
+
+    expect(max).toBe(3);
+    expect(min).toBe(1);
+    expect(avg).toBeGreaterThanOrEqual(2);
+    expect(sum).toBe(6);
+  });
+
+  test("union and unionAll produce queries (toQuery) and return combined results", async () => {
+    // insert into posts_with_uuid
+    await SqlDataSource.query("posts_with_uuid").insertMany([
+      { id: crypto.randomUUID(), title: "P1" },
+    ]);
+
+    // simple union using raw query strings
+    const qb = SqlDataSource.query("posts_with_uuid").select("title");
+    qb.union("select 'X' as title");
+    const q = qb.toQuery();
+    expect(typeof q).toBe("string");
+
+    // unionAll with callback/querybuilder
+    const qb2 = SqlDataSource.query("posts_with_uuid").select("title");
+    qb2.unionAll((sub) => sub.select("title").from("posts_with_uuid"));
+    const q2 = qb2.toQuery();
+    expect(typeof q2).toBe("string");
+
+    // execute unionAll by selecting from a union of constants and the table
+    const unionQb = SqlDataSource.query("posts_with_uuid").select("title");
+    unionQb.union("select 'CONST' as title");
+    const results = await unionQb.many();
+    expect(results.length).toBeGreaterThanOrEqual(1);
+  });
+
+  test("with, withRecursive and withMaterialized (if supported) produce queries", async () => {
+    const qb = SqlDataSource.query("users_without_pk");
+    qb.with("cte_users", (sub) => sub.select("name").from("users_without_pk"));
+    const q = qb.toQuery();
+    expect(typeof q).toBe("string");
+    // execute the built query to ensure it does not throw
+    await qb.many();
+    // the SQL should include the WITH clause for the CTE
+    expect(q.toLowerCase().includes("with")).toBe(true);
+
+    const qb2 = SqlDataSource.query("users_without_pk");
+    qb2.withRecursive("rcte", (sub) =>
+      sub.select("name").from("users_without_pk"),
+    );
+    const q2 = qb2.toQuery();
+    expect(typeof q2).toBe("string");
+    expect(q2.toLowerCase().includes("recursive")).toBe(true);
+    // execute the built query to ensure it does not throw
+    await qb2.many();
+
+    if (env.DB_TYPE === "postgres" || env.DB_TYPE === "cockroachdb") {
+      const qb3 = SqlDataSource.query("users_without_pk");
+      qb3.withMaterialized("mcte", (sub) =>
+        sub.select("name").from("users_without_pk"),
+      );
+      const q3 = qb3.toQuery();
+      expect(typeof q3).toBe("string");
+      await qb3.many();
+      // materialized keyword should be present in the SQL for supported DBs
+      expect(q3.toLowerCase().includes("materialized")).toBe(true);
+    }
+  });
+
+  test("lockForUpdate and forShare add lock clauses to query (toQuery)", async () => {
+    const qb = SqlDataSource.query("users_without_pk").select("*");
+    qb.lockForUpdate({ skipLocked: true });
+    const q = qb.toQuery();
+    await qb.many();
+    expect(typeof q).toBe("string");
+    if (env.DB_TYPE !== "sqlite") {
+      expect(
+        q
+          .toLowerCase()
+          .replace("\n", "")
+          .replace(/\s+/g, "")
+          .includes("forupdateskiplocked"),
+      ).toBe(true);
+    }
+
+    const qb2 = SqlDataSource.query("users_without_pk").select("*");
+    qb2.forShare({ noWait: true });
+    const q2 = qb2.toQuery();
+    await qb2.many();
+    expect(typeof q2).toBe("string");
+  });
+});

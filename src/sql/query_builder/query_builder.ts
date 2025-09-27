@@ -38,6 +38,7 @@ import {
   PluckReturnType,
   StreamOptions,
 } from "./query_builder_types";
+import { coerceToNumber } from "../../utils/types";
 
 export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   model: typeof Model;
@@ -448,7 +449,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     this.clearForFunctions();
     this.annotate("count", column, "total");
     const result = await this.one();
-    return result ? +result["total" as keyof typeof result] : 0;
+    return result ? coerceToNumber(result["total" as keyof typeof result]) : 0;
   }
 
   /**
@@ -458,7 +459,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     this.clearForFunctions();
     this.annotate("max", column, "total");
     const result = await this.one();
-    return result ? +result["total" as keyof typeof result] : 0;
+    return result ? coerceToNumber(result["total" as keyof typeof result]) : 0;
   }
 
   /**
@@ -468,7 +469,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     this.clearForFunctions();
     this.annotate("min", column, "total");
     const result = await this.one();
-    return result ? +result["total" as keyof typeof result] : 0;
+    return result ? coerceToNumber(result["total" as keyof typeof result]) : 0;
   }
 
   /**
@@ -478,7 +479,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     this.clearForFunctions();
     this.annotate("avg", column, "total");
     const result = await this.one();
-    return result ? +result["total" as keyof typeof result] : 0;
+    return result ? coerceToNumber(result["total" as keyof typeof result]) : 0;
   }
 
   /**
@@ -488,7 +489,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     this.clearForFunctions();
     this.annotate("sum", column, "total");
     const result = await this.one();
-    return result ? +result["total" as keyof typeof result] : 0;
+    return result ? coerceToNumber(result["total" as keyof typeof result]) : 0;
   }
 
   /**
