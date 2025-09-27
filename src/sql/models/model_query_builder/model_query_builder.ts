@@ -530,17 +530,18 @@ export class ModelQueryBuilder<
     perPage: number,
     options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<PaginatedData<T, A, R>> {
-    const originalSelectNodes = this.selectNodes;
-    const total = await this.getCount("*", {
-      ignoreHooks: options.ignoreHooks,
-    });
+    const clonedQuery = this.clone();
 
-    this.selectNodes = originalSelectNodes;
-    const models = await this.limit(perPage)
-      .offset((page - 1) * perPage)
-      .many({
-        ignoreHooks: options.ignoreHooks ? ["beforeFetch", "afterFetch"] : [],
-      });
+    const [models, total] = await Promise.all([
+      this.limit(perPage)
+        .offset((page - 1) * perPage)
+        .many({
+          ignoreHooks: options.ignoreHooks ? ["beforeFetch", "afterFetch"] : [],
+        }),
+      clonedQuery.getCount("*", {
+        ignoreHooks: options.ignoreHooks,
+      }),
+    ]);
 
     const paginationMetadata = getPaginationMetadata(page, perPage, total);
 

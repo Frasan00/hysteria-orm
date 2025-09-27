@@ -504,12 +504,14 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     }
 
     const countQueryBuilder = this.clone();
-    const total = await countQueryBuilder.getCount("*");
 
     // Original query is used to get the models with pagination data
-    const models = await this.limit(perPage)
-      .offset((page - 1) * perPage)
-      .many();
+    const [models, total] = await Promise.all([
+      this.limit(perPage)
+        .offset((page - 1) * perPage)
+        .many(),
+      countQueryBuilder.getCount("*"),
+    ]);
 
     const paginationMetadata = getPaginationMetadata(page, perPage, total);
 
