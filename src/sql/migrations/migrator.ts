@@ -11,6 +11,7 @@ import { Migration } from "./migration";
  */
 export class Migrator {
   private sql: SqlDataSource;
+  private readonly migrationTable = "migrations";
 
   constructor(sql?: SqlDataSource) {
     this.sql = sql || SqlDataSource.getInstance();
@@ -64,7 +65,7 @@ export class Migrator {
       .replace("T", " ")
       .replace(/\.\d{3}Z$/, "");
 
-    await this.sql.query("migrations").insert({
+    await this.sql.query(this.migrationTable).insert({
       name: migration.migrationName,
       timestamp,
     });
@@ -72,7 +73,7 @@ export class Migrator {
 
   private async deleteMigrationFromMigrationTable(migration: Migration) {
     await this.sql
-      .query("migrations")
+      .query(this.migrationTable)
       .where("name", migration.migrationName)
       .delete();
   }

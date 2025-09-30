@@ -76,6 +76,12 @@ export class ModelQueryBuilder<
     paginate: this.paginateWithPerformance.bind(this),
     exists: this.existsWithPerformance.bind(this),
     paginateWithCursor: this.paginateWithCursorWithPerformance.bind(this),
+    truncate: this.truncateWithPerformance.bind(this),
+    delete: this.deleteWithPerformance.bind(this),
+    insert: this.insertWithPerformance.bind(this),
+    insertMany: this.insertManyWithPerformance.bind(this),
+    update: this.updateWithPerformance.bind(this),
+    softDelete: this.softDeleteWithPerformance.bind(this),
   };
 
   constructor(model: typeof Model, sqlDataSource: SqlDataSource) {
@@ -159,8 +165,8 @@ export class ModelQueryBuilder<
   override async many(
     options: ManyOptions = {},
   ): Promise<AnnotatedModel<T, A, R>[]> {
-    !options.ignoreHooks?.includes("beforeFetch") &&
-      this.model.beforeFetch?.(this);
+    !(options.ignoreHooks as string[])?.includes("beforeFetch") &&
+      (await this.model.beforeFetch?.(this));
     const rows = await super.many();
     const models = rows.map((row) => {
       return this.addAdditionalColumnsToModel(row, this.model);
@@ -185,7 +191,8 @@ export class ModelQueryBuilder<
     const serializedModelsArray = Array.isArray(serializedModels)
       ? serializedModels
       : [serializedModels];
-    if (!options.ignoreHooks?.includes("afterFetch")) {
+
+    if (!(options.ignoreHooks as string[])?.includes("afterFetch")) {
       await this.model.afterFetch?.(serializedModelsArray);
     }
 
@@ -220,8 +227,8 @@ export class ModelQueryBuilder<
       stream: PassThrough & AsyncGenerator<AnnotatedModel<T, A, R>>,
     ) => void | Promise<void>,
   ): Promise<PassThrough & AsyncGenerator<AnnotatedModel<T, A, R>>> {
-    !options.ignoreHooks?.includes("beforeFetch") &&
-      this.model.beforeFetch?.(this);
+    !(options.ignoreHooks as string[])?.includes("beforeFetch") &&
+      (await this.model.beforeFetch?.(this));
 
     const { sql, bindings } = this.unWrap();
     const stream = await execSqlStreaming(
@@ -244,7 +251,7 @@ export class ModelQueryBuilder<
             return;
           }
 
-          if (!options.ignoreHooks?.includes("afterFetch")) {
+          if (!(options.ignoreHooks as string[])?.includes("afterFetch")) {
             await this.model.afterFetch?.([serializedModel] as unknown as T[]);
           }
 
@@ -284,126 +291,13 @@ export class ModelQueryBuilder<
     >;
   }
 
-  // @ts-expect-error
-  private async manyWithPerformance(
-    options: ManyOptions = {},
-    returnType: "millis" | "seconds" = "millis",
-  ): Promise<{
-    data: AnnotatedModel<T, A, R>[];
-    time: number;
-  }> {
-    const [time, data] = await withPerformance(
-      this.many.bind(this, options),
-      returnType,
-    );
-
-    return { data, time: Number(time) };
-  }
-
-  // @ts-expect-error
-  private async oneWithPerformance(
-    options: OneOptions = {},
-    returnType: "millis" | "seconds" = "millis",
-  ): Promise<{
-    data: AnnotatedModel<T, A, R> | null;
-    time: number;
-  }> {
-    const [time, data] = await withPerformance(
-      this.one.bind(this, options),
-      returnType,
-    );
-
-    return { data, time: Number(time) };
-  }
-
-  // @ts-expect-error
-  private async oneOrFailWithPerformance(
-    options: OneOptions = {},
-    returnType: "millis" | "seconds" = "millis",
-  ): Promise<{
-    data: AnnotatedModel<T, A, R>;
-    time: number;
-  }> {
-    const [time, data] = await withPerformance(
-      this.oneOrFail.bind(this, options),
-      returnType,
-    );
-
-    return { data, time: Number(time) };
-  }
-
-  // @ts-expect-error
-  private async firstOrFailWithPerformance(
-    options: OneOptions = {},
-    returnType: "millis" | "seconds" = "millis",
-  ): Promise<{
-    data: AnnotatedModel<T, A, R>;
-    time: number;
-  }> {
-    return this.oneOrFailWithPerformance(options, returnType);
-  }
-
-  // @ts-expect-error
-  private async firstWithPerformance(
-    options: OneOptions = {},
-    returnType: "millis" | "seconds" = "millis",
-  ): Promise<{
-    data: AnnotatedModel<T, A, R> | null;
-    time: number;
-  }> {
-    return this.oneWithPerformance(options, returnType);
-  }
-
-  // @ts-expect-error
-  private async paginateWithPerformance(
-    page: number,
-    perPage: number,
-    options?: { ignoreHooks?: boolean },
-    returnType: "millis" | "seconds" = "millis",
-  ): Promise<{
-    data: PaginatedData<T, A, R>;
-    time: number;
-  }> {
-    const { ignoreHooks = false } = options || {};
-    const [time, data] = await withPerformance(
-      this.paginate.bind(this, page, perPage, { ignoreHooks }),
-      returnType,
-    );
-
-    return {
-      data: {
-        paginationMetadata: data.paginationMetadata,
-        data: data.data,
-      },
-      time: Number(time),
-    };
-  }
-
-  private async paginateWithCursorWithPerformance(
-    page: number,
-    options: PaginateWithCursorOptions<T, ModelKey<T>>,
-    cursor?: Cursor<T, ModelKey<T>>,
-    returnType: "millis" | "seconds" = "millis",
-  ): Promise<{
-    data: [CursorPaginatedData<T, A, R>, Cursor<T, ModelKey<T>>];
-    time: number;
-  }> {
-    const [time, data] = await withPerformance(
-      this.paginateWithCursor.bind(this, page, options, cursor),
-      returnType,
-    );
-
-    return {
-      data: data as [CursorPaginatedData<T, A, R>, Cursor<T, ModelKey<T>>],
-      time: Number(time),
-    };
-  }
-
   override async update(
     data: Partial<ModelWithoutRelations<T>>,
     options: UpdateOptions = {},
   ): Promise<number> {
-    options.ignoreBeforeUpdateHook && this.model.beforeUpdate?.(this);
+    if (!options.ignoreBeforeUpdateHook) {
+      await this.model.beforeUpdate?.(this);
+    }
     return super.update(data);
   }
 
@@ -411,12 +305,14 @@ export class ModelQueryBuilder<
     options: SoftDeleteOptions<T> = {},
   ): Promise<number> {
     const { ignoreBeforeDeleteHook = false } = options || {};
-    !ignoreBeforeDeleteHook && this.model.beforeDelete?.(this);
+    !ignoreBeforeDeleteHook && (await this.model.beforeDelete?.(this));
     return super.softDelete(options);
   }
 
   async delete(options: DeleteOptions = {}): Promise<number> {
-    options.ignoreBeforeDeleteHook && this.model.beforeDelete?.(this);
+    if (!options.ignoreBeforeDeleteHook) {
+      await this.model.beforeDelete?.(this);
+    }
     return super.delete();
   }
 
@@ -426,12 +322,10 @@ export class ModelQueryBuilder<
   ): Promise<number> {
     this.clearForFunctions();
     this.annotate("count", column, "total");
-    const ignoredHooks: FetchHooks[] = options.ignoreHooks
-      ? ["beforeFetch"]
-      : [];
+    const ignoredHooks: string[] = options.ignoreHooks ? ["beforeFetch"] : [];
 
     const result = (await this.one({
-      ignoreHooks: ignoredHooks,
+      ignoreHooks: ignoredHooks as FetchHooks,
     })) as { $annotations: { total: number } } | null;
 
     if (!result) {
@@ -447,11 +341,13 @@ export class ModelQueryBuilder<
   ): Promise<number> {
     this.clearForFunctions();
     this.annotate("max", column, "total");
-    const ignoredHooks: FetchHooks[] = options.ignoreHooks
+    const ignoredHooks: string[] = options.ignoreHooks
       ? ["beforeFetch", "afterFetch"]
       : [];
 
-    const result = (await this.one({ ignoreHooks: ignoredHooks })) as {
+    const result = (await this.one({
+      ignoreHooks: ignoredHooks as FetchHooks,
+    })) as {
       $annotations: { total: number };
     } | null;
 
@@ -468,11 +364,13 @@ export class ModelQueryBuilder<
   ): Promise<number> {
     this.clearForFunctions();
     this.annotate("min", column, "total");
-    const ignoredHooks: FetchHooks[] = options.ignoreHooks
+    const ignoredHooks: string[] = options.ignoreHooks
       ? ["beforeFetch", "afterFetch"]
       : [];
 
-    const result = (await this.one({ ignoreHooks: ignoredHooks })) as {
+    const result = (await this.one({
+      ignoreHooks: ignoredHooks as FetchHooks,
+    })) as {
       $annotations: { total: number };
     } | null;
 
@@ -489,11 +387,13 @@ export class ModelQueryBuilder<
   ): Promise<number> {
     this.clearForFunctions();
     this.annotate("avg", column, "total");
-    const ignoredHooks: FetchHooks[] = options.ignoreHooks
+    const ignoredHooks: string[] = options.ignoreHooks
       ? ["beforeFetch", "afterFetch"]
       : [];
 
-    const result = (await this.one({ ignoreHooks: ignoredHooks })) as {
+    const result = (await this.one({
+      ignoreHooks: ignoredHooks as FetchHooks,
+    })) as {
       $annotations: { total: number };
     } | null;
 
@@ -510,11 +410,13 @@ export class ModelQueryBuilder<
   ): Promise<number> {
     this.clearForFunctions();
     this.annotate("sum", column, "total");
-    const ignoredHooks: FetchHooks[] = options.ignoreHooks
+    const ignoredHooks: string[] = options.ignoreHooks
       ? ["beforeFetch", "afterFetch"]
       : [];
 
-    const result = (await this.one({ ignoreHooks: ignoredHooks })) as {
+    const result = (await this.one({
+      ignoreHooks: ignoredHooks as FetchHooks,
+    })) as {
       $annotations: { total: number };
     } | null;
 
@@ -1766,5 +1668,239 @@ export class ModelQueryBuilder<
 
     model.$annotations = $annotations;
     return model;
+  }
+
+  // @ts-expect-error
+  private async manyWithPerformance(
+    options: ManyOptions = {},
+    returnType: "millis" | "seconds" = "millis",
+  ): Promise<{
+    data: AnnotatedModel<T, A, R>[];
+    time: number;
+  }> {
+    const [time, data] = await withPerformance(
+      this.many.bind(this, options),
+      returnType,
+    )();
+
+    return { data, time: Number(time) };
+  }
+
+  // @ts-expect-error
+  private async oneWithPerformance(
+    options: OneOptions = {},
+    returnType: "millis" | "seconds" = "millis",
+  ): Promise<{
+    data: AnnotatedModel<T, A, R> | null;
+    time: number;
+  }> {
+    const [time, data] = await withPerformance(
+      this.one.bind(this, options),
+      returnType,
+    )();
+
+    return { data, time: Number(time) };
+  }
+
+  // @ts-expect-error
+  private async oneOrFailWithPerformance(
+    options: OneOptions = {},
+    returnType: "millis" | "seconds" = "millis",
+  ): Promise<{
+    data: AnnotatedModel<T, A, R>;
+    time: number;
+  }> {
+    const [time, data] = await withPerformance(
+      this.oneOrFail.bind(this, options),
+      returnType,
+    )();
+
+    return { data, time: Number(time) };
+  }
+
+  // @ts-expect-error
+  private async firstOrFailWithPerformance(
+    options: OneOptions = {},
+    returnType: "millis" | "seconds" = "millis",
+  ): Promise<{
+    data: AnnotatedModel<T, A, R>;
+    time: number;
+  }> {
+    return this.oneOrFailWithPerformance(options, returnType);
+  }
+
+  // @ts-expect-error
+  private async firstWithPerformance(
+    options: OneOptions = {},
+    returnType: "millis" | "seconds" = "millis",
+  ): Promise<{
+    data: AnnotatedModel<T, A, R> | null;
+    time: number;
+  }> {
+    return this.oneWithPerformance(options, returnType);
+  }
+
+  // @ts-expect-error
+  private async paginateWithPerformance(
+    page: number,
+    perPage: number,
+    options?: { ignoreHooks?: boolean },
+    returnType: "millis" | "seconds" = "millis",
+  ): Promise<{
+    data: PaginatedData<T, A, R>;
+    time: number;
+  }> {
+    const { ignoreHooks = false } = options || {};
+    const [time, data] = await withPerformance(
+      this.paginate.bind(this, page, perPage, { ignoreHooks }),
+      returnType,
+    )();
+
+    return {
+      data: {
+        paginationMetadata: data.paginationMetadata,
+        data: data.data,
+      },
+      time: Number(time),
+    };
+  }
+
+  private async paginateWithCursorWithPerformance(
+    page: number,
+    options: PaginateWithCursorOptions<T, ModelKey<T>>,
+    cursor?: Cursor<T, ModelKey<T>>,
+    returnType: "millis" | "seconds" = "millis",
+  ): Promise<{
+    data: [CursorPaginatedData<T, A, R>, Cursor<T, ModelKey<T>>];
+    time: number;
+  }> {
+    const [time, data] = await withPerformance(
+      this.paginateWithCursor.bind(this, page, options, cursor),
+      returnType,
+    )();
+
+    return {
+      data: data as [CursorPaginatedData<T, A, R>, Cursor<T, ModelKey<T>>],
+      time: Number(time),
+    };
+  }
+
+  private async existsWithPerformance(
+    returnType: "millis" | "seconds" = "millis",
+  ) {
+    const [time, data] = await withPerformance(
+      this.exists.bind(this),
+      returnType,
+    )();
+
+    return {
+      data,
+      time: Number(time),
+    };
+  }
+
+  private async pluckWithPerformance(
+    key: ModelKey<T>,
+    returnType: "millis" | "seconds" = "millis",
+  ) {
+    const [time, data] = await withPerformance(
+      this.pluck.bind(this, key),
+      returnType,
+    )();
+
+    return {
+      data,
+      time: Number(time),
+    };
+  }
+
+  private async softDeleteWithPerformance(
+    options: Omit<SoftDeleteOptions<T>, "ignoreBeforeDeleteHook"> = {},
+    returnType: "millis" | "seconds" = "millis",
+  ) {
+    const [time, data] = await withPerformance(
+      this.softDelete.bind(this, options),
+      returnType,
+    )();
+
+    return {
+      data,
+      time: Number(time),
+    };
+  }
+
+  // @ts-expect-error
+  private async updateWithPerformance(
+    data: Partial<ModelWithoutRelations<T>>,
+    options: UpdateOptions = {},
+    returnType: "millis" | "seconds" = "millis",
+  ) {
+    const [time, result] = await withPerformance(
+      this.update.bind(this, data, options),
+      returnType,
+    )();
+
+    return {
+      data: result,
+      time: Number(time),
+    };
+  }
+
+  private async insertWithPerformance(
+    data: Partial<ModelWithoutRelations<T>>,
+    returnType: "millis" | "seconds" = "millis",
+  ) {
+    const [time, result] = await withPerformance(
+      this.insert.bind(this, data),
+      returnType,
+    )();
+
+    return {
+      data: result,
+      time: Number(time),
+    };
+  }
+
+  private async insertManyWithPerformance(
+    data: Partial<ModelWithoutRelations<T>>[],
+    returnType: "millis" | "seconds" = "millis",
+  ) {
+    const [time, result] = await withPerformance(
+      this.insertMany.bind(this, data),
+      returnType,
+    )();
+
+    return {
+      data: result,
+      time: Number(time),
+    };
+  }
+
+  private async deleteWithPerformance(
+    returnType: "millis" | "seconds" = "millis",
+  ) {
+    const [time, result] = await withPerformance(
+      this.delete.bind(this),
+      returnType,
+    )();
+
+    return {
+      data: result,
+      time: Number(time),
+    };
+  }
+
+  private async truncateWithPerformance(
+    returnType: "millis" | "seconds" = "millis",
+  ) {
+    const [time, result] = await withPerformance(
+      this.truncate.bind(this),
+      returnType,
+    )();
+
+    return {
+      data: result,
+      time: Number(time),
+    };
   }
 }

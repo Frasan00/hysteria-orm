@@ -4,6 +4,7 @@ import { baseSoftDeleteDate } from "../../utils/date_utils";
 import logger from "../../utils/logger";
 import { withPerformance } from "../../utils/performance";
 import { bindParamsIntoQuery, formatQuery } from "../../utils/query";
+import { coerceToNumber } from "../../utils/types";
 import { AstParser } from "../ast/parser";
 import { UnionNode, WithNode } from "../ast/query/node";
 import { DeleteNode } from "../ast/query/node/delete";
@@ -38,7 +39,6 @@ import {
   PluckReturnType,
   StreamOptions,
 } from "./query_builder_types";
-import { coerceToNumber } from "../../utils/types";
 
 export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   model: typeof Model;
@@ -62,6 +62,12 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     paginate: this.paginateWithPerformance.bind(this),
     paginateWithCursor: this.paginateWithCursorWithPerformance.bind(this),
     exists: this.existsWithPerformance.bind(this),
+    truncate: this.truncateWithPerformance.bind(this),
+    delete: this.deleteWithPerformance.bind(this),
+    insert: this.insertWithPerformance.bind(this),
+    insertMany: this.insertManyWithPerformance.bind(this),
+    update: this.updateWithPerformance.bind(this),
+    softDelete: this.softDeleteWithPerformance.bind(this),
   };
 
   constructor(
@@ -79,34 +85,11 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     this.interpreterUtils = new InterpreterUtils(this.model);
   }
 
-  protected get fromTable(): string {
-    this.fromNode ||= new FromNode(this.model.table);
-    const { sql: table } = this.astParser.parse([this.fromNode]);
-    return table.replace(/^FROM /i, "");
-  }
-
   /**
    * @description Executes the query and returns true if the query returns at least one result, false otherwise.
    */
   async exists(): Promise<boolean> {
     return !!(await this.one());
-  }
-
-  /**
-   * @description Executes the query and returns true if the query returns at least one result, false otherwise.
-   * @description Returns the time that took to execute the query
-   */
-  async existsWithPerformance(
-    returnType: "millis" | "seconds" = "millis",
-  ): Promise<{
-    data: boolean;
-    time: number;
-  }> {
-    const [time, data] = await withPerformance(
-      this.exists.bind(this),
-      returnType,
-    );
-    return { data, time: Number(time) };
   }
 
   /**
@@ -391,54 +374,40 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   }
 
   /**
-   * @description Increments the value of a column by a given amount, column must be of a numeric type in order to be incremented
+   * @description Increments the value of a column by a given amount
    * @typeSafe - In typescript, only numeric columns of the model will be accepted if using a Model
    * @default value + 1
    * @returns the number of affected rows
    */
+  async increment(column: string, value: number): Promise<number>;
+  async increment(column: NumberModelKey<T>, value: number): Promise<number>;
   async increment(
-    column: NumberModelKey<T>,
+    column: NumberModelKey<T> | string,
     value: number = 1,
   ): Promise<number> {
-    const { sql, bindings } = this.astParser.parse([
-      new UpdateNode(
-        `${this.fromTable} set ${column as string} = ${column as string} + ${value}`,
-        [],
-        [],
-        true,
+    return this.update({
+      [column as string]: this.sqlDataSource.rawStatement(
+        `${column as string} + ${value}`,
       ),
-      ...this.whereNodes,
-      ...this.joinNodes,
-    ]);
-
-    return execSql(sql, bindings, this.sqlDataSource, "affectedRows", {
-      sqlLiteOptions: { typeofModel: this.model, mode: "affectedRows" },
     });
   }
 
   /**
-   * @description Decrements the value of a column by a given amount, column must be of a numeric type in order to be decremented
+   * @description Decrements the value of a column by a given amount
    * @typeSafe - In typescript, only numeric columns of the model will be accepted if using a Model
    * @default value - 1
    * @returns the number of affected rows
    */
+  async decrement(column: string, value: number): Promise<number>;
+  async decrement(column: NumberModelKey<T>, value: number): Promise<number>;
   async decrement(
-    column: NumberModelKey<T>,
+    column: NumberModelKey<T> | string,
     value: number = 1,
   ): Promise<number> {
-    const { sql, bindings } = this.astParser.parse([
-      new UpdateNode(
-        `${this.fromTable} set ${column as string} = ${column as string} - ${value}`,
-        [],
-        [],
-        true,
+    return this.update({
+      [column as string]: this.sqlDataSource.rawStatement(
+        `${column as string} - ${value}`,
       ),
-      ...this.whereNodes,
-      ...this.joinNodes,
-    ]);
-
-    return execSql(sql, bindings, this.sqlDataSource, "affectedRows", {
-      sqlLiteOptions: { typeofModel: this.model, mode: "affectedRows" },
     });
   }
 
@@ -614,7 +583,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     );
 
     const { sql, bindings } = this.astParser.parse([
-      new InsertNode(this.fromTable, [insertObject], returning),
+      new InsertNode(this.fromNode, [insertObject], returning),
       ...this.joinNodes,
     ]);
 
@@ -656,7 +625,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     });
 
     const { sql, bindings } = this.astParser.parse([
-      new InsertNode(this.fromTable, models, returning),
+      new InsertNode(this.fromNode, models, returning),
       ...this.joinNodes,
     ]);
 
@@ -684,7 +653,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     );
 
     const { sql, bindings } = this.astParser.parse([
-      new UpdateNode(this.fromTable, columns, values),
+      new UpdateNode(this.fromNode, columns, values),
       ...this.whereNodes,
       ...this.joinNodes,
     ]);
@@ -698,7 +667,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    * @description Deletes all records from a table
    */
   async truncate(): Promise<void> {
-    const truncateNode = new TruncateNode(this.fromTable);
+    const truncateNode = new TruncateNode(this.fromNode);
     const { sql, bindings } = this.astParser.parse([truncateNode]);
     await execSql(sql, bindings, this.sqlDataSource, "raw");
   }
@@ -708,7 +677,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    * @returns the number of affected rows
    */
   async delete(): Promise<number> {
-    const deleteNode = new DeleteNode(this.fromTable);
+    const deleteNode = new DeleteNode(this.fromNode);
     const { sql, bindings } = this.astParser.parse([
       deleteNode,
       ...this.whereNodes,
@@ -729,7 +698,9 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    * @default value - The current date and time in UTC timezone in the format "YYYY-MM-DD HH:mm:ss"
    * @returns the number of affected rows
    */
-  async softDelete(options: SoftDeleteOptions<T> = {}): Promise<number> {
+  async softDelete(
+    options: Omit<SoftDeleteOptions<T>, "ignoreBeforeDeleteHook"> = {},
+  ): Promise<number> {
     const { column = "deletedAt", value = baseSoftDeleteDate() } =
       options || {};
 
@@ -740,7 +711,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     );
 
     const { sql, bindings } = this.astParser.parse([
-      new UpdateNode(this.fromTable, columns, values),
+      new UpdateNode(this.fromNode, columns, values),
       ...this.whereNodes,
       ...this.joinNodes,
     ]);
@@ -824,23 +795,43 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     return qb as this;
   }
 
-  protected clearLockQuery(): this {
+  /**
+   * @description Gives a fresh instance of the query builder
+   */
+  clear() {
+    const qb = new QueryBuilder(this.model, this.sqlDataSource);
+    if (this.fromNode.alias) {
+      qb.from(qb.model.table, this.fromNode.alias);
+    }
+
+    return qb;
+  }
+
+  /**
+   * @description Removes the lock query
+   */
+  clearLockQuery(): this {
     this.lockQueryNodes = [];
     return this;
   }
 
-  protected clearUnionQuery(): this {
+  /**
+   * @description Removes any union query
+   */
+  clearUnionQuery(): this {
     this.unionNodes = [];
     return this;
   }
 
-  protected clearWithQuery(): this {
+  /**
+   * @description Removes any with query
+   */
+  clearWithQuery(): this {
     this.withNodes = [];
     return this;
   }
 
   extractQueryNodes(): QueryNode[] {
-    this.fromNode ||= new FromNode(this.fromTable);
     if (!this.selectNodes.length) {
       this.selectNodes = [new SelectNode(`*`)];
     }
@@ -884,7 +875,8 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     const [time, data] = await withPerformance(
       this.many.bind(this),
       returnType,
-    );
+    )();
+
     return {
       data,
       time: Number(time),
@@ -900,7 +892,11 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     data: AnnotatedModel<T, any, any> | null;
     time: number;
   }> {
-    const [time, data] = await withPerformance(this.one.bind(this), returnType);
+    const [time, data] = await withPerformance(
+      this.one.bind(this),
+      returnType,
+    )();
+
     return {
       data,
       time: Number(time),
@@ -933,7 +929,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     const [time, data] = await withPerformance(
       this.paginate.bind(this, page, perPage),
       returnType,
-    );
+    )();
 
     return {
       data,
@@ -950,7 +946,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     const [time, data] = await withPerformance(
       this.paginateWithCursor.bind(this, page, options, cursor),
       returnType,
-    );
+    )();
 
     return {
       data,
@@ -967,9 +963,130 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     const [time, data] = await withPerformance(
       this.oneOrFail.bind(this),
       returnType,
-    );
+    )();
+
     return {
       data,
+      time: Number(time),
+    };
+  }
+
+  /**
+   * @description Executes the query and returns true if the query returns at least one result, false otherwise.
+   * @description Returns the time that took to execute the query
+   */
+  private async existsWithPerformance(
+    returnType: "millis" | "seconds" = "millis",
+  ): Promise<{
+    data: boolean;
+    time: number;
+  }> {
+    const [time, data] = await withPerformance(
+      this.exists.bind(this),
+      returnType,
+    )();
+    return { data, time: Number(time) };
+  }
+
+  private async pluckWithPerformance(
+    key: ModelKey<T>,
+    returnType: "millis" | "seconds" = "millis",
+  ) {
+    const [time, data] = await withPerformance(
+      this.pluck.bind(this, key),
+      returnType,
+    )();
+
+    return {
+      data,
+      time: Number(time),
+    };
+  }
+
+  private async updateWithPerformance(
+    data: Record<string, any>,
+    returnType: "millis" | "seconds" = "millis",
+  ) {
+    const [time, result] = await withPerformance(
+      this.update.bind(this, data),
+      returnType,
+    )();
+
+    return {
+      data: result,
+      time: Number(time),
+    };
+  }
+
+  private async insertWithPerformance(
+    data: Record<string, any>,
+    returnType: "millis" | "seconds" = "millis",
+  ) {
+    const [time, result] = await withPerformance(
+      this.insert.bind(this, data),
+      returnType,
+    )();
+
+    return {
+      data: result,
+      time: Number(time),
+    };
+  }
+
+  private async insertManyWithPerformance(
+    data: Record<string, any>[],
+    returnType: "millis" | "seconds" = "millis",
+  ) {
+    const [time, result] = await withPerformance(
+      this.insertMany.bind(this, data),
+      returnType,
+    )();
+
+    return {
+      data: result,
+      time: Number(time),
+    };
+  }
+
+  private async softDeleteWithPerformance(
+    options: Omit<SoftDeleteOptions<T>, "ignoreBeforeDeleteHook"> = {},
+    returnType: "millis" | "seconds" = "millis",
+  ) {
+    const [time, data] = await withPerformance(
+      this.softDelete.bind(this, options),
+      returnType,
+    )();
+
+    return {
+      data,
+      time: Number(time),
+    };
+  }
+
+  private async deleteWithPerformance(
+    returnType: "millis" | "seconds" = "millis",
+  ) {
+    const [time, data] = await withPerformance(
+      this.delete.bind(this),
+      returnType,
+    )();
+
+    return {
+      data,
+      time: Number(time),
+    };
+  }
+
+  private async truncateWithPerformance(
+    returnType: "millis" | "seconds" = "millis",
+  ) {
+    const [time, result] = await withPerformance(
+      this.truncate.bind(this),
+      returnType,
+    )();
+
+    return {
+      data: result,
       time: Number(time),
     };
   }

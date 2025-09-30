@@ -853,7 +853,7 @@ describe(`[${env.DB_TYPE}] with performance`, () => {
   test("existsWithPerformance", async () => {
     const users = await SqlDataSource.query("users_without_pk")
       .where("name", "Alice")
-      .existsWithPerformance();
+      .performance.exists();
 
     expect(users.data).toBe(true);
     expect(users.time).toBeDefined();

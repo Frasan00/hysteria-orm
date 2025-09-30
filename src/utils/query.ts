@@ -2,6 +2,13 @@ import { format } from "sql-formatter";
 import { SqlDataSource } from "../sql/sql_data_source";
 import { SqlDataSourceType } from "../sql/sql_data_source_types";
 
+/**
+ * @description Removes the "FROM" clause and spaces around it from a statement insensitive to case
+ */
+export const removeFromStatement = (statement: string): string => {
+  return statement.replace(/\s?from\s?/i, "");
+};
+
 export const getSqlDialect = (
   sqlType: SqlDataSourceType,
 ): "mysql" | "postgresql" | "sqlite" | "mariadb" | "sql" => {

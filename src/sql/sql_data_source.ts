@@ -18,7 +18,9 @@ import { SchemaDiff } from "./migrations/schema_diff/schema_diff";
 import { normalizeColumnType } from "./migrations/schema_diff/type_normalizer";
 import { Model } from "./models/model";
 import { ModelManager } from "./models/model_manager/model_manager";
+import { RawModelOptions } from "./models/model_types";
 import { QueryBuilder } from "./query_builder/query_builder";
+import { getRawQueryBuilderModel } from "./query_builder/query_builder_utils";
 import type {
   TableColumnInfo,
   TableForeignKeyInfo,
@@ -306,21 +308,23 @@ export class SqlDataSource extends DataSource {
    * @description Optimal for performance-critical operations
    * @description Use Models to have type safety and serialization
    */
-  static query(table: string): QueryBuilder {
+  static query(table: string, options?: RawModelOptions): QueryBuilder {
     const instance = this.getInstance();
     const sqlForQueryBuilder =
       instance.isInGlobalTransaction && instance.globalTransaction?.isActive
         ? instance.globalTransaction.sql
         : instance;
 
-    return new QueryBuilder(
-      {
-        modelCaseConvention: "preserve",
-        databaseCaseConvention: "preserve",
-        table: table,
-      } as typeof Model,
+    const qb = new QueryBuilder(
+      getRawQueryBuilderModel(table, options),
       sqlForQueryBuilder as SqlDataSource,
     );
+
+    if (options?.alias) {
+      qb.from(table, options.alias);
+    }
+
+    return qb;
   }
 
   /**
@@ -576,21 +580,24 @@ export class SqlDataSource extends DataSource {
    * @description Query builder from the SqlDataSource instance uses raw data from the database so the data is not parsed or serialized in any way
    * @description Optimal for performance-critical operations
    * @description Use Models to have type safety and serialization
+   * @description Default soft delete column is "deleted_at" with stringed date value
    */
-  query(table: string): QueryBuilder {
+  query(table: string, options?: RawModelOptions): QueryBuilder {
     const sqlForQueryBuilder =
       this.isInGlobalTransaction && this.globalTransaction?.isActive
         ? this.globalTransaction.sql
         : this;
 
-    return new QueryBuilder(
-      {
-        modelCaseConvention: "preserve",
-        databaseCaseConvention: "preserve",
-        table: table,
-      } as typeof Model,
+    const qb = new QueryBuilder(
+      getRawQueryBuilderModel(table, options),
       sqlForQueryBuilder as SqlDataSource,
     );
+
+    if (options?.alias) {
+      qb.from(table, options.alias);
+    }
+
+    return qb;
   }
 
   /**

@@ -11,7 +11,15 @@ import type {
 import { serializeCollection, serializeCollections } from "../mongo_serializer";
 
 export type FetchHooks = "beforeFetch" | "afterFetch";
-type BinaryOperatorType = "$eq" | "$ne" | "$gt" | "$gte" | "$lt" | "$lte";
+type BinaryOperatorType =
+  | "$eq"
+  | "$ne"
+  | "$gt"
+  | "$gte"
+  | "$lt"
+  | "$lte"
+  | "$in"
+  | "$nin";
 type BaseValues =
   | string
   | number

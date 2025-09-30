@@ -1,5 +1,6 @@
 import { AstParser } from "../../../ast/parser";
 import { DeleteNode } from "../../../ast/query/node/delete";
+import { FromNode } from "../../../ast/query/node/from";
 import { QueryNode } from "../../../ast/query/query";
 import { Model } from "../../../models/model";
 import { Interpreter } from "../../interpreter";
@@ -11,17 +12,19 @@ class PostgresDeleteInterpreter implements Interpreter {
   toSql(node: QueryNode): ReturnType<typeof AstParser.prototype.parse> {
     const deleteNode = node as DeleteNode;
 
-    if (deleteNode.isRawValue) {
+    if (
+      deleteNode.isRawValue &&
+      typeof deleteNode.fromNode.table === "string"
+    ) {
       return {
-        sql: deleteNode.table,
+        sql: deleteNode.fromNode.table,
         bindings: [],
       };
     }
 
-    const formattedTable = new InterpreterUtils(this.model).formatStringTable(
-      "postgres",
-      deleteNode.table,
-    );
+    const formattedTable = new InterpreterUtils(
+      this.model,
+    ).getFromForWriteOperations("postgres", deleteNode.fromNode as FromNode);
 
     return {
       sql: formattedTable,

@@ -41,6 +41,9 @@ export type SqlPoolType =
  * @default By default, the connection policies are not set, so no query will be retried
  */
 export type ConnectionPolicies = {
+  /**
+   * @description The retry policy for the sql data source, it allows to retry a query if it fails
+   */
   retry?: {
     maxRetries?: number;
     delay?: number;

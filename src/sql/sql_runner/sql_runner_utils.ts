@@ -7,6 +7,7 @@ import { Model } from "../models/model";
 import { AnnotatedModel } from "../models/model_query_builder/model_query_builder_types";
 import { SqlDataSource } from "../sql_data_source";
 import { SqlLiteOptions } from "./sql_runner_types";
+import { FromNode } from "../ast/query/node/from";
 
 export class SQLiteStream extends Readable {
   private db: any;
@@ -251,7 +252,7 @@ export const promisifySqliteQuery = <T extends Model>(
           );
 
           const { sql: query, bindings: params } = astParser.parse([
-            new InsertNode(typeofModel.table, [preparedModel]),
+            new InsertNode(new FromNode(typeofModel.table), [preparedModel]),
           ]);
 
           return new Promise<T>((resolve, reject) => {

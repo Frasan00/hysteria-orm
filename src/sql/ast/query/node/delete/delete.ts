@@ -1,14 +1,15 @@
 import { QueryNode } from "../../query";
+import { FromNode } from "../from";
 
 export class DeleteNode extends QueryNode {
-  table: string;
+  fromNode: FromNode;
   chainsWith = " ";
   canKeywordBeSeenMultipleTimes = false;
   folder = "delete";
   file = "delete";
 
-  constructor(table: string, isRawValue: boolean = false) {
+  constructor(fromNode: FromNode, isRawValue: boolean = false) {
     super("delete from", isRawValue);
-    this.table = table;
+    this.fromNode = fromNode;
   }
 }

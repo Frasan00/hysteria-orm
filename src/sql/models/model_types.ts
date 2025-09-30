@@ -1,3 +1,4 @@
+import { CaseConvention } from "../../utils/case_utils";
 import { SqlDataSource } from "../sql_data_source";
 import { AugmentedSqlDataSource } from "../sql_data_source_types";
 import { Transaction } from "../transactions/transaction";
@@ -41,4 +42,26 @@ export type BaseModelMethodOptions = {
    * @description Whether to ignore the hooks for the model
    */
   ignoreHooks?: boolean;
+};
+
+/**
+ * @description Options that can be provided to a raw sql operation (like the raw QueryBuilder)
+ */
+export type RawModelOptions = {
+  /**
+   * Alias for the table
+   */
+  alias?: string;
+  /**
+   * @description Convert the column casing before making a Database query, by default preserves what is provided
+   */
+  databaseCaseConvention?: CaseConvention;
+  /**
+   * Column to use for soft deleted, by default is `deleted_at`
+   */
+  softDeleteColumn?: string;
+  /**
+   * Column to use for soft deleted, by default is date in format: "YYYY-MM-DD HH:mm:ss" in UTC timezone
+   */
+  softDeleteValue?: string | boolean;
 };

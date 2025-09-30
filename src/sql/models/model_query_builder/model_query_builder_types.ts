@@ -7,14 +7,20 @@ export type ModelInstanceType<O> = O extends typeof Model
   ? InstanceType<O>
   : never;
 
-export type FetchHooks = "beforeFetch" | "afterFetch";
+// Do to the limited number of options, we can manually create the excluding choices
+export type FetchHooks =
+  | ["afterFetch"]
+  | ["beforeFetch"]
+  | ["afterFetch", "beforeFetch"]
+  | ["beforeFetch", "afterFetch"]
+  | [];
 
 export type OneOptions = {
-  ignoreHooks?: FetchHooks[];
+  ignoreHooks?: FetchHooks;
 };
 
 export type ManyOptions = {
-  ignoreHooks?: FetchHooks[];
+  ignoreHooks?: FetchHooks;
 };
 
 export type AnnotatedModel<

@@ -1,5 +1,5 @@
 import { AstParser } from "../../../ast/parser";
-import type { FromNode } from "../../../ast/query/node/from/from";
+import type { FromNode } from "../../../ast/query/node/from";
 import { QueryNode } from "../../../ast/query/query";
 import { Model } from "../../../models/model";
 import type { SqlDataSourceType } from "../../../sql_data_source_types";
@@ -13,8 +13,10 @@ class MySqlFromInterpreter implements Interpreter {
     const fromNode = node as FromNode;
 
     if (typeof fromNode.table === "string") {
+      const interpreterUtils = new InterpreterUtils(this.model);
+
       if (fromNode.alias && fromNode.alias.length > 0) {
-        const tableSql = new InterpreterUtils(this.model).formatStringTable(
+        const tableSql = interpreterUtils.formatStringTable(
           "mysql",
           fromNode.table,
         );
@@ -25,7 +27,12 @@ class MySqlFromInterpreter implements Interpreter {
         };
       }
 
-      return { sql: fromNode.table, bindings: [] };
+      const tableSql = interpreterUtils.formatStringTable(
+        "mysql",
+        fromNode.table,
+      );
+
+      return { sql: tableSql, bindings: [] };
     }
 
     const subQueryNodes = Array.isArray(fromNode.table)

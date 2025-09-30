@@ -1,7 +1,8 @@
 import { QueryNode } from "../../query";
+import { FromNode } from "../from";
 
 export class InsertNode extends QueryNode {
-  table: string;
+  fromNode: FromNode;
   records: Record<string, any>[];
   returning?: string[];
   disableReturning: boolean;
@@ -11,14 +12,14 @@ export class InsertNode extends QueryNode {
   file = "insert";
 
   constructor(
-    table: string,
+    fromNode: FromNode,
     records: Record<string, any>[] = [],
     returning?: string[],
     disableReturning: boolean = false,
     isRawValue: boolean = false,
   ) {
     super("insert into", isRawValue);
-    this.table = table;
+    this.fromNode = fromNode;
     this.records = records;
     this.returning = returning;
     this.disableReturning = disableReturning;

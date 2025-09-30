@@ -63,7 +63,7 @@ export default async function dropAllTablesConnector(
   let trx: Transaction | null = null;
   if (transactional) {
     trx = await sql.startTransaction();
-    sql = trx.sql;
+    sql = trx.sql as SqlDataSource;
   }
 
   try {

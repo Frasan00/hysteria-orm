@@ -13,15 +13,15 @@ class MysqlInsertInterpreter implements Interpreter {
 
     if (insertNode.isRawValue) {
       return {
-        sql: insertNode.table,
+        sql: insertNode.fromNode.table as string,
         bindings: [],
       };
     }
 
     const interpreterUtils = new InterpreterUtils(this.model);
-    const formattedTable = interpreterUtils.formatStringTable(
+    const formattedTable = interpreterUtils.getFromForWriteOperations(
       "mysql",
-      insertNode.table,
+      insertNode.fromNode,
     );
 
     if (!insertNode.records.length) {

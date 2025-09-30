@@ -1,6 +1,7 @@
 import { HysteriaError } from "../../../errors/hysteria_error";
 import { AstParser } from "../../ast/parser";
 import { DeleteNode } from "../../ast/query/node/delete";
+import { FromNode } from "../../ast/query/node/from";
 import { InsertNode } from "../../ast/query/node/insert";
 import { OnDuplicateNode } from "../../ast/query/node/on_duplicate";
 import { UpdateNode } from "../../ast/query/node/update";
@@ -239,7 +240,7 @@ export class ModelManager<T extends Model> {
 
     const { sql, bindings } = this.astParser.parse([
       new InsertNode(
-        this.model.table,
+        new FromNode(this.model.table),
         [insertObject],
         options.returning as string[],
       ),
@@ -267,7 +268,7 @@ export class ModelManager<T extends Model> {
       return model as T;
     }
 
-    this.model.afterFetch?.([insertedModel]);
+    await this.model.afterFetch?.([insertedModel]);
     const result = (await serializeModel([insertedModel], this.model)) as T;
     return result;
   }
@@ -281,7 +282,9 @@ export class ModelManager<T extends Model> {
   ): Promise<AnnotatedModel<T, {}>[]> {
     const insertObjects: Record<string, any>[] = [];
     for (const model of models) {
-      !options.ignoreHooks && this.model.beforeInsert?.(model as T);
+      if (!options.ignoreHooks) {
+        await this.model.beforeInsert?.(model as T);
+      }
       const { columns: preparedColumns, values: preparedValues } =
         this.interpreterUtils.prepareColumns(
           Object.keys(model),
@@ -301,7 +304,7 @@ export class ModelManager<T extends Model> {
 
     const { sql, bindings } = this.astParser.parse([
       new InsertNode(
-        this.model.table,
+        new FromNode(this.model.table),
         insertObjects,
         options.returning as string[],
       ),
@@ -331,7 +334,7 @@ export class ModelManager<T extends Model> {
       return [];
     }
 
-    this.model.afterFetch?.(insertedModels);
+    await this.model.afterFetch?.(insertedModels);
 
     const results = await serializeModel(insertedModels, this.model);
     return (results || []) as T[];
@@ -347,8 +350,10 @@ export class ModelManager<T extends Model> {
   ): Promise<AnnotatedModel<T, {}>[]> {
     const insertObjects: Record<string, any>[] = [];
     await Promise.all(
-      data.map((model) => {
-        !options.ignoreHooks && this.model.beforeInsert?.(model as T);
+      data.map(async (model) => {
+        if (!options.ignoreHooks) {
+          await this.model.beforeInsert?.(model as T);
+        }
         const { columns: preparedColumns, values: preparedValues } =
           this.interpreterUtils.prepareColumns(
             Object.keys(model),
@@ -368,7 +373,12 @@ export class ModelManager<T extends Model> {
     );
 
     const { sql, bindings } = this.astParser.parse([
-      new InsertNode(this.model.table, insertObjects, undefined, true),
+      new InsertNode(
+        new FromNode(this.model.table),
+        insertObjects,
+        undefined,
+        true,
+      ),
       new OnDuplicateNode(
         this.model.table,
         conflictColumns,
@@ -420,7 +430,11 @@ export class ModelManager<T extends Model> {
     );
 
     const { sql, bindings } = this.astParser.parse([
-      new UpdateNode(this.model.table, preparedColumns, preparedValues),
+      new UpdateNode(
+        new FromNode(this.model.table),
+        preparedColumns,
+        preparedValues,
+      ),
       new WhereNode(
         primaryKey as string,
         "and",
@@ -467,7 +481,7 @@ export class ModelManager<T extends Model> {
     );
 
     const { sql, bindings } = this.astParser.parse([
-      new DeleteNode(this.model.table),
+      new DeleteNode(new FromNode(this.model.table)),
       whereNode,
     ]);
 

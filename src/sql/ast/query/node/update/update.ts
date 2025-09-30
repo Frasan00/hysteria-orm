@@ -1,8 +1,9 @@
 import { QueryNode } from "../../query";
 import { RawNode } from "../raw/raw_node";
+import { FromNode } from "../from";
 
 export class UpdateNode extends QueryNode {
-  table: string;
+  fromNode: FromNode;
   columns: string[];
   values: (any | RawNode)[];
   chainsWith = " ";
@@ -11,13 +12,13 @@ export class UpdateNode extends QueryNode {
   file = "update";
 
   constructor(
-    table: string,
+    fromNode: FromNode,
     columns: string[] = [],
     values: (any | RawNode)[] = [],
     isRawValue: boolean = false,
   ) {
     super("update", isRawValue);
-    this.table = table;
+    this.fromNode = fromNode;
     this.columns = columns;
     this.values = values;
   }

@@ -390,13 +390,6 @@ export default class Schema {
   }
 
   private generateAstInstance(model: typeof Model): AstParser {
-    return new AstParser(
-      {
-        table: model.table,
-        databaseCaseConvention: "preserve",
-        modelCaseConvention: "preserve",
-      } as typeof Model,
-      this.sqlType,
-    );
+    return new AstParser(model, this.sqlType);
   }
 }

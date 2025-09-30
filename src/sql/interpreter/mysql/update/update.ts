@@ -1,4 +1,5 @@
 import { AstParser } from "../../../ast/parser";
+import { FromNode } from "../../../ast/query/node/from";
 import { RawNode } from "../../../ast/query/node/raw/raw_node";
 import { UpdateNode } from "../../../ast/query/node/update";
 import { QueryNode } from "../../../ast/query/query";
@@ -11,17 +12,17 @@ class MysqlUpdateInterpreter implements Interpreter {
 
   toSql(node: QueryNode): ReturnType<typeof AstParser.prototype.parse> {
     const updateNode = node as UpdateNode;
-    if (updateNode.isRawValue) {
+    if (updateNode.isRawValue && typeof updateNode.fromNode === "string") {
       return {
-        sql: updateNode.table,
+        sql: updateNode.fromNode as string,
         bindings: updateNode.values,
       };
     }
 
     const interpreterUtils = new InterpreterUtils(this.model);
-    const formattedTable = interpreterUtils.formatStringTable(
+    const formattedTable = interpreterUtils.getFromForWriteOperations(
       "mysql",
-      updateNode.table,
+      updateNode.fromNode as FromNode,
     );
 
     if (!updateNode.columns.length || !updateNode.values.length) {
@@ -45,7 +46,7 @@ class MysqlUpdateInterpreter implements Interpreter {
       .join(", ");
 
     return {
-      sql: `${formattedTable} SET ${setClause}`,
+      sql: `${formattedTable} set ${setClause}`,
       bindings: finalBindings,
     };
   }

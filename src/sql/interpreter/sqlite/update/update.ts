@@ -1,4 +1,5 @@
 import { AstParser } from "../../../ast/parser";
+import { FromNode } from "../../../ast/query/node/from";
 import { RawNode } from "../../../ast/query/node/raw/raw_node";
 import { UpdateNode } from "../../../ast/query/node/update";
 import { QueryNode } from "../../../ast/query/query";
@@ -11,18 +12,17 @@ class SqliteUpdateInterpreter implements Interpreter {
 
   toSql(node: QueryNode): ReturnType<typeof AstParser.prototype.parse> {
     const updateNode = node as UpdateNode;
-
-    if (updateNode.isRawValue) {
+    if (updateNode.isRawValue && typeof updateNode.fromNode === "string") {
       return {
-        sql: updateNode.table,
+        sql: updateNode.fromNode as string,
         bindings: updateNode.values,
       };
     }
 
     const interpreterUtils = new InterpreterUtils(this.model);
-    const formattedTable = interpreterUtils.formatStringTable(
+    const formattedTable = interpreterUtils.getFromForWriteOperations(
       "sqlite",
-      updateNode.table,
+      updateNode.fromNode as FromNode,
     );
 
     if (!updateNode.columns.length || !updateNode.values.length) {
@@ -37,16 +37,16 @@ class SqliteUpdateInterpreter implements Interpreter {
       .map((column, index) => {
         const value = updateNode.values[index];
         if (value instanceof RawNode) {
-          return `${interpreterUtils.formatStringColumn("mysql", column)} = ${value.rawValue}`;
+          return `${interpreterUtils.formatStringColumn("sqlite", column)} = ${value.rawValue}`;
         }
 
         finalBindings.push(value);
-        return `${interpreterUtils.formatStringColumn("mysql", column)} = ?`;
+        return `${interpreterUtils.formatStringColumn("sqlite", column)} = ?`;
       })
       .join(", ");
 
     return {
-      sql: `${formattedTable} SET ${setClause}`,
+      sql: `${formattedTable} set ${setClause}`,
       bindings: finalBindings,
     };
   }

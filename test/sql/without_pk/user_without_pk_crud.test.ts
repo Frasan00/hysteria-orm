@@ -131,7 +131,7 @@ describe(`[${env.DB_TYPE}] Select`, () => {
     await UserFactory.userWithoutPk(2);
     const users = await UserWithoutPk.query()
       .select("u1.name")
-      .from("users_without_pk u1")
+      .from("users_without_pk as u1")
       .where("u1.name", "!=", "impossible_name")
       .many({ ignoreHooks: ["beforeFetch"] });
 

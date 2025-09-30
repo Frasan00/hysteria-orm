@@ -78,7 +78,7 @@ export type UnrestrictedFindOneType<
 > = {
   select?: S;
   relations?: R;
-  ignoreHooks?: FetchHooks[];
+  ignoreHooks?: FetchHooks;
   where?: Record<string, any>;
   orderBy?: OrderByType<T>;
   groupBy?: string[];
@@ -104,7 +104,7 @@ export type FindOneType<
   orderBy?: OrderByType<T>;
   groupBy?: ModelKey<T>[];
   where?: WhereType<T>;
-  ignoreHooks?: FetchHooks[];
+  ignoreHooks?: FetchHooks;
 };
 
 export type FindType<

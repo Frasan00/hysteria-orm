@@ -1,4 +1,7 @@
 import { convertCase } from "../../utils/case_utils";
+import { AstParser } from "../ast/parser";
+import { FromNode } from "../ast/query/node/from";
+import { QueryNode } from "../ast/query/query";
 import { getModelColumns } from "../models/decorators/model_decorators";
 import { ColumnType } from "../models/decorators/model_decorators_types";
 import { Model } from "../models/model";
@@ -71,16 +74,27 @@ export class InterpreterUtils {
     }
   }
 
+  /**
+   * @description Formats the table name for the database type, idempotent for quoting
+   */
   formatStringTable(dbType: SqlDataSourceType, table: string): string {
+    // Table normalization
+    table = table.replace(/\s+/g, " ").trim();
+    let alias = "";
+    if (table.toLowerCase().includes(" as ")) {
+      [table, alias] = table.split(" as ");
+    }
+
     switch (dbType) {
       case "mysql":
-        return `\`${table}\``;
+      case "mariadb":
+        return `\`${table}\`${alias ? ` as \`${alias}\`` : ""}`;
       case "postgres":
       case "cockroachdb":
       case "sqlite":
-        return `"${table}"`;
+        return `"${table}"${alias ? ` as "${alias}"` : ""}`;
       default:
-        return table;
+        return `${table}${alias ? ` as ${alias}` : ""}`;
     }
   }
 
@@ -149,5 +163,24 @@ export class InterpreterUtils {
     }
 
     return { columns: filteredColumns, values: filteredValues };
+  }
+
+  /**
+   * @description Formats the from node for write operations removing the "from" keyword
+   */
+  getFromForWriteOperations(
+    dbType: SqlDataSourceType,
+    fromNode: FromNode,
+  ): string {
+    if (typeof fromNode.table === "string") {
+      return this.formatStringTable(dbType, fromNode.table);
+    }
+
+    const astParser = new AstParser(this.model, dbType);
+    if (Array.isArray(fromNode.table)) {
+      return `(${astParser.parse(fromNode.table).sql})`;
+    }
+
+    return `(${astParser.parse([fromNode.table as QueryNode]).sql})`;
   }
 }
