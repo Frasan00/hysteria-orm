@@ -181,3 +181,12 @@ export type SqlDataSourceWithoutTransaction<
 > & {
   [key in keyof T]: T[key];
 };
+
+/** Only accepts formats `string` e `string as string` */
+type NoSpace<S extends string> = S extends `${infer _} ${infer _}` ? never : S;
+
+export type TableFormat<S extends string> =
+  | NoSpace<S>
+  | (S extends `${infer L} as ${infer R}`
+      ? `${NoSpace<L>} as ${NoSpace<R>}`
+      : never);

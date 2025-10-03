@@ -46,4 +46,10 @@ export class PostWithUuid extends Model {
   static async beforeInsert(data: PostWithUuid): Promise<void> {
     data.id = crypto.randomUUID();
   }
+
+  static async beforeInsertMany(data: PostWithUuid[]): Promise<void> {
+    for (const item of data) {
+      item.id = crypto.randomUUID();
+    }
+  }
 }

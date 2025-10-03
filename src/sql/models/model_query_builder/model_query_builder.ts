@@ -78,10 +78,9 @@ export class ModelQueryBuilder<
     paginateWithCursor: this.paginateWithCursorWithPerformance.bind(this),
     truncate: this.truncateWithPerformance.bind(this),
     delete: this.deleteWithPerformance.bind(this),
-    insert: this.insertWithPerformance.bind(this),
-    insertMany: this.insertManyWithPerformance.bind(this),
     update: this.updateWithPerformance.bind(this),
     softDelete: this.softDeleteWithPerformance.bind(this),
+    pluck: this.pluckWithPerformance.bind(this),
   };
 
   constructor(model: typeof Model, sqlDataSource: SqlDataSource) {
@@ -223,9 +222,6 @@ export class ModelQueryBuilder<
   // @ts-expect-error
   override async stream(
     options: ManyOptions & StreamOptions = {},
-    cb?: (
-      stream: PassThrough & AsyncGenerator<AnnotatedModel<T, A, R>>,
-    ) => void | Promise<void>,
   ): Promise<PassThrough & AsyncGenerator<AnnotatedModel<T, A, R>>> {
     !(options.ignoreHooks as string[])?.includes("beforeFetch") &&
       (await this.model.beforeFetch?.(this));
@@ -264,7 +260,6 @@ export class ModelQueryBuilder<
       },
     );
 
-    await cb?.(stream as PassThrough & AsyncGenerator<AnnotatedModel<T, A, R>>);
     return stream as PassThrough & AsyncGenerator<AnnotatedModel<T, A, R>>;
   }
 
@@ -289,6 +284,26 @@ export class ModelQueryBuilder<
     return super.paginateWithCursor(page, options, cursor) as Promise<
       [CursorPaginatedData<T, A, R>, Cursor<T, K>]
     >;
+  }
+
+  /**
+   * @description Inserts a new record into the database, it is not advised to use this method directly from the query builder if using a ModelQueryBuilder (`Model.query()`), use the `Model.insert` method instead.
+   */
+  // @ts-expect-error
+  override async insert(
+    ...args: Parameters<typeof this.model.insert>
+  ): ReturnType<typeof this.model.insert> {
+    return (this.model as any).insert(...args);
+  }
+
+  /**
+   * @description Inserts multiple records into the database, it is not advised to use this method directly from the query builder if using a ModelQueryBuilder (`Model.query()`), use the `Model.insertMany` method instead.
+   */
+  // @ts-expect-error
+  override async insertMany(
+    ...args: Parameters<typeof this.model.insertMany>
+  ): ReturnType<typeof this.model.insertMany> {
+    return (this.model as any).insertMany(...args);
   }
 
   override async update(
@@ -1837,36 +1852,6 @@ export class ModelQueryBuilder<
   ) {
     const [time, result] = await withPerformance(
       this.update.bind(this, data, options),
-      returnType,
-    )();
-
-    return {
-      data: result,
-      time: Number(time),
-    };
-  }
-
-  private async insertWithPerformance(
-    data: Partial<ModelWithoutRelations<T>>,
-    returnType: "millis" | "seconds" = "millis",
-  ) {
-    const [time, result] = await withPerformance(
-      this.insert.bind(this, data),
-      returnType,
-    )();
-
-    return {
-      data: result,
-      time: Number(time),
-    };
-  }
-
-  private async insertManyWithPerformance(
-    data: Partial<ModelWithoutRelations<T>>[],
-    returnType: "millis" | "seconds" = "millis",
-  ) {
-    const [time, result] = await withPerformance(
-      this.insertMany.bind(this, data),
       returnType,
     )();
 

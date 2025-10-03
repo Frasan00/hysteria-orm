@@ -7,7 +7,7 @@ import { SqlMethod } from "../ast/query/node/select/select_types";
 import { Model } from "../models/model";
 import { ModelKey } from "../models/model_manager/model_manager_types";
 import { SqlDataSource } from "../sql_data_source";
-import { SqlDataSourceType } from "../sql_data_source_types";
+import { SqlDataSourceType, TableFormat } from "../sql_data_source_types";
 import { JoinQueryBuilder } from "./join_query_builder";
 import { SelectableColumn } from "./query_builder_types";
 
@@ -146,8 +146,9 @@ export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
   /**
    * @description Sets the table to select from, by default is the table defined in the Model
    * @description Can be used on non select queries too, it will only specify the table name (es. INSERT INTO $table)
+   * @param table The table name to query from, must be in valid sql format `table` or `table as alias`
    */
-  from(table: string): this {
+  from<S extends string>(table: TableFormat<S>): this {
     this.fromNode = new FromNode(table);
     return this;
   }

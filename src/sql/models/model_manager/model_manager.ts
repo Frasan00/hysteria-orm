@@ -281,10 +281,8 @@ export class ModelManager<T extends Model> {
     options: InsertOptions<T> = {},
   ): Promise<AnnotatedModel<T, {}>[]> {
     const insertObjects: Record<string, any>[] = [];
+    await this.model.beforeInsertMany?.(models as T[]);
     for (const model of models) {
-      if (!options.ignoreHooks) {
-        await this.model.beforeInsert?.(model as T);
-      }
       const { columns: preparedColumns, values: preparedValues } =
         this.interpreterUtils.prepareColumns(
           Object.keys(model),
@@ -349,11 +347,9 @@ export class ModelManager<T extends Model> {
     },
   ): Promise<AnnotatedModel<T, {}>[]> {
     const insertObjects: Record<string, any>[] = [];
+    await this.model.beforeInsertMany?.(data as T[]);
     await Promise.all(
       data.map(async (model) => {
-        if (!options.ignoreHooks) {
-          await this.model.beforeInsert?.(model as T);
-        }
         const { columns: preparedColumns, values: preparedValues } =
           this.interpreterUtils.prepareColumns(
             Object.keys(model),

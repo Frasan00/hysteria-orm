@@ -102,7 +102,7 @@ export class UserWithUuid extends Model {
     queryBuilder.whereNull("users_with_uuid.deleted_at");
   }
 
-  static afterFetch(data: UserWithUuid): UserWithUuid {
+  static afterFetch(data: UserWithUuid[]): UserWithUuid[] {
     return data;
   }
 
@@ -110,5 +110,13 @@ export class UserWithUuid extends Model {
     const originalName = data.name;
     data.name = originalName.toUpperCase();
     data.name = originalName;
+  }
+
+  static beforeInsertMany(data: UserWithUuid[]): void {
+    for (const item of data) {
+      const originalName = item.name;
+      item.name = originalName.toUpperCase();
+      item.name = originalName;
+    }
   }
 }

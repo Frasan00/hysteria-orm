@@ -1,7 +1,7 @@
 import { DataSource } from "../data_source/data_source";
 import { HysteriaError } from "../errors/hysteria_error";
 import { generateOpenApiModelWithMetadata } from "../openapi/openapi";
-import logger from "../utils/logger";
+import logger, { log } from "../utils/logger";
 import {
   formatQuery,
   getSqlDialect,
@@ -42,6 +42,7 @@ import type {
   SqlDataSourceType,
   SqliteConnectionInstance,
   SqlPoolType,
+  TableFormat,
   UseConnectionInput,
 } from "./sql_data_source_types";
 import { execSql } from "./sql_runner/sql_runner";
@@ -307,8 +308,13 @@ export class SqlDataSource extends DataSource {
    * @description Query builder from the SqlDataSource instance returns raw data from the database, the data is not parsed or serialized in any way
    * @description Optimal for performance-critical operations
    * @description Use Models to have type safety and serialization
+   * @description Default soft delete column is "deleted_at" with stringed date value
+   * @param table The table name to query from, must be in valid sql format `table` or `table as alias`
    */
-  static query(table: string, options?: RawModelOptions): QueryBuilder {
+  static query<S extends string>(
+    table: TableFormat<S>,
+    options?: RawModelOptions,
+  ): QueryBuilder {
     const instance = this.getInstance();
     const sqlForQueryBuilder =
       instance.isInGlobalTransaction && instance.globalTransaction?.isActive
@@ -581,8 +587,12 @@ export class SqlDataSource extends DataSource {
    * @description Optimal for performance-critical operations
    * @description Use Models to have type safety and serialization
    * @description Default soft delete column is "deleted_at" with stringed date value
+   * @param table The table name to query from, must be in valid sql format `table` or `table as alias`
    */
-  query(table: string, options?: RawModelOptions): QueryBuilder {
+  query<S extends string>(
+    table: TableFormat<S>,
+    options?: RawModelOptions,
+  ): QueryBuilder {
     const sqlForQueryBuilder =
       this.isInGlobalTransaction && this.globalTransaction?.isActive
         ? this.globalTransaction.sql
@@ -832,7 +842,7 @@ export class SqlDataSource extends DataSource {
    */
   async closeConnection(): Promise<void> {
     if (!this.isConnected) {
-      logger.warn("Connection already closed or not established");
+      log("Connection already closed or not established", this.logs);
       return;
     }
 
@@ -853,7 +863,7 @@ export class SqlDataSource extends DataSource {
       );
     }
 
-    logger.warn("Closing connection");
+    log("Closing connection", this.logs);
     switch (this.type) {
       case "mysql":
       case "mariadb":

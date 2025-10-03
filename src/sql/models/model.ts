@@ -740,16 +740,18 @@ export abstract class Model extends Entity {
     }
   }
 
+  // #region Lifecycle hooks
+
   /**
-   * @description Adds a beforeFetch clause to the model, adding the ability to modify the query before fetching the data
+   * @description Adds a beforeFetch clause to the model, adding the ability to modify the querybuilder before fetching the data
    */
   static beforeFetch?(
     queryBuilder: ModelQueryBuilder<any>,
   ): Promise<void> | void;
 
   /**
-   * @description Adds a beforeInsert clause to the model, adding the ability to modify the data before inserting the data
-   * @param {Model} data The single model to be inserted, in insertMany the hook will be called for each model
+   * @description Adds a beforeInsert clause to the model modifying the data before inserting the data
+   * @param {Model} data The model to be inserted, in insertMany the hook will be called for each model
    * @example
    * ```typescript
    * static async beforeInsert?(data: User): Promise<void> {
@@ -760,7 +762,22 @@ export abstract class Model extends Entity {
   static beforeInsert?(data: any): Promise<void> | void;
 
   /**
+   * @description Adds a beforeInsertMany clause to the model modifying the data before inserting the data
+   * @param {Model[]} data The models to be inserted, in insertMany the hook will be called for each model
+   * @example
+   * ```typescript
+   * static async beforeInsertMany?(data: User[]): Promise<void> {
+   *   data.forEach((user) => {
+   *     user.name = user.name.toUpperCase();
+   *   });
+   * }
+   * ```
+   */
+  static beforeInsertMany?(data: any[]): Promise<void> | void;
+
+  /**
    * @description Adds a beforeUpdate clause to the model, adding the ability to modify the query before updating the data
+   * @description Includes soft delete
    */
   static beforeUpdate?(
     queryBuilder: ModelQueryBuilder<any>,
@@ -768,6 +785,7 @@ export abstract class Model extends Entity {
 
   /**
    * @description Adds a beforeDelete clause to the model, adding the ability to modify the query before deleting the data
+   * @warning This hook does not include soft delete since it's an update operation
    */
   static beforeDelete?(
     queryBuilder: ModelQueryBuilder<any>,
@@ -775,15 +793,17 @@ export abstract class Model extends Entity {
 
   /**
    * @description Adds a afterFetch clause to the model, adding the ability to modify the data after fetching the data
-   * @param {Model} data The single model to be fetched, in queries that return multiple models the hook will be called for each model
+   * @param {Model} data Models fetched from the database, must always provide an implementation for an array of models regardless of the query result
    * @example
    * ```typescript
-   * static async afterFetch?(data: User): Promise<User> {
+   * static async afterFetch?(data: User[]): Promise<User[]> {
    *   return data;
    * }
    * ```
    */
-  static afterFetch?(data: any): Promise<any> | any;
+  static afterFetch?(data: any[]): Promise<any[]> | any[];
+
+  // #endregion Lifecycle hooks
 
   /**
    * @description Returns the columns of the model

@@ -53,4 +53,10 @@ export class AddressWithUuid extends Model {
   static async beforeInsert(data: AddressWithUuid): Promise<void> {
     data.id = crypto.randomUUID();
   }
+
+  static async beforeInsertMany(data: AddressWithUuid[]): Promise<void> {
+    for (const item of data) {
+      item.id = crypto.randomUUID();
+    }
+  }
 }

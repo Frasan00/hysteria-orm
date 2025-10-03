@@ -29,7 +29,7 @@ import {
 } from "../pagination";
 import { deepCloneNode } from "../resources/utils";
 import { SqlDataSource } from "../sql_data_source";
-import type { SqlDataSourceType } from "../sql_data_source_types";
+import type { SqlDataSourceType, TableFormat } from "../sql_data_source_types";
 import { execSql, execSqlStreaming } from "../sql_runner/sql_runner";
 import { SoftDeleteOptions } from "./delete_query_builder_type";
 import { JsonQueryBuilder } from "./json_query_builder";
@@ -68,6 +68,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     insertMany: this.insertManyWithPerformance.bind(this),
     update: this.updateWithPerformance.bind(this),
     softDelete: this.softDeleteWithPerformance.bind(this),
+    pluck: this.pluckWithPerformance.bind(this),
   };
 
   constructor(
@@ -493,10 +494,10 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   /**
    * @description Overrides the from clause in the query.
    */
-  from(table: string, alias?: string): this;
+  from<S extends string>(table: TableFormat<S>, alias?: string): this;
   from(cb: (qb: QueryBuilder<T>) => void, alias: string): this;
-  from(
-    tableOrCb: string | ((qb: QueryBuilder<T>) => void),
+  from<S extends string>(
+    tableOrCb: TableFormat<S> | ((qb: QueryBuilder<T>) => void),
     maybeAlias?: string,
   ): this {
     if (typeof tableOrCb === "function") {
@@ -665,6 +666,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
 
   /**
    * @description Deletes all records from a table
+   * @warning This operation does not trigger any hook
    */
   async truncate(): Promise<void> {
     const truncateNode = new TruncateNode(this.fromNode);
