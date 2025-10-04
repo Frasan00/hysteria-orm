@@ -12,14 +12,14 @@ export class MysqlDriver extends Driver {
 
   constructor(
     client: Mysql2Import,
-    driverSpecificOptions?: DriverSpecificOptions,
+    driverSpecificOptions?: DriverSpecificOptions<DataSourceType>,
   ) {
     super(driverSpecificOptions);
     this.client = client;
   }
 
   static async createDriver(
-    driverSpecificOptions?: DriverSpecificOptions,
+    driverSpecificOptions?: DriverSpecificOptions<DataSourceType>,
   ): Promise<Driver> {
     const mysql2 = await import("mysql2/promise").catch(() => {
       throw new DriverNotFoundError("mysql2");

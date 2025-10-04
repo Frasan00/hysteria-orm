@@ -12,14 +12,14 @@ export class MongoDriver extends Driver {
 
   constructor(
     client: MongoClientImport,
-    driverSpecificOptions?: DriverSpecificOptions,
+    driverSpecificOptions?: DriverSpecificOptions<DataSourceType>,
   ) {
     super(driverSpecificOptions);
     this.client = client;
   }
 
   static async createDriver(
-    driverSpecificOptions?: DriverSpecificOptions,
+    driverSpecificOptions?: DriverSpecificOptions<DataSourceType>,
   ): Promise<Driver> {
     const mongo = await import("mongodb").catch(() => {
       throw new DriverNotFoundError("mongodb");

@@ -22,9 +22,9 @@ const getDriverConnection = async (type: SqlDataSourceType) => {
   return driver;
 };
 
-export const createSqlPool = async (
-  type: SqlDataSourceType,
-  input?: SqlDataSourceInput,
+export const createSqlPool = async <T extends SqlDataSourceType>(
+  type: T,
+  input?: SqlDataSourceInput<T>,
 ): Promise<SqlPoolType> => {
   const driver = await getDriverConnection(type);
   switch (type) {

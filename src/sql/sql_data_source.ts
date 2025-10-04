@@ -78,7 +78,7 @@ export class SqlDataSource extends DataSource {
   /**
    * @description Options provided in the sql data source initialization
    */
-  inputDetails: SqlDataSourceInput;
+  inputDetails: SqlDataSourceInput<SqlDataSourceType>;
 
   // Static Methods
 
@@ -98,16 +98,22 @@ export class SqlDataSource extends DataSource {
    * User.query(); // Will use the default connection
    * ```
    */
-  static async connect<T extends Record<string, SqlDataSourceModel> = {}>(
-    input: SqlDataSourceInput<T>,
+  static async connect<
+    U extends SqlDataSourceType,
+    T extends Record<string, SqlDataSourceModel> = {},
+  >(
+    input: SqlDataSourceInput<U, T>,
     cb?: (sqlDataSource: AugmentedSqlDataSource<T>) => Promise<void> | void,
   ): Promise<AugmentedSqlDataSource<T>>;
   static async connect<T extends Record<string, SqlDataSourceModel> = {}>(
     cb?: (sqlDataSource: AugmentedSqlDataSource<T>) => Promise<void> | void,
   ): Promise<SqlDataSource>;
-  static async connect<T extends Record<string, SqlDataSourceModel> = {}>(
+  static async connect<
+    U extends SqlDataSourceType,
+    T extends Record<string, SqlDataSourceModel> = {},
+  >(
     inputOrCb?:
-      | SqlDataSourceInput<T>
+      | SqlDataSourceInput<U, T>
       | ((sqlDataSource: AugmentedSqlDataSource<T>) => Promise<void> | void),
     cb?: (sqlDataSource: AugmentedSqlDataSource<T>) => Promise<void> | void,
   ): Promise<AugmentedSqlDataSource<T>> {
@@ -116,7 +122,9 @@ export class SqlDataSource extends DataSource {
       inputOrCb = undefined;
     }
 
-    const sqlDataSource = new SqlDataSource(inputOrCb as SqlDataSourceInput<T>);
+    const sqlDataSource = new SqlDataSource(
+      inputOrCb as SqlDataSourceInput<U, T>,
+    );
 
     if (inputOrCb?.models) {
       const sanitizeModelKeys = sqlDataSource.sanitizeModelKeys(
@@ -140,7 +148,7 @@ export class SqlDataSource extends DataSource {
       driverOptions: sqlDataSource.inputDetails.driverOptions,
       logs: sqlDataSource.logs,
       models: sqlDataSource.models,
-    } as SqlDataSourceInput<T>);
+    } as SqlDataSourceInput<U, T>);
 
     sqlDataSource.ownsPool = true;
     await sqlDataSource.testConnectionQuery("SELECT 1");
@@ -164,9 +172,10 @@ export class SqlDataSource extends DataSource {
    * ```
    */
   static async connectToSecondarySource<
+    U extends SqlDataSourceType,
     T extends Record<string, SqlDataSourceModel> = {},
   >(
-    input: SqlDataSourceInput<T>,
+    input: SqlDataSourceInput<U, T>,
     cb?: (sqlDataSource: AugmentedSqlDataSource<T>) => Promise<void> | void,
   ): Promise<AugmentedSqlDataSource<T>>;
   static async connectToSecondarySource<
@@ -175,10 +184,11 @@ export class SqlDataSource extends DataSource {
     cb?: (sqlDataSource: AugmentedSqlDataSource<T>) => Promise<void> | void,
   ): Promise<SqlDataSource>;
   static async connectToSecondarySource<
+    U extends SqlDataSourceType,
     T extends Record<string, SqlDataSourceModel> = {},
   >(
     inputOrCb?:
-      | SqlDataSourceInput<T>
+      | SqlDataSourceInput<U, T>
       | ((sqlDataSource: AugmentedSqlDataSource<T>) => Promise<void> | void),
     cb?: (sqlDataSource: AugmentedSqlDataSource<T>) => Promise<void> | void,
   ): Promise<AugmentedSqlDataSource<T>> {
@@ -187,7 +197,9 @@ export class SqlDataSource extends DataSource {
       inputOrCb = undefined;
     }
 
-    const sqlDataSource = new SqlDataSource(inputOrCb as SqlDataSourceInput);
+    const sqlDataSource = new SqlDataSource(
+      inputOrCb as SqlDataSourceInput<U, T>,
+    );
 
     if (inputOrCb?.models) {
       const sanitizeModelKeys = sqlDataSource.sanitizeModelKeys(
@@ -211,7 +223,7 @@ export class SqlDataSource extends DataSource {
       driverOptions: sqlDataSource.inputDetails.driverOptions,
       logs: sqlDataSource.logs,
       models: sqlDataSource.models,
-    } as SqlDataSourceInput<T>);
+    } as SqlDataSourceInput<U, T>);
     sqlDataSource.ownsPool = true;
 
     await sqlDataSource.testConnectionQuery("SELECT 1");
@@ -234,12 +246,15 @@ export class SqlDataSource extends DataSource {
    * });
    * ```
    */
-  static async useConnection<T extends Record<string, SqlDataSourceModel> = {}>(
-    connectionDetails: UseConnectionInput<T>,
+  static async useConnection<
+    U extends SqlDataSourceType,
+    T extends Record<string, SqlDataSourceModel> = {},
+  >(
+    connectionDetails: UseConnectionInput<U, T>,
     cb: (sqlDataSource: AugmentedSqlDataSource<T>) => Promise<void>,
   ): Promise<void> {
     const customSqlInstance = new SqlDataSource(
-      connectionDetails as SqlDataSourceInput,
+      connectionDetails as SqlDataSourceInput<U, T>,
     );
 
     if (connectionDetails.models) {
@@ -264,7 +279,7 @@ export class SqlDataSource extends DataSource {
       driverOptions: customSqlInstance.inputDetails.driverOptions,
       logs: customSqlInstance.logs,
       models: connectionDetails.models,
-    } as SqlDataSourceInput<T>);
+    } as SqlDataSourceInput<U, T>);
 
     customSqlInstance.ownsPool = true;
     await customSqlInstance.testConnectionQuery("SELECT 1");
@@ -487,7 +502,7 @@ export class SqlDataSource extends DataSource {
   }
 
   // Instance Methods
-  private constructor(input?: SqlDataSourceInput) {
+  private constructor(input?: SqlDataSourceInput<SqlDataSourceType>) {
     super(input);
     this.sqlType = this.type as SqlDataSourceType;
     this.inputDetails = input || {
@@ -551,7 +566,7 @@ export class SqlDataSource extends DataSource {
         driverOptions: cloned.inputDetails.driverOptions,
         logs: cloned.logs,
         models: cloned.models,
-      } as SqlDataSourceInput);
+      } as SqlDataSourceInput<SqlDataSourceType>);
 
       cloned.ownsPool = true;
 
@@ -894,7 +909,7 @@ export class SqlDataSource extends DataSource {
     this.sqlConnection = null;
   }
 
-  getConnectionDetails(): SqlDataSourceInput {
+  getConnectionDetails(): SqlDataSourceInput<SqlDataSourceType> {
     return {
       type: this.getDbType(),
       host: this.host,

@@ -1,3 +1,6 @@
+import type { RedisOptions } from "ioredis";
+import type { DataSourceType } from "../data_source/data_source_types";
+
 export type Mysql2Import = typeof import("mysql2/promise");
 export type Mysql2SyncImport = typeof import("mysql2");
 export type PgImport = typeof import("pg");
@@ -18,11 +21,21 @@ export type MongoConnectionOptions = NonNullable<
   ConstructorParameters<MongoClientImport["MongoClient"]>[1]
 >;
 
-export type DriverSpecificOptions = {
-  mysqlOptions?: MysqlCreateConnectionOptions;
-  pgOptions?: PgClientOptions;
-  mongoOptions?: MongoConnectionOptions;
-};
+export type DriverSpecificOptions<T extends DataSourceType> = T extends "mongo"
+  ? MongoConnectionOptions
+  : T extends "cockroachdb"
+    ? PgClientOptions
+    : T extends "redis"
+      ? RedisOptions
+      : T extends "postgres"
+        ? PgClientOptions
+        : T extends "mongo"
+          ? MongoConnectionOptions
+          : T extends "mariadb"
+            ? MysqlCreateConnectionOptions
+            : T extends "mysql"
+              ? MysqlCreateConnectionOptions
+              : never;
 
 export type DriverImport =
   | Mysql2Import

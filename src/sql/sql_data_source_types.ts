@@ -19,8 +19,8 @@ import {
 import { Model } from "./models/model";
 import { SqlDataSource } from "./sql_data_source";
 
-export type SqlDriverSpecificOptions = Omit<
-  DriverSpecificOptions,
+export type SqlDriverSpecificOptions<T extends DataSourceType> = Omit<
+  DriverSpecificOptions<T>,
   "mongoOptions" | "redisOptions"
 >;
 
@@ -57,6 +57,7 @@ export type SqlDataSourceModel = typeof Model;
  * @description The connectionPolicies object is used to configure the connection policies for the sql data source
  */
 export type SqlDataSourceInput<
+  D extends SqlDataSourceType,
   T extends Record<string, SqlDataSourceModel> = {},
 > = {
   readonly type?: Exclude<DataSourceType, "mongo">;
@@ -82,7 +83,7 @@ export type SqlDataSourceInput<
   /**
    * @description The driver specific options to use for the sql data source, it's used to configure the driver specific options for the sql data source
    */
-  driverOptions?: SqlDriverSpecificOptions;
+  driverOptions?: SqlDriverSpecificOptions<D>;
 } & (
   | MysqlSqlDataSourceInput
   | PostgresSqlDataSourceInput
@@ -90,12 +91,13 @@ export type SqlDataSourceInput<
 );
 
 export type UseConnectionInput<
+  D extends SqlDataSourceType,
   T extends Record<string, SqlDataSourceModel> = {},
 > = {
   readonly type: Exclude<DataSourceType, "mongo">;
   readonly logs?: boolean;
   readonly models?: T;
-  readonly driverOptions?: SqlDriverSpecificOptions;
+  readonly driverOptions?: SqlDriverSpecificOptions<D>;
   connectionPolicies?: ConnectionPolicies;
   queryFormatOptions?: FormatOptionsWithLanguage;
 } & (

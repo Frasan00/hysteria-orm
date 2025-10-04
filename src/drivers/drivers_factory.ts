@@ -10,7 +10,7 @@ import { Sqlite3Driver } from "./sqlite3_driver";
 export class DriverFactory {
   static async getDriver(
     client: DataSourceType | "redis",
-    driverSpecificOptions?: DriverSpecificOptions,
+    driverSpecificOptions?: DriverSpecificOptions<DataSourceType>,
   ): Promise<Driver> {
     switch (client) {
       case "mysql":

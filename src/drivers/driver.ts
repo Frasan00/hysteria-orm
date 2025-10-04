@@ -5,14 +5,14 @@ import { DriverImport, DriverSpecificOptions } from "./driver_constants";
 export abstract class Driver {
   abstract type: DataSourceType | "redis";
   abstract client: DriverImport;
-  options?: DriverSpecificOptions;
+  options?: DriverSpecificOptions<DataSourceType>;
 
-  constructor(driverSpecificOptions?: DriverSpecificOptions) {
+  constructor(driverSpecificOptions?: DriverSpecificOptions<DataSourceType>) {
     this.options = driverSpecificOptions;
   }
 
   static async createDriver(
-    _driverSpecificOptions: DriverSpecificOptions,
+    _driverSpecificOptions: DriverSpecificOptions<DataSourceType>,
   ): Promise<Driver> {
     throw new HysteriaError(
       "Driver::createDriver This error should never happen. Please report it to the developers.",

@@ -10,13 +10,16 @@ export class PgDriver extends Driver {
   override type: DataSourceType | "redis" = "postgres";
   override client: PgImport;
 
-  constructor(client: PgImport, driverSpecificOptions?: DriverSpecificOptions) {
+  constructor(
+    client: PgImport,
+    driverSpecificOptions?: DriverSpecificOptions<DataSourceType>,
+  ) {
     super(driverSpecificOptions);
     this.client = client;
   }
 
   static async createDriver(
-    driverSpecificOptions?: DriverSpecificOptions,
+    driverSpecificOptions?: DriverSpecificOptions<DataSourceType>,
   ): Promise<Driver> {
     const pg = await import("pg").catch(() => {
       throw new DriverNotFoundError("pg");

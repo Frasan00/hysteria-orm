@@ -12,14 +12,14 @@ export class Sqlite3Driver extends Driver {
 
   constructor(
     client: Sqlite3Import,
-    driverSpecificOptions?: DriverSpecificOptions,
+    driverSpecificOptions?: DriverSpecificOptions<DataSourceType>,
   ) {
     super(driverSpecificOptions);
     this.client = client;
   }
 
   static async createDriver(
-    driverSpecificOptions?: DriverSpecificOptions,
+    driverSpecificOptions?: DriverSpecificOptions<DataSourceType>,
   ): Promise<Driver> {
     const sqlite3 = await import("sqlite3").catch(() => {
       throw new DriverNotFoundError("sqlite3");

@@ -3,7 +3,10 @@ import runMigrationsConnector from "../../cli/migration_run_connector";
 import { env } from "../../env/env";
 import logger from "../../utils/logger";
 import { SqlDataSource } from "../sql_data_source";
-import { SqlDataSourceInput } from "../sql_data_source_types";
+import {
+  SqlDataSourceInput,
+  SqlDataSourceType,
+} from "../sql_data_source_types";
 import { Migration } from "./migration";
 
 /**
@@ -118,7 +121,8 @@ export class ClientMigrator {
       this.sqlDataSourceInput instanceof SqlDataSource
         ? this.sqlDataSourceInput
         : await SqlDataSource.connect({
-            ...(this.sqlDataSourceInput as SqlDataSourceInput),
+            ...(this
+              .sqlDataSourceInput as SqlDataSourceInput<SqlDataSourceType>),
           });
 
     if (direction === "up") {
