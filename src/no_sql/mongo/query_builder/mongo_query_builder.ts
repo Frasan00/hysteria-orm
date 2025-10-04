@@ -9,6 +9,11 @@ import type {
   MongoCollectionKey,
 } from "../mongo_models/mongo_collection_types";
 import { serializeCollection, serializeCollections } from "../mongo_serializer";
+import type {
+  Collection as DriverCollection,
+  OptionalUnlessRequiredId,
+  Filter,
+} from "mongodb";
 
 export type FetchHooks = "beforeFetch" | "afterFetch";
 type BinaryOperatorType =
@@ -45,7 +50,7 @@ export class MongoQueryBuilder<T extends Collection> {
   protected limitNumber?: number;
   protected offsetNumber?: number;
   protected mongoDataSource: MongoDataSource;
-  protected collection: MongoClientImport["Collection"]["prototype"];
+  protected collection: DriverCollection<T>;
   protected model: typeof Collection;
   protected logs: boolean;
 
@@ -161,9 +166,12 @@ export class MongoQueryBuilder<T extends Collection> {
       this.model.beforeInsert(modelData);
     }
 
-    const result = await this.collection.insertOne(modelData, {
-      session: this.session,
-    });
+    const result = await this.collection.insertOne(
+      modelData as unknown as OptionalUnlessRequiredId<T>,
+      {
+        session: this.session,
+      },
+    );
 
     if (!options.returning) {
       return {
@@ -173,7 +181,7 @@ export class MongoQueryBuilder<T extends Collection> {
 
     const insertedDocument = await this.collection.findOne({
       _id: result.insertedId,
-    });
+    } as unknown as Filter<T>);
 
     return (await serializeCollection(
       this.model,
@@ -196,9 +204,12 @@ export class MongoQueryBuilder<T extends Collection> {
       this.model.beforeInsert(modelData);
     }
 
-    const result = await this.collection.insertMany(modelData, {
-      session: this.session,
-    });
+    const result = await this.collection.insertMany(
+      modelData as unknown as OptionalUnlessRequiredId<T>[],
+      {
+        session: this.session,
+      },
+    );
 
     if (!options.returning) {
       return Object.values(result.insertedIds).map(
@@ -214,7 +225,7 @@ export class MongoQueryBuilder<T extends Collection> {
         _id: {
           $in: Object.values(result.insertedIds),
         },
-      })
+      } as unknown as Filter<T>)
       .toArray();
 
     return (await serializeCollections(

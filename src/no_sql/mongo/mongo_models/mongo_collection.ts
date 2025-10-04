@@ -3,6 +3,7 @@ import { HysteriaError } from "../../../errors/hysteria_error";
 import { MongoDataSource } from "../mongo_data_source";
 import { MongoQueryBuilder } from "../query_builder/mongo_query_builder";
 import { property } from "./mongo_collection_decorators";
+import type { Collection as DriverCollection } from "mongodb";
 import {
   CollectionManager,
   MongoFindManyOptions,
@@ -60,6 +61,22 @@ export class Collection extends Entity {
     const typeofModel = this as unknown as typeof Collection;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
     return modelManager.query();
+  }
+
+  /**
+   * @description Gets the raw collection from the mongoInstance using the underlying mongodb driver
+   * @param this
+   * @returns {DriverCollection<T>}
+   */
+  static rawCollection<T extends typeof Collection>(
+    this: T,
+  ): DriverCollection<Omit<InstanceType<T>, "$annotations" | "id">> {
+    return this.mongoInstance
+      .getCurrentConnection()
+      .db()
+      .collection(this.collection) as DriverCollection<
+      Omit<InstanceType<T>, "$annotations" | "id">
+    >;
   }
 
   /**

@@ -412,3 +412,47 @@ describe("TestModel", () => {
     });
   });
 });
+
+describe("TestModel rawCollection", () => {
+  let mongoDataSource: MongoDataSource;
+
+  beforeAll(async () => {
+    mongoDataSource = await MongoDataSource.connect(
+      "mongodb://root:root@localhost:27017",
+    );
+  });
+
+  beforeEach(async () => {
+    await TestModel.query().delete();
+  });
+
+  afterAll(async () => {
+    await TestModel.query().delete();
+    await mongoDataSource.disconnect();
+  });
+
+  test("should get the raw collection", async () => {
+    const rawCollection = TestModel.rawCollection();
+    expect(rawCollection).toBeDefined();
+
+    const insertedModel = await rawCollection.insertOne({
+      name: "Test Name",
+      email: "test",
+      userProfile: {
+        birthData: DateTime.now(),
+        age: 20,
+        preferredName: "test",
+      },
+    });
+
+    expect(insertedModel.insertedId).toBeDefined();
+
+    const foundModel = await rawCollection.findOne({
+      _id: insertedModel.insertedId,
+    });
+
+    expect(foundModel?.name).toBe("Test Name");
+    expect(foundModel?.email).toBe("test");
+    expect(foundModel?.userProfile.age).toBe(20);
+  });
+});
