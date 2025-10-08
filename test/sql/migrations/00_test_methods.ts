@@ -17,7 +17,7 @@ export default class extends Migration {
       t.timestamp("deleted_at").default(null).nullable();
     });
 
-    await this.schema.runFile("test/sql/test.sql");
+    this.schema.runFile("test/sql/test.sql");
 
     // CockroachDB doesn't support multiple alter table statements
     if (this.dbType === "cockroachdb") {

@@ -600,7 +600,7 @@ export abstract class Model extends Entity {
       {
         ignoreHooks: options.ignoreHooks,
         returning: options.returning,
-        updateOnConflict: options.updateOnConflict || true,
+        updateOnConflict: options.updateOnConflict ?? true,
       },
     );
 

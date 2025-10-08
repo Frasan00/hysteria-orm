@@ -11,6 +11,7 @@ import { DeleteNode } from "../ast/query/node/delete";
 import { FromNode } from "../ast/query/node/from";
 import { InsertNode } from "../ast/query/node/insert";
 import { LockNode } from "../ast/query/node/lock/lock";
+import { OnDuplicateNode } from "../ast/query/node/on_duplicate";
 import { SelectNode } from "../ast/query/node/select/basic_select";
 import { UnionCallBack } from "../ast/query/node/select/select_types";
 import { TruncateNode } from "../ast/query/node/truncate";
@@ -38,6 +39,7 @@ import {
   PaginateWithCursorOptions,
   PluckReturnType,
   StreamOptions,
+  UpsertOptionsRawBuilder,
 } from "./query_builder_types";
 
 export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
@@ -49,6 +51,10 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   protected isNestedCondition = false;
   protected mustRemoveAnnotations: boolean = false;
   protected interpreterUtils: InterpreterUtils;
+  protected insertNode: InsertNode | null = null;
+  protected updateNode: UpdateNode | null = null;
+  protected deleteNode: DeleteNode | null = null;
+  protected truncateNode: TruncateNode | null = null;
 
   /**
    * @description Performance methods that return the time that took to execute the query with the result
@@ -583,10 +589,8 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
       preparedColumns.map((column, index) => [column, preparedValues[index]]),
     );
 
-    const { sql, bindings } = this.astParser.parse([
-      new InsertNode(this.fromNode, [insertObject], returning),
-      ...this.joinNodes,
-    ]);
+    this.insertNode = new InsertNode(this.fromNode, [insertObject], returning);
+    const { sql, bindings } = this.astParser.parse([this.insertNode]);
 
     const rows = await execSql(sql, bindings, this.sqlDataSource, "raw", {
       sqlLiteOptions: {
@@ -625,10 +629,8 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
       );
     });
 
-    const { sql, bindings } = this.astParser.parse([
-      new InsertNode(this.fromNode, models, returning),
-      ...this.joinNodes,
-    ]);
+    this.insertNode = new InsertNode(this.fromNode, models, returning);
+    const { sql, bindings } = this.astParser.parse([this.insertNode]);
 
     return execSql(sql, bindings, this.sqlDataSource, "raw", {
       sqlLiteOptions: {
@@ -637,6 +639,120 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
         models: models as T[],
       },
     });
+  }
+
+  /**
+   * @description Updates or creates a new record using upsert functionality
+   * @param data The data to insert or update
+   * @param searchCriteria The criteria to search for existing records
+   * @param options Upsert options including updateOnConflict and returning columns
+   * @returns The upserted record
+   */
+  async upsert<O extends Record<string, any>>(
+    data: O,
+    searchCriteria: Partial<O>,
+    options: UpsertOptionsRawBuilder = {
+      updateOnConflict: true,
+    },
+  ): Promise<T[]> {
+    const columnsToUpdate = Object.keys(data);
+    const conflictColumns = Object.keys(searchCriteria);
+    const { columns: preparedColumns, values: preparedValues } =
+      this.interpreterUtils.prepareColumns(
+        Object.keys(data),
+        Object.values(data),
+        "insert",
+      );
+
+    const insertObject = Object.fromEntries(
+      preparedColumns.map((column, index) => [column, preparedValues[index]]),
+    );
+
+    const { sql, bindings } = this.astParser.parse([
+      new InsertNode(
+        new FromNode(this.model.table),
+        [insertObject],
+        undefined,
+        true,
+      ),
+      new OnDuplicateNode(
+        this.model.table,
+        conflictColumns,
+        columnsToUpdate,
+        (options.updateOnConflict ?? true) ? "update" : "ignore",
+        options.returning as string[],
+      ),
+    ]);
+
+    const rawResult = await execSql(sql, bindings, this.sqlDataSource, "raw", {
+      sqlLiteOptions: {
+        typeofModel: this.model,
+        mode: "raw",
+        models: [data as unknown as T],
+      },
+    });
+
+    return (Array.isArray(rawResult) ? rawResult : [rawResult]) as T[];
+  }
+
+  /**
+   * @description Updates or creates multiple records using upsert functionality
+   * @param conflictColumns The columns to check for conflicts
+   * @param columnsToUpdate The columns to update on conflict
+   * @param data Array of data objects to insert or update
+   * @param options Upsert options including updateOnConflict and returning columns
+   */
+  async upsertMany<O extends Record<string, any>>(
+    conflictColumns: string[],
+    columnsToUpdate: string[],
+    data: O[],
+    options: UpsertOptionsRawBuilder = {
+      updateOnConflict: true,
+    },
+  ): Promise<T[]> {
+    const insertObjects: Record<string, any>[] = [];
+
+    for (const record of data) {
+      const { columns: preparedColumns, values: preparedValues } =
+        this.interpreterUtils.prepareColumns(
+          Object.keys(record),
+          Object.values(record),
+          "insert",
+        );
+
+      const insertObject = Object.fromEntries(
+        preparedColumns.map((column, index) => [column, preparedValues[index]]),
+      );
+
+      insertObjects.push(insertObject);
+    }
+
+    const { sql, bindings } = this.astParser.parse([
+      new InsertNode(
+        new FromNode(this.model.table),
+        insertObjects,
+        undefined,
+        true,
+      ),
+      new OnDuplicateNode(
+        this.model.table,
+        conflictColumns,
+        columnsToUpdate,
+        (options.updateOnConflict ?? true) ? "update" : "ignore",
+        options.returning as string[],
+      ),
+    ]);
+
+    const rawResult = await execSql(sql, bindings, this.sqlDataSource, "raw", {
+      sqlLiteOptions: {
+        typeofModel: this.model,
+        mode: "raw",
+        models: data as unknown as T[],
+      },
+    });
+    return (Array.isArray(rawResult)
+      ? rawResult
+      : [rawResult]) as unknown as T[];
   }
 
   /**
@@ -653,8 +769,9 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
       "update",
     );
 
+    this.updateNode = new UpdateNode(this.fromNode, columns, values);
     const { sql, bindings } = this.astParser.parse([
-      new UpdateNode(this.fromNode, columns, values),
+      this.updateNode,
       ...this.whereNodes,
       ...this.joinNodes,
     ]);
@@ -669,8 +786,8 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    * @warning This operation does not trigger any hook
    */
   async truncate(): Promise<void> {
-    const truncateNode = new TruncateNode(this.fromNode);
-    const { sql, bindings } = this.astParser.parse([truncateNode]);
+    this.truncateNode = new TruncateNode(this.fromNode);
+    const { sql, bindings } = this.astParser.parse([this.truncateNode]);
     await execSql(sql, bindings, this.sqlDataSource, "raw");
   }
 
@@ -679,9 +796,9 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    * @returns the number of affected rows
    */
   async delete(): Promise<number> {
-    const deleteNode = new DeleteNode(this.fromNode);
+    this.deleteNode = new DeleteNode(this.fromNode);
     const { sql, bindings } = this.astParser.parse([
-      deleteNode,
+      this.deleteNode,
       ...this.whereNodes,
       ...this.joinNodes,
     ]);
@@ -712,8 +829,9 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
       "update",
     );
 
+    this.updateNode = new UpdateNode(this.fromNode, columns, values);
     const { sql, bindings } = this.astParser.parse([
-      new UpdateNode(this.fromNode, columns, values),
+      this.updateNode,
       ...this.whereNodes,
       ...this.joinNodes,
     ]);
@@ -839,6 +957,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     }
 
     return [
+      // Select
       ...this.withNodes,
       this.distinctNode,
       this.distinctOnNode,

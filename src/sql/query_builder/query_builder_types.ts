@@ -136,3 +136,8 @@ export type PaginateWithCursorOptions<
   operator?: "<" | ">";
   orderBy?: "asc" | "desc";
 };
+
+export type UpsertOptionsRawBuilder = {
+  updateOnConflict?: boolean;
+  returning?: string[];
+};

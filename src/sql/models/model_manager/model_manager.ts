@@ -379,7 +379,7 @@ export class ModelManager<T extends Model> {
         this.model.table,
         conflictColumns,
         columnsToUpdate,
-        options.updateOnConflict || true ? "update" : "ignore",
+        (options.updateOnConflict ?? true) ? "update" : "ignore",
         options.returning as string[],
       ),
     ]);

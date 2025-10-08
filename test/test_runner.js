@@ -10,10 +10,10 @@ import {
 } from "./test_environments.js";
 
 const sqlEnvironments = [
-  pgConfig,
   mysqlConfig,
   sqliteConfig,
   mariadbConfig,
+  pgConfig,
   cockroachdbConfig,
 ];
 

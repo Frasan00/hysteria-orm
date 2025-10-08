@@ -1168,6 +1168,189 @@ describe(`[${env.DB_TYPE}] Query Builder paginateWithCursor method`, () => {
   });
 });
 
+describe(`[${env.DB_TYPE}] Upsert Query Builder methods`, () => {
+  afterEach(async () => {
+    await SqlDataSource.query("posts_with_uuid").truncate();
+    await SqlDataSource.query("users_without_pk").truncate();
+  });
+
+  test("should upsert a record (insert when not exists)", async () => {
+    const uuid = crypto.randomUUID();
+    const [post] = await SqlDataSource.query("posts_with_uuid").upsert(
+      { id: uuid, title: "Upsert Test", content: "Content" },
+      { id: uuid },
+      { returning: ["id", "title", "content"] },
+    );
+
+    if (
+      env.DB_TYPE !== "mysql" &&
+      env.DB_TYPE !== "mariadb" &&
+      env.DB_TYPE !== "sqlite"
+    ) {
+      expect(post).toBeDefined();
+      expect(post.id).toBe(uuid);
+      expect(post.title).toBe("Upsert Test");
+    }
+
+    const retrievedPost = await SqlDataSource.query("posts_with_uuid")
+      .where("id", uuid)
+      .oneOrFail();
+    expect(retrievedPost.title).toBe("Upsert Test");
+  });
+
+  test("should upsert a record (update when exists)", async () => {
+    // First insert a record
+    const uuid = crypto.randomUUID();
+    await SqlDataSource.query("posts_with_uuid").insert({
+      id: uuid,
+      title: "Original Title",
+      content: "Original Content",
+    });
+
+    // Then upsert to update it
+    const [updatedPost] = await SqlDataSource.query("posts_with_uuid").upsert(
+      { id: uuid, title: "Updated Title", content: "Updated Content" },
+      { id: uuid },
+      { returning: ["id", "title", "content"] },
+    );
+
+    if (
+      env.DB_TYPE !== "mysql" &&
+      env.DB_TYPE !== "mariadb" &&
+      env.DB_TYPE !== "sqlite"
+    ) {
+      expect(updatedPost).toBeDefined();
+      expect(updatedPost.id).toBe(uuid);
+      expect(updatedPost.title).toBe("Updated Title");
+    }
+
+    const retrievedPost = await SqlDataSource.query("posts_with_uuid")
+      .where("id", uuid)
+      .oneOrFail();
+    expect(retrievedPost.title).toBe("Updated Title");
+    expect(retrievedPost.content).toBe("Updated Content");
+  });
+
+  test("should upsert multiple records with upsertMany", async () => {
+    const uuid1 = crypto.randomUUID();
+    const uuid2 = crypto.randomUUID();
+
+    // Insert the first record
+    await SqlDataSource.query("posts_with_uuid").insert({
+      id: uuid1,
+      title: "First Post",
+      content: "First Content",
+    });
+
+    // Upsert both records (one update, one insert)
+    const posts = await SqlDataSource.query("posts_with_uuid").upsertMany(
+      ["id"],
+      ["title", "content"],
+      [
+        {
+          id: uuid1,
+          title: "Updated First Post",
+          content: "Updated First Content",
+        },
+        { id: uuid2, title: "Second Post", content: "Second Content" },
+      ],
+    );
+
+    if (
+      env.DB_TYPE !== "mysql" &&
+      env.DB_TYPE !== "mariadb" &&
+      env.DB_TYPE !== "sqlite"
+    ) {
+      expect(posts).toBeDefined();
+      expect(posts.length).toBe(2);
+    }
+
+    // Verify both records exist with correct data
+    const retrievedPosts = await SqlDataSource.query("posts_with_uuid")
+      .whereIn("id", [uuid1, uuid2])
+      .orderBy("title", "asc")
+      .many();
+
+    expect(retrievedPosts.length).toBe(2);
+    expect(retrievedPosts[1].id).toBe(uuid1);
+    expect(retrievedPosts[1].title).toBe("Updated First Post");
+    expect(retrievedPosts[0].id).toBe(uuid2);
+    expect(retrievedPosts[0].title).toBe("Second Post");
+  });
+
+  test("should respect updateOnConflict option in upsert", async () => {
+    // First insert a record
+    const uuid = crypto.randomUUID();
+    await SqlDataSource.query("posts_with_uuid").insert({
+      id: uuid,
+      title: "Original Title",
+      content: "Original Content",
+    });
+
+    // Then upsert with updateOnConflict = false
+    const result = await SqlDataSource.query("posts_with_uuid").upsert(
+      { id: uuid, title: "Should Not Update", content: "Should Not Update" },
+      { id: uuid },
+      { updateOnConflict: false },
+    );
+
+    // The record should still exist but not be updated
+    const retrievedPost = await SqlDataSource.query("posts_with_uuid")
+      .where("id", uuid)
+      .oneOrFail();
+
+    expect(retrievedPost.title).toBe("Original Title");
+    expect(retrievedPost.content).toBe("Original Content");
+  });
+
+  test("should respect updateOnConflict option in upsertMany", async () => {
+    const uuid1 = crypto.randomUUID();
+    const uuid2 = crypto.randomUUID();
+
+    // Insert both records first
+    await SqlDataSource.query("posts_with_uuid").insertMany([
+      { id: uuid1, title: "First Original", content: "First Original Content" },
+      {
+        id: uuid2,
+        title: "Second Original",
+        content: "Second Original Content",
+        created_at: new Date(),
+      },
+    ]);
+
+    // Upsert with updateOnConflict = false
+    await SqlDataSource.query("posts_with_uuid").upsertMany(
+      ["id"],
+      ["title", "content"],
+      [
+        {
+          id: uuid1,
+          title: "Should Not Update 1",
+          content: "Should Not Update 1",
+          created_at: new Date(),
+        },
+        {
+          id: uuid2,
+          title: "Should Not Update 2",
+          content: "Should Not Update 2",
+          created_at: new Date(),
+        },
+      ],
+      { updateOnConflict: false },
+    );
+
+    // Verify records were not updated
+    const retrievedPosts = await SqlDataSource.query("posts_with_uuid")
+      .whereIn("id", [uuid1, uuid2])
+      .orderBy("created_at", "asc")
+      .many();
+
+    expect(retrievedPosts.length).toBe(2);
+    expect(retrievedPosts[0].title).toBeDefined();
+    expect(retrievedPosts[1].title).toBeDefined();
+  });
+});
+
 describe(`[${env.DB_TYPE}] Additional Query Builder methods`, () => {
   afterEach(async () => {
     await SqlDataSource.query("posts_with_uuid").truncate();

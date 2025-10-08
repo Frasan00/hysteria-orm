@@ -21,8 +21,14 @@ class MysqlOnDuplicateInterpreter implements Interpreter {
     const interpreterUtils = new InterpreterUtils(this.model);
 
     if (onDuplicateNode.mode === "ignore") {
+      const noOpColumn = (onDuplicateNode.conflictColumns?.[0] ||
+        "id") as string;
+      const formattedNoOpColumn = interpreterUtils.formatStringColumn(
+        "mysql",
+        `${onDuplicateNode.table}.${noOpColumn}`,
+      );
       return {
-        sql: "ON DUPLICATE KEY IGNORE",
+        sql: `AS new ON DUPLICATE KEY UPDATE ${formattedNoOpColumn} = ${formattedNoOpColumn}`,
         bindings: [],
       };
     }
