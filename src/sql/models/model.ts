@@ -53,6 +53,8 @@ import { AnnotatedModel } from "./model_query_builder/model_query_builder_types"
 import { getBaseTableName } from "./model_utils";
 import { ManyToMany } from "./relations/many_to_many";
 import { RelationEnum } from "./relations/relation";
+import { DryModelQueryBuilder } from "./model_query_builder/dry_model_query_builder";
+import { DryModelQueryBuilderWithoutReadOperations } from "../query_builder/query_builder_types";
 
 /**
  * @description Represents a Table in the Database
@@ -140,6 +142,19 @@ export abstract class Model extends Entity {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
     return modelManager.query() as ModelQueryBuilder<T>;
+  }
+
+  /**
+   * @description Returns a dry query builder instance
+   * @description The dry query builder instance will not execute the query
+   */
+  static dryQuery<T extends Model>(
+    this: new () => T | typeof Model,
+    options?: Omit<BaseModelMethodOptions, "ignoreHooks">,
+  ): DryModelQueryBuilderWithoutReadOperations<T> {
+    const typeofModel = this as unknown as typeof Model;
+    const modelManager = typeofModel.dispatchModelManager<T>(options);
+    return modelManager.dryQuery() as unknown as DryModelQueryBuilderWithoutReadOperations<T>;
   }
 
   /**

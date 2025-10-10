@@ -319,8 +319,8 @@ export class ModelQueryBuilder<
   override async softDelete(
     options: SoftDeleteOptions<T> = {},
   ): Promise<number> {
-    const { ignoreBeforeDeleteHook = false } = options || {};
-    !ignoreBeforeDeleteHook && (await this.model.beforeDelete?.(this));
+    const { ignoreBeforeUpdateHook = false } = options || {};
+    !ignoreBeforeUpdateHook && (await this.model.beforeUpdate?.(this));
     return super.softDelete(options);
   }
 

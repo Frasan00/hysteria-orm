@@ -7,5 +7,5 @@ export type DeleteOptions = {
 export type SoftDeleteOptions<T> = {
   column?: MongoCollectionKey<T>;
   value?: string | number | boolean;
-  ignoreBeforeDeleteHook?: boolean;
+  ignoreBeforeUpdateHook?: boolean;
 };

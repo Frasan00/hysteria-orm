@@ -172,9 +172,6 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    */
   async stream<M extends Model = T>(
     options: StreamOptions = {},
-    cb?: (
-      stream: PassThrough & AsyncGenerator<AnnotatedModel<M, any, any>>,
-    ) => void | Promise<void>,
   ): Promise<PassThrough & AsyncGenerator<AnnotatedModel<M, {}, {}>>> {
     const { sql, bindings } = this.unWrap();
     const stream = await execSqlStreaming(
@@ -189,9 +186,6 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
       },
     );
 
-    await cb?.(
-      stream as PassThrough & AsyncGenerator<AnnotatedModel<M, {}, {}>>,
-    );
     return stream as PassThrough & AsyncGenerator<AnnotatedModel<M, {}, {}>>;
   }
 
@@ -847,17 +841,15 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   /**
    * @description Returns the query with the parameters bound to the query
    */
-  toQuery(dbType: SqlDataSourceType = this.dbType || "mysql"): string {
-    const { sql, bindings } = this.unWrap(dbType);
+  toQuery(): string {
+    const { sql, bindings } = this.unWrap();
     return bindParamsIntoQuery(sql, bindings);
   }
 
   /**
    * @description Returns the query with database driver placeholders and the params
    */
-  unWrap(
-    _dbType: SqlDataSourceType = this.dbType,
-  ): ReturnType<typeof AstParser.prototype.parse> {
+  unWrap(): ReturnType<typeof AstParser.prototype.parse> {
     if (!this.selectNodes.length) {
       this.selectNodes = [new SelectNode(`*`)];
     }
@@ -957,6 +949,10 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     }
 
     return [
+      this.insertNode,
+      this.updateNode,
+      this.deleteNode,
+      this.truncateNode,
       // Select
       ...this.withNodes,
       this.distinctNode,

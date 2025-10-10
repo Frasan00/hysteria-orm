@@ -19,7 +19,9 @@ import { normalizeColumnType } from "./migrations/schema_diff/type_normalizer";
 import { Model } from "./models/model";
 import { ModelManager } from "./models/model_manager/model_manager";
 import { RawModelOptions } from "./models/model_types";
+import { DryQueryBuilder } from "./query_builder/dry_query_builder";
 import { QueryBuilder } from "./query_builder/query_builder";
+import { DryQueryBuilderWithoutReadOperations } from "./query_builder/query_builder_types";
 import { getRawQueryBuilderModel } from "./query_builder/query_builder_utils";
 import type {
   TableColumnInfo,
@@ -349,6 +351,33 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
+   * @description Returns a dry query builder instance
+   * @description The dry query builder instance will not execute the query, it will return the query statement
+   * @returns The dry query builder instance
+   */
+  static dryQuery<S extends string>(
+    table: TableFormat<S>,
+    options?: RawModelOptions,
+  ): DryQueryBuilderWithoutReadOperations {
+    const instance = this.getInstance();
+    const sqlForQueryBuilder =
+      instance.isInGlobalTransaction && instance.globalTransaction?.isActive
+        ? instance.globalTransaction.sql
+        : instance;
+
+    const qb = new DryQueryBuilder(
+      getRawQueryBuilderModel(table, options),
+      sqlForQueryBuilder as SqlDataSource,
+    );
+
+    if (options?.alias) {
+      qb.from(table, options.alias);
+    }
+
+    return qb;
+  }
+
+  /**
    * @description Creates a table on the database, return the query to be executed to create the table
    */
   static createTable(...args: Parameters<Schema["createTable"]>): string {
@@ -623,6 +652,18 @@ export class SqlDataSource extends DataSource {
     }
 
     return qb;
+  }
+
+  /**
+   * @description Returns a DryQueryBuilder instance
+   * @description The dry query builder instance will not execute the query, it will return the query statement
+   * @returns The dry query builder instance
+   */
+  dryQuery<S extends string>(
+    table: TableFormat<S>,
+    options?: RawModelOptions,
+  ): DryQueryBuilderWithoutReadOperations {
+    return new DryQueryBuilder(getRawQueryBuilderModel(table, options), this);
   }
 
   /**

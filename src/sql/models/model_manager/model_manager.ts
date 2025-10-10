@@ -12,6 +12,7 @@ import { SqlDataSource } from "../../sql_data_source";
 import { SqlDataSourceType } from "../../sql_data_source_types";
 import { execSql } from "../../sql_runner/sql_runner";
 import { Model } from "../model";
+import { DryModelQueryBuilder } from "../model_query_builder/dry_model_query_builder";
 import { ModelQueryBuilder } from "../model_query_builder/model_query_builder";
 import { AnnotatedModel } from "../model_query_builder/model_query_builder_types";
 import { ModelWithoutRelations } from "../model_types";
@@ -489,6 +490,14 @@ export class ModelManager<T extends Model> {
    */
   query(): Omit<ModelQueryBuilder<T>, "insert" | "insertMany"> {
     return new ModelQueryBuilder<T>(this.model, this.sqlDataSource);
+  }
+
+  /**
+   * @description Returns a dry query builder instance
+   * @description The dry query builder instance will not execute the query, it will return the query statement
+   */
+  dryQuery(): Omit<DryModelQueryBuilder<T>, "insert" | "insertMany"> {
+    return new DryModelQueryBuilder<T>(this.model, this.sqlDataSource);
   }
 
   /**

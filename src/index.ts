@@ -33,8 +33,10 @@ export { defineMigrator } from "./sql/migrations/migrator";
 export type { ClientMigrator } from "./sql/migrations/migrator";
 
 // Query Builder
-export { QueryBuilder } from "./sql/query_builder/query_builder";
-export { ModelQueryBuilder } from "./sql/models/model_query_builder/model_query_builder";
+export type { QueryBuilder } from "./sql/query_builder/query_builder";
+export type { ModelQueryBuilder } from "./sql/models/model_query_builder/model_query_builder";
+export type { DryQueryBuilder } from "./sql/query_builder/dry_query_builder";
+export type { DryModelQueryBuilder } from "./sql/models/model_query_builder/dry_model_query_builder";
 
 // Utils
 export { default as logger } from "./utils/logger";
