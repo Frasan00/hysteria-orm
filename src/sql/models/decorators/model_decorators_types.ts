@@ -195,8 +195,8 @@ export type ColumnOptions = {
 export type ColumnType = {
   columnName: string;
   databaseName: string;
-  serialize?: (value: any) => any;
-  prepare?: (value: any) => any;
+  serialize?: (value: any) => any | Promise<any>;
+  prepare?: (value: any) => any | Promise<any>;
   hidden?: boolean;
   autoUpdate?: boolean;
   isPrimary: boolean;

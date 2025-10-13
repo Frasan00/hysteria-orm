@@ -233,7 +233,7 @@ export const promisifySqliteQuery = <T extends Model>(
           const interpreterUtils = new InterpreterUtils(typeofModel);
 
           const { columns: preparedColumns, values: preparedValues } =
-            interpreterUtils.prepareColumns(
+            await interpreterUtils.prepareColumns(
               Object.keys(model),
               Object.values(model),
               "insert",

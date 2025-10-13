@@ -1,6 +1,8 @@
 import { baseSoftDeleteDate } from "../../utils/date_utils";
 import { DeleteNode } from "../ast/query/node/delete";
+import { FromNode } from "../ast/query/node/from";
 import { InsertNode } from "../ast/query/node/insert";
+import { OnDuplicateNode } from "../ast/query/node/on_duplicate";
 import { TruncateNode } from "../ast/query/node/truncate";
 import { UpdateNode } from "../ast/query/node/update";
 import type { Model } from "../models/model";
@@ -24,91 +26,136 @@ export class DryQueryBuilder extends QueryBuilder {
   /**
    * @description Builds the insert query statement without executing it, use 'unWrap' or 'toQuery' to get the query statement
    * @param args The arguments to pass to the insert method
+   * @warning This method does not run model or column hooks
    * @returns The query builder
    */
   // @ts-expect-error
   override insert(
     ...args: Parameters<typeof QueryBuilder.prototype.insert>
   ): this {
-    const { columns: preparedColumns, values: preparedValues } =
-      this.interpreterUtils.prepareColumns(
-        Object.keys(args[0]),
-        Object.values(args[0]),
-        "insert",
-      );
-
+    const [data, options] = args;
     const insertObject = Object.fromEntries(
-      preparedColumns.map((column, index) => [column, preparedValues[index]]),
+      Object.keys(data).map((column) => [
+        column,
+        data[column as keyof typeof data],
+      ]),
     );
 
-    this.insertNode = new InsertNode(this.fromNode, [insertObject], args[1]);
+    this.insertNode = new InsertNode(this.fromNode, [insertObject], options);
     return this;
   }
 
   /**
    * @description Builds the insert many query statement without executing it, use 'unWrap' or 'toQuery' to get the query statement
    * @param args The arguments to pass to the insert many method
+   * @warning This method does not run model or column hooks
    * @returns The query builder
    */
   // @ts-expect-error
   override insertMany(
     ...args: Parameters<typeof QueryBuilder.prototype.insertMany>
   ): this {
-    if (!args[0].length) {
+    const [data, options] = args;
+    if (!data.length) {
       return this;
     }
 
-    const models = args[0].map((model) => {
-      const { columns: preparedColumns, values: preparedValues } =
-        this.interpreterUtils.prepareColumns(
-          Object.keys(model),
-          Object.values(model),
-          "insert",
-        );
-
+    const models = data.map((model) => {
       return Object.fromEntries(
-        preparedColumns.map((column, index) => [column, preparedValues[index]]),
+        Object.keys(model).map((column) => [
+          column,
+          model[column as keyof typeof model],
+        ]),
       );
     });
 
-    this.insertNode = new InsertNode(this.fromNode, models, args[1]);
+    this.insertNode = new InsertNode(this.fromNode, models, options);
     return this;
   }
 
   /**
    * @description Builds the upsert query statement without executing it, use 'unWrap' or 'toQuery' to get the query statement
    * @param args The arguments to pass to the upsert method
+   * @warning This method does not run model or column hooks
    * @returns The query builder
    */
   // @ts-expect-error
   override upsert(
     ...args: Parameters<typeof QueryBuilder.prototype.upsert>
   ): this {
+    const [data, searchCriteria, options] = args;
+    const columnsToUpdate = Object.keys(data);
+    const conflictColumns = Object.keys(searchCriteria);
+
+    this.insertNode = new InsertNode(
+      new FromNode(this.model.table),
+      [data],
+      undefined,
+      true,
+    );
+
+    this.onDuplicateNode = new OnDuplicateNode(
+      this.model.table,
+      conflictColumns,
+      columnsToUpdate,
+      (options?.updateOnConflict ?? true) ? "update" : "ignore",
+      options?.returning as string[],
+    );
+
+    return this;
+  }
+
+  // @ts-expect-error
+  override upsertMany(
+    ...args: Parameters<typeof QueryBuilder.prototype.upsertMany>
+  ): this {
+    const [conflictColumns, columnsToUpdate, data, options] = args;
+    const insertObjects: Record<string, any>[] = data.map((record) => {
+      return Object.fromEntries(
+        Object.keys(record).map((column) => [
+          column,
+          record[column as keyof typeof record],
+        ]),
+      );
+    });
+
+    this.insertNode = new InsertNode(
+      new FromNode(this.model.table),
+      insertObjects,
+      undefined,
+      true,
+    );
+
+    this.onDuplicateNode = new OnDuplicateNode(
+      this.model.table,
+      conflictColumns,
+      columnsToUpdate,
+      (options?.updateOnConflict ?? true) ? "update" : "ignore",
+      options?.returning as string[],
+    );
+
     return this;
   }
 
   /**
    * @description Builds the update query statement without executing it, use 'unWrap' or 'toQuery' to get the query statement
    * @param data The data to update
+   * @warning This method does not run model or column hooks
    * @returns The query builder
    */
   // @ts-expect-error
   override update(data: Record<string, any>): this {
-    const rawColumns = Object.keys(data);
-    const rawValues = Object.values(data);
-
-    const { columns, values } = this.interpreterUtils.prepareColumns(
-      rawColumns,
-      rawValues,
-      "update",
+    this.updateNode = new UpdateNode(
+      this.fromNode,
+      Object.keys(data),
+      Object.values(data),
     );
-
-    this.updateNode = new UpdateNode(this.fromNode, columns, values);
     return this;
   }
 
   /**
    * @description Builds the delete query statement without executing it, use 'unWrap' or 'toQuery' to get the query statement
+   * @warning This method does not run model or column hooks
    * @returns The query builder
    */
   // @ts-expect-error
@@ -119,6 +166,7 @@ export class DryQueryBuilder extends QueryBuilder {
 
   /**
    * @description Builds the truncate query statement without executing it, use 'unWrap' or 'toQuery' to get the query statement
+   * @warning This method does not run model or column hooks
    * @returns The query builder
    */
   // @ts-expect-error
@@ -130,6 +178,7 @@ export class DryQueryBuilder extends QueryBuilder {
   /**
    * @description Builds the soft delete query statement without executing it, use 'unWrap' or 'toQuery' to get the query statement
    * @param options Soft delete options
+   * @warning This method does not run model or column hooks
    * @returns The query builder
    */
   // @ts-expect-error
@@ -139,13 +188,11 @@ export class DryQueryBuilder extends QueryBuilder {
     const { column = "deletedAt", value = baseSoftDeleteDate() } =
       options || {};
 
-    const { columns, values } = this.interpreterUtils.prepareColumns(
+    this.updateNode = new UpdateNode(
+      this.fromNode,
       [column as string],
       [value],
-      "update",
     );
-
-    this.updateNode = new UpdateNode(this.fromNode, columns, values);
     return this;
   }
 }

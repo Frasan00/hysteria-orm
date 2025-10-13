@@ -30,7 +30,7 @@ import {
 } from "../pagination";
 import { deepCloneNode } from "../resources/utils";
 import { SqlDataSource } from "../sql_data_source";
-import type { SqlDataSourceType, TableFormat } from "../sql_data_source_types";
+import type { TableFormat } from "../sql_data_source_types";
 import { execSql, execSqlStreaming } from "../sql_runner/sql_runner";
 import { SoftDeleteOptions } from "./delete_query_builder_type";
 import { JsonQueryBuilder } from "./json_query_builder";
@@ -52,6 +52,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   protected mustRemoveAnnotations: boolean = false;
   protected interpreterUtils: InterpreterUtils;
   protected insertNode: InsertNode | null = null;
+  protected onDuplicateNode: OnDuplicateNode | null = null;
   protected updateNode: UpdateNode | null = null;
   protected deleteNode: DeleteNode | null = null;
   protected truncateNode: TruncateNode | null = null;
@@ -573,7 +574,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    */
   async insert(data: Record<string, any>, returning?: string[]): Promise<T> {
     const { columns: preparedColumns, values: preparedValues } =
-      this.interpreterUtils.prepareColumns(
+      await this.interpreterUtils.prepareColumns(
         Object.keys(data),
         Object.values(data),
         "insert",
@@ -610,18 +611,23 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
       return [];
     }
 
-    const models = data.map((model) => {
-      const { columns: preparedColumns, values: preparedValues } =
-        this.interpreterUtils.prepareColumns(
-          Object.keys(model),
-          Object.values(model),
-          "insert",
-        );
+    const models = await Promise.all(
+      data.map(async (model) => {
+        const { columns: preparedColumns, values: preparedValues } =
+          await this.interpreterUtils.prepareColumns(
+            Object.keys(model),
+            Object.values(model),
+            "insert",
+          );
 
-      return Object.fromEntries(
-        preparedColumns.map((column, index) => [column, preparedValues[index]]),
-      );
-    });
+        return Object.fromEntries(
+          preparedColumns.map((column, index) => [
+            column,
+            preparedValues[index],
+          ]),
+        );
+      }),
+    );
 
     this.insertNode = new InsertNode(this.fromNode, models, returning);
     const { sql, bindings } = this.astParser.parse([this.insertNode]);
@@ -652,7 +658,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     const columnsToUpdate = Object.keys(data);
     const conflictColumns = Object.keys(searchCriteria);
     const { columns: preparedColumns, values: preparedValues } =
-      this.interpreterUtils.prepareColumns(
+      await this.interpreterUtils.prepareColumns(
         Object.keys(data),
         Object.values(data),
         "insert",
@@ -706,20 +712,25 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   ): Promise<T[]> {
     const insertObjects: Record<string, any>[] = [];
 
-    for (const record of data) {
-      const { columns: preparedColumns, values: preparedValues } =
-        this.interpreterUtils.prepareColumns(
-          Object.keys(record),
-          Object.values(record),
-          "insert",
+    await Promise.all(
+      data.map(async (record) => {
+        const { columns: preparedColumns, values: preparedValues } =
+          await this.interpreterUtils.prepareColumns(
+            Object.keys(record),
+            Object.values(record),
+            "insert",
+          );
+
+        const insertObject = Object.fromEntries(
+          preparedColumns.map((column, index) => [
+            column,
+            preparedValues[index],
+          ]),
         );
 
-      const insertObject = Object.fromEntries(
-        preparedColumns.map((column, index) => [column, preparedValues[index]]),
-      );
-
-      insertObjects.push(insertObject);
-    }
+        insertObjects.push(insertObject);
+      }),
+    );
 
     const { sql, bindings } = this.astParser.parse([
       new InsertNode(
@@ -757,7 +768,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     const rawColumns = Object.keys(data);
     const rawValues = Object.values(data);
 
-    const { columns, values } = this.interpreterUtils.prepareColumns(
+    const { columns, values } = await this.interpreterUtils.prepareColumns(
       rawColumns,
       rawValues,
       "update",
@@ -817,7 +828,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     const { column = "deletedAt", value = baseSoftDeleteDate() } =
       options || {};
 
-    const { columns, values } = this.interpreterUtils.prepareColumns(
+    const { columns, values } = await this.interpreterUtils.prepareColumns(
       [column as string],
       [value],
       "update",
@@ -948,12 +959,38 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
       this.selectNodes = [new SelectNode(`*`)];
     }
 
+    if (this.insertNode) {
+      return [this.insertNode, this.onDuplicateNode].filter(
+        Boolean,
+      ) as QueryNode[];
+    }
+
+    if (this.updateNode) {
+      return [
+        this.updateNode,
+        ...this.whereNodes,
+        ...this.joinNodes,
+        ...this.orderByNodes,
+        this.limitNode,
+      ].filter(Boolean) as QueryNode[];
+    }
+
+    if (this.deleteNode) {
+      return [
+        this.deleteNode,
+        ...this.whereNodes,
+        ...this.joinNodes,
+        ...this.orderByNodes,
+        this.limitNode,
+      ].filter(Boolean) as QueryNode[];
+    }
+
+    if (this.truncateNode) {
+      return [this.truncateNode];
+    }
+
+    // Read case
     return [
-      this.insertNode,
-      this.updateNode,
-      this.deleteNode,
-      this.truncateNode,
-      // Select
       ...this.withNodes,
       this.distinctNode,
       this.distinctOnNode,

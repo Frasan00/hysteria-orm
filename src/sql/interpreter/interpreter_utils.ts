@@ -98,11 +98,11 @@ export class InterpreterUtils {
     }
   }
 
-  prepareColumns(
+  async prepareColumns(
     columns: string[],
     values: any[],
     mode: "insert" | "update" = "insert",
-  ): { columns: string[]; values: any[] } {
+  ): Promise<{ columns: string[]; values: any[] }> {
     if (!columns.length) {
       return { columns, values };
     }
@@ -122,23 +122,25 @@ export class InterpreterUtils {
       filteredValues.push(value);
     }
 
-    for (let i = 0; i < filteredColumns.length; i++) {
-      const column = filteredColumns[i];
-      const value = filteredValues[i];
+    await Promise.all(
+      filteredColumns.map(async (_, i) => {
+        const column = filteredColumns[i];
+        const value = filteredValues[i];
 
-      const modelColumn = this.modelColumnsMap.get(column);
+        const modelColumn = this.modelColumnsMap.get(column);
 
-      let preparedValue = value;
-      if (modelColumn) {
-        if (mode === "insert" && modelColumn.prepare) {
-          preparedValue = modelColumn.prepare(value);
-        } else if (mode === "update") {
-          preparedValue = modelColumn.prepare?.(value) ?? value;
+        let preparedValue = value;
+        if (modelColumn) {
+          if (mode === "insert" && modelColumn.prepare) {
+            preparedValue = await modelColumn.prepare(value);
+          } else if (mode === "update") {
+            preparedValue = (await modelColumn.prepare?.(value)) ?? value;
+          }
         }
-      }
 
-      filteredValues[i] = preparedValue;
-    }
+        filteredValues[i] = preparedValue;
+      }),
+    );
 
     for (const column of this.modelColumnsMap.keys()) {
       if (!filteredColumns.includes(column)) {

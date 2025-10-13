@@ -155,8 +155,6 @@ export type DryQueryBuilderWithoutReadOperations = Omit<
   | "paginateWithCursor"
   | "exists"
   | "pluck"
-  | "upsert"
-  | "upsertMany"
   | "increment"
   | "decrement"
   | "getSum"

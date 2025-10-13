@@ -27,25 +27,17 @@ export class DryModelQueryBuilder<
   /**
    * @description Builds the insert query statement without executing it, use 'unWrap' or 'toQuery' to get the query statement
    * @param args The arguments to pass to the insert method
+   * @warning This method does not run model or column hooks
    * @returns The query builder
    */
   // @ts-expect-error
   override insert(...args: Parameters<typeof this.model.insert<T>>): this {
     const [data, options] = args;
-
-    if (!options?.ignoreHooks) {
-      this.model.beforeInsert?.(this);
-    }
-
-    const { columns: preparedColumns, values: preparedValues } =
-      this.interpreterUtils.prepareColumns(
-        Object.keys(data),
-        Object.values(data),
-        "insert",
-      );
-
     const insertObject = Object.fromEntries(
-      preparedColumns.map((column, index) => [column, preparedValues[index]]),
+      Object.keys(data).map((column) => [
+        column,
+        data[column as keyof typeof data],
+      ]),
     );
 
     this.insertNode = new InsertNode(
@@ -59,6 +51,7 @@ export class DryModelQueryBuilder<
   /**
    * @description Builds the insert many query statement without executing it, use 'unWrap' or 'toQuery' to get the query statement
    * @param args The arguments to pass to the insert many method
+   * @warning This method does not run model or column hooks
    * @returns The query builder
    */
   // @ts-expect-error
@@ -66,25 +59,16 @@ export class DryModelQueryBuilder<
     ...args: Parameters<typeof this.model.insertMany<T>>
   ): this {
     const [data, options] = args;
-
     if (!data.length) {
       return this;
     }
 
-    if (!options?.ignoreHooks) {
-      this.model.beforeInsert?.(this);
-    }
-
     const models = data.map((model) => {
-      const { columns: preparedColumns, values: preparedValues } =
-        this.interpreterUtils.prepareColumns(
-          Object.keys(model),
-          Object.values(model),
-          "insert",
-        );
-
       return Object.fromEntries(
-        preparedColumns.map((column, index) => [column, preparedValues[index]]),
+        Object.keys(model).map((column) => [
+          column,
+          model[column as keyof typeof model],
+        ]),
       );
     });
 
@@ -99,29 +83,19 @@ export class DryModelQueryBuilder<
   /**
    * @description Builds the update query statement without executing it, use 'unWrap' or 'toQuery' to get the query statement
    * @param data The data to update
-   * @param options Update options
+   * @warning This method does not run model or column hooks
    * @returns The query builder
    */
   // @ts-expect-error
   override update(
     ...args: Parameters<ReturnType<typeof this.model.query<T>>["update"]>
   ): this {
-    const [data, options] = args;
-
-    if (!options?.ignoreBeforeUpdateHook) {
-      this.model.beforeUpdate?.(this as any);
-    }
-
-    const rawColumns = Object.keys(data);
-    const rawValues = Object.values(data);
-
-    const { columns, values } = this.interpreterUtils.prepareColumns(
-      rawColumns,
-      rawValues,
-      "update",
+    const [data] = args;
+    this.updateNode = new UpdateNode(
+      this.fromNode,
+      Object.keys(data),
+      Object.values(data),
     );
-
-    this.updateNode = new UpdateNode(this.fromNode, columns, values);
     return this;
   }
 
@@ -157,6 +131,7 @@ export class DryModelQueryBuilder<
   /**
    * @description Builds the soft delete query statement without executing it, use 'unWrap' or 'toQuery' to get the query statement
    * @param options Soft delete options
+   * @warning This method does not run model or column hooks
    * @returns The query builder
    */
   // @ts-expect-error
@@ -165,20 +140,14 @@ export class DryModelQueryBuilder<
   ): this {
     const [options] = args;
 
-    if (!options?.ignoreBeforeUpdateHook) {
-      this.model.beforeUpdate?.(this as any);
-    }
-
     const { column = "deletedAt", value = baseSoftDeleteDate() } =
       options || {};
 
-    const { columns, values } = this.interpreterUtils.prepareColumns(
+    this.updateNode = new UpdateNode(
+      this.fromNode,
       [column as string],
       [value],
-      "update",
     );
-
-    this.updateNode = new UpdateNode(this.fromNode, columns, values);
     return this;
   }
 }
