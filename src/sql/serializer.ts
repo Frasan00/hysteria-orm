@@ -14,13 +14,19 @@ export const parseDatabaseDataIntoModelResponse = async <
   mustRemoveAnnotations: boolean = false,
 ): Promise<T> => {
   const casedModel: Record<string, any> = {};
-  const hiddenColumns = modelColumns
-    .filter((column) => column.hidden)
-    .map((column) => column.columnName);
+  const hiddenColumnsSet = new Set<string>(
+    modelColumns
+      .filter((column) => column.hidden)
+      .map((column) => column.columnName),
+  );
 
   const databaseColumnsMap = new Map<string, ColumnType>(
     modelColumns.map((modelColumn) => [modelColumn.databaseName, modelColumn]),
   );
+
+  const modelSelectedColumnsSet = modelSelectedColumns.length
+    ? new Set<string>(modelSelectedColumns)
+    : null;
 
   await Promise.all(
     Object.keys(model).map(async (key) => {
@@ -42,9 +48,8 @@ export const parseDatabaseDataIntoModelResponse = async <
 
       if (
         !modelColumnsMap.has(modelKey) || // Handled in the $annotations property
-        hiddenColumns.includes(modelKey) ||
-        (modelSelectedColumns.length &&
-          !modelSelectedColumns.includes(modelKey))
+        hiddenColumnsSet.has(modelKey) ||
+        (modelSelectedColumnsSet && !modelSelectedColumnsSet.has(modelKey))
       ) {
         return;
       }
@@ -66,11 +71,13 @@ export const parseDatabaseDataIntoModelResponse = async <
   );
 
   // Fill model with modelSelectedColumns as null if not present in the model
-  modelSelectedColumns.forEach((column) => {
-    if (!casedModel[column]) {
-      casedModel[column] = null;
+  if (modelSelectedColumnsSet) {
+    for (const column of modelSelectedColumnsSet) {
+      if (!(column in casedModel)) {
+        casedModel[column] = null;
+      }
     }
-  });
+  }
 
   return casedModel as T;
 };
@@ -82,29 +89,31 @@ export const processAnnotations = (
   typeofModel: typeof Model,
   modelAnnotatedColumns: string[] = [],
 ) => {
-  if (!Object.keys(model[key]).length) {
+  const annotationsData = model[key];
+  if (!annotationsData || !Object.keys(annotationsData).length) {
     return;
   }
 
-  const $annotations = Object.keys(model[key]).reduce(
-    (acc, objKey) => {
-      if (!modelAnnotatedColumns.includes(objKey)) {
-        return acc;
-      }
+  const modelAnnotatedColumnsSet =
+    modelAnnotatedColumns.length > 0
+      ? new Set<string>(modelAnnotatedColumns)
+      : null;
 
-      acc[convertCase(objKey, typeofModel.modelCaseConvention)] =
-        model[key][objKey];
-
-      return acc;
-    },
-    {} as Record<string, any>,
-  );
-
-  if (!Object.keys($annotations).length) {
+  if (!modelAnnotatedColumnsSet) {
     return;
   }
 
-  casedModel[key] = $annotations;
+  const $annotations: Record<string, any> = {};
+  for (const objKey of Object.keys(annotationsData)) {
+    if (modelAnnotatedColumnsSet.has(objKey)) {
+      $annotations[convertCase(objKey, typeofModel.modelCaseConvention)] =
+        annotationsData[objKey];
+    }
+  }
+
+  if (Object.keys($annotations).length > 0) {
+    casedModel[key] = $annotations;
+  }
 };
 
 /**
@@ -127,24 +136,29 @@ export const serializeModel = async <T extends Model>(
   );
 
   // At this point `modelSelectedColumns` are in database convention
-  modelSelectedColumns = modelSelectedColumns
-    .map((databaseColumn) => {
-      // If alias, skip because it will be added in $annotations
-      if (databaseColumn.toLowerCase().includes("as")) {
-        return;
-      }
+  const processedSelectedColumns: string[] = [];
+  for (const databaseColumn of modelSelectedColumns) {
+    // If alias, skip because it will be added in $annotations
+    if (databaseColumn.toLowerCase().includes("as")) {
+      continue;
+    }
 
-      // If contains . it means it's something like user.name, so split it and return the last part since it was something useful for the query but at this point we want what to retrieve
-      if (databaseColumn.includes(".")) {
-        databaseColumn = databaseColumn.split(".").pop() as string;
-      }
+    let processedColumn = databaseColumn;
+    // If contains . it means it's something like user.name, so split it and return the last part since it was something useful for the query but at this point we want what to retrieve
+    if (processedColumn.includes(".")) {
+      processedColumn = processedColumn.split(".").pop() as string;
+    }
 
-      return (
-        modelColumnsMap.get(databaseColumn)?.columnName ??
-        convertCase(databaseColumn, typeofModel.modelCaseConvention)
-      );
-    })
-    .filter((column) => column !== "*" && column);
+    if (processedColumn === "*") {
+      continue;
+    }
+
+    const columnName =
+      modelColumnsMap.get(processedColumn)?.columnName ??
+      convertCase(processedColumn, typeofModel.modelCaseConvention);
+    processedSelectedColumns.push(columnName);
+  }
+  modelSelectedColumns = processedSelectedColumns;
 
   const serializedModels = await Promise.all(
     models.map(async (model) => {
