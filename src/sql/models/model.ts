@@ -22,6 +22,7 @@ import { Entity } from "../../entity";
 import { HysteriaError } from "../../errors/hysteria_error";
 import { CaseConvention, convertCase } from "../../utils/case_utils";
 import { baseSoftDeleteDate } from "../../utils/date_utils";
+import { DryModelQueryBuilderWithoutReadOperations } from "../query_builder/query_builder_types";
 import type {
   TableColumnInfo,
   TableIndexInfo,
@@ -53,8 +54,6 @@ import { AnnotatedModel } from "./model_query_builder/model_query_builder_types"
 import { getBaseTableName } from "./model_utils";
 import { ManyToMany } from "./relations/many_to_many";
 import { RelationEnum } from "./relations/relation";
-import { DryModelQueryBuilder } from "./model_query_builder/dry_model_query_builder";
-import { DryModelQueryBuilderWithoutReadOperations } from "../query_builder/query_builder_types";
 
 /**
  * @description Represents a Table in the Database
@@ -244,7 +243,7 @@ export abstract class Model extends Entity {
     R extends ModelRelation<T>[] = never[],
   >(
     this: new () => T | typeof Model,
-    column: S,
+    column: ModelKey<T>,
     value: string | number | boolean | Date | null,
     options: BaseModelMethodOptions = {},
   ): Promise<FindReturnType<T, S, R>[]> {

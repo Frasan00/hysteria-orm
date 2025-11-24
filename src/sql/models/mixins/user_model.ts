@@ -4,7 +4,7 @@ import { Model } from "../model";
 /**
  * @description Mixin to add a user model with id, email, createdAt, updatedAt and deletedAt columns
  */
-export class User extends Model {
+export class UserMixin extends Model {
   @column.integer({
     primaryKey: true,
     type: "integer",
