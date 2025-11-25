@@ -108,11 +108,6 @@ export abstract class Model extends Entity {
     return getPrimaryKey(this);
   }
 
-  /**
-   * @description Constructor for the model, it's not meant to be used directly, it just initializes the $annotations, it's advised to only use the static methods to interact with the database to save the model
-   * @description Using the constructor could lead to unexpected behavior, if you want to create a new record use the insert method
-   * @deprecated
-   */
   constructor() {
     super();
   }
@@ -327,8 +322,8 @@ export abstract class Model extends Entity {
    * @description Saves a new record to the database
    * @description $annotations will be ignored if set in the modelData and won't be returned in the response
    * @warning If not using postgres and the model has no primary key, the model will be saved, but it won't be possible to retrieve it so at that point it will be returned as null, this is not typed as Model | null for type safety reasons
-   * @mysql If no Primary Key is present in the model definition, the exact input model will be returned
-   * @sqlite If no Primary Key is present in the model definition, the exact input will be returned
+   * @mysql If no Primary Key is present in the model definition, the model will be returned
+   * @sqlite If no Primary Key is present in the model definition, the model will be returned
    * @sqlite Returning Not supported and won't have effect
    */
   static async insert<T extends Model>(
@@ -348,8 +343,8 @@ export abstract class Model extends Entity {
    * @description Saves multiple records to the database
    * @description $annotations will be ignored if set in the modelData and won't be returned in the response
    * @warning If not using postgres and the model has no primary key, the models will be saved, but it won't be possible to retrieve them so at that point they will be returned as an empty array
-   * @mysql If no Primary Key is present in the model definition, the exact input model will be returned
-   * @sqlite If no Primary Key is present in the model definition, the exact input will be returned
+   * @mysql If no Primary Key is present in the model definition, the model will be returned
+   * @sqlite If no Primary Key is present in the model definition, the model will be returned
    * @sqlite Returning Not supported and won't have effect
    */
   static async insertMany<T extends Model>(
@@ -463,7 +458,7 @@ export abstract class Model extends Entity {
   static async updateRecord<T extends Model>(
     this: new () => T | typeof Model,
     modelSqlInstance: Partial<T>,
-    updatePayload?: ModelWithoutRelations<T>,
+    updatePayload?: Partial<ModelWithoutRelations<T>>,
     options: Omit<BaseModelMethodOptions, "ignoreHooks"> = {},
   ): Promise<AnnotatedModel<T, {}>> {
     try {
@@ -934,5 +929,191 @@ export abstract class Model extends Entity {
     const typeofModel = this as unknown as typeof Model;
     typeofModel.establishConnection();
     return typeofModel.sqlInstance.getModelManager<T>(typeofModel);
+  }
+
+  // instance methods
+
+  /**
+   * @description inserts or updates the model to the database, must have a primary key in order to work
+   * @throws {HysteriaError} If the model has no primary key
+   */
+  async save<T extends Model = this>(
+    options: Omit<BaseModelMethodOptions, "ignoreHooks"> = {},
+  ) {
+    const instance = this as unknown as new () => T | typeof Model;
+    const typeofModel = instance.constructor as typeof Model &
+      (new () => typeof Model);
+    const primaryKey = typeofModel.primaryKey as keyof T;
+    if (!primaryKey) {
+      throw new HysteriaError(
+        typeofModel.name + "::save",
+        "MODEL_HAS_NO_PRIMARY_KEY",
+      );
+    }
+
+    const primaryKeyValue: string | number =
+      instance[primaryKey as keyof typeof instance];
+
+    const searchCriteria = {
+      [primaryKey]: primaryKeyValue,
+    } as unknown as ModelWithoutRelations<T>;
+
+    const { [primaryKey]: _, ...payloadWithoutPrimaryKey } =
+      instance as unknown as ModelWithoutRelations<T>;
+
+    const result = await typeofModel.upsert(
+      searchCriteria,
+      payloadWithoutPrimaryKey as ModelWithoutRelations<T>,
+      {
+        updateOnConflict: true,
+        ...options,
+      },
+    );
+
+    typeofModel.combineProps(this as unknown as T, result as unknown as T);
+    return this as unknown as T;
+  }
+
+  /**
+   * @description Updates the model in the database, must have a primary key in order to work
+   * @throws {HysteriaError} If the model has no primary key valorized in the instance
+   */
+  async update<T extends Model = this>(
+    payload: Partial<ModelWithoutRelations<T>>,
+    options: Omit<BaseModelMethodOptions, "ignoreHooks"> = {},
+  ) {
+    const instance = this as unknown as new () => T | typeof Model;
+    const typeofModel = instance.constructor as typeof Model &
+      (new () => typeof Model);
+
+    const primaryKey = typeofModel.primaryKey as keyof T;
+    if (!primaryKey) {
+      throw new HysteriaError(
+        typeofModel.name + "::save",
+        "MODEL_HAS_NO_PRIMARY_KEY",
+      );
+    }
+
+    const primaryKeyValue: string | number =
+      instance[primaryKey as keyof typeof instance];
+
+    if (!primaryKeyValue) {
+      throw new HysteriaError(
+        typeofModel.name + "::update",
+        "MODEL_HAS_NO_PRIMARY_KEY_VALUE",
+      );
+    }
+
+    await typeofModel.updateRecord(instance as unknown as T, payload, options);
+  }
+
+  /**
+   * @description Soft deletes the model from the database, must have a primary key in order to work
+   * @throws {HysteriaError} If the model has no primary key valorized in the instance
+   */
+  async softDelete<T extends Model = this>(
+    this: T,
+    softDeleteOptions?: {
+      column?: keyof ModelWithoutRelations<T>;
+      value?: string | number | boolean | Date;
+    },
+    options?: Omit<BaseModelMethodOptions, "ignoreHooks">,
+  ) {
+    const instance = this as unknown as new () => T | typeof Model;
+    const typeofModel = instance.constructor as typeof Model &
+      (new () => typeof Model);
+
+    const primaryKey = typeofModel.primaryKey as keyof T;
+    if (!primaryKey) {
+      throw new HysteriaError(
+        typeofModel.name + "::softDelete",
+        "MODEL_HAS_NO_PRIMARY_KEY",
+      );
+    }
+
+    const primaryKeyValue: string | number =
+      instance[primaryKey as keyof typeof instance];
+
+    if (!primaryKeyValue) {
+      throw new HysteriaError(
+        typeofModel.name + "::softDelete",
+        "MODEL_HAS_NO_PRIMARY_KEY_VALUE",
+      );
+    }
+
+    await typeofModel.softDelete(
+      instance as unknown as T,
+      softDeleteOptions as {
+        column?: ModelKey<T>;
+        value?: string | number | boolean | Date;
+      },
+      options,
+    );
+  }
+
+  /**
+   * @description Deletes the model from the database, must have a primary key in order to work
+   * @throws {HysteriaError} If the model has no primary key valorized in the instance
+   */
+  async delete<T extends Model = this>(
+    options: Omit<BaseModelMethodOptions, "ignoreHooks"> = {},
+  ) {
+    const instance = this as unknown as new () => T | typeof Model;
+    const typeofModel = instance.constructor as typeof Model &
+      (new () => typeof Model);
+
+    const primaryKey = typeofModel.primaryKey as keyof T;
+    if (!primaryKey) {
+      throw new HysteriaError(
+        typeofModel.name + "::delete",
+        "MODEL_HAS_NO_PRIMARY_KEY",
+      );
+    }
+
+    const primaryKeyValue: string | number =
+      instance[primaryKey as keyof typeof instance];
+
+    if (!primaryKeyValue) {
+      throw new HysteriaError(
+        typeofModel.name + "::delete",
+        "MODEL_HAS_NO_PRIMARY_KEY_VALUE",
+      );
+    }
+
+    await typeofModel.deleteRecord(this as unknown as T, options);
+  }
+
+  /**
+   * @description Refreshes the model from the database, it both updates the instance and returns the refreshed model
+   * @throws {HysteriaError} If the model has no primary key valorized in the instance
+   */
+  async refresh<T extends Model = this>(
+    options?: Omit<BaseModelMethodOptions, "ignoreHooks">,
+  ) {
+    const instance = this as unknown as new () => T | typeof Model;
+    const typeofModel = instance.constructor as typeof Model &
+      (new () => typeof Model);
+
+    const primaryKey = typeofModel.primaryKey as keyof T;
+    if (!primaryKey) {
+      throw new HysteriaError(
+        typeofModel.name + "::refresh",
+        "MODEL_HAS_NO_PRIMARY_KEY",
+      );
+    }
+
+    const primaryKeyValue: string | number =
+      instance[primaryKey as keyof typeof instance];
+
+    if (!primaryKeyValue) {
+      throw new HysteriaError(
+        typeofModel.name + "::refresh",
+        "MODEL_HAS_NO_PRIMARY_KEY_VALUE",
+      );
+    }
+
+    const refreshed = await typeofModel.refresh(this as unknown as T, options);
+    typeofModel.combineProps(this as unknown as T, refreshed as unknown as T);
+    return this as unknown as T;
   }
 }

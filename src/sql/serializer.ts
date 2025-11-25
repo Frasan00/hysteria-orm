@@ -13,7 +13,8 @@ export const parseDatabaseDataIntoModelResponse = async <
   modelAnnotatedColumns: string[] = [],
   mustRemoveAnnotations: boolean = false,
 ): Promise<T> => {
-  const casedModel: Record<string, any> = {};
+  const casedModel: Record<string, any> =
+    new (typeofModel as unknown as new () => T)();
   const hiddenColumnsSet = new Set<string>(
     modelColumns
       .filter((column) => column.hidden)

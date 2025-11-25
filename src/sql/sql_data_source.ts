@@ -760,6 +760,23 @@ export class SqlDataSource extends DataSource {
   ): Promise<StartTransactionReturnType<T>> {
     const options =
       typeof optionsOrCb === "function" ? maybeOptions : optionsOrCb;
+
+    // If a global transaction is active, create a nested transaction on the same connection.
+    // This avoids cross-connection locks with uncommitted rows during tests that run under a global transaction.
+    if (this.globalTransaction?.isActive) {
+      if (typeof optionsOrCb === "function") {
+        try {
+          await this.globalTransaction.nestedTransaction(optionsOrCb);
+          return undefined as StartTransactionReturnType<T>;
+        } catch (error) {
+          throw error;
+        }
+      }
+
+      const nested = await this.globalTransaction.nestedTransaction();
+      return nested as StartTransactionReturnType<T>;
+    }
+
     const cloned = await this.clone();
     cloned.sqlConnection = await cloned.getConnection();
     const sqlTrx = new Transaction(cloned, options?.isolationLevel);

@@ -13,6 +13,7 @@ import { SqlDataSource } from "./sql/sql_data_source";
 import { SqlDataSourceType } from "./sql/sql_data_source_types";
 import { importTsUniversal } from "./utils/importer";
 import logger from "./utils/logger";
+import { getPackageManager, installBaseDependencies } from "./utils/package";
 
 const sqlDatabaseTypes = [
   "sqlite",
@@ -52,6 +53,12 @@ program
     logger.info(
       `Database type: ${option.type || "not specified (will use env DB_TYPE)"}`,
     );
+
+    const [packageManager, packageManagerCommand] = getPackageManager();
+    logger.info(`Package manager: ${packageManager}`);
+
+    logger.info("Installing base dependencies");
+    installBaseDependencies(packageManager, packageManagerCommand, option.type);
 
     const template = InitTemplates.initTemplate(option.type);
     if (!fs.existsSync("database")) {
