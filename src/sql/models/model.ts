@@ -534,7 +534,7 @@ export abstract class Model extends Entity {
   }
 
   /**
-   * @description Updates or creates a new record
+   * @description Updates or creates a new record, if no searchCriteria payload is provided, provided data will be inserted as is
    */
   static async upsert<T extends Model>(
     this: new () => T | typeof Model,
@@ -546,10 +546,15 @@ export abstract class Model extends Entity {
   ): Promise<AnnotatedModel<T, {}>> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
-    const doesExist = await modelManager.findOne({
-      ignoreHooks: options.ignoreHooks ? ["afterFetch", "beforeFetch"] : [],
-      where: searchCriteria as WhereType<T>,
-    });
+    const hasSearchCriteria = Object.keys(searchCriteria).length > 0;
+
+    // If no search criteria is given, it is given for granted that record must be created
+    const doesExist = !hasSearchCriteria
+      ? null
+      : await modelManager.findOne({
+          ignoreHooks: options.ignoreHooks ? ["afterFetch", "beforeFetch"] : [],
+          where: searchCriteria as WhereType<T>,
+        });
 
     if (doesExist) {
       (data as T)[typeofModel.primaryKey as keyof T] =
@@ -958,12 +963,10 @@ export abstract class Model extends Entity {
       [primaryKey]: primaryKeyValue,
     } as unknown as ModelWithoutRelations<T>;
 
-    const { [primaryKey]: _, ...payloadWithoutPrimaryKey } =
-      instance as unknown as ModelWithoutRelations<T>;
-
+    const payload = instance as unknown as ModelWithoutRelations<T>;
     const result = await typeofModel.upsert(
       searchCriteria,
-      payloadWithoutPrimaryKey as ModelWithoutRelations<T>,
+      payload as ModelWithoutRelations<T>,
       {
         updateOnConflict: true,
         ...options,
