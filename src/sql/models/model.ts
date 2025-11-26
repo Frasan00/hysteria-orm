@@ -959,9 +959,11 @@ export abstract class Model extends Entity {
     const primaryKeyValue: string | number =
       instance[primaryKey as keyof typeof instance];
 
-    const searchCriteria = {
-      [primaryKey]: primaryKeyValue,
-    } as unknown as ModelWithoutRelations<T>;
+    const searchCriteria = primaryKeyValue
+      ? ({
+          [primaryKey]: primaryKeyValue,
+        } as unknown as ModelWithoutRelations<T>)
+      : {};
 
     const payload = instance as unknown as ModelWithoutRelations<T>;
     const result = await typeofModel.upsert(
