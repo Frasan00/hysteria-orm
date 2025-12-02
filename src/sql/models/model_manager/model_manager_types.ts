@@ -2,6 +2,12 @@ import { Model } from "../model";
 import { FetchHooks } from "../model_query_builder/model_query_builder_types";
 import { ModelWithoutRelations } from "../model_types";
 
+type NullableAndUndefinable<T> =
+  | T
+  | (T | null)
+  | (T | undefined)
+  | (T | null | undefined);
+
 export type UpsertOptions<T extends Model> = {
   ignoreHooks?: boolean;
   updateOnConflict?: boolean;
@@ -19,23 +25,27 @@ export type UpdateOptions<T extends Model> = {
 
 export type ExcludeRelations<T> = {
   [K in keyof T]: T[K] extends
-    | (Model | null | undefined)
-    | (Model[] | null | undefined)
-    | (Model | null)
-    | (Model[] | null)
-    | (Model | undefined)
-    | (Model[] | undefined)
+    | NullableAndUndefinable<Model>
+    | NullableAndUndefinable<Model[]>
     | ((...args: any[]) => any)
     ? never
     : K;
 }[keyof T];
 
 export type OnlyRelations<T> = {
-  [K in keyof T]: T[K] extends Model[] | Model ? K : never;
+  [K in keyof T]: T[K] extends
+    | NullableAndUndefinable<Model>
+    | NullableAndUndefinable<Model[]>
+    ? K
+    : never;
 }[keyof T];
 
 export type OnlyM2MRelations<T> = {
-  [K in keyof T]: K extends string ? (T[K] extends Model[] ? K : never) : never;
+  [K in keyof T]: K extends string
+    ? T[K] extends NullableAndUndefinable<Model[]>
+      ? K
+      : never
+    : never;
 }[keyof T];
 
 export type WhereType<T> = {
@@ -44,12 +54,8 @@ export type WhereType<T> = {
 
 export type ModelKey<T extends Model> = {
   [K in keyof T]: T[K] extends
-    | (Model | null | undefined)
-    | (Model[] | null | undefined)
-    | (Model | null)
-    | (Model[] | null)
-    | (Model | undefined)
-    | (Model[] | undefined)
+    | NullableAndUndefinable<Model>
+    | NullableAndUndefinable<Model[]>
     ? never
     : K extends "*"
       ? never
