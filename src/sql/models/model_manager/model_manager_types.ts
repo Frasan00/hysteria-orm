@@ -59,7 +59,9 @@ export type ModelKey<T extends Model> = {
     ? never
     : K extends "*"
       ? never
-      : K;
+      : T[K] extends (...args: any[]) => any
+        ? never
+        : K;
 }[keyof T];
 
 export type ModelRelation<T extends Model> = OnlyRelations<T>;

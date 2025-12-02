@@ -8,6 +8,7 @@ import {
   encryptAsymmetric,
   encryptSymmetric,
 } from "../../../utils/encryption";
+import { Reflect } from "../../../utils/reflect_metadata";
 import { generateULID } from "../../../utils/ulid";
 import { OnUpdateOrDelete } from "../../migrations/schema/schema_types";
 import { getColumnValue } from "../../resources/utils";
@@ -25,8 +26,8 @@ import {
   PRIMARY_KEY_METADATA_KEY,
   RELATION_METADATA_KEY,
   UNIQUE_METADATA_KEY,
-  getDefaultForeignKey,
   getDefaultFkConstraintName,
+  getDefaultForeignKey,
   getDefaultIndexName,
   getDefaultPrimaryKeyConstraintName,
   getDefaultUniqueConstraintName,
@@ -47,7 +48,6 @@ import type {
   ThroughModel,
   UniqueType,
 } from "./model_decorators_types";
-import { Reflect } from "../../../lib/reflect_metadata";
 
 export type BaseModelRelationType = {
   onDelete?: OnUpdateOrDelete;

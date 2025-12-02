@@ -1,5 +1,5 @@
+import { Reflect } from "../../../utils/reflect_metadata";
 import { Collection } from "./mongo_collection";
-import { Reflect } from "../../../lib/reflect_metadata";
 
 const MONGO_PROPERTY_METADATA_KEY = Symbol("mongoProperties");
 

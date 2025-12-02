@@ -47,6 +47,7 @@ describe(`[${env.DB_TYPE}] uuid pk base relations`, () => {
 
     for (const user of userWithLoadedPosts) {
       expect(user.id).toBe(user.post?.userId);
+      expect(user.post?.content).toBeUndefined();
     }
   });
 
