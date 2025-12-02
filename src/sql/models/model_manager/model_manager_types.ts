@@ -1,10 +1,6 @@
 import { Model } from "../model";
 import { FetchHooks } from "../model_query_builder/model_query_builder_types";
 import { ModelWithoutRelations } from "../model_types";
-import { BelongsTo } from "../relations/belongs_to";
-import { HasMany } from "../relations/has_many";
-import { HasOne } from "../relations/has_one";
-import { ManyToMany } from "../relations/many_to_many";
 
 export type UpsertOptions<T extends Model> = {
   ignoreHooks?: boolean;
@@ -23,14 +19,12 @@ export type UpdateOptions<T extends Model> = {
 
 export type ExcludeRelations<T> = {
   [K in keyof T]: T[K] extends
-    | (Model[] | HasMany)
-    | (Model | HasMany)
-    | (Model | BelongsTo)
-    | (Model[] | BelongsTo)
-    | (Model | HasOne)
-    | (Model[] | HasOne)
-    | (Model | ManyToMany)
-    | (Model[] | ManyToMany)
+    | (Model | null | undefined)
+    | (Model[] | null | undefined)
+    | (Model | null)
+    | (Model[] | null)
+    | (Model | undefined)
+    | (Model[] | undefined)
     | ((...args: any[]) => any)
     ? never
     : K;
@@ -50,12 +44,12 @@ export type WhereType<T> = {
 
 export type ModelKey<T extends Model> = {
   [K in keyof T]: T[K] extends
-    | (Model[] | HasMany)
-    | (Model | HasMany)
-    | (Model | BelongsTo)
-    | (Model[] | BelongsTo)
-    | (Model | HasOne)
-    | (Model[] | HasOne)
+    | (Model | null | undefined)
+    | (Model[] | null | undefined)
+    | (Model | null)
+    | (Model[] | null)
+    | (Model | undefined)
+    | (Model[] | undefined)
     ? never
     : K extends "*"
       ? never
