@@ -4,6 +4,7 @@ import { env } from "../../env/env";
 import logger from "../../utils/logger";
 import { SqlDataSource } from "../sql_data_source";
 import {
+  AugmentedSqlDataSource,
   SqlDataSourceInput,
   SqlDataSourceType,
 } from "../sql_data_source_types";
@@ -13,10 +14,10 @@ import { Migration } from "./migration";
  * @description Used internally from the CLI
  */
 export class Migrator {
-  private sql: SqlDataSource;
+  private sql: SqlDataSource | AugmentedSqlDataSource;
   private readonly migrationTable = "migrations";
 
-  constructor(sql?: SqlDataSource) {
+  constructor(sql?: SqlDataSource | AugmentedSqlDataSource) {
     this.sql = sql || SqlDataSource.getInstance();
   }
 

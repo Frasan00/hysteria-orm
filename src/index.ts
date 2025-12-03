@@ -14,6 +14,12 @@ export * from "./sql/models/model_types";
 // Mixins
 export * from "./sql/models/mixins/index";
 
+// Cache
+export * from "./cache/cache_types";
+export * from "./cache/cache_adapter";
+export * from "./cache/adapters/in_memory";
+export * from "./cache/adapters/redis";
+
 // DataSources
 export * from "./data_source/data_source_types";
 export { MongoDataSource as mongo } from "./no_sql/mongo/mongo_data_source";

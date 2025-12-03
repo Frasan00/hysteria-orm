@@ -1,6 +1,8 @@
 import type { PoolConnection } from "mysql2/promise";
 import type { PoolClient } from "pg";
 import { FormatOptionsWithLanguage } from "sql-formatter";
+import type { CacheAdapter } from "../cache/cache_adapter";
+import type { CacheKeys, UseCacheReturnType } from "../cache/cache_types";
 import type {
   DataSourceType,
   MysqlSqlDataSourceInput,
@@ -10,14 +12,14 @@ import type {
   PostgresSqlDataSourceInput,
   SqliteDataSourceInput,
 } from "../data_source/data_source_types";
-import {
+import type {
   DriverSpecificOptions,
   Mysql2Import,
   PgImport,
   Sqlite3Import,
 } from "../drivers/driver_constants";
-import { Model } from "./models/model";
-import { SqlDataSource } from "./sql_data_source";
+import type { Model } from "./models/model";
+import type { SqlDataSource } from "./sql_data_source";
 
 export type SqlDriverSpecificOptions<T extends DataSourceType> = Omit<
   DriverSpecificOptions<T>,
@@ -59,6 +61,7 @@ export type SqlDataSourceModel = typeof Model;
 export type SqlDataSourceInput<
   D extends SqlDataSourceType,
   T extends Record<string, SqlDataSourceModel> = {},
+  C extends CacheKeys = {},
 > = {
   readonly type?: Exclude<DataSourceType, "mongo">;
   /**
@@ -84,6 +87,11 @@ export type SqlDataSourceInput<
    * @description The driver specific options to use for the sql data source, it's used to configure the driver specific options for the sql data source
    */
   driverOptions?: SqlDriverSpecificOptions<D>;
+
+  cacheStrategy?: {
+    cacheAdapter?: CacheAdapter;
+    keys: C;
+  };
 } & (
   | MysqlSqlDataSourceInput
   | PostgresSqlDataSourceInput
@@ -93,6 +101,7 @@ export type SqlDataSourceInput<
 export type UseConnectionInput<
   D extends SqlDataSourceType,
   T extends Record<string, SqlDataSourceModel> = {},
+  C extends CacheKeys = {},
 > = {
   readonly type: Exclude<DataSourceType, "mongo">;
   readonly logs?: boolean;
@@ -100,6 +109,10 @@ export type UseConnectionInput<
   readonly driverOptions?: SqlDriverSpecificOptions<D>;
   connectionPolicies?: ConnectionPolicies;
   queryFormatOptions?: FormatOptionsWithLanguage;
+  cacheStrategy?: {
+    cacheAdapter: CacheAdapter;
+    keys: C;
+  };
 } & (
   | NotNullableMysqlSqlDataSourceInput
   | NotNullablePostgresSqlDataSourceInput
@@ -140,9 +153,34 @@ export type GetConnectionReturnType<T = SqlDataSourceType> = T extends "mysql"
           ? InstanceType<Sqlite3Import["Database"]>
           : never;
 
+type UseCacheOverloads<C extends CacheKeys> = {
+  <K extends keyof C>(
+    key: K,
+    ...args: Parameters<C[K]>
+  ): Promise<UseCacheReturnType<C, K>>;
+  <K extends keyof C>(
+    key: K,
+    ttl: number,
+    ...args: Parameters<C[K]>
+  ): Promise<UseCacheReturnType<C, K>>;
+};
+
+type UseCacheType<C extends CacheKeys> = keyof C extends never
+  ? SqlDataSource["useCache"]
+  : UseCacheOverloads<C>;
+
+type InvalidCacheType<C extends CacheKeys> = keyof C extends never
+  ? SqlDataSource["invalidCache"]
+  : <K extends keyof C>(key: K) => Promise<void>;
+
 export type AugmentedSqlDataSource<
   T extends Record<string, SqlDataSourceModel> = {},
-> = SqlDataSource & {
+  C extends CacheKeys = {},
+> = Omit<SqlDataSource, "useCache" | "invalidCache" | "clone"> & {
+  useCache: UseCacheType<C>;
+  invalidCache: InvalidCacheType<C>;
+  clone(options?: SqlCloneOptions): Promise<AugmentedSqlDataSource<T, C>>;
+} & {
   [key in keyof T]: T[key];
 };
 

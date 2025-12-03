@@ -1,6 +1,10 @@
+import { InMemoryAdapter } from "../cache/adapters/in_memory";
+import { CacheAdapter } from "../cache/cache_adapter";
+import { CacheKeys, UseCacheReturnType } from "../cache/cache_types";
 import { DataSource } from "../data_source/data_source";
 import { HysteriaError } from "../errors/hysteria_error";
 import { generateOpenApiModelWithMetadata } from "../openapi/openapi";
+import { hashString } from "../utils/hash";
 import logger, { log } from "../utils/logger";
 import {
   formatQuery,
@@ -82,6 +86,16 @@ export class SqlDataSource extends DataSource {
    */
   inputDetails: SqlDataSourceInput<SqlDataSourceType>;
 
+  /**
+   * @description Adapter for `useCache`, uses an in memory strategy by default
+   */
+  cacheAdapter: CacheAdapter = new InMemoryAdapter();
+
+  /**
+   * @description Maps global keys to specific handlers for cache handling
+   */
+  cacheKeys: CacheKeys = {};
+
   // Static Methods
 
   /**
@@ -103,29 +117,34 @@ export class SqlDataSource extends DataSource {
   static async connect<
     U extends SqlDataSourceType,
     T extends Record<string, SqlDataSourceModel> = {},
+    C extends CacheKeys = {},
   >(
-    input: SqlDataSourceInput<U, T>,
-    cb?: (sqlDataSource: AugmentedSqlDataSource<T>) => Promise<void> | void,
-  ): Promise<AugmentedSqlDataSource<T>>;
-  static async connect<T extends Record<string, SqlDataSourceModel> = {}>(
-    cb?: (sqlDataSource: AugmentedSqlDataSource<T>) => Promise<void> | void,
-  ): Promise<SqlDataSource>;
+    input: SqlDataSourceInput<U, T, C>,
+    cb?: (sqlDataSource: AugmentedSqlDataSource<T, C>) => Promise<void> | void,
+  ): Promise<AugmentedSqlDataSource<T, C>>;
+  static async connect<
+    T extends Record<string, SqlDataSourceModel> = {},
+    C extends CacheKeys = {},
+  >(
+    cb?: (sqlDataSource: AugmentedSqlDataSource<T, C>) => Promise<void> | void,
+  ): Promise<AugmentedSqlDataSource<T, C>>;
   static async connect<
     U extends SqlDataSourceType,
     T extends Record<string, SqlDataSourceModel> = {},
+    C extends CacheKeys = {},
   >(
     inputOrCb?:
-      | SqlDataSourceInput<U, T>
-      | ((sqlDataSource: AugmentedSqlDataSource<T>) => Promise<void> | void),
-    cb?: (sqlDataSource: AugmentedSqlDataSource<T>) => Promise<void> | void,
-  ): Promise<AugmentedSqlDataSource<T>> {
+      | SqlDataSourceInput<U, T, C>
+      | ((sqlDataSource: AugmentedSqlDataSource<T, C>) => Promise<void> | void),
+    cb?: (sqlDataSource: AugmentedSqlDataSource<T, C>) => Promise<void> | void,
+  ): Promise<AugmentedSqlDataSource<T, C>> {
     if (typeof inputOrCb === "function") {
       cb = inputOrCb;
       inputOrCb = undefined;
     }
 
     const sqlDataSource = new SqlDataSource(
-      inputOrCb as SqlDataSourceInput<U, T>,
+      inputOrCb as SqlDataSourceInput<U, T, C>,
     );
 
     if (inputOrCb?.models) {
@@ -150,14 +169,14 @@ export class SqlDataSource extends DataSource {
       driverOptions: sqlDataSource.inputDetails.driverOptions,
       logs: sqlDataSource.logs,
       models: sqlDataSource.models,
-    } as SqlDataSourceInput<U, T>);
+    } as SqlDataSourceInput<U, T, C>);
 
     sqlDataSource.ownsPool = true;
     await sqlDataSource.testConnectionQuery("SELECT 1");
     SqlDataSource.instance = sqlDataSource;
 
-    await cb?.(sqlDataSource as AugmentedSqlDataSource<T>);
-    return sqlDataSource as AugmentedSqlDataSource<T>;
+    await cb?.(sqlDataSource as unknown as AugmentedSqlDataSource<T, C>);
+    return sqlDataSource as unknown as AugmentedSqlDataSource<T, C>;
   }
 
   /**
@@ -176,31 +195,34 @@ export class SqlDataSource extends DataSource {
   static async connectToSecondarySource<
     U extends SqlDataSourceType,
     T extends Record<string, SqlDataSourceModel> = {},
+    C extends CacheKeys = {},
   >(
-    input: SqlDataSourceInput<U, T>,
-    cb?: (sqlDataSource: AugmentedSqlDataSource<T>) => Promise<void> | void,
-  ): Promise<AugmentedSqlDataSource<T>>;
+    input: SqlDataSourceInput<U, T, C>,
+    cb?: (sqlDataSource: AugmentedSqlDataSource<T, C>) => Promise<void> | void,
+  ): Promise<AugmentedSqlDataSource<T, C>>;
   static async connectToSecondarySource<
     T extends Record<string, SqlDataSourceModel> = {},
+    C extends CacheKeys = {},
   >(
-    cb?: (sqlDataSource: AugmentedSqlDataSource<T>) => Promise<void> | void,
-  ): Promise<SqlDataSource>;
+    cb?: (sqlDataSource: AugmentedSqlDataSource<T, C>) => Promise<void> | void,
+  ): Promise<AugmentedSqlDataSource<T, C>>;
   static async connectToSecondarySource<
     U extends SqlDataSourceType,
     T extends Record<string, SqlDataSourceModel> = {},
+    C extends CacheKeys = {},
   >(
     inputOrCb?:
-      | SqlDataSourceInput<U, T>
-      | ((sqlDataSource: AugmentedSqlDataSource<T>) => Promise<void> | void),
-    cb?: (sqlDataSource: AugmentedSqlDataSource<T>) => Promise<void> | void,
-  ): Promise<AugmentedSqlDataSource<T>> {
+      | SqlDataSourceInput<U, T, C>
+      | ((sqlDataSource: AugmentedSqlDataSource<T, C>) => Promise<void> | void),
+    cb?: (sqlDataSource: AugmentedSqlDataSource<T, C>) => Promise<void> | void,
+  ): Promise<AugmentedSqlDataSource<T, C>> {
     if (typeof inputOrCb === "function") {
       cb = inputOrCb;
       inputOrCb = undefined;
     }
 
     const sqlDataSource = new SqlDataSource(
-      inputOrCb as SqlDataSourceInput<U, T>,
+      inputOrCb as SqlDataSourceInput<U, T, C>,
     );
 
     if (inputOrCb?.models) {
@@ -225,14 +247,14 @@ export class SqlDataSource extends DataSource {
       driverOptions: sqlDataSource.inputDetails.driverOptions,
       logs: sqlDataSource.logs,
       models: sqlDataSource.models,
-    } as SqlDataSourceInput<U, T>);
+    } as SqlDataSourceInput<U, T, C>);
     sqlDataSource.ownsPool = true;
 
     await sqlDataSource.testConnectionQuery("SELECT 1");
     SqlDataSource.instance = sqlDataSource;
 
-    await cb?.(sqlDataSource as AugmentedSqlDataSource<T>);
-    return sqlDataSource as AugmentedSqlDataSource<T>;
+    await cb?.(sqlDataSource as unknown as AugmentedSqlDataSource<T, C>);
+    return sqlDataSource as unknown as AugmentedSqlDataSource<T, C>;
   }
 
   /**
@@ -251,12 +273,13 @@ export class SqlDataSource extends DataSource {
   static async useConnection<
     U extends SqlDataSourceType,
     T extends Record<string, SqlDataSourceModel> = {},
+    C extends CacheKeys = {},
   >(
-    connectionDetails: UseConnectionInput<U, T>,
-    cb: (sqlDataSource: AugmentedSqlDataSource<T>) => Promise<void>,
+    connectionDetails: UseConnectionInput<U, T, C>,
+    cb: (sqlDataSource: AugmentedSqlDataSource<T, C>) => Promise<void>,
   ): Promise<void> {
     const customSqlInstance = new SqlDataSource(
-      connectionDetails as SqlDataSourceInput<U, T>,
+      connectionDetails as SqlDataSourceInput<U, T, C>,
     );
 
     if (connectionDetails.models) {
@@ -281,21 +304,21 @@ export class SqlDataSource extends DataSource {
       driverOptions: customSqlInstance.inputDetails.driverOptions,
       logs: customSqlInstance.logs,
       models: connectionDetails.models,
-    } as SqlDataSourceInput<U, T>);
+    } as SqlDataSourceInput<U, T, C>);
 
     customSqlInstance.ownsPool = true;
     await customSqlInstance.testConnectionQuery("SELECT 1");
 
     try {
-      await cb(customSqlInstance as AugmentedSqlDataSource<T>).then(
-        async () => {
-          if (!customSqlInstance.isConnected) {
-            return;
-          }
+      await cb(
+        customSqlInstance as unknown as AugmentedSqlDataSource<T, C>,
+      ).then(async () => {
+        if (!customSqlInstance.isConnected) {
+          return;
+        }
 
-          await customSqlInstance.closeConnection();
-        },
-      );
+        await customSqlInstance.closeConnection();
+      });
     } catch (error) {
       if (customSqlInstance.isConnected) {
         await customSqlInstance.closeConnection();
@@ -562,6 +585,126 @@ export class SqlDataSource extends DataSource {
       dataTypeCase: "lower",
       functionCase: "lower",
     };
+
+    this.cacheKeys = input?.cacheStrategy?.keys ?? {};
+    this.cacheAdapter = input?.cacheStrategy?.cacheAdapter ?? this.cacheAdapter;
+  }
+
+  /**
+   * @description Uses the cache adapter to get a value from the cache
+   * @param key The key to get the value from
+   * @param args The arguments to pass to the key handler
+   */
+  async useCache<
+    M extends Record<string, typeof Model>,
+    C extends CacheKeys,
+    K extends keyof C,
+  >(
+    this: AugmentedSqlDataSource<M, C>,
+    key: K,
+    ...args: Parameters<C[K]>
+  ): Promise<UseCacheReturnType<C, K>>;
+  /**
+   * @description Uses the cache adapter to get a value from the cache
+   * @param key The key to get the value from
+   * @param ttl The time to live for the value in milliseconds
+   * @param args The arguments to pass to the key handler
+   */
+  async useCache<
+    M extends Record<string, typeof Model>,
+    C extends CacheKeys,
+    K extends keyof C,
+  >(
+    this: AugmentedSqlDataSource<M, C>,
+    key: K,
+    ttl: number,
+    ...args: Parameters<C[K]>
+  ): Promise<UseCacheReturnType<C, K>>;
+  async useCache<
+    M extends Record<string, typeof Model>,
+    C extends CacheKeys,
+    K extends keyof C,
+  >(
+    this: AugmentedSqlDataSource<M, C>,
+    key: K,
+    ttlOrFirstArg?: number | any,
+    ...restArgs: any[]
+  ): Promise<UseCacheReturnType<C, K>> {
+    if (!this.cacheAdapter) {
+      throw new HysteriaError(
+        "SqlDataSource::useCache",
+        "CACHE_ADAPTER_NOT_CONFIGURED",
+      );
+    }
+
+    const mappedKeyHandler = this.cacheKeys[key as keyof typeof this.cacheKeys];
+    if (!mappedKeyHandler) {
+      throw new HysteriaError(
+        "SqlDataSource::useCache",
+        `KEY_${key as string}_HAS_NO_HANDLER_IN_CACHE_KEYS_CONFIG`,
+      );
+    }
+
+    const handlerArgsCount = mappedKeyHandler.length;
+    const isTTLProvided =
+      typeof ttlOrFirstArg === "number" && handlerArgsCount === restArgs.length;
+
+    let ttl: number | undefined;
+    let args: any[] = [];
+
+    if (isTTLProvided) {
+      ttl = ttlOrFirstArg;
+      args = restArgs;
+    }
+
+    if (!isTTLProvided) {
+      ttl = undefined;
+      args =
+        ttlOrFirstArg !== undefined ? [ttlOrFirstArg, ...restArgs] : restArgs;
+    }
+
+    const hashedArgs = hashString(JSON.stringify(args));
+    const cachedKey = hashedArgs
+      ? `${key as string}:${hashedArgs}`
+      : (key as string);
+
+    const cachedValue = await this.cacheAdapter.get<unknown>(cachedKey);
+    if (cachedValue !== undefined) {
+      return cachedValue as UseCacheReturnType<C, K>;
+    }
+
+    const retrievedValue = await mappedKeyHandler(...args);
+    await this.cacheAdapter.set(cachedKey, retrievedValue, ttl);
+    return retrievedValue;
+  }
+
+  /**
+   * @description Invalidates a value from the cache
+   * @param key The key to invalidate the value from
+   * @param args The arguments to pass to the key handler
+   */
+  async invalidCache<
+    M extends Record<string, typeof Model>,
+    C extends CacheKeys,
+    K extends keyof C,
+  >(
+    this: AugmentedSqlDataSource<M, C>,
+    key: K,
+    ...args: Parameters<C[K]>
+  ): Promise<void> {
+    if (!this.cacheAdapter) {
+      throw new HysteriaError(
+        "SqlDataSource::useCache",
+        "CACHE_ADAPTER_NOT_CONFIGURED",
+      );
+    }
+
+    const hashedArgs = hashString(JSON.stringify(args));
+    const cachedKey = hashedArgs
+      ? `${key as string}:${hashedArgs}`
+      : (key as string);
+
+    await this.cacheAdapter.invalidate(cachedKey);
   }
 
   /**
@@ -934,6 +1077,10 @@ export class SqlDataSource extends DataSource {
       logger.warn(
         "SqlDataSource::closeConnection - Error while rolling back global transaction",
       );
+    }
+
+    if (this.cacheAdapter?.disconnect) {
+      await this.cacheAdapter.disconnect();
     }
 
     log("Closing connection", this.logs);

@@ -94,5 +94,21 @@ execSync(
   { stdio: "inherit" }
 );
 
+// cache adapters
+execSync(
+  `jest --config=jest.config.js --detectOpenHandles ./test/cache/in_memory_cache.test.ts`,
+  { stdio: "inherit" }
+);
+
+execSync(
+  `jest --config=jest.config.js --detectOpenHandles ./test/cache/redis_cache.test.ts`,
+  { stdio: "inherit" }
+);
+
+execSync(
+  `jest --config=jest.config.js --detectOpenHandles ./test/cache/sql_data_source_cache.test.ts`,
+  { stdio: "inherit" }
+);
+
 console.log("All tests passed");
 process.exit(0);

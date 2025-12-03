@@ -1,14 +1,17 @@
 import { Migration } from "../sql/migrations/migration";
 import { Migrator } from "../sql/migrations/migrator";
 import { type SqlDataSource } from "../sql/sql_data_source";
-import { SqlDataSourceType } from "../sql/sql_data_source_types";
+import {
+  AugmentedSqlDataSource,
+  SqlDataSourceType,
+} from "../sql/sql_data_source_types";
 import { Transaction } from "../sql/transactions/transaction";
 import logger from "../utils/logger";
 import { getMigrations, getMigrationTable } from "./migration_utils";
 import { MigrationTableType } from "./resources/migration_table_type";
 
 export default async function rollbackMigrationsConnector(
-  sql: SqlDataSource,
+  sql: SqlDataSource | AugmentedSqlDataSource,
   rollBackUntil?: string,
   migrationPath?: string,
   tsconfigPath?: string,

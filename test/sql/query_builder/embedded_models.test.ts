@@ -1,7 +1,7 @@
 import { env } from "../../../src/env/env";
 import { HysteriaError } from "../../../src/errors/hysteria_error";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
-import { AugmentedSqlDataSource } from "../sql_data_source_types";
+import { AugmentedSqlDataSource } from "../../../src/sql/sql_data_source_types";
 import { UserWithoutPk } from "../test_models/without_pk/user_without_pk";
 
 let sql: AugmentedSqlDataSource<{
