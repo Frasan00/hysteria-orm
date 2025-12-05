@@ -1,18 +1,21 @@
 import type {
   MysqlSqlDataSourceInput,
   PostgresSqlDataSourceInput,
+  SqliteDataSourceInput,
 } from "../data_source/data_source_types";
-import {
+import type {
   Mysql2Import,
   PgImport,
   Sqlite3Import,
-} from "../drivers/driver_constants";
+} from "../drivers/driver_types";
 import { DriverFactory } from "../drivers/drivers_factory";
 import { HysteriaError } from "../errors/hysteria_error";
 import {
   GetConnectionReturnType,
   SqlDataSourceInput,
   SqlDataSourceType,
+  SqlDriverSpecificOptions,
+  Sqlite3ConnectionOptions,
   SqlPoolType,
 } from "./sql_data_source_types";
 import { SqlDataSource } from "./sql_data_source";
@@ -30,7 +33,10 @@ export const createSqlPool = async <T extends SqlDataSourceType>(
   switch (type) {
     case "mariadb":
     case "mysql":
-      const mysqlInput = input as MysqlSqlDataSourceInput;
+      const mysqlInput = input as MysqlSqlDataSourceInput & {
+        driverOptions?: SqlDriverSpecificOptions<"mysql" | "mariadb">;
+      };
+
       const mysqlDriver = driver as Mysql2Import;
       const mysqlPool = mysqlDriver.createPool({
         host: mysqlInput.host,
@@ -43,7 +49,9 @@ export const createSqlPool = async <T extends SqlDataSourceType>(
       return mysqlPool;
     case "postgres":
     case "cockroachdb":
-      const pgInput = input as PostgresSqlDataSourceInput;
+      const pgInput = input as PostgresSqlDataSourceInput & {
+        driverOptions?: SqlDriverSpecificOptions<"postgres" | "cockroachdb">;
+      };
       const pgDriver = driver as PgImport;
       const pgPool = new pgDriver.Pool({
         host: pgInput.host,
@@ -57,10 +65,14 @@ export const createSqlPool = async <T extends SqlDataSourceType>(
       return pgPool;
     case "sqlite":
       const sqliteDriver = driver as Sqlite3Import;
-      const database = input?.database as string;
+      const sqliteInput = input as SqliteDataSourceInput & {
+        driverOptions?: Sqlite3ConnectionOptions;
+      };
+
+      const database = sqliteInput?.database as string;
       const sqlitePool = new sqliteDriver.Database(
         database,
-        sqliteDriver.OPEN_READWRITE | sqliteDriver.OPEN_CREATE,
+        sqliteInput?.driverOptions?.mode ?? undefined,
         (err) => {
           if (err) {
             throw new HysteriaError(

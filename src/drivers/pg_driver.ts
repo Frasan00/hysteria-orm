@@ -1,26 +1,20 @@
-import { DataSourceType } from "../data_source/data_source_types";
 import { Driver } from "./driver";
-import {
-  DriverSpecificOptions,
-  DriverNotFoundError,
-  PgImport,
-} from "./driver_constants";
+import { DriverNotFoundError } from "./driver_constants";
+import { DriverSpecificOptions, PgImport } from "./driver_types";
 
 export class PgDriver extends Driver {
-  override type: DataSourceType | "redis" = "postgres";
+  override type = "postgres" as const;
   override client: PgImport;
 
   constructor(
     client: PgImport,
-    driverSpecificOptions?: DriverSpecificOptions<DataSourceType>,
+    driverSpecificOptions?: DriverSpecificOptions<"postgres">,
   ) {
     super(driverSpecificOptions);
     this.client = client;
   }
 
-  static async createDriver(
-    driverSpecificOptions?: DriverSpecificOptions<DataSourceType>,
-  ): Promise<Driver> {
+  static async createDriver(): Promise<Driver> {
     const pg = await import("pg").catch(() => {
       throw new DriverNotFoundError("pg");
     });
@@ -28,6 +22,6 @@ export class PgDriver extends Driver {
       throw new DriverNotFoundError("pg");
     }
 
-    return new PgDriver(pg.default, driverSpecificOptions);
+    return new PgDriver(pg.default);
   }
 }

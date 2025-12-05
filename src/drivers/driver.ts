@@ -1,6 +1,7 @@
 import type { DataSourceType } from "../data_source/data_source_types";
 import { HysteriaError } from "../errors/hysteria_error";
-import { DriverImport, DriverSpecificOptions } from "./driver_constants";
+import type { DriverSpecificOptions } from "./driver_types";
+import type { DriverImport } from "./driver_types";
 
 export abstract class Driver {
   abstract type: DataSourceType | "redis";

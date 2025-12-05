@@ -1,26 +1,20 @@
-import type { DataSourceType } from "../data_source/data_source_types";
 import { Driver } from "./driver";
-import {
-  DriverSpecificOptions,
-  DriverNotFoundError,
-  MongoClientImport,
-} from "./driver_constants";
+import { DriverNotFoundError } from "./driver_constants";
+import { DriverSpecificOptions, MongoClientImport } from "./driver_types";
 
 export class MongoDriver extends Driver {
-  override type: DataSourceType | "redis" = "postgres";
+  override type = "mongo" as const;
   override client: MongoClientImport;
 
   constructor(
     client: MongoClientImport,
-    driverSpecificOptions?: DriverSpecificOptions<DataSourceType>,
+    driverSpecificOptions?: DriverSpecificOptions<"mongo">,
   ) {
     super(driverSpecificOptions);
     this.client = client;
   }
 
-  static async createDriver(
-    driverSpecificOptions?: DriverSpecificOptions<DataSourceType>,
-  ): Promise<Driver> {
+  static async createDriver(): Promise<Driver> {
     const mongo = await import("mongodb").catch(() => {
       throw new DriverNotFoundError("mongodb");
     });
@@ -28,6 +22,6 @@ export class MongoDriver extends Driver {
       throw new DriverNotFoundError("mongodb");
     }
 
-    return new MongoDriver(mongo, driverSpecificOptions);
+    return new MongoDriver(mongo);
   }
 }

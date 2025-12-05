@@ -11,7 +11,7 @@ import {
   ModelKeyOrAnySort,
 } from "./mongo_collection_types";
 import { HysteriaError } from "../../../errors/hysteria_error";
-import { MongoClientImport } from "../../../drivers/driver_constants";
+import type { MongoClientImport } from "../../../drivers/driver_types";
 
 export type MongoFindOneOptions<T extends Collection> = {
   ignoreHooks?: FetchHooks[];

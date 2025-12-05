@@ -1,26 +1,20 @@
-import type { DataSourceType } from "../data_source/data_source_types";
 import { Driver } from "./driver";
-import {
-  DriverNotFoundError,
-  DriverSpecificOptions,
-  Sqlite3Import,
-} from "./driver_constants";
+import { DriverNotFoundError } from "./driver_constants";
+import { DriverSpecificOptions, Sqlite3Import } from "./driver_types";
 
 export class Sqlite3Driver extends Driver {
-  override type: DataSourceType | "redis" = "sqlite";
+  override type = "sqlite" as const;
   override client: Sqlite3Import;
 
   constructor(
     client: Sqlite3Import,
-    driverSpecificOptions?: DriverSpecificOptions<DataSourceType>,
+    driverSpecificOptions?: DriverSpecificOptions<"sqlite">,
   ) {
     super(driverSpecificOptions);
     this.client = client;
   }
 
-  static async createDriver(
-    driverSpecificOptions?: DriverSpecificOptions<DataSourceType>,
-  ): Promise<Driver> {
+  static async createDriver(): Promise<Driver> {
     const sqlite3 = await import("sqlite3").catch(() => {
       throw new DriverNotFoundError("sqlite3");
     });
@@ -28,6 +22,6 @@ export class Sqlite3Driver extends Driver {
       throw new DriverNotFoundError("sqlite3");
     }
 
-    return new Sqlite3Driver(sqlite3.default, driverSpecificOptions);
+    return new Sqlite3Driver(sqlite3.default);
   }
 }

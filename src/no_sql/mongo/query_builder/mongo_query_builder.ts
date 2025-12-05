@@ -1,4 +1,4 @@
-import type { MongoClientImport } from "../../../drivers/driver_constants";
+import type { MongoClientImport } from "../../../drivers/driver_types";
 import { HysteriaError } from "../../../errors/hysteria_error";
 import logger from "../../../utils/logger";
 import { MongoDataSource } from "../mongo_data_source";

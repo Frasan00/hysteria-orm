@@ -17,9 +17,13 @@ import type {
   Mysql2Import,
   PgImport,
   Sqlite3Import,
-} from "../drivers/driver_constants";
+} from "../drivers/driver_types";
 import type { Model } from "./models/model";
 import type { SqlDataSource } from "./sql_data_source";
+
+export type Sqlite3ConnectionOptions = {
+  mode: number;
+};
 
 export type SqlDriverSpecificOptions<T extends DataSourceType> = Omit<
   DriverSpecificOptions<T>,
@@ -63,7 +67,7 @@ export type SqlDataSourceInput<
   T extends Record<string, SqlDataSourceModel> = {},
   C extends CacheKeys = {},
 > = {
-  readonly type?: Exclude<DataSourceType, "mongo">;
+  readonly type?: D;
   /**
    * @description Whether to log the sql queries and other debug information
    */
@@ -88,6 +92,9 @@ export type SqlDataSourceInput<
    */
   driverOptions?: SqlDriverSpecificOptions<D>;
 
+  /**
+   * @description The cache strategy to use for the sql data source, it's used to configure the cache strategy for the sql data source
+   */
   cacheStrategy?: {
     cacheAdapter?: CacheAdapter;
     keys: C;

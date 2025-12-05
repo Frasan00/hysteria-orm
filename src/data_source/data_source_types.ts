@@ -1,8 +1,4 @@
-import {
-  PgClientOptions,
-  MysqlCreateConnectionOptions,
-  MongoConnectionOptions,
-} from "../drivers/driver_constants";
+import type { MongoConnectionOptions } from "../drivers/driver_types";
 
 /**
  * @description Creates a datasource for the selected database type with the provided credentials
@@ -33,7 +29,6 @@ export interface PostgresSqlDataSourceInput extends CommonDataSourceInput {
   readonly username?: string;
   readonly password?: string;
   readonly database?: string;
-  readonly driverOptions?: PgClientOptions;
 }
 
 export interface NotNullablePostgresSqlDataSourceInput
@@ -44,7 +39,6 @@ export interface NotNullablePostgresSqlDataSourceInput
   readonly password: string;
   readonly database: string;
   readonly port?: number;
-  readonly driverOptions?: PgClientOptions;
 }
 
 export interface MysqlSqlDataSourceInput extends CommonDataSourceInput {
@@ -54,7 +48,6 @@ export interface MysqlSqlDataSourceInput extends CommonDataSourceInput {
   readonly username?: string;
   readonly password?: string;
   readonly database?: string;
-  readonly driverOptions?: MysqlCreateConnectionOptions;
 }
 
 export interface NotNullableMysqlSqlDataSourceInput
@@ -65,7 +58,6 @@ export interface NotNullableMysqlSqlDataSourceInput
   readonly password: string;
   readonly database: string;
   readonly port?: number;
-  readonly driverOptions?: MysqlCreateConnectionOptions;
 }
 
 export interface SqliteDataSourceInput extends CommonDataSourceInput {
