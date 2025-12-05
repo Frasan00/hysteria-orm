@@ -471,6 +471,100 @@ describe(`[${env.DB_TYPE}] Instance Methods - refresh()`, () => {
   });
 });
 
+describe(`[${env.DB_TYPE}] Instance Methods - mergeProps()`, () => {
+  test("should merge provided data with model instance", async () => {
+    const user = new UserWithUuid();
+    user.name = "Original Name";
+    user.email = "original@example.com";
+    user.age = 25;
+    user.status = UserStatus.active;
+    user.isActive = true;
+
+    user.mergeProps({
+      name: "Merged Name",
+      age: 30,
+    });
+
+    expect(user.name).toBe("Merged Name");
+    expect(user.age).toBe(30);
+    expect(user.email).toBe("original@example.com");
+    expect(user.status).toBe(UserStatus.active);
+    expect(user.isActive).toBe(true);
+  });
+
+  test("should merge props on existing model instance from database", async () => {
+    const insertedUser = await UserFactory.userWithUuid(1);
+
+    const user = new UserWithUuid();
+    user.id = insertedUser.id;
+    user.name = insertedUser.name;
+    user.email = insertedUser.email;
+    user.age = insertedUser.age;
+    user.status = insertedUser.status;
+    user.isActive = insertedUser.isActive;
+
+    user.mergeProps({
+      name: "Updated via Merge",
+      status: UserStatus.inactive,
+    });
+
+    expect(user.name).toBe("Updated via Merge");
+    expect(user.status).toBe(UserStatus.inactive);
+    expect(user.id).toBe(insertedUser.id);
+    expect(user.email).toBe(insertedUser.email);
+  });
+
+  test("should not affect other properties when merging partial data", async () => {
+    const user = new UserWithUuid();
+    user.name = "John Doe";
+    user.email = "john@example.com";
+    user.age = 25;
+    user.status = UserStatus.active;
+    user.isActive = true;
+
+    user.mergeProps({
+      email: "newemail@example.com",
+    });
+
+    expect(user.name).toBe("John Doe");
+    expect(user.email).toBe("newemail@example.com");
+    expect(user.age).toBe(25);
+    expect(user.status).toBe(UserStatus.active);
+    expect(user.isActive).toBe(true);
+  });
+
+  test("should merge props and then save successfully", async () => {
+    const user = new UserWithUuid();
+    user.name = "Initial Name";
+    user.email = "initial@example.com";
+    user.age = 20;
+    user.status = UserStatus.active;
+    user.isActive = true;
+
+    await user.save();
+    expect(user.id).toBeDefined();
+
+    user.mergeProps({
+      name: "Merged Before Save",
+      age: 35,
+    });
+
+    await user.save();
+
+    const retrievedUser = await UserWithUuid.findOne({
+      where: { id: user.id },
+    });
+
+    expect(retrievedUser).not.toBeNull();
+    expect(retrievedUser?.name).toBe("Merged Before Save");
+    if (env.DB_TYPE === "cockroachdb") {
+      expect(retrievedUser?.age).toBe("35");
+    } else {
+      expect(retrievedUser?.age).toBe(35);
+    }
+  });
+});
+
 describe(`[${env.DB_TYPE}] Instance Methods - Integration Tests`, () => {
   test("should chain instance methods correctly", async () => {
     // Create

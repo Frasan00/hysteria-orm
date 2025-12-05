@@ -44,6 +44,7 @@ import type {
   IndexType,
   LazyRelationType,
   ManyToManyOptions,
+  ManyToManyStringOptions,
   SymmetricEncryptionOptions,
   ThroughModel,
   UniqueType,
@@ -527,6 +528,16 @@ export function belongsTo<
   model: () => R,
   foreignKey?: ModelKey<InstanceType<M>>,
   options?: BaseModelRelationType,
+): PropertyDecorator;
+export function belongsTo<R extends typeof Model = any>(
+  model: () => R,
+  foreignKey?: string,
+  options?: BaseModelRelationType,
+): PropertyDecorator;
+export function belongsTo<R extends typeof Model = any>(
+  model: () => R,
+  foreignKey?: string | ModelKey<InstanceType<R>>,
+  options?: BaseModelRelationType,
 ): PropertyDecorator {
   return (target: Object, propertyKey: string | symbol) => {
     const fallbackForeignKey = () =>
@@ -567,6 +578,14 @@ export function belongsTo<
 export function hasOne<T extends typeof Model>(
   model: () => T,
   foreignKey?: ModelKey<InstanceType<T>>,
+): PropertyDecorator;
+export function hasOne<T extends typeof Model>(
+  model: () => T,
+  foreignKey?: string,
+): PropertyDecorator;
+export function hasOne<T extends typeof Model>(
+  model: () => T,
+  foreignKey?: string | ModelKey<InstanceType<T>>,
 ): PropertyDecorator {
   return (target: Object, propertyKey: string | symbol) => {
     const fallbackForeignKey = () =>
@@ -596,6 +615,14 @@ export function hasOne<T extends typeof Model>(
 export function hasMany<T extends typeof Model>(
   model: () => T,
   foreignKey?: ModelKey<InstanceType<T>>,
+): PropertyDecorator;
+export function hasMany<T extends typeof Model>(
+  model: () => T,
+  foreignKey?: string,
+): PropertyDecorator;
+export function hasMany<T extends typeof Model>(
+  model: () => T,
+  foreignKey?: string | ModelKey<InstanceType<T>>,
 ): PropertyDecorator {
   return (target: Object, propertyKey: string | symbol) => {
     const fallbackForeignKey = () =>
@@ -635,6 +662,18 @@ export function manyToMany<
   model: () => R,
   throughModel: TM,
   throughModelKeys?: ManyToManyOptions<T, TM>,
+  options?: BaseModelRelationType,
+): PropertyDecorator;
+export function manyToMany<R extends typeof Model>(
+  model: () => R,
+  throughModel: string | (() => typeof Model),
+  throughModelKeys?: ManyToManyStringOptions,
+  options?: BaseModelRelationType,
+): PropertyDecorator;
+export function manyToMany<R extends typeof Model>(
+  model: () => R,
+  throughModel: string | (() => typeof Model),
+  throughModelKeys?: ManyToManyStringOptions,
   options?: BaseModelRelationType,
 ): PropertyDecorator {
   return (target: Object, propertyKey: string | symbol) => {

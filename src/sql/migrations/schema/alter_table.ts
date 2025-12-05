@@ -43,7 +43,12 @@ export class AlterTableBuilder extends BaseBuilder {
    */
   addColumn(cb: (col: CreateTableBuilder) => ConstraintBuilder): void {
     let tempNodes: QueryNode[] = [];
-    const builder = new CreateTableBuilder(this.sqlType, tempNodes, this.table);
+    const builder = new CreateTableBuilder(
+      this.sqlType,
+      tempNodes,
+      this.table,
+      "alter_table",
+    );
     const constraints = cb(builder);
     if (!tempNodes.length) {
       return;
@@ -182,7 +187,7 @@ export class AlterTableBuilder extends BaseBuilder {
           });
           break;
         case "foreign_key":
-          this.addForeignKey(
+          this.foreignKey(
             getColumnValue(columnName),
             constraintNode.references?.table ?? "",
             getColumnValue(constraintNode.references?.columns?.[0] ?? ""),
@@ -228,11 +233,11 @@ export class AlterTableBuilder extends BaseBuilder {
   }
 
   /**
-   * @description Adds a primary key to a column
+   * @description Adds a primary key constraint to a column
+   * @param columnName is the column name to add the primary key to
    * @sqlite not supported and will throw error
-   * @private Used internally by alterColumn
    */
-  private addPrimaryKey(columnName: string) {
+  addPrimaryKey(columnName: string) {
     if (this.sqlType === "sqlite") {
       throw new HysteriaError(
         "AlterTableBuilder::alterColumn",
@@ -262,10 +267,13 @@ export class AlterTableBuilder extends BaseBuilder {
 
   /**
    * @description Adds a foreign key constraint to a column
+   * @param columnName is the column name in the current table
+   * @param foreignTable is the referenced table name
+   * @param foreignColumn is the referenced column name
+   * @param options optional foreign key options (constraintName, onDelete, onUpdate)
    * @sqlite not supported and will throw error
-   * @private Used internally by alterColumn
    */
-  private addForeignKey(
+  foreignKey(
     columnName: string,
     foreignTable: string,
     foreignColumn: string,
@@ -297,10 +305,11 @@ export class AlterTableBuilder extends BaseBuilder {
   /**
    * @description Adds a unique constraint to a column
    * @description By default generates a constraint name using standard pattern: uq_${table}_${column}
+   * @param columnName is the column name in the current table
+   * @param options optional constraint options (constraintName)
    * @sqlite not supported and will throw error
-   * @private Used internally by alterColumn
    */
-  private unique(columnName: string, options?: CommonConstraintOptions) {
+  unique(columnName: string, options?: CommonConstraintOptions) {
     if (this.sqlType === "sqlite") {
       throw new HysteriaError(
         "AlterTableBuilder::alterColumn",
@@ -319,23 +328,6 @@ export class AlterTableBuilder extends BaseBuilder {
         }),
       ),
     );
-  }
-
-  /**
-   * @description Sets a default value for a column
-   * @sqlite not supported and will throw error
-   * @private Used internally by alterColumn
-   */
-  private setDefault(columnName: string, defaultValue: string) {
-    if (this.sqlType === "sqlite") {
-      throw new HysteriaError(
-        "AlterTableBuilder::alterColumn",
-        "SQLITE_NOT_SUPPORTED",
-        new Error("sqlite does not support alter table statements"),
-      );
-    }
-
-    this.nodes.push(new SetDefaultNode(columnName, defaultValue));
   }
 
   /**

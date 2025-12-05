@@ -49,13 +49,11 @@ export type CommonSqlMethodReturnType<T extends SqlMethod> =
             : // Fallback
               any;
 
-export type RelatedInstance<
-  M extends Model,
-  K extends ModelRelation<M>,
-> = M[K] extends (infer R)[]
-  ? R extends Model
-    ? R
-    : never
-  : M[K] extends Model
-    ? M[K]
-    : never;
+export type RelatedInstance<M extends Model, K extends ModelRelation<M>> =
+  NonNullable<M[K]> extends (infer R)[]
+    ? R extends Model
+      ? R
+      : never
+    : NonNullable<M[K]> extends Model
+      ? NonNullable<M[K]>
+      : never;

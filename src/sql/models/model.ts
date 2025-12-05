@@ -939,6 +939,19 @@ export abstract class Model extends Entity {
   // instance methods
 
   /**
+   * @description Merges the provided data with the model instance
+   */
+  mergeProps<T extends Model = this>(
+    this: T,
+    data: Partial<ModelWithoutRelations<T>>,
+  ): void {
+    const instance = this as unknown as new () => T | typeof Model;
+    const typeofModel = instance.constructor as typeof Model &
+      (new () => typeof Model);
+    typeofModel.combineProps(this as unknown as T, data as unknown as T);
+  }
+
+  /**
    * @description inserts or updates the model to the database, must have a primary key in order to work
    * @throws {HysteriaError} If the model has no primary key
    */

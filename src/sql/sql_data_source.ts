@@ -1079,9 +1079,7 @@ export class SqlDataSource extends DataSource {
       );
     }
 
-    if (this.cacheAdapter?.disconnect) {
-      await this.cacheAdapter.disconnect();
-    }
+    await this.cacheAdapter?.disconnect?.();
 
     log("Closing connection", this.logs);
     switch (this.type) {

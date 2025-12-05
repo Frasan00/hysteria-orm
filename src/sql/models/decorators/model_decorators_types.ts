@@ -244,6 +244,11 @@ export type ManyToManyOptions<
     : ModelKey<InstanceType<ExtractModelFromTM<TM>>>;
 };
 
+export type ManyToManyStringOptions = {
+  leftForeignKey?: string;
+  rightForeignKey?: string;
+};
+
 export type IndexType = {
   columns: string[];
   name: string;
