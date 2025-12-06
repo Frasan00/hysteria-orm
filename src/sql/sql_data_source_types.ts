@@ -89,6 +89,7 @@ export type SqlDataSourceInput<
 
   /**
    * @description The driver specific options to use for the sql data source, it's used to configure the driver specific options for the sql data source
+   * @warning For usage with types, you must have driver types installed if the driver handles types in a type package like e.g. `@types/pg`
    */
   driverOptions?: SqlDriverSpecificOptions<D>;
 
