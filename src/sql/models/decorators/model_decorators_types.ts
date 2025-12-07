@@ -22,7 +22,9 @@ export type ColumnDataTypeOptionWithLength = {
     | "tinyint"
     | "smallint"
     | "mediumint"
-    | "bigint";
+    | "bigint"
+    | "increment"
+    | "bigIncrement";
   length?: number;
 };
 

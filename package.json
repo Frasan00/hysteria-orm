@@ -1,6 +1,6 @@
 {
   "name": "hysteria-orm",
-  "version": "10.2.01",
+  "version": "10.2.2",
   "license": "MIT",
   "description": "Yet another orm for Javascript and Typescript no one asked for",
   "type": "module",
@@ -41,8 +41,10 @@
     "lib/**"
   ],
   "devDependencies": {
+    "@adminjs/express": "^6.1.1",
     "@adonisjs/eslint-config": "^2.1.2",
     "@faker-js/faker": "^9.9.0",
+    "@types/express": "^5.0.6",
     "@types/ioredis": "^5.0.0",
     "@types/jest": "^30.0.0",
     "@types/luxon": "^3.7.1",
@@ -53,8 +55,12 @@
     "@types/pino": "^7.0.5",
     "@types/pluralize": "^0.0.33",
     "@types/sqlite3": "^5.1.0",
+    "adminjs": "^7.8.17",
     "bundle-require": "^5.1.0",
     "esbuild": "^0.27.0",
+    "express": "^5.2.1",
+    "express-formidable": "^1.2.0",
+    "express-session": "^1.18.2",
     "husky": "^9.1.7",
     "ioredis": "^5.8.0",
     "jest": "^30.1.3",

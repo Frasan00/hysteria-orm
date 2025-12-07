@@ -1,3 +1,12 @@
+import {
+  initializeAdminJs,
+  initializeAdminJsExpress,
+} from "../adminjs/adminjs_adapter";
+import type {
+  AdminJsAdminInstance,
+  AdminJsInstance,
+  AdminJsOptions,
+} from "../adminjs/adminjs_types";
 import { InMemoryAdapter } from "../cache/adapters/in_memory";
 import { CacheAdapter } from "../cache/cache_adapter";
 import { CacheKeys, UseCacheReturnType } from "../cache/cache_types";
@@ -95,6 +104,16 @@ export class SqlDataSource extends DataSource {
    * @description Maps global keys to specific handlers for cache handling
    */
   cacheKeys: CacheKeys = {};
+
+  /**
+   * @description AdminJS configuration options
+   */
+  private adminJsOptions?: AdminJsOptions;
+
+  /**
+   * @description Cached AdminJS instance
+   */
+  private adminJsInstance?: AdminJsInstance;
 
   // Static Methods
 
@@ -553,6 +572,44 @@ export class SqlDataSource extends DataSource {
     return this.getInstance().rawStatement(value);
   }
 
+  /**
+   * @description Initializes AdminJS with the configured options
+   * @description All AdminJS dependencies are loaded at runtime via dynamic import() to keep the plugin optional
+   * @description To use AdminJS, install: npm install adminjs
+   * @throws {HysteriaError} If AdminJS is not enabled or connection not established
+   * @returns The AdminJS instance
+   */
+  static async initializeAdminJs(): Promise<AdminJsAdminInstance> {
+    return this.getInstance().initializeAdminJs();
+  }
+
+  /**
+   * @description Initializes AdminJS with Express router
+   * @description All AdminJS dependencies are loaded at runtime via dynamic import() to keep the plugin optional
+   * @description To use AdminJS with Express, install: npm install adminjs @adminjs/express express express-formidable --save-dev
+   * @throws {HysteriaError} If AdminJS is not enabled or connection not established
+   * @returns The AdminJS instance with Express router
+   */
+  static async initializeAdminJsExpress(): Promise<AdminJsInstance> {
+    return this.getInstance().initializeAdminJsExpress();
+  }
+
+  /**
+   * @description Returns the AdminJS instance if initialized
+   * @returns The AdminJS instance or undefined if not initialized
+   */
+  static getAdminJs(): AdminJsInstance | undefined {
+    return this.instance?.getAdminJs();
+  }
+
+  /**
+   * @description Checks if AdminJS is enabled
+   * @returns True if AdminJS is enabled
+   */
+  static isAdminJsEnabled(): boolean {
+    return this.instance?.isAdminJsEnabled() ?? false;
+  }
+
   // Instance Methods
   private constructor(input?: SqlDataSourceInput<SqlDataSourceType>) {
     super(input);
@@ -588,6 +645,7 @@ export class SqlDataSource extends DataSource {
 
     this.cacheKeys = input?.cacheStrategy?.keys ?? {};
     this.cacheAdapter = input?.cacheStrategy?.cacheAdapter ?? this.cacheAdapter;
+    this.adminJsOptions = input?.adminJs;
   }
 
   /**
@@ -1227,6 +1285,81 @@ export class SqlDataSource extends DataSource {
     return generateOpenApiModelWithMetadata(
       Object.values(this.models) as unknown as (new () => Model)[],
     );
+  }
+
+  // AdminJS Methods
+
+  /**
+   * @description Initializes AdminJS with the configured options
+   * @description All AdminJS dependencies are loaded at runtime via dynamic import() to keep the plugin optional
+   * @description To use AdminJS, install: npm install adminjs
+   * @throws {HysteriaError} If AdminJS is not enabled in the configuration
+   * @returns The AdminJS instance
+   */
+  async initializeAdminJs(): Promise<AdminJsAdminInstance> {
+    if (!this.adminJsOptions?.enabled) {
+      throw new HysteriaError(
+        "SqlDataSource::initializeAdminJs",
+        "ADMINJS_NOT_ENABLED",
+      );
+    }
+
+    if (this.adminJsInstance) {
+      return this.adminJsInstance.admin;
+    }
+
+    this.adminJsInstance = await initializeAdminJs(this, this.adminJsOptions);
+    return this.adminJsInstance?.admin as AdminJsAdminInstance;
+  }
+
+  /**
+   * @description Initializes AdminJS with Express router
+   * @description All AdminJS dependencies are loaded at runtime via dynamic import() to keep the plugin optional
+   * @description To use AdminJS with Express, install: npm install adminjs @adminjs/express express express-formidable --save-dev
+   * @throws {HysteriaError} If AdminJS is not enabled in the configuration
+   * @returns The AdminJS instance with Express router
+   */
+  async initializeAdminJsExpress(): Promise<AdminJsInstance> {
+    if (!this.adminJsOptions?.enabled) {
+      throw new HysteriaError(
+        "SqlDataSource::initializeAdminJsExpress",
+        "ADMINJS_NOT_ENABLED",
+      );
+    }
+
+    if (this.adminJsInstance?.router) {
+      return this.adminJsInstance;
+    }
+
+    this.adminJsInstance = await initializeAdminJsExpress(
+      this,
+      this.adminJsOptions,
+    );
+    return this.adminJsInstance;
+  }
+
+  /**
+   * @description Returns the AdminJS instance if initialized
+   * @returns The AdminJS instance or undefined if not initialized
+   */
+  getAdminJs(): AdminJsInstance | undefined {
+    return this.adminJsInstance;
+  }
+
+  /**
+   * @description Returns the AdminJS configuration options
+   * @returns The AdminJS configuration options or undefined if not configured
+   */
+  getAdminJsOptions(): AdminJsOptions | undefined {
+    return this.adminJsOptions;
+  }
+
+  /**
+   * @description Checks if AdminJS is enabled
+   * @returns True if AdminJS is enabled
+   */
+  isAdminJsEnabled(): boolean {
+    return !!this.adminJsOptions?.enabled;
   }
 
   /**

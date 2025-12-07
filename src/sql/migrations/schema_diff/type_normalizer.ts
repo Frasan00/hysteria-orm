@@ -24,6 +24,8 @@ export function normalizeColumnType(
     case "sqlite": {
       const rules: Array<{ test: (s: string) => boolean; normalized: string }> =
         [
+          { test: (s) => s === "increment", normalized: "integer" },
+          { test: (s) => s === "bigincrement", normalized: "integer" },
           { test: (s) => s.includes("int"), normalized: "integer" },
           { test: (s) => s.includes("char"), normalized: "varchar" },
           { test: (s) => s.includes("text"), normalized: "text" },
@@ -61,6 +63,7 @@ export function normalizeColumnType(
       switch (base) {
         case "int":
         case "integer":
+        case "increment":
           return "integer";
         case "tinyint":
           return "tinyint";
@@ -69,6 +72,7 @@ export function normalizeColumnType(
         case "mediumint":
           return "mediumint";
         case "bigint":
+        case "bigincrement":
           return "bigint";
         case "float":
           return "float";
@@ -148,11 +152,15 @@ export function normalizeColumnType(
         case "integer":
         case "int4":
         case "int":
+        case "increment":
+        case "serial":
           return "integer";
         case "mediumint":
           return "integer";
         case "bigint":
         case "int8":
+        case "bigincrement":
+        case "bigserial":
           return "bigint";
         case "smallint":
         case "int2":

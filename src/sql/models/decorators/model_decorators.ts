@@ -225,6 +225,8 @@ column.uuid = uuidColumn;
 column.ulid = ulidColumn;
 column.integer = integerColumn;
 column.float = floatColumn;
+column.increment = incrementColumn;
+column.bigIncrement = bigIncrementColumn;
 column.encryption = {
   symmetric,
   asymmetric,
@@ -278,6 +280,80 @@ function integerColumn(
   return column({
     type: "integer",
     ...(options as ColumnOptions),
+    serialize: (value) => {
+      if (value === undefined) {
+        return;
+      }
+
+      if (value === null) {
+        return null;
+      }
+
+      if (typeof value === "number") {
+        return value;
+      }
+
+      if (typeof value === "string") {
+        return +value;
+      }
+
+      return Number.parseInt(value);
+    },
+  });
+}
+
+/**
+ * @description Decorator to define an auto-incrementing integer primary key column
+ * @description Automatically sets primaryKey: true and nullable: false
+ * @mysql INTEGER with AUTO_INCREMENT
+ * @postgres SERIAL (INTEGER with auto-increment sequence)
+ * @sqlite INTEGER PRIMARY KEY AUTOINCREMENT
+ */
+function incrementColumn(
+  options: Omit<ColumnOptions, "serialize" | "primaryKey" | "nullable"> = {},
+): PropertyDecorator {
+  return column({
+    type: "increment",
+    ...(options as ColumnOptions),
+    primaryKey: true,
+    nullable: false,
+    serialize: (value) => {
+      if (value === undefined) {
+        return;
+      }
+
+      if (value === null) {
+        return null;
+      }
+
+      if (typeof value === "number") {
+        return value;
+      }
+
+      if (typeof value === "string") {
+        return +value;
+      }
+
+      return Number.parseInt(value);
+    },
+  });
+}
+
+/**
+ * @description Decorator to define an auto-incrementing bigint primary key column
+ * @description Automatically sets primaryKey: true and nullable: false
+ * @mysql BIGINT with AUTO_INCREMENT
+ * @postgres BIGSERIAL (BIGINT with auto-increment sequence)
+ * @sqlite INTEGER PRIMARY KEY AUTOINCREMENT
+ */
+function bigIncrementColumn(
+  options: Omit<ColumnOptions, "serialize" | "primaryKey" | "nullable"> = {},
+): PropertyDecorator {
+  return column({
+    type: "bigIncrement",
+    ...(options as ColumnOptions),
+    primaryKey: true,
+    nullable: false,
     serialize: (value) => {
       if (value === undefined) {
         return;

@@ -1,6 +1,7 @@
 import type { PoolConnection } from "mysql2/promise";
 import type { PoolClient } from "pg";
 import { FormatOptionsWithLanguage } from "sql-formatter";
+import type { AdminJsOptions } from "../adminjs/adminjs_types";
 import type { CacheAdapter } from "../cache/cache_adapter";
 import type { CacheKeys, UseCacheReturnType } from "../cache/cache_types";
 import type {
@@ -100,6 +101,12 @@ export type SqlDataSourceInput<
     cacheAdapter?: CacheAdapter;
     keys: C;
   };
+
+  /**
+   * @description AdminJS configuration for the admin panel
+   * @description To use AdminJS, install: `npm install adminjs`
+   */
+  adminJs?: AdminJsOptions;
 } & (
   | MysqlSqlDataSourceInput
   | PostgresSqlDataSourceInput
@@ -121,6 +128,11 @@ export type UseConnectionInput<
     cacheAdapter: CacheAdapter;
     keys: C;
   };
+  /**
+   * @description AdminJS configuration for the admin panel
+   * @description AdminJS is completely optional - dependencies are loaded at runtime via dynamic import()
+   */
+  adminJs?: AdminJsOptions;
 } & (
   | NotNullableMysqlSqlDataSourceInput
   | NotNullablePostgresSqlDataSourceInput
