@@ -72,6 +72,15 @@ services:
       timeout: 5s
       retries: 5
 
+  mssql:
+    image: mcr.microsoft.com/azure-sql-edge:latest
+    container_name: "hysteria-mssql"
+    environment:
+      ACCEPT_EULA: Y
+      SA_PASSWORD: Password123!
+    ports:
+      - "1433:1433"
+
 volumes:
   cockroach-data:
     driver: local

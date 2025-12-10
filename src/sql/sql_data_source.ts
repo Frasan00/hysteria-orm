@@ -49,6 +49,7 @@ import type {
   ConnectionPolicies,
   GetConnectionReturnType,
   getPoolReturnType,
+  MssqlPoolInstance,
   MysqlConnectionInstance,
   PgPoolClientInstance,
   SqlCloneOptions,
@@ -139,13 +140,13 @@ export class SqlDataSource extends DataSource {
     C extends CacheKeys = {},
   >(
     input: SqlDataSourceInput<U, T, C>,
-    cb?: (sqlDataSource: AugmentedSqlDataSource<T, C>) => Promise<void> | void,
+    cb?: (sqlDataSource: AugmentedSqlDataSource<T, C>) => Promise<void> | void
   ): Promise<AugmentedSqlDataSource<T, C>>;
   static async connect<
     T extends Record<string, SqlDataSourceModel> = {},
     C extends CacheKeys = {},
   >(
-    cb?: (sqlDataSource: AugmentedSqlDataSource<T, C>) => Promise<void> | void,
+    cb?: (sqlDataSource: AugmentedSqlDataSource<T, C>) => Promise<void> | void
   ): Promise<AugmentedSqlDataSource<T, C>>;
   static async connect<
     U extends SqlDataSourceType,
@@ -155,7 +156,7 @@ export class SqlDataSource extends DataSource {
     inputOrCb?:
       | SqlDataSourceInput<U, T, C>
       | ((sqlDataSource: AugmentedSqlDataSource<T, C>) => Promise<void> | void),
-    cb?: (sqlDataSource: AugmentedSqlDataSource<T, C>) => Promise<void> | void,
+    cb?: (sqlDataSource: AugmentedSqlDataSource<T, C>) => Promise<void> | void
   ): Promise<AugmentedSqlDataSource<T, C>> {
     if (typeof inputOrCb === "function") {
       cb = inputOrCb;
@@ -163,12 +164,12 @@ export class SqlDataSource extends DataSource {
     }
 
     const sqlDataSource = new SqlDataSource(
-      inputOrCb as SqlDataSourceInput<U, T, C>,
+      inputOrCb as SqlDataSourceInput<U, T, C>
     );
 
     if (inputOrCb?.models) {
       const sanitizeModelKeys = sqlDataSource.sanitizeModelKeys(
-        inputOrCb?.models || {},
+        inputOrCb?.models || {}
       );
 
       Object.assign(sqlDataSource, sanitizeModelKeys);
@@ -217,13 +218,13 @@ export class SqlDataSource extends DataSource {
     C extends CacheKeys = {},
   >(
     input: SqlDataSourceInput<U, T, C>,
-    cb?: (sqlDataSource: AugmentedSqlDataSource<T, C>) => Promise<void> | void,
+    cb?: (sqlDataSource: AugmentedSqlDataSource<T, C>) => Promise<void> | void
   ): Promise<AugmentedSqlDataSource<T, C>>;
   static async connectToSecondarySource<
     T extends Record<string, SqlDataSourceModel> = {},
     C extends CacheKeys = {},
   >(
-    cb?: (sqlDataSource: AugmentedSqlDataSource<T, C>) => Promise<void> | void,
+    cb?: (sqlDataSource: AugmentedSqlDataSource<T, C>) => Promise<void> | void
   ): Promise<AugmentedSqlDataSource<T, C>>;
   static async connectToSecondarySource<
     U extends SqlDataSourceType,
@@ -233,7 +234,7 @@ export class SqlDataSource extends DataSource {
     inputOrCb?:
       | SqlDataSourceInput<U, T, C>
       | ((sqlDataSource: AugmentedSqlDataSource<T, C>) => Promise<void> | void),
-    cb?: (sqlDataSource: AugmentedSqlDataSource<T, C>) => Promise<void> | void,
+    cb?: (sqlDataSource: AugmentedSqlDataSource<T, C>) => Promise<void> | void
   ): Promise<AugmentedSqlDataSource<T, C>> {
     if (typeof inputOrCb === "function") {
       cb = inputOrCb;
@@ -241,12 +242,12 @@ export class SqlDataSource extends DataSource {
     }
 
     const sqlDataSource = new SqlDataSource(
-      inputOrCb as SqlDataSourceInput<U, T, C>,
+      inputOrCb as SqlDataSourceInput<U, T, C>
     );
 
     if (inputOrCb?.models) {
       const sanitizeModelKeys = sqlDataSource.sanitizeModelKeys(
-        inputOrCb.models,
+        inputOrCb.models
       );
 
       Object.assign(sqlDataSource, sanitizeModelKeys);
@@ -295,15 +296,15 @@ export class SqlDataSource extends DataSource {
     C extends CacheKeys = {},
   >(
     connectionDetails: UseConnectionInput<U, T, C>,
-    cb: (sqlDataSource: AugmentedSqlDataSource<T, C>) => Promise<void>,
+    cb: (sqlDataSource: AugmentedSqlDataSource<T, C>) => Promise<void>
   ): Promise<void> {
     const customSqlInstance = new SqlDataSource(
-      connectionDetails as SqlDataSourceInput<U, T, C>,
+      connectionDetails as SqlDataSourceInput<U, T, C>
     );
 
     if (connectionDetails.models) {
       const sanitizeModelKeys = customSqlInstance.sanitizeModelKeys(
-        connectionDetails.models,
+        connectionDetails.models
       );
 
       Object.assign(customSqlInstance, sanitizeModelKeys);
@@ -330,7 +331,7 @@ export class SqlDataSource extends DataSource {
 
     try {
       await cb(
-        customSqlInstance as unknown as AugmentedSqlDataSource<T, C>,
+        customSqlInstance as unknown as AugmentedSqlDataSource<T, C>
       ).then(async () => {
         if (!customSqlInstance.isConnected) {
           return;
@@ -355,7 +356,7 @@ export class SqlDataSource extends DataSource {
     if (!SqlDataSource.instance) {
       throw new HysteriaError(
         "SqlDataSource::getInstance",
-        "CONNECTION_NOT_ESTABLISHED",
+        "CONNECTION_NOT_ESTABLISHED"
       );
     }
 
@@ -372,7 +373,7 @@ export class SqlDataSource extends DataSource {
    */
   static query<S extends string>(
     table: TableFormat<S>,
-    options?: RawModelOptions,
+    options?: RawModelOptions
   ): QueryBuilder {
     const instance = this.getInstance();
     const sqlForQueryBuilder =
@@ -382,7 +383,7 @@ export class SqlDataSource extends DataSource {
 
     const qb = new QueryBuilder(
       getRawQueryBuilderModel(table, options),
-      sqlForQueryBuilder as SqlDataSource,
+      sqlForQueryBuilder as SqlDataSource
     );
 
     if (options?.alias) {
@@ -399,7 +400,7 @@ export class SqlDataSource extends DataSource {
    */
   static dryQuery<S extends string>(
     table: TableFormat<S>,
-    options?: RawModelOptions,
+    options?: RawModelOptions
   ): DryQueryBuilderWithoutReadOperations {
     const instance = this.getInstance();
     const sqlForQueryBuilder =
@@ -409,7 +410,7 @@ export class SqlDataSource extends DataSource {
 
     const qb = new DryQueryBuilder(
       getRawQueryBuilderModel(table, options),
-      sqlForQueryBuilder as SqlDataSource,
+      sqlForQueryBuilder as SqlDataSource
     );
 
     if (options?.alias) {
@@ -437,7 +438,7 @@ export class SqlDataSource extends DataSource {
    * @description Starts a global transaction on the database
    */
   static async startGlobalTransaction(
-    options?: StartTransactionOptions,
+    options?: StartTransactionOptions
   ): Promise<Transaction> {
     return this.getInstance().startGlobalTransaction(options);
   }
@@ -467,19 +468,19 @@ export class SqlDataSource extends DataSource {
    * @sqlite ignores the isolation level
    */
   static async startTransaction(
-    options?: StartTransactionOptions,
+    options?: StartTransactionOptions
   ): Promise<Transaction>;
   static async startTransaction(
     cb: (trx: Transaction) => Promise<void>,
-    options?: StartTransactionOptions,
+    options?: StartTransactionOptions
   ): Promise<void>;
   static async startTransaction<T extends TransactionOptionsOrCallback>(
     optionsOrCb?: T,
-    maybeOptions?: StartTransactionOptions,
+    maybeOptions?: StartTransactionOptions
   ): Promise<StartTransactionReturnType<T>> {
     return this.getInstance().startTransaction(
       optionsOrCb as any,
-      maybeOptions,
+      maybeOptions
     ) as unknown as StartTransactionReturnType<T>;
   }
 
@@ -492,27 +493,27 @@ export class SqlDataSource extends DataSource {
    * @sqlite ignores the isolation level
    */
   static async transaction(
-    options?: StartTransactionOptions,
+    options?: StartTransactionOptions
   ): Promise<Transaction>;
   static async transaction(
     cb: (trx: Transaction) => Promise<void>,
-    options?: StartTransactionOptions,
+    options?: StartTransactionOptions
   ): Promise<void>;
   static async transaction(
     optionsOrCb?:
       | StartTransactionOptions
       | ((trx: Transaction) => Promise<void>),
-    maybeOptions?: StartTransactionOptions,
+    maybeOptions?: StartTransactionOptions
   ): Promise<StartTransactionReturnType<TransactionOptionsOrCallback>>;
   static async transaction<T extends TransactionOptionsOrCallback>(
     optionsOrCb?: T,
-    maybeOptions?: StartTransactionOptions,
+    maybeOptions?: StartTransactionOptions
   ): Promise<StartTransactionReturnType<T>> {
     const options =
       typeof optionsOrCb === "function" ? maybeOptions : optionsOrCb;
     return this.getInstance().startTransaction(
       optionsOrCb as any,
-      options as any,
+      options as any
     ) as unknown as StartTransactionReturnType<T>;
   }
 
@@ -548,7 +549,7 @@ export class SqlDataSource extends DataSource {
    */
   static async rawQuery<T = any>(
     query: string,
-    params: any[] = [],
+    params: any[] = []
   ): Promise<T> {
     const instance = this.getInstance();
     const sqlForRawQuery =
@@ -691,7 +692,7 @@ export class SqlDataSource extends DataSource {
     if (!this.cacheAdapter) {
       throw new HysteriaError(
         "SqlDataSource::useCache",
-        "CACHE_ADAPTER_NOT_CONFIGURED",
+        "CACHE_ADAPTER_NOT_CONFIGURED"
       );
     }
 
@@ -699,7 +700,7 @@ export class SqlDataSource extends DataSource {
     if (!mappedKeyHandler) {
       throw new HysteriaError(
         "SqlDataSource::useCache",
-        `KEY_${key as string}_HAS_NO_HANDLER_IN_CACHE_KEYS_CONFIG`,
+        `KEY_${key as string}_HAS_NO_HANDLER_IN_CACHE_KEYS_CONFIG`
       );
     }
 
@@ -753,7 +754,7 @@ export class SqlDataSource extends DataSource {
     if (!this.cacheAdapter) {
       throw new HysteriaError(
         "SqlDataSource::useCache",
-        "CACHE_ADAPTER_NOT_CONFIGURED",
+        "CACHE_ADAPTER_NOT_CONFIGURED"
       );
     }
 
@@ -836,7 +837,7 @@ export class SqlDataSource extends DataSource {
    */
   query<S extends string>(
     table: TableFormat<S>,
-    options?: RawModelOptions,
+    options?: RawModelOptions
   ): QueryBuilder {
     const sqlForQueryBuilder =
       this.isInGlobalTransaction && this.globalTransaction?.isActive
@@ -845,7 +846,7 @@ export class SqlDataSource extends DataSource {
 
     const qb = new QueryBuilder(
       getRawQueryBuilderModel(table, options),
-      sqlForQueryBuilder as SqlDataSource,
+      sqlForQueryBuilder as SqlDataSource
     );
 
     if (options?.alias) {
@@ -862,7 +863,7 @@ export class SqlDataSource extends DataSource {
    */
   dryQuery<S extends string>(
     table: TableFormat<S>,
-    options?: RawModelOptions,
+    options?: RawModelOptions
   ): DryQueryBuilderWithoutReadOperations {
     return new DryQueryBuilder(getRawQueryBuilderModel(table, options), this);
   }
@@ -889,7 +890,7 @@ export class SqlDataSource extends DataSource {
    * @description Starts a global transaction on the database on the main connection pool, intended to for testing purposes only, don't use it in production
    */
   async startGlobalTransaction(
-    options?: StartTransactionOptions,
+    options?: StartTransactionOptions
   ): Promise<Transaction> {
     const cloned = await this.clone();
     cloned.sqlConnection = await cloned.getConnection();
@@ -903,12 +904,12 @@ export class SqlDataSource extends DataSource {
    * @throws {HysteriaError} If the global transaction is not started
    */
   async commitGlobalTransaction(
-    options?: TransactionExecutionOptions,
+    options?: TransactionExecutionOptions
   ): Promise<void> {
     if (!this.globalTransaction) {
       throw new HysteriaError(
         "SqlDataSource::commitGlobalTransaction",
-        "GLOBAL_TRANSACTION_NOT_STARTED",
+        "GLOBAL_TRANSACTION_NOT_STARTED"
       );
     }
 
@@ -923,11 +924,11 @@ export class SqlDataSource extends DataSource {
    * @throws {HysteriaError} If the global transaction is not started and options.throwErrorOnInactiveTransaction is true
    */
   async rollbackGlobalTransaction(
-    options?: TransactionExecutionOptions,
+    options?: TransactionExecutionOptions
   ): Promise<void> {
     if (!this.globalTransaction) {
       logger.warn(
-        "SqlDataSource::rollbackGlobalTransaction - GLOBAL_TRANSACTION_NOT_STARTED",
+        "SqlDataSource::rollbackGlobalTransaction - GLOBAL_TRANSACTION_NOT_STARTED"
       );
       return;
     }
@@ -947,17 +948,17 @@ export class SqlDataSource extends DataSource {
    * @sqlite ignores the isolation level
    */
   async startTransaction(
-    options?: StartTransactionOptions,
+    options?: StartTransactionOptions
   ): Promise<Transaction>;
   async startTransaction(
     cb: (trx: Transaction) => Promise<void>,
-    options?: StartTransactionOptions,
+    options?: StartTransactionOptions
   ): Promise<void>;
   async startTransaction<T extends TransactionOptionsOrCallback>(
     optionsOrCb?:
       | StartTransactionOptions
       | ((trx: Transaction) => Promise<void>),
-    maybeOptions?: StartTransactionOptions,
+    maybeOptions?: StartTransactionOptions
   ): Promise<StartTransactionReturnType<T>> {
     const options =
       typeof optionsOrCb === "function" ? maybeOptions : optionsOrCb;
@@ -1013,13 +1014,13 @@ export class SqlDataSource extends DataSource {
   async transaction(options?: StartTransactionOptions): Promise<Transaction>;
   async transaction(
     cb: (trx: Transaction) => Promise<void>,
-    options?: StartTransactionOptions,
+    options?: StartTransactionOptions
   ): Promise<void>;
   async transaction(
     optionsOrCb?:
       | StartTransactionOptions
       | ((trx: Transaction) => Promise<void>),
-    maybeOptions?: StartTransactionOptions,
+    maybeOptions?: StartTransactionOptions
   ): Promise<Transaction | void> {
     return this.startTransaction(optionsOrCb as any, maybeOptions);
   }
@@ -1029,19 +1030,19 @@ export class SqlDataSource extends DataSource {
    * @description This is intended to use only if you do not want to use active record pattern
    */
   getModelManager<T extends Model>(
-    model: { new (): T } | typeof Model,
+    model: { new (): T } | typeof Model
   ): ModelManager<T> {
     if (!this.isConnected) {
       throw new HysteriaError(
         "SqlDataSource::getModelManager",
-        "CONNECTION_NOT_ESTABLISHED",
+        "CONNECTION_NOT_ESTABLISHED"
       );
     }
 
     if (this.globalTransaction?.isActive) {
       return new ModelManager(
         model as typeof Model,
-        this.globalTransaction.sql as SqlDataSource,
+        this.globalTransaction.sql as SqlDataSource
       );
     }
 
@@ -1057,12 +1058,12 @@ export class SqlDataSource extends DataSource {
    * const sqliteConnection = sql.getPool("sqlite"); // sqlite3 Database
    */
   getPool<T extends SqlDataSourceType = typeof this.sqlType>(
-    _specificType: T = this.sqlType as T,
+    _specificType: T = this.sqlType as T
   ): getPoolReturnType<T> {
     if (!this.sqlPool) {
       throw new HysteriaError(
         "SqlDataSource::getPool",
-        "CONNECTION_NOT_ESTABLISHED",
+        "CONNECTION_NOT_ESTABLISHED"
       );
     }
 
@@ -1078,7 +1079,7 @@ export class SqlDataSource extends DataSource {
    * const sqliteConnection = sql.getConnection("sqlite"); // sqlite3 Database
    */
   async getConnection<T extends SqlDataSourceType = typeof this.sqlType>(
-    _specificType: T = this.sqlType as T,
+    _specificType: T = this.sqlType as T
   ): Promise<GetConnectionReturnType<T>> {
     if (this.sqlConnection) {
       return this.sqlConnection as GetConnectionReturnType<T>;
@@ -1087,7 +1088,7 @@ export class SqlDataSource extends DataSource {
     if (!this.sqlPool) {
       throw new HysteriaError(
         "SqlDataSource::getConnection",
-        "CONNECTION_NOT_ESTABLISHED",
+        "CONNECTION_NOT_ESTABLISHED"
       );
     }
 
@@ -1102,10 +1103,13 @@ export class SqlDataSource extends DataSource {
         return (await pgPool.connect()) as GetConnectionReturnType<T>;
       case "sqlite":
         return this.sqlPool as GetConnectionReturnType<T>;
+      case "mssql":
+        const mssqlPool = this.sqlPool as MssqlPoolInstance;
+        return mssqlPool.transaction() as GetConnectionReturnType<T>;
       default:
         throw new HysteriaError(
           "SqlDataSource::getConnection",
-          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`,
+          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`
         );
     }
   }
@@ -1133,7 +1137,7 @@ export class SqlDataSource extends DataSource {
       }
     } catch (err: any) {
       logger.warn(
-        "SqlDataSource::closeConnection - Error while rolling back global transaction",
+        "SqlDataSource::closeConnection - Error while rolling back global transaction"
       );
     }
 
@@ -1159,10 +1163,13 @@ export class SqlDataSource extends DataSource {
           });
         });
         break;
+      case "mssql":
+        await (this.sqlPool as MssqlPoolInstance).close();
+        break;
       default:
         throw new HysteriaError(
           "SqlDataSource::closeConnection",
-          `UNSUPPORTED_DATABASE_TYPE_${this.type}`,
+          `UNSUPPORTED_DATABASE_TYPE_${this.type}`
         );
     }
 
@@ -1209,13 +1216,13 @@ export class SqlDataSource extends DataSource {
     const sqlStatements = diff.getSqlStatements();
     if (!sqlStatements.length) {
       logger.info(
-        `No new changes detected between database schema and models metadata`,
+        `No new changes detected between database schema and models metadata`
       );
       return;
     }
 
     logger.info(
-      `Generated ${sqlStatements.length} SQL statements to sync schema`,
+      `Generated ${sqlStatements.length} SQL statements to sync schema`
     );
 
     if (!options?.transactional) {
@@ -1242,7 +1249,7 @@ export class SqlDataSource extends DataSource {
     if (!this.isConnected) {
       throw new HysteriaError(
         "SqlDataSource::rawQuery",
-        "CONNECTION_NOT_ESTABLISHED",
+        "CONNECTION_NOT_ESTABLISHED"
       );
     }
 
@@ -1283,7 +1290,7 @@ export class SqlDataSource extends DataSource {
    */
   getModelOpenApiSchema() {
     return generateOpenApiModelWithMetadata(
-      Object.values(this.models) as unknown as (new () => Model)[],
+      Object.values(this.models) as unknown as (new () => Model)[]
     );
   }
 
@@ -1300,7 +1307,7 @@ export class SqlDataSource extends DataSource {
     if (!this.adminJsOptions?.enabled) {
       throw new HysteriaError(
         "SqlDataSource::initializeAdminJs",
-        "ADMINJS_NOT_ENABLED",
+        "ADMINJS_NOT_ENABLED"
       );
     }
 
@@ -1323,7 +1330,7 @@ export class SqlDataSource extends DataSource {
     if (!this.adminJsOptions?.enabled) {
       throw new HysteriaError(
         "SqlDataSource::initializeAdminJsExpress",
-        "ADMINJS_NOT_ENABLED",
+        "ADMINJS_NOT_ENABLED"
       );
     }
 
@@ -1333,7 +1340,7 @@ export class SqlDataSource extends DataSource {
 
     this.adminJsInstance = await initializeAdminJsExpress(
       this,
-      this.adminJsOptions,
+      this.adminJsOptions
     );
     return this.adminJsInstance;
   }
@@ -1372,7 +1379,7 @@ export class SqlDataSource extends DataSource {
         databaseCaseConvention: "preserve",
         modelCaseConvention: "preserve",
       } as typeof Model,
-      this.getDbType(),
+      this.getDbType()
     );
 
     const sql = ast.parse([new TableInfoNode(table)]).sql;
@@ -1403,7 +1410,7 @@ export class SqlDataSource extends DataSource {
     return rows.map((r: any) => {
       const name = String(r.column_name || r.COLUMN_NAME || r.name || "");
       const rawType = String(
-        r.data_type || r.DATA_TYPE || r.type || "",
+        r.data_type || r.DATA_TYPE || r.type || ""
       ).toLowerCase();
       const dataType = normalizeColumnType(db, rawType);
       const rawNullable =
@@ -1440,10 +1447,10 @@ export class SqlDataSource extends DataSource {
           ? Boolean(r.timezone)
           : typeof r.datetime_precision === "number"
             ? /with time zone/.test(
-                String(r.column_type || r.udt_name || "").toLowerCase(),
+                String(r.column_type || r.udt_name || "").toLowerCase()
               )
             : /with time zone/.test(
-                String(r.column_type || r.udt_name || "").toLowerCase(),
+                String(r.column_type || r.udt_name || "").toLowerCase()
               );
       return {
         name,
@@ -1468,7 +1475,7 @@ export class SqlDataSource extends DataSource {
         databaseCaseConvention: "preserve",
         modelCaseConvention: "preserve",
       } as typeof Model,
-      this.getDbType(),
+      this.getDbType()
     );
 
     const sql = ast.parse([new IndexInfoNode(table)]).sql;
@@ -1539,7 +1546,7 @@ export class SqlDataSource extends DataSource {
         databaseCaseConvention: "preserve",
         modelCaseConvention: "preserve",
       } as typeof Model,
-      this.getDbType(),
+      this.getDbType()
     );
 
     const sql = ast.parse([new ForeignKeyInfoNode(table)]).sql;
@@ -1599,7 +1606,7 @@ export class SqlDataSource extends DataSource {
    * @description Introspects table primary key from the database
    */
   async getPrimaryKeyInfo(
-    table: string,
+    table: string
   ): Promise<TablePrimaryKeyInfo | undefined> {
     const ast = new AstParser(
       {
@@ -1607,7 +1614,7 @@ export class SqlDataSource extends DataSource {
         databaseCaseConvention: "preserve",
         modelCaseConvention: "preserve",
       } as typeof Model,
-      this.getDbType(),
+      this.getDbType()
     );
 
     const sql = ast.parse([new PrimaryKeyInfoNode(table)]).sql;
@@ -1641,7 +1648,7 @@ export class SqlDataSource extends DataSource {
   }
 
   private sanitizeModelKeys(
-    models: Record<string, SqlDataSourceModel>,
+    models: Record<string, SqlDataSourceModel>
   ): Record<string, SqlDataSourceModel> {
     const instanceKeys = Object.getOwnPropertyNames(this);
     const staticKeys = Object.getOwnPropertyNames(this.constructor);
@@ -1653,12 +1660,12 @@ export class SqlDataSource extends DataSource {
         "DUPLICATE_MODEL_KEYS_WHILE_INSTANTIATING_MODELS",
         new Error(
           `Duplicate model keys while instantiating models inside the connection: ${Object.keys(
-            models,
+            models
           )
             .filter((key) => allKeys.includes(key))
             .map((key) => `"${key}"`)
-            .join(", ")}`,
-        ),
+            .join(", ")}`
+        )
       );
     }
 

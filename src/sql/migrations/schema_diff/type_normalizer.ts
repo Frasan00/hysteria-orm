@@ -3,6 +3,7 @@ export type SupportedSqlDialect =
   | "cockroachdb"
   | "mysql"
   | "mariadb"
+  | "mssql"
   | "sqlite";
 
 function compactWhitespace(value: string): string {
@@ -15,7 +16,7 @@ function stripLengthSuffix(value: string): string {
 
 export function normalizeColumnType(
   dialect: SupportedSqlDialect,
-  rawType: string,
+  rawType: string
 ): string {
   const lowered = compactWhitespace(rawType.toLowerCase());
   const base = stripLengthSuffix(lowered);
@@ -197,6 +198,9 @@ export function normalizeColumnType(
       }
     }
 
+    // todo mssql
+    case "mssql":
+      return "";
     default:
       return base;
   }

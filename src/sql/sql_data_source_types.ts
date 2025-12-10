@@ -1,3 +1,4 @@
+import type { Transaction as MssqlTransaction } from "mssql";
 import type { PoolConnection } from "mysql2/promise";
 import type { PoolClient } from "pg";
 import { FormatOptionsWithLanguage } from "sql-formatter";
@@ -6,6 +7,7 @@ import type { CacheAdapter } from "../cache/cache_adapter";
 import type { CacheKeys, UseCacheReturnType } from "../cache/cache_types";
 import type {
   DataSourceType,
+  MssqlDataSourceInput,
   MysqlSqlDataSourceInput,
   NotNullableMysqlSqlDataSourceInput,
   NotNullablePostgresSqlDataSourceInput,
@@ -15,6 +17,7 @@ import type {
 } from "../data_source/data_source_types";
 import type {
   DriverSpecificOptions,
+  MssqlImport,
   Mysql2Import,
   PgImport,
   Sqlite3Import,
@@ -38,10 +41,16 @@ export type PgPoolClientInstance = InstanceType<PgImport["Pool"]>;
 
 export type SqliteConnectionInstance = InstanceType<Sqlite3Import["Database"]>;
 
+export type MssqlPoolInstance = InstanceType<MssqlImport["ConnectionPool"]>;
+export type MssqlConnectionInstance = Awaited<
+  ReturnType<MssqlPoolInstance["connect"]>
+>;
+
 export type SqlPoolType =
   | MysqlConnectionInstance
   | PgPoolClientInstance
-  | SqliteConnectionInstance;
+  | SqliteConnectionInstance
+  | MssqlPoolInstance;
 
 /**
  * @description The connection policies for the sql data source
@@ -109,6 +118,7 @@ export type SqlDataSourceInput<
   adminJs?: AdminJsOptions;
 } & (
   | MysqlSqlDataSourceInput
+  | MssqlDataSourceInput
   | PostgresSqlDataSourceInput
   | SqliteDataSourceInput
 );
@@ -159,7 +169,9 @@ export type getPoolReturnType<T = SqlDataSourceType> = T extends "mysql"
         ? PgPoolClientInstance
         : T extends "sqlite"
           ? SqliteConnectionInstance
-          : never;
+          : T extends "mssql"
+            ? MssqlPoolInstance
+            : never;
 
 export type GetConnectionReturnType<T = SqlDataSourceType> = T extends "mysql"
   ? PoolConnection
@@ -171,7 +183,9 @@ export type GetConnectionReturnType<T = SqlDataSourceType> = T extends "mysql"
         ? PoolClient
         : T extends "sqlite"
           ? InstanceType<Sqlite3Import["Database"]>
-          : never;
+          : T extends "mssql"
+            ? MssqlTransaction
+            : never;
 
 type UseCacheOverloads<C extends CacheKeys> = {
   <K extends keyof C>(

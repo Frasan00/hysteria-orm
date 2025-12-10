@@ -2,7 +2,7 @@
 
 import crypto from "node:crypto";
 import { HysteriaError } from "../../errors/hysteria_error";
-import logger from "../../utils/logger";
+import logger, { log } from "../../utils/logger";
 import { SqlDataSource } from "../sql_data_source";
 import {
   GetConnectionReturnType,
@@ -14,6 +14,8 @@ import {
   TransactionExecutionOptions,
   TransactionIsolationLevel,
 } from "./transaction_types";
+import type { IIsolationLevel } from "mssql";
+import { DriverNotFoundError } from "../../drivers/driver_constants";
 
 /**
  * @description Transaction class, not meant to be used directly, use sql.startTransaction() instead
@@ -59,7 +61,7 @@ export class Transaction {
     sql: SqlDataSource,
     isolationLevel?: TransactionIsolationLevel,
     isNested = false,
-    nestingDepth = 0,
+    nestingDepth = 0
   ) {
     this.sql = sql;
     this.isActive = false;
@@ -75,16 +77,16 @@ export class Transaction {
    */
   async nestedTransaction(): Promise<Transaction>;
   async nestedTransaction(
-    cb: (trx: Transaction) => Promise<void>,
+    cb: (trx: Transaction) => Promise<void>
   ): Promise<void>;
   async nestedTransaction<T extends NestedTransactionCallback | undefined>(
-    cb?: T,
+    cb?: T
   ): Promise<NestedTransactionReturnType<T>> {
     const trx = new Transaction(
       this.sql as SqlDataSource,
       this.isolationLevel,
       true,
-      this.nestingDepth + 1,
+      this.nestingDepth + 1
     );
 
     await trx.startTransaction();
@@ -111,6 +113,10 @@ export class Transaction {
     if (this.isNested) {
       const savepoint = this.getSavePointName();
       switch (this.sql.type) {
+        case "mssql":
+          await this.sql.rawQuery(`SAVE TRANSACTION ${savepoint}`);
+          this.isActive = true;
+          return;
         case "mysql":
         case "mariadb":
         case "postgres":
@@ -127,6 +133,18 @@ export class Transaction {
 
     // Top-level transaction handling
     switch (this.sql.type) {
+      case "mssql":
+        if (levelQuery) {
+          await this.sql.rawQuery(levelQuery);
+        }
+
+        log("BEGIN TRANSACTION", this.sql.logs);
+        const mssqlTransactionLevel = await this.getMssqlTransactionLevel();
+        await (
+          this.sql.sqlConnection as GetConnectionReturnType<"mssql">
+        ).begin(mssqlTransactionLevel);
+        this.isActive = true;
+        break;
       case "mysql":
       case "mariadb":
         if (levelQuery) {
@@ -135,6 +153,7 @@ export class Transaction {
 
         const mysqlConnection = this.sql
           .sqlConnection as GetConnectionReturnType<"mysql">;
+        log("BEGIN TRANSACTION", this.sql.logs);
         await mysqlConnection.beginTransaction();
 
         this.isActive = true;
@@ -169,7 +188,7 @@ export class Transaction {
       if (options?.throwErrorOnInactiveTransaction) {
         throw new HysteriaError(
           "TRANSACTION::commit",
-          "TRANSACTION_NOT_ACTIVE",
+          "TRANSACTION_NOT_ACTIVE"
         );
       }
       logger.warn("Transaction::commit - TRANSACTION_NOT_ACTIVE");
@@ -181,6 +200,9 @@ export class Transaction {
       if (this.isNested) {
         const savepoint = this.getSavePointName();
         switch (this.sql.type) {
+          case "mssql":
+            // MSSQL doesn't support RELEASE SAVEPOINT - savepoints are automatically released on commit
+            break;
           case "mysql":
           case "mariadb":
           case "postgres":
@@ -194,10 +216,17 @@ export class Transaction {
       }
 
       switch (this.sql.type) {
+        case "mssql":
+          log("COMMIT", this.sql.logs);
+          await (
+            this.sql.sqlConnection as GetConnectionReturnType<"mssql">
+          ).commit();
+          break;
         case "mysql":
         case "mariadb":
           const mysqlConnection = this.sql
             .sqlConnection as GetConnectionReturnType<"mysql">;
+          log("COMMIT", this.sql.logs);
           await mysqlConnection.commit();
           break;
         case "postgres":
@@ -227,7 +256,7 @@ export class Transaction {
       if (options?.throwErrorOnInactiveTransaction) {
         throw new HysteriaError(
           "TRANSACTION::rollback",
-          "TRANSACTION_NOT_ACTIVE",
+          "TRANSACTION_NOT_ACTIVE"
         );
       }
 
@@ -240,6 +269,9 @@ export class Transaction {
       if (this.isNested) {
         const savepoint = this.getSavePointName();
         switch (this.sql.type) {
+          case "mssql":
+            await this.sql.rawQuery(`ROLLBACK TRANSACTION ${savepoint}`);
+            break;
           case "mysql":
           case "mariadb":
           case "postgres":
@@ -252,7 +284,7 @@ export class Transaction {
           default:
             throw new HysteriaError(
               "TRANSACTION::rollback",
-              `UNSUPPORTED_DATABASE_TYPE_${this.sql.type}`,
+              `UNSUPPORTED_DATABASE_TYPE_${this.sql.type}`
             );
         }
         this.isActive = false;
@@ -260,10 +292,17 @@ export class Transaction {
       }
 
       switch (this.sql.type) {
+        case "mssql":
+          log("ROLLBACK", this.sql.logs);
+          await (
+            this.sql.sqlConnection as GetConnectionReturnType<"mssql">
+          ).rollback();
+          break;
         case "mysql":
         case "mariadb":
           const mysqlConnection = this.sql
             .sqlConnection as GetConnectionReturnType<"mysql">;
+          log("ROLLBACK", this.sql.logs);
           await mysqlConnection.rollback();
           break;
         case "postgres":
@@ -276,7 +315,7 @@ export class Transaction {
         default:
           throw new HysteriaError(
             "TRANSACTION::rollback",
-            `UNSUPPORTED_DATABASE_TYPE_${this.sql.type}`,
+            `UNSUPPORTED_DATABASE_TYPE_${this.sql.type}`
           );
       }
     } catch (error: any) {
@@ -298,6 +337,9 @@ export class Transaction {
 
     try {
       switch (this.sql.type) {
+        case "mssql":
+          // Mssql transactions are automatically released when the connection is released
+          break;
         case "mysql":
         case "mariadb":
           (
@@ -316,7 +358,7 @@ export class Transaction {
         default:
           throw new HysteriaError(
             "TRANSACTION::releaseConnection",
-            `UNSUPPORTED_DATABASE_TYPE_${this.sql.type}`,
+            `UNSUPPORTED_DATABASE_TYPE_${this.sql.type}`
           );
       }
     } catch (error: any) {
@@ -329,14 +371,15 @@ export class Transaction {
   }
 
   private getIsolationLevelQuery(): string {
-    if (!this.isolationLevel) {
+    // MSSQL is handled in the getMssqlTransactionLevel method
+    if (!this.isolationLevel || this.sql.type === "mssql") {
       return "";
     }
 
     if (this.sql.type === "sqlite" && this.isolationLevel !== "SERIALIZABLE") {
       throw new HysteriaError(
         "TRANSACTION::getIsolationLevelQuery",
-        "SQLITE_ONLY_SUPPORTS_SERIALIZABLE_ISOLATION_LEVEL",
+        "SQLITE_ONLY_SUPPORTS_SERIALIZABLE_ISOLATION_LEVEL"
       );
     }
 
@@ -354,12 +397,37 @@ export class Transaction {
 
     throw new HysteriaError(
       "TRANSACTION::getIsolationLevelQuery",
-      `UNSUPPORTED_DATABASE_TYPE_${this.sql.type}`,
+      `UNSUPPORTED_DATABASE_TYPE_${this.sql.type}`
     );
   }
 
   private getSavePointName(): string {
     const shortId = this.transactionId.slice(0, 8).toUpperCase();
     return `sp_${this.nestingDepth}_${shortId}`;
+  }
+
+  private async getMssqlTransactionLevel(): Promise<IIsolationLevel> {
+    const mssqlTransactionLevels = await import("mssql")
+      .then((module) => module.default.ISOLATION_LEVEL)
+      .catch((error) => {
+        logger.error(error);
+        throw new DriverNotFoundError("mssql");
+      });
+
+    switch (this.isolationLevel) {
+      case "READ UNCOMMITTED":
+        return mssqlTransactionLevels.READ_UNCOMMITTED;
+      case "READ COMMITTED":
+        return mssqlTransactionLevels.READ_COMMITTED;
+      case "REPEATABLE READ":
+        return mssqlTransactionLevels.REPEATABLE_READ;
+      case "SERIALIZABLE":
+        return mssqlTransactionLevels.SERIALIZABLE;
+      default:
+        throw new HysteriaError(
+          "TRANSACTION::getMssqlTransactionLevel",
+          `UNSUPPORTED_ISOLATION_LEVEL_${this.isolationLevel}`
+        );
+    }
   }
 }

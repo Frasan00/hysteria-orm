@@ -1,15 +1,18 @@
 import type {
+  MssqlDataSourceInput,
   MysqlSqlDataSourceInput,
   PostgresSqlDataSourceInput,
   SqliteDataSourceInput,
 } from "../data_source/data_source_types";
 import type {
+  MssqlImport,
   Mysql2Import,
   PgImport,
   Sqlite3Import,
 } from "../drivers/driver_types";
 import { DriverFactory } from "../drivers/drivers_factory";
 import { HysteriaError } from "../errors/hysteria_error";
+import { SqlDataSource } from "./sql_data_source";
 import {
   GetConnectionReturnType,
   SqlDataSourceInput,
@@ -18,7 +21,6 @@ import {
   Sqlite3ConnectionOptions,
   SqlPoolType,
 } from "./sql_data_source_types";
-import { SqlDataSource } from "./sql_data_source";
 
 const getDriverConnection = async (type: SqlDataSourceType) => {
   const driver = (await DriverFactory.getDriver(type)).client;
@@ -27,7 +29,7 @@ const getDriverConnection = async (type: SqlDataSourceType) => {
 
 export const createSqlPool = async <T extends SqlDataSourceType>(
   type: T,
-  input?: SqlDataSourceInput<T>,
+  input?: SqlDataSourceInput<T>
 ): Promise<SqlPoolType> => {
   const driver = await getDriverConnection(type);
   switch (type) {
@@ -77,23 +79,49 @@ export const createSqlPool = async <T extends SqlDataSourceType>(
           if (err) {
             throw new HysteriaError(
               "SqliteDataSource::createSqlPool",
-              "CONNECTION_NOT_ESTABLISHED",
+              "CONNECTION_NOT_ESTABLISHED"
             );
           }
-        },
+        }
       );
       return sqlitePool;
+    case "mssql":
+      const mssqlDriver = driver as MssqlImport;
+      const mssqlInput = input as MssqlDataSourceInput & {
+        driverOptions?: SqlDriverSpecificOptions<"mssql">;
+      };
+
+      const { options, ...rest } = mssqlInput.driverOptions ?? {};
+      const mssqlPool = await mssqlDriver.connect({
+        server: mssqlInput.host ?? "localhost",
+        port: mssqlInput.port,
+        database: mssqlInput.database,
+        user: mssqlInput.username,
+        password: mssqlInput.password,
+        ...rest,
+        options: {
+          encrypt: false,
+          trustServerCertificate: true,
+          enableArithAbort: true,
+          ...options,
+          // todo mark those as implicit and required on the documentation and also make those not selectable by the user
+          abortTransactionOnError: false,
+          enableImplicitTransactions: true,
+        },
+      });
+
+      return mssqlPool;
     default:
       throw new HysteriaError(
         "SqlConnectionUtils::createSqlPool",
-        `UNSUPPORTED_DATABASE_TYPE_${type}`,
+        `UNSUPPORTED_DATABASE_TYPE_${type}`
       );
   }
 };
 
 export const createSqlConnection = async (
   type: SqlDataSourceType,
-  sqlDataSource: SqlDataSource,
+  sqlDataSource: SqlDataSource
 ): Promise<GetConnectionReturnType> => {
   switch (type) {
     case "mariadb":
@@ -104,10 +132,12 @@ export const createSqlConnection = async (
       return sqlDataSource.getConnection("postgres");
     case "sqlite":
       return sqlDataSource.getConnection("sqlite");
+    case "mssql":
+      return sqlDataSource.getConnection("mssql");
     default:
       throw new HysteriaError(
         "SqlConnectionUtils::createSqlConnection",
-        `UNSUPPORTED_DATABASE_TYPE_${type}`,
+        `UNSUPPORTED_DATABASE_TYPE_${type}`
       );
   }
 };

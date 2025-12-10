@@ -1,4 +1,5 @@
 export type HysteriaErrorCode =
+  | `UNSUPPORTED_ISOLATION_LEVEL_${string}`
   | "ROW_NOT_FOUND"
   | `UNSUPPORTED_DATABASE_TYPE_${string}`
   | `RELATION_TYPE_NOT_SUPPORTED_${string}`
