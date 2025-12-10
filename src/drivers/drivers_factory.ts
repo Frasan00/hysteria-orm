@@ -25,7 +25,7 @@ export class DriverFactory {
       default:
         throw new HysteriaError(
           `DriverFactory::getDriver Driver ${client} not supported`,
-          "DRIVER_NOT_FOUND"
+          "DRIVER_NOT_FOUND",
         );
     }
   }

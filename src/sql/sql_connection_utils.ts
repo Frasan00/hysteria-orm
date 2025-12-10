@@ -29,7 +29,7 @@ const getDriverConnection = async (type: SqlDataSourceType) => {
 
 export const createSqlPool = async <T extends SqlDataSourceType>(
   type: T,
-  input?: SqlDataSourceInput<T>
+  input?: SqlDataSourceInput<T>,
 ): Promise<SqlPoolType> => {
   const driver = await getDriverConnection(type);
   switch (type) {
@@ -79,10 +79,10 @@ export const createSqlPool = async <T extends SqlDataSourceType>(
           if (err) {
             throw new HysteriaError(
               "SqliteDataSource::createSqlPool",
-              "CONNECTION_NOT_ESTABLISHED"
+              "CONNECTION_NOT_ESTABLISHED",
             );
           }
-        }
+        },
       );
       return sqlitePool;
     case "mssql":
@@ -114,14 +114,14 @@ export const createSqlPool = async <T extends SqlDataSourceType>(
     default:
       throw new HysteriaError(
         "SqlConnectionUtils::createSqlPool",
-        `UNSUPPORTED_DATABASE_TYPE_${type}`
+        `UNSUPPORTED_DATABASE_TYPE_${type}`,
       );
   }
 };
 
 export const createSqlConnection = async (
   type: SqlDataSourceType,
-  sqlDataSource: SqlDataSource
+  sqlDataSource: SqlDataSource,
 ): Promise<GetConnectionReturnType> => {
   switch (type) {
     case "mariadb":
@@ -137,7 +137,7 @@ export const createSqlConnection = async (
     default:
       throw new HysteriaError(
         "SqlConnectionUtils::createSqlConnection",
-        `UNSUPPORTED_DATABASE_TYPE_${type}`
+        `UNSUPPORTED_DATABASE_TYPE_${type}`,
       );
   }
 };

@@ -61,7 +61,7 @@ export class Transaction {
     sql: SqlDataSource,
     isolationLevel?: TransactionIsolationLevel,
     isNested = false,
-    nestingDepth = 0
+    nestingDepth = 0,
   ) {
     this.sql = sql;
     this.isActive = false;
@@ -77,16 +77,16 @@ export class Transaction {
    */
   async nestedTransaction(): Promise<Transaction>;
   async nestedTransaction(
-    cb: (trx: Transaction) => Promise<void>
+    cb: (trx: Transaction) => Promise<void>,
   ): Promise<void>;
   async nestedTransaction<T extends NestedTransactionCallback | undefined>(
-    cb?: T
+    cb?: T,
   ): Promise<NestedTransactionReturnType<T>> {
     const trx = new Transaction(
       this.sql as SqlDataSource,
       this.isolationLevel,
       true,
-      this.nestingDepth + 1
+      this.nestingDepth + 1,
     );
 
     await trx.startTransaction();
@@ -188,7 +188,7 @@ export class Transaction {
       if (options?.throwErrorOnInactiveTransaction) {
         throw new HysteriaError(
           "TRANSACTION::commit",
-          "TRANSACTION_NOT_ACTIVE"
+          "TRANSACTION_NOT_ACTIVE",
         );
       }
       logger.warn("Transaction::commit - TRANSACTION_NOT_ACTIVE");
@@ -256,7 +256,7 @@ export class Transaction {
       if (options?.throwErrorOnInactiveTransaction) {
         throw new HysteriaError(
           "TRANSACTION::rollback",
-          "TRANSACTION_NOT_ACTIVE"
+          "TRANSACTION_NOT_ACTIVE",
         );
       }
 
@@ -284,7 +284,7 @@ export class Transaction {
           default:
             throw new HysteriaError(
               "TRANSACTION::rollback",
-              `UNSUPPORTED_DATABASE_TYPE_${this.sql.type}`
+              `UNSUPPORTED_DATABASE_TYPE_${this.sql.type}`,
             );
         }
         this.isActive = false;
@@ -315,7 +315,7 @@ export class Transaction {
         default:
           throw new HysteriaError(
             "TRANSACTION::rollback",
-            `UNSUPPORTED_DATABASE_TYPE_${this.sql.type}`
+            `UNSUPPORTED_DATABASE_TYPE_${this.sql.type}`,
           );
       }
     } catch (error: any) {
@@ -358,7 +358,7 @@ export class Transaction {
         default:
           throw new HysteriaError(
             "TRANSACTION::releaseConnection",
-            `UNSUPPORTED_DATABASE_TYPE_${this.sql.type}`
+            `UNSUPPORTED_DATABASE_TYPE_${this.sql.type}`,
           );
       }
     } catch (error: any) {
@@ -379,7 +379,7 @@ export class Transaction {
     if (this.sql.type === "sqlite" && this.isolationLevel !== "SERIALIZABLE") {
       throw new HysteriaError(
         "TRANSACTION::getIsolationLevelQuery",
-        "SQLITE_ONLY_SUPPORTS_SERIALIZABLE_ISOLATION_LEVEL"
+        "SQLITE_ONLY_SUPPORTS_SERIALIZABLE_ISOLATION_LEVEL",
       );
     }
 
@@ -397,7 +397,7 @@ export class Transaction {
 
     throw new HysteriaError(
       "TRANSACTION::getIsolationLevelQuery",
-      `UNSUPPORTED_DATABASE_TYPE_${this.sql.type}`
+      `UNSUPPORTED_DATABASE_TYPE_${this.sql.type}`,
     );
   }
 
@@ -426,7 +426,7 @@ export class Transaction {
       default:
         throw new HysteriaError(
           "TRANSACTION::getMssqlTransactionLevel",
-          `UNSUPPORTED_ISOLATION_LEVEL_${this.isolationLevel}`
+          `UNSUPPORTED_ISOLATION_LEVEL_${this.isolationLevel}`,
         );
     }
   }

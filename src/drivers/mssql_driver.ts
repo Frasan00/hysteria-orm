@@ -8,7 +8,7 @@ export class MssqlDriver extends Driver {
 
   constructor(
     client: MssqlImport,
-    driverSpecificOptions?: DriverSpecificOptions<"mssql">
+    driverSpecificOptions?: DriverSpecificOptions<"mssql">,
   ) {
     super(driverSpecificOptions);
     this.client = client;

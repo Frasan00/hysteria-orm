@@ -16,7 +16,7 @@ function stripLengthSuffix(value: string): string {
 
 export function normalizeColumnType(
   dialect: SupportedSqlDialect,
-  rawType: string
+  rawType: string,
 ): string {
   const lowered = compactWhitespace(rawType.toLowerCase());
   const base = stripLengthSuffix(lowered);

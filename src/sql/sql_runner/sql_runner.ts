@@ -26,7 +26,7 @@ export const execSql = async <M extends Model, T extends Returning>(
   options?: {
     sqlLiteOptions?: SqlLiteOptions<M>;
     shouldNotLog?: boolean;
-  }
+  },
 ): Promise<SqlRunnerReturnType<T>> => {
   const sqlType = sqlDataSource.type as SqlDataSourceType;
   if (!options?.shouldNotLog) {
@@ -43,7 +43,7 @@ export const execSql = async <M extends Model, T extends Returning>(
       const [mysqlResult] = await withRetry(
         () => mysqlDriver.query(query, params),
         sqlDataSource.inputDetails.connectionPolicies?.retry,
-        sqlDataSource.logs
+        sqlDataSource.logs,
       );
 
       if (returning === "affectedRows") {
@@ -61,7 +61,7 @@ export const execSql = async <M extends Model, T extends Returning>(
       const pgResult = await withRetry(
         () => pgDriver.query(query, params),
         sqlDataSource.inputDetails.connectionPolicies?.retry,
-        sqlDataSource.logs
+        sqlDataSource.logs,
       );
 
       if (returning === "raw") {
@@ -78,7 +78,7 @@ export const execSql = async <M extends Model, T extends Returning>(
             models: options?.sqlLiteOptions?.models,
           }),
         sqlDataSource.inputDetails.connectionPolicies?.retry,
-        sqlDataSource.logs
+        sqlDataSource.logs,
       );
 
       if (returning === "raw") {
@@ -90,7 +90,9 @@ export const execSql = async <M extends Model, T extends Returning>(
       return sqliteResult as SqlRunnerReturnType<T>;
     case "mssql":
       const mssqlRequest = sqlDataSource.sqlConnection
-        ? (sqlDataSource.sqlConnection as GetConnectionReturnType<"mssql">).request()
+        ? (
+            sqlDataSource.sqlConnection as GetConnectionReturnType<"mssql">
+          ).request()
         : sqlDataSource.getPool("mssql").request();
 
       params.forEach((param, index) => {
@@ -103,7 +105,7 @@ export const execSql = async <M extends Model, T extends Returning>(
       const mssqlResult = await withRetry(
         () => mssqlRequest.query(mssqlQuery),
         sqlDataSource.inputDetails.connectionPolicies?.retry,
-        sqlDataSource.logs
+        sqlDataSource.logs,
       );
 
       if (returning === "affectedRows") {
@@ -114,7 +116,7 @@ export const execSql = async <M extends Model, T extends Returning>(
     default:
       throw new HysteriaError(
         "ExecSql",
-        `UNSUPPORTED_DATABASE_TYPE_${sqlType}`
+        `UNSUPPORTED_DATABASE_TYPE_${sqlType}`,
       );
   }
 };
@@ -132,9 +134,9 @@ export const execSqlStreaming = async <
   events: {
     onData?: (
       passThrough: PassThrough & AsyncGenerator<AnnotatedModel<M, A, R>>,
-      row: any
+      row: any,
     ) => void | Promise<void>;
-  }
+  },
 ): Promise<PassThrough & AsyncGenerator<AnnotatedModel<M, A, R>>> => {
   const sqlType = sqlDataSource.type as SqlDataSourceType;
 
@@ -289,7 +291,7 @@ export const execSqlStreaming = async <
       const stream = new SQLiteStream(sqliteDriver, query, params, {
         onData: events.onData as (
           _passThrough: any,
-          row: any
+          row: any,
         ) => void | Promise<void>,
       });
 
@@ -300,7 +302,7 @@ export const execSqlStreaming = async <
     default:
       throw new HysteriaError(
         "ExecSqlStreaming",
-        `UNSUPPORTED_DATABASE_TYPE_${sqlType}`
+        `UNSUPPORTED_DATABASE_TYPE_${sqlType}`,
       );
   }
 };
@@ -308,7 +310,7 @@ export const execSqlStreaming = async <
 async function withRetry<T>(
   fn: () => Promise<T>,
   retryConfig: ConnectionPolicies["retry"] = { maxRetries: 0, delay: 0 },
-  logs: boolean = false
+  logs: boolean = false,
 ): Promise<T> {
   let retries = 0;
   const maxRetries = retryConfig.maxRetries || 0;
@@ -330,7 +332,7 @@ async function withRetry<T>(
         logMessage(
           `Retrying sql in ${delay}ms (attempt ${retries}/${maxRetries})`,
           "info",
-          logs
+          logs,
         );
 
         await new Promise((resolve) => setTimeout(resolve, delay));
