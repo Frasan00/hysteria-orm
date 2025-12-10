@@ -21,7 +21,9 @@ const db = await ${importType}.connect({
   port: ${port},
   host: "localhost",
   username: "root",
-  password: "root"`
+  password: "root",
+  logs: true,
+  migrationsPath: "database/migrations"`
   }
 })
   .catch((err) => {
@@ -80,6 +82,8 @@ export default db;`;
         return 3306;
       case "cockroachdb":
         return 26257;
+      case "mssql":
+        return 1433;
       case "mongodb":
         return 27017;
       case "redis":

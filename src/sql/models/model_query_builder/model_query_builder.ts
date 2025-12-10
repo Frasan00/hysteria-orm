@@ -448,17 +448,14 @@ export class ModelQueryBuilder<
     options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<PaginatedData<T, A, R>> {
     const clonedQuery = this.clone();
+    const paginatedQuery = this.limit(perPage).offset((page - 1) * perPage);
+    const hooksToIgnore: ["beforeFetch", "afterFetch"] | [] =
+      options.ignoreHooks ? ["beforeFetch", "afterFetch"] : [];
 
-    const [models, total] = await Promise.all([
-      this.limit(perPage)
-        .offset((page - 1) * perPage)
-        .many({
-          ignoreHooks: options.ignoreHooks ? ["beforeFetch", "afterFetch"] : [],
-        }),
-      clonedQuery.getCount("*", {
-        ignoreHooks: options.ignoreHooks,
-      }),
-    ]);
+    const [models, total] = await this.executePaginateQueries(
+      () => paginatedQuery.many({ ignoreHooks: hooksToIgnore }),
+      () => clonedQuery.getCount("*", { ignoreHooks: options.ignoreHooks }),
+    );
 
     const paginationMetadata = getPaginationMetadata(page, perPage, total);
 
@@ -576,6 +573,8 @@ export class ModelQueryBuilder<
    * @warning Many to many relations have special behavior, since they require a join, a join clause will always be added to the query.
    * @warning Many to many relations uses the model foreign key for mapping in the `$annotations` property, this property will be removed from the model after the relation is filled.
    * @warning Foreign keys should always be selected in the relation query builder, otherwise the relation will not be filled.
+   * @mssql HasMany relations with limit/offset and orderByRaw may fail with "Ambiguous column name" error - use fully qualified column names (e.g., `table.column`) in orderByRaw
+   * @cockroachdb HasMany relations with limit/offset and orderByRaw may fail with "Ambiguous column name" error - use fully qualified column names (e.g., `table.column`) in orderByRaw
    */
   load<
     RelationKey extends ModelRelation<T>,

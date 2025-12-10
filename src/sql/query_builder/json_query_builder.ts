@@ -17,6 +17,7 @@ export class JsonQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
 
   /**
    * @description Filters records matching the given JSON value.
+   * @mssql Partial JSON matching not supported - only exact matches work
    */
   andWhereJson(column: ModelKey<T>, value: JsonParam): this;
   andWhereJson(column: string, value: JsonParam): this;
@@ -35,6 +36,7 @@ export class JsonQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
 
   /**
    * @description Filters records matching the given JSON value.
+   * @mssql Partial JSON matching not supported - only exact matches work
    */
   orWhereJson(column: ModelKey<T>, value: JsonParam): this;
   orWhereJson(column: string, value: JsonParam): this;
@@ -54,6 +56,7 @@ export class JsonQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
   /**
    * @description Filters records where JSON column does NOT contain the given value.
    * @sqlite might not work for all cases, suggest using the whereJsonRaw method instead
+   * @mssql not supported - CHARINDEX cannot do partial JSON containment
    */
   whereJsonNotContains(column: ModelKey<T>, value: JsonParam): this;
   whereJsonNotContains(column: string, value: JsonParam): this;
@@ -64,6 +67,7 @@ export class JsonQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
   /**
    * @description Filters records where JSON column does NOT contain the given value (AND).
    * @sqlite might not work for all cases, suggest using the whereJsonRaw method instead
+   * @mssql not supported - CHARINDEX cannot do partial JSON containment
    */
   andWhereJsonNotContains(column: ModelKey<T>, value: JsonParam): this;
   andWhereJsonNotContains(column: string, value: JsonParam): this;
@@ -86,6 +90,7 @@ export class JsonQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
   /**
    * @description Filters records where JSON column does NOT contain the given value (OR).
    * @sqlite might not work for all cases, suggest using the whereJsonRaw method instead
+   * @mssql not supported - CHARINDEX cannot do partial JSON containment
    */
   orWhereJsonNotContains(column: ModelKey<T>, value: JsonParam): this;
   orWhereJsonNotContains(column: string, value: JsonParam): this;
@@ -105,6 +110,7 @@ export class JsonQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
   /**
    * @description Filters records where JSON column contains the given value.
    * @sqlite might not work for all cases, suggest using the whereJsonRaw method instead
+   * @mssql not supported - CHARINDEX cannot do partial JSON containment
    */
   whereJsonContains(column: ModelKey<T>, value: JsonParam): this;
   whereJsonContains(column: string, value: JsonParam): this;
@@ -115,6 +121,7 @@ export class JsonQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
   /**
    * @description Filters records where JSON column contains the given value (AND).
    * @sqlite might not work for all cases, suggest using the whereJsonRaw method instead
+   * @mssql not supported - CHARINDEX cannot do partial JSON containment
    */
   andWhereJsonContains(column: ModelKey<T>, value: JsonParam): this;
   andWhereJsonContains(column: string, value: JsonParam): this;
@@ -134,6 +141,7 @@ export class JsonQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
   /**
    * @description Filters records where JSON column contains the given value (OR).
    * @sqlite might not work for all cases, suggest using the whereJsonRaw method instead
+   * @mssql not supported - CHARINDEX cannot do partial JSON containment
    */
   orWhereJsonContains(column: ModelKey<T>, value: JsonParam): this;
   orWhereJsonContains(column: string, value: JsonParam): this;

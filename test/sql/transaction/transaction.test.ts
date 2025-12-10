@@ -284,7 +284,8 @@ describe(`[${env.DB_TYPE}] Raw transaction from transaction sql instance should 
 
     // standard connection should not have this transaction data
     // We avoid mid transaction testing for cockroachdb since it's serializable MVCC may cause issues
-    if (env.DB_TYPE !== "cockroachdb") {
+    // MSSQL also blocks reads on tables with uncommitted writes (lock contention)
+    if (env.DB_TYPE !== "cockroachdb" && env.DB_TYPE !== "mssql") {
       const usersFromStandardConnection = await UserWithoutPk.query().many();
       expect(usersFromStandardConnection.length).toBe(0);
     }
@@ -304,7 +305,8 @@ describe(`[${env.DB_TYPE}] Raw transaction from transaction sql instance should 
     ]);
 
     // standard connection should not have this transaction data
-    if (env.DB_TYPE !== "cockroachdb") {
+    // MSSQL blocks reads on tables with uncommitted writes (lock contention)
+    if (env.DB_TYPE !== "cockroachdb" && env.DB_TYPE !== "mssql") {
       const usersFromStandardConnection = await UserWithoutPk.query().many();
       expect(usersFromStandardConnection.length).toBe(0);
     }
@@ -326,7 +328,8 @@ describe(`[${env.DB_TYPE}] Raw transaction from transaction sql instance should 
     ]);
 
     // standard connection should not have this transaction data
-    if (env.DB_TYPE !== "cockroachdb") {
+    // MSSQL blocks reads on tables with uncommitted writes (lock contention)
+    if (env.DB_TYPE !== "cockroachdb" && env.DB_TYPE !== "mssql") {
       const usersFromStandardConnection = await UserWithoutPk.query().many();
       expect(usersFromStandardConnection.length).toBe(0);
     }
@@ -580,7 +583,8 @@ describe(`[${env.DB_TYPE}] Nested transactions with savePoints`, () => {
     await lvl1.commit();
 
     // Before outer commit, data should not be visible from default connection (except cockroachdb caveat)
-    if (env.DB_TYPE !== "cockroachdb") {
+    // MSSQL also blocks reads on tables with uncommitted writes (lock contention)
+    if (env.DB_TYPE !== "cockroachdb" && env.DB_TYPE !== "mssql") {
       const midUsers = await UserWithoutPk.query().many();
       expect(midUsers.length).toBe(0);
     }
@@ -606,7 +610,8 @@ describe(`[${env.DB_TYPE}] Nested transactions with savePoints`, () => {
     await inner.rollback(); // rollback savepoint
 
     // Inner changes should not be visible; outer still uncommitted
-    if (env.DB_TYPE !== "cockroachdb") {
+    // MSSQL also blocks reads on tables with uncommitted writes (lock contention)
+    if (env.DB_TYPE !== "cockroachdb" && env.DB_TYPE !== "mssql") {
       const midUsers = await UserWithoutPk.query().many();
       expect(midUsers.length).toBe(0);
     }

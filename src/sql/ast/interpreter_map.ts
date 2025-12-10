@@ -1,148 +1,298 @@
-import mysql_alter_table_add_column from "../interpreter/mysql/alter_table/add_column";
-import mysql_alter_table_add_constraint from "../interpreter/mysql/alter_table/add_constraint";
-import mysql_alter_table_add_primary_key from "../interpreter/mysql/alter_table/add_primary_key";
-import mysql_alter_table_alter_column_type from "../interpreter/mysql/alter_table/alter_column_type";
-import mysql_alter_table_alter_table from "../interpreter/mysql/alter_table/alter_table";
-import mysql_alter_table_drop_column from "../interpreter/mysql/alter_table/drop_column";
-import mysql_alter_table_drop_constraint from "../interpreter/mysql/alter_table/drop_constraint";
-import mysql_alter_table_drop_default from "../interpreter/mysql/alter_table/drop_default";
-import mysql_alter_table_drop_not_null from "../interpreter/mysql/alter_table/drop_not_null";
-import mysql_alter_table_drop_primary_key from "../interpreter/mysql/alter_table/drop_primary_key";
-import mysql_alter_table_rename_column from "../interpreter/mysql/alter_table/rename_column";
-import mysql_alter_table_rename_table from "../interpreter/mysql/alter_table/rename_table";
-import mysql_alter_table_set_default from "../interpreter/mysql/alter_table/set_default";
-import mysql_alter_table_set_not_null from "../interpreter/mysql/alter_table/set_not_null";
-import mysql_column_column_type from "../interpreter/mysql/column/column_type";
-import mysql_constraint_after from "../interpreter/mysql/constraint/after";
-import mysql_constraint_constraint from "../interpreter/mysql/constraint/constraint";
-import mysql_create_table_create_table from "../interpreter/mysql/create_table/create_table";
-import mysql_delete_delete from "../interpreter/mysql/delete/delete";
-import mysql_distinct_distinct from "../interpreter/mysql/distinct/distinct";
-import mysql_distinct_distinct_on from "../interpreter/mysql/distinct/distinct_on";
-import mysql_drop_table_drop_table from "../interpreter/mysql/drop_table/drop_table";
-import mysql_from_from from "../interpreter/mysql/from/from";
-import mysql_group_by_group_by from "../interpreter/mysql/group_by/group_by";
-import mysql_having_having from "../interpreter/mysql/having/having";
-import mysql_index_op_create_index from "../interpreter/mysql/index_op/create_index";
-import mysql_index_op_drop_index from "../interpreter/mysql/index_op/drop_index";
-import mysql_insert_insert from "../interpreter/mysql/insert/insert";
-import mysql_join_join from "../interpreter/mysql/join/join";
-import mysql_limit_limit from "../interpreter/mysql/limit/limit";
-import mysql_lock_lock from "../interpreter/mysql/lock/lock";
-import mysql_offset_offset from "../interpreter/mysql/offset/offset";
-import mysql_on_duplicate_on_duplicate from "../interpreter/mysql/on_duplicate/on_duplicate";
-import mysql_order_by_order_by from "../interpreter/mysql/order_by/order_by";
-import mysql_raw_raw from "../interpreter/mysql/raw/raw";
-import mysql_schema_foreign_key_info from "../interpreter/mysql/schema/foreign_key_info";
-import mysql_schema_index_info from "../interpreter/mysql/schema/index_info";
-import mysql_schema_primary_key_info from "../interpreter/mysql/schema/primary_key_info";
-import mysql_schema_table_info from "../interpreter/mysql/schema/table_info";
-import mysql_select_select from "../interpreter/mysql/select/select";
-import mysql_truncate_truncate from "../interpreter/mysql/truncate/truncate";
-import mysql_union_union from "../interpreter/mysql/union/union";
-import mysql_update_update from "../interpreter/mysql/update/update";
-import mysql_where_where from "../interpreter/mysql/where/where";
-import mysql_where_where_group from "../interpreter/mysql/where/where_group";
-import mysql_where_where_json from "../interpreter/mysql/where/where_json";
-import mysql_where_where_subquery from "../interpreter/mysql/where/where_subquery";
-import mysql_with_with from "../interpreter/mysql/with/with";
-import postgres_alter_table_add_column from "../interpreter/postgres/alter_table/add_column";
-import postgres_alter_table_add_constraint from "../interpreter/postgres/alter_table/add_constraint";
-import postgres_alter_table_add_primary_key from "../interpreter/postgres/alter_table/add_primary_key";
-import postgres_alter_table_alter_column_type from "../interpreter/postgres/alter_table/alter_column_type";
-import postgres_alter_table_alter_table from "../interpreter/postgres/alter_table/alter_table";
-import postgres_alter_table_drop_column from "../interpreter/postgres/alter_table/drop_column";
-import postgres_alter_table_drop_constraint from "../interpreter/postgres/alter_table/drop_constraint";
-import postgres_alter_table_drop_default from "../interpreter/postgres/alter_table/drop_default";
-import postgres_alter_table_drop_not_null from "../interpreter/postgres/alter_table/drop_not_null";
-import postgres_alter_table_drop_primary_key from "../interpreter/postgres/alter_table/drop_primary_key";
-import postgres_alter_table_rename_column from "../interpreter/postgres/alter_table/rename_column";
-import postgres_alter_table_rename_table from "../interpreter/postgres/alter_table/rename_table";
-import postgres_alter_table_set_default from "../interpreter/postgres/alter_table/set_default";
-import postgres_alter_table_set_not_null from "../interpreter/postgres/alter_table/set_not_null";
-import postgres_column_column_type from "../interpreter/postgres/column/column_type";
-import postgres_constraint_after from "../interpreter/postgres/constraint/after";
-import postgres_constraint_constraint from "../interpreter/postgres/constraint/constraint";
-import postgres_create_table_create_table from "../interpreter/postgres/create_table/create_table";
-import postgres_delete_delete from "../interpreter/postgres/delete/delete";
-import postgres_distinct_distinct from "../interpreter/postgres/distinct/distinct";
-import postgres_distinct_distinct_on from "../interpreter/postgres/distinct/distinct_on";
-import postgres_drop_table_drop_table from "../interpreter/postgres/drop_table/drop_table";
-import postgres_from_from from "../interpreter/postgres/from/from";
-import postgres_group_by_group_by from "../interpreter/postgres/group_by/group_by";
-import postgres_having_having from "../interpreter/postgres/having/having";
-import postgres_index_op_create_index from "../interpreter/postgres/index_op/create_index";
-import postgres_index_op_drop_index from "../interpreter/postgres/index_op/drop_index";
-import postgres_insert_insert from "../interpreter/postgres/insert/insert";
-import postgres_join_join from "../interpreter/postgres/join/join";
-import postgres_limit_limit from "../interpreter/postgres/limit/limit";
-import postgres_lock_lock from "../interpreter/postgres/lock/lock";
-import postgres_offset_offset from "../interpreter/postgres/offset/offset";
-import postgres_on_duplicate_on_duplicate from "../interpreter/postgres/on_duplicate/on_duplicate";
-import postgres_order_by_order_by from "../interpreter/postgres/order_by/order_by";
-import postgres_raw_raw from "../interpreter/postgres/raw/raw";
-import postgres_schema_foreign_key_info from "../interpreter/postgres/schema/foreign_key_info";
-import postgres_schema_index_info from "../interpreter/postgres/schema/index_info";
-import postgres_schema_primary_key_info from "../interpreter/postgres/schema/primary_key_info";
-import postgres_schema_table_info from "../interpreter/postgres/schema/table_info";
-import postgres_select_select from "../interpreter/postgres/select/select";
-import postgres_truncate_truncate from "../interpreter/postgres/truncate/truncate";
-import postgres_union_union from "../interpreter/postgres/union/union";
-import postgres_update_update from "../interpreter/postgres/update/update";
-import postgres_where_where from "../interpreter/postgres/where/where";
-import postgres_where_where_group from "../interpreter/postgres/where/where_group";
-import postgres_where_where_json from "../interpreter/postgres/where/where_json";
-import postgres_where_where_subquery from "../interpreter/postgres/where/where_subquery";
-import postgres_with_with from "../interpreter/postgres/with/with";
-import sqlite_alter_table_add_column from "../interpreter/sqlite/alter_table/add_column";
-import sqlite_alter_table_add_constraint from "../interpreter/sqlite/alter_table/add_constraint";
-import sqlite_alter_table_alter_column_type from "../interpreter/sqlite/alter_table/alter_column_type";
-import sqlite_alter_table_alter_table from "../interpreter/sqlite/alter_table/alter_table";
-import sqlite_alter_table_drop_column from "../interpreter/sqlite/alter_table/drop_column";
-import sqlite_alter_table_drop_constraint from "../interpreter/sqlite/alter_table/drop_constraint";
-import sqlite_alter_table_drop_default from "../interpreter/sqlite/alter_table/drop_default";
-import sqlite_alter_table_drop_not_null from "../interpreter/sqlite/alter_table/drop_not_null";
-import sqlite_alter_table_drop_primary_key from "../interpreter/sqlite/alter_table/drop_primary_key";
-import sqlite_alter_table_rename_column from "../interpreter/sqlite/alter_table/rename_column";
-import sqlite_alter_table_rename_table from "../interpreter/sqlite/alter_table/rename_table";
-import sqlite_alter_table_set_default from "../interpreter/sqlite/alter_table/set_default";
-import sqlite_alter_table_set_not_null from "../interpreter/sqlite/alter_table/set_not_null";
-import sqlite_column_column_type from "../interpreter/sqlite/column/column_type";
-import sqlite_constraint_after from "../interpreter/sqlite/constraint/after";
-import sqlite_constraint_constraint from "../interpreter/sqlite/constraint/constraint";
-import sqlite_create_table_create_table from "../interpreter/sqlite/create_table/create_table";
-import sqlite_delete_delete from "../interpreter/sqlite/delete/delete";
-import sqlite_distinct_distinct from "../interpreter/sqlite/distinct/distinct";
-import sqlite_distinct_distinct_on from "../interpreter/sqlite/distinct/distinct_on";
-import sqlite_drop_table_drop_table from "../interpreter/sqlite/drop_table/drop_table";
-import sqlite_from_from from "../interpreter/sqlite/from/from";
-import sqlite_group_by_group_by from "../interpreter/sqlite/group_by/group_by";
-import sqlite_having_having from "../interpreter/sqlite/having/having";
-import sqlite_index_op_create_index from "../interpreter/sqlite/index_op/create_index";
-import sqlite_index_op_drop_index from "../interpreter/sqlite/index_op/drop_index";
-import sqlite_insert_insert from "../interpreter/sqlite/insert/insert";
-import sqlite_join_join from "../interpreter/sqlite/join/join";
-import sqlite_limit_limit from "../interpreter/sqlite/limit/limit";
-import sqlite_lock_lock from "../interpreter/sqlite/lock/lock";
-import sqlite_offset_offset from "../interpreter/sqlite/offset/offset";
-import sqlite_on_duplicate_on_duplicate from "../interpreter/sqlite/on_duplicate/on_duplicate";
-import sqlite_order_by_order_by from "../interpreter/sqlite/order_by/order_by";
-import sqlite_raw_raw from "../interpreter/sqlite/raw/raw";
-import sqlite_schema_foreign_key_info from "../interpreter/sqlite/schema/foreign_key_info";
-import sqlite_schema_index_info from "../interpreter/sqlite/schema/index_info";
-import sqlite_schema_primary_key_info from "../interpreter/sqlite/schema/primary_key_info";
-import sqlite_schema_table_info from "../interpreter/sqlite/schema/table_info";
-import sqlite_select_select from "../interpreter/sqlite/select/select";
-import sqlite_truncate_truncate from "../interpreter/sqlite/truncate/truncate";
-import sqlite_union_union from "../interpreter/sqlite/union/union";
-import sqlite_update_update from "../interpreter/sqlite/update/update";
-import sqlite_where_where from "../interpreter/sqlite/where/where";
-import sqlite_where_where_group from "../interpreter/sqlite/where/where_group";
-import sqlite_where_where_json from "../interpreter/sqlite/where/where_json";
-import sqlite_where_where_subquery from "../interpreter/sqlite/where/where_subquery";
-import sqlite_with_with from "../interpreter/sqlite/with/with";
+import mssql_alter_table_add_column from '../interpreter/mssql/alter_table/add_column';
+import mssql_alter_table_add_constraint from '../interpreter/mssql/alter_table/add_constraint';
+import mssql_alter_table_add_primary_key from '../interpreter/mssql/alter_table/add_primary_key';
+import mssql_alter_table_alter_column_type from '../interpreter/mssql/alter_table/alter_column_type';
+import mssql_alter_table_alter_table from '../interpreter/mssql/alter_table/alter_table';
+import mssql_alter_table_drop_column from '../interpreter/mssql/alter_table/drop_column';
+import mssql_alter_table_drop_constraint from '../interpreter/mssql/alter_table/drop_constraint';
+import mssql_alter_table_drop_default from '../interpreter/mssql/alter_table/drop_default';
+import mssql_alter_table_drop_not_null from '../interpreter/mssql/alter_table/drop_not_null';
+import mssql_alter_table_drop_primary_key from '../interpreter/mssql/alter_table/drop_primary_key';
+import mssql_alter_table_rename_column from '../interpreter/mssql/alter_table/rename_column';
+import mssql_alter_table_rename_table from '../interpreter/mssql/alter_table/rename_table';
+import mssql_alter_table_set_default from '../interpreter/mssql/alter_table/set_default';
+import mssql_alter_table_set_not_null from '../interpreter/mssql/alter_table/set_not_null';
+import mssql_column_column_type from '../interpreter/mssql/column/column_type';
+import mssql_constraint_after from '../interpreter/mssql/constraint/after';
+import mssql_constraint_constraint from '../interpreter/mssql/constraint/constraint';
+import mssql_create_table_create_table from '../interpreter/mssql/create_table/create_table';
+import mssql_delete_delete from '../interpreter/mssql/delete/delete';
+import mssql_distinct_distinct from '../interpreter/mssql/distinct/distinct';
+import mssql_distinct_distinct_on from '../interpreter/mssql/distinct/distinct_on';
+import mssql_drop_table_drop_table from '../interpreter/mssql/drop_table/drop_table';
+import mssql_from_from from '../interpreter/mssql/from/from';
+import mssql_group_by_group_by from '../interpreter/mssql/group_by/group_by';
+import mssql_having_having from '../interpreter/mssql/having/having';
+import mssql_index_op_create_index from '../interpreter/mssql/index_op/create_index';
+import mssql_index_op_drop_index from '../interpreter/mssql/index_op/drop_index';
+import mssql_insert_insert from '../interpreter/mssql/insert/insert';
+import mssql_join_join from '../interpreter/mssql/join/join';
+import mssql_limit_limit from '../interpreter/mssql/limit/limit';
+import mssql_lock_lock from '../interpreter/mssql/lock/lock';
+import mssql_offset_offset from '../interpreter/mssql/offset/offset';
+import mssql_on_duplicate_on_duplicate from '../interpreter/mssql/on_duplicate/on_duplicate';
+import mssql_order_by_order_by from '../interpreter/mssql/order_by/order_by';
+import mssql_raw_raw from '../interpreter/mssql/raw/raw';
+import mssql_schema_foreign_key_info from '../interpreter/mssql/schema/foreign_key_info';
+import mssql_schema_index_info from '../interpreter/mssql/schema/index_info';
+import mssql_schema_primary_key_info from '../interpreter/mssql/schema/primary_key_info';
+import mssql_schema_table_info from '../interpreter/mssql/schema/table_info';
+import mssql_select_select from '../interpreter/mssql/select/select';
+import mssql_truncate_truncate from '../interpreter/mssql/truncate/truncate';
+import mssql_union_union from '../interpreter/mssql/union/union';
+import mssql_update_update from '../interpreter/mssql/update/update';
+import mssql_where_where from '../interpreter/mssql/where/where';
+import mssql_where_where_group from '../interpreter/mssql/where/where_group';
+import mssql_where_where_json from '../interpreter/mssql/where/where_json';
+import mssql_where_where_subquery from '../interpreter/mssql/where/where_subquery';
+import mssql_with_with from '../interpreter/mssql/with/with';
+import mysql_alter_table_add_column from '../interpreter/mysql/alter_table/add_column';
+import mysql_alter_table_add_constraint from '../interpreter/mysql/alter_table/add_constraint';
+import mysql_alter_table_add_primary_key from '../interpreter/mysql/alter_table/add_primary_key';
+import mysql_alter_table_alter_column_type from '../interpreter/mysql/alter_table/alter_column_type';
+import mysql_alter_table_alter_table from '../interpreter/mysql/alter_table/alter_table';
+import mysql_alter_table_drop_column from '../interpreter/mysql/alter_table/drop_column';
+import mysql_alter_table_drop_constraint from '../interpreter/mysql/alter_table/drop_constraint';
+import mysql_alter_table_drop_default from '../interpreter/mysql/alter_table/drop_default';
+import mysql_alter_table_drop_not_null from '../interpreter/mysql/alter_table/drop_not_null';
+import mysql_alter_table_drop_primary_key from '../interpreter/mysql/alter_table/drop_primary_key';
+import mysql_alter_table_rename_column from '../interpreter/mysql/alter_table/rename_column';
+import mysql_alter_table_rename_table from '../interpreter/mysql/alter_table/rename_table';
+import mysql_alter_table_set_default from '../interpreter/mysql/alter_table/set_default';
+import mysql_alter_table_set_not_null from '../interpreter/mysql/alter_table/set_not_null';
+import mysql_column_column_type from '../interpreter/mysql/column/column_type';
+import mysql_constraint_after from '../interpreter/mysql/constraint/after';
+import mysql_constraint_constraint from '../interpreter/mysql/constraint/constraint';
+import mysql_create_table_create_table from '../interpreter/mysql/create_table/create_table';
+import mysql_delete_delete from '../interpreter/mysql/delete/delete';
+import mysql_distinct_distinct from '../interpreter/mysql/distinct/distinct';
+import mysql_distinct_distinct_on from '../interpreter/mysql/distinct/distinct_on';
+import mysql_drop_table_drop_table from '../interpreter/mysql/drop_table/drop_table';
+import mysql_from_from from '../interpreter/mysql/from/from';
+import mysql_group_by_group_by from '../interpreter/mysql/group_by/group_by';
+import mysql_having_having from '../interpreter/mysql/having/having';
+import mysql_index_op_create_index from '../interpreter/mysql/index_op/create_index';
+import mysql_index_op_drop_index from '../interpreter/mysql/index_op/drop_index';
+import mysql_insert_insert from '../interpreter/mysql/insert/insert';
+import mysql_join_join from '../interpreter/mysql/join/join';
+import mysql_limit_limit from '../interpreter/mysql/limit/limit';
+import mysql_lock_lock from '../interpreter/mysql/lock/lock';
+import mysql_offset_offset from '../interpreter/mysql/offset/offset';
+import mysql_on_duplicate_on_duplicate from '../interpreter/mysql/on_duplicate/on_duplicate';
+import mysql_order_by_order_by from '../interpreter/mysql/order_by/order_by';
+import mysql_raw_raw from '../interpreter/mysql/raw/raw';
+import mysql_schema_foreign_key_info from '../interpreter/mysql/schema/foreign_key_info';
+import mysql_schema_index_info from '../interpreter/mysql/schema/index_info';
+import mysql_schema_primary_key_info from '../interpreter/mysql/schema/primary_key_info';
+import mysql_schema_table_info from '../interpreter/mysql/schema/table_info';
+import mysql_select_select from '../interpreter/mysql/select/select';
+import mysql_truncate_truncate from '../interpreter/mysql/truncate/truncate';
+import mysql_union_union from '../interpreter/mysql/union/union';
+import mysql_update_update from '../interpreter/mysql/update/update';
+import mysql_where_where from '../interpreter/mysql/where/where';
+import mysql_where_where_group from '../interpreter/mysql/where/where_group';
+import mysql_where_where_json from '../interpreter/mysql/where/where_json';
+import mysql_where_where_subquery from '../interpreter/mysql/where/where_subquery';
+import mysql_with_with from '../interpreter/mysql/with/with';
+import postgres_alter_table_add_column from '../interpreter/postgres/alter_table/add_column';
+import postgres_alter_table_add_constraint from '../interpreter/postgres/alter_table/add_constraint';
+import postgres_alter_table_add_primary_key from '../interpreter/postgres/alter_table/add_primary_key';
+import postgres_alter_table_alter_column_type from '../interpreter/postgres/alter_table/alter_column_type';
+import postgres_alter_table_alter_table from '../interpreter/postgres/alter_table/alter_table';
+import postgres_alter_table_drop_column from '../interpreter/postgres/alter_table/drop_column';
+import postgres_alter_table_drop_constraint from '../interpreter/postgres/alter_table/drop_constraint';
+import postgres_alter_table_drop_default from '../interpreter/postgres/alter_table/drop_default';
+import postgres_alter_table_drop_not_null from '../interpreter/postgres/alter_table/drop_not_null';
+import postgres_alter_table_drop_primary_key from '../interpreter/postgres/alter_table/drop_primary_key';
+import postgres_alter_table_rename_column from '../interpreter/postgres/alter_table/rename_column';
+import postgres_alter_table_rename_table from '../interpreter/postgres/alter_table/rename_table';
+import postgres_alter_table_set_default from '../interpreter/postgres/alter_table/set_default';
+import postgres_alter_table_set_not_null from '../interpreter/postgres/alter_table/set_not_null';
+import postgres_column_column_type from '../interpreter/postgres/column/column_type';
+import postgres_constraint_after from '../interpreter/postgres/constraint/after';
+import postgres_constraint_constraint from '../interpreter/postgres/constraint/constraint';
+import postgres_create_table_create_table from '../interpreter/postgres/create_table/create_table';
+import postgres_delete_delete from '../interpreter/postgres/delete/delete';
+import postgres_distinct_distinct from '../interpreter/postgres/distinct/distinct';
+import postgres_distinct_distinct_on from '../interpreter/postgres/distinct/distinct_on';
+import postgres_drop_table_drop_table from '../interpreter/postgres/drop_table/drop_table';
+import postgres_from_from from '../interpreter/postgres/from/from';
+import postgres_group_by_group_by from '../interpreter/postgres/group_by/group_by';
+import postgres_having_having from '../interpreter/postgres/having/having';
+import postgres_index_op_create_index from '../interpreter/postgres/index_op/create_index';
+import postgres_index_op_drop_index from '../interpreter/postgres/index_op/drop_index';
+import postgres_insert_insert from '../interpreter/postgres/insert/insert';
+import postgres_join_join from '../interpreter/postgres/join/join';
+import postgres_limit_limit from '../interpreter/postgres/limit/limit';
+import postgres_lock_lock from '../interpreter/postgres/lock/lock';
+import postgres_offset_offset from '../interpreter/postgres/offset/offset';
+import postgres_on_duplicate_on_duplicate from '../interpreter/postgres/on_duplicate/on_duplicate';
+import postgres_order_by_order_by from '../interpreter/postgres/order_by/order_by';
+import postgres_raw_raw from '../interpreter/postgres/raw/raw';
+import postgres_schema_foreign_key_info from '../interpreter/postgres/schema/foreign_key_info';
+import postgres_schema_index_info from '../interpreter/postgres/schema/index_info';
+import postgres_schema_primary_key_info from '../interpreter/postgres/schema/primary_key_info';
+import postgres_schema_table_info from '../interpreter/postgres/schema/table_info';
+import postgres_select_select from '../interpreter/postgres/select/select';
+import postgres_truncate_truncate from '../interpreter/postgres/truncate/truncate';
+import postgres_union_union from '../interpreter/postgres/union/union';
+import postgres_update_update from '../interpreter/postgres/update/update';
+import postgres_where_where from '../interpreter/postgres/where/where';
+import postgres_where_where_group from '../interpreter/postgres/where/where_group';
+import postgres_where_where_json from '../interpreter/postgres/where/where_json';
+import postgres_where_where_subquery from '../interpreter/postgres/where/where_subquery';
+import postgres_with_with from '../interpreter/postgres/with/with';
+import sqlite_alter_table_add_column from '../interpreter/sqlite/alter_table/add_column';
+import sqlite_alter_table_add_constraint from '../interpreter/sqlite/alter_table/add_constraint';
+import sqlite_alter_table_alter_column_type from '../interpreter/sqlite/alter_table/alter_column_type';
+import sqlite_alter_table_alter_table from '../interpreter/sqlite/alter_table/alter_table';
+import sqlite_alter_table_drop_column from '../interpreter/sqlite/alter_table/drop_column';
+import sqlite_alter_table_drop_constraint from '../interpreter/sqlite/alter_table/drop_constraint';
+import sqlite_alter_table_drop_default from '../interpreter/sqlite/alter_table/drop_default';
+import sqlite_alter_table_drop_not_null from '../interpreter/sqlite/alter_table/drop_not_null';
+import sqlite_alter_table_drop_primary_key from '../interpreter/sqlite/alter_table/drop_primary_key';
+import sqlite_alter_table_rename_column from '../interpreter/sqlite/alter_table/rename_column';
+import sqlite_alter_table_rename_table from '../interpreter/sqlite/alter_table/rename_table';
+import sqlite_alter_table_set_default from '../interpreter/sqlite/alter_table/set_default';
+import sqlite_alter_table_set_not_null from '../interpreter/sqlite/alter_table/set_not_null';
+import sqlite_column_column_type from '../interpreter/sqlite/column/column_type';
+import sqlite_constraint_after from '../interpreter/sqlite/constraint/after';
+import sqlite_constraint_constraint from '../interpreter/sqlite/constraint/constraint';
+import sqlite_create_table_create_table from '../interpreter/sqlite/create_table/create_table';
+import sqlite_delete_delete from '../interpreter/sqlite/delete/delete';
+import sqlite_distinct_distinct from '../interpreter/sqlite/distinct/distinct';
+import sqlite_distinct_distinct_on from '../interpreter/sqlite/distinct/distinct_on';
+import sqlite_drop_table_drop_table from '../interpreter/sqlite/drop_table/drop_table';
+import sqlite_from_from from '../interpreter/sqlite/from/from';
+import sqlite_group_by_group_by from '../interpreter/sqlite/group_by/group_by';
+import sqlite_having_having from '../interpreter/sqlite/having/having';
+import sqlite_index_op_create_index from '../interpreter/sqlite/index_op/create_index';
+import sqlite_index_op_drop_index from '../interpreter/sqlite/index_op/drop_index';
+import sqlite_insert_insert from '../interpreter/sqlite/insert/insert';
+import sqlite_join_join from '../interpreter/sqlite/join/join';
+import sqlite_limit_limit from '../interpreter/sqlite/limit/limit';
+import sqlite_lock_lock from '../interpreter/sqlite/lock/lock';
+import sqlite_offset_offset from '../interpreter/sqlite/offset/offset';
+import sqlite_on_duplicate_on_duplicate from '../interpreter/sqlite/on_duplicate/on_duplicate';
+import sqlite_order_by_order_by from '../interpreter/sqlite/order_by/order_by';
+import sqlite_raw_raw from '../interpreter/sqlite/raw/raw';
+import sqlite_schema_foreign_key_info from '../interpreter/sqlite/schema/foreign_key_info';
+import sqlite_schema_index_info from '../interpreter/sqlite/schema/index_info';
+import sqlite_schema_primary_key_info from '../interpreter/sqlite/schema/primary_key_info';
+import sqlite_schema_table_info from '../interpreter/sqlite/schema/table_info';
+import sqlite_select_select from '../interpreter/sqlite/select/select';
+import sqlite_truncate_truncate from '../interpreter/sqlite/truncate/truncate';
+import sqlite_union_union from '../interpreter/sqlite/union/union';
+import sqlite_update_update from '../interpreter/sqlite/update/update';
+import sqlite_where_where from '../interpreter/sqlite/where/where';
+import sqlite_where_where_group from '../interpreter/sqlite/where/where_group';
+import sqlite_where_where_json from '../interpreter/sqlite/where/where_json';
+import sqlite_where_where_subquery from '../interpreter/sqlite/where/where_subquery';
+import sqlite_with_with from '../interpreter/sqlite/with/with';
 
 export const interpreterMap = {
+  mssql: {
+    alter_table: {
+      add_column: mssql_alter_table_add_column,
+      add_constraint: mssql_alter_table_add_constraint,
+      add_primary_key: mssql_alter_table_add_primary_key,
+      alter_column_type: mssql_alter_table_alter_column_type,
+      alter_table: mssql_alter_table_alter_table,
+      drop_column: mssql_alter_table_drop_column,
+      drop_constraint: mssql_alter_table_drop_constraint,
+      drop_default: mssql_alter_table_drop_default,
+      drop_not_null: mssql_alter_table_drop_not_null,
+      drop_primary_key: mssql_alter_table_drop_primary_key,
+      rename_column: mssql_alter_table_rename_column,
+      rename_table: mssql_alter_table_rename_table,
+      set_default: mssql_alter_table_set_default,
+      set_not_null: mssql_alter_table_set_not_null,
+    },
+    column: {
+      column_type: mssql_column_column_type,
+    },
+    constraint: {
+      after: mssql_constraint_after,
+      constraint: mssql_constraint_constraint,
+    },
+    create_table: {
+      create_table: mssql_create_table_create_table,
+    },
+    delete: {
+      delete: mssql_delete_delete,
+    },
+    distinct: {
+      distinct: mssql_distinct_distinct,
+      distinct_on: mssql_distinct_distinct_on,
+    },
+    drop_table: {
+      drop_table: mssql_drop_table_drop_table,
+    },
+    from: {
+      from: mssql_from_from,
+    },
+    group_by: {
+      group_by: mssql_group_by_group_by,
+    },
+    having: {
+      having: mssql_having_having,
+    },
+    index_op: {
+      create_index: mssql_index_op_create_index,
+      drop_index: mssql_index_op_drop_index,
+    },
+    insert: {
+      insert: mssql_insert_insert,
+    },
+    join: {
+      join: mssql_join_join,
+    },
+    limit: {
+      limit: mssql_limit_limit,
+    },
+    lock: {
+      lock: mssql_lock_lock,
+    },
+    offset: {
+      offset: mssql_offset_offset,
+    },
+    on_duplicate: {
+      on_duplicate: mssql_on_duplicate_on_duplicate,
+    },
+    order_by: {
+      order_by: mssql_order_by_order_by,
+    },
+    raw: {
+      raw: mssql_raw_raw,
+    },
+    schema: {
+      foreign_key_info: mssql_schema_foreign_key_info,
+      index_info: mssql_schema_index_info,
+      primary_key_info: mssql_schema_primary_key_info,
+      table_info: mssql_schema_table_info,
+    },
+    select: {
+      select: mssql_select_select,
+    },
+    truncate: {
+      truncate: mssql_truncate_truncate,
+    },
+    union: {
+      union: mssql_union_union,
+    },
+    update: {
+      update: mssql_update_update,
+    },
+    where: {
+      where: mssql_where_where,
+      where_group: mssql_where_where_group,
+      where_json: mssql_where_where_json,
+      where_subquery: mssql_where_where_subquery,
+    },
+    with: {
+      with: mssql_with_with,
+    },
+  },
   mysql: {
     alter_table: {
       add_column: mysql_alter_table_add_column,

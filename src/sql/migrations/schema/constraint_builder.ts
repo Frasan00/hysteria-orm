@@ -1,6 +1,7 @@
 import { ColumnTypeNode } from "../../ast/query/node/column";
 import { ConstraintNode } from "../../ast/query/node/constraint";
 import { AfterConstraintNode } from "../../ast/query/node/constraint/after";
+import { RawNode } from "../../ast/query/node/raw/raw_node";
 import { QueryNode } from "../../ast/query/query";
 import {
   getDefaultFkConstraintName,
@@ -174,10 +175,12 @@ export class ConstraintBuilder extends BaseBuilder {
    * @description Sets the default value for the column
    * @param value is the default value for the column
    */
-  default(value: string | number | boolean | null): this {
-    let defaultVal: string | undefined;
+  default(value: string | number | boolean | null | RawNode): this {
+    let defaultVal: string | undefined | RawNode;
 
-    if (value === null) {
+    if (value instanceof RawNode) {
+      defaultVal = value;
+    } else if (value === null) {
       defaultVal = "NULL";
     } else if (typeof value === "boolean") {
       defaultVal = value ? "TRUE" : "FALSE";

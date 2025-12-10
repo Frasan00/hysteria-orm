@@ -6,6 +6,7 @@ import { env } from "../env/env";
 import { HysteriaError } from "../errors/hysteria_error";
 import { Migration } from "../sql/migrations/migration";
 import type {
+  MssqlPoolInstance,
   MysqlConnectionInstance,
   PgPoolClientInstance,
   SqlDataSourceType,
@@ -102,6 +103,16 @@ export async function getMigrationTable(
           sqlConnection as SqliteConnectionInstance,
         )) || []
       );
+
+    case "mssql":
+      const mssqlConnection = sqlConnection as MssqlPoolInstance;
+      await mssqlConnection
+        .request()
+        .query(MigrationTemplates.migrationTableTemplateMssql());
+      const mssqlResult = await mssqlConnection
+        .request()
+        .query(MigrationTemplates.selectAllFromMigrationsTemplate());
+      return mssqlResult.recordset as MigrationTableType[];
 
     default:
       throw new HysteriaError(

@@ -3,6 +3,7 @@ import type {
   DataSourceInput,
   DataSourceType,
   MongoDataSourceInput,
+  MssqlDataSourceInput,
   MysqlSqlDataSourceInput,
   PostgresSqlDataSourceInput,
   SqliteDataSourceInput,
@@ -37,6 +38,9 @@ export abstract class DataSource {
         break;
       case "sqlite":
         this.handleSqliteSource(input as SqliteDataSourceInput);
+        break;
+      case "mssql":
+        this.handleMssqlSource(input as MssqlDataSourceInput);
         break;
       default:
         throw new HysteriaError(
@@ -94,5 +98,18 @@ Valid database types are: [mongo, postgres, cockroachdb, mysql, mariadb, sqlite]
   protected handleMongoSource(input?: MongoDataSourceInput) {
     this.url = input?.url || (env.MONGO_URL as string);
     this.logs = input?.logs || env.MONGO_LOGS || false;
+  }
+
+  protected handleMssqlSource(input?: MssqlDataSourceInput) {
+    this.host = (input?.host || env.DB_HOST) as string;
+    this.port = +(input?.port as number) || +(env.DB_PORT as string);
+    this.username = (input?.username || env.DB_USER) as string;
+    this.password = (input?.password || env.DB_PASSWORD) as string;
+    this.database = (input?.database || env.DB_DATABASE) as string;
+    this.logs = input?.logs || env.DB_LOGS || false;
+
+    if (!this.port) {
+      this.port = 1433;
+    }
   }
 }

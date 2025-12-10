@@ -9,7 +9,17 @@ export type DataSourceType =
   | "postgres"
   | "mariadb"
   | "sqlite"
+  | "mssql"
   | "mongo";
+
+export interface MssqlDataSourceInput extends CommonDataSourceInput {
+  readonly type: "mssql";
+  readonly host?: string;
+  readonly port?: number;
+  readonly username?: string;
+  readonly password?: string;
+  readonly database?: string;
+}
 
 export interface CommonDataSourceInput {
   readonly type?: DataSourceType;
@@ -75,6 +85,7 @@ export interface NotNullableSqliteDataSourceInput
  * @description By default the connection details can be provided in the .env file, you can still override each prop with your actual connection details in the input
  */
 export type DataSourceInput =
+  | MssqlDataSourceInput
   | MysqlSqlDataSourceInput
   | SqliteDataSourceInput
   | PostgresSqlDataSourceInput

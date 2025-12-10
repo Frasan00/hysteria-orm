@@ -2,9 +2,9 @@ import fs from "fs/promises";
 import { createSqlPool } from "../sql/sql_connection_utils";
 import { type SqlDataSource } from "../sql/sql_data_source";
 import { SqlDataSourceType } from "../sql/sql_data_source_types";
+import { Transaction } from "../sql/transactions/transaction";
 import logger from "../utils/logger";
 import MigrationTemplates from "./resources/migration_templates";
-import { Transaction } from "../sql/transactions/transaction";
 
 export default async function dropAllTablesConnector(
   sql: SqlDataSource,
@@ -55,13 +55,23 @@ export default async function dropAllTablesConnector(
     tables,
   );
 
+  if (!parsedTables.length) {
+    logger.info("No tables to drop");
+    if (shouldExit) {
+      await sql.closeConnection();
+      process.exit(0);
+    }
+    return;
+  }
+
   const dropAllTablesTemplate = MigrationTemplates.dropAllTablesTemplate(
     dbType as SqlDataSourceType,
     parsedTables,
   );
 
   let trx: Transaction | null = null;
-  if (transactional) {
+  const shouldUseTransaction = transactional && dbType !== "mssql";
+  if (shouldUseTransaction) {
     trx = await sql.startTransaction();
     sql = trx.sql as SqlDataSource;
   }
@@ -71,17 +81,33 @@ export default async function dropAllTablesConnector(
       await sql.rawQuery(`SET FOREIGN_KEY_CHECKS = 0;`);
     }
 
+    if (dbType === "mssql") {
+      const fkConstraints = await sql.rawQuery<
+        { table_name: string; constraint_name: string }[]
+      >(`
+        SELECT
+          OBJECT_NAME(parent_object_id) AS table_name,
+          name AS constraint_name
+        FROM sys.foreign_keys;
+      `);
+      for (const fk of fkConstraints) {
+        await sql.rawQuery(
+          `ALTER TABLE [${fk.table_name}] DROP CONSTRAINT [${fk.constraint_name}];`,
+        );
+      }
+    }
+
     await sql.rawQuery(dropAllTablesTemplate);
 
     if (dbType === "mysql" || dbType === "mariadb") {
       await sql.rawQuery(`SET FOREIGN_KEY_CHECKS = 1;`);
     }
 
-    if (transactional) {
+    if (shouldUseTransaction) {
       await trx?.commit();
     }
   } catch (error: any) {
-    if (transactional) {
+    if (shouldUseTransaction) {
       await trx?.rollback();
     }
 

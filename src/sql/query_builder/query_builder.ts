@@ -475,14 +475,12 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     }
 
     const countQueryBuilder = this.clone();
+    const paginatedQuery = this.limit(perPage).offset((page - 1) * perPage);
 
-    // Original query is used to get the models with pagination data
-    const [models, total] = await Promise.all([
-      this.limit(perPage)
-        .offset((page - 1) * perPage)
-        .many(),
-      countQueryBuilder.getCount("*"),
-    ]);
+    const [models, total] = await this.executePaginateQueries(
+      () => paginatedQuery.many(),
+      () => countQueryBuilder.getCount("*"),
+    );
 
     const paginationMetadata = getPaginationMetadata(page, perPage, total);
 
@@ -537,6 +535,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
 
   /**
    * @description Adds a recursive CTE to the query using a callback to build the subquery.
+   * @mssql not supported
    */
   withRecursive(alias: string, cb: (qb: QueryBuilder<T>) => void): this {
     const subQuery = new QueryBuilder<T>(this.model, this.sqlDataSource);
@@ -668,6 +667,17 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
       preparedColumns.map((column, index) => [column, preparedValues[index]]),
     );
 
+    // MSSQL requires MERGE statement for upsert operations
+    if (this.sqlDataSource.type === "mssql") {
+      return this.executeMssqlMergeRaw(
+        [insertObject],
+        conflictColumns,
+        columnsToUpdate,
+        options,
+        [data],
+      );
+    }
+
     const { sql, bindings } = this.astParser.parse([
       new InsertNode(
         new FromNode(this.model.table),
@@ -732,6 +742,17 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
       }),
     );
 
+    // MSSQL requires MERGE statement for upsert operations
+    if (this.sqlDataSource.type === "mssql") {
+      return this.executeMssqlMergeRaw(
+        insertObjects,
+        conflictColumns,
+        columnsToUpdate,
+        options,
+        data,
+      );
+    }
+
     const { sql, bindings } = this.astParser.parse([
       new InsertNode(
         new FromNode(this.model.table),
@@ -755,6 +776,95 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
         models: data as unknown as T[],
       },
     });
+    return (Array.isArray(rawResult)
+      ? rawResult
+      : [rawResult]) as unknown as T[];
+  }
+
+  /**
+   * @description Executes a MERGE statement for MSSQL upsert operations (raw query builder)
+   */
+  private async executeMssqlMergeRaw<O extends Record<string, any>>(
+    insertObjects: Record<string, any>[],
+    conflictColumns: string[],
+    columnsToUpdate: string[],
+    options: UpsertOptionsRawBuilder,
+    data: O[],
+  ): Promise<T[]> {
+    if (!insertObjects.length) {
+      return [];
+    }
+
+    const columns = Object.keys(insertObjects[0]);
+    const formattedTable = this.interpreterUtils.formatStringColumn(
+      "mssql",
+      this.model.table,
+    );
+
+    const formatCol = (col: string) =>
+      this.interpreterUtils.formatStringColumn("mssql", col);
+
+    // Build source values for MERGE
+    const bindings: any[] = [];
+    const sourceRows = insertObjects.map((obj) => {
+      const rowValues = columns.map((col) => {
+        bindings.push(obj[col]);
+        return `@${bindings.length}`;
+      });
+      return `select ${rowValues.join(", ")}`;
+    });
+
+    const sourceColumns = columns.map(formatCol).join(", ");
+    const sourceQuery = sourceRows.join(" union all ");
+
+    // Build ON condition for conflict columns
+    const onCondition = conflictColumns
+      .map((col) => `target.${formatCol(col)} = source.${formatCol(col)}`)
+      .join(" and ");
+
+    // Build UPDATE SET clause
+    const updateSet = columnsToUpdate
+      .filter((col) => !conflictColumns.includes(col))
+      .map((col) => `target.${formatCol(col)} = source.${formatCol(col)}`)
+      .join(", ");
+
+    // Build INSERT columns and values
+    const insertCols = columns.map(formatCol).join(", ");
+    const insertVals = columns
+      .map((col) => `source.${formatCol(col)}`)
+      .join(", ");
+
+    // Build OUTPUT clause
+    const outputCols =
+      options.returning && options.returning.length
+        ? options.returning
+            .map((col) => `inserted.${formatCol(col)}`)
+            .join(", ")
+        : columns.map((col) => `inserted.${formatCol(col)}`).join(", ");
+
+    // Construct MERGE statement
+    const updateOnConflict = options.updateOnConflict ?? true;
+    const whenMatchedClause =
+      updateOnConflict && updateSet
+        ? `when matched then update set ${updateSet}`
+        : "";
+
+    const sql =
+      `merge into ${formattedTable} as target ` +
+      `using (${sourceQuery}) as source (${sourceColumns}) ` +
+      `on ${onCondition} ` +
+      `${whenMatchedClause} ` +
+      `when not matched then insert (${insertCols}) values (${insertVals}) ` +
+      `output ${outputCols};`;
+
+    const rawResult = await execSql(sql, bindings, this.sqlDataSource, "raw", {
+      sqlLiteOptions: {
+        typeofModel: this.model,
+        mode: "raw",
+        models: data as unknown as T[],
+      },
+    });
+
     return (Array.isArray(rawResult)
       ? rawResult
       : [rawResult]) as unknown as T[];
@@ -1243,5 +1353,31 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
       data: result,
       time: Number(time),
     };
+  }
+
+  /**
+   * @description Checks if the current context is an MSSQL transaction
+   * @description MSSQL transactions can only handle one request at a time
+   */
+  protected isMssqlTransaction(): boolean {
+    return (
+      this.sqlDataSource.type === "mssql" && !!this.sqlDataSource.sqlConnection
+    );
+  }
+
+  /**
+   * @description Executes pagination queries, serializing them for MSSQL transactions
+   */
+  protected async executePaginateQueries<M, C>(
+    modelsQuery: () => Promise<M>,
+    countQuery: () => Promise<C>,
+  ): Promise<[M, C]> {
+    if (this.isMssqlTransaction()) {
+      const models = await modelsQuery();
+      const count = await countQuery();
+      return [models, count];
+    }
+
+    return Promise.all([modelsQuery(), countQuery()]);
   }
 }

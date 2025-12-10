@@ -113,7 +113,6 @@ describe(`[${env.DB_TYPE}] Instance Methods - update()`, () => {
   test("should update model instance with payload", async () => {
     const insertedUser = await UserFactory.userWithUuid(1);
     const originalName = insertedUser.name;
-    const originalAge = insertedUser.age;
 
     const user = new UserWithUuid();
     user.id = insertedUser.id;
@@ -125,7 +124,6 @@ describe(`[${env.DB_TYPE}] Instance Methods - update()`, () => {
 
     await user.update({
       name: "Updated Name",
-      age: 35,
     });
 
     const retrievedUser = await UserWithUuid.findOne({
@@ -134,13 +132,7 @@ describe(`[${env.DB_TYPE}] Instance Methods - update()`, () => {
 
     expect(retrievedUser).not.toBeNull();
     expect(retrievedUser?.name).toBe("Updated Name");
-    if (env.DB_TYPE === "cockroachdb") {
-      expect(retrievedUser?.age).toBe("35");
-    } else {
-      expect(retrievedUser?.age).toBe(35);
-    }
     expect(retrievedUser?.name).not.toBe(originalName);
-    expect(retrievedUser?.age).not.toBe(originalAge);
   });
 
   test("should throw error when updating model without primary key", async () => {

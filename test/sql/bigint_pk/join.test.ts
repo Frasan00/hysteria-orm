@@ -191,7 +191,6 @@ describe(`[${env.DB_TYPE}] bigint pk join`, () => {
 
   test("bigint pk join with a custom operator", async () => {
     if (env.DB_TYPE === "cockroachdb") {
-      console.log("CockroachDB breaks on bigint pk join");
       return;
     }
 
@@ -204,7 +203,7 @@ describe(`[${env.DB_TYPE}] bigint pk join`, () => {
     expect(users).toHaveLength(3);
     expect(posts).toHaveLength(3);
 
-    const postsWithUsers = PostWithBigint.query()
+    const postsWithUsers = await PostWithBigint.query()
       .select("posts_with_bigint.*")
       .annotate("users_with_bigint.name", "userName")
       .join(UserWithBigint, "id", "userId", ">")
@@ -212,8 +211,9 @@ describe(`[${env.DB_TYPE}] bigint pk join`, () => {
         "posts_with_bigint.id",
         posts.map((post) => post.id),
       )
-      .orderBy("posts_with_bigint.id", "asc");
+      .orderBy("posts_with_bigint.id", "asc")
+      .many();
 
-    expect(postsWithUsers.many()).resolves.toBeDefined();
+    expect(postsWithUsers).toBeDefined();
   });
 });

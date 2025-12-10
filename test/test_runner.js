@@ -7,6 +7,7 @@ import {
   mysqlConfig,
   pgConfig,
   sqliteConfig,
+  mssqlConfig,
 } from "./test_environments.js";
 
 const sqlEnvironments = [
@@ -15,6 +16,7 @@ const sqlEnvironments = [
   mariadbConfig,
   pgConfig,
   cockroachdbConfig,
+  mssqlConfig,
 ];
 
 const sqlTests = [
@@ -66,7 +68,7 @@ sqlTests.forEach((file) => {
     console.log(`Running ${file} on ${environment.type}`);
     try {
       execSync(
-        `DB_LOGS=true DB_TYPE=${environment.type} DB_HOST=${environment.host} DB_USER=${environment.user} DB_PASSWORD=${environment.password} DB_DATABASE=${environment.database} npx jest --config=jest.config.js --detectOpenHandles ${file}`,
+        `DB_LOGS=true MSSQL_TRUST_SERVER_CERTIFICATE=true DB_TYPE=${environment.type} DB_HOST=${environment.host} DB_USER=${environment.user} DB_PASSWORD=${environment.password} DB_DATABASE=${environment.database} npx jest --config=jest.config.js --detectOpenHandles ${file}`,
         { stdio: "inherit" }
       );
     } catch (error) {

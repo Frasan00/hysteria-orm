@@ -46,6 +46,9 @@ export type { ModelQueryBuilder } from "./sql/models/model_query_builder/model_q
 export type { DryQueryBuilder } from "./sql/query_builder/dry_query_builder";
 export type { QueryBuilder } from "./sql/query_builder/query_builder";
 
+// Raw SQL
+export { RawNode } from "./sql/ast/query/node/raw/raw_node";
+
 // Utils
 export { default as logger } from "./utils/logger";
 export { withPerformance } from "./utils/performance";

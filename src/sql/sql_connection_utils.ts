@@ -1,15 +1,19 @@
 import type {
+  MssqlDataSourceInput,
   MysqlSqlDataSourceInput,
   PostgresSqlDataSourceInput,
   SqliteDataSourceInput,
 } from "../data_source/data_source_types";
 import type {
+  MssqlImport,
   Mysql2Import,
   PgImport,
   Sqlite3Import,
 } from "../drivers/driver_types";
 import { DriverFactory } from "../drivers/drivers_factory";
+import { env } from "../env/env";
 import { HysteriaError } from "../errors/hysteria_error";
+import { SqlDataSource } from "./sql_data_source";
 import {
   GetConnectionReturnType,
   SqlDataSourceInput,
@@ -18,7 +22,6 @@ import {
   Sqlite3ConnectionOptions,
   SqlPoolType,
 } from "./sql_data_source_types";
-import { SqlDataSource } from "./sql_data_source";
 
 const getDriverConnection = async (type: SqlDataSourceType) => {
   const driver = (await DriverFactory.getDriver(type)).client;
@@ -83,6 +86,30 @@ export const createSqlPool = async <T extends SqlDataSourceType>(
         },
       );
       return sqlitePool;
+    case "mssql":
+      const mssqlDriver = driver as MssqlImport;
+      const mssqlInput = input as MssqlDataSourceInput & {
+        driverOptions?: SqlDriverSpecificOptions<"mssql">;
+      };
+
+      const { options, ...rest } = mssqlInput.driverOptions ?? {};
+      const mssqlPool = await mssqlDriver.connect({
+        server: mssqlInput.host ?? "localhost",
+        port: mssqlInput.port,
+        database: mssqlInput.database,
+        user: mssqlInput.username,
+        password: mssqlInput.password,
+        ...rest,
+        options: {
+          trustServerCertificate:
+            env.MSSQL_TRUST_SERVER_CERTIFICATE ?? undefined,
+          ...options,
+          abortTransactionOnError: false,
+          enableImplicitTransactions: false,
+        },
+      });
+
+      return mssqlPool;
     default:
       throw new HysteriaError(
         "SqlConnectionUtils::createSqlPool",
@@ -104,6 +131,8 @@ export const createSqlConnection = async (
       return sqlDataSource.getConnection("postgres");
     case "sqlite":
       return sqlDataSource.getConnection("sqlite");
+    case "mssql":
+      return sqlDataSource.getConnection("mssql");
     default:
       throw new HysteriaError(
         "SqlConnectionUtils::createSqlConnection",

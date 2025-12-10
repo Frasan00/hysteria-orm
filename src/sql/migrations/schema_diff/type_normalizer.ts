@@ -3,7 +3,8 @@ export type SupportedSqlDialect =
   | "cockroachdb"
   | "mysql"
   | "mariadb"
-  | "sqlite";
+  | "sqlite"
+  | "mssql";
 
 function compactWhitespace(value: string): string {
   return value.replace(/\s+/g, " ").trim();
@@ -192,6 +193,89 @@ export function normalizeColumnType(
           return "json";
         case "date":
           return "date";
+        default:
+          return base;
+      }
+    }
+
+    case "mssql": {
+      if (base.endsWith("text") || base === "text" || base === "ntext")
+        return "text";
+      if (base.startsWith("datetime2")) return "datetime2";
+      if (base.startsWith("datetimeoffset")) return "datetimeoffset";
+      switch (base) {
+        case "int":
+        case "integer":
+        case "increment":
+          return "int";
+        case "tinyint":
+          return "tinyint";
+        case "smallint":
+          return "smallint";
+        case "bigint":
+        case "bigincrement":
+          return "bigint";
+        case "float":
+          return "float";
+        case "real":
+          return "real";
+        case "double":
+        case "double precision":
+          return "float";
+        case "decimal":
+        case "numeric":
+          return "decimal";
+        case "money":
+          return "money";
+        case "smallmoney":
+          return "smallmoney";
+        case "varchar":
+        case "character varying":
+          return "varchar";
+        case "nvarchar":
+          return "nvarchar";
+        case "char":
+        case "character":
+          return "char";
+        case "nchar":
+          return "nchar";
+        case "uuid":
+        case "uniqueidentifier":
+          return "uniqueidentifier";
+        case "ulid":
+          return "varchar";
+        case "date":
+          return "date";
+        case "datetime":
+          return "datetime";
+        case "smalldatetime":
+          return "smalldatetime";
+        case "time":
+          return "time";
+        case "timestamp":
+          return "datetime2";
+        case "binary":
+          return "binary";
+        case "varbinary":
+        case "blob":
+        case "tinyblob":
+        case "mediumblob":
+        case "longblob":
+        case "bytea":
+          return "varbinary";
+        case "image":
+          return "image";
+        case "bit":
+        case "boolean":
+        case "bool":
+          return "bit";
+        case "json":
+        case "jsonb":
+          return "nvarchar";
+        case "xml":
+          return "xml";
+        case "sql_variant":
+          return "sql_variant";
         default:
           return base;
       }

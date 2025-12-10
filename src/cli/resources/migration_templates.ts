@@ -16,6 +16,8 @@ class MigrationTemplates {
       case "cockroachdb":
       case "postgres":
         return result.map((row: any) => row.table_name);
+      case "mssql":
+        return result.map((row: any) => row.TABLE_NAME);
       default:
         throw new Error(`Unsupported database type: ${dbType}`);
     }
@@ -33,6 +35,11 @@ FROM information_schema.tables
 WHERE table_catalog = '${database}'
   AND table_schema = 'public'
   AND table_type = 'BASE TABLE';`;
+      case "mssql":
+        return `SELECT TABLE_NAME
+FROM INFORMATION_SCHEMA.TABLES
+WHERE TABLE_CATALOG = '${database}'
+  AND TABLE_TYPE = 'BASE TABLE';`;
       default:
         throw new Error(`Unsupported database type: ${dbType}`);
     }
@@ -49,6 +56,10 @@ WHERE table_catalog = '${database}'
       case "cockroachdb":
       case "postgres":
         return `DROP TABLE IF EXISTS ${tables.join(", ")} CASCADE;`;
+      case "mssql":
+        return tables
+          .map((table) => `DROP TABLE IF EXISTS [${table}];`)
+          .join("\n");
       default:
         throw new Error(`Unsupported database type: ${dbType}`);
     }
@@ -193,6 +204,16 @@ export default class extends Migration {
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     timestamp TEXT NOT NULL DEFAULT '${now}'
+);`;
+  }
+
+  migrationTableTemplateMssql(): string {
+    return `IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='migrations' AND xtype='U')
+CREATE TABLE [migrations] (
+    [id] INT NOT NULL IDENTITY(1,1),
+    [name] NVARCHAR(255) NOT NULL,
+    [timestamp] DATETIME NOT NULL DEFAULT GETDATE(),
+    PRIMARY KEY ([id])
 );`;
   }
 }

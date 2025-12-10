@@ -331,7 +331,7 @@ function incrementColumn(
       }
 
       if (typeof value === "string") {
-        return +value;
+        return Number.parseInt(value);
       }
 
       return Number.parseInt(value);
@@ -365,10 +365,6 @@ function bigIncrementColumn(
 
       if (typeof value === "number") {
         return value;
-      }
-
-      if (typeof value === "string") {
-        return +value;
       }
 
       return Number.parseInt(value);

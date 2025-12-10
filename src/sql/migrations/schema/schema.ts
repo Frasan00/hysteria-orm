@@ -85,6 +85,7 @@ export default class Schema {
 
   /**
    * @description Create table constructor
+   * @mssql Does not support ifNotExists option
    */
   createTable(
     table: string,
@@ -120,6 +121,7 @@ export default class Schema {
 
   /**
    * @description Alter table constructor
+   * @mssql Limited support - cannot modify columns with constraints; see AlterTableBuilder methods for details
    */
   alterTable(table: string, cb: (t: AlterTableBuilder) => void): void {
     const nodes: QueryNode[] = [];
@@ -186,6 +188,7 @@ export default class Schema {
 
   /**
    * @description Rename table in the database
+   * @mssql Uses sp_rename procedure; does not update references in views/procedures/triggers
    */
   renameTable(oldTable: string, newTable: string): void {
     const node = new AlterTableNode(oldTable, [new RenameTableNode(newTable)]);
