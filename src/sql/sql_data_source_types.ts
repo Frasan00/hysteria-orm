@@ -104,6 +104,12 @@ export type SqlDataSourceInput<
   driverOptions?: SqlDriverSpecificOptions<D>;
 
   /**
+   * @description The path to the migrations folder for the sql data source, it's used to configure the migrations path for the sql data source
+   * @default "database/migrations"
+   */
+  migrationsPath?: string;
+
+  /**
    * @description The cache strategy to use for the sql data source, it's used to configure the cache strategy for the sql data source
    */
   cacheStrategy?: {

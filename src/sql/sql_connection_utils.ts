@@ -11,6 +11,7 @@ import type {
   Sqlite3Import,
 } from "../drivers/driver_types";
 import { DriverFactory } from "../drivers/drivers_factory";
+import { env } from "../env/env";
 import { HysteriaError } from "../errors/hysteria_error";
 import { SqlDataSource } from "./sql_data_source";
 import {
@@ -100,13 +101,11 @@ export const createSqlPool = async <T extends SqlDataSourceType>(
         password: mssqlInput.password,
         ...rest,
         options: {
-          encrypt: false,
-          trustServerCertificate: true,
-          enableArithAbort: true,
+          trustServerCertificate:
+            env.MSSQL_TRUST_SERVER_CERTIFICATE ?? undefined,
           ...options,
-          // todo mark those as implicit and required on the documentation and also make those not selectable by the user
           abortTransactionOnError: false,
-          enableImplicitTransactions: true,
+          enableImplicitTransactions: false,
         },
       });
 

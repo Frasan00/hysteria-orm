@@ -1,3 +1,51 @@
+import mssql_alter_table_add_column from '../interpreter/mssql/alter_table/add_column';
+import mssql_alter_table_add_constraint from '../interpreter/mssql/alter_table/add_constraint';
+import mssql_alter_table_add_primary_key from '../interpreter/mssql/alter_table/add_primary_key';
+import mssql_alter_table_alter_column_type from '../interpreter/mssql/alter_table/alter_column_type';
+import mssql_alter_table_alter_table from '../interpreter/mssql/alter_table/alter_table';
+import mssql_alter_table_drop_column from '../interpreter/mssql/alter_table/drop_column';
+import mssql_alter_table_drop_constraint from '../interpreter/mssql/alter_table/drop_constraint';
+import mssql_alter_table_drop_default from '../interpreter/mssql/alter_table/drop_default';
+import mssql_alter_table_drop_not_null from '../interpreter/mssql/alter_table/drop_not_null';
+import mssql_alter_table_drop_primary_key from '../interpreter/mssql/alter_table/drop_primary_key';
+import mssql_alter_table_rename_column from '../interpreter/mssql/alter_table/rename_column';
+import mssql_alter_table_rename_table from '../interpreter/mssql/alter_table/rename_table';
+import mssql_alter_table_set_default from '../interpreter/mssql/alter_table/set_default';
+import mssql_alter_table_set_not_null from '../interpreter/mssql/alter_table/set_not_null';
+import mssql_column_column_type from '../interpreter/mssql/column/column_type';
+import mssql_constraint_after from '../interpreter/mssql/constraint/after';
+import mssql_constraint_constraint from '../interpreter/mssql/constraint/constraint';
+import mssql_create_table_create_table from '../interpreter/mssql/create_table/create_table';
+import mssql_delete_delete from '../interpreter/mssql/delete/delete';
+import mssql_distinct_distinct from '../interpreter/mssql/distinct/distinct';
+import mssql_distinct_distinct_on from '../interpreter/mssql/distinct/distinct_on';
+import mssql_drop_table_drop_table from '../interpreter/mssql/drop_table/drop_table';
+import mssql_from_from from '../interpreter/mssql/from/from';
+import mssql_group_by_group_by from '../interpreter/mssql/group_by/group_by';
+import mssql_having_having from '../interpreter/mssql/having/having';
+import mssql_index_op_create_index from '../interpreter/mssql/index_op/create_index';
+import mssql_index_op_drop_index from '../interpreter/mssql/index_op/drop_index';
+import mssql_insert_insert from '../interpreter/mssql/insert/insert';
+import mssql_join_join from '../interpreter/mssql/join/join';
+import mssql_limit_limit from '../interpreter/mssql/limit/limit';
+import mssql_lock_lock from '../interpreter/mssql/lock/lock';
+import mssql_offset_offset from '../interpreter/mssql/offset/offset';
+import mssql_on_duplicate_on_duplicate from '../interpreter/mssql/on_duplicate/on_duplicate';
+import mssql_order_by_order_by from '../interpreter/mssql/order_by/order_by';
+import mssql_raw_raw from '../interpreter/mssql/raw/raw';
+import mssql_schema_foreign_key_info from '../interpreter/mssql/schema/foreign_key_info';
+import mssql_schema_index_info from '../interpreter/mssql/schema/index_info';
+import mssql_schema_primary_key_info from '../interpreter/mssql/schema/primary_key_info';
+import mssql_schema_table_info from '../interpreter/mssql/schema/table_info';
+import mssql_select_select from '../interpreter/mssql/select/select';
+import mssql_truncate_truncate from '../interpreter/mssql/truncate/truncate';
+import mssql_union_union from '../interpreter/mssql/union/union';
+import mssql_update_update from '../interpreter/mssql/update/update';
+import mssql_where_where from '../interpreter/mssql/where/where';
+import mssql_where_where_group from '../interpreter/mssql/where/where_group';
+import mssql_where_where_json from '../interpreter/mssql/where/where_json';
+import mssql_where_where_subquery from '../interpreter/mssql/where/where_subquery';
+import mssql_with_with from '../interpreter/mssql/with/with';
 import mysql_alter_table_add_column from '../interpreter/mysql/alter_table/add_column';
 import mysql_alter_table_add_constraint from '../interpreter/mysql/alter_table/add_constraint';
 import mysql_alter_table_add_primary_key from '../interpreter/mysql/alter_table/add_primary_key';
@@ -143,6 +191,108 @@ import sqlite_where_where_subquery from '../interpreter/sqlite/where/where_subqu
 import sqlite_with_with from '../interpreter/sqlite/with/with';
 
 export const interpreterMap = {
+  mssql: {
+    alter_table: {
+      add_column: mssql_alter_table_add_column,
+      add_constraint: mssql_alter_table_add_constraint,
+      add_primary_key: mssql_alter_table_add_primary_key,
+      alter_column_type: mssql_alter_table_alter_column_type,
+      alter_table: mssql_alter_table_alter_table,
+      drop_column: mssql_alter_table_drop_column,
+      drop_constraint: mssql_alter_table_drop_constraint,
+      drop_default: mssql_alter_table_drop_default,
+      drop_not_null: mssql_alter_table_drop_not_null,
+      drop_primary_key: mssql_alter_table_drop_primary_key,
+      rename_column: mssql_alter_table_rename_column,
+      rename_table: mssql_alter_table_rename_table,
+      set_default: mssql_alter_table_set_default,
+      set_not_null: mssql_alter_table_set_not_null,
+    },
+    column: {
+      column_type: mssql_column_column_type,
+    },
+    constraint: {
+      after: mssql_constraint_after,
+      constraint: mssql_constraint_constraint,
+    },
+    create_table: {
+      create_table: mssql_create_table_create_table,
+    },
+    delete: {
+      delete: mssql_delete_delete,
+    },
+    distinct: {
+      distinct: mssql_distinct_distinct,
+      distinct_on: mssql_distinct_distinct_on,
+    },
+    drop_table: {
+      drop_table: mssql_drop_table_drop_table,
+    },
+    from: {
+      from: mssql_from_from,
+    },
+    group_by: {
+      group_by: mssql_group_by_group_by,
+    },
+    having: {
+      having: mssql_having_having,
+    },
+    index_op: {
+      create_index: mssql_index_op_create_index,
+      drop_index: mssql_index_op_drop_index,
+    },
+    insert: {
+      insert: mssql_insert_insert,
+    },
+    join: {
+      join: mssql_join_join,
+    },
+    limit: {
+      limit: mssql_limit_limit,
+    },
+    lock: {
+      lock: mssql_lock_lock,
+    },
+    offset: {
+      offset: mssql_offset_offset,
+    },
+    on_duplicate: {
+      on_duplicate: mssql_on_duplicate_on_duplicate,
+    },
+    order_by: {
+      order_by: mssql_order_by_order_by,
+    },
+    raw: {
+      raw: mssql_raw_raw,
+    },
+    schema: {
+      foreign_key_info: mssql_schema_foreign_key_info,
+      index_info: mssql_schema_index_info,
+      primary_key_info: mssql_schema_primary_key_info,
+      table_info: mssql_schema_table_info,
+    },
+    select: {
+      select: mssql_select_select,
+    },
+    truncate: {
+      truncate: mssql_truncate_truncate,
+    },
+    union: {
+      union: mssql_union_union,
+    },
+    update: {
+      update: mssql_update_update,
+    },
+    where: {
+      where: mssql_where_where,
+      where_group: mssql_where_where_group,
+      where_json: mssql_where_where_json,
+      where_subquery: mssql_where_where_subquery,
+    },
+    with: {
+      with: mssql_with_with,
+    },
+  },
   mysql: {
     alter_table: {
       add_column: mysql_alter_table_add_column,

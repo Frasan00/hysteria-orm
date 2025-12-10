@@ -41,3 +41,13 @@ export const cockroachdbConfig = {
   database: "test",
   logs: true,
 };
+
+export const mssqlConfig = {
+  type: "mssql",
+  host: "localhost",
+  port: 1433,
+  user: "sa",
+  password: "Password123!",
+  database: "master",
+  logs: true,
+};

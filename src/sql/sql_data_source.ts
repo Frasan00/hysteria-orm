@@ -11,6 +11,7 @@ import { InMemoryAdapter } from "../cache/adapters/in_memory";
 import { CacheAdapter } from "../cache/cache_adapter";
 import { CacheKeys, UseCacheReturnType } from "../cache/cache_types";
 import { DataSource } from "../data_source/data_source";
+import { env } from "../env/env";
 import { HysteriaError } from "../errors/hysteria_error";
 import { generateOpenApiModelWithMetadata } from "../openapi/openapi";
 import { hashString } from "../utils/hash";
@@ -105,6 +106,11 @@ export class SqlDataSource extends DataSource {
    * @description Maps global keys to specific handlers for cache handling
    */
   cacheKeys: CacheKeys = {};
+
+  /**
+   * @description The path to the migrations folder for the sql data source, it's used to configure the migrations path for the sql data source
+   */
+  migrationsPath: string = env.MIGRATION_PATH || "database/migrations";
 
   /**
    * @description AdminJS configuration options
@@ -647,6 +653,7 @@ export class SqlDataSource extends DataSource {
     this.cacheKeys = input?.cacheStrategy?.keys ?? {};
     this.cacheAdapter = input?.cacheStrategy?.cacheAdapter ?? this.cacheAdapter;
     this.adminJsOptions = input?.adminJs;
+    this.migrationsPath = input?.migrationsPath || this.migrationsPath;
   }
 
   /**

@@ -1,5 +1,6 @@
 import { AstParser } from "../../../ast/parser";
 import { ConstraintNode } from "../../../ast/query/node/constraint";
+import { RawNode } from "../../../ast/query/node/raw/raw_node";
 import { QueryNode } from "../../../ast/query/query";
 import { Model } from "../../../models/model";
 import { getColumnValue } from "../../../resources/utils";
@@ -55,18 +56,18 @@ class PostgresConstraintInterpreter implements Interpreter {
 
     if (cNode.constraintType === "default") {
       if (cNode.defaultValue !== undefined) {
-        let val = cNode.defaultValue;
-        if (val === "NULL") {
+        const val = cNode.defaultValue;
+        if (val instanceof RawNode) {
+          return { sql: `default ${val.rawValue}`, bindings: [] };
+        }
+        if (val === "NULL" || val === null) {
           return { sql: `default null`, bindings: [] };
         }
         if (val === "TRUE" || val === "FALSE") {
           return { sql: `default ${val.toLowerCase()}`, bindings: [] };
         }
-        if (val === null) {
-          return { sql: `default null`, bindings: [] };
-        }
         if (typeof val === "string") {
-          val = `'${val}'`;
+          return { sql: `default '${val}'`, bindings: [] };
         }
         return { sql: `default ${val}`, bindings: [] };
       }

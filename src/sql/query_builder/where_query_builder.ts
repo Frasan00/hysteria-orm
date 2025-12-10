@@ -1176,6 +1176,8 @@ export abstract class WhereQueryBuilder<
 
   /**
    * @description Adds a WHERE REGEXP condition to the query.
+   * @mssql doesn't support REGEXP syntax
+   * @sqlite doesn't support REGEXP syntax
    */
   whereRegexp(column: ModelKey<T>, regexp: RegExp): this;
   whereRegexp<S extends string>(
@@ -1191,6 +1193,8 @@ export abstract class WhereQueryBuilder<
 
   /**
    * @description Adds an AND WHERE REGEXP condition to the query.
+   * @mssql doesn't support REGEXP syntax
+   * @sqlite doesn't support REGEXP syntax
    */
   andWhereRegexp(column: ModelKey<T>, regexp: RegExp): this;
   andWhereRegexp<S extends string>(
@@ -1219,6 +1223,8 @@ export abstract class WhereQueryBuilder<
 
   /**
    * @description Adds an OR WHERE REGEXP condition to the query.
+   * @mssql doesn't support REGEXP syntax
+   * @sqlite doesn't support REGEXP syntax
    */
   orWhereRegexp(column: ModelKey<T>, regexp: RegExp): this;
   orWhereRegexp<S extends string>(
@@ -1245,6 +1251,11 @@ export abstract class WhereQueryBuilder<
     return this;
   }
 
+  /**
+   * @description Adds a WHERE NOT REGEXP condition to the query.
+   * @mssql doesn't support REGEXP syntax
+   * @sqlite doesn't support REGEXP syntax
+   */
   whereNotRegexp(column: ModelKey<T>, regexp: RegExp): this;
   whereNotRegexp<S extends string>(
     column: SelectableColumn<S>,
@@ -1267,6 +1278,11 @@ export abstract class WhereQueryBuilder<
     return this;
   }
 
+  /**
+   * @description Adds an AND WHERE NOT REGEXP condition to the query.
+   * @mssql doesn't support REGEXP syntax
+   * @sqlite doesn't support REGEXP syntax
+   */
   andWhereNotRegexp(column: ModelKey<T>, regexp: RegExp): this;
   andWhereNotRegexp<S extends string>(
     column: SelectableColumn<S>,
@@ -1289,6 +1305,11 @@ export abstract class WhereQueryBuilder<
     return this;
   }
 
+  /**
+   * @description Adds an OR WHERE NOT REGEXP condition to the query.
+   * @mssql doesn't support REGEXP syntax
+   * @sqlite doesn't support REGEXP syntax
+   */
   orWhereNotRegexp(column: ModelKey<T>, regexp: RegExp): this;
   orWhereNotRegexp<S extends string>(
     column: SelectableColumn<S>,

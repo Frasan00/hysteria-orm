@@ -100,7 +100,10 @@ export const execSql = async <M extends Model, T extends Returning>(
       });
 
       let mssqlParamIdx = 0;
-      const mssqlQuery = query.replace(/\?/g, () => `@p${mssqlParamIdx++}`);
+      const mssqlQuery = query.replace(
+        /\?|@(\d+)/g,
+        () => `@p${mssqlParamIdx++}`,
+      );
 
       const mssqlResult = await withRetry(
         () => mssqlRequest.query(mssqlQuery),
@@ -297,6 +300,71 @@ export const execSqlStreaming = async <
 
       return stream as unknown as PassThrough &
         AsyncGenerator<AnnotatedModel<M, A, R>>;
+    }
+
+    case "mssql": {
+      const mssqlDriver =
+        (sqlDataSource.sqlConnection as GetConnectionReturnType<"mssql">) ??
+        sqlDataSource.getPool("mssql");
+      const passThrough = new PassThrough({
+        objectMode: options.objectMode ?? true,
+        highWaterMark: options.highWaterMark,
+      }) as PassThrough & AsyncGenerator<AnnotatedModel<M, A, R>>;
+
+      const mssqlRequest = mssqlDriver.request();
+      mssqlRequest.stream = true;
+
+      params.forEach((param, index) => {
+        mssqlRequest.input(`p${index}`, param);
+      });
+
+      let mssqlParamIdx = 0;
+      const mssqlQuery = query.replace(
+        /\?|@(\d+)/g,
+        () => `@p${mssqlParamIdx++}`,
+      );
+
+      let pending = 0;
+      let ended = false;
+      let hasError = false;
+
+      mssqlRequest.on("row", (row: any) => {
+        if (hasError) return;
+
+        if (events.onData) {
+          pending++;
+          Promise.resolve(events.onData(passThrough, row))
+            .then(() => {
+              pending--;
+              if (ended && pending === 0 && !hasError) {
+                passThrough.end();
+              }
+            })
+            .catch((err: any) => {
+              hasError = true;
+              passThrough.destroy(err);
+            });
+          return;
+        }
+
+        passThrough.write(row);
+      });
+
+      mssqlRequest.on("error", (err: any) => {
+        hasError = true;
+        passThrough.destroy(err);
+      });
+
+      mssqlRequest.on("done", () => {
+        ended = true;
+        if (pending === 0 && !hasError) {
+          passThrough.end();
+        }
+      });
+
+      mssqlRequest.query(mssqlQuery);
+
+      return passThrough;
     }
 
     default:

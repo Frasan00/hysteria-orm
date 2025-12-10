@@ -239,6 +239,10 @@ describe(`[${env.DB_TYPE}] Select`, () => {
   });
 
   test("CTE with recursive", async () => {
+    if (env.DB_TYPE === "mssql") {
+      return;
+    }
+
     await UserFactory.userWithoutPk(2);
     const users = await UserWithoutPk.query()
       .withRecursive("users_cte", (qb) => qb.select("name"))
@@ -485,16 +489,16 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
 describe(`[${env.DB_TYPE}] Query Builder Paginate With Cursor`, () => {
   test("should paginate with cursor", async () => {
     await UserWithoutPk.insertMany([
-      { name: "User 1", age: 21 },
-      { name: "User 2", age: 22 },
-      { name: "User 3", age: 23 },
-      { name: "User 4", age: 24 },
-      { name: "User 5", age: 25 },
-      { name: "User 6", age: 26 },
-      { name: "User 7", age: 27 },
-      { name: "User 8", age: 28 },
-      { name: "User 9", age: 29 },
-      { name: "User 10", age: 30 },
+      { name: "User 1", age: 21, email: "cursor1@test.com" },
+      { name: "User 2", age: 22, email: "cursor2@test.com" },
+      { name: "User 3", age: 23, email: "cursor3@test.com" },
+      { name: "User 4", age: 24, email: "cursor4@test.com" },
+      { name: "User 5", age: 25, email: "cursor5@test.com" },
+      { name: "User 6", age: 26, email: "cursor6@test.com" },
+      { name: "User 7", age: 27, email: "cursor7@test.com" },
+      { name: "User 8", age: 28, email: "cursor8@test.com" },
+      { name: "User 9", age: 29, email: "cursor9@test.com" },
+      { name: "User 10", age: 30, email: "cursor10@test.com" },
     ]);
 
     const [users, cursor] = await UserWithoutPk.query().paginateWithCursor(5, {

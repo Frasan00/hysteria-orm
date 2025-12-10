@@ -19,6 +19,9 @@ const envBase: Env = {
 
   MONGO_URL: process.env.MONGO_URL,
   MONGO_LOGS: process.env.MONGO_LOGS === "true",
+
+  MSSQL_TRUST_SERVER_CERTIFICATE:
+    process.env.MSSQL_TRUST_SERVER_CERTIFICATE === "true" || false,
 };
 
 const fillEnvWithDatabaseEnvs = (): Env => {
@@ -71,6 +74,9 @@ const fillEnvWithDatabaseEnvs = (): Env => {
 
         case "MONGO_URL":
           envBase.MONGO_URL ||= trimmedValue;
+          break;
+        case "MSSQL_TRUST_SERVER_CERTIFICATE":
+          envBase.MSSQL_TRUST_SERVER_CERTIFICATE ||= trimmedValue === "true";
           break;
       }
     });

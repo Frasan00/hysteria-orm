@@ -40,6 +40,7 @@ export class AlterTableBuilder extends BaseBuilder {
   /**
    * @description Adds a column to the table
    * @param cb is the callback that will be used to build the column
+   * @mssql Auto-generates default constraint names (DF__table__col__xxxxx) which are hard to drop later
    */
   addColumn(cb: (col: CreateTableBuilder) => ConstraintBuilder): void {
     let tempNodes: QueryNode[] = [];
@@ -96,6 +97,7 @@ export class AlterTableBuilder extends BaseBuilder {
   /**
    * @description Alters a column, can generate multiple sql statements depending on the constraints
    * @throws HysteriaError if sqlite database
+   * @mssql Cannot alter columns with DEFAULT/CHECK constraints or indexes - drop them first
    */
   alterColumn(columnBuilder: (col: CreateTableBuilder) => ConstraintBuilder) {
     if (this.sqlType === "sqlite") {
@@ -204,6 +206,7 @@ export class AlterTableBuilder extends BaseBuilder {
 
   /**
    * @description Drops a column
+   * @mssql Must drop all dependent constraints and indexes before dropping the column
    */
   dropColumn(name: string) {
     this.nodes.push(new DropColumnNode(name));
@@ -211,6 +214,7 @@ export class AlterTableBuilder extends BaseBuilder {
 
   /**
    * @description Renames a column
+   * @mssql Uses sp_rename procedure; does not update references in views/procedures/triggers
    */
   renameColumn(oldName: string, newName: string) {
     this.nodes.push(new RenameColumnNode(oldName, newName));
@@ -219,6 +223,7 @@ export class AlterTableBuilder extends BaseBuilder {
   /**
    * @description Drops a default value from a column
    * @sqlite not supported and will throw error
+   * @mssql Requires constraint name; use dropConstraint() with name from sys.default_constraints
    */
   dropDefault(columnName: string) {
     if (this.sqlType === "sqlite") {
@@ -236,6 +241,7 @@ export class AlterTableBuilder extends BaseBuilder {
    * @description Adds a primary key constraint to a column
    * @param columnName is the column name to add the primary key to
    * @sqlite not supported and will throw error
+   * @mssql Column must be NOT NULL before adding primary key
    */
   addPrimaryKey(columnName: string) {
     if (this.sqlType === "sqlite") {
@@ -252,6 +258,7 @@ export class AlterTableBuilder extends BaseBuilder {
   /**
    * @description Raw non type safe way builder to add a constraint
    * @sqlite not supported and will throw error
+   * @mssql UNIQUE does not allow multiple NULLs (unlike PostgreSQL)
    */
   addConstraint(...options: ConstructorParameters<typeof ConstraintNode>) {
     if (this.sqlType === "sqlite") {
@@ -406,6 +413,7 @@ export class AlterTableBuilder extends BaseBuilder {
    * @postgres not supported, use `dropConstraint` instead with the pk constraint name
    * @sqlite not supported and will throw error
    * @throws HysteriaError if postgres and table is not provided
+   * @mssql Foreign keys referencing this primary key must be dropped first
    */
   dropPrimaryKey(table?: string) {
     if (this.sqlType === "sqlite") {

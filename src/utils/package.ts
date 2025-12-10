@@ -46,6 +46,7 @@ export const installBaseDependencies = (
     case "cockroachdb":
     case "postgres":
       driverDependency = "pg";
+      devDependencies.push("@types/pg");
       break;
     case "sqlite":
       driverDependency = "sqlite3";
@@ -55,6 +56,10 @@ export const installBaseDependencies = (
       break;
     case "redis":
       driverDependency = "ioredis";
+      break;
+    case "mssql":
+      driverDependency = "mssql";
+      devDependencies.push("@types/mssql");
       break;
     default:
       throw new Error(`Invalid database type: ${type}`);

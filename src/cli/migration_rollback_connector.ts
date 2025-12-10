@@ -18,6 +18,7 @@ export default async function rollbackMigrationsConnector(
   transactional?: boolean,
 ) {
   const dbType = sql.getDbType();
+  const shouldUseTransaction = transactional && dbType !== "mssql";
   let trx: Transaction | null = null;
   logger.info("Rolling back migrations for database type: " + dbType);
 
@@ -54,7 +55,7 @@ export default async function rollbackMigrationsConnector(
 
       const filteredMigrations = pendingMigrations.slice(rollBackUntilIndex);
 
-      if (transactional) {
+      if (shouldUseTransaction) {
         trx = await sql.startTransaction();
         sql = trx.sql as SqlDataSource;
       }
@@ -62,7 +63,7 @@ export default async function rollbackMigrationsConnector(
       const migrator = new Migrator(sql);
       await migrator.downMigrations(filteredMigrations);
 
-      if (transactional) {
+      if (shouldUseTransaction) {
         await trx?.commit();
       }
 
@@ -71,18 +72,18 @@ export default async function rollbackMigrationsConnector(
     }
 
     const migrator = new Migrator(sql);
-    if (transactional) {
+    if (shouldUseTransaction) {
       trx = await sql.startTransaction();
       sql = trx.sql as SqlDataSource;
     }
 
     await migrator.downMigrations(pendingMigrations);
 
-    if (transactional) {
+    if (shouldUseTransaction) {
       await trx?.commit();
     }
   } catch (error: any) {
-    if (transactional) {
+    if (shouldUseTransaction) {
       await trx?.rollback();
     }
 

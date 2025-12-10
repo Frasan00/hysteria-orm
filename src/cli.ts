@@ -21,6 +21,7 @@ const sqlDatabaseTypes = [
   "postgres",
   "mariadb",
   "cockroachdb",
+  "mssql",
 ];
 const allDatabaseTypes = sqlDatabaseTypes.concat("mongodb", "redis");
 
@@ -289,11 +290,13 @@ program
         default: SqlDataSource;
       }>(path.resolve(process.cwd(), option.datasource), option?.tsconfigPath);
 
+      const migrationPath = option?.migrationPath || sqlDs.migrationsPath;
+
       try {
         await runMigrationsConnector(
           sqlDs,
           runUntil,
-          option?.migrationPath,
+          migrationPath,
           option?.tsconfigPath,
           option?.transactional,
         );
@@ -351,11 +354,13 @@ program
         default: SqlDataSource;
       }>(path.resolve(process.cwd(), option.datasource), option?.tsconfigPath);
 
+      const migrationPath = option?.migrationPath || sqlDs.migrationsPath;
+
       try {
         await rollbackMigrationsConnector(
           sqlDs,
           rollbackUntil,
-          option?.migrationPath,
+          migrationPath,
           option?.tsconfigPath,
           option?.transactional,
         );
@@ -413,13 +418,15 @@ program
         default: SqlDataSource;
       }>(path.resolve(process.cwd(), option.datasource), option?.tsconfigPath);
 
+      const migrationPath = option?.migrationPath || sqlDs.migrationsPath;
+
       try {
         force
           ? await dropAllTablesConnector(sqlDs, false, option?.transactional)
           : await rollbackMigrationsConnector(
               sqlDs,
               undefined,
-              option?.migrationPath,
+              migrationPath,
               option?.tsconfigPath,
               option?.transactional,
             );
@@ -427,7 +434,7 @@ program
         await runMigrationsConnector(
           sqlDs,
           undefined,
-          option?.migrationPath,
+          migrationPath,
           option?.tsconfigPath,
           option?.transactional,
         );
@@ -483,13 +490,6 @@ program
         process.exit(1);
       }
 
-      if (!option?.migrationPath) {
-        option.migrationPath = path.resolve(
-          process.cwd(),
-          "database/migrations",
-        );
-      }
-
       if (!option?.name) {
         option.name = `auto_generated_migration`;
       }
@@ -500,9 +500,17 @@ program
         default: SqlDataSource;
       }>(path.resolve(process.cwd(), option.datasource), option?.tsconfigPath);
 
-      if (sqlDs.getDbType() === "sqlite") {
+      const migrationPath = option?.migrationPath || sqlDs.migrationsPath;
+
+      const allowedDatabaseTypes = [
+        "mysql",
+        "postgres",
+        "mariadb",
+        "cockroachdb",
+      ];
+      if (!allowedDatabaseTypes.includes(sqlDs.getDbType())) {
         logger.error(
-          "generate:migrations with sqlite is not supported, it's suggested to use manual migrations instead",
+          `generate:migrations is not supported for ${sqlDs.getDbType()}, it's suggested to use manual migrations instead`,
         );
         process.exit(1);
       }
@@ -525,8 +533,8 @@ program
           process.exit(0);
         }
 
-        if (!fs.existsSync(option?.migrationPath)) {
-          fs.mkdirSync(option?.migrationPath, { recursive: true });
+        if (!fs.existsSync(migrationPath)) {
+          fs.mkdirSync(migrationPath, { recursive: true });
         }
 
         const template =
@@ -534,7 +542,7 @@ program
 
         const extension = option?.javascript ? ".js" : ".ts";
         fs.writeFileSync(
-          `${option?.migrationPath}/${option?.name}${extension}`,
+          `${migrationPath}/${option?.name}${extension}`,
           template,
         );
         logger.info(

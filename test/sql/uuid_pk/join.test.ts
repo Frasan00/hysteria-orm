@@ -180,7 +180,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
     expect(users).toHaveLength(3);
     expect(posts).toHaveLength(3);
 
-    const postsWithUsers = PostWithUuid.query()
+    const postsWithUsers = await PostWithUuid.query()
       .select("posts_with_uuid.*")
       .annotate("users_with_uuid.name", "userName")
       .join(UserWithUuid, "id", "userId", ">")
@@ -188,9 +188,10 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
         "posts_with_uuid.id",
         posts.map((post) => post.id),
       )
-      .orderBy("posts_with_uuid.id", "asc");
+      .orderBy("posts_with_uuid.id", "asc")
+      .many();
 
-    expect(postsWithUsers.many()).resolves.toBeDefined();
+    expect(postsWithUsers).toBeDefined();
   });
 
   test("uuid pk simple raw join", async () => {

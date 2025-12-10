@@ -1,4 +1,5 @@
 import { SetDefaultNode } from "../../../ast/query/node/alter_table/set_default";
+import { RawNode } from "../../../ast/query/node/raw/raw_node";
 import { QueryNode } from "../../../ast/query/query";
 import { Model } from "../../../models/model";
 import type { Interpreter } from "../../interpreter";
@@ -7,19 +8,23 @@ class SqliteSetDefaultInterpreter implements Interpreter {
   declare model: typeof Model;
   toSql(node: QueryNode) {
     const n = node as SetDefaultNode;
-    let val = n.defaultValue;
+    let val: string;
 
-    if (val === "NULL") {
+    if (n.defaultValue instanceof RawNode) {
+      val = n.defaultValue.rawValue;
+    } else if (n.defaultValue === "NULL") {
       val = "null";
-    } else if (val === "TRUE" || val === "FALSE") {
-      val = val.toLowerCase();
+    } else if (n.defaultValue === "TRUE" || n.defaultValue === "FALSE") {
+      val = n.defaultValue.toLowerCase();
     } else if (
-      typeof val === "string" &&
-      val !== "null" &&
-      val !== "true" &&
-      val !== "false"
+      typeof n.defaultValue === "string" &&
+      n.defaultValue !== "null" &&
+      n.defaultValue !== "true" &&
+      n.defaultValue !== "false"
     ) {
-      val = `'${val}'`;
+      val = `'${n.defaultValue}'`;
+    } else {
+      val = String(n.defaultValue);
     }
 
     return {

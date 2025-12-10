@@ -369,6 +369,17 @@ export class ModelManager<T extends Model> {
       }),
     );
 
+    // MSSQL requires MERGE statement for upsert operations
+    if (this.sqlType === "mssql") {
+      return this.executeMssqlMerge(
+        insertObjects,
+        conflictColumns,
+        columnsToUpdate,
+        options,
+        data,
+      );
+    }
+
     const { sql, bindings } = this.astParser.parse([
       new InsertNode(
         new FromNode(this.model.table),
@@ -384,6 +395,93 @@ export class ModelManager<T extends Model> {
         options.returning as string[],
       ),
     ]);
+
+    const rows = await execSql(sql, bindings, this.sqlDataSource, "raw", {
+      sqlLiteOptions: {
+        typeofModel: this.model,
+        mode: "raw",
+        models: data as T[],
+      },
+    });
+
+    return rows as T[];
+  }
+
+  /**
+   * @description Executes a MERGE statement for MSSQL upsert operations
+   */
+  private async executeMssqlMerge(
+    insertObjects: Record<string, any>[],
+    conflictColumns: string[],
+    columnsToUpdate: string[],
+    options: UpsertOptions<T>,
+    data: ModelWithoutRelations<T>[],
+  ): Promise<AnnotatedModel<T, {}>[]> {
+    if (!insertObjects.length) {
+      return [];
+    }
+
+    const columns = Object.keys(insertObjects[0]);
+    const formattedTable = this.interpreterUtils.formatStringColumn(
+      "mssql",
+      this.model.table,
+    );
+
+    const formatCol = (col: string) =>
+      this.interpreterUtils.formatStringColumn("mssql", col);
+
+    // Build source values for MERGE
+    const bindings: any[] = [];
+    const sourceRows = insertObjects.map((obj) => {
+      const rowValues = columns.map((col) => {
+        bindings.push(obj[col]);
+        return `@${bindings.length}`;
+      });
+      return `select ${rowValues.join(", ")}`;
+    });
+
+    const sourceColumns = columns.map(formatCol).join(", ");
+    const sourceQuery = sourceRows.join(" union all ");
+
+    // Build ON condition for conflict columns
+    const onCondition = conflictColumns
+      .map((col) => `target.${formatCol(col)} = source.${formatCol(col)}`)
+      .join(" and ");
+
+    // Build UPDATE SET clause
+    const updateSet = columnsToUpdate
+      .filter((col) => !conflictColumns.includes(col))
+      .map((col) => `target.${formatCol(col)} = source.${formatCol(col)}`)
+      .join(", ");
+
+    // Build INSERT columns and values
+    const insertCols = columns.map(formatCol).join(", ");
+    const insertVals = columns
+      .map((col) => `source.${formatCol(col)}`)
+      .join(", ");
+
+    // Build OUTPUT clause
+    const outputCols =
+      options.returning && options.returning.length
+        ? options.returning
+            .map((col) => `inserted.${formatCol(col as string)}`)
+            .join(", ")
+        : columns.map((col) => `inserted.${formatCol(col)}`).join(", ");
+
+    // Construct MERGE statement
+    const updateOnConflict = options.updateOnConflict ?? true;
+    const whenMatchedClause =
+      updateOnConflict && updateSet
+        ? `when matched then update set ${updateSet}`
+        : "";
+
+    const sql =
+      `merge into ${formattedTable} as target ` +
+      `using (${sourceQuery}) as source (${sourceColumns}) ` +
+      `on ${onCondition} ` +
+      `${whenMatchedClause} ` +
+      `when not matched then insert (${insertCols}) values (${insertVals}) ` +
+      `output ${outputCols};`;
 
     const rows = await execSql(sql, bindings, this.sqlDataSource, "raw", {
       sqlLiteOptions: {

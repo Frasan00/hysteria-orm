@@ -406,7 +406,13 @@ export class Transaction {
     return `sp_${this.nestingDepth}_${shortId}`;
   }
 
-  private async getMssqlTransactionLevel(): Promise<IIsolationLevel> {
+  private async getMssqlTransactionLevel(): Promise<
+    IIsolationLevel | undefined
+  > {
+    if (!this.isolationLevel) {
+      return;
+    }
+
     const mssqlTransactionLevels = await import("mssql")
       .then((module) => module.default.ISOLATION_LEVEL)
       .catch((error) => {

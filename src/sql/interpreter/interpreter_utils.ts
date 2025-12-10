@@ -35,6 +35,8 @@ export class InterpreterUtils {
           case "cockroachdb":
           case "sqlite":
             return `"${table}".*`;
+          case "mssql":
+            return `[${table}].*`;
           default:
             throw new Error(`Unsupported database type: ${dbType}`);
         }
@@ -52,6 +54,8 @@ export class InterpreterUtils {
         case "cockroachdb":
         case "sqlite":
           return `"${table}"."${casedColumn}"`;
+        case "mssql":
+          return `[${table}].[${casedColumn}]`;
         default:
           throw new Error(`Unsupported database type: ${dbType}`);
       }
@@ -69,6 +73,8 @@ export class InterpreterUtils {
       case "cockroachdb":
       case "sqlite":
         return `"${casedColumn}"`;
+      case "mssql":
+        return `[${casedColumn}]`;
       default:
         throw new Error(`Unsupported database type: ${dbType}`);
     }
@@ -93,6 +99,8 @@ export class InterpreterUtils {
       case "cockroachdb":
       case "sqlite":
         return `"${table}"${alias ? ` as "${alias}"` : ""}`;
+      case "mssql":
+        return `[${table}]${alias ? ` as [${alias}]` : ""}`;
       default:
         return `${table}${alias ? ` as ${alias}` : ""}`;
     }

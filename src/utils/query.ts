@@ -11,7 +11,7 @@ export const removeFromStatement = (statement: string): string => {
 
 export const getSqlDialect = (
   sqlType: SqlDataSourceType,
-): "mysql" | "postgresql" | "sqlite" | "mariadb" | "sql" => {
+): "mysql" | "postgresql" | "sqlite" | "mariadb" | "sql" | "transactsql" => {
   switch (sqlType) {
     case "mysql":
       return "mysql";
@@ -25,6 +25,9 @@ export const getSqlDialect = (
 
     case "sqlite":
       return "sqlite";
+
+    case "mssql":
+      return "transactsql";
 
     default:
       return "sql";
@@ -80,6 +83,12 @@ export const bindParamsIntoQuery = (query: string, params: any[]): string => {
   for (let i = 0; i < params.length; i++) {
     const pgPlaceholder = new RegExp(`\\$${i + 1}(?!\\d)`, "g");
     result = result.replace(pgPlaceholder, formatParam(params[i]));
+  }
+
+  // Replace MSSQL-style placeholders (@p0, @p1, ...)
+  for (let i = 0; i < params.length; i++) {
+    const mssqlPlaceholder = new RegExp(`@p${i}(?!\\d)`, "g");
+    result = result.replace(mssqlPlaceholder, formatParam(params[i]));
   }
 
   return result;

@@ -9,42 +9,49 @@ const ds = {
   mariadb: path.resolve(process.cwd(), "test/sql_data_sources/mariadb.ts"),
   cockroachdb: path.resolve(
     process.cwd(),
-    "test/sql_data_sources/cockroachdb.ts",
+    "test/sql_data_sources/cockroachdb.ts"
   ),
   sqlite: path.resolve(process.cwd(), "test/sql_data_sources/sqlite.ts"),
+  mssql: path.resolve(process.cwd(), "test/sql_data_sources/mssql.ts"),
 };
 
 migrations.forEach((migration) => {
+  // MSSQL
+  execSync(
+    `node lib/cli.js refresh:migrations -d ${ds.mssql} -m ${migration.replace("migrations", "migrations_mssql")} --force`,
+    { stdio: "inherit" }
+  );
+
   // PostgreSQL
   execSync(
     `node lib/cli.js refresh:migrations -d ${ds.postgres} -m ${migration} --force`,
-    { stdio: "inherit" },
+    { stdio: "inherit" }
   );
 
   // MySQL
   execSync(
     `node lib/cli.js refresh:migrations -d ${ds.mysql} -m ${migration} --force`,
-    { stdio: "inherit" },
+    { stdio: "inherit" }
   );
 
   // MariaDB
   execSync(
     `node lib/cli.js refresh:migrations -d ${ds.mariadb} -m ${migration}`,
-    { stdio: "inherit" },
+    { stdio: "inherit" }
   );
 
   // CockroachDB
   execSync(
     `node lib/cli.js refresh:migrations -d ${ds.cockroachdb} -m ${migration} --force`,
-    { stdio: "inherit" },
+    { stdio: "inherit" }
   );
 
   // SQLite (uses dedicated migrations folder)
   execSync(
     `node lib/cli.js refresh:migrations -d ${ds.sqlite} -m ${migration.replace(
       "migrations",
-      "migrations_sqlite",
+      "migrations_sqlite"
     )} --force`,
-    { stdio: "inherit" },
+    { stdio: "inherit" }
   );
 });

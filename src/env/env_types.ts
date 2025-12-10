@@ -14,4 +14,5 @@ export type Env = {
   REDIS_DATABASE?: string;
   MONGO_URL?: string;
   MONGO_LOGS?: boolean;
+  MSSQL_TRUST_SERVER_CERTIFICATE?: boolean;
 };

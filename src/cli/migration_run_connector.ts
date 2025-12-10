@@ -18,6 +18,7 @@ export default async function runMigrationsConnector(
   transactional?: boolean,
 ) {
   const dbType = sql.getDbType();
+  const shouldUseTransaction = transactional && dbType !== "mssql";
   let trx: Transaction | null = null;
   logger.info("Running migrations for database type: " + dbType);
 
@@ -56,7 +57,7 @@ export default async function runMigrationsConnector(
 
       const filteredMigrations = pendingMigrations.slice(0, runUntilIndex + 1);
 
-      if (transactional) {
+      if (shouldUseTransaction) {
         trx = await sql.startTransaction();
         sql = trx.sql as SqlDataSource;
       }
@@ -64,7 +65,7 @@ export default async function runMigrationsConnector(
       const migrator = new Migrator(sql);
       await migrator.upMigrations(filteredMigrations);
 
-      if (transactional) {
+      if (shouldUseTransaction) {
         await trx?.commit();
       }
 
@@ -73,18 +74,18 @@ export default async function runMigrationsConnector(
     }
 
     const migrator = new Migrator(sql);
-    if (transactional) {
+    if (shouldUseTransaction) {
       trx = await sql.startTransaction();
       sql = trx.sql as SqlDataSource;
     }
 
     await migrator.upMigrations(pendingMigrations);
 
-    if (transactional) {
+    if (shouldUseTransaction) {
       await trx?.commit();
     }
   } catch (error: any) {
-    if (transactional) {
+    if (shouldUseTransaction) {
       await trx?.rollback();
     }
 
