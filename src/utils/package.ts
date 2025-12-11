@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { DataSourceType } from "../data_source/data_source_types";
 import logger from "./logger";
+import { sqlDatabaseTypes } from "../cli";
 
 export const getPackageManager = (): [string, string] => {
   const hasYarnLock = fs.existsSync(path.join(process.cwd(), "yarn.lock"));
@@ -35,7 +36,9 @@ export const installBaseDependencies = (
   packageManagerCommand: string,
   type: DataSourceType | "redis",
 ) => {
-  const devDependencies = ["bundle-require", "typescript", "esbuild"];
+  const devDependencies = sqlDatabaseTypes.includes(type)
+    ? ["bundle-require", "typescript", "esbuild"]
+    : [];
 
   let driverDependency = "";
   switch (type) {
