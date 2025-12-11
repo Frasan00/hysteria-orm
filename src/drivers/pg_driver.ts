@@ -3,6 +3,8 @@ import { DriverNotFoundError } from "./driver_constants";
 import { DriverSpecificOptions, PgImport } from "./driver_types";
 
 export class PgDriver extends Driver {
+  static pgClient: PgImport | null = null;
+
   override type = "postgres" as const;
   override client: PgImport;
 
@@ -15,13 +17,20 @@ export class PgDriver extends Driver {
   }
 
   static async createDriver(): Promise<Driver> {
-    const pg = await import("pg").catch(() => {
+    if (this.pgClient) {
+      return new PgDriver(this.pgClient);
+    }
+
+    const pgModule = await import("pg").catch(() => {
       throw new DriverNotFoundError("pg");
     });
-    if (!pg) {
+
+    this.pgClient = (pgModule as { default?: PgImport }).default ?? pgModule;
+
+    if (!this.pgClient) {
       throw new DriverNotFoundError("pg");
     }
 
-    return new PgDriver(pg.default);
+    return new PgDriver(this.pgClient);
   }
 }

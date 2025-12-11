@@ -6,9 +6,10 @@ describe("TestModel", () => {
   let mongoDataSource: MongoDataSource;
 
   beforeAll(async () => {
-    mongoDataSource = await MongoDataSource.connect(
-      "mongodb://root:root@localhost:27017",
-    );
+    mongoDataSource = new MongoDataSource({
+      url: "mongodb://root:root@localhost:27017",
+    });
+    await mongoDataSource.connect();
   });
 
   beforeEach(async () => {
@@ -417,9 +418,10 @@ describe("TestModel rawCollection", () => {
   let mongoDataSource: MongoDataSource;
 
   beforeAll(async () => {
-    mongoDataSource = await MongoDataSource.connect(
-      "mongodb://root:root@localhost:27017",
-    );
+    mongoDataSource = new MongoDataSource({
+      url: "mongodb://root:root@localhost:27017",
+    });
+    await mongoDataSource.connect();
   });
 
   beforeEach(async () => {

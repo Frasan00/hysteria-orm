@@ -1,17 +1,24 @@
 import type { Transaction as MssqlTransaction } from "mssql";
 import type { PoolConnection } from "mysql2/promise";
+import type {
+  Connection as OracleDBConnection,
+  Pool as OracleDBPool,
+} from "oracledb";
 import type { PoolClient } from "pg";
 import { FormatOptionsWithLanguage } from "sql-formatter";
 import type { AdminJsOptions } from "../adminjs/adminjs_types";
 import type { CacheAdapter } from "../cache/cache_adapter";
-import type { CacheKeys, UseCacheReturnType } from "../cache/cache_types";
+import type { CacheKeys } from "../cache/cache_types";
 import type {
   DataSourceType,
   MssqlDataSourceInput,
   MysqlSqlDataSourceInput,
   NotNullableMysqlSqlDataSourceInput,
+  NotNullableOracleDBDataSourceInput,
+  NotNullableOracleMssqlDataSourceInput,
   NotNullablePostgresSqlDataSourceInput,
   NotNullableSqliteDataSourceInput,
+  OracleDBDataSourceInput,
   PostgresSqlDataSourceInput,
   SqliteDataSourceInput,
 } from "../data_source/data_source_types";
@@ -41,12 +48,15 @@ export type PgPoolClientInstance = InstanceType<PgImport["Pool"]>;
 
 export type SqliteConnectionInstance = InstanceType<Sqlite3Import["Database"]>;
 
+export type OracleDBPoolInstance = OracleDBPool;
+
 export type MssqlPoolInstance = InstanceType<MssqlImport["ConnectionPool"]>;
 export type MssqlConnectionInstance = Awaited<
   ReturnType<MssqlPoolInstance["connect"]>
 >;
 
 export type SqlPoolType =
+  | OracleDBPoolInstance
   | MysqlConnectionInstance
   | PgPoolClientInstance
   | SqliteConnectionInstance
@@ -54,7 +64,7 @@ export type SqlPoolType =
 
 /**
  * @description The connection policies for the sql data source
- * @default By default, the connection policies are not set, so no query will be retried
+ * @default the connection policies are not set, so no query will be retried
  */
 export type ConnectionPolicies = {
   /**
@@ -69,15 +79,12 @@ export type ConnectionPolicies = {
 export type SqlDataSourceModel = typeof Model;
 
 /**
- * @description The input type for the SqlDataSource constructor
- * @description The connectionPolicies object is used to configure the connection policies for the sql data source
+ * @description Common input properties shared across all SqlDataSource types
  */
-export type SqlDataSourceInput<
-  D extends SqlDataSourceType,
+type SqlDataSourceInputBase<
   T extends Record<string, SqlDataSourceModel> = {},
   C extends CacheKeys = {},
 > = {
-  readonly type?: D;
   /**
    * @description Whether to log the sql queries and other debug information
    */
@@ -98,12 +105,6 @@ export type SqlDataSourceInput<
   models?: T;
 
   /**
-   * @description The driver specific options to use for the sql data source, it's used to configure the driver specific options for the sql data source
-   * @warning For usage with types, you must have driver types installed if the driver handles types in a type package like e.g. `@types/pg`
-   */
-  driverOptions?: SqlDriverSpecificOptions<D>;
-
-  /**
    * @description The path to the migrations folder for the sql data source, it's used to configure the migrations path for the sql data source
    * @default "database/migrations"
    */
@@ -122,19 +123,70 @@ export type SqlDataSourceInput<
    * @description To use AdminJS, install: `npm install adminjs`
    */
   adminJs?: AdminJsOptions;
-} & (
-  | MysqlSqlDataSourceInput
-  | MssqlDataSourceInput
-  | PostgresSqlDataSourceInput
-  | SqliteDataSourceInput
-);
+};
+
+/**
+ * @description Maps a SqlDataSourceType to its corresponding input interface
+ */
+type MapSqlDataSourceTypeToInput<D extends SqlDataSourceType> = D extends
+  | "mysql"
+  | "mariadb"
+  ? MysqlSqlDataSourceInput
+  : D extends "postgres" | "cockroachdb"
+    ? PostgresSqlDataSourceInput
+    : D extends "sqlite"
+      ? SqliteDataSourceInput
+      : D extends "mssql"
+        ? MssqlDataSourceInput
+        : D extends "oracledb"
+          ? OracleDBDataSourceInput
+          : never;
+
+/**
+ * @description The input type for the SqlDataSource constructor
+ * @description The connectionPolicies object is used to configure the connection policies for the sql data source
+ */
+export type SqlDataSourceInput<
+  D extends SqlDataSourceType = SqlDataSourceType,
+  T extends Record<string, SqlDataSourceModel> = {},
+  C extends CacheKeys = {},
+> = SqlDataSourceInputBase<T, C> & {
+  /**
+   * @description The type of the database to connect to
+   */
+  readonly type: D;
+  /**
+   * @description The driver specific options to use for the sql data source, it's used to configure the driver specific options for the sql data source
+   * @warning For usage with types, you must have driver types installed if the driver handles types in a type package like e.g. `@types/pg`
+   */
+  driverOptions?: SqlDriverSpecificOptions<D>;
+} & Omit<MapSqlDataSourceTypeToInput<D>, "type">;
+
+/**
+ * @description Maps a SqlDataSourceType to its corresponding non-nullable input interface
+ */
+type MapSqlDataSourceTypeToNotNullableInput<D extends SqlDataSourceType> =
+  D extends "mysql" | "mariadb"
+    ? NotNullableMysqlSqlDataSourceInput
+    : D extends "postgres" | "cockroachdb"
+      ? NotNullablePostgresSqlDataSourceInput
+      : D extends "sqlite"
+        ? NotNullableSqliteDataSourceInput
+        : D extends "mssql"
+          ? NotNullableOracleMssqlDataSourceInput
+          : D extends "oracledb"
+            ? NotNullableOracleDBDataSourceInput
+            : never;
 
 export type UseConnectionInput<
-  D extends SqlDataSourceType,
+  D extends SqlDataSourceType = SqlDataSourceType,
   T extends Record<string, SqlDataSourceModel> = {},
   C extends CacheKeys = {},
 > = {
-  readonly type: Exclude<DataSourceType, "mongo">;
+  /**
+   * @description The type of the database to connect to
+   */
+  readonly type: D;
   readonly logs?: boolean;
   readonly models?: T;
   readonly driverOptions?: SqlDriverSpecificOptions<D>;
@@ -149,11 +201,7 @@ export type UseConnectionInput<
    * @description AdminJS is completely optional - dependencies are loaded at runtime via dynamic import()
    */
   adminJs?: AdminJsOptions;
-} & (
-  | NotNullableMysqlSqlDataSourceInput
-  | NotNullablePostgresSqlDataSourceInput
-  | NotNullableSqliteDataSourceInput
-);
+} & Omit<MapSqlDataSourceTypeToNotNullableInput<D>, "type">;
 
 export type SqlDataSourceType = Exclude<DataSourceType, "mongo">;
 
@@ -177,7 +225,9 @@ export type getPoolReturnType<T = SqlDataSourceType> = T extends "mysql"
           ? SqliteConnectionInstance
           : T extends "mssql"
             ? MssqlPoolInstance
-            : never;
+            : T extends "oracledb"
+              ? OracleDBPoolInstance
+              : never;
 
 export type GetConnectionReturnType<T = SqlDataSourceType> = T extends "mysql"
   ? PoolConnection
@@ -191,76 +241,9 @@ export type GetConnectionReturnType<T = SqlDataSourceType> = T extends "mysql"
           ? InstanceType<Sqlite3Import["Database"]>
           : T extends "mssql"
             ? MssqlTransaction
-            : never;
-
-type UseCacheOverloads<C extends CacheKeys> = {
-  <K extends keyof C>(
-    key: K,
-    ...args: Parameters<C[K]>
-  ): Promise<UseCacheReturnType<C, K>>;
-  <K extends keyof C>(
-    key: K,
-    ttl: number,
-    ...args: Parameters<C[K]>
-  ): Promise<UseCacheReturnType<C, K>>;
-};
-
-type UseCacheType<C extends CacheKeys> = keyof C extends never
-  ? SqlDataSource["useCache"]
-  : UseCacheOverloads<C>;
-
-type InvalidCacheType<C extends CacheKeys> = keyof C extends never
-  ? SqlDataSource["invalidCache"]
-  : <K extends keyof C>(key: K) => Promise<void>;
-
-export type AugmentedSqlDataSource<
-  T extends Record<string, SqlDataSourceModel> = {},
-  C extends CacheKeys = {},
-> = Omit<SqlDataSource, "useCache" | "invalidCache" | "clone"> & {
-  useCache: UseCacheType<C>;
-  invalidCache: InvalidCacheType<C>;
-  clone(options?: SqlCloneOptions): Promise<AugmentedSqlDataSource<T, C>>;
-} & {
-  [key in keyof T]: T[key];
-};
-
-export type SqlDataSourceWithoutTransaction<
-  T extends Record<string, SqlDataSourceModel> = {},
-> = Pick<
-  SqlDataSource,
-  | "sqlPool"
-  | "sqlConnection"
-  | "inputDetails"
-  | "isConnected"
-  | "getDbType"
-  | "clone"
-  | "getModelManager"
-  | "getPool"
-  | "getConnection"
-  | "closeConnection"
-  | "getConnectionDetails"
-  | "disconnect"
-  | "syncSchema"
-  | "rawQuery"
-  | "rawStatement"
-  | "getTableSchema"
-  | "getModelOpenApiSchema"
-  | "getTableInfo"
-  | "getIndexInfo"
-  | "getForeignKeyInfo"
-  | "getPrimaryKeyInfo"
-  | "registeredModels"
-  | "type"
-  | "host"
-  | "port"
-  | "username"
-  | "password"
-  | "database"
-  | "logs"
-  | "query"
-> & {
-  [key in keyof T]: T[key];
-};
+            : T extends "oracledb"
+              ? OracleDBConnection
+              : never;
 
 /** Only accepts formats `string` e `string as string` */
 type NoSpace<S extends string> = S extends `${infer _} ${infer _}` ? never : S;

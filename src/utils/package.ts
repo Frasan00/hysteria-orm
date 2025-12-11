@@ -64,6 +64,10 @@ export const installBaseDependencies = (
       driverDependency = "mssql";
       devDependencies.push("@types/mssql");
       break;
+    case "oracledb":
+      driverDependency = "oracledb";
+      devDependencies.push("@types/oracledb");
+      break;
     default:
       throw new Error(`Invalid database type: ${type}`);
   }

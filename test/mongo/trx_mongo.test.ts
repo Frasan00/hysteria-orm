@@ -1,6 +1,6 @@
-import { property } from "../../src/no_sql/mongo/mongo_models/mongo_collection_decorators";
 import { MongoDataSource } from "../../src/no_sql/mongo/mongo_data_source";
 import { Collection } from "../../src/no_sql/mongo/mongo_models/mongo_collection";
+import { property } from "../../src/no_sql/mongo/mongo_models/mongo_collection_decorators";
 
 class TestModel extends Collection {
   @property()
@@ -14,10 +14,10 @@ describe("TestModel", () => {
   let mongoDataSource: MongoDataSource;
 
   beforeAll(async () => {
-    mongoDataSource = await MongoDataSource.connect(
-      "mongodb://root:root@localhost:27017/?replicaSet=rs0",
-      {},
-    );
+    mongoDataSource = new MongoDataSource({
+      url: "mongodb://root:root@localhost:27017/?replicaSet=rs0",
+    });
+    await mongoDataSource.connect();
   });
 
   beforeEach(async () => {

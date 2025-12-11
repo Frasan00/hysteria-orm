@@ -34,6 +34,7 @@ export class InterpreterUtils {
           case "postgres":
           case "cockroachdb":
           case "sqlite":
+          case "oracledb":
             return `"${table}".*`;
           case "mssql":
             return `[${table}].*`;
@@ -53,6 +54,7 @@ export class InterpreterUtils {
         case "postgres":
         case "cockroachdb":
         case "sqlite":
+        case "oracledb":
           return `"${table}"."${casedColumn}"`;
         case "mssql":
           return `[${table}].[${casedColumn}]`;
@@ -72,6 +74,7 @@ export class InterpreterUtils {
       case "postgres":
       case "cockroachdb":
       case "sqlite":
+      case "oracledb":
         return `"${casedColumn}"`;
       case "mssql":
         return `[${casedColumn}]`;
@@ -98,6 +101,7 @@ export class InterpreterUtils {
       case "postgres":
       case "cockroachdb":
       case "sqlite":
+      case "oracledb":
         return `"${table}"${alias ? ` as "${alias}"` : ""}`;
       case "mssql":
         return `[${table}]${alias ? ` as [${alias}]` : ""}`;

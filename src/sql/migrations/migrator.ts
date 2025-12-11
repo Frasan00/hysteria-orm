@@ -4,7 +4,6 @@ import { env } from "../../env/env";
 import logger from "../../utils/logger";
 import { SqlDataSource } from "../sql_data_source";
 import {
-  AugmentedSqlDataSource,
   SqlDataSourceInput,
   SqlDataSourceType,
 } from "../sql_data_source_types";
@@ -14,11 +13,11 @@ import { Migration } from "./migration";
  * @description Used internally from the CLI
  */
 export class Migrator {
-  private sql: SqlDataSource | AugmentedSqlDataSource;
+  private sql: SqlDataSource;
   private readonly migrationTable = "migrations";
 
-  constructor(sql?: SqlDataSource | AugmentedSqlDataSource) {
-    this.sql = sql || SqlDataSource.getInstance();
+  constructor(sql?: SqlDataSource) {
+    this.sql = sql || SqlDataSource.instance;
   }
 
   async upMigrations(migrations: Migration[]): Promise<void> {
@@ -64,10 +63,14 @@ export class Migrator {
 
   private async addMigrationToMigrationTable(migration: Migration) {
     const completeUtcTimestamp = new Date();
-    const timestamp = completeUtcTimestamp
-      .toISOString()
-      .replace("T", " ")
-      .replace(/\.\d{3}Z$/, "");
+    // Oracle requires Date object, not string format
+    const timestamp =
+      this.sql.getDbType() === "oracledb"
+        ? completeUtcTimestamp
+        : completeUtcTimestamp
+            .toISOString()
+            .replace("T", " ")
+            .replace(/\.\d{3}Z$/, "");
 
     await this.sql.query(this.migrationTable).insert({
       name: migration.migrationName,
@@ -118,13 +121,16 @@ export class ClientMigrator {
    */
   private async migrate(direction: "up" | "down"): Promise<void> {
     env.MIGRATION_PATH = this.migrationPath;
-    const sqlDataSource =
-      this.sqlDataSourceInput instanceof SqlDataSource
-        ? this.sqlDataSourceInput
-        : await SqlDataSource.connect({
-            ...(this
-              .sqlDataSourceInput as SqlDataSourceInput<SqlDataSourceType>),
-          });
+    let sqlDataSource: SqlDataSource;
+
+    if (this.sqlDataSourceInput instanceof SqlDataSource) {
+      sqlDataSource = this.sqlDataSourceInput;
+    } else {
+      const input = this
+        .sqlDataSourceInput as SqlDataSourceInput<SqlDataSourceType>;
+      sqlDataSource = new SqlDataSource(input);
+      await sqlDataSource.connect();
+    }
 
     if (direction === "up") {
       return runMigrationsConnector(

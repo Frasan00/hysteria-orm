@@ -4,7 +4,8 @@ import { UserStatus, UserWithBigint } from "../test_models/bigint/user_bigint";
 import { UserFactory } from "../test_models/factory/user_factory";
 
 beforeAll(async () => {
-  await SqlDataSource.connect();
+  const dataSource = new SqlDataSource();
+  await dataSource.connect();
 });
 
 afterAll(async () => {

@@ -1,12 +1,43 @@
+import type { IResult } from "mssql";
+import type { QueryResult as MysqlResult } from "mysql2/promise";
+import { Readable } from "node:stream";
+import type { Result as OracleDBResult } from "oracledb";
+import type { QueryResult as PgResult } from "pg";
+import type { RunResult as SqliteResult } from "sqlite3";
 import { Model } from "../models/model";
 import { AnnotatedModel } from "../models/model_query_builder/model_query_builder_types";
-import { Readable } from "node:stream";
-import { GetConnectionReturnType } from "../sql_data_source_types";
+import {
+  GetConnectionReturnType,
+  SqlDataSourceType,
+} from "../sql_data_source_types";
 
-export type Returning = "raw" | "affectedRows";
-export type SqlRunnerReturnType<T extends Returning> = T extends "raw"
+export type Returning = "rows" | "affectedRows" | "raw";
+
+/**
+ * @description Maps a SqlDataSourceType to the raw driver response type
+ */
+export type RawQueryResponseType<D extends SqlDataSourceType> = D extends
+  | "mysql"
+  | "mariadb"
+  ? MysqlResult
+  : D extends "postgres" | "cockroachdb"
+    ? PgResult
+    : D extends "sqlite"
+      ? SqliteResult
+      : D extends "mssql"
+        ? IResult<any>
+        : D extends "oracledb"
+          ? OracleDBResult<any>
+          : any;
+
+export type SqlRunnerReturnType<
+  T extends Returning,
+  D extends SqlDataSourceType,
+> = T extends "rows"
   ? any
-  : number;
+  : T extends "affectedRows"
+    ? number
+    : RawQueryResponseType<D>;
 
 export type SqlLiteOptions<T extends Model> = {
   typeofModel?: typeof Model;

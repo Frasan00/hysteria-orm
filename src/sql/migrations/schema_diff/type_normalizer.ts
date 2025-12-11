@@ -1,4 +1,5 @@
 export type SupportedSqlDialect =
+  | "oracledb"
   | "postgres"
   | "cockroachdb"
   | "mysql"
@@ -281,6 +282,61 @@ export function normalizeColumnType(
       }
     }
 
+    case "oracledb": {
+      // Oracle data types normalization
+      if (base.endsWith("clob") || base === "clob" || base === "nclob")
+        return "clob";
+      if (base.startsWith("timestamp")) return "timestamp";
+      if (base.startsWith("interval")) return "interval";
+      switch (base) {
+        case "varchar2":
+        case "nvarchar2":
+        case "character varying":
+          return "varchar2";
+        case "char":
+        case "nchar":
+        case "character":
+          return "char";
+        case "number":
+        case "numeric":
+        case "decimal":
+        case "integer":
+        case "int":
+        case "smallint":
+        case "tinyint":
+        case "mediumint":
+        case "bigint":
+          return "number";
+        case "binary_float":
+        case "float":
+        case "real":
+          return "binary_float";
+        case "binary_double":
+        case "double":
+        case "double precision":
+          return "binary_double";
+        case "date":
+          return "date";
+        case "blob":
+        case "raw":
+        case "long raw":
+        case "bytea":
+        case "binary":
+        case "varbinary":
+          return "blob";
+        case "json":
+        case "jsonb":
+          return "clob";
+        case "boolean":
+        case "bool":
+          return "number";
+        case "uuid":
+        case "ulid":
+          return "varchar2";
+        default:
+          return base;
+      }
+    }
     default:
       return base;
   }

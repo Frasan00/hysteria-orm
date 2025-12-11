@@ -42,6 +42,9 @@ export abstract class DataSource {
       case "mssql":
         this.handleMssqlSource(input as MssqlDataSourceInput);
         break;
+      case "oracledb":
+        this.handleOracleDBSource(input as MssqlDataSourceInput);
+        break;
       default:
         throw new HysteriaError(
           `Invalid database type: ${this.type}, please provide a valid database type in your input or in the .env file with the key DB_TYPE
@@ -110,6 +113,19 @@ Valid database types are: [mongo, postgres, cockroachdb, mysql, mariadb, sqlite]
 
     if (!this.port) {
       this.port = 1433;
+    }
+  }
+
+  protected handleOracleDBSource(input?: MssqlDataSourceInput) {
+    this.host = (input?.host || env.DB_HOST) as string;
+    this.port = +(input?.port as number) || +(env.DB_PORT as string);
+    this.username = (input?.username || env.DB_USER) as string;
+    this.password = (input?.password || env.DB_PASSWORD) as string;
+    this.database = (input?.database || env.DB_DATABASE) as string;
+    this.logs = input?.logs || env.DB_LOGS || false;
+
+    if (!this.port) {
+      this.port = 1521;
     }
   }
 }

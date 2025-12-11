@@ -358,8 +358,7 @@ export async function initializeAdminJs(
   await registerHysteriaAdapter();
 
   const models =
-    options.resources ||
-    (Object.values(sqlDataSource.registeredModels) as AnyModel[]);
+    options.resources || (Object.values(sqlDataSource.models) as AnyModel[]);
 
   if (!models.length) {
     throw new Error(

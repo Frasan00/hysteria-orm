@@ -13,9 +13,16 @@ const ds = {
   ),
   sqlite: path.resolve(process.cwd(), "test/sql_data_sources/sqlite.ts"),
   mssql: path.resolve(process.cwd(), "test/sql_data_sources/mssql.ts"),
+  oracledb: path.resolve(process.cwd(), "test/sql_data_sources/oracledb.ts"),
 };
 
 migrations.forEach((migration) => {
+  // Oracle
+  execSync(
+    `node lib/cli.js refresh:migrations -d ${ds.oracledb} -m ${migration.replace("migrations", "migrations_oracle")} --force`,
+    { stdio: "inherit" }
+  );
+
   // MSSQL
   execSync(
     `node lib/cli.js refresh:migrations -d ${ds.mssql} -m ${migration.replace("migrations", "migrations_mssql")} --force`,

@@ -3,16 +3,23 @@ export class InitTemplates {
     const port = this.getDefaultPort(type);
     const database = type === "sqlite" ? "database.db" : "database";
     const importType =
-      type === "mongodb" ? "mongo" : type === "redis" ? "redis" : "sql";
+      type === "mongodb"
+        ? "mongo"
+        : type === "redis"
+          ? "redis"
+          : "SqlDataSource";
 
     if (type === "mongodb" || type === "redis") {
-      return this.handleNoSqlConnection(type, importType);
+      return this.handleNoSqlConnection(
+        type,
+        importType === "SqlDataSource" ? "sql" : importType,
+      );
     }
 
     return `
 import { ${importType} } from "hysteria-orm";
 
-const db = await ${importType}.connect({
+const db = new ${importType}({
   type: "${type}",
   database: "${database}"${
     type === "sqlite"
@@ -25,11 +32,12 @@ const db = await ${importType}.connect({
   logs: true,
   migrationsPath: "database/migrations"`
   }
-})
-  .catch((err) => {
-    console.error(err);
-    process.exit(1);
-  });
+});
+
+await db.connect().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
 
 export default db;
 `;
@@ -88,6 +96,8 @@ export default db;`;
         return 27017;
       case "redis":
         return 6379;
+      case "oracledb":
+        return 1521;
       default:
         return 3306;
     }

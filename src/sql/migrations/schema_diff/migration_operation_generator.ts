@@ -30,7 +30,7 @@ export class MigrationOperationGenerator {
 
   constructor(sql: SqlDataSource) {
     this.sql = sql;
-    this.models = Object.values(this.sql.registeredModels);
+    this.models = Object.values(this.sql.models);
     this.dropResolver = new DropOrderResolver(sql);
   }
 

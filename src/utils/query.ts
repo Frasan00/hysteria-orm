@@ -11,7 +11,7 @@ export const removeFromStatement = (statement: string): string => {
 
 export const getSqlDialect = (
   sqlType: SqlDataSourceType,
-): "mysql" | "postgresql" | "sqlite" | "mariadb" | "sql" | "transactsql" => {
+): NonNullable<Parameters<typeof format>[1]>["language"] => {
   switch (sqlType) {
     case "mysql":
       return "mysql";
@@ -28,6 +28,9 @@ export const getSqlDialect = (
 
     case "mssql":
       return "transactsql";
+
+    case "oracledb":
+      return "plsql";
 
     default:
       return "sql";
@@ -87,8 +90,14 @@ export const bindParamsIntoQuery = (query: string, params: any[]): string => {
 
   // Replace MSSQL-style placeholders (@p0, @p1, ...)
   for (let i = 0; i < params.length; i++) {
-    const mssqlPlaceholder = new RegExp(`@p${i}(?!\\d)`, "g");
+    const mssqlPlaceholder = new RegExp(`\\@${i + 1}(?!\\d)`, "g");
     result = result.replace(mssqlPlaceholder, formatParam(params[i]));
+  }
+
+  // Replace Oracle-style placeholders (:1, :2, ...)
+  for (let i = 0; i < params.length; i++) {
+    const oraclePlaceholder = new RegExp(`:${i + 1}(?!\\d)`, "g");
+    result = result.replace(oraclePlaceholder, formatParam(params[i]));
   }
 
   return result;
@@ -112,6 +121,14 @@ export const isTableMissingError = (
 
   if (sqlType === "sqlite") {
     return /no such table/i.test(String(error.message || ""));
+  }
+
+  if (sqlType === "mssql") {
+    return error.number === 208; // Invalid object name
+  }
+
+  if (sqlType === "oracledb") {
+    return error.errorNum === 942; // ORA-00942: table or view does not exist
   }
 
   return false;

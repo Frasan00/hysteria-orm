@@ -8,6 +8,7 @@ import { Migration } from "../sql/migrations/migration";
 import type {
   MssqlPoolInstance,
   MysqlConnectionInstance,
+  OracleDBPoolInstance,
   PgPoolClientInstance,
   SqlDataSourceType,
   SqliteConnectionInstance,
@@ -113,6 +114,33 @@ export async function getMigrationTable(
         .request()
         .query(MigrationTemplates.selectAllFromMigrationsTemplate());
       return mssqlResult.recordset as MigrationTableType[];
+
+    case "oracledb":
+      const oraclePool = sqlConnection as OracleDBPoolInstance;
+      const oracleConnection = await oraclePool.getConnection();
+      try {
+        try {
+          await oracleConnection.execute(
+            MigrationTemplates.migrationTableTemplateOracle(),
+          );
+        } catch (err: any) {
+          if (err.errorNum !== 955) {
+            throw err;
+          }
+        }
+        // Oracle requires quoted identifiers to match case from CREATE TABLE
+        const oracleResult = await oracleConnection.execute(
+          `SELECT * FROM "migrations"`,
+        );
+        // Oracle returns rows as arrays: [id, name, timestamp]
+        return (oracleResult.rows || []).map((row: any) => ({
+          id: row[0],
+          name: row[1],
+          timestamp: row[2],
+        })) as MigrationTableType[];
+      } finally {
+        await oracleConnection.close();
+      }
 
     default:
       throw new HysteriaError(

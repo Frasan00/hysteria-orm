@@ -17,9 +17,9 @@ export default class extends Migration {
       table.jsonb("json");
       table.boolean("is_active");
       table.enum("status", ["active", "inactive"]).default("active");
-      table.timestamp("created_at", { withTimezone: true });
-      table.timestamp("updated_at", { withTimezone: true });
-      table.timestamp("deleted_at").default(null).nullable();
+      table.varchar("created_at");
+      table.varchar("updated_at");
+      table.varchar("deleted_at").nullable();
     });
   }
 

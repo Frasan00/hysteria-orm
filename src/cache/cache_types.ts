@@ -1,4 +1,4 @@
-export type CacheKeys = Record<string, (...args: any[]) => Promise<any>>;
+export type CacheKeys = Record<string, (...args: any[]) => Promise<any> | any>;
 
 export type UseCacheReturnType<
   C extends CacheKeys,

@@ -26,7 +26,7 @@ export class UserView extends Model {
   declare total: number;
 }
 
-await SqlDataSource.connect({
+const dataSource = new SqlDataSource({
   type: "postgres",
   database: "test",
   host: "localhost",
@@ -35,5 +35,6 @@ await SqlDataSource.connect({
   password: "root",
   logs: true,
 });
+await dataSource.connect();
 console.log(await UserView.query().many());
 await SqlDataSource.disconnect();

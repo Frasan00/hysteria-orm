@@ -1,6 +1,6 @@
 {
   "name": "hysteria-orm",
-  "version": "10.2.3",
+  "version": "10.3.0",
   "license": "MIT",
   "description": "Yet another orm for Javascript and Typescript no one asked for",
   "type": "module",
@@ -96,13 +96,17 @@
     "mysql2": "^3.14.1",
     "pg": "^8.16.0",
     "sqlite3": "^5.1.7",
-    "typescript": "^5.8.3"
+    "typescript": "^5.8.3",
+    "oracledb": "^6.10.0"
   },
   "peerDependenciesMeta": {
     "ioredis": {
       "optional": true
     },
     "mongodb": {
+      "optional": true
+    },
+    "oracledb": {
       "optional": true
     },
     "mssql": {

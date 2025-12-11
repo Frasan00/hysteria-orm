@@ -46,12 +46,12 @@ import type {
 } from "./schema_introspection_types";
 import { createSqlPool } from "./sql_connection_utils";
 import type {
-  AugmentedSqlDataSource,
   ConnectionPolicies,
   GetConnectionReturnType,
   getPoolReturnType,
   MssqlPoolInstance,
   MysqlConnectionInstance,
+  OracleDBPoolInstance,
   PgPoolClientInstance,
   SqlCloneOptions,
   SqlDataSourceInput,
@@ -63,6 +63,7 @@ import type {
   UseConnectionInput,
 } from "./sql_data_source_types";
 import { execSql } from "./sql_runner/sql_runner";
+import { RawQueryResponseType } from "./sql_runner/sql_runner_types";
 import { Transaction } from "./transactions/transaction";
 import {
   StartTransactionOptions,
@@ -73,12 +74,32 @@ import {
 
 /**
  * @description The SqlDataSource class is the main class for interacting with the database, it's used to create connections, execute queries, and manage transactions
+ * @example
+ * ```ts
+ * // Create and connect to a database
+ * const sql = new SqlDataSource({
+ *   type: "mysql",
+ *   host: "localhost",
+ *   username: "root",
+ *   password: "password",
+ *   database: "mydb",
+ *   models: { User, Post }
+ * });
+ * await sql.connect();
+ *
+ * // Now you can use the connection
+ * const users = await sql.query("users").many();
+ * ```
  */
-export class SqlDataSource extends DataSource {
-  private static instance: SqlDataSource | null = null;
+export class SqlDataSource<
+  D extends SqlDataSourceType = SqlDataSourceType,
+  T extends Record<string, SqlDataSourceModel> = {},
+  C extends CacheKeys = {},
+> extends DataSource {
+  static #instance: SqlDataSource | null = null;
   private globalTransaction: Transaction | null = null;
-  private sqlType: SqlDataSourceType;
-  private models: Record<string, SqlDataSourceModel> = {};
+  private sqlType: D;
+  private _models: T;
   private ownsPool: boolean = false;
 
   /**
@@ -90,12 +111,12 @@ export class SqlDataSource extends DataSource {
    * @description Only used in transaction context to specify the connection, not meant to be used directly
    * @private
    */
-  sqlConnection: GetConnectionReturnType<SqlDataSourceType> | null = null;
+  sqlConnection: GetConnectionReturnType<D> | null = null;
 
   /**
    * @description Options provided in the sql data source initialization
    */
-  inputDetails: SqlDataSourceInput<SqlDataSourceType>;
+  inputDetails: SqlDataSourceInput<D, T, C>;
 
   /**
    * @description Adapter for `useCache`, uses an in memory strategy by default
@@ -105,7 +126,7 @@ export class SqlDataSource extends DataSource {
   /**
    * @description Maps global keys to specific handlers for cache handling
    */
-  cacheKeys: CacheKeys = {};
+  cacheKeys: C;
 
   /**
    * @description The path to the migrations folder for the sql data source, it's used to configure the migrations path for the sql data source
@@ -122,425 +143,106 @@ export class SqlDataSource extends DataSource {
    */
   private adminJsInstance?: AdminJsInstance;
 
+  // ============================================
   // Static Methods
+  // ============================================
 
   /**
-   * @description Establishes the default singleton connection used by default by all the Models, if not configuration is passed, env variables will be used instead
-   * @description You can continue to use the global sql class exported by hysteria after the connection without having to rely on the return of this function
-   * @throws {HysteriaError} If using models in input, and the model key is already used by the sql data source instance e.g. a model called `connect` is already used by the sql data source instance and will throw an error
-   * @example
-   * ```ts
-   * import { sql } from "hysteria-orm";
-   * const connection = await sql.connect();
-   * // You can use both connection and sql from now own, since `sql` will use the default connection after being connected
-   * connection.query();
-   * sql.query();
-   *
-   * // Models will use the default connection after being connected
-   * User.query(); // Will use the default connection
-   * ```
+   * @description Returns the primary instance of the SqlDataSource (set via connect with setPrimary: true)
+   * All models by default will use this instance to execute queries unless you pass a different connection/transaction in the query options
    */
-  static async connect<
-    U extends SqlDataSourceType,
-    T extends Record<string, SqlDataSourceModel> = {},
-    C extends CacheKeys = {},
-  >(
-    input: SqlDataSourceInput<U, T, C>,
-    cb?: (sqlDataSource: AugmentedSqlDataSource<T, C>) => Promise<void> | void,
-  ): Promise<AugmentedSqlDataSource<T, C>>;
-  static async connect<
-    T extends Record<string, SqlDataSourceModel> = {},
-    C extends CacheKeys = {},
-  >(
-    cb?: (sqlDataSource: AugmentedSqlDataSource<T, C>) => Promise<void> | void,
-  ): Promise<AugmentedSqlDataSource<T, C>>;
-  static async connect<
-    U extends SqlDataSourceType,
-    T extends Record<string, SqlDataSourceModel> = {},
-    C extends CacheKeys = {},
-  >(
-    inputOrCb?:
-      | SqlDataSourceInput<U, T, C>
-      | ((sqlDataSource: AugmentedSqlDataSource<T, C>) => Promise<void> | void),
-    cb?: (sqlDataSource: AugmentedSqlDataSource<T, C>) => Promise<void> | void,
-  ): Promise<AugmentedSqlDataSource<T, C>> {
-    if (typeof inputOrCb === "function") {
-      cb = inputOrCb;
-      inputOrCb = undefined;
-    }
-
-    const sqlDataSource = new SqlDataSource(
-      inputOrCb as SqlDataSourceInput<U, T, C>,
-    );
-
-    if (inputOrCb?.models) {
-      const sanitizeModelKeys = sqlDataSource.sanitizeModelKeys(
-        inputOrCb?.models || {},
+  static get instance(): SqlDataSource {
+    if (!this.#instance) {
+      throw new HysteriaError(
+        "SqlDataSource::instance",
+        "CONNECTION_NOT_ESTABLISHED",
       );
-
-      Object.assign(sqlDataSource, sanitizeModelKeys);
     }
 
-    sqlDataSource.models = inputOrCb?.models || {};
-    sqlDataSource.sqlPool = await createSqlPool(sqlDataSource.sqlType, {
-      type: sqlDataSource.sqlType,
-      host: sqlDataSource.host,
-      port: sqlDataSource.port,
-      username: sqlDataSource.username,
-      password: sqlDataSource.password,
-      database: sqlDataSource.database,
-      connectionPolicies: sqlDataSource.inputDetails
-        .connectionPolicies as ConnectionPolicies,
-      queryFormatOptions: sqlDataSource.inputDetails.queryFormatOptions,
-      driverOptions: sqlDataSource.inputDetails.driverOptions,
-      logs: sqlDataSource.logs,
-      models: sqlDataSource.models,
-    } as SqlDataSourceInput<U, T, C>);
-
-    sqlDataSource.ownsPool = true;
-    await sqlDataSource.testConnectionQuery("SELECT 1");
-    SqlDataSource.instance = sqlDataSource;
-
-    await cb?.(sqlDataSource as unknown as AugmentedSqlDataSource<T, C>);
-    return sqlDataSource as unknown as AugmentedSqlDataSource<T, C>;
+    return this.#instance;
   }
 
   /**
-   * @description Get's another database connection and return it, this won't be marked as the default connection used by the Models, for that use the static method `connect`
+   * @description Creates a secondary database connection that won't be set as the primary instance
    * @description By default not used by the Models, you have to pass it as a parameter to the Models to use it
-   * @throws {HysteriaError} If using models in input, and the model key is already used by the sql data source instance e.g. a model called `connect` is already used by the sql data source instance and will throw an error
    * @example
    * ```ts
-   * const anotherSql = await Sql.connectToSecondarySource({
-   *    ...connectionData
+   * const secondaryDb = await SqlDataSource.connectToSecondarySource({
+   *   type: "postgres",
+   *   host: "replica.db.com",
+   *   ...
    * });
    *
-   * const user = await User.query({ connection: anotherSql }).many();
+   * const user = await User.query({ connection: secondaryDb }).many();
    * ```
    */
   static async connectToSecondarySource<
     U extends SqlDataSourceType,
-    T extends Record<string, SqlDataSourceModel> = {},
-    C extends CacheKeys = {},
+    M extends Record<string, SqlDataSourceModel> = {},
+    K extends CacheKeys = {},
   >(
-    input: SqlDataSourceInput<U, T, C>,
-    cb?: (sqlDataSource: AugmentedSqlDataSource<T, C>) => Promise<void> | void,
-  ): Promise<AugmentedSqlDataSource<T, C>>;
-  static async connectToSecondarySource<
-    T extends Record<string, SqlDataSourceModel> = {},
-    C extends CacheKeys = {},
-  >(
-    cb?: (sqlDataSource: AugmentedSqlDataSource<T, C>) => Promise<void> | void,
-  ): Promise<AugmentedSqlDataSource<T, C>>;
-  static async connectToSecondarySource<
-    U extends SqlDataSourceType,
-    T extends Record<string, SqlDataSourceModel> = {},
-    C extends CacheKeys = {},
-  >(
-    inputOrCb?:
-      | SqlDataSourceInput<U, T, C>
-      | ((sqlDataSource: AugmentedSqlDataSource<T, C>) => Promise<void> | void),
-    cb?: (sqlDataSource: AugmentedSqlDataSource<T, C>) => Promise<void> | void,
-  ): Promise<AugmentedSqlDataSource<T, C>> {
-    if (typeof inputOrCb === "function") {
-      cb = inputOrCb;
-      inputOrCb = undefined;
-    }
-
-    const sqlDataSource = new SqlDataSource(
-      inputOrCb as SqlDataSourceInput<U, T, C>,
-    );
-
-    if (inputOrCb?.models) {
-      const sanitizeModelKeys = sqlDataSource.sanitizeModelKeys(
-        inputOrCb.models,
-      );
-
-      Object.assign(sqlDataSource, sanitizeModelKeys);
-    }
-
-    sqlDataSource.models = inputOrCb?.models || {};
-    sqlDataSource.sqlPool = await createSqlPool(sqlDataSource.sqlType, {
-      type: sqlDataSource.sqlType,
-      host: sqlDataSource.host,
-      port: sqlDataSource.port,
-      username: sqlDataSource.username,
-      password: sqlDataSource.password,
-      database: sqlDataSource.database,
-      connectionPolicies: sqlDataSource.inputDetails
-        .connectionPolicies as ConnectionPolicies,
-      queryFormatOptions: sqlDataSource.inputDetails.queryFormatOptions,
-      driverOptions: sqlDataSource.inputDetails.driverOptions,
-      logs: sqlDataSource.logs,
-      models: sqlDataSource.models,
-    } as SqlDataSourceInput<U, T, C>);
-    sqlDataSource.ownsPool = true;
-
-    await sqlDataSource.testConnectionQuery("SELECT 1");
-    SqlDataSource.instance = sqlDataSource;
-
-    await cb?.(sqlDataSource as unknown as AugmentedSqlDataSource<T, C>);
-    return sqlDataSource as unknown as AugmentedSqlDataSource<T, C>;
+    input: SqlDataSourceInput<U, M, K>,
+    cb?: (sqlDataSource: SqlDataSource<U, M, K>) => Promise<void> | void,
+  ): Promise<SqlDataSource<U, M, K>> {
+    const sqlDataSource = new SqlDataSource(input);
+    await sqlDataSource.connectWithoutSettingPrimary();
+    const result = sqlDataSource as unknown as SqlDataSource<U, M, K>;
+    await cb?.(result);
+    return result;
   }
 
   /**
-   * @description Creates a new connection and executes a callback with the new instance, the connection is automatically closed after the callback is executed, so it's lifespan is only inside the callback
-   * @description By default not used by the Models, you have to pass it as a parameter to the Models to use it
-   * @throws {HysteriaError} If using models in input, and the model key is already used by the sql data source instance e.g. a model called `connect` is already used by the sql data source instance and will throw an error
+   * @description Creates a temporary connection that is automatically closed after the callback is executed
    * @example
    * ```ts
-   * await Sql.useConnection({
-   *    ...connectionData
-   * }, (sql) => {
-   *    const user = await User.query({ connection: sql }).many();
+   * await SqlDataSource.useConnection({
+   *   type: "mysql",
+   *   ...connectionData
+   * }, async (sql) => {
+   *   const user = await User.query({ connection: sql }).many();
    * });
+   * // Connection is automatically closed here
    * ```
    */
   static async useConnection<
     U extends SqlDataSourceType,
-    T extends Record<string, SqlDataSourceModel> = {},
-    C extends CacheKeys = {},
+    M extends Record<string, SqlDataSourceModel> = {},
+    K extends CacheKeys = {},
   >(
-    connectionDetails: UseConnectionInput<U, T, C>,
-    cb: (sqlDataSource: AugmentedSqlDataSource<T, C>) => Promise<void>,
+    connectionDetails: UseConnectionInput<U, M, K>,
+    cb: (sqlDataSource: SqlDataSource<U, M, K>) => Promise<void>,
   ): Promise<void> {
-    const customSqlInstance = new SqlDataSource(
-      connectionDetails as SqlDataSourceInput<U, T, C>,
+    const sqlDataSource = new SqlDataSource(
+      connectionDetails as unknown as SqlDataSourceInput<U, M, K>,
     );
+    await sqlDataSource.connectWithoutSettingPrimary();
 
-    if (connectionDetails.models) {
-      const sanitizeModelKeys = customSqlInstance.sanitizeModelKeys(
-        connectionDetails.models,
-      );
-
-      Object.assign(customSqlInstance, sanitizeModelKeys);
-    }
-
-    customSqlInstance.models = connectionDetails.models || {};
-    customSqlInstance.sqlPool = await createSqlPool(customSqlInstance.sqlType, {
-      type: customSqlInstance.sqlType,
-      host: customSqlInstance.host,
-      port: customSqlInstance.port,
-      username: customSqlInstance.username,
-      password: customSqlInstance.password,
-      database: customSqlInstance.database,
-      connectionPolicies: customSqlInstance.inputDetails
-        .connectionPolicies as ConnectionPolicies,
-      queryFormatOptions: customSqlInstance.inputDetails.queryFormatOptions,
-      driverOptions: customSqlInstance.inputDetails.driverOptions,
-      logs: customSqlInstance.logs,
-      models: connectionDetails.models,
-    } as SqlDataSourceInput<U, T, C>);
-
-    customSqlInstance.ownsPool = true;
-    await customSqlInstance.testConnectionQuery("SELECT 1");
+    const result = sqlDataSource as unknown as SqlDataSource<U, M, K>;
 
     try {
-      await cb(
-        customSqlInstance as unknown as AugmentedSqlDataSource<T, C>,
-      ).then(async () => {
-        if (!customSqlInstance.isConnected) {
-          return;
-        }
-
-        await customSqlInstance.closeConnection();
-      });
-    } catch (error) {
-      if (customSqlInstance.isConnected) {
-        await customSqlInstance.closeConnection();
+      await cb(result);
+      if (sqlDataSource.isConnected) {
+        await sqlDataSource.closeConnection();
       }
-
+    } catch (error) {
+      if (sqlDataSource.isConnected) {
+        await sqlDataSource.closeConnection();
+      }
       throw error;
     }
   }
 
   /**
-   * @description Returns the instance of the SqlDataSource
-   * @throws {HysteriaError} If the connection is not established
-   */
-  static getInstance(): SqlDataSource {
-    if (!SqlDataSource.instance) {
-      throw new HysteriaError(
-        "SqlDataSource::getInstance",
-        "CONNECTION_NOT_ESTABLISHED",
-      );
-    }
-
-    return SqlDataSource.instance;
-  }
-
-  /**
-   * @description Returns a QueryBuilder instance
-   * @description Query builder from the SqlDataSource instance returns raw data from the database, the data is not parsed or serialized in any way
-   * @description Optimal for performance-critical operations
-   * @description Use Models to have type safety and serialization
-   * @description Default soft delete column is "deleted_at" with stringed date value
-   * @param table The table name to query from, must be in valid sql format `table` or `table as alias`
-   */
-  static query<S extends string>(
-    table: TableFormat<S>,
-    options?: RawModelOptions,
-  ): QueryBuilder {
-    const instance = this.getInstance();
-    const sqlForQueryBuilder =
-      instance.isInGlobalTransaction && instance.globalTransaction?.isActive
-        ? instance.globalTransaction.sql
-        : instance;
-
-    const qb = new QueryBuilder(
-      getRawQueryBuilderModel(table, options),
-      sqlForQueryBuilder as SqlDataSource,
-    );
-
-    if (options?.alias) {
-      qb.from(table, options.alias);
-    }
-
-    return qb;
-  }
-
-  /**
-   * @description Returns a dry query builder instance
-   * @description The dry query builder instance will not execute the query, it will return the query statement
-   * @returns The dry query builder instance
-   */
-  static dryQuery<S extends string>(
-    table: TableFormat<S>,
-    options?: RawModelOptions,
-  ): DryQueryBuilderWithoutReadOperations {
-    const instance = this.getInstance();
-    const sqlForQueryBuilder =
-      instance.isInGlobalTransaction && instance.globalTransaction?.isActive
-        ? instance.globalTransaction.sql
-        : instance;
-
-    const qb = new DryQueryBuilder(
-      getRawQueryBuilderModel(table, options),
-      sqlForQueryBuilder as SqlDataSource,
-    );
-
-    if (options?.alias) {
-      qb.from(table, options.alias);
-    }
-
-    return qb;
-  }
-
-  /**
-   * @description Creates a table on the database, return the query to be executed to create the table
-   */
-  static createTable(...args: Parameters<Schema["createTable"]>): string {
-    return this.getInstance().createTable(...args);
-  }
-
-  /**
-   * @description Alters a table on the database, return the queries to be executed in order to alter the table
-   */
-  static alterTable(...args: Parameters<Schema["alterTable"]>): string[] {
-    return this.getInstance().alterTable(...args);
-  }
-
-  /**
-   * @description Starts a global transaction on the database
-   */
-  static async startGlobalTransaction(
-    options?: StartTransactionOptions,
-  ): Promise<Transaction> {
-    return this.getInstance().startGlobalTransaction(options);
-  }
-
-  /**
-   * @description Commits a global transaction on the database
-   * @throws {HysteriaError} If the global transaction is not started
-   */
-  static async commitGlobalTransaction(): Promise<void> {
-    await this.getInstance().commitGlobalTransaction();
-  }
-
-  /**
-   * @description Rolls back a global transaction on the database
-   * @throws {HysteriaError} If the global transaction is not started
-   */
-  static async rollbackGlobalTransaction(): Promise<void> {
-    await this.getInstance().rollbackGlobalTransaction();
-  }
-
-  /**
-   * @description Starts a transaction on a dedicated connection from the pool and returns a Transaction instance
-   * @param cb if a callback is provided, it will execute the callback and commit or rollback the transaction based on the callback's success or failure
-   * @param options.isolationLevel The isolation level to use for the transaction
-   * @param options.throwErrorOnInactiveTransaction Whether to throw an error if the transaction is not active
-   * @param options.endConnection Whether to end the connection after the transaction is committed or rolled back (Default is true, better to leave it this way)
-   * @sqlite ignores the isolation level
-   */
-  static async startTransaction(
-    options?: StartTransactionOptions,
-  ): Promise<Transaction>;
-  static async startTransaction(
-    cb: (trx: Transaction) => Promise<void>,
-    options?: StartTransactionOptions,
-  ): Promise<void>;
-  static async startTransaction<T extends TransactionOptionsOrCallback>(
-    optionsOrCb?: T,
-    maybeOptions?: StartTransactionOptions,
-  ): Promise<StartTransactionReturnType<T>> {
-    return this.getInstance().startTransaction(
-      optionsOrCb as any,
-      maybeOptions,
-    ) as unknown as StartTransactionReturnType<T>;
-  }
-
-  /**
-   * @alias startTransaction
-   * @param cb if a callback is provided, it will execute the callback and commit or rollback the transaction based on the callback's success or failure
-   * @param options.isolationLevel The isolation level to use for the transaction
-   * @param options.throwErrorOnInactiveTransaction Whether to throw an error if the transaction is not active
-   * @param options.endConnection Whether to end the connection after the transaction is committed or rolled back (Default is true, better to leave it this way)
-   * @sqlite ignores the isolation level
-   */
-  static async transaction(
-    options?: StartTransactionOptions,
-  ): Promise<Transaction>;
-  static async transaction(
-    cb: (trx: Transaction) => Promise<void>,
-    options?: StartTransactionOptions,
-  ): Promise<void>;
-  static async transaction(
-    optionsOrCb?:
-      | StartTransactionOptions
-      | ((trx: Transaction) => Promise<void>),
-    maybeOptions?: StartTransactionOptions,
-  ): Promise<StartTransactionReturnType<TransactionOptionsOrCallback>>;
-  static async transaction<T extends TransactionOptionsOrCallback>(
-    optionsOrCb?: T,
-    maybeOptions?: StartTransactionOptions,
-  ): Promise<StartTransactionReturnType<T>> {
-    const options =
-      typeof optionsOrCb === "function" ? maybeOptions : optionsOrCb;
-    return this.getInstance().startTransaction(
-      optionsOrCb as any,
-      options as any,
-    ) as unknown as StartTransactionReturnType<T>;
-  }
-
-  /**
-   * @description Retrieves informations from the database for the given table
-   */
-  static async getTableSchema(table: string): Promise<TableSchemaInfo> {
-    return this.getInstance().getTableSchema(table);
-  }
-
-  /**
-   * @description Closes the current connection
+   * @description Closes the primary connection (singleton instance)
    */
   static async closeConnection(): Promise<void> {
-    if (!this.instance) {
+    if (!this.#instance) {
       logger.warn("Connection already closed");
       return;
     }
 
-    await this.instance.closeConnection();
-    this.instance = null;
+    await this.#instance.closeConnection();
+    this.#instance = null;
   }
 
   /**
@@ -551,91 +253,84 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
-   * @description Executes a raw query on the database
+   * @description Starts a global transaction on the primary database connection
+   * @description Intended for testing purposes - wraps all operations in a transaction that can be rolled back
    */
-  static async rawQuery<T = any>(
-    query: string,
-    params: any[] = [],
-  ): Promise<T> {
-    const instance = this.getInstance();
-    const sqlForRawQuery =
-      instance.isInGlobalTransaction && instance.globalTransaction?.isActive
-        ? instance.globalTransaction.sql
-        : instance;
-
-    return sqlForRawQuery.rawQuery(query, params);
+  static async startGlobalTransaction(
+    options?: StartTransactionOptions,
+  ): Promise<Transaction> {
+    return this.instance.startGlobalTransaction(options);
   }
 
   /**
-   * @description Adds a raw statement to an operation like where or update, those raw values won't be used as bindings and will be used as the are
+   * @description Commits a global transaction on the primary database connection
+   * @throws {HysteriaError} If the global transaction is not started
+   */
+  static async commitGlobalTransaction(): Promise<void> {
+    await this.instance.commitGlobalTransaction();
+  }
+
+  /**
+   * @description Rolls back a global transaction on the primary database connection
+   * @throws {HysteriaError} If the global transaction is not started
+   */
+  static async rollbackGlobalTransaction(): Promise<void> {
+    await this.instance.rollbackGlobalTransaction();
+  }
+
+  /**
+   * @description Returns true if the primary instance is in a global transaction
+   */
+  static get isInGlobalTransaction(): boolean {
+    return !!this.#instance?.globalTransaction;
+  }
+
+  // ============================================
+  // Constructor
+  // ============================================
+
+  /**
+   * @description Creates a new SqlDataSource instance. Call `.connect()` to establish the connection.
+   * @param input Configuration options for the database connection. If not provided, uses env variables.
    * @example
    * ```ts
-   * import { sql } from "hysteria-orm";
+   * // With explicit config
+   * const sql = new SqlDataSource({
+   *   type: "mysql",
+   *   host: "localhost",
+   *   username: "root",
+   *   password: "password",
+   *   database: "mydb",
+   *   models: { User, Post }
+   * });
+   * await sql.connect();
    *
-   * await User.query().where("name", sql.rawStatement("LOWER(name)"));
+   * // Using env variables
+   * const sql = new SqlDataSource();
+   * await sql.connect();
    * ```
    */
-  static rawStatement(value: string) {
-    return this.getInstance().rawStatement(value);
-  }
+  constructor(input?: SqlDataSourceInput<D, T, C>) {
+    super(input as any);
+    this.sqlType = (input?.type || this.type) as D;
 
-  /**
-   * @description Initializes AdminJS with the configured options
-   * @description All AdminJS dependencies are loaded at runtime via dynamic import() to keep the plugin optional
-   * @description To use AdminJS, install: npm install adminjs
-   * @throws {HysteriaError} If AdminJS is not enabled or connection not established
-   * @returns The AdminJS instance
-   */
-  static async initializeAdminJs(): Promise<AdminJsAdminInstance> {
-    return this.getInstance().initializeAdminJs();
-  }
+    // Cast input to access connection properties that come from mapped types
+    const inputAny = input as Record<string, any> | undefined;
 
-  /**
-   * @description Initializes AdminJS with Express router
-   * @description All AdminJS dependencies are loaded at runtime via dynamic import() to keep the plugin optional
-   * @description To use AdminJS with Express, install: npm install adminjs @adminjs/express express express-formidable --save-dev
-   * @throws {HysteriaError} If AdminJS is not enabled or connection not established
-   * @returns The AdminJS instance with Express router
-   */
-  static async initializeAdminJsExpress(): Promise<AdminJsInstance> {
-    return this.getInstance().initializeAdminJsExpress();
-  }
+    // Create inputDetails by merging input with base class values (from env vars)
+    // This ensures connection details are available even if only partially provided
+    this.inputDetails = {
+      ...input,
+      type: this.sqlType,
+      host: inputAny?.host ?? this.host,
+      port: inputAny?.port ?? this.port,
+      username: inputAny?.username ?? this.username,
+      password: inputAny?.password ?? this.password,
+      database: inputAny?.database ?? this.database,
+      logs: inputAny?.logs ?? this.logs,
+    } as unknown as SqlDataSourceInput<D, T, C>;
 
-  /**
-   * @description Returns the AdminJS instance if initialized
-   * @returns The AdminJS instance or undefined if not initialized
-   */
-  static getAdminJs(): AdminJsInstance | undefined {
-    return this.instance?.getAdminJs();
-  }
-
-  /**
-   * @description Checks if AdminJS is enabled
-   * @returns True if AdminJS is enabled
-   */
-  static isAdminJsEnabled(): boolean {
-    return this.instance?.isAdminJsEnabled() ?? false;
-  }
-
-  // Instance Methods
-  private constructor(input?: SqlDataSourceInput<SqlDataSourceType>) {
-    super(input);
-    this.sqlType = this.type as SqlDataSourceType;
-    this.inputDetails = input || {
-      connectionPolicies: {
-        retry: {
-          maxRetries: 0,
-          delay: 0,
-        },
-      },
-      queryFormatOptions: {
-        language: getSqlDialect(this.sqlType),
-        keywordCase: "lower",
-        dataTypeCase: "lower",
-        functionCase: "lower",
-      },
-    };
-
+    // Set connection policies with defaults
     this.inputDetails.connectionPolicies = input?.connectionPolicies || {
       retry: {
         maxRetries: 0,
@@ -643,6 +338,7 @@ export class SqlDataSource extends DataSource {
       },
     };
 
+    // Set query format options with defaults
     this.inputDetails.queryFormatOptions = input?.queryFormatOptions || {
       language: getSqlDialect(this.sqlType),
       keywordCase: "lower",
@@ -650,10 +346,72 @@ export class SqlDataSource extends DataSource {
       functionCase: "lower",
     };
 
-    this.cacheKeys = input?.cacheStrategy?.keys ?? {};
+    // Set cache configuration
+    this.cacheKeys = (input?.cacheStrategy?.keys ?? {}) as C;
     this.cacheAdapter = input?.cacheStrategy?.cacheAdapter ?? this.cacheAdapter;
+
+    // Set AdminJS options
     this.adminJsOptions = input?.adminJs;
+
+    // Set migrations path
     this.migrationsPath = input?.migrationsPath || this.migrationsPath;
+
+    // Set models configured on the sql data source instance
+    this._models = (input?.models || {}) as T;
+  }
+
+  // ============================================
+  // Connect Method
+  // ============================================
+
+  /**
+   * @description Establishes the database connection and sets this instance as the primary connection
+   * @throws {HysteriaError} If the connection is already established, use `SqlDataSource.useConnection` or `SqlDataSource.connectToSecondarySource` for auxiliary connections
+   * @example
+   * ```ts
+   * const sql = new SqlDataSource({ type: "mysql", ... });
+   * await sql.connect();
+   * ```
+   */
+  async connect(): Promise<void> {
+    if (SqlDataSource.#instance) {
+      throw new HysteriaError(
+        "SqlDataSource::connect",
+        "CONNECTION_ALREADY_ESTABLISHED",
+      );
+    }
+
+    // Create the connection pool
+    this.sqlPool = await createSqlPool(this.sqlType, this.inputDetails);
+    this.ownsPool = true;
+
+    // Set as primary instance
+    SqlDataSource.#instance = this;
+  }
+
+  // ============================================
+  // Instance Methods
+  // ============================================
+
+  /**
+   * @description Returns true if the connection is established
+   */
+  get isConnected(): boolean {
+    return !!this.sqlPool || !!this.sqlConnection;
+  }
+
+  /**
+   * @description Returns true if this instance is in a global transaction
+   */
+  get isInGlobalTransaction(): boolean {
+    return !!this.globalTransaction;
+  }
+
+  /**
+   * @description Returns the models configured on this SqlDataSource instance
+   */
+  get models(): T {
+    return this._models;
   }
 
   /**
@@ -661,12 +419,7 @@ export class SqlDataSource extends DataSource {
    * @param key The key to get the value from
    * @param args The arguments to pass to the key handler
    */
-  async useCache<
-    M extends Record<string, typeof Model>,
-    C extends CacheKeys,
-    K extends keyof C,
-  >(
-    this: AugmentedSqlDataSource<M, C>,
+  async useCache<K extends keyof C>(
     key: K,
     ...args: Parameters<C[K]>
   ): Promise<UseCacheReturnType<C, K>>;
@@ -676,22 +429,12 @@ export class SqlDataSource extends DataSource {
    * @param ttl The time to live for the value in milliseconds
    * @param args The arguments to pass to the key handler
    */
-  async useCache<
-    M extends Record<string, typeof Model>,
-    C extends CacheKeys,
-    K extends keyof C,
-  >(
-    this: AugmentedSqlDataSource<M, C>,
+  async useCache<K extends keyof C>(
     key: K,
     ttl: number,
     ...args: Parameters<C[K]>
   ): Promise<UseCacheReturnType<C, K>>;
-  async useCache<
-    M extends Record<string, typeof Model>,
-    C extends CacheKeys,
-    K extends keyof C,
-  >(
-    this: AugmentedSqlDataSource<M, C>,
+  async useCache<K extends keyof C>(
     key: K,
     ttlOrFirstArg?: number | any,
     ...restArgs: any[]
@@ -703,7 +446,7 @@ export class SqlDataSource extends DataSource {
       );
     }
 
-    const mappedKeyHandler = this.cacheKeys[key as keyof typeof this.cacheKeys];
+    const mappedKeyHandler = this.cacheKeys[key];
     if (!mappedKeyHandler) {
       throw new HysteriaError(
         "SqlDataSource::useCache",
@@ -711,7 +454,7 @@ export class SqlDataSource extends DataSource {
       );
     }
 
-    const handlerArgsCount = mappedKeyHandler.length;
+    const handlerArgsCount = (mappedKeyHandler as Function).length;
     const isTTLProvided =
       typeof ttlOrFirstArg === "number" && handlerArgsCount === restArgs.length;
 
@@ -721,9 +464,7 @@ export class SqlDataSource extends DataSource {
     if (isTTLProvided) {
       ttl = ttlOrFirstArg;
       args = restArgs;
-    }
-
-    if (!isTTLProvided) {
+    } else {
       ttl = undefined;
       args =
         ttlOrFirstArg !== undefined ? [ttlOrFirstArg, ...restArgs] : restArgs;
@@ -739,7 +480,7 @@ export class SqlDataSource extends DataSource {
       return cachedValue as UseCacheReturnType<C, K>;
     }
 
-    const retrievedValue = await mappedKeyHandler(...args);
+    const retrievedValue = await (mappedKeyHandler as Function)(...args);
     await this.cacheAdapter.set(cachedKey, retrievedValue, ttl);
     return retrievedValue;
   }
@@ -747,22 +488,35 @@ export class SqlDataSource extends DataSource {
   /**
    * @description Invalidates a value from the cache
    * @param key The key to invalidate the value from
-   * @param args The arguments to pass to the key handler
+   * @param args The arguments to pass to the key handler (required if the handler expects arguments)
    */
-  async invalidCache<
-    M extends Record<string, typeof Model>,
-    C extends CacheKeys,
-    K extends keyof C,
-  >(
-    this: AugmentedSqlDataSource<M, C>,
+  async invalidCache<K extends keyof C>(
     key: K,
     ...args: Parameters<C[K]>
-  ): Promise<void> {
+  ): Promise<void>;
+  async invalidCache<K extends keyof C>(key: K): Promise<void>;
+  async invalidCache<K extends keyof C>(key: K, ...args: any[]): Promise<void> {
     if (!this.cacheAdapter) {
       throw new HysteriaError(
-        "SqlDataSource::useCache",
+        "SqlDataSource::invalidCache",
         "CACHE_ADAPTER_NOT_CONFIGURED",
       );
+    }
+
+    const mappedKeyHandler = this.cacheKeys[key];
+    if (!mappedKeyHandler) {
+      throw new HysteriaError(
+        "SqlDataSource::invalidCache",
+        `KEY_${key as string}_HAS_NO_HANDLER_IN_CACHE_KEYS_CONFIG`,
+      );
+    }
+
+    const handlerArgsCount = (mappedKeyHandler as Function).length;
+
+    if (handlerArgsCount > 0 && args.length === 0) {
+      const cachedKey = key as string;
+      await this.cacheAdapter.invalidate(cachedKey);
+      return;
     }
 
     const hashedArgs = hashString(JSON.stringify(args));
@@ -771,13 +525,6 @@ export class SqlDataSource extends DataSource {
       : (key as string);
 
     await this.cacheAdapter.invalidate(cachedKey);
-  }
-
-  /**
-   * @description Returns true if the connection is established
-   */
-  get isConnected(): boolean {
-    return !!this.sqlPool || !!this.sqlConnection;
   }
 
   /**
@@ -790,38 +537,16 @@ export class SqlDataSource extends DataSource {
     const cloned = new SqlDataSource(this.inputDetails) as this;
     const mustCreateNewPool =
       cloned.sqlType === "sqlite" || !!options?.shouldRecreatePool;
+
     if (mustCreateNewPool) {
-      cloned.sqlPool = await createSqlPool(cloned.sqlType, {
-        type: cloned.sqlType,
-        host: cloned.host,
-        port: cloned.port,
-        username: cloned.username,
-        password: cloned.password,
-        database: cloned.database,
-        connectionPolicies: cloned.inputDetails
-          .connectionPolicies as ConnectionPolicies,
-        queryFormatOptions: cloned.inputDetails.queryFormatOptions,
-        driverOptions: cloned.inputDetails.driverOptions,
-        logs: cloned.logs,
-        models: cloned.models,
-      } as SqlDataSourceInput<SqlDataSourceType>);
-
+      cloned.sqlPool = await createSqlPool(
+        cloned.sqlType,
+        this.inputDetails as SqlDataSourceInput<SqlDataSourceType>,
+      );
       cloned.ownsPool = true;
-
-      if (Object.keys(this.models).length) {
-        const sanitizeModelKeys = cloned.sanitizeModelKeys(this.models);
-        Object.assign(cloned, sanitizeModelKeys);
-      }
-
-      return cloned;
-    }
-
-    cloned.sqlPool = this.sqlPool;
-    cloned.ownsPool = false;
-
-    if (Object.keys(this.models).length) {
-      const sanitizeModelKeys = cloned.sanitizeModelKeys(this.models);
-      Object.assign(cloned, sanitizeModelKeys);
+    } else {
+      cloned.sqlPool = this.sqlPool;
+      cloned.ownsPool = false;
     }
 
     return cloned;
@@ -830,17 +555,14 @@ export class SqlDataSource extends DataSource {
   /**
    * @description Returns the type of the database
    */
-  getDbType(): SqlDataSourceType {
-    return this.type as SqlDataSourceType;
+  getDbType(): D {
+    return this.sqlType;
   }
 
   /**
-   * @description Returns a QueryBuilder instance
-   * @description Query builder from the SqlDataSource instance uses raw data from the database so the data is not parsed or serialized in any way
-   * @description Optimal for performance-critical operations
-   * @description Use Models to have type safety and serialization
-   * @description Default soft delete column is "deleted_at" with stringed date value
-   * @param table The table name to query from, must be in valid sql format `table` or `table as alias`
+   * @description Returns a QueryBuilder instance for raw queries
+   * @description Query builder from the SqlDataSource instance returns raw data from the database
+   * @param table The table name to query from
    */
   query<S extends string>(
     table: TableFormat<S>,
@@ -864,9 +586,7 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
-   * @description Returns a DryQueryBuilder instance
-   * @description The dry query builder instance will not execute the query, it will return the query statement
-   * @returns The dry query builder instance
+   * @description Returns a DryQueryBuilder instance that returns the query statement without executing
    */
   dryQuery<S extends string>(
     table: TableFormat<S>,
@@ -894,7 +614,8 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
-   * @description Starts a global transaction on the database on the main connection pool, intended to for testing purposes only, don't use it in production
+   * @description Starts a global transaction on the database
+   * @description Intended for testing purposes - wraps all operations in a transaction that can be rolled back
    */
   async startGlobalTransaction(
     options?: StartTransactionOptions,
@@ -907,7 +628,7 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
-   * @description Commits a global transaction on the database on the main connection pool, intended to for testing purposes only, don't use it in production
+   * @description Commits a global transaction on the database
    * @throws {HysteriaError} If the global transaction is not started
    */
   async commitGlobalTransaction(
@@ -927,8 +648,7 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
-   * @description Rolls back a global transaction on the database on the main connection pool, intended to for testing purposes only, don't use it in production
-   * @throws {HysteriaError} If the global transaction is not started and options.throwErrorOnInactiveTransaction is true
+   * @description Rolls back a global transaction on the database
    */
   async rollbackGlobalTransaction(
     options?: TransactionExecutionOptions,
@@ -947,11 +667,9 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
-   * @description Get's a connection from the pool and starts a transaction on the database and returns an already started transaction instance
+   * @description Starts a transaction on a dedicated connection from the pool
    * @param cb if a callback is provided, it will execute the callback and commit or rollback the transaction based on the callback's success or failure
    * @param options.isolationLevel The isolation level to use for the transaction
-   * @param options.throwErrorOnInactiveTransaction Whether to throw an error if the transaction is not active
-   * @param options.endConnection Whether to end the connection after the transaction is committed or rolled back (Default is true, better to leave it this way)
    * @sqlite ignores the isolation level
    */
   async startTransaction(
@@ -961,29 +679,28 @@ export class SqlDataSource extends DataSource {
     cb: (trx: Transaction) => Promise<void>,
     options?: StartTransactionOptions,
   ): Promise<void>;
-  async startTransaction<T extends TransactionOptionsOrCallback>(
+  async startTransaction<TOption extends TransactionOptionsOrCallback>(
     optionsOrCb?:
       | StartTransactionOptions
       | ((trx: Transaction) => Promise<void>),
     maybeOptions?: StartTransactionOptions,
-  ): Promise<StartTransactionReturnType<T>> {
+  ): Promise<StartTransactionReturnType<TOption>> {
     const options =
       typeof optionsOrCb === "function" ? maybeOptions : optionsOrCb;
 
-    // If a global transaction is active, create a nested transaction on the same connection.
-    // This avoids cross-connection locks with uncommitted rows during tests that run under a global transaction.
+    // If a global transaction is active, create a nested transaction on the same connection
     if (this.globalTransaction?.isActive) {
       if (typeof optionsOrCb === "function") {
         try {
           await this.globalTransaction.nestedTransaction(optionsOrCb);
-          return undefined as StartTransactionReturnType<T>;
+          return undefined as StartTransactionReturnType<TOption>;
         } catch (error) {
           throw error;
         }
       }
 
       const nested = await this.globalTransaction.nestedTransaction();
-      return nested as StartTransactionReturnType<T>;
+      return nested as StartTransactionReturnType<TOption>;
     }
 
     const cloned = await this.clone();
@@ -997,7 +714,7 @@ export class SqlDataSource extends DataSource {
         await sqlTrx.commit({
           throwErrorOnInactiveTransaction: false,
         });
-        return undefined as StartTransactionReturnType<T>;
+        return undefined as StartTransactionReturnType<TOption>;
       } catch (error) {
         await sqlTrx.rollback({
           throwErrorOnInactiveTransaction: false,
@@ -1006,17 +723,11 @@ export class SqlDataSource extends DataSource {
       }
     }
 
-    return sqlTrx as StartTransactionReturnType<T>;
+    return sqlTrx as StartTransactionReturnType<TOption>;
   }
 
   /**
    * @alias startTransaction
-   * @description Get's a connection from the pool and starts a transaction on the database and returns an already started transaction instance
-   * @param cb if a callback is provided, it will execute the callback and commit or rollback the transaction based on the callback's success or failure
-   * @param options.isolationLevel The isolation level to use for the transaction
-   * @param options.throwErrorOnInactiveTransaction Whether to throw an error if the transaction is not active
-   * @param options.endConnection Whether to end the connection after the transaction is committed or rolled back (Default is true, better to leave it this way)
-   * @sqlite ignores the isolation level
    */
   async transaction(options?: StartTransactionOptions): Promise<Transaction>;
   async transaction(
@@ -1033,12 +744,11 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
-   * @description Returns a ModelManager instance for the given model, it's advised to use Model static methods instead.
-   * @description This is intended to use only if you do not want to use active record pattern
+   * @description Returns a ModelManager instance for the given model
    */
-  getModelManager<T extends Model>(
-    model: { new (): T } | typeof Model,
-  ): ModelManager<T> {
+  getModelManager<M extends Model>(
+    model: { new (): M } | typeof Model,
+  ): ModelManager<M> {
     if (!this.isConnected) {
       throw new HysteriaError(
         "SqlDataSource::getModelManager",
@@ -1057,16 +767,10 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
-   * @description Returns the current raw driver Pool, you can specify the type of connection you want to get to have better type safety
+   * @description Returns the current raw driver Pool
    * @throws {HysteriaError} If the connection pool is not established
-   * @example
-   * const mysqlConnection = sql.getPool("mysql"); // mysql2 Pool
-   * const pgConnection = sql.getPool("postgres"); // pg Pool
-   * const sqliteConnection = sql.getPool("sqlite"); // sqlite3 Database
    */
-  getPool<T extends SqlDataSourceType = typeof this.sqlType>(
-    _specificType: T = this.sqlType as T,
-  ): getPoolReturnType<T> {
+  getPool(): getPoolReturnType<D> {
     if (!this.sqlPool) {
       throw new HysteriaError(
         "SqlDataSource::getPool",
@@ -1074,22 +778,16 @@ export class SqlDataSource extends DataSource {
       );
     }
 
-    return this.sqlPool as getPoolReturnType<T>;
+    return this.sqlPool as getPoolReturnType<D>;
   }
 
   /**
-   * @description Returns a connection from the pool, you can specify the type of connection you want to get to have better type safety
+   * @description Returns a connection from the pool
    * @throws {HysteriaError} If the connection is not established
-   * @example
-   * const mysqlConnection = sql.getConnection("mysql"); // mysql2 PoolConnection
-   * const pgConnection = sql.getConnection("postgres"); // pg PoolClient
-   * const sqliteConnection = sql.getConnection("sqlite"); // sqlite3 Database
    */
-  async getConnection<T extends SqlDataSourceType = typeof this.sqlType>(
-    _specificType: T = this.sqlType as T,
-  ): Promise<GetConnectionReturnType<T>> {
+  async getConnection(): Promise<GetConnectionReturnType<D>> {
     if (this.sqlConnection) {
-      return this.sqlConnection as GetConnectionReturnType<T>;
+      return this.sqlConnection as GetConnectionReturnType<D>;
     }
 
     if (!this.sqlPool) {
@@ -1103,16 +801,19 @@ export class SqlDataSource extends DataSource {
       case "mysql":
       case "mariadb":
         const mysqlPool = this.sqlPool as MysqlConnectionInstance;
-        return (await mysqlPool.getConnection()) as GetConnectionReturnType<T>;
+        return (await mysqlPool.getConnection()) as GetConnectionReturnType<D>;
       case "postgres":
       case "cockroachdb":
         const pgPool = this.sqlPool as PgPoolClientInstance;
-        return (await pgPool.connect()) as GetConnectionReturnType<T>;
+        return (await pgPool.connect()) as GetConnectionReturnType<D>;
       case "sqlite":
-        return this.sqlPool as GetConnectionReturnType<T>;
+        return this.sqlPool as GetConnectionReturnType<D>;
       case "mssql":
         const mssqlPool = this.sqlPool as MssqlPoolInstance;
-        return mssqlPool.transaction() as GetConnectionReturnType<T>;
+        return mssqlPool.transaction() as GetConnectionReturnType<D>;
+      case "oracledb":
+        const oracledbPool = this.sqlPool as OracleDBPoolInstance;
+        return (await oracledbPool.getConnection()) as GetConnectionReturnType<D>;
       default:
         throw new HysteriaError(
           "SqlDataSource::getConnection",
@@ -1151,7 +852,7 @@ export class SqlDataSource extends DataSource {
     await this.cacheAdapter?.disconnect?.();
 
     log("Closing connection", this.logs);
-    switch (this.type) {
+    switch (this.sqlType) {
       case "mysql":
       case "mariadb":
         await (this.sqlPool as MysqlConnectionInstance).end();
@@ -1173,10 +874,13 @@ export class SqlDataSource extends DataSource {
       case "mssql":
         await (this.sqlPool as MssqlPoolInstance).close();
         break;
+      case "oracledb":
+        await (this.sqlPool as OracleDBPoolInstance).close();
+        break;
       default:
         throw new HysteriaError(
           "SqlDataSource::closeConnection",
-          `UNSUPPORTED_DATABASE_TYPE_${this.type}`,
+          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`,
         );
     }
 
@@ -1184,7 +888,10 @@ export class SqlDataSource extends DataSource {
     this.sqlConnection = null;
   }
 
-  getConnectionDetails(): SqlDataSourceInput<SqlDataSourceType> {
+  /**
+   * @description Returns the connection details
+   */
+  getConnectionDetails(): SqlDataSourceInput<D, T, C> {
     return {
       type: this.getDbType(),
       host: this.host,
@@ -1195,7 +902,7 @@ export class SqlDataSource extends DataSource {
       connectionPolicies: this.inputDetails
         .connectionPolicies as ConnectionPolicies,
       queryFormatOptions: this.inputDetails.queryFormatOptions,
-    };
+    } as unknown as SqlDataSourceInput<D, T, C>;
   }
 
   /**
@@ -1207,8 +914,7 @@ export class SqlDataSource extends DataSource {
 
   /**
    * @description Syncs the schema of the database with the models metadata
-   * @warning This will drop and recreate all the indexes and constraints, use with caution and not in production environments
-   * @param options.transactional Whether to use a transaction to sync the schema, if true it will use a transaction for the entire sync operation, defaults to false
+   * @warning This will drop and recreate all the indexes and constraints, use with caution
    * @sqlite Not supported but won't throw an error
    */
   async syncSchema(options?: { transactional: boolean }): Promise<void> {
@@ -1250,9 +956,12 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
-   * @description Executes a raw query on the database
+   * @description Executes a raw query on the database and returns the raw driver result
    */
-  async rawQuery<T = any>(query: string, params: any[] = []): Promise<T> {
+  async rawQuery<R = RawQueryResponseType<D>>(
+    query: string,
+    params: any[] = [],
+  ): Promise<R> {
     if (!this.isConnected) {
       throw new HysteriaError(
         "SqlDataSource::rawQuery",
@@ -1261,15 +970,13 @@ export class SqlDataSource extends DataSource {
     }
 
     const formattedQuery = formatQuery(this, query);
-    return execSql(formattedQuery, params, this, "raw");
+    return execSql(formattedQuery, params, this, this.getDbType(), "raw") as R;
   }
 
   /**
-   * @description Adds a raw statement to an operation like where or update, those raw values won't be used as bindings and will be used as the are
+   * @description Adds a raw statement to an operation like where or update
    * @example
    * ```ts
-   * import { sql } from "hysteria-orm";
-   *
    * await User.query().where("name", sql.rawStatement("LOWER(name)"));
    * ```
    */
@@ -1297,7 +1004,7 @@ export class SqlDataSource extends DataSource {
    */
   getModelOpenApiSchema() {
     return generateOpenApiModelWithMetadata(
-      Object.values(this.models) as unknown as (new () => Model)[],
+      Object.values(this._models) as unknown as (new () => Model)[],
     );
   }
 
@@ -1305,10 +1012,7 @@ export class SqlDataSource extends DataSource {
 
   /**
    * @description Initializes AdminJS with the configured options
-   * @description All AdminJS dependencies are loaded at runtime via dynamic import() to keep the plugin optional
-   * @description To use AdminJS, install: npm install adminjs
    * @throws {HysteriaError} If AdminJS is not enabled in the configuration
-   * @returns The AdminJS instance
    */
   async initializeAdminJs(): Promise<AdminJsAdminInstance> {
     if (!this.adminJsOptions?.enabled) {
@@ -1328,12 +1032,9 @@ export class SqlDataSource extends DataSource {
 
   /**
    * @description Initializes AdminJS with Express router
-   * @description All AdminJS dependencies are loaded at runtime via dynamic import() to keep the plugin optional
-   * @description To use AdminJS with Express, install: npm install adminjs @adminjs/express express express-formidable --save-dev
    * @throws {HysteriaError} If AdminJS is not enabled in the configuration
-   * @returns The AdminJS instance with Express router
    */
-  async initializeAdminJsExpress(): Promise<AdminJsInstance> {
+  async initializeAdminJsExpress(): Promise<Required<AdminJsInstance>> {
     if (!this.adminJsOptions?.enabled) {
       throw new HysteriaError(
         "SqlDataSource::initializeAdminJsExpress",
@@ -1342,19 +1043,18 @@ export class SqlDataSource extends DataSource {
     }
 
     if (this.adminJsInstance?.router) {
-      return this.adminJsInstance;
+      return this.adminJsInstance as Required<AdminJsInstance>;
     }
 
     this.adminJsInstance = await initializeAdminJsExpress(
       this,
       this.adminJsOptions,
     );
-    return this.adminJsInstance;
+    return this.adminJsInstance as Required<AdminJsInstance>;
   }
 
   /**
    * @description Returns the AdminJS instance if initialized
-   * @returns The AdminJS instance or undefined if not initialized
    */
   getAdminJs(): AdminJsInstance | undefined {
     return this.adminJsInstance;
@@ -1362,7 +1062,6 @@ export class SqlDataSource extends DataSource {
 
   /**
    * @description Returns the AdminJS configuration options
-   * @returns The AdminJS configuration options or undefined if not configured
    */
   getAdminJsOptions(): AdminJsOptions | undefined {
     return this.adminJsOptions;
@@ -1370,7 +1069,6 @@ export class SqlDataSource extends DataSource {
 
   /**
    * @description Checks if AdminJS is enabled
-   * @returns True if AdminJS is enabled
    */
   isAdminJsEnabled(): boolean {
     return !!this.adminJsOptions?.enabled;
@@ -1473,7 +1171,7 @@ export class SqlDataSource extends DataSource {
   }
 
   /**
-   * @description Introspects table indexes metadata using AST-driven queries
+   * @description Introspects table indexes metadata
    */
   async getIndexInfo(table: string): Promise<TableIndexInfo[]> {
     const ast = new AstParser(
@@ -1534,7 +1232,7 @@ export class SqlDataSource extends DataSource {
       return Array.from(map.values());
     }
 
-    // sqlite: PRAGMA index_list returns name, unique; need per-index columns via PRAGMA index_info(name)
+    // sqlite
     const result: TableIndexInfo[] = [];
     for (const r of rows) {
       const name = r.name;
@@ -1546,6 +1244,9 @@ export class SqlDataSource extends DataSource {
     return result;
   }
 
+  /**
+   * @description Introspects table foreign keys metadata
+   */
   async getForeignKeyInfo(table: string): Promise<TableForeignKeyInfo[]> {
     const ast = new AstParser(
       {
@@ -1648,49 +1349,16 @@ export class SqlDataSource extends DataSource {
     };
   }
 
-  private async testConnectionQuery(query: string): Promise<void> {
-    await execSql(query, [], this, "raw", {
-      shouldNotLog: true,
-    });
-  }
-
-  private sanitizeModelKeys(
-    models: Record<string, SqlDataSourceModel>,
-  ): Record<string, SqlDataSourceModel> {
-    const instanceKeys = Object.getOwnPropertyNames(this);
-    const staticKeys = Object.getOwnPropertyNames(this.constructor);
-    const allKeys = [...instanceKeys, ...staticKeys];
-
-    if (Object.keys(models).some((key) => allKeys.includes(key))) {
-      throw new HysteriaError(
-        "SqlDataSource::sanitizeModelKeys",
-        "DUPLICATE_MODEL_KEYS_WHILE_INSTANTIATING_MODELS",
-        new Error(
-          `Duplicate model keys while instantiating models inside the connection: ${Object.keys(
-            models,
-          )
-            .filter((key) => allKeys.includes(key))
-            .map((key) => `"${key}"`)
-            .join(", ")}`,
-        ),
-      );
-    }
-
-    return models;
-  }
-
-  static get isInGlobalTransaction(): boolean {
-    return !!this.instance?.globalTransaction;
-  }
-
-  get isInGlobalTransaction(): boolean {
-    return !!this.globalTransaction;
-  }
+  // ============================================
+  // Private Methods
+  // ============================================
 
   /**
-   * @description Returns the models registered on this SqlDataSource instance (as provided in connect input)
+   * @description Internal method to establish connection without setting as primary instance
+   * @description Used by connectToSecondarySource and useConnection
    */
-  get registeredModels(): Record<string, typeof Model> {
-    return this.models;
+  private async connectWithoutSettingPrimary(): Promise<void> {
+    this.sqlPool = await createSqlPool(this.sqlType, this.inputDetails);
+    this.ownsPool = true;
   }
 }

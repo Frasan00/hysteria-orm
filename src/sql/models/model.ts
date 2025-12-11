@@ -346,6 +346,7 @@ export abstract class Model extends Entity {
    * @mysql If no Primary Key is present in the model definition, the model will be returned
    * @sqlite If no Primary Key is present in the model definition, the model will be returned
    * @sqlite Returning Not supported and won't have effect
+   * @oracledb may do multiple inserts with auto-generated identity columns
    */
   static async insertMany<T extends Model>(
     this: new () => T | typeof Model,
@@ -901,7 +902,7 @@ export abstract class Model extends Entity {
    * @internal
    */
   private static establishConnection(): void {
-    const sql = SqlDataSource.getInstance();
+    const sql = SqlDataSource.instance;
     if (!sql) {
       throw new HysteriaError(
         "sqlInstance not initialized, did you defined it in SqlDataSource.connect static method?",

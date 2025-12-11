@@ -3,6 +3,7 @@ import type { config as MssqlConfig } from "mssql";
 import type { PoolOptions } from "mysql2/promise";
 import type { ClientConfig } from "pg";
 import type { DataSourceType } from "../data_source/data_source_types";
+import type { PoolAttributes } from "oracledb";
 
 export type Mysql2Import = typeof import("mysql2/promise");
 export type Mysql2SyncImport = typeof import("mysql2");
@@ -10,7 +11,9 @@ export type PgImport = typeof import("pg");
 export type Sqlite3Import = typeof import("sqlite3");
 export type MongoClientImport = typeof import("mongodb");
 export type MssqlImport = typeof import("mssql");
+export type OracleDBImport = typeof import("oracledb");
 
+export type OracleDBCreateConnectionOptions = PoolAttributes;
 export type MysqlCreateConnectionOptions = PoolOptions;
 export type PgClientOptions = ClientConfig;
 export type MssqlConnectionOptions = Omit<MssqlConfig, "options"> & {
@@ -34,9 +37,12 @@ export type DriverSpecificOptions<T extends DataSourceType> = T extends "mongo"
         ? MysqlCreateConnectionOptions
         : T extends "mssql"
           ? MssqlConnectionOptions
-          : never;
+          : T extends "oracledb"
+            ? OracleDBCreateConnectionOptions
+            : never;
 
 export type DriverImport =
+  | OracleDBImport
   | Mysql2Import
   | PgImport
   | Sqlite3Import

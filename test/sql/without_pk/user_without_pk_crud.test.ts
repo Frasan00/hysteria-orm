@@ -8,7 +8,8 @@ import {
 } from "../test_models/without_pk/user_without_pk";
 
 beforeAll(async () => {
-  await SqlDataSource.connect();
+  const dataSource = new SqlDataSource();
+  await dataSource.connect();
 });
 
 afterAll(async () => {

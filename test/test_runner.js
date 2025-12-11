@@ -4,13 +4,14 @@ import { execSync } from "node:child_process";
 import {
   cockroachdbConfig,
   mariadbConfig,
+  mssqlConfig,
   mysqlConfig,
   pgConfig,
   sqliteConfig,
-  mssqlConfig,
 } from "./test_environments.js";
 
 const sqlEnvironments = [
+  // oracledbConfig,
   mysqlConfig,
   sqliteConfig,
   mariadbConfig,

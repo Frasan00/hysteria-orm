@@ -4,6 +4,7 @@
  */
 
 import type { Model } from "../sql/models/model";
+import type express from "express";
 
 /**
  * @description Configuration options for AdminJS integration
@@ -373,7 +374,7 @@ export type AdminJsInstance = {
   /**
    * @description Express router for AdminJS (if using express adapter)
    */
-  router?: unknown;
+  router?: ReturnType<typeof express.Router>;
 };
 
 /**

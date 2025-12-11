@@ -9,7 +9,8 @@ import { PostWithUuid } from "../test_models/uuid/post_uuid";
 import { UserWithUuid } from "../test_models/uuid/user_uuid";
 
 beforeAll(async () => {
-  await SqlDataSource.connect();
+  const dataSource = new SqlDataSource();
+  await dataSource.connect();
 });
 
 afterAll(async () => {

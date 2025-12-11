@@ -80,7 +80,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
 
   constructor(
     model: typeof Model,
-    sqlDataSource: SqlDataSource = SqlDataSource.getInstance(),
+    sqlDataSource: SqlDataSource = SqlDataSource.instance,
   ) {
     super(model, sqlDataSource);
     this.dbType = sqlDataSource.getDbType();
@@ -105,7 +105,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    */
   async many(): Promise<AnnotatedModel<T, any, any>[]> {
     const { sql, bindings } = this.unWrap();
-    return execSql(sql, bindings, this.sqlDataSource, "raw", {
+    return execSql(sql, bindings, this.sqlDataSource, this.dbType, "rows", {
       sqlLiteOptions: {
         typeofModel: this.model,
         mode: "fetch",
@@ -586,13 +586,20 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     this.insertNode = new InsertNode(this.fromNode, [insertObject], returning);
     const { sql, bindings } = this.astParser.parse([this.insertNode]);
 
-    const rows = await execSql(sql, bindings, this.sqlDataSource, "raw", {
-      sqlLiteOptions: {
-        typeofModel: this.model,
-        mode: "insertOne",
-        models: [data as T],
+    const rows = await execSql(
+      sql,
+      bindings,
+      this.sqlDataSource,
+      this.dbType,
+      "rows",
+      {
+        sqlLiteOptions: {
+          typeofModel: this.model,
+          mode: "insertOne",
+          models: [data as T],
+        },
       },
-    });
+    );
 
     return Array.isArray(rows) && rows.length ? rows[0] : rows;
   }
@@ -601,6 +608,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    * @description Insert multiple records into a table
    * @param returning - The columns to return from the query, only supported by postgres and cockroachdb - default is "*"
    * @returns raw driver response
+   * @oracledb may do multiple inserts with auto-generated identity columns
    */
   async insertMany(
     data: Record<string, any>[],
@@ -631,7 +639,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     this.insertNode = new InsertNode(this.fromNode, models, returning);
     const { sql, bindings } = this.astParser.parse([this.insertNode]);
 
-    return execSql(sql, bindings, this.sqlDataSource, "raw", {
+    return execSql(sql, bindings, this.sqlDataSource, this.dbType, "rows", {
       sqlLiteOptions: {
         typeofModel: this.model,
         mode: "insertMany",
@@ -694,13 +702,20 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
       ),
     ]);
 
-    const rawResult = await execSql(sql, bindings, this.sqlDataSource, "raw", {
-      sqlLiteOptions: {
-        typeofModel: this.model,
-        mode: "raw",
-        models: [data as unknown as T],
+    const rawResult = await execSql(
+      sql,
+      bindings,
+      this.sqlDataSource,
+      this.dbType,
+      "rows",
+      {
+        sqlLiteOptions: {
+          typeofModel: this.model,
+          mode: "raw",
+          models: [data as unknown as T],
+        },
       },
-    });
+    );
 
     return (Array.isArray(rawResult) ? rawResult : [rawResult]) as T[];
   }
@@ -769,13 +784,20 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
       ),
     ]);
 
-    const rawResult = await execSql(sql, bindings, this.sqlDataSource, "raw", {
-      sqlLiteOptions: {
-        typeofModel: this.model,
-        mode: "raw",
-        models: data as unknown as T[],
+    const rawResult = await execSql(
+      sql,
+      bindings,
+      this.sqlDataSource,
+      this.dbType,
+      "rows",
+      {
+        sqlLiteOptions: {
+          typeofModel: this.model,
+          mode: "raw",
+          models: data as unknown as T[],
+        },
       },
-    });
+    );
     return (Array.isArray(rawResult)
       ? rawResult
       : [rawResult]) as unknown as T[];
@@ -857,13 +879,20 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
       `when not matched then insert (${insertCols}) values (${insertVals}) ` +
       `output ${outputCols};`;
 
-    const rawResult = await execSql(sql, bindings, this.sqlDataSource, "raw", {
-      sqlLiteOptions: {
-        typeofModel: this.model,
-        mode: "raw",
-        models: data as unknown as T[],
+    const rawResult = await execSql(
+      sql,
+      bindings,
+      this.sqlDataSource,
+      this.dbType,
+      "rows",
+      {
+        sqlLiteOptions: {
+          typeofModel: this.model,
+          mode: "raw",
+          models: data as unknown as T[],
+        },
       },
-    });
+    );
 
     return (Array.isArray(rawResult)
       ? rawResult
@@ -891,9 +920,16 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
       ...this.joinNodes,
     ]);
 
-    return execSql(sql, bindings, this.sqlDataSource, "affectedRows", {
-      sqlLiteOptions: { typeofModel: this.model, mode: "affectedRows" },
-    });
+    return execSql(
+      sql,
+      bindings,
+      this.sqlDataSource,
+      this.dbType,
+      "affectedRows",
+      {
+        sqlLiteOptions: { typeofModel: this.model, mode: "affectedRows" },
+      },
+    );
   }
 
   /**
@@ -903,7 +939,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   async truncate(): Promise<void> {
     this.truncateNode = new TruncateNode(this.fromNode);
     const { sql, bindings } = this.astParser.parse([this.truncateNode]);
-    await execSql(sql, bindings, this.sqlDataSource, "raw");
+    await execSql(sql, bindings, this.sqlDataSource, this.dbType, "rows");
   }
 
   /**
@@ -918,12 +954,19 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
       ...this.joinNodes,
     ]);
 
-    return execSql(sql, bindings, this.sqlDataSource, "affectedRows", {
-      sqlLiteOptions: {
-        typeofModel: this.model,
-        mode: "affectedRows",
+    return execSql(
+      sql,
+      bindings,
+      this.sqlDataSource,
+      this.dbType,
+      "affectedRows",
+      {
+        sqlLiteOptions: {
+          typeofModel: this.model,
+          mode: "affectedRows",
+        },
       },
-    });
+    );
   }
 
   /**
@@ -951,12 +994,19 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
       ...this.joinNodes,
     ]);
 
-    return execSql(sql, bindings, this.sqlDataSource, "affectedRows", {
-      sqlLiteOptions: {
-        typeofModel: this.model,
-        mode: "affectedRows",
+    return execSql(
+      sql,
+      bindings,
+      this.sqlDataSource,
+      this.dbType,
+      "affectedRows",
+      {
+        sqlLiteOptions: {
+          typeofModel: this.model,
+          mode: "affectedRows",
+        },
       },
-    });
+    );
   }
 
   /**

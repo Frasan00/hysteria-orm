@@ -156,3 +156,5 @@ buildcache
 website/
 database/
 src/test.ts
+
+.adminjs/

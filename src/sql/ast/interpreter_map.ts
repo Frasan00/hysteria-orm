@@ -94,6 +94,54 @@ import mysql_where_where_group from '../interpreter/mysql/where/where_group';
 import mysql_where_where_json from '../interpreter/mysql/where/where_json';
 import mysql_where_where_subquery from '../interpreter/mysql/where/where_subquery';
 import mysql_with_with from '../interpreter/mysql/with/with';
+import oracledb_alter_table_add_column from '../interpreter/oracledb/alter_table/add_column';
+import oracledb_alter_table_add_constraint from '../interpreter/oracledb/alter_table/add_constraint';
+import oracledb_alter_table_add_primary_key from '../interpreter/oracledb/alter_table/add_primary_key';
+import oracledb_alter_table_alter_column_type from '../interpreter/oracledb/alter_table/alter_column_type';
+import oracledb_alter_table_alter_table from '../interpreter/oracledb/alter_table/alter_table';
+import oracledb_alter_table_drop_column from '../interpreter/oracledb/alter_table/drop_column';
+import oracledb_alter_table_drop_constraint from '../interpreter/oracledb/alter_table/drop_constraint';
+import oracledb_alter_table_drop_default from '../interpreter/oracledb/alter_table/drop_default';
+import oracledb_alter_table_drop_not_null from '../interpreter/oracledb/alter_table/drop_not_null';
+import oracledb_alter_table_drop_primary_key from '../interpreter/oracledb/alter_table/drop_primary_key';
+import oracledb_alter_table_rename_column from '../interpreter/oracledb/alter_table/rename_column';
+import oracledb_alter_table_rename_table from '../interpreter/oracledb/alter_table/rename_table';
+import oracledb_alter_table_set_default from '../interpreter/oracledb/alter_table/set_default';
+import oracledb_alter_table_set_not_null from '../interpreter/oracledb/alter_table/set_not_null';
+import oracledb_column_column_type from '../interpreter/oracledb/column/column_type';
+import oracledb_constraint_after from '../interpreter/oracledb/constraint/after';
+import oracledb_constraint_constraint from '../interpreter/oracledb/constraint/constraint';
+import oracledb_create_table_create_table from '../interpreter/oracledb/create_table/create_table';
+import oracledb_delete_delete from '../interpreter/oracledb/delete/delete';
+import oracledb_distinct_distinct from '../interpreter/oracledb/distinct/distinct';
+import oracledb_distinct_distinct_on from '../interpreter/oracledb/distinct/distinct_on';
+import oracledb_drop_table_drop_table from '../interpreter/oracledb/drop_table/drop_table';
+import oracledb_from_from from '../interpreter/oracledb/from/from';
+import oracledb_group_by_group_by from '../interpreter/oracledb/group_by/group_by';
+import oracledb_having_having from '../interpreter/oracledb/having/having';
+import oracledb_index_op_create_index from '../interpreter/oracledb/index_op/create_index';
+import oracledb_index_op_drop_index from '../interpreter/oracledb/index_op/drop_index';
+import oracledb_insert_insert from '../interpreter/oracledb/insert/insert';
+import oracledb_join_join from '../interpreter/oracledb/join/join';
+import oracledb_limit_limit from '../interpreter/oracledb/limit/limit';
+import oracledb_lock_lock from '../interpreter/oracledb/lock/lock';
+import oracledb_offset_offset from '../interpreter/oracledb/offset/offset';
+import oracledb_on_duplicate_on_duplicate from '../interpreter/oracledb/on_duplicate/on_duplicate';
+import oracledb_order_by_order_by from '../interpreter/oracledb/order_by/order_by';
+import oracledb_raw_raw from '../interpreter/oracledb/raw/raw';
+import oracledb_schema_foreign_key_info from '../interpreter/oracledb/schema/foreign_key_info';
+import oracledb_schema_index_info from '../interpreter/oracledb/schema/index_info';
+import oracledb_schema_primary_key_info from '../interpreter/oracledb/schema/primary_key_info';
+import oracledb_schema_table_info from '../interpreter/oracledb/schema/table_info';
+import oracledb_select_select from '../interpreter/oracledb/select/select';
+import oracledb_truncate_truncate from '../interpreter/oracledb/truncate/truncate';
+import oracledb_union_union from '../interpreter/oracledb/union/union';
+import oracledb_update_update from '../interpreter/oracledb/update/update';
+import oracledb_where_where from '../interpreter/oracledb/where/where';
+import oracledb_where_where_group from '../interpreter/oracledb/where/where_group';
+import oracledb_where_where_json from '../interpreter/oracledb/where/where_json';
+import oracledb_where_where_subquery from '../interpreter/oracledb/where/where_subquery';
+import oracledb_with_with from '../interpreter/oracledb/with/with';
 import postgres_alter_table_add_column from '../interpreter/postgres/alter_table/add_column';
 import postgres_alter_table_add_constraint from '../interpreter/postgres/alter_table/add_constraint';
 import postgres_alter_table_add_primary_key from '../interpreter/postgres/alter_table/add_primary_key';
@@ -393,6 +441,108 @@ export const interpreterMap = {
     },
     with: {
       with: mysql_with_with,
+    },
+  },
+  oracledb: {
+    alter_table: {
+      add_column: oracledb_alter_table_add_column,
+      add_constraint: oracledb_alter_table_add_constraint,
+      add_primary_key: oracledb_alter_table_add_primary_key,
+      alter_column_type: oracledb_alter_table_alter_column_type,
+      alter_table: oracledb_alter_table_alter_table,
+      drop_column: oracledb_alter_table_drop_column,
+      drop_constraint: oracledb_alter_table_drop_constraint,
+      drop_default: oracledb_alter_table_drop_default,
+      drop_not_null: oracledb_alter_table_drop_not_null,
+      drop_primary_key: oracledb_alter_table_drop_primary_key,
+      rename_column: oracledb_alter_table_rename_column,
+      rename_table: oracledb_alter_table_rename_table,
+      set_default: oracledb_alter_table_set_default,
+      set_not_null: oracledb_alter_table_set_not_null,
+    },
+    column: {
+      column_type: oracledb_column_column_type,
+    },
+    constraint: {
+      after: oracledb_constraint_after,
+      constraint: oracledb_constraint_constraint,
+    },
+    create_table: {
+      create_table: oracledb_create_table_create_table,
+    },
+    delete: {
+      delete: oracledb_delete_delete,
+    },
+    distinct: {
+      distinct: oracledb_distinct_distinct,
+      distinct_on: oracledb_distinct_distinct_on,
+    },
+    drop_table: {
+      drop_table: oracledb_drop_table_drop_table,
+    },
+    from: {
+      from: oracledb_from_from,
+    },
+    group_by: {
+      group_by: oracledb_group_by_group_by,
+    },
+    having: {
+      having: oracledb_having_having,
+    },
+    index_op: {
+      create_index: oracledb_index_op_create_index,
+      drop_index: oracledb_index_op_drop_index,
+    },
+    insert: {
+      insert: oracledb_insert_insert,
+    },
+    join: {
+      join: oracledb_join_join,
+    },
+    limit: {
+      limit: oracledb_limit_limit,
+    },
+    lock: {
+      lock: oracledb_lock_lock,
+    },
+    offset: {
+      offset: oracledb_offset_offset,
+    },
+    on_duplicate: {
+      on_duplicate: oracledb_on_duplicate_on_duplicate,
+    },
+    order_by: {
+      order_by: oracledb_order_by_order_by,
+    },
+    raw: {
+      raw: oracledb_raw_raw,
+    },
+    schema: {
+      foreign_key_info: oracledb_schema_foreign_key_info,
+      index_info: oracledb_schema_index_info,
+      primary_key_info: oracledb_schema_primary_key_info,
+      table_info: oracledb_schema_table_info,
+    },
+    select: {
+      select: oracledb_select_select,
+    },
+    truncate: {
+      truncate: oracledb_truncate_truncate,
+    },
+    union: {
+      union: oracledb_union_union,
+    },
+    update: {
+      update: oracledb_update_update,
+    },
+    where: {
+      where: oracledb_where_where,
+      where_group: oracledb_where_where_group,
+      where_json: oracledb_where_where_json,
+      where_subquery: oracledb_where_where_subquery,
+    },
+    with: {
+      with: oracledb_with_with,
     },
   },
   postgres: {

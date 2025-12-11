@@ -4,7 +4,8 @@ import { UserFactory } from "../test_models/factory/user_factory";
 import { UserStatus, UserWithUuid } from "../test_models/uuid/user_uuid";
 
 beforeAll(async () => {
-  await SqlDataSource.connect();
+  const dataSource = new SqlDataSource();
+  await dataSource.connect();
 });
 
 afterAll(async () => {

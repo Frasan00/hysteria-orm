@@ -1,16 +1,17 @@
 import { PassThrough, Readable } from "node:stream";
 import { HysteriaError } from "../../errors/hysteria_error";
 import { AstParser } from "../ast/parser";
+import { FromNode } from "../ast/query/node/from";
 import { InsertNode } from "../ast/query/node/insert";
 import { InterpreterUtils } from "../interpreter/interpreter_utils";
 import { Model } from "../models/model";
 import { AnnotatedModel } from "../models/model_query_builder/model_query_builder_types";
 import { SqlDataSource } from "../sql_data_source";
+import { SqliteConnectionInstance } from "../sql_data_source_types";
 import { SqlLiteOptions } from "./sql_runner_types";
-import { FromNode } from "../ast/query/node/from";
 
 export class SQLiteStream extends Readable {
-  private db: any;
+  private db: SqliteConnectionInstance;
   private query: string;
   private params: any[];
   private started: boolean;
@@ -22,7 +23,7 @@ export class SQLiteStream extends Readable {
   };
 
   constructor(
-    db: any,
+    db: SqliteConnectionInstance,
     query: string,
     params: any[] = [],
     events: {
@@ -131,7 +132,8 @@ export const promisifySqliteQuery = <T extends Model>(
   ].includes(query.trim().toLowerCase());
 
   const sqliteDriver =
-    options.customConnection ?? sqlDataSource.getPool("sqlite");
+    options.customConnection ??
+    (sqlDataSource.getPool() as SqliteConnectionInstance);
 
   if (isTransactional) {
     return new Promise<number>((resolve, reject) => {
@@ -177,7 +179,7 @@ export const promisifySqliteQuery = <T extends Model>(
   const table = typeofModel.table;
   if (options.mode === "insertOne" || options.mode === "insertMany") {
     if (options.mode === "insertOne") {
-      return new Promise<T>((resolve, reject) => {
+      return new Promise<T[]>((resolve, reject) => {
         sqliteDriver.run(query, params, function (this: any, err: any) {
           if (err) {
             return reject(err);
@@ -191,7 +193,7 @@ export const promisifySqliteQuery = <T extends Model>(
               : null;
 
           if (!primaryKeyName) {
-            resolve(inputModel as T);
+            resolve([inputModel] as T[]);
             return;
           }
 
@@ -212,7 +214,7 @@ export const promisifySqliteQuery = <T extends Model>(
               return reject(err);
             }
 
-            resolve(row as T);
+            resolve([row] as T[]);
           });
         });
       });
@@ -226,6 +228,18 @@ export const promisifySqliteQuery = <T extends Model>(
     }
 
     const models = options.models as T[];
+
+    if (!primaryKeyName) {
+      return new Promise<T[]>((resolve, reject) => {
+        sqliteDriver.run(query, params, function (err: any) {
+          if (err) {
+            return reject(err);
+          }
+          resolve(models as T[]);
+        });
+      });
+    }
+
     let finalResult: T[] = [];
     return new Promise<T[]>(async (resolve, reject) => {
       try {
@@ -262,10 +276,6 @@ export const promisifySqliteQuery = <T extends Model>(
               }
 
               const lastID = model[primaryKeyName as keyof T] || this.lastID;
-              if (!primaryKeyName) {
-                resolve(model as T);
-                return;
-              }
 
               if (!lastID) {
                 return reject(
@@ -297,12 +307,16 @@ export const promisifySqliteQuery = <T extends Model>(
   }
 
   return new Promise<number>((resolve, reject) => {
-    sqliteDriver.run(query, params, function (this: { changes: number }, err) {
-      if (err) {
-        reject(new Error(err.message));
-      } else {
-        resolve(this.changes as number);
-      }
-    });
+    (sqliteDriver as SqliteConnectionInstance).run(
+      query,
+      params,
+      function (this: { changes: number }, err: Error | null) {
+        if (err) {
+          reject(new Error(err.message));
+        } else {
+          resolve(this.changes as number);
+        }
+      },
+    );
   });
 };

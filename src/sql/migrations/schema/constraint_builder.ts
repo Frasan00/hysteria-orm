@@ -174,6 +174,7 @@ export class ConstraintBuilder extends BaseBuilder {
   /**
    * @description Sets the default value for the column
    * @param value is the default value for the column
+   * @oracle not supported must be defined manually in a separate statement
    */
   default(value: string | number | boolean | null | RawNode): this {
     let defaultVal: string | undefined | RawNode;

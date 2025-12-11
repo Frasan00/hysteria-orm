@@ -1,63 +1,98 @@
+import { DataSource } from "../../data_source/data_source";
 import type {
   MongoClientImport,
   MongoConnectionOptions,
 } from "../../drivers/driver_types";
-import { DataSource } from "../../data_source/data_source";
-import { CollectionManager } from "./mongo_models/mongo_collection_manager";
 import { DriverFactory } from "../../drivers/drivers_factory";
+import { env } from "../../env/env";
 import { HysteriaError } from "../../errors/hysteria_error";
 import { Collection } from "./mongo_models/mongo_collection";
-import { env } from "../../env/env";
+import { CollectionManager } from "./mongo_models/mongo_collection_manager";
 
 type MongoClientInstance = InstanceType<MongoClientImport["MongoClient"]>;
+
+export interface MongoDataSourceInput {
+  url?: string;
+  options?: MongoConnectionOptions;
+  logs?: boolean;
+}
 
 export class MongoDataSource extends DataSource {
   declare url: string;
   declare isConnected: boolean;
-  private mongoClient: MongoClientInstance;
+  private mongoClient: MongoClientInstance | null = null;
+  private mongoOptions?: MongoConnectionOptions;
   private static instance: MongoDataSource | null = null;
 
-  private constructor(url: string, mongoClient: MongoClientInstance) {
-    super({ type: "mongo" });
-    this.url = url;
+  constructor(input?: MongoDataSourceInput) {
+    super({ type: "mongo", url: input?.url, logs: input?.logs });
     this.isConnected = false;
-    this.mongoClient = mongoClient;
+    this.mongoOptions = input?.options;
+
+    if (!this.url) {
+      this.url = env.MONGO_URL as string;
+    }
+  }
+
+  /**
+   * @description Establishes the connection to MongoDB and sets this as the primary instance
+   */
+  async connect(): Promise<void> {
+    if (!this.url) {
+      throw new HysteriaError(
+        "MongoDataSource::connect url is required to connect to mongo database and was not provided in the options nor the environment variables",
+        "REQUIRED_VALUE_NOT_SET",
+      );
+    }
+
+    const driver = (await DriverFactory.getDriver("mongo"))
+      .client as MongoClientImport;
+    this.mongoClient = new driver.MongoClient(this.url, this.mongoOptions);
+    await this.mongoClient.connect();
+    this.isConnected = true;
+    MongoDataSource.instance = this;
+  }
+
+  /**
+   * @description Establishes the connection without setting this as the primary instance
+   */
+  private async connectWithoutSettingPrimary(): Promise<void> {
+    if (!this.url) {
+      throw new HysteriaError(
+        "MongoDataSource::connect url is required to connect to mongo database and was not provided in the options nor the environment variables",
+        "REQUIRED_VALUE_NOT_SET",
+      );
+    }
+
+    const driver = (await DriverFactory.getDriver("mongo"))
+      .client as MongoClientImport;
+    this.mongoClient = new driver.MongoClient(this.url, this.mongoOptions);
+    await this.mongoClient.connect();
+    this.isConnected = true;
   }
 
   /**
    * @description Returns the current connection to the mongo client to execute direct statements using the mongo client from `mongodb` package
    */
   getCurrentConnection(): MongoClientInstance {
+    if (!this.mongoClient) {
+      throw new HysteriaError(
+        "MongoDataSource::getCurrentConnection mongo database connection not established",
+        "CONNECTION_NOT_ESTABLISHED",
+      );
+    }
     return this.mongoClient;
   }
 
   /**
-   * @description Connects to the mongo database using the provided url and options
+   * @description Creates a secondary connection to MongoDB (does not become the primary instance)
    */
-  static async connect(
-    url?: string,
-    options?: Partial<MongoConnectionOptions> & { logs?: boolean },
-    cb?: (mongoDataSource: MongoDataSource) => Promise<void> | void,
+  static async connectToSecondarySource(
+    input: MongoDataSourceInput,
   ): Promise<MongoDataSource> {
-    if (!url) {
-      url = env.MONGO_URL;
-      if (!url) {
-        throw new HysteriaError(
-          "MongoDataSource::connect url is required to connect to mongo database and was not provided in the options nor the environment variables",
-          "REQUIRED_VALUE_NOT_SET",
-        );
-      }
-    }
-
-    const driver = (await DriverFactory.getDriver("mongo"))
-      .client as MongoClientImport;
-    const mongoClient = new driver.MongoClient(url, options);
-    await mongoClient.connect();
-    this.instance = new MongoDataSource(url, mongoClient);
-    this.instance.isConnected = true;
-    this.instance.logs = options?.logs || env.MONGO_LOGS || false;
-    await cb?.(this.instance);
-    return this.instance;
+    const mongoDataSource = new MongoDataSource(input);
+    await mongoDataSource.connectWithoutSettingPrimary();
+    return mongoDataSource;
   }
 
   static getInstance(): MongoDataSource {
@@ -75,6 +110,12 @@ export class MongoDataSource extends DataSource {
    * @description Starts a new session and transaction using the current connection
    */
   startSession(): InstanceType<MongoClientImport["ClientSession"]> {
+    if (!this.mongoClient) {
+      throw new HysteriaError(
+        "MongoDataSource::startSession mongo database connection not established",
+        "CONNECTION_NOT_ESTABLISHED",
+      );
+    }
     const session = this.mongoClient.startSession();
     session.startTransaction();
     return session;
@@ -98,7 +139,9 @@ export class MongoDataSource extends DataSource {
    * @description Disconnects from the mongo database
    */
   async disconnect(): Promise<void> {
-    await this.mongoClient.close();
+    if (this.mongoClient) {
+      await this.mongoClient.close();
+    }
     this.isConnected = false;
   }
 
@@ -119,29 +162,20 @@ export class MongoDataSource extends DataSource {
   }
 
   /**
-   * @description Executes a callback function with the provided connection details
+   * @description Executes a callback function with the provided connection details, automatically closing the connection when done
    */
   static async useConnection(
     this: typeof MongoDataSource,
-    connectionDetails: {
-      url: string;
-      options?: MongoConnectionOptions;
-    },
+    input: MongoDataSourceInput,
     cb: (mongoDataSource: MongoDataSource) => Promise<void>,
   ): Promise<void> {
-    const driver = (await DriverFactory.getDriver("mongo"))
-      .client as MongoClientImport;
-    const mongoClient = new driver.MongoClient(
-      connectionDetails.url,
-      connectionDetails.options,
-    );
-    await mongoClient.connect();
-    const mongoDataSource = new MongoDataSource(
-      connectionDetails.url,
-      mongoClient,
-    );
-    await cb(mongoDataSource);
-    await mongoClient.close();
+    const mongoDataSource = new MongoDataSource(input);
+    await mongoDataSource.connectWithoutSettingPrimary();
+    try {
+      await cb(mongoDataSource);
+    } finally {
+      await mongoDataSource.disconnect();
+    }
   }
 
   static query(collection: string) {

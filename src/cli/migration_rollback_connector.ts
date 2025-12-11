@@ -1,24 +1,22 @@
 import { Migration } from "../sql/migrations/migration";
 import { Migrator } from "../sql/migrations/migrator";
 import { type SqlDataSource } from "../sql/sql_data_source";
-import {
-  AugmentedSqlDataSource,
-  SqlDataSourceType,
-} from "../sql/sql_data_source_types";
+import { SqlDataSourceType } from "../sql/sql_data_source_types";
 import { Transaction } from "../sql/transactions/transaction";
 import logger from "../utils/logger";
 import { getMigrations, getMigrationTable } from "./migration_utils";
 import { MigrationTableType } from "./resources/migration_table_type";
 
 export default async function rollbackMigrationsConnector(
-  sql: SqlDataSource | AugmentedSqlDataSource,
+  sql: SqlDataSource,
   rollBackUntil?: string,
   migrationPath?: string,
   tsconfigPath?: string,
   transactional?: boolean,
 ) {
   const dbType = sql.getDbType();
-  const shouldUseTransaction = transactional && dbType !== "mssql";
+  const shouldUseTransaction =
+    transactional && dbType !== "mssql" && dbType !== "oracledb";
   let trx: Transaction | null = null;
   logger.info("Rolling back migrations for database type: " + dbType);
 
