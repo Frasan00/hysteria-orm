@@ -2,10 +2,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import Schema from "./schema/schema";
 import { SqlDataSource } from "../sql_data_source";
-import {
-  AugmentedSqlDataSource,
-  SqlDataSourceType,
-} from "../sql_data_source_types";
+import { SqlDataSourceType } from "../sql_data_source_types";
 
 export abstract class Migration {
   declare dbType: SqlDataSourceType;
@@ -31,7 +28,5 @@ export abstract class Migration {
   /**
    * @description This method is called after the migration has been run
    */
-  async afterMigration?(
-    sqlDataSource: SqlDataSource | AugmentedSqlDataSource,
-  ): Promise<void>;
+  async afterMigration?(sqlDataSource: SqlDataSource): Promise<void>;
 }

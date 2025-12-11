@@ -6,7 +6,8 @@ import { PostFactory } from "../test_models/factory/post_factory";
 import { UserFactory } from "../test_models/factory/user_factory";
 
 beforeAll(async () => {
-  await SqlDataSource.connect();
+  const dataSource = new SqlDataSource();
+  await dataSource.connect();
 });
 
 afterAll(async () => {

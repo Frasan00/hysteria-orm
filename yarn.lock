@@ -3463,6 +3463,13 @@
   dependencies:
     undici-types "~7.16.0"
 
+"@types/oracledb@^6.10.0":
+  version "6.10.0"
+  resolved "https://registry.npmjs.org/@types/oracledb/-/oracledb-6.10.0.tgz#1e7dd2373c9730105ccd5af941a4f0a8110c4c52"
+  integrity sha512-dRaEYKRkJhSSM/uKrscE7zXC5D75JSkBgdye5kSxzTRwrMAUI5V675cD3fqCdMuSOiGo2K9Ng3CjjRI4rzeuAg==
+  dependencies:
+    "@types/node" "*"
+
 "@types/parse-json@^4.0.0":
   version "4.0.2"
   resolved "https://registry.npmjs.org/@types/parse-json/-/parse-json-4.0.2.tgz#5950e50960793055845e956c427fc2b0d70c5239"
@@ -8241,6 +8248,11 @@ ora@^6.2.0:
     stdin-discarder "^0.1.0"
     strip-ansi "^7.0.1"
     wcwidth "^1.0.1"
+
+oracledb@^6.10.0:
+  version "6.10.0"
+  resolved "https://registry.npmjs.org/oracledb/-/oracledb-6.10.0.tgz#a54f699547e7dfc1f2ecb8a72af0423b4e86e51d"
+  integrity sha512-kGUumXmrEWbSpBuKJyb9Ip3rXcNgKK6grunI3/cLPzrRvboZ6ZoLi9JQ+z6M/RIG924tY8BLflihL4CKKQAYMA==
 
 orderedmap@^2.0.0:
   version "2.1.1"

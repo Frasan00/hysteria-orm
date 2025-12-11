@@ -9,7 +9,8 @@ import { UserAddressFactory } from "../test_models/factory/user_address_factory"
 import { UserFactory } from "../test_models/factory/user_factory";
 
 beforeAll(async () => {
-  await SqlDataSource.connect();
+  const dataSource = new SqlDataSource();
+  await dataSource.connect();
 });
 
 afterAll(async () => {

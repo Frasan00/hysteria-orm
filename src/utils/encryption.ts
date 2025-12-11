@@ -22,13 +22,23 @@ export const encryptSymmetric = (key: string, value: string): string => {
 export const decryptSymmetric = (key: string, value: string): string => {
   try {
     const keyBuffer = crypto.createHash("sha256").update(key).digest();
-    const [ivHex, encrypted] = value.split(":");
+    // Ensure value is a string and trim any whitespace (Oracle may add trailing spaces)
+    const stringValue = String(value).trim();
+    const [ivHex, encrypted] = stringValue.split(":");
+    if (!ivHex || !encrypted) {
+      throw new Error(
+        `Invalid encrypted value format: expected "iv:data" but got "${stringValue.substring(0, 50)}..."`,
+      );
+    }
+    // Normalize hex to lowercase (Oracle may return uppercase)
+    const normalizedIv = ivHex.toLowerCase();
+    const normalizedEncrypted = encrypted.toLowerCase();
     const decipher = crypto.createDecipheriv(
       "aes-256-cbc",
       keyBuffer,
-      Buffer.from(ivHex, "hex"),
+      Buffer.from(normalizedIv, "hex"),
     );
-    let decrypted = decipher.update(encrypted, "hex", "utf8");
+    let decrypted = decipher.update(normalizedEncrypted, "hex", "utf8");
     decrypted += decipher.final("utf8");
     return decrypted;
   } catch (error) {
@@ -72,7 +82,14 @@ export const decryptAsymmetric = (
   value: string,
 ): string => {
   try {
-    const [ivHex, encryptedKeyHex, encryptedData] = value.split(":");
+    // Ensure value is a string and trim any whitespace (Oracle may add trailing spaces)
+    const stringValue = String(value).trim();
+    const [ivHex, encryptedKeyHex, encryptedData] = stringValue.split(":");
+    if (!ivHex || !encryptedKeyHex || !encryptedData) {
+      throw new Error(
+        `Invalid encrypted value format: expected "iv:key:data" but got "${stringValue.substring(0, 50)}..."`,
+      );
+    }
 
     const symmetricKey = privateDecrypt(
       privateKey,

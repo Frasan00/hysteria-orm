@@ -7,7 +7,8 @@ import { UserFactory } from "../test_models/factory/user_factory";
 import { PostWithUuid } from "../test_models/uuid/post_uuid";
 
 beforeAll(async () => {
-  await SqlDataSource.connect();
+  const dataSource = new SqlDataSource();
+  await dataSource.connect();
 });
 
 afterAll(async () => {
@@ -124,7 +125,8 @@ describe(`[${env.DB_TYPE}] uuid pk join edge cases`, () => {
       );
     }
 
-    const rows = await SqlDataSource.query("posts_with_uuid")
+    const rows = await SqlDataSource.instance
+      .query("posts_with_uuid")
       .from("posts_with_uuid", "p")
       .select("p.*")
       .annotate("u.name", "mustBe1")

@@ -7,7 +7,7 @@ describe("SqlDataSource Cache Integration", () => {
     let sql: Awaited<ReturnType<typeof createInMemoryDataSource>>;
 
     async function createInMemoryDataSource() {
-      return SqlDataSource.connect({
+      return SqlDataSource.connectToSecondarySource({
         type: "sqlite",
         database: ":memory:",
         logs: false,
@@ -180,7 +180,7 @@ describe("SqlDataSource Cache Integration", () => {
     let sql: Awaited<ReturnType<typeof createRedisDataSource>>;
 
     async function createRedisDataSource() {
-      return SqlDataSource.connect({
+      return SqlDataSource.connectToSecondarySource({
         type: "sqlite",
         database: ":memory:",
         logs: false,

@@ -6,7 +6,8 @@ import { UserStatus, UserWithUuid } from "../test_models/uuid/user_uuid";
 import { UserWithoutPk } from "../test_models/without_pk/user_without_pk";
 
 beforeAll(async () => {
-  await SqlDataSource.connect();
+  const dataSource = new SqlDataSource();
+  await dataSource.connect();
 });
 
 afterAll(async () => {
@@ -60,7 +61,7 @@ describe(`[${env.DB_TYPE}] Instance Methods - save()`, () => {
     await user.save();
 
     expect(user.name).toBe("Updated Name");
-    expect(user.id).toBe(insertedUser.id);
+    expect(user.id?.toLowerCase()).toBe(insertedUser.id?.toLowerCase());
 
     const retrievedUser = await UserWithUuid.findOne({
       where: { id: insertedUser.id },
@@ -81,7 +82,7 @@ describe(`[${env.DB_TYPE}] Instance Methods - save()`, () => {
   });
 
   test("should save with transaction support", async () => {
-    const sql = SqlDataSource.getInstance();
+    const sql = SqlDataSource.instance;
     const trx = await sql.transaction();
 
     try {
@@ -164,7 +165,7 @@ describe(`[${env.DB_TYPE}] Instance Methods - update()`, () => {
 
   test("should update with transaction support", async () => {
     const insertedUser = await UserFactory.userWithUuid(1);
-    const sql = SqlDataSource.getInstance();
+    const sql = SqlDataSource.instance;
     const trx = await sql.transaction();
 
     try {
@@ -271,7 +272,7 @@ describe(`[${env.DB_TYPE}] Instance Methods - softDelete()`, () => {
 
   test("should soft delete with transaction support", async () => {
     const insertedUser = await UserFactory.userWithUuid(1);
-    const sql = SqlDataSource.getInstance();
+    const sql = SqlDataSource.instance;
     const trx = await sql.transaction();
 
     try {
@@ -350,7 +351,7 @@ describe(`[${env.DB_TYPE}] Instance Methods - delete()`, () => {
 
   test("should delete with transaction support", async () => {
     const insertedUser = await UserFactory.userWithUuid(1);
-    const sql = SqlDataSource.getInstance();
+    const sql = SqlDataSource.instance;
     const trx = await sql.transaction();
 
     try {
@@ -407,7 +408,7 @@ describe(`[${env.DB_TYPE}] Instance Methods - refresh()`, () => {
     } else {
       expect(user.age).toBe(40);
     }
-    expect(user.id).toBe(insertedUser.id);
+    expect(user.id?.toLowerCase()).toBe(insertedUser.id?.toLowerCase());
   });
 
   test("should throw error when refreshing model without primary key", async () => {
@@ -433,7 +434,7 @@ describe(`[${env.DB_TYPE}] Instance Methods - refresh()`, () => {
 
   test("should refresh with transaction support", async () => {
     const insertedUser = await UserFactory.userWithUuid(1);
-    const sql = SqlDataSource.getInstance();
+    const sql = SqlDataSource.instance;
     const trx = await sql.transaction();
 
     try {

@@ -1,6 +1,6 @@
 import { SqlDataSource } from "../../src/sql/sql_data_source";
 
-const sql = await SqlDataSource.connect({
+const sql = new SqlDataSource({
   type: "postgres",
   host: "localhost",
   port: 5432,
@@ -9,5 +9,7 @@ const sql = await SqlDataSource.connect({
   database: "test",
   logs: true,
 });
+
+await sql.connect();
 
 export default sql;

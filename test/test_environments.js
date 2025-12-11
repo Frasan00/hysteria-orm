@@ -51,3 +51,13 @@ export const mssqlConfig = {
   database: "master",
   logs: true,
 };
+
+export const oracledbConfig = {
+  type: "oracledb",
+  host: "localhost",
+  user: "hysteria",
+  password: "oracle",
+  database: "FREEPDB1",
+  port: 1521,
+  logs: true,
+};

@@ -3,6 +3,8 @@ import { DriverNotFoundError } from "./driver_constants";
 import { DriverSpecificOptions, MongoClientImport } from "./driver_types";
 
 export class MongoDriver extends Driver {
+  static mongoClient: MongoClientImport | null = null;
+
   override type = "mongo" as const;
   override client: MongoClientImport;
 
@@ -15,13 +17,21 @@ export class MongoDriver extends Driver {
   }
 
   static async createDriver(): Promise<Driver> {
-    const mongo = await import("mongodb").catch(() => {
+    if (this.mongoClient) {
+      return new MongoDriver(this.mongoClient);
+    }
+
+    const mongoModule = await import("mongodb").catch(() => {
       throw new DriverNotFoundError("mongodb");
     });
-    if (!mongo) {
+
+    this.mongoClient =
+      (mongoModule as { default?: MongoClientImport }).default ?? mongoModule;
+
+    if (!this.mongoClient) {
       throw new DriverNotFoundError("mongodb");
     }
 
-    return new MongoDriver(mongo);
+    return new MongoDriver(this.mongoClient);
   }
 }

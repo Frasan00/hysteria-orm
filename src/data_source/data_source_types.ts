@@ -4,6 +4,7 @@ import type { MongoConnectionOptions } from "../drivers/driver_types";
  * @description Creates a datasource for the selected database type with the provided credentials
  */
 export type DataSourceType =
+  | "oracledb"
   | "cockroachdb"
   | "mysql"
   | "postgres"
@@ -14,6 +15,15 @@ export type DataSourceType =
 
 export interface MssqlDataSourceInput extends CommonDataSourceInput {
   readonly type: "mssql";
+  readonly host?: string;
+  readonly port?: number;
+  readonly username?: string;
+  readonly password?: string;
+  readonly database?: string;
+}
+
+export interface OracleDBDataSourceInput extends CommonDataSourceInput {
+  readonly type: "oracledb";
   readonly host?: string;
   readonly port?: number;
   readonly username?: string;
@@ -44,6 +54,26 @@ export interface PostgresSqlDataSourceInput extends CommonDataSourceInput {
 export interface NotNullablePostgresSqlDataSourceInput
   extends PostgresSqlDataSourceInput {
   readonly type?: "postgres" | "cockroachdb";
+  readonly host: string;
+  readonly username: string;
+  readonly password: string;
+  readonly database: string;
+  readonly port?: number;
+}
+
+export interface NotNullableOracleMssqlDataSourceInput
+  extends MssqlDataSourceInput {
+  readonly type: "mssql";
+  readonly host: string;
+  readonly username: string;
+  readonly password: string;
+  readonly database: string;
+  readonly port?: number;
+}
+
+export interface NotNullableOracleDBDataSourceInput
+  extends OracleDBDataSourceInput {
+  readonly type: "oracledb";
   readonly host: string;
   readonly username: string;
   readonly password: string;
@@ -85,6 +115,7 @@ export interface NotNullableSqliteDataSourceInput
  * @description By default the connection details can be provided in the .env file, you can still override each prop with your actual connection details in the input
  */
 export type DataSourceInput =
+  | OracleDBDataSourceInput
   | MssqlDataSourceInput
   | MysqlSqlDataSourceInput
   | SqliteDataSourceInput

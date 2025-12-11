@@ -247,13 +247,20 @@ export class ModelManager<T extends Model> {
       ),
     ]);
 
-    const rows = await execSql(sql, bindings, this.sqlDataSource, "raw", {
-      sqlLiteOptions: {
-        typeofModel: this.model,
-        mode: "insertOne",
-        models: [model as T],
+    const rows = await execSql(
+      sql,
+      bindings,
+      this.sqlDataSource,
+      this.sqlType as SqlDataSourceType,
+      "rows",
+      {
+        sqlLiteOptions: {
+          typeofModel: this.model,
+          mode: "insertOne",
+          models: [model as T],
+        },
       },
-    });
+    );
 
     if (this.sqlType === "mysql" || this.sqlType === "mariadb") {
       return this.handleMysqlInsert(
@@ -264,7 +271,7 @@ export class ModelManager<T extends Model> {
       );
     }
 
-    const insertedModel = rows[0] as T;
+    const insertedModel = (rows as T[])[0];
     if (!insertedModel) {
       return model as T;
     }
@@ -281,8 +288,22 @@ export class ModelManager<T extends Model> {
     models: Partial<T>[],
     options: InsertOptions<T> = {},
   ): Promise<AnnotatedModel<T, {}>[]> {
-    const insertObjects: Record<string, any>[] = [];
     await this.model.beforeInsertMany?.(models as T[]);
+
+    // Oracle with identity columns doesn't support INSERT ALL properly
+    // Handle this case separately BEFORE attempting the batch insert
+    if (this.sqlType === "oracledb") {
+      const primaryKey = this.model.primaryKey;
+      const firstModelKeys = Object.keys(models[0] || {});
+      const hasMissingPrimaryKey =
+        primaryKey && !firstModelKeys.includes(primaryKey);
+
+      if (hasMissingPrimaryKey) {
+        return this.handleOracleIdentityInsert(models as T[], options);
+      }
+    }
+
+    const insertObjects: Record<string, any>[] = [];
     for (const model of models) {
       const { columns: preparedColumns, values: preparedValues } =
         await this.interpreterUtils.prepareColumns(
@@ -309,13 +330,20 @@ export class ModelManager<T extends Model> {
       ),
     ]);
 
-    const rows = await execSql(sql, bindings, this.sqlDataSource, "raw", {
-      sqlLiteOptions: {
-        typeofModel: this.model,
-        mode: "insertMany",
-        models: models as T[],
+    const rows = await execSql(
+      sql,
+      bindings,
+      this.sqlDataSource,
+      this.sqlType as SqlDataSourceType,
+      "rows",
+      {
+        sqlLiteOptions: {
+          typeofModel: this.model,
+          mode: "insertMany",
+          models: models as T[],
+        },
       },
-    });
+    );
 
     if (this.sqlType === "mysql" || this.sqlType === "mariadb") {
       return (
@@ -396,13 +424,20 @@ export class ModelManager<T extends Model> {
       ),
     ]);
 
-    const rows = await execSql(sql, bindings, this.sqlDataSource, "raw", {
-      sqlLiteOptions: {
-        typeofModel: this.model,
-        mode: "raw",
-        models: data as T[],
+    const rows = await execSql(
+      sql,
+      bindings,
+      this.sqlDataSource,
+      this.sqlType as SqlDataSourceType,
+      "rows",
+      {
+        sqlLiteOptions: {
+          typeofModel: this.model,
+          mode: "raw",
+          models: data as T[],
+        },
       },
-    });
+    );
 
     return rows as T[];
   }
@@ -483,13 +518,20 @@ export class ModelManager<T extends Model> {
       `when not matched then insert (${insertCols}) values (${insertVals}) ` +
       `output ${outputCols};`;
 
-    const rows = await execSql(sql, bindings, this.sqlDataSource, "raw", {
-      sqlLiteOptions: {
-        typeofModel: this.model,
-        mode: "raw",
-        models: data as T[],
+    const rows = await execSql(
+      sql,
+      bindings,
+      this.sqlDataSource,
+      this.sqlType as SqlDataSourceType,
+      "rows",
+      {
+        sqlLiteOptions: {
+          typeofModel: this.model,
+          mode: "raw",
+          models: data as T[],
+        },
       },
-    });
+    );
 
     return rows as T[];
   }
@@ -539,7 +581,13 @@ export class ModelManager<T extends Model> {
       ),
     ]);
 
-    await execSql(sql, bindings, this.sqlDataSource, "raw");
+    await execSql(
+      sql,
+      bindings,
+      this.sqlDataSource,
+      this.sqlType as SqlDataSourceType,
+      "affectedRows",
+    );
     const updatedModel = await this.findOneByPrimaryKey(
       model[this.model.primaryKey as keyof T] as string,
       options?.returning ?? undefined,
@@ -580,7 +628,13 @@ export class ModelManager<T extends Model> {
       whereNode,
     ]);
 
-    await execSql(sql, bindings, this.sqlDataSource, "raw");
+    await execSql(
+      sql,
+      bindings,
+      this.sqlDataSource,
+      this.sqlType as SqlDataSourceType,
+      "affectedRows",
+    );
   }
 
   /**
@@ -665,5 +719,88 @@ export class ModelManager<T extends Model> {
     }
 
     return fetchedModels as O extends "one" ? T : T[];
+  }
+
+  /**
+   * @description Oracle with identity columns doesn't support INSERT ALL properly.
+   * This method inserts records one at a time to avoid duplicate ID issues.
+   * After each insert, it queries the row back using unique columns to get the generated ID.
+   */
+  private async handleOracleIdentityInsert(
+    models: T[],
+    options: InsertOptions<T>,
+  ): Promise<AnnotatedModel<T, {}>[]> {
+    const results: T[] = [];
+    const primaryKey = this.model.primaryKey;
+
+    for (const model of models) {
+      // Prepare columns for the insert
+      const { columns: preparedColumns, values: preparedValues } =
+        await this.interpreterUtils.prepareColumns(
+          Object.keys(model),
+          Object.values(model),
+          "insert",
+        );
+
+      const insertObject: Record<string, any> = {};
+      preparedColumns.forEach((column, index) => {
+        const value = preparedValues[index];
+        insertObject[column] = value;
+        (model as any)[column] ??= value;
+      });
+
+      // Execute the insert
+      const { sql, bindings } = this.astParser.parse([
+        new InsertNode(
+          new FromNode(this.model.table),
+          [insertObject],
+          options.returning as string[],
+        ),
+      ]);
+
+      await execSql(
+        sql,
+        bindings,
+        this.sqlDataSource,
+        this.sqlType as SqlDataSourceType,
+        "rows",
+      );
+
+      // Query back the inserted row to get the generated ID
+      const queryBuilder = this.query().select(
+        ...((options.returning as string[]) || ["*"]),
+      );
+
+      for (const [column, value] of Object.entries(insertObject)) {
+        if (value !== null && value !== undefined && column !== primaryKey) {
+          queryBuilder.where(column, "=", value);
+        }
+      }
+
+      // Order by ID desc to get the most recently inserted row
+      if (primaryKey) {
+        queryBuilder.orderBy(primaryKey, "desc");
+      }
+
+      const insertedRow = await queryBuilder.one({
+        ignoreHooks: ["beforeFetch"],
+      });
+
+      if (insertedRow) {
+        if (
+          primaryKey &&
+          insertedRow[primaryKey as keyof ModelWithoutRelations<T>]
+        ) {
+          (model as any)[primaryKey] =
+            insertedRow[primaryKey as keyof ModelWithoutRelations<T>];
+        }
+        results.push(insertedRow as T);
+      } else {
+        results.push(model as T);
+      }
+    }
+
+    await this.model.afterFetch?.(results);
+    return results as AnnotatedModel<T, {}>[];
   }
 }

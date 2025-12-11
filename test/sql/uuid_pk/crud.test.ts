@@ -4,7 +4,8 @@ import { UserFactory } from "../test_models/factory/user_factory";
 import { UserStatus, UserWithUuid } from "../test_models/uuid/user_uuid";
 
 beforeAll(async () => {
-  await SqlDataSource.connect();
+  const dataSource = new SqlDataSource();
+  await dataSource.connect();
 });
 
 afterAll(async () => {
@@ -269,7 +270,7 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
     await expect(
       UserWithUuid.findOneOrFail({
         where: { email: "nonexistent@example.com" },
-      })
+      }),
     ).rejects.toThrow();
   });
 
@@ -278,7 +279,7 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
 
     const foundUser = await UserWithUuid.firstOrInsert(
       { email: existingUser.email },
-      { name: "Different Name", email: existingUser.email }
+      { name: "Different Name", email: existingUser.email },
     );
 
     expect(foundUser.name).toBe(existingUser.name);
@@ -286,7 +287,7 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
 
     const newUser = await UserWithUuid.firstOrInsert(
       { email: "new@example.com" },
-      { name: "New User", email: "new@example.com", status: UserStatus.active }
+      { name: "New User", email: "new@example.com", status: UserStatus.active },
     );
 
     expect(newUser.name).toBe("New User");
@@ -316,7 +317,7 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
 
     const foundUser = await UserWithUuid.firstOrInsert(
       { email: existingUser.email },
-      { name: "Different Name", email: existingUser.email }
+      { name: "Different Name", email: existingUser.email },
     );
 
     const newUser = await UserWithUuid.findOne({
@@ -333,7 +334,7 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
   test("should firstOrInsert (create) an user", async () => {
     const foundUser = await UserWithUuid.firstOrInsert(
       { email: "" },
-      { ...UserFactory.getCommonUserData() }
+      { ...UserFactory.getCommonUserData() },
     );
 
     const allUsers = await UserWithUuid.find();
@@ -384,7 +385,7 @@ describe(`[${env.DB_TYPE}] Stream`, () => {
   test("should properly stream results with async iteration", async () => {
     if (env.DB_TYPE === "mssql") {
       console.log(
-        "MSSQL does not support eager loading within streams in a transaction"
+        "MSSQL does not support eager loading within streams in a transaction",
       );
       return;
     }

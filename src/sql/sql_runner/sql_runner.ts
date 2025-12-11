@@ -9,6 +9,9 @@ import { SqlDataSource } from "../sql_data_source";
 import {
   ConnectionPolicies,
   GetConnectionReturnType,
+  MssqlPoolInstance,
+  MysqlConnectionInstance,
+  PgPoolClientInstance,
   SqlDataSourceType,
 } from "../sql_data_source_types";
 import {
@@ -17,18 +20,27 @@ import {
   SqlRunnerReturnType,
 } from "./sql_runner_types";
 import { promisifySqliteQuery, SQLiteStream } from "./sql_runner_utils";
+import {
+  convertDateStringToDateForOracle,
+  processOracleRow,
+} from "../../utils/oracle_utils";
 
-export const execSql = async <M extends Model, T extends Returning>(
+export const execSql = async <
+  S extends SqlDataSource,
+  M extends Model,
+  T extends Returning,
+  D extends SqlDataSourceType = ReturnType<S["getDbType"]>,
+>(
   query: string,
   params: any[],
-  sqlDataSource: SqlDataSource,
-  returning: T = "raw" as T,
+  sqlDataSource: S,
+  sqlType: D,
+  returning: T = "rows" as T,
   options?: {
     sqlLiteOptions?: SqlLiteOptions<M>;
     shouldNotLog?: boolean;
   },
-): Promise<SqlRunnerReturnType<T>> => {
-  const sqlType = sqlDataSource.type as SqlDataSourceType;
+): Promise<SqlRunnerReturnType<T, D>> => {
   if (!options?.shouldNotLog) {
     log(query, sqlDataSource.logs, params);
   }
@@ -38,25 +50,29 @@ export const execSql = async <M extends Model, T extends Returning>(
     case "mariadb":
       const mysqlDriver =
         (sqlDataSource.sqlConnection as GetConnectionReturnType<"mysql">) ??
-        sqlDataSource.getPool("mysql");
+        sqlDataSource.getPool();
 
-      const [mysqlResult] = await withRetry(
+      const mysqlResult = await withRetry(
         () => mysqlDriver.query(query, params),
         sqlDataSource.inputDetails.connectionPolicies?.retry,
         sqlDataSource.logs,
       );
 
       if (returning === "affectedRows") {
-        return (mysqlResult as { affectedRows: number })
-          .affectedRows as SqlRunnerReturnType<T>;
+        return (mysqlResult[0] as { affectedRows: number })
+          .affectedRows as SqlRunnerReturnType<T, D>;
       }
 
-      return mysqlResult as SqlRunnerReturnType<T>;
+      if (returning === "raw") {
+        return mysqlResult as SqlRunnerReturnType<T, D>;
+      }
+
+      return mysqlResult[0] as SqlRunnerReturnType<T, D>;
     case "postgres":
     case "cockroachdb":
       const pgDriver =
         (sqlDataSource.sqlConnection as GetConnectionReturnType<"postgres">) ??
-        sqlDataSource.getPool("postgres");
+        sqlDataSource.getPool();
 
       const pgResult = await withRetry(
         () => pgDriver.query(query, params),
@@ -64,11 +80,15 @@ export const execSql = async <M extends Model, T extends Returning>(
         sqlDataSource.logs,
       );
 
-      if (returning === "raw") {
-        return pgResult.rows as SqlRunnerReturnType<T>;
+      if (returning === "rows") {
+        return pgResult.rows as SqlRunnerReturnType<T, D>;
       }
 
-      return pgResult.rowCount as number as SqlRunnerReturnType<T>;
+      if (returning === "raw") {
+        return pgResult as SqlRunnerReturnType<T, D>;
+      }
+
+      return pgResult.rowCount as number as SqlRunnerReturnType<T, D>;
     case "sqlite":
       const sqliteResult = await withRetry(
         () =>
@@ -83,17 +103,18 @@ export const execSql = async <M extends Model, T extends Returning>(
 
       if (returning === "raw") {
         return !Array.isArray(sqliteResult)
-          ? ([sqliteResult] as SqlRunnerReturnType<T>)
-          : (sqliteResult as SqlRunnerReturnType<T>);
+          ? ([sqliteResult] as SqlRunnerReturnType<T, D>)
+          : (sqliteResult as SqlRunnerReturnType<T, D>);
       }
 
-      return sqliteResult as SqlRunnerReturnType<T>;
+      return sqliteResult as SqlRunnerReturnType<T, D>;
     case "mssql":
+      const mssqlPool = sqlDataSource.getPool() as MssqlPoolInstance;
       const mssqlRequest = sqlDataSource.sqlConnection
         ? (
             sqlDataSource.sqlConnection as GetConnectionReturnType<"mssql">
           ).request()
-        : sqlDataSource.getPool("mssql").request();
+        : mssqlPool.request();
 
       params.forEach((param, index) => {
         mssqlRequest.input(`p${index}`, param);
@@ -112,10 +133,67 @@ export const execSql = async <M extends Model, T extends Returning>(
       );
 
       if (returning === "affectedRows") {
-        return mssqlResult.rowsAffected[0] as SqlRunnerReturnType<T>;
+        return mssqlResult.rowsAffected[0] as SqlRunnerReturnType<T, D>;
       }
 
-      return mssqlResult.recordset as SqlRunnerReturnType<T>;
+      if (returning === "raw") {
+        return mssqlResult as SqlRunnerReturnType<T, D>;
+      }
+
+      return mssqlResult.recordset as SqlRunnerReturnType<T, D>;
+    case "oracledb":
+      const ORACLE_OUT_FORMAT_OBJECT = 4002 as const;
+
+      let oracledbConnection: GetConnectionReturnType<"oracledb"> | null = null;
+      const isInTransaction = !!sqlDataSource.sqlConnection;
+      try {
+        oracledbConnection = sqlDataSource.sqlConnection
+          ? (sqlDataSource.sqlConnection as GetConnectionReturnType<"oracledb">)
+          : ((await sqlDataSource.getConnection()) as GetConnectionReturnType<"oracledb">);
+
+        const oracleParams = params.map(convertDateStringToDateForOracle);
+
+        const oracledbResult = await withRetry(
+          () =>
+            (oracledbConnection as GetConnectionReturnType<"oracledb">).execute(
+              query,
+              oracleParams,
+              {
+                outFormat: ORACLE_OUT_FORMAT_OBJECT,
+                autoCommit: !isInTransaction,
+              },
+            ),
+          sqlDataSource.inputDetails.connectionPolicies?.retry,
+          sqlDataSource.logs,
+        );
+
+        if (returning === "affectedRows") {
+          return oracledbResult.rowsAffected as SqlRunnerReturnType<T, D>;
+        }
+
+        if (returning === "raw") {
+          return oracledbResult as SqlRunnerReturnType<T, D>;
+        }
+
+        // Oracle returns column names in UPPERCASE - normalize to lowercase
+        // Also convert any Lob objects (CLOB/BLOB) to strings/buffers
+        const normalizedRows = await Promise.all(
+          (oracledbResult.rows as any[])?.map(async (row) => {
+            const processedRow = await processOracleRow(row);
+            const normalizedRow: Record<string, any> = {};
+            for (const key in processedRow) {
+              normalizedRow[key.toLowerCase()] = processedRow[key];
+            }
+            return normalizedRow;
+          }) ?? [],
+        );
+
+        return normalizedRows as SqlRunnerReturnType<T, D>;
+      } finally {
+        if (oracledbConnection && !isInTransaction) {
+          await oracledbConnection.close();
+        }
+      }
     default:
       throw new HysteriaError(
         "ExecSql",
@@ -146,7 +224,7 @@ export const execSqlStreaming = async <
   switch (sqlType) {
     case "mariadb":
     case "mysql": {
-      const pool = sqlDataSource.getPool("mysql");
+      const pool = sqlDataSource.getPool() as MysqlConnectionInstance;
       const conn =
         (sqlDataSource.sqlConnection as GetConnectionReturnType<"mysql">) ??
         (await pool.getConnection());
@@ -216,9 +294,10 @@ export const execSqlStreaming = async <
 
     case "cockroachdb":
     case "postgres": {
+      const pgPool = sqlDataSource.getPool() as PgPoolClientInstance;
       const pgDriver =
         (sqlDataSource.sqlConnection as GetConnectionReturnType<"postgres">) ??
-        (await sqlDataSource.getPool("postgres").connect());
+        (await pgPool.connect());
 
       const pgQueryStreamDriver = await import("pg-query-stream").catch(() => {
         throw new DriverNotFoundError("pg-query-stream");
@@ -290,7 +369,7 @@ export const execSqlStreaming = async <
     case "sqlite": {
       const sqliteDriver =
         (sqlDataSource.sqlConnection as GetConnectionReturnType<"sqlite">) ??
-        sqlDataSource.getPool("sqlite");
+        sqlDataSource.getPool();
       const stream = new SQLiteStream(sqliteDriver, query, params, {
         onData: events.onData as (
           _passThrough: any,
@@ -305,7 +384,7 @@ export const execSqlStreaming = async <
     case "mssql": {
       const mssqlDriver =
         (sqlDataSource.sqlConnection as GetConnectionReturnType<"mssql">) ??
-        sqlDataSource.getPool("mssql");
+        sqlDataSource.getPool();
       const passThrough = new PassThrough({
         objectMode: options.objectMode ?? true,
         highWaterMark: options.highWaterMark,
@@ -363,6 +442,86 @@ export const execSqlStreaming = async <
       });
 
       mssqlRequest.query(mssqlQuery);
+
+      return passThrough;
+    }
+
+    case "oracledb": {
+      // OracleDB supports result set streaming via queryStream
+      const oraclePool = sqlDataSource.getPool();
+      const oracleConnection =
+        (sqlDataSource.sqlConnection as GetConnectionReturnType<"oracledb">) ??
+        (await (oraclePool as any).getConnection());
+
+      const passThrough = new PassThrough({
+        objectMode: options.objectMode ?? true,
+        highWaterMark: options.highWaterMark,
+      }) as PassThrough & AsyncGenerator<AnnotatedModel<M, A, R>>;
+
+      const ORACLE_STREAM_OUT_FORMAT_OBJECT = 4002 as const;
+
+      const oracleStreamParams = params.map(convertDateStringToDateForOracle);
+      const oracleStream = oracleConnection.queryStream(
+        query,
+        oracleStreamParams,
+        {
+          outFormat: ORACLE_STREAM_OUT_FORMAT_OBJECT,
+        },
+      );
+
+      let pending = 0;
+      let ended = false;
+      let hasError = false;
+
+      const tryRelease = async () => {
+        try {
+          await oracleConnection.close();
+        } catch {}
+      };
+
+      oracleStream.on("data", (row: any) => {
+        if (hasError) return;
+
+        // Oracle returns column names in UPPERCASE - normalize to lowercase
+        const normalizedRow: Record<string, any> = {};
+        for (const key in row) {
+          normalizedRow[key.toLowerCase()] = row[key];
+        }
+
+        if (events.onData) {
+          pending++;
+          Promise.resolve(events.onData(passThrough, normalizedRow))
+            .then(() => {
+              pending--;
+              if (ended && pending === 0 && !hasError) {
+                tryRelease();
+                passThrough.end();
+              }
+            })
+            .catch((err: any) => {
+              hasError = true;
+              tryRelease();
+              passThrough.destroy(err);
+            });
+          return;
+        }
+
+        passThrough.write(normalizedRow);
+      });
+
+      oracleStream.on("end", () => {
+        ended = true;
+        if (pending === 0 && !hasError) {
+          tryRelease();
+          passThrough.end();
+        }
+      });
+
+      oracleStream.on("error", (err: any) => {
+        hasError = true;
+        tryRelease();
+        passThrough.destroy(err);
+      });
 
       return passThrough;
     }

@@ -3,6 +3,8 @@ import { DriverNotFoundError } from "./driver_constants";
 import { DriverSpecificOptions, Mysql2Import } from "./driver_types";
 
 export class MysqlDriver extends Driver {
+  static mysqlClient: Mysql2Import | null = null;
+
   override type = "mysql" as const;
   override client: Mysql2Import;
 
@@ -15,14 +17,21 @@ export class MysqlDriver extends Driver {
   }
 
   static async createDriver(): Promise<Driver> {
-    const mysql2 = await import("mysql2/promise").catch(() => {
+    if (this.mysqlClient) {
+      return new MysqlDriver(this.mysqlClient);
+    }
+
+    const mysqlModule = await import("mysql2/promise").catch(() => {
       throw new DriverNotFoundError("mysql2");
     });
 
-    if (!mysql2) {
-      throw new DriverNotFoundError("mysql");
+    this.mysqlClient =
+      (mysqlModule as { default?: Mysql2Import }).default ?? mysqlModule;
+
+    if (!this.mysqlClient) {
+      throw new DriverNotFoundError("mysql2");
     }
 
-    return new MysqlDriver(mysql2.default);
+    return new MysqlDriver(this.mysqlClient);
   }
 }

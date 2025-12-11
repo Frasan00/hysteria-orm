@@ -1,4 +1,5 @@
 export type HysteriaErrorCode =
+  | "CONNECTION_ALREADY_ESTABLISHED"
   | `UNSUPPORTED_ISOLATION_LEVEL_${string}`
   | "ROW_NOT_FOUND"
   | `UNSUPPORTED_DATABASE_TYPE_${string}`

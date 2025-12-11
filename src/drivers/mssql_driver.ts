@@ -3,6 +3,8 @@ import { DriverNotFoundError } from "./driver_constants";
 import { DriverSpecificOptions, MssqlImport } from "./driver_types";
 
 export class MssqlDriver extends Driver {
+  static mssqlClient: MssqlImport | null = null;
+
   override type = "mssql" as const;
   override client: MssqlImport;
 
@@ -15,14 +17,21 @@ export class MssqlDriver extends Driver {
   }
 
   static async createDriver(): Promise<Driver> {
-    const { default: mssql } = await import("mssql").catch(() => {
+    if (this.mssqlClient) {
+      return new MssqlDriver(this.mssqlClient);
+    }
+
+    const mssqlModule = await import("mssql").catch(() => {
       throw new DriverNotFoundError("mssql");
     });
 
-    if (!mssql) {
+    this.mssqlClient =
+      (mssqlModule as { default?: MssqlImport }).default ?? mssqlModule;
+
+    if (!this.mssqlClient) {
       throw new DriverNotFoundError("mssql");
     }
 
-    return new MssqlDriver(mssql);
+    return new MssqlDriver(this.mssqlClient);
   }
 }

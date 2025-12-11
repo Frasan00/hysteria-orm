@@ -70,7 +70,8 @@ export default async function dropAllTablesConnector(
   );
 
   let trx: Transaction | null = null;
-  const shouldUseTransaction = transactional && dbType !== "mssql";
+  const shouldUseTransaction =
+    transactional && dbType !== "mssql" && dbType !== "oracledb";
   if (shouldUseTransaction) {
     trx = await sql.startTransaction();
     sql = trx.sql as SqlDataSource;
@@ -82,14 +83,13 @@ export default async function dropAllTablesConnector(
     }
 
     if (dbType === "mssql") {
-      const fkConstraints = await sql.rawQuery<
-        { table_name: string; constraint_name: string }[]
-      >(`
+      const fkResult = await sql.rawQuery<any>(`
         SELECT
           OBJECT_NAME(parent_object_id) AS table_name,
           name AS constraint_name
         FROM sys.foreign_keys;
       `);
+      const fkConstraints = fkResult.recordset;
       for (const fk of fkConstraints) {
         await sql.rawQuery(
           `ALTER TABLE [${fk.table_name}] DROP CONSTRAINT [${fk.constraint_name}];`,
@@ -97,7 +97,27 @@ export default async function dropAllTablesConnector(
       }
     }
 
-    await sql.rawQuery(dropAllTablesTemplate);
+    if (dbType === "oracledb") {
+      const fkResult = await sql.rawQuery<any>(`
+        SELECT constraint_name, table_name
+        FROM user_constraints
+        WHERE constraint_type = 'R'
+      `);
+
+      // Oracle rawQuery returns rows as objects with UPPERCASE column names
+      for (const fk of fkResult.rows || []) {
+        await sql.rawQuery(
+          `ALTER TABLE "${fk.TABLE_NAME}" DROP CONSTRAINT "${fk.CONSTRAINT_NAME}"`,
+        );
+      }
+
+      // Oracle can't execute multiple statements at once, drop each table individually
+      for (const table of parsedTables) {
+        await sql.rawQuery(`DROP TABLE "${table}" CASCADE CONSTRAINTS PURGE`);
+      }
+    } else {
+      await sql.rawQuery(dropAllTablesTemplate);
+    }
 
     if (dbType === "mysql" || dbType === "mariadb") {
       await sql.rawQuery(`SET FOREIGN_KEY_CHECKS = 1;`);

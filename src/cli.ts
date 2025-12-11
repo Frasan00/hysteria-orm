@@ -15,7 +15,7 @@ import { importTsUniversal } from "./utils/importer";
 import logger from "./utils/logger";
 import { getPackageManager, installBaseDependencies } from "./utils/package";
 
-const sqlDatabaseTypes = [
+export const sqlDatabaseTypes = [
   "sqlite",
   "mysql",
   "postgres",

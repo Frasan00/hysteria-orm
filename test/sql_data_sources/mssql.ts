@@ -1,6 +1,6 @@
 import { SqlDataSource } from "../../src/sql/sql_data_source";
 
-const sql = await SqlDataSource.connect({
+const sql = new SqlDataSource({
   type: "mssql",
   host: "localhost",
   port: 1433,
@@ -16,5 +16,7 @@ const sql = await SqlDataSource.connect({
     },
   },
 });
+
+await sql.connect();
 
 export default sql;
