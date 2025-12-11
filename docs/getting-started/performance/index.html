@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="generator" content="Docusaurus v3.7.0">
 <title data-rh="true">Performance | Hysteria ORM</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:image" content="https://frasan00.github.io/hysteria-orm/img/docusaurus-social-card.jpg"><meta data-rh="true" name="twitter:image" content="https://frasan00.github.io/hysteria-orm/img/docusaurus-social-card.jpg"><meta data-rh="true" property="og:url" content="https://frasan00.github.io/hysteria-orm/docs/getting-started/performance"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docusaurus_version" content="current"><meta data-rh="true" name="docusaurus_tag" content="docs-default-current"><meta data-rh="true" name="docsearch:version" content="current"><meta data-rh="true" name="docsearch:docusaurus_tag" content="docs-default-current"><meta data-rh="true" property="og:title" content="Performance | Hysteria ORM"><meta data-rh="true" name="description" content="Hysteria ORM is designed for high performance. Here are some tips:"><meta data-rh="true" property="og:description" content="Hysteria ORM is designed for high performance. Here are some tips:"><link data-rh="true" rel="icon" href="/hysteria-orm/img/favicon.ico"><link data-rh="true" rel="canonical" href="https://frasan00.github.io/hysteria-orm/docs/getting-started/performance"><link data-rh="true" rel="alternate" href="https://frasan00.github.io/hysteria-orm/docs/getting-started/performance" hreflang="en"><link data-rh="true" rel="alternate" href="https://frasan00.github.io/hysteria-orm/docs/getting-started/performance" hreflang="x-default"><link rel="stylesheet" href="/hysteria-orm/assets/css/styles.bc4fb98a.css">
-<script src="/hysteria-orm/assets/js/runtime~main.3688abcf.js" defer="defer"></script>
+<script src="/hysteria-orm/assets/js/runtime~main.5df4be69.js" defer="defer"></script>
 <script src="/hysteria-orm/assets/js/main.5ba7faed.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
@@ -13,7 +13,7 @@
 <h2 class="anchor anchorWithStickyNavbar_LWe7" id="connection-pooling">Connection Pooling<a href="#connection-pooling" class="hash-link" aria-label="Direct link to Connection Pooling" title="Direct link to Connection Pooling">​</a></h2>
 <ul>
 <li>SQL and MongoDB connections use pooling by default (driver-dependent).</li>
-<li>Use <code>sql.connect()</code> and <code>mongo.connect()</code> for singleton connections.</li>
+<li>Use <code>new SqlDataSource().connect()</code> and <code>new MongoDataSource().connect()</code> for singleton connections.</li>
 </ul>
 <h2 class="anchor anchorWithStickyNavbar_LWe7" id="query-optimization">Query Optimization<a href="#query-optimization" class="hash-link" aria-label="Direct link to Query Optimization" title="Direct link to Query Optimization">​</a></h2>
 <ul>
@@ -28,7 +28,6 @@
 <li><code>.performance.many()</code></li>
 <li><code>.performance.one()</code></li>
 <li><code>.performance.oneOrFail()</code></li>
-<li><code>.performance.exists()</code></li>
 <li><code>.performance.paginate()</code></li>
 <li><code>.performance.exists()</code></li>
 </ul>
