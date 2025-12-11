@@ -1,5 +1,6 @@
 import { CaseConvention } from "../../utils/case_utils";
 import { SqlDataSource } from "../sql_data_source";
+import { ReplicationType } from "../sql_data_source_types";
 import { Transaction } from "../transactions/transaction";
 import { Model } from "./model";
 import { ExcludeRelations } from "./model_manager/model_manager_types";
@@ -41,6 +42,14 @@ export type BaseModelMethodOptions = {
    * @description Whether to ignore the hooks for the model
    */
   ignoreHooks?: boolean;
+
+  /**
+   * @description The replication mode to use for the model
+   * @description If not specified, read operations will use slave (if available) else master, and write operations will always use master
+   * @description If set to "master", all operations will use master
+   * @description If set to "slave", read operations will use slave and write operations will use master
+   */
+  replicationMode?: ReplicationType;
 };
 
 /**

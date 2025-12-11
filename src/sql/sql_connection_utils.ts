@@ -14,9 +14,7 @@ import type {
 import { DriverFactory } from "../drivers/drivers_factory";
 import { env } from "../env/env";
 import { HysteriaError } from "../errors/hysteria_error";
-import { SqlDataSource } from "./sql_data_source";
 import {
-  GetConnectionReturnType,
   SqlDataSourceInput,
   SqlDataSourceType,
   SqlDriverSpecificOptions,

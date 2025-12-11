@@ -73,7 +73,7 @@ sqlTests.forEach((file) => {
         { stdio: "inherit" }
       );
     } catch (error) {
-      console.error(`Error running ${file}`);
+      console.error(`[${environment.type}] Error running ${file}`);
       process.exit(1);
     }
   });
@@ -110,6 +110,12 @@ execSync(
 
 execSync(
   `jest --config=jest.config.js --detectOpenHandles ./test/cache/sql_data_source_cache.test.ts`,
+  { stdio: "inherit" }
+);
+
+// replication
+execSync(
+  `jest --config=jest.config.js --detectOpenHandles ./test/replication/slaves.test.ts`,
   { stdio: "inherit" }
 );
 

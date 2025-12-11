@@ -53,6 +53,9 @@ import type {
   MysqlConnectionInstance,
   OracleDBPoolInstance,
   PgPoolClientInstance,
+  RawQueryOptions,
+  ReplicationType,
+  SlaveAlgorithm,
   SqlCloneOptions,
   SqlDataSourceInput,
   SqlDataSourceModel,
@@ -101,6 +104,24 @@ export class SqlDataSource<
   private sqlType: D;
   private _models: T;
   private ownsPool: boolean = false;
+
+  /**
+   * @description The slaves data sources to use for the sql data source, slaves are automatically used for read operations unless specified otherwise
+   */
+  slaves: SqlDataSource<D, T, C>[];
+
+  /**
+   * @description The algorithm to use for selecting the slave for read operations
+   * @default "roundRobin" - Distributes requests evenly across all slaves in sequence
+   * @option "random" - Randomly selects a slave for each request
+   */
+  slaveAlgorithm: SlaveAlgorithm;
+
+  /**
+   * @description The current index for round-robin slave selection
+   * @private
+   */
+  private roundRobinIndex: number = 0;
 
   /**
    * @description The pool of connections for the database
@@ -181,12 +202,14 @@ export class SqlDataSource<
     M extends Record<string, SqlDataSourceModel> = {},
     K extends CacheKeys = {},
   >(
-    input: SqlDataSourceInput<U, M, K>,
+    input: Omit<SqlDataSourceInput<U, M, K>, "slaves">,
     cb?: (sqlDataSource: SqlDataSource<U, M, K>) => Promise<void> | void,
   ): Promise<SqlDataSource<U, M, K>> {
-    const sqlDataSource = new SqlDataSource(input);
+    const sqlDataSource = new SqlDataSource(
+      input as SqlDataSourceInput<U, M, K>,
+    );
     await sqlDataSource.connectWithoutSettingPrimary();
-    const result = sqlDataSource as unknown as SqlDataSource<U, M, K>;
+    const result = sqlDataSource as SqlDataSource<U, M, K>;
     await cb?.(result);
     return result;
   }
@@ -213,11 +236,11 @@ export class SqlDataSource<
     cb: (sqlDataSource: SqlDataSource<U, M, K>) => Promise<void>,
   ): Promise<void> {
     const sqlDataSource = new SqlDataSource(
-      connectionDetails as unknown as SqlDataSourceInput<U, M, K>,
+      connectionDetails as SqlDataSourceInput<U, M, K>,
     );
     await sqlDataSource.connectWithoutSettingPrimary();
 
-    const result = sqlDataSource as unknown as SqlDataSource<U, M, K>;
+    const result = sqlDataSource as SqlDataSource<U, M, K>;
 
     try {
       await cb(result);
@@ -358,6 +381,14 @@ export class SqlDataSource<
 
     // Set models configured on the sql data source instance
     this._models = (input?.models || {}) as T;
+
+    // Set slaves configured on the sql data source instance
+    this.slaves = (input?.replication?.slaves || []).map(
+      (slave) => new SqlDataSource(slave as SqlDataSourceInput<D, T, C>),
+    );
+
+    // Set slave algorithm
+    this.slaveAlgorithm = input?.replication?.slaveAlgorithm || "roundRobin";
   }
 
   // ============================================
@@ -365,7 +396,7 @@ export class SqlDataSource<
   // ============================================
 
   /**
-   * @description Establishes the database connection and sets this instance as the primary connection
+   * @description Establishes the database connection and sets this instance as the primary connection, it also connects to the slaves if any are configured
    * @throws {HysteriaError} If the connection is already established, use `SqlDataSource.useConnection` or `SqlDataSource.connectToSecondarySource` for auxiliary connections
    * @example
    * ```ts
@@ -384,6 +415,19 @@ export class SqlDataSource<
     // Create the connection pool
     this.sqlPool = await createSqlPool(this.sqlType, this.inputDetails);
     this.ownsPool = true;
+
+    // Connect to the slaves if any are configured
+    if (this.slaves.length) {
+      await Promise.all(
+        this.slaves.map(async (slave) => {
+          slave.sqlPool = await createSqlPool(
+            slave.sqlType,
+            slave.inputDetails,
+          );
+          slave.ownsPool = true;
+        }),
+      );
+    }
 
     // Set as primary instance
     SqlDataSource.#instance = this;
@@ -412,6 +456,24 @@ export class SqlDataSource<
    */
   get models(): T {
     return this._models;
+  }
+
+  /**
+   * @description Selects a slave from the pool using the configured algorithm
+   * @returns A slave SqlDataSource instance or null if no slaves are available
+   */
+  getSlave(): SqlDataSource<D, T, C> | null {
+    if (!this.slaves.length) {
+      return null;
+    }
+
+    if (this.slaveAlgorithm === "random") {
+      return this.slaves[Math.floor(Math.random() * this.slaves.length)];
+    }
+
+    const slave = this.slaves[this.roundRobinIndex % this.slaves.length];
+    this.roundRobinIndex = (this.roundRobinIndex + 1) % this.slaves.length;
+    return slave;
   }
 
   /**
@@ -825,6 +887,7 @@ export class SqlDataSource<
   /**
    * @description Closes the current connection
    * @description If there is an active global transaction, it will be rolled back
+   * @description Also disconnects all slave connections if any are configured
    */
   async closeConnection(): Promise<void> {
     if (!this.isConnected) {
@@ -850,6 +913,20 @@ export class SqlDataSource<
     }
 
     await this.cacheAdapter?.disconnect?.();
+
+    if (this.slaves.length) {
+      await Promise.all(
+        this.slaves.map(async (slave) => {
+          try {
+            await slave.closeConnection();
+          } catch (err: any) {
+            logger.warn(
+              `SqlDataSource::closeConnection - Error while closing slave connection: ${err.message}`,
+            );
+          }
+        }),
+      );
+    }
 
     log("Closing connection", this.logs);
     switch (this.sqlType) {
@@ -961,6 +1038,7 @@ export class SqlDataSource<
   async rawQuery<R = RawQueryResponseType<D>>(
     query: string,
     params: any[] = [],
+    options?: RawQueryOptions,
   ): Promise<R> {
     if (!this.isConnected) {
       throw new HysteriaError(
@@ -970,6 +1048,19 @@ export class SqlDataSource<
     }
 
     const formattedQuery = formatQuery(this, query);
+    const replicationMode = options?.replicationMode || "master";
+
+    if (replicationMode === "slave") {
+      const slave = this.getSlave() || this;
+      return execSql(
+        formattedQuery,
+        params,
+        slave,
+        this.getDbType(),
+        "raw",
+      ) as R;
+    }
+
     return execSql(formattedQuery, params, this, this.getDbType(), "raw") as R;
   }
 

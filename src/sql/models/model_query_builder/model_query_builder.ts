@@ -227,38 +227,33 @@ export class ModelQueryBuilder<
       (await this.model.beforeFetch?.(this));
 
     const { sql, bindings } = this.unWrap();
-    const stream = await execSqlStreaming(
-      sql,
-      bindings,
-      this.sqlDataSource,
-      options,
-      {
-        onData: async (passThrough, row) => {
-          const model = this.addAdditionalColumnsToModel(row, this.model);
-          const serializedModel = await serializeModel(
-            [model] as T[],
-            this.model,
-            this.modelSelectedColumns,
-            this.modelAnnotatedColumns,
-            this.mustRemoveAnnotations,
-          );
+    const dataSource = await this.getSqlDataSource("read");
+    const stream = await execSqlStreaming(sql, bindings, dataSource, options, {
+      onData: async (passThrough, row) => {
+        const model = this.addAdditionalColumnsToModel(row, this.model);
+        const serializedModel = await serializeModel(
+          [model] as T[],
+          this.model,
+          this.modelSelectedColumns,
+          this.modelAnnotatedColumns,
+          this.mustRemoveAnnotations,
+        );
 
-          if (!serializedModel) {
-            return;
-          }
+        if (!serializedModel) {
+          return;
+        }
 
-          if (!(options.ignoreHooks as string[])?.includes("afterFetch")) {
-            await this.model.afterFetch?.([serializedModel] as unknown as T[]);
-          }
+        if (!(options.ignoreHooks as string[])?.includes("afterFetch")) {
+          await this.model.afterFetch?.([serializedModel] as unknown as T[]);
+        }
 
-          if (this.relationQueryBuilders.length) {
-            await this.processRelationsRecursively([serializedModel as T]);
-          }
+        if (this.relationQueryBuilders.length) {
+          await this.processRelationsRecursively([serializedModel as T]);
+        }
 
-          passThrough.write(serializedModel);
-        },
+        passThrough.write(serializedModel);
       },
-    );
+    });
 
     return stream as PassThrough & AsyncGenerator<AnnotatedModel<T, A, R>>;
   }

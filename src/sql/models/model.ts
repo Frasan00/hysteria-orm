@@ -920,21 +920,27 @@ export abstract class Model extends Entity {
     this: typeof Model,
     options?: BaseModelMethodOptions,
   ): ModelManager<T> {
+    let modelManager: ModelManager<T>;
+
     if (options?.connection) {
-      return options.connection.getModelManager<T>(
+      modelManager = options.connection.getModelManager<T>(
         this as unknown as typeof Model,
       );
-    }
-
-    if (options?.trx) {
-      return options.trx.sql.getModelManager<T>(
+    } else if (options?.trx) {
+      modelManager = options.trx.sql.getModelManager<T>(
         this as unknown as typeof Model,
       );
+    } else {
+      const typeofModel = this as unknown as typeof Model;
+      typeofModel.establishConnection();
+      modelManager = typeofModel.sqlInstance.getModelManager<T>(typeofModel);
     }
 
-    const typeofModel = this as unknown as typeof Model;
-    typeofModel.establishConnection();
-    return typeofModel.sqlInstance.getModelManager<T>(typeofModel);
+    if (options?.replicationMode) {
+      modelManager.setReplicationMode(options.replicationMode);
+    }
+
+    return modelManager;
   }
 
   // instance methods

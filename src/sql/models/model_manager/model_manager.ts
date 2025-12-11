@@ -37,6 +37,7 @@ export class ModelManager<T extends Model> {
   protected modelInstance: T;
   protected astParser: AstParser;
   protected interpreterUtils: InterpreterUtils;
+  protected replicationMode: "master" | "slave" | null = null;
 
   /**
    * @description Constructor for ModelManager class.
@@ -49,6 +50,14 @@ export class ModelManager<T extends Model> {
     this.sqlType = this.sqlDataSource.getDbType();
     this.astParser = new AstParser(this.model, this.sqlType);
     this.interpreterUtils = new InterpreterUtils(this.model);
+  }
+
+  /**
+   * @description Sets the replication mode for queries created by this model manager
+   */
+  setReplicationMode(mode: "master" | "slave"): this {
+    this.replicationMode = mode;
+    return this;
   }
 
   /**
@@ -641,7 +650,14 @@ export class ModelManager<T extends Model> {
    * @description Returns a query builder instance
    */
   query(): Omit<ModelQueryBuilder<T>, "insert" | "insertMany"> {
-    return new ModelQueryBuilder<T>(this.model, this.sqlDataSource);
+    const queryBuilder = new ModelQueryBuilder<T>(
+      this.model,
+      this.sqlDataSource,
+    );
+    if (this.replicationMode) {
+      queryBuilder.setReplicationMode(this.replicationMode);
+    }
+    return queryBuilder;
   }
 
   /**

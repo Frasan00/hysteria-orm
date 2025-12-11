@@ -30,7 +30,6 @@ import type {
   Sqlite3Import,
 } from "../drivers/driver_types";
 import type { Model } from "./models/model";
-import type { SqlDataSource } from "./sql_data_source";
 
 export type Sqlite3ConnectionOptions = {
   mode: number;
@@ -160,6 +159,32 @@ export type SqlDataSourceInput<
    * @warning For usage with types, you must have driver types installed if the driver handles types in a type package like e.g. `@types/pg`
    */
   driverOptions?: SqlDriverSpecificOptions<D>;
+
+  /**
+   * @description The replication configuration for the sql data source, it's used to configure the replication for the sql data source
+   */
+  replication?: {
+    /**
+     * @description The slaves data sources to use for the sql data source, slaves are automatically used for read operations unless specified otherwise
+     */
+    slaves?: Omit<
+      UseConnectionInput<D, T, C>,
+      | "slaves"
+      | "models"
+      | "cacheStrategy"
+      | "adminJs"
+      | "logs"
+      | "queryFormatOptions"
+      | "migrationsPath"
+    >[];
+
+    /**
+     * @description The algorithm to use for selecting the slave for read operations
+     * @default "roundRobin" - Distributes requests evenly across all slaves in sequence
+     * @option "random" - Randomly selects a slave for each request
+     */
+    slaveAlgorithm?: SlaveAlgorithm;
+  };
 } & Omit<MapSqlDataSourceTypeToInput<D>, "type">;
 
 /**
@@ -253,3 +278,16 @@ export type TableFormat<S extends string> =
   | (S extends `${infer L} as ${infer R}`
       ? `${NoSpace<L>} as ${NoSpace<R>}`
       : never);
+
+export type ReplicationType = "master" | "slave";
+
+/**
+ * @description Algorithm for selecting a slave database for read operations
+ * @option "roundRobin" - Distributes requests evenly across all slaves in sequence
+ * @option "random" - Randomly selects a slave for each request
+ */
+export type SlaveAlgorithm = "roundRobin" | "random";
+
+export type RawQueryOptions = {
+  replicationMode?: ReplicationType;
+};

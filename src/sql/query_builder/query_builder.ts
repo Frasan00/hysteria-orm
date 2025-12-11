@@ -30,7 +30,7 @@ import {
 } from "../pagination";
 import { deepCloneNode } from "../resources/utils";
 import { SqlDataSource } from "../sql_data_source";
-import type { TableFormat } from "../sql_data_source_types";
+import type { ReplicationType, TableFormat } from "../sql_data_source_types";
 import { execSql, execSqlStreaming } from "../sql_runner/sql_runner";
 import { SoftDeleteOptions } from "./delete_query_builder_type";
 import { JsonQueryBuilder } from "./json_query_builder";
@@ -56,6 +56,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   protected updateNode: UpdateNode | null = null;
   protected deleteNode: DeleteNode | null = null;
   protected truncateNode: TruncateNode | null = null;
+  protected replicationMode: ReplicationType | null = null;
 
   /**
    * @description Performance methods that return the time that took to execute the query with the result
@@ -94,6 +95,18 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   }
 
   /**
+   * @description Sets the replication mode for the query builder
+   * @param replicationMode - The replication mode to use for the query builder
+   * @description If not specified, read operations will use slave (if available) else master, and write operations will always use master
+   * @description If set to "master", all operations will use master
+   * @description If set to "slave", read operations will use slave and write operations will use master
+   */
+  setReplicationMode(replicationMode: ReplicationType): this {
+    this.replicationMode = replicationMode;
+    return this;
+  }
+
+  /**
    * @description Executes the query and returns true if the query returns at least one result, false otherwise.
    */
   async exists(): Promise<boolean> {
@@ -105,7 +118,8 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    */
   async many(): Promise<AnnotatedModel<T, any, any>[]> {
     const { sql, bindings } = this.unWrap();
-    return execSql(sql, bindings, this.sqlDataSource, this.dbType, "rows", {
+    const dataSource = await this.getSqlDataSource("read");
+    return execSql(sql, bindings, dataSource, this.dbType, "rows", {
       sqlLiteOptions: {
         typeofModel: this.model,
         mode: "fetch",
@@ -175,17 +189,12 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     options: StreamOptions = {},
   ): Promise<PassThrough & AsyncGenerator<AnnotatedModel<M, {}, {}>>> {
     const { sql, bindings } = this.unWrap();
-    const stream = await execSqlStreaming(
-      sql,
-      bindings,
-      this.sqlDataSource,
-      options,
-      {
-        onData: (passThrough, row) => {
-          passThrough.write(row);
-        },
+    const dataSource = await this.getSqlDataSource("read");
+    const stream = await execSqlStreaming(sql, bindings, dataSource, options, {
+      onData: (passThrough, row) => {
+        passThrough.write(row);
       },
-    );
+    });
 
     return stream as PassThrough & AsyncGenerator<AnnotatedModel<M, {}, {}>>;
   }
@@ -586,20 +595,14 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     this.insertNode = new InsertNode(this.fromNode, [insertObject], returning);
     const { sql, bindings } = this.astParser.parse([this.insertNode]);
 
-    const rows = await execSql(
-      sql,
-      bindings,
-      this.sqlDataSource,
-      this.dbType,
-      "rows",
-      {
-        sqlLiteOptions: {
-          typeofModel: this.model,
-          mode: "insertOne",
-          models: [data as T],
-        },
+    const dataSource = await this.getSqlDataSource("write");
+    const rows = await execSql(sql, bindings, dataSource, this.dbType, "rows", {
+      sqlLiteOptions: {
+        typeofModel: this.model,
+        mode: "insertOne",
+        models: [data as T],
       },
-    );
+    });
 
     return Array.isArray(rows) && rows.length ? rows[0] : rows;
   }
@@ -639,7 +642,8 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     this.insertNode = new InsertNode(this.fromNode, models, returning);
     const { sql, bindings } = this.astParser.parse([this.insertNode]);
 
-    return execSql(sql, bindings, this.sqlDataSource, this.dbType, "rows", {
+    const dataSource = await this.getSqlDataSource("write");
+    return execSql(sql, bindings, dataSource, this.dbType, "rows", {
       sqlLiteOptions: {
         typeofModel: this.model,
         mode: "insertMany",
@@ -702,10 +706,11 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
       ),
     ]);
 
+    const dataSource = await this.getSqlDataSource("write");
     const rawResult = await execSql(
       sql,
       bindings,
-      this.sqlDataSource,
+      dataSource,
       this.dbType,
       "rows",
       {
@@ -784,10 +789,11 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
       ),
     ]);
 
+    const dataSource = await this.getSqlDataSource("write");
     const rawResult = await execSql(
       sql,
       bindings,
-      this.sqlDataSource,
+      dataSource,
       this.dbType,
       "rows",
       {
@@ -879,10 +885,11 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
       `when not matched then insert (${insertCols}) values (${insertVals}) ` +
       `output ${outputCols};`;
 
+    const dataSource = await this.getSqlDataSource("write");
     const rawResult = await execSql(
       sql,
       bindings,
-      this.sqlDataSource,
+      dataSource,
       this.dbType,
       "rows",
       {
@@ -920,16 +927,10 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
       ...this.joinNodes,
     ]);
 
-    return execSql(
-      sql,
-      bindings,
-      this.sqlDataSource,
-      this.dbType,
-      "affectedRows",
-      {
-        sqlLiteOptions: { typeofModel: this.model, mode: "affectedRows" },
-      },
-    );
+    const dataSource = await this.getSqlDataSource("write");
+    return execSql(sql, bindings, dataSource, this.dbType, "affectedRows", {
+      sqlLiteOptions: { typeofModel: this.model, mode: "affectedRows" },
+    });
   }
 
   /**
@@ -939,7 +940,8 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   async truncate(): Promise<void> {
     this.truncateNode = new TruncateNode(this.fromNode);
     const { sql, bindings } = this.astParser.parse([this.truncateNode]);
-    await execSql(sql, bindings, this.sqlDataSource, this.dbType, "rows");
+    const dataSource = await this.getSqlDataSource("write");
+    await execSql(sql, bindings, dataSource, this.dbType, "rows");
   }
 
   /**
@@ -954,19 +956,13 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
       ...this.joinNodes,
     ]);
 
-    return execSql(
-      sql,
-      bindings,
-      this.sqlDataSource,
-      this.dbType,
-      "affectedRows",
-      {
-        sqlLiteOptions: {
-          typeofModel: this.model,
-          mode: "affectedRows",
-        },
+    const dataSource = await this.getSqlDataSource("write");
+    return execSql(sql, bindings, dataSource, this.dbType, "affectedRows", {
+      sqlLiteOptions: {
+        typeofModel: this.model,
+        mode: "affectedRows",
       },
-    );
+    });
   }
 
   /**
@@ -994,19 +990,13 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
       ...this.joinNodes,
     ]);
 
-    return execSql(
-      sql,
-      bindings,
-      this.sqlDataSource,
-      this.dbType,
-      "affectedRows",
-      {
-        sqlLiteOptions: {
-          typeofModel: this.model,
-          mode: "affectedRows",
-        },
+    const dataSource = await this.getSqlDataSource("write");
+    return execSql(sql, bindings, dataSource, this.dbType, "affectedRows", {
+      sqlLiteOptions: {
+        typeofModel: this.model,
+        mode: "affectedRows",
       },
-    );
+    });
   }
 
   /**
@@ -1429,5 +1419,29 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     }
 
     return Promise.all([modelsQuery(), countQuery()]);
+  }
+
+  protected async getSqlDataSource(
+    mode: "read" | "write",
+  ): Promise<SqlDataSource> {
+    if (!this.replicationMode) {
+      if (mode === "read") {
+        const slave = this.sqlDataSource.getSlave();
+        return slave || this.sqlDataSource;
+      }
+
+      return this.sqlDataSource;
+    }
+
+    if (this.replicationMode === "master") {
+      return this.sqlDataSource;
+    }
+
+    if (mode === "write") {
+      return this.sqlDataSource;
+    }
+
+    const slave = this.sqlDataSource.getSlave();
+    return slave || this.sqlDataSource;
   }
 }
