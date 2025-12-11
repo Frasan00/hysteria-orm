@@ -1,7 +1,7 @@
 import type { RedisOptions } from "ioredis";
 import type { config as MssqlConfig } from "mssql";
 import type { PoolOptions } from "mysql2/promise";
-import type { ClientConfig } from "pg";
+import type { PoolConfig } from "pg";
 import type { DataSourceType } from "../data_source/data_source_types";
 import type { PoolAttributes } from "oracledb";
 
@@ -15,7 +15,7 @@ export type OracleDBImport = typeof import("oracledb");
 
 export type OracleDBCreateConnectionOptions = PoolAttributes;
 export type MysqlCreateConnectionOptions = PoolOptions;
-export type PgClientOptions = ClientConfig;
+export type PgPoolOptions = PoolConfig;
 export type MssqlConnectionOptions = Omit<MssqlConfig, "options"> & {
   options?: Omit<
     NonNullable<MssqlConfig["options"]>,
@@ -30,7 +30,7 @@ export type MongoConnectionOptions = NonNullable<
 export type DriverSpecificOptions<T extends DataSourceType> = T extends "mongo"
   ? MongoConnectionOptions
   : T extends "cockroachdb" | "postgres"
-    ? PgClientOptions
+    ? PgPoolOptions
     : T extends "redis"
       ? RedisOptions
       : T extends "mysql" | "mariadb"
