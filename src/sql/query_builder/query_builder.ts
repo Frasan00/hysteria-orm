@@ -118,13 +118,14 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    */
   async many(): Promise<AnnotatedModel<T, any, any>[]> {
     const { sql, bindings } = this.unWrap();
-    const dataSource = await this.getSqlDataSource("read");
-    return execSql(sql, bindings, dataSource, this.dbType, "rows", {
-      sqlLiteOptions: {
-        typeofModel: this.model,
-        mode: "fetch",
-      },
-    });
+    return this.execSqlWithSlaveHandling("read", (dataSource) =>
+      execSql(sql, bindings, dataSource, this.dbType, "rows", {
+        sqlLiteOptions: {
+          typeofModel: this.model,
+          mode: "fetch",
+        },
+      }),
+    );
   }
 
   /**
@@ -189,14 +190,21 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     options: StreamOptions = {},
   ): Promise<PassThrough & AsyncGenerator<AnnotatedModel<M, {}, {}>>> {
     const { sql, bindings } = this.unWrap();
-    const dataSource = await this.getSqlDataSource("read");
-    const stream = await execSqlStreaming(sql, bindings, dataSource, options, {
-      onData: (passThrough, row) => {
-        passThrough.write(row);
-      },
-    });
+    return this.execSqlWithSlaveHandling("read", async (dataSource) => {
+      const stream = await execSqlStreaming(
+        sql,
+        bindings,
+        dataSource,
+        options,
+        {
+          onData: (passThrough, row) => {
+            passThrough.write(row);
+          },
+        },
+      );
 
-    return stream as PassThrough & AsyncGenerator<AnnotatedModel<M, {}, {}>>;
+      return stream as PassThrough & AsyncGenerator<AnnotatedModel<M, {}, {}>>;
+    });
   }
 
   /**
@@ -1443,5 +1451,44 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
 
     const slave = this.sqlDataSource.getSlave();
     return slave || this.sqlDataSource;
+  }
+
+  /**
+   * @description Executes SQL with slave failure handling
+   * @param mode The operation mode (read or write)
+   * @param operation The execSql operation to perform
+   * @returns The result of the operation
+   */
+  protected async execSqlWithSlaveHandling<R>(
+    mode: "read" | "write",
+    operation: (dataSource: SqlDataSource) => Promise<R>,
+  ): Promise<R> {
+    const dataSource = await this.getSqlDataSource(mode);
+    const isSlave = dataSource !== this.sqlDataSource;
+
+    if (!isSlave) {
+      return operation(dataSource);
+    }
+
+    try {
+      return await operation(dataSource);
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      const onSlaveFailure = this.sqlDataSource.getOnSlaveServerFailure();
+
+      if (onSlaveFailure) {
+        await onSlaveFailure(err, {
+          host: dataSource.host,
+          port: dataSource.port,
+          username: dataSource.username,
+          password: dataSource.password,
+          database: dataSource.database,
+          type: dataSource.getDbType(),
+        });
+        return await operation(this.sqlDataSource);
+      }
+
+      throw err;
+    }
   }
 }

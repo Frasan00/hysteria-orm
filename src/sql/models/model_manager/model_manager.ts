@@ -570,10 +570,11 @@ export class ModelManager<T extends Model> {
     }
 
     // Primary key is filtered out of the prepared columns and values
-    preparedColumns = preparedColumns.filter((column) => column !== primaryKey);
-    preparedValues = preparedValues.filter(
-      (value) => value !== model[primaryKey as keyof T],
-    );
+    const primaryKeyIndex = preparedColumns.indexOf(primaryKey);
+    if (primaryKeyIndex !== -1) {
+      preparedColumns.splice(primaryKeyIndex, 1);
+      preparedValues.splice(primaryKeyIndex, 1);
+    }
 
     const { sql, bindings } = this.astParser.parse([
       new UpdateNode(

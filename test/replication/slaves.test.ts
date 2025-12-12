@@ -324,3 +324,80 @@ describe("Slave Replication", () => {
     });
   });
 });
+
+describe("Slave Failure Handling", () => {
+  let sqlFailure: SqlDataSource;
+  let onSlaveServerFailure: jest.Mock;
+
+  beforeAll(async () => {
+    try {
+      await SqlDataSource.disconnect();
+    } catch {}
+
+    onSlaveServerFailure = jest.fn();
+
+    sqlFailure = new SqlDataSource({
+      type: "postgres",
+      host: process.env.DB_HOST || "localhost",
+      username: process.env.DB_USER || "root",
+      password: process.env.DB_PASSWORD || "root",
+      database: process.env.DB_DATABASE || "test",
+      port: Number(process.env.DB_PORT) || 5432,
+      logs: false,
+      replication: {
+        slaves: [
+          {
+            type: "postgres",
+            host: "localhost",
+            username: "root",
+            password: "root",
+            database: "test",
+            port: 65432,
+          },
+        ],
+        onSlaveServerFailure,
+      },
+      models: {
+        replicationUser: ReplicationUser,
+      },
+    });
+
+    await sqlFailure.connect();
+
+    await sqlFailure.rawQuery("DROP TABLE IF EXISTS replication_users", []);
+    await sqlFailure.rawQuery(
+      `
+      CREATE TABLE replication_users (
+        id BIGSERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) NOT NULL UNIQUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `,
+      [],
+    );
+  });
+
+  afterAll(async () => {
+    try {
+      await sqlFailure.rawQuery("DROP TABLE IF EXISTS replication_users", []);
+    } finally {
+      await sqlFailure.disconnect();
+    }
+  });
+
+  test("should fallback to master when slave fails and call onSlaveServerFailure", async () => {
+    await ReplicationUser.insert({
+      name: "Failure Test",
+      email: "failure@example.com",
+    });
+
+    const users = await ReplicationUser.find({
+      where: { email: "failure@example.com" },
+    });
+
+    expect(users.length).toBe(1);
+    expect(users[0].name).toBe("Failure Test");
+    expect(onSlaveServerFailure).toHaveBeenCalled();
+  });
+});

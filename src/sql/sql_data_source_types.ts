@@ -30,6 +30,7 @@ import type {
   Sqlite3Import,
 } from "../drivers/driver_types";
 import type { Model } from "./models/model";
+import type { SqlDataSource } from "./sql_data_source";
 
 export type Sqlite3ConnectionOptions = {
   mode: number;
@@ -141,6 +142,15 @@ type MapSqlDataSourceTypeToInput<D extends SqlDataSourceType> = D extends
           ? OracleDBDataSourceInput
           : never;
 
+export type SlaveContext = {
+  type: SqlDataSourceType;
+  host: string;
+  port: number;
+  username: string;
+  password: string;
+  database: string;
+};
+
 /**
  * @description The input type for the SqlDataSource constructor
  * @description The connectionPolicies object is used to configure the connection policies for the sql data source
@@ -164,6 +174,14 @@ export type SqlDataSourceInput<
    * @description The replication configuration for the sql data source, it's used to configure the replication for the sql data source
    */
   replication?: {
+    /**
+     * @description The function to call when a slave server fails, if not provided an error will be thrown
+     */
+    onSlaveServerFailure?: (
+      error: Error,
+      context: SlaveContext,
+    ) => void | Promise<void>;
+
     /**
      * @description The slaves data sources to use for the sql data source, slaves are automatically used for read operations unless specified otherwise
      */

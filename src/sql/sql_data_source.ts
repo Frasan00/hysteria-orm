@@ -54,8 +54,8 @@ import type {
   OracleDBPoolInstance,
   PgPoolClientInstance,
   RawQueryOptions,
-  ReplicationType,
   SlaveAlgorithm,
+  SlaveContext,
   SqlCloneOptions,
   SqlDataSourceInput,
   SqlDataSourceModel,
@@ -163,6 +163,21 @@ export class SqlDataSource<
    * @description Cached AdminJS instance
    */
   private adminJsInstance?: AdminJsInstance;
+
+  /**
+   * @description Callback to handle slave server failures
+   */
+  private onSlaveServerFailure?: (
+    error: Error,
+    context: SlaveContext,
+  ) => void | Promise<void>;
+
+  /**
+   * @description Returns the configured slave failure callback
+   */
+  getOnSlaveServerFailure() {
+    return this.onSlaveServerFailure;
+  }
 
   // ============================================
   // Static Methods
@@ -334,7 +349,7 @@ export class SqlDataSource<
    * ```
    */
   constructor(input?: SqlDataSourceInput<D, T, C>) {
-    super(input as any);
+    super(input as SqlDataSourceInput);
     this.sqlType = (input?.type || this.type) as D;
 
     // Cast input to access connection properties that come from mapped types
@@ -389,6 +404,9 @@ export class SqlDataSource<
 
     // Set slave algorithm
     this.slaveAlgorithm = input?.replication?.slaveAlgorithm || "roundRobin";
+
+    // Set slave failure callback
+    this.onSlaveServerFailure = input?.replication?.onSlaveServerFailure;
   }
 
   // ============================================
@@ -802,7 +820,10 @@ export class SqlDataSource<
       | ((trx: Transaction) => Promise<void>),
     maybeOptions?: StartTransactionOptions,
   ): Promise<Transaction | void> {
-    return this.startTransaction(optionsOrCb as any, maybeOptions);
+    return this.startTransaction(
+      optionsOrCb as (trx: Transaction) => Promise<void>,
+      maybeOptions,
+    );
   }
 
   /**
@@ -1051,14 +1072,15 @@ export class SqlDataSource<
     const replicationMode = options?.replicationMode || "master";
 
     if (replicationMode === "slave") {
-      const slave = this.getSlave() || this;
-      return execSql(
-        formattedQuery,
-        params,
-        slave,
-        this.getDbType(),
-        "raw",
-      ) as R;
+      return this.executeOnSlave(async (slaveInstance) => {
+        return execSql(
+          formattedQuery,
+          params,
+          slaveInstance,
+          this.getDbType(),
+          "raw",
+        ) as R;
+      });
     }
 
     return execSql(formattedQuery, params, this, this.getDbType(), "raw") as R;
@@ -1443,6 +1465,42 @@ export class SqlDataSource<
   // ============================================
   // Private Methods
   // ============================================
+
+  /**
+   * @description Executes an operation on a slave, handling failures with the configured callback
+   * @param operation The operation to execute on the slave
+   * @returns The result of the operation, or falls back to master if slave fails
+   */
+  private async executeOnSlave<R>(
+    operation: (slave: SqlDataSource<D, T, C>) => Promise<R>,
+  ): Promise<R> {
+    const slave = this.getSlave();
+
+    if (!slave) {
+      return operation(this);
+    }
+
+    try {
+      return await operation(slave);
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+
+      if (this.onSlaveServerFailure) {
+        await this.onSlaveServerFailure(err, {
+          host: slave.host,
+          port: slave.port,
+          username: slave.username,
+          password: slave.password,
+          database: slave.database,
+          type: slave.sqlType,
+        });
+
+        return operation(this);
+      }
+
+      throw err;
+    }
+  }
 
   /**
    * @description Internal method to establish connection without setting as primary instance
