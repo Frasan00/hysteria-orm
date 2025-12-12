@@ -1,27 +1,66 @@
+# Source files
 src/
+
+# Test files and configs
+test/
 test_runner.js
 migration_runner.js
 jest.config.js
+TEST.MD
+*.test.ts
+*.test.js
+*.spec.ts
+*.spec.js
+
+# Build configuration
 tsconfig.json
-.gitignore
-.npmignore
 tsup.config.ts
 .nvmrc
-test/
-node_modules/
-yarn.lock
+generate_interpreter_map.js
+
+# Version control and CI/CD
+.git/
+.gitignore
 .github/
 .husky/
+
+# IDE and editor files
 .idea/
 .vscode/
+*.swp
+*.swo
+*~
+
+# Dependencies
+node_modules/
+yarn.lock
+package-lock.json
+
+# Docker files
 docker/
 docker-compose.yaml
 docker-compose.yml
 scripts/
-scripts/init_cockroachdb.sh
-website/
-generate_interpreter_map.js
-KNOWN_ISSUES.MD
-LICENSE
-TEST.MD
+
+# Database files
 *.db
+*.sqlite
+*.sqlite3
+
+# Documentation and community files
+website/
+docs/
+CONTRIBUTING.md
+CODE_OF_CONDUCT.md
+SECURITY.md
+CHANGELOG.md
+KNOWN_ISSUES.MD
+
+# Misc
+.npmignore
+.DS_Store
+*.log
+coverage/
+.nyc_output/
+tmp/
+temp/

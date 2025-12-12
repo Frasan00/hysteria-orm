@@ -7,51 +7,7 @@
 
 ## Database Setup
 
-The test suite requires multiple databases to be running. We provide a Docker Compose configuration to set up all necessary databases:
-
-```yaml
-version: "3"
-services:
-  sql:
-    image: mysql:8.0
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: test
-    ports:
-      - "3306:3306"
-
-  postgres:
-    image: postgres:13
-    environment:
-      POSTGRES_USER: root
-      POSTGRES_PASSWORD: root
-      POSTGRES_DB: test
-    ports:
-      - "5432:5432"
-
-  mariadb:
-    image: mariadb:10.5
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: test
-    ports:
-      - "3307:3306"
-
-  redis:
-    image: redis:6
-    environment:
-      - REDIS_PASSWORD=root
-    ports:
-      - "6379:6379"
-
-  mongo:
-    image: mongo:4.4
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: root
-    ports:
-      - "27017:27017"
-```
+The test suite requires multiple databases to be running. We provide a Docker Compose configuration to set up all necessary databases see [docker-compose.yaml](docker-compose.yml)
 
 ## Setup Instructions
 
