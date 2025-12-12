@@ -1,5 +1,6 @@
 import { AstParser } from "../../../ast/parser";
 import { InsertNode } from "../../../ast/query/node/insert";
+import { RawNode } from "../../../ast/query/node/raw/raw_node";
 import { QueryNode } from "../../../ast/query/query";
 import { Model } from "../../../models/model";
 import { Interpreter } from "../../interpreter";
@@ -51,11 +52,18 @@ class MssqlInsertInterpreter implements Interpreter {
 
     for (const record of insertNode.records) {
       const recordValues = columns.map((column) => record[column]);
-      allValues.push(...recordValues);
 
-      const placeholders = columns.map(() => `@${paramIndex++}`).join(", ");
+      const placeholders: string[] = [];
+      for (const value of recordValues) {
+        if (value instanceof RawNode) {
+          placeholders.push(value.rawValue);
+        } else {
+          allValues.push(value);
+          placeholders.push(`@${paramIndex++}`);
+        }
+      }
 
-      valuesClauses.push(`(${placeholders})`);
+      valuesClauses.push(`(${placeholders.join(", ")})`);
     }
 
     let sql = `${formattedTable} (${formattedColumns}) values ${valuesClauses.join(", ")}`;

@@ -1,5 +1,6 @@
 import { AstParser } from "../../../ast/parser";
 import { InsertNode } from "../../../ast/query/node/insert";
+import { RawNode } from "../../../ast/query/node/raw/raw_node";
 import { QueryNode } from "../../../ast/query/query";
 import { Model } from "../../../models/model";
 import { Interpreter } from "../../interpreter";
@@ -49,16 +50,20 @@ class PostgresInsertInterpreter implements Interpreter {
 
     for (const record of insertNode.records) {
       const recordValues = columns.map((column) => record[column]);
-      allValues.push(...recordValues);
 
-      const placeholders = columns
-        .map((_, i) => {
-          const value = recordValues[i];
-          return `$${paramIndex++}${this.formatTypeCast(value)}`;
-        })
-        .join(", ");
+      const placeholders: string[] = [];
+      for (let i = 0; i < columns.length; i++) {
+        const value = recordValues[i];
 
-      valuesClauses.push(`(${placeholders})`);
+        if (value instanceof RawNode) {
+          placeholders.push(value.rawValue);
+        } else {
+          allValues.push(value);
+          placeholders.push(`$${paramIndex++}${this.formatTypeCast(value)}`);
+        }
+      }
+
+      valuesClauses.push(`(${placeholders.join(", ")})`);
     }
 
     let sql = `${formattedTable} (${formattedColumns}) values ${valuesClauses.join(", ")}`;

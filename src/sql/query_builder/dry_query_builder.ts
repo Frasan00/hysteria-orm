@@ -144,7 +144,7 @@ export class DryQueryBuilder extends QueryBuilder {
    * @returns The query builder
    */
   // @ts-expect-error
-  override update(data: Record<string, any>): this {
+  override update(data: Record<string, WriteQueryParam>): this {
     this.updateNode = new UpdateNode(
       this.fromNode,
       Object.keys(data),

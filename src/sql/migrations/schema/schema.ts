@@ -27,6 +27,7 @@ import type { SqlDataSourceType } from "../../sql_data_source_types";
 import { AlterTableBuilder } from "./alter_table";
 import { CreateTableBuilder } from "./create_table";
 import { CommonConstraintOptions } from "./schema_types";
+import { RawNode } from "../../ast/query/node/raw/raw_node";
 
 export default class Schema {
   queryStatements: string[];
@@ -44,6 +45,20 @@ export default class Schema {
     }
 
     this.queryStatements = [];
+  }
+
+  /**
+   * @description Adds a raw statement to an operation that will be executed as is
+   * @example
+   * ```ts
+   * schema.rawStatement("CURRENT_TIMESTAMP");
+   * schema.alterTable("users", (table) => {
+   *   table.timestamp("created_at").default(this.schema.rawStatement("CURRENT_TIMESTAMP"));
+   * });
+   * ```
+   */
+  rawStatement(value: string) {
+    return new RawNode(value);
   }
 
   /**

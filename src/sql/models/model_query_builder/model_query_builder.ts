@@ -29,6 +29,7 @@ import {
   RelationRetrieveMethod,
   SelectableColumn,
   StreamOptions,
+  WriteQueryParam,
 } from "../../query_builder/query_builder_types";
 import type { UpdateOptions } from "../../query_builder/update_query_builder_types";
 import {
@@ -301,6 +302,7 @@ export class ModelQueryBuilder<
     return (this.model as any).insertMany(...args);
   }
 
+  // @ts-expect-error
   override async update(
     data: Partial<ModelWithoutRelations<T>>,
     options: UpdateOptions = {},
@@ -308,7 +310,7 @@ export class ModelQueryBuilder<
     if (!options.ignoreBeforeUpdateHook) {
       await this.model.beforeUpdate?.(this);
     }
-    return super.update(data);
+    return super.update(data as Record<string, WriteQueryParam>);
   }
 
   override async softDelete(

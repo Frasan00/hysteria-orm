@@ -1,5 +1,6 @@
 import { AstParser } from "../../../ast/parser";
 import { InsertNode } from "../../../ast/query/node/insert";
+import { RawNode } from "../../../ast/query/node/raw/raw_node";
 import { QueryNode } from "../../../ast/query/query";
 import { Model } from "../../../models/model";
 import { Interpreter } from "../../interpreter";
@@ -49,10 +50,18 @@ class SqliteInsertInterpreter implements Interpreter {
 
     for (const record of insertNode.records) {
       const recordValues = columns.map((column) => record[column]);
-      allValues.push(...recordValues);
 
-      const placeholders = Array(columns.length).fill("?").join(", ");
-      valuesClauses.push(`(${placeholders})`);
+      const placeholders: string[] = [];
+      for (const value of recordValues) {
+        if (value instanceof RawNode) {
+          placeholders.push(value.rawValue);
+        } else {
+          allValues.push(value);
+          placeholders.push("?");
+        }
+      }
+
+      valuesClauses.push(`(${placeholders.join(", ")})`);
     }
 
     const sql = `${formattedTable} (${formattedColumns}) VALUES ${valuesClauses.join(", ")}`;

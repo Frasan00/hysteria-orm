@@ -1087,10 +1087,16 @@ export class SqlDataSource<
   }
 
   /**
-   * @description Adds a raw statement to an operation like where or update
+   * @description Adds a raw statement to an operation that will be executed as is
    * @example
    * ```ts
-   * await User.query().where("name", sql.rawStatement("LOWER(name)"));
+   * await sql.query("users").where("name", sql.rawStatement("LOWER(name)"));
+   * await sql.query("users").update({
+   *   name: sql.rawStatement("LOWER(name)"),
+   * });
+   * await sql.query("users").insert({
+   *   name: sql.rawStatement("LOWER(name)"),
+   * });
    * ```
    */
   rawStatement(value: string) {

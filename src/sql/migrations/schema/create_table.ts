@@ -1,4 +1,5 @@
 import { ColumnTypeNode } from "../../ast/query/node/column";
+import { RawNode } from "../../ast/query/node/raw/raw_node";
 import { QueryNode } from "../../ast/query/query";
 import { SqlDataSourceType } from "../../sql_data_source_types";
 import { BaseBuilder } from "./base_builder";
@@ -33,6 +34,17 @@ export class CreateTableBuilder extends BaseBuilder {
       this.namedConstraints,
       this.context,
     );
+  }
+
+  /**
+   * @description Adds a raw statement to an operation that will be executed as is
+   * @example
+   * ```ts
+   * table.varchar("name").default(table.rawStatement("CURRENT_TIMESTAMP"));
+   * ```
+   */
+  rawStatement(value: string): RawNode {
+    return new RawNode(value);
   }
 
   // #region string

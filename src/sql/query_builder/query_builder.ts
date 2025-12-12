@@ -40,7 +40,9 @@ import {
   PluckReturnType,
   StreamOptions,
   UpsertOptionsRawBuilder,
+  WriteQueryParam,
 } from "./query_builder_types";
+import { RawNode } from "../ast/query/node/raw/raw_node";
 
 export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   model: typeof Model;
@@ -584,11 +586,14 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   }
 
   /**
-   * @description Insert record into a table
+   * @description Insert record into a table, you can use raw statements in the data object for literal references to other columns
    * @param returning - The columns to return from the query, only supported by postgres and cockroachdb - default is "*"
    * @returns raw driver response
    */
-  async insert(data: Record<string, any>, returning?: string[]): Promise<T> {
+  async insert(
+    data: Record<string, WriteQueryParam>,
+    returning?: string[],
+  ): Promise<T> {
     const { columns: preparedColumns, values: preparedValues } =
       await this.interpreterUtils.prepareColumns(
         Object.keys(data),
@@ -608,7 +613,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
       sqlLiteOptions: {
         typeofModel: this.model,
         mode: "insertOne",
-        models: [data as T],
+        models: [data as unknown as T],
       },
     });
 
@@ -622,7 +627,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    * @oracledb may do multiple inserts with auto-generated identity columns
    */
   async insertMany(
-    data: Record<string, any>[],
+    data: Record<string, WriteQueryParam>[],
     returning?: string[],
   ): Promise<T[]> {
     if (!data.length) {
@@ -915,10 +920,10 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   }
 
   /**
-   * @description Updates records from a table
+   * @description Updates records from a table, you can use raw statements in the data object for literal references to other columns
    * @returns the number of affected rows
    */
-  async update(data: Record<string, any>): Promise<number> {
+  async update(data: Record<string, WriteQueryParam>): Promise<number> {
     const rawColumns = Object.keys(data);
     const rawValues = Object.values(data);
 

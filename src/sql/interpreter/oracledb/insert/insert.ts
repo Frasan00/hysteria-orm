@@ -1,5 +1,6 @@
 import { AstParser } from "../../../ast/parser";
 import { InsertNode } from "../../../ast/query/node/insert";
+import { RawNode } from "../../../ast/query/node/raw/raw_node";
 import { QueryNode } from "../../../ast/query/query";
 import { Model } from "../../../models/model";
 import { Interpreter } from "../../interpreter";
@@ -49,10 +50,18 @@ class OracleInsertInterpreter implements Interpreter {
 
     for (const record of insertNode.records) {
       const recordValues = columns.map((column) => record[column]);
-      allValues.push(...recordValues);
 
-      const placeholders = columns.map(() => `:${paramIndex++}`).join(", ");
-      valuesClauses.push(`(${placeholders})`);
+      const placeholders: string[] = [];
+      for (const value of recordValues) {
+        if (value instanceof RawNode) {
+          placeholders.push(value.rawValue);
+        } else {
+          allValues.push(value);
+          placeholders.push(`:${paramIndex++}`);
+        }
+      }
+
+      valuesClauses.push(`(${placeholders.join(", ")})`);
     }
 
     // Oracle uses INSERT ALL for multiple rows or single INSERT INTO ... VALUES
@@ -65,10 +74,25 @@ class OracleInsertInterpreter implements Interpreter {
       // For multiple records, use INSERT ALL ... SELECT * FROM DUAL
       insertNode.keyword = "insert";
       paramIndex = insertNode.currParamIndex;
-      const insertAllClauses = insertNode.records.map(() => {
-        const placeholders = columns.map(() => `:${paramIndex++}`).join(", ");
-        return `into ${formattedTable} (${formattedColumns}) values (${placeholders})`;
-      });
+      const insertAllClauses: string[] = [];
+
+      for (const record of insertNode.records) {
+        const recordValues = columns.map((column) => record[column]);
+        const placeholders: string[] = [];
+
+        for (const value of recordValues) {
+          if (value instanceof RawNode) {
+            placeholders.push(value.rawValue);
+          } else {
+            placeholders.push(`:${paramIndex++}`);
+          }
+        }
+
+        insertAllClauses.push(
+          `into ${formattedTable} (${formattedColumns}) values (${placeholders.join(", ")})`,
+        );
+      }
+
       sql = `all ${insertAllClauses.join(" ")} select * from dual`;
     }
 

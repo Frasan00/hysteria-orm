@@ -1,3 +1,4 @@
+import { RawNode } from "../ast/query/node/raw/raw_node";
 import type { Model } from "../models/model";
 import type { ModelKey } from "../models/model_manager/model_manager_types";
 import { DryModelQueryBuilder } from "../models/model_query_builder/dry_model_query_builder";
@@ -199,3 +200,13 @@ export type DryModelQueryBuilderWithoutReadOperations<
   | "paginateWithCursor"
   | "exists"
 >;
+
+export type WriteQueryParam =
+  | string
+  | number
+  | boolean
+  | Date
+  | RawNode
+  | object
+  | null
+  | undefined;

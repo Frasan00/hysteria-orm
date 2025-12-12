@@ -15,6 +15,7 @@ import { DropNotNullNode } from "../../ast/query/node/alter_table/drop_not_null"
 import { DropPrimaryKeyNode } from "../../ast/query/node/alter_table/drop_primary_key";
 import { SetNotNullNode } from "../../ast/query/node/alter_table/set_not_null";
 import { ColumnTypeNode } from "../../ast/query/node/column";
+import { RawNode } from "../../ast/query/node/raw/raw_node";
 import { QueryNode } from "../../ast/query/query";
 import {
   getDefaultFkConstraintName,
@@ -35,6 +36,17 @@ export class AlterTableBuilder extends BaseBuilder {
     super(nodes);
     this.table = table;
     this.sqlType = sqlType;
+  }
+
+  /**
+   * @description Adds a raw statement to an operation that will be executed as is
+   * @example
+   * ```ts
+   * table.varchar("name").default(table.rawStatement("CURRENT_TIMESTAMP"));
+   * ```
+   */
+  rawStatement(value: string): RawNode {
+    return new RawNode(value);
   }
 
   /**
