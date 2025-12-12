@@ -1,6 +1,6 @@
 {
   "name": "hysteria-orm",
-  "version": "10.3.2",
+  "version": "10.3.3",
   "license": "MIT",
   "description": "Yet another orm for Javascript and Typescript no one asked for",
   "type": "module",
@@ -14,7 +14,7 @@
     "test": "reset && node ./test/test_runner.js",
     "test:with:migrations": "rm -rf sqlite.db && touch sqlite.db && yarn format && yarn build:prod && yarn migrate && node ./test/test_runner.js",
     "format": "prettier --write \"**/*.ts\"",
-    "build": "yarn generate:interpreter:map && yarn build:prod",
+    "build": "yarn build:prod",
     "build:prod": "yarn generate:interpreter:map && tsup --minify",
     "build:dev": "tsup",
     "test:fresh": "node lib/cli.js refresh:migrations",
@@ -83,10 +83,10 @@
     "typescript": "^5.9.3"
   },
   "dependencies": {
-    "commander": "^14.0.1",
-    "dayjs": "^1.11.18",
+    "commander": "^14.0.2",
+    "dayjs": "^1.11.19",
     "pluralize": "^8.0.0",
-    "sql-formatter": "^15.6.9",
+    "sql-formatter": "^15.6.11",
     "sql-highlight": "^6.1.0"
   },
   "peerDependencies": {

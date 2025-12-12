@@ -1,10 +1,14 @@
-import { bundleRequire } from "bundle-require";
 import path from "node:path";
+import { DriverNotFoundError } from "../drivers/driver_constants";
 
 export async function importTsUniversal<T = any>(
   entry: string,
   tsconfigPath?: string,
 ): Promise<T> {
+  const { bundleRequire } = await import("bundle-require").catch(() => {
+    throw new DriverNotFoundError("bundle-require");
+  });
+
   const filepath = path.isAbsolute(entry)
     ? entry
     : path.resolve(process.cwd(), entry);
