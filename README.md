@@ -8,8 +8,8 @@ Hysteria ORM is a modern, high-performance, partially type safe Object Relationa
 
 To get started, follow the official installation guide:
 
-👉 [Installation Guide](https://frasan00.github.io/hysteria-orm/docs/getting-started/installation)
+👉 [Installation Guide](https://frasan00.github.io/hysteria-orm/getting-started/installation)
 
 ---
 
-For more details, visit the [full documentation](https://frasan00.github.io/hysteria-orm/docs/getting-started/philosophy).
+For more details, visit the [full documentation](https://frasan00.github.io/hysteria-orm).
