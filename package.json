@@ -17,11 +17,11 @@
     "build": "yarn build:prod",
     "build:prod": "yarn generate:interpreter:map && tsup --minify",
     "build:dev": "tsup",
-    "test:fresh": "node lib/cli.js refresh:migrations",
+    "test:fresh": "node lib/cli.js refresh",
     "generate:interpreter:map": "node generate_interpreter_map.js",
     "generate:migrations": "yarn build && node lib/cli.js generate:migrations -d database/index.ts",
-    "run:migrations": "yarn build && node lib/cli.js run:migrations -d database/index.ts",
-    "refresh:migrations": "yarn build && node lib/cli.js refresh:migrations -d database/index.ts"
+    "run:migrations": "yarn build && node lib/cli.js migrate -d database/index.ts",
+    "refresh:migrations": "yarn build && node lib/cli.js refresh -d database/index.ts"
   },
   "main": "./lib/index.cjs",
   "module": "./lib/index.js",

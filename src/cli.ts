@@ -28,7 +28,7 @@ const allDatabaseTypes = sqlDatabaseTypes.concat("mongodb", "redis");
 const program = new Command();
 
 program
-  .command("init")
+  .command("init", { isDefault: false })
   .option(
     "-t, --type [type]",
     `Type of the database to connect to, available types: ${allDatabaseTypes.join(", ")}`,
@@ -38,8 +38,11 @@ program
     "Initialize the hysteria-orm with standard configuration, it will create a database if not exists and a migrations folder inside it if not exists, it will also create a index.ts file in the database folder",
   )
   .action(async (option: { type: SqlDataSourceType }) => {
+    const availableTypes = allDatabaseTypes.join(", ");
     if (!option.type) {
-      logger.error("Database type is required");
+      logger.error(
+        `Database type is required (-t|--type), available types: ${availableTypes}`,
+      );
       process.exit(1);
     }
 
@@ -89,7 +92,8 @@ program
   });
 
 program
-  .command("run:sql [sql]")
+  .command("sql [sql]")
+  .alias("run:sql")
   .option("-f, --file [path]", "Path to the sql file", undefined)
   .option(
     "-d, --datasource [path]",
@@ -248,7 +252,7 @@ program
   );
 
 program
-  .command("run:migrations [runUntil]")
+  .command("migrate [runUntil]")
   .option(
     "-c, --tsconfig [tsconfigPath]",
     "Path to the tsconfig.json file, defaults to ./tsconfig.json",
@@ -356,7 +360,7 @@ program
   );
 
 program
-  .command("rollback:migrations [rollbackUntil]")
+  .command("rollback [rollbackUntil]")
   .option(
     "-c, --tsconfig [tsconfigPath]",
     "Path to the tsconfig.json file, defaults to ./tsconfig.json",
@@ -464,7 +468,7 @@ program
   );
 
 program
-  .command("refresh:migrations")
+  .command("refresh")
   .option(
     "-f, --force",
     "Drop all tables in the database before running the migrations instead of running the down migrations",

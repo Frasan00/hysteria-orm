@@ -55,7 +55,7 @@ const runMigration = async (dbType, migration) => {
   console.log(`  → Running migrations for ${dbType.toUpperCase()}...`);
 
   const command =
-    `node lib/cli.js refresh:migrations -d ${dataSourcePath} -m ${migrationFolder} ${forceFlag}`.trim();
+    `node lib/cli.js refresh -d ${dataSourcePath} -m ${migrationFolder} ${forceFlag}`.trim();
 
   try {
     const { stdout, stderr } = await execAsync(command);
