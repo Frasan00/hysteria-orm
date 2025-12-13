@@ -102,6 +102,10 @@ export interface NotNullableMysqlSqlDataSourceInput
 
 export interface SqliteDataSourceInput extends CommonDataSourceInput {
   readonly type?: "sqlite";
+  /**
+   * @description The filename of the database file for SQLite
+   * @default ":memory:"
+   */
   readonly database?: string;
 }
 
