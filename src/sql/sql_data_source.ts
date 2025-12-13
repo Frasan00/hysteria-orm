@@ -157,10 +157,12 @@ export class SqlDataSource<
     tsconfig?: string;
     lock: boolean;
     transactional: boolean;
+    lockTimeout?: number;
   } = {
     path: env.MIGRATION_PATH || "database/migrations",
     lock: true,
     transactional: true,
+    lockTimeout: 30000,
   };
 
   /**

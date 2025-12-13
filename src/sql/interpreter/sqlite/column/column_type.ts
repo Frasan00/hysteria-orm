@@ -82,6 +82,14 @@ class SqliteColumnTypeInterpreter implements Interpreter {
       }
 
       return { sql: `${columnName} integer`, bindings: [] };
+    } else if (
+      dt === "geometry" ||
+      dt === "point" ||
+      dt === "linestring" ||
+      dt === "polygon" ||
+      dt === "multipoint"
+    ) {
+      return { sql: `${columnName} ${dt}`, bindings: [] };
     }
 
     return {

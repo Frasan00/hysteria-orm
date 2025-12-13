@@ -144,6 +144,26 @@ class MssqlColumnTypeInterpreter implements Interpreter {
       return { sql: `${columnName} int`, bindings: [] };
     }
 
+    if (dt === "geometry") {
+      return { sql: `${columnName} geometry`, bindings: [] };
+    }
+
+    if (dt === "point") {
+      return { sql: `${columnName} geometry`, bindings: [] };
+    }
+
+    if (dt === "linestring") {
+      return { sql: `${columnName} geometry`, bindings: [] };
+    }
+
+    if (dt === "polygon") {
+      return { sql: `${columnName} geometry`, bindings: [] };
+    }
+
+    if (dt === "multipoint") {
+      return { sql: `${columnName} geometry`, bindings: [] };
+    }
+
     return {
       sql: `${columnName} ${dt}${colNode.length ? `(${colNode.length})` : ""}`,
       bindings: [],

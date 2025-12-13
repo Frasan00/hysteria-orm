@@ -133,6 +133,15 @@ class OracleColumnTypeInterpreter implements Interpreter {
         };
       }
       return { sql: `${columnName} number(10)`, bindings: [] };
+    } else if (
+      dt === "geometry" ||
+      dt === "point" ||
+      dt === "linestring" ||
+      dt === "polygon" ||
+      dt === "multipoint"
+    ) {
+      // Oracle Spatial uses SDO_GEOMETRY for all spatial types
+      return { sql: `${columnName} sdo_geometry`, bindings: [] };
     }
 
     return {

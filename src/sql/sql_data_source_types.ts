@@ -98,6 +98,12 @@ export type MigrationConfigBase = {
    * @default true
    */
   lock?: boolean;
+
+  /**
+   * @description Lock timeout in milliseconds for migration advisory lock acquisition, can be overridden in the cli command
+   * @default 30000
+   */
+  lockTimeout?: number;
 };
 
 /**

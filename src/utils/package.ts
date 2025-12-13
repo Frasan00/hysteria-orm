@@ -1,9 +1,9 @@
 import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { sqlDatabaseTypes } from "../cli";
 import { DataSourceType } from "../data_source/data_source_types";
 import logger from "./logger";
-import { sqlDatabaseTypes } from "../cli";
 
 export const getPackageManager = (): [string, string] => {
   const hasYarnLock = fs.existsSync(path.join(process.cwd(), "yarn.lock"));
@@ -37,36 +37,40 @@ export const installBaseDependencies = (
   type: DataSourceType | "redis",
 ) => {
   const devDependencies = sqlDatabaseTypes.includes(type)
-    ? ["bundle-require", "typescript", "esbuild"]
+    ? ["bundle-require@^5.1.0", "typescript@^5.9.3", "esbuild@^0.27.0"]
     : [];
 
   let driverDependency = "";
   switch (type) {
     case "mariadb":
     case "mysql":
-      driverDependency = "mysql2";
+      driverDependency = "mysql2@^3.15.3";
+      devDependencies.push("@types/mysql2@github:types/mysql2");
       break;
     case "cockroachdb":
     case "postgres":
-      driverDependency = "pg";
-      devDependencies.push("@types/pg");
+      driverDependency = "pg@^8.16.3";
+      devDependencies.push("@types/pg@^8.16.0");
       break;
     case "sqlite":
-      driverDependency = "sqlite3";
+      driverDependency = "sqlite3@^5.1.7";
+      devDependencies.push("@types/sqlite3@^5.1.0");
       break;
     case "mongo":
-      driverDependency = "mongodb";
+      driverDependency = "mongodb@^7.0.0";
+      devDependencies.push("@types/mongodb@^4.0.7");
       break;
     case "redis":
-      driverDependency = "ioredis";
+      driverDependency = "ioredis@^5.8.2";
+      devDependencies.push("@types/ioredis@^5.0.0");
       break;
     case "mssql":
-      driverDependency = "mssql";
-      devDependencies.push("@types/mssql");
+      driverDependency = "mssql@^12.2.0";
+      devDependencies.push("@types/mssql@^9.1.8");
       break;
     case "oracledb":
-      driverDependency = "oracledb";
-      devDependencies.push("@types/oracledb");
+      driverDependency = "oracledb@^6.10.0";
+      devDependencies.push("@types/oracledb@^6.10.0");
       break;
     default:
       throw new Error(`Invalid database type: ${type}`);

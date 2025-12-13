@@ -20,6 +20,7 @@ import mssql_delete_delete from '../interpreter/mssql/delete/delete';
 import mssql_distinct_distinct from '../interpreter/mssql/distinct/distinct';
 import mssql_distinct_distinct_on from '../interpreter/mssql/distinct/distinct_on';
 import mssql_drop_table_drop_table from '../interpreter/mssql/drop_table/drop_table';
+import mssql_extension_create_extension from '../interpreter/mssql/extension/create_extension';
 import mssql_from_from from '../interpreter/mssql/from/from';
 import mssql_group_by_group_by from '../interpreter/mssql/group_by/group_by';
 import mssql_having_having from '../interpreter/mssql/having/having';
@@ -68,6 +69,7 @@ import mysql_delete_delete from '../interpreter/mysql/delete/delete';
 import mysql_distinct_distinct from '../interpreter/mysql/distinct/distinct';
 import mysql_distinct_distinct_on from '../interpreter/mysql/distinct/distinct_on';
 import mysql_drop_table_drop_table from '../interpreter/mysql/drop_table/drop_table';
+import mysql_extension_create_extension from '../interpreter/mysql/extension/create_extension';
 import mysql_from_from from '../interpreter/mysql/from/from';
 import mysql_group_by_group_by from '../interpreter/mysql/group_by/group_by';
 import mysql_having_having from '../interpreter/mysql/having/having';
@@ -116,6 +118,7 @@ import oracledb_delete_delete from '../interpreter/oracledb/delete/delete';
 import oracledb_distinct_distinct from '../interpreter/oracledb/distinct/distinct';
 import oracledb_distinct_distinct_on from '../interpreter/oracledb/distinct/distinct_on';
 import oracledb_drop_table_drop_table from '../interpreter/oracledb/drop_table/drop_table';
+import oracledb_extension_create_extension from '../interpreter/oracledb/extension/create_extension';
 import oracledb_from_from from '../interpreter/oracledb/from/from';
 import oracledb_group_by_group_by from '../interpreter/oracledb/group_by/group_by';
 import oracledb_having_having from '../interpreter/oracledb/having/having';
@@ -164,6 +167,7 @@ import postgres_delete_delete from '../interpreter/postgres/delete/delete';
 import postgres_distinct_distinct from '../interpreter/postgres/distinct/distinct';
 import postgres_distinct_distinct_on from '../interpreter/postgres/distinct/distinct_on';
 import postgres_drop_table_drop_table from '../interpreter/postgres/drop_table/drop_table';
+import postgres_extension_create_extension from '../interpreter/postgres/extension/create_extension';
 import postgres_from_from from '../interpreter/postgres/from/from';
 import postgres_group_by_group_by from '../interpreter/postgres/group_by/group_by';
 import postgres_having_having from '../interpreter/postgres/having/having';
@@ -211,6 +215,7 @@ import sqlite_delete_delete from '../interpreter/sqlite/delete/delete';
 import sqlite_distinct_distinct from '../interpreter/sqlite/distinct/distinct';
 import sqlite_distinct_distinct_on from '../interpreter/sqlite/distinct/distinct_on';
 import sqlite_drop_table_drop_table from '../interpreter/sqlite/drop_table/drop_table';
+import sqlite_extension_create_extension from '../interpreter/sqlite/extension/create_extension';
 import sqlite_from_from from '../interpreter/sqlite/from/from';
 import sqlite_group_by_group_by from '../interpreter/sqlite/group_by/group_by';
 import sqlite_having_having from '../interpreter/sqlite/having/having';
@@ -275,6 +280,9 @@ export const interpreterMap = {
     },
     drop_table: {
       drop_table: mssql_drop_table_drop_table,
+    },
+    extension: {
+      create_extension: mssql_extension_create_extension,
     },
     from: {
       from: mssql_from_from,
@@ -378,6 +386,9 @@ export const interpreterMap = {
     drop_table: {
       drop_table: mysql_drop_table_drop_table,
     },
+    extension: {
+      create_extension: mysql_extension_create_extension,
+    },
     from: {
       from: mysql_from_from,
     },
@@ -479,6 +490,9 @@ export const interpreterMap = {
     },
     drop_table: {
       drop_table: oracledb_drop_table_drop_table,
+    },
+    extension: {
+      create_extension: oracledb_extension_create_extension,
     },
     from: {
       from: oracledb_from_from,
@@ -582,6 +596,9 @@ export const interpreterMap = {
     drop_table: {
       drop_table: postgres_drop_table_drop_table,
     },
+    extension: {
+      create_extension: postgres_extension_create_extension,
+    },
     from: {
       from: postgres_from_from,
     },
@@ -682,6 +699,9 @@ export const interpreterMap = {
     },
     drop_table: {
       drop_table: sqlite_drop_table_drop_table,
+    },
+    extension: {
+      create_extension: sqlite_extension_create_extension,
     },
     from: {
       from: sqlite_from_from,

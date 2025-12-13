@@ -14,6 +14,7 @@ import { AddConstraintNode } from "../../ast/query/node/alter_table/add_constrai
 import { ConstraintNode } from "../../ast/query/node/constraint";
 import { CreateTableNode } from "../../ast/query/node/create_table";
 import { DropTableNode } from "../../ast/query/node/drop_table";
+import { CreateExtensionNode } from "../../ast/query/node/extension/create_extension";
 import { CreateIndexNode, DropIndexNode } from "../../ast/query/node/index_op";
 import { RawNode } from "../../ast/query/node/raw/raw_node";
 import { TruncateNode } from "../../ast/query/node/truncate";
@@ -27,7 +28,10 @@ import { Model } from "../../models/model";
 import type { SqlDataSourceType } from "../../sql_data_source_types";
 import { AlterTableBuilder } from "./alter_table";
 import { CreateTableBuilder } from "./create_table";
-import { CommonConstraintOptions } from "./schema_types";
+import {
+  CommonConstraintOptions,
+  CommonPostgresExtensions,
+} from "./schema_types";
 
 export default class Schema {
   queryStatements: string[];
@@ -48,7 +52,7 @@ export default class Schema {
   }
 
   /**
-   * @description Adds a raw statement to an operation that will be executed as is
+   * @description Adds a raw statement to define a default value as is
    * @example
    * ```ts
    * schema.rawStatement("CURRENT_TIMESTAMP");
@@ -401,6 +405,32 @@ export default class Schema {
     const node = new DropConstraintNode(constraintName);
     const astParser = this.generateAstInstance({
       table,
+      databaseCaseConvention: "preserve",
+      modelCaseConvention: "preserve",
+    } as typeof Model);
+    this.rawQuery(astParser.parse([node]).sql);
+  }
+
+  /**
+   * @description Create database extension, only supported for postgres
+   * @postgres Supports extensions like PostGIS, uuid-ossp, hstore, etc.
+   * @mysql Extensions are not supported - outputs a comment
+   * @sqlite Extensions are loaded dynamically - outputs a comment
+   * @mssql Extensions are not supported - outputs a comment
+   * @oracledb Extensions are not supported - outputs a comment
+   */
+  createExtension(
+    extensionName: CommonPostgresExtensions,
+    ifNotExists?: boolean,
+  ): void;
+  createExtension(extensionName: string, ifNotExists?: boolean): void;
+  createExtension(
+    extensionName: string | CommonPostgresExtensions,
+    ifNotExists: boolean = true,
+  ): void {
+    const node = new CreateExtensionNode(extensionName, ifNotExists);
+    const astParser = this.generateAstInstance({
+      table: "",
       databaseCaseConvention: "preserve",
       modelCaseConvention: "preserve",
     } as typeof Model);

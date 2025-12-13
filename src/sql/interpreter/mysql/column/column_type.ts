@@ -111,6 +111,16 @@ class MysqlColumnTypeInterpreter implements Interpreter {
         return { sql: `${columnName} enum(${values})`, bindings: [] };
       }
       return { sql: `${columnName} text`, bindings: [] };
+    } else if (dt === "geometry") {
+      return { sql: `${columnName} geometry`, bindings: [] };
+    } else if (dt === "point") {
+      return { sql: `${columnName} point`, bindings: [] };
+    } else if (dt === "linestring") {
+      return { sql: `${columnName} linestring`, bindings: [] };
+    } else if (dt === "polygon") {
+      return { sql: `${columnName} polygon`, bindings: [] };
+    } else if (dt === "multipoint") {
+      return { sql: `${columnName} multipoint`, bindings: [] };
     }
 
     return {

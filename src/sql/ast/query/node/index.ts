@@ -3,6 +3,7 @@ export * from "./column";
 export * from "./constraint";
 export * from "./create_table";
 export * from "./drop_table";
+export * from "./extension";
 export * from "./index_op";
 export * from "./lock";
 export * from "./union";

@@ -274,6 +274,11 @@ program
     "Acquire advisory lock before running migrations to prevent concurrent execution",
     true,
   )
+  .option(
+    "--lock-timeout [lockTimeout]",
+    "Lock timeout in milliseconds for migration advisory lock acquisition",
+    undefined,
+  )
   .description(
     "Run pending migrations, if runUntil is provided, it will run all migrations until the provided migration name",
   )
@@ -286,6 +291,7 @@ program
         datasource?: string;
         transactional: boolean;
         lock: boolean;
+        lockTimeout?: string;
       },
     ) => {
       if (!option?.datasource) {
@@ -300,6 +306,9 @@ program
       const migrationPath = option?.migrationPath || sqlDs.migrationConfig.path;
       const tsconfig = option?.tsconfigPath || sqlDs.migrationConfig.tsconfig;
       const useLock = option?.lock ?? sqlDs.migrationConfig.lock;
+      const lockTimeout = option?.lockTimeout
+        ? parseInt(option.lockTimeout, 10)
+        : sqlDs.migrationConfig.lockTimeout;
       const transactional =
         option?.transactional ?? sqlDs.migrationConfig.transactional;
       let lockAcquired = false;
@@ -307,7 +316,10 @@ program
       try {
         if (useLock) {
           logger.info("Acquiring migration lock");
-          lockAcquired = await sqlDs.acquireLock("hysteria_migration_lock");
+          lockAcquired = await sqlDs.acquireLock(
+            "hysteria_migration_lock",
+            lockTimeout,
+          );
 
           if (!lockAcquired) {
             logger.error(
@@ -370,6 +382,11 @@ program
     "Acquire advisory lock before running migrations to prevent concurrent execution",
     true,
   )
+  .option(
+    "--lock-timeout [lockTimeout]",
+    "Lock timeout in milliseconds for migration advisory lock acquisition",
+    undefined,
+  )
   .description(
     "Rollbacks every migration that has been run, if rollbackUntil is provided, it will rollback all migrations until the provided migration name",
   )
@@ -382,6 +399,7 @@ program
         datasource?: string;
         transactional: boolean;
         lock: boolean;
+        lockTimeout?: string;
       },
     ) => {
       if (!option?.datasource) {
@@ -396,6 +414,9 @@ program
       const migrationPath = option?.migrationPath || sqlDs.migrationConfig.path;
       const tsconfig = option?.tsconfigPath || sqlDs.migrationConfig.tsconfig;
       const useLock = option?.lock ?? sqlDs.migrationConfig.lock;
+      const lockTimeout = option?.lockTimeout
+        ? parseInt(option.lockTimeout, 10)
+        : sqlDs.migrationConfig.lockTimeout;
       const transactional =
         option?.transactional ?? sqlDs.migrationConfig.transactional;
       let lockAcquired = false;
@@ -403,7 +424,10 @@ program
       try {
         if (useLock) {
           logger.info("Acquiring migration lock");
-          lockAcquired = await sqlDs.acquireLock("hysteria_migration_lock");
+          lockAcquired = await sqlDs.acquireLock(
+            "hysteria_migration_lock",
+            lockTimeout,
+          );
 
           if (!lockAcquired) {
             logger.error(
@@ -466,6 +490,11 @@ program
     "Acquire advisory lock before running migrations to prevent concurrent execution",
     true,
   )
+  .option(
+    "--lock-timeout [lockTimeout]",
+    "Lock timeout in milliseconds for migration advisory lock acquisition",
+    undefined,
+  )
   .option("-m, --migration-path [path]", "Path to the migrations", undefined)
   .description(
     "Rollbacks every migration that has been run and then run the migrations",
@@ -478,6 +507,7 @@ program
       datasource?: string;
       transactional: boolean;
       lock: boolean;
+      lockTimeout?: string;
     }) => {
       const force = option?.force || false;
       if (!option?.datasource) {
@@ -492,6 +522,9 @@ program
       const migrationPath = option?.migrationPath || sqlDs.migrationConfig.path;
       const tsconfig = option?.tsconfigPath || sqlDs.migrationConfig.tsconfig;
       const useLock = option?.lock ?? sqlDs.migrationConfig.lock;
+      const lockTimeout = option?.lockTimeout
+        ? parseInt(option.lockTimeout, 10)
+        : sqlDs.migrationConfig.lockTimeout;
       const transactional =
         option?.transactional ?? sqlDs.migrationConfig.transactional;
       let lockAcquired = false;
@@ -499,7 +532,10 @@ program
       try {
         if (useLock) {
           logger.info("Acquiring migration lock for refresh operation");
-          lockAcquired = await sqlDs.acquireLock("hysteria_migration_lock");
+          lockAcquired = await sqlDs.acquireLock(
+            "hysteria_migration_lock",
+            lockTimeout,
+          );
 
           if (!lockAcquired) {
             logger.error(

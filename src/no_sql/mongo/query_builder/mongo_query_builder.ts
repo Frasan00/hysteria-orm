@@ -1,3 +1,8 @@
+import type {
+  Collection as DriverCollection,
+  Filter,
+  OptionalUnlessRequiredId,
+} from "mongodb";
 import type { MongoClientImport } from "../../../drivers/driver_types";
 import { HysteriaError } from "../../../errors/hysteria_error";
 import logger from "../../../utils/logger";
@@ -9,11 +14,6 @@ import type {
   MongoCollectionKey,
 } from "../mongo_models/mongo_collection_types";
 import { serializeCollection, serializeCollections } from "../mongo_serializer";
-import type {
-  Collection as DriverCollection,
-  OptionalUnlessRequiredId,
-  Filter,
-} from "mongodb";
 
 export type FetchHooks = "beforeFetch" | "afterFetch";
 type BinaryOperatorType =
@@ -93,7 +93,6 @@ export class MongoQueryBuilder<T extends Collection> {
 
     const result = await this.collection.findOne(queryPayload, {
       projection: this.selectObject,
-      limit: 1,
       session: this.session,
     });
 

@@ -10,10 +10,7 @@ const external = [
   "esbuild",
   "sql-formatter",
   "sql-highlight",
-  "reflect-metadata",
-  "pluralize",
   "dayjs",
-  "async-mutex",
   "commander",
 ];
 

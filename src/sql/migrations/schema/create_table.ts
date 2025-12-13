@@ -37,7 +37,7 @@ export class CreateTableBuilder extends BaseBuilder {
   }
 
   /**
-   * @description Adds a raw statement to an operation that will be executed as is
+   * @description Adds a raw statement to define a default value as is
    * @example
    * ```ts
    * table.varchar("name").default(table.rawStatement("CURRENT_TIMESTAMP"));
@@ -516,6 +516,63 @@ export class CreateTableBuilder extends BaseBuilder {
    */
   rawColumn(raw: string): ConstraintBuilder {
     const node = new ColumnTypeNode(raw, "", { isRawValue: true });
+    return this.build(node);
+  }
+
+  // #region spatial
+
+  /**
+   * Geometry data type
+   * @mysql GEOMETRY
+   * @postgres GEOMETRY (must have PostGIS extension)
+   * @sqlite GEOMETRY must have SpatiaLite extension
+   */
+  geometry(name: string): ConstraintBuilder {
+    const node = new ColumnTypeNode(name, "geometry");
+    return this.build(node);
+  }
+
+  /**
+   * Point data type
+   * @mysql POINT
+   * @postgres POINT
+   * @sqlite POINT must have SpatiaLite extension
+   */
+  point(name: string): ConstraintBuilder {
+    const node = new ColumnTypeNode(name, "point");
+    return this.build(node);
+  }
+
+  /**
+   * Linestring data type
+   * @mysql LINESTRING
+   * @postgres LINESTRING
+   * @sqlite LINESTRING must have SpatiaLite extension
+   */
+  linestring(name: string): ConstraintBuilder {
+    const node = new ColumnTypeNode(name, "linestring");
+    return this.build(node);
+  }
+
+  /**
+   * Polygon data type
+   * @mysql POLYGON
+   * @postgres POLYGON
+   * @sqlite POLYGON must have SpatiaLite extension
+   */
+  polygon(name: string): ConstraintBuilder {
+    const node = new ColumnTypeNode(name, "polygon");
+    return this.build(node);
+  }
+
+  /**
+   * MultiPoint data type
+   * @mysql MULTIPOINT
+   * @postgres MULTIPOINT
+   * @sqlite MULTIPOINT must have SpatiaLite extension
+   */
+  multiPoint(name: string): ConstraintBuilder {
+    const node = new ColumnTypeNode(name, "multiPoint");
     return this.build(node);
   }
 

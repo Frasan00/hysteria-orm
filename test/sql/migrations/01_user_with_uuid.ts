@@ -2,6 +2,10 @@ import { Migration } from "../../../src/sql/migrations/migration";
 
 export default class extends Migration {
   async up() {
+    if (this.dbType === "postgres") {
+      this.schema.createExtension("uuid-ossp");
+    }
+
     this.schema.createTable("users_with_uuid", (table) => {
       table.uuid("id").primaryKey();
       table.varchar("name");

@@ -39,7 +39,7 @@ export class AlterTableBuilder extends BaseBuilder {
   }
 
   /**
-   * @description Adds a raw statement to an operation that will be executed as is
+   * @description Adds a raw statement to define a default value as is
    * @example
    * ```ts
    * table.varchar("name").default(table.rawStatement("CURRENT_TIMESTAMP"));
