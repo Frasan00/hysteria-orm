@@ -15,6 +15,7 @@ import { ConstraintNode } from "../../ast/query/node/constraint";
 import { CreateTableNode } from "../../ast/query/node/create_table";
 import { DropTableNode } from "../../ast/query/node/drop_table";
 import { CreateIndexNode, DropIndexNode } from "../../ast/query/node/index_op";
+import { RawNode } from "../../ast/query/node/raw/raw_node";
 import { TruncateNode } from "../../ast/query/node/truncate";
 import { QueryNode } from "../../ast/query/query";
 import {
@@ -27,7 +28,6 @@ import type { SqlDataSourceType } from "../../sql_data_source_types";
 import { AlterTableBuilder } from "./alter_table";
 import { CreateTableBuilder } from "./create_table";
 import { CommonConstraintOptions } from "./schema_types";
-import { RawNode } from "../../ast/query/node/raw/raw_node";
 
 export default class Schema {
   queryStatements: string[];
@@ -220,7 +220,7 @@ export default class Schema {
    * @description Truncate table
    */
   truncateTable(table: string): void {
-    const node = new TruncateNode(table);
+    const node = new TruncateNode(table, true);
     const astParser = this.generateAstInstance({
       table,
       databaseCaseConvention: "preserve",
