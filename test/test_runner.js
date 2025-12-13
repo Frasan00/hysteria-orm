@@ -1,6 +1,7 @@
-// This file is used to enforce the order of test files to be run in a specific order and one by one.
-
-import { execSync } from "node:child_process";
+import { Command } from "commander";
+import { exec, execSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { promisify } from "node:util";
 import {
   cockroachdbConfig,
   mariadbConfig,
@@ -10,17 +11,23 @@ import {
   sqliteConfig,
 } from "./test_environments.js";
 
-const sqlEnvironments = [
-  // oracledbConfig,
-  mysqlConfig,
-  sqliteConfig,
-  mariadbConfig,
-  pgConfig,
-  cockroachdbConfig,
-  mssqlConfig,
-];
+const execAsync = promisify(exec);
 
-const sqlTests = [
+const ALL_SQL_ENVIRONMENTS = {
+  mysql: mysqlConfig,
+  sqlite: sqliteConfig,
+  mariadb: mariadbConfig,
+  postgres: pgConfig,
+  cockroachdb: cockroachdbConfig,
+  mssql: mssqlConfig,
+};
+
+const VALID_DB_TYPES = Object.keys(ALL_SQL_ENVIRONMENTS);
+
+const SQL_TESTS = [
+  // transaction
+  "./test/sql/transaction/transaction.test.ts",
+
   // instance methods
   "./test/sql/instance_methods/instance_methods.test.ts",
 
@@ -31,9 +38,6 @@ const sqlTests = [
   // edge cases
   "./test/sql/edge_cases/query_builder_complex_edge_cases.test.ts",
   "./test/sql/edge_cases/model_serialization_edge_cases.test.ts",
-
-  // transaction
-  "./test/sql/transaction/transaction.test.ts",
 
   // query builder
   "./test/sql/query_builder/query_builder.test.ts",
@@ -57,67 +61,224 @@ const sqlTests = [
   "./test/sql/uuid_pk/join.test.ts",
 ];
 
-sqlTests.forEach((file) => {
-  sqlEnvironments.forEach((environment) => {
-    if (file.includes("bigint_pk") && environment.type === "cockroachdb") {
-      console.log(
-        `Skipping ${file} on ${environment.type} since it's using bigint pk`
-      );
-      return;
+const NON_SQL_TESTS = [
+  {
+    name: "use_connection",
+    path: "./test/sql/use_connection/use_connection.test.ts",
+  },
+  { name: "mongo", path: "./test/mongo/crud_mongo.test.ts" },
+  { name: "redis", path: "./test/redis/redis.test.ts" },
+  {
+    name: "cache_in_memory",
+    path: "./test/cache/in_memory_cache.test.ts",
+  },
+  {
+    name: "cache_redis",
+    path: "./test/cache/redis_cache.test.ts",
+  },
+  {
+    name: "cache_sql",
+    path: "./test/cache/sql_data_source_cache.test.ts",
+  },
+  {
+    name: "replication",
+    path: "./test/replication/slaves.test.ts",
+  },
+];
+
+const fileContainsTests = (filePath, testNames) => {
+  try {
+    const content = readFileSync(filePath, "utf-8");
+    return testNames.some((testName) => content.includes(testName));
+  } catch (error) {
+    return false;
+  }
+};
+
+const runSqlTest = async (file, environment, testNames = [], logs = false) => {
+  if (file.includes("bigint_pk") && environment.type === "cockroachdb") {
+    console.log(
+      `  ⊘ Skipping ${file} on ${environment.type} (bigint pk not supported)`
+    );
+    return;
+  }
+
+  const testNameFlags =
+    testNames.length > 0
+      ? testNames.map((name) => `-t "${name}"`).join(" ")
+      : "";
+
+  console.log(`  → Running on ${environment.type.toUpperCase()}...`);
+
+  const dbLogsValue = logs ? "true" : "false";
+  const command =
+    `DB_LOGS=${dbLogsValue} MSSQL_TRUST_SERVER_CERTIFICATE=true DB_TYPE=${environment.type} DB_HOST=${environment.host} DB_USER=${environment.user} DB_PASSWORD=${environment.password} DB_DATABASE=${environment.database} npx jest --config=jest.config.js --colors --forceExit ${file} ${testNameFlags}`.trim();
+
+  try {
+    const { stdout, stderr } = await execAsync(command, {
+      env: {
+        ...process.env,
+        DB_LOGS: dbLogsValue,
+        MSSQL_TRUST_SERVER_CERTIFICATE: "true",
+        DB_TYPE: environment.type,
+        DB_HOST: environment.host,
+        DB_USER: environment.user,
+        DB_PASSWORD: environment.password,
+        DB_DATABASE: environment.database,
+      },
+    });
+
+    if (stdout) {
+      process.stdout.write(stdout);
     }
 
-    console.log(`Running ${file} on ${environment.type}`);
-    try {
-      execSync(
-        `DB_LOGS=true MSSQL_TRUST_SERVER_CERTIFICATE=true DB_TYPE=${environment.type} DB_HOST=${environment.host} DB_USER=${environment.user} DB_PASSWORD=${environment.password} DB_DATABASE=${environment.database} npx jest --config=jest.config.js --detectOpenHandles ${file}`,
-        { stdio: "inherit" }
+    if (stderr) {
+      process.stderr.write(stderr);
+    }
+    console.log(`  ✓ ${environment.type.toUpperCase()} completed`);
+  } catch (error) {
+    console.log(`  ✗ ${environment.type.toUpperCase()} failed`);
+    throw new Error(`[${environment.type}] Failed: ${error.message}`);
+  }
+};
+
+const runNonSqlTest = (test) => {
+  console.log(`Running ${test.name}...`);
+  execSync(`jest --config=jest.config.js --colors --forceExit ${test.path}`, {
+    stdio: "inherit",
+  });
+};
+
+const runTests = async (options) => {
+  const {
+    database: databases = [],
+    testCase: testCases = [],
+    file: files = [],
+    logs = false,
+  } = options;
+
+  const invalidDbs = databases.filter((db) => !VALID_DB_TYPES.includes(db));
+  if (invalidDbs.length > 0) {
+    console.error(
+      `Invalid database types: ${invalidDbs.join(", ")}. Valid types are: ${VALID_DB_TYPES.join(", ")}`
+    );
+    process.exit(1);
+  }
+
+  const environmentsToRun =
+    databases.length > 0
+      ? databases.map((db) => ALL_SQL_ENVIRONMENTS[db])
+      : Object.values(ALL_SQL_ENVIRONMENTS);
+
+  let sqlTestsToRun = SQL_TESTS;
+
+  if (files.length) {
+    sqlTestsToRun = SQL_TESTS.filter((test) => {
+      const fileName = test.split("/").pop();
+      return files.some((file) => test === file || fileName === file);
+    });
+    if (sqlTestsToRun.length === 0) {
+      console.error(`No SQL tests found matching files: ${files.join(", ")}`);
+      process.exit(1);
+    }
+  }
+
+  if (testCases.length && !files.length) {
+    console.log(
+      `🔍 Scanning test files for matching test cases: ${testCases.join(", ")}...\n`
+    );
+    sqlTestsToRun = sqlTestsToRun.filter((test) =>
+      fileContainsTests(test, testCases)
+    );
+    if (sqlTestsToRun.length === 0) {
+      console.error(
+        `No test files found containing test cases: ${testCases.join(", ")}`
       );
+      process.exit(1);
+    }
+    console.log(
+      `✓ Found ${sqlTestsToRun.length} test file(s) with matching tests\n`
+    );
+  }
+
+  for (const file of sqlTestsToRun) {
+    console.log(`\n${"=".repeat(80)}`);
+    console.log(`📋 Test File: ${file}`);
+    console.log(`${"=".repeat(80)}\n`);
+
+    console.log(
+      `🔄 Running sequentially across ${environmentsToRun.length} database(s)...\n`
+    );
+    for (const environment of environmentsToRun) {
+      try {
+        await runSqlTest(file, environment, testCases, logs);
+      } catch (error) {
+        console.error(error.message);
+        process.exit(1);
+      }
+    }
+    console.log(`\n✅ All databases completed for ${file}`);
+  }
+
+  const shouldRunNonSqlTests =
+    databases.length === 0 && testCases.length === 0 && files.length === 0;
+
+  if (shouldRunNonSqlTests) {
+    console.log(`\n${"=".repeat(80)}`);
+    console.log(`📦 Running Non-SQL specific Tests (Mongo, Redis, Cache, Replication)`);
+    console.log(`${"=".repeat(80)}\n`);
+
+    for (const test of NON_SQL_TESTS) {
+      try {
+        console.log(`  → Running ${test.name}...`);
+        runNonSqlTest(test);
+        console.log(`  ✓ ${test.name} completed`);
+      } catch (error) {
+        console.log(`  ✗ ${test.name} failed`);
+        console.error(`Error running ${test.name}`);
+        process.exit(1);
+      }
+    }
+  }
+
+  console.log(`\n${"=".repeat(80)}`);
+  console.log(`🎉 ALL TESTS PASSED!`);
+  console.log(`${"=".repeat(80)}\n`);
+  process.exit(0);
+};
+
+const program = new Command();
+
+program
+  .name("test-runner")
+  .description("Run test suite for Hysteria ORM")
+  .option(
+    "-d, --database <databases...>",
+    `Run tests for specific database(s), valid databases are: ${VALID_DB_TYPES.join(", ")}`,
+    []
+  )
+  .option(
+    "-t, --test-case <testCases...>",
+    "Run specific test name(s) within files (passed to Jest -t)",
+    []
+  )
+  .option(
+    "-f, --file <files...>",
+    "Run specific file(s) by filename or full path",
+    []
+  )
+  .option(
+    "-l, --logs",
+    "Enable database query logs (DB_LOGS=true)",
+    false
+  )
+  .action(async (options) => {
+    try {
+      await runTests(options);
     } catch (error) {
-      console.error(`[${environment.type}] Error running ${file}`);
+      console.error("Test execution failed:", error.message);
       process.exit(1);
     }
   });
-});
 
-// use connection
-execSync(
-  `jest --config=jest.config.js --detectOpenHandles ./test/sql/use_connection/use_connection.test.ts`,
-  { stdio: "inherit" }
-);
-
-// mongo
-execSync(
-  `jest --config=jest.config.js --detectOpenHandles ./test/mongo/crud_mongo.test.ts`,
-  { stdio: "inherit" }
-);
-
-// redis
-execSync(
-  `jest --config=jest.config.js --detectOpenHandles ./test/redis/redis.test.ts`,
-  { stdio: "inherit" }
-);
-
-// cache adapters
-execSync(
-  `jest --config=jest.config.js --detectOpenHandles ./test/cache/in_memory_cache.test.ts`,
-  { stdio: "inherit" }
-);
-
-execSync(
-  `jest --config=jest.config.js --detectOpenHandles ./test/cache/redis_cache.test.ts`,
-  { stdio: "inherit" }
-);
-
-execSync(
-  `jest --config=jest.config.js --detectOpenHandles ./test/cache/sql_data_source_cache.test.ts`,
-  { stdio: "inherit" }
-);
-
-// replication
-execSync(
-  `jest --config=jest.config.js --detectOpenHandles ./test/replication/slaves.test.ts`,
-  { stdio: "inherit" }
-);
-
-console.log("All tests passed");
-process.exit(0);
+program.parse(process.argv);

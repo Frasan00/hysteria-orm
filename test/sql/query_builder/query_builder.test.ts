@@ -21,6 +21,16 @@ afterEach(async () => {
 });
 
 describe(`[${env.DB_TYPE}] Query Builder with uuid`, () => {
+  beforeEach(async () => {
+    await SqlDataSource.instance.query("posts_with_uuid").delete();
+    await SqlDataSource.instance.query("users_without_pk").delete();
+  });
+
+  afterEach(async () => {
+    await SqlDataSource.instance.query("posts_with_uuid").delete();
+    await SqlDataSource.instance.query("users_without_pk").delete();
+  });
+
   test("should support distinct and distinctOn", async () => {
     await SqlDataSource.instance.query("posts_with_uuid").insertMany([
       { id: crypto.randomUUID(), title: "Hello" },
@@ -280,6 +290,14 @@ describe(`[${env.DB_TYPE}] Query Builder with uuid`, () => {
 });
 
 describe(`[${env.DB_TYPE}] Query Builder with a model without a primary key`, () => {
+  beforeEach(async () => {
+    await SqlDataSource.instance.query("users_without_pk").delete();
+  });
+
+  afterEach(async () => {
+    await SqlDataSource.instance.query("users_without_pk").delete();
+  });
+
   test("should create a user", async () => {
     await SqlDataSource.instance.query("users_without_pk").insert({
       name: "John Doe",
@@ -380,6 +398,14 @@ describe(`[${env.DB_TYPE}] Query Builder with a model without a primary key`, ()
 });
 
 describe(`[${env.DB_TYPE}] Where query builder tests`, () => {
+  beforeEach(async () => {
+    await SqlDataSource.instance.query("users_without_pk").delete();
+  });
+
+  afterEach(async () => {
+    await SqlDataSource.instance.query("users_without_pk").delete();
+  });
+
   test("when does not enter the callback", async () => {
     await SqlDataSource.instance.query("users_without_pk").insert({
       name: "John Doe",
@@ -453,6 +479,7 @@ describe(`[${env.DB_TYPE}] Where query builder tests`, () => {
 
 describe(`[${env.DB_TYPE}] Where query builder (users_without_pk only)`, () => {
   beforeEach(async () => {
+    await SqlDataSource.instance.query("users_without_pk").delete();
     await SqlDataSource.instance.query("users_without_pk").insertMany([
       { name: "Alice", email: "alice.where@test.com" },
       { name: "Bob", email: "bob.where@test.com" },
@@ -589,12 +616,17 @@ describe(`[${env.DB_TYPE}] Where query builder (users_without_pk only)`, () => {
 
 describe(`[${env.DB_TYPE}] Where query builder advanced tests (users_without_pk only)`, () => {
   beforeEach(async () => {
+    await SqlDataSource.instance.query("users_without_pk").delete();
     await SqlDataSource.instance.query("users_without_pk").insertMany([
       { name: "Alice", email: "alice.adv@test.com" },
       { name: "Bob", email: "bob.adv@test.com" },
       { name: "Charlie", email: "charlie.adv@test.com" },
       { name: null, email: "nullname.adv@test.com" },
     ]);
+  });
+
+  afterEach(async () => {
+    await SqlDataSource.instance.query("users_without_pk").delete();
   });
 
   test("whereIn empty combined with another where returns no users", async () => {
@@ -843,6 +875,7 @@ describe(`[${env.DB_TYPE}] Where query builder advanced tests (users_without_pk 
 
 describe(`[${env.DB_TYPE}] Query Builder: whereSubQuery + whereBuilder integration`, () => {
   beforeEach(async () => {
+    await SqlDataSource.instance.query("users_without_pk").delete();
     await SqlDataSource.instance.query("users_without_pk").insertMany([
       { name: "Alice", age: 25, email: "alice.sub@test.com" },
       { name: "Bob", age: 30, email: "bob.sub@test.com" },
@@ -939,6 +972,7 @@ describe(`[${env.DB_TYPE}] Query Builder: whereSubQuery + whereBuilder integrati
 
 describe(`[${env.DB_TYPE}] with performance`, () => {
   beforeEach(async () => {
+    await SqlDataSource.instance.query("users_without_pk").delete();
     await SqlDataSource.instance.query("users_without_pk").insertMany([
       { name: "Alice", age: 25, email: "alice.perf@test.com" },
       { name: "Bob", age: 30, email: "bob.perf@test.com" },
@@ -1036,6 +1070,7 @@ describe(`[${env.DB_TYPE}] with performance`, () => {
 
 describe(`[${env.DB_TYPE}] Query Builder chunk method`, () => {
   beforeEach(async () => {
+    await SqlDataSource.instance.query("users_without_pk").delete();
     await SqlDataSource.instance.query("users_without_pk").insertMany([
       { name: "User 1", age: 21, email: "chunk1@test.com" },
       { name: "User 2", age: 22, email: "chunk2@test.com" },
@@ -1136,11 +1171,16 @@ describe(`[${env.DB_TYPE}] Query Builder chunk method`, () => {
 
 describe(`[${env.DB_TYPE}] Query Builder stream method`, () => {
   beforeEach(async () => {
+    await SqlDataSource.instance.query("users_without_pk").delete();
     await SqlDataSource.instance.query("users_without_pk").insertMany([
       { name: "User 1", age: 21, email: "stream1@test.com" },
       { name: "User 2", age: 22, email: "stream2@test.com" },
       { name: "User 3", age: 23, email: "stream3@test.com" },
     ]);
+  });
+
+  afterEach(async () => {
+    await SqlDataSource.instance.query("users_without_pk").delete();
   });
 
   test("should properly stream results with event listeners", async () => {
@@ -1190,6 +1230,7 @@ describe(`[${env.DB_TYPE}] Query Builder stream method`, () => {
 
 describe(`[${env.DB_TYPE}] Query Builder clone method`, () => {
   beforeEach(async () => {
+    await SqlDataSource.instance.query("users_without_pk").delete();
     await SqlDataSource.instance.query("users_without_pk").insertMany([
       { name: "User 1", age: 21, email: "clone1@test.com" },
       { name: "User 2", age: 22, email: "clone2@test.com" },
@@ -1238,6 +1279,7 @@ describe(`[${env.DB_TYPE}] Query Builder clone method`, () => {
 
 describe(`[${env.DB_TYPE}] Query Builder paginateWithCursor method`, () => {
   beforeEach(async () => {
+    await SqlDataSource.instance.query("users_without_pk").delete();
     await SqlDataSource.instance.query("users_without_pk").insertMany([
       { name: "User 1", age: 21, email: "cursor1@test.com" },
       { name: "User 2", age: 22, email: "cursor2@test.com" },
@@ -1246,7 +1288,7 @@ describe(`[${env.DB_TYPE}] Query Builder paginateWithCursor method`, () => {
   });
 
   afterEach(async () => {
-    await SqlDataSource.instance.query("users_without_pk").truncate();
+    await SqlDataSource.instance.query("users_without_pk").delete();
   });
 
   test("should properly paginate results with cursor", async () => {
@@ -1280,9 +1322,14 @@ describe(`[${env.DB_TYPE}] Query Builder paginateWithCursor method`, () => {
 });
 
 describe(`[${env.DB_TYPE}] Upsert Query Builder methods`, () => {
+  beforeEach(async () => {
+    await SqlDataSource.instance.query("posts_with_uuid").delete();
+    await SqlDataSource.instance.query("users_without_pk").delete();
+  });
+
   afterEach(async () => {
-    await SqlDataSource.instance.query("posts_with_uuid").truncate();
-    await SqlDataSource.instance.query("users_without_pk").truncate();
+    await SqlDataSource.instance.query("posts_with_uuid").delete();
+    await SqlDataSource.instance.query("users_without_pk").delete();
   });
 
   test("should upsert a record (insert when not exists)", async () => {
@@ -1479,9 +1526,14 @@ describe(`[${env.DB_TYPE}] Upsert Query Builder methods`, () => {
 });
 
 describe(`[${env.DB_TYPE}] Additional Query Builder methods`, () => {
+  beforeEach(async () => {
+    await SqlDataSource.instance.query("posts_with_uuid").delete();
+    await SqlDataSource.instance.query("users_without_pk").delete();
+  });
+
   afterEach(async () => {
-    await SqlDataSource.instance.query("posts_with_uuid").truncate();
-    await SqlDataSource.instance.query("users_without_pk").truncate();
+    await SqlDataSource.instance.query("posts_with_uuid").delete();
+    await SqlDataSource.instance.query("users_without_pk").delete();
   });
 
   test("pluck returns single column array", async () => {
