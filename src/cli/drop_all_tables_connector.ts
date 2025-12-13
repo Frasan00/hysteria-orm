@@ -13,6 +13,7 @@ export default async function dropAllTablesConnector(
 ) {
   const dbType = sql.getDbType();
   const dbDatabase = sql.database;
+
   if (!dbType) {
     logger.error("DB_TYPE is not set could not drop all tables");
     process.exit(1);
@@ -24,60 +25,51 @@ export default async function dropAllTablesConnector(
   }
 
   logger.info("Dropping all tables for database type: " + dbType);
-  if (dbType === "sqlite") {
-    await sql.closeConnection();
-
-    await fs.rm(dbDatabase as string, { recursive: true, force: true });
-    logger.info("Sqlite database dropped successfully");
-    await fs.writeFile(dbDatabase as string, "");
-    logger.info("Sqlite database recreated successfully");
-
-    const details = sql.getConnectionDetails();
-    sql.sqlPool = await createSqlPool(sql.getDbType(), details);
-
-    if (shouldExit) {
-      await sql.closeConnection();
-      logger.info("All tables dropped successfully");
-      shouldExit && process.exit(0);
-    }
-    return;
-  }
-
-  const templates = MigrationTemplates.getAllTablesTemplate(
-    dbType as SqlDataSourceType,
-    dbDatabase as string,
-  );
-
-  const tables: string[] = await sql.rawQuery(templates);
-  const parsedTables = MigrationTemplates.parseGetAllTables(
-    dbType as SqlDataSourceType,
-    dbDatabase as string,
-    tables,
-  );
-
-  if (!parsedTables.length) {
-    logger.info("No tables to drop");
-    if (shouldExit) {
-      await sql.closeConnection();
-      process.exit(0);
-    }
-    return;
-  }
-
-  const dropAllTablesTemplate = MigrationTemplates.dropAllTablesTemplate(
-    dbType as SqlDataSourceType,
-    parsedTables,
-  );
 
   let trx: Transaction | null = null;
-  const shouldUseTransaction =
-    transactional && dbType !== "mssql" && dbType !== "oracledb";
-  if (shouldUseTransaction) {
-    trx = await sql.startTransaction();
-    sql = trx.sql as SqlDataSource;
-  }
+  const shouldUseTransaction = transactional && dbType === "postgres";
 
   try {
+    if (dbType === "sqlite") {
+      await sql.closeConnection();
+
+      await fs.rm(dbDatabase as string, { recursive: true, force: true });
+      logger.info("Sqlite database dropped successfully");
+      await fs.writeFile(dbDatabase as string, "");
+      logger.info("Sqlite database recreated successfully");
+
+      const details = sql.getConnectionDetails();
+      sql.sqlPool = await createSqlPool(sql.getDbType(), details);
+
+      logger.info("All tables dropped successfully");
+      return;
+    }
+
+    const templates = MigrationTemplates.getAllTablesTemplate(
+      dbType as SqlDataSourceType,
+      dbDatabase as string,
+    );
+
+    const tables: string[] = await sql.rawQuery(templates);
+    const parsedTables = MigrationTemplates.parseGetAllTables(
+      dbType as SqlDataSourceType,
+      dbDatabase as string,
+      tables,
+    );
+
+    if (!parsedTables.length) {
+      logger.info("No tables to drop");
+      return;
+    }
+
+    const dropAllTablesTemplate = MigrationTemplates.dropAllTablesTemplate(
+      dbType as SqlDataSourceType,
+      parsedTables,
+    );
+    if (shouldUseTransaction) {
+      trx = await sql.startTransaction();
+      sql = trx.sql as SqlDataSource;
+    }
     if (dbType === "mysql" || dbType === "mariadb") {
       await sql.rawQuery(`SET FOREIGN_KEY_CHECKS = 0;`);
     }
@@ -126,19 +118,18 @@ export default async function dropAllTablesConnector(
     if (shouldUseTransaction) {
       await trx?.commit();
     }
+
+    logger.info("All tables dropped successfully");
   } catch (error: any) {
     if (shouldUseTransaction) {
       await trx?.rollback();
     }
 
     logger.error(error);
-    process.exit(1);
+    throw error;
   } finally {
     if (shouldExit) {
       await sql.closeConnection();
     }
   }
-
-  logger.info("All tables dropped successfully");
-  shouldExit && process.exit(0);
 }

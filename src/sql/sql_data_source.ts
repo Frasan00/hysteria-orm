@@ -150,9 +150,18 @@ export class SqlDataSource<
   cacheKeys: C;
 
   /**
-   * @description The path to the migrations folder for the sql data source, it's used to configure the migrations path for the sql data source
+   * @description Migration configuration for the sql data source
    */
-  migrationsPath: string = env.MIGRATION_PATH || "database/migrations";
+  migrationConfig: {
+    path: string;
+    tsconfig?: string;
+    lock: boolean;
+    transactional: boolean;
+  } = {
+    path: env.MIGRATION_PATH || "database/migrations",
+    lock: true,
+    transactional: true,
+  };
 
   /**
    * @description AdminJS configuration options
@@ -391,8 +400,19 @@ export class SqlDataSource<
     // Set AdminJS options
     this.adminJsOptions = input?.adminJs;
 
-    // Set migrations path
-    this.migrationsPath = input?.migrationsPath || this.migrationsPath;
+    // Set migrations configuration
+    if (input?.migrations) {
+      this.migrationConfig = {
+        path: input.migrations.path || this.migrationConfig.path,
+        tsconfig: input.migrations.tsconfig,
+        lock: input.migrations.lock ?? this.migrationConfig.lock,
+        transactional:
+          "transactional" in input.migrations
+            ? ((input.migrations as { transactional?: boolean })
+                .transactional ?? this.migrationConfig.transactional)
+            : this.migrationConfig.transactional,
+      };
+    }
 
     // Set models configured on the sql data source instance
     this._models = (input?.models || {}) as T;
@@ -1468,9 +1488,205 @@ export class SqlDataSource<
     };
   }
 
+  /**
+   * @description Acquires an advisory lock
+   * @description Useful for preventing concurrent operations from running simultaneously
+   * @param lockKey - The lock identifier (defaults to 'hysteria_lock')
+   * @param timeoutMs - Maximum time to wait for lock in milliseconds (postgres/mssql only)
+   * @returns true if lock was acquired, false otherwise
+   */
+  async acquireLock(
+    lockKey: string = "hysteria_lock",
+    timeoutMs: number = 30000,
+  ): Promise<boolean> {
+    const dbType = this.getDbType();
+
+    try {
+      switch (dbType) {
+        case "postgres":
+        case "cockroachdb": {
+          const lockId = this.hashStringToLockId(lockKey);
+          const result = (await this.rawQuery(
+            `SELECT pg_try_advisory_lock($1) as pg_try_advisory_lock`,
+            [lockId],
+          )) as any;
+          const lockAcquired = result.rows?.[0]?.pg_try_advisory_lock;
+          // Handle both boolean and string ('t'/'f') responses from different drivers
+          return lockAcquired === true || lockAcquired === "t";
+        }
+
+        case "mysql":
+        case "mariadb": {
+          const timeoutSeconds = Math.floor(timeoutMs / 1000);
+          const result = (await this.rawQuery(
+            `SELECT GET_LOCK(?, ?) as lock_result`,
+            [lockKey, timeoutSeconds],
+          )) as any;
+          return result[0]?.[0]?.lock_result === 1;
+        }
+
+        case "mssql": {
+          const result = (await this.rawQuery(
+            `DECLARE @result INT; EXEC @result = sp_getapplock @Resource = @p0, @LockMode = 'Exclusive', @LockOwner = 'Session', @LockTimeout = @p1; SELECT @result as lock_result`,
+            [lockKey, timeoutMs],
+          )) as any;
+          const lockResult = result.recordset?.[0]?.lock_result ?? -999;
+          return lockResult >= 0;
+        }
+
+        case "oracledb": {
+          try {
+            const lockHandle = this.hashStringToLockId(lockKey);
+            await this.rawQuery(
+              `BEGIN DBMS_LOCK.ALLOCATE_UNIQUE('${lockKey}', '${lockHandle}'); END;`,
+            );
+            const result = await this.rawQuery<any>(
+              `DECLARE
+                 v_result NUMBER;
+               BEGIN
+                 v_result := DBMS_LOCK.REQUEST(
+                   lockhandle => ${lockHandle},
+                   lockmode => DBMS_LOCK.X_MODE,
+                   timeout => ${Math.floor(timeoutMs / 1000)},
+                   release_on_commit => FALSE
+                 );
+                 IF v_result IN (0, 4) THEN
+                   :result := 1;
+                 ELSE
+                   :result := 0;
+                 END IF;
+               END;`,
+            );
+            return result?.outBinds?.result === 1;
+          } catch (error) {
+            const err =
+              error instanceof Error ? error : new Error(String(error));
+            logger.warn(
+              `Oracle lock allocation may have failed: ${err.message}`,
+            );
+            return false;
+          }
+        }
+
+        case "sqlite":
+          logger.info(
+            "SQLite uses automatic file-based locking, advisory locks not needed",
+          );
+          return true;
+
+        default:
+          logger.warn(
+            `Advisory locks not implemented for database type: ${dbType}`,
+          );
+          return true;
+      }
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      logger.error(
+        `Failed to acquire lock: ${err.message || JSON.stringify(error)} (dbType: ${dbType}, lockKey: ${lockKey}). Full error: ${JSON.stringify(error)}`,
+      );
+      return false;
+    }
+  }
+
+  /**
+   * @description Releases an advisory lock
+   * @param lockKey - The lock identifier (defaults to 'hysteria_lock')
+   * @returns true if lock was released, false otherwise
+   */
+  async releaseLock(lockKey: string = "hysteria_lock"): Promise<boolean> {
+    const dbType = this.getDbType();
+
+    try {
+      switch (dbType) {
+        case "postgres":
+        case "cockroachdb": {
+          const lockId = this.hashStringToLockId(lockKey);
+          const result = (await this.rawQuery(
+            `SELECT pg_advisory_unlock($1) as pg_advisory_unlock`,
+            [lockId],
+          )) as any;
+          const lockReleased = result.rows?.[0]?.pg_advisory_unlock;
+          // Handle both boolean and string ('t'/'f') responses from different drivers
+          return lockReleased === true || lockReleased === "t";
+        }
+
+        case "mysql":
+        case "mariadb": {
+          const result = (await this.rawQuery(
+            `SELECT RELEASE_LOCK(?) as release_result`,
+            [lockKey],
+          )) as any;
+          return result[0]?.[0]?.release_result === 1;
+        }
+
+        case "mssql": {
+          const result = (await this.rawQuery(
+            `DECLARE @result INT; EXEC @result = sp_releaseapplock @Resource = @p0, @LockOwner = 'Session'; SELECT @result as release_result`,
+            [lockKey],
+          )) as any;
+          const lockResult = result.recordset?.[0]?.release_result ?? -999;
+          return lockResult >= 0;
+        }
+
+        case "oracledb": {
+          try {
+            const lockHandle = this.hashStringToLockId(lockKey);
+            const result = await this.rawQuery<any>(
+              `DECLARE
+                 v_result NUMBER;
+               BEGIN
+                 v_result := DBMS_LOCK.RELEASE(${lockHandle});
+                 IF v_result = 0 THEN
+                   :result := 1;
+                 ELSE
+                   :result := 0;
+                 END IF;
+               END;`,
+            );
+            return result?.outBinds?.result === 1;
+          } catch (error) {
+            const err =
+              error instanceof Error ? error : new Error(String(error));
+            logger.warn(`Oracle lock release may have failed: ${err.message}`);
+            return false;
+          }
+        }
+
+        case "sqlite":
+          return true;
+
+        default:
+          logger.warn(
+            `Advisory locks not implemented for database type: ${dbType}`,
+          );
+          return true;
+      }
+    } catch (error) {
+      const err = error instanceof Error ? error : new Error(String(error));
+      logger.error(
+        `Failed to release lock: ${err.message || JSON.stringify(error)} (dbType: ${dbType}, lockKey: ${lockKey}). Full error: ${JSON.stringify(error)}`,
+      );
+      return false;
+    }
+  }
+
   // ============================================
   // Private Methods
   // ============================================
+
+  /**
+   * @description Converts a string to a numeric lock ID for databases that require it
+   */
+  private hashStringToLockId(str: string): number {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      const char = str.charCodeAt(i);
+      hash = (hash << 5) - hash + char;
+      hash = hash & hash;
+    }
+    return Math.abs(hash);
+  }
 
   /**
    * @description Executes an operation on a slave, handling failures with the configured callback

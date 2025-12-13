@@ -30,7 +30,6 @@ import type {
   Sqlite3Import,
 } from "../drivers/driver_types";
 import type { Model } from "./models/model";
-import type { SqlDataSource } from "./sql_data_source";
 
 export type Sqlite3ConnectionOptions = {
   mode: number;
@@ -79,11 +78,56 @@ export type ConnectionPolicies = {
 export type SqlDataSourceModel = typeof Model;
 
 /**
+ * @description Base migration configuration options available for all databases
+ */
+export type MigrationConfigBase = {
+  /**
+   * @description The path to the migrations folder, can be overridden in the cli command
+   * @default "database/migrations"
+   */
+  path?: string;
+
+  /**
+   * @description Path to the tsconfig.json file for TypeScript migration files, can be overridden in the cli command
+   * @default "./tsconfig.json"
+   */
+  tsconfig?: string;
+
+  /**
+   * @description Acquire advisory lock before running migrations to prevent concurrent execution, can be overridden in the cli command
+   * @default true
+   */
+  lock?: boolean;
+};
+
+/**
+ * @description Migration configuration with transactional support for PostgreSQL and CockroachDB
+ */
+type MigrationConfigWithTransactional = MigrationConfigBase & {
+  /**
+   * @description Runs all pending migrations in a single transaction, can be overridden in the cli command
+   * @default true
+   * @note Only available for PostgreSQL and CockroachDB
+   */
+  transactional?: boolean;
+};
+
+/**
+ * @description Migration configuration type based on database type
+ * @description Adds transactional option only for PostgreSQL and CockroachDB
+ */
+export type MigrationConfig<D extends SqlDataSourceType = SqlDataSourceType> =
+  D extends "postgres" | "cockroachdb"
+    ? MigrationConfigWithTransactional
+    : MigrationConfigBase;
+
+/**
  * @description Common input properties shared across all SqlDataSource types
  */
 type SqlDataSourceInputBase<
   T extends Record<string, SqlDataSourceModel> = {},
   C extends CacheKeys = {},
+  D extends SqlDataSourceType = SqlDataSourceType,
 > = {
   /**
    * @description Whether to log the sql queries and other debug information
@@ -105,10 +149,9 @@ type SqlDataSourceInputBase<
   models?: T;
 
   /**
-   * @description The path to the migrations folder for the sql data source, it's used to configure the migrations path for the sql data source
-   * @default "database/migrations"
+   * @description Migration configuration for the sql data source
    */
-  migrationsPath?: string;
+  migrations?: MigrationConfig<D>;
 
   /**
    * @description The cache strategy to use for the sql data source, it's used to configure the cache strategy for the sql data source
@@ -159,7 +202,7 @@ export type SqlDataSourceInput<
   D extends SqlDataSourceType = SqlDataSourceType,
   T extends Record<string, SqlDataSourceModel> = {},
   C extends CacheKeys = {},
-> = SqlDataSourceInputBase<T, C> & {
+> = SqlDataSourceInputBase<T, C, D> & {
   /**
    * @description The type of the database to connect to
    */
@@ -193,7 +236,7 @@ export type SqlDataSourceInput<
       | "adminJs"
       | "logs"
       | "queryFormatOptions"
-      | "migrationsPath"
+      | "migrations"
     >[];
 
     /**

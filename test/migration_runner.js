@@ -27,7 +27,7 @@ const VALID_DB_TYPES = [
   "cockroachdb",
   "sqlite",
   "mssql",
-  "oracledb",
+  // "oracledb",
 ];
 
 const getMigrationFolder = (dbType, baseMigration) => {

@@ -137,6 +137,8 @@ export class ClientMigrator {
         sqlDataSource,
         undefined,
         this.migrationPath,
+        sqlDataSource.migrationConfig.tsconfig,
+        sqlDataSource.migrationConfig.transactional,
       );
     }
 
@@ -144,6 +146,8 @@ export class ClientMigrator {
       sqlDataSource,
       undefined,
       this.migrationPath,
+      sqlDataSource.migrationConfig.tsconfig,
+      sqlDataSource.migrationConfig.transactional,
     );
   }
 }

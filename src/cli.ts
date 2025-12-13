@@ -266,7 +266,12 @@ program
   )
   .option(
     "-t, --transactional",
-    "Runs all the pending migrations in a single transaction, this does not apply to mysql since it does not support transactions inside schema changes",
+    "Runs all the pending migrations in a single transaction, only applies to postgres",
+    true,
+  )
+  .option(
+    "-l, --lock",
+    "Acquire advisory lock before running migrations to prevent concurrent execution",
     true,
   )
   .description(
@@ -280,6 +285,7 @@ program
         tsconfigPath: string;
         datasource?: string;
         transactional: boolean;
+        lock: boolean;
       },
     ) => {
       if (!option?.datasource) {
@@ -290,23 +296,49 @@ program
         default: SqlDataSource;
       }>(path.resolve(process.cwd(), option.datasource), option?.tsconfigPath);
 
-      const migrationPath = option?.migrationPath || sqlDs.migrationsPath;
+      // Priority: CLI option > DataSource config > Default
+      const migrationPath = option?.migrationPath || sqlDs.migrationConfig.path;
+      const tsconfig = option?.tsconfigPath || sqlDs.migrationConfig.tsconfig;
+      const useLock = option?.lock ?? sqlDs.migrationConfig.lock;
+      const transactional =
+        option?.transactional ?? sqlDs.migrationConfig.transactional;
+      let lockAcquired = false;
 
       try {
+        if (useLock) {
+          logger.info("Acquiring migration lock");
+          lockAcquired = await sqlDs.acquireLock("hysteria_migration_lock");
+
+          if (!lockAcquired) {
+            logger.error(
+              "Failed to acquire migration lock. Another migration may be running.",
+            );
+            throw new Error("Failed to acquire migration lock");
+          }
+
+          logger.info("Migration lock acquired successfully");
+        }
+
         await runMigrationsConnector(
           sqlDs,
           runUntil,
           migrationPath,
-          option?.tsconfigPath,
-          option?.transactional,
+          tsconfig,
+          transactional,
         );
-
-        await sqlDs.closeConnection();
-        process.exit(0);
       } catch (error) {
         console.error(error);
+        throw error;
+      } finally {
+        if (useLock && lockAcquired) {
+          logger.info("Releasing migration lock");
+          const released = await sqlDs.releaseLock("hysteria_migration_lock");
+
+          if (!released) {
+            logger.warn("Failed to release migration lock");
+          }
+        }
         await sqlDs.closeConnection();
-        process.exit(1);
       }
     },
   );
@@ -333,6 +365,11 @@ program
     "Runs all the pending migrations in a single transaction, this does not apply to mysql since it does not support transactions inside schema changes",
     true,
   )
+  .option(
+    "-l, --lock",
+    "Acquire advisory lock before running migrations to prevent concurrent execution",
+    true,
+  )
   .description(
     "Rollbacks every migration that has been run, if rollbackUntil is provided, it will rollback all migrations until the provided migration name",
   )
@@ -344,6 +381,7 @@ program
         tsconfigPath: string;
         datasource?: string;
         transactional: boolean;
+        lock: boolean;
       },
     ) => {
       if (!option?.datasource) {
@@ -354,23 +392,49 @@ program
         default: SqlDataSource;
       }>(path.resolve(process.cwd(), option.datasource), option?.tsconfigPath);
 
-      const migrationPath = option?.migrationPath || sqlDs.migrationsPath;
+      // Priority: CLI option > DataSource config > Default
+      const migrationPath = option?.migrationPath || sqlDs.migrationConfig.path;
+      const tsconfig = option?.tsconfigPath || sqlDs.migrationConfig.tsconfig;
+      const useLock = option?.lock ?? sqlDs.migrationConfig.lock;
+      const transactional =
+        option?.transactional ?? sqlDs.migrationConfig.transactional;
+      let lockAcquired = false;
 
       try {
+        if (useLock) {
+          logger.info("Acquiring migration lock");
+          lockAcquired = await sqlDs.acquireLock("hysteria_migration_lock");
+
+          if (!lockAcquired) {
+            logger.error(
+              "Failed to acquire migration lock. Another migration may be running.",
+            );
+            throw new Error("Failed to acquire migration lock");
+          }
+
+          logger.info("Migration lock acquired successfully");
+        }
+
         await rollbackMigrationsConnector(
           sqlDs,
           rollbackUntil,
           migrationPath,
-          option?.tsconfigPath,
-          option?.transactional,
+          tsconfig,
+          transactional,
         );
-
-        await sqlDs.closeConnection();
-        process.exit(0);
       } catch (error) {
         console.error(error);
+        throw error;
+      } finally {
+        if (useLock && lockAcquired) {
+          logger.info("Releasing migration lock");
+          const released = await sqlDs.releaseLock("hysteria_migration_lock");
+
+          if (!released) {
+            logger.warn("Failed to release migration lock");
+          }
+        }
         await sqlDs.closeConnection();
-        process.exit(1);
       }
     },
   );
@@ -397,6 +461,11 @@ program
     "Runs all the pending migrations in a single transaction, this does not apply to mysql since it does not support transactions inside schema changes",
     true,
   )
+  .option(
+    "-l, --lock",
+    "Acquire advisory lock before running migrations to prevent concurrent execution",
+    true,
+  )
   .option("-m, --migration-path [path]", "Path to the migrations", undefined)
   .description(
     "Rollbacks every migration that has been run and then run the migrations",
@@ -408,6 +477,7 @@ program
       tsconfigPath: string;
       datasource?: string;
       transactional: boolean;
+      lock: boolean;
     }) => {
       const force = option?.force || false;
       if (!option?.datasource) {
@@ -418,33 +488,58 @@ program
         default: SqlDataSource;
       }>(path.resolve(process.cwd(), option.datasource), option?.tsconfigPath);
 
-      const migrationPath = option?.migrationPath || sqlDs.migrationsPath;
+      // Priority: CLI option > DataSource config > Default
+      const migrationPath = option?.migrationPath || sqlDs.migrationConfig.path;
+      const tsconfig = option?.tsconfigPath || sqlDs.migrationConfig.tsconfig;
+      const useLock = option?.lock ?? sqlDs.migrationConfig.lock;
+      const transactional =
+        option?.transactional ?? sqlDs.migrationConfig.transactional;
+      let lockAcquired = false;
 
       try {
+        if (useLock) {
+          logger.info("Acquiring migration lock for refresh operation");
+          lockAcquired = await sqlDs.acquireLock("hysteria_migration_lock");
+
+          if (!lockAcquired) {
+            logger.error(
+              "Failed to acquire migration lock. Another migration may be running.",
+            );
+            throw new Error("Failed to acquire migration lock");
+          }
+
+          logger.info("Migration lock acquired successfully");
+        }
+
         force
-          ? await dropAllTablesConnector(sqlDs, false, option?.transactional)
+          ? await dropAllTablesConnector(sqlDs, false, transactional)
           : await rollbackMigrationsConnector(
               sqlDs,
               undefined,
               migrationPath,
-              option?.tsconfigPath,
-              option?.transactional,
+              tsconfig,
+              transactional,
             );
 
         await runMigrationsConnector(
           sqlDs,
           undefined,
           migrationPath,
-          option?.tsconfigPath,
-          option?.transactional,
+          tsconfig,
+          transactional,
         );
-
-        await sqlDs.closeConnection();
-        process.exit(0);
       } catch (error) {
         console.error(error);
+      } finally {
+        if (useLock && lockAcquired) {
+          logger.info("Releasing migration lock");
+          const released = await sqlDs.releaseLock("hysteria_migration_lock");
+
+          if (!released) {
+            logger.warn("Failed to release migration lock");
+          }
+        }
         await sqlDs.closeConnection();
-        process.exit(1);
       }
     },
   );
@@ -500,7 +595,8 @@ program
         default: SqlDataSource;
       }>(path.resolve(process.cwd(), option.datasource), option?.tsconfigPath);
 
-      const migrationPath = option?.migrationPath || sqlDs.migrationsPath;
+      // Priority: CLI option > DataSource config > Default
+      const migrationPath = option?.migrationPath || sqlDs.migrationConfig.path;
 
       const allowedDatabaseTypes = [
         "mysql",

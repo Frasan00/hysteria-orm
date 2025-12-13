@@ -21,16 +21,22 @@ import { ${importType} } from "hysteria-orm";
 
 const db = new ${importType}({
   type: "${type}",
-  database: "${database}"${
+  database: "${database}",${
     type === "sqlite"
-      ? ""
-      : `,
+      ? `
+  logs: true,
+  migrations: {
+    path: "database/migrations",
+  },`
+      : `
   port: ${port},
   host: "localhost",
   username: "root",
   password: "root",
   logs: true,
-  migrationsPath: "database/migrations"`
+  migrations: {
+    path: "database/migrations",
+  },`
   }
 });
 
