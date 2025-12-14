@@ -128,6 +128,23 @@ export type MigrationConfig<D extends SqlDataSourceType = SqlDataSourceType> =
     : MigrationConfigBase;
 
 /**
+ * @description Seeder configuration options
+ */
+export type SeederConfig = {
+  /**
+   * @description The path to the seeders folder
+   * @default "database/seeders"
+   */
+  path?: string;
+
+  /**
+   * @description Path to the tsconfig.json file for TypeScript seeder files
+   * @default "./tsconfig.json"
+   */
+  tsconfig?: string;
+};
+
+/**
  * @description Common input properties shared across all SqlDataSource types
  */
 type SqlDataSourceInputBase<
@@ -158,6 +175,11 @@ type SqlDataSourceInputBase<
    * @description Migration configuration for the sql data source
    */
   migrations?: MigrationConfig<D>;
+
+  /**
+   * @description Seeder configuration for the sql data source
+   */
+  seeders?: SeederConfig;
 
   /**
    * @description The cache strategy to use for the sql data source, it's used to configure the cache strategy for the sql data source

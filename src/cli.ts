@@ -8,6 +8,8 @@ import runMigrationsConnector from "./cli/migration_run_connector";
 import { GenerateMigrationTemplate } from "./cli/resources/generate_migration_template";
 import { InitTemplates } from "./cli/resources/init_templates";
 import runSqlConnector from "./cli/run_sql_connector";
+import seederCreateConnector from "./cli/seeder_create_connector";
+import runSeedersConnector from "./cli/seeder_run_connector";
 import { SchemaDiff } from "./sql/migrations/schema_diff/schema_diff";
 import { SqlDataSource } from "./sql/sql_data_source";
 import { SqlDataSourceType } from "./sql/sql_data_source_types";
@@ -686,6 +688,94 @@ program
         );
 
         await sqlDs.closeConnection();
+        process.exit(0);
+      } catch (error) {
+        console.error(error);
+        await sqlDs.closeConnection();
+        process.exit(1);
+      }
+    },
+  );
+
+program
+  .command("create:seeder <name>")
+  .description("Create a new seeder file")
+  .option(
+    "-j, --javascript",
+    "Generate a javascript seeder file instead of a default typescript one",
+    false,
+  )
+  .option("-s, --seeder-path [path]", "Path to the seeders", undefined)
+  .action(
+    (
+      name: string,
+      option: {
+        javascript: boolean;
+        seederPath?: string;
+      },
+    ) => {
+      logger.info(`Creating seeder: ${name}`);
+      logger.info(`Seeder options: javascript=${option.javascript}`);
+
+      if (!name) {
+        logger.error("Seeder name is required");
+        process.exit(1);
+      }
+
+      seederCreateConnector(name, option.javascript, option.seederPath);
+    },
+  );
+
+program
+  .command("seed")
+  .description("Run database seeders from folder or specific files")
+  .option(
+    "-c, --tsconfig [tsconfigPath]",
+    "Path to the tsconfig.json file, defaults to ./tsconfig.json",
+    undefined,
+  )
+  .option(
+    "-d, --datasource [path]",
+    "Path to SqlDataSource (default export)",
+    undefined,
+  )
+  .option(
+    "-s, --seeder-path [path]",
+    "Path to seeder folder or file (can be specified multiple times or comma-separated)",
+    (value, previous: string[] = []) => {
+      return [...previous, value];
+    },
+  )
+  .action(
+    async (option?: {
+      tsconfigPath?: string;
+      datasource?: string;
+      seederPath?: string[];
+    }) => {
+      logger.info("Starting seeder execution");
+      if (!option?.datasource) {
+        logger.error("SqlDataSource file path is required (-d|--datasource)");
+        process.exit(1);
+      }
+
+      const { default: sqlDs } = await importTsUniversal<{
+        default: SqlDataSource;
+      }>(path.resolve(process.cwd(), option.datasource), option?.tsconfigPath);
+
+      let seederPaths: string[];
+      if (option?.seederPath && option.seederPath.length > 0) {
+        seederPaths = option.seederPath.flatMap((path) =>
+          path.split(",").map((s) => s.trim()),
+        );
+      } else {
+        seederPaths = [sqlDs.seederConfig.path];
+      }
+      const tsconfig = option?.tsconfigPath || sqlDs.seederConfig.tsconfig;
+
+      try {
+        await runSeedersConnector(sqlDs, seederPaths, tsconfig);
+        await sqlDs.closeConnection();
+        logger.info("Seeding completed successfully");
         process.exit(0);
       } catch (error) {
         console.error(error);

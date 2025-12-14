@@ -39,6 +39,9 @@ export { Migration } from "./sql/migrations/migration";
 export { defineMigrator } from "./sql/migrations/migrator";
 export type { ClientMigrator } from "./sql/migrations/migrator";
 
+// Seeders
+export { BaseSeeder } from "./sql/seeders/base_seeder";
+
 // Query Builder
 export type { DryModelQueryBuilder } from "./sql/models/model_query_builder/dry_model_query_builder";
 export type { ModelQueryBuilder } from "./sql/models/model_query_builder/model_query_builder";

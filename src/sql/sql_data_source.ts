@@ -166,6 +166,16 @@ export class SqlDataSource<
   };
 
   /**
+   * @description Seeder configuration for the sql data source
+   */
+  seederConfig: {
+    path: string;
+    tsconfig?: string;
+  } = {
+    path: "database/seeders",
+  };
+
+  /**
    * @description AdminJS configuration options
    */
   private adminJsOptions?: AdminJsOptions;
@@ -413,6 +423,14 @@ export class SqlDataSource<
             ? ((input.migrations as { transactional?: boolean })
                 .transactional ?? this.migrationConfig.transactional)
             : this.migrationConfig.transactional,
+      };
+    }
+
+    // Set seeders configuration
+    if (input?.seeders) {
+      this.seederConfig = {
+        path: input.seeders.path || this.seederConfig.path,
+        tsconfig: input.seeders.tsconfig,
       };
     }
 

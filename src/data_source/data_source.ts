@@ -94,7 +94,7 @@ Valid database types are: [mongo, postgres, cockroachdb, mysql, mariadb, sqlite]
   }
 
   protected handleSqliteSource(input?: SqliteDataSourceInput) {
-    this.database = (input?.database || env.DB_DATABASE || ":memory:");
+    this.database = input?.database || env.DB_DATABASE || ":memory:";
     this.logs = input?.logs || env.DB_LOGS || false;
   }
 
