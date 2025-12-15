@@ -1,6 +1,7 @@
 import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import readline from "node:readline";
 import { sqlDatabaseTypes } from "../cli";
 import { DataSourceType } from "../data_source/data_source_types";
 import logger from "./logger";
@@ -31,11 +32,48 @@ export const getPackageManager = (): [string, string] => {
   return ["npm", "install"];
 };
 
-export const installBaseDependencies = (
+/**
+ * Prompts user for confirmation and executes a command if approved
+ * @param command - The command to execute
+ * @param packageManager - The package manager name (e.g., "npm", "yarn")
+ * @param dependencies - Array of dependencies to display
+ * @param options - execSync options
+ * @returns Promise that resolves to true if executed, false if skipped
+ */
+export const execWithPrompt = async (
+  command: string,
+  packageManager: string,
+  dependencies: string[],
+  options?: Parameters<typeof execSync>[1],
+): Promise<boolean> => {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  const dependenciesList = dependencies.join(", ");
+  const prompt = `Do you want to install the following dependencies using ${packageManager}?\n${dependenciesList}\n(y/n): `;
+
+  return new Promise((resolve) => {
+    rl.question(prompt, (answer) => {
+      rl.close();
+
+      if (answer.toLowerCase() === "y" || answer.toLowerCase() === "yes") {
+        execSync(command, options);
+        resolve(true);
+        return;
+      }
+
+      resolve(false);
+    });
+  });
+};
+
+export const installBaseDependencies = async (
   packageManager: string,
   packageManagerCommand: string,
   type: DataSourceType | "redis",
-) => {
+): Promise<void> => {
   const devDependencies = sqlDatabaseTypes.includes(type)
     ? ["bundle-require@^5.1.0", "typescript@^5.9.3", "esbuild@^0.27.0"]
     : [];
@@ -76,19 +114,38 @@ export const installBaseDependencies = (
       throw new Error(`Invalid database type: ${type}`);
   }
 
-  logger.info(`installing dev dependencies: ${devDependencies.join(" ")}`);
+  if (driverDependency) {
+    const driverInstalled = await execWithPrompt(
+      `${packageManager} ${packageManagerCommand} ${driverDependency}`,
+      packageManager,
+      [driverDependency],
+      { stdio: "inherit" },
+    );
+
+    if (driverInstalled) {
+      logger.info("Driver dependency installed successfully");
+    }
+
+    if (!driverInstalled) {
+      logger.info("Driver dependency installation skipped");
+    }
+  }
 
   const devFlag = packageManager === "deno" ? "--dev" : "-D";
+  if (devDependencies.length) {
+    const devInstalled = await execWithPrompt(
+      `${packageManager} ${packageManagerCommand} ${devDependencies.join(" ")} ${devFlag}`,
+      packageManager,
+      devDependencies,
+      { stdio: "inherit" },
+    );
 
-  execSync(
-    `${packageManager} ${packageManagerCommand} ${devDependencies.join(" ")} ${devFlag}`,
-    { stdio: "inherit" },
-  );
+    if (devInstalled) {
+      logger.info("Dev dependencies installed successfully");
+    }
 
-  if (driverDependency) {
-    logger.info(`installing driver dependency: ${driverDependency}`);
-    execSync(`${packageManager} ${packageManagerCommand} ${driverDependency}`, {
-      stdio: "inherit",
-    });
+    if (!devInstalled) {
+      logger.info("Dev dependencies installation skipped");
+    }
   }
 };

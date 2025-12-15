@@ -64,7 +64,11 @@ program
     logger.info(`Package manager: ${packageManager}`);
 
     logger.info("Installing base dependencies");
-    installBaseDependencies(packageManager, packageManagerCommand, option.type);
+    await installBaseDependencies(
+      packageManager,
+      packageManagerCommand,
+      option.type,
+    );
 
     const template = InitTemplates.initTemplate(option.type);
     if (!fs.existsSync("database")) {
