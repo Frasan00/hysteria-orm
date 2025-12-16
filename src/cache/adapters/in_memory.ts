@@ -19,4 +19,13 @@ export class InMemoryAdapter implements CacheAdapter {
   async invalidate(key: string): Promise<void> {
     inMemoryCache.delete(key);
   }
+
+  async invalidateAll(key: string): Promise<void> {
+    const keys = inMemoryCache.keys();
+    for (const cacheKey of keys) {
+      if (cacheKey.startsWith(key)) {
+        inMemoryCache.delete(cacheKey);
+      }
+    }
+  }
 }

@@ -59,6 +59,14 @@ export class RedisCacheAdapter implements CacheAdapter {
     await client.del(key);
   }
 
+  async invalidateAll(key: string): Promise<void> {
+    const client = await this.getClient();
+    const keys = await client.keys(`${key}:*`);
+    for (const key of keys) {
+      await client.del(key);
+    }
+  }
+
   private serializeData(data: any): string | undefined {
     if (data === null || data === undefined) {
       return undefined;

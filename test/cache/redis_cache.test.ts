@@ -171,4 +171,99 @@ describe("RedisCacheAdapter", () => {
       expect(result).toBe("plain string");
     });
   });
+
+  describe("invalidateAll operations", () => {
+    beforeEach(async () => {
+      await adapter.invalidateAll("users");
+      await adapter.invalidateAll("posts");
+      await adapter.invalidateAll("cache");
+      await adapter.invalidateAll("session");
+      await adapter.invalidateAll("api");
+    });
+
+    test("should invalidate all keys with matching prefix", async () => {
+      await adapter.set("users:1", { id: 1, name: "User 1" });
+      await adapter.set("users:2", { id: 2, name: "User 2" });
+      await adapter.set("users:3", { id: 3, name: "User 3" });
+      await adapter.set("posts:1", { id: 1, title: "Post 1" });
+
+      await adapter.invalidateAll("users");
+
+      const user1 = await adapter.get<any>("users:1");
+      const user2 = await adapter.get<any>("users:2");
+      const user3 = await adapter.get<any>("users:3");
+      const post1 = await adapter.get<any>("posts:1");
+
+      expect(user1).toBeUndefined();
+      expect(user2).toBeUndefined();
+      expect(user3).toBeUndefined();
+      expect(post1).toEqual({ id: 1, title: "Post 1" });
+    });
+
+    test("should handle invalidateAll with non-existent prefix", async () => {
+      await adapter.set("test:key", "value");
+      await expect(adapter.invalidateAll("nonexistent")).resolves.not.toThrow();
+
+      const result = await adapter.get<string>("test:key");
+      expect(result).toBe("value");
+    });
+
+    test("should invalidate all keys when prefix matches multiple patterns", async () => {
+      await adapter.set("cache:user:1", "user1");
+      await adapter.set("cache:user:2", "user2");
+      await adapter.set("cache:post:1", "post1");
+      await adapter.set("session:123", "session");
+
+      await adapter.invalidateAll("cache");
+
+      const user1 = await adapter.get<string>("cache:user:1");
+      const user2 = await adapter.get<string>("cache:user:2");
+      const post1 = await adapter.get<string>("cache:post:1");
+      const session = await adapter.get<string>("session:123");
+
+      expect(user1).toBeUndefined();
+      expect(user2).toBeUndefined();
+      expect(post1).toBeUndefined();
+      expect(session).toBe("session");
+    });
+
+    test("should handle empty cache on invalidateAll", async () => {
+      await expect(adapter.invalidateAll("any:prefix")).resolves.not.toThrow();
+    });
+
+    test("should invalidate keys with complex nested prefixes", async () => {
+      await adapter.set("api:v1:users:list", [1, 2, 3]);
+      await adapter.set("api:v1:users:detail:1", { id: 1 });
+      await adapter.set("api:v1:posts:list", [4, 5, 6]);
+      await adapter.set("api:v2:users:list", [7, 8, 9]);
+
+      await adapter.invalidateAll("api:v1:users");
+
+      const usersList = await adapter.get<any>("api:v1:users:list");
+      const usersDetail = await adapter.get<any>("api:v1:users:detail:1");
+      const postsList = await adapter.get<any>("api:v1:posts:list");
+      const v2UsersList = await adapter.get<any>("api:v2:users:list");
+
+      expect(usersList).toBeUndefined();
+      expect(usersDetail).toBeUndefined();
+      expect(postsList).toEqual([4, 5, 6]);
+      expect(v2UsersList).toEqual([7, 8, 9]);
+    });
+
+    test("should handle special characters in prefix", async () => {
+      await adapter.set("special:key*1", "value1");
+      await adapter.set("special:key*2", "value2");
+      await adapter.set("normal:key", "value3");
+
+      await adapter.invalidateAll("special");
+
+      const special1 = await adapter.get<string>("special:key*1");
+      const special2 = await adapter.get<string>("special:key*2");
+      const normal = await adapter.get<string>("normal:key");
+
+      expect(special1).toBeUndefined();
+      expect(special2).toBeUndefined();
+      expect(normal).toBe("value3");
+    });
+  });
 });

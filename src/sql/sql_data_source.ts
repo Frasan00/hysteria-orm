@@ -648,6 +648,21 @@ export class SqlDataSource<
   }
 
   /**
+   * @description Invalidates all values from the cache starting with the given key
+   * @param key The key to invalidate the values from
+   */
+  async invalidateAllCache(key: string): Promise<void> {
+    if (!this.cacheAdapter) {
+      throw new HysteriaError(
+        "SqlDataSource::invalidateAllCache",
+        "CACHE_ADAPTER_NOT_CONFIGURED",
+      );
+    }
+
+    await this.cacheAdapter.invalidateAll(key);
+  }
+
+  /**
    * @description Clones the SqlDataSource instance
    * @param options.shouldRecreatePool Whether to recreate the pool of connections for the given driver, by default it's false
    * @sqlite ignores the shouldRecreatePool option

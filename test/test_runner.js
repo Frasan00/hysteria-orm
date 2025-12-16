@@ -125,6 +125,7 @@ const runSqlTest = async (file, environment, testNames = [], logs = false) => {
         DB_USER: environment.user,
         DB_PASSWORD: environment.password,
         DB_DATABASE: environment.database,
+        COLUMNS: '100'
       },
     });
 
@@ -144,7 +145,7 @@ const runSqlTest = async (file, environment, testNames = [], logs = false) => {
 
 const runNonSqlTest = (test) => {
   console.log(`Running ${test.name}...`);
-  execSync(`jest --config=jest.config.js --colors --forceExit ${test.path}`, {
+  execSync(`npx jest --config=jest.config.js --colors --forceExit ${test.path}`, {
     stdio: "inherit",
   });
 };
@@ -171,14 +172,23 @@ const runTests = async (options) => {
       : Object.values(ALL_SQL_ENVIRONMENTS);
 
   let sqlTestsToRun = SQL_TESTS;
+  let nonSqlTestsToRun = [];
 
   if (files.length) {
     sqlTestsToRun = SQL_TESTS.filter((test) => {
       const fileName = test.split("/").pop();
       return files.some((file) => test === file || fileName === file);
     });
-    if (sqlTestsToRun.length === 0) {
-      console.error(`No SQL tests found matching files: ${files.join(", ")}`);
+
+    nonSqlTestsToRun = NON_SQL_TESTS.filter((test) => {
+      const fileName = test.path.split("/").pop();
+      return files.some(
+        (file) => test.path === file || fileName === file || test.name === file
+      );
+    });
+
+    if (sqlTestsToRun.length === 0 && nonSqlTestsToRun.length === 0) {
+      console.error(`No tests found matching files: ${files.join(", ")}`);
       process.exit(1);
     }
   }
@@ -201,34 +211,59 @@ const runTests = async (options) => {
     );
   }
 
-  for (const file of sqlTestsToRun) {
-    console.log(`\n${"=".repeat(80)}`);
-    console.log(`📋 Test File: ${file}`);
-    console.log(`${"=".repeat(80)}\n`);
+  if (sqlTestsToRun.length > 0) {
+    for (const file of sqlTestsToRun) {
+      console.log(`\n${"=".repeat(80)}`);
+      console.log(`📋 Test File: ${file}`);
+      console.log(`${"=".repeat(80)}\n`);
 
-    console.log(
-      `🔄 Running sequentially across ${environmentsToRun.length} database(s)...\n`
-    );
-    for (const environment of environmentsToRun) {
-      try {
-        await runSqlTest(file, environment, testCases, logs);
-      } catch (error) {
-        console.error(error.message);
-        process.exit(1);
+      console.log(
+        `🔄 Running sequentially across ${environmentsToRun.length} database(s)...\n`
+      );
+      for (const environment of environmentsToRun) {
+        try {
+          await runSqlTest(file, environment, testCases, logs);
+        } catch (error) {
+          console.error(error.message);
+          process.exit(1);
+        }
       }
+      console.log(`\n✅ All databases completed for ${file}`);
     }
-    console.log(`\n✅ All databases completed for ${file}`);
   }
 
-  const shouldRunNonSqlTests =
+  const shouldRunAllNonSqlTests =
     databases.length === 0 && testCases.length === 0 && files.length === 0;
 
-  if (shouldRunNonSqlTests) {
+  const shouldRunFilteredNonSqlTests =
+    files.length > 0 && nonSqlTestsToRun.length > 0;
+
+  if (shouldRunAllNonSqlTests) {
     console.log(`\n${"=".repeat(80)}`);
-    console.log(`📦 Running Non-SQL specific Tests (Mongo, Redis, Cache, Replication)`);
+    console.log(
+      `📦 Running Non-SQL specific Tests (Mongo, Redis, Cache, Replication)`
+    );
     console.log(`${"=".repeat(80)}\n`);
 
     for (const test of NON_SQL_TESTS) {
+      try {
+        console.log(`  → Running ${test.name}...`);
+        runNonSqlTest(test);
+        console.log(`  ✓ ${test.name} completed`);
+      } catch (error) {
+        console.log(`  ✗ ${test.name} failed`);
+        console.error(`Error running ${test.name}`);
+        process.exit(1);
+      }
+    }
+  }
+
+  if (shouldRunFilteredNonSqlTests) {
+    console.log(`\n${"=".repeat(80)}`);
+    console.log(`📦 Running Filtered Non-SQL Tests`);
+    console.log(`${"=".repeat(80)}\n`);
+
+    for (const test of nonSqlTestsToRun) {
       try {
         console.log(`  → Running ${test.name}...`);
         runNonSqlTest(test);
@@ -267,11 +302,7 @@ program
     "Run specific file(s) by filename or full path",
     []
   )
-  .option(
-    "-l, --logs",
-    "Enable database query logs (DB_LOGS=true)",
-    false
-  )
+  .option("-l, --logs", "Enable database query logs (DB_LOGS=true)", false)
   .action(async (options) => {
     try {
       await runTests(options);
