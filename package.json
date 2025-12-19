@@ -1,6 +1,6 @@
 {
   "name": "hysteria-orm",
-  "version": "10.4.1",
+  "version": "10.4.2",
   "license": "MIT",
   "description": "Yet another orm for Javascript and Typescript no one asked for",
   "type": "module",
@@ -34,8 +34,7 @@
     }
   },
   "bin": {
-    "hysteria": "lib/cli.js",
-    "hysteria-cjs": "lib/cli.cjs"
+    "hysteria": "lib/cli.js"
   },
   "files": [
     "lib/**"

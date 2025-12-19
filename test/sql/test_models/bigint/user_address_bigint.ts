@@ -15,17 +15,17 @@ export class UserAddressWithBigint extends Model {
   @column.integer()
   declare addressId: number;
 
-  @column.date({
+  @column.datetime({
     autoCreate: true,
   })
   declare createdAt: Date;
 
-  @column.date({
+  @column.datetime({
     autoCreate: true,
     autoUpdate: true,
   })
   declare updatedAt: Date;
 
-  @column.date()
+  @column.datetime()
   declare deletedAt: Date | null;
 }

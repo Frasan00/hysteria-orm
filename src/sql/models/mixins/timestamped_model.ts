@@ -5,23 +5,20 @@ import { Model } from "../model";
  * @description Mixin to add createdAt, updatedAt and deletedAt columns to a model
  */
 export class TimestampedModel extends Model {
-  @column.date({
+  @column.datetime({
     autoCreate: true,
-    type: "timestamp",
     openApi: { type: "string", format: "date-time", required: true },
   })
   declare createdAt: Date;
 
-  @column.date({
+  @column.datetime({
     autoCreate: true,
     autoUpdate: true,
-    type: "timestamp",
     openApi: { type: "string", format: "date-time", required: true },
   })
   declare updatedAt: Date;
 
-  @column.date({
-    type: "timestamp",
+  @column.datetime({
     openApi: { type: "string", format: "date-time", required: true },
   })
   declare deletedAt: Date | null;

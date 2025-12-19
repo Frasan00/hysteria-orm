@@ -30,18 +30,18 @@ export class AddressWithUuid extends Model {
   @column()
   declare country: string;
 
-  @column.date({
+  @column.datetime({
     autoCreate: true,
   })
   declare createdAt: Date;
 
-  @column.date({
+  @column.datetime({
     autoCreate: true,
     autoUpdate: true,
   })
   declare updatedAt: Date;
 
-  @column.date()
+  @column.datetime()
   declare deletedAt: Date | null;
 
   @manyToMany(() => UserWithUuid, () => UserAddressWithUuid, {

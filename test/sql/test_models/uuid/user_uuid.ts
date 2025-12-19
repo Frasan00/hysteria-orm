@@ -69,13 +69,13 @@ export class UserWithUuid extends Model {
   @column.date()
   declare birthDate: Date;
 
-  @column.date({ autoCreate: true })
+  @column.datetime({ autoCreate: true })
   declare createdAt: Date;
 
-  @column.date({ autoCreate: true, autoUpdate: true })
+  @column.datetime({ autoCreate: true, autoUpdate: true })
   declare updatedAt: Date;
 
-  @column.date()
+  @column.datetime()
   declare deletedAt: Date | null;
 
   @hasOne(() => PostWithUuid, "userId")

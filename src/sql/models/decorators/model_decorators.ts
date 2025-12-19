@@ -218,7 +218,10 @@ export function column(
 }
 
 column.primary = primaryKeyColumn;
-column.date = dateColumn;
+column.date = dateOnlyColumn;
+column.datetime = datetimeColumn;
+column.timestamp = timestampColumn;
+column.time = timeOnlyColumn;
 column.boolean = booleanColumn;
 column.json = jsonColumn;
 column.uuid = uuidColumn;
@@ -485,61 +488,333 @@ function booleanColumn(
 }
 
 /**
- * @description Decorator to define a date column in the model
- * @description This will automatically convert the date to the correct format for the database
- * @description Supports both ISO format (YYYY-MM-DD HH:mm:ss) and Unix timestamp
+ * @description Decorator to define a DATE_ONLY column in the model (YYYY-MM-DD)
+ * @description This will automatically convert the date to DATE_ONLY format
  * @description Handles timezone conversion between UTC and local time
  * @description Can automatically update/create timestamps
  * @param options Configuration options for the date column
- * @param options.format The format to store dates in ('ISO' or 'TIMESTAMP')
  * @param options.timezone The timezone to use ('UTC' or 'LOCAL')
- * @param options.autoUpdate Whether to automatically update the timestamp on record updates
- * @param options.autoCreate Whether to automatically set the timestamp on record creation
+ * @param options.autoUpdate Whether to automatically update the date on record updates
+ * @param options.autoCreate Whether to automatically set the date on record creation
+ * @param options.prepare Optional custom prepare function that receives the pre-handled value
+ * @param options.serialize Optional custom serialize function that receives the pre-handled value
  */
-function dateColumn(
-  options: Omit<DateColumnOptions, "prepare" | "serialize"> = {},
+function dateOnlyColumn(
+  options: Omit<DateColumnOptions, "format"> = {},
 ): PropertyDecorator {
   const {
-    format = "ISO",
     timezone = "UTC",
     autoUpdate = false,
     autoCreate = false,
+    prepare: customPrepare,
+    serialize: customSerialize,
     ...rest
   } = options;
+
+  const preHandlerPrepare = (
+    value?: Date | string | null,
+  ): string | null | undefined => {
+    if (!value) {
+      if (autoCreate) {
+        return getDate(new Date(), "DATE_ONLY", timezone);
+      }
+
+      return null;
+    }
+
+    if (autoUpdate) {
+      return getDate(new Date(), "DATE_ONLY", timezone);
+    }
+
+    if (typeof value === "string") {
+      return value;
+    }
+
+    return getDate(value, "DATE_ONLY", timezone);
+  };
+
+  const preHandlerSerialize = (
+    value?: Date | string | null,
+  ): Date | null | undefined => {
+    if (value === undefined) {
+      return;
+    }
+
+    if (value === null) {
+      return null;
+    }
+
+    return parseDate(value, undefined, timezone);
+  };
+
+  return column({
+    type: "date",
+    ...(rest as ColumnOptions),
+    autoUpdate,
+    prepare: (value?: Date | string | null) => {
+      const preHandled = preHandlerPrepare(value);
+      if (customPrepare) {
+        return customPrepare(preHandled);
+      }
+
+      return preHandled;
+    },
+    serialize: (value?: Date | string | null) => {
+      const preHandled = preHandlerSerialize(value);
+      if (customSerialize) {
+        return customSerialize(preHandled);
+      }
+
+      return preHandled;
+    },
+  });
+}
+
+/**
+ * @description Decorator to define a DATETIME column in the model (YYYY-MM-DD HH:mm:ss)
+ * @description This will automatically convert the date to ISO format
+ * @description Handles timezone conversion between UTC and local time
+ * @description Can automatically update/create timestamps
+ * @param options Configuration options for the datetime column
+ * @param options.timezone The timezone to use ('UTC' or 'LOCAL')
+ * @param options.autoUpdate Whether to automatically update the timestamp on record updates
+ * @param options.autoCreate Whether to automatically set the timestamp on record creation
+ * @param options.prepare Optional custom prepare function that receives the pre-handled value
+ * @param options.serialize Optional custom serialize function that receives the pre-handled value
+ */
+function datetimeColumn(
+  options: Omit<DateColumnOptions, "format"> = {},
+): PropertyDecorator {
+  const {
+    timezone = "UTC",
+    autoUpdate = false,
+    autoCreate = false,
+    prepare: customPrepare,
+    serialize: customSerialize,
+    ...rest
+  } = options;
+
+  const preHandlerPrepare = (
+    value?: Date | string | null,
+  ): string | null | undefined => {
+    if (!value) {
+      if (autoCreate) {
+        return getDate(new Date(), "ISO", timezone);
+      }
+
+      return null;
+    }
+
+    if (autoUpdate) {
+      return getDate(new Date(), "ISO", timezone);
+    }
+
+    if (typeof value === "string") {
+      return value;
+    }
+
+    return getDate(value, "ISO", timezone);
+  };
+
+  const preHandlerSerialize = (
+    value?: Date | string | null,
+  ): Date | null | undefined => {
+    if (value === undefined) {
+      return;
+    }
+
+    if (value === null) {
+      return null;
+    }
+
+    return parseDate(value, undefined, timezone);
+  };
 
   return column({
     type: "datetime",
     ...(rest as ColumnOptions),
     autoUpdate,
-    prepare: (value?: Date | string | null): string | null | undefined => {
-      if (!value) {
-        if (autoCreate) {
-          return getDate(new Date(), format, timezone);
-        }
-
-        return null;
+    prepare: (value?: Date | string | null) => {
+      const preHandled = preHandlerPrepare(value);
+      if (customPrepare) {
+        return customPrepare(preHandled);
       }
 
-      if (autoUpdate) {
-        return getDate(new Date(), format, timezone);
-      }
-
-      if (typeof value === "string") {
-        return value;
-      }
-
-      return getDate(value, format, timezone);
+      return preHandled;
     },
-    serialize: (value?: Date | string | null): Date | null | undefined => {
-      if (value === undefined) {
-        return;
+    serialize: (value?: Date | string | null) => {
+      const preHandled = preHandlerSerialize(value);
+      if (customSerialize) {
+        return customSerialize(preHandled);
       }
 
-      if (value === null) {
-        return null;
+      return preHandled;
+    },
+  });
+}
+
+/**
+ * @description Decorator to define a TIMESTAMP column in the model (Unix timestamp)
+ * @description This will automatically convert the date to Unix timestamp format
+ * @description Handles timezone conversion between UTC and local time
+ * @description Can automatically update/create timestamps
+ * @param options Configuration options for the timestamp column
+ * @param options.timezone The timezone to use ('UTC' or 'LOCAL')
+ * @param options.autoUpdate Whether to automatically update the timestamp on record updates
+ * @param options.autoCreate Whether to automatically set the timestamp on record creation
+ * @param options.prepare Optional custom prepare function that receives the pre-handled value
+ * @param options.serialize Optional custom serialize function that receives the pre-handled value
+ */
+function timestampColumn(
+  options: Omit<DateColumnOptions, "format"> = {},
+): PropertyDecorator {
+  const {
+    timezone = "UTC",
+    autoUpdate = false,
+    autoCreate = false,
+    prepare: customPrepare,
+    serialize: customSerialize,
+    ...rest
+  } = options;
+
+  const preHandlerPrepare = (
+    value?: Date | string | null,
+  ): string | null | undefined => {
+    if (!value) {
+      if (autoCreate) {
+        return getDate(new Date(), "TIMESTAMP", timezone);
       }
 
-      return parseDate(value, format, timezone);
+      return null;
+    }
+
+    if (autoUpdate) {
+      return getDate(new Date(), "TIMESTAMP", timezone);
+    }
+
+    if (typeof value === "string") {
+      return value;
+    }
+
+    return getDate(value, "TIMESTAMP", timezone);
+  };
+
+  const preHandlerSerialize = (
+    value?: Date | string | null,
+  ): Date | null | undefined => {
+    if (value === undefined) {
+      return;
+    }
+
+    if (value === null) {
+      return null;
+    }
+
+    return parseDate(value, undefined, timezone);
+  };
+
+  return column({
+    type: "timestamp",
+    ...(rest as ColumnOptions),
+    autoUpdate,
+    prepare: (value?: Date | string | null) => {
+      const preHandled = preHandlerPrepare(value);
+      if (customPrepare) {
+        return customPrepare(preHandled);
+      }
+
+      return preHandled;
+    },
+    serialize: (value?: Date | string | null) => {
+      const preHandled = preHandlerSerialize(value);
+      if (customSerialize) {
+        return customSerialize(preHandled);
+      }
+
+      return preHandled;
+    },
+  });
+}
+
+/**
+ * @description Decorator to define a TIME_ONLY column in the model (HH:mm:ss)
+ * @description This will automatically convert the date to TIME_ONLY format
+ * @description Handles timezone conversion between UTC and local time
+ * @description Can automatically update/create timestamps
+ * @param options Configuration options for the time column
+ * @param options.timezone The timezone to use ('UTC' or 'LOCAL')
+ * @param options.autoUpdate Whether to automatically update the time on record updates
+ * @param options.autoCreate Whether to automatically set the time on record creation
+ * @param options.prepare Optional custom prepare function that receives the pre-handled value
+ * @param options.serialize Optional custom serialize function that receives the pre-handled value
+ */
+function timeOnlyColumn(
+  options: Omit<DateColumnOptions, "format"> = {},
+): PropertyDecorator {
+  const {
+    timezone = "UTC",
+    autoUpdate = false,
+    autoCreate = false,
+    prepare: customPrepare,
+    serialize: customSerialize,
+    ...rest
+  } = options;
+
+  const preHandlerPrepare = (
+    value?: Date | string | null,
+  ): string | null | undefined => {
+    if (!value) {
+      if (autoCreate) {
+        return getDate(new Date(), "TIME_ONLY", timezone);
+      }
+
+      return null;
+    }
+
+    if (autoUpdate) {
+      return getDate(new Date(), "TIME_ONLY", timezone);
+    }
+
+    if (typeof value === "string") {
+      return value;
+    }
+
+    return getDate(value, "TIME_ONLY", timezone);
+  };
+
+  const preHandlerSerialize = (
+    value?: Date | string | null,
+  ): Date | null | undefined => {
+    if (value === undefined) {
+      return;
+    }
+
+    if (value === null) {
+      return null;
+    }
+
+    return parseDate(value, undefined, timezone);
+  };
+
+  return column({
+    type: "time",
+    ...(rest as ColumnOptions),
+    autoUpdate,
+    prepare: (value?: Date | string | null) => {
+      const preHandled = preHandlerPrepare(value);
+      if (customPrepare) {
+        return customPrepare(preHandled);
+      }
+
+      return preHandled;
+    },
+    serialize: (value?: Date | string | null) => {
+      const preHandled = preHandlerSerialize(value);
+      if (customSerialize) {
+        return customSerialize(preHandled);
+      }
+
+      return preHandled;
     },
   });
 }

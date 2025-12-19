@@ -14,7 +14,7 @@ class ReplicationUser extends Model {
   @column()
   declare email: string;
 
-  @column.date({ autoCreate: true })
+  @column.datetime({ autoCreate: true })
   declare createdAt: Date;
 }
 

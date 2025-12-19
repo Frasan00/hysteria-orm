@@ -16,18 +16,18 @@ export class UserAddressWithUuid extends Model {
   @column()
   declare addressId: string;
 
-  @column.date({
+  @column.datetime({
     autoCreate: true,
   })
   declare createdAt: Date;
 
-  @column.date({
+  @column.datetime({
     autoCreate: true,
     autoUpdate: true,
   })
   declare updatedAt: Date;
 
-  @column.date()
+  @column.datetime()
   declare deletedAt: Date | null;
 
   static async beforeInsert(data: UserAddressWithUuid): Promise<void> {

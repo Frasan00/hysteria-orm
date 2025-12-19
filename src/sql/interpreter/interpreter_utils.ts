@@ -171,7 +171,10 @@ export class InterpreterUtils {
 
         if (mode === "insert" || modelColumn.autoUpdate) {
           filteredColumns.push(column);
-          filteredValues.push(modelColumn.prepare?.(undefined) ?? undefined);
+          const preparedValue = modelColumn.prepare
+            ? await modelColumn.prepare(undefined)
+            : undefined;
+          filteredValues.push(preparedValue ?? undefined);
         }
       }
     }

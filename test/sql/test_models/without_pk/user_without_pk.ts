@@ -57,18 +57,18 @@ export class UserWithoutPk extends Model {
   @column.date()
   declare birthDate: Date;
 
-  @column.date({
+  @column.datetime({
     autoCreate: true,
   })
   declare createdAt: Date;
 
-  @column.date({
+  @column.datetime({
     autoCreate: true,
     autoUpdate: true,
   })
   declare updatedAt: Date;
 
-  @column.date()
+  @column.datetime()
   declare deletedAt: Date | null;
 
   static beforeUpdate(queryBuilder: ModelQueryBuilder<UserWithoutPk>): void {

@@ -67,18 +67,18 @@ export class UserWithBigint extends Model {
   @column.date()
   declare birthDate: Date | null;
 
-  @column.date({
+  @column.datetime({
     autoCreate: true,
   })
   declare createdAt: Date;
 
-  @column.date({
+  @column.datetime({
     autoCreate: true,
     autoUpdate: true,
   })
   declare updatedAt: Date;
 
-  @column.date()
+  @column.datetime()
   declare deletedAt: Date | null;
 
   @hasOne(() => PostWithBigint, "userId")

@@ -25,18 +25,18 @@ export class PostWithBigint extends Model {
   @column()
   declare shortDescription: string;
 
-  @column.date({
+  @column.datetime({
     autoCreate: true,
   })
   declare createdAt: Date;
 
-  @column.date({
+  @column.datetime({
     autoCreate: true,
     autoUpdate: true,
   })
   declare updatedAt: Date;
 
-  @column.date()
+  @column.datetime()
   declare deletedAt: Date | null;
 
   @belongsTo(() => UserWithBigint, "userId")
