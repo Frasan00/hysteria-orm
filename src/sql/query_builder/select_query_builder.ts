@@ -1,8 +1,10 @@
 import { convertCase } from "../../utils/case_utils";
+import { JsonPathInput } from "../../utils/json_path_utils";
 import { DistinctNode } from "../ast/query/node/distinct/distinct";
 import { DistinctOnNode } from "../ast/query/node/distinct/distinct_on";
 import { FromNode } from "../ast/query/node/from/from";
 import { SelectNode } from "../ast/query/node/select/basic_select";
+import { SelectJsonNode } from "../ast/query/node/select/select_json";
 import { SqlMethod } from "../ast/query/node/select/select_types";
 import { Model } from "../models/model";
 import { ModelKey } from "../models/model_manager/model_manager_types";
@@ -115,13 +117,17 @@ export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
    * const user = await User.query().annotate("id", "superId").first(); // id as superId
    * ```
    */
-  annotate(column: string, alias: string): this;
-  annotate(sqlMethod: SqlMethod, column: string, alias: string): this;
-  annotate(sqlMethod: string, column: string, alias: string): this;
-  annotate(
+  annotate<A extends string>(column: string, alias: A): this;
+  annotate<A extends string>(
+    sqlMethod: SqlMethod,
+    column: string,
+    alias: A,
+  ): this;
+  annotate<A extends string>(sqlMethod: string, column: string, alias: A): this;
+  annotate<A extends string>(
     sqlMethodOrColumn: string | SqlMethod,
     columnOrAlias: string,
-    maybeAlias?: string,
+    maybeAlias?: A,
   ): this {
     let sqlMethod: string | undefined;
     let column: string;
@@ -182,6 +188,184 @@ export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
     ...columns: (ModelKey<T> | SelectableColumn<S>)[]
   ): this {
     this.distinctOnNode = new DistinctOnNode(columns as string[]);
+    return this;
+  }
+
+  /**
+   * @description Selects a JSON value at the specified path and returns it as JSON
+   * @param column The column containing JSON data
+   * @param path The JSON path to extract (standardized format: "$.user.name", "user.name", or ["user", "name"])
+   * @param alias The alias for the selected value
+   * @description Path format is standardized across all databases - ORM converts to DB-specific syntax
+   * @description Result will be available in model.$annotations[alias]
+   * @example
+   * ```ts
+   * // All databases accept the same path format:
+   * const user = await User.query().selectJson("data", "$.user.name", "userName").first();
+   * console.log(user?.$annotations?.userName); // Typed!
+   *
+   * await User.query().selectJson("data", "user.name", "userName").first(); // $ is optional
+   * await User.query().selectJson("data", ["user", "name"], "userName").first();
+   *
+   * // Array indices:
+   * await User.query().selectJson("data", "items.0.name", "firstItemName").first();
+   * await User.query().selectJson("data", ["items", 0, "name"], "firstItemName").first();
+   * ```
+   */
+  selectJson<A extends string>(
+    column: ModelKey<T>,
+    path: JsonPathInput,
+    alias: A,
+  ): this;
+  selectJson<A extends string>(
+    column: string,
+    path: JsonPathInput,
+    alias: A,
+  ): this;
+  selectJson<A extends string>(
+    column: ModelKey<T> | string,
+    path: JsonPathInput,
+    alias: A,
+  ): this {
+    this.selectNodes.push(
+      new SelectJsonNode(column as string, path, alias, "extract"),
+    );
+    this.modelAnnotatedColumns.push(alias);
+    return this;
+  }
+
+  /**
+   * @description Selects a JSON value at the specified path and returns it as text
+   * @param column The column containing JSON data
+   * @param path The JSON path to extract (standardized format)
+   * @param alias The alias for the selected value
+   * @description Path format is standardized across all databases - ORM converts to DB-specific syntax
+   * @description Result will be available in model.$annotations[alias]
+   * @example
+   * ```ts
+   * // All databases accept the same path format:
+   * const user = await User.query().selectJsonText("data", "$.user.name", "userName").first();
+   * console.log(user?.$annotations?.userName); // Typed!
+   *
+   * await User.query().selectJsonText("data", ["user", "name"], "userName").first();
+   * ```
+   */
+  selectJsonText<A extends string>(
+    column: ModelKey<T>,
+    path: JsonPathInput,
+    alias: A,
+  ): this;
+  selectJsonText<A extends string>(
+    column: string,
+    path: JsonPathInput,
+    alias: A,
+  ): this;
+  selectJsonText<A extends string>(
+    column: ModelKey<T> | string,
+    path: JsonPathInput,
+    alias: A,
+  ): this {
+    this.selectNodes.push(
+      new SelectJsonNode(column as string, path, alias, "extract_text"),
+    );
+    this.modelAnnotatedColumns.push(alias);
+    return this;
+  }
+
+  /**
+   * @description Selects the length of a JSON array
+   * @param column The column containing JSON array data
+   * @param path The JSON path to the array (standardized format, use "$" or "" for root)
+   * @param alias The alias for the length value
+   * @description Path format is standardized across all databases - ORM converts to DB-specific syntax
+   * @description Result will be available in model.$annotations[alias]
+   * @example
+   * ```ts
+   * // All databases accept the same path format:
+   * const user = await User.query().selectJsonArrayLength("data", "$.items", "itemCount").first();
+   * console.log(user?.$annotations?.itemCount); // Typed!
+   *
+   * await User.query().selectJsonArrayLength("data", "items", "itemCount").first();
+   * await User.query().selectJsonArrayLength("data", "$", "totalCount").first(); // root array
+   * ```
+   */
+  selectJsonArrayLength<A extends string>(
+    column: ModelKey<T>,
+    path: JsonPathInput,
+    alias: A,
+  ): this;
+  selectJsonArrayLength<A extends string>(
+    column: string,
+    path: JsonPathInput,
+    alias: A,
+  ): this;
+  selectJsonArrayLength<A extends string>(
+    column: ModelKey<T> | string,
+    path: JsonPathInput,
+    alias: A,
+  ): this {
+    this.selectNodes.push(
+      new SelectJsonNode(column as string, path, alias, "array_length"),
+    );
+    this.modelAnnotatedColumns.push(alias);
+    return this;
+  }
+
+  /**
+   * @description Selects the keys of a JSON object
+   * @param column The column containing JSON object data
+   * @param path The JSON path to the object (standardized format, use "$" or "" for root)
+   * @param alias The alias for the keys
+   * @description Path format is standardized across all databases - ORM converts to DB-specific syntax
+   * @description Result will be available in model.$annotations[alias]
+   * @postgres Returns an array of keys
+   * @mysql Returns a JSON array of keys
+   * @example
+   * ```ts
+   * // All databases accept the same path format:
+   * const user = await User.query().selectJsonKeys("data", "$.user", "userKeys").first();
+   * console.log(user?.$annotations?.userKeys); // Typed!
+   *
+   * await User.query().selectJsonKeys("data", "user", "userKeys").first();
+   * await User.query().selectJsonKeys("data", "$", "rootKeys").first(); // root object
+   * ```
+   */
+  selectJsonKeys<A extends string>(
+    column: ModelKey<T>,
+    path: JsonPathInput,
+    alias: A,
+  ): this;
+  selectJsonKeys<A extends string>(
+    column: string,
+    path: JsonPathInput,
+    alias: A,
+  ): this;
+  selectJsonKeys<A extends string>(
+    column: ModelKey<T> | string,
+    path: JsonPathInput,
+    alias: A,
+  ): this {
+    this.selectNodes.push(
+      new SelectJsonNode(column as string, path, alias, "object_keys"),
+    );
+    this.modelAnnotatedColumns.push(alias);
+    return this;
+  }
+
+  /**
+   * @description Adds a raw JSON select expression
+   * @param raw The raw SQL expression
+   * @param alias The alias for the selected value
+   * @description Result will be available in model.$annotations[alias]
+   * @example
+   * ```ts
+   * const user = await User.query().selectJsonRaw("data->>'email'", "userEmail").first();
+   * console.log(user?.$annotations?.userEmail); // Typed!
+   * ```
+   */
+  selectJsonRaw<A extends string>(raw: string, alias: A): this {
+    this.selectNodes.push(new SelectJsonNode(raw, "", alias, "raw", true));
+    this.modelAnnotatedColumns.push(alias);
     return this;
   }
 }

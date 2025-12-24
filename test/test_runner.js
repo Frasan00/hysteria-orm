@@ -42,6 +42,7 @@ const SQL_TESTS = [
   // query builder
   "./test/sql/query_builder/query_builder.test.ts",
   "./test/sql/query_builder/embedded_models.test.ts",
+  "./test/sql/query_builder/json_select.test.ts",
 
   // without primary key tests
   "./test/sql/without_pk/user_without_pk_json.test.ts",

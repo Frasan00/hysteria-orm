@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { PassThrough } from "node:stream";
 import { HysteriaError } from "../../../errors/hysteria_error";
 import { convertCase } from "../../../utils/case_utils";
+import { JsonPathInput } from "../../../utils/json_path_utils";
 import { withPerformance } from "../../../utils/performance";
 import { SelectNode } from "../../ast/query/node/select/basic_select";
 import type { SqlMethod } from "../../ast/query/node/select/select_types";
@@ -553,6 +554,280 @@ export class ModelQueryBuilder<
     );
     this.modelAnnotatedColumns.push(alias);
 
+    return this;
+  }
+
+  /**
+   * @description Selects a JSON value at the specified path and returns it as JSON
+   * @param column The column containing JSON data
+   * @param path The JSON path to extract (standardized format: "$.user.name", "user.name", or ["user", "name"])
+   * @param alias The alias for the selected value
+   * @description Path format is standardized across all databases - ORM converts to DB-specific syntax
+   * @description Result will be available in model.$annotations[alias]
+   * @example
+   * ```ts
+   * // All these path formats are supported:
+   *
+   * // 1. With $ prefix (standard JSON path)
+   * await User.query().selectJson("data", "$.user.name", "userName").first();
+   *
+   * // 2. Without $ prefix ($ is optional)
+   * await User.query().selectJson("data", "user.name", "userName").first();
+   *
+   * // 3. Array format
+   * await User.query().selectJson("data", ["user", "name"], "userName").first();
+   *
+   * // 4. Array indices with dot notation
+   * await User.query().selectJson("data", "items.0.name", "firstItemName").first();
+   *
+   * // 5. Array indices with array format
+   * await User.query().selectJson("data", ["items", 0, "name"], "firstItemName").first();
+   *
+   * // 6. Root object
+   * await User.query().selectJson("data", "$", "allData").first();
+   *
+   * // Access the result
+   * const user = await User.query().selectJson("data", "user.name", "userName").first();
+   * console.log(user?.$annotations?.userName); // Typed as any
+   * ```
+   */
+  // @ts-expect-error
+  override selectJson<K extends string>(
+    column: ModelKey<T>,
+    path: JsonPathInput,
+    alias: K,
+  ): ModelQueryBuilder<T, A & { [P in K]: any }, R>;
+  // @ts-expect-error
+  override selectJson<K extends string>(
+    column: string,
+    path: JsonPathInput,
+    alias: K,
+  ): ModelQueryBuilder<T, A & { [P in K]: any }, R>;
+  // @ts-expect-error
+  override selectJson<K extends string>(
+    column: ModelKey<T> | string,
+    path: JsonPathInput,
+    alias: K,
+  ): ModelQueryBuilder<T, A & { [P in K]: any }, R> {
+    super.selectJson(column as any, path, alias);
+    return this;
+  }
+
+  /**
+   * @description Selects a JSON value at the specified path and returns it as text
+   * @param column The column containing JSON data
+   * @param path The JSON path to extract (standardized format)
+   * @param alias The alias for the selected value
+   * @description Path format is standardized across all databases - ORM converts to DB-specific syntax
+   * @description Result will be available in model.$annotations[alias]
+   * @example
+   * ```ts
+   * // All these path formats are supported:
+   *
+   * // 1. With $ prefix
+   * await User.query().selectJsonText("data", "$.user.email", "userEmail").first();
+   *
+   * // 2. Without $ prefix
+   * await User.query().selectJsonText("data", "user.email", "userEmail").first();
+   *
+   * // 3. Array format
+   * await User.query().selectJsonText("data", ["user", "email"], "userEmail").first();
+   *
+   * // 4. Array indices
+   * await User.query().selectJsonText("data", "tags.0", "firstTag").first();
+   * await User.query().selectJsonText("data", ["tags", 0], "firstTag").first();
+   *
+   * // 5. Deep nesting
+   * await User.query().selectJsonText("data", "user.profile.bio", "biography").first();
+   *
+   * // Access the result
+   * const user = await User.query().selectJsonText("data", "user.email", "email").first();
+   * console.log(user?.$annotations?.email); // Typed as string
+   * ```
+   */
+  // @ts-expect-error
+  override selectJsonText<K extends string>(
+    column: ModelKey<T>,
+    path: any,
+    alias: K,
+  ): ModelQueryBuilder<T, A & { [P in K]: string }, R>;
+  // @ts-expect-error
+  override selectJsonText<K extends string>(
+    column: string,
+    path: any,
+    alias: K,
+  ): ModelQueryBuilder<T, A & { [P in K]: string }, R>;
+  // @ts-expect-error
+  override selectJsonText<K extends string>(
+    column: ModelKey<T> | string,
+    path: any,
+    alias: K,
+  ): ModelQueryBuilder<T, A & { [P in K]: string }, R> {
+    super.selectJsonText(column as any, path, alias);
+    return this;
+  }
+
+  /**
+   * @description Selects the length of a JSON array
+   * @param column The column containing JSON array data
+   * @param path The JSON path to the array (standardized format, use "$" or "" for root)
+   * @param alias The alias for the length value
+   * @description Path format is standardized across all databases - ORM converts to DB-specific syntax
+   * @description Result will be available in model.$annotations[alias]
+   * @warning Not supported in SQLite
+   * @example
+   * ```ts
+   * // All these path formats are supported:
+   *
+   * // 1. With $ prefix
+   * await User.query().selectJsonArrayLength("data", "$.items", "itemCount").first();
+   *
+   * // 2. Without $ prefix
+   * await User.query().selectJsonArrayLength("data", "items", "itemCount").first();
+   *
+   * // 3. Array format
+   * await User.query().selectJsonArrayLength("data", ["items"], "itemCount").first();
+   *
+   * // 4. Root array (use "$" or "")
+   * await User.query().selectJsonArrayLength("data", "$", "totalCount").first();
+   * await User.query().selectJsonArrayLength("data", "", "totalCount").first();
+   *
+   * // 5. Nested arrays
+   * await User.query().selectJsonArrayLength("data", "user.roles", "roleCount").first();
+   * await User.query().selectJsonArrayLength("data", ["user", "roles"], "roleCount").first();
+   *
+   * // 6. Deeply nested arrays
+   * await User.query().selectJsonArrayLength("data", "level1.level2.items", "deepCount").first();
+   *
+   * // Access the result
+   * const user = await User.query().selectJsonArrayLength("data", "items", "count").first();
+   * console.log(user?.$annotations?.count); // Typed as number
+   * ```
+   */
+  // @ts-expect-error
+  override selectJsonArrayLength<K extends string>(
+    column: ModelKey<T>,
+    path: JsonPathInput,
+    alias: K,
+  ): ModelQueryBuilder<T, A & { [P in K]: number }, R>;
+  // @ts-expect-error
+  override selectJsonArrayLength<K extends string>(
+    column: string,
+    path: JsonPathInput,
+    alias: K,
+  ): ModelQueryBuilder<T, A & { [P in K]: number }, R>;
+  // @ts-expect-error
+  override selectJsonArrayLength<K extends string>(
+    column: ModelKey<T> | string,
+    path: JsonPathInput,
+    alias: K,
+  ): ModelQueryBuilder<T, A & { [P in K]: number }, R> {
+    super.selectJsonArrayLength(column as any, path, alias);
+    return this;
+  }
+
+  /**
+   * @description Selects the keys of a JSON object
+   * @param column The column containing JSON object data
+   * @param path The JSON path to the object (standardized format, use "$" or "" for root)
+   * @param alias The alias for the keys
+   * @description Path format is standardized across all databases - ORM converts to DB-specific syntax
+   * @description Result will be available in model.$annotations[alias]
+   * @warning Not supported in SQLite or MSSQL
+   * @postgresql Returns a native array of keys
+   * @mysql Returns a JSON array of keys
+   * @example
+   * ```ts
+   * // All these path formats are supported:
+   *
+   * // 1. With $ prefix
+   * await User.query().selectJsonKeys("data", "$.settings", "settingKeys").first();
+   *
+   * // 2. Without $ prefix
+   * await User.query().selectJsonKeys("data", "settings", "settingKeys").first();
+   *
+   * // 3. Array format
+   * await User.query().selectJsonKeys("data", ["settings"], "settingKeys").first();
+   *
+   * // 4. Root object (use "$" or "")
+   * await User.query().selectJsonKeys("data", "$", "rootKeys").first();
+   * await User.query().selectJsonKeys("data", "", "rootKeys").first();
+   *
+   * // 5. Nested objects
+   * await User.query().selectJsonKeys("data", "user.profile", "profileKeys").first();
+   * await User.query().selectJsonKeys("data", ["user", "profile"], "profileKeys").first();
+   *
+   * // 6. Deeply nested objects
+   * await User.query().selectJsonKeys("data", "settings.display.theme", "themeKeys").first();
+   *
+   * // Access the result
+   * const user = await User.query().selectJsonKeys("data", "settings", "keys").first();
+   * console.log(user?.$annotations?.keys); // Typed as any[] - ["theme", "fontSize", "autoSave"]
+   * ```
+   */
+  // @ts-expect-error
+  override selectJsonKeys<K extends string>(
+    column: ModelKey<T>,
+    path: JsonPathInput,
+    alias: K,
+  ): ModelQueryBuilder<T, A & { [P in K]: any[] }, R>;
+  // @ts-expect-error
+  override selectJsonKeys<K extends string>(
+    column: string,
+    path: JsonPathInput,
+    alias: K,
+  ): ModelQueryBuilder<T, A & { [P in K]: any[] }, R>;
+  // @ts-expect-error
+  override selectJsonKeys<K extends string>(
+    column: ModelKey<T> | string,
+    path: JsonPathInput,
+    alias: K,
+  ): ModelQueryBuilder<T, A & { [P in K]: any[] }, R> {
+    super.selectJsonKeys(column as any, path, alias);
+    return this;
+  }
+
+  /**
+   * @description Adds a raw JSON select expression for database-specific operations
+   * @param raw The raw SQL expression (database-specific syntax)
+   * @param alias The alias for the selected value
+   * @description Result will be available in model.$annotations[alias]
+   * @description Use this for advanced JSON operations not covered by other selectJson* methods
+   * @warning This bypasses path standardization - you must write database-specific SQL
+   * @example
+   * ```ts
+   * // PostgreSQL - Extract as text with ->> operator
+   * await User.query().selectJsonRaw("data->>'email'", "userEmail").first();
+   *
+   * // PostgreSQL - Extract nested JSON with -> operator
+   * await User.query().selectJsonRaw("data->'user'->'profile'->>'name'", "profileName").first();
+   *
+   * // PostgreSQL - Array element access
+   * await User.query().selectJsonRaw("data->'items'->0->>'name'", "firstName").first();
+   *
+   * // MySQL - Extract value with JSON_EXTRACT and ->>
+   * await User.query().selectJsonRaw("data->>'$.email'", "userEmail").first();
+   *
+   * // MySQL - Array length with JSON_LENGTH
+   * await User.query().selectJsonRaw("JSON_LENGTH(data, '$.items')", "itemCount").first();
+   *
+   * // MSSQL - Extract value with JSON_VALUE
+   * await User.query().selectJsonRaw("JSON_VALUE(data, '$.email')", "userEmail").first();
+   *
+   * // SQLite - Extract value with json_extract
+   * await User.query().selectJsonRaw("json_extract(data, '$.email')", "userEmail").first();
+   *
+   * // Access the result
+   * const user = await User.query().selectJsonRaw("data->>'email'", "email").first();
+   * console.log(user?.$annotations?.email); // Typed as any
+   * ```
+   */
+  // @ts-expect-error
+  override selectJsonRaw<K extends string>(
+    raw: string,
+    alias: K,
+  ): ModelQueryBuilder<T, A & { [P in K]: any }, R> {
+    super.selectJsonRaw(raw, alias);
     return this;
   }
 

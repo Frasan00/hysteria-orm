@@ -42,7 +42,6 @@ import {
   UpsertOptionsRawBuilder,
   WriteQueryParam,
 } from "./query_builder_types";
-import { RawNode } from "../ast/query/node/raw/raw_node";
 
 export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   model: typeof Model;
@@ -286,7 +285,9 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     const count = await countQueryBuilder.getCount();
 
     const lastItem = data[data.length - 1];
-    const lastItemValue = lastItem ? lastItem[options.discriminator] : null;
+    const lastItemValue = lastItem
+      ? lastItem[options.discriminator as keyof typeof lastItem]
+      : null;
     const paginationMetadata = getCursorPaginationMetadata(limit, count);
 
     return [

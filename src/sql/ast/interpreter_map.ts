@@ -39,6 +39,7 @@ import mssql_schema_index_info from '../interpreter/mssql/schema/index_info';
 import mssql_schema_primary_key_info from '../interpreter/mssql/schema/primary_key_info';
 import mssql_schema_table_info from '../interpreter/mssql/schema/table_info';
 import mssql_select_select from '../interpreter/mssql/select/select';
+import mssql_select_select_json from '../interpreter/mssql/select/select_json';
 import mssql_truncate_truncate from '../interpreter/mssql/truncate/truncate';
 import mssql_union_union from '../interpreter/mssql/union/union';
 import mssql_update_update from '../interpreter/mssql/update/update';
@@ -88,6 +89,7 @@ import mysql_schema_index_info from '../interpreter/mysql/schema/index_info';
 import mysql_schema_primary_key_info from '../interpreter/mysql/schema/primary_key_info';
 import mysql_schema_table_info from '../interpreter/mysql/schema/table_info';
 import mysql_select_select from '../interpreter/mysql/select/select';
+import mysql_select_select_json from '../interpreter/mysql/select/select_json';
 import mysql_truncate_truncate from '../interpreter/mysql/truncate/truncate';
 import mysql_union_union from '../interpreter/mysql/union/union';
 import mysql_update_update from '../interpreter/mysql/update/update';
@@ -137,6 +139,7 @@ import oracledb_schema_index_info from '../interpreter/oracledb/schema/index_inf
 import oracledb_schema_primary_key_info from '../interpreter/oracledb/schema/primary_key_info';
 import oracledb_schema_table_info from '../interpreter/oracledb/schema/table_info';
 import oracledb_select_select from '../interpreter/oracledb/select/select';
+import oracledb_select_select_json from '../interpreter/oracledb/select/select_json';
 import oracledb_truncate_truncate from '../interpreter/oracledb/truncate/truncate';
 import oracledb_union_union from '../interpreter/oracledb/union/union';
 import oracledb_update_update from '../interpreter/oracledb/update/update';
@@ -186,6 +189,7 @@ import postgres_schema_index_info from '../interpreter/postgres/schema/index_inf
 import postgres_schema_primary_key_info from '../interpreter/postgres/schema/primary_key_info';
 import postgres_schema_table_info from '../interpreter/postgres/schema/table_info';
 import postgres_select_select from '../interpreter/postgres/select/select';
+import postgres_select_select_json from '../interpreter/postgres/select/select_json';
 import postgres_truncate_truncate from '../interpreter/postgres/truncate/truncate';
 import postgres_union_union from '../interpreter/postgres/union/union';
 import postgres_update_update from '../interpreter/postgres/update/update';
@@ -234,6 +238,7 @@ import sqlite_schema_index_info from '../interpreter/sqlite/schema/index_info';
 import sqlite_schema_primary_key_info from '../interpreter/sqlite/schema/primary_key_info';
 import sqlite_schema_table_info from '../interpreter/sqlite/schema/table_info';
 import sqlite_select_select from '../interpreter/sqlite/select/select';
+import sqlite_select_select_json from '../interpreter/sqlite/select/select_json';
 import sqlite_truncate_truncate from '../interpreter/sqlite/truncate/truncate';
 import sqlite_union_union from '../interpreter/sqlite/union/union';
 import sqlite_update_update from '../interpreter/sqlite/update/update';
@@ -329,6 +334,7 @@ export const interpreterMap = {
     },
     select: {
       select: mssql_select_select,
+      select_json: mssql_select_select_json,
     },
     truncate: {
       truncate: mssql_truncate_truncate,
@@ -434,6 +440,7 @@ export const interpreterMap = {
     },
     select: {
       select: mysql_select_select,
+      select_json: mysql_select_select_json,
     },
     truncate: {
       truncate: mysql_truncate_truncate,
@@ -539,6 +546,7 @@ export const interpreterMap = {
     },
     select: {
       select: oracledb_select_select,
+      select_json: oracledb_select_select_json,
     },
     truncate: {
       truncate: oracledb_truncate_truncate,
@@ -644,6 +652,7 @@ export const interpreterMap = {
     },
     select: {
       select: postgres_select_select,
+      select_json: postgres_select_select_json,
     },
     truncate: {
       truncate: postgres_truncate_truncate,
@@ -748,6 +757,7 @@ export const interpreterMap = {
     },
     select: {
       select: sqlite_select_select,
+      select_json: sqlite_select_select_json,
     },
     truncate: {
       truncate: sqlite_truncate_truncate,
