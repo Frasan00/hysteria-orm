@@ -558,8 +558,9 @@ export abstract class Model extends Entity {
         });
 
     if (doesExist) {
-      (data as T)[typeofModel.primaryKey as keyof T] =
-        doesExist[typeofModel.primaryKey as keyof ModelWithoutRelations<T>];
+      (data as T)[typeofModel.primaryKey as keyof T] = doesExist[
+        typeofModel.primaryKey as keyof ModelWithoutRelations<T>
+      ] as T[keyof T];
 
       if (options.updateOnConflict) {
         return (await modelManager.updateRecord(data as T, {
@@ -1140,5 +1141,57 @@ export abstract class Model extends Entity {
     const refreshed = await typeofModel.refresh(this as unknown as T, options);
     typeofModel.combineProps(this as unknown as T, refreshed as unknown as T);
     return this as unknown as T;
+  }
+
+  /**
+   * @description Converts the model to a JSON object
+   * @description Flattens all `$annotations` into the JSON object at first level including the relations
+   * @warning Use with caution, this method flattens the `$annotations` into the JSON object at first level including the relations, so if you have conflicting column names between model columns and annotations, the annotation could override the model column value
+   */
+  toJSON(): Record<string, any> {
+    const result: Record<string, any> = {};
+
+    // Copy all own properties (model columns and relations)
+    for (const key in this) {
+      if (Object.prototype.hasOwnProperty.call(this, key)) {
+        const value = this[key];
+
+        // Skip $annotations as we'll flatten it
+        if (key === "$annotations") {
+          continue;
+        }
+
+        // Handle relations - recursively call toJSON if they have the method
+        if (value && typeof value === "object") {
+          if (Array.isArray(value)) {
+            // Handle arrays of models (hasMany, manyToMany relations)
+            result[key] = value.map((item) =>
+              item && typeof item === "object" && "toJSON" in item
+                ? item.toJSON()
+                : item,
+            );
+          } else if ("toJSON" in value && typeof value.toJSON === "function") {
+            // Handle single model relations (hasOne, belongsTo)
+            result[key] = value.toJSON();
+          } else {
+            result[key] = value;
+          }
+        } else {
+          result[key] = value;
+        }
+      }
+    }
+
+    // Flatten $annotations to top level
+    const annotations = (this as any).$annotations;
+    if (annotations && typeof annotations === "object") {
+      for (const key in annotations) {
+        if (Object.prototype.hasOwnProperty.call(annotations, key)) {
+          result[key] = annotations[key];
+        }
+      }
+    }
+
+    return result;
   }
 }

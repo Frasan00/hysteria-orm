@@ -6,9 +6,10 @@ import { Model } from "./model";
 import { ExcludeRelations } from "./model_manager/model_manager_types";
 
 export type ModelWithoutRelations<T extends Model> = Pick<
-  T,
+  Omit<T, "*">,
   ExcludeRelations<Omit<T, "*">>
->;
+> &
+  Pick<Model, keyof Model>;
 
 export type NumberModelKey<T extends Model> = {
   [K in keyof T]: T[K] extends number | bigint ? K : never;

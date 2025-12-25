@@ -54,6 +54,21 @@ import type {
 } from "./model_query_builder_types";
 import type { RelationQueryBuilderType } from "./relation_query_builder/relation_query_builder_types";
 
+/**
+ * Helper type to determine if annotation overrides model field or goes to $annotations
+ * If K is a key of the model T, it overrides that field in the model.
+ * Otherwise, it goes into the annotations object A.
+ */
+type AnnotationResult<
+  T extends Model,
+  A extends Record<string, any>,
+  R extends Record<string, any>,
+  K extends string,
+  V,
+> = K extends keyof T
+  ? ModelQueryBuilder<T & { [P in K]: V }, A, R>
+  : ModelQueryBuilder<T, A & { [P in K]: V }, R>;
+
 export class ModelQueryBuilder<
   T extends Model,
   A extends Record<string, any> = {},
@@ -288,7 +303,7 @@ export class ModelQueryBuilder<
    */
   // @ts-expect-error
   override async insert(
-    ...args: Parameters<typeof this.model.insert>
+    ...args: Parameters<typeof this.model.insert<T>>
   ): ReturnType<typeof this.model.insert> {
     return (this.model as any).insert(...args);
   }
@@ -298,7 +313,7 @@ export class ModelQueryBuilder<
    */
   // @ts-expect-error
   override async insertMany(
-    ...args: Parameters<typeof this.model.insertMany>
+    ...args: Parameters<typeof this.model.insertMany<T>>
   ): ReturnType<typeof this.model.insertMany> {
     return (this.model as any).insertMany(...args);
   }
@@ -482,18 +497,20 @@ export class ModelQueryBuilder<
 
   /**
    * @description Annotates a column with a SQL method or a simple alias
-   * @description If using a model, the result will be available in the $annotations property of the model, else it will be available in the result of the query
+   * @description If the alias matches a model field name, it overrides that field. Otherwise, it's available in $annotations
    * @example
    * ```ts
    * const user = await User.query().annotate("max", "id", "maxId").first(); // max(id) as maxId
    * const user = await User.query().annotate("id", "superId").first(); // id as superId
+   * // If alias matches model field, it overrides it:
+   * const user = await User.query().annotate("COUNT(*)", "email").first(); // user.email is now a number
    * ```
    */
   // @ts-expect-error
   override annotate<K extends string, V = any>(
     column: string,
     alias: K,
-  ): ModelQueryBuilder<T, A & { [P in K]: V }, R>;
+  ): AnnotationResult<T, A, R, K, V>;
   // @ts-expect-error
   override annotate<
     K extends string,
@@ -503,27 +520,19 @@ export class ModelQueryBuilder<
     sqlMethod: string,
     column: string,
     alias: K,
-  ): ModelQueryBuilder<T, A & { [P in K]: V }, R>;
+  ): AnnotationResult<T, A, R, K, V>;
   // @ts-expect-error
   override annotate<
     K extends string,
     S extends SqlMethod,
     V = CommonSqlMethodReturnType<S>,
-  >(
-    sqlMethod: S,
-    column: string,
-    alias: K,
-  ): ModelQueryBuilder<T, A & { [P in K]: V }, R>;
+  >(sqlMethod: S, column: string, alias: K): AnnotationResult<T, A, R, K, V>;
   // @ts-expect-error
   override annotate<
     K extends string,
     S extends SqlMethod,
     V = CommonSqlMethodReturnType<S>,
-  >(
-    sqlMethod: S,
-    column: string,
-    alias: K,
-  ): ModelQueryBuilder<T, A & { [P in K]: V }, R>;
+  >(sqlMethod: S, column: string, alias: K): AnnotationResult<T, A, R, K, V>;
 
   // @ts-expect-error
   override annotate<
@@ -534,7 +543,7 @@ export class ModelQueryBuilder<
     sqlMethodOrColumn: string | S,
     columnOrAlias: string,
     maybeAlias?: string,
-  ): ModelQueryBuilder<T, A & { [P in K]: V }, R> {
+  ): AnnotationResult<T, A, R, K, V> {
     let sqlMethod: string | undefined;
     let column: string;
     let alias: string;
@@ -554,7 +563,7 @@ export class ModelQueryBuilder<
     );
     this.modelAnnotatedColumns.push(alias);
 
-    return this;
+    return this as unknown as AnnotationResult<T, A, R, K, V>;
   }
 
   /**
@@ -563,7 +572,7 @@ export class ModelQueryBuilder<
    * @param path The JSON path to extract (standardized format: "$.user.name", "user.name", or ["user", "name"])
    * @param alias The alias for the selected value
    * @description Path format is standardized across all databases - ORM converts to DB-specific syntax
-   * @description Result will be available in model.$annotations[alias]
+   * @description If alias matches a model field, it overrides that field. Otherwise, it's in $annotations
    * @example
    * ```ts
    * // All these path formats are supported:
@@ -586,9 +595,13 @@ export class ModelQueryBuilder<
    * // 6. Root object
    * await User.query().selectJson("data", "$", "allData").first();
    *
-   * // Access the result
+   * // Access the result - in $annotations if not a model field
    * const user = await User.query().selectJson("data", "user.name", "userName").first();
    * console.log(user?.$annotations?.userName); // Typed as any
+   *
+   * // If alias matches model field, it overrides it
+   * const user2 = await User.query().selectJson("data", "$.name", "email").first();
+   * console.log(user2?.email); // Overrides model's email field
    * ```
    */
   // @ts-expect-error
@@ -596,21 +609,21 @@ export class ModelQueryBuilder<
     column: ModelKey<T>,
     path: JsonPathInput,
     alias: K,
-  ): ModelQueryBuilder<T, A & { [P in K]: any }, R>;
+  ): AnnotationResult<T, A, R, K, any>;
   // @ts-expect-error
   override selectJson<K extends string>(
     column: string,
     path: JsonPathInput,
     alias: K,
-  ): ModelQueryBuilder<T, A & { [P in K]: any }, R>;
+  ): AnnotationResult<T, A, R, K, any>;
   // @ts-expect-error
   override selectJson<K extends string>(
     column: ModelKey<T> | string,
     path: JsonPathInput,
     alias: K,
-  ): ModelQueryBuilder<T, A & { [P in K]: any }, R> {
+  ): AnnotationResult<T, A, R, K, any> {
     super.selectJson(column as any, path, alias);
-    return this;
+    return this as any;
   }
 
   /**
@@ -619,7 +632,7 @@ export class ModelQueryBuilder<
    * @param path The JSON path to extract (standardized format)
    * @param alias The alias for the selected value
    * @description Path format is standardized across all databases - ORM converts to DB-specific syntax
-   * @description Result will be available in model.$annotations[alias]
+   * @description If alias matches a model field, it overrides that field. Otherwise, it's in $annotations
    * @example
    * ```ts
    * // All these path formats are supported:
@@ -640,31 +653,31 @@ export class ModelQueryBuilder<
    * // 5. Deep nesting
    * await User.query().selectJsonText("data", "user.profile.bio", "biography").first();
    *
-   * // Access the result
-   * const user = await User.query().selectJsonText("data", "user.email", "email").first();
-   * console.log(user?.$annotations?.email); // Typed as string
+   * // Access the result - in $annotations if not a model field
+   * const user = await User.query().selectJsonText("data", "user.email", "userEmail").first();
+   * console.log(user?.$annotations?.userEmail); // Typed as string
    * ```
    */
   // @ts-expect-error
   override selectJsonText<K extends string>(
     column: ModelKey<T>,
-    path: any,
+    path: JsonPathInput,
     alias: K,
-  ): ModelQueryBuilder<T, A & { [P in K]: string }, R>;
+  ): AnnotationResult<T, A, R, K, string>;
   // @ts-expect-error
   override selectJsonText<K extends string>(
     column: string,
-    path: any,
+    path: JsonPathInput,
     alias: K,
-  ): ModelQueryBuilder<T, A & { [P in K]: string }, R>;
+  ): AnnotationResult<T, A, R, K, string>;
   // @ts-expect-error
   override selectJsonText<K extends string>(
     column: ModelKey<T> | string,
-    path: any,
+    path: JsonPathInput,
     alias: K,
-  ): ModelQueryBuilder<T, A & { [P in K]: string }, R> {
+  ): AnnotationResult<T, A, R, K, string> {
     super.selectJsonText(column as any, path, alias);
-    return this;
+    return this as unknown as AnnotationResult<T, A, R, K, string>;
   }
 
   /**
@@ -673,7 +686,7 @@ export class ModelQueryBuilder<
    * @param path The JSON path to the array (standardized format, use "$" or "" for root)
    * @param alias The alias for the length value
    * @description Path format is standardized across all databases - ORM converts to DB-specific syntax
-   * @description Result will be available in model.$annotations[alias]
+   * @description If alias matches a model field, it overrides that field. Otherwise, it's in $annotations
    * @warning Not supported in SQLite
    * @example
    * ```ts
@@ -699,7 +712,7 @@ export class ModelQueryBuilder<
    * // 6. Deeply nested arrays
    * await User.query().selectJsonArrayLength("data", "level1.level2.items", "deepCount").first();
    *
-   * // Access the result
+   * // Access the result - in $annotations if not a model field
    * const user = await User.query().selectJsonArrayLength("data", "items", "count").first();
    * console.log(user?.$annotations?.count); // Typed as number
    * ```
@@ -709,21 +722,21 @@ export class ModelQueryBuilder<
     column: ModelKey<T>,
     path: JsonPathInput,
     alias: K,
-  ): ModelQueryBuilder<T, A & { [P in K]: number }, R>;
+  ): AnnotationResult<T, A, R, K, number>;
   // @ts-expect-error
   override selectJsonArrayLength<K extends string>(
     column: string,
     path: JsonPathInput,
     alias: K,
-  ): ModelQueryBuilder<T, A & { [P in K]: number }, R>;
+  ): AnnotationResult<T, A, R, K, number>;
   // @ts-expect-error
   override selectJsonArrayLength<K extends string>(
     column: ModelKey<T> | string,
     path: JsonPathInput,
     alias: K,
-  ): ModelQueryBuilder<T, A & { [P in K]: number }, R> {
+  ): AnnotationResult<T, A, R, K, number> {
     super.selectJsonArrayLength(column as any, path, alias);
-    return this;
+    return this as unknown as AnnotationResult<T, A, R, K, number>;
   }
 
   /**
@@ -732,7 +745,7 @@ export class ModelQueryBuilder<
    * @param path The JSON path to the object (standardized format, use "$" or "" for root)
    * @param alias The alias for the keys
    * @description Path format is standardized across all databases - ORM converts to DB-specific syntax
-   * @description Result will be available in model.$annotations[alias]
+   * @description If alias matches a model field, it overrides that field. Otherwise, it's in $annotations
    * @warning Not supported in SQLite or MSSQL
    * @postgresql Returns a native array of keys
    * @mysql Returns a JSON array of keys
@@ -760,7 +773,7 @@ export class ModelQueryBuilder<
    * // 6. Deeply nested objects
    * await User.query().selectJsonKeys("data", "settings.display.theme", "themeKeys").first();
    *
-   * // Access the result
+   * // Access the result - in $annotations if not a model field
    * const user = await User.query().selectJsonKeys("data", "settings", "keys").first();
    * console.log(user?.$annotations?.keys); // Typed as any[] - ["theme", "fontSize", "autoSave"]
    * ```
@@ -770,28 +783,28 @@ export class ModelQueryBuilder<
     column: ModelKey<T>,
     path: JsonPathInput,
     alias: K,
-  ): ModelQueryBuilder<T, A & { [P in K]: any[] }, R>;
+  ): AnnotationResult<T, A, R, K, any[]>;
   // @ts-expect-error
   override selectJsonKeys<K extends string>(
     column: string,
     path: JsonPathInput,
     alias: K,
-  ): ModelQueryBuilder<T, A & { [P in K]: any[] }, R>;
+  ): AnnotationResult<T, A, R, K, any[]>;
   // @ts-expect-error
   override selectJsonKeys<K extends string>(
     column: ModelKey<T> | string,
     path: JsonPathInput,
     alias: K,
-  ): ModelQueryBuilder<T, A & { [P in K]: any[] }, R> {
+  ): AnnotationResult<T, A, R, K, any[]> {
     super.selectJsonKeys(column as any, path, alias);
-    return this;
+    return this as unknown as AnnotationResult<T, A, R, K, any[]>;
   }
 
   /**
    * @description Adds a raw JSON select expression for database-specific operations
    * @param raw The raw SQL expression (database-specific syntax)
    * @param alias The alias for the selected value
-   * @description Result will be available in model.$annotations[alias]
+   * @description If alias matches a model field, it overrides that field. Otherwise, it's in $annotations
    * @description Use this for advanced JSON operations not covered by other selectJson* methods
    * @warning This bypasses path standardization - you must write database-specific SQL
    * @example
@@ -817,18 +830,18 @@ export class ModelQueryBuilder<
    * // SQLite - Extract value with json_extract
    * await User.query().selectJsonRaw("json_extract(data, '$.email')", "userEmail").first();
    *
-   * // Access the result
-   * const user = await User.query().selectJsonRaw("data->>'email'", "email").first();
-   * console.log(user?.$annotations?.email); // Typed as any
+   * // Access the result - in $annotations if not a model field
+   * const user = await User.query().selectJsonRaw("data->>'email'", "userEmail").first();
+   * console.log(user?.$annotations?.userEmail); // Typed as any
    * ```
    */
   // @ts-expect-error
   override selectJsonRaw<K extends string>(
     raw: string,
     alias: K,
-  ): ModelQueryBuilder<T, A & { [P in K]: any }, R> {
+  ): AnnotationResult<T, A, R, K, any> {
     super.selectJsonRaw(raw, alias);
-    return this;
+    return this as unknown as AnnotationResult<T, A, R, K, any>;
   }
 
   /**
@@ -1943,13 +1956,32 @@ export class ModelQueryBuilder<
   ): Record<string, any> {
     const model: Record<string, any> = {};
     const $annotations: Record<string, any> = {};
+
+    // Create a set of annotated columns for faster lookup
+    const annotatedColumnsSet = new Set(this.modelAnnotatedColumns);
+
     Object.entries(row).forEach(([key, value]) => {
-      if (key === "$annotations" || this.modelColumnsDatabaseNames.get(key)) {
+      const casedKey = convertCase(key, typeofModel.modelCaseConvention);
+      const isAnnotated =
+        annotatedColumnsSet.has(casedKey) || annotatedColumnsSet.has(key);
+      const isModelColumn =
+        key === "$annotations" || this.modelColumnsDatabaseNames.get(key);
+
+      // If it's annotated, add to annotations
+      if (isAnnotated) {
+        $annotations[casedKey] = value;
+      }
+
+      // If it's a model column, add to model
+      if (isModelColumn) {
         model[key] = value;
         return;
       }
 
-      $annotations[convertCase(key, typeofModel.modelCaseConvention)] = value;
+      // If it's not a model column and not already annotated, add to annotations
+      if (!isAnnotated) {
+        $annotations[casedKey] = value;
+      }
     });
 
     model.$annotations = $annotations;

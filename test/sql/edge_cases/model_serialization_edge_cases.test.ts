@@ -301,4 +301,281 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
 
     expect(insertedSerialized.name).toBe(foundSerialized.name);
   });
+
+  test("toJSON() should flatten $annotations to top level", async () => {
+    // Create user with some data
+    const userData = {
+      ...UserFactory.getCommonUserData(),
+      name: "JsonFlattenTest",
+      age: 30,
+    };
+
+    await UserWithoutPk.insert(userData);
+
+    // Query with annotations
+    const user = await UserWithoutPk.query()
+      .select("name", "age")
+      .annotate("age", "userAge")
+      .annotate("name", "userName")
+      .where("name", "JsonFlattenTest")
+      .first();
+
+    expect(user).not.toBeNull();
+    expect(user?.$annotations).toBeDefined();
+    // CockroachDB may return numbers as strings in some cases
+    expect(+user?.$annotations.userAge!).toBe(30);
+    expect(user?.$annotations.userName).toBe("JsonFlattenTest");
+
+    // Call toJSON() and verify flattening - should now be typed!
+    const json = user!.toJSON();
+
+    // Regular model properties should be present
+    expect(json.name).toBe("JsonFlattenTest");
+    expect(+json.age).toBe(30); // May be string or number depending on DB
+
+    // $annotations should be flattened to top level
+    expect(+json.userAge).toBe(30); // May be string or number depending on DB
+    expect(json.userName).toBe("JsonFlattenTest");
+
+    // $annotations property itself should NOT be in the result
+    expect(json.$annotations).toBeUndefined();
+  });
+
+  test("toJSON() should handle models without annotations", async () => {
+    const userData = {
+      ...UserFactory.getCommonUserData(),
+      name: "NoAnnotationsTest",
+    };
+
+    const user = await UserWithoutPk.insert(userData);
+
+    // Call toJSON() on model without annotations - should now be typed!
+    const json = user.toJSON();
+
+    expect(json.name).toBe("NoAnnotationsTest");
+    expect(json.$annotations).toBeUndefined();
+  });
+
+  test("toJSON() should handle JSON select methods", async () => {
+    if (env.DB_TYPE === "sqlite") {
+      // SQLite doesn't support all JSON functions
+      return;
+    }
+
+    const jsonData = {
+      user: { name: "Alice", age: 25 },
+      items: ["apple", "banana"],
+    };
+
+    const userData = {
+      ...UserFactory.getCommonUserData(),
+      name: "JsonSelectTest",
+      json: jsonData,
+    };
+
+    await UserWithoutPk.insert(userData);
+
+    // Query with JSON select methods
+    const user = await UserWithoutPk.query()
+      .select("name")
+      .selectJsonText("json", "user.name", "extractedName")
+      .where("name", "JsonSelectTest")
+      .first();
+
+    expect(user).not.toBeNull();
+    expect(user?.$annotations?.extractedName).toBe("Alice");
+
+    // Call toJSON() and verify JSON annotations are flattened - should now be typed!
+    const json = user!.toJSON();
+
+    expect(json!.name).toBe("JsonSelectTest");
+    expect(json!.extractedName).toBe("Alice");
+    expect(json!.$annotations).toBeUndefined();
+  });
+
+  describe("Annotation collision with model fields (Bug Fix Tests)", () => {
+    test("annotate() with alias matching model column should go to $annotations", async () => {
+      const userData = {
+        ...UserFactory.getCommonUserData(),
+        name: "CollisionTest1",
+        age: 25,
+        email: "collision1@test.com",
+      };
+
+      await UserWithoutPk.insert(userData);
+
+      // Annotate with aliases that match existing model columns
+      const user = await UserWithoutPk.query()
+        .select("name", "age", "email")
+        .annotate("max", "age", "maxAge") // Non-conflicting alias
+        .annotate("count", "*", "totalCount") // Non-conflicting alias
+        .where("email", "collision1@test.com")
+        .groupBy("name", "age", "email")
+        .first();
+
+      expect(user).not.toBeNull();
+
+      // Original model fields should still be present
+      expect(user!.name).toBe("CollisionTest1");
+      expect(+user!.age).toBe(25);
+      expect(user!.email).toBe("collision1@test.com");
+
+      // Annotations should be in $annotations
+      expect(user!.$annotations).toBeDefined();
+      expect(user!.$annotations.maxAge).toBeDefined();
+      expect(+user!.$annotations.maxAge).toBeGreaterThanOrEqual(25);
+      expect(user!.$annotations.totalCount).toBeDefined();
+      expect(+user!.$annotations.totalCount).toBeGreaterThanOrEqual(1);
+
+      // Model fields should still have their original values
+      expect(+user!.age).toBe(25);
+      expect(user!.email).toBe("collision1@test.com");
+    });
+
+    test("selectJson() with alias matching model column should go to $annotations", async () => {
+      if (env.DB_TYPE === "sqlite") {
+        return; // Skip SQLite for JSON tests
+      }
+
+      const jsonData = {
+        username: "json_user",
+        userAge: 30,
+      };
+
+      const userData = {
+        ...UserFactory.getCommonUserData(),
+        name: "CollisionTest2",
+        age: 25,
+        email: "collision2@test.com",
+        json: jsonData,
+      };
+
+      await UserWithoutPk.insert(userData);
+
+      // Select JSON with aliases matching existing model columns
+      const user = await UserWithoutPk.query()
+        .select("name", "email")
+        .selectJsonText("json", "username", "jsonName") // Non-conflicting alias
+        .selectJsonText("json", "userAge", "jsonAge") // Non-conflicting alias
+        .where("email", "collision2@test.com")
+        .first();
+
+      expect(user).not.toBeNull();
+
+      // Original model fields should still be present
+      expect(user!.name).toBe("CollisionTest2");
+      expect(user!.email).toBe("collision2@test.com");
+
+      // JSON annotations should be in $annotations
+      expect(user!.$annotations).toBeDefined();
+      expect(user!.$annotations.jsonName).toBe("json_user");
+      expect(+user!.$annotations.jsonAge).toBe(30);
+
+      // Model fields should have their original values
+      expect(user!.name).toBe("CollisionTest2");
+    });
+
+    test("Multiple annotations with same alias as model column should all go to $annotations", async () => {
+      const userData = {
+        ...UserFactory.getCommonUserData(),
+        name: "CollisionTest3",
+        age: 25,
+        email: "collision3@test.com",
+      };
+
+      await UserWithoutPk.insert(userData);
+
+      // Multiple annotations
+      const user = await UserWithoutPk.query()
+        .select("name", "email")
+        .annotate("name", "nameAlias") // Non-conflicting
+        .annotate("count", "*", "totalRecords") // Non-conflicting
+        .where("email", "collision3@test.com")
+        .groupBy("name", "email")
+        .first();
+
+      expect(user).not.toBeNull();
+
+      // Original model field
+      expect(user!.name).toBe("CollisionTest3");
+
+      // Annotations should all be in $annotations
+      expect(user!.$annotations).toBeDefined();
+      expect(user!.$annotations.nameAlias).toBe("CollisionTest3");
+      expect(+user!.$annotations.totalRecords).toBeGreaterThanOrEqual(1);
+
+      // Original model field should be a string
+      expect(typeof user!.name).toBe("string");
+      expect(user!.name).toBe("CollisionTest3");
+    });
+
+    test("toJSON() should handle colliding Annotations correctly", async () => {
+      const userData = {
+        ...UserFactory.getCommonUserData(),
+        name: "CollisionTest4",
+        age: 30,
+        email: "collision4@test.com",
+      };
+
+      await UserWithoutPk.insert(userData);
+
+      const user = await UserWithoutPk.query()
+        .select("name", "age")
+        .annotate("max", "age", "maxAge") // Non-conflicting
+        .annotate("name", "computedName") // Non-conflicting
+        .where("email", "collision4@test.com")
+        .groupBy("name", "age")
+        .first();
+
+      expect(user).not.toBeNull();
+      expect(user!.$annotations.maxAge).toBeDefined();
+      expect(user!.$annotations.computedName).toBe("CollisionTest4");
+
+      // toJSON should flatten annotations to top level
+      const json = user!.toJSON();
+
+      // Model fields should be present
+      expect(json.name).toBe("CollisionTest4");
+      expect(+json.age).toBe(30);
+
+      // Annotations should be flattened
+      expect(json.computedName).toBe("CollisionTest4");
+      expect(+json.maxAge).toBeGreaterThanOrEqual(30);
+    });
+
+    test("Type system should infer correct types for colliding annotations", async () => {
+      const userData = {
+        ...UserFactory.getCommonUserData(),
+        name: "CollisionTest5",
+        age: 35,
+        email: "collision5@test.com",
+      };
+
+      await UserWithoutPk.insert(userData);
+
+      // This tests that TypeScript properly handles the AnnotationResult type
+      const user = await UserWithoutPk.query()
+        .select("name", "age")
+        .annotate("max", "age", "maxAge") // Non-conflicting alias
+        .where("email", "collision5@test.com")
+        .groupBy("name", "age")
+        .first();
+
+      // TypeScript should properly type annotations
+      if (user?.$annotations) {
+        const annotatedMaxAge = user.$annotations.maxAge;
+        expect(annotatedMaxAge).toBeDefined();
+        expect(+annotatedMaxAge).toBeGreaterThanOrEqual(35);
+      }
+
+      // Original model field should still be accessible
+      expect(user?.age).toBeDefined();
+      // CockroachDB returns age as string due to type coercion
+      if (env.DB_TYPE === "cockroachdb") {
+        expect(+user!.age).toBe(35);
+      } else {
+        expect(user?.age).toBe(35);
+      }
+    });
+  });
 });
