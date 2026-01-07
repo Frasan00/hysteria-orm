@@ -101,13 +101,13 @@ describe(`[${env.DB_TYPE}] Transaction`, () => {
   testNested(
     "[Nested] Should handle nested transactions correctly",
     async () => {
-      const outerTrx = await SqlDataSource.instance.startTransaction();
+      const outerTrx = await SqlDataSource.instance.transaction();
       const user1 = await UserWithoutPk.insert(
         { ...UserFactory.getCommonUserData() },
         { trx: outerTrx },
       );
 
-      const innerTrx = await SqlDataSource.instance.startTransaction();
+      const innerTrx = await SqlDataSource.instance.transaction();
       await UserWithoutPk.insert(
         { ...UserFactory.getCommonUserData() },
         { trx: innerTrx },
@@ -127,8 +127,8 @@ describe(`[${env.DB_TYPE}] Transaction`, () => {
   testConcurrent(
     "[Concurrent] Should handle concurrent transactions correctly",
     async () => {
-      const trx1 = await SqlDataSource.instance.startTransaction();
-      const trx2 = await SqlDataSource.instance.startTransaction();
+      const trx1 = await SqlDataSource.instance.transaction();
+      const trx2 = await SqlDataSource.instance.transaction();
 
       await UserWithoutPk.insert(
         { ...UserFactory.getCommonUserData() },
@@ -150,7 +150,7 @@ describe(`[${env.DB_TYPE}] Transaction`, () => {
 
   if (env.DB_TYPE === "sqlite") {
     test("[SQLite] Should handle single transaction correctly", async () => {
-      const trx = await SqlDataSource.instance.startTransaction();
+      const trx = await SqlDataSource.instance.transaction();
       const user = await UserWithoutPk.insert(
         { ...UserFactory.getCommonUserData() },
         { trx },
@@ -164,7 +164,7 @@ describe(`[${env.DB_TYPE}] Transaction`, () => {
   }
 
   test("[Commit] Simple transaction passing transaction to the Model methods", async () => {
-    const trx = await SqlDataSource.instance.startTransaction();
+    const trx = await SqlDataSource.instance.transaction();
     const user = await UserWithoutPk.insert(
       {
         ...UserFactory.getCommonUserData(),
@@ -194,7 +194,7 @@ describe(`[${env.DB_TYPE}] Transaction`, () => {
   });
 
   test("[Commit] Test global transaction with transaction with custom isolation level", async () => {
-    const trx = await SqlDataSource.instance.startTransaction({
+    const trx = await SqlDataSource.instance.transaction({
       isolationLevel: "SERIALIZABLE",
     });
 
@@ -213,7 +213,7 @@ describe(`[${env.DB_TYPE}] Transaction`, () => {
   });
 
   test("[Rollback] Simple transaction passing transaction to the Model methods", async () => {
-    const trx = await SqlDataSource.instance.startTransaction();
+    const trx = await SqlDataSource.instance.transaction();
     const user = await UserWithoutPk.insert(
       {
         ...UserFactory.getCommonUserData(),
@@ -239,7 +239,7 @@ describe(`[${env.DB_TYPE}] Transaction`, () => {
   });
 
   test("Should throw error if transaction is not active and throwErrorOnInactiveTransaction is true", async () => {
-    const trx = await SqlDataSource.instance.startTransaction();
+    const trx = await SqlDataSource.instance.transaction();
     await trx.rollback();
     expect(trx.isActive).toBe(false);
     expect(
@@ -248,7 +248,7 @@ describe(`[${env.DB_TYPE}] Transaction`, () => {
   });
 
   test("Should not throw error if transaction is not active and throwErrorOnInactiveTransaction is false", async () => {
-    const trx = await SqlDataSource.instance.startTransaction();
+    const trx = await SqlDataSource.instance.transaction();
     await trx.rollback();
     expect(trx.isActive).toBe(false);
     expect(
@@ -259,13 +259,13 @@ describe(`[${env.DB_TYPE}] Transaction`, () => {
 
 describe(`[${env.DB_TYPE}] Raw transaction from transaction sql instance should work`, () => {
   test("Simple transaction", async () => {
-    const trx = await SqlDataSource.instance.startTransaction();
+    const trx = await SqlDataSource.instance.transaction();
     await trx.sql.rawQuery("SELECT 1");
     await trx.commit();
   });
 
   test("Insert with commit via query builder", async () => {
-    const trx = await SqlDataSource.instance.startTransaction();
+    const trx = await SqlDataSource.instance.transaction();
     await trx.sql.query(UserWithoutPk.table).insert({
       email: "test@test.com",
     });
@@ -278,7 +278,7 @@ describe(`[${env.DB_TYPE}] Raw transaction from transaction sql instance should 
   });
 
   test("Insert with rollback via query builder", async () => {
-    const trx = await SqlDataSource.instance.startTransaction();
+    const trx = await SqlDataSource.instance.transaction();
     await trx.sql.query(UserWithoutPk.table).insert({
       email: "test@test.com",
     });
@@ -298,7 +298,7 @@ describe(`[${env.DB_TYPE}] Raw transaction from transaction sql instance should 
   });
 
   test("Insert many with commit via model manager", async () => {
-    const trx = await SqlDataSource.instance.startTransaction();
+    const trx = await SqlDataSource.instance.transaction();
     const modelManager = trx.sql.getModelManager(UserWithoutPk);
     await modelManager.insertMany([
       { email: "test@test.com" },
@@ -325,7 +325,7 @@ describe(`[${env.DB_TYPE}] Raw transaction from transaction sql instance should 
   });
 
   test("Insert many with rollback via model manager", async () => {
-    const trx = await SqlDataSource.instance.startTransaction();
+    const trx = await SqlDataSource.instance.transaction();
     const modelManager = trx.sql.getModelManager(UserWithoutPk);
     await modelManager.insertMany([
       { email: "test@test.com" },
@@ -343,7 +343,7 @@ describe(`[${env.DB_TYPE}] Raw transaction from transaction sql instance should 
   });
 
   test("Update with commit via query builder", async () => {
-    const trx = await SqlDataSource.instance.startTransaction();
+    const trx = await SqlDataSource.instance.transaction();
     await trx.sql.query(UserWithoutPk.table).update({
       email: "test@test.com",
     });
@@ -531,7 +531,7 @@ describe(`[${env.DB_TYPE}] Transaction Alias - instance use`, () => {
 
 describe(`[${env.DB_TYPE}] Nested transactions with savePoints`, () => {
   test("Simple transaction", async () => {
-    const trx = await SqlDataSource.instance.startTransaction();
+    const trx = await SqlDataSource.instance.transaction();
     await trx.sql.rawQuery("SELECT 1");
     const nestedTrx = await trx.nestedTransaction();
     await nestedTrx.sql.rawQuery("SELECT 2");
@@ -540,7 +540,7 @@ describe(`[${env.DB_TYPE}] Nested transactions with savePoints`, () => {
   });
 
   test("Nested transaction with callback", async () => {
-    const trx = await SqlDataSource.instance.startTransaction();
+    const trx = await SqlDataSource.instance.transaction();
     await trx.sql.rawQuery("SELECT 1");
     await trx.nestedTransaction(async (trx) => {
       await trx.sql.query(UserWithoutPk.table).insert({
@@ -556,7 +556,7 @@ describe(`[${env.DB_TYPE}] Nested transactions with savePoints`, () => {
   });
 
   test("Nested transaction with insert", async () => {
-    const trx = await SqlDataSource.instance.startTransaction();
+    const trx = await SqlDataSource.instance.transaction();
     await trx.sql.rawQuery("SELECT 1");
     const nestedTrx = await trx.nestedTransaction();
     await nestedTrx.sql.query(UserWithoutPk.table).insert({
@@ -576,7 +576,7 @@ describe(`[${env.DB_TYPE}] Nested transactions with savePoints`, () => {
   });
 
   test("Multi-level nesting commit chain", async () => {
-    const outer = await SqlDataSource.instance.startTransaction();
+    const outer = await SqlDataSource.instance.transaction();
     const lvl1 = await outer.nestedTransaction();
     const lvl2 = await lvl1.nestedTransaction();
 
@@ -602,7 +602,7 @@ describe(`[${env.DB_TYPE}] Nested transactions with savePoints`, () => {
   });
 
   test("Inner rollback, outer commit persists outer work only", async () => {
-    const outer = await SqlDataSource.instance.startTransaction();
+    const outer = await SqlDataSource.instance.transaction();
     await outer.sql
       .query(UserWithoutPk.table)
       .insert({ email: "outer@test.com" });
@@ -629,7 +629,7 @@ describe(`[${env.DB_TYPE}] Nested transactions with savePoints`, () => {
   });
 
   test("Nested rollback then continue outer", async () => {
-    const outer = await SqlDataSource.instance.startTransaction();
+    const outer = await SqlDataSource.instance.transaction();
     const inner = await outer.nestedTransaction();
     await inner.sql
       .query(UserWithoutPk.table)
@@ -649,7 +649,7 @@ describe(`[${env.DB_TYPE}] Nested transactions with savePoints`, () => {
   });
 
   test("Nested inactive error behavior on rollback/commit", async () => {
-    const outer = await SqlDataSource.instance.startTransaction();
+    const outer = await SqlDataSource.instance.transaction();
     const inner = await outer.nestedTransaction();
     await inner.sql.rawQuery("SELECT 1");
     await inner.commit();
@@ -668,7 +668,7 @@ describe(`[${env.DB_TYPE}] Nested transactions with savePoints`, () => {
   });
 
   test("Nested transaction with callback", async () => {
-    const trx = await SqlDataSource.instance.startTransaction();
+    const trx = await SqlDataSource.instance.transaction();
     await trx.sql.rawQuery("SELECT 1");
     await trx.nestedTransaction(async (trx) => {
       await trx.nestedTransaction(async (trx) => {

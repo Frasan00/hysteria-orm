@@ -281,11 +281,11 @@ export class SqlDataSource<
     try {
       await cb(result);
       if (sqlDataSource.isConnected) {
-        await sqlDataSource.closeConnection();
+        await sqlDataSource.disconnect();
       }
     } catch (error) {
       if (sqlDataSource.isConnected) {
-        await sqlDataSource.closeConnection();
+        await sqlDataSource.disconnect();
       }
       throw error;
     }
@@ -294,21 +294,14 @@ export class SqlDataSource<
   /**
    * @description Closes the primary connection (singleton instance)
    */
-  static async closeConnection(): Promise<void> {
+  static async disconnect(): Promise<void> {
     if (!this.#instance) {
       logger.warn("Connection already closed");
       return;
     }
 
-    await this.#instance.closeConnection();
+    await this.#instance.disconnect();
     this.#instance = null;
-  }
-
-  /**
-   * @alias closeConnection
-   */
-  static async disconnect(): Promise<void> {
-    return this.closeConnection();
   }
 
   /**
@@ -758,7 +751,7 @@ export class SqlDataSource<
     const cloned = await this.clone();
     cloned.sqlConnection = await cloned.getConnection();
     this.globalTransaction = new Transaction(cloned, options?.isolationLevel);
-    await this.globalTransaction.startTransaction();
+    await this.globalTransaction.transaction();
     return this.globalTransaction;
   }
 
@@ -807,14 +800,12 @@ export class SqlDataSource<
    * @param options.isolationLevel The isolation level to use for the transaction
    * @sqlite ignores the isolation level
    */
-  async startTransaction(
-    options?: StartTransactionOptions,
-  ): Promise<Transaction>;
-  async startTransaction(
+  async transaction(options?: StartTransactionOptions): Promise<Transaction>;
+  async transaction(
     cb: (trx: Transaction) => Promise<void>,
     options?: StartTransactionOptions,
   ): Promise<void>;
-  async startTransaction<TOption extends TransactionOptionsOrCallback>(
+  async transaction<TOption extends TransactionOptionsOrCallback>(
     optionsOrCb?:
       | StartTransactionOptions
       | ((trx: Transaction) => Promise<void>),
@@ -841,7 +832,7 @@ export class SqlDataSource<
     const cloned = await this.clone();
     cloned.sqlConnection = await cloned.getConnection();
     const sqlTrx = new Transaction(cloned, options?.isolationLevel);
-    await sqlTrx.startTransaction();
+    await sqlTrx.transaction();
 
     if (typeof optionsOrCb === "function") {
       try {
@@ -859,26 +850,6 @@ export class SqlDataSource<
     }
 
     return sqlTrx as StartTransactionReturnType<TOption>;
-  }
-
-  /**
-   * @alias startTransaction
-   */
-  async transaction(options?: StartTransactionOptions): Promise<Transaction>;
-  async transaction(
-    cb: (trx: Transaction) => Promise<void>,
-    options?: StartTransactionOptions,
-  ): Promise<void>;
-  async transaction(
-    optionsOrCb?:
-      | StartTransactionOptions
-      | ((trx: Transaction) => Promise<void>),
-    maybeOptions?: StartTransactionOptions,
-  ): Promise<Transaction | void> {
-    return this.startTransaction(
-      optionsOrCb as (trx: Transaction) => Promise<void>,
-      maybeOptions,
-    );
   }
 
   /**
@@ -965,7 +936,7 @@ export class SqlDataSource<
    * @description If there is an active global transaction, it will be rolled back
    * @description Also disconnects all slave connections if any are configured
    */
-  async closeConnection(): Promise<void> {
+  async disconnect(): Promise<void> {
     if (!this.isConnected) {
       log("Connection already closed or not established", this.logs);
       return;
@@ -984,7 +955,7 @@ export class SqlDataSource<
       }
     } catch (err: any) {
       logger.warn(
-        "SqlDataSource::closeConnection - Error while rolling back global transaction",
+        "SqlDataSource::disconnect - Error while rolling back global transaction",
       );
     }
 
@@ -994,10 +965,10 @@ export class SqlDataSource<
       await Promise.all(
         this.slaves.map(async (slave) => {
           try {
-            await slave.closeConnection();
+            await slave.disconnect();
           } catch (err: any) {
             logger.warn(
-              `SqlDataSource::closeConnection - Error while closing slave connection: ${err.message}`,
+              `SqlDataSource::disconnect - Error while closing slave connection: ${err.message}`,
             );
           }
         }),
@@ -1032,7 +1003,7 @@ export class SqlDataSource<
         break;
       default:
         throw new HysteriaError(
-          "SqlDataSource::closeConnection",
+          "SqlDataSource::disconnect",
           `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`,
         );
     }
@@ -1056,13 +1027,6 @@ export class SqlDataSource<
         .connectionPolicies as ConnectionPolicies,
       queryFormatOptions: this.inputDetails.queryFormatOptions,
     } as unknown as SqlDataSourceInput<D, T, C>;
-  }
-
-  /**
-   * @alias closeConnection
-   */
-  async disconnect(): Promise<void> {
-    return this.closeConnection();
   }
 
   /**

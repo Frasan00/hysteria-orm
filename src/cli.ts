@@ -360,7 +360,7 @@ program
             logger.warn("Failed to release migration lock");
           }
         }
-        await sqlDs.closeConnection();
+        await sqlDs.disconnect();
       }
     },
   );
@@ -468,7 +468,7 @@ program
             logger.warn("Failed to release migration lock");
           }
         }
-        await sqlDs.closeConnection();
+        await sqlDs.disconnect();
       }
     },
   );
@@ -585,7 +585,7 @@ program
             logger.warn("Failed to release migration lock");
           }
         }
-        await sqlDs.closeConnection();
+        await sqlDs.disconnect();
       }
     },
   );
@@ -691,11 +691,11 @@ program
           `Migration file created successfully: ${option?.name}${extension}`,
         );
 
-        await sqlDs.closeConnection();
+        await sqlDs.disconnect();
         process.exit(0);
       } catch (error) {
         console.error(error);
-        await sqlDs.closeConnection();
+        await sqlDs.disconnect();
         process.exit(1);
       }
     },
@@ -778,12 +778,12 @@ program
 
       try {
         await runSeedersConnector(sqlDs, seederPaths, tsconfig);
-        await sqlDs.closeConnection();
+        await sqlDs.disconnect();
         logger.info("Seeding completed successfully");
         process.exit(0);
       } catch (error) {
         console.error(error);
-        await sqlDs.closeConnection();
+        await sqlDs.disconnect();
         process.exit(1);
       }
     },

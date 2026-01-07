@@ -38,8 +38,8 @@ export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
    * @warning For annotations, use the `annotate` method instead, aliases and methods are not supported in the select method and will give error `column "${columnName} as ${alias}" does not exist`
    * @example
    * ```ts
-   * const user = await User.query().select("name", "age").first(); // SELECT name, age FROM users
-   * const user = await User.query().select("name", "users.age").first(); // SELECT name, users.age FROM users
+   * const user = await User.query().select("name", "age").one(); // SELECT name, age FROM users
+   * const user = await User.query().select("name", "users.age").one(); // SELECT name, users.age FROM users
    * ```
    */
   select<S extends string>(...columns: SelectableColumn<S>[]): this;
@@ -112,9 +112,9 @@ export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
    * @description If using a model, the result will be available in the $annotations property of the model, else it will be available in the result of the query
    * @example
    * ```ts
-   * const user = await User.query().annotate("max", "id", "maxId").first(); // max(id) as maxId
-   * const user = await User.query().annotate("id", "superId").first(); // id as superId
-   * const user = await User.query().annotate("id", "superId").first(); // id as superId
+   * const user = await User.query().annotate("max", "id", "maxId").one(); // max(id) as maxId
+   * const user = await User.query().annotate("id", "superId").one(); // id as superId
+   * const user = await User.query().annotate("id", "superId").one(); // id as superId
    * ```
    */
   annotate<A extends string>(column: string, alias: A): this;
@@ -201,15 +201,15 @@ export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
    * @example
    * ```ts
    * // All databases accept the same path format:
-   * const user = await User.query().selectJson("data", "$.user.name", "userName").first();
+   * const user = await User.query().selectJson("data", "$.user.name", "userName").one();
    * console.log(user?.$annotations?.userName); // Typed!
    *
-   * await User.query().selectJson("data", "user.name", "userName").first(); // $ is optional
-   * await User.query().selectJson("data", ["user", "name"], "userName").first();
+   * await User.query().selectJson("data", "user.name", "userName").one(); // $ is optional
+   * await User.query().selectJson("data", ["user", "name"], "userName").one();
    *
    * // Array indices:
-   * await User.query().selectJson("data", "items.0.name", "firstItemName").first();
-   * await User.query().selectJson("data", ["items", 0, "name"], "firstItemName").first();
+   * await User.query().selectJson("data", "items.0.name", "firstItemName").one();
+   * await User.query().selectJson("data", ["items", 0, "name"], "firstItemName").one();
    * ```
    */
   selectJson<A extends string>(
@@ -244,10 +244,10 @@ export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
    * @example
    * ```ts
    * // All databases accept the same path format:
-   * const user = await User.query().selectJsonText("data", "$.user.name", "userName").first();
+   * const user = await User.query().selectJsonText("data", "$.user.name", "userName").one();
    * console.log(user?.$annotations?.userName); // Typed!
    *
-   * await User.query().selectJsonText("data", ["user", "name"], "userName").first();
+   * await User.query().selectJsonText("data", ["user", "name"], "userName").one();
    * ```
    */
   selectJsonText<A extends string>(
@@ -282,11 +282,11 @@ export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
    * @example
    * ```ts
    * // All databases accept the same path format:
-   * const user = await User.query().selectJsonArrayLength("data", "$.items", "itemCount").first();
+   * const user = await User.query().selectJsonArrayLength("data", "$.items", "itemCount").one();
    * console.log(user?.$annotations?.itemCount); // Typed!
    *
-   * await User.query().selectJsonArrayLength("data", "items", "itemCount").first();
-   * await User.query().selectJsonArrayLength("data", "$", "totalCount").first(); // root array
+   * await User.query().selectJsonArrayLength("data", "items", "itemCount").one();
+   * await User.query().selectJsonArrayLength("data", "$", "totalCount").one(); // root array
    * ```
    */
   selectJsonArrayLength<A extends string>(
@@ -323,11 +323,11 @@ export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
    * @example
    * ```ts
    * // All databases accept the same path format:
-   * const user = await User.query().selectJsonKeys("data", "$.user", "userKeys").first();
+   * const user = await User.query().selectJsonKeys("data", "$.user", "userKeys").one();
    * console.log(user?.$annotations?.userKeys); // Typed!
    *
-   * await User.query().selectJsonKeys("data", "user", "userKeys").first();
-   * await User.query().selectJsonKeys("data", "$", "rootKeys").first(); // root object
+   * await User.query().selectJsonKeys("data", "user", "userKeys").one();
+   * await User.query().selectJsonKeys("data", "$", "rootKeys").one(); // root object
    * ```
    */
   selectJsonKeys<A extends string>(
@@ -359,7 +359,7 @@ export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
    * @description Result will be available in model.$annotations[alias]
    * @example
    * ```ts
-   * const user = await User.query().selectJsonRaw("data->>'email'", "userEmail").first();
+   * const user = await User.query().selectJsonRaw("data->>'email'", "userEmail").one();
    * console.log(user?.$annotations?.userEmail); // Typed!
    * ```
    */

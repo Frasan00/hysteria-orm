@@ -318,7 +318,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
       .annotate("age", "userAge")
       .annotate("name", "userName")
       .where("name", "JsonFlattenTest")
-      .first();
+      .one();
 
     expect(user).not.toBeNull();
     expect(user?.$annotations).toBeDefined();
@@ -380,7 +380,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
       .select("name")
       .selectJsonText("json", "user.name", "extractedName")
       .where("name", "JsonSelectTest")
-      .first();
+      .one();
 
     expect(user).not.toBeNull();
     expect(user?.$annotations?.extractedName).toBe("Alice");
@@ -411,7 +411,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         .annotate("count", "*", "totalCount") // Non-conflicting alias
         .where("email", "collision1@test.com")
         .groupBy("name", "age", "email")
-        .first();
+        .one();
 
       expect(user).not.toBeNull();
 
@@ -458,7 +458,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         .selectJsonText("json", "username", "jsonName") // Non-conflicting alias
         .selectJsonText("json", "userAge", "jsonAge") // Non-conflicting alias
         .where("email", "collision2@test.com")
-        .first();
+        .one();
 
       expect(user).not.toBeNull();
 
@@ -492,7 +492,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         .annotate("count", "*", "totalRecords") // Non-conflicting
         .where("email", "collision3@test.com")
         .groupBy("name", "email")
-        .first();
+        .one();
 
       expect(user).not.toBeNull();
 
@@ -525,7 +525,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         .annotate("name", "computedName") // Non-conflicting
         .where("email", "collision4@test.com")
         .groupBy("name", "age")
-        .first();
+        .one();
 
       expect(user).not.toBeNull();
       expect(user!.$annotations.maxAge).toBeDefined();
@@ -559,7 +559,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         .annotate("max", "age", "maxAge") // Non-conflicting alias
         .where("email", "collision5@test.com")
         .groupBy("name", "age")
-        .first();
+        .one();
 
       // TypeScript should properly type annotations
       if (user?.$annotations) {

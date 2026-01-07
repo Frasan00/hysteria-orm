@@ -67,6 +67,11 @@ const SQL_TESTS = [
 
 const NON_SQL_TESTS = [
   {
+    name: "mixins",
+    path: "./test/sql/mixins/",
+    runInBand: true,
+  },
+  {
     name: "use_connection",
     path: "./test/sql/use_connection/use_connection.test.ts",
   },
@@ -149,7 +154,8 @@ const runSqlTest = async (file, environment, testNames = [], logs = false) => {
 
 const runNonSqlTest = (test) => {
   console.log(`Running ${test.name}...`);
-  execSync(`npx jest --config=jest.config.js --colors --forceExit ${test.path}`, {
+  const runInBandFlag = test.runInBand ? "--runInBand" : "";
+  execSync(`npx jest --config=jest.config.js --colors --forceExit ${runInBandFlag} ${test.path}`, {
     stdio: "inherit",
   });
 };

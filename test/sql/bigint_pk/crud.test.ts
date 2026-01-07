@@ -69,7 +69,7 @@ describe(`[${env.DB_TYPE}] Select`, () => {
     const originalAge = user.age;
     await UserWithBigint.query().increment("age", 1);
 
-    const updatedUser = await UserWithBigint.query().first();
+    const updatedUser = await UserWithBigint.query().one();
     expect(Number(updatedUser?.age)).toBe(Number(originalAge) + 1);
   });
 
@@ -78,7 +78,7 @@ describe(`[${env.DB_TYPE}] Select`, () => {
     const originalAge = user.age;
     await UserWithBigint.query().decrement("age", 1);
 
-    const updatedUser = await UserWithBigint.query().first();
+    const updatedUser = await UserWithBigint.query().one();
 
     expect(Number(updatedUser?.age)).toBe(Number(originalAge) - 1);
   });

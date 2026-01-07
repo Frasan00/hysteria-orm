@@ -88,8 +88,6 @@ export class ModelQueryBuilder<
     many: this.manyWithPerformance.bind(this),
     one: this.oneWithPerformance.bind(this),
     oneOrFail: this.oneOrFailWithPerformance.bind(this),
-    first: this.firstWithPerformance.bind(this),
-    firstOrFail: this.firstOrFailWithPerformance.bind(this),
     paginate: this.paginateWithPerformance.bind(this),
     exists: this.existsWithPerformance.bind(this),
     paginateWithCursor: this.paginateWithCursorWithPerformance.bind(this),
@@ -155,10 +153,6 @@ export class ModelQueryBuilder<
     }
 
     return result[0];
-  }
-
-  async first(options?: OneOptions): Promise<AnnotatedModel<T, A, R> | null> {
-    return this.one(options);
   }
 
   async oneOrFail(options?: {
@@ -500,10 +494,10 @@ export class ModelQueryBuilder<
    * @description If the alias matches a model field name, it overrides that field. Otherwise, it's available in $annotations
    * @example
    * ```ts
-   * const user = await User.query().annotate("max", "id", "maxId").first(); // max(id) as maxId
-   * const user = await User.query().annotate("id", "superId").first(); // id as superId
+   * const user = await User.query().annotate("max", "id", "maxId").one(); // max(id) as maxId
+   * const user = await User.query().annotate("id", "superId").one(); // id as superId
    * // If alias matches model field, it overrides it:
-   * const user = await User.query().annotate("COUNT(*)", "email").first(); // user.email is now a number
+   * const user = await User.query().annotate("COUNT(*)", "email").one(); // user.email is now a number
    * ```
    */
   // @ts-expect-error
@@ -578,29 +572,29 @@ export class ModelQueryBuilder<
    * // All these path formats are supported:
    *
    * // 1. With $ prefix (standard JSON path)
-   * await User.query().selectJson("data", "$.user.name", "userName").first();
+   * await User.query().selectJson("data", "$.user.name", "userName").one();
    *
    * // 2. Without $ prefix ($ is optional)
-   * await User.query().selectJson("data", "user.name", "userName").first();
+   * await User.query().selectJson("data", "user.name", "userName").one();
    *
    * // 3. Array format
-   * await User.query().selectJson("data", ["user", "name"], "userName").first();
+   * await User.query().selectJson("data", ["user", "name"], "userName").one();
    *
    * // 4. Array indices with dot notation
-   * await User.query().selectJson("data", "items.0.name", "firstItemName").first();
+   * await User.query().selectJson("data", "items.0.name", "firstItemName").one();
    *
    * // 5. Array indices with array format
-   * await User.query().selectJson("data", ["items", 0, "name"], "firstItemName").first();
+   * await User.query().selectJson("data", ["items", 0, "name"], "firstItemName").one();
    *
    * // 6. Root object
-   * await User.query().selectJson("data", "$", "allData").first();
+   * await User.query().selectJson("data", "$", "allData").one();
    *
    * // Access the result - in $annotations if not a model field
-   * const user = await User.query().selectJson("data", "user.name", "userName").first();
+   * const user = await User.query().selectJson("data", "user.name", "userName").one();
    * console.log(user?.$annotations?.userName); // Typed as any
    *
    * // If alias matches model field, it overrides it
-   * const user2 = await User.query().selectJson("data", "$.name", "email").first();
+   * const user2 = await User.query().selectJson("data", "$.name", "email").one();
    * console.log(user2?.email); // Overrides model's email field
    * ```
    */
@@ -638,23 +632,23 @@ export class ModelQueryBuilder<
    * // All these path formats are supported:
    *
    * // 1. With $ prefix
-   * await User.query().selectJsonText("data", "$.user.email", "userEmail").first();
+   * await User.query().selectJsonText("data", "$.user.email", "userEmail").one();
    *
    * // 2. Without $ prefix
-   * await User.query().selectJsonText("data", "user.email", "userEmail").first();
+   * await User.query().selectJsonText("data", "user.email", "userEmail").one();
    *
    * // 3. Array format
-   * await User.query().selectJsonText("data", ["user", "email"], "userEmail").first();
+   * await User.query().selectJsonText("data", ["user", "email"], "userEmail").one();
    *
    * // 4. Array indices
-   * await User.query().selectJsonText("data", "tags.0", "firstTag").first();
-   * await User.query().selectJsonText("data", ["tags", 0], "firstTag").first();
+   * await User.query().selectJsonText("data", "tags.0", "firstTag").one();
+   * await User.query().selectJsonText("data", ["tags", 0], "firstTag").one();
    *
    * // 5. Deep nesting
-   * await User.query().selectJsonText("data", "user.profile.bio", "biography").first();
+   * await User.query().selectJsonText("data", "user.profile.bio", "biography").one();
    *
    * // Access the result - in $annotations if not a model field
-   * const user = await User.query().selectJsonText("data", "user.email", "userEmail").first();
+   * const user = await User.query().selectJsonText("data", "user.email", "userEmail").one();
    * console.log(user?.$annotations?.userEmail); // Typed as string
    * ```
    */
@@ -693,27 +687,27 @@ export class ModelQueryBuilder<
    * // All these path formats are supported:
    *
    * // 1. With $ prefix
-   * await User.query().selectJsonArrayLength("data", "$.items", "itemCount").first();
+   * await User.query().selectJsonArrayLength("data", "$.items", "itemCount").one();
    *
    * // 2. Without $ prefix
-   * await User.query().selectJsonArrayLength("data", "items", "itemCount").first();
+   * await User.query().selectJsonArrayLength("data", "items", "itemCount").one();
    *
    * // 3. Array format
-   * await User.query().selectJsonArrayLength("data", ["items"], "itemCount").first();
+   * await User.query().selectJsonArrayLength("data", ["items"], "itemCount").one();
    *
    * // 4. Root array (use "$" or "")
-   * await User.query().selectJsonArrayLength("data", "$", "totalCount").first();
-   * await User.query().selectJsonArrayLength("data", "", "totalCount").first();
+   * await User.query().selectJsonArrayLength("data", "$", "totalCount").one();
+   * await User.query().selectJsonArrayLength("data", "", "totalCount").one();
    *
    * // 5. Nested arrays
-   * await User.query().selectJsonArrayLength("data", "user.roles", "roleCount").first();
-   * await User.query().selectJsonArrayLength("data", ["user", "roles"], "roleCount").first();
+   * await User.query().selectJsonArrayLength("data", "user.roles", "roleCount").one();
+   * await User.query().selectJsonArrayLength("data", ["user", "roles"], "roleCount").one();
    *
    * // 6. Deeply nested arrays
-   * await User.query().selectJsonArrayLength("data", "level1.level2.items", "deepCount").first();
+   * await User.query().selectJsonArrayLength("data", "level1.level2.items", "deepCount").one();
    *
    * // Access the result - in $annotations if not a model field
-   * const user = await User.query().selectJsonArrayLength("data", "items", "count").first();
+   * const user = await User.query().selectJsonArrayLength("data", "items", "count").one();
    * console.log(user?.$annotations?.count); // Typed as number
    * ```
    */
@@ -754,27 +748,27 @@ export class ModelQueryBuilder<
    * // All these path formats are supported:
    *
    * // 1. With $ prefix
-   * await User.query().selectJsonKeys("data", "$.settings", "settingKeys").first();
+   * await User.query().selectJsonKeys("data", "$.settings", "settingKeys").one();
    *
    * // 2. Without $ prefix
-   * await User.query().selectJsonKeys("data", "settings", "settingKeys").first();
+   * await User.query().selectJsonKeys("data", "settings", "settingKeys").one();
    *
    * // 3. Array format
-   * await User.query().selectJsonKeys("data", ["settings"], "settingKeys").first();
+   * await User.query().selectJsonKeys("data", ["settings"], "settingKeys").one();
    *
    * // 4. Root object (use "$" or "")
-   * await User.query().selectJsonKeys("data", "$", "rootKeys").first();
-   * await User.query().selectJsonKeys("data", "", "rootKeys").first();
+   * await User.query().selectJsonKeys("data", "$", "rootKeys").one();
+   * await User.query().selectJsonKeys("data", "", "rootKeys").one();
    *
    * // 5. Nested objects
-   * await User.query().selectJsonKeys("data", "user.profile", "profileKeys").first();
-   * await User.query().selectJsonKeys("data", ["user", "profile"], "profileKeys").first();
+   * await User.query().selectJsonKeys("data", "user.profile", "profileKeys").one();
+   * await User.query().selectJsonKeys("data", ["user", "profile"], "profileKeys").one();
    *
    * // 6. Deeply nested objects
-   * await User.query().selectJsonKeys("data", "settings.display.theme", "themeKeys").first();
+   * await User.query().selectJsonKeys("data", "settings.display.theme", "themeKeys").one();
    *
    * // Access the result - in $annotations if not a model field
-   * const user = await User.query().selectJsonKeys("data", "settings", "keys").first();
+   * const user = await User.query().selectJsonKeys("data", "settings", "keys").one();
    * console.log(user?.$annotations?.keys); // Typed as any[] - ["theme", "fontSize", "autoSave"]
    * ```
    */
@@ -810,28 +804,28 @@ export class ModelQueryBuilder<
    * @example
    * ```ts
    * // PostgreSQL - Extract as text with ->> operator
-   * await User.query().selectJsonRaw("data->>'email'", "userEmail").first();
+   * await User.query().selectJsonRaw("data->>'email'", "userEmail").one();
    *
    * // PostgreSQL - Extract nested JSON with -> operator
-   * await User.query().selectJsonRaw("data->'user'->'profile'->>'name'", "profileName").first();
+   * await User.query().selectJsonRaw("data->'user'->'profile'->>'name'", "profileName").one();
    *
    * // PostgreSQL - Array element access
-   * await User.query().selectJsonRaw("data->'items'->0->>'name'", "firstName").first();
+   * await User.query().selectJsonRaw("data->'items'->0->>'name'", "firstName").one();
    *
    * // MySQL - Extract value with JSON_EXTRACT and ->>
-   * await User.query().selectJsonRaw("data->>'$.email'", "userEmail").first();
+   * await User.query().selectJsonRaw("data->>'$.email'", "userEmail").one();
    *
    * // MySQL - Array length with JSON_LENGTH
-   * await User.query().selectJsonRaw("JSON_LENGTH(data, '$.items')", "itemCount").first();
+   * await User.query().selectJsonRaw("JSON_LENGTH(data, '$.items')", "itemCount").one();
    *
    * // MSSQL - Extract value with JSON_VALUE
-   * await User.query().selectJsonRaw("JSON_VALUE(data, '$.email')", "userEmail").first();
+   * await User.query().selectJsonRaw("JSON_VALUE(data, '$.email')", "userEmail").one();
    *
    * // SQLite - Extract value with json_extract
-   * await User.query().selectJsonRaw("json_extract(data, '$.email')", "userEmail").first();
+   * await User.query().selectJsonRaw("json_extract(data, '$.email')", "userEmail").one();
    *
    * // Access the result - in $annotations if not a model field
-   * const user = await User.query().selectJsonRaw("data->>'email'", "userEmail").first();
+   * const user = await User.query().selectJsonRaw("data->>'email'", "userEmail").one();
    * console.log(user?.$annotations?.userEmail); // Typed as any
    * ```
    */
@@ -2045,17 +2039,6 @@ export class ModelQueryBuilder<
     time: number;
   }> {
     return this.oneOrFailWithPerformance(options, returnType);
-  }
-
-  // @ts-expect-error
-  private async firstWithPerformance(
-    options: OneOptions = {},
-    returnType: "millis" | "seconds" = "millis",
-  ): Promise<{
-    data: AnnotatedModel<T, A, R> | null;
-    time: number;
-  }> {
-    return this.oneWithPerformance(options, returnType);
   }
 
   // @ts-expect-error

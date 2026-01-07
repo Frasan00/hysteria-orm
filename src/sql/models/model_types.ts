@@ -31,7 +31,7 @@ export type BaseModelMethodOptions = {
    *   port: 5432,
    * });
    *
-   * const user = await User.query({ connection: customConnection }).first();
+   * const user = await User.query({ connection: customConnection }).one();
    * ```
    */
   connection?: SqlDataSource;

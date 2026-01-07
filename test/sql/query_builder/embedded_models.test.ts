@@ -1,5 +1,4 @@
 import { env } from "../../../src/env/env";
-import { HysteriaError } from "../../../src/errors/hysteria_error";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { SqlDataSourceType } from "../../../src/sql/sql_data_source_types";
 import { UserWithoutPk } from "../test_models/without_pk/user_without_pk";
@@ -41,11 +40,11 @@ describe(`[${env.DB_TYPE}] Query Builder with embedded models with cloned connec
 
     const user = await clonedSql.models.userWithoutPk
       .query({ connection: clonedSql })
-      .first();
+      .one();
     expect(user).toBeDefined();
     expect(user?.name).toBe("John");
 
     await clonedSql.rollbackGlobalTransaction();
-    await clonedSql.closeConnection();
+    await clonedSql.disconnect();
   });
 });

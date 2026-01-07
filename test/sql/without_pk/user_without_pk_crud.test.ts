@@ -29,7 +29,7 @@ describe(`[${env.DB_TYPE}] Select`, () => {
     await UserFactory.userWithoutPk(2);
     const user = await UserWithoutPk.query()
       .annotate("max", "age", "maxAge")
-      .first();
+      .one();
 
     expect(user).not.toBeUndefined();
     expect(user?.$annotations.maxAge).toBeDefined();
@@ -40,7 +40,7 @@ describe(`[${env.DB_TYPE}] Select`, () => {
     const user = await UserWithoutPk.query()
       .select("name")
       .annotate("age", "superAge")
-      .first();
+      .one();
 
     expect(user).not.toBeUndefined();
     expect(user?.name).toBeDefined();

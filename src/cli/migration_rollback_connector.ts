@@ -54,7 +54,7 @@ export default async function rollbackMigrationsConnector(
       const filteredMigrations = pendingMigrations.slice(rollBackUntilIndex);
 
       if (shouldUseTransaction) {
-        trx = await sql.startTransaction();
+        trx = await sql.transaction();
         sql = trx.sql as SqlDataSource;
       }
 
@@ -71,7 +71,7 @@ export default async function rollbackMigrationsConnector(
 
     const migrator = new Migrator(sql);
     if (shouldUseTransaction) {
-      trx = await sql.startTransaction();
+      trx = await sql.transaction();
       sql = trx.sql as SqlDataSource;
     }
 

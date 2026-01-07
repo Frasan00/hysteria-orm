@@ -26,13 +26,13 @@ describe(`[${env.DB_TYPE}] Select`, () => {
     const user = await UserWithUuid.query()
       .annotate("count", "id", "count")
       .removeAnnotations()
-      .first();
+      .one();
 
     expect((user as any)?.$annotations).toBeUndefined();
 
     const user2 = await UserWithUuid.query()
       .annotate("count", "id", "count")
-      .first();
+      .one();
 
     expect(user2?.$annotations).not.toBeUndefined();
   });
@@ -83,7 +83,7 @@ describe(`[${env.DB_TYPE}] Select`, () => {
     const originalAge = user.age;
     await UserWithUuid.query().increment("age", 1);
 
-    const updatedUser = await UserWithUuid.query().first();
+    const updatedUser = await UserWithUuid.query().one();
 
     expect(Number(updatedUser?.age)).toBe(Number(originalAge) + 1);
   });
@@ -93,7 +93,7 @@ describe(`[${env.DB_TYPE}] Select`, () => {
     const originalAge = user.age;
     await UserWithUuid.query().decrement("age", 1);
 
-    const updatedUser = await UserWithUuid.query().first();
+    const updatedUser = await UserWithUuid.query().one();
 
     expect(Number(updatedUser?.age)).toBe(Number(originalAge) - 1);
   });

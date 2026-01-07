@@ -46,7 +46,7 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
       const result = await UserWithoutPk.query()
         .selectJson("json", "$.user.name", "userName")
         .selectJson("json", "$.settings.theme", "userTheme")
-        .first();
+        .one();
 
       expect(result).not.toBeNull();
       expect(result?.$annotations?.userName).toBeDefined();
@@ -70,7 +70,7 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
       const result = await UserWithoutPk.query()
         .selectJson("json", "profile.age", "userAge")
         .selectJson("json", "profile.city", "userCity")
-        .first();
+        .one();
 
       expect(result).not.toBeNull();
       expect(result?.$annotations?.userAge).toBeDefined();
@@ -94,7 +94,7 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
 
       const result = await UserWithoutPk.query()
         .selectJson("json", ["contact", "phone", "mobile"], "phoneNumber")
-        .first();
+        .one();
 
       expect(result).not.toBeNull();
       expect(result?.$annotations?.phoneNumber).toBeDefined();
@@ -118,7 +118,7 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
       const result = await UserWithoutPk.query()
         .selectJson("json", "items.0.name", "firstItemName")
         .selectJson("json", ["items", 1, "name"], "secondItemName")
-        .first();
+        .one();
 
       expect(result).not.toBeNull();
       expect(result?.$annotations?.firstItemName).toBeDefined();
@@ -138,7 +138,7 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
 
       const result = await UserWithoutPk.query()
         .selectJson("json", "simpleValue", "value")
-        .first();
+        .one();
 
       expect(result).not.toBeNull();
       expect(result?.$annotations?.value).toBeDefined();
@@ -163,7 +163,7 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
       const result = await UserWithoutPk.query()
         .selectJsonText("json", "$.data.message", "message")
         .selectJsonText("json", "data.status", "userStatus")
-        .first();
+        .one();
 
       expect(result).not.toBeNull();
       expect(result?.$annotations?.message).toBeDefined();
@@ -187,7 +187,7 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
 
       const result = await UserWithoutPk.query()
         .selectJsonText("json", ["user", "info", "bio"], "biography")
-        .first();
+        .one();
 
       expect(result).not.toBeNull();
       expect(result?.$annotations?.biography).toBeDefined();
@@ -207,7 +207,7 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
       const result = await UserWithoutPk.query()
         .selectJsonText("json", "tags.0", "firstTag")
         .selectJsonText("json", ["tags", 1], "secondTag")
-        .first();
+        .one();
 
       expect(result).not.toBeNull();
       expect(result?.$annotations?.firstTag).toBeDefined();
@@ -233,7 +233,7 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
 
       const result = await UserWithoutPk.query()
         .selectJsonArrayLength("json", "$.items", "itemCount")
-        .first();
+        .one();
 
       expect(result).not.toBeNull();
       expect(result?.$annotations?.itemCount).toBeDefined();
@@ -260,7 +260,7 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
       const result = await UserWithoutPk.query()
         .selectJsonArrayLength("json", "user.tags", "tagCount")
         .selectJsonArrayLength("json", ["user", "scores"], "scoreCount")
-        .first();
+        .one();
 
       expect(result).not.toBeNull();
       expect(result?.$annotations?.tagCount).toBeDefined();
@@ -294,7 +294,7 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
           "data.nested.deep.array",
           "deepArrayCount",
         )
-        .first();
+        .one();
 
       expect(result).not.toBeNull();
       expect(result?.$annotations?.deepArrayCount).toBeDefined();
@@ -322,7 +322,7 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
 
       const result = await UserWithoutPk.query()
         .selectJsonKeys("json", "$", "allKeys")
-        .first();
+        .one();
 
       expect(result).not.toBeNull();
       expect(result?.$annotations?.allKeys).toBeDefined();
@@ -351,7 +351,7 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
 
       const result = await UserWithoutPk.query()
         .selectJsonKeys("json", "user.profile", "profileKeys")
-        .first();
+        .one();
 
       expect(result).not.toBeNull();
       expect(result?.$annotations?.profileKeys).toBeDefined();
@@ -380,7 +380,7 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
 
       const result = await UserWithoutPk.query()
         .selectJsonKeys("json", ["settings", "display"], "displayKeys")
-        .first();
+        .one();
 
       expect(result).not.toBeNull();
       expect(result?.$annotations?.displayKeys).toBeDefined();
@@ -407,7 +407,7 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
 
       const result = await UserWithoutPk.query()
         .selectJsonRaw("json->>'user'", "userJson")
-        .first();
+        .one();
 
       expect(result).not.toBeNull();
       expect(result?.$annotations?.userJson).toBeDefined();
@@ -435,7 +435,7 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
           "JSON_UNQUOTE(JSON_EXTRACT(json, '$.data.value'))",
           "extractedValue",
         )
-        .first();
+        .one();
 
       expect(result).not.toBeNull();
       expect(result?.$annotations?.extractedValue).toBeDefined();
@@ -475,7 +475,7 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         .selectJsonText("json", "user.email", "userEmail")
         .selectJsonText("json", "user.profile.bio", "userBio")
         .selectJsonArrayLength("json", "tags", "tagCount")
-        .first();
+        .one();
 
       expect(result).not.toBeNull();
       expect(result?.$annotations?.userName).toBeDefined();
@@ -502,7 +502,7 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         .select("email", "name")
         .selectJson("json", "preferences.theme", "theme")
         .selectJsonText("json", "preferences.language", "language")
-        .first();
+        .one();
 
       expect(result).not.toBeNull();
       expect(result?.email).toBeDefined();
@@ -538,7 +538,7 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         .selectJson("json", "status", "userStatus")
         .selectJson("json", "priority", "userPriority")
         .where("email", "json-where-1@test.com")
-        .first();
+        .one();
 
       expect(result).not.toBeNull();
       expect(result?.$annotations?.userStatus).toBeDefined();
@@ -595,15 +595,15 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
 
       const result1 = await UserWithoutPk.query()
         .selectJsonText("json", "$.data.nested.value", "value1")
-        .first();
+        .one();
 
       const result2 = await UserWithoutPk.query()
         .selectJsonText("json", "data.nested.value", "value2")
-        .first();
+        .one();
 
       const result3 = await UserWithoutPk.query()
         .selectJsonText("json", ["data", "nested", "value"], "value3")
-        .first();
+        .one();
 
       expect(result1?.$annotations?.value1).toBeDefined();
       expect(result2?.$annotations?.value2).toBeDefined();
@@ -623,11 +623,11 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
 
       const result1 = await UserWithoutPk.query()
         .selectJsonText("json", "items.0", "item1")
-        .first();
+        .one();
 
       const result2 = await UserWithoutPk.query()
         .selectJsonText("json", ["items", 0], "item2")
-        .first();
+        .one();
 
       expect(result1?.$annotations?.item1).toBeDefined();
       expect(result2?.$annotations?.item2).toBeDefined();
@@ -644,7 +644,7 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         email: "json-edge-1@test.com",
       });
 
-      const result = await UserWithoutPk.query().select("email").first();
+      const result = await UserWithoutPk.query().select("email").one();
 
       expect(result).not.toBeNull();
       expect(result?.email).toBe("json-edge-1@test.com");
@@ -664,7 +664,7 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
 
       const result = await UserWithoutPk.query()
         .selectJson("json", "validValue", "valid")
-        .first();
+        .one();
 
       expect(result).not.toBeNull();
       expect(result?.$annotations?.valid).toBeDefined();
@@ -697,7 +697,7 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
           "level1.level2.level3.level4.level5.value",
           "deepValue",
         )
-        .first();
+        .one();
 
       expect(result).not.toBeNull();
       expect(result?.$annotations?.deepValue).toBeDefined();
@@ -722,7 +722,7 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         .selectJsonText("json", "string", "stringVal")
         .selectJson("json", "number", "numberVal")
         .selectJson("json", "boolean", "boolVal")
-        .first();
+        .one();
 
       expect(result).not.toBeNull();
       expect(result?.$annotations?.stringVal).toBeDefined();

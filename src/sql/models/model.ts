@@ -153,7 +153,7 @@ export abstract class Model extends Entity {
 
   /**
    * @description Finds the first record in the database
-   * @deprecated Used only for debugging purposes, use findOne or query instead
+   * @deprecated Used only for debugging purposes, use `.findOne` or `.query` instead
    */
   static async first<T extends Model>(
     this: new () => T | typeof Model,
@@ -854,6 +854,160 @@ export abstract class Model extends Entity {
    */
   static column(columnName: string, ...args: Parameters<typeof column>): void {
     column(...args)(this.prototype, columnName);
+  }
+
+  /**
+   * @description Defines a column in the model, useful in javascript in order to not have to rely on decorators since are not supported without a transpiler like babel
+   * @javascript
+   */
+  static dateColumn(
+    columnName: string,
+    ...args: Parameters<(typeof column)["date"]>
+  ): void {
+    column.date(...args)(this.prototype, columnName);
+  }
+
+  /**
+   * @description Defines a column in the model, useful in javascript in order to not have to rely on decorators since are not supported without a transpiler like babel
+   * @javascript
+   */
+  static datetimeColumn(
+    columnName: string,
+    ...args: Parameters<(typeof column)["datetime"]>
+  ): void {
+    column.datetime(...args)(this.prototype, columnName);
+  }
+
+  /**
+   * @description Defines a column in the model, useful in javascript in order to not have to rely on decorators since are not supported without a transpiler like babel
+   * @javascript
+   */
+  static timestampColumn(
+    columnName: string,
+    ...args: Parameters<(typeof column)["timestamp"]>
+  ): void {
+    column.timestamp(...args)(this.prototype, columnName);
+  }
+
+  /**
+   * @description Defines a column in the model, useful in javascript in order to not have to rely on decorators since are not supported without a transpiler like babel
+   * @javascript
+   */
+  static timeColumn(
+    columnName: string,
+    ...args: Parameters<(typeof column)["time"]>
+  ): void {
+    column.time(...args)(this.prototype, columnName);
+  }
+
+  /**
+   * @description Defines a column in the model, useful in javascript in order to not have to rely on decorators since are not supported without a transpiler like babel
+   * @javascript
+   */
+  static booleanColumn(
+    columnName: string,
+    ...args: Parameters<(typeof column)["boolean"]>
+  ): void {
+    column.boolean(...args)(this.prototype, columnName);
+  }
+
+  /**
+   * @description Defines a column in the model, useful in javascript in order to not have to rely on decorators since are not supported without a transpiler like babel
+   * @javascript
+   */
+  static jsonColumn(
+    columnName: string,
+    ...args: Parameters<(typeof column)["json"]>
+  ): void {
+    column.json(...args)(this.prototype, columnName);
+  }
+
+  /**
+   * @description Defines a column in the model, useful in javascript in order to not have to rely on decorators since are not supported without a transpiler like babel
+   * @javascript
+   */
+  static uuidColumn(
+    columnName: string,
+    ...args: Parameters<(typeof column)["uuid"]>
+  ): void {
+    column.uuid(...args)(this.prototype, columnName);
+  }
+
+  /**
+   * @description Defines a column in the model, useful in javascript in order to not have to rely on decorators since are not supported without a transpiler like babel
+   * @javascript
+   */
+  static ulidColumn(
+    columnName: string,
+    ...args: Parameters<(typeof column)["ulid"]>
+  ): void {
+    column.ulid(...args)(this.prototype, columnName);
+  }
+
+  /**
+   * @description Defines a column in the model, useful in javascript in order to not have to rely on decorators since are not supported without a transpiler like babel
+   * @javascript
+   */
+  static integerColumn(
+    columnName: string,
+    ...args: Parameters<(typeof column)["integer"]>
+  ): void {
+    column.integer(...args)(this.prototype, columnName);
+  }
+
+  /**
+   * @description Defines a column in the model, useful in javascript in order to not have to rely on decorators since are not supported without a transpiler like babel
+   * @javascript
+   */
+  static floatColumn(
+    columnName: string,
+    ...args: Parameters<(typeof column)["float"]>
+  ): void {
+    column.float(...args)(this.prototype, columnName);
+  }
+
+  /**
+   * @description Defines a column in the model, useful in javascript in order to not have to rely on decorators since are not supported without a transpiler like babel
+   * @javascript
+   */
+  static incrementColumn(
+    columnName: string,
+    ...args: Parameters<(typeof column)["increment"]>
+  ): void {
+    column.increment(...args)(this.prototype, columnName);
+  }
+
+  /**
+   * @description Defines a column in the model, useful in javascript in order to not have to rely on decorators since are not supported without a transpiler like babel
+   * @javascript
+   */
+  static bigIncrementColumn(
+    columnName: string,
+    ...args: Parameters<(typeof column)["bigIncrement"]>
+  ): void {
+    column.bigIncrement(...args)(this.prototype, columnName);
+  }
+
+  /**
+   * @description Defines a column in the model, useful in javascript in order to not have to rely on decorators since are not supported without a transpiler like babel
+   * @javascript
+   */
+  static encryptionSymmetricColumn(
+    columnName: string,
+    ...args: Parameters<(typeof column)["encryption"]["symmetric"]>
+  ): void {
+    column.encryption.symmetric(...args)(this.prototype, columnName);
+  }
+
+  /**
+   * @description Defines a column in the model, useful in javascript in order to not have to rely on decorators since are not supported without a transpiler like babel
+   * @javascript
+   */
+  static encryptionAsymmetricColumn(
+    columnName: string,
+    ...args: Parameters<(typeof column)["encryption"]["asymmetric"]>
+  ): void {
+    column.encryption.asymmetric(...args)(this.prototype, columnName);
   }
 
   /**

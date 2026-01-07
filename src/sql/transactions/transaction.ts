@@ -15,7 +15,7 @@ import {
 } from "./transaction_types";
 
 /**
- * @description Transaction class, not meant to be used directly, use sql.startTransaction() instead
+ * @description Transaction class, not meant to be used directly, use sql.transaction() instead
  */
 export class Transaction {
   /**
@@ -26,7 +26,7 @@ export class Transaction {
    * import { User } from "./models/user";
    *
    * // Raw queries
-   * const trx = await sql.startTransaction();
+   * const trx = await sql.transaction();
    * await trx.rawQuery("SELECT * FROM users");
    *
    * // Model manager
@@ -39,10 +39,7 @@ export class Transaction {
    * await trx.commit();
    * ```
    */
-  sql: Omit<
-    SqlDataSource,
-    "transaction" | "startGlobalTransaction" | "startTransaction"
-  >;
+  sql: Omit<SqlDataSource, "transaction" | "startGlobalTransaction">;
   /**
    * @description Whether the transaction is active
    */
@@ -89,7 +86,7 @@ export class Transaction {
       this.nestingDepth + 1,
     );
 
-    await trx.startTransaction();
+    await trx.transaction();
 
     if (cb) {
       try {
@@ -105,9 +102,9 @@ export class Transaction {
   }
 
   /**
-   * @description Starts a transaction, automatically handled from the sql data source instance in the `startTransaction` method
+   * @description Starts a transaction, automatically handled from the sql data source instance in the `transaction` method
    */
-  async startTransaction(): Promise<void> {
+  async transaction(): Promise<void> {
     const levelQuery = this.getIsolationLevelQuery();
     // Nested transactions use SAVEPOINTs and do not begin a new transaction
     if (this.isNested) {
@@ -392,7 +389,7 @@ export class Transaction {
       logger.error(error);
     }
 
-    await this.sql.closeConnection();
+    await this.sql.disconnect();
     this.sql.sqlConnection = null;
     this.connectionReleased = true;
   }

@@ -245,7 +245,7 @@ describe(`[${env.DB_TYPE}] Query Builder with uuid`, () => {
 
     const retrievedPost = await SqlDataSource.instance
       .query("posts_with_uuid")
-      .first();
+      .one();
     expect(retrievedPost).toBeNull();
   });
 
@@ -262,7 +262,7 @@ describe(`[${env.DB_TYPE}] Query Builder with uuid`, () => {
     const retrievedPost = await SqlDataSource.instance
       .query("posts_with_uuid")
       .whereNull("deleted_at")
-      .first();
+      .one();
     expect(retrievedPost).toBeNull();
 
     const retrievedPostWithDeletedAt = await SqlDataSource.instance
@@ -284,7 +284,7 @@ describe(`[${env.DB_TYPE}] Query Builder with uuid`, () => {
 
     const retrievedPost = await SqlDataSource.instance
       .query("posts_with_uuid")
-      .first();
+      .one();
     expect(retrievedPost).toBeNull();
   });
 });
@@ -355,7 +355,7 @@ describe(`[${env.DB_TYPE}] Query Builder with a model without a primary key`, ()
 
     const retrievedUser = await SqlDataSource.instance
       .query("users_without_pk")
-      .first();
+      .one();
     expect(retrievedUser).toBeNull();
   });
 
@@ -371,7 +371,7 @@ describe(`[${env.DB_TYPE}] Query Builder with a model without a primary key`, ()
     const retrievedUser = await SqlDataSource.instance
       .query("users_without_pk")
       .whereNull("deleted_at")
-      .first();
+      .one();
     expect(retrievedUser).toBeNull();
 
     const retrievedUserWithDeletedAt = await SqlDataSource.instance
@@ -392,7 +392,7 @@ describe(`[${env.DB_TYPE}] Query Builder with a model without a primary key`, ()
 
     const retrievedUser = await SqlDataSource.instance
       .query("users_without_pk")
-      .first();
+      .one();
     expect(retrievedUser).toBeNull();
   });
 });

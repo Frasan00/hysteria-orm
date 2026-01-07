@@ -83,7 +83,7 @@ conditionalDescribe(`[${dbType}] Schema Diff Migration Generation`, () => {
 
   afterAll(async () => {
     await dropAllTestTables(baseSql);
-    await baseSql.closeConnection();
+    await baseSql.disconnect();
   });
 
   describe("User Model Versions (Column-focused changes)", () => {

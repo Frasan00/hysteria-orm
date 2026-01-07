@@ -66,8 +66,6 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     many: this.manyWithPerformance.bind(this),
     one: this.oneWithPerformance.bind(this),
     oneOrFail: this.oneOrFailWithPerformance.bind(this),
-    first: this.firstWithPerformance.bind(this),
-    firstOrFail: this.firstOrFailWithPerformance.bind(this),
     paginate: this.paginateWithPerformance.bind(this),
     paginateWithCursor: this.paginateWithCursorWithPerformance.bind(this),
     exists: this.existsWithPerformance.bind(this),
@@ -150,13 +148,6 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     }
 
     return result[0];
-  }
-
-  /**
-   * @alias one
-   */
-  async first(): Promise<AnnotatedModel<T, any, any> | null> {
-    return this.one();
   }
 
   /**
@@ -1219,15 +1210,6 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
       data,
       time: Number(time),
     };
-  }
-
-  /**
-   * @alias oneWithPerformance
-   */
-  private async firstWithPerformance(
-    returnType: "millis" | "seconds" = "millis",
-  ) {
-    return this.oneWithPerformance(returnType);
   }
 
   /**

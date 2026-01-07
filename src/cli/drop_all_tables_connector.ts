@@ -31,7 +31,7 @@ export default async function dropAllTablesConnector(
 
   try {
     if (dbType === "sqlite") {
-      await sql.closeConnection();
+      await sql.disconnect();
 
       await fs.rm(dbDatabase as string, { recursive: true, force: true });
       logger.info("Sqlite database dropped successfully");
@@ -67,7 +67,7 @@ export default async function dropAllTablesConnector(
       parsedTables,
     );
     if (shouldUseTransaction) {
-      trx = await sql.startTransaction();
+      trx = await sql.transaction();
       sql = trx.sql as SqlDataSource;
     }
     if (dbType === "mysql" || dbType === "mariadb") {
@@ -129,7 +129,7 @@ export default async function dropAllTablesConnector(
     throw error;
   } finally {
     if (shouldExit) {
-      await sql.closeConnection();
+      await sql.disconnect();
     }
   }
 }

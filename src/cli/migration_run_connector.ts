@@ -56,7 +56,7 @@ export default async function runMigrationsConnector(
       const filteredMigrations = pendingMigrations.slice(0, runUntilIndex + 1);
 
       if (shouldUseTransaction) {
-        trx = await sql.startTransaction();
+        trx = await sql.transaction();
         sql = trx.sql as SqlDataSource;
       }
 
@@ -73,7 +73,7 @@ export default async function runMigrationsConnector(
 
     const migrator = new Migrator(sql);
     if (shouldUseTransaction) {
-      trx = await sql.startTransaction();
+      trx = await sql.transaction();
       sql = trx.sql as SqlDataSource;
     }
 

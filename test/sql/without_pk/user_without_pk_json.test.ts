@@ -30,7 +30,7 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
         email: `eq@json.com`,
       });
 
-      const found = await UserWithoutPk.query().whereJson("json", json).first();
+      const found = await UserWithoutPk.query().whereJson("json", json).one();
       expect(found).not.toBeNull();
       expect(found?.json).toEqual(json);
     });
@@ -43,7 +43,7 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
         email: `nested@json.com`,
       });
 
-      const found = await UserWithoutPk.query().whereJson("json", json).first();
+      const found = await UserWithoutPk.query().whereJson("json", json).one();
       expect(found).not.toBeNull();
       expect(found?.json).toEqual(json);
     });
@@ -88,7 +88,7 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
 
       const retrievedUserByNestedProperty = await UserWithoutPk.query()
         .whereJson("json", { a: [{ b: 3 }] })
-        .first();
+        .one();
 
       expect(retrievedUserByNestedProperty).not.toBeNull();
     });
@@ -117,7 +117,7 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
       const andFound = await UserWithoutPk.query()
         .whereJson("json", { logic: "A" })
         .andWhereJson("json", { status: "active" })
-        .first();
+        .one();
 
       expect(andFound).not.toBeNull();
       expect(andFound?.email).toBe(userA.email);
@@ -196,7 +196,7 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
 
       const found = await UserWithoutPk.query()
         .whereJson("json", { tags: ["frontend", "typescript"] })
-        .first();
+        .one();
 
       expect(found).not.toBeNull();
       expect(found?.email).toBe(userWithArray.email);
@@ -220,7 +220,7 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
         .whereJson("json", {
           user: { profile: { settings: { theme: "dark" } } },
         })
-        .first();
+        .one();
 
       expect(found).not.toBeNull();
       expect(found?.email).toBe(userWithNested.email);
@@ -286,10 +286,10 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
 
       const found1 = await UserWithoutPk.query()
         .whereJson("json", { bulk: 1 })
-        .first();
+        .one();
       const found2 = await UserWithoutPk.query()
         .whereJson("json", { bulk: 2 })
-        .first();
+        .one();
 
       expect(found1).not.toBeNull();
       expect(found2).not.toBeNull();
@@ -352,13 +352,13 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
       // whereJsonContains
       const foundA = await UserWithoutPk.query()
         .whereJsonContains("json", { arr: [1, 2, 3] })
-        .first();
+        .one();
       expect(foundA).not.toBeNull();
       expect(foundA?.email).toBe(userA.email);
       // whereJsonNotContains
       const notFoundA = await UserWithoutPk.query()
         .whereJsonNotContains("json", { arr: [1, 2, 3] })
-        .first();
+        .one();
       expect(notFoundA).not.toBeNull();
       expect(notFoundA?.email).not.toBe(userA.email);
     });
@@ -378,7 +378,7 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
       });
       const found = await UserWithoutPk.query()
         .whereNotJson("json", { foo: "bar" })
-        .first();
+        .one();
       expect(found).not.toBeNull();
       expect(found?.json).not.toBeNull();
       expect(found?.json && found?.json.foo).toBe("baz");
@@ -396,7 +396,7 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
       const found = await UserWithoutPk.query()
         .select("json")
         .where("email", "=", user.email)
-        .first();
+        .one();
       expect(found).not.toBeNull();
       expect(found?.json).toEqual(json);
       // Should not have other columns (except maybe id/pk if present)
@@ -413,7 +413,7 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
       const found = await UserWithoutPk.query()
         .select("json", "email")
         .where("email", "=", user.email)
-        .first();
+        .one();
       expect(found).not.toBeNull();
       expect(found?.json).toEqual(json);
       expect(found?.email).toBe(user.email);
@@ -428,7 +428,7 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
       const found = await UserWithoutPk.query()
         .select("json")
         .where("email", "=", user.email)
-        .first();
+        .one();
       expect(found).not.toBeNull();
       expect(found?.json).toBeNull();
     });
