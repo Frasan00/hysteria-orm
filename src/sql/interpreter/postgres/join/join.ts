@@ -33,8 +33,27 @@ class PostgresJoinInterpreter implements Interpreter {
     const rightSql = utils.formatStringColumn("postgres", rightColumnStr);
     const tableSql = utils.formatStringTable("postgres", joinNode.table);
 
-    const sql = `${tableSql} on ${leftSql} ${joinNode.on?.operator} ${rightSql}`;
-    return { sql, bindings: [] };
+    let sql = `${tableSql} on ${leftSql} ${joinNode.on?.operator} ${rightSql}`;
+    let bindings: any[] = [];
+
+    // Process additional conditions if present
+    if (
+      joinNode.additionalConditions &&
+      joinNode.additionalConditions.length > 0
+    ) {
+      const parser = new AstParser(this.model, "postgres");
+      for (const condition of joinNode.additionalConditions) {
+        const result = parser.parse([condition]);
+        if (result.sql) {
+          // Remove 'where ' or 'where' prefix from the SQL since we're in a join clause
+          const conditionSql = result.sql.replace(/^where\s+/i, "");
+          sql += ` and ${conditionSql}`;
+          bindings.push(...result.bindings);
+        }
+      }
+    }
+
+    return { sql, bindings };
   }
 }
 

@@ -1,11 +1,22 @@
 import { HysteriaError } from "../../errors/hysteria_error";
 import { JoinNode } from "../ast/query/node/join";
+import type {
+  WhereGroupNode,
+  WhereNode,
+  WhereSubqueryNode,
+} from "../ast/query/node/where";
 import { BinaryOperatorType } from "../ast/query/node/where";
 import { Model } from "../models/model";
 import { ModelKey } from "../models/model_manager/model_manager_types";
 import { SqlDataSource } from "../sql_data_source";
 import { FooterQueryBuilder } from "./footer_query_builder";
+import { JoinOnQueryBuilder } from "./join_on_query_builder";
 import { JoinableColumn } from "./query_builder_types";
+
+/**
+ * @description Callback type for join conditions
+ */
+export type JoinOnCallback = (query: JoinOnQueryBuilder) => void;
 
 export abstract class JoinQueryBuilder<
   T extends Model,
@@ -145,6 +156,32 @@ export abstract class JoinQueryBuilder<
     primaryColumn?: ModelKey<T>,
     operator?: BinaryOperatorType,
   ): this;
+  innerJoin(
+    relationTable: string,
+    referencingColumn: JoinableColumn,
+    primaryColumn: JoinableColumn,
+    operator: BinaryOperatorType,
+    callback: JoinOnCallback,
+  ): this;
+  innerJoin(
+    relationTable: string,
+    referencingColumn: JoinableColumn,
+    primaryColumn: JoinableColumn,
+    callback: JoinOnCallback,
+  ): this;
+  innerJoin<R extends typeof Model>(
+    relationModel: R,
+    referencingColumn: ModelKey<InstanceType<R>>,
+    primaryColumn: ModelKey<T>,
+    operator: BinaryOperatorType,
+    callback: JoinOnCallback,
+  ): this;
+  innerJoin<R extends typeof Model>(
+    relationModel: R,
+    referencingColumn: ModelKey<InstanceType<R>>,
+    primaryColumn: ModelKey<T>,
+    callback: JoinOnCallback,
+  ): this;
   innerJoin<R extends typeof Model>(
     relationTable: string | R,
     referencingColumnOrPrimaryColumn:
@@ -152,10 +189,15 @@ export abstract class JoinQueryBuilder<
       | ModelKey<InstanceType<R>>
       | ModelKey<T>,
     primaryColumn?: JoinableColumn | ModelKey<T>,
-    operator?: BinaryOperatorType,
+    operatorOrCallback?: BinaryOperatorType | JoinOnCallback,
+    callback?: JoinOnCallback,
   ): this {
     let primaryColumnValue: string | ModelKey<T> | undefined = primaryColumn;
-    const op: BinaryOperatorType | undefined = operator;
+    const op: BinaryOperatorType | undefined =
+      operatorOrCallback as BinaryOperatorType;
+    const cb: JoinOnCallback | undefined = (
+      typeof operatorOrCallback === "function" ? operatorOrCallback : callback
+    ) as JoinOnCallback | undefined;
 
     if (!primaryColumnValue) {
       if (!this.model.primaryKey) {
@@ -173,6 +215,7 @@ export abstract class JoinQueryBuilder<
       referencingColumnOrPrimaryColumn as JoinableColumn,
       primaryColumnValue as JoinableColumn,
       op,
+      cb as any,
     );
 
     return this;
@@ -209,6 +252,32 @@ export abstract class JoinQueryBuilder<
     primaryColumn?: ModelKey<T>,
     operator?: BinaryOperatorType,
   ): this;
+  join(
+    relationTable: string,
+    referencingColumn: JoinableColumn,
+    primaryColumn: JoinableColumn,
+    operator: BinaryOperatorType,
+    callback: JoinOnCallback,
+  ): this;
+  join(
+    relationTable: string,
+    referencingColumn: JoinableColumn,
+    primaryColumn: JoinableColumn,
+    callback: JoinOnCallback,
+  ): this;
+  join<R extends typeof Model>(
+    relationModel: R,
+    referencingColumn: ModelKey<InstanceType<R>>,
+    primaryColumn: ModelKey<T>,
+    operator: BinaryOperatorType,
+    callback: JoinOnCallback,
+  ): this;
+  join<R extends typeof Model>(
+    relationModel: R,
+    referencingColumn: ModelKey<InstanceType<R>>,
+    primaryColumn: ModelKey<T>,
+    callback: JoinOnCallback,
+  ): this;
   join<R extends typeof Model>(
     relationTable: string | R,
     referencingColumnOrPrimaryColumn:
@@ -216,10 +285,20 @@ export abstract class JoinQueryBuilder<
       | ModelKey<InstanceType<R>>
       | ModelKey<T>,
     primaryColumn?: JoinableColumn | ModelKey<T>,
-    operator?: BinaryOperatorType,
+    operatorOrCallback?: BinaryOperatorType | JoinOnCallback,
+    callback?: JoinOnCallback,
   ): this {
     let primaryColumnValue: string | ModelKey<T> | undefined = primaryColumn;
-    const op: BinaryOperatorType | undefined = operator;
+    let op: BinaryOperatorType | undefined = "=";
+    let cb: JoinOnCallback | undefined;
+
+    // Determine if we have a callback
+    if (typeof operatorOrCallback === "function") {
+      cb = operatorOrCallback as JoinOnCallback;
+    } else if (typeof operatorOrCallback === "string") {
+      op = operatorOrCallback as BinaryOperatorType;
+      cb = callback;
+    }
 
     if (!primaryColumnValue) {
       if (!this.model.primaryKey) {
@@ -231,6 +310,17 @@ export abstract class JoinQueryBuilder<
       primaryColumnValue = `${this.model.table}.${this.model.primaryKey}`;
     }
 
+    // Build additional conditions if callback is provided
+    let additionalConditions:
+      | (WhereNode | WhereGroupNode | WhereSubqueryNode)[]
+      | undefined = undefined;
+
+    if (cb) {
+      const joinOnQb = new JoinOnQueryBuilder(this.sqlDataSource);
+      cb(joinOnQb);
+      additionalConditions = joinOnQb.getConditions();
+    }
+
     this.joinNodes.push(
       new JoinNode(
         typeof relationTable === "string" ? relationTable : relationTable.table,
@@ -240,6 +330,8 @@ export abstract class JoinQueryBuilder<
         {
           operator: op || "=",
         },
+        false,
+        additionalConditions,
       ),
     );
     return this;
@@ -276,6 +368,32 @@ export abstract class JoinQueryBuilder<
     primaryColumn?: ModelKey<T>,
     operator?: BinaryOperatorType,
   ): this;
+  leftJoin(
+    relationTable: string,
+    referencingColumn: JoinableColumn,
+    primaryColumn: JoinableColumn,
+    operator: BinaryOperatorType,
+    callback: JoinOnCallback,
+  ): this;
+  leftJoin(
+    relationTable: string,
+    referencingColumn: JoinableColumn,
+    primaryColumn: JoinableColumn,
+    callback: JoinOnCallback,
+  ): this;
+  leftJoin<R extends typeof Model>(
+    relationModel: R,
+    referencingColumn: ModelKey<InstanceType<R>>,
+    primaryColumn: ModelKey<T>,
+    operator: BinaryOperatorType,
+    callback: JoinOnCallback,
+  ): this;
+  leftJoin<R extends typeof Model>(
+    relationModel: R,
+    referencingColumn: ModelKey<InstanceType<R>>,
+    primaryColumn: ModelKey<T>,
+    callback: JoinOnCallback,
+  ): this;
   leftJoin<R extends typeof Model>(
     relationTable: string | R,
     referencingColumnOrPrimaryColumn:
@@ -283,10 +401,20 @@ export abstract class JoinQueryBuilder<
       | ModelKey<InstanceType<R>>
       | ModelKey<T>,
     primaryColumn?: JoinableColumn | ModelKey<T>,
-    operator?: BinaryOperatorType,
+    operatorOrCallback?: BinaryOperatorType | JoinOnCallback,
+    callback?: JoinOnCallback,
   ): this {
     let primaryColumnValue: string | ModelKey<T> | undefined = primaryColumn;
-    const op: BinaryOperatorType | undefined = operator;
+    let op: BinaryOperatorType | undefined = "=";
+    let cb: JoinOnCallback | undefined;
+
+    // Determine if we have a callback
+    if (typeof operatorOrCallback === "function") {
+      cb = operatorOrCallback as JoinOnCallback;
+    } else if (typeof operatorOrCallback === "string") {
+      op = operatorOrCallback as BinaryOperatorType;
+      cb = callback;
+    }
 
     if (!primaryColumnValue) {
       if (!this.model.primaryKey) {
@@ -298,6 +426,17 @@ export abstract class JoinQueryBuilder<
       primaryColumnValue = `${this.model.table}.${this.model.primaryKey}`;
     }
 
+    // Build additional conditions if callback is provided
+    let additionalConditions:
+      | (WhereNode | WhereGroupNode | WhereSubqueryNode)[]
+      | undefined = undefined;
+
+    if (cb) {
+      const joinOnQb = new JoinOnQueryBuilder(this.sqlDataSource);
+      cb(joinOnQb);
+      additionalConditions = joinOnQb.getConditions();
+    }
+
     this.joinNodes.push(
       new JoinNode(
         typeof relationTable === "string" ? relationTable : relationTable.table,
@@ -307,6 +446,8 @@ export abstract class JoinQueryBuilder<
         {
           operator: op || "=",
         },
+        false,
+        additionalConditions,
       ),
     );
     return this;
@@ -339,9 +480,41 @@ export abstract class JoinQueryBuilder<
       | ModelKey<T>,
     primaryColumn?: JoinableColumn | ModelKey<T>,
     operator?: BinaryOperatorType,
+  ): this;
+  rightJoin(
+    relationTable: string,
+    referencingColumnOrPrimaryColumn: JoinableColumn,
+    primaryColumn: JoinableColumn,
+    operator: BinaryOperatorType,
+    callback: JoinOnCallback,
+  ): this;
+  rightJoin(
+    relationTable: string,
+    referencingColumnOrPrimaryColumn: JoinableColumn,
+    primaryColumn: JoinableColumn,
+    callback: JoinOnCallback,
+  ): this;
+  rightJoin<R extends typeof Model>(
+    relationTable: string | R,
+    referencingColumnOrPrimaryColumn:
+      | ModelKey<InstanceType<R>>
+      | JoinableColumn
+      | ModelKey<T>,
+    primaryColumn?: JoinableColumn | ModelKey<T>,
+    operatorOrCallback?: BinaryOperatorType | JoinOnCallback,
+    callback?: JoinOnCallback,
   ): this {
     let primaryColumnValue: string | ModelKey<T> | undefined = primaryColumn;
-    const op: BinaryOperatorType | undefined = operator;
+    let op: BinaryOperatorType | undefined = "=";
+    let cb: JoinOnCallback | undefined;
+
+    // Determine if we have a callback
+    if (typeof operatorOrCallback === "function") {
+      cb = operatorOrCallback as JoinOnCallback;
+    } else if (typeof operatorOrCallback === "string") {
+      op = operatorOrCallback as BinaryOperatorType;
+      cb = callback;
+    }
 
     if (!primaryColumnValue) {
       if (!this.model.primaryKey) {
@@ -353,6 +526,17 @@ export abstract class JoinQueryBuilder<
       primaryColumnValue = `${this.model.table}.${this.model.primaryKey}`;
     }
 
+    // Build additional conditions if callback is provided
+    let additionalConditions:
+      | (WhereNode | WhereGroupNode | WhereSubqueryNode)[]
+      | undefined = undefined;
+
+    if (cb) {
+      const joinOnQb = new JoinOnQueryBuilder(this.sqlDataSource);
+      cb(joinOnQb);
+      additionalConditions = joinOnQb.getConditions();
+    }
+
     this.joinNodes.push(
       new JoinNode(
         typeof relationTable === "string" ? relationTable : relationTable.table,
@@ -362,6 +546,8 @@ export abstract class JoinQueryBuilder<
         {
           operator: op || "=",
         },
+        false,
+        additionalConditions,
       ),
     );
     return this;
@@ -394,9 +580,41 @@ export abstract class JoinQueryBuilder<
       | ModelKey<T>,
     primaryColumn?: JoinableColumn | ModelKey<T>,
     operator?: BinaryOperatorType,
+  ): this;
+  fullJoin(
+    relationTable: string,
+    referencingColumnOrPrimaryColumn: JoinableColumn,
+    primaryColumn: JoinableColumn,
+    operator: BinaryOperatorType,
+    callback: JoinOnCallback,
+  ): this;
+  fullJoin(
+    relationTable: string,
+    referencingColumnOrPrimaryColumn: JoinableColumn,
+    primaryColumn: JoinableColumn,
+    callback: JoinOnCallback,
+  ): this;
+  fullJoin<R extends typeof Model>(
+    relationTable: string | R,
+    referencingColumnOrPrimaryColumn:
+      | ModelKey<InstanceType<R>>
+      | JoinableColumn
+      | ModelKey<T>,
+    primaryColumn?: JoinableColumn | ModelKey<T>,
+    operatorOrCallback?: BinaryOperatorType | JoinOnCallback,
+    callback?: JoinOnCallback,
   ): this {
     let primaryColumnValue: string | ModelKey<T> | undefined = primaryColumn;
-    const op: BinaryOperatorType | undefined = operator;
+    let op: BinaryOperatorType | undefined = "=";
+    let cb: JoinOnCallback | undefined;
+
+    // Determine if we have a callback
+    if (typeof operatorOrCallback === "function") {
+      cb = operatorOrCallback as JoinOnCallback;
+    } else if (typeof operatorOrCallback === "string") {
+      op = operatorOrCallback as BinaryOperatorType;
+      cb = callback;
+    }
 
     if (!primaryColumnValue) {
       if (!this.model.primaryKey) {
@@ -408,6 +626,17 @@ export abstract class JoinQueryBuilder<
       primaryColumnValue = `${this.model.table}.${this.model.primaryKey}`;
     }
 
+    // Build additional conditions if callback is provided
+    let additionalConditions:
+      | (WhereNode | WhereGroupNode | WhereSubqueryNode)[]
+      | undefined = undefined;
+
+    if (cb) {
+      const joinOnQb = new JoinOnQueryBuilder(this.sqlDataSource);
+      cb(joinOnQb);
+      additionalConditions = joinOnQb.getConditions();
+    }
+
     this.joinNodes.push(
       new JoinNode(
         typeof relationTable === "string" ? relationTable : relationTable.table,
@@ -417,6 +646,8 @@ export abstract class JoinQueryBuilder<
         {
           operator: op || "=",
         },
+        false,
+        additionalConditions,
       ),
     );
     return this;

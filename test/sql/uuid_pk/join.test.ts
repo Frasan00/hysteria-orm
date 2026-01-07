@@ -284,4 +284,380 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
     expect(postsWithUsers[1].$annotations.userName).toBeDefined();
     expect(postsWithUsers[2].$annotations.userName).toBeDefined();
   });
+
+  test("uuid pk join with callback additional conditions", async () => {
+    const users = await UserFactory.userWithUuid(3);
+    const posts = [];
+    for (const user of users) {
+      const post = await PostFactory.postWithUuid(user.id, 1);
+      posts.push(post);
+    }
+
+    expect(users).toHaveLength(3);
+    expect(posts).toHaveLength(3);
+
+    // Get the user we want to filter by
+    const targetUser = users[0];
+
+    // Use INNER JOIN to filter results based on join condition
+    const postsWithUsers = await PostWithUuid.query()
+      .select("posts_with_uuid.*")
+      .annotate("users_with_uuid.name", "userName")
+      .join(
+        "users_with_uuid",
+        "users_with_uuid.id",
+        "posts_with_uuid.user_id",
+        (q) => q.where("users_with_uuid.id", targetUser.id),
+      )
+      .whereIn(
+        "posts_with_uuid.id",
+        posts.map((post) => post.id),
+      )
+      .orderBy("posts_with_uuid.id", "asc")
+      .many();
+
+    // Should only get posts for the target user due to INNER JOIN condition
+    expect(postsWithUsers).toHaveLength(1);
+    expect(postsWithUsers[0].$annotations.userName).toBeDefined();
+    expect(postsWithUsers[0].$annotations.userName).toBe(targetUser.name);
+  });
+
+  test("uuid pk join with callback multiple conditions", async () => {
+    const users = await UserFactory.userWithUuid(3);
+    const posts = [];
+    for (const user of users) {
+      const post = await PostFactory.postWithUuid(user.id, 1);
+      posts.push(post);
+    }
+
+    expect(users).toHaveLength(3);
+    expect(posts).toHaveLength(3);
+
+    // Get the users we want to filter by
+    const targetUser1 = users[0];
+    const targetUser2 = users[1];
+
+    // Use INNER JOIN to filter results based on join condition
+    const postsWithUsers = await PostWithUuid.query()
+      .select("posts_with_uuid.*")
+      .annotate("users_with_uuid.name", "userName")
+      .join(
+        "users_with_uuid",
+        "users_with_uuid.id",
+        "posts_with_uuid.user_id",
+        (q) =>
+          q.whereIn("users_with_uuid.id", [targetUser1.id, targetUser2.id]),
+      )
+      .whereIn(
+        "posts_with_uuid.id",
+        posts.map((post) => post.id),
+      )
+      .orderBy("posts_with_uuid.id", "asc")
+      .many();
+
+    // Should only get posts for the target users due to INNER JOIN condition
+    expect(postsWithUsers).toHaveLength(2);
+    expect(postsWithUsers[0].$annotations.userName).toBeDefined();
+    expect(postsWithUsers[1].$annotations.userName).toBeDefined();
+  });
+
+  test("uuid pk innerJoin with all params", async () => {
+    const users = await UserFactory.userWithUuid(3);
+    const posts = [];
+    for (const user of users) {
+      const post = await PostFactory.postWithUuid(user.id, 1);
+      posts.push(post);
+    }
+
+    expect(users).toHaveLength(3);
+    expect(posts).toHaveLength(3);
+
+    const postsWithUsers = await PostWithUuid.query()
+      .select("posts_with_uuid.*")
+      .annotate("users_with_uuid.name", "userName")
+      .innerJoin(
+        "users_with_uuid",
+        "users_with_uuid.id",
+        "posts_with_uuid.user_id",
+        "=",
+      )
+      .whereIn(
+        "posts_with_uuid.id",
+        posts.map((post) => post.id),
+      )
+      .orderBy("posts_with_uuid.id", "asc")
+      .many();
+
+    expect(postsWithUsers).toHaveLength(3);
+    expect(postsWithUsers[0].$annotations.userName).toBeDefined();
+  });
+
+  test("uuid pk innerJoin with optional primaryColumn", async () => {
+    const users = await UserFactory.userWithUuid(3);
+    const posts = [];
+    for (const user of users) {
+      const post = await PostFactory.postWithUuid(user.id, 1);
+      posts.push(post);
+    }
+
+    expect(users).toHaveLength(3);
+    expect(posts).toHaveLength(3);
+
+    const postsWithUsers = await PostWithUuid.query()
+      .select("posts_with_uuid.*")
+      .annotate("users_with_uuid.name", "userName")
+      .innerJoin(
+        "users_with_uuid",
+        "users_with_uuid.id",
+        "posts_with_uuid.user_id",
+      )
+      .whereIn(
+        "posts_with_uuid.id",
+        posts.map((post) => post.id),
+      )
+      .orderBy("posts_with_uuid.id", "asc")
+      .many();
+
+    expect(postsWithUsers).toHaveLength(3);
+    expect(postsWithUsers[0].$annotations.userName).toBeDefined();
+  });
+
+  test("uuid pk innerJoin with default operator", async () => {
+    const users = await UserFactory.userWithUuid(3);
+    const posts = [];
+    for (const user of users) {
+      const post = await PostFactory.postWithUuid(user.id, 1);
+      posts.push(post);
+    }
+
+    expect(users).toHaveLength(3);
+    expect(posts).toHaveLength(3);
+
+    const postsWithUsers = await PostWithUuid.query()
+      .select("posts_with_uuid.*")
+      .annotate("users_with_uuid.name", "userName")
+      .innerJoin(
+        "users_with_uuid",
+        "users_with_uuid.id",
+        "posts_with_uuid.user_id",
+      )
+      .whereIn(
+        "posts_with_uuid.id",
+        posts.map((post) => post.id),
+      )
+      .orderBy("posts_with_uuid.id", "asc")
+      .many();
+
+    expect(postsWithUsers).toHaveLength(3);
+    expect(postsWithUsers[0].$annotations.userName).toBeDefined();
+  });
+
+  test("uuid pk innerJoin with Model and all params", async () => {
+    const users = await UserFactory.userWithUuid(3);
+    const posts = [];
+    for (const user of users) {
+      const post = await PostFactory.postWithUuid(user.id, 1);
+      posts.push(post);
+    }
+
+    expect(users).toHaveLength(3);
+    expect(posts).toHaveLength(3);
+
+    const postsWithUsers = await PostWithUuid.query()
+      .select("posts_with_uuid.*")
+      .annotate("users_with_uuid.name", "userName")
+      .innerJoin(UserWithUuid, "id", "userId", "=")
+      .whereIn(
+        "posts_with_uuid.id",
+        posts.map((post) => post.id),
+      )
+      .orderBy("posts_with_uuid.id", "asc")
+      .many();
+
+    expect(postsWithUsers).toHaveLength(3);
+    expect(postsWithUsers[0].$annotations.userName).toBeDefined();
+  });
+
+  test("uuid pk innerJoin with Model and optional primaryColumn", async () => {
+    const users = await UserFactory.userWithUuid(3);
+    const posts = [];
+    for (const user of users) {
+      const post = await PostFactory.postWithUuid(user.id, 1);
+      posts.push(post);
+    }
+
+    expect(users).toHaveLength(3);
+    expect(posts).toHaveLength(3);
+
+    const postsWithUsers = await PostWithUuid.query()
+      .select("posts_with_uuid.*")
+      .annotate("users_with_uuid.name", "userName")
+      .innerJoin(UserWithUuid, "id", "userId")
+      .whereIn(
+        "posts_with_uuid.id",
+        posts.map((post) => post.id),
+      )
+      .orderBy("posts_with_uuid.id", "asc")
+      .many();
+
+    expect(postsWithUsers).toHaveLength(3);
+    expect(postsWithUsers[0].$annotations.userName).toBeDefined();
+  });
+
+  test("uuid pk innerJoin with Model and default operator", async () => {
+    const users = await UserFactory.userWithUuid(3);
+    const posts = [];
+    for (const user of users) {
+      const post = await PostFactory.postWithUuid(user.id, 1);
+      posts.push(post);
+    }
+
+    expect(users).toHaveLength(3);
+    expect(posts).toHaveLength(3);
+
+    const postsWithUsers = await PostWithUuid.query()
+      .select("posts_with_uuid.*")
+      .annotate("users_with_uuid.name", "userName")
+      .innerJoin(UserWithUuid, "id", "userId")
+      .whereIn(
+        "posts_with_uuid.id",
+        posts.map((post) => post.id),
+      )
+      .orderBy("posts_with_uuid.id", "asc")
+      .many();
+
+    expect(postsWithUsers).toHaveLength(3);
+    expect(postsWithUsers[0].$annotations.userName).toBeDefined();
+  });
+
+  test("uuid pk innerJoin with callback", async () => {
+    const users = await UserFactory.userWithUuid(3);
+    const posts = [];
+    for (const user of users) {
+      const post = await PostFactory.postWithUuid(user.id, 1);
+      posts.push(post);
+    }
+
+    expect(users).toHaveLength(3);
+    expect(posts).toHaveLength(3);
+
+    const targetUser = users[0];
+
+    const postsWithUsers = await PostWithUuid.query()
+      .select("posts_with_uuid.*")
+      .annotate("users_with_uuid.name", "userName")
+      .innerJoin(
+        "users_with_uuid",
+        "users_with_uuid.id",
+        "posts_with_uuid.user_id",
+        (q) => q.where("users_with_uuid.id", targetUser.id),
+      )
+      .whereIn(
+        "posts_with_uuid.id",
+        posts.map((post) => post.id),
+      )
+      .orderBy("posts_with_uuid.id", "asc")
+      .many();
+
+    expect(postsWithUsers).toHaveLength(1);
+    expect(postsWithUsers[0].$annotations.userName).toBeDefined();
+    expect(postsWithUsers[0].$annotations.userName).toBe(targetUser.name);
+  });
+
+  test("uuid pk innerJoin with callback and explicit operator", async () => {
+    const users = await UserFactory.userWithUuid(3);
+    const posts = [];
+    for (const user of users) {
+      const post = await PostFactory.postWithUuid(user.id, 1);
+      posts.push(post);
+    }
+
+    expect(users).toHaveLength(3);
+    expect(posts).toHaveLength(3);
+
+    const targetUser = users[0];
+
+    const postsWithUsers = await PostWithUuid.query()
+      .select("posts_with_uuid.*")
+      .annotate("users_with_uuid.name", "userName")
+      .innerJoin(
+        "users_with_uuid",
+        "users_with_uuid.id",
+        "posts_with_uuid.user_id",
+        "=",
+        (q) => q.where("users_with_uuid.id", targetUser.id),
+      )
+      .whereIn(
+        "posts_with_uuid.id",
+        posts.map((post) => post.id),
+      )
+      .orderBy("posts_with_uuid.id", "asc")
+      .many();
+
+    expect(postsWithUsers).toHaveLength(1);
+    expect(postsWithUsers[0].$annotations.userName).toBeDefined();
+    expect(postsWithUsers[0].$annotations.userName).toBe(targetUser.name);
+  });
+
+  test("uuid pk innerJoin with Model and callback", async () => {
+    const users = await UserFactory.userWithUuid(3);
+    const posts = [];
+    for (const user of users) {
+      const post = await PostFactory.postWithUuid(user.id, 1);
+      posts.push(post);
+    }
+
+    expect(users).toHaveLength(3);
+    expect(posts).toHaveLength(3);
+
+    const targetUser = users[0];
+
+    const postsWithUsers = await PostWithUuid.query()
+      .select("posts_with_uuid.*")
+      .annotate("users_with_uuid.name", "userName")
+      .innerJoin(UserWithUuid, "id", "userId", (q) =>
+        q.where("users_with_uuid.id", targetUser.id),
+      )
+      .whereIn(
+        "posts_with_uuid.id",
+        posts.map((post) => post.id),
+      )
+      .orderBy("posts_with_uuid.id", "asc")
+      .many();
+
+    expect(postsWithUsers).toHaveLength(1);
+    expect(postsWithUsers[0].$annotations.userName).toBeDefined();
+    expect(postsWithUsers[0].$annotations.userName).toBe(targetUser.name);
+  });
+
+  test("uuid pk innerJoin with Model, operator and callback", async () => {
+    const users = await UserFactory.userWithUuid(3);
+    const posts = [];
+    for (const user of users) {
+      const post = await PostFactory.postWithUuid(user.id, 1);
+      posts.push(post);
+    }
+
+    expect(users).toHaveLength(3);
+    expect(posts).toHaveLength(3);
+
+    const targetUser = users[0];
+
+    const postsWithUsers = await PostWithUuid.query()
+      .select("posts_with_uuid.*")
+      .annotate("users_with_uuid.name", "userName")
+      .innerJoin(UserWithUuid, "id", "userId", "=", (q) =>
+        q.where("users_with_uuid.id", targetUser.id),
+      )
+      .whereIn(
+        "posts_with_uuid.id",
+        posts.map((post) => post.id),
+      )
+      .orderBy("posts_with_uuid.id", "asc")
+      .many();
+
+    expect(postsWithUsers).toHaveLength(1);
+    expect(postsWithUsers[0].$annotations.userName).toBeDefined();
+    expect(postsWithUsers[0].$annotations.userName).toBe(targetUser.name);
+  });
 });
