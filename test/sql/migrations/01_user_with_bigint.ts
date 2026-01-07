@@ -30,9 +30,29 @@ export default class extends Migration {
       table.addColumn((col) =>
         col.integer("test").notNullable().default(1).after("id"),
       );
-      table.alterColumn((col) =>
-        col.varchar("test").notNullable().default("test"),
-      );
+    });
+
+    if (this.dbType === "cockroachdb") {
+      this.schema.alterTable("users_with_bigint", (table) => {
+        table.alterColumn((col) => col.varchar("test"));
+      });
+      this.schema.alterTable("users_with_bigint", (table) => {
+        table.alterColumn((col) => col.varchar("test").notNullable());
+      });
+      this.schema.alterTable("users_with_bigint", (table) => {
+        table.alterColumn((col) => col.varchar("test").default("test"));
+      });
+    }
+
+    if (this.dbType !== "cockroachdb") {
+      this.schema.alterTable("users_with_bigint", (table) => {
+        table.alterColumn((col) =>
+          col.varchar("test").notNullable().default("test"),
+        );
+      });
+    }
+
+    this.schema.alterTable("users_with_bigint", (table) => {
       table.renameColumn("test", "test_2");
       table.dropColumn("test_2");
     });

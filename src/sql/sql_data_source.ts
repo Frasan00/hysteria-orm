@@ -1109,6 +1109,45 @@ export class SqlDataSource<
   }
 
   /**
+   * @description Extracts rows from raw query result based on database type
+   * MySQL/MariaDB returns [rows, fields], Postgres returns {rows: []}, others return rows directly
+   */
+  private extractRowsFromRawResult(rawResult: any): any[] {
+    const db = this.getDbType();
+
+    if (db === "mysql" || db === "mariadb") {
+      // MySQL2 returns [rows, fields]
+      if (Array.isArray(rawResult) && rawResult.length >= 1) {
+        const firstElement = rawResult[0];
+        // If first element is an array, that's the rows array
+        if (Array.isArray(firstElement)) {
+          return firstElement;
+        }
+        // If first element is an object with ResultSetHeader shape (insertId, affectedRows), return empty
+        if (
+          typeof firstElement === "object" &&
+          firstElement !== null &&
+          ("insertId" in firstElement || "affectedRows" in firstElement)
+        ) {
+          return [];
+        }
+      }
+      return rawResult;
+    }
+
+    if (db === "postgres" || db === "cockroachdb") {
+      // pg returns { rows: [], ... }
+      if (rawResult && typeof rawResult === "object" && "rows" in rawResult) {
+        return rawResult.rows || [];
+      }
+      return rawResult;
+    }
+
+    // SQLite, MSSQL, OracleDB - return as-is (usually array of rows)
+    return Array.isArray(rawResult) ? rawResult : [];
+  }
+
+  /**
    * @description Executes a raw query on the database and returns the raw driver result
    */
   async rawQuery<R = RawQueryResponseType<D>>(
@@ -1264,7 +1303,8 @@ export class SqlDataSource<
     const sql = ast.parse([new TableInfoNode(table)]).sql;
     let rows: any[] = [];
     try {
-      rows = await this.rawQuery(sql);
+      const rawResult = await this.rawQuery(sql);
+      rows = this.extractRowsFromRawResult(rawResult);
     } catch (err: any) {
       if (isTableMissingError(this.getDbType(), err)) {
         return [];
@@ -1324,13 +1364,11 @@ export class SqlDataSource<
       const withTimezone =
         r.timezone != null
           ? Boolean(r.timezone)
-          : typeof r.datetime_precision === "number"
-            ? /with time zone/.test(
-                String(r.column_type || r.udt_name || "").toLowerCase(),
-              )
-            : /with time zone/.test(
-                String(r.column_type || r.udt_name || "").toLowerCase(),
-              );
+          : /with time zone/.test(
+              String(
+                r.column_type || r.udt_name || rawType || "",
+              ).toLowerCase(),
+            );
       return {
         name,
         dataType,
@@ -1361,7 +1399,8 @@ export class SqlDataSource<
     const db = this.getDbType();
     let rows: any[] = [];
     try {
-      rows = await this.rawQuery(sql);
+      const rawResult = await this.rawQuery(sql);
+      rows = this.extractRowsFromRawResult(rawResult);
     } catch (err: any) {
       if (isTableMissingError(this.getDbType(), err)) {
         return [];
@@ -1411,7 +1450,8 @@ export class SqlDataSource<
     for (const r of rows) {
       const name = r.name;
       const isUnique = !!r.unique;
-      const colsRows: any[] = await this.rawQuery(`PRAGMA index_info(${name})`);
+      const colsRawResult = await this.rawQuery(`PRAGMA index_info(${name})`);
+      const colsRows: any[] = this.extractRowsFromRawResult(colsRawResult);
       const columns = colsRows.map((cr) => cr.name);
       result.push({ name, columns, isUnique });
     }
@@ -1434,7 +1474,8 @@ export class SqlDataSource<
     const sql = ast.parse([new ForeignKeyInfoNode(table)]).sql;
     let rows: any[] = [];
     try {
-      rows = await this.rawQuery(sql);
+      const rawResult = await this.rawQuery(sql);
+      rows = this.extractRowsFromRawResult(rawResult);
     } catch (err: any) {
       if (isTableMissingError(this.getDbType(), err)) {
         return [];
@@ -1502,7 +1543,8 @@ export class SqlDataSource<
     const sql = ast.parse([new PrimaryKeyInfoNode(table)]).sql;
     let rows: any[] = [];
     try {
-      rows = await this.rawQuery(sql);
+      const rawResult = await this.rawQuery(sql);
+      rows = this.extractRowsFromRawResult(rawResult);
     } catch (err: any) {
       if (isTableMissingError(this.getDbType(), err)) {
         return undefined;

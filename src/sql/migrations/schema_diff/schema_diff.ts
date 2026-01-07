@@ -28,7 +28,7 @@ export class SchemaDiff {
   private sql: SqlDataSource;
   private models: (typeof Model)[];
   private data: GenerateTableDiffReturnType;
-  private readonly emptyStatements = [/alter table ".*"$/];
+  private readonly emptyStatements = [/^alter table [`'"]?[\w]+[`'"]?\s*$/i];
 
   private constructor(sql: SqlDataSource) {
     this.sql = sql;
@@ -179,9 +179,13 @@ export class SchemaDiff {
           }
         }
 
-        // Indexes to drop (ignore unique indexes managed by constraints)
+        const fkConstraintNames = databaseData.foreignKeys.map((fk) => fk.name);
         for (const index of databaseData.indexes) {
           if (index.isUnique) {
+            continue;
+          }
+
+          if (fkConstraintNames.includes(index.name)) {
             continue;
           }
 
@@ -198,9 +202,12 @@ export class SchemaDiff {
           });
         }
 
-        // Unique constraints to drop (not present in model uniques but unique in DB)
         for (const dbIndex of databaseData.indexes) {
           if (!dbIndex.isUnique) {
+            continue;
+          }
+
+          if (dbIndex.name === "PRIMARY") {
             continue;
           }
           const existsInModel = ((model as typeof Model).getUniques?.() || [])
@@ -439,7 +446,16 @@ export class SchemaDiff {
 
   getSqlStatements(): string[] {
     const operations = this.getSqlStatementsByPhase();
-    return Object.values(operations).flat();
+    const statements = Object.values(operations).flat();
+
+    // Filter out empty statements (e.g., "ALTER TABLE `table`" with no operations)
+    return statements.filter((stmt) => {
+      const trimmed = stmt.trim();
+      if (!trimmed) {
+        return false;
+      }
+      return !this.emptyStatements.some((pattern) => pattern.test(trimmed));
+    });
   }
 
   /**
@@ -519,7 +535,12 @@ export class SchemaDiff {
       const isTimestampLike =
         normalizedModelType === "timestamp" || normalizedModelType === "time";
       if (isTimestampLike) {
+        // MySQL and MariaDB don't support timezone on timestamp/time columns,
+        // so skip the withTimezone check for these dialects
+        const supportsTimezone =
+          dialect === "postgres" || dialect === "cockroachdb";
         if (
+          supportsTimezone &&
           modelColumn.withTimezone !== undefined &&
           dbColumn.withTimezone !== undefined
         ) {
@@ -671,6 +692,14 @@ export class SchemaDiff {
     const columnsMatch =
       dbPrimaryKeyColumn === modelPrimaryKeyColumn.databaseName;
 
+    const dialect = this.sql.getDbType();
+    const mysqlDialects = ["mysql", "mariadb"];
+
+    if (mysqlDialects.includes(dialect)) {
+      // MySQL always uses "PRIMARY" as the constraint name, so only check columns
+      return columnsMatch;
+    }
+
     const constraintNamesMatch =
       !dbPrimaryKey.name ||
       !modelPrimaryKeyColumn.primaryKeyConstraintName ||
@@ -716,7 +745,13 @@ export class SchemaDiff {
     ) {
       return false;
     }
+    // MySQL and MariaDB don't support timezone on timestamp/time columns,
+    // so skip the withTimezone check for these dialects
+    const supportsTimezone =
+      this.sql.getDbType() === "postgres" ||
+      this.sql.getDbType() === "cockroachdb";
     if (
+      supportsTimezone &&
       typeof columnData.modelColumn.type === "string" &&
       (normalizedModelType === "timestamp" || normalizedModelType === "time") &&
       columnData.modelColumn.withTimezone !== undefined &&
@@ -731,10 +766,22 @@ export class SchemaDiff {
     const dbHasDefault =
       columnData.dbColumns.defaultValue !== null &&
       columnData.dbColumns.defaultValue !== undefined;
+
+    const isAutoIncrementColumn =
+      columnData.modelColumn.type === "bigIncrement" ||
+      columnData.modelColumn.type === "increment";
+    const isSequenceDefault =
+      typeof columnData.dbColumns.defaultValue === "string" &&
+      columnData.dbColumns.defaultValue.includes("nextval(");
+
     if (modelHasDefault && !dbHasDefault) {
       return "set";
     }
     if (!modelHasDefault && dbHasDefault) {
+      // Skip for auto-increment columns with sequence defaults
+      if (isAutoIncrementColumn && isSequenceDefault) {
+        return false;
+      }
       return "drop";
     }
     if (modelHasDefault && dbHasDefault) {
@@ -1192,11 +1239,18 @@ export class SchemaDiff {
   }
 
   private clonePkAsColumn(pk: ColumnType, columnName: string): ColumnType {
+    let columnType = pk.type;
+    if (columnType === "bigIncrement") {
+      columnType = "bigint";
+    } else if (columnType === "increment") {
+      columnType = "integer";
+    }
+
     return {
       columnName,
       databaseName: columnName,
       isPrimary: false,
-      type: pk.type,
+      type: columnType,
       length: pk.length,
       precision: pk.precision,
       scale: pk.scale,

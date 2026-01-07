@@ -157,13 +157,37 @@ export class AlterTableBuilder extends BaseBuilder {
       return constraintNode.constraintType === "default";
     }) as ConstraintNode | undefined;
 
-    // Always push type change node
+    // Build options for AlterColumnTypeNode - include nullable for MySQL MODIFY COLUMN
+    const alterColumnOptions: Record<string, any> = {};
+    if (nullableNode) {
+      alterColumnOptions.nullable = nullableNode.constraintType === "null";
+    }
+    if (hasDefault) {
+      if (
+        hasDefault.defaultValue === undefined ||
+        hasDefault.defaultValue === null
+      ) {
+        alterColumnOptions.dropDefault = true;
+      } else {
+        alterColumnOptions.default = hasDefault.defaultValue;
+      }
+    }
+
+    // Always push type change node with options
     this.nodes.push(
-      new AlterColumnTypeNode(getColumnValue(columnName), colNode, {}),
+      new AlterColumnTypeNode(
+        getColumnValue(columnName),
+        colNode,
+        alterColumnOptions,
+      ),
     );
 
-    // Nullability
-    if (nullableNode) {
+    // Nullability - for databases that support separate SET/DROP NOT NULL (Postgres)
+    if (
+      nullableNode &&
+      this.sqlType !== "mysql" &&
+      this.sqlType !== "mariadb"
+    ) {
       if (nullableNode.constraintType === "not_null") {
         this.nodes.push(new SetNotNullNode(getColumnValue(columnName)));
       } else if (nullableNode.constraintType === "null") {
@@ -171,8 +195,9 @@ export class AlterTableBuilder extends BaseBuilder {
       }
     }
 
-    // Default
-    if (hasDefault) {
+    // Default - for databases that support separate SET/ALTER DEFAULT (Postgres)
+    // MySQL handles defaults in the MODIFY COLUMN statement
+    if (hasDefault && this.sqlType !== "mysql" && this.sqlType !== "mariadb") {
       if (
         hasDefault.defaultValue === undefined ||
         hasDefault.defaultValue === null

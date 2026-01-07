@@ -10,7 +10,7 @@ export class UserMixin extends Model {
     type: "integer",
     openApi: { type: "number", required: true },
   })
-  declare id: BigInt;
+  declare id: number;
 
   @column({
     type: "varchar",

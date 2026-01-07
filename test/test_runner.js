@@ -60,6 +60,9 @@ const SQL_TESTS = [
   "./test/sql/uuid_pk/relations.test.ts",
   "./test/sql/uuid_pk/crud.test.ts",
   "./test/sql/uuid_pk/join.test.ts",
+
+  // schema diff (migration generation)
+  "./test/sql/schema_diff/schema_diff.test.ts",
 ];
 
 const NON_SQL_TESTS = [
