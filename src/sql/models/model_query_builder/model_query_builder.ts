@@ -1635,7 +1635,6 @@ export class ModelQueryBuilder<
           convertCase(relatedPrimaryKey, this.model.modelCaseConvention);
 
         relatedModels.forEach((relatedModel) => {
-          // The foreign key is now a direct property on the model (not in $annotations)
           const foreignKeyValue = (relatedModel as any)[casedRelatedPrimaryKey];
           if (foreignKeyValue === undefined || foreignKeyValue === null) {
             return;

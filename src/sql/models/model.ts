@@ -313,7 +313,6 @@ export abstract class Model extends Entity {
 
   /**
    * @description Saves a new record to the database
-   * @description $annotations will be ignored if set in the modelData and won't be returned in the response
    * @warning If not using postgres and the model has no primary key, the model will be saved, but it won't be possible to retrieve it so at that point it will be returned as null, this is not typed as Model | null for type safety reasons
    * @mysql If no Primary Key is present in the model definition, the model will be returned
    * @sqlite If no Primary Key is present in the model definition, the model will be returned
@@ -334,7 +333,6 @@ export abstract class Model extends Entity {
 
   /**
    * @description Saves multiple records to the database
-   * @description $annotations will be ignored if set in the modelData and won't be returned in the response
    * @warning If not using postgres and the model has no primary key, the models will be saved, but it won't be possible to retrieve them so at that point they will be returned as an empty array
    * @mysql If no Primary Key is present in the model definition, the model will be returned
    * @sqlite If no Primary Key is present in the model definition, the model will be returned

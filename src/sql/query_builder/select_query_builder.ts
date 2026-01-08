@@ -187,12 +187,10 @@ export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
    * @param path The JSON path to extract (standardized format: "$.user.name", "user.name", or ["user", "name"])
    * @param alias The alias for the selected value
    * @description Path format is standardized across all databases - ORM converts to DB-specific syntax
-   * @description Result will be available in model.$annotations[alias]
    * @example
    * ```ts
    * // All databases accept the same path format:
    * const user = await User.query().selectJson("data", "$.user.name", "userName").one();
-   * console.log(user?.$annotations?.userName); // Typed!
    *
    * await User.query().selectJson("data", "user.name", "userName").one(); // $ is optional
    * await User.query().selectJson("data", ["user", "name"], "userName").one();
@@ -229,12 +227,10 @@ export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
    * @param path The JSON path to extract (standardized format)
    * @param alias The alias for the selected value
    * @description Path format is standardized across all databases - ORM converts to DB-specific syntax
-   * @description Result will be available in model.$annotations[alias]
    * @example
    * ```ts
    * // All databases accept the same path format:
    * const user = await User.query().selectJsonText("data", "$.user.name", "userName").one();
-   * console.log(user?.$annotations?.userName); // Typed!
    *
    * await User.query().selectJsonText("data", ["user", "name"], "userName").one();
    * ```
@@ -266,12 +262,10 @@ export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
    * @param path The JSON path to the array (standardized format, use "$" or "" for root)
    * @param alias The alias for the length value
    * @description Path format is standardized across all databases - ORM converts to DB-specific syntax
-   * @description Result will be available in model.$annotations[alias]
    * @example
    * ```ts
    * // All databases accept the same path format:
    * const user = await User.query().selectJsonArrayLength("data", "$.items", "itemCount").one();
-   * console.log(user?.$annotations?.itemCount); // Typed!
    *
    * await User.query().selectJsonArrayLength("data", "items", "itemCount").one();
    * await User.query().selectJsonArrayLength("data", "$", "totalCount").one(); // root array
@@ -304,14 +298,12 @@ export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
    * @param path The JSON path to the object (standardized format, use "$" or "" for root)
    * @param alias The alias for the keys
    * @description Path format is standardized across all databases - ORM converts to DB-specific syntax
-   * @description Result will be available in model.$annotations[alias]
    * @postgres Returns an array of keys
    * @mysql Returns a JSON array of keys
    * @example
    * ```ts
    * // All databases accept the same path format:
    * const user = await User.query().selectJsonKeys("data", "$.user", "userKeys").one();
-   * console.log(user?.$annotations?.userKeys); // Typed!
    *
    * await User.query().selectJsonKeys("data", "user", "userKeys").one();
    * await User.query().selectJsonKeys("data", "$", "rootKeys").one(); // root object
@@ -342,11 +334,9 @@ export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
    * @description Adds a raw JSON select expression
    * @param raw The raw SQL expression
    * @param alias The alias for the selected value
-   * @description Result will be available in model.$annotations[alias]
    * @example
    * ```ts
    * const user = await User.query().selectJsonRaw("data->>'email'", "userEmail").one();
-   * console.log(user?.$annotations?.userEmail); // Typed!
    * ```
    */
   selectJsonRaw<A extends string>(raw: string, alias: A): this {
@@ -361,10 +351,8 @@ export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
    * @example
    * ```ts
    * const result = await User.query().selectCount("id", "totalUsers").one();
-   * console.log(result?.totalUsers); // number
    *
    * const result = await User.query().selectCount("*", "total").one();
-   * console.log(result?.total); // number
    * ```
    */
   selectCount<A extends string>(column: ModelKey<T> | "*", alias: A): this;

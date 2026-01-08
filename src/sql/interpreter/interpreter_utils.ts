@@ -126,7 +126,7 @@ export class InterpreterUtils {
       const column = columns[i];
       const value = values[i];
 
-      if (column === "*" || column === "$annotations") {
+      if (column === "*") {
         continue;
       }
 
