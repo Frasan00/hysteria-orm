@@ -2,8 +2,11 @@ import { PassThrough } from "node:stream";
 import { DriverNotFoundError } from "../../drivers/driver_constants";
 import { HysteriaError } from "../../errors/hysteria_error";
 import { log, logMessage } from "../../utils/logger";
+import {
+  convertDateStringToDateForOracle,
+  processOracleRow,
+} from "../../utils/oracle_utils";
 import { Model } from "../models/model";
-import { AnnotatedModel } from "../models/model_query_builder/model_query_builder_types";
 import { StreamOptions } from "../query_builder/query_builder_types";
 import { SqlDataSource } from "../sql_data_source";
 import {
@@ -20,10 +23,6 @@ import {
   SqlRunnerReturnType,
 } from "./sql_runner_types";
 import { promisifySqliteQuery, SQLiteStream } from "./sql_runner_utils";
-import {
-  convertDateStringToDateForOracle,
-  processOracleRow,
-} from "../../utils/oracle_utils";
 
 export const execSql = async <
   S extends SqlDataSource,
@@ -205,7 +204,7 @@ export const execSql = async <
 export const execSqlStreaming = async <
   M extends Model,
   T extends "generator" | "stream" = "generator",
-  A extends Record<string, any> = {},
+  S extends Record<string, any> = {},
   R extends Record<string, any> = {},
 >(
   query: string,
@@ -214,11 +213,11 @@ export const execSqlStreaming = async <
   options: StreamOptions = {},
   events: {
     onData?: (
-      passThrough: PassThrough & AsyncGenerator<AnnotatedModel<M, A, R>>,
+      passThrough: PassThrough & AsyncGenerator<M & S & R>,
       row: any,
     ) => void | Promise<void>;
   },
-): Promise<PassThrough & AsyncGenerator<AnnotatedModel<M, A, R>>> => {
+): Promise<PassThrough & AsyncGenerator<M & S & R>> => {
   const sqlType = sqlDataSource.type as SqlDataSourceType;
 
   switch (sqlType) {
@@ -231,7 +230,7 @@ export const execSqlStreaming = async <
       const passThrough = new PassThrough({
         objectMode: options.objectMode ?? true,
         highWaterMark: options.highWaterMark,
-      }) as PassThrough & AsyncGenerator<AnnotatedModel<M, A, R>>;
+      }) as PassThrough & AsyncGenerator<M & S & R>;
 
       const rawConn = conn.connection as any;
       const mysqlStream = rawConn.query(query, params).stream({
@@ -306,7 +305,7 @@ export const execSqlStreaming = async <
       const passThrough = new PassThrough({
         objectMode: options.objectMode || true,
         highWaterMark: options.highWaterMark,
-      }) as PassThrough & AsyncGenerator<AnnotatedModel<M, A, R>>;
+      }) as PassThrough & AsyncGenerator<M & S & R>;
 
       const streamQuery = new pgQueryStreamDriver.default(query, params, {
         highWaterMark: options.highWaterMark,
@@ -377,8 +376,7 @@ export const execSqlStreaming = async <
         ) => void | Promise<void>,
       });
 
-      return stream as unknown as PassThrough &
-        AsyncGenerator<AnnotatedModel<M, A, R>>;
+      return stream as unknown as PassThrough & AsyncGenerator<M & S & R>;
     }
 
     case "mssql": {
@@ -388,7 +386,7 @@ export const execSqlStreaming = async <
       const passThrough = new PassThrough({
         objectMode: options.objectMode ?? true,
         highWaterMark: options.highWaterMark,
-      }) as PassThrough & AsyncGenerator<AnnotatedModel<M, A, R>>;
+      }) as PassThrough & AsyncGenerator<M & S & R>;
 
       const mssqlRequest = mssqlDriver.request();
       mssqlRequest.stream = true;
@@ -456,7 +454,7 @@ export const execSqlStreaming = async <
       const passThrough = new PassThrough({
         objectMode: options.objectMode ?? true,
         highWaterMark: options.highWaterMark,
-      }) as PassThrough & AsyncGenerator<AnnotatedModel<M, A, R>>;
+      }) as PassThrough & AsyncGenerator<M & S & R>;
 
       const ORACLE_STREAM_OUT_FORMAT_OBJECT = 4002 as const;
 

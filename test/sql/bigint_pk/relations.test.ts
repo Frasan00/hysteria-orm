@@ -79,7 +79,8 @@ describe(`[${env.DB_TYPE}] bigint pk base relations`, () => {
       expect(user.post?.title).toBe(
         userWithLoadedPosts.find((u) => u.id === user.id)?.post?.title,
       );
-      expect(user.post?.id).toBeUndefined();
+      // Non-selected columns should not exist at runtime
+      expect(Object.prototype.hasOwnProperty.call(user.post, "id")).toBe(false);
     }
   });
 

@@ -48,7 +48,6 @@ import {
   LazyRelationType,
   UniqueType,
 } from "./decorators/model_decorators_types";
-import { AnnotatedModel } from "./model_query_builder/model_query_builder_types";
 import { getBaseTableName } from "./model_utils";
 import { ManyToMany } from "./relations/many_to_many";
 import { RelationEnum } from "./relations/relation";
@@ -116,12 +115,12 @@ export abstract class Model extends Entity {
   static async all<T extends Model>(
     this: new () => T | typeof Model,
     options: BaseModelMethodOptions = {},
-  ): Promise<AnnotatedModel<T, {}>[]> {
+  ): Promise<ModelWithoutRelations<T>[]> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
     return (await modelManager.find({
       ignoreHooks: options.ignoreHooks ? ["afterFetch", "beforeFetch"] : [],
-    })) as AnnotatedModel<T, {}>[];
+    })) as ModelWithoutRelations<T>[];
   }
 
   /**
@@ -156,7 +155,7 @@ export abstract class Model extends Entity {
   static async first<T extends Model>(
     this: new () => T | typeof Model,
     options?: BaseModelMethodOptions,
-  ): Promise<AnnotatedModel<T, {}> | null> {
+  ): Promise<ModelWithoutRelations<T> | null> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
     return modelManager.query().one({
@@ -297,7 +296,7 @@ export abstract class Model extends Entity {
     this: new () => T | typeof Model,
     model: T,
     options: Omit<BaseModelMethodOptions, "ignoreHooks"> = {},
-  ): Promise<AnnotatedModel<T, {}> | null> {
+  ): Promise<ModelWithoutRelations<T> | null> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
     const primaryKey = typeofModel.primaryKey as keyof T;
@@ -324,7 +323,7 @@ export abstract class Model extends Entity {
     this: new () => T | typeof Model,
     modelData: Partial<ModelWithoutRelations<T>>,
     options: BaseModelMethodOptions & InsertOptions<T> = {},
-  ): Promise<AnnotatedModel<T, {}>> {
+  ): Promise<ModelWithoutRelations<T>> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
     return modelManager.insert(modelData as T, {
@@ -346,7 +345,7 @@ export abstract class Model extends Entity {
     this: new () => T | typeof Model,
     modelsData: Partial<ModelWithoutRelations<T>>[],
     options: BaseModelMethodOptions & InsertOptions<T> = {},
-  ): Promise<AnnotatedModel<T, {}>[]> {
+  ): Promise<ModelWithoutRelations<T>[]> {
     if (!modelsData.length) {
       return [];
     }
@@ -455,7 +454,7 @@ export abstract class Model extends Entity {
     modelSqlInstance: Partial<T>,
     updatePayload?: Partial<ModelWithoutRelations<T>>,
     options: Omit<BaseModelMethodOptions, "ignoreHooks"> = {},
-  ): Promise<AnnotatedModel<T, {}>> {
+  ): Promise<ModelWithoutRelations<T>> {
     try {
       const typeofModel = this as unknown as typeof Model;
       const modelManager = typeofModel.dispatchModelManager<T>(options);
@@ -538,7 +537,7 @@ export abstract class Model extends Entity {
     options: UpsertOptions<T> & BaseModelMethodOptions = {
       updateOnConflict: true,
     },
-  ): Promise<AnnotatedModel<T, {}>> {
+  ): Promise<ModelWithoutRelations<T>> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
     const hasSearchCriteria = Object.keys(searchCriteria).length > 0;
@@ -582,7 +581,7 @@ export abstract class Model extends Entity {
     options: UpsertOptions<T> & BaseModelMethodOptions = {
       updateOnConflict: true,
     },
-  ): Promise<AnnotatedModel<T, {}>[]> {
+  ): Promise<ModelWithoutRelations<T>[]> {
     if (!data.length) {
       return [];
     }
@@ -620,7 +619,7 @@ export abstract class Model extends Entity {
         upsertResult as T[],
         typeofModel,
         options.returning as string[],
-      )) as unknown as AnnotatedModel<T, {}>[];
+      )) as unknown as ModelWithoutRelations<T>[];
     }
 
     const lookupQuery = modelManager.query();
@@ -676,7 +675,7 @@ export abstract class Model extends Entity {
       value?: string | number | boolean | Date;
     },
     options?: Omit<BaseModelMethodOptions, "ignoreHooks">,
-  ): Promise<AnnotatedModel<T, {}>> {
+  ): Promise<ModelWithoutRelations<T>> {
     const typeofModel = this as unknown as typeof Model;
     const {
       column = typeofModel.softDeleteColumn as ModelKey<T>,
@@ -692,11 +691,11 @@ export abstract class Model extends Entity {
 
     if (typeof value === "string") {
       modelSqlInstance[column as keyof T] = new Date(value) as T[keyof T];
-      return modelSqlInstance as AnnotatedModel<T, {}>;
+      return modelSqlInstance as ModelWithoutRelations<T>;
     }
 
     modelSqlInstance[column as keyof T] = value as T[keyof T];
-    return modelSqlInstance as AnnotatedModel<T, {}>;
+    return modelSqlInstance as ModelWithoutRelations<T>;
   }
 
   /**
@@ -1289,57 +1288,5 @@ export abstract class Model extends Entity {
     const refreshed = await typeofModel.refresh(this as unknown as T, options);
     typeofModel.combineProps(this as unknown as T, refreshed as unknown as T);
     return this as unknown as T;
-  }
-
-  /**
-   * @description Converts the model to a JSON object
-   * @description Flattens all `$annotations` into the JSON object at first level including the relations
-   * @warning Use with caution, this method flattens the `$annotations` into the JSON object at first level including the relations, so if you have conflicting column names between model columns and annotations, the annotation could override the model column value
-   */
-  toJSON(): Record<string, any> {
-    const result: Record<string, any> = {};
-
-    // Copy all own properties (model columns and relations)
-    for (const key in this) {
-      if (Object.prototype.hasOwnProperty.call(this, key)) {
-        const value = this[key];
-
-        // Skip $annotations as we'll flatten it
-        if (key === "$annotations") {
-          continue;
-        }
-
-        // Handle relations - recursively call toJSON if they have the method
-        if (value && typeof value === "object") {
-          if (Array.isArray(value)) {
-            // Handle arrays of models (hasMany, manyToMany relations)
-            result[key] = value.map((item) =>
-              item && typeof item === "object" && "toJSON" in item
-                ? item.toJSON()
-                : item,
-            );
-          } else if ("toJSON" in value && typeof value.toJSON === "function") {
-            // Handle single model relations (hasOne, belongsTo)
-            result[key] = value.toJSON();
-          } else {
-            result[key] = value;
-          }
-        } else {
-          result[key] = value;
-        }
-      }
-    }
-
-    // Flatten $annotations to top level
-    const annotations = (this as any).$annotations;
-    if (annotations && typeof annotations === "object") {
-      for (const key in annotations) {
-        if (Object.prototype.hasOwnProperty.call(annotations, key)) {
-          result[key] = annotations[key];
-        }
-      }
-    }
-
-    return result;
   }
 }

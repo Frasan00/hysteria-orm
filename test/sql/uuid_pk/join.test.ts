@@ -36,7 +36,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
 
     const postsWithUsers = await PostWithUuid.query()
       .select("posts_with_uuid.*")
-      .annotate("users_with_uuid.name", "userName")
+      .select("users_with_uuid.name as userName")
       .leftJoin(
         "users_with_uuid",
         "users_with_uuid.id",
@@ -50,9 +50,9 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
       .many();
 
     expect(postsWithUsers).toHaveLength(3);
-    expect(postsWithUsers[0].$annotations.userName).toBeDefined();
-    expect(postsWithUsers[1].$annotations.userName).toBeDefined();
-    expect(postsWithUsers[2].$annotations.userName).toBeDefined();
+    expect(postsWithUsers[0].userName).toBeDefined();
+    expect(postsWithUsers[1].userName).toBeDefined();
+    expect(postsWithUsers[2].userName).toBeDefined();
 
     const columns = PostWithUuid.getColumns();
     expect(Object.keys(postsWithUsers[0]).length - 1).toEqual(columns.length); // ignore additional
@@ -71,7 +71,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
 
     const postsWithUsers = await PostWithUuid.query()
       .select("posts_with_uuid.*")
-      .annotate("users_with_uuid.name", "userName")
+      .select("users_with_uuid.name as userName")
       .leftJoin(
         "users_with_uuid",
         "users_with_uuid.id",
@@ -85,7 +85,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
       .many();
 
     expect(postsWithUsers).toHaveLength(3);
-    expect(postsWithUsers[0].$annotations.userName).toBeDefined();
+    expect(postsWithUsers[0].userName).toBeDefined();
   });
 
   test("uuid pk simple right join", async () => {
@@ -101,7 +101,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
 
     const postsWithUsers = await PostWithUuid.query()
       .select("posts_with_uuid.*")
-      .annotate("users_with_uuid.name", "userName")
+      .select("users_with_uuid.name as userName")
       .rightJoin(
         "users_with_uuid",
         "users_with_uuid.id",
@@ -115,7 +115,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
       .many();
 
     expect(postsWithUsers).toHaveLength(3);
-    expect(postsWithUsers[0].$annotations.userName).toBeDefined();
+    expect(postsWithUsers[0].userName).toBeDefined();
   });
 
   test("uuid pk simple Model join", async () => {
@@ -131,7 +131,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
 
     const postsWithUsers = await PostWithUuid.query()
       .select("posts_with_uuid.*")
-      .annotate("users_with_uuid.name", "userName")
+      .select("users_with_uuid.name as userName")
       .join(UserWithUuid, "id", "userId")
       .whereIn(
         "posts_with_uuid.id",
@@ -141,7 +141,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
       .many();
 
     expect(postsWithUsers).toHaveLength(3);
-    expect(postsWithUsers[0].$annotations.userName).toBeDefined();
+    expect(postsWithUsers[0].userName).toBeDefined();
   });
 
   test("uuid pk simple Model left join", async () => {
@@ -157,7 +157,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
 
     const postsWithUsers = await PostWithUuid.query()
       .select("posts_with_uuid.*")
-      .annotate("users_with_uuid.name", "userName")
+      .select("users_with_uuid.name as userName")
       .leftJoin(UserWithUuid, "id", "userId")
       .whereIn(
         "posts_with_uuid.id",
@@ -167,7 +167,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
       .many();
 
     expect(postsWithUsers).toHaveLength(3);
-    expect(postsWithUsers[0].$annotations.userName).toBeDefined();
+    expect(postsWithUsers[0].userName).toBeDefined();
   });
 
   test("uuid pk join with a custom operator", async () => {
@@ -183,7 +183,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
 
     const postsWithUsers = await PostWithUuid.query()
       .select("posts_with_uuid.*")
-      .annotate("users_with_uuid.name", "userName")
+      .select("users_with_uuid.name as userName")
       .join(UserWithUuid, "id", "userId", ">")
       .whereIn(
         "posts_with_uuid.id",
@@ -208,7 +208,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
 
     const postsWithUsers = await PostWithUuid.query()
       .select("posts_with_uuid.*")
-      .annotate("users_with_uuid.name", "userName")
+      .select("users_with_uuid.name as userName")
       .joinRaw(
         "users_with_uuid ON users_with_uuid.id = posts_with_uuid.user_id",
       )
@@ -220,9 +220,9 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
       .many();
 
     expect(postsWithUsers).toHaveLength(3);
-    expect(postsWithUsers[0].$annotations.userName).toBeDefined();
-    expect(postsWithUsers[1].$annotations.userName).toBeDefined();
-    expect(postsWithUsers[2].$annotations.userName).toBeDefined();
+    expect(postsWithUsers[0].userName).toBeDefined();
+    expect(postsWithUsers[1].userName).toBeDefined();
+    expect(postsWithUsers[2].userName).toBeDefined();
   });
 
   test("uuid pk simple raw left join", async () => {
@@ -238,7 +238,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
 
     const postsWithUsers = await PostWithUuid.query()
       .select("posts_with_uuid.*")
-      .annotate("users_with_uuid.name", "userName")
+      .select("users_with_uuid.name as userName")
       .leftJoinRaw(
         "users_with_uuid ON users_with_uuid.id = posts_with_uuid.user_id",
       )
@@ -250,9 +250,9 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
       .many();
 
     expect(postsWithUsers).toHaveLength(3);
-    expect(postsWithUsers[0].$annotations.userName).toBeDefined();
-    expect(postsWithUsers[1].$annotations.userName).toBeDefined();
-    expect(postsWithUsers[2].$annotations.userName).toBeDefined();
+    expect(postsWithUsers[0].userName).toBeDefined();
+    expect(postsWithUsers[1].userName).toBeDefined();
+    expect(postsWithUsers[2].userName).toBeDefined();
   });
 
   test("uuid pk simple raw right join", async () => {
@@ -268,7 +268,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
 
     const postsWithUsers = await PostWithUuid.query()
       .select("posts_with_uuid.*")
-      .annotate("users_with_uuid.name", "userName")
+      .select("users_with_uuid.name as userName")
       .rightJoinRaw(
         "users_with_uuid ON users_with_uuid.id = posts_with_uuid.user_id",
       )
@@ -280,9 +280,9 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
       .many();
 
     expect(postsWithUsers).toHaveLength(3);
-    expect(postsWithUsers[0].$annotations.userName).toBeDefined();
-    expect(postsWithUsers[1].$annotations.userName).toBeDefined();
-    expect(postsWithUsers[2].$annotations.userName).toBeDefined();
+    expect(postsWithUsers[0].userName).toBeDefined();
+    expect(postsWithUsers[1].userName).toBeDefined();
+    expect(postsWithUsers[2].userName).toBeDefined();
   });
 
   test("uuid pk join with callback additional conditions", async () => {
@@ -302,7 +302,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
     // Use INNER JOIN to filter results based on join condition
     const postsWithUsers = await PostWithUuid.query()
       .select("posts_with_uuid.*")
-      .annotate("users_with_uuid.name", "userName")
+      .select("users_with_uuid.name as userName")
       .join(
         "users_with_uuid",
         "users_with_uuid.id",
@@ -318,8 +318,8 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
 
     // Should only get posts for the target user due to INNER JOIN condition
     expect(postsWithUsers).toHaveLength(1);
-    expect(postsWithUsers[0].$annotations.userName).toBeDefined();
-    expect(postsWithUsers[0].$annotations.userName).toBe(targetUser.name);
+    expect(postsWithUsers[0].userName).toBeDefined();
+    expect(postsWithUsers[0].userName).toBe(targetUser.name);
   });
 
   test("uuid pk join with callback multiple conditions", async () => {
@@ -340,7 +340,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
     // Use INNER JOIN to filter results based on join condition
     const postsWithUsers = await PostWithUuid.query()
       .select("posts_with_uuid.*")
-      .annotate("users_with_uuid.name", "userName")
+      .select("users_with_uuid.name as userName")
       .join(
         "users_with_uuid",
         "users_with_uuid.id",
@@ -357,8 +357,8 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
 
     // Should only get posts for the target users due to INNER JOIN condition
     expect(postsWithUsers).toHaveLength(2);
-    expect(postsWithUsers[0].$annotations.userName).toBeDefined();
-    expect(postsWithUsers[1].$annotations.userName).toBeDefined();
+    expect(postsWithUsers[0].userName).toBeDefined();
+    expect(postsWithUsers[1].userName).toBeDefined();
   });
 
   test("uuid pk innerJoin with all params", async () => {
@@ -374,7 +374,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
 
     const postsWithUsers = await PostWithUuid.query()
       .select("posts_with_uuid.*")
-      .annotate("users_with_uuid.name", "userName")
+      .select("users_with_uuid.name as userName")
       .innerJoin(
         "users_with_uuid",
         "users_with_uuid.id",
@@ -389,7 +389,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
       .many();
 
     expect(postsWithUsers).toHaveLength(3);
-    expect(postsWithUsers[0].$annotations.userName).toBeDefined();
+    expect(postsWithUsers[0].userName).toBeDefined();
   });
 
   test("uuid pk innerJoin with optional primaryColumn", async () => {
@@ -405,7 +405,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
 
     const postsWithUsers = await PostWithUuid.query()
       .select("posts_with_uuid.*")
-      .annotate("users_with_uuid.name", "userName")
+      .select("users_with_uuid.name as userName")
       .innerJoin(
         "users_with_uuid",
         "users_with_uuid.id",
@@ -419,7 +419,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
       .many();
 
     expect(postsWithUsers).toHaveLength(3);
-    expect(postsWithUsers[0].$annotations.userName).toBeDefined();
+    expect(postsWithUsers[0].userName).toBeDefined();
   });
 
   test("uuid pk innerJoin with default operator", async () => {
@@ -435,7 +435,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
 
     const postsWithUsers = await PostWithUuid.query()
       .select("posts_with_uuid.*")
-      .annotate("users_with_uuid.name", "userName")
+      .select("users_with_uuid.name as userName")
       .innerJoin(
         "users_with_uuid",
         "users_with_uuid.id",
@@ -449,7 +449,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
       .many();
 
     expect(postsWithUsers).toHaveLength(3);
-    expect(postsWithUsers[0].$annotations.userName).toBeDefined();
+    expect(postsWithUsers[0].userName).toBeDefined();
   });
 
   test("uuid pk innerJoin with Model and all params", async () => {
@@ -465,7 +465,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
 
     const postsWithUsers = await PostWithUuid.query()
       .select("posts_with_uuid.*")
-      .annotate("users_with_uuid.name", "userName")
+      .select("users_with_uuid.name as userName")
       .innerJoin(UserWithUuid, "id", "userId", "=")
       .whereIn(
         "posts_with_uuid.id",
@@ -475,7 +475,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
       .many();
 
     expect(postsWithUsers).toHaveLength(3);
-    expect(postsWithUsers[0].$annotations.userName).toBeDefined();
+    expect(postsWithUsers[0].userName).toBeDefined();
   });
 
   test("uuid pk innerJoin with Model and optional primaryColumn", async () => {
@@ -491,7 +491,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
 
     const postsWithUsers = await PostWithUuid.query()
       .select("posts_with_uuid.*")
-      .annotate("users_with_uuid.name", "userName")
+      .select("users_with_uuid.name as userName")
       .innerJoin(UserWithUuid, "id", "userId")
       .whereIn(
         "posts_with_uuid.id",
@@ -501,7 +501,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
       .many();
 
     expect(postsWithUsers).toHaveLength(3);
-    expect(postsWithUsers[0].$annotations.userName).toBeDefined();
+    expect(postsWithUsers[0].userName).toBeDefined();
   });
 
   test("uuid pk innerJoin with Model and default operator", async () => {
@@ -517,7 +517,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
 
     const postsWithUsers = await PostWithUuid.query()
       .select("posts_with_uuid.*")
-      .annotate("users_with_uuid.name", "userName")
+      .select("users_with_uuid.name as userName")
       .innerJoin(UserWithUuid, "id", "userId")
       .whereIn(
         "posts_with_uuid.id",
@@ -527,7 +527,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
       .many();
 
     expect(postsWithUsers).toHaveLength(3);
-    expect(postsWithUsers[0].$annotations.userName).toBeDefined();
+    expect(postsWithUsers[0].userName).toBeDefined();
   });
 
   test("uuid pk innerJoin with callback", async () => {
@@ -545,7 +545,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
 
     const postsWithUsers = await PostWithUuid.query()
       .select("posts_with_uuid.*")
-      .annotate("users_with_uuid.name", "userName")
+      .select("users_with_uuid.name as userName")
       .innerJoin(
         "users_with_uuid",
         "users_with_uuid.id",
@@ -560,8 +560,8 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
       .many();
 
     expect(postsWithUsers).toHaveLength(1);
-    expect(postsWithUsers[0].$annotations.userName).toBeDefined();
-    expect(postsWithUsers[0].$annotations.userName).toBe(targetUser.name);
+    expect(postsWithUsers[0].userName).toBeDefined();
+    expect(postsWithUsers[0].userName).toBe(targetUser.name);
   });
 
   test("uuid pk innerJoin with callback and explicit operator", async () => {
@@ -579,7 +579,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
 
     const postsWithUsers = await PostWithUuid.query()
       .select("posts_with_uuid.*")
-      .annotate("users_with_uuid.name", "userName")
+      .select("users_with_uuid.name as userName")
       .innerJoin(
         "users_with_uuid",
         "users_with_uuid.id",
@@ -595,8 +595,8 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
       .many();
 
     expect(postsWithUsers).toHaveLength(1);
-    expect(postsWithUsers[0].$annotations.userName).toBeDefined();
-    expect(postsWithUsers[0].$annotations.userName).toBe(targetUser.name);
+    expect(postsWithUsers[0].userName).toBeDefined();
+    expect(postsWithUsers[0].userName).toBe(targetUser.name);
   });
 
   test("uuid pk innerJoin with Model and callback", async () => {
@@ -614,7 +614,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
 
     const postsWithUsers = await PostWithUuid.query()
       .select("posts_with_uuid.*")
-      .annotate("users_with_uuid.name", "userName")
+      .select("users_with_uuid.name as userName")
       .innerJoin(UserWithUuid, "id", "userId", (q) =>
         q.where("users_with_uuid.id", targetUser.id),
       )
@@ -626,8 +626,8 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
       .many();
 
     expect(postsWithUsers).toHaveLength(1);
-    expect(postsWithUsers[0].$annotations.userName).toBeDefined();
-    expect(postsWithUsers[0].$annotations.userName).toBe(targetUser.name);
+    expect(postsWithUsers[0].userName).toBeDefined();
+    expect(postsWithUsers[0].userName).toBe(targetUser.name);
   });
 
   test("uuid pk innerJoin with Model, operator and callback", async () => {
@@ -645,7 +645,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
 
     const postsWithUsers = await PostWithUuid.query()
       .select("posts_with_uuid.*")
-      .annotate("users_with_uuid.name", "userName")
+      .select("users_with_uuid.name as userName")
       .innerJoin(UserWithUuid, "id", "userId", "=", (q) =>
         q.where("users_with_uuid.id", targetUser.id),
       )
@@ -657,7 +657,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
       .many();
 
     expect(postsWithUsers).toHaveLength(1);
-    expect(postsWithUsers[0].$annotations.userName).toBeDefined();
-    expect(postsWithUsers[0].$annotations.userName).toBe(targetUser.name);
+    expect(postsWithUsers[0].userName).toBeDefined();
+    expect(postsWithUsers[0].userName).toBe(targetUser.name);
   });
 });

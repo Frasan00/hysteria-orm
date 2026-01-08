@@ -39,8 +39,7 @@ describe(`[${env.DB_TYPE}] bigint pk join`, () => {
     expect(posts).toHaveLength(3);
 
     const postsWithUsers = await PostWithBigint.query()
-      .select("posts_with_bigint.*")
-      .annotate("users_with_bigint.name", "userName")
+      .select("posts_with_bigint.*", "users_with_bigint.name as userName")
       .leftJoin(
         "users_with_bigint",
         "users_with_bigint.id",
@@ -54,9 +53,9 @@ describe(`[${env.DB_TYPE}] bigint pk join`, () => {
       .many();
 
     expect(postsWithUsers).toHaveLength(3);
-    expect(postsWithUsers[0].$annotations.userName).toBeDefined();
-    expect(postsWithUsers[1].$annotations.userName).toBeDefined();
-    expect(postsWithUsers[2].$annotations.userName).toBeDefined();
+    expect(postsWithUsers[0].userName).toBeDefined();
+    expect(postsWithUsers[1].userName).toBeDefined();
+    expect(postsWithUsers[2].userName).toBeDefined();
 
     const columns = PostWithBigint.getColumns();
     expect(Object.keys(postsWithUsers[0]).length - 1).toEqual(columns.length); // ignore additional
@@ -78,8 +77,7 @@ describe(`[${env.DB_TYPE}] bigint pk join`, () => {
     expect(posts).toHaveLength(3);
 
     const postsWithUsers = await PostWithBigint.query()
-      .select("posts_with_bigint.*")
-      .annotate("users_with_bigint.name", "userName")
+      .select("posts_with_bigint.*", "users_with_bigint.name as userName")
       .leftJoin(
         "users_with_bigint",
         "users_with_bigint.id",
@@ -93,7 +91,7 @@ describe(`[${env.DB_TYPE}] bigint pk join`, () => {
       .many();
 
     expect(postsWithUsers).toHaveLength(3);
-    expect(postsWithUsers[0].$annotations.userName).toBeDefined();
+    expect(postsWithUsers[0].userName).toBeDefined();
   });
 
   test("bigint pk simple right join", async () => {
@@ -112,8 +110,7 @@ describe(`[${env.DB_TYPE}] bigint pk join`, () => {
     expect(posts).toHaveLength(3);
 
     const postsWithUsers = await PostWithBigint.query()
-      .select("posts_with_bigint.*")
-      .annotate("users_with_bigint.name", "userName")
+      .select("posts_with_bigint.*", "users_with_bigint.name as userName")
       .rightJoin(
         "users_with_bigint",
         "users_with_bigint.id",
@@ -127,7 +124,7 @@ describe(`[${env.DB_TYPE}] bigint pk join`, () => {
       .many();
 
     expect(postsWithUsers).toHaveLength(3);
-    expect(postsWithUsers[0].$annotations.userName).toBeDefined();
+    expect(postsWithUsers[0].userName).toBeDefined();
   });
 
   test("bigint pk simple Model join", async () => {
@@ -146,8 +143,7 @@ describe(`[${env.DB_TYPE}] bigint pk join`, () => {
     expect(posts).toHaveLength(3);
 
     const postsWithUsers = await PostWithBigint.query()
-      .select("posts_with_bigint.*")
-      .annotate("users_with_bigint.name", "userName")
+      .select("posts_with_bigint.*", "users_with_bigint.name as userName")
       .join(UserWithBigint, "id", "userId")
       .whereIn(
         "posts_with_bigint.id",
@@ -157,7 +153,7 @@ describe(`[${env.DB_TYPE}] bigint pk join`, () => {
       .many();
 
     expect(postsWithUsers).toHaveLength(3);
-    expect(postsWithUsers[0].$annotations.userName).toBeDefined();
+    expect(postsWithUsers[0].userName).toBeDefined();
   });
 
   test("bigint pk simple Model left join", async () => {
@@ -176,8 +172,7 @@ describe(`[${env.DB_TYPE}] bigint pk join`, () => {
     expect(posts).toHaveLength(3);
 
     const postsWithUsers = await PostWithBigint.query()
-      .select("posts_with_bigint.*")
-      .annotate("users_with_bigint.name", "userName")
+      .select("posts_with_bigint.*", "users_with_bigint.name as userName")
       .leftJoin(UserWithBigint, "id", "userId")
       .whereIn(
         "posts_with_bigint.id",
@@ -187,7 +182,7 @@ describe(`[${env.DB_TYPE}] bigint pk join`, () => {
       .many();
 
     expect(postsWithUsers).toHaveLength(3);
-    expect(postsWithUsers[0].$annotations.userName).toBeDefined();
+    expect(postsWithUsers[0].userName).toBeDefined();
   });
 
   test("bigint pk join with a custom operator", async () => {
@@ -205,8 +200,7 @@ describe(`[${env.DB_TYPE}] bigint pk join`, () => {
     expect(posts).toHaveLength(3);
 
     const postsWithUsers = await PostWithBigint.query()
-      .select("posts_with_bigint.*")
-      .annotate("users_with_bigint.name", "userName")
+      .select("posts_with_bigint.*", "users_with_bigint.name as userName")
       .join(UserWithBigint, "id", "userId", ">")
       .whereIn(
         "posts_with_bigint.id",

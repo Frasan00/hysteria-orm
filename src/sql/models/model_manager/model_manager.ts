@@ -14,7 +14,6 @@ import { execSql } from "../../sql_runner/sql_runner";
 import { Model } from "../model";
 import { DryModelQueryBuilder } from "../model_query_builder/dry_model_query_builder";
 import { ModelQueryBuilder } from "../model_query_builder/model_query_builder";
-import { AnnotatedModel } from "../model_query_builder/model_query_builder_types";
 import { ModelWithoutRelations } from "../model_types";
 import { getBaseModelInstance } from "../model_utils";
 import {
@@ -64,18 +63,18 @@ export class ModelManager<T extends Model> {
   async find<
     S extends ModelKey<T>[] = never[],
     R extends ModelRelation<T>[] = never[],
-  >(input?: FindType<T, S, R>): Promise<AnnotatedModel<T, {}>[]>;
+  >(input?: FindType<T, S, R>): Promise<ModelWithoutRelations<T>[]>;
   async find<
     S extends ModelKey<T>[] = never[],
     R extends ModelRelation<T>[] = never[],
-  >(input?: FindType<T, S, R>): Promise<AnnotatedModel<T, {}>[]> {
+  >(input?: FindType<T, S, R>): Promise<ModelWithoutRelations<T>[]> {
     if (!input) {
       return this.query().many();
     }
 
     const query = this.query();
     if (input.select) {
-      query.select(...(input.select as string[]));
+      query.select(...(input.select as any[]));
     }
 
     if (input.relations) {
@@ -115,11 +114,11 @@ export class ModelManager<T extends Model> {
   async findOne<
     S extends ModelKey<T>[] = never[],
     R extends ModelRelation<T>[] = never[],
-  >(input: FindOneType<T, S, R>): Promise<AnnotatedModel<T, {}> | null>;
+  >(input: FindOneType<T, S, R>): Promise<ModelWithoutRelations<T> | null>;
   async findOne<
     S extends ModelKey<T>[] = never[],
     R extends ModelRelation<T>[] = never[],
-  >(input: FindOneType<T, S, R>): Promise<AnnotatedModel<T, {}> | null> {
+  >(input: FindOneType<T, S, R>): Promise<ModelWithoutRelations<T> | null> {
     const results = await this.find({
       groupBy: input.groupBy,
       orderBy: input.orderBy,
@@ -144,7 +143,7 @@ export class ModelManager<T extends Model> {
   async findOneOrFail<
     S extends ModelKey<T>[] = never[],
     R extends ModelRelation<T>[] = never[],
-  >(input: FindOneType<T, S, R>): Promise<AnnotatedModel<T, {}>>;
+  >(input: FindOneType<T, S, R>): Promise<ModelWithoutRelations<T>>;
   async findOneOrFail<
     S extends ModelKey<T>[] = never[],
     R extends ModelRelation<T>[] = never[],
@@ -152,7 +151,7 @@ export class ModelManager<T extends Model> {
     input: FindOneType<T, S, R> & {
       customError?: Error;
     },
-  ): Promise<AnnotatedModel<T, {}>> {
+  ): Promise<ModelWithoutRelations<T>> {
     const result = await this.findOne({
       groupBy: input.groupBy,
       orderBy: input.orderBy,
@@ -185,7 +184,7 @@ export class ModelManager<T extends Model> {
   async findOneByPrimaryKey(
     value: string | number,
     returning?: ModelKey<T>[],
-  ): Promise<AnnotatedModel<T, {}> | null> {
+  ): Promise<ModelWithoutRelations<T> | null> {
     if (!this.model.primaryKey) {
       throw new HysteriaError(
         this.model.name + "::findOneByPrimaryKey",
@@ -205,7 +204,7 @@ export class ModelManager<T extends Model> {
   async insert(
     model: Partial<T>,
     options: InsertOptions<T> = {},
-  ): Promise<AnnotatedModel<T, {}>> {
+  ): Promise<ModelWithoutRelations<T>> {
     !options.ignoreHooks && (await this.model.beforeInsert?.(model as T));
     const { columns: preparedColumns, values: preparedValues } =
       await this.interpreterUtils.prepareColumns(
@@ -269,7 +268,7 @@ export class ModelManager<T extends Model> {
   async insertMany(
     models: Partial<T>[],
     options: InsertOptions<T> = {},
-  ): Promise<AnnotatedModel<T, {}>[]> {
+  ): Promise<ModelWithoutRelations<T>[]> {
     await this.model.beforeInsertMany?.(models as T[]);
 
     // Oracle with identity columns doesn't support INSERT ALL properly
@@ -356,7 +355,7 @@ export class ModelManager<T extends Model> {
     options: UpsertOptions<T> = {
       updateOnConflict: true,
     },
-  ): Promise<AnnotatedModel<T, {}>[]> {
+  ): Promise<ModelWithoutRelations<T>[]> {
     const insertObjects: Record<string, any>[] = [];
     await this.model.beforeInsertMany?.(data as T[]);
     await Promise.all(
@@ -433,7 +432,7 @@ export class ModelManager<T extends Model> {
     columnsToUpdate: string[],
     options: UpsertOptions<T>,
     data: ModelWithoutRelations<T>[],
-  ): Promise<AnnotatedModel<T, {}>[]> {
+  ): Promise<ModelWithoutRelations<T>[]> {
     if (!insertObjects.length) {
       return [];
     }
@@ -526,7 +525,7 @@ export class ModelManager<T extends Model> {
   async updateRecord(
     model: Partial<T>,
     options?: { returning?: ModelKey<T>[] },
-  ): Promise<AnnotatedModel<T, {}>> {
+  ): Promise<ModelWithoutRelations<T>> {
     let { columns: preparedColumns, values: preparedValues } =
       await this.interpreterUtils.prepareColumns(
         Object.keys(model),
@@ -677,18 +676,18 @@ export class ModelManager<T extends Model> {
 
       const primaryKeyList = idsToFetchList.map((key) => `'${key}'`).join(",");
       const fetchedModels = await this.query()
-        .select(...(retuning ?? "*"))
+        .select(...((retuning ?? ["*"]) as any[]))
         .whereIn(this.model.primaryKey as string, idsToFetchList)
         .orderByRaw(`FIELD(${this.model.primaryKey}, ${primaryKeyList})`)
         .many();
 
       if (returnType === "one") {
-        return (
-          fetchedModels.length ? fetchedModels[0] : null
-        ) as O extends "one" ? T : T[];
+        return (fetchedModels.length
+          ? fetchedModels[0]
+          : null) as unknown as O extends "one" ? T : T[];
       }
 
-      return fetchedModels as O extends "one" ? T : T[];
+      return fetchedModels as unknown as O extends "one" ? T : T[];
     }
 
     // standard auto increment primary keys
@@ -698,17 +697,17 @@ export class ModelManager<T extends Model> {
     );
 
     const fetchedModels = await this.query()
-      .select(...(retuning || "*"))
+      .select(...((retuning || ["*"]) as any[]))
       .whereIn(this.model.primaryKey as string, idsToFetchList)
       .many();
 
     if (returnType === "one") {
-      return (fetchedModels.length ? fetchedModels[0] : null) as O extends "one"
-        ? T
-        : T[];
+      return (fetchedModels.length
+        ? fetchedModels[0]
+        : null) as unknown as O extends "one" ? T : T[];
     }
 
-    return fetchedModels as O extends "one" ? T : T[];
+    return fetchedModels as unknown as O extends "one" ? T : T[];
   }
 
   /**
@@ -719,7 +718,7 @@ export class ModelManager<T extends Model> {
   private async handleOracleIdentityInsert(
     models: T[],
     options: InsertOptions<T>,
-  ): Promise<AnnotatedModel<T, {}>[]> {
+  ): Promise<ModelWithoutRelations<T>[]> {
     const results: T[] = [];
     const primaryKey = this.model.primaryKey;
 
@@ -758,7 +757,7 @@ export class ModelManager<T extends Model> {
 
       // Query back the inserted row to get the generated ID
       const queryBuilder = this.query().select(
-        ...((options.returning as string[]) || ["*"]),
+        ...(((options.returning as string[]) || ["*"]) as any[]),
       );
 
       for (const [column, value] of Object.entries(insertObject)) {
@@ -791,7 +790,7 @@ export class ModelManager<T extends Model> {
     }
 
     await this.model.afterFetch?.(results);
-    return results as AnnotatedModel<T, {}>[];
+    return results as ModelWithoutRelations<T>[];
   }
 
   private handleWhereCondition(

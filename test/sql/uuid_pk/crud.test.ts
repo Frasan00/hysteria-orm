@@ -21,22 +21,6 @@ afterEach(async () => {
 });
 
 describe(`[${env.DB_TYPE}] Select`, () => {
-  test("remove annotations", async () => {
-    await UserFactory.userWithUuid(2);
-    const user = await UserWithUuid.query()
-      .annotate("count", "id", "count")
-      .removeAnnotations()
-      .one();
-
-    expect((user as any)?.$annotations).toBeUndefined();
-
-    const user2 = await UserWithUuid.query()
-      .annotate("count", "id", "count")
-      .one();
-
-    expect(user2?.$annotations).not.toBeUndefined();
-  });
-
   test("lockForUpdate", async () => {
     if (env.DB_TYPE === "sqlite") {
       console.log("Sqlite does not support lockForUpdate");
@@ -122,8 +106,9 @@ describe(`[${env.DB_TYPE}] Select`, () => {
       .many();
 
     expect(users.length).toBe(2);
-    expect(users[0].name).not.toBeUndefined();
-    expect(users[1].name).not.toBeUndefined();
+    // Both name and age are selected at runtime (chained selects accumulate)
+    expect(Object.prototype.hasOwnProperty.call(users[0], "name")).toBe(true);
+    expect(Object.prototype.hasOwnProperty.call(users[1], "name")).toBe(true);
     expect(users[0].age).not.toBeUndefined();
     expect(users[1].age).not.toBeUndefined();
   });
@@ -166,17 +151,16 @@ describe(`[${env.DB_TYPE}] Select`, () => {
   test("Multiple columns select with aliases", async () => {
     await UserFactory.userWithUuid(2);
     const users = await UserWithUuid.query()
-      .annotate("age", "testAge")
-      .annotate("birthDate", "testBirth")
+      .select("age as testAge", "birthDate as testBirth")
       .many();
 
     expect(users.length).toBe(2);
-    expect(users[0].$annotations.testAge).not.toBeUndefined();
-    expect(users[1].$annotations.testBirth).not.toBeUndefined();
-    expect(users[0].$annotations.testAge).not.toBeUndefined();
-    expect(users[1].$annotations.testBirth).not.toBeUndefined();
-    expect(Object.keys(users[0]).length).toBe(1); // $annotations
-    expect(Object.keys(users[1]).length).toBe(1);
+    expect(users[0].testAge).not.toBeUndefined();
+    expect(users[1].testBirth).not.toBeUndefined();
+    expect(users[0].testAge).not.toBeUndefined();
+    expect(users[1].testBirth).not.toBeUndefined();
+    expect(Object.keys(users[0]).length).toBe(2); // testAge, testBirth
+    expect(Object.keys(users[1]).length).toBe(2);
   });
 });
 
@@ -966,7 +950,6 @@ describe(`[${env.DB_TYPE}] Stream`, () => {
     const stream = await UserWithUuid.query()
       .select("*")
       .load("post")
-      .annotate("birthDate", "birthDate")
       .orderBy("name", "asc")
       .stream();
 
@@ -982,6 +965,5 @@ describe(`[${env.DB_TYPE}] Stream`, () => {
     expect(users[1].birthDate).not.toBeUndefined();
     expect(users[2].birthDate).not.toBeUndefined();
     expect(users[0].post).not.toBeUndefined();
-    expect(users[0].$annotations.birthDate).not.toBeUndefined();
   });
 });

@@ -302,7 +302,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
     expect(insertedSerialized.name).toBe(foundSerialized.name);
   });
 
-  test("toJSON() should flatten $annotations to top level", async () => {
+  test("select with aliases should return columns directly", async () => {
     // Create user with some data
     const userData = {
       ...UserFactory.getCommonUserData(),
@@ -312,51 +312,23 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
 
     await UserWithoutPk.insert(userData);
 
-    // Query with annotations
+    // Query with select aliases
     const user = await UserWithoutPk.query()
-      .select("name", "age")
-      .annotate("age", "userAge")
-      .annotate("name", "userName")
+      .select("name", "age", "age as userAge", "name as userName")
       .where("name", "JsonFlattenTest")
       .one();
 
     expect(user).not.toBeNull();
-    expect(user?.$annotations).toBeDefined();
     // CockroachDB may return numbers as strings in some cases
-    expect(+user?.$annotations.userAge!).toBe(30);
-    expect(user?.$annotations.userName).toBe("JsonFlattenTest");
-
-    // Call toJSON() and verify flattening - should now be typed!
-    const json = user!.toJSON();
+    expect(+user?.userAge!).toBe(30);
+    expect(user?.userName).toBe("JsonFlattenTest");
 
     // Regular model properties should be present
-    expect(json.name).toBe("JsonFlattenTest");
-    expect(+json.age).toBe(30); // May be string or number depending on DB
-
-    // $annotations should be flattened to top level
-    expect(+json.userAge).toBe(30); // May be string or number depending on DB
-    expect(json.userName).toBe("JsonFlattenTest");
-
-    // $annotations property itself should NOT be in the result
-    expect(json.$annotations).toBeUndefined();
+    expect(user?.name).toBe("JsonFlattenTest");
+    expect(+user?.age!).toBe(30);
   });
 
-  test("toJSON() should handle models without annotations", async () => {
-    const userData = {
-      ...UserFactory.getCommonUserData(),
-      name: "NoAnnotationsTest",
-    };
-
-    const user = await UserWithoutPk.insert(userData);
-
-    // Call toJSON() on model without annotations - should now be typed!
-    const json = user.toJSON();
-
-    expect(json.name).toBe("NoAnnotationsTest");
-    expect(json.$annotations).toBeUndefined();
-  });
-
-  test("toJSON() should handle JSON select methods", async () => {
+  test("selectJsonText should return values directly on model", async () => {
     if (env.DB_TYPE === "sqlite") {
       // SQLite doesn't support all JSON functions
       return;
@@ -383,18 +355,12 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
       .one();
 
     expect(user).not.toBeNull();
-    expect(user?.$annotations?.extractedName).toBe("Alice");
-
-    // Call toJSON() and verify JSON annotations are flattened - should now be typed!
-    const json = user!.toJSON();
-
-    expect(json!.name).toBe("JsonSelectTest");
-    expect(json!.extractedName).toBe("Alice");
-    expect(json!.$annotations).toBeUndefined();
+    expect(user?.extractedName).toBe("Alice");
+    expect(user?.name).toBe("JsonSelectTest");
   });
 
-  describe("Annotation collision with model fields (Bug Fix Tests)", () => {
-    test("annotate() with alias matching model column should go to $annotations", async () => {
+  describe("Select with aliases and aggregate functions", () => {
+    test("selectRaw with aggregate functions", async () => {
       const userData = {
         ...UserFactory.getCommonUserData(),
         name: "CollisionTest1",
@@ -404,11 +370,13 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
 
       await UserWithoutPk.insert(userData);
 
-      // Annotate with aliases that match existing model columns
+      // selectRaw for aggregate functions
       const user = await UserWithoutPk.query()
         .select("name", "age", "email")
-        .annotate("max", "age", "maxAge") // Non-conflicting alias
-        .annotate("count", "*", "totalCount") // Non-conflicting alias
+        .selectRaw<{
+          maxAge: number;
+          totalCount: number;
+        }>("max(age) as maxAge, count(*) as totalCount")
         .where("email", "collision1@test.com")
         .groupBy("name", "age", "email")
         .one();
@@ -420,19 +388,18 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
       expect(+user!.age).toBe(25);
       expect(user!.email).toBe("collision1@test.com");
 
-      // Annotations should be in $annotations
-      expect(user!.$annotations).toBeDefined();
-      expect(user!.$annotations.maxAge).toBeDefined();
-      expect(+user!.$annotations.maxAge).toBeGreaterThanOrEqual(25);
-      expect(user!.$annotations.totalCount).toBeDefined();
-      expect(+user!.$annotations.totalCount).toBeGreaterThanOrEqual(1);
+      // Aggregate results should be directly accessible
+      expect(user!.maxAge).toBeDefined();
+      expect(+user!.maxAge).toBeGreaterThanOrEqual(25);
+      expect(user!.totalCount).toBeDefined();
+      expect(+user!.totalCount).toBeGreaterThanOrEqual(1);
 
       // Model fields should still have their original values
       expect(+user!.age).toBe(25);
       expect(user!.email).toBe("collision1@test.com");
     });
 
-    test("selectJson() with alias matching model column should go to $annotations", async () => {
+    test("selectJson() should return values directly on model", async () => {
       if (env.DB_TYPE === "sqlite") {
         return; // Skip SQLite for JSON tests
       }
@@ -452,11 +419,11 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
 
       await UserWithoutPk.insert(userData);
 
-      // Select JSON with aliases matching existing model columns
+      // Select JSON with aliases
       const user = await UserWithoutPk.query()
         .select("name", "email")
-        .selectJsonText("json", "username", "jsonName") // Non-conflicting alias
-        .selectJsonText("json", "userAge", "jsonAge") // Non-conflicting alias
+        .selectJsonText("json", "username", "jsonName")
+        .selectJsonText("json", "userAge", "jsonAge")
         .where("email", "collision2@test.com")
         .one();
 
@@ -466,16 +433,15 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
       expect(user!.name).toBe("CollisionTest2");
       expect(user!.email).toBe("collision2@test.com");
 
-      // JSON annotations should be in $annotations
-      expect(user!.$annotations).toBeDefined();
-      expect(user!.$annotations.jsonName).toBe("json_user");
-      expect(+user!.$annotations.jsonAge).toBe(30);
+      // JSON values should be directly accessible
+      expect(user!.jsonName).toBe("json_user");
+      expect(+user!.jsonAge).toBe(30);
 
       // Model fields should have their original values
       expect(user!.name).toBe("CollisionTest2");
     });
 
-    test("Multiple annotations with same alias as model column should all go to $annotations", async () => {
+    test("Multiple aliases should all be accessible directly", async () => {
       const userData = {
         ...UserFactory.getCommonUserData(),
         name: "CollisionTest3",
@@ -485,11 +451,10 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
 
       await UserWithoutPk.insert(userData);
 
-      // Multiple annotations
+      // Multiple aliases using select
       const user = await UserWithoutPk.query()
-        .select("name", "email")
-        .annotate("name", "nameAlias") // Non-conflicting
-        .annotate("count", "*", "totalRecords") // Non-conflicting
+        .select("name", "email", "name as nameAlias")
+        .selectRaw<{ totalRecords: number }>("count(*) as totalRecords")
         .where("email", "collision3@test.com")
         .groupBy("name", "email")
         .one();
@@ -499,51 +464,16 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
       // Original model field
       expect(user!.name).toBe("CollisionTest3");
 
-      // Annotations should all be in $annotations
-      expect(user!.$annotations).toBeDefined();
-      expect(user!.$annotations.nameAlias).toBe("CollisionTest3");
-      expect(+user!.$annotations.totalRecords).toBeGreaterThanOrEqual(1);
+      // Aliases should be directly accessible
+      expect(user!.nameAlias).toBe("CollisionTest3");
+      expect(+user!.totalRecords).toBeGreaterThanOrEqual(1);
 
       // Original model field should be a string
       expect(typeof user!.name).toBe("string");
       expect(user!.name).toBe("CollisionTest3");
     });
 
-    test("toJSON() should handle colliding Annotations correctly", async () => {
-      const userData = {
-        ...UserFactory.getCommonUserData(),
-        name: "CollisionTest4",
-        age: 30,
-        email: "collision4@test.com",
-      };
-
-      await UserWithoutPk.insert(userData);
-
-      const user = await UserWithoutPk.query()
-        .select("name", "age")
-        .annotate("max", "age", "maxAge") // Non-conflicting
-        .annotate("name", "computedName") // Non-conflicting
-        .where("email", "collision4@test.com")
-        .groupBy("name", "age")
-        .one();
-
-      expect(user).not.toBeNull();
-      expect(user!.$annotations.maxAge).toBeDefined();
-      expect(user!.$annotations.computedName).toBe("CollisionTest4");
-
-      // toJSON should flatten annotations to top level
-      const json = user!.toJSON();
-
-      // Model fields should be present
-      expect(json.name).toBe("CollisionTest4");
-      expect(+json.age).toBe(30);
-
-      // Annotations should be flattened
-      expect(json.computedName).toBe("CollisionTest4");
-      expect(+json.maxAge).toBeGreaterThanOrEqual(30);
-    });
-
-    test("Type system should infer correct types for colliding annotations", async () => {
+    test("Type system should infer correct types for selected columns", async () => {
       const userData = {
         ...UserFactory.getCommonUserData(),
         name: "CollisionTest5",
@@ -553,19 +483,19 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
 
       await UserWithoutPk.insert(userData);
 
-      // This tests that TypeScript properly handles the AnnotationResult type
+      // Using selectRaw with typed generics
       const user = await UserWithoutPk.query()
         .select("name", "age")
-        .annotate("max", "age", "maxAge") // Non-conflicting alias
+        .selectRaw<{ maxAge: number }>("max(age) as maxAge")
         .where("email", "collision5@test.com")
         .groupBy("name", "age")
         .one();
 
-      // TypeScript should properly type annotations
-      if (user?.$annotations) {
-        const annotatedMaxAge = user.$annotations.maxAge;
-        expect(annotatedMaxAge).toBeDefined();
-        expect(+annotatedMaxAge).toBeGreaterThanOrEqual(35);
+      // Additional columns should be directly accessible
+      if (user) {
+        const maxAge = user.maxAge;
+        expect(maxAge).toBeDefined();
+        expect(+maxAge).toBeGreaterThanOrEqual(35);
       }
 
       // Original model field should still be accessible
@@ -576,6 +506,482 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
       } else {
         expect(user?.age).toBe(35);
       }
+    });
+
+    test("selectRaw with CAST expression should not quote the type", async () => {
+      const userData = {
+        ...UserFactory.getCommonUserData(),
+        name: "castTest",
+        age: 42,
+        email: "cast@test.com",
+      };
+
+      await UserWithoutPk.insert(userData);
+
+      // CAST(x AS type) should work - the "AS type" inside CAST should not be quoted
+      // while "AS alias" outside should be quoted for case preservation
+      // Using VARCHAR(10) for cross-database compatibility (CHAR defaults to CHAR(1) in PostgreSQL)
+      const castType =
+        env.DB_TYPE === "postgres" || env.DB_TYPE === "cockroachdb"
+          ? "VARCHAR"
+          : "CHAR(10)";
+      const user = await UserWithoutPk.query()
+        .selectRaw<{
+          ageAsText: string;
+        }>(`CAST(age AS ${castType}) as ageAsText`)
+        .where("email", "cast@test.com")
+        .one();
+
+      expect(user).not.toBeNull();
+      expect(user!.ageAsText).toBeDefined();
+      expect(user!.ageAsText.trim()).toBe("42");
+    });
+  });
+
+  describe("Aggregate shorthand methods", () => {
+    test("selectCount should return count with alias", async () => {
+      const userData = [
+        { ...UserFactory.getCommonUserData(), name: "CountTest1", age: 25 },
+        { ...UserFactory.getCommonUserData(), name: "CountTest2", age: 30 },
+        { ...UserFactory.getCommonUserData(), name: "CountTest3", age: 35 },
+      ];
+
+      await UserWithoutPk.insertMany(userData);
+
+      const result = await UserWithoutPk.query()
+        .selectCount("*", "totalUsers")
+        .where("name", "like", "CountTest%")
+        .one();
+
+      expect(result).not.toBeNull();
+      expect(result!.totalUsers).toBeDefined();
+      expect(+result!.totalUsers).toBe(3);
+    });
+
+    test("selectCount with specific column", async () => {
+      const userData = [
+        { ...UserFactory.getCommonUserData(), name: "CountCol1", age: 25 },
+        {
+          ...UserFactory.getCommonUserData(),
+          name: "CountCol2",
+          age: undefined,
+        },
+      ];
+
+      await UserWithoutPk.insertMany(userData);
+
+      const result = await UserWithoutPk.query()
+        .selectCount("age", "ageCount")
+        .where("name", "like", "CountCol%")
+        .one();
+
+      expect(result).not.toBeNull();
+      expect(result!.ageCount).toBeDefined();
+      // COUNT(age) should only count non-null values
+      expect(+result!.ageCount).toBe(1);
+    });
+
+    test("selectSum should return sum with alias", async () => {
+      const userData = [
+        { ...UserFactory.getCommonUserData(), name: "SumTest1", age: 10 },
+        { ...UserFactory.getCommonUserData(), name: "SumTest2", age: 20 },
+        { ...UserFactory.getCommonUserData(), name: "SumTest3", age: 30 },
+      ];
+
+      await UserWithoutPk.insertMany(userData);
+
+      const result = await UserWithoutPk.query()
+        .selectSum("age", "totalAge")
+        .where("name", "like", "SumTest%")
+        .one();
+
+      expect(result).not.toBeNull();
+      expect(result!.totalAge).toBeDefined();
+      expect(+result!.totalAge).toBe(60);
+    });
+
+    test("selectAvg should return average with alias", async () => {
+      const userData = [
+        { ...UserFactory.getCommonUserData(), name: "AvgTest1", age: 20 },
+        { ...UserFactory.getCommonUserData(), name: "AvgTest2", age: 30 },
+        { ...UserFactory.getCommonUserData(), name: "AvgTest3", age: 40 },
+      ];
+
+      await UserWithoutPk.insertMany(userData);
+
+      const result = await UserWithoutPk.query()
+        .selectAvg("age", "averageAge")
+        .where("name", "like", "AvgTest%")
+        .one();
+
+      expect(result).not.toBeNull();
+      expect(result!.averageAge).toBeDefined();
+      // Average of 20, 30, 40 = 30
+      expect(+result!.averageAge).toBe(30);
+    });
+
+    test("selectMin should return minimum with alias", async () => {
+      const userData = [
+        { ...UserFactory.getCommonUserData(), name: "MinTest1", age: 25 },
+        { ...UserFactory.getCommonUserData(), name: "MinTest2", age: 15 },
+        { ...UserFactory.getCommonUserData(), name: "MinTest3", age: 35 },
+      ];
+
+      await UserWithoutPk.insertMany(userData);
+
+      const result = await UserWithoutPk.query()
+        .selectMin("age", "youngestAge")
+        .where("name", "like", "MinTest%")
+        .one();
+
+      expect(result).not.toBeNull();
+      expect(result!.youngestAge).toBeDefined();
+      expect(+result!.youngestAge).toBe(15);
+    });
+
+    test("selectMax should return maximum with alias", async () => {
+      const userData = [
+        { ...UserFactory.getCommonUserData(), name: "MaxTest1", age: 25 },
+        { ...UserFactory.getCommonUserData(), name: "MaxTest2", age: 45 },
+        { ...UserFactory.getCommonUserData(), name: "MaxTest3", age: 35 },
+      ];
+
+      await UserWithoutPk.insertMany(userData);
+
+      const result = await UserWithoutPk.query()
+        .selectMax("age", "oldestAge")
+        .where("name", "like", "MaxTest%")
+        .one();
+
+      expect(result).not.toBeNull();
+      expect(result!.oldestAge).toBeDefined();
+      expect(+result!.oldestAge).toBe(45);
+    });
+
+    test("Multiple aggregate methods can be chained", async () => {
+      const userData = [
+        { ...UserFactory.getCommonUserData(), name: "ChainTest1", age: 20 },
+        { ...UserFactory.getCommonUserData(), name: "ChainTest2", age: 30 },
+        { ...UserFactory.getCommonUserData(), name: "ChainTest3", age: 40 },
+      ];
+
+      await UserWithoutPk.insertMany(userData);
+
+      const result = await UserWithoutPk.query()
+        .selectCount("*", "total")
+        .selectSum("age", "sumAge")
+        .selectAvg("age", "avgAge")
+        .selectMin("age", "minAge")
+        .selectMax("age", "maxAge")
+        .where("name", "like", "ChainTest%")
+        .one();
+
+      expect(result).not.toBeNull();
+      expect(+result!.total).toBe(3);
+      expect(+result!.sumAge).toBe(90);
+      expect(+result!.avgAge).toBe(30);
+      expect(+result!.minAge).toBe(20);
+      expect(+result!.maxAge).toBe(40);
+    });
+
+    test("Aggregate methods can be combined with regular select", async () => {
+      const userData = {
+        ...UserFactory.getCommonUserData(),
+        name: "CombineTest",
+        age: 25,
+        email: "combine@test.com",
+      };
+
+      await UserWithoutPk.insert(userData);
+
+      const result = await UserWithoutPk.query()
+        .select("name", "email")
+        .selectCount("*", "recordCount")
+        .selectMax("age", "maxAge")
+        .where("email", "combine@test.com")
+        .groupBy("name", "email")
+        .one();
+
+      expect(result).not.toBeNull();
+      expect(result!.name).toBe("CombineTest");
+      expect(result!.email).toBe("combine@test.com");
+      expect(+result!.recordCount).toBe(1);
+      expect(+result!.maxAge).toBe(25);
+    });
+
+    test("Aggregate with table.column format", async () => {
+      const userData = [
+        {
+          ...UserFactory.getCommonUserData(),
+          name: "TablePrefixTest1",
+          age: 10,
+        },
+        {
+          ...UserFactory.getCommonUserData(),
+          name: "TablePrefixTest2",
+          age: 20,
+        },
+      ];
+
+      await UserWithoutPk.insertMany(userData);
+
+      const result = await UserWithoutPk.query()
+        .selectSum("users_without_pk.age", "totalAge")
+        .where("name", "like", "TablePrefixTest%")
+        .one();
+
+      expect(result).not.toBeNull();
+      expect(result!.totalAge).toBeDefined();
+      expect(+result!.totalAge).toBe(30);
+    });
+  });
+
+  describe("Select type narrowing edge cases", () => {
+    test("select with only model columns excludes non-selected columns", async () => {
+      const userData = {
+        ...UserFactory.getCommonUserData(),
+        name: "TypeNarrowTest",
+        age: 42,
+      };
+
+      await UserWithoutPk.insert(userData);
+
+      const user = await UserWithoutPk.query()
+        .select("name")
+        .where("name", "TypeNarrowTest")
+        .one();
+
+      expect(user).not.toBeNull();
+      expect(user!.name).toBe("TypeNarrowTest");
+
+      // Non-selected columns should not exist
+      expect(Object.prototype.hasOwnProperty.call(user, "age")).toBe(false);
+      expect(Object.prototype.hasOwnProperty.call(user, "email")).toBe(false);
+      expect(Object.prototype.hasOwnProperty.call(user, "status")).toBe(false);
+    });
+
+    test("select * returns all model columns", async () => {
+      const userData = {
+        ...UserFactory.getCommonUserData(),
+        name: "SelectAllTest",
+        age: 30,
+      };
+
+      await UserWithoutPk.insert(userData);
+
+      const user = await UserWithoutPk.query()
+        .select("*")
+        .where("name", "SelectAllTest")
+        .one();
+
+      expect(user).not.toBeNull();
+      expect(user!.name).toBe("SelectAllTest");
+      // CockroachDB may return numbers as strings
+      expect(+user!.age).toBe(30);
+      expect(user!.email).toBeDefined();
+      expect(user!.status).toBeDefined();
+    });
+
+    test("select with table.* returns all columns from that table", async () => {
+      const userData = {
+        ...UserFactory.getCommonUserData(),
+        name: "TableWildcardTest",
+        age: 25,
+      };
+
+      await UserWithoutPk.insert(userData);
+
+      const user = await UserWithoutPk.query()
+        .select("users_without_pk.*")
+        .where("name", "TableWildcardTest")
+        .one();
+
+      expect(user).not.toBeNull();
+      expect(user!.name).toBe("TableWildcardTest");
+      // CockroachDB may return numbers as strings
+      expect(+user!.age).toBe(25);
+      expect(user!.email).toBeDefined();
+    });
+
+    test("select same column multiple times returns it once", async () => {
+      // MSSQL returns duplicate columns as an array instead of deduplicating
+      if (env.DB_TYPE === "mssql") {
+        return;
+      }
+
+      const userData = {
+        ...UserFactory.getCommonUserData(),
+        name: "DuplicateSelectTest",
+        age: 35,
+      };
+
+      await UserWithoutPk.insert(userData);
+
+      const user = await UserWithoutPk.query()
+        .select("name", "name", "age", "age")
+        .where("name", "DuplicateSelectTest")
+        .one();
+
+      expect(user).not.toBeNull();
+      expect(user!.name).toBe("DuplicateSelectTest");
+      // CockroachDB may return numbers as strings
+      expect(+user!.age).toBe(35);
+    });
+
+    test("select with mixed aliases and direct columns", async () => {
+      const userData = {
+        ...UserFactory.getCommonUserData(),
+        name: "MixedSelectTest",
+        age: 40,
+      };
+
+      await UserWithoutPk.insert(userData);
+
+      const user = await UserWithoutPk.query()
+        .select("name", "age as userAge", "email as userEmail")
+        .where("name", "MixedSelectTest")
+        .one();
+
+      expect(user).not.toBeNull();
+      expect(user!.name).toBe("MixedSelectTest");
+      // CockroachDB may return numbers as strings
+      expect(+user!.userAge).toBe(40);
+      expect(user!.userEmail).toBeDefined();
+
+      // Original names when aliased should not exist
+      expect(Object.prototype.hasOwnProperty.call(user, "age")).toBe(false);
+      expect(Object.prototype.hasOwnProperty.call(user, "email")).toBe(false);
+    });
+
+    test("select combined with selectRaw returns both", async () => {
+      const userData = {
+        ...UserFactory.getCommonUserData(),
+        name: "CombinedSelectTest",
+        age: 50,
+      };
+
+      await UserWithoutPk.insert(userData);
+
+      const user = await UserWithoutPk.query()
+        .select("name")
+        .selectRaw<{ doubleAge: number }>("age * 2 as doubleAge")
+        .where("name", "CombinedSelectTest")
+        .one();
+
+      expect(user).not.toBeNull();
+      expect(user!.name).toBe("CombinedSelectTest");
+      expect(+user!.doubleAge).toBe(100);
+    });
+
+    test("empty select results in all columns", async () => {
+      const userData = {
+        ...UserFactory.getCommonUserData(),
+        name: "EmptySelectTest",
+        age: 28,
+      };
+
+      await UserWithoutPk.insert(userData);
+
+      // Calling query without select should return all columns
+      const user = await UserWithoutPk.query()
+        .where("name", "EmptySelectTest")
+        .one();
+
+      expect(user).not.toBeNull();
+      expect(user!.name).toBe("EmptySelectTest");
+      // CockroachDB may return numbers as strings
+      expect(+user!.age).toBe(28);
+      expect(user!.email).toBeDefined();
+      expect(user!.status).toBeDefined();
+    });
+
+    test("clearSelect after select returns all columns", async () => {
+      const userData = {
+        ...UserFactory.getCommonUserData(),
+        name: "ClearSelectTest",
+        age: 33,
+      };
+
+      await UserWithoutPk.insert(userData);
+
+      const user = await UserWithoutPk.query()
+        .select("name")
+        .clearSelect()
+        .where("name", "ClearSelectTest")
+        .one();
+
+      expect(user).not.toBeNull();
+      expect(user!.name).toBe("ClearSelectTest");
+      // CockroachDB may return numbers as strings
+      expect(+user!.age).toBe(33);
+      expect(user!.email).toBeDefined();
+    });
+
+    test("select with non-existent column name is silently handled", async () => {
+      const userData = {
+        ...UserFactory.getCommonUserData(),
+        name: "NonExistentColTest",
+        age: 22,
+      };
+
+      await UserWithoutPk.insert(userData);
+
+      // Selecting a column that doesn't exist
+      // Depending on database, this might error or return undefined
+      // This tests the edge case handling
+      try {
+        const user = await UserWithoutPk.query()
+          .select("name", "nonExistentColumn" as any)
+          .where("name", "NonExistentColTest")
+          .one();
+
+        // If the query succeeds, the non-existent column should be undefined
+        expect(user).not.toBeNull();
+        expect(user!.name).toBe("NonExistentColTest");
+      } catch {
+        // Some databases throw an error for non-existent columns - that's acceptable
+        expect(true).toBe(true);
+      }
+    });
+
+    test("select preserves null values", async () => {
+      const userData = {
+        ...UserFactory.getCommonUserData(),
+        name: "NullPreserveTest",
+        age: null as unknown as number,
+      };
+
+      await UserWithoutPk.insert(userData);
+
+      const user = await UserWithoutPk.query()
+        .select("name", "age")
+        .where("name", "NullPreserveTest")
+        .one();
+
+      expect(user).not.toBeNull();
+      expect(user!.name).toBe("NullPreserveTest");
+      expect(user!.age).toBeNull();
+    });
+
+    test("select with only aggregate returns only that aggregate", async () => {
+      const userData = [
+        { ...UserFactory.getCommonUserData(), name: "AggOnlyTest1", age: 10 },
+        { ...UserFactory.getCommonUserData(), name: "AggOnlyTest2", age: 20 },
+      ];
+
+      await UserWithoutPk.insertMany(userData);
+
+      const result = await UserWithoutPk.query()
+        .selectCount("*", "total")
+        .where("name", "like", "AggOnlyTest%")
+        .one();
+
+      expect(result).not.toBeNull();
+      expect(+result!.total).toBe(2);
+
+      // Model columns should not exist since we only selected an aggregate
+      expect(Object.prototype.hasOwnProperty.call(result, "name")).toBe(false);
+      expect(Object.prototype.hasOwnProperty.call(result, "age")).toBe(false);
     });
   });
 });

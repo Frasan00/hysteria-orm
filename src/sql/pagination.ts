@@ -1,5 +1,5 @@
 import { Model } from "./models/model";
-import { AnnotatedModel } from "./models/model_query_builder/model_query_builder_types";
+import { SelectedModel } from "./models/model_query_builder/model_query_builder_types";
 
 export type PaginationMetadata = {
   perPage: number;
@@ -21,20 +21,20 @@ export type CursorPaginationMetadata = {
 
 export type PaginatedData<
   T extends Model,
-  A extends object = {},
-  R extends object = {},
+  S extends Record<string, any> = {},
+  R extends Record<string, any> = {},
 > = {
   paginationMetadata: PaginationMetadata;
-  data: AnnotatedModel<T, A, R>[];
+  data: ([keyof S] extends [never] ? T & R : SelectedModel<S, R>)[];
 };
 
 export type CursorPaginatedData<
   T extends Model,
-  A extends object = {},
-  R extends object = {},
+  S extends Record<string, any> = {},
+  R extends Record<string, any> = {},
 > = {
   paginationMetadata: CursorPaginationMetadata;
-  data: AnnotatedModel<T, A, R>[];
+  data: ([keyof S] extends [never] ? T & R : SelectedModel<S, R>)[];
 };
 
 export function getPaginationMetadata(

@@ -20,7 +20,6 @@ import { QueryNode } from "../ast/query/query";
 import { InterpreterUtils } from "../interpreter/interpreter_utils";
 import type { Model } from "../models/model";
 import { ModelKey } from "../models/model_manager/model_manager_types";
-import { AnnotatedModel } from "../models/model_query_builder/model_query_builder_types";
 import type { NumberModelKey } from "../models/model_types";
 import {
   CursorPaginatedData,
@@ -50,7 +49,6 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   protected withNodes: WithNode[];
   protected lockQueryNodes: LockNode[];
   protected isNestedCondition = false;
-  protected mustRemoveAnnotations: boolean = false;
   protected interpreterUtils: InterpreterUtils;
   protected insertNode: InsertNode | null = null;
   protected onDuplicateNode: OnDuplicateNode | null = null;
@@ -115,7 +113,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   /**
    * @description Executes the query and retrieves multiple results.
    */
-  async many(): Promise<AnnotatedModel<T, any, any>[]> {
+  async many(): Promise<T[]> {
     const { sql, bindings } = this.unWrap();
     return this.execSqlWithSlaveHandling("read", (dataSource) =>
       execSql(sql, bindings, dataSource, this.dbType, "rows", {
@@ -141,8 +139,8 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   /**
    * @description Executes the query and retrieves a single result.
    */
-  async one(): Promise<AnnotatedModel<T, any, any> | null> {
-    const result = (await this.limit(1).many()) as AnnotatedModel<T, {}>[];
+  async one(): Promise<T | null> {
+    const result = (await this.limit(1).many()) as T[];
     if (!result || !result.length) {
       return null;
     }
@@ -153,7 +151,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   /**
    * @description Executes the query and retrieves the first result. Fail if no result is found.
    */
-  async oneOrFail(): Promise<AnnotatedModel<T, any, any>> {
+  async oneOrFail(): Promise<T> {
     const model = await this.one();
     if (!model) {
       throw new HysteriaError(
@@ -166,13 +164,6 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   }
 
   /**
-   * @alias oneOrFail
-   */
-  async firstOrFail(): Promise<AnnotatedModel<T, any, any>> {
-    return this.oneOrFail();
-  }
-
-  /**
    * @description Executes the query and returns a node readable stream.
    * @description If used by a model query builder, it will serialize the models and apply the hooks and relations.
    * @postgres needs the pg-query-stream package in order to work
@@ -180,7 +171,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    */
   async stream<M extends Model = T>(
     options: StreamOptions = {},
-  ): Promise<PassThrough & AsyncGenerator<AnnotatedModel<M, {}, {}>>> {
+  ): Promise<PassThrough & AsyncGenerator<M>> {
     const { sql, bindings } = this.unWrap();
     return this.execSqlWithSlaveHandling("read", async (dataSource) => {
       const stream = await execSqlStreaming(
@@ -195,7 +186,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
         },
       );
 
-      return stream as PassThrough & AsyncGenerator<AnnotatedModel<M, {}, {}>>;
+      return stream as PassThrough & AsyncGenerator<M>;
     });
   }
 
@@ -277,7 +268,9 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
 
     const lastItem = data[data.length - 1];
     const lastItemValue = lastItem
-      ? lastItem[options.discriminator as keyof typeof lastItem]
+      ? (lastItem[options.discriminator as keyof typeof lastItem] as
+          | string
+          | number)
       : null;
     const paginationMetadata = getCursorPaginationMetadata(limit, count);
 
@@ -288,7 +281,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
       },
       {
         key: options.discriminator,
-        value: lastItemValue,
+        value: lastItemValue as string | number,
       },
     ];
   }
@@ -429,9 +422,9 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    */
   async getCount(column: string = "*"): Promise<number> {
     this.clearForFunctions();
-    this.annotate("count", column, "total");
-    const result = await this.one();
-    return result ? coerceToNumber(result["total" as keyof typeof result]) : 0;
+    this.selectRaw(`count(${column}) as total`);
+    const result = (await this.one()) as { total: number } | null;
+    return result ? coerceToNumber(result.total) : 0;
   }
 
   /**
@@ -439,9 +432,9 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    */
   async getMax(column: string): Promise<number> {
     this.clearForFunctions();
-    this.annotate("max", column, "total");
-    const result = await this.one();
-    return result ? coerceToNumber(result["total" as keyof typeof result]) : 0;
+    this.selectRaw(`max(${column}) as total`);
+    const result = (await this.one()) as { total: number } | null;
+    return result ? coerceToNumber(result.total) : 0;
   }
 
   /**
@@ -449,9 +442,9 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    */
   async getMin(column: string): Promise<number> {
     this.clearForFunctions();
-    this.annotate("min", column, "total");
-    const result = await this.one();
-    return result ? coerceToNumber(result["total" as keyof typeof result]) : 0;
+    this.selectRaw(`min(${column}) as total`);
+    const result = (await this.one()) as { total: number } | null;
+    return result ? coerceToNumber(result.total) : 0;
   }
 
   /**
@@ -459,9 +452,9 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    */
   async getAvg(column: string): Promise<number> {
     this.clearForFunctions();
-    this.annotate("avg", column, "total");
-    const result = await this.one();
-    return result ? coerceToNumber(result["total" as keyof typeof result]) : 0;
+    this.selectRaw(`avg(${column}) as total`);
+    const result = (await this.one()) as { total: number } | null;
+    return result ? coerceToNumber(result.total) : 0;
   }
 
   /**
@@ -469,9 +462,9 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    */
   async getSum(column: string): Promise<number> {
     this.clearForFunctions();
-    this.annotate("sum", column, "total");
-    const result = await this.one();
-    return result ? coerceToNumber(result["total" as keyof typeof result]) : 0;
+    this.selectRaw(`sum(${column}) as total`);
+    const result = (await this.one()) as { total: number } | null;
+    return result ? coerceToNumber(result.total) : 0;
   }
 
   /**
@@ -1043,7 +1036,6 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     // select / from / distinct (from SelectQueryBuilder)
     qb.dbType = this.dbType;
     qb.modelSelectedColumns = deepCloneNode(this.modelSelectedColumns);
-    qb.modelAnnotatedColumns = deepCloneNode(this.modelAnnotatedColumns);
     qb.distinctNode = deepCloneNode(this.distinctNode);
     qb.distinctOnNode = deepCloneNode(this.distinctOnNode);
     qb.selectNodes = deepCloneNode(this.selectNodes);
@@ -1068,7 +1060,6 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
 
     // flags
     qb.isNestedCondition = this.isNestedCondition;
-    qb.mustRemoveAnnotations = this.mustRemoveAnnotations;
 
     return qb as this;
   }
@@ -1178,7 +1169,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   private async manyWithPerformance(
     returnType: "millis" | "seconds" = "millis",
   ): Promise<{
-    data: AnnotatedModel<T, any, any>[];
+    data: T[];
     time: number;
   }> {
     const [time, data] = await withPerformance(
@@ -1198,7 +1189,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   private async oneWithPerformance(
     returnType: "millis" | "seconds" = "millis",
   ): Promise<{
-    data: AnnotatedModel<T, any, any> | null;
+    data: T | null;
     time: number;
   }> {
     const [time, data] = await withPerformance(

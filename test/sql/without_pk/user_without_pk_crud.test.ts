@@ -25,26 +25,25 @@ afterEach(async () => {
 });
 
 describe(`[${env.DB_TYPE}] Select`, () => {
-  test("Annotate", async () => {
+  test("selectRaw with aggregate function", async () => {
     await UserFactory.userWithoutPk(2);
     const user = await UserWithoutPk.query()
-      .annotate("max", "age", "maxAge")
+      .selectRaw<{ maxAge: number }>("max(age) as maxAge")
       .one();
 
     expect(user).not.toBeUndefined();
-    expect(user?.$annotations.maxAge).toBeDefined();
+    expect(user?.maxAge).toBeDefined();
   });
 
-  test("Select before annotate", async () => {
+  test("Select with alias", async () => {
     await UserFactory.userWithoutPk(2);
     const user = await UserWithoutPk.query()
-      .select("name")
-      .annotate("age", "superAge")
+      .select("name", "age as superAge")
       .one();
 
     expect(user).not.toBeUndefined();
     expect(user?.name).toBeDefined();
-    expect(user?.$annotations.superAge).toBeDefined();
+    expect(user?.superAge).toBeDefined();
   });
 
   test("Select all without `select` method call (default behavior)", async () => {
@@ -65,14 +64,16 @@ describe(`[${env.DB_TYPE}] Select`, () => {
 
   test("Multiple select", async () => {
     await UserFactory.userWithoutPk(2);
+    // Note: Chained select calls accumulate at runtime but type reflects last call
     const users = await UserWithoutPk.query()
       .select("name")
       .select("age")
       .many();
 
     expect(users.length).toBe(2);
-    expect(users[0].name).not.toBeUndefined();
-    expect(users[1].name).not.toBeUndefined();
+    // Both name and age are selected at runtime (chained selects accumulate)
+    expect(Object.prototype.hasOwnProperty.call(users[0], "name")).toBe(true);
+    expect(Object.prototype.hasOwnProperty.call(users[1], "name")).toBe(true);
     expect(users[0].age).not.toBeUndefined();
     expect(users[1].age).not.toBeUndefined();
   });
@@ -115,17 +116,16 @@ describe(`[${env.DB_TYPE}] Select`, () => {
   test("Multiple columns select with aliases", async () => {
     await UserFactory.userWithoutPk(2);
     const users = await UserWithoutPk.query()
-      .annotate("age", "result")
-      .annotate("birthDate", "result2")
+      .select("age as result", "birthDate as result2")
       .many();
 
     expect(users.length).toBe(2);
-    expect(users[0].$annotations.result).not.toBeUndefined();
-    expect(users[1].$annotations.result2).not.toBeUndefined();
-    expect(users[0].$annotations.result).not.toBeUndefined();
-    expect(users[1].$annotations.result2).not.toBeUndefined();
-    expect(Object.keys(users[0]).length).toBe(1); // $annotations
-    expect(Object.keys(users[1]).length).toBe(1);
+    expect(users[0].result).not.toBeUndefined();
+    expect(users[1].result2).not.toBeUndefined();
+    expect(users[0].result).not.toBeUndefined();
+    expect(users[1].result2).not.toBeUndefined();
+    expect(Object.keys(users[0]).length).toBe(2); // result, result2
+    expect(Object.keys(users[1]).length).toBe(2);
   });
 
   test("Custom From alias", async () => {

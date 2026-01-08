@@ -5,7 +5,6 @@ import type { Result as OracleDBResult } from "oracledb";
 import type { QueryResult as PgResult } from "pg";
 import type { RunResult as SqliteResult } from "sqlite3";
 import { Model } from "../models/model";
-import { AnnotatedModel } from "../models/model_query_builder/model_query_builder_types";
 import {
   GetConnectionReturnType,
   SqlDataSourceType,
@@ -48,8 +47,6 @@ export type SqlLiteOptions<T extends Model> = {
 
 export type SqlStreamingReturnType<
   T extends "generator" | "stream",
-  A extends Record<string, any>,
+  S extends Record<string, any>,
   R extends Record<string, any>,
-> = T extends "generator"
-  ? AsyncGenerator<AnnotatedModel<Model, A, R>>
-  : Readable;
+> = T extends "generator" ? AsyncGenerator<Model & S & R> : Readable;

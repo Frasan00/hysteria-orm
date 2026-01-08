@@ -24,7 +24,7 @@ afterEach(async () => {
 });
 
 describe(`[${env.DB_TYPE}] uuid pk join edge cases`, () => {
-  test("left join with null foreign key returns rows and undefined annotations", async () => {
+  test("left join with null foreign key returns rows and undefined columns", async () => {
     const user = await UserFactory.userWithUuid(1);
     const linkedPost = await PostFactory.postWithUuid(user.id, 1);
     const orphanPost = await PostWithUuid.insert({
@@ -33,8 +33,7 @@ describe(`[${env.DB_TYPE}] uuid pk join edge cases`, () => {
     });
 
     const postsWithUsers = await PostWithUuid.query()
-      .select("posts_with_uuid.*")
-      .annotate("users_with_uuid.name", "userName")
+      .select("posts_with_uuid.*", "users_with_uuid.name as userName")
       .leftJoin(
         "users_with_uuid",
         "users_with_uuid.id",
@@ -46,10 +45,7 @@ describe(`[${env.DB_TYPE}] uuid pk join edge cases`, () => {
 
     expect(postsWithUsers).toHaveLength(2);
     const [first, second] = postsWithUsers;
-    const userNameValues = [
-      first.$annotations.userName,
-      second.$annotations.userName,
-    ];
+    const userNameValues = [first.userName, second.userName];
     // one defined, one null
     if (!userNameValues.some((n) => n)) {
       throw new Error();
@@ -78,9 +74,11 @@ describe(`[${env.DB_TYPE}] uuid pk join edge cases`, () => {
     }
 
     const rows = await PostWithUuid.query()
-      .select("posts_with_uuid.*")
-      .annotate("users_with_uuid.name", "userName")
-      .annotate("address_with_uuid.city", "city")
+      .select(
+        "posts_with_uuid.*",
+        "users_with_uuid.name as userName",
+        "address_with_uuid.city as city",
+      )
       .leftJoin(
         "users_with_uuid",
         "users_with_uuid.id",
@@ -104,8 +102,8 @@ describe(`[${env.DB_TYPE}] uuid pk join edge cases`, () => {
       .many();
 
     expect(rows).toHaveLength(3);
-    expect(rows[0].$annotations.userName).toBeDefined();
-    expect(rows[0].$annotations.city).toBeDefined();
+    expect(rows[0].userName).toBeDefined();
+    expect(rows[0].city).toBeDefined();
   });
 
   test("raw alias join chain using from aliases", async () => {
@@ -128,9 +126,7 @@ describe(`[${env.DB_TYPE}] uuid pk join edge cases`, () => {
     const rows = await SqlDataSource.instance
       .query("posts_with_uuid")
       .from("posts_with_uuid", "p")
-      .select("p.*")
-      .annotate("u.name", "mustBe1")
-      .annotate("a.city", "mustBe2")
+      .select("p.*", "u.name as mustBe1", "a.city as mustBe2")
       .leftJoinRaw("users_with_uuid u ON u.id = p.user_id")
       .leftJoinRaw("user_address_with_uuid ua ON ua.user_id = u.id")
       .leftJoinRaw("address_with_uuid a ON a.id = ua.address_id")

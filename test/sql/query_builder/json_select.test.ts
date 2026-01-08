@@ -49,8 +49,8 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         .one();
 
       expect(result).not.toBeNull();
-      expect(result?.$annotations?.userName).toBeDefined();
-      expect(result?.$annotations?.userTheme).toBeDefined();
+      expect(result?.userName).toBeDefined();
+      expect(result?.userTheme).toBeDefined();
     });
 
     test("should extract JSON property with path without $ prefix", async () => {
@@ -73,8 +73,8 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         .one();
 
       expect(result).not.toBeNull();
-      expect(result?.$annotations?.userAge).toBeDefined();
-      expect(result?.$annotations?.userCity).toBeDefined();
+      expect(result?.userAge).toBeDefined();
+      expect(result?.userCity).toBeDefined();
     });
 
     test("should extract JSON property with array path format", async () => {
@@ -97,7 +97,7 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         .one();
 
       expect(result).not.toBeNull();
-      expect(result?.$annotations?.phoneNumber).toBeDefined();
+      expect(result?.phoneNumber).toBeDefined();
     });
 
     test("should extract from JSON array by index", async () => {
@@ -121,8 +121,8 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         .one();
 
       expect(result).not.toBeNull();
-      expect(result?.$annotations?.firstItemName).toBeDefined();
-      expect(result?.$annotations?.secondItemName).toBeDefined();
+      expect(result?.firstItemName).toBeDefined();
+      expect(result?.secondItemName).toBeDefined();
     });
 
     test("should handle root level extraction", async () => {
@@ -141,7 +141,7 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         .one();
 
       expect(result).not.toBeNull();
-      expect(result?.$annotations?.value).toBeDefined();
+      expect(result?.value).toBeDefined();
     });
   });
 
@@ -166,8 +166,8 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         .one();
 
       expect(result).not.toBeNull();
-      expect(result?.$annotations?.message).toBeDefined();
-      expect(result?.$annotations?.userStatus).toBeDefined();
+      expect(result?.message).toBeDefined();
+      expect(result?.userStatus).toBeDefined();
     });
 
     test("should extract JSON property as text with array path", async () => {
@@ -190,7 +190,7 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         .one();
 
       expect(result).not.toBeNull();
-      expect(result?.$annotations?.biography).toBeDefined();
+      expect(result?.biography).toBeDefined();
     });
 
     test("should extract from nested array as text", async () => {
@@ -210,8 +210,8 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         .one();
 
       expect(result).not.toBeNull();
-      expect(result?.$annotations?.firstTag).toBeDefined();
-      expect(result?.$annotations?.secondTag).toBeDefined();
+      expect(result?.firstTag).toBeDefined();
+      expect(result?.secondTag).toBeDefined();
     });
   });
 
@@ -236,7 +236,7 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         .one();
 
       expect(result).not.toBeNull();
-      expect(result?.$annotations?.itemCount).toBeDefined();
+      expect(result?.itemCount).toBeDefined();
     });
 
     test("should get length of nested JSON array", async () => {
@@ -263,8 +263,8 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         .one();
 
       expect(result).not.toBeNull();
-      expect(result?.$annotations?.tagCount).toBeDefined();
-      expect(result?.$annotations?.scoreCount).toBeDefined();
+      expect(result?.tagCount).toBeDefined();
+      expect(result?.scoreCount).toBeDefined();
     });
 
     test("should get length of deeply nested array", async () => {
@@ -297,7 +297,7 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         .one();
 
       expect(result).not.toBeNull();
-      expect(result?.$annotations?.deepArrayCount).toBeDefined();
+      expect(result?.deepArrayCount).toBeDefined();
     });
   });
 
@@ -325,7 +325,7 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         .one();
 
       expect(result).not.toBeNull();
-      expect(result?.$annotations?.allKeys).toBeDefined();
+      expect(result?.allKeys).toBeDefined();
     });
 
     test("should get keys of nested JSON object", async () => {
@@ -354,7 +354,7 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         .one();
 
       expect(result).not.toBeNull();
-      expect(result?.$annotations?.profileKeys).toBeDefined();
+      expect(result?.profileKeys).toBeDefined();
     });
 
     test("should get keys using array path format", async () => {
@@ -383,7 +383,7 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         .one();
 
       expect(result).not.toBeNull();
-      expect(result?.$annotations?.displayKeys).toBeDefined();
+      expect(result?.displayKeys).toBeDefined();
     });
   });
 
@@ -410,7 +410,7 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         .one();
 
       expect(result).not.toBeNull();
-      expect(result?.$annotations?.userJson).toBeDefined();
+      expect(result?.userJson).toBeDefined();
     });
 
     test("should use raw JSON expression for MySQL", async () => {
@@ -438,7 +438,7 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         .one();
 
       expect(result).not.toBeNull();
-      expect(result?.$annotations?.extractedValue).toBeDefined();
+      expect(result?.extractedValue).toBeDefined();
     });
   });
 
@@ -478,10 +478,10 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         .one();
 
       expect(result).not.toBeNull();
-      expect(result?.$annotations?.userName).toBeDefined();
-      expect(result?.$annotations?.userEmail).toBeDefined();
-      expect(result?.$annotations?.userBio).toBeDefined();
-      expect(result?.$annotations?.tagCount).toBeDefined();
+      expect(result?.userName).toBeDefined();
+      expect(result?.userEmail).toBeDefined();
+      expect(result?.userBio).toBeDefined();
+      expect(result?.tagCount).toBeDefined();
     });
 
     test("should combine JSON select with regular select", async () => {
@@ -507,8 +507,8 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
       expect(result).not.toBeNull();
       expect(result?.email).toBeDefined();
       expect(result?.name).toBeDefined();
-      expect(result?.$annotations?.theme).toBeDefined();
-      expect(result?.$annotations?.language).toBeDefined();
+      expect(result?.theme).toBeDefined();
+      expect(result?.language).toBeDefined();
     });
 
     test("should use JSON select with where conditions", async () => {
@@ -541,8 +541,8 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         .one();
 
       expect(result).not.toBeNull();
-      expect(result?.$annotations?.userStatus).toBeDefined();
-      expect(result?.$annotations?.userPriority).toBeDefined();
+      expect(result?.userStatus).toBeDefined();
+      expect(result?.userPriority).toBeDefined();
     });
 
     test("should use JSON select with orderBy and limit", async () => {
@@ -572,8 +572,8 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         .many();
 
       expect(results).toHaveLength(2);
-      expect(results[0].$annotations?.userScore).toBeDefined();
-      expect(results[0].$annotations?.userRank).toBeDefined();
+      expect(results[0]?.userScore).toBeDefined();
+      expect(results[0]?.userRank).toBeDefined();
     });
   });
 
@@ -605,9 +605,9 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         .selectJsonText("json", ["data", "nested", "value"], "value3")
         .one();
 
-      expect(result1?.$annotations?.value1).toBeDefined();
-      expect(result2?.$annotations?.value2).toBeDefined();
-      expect(result3?.$annotations?.value3).toBeDefined();
+      expect(result1?.value1).toBeDefined();
+      expect(result2?.value2).toBeDefined();
+      expect(result3?.value3).toBeDefined();
     });
 
     test("should handle numeric array indices in different formats", async () => {
@@ -629,8 +629,8 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         .selectJsonText("json", ["items", 0], "item2")
         .one();
 
-      expect(result1?.$annotations?.item1).toBeDefined();
-      expect(result2?.$annotations?.item2).toBeDefined();
+      expect(result1?.item1).toBeDefined();
+      expect(result2?.item2).toBeDefined();
     });
   });
 
@@ -667,7 +667,7 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         .one();
 
       expect(result).not.toBeNull();
-      expect(result?.$annotations?.valid).toBeDefined();
+      expect(result?.valid).toBeDefined();
     });
 
     test("should handle deeply nested JSON structures", async () => {
@@ -700,7 +700,7 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         .one();
 
       expect(result).not.toBeNull();
-      expect(result?.$annotations?.deepValue).toBeDefined();
+      expect(result?.deepValue).toBeDefined();
     });
 
     test("should handle mixed data types in JSON", async () => {
@@ -725,9 +725,9 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         .one();
 
       expect(result).not.toBeNull();
-      expect(result?.$annotations?.stringVal).toBeDefined();
-      expect(result?.$annotations?.numberVal).toBeDefined();
-      expect(result?.$annotations?.boolVal).toBeDefined();
+      expect(result?.stringVal).toBeDefined();
+      expect(result?.numberVal).toBeDefined();
+      expect(result?.boolVal).toBeDefined();
     });
   });
 });

@@ -131,7 +131,7 @@ describe(`[${env.DB_TYPE}] Query Builder with uuid`, () => {
 
     const retrievedPost = await SqlDataSource.instance
       .query("posts_with_uuid")
-      .annotate("title", "postTitle")
+      .select("title as postTitle")
       .oneOrFail();
 
     expect(retrievedPost).toBeDefined();
@@ -231,7 +231,7 @@ describe(`[${env.DB_TYPE}] Query Builder with uuid`, () => {
 
     const retrievedPost = await SqlDataSource.instance
       .query("posts_with_uuid")
-      .firstOrFail();
+      .oneOrFail();
     expect(retrievedPost.title).toBe("Hello World Updated");
   });
 
@@ -305,7 +305,7 @@ describe(`[${env.DB_TYPE}] Query Builder with a model without a primary key`, ()
 
     const retrievedUser = await SqlDataSource.instance
       .query("users_without_pk")
-      .firstOrFail();
+      .oneOrFail();
 
     expect(retrievedUser).toBeDefined();
     expect(retrievedUser.id).not.toBeDefined();
@@ -342,7 +342,7 @@ describe(`[${env.DB_TYPE}] Query Builder with a model without a primary key`, ()
 
     const retrievedUser = await SqlDataSource.instance
       .query("users_without_pk")
-      .firstOrFail();
+      .oneOrFail();
     expect(retrievedUser.name).toBe("Jane Doe");
   });
 
@@ -1563,7 +1563,7 @@ describe(`[${env.DB_TYPE}] Additional Query Builder methods`, () => {
 
     const userAfterInc = await SqlDataSource.instance
       .query("users_without_pk")
-      .firstOrFail();
+      .oneOrFail();
     if (env.DB_TYPE === "cockroachdb") {
       expect(userAfterInc.age).toBe("15");
     } else {
@@ -1577,7 +1577,7 @@ describe(`[${env.DB_TYPE}] Additional Query Builder methods`, () => {
 
     const userAfterDec = await SqlDataSource.instance
       .query("users_without_pk")
-      .firstOrFail();
+      .oneOrFail();
 
     if (env.DB_TYPE === "cockroachdb") {
       expect(userAfterDec.age).toBe("12");

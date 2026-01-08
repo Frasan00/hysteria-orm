@@ -5,7 +5,6 @@ import { DistinctOnNode } from "../ast/query/node/distinct/distinct_on";
 import { FromNode } from "../ast/query/node/from/from";
 import { SelectNode } from "../ast/query/node/select/basic_select";
 import { SelectJsonNode } from "../ast/query/node/select/select_json";
-import { SqlMethod } from "../ast/query/node/select/select_types";
 import { Model } from "../models/model";
 import { ModelKey } from "../models/model_manager/model_manager_types";
 import { SqlDataSource } from "../sql_data_source";
@@ -16,7 +15,6 @@ import { SelectableColumn } from "./query_builder_types";
 export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
   protected dbType: SqlDataSourceType;
   protected modelSelectedColumns: string[] = [];
-  protected modelAnnotatedColumns: string[] = [];
   protected withQuery?: string;
   protected fromNode: FromNode;
   protected distinctNode: DistinctNode | null;
@@ -35,11 +33,12 @@ export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
   /**
    * @description Adds a SELECT condition to the query.
    * @description Can be stacked multiple times
-   * @warning For annotations, use the `annotate` method instead, aliases and methods are not supported in the select method and will give error `column "${columnName} as ${alias}" does not exist`
+   * @description Supports: "column", "table.column", "column as alias", "*", "table.*"
    * @example
    * ```ts
    * const user = await User.query().select("name", "age").one(); // SELECT name, age FROM users
    * const user = await User.query().select("name", "users.age").one(); // SELECT name, users.age FROM users
+   * const user = await User.query().select("name as userName").one(); // SELECT name as userName FROM users
    * ```
    */
   select<S extends string>(...columns: SelectableColumn<S>[]): this;
@@ -52,20 +51,53 @@ export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
       ...(columns as string[]),
     ];
 
-    const casedColumns = columns.map((column) =>
-      convertCase(column as string, this.model.databaseCaseConvention),
-    );
+    columns.forEach((column) => {
+      const columnStr = column as string;
+      const { columnPart, aliasPart } = this.parseColumnAlias(columnStr);
 
-    casedColumns.forEach((column) => {
-      this.selectNodes.push(new SelectNode(column));
+      const casedColumn = convertCase(
+        columnPart,
+        this.model.databaseCaseConvention,
+      );
+
+      this.selectNodes.push(new SelectNode(casedColumn, aliasPart));
     });
 
     return this;
   }
 
   /**
-   * @description Adds a raw select statement to the query
-   * @warning For models, only annotated columns are available and will be added to the `$annotations` property of the model. Everything else will be ignored, if you need a query like `selectRaw` you can use the `QueryBuilder` instead.
+   * @description Parses a column string that may contain an alias (e.g., "column as alias")
+   * @returns The column part and optional alias part
+   */
+  private parseColumnAlias(column: string): {
+    columnPart: string;
+    aliasPart: string | undefined;
+  } {
+    const normalized = column.replace(/\s+/g, " ").trim();
+    const asMatch = normalized.match(/^(.+?)\s+as\s+(.+)$/i);
+
+    if (asMatch) {
+      return {
+        columnPart: asMatch[1].trim(),
+        aliasPart: asMatch[2].trim(),
+      };
+    }
+
+    return {
+      columnPart: normalized,
+      aliasPart: undefined,
+    };
+  }
+
+  /**
+   * @description Adds a raw SELECT statement to the query
+   * @description Useful for SQL functions, expressions, or complex selections
+   * @example
+   * ```ts
+   * const result = await User.query().selectRaw("count(*) as total").one();
+   * const result = await User.query().selectRaw("sum(amount) as total_amount").one();
+   * ```
    */
   selectRaw(statement: string): this {
     this.selectNodes.push(
@@ -104,48 +136,6 @@ export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
    */
   clearDistinctOn(): this {
     this.distinctOnNode = null;
-    return this;
-  }
-
-  /**
-   * @description Annotates a column with a SQL method or a simple alias
-   * @description If using a model, the result will be available in the $annotations property of the model, else it will be available in the result of the query
-   * @example
-   * ```ts
-   * const user = await User.query().annotate("max", "id", "maxId").one(); // max(id) as maxId
-   * const user = await User.query().annotate("id", "superId").one(); // id as superId
-   * const user = await User.query().annotate("id", "superId").one(); // id as superId
-   * ```
-   */
-  annotate<A extends string>(column: string, alias: A): this;
-  annotate<A extends string>(
-    sqlMethod: SqlMethod,
-    column: string,
-    alias: A,
-  ): this;
-  annotate<A extends string>(sqlMethod: string, column: string, alias: A): this;
-  annotate<A extends string>(
-    sqlMethodOrColumn: string | SqlMethod,
-    columnOrAlias: string,
-    maybeAlias?: A,
-  ): this {
-    let sqlMethod: string | undefined;
-    let column: string;
-    let alias: string;
-
-    if (maybeAlias) {
-      sqlMethod = sqlMethodOrColumn;
-      column = columnOrAlias;
-      alias = maybeAlias;
-    } else {
-      sqlMethod = undefined;
-      column = sqlMethodOrColumn as string;
-      alias = columnOrAlias;
-    }
-
-    this.selectNodes.push(new SelectNode(column, alias, sqlMethod));
-    this.modelAnnotatedColumns.push(alias);
-
     return this;
   }
 
@@ -230,7 +220,6 @@ export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
     this.selectNodes.push(
       new SelectJsonNode(column as string, path, alias, "extract"),
     );
-    this.modelAnnotatedColumns.push(alias);
     return this;
   }
 
@@ -268,7 +257,6 @@ export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
     this.selectNodes.push(
       new SelectJsonNode(column as string, path, alias, "extract_text"),
     );
-    this.modelAnnotatedColumns.push(alias);
     return this;
   }
 
@@ -307,7 +295,6 @@ export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
     this.selectNodes.push(
       new SelectJsonNode(column as string, path, alias, "array_length"),
     );
-    this.modelAnnotatedColumns.push(alias);
     return this;
   }
 
@@ -348,7 +335,6 @@ export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
     this.selectNodes.push(
       new SelectJsonNode(column as string, path, alias, "object_keys"),
     );
-    this.modelAnnotatedColumns.push(alias);
     return this;
   }
 
@@ -365,7 +351,117 @@ export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
    */
   selectJsonRaw<A extends string>(raw: string, alias: A): this {
     this.selectNodes.push(new SelectJsonNode(raw, "", alias, "raw", true));
-    this.modelAnnotatedColumns.push(alias);
+    return this;
+  }
+
+  /**
+   * @description Selects COUNT(column) with an alias
+   * @param column The column to count (use "*" for COUNT(*))
+   * @param alias The alias for the count result
+   * @example
+   * ```ts
+   * const result = await User.query().selectCount("id", "totalUsers").one();
+   * console.log(result?.totalUsers); // number
+   *
+   * const result = await User.query().selectCount("*", "total").one();
+   * console.log(result?.total); // number
+   * ```
+   */
+  selectCount<A extends string>(column: ModelKey<T> | "*", alias: A): this;
+  selectCount<A extends string>(column: string, alias: A): this;
+  selectCount<A extends string>(
+    column: ModelKey<T> | "*" | string,
+    alias: A,
+  ): this {
+    const casedColumn =
+      column === "*"
+        ? "*"
+        : convertCase(column as string, this.model.databaseCaseConvention);
+    this.selectNodes.push(new SelectNode(casedColumn, alias, "count"));
+    return this;
+  }
+
+  /**
+   * @description Selects SUM(column) with an alias
+   * @param column The column to sum
+   * @param alias The alias for the sum result
+   * @example
+   * ```ts
+   * const result = await Order.query().selectSum("amount", "totalAmount").one();
+   * console.log(result?.totalAmount); // number
+   * ```
+   */
+  selectSum<A extends string>(column: ModelKey<T>, alias: A): this;
+  selectSum<A extends string>(column: string, alias: A): this;
+  selectSum<A extends string>(column: ModelKey<T> | string, alias: A): this {
+    const casedColumn = convertCase(
+      column as string,
+      this.model.databaseCaseConvention,
+    );
+    this.selectNodes.push(new SelectNode(casedColumn, alias, "sum"));
+    return this;
+  }
+
+  /**
+   * @description Selects AVG(column) with an alias
+   * @param column The column to average
+   * @param alias The alias for the average result
+   * @example
+   * ```ts
+   * const result = await User.query().selectAvg("age", "averageAge").one();
+   * console.log(result?.averageAge); // number
+   * ```
+   */
+  selectAvg<A extends string>(column: ModelKey<T>, alias: A): this;
+  selectAvg<A extends string>(column: string, alias: A): this;
+  selectAvg<A extends string>(column: ModelKey<T> | string, alias: A): this {
+    const casedColumn = convertCase(
+      column as string,
+      this.model.databaseCaseConvention,
+    );
+    this.selectNodes.push(new SelectNode(casedColumn, alias, "avg"));
+    return this;
+  }
+
+  /**
+   * @description Selects MIN(column) with an alias
+   * @param column The column to get minimum value
+   * @param alias The alias for the min result
+   * @example
+   * ```ts
+   * const result = await User.query().selectMin("age", "youngestAge").one();
+   * console.log(result?.youngestAge); // number
+   * ```
+   */
+  selectMin<A extends string>(column: ModelKey<T>, alias: A): this;
+  selectMin<A extends string>(column: string, alias: A): this;
+  selectMin<A extends string>(column: ModelKey<T> | string, alias: A): this {
+    const casedColumn = convertCase(
+      column as string,
+      this.model.databaseCaseConvention,
+    );
+    this.selectNodes.push(new SelectNode(casedColumn, alias, "min"));
+    return this;
+  }
+
+  /**
+   * @description Selects MAX(column) with an alias
+   * @param column The column to get maximum value
+   * @param alias The alias for the max result
+   * @example
+   * ```ts
+   * const result = await User.query().selectMax("age", "oldestAge").one();
+   * console.log(result?.oldestAge); // number
+   * ```
+   */
+  selectMax<A extends string>(column: ModelKey<T>, alias: A): this;
+  selectMax<A extends string>(column: string, alias: A): this;
+  selectMax<A extends string>(column: ModelKey<T> | string, alias: A): this {
+    const casedColumn = convertCase(
+      column as string,
+      this.model.databaseCaseConvention,
+    );
+    this.selectNodes.push(new SelectNode(casedColumn, alias, "max"));
     return this;
   }
 }

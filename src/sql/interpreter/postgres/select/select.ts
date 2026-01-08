@@ -13,7 +13,7 @@ class PostgresSelectInterpreter implements Interpreter {
     const selectNode = node as SelectNode;
     if (selectNode.isRawValue) {
       return {
-        sql: selectNode.column as string,
+        sql: this.quoteAliasesInRawSql(selectNode.column as string),
         bindings: [],
       };
     }
@@ -115,6 +115,68 @@ class PostgresSelectInterpreter implements Interpreter {
       return ` as "${alias}"`;
     }
     return "";
+  }
+
+  /**
+   * Quotes unquoted aliases in raw SQL to preserve identifier case.
+   *
+   * PostgreSQL converts unquoted identifiers to lowercase by default.
+   * This method ensures aliases in SELECT statements are quoted to preserve
+   * camelCase or other mixed-case naming.
+   *
+   * @example
+   * Input:  "max(age) as maxAge"
+   * Output: "max(age) as \"maxAge\""
+   *
+   * @example CAST expressions are handled specially
+   * Input:  "CAST(x AS int) as result"
+   * Output: "CAST(x AS int) as \"result\""
+   *
+   * The type after AS inside CAST() is NOT quoted since it's part of SQL
+   * syntax, not an alias. This is detected by checking if there's an unclosed
+   * CAST( parenthesis before the AS keyword.
+   */
+  private quoteAliasesInRawSql(sql: string): string {
+    return sql.replace(
+      /\bas\s+([a-zA-Z_][a-zA-Z0-9_]*)\b/gi,
+      (match, alias, offset) => {
+        const before = sql.slice(0, offset);
+        const lowerBefore = before.toLowerCase();
+        let lastCastPos = lowerBefore.lastIndexOf("cast");
+
+        while (lastCastPos >= 0) {
+          const charBefore =
+            lastCastPos > 0 ? lowerBefore[lastCastPos - 1] : " ";
+          const charAfter = lowerBefore[lastCastPos + 4] || " ";
+
+          if (!/[a-z0-9_]/i.test(charBefore) && !/[a-z0-9_]/i.test(charAfter)) {
+            break;
+          }
+          lastCastPos = lowerBefore.lastIndexOf("cast", lastCastPos - 1);
+        }
+
+        if (lastCastPos >= 0) {
+          // Count parentheses from CAST position to current position
+          const segment = before.slice(lastCastPos);
+          let depth = 0;
+          for (const char of segment) {
+            if (char === "(") {
+              depth++;
+            }
+            if (char === ")") {
+              depth--;
+            }
+          }
+
+          // depth > 0 means we're inside an unclosed CAST() - don't quote the type
+          if (depth > 0) {
+            return match;
+          }
+        }
+
+        return `as "${alias}"`;
+      },
+    );
   }
 }
 

@@ -4,8 +4,6 @@ import { HysteriaError } from "../../../errors/hysteria_error";
 import { convertCase } from "../../../utils/case_utils";
 import { JsonPathInput } from "../../../utils/json_path_utils";
 import { withPerformance } from "../../../utils/performance";
-import { SelectNode } from "../../ast/query/node/select/basic_select";
-import type { SqlMethod } from "../../ast/query/node/select/select_types";
 import { BaseValues, BinaryOperatorType } from "../../ast/query/node/where";
 import { InterpreterUtils } from "../../interpreter/interpreter_utils";
 import { Model } from "../../models/model";
@@ -28,7 +26,6 @@ import {
   Cursor,
   PaginateWithCursorOptions,
   RelationRetrieveMethod,
-  SelectableColumn,
   StreamOptions,
   WriteQueryParam,
 } from "../../query_builder/query_builder_types";
@@ -45,33 +42,19 @@ import { BaseModelMethodOptions, ModelWithoutRelations } from "../model_types";
 import { ManyToMany } from "../relations/many_to_many";
 import { Relation, RelationEnum } from "../relations/relation";
 import type {
-  AnnotatedModel,
-  CommonSqlMethodReturnType,
+  BuildSelectType,
   FetchHooks,
   ManyOptions,
   OneOptions,
   RelatedInstance,
+  SelectableColumn,
+  SelectedModel,
 } from "./model_query_builder_types";
 import type { RelationQueryBuilderType } from "./relation_query_builder/relation_query_builder_types";
 
-/**
- * Helper type to determine if annotation overrides model field or goes to $annotations
- * If K is a key of the model T, it overrides that field in the model.
- * Otherwise, it goes into the annotations object A.
- */
-type AnnotationResult<
-  T extends Model,
-  A extends Record<string, any>,
-  R extends Record<string, any>,
-  K extends string,
-  V,
-> = K extends keyof T
-  ? ModelQueryBuilder<T & { [P in K]: V }, A, R>
-  : ModelQueryBuilder<T, A & { [P in K]: V }, R>;
-
 export class ModelQueryBuilder<
   T extends Model,
-  A extends Record<string, any> = {},
+  S extends Record<string, any> = ModelWithoutRelations<T>,
   R extends Record<string, any> = {},
 > extends QueryBuilder<T> {
   declare relation: Relation;
@@ -146,7 +129,8 @@ export class ModelQueryBuilder<
     return new ModelQueryBuilder(model, model.sqlInstance);
   }
 
-  async one(options: OneOptions = {}): Promise<AnnotatedModel<T, A, R> | null> {
+  // @ts-expect-error - Override with more specific return type for type-safety
+  async one(options: OneOptions = {}): Promise<SelectedModel<S, R> | null> {
     const result = await this.limit(1).many(options);
     if (!result || !result.length) {
       return null;
@@ -155,28 +139,30 @@ export class ModelQueryBuilder<
     return result[0];
   }
 
+  // @ts-expect-error - Override with more specific return type for type-safety
   async oneOrFail(options?: {
     ignoreHooks?: OneOptions["ignoreHooks"] & { customError?: Error };
-  }): Promise<AnnotatedModel<T, A, R>> {
+  }): Promise<SelectedModel<S, R>> {
     const model = await this.one(options);
     if (!model) {
       throw new HysteriaError(this.model.name + "::oneOrFail", "ROW_NOT_FOUND");
     }
 
-    return model as AnnotatedModel<T, A, R>;
+    return model as SelectedModel<S, R>;
   }
 
   async firstOrFail(options?: {
     ignoreHooks?: OneOptions["ignoreHooks"] & { customError?: Error };
-  }): Promise<AnnotatedModel<T, A, R>> {
+  }): Promise<SelectedModel<S, R>> {
     return this.oneOrFail(options);
   }
 
+  // @ts-expect-error - Override with more specific return type for type-safety
   override async many(
     options: ManyOptions = {},
-  ): Promise<AnnotatedModel<T, A, R>[]> {
+  ): Promise<SelectedModel<S, R>[]> {
     !(options.ignoreHooks as string[])?.includes("beforeFetch") &&
-      (await this.model.beforeFetch?.(this));
+      (await this.model.beforeFetch?.(this as any));
     const rows = await super.many();
     const models = rows.map((row) => {
       return this.addAdditionalColumnsToModel(row, this.model);
@@ -190,8 +176,6 @@ export class ModelQueryBuilder<
       models as T[],
       this.model,
       this.modelSelectedColumns,
-      this.modelAnnotatedColumns,
-      this.mustRemoveAnnotations,
     );
 
     if (!serializedModels) {
@@ -210,13 +194,14 @@ export class ModelQueryBuilder<
       await this.processRelationsRecursively(serializedModelsArray);
     }
 
-    return serializedModelsArray as unknown as AnnotatedModel<T, A, R>[];
+    return serializedModelsArray as unknown as SelectedModel<S, R>[];
   }
 
+  // @ts-expect-error - Override with more specific return type for type-safety
   override async *chunk(
     chunkSize: number,
     options: ManyOptions = {},
-  ): AsyncGenerator<AnnotatedModel<T, A, R>[]> {
+  ): AsyncGenerator<SelectedModel<S, R>[]> {
     let offset = 0;
 
     while (true) {
@@ -230,12 +215,12 @@ export class ModelQueryBuilder<
     }
   }
 
-  // @ts-expect-error
+  // @ts-expect-error - Override with more specific return type for type-safety
   override async stream(
     options: ManyOptions & StreamOptions = {},
-  ): Promise<PassThrough & AsyncGenerator<AnnotatedModel<T, A, R>>> {
+  ): Promise<PassThrough & AsyncGenerator<SelectedModel<S, R>>> {
     !(options.ignoreHooks as string[])?.includes("beforeFetch") &&
-      (await this.model.beforeFetch?.(this));
+      (await this.model.beforeFetch?.(this as any));
 
     const { sql, bindings } = this.unWrap();
     const dataSource = await this.getSqlDataSource("read");
@@ -246,8 +231,6 @@ export class ModelQueryBuilder<
           [model] as T[],
           this.model,
           this.modelSelectedColumns,
-          this.modelAnnotatedColumns,
-          this.mustRemoveAnnotations,
         );
 
         if (!serializedModel) {
@@ -266,14 +249,14 @@ export class ModelQueryBuilder<
       },
     });
 
-    return stream as PassThrough & AsyncGenerator<AnnotatedModel<T, A, R>>;
+    return stream as PassThrough & AsyncGenerator<SelectedModel<S, R>>;
   }
 
   override async paginateWithCursor<K extends ModelKey<T>>(
     page: number,
     options?: PaginateWithCursorOptions<T, K>,
     cursor?: Cursor<T, K>,
-  ): Promise<[CursorPaginatedData<T, A, R>, Cursor<T, K>]> {
+  ): Promise<[CursorPaginatedData<T, S, R>, Cursor<T, K>]> {
     if (!options) {
       if (!this.model.primaryKey) {
         throw new HysteriaError(
@@ -288,7 +271,7 @@ export class ModelQueryBuilder<
     }
 
     return super.paginateWithCursor(page, options, cursor) as Promise<
-      [CursorPaginatedData<T, A, R>, Cursor<T, K>]
+      [CursorPaginatedData<T, S, R>, Cursor<T, K>]
     >;
   }
 
@@ -318,7 +301,7 @@ export class ModelQueryBuilder<
     options: UpdateOptions = {},
   ): Promise<number> {
     if (!options.ignoreBeforeUpdateHook) {
-      await this.model.beforeUpdate?.(this);
+      await this.model.beforeUpdate?.(this as any);
     }
     return super.update(data as Record<string, WriteQueryParam>);
   }
@@ -327,13 +310,13 @@ export class ModelQueryBuilder<
     options: SoftDeleteOptions<T> = {},
   ): Promise<number> {
     const { ignoreBeforeUpdateHook = false } = options || {};
-    !ignoreBeforeUpdateHook && (await this.model.beforeUpdate?.(this));
+    !ignoreBeforeUpdateHook && (await this.model.beforeUpdate?.(this as any));
     return super.softDelete(options);
   }
 
   async delete(options: DeleteOptions = {}): Promise<number> {
     if (!options.ignoreBeforeDeleteHook) {
-      await this.model.beforeDelete?.(this);
+      await this.model.beforeDelete?.(this as any);
     }
     return super.delete();
   }
@@ -343,18 +326,18 @@ export class ModelQueryBuilder<
     options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<number> {
     this.clearForFunctions();
-    this.annotate("count", column, "total");
+    this.selectRaw(`count(${column}) as total`);
     const ignoredHooks: string[] = options.ignoreHooks ? ["beforeFetch"] : [];
 
     const result = (await this.one({
       ignoreHooks: ignoredHooks as FetchHooks,
-    })) as { $annotations: { total: number } } | null;
+    })) as { total: number } | null;
 
     if (!result) {
       return 0;
     }
 
-    return +result.$annotations.total;
+    return +result.total;
   }
 
   override async getMax(
@@ -362,22 +345,20 @@ export class ModelQueryBuilder<
     options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<number> {
     this.clearForFunctions();
-    this.annotate("max", column, "total");
+    this.selectRaw(`max(${column}) as total`);
     const ignoredHooks: string[] = options.ignoreHooks
       ? ["beforeFetch", "afterFetch"]
       : [];
 
     const result = (await this.one({
       ignoreHooks: ignoredHooks as FetchHooks,
-    })) as {
-      $annotations: { total: number };
-    } | null;
+    })) as { total: number } | null;
 
     if (!result) {
       return 0;
     }
 
-    return +result.$annotations.total;
+    return +result.total;
   }
 
   override async getMin(
@@ -385,22 +366,20 @@ export class ModelQueryBuilder<
     options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<number> {
     this.clearForFunctions();
-    this.annotate("min", column, "total");
+    this.selectRaw(`min(${column}) as total`);
     const ignoredHooks: string[] = options.ignoreHooks
       ? ["beforeFetch", "afterFetch"]
       : [];
 
     const result = (await this.one({
       ignoreHooks: ignoredHooks as FetchHooks,
-    })) as {
-      $annotations: { total: number };
-    } | null;
+    })) as { total: number } | null;
 
     if (!result) {
       return 0;
     }
 
-    return +result.$annotations.total;
+    return +result.total;
   }
 
   override async getAvg(
@@ -408,22 +387,20 @@ export class ModelQueryBuilder<
     options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<number> {
     this.clearForFunctions();
-    this.annotate("avg", column, "total");
+    this.selectRaw(`avg(${column}) as total`);
     const ignoredHooks: string[] = options.ignoreHooks
       ? ["beforeFetch", "afterFetch"]
       : [];
 
     const result = (await this.one({
       ignoreHooks: ignoredHooks as FetchHooks,
-    })) as {
-      $annotations: { total: number };
-    } | null;
+    })) as { total: number } | null;
 
     if (!result) {
       return 0;
     }
 
-    return +result.$annotations.total;
+    return +result.total;
   }
 
   override async getSum(
@@ -431,29 +408,27 @@ export class ModelQueryBuilder<
     options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<number> {
     this.clearForFunctions();
-    this.annotate("sum", column, "total");
+    this.selectRaw(`sum(${column}) as total`);
     const ignoredHooks: string[] = options.ignoreHooks
       ? ["beforeFetch", "afterFetch"]
       : [];
 
     const result = (await this.one({
       ignoreHooks: ignoredHooks as FetchHooks,
-    })) as {
-      $annotations: { total: number };
-    } | null;
+    })) as { total: number } | null;
 
     if (!result) {
       return 0;
     }
 
-    return +result.$annotations.total;
+    return +result.total;
   }
 
   override async paginate(
     page: number,
     perPage: number,
     options: { ignoreHooks: boolean } = { ignoreHooks: false },
-  ): Promise<PaginatedData<T, A, R>> {
+  ): Promise<PaginatedData<T, S, R>> {
     const clonedQuery = this.clone();
     const paginatedQuery = this.limit(perPage).offset((page - 1) * perPage);
     const hooksToIgnore: ["beforeFetch", "afterFetch"] | [] =
@@ -468,96 +443,91 @@ export class ModelQueryBuilder<
 
     return {
       paginationMetadata,
-      data: models,
+      data: models as PaginatedData<T, S, R>["data"],
     };
   }
 
-  override select<S extends string>(...columns: SelectableColumn<S>[]): this;
-  override select(...columns: (ModelKey<T> | "*")[]): this;
-  override select<S extends string>(
-    ...columns: (ModelKey<T> | "*" | SelectableColumn<S>)[]
-  ): this {
-    this.modelSelectedColumns = [
-      ...this.modelSelectedColumns,
-      ...(columns as string[]),
-    ];
+  /**
+   * @description Adds columns to the SELECT clause with full type safety.
+   * @description Supports formats: "column", "table.column", "column as alias", "*", "table.*"
+   * @description When columns are selected, the return type reflects only those columns
+   * @example
+   * ```ts
+   * // Select specific columns - return type is { id: number, name: string }
+   * const users = await User.query().select("id", "name").many();
+   *
+   * // Select with alias - return type includes the alias
+   * const users = await User.query().select("id as userId").many();
+   *
+   * // Select all - return type is the full model
+   * const users = await User.query().select("*").many();
+   * ```
+   */
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override select<Columns extends readonly SelectableColumn<T>[]>(
+    ...columns: Columns
+  ): ModelQueryBuilder<
+    T,
+    BuildSelectType<
+      T,
+      Columns extends readonly string[] ? Columns : readonly string[]
+    >,
+    R
+  > {
+    super.select(...(columns as unknown as string[]));
 
-    this.selectNodes = this.selectNodes.concat(
-      columns.map((column) => new SelectNode(column as string)),
-    );
-
-    return this;
+    return this as unknown as ModelQueryBuilder<
+      T,
+      BuildSelectType<
+        T,
+        Columns extends readonly string[] ? Columns : readonly string[]
+      >,
+      R
+    >;
   }
 
   /**
-   * @description Annotates a column with a SQL method or a simple alias
-   * @description If the alias matches a model field name, it overrides that field. Otherwise, it's available in $annotations
+   * @description Adds a raw SELECT statement with type-safe return type.
+   * @description Use the generic parameter to specify the type of the selected columns.
    * @example
    * ```ts
-   * const user = await User.query().annotate("max", "id", "maxId").one(); // max(id) as maxId
-   * const user = await User.query().annotate("id", "superId").one(); // id as superId
-   * // If alias matches model field, it overrides it:
-   * const user = await User.query().annotate("COUNT(*)", "email").one(); // user.email is now a number
+   * // Select raw with type - return type includes the typed columns
+   * const users = await User.query()
+   *   .selectRaw<{ count: number }>("count(*) as count")
+   *   .many();
+   * // users[0].count is typed as number
+   *
+   * // Can be chained with other selects
+   * const users = await User.query()
+   *   .select("id")
+   *   .selectRaw<{ total: number }>("sum(amount) as total")
+   *   .many();
+   * // users[0] is { id: number, total: number }
    * ```
    */
-  // @ts-expect-error
-  override annotate<K extends string, V = any>(
-    column: string,
-    alias: K,
-  ): AnnotationResult<T, A, R, K, V>;
-  // @ts-expect-error
-  override annotate<
-    K extends string,
-    S extends SqlMethod,
-    V = CommonSqlMethodReturnType<S>,
-  >(
-    sqlMethod: string,
-    column: string,
-    alias: K,
-  ): AnnotationResult<T, A, R, K, V>;
-  // @ts-expect-error
-  override annotate<
-    K extends string,
-    S extends SqlMethod,
-    V = CommonSqlMethodReturnType<S>,
-  >(sqlMethod: S, column: string, alias: K): AnnotationResult<T, A, R, K, V>;
-  // @ts-expect-error
-  override annotate<
-    K extends string,
-    S extends SqlMethod,
-    V = CommonSqlMethodReturnType<S>,
-  >(sqlMethod: S, column: string, alias: K): AnnotationResult<T, A, R, K, V>;
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectRaw<Added extends Record<string, any> = Record<string, any>>(
+    statement: string,
+  ): ModelQueryBuilder<T, S & Added, R> {
+    super.selectRaw(statement);
+    return this as unknown as ModelQueryBuilder<T, S & Added, R>;
+  }
 
-  // @ts-expect-error
-  override annotate<
-    K extends string,
-    S extends SqlMethod,
-    V = CommonSqlMethodReturnType<S>,
-  >(
-    sqlMethodOrColumn: string | S,
-    columnOrAlias: string,
-    maybeAlias?: string,
-  ): AnnotationResult<T, A, R, K, V> {
-    let sqlMethod: string | undefined;
-    let column: string;
-    let alias: string;
-
-    if (maybeAlias) {
-      sqlMethod = sqlMethodOrColumn as string;
-      column = columnOrAlias;
-      alias = maybeAlias as string;
-    } else {
-      sqlMethod = undefined;
-      column = sqlMethodOrColumn as string;
-      alias = columnOrAlias as string;
-    }
-
-    this.selectNodes = this.selectNodes.concat(
-      new SelectNode(column, alias, sqlMethod),
-    );
-    this.modelAnnotatedColumns.push(alias);
-
-    return this as unknown as AnnotationResult<T, A, R, K, V>;
+  /**
+   * @description Clears the SELECT clause and resets to default model type
+   * @example
+   * ```ts
+   * const users = await User.query()
+   *   .select("id")
+   *   .clearSelect() // Resets to selecting all model columns
+   *   .many();
+   * ```
+   */
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override clearSelect(): ModelQueryBuilder<T, ModelWithoutRelations<T>, R> {
+    this.modelSelectedColumns = [];
+    this.selectNodes = [];
+    return this as unknown as ModelQueryBuilder<T, ModelWithoutRelations<T>, R>;
   }
 
   /**
@@ -566,7 +536,7 @@ export class ModelQueryBuilder<
    * @param path The JSON path to extract (standardized format: "$.user.name", "user.name", or ["user", "name"])
    * @param alias The alias for the selected value
    * @description Path format is standardized across all databases - ORM converts to DB-specific syntax
-   * @description If alias matches a model field, it overrides that field. Otherwise, it's in $annotations
+   * @description Result is available as a direct property on the model with the alias name
    * @example
    * ```ts
    * // All these path formats are supported:
@@ -589,35 +559,23 @@ export class ModelQueryBuilder<
    * // 6. Root object
    * await User.query().selectJson("data", "$", "allData").one();
    *
-   * // Access the result - in $annotations if not a model field
-   * const user = await User.query().selectJson("data", "user.name", "userName").one();
-   * console.log(user?.$annotations?.userName); // Typed as any
-   *
-   * // If alias matches model field, it overrides it
-   * const user2 = await User.query().selectJson("data", "$.name", "email").one();
-   * console.log(user2?.email); // Overrides model's email field
+   * // Access the result directly on the model
+   * const user = await User.query().selectJson<string, "userName">("data", "user.name", "userName").one();
+   * console.log(user?.userName); // Typed as string
    * ```
    */
-  // @ts-expect-error
-  override selectJson<K extends string>(
-    column: ModelKey<T>,
-    path: JsonPathInput,
-    alias: K,
-  ): AnnotationResult<T, A, R, K, any>;
-  // @ts-expect-error
-  override selectJson<K extends string>(
-    column: string,
-    path: JsonPathInput,
-    alias: K,
-  ): AnnotationResult<T, A, R, K, any>;
-  // @ts-expect-error
-  override selectJson<K extends string>(
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectJson<ValueType = any, Alias extends string = string>(
     column: ModelKey<T> | string,
     path: JsonPathInput,
-    alias: K,
-  ): AnnotationResult<T, A, R, K, any> {
+    alias: Alias,
+  ): ModelQueryBuilder<T, S & { [K in Alias]: ValueType }, R> {
     super.selectJson(column as any, path, alias);
-    return this as any;
+    return this as unknown as ModelQueryBuilder<
+      T,
+      S & { [K in Alias]: ValueType },
+      R
+    >;
   }
 
   /**
@@ -626,7 +584,7 @@ export class ModelQueryBuilder<
    * @param path The JSON path to extract (standardized format)
    * @param alias The alias for the selected value
    * @description Path format is standardized across all databases - ORM converts to DB-specific syntax
-   * @description If alias matches a model field, it overrides that field. Otherwise, it's in $annotations
+   * @description Result is available as a direct property on the model with the alias name
    * @example
    * ```ts
    * // All these path formats are supported:
@@ -647,31 +605,23 @@ export class ModelQueryBuilder<
    * // 5. Deep nesting
    * await User.query().selectJsonText("data", "user.profile.bio", "biography").one();
    *
-   * // Access the result - in $annotations if not a model field
-   * const user = await User.query().selectJsonText("data", "user.email", "userEmail").one();
-   * console.log(user?.$annotations?.userEmail); // Typed as string
+   * // Access the result directly on the model
+   * const user = await User.query().selectJsonText<string, "userEmail">("data", "user.email", "userEmail").one();
+   * console.log(user?.userEmail); // Typed as string
    * ```
    */
-  // @ts-expect-error
-  override selectJsonText<K extends string>(
-    column: ModelKey<T>,
-    path: JsonPathInput,
-    alias: K,
-  ): AnnotationResult<T, A, R, K, string>;
-  // @ts-expect-error
-  override selectJsonText<K extends string>(
-    column: string,
-    path: JsonPathInput,
-    alias: K,
-  ): AnnotationResult<T, A, R, K, string>;
-  // @ts-expect-error
-  override selectJsonText<K extends string>(
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectJsonText<ValueType = string, Alias extends string = string>(
     column: ModelKey<T> | string,
     path: JsonPathInput,
-    alias: K,
-  ): AnnotationResult<T, A, R, K, string> {
+    alias: Alias,
+  ): ModelQueryBuilder<T, S & { [K in Alias]: ValueType }, R> {
     super.selectJsonText(column as any, path, alias);
-    return this as unknown as AnnotationResult<T, A, R, K, string>;
+    return this as unknown as ModelQueryBuilder<
+      T,
+      S & { [K in Alias]: ValueType },
+      R
+    >;
   }
 
   /**
@@ -680,7 +630,7 @@ export class ModelQueryBuilder<
    * @param path The JSON path to the array (standardized format, use "$" or "" for root)
    * @param alias The alias for the length value
    * @description Path format is standardized across all databases - ORM converts to DB-specific syntax
-   * @description If alias matches a model field, it overrides that field. Otherwise, it's in $annotations
+   * @description Result is available as a direct property on the model with the alias name
    * @warning Not supported in SQLite
    * @example
    * ```ts
@@ -706,31 +656,26 @@ export class ModelQueryBuilder<
    * // 6. Deeply nested arrays
    * await User.query().selectJsonArrayLength("data", "level1.level2.items", "deepCount").one();
    *
-   * // Access the result - in $annotations if not a model field
-   * const user = await User.query().selectJsonArrayLength("data", "items", "count").one();
-   * console.log(user?.$annotations?.count); // Typed as number
+   * // Access the result directly on the model
+   * const user = await User.query().selectJsonArrayLength<number, "count">("data", "items", "count").one();
+   * console.log(user?.count); // Typed as number
    * ```
    */
-  // @ts-expect-error
-  override selectJsonArrayLength<K extends string>(
-    column: ModelKey<T>,
-    path: JsonPathInput,
-    alias: K,
-  ): AnnotationResult<T, A, R, K, number>;
-  // @ts-expect-error
-  override selectJsonArrayLength<K extends string>(
-    column: string,
-    path: JsonPathInput,
-    alias: K,
-  ): AnnotationResult<T, A, R, K, number>;
-  // @ts-expect-error
-  override selectJsonArrayLength<K extends string>(
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectJsonArrayLength<
+    ValueType = number,
+    Alias extends string = string,
+  >(
     column: ModelKey<T> | string,
     path: JsonPathInput,
-    alias: K,
-  ): AnnotationResult<T, A, R, K, number> {
+    alias: Alias,
+  ): ModelQueryBuilder<T, S & { [K in Alias]: ValueType }, R> {
     super.selectJsonArrayLength(column as any, path, alias);
-    return this as unknown as AnnotationResult<T, A, R, K, number>;
+    return this as unknown as ModelQueryBuilder<
+      T,
+      S & { [K in Alias]: ValueType },
+      R
+    >;
   }
 
   /**
@@ -739,7 +684,7 @@ export class ModelQueryBuilder<
    * @param path The JSON path to the object (standardized format, use "$" or "" for root)
    * @param alias The alias for the keys
    * @description Path format is standardized across all databases - ORM converts to DB-specific syntax
-   * @description If alias matches a model field, it overrides that field. Otherwise, it's in $annotations
+   * @description Result is available as a direct property on the model with the alias name
    * @warning Not supported in SQLite or MSSQL
    * @postgresql Returns a native array of keys
    * @mysql Returns a JSON array of keys
@@ -767,38 +712,30 @@ export class ModelQueryBuilder<
    * // 6. Deeply nested objects
    * await User.query().selectJsonKeys("data", "settings.display.theme", "themeKeys").one();
    *
-   * // Access the result - in $annotations if not a model field
-   * const user = await User.query().selectJsonKeys("data", "settings", "keys").one();
-   * console.log(user?.$annotations?.keys); // Typed as any[] - ["theme", "fontSize", "autoSave"]
+   * // Access the result directly on the model
+   * const user = await User.query().selectJsonKeys<string[], "keys">("data", "settings", "keys").one();
+   * console.log(user?.keys); // Typed as string[] - ["theme", "fontSize", "autoSave"]
    * ```
    */
-  // @ts-expect-error
-  override selectJsonKeys<K extends string>(
-    column: ModelKey<T>,
-    path: JsonPathInput,
-    alias: K,
-  ): AnnotationResult<T, A, R, K, any[]>;
-  // @ts-expect-error
-  override selectJsonKeys<K extends string>(
-    column: string,
-    path: JsonPathInput,
-    alias: K,
-  ): AnnotationResult<T, A, R, K, any[]>;
-  // @ts-expect-error
-  override selectJsonKeys<K extends string>(
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectJsonKeys<ValueType = string[], Alias extends string = string>(
     column: ModelKey<T> | string,
     path: JsonPathInput,
-    alias: K,
-  ): AnnotationResult<T, A, R, K, any[]> {
+    alias: Alias,
+  ): ModelQueryBuilder<T, S & { [K in Alias]: ValueType }, R> {
     super.selectJsonKeys(column as any, path, alias);
-    return this as unknown as AnnotationResult<T, A, R, K, any[]>;
+    return this as unknown as ModelQueryBuilder<
+      T,
+      S & { [K in Alias]: ValueType },
+      R
+    >;
   }
 
   /**
    * @description Adds a raw JSON select expression for database-specific operations
    * @param raw The raw SQL expression (database-specific syntax)
    * @param alias The alias for the selected value
-   * @description If alias matches a model field, it overrides that field. Otherwise, it's in $annotations
+   * @description Result is available as a direct property on the model with the alias name
    * @description Use this for advanced JSON operations not covered by other selectJson* methods
    * @warning This bypasses path standardization - you must write database-specific SQL
    * @example
@@ -812,67 +749,202 @@ export class ModelQueryBuilder<
    * // PostgreSQL - Array element access
    * await User.query().selectJsonRaw("data->'items'->0->>'name'", "firstName").one();
    *
-   * // MySQL - Extract value with JSON_EXTRACT and ->>
+   * // MySQL - Extract value with json_extract and ->>
    * await User.query().selectJsonRaw("data->>'$.email'", "userEmail").one();
    *
-   * // MySQL - Array length with JSON_LENGTH
-   * await User.query().selectJsonRaw("JSON_LENGTH(data, '$.items')", "itemCount").one();
+   * // MySQL - Array length with json_length
+   * await User.query().selectJsonRaw("json_length(data, '$.items')", "itemCount").one();
    *
-   * // MSSQL - Extract value with JSON_VALUE
-   * await User.query().selectJsonRaw("JSON_VALUE(data, '$.email')", "userEmail").one();
+   * // MSSQL - Extract value with json_value
+   * await User.query().selectJsonRaw("json_value(data, '$.email')", "userEmail").one();
    *
    * // SQLite - Extract value with json_extract
    * await User.query().selectJsonRaw("json_extract(data, '$.email')", "userEmail").one();
    *
-   * // Access the result - in $annotations if not a model field
-   * const user = await User.query().selectJsonRaw("data->>'email'", "userEmail").one();
-   * console.log(user?.$annotations?.userEmail); // Typed as any
+   * // Access the result directly on the model
+   * const user = await User.query().selectJsonRaw<string, "userEmail">("data->>'email'", "userEmail").one();
+   * console.log(user?.userEmail); // Typed as string
    * ```
    */
-  // @ts-expect-error
-  override selectJsonRaw<K extends string>(
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectJsonRaw<ValueType = any, Alias extends string = string>(
     raw: string,
-    alias: K,
-  ): AnnotationResult<T, A, R, K, any> {
+    alias: Alias,
+  ): ModelQueryBuilder<T, S & { [K in Alias]: ValueType }, R> {
     super.selectJsonRaw(raw, alias);
-    return this as unknown as AnnotationResult<T, A, R, K, any>;
+    return this as unknown as ModelQueryBuilder<
+      T,
+      S & { [K in Alias]: ValueType },
+      R
+    >;
   }
 
   /**
-   * @description Removes annotations from the serialized model, by default, annotations are maintained in the serialized model if `annotate` is used
+   * @description Selects COUNT(column) with a typed alias
+   * @param column The column to count (use "*" for COUNT(*), supports "table.column" format)
+   * @param alias The alias for the count result
+   * @example
+   * ```ts
+   * // Count all rows
+   * const result = await User.query().selectCount("*", "totalUsers").one();
+   * console.log(result?.totalUsers); // Typed as number
+   *
+   * // Count specific column
+   * const result = await User.query().selectCount("id", "userCount").one();
+   *
+   * // With table prefix
+   * const result = await User.query().selectCount("users.id", "total").one();
+   * ```
    */
-  removeAnnotations(): ModelQueryBuilder<T, {}> {
-    this.mustRemoveAnnotations = true;
-    this.modelAnnotatedColumns = [];
-    return this;
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectCount<Alias extends string>(
+    column: ModelKey<T> | "*" | string,
+    alias: Alias,
+  ): ModelQueryBuilder<T, S & { [K in Alias]: number }, R> {
+    super.selectCount(column as string, alias);
+    return this as unknown as ModelQueryBuilder<
+      T,
+      S & { [K in Alias]: number },
+      R
+    >;
+  }
+
+  /**
+   * @description Selects SUM(column) with a typed alias
+   * @param column The column to sum (supports "table.column" format)
+   * @param alias The alias for the sum result
+   * @example
+   * ```ts
+   * const result = await Order.query().selectSum("amount", "totalAmount").one();
+   * console.log(result?.totalAmount); // Typed as number
+   *
+   * // With table prefix
+   * const result = await Order.query().selectSum("orders.amount", "total").one();
+   * ```
+   */
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectSum<Alias extends string>(
+    column: ModelKey<T> | string,
+    alias: Alias,
+  ): ModelQueryBuilder<T, S & { [K in Alias]: number }, R> {
+    super.selectSum(column as string, alias);
+    return this as unknown as ModelQueryBuilder<
+      T,
+      S & { [K in Alias]: number },
+      R
+    >;
+  }
+
+  /**
+   * @description Selects AVG(column) with a typed alias
+   * @param column The column to average (supports "table.column" format)
+   * @param alias The alias for the average result
+   * @example
+   * ```ts
+   * const result = await User.query().selectAvg("age", "averageAge").one();
+   * console.log(result?.averageAge); // Typed as number
+   *
+   * // With table prefix
+   * const result = await User.query().selectAvg("users.age", "avgAge").one();
+   * ```
+   */
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectAvg<Alias extends string>(
+    column: ModelKey<T> | string,
+    alias: Alias,
+  ): ModelQueryBuilder<T, S & { [K in Alias]: number }, R> {
+    super.selectAvg(column as string, alias);
+    return this as unknown as ModelQueryBuilder<
+      T,
+      S & { [K in Alias]: number },
+      R
+    >;
+  }
+
+  /**
+   * @description Selects MIN(column) with a typed alias
+   * @param column The column to get minimum value (supports "table.column" format)
+   * @param alias The alias for the min result
+   * @example
+   * ```ts
+   * const result = await User.query().selectMin("age", "youngestAge").one();
+   * console.log(result?.youngestAge); // Typed as number
+   *
+   * // With table prefix
+   * const result = await User.query().selectMin("users.age", "minAge").one();
+   * ```
+   */
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectMin<Alias extends string>(
+    column: ModelKey<T> | string,
+    alias: Alias,
+  ): ModelQueryBuilder<T, S & { [K in Alias]: number }, R> {
+    super.selectMin(column as string, alias);
+    return this as unknown as ModelQueryBuilder<
+      T,
+      S & { [K in Alias]: number },
+      R
+    >;
+  }
+
+  /**
+   * @description Selects MAX(column) with a typed alias
+   * @param column The column to get maximum value (supports "table.column" format)
+   * @param alias The alias for the max result
+   * @example
+   * ```ts
+   * const result = await User.query().selectMax("age", "oldestAge").one();
+   * console.log(result?.oldestAge); // Typed as number
+   *
+   * // With table prefix
+   * const result = await User.query().selectMax("users.age", "maxAge").one();
+   * ```
+   */
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectMax<Alias extends string>(
+    column: ModelKey<T> | string,
+    alias: Alias,
+  ): ModelQueryBuilder<T, S & { [K in Alias]: number }, R> {
+    super.selectMax(column as string, alias);
+    return this as unknown as ModelQueryBuilder<
+      T,
+      S & { [K in Alias]: number },
+      R
+    >;
   }
 
   /**
    * @description Fills the relations in the model in the serialized response. Relation must be defined in the model.
    * @warning Many to many relations have special behavior, since they require a join, a join clause will always be added to the query.
-   * @warning Many to many relations uses the model foreign key for mapping in the `$annotations` property, this property will be removed from the model after the relation is filled.
+   * @warning Many to many relations uses the model foreign key for mapping, this property will be removed from the model after the relation is filled.
    * @warning Foreign keys should always be selected in the relation query builder, otherwise the relation will not be filled.
    * @mssql HasMany relations with limit/offset and orderByRaw may fail with "Ambiguous column name" error - use fully qualified column names (e.g., `table.column`) in orderByRaw
    * @cockroachdb HasMany relations with limit/offset and orderByRaw may fail with "Ambiguous column name" error - use fully qualified column names (e.g., `table.column`) in orderByRaw
    */
   load<
     RelationKey extends ModelRelation<T>,
-    IA extends Record<string, any> = {},
+    IS extends Record<string, any> = ModelWithoutRelations<
+      RelatedInstance<T, RelationKey>
+    >,
     IR extends Record<string, any> = {},
   >(
     relation: RelationKey,
     cb: (
-      queryBuilder: RelationQueryBuilderType<RelatedInstance<T, RelationKey>>,
-    ) => RelationQueryBuilderType<RelatedInstance<T, RelationKey>, IA, IR>,
+      queryBuilder: RelationQueryBuilderType<
+        RelatedInstance<T, RelationKey>,
+        ModelWithoutRelations<RelatedInstance<T, RelationKey>>,
+        {}
+      >,
+    ) => RelationQueryBuilderType<RelatedInstance<T, RelationKey>, IS, IR>,
   ): ModelQueryBuilder<
     T,
-    A,
+    S,
     R & {
       [K in RelationKey]: Awaited<
         ReturnType<
           ModelQueryBuilder<
             RelatedInstance<T, K>,
-            IA,
+            IS,
             IR
           >[RelationRetrieveMethod<T[K]>]
         >
@@ -882,17 +954,21 @@ export class ModelQueryBuilder<
   load<RelationKey extends ModelRelation<T>>(
     relation: RelationKey,
     cb?: (
-      queryBuilder: RelationQueryBuilderType<RelatedInstance<T, RelationKey>>,
+      queryBuilder: RelationQueryBuilderType<
+        RelatedInstance<T, RelationKey>,
+        ModelWithoutRelations<RelatedInstance<T, RelationKey>>,
+        {}
+      >,
     ) => void,
   ): ModelQueryBuilder<
     T,
-    A,
+    S,
     R & {
       [K in RelationKey]: Awaited<
         ReturnType<
           ModelQueryBuilder<
             RelatedInstance<T, K>,
-            {},
+            ModelWithoutRelations<RelatedInstance<T, K>>,
             {}
           >[RelationRetrieveMethod<T[K]>]
         >
@@ -901,26 +977,32 @@ export class ModelQueryBuilder<
   >;
   load<
     RelationKey extends ModelRelation<T>,
-    IA extends Record<string, any> = {},
+    IS extends Record<string, any> = ModelWithoutRelations<
+      RelatedInstance<T, RelationKey>
+    >,
     IR extends Record<string, any> = {},
   >(
     relation: RelationKey,
     cb?: (
-      queryBuilder: RelationQueryBuilderType<RelatedInstance<T, RelationKey>>,
+      queryBuilder: RelationQueryBuilderType<
+        RelatedInstance<T, RelationKey>,
+        ModelWithoutRelations<RelatedInstance<T, RelationKey>>,
+        {}
+      >,
     ) => RelationQueryBuilderType<
       RelatedInstance<T, RelationKey>,
-      IA,
+      IS,
       IR
     > | void,
   ): ModelQueryBuilder<
     T,
-    A,
+    S,
     R & {
       [K in RelationKey]: Awaited<
         ReturnType<
           ModelQueryBuilder<
             RelatedInstance<T, K>,
-            IA,
+            IS,
             IR
           >[RelationRetrieveMethod<T[K]>]
         >
@@ -937,20 +1019,22 @@ export class ModelQueryBuilder<
     relationQueryBuilder.relation = modelRelation;
     cb?.(
       relationQueryBuilder as unknown as RelationQueryBuilderType<
-        RelatedInstance<T, RelationKey>
+        RelatedInstance<T, RelationKey>,
+        ModelWithoutRelations<RelatedInstance<T, RelationKey>>,
+        {}
       >,
     );
     this.relationQueryBuilders.push(relationQueryBuilder);
 
     return this as unknown as ModelQueryBuilder<
       T,
-      A,
+      S,
       R & {
         [K in RelationKey]: Awaited<
           ReturnType<
             ModelQueryBuilder<
               RelatedInstance<T, K>,
-              IA,
+              IS,
               IR
             >[RelationRetrieveMethod<T[K]>]
           >
@@ -1551,8 +1635,8 @@ export class ModelQueryBuilder<
           convertCase(relatedPrimaryKey, this.model.modelCaseConvention);
 
         relatedModels.forEach((relatedModel) => {
-          const annotations = (relatedModel as any).$annotations || {};
-          const foreignKeyValue = annotations[casedRelatedPrimaryKey];
+          // The foreign key is now a direct property on the model (not in $annotations)
+          const foreignKeyValue = (relatedModel as any)[casedRelatedPrimaryKey];
           if (foreignKeyValue === undefined || foreignKeyValue === null) {
             return;
           }
@@ -1562,12 +1646,8 @@ export class ModelQueryBuilder<
             relatedModelsMapManyToMany.set(foreignKeyStr, []);
           }
 
-          if (!this.modelAnnotatedColumns.includes(casedRelatedPrimaryKey)) {
-            delete annotations[casedRelatedPrimaryKey];
-            if (!Object.keys(annotations).length) {
-              delete (relatedModel as any).$annotations;
-            }
-          }
+          // Remove the internal foreign key used for mapping
+          delete (relatedModel as any)[casedRelatedPrimaryKey];
 
           relatedModelsMapManyToMany.get(foreignKeyStr)!.push(relatedModel);
         });
@@ -1612,7 +1692,7 @@ export class ModelQueryBuilder<
     relationQueryBuilder: ModelQueryBuilder<any>,
     relation: Relation,
     models: T[],
-  ): ModelQueryBuilder<T> {
+  ): ModelQueryBuilder<any, any, any> {
     const filterValues = this.getFilterValuesFromModelsForRelation(
       relation,
       models,
@@ -1708,9 +1788,8 @@ export class ModelQueryBuilder<
         if (!m2mLimit && !m2mOffset) {
           return relationQueryBuilder
             .select(...m2mSelectedColumns)
-            .annotate(
-              `${manyToManyRelation.throughModel}.${manyToManyRelation.leftForeignKey}`,
-              manyToManyRelation.leftForeignKey,
+            .select(
+              `${manyToManyRelation.throughModel}.${manyToManyRelation.leftForeignKey} as ${manyToManyRelation.leftForeignKey}`,
             )
             .leftJoin(
               manyToManyRelation.throughModel,
@@ -1746,9 +1825,8 @@ export class ModelQueryBuilder<
         const qbM2m = relationQueryBuilder.with(withTableNameM2m, (innerQb) =>
           innerQb
             .select(...m2mSelectedColumns)
-            .annotate(
-              `${manyToManyRelation.throughModel}.${manyToManyRelation.leftForeignKey}`,
-              cteLeftForeignKey,
+            .select(
+              `${manyToManyRelation.throughModel}.${manyToManyRelation.leftForeignKey} as ${cteLeftForeignKey}`,
             )
             .selectRaw(
               `ROW_NUMBER() OVER (PARTITION BY ${manyToManyRelation.throughModel}.${this.interpreterUtils.formatStringColumn(this.dbType, manyToManyRelation.leftForeignKey)} ORDER BY ${orderByClauseM2m}) as rn_${rnM2m}`,
@@ -1782,9 +1860,8 @@ export class ModelQueryBuilder<
 
         return qbM2m
           .select(...outerSelectedColumns)
-          .annotate(
-            `${withTableNameM2m}.${cteLeftForeignKey}`,
-            manyToManyRelation.leftForeignKey,
+          .select(
+            `${withTableNameM2m}.${cteLeftForeignKey} as ${manyToManyRelation.leftForeignKey}`,
           )
           .from(withTableNameM2m);
       default:
@@ -1949,36 +2026,22 @@ export class ModelQueryBuilder<
     typeofModel: typeof Model,
   ): Record<string, any> {
     const model: Record<string, any> = {};
-    const $annotations: Record<string, any> = {};
-
-    // Create a set of annotated columns for faster lookup
-    const annotatedColumnsSet = new Set(this.modelAnnotatedColumns);
 
     Object.entries(row).forEach(([key, value]) => {
       const casedKey = convertCase(key, typeofModel.modelCaseConvention);
-      const isAnnotated =
-        annotatedColumnsSet.has(casedKey) || annotatedColumnsSet.has(key);
-      const isModelColumn =
-        key === "$annotations" || this.modelColumnsDatabaseNames.get(key);
+      const isModelColumn = this.modelColumnsDatabaseNames.get(key);
 
-      // If it's annotated, add to annotations
-      if (isAnnotated) {
-        $annotations[casedKey] = value;
-      }
-
-      // If it's a model column, add to model
+      // If it's a model column, add with the original key (database format)
       if (isModelColumn) {
         model[key] = value;
         return;
       }
 
-      // If it's not a model column and not already annotated, add to annotations
-      if (!isAnnotated) {
-        $annotations[casedKey] = value;
-      }
+      // For non-model columns (extra selected columns, aliases, etc.)
+      // Add directly to the model with the cased key
+      model[casedKey] = value;
     });
 
-    model.$annotations = $annotations;
     return model;
   }
 
@@ -1987,7 +2050,7 @@ export class ModelQueryBuilder<
     options: ManyOptions = {},
     returnType: "millis" | "seconds" = "millis",
   ): Promise<{
-    data: AnnotatedModel<T, A, R>[];
+    data: SelectedModel<S, R>[];
     time: number;
   }> {
     const [time, data] = await withPerformance(
@@ -2003,7 +2066,7 @@ export class ModelQueryBuilder<
     options: OneOptions = {},
     returnType: "millis" | "seconds" = "millis",
   ): Promise<{
-    data: AnnotatedModel<T, A, R> | null;
+    data: SelectedModel<S, R> | null;
     time: number;
   }> {
     const [time, data] = await withPerformance(
@@ -2019,7 +2082,7 @@ export class ModelQueryBuilder<
     options: OneOptions = {},
     returnType: "millis" | "seconds" = "millis",
   ): Promise<{
-    data: AnnotatedModel<T, A, R>;
+    data: SelectedModel<S, R>;
     time: number;
   }> {
     const [time, data] = await withPerformance(
@@ -2035,7 +2098,7 @@ export class ModelQueryBuilder<
     options: OneOptions = {},
     returnType: "millis" | "seconds" = "millis",
   ): Promise<{
-    data: AnnotatedModel<T, A, R>;
+    data: SelectedModel<S, R>;
     time: number;
   }> {
     return this.oneOrFailWithPerformance(options, returnType);
@@ -2048,7 +2111,7 @@ export class ModelQueryBuilder<
     options?: { ignoreHooks?: boolean },
     returnType: "millis" | "seconds" = "millis",
   ): Promise<{
-    data: PaginatedData<T, A, R>;
+    data: PaginatedData<T, S, R>;
     time: number;
   }> {
     const { ignoreHooks = false } = options || {};
@@ -2072,7 +2135,7 @@ export class ModelQueryBuilder<
     cursor?: Cursor<T, ModelKey<T>>,
     returnType: "millis" | "seconds" = "millis",
   ): Promise<{
-    data: [CursorPaginatedData<T, A, R>, Cursor<T, ModelKey<T>>];
+    data: [CursorPaginatedData<T, S, R>, Cursor<T, ModelKey<T>>];
     time: number;
   }> {
     const [time, data] = await withPerformance(
@@ -2081,7 +2144,7 @@ export class ModelQueryBuilder<
     )();
 
     return {
-      data: data as [CursorPaginatedData<T, A, R>, Cursor<T, ModelKey<T>>],
+      data: data as [CursorPaginatedData<T, S, R>, Cursor<T, ModelKey<T>>],
       time: Number(time),
     };
   }

@@ -5,7 +5,6 @@ import { FromNode } from "../ast/query/node/from";
 import { InsertNode } from "../ast/query/node/insert";
 import { InterpreterUtils } from "../interpreter/interpreter_utils";
 import { Model } from "../models/model";
-import { AnnotatedModel } from "../models/model_query_builder/model_query_builder_types";
 import { SqlDataSource } from "../sql_data_source";
 import { SqliteConnectionInstance } from "../sql_data_source_types";
 import { SqlLiteOptions } from "./sql_runner_types";
@@ -17,7 +16,7 @@ export class SQLiteStream extends Readable {
   private started: boolean;
   private events: {
     onData?: (
-      _passThrough: PassThrough & AsyncGenerator<AnnotatedModel<Model, {}, {}>>,
+      _passThrough: PassThrough & AsyncGenerator<Model>,
       row: any,
     ) => void | Promise<void>;
   };
@@ -28,8 +27,7 @@ export class SQLiteStream extends Readable {
     params: any[] = [],
     events: {
       onData?: (
-        _passThrough: PassThrough &
-          AsyncGenerator<AnnotatedModel<Model, {}, {}>>,
+        _passThrough: PassThrough & AsyncGenerator<Model>,
         row: any,
       ) => void | Promise<void>;
     },
@@ -76,7 +74,7 @@ export class SQLiteStream extends Readable {
             wroteFlag = true;
             wroteValue = v;
           },
-        } as PassThrough & AsyncGenerator<AnnotatedModel<Model, {}, {}>>;
+        } as PassThrough & AsyncGenerator<Model>;
 
         Promise.resolve(this.events.onData?.(mockPassThrough, row))
           .then(() => {
