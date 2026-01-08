@@ -1,4 +1,3 @@
-import { convertCase } from "../utils/case_utils";
 import { ColumnType } from "./models/decorators/model_decorators_types";
 import { Model } from "./models/model";
 
@@ -67,10 +66,8 @@ export const parseDatabaseDataIntoModelResponse = async <
       const databaseValue = model[key];
 
       // Convert database column name to model property name
-      // First check if it's a known model column, otherwise apply case conversion
-      const modelKey =
-        databaseColumnsMap.get(key)?.columnName ??
-        convertCase(key, typeofModel.modelCaseConvention);
+      // First check if it's a known model column, otherwise preserve as-is
+      const modelKey = databaseColumnsMap.get(key)?.columnName ?? key;
 
       const isModelColumn = modelColumnsMap.has(modelKey);
       const isHidden = hiddenColumnsSet.has(modelKey);
@@ -212,9 +209,8 @@ export const serializeModel = async <T extends Model>(
     if (lowerColumn.includes(" as ")) {
       const aliasMatch = databaseColumn.match(/\s+as\s+(.+)$/i);
       if (aliasMatch) {
-        processedSelectedColumns.push(
-          convertCase(aliasMatch[1].trim(), typeofModel.modelCaseConvention),
-        );
+        // Preserve alias as-is without case conversion
+        processedSelectedColumns.push(aliasMatch[1].trim());
       }
       continue;
     }
@@ -231,10 +227,9 @@ export const serializeModel = async <T extends Model>(
       continue;
     }
 
-    // Convert to model case convention (e.g., snake_case -> camelCase)
+    // Use model column name if known, otherwise preserve as-is
     const columnName =
-      modelColumnsMap.get(processedColumn)?.columnName ??
-      convertCase(processedColumn, typeofModel.modelCaseConvention);
+      modelColumnsMap.get(processedColumn)?.columnName ?? processedColumn;
     processedSelectedColumns.push(columnName);
   }
   modelSelectedColumns = processedSelectedColumns;

@@ -42,7 +42,8 @@ import { BaseModelMethodOptions, ModelWithoutRelations } from "../model_types";
 import { ManyToMany } from "../relations/many_to_many";
 import { Relation, RelationEnum } from "../relations/relation";
 import type {
-  BuildSelectType,
+  ComposeBuildSelect,
+  ComposeSelect,
   FetchHooks,
   ManyOptions,
   OneOptions,
@@ -468,7 +469,8 @@ export class ModelQueryBuilder<
     ...columns: Columns
   ): ModelQueryBuilder<
     T,
-    BuildSelectType<
+    ComposeBuildSelect<
+      S,
       T,
       Columns extends readonly string[] ? Columns : readonly string[]
     >,
@@ -478,7 +480,8 @@ export class ModelQueryBuilder<
 
     return this as unknown as ModelQueryBuilder<
       T,
-      BuildSelectType<
+      ComposeBuildSelect<
+        S,
         T,
         Columns extends readonly string[] ? Columns : readonly string[]
       >,
@@ -508,9 +511,41 @@ export class ModelQueryBuilder<
   // @ts-expect-error - intentionally returns different type for type-safety
   override selectRaw<Added extends Record<string, any> = Record<string, any>>(
     statement: string,
-  ): ModelQueryBuilder<T, S & Added, R> {
+  ): ModelQueryBuilder<T, ComposeSelect<S, Added>, R> {
     super.selectRaw(statement);
-    return this as unknown as ModelQueryBuilder<T, S & Added, R>;
+    return this as unknown as ModelQueryBuilder<T, ComposeSelect<S, Added>, R>;
+  }
+
+  /**
+   * @description Selects a subquery with a typed alias
+   * @param cbOrQueryBuilder A callback that receives a QueryBuilder or a QueryBuilder instance
+   * @param alias The alias for the subquery result
+   * @description Subquery must return a single column
+   * @example
+   * ```ts
+   * const users = await User.query()
+   *   .select("id")
+   *   .selectSubQuery<number, "postCount">((subQuery) => {
+   *     subQuery
+   *       .select("COUNT(*)")
+   *       .from("posts")
+   *       .whereColumn("posts.user_id", "users.id");
+   *   }, "postCount")
+   *   .many();
+   * // users[0].postCount is typed as number
+   * ```
+   */
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectSubQuery<ValueType = any, Alias extends string = string>(
+    cbOrQueryBuilder: ((subQuery: QueryBuilder<T>) => void) | QueryBuilder<any>,
+    alias: Alias,
+  ): ModelQueryBuilder<T, ComposeSelect<S, { [K in Alias]: ValueType }>, R> {
+    super.selectSubQuery(cbOrQueryBuilder, alias);
+    return this as unknown as ModelQueryBuilder<
+      T,
+      ComposeSelect<S, { [K in Alias]: ValueType }>,
+      R
+    >;
   }
 
   /**
@@ -569,11 +604,11 @@ export class ModelQueryBuilder<
     column: ModelKey<T> | string,
     path: JsonPathInput,
     alias: Alias,
-  ): ModelQueryBuilder<T, S & { [K in Alias]: ValueType }, R> {
+  ): ModelQueryBuilder<T, ComposeSelect<S, { [K in Alias]: ValueType }>, R> {
     super.selectJson(column as any, path, alias);
     return this as unknown as ModelQueryBuilder<
       T,
-      S & { [K in Alias]: ValueType },
+      ComposeSelect<S, { [K in Alias]: ValueType }>,
       R
     >;
   }
@@ -615,11 +650,11 @@ export class ModelQueryBuilder<
     column: ModelKey<T> | string,
     path: JsonPathInput,
     alias: Alias,
-  ): ModelQueryBuilder<T, S & { [K in Alias]: ValueType }, R> {
+  ): ModelQueryBuilder<T, ComposeSelect<S, { [K in Alias]: ValueType }>, R> {
     super.selectJsonText(column as any, path, alias);
     return this as unknown as ModelQueryBuilder<
       T,
-      S & { [K in Alias]: ValueType },
+      ComposeSelect<S, { [K in Alias]: ValueType }>,
       R
     >;
   }
@@ -669,11 +704,11 @@ export class ModelQueryBuilder<
     column: ModelKey<T> | string,
     path: JsonPathInput,
     alias: Alias,
-  ): ModelQueryBuilder<T, S & { [K in Alias]: ValueType }, R> {
+  ): ModelQueryBuilder<T, ComposeSelect<S, { [K in Alias]: ValueType }>, R> {
     super.selectJsonArrayLength(column as any, path, alias);
     return this as unknown as ModelQueryBuilder<
       T,
-      S & { [K in Alias]: ValueType },
+      ComposeSelect<S, { [K in Alias]: ValueType }>,
       R
     >;
   }
@@ -722,11 +757,11 @@ export class ModelQueryBuilder<
     column: ModelKey<T> | string,
     path: JsonPathInput,
     alias: Alias,
-  ): ModelQueryBuilder<T, S & { [K in Alias]: ValueType }, R> {
+  ): ModelQueryBuilder<T, ComposeSelect<S, { [K in Alias]: ValueType }>, R> {
     super.selectJsonKeys(column as any, path, alias);
     return this as unknown as ModelQueryBuilder<
       T,
-      S & { [K in Alias]: ValueType },
+      ComposeSelect<S, { [K in Alias]: ValueType }>,
       R
     >;
   }
@@ -770,11 +805,11 @@ export class ModelQueryBuilder<
   override selectJsonRaw<ValueType = any, Alias extends string = string>(
     raw: string,
     alias: Alias,
-  ): ModelQueryBuilder<T, S & { [K in Alias]: ValueType }, R> {
+  ): ModelQueryBuilder<T, ComposeSelect<S, { [K in Alias]: ValueType }>, R> {
     super.selectJsonRaw(raw, alias);
     return this as unknown as ModelQueryBuilder<
       T,
-      S & { [K in Alias]: ValueType },
+      ComposeSelect<S, { [K in Alias]: ValueType }>,
       R
     >;
   }
@@ -800,11 +835,11 @@ export class ModelQueryBuilder<
   override selectCount<Alias extends string>(
     column: ModelKey<T> | "*" | string,
     alias: Alias,
-  ): ModelQueryBuilder<T, S & { [K in Alias]: number }, R> {
+  ): ModelQueryBuilder<T, ComposeSelect<S, { [K in Alias]: number }>, R> {
     super.selectCount(column as string, alias);
     return this as unknown as ModelQueryBuilder<
       T,
-      S & { [K in Alias]: number },
+      ComposeSelect<S, { [K in Alias]: number }>,
       R
     >;
   }
@@ -826,11 +861,11 @@ export class ModelQueryBuilder<
   override selectSum<Alias extends string>(
     column: ModelKey<T> | string,
     alias: Alias,
-  ): ModelQueryBuilder<T, S & { [K in Alias]: number }, R> {
+  ): ModelQueryBuilder<T, ComposeSelect<S, { [K in Alias]: number }>, R> {
     super.selectSum(column as string, alias);
     return this as unknown as ModelQueryBuilder<
       T,
-      S & { [K in Alias]: number },
+      ComposeSelect<S, { [K in Alias]: number }>,
       R
     >;
   }
@@ -852,11 +887,11 @@ export class ModelQueryBuilder<
   override selectAvg<Alias extends string>(
     column: ModelKey<T> | string,
     alias: Alias,
-  ): ModelQueryBuilder<T, S & { [K in Alias]: number }, R> {
+  ): ModelQueryBuilder<T, ComposeSelect<S, { [K in Alias]: number }>, R> {
     super.selectAvg(column as string, alias);
     return this as unknown as ModelQueryBuilder<
       T,
-      S & { [K in Alias]: number },
+      ComposeSelect<S, { [K in Alias]: number }>,
       R
     >;
   }
@@ -878,11 +913,11 @@ export class ModelQueryBuilder<
   override selectMin<Alias extends string>(
     column: ModelKey<T> | string,
     alias: Alias,
-  ): ModelQueryBuilder<T, S & { [K in Alias]: number }, R> {
+  ): ModelQueryBuilder<T, ComposeSelect<S, { [K in Alias]: number }>, R> {
     super.selectMin(column as string, alias);
     return this as unknown as ModelQueryBuilder<
       T,
-      S & { [K in Alias]: number },
+      ComposeSelect<S, { [K in Alias]: number }>,
       R
     >;
   }
@@ -904,11 +939,11 @@ export class ModelQueryBuilder<
   override selectMax<Alias extends string>(
     column: ModelKey<T> | string,
     alias: Alias,
-  ): ModelQueryBuilder<T, S & { [K in Alias]: number }, R> {
+  ): ModelQueryBuilder<T, ComposeSelect<S, { [K in Alias]: number }>, R> {
     super.selectMax(column as string, alias);
     return this as unknown as ModelQueryBuilder<
       T,
-      S & { [K in Alias]: number },
+      ComposeSelect<S, { [K in Alias]: number }>,
       R
     >;
   }
@@ -2027,7 +2062,6 @@ export class ModelQueryBuilder<
     const model: Record<string, any> = {};
 
     Object.entries(row).forEach(([key, value]) => {
-      const casedKey = convertCase(key, typeofModel.modelCaseConvention);
       const isModelColumn = this.modelColumnsDatabaseNames.get(key);
 
       // If it's a model column, add with the original key (database format)
@@ -2036,9 +2070,10 @@ export class ModelQueryBuilder<
         return;
       }
 
-      // For non-model columns (extra selected columns, aliases, etc.)
-      // Add directly to the model with the cased key
-      model[casedKey] = value;
+      // For non-model columns (aliases, selectRaw, joined columns, etc.)
+      // Preserve the key exactly as returned from database (no case conversion)
+      // Aliases should remain exactly as the user specified them
+      model[key] = value;
     });
 
     return model;

@@ -110,6 +110,7 @@ export type SelectableColumn<T extends Model> =
   | ModelKey<T>
   | `${string}.${string}`
   | `${string} as ${string}`
+  | `${string}(${string}) as ${string}`
   | "*";
 
 /**
@@ -203,6 +204,21 @@ type HasStarOrEmpty<Columns extends readonly string[]> =
       : false;
 
 /**
+ * Unique symbol used internally to mark that a select() has been called.
+ */
+declare const SELECT_BRAND: unique symbol;
+
+/**
+ * Marker type to indicate that a select() has been called.
+ * This brand is used to distinguish between:
+ * - Initial state: ModelWithoutRelations<T> (no select called)
+ * - After select: { selectedColumns } & Pick<Model, keyof Model> & SelectBrand
+ *
+ * @internal
+ */
+export type SelectBrand = { [SELECT_BRAND]?: never };
+
+/**
  * Builds the combined TypeScript type for multiple selected columns.
  *
  * This is the main type used to compute the return type of `select()` calls.
@@ -242,9 +258,70 @@ export type BuildSelectType<
       ? Result extends Record<string, any>
         ? keyof Result extends never
           ? ModelWithoutRelations<T>
-          : Result & Pick<Model, keyof Model>
+          : Result & Pick<Model, keyof Model> & SelectBrand
         : ModelWithoutRelations<T>
       : ModelWithoutRelations<T>;
+
+/**
+ * Composes a new selection with the existing selection state.
+ *
+ * - If S is the default ModelWithoutRelations (no previous select), drops default columns
+ *   and returns only the new selection with model methods
+ * - If S already has SelectBrand (from a previous select), composes with new selection
+ *
+ * Uses SelectBrand (a unique symbol) as a marker to detect if a select has been called.
+ *
+ * @typeParam S - Current selection state
+ * @typeParam Added - New fields being added by the select
+ *
+ * @example
+ * // First select - drops default columns
+ * ComposeSelect<ModelWithoutRelations<User>, { count: number }>
+ * // Result: Pick<Model, keyof Model> & SelectBrand & { count: number }
+ *
+ * @example
+ * // Chained select - composes with previous
+ * ComposeSelect<{ count: number } & Pick<Model, keyof Model> & SelectBrand, { userName: string }>
+ * // Result: { count: number } & Pick<Model, keyof Model> & SelectBrand & { userName: string }
+ */
+export type ComposeSelect<
+  S extends Record<string, any>,
+  Added extends Record<string, any>,
+> = (typeof SELECT_BRAND extends keyof S
+  ? S
+  : Pick<Model, keyof Model> & SelectBrand) &
+  Added;
+
+/**
+ * Composes a BuildSelectType result with the existing selection state.
+ *
+ * Similar to ComposeSelect but designed for use with BuildSelectType which already
+ * includes Pick<Model, keyof Model> and SelectBrand in its result.
+ *
+ * - If S is the default ModelWithoutRelations (no previous select), returns just BuildSelectType
+ * - If S already has SelectBrand (from a previous select), composes S with BuildSelectType
+ * - This is checked using the SELECT_BRAND symbol to detect if another select was already used
+ *
+ * @typeParam S - Current selection state
+ * @typeParam T - The Model type
+ * @typeParam Columns - The columns being selected
+ *
+ * @example
+ * // First select - returns BuildSelectType result
+ * ComposeBuildSelect<ModelWithoutRelations<User>, User, ["id", "name"]>
+ * // Result: { id: number; name: string } & Pick<Model, keyof Model> & SelectBrand
+ *
+ * @example
+ * // Chained select - composes with previous
+ * ComposeBuildSelect<{ count: number } & Pick<Model, keyof Model> & SelectBrand, User, ["id"]>
+ * // Result: { count: number } & Pick<Model, keyof Model> & SelectBrand & { id: number }
+ */
+export type ComposeBuildSelect<
+  S extends Record<string, any>,
+  T extends Model,
+  Columns extends readonly string[],
+> = (typeof SELECT_BRAND extends keyof S ? S : {}) &
+  BuildSelectType<T, Columns>;
 
 /**
  * The final result type for ModelQueryBuilder queries.

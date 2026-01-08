@@ -91,15 +91,19 @@ export type RelationRetrieveMethod<P extends any> = P extends any[]
 export type SelectableColumn<T extends string = string> =
   T extends `${infer Table}.${infer Column}.${string}`
     ? never // Reject multiple dots
-    : T extends `${string} ${string}`
-      ? never // Reject spaces
-      : T extends `.${string}` | `${string}.`
-        ? never // Reject leading/trailing dots
-        : T extends `${string}-${string}`
-          ? never // Reject hyphens
-          : T extends `${string}.${string}`
-            ? T // Accept table.column format
-            : T;
+    : T extends `${string}(${string})`
+      ? T // Accept function calls: count(*), sum(age), etc.
+      : T extends `${string} as ${string}`
+        ? T // Accept "column as alias" and "func(args) as alias" format
+        : T extends `${string} ${string}`
+          ? never // Reject other spaces
+          : T extends `.${string}` | `${string}.`
+            ? never // Reject leading/trailing dots
+            : T extends `${string}-${string}`
+              ? never // Reject hyphens
+              : T extends `${string}.${string}`
+                ? T // Accept table.column format
+                : T;
 
 /**
  * @description A column that can be used in a join statement e.g. `users.id`

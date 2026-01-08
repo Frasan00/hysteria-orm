@@ -736,6 +736,258 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
     });
   });
 
+  describe("Case convention handling", () => {
+    test("Model columns should have case conversion applied (snake_case DB -> camelCase model)", async () => {
+      if (env.DB_TYPE === "mssql") return;
+
+      const userData = {
+        ...UserFactory.getCommonUserData(),
+        name: "CaseConversionTest",
+        shortDescription: "A short description",
+        isActive: true,
+      };
+
+      await UserWithoutPk.insert(userData);
+
+      const user = await UserWithoutPk.query()
+        .select("name", "shortDescription", "isActive")
+        .where("name", "CaseConversionTest")
+        .one();
+
+      expect(user).not.toBeNull();
+      expect(user!.name).toBe("CaseConversionTest");
+
+      // Model columns should be in camelCase (converted from snake_case in DB)
+      expect(user!.shortDescription).toBe("A short description");
+      expect(user!.isActive).toBe(true);
+
+      // Snake_case keys should NOT exist on the response
+      expect(
+        Object.prototype.hasOwnProperty.call(user, "short_description"),
+      ).toBe(false);
+      expect(Object.prototype.hasOwnProperty.call(user, "is_active")).toBe(
+        false,
+      );
+    });
+
+    test("Aliases should remain exactly as specified (no case conversion)", async () => {
+      if (env.DB_TYPE === "mssql") return;
+
+      const userData = {
+        ...UserFactory.getCommonUserData(),
+        name: "AliasNoCaseConversionTest",
+        age: 25,
+        height: 180,
+      };
+
+      await UserWithoutPk.insert(userData);
+
+      // Test snake_case alias - should remain exactly as written
+      const user = await UserWithoutPk.query()
+        .select(
+          "name",
+          "age as user_age", // snake_case alias
+          "height as user_height", // another snake_case alias
+        )
+        .where("name", "AliasNoCaseConversionTest")
+        .one();
+
+      expect(user).not.toBeNull();
+
+      // Model column should be in camelCase
+      expect(user!.name).toBe("AliasNoCaseConversionTest");
+
+      // Aliases should remain EXACTLY as specified (snake_case preserved)
+      expect(user!.user_age).toBeDefined();
+      expect(+user!.user_age).toBe(25);
+      expect(user!.user_height).toBeDefined();
+      expect(+user!.user_height).toBe(180);
+
+      // camelCase versions should NOT exist (aliases not converted)
+      expect(Object.prototype.hasOwnProperty.call(user, "userAge")).toBe(false);
+      expect(Object.prototype.hasOwnProperty.call(user, "userHeight")).toBe(
+        false,
+      );
+    });
+
+    test("selectRaw aliases should remain exactly as specified", async () => {
+      if (env.DB_TYPE === "mssql" || env.DB_TYPE === "cockroachdb") return;
+
+      const userData = {
+        ...UserFactory.getCommonUserData(),
+        name: "SelectRawAliasTest",
+        age: 30,
+        height: 175,
+      };
+
+      await UserWithoutPk.insert(userData);
+
+      const user = await UserWithoutPk.query()
+        .select("name")
+        .selectRaw<{
+          total_records: number;
+          computed_sum: number;
+        }>("count(*) as total_records, (age + height) as computed_sum")
+        .where("name", "SelectRawAliasTest")
+        .groupBy("name", "age", "height")
+        .one();
+
+      expect(user).not.toBeNull();
+
+      // Model column should be in camelCase
+      expect(user!.name).toBe("SelectRawAliasTest");
+
+      // selectRaw aliases should remain EXACTLY as specified (snake_case preserved)
+      expect(user!.total_records).toBeDefined();
+      expect(+user!.total_records).toBe(1);
+      expect(user!.computed_sum).toBeDefined();
+      expect(+user!.computed_sum).toBe(205); // 30 + 175
+
+      // camelCase versions should NOT exist
+      expect(Object.prototype.hasOwnProperty.call(user, "totalRecords")).toBe(
+        false,
+      );
+      expect(Object.prototype.hasOwnProperty.call(user, "computedSum")).toBe(
+        false,
+      );
+    });
+
+    test("Aggregate function aliases should remain exactly as specified", async () => {
+      const userData = [
+        {
+          ...UserFactory.getCommonUserData(),
+          name: "AggAliasTest1",
+          age: 20,
+        },
+        {
+          ...UserFactory.getCommonUserData(),
+          name: "AggAliasTest2",
+          age: 40,
+        },
+      ];
+
+      await UserWithoutPk.insertMany(userData);
+
+      const result = await UserWithoutPk.query()
+        .selectCount("*", "total_count")
+        .selectSum("age", "sum_of_ages")
+        .selectAvg("age", "average_age")
+        .where("name", "like", "AggAliasTest%")
+        .one();
+
+      expect(result).not.toBeNull();
+
+      // Aliases should remain EXACTLY as specified (snake_case preserved)
+      expect(result!.total_count).toBeDefined();
+      expect(+result!.total_count).toBe(2);
+      expect(result!.sum_of_ages).toBeDefined();
+      expect(+result!.sum_of_ages).toBe(60);
+      expect(result!.average_age).toBeDefined();
+      expect(+result!.average_age).toBe(30);
+
+      // camelCase versions should NOT exist
+      expect(Object.prototype.hasOwnProperty.call(result, "totalCount")).toBe(
+        false,
+      );
+      expect(Object.prototype.hasOwnProperty.call(result, "sumOfAges")).toBe(
+        false,
+      );
+      expect(Object.prototype.hasOwnProperty.call(result, "averageAge")).toBe(
+        false,
+      );
+    });
+
+    test("Mixed model columns and aliases maintain their respective conventions", async () => {
+      if (env.DB_TYPE === "mssql") return;
+
+      const userData = {
+        ...UserFactory.getCommonUserData(),
+        name: "MixedConventionTest",
+        shortDescription: "Short desc",
+        isActive: true,
+        age: 35,
+        height: 170,
+      };
+
+      await UserWithoutPk.insert(userData);
+
+      const user = await UserWithoutPk.query()
+        .select(
+          "name",
+          "shortDescription", // model column - should be camelCase
+          "isActive", // model column - should be camelCase
+          "age as user_age_value", // alias - should remain snake_case
+        )
+        .selectRaw<{ computed_value: number }>("height + 10 as computed_value")
+        .where("name", "MixedConventionTest")
+        .one();
+
+      expect(user).not.toBeNull();
+
+      // Model columns should be in camelCase (converted from DB snake_case)
+      expect(user!.name).toBe("MixedConventionTest");
+      expect(user!.shortDescription).toBe("Short desc");
+      expect(user!.isActive).toBe(true);
+
+      // Aliases should remain EXACTLY as specified (no conversion)
+      expect(user!.user_age_value).toBeDefined();
+      expect(+user!.user_age_value).toBe(35);
+      expect(user!.computed_value).toBeDefined();
+      expect(+user!.computed_value).toBe(180); // 170 + 10
+
+      // Verify snake_case model column names don't exist
+      expect(
+        Object.prototype.hasOwnProperty.call(user, "short_description"),
+      ).toBe(false);
+      expect(Object.prototype.hasOwnProperty.call(user, "is_active")).toBe(
+        false,
+      );
+
+      // Verify camelCase alias versions don't exist
+      expect(Object.prototype.hasOwnProperty.call(user, "userAgeValue")).toBe(
+        false,
+      );
+      expect(Object.prototype.hasOwnProperty.call(user, "computedValue")).toBe(
+        false,
+      );
+    });
+
+    test("CamelCase aliases should remain as camelCase (not converted to snake_case)", async () => {
+      if (env.DB_TYPE === "mssql") return;
+
+      const userData = {
+        ...UserFactory.getCommonUserData(),
+        name: "CamelCaseAliasTest",
+        age: 28,
+      };
+
+      await UserWithoutPk.insert(userData);
+
+      const user = await UserWithoutPk.query()
+        .select("name", "age as userAge", "name as fullName")
+        .where("name", "CamelCaseAliasTest")
+        .one();
+
+      expect(user).not.toBeNull();
+
+      // Model column
+      expect(user!.name).toBe("CamelCaseAliasTest");
+
+      // camelCase aliases should remain as camelCase
+      expect(user!.userAge).toBeDefined();
+      expect(+user!.userAge).toBe(28);
+      expect(user!.fullName).toBe("CamelCaseAliasTest");
+
+      // snake_case versions should NOT exist (aliases not converted)
+      expect(Object.prototype.hasOwnProperty.call(user, "user_age")).toBe(
+        false,
+      );
+      expect(Object.prototype.hasOwnProperty.call(user, "full_name")).toBe(
+        false,
+      );
+    });
+  });
+
   describe("Select type narrowing edge cases", () => {
     test("select with only model columns excludes non-selected columns", async () => {
       const userData = {

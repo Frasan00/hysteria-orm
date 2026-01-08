@@ -55,6 +55,24 @@ export class SelectQueryBuilder<T extends Model> extends JoinQueryBuilder<T> {
       const columnStr = column as string;
       const { columnPart, aliasPart } = this.parseColumnAlias(columnStr);
 
+      // Detect SQL expression patterns:
+      // - Function calls: count(...), COALESCE(...), etc.
+      // - Nested functions: COALESCE(COUNT(*), 0)
+      // - Arithmetic with functions: count(*) + 1
+      const isSqlExpression = /[a-zA-Z_]\w*\s*\(/.test(columnPart);
+
+      if (isSqlExpression) {
+        this.selectNodes.push(
+          new SelectNode(
+            aliasPart ? `${columnPart} as ${aliasPart}` : columnPart,
+            undefined,
+            undefined,
+            true,
+          ),
+        );
+        return;
+      }
+
       const casedColumn = convertCase(
         columnPart,
         this.model.databaseCaseConvention,
