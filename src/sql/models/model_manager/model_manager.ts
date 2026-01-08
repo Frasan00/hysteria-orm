@@ -24,8 +24,6 @@ import {
   ModelKey,
   ModelRelation,
   OrderByChoices,
-  UnrestrictedFindOneType,
-  UnrestrictedFindType,
   UpsertOptions,
 } from "./model_manager_types";
 
@@ -70,13 +68,7 @@ export class ModelManager<T extends Model> {
   async find<
     S extends ModelKey<T>[] = never[],
     R extends ModelRelation<T>[] = never[],
-  >(input?: UnrestrictedFindType<T, S, R>): Promise<AnnotatedModel<T, {}>[]>;
-  async find<
-    S extends ModelKey<T>[] = never[],
-    R extends ModelRelation<T>[] = never[],
-  >(
-    input?: FindType<T, S, R> | UnrestrictedFindType<T, S, R>,
-  ): Promise<AnnotatedModel<T, {}>[]> {
+  >(input?: FindType<T, S, R>): Promise<AnnotatedModel<T, {}>[]> {
     if (!input) {
       return this.query().many();
     }
@@ -93,14 +85,7 @@ export class ModelManager<T extends Model> {
     }
 
     if (input.where) {
-      Object.entries(input.where).forEach(([key, value]) => {
-        if (Array.isArray(value)) {
-          query.whereIn(key, value);
-          return;
-        }
-
-        query.where(key, value);
-      });
+      this.handleWhereCondition(query as ModelQueryBuilder<T>, input.where);
     }
 
     if (input.orderBy) {
@@ -130,19 +115,11 @@ export class ModelManager<T extends Model> {
   async findOne<
     S extends ModelKey<T>[] = never[],
     R extends ModelRelation<T>[] = never[],
-  >(
-    input: UnrestrictedFindOneType<T, S, R>,
-  ): Promise<AnnotatedModel<T, {}> | null>;
-  async findOne<
-    S extends ModelKey<T>[] = never[],
-    R extends ModelRelation<T>[] = never[],
   >(input: FindOneType<T, S, R>): Promise<AnnotatedModel<T, {}> | null>;
   async findOne<
     S extends ModelKey<T>[] = never[],
     R extends ModelRelation<T>[] = never[],
-  >(
-    input: FindOneType<T, S, R> | UnrestrictedFindOneType<T, S, R>,
-  ): Promise<AnnotatedModel<T, {}> | null> {
+  >(input: FindOneType<T, S, R>): Promise<AnnotatedModel<T, {}> | null> {
     const results = await this.find({
       groupBy: input.groupBy,
       orderBy: input.orderBy,
@@ -171,12 +148,8 @@ export class ModelManager<T extends Model> {
   async findOneOrFail<
     S extends ModelKey<T>[] = never[],
     R extends ModelRelation<T>[] = never[],
-  >(input: UnrestrictedFindOneType<T, S, R>): Promise<AnnotatedModel<T, {}>>;
-  async findOneOrFail<
-    S extends ModelKey<T>[] = never[],
-    R extends ModelRelation<T>[] = never[],
   >(
-    input: (FindOneType<T, S, R> | UnrestrictedFindOneType<T, S, R>) & {
+    input: FindOneType<T, S, R> & {
       customError?: Error;
     },
   ): Promise<AnnotatedModel<T, {}>> {
@@ -819,5 +792,189 @@ export class ModelManager<T extends Model> {
 
     await this.model.afterFetch?.(results);
     return results as AnnotatedModel<T, {}>[];
+  }
+
+  private handleWhereCondition(
+    query: ModelQueryBuilder<T>,
+    where: FindOneType<T>["where"],
+    useOr = false,
+  ): void {
+    if (!where) {
+      return;
+    }
+
+    for (const [key, condition] of Object.entries(where)) {
+      if (key === "$and" && Array.isArray(condition)) {
+        // $and groups conditions with AND logic inside a where group
+        const whereMethod = useOr ? "orWhere" : "where";
+        (query as any)[whereMethod]((builder: ModelQueryBuilder<T>) => {
+          for (const subCondition of condition) {
+            this.handleWhereCondition(
+              builder as unknown as ModelQueryBuilder<T>,
+              subCondition,
+              false,
+            );
+          }
+        });
+      } else if (key === "$or" && Array.isArray(condition)) {
+        // $or groups conditions with OR logic inside a where group
+        const whereMethod = useOr ? "orWhere" : "where";
+        (query as any)[whereMethod]((builder: ModelQueryBuilder<T>) => {
+          let isFirst = true;
+          for (const subCondition of condition) {
+            this.handleWhereCondition(
+              builder as unknown as ModelQueryBuilder<T>,
+              subCondition,
+              !isFirst,
+            );
+            isFirst = false;
+          }
+        });
+      } else {
+        this.applyFieldCondition(query, key, condition, useOr);
+      }
+    }
+  }
+
+  private applyFieldCondition(
+    query: ModelQueryBuilder<T>,
+    column: string,
+    condition: unknown,
+    useOr = false,
+  ): void {
+    if (
+      condition === null ||
+      condition === undefined ||
+      typeof condition !== "object"
+    ) {
+      if (condition === null) {
+        useOr
+          ? query.orWhereNull(column as any)
+          : query.whereNull(column as any);
+      } else {
+        useOr
+          ? query.orWhere(column as any, "=", condition as any)
+          : query.where(column as any, "=", condition as any);
+      }
+
+      return;
+    }
+
+    const opCondition = condition as { op: string; value?: unknown };
+    const op = opCondition.op;
+    const value = opCondition.value;
+
+    switch (op) {
+      case "$eq":
+        if (value === null) {
+          useOr
+            ? query.orWhereNull(column as any)
+            : query.whereNull(column as any);
+        } else {
+          useOr
+            ? query.orWhere(column as any, "=", value as any)
+            : query.where(column as any, "=", value as any);
+        }
+        break;
+      case "$ne":
+        if (value === null) {
+          useOr
+            ? query.orWhereNotNull(column as any)
+            : query.whereNotNull(column as any);
+        } else {
+          useOr
+            ? query.orWhere(column as any, "!=", value as any)
+            : query.where(column as any, "!=", value as any);
+        }
+        break;
+      case "$gt":
+        useOr
+          ? query.orWhere(column as any, ">", value as any)
+          : query.where(column as any, ">", value as any);
+        break;
+      case "$gte":
+        useOr
+          ? query.orWhere(column as any, ">=", value as any)
+          : query.where(column as any, ">=", value as any);
+        break;
+      case "$lt":
+        useOr
+          ? query.orWhere(column as any, "<", value as any)
+          : query.where(column as any, "<", value as any);
+        break;
+      case "$lte":
+        useOr
+          ? query.orWhere(column as any, "<=", value as any)
+          : query.where(column as any, "<=", value as any);
+        break;
+      case "$between": {
+        const [min, max] = value as [unknown, unknown];
+        useOr
+          ? query.orWhereBetween(column as any, min as any, max as any)
+          : query.whereBetween(column as any, min as any, max as any);
+        break;
+      }
+      case "$not between": {
+        const [notMin, notMax] = value as [unknown, unknown];
+        useOr
+          ? query.orWhereNotBetween(column as any, notMin as any, notMax as any)
+          : query.whereNotBetween(column as any, notMin as any, notMax as any);
+        break;
+      }
+      case "$regexp":
+        useOr
+          ? query.orWhereRegexp(column as any, value as RegExp)
+          : query.whereRegexp(column as any, value as RegExp);
+        break;
+      case "$not regexp":
+        useOr
+          ? query.orWhereNotRegexp(column as any, value as RegExp)
+          : query.whereNotRegexp(column as any, value as RegExp);
+        break;
+      case "$is null":
+        useOr
+          ? query.orWhereNull(column as any)
+          : query.whereNull(column as any);
+        break;
+      case "$is not null":
+        useOr
+          ? query.orWhereNotNull(column as any)
+          : query.whereNotNull(column as any);
+        break;
+      case "$like":
+        useOr
+          ? query.orWhereLike(column as any, value as string)
+          : query.whereLike(column as any, value as string);
+        break;
+      case "$not like":
+        useOr
+          ? query.orWhereNotLike(column as any, value as string)
+          : query.whereNotLike(column as any, value as string);
+        break;
+      case "$ilike":
+        useOr
+          ? query.orWhereILike(column as any, value as string)
+          : query.whereILike(column as any, value as string);
+        break;
+      case "$not ilike":
+        useOr
+          ? query.orWhereNotILike(column as any, value as string)
+          : query.whereNotILike(column as any, value as string);
+        break;
+      case "$in":
+        useOr
+          ? query.orWhereIn(column as any, value as any[])
+          : query.whereIn(column as any, value as any[]);
+        break;
+      case "$nin":
+        useOr
+          ? query.orWhereNotIn(column as any, value as any[])
+          : query.whereNotIn(column as any, value as any[]);
+        break;
+      default:
+        useOr
+          ? query.orWhere(column as any, "=", condition as any)
+          : query.where(column as any, "=", condition as any);
+    }
   }
 }

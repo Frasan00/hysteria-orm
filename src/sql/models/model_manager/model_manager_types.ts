@@ -48,8 +48,35 @@ export type OnlyM2MRelations<T> = {
     : never;
 }[keyof T];
 
-export type WhereType<T> = {
-  [K in keyof T]?: T[K];
+export type FindComparisonOperator =
+  | "$eq"
+  | "$ne"
+  | "$gt"
+  | "$gte"
+  | "$lt"
+  | "$lte";
+
+export type BaseWhereType<T> = {
+  [K in keyof T as T[K] extends Function ? never : K]?:
+    | T[K]
+    | { op: "$between"; value: [T[K], T[K]] }
+    | { op: "$not between"; value: [T[K], T[K]] }
+    | { op: "$regexp"; value: RegExp }
+    | { op: "$not regexp"; value: RegExp }
+    | { op: "$is null" }
+    | { op: "$is not null" }
+    | { op: "$like"; value: string }
+    | { op: "$not like"; value: string }
+    | { op: "$ilike"; value: string }
+    | { op: "$not ilike"; value: string }
+    | { op: "$in"; value: T[K][] }
+    | { op: "$nin"; value: T[K][] }
+    | { op: FindComparisonOperator; value: T[K] | T[K][] | null };
+};
+
+export type WhereType<T> = BaseWhereType<T> & {
+  $and?: WhereType<T>[];
+  $or?: WhereType<T>[];
 };
 
 export type ModelKey<T extends Model> = {
@@ -71,28 +98,6 @@ export type OrderByType<T extends Model> = {
   [K in keyof T]?: OrderByChoices;
 } & {
   [K in string]?: OrderByChoices;
-};
-
-export type UnrestrictedFindOneType<
-  T extends Model,
-  S extends ModelKey<T>[] = any[],
-  R extends ModelRelation<T>[] = never[],
-> = {
-  select?: S;
-  relations?: R;
-  ignoreHooks?: FetchHooks;
-  where?: Record<string, any>;
-  orderBy?: OrderByType<T>;
-  groupBy?: string[];
-  offset?: number;
-};
-
-export type UnrestrictedFindType<
-  T extends Model,
-  S extends ModelKey<T>[] = any[],
-  R extends ModelRelation<T>[] = never[],
-> = Omit<UnrestrictedFindOneType<T, S, R>, "throwErrorOnNull"> & {
-  limit?: number;
 };
 
 export type FindOneType<

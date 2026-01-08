@@ -356,6 +356,577 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
   });
 });
 
+describe(`[${env.DB_TYPE}] Where Operations`, () => {
+  describe("Simple equality", () => {
+    test("should find by simple value equality", async () => {
+      const user = await UserFactory.userWithUuid(1);
+      await UserFactory.userWithUuid(1);
+
+      const found = await UserWithUuid.find({
+        where: { email: user.email },
+      });
+
+      expect(found).toHaveLength(1);
+      expect(found[0].email).toBe(user.email);
+    });
+
+    test("should find with $eq operator", async () => {
+      const user = await UserFactory.userWithUuid(1);
+      await UserFactory.userWithUuid(1);
+
+      const found = await UserWithUuid.find({
+        where: { email: { op: "$eq", value: user.email } },
+      });
+
+      expect(found).toHaveLength(1);
+      expect(found[0].email).toBe(user.email);
+    });
+
+    test("should find with $ne operator", async () => {
+      const user1 = await UserFactory.userWithUuid(1);
+      await UserFactory.userWithUuid(1);
+
+      const found = await UserWithUuid.find({
+        where: { email: { op: "$ne", value: user1.email } },
+      });
+
+      expect(found).toHaveLength(1);
+      expect(found[0].email).not.toBe(user1.email);
+    });
+  });
+
+  describe("Comparison operators", () => {
+    test("should find with $gt operator", async () => {
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        age: 25,
+      });
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        age: 35,
+      });
+
+      const found = await UserWithUuid.find({
+        where: { age: { op: "$gt", value: 30 } },
+      });
+
+      expect(found).toHaveLength(1);
+      expect(Number(found[0].age)).toBeGreaterThan(30);
+    });
+
+    test("should find with $gte operator", async () => {
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        age: 25,
+      });
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        age: 30,
+      });
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        age: 35,
+      });
+
+      const found = await UserWithUuid.find({
+        where: { age: { op: "$gte", value: 30 } },
+      });
+
+      expect(found).toHaveLength(2);
+      found.forEach((user) => {
+        expect(Number(user.age)).toBeGreaterThanOrEqual(30);
+      });
+    });
+
+    test("should find with $lt operator", async () => {
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        age: 25,
+      });
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        age: 35,
+      });
+
+      const found = await UserWithUuid.find({
+        where: { age: { op: "$lt", value: 30 } },
+      });
+
+      expect(found).toHaveLength(1);
+      expect(Number(found[0].age)).toBeLessThan(30);
+    });
+
+    test("should find with $lte operator", async () => {
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        age: 25,
+      });
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        age: 30,
+      });
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        age: 35,
+      });
+
+      const found = await UserWithUuid.find({
+        where: { age: { op: "$lte", value: 30 } },
+      });
+
+      expect(found).toHaveLength(2);
+      found.forEach((user) => {
+        expect(Number(user.age)).toBeLessThanOrEqual(30);
+      });
+    });
+  });
+
+  describe("Between operators", () => {
+    test("should find with $between operator", async () => {
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        age: 20,
+      });
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        age: 30,
+      });
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        age: 40,
+      });
+
+      const found = await UserWithUuid.find({
+        where: { age: { op: "$between", value: [25, 35] } },
+      });
+
+      expect(found).toHaveLength(1);
+      expect(Number(found[0].age)).toBe(30);
+    });
+
+    test("should find with $not between operator", async () => {
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        age: 20,
+      });
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        age: 30,
+      });
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        age: 40,
+      });
+
+      const found = await UserWithUuid.find({
+        where: { age: { op: "$not between", value: [25, 35] } },
+      });
+
+      expect(found).toHaveLength(2);
+    });
+  });
+
+  describe("Null operators", () => {
+    test("should find with $is null operator", async () => {
+      const user1 = await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        shortDescription: null as any,
+      });
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        shortDescription: "has description",
+      });
+
+      const found = await UserWithUuid.find({
+        where: { shortDescription: { op: "$is null" } },
+      });
+
+      expect(found).toHaveLength(1);
+      expect(found[0].id).toBe(user1.id);
+    });
+
+    test("should find with $is not null operator", async () => {
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        shortDescription: null as any,
+      });
+      const user2 = await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        shortDescription: "has description",
+      });
+
+      const found = await UserWithUuid.find({
+        where: { shortDescription: { op: "$is not null" } },
+      });
+
+      expect(found).toHaveLength(1);
+      expect(found[0].id).toBe(user2.id);
+    });
+  });
+
+  describe("Like operators", () => {
+    test("should find with $like operator", async () => {
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        name: "John Doe",
+      });
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        name: "Jane Smith",
+      });
+
+      const found = await UserWithUuid.find({
+        where: { name: { op: "$like", value: "John%" } },
+      });
+
+      expect(found).toHaveLength(1);
+      expect(found[0].name).toBe("John Doe");
+    });
+
+    test("should find with $not like operator", async () => {
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        name: "John Doe",
+      });
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        name: "Jane Smith",
+      });
+
+      const found = await UserWithUuid.find({
+        where: { name: { op: "$not like", value: "John%" } },
+      });
+
+      expect(found).toHaveLength(1);
+      expect(found[0].name).toBe("Jane Smith");
+    });
+  });
+
+  describe("In operators", () => {
+    test("should find with $in operator", async () => {
+      const user1 = await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        age: 25,
+      });
+      const user2 = await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        age: 30,
+      });
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        age: 35,
+      });
+
+      const found = await UserWithUuid.find({
+        where: { age: { op: "$in", value: [25, 30] } },
+      });
+
+      expect(found).toHaveLength(2);
+      const foundIds = found.map((u) => u.id);
+      expect(foundIds).toContain(user1.id);
+      expect(foundIds).toContain(user2.id);
+    });
+
+    test("should find with $nin operator", async () => {
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        age: 25,
+      });
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        age: 30,
+      });
+      const user3 = await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        age: 35,
+      });
+
+      const found = await UserWithUuid.find({
+        where: { age: { op: "$nin", value: [25, 30] } },
+      });
+
+      expect(found).toHaveLength(1);
+      expect(found[0].id).toBe(user3.id);
+    });
+  });
+
+  describe("$and operator", () => {
+    test("should find with $and combining multiple conditions", async () => {
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        name: "John Doe",
+        age: 25,
+      });
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        name: "John Doe",
+        age: 35,
+      });
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        name: "Jane Smith",
+        age: 25,
+      });
+
+      const found = await UserWithUuid.find({
+        where: {
+          $and: [{ name: "John Doe" }, { age: { op: "$gte", value: 30 } }],
+        },
+      });
+
+      expect(found).toHaveLength(1);
+      expect(found[0].name).toBe("John Doe");
+      expect(Number(found[0].age)).toBe(35);
+    });
+  });
+
+  describe("$or operator", () => {
+    test("should find with $or combining multiple conditions", async () => {
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        name: "John Doe",
+        age: 25,
+      });
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        name: "Jane Smith",
+        age: 35,
+      });
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        name: "Bob Wilson",
+        age: 40,
+      });
+
+      const found = await UserWithUuid.find({
+        where: {
+          $or: [{ name: "John Doe" }, { name: "Jane Smith" }],
+        },
+      });
+
+      expect(found).toHaveLength(2);
+      const names = found.map((u) => u.name);
+      expect(names).toContain("John Doe");
+      expect(names).toContain("Jane Smith");
+    });
+  });
+
+  describe("Complex nested conditions", () => {
+    test("should handle nested $and within $or", async () => {
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        name: "John Doe",
+        age: 25,
+        status: UserStatus.active,
+      });
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        name: "Jane Smith",
+        age: 35,
+        status: UserStatus.inactive,
+      });
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        name: "Bob Wilson",
+        age: 40,
+        status: UserStatus.active,
+      });
+
+      // Find users who are (active AND age < 30) OR (inactive AND age > 30)
+      const found = await UserWithUuid.find({
+        where: {
+          $or: [
+            {
+              $and: [
+                { status: UserStatus.active },
+                { age: { op: "$lt", value: 30 } },
+              ],
+            },
+            {
+              $and: [
+                { status: UserStatus.inactive },
+                { age: { op: "$gt", value: 30 } },
+              ],
+            },
+          ],
+        },
+      });
+
+      expect(found).toHaveLength(2);
+      const names = found.map((u) => u.name);
+      expect(names).toContain("John Doe");
+      expect(names).toContain("Jane Smith");
+    });
+
+    test("should handle nested $or within $and", async () => {
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        name: "John Doe",
+        age: 25,
+        status: UserStatus.active,
+      });
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        name: "Jane Smith",
+        age: 35,
+        status: UserStatus.active,
+      });
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        name: "Bob Wilson",
+        age: 40,
+        status: UserStatus.inactive,
+      });
+
+      // Find users who are active AND (named John Doe OR named Jane Smith)
+      const found = await UserWithUuid.find({
+        where: {
+          $and: [
+            { status: UserStatus.active },
+            {
+              $or: [{ name: "John Doe" }, { name: "Jane Smith" }],
+            },
+          ],
+        },
+      });
+
+      expect(found).toHaveLength(2);
+      const names = found.map((u) => u.name);
+      expect(names).toContain("John Doe");
+      expect(names).toContain("Jane Smith");
+    });
+
+    test("should handle deeply nested conditions", async () => {
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        name: "John Doe",
+        age: 25,
+        status: UserStatus.active,
+      });
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        name: "Jane Smith",
+        age: 35,
+        status: UserStatus.active,
+      });
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        name: "Bob Wilson",
+        age: 40,
+        status: UserStatus.inactive,
+      });
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        name: "Alice Brown",
+        age: 28,
+        status: UserStatus.inactive,
+      });
+
+      // Complex query:
+      // (active AND age between 20-30) OR (inactive AND (age > 35 OR name like 'Alice%'))
+      const found = await UserWithUuid.find({
+        where: {
+          $or: [
+            {
+              $and: [
+                { status: UserStatus.active },
+                { age: { op: "$between", value: [20, 30] } },
+              ],
+            },
+            {
+              $and: [
+                { status: UserStatus.inactive },
+                {
+                  $or: [
+                    { age: { op: "$gt", value: 35 } },
+                    { name: { op: "$like", value: "Alice%" } },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      });
+
+      expect(found).toHaveLength(3);
+      const names = found.map((u) => u.name);
+      expect(names).toContain("John Doe");
+      expect(names).toContain("Bob Wilson");
+      expect(names).toContain("Alice Brown");
+    });
+
+    test("should combine top-level fields with $and/$or", async () => {
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        name: "John Doe",
+        age: 25,
+        status: UserStatus.active,
+      });
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        name: "Jane Smith",
+        age: 35,
+        status: UserStatus.active,
+      });
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        name: "Bob Wilson",
+        age: 40,
+        status: UserStatus.inactive,
+      });
+
+      // Find active users who are either John Doe or Jane Smith
+      const found = await UserWithUuid.find({
+        where: {
+          status: UserStatus.active,
+          $or: [{ name: "John Doe" }, { name: "Jane Smith" }],
+        },
+      });
+
+      expect(found).toHaveLength(2);
+      found.forEach((user) => {
+        expect(user.status).toBe(UserStatus.active);
+      });
+    });
+
+    test("should handle multiple operations on same field via $and", async () => {
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        age: 25,
+      });
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        age: 30,
+      });
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        age: 35,
+      });
+      await UserWithUuid.insert({
+        ...UserFactory.getCommonUserData(),
+        age: 40,
+      });
+
+      // Find users with age > 25 AND age < 40
+      const found = await UserWithUuid.find({
+        where: {
+          $and: [
+            { age: { op: "$gt", value: 25 } },
+            { age: { op: "$lt", value: 40 } },
+          ],
+        },
+      });
+
+      expect(found).toHaveLength(2);
+      found.forEach((user) => {
+        const age = Number(user.age);
+        expect(age).toBeGreaterThan(25);
+        expect(age).toBeLessThan(40);
+      });
+    });
+  });
+});
+
 describe(`[${env.DB_TYPE}] Stream`, () => {
   test("should properly stream results with event listeners", async () => {
     const users: UserWithUuid[] = [];

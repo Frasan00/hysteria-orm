@@ -7,8 +7,6 @@ import type {
   ModelKey,
   ModelRelation,
   OnlyM2MRelations,
-  UnrestrictedFindOneType,
-  UnrestrictedFindType,
   UpsertOptions,
   WhereType,
 } from "./model_manager/model_manager_types";
@@ -175,7 +173,7 @@ export abstract class Model extends Entity {
     R extends ModelRelation<T>[] = never[],
   >(
     this: new () => T | typeof Model,
-    findOptions?: FindType<T, S, R> | UnrestrictedFindType<T, S, R>,
+    findOptions?: FindType<T, S, R>,
     options?: Omit<BaseModelMethodOptions, "ignoreHooks">,
   ): Promise<FindReturnType<T, S, R>[]> {
     const typeofModel = this as unknown as typeof Model;
@@ -194,10 +192,7 @@ export abstract class Model extends Entity {
     R extends ModelRelation<T>[] = never[],
   >(
     this: new () => T | typeof Model,
-    findOneOptions: (
-      | FindOneType<T, S, R>
-      | UnrestrictedFindOneType<T, S, R>
-    ) & {
+    findOneOptions: FindOneType<T, S, R> & {
       customError?: Error;
     },
     options?: Omit<BaseModelMethodOptions, "ignoreHooks">,
@@ -218,8 +213,7 @@ export abstract class Model extends Entity {
     R extends ModelRelation<T>[] = never[],
   >(
     this: new () => T | typeof Model,
-    findOneOptions: (FindOneType<T, S, R> | UnrestrictedFindOneType<T, S, R>) &
-      BaseModelMethodOptions,
+    findOneOptions: FindOneType<T, S, R> & BaseModelMethodOptions,
     options?: Omit<BaseModelMethodOptions, "ignoreHooks">,
   ): Promise<FindReturnType<T, S, R> | null> {
     const typeofModel = this as unknown as typeof Model;
@@ -509,7 +503,7 @@ export abstract class Model extends Entity {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
     const doesExist = (await modelManager.findOne({
-      where: searchCriteria as WhereType<T>,
+      where: searchCriteria as unknown as WhereType<T>,
     })) as T;
 
     if (doesExist) {
@@ -554,7 +548,7 @@ export abstract class Model extends Entity {
       ? null
       : await modelManager.findOne({
           ignoreHooks: options.ignoreHooks ? ["afterFetch", "beforeFetch"] : [],
-          where: searchCriteria as WhereType<T>,
+          where: searchCriteria as unknown as WhereType<T>,
         });
 
     if (doesExist) {
