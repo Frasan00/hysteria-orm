@@ -1,6 +1,6 @@
 import { Model } from "../../models/model";
 import { ModelKey, ModelRelation } from "../model_manager/model_manager_types";
-import { ModelWithoutRelations } from "../model_types";
+import { ModelDataProperties, ModelWithoutRelations } from "../model_types";
 
 /**
  * Extracts the instance type from a Model class type.
@@ -108,8 +108,8 @@ type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
  */
 export type SelectableColumn<T extends Model> =
   | ModelKey<T>
-  | `${string}.${string}`
-  | `${string} as ${string}`
+  | `${string}.${string | "*"}`
+  | `${ModelKey<T> & string} as ${string}`
   | `${string}(${string}) as ${string}`
   | "*";
 
@@ -258,7 +258,7 @@ export type BuildSelectType<
       ? Result extends Record<string, any>
         ? keyof Result extends never
           ? ModelWithoutRelations<T>
-          : Result & Pick<Model, keyof Model> & SelectBrand
+          : Result & ModelDataProperties & SelectBrand
         : ModelWithoutRelations<T>
       : ModelWithoutRelations<T>;
 
@@ -289,7 +289,7 @@ export type ComposeSelect<
   Added extends Record<string, any>,
 > = (typeof SELECT_BRAND extends keyof S
   ? S
-  : Pick<Model, keyof Model> & SelectBrand) &
+  : ModelDataProperties & SelectBrand) &
   Added;
 
 /**
@@ -337,6 +337,7 @@ export type ComposeBuildSelect<
  * // Result: { name: string; posts: Post[] }
  */
 export type SelectedModel<
+  M extends Model,
   S extends Record<string, any> = {},
   R extends Record<string, any> = {},
 > = S & R;

@@ -12,8 +12,6 @@ export type RelationQueryBuilderType<
   ModelQueryBuilder<T, A, R>,
   | "increment"
   | "decrement"
-  | "first"
-  | "firstOrFail"
   | "paginate"
   | "pluck"
   | "truncate"

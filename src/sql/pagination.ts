@@ -25,7 +25,7 @@ export type PaginatedData<
   R extends Record<string, any> = {},
 > = {
   paginationMetadata: PaginationMetadata;
-  data: ([keyof S] extends [never] ? T & R : SelectedModel<S, R>)[];
+  data: ([keyof S] extends [never] ? T & R : SelectedModel<T, S, R>)[];
 };
 
 export type CursorPaginatedData<
@@ -34,7 +34,7 @@ export type CursorPaginatedData<
   R extends Record<string, any> = {},
 > = {
   paginationMetadata: CursorPaginationMetadata;
-  data: ([keyof S] extends [never] ? T & R : SelectedModel<S, R>)[];
+  data: ([keyof S] extends [never] ? T & R : SelectedModel<T, S, R>)[];
 };
 
 export function getPaginationMetadata(

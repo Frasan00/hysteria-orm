@@ -24,7 +24,6 @@ import { Model } from "./models/model";
  *    Only explicitly selected columns (via aliases) are included from joined tables.
  *
  * @param model - Raw database row as key-value pairs
- * @param typeofModel - The Model class for metadata lookup
  * @param modelColumns - Array of column definitions from the model
  * @param modelColumnsMap - Map of column name -> column definition for O(1) lookup
  * @param modelSelectedColumns - Array of selected column names (in model case convention)
@@ -35,14 +34,12 @@ export const parseDatabaseDataIntoModelResponse = async <
   T extends Record<string, any>,
 >(
   model: T,
-  typeofModel: typeof Model,
   modelColumns: ColumnType[],
   modelColumnsMap: Map<string, ColumnType>,
   modelSelectedColumns: string[] = [],
   hasWildcards: boolean = false,
 ): Promise<T> => {
-  const casedModel: Record<string, any> =
-    new (typeofModel as unknown as new () => T)();
+  const casedModel: Record<string, any> = {};
 
   // Pre-compute hidden columns for O(1) lookup during iteration
   const hiddenColumnsSet = new Set<string>(
@@ -239,7 +236,6 @@ export const serializeModel = async <T extends Model>(
     models.map(async (model) => {
       const serializedModel = await parseDatabaseDataIntoModelResponse(
         model,
-        typeofModel,
         modelColumns,
         modelColumnsMap,
         modelSelectedColumns,

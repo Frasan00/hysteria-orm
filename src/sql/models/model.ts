@@ -549,9 +549,9 @@ export abstract class Model extends Entity {
         });
 
     if (doesExist) {
-      (data as T)[typeofModel.primaryKey as keyof T] = doesExist[
+      (data as T)[typeofModel.primaryKey as keyof T] = (doesExist as T)[
         typeofModel.primaryKey as keyof ModelWithoutRelations<T>
-      ] as T[keyof T];
+      ];
 
       if (options.updateOnConflict) {
         return (await modelManager.updateRecord(data as T, {

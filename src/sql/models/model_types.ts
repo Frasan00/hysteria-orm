@@ -5,11 +5,26 @@ import { Transaction } from "../transactions/transaction";
 import { Model } from "./model";
 import { ExcludeRelations } from "./model_manager/model_manager_types";
 
+/**
+ * Extracts only non-method keys from a type.
+ * Excludes any property that is a function.
+ */
+export type ExcludeMethods<T> = {
+  [K in keyof T]: T[K] extends (...args: any[]) => any ? never : K;
+}[keyof T];
+
+/**
+ * Picks only non-method properties from the base Model class.
+ * This ensures that when selecting specific columns, instance methods
+ * like save(), delete(), refresh() are not incorrectly included.
+ */
+export type ModelDataProperties = Pick<Model, ExcludeMethods<Model>>;
+
 export type ModelWithoutRelations<T extends Model> = Pick<
   Omit<T, "*">,
   ExcludeRelations<Omit<T, "*">>
 > &
-  Pick<Model, keyof Model>;
+  ModelDataProperties;
 
 export type NumberModelKey<T extends Model> = {
   [K in keyof T]: T[K] extends number | bigint ? K : never;

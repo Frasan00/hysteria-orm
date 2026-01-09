@@ -1236,4 +1236,344 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
       expect(Object.prototype.hasOwnProperty.call(result, "age")).toBe(false);
     });
   });
+
+  describe("Extended SQL function methods", () => {
+    test("selectCountDistinct should count unique values", async () => {
+      const userData = [
+        { ...UserFactory.getCommonUserData(), name: "DistinctTest1", age: 25 },
+        { ...UserFactory.getCommonUserData(), name: "DistinctTest2", age: 25 },
+        { ...UserFactory.getCommonUserData(), name: "DistinctTest3", age: 30 },
+        { ...UserFactory.getCommonUserData(), name: "DistinctTest4", age: 35 },
+      ];
+
+      await UserWithoutPk.insertMany(userData);
+
+      const result = await UserWithoutPk.query()
+        .selectCountDistinct("age", "uniqueAges")
+        .where("name", "like", "DistinctTest%")
+        .one();
+
+      expect(result).not.toBeNull();
+      expect(result!.uniqueAges).toBeDefined();
+      expect(+result!.uniqueAges).toBe(3);
+    });
+
+    test("selectUpper should convert to uppercase", async () => {
+      const userData = {
+        ...UserFactory.getCommonUserData(),
+        name: "UpperTest",
+      };
+
+      await UserWithoutPk.insert(userData);
+
+      const result = await UserWithoutPk.query()
+        .select("name")
+        .selectUpper("name", "upperName")
+        .where("name", "UpperTest")
+        .one();
+
+      expect(result).not.toBeNull();
+      expect(result!.name).toBe("UpperTest");
+      expect(result!.upperName).toBe("UPPERTEST");
+    });
+
+    test("selectLower should convert to lowercase", async () => {
+      const userData = {
+        ...UserFactory.getCommonUserData(),
+        name: "LowerTest",
+      };
+
+      await UserWithoutPk.insert(userData);
+
+      const result = await UserWithoutPk.query()
+        .select("name")
+        .selectLower("name", "lowerName")
+        .where("name", "LowerTest")
+        .one();
+
+      expect(result).not.toBeNull();
+      expect(result!.name).toBe("LowerTest");
+      expect(result!.lowerName).toBe("lowertest");
+    });
+
+    test("selectLength should return string length", async () => {
+      const userData = {
+        ...UserFactory.getCommonUserData(),
+        name: "LengthTest",
+      };
+
+      await UserWithoutPk.insert(userData);
+
+      const result = await UserWithoutPk.query()
+        .select("name")
+        .selectLength("name", "nameLength")
+        .where("name", "LengthTest")
+        .one();
+
+      expect(result).not.toBeNull();
+      expect(result!.name).toBe("LengthTest");
+      expect(+result!.nameLength).toBe(10);
+    });
+
+    test("selectTrim should remove whitespace", async () => {
+      const userData = {
+        ...UserFactory.getCommonUserData(),
+        name: "  TrimTest  ",
+      };
+
+      await UserWithoutPk.insert(userData);
+
+      const result = await UserWithoutPk.query()
+        .select("name")
+        .selectTrim("name", "trimmedName")
+        .where("name", "  TrimTest  ")
+        .one();
+
+      expect(result).not.toBeNull();
+      expect(result!.name).toBe("  TrimTest  ");
+      expect(result!.trimmedName).toBe("TrimTest");
+    });
+
+    test("selectAbs should return absolute value", async () => {
+      const userData = {
+        ...UserFactory.getCommonUserData(),
+        name: "AbsTest",
+        height: -100,
+      };
+
+      await UserWithoutPk.insert(userData);
+
+      const result = await UserWithoutPk.query()
+        .select("name", "height")
+        .selectAbs("height", "absoluteHeight")
+        .where("name", "AbsTest")
+        .one();
+
+      expect(result).not.toBeNull();
+      expect(result!.name).toBe("AbsTest");
+      expect(+result!.height).toBe(-100);
+      expect(+result!.absoluteHeight).toBe(100);
+    });
+
+    test("selectRound should round to specified decimals", async () => {
+      // SQLite ROUND behavior can be different
+      // PostgreSQL/CockroachDB require numeric type for ROUND with precision
+      if (
+        env.DB_TYPE === "sqlite" ||
+        env.DB_TYPE === "postgres" ||
+        env.DB_TYPE === "cockroachdb"
+      ) {
+        return;
+      }
+
+      const userData = {
+        ...UserFactory.getCommonUserData(),
+        name: "RoundTest",
+        height: 123,
+      };
+
+      await UserWithoutPk.insert(userData);
+
+      const result = await UserWithoutPk.query()
+        .select("name")
+        .selectRound("height", 0, "roundedHeight")
+        .where("name", "RoundTest")
+        .one();
+
+      expect(result).not.toBeNull();
+      expect(result!.name).toBe("RoundTest");
+      expect(+result!.roundedHeight).toBe(123);
+    });
+
+    test("selectCoalesce should return default when null", async () => {
+      const userData = {
+        ...UserFactory.getCommonUserData(),
+        name: "CoalesceTest",
+        description: null as unknown as string,
+      };
+
+      await UserWithoutPk.insert(userData);
+
+      const result = await UserWithoutPk.query()
+        .select("name")
+        .selectCoalesce("description", "'DefaultValue'", "displayDesc")
+        .where("name", "CoalesceTest")
+        .one();
+
+      expect(result).not.toBeNull();
+      expect(result!.name).toBe("CoalesceTest");
+      expect(result!.displayDesc).toBe("DefaultValue");
+    });
+
+    test("selectCoalesce should return original value when not null", async () => {
+      const userData = {
+        ...UserFactory.getCommonUserData(),
+        name: "CoalesceTest2",
+        description: "ActualValue",
+      };
+
+      await UserWithoutPk.insert(userData);
+
+      const result = await UserWithoutPk.query()
+        .select("name")
+        .selectCoalesce("description", "'DefaultValue'", "displayDesc")
+        .where("name", "CoalesceTest2")
+        .one();
+
+      expect(result).not.toBeNull();
+      expect(result!.name).toBe("CoalesceTest2");
+      expect(result!.displayDesc).toBe("ActualValue");
+    });
+
+    test("selectCeil should round up", async () => {
+      // SQLite doesn't have CEIL, it has a different behavior
+      if (env.DB_TYPE === "sqlite") return;
+
+      const userData = {
+        ...UserFactory.getCommonUserData(),
+        name: "CeilTest",
+        height: 123,
+      };
+
+      await UserWithoutPk.insert(userData);
+
+      const result = await UserWithoutPk.query()
+        .select("name", "height")
+        .selectCeil("height", "ceilHeight")
+        .where("name", "CeilTest")
+        .one();
+
+      expect(result).not.toBeNull();
+      expect(result!.name).toBe("CeilTest");
+      expect(+result!.ceilHeight).toBe(123);
+    });
+
+    test("selectFloor should round down", async () => {
+      // SQLite doesn't have FLOOR
+      if (env.DB_TYPE === "sqlite") return;
+
+      const userData = {
+        ...UserFactory.getCommonUserData(),
+        name: "FloorTest",
+        height: 123,
+      };
+
+      await UserWithoutPk.insert(userData);
+
+      const result = await UserWithoutPk.query()
+        .select("name", "height")
+        .selectFloor("height", "floorHeight")
+        .where("name", "FloorTest")
+        .one();
+
+      expect(result).not.toBeNull();
+      expect(result!.name).toBe("FloorTest");
+      expect(+result!.floorHeight).toBe(123);
+    });
+
+    test("selectSqrt should return square root", async () => {
+      if (env.DB_TYPE === "cockroachdb") {
+        return;
+      }
+
+      const userData = {
+        ...UserFactory.getCommonUserData(),
+        name: "SqrtTest",
+        age: 25,
+      };
+
+      await UserWithoutPk.insert(userData);
+
+      const result = await UserWithoutPk.query()
+        .select("name", "age")
+        .selectSqrt("age", "sqrtAge")
+        .where("name", "SqrtTest")
+        .one();
+
+      expect(result).not.toBeNull();
+      expect(result!.name).toBe("SqrtTest");
+      expect(+result!.age).toBe(25);
+      expect(+result!.sqrtAge).toBe(5);
+    });
+
+    test("Multiple extended functions can be chained", async () => {
+      if (env.DB_TYPE === "cockroachdb" || env.DB_TYPE === "mssql") {
+        return;
+      }
+
+      const userData = {
+        ...UserFactory.getCommonUserData(),
+        name: "  ChainFuncTest  ",
+        age: 16,
+        height: -50,
+      };
+
+      await UserWithoutPk.insert(userData);
+
+      const result = await UserWithoutPk.query()
+        .select("name")
+        .selectTrim("name", "trimmedName")
+        .selectUpper("name", "upperName")
+        .selectLength("name", "nameLength")
+        .selectAbs("height", "absHeight")
+        .selectSqrt("age", "sqrtAge")
+        .where("name", "  ChainFuncTest  ")
+        .one();
+
+      expect(result).not.toBeNull();
+      expect(result!.name).toBe("  ChainFuncTest  ");
+      expect(result!.trimmedName).toBe("ChainFuncTest");
+      expect(result!.upperName).toBe("  CHAINFUNCTEST  ");
+      expect(+result!.nameLength).toBe(17);
+      expect(+result!.absHeight).toBe(50);
+      expect(+result!.sqrtAge).toBe(4);
+    });
+
+    test("Extended functions can be combined with regular aggregates", async () => {
+      const userData = [
+        { ...UserFactory.getCommonUserData(), name: "CombinedFunc1", age: 20 },
+        { ...UserFactory.getCommonUserData(), name: "CombinedFunc2", age: 30 },
+        { ...UserFactory.getCommonUserData(), name: "CombinedFunc3", age: 20 },
+      ];
+
+      await UserWithoutPk.insertMany(userData);
+
+      const result = await UserWithoutPk.query()
+        .selectCount("*", "total")
+        .selectCountDistinct("age", "uniqueAges")
+        .selectSum("age", "sumAge")
+        .selectAvg("age", "avgAge")
+        .where("name", "like", "CombinedFunc%")
+        .one();
+
+      expect(result).not.toBeNull();
+      expect(+result!.total).toBe(3);
+      expect(+result!.uniqueAges).toBe(2);
+      expect(+result!.sumAge).toBe(70);
+    });
+
+    test("Extended functions with table.column format", async () => {
+      if (env.DB_TYPE === "cockroachdb") {
+        return;
+      }
+
+      const userData = {
+        ...UserFactory.getCommonUserData(),
+        name: "TablePrefixFunc",
+        age: 36,
+      };
+
+      await UserWithoutPk.insert(userData);
+
+      const result = await UserWithoutPk.query()
+        .select("name")
+        .selectSqrt("users_without_pk.age", "sqrtAge")
+        .where("name", "TablePrefixFunc")
+        .one();
+
+      expect(result).not.toBeNull();
+      expect(result!.name).toBe("TablePrefixFunc");
+      expect(+result!.sqrtAge).toBe(6);
+    });
+  });
 });

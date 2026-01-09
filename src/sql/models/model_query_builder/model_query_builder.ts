@@ -130,38 +130,34 @@ export class ModelQueryBuilder<
     return new ModelQueryBuilder(model, model.sqlInstance);
   }
 
-  // @ts-expect-error - Override with more specific return type for type-safety
-  async one(options: OneOptions = {}): Promise<SelectedModel<S, R> | null> {
+  // @ts-expect-error - Override could return a subset of the model
+  override async one(
+    options: OneOptions = {},
+  ): Promise<SelectedModel<T, S, R> | null> {
     const result = await this.limit(1).many(options);
     if (!result || !result.length) {
       return null;
     }
 
-    return result[0];
+    return result[0] as SelectedModel<T, S, R>;
   }
 
-  // @ts-expect-error - Override with more specific return type for type-safety
-  async oneOrFail(options?: {
+  // @ts-expect-error - Override could return a subset of the model
+  override async oneOrFail(options?: {
     ignoreHooks?: OneOptions["ignoreHooks"] & { customError?: Error };
-  }): Promise<SelectedModel<S, R>> {
+  }): Promise<SelectedModel<T, S, R>> {
     const model = await this.one(options);
     if (!model) {
       throw new HysteriaError(this.model.name + "::oneOrFail", "ROW_NOT_FOUND");
     }
 
-    return model as SelectedModel<S, R>;
+    return model as SelectedModel<T, S, R>;
   }
 
-  async firstOrFail(options?: {
-    ignoreHooks?: OneOptions["ignoreHooks"] & { customError?: Error };
-  }): Promise<SelectedModel<S, R>> {
-    return this.oneOrFail(options);
-  }
-
-  // @ts-expect-error - Override with more specific return type for type-safety
+  // @ts-expect-error - Override could return a subset of the model
   override async many(
     options: ManyOptions = {},
-  ): Promise<SelectedModel<S, R>[]> {
+  ): Promise<SelectedModel<T, S, R>[]> {
     !(options.ignoreHooks as string[])?.includes("beforeFetch") &&
       (await this.model.beforeFetch?.(this as any));
     const rows = await super.many();
@@ -195,14 +191,14 @@ export class ModelQueryBuilder<
       await this.processRelationsRecursively(serializedModelsArray);
     }
 
-    return serializedModelsArray as unknown as SelectedModel<S, R>[];
+    return serializedModelsArray as unknown as SelectedModel<T, S, R>[];
   }
 
-  // @ts-expect-error - Override with more specific return type for type-safety
+  // @ts-expect-error - Override could return a subset of the model
   override async *chunk(
     chunkSize: number,
     options: ManyOptions = {},
-  ): AsyncGenerator<SelectedModel<S, R>[]> {
+  ): AsyncGenerator<SelectedModel<T, S, R>[] | T[]> {
     let offset = 0;
 
     while (true) {
@@ -219,7 +215,7 @@ export class ModelQueryBuilder<
   // @ts-expect-error - Override with more specific return type for type-safety
   override async stream(
     options: ManyOptions & StreamOptions = {},
-  ): Promise<PassThrough & AsyncGenerator<SelectedModel<S, R>>> {
+  ): Promise<PassThrough & AsyncGenerator<SelectedModel<T, S, R> | T>> {
     !(options.ignoreHooks as string[])?.includes("beforeFetch") &&
       (await this.model.beforeFetch?.(this as any));
 
@@ -250,7 +246,7 @@ export class ModelQueryBuilder<
       },
     });
 
-    return stream as PassThrough & AsyncGenerator<SelectedModel<S, R>>;
+    return stream as PassThrough & AsyncGenerator<SelectedModel<T, S, R> | T>;
   }
 
   override async paginateWithCursor<K extends ModelKey<T>>(
@@ -452,6 +448,7 @@ export class ModelQueryBuilder<
    * @description Adds columns to the SELECT clause with full type safety.
    * @description Supports formats: "column", "table.column", "column as alias", "*", "table.*"
    * @description When columns are selected, the return type reflects only those columns
+   * @warning This only allows selecting columns that are part of the model. For other columns, use `selectRaw`.
    * @example
    * ```ts
    * // Select specific columns - return type is { id: number, name: string }
@@ -941,6 +938,269 @@ export class ModelQueryBuilder<
     alias: Alias,
   ): ModelQueryBuilder<T, ComposeSelect<S, { [K in Alias]: number }>, R> {
     super.selectMax(column as string, alias);
+    return this as unknown as ModelQueryBuilder<
+      T,
+      ComposeSelect<S, { [K in Alias]: number }>,
+      R
+    >;
+  }
+
+  /**
+   * @description Selects COUNT(DISTINCT column) with a typed alias
+   * @param column The column to count distinct values (supports "table.column" format)
+   * @param alias The alias for the count result
+   * @example
+   * ```ts
+   * const result = await User.query().selectCountDistinct("email", "uniqueEmails").one();
+   * console.log(result?.uniqueEmails); // Typed as number
+   * ```
+   */
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectCountDistinct<Alias extends string>(
+    column: ModelKey<T> | string,
+    alias: Alias,
+  ): ModelQueryBuilder<T, ComposeSelect<S, { [K in Alias]: number }>, R> {
+    super.selectCountDistinct(column as string, alias);
+    return this as unknown as ModelQueryBuilder<
+      T,
+      ComposeSelect<S, { [K in Alias]: number }>,
+      R
+    >;
+  }
+
+  /**
+   * @description Selects UPPER(column) with a typed alias
+   * @param column The column to convert to uppercase
+   * @param alias The alias for the result
+   * @example
+   * ```ts
+   * const result = await User.query().selectUpper("name", "upperName").one();
+   * console.log(result?.upperName); // Typed as string
+   * ```
+   */
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectUpper<Alias extends string>(
+    column: ModelKey<T> | string,
+    alias: Alias,
+  ): ModelQueryBuilder<T, ComposeSelect<S, { [K in Alias]: string }>, R> {
+    super.selectUpper(column as string, alias);
+    return this as unknown as ModelQueryBuilder<
+      T,
+      ComposeSelect<S, { [K in Alias]: string }>,
+      R
+    >;
+  }
+
+  /**
+   * @description Selects LOWER(column) with a typed alias
+   * @param column The column to convert to lowercase
+   * @param alias The alias for the result
+   * @example
+   * ```ts
+   * const result = await User.query().selectLower("name", "lowerName").one();
+   * console.log(result?.lowerName); // Typed as string
+   * ```
+   */
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectLower<Alias extends string>(
+    column: ModelKey<T> | string,
+    alias: Alias,
+  ): ModelQueryBuilder<T, ComposeSelect<S, { [K in Alias]: string }>, R> {
+    super.selectLower(column as string, alias);
+    return this as unknown as ModelQueryBuilder<
+      T,
+      ComposeSelect<S, { [K in Alias]: string }>,
+      R
+    >;
+  }
+
+  /**
+   * @description Selects LENGTH(column) with a typed alias
+   * @param column The column to get length of
+   * @param alias The alias for the result
+   * @note MSSQL uses LEN() instead of LENGTH(), handled automatically
+   * @example
+   * ```ts
+   * const result = await User.query().selectLength("name", "nameLength").one();
+   * console.log(result?.nameLength); // Typed as number
+   * ```
+   */
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectLength<Alias extends string>(
+    column: ModelKey<T> | string,
+    alias: Alias,
+  ): ModelQueryBuilder<T, ComposeSelect<S, { [K in Alias]: number }>, R> {
+    super.selectLength(column as string, alias);
+    return this as unknown as ModelQueryBuilder<
+      T,
+      ComposeSelect<S, { [K in Alias]: number }>,
+      R
+    >;
+  }
+
+  /**
+   * @description Selects TRIM(column) with a typed alias
+   * @param column The column to trim whitespace from
+   * @param alias The alias for the result
+   * @example
+   * ```ts
+   * const result = await User.query().selectTrim("name", "trimmedName").one();
+   * console.log(result?.trimmedName); // Typed as string
+   * ```
+   */
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectTrim<Alias extends string>(
+    column: ModelKey<T> | string,
+    alias: Alias,
+  ): ModelQueryBuilder<T, ComposeSelect<S, { [K in Alias]: string }>, R> {
+    super.selectTrim(column as string, alias);
+    return this as unknown as ModelQueryBuilder<
+      T,
+      ComposeSelect<S, { [K in Alias]: string }>,
+      R
+    >;
+  }
+
+  /**
+   * @description Selects ABS(column) with a typed alias
+   * @param column The column to get absolute value of
+   * @param alias The alias for the result
+   * @example
+   * ```ts
+   * const result = await Order.query().selectAbs("balance", "absoluteBalance").one();
+   * console.log(result?.absoluteBalance); // Typed as number
+   * ```
+   */
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectAbs<Alias extends string>(
+    column: ModelKey<T> | string,
+    alias: Alias,
+  ): ModelQueryBuilder<T, ComposeSelect<S, { [K in Alias]: number }>, R> {
+    super.selectAbs(column as string, alias);
+    return this as unknown as ModelQueryBuilder<
+      T,
+      ComposeSelect<S, { [K in Alias]: number }>,
+      R
+    >;
+  }
+
+  /**
+   * @description Selects ROUND(column, decimals) with a typed alias
+   * @param column The column to round
+   * @param decimals Number of decimal places
+   * @param alias The alias for the result
+   * @postgres Not fully supported - ROUND with precision requires NUMERIC type, not REAL/FLOAT
+   * @cockroachdb Not fully supported - ROUND with precision requires NUMERIC type, not REAL/FLOAT
+   * @example
+   * ```ts
+   * const result = await Order.query().selectRound("price", 2, "roundedPrice").one();
+   * console.log(result?.roundedPrice); // Typed as number
+   * ```
+   */
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectRound<Alias extends string>(
+    column: ModelKey<T> | string,
+    decimals: number,
+    alias: Alias,
+  ): ModelQueryBuilder<T, ComposeSelect<S, { [K in Alias]: number }>, R> {
+    super.selectRound(column as string, decimals, alias);
+    return this as unknown as ModelQueryBuilder<
+      T,
+      ComposeSelect<S, { [K in Alias]: number }>,
+      R
+    >;
+  }
+
+  /**
+   * @description Selects COALESCE(column, defaultValue) with a typed alias
+   * @param column The column to check for NULL
+   * @param defaultValue The value to use if column is NULL
+   * @param alias The alias for the result
+   * @example
+   * ```ts
+   * const result = await User.query().selectCoalesce("nickname", "'Unknown'", "displayName").one();
+   * console.log(result?.displayName); // Typed as any (depends on column type)
+   * ```
+   */
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectCoalesce<Alias extends string>(
+    column: ModelKey<T> | string,
+    defaultValue: string | number,
+    alias: Alias,
+  ): ModelQueryBuilder<T, ComposeSelect<S, { [K in Alias]: any }>, R> {
+    super.selectCoalesce(column as string, defaultValue, alias);
+    return this as unknown as ModelQueryBuilder<
+      T,
+      ComposeSelect<S, { [K in Alias]: any }>,
+      R
+    >;
+  }
+
+  /**
+   * @description Selects CEIL(column) with a typed alias (rounds up to nearest integer)
+   * @param column The column to round up
+   * @param alias The alias for the result
+   * @sqlite Not supported - SQLite does not have a native CEIL function
+   * @mssql Uses CEILING instead of CEIL (handled automatically)
+   * @example
+   * ```ts
+   * const result = await Order.query().selectCeil("price", "ceilPrice").one();
+   * console.log(result?.ceilPrice); // Typed as number
+   * ```
+   */
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectCeil<Alias extends string>(
+    column: ModelKey<T> | string,
+    alias: Alias,
+  ): ModelQueryBuilder<T, ComposeSelect<S, { [K in Alias]: number }>, R> {
+    super.selectCeil(column as string, alias);
+    return this as unknown as ModelQueryBuilder<
+      T,
+      ComposeSelect<S, { [K in Alias]: number }>,
+      R
+    >;
+  }
+
+  /**
+   * @description Selects FLOOR(column) with a typed alias (rounds down to nearest integer)
+   * @param column The column to round down
+   * @param alias The alias for the result
+   * @sqlite Not supported - SQLite does not have a native FLOOR function
+   * @example
+   * ```ts
+   * const result = await Order.query().selectFloor("price", "floorPrice").one();
+   * console.log(result?.floorPrice); // Typed as number
+   * ```
+   */
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectFloor<Alias extends string>(
+    column: ModelKey<T> | string,
+    alias: Alias,
+  ): ModelQueryBuilder<T, ComposeSelect<S, { [K in Alias]: number }>, R> {
+    super.selectFloor(column as string, alias);
+    return this as unknown as ModelQueryBuilder<
+      T,
+      ComposeSelect<S, { [K in Alias]: number }>,
+      R
+    >;
+  }
+
+  /**
+   * @description Selects SQRT(column) with a typed alias (square root)
+   * @param column The column to get square root of
+   * @param alias The alias for the result
+   * @example
+   * ```ts
+   * const result = await Data.query().selectSqrt("value", "sqrtValue").one();
+   * console.log(result?.sqrtValue); // Typed as number
+   * ```
+   */
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectSqrt<Alias extends string>(
+    column: ModelKey<T> | string,
+    alias: Alias,
+  ): ModelQueryBuilder<T, ComposeSelect<S, { [K in Alias]: number }>, R> {
+    super.selectSqrt(column as string, alias);
     return this as unknown as ModelQueryBuilder<
       T,
       ComposeSelect<S, { [K in Alias]: number }>,
@@ -1542,7 +1802,9 @@ export class ModelQueryBuilder<
     );
   }
 
-  protected mapRelatedModelsToModels<R extends ModelWithoutRelations<T>>(
+  protected mapRelatedModelsToModels<
+    R extends SelectedModel<T, ModelWithoutRelations<T>, Record<string, any>>,
+  >(
     relation: Relation,
     modelsToFillWithRelations: T[],
     relatedModels: R[],
@@ -1714,7 +1976,7 @@ export class ModelQueryBuilder<
     relationQueryBuilder: ModelQueryBuilder<any>,
     relation: Relation,
     models: T[],
-  ): Promise<ModelWithoutRelations<T>[]> {
+  ): Promise<SelectedModel<T, ModelWithoutRelations<T>, R>[]> {
     return this.getRelatedModelsQueryForRelation(
       relationQueryBuilder,
       relation,
@@ -2084,7 +2346,7 @@ export class ModelQueryBuilder<
     options: ManyOptions = {},
     returnType: "millis" | "seconds" = "millis",
   ): Promise<{
-    data: SelectedModel<S, R>[];
+    data: SelectedModel<T, S, R>[];
     time: number;
   }> {
     const [time, data] = await withPerformance(
@@ -2100,7 +2362,7 @@ export class ModelQueryBuilder<
     options: OneOptions = {},
     returnType: "millis" | "seconds" = "millis",
   ): Promise<{
-    data: SelectedModel<S, R> | null;
+    data: SelectedModel<T, S, R> | null;
     time: number;
   }> {
     const [time, data] = await withPerformance(
@@ -2116,7 +2378,7 @@ export class ModelQueryBuilder<
     options: OneOptions = {},
     returnType: "millis" | "seconds" = "millis",
   ): Promise<{
-    data: SelectedModel<S, R>;
+    data: SelectedModel<T, S, R>;
     time: number;
   }> {
     const [time, data] = await withPerformance(
@@ -2132,7 +2394,7 @@ export class ModelQueryBuilder<
     options: OneOptions = {},
     returnType: "millis" | "seconds" = "millis",
   ): Promise<{
-    data: SelectedModel<S, R>;
+    data: SelectedModel<T, S, R>;
     time: number;
   }> {
     return this.oneOrFailWithPerformance(options, returnType);
