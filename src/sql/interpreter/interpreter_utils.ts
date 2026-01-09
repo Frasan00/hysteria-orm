@@ -7,6 +7,27 @@ import { ColumnType } from "../models/decorators/model_decorators_types";
 import { Model } from "../models/model";
 import { SqlDataSourceType } from "../sql_data_source_types";
 
+const isPlainObjectOrArray = (value: unknown): boolean => {
+  if (value === null || value === undefined) {
+    return false;
+  }
+
+  if (typeof value !== "object") {
+    return false;
+  }
+
+  if (value instanceof Date) {
+    return false;
+  }
+
+  if (Array.isArray(value)) {
+    return true;
+  }
+
+  const proto = Object.getPrototypeOf(value);
+  return proto === Object.prototype || proto === null;
+};
+
 export class InterpreterUtils {
   private readonly modelColumnsMap: Map<string, ColumnType>;
 
@@ -148,6 +169,8 @@ export class InterpreterUtils {
           } else if (mode === "update") {
             preparedValue = (await modelColumn.prepare?.(value)) ?? value;
           }
+        } else if (isPlainObjectOrArray(value)) {
+          preparedValue = JSON.stringify(value);
         }
 
         filteredValues[i] = preparedValue;

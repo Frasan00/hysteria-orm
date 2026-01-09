@@ -25,6 +25,27 @@ const ALL_SQL_ENVIRONMENTS = {
 const VALID_DB_TYPES = Object.keys(ALL_SQL_ENVIRONMENTS);
 
 const SQL_TESTS = [
+  // connection management
+  "./test/sql/connection_management/connection_management.test.ts",
+
+  // schema introspection
+  "./test/sql/schema_introspection/schema_introspection.test.ts",
+
+  // error handling
+  "./test/sql/error_handling/error_scenarios.test.ts",
+
+  // security
+  "./test/sql/security/sql_injection_prevention.test.ts",
+
+  // locking
+  "./test/sql/locking/advisory_locks.test.ts",
+
+  // model manager
+  "./test/sql/model_manager/model_manager.test.ts",
+
+  // cloning
+  "./test/sql/cloning/clone_behavior.test.ts",
+
   // transaction
   "./test/sql/transaction/transaction.test.ts",
 
@@ -43,13 +64,11 @@ const SQL_TESTS = [
   "./test/sql/query_builder/query_builder.test.ts",
   "./test/sql/query_builder/embedded_models.test.ts",
   "./test/sql/query_builder/json_select.test.ts",
+  "./test/sql/query_builder/join_edge_cases.test.ts",
 
   // without primary key tests
   "./test/sql/without_pk/user_without_pk_json.test.ts",
   "./test/sql/without_pk/user_without_pk_crud.test.ts",
-
-  // join edge cases
-  "./test/sql/query_builder/join_edge_cases.test.ts",
 
   // bigint join test
   "./test/sql/bigint_pk/relations.test.ts",

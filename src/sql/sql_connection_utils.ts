@@ -92,7 +92,7 @@ export const createSqlPool = async <T extends SqlDataSourceType>(
       };
 
       const { options, ...rest } = mssqlInput.driverOptions ?? {};
-      const mssqlPool = await mssqlDriver.connect({
+      const mssqlPool = new mssqlDriver.ConnectionPool({
         server: mssqlInput.host ?? "localhost",
         port: mssqlInput.port,
         database: mssqlInput.database,
@@ -107,6 +107,7 @@ export const createSqlPool = async <T extends SqlDataSourceType>(
           enableImplicitTransactions: false,
         },
       });
+      await mssqlPool.connect();
 
       return mssqlPool;
     case "oracledb":

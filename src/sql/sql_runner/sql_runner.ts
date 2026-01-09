@@ -73,8 +73,12 @@ export const execSql = async <
         (sqlDataSource.sqlConnection as GetConnectionReturnType<"postgres">) ??
         sqlDataSource.getPool();
 
+      // Convert MySQL-style (?) placeholders to PostgreSQL-style ($1, $2, ...)
+      let pgParamIdx = 0;
+      const pgQuery = query.replace(/\?/g, () => `$${++pgParamIdx}`);
+
       const pgResult = await withRetry(
-        () => pgDriver.query(query, params),
+        () => pgDriver.query(pgQuery, params),
         sqlDataSource.inputDetails.connectionPolicies?.retry,
         sqlDataSource.logs,
       );
@@ -152,10 +156,14 @@ export const execSql = async <
 
         const oracleParams = params.map(convertDateStringToDateForOracle);
 
+        // Convert MySQL-style (?) placeholders to Oracle-style (:1, :2, ...)
+        let oracleParamIdx = 0;
+        const oracleQuery = query.replace(/\?/g, () => `:${++oracleParamIdx}`);
+
         const oracledbResult = await withRetry(
           () =>
             (oracledbConnection as GetConnectionReturnType<"oracledb">).execute(
-              query,
+              oracleQuery,
               oracleParams,
               {
                 outFormat: ORACLE_OUT_FORMAT_OBJECT,
@@ -307,12 +315,23 @@ export const execSqlStreaming = async <
         highWaterMark: options.highWaterMark,
       }) as PassThrough & AsyncGenerator<M & S & R>;
 
-      const streamQuery = new pgQueryStreamDriver.default(query, params, {
-        highWaterMark: options.highWaterMark,
-        rowMode: options.rowMode,
-        batchSize: options.batchSize,
-        types: options.types,
-      });
+      // Convert MySQL-style (?) placeholders to PostgreSQL-style ($1, $2, ...)
+      let pgStreamParamIdx = 0;
+      const pgStreamQuery = query.replace(
+        /\?/g,
+        () => `$${++pgStreamParamIdx}`,
+      );
+
+      const streamQuery = new pgQueryStreamDriver.default(
+        pgStreamQuery,
+        params,
+        {
+          highWaterMark: options.highWaterMark,
+          rowMode: options.rowMode,
+          batchSize: options.batchSize,
+          types: options.types,
+        },
+      );
 
       const pgStream = pgDriver.query(streamQuery);
 
@@ -458,9 +477,16 @@ export const execSqlStreaming = async <
 
       const ORACLE_STREAM_OUT_FORMAT_OBJECT = 4002 as const;
 
+      // Convert MySQL-style (?) placeholders to Oracle-style (:1, :2, ...)
+      let oracleStreamParamIdx = 0;
+      const oracleStreamQuery = query.replace(
+        /\?/g,
+        () => `:${++oracleStreamParamIdx}`,
+      );
+
       const oracleStreamParams = params.map(convertDateStringToDateForOracle);
       const oracleStream = oracleConnection.queryStream(
-        query,
+        oracleStreamQuery,
         oracleStreamParams,
         {
           outFormat: ORACLE_STREAM_OUT_FORMAT_OBJECT,
