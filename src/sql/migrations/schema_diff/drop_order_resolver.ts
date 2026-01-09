@@ -359,18 +359,24 @@ export class DropOrderResolver {
     if (!relation.relation.name) {
       return [];
     }
-    return this.sql.alterTable(relation.table, (t) => {
-      t.dropConstraint(relation.relation.name);
-    });
+    return this.sql
+      .schema()
+      .alterTable(relation.table, (t) => {
+        t.dropConstraint(relation.relation.name);
+      })
+      .toQueries();
   }
 
   private generateDropPrimaryKeySql(table: string): string[] {
     if (this.sql.getDbType() === "sqlite") {
       return [];
     }
-    return this.sql.alterTable(table, (t) => {
-      t.dropPrimaryKey();
-    });
+    return this.sql
+      .schema()
+      .alterTable(table, (t) => {
+        t.dropPrimaryKey();
+      })
+      .toQueries();
   }
 
   private generateDropUniqueConstraintSql(
@@ -380,15 +386,21 @@ export class DropOrderResolver {
     if (this.sql.getDbType() === "sqlite") {
       return [];
     }
-    return this.sql.alterTable(table, (t) => {
-      t.dropConstraint(`UNIQUE_${column}`);
-    });
+    return this.sql
+      .schema()
+      .alterTable(table, (t) => {
+        t.dropConstraint(`UNIQUE_${column}`);
+      })
+      .toQueries();
   }
 
   private generateDropColumnSql(column: any): string[] {
-    return this.sql.alterTable(column.table, (t) => {
-      t.dropColumn(column.column);
-    });
+    return this.sql
+      .schema()
+      .alterTable(column.table, (t) => {
+        t.dropColumn(column.column);
+      })
+      .toQueries();
   }
 
   private generateDropTableSql(table: any): string[] {

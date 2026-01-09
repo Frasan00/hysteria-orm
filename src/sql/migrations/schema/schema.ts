@@ -73,6 +73,15 @@ export default class Schema {
   }
 
   /**
+   * @description Executes the queries built by the schema
+   */
+  async execute(): Promise<void> {
+    for (const query of this.queryStatements) {
+      this.rawQuery(query);
+    }
+  }
+
+  /**
    * @description Runs the sql in the given file, throws error if file does not exist or is not .sql or .txt
    * @description File is splitted by semicolons and each statement is executed separately and in order
    */
@@ -239,7 +248,7 @@ export default class Schema {
   createIndex(
     table: string,
     columns: string[] | string,
-    options: CommonConstraintOptions,
+    options: CommonConstraintOptions = {},
   ): void {
     if (!Array.isArray(columns)) {
       columns = [columns];

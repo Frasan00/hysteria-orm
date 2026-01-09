@@ -27,7 +27,7 @@ import { ForeignKeyInfoNode } from "./ast/query/node/schema";
 import { IndexInfoNode } from "./ast/query/node/schema/index_info";
 import { PrimaryKeyInfoNode } from "./ast/query/node/schema/primary_key_info";
 import { TableInfoNode } from "./ast/query/node/schema/table_info";
-import Schema from "./migrations/schema/schema";
+import { SchemaBuilder } from "./migrations/schema/schema_builder";
 import { SchemaDiff } from "./migrations/schema_diff/schema_diff";
 import { normalizeColumnType } from "./migrations/schema_diff/type_normalizer";
 import { Model } from "./models/model";
@@ -724,21 +724,37 @@ export class SqlDataSource<
   }
 
   /**
-   * @description Return the query to alter the given table schema
+   * @description Returns a SchemaBuilder instance for DDL operations
+   * @description The builder will execute queries when awaited or when .execute() is called
+   * @description Use .toQuery() or .toString() to get the SQL without executing
+   * @example
+   * ```ts
+   * // Execute on await
+   * await sql.schema().createTable("users", (table) => {
+   *   table.addColumn("id", "integer", { primaryKey: true });
+   * });
+   *
+   * // Get SQL without executing
+   * const sql = sql.schema().createTable("users", (table) => {
+   *   table.addColumn("id", "integer", { primaryKey: true });
+   * }).toQuery();
+   *
+   * // Multiple operations
+   * const builder = sql.schema();
+   * builder.createTable("users", (table) => { ... });
+   * builder.createTable("posts", (table) => { ... });
+   * await builder; // Executes all
+   * ```
    */
-  alterTable(...args: Parameters<Schema["alterTable"]>): string[] {
-    const schema = new Schema(this.getDbType());
-    schema.alterTable(...args);
-    return schema.queryStatements;
-  }
+  schema(): SchemaBuilder {
+    if (!this.isConnected) {
+      throw new HysteriaError(
+        "SqlDataSource::schema",
+        "CONNECTION_NOT_ESTABLISHED",
+      );
+    }
 
-  /**
-   * @description Return the query to create the given table schema
-   */
-  createTable(...args: Parameters<Schema["createTable"]>): string {
-    const schema = new Schema(this.getDbType());
-    schema.createTable(...args);
-    return schema.queryStatements[0] || "";
+    return new SchemaBuilder(this, this.getDbType());
   }
 
   /**

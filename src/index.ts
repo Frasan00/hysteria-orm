@@ -38,6 +38,8 @@ export type {
 export { Migration } from "./sql/migrations/migration";
 export { defineMigrator } from "./sql/migrations/migrator";
 export type { ClientMigrator } from "./sql/migrations/migrator";
+export { SchemaBuilder } from "./sql/migrations/schema/schema_builder";
+export { default as Schema } from "./sql/migrations/schema/schema";
 
 // Seeders
 export { BaseSeeder } from "./sql/seeders/base_seeder";

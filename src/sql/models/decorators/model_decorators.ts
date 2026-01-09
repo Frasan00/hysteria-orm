@@ -269,6 +269,12 @@ function floatColumn(
 
       return Number.parseFloat(value);
     },
+    openApi: {
+      type: "number",
+      format: "float",
+      description: "A floating point number",
+      ...(options.openApi || {}),
+    },
   });
 }
 
@@ -301,6 +307,12 @@ function integerColumn(
       }
 
       return Number.parseInt(value);
+    },
+    openApi: {
+      type: "integer",
+      format: "int64",
+      description: "An integer number",
+      ...(options.openApi || {}),
     },
   });
 }
@@ -339,6 +351,12 @@ function incrementColumn(
 
       return Number.parseInt(value);
     },
+    openApi: {
+      type: "integer",
+      format: "int64",
+      description: "An auto-incrementing integer number",
+      ...(options.openApi || {}),
+    },
   });
 }
 
@@ -372,6 +390,12 @@ function bigIncrementColumn(
 
       return Number.parseInt(value);
     },
+    openApi: {
+      type: "integer",
+      format: "int64",
+      description: "An auto-incrementing bigint number",
+      ...(options.openApi || {}),
+    },
   });
 }
 
@@ -393,6 +417,12 @@ function uuidColumn(
 
       return value;
     },
+    openApi: {
+      type: "string",
+      format: "uuid",
+      description: "uuid (Universally Unique Identifier)",
+      ...(options.openApi || {}),
+    },
   });
 }
 
@@ -413,6 +443,13 @@ function ulidColumn(
       }
 
       return value;
+    },
+    openApi: {
+      type: "string",
+      format: "ulid",
+      description:
+        "ulid (Universally Unique Lexicographically Sortable Identifier)",
+      ...(options.openApi || {}),
     },
   });
 }
@@ -484,6 +521,11 @@ function booleanColumn(
     ...(options as ColumnOptions),
     serialize: (value) => Boolean(value),
     prepare: (value) => Boolean(value),
+    openApi: {
+      type: "boolean",
+      description: "A boolean value",
+      ...(options.openApi || {}),
+    },
   });
 }
 
@@ -566,6 +608,12 @@ function dateOnlyColumn(
       }
 
       return preHandled;
+    },
+    openApi: {
+      type: "string",
+      format: "date",
+      description: "YYYY-MM-DD",
+      ...(rest.openApi || {}),
     },
   });
 }
@@ -650,6 +698,12 @@ function datetimeColumn(
 
       return preHandled;
     },
+    openApi: {
+      type: "string",
+      format: "date-time",
+      description: "YYYY-MM-DD HH:mm:ss",
+      ...(rest.openApi || {}),
+    },
   });
 }
 
@@ -732,6 +786,12 @@ function timestampColumn(
       }
 
       return preHandled;
+    },
+    openApi: {
+      type: "string",
+      format: "date-time",
+      description: "Unix timestamp",
+      ...(rest.openApi || {}),
     },
   });
 }
@@ -816,6 +876,12 @@ function timeOnlyColumn(
 
       return preHandled;
     },
+    openApi: {
+      type: "string",
+      format: "time",
+      description: "HH:mm:ss",
+      ...(rest.openApi || {}),
+    },
   });
 }
 
@@ -844,6 +910,11 @@ function jsonColumn(
       }
 
       return value;
+    },
+    openApi: {
+      type: "object",
+      description: "A JSON object",
+      ...(options.openApi || {}),
     },
   });
 }

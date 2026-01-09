@@ -97,36 +97,39 @@ export class MigrationOperationGenerator {
 
     // 1. Create tables (no FK constraints)
     for (const table of changes.tablesToAdd) {
-      const createTableSql = this.sql.createTable(table.table, (builder) => {
-        for (const column of table.columns) {
-          if (Array.isArray(column.type)) {
-            builder.enum(column.databaseName, column.type);
-            continue;
-          }
+      const createTableSql = this.sql
+        .schema()
+        .createTable(table.table, (builder) => {
+          for (const column of table.columns) {
+            if (Array.isArray(column.type)) {
+              builder.enum(column.databaseName, column.type);
+              continue;
+            }
 
-          column.type &&
-            this.executeBuilderMethod(
-              table.table,
-              builder,
-              column,
-              [
-                column.databaseName,
-                column.length,
-                column.precision && !column.withTimezone
-                  ? column.precision
-                  : undefined,
-                column.scale,
-                column.withTimezone
-                  ? {
-                      withTimezone: column.withTimezone,
-                      precision: column.precision,
-                    }
-                  : undefined,
-              ].filter(Boolean),
-              true,
-            );
-        }
-      });
+            column.type &&
+              this.executeBuilderMethod(
+                table.table,
+                builder,
+                column,
+                [
+                  column.databaseName,
+                  column.length,
+                  column.precision && !column.withTimezone
+                    ? column.precision
+                    : undefined,
+                  column.scale,
+                  column.withTimezone
+                    ? {
+                        withTimezone: column.withTimezone,
+                        precision: column.precision,
+                      }
+                    : undefined,
+                ].filter(Boolean),
+                true,
+              );
+          }
+        })
+        .toQuery() as string;
 
       operations.push({
         type: OperationType.CREATE_TABLE,
@@ -165,9 +168,12 @@ export class MigrationOperationGenerator {
 
     // 0. Drop UNIQUE constraints first (e.g., rename cases)
     for (const uq of changes.uniquesToDrop || []) {
-      const dropSql = this.sql.alterTable(uq.table, (t) => {
-        t.dropConstraint(uq.name);
-      });
+      const dropSql = this.sql
+        .schema()
+        .alterTable(uq.table, (t) => {
+          t.dropConstraint(uq.name);
+        })
+        .toQueries();
       operations.push({
         type: OperationType.DROP_CONSTRAINT,
         phase: ExecutionPhase.CONSTRAINT_CREATION,
@@ -215,18 +221,21 @@ export class MigrationOperationGenerator {
           primaryKey.columns[0],
         );
 
-      const addPrimaryKeySql = this.sql.alterTable(primaryKey.table, (t) => {
-        const pkConstraintName =
-          constraintName ||
-          getDefaultPrimaryKeyConstraintName(
-            primaryKey.table,
-            primaryKey.columns[0],
-          );
-        t.addConstraint("primary_key", {
-          columns: [primaryKey.columns[0]],
-          constraintName: pkConstraintName,
-        });
-      });
+      const addPrimaryKeySql = this.sql
+        .schema()
+        .alterTable(primaryKey.table, (t) => {
+          const pkConstraintName =
+            constraintName ||
+            getDefaultPrimaryKeyConstraintName(
+              primaryKey.table,
+              primaryKey.columns[0],
+            );
+          t.addConstraint("primary_key", {
+            columns: [primaryKey.columns[0]],
+            constraintName: pkConstraintName,
+          });
+        })
+        .toQueries();
 
       operations.push({
         type: OperationType.ADD_PRIMARY_KEY,
@@ -266,12 +275,15 @@ export class MigrationOperationGenerator {
         const mc = model?.getColumns().find((c) => c.columnName === col);
         return mc?.databaseName || col;
       });
-      const addUqSql = this.sql.alterTable(uq.table, (t) => {
-        t.addConstraint("unique", {
-          columns,
-          constraintName: uq.name || "mandatory",
-        });
-      });
+      const addUqSql = this.sql
+        .schema()
+        .alterTable(uq.table, (t) => {
+          t.addConstraint("unique", {
+            columns,
+            constraintName: uq.name || "mandatory",
+          });
+        })
+        .toQueries();
       operations.push({
         type: OperationType.ADD_UNIQUE_CONSTRAINT,
         phase: ExecutionPhase.CONSTRAINT_CREATION,
@@ -493,31 +505,34 @@ export class MigrationOperationGenerator {
         : undefined,
     ].filter(Boolean);
 
-    return this.sql.alterTable(columnData.table, (t) => {
-      t.addColumn((b) => {
-        // First create the column without constraints
-        const columnBuilder = this.executeBuilderMethod(
-          columnData.table,
-          b,
-          columnData.column,
-          args,
-          false,
-        );
+    return this.sql
+      .schema()
+      .alterTable(columnData.table, (t) => {
+        t.addColumn((b) => {
+          // First create the column without constraints
+          const columnBuilder = this.executeBuilderMethod(
+            columnData.table,
+            b,
+            columnData.column,
+            args,
+            false,
+          );
 
-        // Then apply constraints separately
-        if (columnData.column.constraints?.default !== undefined) {
-          columnBuilder.default(columnData.column.constraints.default);
-        }
+          // Then apply constraints separately
+          if (columnData.column.constraints?.default !== undefined) {
+            columnBuilder.default(columnData.column.constraints.default);
+          }
 
-        if (columnData.column.constraints?.nullable === false) {
-          columnBuilder.notNullable();
-        } else if (columnData.column.constraints?.nullable === true) {
-          columnBuilder.nullable();
-        }
+          if (columnData.column.constraints?.nullable === false) {
+            columnBuilder.notNullable();
+          } else if (columnData.column.constraints?.nullable === true) {
+            columnBuilder.nullable();
+          }
 
-        return columnBuilder;
-      });
-    });
+          return columnBuilder;
+        });
+      })
+      .toQueries();
   }
 
   /**
@@ -548,30 +563,33 @@ export class MigrationOperationGenerator {
         : undefined,
     ].filter(Boolean);
 
-    const alterColumnSql = this.sql.alterTable(columnData.table, (t) => {
-      t.alterColumn((b) => {
-        const columnBuilder = this.executeBuilderMethod(
-          columnData.table,
-          b,
-          columnData.modelColumn,
-          args,
-          false,
-        );
+    const alterColumnSql = this.sql
+      .schema()
+      .alterTable(columnData.table, (t) => {
+        t.alterColumn((b) => {
+          const columnBuilder = this.executeBuilderMethod(
+            columnData.table,
+            b,
+            columnData.modelColumn,
+            args,
+            false,
+          );
 
-        // Add constraints based on the model column
-        if (columnData.modelColumn.constraints?.default !== undefined) {
-          columnBuilder.default(columnData.modelColumn.constraints.default);
-        }
+          // Add constraints based on the model column
+          if (columnData.modelColumn.constraints?.default !== undefined) {
+            columnBuilder.default(columnData.modelColumn.constraints.default);
+          }
 
-        if (columnData.modelColumn.constraints?.nullable === false) {
-          columnBuilder.notNullable();
-        } else if (columnData.modelColumn.constraints?.nullable === true) {
-          columnBuilder.nullable();
-        }
+          if (columnData.modelColumn.constraints?.nullable === false) {
+            columnBuilder.notNullable();
+          } else if (columnData.modelColumn.constraints?.nullable === true) {
+            columnBuilder.nullable();
+          }
 
-        return columnBuilder;
-      });
-    });
+          return columnBuilder;
+        });
+      })
+      .toQueries();
 
     return alterColumnSql;
   }
@@ -761,26 +779,29 @@ export class MigrationOperationGenerator {
       | OnUpdateOrDelete
       | undefined;
 
-    return this.sql.alterTable(relationData.table, (t) => {
-      const fkConstraintName =
-        constraintName ||
-        getDefaultFkConstraintName(
-          relationData.table,
-          sourceColumnName,
-          referencesTable,
-        );
+    return this.sql
+      .schema()
+      .alterTable(relationData.table, (t) => {
+        const fkConstraintName =
+          constraintName ||
+          getDefaultFkConstraintName(
+            relationData.table,
+            sourceColumnName,
+            referencesTable,
+          );
 
-      t.addConstraint("foreign_key", {
-        columns: [sourceColumnName],
-        references: {
-          table: referencesTable,
-          columns: [foreignKeyColumn],
-        },
-        constraintName: fkConstraintName,
-        onDelete,
-        onUpdate,
-      });
-    });
+        t.addConstraint("foreign_key", {
+          columns: [sourceColumnName],
+          references: {
+            table: referencesTable,
+            columns: [foreignKeyColumn],
+          },
+          constraintName: fkConstraintName,
+          onDelete,
+          onUpdate,
+        });
+      })
+      .toQueries();
   }
 
   /**
