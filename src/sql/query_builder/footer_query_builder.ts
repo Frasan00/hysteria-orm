@@ -12,7 +12,10 @@ import type {
 import { SqlDataSource } from "../sql_data_source";
 import { SelectableColumn } from "./query_builder_types";
 
-export abstract class FooterQueryBuilder<T extends Model> {
+export abstract class FooterQueryBuilder<
+  T extends Model,
+  S extends Record<string, any> = Record<string, any>,
+> {
   protected sqlDataSource: SqlDataSource;
   protected model: typeof Model;
   protected groupByNodes: GroupByNode[];

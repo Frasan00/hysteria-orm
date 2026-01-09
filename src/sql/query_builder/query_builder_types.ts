@@ -11,6 +11,185 @@ export type PluckReturnType<
   K extends ModelKey<T>,
 > = T[K] extends infer U ? U[] : never;
 
+/**
+ * Unique symbol used internally to mark that a raw select() has been called.
+ */
+declare const RAW_SELECT_BRAND: unique symbol;
+
+/**
+ * Marker type to indicate that a raw select() has been called.
+ * @internal
+ */
+export type RawSelectBrand = { [RAW_SELECT_BRAND]?: never };
+
+/**
+ * Utility type to convert a union to an intersection.
+ * @internal
+ */
+type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
+  k: infer I,
+) => void
+  ? I
+  : never;
+
+/**
+ * Extracts the final property name from a column selection string for raw queries.
+ *
+ * | Input                    | Output        |
+ * |--------------------------|---------------|
+ * | `"name"`                 | `"name"`      |
+ * | `"users.name"`           | `"name"`      |
+ * | `"name as userName"`     | `"userName"`  |
+ * | `"count(*) as total"`    | `"total"`     |
+ * | `"*"`                    | `never`       |
+ * | `"users.*"`              | `never`       |
+ */
+export type ExtractRawColumnName<S extends string> =
+  S extends `${string} as ${infer Alias}`
+    ? Alias
+    : S extends "*"
+      ? never
+      : S extends `${string}.*`
+        ? never
+        : S extends `${string}.${infer Column}`
+          ? Column extends "*"
+            ? never
+            : Column
+          : S;
+
+/**
+ * Builds the type for a single selected column in a raw query.
+ * All column types are `any` since we don't have model type information.
+ *
+ * | Selection          | Result Type                           |
+ * |--------------------|---------------------------------------|
+ * | `"*"`              | `Record<string, any>`                 |
+ * | `"table.*"`        | `Record<string, any>`                 |
+ * | `"column"`         | `{ column: any }`                     |
+ * | `"col as alias"`   | `{ alias: any }`                      |
+ *
+ * @internal
+ */
+export type BuildRawSingleSelectType<S extends string> = S extends "*"
+  ? Record<string, any>
+  : S extends `${string}.*`
+    ? Record<string, any>
+    : ExtractRawColumnName<S> extends never
+      ? {}
+      : {
+          [K in ExtractRawColumnName<S>]: any;
+        };
+
+/**
+ * Checks if a column selection includes wildcards or is empty.
+ * @internal
+ */
+type HasRawStarOrEmpty<Columns extends readonly string[]> =
+  Columns["length"] extends 0
+    ? true
+    : "*" extends Columns[number]
+      ? true
+      : false;
+
+/**
+ * Builds the combined TypeScript type for multiple selected columns in a raw query.
+ *
+ * ## Rules
+ *
+ * 1. **Empty selection or `*`**: Returns `Record<string, any>`
+ * 2. **Specific columns**: Returns intersection of all selected column types (all `any`)
+ * 3. **With `table.*`**: Adds `Record<string, any>` to allow unknown properties
+ *
+ * @example
+ * // .select("name", "age as userAge")
+ * BuildRawSelectType<["name", "age as userAge"]>
+ * // Result: { name: any; userAge: any } & RawSelectBrand
+ *
+ * @example
+ * // .select("*")
+ * BuildRawSelectType<["*"]>
+ * // Result: Record<string, any>
+ */
+export type BuildRawSelectType<Columns extends readonly string[]> =
+  HasRawStarOrEmpty<Columns> extends true
+    ? Record<string, any>
+    : UnionToIntersection<
+          {
+            [K in keyof Columns]: Columns[K] extends string
+              ? BuildRawSingleSelectType<Columns[K]>
+              : {};
+          }[number]
+        > extends infer Result
+      ? Result extends Record<string, any>
+        ? keyof Result extends never
+          ? Record<string, any>
+          : Result & RawSelectBrand
+        : Record<string, any>
+      : Record<string, any>;
+
+/**
+ * Composes a new selection with the existing selection state for raw queries.
+ *
+ * - If S is the default Record<string, any> (no previous select), returns just the new selection
+ * - If S already has RawSelectBrand (from a previous select), composes with new selection
+ *
+ * @typeParam S - Current selection state
+ * @typeParam Added - New fields being added by the select
+ *
+ * @example
+ * // First selectRaw - creates new selection
+ * ComposeRawSelect<Record<string, any>, { count: number }>
+ * // Result: RawSelectBrand & { count: number }
+ *
+ * @example
+ * // Chained selectRaw - composes with previous
+ * ComposeRawSelect<{ count: number } & RawSelectBrand, { userName: string }>
+ * // Result: { count: number } & RawSelectBrand & { userName: string }
+ */
+export type ComposeRawSelect<
+  S extends Record<string, any>,
+  Added extends Record<string, any>,
+> = (typeof RAW_SELECT_BRAND extends keyof S ? S : RawSelectBrand) & Added;
+
+/**
+ * Composes a BuildRawSelectType result with the existing selection state.
+ *
+ * Similar to ComposeRawSelect but designed for use with BuildRawSelectType.
+ *
+ * @typeParam S - Current selection state
+ * @typeParam Columns - The columns being selected
+ */
+export type ComposeBuildRawSelect<
+  S extends Record<string, any>,
+  Columns extends readonly string[],
+> = (typeof RAW_SELECT_BRAND extends keyof S ? S : {}) &
+  BuildRawSelectType<Columns>;
+
+/**
+ * Composes a new selection with the existing selection state for select* methods.
+ * Similar to ComposeRawSelect but without the RawSelectBrand.
+ *
+ * - If S is the default Record<string, any>, returns just the new selection
+ * - Otherwise, composes S with the new selection
+ *
+ * @typeParam S - Current selection state
+ * @typeParam Added - New fields being added by the select
+ *
+ * @example
+ * // First selectCount - creates new selection
+ * ComposeSelect<Record<string, any>, { count: number }>
+ * // Result: { count: number }
+ *
+ * @example
+ * // Chained select - composes with previous
+ * ComposeSelect<{ count: number }, { userName: string }>
+ * // Result: { count: number } & { userName: string }
+ */
+export type ComposeSelect<
+  S extends Record<string, any>,
+  Added extends Record<string, any>,
+> = S extends Record<string, any> ? S & Added : Added;
+
 export type WhereOnlyQueryBuilder<T extends Model> = Pick<
   WhereQueryBuilder<T>,
   | "where"
@@ -210,3 +389,33 @@ export type WriteQueryParam =
   | object
   | null
   | undefined;
+
+/**
+ * Simple paginated data type for raw query builders (without Model constraint)
+ */
+export type RawPaginatedData<S extends Record<string, any>> = {
+  paginationMetadata: {
+    perPage: number;
+    currentPage: number;
+    firstPage: number;
+    isEmpty: boolean;
+    total: number;
+    lastPage: number;
+    hasMorePages: boolean;
+    hasPages: boolean;
+  };
+  data: S[];
+};
+
+/**
+ * Simple cursor paginated data type for raw query builders (without Model constraint)
+ */
+export type RawCursorPaginatedData<S extends Record<string, any>> = {
+  paginationMetadata: {
+    perPage: number;
+    firstPage: number;
+    isEmpty: boolean;
+    total: number;
+  };
+  data: S[];
+};

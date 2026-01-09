@@ -130,7 +130,6 @@ export class ModelQueryBuilder<
     return new ModelQueryBuilder(model, model.sqlInstance);
   }
 
-  // @ts-expect-error - Override could return a subset of the model
   override async one(
     options: OneOptions = {},
   ): Promise<SelectedModel<T, S, R> | null> {
@@ -142,7 +141,6 @@ export class ModelQueryBuilder<
     return result[0] as SelectedModel<T, S, R>;
   }
 
-  // @ts-expect-error - Override could return a subset of the model
   override async oneOrFail(options?: {
     ignoreHooks?: OneOptions["ignoreHooks"] & { customError?: Error };
   }): Promise<SelectedModel<T, S, R>> {
@@ -154,7 +152,6 @@ export class ModelQueryBuilder<
     return model as SelectedModel<T, S, R>;
   }
 
-  // @ts-expect-error - Override could return a subset of the model
   override async many(
     options: ManyOptions = {},
   ): Promise<SelectedModel<T, S, R>[]> {
@@ -194,7 +191,6 @@ export class ModelQueryBuilder<
     return serializedModelsArray as unknown as SelectedModel<T, S, R>[];
   }
 
-  // @ts-expect-error - Override could return a subset of the model
   override async *chunk(
     chunkSize: number,
     options: ManyOptions = {},
@@ -1769,9 +1765,10 @@ export class ModelQueryBuilder<
   /**
    * @description Returns a copy of the query builder instance.
    */
+  // @ts-expect-error - Override has different return type for type-safety
   override clone(): this {
-    const queryBuilder = super.clone();
-    queryBuilder.relationQueryBuilders = deepCloneNode(
+    const queryBuilder = super.clone() as unknown as this;
+    (queryBuilder as any).relationQueryBuilders = deepCloneNode(
       this.relationQueryBuilders,
     );
     return queryBuilder;

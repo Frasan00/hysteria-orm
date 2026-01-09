@@ -5,7 +5,10 @@ import { WhereQueryBuilder } from "./where_query_builder";
 
 type JsonParam = Record<string, unknown> | any[];
 
-export class JsonQueryBuilder<T extends Model> extends WhereQueryBuilder<T> {
+export class JsonQueryBuilder<
+  T extends Model,
+  S extends Record<string, any> = Record<string, any>,
+> extends WhereQueryBuilder<T, S> {
   /**
    * @description Filters records matching exact JSON value.
    */

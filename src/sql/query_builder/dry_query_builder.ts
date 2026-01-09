@@ -13,7 +13,10 @@ import { QueryBuilder } from "./query_builder";
 /**
  * Allows to get queries without executing them
  */
-export class DryQueryBuilder extends QueryBuilder {
+export class DryQueryBuilder<
+  T extends Model = any,
+  S extends Record<string, any> = Record<string, any>,
+> extends QueryBuilder<T, S> {
   constructor(model: typeof Model, sqlDataSource: SqlDataSource) {
     super(model, sqlDataSource);
   }

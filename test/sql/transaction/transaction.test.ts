@@ -572,7 +572,7 @@ describe(`[${env.DB_TYPE}] Nested transactions with savePoints`, () => {
     await trx.commit();
 
     expect(lookupQuery).toBeDefined();
-    expect(lookupQuery.email).toBe("test@test.com");
+    expect(lookupQuery?.email).toBe("test@test.com");
   });
 
   test("Multi-level nesting commit chain", async () => {

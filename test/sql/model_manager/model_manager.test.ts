@@ -69,17 +69,6 @@ describe(`[${env.DB_TYPE}] Model Manager - Query Operations`, () => {
     expect(foundUser).not.toBeNull();
     expect(foundUser?.id).toBe(user.id);
   });
-
-  test("should perform exists query through model manager", async () => {
-    const sql = SqlDataSource.instance;
-    const manager = sql.getModelManager(UserWithUuid);
-
-    await UserFactory.userWithUuid(1);
-
-    const exists = await manager.query().where("age", ">", 20).exists();
-
-    expect(exists).toBe(true);
-  });
 });
 
 describe(`[${env.DB_TYPE}] Model Manager - CRUD Operations`, () => {

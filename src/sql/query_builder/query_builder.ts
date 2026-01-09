@@ -1,6 +1,7 @@
 import { PassThrough } from "node:stream";
 import { HysteriaError } from "../../errors/hysteria_error";
 import { baseSoftDeleteDate } from "../../utils/date_utils";
+import { JsonPathInput } from "../../utils/json_path_utils";
 import logger from "../../utils/logger";
 import { withPerformance } from "../../utils/performance";
 import { bindParamsIntoQuery, formatQuery } from "../../utils/query";
@@ -22,10 +23,8 @@ import type { Model } from "../models/model";
 import { ModelKey } from "../models/model_manager/model_manager_types";
 import type { NumberModelKey } from "../models/model_types";
 import {
-  CursorPaginatedData,
   getCursorPaginationMetadata,
   getPaginationMetadata,
-  PaginatedData,
 } from "../pagination";
 import { deepCloneNode } from "../resources/utils";
 import { SqlDataSource } from "../sql_data_source";
@@ -34,15 +33,22 @@ import { execSql, execSqlStreaming } from "../sql_runner/sql_runner";
 import { SoftDeleteOptions } from "./delete_query_builder_type";
 import { JsonQueryBuilder } from "./json_query_builder";
 import {
+  ComposeBuildRawSelect,
+  ComposeRawSelect,
   Cursor,
   PaginateWithCursorOptions,
   PluckReturnType,
+  RawCursorPaginatedData,
+  RawPaginatedData,
   StreamOptions,
   UpsertOptionsRawBuilder,
   WriteQueryParam,
 } from "./query_builder_types";
 
-export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
+export class QueryBuilder<
+  T extends Model = any,
+  S extends Record<string, any> = Record<string, any>,
+> extends JsonQueryBuilder<T, S> {
   model: typeof Model;
   protected astParser: AstParser;
   protected unionNodes: UnionNode[];
@@ -104,6 +110,344 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   }
 
   /**
+   * @description Adds a SELECT condition to the query with type safety.
+   * @description Can be stacked multiple times
+   * @description Supports: "column", "table.column", "column as alias", "*", "table.*"
+   * @example
+   * ```ts
+   * const user = await sql.query("users").select("name", "age").one();
+   * // user type: { name: any, age: any } | null
+   *
+   * const user = await sql.query("users").select("name as userName").one();
+   * // user type: { userName: any } | null
+   * ```
+   */
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override select<Columns extends readonly string[]>(
+    ...columns: Columns
+  ): QueryBuilder<T, ComposeBuildRawSelect<S, Columns>> {
+    super.select(...columns);
+    return this as unknown as QueryBuilder<
+      T,
+      ComposeBuildRawSelect<S, Columns>
+    >;
+  }
+
+  /**
+   * @description Adds a raw SELECT statement to the query with type safety.
+   * @description Use the generic parameter to specify the type of the selected columns.
+   * @example
+   * ```ts
+   * const result = await sql.query("users")
+   *   .selectRaw<{ total: number }>("count(*) as total")
+   *   .one();
+   * // result type: { total: number } | null
+   * ```
+   */
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectRaw<Added extends Record<string, any> = Record<string, any>>(
+    statement: string,
+  ): QueryBuilder<T, ComposeRawSelect<S, Added>> {
+    super.selectRaw(statement);
+    return this as unknown as QueryBuilder<T, ComposeRawSelect<S, Added>>;
+  }
+
+  /**
+   * @description Clears the SELECT clause and resets type to default
+   */
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override clearSelect(): QueryBuilder<T, Record<string, any>> {
+    super.clearSelect();
+    return this as unknown as QueryBuilder<T, Record<string, any>>;
+  }
+
+  /**
+   * @description Selects a subquery, subquery must return a single column
+   */
+  selectSubQuery<ValueType = any, Alias extends string = string>(
+    cbOrQueryBuilder: ((subQuery: QueryBuilder<T>) => void) | QueryBuilder<any>,
+    alias: Alias,
+  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: ValueType }>> {
+    if (typeof cbOrQueryBuilder === "function") {
+      const subQuery = new QueryBuilder<T>(this.model, this.sqlDataSource);
+      cbOrQueryBuilder(subQuery);
+      this.selectNodes.push(
+        new SelectNode(subQuery.extractQueryNodes(), alias),
+      );
+      return this as unknown as QueryBuilder<
+        T,
+        ComposeRawSelect<S, { [K in Alias]: ValueType }>
+      >;
+    }
+
+    this.selectNodes.push(
+      new SelectNode(cbOrQueryBuilder.extractQueryNodes(), alias),
+    );
+    return this as unknown as QueryBuilder<
+      T,
+      ComposeRawSelect<S, { [K in Alias]: ValueType }>
+    >;
+  }
+
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectJson<ValueType = any, Alias extends string = string>(
+    column: ModelKey<T> | string,
+    path: JsonPathInput,
+    alias: Alias,
+  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: ValueType }>> {
+    super.selectJson(column as string, path, alias);
+    return this as unknown as QueryBuilder<
+      T,
+      ComposeRawSelect<S, { [K in Alias]: ValueType }>
+    >;
+  }
+
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectJsonText<ValueType = string, Alias extends string = string>(
+    column: ModelKey<T> | string,
+    path: JsonPathInput,
+    alias: Alias,
+  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: ValueType }>> {
+    super.selectJsonText(column as string, path, alias);
+    return this as unknown as QueryBuilder<
+      T,
+      ComposeRawSelect<S, { [K in Alias]: ValueType }>
+    >;
+  }
+
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectJsonArrayLength<Alias extends string = string>(
+    column: ModelKey<T> | string,
+    path: JsonPathInput,
+    alias: Alias,
+  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: number }>> {
+    super.selectJsonArrayLength(column as string, path, alias);
+    return this as unknown as QueryBuilder<
+      T,
+      ComposeRawSelect<S, { [K in Alias]: number }>
+    >;
+  }
+
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectJsonKeys<Alias extends string = string>(
+    column: ModelKey<T> | string,
+    path: JsonPathInput,
+    alias: Alias,
+  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: string[] }>> {
+    super.selectJsonKeys(column as string, path, alias);
+    return this as unknown as QueryBuilder<
+      T,
+      ComposeRawSelect<S, { [K in Alias]: string[] }>
+    >;
+  }
+
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectJsonRaw<ValueType = any, Alias extends string = string>(
+    raw: string,
+    alias: Alias,
+  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: ValueType }>> {
+    super.selectJsonRaw(raw, alias);
+    return this as unknown as QueryBuilder<
+      T,
+      ComposeRawSelect<S, { [K in Alias]: ValueType }>
+    >;
+  }
+
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectCount<Alias extends string = string>(
+    column: ModelKey<T> | "*" | string,
+    alias: Alias,
+  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: number }>> {
+    super.selectCount(column as string, alias);
+    return this as unknown as QueryBuilder<
+      T,
+      ComposeRawSelect<S, { [K in Alias]: number }>
+    >;
+  }
+
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectSum<Alias extends string = string>(
+    column: ModelKey<T> | string,
+    alias: Alias,
+  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: number }>> {
+    super.selectSum(column as string, alias);
+    return this as unknown as QueryBuilder<
+      T,
+      ComposeRawSelect<S, { [K in Alias]: number }>
+    >;
+  }
+
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectAvg<Alias extends string = string>(
+    column: ModelKey<T> | string,
+    alias: Alias,
+  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: number }>> {
+    super.selectAvg(column as string, alias);
+    return this as unknown as QueryBuilder<
+      T,
+      ComposeRawSelect<S, { [K in Alias]: number }>
+    >;
+  }
+
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectMin<Alias extends string = string>(
+    column: ModelKey<T> | string,
+    alias: Alias,
+  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: any }>> {
+    super.selectMin(column as string, alias);
+    return this as unknown as QueryBuilder<
+      T,
+      ComposeRawSelect<S, { [K in Alias]: any }>
+    >;
+  }
+
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectMax<Alias extends string = string>(
+    column: ModelKey<T> | string,
+    alias: Alias,
+  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: any }>> {
+    super.selectMax(column as string, alias);
+    return this as unknown as QueryBuilder<
+      T,
+      ComposeRawSelect<S, { [K in Alias]: any }>
+    >;
+  }
+
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectCountDistinct<Alias extends string = string>(
+    column: ModelKey<T> | string,
+    alias: Alias,
+  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: number }>> {
+    super.selectCountDistinct(column as string, alias);
+    return this as unknown as QueryBuilder<
+      T,
+      ComposeRawSelect<S, { [K in Alias]: number }>
+    >;
+  }
+
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectUpper<Alias extends string = string>(
+    column: ModelKey<T> | string,
+    alias: Alias,
+  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: string }>> {
+    super.selectUpper(column as string, alias);
+    return this as unknown as QueryBuilder<
+      T,
+      ComposeRawSelect<S, { [K in Alias]: string }>
+    >;
+  }
+
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectLower<Alias extends string = string>(
+    column: ModelKey<T> | string,
+    alias: Alias,
+  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: string }>> {
+    super.selectLower(column as string, alias);
+    return this as unknown as QueryBuilder<
+      T,
+      ComposeRawSelect<S, { [K in Alias]: string }>
+    >;
+  }
+
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectLength<Alias extends string = string>(
+    column: ModelKey<T> | string,
+    alias: Alias,
+  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: number }>> {
+    super.selectLength(column as string, alias);
+    return this as unknown as QueryBuilder<
+      T,
+      ComposeRawSelect<S, { [K in Alias]: number }>
+    >;
+  }
+
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectTrim<Alias extends string = string>(
+    column: ModelKey<T> | string,
+    alias: Alias,
+  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: string }>> {
+    super.selectTrim(column as string, alias);
+    return this as unknown as QueryBuilder<
+      T,
+      ComposeRawSelect<S, { [K in Alias]: string }>
+    >;
+  }
+
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectAbs<Alias extends string = string>(
+    column: ModelKey<T> | string,
+    alias: Alias,
+  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: number }>> {
+    super.selectAbs(column as string, alias);
+    return this as unknown as QueryBuilder<
+      T,
+      ComposeRawSelect<S, { [K in Alias]: number }>
+    >;
+  }
+
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectRound<Alias extends string = string>(
+    column: ModelKey<T> | string,
+    decimals: number,
+    alias: Alias,
+  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: number }>> {
+    super.selectRound(column as string, decimals, alias);
+    return this as unknown as QueryBuilder<
+      T,
+      ComposeRawSelect<S, { [K in Alias]: number }>
+    >;
+  }
+
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectCoalesce<ValueType = any, Alias extends string = string>(
+    column: ModelKey<T> | string,
+    defaultValue: string | number,
+    alias: Alias,
+  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: ValueType }>> {
+    super.selectCoalesce(column as string, defaultValue, alias);
+    return this as unknown as QueryBuilder<
+      T,
+      ComposeRawSelect<S, { [K in Alias]: ValueType }>
+    >;
+  }
+
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectCeil<Alias extends string = string>(
+    column: ModelKey<T> | string,
+    alias: Alias,
+  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: number }>> {
+    super.selectCeil(column as string, alias);
+    return this as unknown as QueryBuilder<
+      T,
+      ComposeRawSelect<S, { [K in Alias]: number }>
+    >;
+  }
+
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectFloor<Alias extends string = string>(
+    column: ModelKey<T> | string,
+    alias: Alias,
+  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: number }>> {
+    super.selectFloor(column as string, alias);
+    return this as unknown as QueryBuilder<
+      T,
+      ComposeRawSelect<S, { [K in Alias]: number }>
+    >;
+  }
+
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectSqrt<Alias extends string = string>(
+    column: ModelKey<T> | string,
+    alias: Alias,
+  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: number }>> {
+    super.selectSqrt(column as string, alias);
+    return this as unknown as QueryBuilder<
+      T,
+      ComposeRawSelect<S, { [K in Alias]: number }>
+    >;
+  }
+
+  /**
    * @description Executes the query and returns true if the query returns at least one result, false otherwise.
    */
   async exists(): Promise<boolean> {
@@ -113,7 +457,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   /**
    * @description Executes the query and retrieves multiple results.
    */
-  async many(): Promise<T[]> {
+  async many(): Promise<S[]> {
     const { sql, bindings } = this.unWrap();
     return this.execSqlWithSlaveHandling("read", (dataSource) =>
       execSql(sql, bindings, dataSource, this.dbType, "rows", {
@@ -130,17 +474,17 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    * @param key - The column to retrieve from the results, must be a Model Column
    */
   async pluck<K extends ModelKey<T>>(key: K): Promise<PluckReturnType<T, K>> {
-    const result = (await this.many()) as T[];
+    const result = await this.many();
     return result.map(
-      (item) => item[key as keyof typeof item],
+      (item) => (item as Record<string, any>)[key as string],
     ) as PluckReturnType<T, K>;
   }
 
   /**
    * @description Executes the query and retrieves a single result.
    */
-  async one(): Promise<T | null> {
-    const result = (await this.limit(1).many()) as T[];
+  async one(): Promise<S | null> {
+    const result = (await this.limit(1).many()) as S[];
     if (!result || !result.length) {
       return null;
     }
@@ -151,7 +495,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   /**
    * @description Executes the query and retrieves the first result. Fail if no result is found.
    */
-  async oneOrFail(): Promise<T> {
+  async oneOrFail(): Promise<S> {
     const model = await this.one();
     if (!model) {
       throw new HysteriaError(
@@ -169,7 +513,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    * @postgres needs the pg-query-stream package in order to work
    * @throws If using postgres and the `pg-query-stream` package is not installed
    */
-  async stream<M extends Model = T>(
+  async stream<M = S>(
     options: StreamOptions = {},
   ): Promise<PassThrough & AsyncGenerator<M>> {
     const { sql, bindings } = this.unWrap();
@@ -250,7 +594,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     limit: number,
     options: PaginateWithCursorOptions<T, K>,
     cursor?: Cursor<T, K>,
-  ): Promise<[CursorPaginatedData<T>, Cursor<T, K>]> {
+  ): Promise<[RawCursorPaginatedData<S>, Cursor<T, K>]> {
     const countQueryBuilder = this.clone();
 
     if (!this.orderByNodes.length) {
@@ -284,28 +628,6 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
         value: lastItemValue as string | number,
       },
     ];
-  }
-
-  /**
-   * @description Selects a subquery, subquery must return a single column
-   */
-  selectSubQuery(
-    cbOrQueryBuilder: ((subQuery: QueryBuilder<T>) => void) | QueryBuilder<any>,
-    alias: string,
-  ): this {
-    if (typeof cbOrQueryBuilder === "function") {
-      const subQuery = new QueryBuilder<T>(this.model, this.sqlDataSource);
-      cbOrQueryBuilder(subQuery);
-      this.selectNodes.push(
-        new SelectNode(subQuery.extractQueryNodes(), alias),
-      );
-      return this;
-    }
-
-    this.selectNodes.push(
-      new SelectNode(cbOrQueryBuilder.extractQueryNodes(), alias),
-    );
-    return this;
   }
 
   /**
@@ -471,7 +793,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
    * @description Executes the query and retrieves multiple paginated results.
    * @description Overrides the limit and offset clauses in order to paginate the results.
    */
-  async paginate(page: number, perPage: number): Promise<PaginatedData<T>> {
+  async paginate(page: number, perPage: number): Promise<RawPaginatedData<S>> {
     if (typeof page !== "number" || typeof perPage !== "number") {
       logger.warn(
         `${this.model.name}::paginate Non numeric values provided to \`paginate\``,
@@ -491,7 +813,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     return {
       paginationMetadata,
       data: models,
-    } as PaginatedData<T>;
+    };
   }
 
   /**
@@ -1030,8 +1352,8 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   /**
    * @description Returns a deep clone of the query builder instance.
    */
-  clone(): this {
-    const qb = new QueryBuilder<T>(this.model, this.sqlDataSource) as any;
+  clone(): QueryBuilder<T, S> {
+    const qb = new QueryBuilder<T, S>(this.model, this.sqlDataSource) as any;
 
     // select / from / distinct (from SelectQueryBuilder)
     qb.dbType = this.dbType;
@@ -1061,19 +1383,19 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     // flags
     qb.isNestedCondition = this.isNestedCondition;
 
-    return qb as this;
+    return qb as QueryBuilder<T, S>;
   }
 
   /**
    * @description Gives a fresh instance of the query builder
    */
-  clear() {
+  clear(): QueryBuilder<T, Record<string, any>> {
     const qb = new QueryBuilder(this.model, this.sqlDataSource);
     if (this.fromNode.alias) {
       qb.from(qb.model.table, this.fromNode.alias);
     }
 
-    return qb;
+    return qb as QueryBuilder<T, Record<string, any>>;
   }
 
   /**
@@ -1169,7 +1491,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   private async manyWithPerformance(
     returnType: "millis" | "seconds" = "millis",
   ): Promise<{
-    data: T[];
+    data: S[];
     time: number;
   }> {
     const [time, data] = await withPerformance(
@@ -1178,7 +1500,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     )();
 
     return {
-      data,
+      data: data as S[],
       time: Number(time),
     };
   }
@@ -1189,7 +1511,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
   private async oneWithPerformance(
     returnType: "millis" | "seconds" = "millis",
   ): Promise<{
-    data: T | null;
+    data: S | null;
     time: number;
   }> {
     const [time, data] = await withPerformance(
@@ -1198,7 +1520,7 @@ export class QueryBuilder<T extends Model = any> extends JsonQueryBuilder<T> {
     )();
 
     return {
-      data,
+      data: data as S | null,
       time: Number(time),
     };
   }

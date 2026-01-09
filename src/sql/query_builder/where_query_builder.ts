@@ -17,7 +17,8 @@ import { SelectQueryBuilder } from "./select_query_builder";
 
 export abstract class WhereQueryBuilder<
   T extends Model,
-> extends SelectQueryBuilder<T> {
+  S extends Record<string, any> = Record<string, any>,
+> extends SelectQueryBuilder<T, S> {
   protected whereNodes: (WhereNode | WhereGroupNode | WhereSubqueryNode)[];
   protected havingNodes: HavingNode[];
   protected isNestedCondition = false;

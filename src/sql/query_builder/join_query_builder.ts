@@ -20,7 +20,8 @@ export type JoinOnCallback = (query: JoinOnQueryBuilder) => void;
 
 export abstract class JoinQueryBuilder<
   T extends Model,
-> extends FooterQueryBuilder<T> {
+  S extends Record<string, any> = Record<string, any>,
+> extends FooterQueryBuilder<T, S> {
   protected joinNodes: JoinNode[];
   protected constructor(model: typeof Model, sqlDataSource: SqlDataSource) {
     super(model, sqlDataSource);
