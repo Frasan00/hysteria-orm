@@ -237,7 +237,7 @@ describe(`[${env.DB_TYPE}] uuid pk base relations`, () => {
     const userWithPost = await UserWithUuid.query()
       .where("id", user.id)
       .load("post", (qb) =>
-        qb.select("userId", "title as postTitle", "content as postContent"),
+        qb.select("userId", ["title", "postTitle"], ["content", "postContent"]),
       )
       .one();
 

@@ -33,7 +33,7 @@ describe(`[${env.DB_TYPE}] uuid pk join edge cases`, () => {
     });
 
     const postsWithUsers = await PostWithUuid.query()
-      .select("posts_with_uuid.*", "users_with_uuid.name as userName")
+      .select("posts_with_uuid.*", ["users_with_uuid.name", "userName"])
       .leftJoin(
         "users_with_uuid",
         "users_with_uuid.id",
@@ -76,8 +76,8 @@ describe(`[${env.DB_TYPE}] uuid pk join edge cases`, () => {
     const rows = await PostWithUuid.query()
       .select(
         "posts_with_uuid.*",
-        "users_with_uuid.name as userName",
-        "address_with_uuid.city as city",
+        ["users_with_uuid.name", "userName"],
+        ["address_with_uuid.city", "city"],
       )
       .leftJoin(
         "users_with_uuid",
@@ -126,7 +126,7 @@ describe(`[${env.DB_TYPE}] uuid pk join edge cases`, () => {
     const rows = await SqlDataSource.instance
       .query("posts_with_uuid")
       .from("posts_with_uuid", "p")
-      .select("p.*", "u.name as mustBe1", "a.city as mustBe2")
+      .select("p.*", ["u.name", "mustBe1"], ["a.city", "mustBe2"])
       .leftJoinRaw("users_with_uuid u ON u.id = p.user_id")
       .leftJoinRaw("user_address_with_uuid ua ON ua.user_id = u.id")
       .leftJoinRaw("address_with_uuid a ON a.id = ua.address_id")

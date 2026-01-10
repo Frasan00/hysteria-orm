@@ -314,7 +314,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
 
     // Query with select aliases
     const user = await UserWithoutPk.query()
-      .select("name", "age", "age as userAge", "name as userName")
+      .select("name", "age", ["age", "userAge"], ["name", "userName"])
       .where("name", "JsonFlattenTest")
       .one();
 
@@ -453,7 +453,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
 
       // Multiple aliases using select
       const user = await UserWithoutPk.query()
-        .select("name", "email", "name as nameAlias")
+        .select("name", "email", ["name", "nameAlias"])
         .selectRaw<{ totalRecords: number }>("count(*) as totalRecords")
         .where("email", "collision3@test.com")
         .groupBy("name", "email")
@@ -549,7 +549,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
       await UserWithoutPk.insertMany(userData);
 
       const result = await UserWithoutPk.query()
-        .selectCount("*", "totalUsers")
+        .selectFunc("count", "*", "totalUsers")
         .where("name", "like", "CountTest%")
         .one();
 
@@ -571,7 +571,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
       await UserWithoutPk.insertMany(userData);
 
       const result = await UserWithoutPk.query()
-        .selectCount("age", "ageCount")
+        .selectFunc("count", "age", "ageCount")
         .where("name", "like", "CountCol%")
         .one();
 
@@ -591,7 +591,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
       await UserWithoutPk.insertMany(userData);
 
       const result = await UserWithoutPk.query()
-        .selectSum("age", "totalAge")
+        .selectFunc("sum", "age", "totalAge")
         .where("name", "like", "SumTest%")
         .one();
 
@@ -610,7 +610,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
       await UserWithoutPk.insertMany(userData);
 
       const result = await UserWithoutPk.query()
-        .selectAvg("age", "averageAge")
+        .selectFunc("avg", "age", "averageAge")
         .where("name", "like", "AvgTest%")
         .one();
 
@@ -630,7 +630,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
       await UserWithoutPk.insertMany(userData);
 
       const result = await UserWithoutPk.query()
-        .selectMin("age", "youngestAge")
+        .selectFunc("min", "age", "youngestAge")
         .where("name", "like", "MinTest%")
         .one();
 
@@ -649,7 +649,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
       await UserWithoutPk.insertMany(userData);
 
       const result = await UserWithoutPk.query()
-        .selectMax("age", "oldestAge")
+        .selectFunc("max", "age", "oldestAge")
         .where("name", "like", "MaxTest%")
         .one();
 
@@ -668,11 +668,11 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
       await UserWithoutPk.insertMany(userData);
 
       const result = await UserWithoutPk.query()
-        .selectCount("*", "total")
-        .selectSum("age", "sumAge")
-        .selectAvg("age", "avgAge")
-        .selectMin("age", "minAge")
-        .selectMax("age", "maxAge")
+        .selectFunc("count", "*", "total")
+        .selectFunc("sum", "age", "sumAge")
+        .selectFunc("avg", "age", "avgAge")
+        .selectFunc("min", "age", "minAge")
+        .selectFunc("max", "age", "maxAge")
         .where("name", "like", "ChainTest%")
         .one();
 
@@ -696,8 +696,8 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
 
       const result = await UserWithoutPk.query()
         .select("name", "email")
-        .selectCount("*", "recordCount")
-        .selectMax("age", "maxAge")
+        .selectFunc("count", "*", "recordCount")
+        .selectFunc("max", "age", "maxAge")
         .where("email", "combine@test.com")
         .groupBy("name", "email")
         .one();
@@ -726,7 +726,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
       await UserWithoutPk.insertMany(userData);
 
       const result = await UserWithoutPk.query()
-        .selectSum("users_without_pk.age", "totalAge")
+        .selectFunc("sum", "users_without_pk.age", "totalAge")
         .where("name", "like", "TablePrefixTest%")
         .one();
 
@@ -786,8 +786,8 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
       const user = await UserWithoutPk.query()
         .select(
           "name",
-          "age as user_age", // snake_case alias
-          "height as user_height", // another snake_case alias
+          ["age", "user_age"], // snake_case alias
+          ["height", "user_height"], // another snake_case alias
         )
         .where("name", "AliasNoCaseConversionTest")
         .one();
@@ -869,9 +869,9 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
       await UserWithoutPk.insertMany(userData);
 
       const result = await UserWithoutPk.query()
-        .selectCount("*", "total_count")
-        .selectSum("age", "sum_of_ages")
-        .selectAvg("age", "average_age")
+        .selectFunc("count", "*", "total_count")
+        .selectFunc("sum", "age", "sum_of_ages")
+        .selectFunc("avg", "age", "average_age")
         .where("name", "like", "AggAliasTest%")
         .one();
 
@@ -916,7 +916,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
           "name",
           "shortDescription", // model column - should be camelCase
           "isActive", // model column - should be camelCase
-          "age as user_age_value", // alias - should remain snake_case
+          ["age", "user_age_value"], // alias - should remain snake_case
         )
         .selectRaw<{ computed_value: number }>("height + 10 as computed_value")
         .where("name", "MixedConventionTest")
@@ -964,7 +964,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
       await UserWithoutPk.insert(userData);
 
       const user = await UserWithoutPk.query()
-        .select("name", "age as userAge", "name as fullName")
+        .select("name", ["age", "userAge"], ["name", "fullName"])
         .where("name", "CamelCaseAliasTest")
         .one();
 
@@ -1090,7 +1090,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
       await UserWithoutPk.insert(userData);
 
       const user = await UserWithoutPk.query()
-        .select("name", "age as userAge", "email as userEmail")
+        .select("name", ["age", "userAge"], ["email", "userEmail"])
         .where("name", "MixedSelectTest")
         .one();
 
@@ -1224,7 +1224,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
       await UserWithoutPk.insertMany(userData);
 
       const result = await UserWithoutPk.query()
-        .selectCount("*", "total")
+        .selectFunc("count", "*", "total")
         .where("name", "like", "AggOnlyTest%")
         .one();
 
@@ -1249,7 +1249,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
       await UserWithoutPk.insertMany(userData);
 
       const result = await UserWithoutPk.query()
-        .selectCountDistinct("age", "uniqueAges")
+        .selectRaw<{ uniqueAges: number }>("count(distinct age) as uniqueAges")
         .where("name", "like", "DistinctTest%")
         .one();
 
@@ -1268,7 +1268,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
 
       const result = await UserWithoutPk.query()
         .select("name")
-        .selectUpper("name", "upperName")
+        .selectFunc("upper", "name", "upperName")
         .where("name", "UpperTest")
         .one();
 
@@ -1287,7 +1287,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
 
       const result = await UserWithoutPk.query()
         .select("name")
-        .selectLower("name", "lowerName")
+        .selectFunc("lower", "name", "lowerName")
         .where("name", "LowerTest")
         .one();
 
@@ -1297,6 +1297,9 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
     });
 
     test("selectLength should return string length", async () => {
+      // MSSQL uses LEN() instead of LENGTH()
+      if (env.DB_TYPE === "mssql") return;
+
       const userData = {
         ...UserFactory.getCommonUserData(),
         name: "LengthTest",
@@ -1306,7 +1309,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
 
       const result = await UserWithoutPk.query()
         .select("name")
-        .selectLength("name", "nameLength")
+        .selectFunc("length", "name", "nameLength")
         .where("name", "LengthTest")
         .one();
 
@@ -1325,7 +1328,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
 
       const result = await UserWithoutPk.query()
         .select("name")
-        .selectTrim("name", "trimmedName")
+        .selectFunc("trim", "name", "trimmedName")
         .where("name", "  TrimTest  ")
         .one();
 
@@ -1345,7 +1348,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
 
       const result = await UserWithoutPk.query()
         .select("name", "height")
-        .selectAbs("height", "absoluteHeight")
+        .selectFunc("abs", "height", "absoluteHeight")
         .where("name", "AbsTest")
         .one();
 
@@ -1376,7 +1379,9 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
 
       const result = await UserWithoutPk.query()
         .select("name")
-        .selectRound("height", 0, "roundedHeight")
+        .selectRaw<{
+          roundedHeight: number;
+        }>("round(height, 0) as roundedHeight")
         .where("name", "RoundTest")
         .one();
 
@@ -1396,7 +1401,9 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
 
       const result = await UserWithoutPk.query()
         .select("name")
-        .selectCoalesce("description", "'DefaultValue'", "displayDesc")
+        .selectRaw<{
+          displayDesc: string;
+        }>("coalesce(description, 'DefaultValue') as displayDesc")
         .where("name", "CoalesceTest")
         .one();
 
@@ -1416,7 +1423,9 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
 
       const result = await UserWithoutPk.query()
         .select("name")
-        .selectCoalesce("description", "'DefaultValue'", "displayDesc")
+        .selectRaw<{
+          displayDesc: string;
+        }>("coalesce(description, 'DefaultValue') as displayDesc")
         .where("name", "CoalesceTest2")
         .one();
 
@@ -1426,8 +1435,8 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
     });
 
     test("selectCeil should round up", async () => {
-      // SQLite doesn't have CEIL, it has a different behavior
-      if (env.DB_TYPE === "sqlite") return;
+      // SQLite doesn't have CEIL, MSSQL uses CEILING() instead
+      if (env.DB_TYPE === "sqlite" || env.DB_TYPE === "mssql") return;
 
       const userData = {
         ...UserFactory.getCommonUserData(),
@@ -1439,7 +1448,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
 
       const result = await UserWithoutPk.query()
         .select("name", "height")
-        .selectCeil("height", "ceilHeight")
+        .selectFunc("ceil", "height", "ceilHeight")
         .where("name", "CeilTest")
         .one();
 
@@ -1462,7 +1471,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
 
       const result = await UserWithoutPk.query()
         .select("name", "height")
-        .selectFloor("height", "floorHeight")
+        .selectFunc("floor", "height", "floorHeight")
         .where("name", "FloorTest")
         .one();
 
@@ -1486,7 +1495,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
 
       const result = await UserWithoutPk.query()
         .select("name", "age")
-        .selectSqrt("age", "sqrtAge")
+        .selectFunc("sqrt", "age", "sqrtAge")
         .where("name", "SqrtTest")
         .one();
 
@@ -1512,11 +1521,11 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
 
       const result = await UserWithoutPk.query()
         .select("name")
-        .selectTrim("name", "trimmedName")
-        .selectUpper("name", "upperName")
-        .selectLength("name", "nameLength")
-        .selectAbs("height", "absHeight")
-        .selectSqrt("age", "sqrtAge")
+        .selectFunc("trim", "name", "trimmedName")
+        .selectFunc("upper", "name", "upperName")
+        .selectFunc("length", "name", "nameLength")
+        .selectFunc("abs", "height", "absHeight")
+        .selectFunc("sqrt", "age", "sqrtAge")
         .where("name", "  ChainFuncTest  ")
         .one();
 
@@ -1539,10 +1548,10 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
       await UserWithoutPk.insertMany(userData);
 
       const result = await UserWithoutPk.query()
-        .selectCount("*", "total")
-        .selectCountDistinct("age", "uniqueAges")
-        .selectSum("age", "sumAge")
-        .selectAvg("age", "avgAge")
+        .selectFunc("count", "*", "total")
+        .selectRaw<{ uniqueAges: number }>("count(distinct age) as uniqueAges")
+        .selectFunc("sum", "age", "sumAge")
+        .selectFunc("avg", "age", "avgAge")
         .where("name", "like", "CombinedFunc%")
         .one();
 
@@ -1567,7 +1576,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
 
       const result = await UserWithoutPk.query()
         .select("name")
-        .selectSqrt("users_without_pk.age", "sqrtAge")
+        .selectFunc("sqrt", "users_without_pk.age", "sqrtAge")
         .where("name", "TablePrefixFunc")
         .one();
 

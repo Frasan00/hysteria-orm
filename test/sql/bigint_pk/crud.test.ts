@@ -154,7 +154,7 @@ describe(`[${env.DB_TYPE}] Select`, () => {
   test("Multiple columns select with aliases", async () => {
     await UserFactory.userWithBigint(2);
     const users = await UserWithBigint.query()
-      .select("age as testAge", "birthDate as testBirth")
+      .select(["age", "testAge"], ["birthDate", "testBirth"])
       .many();
 
     expect(users.length).toBe(2);

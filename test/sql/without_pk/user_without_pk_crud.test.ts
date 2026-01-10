@@ -38,7 +38,7 @@ describe(`[${env.DB_TYPE}] Select`, () => {
   test("Select with alias", async () => {
     await UserFactory.userWithoutPk(2);
     const user = await UserWithoutPk.query()
-      .select("name", "age as superAge")
+      .select("name", ["age", "superAge"])
       .one();
 
     expect(user).not.toBeUndefined();
@@ -116,7 +116,7 @@ describe(`[${env.DB_TYPE}] Select`, () => {
   test("Multiple columns select with aliases", async () => {
     await UserFactory.userWithoutPk(2);
     const users = await UserWithoutPk.query()
-      .select("age as result", "birthDate as result2")
+      .select(["age", "result"], ["birthDate", "result2"])
       .many();
 
     expect(users.length).toBe(2);

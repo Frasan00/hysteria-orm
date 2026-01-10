@@ -12,6 +12,78 @@ export type PluckReturnType<
 > = T[K] extends infer U ? U[] : never;
 
 /**
+ * Common SQL functions with intellisense support.
+ * Provides autocomplete for standard SQL aggregate and scalar functions,
+ * while still allowing any custom function name via string fallback.
+ *
+ * @example
+ * selectFunc("count", "*", "total")     // Intellisense suggests "count"
+ * selectFunc("custom_fn", "col", "res") // Custom functions still work
+ */
+export type SqlFunction =
+  | "count"
+  | "sum"
+  | "avg"
+  | "min"
+  | "max"
+  | "upper"
+  | "lower"
+  | "length"
+  | "trim"
+  | "abs"
+  | "round"
+  | "coalesce"
+  | "ceil"
+  | "floor"
+  | "sqrt"
+  | (string & {});
+
+/**
+ * Maps SQL function names to their return types.
+ * Used by selectFunc to auto-infer the result type.
+ *
+ * - Numeric functions (count, sum, avg, etc.) → number
+ * - String functions (upper, lower, trim) → string
+ * - Unknown functions → any
+ */
+export type SqlFunctionReturnType<F extends string> = F extends
+  | "count"
+  | "sum"
+  | "avg"
+  | "min"
+  | "max"
+  | "length"
+  | "abs"
+  | "round"
+  | "ceil"
+  | "floor"
+  | "sqrt"
+  ? number
+  : F extends "upper" | "lower" | "trim"
+    ? string
+    : any;
+
+/**
+ * A tuple type for selecting a column with an alias.
+ * @example ["id", "userId"] selects "id" column as "userId"
+ */
+export type SelectTuple<
+  C extends string = string,
+  A extends string = string,
+> = readonly [column: C, alias: A];
+
+/**
+ * Input type for select() method in raw query builder.
+ * Accepts either a column string or a [column, alias] tuple.
+ *
+ * @example
+ * .select("id", "name")                    // Simple columns
+ * .select(["id", "userId"], ["name", "n"]) // Columns with aliases
+ * .select("id", ["name", "userName"])      // Mixed
+ */
+export type Selectable = string | SelectTuple;
+
+/**
  * Unique symbol used internally to mark that a raw select() has been called.
  */
 declare const RAW_SELECT_BRAND: unique symbol;
@@ -33,21 +105,25 @@ type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
   : never;
 
 /**
- * Extracts the final property name from a column selection string for raw queries.
+ * Extracts the final property name from a column selection for raw queries.
+ * Supports both string columns and [column, alias] tuples.
  *
- * | Input                    | Output        |
- * |--------------------------|---------------|
- * | `"name"`                 | `"name"`      |
- * | `"users.name"`           | `"name"`      |
- * | `"name as userName"`     | `"userName"`  |
- * | `"count(*) as total"`    | `"total"`     |
- * | `"*"`                    | `never`       |
- * | `"users.*"`              | `never`       |
+ * | Input                        | Output        |
+ * |------------------------------|---------------|
+ * | `"name"`                     | `"name"`      |
+ * | `"users.name"`               | `"name"`      |
+ * | `["name", "userName"]`       | `"userName"`  |
+ * | `["users.id", "id"]`         | `"id"`        |
+ * | `"*"`                        | `never`       |
+ * | `"users.*"`                  | `never`       |
  */
-export type ExtractRawColumnName<S extends string> =
-  S extends `${string} as ${infer Alias}`
-    ? Alias
-    : S extends "*"
+export type ExtractRawColumnName<S> = S extends readonly [
+  string,
+  infer Alias extends string,
+]
+  ? Alias
+  : S extends string
+    ? S extends "*"
       ? never
       : S extends `${string}.*`
         ? never
@@ -55,36 +131,45 @@ export type ExtractRawColumnName<S extends string> =
           ? Column extends "*"
             ? never
             : Column
-          : S;
+          : S
+    : never;
 
 /**
  * Builds the type for a single selected column in a raw query.
  * All column types are `any` since we don't have model type information.
+ * Supports both string columns and [column, alias] tuples.
  *
- * | Selection          | Result Type                           |
- * |--------------------|---------------------------------------|
- * | `"*"`              | `Record<string, any>`                 |
- * | `"table.*"`        | `Record<string, any>`                 |
- * | `"column"`         | `{ column: any }`                     |
- * | `"col as alias"`   | `{ alias: any }`                      |
+ * | Selection              | Result Type                           |
+ * |------------------------|---------------------------------------|
+ * | `"*"`                  | `Record<string, any>`                 |
+ * | `"table.*"`            | `Record<string, any>`                 |
+ * | `"column"`             | `{ column: any }`                     |
+ * | `["col", "alias"]`     | `{ alias: any }`                      |
  *
  * @internal
  */
-export type BuildRawSingleSelectType<S extends string> = S extends "*"
-  ? Record<string, any>
-  : S extends `${string}.*`
-    ? Record<string, any>
-    : ExtractRawColumnName<S> extends never
-      ? {}
-      : {
-          [K in ExtractRawColumnName<S>]: any;
-        };
+export type BuildRawSingleSelectType<S> = S extends readonly [
+  string,
+  infer Alias extends string,
+]
+  ? { [K in Alias]: any }
+  : S extends string
+    ? S extends "*"
+      ? Record<string, any>
+      : S extends `${string}.*`
+        ? Record<string, any>
+        : ExtractRawColumnName<S> extends never
+          ? {}
+          : {
+              [K in ExtractRawColumnName<S> & string]: any;
+            }
+    : {};
 
 /**
  * Checks if a column selection includes wildcards or is empty.
  * @internal
  */
-type HasRawStarOrEmpty<Columns extends readonly string[]> =
+type HasRawStarOrEmpty<Columns extends readonly Selectable[]> =
   Columns["length"] extends 0
     ? true
     : "*" extends Columns[number]
@@ -93,6 +178,7 @@ type HasRawStarOrEmpty<Columns extends readonly string[]> =
 
 /**
  * Builds the combined TypeScript type for multiple selected columns in a raw query.
+ * Supports both string columns and [column, alias] tuples.
  *
  * ## Rules
  *
@@ -101,8 +187,8 @@ type HasRawStarOrEmpty<Columns extends readonly string[]> =
  * 3. **With `table.*`**: Adds `Record<string, any>` to allow unknown properties
  *
  * @example
- * // .select("name", "age as userAge")
- * BuildRawSelectType<["name", "age as userAge"]>
+ * // .select("name", ["age", "userAge"])
+ * BuildRawSelectType<["name", ["age", "userAge"]]>
  * // Result: { name: any; userAge: any } & RawSelectBrand
  *
  * @example
@@ -110,14 +196,12 @@ type HasRawStarOrEmpty<Columns extends readonly string[]> =
  * BuildRawSelectType<["*"]>
  * // Result: Record<string, any>
  */
-export type BuildRawSelectType<Columns extends readonly string[]> =
+export type BuildRawSelectType<Columns extends readonly Selectable[]> =
   HasRawStarOrEmpty<Columns> extends true
     ? Record<string, any>
     : UnionToIntersection<
           {
-            [K in keyof Columns]: Columns[K] extends string
-              ? BuildRawSingleSelectType<Columns[K]>
-              : {};
+            [K in keyof Columns]: BuildRawSingleSelectType<Columns[K]>;
           }[number]
         > extends infer Result
       ? Result extends Record<string, any>
@@ -161,7 +245,7 @@ export type ComposeRawSelect<
  */
 export type ComposeBuildRawSelect<
   S extends Record<string, any>,
-  Columns extends readonly string[],
+  Columns extends readonly Selectable[],
 > = (typeof RAW_SELECT_BRAND extends keyof S ? S : {}) &
   BuildRawSelectType<Columns>;
 
@@ -267,22 +351,23 @@ export type RelationRetrieveMethod<P extends any> = P extends any[]
   ? "many"
   : "one";
 
+/**
+ * Validates a column string for raw query builder select().
+ * Use [column, alias] tuple format for aliases instead of "column as alias".
+ * Use selectFunction() for SQL functions instead of embedding them in select().
+ */
 export type SelectableColumn<T extends string = string> =
-  T extends `${infer Table}.${infer Column}.${string}`
+  T extends `${string}.${string}.${string}`
     ? never // Reject multiple dots
-    : T extends `${string}(${string})`
-      ? T // Accept function calls: count(*), sum(age), etc.
-      : T extends `${string} as ${string}`
-        ? T // Accept "column as alias" and "func(args) as alias" format
-        : T extends `${string} ${string}`
-          ? never // Reject other spaces
-          : T extends `.${string}` | `${string}.`
-            ? never // Reject leading/trailing dots
-            : T extends `${string}-${string}`
-              ? never // Reject hyphens
-              : T extends `${string}.${string}`
-                ? T // Accept table.column format
-                : T;
+    : T extends `${string} ${string}`
+      ? never // Reject spaces (use tuple for aliases)
+      : T extends `.${string}` | `${string}.`
+        ? never // Reject leading/trailing dots
+        : T extends `${string}-${string}`
+          ? never // Reject hyphens
+          : T extends `${string}.${string}`
+            ? T // Accept table.column format
+            : T;
 
 /**
  * @description A column that can be used in a join statement e.g. `users.id`

@@ -39,7 +39,7 @@ describe(`[${env.DB_TYPE}] bigint pk join`, () => {
     expect(posts).toHaveLength(3);
 
     const postsWithUsers = await PostWithBigint.query()
-      .select("posts_with_bigint.*", "users_with_bigint.name as userName")
+      .select("posts_with_bigint.*", ["users_with_bigint.name", "userName"])
       .leftJoin(
         "users_with_bigint",
         "users_with_bigint.id",
@@ -77,7 +77,7 @@ describe(`[${env.DB_TYPE}] bigint pk join`, () => {
     expect(posts).toHaveLength(3);
 
     const postsWithUsers = await PostWithBigint.query()
-      .select("posts_with_bigint.*", "users_with_bigint.name as userName")
+      .select("posts_with_bigint.*", ["users_with_bigint.name", "userName"])
       .leftJoin(
         "users_with_bigint",
         "users_with_bigint.id",
@@ -110,7 +110,7 @@ describe(`[${env.DB_TYPE}] bigint pk join`, () => {
     expect(posts).toHaveLength(3);
 
     const postsWithUsers = await PostWithBigint.query()
-      .select("posts_with_bigint.*", "users_with_bigint.name as userName")
+      .select("posts_with_bigint.*", ["users_with_bigint.name", "userName"])
       .rightJoin(
         "users_with_bigint",
         "users_with_bigint.id",
@@ -143,7 +143,7 @@ describe(`[${env.DB_TYPE}] bigint pk join`, () => {
     expect(posts).toHaveLength(3);
 
     const postsWithUsers = await PostWithBigint.query()
-      .select("posts_with_bigint.*", "users_with_bigint.name as userName")
+      .select("posts_with_bigint.*", ["users_with_bigint.name", "userName"])
       .join(UserWithBigint, "id", "userId")
       .whereIn(
         "posts_with_bigint.id",
@@ -172,7 +172,7 @@ describe(`[${env.DB_TYPE}] bigint pk join`, () => {
     expect(posts).toHaveLength(3);
 
     const postsWithUsers = await PostWithBigint.query()
-      .select("posts_with_bigint.*", "users_with_bigint.name as userName")
+      .select("posts_with_bigint.*", ["users_with_bigint.name", "userName"])
       .leftJoin(UserWithBigint, "id", "userId")
       .whereIn(
         "posts_with_bigint.id",
@@ -200,7 +200,7 @@ describe(`[${env.DB_TYPE}] bigint pk join`, () => {
     expect(posts).toHaveLength(3);
 
     const postsWithUsers = await PostWithBigint.query()
-      .select("posts_with_bigint.*", "users_with_bigint.name as userName")
+      .select("posts_with_bigint.*", ["users_with_bigint.name", "userName"])
       .join(UserWithBigint, "id", "userId", ">")
       .whereIn(
         "posts_with_bigint.id",

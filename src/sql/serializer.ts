@@ -23,23 +23,31 @@ import { Model } from "./models/model";
  *    columns from other tables are filtered out to prevent data bleeding.
  *    Only explicitly selected columns (via aliases) are included from joined tables.
  *
+ * 6. **Model Instance**: Creates an actual Model instance with prototype chain,
+ *    ensuring instance methods like save(), update(), delete() are available.
+ *
  * @param model - Raw database row as key-value pairs
+ * @param typeofModel - The Model class to create instances from
  * @param modelColumns - Array of column definitions from the model
  * @param modelColumnsMap - Map of column name -> column definition for O(1) lookup
  * @param modelSelectedColumns - Array of selected column names (in model case convention)
  * @param hasWildcards - Whether the query used wildcards (*, table.*)
- * @returns Promise resolving to the serialized model with proper typing
+ * @returns Promise resolving to the serialized model instance with proper typing
  */
 export const parseDatabaseDataIntoModelResponse = async <
   T extends Record<string, any>,
 >(
   model: T,
+  typeofModel: typeof Model,
   modelColumns: ColumnType[],
   modelColumnsMap: Map<string, ColumnType>,
   modelSelectedColumns: string[] = [],
   hasWildcards: boolean = false,
 ): Promise<T> => {
-  const casedModel: Record<string, any> = {};
+  const casedModel = Object.create(typeofModel.prototype) as Record<
+    string,
+    any
+  >;
 
   // Pre-compute hidden columns for O(1) lookup during iteration
   const hiddenColumnsSet = new Set<string>(
@@ -236,6 +244,7 @@ export const serializeModel = async <T extends Model>(
     models.map(async (model) => {
       const serializedModel = await parseDatabaseDataIntoModelResponse(
         model,
+        typeofModel,
         modelColumns,
         modelColumnsMap,
         modelSelectedColumns,

@@ -131,7 +131,7 @@ describe(`[${env.DB_TYPE}] Query Builder with uuid`, () => {
 
     const retrievedPost = await SqlDataSource.instance
       .query("posts_with_uuid")
-      .select("title as postTitle")
+      .select(["title", "postTitle"])
       .oneOrFail();
 
     expect(retrievedPost).toBeDefined();

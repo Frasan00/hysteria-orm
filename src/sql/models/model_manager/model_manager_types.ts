@@ -1,6 +1,6 @@
 import { Model } from "../model";
 import { FetchHooks } from "../model_query_builder/model_query_builder_types";
-import { ModelWithoutRelations } from "../model_types";
+import { ModelInstanceMethods, ModelWithoutRelations } from "../model_types";
 
 type NullableAndUndefinable<T> =
   | T
@@ -126,10 +126,11 @@ export type FindReturnType<
   T extends Model,
   S extends ModelKey<T>[] = any[],
   R extends ModelRelation<T>[] = never[],
-> = S extends readonly any[]
+> = (S extends readonly any[]
   ? S[number] extends never
     ? ModelWithoutRelations<T> & { [K in R[number] & keyof T]: T[K] }
     : { [K in S[number] & keyof T]: T[K] } & {
         [K in R[number] & keyof T]: T[K];
       }
-  : ModelWithoutRelations<T> & { [K in R[number] & keyof T]: T[K] };
+  : ModelWithoutRelations<T> & { [K in R[number] & keyof T]: T[K] }) &
+  ModelInstanceMethods<T>;

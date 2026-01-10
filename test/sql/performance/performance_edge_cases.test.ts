@@ -118,11 +118,11 @@ describe(`[${env.DB_TYPE}] Performance - Complex Aggregations`, () => {
     const result = await sql
       .query("users_with_uuid")
       .select("count", "avg_age", "max_age", "min_age", "sum_age")
-      .selectCount("*", "count")
-      .selectAvg("age", "avg_age")
-      .selectMax("age", "max_age")
-      .selectMin("age", "min_age")
-      .selectSum("age", "sum_age")
+      .selectFunc("count", "*", "count")
+      .selectFunc("avg", "age", "avg_age")
+      .selectFunc("max", "age", "max_age")
+      .selectFunc("min", "age", "min_age")
+      .selectFunc("sum", "age", "sum_age")
       .one();
 
     expect(result).toBeDefined();
@@ -136,8 +136,8 @@ describe(`[${env.DB_TYPE}] Performance - Complex Aggregations`, () => {
     const result = await sql
       .query("users_with_uuid")
       .select("status")
-      .selectCount("*", "count")
-      .selectAvg("age", "avg_age")
+      .selectFunc("count", "*", "count")
+      .selectFunc("avg", "age", "avg_age")
       .groupBy("status")
       .many();
 
@@ -152,7 +152,7 @@ describe(`[${env.DB_TYPE}] Performance - Complex Aggregations`, () => {
     const result = await sql
       .query("users_with_uuid")
       .select("status")
-      .selectCount("id", "count")
+      .selectFunc("count", "id", "count")
       .groupBy("status")
       .having("count", ">", 0)
       .many();

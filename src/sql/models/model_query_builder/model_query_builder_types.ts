@@ -1,6 +1,10 @@
 import { Model } from "../../models/model";
 import { ModelKey, ModelRelation } from "../model_manager/model_manager_types";
-import { ModelDataProperties, ModelWithoutRelations } from "../model_types";
+import {
+  ModelDataProperties,
+  ModelInstanceMethods,
+  ModelWithoutRelations,
+} from "../model_types";
 
 /**
  * Extracts the instance type from a Model class type.
@@ -58,13 +62,13 @@ export type RelatedInstance<M extends Model, K extends ModelRelation<M>> =
 // which columns are selected in a query. This provides:
 //
 // 1. **Type Safety**: Only selected columns are available on the result
-// 2. **Intellisense**: Autocomplete for model columns and aliases
-// 3. **Alias Support**: `"column as alias"` syntax creates typed aliases
+// 2. **Intellisense**: Autocomplete for model columns
+// 3. **Alias Support**: Use `[column, alias]` tuples for aliases
 //
 // Example:
 // ```ts
 // const user = await User.query()
-//   .select("name", "age as userAge")
+//   .select("name", ["age", "userAge"])
 //   .one();
 //
 // user.name;     // ✓ string
@@ -86,7 +90,9 @@ type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
   : never;
 
 /**
- * Represents all valid column selection formats with intellisense support.
+ * Represents valid string column selection formats with intellisense support.
+ * Use [column, alias] tuple format for aliases instead of "column as alias".
+ * Use selectFunction() for SQL functions instead of embedding them in select().
  *
  * ## Supported Formats
  *
@@ -94,7 +100,6 @@ type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
  * |---------------------------|--------------------------|--------------------------------|
  * | Model column              | `"name"`                 | Direct column with intellisense |
  * | Qualified column          | `"users.name"`           | Table-prefixed column          |
- * | Aliased column            | `"name as userName"`     | Column with custom alias       |
  * | Wildcard                  | `"*"`                    | Select all from primary table  |
  * | Table wildcard            | `"users.*"`              | Select all from specific table |
  *
@@ -102,23 +107,46 @@ type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
  * User.query().select(
  *   "name",                    // Model column with intellisense
  *   "users.email",             // Qualified column
- *   "age as userAge",          // Aliased column
  *   "*"                        // All columns
  * );
  */
 export type SelectableColumn<T extends Model> =
   | ModelKey<T>
   | `${string}.${string | "*"}`
-  | `${ModelKey<T> & string} as ${string}`
-  | `${string}(${string}) as ${string}`
   | "*";
 
 /**
- * Extracts the final property name from a column selection string.
+ * A tuple type for selecting a column with an alias in ModelQueryBuilder.
+ * @example ["id", "userId"] selects "id" column as "userId"
+ */
+export type ModelSelectTuple<
+  T extends Model,
+  C extends ModelKey<T> | `${string}.${string}` =
+    | ModelKey<T>
+    | `${string}.${string}`,
+  A extends string = string,
+> = readonly [column: C, alias: A];
+
+/**
+ * Input type for select() method in ModelQueryBuilder.
+ * Accepts either a column string or a [column, alias] tuple for aliasing.
+ *
+ * @example
+ * .select("id", "name")                           // Simple columns
+ * .select(["id", "userId"], ["name", "userName"]) // Columns with aliases
+ * .select("id", ["name", "userName"])             // Mixed
+ */
+export type ModelSelectableInput<T extends Model> =
+  | SelectableColumn<T>
+  | ModelSelectTuple<T>;
+
+/**
+ * Extracts the final property name from a column selection.
+ * Supports both string columns and [column, alias] tuples.
  *
  * This type determines what property name will be available on the result:
  * - Plain columns use their name directly
- * - Aliased columns use the alias
+ * - Tuples use the alias (second element)
  * - Wildcards return `never` (handled specially to return full model)
  *
  * ## Extraction Rules
@@ -127,15 +155,18 @@ export type SelectableColumn<T extends Model> =
  * |--------------------------|---------------|--------------------------------|
  * | `"name"`                 | `"name"`      | Direct column                  |
  * | `"users.name"`           | `"name"`      | Extract column from qualified  |
- * | `"name as userName"`     | `"userName"`  | Use alias                      |
- * | `"users.name as author"` | `"author"`    | Alias takes precedence         |
+ * | `["name", "userName"]`   | `"userName"`  | Use alias from tuple           |
+ * | `["users.id", "id"]`     | `"id"`        | Use alias from tuple           |
  * | `"*"`                    | `never`       | Wildcard - full model          |
  * | `"users.*"`              | `never`       | Table wildcard - Record<>      |
  */
-export type ExtractColumnName<S extends string> =
-  S extends `${string} as ${infer Alias}`
-    ? Alias
-    : S extends "*"
+export type ExtractColumnName<S> = S extends readonly [
+  string,
+  infer Alias extends string,
+]
+  ? Alias
+  : S extends string
+    ? S extends "*"
       ? never
       : S extends `${string}.*`
         ? never
@@ -143,7 +174,28 @@ export type ExtractColumnName<S extends string> =
           ? Column extends "*"
             ? never
             : Column
-          : S;
+          : S
+    : never;
+
+/**
+ * Extracts the source column name from a selectable input.
+ * For strings, returns the column part (after last dot if qualified).
+ * For tuples, returns the first element (the column).
+ *
+ * @internal
+ */
+export type ExtractSourceColumn<S> = S extends readonly [
+  infer Column extends string,
+  string,
+]
+  ? Column extends `${string}.${infer Col}`
+    ? Col
+    : Column
+  : S extends string
+    ? S extends `${string}.${infer Column}`
+      ? Column
+      : S
+    : never;
 
 /**
  * Resolves the TypeScript type for a selected column.
@@ -165,30 +217,40 @@ export type GetColumnType<
 
 /**
  * Builds the type for a single selected column.
+ * Supports both string columns and [column, alias] tuples.
  *
  * ## Type Resolution
  *
- * | Selection          | Result Type                           |
- * |--------------------|---------------------------------------|
- * | `"*"`              | `ModelWithoutRelations<T>` (full)     |
- * | `"table.*"`        | `Record<string, any>` (unknown shape) |
- * | `"column"`         | `{ column: ColumnType }`              |
- * | `"col as alias"`   | `{ alias: ColumnType }`               |
+ * | Selection              | Result Type                           |
+ * |------------------------|---------------------------------------|
+ * | `"*"`                  | `ModelWithoutRelations<T>` (full)     |
+ * | `"table.*"`            | `Record<string, any>` (unknown shape) |
+ * | `"column"`             | `{ column: ColumnType }`              |
+ * | `["col", "alias"]`     | `{ alias: ColumnType }`               |
  *
  * @internal
  */
-export type BuildSingleSelectType<
-  T extends Model,
-  S extends string,
-> = S extends "*"
-  ? ModelWithoutRelations<T>
-  : S extends `${string}.*`
-    ? Record<string, any>
-    : ExtractColumnName<S> extends never
-      ? {}
-      : {
-          [K in ExtractColumnName<S>]: GetColumnType<T, ExtractColumnName<S>>;
-        };
+export type BuildSingleSelectType<T extends Model, S> = S extends readonly [
+  infer Column extends string,
+  infer Alias extends string,
+]
+  ? {
+      [K in Alias]: GetColumnType<T, ExtractSourceColumn<S> & string>;
+    }
+  : S extends string
+    ? S extends "*"
+      ? ModelWithoutRelations<T>
+      : S extends `${string}.*`
+        ? Record<string, any>
+        : ExtractColumnName<S> extends never
+          ? {}
+          : {
+              [K in ExtractColumnName<S> & string]: GetColumnType<
+                T,
+                ExtractColumnName<S> & string
+              >;
+            }
+    : {};
 
 /**
  * Checks if a column selection includes wildcards or is empty.
@@ -196,12 +258,13 @@ export type BuildSingleSelectType<
  *
  * @internal
  */
-type HasStarOrEmpty<Columns extends readonly string[]> =
-  Columns["length"] extends 0
+type HasStarOrEmpty<
+  Columns extends readonly (string | readonly [string, string])[],
+> = Columns["length"] extends 0
+  ? true
+  : "*" extends Columns[number]
     ? true
-    : "*" extends Columns[number]
-      ? true
-      : false;
+    : false;
 
 /**
  * Unique symbol used internally to mark that a select() has been called.
@@ -220,6 +283,7 @@ export type SelectBrand = { [SELECT_BRAND]?: never };
 
 /**
  * Builds the combined TypeScript type for multiple selected columns.
+ * Supports both string columns and [column, alias] tuples.
  *
  * This is the main type used to compute the return type of `select()` calls.
  * It handles all the complexity of combining multiple column selections into
@@ -233,8 +297,8 @@ export type SelectBrand = { [SELECT_BRAND]?: never };
  * 4. **Always includes**: Base `Model` methods (save, delete, etc.)
  *
  * @example
- * // .select("name", "age as userAge")
- * BuildSelectType<User, ["name", "age as userAge"]>
+ * // .select("name", ["age", "userAge"])
+ * BuildSelectType<User, ["name", ["age", "userAge"]]>
  * // Result: { name: string; userAge: number } & Pick<Model, keyof Model>
  *
  * @example
@@ -244,15 +308,13 @@ export type SelectBrand = { [SELECT_BRAND]?: never };
  */
 export type BuildSelectType<
   T extends Model,
-  Columns extends readonly string[],
+  Columns extends readonly (string | readonly [string, string])[],
 > =
   HasStarOrEmpty<Columns> extends true
     ? ModelWithoutRelations<T>
     : UnionToIntersection<
           {
-            [K in keyof Columns]: Columns[K] extends string
-              ? BuildSingleSelectType<T, Columns[K]>
-              : {};
+            [K in keyof Columns]: BuildSingleSelectType<T, Columns[K]>;
           }[number]
         > extends infer Result
       ? Result extends Record<string, any>
@@ -294,6 +356,7 @@ export type ComposeSelect<
 
 /**
  * Composes a BuildSelectType result with the existing selection state.
+ * Supports both string columns and [column, alias] tuples.
  *
  * Similar to ComposeSelect but designed for use with BuildSelectType which already
  * includes Pick<Model, keyof Model> and SelectBrand in its result.
@@ -319,25 +382,28 @@ export type ComposeSelect<
 export type ComposeBuildSelect<
   S extends Record<string, any>,
   T extends Model,
-  Columns extends readonly string[],
+  Columns extends readonly (string | readonly [string, string])[],
 > = (typeof SELECT_BRAND extends keyof S ? S : {}) &
   BuildSelectType<T, Columns>;
 
 /**
  * The final result type for ModelQueryBuilder queries.
  *
- * Combines selected columns (S) with loaded relations (R) into a single type.
+ * Combines selected columns (S) with loaded relations (R) and Model instance methods
+ * into a single type. This ensures query results have access to CRUD operations
+ * like save(), update(), delete(), etc.
  *
+ * @typeParam M - The Model type
  * @typeParam S - Selected columns type from `select()` calls
  * @typeParam R - Relations type from `load()` calls
  *
  * @example
  * // User.query().select("name").load("posts").one()
- * SelectedModel<{ name: string }, { posts: Post[] }>
- * // Result: { name: string; posts: Post[] }
+ * SelectedModel<User, { name: string }, { posts: Post[] }>
+ * // Result: { name: string; posts: Post[] } & ModelInstanceMethods
  */
 export type SelectedModel<
   M extends Model,
   S extends Record<string, any> = {},
   R extends Record<string, any> = {},
-> = S & R;
+> = S & R & ModelInstanceMethods<M>;

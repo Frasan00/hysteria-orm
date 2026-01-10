@@ -557,7 +557,7 @@ describe(`[${env.DB_TYPE}] Error Handling - Query Builder Errors`, () => {
     // Try to use invalid aggregate
     const query = sql
       .query("users_with_uuid")
-      .selectSum("invalid_column", "invalid_column");
+      .selectFunc("sum", "invalid_column", "invalid_column");
 
     await expect(query.one()).rejects.toThrow();
   });

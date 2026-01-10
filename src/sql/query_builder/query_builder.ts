@@ -40,6 +40,9 @@ import {
   PluckReturnType,
   RawCursorPaginatedData,
   RawPaginatedData,
+  Selectable,
+  SqlFunction,
+  SqlFunctionReturnType,
   StreamOptions,
   UpsertOptionsRawBuilder,
   WriteQueryParam,
@@ -112,21 +115,21 @@ export class QueryBuilder<
   /**
    * @description Adds a SELECT condition to the query with type safety.
    * @description Can be stacked multiple times
-   * @description Supports: "column", "table.column", "column as alias", "*", "table.*"
+   * @description Supports: "column", "table.column", "*", "table.*", or [column, alias] tuples
    * @example
    * ```ts
    * const user = await sql.query("users").select("name", "age").one();
    * // user type: { name: any, age: any } | null
    *
-   * const user = await sql.query("users").select("name as userName").one();
+   * const user = await sql.query("users").select(["name", "userName"]).one();
    * // user type: { userName: any } | null
    * ```
    */
   // @ts-expect-error - intentionally returns different type for type-safety
-  override select<Columns extends readonly string[]>(
+  override select<const Columns extends readonly Selectable[]>(
     ...columns: Columns
   ): QueryBuilder<T, ComposeBuildRawSelect<S, Columns>> {
-    super.select(...columns);
+    super.select(...(columns as unknown as Selectable[]));
     return this as unknown as QueryBuilder<
       T,
       ComposeBuildRawSelect<S, Columns>
@@ -159,6 +162,37 @@ export class QueryBuilder<
   override clearSelect(): QueryBuilder<T, Record<string, any>> {
     super.clearSelect();
     return this as unknown as QueryBuilder<T, Record<string, any>>;
+  }
+
+  /**
+   * @description Selects a SQL function applied to a column with a typed alias.
+   * @description Provides intellisense for common SQL functions while accepting any custom function.
+   * @description Return type is auto-inferred based on function name (number for count/sum/avg, string for upper/lower/trim, etc.)
+   * @param sqlFunc The SQL function name (count, sum, avg, min, max, upper, lower, etc.)
+   * @param column The column to apply the function to (use "*" for count(*))
+   * @param alias The alias for the result
+   * @example
+   * ```ts
+   * const result = await sql.query("users")
+   *   .selectFunc("count", "*", "total")
+   *   .one();
+   * // result type: { total: number } | null - auto-inferred!
+   * ```
+   */
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override selectFunc<F extends SqlFunction, Alias extends string>(
+    sqlFunc: F,
+    column: string,
+    alias: Alias,
+  ): QueryBuilder<
+    T,
+    ComposeRawSelect<S, { [K in Alias]: SqlFunctionReturnType<F> }>
+  > {
+    super.selectFunc(sqlFunc, column, alias);
+    return this as unknown as QueryBuilder<
+      T,
+      ComposeRawSelect<S, { [K in Alias]: SqlFunctionReturnType<F> }>
+    >;
   }
 
   /**
@@ -250,200 +284,6 @@ export class QueryBuilder<
     return this as unknown as QueryBuilder<
       T,
       ComposeRawSelect<S, { [K in Alias]: ValueType }>
-    >;
-  }
-
-  // @ts-expect-error - intentionally returns different type for type-safety
-  override selectCount<Alias extends string = string>(
-    column: ModelKey<T> | "*" | string,
-    alias: Alias,
-  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: number }>> {
-    super.selectCount(column as string, alias);
-    return this as unknown as QueryBuilder<
-      T,
-      ComposeRawSelect<S, { [K in Alias]: number }>
-    >;
-  }
-
-  // @ts-expect-error - intentionally returns different type for type-safety
-  override selectSum<Alias extends string = string>(
-    column: ModelKey<T> | string,
-    alias: Alias,
-  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: number }>> {
-    super.selectSum(column as string, alias);
-    return this as unknown as QueryBuilder<
-      T,
-      ComposeRawSelect<S, { [K in Alias]: number }>
-    >;
-  }
-
-  // @ts-expect-error - intentionally returns different type for type-safety
-  override selectAvg<Alias extends string = string>(
-    column: ModelKey<T> | string,
-    alias: Alias,
-  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: number }>> {
-    super.selectAvg(column as string, alias);
-    return this as unknown as QueryBuilder<
-      T,
-      ComposeRawSelect<S, { [K in Alias]: number }>
-    >;
-  }
-
-  // @ts-expect-error - intentionally returns different type for type-safety
-  override selectMin<Alias extends string = string>(
-    column: ModelKey<T> | string,
-    alias: Alias,
-  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: any }>> {
-    super.selectMin(column as string, alias);
-    return this as unknown as QueryBuilder<
-      T,
-      ComposeRawSelect<S, { [K in Alias]: any }>
-    >;
-  }
-
-  // @ts-expect-error - intentionally returns different type for type-safety
-  override selectMax<Alias extends string = string>(
-    column: ModelKey<T> | string,
-    alias: Alias,
-  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: any }>> {
-    super.selectMax(column as string, alias);
-    return this as unknown as QueryBuilder<
-      T,
-      ComposeRawSelect<S, { [K in Alias]: any }>
-    >;
-  }
-
-  // @ts-expect-error - intentionally returns different type for type-safety
-  override selectCountDistinct<Alias extends string = string>(
-    column: ModelKey<T> | string,
-    alias: Alias,
-  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: number }>> {
-    super.selectCountDistinct(column as string, alias);
-    return this as unknown as QueryBuilder<
-      T,
-      ComposeRawSelect<S, { [K in Alias]: number }>
-    >;
-  }
-
-  // @ts-expect-error - intentionally returns different type for type-safety
-  override selectUpper<Alias extends string = string>(
-    column: ModelKey<T> | string,
-    alias: Alias,
-  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: string }>> {
-    super.selectUpper(column as string, alias);
-    return this as unknown as QueryBuilder<
-      T,
-      ComposeRawSelect<S, { [K in Alias]: string }>
-    >;
-  }
-
-  // @ts-expect-error - intentionally returns different type for type-safety
-  override selectLower<Alias extends string = string>(
-    column: ModelKey<T> | string,
-    alias: Alias,
-  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: string }>> {
-    super.selectLower(column as string, alias);
-    return this as unknown as QueryBuilder<
-      T,
-      ComposeRawSelect<S, { [K in Alias]: string }>
-    >;
-  }
-
-  // @ts-expect-error - intentionally returns different type for type-safety
-  override selectLength<Alias extends string = string>(
-    column: ModelKey<T> | string,
-    alias: Alias,
-  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: number }>> {
-    super.selectLength(column as string, alias);
-    return this as unknown as QueryBuilder<
-      T,
-      ComposeRawSelect<S, { [K in Alias]: number }>
-    >;
-  }
-
-  // @ts-expect-error - intentionally returns different type for type-safety
-  override selectTrim<Alias extends string = string>(
-    column: ModelKey<T> | string,
-    alias: Alias,
-  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: string }>> {
-    super.selectTrim(column as string, alias);
-    return this as unknown as QueryBuilder<
-      T,
-      ComposeRawSelect<S, { [K in Alias]: string }>
-    >;
-  }
-
-  // @ts-expect-error - intentionally returns different type for type-safety
-  override selectAbs<Alias extends string = string>(
-    column: ModelKey<T> | string,
-    alias: Alias,
-  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: number }>> {
-    super.selectAbs(column as string, alias);
-    return this as unknown as QueryBuilder<
-      T,
-      ComposeRawSelect<S, { [K in Alias]: number }>
-    >;
-  }
-
-  // @ts-expect-error - intentionally returns different type for type-safety
-  override selectRound<Alias extends string = string>(
-    column: ModelKey<T> | string,
-    decimals: number,
-    alias: Alias,
-  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: number }>> {
-    super.selectRound(column as string, decimals, alias);
-    return this as unknown as QueryBuilder<
-      T,
-      ComposeRawSelect<S, { [K in Alias]: number }>
-    >;
-  }
-
-  // @ts-expect-error - intentionally returns different type for type-safety
-  override selectCoalesce<ValueType = any, Alias extends string = string>(
-    column: ModelKey<T> | string,
-    defaultValue: string | number,
-    alias: Alias,
-  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: ValueType }>> {
-    super.selectCoalesce(column as string, defaultValue, alias);
-    return this as unknown as QueryBuilder<
-      T,
-      ComposeRawSelect<S, { [K in Alias]: ValueType }>
-    >;
-  }
-
-  // @ts-expect-error - intentionally returns different type for type-safety
-  override selectCeil<Alias extends string = string>(
-    column: ModelKey<T> | string,
-    alias: Alias,
-  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: number }>> {
-    super.selectCeil(column as string, alias);
-    return this as unknown as QueryBuilder<
-      T,
-      ComposeRawSelect<S, { [K in Alias]: number }>
-    >;
-  }
-
-  // @ts-expect-error - intentionally returns different type for type-safety
-  override selectFloor<Alias extends string = string>(
-    column: ModelKey<T> | string,
-    alias: Alias,
-  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: number }>> {
-    super.selectFloor(column as string, alias);
-    return this as unknown as QueryBuilder<
-      T,
-      ComposeRawSelect<S, { [K in Alias]: number }>
-    >;
-  }
-
-  // @ts-expect-error - intentionally returns different type for type-safety
-  override selectSqrt<Alias extends string = string>(
-    column: ModelKey<T> | string,
-    alias: Alias,
-  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: number }>> {
-    super.selectSqrt(column as string, alias);
-    return this as unknown as QueryBuilder<
-      T,
-      ComposeRawSelect<S, { [K in Alias]: number }>
     >;
   }
 

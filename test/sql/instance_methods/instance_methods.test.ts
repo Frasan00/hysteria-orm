@@ -562,6 +562,730 @@ describe(`[${env.DB_TYPE}] Instance Methods - mergeProps()`, () => {
   });
 });
 
+describe(`[${env.DB_TYPE}] Instance Methods - Query Results (without select)`, () => {
+  test("should have instance methods available on query result from one()", async () => {
+    const insertedUser = await UserFactory.userWithUuid(1);
+
+    const user = await UserWithUuid.query().where("id", insertedUser.id).one();
+
+    expect(user).not.toBeNull();
+    expect(typeof user!.mergeProps).toBe("function");
+    expect(typeof user!.save).toBe("function");
+    expect(typeof user!.update).toBe("function");
+    expect(typeof user!.delete).toBe("function");
+    expect(typeof user!.refresh).toBe("function");
+    expect(typeof user!.softDelete).toBe("function");
+  });
+
+  test("should have instance methods available on query result from many()", async () => {
+    await UserFactory.userWithUuid(3);
+
+    const users = await UserWithUuid.query().many();
+
+    expect(users.length).toBeGreaterThan(0);
+    const user = users[0];
+    expect(typeof user.mergeProps).toBe("function");
+    expect(typeof user.save).toBe("function");
+    expect(typeof user.update).toBe("function");
+    expect(typeof user.delete).toBe("function");
+    expect(typeof user.refresh).toBe("function");
+    expect(typeof user.softDelete).toBe("function");
+  });
+
+  test("should be able to use mergeProps on query result", async () => {
+    const insertedUser = await UserFactory.userWithUuid(1);
+
+    const user = await UserWithUuid.query()
+      .where("id", insertedUser.id)
+      .oneOrFail();
+
+    user.mergeProps({ name: "Merged from Query" });
+    expect(user.name).toBe("Merged from Query");
+  });
+
+  test("should be able to use update on query result", async () => {
+    if (env.DB_TYPE === "mssql") return;
+
+    const insertedUser = await UserFactory.userWithUuid(1);
+
+    const user = await UserWithUuid.query()
+      .where("id", insertedUser.id)
+      .oneOrFail();
+
+    await user.update({ name: "Updated from Query" });
+
+    const refreshedUser = await UserWithUuid.findOne({
+      where: { id: insertedUser.id },
+    });
+
+    expect(refreshedUser?.name).toBe("Updated from Query");
+  });
+
+  test("should be able to use save on query result", async () => {
+    if (env.DB_TYPE === "mssql") return;
+
+    const insertedUser = await UserFactory.userWithUuid(1);
+
+    const user = await UserWithUuid.query()
+      .where("id", insertedUser.id)
+      .oneOrFail();
+
+    user.name = "Saved from Query";
+    await user.save();
+
+    const refreshedUser = await UserWithUuid.findOne({
+      where: { id: insertedUser.id },
+    });
+
+    expect(refreshedUser?.name).toBe("Saved from Query");
+  });
+
+  test("should be able to use refresh on query result", async () => {
+    if (env.DB_TYPE === "mssql") return;
+
+    const insertedUser = await UserFactory.userWithUuid(1);
+
+    const user = await UserWithUuid.query()
+      .where("id", insertedUser.id)
+      .oneOrFail();
+
+    await UserWithUuid.updateRecord(user as UserWithUuid, {
+      name: "DB Updated",
+    });
+
+    await user.refresh();
+    expect(user.name).toBe("DB Updated");
+  });
+
+  test("should be able to use delete on query result", async () => {
+    const insertedUser = await UserFactory.userWithUuid(1);
+
+    const user = await UserWithUuid.query()
+      .where("id", insertedUser.id)
+      .oneOrFail();
+
+    await user.delete();
+
+    const deletedUser = await UserWithUuid.query()
+      .where("id", insertedUser.id)
+      .many({ ignoreHooks: ["beforeFetch"] });
+
+    expect(deletedUser.length).toBe(0);
+  });
+
+  test("should be able to use softDelete on query result", async () => {
+    if (env.DB_TYPE === "mssql") return;
+
+    const insertedUser = await UserFactory.userWithUuid(1);
+
+    const user = await UserWithUuid.query()
+      .where("id", insertedUser.id)
+      .oneOrFail();
+
+    await user.softDelete();
+
+    const softDeletedUser = await UserWithUuid.findOne({
+      where: { id: insertedUser.id },
+    });
+
+    expect(softDeletedUser).toBeNull();
+
+    const allUsers = await UserWithUuid.query()
+      .where("id", insertedUser.id)
+      .many({ ignoreHooks: ["beforeFetch"] });
+
+    expect(allUsers.length).toBe(1);
+    expect(allUsers[0].deletedAt).not.toBeNull();
+  });
+});
+
+describe(`[${env.DB_TYPE}] Instance Methods - Query Results (with select)`, () => {
+  test("should have instance methods available when using select()", async () => {
+    const insertedUser = await UserFactory.userWithUuid(1);
+
+    const user = await UserWithUuid.query()
+      .select("id", "name", "email")
+      .where("id", insertedUser.id)
+      .one();
+
+    expect(user).not.toBeNull();
+    expect(typeof user!.mergeProps).toBe("function");
+    expect(typeof user!.save).toBe("function");
+    expect(typeof user!.update).toBe("function");
+    expect(typeof user!.delete).toBe("function");
+    expect(typeof user!.refresh).toBe("function");
+    expect(typeof user!.softDelete).toBe("function");
+  });
+
+  test("should have instance methods available when using select with aliases", async () => {
+    const insertedUser = await UserFactory.userWithUuid(1);
+
+    const user = await UserWithUuid.query()
+      .select("id", ["name", "userName"], ["email", "userEmail"])
+      .where("id", insertedUser.id)
+      .one();
+
+    expect(user).not.toBeNull();
+    expect(typeof user!.mergeProps).toBe("function");
+    expect(typeof user!.save).toBe("function");
+    expect(typeof user!.update).toBe("function");
+    expect(typeof user!.delete).toBe("function");
+    expect(typeof user!.refresh).toBe("function");
+    expect(typeof user!.softDelete).toBe("function");
+  });
+
+  test("should be able to use update on query result with select", async () => {
+    const insertedUser = await UserFactory.userWithUuid(1);
+
+    const user = await UserWithUuid.query()
+      .select("id", "name")
+      .where("id", insertedUser.id)
+      .oneOrFail();
+
+    await user.update({ name: "Updated with Select" });
+
+    const refreshedUser = await UserWithUuid.findOne({
+      where: { id: insertedUser.id },
+    });
+
+    expect(refreshedUser?.name).toBe("Updated with Select");
+  });
+
+  test("should be able to use save on query result with select", async () => {
+    const insertedUser = await UserFactory.userWithUuid(1);
+
+    const user = await UserWithUuid.query()
+      .select("id", "name", "email", "age", "status", "isActive")
+      .where("id", insertedUser.id)
+      .oneOrFail();
+
+    user.name = "Saved with Select";
+    await user.save();
+
+    const refreshedUser = await UserWithUuid.findOne({
+      where: { id: insertedUser.id },
+    });
+
+    expect(refreshedUser?.name).toBe("Saved with Select");
+  });
+
+  test("should be able to use delete on query result with select", async () => {
+    const insertedUser = await UserFactory.userWithUuid(1);
+
+    const user = await UserWithUuid.query()
+      .select("id", "name")
+      .where("id", insertedUser.id)
+      .oneOrFail();
+
+    await user.delete();
+
+    const deletedUser = await UserWithUuid.query()
+      .where("id", insertedUser.id)
+      .many({ ignoreHooks: ["beforeFetch"] });
+
+    expect(deletedUser.length).toBe(0);
+  });
+
+  test("should be able to use refresh on query result with select", async () => {
+    const insertedUser = await UserFactory.userWithUuid(1);
+
+    const user = await UserWithUuid.query()
+      .select("id", "name")
+      .where("id", insertedUser.id)
+      .oneOrFail();
+
+    await UserWithUuid.updateRecord({ id: insertedUser.id } as UserWithUuid, {
+      name: "DB Updated Select",
+    });
+
+    await user.refresh();
+    expect(user.name).toBe("DB Updated Select");
+  });
+
+  test("should be able to use softDelete on query result with select", async () => {
+    const insertedUser = await UserFactory.userWithUuid(1);
+
+    const user = await UserWithUuid.query()
+      .select("id", "name")
+      .where("id", insertedUser.id)
+      .oneOrFail();
+
+    await user.softDelete();
+
+    const softDeletedUser = await UserWithUuid.findOne({
+      where: { id: insertedUser.id },
+    });
+
+    expect(softDeletedUser).toBeNull();
+  });
+
+  test("should be able to use mergeProps on query result with select", async () => {
+    const insertedUser = await UserFactory.userWithUuid(1);
+
+    const user = await UserWithUuid.query()
+      .select("id", "name", "email")
+      .where("id", insertedUser.id)
+      .oneOrFail();
+
+    user.mergeProps({ name: "Merged with Select" });
+    expect(user.name).toBe("Merged with Select");
+  });
+
+  test("should work with selectRaw and instance methods", async () => {
+    const insertedUser = await UserFactory.userWithUuid(1);
+
+    const user = await UserWithUuid.query()
+      .select("id", "name")
+      .selectRaw<{ customField: string }>("'test' as customField")
+      .where("id", insertedUser.id)
+      .oneOrFail();
+
+    // Verify instance methods are available
+    expect(typeof user.mergeProps).toBe("function");
+    expect(typeof user.save).toBe("function");
+    expect(typeof user.update).toBe("function");
+    expect(typeof user.delete).toBe("function");
+    expect(typeof user.refresh).toBe("function");
+    expect(typeof user.softDelete).toBe("function");
+
+    // Verify selectRaw data is present
+    expect(user.customField).toBe("test");
+  });
+});
+
+describe(`[${env.DB_TYPE}] Instance Methods - Static Find Methods`, () => {
+  test("should have instance methods on Model.findOne() result", async () => {
+    const insertedUser = await UserFactory.userWithUuid(1);
+
+    const user = await UserWithUuid.findOne({
+      where: { id: insertedUser.id },
+    });
+
+    expect(user).not.toBeNull();
+    expect(typeof user!.mergeProps).toBe("function");
+    expect(typeof user!.save).toBe("function");
+    expect(typeof user!.update).toBe("function");
+    expect(typeof user!.delete).toBe("function");
+    expect(typeof user!.refresh).toBe("function");
+    expect(typeof user!.softDelete).toBe("function");
+  });
+
+  test("should have instance methods on Model.findOne() with select", async () => {
+    const insertedUser = await UserFactory.userWithUuid(1);
+
+    const user = await UserWithUuid.findOne({
+      select: ["id", "name", "email"],
+      where: { id: insertedUser.id },
+    });
+
+    expect(user).not.toBeNull();
+    expect(typeof user!.mergeProps).toBe("function");
+    expect(typeof user!.save).toBe("function");
+    expect(typeof user!.update).toBe("function");
+    expect(typeof user!.delete).toBe("function");
+    expect(typeof user!.refresh).toBe("function");
+    expect(typeof user!.softDelete).toBe("function");
+  });
+
+  test("should be able to use update on Model.findOne() result", async () => {
+    if (env.DB_TYPE === "mssql") return;
+
+    const insertedUser = await UserFactory.userWithUuid(1);
+
+    const user = await UserWithUuid.findOne({
+      where: { id: insertedUser.id },
+    });
+
+    expect(user).not.toBeNull();
+    await user!.update({ name: "Updated via findOne" });
+
+    const refreshedUser = await UserWithUuid.findOne({
+      where: { id: insertedUser.id },
+    });
+
+    expect(refreshedUser?.name).toBe("Updated via findOne");
+  });
+
+  test("should have instance methods on Model.findOneOrFail() result", async () => {
+    const insertedUser = await UserFactory.userWithUuid(1);
+
+    const user = await UserWithUuid.findOneOrFail({
+      where: { id: insertedUser.id },
+    });
+
+    expect(typeof user.mergeProps).toBe("function");
+    expect(typeof user.save).toBe("function");
+    expect(typeof user.update).toBe("function");
+    expect(typeof user.delete).toBe("function");
+    expect(typeof user.refresh).toBe("function");
+    expect(typeof user.softDelete).toBe("function");
+  });
+
+  test("should be able to use delete on Model.findOneOrFail() result", async () => {
+    const insertedUser = await UserFactory.userWithUuid(1);
+
+    const user = await UserWithUuid.findOneOrFail({
+      where: { id: insertedUser.id },
+    });
+
+    await user.delete();
+
+    const deletedUser = await UserWithUuid.query()
+      .where("id", insertedUser.id)
+      .many({ ignoreHooks: ["beforeFetch"] });
+
+    expect(deletedUser.length).toBe(0);
+  });
+
+  test("should have instance methods on Model.find() results", async () => {
+    await UserFactory.userWithUuid(3);
+
+    const users = await UserWithUuid.find({});
+
+    expect(users.length).toBeGreaterThan(0);
+    const user = users[0];
+    expect(typeof user.mergeProps).toBe("function");
+    expect(typeof user.save).toBe("function");
+    expect(typeof user.update).toBe("function");
+    expect(typeof user.delete).toBe("function");
+    expect(typeof user.refresh).toBe("function");
+    expect(typeof user.softDelete).toBe("function");
+  });
+
+  test("should have instance methods on Model.find() with select", async () => {
+    await UserFactory.userWithUuid(3);
+
+    const users = await UserWithUuid.find({
+      select: ["id", "name"],
+    });
+
+    expect(users.length).toBeGreaterThan(0);
+    const user = users[0];
+    expect(typeof user.mergeProps).toBe("function");
+    expect(typeof user.save).toBe("function");
+    expect(typeof user.update).toBe("function");
+  });
+
+  test("should be able to use softDelete on Model.find() result", async () => {
+    if (env.DB_TYPE === "mssql") return;
+
+    const insertedUser = await UserFactory.userWithUuid(1);
+
+    const users = await UserWithUuid.find({
+      where: { id: insertedUser.id },
+    });
+
+    expect(users.length).toBe(1);
+    await users[0].softDelete();
+
+    const softDeletedUser = await UserWithUuid.findOne({
+      where: { id: insertedUser.id },
+    });
+
+    expect(softDeletedUser).toBeNull();
+  });
+
+  test("should have instance methods on Model.findBy() results", async () => {
+    const insertedUser = await UserFactory.userWithUuid(1);
+
+    const users = await UserWithUuid.findBy("id", insertedUser.id!);
+
+    expect(users.length).toBe(1);
+    const user = users[0];
+    expect(typeof user.mergeProps).toBe("function");
+    expect(typeof user.save).toBe("function");
+    expect(typeof user.update).toBe("function");
+    expect(typeof user.delete).toBe("function");
+    expect(typeof user.refresh).toBe("function");
+    expect(typeof user.softDelete).toBe("function");
+  });
+
+  test("should be able to use refresh on Model.findBy() result", async () => {
+    const insertedUser = await UserFactory.userWithUuid(1);
+
+    const users = await UserWithUuid.findBy("id", insertedUser.id!);
+
+    expect(users.length).toBe(1);
+    const user = users[0];
+
+    await UserWithUuid.updateRecord({ id: insertedUser.id } as UserWithUuid, {
+      name: "Updated in DB",
+    });
+
+    await user.refresh();
+    expect(user.name).toBe("Updated in DB");
+  });
+
+  test("should have instance methods on Model.findOneBy() result", async () => {
+    const insertedUser = await UserFactory.userWithUuid(1);
+
+    const user = await UserWithUuid.findOneBy("id", insertedUser.id!);
+
+    expect(user).not.toBeNull();
+    expect(typeof user!.mergeProps).toBe("function");
+    expect(typeof user!.save).toBe("function");
+    expect(typeof user!.update).toBe("function");
+    expect(typeof user!.delete).toBe("function");
+    expect(typeof user!.refresh).toBe("function");
+    expect(typeof user!.softDelete).toBe("function");
+  });
+
+  test("should be able to use update on Model.findOneBy() result", async () => {
+    if (env.DB_TYPE === "mssql") return;
+
+    const insertedUser = await UserFactory.userWithUuid(1);
+
+    const user = await UserWithUuid.findOneBy("id", insertedUser.id!);
+
+    expect(user).not.toBeNull();
+    await user!.update({ name: "Updated via findOneBy" });
+
+    const refreshedUser = await UserWithUuid.findOne({
+      where: { id: insertedUser.id },
+    });
+
+    expect(refreshedUser?.name).toBe("Updated via findOneBy");
+  });
+
+  test("should have instance methods on Model.findOneByPrimaryKey() result", async () => {
+    const insertedUser = await UserFactory.userWithUuid(1);
+
+    const user = await UserWithUuid.findOneByPrimaryKey(insertedUser.id!);
+
+    expect(user).not.toBeNull();
+    expect(typeof user!.mergeProps).toBe("function");
+    expect(typeof user!.save).toBe("function");
+    expect(typeof user!.update).toBe("function");
+    expect(typeof user!.delete).toBe("function");
+    expect(typeof user!.refresh).toBe("function");
+    expect(typeof user!.softDelete).toBe("function");
+  });
+
+  test("should be able to use save on Model.findOneByPrimaryKey() result", async () => {
+    if (env.DB_TYPE === "mssql") return;
+
+    const insertedUser = await UserFactory.userWithUuid(1);
+
+    const user = await UserWithUuid.findOneByPrimaryKey(insertedUser.id!);
+
+    expect(user).not.toBeNull();
+    user!.name = "Saved via findOneByPrimaryKey";
+    await user!.save();
+
+    const refreshedUser = await UserWithUuid.findOne({
+      where: { id: insertedUser.id },
+    });
+
+    expect(refreshedUser?.name).toBe("Saved via findOneByPrimaryKey");
+  });
+
+  test("should have instance methods on Model.all() results", async () => {
+    await UserFactory.userWithUuid(3);
+
+    const users = await UserWithUuid.all();
+
+    expect(users.length).toBeGreaterThan(0);
+    const user = users[0];
+    expect(typeof user.mergeProps).toBe("function");
+    expect(typeof user.save).toBe("function");
+    expect(typeof user.update).toBe("function");
+    expect(typeof user.delete).toBe("function");
+    expect(typeof user.refresh).toBe("function");
+    expect(typeof user.softDelete).toBe("function");
+  });
+
+  test("should be able to use delete on Model.all() result", async () => {
+    const insertedUser = await UserFactory.userWithUuid(1);
+
+    const users = await UserWithUuid.all();
+    const userToDelete = users.find(
+      (u) => u.id?.toLowerCase() === insertedUser.id?.toLowerCase(),
+    );
+
+    expect(userToDelete).toBeDefined();
+    await userToDelete!.delete();
+
+    const deletedUser = await UserWithUuid.query()
+      .where("id", insertedUser.id!)
+      .many({ ignoreHooks: ["beforeFetch"] });
+
+    expect(deletedUser.length).toBe(0);
+  });
+
+  test("should have instance methods on Model.first() result", async () => {
+    await UserFactory.userWithUuid(1);
+
+    const user = await UserWithUuid.first();
+
+    expect(user).not.toBeNull();
+    expect(typeof user!.mergeProps).toBe("function");
+    expect(typeof user!.save).toBe("function");
+    expect(typeof user!.update).toBe("function");
+    expect(typeof user!.delete).toBe("function");
+    expect(typeof user!.refresh).toBe("function");
+    expect(typeof user!.softDelete).toBe("function");
+  });
+
+  test("should be able to use mergeProps and save on Model.first() result", async () => {
+    if (env.DB_TYPE === "mssql") return;
+
+    const insertedUser = await UserFactory.userWithUuid(1);
+
+    const user = await UserWithUuid.first();
+
+    expect(user).not.toBeNull();
+    user!.mergeProps({ name: "Merged via first" });
+    await user!.save();
+
+    const refreshedUser = await UserWithUuid.findOne({
+      where: { id: insertedUser.id },
+    });
+
+    expect(refreshedUser?.name).toBe("Merged via first");
+  });
+
+  test("should have instance methods on Model.insert() result", async () => {
+    const user = await UserWithUuid.insert({
+      name: "Insert Test",
+      email: "insert@test.com",
+      age: 25,
+      status: UserStatus.active,
+      isActive: true,
+    });
+
+    expect(user.id).toBeDefined();
+    expect(typeof user.mergeProps).toBe("function");
+    expect(typeof user.save).toBe("function");
+    expect(typeof user.update).toBe("function");
+    expect(typeof user.delete).toBe("function");
+    expect(typeof user.refresh).toBe("function");
+    expect(typeof user.softDelete).toBe("function");
+  });
+
+  test("should be able to use update on Model.insert() result", async () => {
+    const user = await UserWithUuid.insert({
+      name: "Insert Then Update",
+      email: "insertupdate@test.com",
+      age: 25,
+      status: UserStatus.active,
+      isActive: true,
+    });
+
+    await user.update({ name: "Updated After Insert" });
+
+    const refreshedUser = await UserWithUuid.findOne({
+      where: { id: user.id },
+    });
+
+    expect(refreshedUser?.name).toBe("Updated After Insert");
+  });
+
+  test("should have instance methods on Model.insertMany() results", async () => {
+    const users = await UserWithUuid.insertMany([
+      {
+        name: "Batch User 1",
+        email: "batch1@test.com",
+        age: 25,
+        status: UserStatus.active,
+        isActive: true,
+      },
+      {
+        name: "Batch User 2",
+        email: "batch2@test.com",
+        age: 30,
+        status: UserStatus.active,
+        isActive: true,
+      },
+    ]);
+
+    expect(users.length).toBe(2);
+    for (const user of users) {
+      expect(typeof user.mergeProps).toBe("function");
+      expect(typeof user.save).toBe("function");
+      expect(typeof user.update).toBe("function");
+      expect(typeof user.delete).toBe("function");
+      expect(typeof user.refresh).toBe("function");
+      expect(typeof user.softDelete).toBe("function");
+    }
+  });
+
+  test("should have instance methods on Model.upsert() result", async () => {
+    const user = await UserWithUuid.upsert(
+      { email: "upsert@test.com" },
+      {
+        name: "Upsert User",
+        email: "upsert@test.com",
+        age: 25,
+        status: UserStatus.active,
+        isActive: true,
+      },
+    );
+
+    expect(user.id).toBeDefined();
+    expect(typeof user.mergeProps).toBe("function");
+    expect(typeof user.save).toBe("function");
+    expect(typeof user.update).toBe("function");
+    expect(typeof user.delete).toBe("function");
+    expect(typeof user.refresh).toBe("function");
+    expect(typeof user.softDelete).toBe("function");
+  });
+
+  test("should be able to use refresh on Model.upsert() result", async () => {
+    const user = await UserWithUuid.upsert(
+      { email: "upsertrefresh@test.com" },
+      {
+        name: "Upsert Refresh User",
+        email: "upsertrefresh@test.com",
+        age: 25,
+        status: UserStatus.active,
+        isActive: true,
+      },
+    );
+
+    await UserWithUuid.updateRecord({ id: user.id } as UserWithUuid, {
+      name: "Updated in DB after upsert",
+    });
+
+    await user.refresh();
+    expect(user.name).toBe("Updated in DB after upsert");
+  });
+
+  test("should have instance methods on Model.updateRecord() result", async () => {
+    const insertedUser = await UserFactory.userWithUuid(1);
+
+    const user = await UserWithUuid.updateRecord(
+      { id: insertedUser.id } as UserWithUuid,
+      { name: "Updated Record" },
+    );
+
+    expect(typeof user.mergeProps).toBe("function");
+    expect(typeof user.save).toBe("function");
+    expect(typeof user.update).toBe("function");
+    expect(typeof user.delete).toBe("function");
+    expect(typeof user.refresh).toBe("function");
+    expect(typeof user.softDelete).toBe("function");
+  });
+
+  test("should be able to chain operations on Model.updateRecord() result", async () => {
+    if (env.DB_TYPE === "mssql") return;
+
+    const insertedUser = await UserFactory.userWithUuid(1);
+
+    const user = await UserWithUuid.updateRecord(
+      { id: insertedUser.id } as UserWithUuid,
+      { name: "First Update" },
+    );
+
+    await user.update({ name: "Second Update" });
+
+    const refreshedUser = await UserWithUuid.findOne({
+      where: { id: insertedUser.id },
+    });
+
+    expect(refreshedUser?.name).toBe("Second Update");
+  });
+});
+
 describe(`[${env.DB_TYPE}] Instance Methods - Integration Tests`, () => {
   test("should chain instance methods correctly", async () => {
     if (env.DB_TYPE === "mssql") {

@@ -36,7 +36,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
 
     const postsWithUsers = await PostWithUuid.query()
       .select("posts_with_uuid.*")
-      .select("users_with_uuid.name as userName")
+      .select(["users_with_uuid.name", "userName"])
       .leftJoin(
         "users_with_uuid",
         "users_with_uuid.id",
@@ -71,7 +71,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
 
     const postsWithUsers = await PostWithUuid.query()
       .select("posts_with_uuid.*")
-      .select("users_with_uuid.name as userName")
+      .select(["users_with_uuid.name", "userName"])
       .leftJoin(
         "users_with_uuid",
         "users_with_uuid.id",
@@ -101,7 +101,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
 
     const postsWithUsers = await PostWithUuid.query()
       .select("posts_with_uuid.*")
-      .select("users_with_uuid.name as userName")
+      .select(["users_with_uuid.name", "userName"])
       .rightJoin(
         "users_with_uuid",
         "users_with_uuid.id",
@@ -131,7 +131,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
 
     const postsWithUsers = await PostWithUuid.query()
       .select("posts_with_uuid.*")
-      .select("users_with_uuid.name as userName")
+      .select(["users_with_uuid.name", "userName"])
       .join(UserWithUuid, "id", "userId")
       .whereIn(
         "posts_with_uuid.id",
@@ -157,7 +157,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
 
     const postsWithUsers = await PostWithUuid.query()
       .select("posts_with_uuid.*")
-      .select("users_with_uuid.name as userName")
+      .select(["users_with_uuid.name", "userName"])
       .leftJoin(UserWithUuid, "id", "userId")
       .whereIn(
         "posts_with_uuid.id",
@@ -183,7 +183,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
 
     const postsWithUsers = await PostWithUuid.query()
       .select("posts_with_uuid.*")
-      .select("users_with_uuid.name as userName")
+      .select(["users_with_uuid.name", "userName"])
       .join(UserWithUuid, "id", "userId", ">")
       .whereIn(
         "posts_with_uuid.id",
@@ -208,7 +208,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
 
     const postsWithUsers = await PostWithUuid.query()
       .select("posts_with_uuid.*")
-      .select("users_with_uuid.name as userName")
+      .select(["users_with_uuid.name", "userName"])
       .joinRaw(
         "users_with_uuid ON users_with_uuid.id = posts_with_uuid.user_id",
       )
@@ -238,7 +238,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
 
     const postsWithUsers = await PostWithUuid.query()
       .select("posts_with_uuid.*")
-      .select("users_with_uuid.name as userName")
+      .select(["users_with_uuid.name", "userName"])
       .leftJoinRaw(
         "users_with_uuid ON users_with_uuid.id = posts_with_uuid.user_id",
       )
@@ -268,7 +268,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
 
     const postsWithUsers = await PostWithUuid.query()
       .select("posts_with_uuid.*")
-      .select("users_with_uuid.name as userName")
+      .select(["users_with_uuid.name", "userName"])
       .rightJoinRaw(
         "users_with_uuid ON users_with_uuid.id = posts_with_uuid.user_id",
       )
@@ -302,7 +302,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
     // Use INNER JOIN to filter results based on join condition
     const postsWithUsers = await PostWithUuid.query()
       .select("posts_with_uuid.*")
-      .select("users_with_uuid.name as userName")
+      .select(["users_with_uuid.name", "userName"])
       .join(
         "users_with_uuid",
         "users_with_uuid.id",
@@ -340,7 +340,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
     // Use INNER JOIN to filter results based on join condition
     const postsWithUsers = await PostWithUuid.query()
       .select("posts_with_uuid.*")
-      .select("users_with_uuid.name as userName")
+      .select(["users_with_uuid.name", "userName"])
       .join(
         "users_with_uuid",
         "users_with_uuid.id",
@@ -374,7 +374,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
 
     const postsWithUsers = await PostWithUuid.query()
       .select("posts_with_uuid.*")
-      .select("users_with_uuid.name as userName")
+      .select(["users_with_uuid.name", "userName"])
       .innerJoin(
         "users_with_uuid",
         "users_with_uuid.id",
@@ -405,7 +405,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
 
     const postsWithUsers = await PostWithUuid.query()
       .select("posts_with_uuid.*")
-      .select("users_with_uuid.name as userName")
+      .select(["users_with_uuid.name", "userName"])
       .innerJoin(
         "users_with_uuid",
         "users_with_uuid.id",
@@ -435,7 +435,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
 
     const postsWithUsers = await PostWithUuid.query()
       .select("posts_with_uuid.*")
-      .select("users_with_uuid.name as userName")
+      .select(["users_with_uuid.name", "userName"])
       .innerJoin(
         "users_with_uuid",
         "users_with_uuid.id",
@@ -465,7 +465,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
 
     const postsWithUsers = await PostWithUuid.query()
       .select("posts_with_uuid.*")
-      .select("users_with_uuid.name as userName")
+      .select(["users_with_uuid.name", "userName"])
       .innerJoin(UserWithUuid, "id", "userId", "=")
       .whereIn(
         "posts_with_uuid.id",
@@ -491,7 +491,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
 
     const postsWithUsers = await PostWithUuid.query()
       .select("posts_with_uuid.*")
-      .select("users_with_uuid.name as userName")
+      .select(["users_with_uuid.name", "userName"])
       .innerJoin(UserWithUuid, "id", "userId")
       .whereIn(
         "posts_with_uuid.id",
@@ -517,7 +517,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
 
     const postsWithUsers = await PostWithUuid.query()
       .select("posts_with_uuid.*")
-      .select("users_with_uuid.name as userName")
+      .select(["users_with_uuid.name", "userName"])
       .innerJoin(UserWithUuid, "id", "userId")
       .whereIn(
         "posts_with_uuid.id",
@@ -545,7 +545,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
 
     const postsWithUsers = await PostWithUuid.query()
       .select("posts_with_uuid.*")
-      .select("users_with_uuid.name as userName")
+      .select(["users_with_uuid.name", "userName"])
       .innerJoin(
         "users_with_uuid",
         "users_with_uuid.id",
@@ -579,7 +579,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
 
     const postsWithUsers = await PostWithUuid.query()
       .select("posts_with_uuid.*")
-      .select("users_with_uuid.name as userName")
+      .select(["users_with_uuid.name", "userName"])
       .innerJoin(
         "users_with_uuid",
         "users_with_uuid.id",
@@ -614,7 +614,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
 
     const postsWithUsers = await PostWithUuid.query()
       .select("posts_with_uuid.*")
-      .select("users_with_uuid.name as userName")
+      .select(["users_with_uuid.name", "userName"])
       .innerJoin(UserWithUuid, "id", "userId", (q) =>
         q.where("users_with_uuid.id", targetUser.id),
       )
@@ -645,7 +645,7 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
 
     const postsWithUsers = await PostWithUuid.query()
       .select("posts_with_uuid.*")
-      .select("users_with_uuid.name as userName")
+      .select(["users_with_uuid.name", "userName"])
       .innerJoin(UserWithUuid, "id", "userId", "=", (q) =>
         q.where("users_with_uuid.id", targetUser.id),
       )

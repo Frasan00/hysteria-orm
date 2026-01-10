@@ -13,6 +13,7 @@ import type {
 import type { ModelQueryBuilder } from "./model_query_builder/model_query_builder";
 import type {
   BaseModelMethodOptions,
+  ModelQueryResult,
   ModelWithoutRelations,
 } from "./model_types";
 
@@ -115,12 +116,12 @@ export abstract class Model extends Entity {
   static async all<T extends Model>(
     this: new () => T | typeof Model,
     options: BaseModelMethodOptions = {},
-  ): Promise<ModelWithoutRelations<T>[]> {
+  ): Promise<ModelQueryResult<T>[]> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
     return (await modelManager.find({
       ignoreHooks: options.ignoreHooks ? ["afterFetch", "beforeFetch"] : [],
-    })) as ModelWithoutRelations<T>[];
+    })) as ModelQueryResult<T>[];
   }
 
   /**
@@ -155,7 +156,7 @@ export abstract class Model extends Entity {
   static async first<T extends Model>(
     this: new () => T | typeof Model,
     options?: BaseModelMethodOptions,
-  ): Promise<ModelWithoutRelations<T> | null> {
+  ): Promise<ModelQueryResult<T> | null> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
     return modelManager.query().one({
@@ -296,7 +297,7 @@ export abstract class Model extends Entity {
     this: new () => T | typeof Model,
     model: T,
     options: Omit<BaseModelMethodOptions, "ignoreHooks"> = {},
-  ): Promise<ModelWithoutRelations<T> | null> {
+  ): Promise<ModelQueryResult<T> | null> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
     const primaryKey = typeofModel.primaryKey as keyof T;
@@ -308,7 +309,7 @@ export abstract class Model extends Entity {
       return null;
     }
 
-    return refreshedModel;
+    return refreshedModel as ModelQueryResult<T>;
   }
 
   /**
@@ -322,13 +323,13 @@ export abstract class Model extends Entity {
     this: new () => T | typeof Model,
     modelData: Partial<ModelWithoutRelations<T>>,
     options: BaseModelMethodOptions & InsertOptions<T> = {},
-  ): Promise<ModelWithoutRelations<T>> {
+  ): Promise<ModelQueryResult<T>> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
     return modelManager.insert(modelData as T, {
       ignoreHooks: options.ignoreHooks,
       returning: options.returning,
-    });
+    }) as Promise<ModelQueryResult<T>>;
   }
 
   /**
@@ -343,7 +344,7 @@ export abstract class Model extends Entity {
     this: new () => T | typeof Model,
     modelsData: Partial<ModelWithoutRelations<T>>[],
     options: BaseModelMethodOptions & InsertOptions<T> = {},
-  ): Promise<ModelWithoutRelations<T>[]> {
+  ): Promise<ModelQueryResult<T>[]> {
     if (!modelsData.length) {
       return [];
     }
@@ -353,7 +354,7 @@ export abstract class Model extends Entity {
     return modelManager.insertMany(modelsData as T[], {
       ignoreHooks: options.ignoreHooks,
       returning: options.returning,
-    });
+    }) as Promise<ModelQueryResult<T>[]>;
   }
 
   /**
@@ -452,14 +453,14 @@ export abstract class Model extends Entity {
     modelSqlInstance: Partial<T>,
     updatePayload?: Partial<ModelWithoutRelations<T>>,
     options: Omit<BaseModelMethodOptions, "ignoreHooks"> = {},
-  ): Promise<ModelWithoutRelations<T>> {
+  ): Promise<ModelQueryResult<T>> {
     try {
       const typeofModel = this as unknown as typeof Model;
       const modelManager = typeofModel.dispatchModelManager<T>(options);
       updatePayload &&
         typeofModel.combineProps(modelSqlInstance, updatePayload as Partial<T>);
       const updatedModel = await modelManager.updateRecord(modelSqlInstance);
-      return updatedModel;
+      return updatedModel as ModelQueryResult<T>;
     } catch (error) {
       if (
         error instanceof HysteriaError &&
@@ -535,7 +536,7 @@ export abstract class Model extends Entity {
     options: UpsertOptions<T> & BaseModelMethodOptions = {
       updateOnConflict: true,
     },
-  ): Promise<ModelWithoutRelations<T>> {
+  ): Promise<ModelQueryResult<T>> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
     const hasSearchCriteria = Object.keys(searchCriteria).length > 0;
@@ -556,16 +557,16 @@ export abstract class Model extends Entity {
       if (options.updateOnConflict) {
         return (await modelManager.updateRecord(data as T, {
           returning: options.returning as ModelKey<T>[] | undefined,
-        })) as T;
+        })) as ModelQueryResult<T>;
       }
 
-      return doesExist;
+      return doesExist as ModelQueryResult<T>;
     }
 
     return (await modelManager.insert(data as T, {
       ignoreHooks: options.ignoreHooks,
       returning: options.returning ?? (["*"] as ModelKey<T>[]),
-    })) as T;
+    })) as ModelQueryResult<T>;
   }
 
   /**
@@ -579,7 +580,7 @@ export abstract class Model extends Entity {
     options: UpsertOptions<T> & BaseModelMethodOptions = {
       updateOnConflict: true,
     },
-  ): Promise<ModelWithoutRelations<T>[]> {
+  ): Promise<ModelQueryResult<T>[]> {
     if (!data.length) {
       return [];
     }
@@ -617,7 +618,7 @@ export abstract class Model extends Entity {
         upsertResult as T[],
         typeofModel,
         options.returning as string[],
-      )) as unknown as ModelWithoutRelations<T>[];
+      )) as unknown as ModelQueryResult<T>[];
     }
 
     const lookupQuery = modelManager.query();
@@ -673,7 +674,7 @@ export abstract class Model extends Entity {
       value?: string | number | boolean | Date;
     },
     options?: Omit<BaseModelMethodOptions, "ignoreHooks">,
-  ): Promise<ModelWithoutRelations<T>> {
+  ): Promise<ModelQueryResult<T>> {
     const typeofModel = this as unknown as typeof Model;
     const {
       column = typeofModel.softDeleteColumn as ModelKey<T>,
@@ -689,11 +690,11 @@ export abstract class Model extends Entity {
 
     if (typeof value === "string") {
       modelSqlInstance[column as keyof T] = new Date(value) as T[keyof T];
-      return modelSqlInstance as ModelWithoutRelations<T>;
+      return modelSqlInstance as ModelQueryResult<T>;
     }
 
     modelSqlInstance[column as keyof T] = value as T[keyof T];
-    return modelSqlInstance as ModelWithoutRelations<T>;
+    return modelSqlInstance as ModelQueryResult<T>;
   }
 
   /**
