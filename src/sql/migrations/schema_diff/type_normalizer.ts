@@ -29,6 +29,7 @@ export function normalizeColumnType(
           { test: (s) => s === "increment", normalized: "integer" },
           { test: (s) => s === "bigincrement", normalized: "integer" },
           { test: (s) => s.includes("int"), normalized: "integer" },
+          { test: (s) => s === "string", normalized: "varchar" },
           { test: (s) => s.includes("char"), normalized: "varchar" },
           { test: (s) => s.includes("text"), normalized: "text" },
           { test: (s) => s.includes("clob"), normalized: "text" },
@@ -68,7 +69,7 @@ export function normalizeColumnType(
         case "increment":
           return "integer";
         case "tinyint":
-          return "tinyint";
+          return "boolean";
         case "smallint":
           return "smallint";
         case "mediumint":
@@ -86,6 +87,7 @@ export function normalizeColumnType(
         case "decimal":
         case "numeric":
           return "numeric";
+        case "string":
         case "varchar":
         case "character varying":
           return "varchar";
@@ -139,8 +141,11 @@ export function normalizeColumnType(
       if (base.startsWith("time")) return "time";
       if (base === "datetime") return "timestamp";
       switch (base) {
+        case "string":
+        case "varchar":
         case "character varying":
           return "varchar";
+        case "char":
         case "character":
           return "char";
         case "ulid":
@@ -230,6 +235,7 @@ export function normalizeColumnType(
           return "money";
         case "smallmoney":
           return "smallmoney";
+        case "string":
         case "varchar":
         case "character varying":
           return "varchar";
@@ -289,6 +295,8 @@ export function normalizeColumnType(
       if (base.startsWith("timestamp")) return "timestamp";
       if (base.startsWith("interval")) return "interval";
       switch (base) {
+        case "string":
+        case "varchar":
         case "varchar2":
         case "nvarchar2":
         case "character varying":

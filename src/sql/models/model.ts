@@ -56,7 +56,7 @@ import { RelationEnum } from "./relations/relation";
 /**
  * @description Represents a Table in the Database
  */
-export abstract class Model extends Entity {
+export abstract class Model<T extends Model<T> = any> extends Entity {
   declare private "*": string;
 
   /**
@@ -106,8 +106,40 @@ export abstract class Model extends Entity {
     return getPrimaryKey(this);
   }
 
-  constructor() {
+  /**
+   * @description Creates a new instance of the model
+   * @description Use `${Model.from(...)}` to pass initial data to the model or pass initial data to the constructor
+   * @warning For typescript limitations, in order to pass initial data to the constructor directly, you must use generic type inference to pass the model type
+   * @example
+   * ```typescript
+   * class User extends Model<User> {
+   *   @column.string()
+   *   declare name: string;
+   * }
+   *
+   * const user = new User({ name: "John Doe" }); // now the constructor is typed as User
+   * ```
+   */
+  constructor(initialData?: Partial<ModelWithoutRelations<T>>) {
     super();
+    if (initialData) {
+      this.mergeProps(
+        initialData as unknown as Partial<ModelWithoutRelations<this>>,
+      );
+    }
+  }
+
+  /**
+   * @description Returns a model query result from the given initial data
+   * @warning This method does not persist the data to the database, it only creates a new instance of the model with the given data
+   */
+  static from<T extends Model>(
+    this: new () => T | typeof Model,
+    data: Partial<ModelWithoutRelations<T>>,
+  ): ModelQueryResult<T> {
+    const instance = new this() as T;
+    instance.mergeProps(data);
+    return instance as ModelQueryResult<T>;
   }
 
   /**

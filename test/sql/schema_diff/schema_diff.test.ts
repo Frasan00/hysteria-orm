@@ -2,6 +2,7 @@ import { env } from "../../../src/env/env";
 import { Model } from "../../../src/sql/models/model";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import {
+  DecoratorShortcutsModel,
   PostMigrationV1,
   PostMigrationV10,
   PostMigrationV2,
@@ -31,6 +32,7 @@ const TEST_TABLES = [
   "schema_diff_posts",
   "schema_diff_tags",
   "schema_diff_users",
+  "schema_diff_decorator_shortcuts",
 ];
 
 const dbType = env.DB_TYPE || "mysql";
@@ -819,6 +821,68 @@ conditionalDescribe(`[${dbType}] Schema Diff Migration Generation`, () => {
         async (sql) => {
           const finalDiff = await SchemaDiff.makeDiff(sql);
           expect(finalDiff.getSqlStatements().length).toBe(0);
+        },
+      );
+    });
+  });
+
+  describe("Decorator Shortcuts Idempotency", () => {
+    beforeAll(async () => {
+      await dropAllTestTables(baseSql);
+    });
+
+    afterAll(async () => {
+      await dropAllTestTables(baseSql);
+    });
+
+    test("should be idempotent when using @column.string() and other decorator shortcuts", async () => {
+      const SchemaDiff = await getSchemaDiff();
+
+      await SqlDataSource.useConnection(
+        {
+          ...getConnectionConfig(),
+          models: { DecoratorShortcutsModel },
+        },
+        async (sql) => {
+          // First sync - should create the table
+          const firstDiff = await SchemaDiff.makeDiff(sql);
+          const firstStatements = firstDiff.getSqlStatements();
+
+          console.log(
+            "First sync statements:",
+            JSON.stringify(firstStatements, null, 2),
+          );
+
+          expect(firstStatements.length).toBeGreaterThan(0);
+          expect(
+            firstStatements.some((s) =>
+              s.toLowerCase().includes("create table"),
+            ),
+          ).toBe(true);
+
+          await sql.syncSchema();
+
+          // Second sync - should have NO changes (idempotent)
+          const secondDiff = await SchemaDiff.makeDiff(sql);
+          const secondStatements = secondDiff.getSqlStatements();
+
+          console.log(
+            "Second sync statements (should be empty):",
+            JSON.stringify(secondStatements, null, 2),
+          );
+
+          expect(secondStatements.length).toBe(0);
+
+          // Third sync - should still have NO changes
+          const thirdDiff = await SchemaDiff.makeDiff(sql);
+          const thirdStatements = thirdDiff.getSqlStatements();
+
+          console.log(
+            "Third sync statements (should be empty):",
+            JSON.stringify(thirdStatements, null, 2),
+          );
+
+          expect(thirdStatements.length).toBe(0);
         },
       );
     });
