@@ -5,7 +5,7 @@ export default class extends Migration {
     const table = "__test_methods_temp";
 
     this.schema.createTable(table, (t) => {
-      t.bigint("id").primaryKey().increment();
+      t.increment("id");
       t.varchar("name", 255);
       t.integer("age");
       t.timestamp("created_at");

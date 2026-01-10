@@ -3,7 +3,7 @@ import { Migration } from "../../../lib/index.js";
 export default class extends Migration {
   async up() {
     this.schema.createTable("users_with_bigint", (table) => {
-      table.bigint("id").primaryKey().increment();
+      table.bigIncrement("id");
       table.varchar("name");
       table.varchar("email").unique();
       table.varchar("password");
