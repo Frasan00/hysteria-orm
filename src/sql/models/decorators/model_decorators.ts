@@ -179,7 +179,13 @@ export function column(
           "MULTIPLE_PRIMARY_KEYS_NOT_ALLOWED",
         );
       }
+
       Reflect.defineMetadata(PRIMARY_KEY_METADATA_KEY, propertyKey, target);
+      Reflect.defineMetadata(
+        PRIMARY_KEY_METADATA_KEY,
+        propertyKey,
+        target.constructor,
+      );
     }
     const databaseName =
       options.databaseName ??
@@ -227,9 +233,15 @@ column.json = jsonColumn;
 column.uuid = uuidColumn;
 column.ulid = ulidColumn;
 column.integer = integerColumn;
+column.bigint = bigintColumn;
 column.float = floatColumn;
+column.decimal = decimalColumn;
 column.increment = incrementColumn;
 column.bigIncrement = bigIncrementColumn;
+column.string = stringColumn;
+column.text = textColumn;
+column.binary = binaryColumn;
+column.enum = enumColumn;
 column.encryption = {
   symmetric,
   asymmetric,
@@ -449,6 +461,168 @@ function ulidColumn(
       format: "ulid",
       description:
         "ulid (Universally Unique Lexicographically Sortable Identifier)",
+      ...(options.openApi || {}),
+    },
+  });
+}
+
+/**
+ * @description Decorator to define a string (varchar) column in the model
+ * @description Defaults type to string for migration generation
+ */
+function stringColumn(
+  options: Omit<ColumnOptions, "type"> & { length?: number } = {},
+): PropertyDecorator {
+  return column({
+    type: "string",
+    ...(options as ColumnOptions),
+    openApi: {
+      type: "string",
+      description: "A string value",
+      ...(options.openApi || {}),
+    },
+  });
+}
+
+/**
+ * @description Decorator to define a text column in the model for longer text content
+ * @description Defaults type to longtext for migration generation
+ */
+function textColumn(
+  options: Omit<ColumnOptions, "type"> = {},
+): PropertyDecorator {
+  return column({
+    type: "longtext",
+    ...(options as ColumnOptions),
+    openApi: {
+      type: "string",
+      description: "A text value",
+      ...(options.openApi || {}),
+    },
+  });
+}
+
+/**
+ * @description Decorator to define a bigint column in the model
+ * @description Useful in databases like postgres where the bigint is returned as a string by the driver
+ * @description Defaults type to bigint for migration generation
+ */
+function bigintColumn(
+  options: Omit<ColumnOptions, "serialize"> = {},
+): PropertyDecorator {
+  return column({
+    type: "bigint",
+    ...(options as ColumnOptions),
+    serialize: (value) => {
+      if (value === undefined) {
+        return;
+      }
+
+      if (value === null) {
+        return null;
+      }
+
+      if (typeof value === "number") {
+        return value;
+      }
+
+      if (typeof value === "bigint") {
+        return value;
+      }
+
+      return BigInt(value);
+    },
+    openApi: {
+      type: "integer",
+      format: "int64",
+      description: "A bigint number",
+      ...(options.openApi || {}),
+    },
+  });
+}
+
+/**
+ * @description Decorator to define a decimal column in the model for precise numeric values
+ * @description Useful for financial data and other precise calculations
+ * @description Defaults type to decimal for migration generation
+ * @param options.precision The total number of digits (default: 10)
+ * @param options.scale The number of digits after the decimal point (default: 2)
+ */
+function decimalColumn(
+  options: Omit<ColumnOptions, "serialize"> & {
+    precision?: number;
+    scale?: number;
+  } = {},
+): PropertyDecorator {
+  return column({
+    type: "decimal",
+    precision: options.precision ?? 10,
+    scale: options.scale ?? 2,
+    ...(options as ColumnOptions),
+    serialize: (value) => {
+      if (value === undefined) {
+        return;
+      }
+
+      if (value === null) {
+        return null;
+      }
+
+      if (typeof value === "number") {
+        return value;
+      }
+
+      if (typeof value === "string") {
+        return Number.parseFloat(value);
+      }
+
+      return Number.parseFloat(value);
+    },
+    openApi: {
+      type: "number",
+      format: "double",
+      description: "A decimal number",
+      ...(options.openApi || {}),
+    },
+  });
+}
+
+/**
+ * @description Decorator to define a binary/blob column in the model
+ * @description Defaults type to binary for migration generation
+ */
+function binaryColumn(
+  options: Omit<ColumnOptions, "type"> = {},
+): PropertyDecorator {
+  return column({
+    type: "binary",
+    ...(options as ColumnOptions),
+    openApi: {
+      type: "string",
+      format: "binary",
+      description: "Binary data",
+      ...(options.openApi || {}),
+    },
+  });
+}
+
+/**
+ * @description Decorator to define an enum column in the model
+ * @description Defaults type to enum for migration generation
+ * @param values The allowed enum values
+ * @param options Additional column options
+ */
+function enumColumn(
+  values: readonly string[],
+  options: Omit<ColumnOptions, "type"> = {},
+): PropertyDecorator {
+  return column({
+    type: values,
+    ...(options as ColumnOptions),
+    openApi: {
+      type: "string",
+      enum: values as unknown as string[],
+      description: "An enum value",
       ...(options.openApi || {}),
     },
   });
@@ -1200,9 +1374,10 @@ export function getRelations(target: typeof Model): Relation[] {
  * @description Returns the primary key of the model
  */
 export function getPrimaryKey(target: typeof Model): string | undefined {
-  return Reflect.getMetadata<string>(
-    PRIMARY_KEY_METADATA_KEY,
-    target.prototype,
+  // Check both prototype and constructor for compatibility
+  return (
+    Reflect.getMetadata<string>(PRIMARY_KEY_METADATA_KEY, target) ||
+    Reflect.getMetadata<string>(PRIMARY_KEY_METADATA_KEY, target.prototype)
   );
 }
 

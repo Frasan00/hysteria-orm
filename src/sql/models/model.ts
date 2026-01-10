@@ -297,7 +297,7 @@ export abstract class Model extends Entity {
     this: new () => T | typeof Model,
     model: T,
     options: Omit<BaseModelMethodOptions, "ignoreHooks"> = {},
-  ): Promise<ModelQueryResult<T> | null> {
+  ): Promise<void> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
     const primaryKey = typeofModel.primaryKey as keyof T;
@@ -306,10 +306,10 @@ export abstract class Model extends Entity {
       primaryKeyValue as string,
     );
     if (!refreshedModel) {
-      return null;
+      return;
     }
 
-    return refreshedModel as ModelQueryResult<T>;
+    Object.assign(model, refreshedModel);
   }
 
   /**

@@ -22,6 +22,13 @@ class SqliteColumnTypeInterpreter implements Interpreter {
     );
     const dt = colNode.dataType.toLowerCase();
 
+    if (dt === "bigincrement") {
+      return {
+        sql: `${columnName} integer primary key autoincrement`,
+        bindings: [],
+      };
+    }
+
     if (dt === "char" || dt === "varchar") {
       return { sql: `${columnName} text`, bindings: [] };
     } else if (dt === "uuid") {
@@ -33,6 +40,12 @@ class SqliteColumnTypeInterpreter implements Interpreter {
     if (dt.includes("text")) {
       return { sql: `${columnName} text`, bindings: [] };
     } else if (dt === "integer" || dt === "bigint" || dt === "int") {
+      if (colNode.autoIncrement) {
+        return {
+          sql: `${columnName} integer primary key autoincrement`,
+          bindings: [],
+        };
+      }
       return { sql: `${columnName} integer`, bindings: [] };
     } else if (dt === "tinyint") {
       return { sql: `${columnName} integer`, bindings: [] };
@@ -76,12 +89,6 @@ class SqliteColumnTypeInterpreter implements Interpreter {
       dt === "tinyblob"
     ) {
       return { sql: `${columnName} blob`, bindings: [] };
-    } else if (dt === "integer" || dt === "int") {
-      if (colNode.autoIncrement) {
-        return { sql: `${columnName} serial`, bindings: [] };
-      }
-
-      return { sql: `${columnName} integer`, bindings: [] };
     } else if (
       dt === "geometry" ||
       dt === "point" ||

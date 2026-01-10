@@ -111,7 +111,7 @@ export type ModelInstanceMethods<T extends Model> = {
    */
   refresh: (
     options?: Omit<BaseModelMethodOptions, "ignoreHooks">,
-  ) => Promise<any>;
+  ) => Promise<void>;
 };
 
 /**
