@@ -21,7 +21,7 @@ import { Entity } from "../../entity";
 import { HysteriaError } from "../../errors/hysteria_error";
 import { CaseConvention, convertCase } from "../../utils/case_utils";
 import { baseSoftDeleteDate } from "../../utils/date_utils";
-import { DryModelQueryBuilderWithoutReadOperations } from "../query_builder/query_builder_types";
+import { WriteOperation } from "../query_builder/write_operation";
 import type {
   TableColumnInfo,
   TableIndexInfo,
@@ -62,7 +62,7 @@ export abstract class Model<T extends Model<T> = any> extends Entity {
   /**
    * @description The column used to soft delete a record, default is deletedAt
    */
-  static softDeleteColumn = "deletedAt";
+  static softDeleteColumn: string = "deletedAt";
 
   /**
    * @description The value used to soft delete a record, default is the current date and time
@@ -166,19 +166,6 @@ export abstract class Model<T extends Model<T> = any> extends Entity {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
     return modelManager.query() as ModelQueryBuilder<T>;
-  }
-
-  /**
-   * @description Returns a dry query builder instance
-   * @description The dry query builder instance will not execute the query
-   */
-  static dryQuery<T extends Model>(
-    this: new () => T | typeof Model,
-    options?: Omit<BaseModelMethodOptions, "ignoreHooks">,
-  ): DryModelQueryBuilderWithoutReadOperations<T> {
-    const typeofModel = this as unknown as typeof Model;
-    const modelManager = typeofModel.dispatchModelManager<T>(options);
-    return modelManager.dryQuery() as unknown as DryModelQueryBuilderWithoutReadOperations<T>;
   }
 
   /**
@@ -351,17 +338,17 @@ export abstract class Model<T extends Model<T> = any> extends Entity {
    * @sqlite If no Primary Key is present in the model definition, the model will be returned
    * @sqlite Returning Not supported and won't have effect
    */
-  static async insert<T extends Model>(
+  static insert<T extends Model>(
     this: new () => T | typeof Model,
     modelData: Partial<ModelWithoutRelations<T>>,
     options: BaseModelMethodOptions & InsertOptions<T> = {},
-  ): Promise<ModelQueryResult<T>> {
+  ): WriteOperation<ModelQueryResult<T>> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
     return modelManager.insert(modelData as T, {
       ignoreHooks: options.ignoreHooks,
       returning: options.returning,
-    }) as Promise<ModelQueryResult<T>>;
+    }) as WriteOperation<ModelQueryResult<T>>;
   }
 
   /**
@@ -372,21 +359,26 @@ export abstract class Model<T extends Model<T> = any> extends Entity {
    * @sqlite Returning Not supported and won't have effect
    * @oracledb may do multiple inserts with auto-generated identity columns
    */
-  static async insertMany<T extends Model>(
+  static insertMany<T extends Model>(
     this: new () => T | typeof Model,
     modelsData: Partial<ModelWithoutRelations<T>>[],
     options: BaseModelMethodOptions & InsertOptions<T> = {},
-  ): Promise<ModelQueryResult<T>[]> {
-    if (!modelsData.length) {
-      return [];
-    }
-
+  ): WriteOperation<ModelQueryResult<T>[]> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
+
+    if (!modelsData.length) {
+      return new WriteOperation(
+        () => ({ sql: "", bindings: [] }),
+        () => "",
+        async () => [],
+      );
+    }
+
     return modelManager.insertMany(modelsData as T[], {
       ignoreHooks: options.ignoreHooks,
       returning: options.returning,
-    }) as Promise<ModelQueryResult<T>[]>;
+    }) as WriteOperation<ModelQueryResult<T>[]>;
   }
 
   /**

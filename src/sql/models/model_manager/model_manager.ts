@@ -1,4 +1,5 @@
 import { HysteriaError } from "../../../errors/hysteria_error";
+import { bindParamsIntoQuery, formatQuery } from "../../../utils/query";
 import { AstParser } from "../../ast/parser";
 import { DeleteNode } from "../../ast/query/node/delete";
 import { FromNode } from "../../ast/query/node/from";
@@ -7,12 +8,12 @@ import { OnDuplicateNode } from "../../ast/query/node/on_duplicate";
 import { UpdateNode } from "../../ast/query/node/update";
 import { WhereNode } from "../../ast/query/node/where";
 import { InterpreterUtils } from "../../interpreter/interpreter_utils";
+import { WriteOperation } from "../../query_builder/write_operation";
 import { serializeModel } from "../../serializer";
 import { SqlDataSource } from "../../sql_data_source";
 import { SqlDataSourceType } from "../../sql_data_source_types";
 import { execSql } from "../../sql_runner/sql_runner";
 import { Model } from "../model";
-import { DryModelQueryBuilder } from "../model_query_builder/dry_model_query_builder";
 import { ModelQueryBuilder } from "../model_query_builder/model_query_builder";
 import { ModelWithoutRelations } from "../model_types";
 import { getBaseModelInstance } from "../model_utils";
@@ -200,92 +201,40 @@ export class ModelManager<T extends Model> {
 
   /**
    * @description Creates a new record in the database
+   * @returns WriteOperation that executes when awaited
    */
-  async insert(
+  insert(
     model: Partial<T>,
     options: InsertOptions<T> = {},
-  ): Promise<ModelWithoutRelations<T>> {
-    !options.ignoreHooks && (await this.model.beforeInsert?.(model as T));
-    const { columns: preparedColumns, values: preparedValues } =
-      await this.interpreterUtils.prepareColumns(
-        Object.keys(model),
-        Object.values(model),
-        "insert",
-      );
-
-    const insertObject: Record<string, any> = {};
-    preparedColumns.forEach((column, index) => {
-      const value = preparedValues[index];
-      insertObject[column] = value;
-      (model as any)[column] ??= value;
-    });
-
-    const { sql, bindings } = this.astParser.parse([
-      new InsertNode(
-        new FromNode(this.model.table),
-        [insertObject],
-        options.returning as string[],
-      ),
-    ]);
-
-    const rows = await execSql(
-      sql,
-      bindings,
-      this.sqlDataSource,
-      this.sqlType as SqlDataSourceType,
-      "rows",
-      {
-        sqlLiteOptions: {
-          typeofModel: this.model,
-          mode: "insertOne",
-          models: [model as T],
-        },
-      },
+  ): WriteOperation<ModelWithoutRelations<T>> {
+    const rawInsertObject = Object.fromEntries(
+      Object.keys(model).map((col) => [col, (model as any)[col]]),
     );
 
-    if (this.sqlType === "mysql" || this.sqlType === "mariadb") {
-      return this.handleMysqlInsert(
-        rows,
-        [model as T],
-        "one",
-        options.returning as string[],
-      );
-    }
+    const insertNode = new InsertNode(
+      new FromNode(this.model.table),
+      [rawInsertObject],
+      options.returning as string[],
+    );
 
-    const insertedModel = (rows as T[])[0];
-    if (!insertedModel) {
-      return model as T;
-    }
+    const unWrapFn = () => {
+      const result = this.astParser.parse([insertNode]);
+      return {
+        sql: formatQuery(this.sqlDataSource, result.sql),
+        bindings: result.bindings,
+      };
+    };
 
-    await this.model.afterFetch?.([insertedModel]);
-    const result = (await serializeModel([insertedModel], this.model)) as T;
-    return result;
-  }
+    const toQueryFn = () => {
+      const { sql, bindings } = unWrapFn();
+      return bindParamsIntoQuery(sql, bindings);
+    };
 
-  /**
-   * @description Creates multiple records in the database
-   */
-  async insertMany(
-    models: Partial<T>[],
-    options: InsertOptions<T> = {},
-  ): Promise<ModelWithoutRelations<T>[]> {
-    await this.model.beforeInsertMany?.(models as T[]);
-
-    // Oracle with identity columns doesn't support INSERT ALL properly
-    // Handle this case separately BEFORE attempting the batch insert
-    if (this.sqlType === "oracledb") {
-      const primaryKey = this.model.primaryKey;
-      const firstModelKeys = Object.keys(models[0] || {});
-      const hasMissingPrimaryKey =
-        primaryKey && !firstModelKeys.includes(primaryKey);
-
-      if (hasMissingPrimaryKey) {
-        return this.handleOracleIdentityInsert(models as T[], options);
+    return new WriteOperation(unWrapFn, toQueryFn, async () => {
+      if (!options.ignoreHooks) {
+        await this.model.beforeInsert?.(model as T);
       }
-    }
 
-    const insertObjects: Record<string, any>[] = [];
-    for (const model of models) {
       const { columns: preparedColumns, values: preparedValues } =
         await this.interpreterUtils.prepareColumns(
           Object.keys(model),
@@ -300,66 +249,100 @@ export class ModelManager<T extends Model> {
         (model as any)[column] ??= value;
       });
 
-      insertObjects.push(insertObject);
-    }
-
-    const { sql, bindings } = this.astParser.parse([
-      new InsertNode(
-        new FromNode(this.model.table),
-        insertObjects,
-        options.returning as string[],
-      ),
-    ]);
-
-    const rows = await execSql(
-      sql,
-      bindings,
-      this.sqlDataSource,
-      this.sqlType as SqlDataSourceType,
-      "rows",
-      {
-        sqlLiteOptions: {
-          typeofModel: this.model,
-          mode: "insertMany",
-          models: models as T[],
-        },
-      },
-    );
-
-    if (this.sqlType === "mysql" || this.sqlType === "mariadb") {
-      return (
-        (await this.handleMysqlInsert(
-          rows,
-          models as T[],
-          "many",
+      const { sql, bindings } = this.astParser.parse([
+        new InsertNode(
+          new FromNode(this.model.table),
+          [insertObject],
           options.returning as string[],
-        )) || []
+        ),
+      ]);
+
+      const rows = await execSql(
+        sql,
+        bindings,
+        this.sqlDataSource,
+        this.sqlType as SqlDataSourceType,
+        "rows",
+        {
+          sqlLiteOptions: {
+            typeofModel: this.model,
+            mode: "insertOne",
+            models: [model as T],
+          },
+        },
       );
-    }
 
-    const insertedModels = rows as T[];
-    if (!insertedModels.length) {
-      return [];
-    }
+      if (this.sqlType === "mysql" || this.sqlType === "mariadb") {
+        return this.handleMysqlInsert(
+          rows,
+          [model as T],
+          "one",
+          options.returning as string[],
+        );
+      }
 
-    await this.model.afterFetch?.(insertedModels);
+      const insertedModel = (rows as T[])[0];
+      if (!insertedModel) {
+        return model as T;
+      }
 
-    const results = await serializeModel(insertedModels, this.model);
-    return (results || []) as T[];
+      await this.model.afterFetch?.([insertedModel]);
+      const result = (await serializeModel([insertedModel], this.model)) as T;
+      return result;
+    });
   }
 
-  async upsertMany(
-    conflictColumns: string[],
-    columnsToUpdate: string[],
-    data: ModelWithoutRelations<T>[],
-    options: UpsertOptions<T> = {
-      updateOnConflict: true,
-    },
-  ): Promise<ModelWithoutRelations<T>[]> {
-    const insertObjects: Record<string, any>[] = [];
-    await this.model.beforeInsertMany?.(data as T[]);
-    await Promise.all(
-      data.map(async (model) => {
+  /**
+   * @description Creates multiple records in the database
+   * @returns WriteOperation that executes when awaited
+   */
+  insertMany(
+    models: Partial<T>[],
+    options: InsertOptions<T> = {},
+  ): WriteOperation<ModelWithoutRelations<T>[]> {
+    const rawInsertObjects = models.map((model) =>
+      Object.fromEntries(
+        Object.keys(model).map((col) => [col, (model as any)[col]]),
+      ),
+    );
+
+    const insertNode = new InsertNode(
+      new FromNode(this.model.table),
+      rawInsertObjects,
+      options.returning as string[],
+    );
+
+    const unWrapFn = () => {
+      const result = this.astParser.parse([insertNode]);
+      return {
+        sql: formatQuery(this.sqlDataSource, result.sql),
+        bindings: result.bindings,
+      };
+    };
+
+    const toQueryFn = () => {
+      const { sql, bindings } = unWrapFn();
+      return bindParamsIntoQuery(sql, bindings);
+    };
+
+    return new WriteOperation(unWrapFn, toQueryFn, async () => {
+      await this.model.beforeInsertMany?.(models as T[]);
+
+      // Oracle with identity columns doesn't support INSERT ALL properly
+      // Handle this case separately BEFORE attempting the batch insert
+      if (this.sqlType === "oracledb") {
+        const primaryKey = this.model.primaryKey;
+        const firstModelKeys = Object.keys(models[0] || {});
+        const hasMissingPrimaryKey =
+          primaryKey && !firstModelKeys.includes(primaryKey);
+
+        if (hasMissingPrimaryKey) {
+          return this.handleOracleIdentityInsert(models as T[], options);
+        }
+      }
+
+      const insertObjects: Record<string, any>[] = [];
+      for (const model of models) {
         const { columns: preparedColumns, values: preparedValues } =
           await this.interpreterUtils.prepareColumns(
             Object.keys(model),
@@ -367,60 +350,170 @@ export class ModelManager<T extends Model> {
             "insert",
           );
 
-        const insertObject = Object.fromEntries(
-          preparedColumns.map((column, index) => [
-            column,
-            preparedValues[index],
-          ]),
-        );
+        const insertObject: Record<string, any> = {};
+        preparedColumns.forEach((column, index) => {
+          const value = preparedValues[index];
+          insertObject[column] = value;
+          (model as any)[column] ??= value;
+        });
 
         insertObjects.push(insertObject);
-      }),
-    );
+      }
 
-    // MSSQL requires MERGE statement for upsert operations
-    if (this.sqlType === "mssql") {
-      return this.executeMssqlMerge(
-        insertObjects,
-        conflictColumns,
-        columnsToUpdate,
-        options,
-        data,
-      );
-    }
+      const { sql, bindings } = this.astParser.parse([
+        new InsertNode(
+          new FromNode(this.model.table),
+          insertObjects,
+          options.returning as string[],
+        ),
+      ]);
 
-    const { sql, bindings } = this.astParser.parse([
-      new InsertNode(
-        new FromNode(this.model.table),
-        insertObjects,
-        undefined,
-        true,
-      ),
-      new OnDuplicateNode(
-        this.model.table,
-        conflictColumns,
-        columnsToUpdate,
-        (options.updateOnConflict ?? true) ? "update" : "ignore",
-        options.returning as string[],
-      ),
-    ]);
-
-    const rows = await execSql(
-      sql,
-      bindings,
-      this.sqlDataSource,
-      this.sqlType as SqlDataSourceType,
-      "rows",
-      {
-        sqlLiteOptions: {
-          typeofModel: this.model,
-          mode: "raw",
-          models: data as T[],
+      const rows = await execSql(
+        sql,
+        bindings,
+        this.sqlDataSource,
+        this.sqlType as SqlDataSourceType,
+        "rows",
+        {
+          sqlLiteOptions: {
+            typeofModel: this.model,
+            mode: "insertMany",
+            models: models as T[],
+          },
         },
-      },
+      );
+
+      if (this.sqlType === "mysql" || this.sqlType === "mariadb") {
+        return (
+          (await this.handleMysqlInsert(
+            rows,
+            models as T[],
+            "many",
+            options.returning as string[],
+          )) || []
+        );
+      }
+
+      const insertedModels = rows as T[];
+      if (!insertedModels.length) {
+        return [];
+      }
+
+      await this.model.afterFetch?.(insertedModels);
+
+      const results = await serializeModel(insertedModels, this.model);
+      return (results || []) as T[];
+    });
+  }
+
+  upsertMany(
+    conflictColumns: string[],
+    columnsToUpdate: string[],
+    data: ModelWithoutRelations<T>[],
+    options: UpsertOptions<T> = {
+      updateOnConflict: true,
+    },
+  ): WriteOperation<ModelWithoutRelations<T>[]> {
+    const rawInsertObjects = data.map((model) =>
+      Object.fromEntries(
+        Object.keys(model).map((col) => [col, (model as any)[col]]),
+      ),
     );
 
-    return rows as T[];
+    const insertNode = new InsertNode(
+      new FromNode(this.model.table),
+      rawInsertObjects,
+      undefined,
+      true,
+    );
+    const onDuplicateNode = new OnDuplicateNode(
+      this.model.table,
+      conflictColumns,
+      columnsToUpdate,
+      (options.updateOnConflict ?? true) ? "update" : "ignore",
+      options.returning as string[],
+    );
+
+    const unWrapFn = () => {
+      const result = this.astParser.parse([insertNode, onDuplicateNode]);
+      return {
+        sql: formatQuery(this.sqlDataSource, result.sql),
+        bindings: result.bindings,
+      };
+    };
+
+    const toQueryFn = () => {
+      const { sql, bindings } = unWrapFn();
+      return bindParamsIntoQuery(sql, bindings);
+    };
+
+    return new WriteOperation(unWrapFn, toQueryFn, async () => {
+      const insertObjects: Record<string, any>[] = [];
+      await this.model.beforeInsertMany?.(data as T[]);
+      await Promise.all(
+        data.map(async (model) => {
+          const { columns: preparedColumns, values: preparedValues } =
+            await this.interpreterUtils.prepareColumns(
+              Object.keys(model),
+              Object.values(model),
+              "insert",
+            );
+
+          const insertObject = Object.fromEntries(
+            preparedColumns.map((column, index) => [
+              column,
+              preparedValues[index],
+            ]),
+          );
+
+          insertObjects.push(insertObject);
+        }),
+      );
+
+      // MSSQL requires MERGE statement for upsert operations
+      if (this.sqlType === "mssql") {
+        return this.executeMssqlMerge(
+          insertObjects,
+          conflictColumns,
+          columnsToUpdate,
+          options,
+          data,
+        );
+      }
+
+      const { sql, bindings } = this.astParser.parse([
+        new InsertNode(
+          new FromNode(this.model.table),
+          insertObjects,
+          undefined,
+          true,
+        ),
+        new OnDuplicateNode(
+          this.model.table,
+          conflictColumns,
+          columnsToUpdate,
+          (options.updateOnConflict ?? true) ? "update" : "ignore",
+          options.returning as string[],
+        ),
+      ]);
+
+      const rows = await execSql(
+        sql,
+        bindings,
+        this.sqlDataSource,
+        this.sqlType as SqlDataSourceType,
+        "rows",
+        {
+          sqlLiteOptions: {
+            typeofModel: this.model,
+            mode: "raw",
+            models: data as T[],
+          },
+        },
+      );
+
+      return rows as T[];
+    });
   }
 
   /**
@@ -631,14 +724,6 @@ export class ModelManager<T extends Model> {
       queryBuilder.setReplicationMode(this.replicationMode);
     }
     return queryBuilder;
-  }
-
-  /**
-   * @description Returns a dry query builder instance
-   * @description The dry query builder instance will not execute the query, it will return the query statement
-   */
-  dryQuery(): Omit<DryModelQueryBuilder<T>, "insert" | "insertMany"> {
-    return new DryModelQueryBuilder<T>(this.model, this.sqlDataSource);
   }
 
   /**

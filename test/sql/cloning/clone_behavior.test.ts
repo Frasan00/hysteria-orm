@@ -1,6 +1,5 @@
 import { env } from "../../../src/env/env";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
-import { UserFactory } from "../test_models/factory/user_factory";
 
 beforeAll(async () => {
   const dataSource = new SqlDataSource();
@@ -209,11 +208,11 @@ describe(`[${env.DB_TYPE}] Clone Method - Edge Cases`, () => {
     expect(cloned.inputDetails.connectionPolicies?.retry?.maxRetries).toBe(3);
   });
 
-  test("should clone and execute dry query", async () => {
+  test("should clone and execute query", async () => {
     const cloned = await SqlDataSource.instance.clone();
 
     const query = cloned
-      .dryQuery("users_with_uuid")
+      .query("users_with_uuid")
       .select("name")
       .where("age", ">", 25);
     const sqlString = query.toQuery();

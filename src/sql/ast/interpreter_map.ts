@@ -249,10 +249,6 @@ import sqlite_where_where_subquery from '../interpreter/sqlite/where/where_subqu
 import sqlite_with_with from '../interpreter/sqlite/with/with';
 
 export const interpreterMap = {
-  cockroachdb: {
-    alter_table: {
-    },
-  },
   mssql: {
     alter_table: {
       add_column: mssql_alter_table_add_column,

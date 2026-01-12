@@ -25,6 +25,9 @@ const ALL_SQL_ENVIRONMENTS = {
 const VALID_DB_TYPES = Object.keys(ALL_SQL_ENVIRONMENTS);
 
 const SQL_TESTS = [
+  // write operation
+  "./test/sql/write_operation/write_operation.test.ts",
+
   // connection management
   "./test/sql/connection_management/connection_management.test.ts",
 
@@ -154,7 +157,7 @@ const runSqlTest = async (file, environment, testNames = [], logs = false) => {
         DB_USER: environment.user,
         DB_PASSWORD: environment.password,
         DB_DATABASE: environment.database,
-        COLUMNS: '100'
+        COLUMNS: "100",
       },
     });
 
@@ -175,9 +178,12 @@ const runSqlTest = async (file, environment, testNames = [], logs = false) => {
 const runNonSqlTest = (test) => {
   console.log(`Running ${test.name}...`);
   const runInBandFlag = test.runInBand ? "--runInBand" : "";
-  execSync(`npx jest --config=jest.config.js --colors --forceExit ${runInBandFlag} ${test.path}`, {
-    stdio: "inherit",
-  });
+  execSync(
+    `npx jest --config=jest.config.js --colors --forceExit ${runInBandFlag} ${test.path}`,
+    {
+      stdio: "inherit",
+    }
+  );
 };
 
 const runTests = async (options) => {

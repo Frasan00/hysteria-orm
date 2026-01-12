@@ -32,6 +32,7 @@ import {
   WriteQueryParam,
 } from "../../query_builder/query_builder_types";
 import type { UpdateOptions } from "../../query_builder/update_query_builder_types";
+import { WriteOperation } from "../../query_builder/write_operation";
 import {
   deepCloneNode,
   remapSelectedColumnToFromAlias,
@@ -276,7 +277,7 @@ export class ModelQueryBuilder<
   // @ts-expect-error
   override async insert(
     ...args: Parameters<typeof this.model.insert<T>>
-  ): ReturnType<typeof this.model.insert> {
+  ): Promise<ReturnType<typeof this.model.insert>> {
     return (this.model as any).insert(...args);
   }
 
@@ -286,34 +287,60 @@ export class ModelQueryBuilder<
   // @ts-expect-error
   override async insertMany(
     ...args: Parameters<typeof this.model.insertMany<T>>
-  ): ReturnType<typeof this.model.insertMany> {
+  ): Promise<ReturnType<typeof this.model.insertMany>> {
     return (this.model as any).insertMany(...args);
   }
 
   // @ts-expect-error
-  override async update(
+  override update(
     data: Partial<ModelWithoutRelations<T>>,
     options: UpdateOptions = {},
-  ): Promise<number> {
-    if (!options.ignoreBeforeUpdateHook) {
-      await this.model.beforeUpdate?.(this as any);
-    }
-    return super.update(data as Record<string, WriteQueryParam>);
+  ): WriteOperation<number> {
+    const baseWriteOp = super.update(data as Record<string, WriteQueryParam>);
+
+    return new WriteOperation(
+      () => baseWriteOp.unWrap(),
+      () => baseWriteOp.toQuery(),
+      async () => {
+        if (!options.ignoreBeforeUpdateHook) {
+          await this.model.beforeUpdate?.(this as any);
+        }
+        return baseWriteOp;
+      },
+    );
   }
 
-  override async softDelete(
+  override softDelete(
     options: SoftDeleteOptions<T> = {},
-  ): Promise<number> {
+  ): WriteOperation<number> {
+    const baseWriteOp = super.softDelete(options);
     const { ignoreBeforeUpdateHook = false } = options || {};
-    !ignoreBeforeUpdateHook && (await this.model.beforeUpdate?.(this as any));
-    return super.softDelete(options);
+
+    return new WriteOperation(
+      () => baseWriteOp.unWrap(),
+      () => baseWriteOp.toQuery(),
+      async () => {
+        if (!ignoreBeforeUpdateHook) {
+          await this.model.beforeUpdate?.(this as any);
+        }
+        return baseWriteOp;
+      },
+    );
   }
 
-  async delete(options: DeleteOptions = {}): Promise<number> {
-    if (!options.ignoreBeforeDeleteHook) {
-      await this.model.beforeDelete?.(this as any);
-    }
-    return super.delete();
+  delete(options: DeleteOptions = {}): WriteOperation<number> {
+    const baseWriteOp = super.delete();
+
+    return new WriteOperation(
+      () => baseWriteOp.unWrap(),
+      () => baseWriteOp.toQuery(),
+      async () => {
+        if (!options.ignoreBeforeDeleteHook) {
+          await this.model.beforeDelete?.(this as any);
+        }
+        return baseWriteOp;
+      },
+    );
   }
 
   override async getCount(

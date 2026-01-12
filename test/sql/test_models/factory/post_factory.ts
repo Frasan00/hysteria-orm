@@ -10,19 +10,19 @@ export class PostFactory {
   ): Promise<FactoryReturnType<T, PostWithBigint>> {
     const postData = PostFactory.getCommonPostData();
     if (howMany === 1) {
-      return PostWithBigint.insert({
+      return (await PostWithBigint.insert({
         ...postData,
         userId,
-      }) as Promise<FactoryReturnType<T, PostWithBigint>>;
+      })) as FactoryReturnType<T, PostWithBigint>;
     }
 
     const array = Array.from({ length: howMany });
-    return PostWithBigint.insertMany(
+    return (await PostWithBigint.insertMany(
       array.map(() => ({
         ...postData,
         userId,
       })),
-    ) as Promise<FactoryReturnType<T, PostWithBigint>>;
+    )) as FactoryReturnType<T, PostWithBigint>;
   }
 
   static async postWithUuid<T extends number>(
@@ -31,18 +31,19 @@ export class PostFactory {
   ): Promise<FactoryReturnType<T, PostWithUuid>> {
     const postData = PostFactory.getCommonPostData();
     if (howMany === 1) {
-      return PostWithUuid.insert({ ...postData, userId }) as Promise<
-        FactoryReturnType<T, PostWithUuid>
-      >;
+      return (await PostWithUuid.insert({
+        ...postData,
+        userId,
+      })) as FactoryReturnType<T, PostWithUuid>;
     }
 
     const array = Array.from({ length: howMany });
-    return PostWithUuid.insertMany(
+    return (await PostWithUuid.insertMany(
       array.map(() => ({
         ...postData,
         userId,
       })),
-    ) as Promise<FactoryReturnType<T, PostWithUuid>>;
+    )) as FactoryReturnType<T, PostWithUuid>;
   }
 
   static getCommonPostData(): Record<string, string> {

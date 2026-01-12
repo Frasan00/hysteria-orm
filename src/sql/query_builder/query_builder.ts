@@ -20,7 +20,7 @@ import { UpdateNode } from "../ast/query/node/update";
 import { QueryNode } from "../ast/query/query";
 import { InterpreterUtils } from "../interpreter/interpreter_utils";
 import type { Model } from "../models/model";
-import { ModelKey } from "../models/model_manager/model_manager_types";
+import type { ModelKey } from "../models/model_manager/model_manager_types";
 import type { NumberModelKey } from "../models/model_types";
 import {
   getCursorPaginationMetadata,
@@ -32,7 +32,7 @@ import type { ReplicationType, TableFormat } from "../sql_data_source_types";
 import { execSql, execSqlStreaming } from "../sql_runner/sql_runner";
 import { SoftDeleteOptions } from "./delete_query_builder_type";
 import { JsonQueryBuilder } from "./json_query_builder";
-import {
+import type {
   ComposeBuildRawSelect,
   ComposeRawSelect,
   Cursor,
@@ -47,6 +47,7 @@ import {
   UpsertOptionsRawBuilder,
   WriteQueryParam,
 } from "./query_builder_types";
+import { WriteOperation } from "./write_operation";
 
 export class QueryBuilder<
   T extends Model = any,
@@ -545,14 +546,14 @@ export class QueryBuilder<
    * @description Increments the value of a column by a given amount
    * @typeSafe - In typescript, only numeric columns of the model will be accepted if using a Model
    * @default value + 1
-   * @returns the number of affected rows
+   * @returns WriteOperation that resolves to the number of affected rows
    */
-  async increment(column: string, value: number): Promise<number>;
-  async increment(column: NumberModelKey<T>, value: number): Promise<number>;
-  async increment(
+  increment(column: string, value: number): WriteOperation<number>;
+  increment(column: NumberModelKey<T>, value: number): WriteOperation<number>;
+  increment(
     column: NumberModelKey<T> | string,
     value: number = 1,
-  ): Promise<number> {
+  ): WriteOperation<number> {
     return this.update({
       [column as string]: this.sqlDataSource.rawStatement(
         `${column as string} + ${value}`,
@@ -564,14 +565,14 @@ export class QueryBuilder<
    * @description Decrements the value of a column by a given amount
    * @typeSafe - In typescript, only numeric columns of the model will be accepted if using a Model
    * @default value - 1
-   * @returns the number of affected rows
+   * @returns WriteOperation that resolves to the number of affected rows
    */
-  async decrement(column: string, value: number): Promise<number>;
-  async decrement(column: NumberModelKey<T>, value: number): Promise<number>;
-  async decrement(
+  decrement(column: string, value: number): WriteOperation<number>;
+  decrement(column: NumberModelKey<T>, value: number): WriteOperation<number>;
+  decrement(
     column: NumberModelKey<T> | string,
     value: number = 1,
-  ): Promise<number> {
+  ): WriteOperation<number> {
     return this.update({
       [column as string]: this.sqlDataSource.rawStatement(
         `${column as string} - ${value}`,
@@ -735,81 +736,121 @@ export class QueryBuilder<
   /**
    * @description Insert record into a table, you can use raw statements in the data object for literal references to other columns
    * @param returning - The columns to return from the query, only supported by postgres and cockroachdb - default is "*"
-   * @returns raw driver response
+   * @returns WriteOperation that executes when awaited
    */
-  async insert(
+  insert(
     data: Record<string, WriteQueryParam>,
     returning?: string[],
-  ): Promise<T> {
-    const { columns: preparedColumns, values: preparedValues } =
-      await this.interpreterUtils.prepareColumns(
-        Object.keys(data),
-        Object.values(data),
-        "insert",
-      );
-
+  ): WriteOperation<T> {
     const insertObject = Object.fromEntries(
-      preparedColumns.map((column, index) => [column, preparedValues[index]]),
+      Object.keys(data).map((column) => [column, data[column]]),
     );
 
     this.insertNode = new InsertNode(this.fromNode, [insertObject], returning);
-    const { sql, bindings } = this.astParser.parse([this.insertNode]);
 
-    const dataSource = await this.getSqlDataSource("write");
-    const rows = await execSql(sql, bindings, dataSource, this.dbType, "rows", {
-      sqlLiteOptions: {
-        typeofModel: this.model,
-        mode: "insertOne",
-        models: [data as unknown as T],
-      },
-    });
-
-    return Array.isArray(rows) && rows.length ? rows[0] : rows;
-  }
-
-  /**
-   * @description Insert multiple records into a table
-   * @param returning - The columns to return from the query, only supported by postgres and cockroachdb - default is "*"
-   * @returns raw driver response
-   * @oracledb may do multiple inserts with auto-generated identity columns
-   */
-  async insertMany(
-    data: Record<string, WriteQueryParam>[],
-    returning?: string[],
-  ): Promise<T[]> {
-    if (!data.length) {
-      return [];
-    }
-
-    const models = await Promise.all(
-      data.map(async (model) => {
+    return new WriteOperation(
+      () => this.unWrap(),
+      () => this.toQuery(),
+      async () => {
         const { columns: preparedColumns, values: preparedValues } =
           await this.interpreterUtils.prepareColumns(
-            Object.keys(model),
-            Object.values(model),
+            Object.keys(data),
+            Object.values(data),
             "insert",
           );
 
-        return Object.fromEntries(
+        const preparedInsertObject = Object.fromEntries(
           preparedColumns.map((column, index) => [
             column,
             preparedValues[index],
           ]),
         );
-      }),
+
+        this.insertNode = new InsertNode(
+          this.fromNode,
+          [preparedInsertObject],
+          returning,
+        );
+        const { sql, bindings } = this.astParser.parse([this.insertNode]);
+
+        const dataSource = await this.getSqlDataSource("write");
+        const rows = await execSql(
+          sql,
+          bindings,
+          dataSource,
+          this.dbType,
+          "rows",
+          {
+            sqlLiteOptions: {
+              typeofModel: this.model,
+              mode: "insertOne",
+              models: [data as unknown as T],
+            },
+          },
+        );
+
+        return Array.isArray(rows) && rows.length ? rows[0] : rows;
+      },
+    );
+  }
+
+  /**
+   * @description Insert multiple records into a table
+   * @param returning - The columns to return from the query, only supported by postgres and cockroachdb - default is "*"
+   * @returns WriteOperation that executes when awaited
+   * @oracledb may do multiple inserts with auto-generated identity columns
+   */
+  insertMany(
+    data: Record<string, WriteQueryParam>[],
+    returning?: string[],
+  ): WriteOperation<T[]> {
+    const rawModels = data.map((model) =>
+      Object.fromEntries(
+        Object.keys(model).map((column) => [column, model[column]]),
+      ),
     );
 
-    this.insertNode = new InsertNode(this.fromNode, models, returning);
-    const { sql, bindings } = this.astParser.parse([this.insertNode]);
+    this.insertNode = new InsertNode(this.fromNode, rawModels, returning);
 
-    const dataSource = await this.getSqlDataSource("write");
-    return execSql(sql, bindings, dataSource, this.dbType, "rows", {
-      sqlLiteOptions: {
-        typeofModel: this.model,
-        mode: "insertMany",
-        models: models as T[],
+    return new WriteOperation(
+      () => this.unWrap(),
+      () => this.toQuery(),
+      async () => {
+        if (!data.length) {
+          return [];
+        }
+
+        const models = await Promise.all(
+          data.map(async (model) => {
+            const { columns: preparedColumns, values: preparedValues } =
+              await this.interpreterUtils.prepareColumns(
+                Object.keys(model),
+                Object.values(model),
+                "insert",
+              );
+
+            return Object.fromEntries(
+              preparedColumns.map((column, index) => [
+                column,
+                preparedValues[index],
+              ]),
+            );
+          }),
+        );
+
+        this.insertNode = new InsertNode(this.fromNode, models, returning);
+        const { sql, bindings } = this.astParser.parse([this.insertNode]);
+
+        const dataSource = await this.getSqlDataSource("write");
+        return execSql(sql, bindings, dataSource, this.dbType, "rows", {
+          sqlLiteOptions: {
+            typeofModel: this.model,
+            mode: "insertMany",
+            models: models as T[],
+          },
+        });
       },
-    });
+    );
   }
 
   /**
@@ -817,97 +858,43 @@ export class QueryBuilder<
    * @param data The data to insert or update
    * @param searchCriteria The criteria to search for existing records
    * @param options Upsert options including updateOnConflict and returning columns
-   * @returns The upserted record
+   * @returns WriteOperation that executes when awaited
    */
-  async upsert<O extends Record<string, any>>(
+  upsert<O extends Record<string, any>>(
     data: O,
     searchCriteria: Partial<O>,
     options: UpsertOptionsRawBuilder = {
       updateOnConflict: true,
     },
-  ): Promise<T[]> {
+  ): WriteOperation<T[]> {
     const columnsToUpdate = Object.keys(data);
     const conflictColumns = Object.keys(searchCriteria);
-    const { columns: preparedColumns, values: preparedValues } =
-      await this.interpreterUtils.prepareColumns(
-        Object.keys(data),
-        Object.values(data),
-        "insert",
-      );
-
-    const insertObject = Object.fromEntries(
-      preparedColumns.map((column, index) => [column, preparedValues[index]]),
+    const rawInsertObject = Object.fromEntries(
+      Object.keys(data).map((column) => [column, data[column]]),
     );
 
-    // MSSQL requires MERGE statement for upsert operations
-    if (this.sqlDataSource.type === "mssql") {
-      return this.executeMssqlMergeRaw(
-        [insertObject],
-        conflictColumns,
-        columnsToUpdate,
-        options,
-        [data],
-      );
-    }
-
-    const { sql, bindings } = this.astParser.parse([
-      new InsertNode(
-        new FromNode(this.model.table),
-        [insertObject],
-        undefined,
-        true,
-      ),
-      new OnDuplicateNode(
-        this.model.table,
-        conflictColumns,
-        columnsToUpdate,
-        (options.updateOnConflict ?? true) ? "update" : "ignore",
-        options.returning as string[],
-      ),
-    ]);
-
-    const dataSource = await this.getSqlDataSource("write");
-    const rawResult = await execSql(
-      sql,
-      bindings,
-      dataSource,
-      this.dbType,
-      "rows",
-      {
-        sqlLiteOptions: {
-          typeofModel: this.model,
-          mode: "raw",
-          models: [data as unknown as T],
-        },
-      },
+    this.insertNode = new InsertNode(
+      new FromNode(this.model.table),
+      [rawInsertObject],
+      undefined,
+      true,
+    );
+    this.onDuplicateNode = new OnDuplicateNode(
+      this.model.table,
+      conflictColumns,
+      columnsToUpdate,
+      (options.updateOnConflict ?? true) ? "update" : "ignore",
+      options.returning as string[],
     );
 
-    return (Array.isArray(rawResult) ? rawResult : [rawResult]) as T[];
-  }
-
-  /**
-   * @description Updates or creates multiple records using upsert functionality
-   * @param conflictColumns The columns to check for conflicts
-   * @param columnsToUpdate The columns to update on conflict
-   * @param data Array of data objects to insert or update
-   * @param options Upsert options including updateOnConflict and returning columns
-   */
-  async upsertMany<O extends Record<string, any>>(
-    conflictColumns: string[],
-    columnsToUpdate: string[],
-    data: O[],
-    options: UpsertOptionsRawBuilder = {
-      updateOnConflict: true,
-    },
-  ): Promise<T[]> {
-    const insertObjects: Record<string, any>[] = [];
-
-    await Promise.all(
-      data.map(async (record) => {
+    return new WriteOperation(
+      () => this.unWrap(),
+      () => this.toQuery(),
+      async () => {
         const { columns: preparedColumns, values: preparedValues } =
           await this.interpreterUtils.prepareColumns(
-            Object.keys(record),
-            Object.values(record),
+            Object.keys(data),
+            Object.values(data),
             "insert",
           );
 
@@ -918,55 +905,161 @@ export class QueryBuilder<
           ]),
         );
 
-        insertObjects.push(insertObject);
-      }),
-    );
+        if (this.sqlDataSource.type === "mssql") {
+          return this.executeMssqlMergeRaw(
+            [insertObject],
+            conflictColumns,
+            columnsToUpdate,
+            options,
+            [data],
+          );
+        }
 
-    // MSSQL requires MERGE statement for upsert operations
-    if (this.sqlDataSource.type === "mssql") {
-      return this.executeMssqlMergeRaw(
-        insertObjects,
-        conflictColumns,
-        columnsToUpdate,
-        options,
-        data,
-      );
-    }
+        const { sql, bindings } = this.astParser.parse([
+          new InsertNode(
+            new FromNode(this.model.table),
+            [insertObject],
+            undefined,
+            true,
+          ),
+          new OnDuplicateNode(
+            this.model.table,
+            conflictColumns,
+            columnsToUpdate,
+            (options.updateOnConflict ?? true) ? "update" : "ignore",
+            options.returning as string[],
+          ),
+        ]);
 
-    const { sql, bindings } = this.astParser.parse([
-      new InsertNode(
-        new FromNode(this.model.table),
-        insertObjects,
-        undefined,
-        true,
-      ),
-      new OnDuplicateNode(
-        this.model.table,
-        conflictColumns,
-        columnsToUpdate,
-        (options.updateOnConflict ?? true) ? "update" : "ignore",
-        options.returning as string[],
-      ),
-    ]);
+        const dataSource = await this.getSqlDataSource("write");
+        const rawResult = await execSql(
+          sql,
+          bindings,
+          dataSource,
+          this.dbType,
+          "rows",
+          {
+            sqlLiteOptions: {
+              typeofModel: this.model,
+              mode: "raw",
+              models: [data as unknown as T],
+            },
+          },
+        );
 
-    const dataSource = await this.getSqlDataSource("write");
-    const rawResult = await execSql(
-      sql,
-      bindings,
-      dataSource,
-      this.dbType,
-      "rows",
-      {
-        sqlLiteOptions: {
-          typeofModel: this.model,
-          mode: "raw",
-          models: data as unknown as T[],
-        },
+        return (Array.isArray(rawResult) ? rawResult : [rawResult]) as T[];
       },
     );
-    return (Array.isArray(rawResult)
-      ? rawResult
-      : [rawResult]) as unknown as T[];
+  }
+
+  /**
+   * @description Updates or creates multiple records using upsert functionality
+   * @param conflictColumns The columns to check for conflicts
+   * @param columnsToUpdate The columns to update on conflict
+   * @param data Array of data objects to insert or update
+   * @param options Upsert options including updateOnConflict and returning columns
+   * @returns WriteOperation that executes when awaited
+   */
+  upsertMany<O extends Record<string, any>>(
+    conflictColumns: string[],
+    columnsToUpdate: string[],
+    data: O[],
+    options: UpsertOptionsRawBuilder = {
+      updateOnConflict: true,
+    },
+  ): WriteOperation<T[]> {
+    const rawInsertObjects = data.map((record) =>
+      Object.fromEntries(
+        Object.keys(record).map((column) => [column, record[column]]),
+      ),
+    );
+
+    this.insertNode = new InsertNode(
+      new FromNode(this.model.table),
+      rawInsertObjects,
+      undefined,
+      true,
+    );
+    this.onDuplicateNode = new OnDuplicateNode(
+      this.model.table,
+      conflictColumns,
+      columnsToUpdate,
+      (options.updateOnConflict ?? true) ? "update" : "ignore",
+      options.returning as string[],
+    );
+
+    return new WriteOperation(
+      () => this.unWrap(),
+      () => this.toQuery(),
+      async () => {
+        const insertObjects: Record<string, any>[] = [];
+
+        await Promise.all(
+          data.map(async (record) => {
+            const { columns: preparedColumns, values: preparedValues } =
+              await this.interpreterUtils.prepareColumns(
+                Object.keys(record),
+                Object.values(record),
+                "insert",
+              );
+
+            const insertObject = Object.fromEntries(
+              preparedColumns.map((column, index) => [
+                column,
+                preparedValues[index],
+              ]),
+            );
+
+            insertObjects.push(insertObject);
+          }),
+        );
+
+        if (this.sqlDataSource.type === "mssql") {
+          return this.executeMssqlMergeRaw(
+            insertObjects,
+            conflictColumns,
+            columnsToUpdate,
+            options,
+            data,
+          );
+        }
+
+        const { sql, bindings } = this.astParser.parse([
+          new InsertNode(
+            new FromNode(this.model.table),
+            insertObjects,
+            undefined,
+            true,
+          ),
+          new OnDuplicateNode(
+            this.model.table,
+            conflictColumns,
+            columnsToUpdate,
+            (options.updateOnConflict ?? true) ? "update" : "ignore",
+            options.returning as string[],
+          ),
+        ]);
+
+        const dataSource = await this.getSqlDataSource("write");
+        const rawResult = await execSql(
+          sql,
+          bindings,
+          dataSource,
+          this.dbType,
+          "rows",
+          {
+            sqlLiteOptions: {
+              typeofModel: this.model,
+              mode: "raw",
+              models: data as unknown as T[],
+            },
+          },
+        );
+        return (Array.isArray(rawResult)
+          ? rawResult
+          : [rawResult]) as unknown as T[];
+      },
+    );
   }
 
   /**
@@ -1068,99 +1161,135 @@ export class QueryBuilder<
 
   /**
    * @description Updates records from a table, you can use raw statements in the data object for literal references to other columns
-   * @returns the number of affected rows
+   * @returns WriteOperation that resolves to the number of affected rows
    */
-  async update(data: Record<string, WriteQueryParam>): Promise<number> {
+  update(data: Record<string, WriteQueryParam>): WriteOperation<number> {
     const rawColumns = Object.keys(data);
     const rawValues = Object.values(data);
 
-    const { columns, values } = await this.interpreterUtils.prepareColumns(
-      rawColumns,
-      rawValues,
-      "update",
+    this.updateNode = new UpdateNode(this.fromNode, rawColumns, rawValues);
+
+    return new WriteOperation(
+      () => this.unWrap(),
+      () => this.toQuery(),
+      async () => {
+        const { columns, values } = await this.interpreterUtils.prepareColumns(
+          rawColumns,
+          rawValues,
+          "update",
+        );
+
+        this.updateNode = new UpdateNode(this.fromNode, columns, values);
+        const { sql, bindings } = this.astParser.parse([
+          this.updateNode,
+          ...this.whereNodes,
+          ...this.joinNodes,
+        ]);
+
+        const dataSource = await this.getSqlDataSource("write");
+        return execSql(sql, bindings, dataSource, this.dbType, "affectedRows", {
+          sqlLiteOptions: { typeofModel: this.model, mode: "affectedRows" },
+        });
+      },
     );
-
-    this.updateNode = new UpdateNode(this.fromNode, columns, values);
-    const { sql, bindings } = this.astParser.parse([
-      this.updateNode,
-      ...this.whereNodes,
-      ...this.joinNodes,
-    ]);
-
-    const dataSource = await this.getSqlDataSource("write");
-    return execSql(sql, bindings, dataSource, this.dbType, "affectedRows", {
-      sqlLiteOptions: { typeofModel: this.model, mode: "affectedRows" },
-    });
   }
 
   /**
    * @description Deletes all records from a table
    * @warning This operation does not trigger any hook
+   * @returns WriteOperation that executes when awaited
    */
-  async truncate(): Promise<void> {
+  truncate(): WriteOperation<void> {
     this.truncateNode = new TruncateNode(this.fromNode);
-    const { sql, bindings } = this.astParser.parse([this.truncateNode]);
-    const dataSource = await this.getSqlDataSource("write");
-    await execSql(sql, bindings, dataSource, this.dbType, "rows");
+
+    return new WriteOperation(
+      () => this.unWrap(),
+      () => this.toQuery(),
+      async () => {
+        const { sql, bindings } = this.astParser.parse([this.truncateNode!]);
+        const dataSource = await this.getSqlDataSource("write");
+        await execSql(sql, bindings, dataSource, this.dbType, "rows");
+      },
+    );
   }
 
   /**
    * @description Deletes records from a table
-   * @returns the number of affected rows
+   * @returns WriteOperation that resolves to the number of affected rows
    */
-  async delete(): Promise<number> {
+  delete(): WriteOperation<number> {
     this.deleteNode = new DeleteNode(this.fromNode);
-    const { sql, bindings } = this.astParser.parse([
-      this.deleteNode,
-      ...this.whereNodes,
-      ...this.joinNodes,
-    ]);
 
-    const dataSource = await this.getSqlDataSource("write");
-    return execSql(sql, bindings, dataSource, this.dbType, "affectedRows", {
-      sqlLiteOptions: {
-        typeofModel: this.model,
-        mode: "affectedRows",
+    return new WriteOperation(
+      () => this.unWrap(),
+      () => this.toQuery(),
+      async () => {
+        const { sql, bindings } = this.astParser.parse([
+          this.deleteNode!,
+          ...this.whereNodes,
+          ...this.joinNodes,
+        ]);
+
+        const dataSource = await this.getSqlDataSource("write");
+        return execSql(sql, bindings, dataSource, this.dbType, "affectedRows", {
+          sqlLiteOptions: {
+            typeofModel: this.model,
+            mode: "affectedRows",
+          },
+        });
       },
-    });
+    );
   }
 
   /**
    * @description Soft deletes records from a table
    * @default column - 'deletedAt'
    * @default value - The current date and time in UTC timezone in the format "YYYY-MM-DD HH:mm:ss"
-   * @returns the number of affected rows
+   * @returns WriteOperation that resolves to the number of affected rows
    */
-  async softDelete(
+  softDelete(
     options: Omit<SoftDeleteOptions<T>, "ignoreBeforeDeleteHook"> = {},
-  ): Promise<number> {
+  ): WriteOperation<number> {
     const { column = "deletedAt", value = baseSoftDeleteDate() } =
       options || {};
 
-    const { columns, values } = await this.interpreterUtils.prepareColumns(
+    this.updateNode = new UpdateNode(
+      this.fromNode,
       [column as string],
       [value],
-      "update",
     );
 
-    this.updateNode = new UpdateNode(this.fromNode, columns, values);
-    const { sql, bindings } = this.astParser.parse([
-      this.updateNode,
-      ...this.whereNodes,
-      ...this.joinNodes,
-    ]);
+    return new WriteOperation(
+      () => this.unWrap(),
+      () => this.toQuery(),
+      async () => {
+        const { columns, values } = await this.interpreterUtils.prepareColumns(
+          [column as string],
+          [value],
+          "update",
+        );
 
-    const dataSource = await this.getSqlDataSource("write");
-    return execSql(sql, bindings, dataSource, this.dbType, "affectedRows", {
-      sqlLiteOptions: {
-        typeofModel: this.model,
-        mode: "affectedRows",
+        this.updateNode = new UpdateNode(this.fromNode, columns, values);
+        const { sql, bindings } = this.astParser.parse([
+          this.updateNode,
+          ...this.whereNodes,
+          ...this.joinNodes,
+        ]);
+
+        const dataSource = await this.getSqlDataSource("write");
+        return execSql(sql, bindings, dataSource, this.dbType, "affectedRows", {
+          sqlLiteOptions: {
+            typeofModel: this.model,
+            mode: "affectedRows",
+          },
+        });
       },
-    });
+    );
   }
 
   /**
    * @description Returns the query with the parameters bound to the query
+   * @warning Does not apply any hook from the model
    */
   toQuery(): string {
     const { sql, bindings } = this.unWrap();
@@ -1169,6 +1298,7 @@ export class QueryBuilder<
 
   /**
    * @description Returns the query with database driver placeholders and the params
+   * @warning Does not apply any hook from the model
    */
   unWrap(): ReturnType<typeof AstParser.prototype.parse> {
     if (!this.selectNodes.length) {

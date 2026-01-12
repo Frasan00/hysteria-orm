@@ -38,17 +38,16 @@ export type {
 export { Migration } from "./sql/migrations/migration";
 export { defineMigrator } from "./sql/migrations/migrator";
 export type { ClientMigrator } from "./sql/migrations/migrator";
-export { SchemaBuilder } from "./sql/migrations/schema/schema_builder";
 export { default as Schema } from "./sql/migrations/schema/schema";
+export { SchemaBuilder } from "./sql/migrations/schema/schema_builder";
 
 // Seeders
 export { BaseSeeder } from "./sql/seeders/base_seeder";
 
 // Query Builder
-export type { DryModelQueryBuilder } from "./sql/models/model_query_builder/dry_model_query_builder";
 export type { ModelQueryBuilder } from "./sql/models/model_query_builder/model_query_builder";
-export type { DryQueryBuilder } from "./sql/query_builder/dry_query_builder";
 export type { QueryBuilder } from "./sql/query_builder/query_builder";
+export { WriteOperation } from "./sql/query_builder/write_operation";
 
 // Raw SQL
 export { RawNode } from "./sql/ast/query/node/raw/raw_node";

@@ -1,8 +1,8 @@
 import { faker } from "@faker-js/faker";
+import { UserWithBigint } from "../bigint/user_bigint";
+import { UserWithUuid } from "../uuid/user_uuid";
 import { UserStatus, UserWithoutPk } from "../without_pk/user_without_pk";
 import { FactoryReturnType } from "./factory_types";
-import { UserWithUuid } from "../uuid/user_uuid";
-import { UserWithBigint } from "../bigint/user_bigint";
 
 export class UserFactory {
   static async userWithoutPk<T extends number>(
@@ -13,20 +13,21 @@ export class UserFactory {
   ): Promise<FactoryReturnType<T, UserWithoutPk>> {
     const userData = UserFactory.getCommonUserData(status, isActive, jsonData);
     if (howMany === 1) {
-      return UserWithoutPk.insert(userData) as Promise<
-        FactoryReturnType<T, UserWithoutPk>
+      return (await UserWithoutPk.insert(userData)) as FactoryReturnType<
+        T,
+        UserWithoutPk
       >;
     }
 
     const array = Array.from({ length: howMany });
-    return UserWithoutPk.insertMany(
+    return (await UserWithoutPk.insertMany(
       array.map(() => ({
         ...userData,
         name: faker.person.fullName(),
         email: faker.internet.email(),
         password: faker.internet.password(),
       })),
-    ) as Promise<FactoryReturnType<T, UserWithoutPk>>;
+    )) as FactoryReturnType<T, UserWithoutPk>;
   }
 
   static async userWithUuid<T extends number>(
@@ -37,20 +38,21 @@ export class UserFactory {
   ): Promise<FactoryReturnType<T, UserWithUuid>> {
     const userData = UserFactory.getCommonUserData(status, isActive, jsonData);
     if (howMany === 1) {
-      return UserWithUuid.insert(userData) as Promise<
-        FactoryReturnType<T, UserWithUuid>
+      return (await UserWithUuid.insert(userData)) as FactoryReturnType<
+        T,
+        UserWithUuid
       >;
     }
 
     const array = Array.from({ length: howMany });
-    return UserWithUuid.insertMany(
+    return (await UserWithUuid.insertMany(
       array.map(() => ({
         ...userData,
         name: faker.person.fullName(),
         email: faker.internet.email(),
         password: faker.internet.password(),
       })),
-    ) as Promise<FactoryReturnType<T, UserWithUuid>>;
+    )) as FactoryReturnType<T, UserWithUuid>;
   }
 
   static async userWithBigint<T extends number>(
@@ -61,20 +63,21 @@ export class UserFactory {
   ): Promise<FactoryReturnType<T, UserWithBigint>> {
     const userData = UserFactory.getCommonUserData(status, isActive, jsonData);
     if (howMany === 1) {
-      return UserWithBigint.insert(userData) as Promise<
-        FactoryReturnType<T, UserWithBigint>
+      return (await UserWithBigint.insert(userData)) as FactoryReturnType<
+        T,
+        UserWithBigint
       >;
     }
 
     const array = Array.from({ length: howMany });
-    return UserWithBigint.insertMany(
+    return (await UserWithBigint.insertMany(
       array.map(() => ({
         ...userData,
         name: faker.person.fullName(),
         email: faker.internet.email(),
         password: faker.internet.password(),
       })),
-    ) as Promise<FactoryReturnType<T, UserWithBigint>>;
+    )) as FactoryReturnType<T, UserWithBigint>;
   }
 
   static getCommonUserData(

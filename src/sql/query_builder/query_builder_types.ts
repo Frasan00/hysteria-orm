@@ -1,8 +1,6 @@
 import { RawNode } from "../ast/query/node/raw/raw_node";
 import type { Model } from "../models/model";
 import type { ModelKey } from "../models/model_manager/model_manager_types";
-import { DryModelQueryBuilder } from "../models/model_query_builder/dry_model_query_builder";
-import { DryQueryBuilder } from "./dry_query_builder";
 import { JsonQueryBuilder } from "./json_query_builder";
 import type { WhereQueryBuilder } from "./where_query_builder";
 
@@ -412,58 +410,6 @@ export type UpsertOptionsRawBuilder = {
   updateOnConflict?: boolean;
   returning?: string[];
 };
-
-export type DryQueryBuilderWithoutReadOperations = Omit<
-  DryQueryBuilder,
-  | "many"
-  | "one"
-  | "oneOrFail"
-  | "paginate"
-  | "paginateWithCursor"
-  | "exists"
-  | "pluck"
-  | "increment"
-  | "decrement"
-  | "getSum"
-  | "getAvg"
-  | "getMin"
-  | "getMax"
-  | "getCount"
-  | "stream"
-  | "chunk"
-  | "paginate"
-  | "paginateWithCursor"
-  | "exists"
->;
-
-export type DryModelQueryBuilderWithoutReadOperations<
-  T extends Model,
-  A extends Record<string, any> = {},
-  R extends Record<string, any> = {},
-> = Omit<
-  DryModelQueryBuilder<T, A, R>,
-  | "many"
-  | "one"
-  | "oneOrFail"
-  | "paginate"
-  | "paginateWithCursor"
-  | "exists"
-  | "pluck"
-  | "upsert"
-  | "upsertMany"
-  | "increment"
-  | "decrement"
-  | "getSum"
-  | "getAvg"
-  | "getMin"
-  | "getMax"
-  | "getCount"
-  | "stream"
-  | "chunk"
-  | "paginate"
-  | "paginateWithCursor"
-  | "exists"
->;
 
 export type WriteQueryParam =
   | string

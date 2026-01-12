@@ -33,9 +33,7 @@ import { normalizeColumnType } from "./migrations/schema_diff/type_normalizer";
 import { Model } from "./models/model";
 import { ModelManager } from "./models/model_manager/model_manager";
 import { RawModelOptions } from "./models/model_types";
-import { DryQueryBuilder } from "./query_builder/dry_query_builder";
 import { QueryBuilder } from "./query_builder/query_builder";
-import { DryQueryBuilderWithoutReadOperations } from "./query_builder/query_builder_types";
 import { getRawQueryBuilderModel } from "./query_builder/query_builder_utils";
 import type {
   TableColumnInfo,
@@ -711,16 +709,6 @@ export class SqlDataSource<
     }
 
     return qb;
-  }
-
-  /**
-   * @description Returns a DryQueryBuilder instance that returns the query statement without executing
-   */
-  dryQuery<S extends string>(
-    table: TableFormat<S>,
-    options?: RawModelOptions,
-  ): DryQueryBuilderWithoutReadOperations {
-    return new DryQueryBuilder(getRawQueryBuilderModel(table, options), this);
   }
 
   /**

@@ -9,19 +9,19 @@ export class UserAddressFactory {
     addressId: string,
   ): Promise<FactoryReturnType<T, UserAddressWithUuid>> {
     if (howMany === 1) {
-      return UserAddressWithUuid.insert({
+      return (await UserAddressWithUuid.insert({
         userId,
         addressId,
-      }) as Promise<FactoryReturnType<T, UserAddressWithUuid>>;
+      })) as FactoryReturnType<T, UserAddressWithUuid>;
     }
 
     const array = Array.from({ length: howMany });
-    return UserAddressWithUuid.insertMany(
+    return (await UserAddressWithUuid.insertMany(
       array.map(() => ({
         userId,
         addressId,
       })),
-    ) as Promise<FactoryReturnType<T, UserAddressWithUuid>>;
+    )) as FactoryReturnType<T, UserAddressWithUuid>;
   }
 
   static async userAddressWithBigint<T extends number>(
@@ -30,18 +30,18 @@ export class UserAddressFactory {
     addressId: number,
   ): Promise<FactoryReturnType<T, UserAddressWithBigint>> {
     if (howMany === 1) {
-      return UserAddressWithBigint.insert({
+      return (await UserAddressWithBigint.insert({
         userId,
         addressId,
-      }) as Promise<FactoryReturnType<T, UserAddressWithBigint>>;
+      })) as FactoryReturnType<T, UserAddressWithBigint>;
     }
 
     const array = Array.from({ length: howMany });
-    return UserAddressWithBigint.insertMany(
+    return (await UserAddressWithBigint.insertMany(
       array.map(() => ({
         userId,
         addressId,
       })),
-    ) as Promise<FactoryReturnType<T, UserAddressWithBigint>>;
+    )) as FactoryReturnType<T, UserAddressWithBigint>;
   }
 }
