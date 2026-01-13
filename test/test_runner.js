@@ -25,6 +25,7 @@ const ALL_SQL_ENVIRONMENTS = {
 const VALID_DB_TYPES = Object.keys(ALL_SQL_ENVIRONMENTS);
 
 const SQL_TESTS = [
+  "./test/sql/query_builder/select_subquery.test.ts",
   // write operation
   "./test/sql/write_operation/write_operation.test.ts",
 
@@ -65,6 +66,7 @@ const SQL_TESTS = [
 
   // query builder
   "./test/sql/query_builder/select_tuple.test.ts",
+  "./test/sql/query_builder/select_subquery.test.ts",
   "./test/sql/query_builder/query_builder.test.ts",
   "./test/sql/query_builder/embedded_models.test.ts",
   "./test/sql/query_builder/json_select.test.ts",

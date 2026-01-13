@@ -954,7 +954,7 @@ describe(`[${env.DB_TYPE}] Query Builder: whereSubQuery + whereBuilder integrati
     const retrievedUser = await SqlDataSource.instance
       .query("users_without_pk")
       .select("name")
-      .selectSubQuery((subq) => {
+      .select((subq) => {
         subq
           .select("name")
           .from("users_without_pk")

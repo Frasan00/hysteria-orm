@@ -50,14 +50,14 @@ class ModelFactory<M extends Model> {
     return (await insertModel.insertMany(
       array.map(() => ({
         ...this.modelData,
-      }))
+      })),
     )) as FactoryReturnType<T, M>;
   }
 }
 
 export const createModelFactory = <M extends Model>(
   typeofModel: typeof Model,
-  modelData: Partial<ModelWithoutRelations<M>>
+  modelData: Partial<ModelWithoutRelations<M>>,
 ) => {
   return new ModelFactory<M>(typeofModel, modelData as M);
 };

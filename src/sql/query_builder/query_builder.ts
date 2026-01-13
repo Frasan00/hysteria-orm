@@ -129,7 +129,39 @@ export class QueryBuilder<
   // @ts-expect-error - intentionally returns different type for type-safety
   override select<const Columns extends readonly Selectable[]>(
     ...columns: Columns
+  ): QueryBuilder<T, ComposeBuildRawSelect<S, Columns>>;
+  // @ts-expect-error - intentionally returns different type for type-safety
+  select<ValueType = any, Alias extends string = string>(
+    cbOrQueryBuilder: ((subQuery: QueryBuilder<T>) => void) | QueryBuilder<any>,
+    alias: Alias,
+  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: ValueType }>>;
+  // @ts-expect-error - intentionally returns different type for type-safety
+  select<const Columns extends readonly Selectable[]>(
+    ...columns: Columns
   ): QueryBuilder<T, ComposeBuildRawSelect<S, Columns>> {
+    if (
+      columns.length === 2 &&
+      (typeof columns[0] === "function" ||
+        columns[0] instanceof QueryBuilder) &&
+      typeof columns[1] === "string"
+    ) {
+      const [cbOrQueryBuilder, alias] = columns as unknown as [
+        ((subQuery: QueryBuilder<T>) => void) | QueryBuilder<any>,
+        string,
+      ];
+      if (typeof cbOrQueryBuilder === "function") {
+        const subQuery = new QueryBuilder<T>(this.model, this.sqlDataSource);
+        cbOrQueryBuilder(subQuery);
+        this.selectNodes.push(
+          new SelectNode(subQuery.extractQueryNodes(), alias),
+        );
+        return this as any;
+      }
+      this.selectNodes.push(
+        new SelectNode(cbOrQueryBuilder.extractQueryNodes(), alias),
+      );
+      return this as any;
+    }
     super.select(...(columns as unknown as Selectable[]));
     return this as unknown as QueryBuilder<
       T,
@@ -193,34 +225,6 @@ export class QueryBuilder<
     return this as unknown as QueryBuilder<
       T,
       ComposeRawSelect<S, { [K in Alias]: SqlFunctionReturnType<F> }>
-    >;
-  }
-
-  /**
-   * @description Selects a subquery, subquery must return a single column
-   */
-  selectSubQuery<ValueType = any, Alias extends string = string>(
-    cbOrQueryBuilder: ((subQuery: QueryBuilder<T>) => void) | QueryBuilder<any>,
-    alias: Alias,
-  ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: ValueType }>> {
-    if (typeof cbOrQueryBuilder === "function") {
-      const subQuery = new QueryBuilder<T>(this.model, this.sqlDataSource);
-      cbOrQueryBuilder(subQuery);
-      this.selectNodes.push(
-        new SelectNode(subQuery.extractQueryNodes(), alias),
-      );
-      return this as unknown as QueryBuilder<
-        T,
-        ComposeRawSelect<S, { [K in Alias]: ValueType }>
-      >;
-    }
-
-    this.selectNodes.push(
-      new SelectNode(cbOrQueryBuilder.extractQueryNodes(), alias),
-    );
-    return this as unknown as QueryBuilder<
-      T,
-      ComposeRawSelect<S, { [K in Alias]: ValueType }>
     >;
   }
 

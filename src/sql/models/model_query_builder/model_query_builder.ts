@@ -499,7 +499,39 @@ export class ModelQueryBuilder<
         : readonly (string | readonly [string, string])[]
     >,
     R
+  >;
+  // @ts-expect-error - intentionally returns different type for type-safety
+  select<ValueType = any, Alias extends string = string>(
+    cbOrQueryBuilder: ((subQuery: QueryBuilder<T>) => void) | QueryBuilder<any>,
+    alias: Alias,
+  ): ModelQueryBuilder<T, ComposeSelect<S, { [K in Alias]: ValueType }>, R>;
+  // @ts-expect-error - intentionally returns different type for type-safety
+  select<const Columns extends readonly ModelSelectableInput<T>[]>(
+    ...columns: Columns
+  ): ModelQueryBuilder<
+    T,
+    ComposeBuildSelect<
+      S,
+      T,
+      Columns extends readonly (string | readonly [string, string])[]
+        ? Columns
+        : readonly (string | readonly [string, string])[]
+    >,
+    R
   > {
+    if (
+      columns.length === 2 &&
+      (typeof columns[0] === "function" ||
+        columns[0] instanceof QueryBuilder) &&
+      typeof columns[1] === "string"
+    ) {
+      const [cbOrQueryBuilder, alias] = columns as unknown as [
+        ((subQuery: QueryBuilder<T>) => void) | QueryBuilder<any>,
+        string,
+      ];
+      super.select(cbOrQueryBuilder as any, alias as any);
+      return this as any;
+    }
     super.select(...(columns as any));
 
     return this as unknown as ModelQueryBuilder<
@@ -577,38 +609,6 @@ export class ModelQueryBuilder<
     return this as unknown as ModelQueryBuilder<
       T,
       ComposeSelect<S, { [K in Alias]: SqlFunctionReturnType<F> }>,
-      R
-    >;
-  }
-
-  /**
-   * @description Selects a subquery with a typed alias
-   * @param cbOrQueryBuilder A callback that receives a QueryBuilder or a QueryBuilder instance
-   * @param alias The alias for the subquery result
-   * @description Subquery must return a single column
-   * @example
-   * ```ts
-   * const users = await User.query()
-   *   .select("id")
-   *   .selectSubQuery<number, "postCount">((subQuery) => {
-   *     subQuery
-   *       .select("COUNT(*)")
-   *       .from("posts")
-   *       .whereColumn("posts.user_id", "users.id");
-   *   }, "postCount")
-   *   .many();
-   * // users[0].postCount is typed as number
-   * ```
-   */
-  // @ts-expect-error - intentionally returns different type for type-safety
-  override selectSubQuery<ValueType = any, Alias extends string = string>(
-    cbOrQueryBuilder: ((subQuery: QueryBuilder<T>) => void) | QueryBuilder<any>,
-    alias: Alias,
-  ): ModelQueryBuilder<T, ComposeSelect<S, { [K in Alias]: ValueType }>, R> {
-    super.selectSubQuery(cbOrQueryBuilder, alias);
-    return this as unknown as ModelQueryBuilder<
-      T,
-      ComposeSelect<S, { [K in Alias]: ValueType }>,
       R
     >;
   }
