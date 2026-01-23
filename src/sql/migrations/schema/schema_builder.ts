@@ -4,6 +4,7 @@ import type { SqlDataSource } from "../../sql_data_source";
 import {
   CommonConstraintOptions,
   CommonPostgresExtensions,
+  DatabaseTableOptions,
 } from "./schema_types";
 import type { CreateTableBuilder } from "./create_table";
 import type { AlterTableBuilder } from "./alter_table";
@@ -92,7 +93,7 @@ export class SchemaBuilder implements PromiseLike<void> {
   createTable(
     table: string,
     cb: (table: CreateTableBuilder) => void,
-    options?: { ifNotExists?: boolean },
+    options?: { ifNotExists?: boolean } & DatabaseTableOptions,
   ): this {
     this.schema.createTable(table, cb, options);
     return this;

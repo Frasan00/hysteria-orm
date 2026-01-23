@@ -11,7 +11,6 @@ class PostgresCreateTableInterpreter implements Interpreter {
 
   toSql(node: QueryNode): ReturnType<typeof AstParser.prototype.parse> {
     const ctNode = node as CreateTableNode;
-
     const utils = new InterpreterUtils(this.model);
     const tableName = utils.formatStringTable("postgres", ctNode.table);
 
@@ -34,7 +33,6 @@ class PostgresCreateTableInterpreter implements Interpreter {
         const last = parts.pop() ?? "";
         const inlineConstraintSql = sql;
 
-        // Handle inline constraints: not null, null, and default
         if (
           /not null/i.test(inlineConstraintSql) ||
           /null/i.test(inlineConstraintSql) ||
@@ -71,7 +69,36 @@ class PostgresCreateTableInterpreter implements Interpreter {
 
     const columnsSql = parts.join(", ");
     const ifNotExists = ctNode.ifNotExists ? "if not exists " : "";
-    const finalSql = `${ifNotExists}${tableName} (${columnsSql})`;
+
+    const tablePrefix: string[] = [];
+    if (ctNode.temporary) {
+      tablePrefix.push("TEMPORARY");
+    }
+    if (ctNode.unlogged) {
+      tablePrefix.push("UNLOGGED");
+    }
+
+    const withOptions: string[] = [];
+    if (ctNode.postgresWith) {
+      const params = Object.entries(ctNode.postgresWith)
+        .map(([key, value]) => {
+          const val = typeof value === "boolean" ? value : value;
+          return `${key}=${val}`;
+        })
+        .join(", ");
+      if (params) {
+        withOptions.push(`WITH (${params})`);
+      }
+    }
+
+    const tablespaceClause = ctNode.tablespace
+      ? `TABLESPACE ${ctNode.tablespace}`
+      : "";
+
+    const prefixSql = tablePrefix.length > 0 ? `${tablePrefix.join(" ")} ` : "";
+    const withSql = withOptions.length > 0 ? ` ${withOptions.join(" ")}` : "";
+    const tablespaceSql = tablespaceClause ? ` ${tablespaceClause}` : "";
+    const finalSql = `${ifNotExists}${prefixSql}${tableName} (${columnsSql})${withSql}${tablespaceSql}`;
     return { sql: finalSql, bindings };
   }
 }

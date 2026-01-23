@@ -66,7 +66,20 @@ class MssqlCreateTableInterpreter implements Interpreter {
     }
 
     const columnsSql = parts.join(", ");
-    const finalSql = `${tableName} (${columnsSql})`;
+
+    const withOptions: string[] = [];
+    if (ctNode.dataCompression) {
+      withOptions.push(`DATA_COMPRESSION = ${ctNode.dataCompression}`);
+    }
+
+    const onFilegroup = ctNode.onFilegroup ? ` ON [${ctNode.onFilegroup}]` : "";
+    const textImageOn = ctNode.textImageOn
+      ? ` TEXTIMAGE_ON [${ctNode.textImageOn}]`
+      : "";
+
+    const withSql =
+      withOptions.length > 0 ? ` WITH (${withOptions.join(", ")})` : "";
+    const finalSql = `${tableName} (${columnsSql})${withSql}${onFilegroup}${textImageOn}`;
     return { sql: finalSql, bindings };
   }
 }

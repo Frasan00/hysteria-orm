@@ -12,3 +12,4 @@ export * from "./rename_column";
 export * from "./rename_table";
 export * from "./set_default";
 export * from "./set_not_null";
+export * from "./set_table_options";

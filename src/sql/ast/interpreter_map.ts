@@ -12,6 +12,7 @@ import mssql_alter_table_rename_column from '../interpreter/mssql/alter_table/re
 import mssql_alter_table_rename_table from '../interpreter/mssql/alter_table/rename_table';
 import mssql_alter_table_set_default from '../interpreter/mssql/alter_table/set_default';
 import mssql_alter_table_set_not_null from '../interpreter/mssql/alter_table/set_not_null';
+import mssql_alter_table_set_table_options from '../interpreter/mssql/alter_table/set_table_options';
 import mssql_column_column_type from '../interpreter/mssql/column/column_type';
 import mssql_constraint_after from '../interpreter/mssql/constraint/after';
 import mssql_constraint_constraint from '../interpreter/mssql/constraint/constraint';
@@ -62,6 +63,7 @@ import mysql_alter_table_rename_column from '../interpreter/mysql/alter_table/re
 import mysql_alter_table_rename_table from '../interpreter/mysql/alter_table/rename_table';
 import mysql_alter_table_set_default from '../interpreter/mysql/alter_table/set_default';
 import mysql_alter_table_set_not_null from '../interpreter/mysql/alter_table/set_not_null';
+import mysql_alter_table_set_table_options from '../interpreter/mysql/alter_table/set_table_options';
 import mysql_column_column_type from '../interpreter/mysql/column/column_type';
 import mysql_constraint_after from '../interpreter/mysql/constraint/after';
 import mysql_constraint_constraint from '../interpreter/mysql/constraint/constraint';
@@ -112,6 +114,7 @@ import oracledb_alter_table_rename_column from '../interpreter/oracledb/alter_ta
 import oracledb_alter_table_rename_table from '../interpreter/oracledb/alter_table/rename_table';
 import oracledb_alter_table_set_default from '../interpreter/oracledb/alter_table/set_default';
 import oracledb_alter_table_set_not_null from '../interpreter/oracledb/alter_table/set_not_null';
+import oracledb_alter_table_set_table_options from '../interpreter/oracledb/alter_table/set_table_options';
 import oracledb_column_column_type from '../interpreter/oracledb/column/column_type';
 import oracledb_constraint_after from '../interpreter/oracledb/constraint/after';
 import oracledb_constraint_constraint from '../interpreter/oracledb/constraint/constraint';
@@ -162,6 +165,7 @@ import postgres_alter_table_rename_column from '../interpreter/postgres/alter_ta
 import postgres_alter_table_rename_table from '../interpreter/postgres/alter_table/rename_table';
 import postgres_alter_table_set_default from '../interpreter/postgres/alter_table/set_default';
 import postgres_alter_table_set_not_null from '../interpreter/postgres/alter_table/set_not_null';
+import postgres_alter_table_set_table_options from '../interpreter/postgres/alter_table/set_table_options';
 import postgres_column_column_type from '../interpreter/postgres/column/column_type';
 import postgres_constraint_after from '../interpreter/postgres/constraint/after';
 import postgres_constraint_constraint from '../interpreter/postgres/constraint/constraint';
@@ -211,6 +215,7 @@ import sqlite_alter_table_rename_column from '../interpreter/sqlite/alter_table/
 import sqlite_alter_table_rename_table from '../interpreter/sqlite/alter_table/rename_table';
 import sqlite_alter_table_set_default from '../interpreter/sqlite/alter_table/set_default';
 import sqlite_alter_table_set_not_null from '../interpreter/sqlite/alter_table/set_not_null';
+import sqlite_alter_table_set_table_options from '../interpreter/sqlite/alter_table/set_table_options';
 import sqlite_column_column_type from '../interpreter/sqlite/column/column_type';
 import sqlite_constraint_after from '../interpreter/sqlite/constraint/after';
 import sqlite_constraint_constraint from '../interpreter/sqlite/constraint/constraint';
@@ -265,6 +270,7 @@ export const interpreterMap = {
       rename_table: mssql_alter_table_rename_table,
       set_default: mssql_alter_table_set_default,
       set_not_null: mssql_alter_table_set_not_null,
+      set_table_options: mssql_alter_table_set_table_options,
     },
     column: {
       column_type: mssql_column_column_type,
@@ -371,6 +377,7 @@ export const interpreterMap = {
       rename_table: mysql_alter_table_rename_table,
       set_default: mysql_alter_table_set_default,
       set_not_null: mysql_alter_table_set_not_null,
+      set_table_options: mysql_alter_table_set_table_options,
     },
     column: {
       column_type: mysql_column_column_type,
@@ -477,6 +484,7 @@ export const interpreterMap = {
       rename_table: oracledb_alter_table_rename_table,
       set_default: oracledb_alter_table_set_default,
       set_not_null: oracledb_alter_table_set_not_null,
+      set_table_options: oracledb_alter_table_set_table_options,
     },
     column: {
       column_type: oracledb_column_column_type,
@@ -583,6 +591,7 @@ export const interpreterMap = {
       rename_table: postgres_alter_table_rename_table,
       set_default: postgres_alter_table_set_default,
       set_not_null: postgres_alter_table_set_not_null,
+      set_table_options: postgres_alter_table_set_table_options,
     },
     column: {
       column_type: postgres_column_column_type,
@@ -688,6 +697,7 @@ export const interpreterMap = {
       rename_table: sqlite_alter_table_rename_table,
       set_default: sqlite_alter_table_set_default,
       set_not_null: sqlite_alter_table_set_not_null,
+      set_table_options: sqlite_alter_table_set_table_options,
     },
     column: {
       column_type: sqlite_column_column_type,

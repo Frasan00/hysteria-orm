@@ -67,7 +67,17 @@ class SqliteCreateTableInterpreter implements Interpreter {
 
     const columnsSql = parts.join(", ");
     const ifNotExists = ctNode.ifNotExists ? "if not exists " : "";
-    const finalSql = `${ifNotExists}${tableName} (${columnsSql})`;
+
+    const tableOptions: string[] = [];
+    if (ctNode.sqliteTemporary) {
+      tableOptions.push("TEMPORARY");
+    }
+
+    const optionsPrefix =
+      tableOptions.length > 0 ? `${tableOptions.join(" ")} ` : "";
+    const withoutRowId = ctNode.withoutRowId ? " WITHOUT ROWID" : "";
+    const strict = ctNode.strict ? " STRICT" : "";
+    const finalSql = `${ifNotExists}${optionsPrefix}${tableName} (${columnsSql})${withoutRowId}${strict}`;
     return { sql: finalSql, bindings };
   }
 }

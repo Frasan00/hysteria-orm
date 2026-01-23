@@ -6,6 +6,7 @@ export interface AlterColumnOptions {
   unique?: boolean;
   default?: string | number | boolean | null;
   dropDefault?: boolean;
+  collate?: string;
 }
 
 export class AlterColumnTypeNode extends QueryNode {

@@ -66,7 +66,22 @@ class MysqlCreateTableInterpreter implements Interpreter {
 
     const columnsSql = parts.join(", ");
     const ifNotExists = ctNode.ifNotExists ? "if not exists " : "";
-    const finalSql = `${ifNotExists}${tableName} (${columnsSql})`;
+
+    const tableOptions: string[] = [];
+    if (ctNode.engine) {
+      tableOptions.push(`ENGINE=${ctNode.engine}`);
+    }
+    if (ctNode.charset) {
+      tableOptions.push(`CHARSET=${ctNode.charset}`);
+    }
+    if (ctNode.collate) {
+      tableOptions.push(`COLLATE=${ctNode.collate}`);
+    }
+
+    const tableOptionsSql =
+      tableOptions.length > 0 ? ` ${tableOptions.join(" ")}` : "";
+
+    const finalSql = `${ifNotExists}${tableName} (${columnsSql})${tableOptionsSql}`;
     return { sql: finalSql, bindings };
   }
 }

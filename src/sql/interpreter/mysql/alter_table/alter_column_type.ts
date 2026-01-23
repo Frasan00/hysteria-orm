@@ -41,6 +41,10 @@ class MysqlAlterColumnTypeInterpreter implements Interpreter {
       resultSql += ` default ${defaultValue}`;
     }
 
+    if (a.options.collate) {
+      resultSql += ` COLLATE ${a.options.collate}`;
+    }
+
     if (a.options.unique !== undefined) {
       if (a.options.unique) {
         resultSql += " unique";

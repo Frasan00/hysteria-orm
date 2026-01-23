@@ -4,12 +4,14 @@ import { QueryNode } from "../../ast/query/query";
 import { SqlDataSourceType } from "../../sql_data_source_types";
 import { BaseBuilder } from "./base_builder";
 import { ConstraintBuilder } from "./constraint_builder";
+import { MysqlTableOptions } from "./schema_types";
 
 export class CreateTableBuilder extends BaseBuilder {
   private tableName?: string;
   private namedConstraints: QueryNode[];
   private context: "alter_table" | "create_table" = "create_table";
   private sqlType: SqlDataSourceType;
+  private _mysqlOptions?: MysqlTableOptions;
 
   constructor(
     sqlType: SqlDataSourceType,
@@ -22,6 +24,15 @@ export class CreateTableBuilder extends BaseBuilder {
     this.namedConstraints = [];
     this.context = context ?? "create_table";
     this.sqlType = sqlType;
+  }
+
+  mysqlOptions(options: MysqlTableOptions): this {
+    this._mysqlOptions = options;
+    return this;
+  }
+
+  getMysqlOptions(): MysqlTableOptions | undefined {
+    return this._mysqlOptions;
   }
 
   private build(node: ColumnTypeNode): ConstraintBuilder {

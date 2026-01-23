@@ -34,7 +34,6 @@ class OracleCreateTableInterpreter implements Interpreter {
         const last = parts.pop() ?? "";
         const inlineConstraintSql = sql;
 
-        // Handle inline constraints: not null, null, and default
         if (
           /not null/i.test(inlineConstraintSql) ||
           /null/i.test(inlineConstraintSql) ||
@@ -44,11 +43,6 @@ class OracleCreateTableInterpreter implements Interpreter {
           combined = combined.replace(
             /(references\s+"[^"]+"\s*\([^)]*\))\s+not null/i,
             "not null $1",
-          );
-          // Oracle requires DEFAULT before CHECK constraint
-          combined = combined.replace(
-            /(check\s*\([^)]+\))\s+(default\s+(?:'[^']*'|\S+))/i,
-            "$2 $1",
           );
           parts.push(combined);
           bindings.push(...childBindings);
@@ -75,8 +69,46 @@ class OracleCreateTableInterpreter implements Interpreter {
     }
 
     const columnsSql = parts.join(", ");
-    // Oracle doesn't support IF NOT EXISTS directly, would need PL/SQL block
-    const finalSql = `${tableName} (${columnsSql})`;
+
+    const options: string[] = [];
+
+    if (ctNode.oracleTablespace) {
+      options.push(`TABLESPACE ${ctNode.oracleTablespace}`);
+    }
+
+    if (ctNode.oracleCompress) {
+      options.push("COMPRESS");
+    } else if (ctNode.oracleCompressFor) {
+      options.push(`COMPRESS FOR ${ctNode.oracleCompressFor}`);
+    }
+
+    if (ctNode.oracleStorage) {
+      const storageParts = Object.entries(ctNode.oracleStorage)
+        .map(([key, value]) => `${key.toUpperCase()} ${value}`)
+        .join(" ");
+      if (storageParts) {
+        options.push(`STORAGE (${storageParts})`);
+      }
+    }
+
+    if (ctNode.oracleLogging === false) {
+      options.push("NOLOGGING");
+    } else if (ctNode.oracleLogging === true) {
+      options.push("LOGGING");
+    }
+
+    if (ctNode.oracleCache === false) {
+      options.push("NOCACHE");
+    } else if (ctNode.oracleCache === true) {
+      options.push("CACHE");
+    }
+
+    if (ctNode.oracleInMemory) {
+      options.push("INMEMORY");
+    }
+
+    const optionsSql = options.length > 0 ? ` ${options.join(" ")}` : "";
+    const finalSql = `${tableName} (${columnsSql})${optionsSql}`;
     return { sql: finalSql, bindings };
   }
 }

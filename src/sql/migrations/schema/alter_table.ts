@@ -14,6 +14,7 @@ import { DropConstraintNode } from "../../ast/query/node/alter_table/drop_constr
 import { DropNotNullNode } from "../../ast/query/node/alter_table/drop_not_null";
 import { DropPrimaryKeyNode } from "../../ast/query/node/alter_table/drop_primary_key";
 import { SetNotNullNode } from "../../ast/query/node/alter_table/set_not_null";
+import { SetTableOptionsNode } from "../../ast/query/node/alter_table/set_table_options";
 import { ColumnTypeNode } from "../../ast/query/node/column";
 import { RawNode } from "../../ast/query/node/raw/raw_node";
 import { QueryNode } from "../../ast/query/query";
@@ -26,7 +27,20 @@ import { SqlDataSourceType } from "../../sql_data_source_types";
 import { BaseBuilder } from "./base_builder";
 import { ConstraintBuilder } from "./constraint_builder";
 import { CreateTableBuilder } from "./create_table";
-import { CommonConstraintOptions, ForeignKeyOptions } from "./schema_types";
+import {
+  CommonConstraintOptions,
+  CommonMysqlCharsets,
+  CommonMysqlCollations,
+  CommonMysqlEngines,
+  ForeignKeyOptions,
+  MysqlTableOptions,
+  MysqlAdvancedTableOptions,
+  PostgresTableOptions,
+  SqliteTableOptions,
+  MssqlTableOptions,
+  OracledbTableOptions,
+  DatabaseTableOptions,
+} from "./schema_types";
 
 export class AlterTableBuilder extends BaseBuilder {
   private table: string;
@@ -157,7 +171,6 @@ export class AlterTableBuilder extends BaseBuilder {
       return constraintNode.constraintType === "default";
     }) as ConstraintNode | undefined;
 
-    // Build options for AlterColumnTypeNode - include nullable for MySQL MODIFY COLUMN
     const alterColumnOptions: Record<string, any> = {};
     if (nullableNode) {
       alterColumnOptions.nullable = nullableNode.constraintType === "null";
@@ -173,7 +186,13 @@ export class AlterTableBuilder extends BaseBuilder {
       }
     }
 
-    // Always push type change node with options
+    if (
+      colNode.collate &&
+      (this.sqlType === "mysql" || this.sqlType === "mariadb")
+    ) {
+      alterColumnOptions.collate = colNode.collate;
+    }
+
     this.nodes.push(
       new AlterColumnTypeNode(
         getColumnValue(columnName),
@@ -470,5 +489,109 @@ export class AlterTableBuilder extends BaseBuilder {
     }
 
     this.nodes.push(new DropPrimaryKeyNode(table));
+  }
+
+  /**
+   * @description Sets table options for ALTER TABLE
+   * @mysql Supports: engine, charset, collate, rowFormat, autoIncrement, dataDirectory, etc.
+   * @postgres Supports: tablespace, with storage parameters
+   * @sqlite Not supported for ALTER TABLE table options (most table options are CREATE TABLE only)
+   * @mssql Supports: onFilegroup, dataCompression
+   * @oracledb Supports: tablespace, compress, storage parameters
+   */
+  setTableOptions(options: MysqlTableOptions & MysqlAdvancedTableOptions): this;
+  setTableOptions(options: PostgresTableOptions): this;
+  setTableOptions(options: SqliteTableOptions): this;
+  setTableOptions(options: MssqlTableOptions): this;
+  setTableOptions(options: OracledbTableOptions): this;
+  setTableOptions(options: {
+    engine?: CommonMysqlEngines | string;
+    charset?: CommonMysqlCharsets | string;
+    collate?: CommonMysqlCollations | string;
+    rowFormat?:
+      | "DEFAULT"
+      | "DYNAMIC"
+      | "COMPRESSED"
+      | "REDUNDANT"
+      | "COMPACT"
+      | "FIXED";
+    autoIncrement?: number;
+    dataDirectory?: string;
+    indexDirectory?: string;
+    maxRows?: number;
+    minRows?: number;
+    checksum?: boolean;
+    encrypted?: boolean;
+    comment?: string;
+  }): this;
+  setTableOptions(options: {
+    engine?: CommonMysqlEngines | string;
+    charset?: CommonMysqlCharsets | string;
+    collate?: CommonMysqlCollations | string;
+  }): this;
+  setTableOptions(options: {
+    tablespace?: string;
+    unlogged?: boolean;
+    temporary?: boolean;
+    with?: Record<string, string | number | boolean>;
+  }): this;
+  setTableOptions(options: {
+    strict?: boolean;
+    withoutRowId?: boolean;
+    temporary?: boolean;
+  }): this;
+  setTableOptions(options: {
+    onFilegroup?: string;
+    textImageOn?: string;
+    dataCompression?:
+      | "NONE"
+      | "ROW"
+      | "PAGE"
+      | "COLUMNSTORE"
+      | "COLUMNSTORE_ARCHIVE";
+  }): this;
+  setTableOptions(options: {
+    tablespace?: string;
+    compress?: boolean;
+    storage?: {
+      initial?: string;
+      next?: string;
+      minextents?: number;
+      maxextents?: string;
+      pctincrease?: number;
+      pctfree?: number;
+      pctused?: number;
+    };
+    logging?: boolean;
+    cache?: boolean;
+    inMemory?: boolean;
+    compressFor?: "QUERY LOW" | "QUERY HIGH" | "ARCHIVE LOW" | "ARCHIVE HIGH";
+  }): this;
+  setTableOptions(
+    options: { ifNotExists?: boolean } & DatabaseTableOptions,
+  ): this;
+  setTableOptions(options: any): this {
+    const isMysql = this.sqlType === "mysql" || this.sqlType === "mariadb";
+    const isPostgres =
+      this.sqlType === "postgres" || this.sqlType === "cockroachdb";
+    const isMssql = this.sqlType === "mssql";
+    const isOracledb = this.sqlType === "oracledb";
+    const isSqlite = this.sqlType === "sqlite";
+
+    if (isSqlite) {
+      return this;
+    }
+
+    if (isMysql) {
+      this.nodes.push(new SetTableOptionsNode(options));
+    } else if (isPostgres) {
+      this.nodes.push(new SetTableOptionsNode(options));
+    } else if (isMssql) {
+      this.nodes.push(new SetTableOptionsNode(options));
+    } else if (isOracledb) {
+      this.nodes.push(new SetTableOptionsNode(options));
+    }
+
+    return this;
   }
 }

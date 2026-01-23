@@ -31,6 +31,16 @@ import { CreateTableBuilder } from "./create_table";
 import {
   CommonConstraintOptions,
   CommonPostgresExtensions,
+  MysqlTableOptions,
+  MysqlAdvancedTableOptions,
+  PostgresTableOptions,
+  SqliteTableOptions,
+  MssqlTableOptions,
+  OracledbTableOptions,
+  CommonMysqlEngines,
+  CommonMysqlCharsets,
+  CommonMysqlCollations,
+  DatabaseTableOptions,
 } from "./schema_types";
 
 export default class Schema {
@@ -118,7 +128,7 @@ export default class Schema {
   createTable(
     table: string,
     cb: (table: CreateTableBuilder) => void,
-    options?: { ifNotExists?: boolean },
+    options?: { ifNotExists?: boolean } & DatabaseTableOptions,
   ): void {
     const tableBuilder = new CreateTableBuilder(this.sqlType, [], table);
     cb(tableBuilder);
@@ -133,11 +143,19 @@ export default class Schema {
       this.sqlType,
     );
 
+    const allOptions = {
+      ...options,
+      ...(this.sqlType === "mysql" || this.sqlType === "mariadb"
+        ? tableBuilder.getMysqlOptions() || {}
+        : {}),
+    };
+
     const createTableNode = new CreateTableNode(
       table,
       nodes,
       tableBuilder.getNamedConstraints() as ConstraintNode[],
       options?.ifNotExists,
+      allOptions,
     );
 
     const frag = astParser.parse([createTableNode]).sql;

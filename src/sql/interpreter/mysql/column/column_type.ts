@@ -22,111 +22,112 @@ class MysqlColumnTypeInterpreter implements Interpreter {
     );
     const dt = colNode.dataType.toLowerCase();
 
+    let typeSql: string;
+
     if (dt === "char") {
       const len = colNode.length ?? 1;
-      return { sql: `${columnName} char(${len})`, bindings: [] };
+      typeSql = `${columnName} char(${len})`;
     } else if (dt === "varchar") {
       const len = colNode.length ?? 255;
-      return { sql: `${columnName} varchar(${len})`, bindings: [] };
+      typeSql = `${columnName} varchar(${len})`;
     } else if (dt === "uuid") {
-      return { sql: `${columnName} varchar(36)`, bindings: [] };
+      typeSql = `${columnName} varchar(36)`;
     } else if (dt === "ulid") {
-      return { sql: `${columnName} varchar(26)`, bindings: [] };
+      typeSql = `${columnName} varchar(26)`;
     } else if (
       dt === "longtext" ||
       dt === "mediumtext" ||
       dt === "tinytext" ||
       dt === "text"
     ) {
-      return { sql: `${columnName} ${dt}`, bindings: [] };
+      typeSql = `${columnName} ${dt}`;
     } else if (dt === "integer" || dt === "int") {
-      let sqlType = `int`;
+      typeSql = "int";
       if (colNode.autoIncrement) {
-        sqlType += " auto_increment";
+        typeSql += " auto_increment";
       }
-      return { sql: `${columnName} ${sqlType}`, bindings: [] };
+      typeSql = `${columnName} ${typeSql}`;
     } else if (dt === "tinyint") {
-      return { sql: `${columnName} tinyint`, bindings: [] };
+      typeSql = `${columnName} tinyint`;
     } else if (dt === "smallint") {
-      return { sql: `${columnName} smallint`, bindings: [] };
+      typeSql = `${columnName} smallint`;
     } else if (dt === "mediumint") {
-      return { sql: `${columnName} mediumint`, bindings: [] };
+      typeSql = `${columnName} mediumint`;
     } else if (dt === "bigint") {
-      let sqlType = `bigint`;
+      typeSql = "bigint";
       if (colNode.autoIncrement) {
-        sqlType += " auto_increment";
+        typeSql += " auto_increment";
       }
-      return { sql: `${columnName} ${sqlType}`, bindings: [] };
+      typeSql = `${columnName} ${typeSql}`;
     } else if (dt === "float") {
-      return { sql: `${columnName} float`, bindings: [] };
+      typeSql = `${columnName} float`;
     } else if (dt === "double") {
-      return { sql: `${columnName} double`, bindings: [] };
+      typeSql = `${columnName} double`;
     } else if (dt === "real") {
-      return { sql: `${columnName} double`, bindings: [] };
+      typeSql = `${columnName} double`;
     } else if (dt === "decimal") {
       const precision = colNode.precision ?? 10;
       const scale = colNode.scale ?? 0;
-      return {
-        sql: `${columnName} decimal(${precision}, ${scale})`,
-        bindings: [],
-      };
+      typeSql = `${columnName} decimal(${precision}, ${scale})`;
     } else if (dt === "numeric") {
       const precision = colNode.precision ?? 10;
       const scale = colNode.scale ?? 0;
-      return {
-        sql: `${columnName} numeric(${precision}, ${scale})`,
-        bindings: [],
-      };
+      typeSql = `${columnName} numeric(${precision}, ${scale})`;
     } else if (dt === "date") {
-      return { sql: `${columnName} date`, bindings: [] };
+      typeSql = `${columnName} date`;
     } else if (dt === "time") {
       const p =
         typeof colNode.precision === "number" ? `(${colNode.precision})` : "";
-      return { sql: `${columnName} time${p}`.trimEnd(), bindings: [] };
+      typeSql = `${columnName} time${p}`.trimEnd();
     } else if (dt === "datetime") {
       const p =
         typeof colNode.precision === "number" ? `(${colNode.precision})` : "";
-      return { sql: `${columnName} datetime${p}`.trimEnd(), bindings: [] };
+      typeSql = `${columnName} datetime${p}`.trimEnd();
     } else if (dt === "timestamp") {
       const p =
         typeof colNode.precision === "number" ? `(${colNode.precision})` : "";
-      return { sql: `${columnName} timestamp${p}`.trimEnd(), bindings: [] };
+      typeSql = `${columnName} timestamp${p}`.trimEnd();
     } else if (dt === "year") {
-      return { sql: `${columnName} year`, bindings: [] };
+      typeSql = `${columnName} year`;
     } else if (dt === "boolean") {
-      return { sql: `${columnName} boolean`, bindings: [] };
+      typeSql = `${columnName} boolean`;
     } else if (dt === "varbinary") {
       const len = colNode.length ?? 255;
-      return { sql: `${columnName} varbinary(${len})`, bindings: [] };
+      typeSql = `${columnName} varbinary(${len})`;
     } else if (dt === "binary") {
       const len = colNode.length ?? 255;
-      return { sql: `${columnName} binary(${len})`, bindings: [] };
+      typeSql = `${columnName} binary(${len})`;
     } else if (dt === "bytea" || dt === "blob") {
-      return { sql: `${columnName} blob`, bindings: [] };
+      typeSql = `${columnName} blob`;
     } else if (dt === "json" || dt === "jsonb") {
-      return { sql: `${columnName} json`, bindings: [] };
+      typeSql = `${columnName} json`;
     } else if (dt === "enum") {
       if (colNode.enumValues && colNode.enumValues.length > 0) {
         const values = colNode.enumValues.map((v) => `'${v}'`).join(", ");
-        return { sql: `${columnName} enum(${values})`, bindings: [] };
+        typeSql = `${columnName} enum(${values})`;
+      } else {
+        typeSql = `${columnName} text`;
       }
-      return { sql: `${columnName} text`, bindings: [] };
     } else if (dt === "geometry") {
-      return { sql: `${columnName} geometry`, bindings: [] };
+      typeSql = `${columnName} geometry`;
     } else if (dt === "point") {
-      return { sql: `${columnName} point`, bindings: [] };
+      typeSql = `${columnName} point`;
     } else if (dt === "linestring") {
-      return { sql: `${columnName} linestring`, bindings: [] };
+      typeSql = `${columnName} linestring`;
     } else if (dt === "polygon") {
-      return { sql: `${columnName} polygon`, bindings: [] };
+      typeSql = `${columnName} polygon`;
     } else if (dt === "multipoint") {
-      return { sql: `${columnName} multipoint`, bindings: [] };
+      typeSql = `${columnName} multipoint`;
+    } else {
+      typeSql =
+        `${columnName} ${dt} ${colNode.length ? `(${colNode.length})` : ""}`.trim();
     }
 
-    return {
-      sql: `${columnName} ${dt} ${colNode.length ? `(${colNode.length})` : ""}`,
-      bindings: [],
-    };
+    if (colNode.collate) {
+      typeSql += ` COLLATE ${colNode.collate}`;
+    }
+
+    return { sql: typeSql, bindings: [] };
   }
 }
 

@@ -13,6 +13,7 @@ import { SqlDataSourceType } from "../../sql_data_source_types";
 import { BaseBuilder } from "./base_builder";
 import {
   CommonConstraintOptions,
+  CommonMysqlCollations,
   CreateTableContext,
   ForeignKeyOptions,
   PrimaryKeyOptions,
@@ -245,7 +246,25 @@ export class ConstraintBuilder extends BaseBuilder {
    * @mysql only
    */
   after(columnName: string): this {
+    if (this.sqlType !== "mysql") {
+      return this;
+    }
+
     this.nodes.push(new AfterConstraintNode(columnName));
+    return this;
+  }
+
+  // #endregion
+
+  // #region collate
+  /**
+   * @description Sets the COLLATE for the column
+   * @mysql only
+   */
+  collate(collation: CommonMysqlCollations): this;
+  collate(collation: string): this;
+  collate(collation: string | CommonMysqlCollations): this {
+    this.columnNode.collate = collation;
     return this;
   }
 
