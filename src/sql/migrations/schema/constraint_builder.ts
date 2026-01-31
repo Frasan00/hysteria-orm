@@ -239,6 +239,48 @@ export class ConstraintBuilder extends BaseBuilder {
   }
   // #endregion
 
+  // #region check
+  /**
+   * @description Adds a CHECK constraint to the column
+   * @param expression SQL expression for the check constraint (e.g., "age >= 18", "price > 0")
+   * @param options Optional constraint name
+   * @example
+   * ```ts
+   * table.integer("age").check("age >= 18");
+   * table.decimal("price").check("price > 0", { constraintName: "positive_price" });
+   * ```
+   */
+  check(expression: string, options?: CommonConstraintOptions): this {
+    const columnName = getColumnValue(this.columnNode.column);
+    const constraintName =
+      options?.constraintName ??
+      `chk_${this.tableName}_${columnName}`.substring(0, 63);
+
+    if (this.context === "alter_table") {
+      this.nodes.push(
+        new ConstraintNode("check", {
+          columns: [columnName],
+          checkExpression: expression,
+          constraintName,
+        }),
+      );
+
+      return this;
+    }
+
+    this.namedConstraints.push(
+      new ConstraintNode("check", {
+        columns: [columnName],
+        checkExpression: expression,
+        constraintName,
+      }),
+    );
+
+    return this;
+  }
+
+  // #endregion
+
   // #region after
   /**
    * @description Sets the column to be after another column

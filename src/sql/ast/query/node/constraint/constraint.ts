@@ -7,7 +7,8 @@ export type ConstraintType =
   | "unique"
   | "not_null"
   | "null"
-  | "default";
+  | "default"
+  | "check";
 
 export class ConstraintNode extends QueryNode {
   constraintType: ConstraintType;

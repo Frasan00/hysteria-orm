@@ -102,6 +102,19 @@ class MssqlConstraintInterpreter implements Interpreter {
       return { sql, bindings: [] };
     }
 
+    if (cNode.constraintType === "check") {
+      if (!cNode.checkExpression) {
+        return { sql: "", bindings: [] };
+      }
+      const sqlPrefix = cNode.constraintName
+        ? `constraint [${cNode.constraintName}] `
+        : "";
+      return {
+        sql: `${sqlPrefix}check (${cNode.checkExpression})`,
+        bindings: [],
+      };
+    }
+
     return { sql: "", bindings: [] };
   }
 }

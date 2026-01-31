@@ -92,6 +92,13 @@ class SqliteConstraintInterpreter implements Interpreter {
       return { sql, bindings: [] };
     }
 
+    if (cNode.constraintType === "check") {
+      if (!cNode.checkExpression) {
+        return { sql: "", bindings: [] };
+      }
+      return { sql: `${prefix}check (${cNode.checkExpression})`, bindings: [] };
+    }
+
     return { sql: "", bindings: [] };
   }
 }

@@ -31,15 +31,6 @@ import { CreateTableBuilder } from "./create_table";
 import {
   CommonConstraintOptions,
   CommonPostgresExtensions,
-  MysqlTableOptions,
-  MysqlAdvancedTableOptions,
-  PostgresTableOptions,
-  SqliteTableOptions,
-  MssqlTableOptions,
-  OracledbTableOptions,
-  CommonMysqlEngines,
-  CommonMysqlCharsets,
-  CommonMysqlCollations,
   DatabaseTableOptions,
 } from "./schema_types";
 
@@ -436,6 +427,56 @@ export default class Schema {
       modelCaseConvention: "preserve",
     } as typeof Model);
     this.rawQuery(astParser.parse([node]).sql);
+  }
+
+  /**
+   * @description Adds a CHECK constraint to a table
+   * @param table The table name
+   * @param expression The SQL expression for the check constraint (e.g., "age >= 18", "price > 0")
+   * @param options Optional constraint name and other options
+   * @example
+   * ```ts
+   * schema.addCheck("users", "age >= 18", { constraintName: "users_age_check" });
+   * schema.addCheck("products", "price > 0 AND stock >= 0");
+   * ```
+   */
+  addCheck(
+    table: string,
+    expression: string,
+    options?: CommonConstraintOptions,
+  ): void {
+    const constraintName =
+      options?.constraintName ?? `chk_${table}_custom`.substring(0, 63);
+
+    const constraint = new ConstraintNode("check", {
+      checkExpression: expression,
+      constraintName,
+    });
+
+    const alterNode = new AlterTableNode(table, [
+      new AddConstraintNode(constraint),
+    ]);
+
+    const astParser = this.generateAstInstance({
+      table,
+      databaseCaseConvention: "preserve",
+      modelCaseConvention: "preserve",
+    } as typeof Model);
+
+    this.rawQuery(astParser.parse([alterNode]).sql);
+  }
+
+  /**
+   * @description Drops a CHECK constraint from a table
+   * @param table The table name
+   * @param constraintName The name of the check constraint to drop
+   * @example
+   * ```ts
+   * schema.dropCheck("users", "users_age_check");
+   * ```
+   */
+  dropCheck(table: string, constraintName: string): void {
+    this.dropConstraint(table, constraintName);
   }
 
   /**

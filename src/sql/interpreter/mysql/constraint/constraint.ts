@@ -90,6 +90,16 @@ class MysqlConstraintInterpreter implements Interpreter {
       return { sql, bindings: [] };
     }
 
+    if (cNode.constraintType === "check") {
+      if (!cNode.checkExpression) {
+        return { sql: "", bindings: [] };
+      }
+      const prefix = cNode.constraintName
+        ? `constraint \`${cNode.constraintName}\` `
+        : "";
+      return { sql: `${prefix}check (${cNode.checkExpression})`, bindings: [] };
+    }
+
     return { sql: "", bindings: [] };
   }
 }
