@@ -4,7 +4,7 @@ import { QueryNode } from "../../ast/query/query";
 import { SqlDataSourceType } from "../../sql_data_source_types";
 import { BaseBuilder } from "./base_builder";
 import { ConstraintBuilder } from "./constraint_builder";
-import { MysqlTableOptions } from "./schema_types";
+import { DateTimeOptions, MysqlTableOptions } from "./schema_types";
 
 export class CreateTableBuilder extends BaseBuilder {
   private tableName?: string;
@@ -349,14 +349,15 @@ export class CreateTableBuilder extends BaseBuilder {
    * @mysql DATETIME(precision)
    * @postgres TIMESTAMP(precision) WITHOUT TIME ZONE
    * @sqlite TEXT
+   * @param options.autoCreate Sets DEFAULT CURRENT_TIMESTAMP on the column
+   * @param options.autoUpdate Automatically updates the column on row update. Uses ON UPDATE CURRENT_TIMESTAMP on MySQL/MariaDB, auto-generates a trigger on other databases
    */
-  datetime(
-    name: string,
-    options?: { withTimezone?: boolean; precision?: number },
-  ): ConstraintBuilder {
+  datetime(name: string, options?: DateTimeOptions): ConstraintBuilder {
     const node = new ColumnTypeNode(name, "datetime", {
       withTimezone: options?.withTimezone ?? false,
       precision: options?.precision,
+      autoCreate: options?.autoCreate,
+      autoUpdate: options?.autoUpdate,
     });
     return this.build(node);
   }
@@ -366,14 +367,15 @@ export class CreateTableBuilder extends BaseBuilder {
    * @mysql TIMESTAMP(precision)
    * @postgres TIMESTAMP(precision) WITH/WITHOUT TIME ZONE
    * @sqlite TEXT
+   * @param options.autoCreate Sets DEFAULT CURRENT_TIMESTAMP on the column
+   * @param options.autoUpdate Automatically updates the column on row update. Uses ON UPDATE CURRENT_TIMESTAMP on MySQL/MariaDB, auto-generates a trigger on other databases
    */
-  timestamp(
-    name: string,
-    options?: { withTimezone?: boolean; precision?: number },
-  ): ConstraintBuilder {
+  timestamp(name: string, options?: DateTimeOptions): ConstraintBuilder {
     const node = new ColumnTypeNode(name, "timestamp", {
       withTimezone: options?.withTimezone ?? false,
       precision: options?.precision,
+      autoCreate: options?.autoCreate,
+      autoUpdate: options?.autoUpdate,
     });
     return this.build(node);
   }

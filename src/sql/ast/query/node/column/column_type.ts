@@ -9,6 +9,8 @@ export class ColumnTypeNode extends QueryNode {
   enumValues?: readonly string[];
   autoIncrement?: boolean;
   withTimezone?: boolean;
+  autoCreate?: boolean;
+  autoUpdate?: boolean;
   collate?: string;
   chainsWith = ",";
   canKeywordBeSeenMultipleTimes = true;
@@ -26,6 +28,8 @@ export class ColumnTypeNode extends QueryNode {
       enumValues?: readonly string[];
       withTimezone?: boolean;
       autoIncrement?: boolean;
+      autoCreate?: boolean;
+      autoUpdate?: boolean;
       collate?: string;
       isRawValue?: boolean;
     } = {},
@@ -39,6 +43,8 @@ export class ColumnTypeNode extends QueryNode {
     this.enumValues = opts.enumValues;
     this.withTimezone = opts.withTimezone;
     this.autoIncrement = opts.autoIncrement;
+    this.autoCreate = opts.autoCreate;
+    this.autoUpdate = opts.autoUpdate;
     this.collate = opts.collate;
     this.isRawValue = opts.isRawValue ?? false;
   }

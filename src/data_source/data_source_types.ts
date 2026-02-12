@@ -106,7 +106,7 @@ export interface SqliteDataSourceInput extends CommonDataSourceInput {
    * @description The filename of the database file for SQLite
    * @default ":memory:"
    */
-  readonly database?: string;
+  readonly database?: ":memory:" | (string & {});
 }
 
 export interface NotNullableSqliteDataSourceInput

@@ -103,7 +103,11 @@ class MssqlColumnTypeInterpreter implements Interpreter {
     if (dt === "datetime" || dt === "timestamp") {
       const p =
         typeof colNode.precision === "number" ? `(${colNode.precision})` : "";
-      return { sql: `${columnName} datetime2${p}`, bindings: [] };
+      let sql = `${columnName} datetime2${p}`;
+      if (colNode.autoCreate) {
+        sql += ` default current_timestamp`;
+      }
+      return { sql, bindings: [] };
     }
 
     if (dt === "boolean" || dt === "bool") {

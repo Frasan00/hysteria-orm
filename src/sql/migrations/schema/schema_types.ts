@@ -255,6 +255,25 @@ export type OracledbTableOptions = {
   compressFor?: "QUERY LOW" | "QUERY HIGH" | "ARCHIVE LOW" | "ARCHIVE HIGH";
 };
 
+export type DateTimeOptions = {
+  /**
+   * @description Whether to include the timezone in the datetime column
+   */
+  withTimezone?: boolean;
+  /**
+   * @description The precision of the datetime column
+   */
+  precision?: number;
+  /**
+   * @description Sets DEFAULT CURRENT_TIMESTAMP on the column
+   */
+  autoCreate?: boolean;
+  /**
+   * @description Automatically updates the column on row update. Uses ON UPDATE CURRENT_TIMESTAMP on MySQL/MariaDB, auto-generates a trigger on other databases
+   */
+  autoUpdate?: boolean;
+};
+
 /**
  * @description Union type for all database-specific table options
  */

@@ -95,8 +95,12 @@ class OracleColumnTypeInterpreter implements Interpreter {
       const withTz = colNode.withTimezone ? " with time zone" : "";
       const p =
         typeof colNode.precision === "number" ? `(${colNode.precision})` : "";
+      let sql = `${columnName} timestamp${p}${withTz}`.trimEnd();
+      if (colNode.autoCreate) {
+        sql += ` default current_timestamp`;
+      }
       return {
-        sql: `${columnName} timestamp${p}${withTz}`.trimEnd(),
+        sql,
         bindings: [],
       };
     } else if (dt === "boolean" || dt === "bool") {

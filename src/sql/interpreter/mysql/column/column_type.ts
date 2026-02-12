@@ -83,10 +83,22 @@ class MysqlColumnTypeInterpreter implements Interpreter {
       const p =
         typeof colNode.precision === "number" ? `(${colNode.precision})` : "";
       typeSql = `${columnName} datetime${p}`.trimEnd();
+      if (colNode.autoCreate) {
+        typeSql += ` default current_timestamp${p}`;
+      }
+      if (colNode.autoUpdate) {
+        typeSql += ` on update current_timestamp${p}`;
+      }
     } else if (dt === "timestamp") {
       const p =
         typeof colNode.precision === "number" ? `(${colNode.precision})` : "";
       typeSql = `${columnName} timestamp${p}`.trimEnd();
+      if (colNode.autoCreate) {
+        typeSql += ` default current_timestamp${p}`;
+      }
+      if (colNode.autoUpdate) {
+        typeSql += ` on update current_timestamp${p}`;
+      }
     } else if (dt === "year") {
       typeSql = `${columnName} year`;
     } else if (dt === "boolean") {

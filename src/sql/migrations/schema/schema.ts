@@ -10,7 +10,9 @@ import {
   DropPrimaryKeyNode,
   RenameTableNode,
 } from "../../ast/query/node/alter_table";
+import { AddColumnNode } from "../../ast/query/node/alter_table/add_column";
 import { AddConstraintNode } from "../../ast/query/node/alter_table/add_constraint";
+import { ColumnTypeNode } from "../../ast/query/node/column";
 import { ConstraintNode } from "../../ast/query/node/constraint";
 import { CreateTableNode } from "../../ast/query/node/create_table";
 import { DropTableNode } from "../../ast/query/node/drop_table";
@@ -26,6 +28,7 @@ import {
 } from "../../models/decorators/model_decorators_constants";
 import { Model } from "../../models/model";
 import type { SqlDataSourceType } from "../../sql_data_source_types";
+import { getColumnValue } from "../../resources/utils";
 import { AlterTableBuilder } from "./alter_table";
 import { CreateTableBuilder } from "./create_table";
 import {
@@ -154,6 +157,8 @@ export default class Schema {
       ? frag
       : `create table ${frag}`;
     this.rawQuery(stmt);
+
+    this.generateAutoUpdateTriggers(table, nodes);
   }
 
   /**
@@ -208,6 +213,11 @@ export default class Schema {
       }
     }
     flushGroup();
+
+    const addColumnNodes = nodes
+      .filter((n) => n.file === "add_column")
+      .map((n) => (n as AddColumnNode).column);
+    this.generateAutoUpdateTriggers(table, addColumnNodes);
   }
 
   /**
@@ -503,6 +513,57 @@ export default class Schema {
       modelCaseConvention: "preserve",
     } as typeof Model);
     this.rawQuery(astParser.parse([node]).sql);
+  }
+
+  private generateAutoUpdateTriggers(table: string, nodes: QueryNode[]): void {
+    if (this.sqlType === "mysql" || this.sqlType === "mariadb") {
+      return;
+    }
+
+    const autoUpdateColumns = nodes
+      .filter(
+        (n) =>
+          n.folder === "column" && (n as ColumnTypeNode).autoUpdate === true,
+      )
+      .map((n) => getColumnValue((n as ColumnTypeNode).column));
+
+    for (const column of autoUpdateColumns) {
+      const triggerStatements = this.getAutoUpdateTriggerSql(table, column);
+      for (const stmt of triggerStatements) {
+        this.rawQuery(stmt);
+      }
+    }
+  }
+
+  private getAutoUpdateTriggerSql(table: string, column: string): string[] {
+    const triggerName = `trg_${table}_${column}_auto_update`;
+
+    switch (this.sqlType) {
+      case "postgres":
+      case "cockroachdb":
+        return [
+          `CREATE OR REPLACE FUNCTION ${triggerName}_fn() RETURNS trigger AS $$ BEGIN NEW."${column}" = CURRENT_TIMESTAMP; RETURN NEW; END; $$ LANGUAGE plpgsql`,
+          `CREATE OR REPLACE TRIGGER ${triggerName} BEFORE UPDATE ON "${table}" FOR EACH ROW EXECUTE FUNCTION ${triggerName}_fn()`,
+        ];
+
+      case "sqlite":
+        return [
+          `CREATE TRIGGER IF NOT EXISTS ${triggerName} AFTER UPDATE ON "${table}" FOR EACH ROW BEGIN UPDATE "${table}" SET "${column}" = CURRENT_TIMESTAMP WHERE rowid = NEW.rowid; END`,
+        ];
+
+      case "mssql":
+        return [
+          `CREATE OR ALTER TRIGGER [${triggerName}] ON [${table}] AFTER UPDATE AS BEGIN SET NOCOUNT ON; UPDATE t SET t.[${column}] = CURRENT_TIMESTAMP FROM [${table}] t INNER JOIN inserted i ON t.[id] = i.[id]; END`,
+        ];
+
+      case "oracledb":
+        return [
+          `CREATE OR REPLACE TRIGGER "${triggerName}" BEFORE UPDATE ON "${table}" FOR EACH ROW BEGIN :NEW."${column}" := CURRENT_TIMESTAMP; END;`,
+        ];
+
+      default:
+        return [];
+    }
   }
 
   private generateAstInstance(model: typeof Model): AstParser {

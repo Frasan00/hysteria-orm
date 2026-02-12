@@ -73,7 +73,11 @@ class SqliteColumnTypeInterpreter implements Interpreter {
       dt === "time" ||
       dt === "year"
     ) {
-      return { sql: `${columnName} text`, bindings: [] };
+      let sql = `${columnName} text`;
+      if ((dt === "datetime" || dt === "timestamp") && colNode.autoCreate) {
+        sql += ` default current_timestamp`;
+      }
+      return { sql, bindings: [] };
     } else if (dt === "boolean") {
       return { sql: `${columnName} integer`, bindings: [] };
     } else if (dt === "json" || dt === "jsonb") {
