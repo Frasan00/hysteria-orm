@@ -100,6 +100,12 @@ Each database has a dedicated interpreter in `src/sql/interpreter/` that transla
 **3. Query Builder**
 The query builder (`src/sql/query_builder/`) provides a fluent API for constructing queries. It builds an AST that interpreters then convert to database-specific SQL.
 
+**Type Safety in the Query Builder:**
+- **Select**: Return type narrows based on selected columns via `BuildSelectType<T, Columns>`. The `S` generic on `ModelQueryBuilder<T, S, R>` tracks selected columns, and `R` tracks loaded relations.
+- **Where clauses**: `where`, `whereIn`, `whereBetween`, and `having` methods use `<K extends ModelKey<T>>` overloads so the value parameter is inferred from the column's type (e.g., `where("age", 25)` enforces `number`). Fallback overloads with `BaseValues` remain for raw/joined columns.
+- **Aggregates**: `getCount`, `getMax`, `getMin`, `getAvg`, `getSum` in `ModelQueryBuilder` accept `ModelKey<T> & string` for intellisense while still allowing arbitrary strings.
+- **Key type utilities**: `ModelKey<T>` (excludes relations/methods), `WhereColumnValue<T, K>` (column value type + null), `BuildSelectType`, `ComposeBuildSelect`, `SelectBrand`.
+
 **4. Migration System**
 Migrations work by:
 1. Reading model decorator metadata

@@ -2,12 +2,12 @@
  * Test to verify CHECK constraint SQL generation for different databases
  */
 
-import { AstParser } from "../src/sql/ast/parser";
-import { ConstraintNode } from "../src/sql/ast/query/node/constraint";
-import { CreateTableNode } from "../src/sql/ast/query/node/create_table";
-import { ColumnTypeNode } from "../src/sql/ast/query/node/column/column_type";
-import { Model } from "../src/sql/models/model";
-import type { SqlDataSourceType } from "../src/sql/sql_data_source_types";
+import { AstParser } from "../../src/sql/ast/parser";
+import { ConstraintNode } from "../../src/sql/ast/query/node/constraint";
+import { CreateTableNode } from "../../src/sql/ast/query/node/create_table";
+import { ColumnTypeNode } from "../../src/sql/ast/query/node/column/column_type";
+import { Model } from "../../src/sql/models/model";
+import type { SqlDataSourceType } from "../../src/sql/sql_data_source_types";
 
 describe("Check Constraint SQL Generation", () => {
   const mockModel = {

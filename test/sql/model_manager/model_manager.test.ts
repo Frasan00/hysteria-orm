@@ -166,7 +166,7 @@ describe(`[${env.DB_TYPE}] Model Manager - Advanced Operations`, () => {
     const users = await manager
       .query()
       .where("age", ">", 25)
-      .where("status", "active")
+      .where("status", UserStatus.active)
       .orderBy("age", "desc")
       .limit(2)
       .many();

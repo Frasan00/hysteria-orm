@@ -91,6 +91,14 @@ export type ModelKey<T extends Model> = {
         : K;
 }[keyof T];
 
+/**
+ * Extracts the value type for a model column key, adding `null` for SQL compatibility.
+ * Used in type-safe where/having clauses to infer value types from column keys.
+ */
+export type WhereColumnValue<T extends Model, K extends ModelKey<T>> =
+  | T[K]
+  | null;
+
 export type ModelRelation<T extends Model> = OnlyRelations<T>;
 
 export type OrderByChoices = "asc" | "desc";

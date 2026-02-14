@@ -20,7 +20,10 @@ import { UpdateNode } from "../ast/query/node/update";
 import { QueryNode } from "../ast/query/query";
 import { InterpreterUtils } from "../interpreter/interpreter_utils";
 import type { Model } from "../models/model";
-import type { ModelKey } from "../models/model_manager/model_manager_types";
+import type {
+  ModelKey,
+  WhereColumnValue,
+} from "../models/model_manager/model_manager_types";
 import type { NumberModelKey } from "../models/model_types";
 import {
   getCursorPaginationMetadata,
@@ -447,7 +450,11 @@ export class QueryBuilder<
     }
 
     if (cursor) {
-      this.where(cursor.key, options.operator || ">", cursor.value);
+      this.where(
+        cursor.key,
+        options.operator || ">",
+        cursor.value as WhereColumnValue<T, K>,
+      );
     }
 
     this.limit(limit);

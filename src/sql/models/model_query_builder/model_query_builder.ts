@@ -344,7 +344,7 @@ export class ModelQueryBuilder<
   }
 
   override async getCount(
-    column: string = "*",
+    column: (ModelKey<T> & string) | "*" | (string & {}) = "*",
     options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<number> {
     this.clearForFunctions();
@@ -363,7 +363,7 @@ export class ModelQueryBuilder<
   }
 
   override async getMax(
-    column: string,
+    column: (ModelKey<T> & string) | (string & {}),
     options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<number> {
     this.clearForFunctions();
@@ -384,7 +384,7 @@ export class ModelQueryBuilder<
   }
 
   override async getMin(
-    column: string,
+    column: (ModelKey<T> & string) | (string & {}),
     options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<number> {
     this.clearForFunctions();
@@ -405,7 +405,7 @@ export class ModelQueryBuilder<
   }
 
   override async getAvg(
-    column: string,
+    column: (ModelKey<T> & string) | (string & {}),
     options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<number> {
     this.clearForFunctions();
@@ -426,7 +426,7 @@ export class ModelQueryBuilder<
   }
 
   override async getSum(
-    column: string,
+    column: (ModelKey<T> & string) | (string & {}),
     options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<number> {
     this.clearForFunctions();

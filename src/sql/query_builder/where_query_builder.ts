@@ -8,7 +8,10 @@ import { WhereGroupNode } from "../ast/query/node/where/where_group";
 import type { SubqueryOperatorType } from "../ast/query/node/where/where_subquery";
 import { WhereSubqueryNode } from "../ast/query/node/where/where_subquery";
 import { Model } from "../models/model";
-import type { ModelKey } from "../models/model_manager/model_manager_types";
+import type {
+  ModelKey,
+  WhereColumnValue,
+} from "../models/model_manager/model_manager_types";
 import { SqlDataSource } from "../sql_data_source";
 import { QueryBuilder } from "./query_builder";
 import type { WhereOnlyQueryBuilder } from "./query_builder_types";
@@ -73,30 +76,28 @@ export abstract class WhereQueryBuilder<
   /**
    * @description Adds a WHERE condition to the query.
    */
-  where(
-    column: ModelKey<T>,
-    operator: BinaryOperatorType,
-    value: BaseValues,
-  ): this;
-  where<S extends string>(
-    column: SelectableColumn<S>,
-    operator: BinaryOperatorType,
-    value: BaseValues,
-  ): this;
   where(cb: (queryBuilder: WhereOnlyQueryBuilder<T>) => void): this;
   where(
-    column: ModelKey<T> | SelectableColumn<string>,
+    column: string,
     subQuery: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
   ): this;
   where(
-    column: ModelKey<T> | SelectableColumn<string>,
+    column: string,
     operator: SubqueryOperatorType,
     subQuery: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
   ): this;
+  where<K extends ModelKey<T>>(
+    column: K,
+    operator: BinaryOperatorType,
+    value: WhereColumnValue<T, K>,
+  ): this;
+  where<K extends ModelKey<T>>(column: K, value: WhereColumnValue<T, K>): this;
   where(
-    column: ModelKey<T> | SelectableColumn<string>,
+    column: `${string}.${string}`,
+    operator: BinaryOperatorType,
     value: BaseValues,
   ): this;
+  where(column: `${string}.${string}`, value: BaseValues): this;
   where(
     columnOrCb:
       | ModelKey<T>
@@ -151,37 +152,38 @@ export abstract class WhereQueryBuilder<
     return this.andWhere(
       columnOrCb as ModelKey<T>,
       operatorOrValue as BinaryOperatorType,
-      value as BaseValues,
+      value as any,
     );
   }
 
   /**
    * @description Adds an AND WHERE condition to the query.
    */
-  andWhere(
-    column: ModelKey<T>,
-    operator: BinaryOperatorType,
-    value: BaseValues,
-  ): this;
-  andWhere(
-    column: SelectableColumn<string>,
-    operator: BinaryOperatorType,
-    value: BaseValues,
-  ): this;
-  andWhere(
-    column: ModelKey<T> | SelectableColumn<string>,
-    value: BaseValues,
-  ): this;
   andWhere(cb: (queryBuilder: WhereOnlyQueryBuilder<T>) => void): this;
   andWhere(
-    column: ModelKey<T> | SelectableColumn<string>,
+    column: string,
     subQuery: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
   ): this;
   andWhere(
-    column: ModelKey<T> | SelectableColumn<string>,
+    column: string,
     operator: SubqueryOperatorType,
     subQuery: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
   ): this;
+  andWhere<K extends ModelKey<T>>(
+    column: K,
+    operator: BinaryOperatorType,
+    value: WhereColumnValue<T, K>,
+  ): this;
+  andWhere<K extends ModelKey<T>>(
+    column: K,
+    value: WhereColumnValue<T, K>,
+  ): this;
+  andWhere(
+    column: `${string}.${string}`,
+    operator: BinaryOperatorType,
+    value: BaseValues,
+  ): this;
+  andWhere(column: `${string}.${string}`, value: BaseValues): this;
   andWhere<S extends string>(
     columnOrCb:
       | ModelKey<T>
@@ -258,30 +260,31 @@ export abstract class WhereQueryBuilder<
   /**
    * @description Adds an OR WHERE condition to the query.
    */
-  orWhere(
-    column: ModelKey<T>,
-    operator: BinaryOperatorType,
-    value: BaseValues,
-  ): this;
-  orWhere<S extends string>(
-    column: SelectableColumn<S>,
-    operator: BinaryOperatorType,
-    value: BaseValues,
-  ): this;
-  orWhere<S extends string>(
-    column: ModelKey<T> | SelectableColumn<S>,
-    value: BaseValues,
-  ): this;
   orWhere(cb: (queryBuilder: WhereOnlyQueryBuilder<T>) => void): this;
   orWhere(
-    column: ModelKey<T> | SelectableColumn<string>,
+    column: string,
     subQuery: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
   ): this;
   orWhere(
-    column: ModelKey<T> | SelectableColumn<string>,
+    column: string,
     operator: SubqueryOperatorType,
     subQuery: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
   ): this;
+  orWhere<K extends ModelKey<T>>(
+    column: K,
+    operator: BinaryOperatorType,
+    value: WhereColumnValue<T, K>,
+  ): this;
+  orWhere<K extends ModelKey<T>>(
+    column: K,
+    value: WhereColumnValue<T, K>,
+  ): this;
+  orWhere(
+    column: `${string}.${string}`,
+    operator: BinaryOperatorType,
+    value: BaseValues,
+  ): this;
+  orWhere(column: `${string}.${string}`, value: BaseValues): this;
   orWhere<S extends string>(
     columnOrCb:
       | ModelKey<T>
@@ -359,28 +362,29 @@ export abstract class WhereQueryBuilder<
    * @description Adds a negated WHERE condition to the query.
    */
   whereNot(
-    column: ModelKey<T>,
-    operator: BinaryOperatorType,
-    value: BaseValues,
-  ): this;
-  whereNot<S extends string>(
-    column: SelectableColumn<S>,
-    operator: BinaryOperatorType,
-    value: BaseValues,
-  ): this;
-  whereNot(
-    column: ModelKey<T> | SelectableColumn<string>,
-    value: BaseValues,
-  ): this;
-  whereNot(
-    column: ModelKey<T> | SelectableColumn<string>,
+    column: string,
     subQuery: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
   ): this;
   whereNot(
-    column: ModelKey<T> | SelectableColumn<string>,
+    column: string,
     operator: SubqueryOperatorType,
     subQuery: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
   ): this;
+  whereNot<K extends ModelKey<T>>(
+    column: K,
+    operator: BinaryOperatorType,
+    value: WhereColumnValue<T, K>,
+  ): this;
+  whereNot<K extends ModelKey<T>>(
+    column: K,
+    value: WhereColumnValue<T, K>,
+  ): this;
+  whereNot(
+    column: `${string}.${string}`,
+    operator: BinaryOperatorType,
+    value: BaseValues,
+  ): this;
+  whereNot(column: `${string}.${string}`, value: BaseValues): this;
   whereNot<S extends string>(
     column: ModelKey<T> | SelectableColumn<S>,
     operatorOrValue:
@@ -448,28 +452,29 @@ export abstract class WhereQueryBuilder<
    * @description Adds a negated AND WHERE condition to the query.
    */
   andWhereNot(
-    column: ModelKey<T>,
-    operator: BinaryOperatorType,
-    value: BaseValues,
-  ): this;
-  andWhereNot<S extends string>(
-    column: SelectableColumn<S>,
-    operator: BinaryOperatorType,
-    value: BaseValues,
-  ): this;
-  andWhereNot(
-    column: ModelKey<T> | SelectableColumn<string>,
-    value: BaseValues,
-  ): this;
-  andWhereNot(
-    column: ModelKey<T> | SelectableColumn<string>,
+    column: string,
     subQuery: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
   ): this;
   andWhereNot(
-    column: ModelKey<T> | SelectableColumn<string>,
+    column: string,
     operator: SubqueryOperatorType,
     subQuery: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
   ): this;
+  andWhereNot<K extends ModelKey<T>>(
+    column: K,
+    operator: BinaryOperatorType,
+    value: WhereColumnValue<T, K>,
+  ): this;
+  andWhereNot<K extends ModelKey<T>>(
+    column: K,
+    value: WhereColumnValue<T, K>,
+  ): this;
+  andWhereNot(
+    column: `${string}.${string}`,
+    operator: BinaryOperatorType,
+    value: BaseValues,
+  ): this;
+  andWhereNot(column: `${string}.${string}`, value: BaseValues): this;
   andWhereNot<S extends string>(
     column: ModelKey<T> | SelectableColumn<S>,
     operatorOrValue:
@@ -537,28 +542,29 @@ export abstract class WhereQueryBuilder<
    * @description Adds a negated OR WHERE condition to the query.
    */
   orWhereNot(
-    column: ModelKey<T>,
-    operator: BinaryOperatorType,
-    value: BaseValues,
-  ): this;
-  orWhereNot<S extends string>(
-    column: SelectableColumn<S>,
-    operator: BinaryOperatorType,
-    value: BaseValues,
-  ): this;
-  orWhereNot(
-    column: ModelKey<T> | SelectableColumn<string>,
-    value: BaseValues,
-  ): this;
-  orWhereNot(
-    column: ModelKey<T> | SelectableColumn<string>,
+    column: string,
     subQuery: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
   ): this;
   orWhereNot(
-    column: ModelKey<T> | SelectableColumn<string>,
+    column: string,
     operator: SubqueryOperatorType,
     subQuery: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
   ): this;
+  orWhereNot<K extends ModelKey<T>>(
+    column: K,
+    operator: BinaryOperatorType,
+    value: WhereColumnValue<T, K>,
+  ): this;
+  orWhereNot<K extends ModelKey<T>>(
+    column: K,
+    value: WhereColumnValue<T, K>,
+  ): this;
+  orWhereNot(
+    column: `${string}.${string}`,
+    operator: BinaryOperatorType,
+    value: BaseValues,
+  ): this;
+  orWhereNot(column: `${string}.${string}`, value: BaseValues): this;
   orWhereNot<S extends string>(
     column: ModelKey<T> | SelectableColumn<S>,
     operatorOrValue:
@@ -625,9 +631,9 @@ export abstract class WhereQueryBuilder<
   /**
    * @description Adds a WHERE BETWEEN condition to the query.
    */
-  whereBetween(column: ModelKey<T>, min: BaseValues, max: BaseValues): this;
-  whereBetween<S extends string>(
-    column: SelectableColumn<S>,
+  whereBetween<K extends ModelKey<T>>(column: K, min: T[K], max: T[K]): this;
+  whereBetween(
+    column: `${string}.${string}`,
     min: BaseValues,
     max: BaseValues,
   ): this;
@@ -636,15 +642,15 @@ export abstract class WhereQueryBuilder<
     min: BaseValues,
     max: BaseValues,
   ): this {
-    return this.andWhereBetween(column as ModelKey<T>, min, max);
+    return this.andWhereBetween(column as ModelKey<T>, min as any, max as any);
   }
 
   /**
    * @description Adds an AND WHERE BETWEEN condition to the query.
    */
-  andWhereBetween(column: ModelKey<T>, min: BaseValues, max: BaseValues): this;
-  andWhereBetween<S extends string>(
-    column: SelectableColumn<S>,
+  andWhereBetween<K extends ModelKey<T>>(column: K, min: T[K], max: T[K]): this;
+  andWhereBetween(
+    column: `${string}.${string}`,
     min: BaseValues,
     max: BaseValues,
   ): this;
@@ -662,9 +668,9 @@ export abstract class WhereQueryBuilder<
   /**
    * @description Adds an OR WHERE BETWEEN condition to the query.
    */
-  orWhereBetween(column: ModelKey<T>, min: BaseValues, max: BaseValues): this;
-  orWhereBetween<S extends string>(
-    column: SelectableColumn<S>,
+  orWhereBetween<K extends ModelKey<T>>(column: K, min: T[K], max: T[K]): this;
+  orWhereBetween(
+    column: `${string}.${string}`,
     min: BaseValues,
     max: BaseValues,
   ): this;
@@ -682,9 +688,9 @@ export abstract class WhereQueryBuilder<
   /**
    * @description Adds a WHERE NOT BETWEEN condition to the query.
    */
-  whereNotBetween(column: ModelKey<T>, min: BaseValues, max: BaseValues): this;
-  whereNotBetween<S extends string>(
-    column: SelectableColumn<S>,
+  whereNotBetween<K extends ModelKey<T>>(column: K, min: T[K], max: T[K]): this;
+  whereNotBetween(
+    column: `${string}.${string}`,
     min: BaseValues,
     max: BaseValues,
   ): this;
@@ -693,19 +699,23 @@ export abstract class WhereQueryBuilder<
     min: BaseValues,
     max: BaseValues,
   ): this {
-    return this.andWhereNotBetween(column as ModelKey<T>, min, max);
+    return this.andWhereNotBetween(
+      column as ModelKey<T>,
+      min as any,
+      max as any,
+    );
   }
 
   /**
    * @description Adds an AND WHERE NOT BETWEEN condition to the query.
    */
-  andWhereNotBetween(
-    column: ModelKey<T>,
-    min: BaseValues,
-    max: BaseValues,
+  andWhereNotBetween<K extends ModelKey<T>>(
+    column: K,
+    min: T[K],
+    max: T[K],
   ): this;
-  andWhereNotBetween<S extends string>(
-    column: SelectableColumn<S>,
+  andWhereNotBetween(
+    column: `${string}.${string}`,
     min: BaseValues,
     max: BaseValues,
   ): this;
@@ -723,13 +733,13 @@ export abstract class WhereQueryBuilder<
   /**
    * @description Adds an OR WHERE NOT BETWEEN condition to the query.
    */
-  orWhereNotBetween(
-    column: ModelKey<T>,
-    min: BaseValues,
-    max: BaseValues,
+  orWhereNotBetween<K extends ModelKey<T>>(
+    column: K,
+    min: T[K],
+    max: T[K],
   ): this;
-  orWhereNotBetween<S extends string>(
-    column: SelectableColumn<S>,
+  orWhereNotBetween(
+    column: `${string}.${string}`,
     min: BaseValues,
     max: BaseValues,
   ): this;
@@ -768,7 +778,7 @@ export abstract class WhereQueryBuilder<
     column: ModelKey<T> | SelectableColumn<string>,
     value: string,
   ): this {
-    this.where(column as string, "like", value);
+    this.where(column as ModelKey<T>, "like" as any, value as any);
     return this;
   }
 
@@ -784,7 +794,7 @@ export abstract class WhereQueryBuilder<
     column: ModelKey<T> | SelectableColumn<string>,
     value: string,
   ): this {
-    this.orWhere(column as string, "like", value);
+    this.orWhere(column as ModelKey<T>, "like" as any, value as any);
     return this;
   }
 
@@ -815,7 +825,7 @@ export abstract class WhereQueryBuilder<
     column: ModelKey<T> | SelectableColumn<string>,
     value: string,
   ): this {
-    this.where(column as string, "ilike", value);
+    this.where(column as ModelKey<T>, "ilike" as any, value as any);
     return this;
   }
 
@@ -831,7 +841,7 @@ export abstract class WhereQueryBuilder<
     column: ModelKey<T> | SelectableColumn<string>,
     value: string,
   ): this {
-    this.orWhere(column as string, "ilike", value);
+    this.orWhere(column as ModelKey<T>, "ilike" as any, value as any);
     return this;
   }
 
@@ -862,7 +872,7 @@ export abstract class WhereQueryBuilder<
     column: ModelKey<T> | SelectableColumn<string>,
     value: string,
   ): this {
-    this.where(column as string, "not like", value);
+    this.where(column as ModelKey<T>, "not like" as any, value as any);
     return this;
   }
 
@@ -878,7 +888,7 @@ export abstract class WhereQueryBuilder<
     column: ModelKey<T> | SelectableColumn<string>,
     value: string,
   ): this {
-    this.orWhere(column as string, "not like", value);
+    this.orWhere(column as ModelKey<T>, "not like" as any, value as any);
     return this;
   }
 
@@ -909,7 +919,7 @@ export abstract class WhereQueryBuilder<
     column: ModelKey<T> | SelectableColumn<string>,
     value: string,
   ): this {
-    this.where(column as string, "not ilike", value);
+    this.where(column as ModelKey<T>, "not ilike" as any, value as any);
     return this;
   }
 
@@ -925,7 +935,7 @@ export abstract class WhereQueryBuilder<
     column: ModelKey<T> | SelectableColumn<string>,
     value: string,
   ): this {
-    this.orWhere(column as string, "not ilike", value);
+    this.orWhere(column as ModelKey<T>, "not ilike" as any, value as any);
     return this;
   }
 
@@ -933,11 +943,12 @@ export abstract class WhereQueryBuilder<
    * @description Adds a WHERE IN condition to the query.
    * @warning If the array is empty, it will add an impossible condition.
    */
-  whereIn(column: ModelKey<T>, values: BaseValues[]): this;
-  whereIn<S extends string>(
-    column: SelectableColumn<S>,
-    values: BaseValues[],
+  whereIn(
+    column: string,
+    values: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
   ): this;
+  whereIn<K extends ModelKey<T>>(column: K, values: T[K][]): this;
+  whereIn(column: `${string}.${string}`, values: BaseValues[]): this;
   whereIn(
     column: ModelKey<T> | SelectableColumn<string>,
     values:
@@ -952,11 +963,12 @@ export abstract class WhereQueryBuilder<
    * @description Adds an AND WHERE IN condition to the query.
    * @warning If the array is empty, it will add an impossible condition.
    */
-  andWhereIn(column: ModelKey<T>, values: BaseValues[]): this;
-  andWhereIn<S extends string>(
-    column: SelectableColumn<S>,
-    values: BaseValues[],
+  andWhereIn(
+    column: string,
+    values: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
   ): this;
+  andWhereIn<K extends ModelKey<T>>(column: K, values: T[K][]): this;
+  andWhereIn(column: `${string}.${string}`, values: BaseValues[]): this;
   andWhereIn(
     column: ModelKey<T> | SelectableColumn<string>,
     values:
@@ -989,11 +1001,12 @@ export abstract class WhereQueryBuilder<
    * @description Adds an OR WHERE IN condition to the query.
    * @warning If the array is empty, it will add an impossible condition.
    */
-  orWhereIn(column: ModelKey<T>, values: BaseValues[]): this;
-  orWhereIn<S extends string>(
-    column: SelectableColumn<S>,
-    values: BaseValues[],
+  orWhereIn(
+    column: string,
+    values: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
   ): this;
+  orWhereIn<K extends ModelKey<T>>(column: K, values: T[K][]): this;
+  orWhereIn(column: `${string}.${string}`, values: BaseValues[]): this;
   orWhereIn(
     column: ModelKey<T> | SelectableColumn<string>,
     values:
@@ -1024,11 +1037,12 @@ export abstract class WhereQueryBuilder<
    * @description Adds a WHERE NOT IN condition to the query.
    * @warning If the array is empty, it will add an obvious condition to make it true.
    */
-  whereNotIn(column: ModelKey<T>, values: BaseValues[]): this;
-  whereNotIn<S extends string>(
-    column: SelectableColumn<S>,
-    values: BaseValues[],
+  whereNotIn(
+    column: string,
+    values: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
   ): this;
+  whereNotIn<K extends ModelKey<T>>(column: K, values: T[K][]): this;
+  whereNotIn(column: `${string}.${string}`, values: BaseValues[]): this;
   whereNotIn(
     column: ModelKey<T> | SelectableColumn<string>,
     values:
@@ -1043,11 +1057,12 @@ export abstract class WhereQueryBuilder<
    * @description Adds an OR WHERE NOT IN condition to the query.
    * @warning If the array is empty, it will add an obvious condition to make it true.
    */
-  andWhereNotIn(column: ModelKey<T>, values: BaseValues[]): this;
-  andWhereNotIn<S extends string>(
-    column: SelectableColumn<S>,
-    values: BaseValues[],
+  andWhereNotIn(
+    column: string,
+    values: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
   ): this;
+  andWhereNotIn<K extends ModelKey<T>>(column: K, values: T[K][]): this;
+  andWhereNotIn(column: `${string}.${string}`, values: BaseValues[]): this;
   andWhereNotIn(
     column: ModelKey<T> | SelectableColumn<string>,
     values:
@@ -1078,11 +1093,12 @@ export abstract class WhereQueryBuilder<
    * @description Adds an OR WHERE NOT IN condition to the query.
    * @warning If the array is empty, it will add an obvious condition to make it true.
    */
-  orWhereNotIn(column: ModelKey<T>, values: BaseValues[]): this;
-  orWhereNotIn<S extends string>(
-    column: SelectableColumn<S>,
-    values: BaseValues[],
+  orWhereNotIn(
+    column: string,
+    values: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
   ): this;
+  orWhereNotIn<K extends ModelKey<T>>(column: K, values: T[K][]): this;
+  orWhereNotIn(column: `${string}.${string}`, values: BaseValues[]): this;
   orWhereNotIn(
     column: ModelKey<T> | SelectableColumn<string>,
     values:
@@ -1493,8 +1509,18 @@ export abstract class WhereQueryBuilder<
   /**
    * @description Adds a HAVING condition to the query.
    */
-  having<S extends string>(column: SelectableColumn<S>, value: any): this;
-  having(column: ModelKey<T>, operator: BinaryOperatorType, value: any): this;
+  having<K extends ModelKey<T>>(column: K, value: WhereColumnValue<T, K>): this;
+  having<K extends ModelKey<T>>(
+    column: K,
+    operator: BinaryOperatorType,
+    value: WhereColumnValue<T, K>,
+  ): this;
+  having(column: `${string}.${string}`, value: any): this;
+  having(
+    column: `${string}.${string}`,
+    operator: BinaryOperatorType,
+    value: any,
+  ): this;
   having(
     column: ModelKey<T> | SelectableColumn<string>,
     operatorOrValue: BinaryOperatorType | BaseValues,
@@ -1510,7 +1536,21 @@ export abstract class WhereQueryBuilder<
   /**
    * @description Adds an AND HAVING condition to the query.
    */
-  andHaving<S extends string>(column: SelectableColumn<S>, value: any): this;
+  andHaving<K extends ModelKey<T>>(
+    column: K,
+    value: WhereColumnValue<T, K>,
+  ): this;
+  andHaving<K extends ModelKey<T>>(
+    column: K,
+    operator: BinaryOperatorType,
+    value: WhereColumnValue<T, K>,
+  ): this;
+  andHaving(column: `${string}.${string}`, value: any): this;
+  andHaving(
+    column: `${string}.${string}`,
+    operator: BinaryOperatorType,
+    value: any,
+  ): this;
   andHaving(
     column: ModelKey<T>,
     operator: BinaryOperatorType,
@@ -1547,8 +1587,21 @@ export abstract class WhereQueryBuilder<
   /**
    * @description Adds an OR HAVING condition to the query.
    */
-  orHaving<S extends string>(column: SelectableColumn<S>, value: any): this;
-  orHaving(column: ModelKey<T>, operator: BinaryOperatorType, value: any): this;
+  orHaving<K extends ModelKey<T>>(
+    column: K,
+    value: WhereColumnValue<T, K>,
+  ): this;
+  orHaving<K extends ModelKey<T>>(
+    column: K,
+    operator: BinaryOperatorType,
+    value: WhereColumnValue<T, K>,
+  ): this;
+  orHaving(column: `${string}.${string}`, value: any): this;
+  orHaving(
+    column: `${string}.${string}`,
+    operator: BinaryOperatorType,
+    value: any,
+  ): this;
   orHaving(
     column: ModelKey<T> | SelectableColumn<string>,
     operatorOrValue: BinaryOperatorType | BaseValues,

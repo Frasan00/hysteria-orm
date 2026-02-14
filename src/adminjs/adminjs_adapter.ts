@@ -49,12 +49,12 @@ function applyFilter(
     const propertyType = HYSTERIA_TO_ADMINJS_TYPE_MAP[typeString] || "string";
 
     if (propertyType === "string" || propertyType === "textarea") {
-      query.whereLike(key, `%${value}%`);
+      query.whereLike(key as any, `%${value}%`);
       continue;
     }
 
     if (propertyType === "boolean") {
-      query.where(key, value === "true" || value === true);
+      query.where(key as any, value === "true" || value === true);
       continue;
     }
 
@@ -62,18 +62,18 @@ function applyFilter(
       if (typeof value === "object" && value !== null) {
         const dateFilter = value as { from?: string; to?: string };
         if (dateFilter.from) {
-          query.where(key, ">=", dateFilter.from);
+          query.where(key as any, ">=", dateFilter.from);
         }
         if (dateFilter.to) {
-          query.where(key, "<=", dateFilter.to);
+          query.where(key as any, "<=", dateFilter.to);
         }
         continue;
       }
-      query.where(key, value as string);
+      query.where(key as any, value as string);
       continue;
     }
 
-    query.where(key, value as string | number | boolean);
+    query.where(key as any, value as string | number | boolean);
   }
 }
 

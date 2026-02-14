@@ -25,6 +25,7 @@ import {
   ModelRelation,
   OrderByChoices,
   UpsertOptions,
+  WhereColumnValue,
 } from "./model_manager_types";
 
 export class ModelManager<T extends Model> {
@@ -195,7 +196,10 @@ export class ModelManager<T extends Model> {
 
     return this.query()
       .select(...(returning || []))
-      .where(this.model.primaryKey as string, value)
+      .where(
+        this.model.primaryKey as ModelKey<T>,
+        value as WhereColumnValue<T, ModelKey<T>>,
+      )
       .one({ ignoreHooks: ["afterFetch", "beforeFetch"] });
   }
 
@@ -762,7 +766,7 @@ export class ModelManager<T extends Model> {
       const primaryKeyList = idsToFetchList.map((key) => `'${key}'`).join(",");
       const fetchedModels = await this.query()
         .select(...((retuning ?? ["*"]) as any[]))
-        .whereIn(this.model.primaryKey as string, idsToFetchList)
+        .whereIn(this.model.primaryKey as ModelKey<T>, idsToFetchList as any)
         .orderByRaw(`FIELD(${this.model.primaryKey}, ${primaryKeyList})`)
         .many();
 
@@ -783,7 +787,7 @@ export class ModelManager<T extends Model> {
 
     const fetchedModels = await this.query()
       .select(...((retuning || ["*"]) as any[]))
-      .whereIn(this.model.primaryKey as string, idsToFetchList)
+      .whereIn(this.model.primaryKey as ModelKey<T>, idsToFetchList as any)
       .many();
 
     if (returnType === "one") {
@@ -847,7 +851,11 @@ export class ModelManager<T extends Model> {
 
       for (const [column, value] of Object.entries(insertObject)) {
         if (value !== null && value !== undefined && column !== primaryKey) {
-          queryBuilder.where(column, "=", value);
+          queryBuilder.where(
+            column as ModelKey<T>,
+            "=",
+            value as WhereColumnValue<T, ModelKey<T>>,
+          );
         }
       }
 
