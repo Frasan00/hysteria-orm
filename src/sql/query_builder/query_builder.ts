@@ -317,6 +317,32 @@ export class QueryBuilder<
     );
   }
 
+  then<TResult1 = S[], TResult2 = never>(
+    onfulfilled?:
+      | ((value: S[]) => TResult1 | PromiseLike<TResult1>)
+      | null
+      | undefined,
+    onrejected?:
+      | ((reason: any) => TResult2 | PromiseLike<TResult2>)
+      | null
+      | undefined,
+  ): Promise<TResult1 | TResult2> {
+    return this.many().then(onfulfilled, onrejected);
+  }
+
+  catch<TResult = never>(
+    onrejected?:
+      | ((reason: any) => TResult | PromiseLike<TResult>)
+      | null
+      | undefined,
+  ): Promise<S[] | TResult> {
+    return this.many().catch(onrejected);
+  }
+
+  finally(onfinally?: (() => void) | null | undefined): Promise<S[]> {
+    return this.many().finally(onfinally);
+  }
+
   /**
    * @description Executes the query and retrieves a single column from the results.
    * @param key - The column to retrieve from the results, must be a Model Column

@@ -194,6 +194,34 @@ export class ModelQueryBuilder<
     return serializedModelsArray as unknown as SelectedModel<T, S, R>[];
   }
 
+  then<TResult1 = SelectedModel<T, S, R>[], TResult2 = never>(
+    onfulfilled?:
+      | ((value: SelectedModel<T, S, R>[]) => TResult1 | PromiseLike<TResult1>)
+      | null
+      | undefined,
+    onrejected?:
+      | ((reason: any) => TResult2 | PromiseLike<TResult2>)
+      | null
+      | undefined,
+  ): Promise<TResult1 | TResult2> {
+    return this.many().then(onfulfilled, onrejected);
+  }
+
+  catch<TResult = never>(
+    onrejected?:
+      | ((reason: any) => TResult | PromiseLike<TResult>)
+      | null
+      | undefined,
+  ): Promise<SelectedModel<T, S, R>[] | TResult> {
+    return this.many().catch(onrejected);
+  }
+
+  finally(
+    onfinally?: (() => void) | null | undefined,
+  ): Promise<SelectedModel<T, S, R>[]> {
+    return this.many().finally(onfinally);
+  }
+
   override async *chunk(
     chunkSize: number,
     options: ManyOptions = {},
