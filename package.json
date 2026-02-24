@@ -1,6 +1,6 @@
 {
   "name": "hysteria-orm",
-  "version": "10.6.4",
+  "version": "10.6.5",
   "license": "MIT",
   "description": "Yet another orm for Javascript and Typescript no one asked for",
   "type": "module",
@@ -62,7 +62,6 @@
     "express-formidable": "^1.2.0",
     "express-session": "^1.18.2",
     "husky": "^9.1.7",
-    "jiti": "^2.6.1",
     "ioredis": "^5.9.3",
     "jest": "^30.2.0",
     "luxon": "^3.7.2",
@@ -89,18 +88,18 @@
     "sql-highlight": "^6.1.0"
   },
   "peerDependencies": {
-    "jiti": "^2.6.1",
-    "ioredis": "^5.6.1",
-    "mongodb": "^6.17.0",
-    "mssql": "^11.0.0",
-    "mysql2": "^3.14.1",
+    "esbuild": "^0.27.2",
+    "ioredis": "^5.9.3",
+    "mongodb": "^7.0.0",
+    "mssql": "^12.2.0",
+    "mysql2": "^3.18.0",
     "oracledb": "^6.10.0",
-    "pg": "^8.16.0",
+    "pg": "^8.18.0",
     "sqlite3": "^5.1.7",
-    "typescript": "^5.8.3"
+    "typescript": "^5.9.3"
   },
   "peerDependenciesMeta": {
-    "jiti": {
+    "esbuild": {
       "optional": true
     },
     "ioredis": {

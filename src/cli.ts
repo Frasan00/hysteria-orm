@@ -27,6 +27,21 @@ export const sqlDatabaseTypes = [
 ];
 const allDatabaseTypes = sqlDatabaseTypes.concat("mongodb", "redis");
 
+async function loadDatasource(
+  datasourcePath: string,
+  tsconfigPath?: string,
+): Promise<SqlDataSource> {
+  const { default: sqlDs } = await importTsUniversal<{
+    default: SqlDataSource;
+  }>(path.resolve(process.cwd(), datasourcePath), tsconfigPath);
+
+  if (!sqlDs.isConnected) {
+    await sqlDs.connect();
+  }
+
+  return sqlDs;
+}
+
 const program = new Command();
 
 program
@@ -142,10 +157,10 @@ program
         process.exit(1);
       }
 
-      const resolvedPath = path.resolve(process.cwd(), option.datasource);
-      const { default: sqlDs } = await importTsUniversal<{
-        default: SqlDataSource;
-      }>(resolvedPath, option?.tsconfigPath);
+      const sqlDs = await loadDatasource(
+        option.datasource,
+        option?.tsconfigPath,
+      );
 
       if (sql) {
         logger.info("Executing SQL query directly from command line");
@@ -308,9 +323,10 @@ program
         logger.error("SqlDataSource file path is required (-d|--datasource)");
         process.exit(1);
       }
-      const { default: sqlDs } = await importTsUniversal<{
-        default: SqlDataSource;
-      }>(path.resolve(process.cwd(), option.datasource), option?.tsconfigPath);
+      const sqlDs = await loadDatasource(
+        option.datasource,
+        option?.tsconfigPath,
+      );
 
       // Priority: CLI option > DataSource config > Default
       const migrationPath = option?.migrationPath || sqlDs.migrationConfig.path;
@@ -416,9 +432,10 @@ program
         logger.error("SqlDataSource file path is required (-d|--datasource)");
         process.exit(1);
       }
-      const { default: sqlDs } = await importTsUniversal<{
-        default: SqlDataSource;
-      }>(path.resolve(process.cwd(), option.datasource), option?.tsconfigPath);
+      const sqlDs = await loadDatasource(
+        option.datasource,
+        option?.tsconfigPath,
+      );
 
       // Priority: CLI option > DataSource config > Default
       const migrationPath = option?.migrationPath || sqlDs.migrationConfig.path;
@@ -524,9 +541,10 @@ program
         logger.error("SqlDataSource file path is required (-d|--datasource)");
         process.exit(1);
       }
-      const { default: sqlDs } = await importTsUniversal<{
-        default: SqlDataSource;
-      }>(path.resolve(process.cwd(), option.datasource), option?.tsconfigPath);
+      const sqlDs = await loadDatasource(
+        option.datasource,
+        option?.tsconfigPath,
+      );
 
       // Priority: CLI option > DataSource config > Default
       const migrationPath = option?.migrationPath || sqlDs.migrationConfig.path;
@@ -637,9 +655,10 @@ program
 
       option.name = `${Date.now()}_${option.name}`;
 
-      const { default: sqlDs } = await importTsUniversal<{
-        default: SqlDataSource;
-      }>(path.resolve(process.cwd(), option.datasource), option?.tsconfigPath);
+      const sqlDs = await loadDatasource(
+        option.datasource,
+        option?.tsconfigPath,
+      );
 
       // Priority: CLI option > DataSource config > Default
       const migrationPath = option?.migrationPath || sqlDs.migrationConfig.path;
@@ -738,9 +757,10 @@ program
         process.exit(1);
       }
 
-      const { default: sqlDs } = await importTsUniversal<{
-        default: SqlDataSource;
-      }>(path.resolve(process.cwd(), option.datasource), option?.tsconfigPath);
+      const sqlDs = await loadDatasource(
+        option.datasource,
+        option?.tsconfigPath,
+      );
 
       const allowedDatabaseTypes = [
         "mysql",
@@ -857,9 +877,10 @@ program
         process.exit(1);
       }
 
-      const { default: sqlDs } = await importTsUniversal<{
-        default: SqlDataSource;
-      }>(path.resolve(process.cwd(), option.datasource), option?.tsconfigPath);
+      const sqlDs = await loadDatasource(
+        option.datasource,
+        option?.tsconfigPath,
+      );
 
       let seederPaths: string[];
       if (option?.seederPath && option.seederPath.length > 0) {

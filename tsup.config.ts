@@ -6,7 +6,7 @@ const external = [
   "pg",
   "mysql2",
   "sqlite3",
-  "jiti",
+  "esbuild",
   "sql-formatter",
   "sql-highlight",
   "dayjs",

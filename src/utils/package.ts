@@ -5,6 +5,7 @@ import readline from "node:readline";
 import { sqlDatabaseTypes } from "../cli";
 import { DataSourceType } from "../data_source/data_source_types";
 import logger from "./logger";
+import pkg from "../../package.json";
 
 export const getPackageManager = (): [string, string] => {
   const hasYarnLock = fs.existsSync(path.join(process.cwd(), "yarn.lock"));
@@ -69,46 +70,46 @@ export const execWithPrompt = async (
   });
 };
 
+const deps = pkg.devDependencies;
+
 export const installBaseDependencies = async (
   packageManager: string,
   packageManagerCommand: string,
   type: DataSourceType | "redis",
 ): Promise<void> => {
   const devDependencies = sqlDatabaseTypes.includes(type)
-    ? ["typescript@^5.9.3", "jiti@^2.6.1"]
+    ? [`typescript@${deps.typescript}`, `esbuild@${deps.esbuild}`]
     : [];
 
   let driverDependency = "";
   switch (type) {
     case "mariadb":
     case "mysql":
-      driverDependency = "mysql2@^3.15.3";
-      devDependencies.push("@types/mysql2@github:types/mysql2");
       break;
     case "cockroachdb":
     case "postgres":
-      driverDependency = "pg@^8.16.3";
-      devDependencies.push("@types/pg@^8.16.0");
+      driverDependency = `pg@${deps.pg}`;
+      devDependencies.push(`@types/pg@${deps["@types/pg"]}`);
       break;
     case "sqlite":
-      driverDependency = "sqlite3@^5.1.7";
-      devDependencies.push("@types/sqlite3@^5.1.0");
+      driverDependency = `sqlite3@${deps.sqlite3}`;
+      devDependencies.push(`@types/sqlite3@${deps["@types/sqlite3"]}`);
       break;
     case "mongo":
-      driverDependency = "mongodb@^7.0.0";
-      devDependencies.push("@types/mongodb@^4.0.7");
+      driverDependency = `mongodb@${deps.mongodb}`;
+      devDependencies.push(`@types/mongodb@${deps["@types/mongodb"]}`);
       break;
     case "redis":
-      driverDependency = "ioredis@^5.8.2";
-      devDependencies.push("@types/ioredis@^5.0.0");
+      driverDependency = `ioredis@${deps.ioredis}`;
+      devDependencies.push(`@types/ioredis@${deps["@types/ioredis"]}`);
       break;
     case "mssql":
-      driverDependency = "mssql@^12.2.0";
-      devDependencies.push("@types/mssql@^9.1.8");
+      driverDependency = `mssql@${deps.mssql}`;
+      devDependencies.push(`@types/mssql@${deps["@types/mssql"]}`);
       break;
     case "oracledb":
-      driverDependency = "oracledb@^6.10.0";
-      devDependencies.push("@types/oracledb@^6.10.0");
+      driverDependency = `oracledb@${deps.oracledb}`;
+      devDependencies.push(`@types/oracledb@${deps["@types/oracledb"]}`);
       break;
     default:
       throw new Error(`Invalid database type: ${type}`);

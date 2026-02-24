@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -17,19 +18,32 @@ async function importJs<T>(filepath: string): Promise<T> {
 }
 
 async function importTs<T>(filepath: string): Promise<T> {
-  const { createJiti } = await import("jiti").catch(() => {
+  const { build } = await import("esbuild").catch(() => {
     throw new Error(
-      "`jiti` npm package is required to import TypeScript files when running migrations locally. Install it with: npm install --save-dev jiti",
+      "esbuild is required to import TypeScript files. Install it with: npm install esbuild -D",
     );
   });
 
-  const jiti = createJiti(import.meta.url, {
-    moduleCache: false,
-    fsCache: false,
-  });
+  const randId = Math.random().toString(36).slice(2, 8);
+  const outfile = filepath.replace(/\.ts$/, `.bundled_${randId}.mjs`);
 
-  const mod = await jiti.import(filepath);
-  return mod as T;
+  try {
+    await build({
+      entryPoints: [filepath],
+      bundle: true,
+      platform: "node",
+      format: "esm",
+      sourcemap: "inline",
+      outfile,
+      packages: "external",
+      logLevel: "silent",
+    });
+
+    const fileUrl = pathToFileURL(outfile).href;
+    return (await import(fileUrl)) as T;
+  } finally {
+    await fs.promises.unlink(outfile).catch(() => {});
+  }
 }
 
 export async function importTsUniversal<T = any>(
