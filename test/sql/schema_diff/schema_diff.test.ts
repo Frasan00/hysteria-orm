@@ -66,9 +66,8 @@ const dropAllTestTables = async (sql: SqlDataSource) => {
 
 // Dynamic import to avoid circular dependency issues
 const getSchemaDiff = async () => {
-  const module = await import(
-    "../../../src/sql/migrations/schema_diff/schema_diff"
-  );
+  const module =
+    await import("../../../src/sql/migrations/schema_diff/schema_diff");
   return module.SchemaDiff;
 };
 

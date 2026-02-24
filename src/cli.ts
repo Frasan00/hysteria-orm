@@ -593,7 +593,7 @@ program
 program
   .command("generate:migrations")
   .description(
-    "Generate a migration file based on the database schema and the models metadata, not supported for sqlite",
+    "Generate a migration file based on the database schema and the models metadata, supported only for postgres, mysql, mariadb and cockroachdb",
   )
   .option(
     "-c, --tsconfig [tsconfigPath]",
@@ -691,6 +691,101 @@ program
           `Migration file created successfully: ${option?.name}${extension}`,
         );
 
+        await sqlDs.disconnect();
+        process.exit(0);
+      } catch (error) {
+        console.error(error);
+        await sqlDs.disconnect();
+        process.exit(1);
+      }
+    },
+  );
+
+program
+  .command("sync")
+  .description(
+    "Sync the database schema with the models metadata by computing a diff and applying the SQL statements directly, supported only for postgres, mysql, mariadb and cockroachdb",
+  )
+  .option(
+    "-c, --tsconfig [tsconfigPath]",
+    "Path to the tsconfig.json file, defaults to ./tsconfig.json",
+    undefined,
+  )
+  .option(
+    "-d, --datasource [path]",
+    "Path to SqlDataSource (default export)",
+    undefined,
+  )
+  .option(
+    "-f, --dry",
+    "Does not apply changes but only outputs the SQL statements that would be executed",
+    false,
+  )
+  .option(
+    "-t, --transactional",
+    "Runs all the sync statements in a single transaction",
+    false,
+  )
+  .action(
+    async (option?: {
+      tsconfigPath?: string;
+      datasource?: string;
+      dry?: boolean;
+      transactional?: boolean;
+    }) => {
+      if (!option?.datasource) {
+        logger.error("SqlDataSource file path is required (-d|--datasource)");
+        process.exit(1);
+      }
+
+      const { default: sqlDs } = await importTsUniversal<{
+        default: SqlDataSource;
+      }>(path.resolve(process.cwd(), option.datasource), option?.tsconfigPath);
+
+      const allowedDatabaseTypes = [
+        "mysql",
+        "postgres",
+        "mariadb",
+        "cockroachdb",
+      ];
+      if (!allowedDatabaseTypes.includes(sqlDs.getDbType())) {
+        logger.error(
+          `sync is not supported for ${sqlDs.getDbType()}, it's suggested to use manual migrations instead`,
+        );
+        await sqlDs.disconnect();
+        process.exit(1);
+      }
+
+      try {
+        const diff = await SchemaDiff.makeDiff(sqlDs);
+        const sqlStatements = diff.getSqlStatements();
+
+        if (!sqlStatements.length) {
+          logger.info(
+            "No new changes detected between database schema and models metadata",
+          );
+
+          await sqlDs.disconnect();
+          process.exit(0);
+        }
+
+        if (option.dry) {
+          logger.info(
+            `${sqlStatements.length} SQL statement(s) would be executed:`,
+          );
+          for (const sql of sqlStatements) {
+            console.log(sql);
+          }
+
+          await sqlDs.disconnect();
+          process.exit(0);
+        }
+
+        await sqlDs.syncSchema({
+          transactional: option?.transactional ?? false,
+        });
+
+        logger.info("Schema sync completed successfully");
         await sqlDs.disconnect();
         process.exit(0);
       } catch (error) {

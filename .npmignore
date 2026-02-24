@@ -65,3 +65,4 @@ coverage/
 .nyc_output/
 tmp/
 temp/
+LICENSE

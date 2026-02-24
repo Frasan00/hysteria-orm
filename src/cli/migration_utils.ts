@@ -21,27 +21,6 @@ import MigrationTemplates from "./resources/migration_templates";
 const importMigrationFile = async (filePath: string, tsconfigPath?: string) => {
   const isTs = filePath.endsWith(".ts");
   if (isTs) {
-    await import("typescript").catch(() => {
-      throw new HysteriaError(
-        "MigrationUtils::importMigrationFile In order to use TypeScript migrations, you must have `typeScript` installed in your project. Please install it with `npm install typescript --save-dev`, if you're in a production environment, it's recommended to transpile your migrations to JavaScript before running the application.",
-        "MIGRATION_MODULE_NOT_FOUND",
-      );
-    });
-
-    await import("esbuild").catch(() => {
-      throw new HysteriaError(
-        "MigrationUtils::importMigrationFile In order to use TypeScript migrations, you must have `esbuild` installed in your project. Please install it with `npm install esbuild --save-dev`, if you're in a production environment, it's recommended to transpile your migrations to JavaScript before running the application.",
-        "MIGRATION_MODULE_NOT_FOUND",
-      );
-    });
-
-    await import("bundle-require").catch(() => {
-      throw new HysteriaError(
-        "MigrationUtils::importMigrationFile In order to use TypeScript migrations, you must have `bundle-require` installed in your project. Please install it with `npm install bundle-require --save-dev`, if you're in a production environment, it's recommended to transpile your migrations to JavaScript before running the application.",
-        "MIGRATION_MODULE_NOT_FOUND",
-      );
-    });
-
     return importTsUniversal(filePath, tsconfigPath);
   }
 

@@ -75,7 +75,7 @@ export const installBaseDependencies = async (
   type: DataSourceType | "redis",
 ): Promise<void> => {
   const devDependencies = sqlDatabaseTypes.includes(type)
-    ? ["bundle-require@^5.1.0", "typescript@^5.9.3", "esbuild@^0.27.2"]
+    ? ["typescript@^5.9.3", "jiti@^2.6.1"]
     : [];
 
   let driverDependency = "";
