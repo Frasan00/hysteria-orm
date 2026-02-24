@@ -298,7 +298,7 @@ describe("Slave Replication", () => {
           name: "QB Insert",
           email: "qbinsert@example.com",
         },
-        ["*"],
+        { returning: ["*"] },
       );
       expect(user).toBeDefined();
     });

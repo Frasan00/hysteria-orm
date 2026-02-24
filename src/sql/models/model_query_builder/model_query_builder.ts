@@ -10,6 +10,7 @@ import { Model } from "../../models/model";
 import type {
   ModelKey,
   ModelRelation,
+  ReturningColumns,
 } from "../../models/model_manager/model_manager_types";
 import SqlModelManagerUtils from "../../models/model_manager/model_manager_utils";
 import {
@@ -303,24 +304,40 @@ export class ModelQueryBuilder<
    * @description Inserts a new record into the database, it is not advised to use this method directly from the query builder if using a ModelQueryBuilder (`Model.query()`), use the `Model.insert` method instead.
    */
   // @ts-expect-error - Override with more specific return type for type-safety
-  override insert(
-    modelData: Partial<ModelWithoutRelations<T>>,
-    returning: readonly (ModelKey<T> | "*")[] | undefined,
-  ): WriteOperation<any> {
-    const options = { returning };
-    return (this.model as any).insert(modelData, options);
+  override insert<const R extends ReturningColumns<T> = undefined>(
+    ...args: Parameters<typeof Model.insert<T, R>>
+  ): ReturnType<typeof Model.insert<T, R>> {
+    return (this.model as any).insert(...args);
   }
 
   /**
    * @description Inserts multiple records into the database, it is not advised to use this method directly from the query builder if using a ModelQueryBuilder (`Model.query()`), use the `Model.insertMany` method instead.
    */
   // @ts-expect-error - Override with more specific return type for type-safety
-  override insertMany(
-    modelsData: Partial<ModelWithoutRelations<T>>[],
-    returning: readonly (ModelKey<T> | "*")[] | undefined,
-  ): WriteOperation<any> {
-    const options = { returning };
-    return (this.model as any).insertMany(modelsData, options);
+  override insertMany<const R extends ReturningColumns<T> = undefined>(
+    ...args: Parameters<typeof Model.insertMany<T, R>>
+  ): ReturnType<typeof Model.insertMany<T, R>> {
+    return (this.model as any).insertMany(...args);
+  }
+
+  /**
+   * @description Upserts a record (insert or update on conflict). It is not advised to use this method directly from the query builder if using a ModelQueryBuilder (`Model.query()`), use the `Model.upsert` method instead.
+   */
+  // @ts-expect-error - Override with more specific return type for type-safety
+  override upsert<const R extends ReturningColumns<T> = undefined>(
+    ...args: Parameters<typeof Model.upsert<T, R>>
+  ): ReturnType<typeof Model.upsert<T, R>> {
+    return (this.model as any).upsert(...args);
+  }
+
+  /**
+   * @description Upserts multiple records (insert or update on conflict). It is not advised to use this method directly from the query builder if using a ModelQueryBuilder (`Model.query()`), use the `Model.upsertMany` method instead.
+   */
+  // @ts-expect-error - Override with more specific return type for type-safety
+  override upsertMany<const R extends ReturningColumns<T> = undefined>(
+    ...args: Parameters<typeof Model.upsertMany<T, R>>
+  ): ReturnType<typeof Model.upsertMany<T, R>> {
+    return (this.model as any).upsertMany(...args);
   }
 
   // @ts-expect-error
