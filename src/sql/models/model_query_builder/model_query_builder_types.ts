@@ -1,10 +1,6 @@
 import { Model } from "../../models/model";
 import { ModelKey, ModelRelation } from "../model_manager/model_manager_types";
-import {
-  ModelDataProperties,
-  ModelInstanceMethods,
-  ModelWithoutRelations,
-} from "../model_types";
+import { ModelDataProperties, ModelWithoutRelations } from "../model_types";
 
 /**
  * Extracts the instance type from a Model class type.
@@ -389,9 +385,8 @@ export type ComposeBuildSelect<
 /**
  * The final result type for ModelQueryBuilder queries.
  *
- * Combines selected columns (S) with loaded relations (R) and Model instance methods
- * into a single type. This ensures query results have access to CRUD operations
- * like save(), update(), delete(), etc.
+ * Combines selected columns (S) with loaded relations (R) into a single type.
+ * Query results are plain data objects without business logic.
  *
  * @typeParam M - The Model type
  * @typeParam S - Selected columns type from `select()` calls
@@ -400,10 +395,10 @@ export type ComposeBuildSelect<
  * @example
  * // User.query().select("name").load("posts").one()
  * SelectedModel<User, { name: string }, { posts: Post[] }>
- * // Result: { name: string; posts: Post[] } & ModelInstanceMethods
+ * // Result: { name: string; posts: Post[] }
  */
 export type SelectedModel<
   M extends Model,
   S extends Record<string, any> = {},
   R extends Record<string, any> = {},
-> = S & R & ModelInstanceMethods<M>;
+> = S & R;

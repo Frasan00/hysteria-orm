@@ -77,12 +77,12 @@ describe("Use Transaction", () => {
     await SqlDataSource.instance.transaction(async (trx) => {
       const user1 = await UserWithoutPk.insert(
         { ...UserFactory.getCommonUserData() },
-        { trx },
+        { trx, returning: ["*"] },
       );
 
       const user2 = await UserWithoutPk.insert(
         { ...UserFactory.getCommonUserData() },
-        { trx },
+        { trx, returning: ["*"] },
       );
 
       expect(user1).toBeDefined();
@@ -104,7 +104,7 @@ describe(`[${env.DB_TYPE}] Transaction`, () => {
       const outerTrx = await SqlDataSource.instance.transaction();
       const user1 = await UserWithoutPk.insert(
         { ...UserFactory.getCommonUserData() },
-        { trx: outerTrx },
+        { trx: outerTrx, returning: ["*"] as const },
       );
 
       const innerTrx = await SqlDataSource.instance.transaction();
@@ -153,7 +153,7 @@ describe(`[${env.DB_TYPE}] Transaction`, () => {
       const trx = await SqlDataSource.instance.transaction();
       const user = await UserWithoutPk.insert(
         { ...UserFactory.getCommonUserData() },
-        { trx },
+        { trx, returning: ["*"] },
       );
 
       await trx.commit();
@@ -169,7 +169,7 @@ describe(`[${env.DB_TYPE}] Transaction`, () => {
       {
         ...UserFactory.getCommonUserData(),
       },
-      { trx },
+      { trx, returning: ["*"] },
     );
 
     await trx.commit({ throwErrorOnInactiveTransaction: true });
@@ -181,9 +181,12 @@ describe(`[${env.DB_TYPE}] Transaction`, () => {
 
   test("[Commit] Test global transaction", async () => {
     await SqlDataSource.instance.startGlobalTransaction();
-    const user = await UserWithoutPk.insert({
-      ...UserFactory.getCommonUserData(),
-    });
+    const user = await UserWithoutPk.insert(
+      {
+        ...UserFactory.getCommonUserData(),
+      },
+      { returning: ["*"] },
+    );
 
     await SqlDataSource.instance.commitGlobalTransaction();
 
@@ -202,7 +205,7 @@ describe(`[${env.DB_TYPE}] Transaction`, () => {
       {
         ...UserFactory.getCommonUserData(),
       },
-      { trx },
+      { trx, returning: ["*"] },
     );
 
     await trx.commit({ throwErrorOnInactiveTransaction: true });
@@ -214,7 +217,7 @@ describe(`[${env.DB_TYPE}] Transaction`, () => {
 
   test("[Rollback] Simple transaction passing transaction to the Model methods", async () => {
     const trx = await SqlDataSource.instance.transaction();
-    const user = await UserWithoutPk.insert(
+    await UserWithoutPk.insert(
       {
         ...UserFactory.getCommonUserData(),
       },
@@ -228,7 +231,7 @@ describe(`[${env.DB_TYPE}] Transaction`, () => {
 
   test("[Rollback] Test global transaction", async () => {
     await SqlDataSource.instance.startGlobalTransaction();
-    const user = await UserWithoutPk.insert({
+    await UserWithoutPk.insert({
       ...UserFactory.getCommonUserData(),
     });
 
@@ -363,7 +366,7 @@ describe(`[${env.DB_TYPE}] Transaction Alias - static use`, () => {
       const outerTrx = await SqlDataSource.instance.transaction();
       const user1 = await UserWithoutPk.insert(
         { ...UserFactory.getCommonUserData() },
-        { trx: outerTrx },
+        { trx: outerTrx, returning: ["*"] as const },
       );
 
       const innerTrx = await SqlDataSource.instance.transaction();
@@ -409,7 +412,7 @@ describe(`[${env.DB_TYPE}] Transaction Alias - static use`, () => {
     const trx = await SqlDataSource.instance.transaction();
     const user = await UserWithoutPk.insert(
       { ...UserFactory.getCommonUserData() },
-      { trx },
+      { trx, returning: ["*"] },
     );
     await trx.commit({ throwErrorOnInactiveTransaction: true });
     const retrievedUsers = await UserWithoutPk.query().many();
@@ -444,7 +447,7 @@ describe(`[${env.DB_TYPE}] Transaction Alias - instance use`, () => {
       const outerTrx = await sql.transaction();
       const user1 = await UserWithoutPk.insert(
         { ...UserFactory.getCommonUserData() },
-        { trx: outerTrx },
+        { trx: outerTrx, returning: ["*"] as const },
       );
 
       const innerTrx = await sql.transaction();
@@ -492,7 +495,7 @@ describe(`[${env.DB_TYPE}] Transaction Alias - instance use`, () => {
     const trx = await sql.transaction();
     const user = await UserWithoutPk.insert(
       { ...UserFactory.getCommonUserData() },
-      { trx },
+      { trx, returning: ["*"] },
     );
     await trx.commit({ throwErrorOnInactiveTransaction: true });
     const retrievedUsers = await UserWithoutPk.query().many();

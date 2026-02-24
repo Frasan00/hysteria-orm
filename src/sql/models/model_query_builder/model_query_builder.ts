@@ -302,21 +302,25 @@ export class ModelQueryBuilder<
   /**
    * @description Inserts a new record into the database, it is not advised to use this method directly from the query builder if using a ModelQueryBuilder (`Model.query()`), use the `Model.insert` method instead.
    */
-  // @ts-expect-error
-  override async insert(
-    ...args: Parameters<typeof this.model.insert<T>>
-  ): Promise<ReturnType<typeof this.model.insert>> {
-    return (this.model as any).insert(...args);
+  // @ts-expect-error - Override with more specific return type for type-safety
+  override insert(
+    modelData: Partial<ModelWithoutRelations<T>>,
+    returning: readonly (ModelKey<T> | "*")[] | undefined,
+  ): WriteOperation<any> {
+    const options = { returning };
+    return (this.model as any).insert(modelData, options);
   }
 
   /**
    * @description Inserts multiple records into the database, it is not advised to use this method directly from the query builder if using a ModelQueryBuilder (`Model.query()`), use the `Model.insertMany` method instead.
    */
-  // @ts-expect-error
-  override async insertMany(
-    ...args: Parameters<typeof this.model.insertMany<T>>
-  ): Promise<ReturnType<typeof this.model.insertMany>> {
-    return (this.model as any).insertMany(...args);
+  // @ts-expect-error - Override with more specific return type for type-safety
+  override insertMany(
+    modelsData: Partial<ModelWithoutRelations<T>>[],
+    returning: readonly (ModelKey<T> | "*")[] | undefined,
+  ): WriteOperation<any> {
+    const options = { returning };
+    return (this.model as any).insertMany(modelsData, options);
   }
 
   // @ts-expect-error

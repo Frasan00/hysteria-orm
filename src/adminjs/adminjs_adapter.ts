@@ -249,6 +249,7 @@ async function createHysteriaResourceClass() {
     async create(params: Record<string, unknown>): Promise<ParamsType> {
       const record = await this._model.insert(params, {
         connection: this._db,
+        returning: ["*"],
       });
       return recordToParams(record as Model, this._model);
     }

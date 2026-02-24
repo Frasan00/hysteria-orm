@@ -161,13 +161,14 @@ describe(`[${env.DB_TYPE}] Connection Management - disconnect()`, () => {
     await slave.startGlobalTransaction();
 
     // Create a user within the slave's transaction context
-    const user = new UserWithUuid();
-    user.name = "Transaction Test";
-    user.email = "transaction-disconnect@example.com";
-    user.age = 25;
-    user.status = UserStatus.active;
-    user.isActive = true;
-    await user.save({ connection: slave });
+    const user = {
+      name: "Transaction Test",
+      email: "transaction-disconnect@example.com",
+      age: 25,
+      status: UserStatus.active,
+      isActive: true,
+    };
+    await UserWithUuid.save(user, { connection: slave });
 
     // Disconnect should rollback the transaction on the slave
     await slave.disconnect();
@@ -262,13 +263,14 @@ describe(`[${env.DB_TYPE}] Connection Management - Integration`, () => {
     });
 
     // Create a user
-    const user1 = new UserWithUuid();
-    user1.name = "Before Reconnect";
-    user1.email = `before-${Date.now()}@example.com`;
-    user1.age = 30;
-    user1.status = UserStatus.active;
-    user1.isActive = true;
-    await user1.save();
+    const user1 = {
+      name: "Before Reconnect",
+      email: `before-${Date.now()}@example.com`,
+      age: 30,
+      status: UserStatus.active,
+      isActive: true,
+    };
+    await UserWithUuid.insert(user1);
 
     // Disconnect
     await slave.disconnect();

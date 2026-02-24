@@ -23,8 +23,8 @@ import { Model } from "./models/model";
  *    columns from other tables are filtered out to prevent data bleeding.
  *    Only explicitly selected columns (via aliases) are included from joined tables.
  *
- * 6. **Model Instance**: Creates an actual Model instance with prototype chain,
- *    ensuring instance methods like save(), update(), delete() are available.
+ * 6. **Model Instance**: Creates an actual Model instance with prototype chain for
+ *    proper column serialization and type handling.
  *
  * @param model - Raw database row as key-value pairs
  * @param typeofModel - The Model class to create instances from

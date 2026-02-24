@@ -13,10 +13,9 @@ export class UserFactory {
   ): Promise<FactoryReturnType<T, UserWithoutPk>> {
     const userData = UserFactory.getCommonUserData(status, isActive, jsonData);
     if (howMany === 1) {
-      return (await UserWithoutPk.insert(userData)) as FactoryReturnType<
-        T,
-        UserWithoutPk
-      >;
+      return (await UserWithoutPk.insert(userData, {
+        returning: ["*"],
+      })) as FactoryReturnType<T, UserWithoutPk>;
     }
 
     const array = Array.from({ length: howMany });
@@ -27,6 +26,7 @@ export class UserFactory {
         email: faker.internet.email(),
         password: faker.internet.password(),
       })),
+      { returning: ["*"] },
     )) as FactoryReturnType<T, UserWithoutPk>;
   }
 
@@ -38,10 +38,9 @@ export class UserFactory {
   ): Promise<FactoryReturnType<T, UserWithUuid>> {
     const userData = UserFactory.getCommonUserData(status, isActive, jsonData);
     if (howMany === 1) {
-      return (await UserWithUuid.insert(userData)) as FactoryReturnType<
-        T,
-        UserWithUuid
-      >;
+      return (await UserWithUuid.insert(userData, {
+        returning: ["*"],
+      })) as FactoryReturnType<T, UserWithUuid>;
     }
 
     const array = Array.from({ length: howMany });
@@ -52,6 +51,7 @@ export class UserFactory {
         email: faker.internet.email(),
         password: faker.internet.password(),
       })),
+      { returning: ["*"] },
     )) as FactoryReturnType<T, UserWithUuid>;
   }
 
@@ -63,10 +63,9 @@ export class UserFactory {
   ): Promise<FactoryReturnType<T, UserWithBigint>> {
     const userData = UserFactory.getCommonUserData(status, isActive, jsonData);
     if (howMany === 1) {
-      return (await UserWithBigint.insert(userData)) as FactoryReturnType<
-        T,
-        UserWithBigint
-      >;
+      return (await UserWithBigint.insert(userData, {
+        returning: ["*"],
+      })) as FactoryReturnType<T, UserWithBigint>;
     }
 
     const array = Array.from({ length: howMany });
@@ -77,6 +76,7 @@ export class UserFactory {
         email: faker.internet.email(),
         password: faker.internet.password(),
       })),
+      { returning: ["*"] },
     )) as FactoryReturnType<T, UserWithBigint>;
   }
 

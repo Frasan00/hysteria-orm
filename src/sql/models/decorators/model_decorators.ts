@@ -47,6 +47,7 @@ import type {
   ManyToManyStringOptions,
   SymmetricEncryptionOptions,
   ThroughModel,
+  TypedPropertyDecorator,
   UniqueType,
 } from "./model_decorators_types";
 
@@ -258,7 +259,7 @@ function primaryKeyColumn(
 
 function floatColumn(
   options: Omit<ColumnOptions, "serialize"> = {},
-): PropertyDecorator {
+): TypedPropertyDecorator<number | null | undefined> {
   return column({
     type: "float",
     ...(options as ColumnOptions),
@@ -287,7 +288,7 @@ function floatColumn(
       description: "A floating point number",
       ...(options.openApi || {}),
     },
-  });
+  }) as TypedPropertyDecorator<number | null | undefined>;
 }
 
 /**
@@ -297,7 +298,7 @@ function floatColumn(
  */
 function integerColumn(
   options: Omit<ColumnOptions, "serialize"> = {},
-): PropertyDecorator {
+): TypedPropertyDecorator<number | null | undefined> {
   return column({
     type: "integer",
     ...(options as ColumnOptions),
@@ -326,7 +327,7 @@ function integerColumn(
       description: "An integer number",
       ...(options.openApi || {}),
     },
-  });
+  }) as TypedPropertyDecorator<number | null | undefined>;
 }
 
 /**
@@ -338,7 +339,7 @@ function integerColumn(
  */
 function incrementColumn(
   options: Omit<ColumnOptions, "serialize" | "primaryKey" | "nullable"> = {},
-): PropertyDecorator {
+): TypedPropertyDecorator<number | null | undefined> {
   return column({
     type: "increment",
     ...(options as ColumnOptions),
@@ -369,7 +370,7 @@ function incrementColumn(
       description: "An auto-incrementing integer number",
       ...(options.openApi || {}),
     },
-  });
+  }) as TypedPropertyDecorator<number | null | undefined>;
 }
 
 /**
@@ -381,7 +382,7 @@ function incrementColumn(
  */
 function bigIncrementColumn(
   options: Omit<ColumnOptions, "serialize" | "primaryKey" | "nullable"> = {},
-): PropertyDecorator {
+): TypedPropertyDecorator<number | null | undefined> {
   return column({
     type: "bigIncrement",
     ...(options as ColumnOptions),
@@ -408,7 +409,7 @@ function bigIncrementColumn(
       description: "An auto-incrementing bigint number",
       ...(options.openApi || {}),
     },
-  });
+  }) as TypedPropertyDecorator<number | null | undefined>;
 }
 
 /**
@@ -418,7 +419,7 @@ function bigIncrementColumn(
  */
 function uuidColumn(
   options: Omit<ColumnOptions, "prepare"> = {},
-): PropertyDecorator {
+): TypedPropertyDecorator<string | null | undefined> {
   return column({
     type: "uuid",
     ...(options as ColumnOptions),
@@ -435,7 +436,7 @@ function uuidColumn(
       description: "uuid (Universally Unique Identifier)",
       ...(options.openApi || {}),
     },
-  });
+  }) as TypedPropertyDecorator<string | null | undefined>;
 }
 
 /**
@@ -445,7 +446,7 @@ function uuidColumn(
  */
 function ulidColumn(
   options: Omit<ColumnOptions, "prepare"> = {},
-): PropertyDecorator {
+): TypedPropertyDecorator<string | null | undefined> {
   return column({
     type: "ulid",
     ...(options as ColumnOptions),
@@ -463,7 +464,7 @@ function ulidColumn(
         "ulid (Universally Unique Lexicographically Sortable Identifier)",
       ...(options.openApi || {}),
     },
-  });
+  }) as TypedPropertyDecorator<string | null | undefined>;
 }
 
 /**
@@ -472,7 +473,7 @@ function ulidColumn(
  */
 function stringColumn(
   options: Omit<ColumnOptions, "type"> & { length?: number } = {},
-): PropertyDecorator {
+): TypedPropertyDecorator<string | null | undefined> {
   return column({
     type: "string",
     ...(options as ColumnOptions),
@@ -481,7 +482,7 @@ function stringColumn(
       description: "A string value",
       ...(options.openApi || {}),
     },
-  });
+  }) as TypedPropertyDecorator<string | null | undefined>;
 }
 
 /**
@@ -490,7 +491,7 @@ function stringColumn(
  */
 function textColumn(
   options: Omit<ColumnOptions, "type"> = {},
-): PropertyDecorator {
+): TypedPropertyDecorator<string | null | undefined> {
   return column({
     type: "longtext",
     ...(options as ColumnOptions),
@@ -499,7 +500,7 @@ function textColumn(
       description: "A text value",
       ...(options.openApi || {}),
     },
-  });
+  }) as TypedPropertyDecorator<string | null | undefined>;
 }
 
 /**
@@ -509,7 +510,7 @@ function textColumn(
  */
 function bigintColumn(
   options: Omit<ColumnOptions, "serialize"> = {},
-): PropertyDecorator {
+): TypedPropertyDecorator<number | bigint | null | undefined> {
   return column({
     type: "bigint",
     ...(options as ColumnOptions),
@@ -538,7 +539,7 @@ function bigintColumn(
       description: "A bigint number",
       ...(options.openApi || {}),
     },
-  });
+  }) as TypedPropertyDecorator<number | bigint | null | undefined>;
 }
 
 /**
@@ -553,7 +554,7 @@ function decimalColumn(
     precision?: number;
     scale?: number;
   } = {},
-): PropertyDecorator {
+): TypedPropertyDecorator<number | null | undefined> {
   return column({
     type: "decimal",
     precision: options.precision ?? 10,
@@ -584,7 +585,7 @@ function decimalColumn(
       description: "A decimal number",
       ...(options.openApi || {}),
     },
-  });
+  }) as TypedPropertyDecorator<number | null | undefined>;
 }
 
 /**
@@ -593,7 +594,7 @@ function decimalColumn(
  */
 function binaryColumn(
   options: Omit<ColumnOptions, "type"> = {},
-): PropertyDecorator {
+): TypedPropertyDecorator<Buffer | Uint8Array | string | null | undefined> {
   return column({
     type: "binary",
     ...(options as ColumnOptions),
@@ -603,7 +604,9 @@ function binaryColumn(
       description: "Binary data",
       ...(options.openApi || {}),
     },
-  });
+  }) as unknown as TypedPropertyDecorator<
+    Buffer | Uint8Array | string | null | undefined
+  >;
 }
 
 /**
@@ -612,10 +615,10 @@ function binaryColumn(
  * @param values The allowed enum values
  * @param options Additional column options
  */
-function enumColumn(
-  values: readonly string[],
+function enumColumn<const V extends readonly string[]>(
+  values: V,
   options: Omit<ColumnOptions, "type"> = {},
-): PropertyDecorator {
+): TypedPropertyDecorator<V[number] | null | undefined> {
   return column({
     type: values,
     ...(options as ColumnOptions),
@@ -625,7 +628,7 @@ function enumColumn(
       description: "An enum value",
       ...(options.openApi || {}),
     },
-  });
+  }) as unknown as TypedPropertyDecorator<V[number] | null | undefined>;
 }
 
 /**
@@ -635,7 +638,7 @@ function enumColumn(
  */
 function symmetric(
   options: Omit<SymmetricEncryptionOptions, "prepare" | "serialize">,
-): PropertyDecorator {
+): TypedPropertyDecorator<string | null | undefined> {
   return column({
     ...(options as ColumnOptions),
     prepare: (value) => {
@@ -652,7 +655,7 @@ function symmetric(
 
       return decryptSymmetric(options.key, value);
     },
-  });
+  }) as unknown as TypedPropertyDecorator<string | null | undefined>;
 }
 
 /**
@@ -662,7 +665,7 @@ function symmetric(
  */
 function asymmetric(
   options: Omit<AsymmetricEncryptionOptions, "prepare" | "serialize">,
-): PropertyDecorator {
+): TypedPropertyDecorator<string | null | undefined> {
   return column({
     ...(options as ColumnOptions),
     prepare: (value) => {
@@ -679,7 +682,7 @@ function asymmetric(
 
       return decryptAsymmetric(options.privateKey, value);
     },
-  });
+  }) as unknown as TypedPropertyDecorator<string | null | undefined>;
 }
 
 /**
@@ -689,7 +692,7 @@ function asymmetric(
  */
 function booleanColumn(
   options: Omit<ColumnOptions, "prepare" | "serialize"> = {},
-): PropertyDecorator {
+): TypedPropertyDecorator<boolean | null | undefined> {
   return column({
     type: "boolean",
     ...(options as ColumnOptions),
@@ -700,7 +703,7 @@ function booleanColumn(
       description: "A boolean value",
       ...(options.openApi || {}),
     },
-  });
+  }) as TypedPropertyDecorator<boolean | null | undefined>;
 }
 
 /**
@@ -717,7 +720,7 @@ function booleanColumn(
  */
 function dateOnlyColumn(
   options: Omit<DateColumnOptions, "format"> = {},
-): PropertyDecorator {
+): TypedPropertyDecorator<Date | string | null | undefined> {
   const {
     timezone = "UTC",
     autoUpdate = false,
@@ -789,7 +792,7 @@ function dateOnlyColumn(
       description: "YYYY-MM-DD",
       ...(rest.openApi || {}),
     },
-  });
+  }) as TypedPropertyDecorator<Date | string | null | undefined>;
 }
 
 /**
@@ -806,7 +809,7 @@ function dateOnlyColumn(
  */
 function datetimeColumn(
   options: Omit<DateColumnOptions, "format"> = {},
-): PropertyDecorator {
+): TypedPropertyDecorator<Date | string | null | undefined> {
   const {
     timezone = "UTC",
     autoUpdate = false,
@@ -878,7 +881,7 @@ function datetimeColumn(
       description: "YYYY-MM-DD HH:mm:ss",
       ...(rest.openApi || {}),
     },
-  });
+  }) as TypedPropertyDecorator<Date | string | null | undefined>;
 }
 
 /**
@@ -895,7 +898,7 @@ function datetimeColumn(
  */
 function timestampColumn(
   options: Omit<DateColumnOptions, "format"> = {},
-): PropertyDecorator {
+): TypedPropertyDecorator<Date | string | null | undefined> {
   const {
     timezone = "UTC",
     autoUpdate = false,
@@ -967,7 +970,7 @@ function timestampColumn(
       description: "Unix timestamp",
       ...(rest.openApi || {}),
     },
-  });
+  }) as unknown as TypedPropertyDecorator<Date | string | null | undefined>;
 }
 
 /**
@@ -984,7 +987,7 @@ function timestampColumn(
  */
 function timeOnlyColumn(
   options: Omit<DateColumnOptions, "format"> = {},
-): PropertyDecorator {
+): TypedPropertyDecorator<Date | string | null | undefined> {
   const {
     timezone = "UTC",
     autoUpdate = false,
@@ -1056,7 +1059,7 @@ function timeOnlyColumn(
       description: "HH:mm:ss",
       ...(rest.openApi || {}),
     },
-  });
+  }) as unknown as TypedPropertyDecorator<Date | string | null | undefined>;
 }
 
 /**
@@ -1067,7 +1070,7 @@ function timeOnlyColumn(
  */
 function jsonColumn(
   options: Omit<ColumnOptions, "prepare" | "serialize"> = {},
-): PropertyDecorator {
+): TypedPropertyDecorator<unknown> {
   return column({
     type: "jsonb",
     ...(options as ColumnOptions),
@@ -1090,7 +1093,7 @@ function jsonColumn(
       description: "A JSON object",
       ...(options.openApi || {}),
     },
-  });
+  }) as unknown as TypedPropertyDecorator<unknown>;
 }
 
 export function getModelColumns(target: typeof Model): ColumnType[] {
@@ -1120,18 +1123,18 @@ export function belongsTo<
   model: () => R,
   foreignKey?: ModelKey<InstanceType<M>>,
   options?: BaseModelRelationType,
-): PropertyDecorator;
+): TypedPropertyDecorator<InstanceType<R> | null | undefined>;
 export function belongsTo<R extends typeof Model = any>(
   model: () => R,
   foreignKey?: string,
   options?: BaseModelRelationType,
-): PropertyDecorator;
+): TypedPropertyDecorator<InstanceType<R> | null | undefined>;
 export function belongsTo<R extends typeof Model = any>(
   model: () => R,
   foreignKey?: string | ModelKey<InstanceType<R>>,
   options?: BaseModelRelationType,
-): PropertyDecorator {
-  return (target: Object, propertyKey: string | symbol) => {
+): TypedPropertyDecorator<InstanceType<R> | null | undefined> {
+  return ((target: Object, propertyKey: string | symbol) => {
     const fallbackForeignKey = () =>
       getDefaultForeignKey(model().table as string);
     const fallbackConstraintName = () => {
@@ -1159,7 +1162,7 @@ export function belongsTo<R extends typeof Model = any>(
       [];
     relations.push(relation);
     Reflect.defineMetadata(RELATION_METADATA_KEY, relations, target);
-  };
+  }) as unknown as TypedPropertyDecorator<InstanceType<R> | null | undefined>;
 }
 
 /**
@@ -1170,16 +1173,16 @@ export function belongsTo<R extends typeof Model = any>(
 export function hasOne<T extends typeof Model>(
   model: () => T,
   foreignKey?: ModelKey<InstanceType<T>>,
-): PropertyDecorator;
+): TypedPropertyDecorator<InstanceType<T> | null | undefined>;
 export function hasOne<T extends typeof Model>(
   model: () => T,
   foreignKey?: string,
-): PropertyDecorator;
+): TypedPropertyDecorator<InstanceType<T> | null | undefined>;
 export function hasOne<T extends typeof Model>(
   model: () => T,
   foreignKey?: string | ModelKey<InstanceType<T>>,
-): PropertyDecorator {
-  return (target: Object, propertyKey: string | symbol) => {
+): TypedPropertyDecorator<InstanceType<T> | null | undefined> {
+  return ((target: Object, propertyKey: string | symbol) => {
     const fallbackForeignKey = () =>
       getDefaultForeignKey((target.constructor as typeof Model).table);
 
@@ -1196,7 +1199,7 @@ export function hasOne<T extends typeof Model>(
       [];
     relations.push(relation);
     Reflect.defineMetadata(RELATION_METADATA_KEY, relations, target);
-  };
+  }) as unknown as TypedPropertyDecorator<InstanceType<T> | null | undefined>;
 }
 
 /**
@@ -1207,16 +1210,16 @@ export function hasOne<T extends typeof Model>(
 export function hasMany<T extends typeof Model>(
   model: () => T,
   foreignKey?: ModelKey<InstanceType<T>>,
-): PropertyDecorator;
+): TypedPropertyDecorator<InstanceType<T>[] | null | undefined>;
 export function hasMany<T extends typeof Model>(
   model: () => T,
   foreignKey?: string,
-): PropertyDecorator;
+): TypedPropertyDecorator<InstanceType<T>[] | null | undefined>;
 export function hasMany<T extends typeof Model>(
   model: () => T,
   foreignKey?: string | ModelKey<InstanceType<T>>,
-): PropertyDecorator {
-  return (target: Object, propertyKey: string | symbol) => {
+): TypedPropertyDecorator<InstanceType<T>[] | null | undefined> {
+  return ((target: Object, propertyKey: string | symbol) => {
     const fallbackForeignKey = () =>
       getDefaultForeignKey((target.constructor as typeof Model).table);
 
@@ -1233,7 +1236,7 @@ export function hasMany<T extends typeof Model>(
       [];
     relations.push(relation);
     Reflect.defineMetadata(RELATION_METADATA_KEY, relations, target);
-  };
+  }) as unknown as TypedPropertyDecorator<InstanceType<T>[] | null | undefined>;
 }
 
 /**
@@ -1255,20 +1258,20 @@ export function manyToMany<
   throughModel: TM,
   throughModelKeys?: ManyToManyOptions<T, TM>,
   options?: BaseModelRelationType,
-): PropertyDecorator;
+): TypedPropertyDecorator<InstanceType<R>[] | null | undefined>;
 export function manyToMany<R extends typeof Model>(
   model: () => R,
   throughModel: string | (() => typeof Model),
   throughModelKeys?: ManyToManyStringOptions,
   options?: BaseModelRelationType,
-): PropertyDecorator;
+): TypedPropertyDecorator<InstanceType<R>[] | null | undefined>;
 export function manyToMany<R extends typeof Model>(
   model: () => R,
   throughModel: string | (() => typeof Model),
   throughModelKeys?: ManyToManyStringOptions,
   options?: BaseModelRelationType,
-): PropertyDecorator {
-  return (target: Object, propertyKey: string | symbol) => {
+): TypedPropertyDecorator<InstanceType<R>[] | null | undefined> {
+  return ((target: Object, propertyKey: string | symbol) => {
     const { leftForeignKey, rightForeignKey } = throughModelKeys ?? {};
     const wasModelProvided = typeof throughModel !== "string";
     const throughModelTable =
@@ -1313,7 +1316,7 @@ export function manyToMany<R extends typeof Model>(
       [];
     relations.push(relation);
     Reflect.defineMetadata(RELATION_METADATA_KEY, relations, target);
-  };
+  }) as unknown as TypedPropertyDecorator<InstanceType<R>[] | null | undefined>;
 }
 
 export function getRelationsMetadata(target: typeof Model): LazyRelationType[] {

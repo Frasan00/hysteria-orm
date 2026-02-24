@@ -27,10 +27,13 @@ describe(`[${env.DB_TYPE}] uuid pk join edge cases`, () => {
   test("left join with null foreign key returns rows and undefined columns", async () => {
     const user = await UserFactory.userWithUuid(1);
     const linkedPost = await PostFactory.postWithUuid(user.id, 1);
-    const orphanPost = await PostWithUuid.insert({
-      ...PostFactory.getCommonPostData(),
-      userId: null as unknown as string,
-    });
+    const orphanPost = await PostWithUuid.insert(
+      {
+        ...PostFactory.getCommonPostData(),
+        userId: null as unknown as string,
+      },
+      { returning: ["*"] },
+    );
 
     const postsWithUsers = await PostWithUuid.query()
       .select("posts_with_uuid.*", ["users_with_uuid.name", "userName"])

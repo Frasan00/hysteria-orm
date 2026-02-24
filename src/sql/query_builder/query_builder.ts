@@ -777,13 +777,25 @@ export class QueryBuilder<
    */
   insert(
     data: Record<string, WriteQueryParam>,
+    returning: string[],
+  ): WriteOperation<T>;
+  insert(data: Record<string, WriteQueryParam>): WriteOperation<void>;
+  insert(
+    data: Record<string, WriteQueryParam>,
     returning?: string[],
-  ): WriteOperation<T> {
+  ): WriteOperation<T | void> {
     const insertObject = Object.fromEntries(
       Object.keys(data).map((column) => [column, data[column]]),
     );
 
-    this.insertNode = new InsertNode(this.fromNode, [insertObject], returning);
+    const shouldDisableReturning = !returning || returning.length === 0;
+
+    this.insertNode = new InsertNode(
+      this.fromNode,
+      [insertObject],
+      returning as string[] | undefined,
+      shouldDisableReturning,
+    );
 
     return new WriteOperation(
       () => this.unWrap(),
@@ -806,7 +818,8 @@ export class QueryBuilder<
         this.insertNode = new InsertNode(
           this.fromNode,
           [preparedInsertObject],
-          returning,
+          returning as string[] | undefined,
+          shouldDisableReturning,
         );
         const { sql, bindings } = this.astParser.parse([this.insertNode]);
 
@@ -826,6 +839,10 @@ export class QueryBuilder<
           },
         );
 
+        if (shouldDisableReturning) {
+          return undefined;
+        }
+
         return Array.isArray(rows) && rows.length ? rows[0] : rows;
       },
     );
@@ -839,22 +856,34 @@ export class QueryBuilder<
    */
   insertMany(
     data: Record<string, WriteQueryParam>[],
+    returning: string[],
+  ): WriteOperation<T[]>;
+  insertMany(data: Record<string, WriteQueryParam>[]): WriteOperation<void>;
+  insertMany(
+    data: Record<string, WriteQueryParam>[],
     returning?: string[],
-  ): WriteOperation<T[]> {
+  ): WriteOperation<T[] | void> {
     const rawModels = data.map((model) =>
       Object.fromEntries(
         Object.keys(model).map((column) => [column, model[column]]),
       ),
     );
 
-    this.insertNode = new InsertNode(this.fromNode, rawModels, returning);
+    const shouldDisableReturning = !returning || returning.length === 0;
+
+    this.insertNode = new InsertNode(
+      this.fromNode,
+      rawModels,
+      returning as string[] | undefined,
+      shouldDisableReturning,
+    );
 
     return new WriteOperation(
       () => this.unWrap(),
       () => this.toQuery(),
       async () => {
         if (!data.length) {
-          return [];
+          return shouldDisableReturning ? undefined : [];
         }
 
         const models = await Promise.all(
@@ -875,17 +904,35 @@ export class QueryBuilder<
           }),
         );
 
-        this.insertNode = new InsertNode(this.fromNode, models, returning);
+        this.insertNode = new InsertNode(
+          this.fromNode,
+          models,
+          returning as string[] | undefined,
+          shouldDisableReturning,
+        );
         const { sql, bindings } = this.astParser.parse([this.insertNode]);
 
         const dataSource = await this.getSqlDataSource("write");
-        return execSql(sql, bindings, dataSource, this.dbType, "rows", {
-          sqlLiteOptions: {
-            typeofModel: this.model,
-            mode: "insertMany",
-            models: models as T[],
+        const rows = await execSql(
+          sql,
+          bindings,
+          dataSource,
+          this.dbType,
+          "rows",
+          {
+            sqlLiteOptions: {
+              typeofModel: this.model,
+              mode: "insertMany",
+              models: models as T[],
+            },
           },
-        });
+        );
+
+        if (shouldDisableReturning) {
+          return undefined;
+        }
+
+        return rows;
       },
     );
   }

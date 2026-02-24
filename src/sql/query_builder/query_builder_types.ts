@@ -408,7 +408,7 @@ export type PaginateWithCursorOptions<
 
 export type UpsertOptionsRawBuilder = {
   updateOnConflict?: boolean;
-  returning?: string[];
+  returning?: readonly string[];
 };
 
 export type WriteQueryParam =

@@ -260,3 +260,16 @@ export type UniqueType = {
   columns: string[];
   name: string;
 };
+
+/**
+ * @description A property decorator that constrains the decorated property to type V.
+ * TypeScript infers K from the property name and T from the class, then checks
+ * that the property at key K is assignable to V.
+ */
+export type TypedPropertyDecorator<V> = <
+  K extends string,
+  T extends Record<K, V>,
+>(
+  target: T,
+  propertyKey: K,
+) => void;

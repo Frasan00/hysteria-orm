@@ -215,10 +215,14 @@ export class ModelManager<T extends Model> {
       Object.keys(model).map((col) => [col, (model as any)[col]]),
     );
 
+    const shouldDisableReturning =
+      !options.returning || options.returning.length === 0;
+
     const insertNode = new InsertNode(
       new FromNode(this.model.table),
       [rawInsertObject],
       options.returning as string[],
+      shouldDisableReturning,
     );
 
     const unWrapFn = () => {
@@ -253,11 +257,15 @@ export class ModelManager<T extends Model> {
         (model as any)[column] ??= value;
       });
 
+      const shouldDisableReturning =
+        !options.returning || options.returning.length === 0;
+
       const { sql, bindings } = this.astParser.parse([
         new InsertNode(
           new FromNode(this.model.table),
           [insertObject],
           options.returning as string[],
+          shouldDisableReturning,
         ),
       ]);
 
@@ -276,6 +284,10 @@ export class ModelManager<T extends Model> {
         },
       );
 
+      if (shouldDisableReturning) {
+        return undefined as any;
+      }
+
       if (this.sqlType === "mysql" || this.sqlType === "mariadb") {
         return this.handleMysqlInsert(
           rows,
@@ -291,7 +303,11 @@ export class ModelManager<T extends Model> {
       }
 
       await this.model.afterFetch?.([insertedModel]);
-      const result = (await serializeModel([insertedModel], this.model)) as T;
+      const result = (await serializeModel(
+        [insertedModel],
+        this.model,
+        options.returning as string[],
+      )) as T;
       return result;
     });
   }
@@ -310,10 +326,14 @@ export class ModelManager<T extends Model> {
       ),
     );
 
+    const shouldDisableReturning =
+      !options.returning || options.returning.length === 0;
+
     const insertNode = new InsertNode(
       new FromNode(this.model.table),
       rawInsertObjects,
       options.returning as string[],
+      shouldDisableReturning,
     );
 
     const unWrapFn = () => {
@@ -364,11 +384,15 @@ export class ModelManager<T extends Model> {
         insertObjects.push(insertObject);
       }
 
+      const shouldDisableReturning =
+        !options.returning || options.returning.length === 0;
+
       const { sql, bindings } = this.astParser.parse([
         new InsertNode(
           new FromNode(this.model.table),
           insertObjects,
           options.returning as string[],
+          shouldDisableReturning,
         ),
       ]);
 
@@ -386,6 +410,10 @@ export class ModelManager<T extends Model> {
           },
         },
       );
+
+      if (shouldDisableReturning) {
+        return [];
+      }
 
       if (this.sqlType === "mysql" || this.sqlType === "mariadb") {
         return (
@@ -405,7 +433,11 @@ export class ModelManager<T extends Model> {
 
       await this.model.afterFetch?.(insertedModels);
 
-      const results = await serializeModel(insertedModels, this.model);
+      const results = await serializeModel(
+        insertedModels,
+        this.model,
+        options.returning as string[],
+      );
       return (results || []) as T[];
     });
   }
@@ -623,12 +655,14 @@ export class ModelManager<T extends Model> {
     model: Partial<T>,
     options?: { returning?: ModelKey<T>[] },
   ): Promise<ModelWithoutRelations<T>> {
+    const modelColumnNames = new Set(
+      this.model.getColumns().map((c) => c.columnName),
+    );
+    const keys = Object.keys(model).filter((k) => modelColumnNames.has(k));
+    const values = keys.map((k) => (model as any)[k]);
+
     let { columns: preparedColumns, values: preparedValues } =
-      await this.interpreterUtils.prepareColumns(
-        Object.keys(model),
-        Object.values(model),
-        "update",
-      );
+      await this.interpreterUtils.prepareColumns(keys, values, "update");
 
     const { primaryKey } = this.model;
     if (!primaryKey) {

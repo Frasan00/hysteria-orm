@@ -356,6 +356,7 @@ describe(`[${env.DB_TYPE}] upsert`, () => {
     const insertedUser = await UserWithBigint.upsert(
       { email: "test@test.com" },
       { name: "John Doe", email: "test@test.com" },
+      { returning: ["*"] },
     );
 
     console.log(insertedUser);
@@ -373,6 +374,7 @@ describe(`[${env.DB_TYPE}] upsert`, () => {
     const updatedUser = await UserWithBigint.upsert(
       { email: user.email },
       { name: "John Doe", email: user.email },
+      { returning: ["*"] },
     );
     expect(updatedUser.name).toBe("John Doe");
     expect(updatedUser.email).toBe(user.email);
@@ -382,7 +384,7 @@ describe(`[${env.DB_TYPE}] upsert`, () => {
     const insertedUser = await UserWithBigint.upsert(
       { email: "test@test.com" },
       { name: "John Doe", email: "test@test.com" },
-      { updateOnConflict: false },
+      { updateOnConflict: false, returning: ["*"] },
     );
     expect(insertedUser.name).toBe("John Doe");
     expect(insertedUser.email).toBe("test@test.com");
@@ -393,7 +395,7 @@ describe(`[${env.DB_TYPE}] upsert`, () => {
     const updatedUser = await UserWithBigint.upsert(
       { email: user.email },
       { name: "John Doe", email: user.email },
-      { updateOnConflict: false },
+      { updateOnConflict: false, returning: ["*"] },
     );
     expect(updatedUser.name).toBe(user.name);
     expect(updatedUser.email).toBe(user.email);
@@ -407,7 +409,7 @@ describe(`[${env.DB_TYPE}] upsert`, () => {
     );
     expect(insertedUser.name).toBe("John Doe");
     if (env.DB_TYPE !== "sqlite") {
-      expect(insertedUser.email).not.toBeDefined();
+      expect((insertedUser as any).email).not.toBeDefined();
     }
   });
 
@@ -424,7 +426,7 @@ describe(`[${env.DB_TYPE}] upsert`, () => {
       { updateOnConflict: true, returning: ["name"] },
     );
     expect(updatedUser.name).toBe("John Doe");
-    expect(updatedUser.email).not.toBeDefined();
+    expect((updatedUser as any).email).not.toBeDefined();
   });
 });
 
@@ -436,6 +438,7 @@ describe(`[${env.DB_TYPE}] upsertMany`, () => {
         { email: "test@test.com", name: "John Doe" },
         { email: "test2@test.com", name: "John Doe 2" },
       ],
+      { returning: ["*"] },
     );
 
     expect(insertedUsers).toHaveLength(2);
@@ -453,6 +456,7 @@ describe(`[${env.DB_TYPE}] upsertMany`, () => {
         { email: users[0].email, name: "John Doe", isActive: true },
         { email: users[1].email, name: "John Doe 2", isActive: false },
       ],
+      { returning: ["*"] },
     );
 
     expect(updatedUsers).toHaveLength(2);
@@ -479,11 +483,11 @@ describe(`[${env.DB_TYPE}] upsertMany`, () => {
     expect(insertedUsers).toHaveLength(2);
     expect(insertedUsers[0].name).toMatch(/John Doe|John Doe 2/);
     if (env.DB_TYPE !== "sqlite") {
-      expect(insertedUsers[0].email).not.toBeDefined();
+      expect((insertedUsers[0] as any).email).not.toBeDefined();
     }
     expect(insertedUsers[1].name).toMatch(/John Doe|John Doe 2/);
     if (env.DB_TYPE !== "sqlite") {
-      expect(insertedUsers[1].email).not.toBeDefined();
+      expect((insertedUsers[1] as any).email).not.toBeDefined();
     }
   });
 });

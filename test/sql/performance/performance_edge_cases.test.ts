@@ -325,15 +325,18 @@ describe(`[${env.DB_TYPE}] Performance - String Operations`, () => {
 
     const longString = "a".repeat(10000);
 
-    const user = await sql.query("users_with_uuid").insert({
-      id: crypto.randomUUID(),
-      name: "Long String Test",
-      email: "longstring@example.com",
-      age: 30,
-      status: "active",
-      is_active: true,
-      description: longString,
-    });
+    const user = await sql.query("users_with_uuid").insert(
+      {
+        id: crypto.randomUUID(),
+        name: "Long String Test",
+        email: "longstring@example.com",
+        age: 30,
+        status: "active",
+        is_active: true,
+        description: longString,
+      },
+      ["*"],
+    );
 
     expect(user).toBeDefined();
 
@@ -389,14 +392,17 @@ describe(`[${env.DB_TYPE}] Performance - Concurrent Operations`, () => {
     const sql = SqlDataSource.instance;
 
     const promises = Array.from({ length: 10 }, (_, i) =>
-      sql.query("users_with_uuid").insert({
-        id: crypto.randomUUID(),
-        name: `Concurrent ${i}`,
-        email: `concurrent${i}@example.com`,
-        age: 20 + i,
-        status: "active",
-        is_active: true,
-      }),
+      sql.query("users_with_uuid").insert(
+        {
+          id: crypto.randomUUID(),
+          name: `Concurrent ${i}`,
+          email: `concurrent${i}@example.com`,
+          age: 20 + i,
+          status: "active",
+          is_active: true,
+        },
+        ["*"],
+      ),
     );
 
     const results = await Promise.all(promises);

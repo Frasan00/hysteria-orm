@@ -22,7 +22,7 @@ describe("useConnection test", () => {
           {
             ...UserFactory.getCommonUserData(),
           },
-          { connection: sql },
+          { connection: sql, returning: ["*"] },
         );
 
         const post = await PostWithBigint.insert(
@@ -31,7 +31,7 @@ describe("useConnection test", () => {
             content: "Test Content",
             userId: userWithBigint.id,
           },
-          { connection: sql },
+          { connection: sql, returning: ["*"] },
         );
         expect(post).toHaveProperty("id");
 
@@ -58,7 +58,7 @@ describe("useConnection test", () => {
           {
             ...UserFactory.getCommonUserData(),
           },
-          { connection: sql },
+          { connection: sql, returning: ["*"] },
         );
         const post = await PostWithBigint.insert(
           {
@@ -66,7 +66,7 @@ describe("useConnection test", () => {
             content: "Test Content",
             userId: userWithBigint.id,
           },
-          { connection: sql },
+          { connection: sql, returning: ["*"] },
         );
         expect(post).toHaveProperty("id");
         await sql.rollbackGlobalTransaction();
@@ -92,7 +92,7 @@ describe("useConnection test", () => {
           {
             ...UserFactory.getCommonUserData(),
           },
-          { connection: sql },
+          { connection: sql, returning: ["*"] },
         );
         const post = await PostWithBigint.insert(
           {
@@ -100,7 +100,7 @@ describe("useConnection test", () => {
             content: "Test Content",
             userId: userWithBigint.id,
           },
-          { connection: sql },
+          { connection: sql, returning: ["*"] },
         );
         expect(post).toHaveProperty("id");
         await sql.rollbackGlobalTransaction();
@@ -122,7 +122,7 @@ describe("useConnection test", () => {
           {
             ...UserFactory.getCommonUserData(),
           },
-          { connection: sql },
+          { connection: sql, returning: ["*"] },
         );
         const post = await PostWithBigint.insert(
           {
@@ -130,7 +130,7 @@ describe("useConnection test", () => {
             content: "Test Content",
             userId: userWithBigint.id,
           },
-          { connection: sql },
+          { connection: sql, returning: ["*"] },
         );
         expect(post).toHaveProperty("id");
         await sql.rollbackGlobalTransaction();

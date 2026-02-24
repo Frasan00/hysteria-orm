@@ -512,10 +512,13 @@ describe(`[${env.DB_TYPE}] Where Operations`, () => {
 
   describe("Null operators", () => {
     test("should find with $is null operator", async () => {
-      const user1 = await UserWithUuid.insert({
-        ...UserFactory.getCommonUserData(),
-        shortDescription: null as any,
-      });
+      const user1 = await UserWithUuid.insert(
+        {
+          ...UserFactory.getCommonUserData(),
+          shortDescription: null as any,
+        },
+        { returning: ["*"] },
+      );
       await UserWithUuid.insert({
         ...UserFactory.getCommonUserData(),
         shortDescription: "has description",
@@ -534,10 +537,13 @@ describe(`[${env.DB_TYPE}] Where Operations`, () => {
         ...UserFactory.getCommonUserData(),
         shortDescription: null as any,
       });
-      const user2 = await UserWithUuid.insert({
-        ...UserFactory.getCommonUserData(),
-        shortDescription: "has description",
-      });
+      const user2 = await UserWithUuid.insert(
+        {
+          ...UserFactory.getCommonUserData(),
+          shortDescription: "has description",
+        },
+        { returning: ["*"] },
+      );
 
       const found = await UserWithUuid.find({
         where: { shortDescription: { op: "$is not null" } },
@@ -588,14 +594,20 @@ describe(`[${env.DB_TYPE}] Where Operations`, () => {
 
   describe("In operators", () => {
     test("should find with $in operator", async () => {
-      const user1 = await UserWithUuid.insert({
-        ...UserFactory.getCommonUserData(),
-        age: 25,
-      });
-      const user2 = await UserWithUuid.insert({
-        ...UserFactory.getCommonUserData(),
-        age: 30,
-      });
+      const user1 = await UserWithUuid.insert(
+        {
+          ...UserFactory.getCommonUserData(),
+          age: 25,
+        },
+        { returning: ["*"] },
+      );
+      const user2 = await UserWithUuid.insert(
+        {
+          ...UserFactory.getCommonUserData(),
+          age: 30,
+        },
+        { returning: ["*"] },
+      );
       await UserWithUuid.insert({
         ...UserFactory.getCommonUserData(),
         age: 35,
@@ -620,10 +632,13 @@ describe(`[${env.DB_TYPE}] Where Operations`, () => {
         ...UserFactory.getCommonUserData(),
         age: 30,
       });
-      const user3 = await UserWithUuid.insert({
-        ...UserFactory.getCommonUserData(),
-        age: 35,
-      });
+      const user3 = await UserWithUuid.insert(
+        {
+          ...UserFactory.getCommonUserData(),
+          age: 35,
+        },
+        { returning: ["*"] },
+      );
 
       const found = await UserWithUuid.find({
         where: { age: { op: "$nin", value: [25, 30] } },

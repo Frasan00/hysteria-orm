@@ -3,12 +3,14 @@ import type {
   FindOneType,
   FindReturnType,
   FindType,
-  InsertOptions,
   ModelKey,
   ModelRelation,
   OnlyM2MRelations,
+  ReturningColumns,
+  ReturningKey,
   UpsertOptions,
   WhereType,
+  WriteReturnType,
 } from "./model_manager/model_manager_types";
 import type { ModelQueryBuilder } from "./model_query_builder/model_query_builder";
 import type {
@@ -123,8 +125,10 @@ export abstract class Model<T extends Model<T> = any> extends Entity {
   constructor(initialData?: Partial<ModelWithoutRelations<T>>) {
     super();
     if (initialData) {
-      this.mergeProps(
-        initialData as unknown as Partial<ModelWithoutRelations<this>>,
+      const typeofModel = this.constructor as typeof Model;
+      typeofModel.combineProps(
+        this as unknown as T,
+        initialData as unknown as Partial<T>,
       );
     }
   }
@@ -138,7 +142,8 @@ export abstract class Model<T extends Model<T> = any> extends Entity {
     data: Partial<ModelWithoutRelations<T>>,
   ): ModelQueryResult<T> {
     const instance = new this() as T;
-    instance.mergeProps(data);
+    const typeofModel = this as unknown as typeof Model;
+    typeofModel.combineProps(instance, data as Partial<T>);
     return instance as ModelQueryResult<T>;
   }
 
@@ -337,18 +342,26 @@ export abstract class Model<T extends Model<T> = any> extends Entity {
    * @mysql If no Primary Key is present in the model definition, the model will be returned
    * @sqlite If no Primary Key is present in the model definition, the model will be returned
    * @sqlite Returning Not supported and won't have effect
+   * @typeParam T - The Model type
+   * @typeParam R - The returning columns (literal tuple for type inference)
    */
-  static insert<T extends Model>(
+  static insert<
+    T extends Model,
+    const R extends ReturningColumns<T> = undefined,
+  >(
     this: new () => T | typeof Model,
     modelData: Partial<ModelWithoutRelations<T>>,
-    options: BaseModelMethodOptions & InsertOptions<T> = {},
-  ): WriteOperation<ModelQueryResult<T>> {
+    options: BaseModelMethodOptions & {
+      ignoreHooks?: boolean;
+      returning?: R;
+    } = {},
+  ): WriteOperation<WriteReturnType<T, R>> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
     return modelManager.insert(modelData as T, {
       ignoreHooks: options.ignoreHooks,
-      returning: options.returning,
-    }) as WriteOperation<ModelQueryResult<T>>;
+      returning: options.returning as ReturningKey<T>[],
+    }) as WriteOperation<WriteReturnType<T, R>>;
   }
 
   /**
@@ -358,27 +371,41 @@ export abstract class Model<T extends Model<T> = any> extends Entity {
    * @sqlite If no Primary Key is present in the model definition, the model will be returned
    * @sqlite Returning Not supported and won't have effect
    * @oracledb may do multiple inserts with auto-generated identity columns
+   * @typeParam T - The Model type
+   * @typeParam R - The returning columns (literal tuple for type inference)
    */
-  static insertMany<T extends Model>(
+  static insertMany<
+    T extends Model,
+    const R extends ReturningColumns<T> = undefined,
+  >(
     this: new () => T | typeof Model,
     modelsData: Partial<ModelWithoutRelations<T>>[],
-    options: BaseModelMethodOptions & InsertOptions<T> = {},
-  ): WriteOperation<ModelQueryResult<T>[]> {
+    options: BaseModelMethodOptions & {
+      ignoreHooks?: boolean;
+      returning?: R;
+    } = {},
+  ): WriteOperation<R extends readonly [] ? void : WriteReturnType<T, R>[]> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
 
     if (!modelsData.length) {
+      const shouldDisableReturning =
+        !options.returning || options.returning.length === 0;
       return new WriteOperation(
         () => ({ sql: "", bindings: [] }),
         () => "",
-        async () => [],
-      );
+        async () => (shouldDisableReturning ? undefined : []),
+      ) as WriteOperation<
+        R extends readonly [] ? void : WriteReturnType<T, R>[]
+      >;
     }
 
     return modelManager.insertMany(modelsData as T[], {
       ignoreHooks: options.ignoreHooks,
-      returning: options.returning,
-    }) as WriteOperation<ModelQueryResult<T>[]>;
+      returning: options.returning as ReturningKey<T>[],
+    }) as WriteOperation<
+      R extends readonly [] ? void : WriteReturnType<T, R>[]
+    >;
   }
 
   /**
@@ -539,7 +566,9 @@ export abstract class Model<T extends Model<T> = any> extends Entity {
       return doesExist as O extends true ? { isNew: boolean; model: T } : T;
     }
 
-    const newModel = (await modelManager.insert(createData as T)) as T;
+    const newModel = (await modelManager.insert(createData as T, {
+      returning: ["*"] as ModelKey<T>[],
+    })) as T;
     if (options.fullResponse) {
       return {
         isNew: true,
@@ -552,20 +581,27 @@ export abstract class Model<T extends Model<T> = any> extends Entity {
 
   /**
    * @description Updates or creates a new record, if no searchCriteria payload is provided, provided data will be inserted as is
+   * @typeParam R - The returning columns (literal tuple for type inference). Defaults to void.
    */
-  static async upsert<T extends Model>(
+  static async upsert<
+    T extends Model,
+    const R extends ReturningColumns<T> = undefined,
+  >(
     this: new () => T | typeof Model,
     searchCriteria: Partial<ModelWithoutRelations<T>>,
     data: Partial<ModelWithoutRelations<T>>,
-    options: UpsertOptions<T> & BaseModelMethodOptions = {
+    options: Omit<UpsertOptions<T>, "returning"> &
+      BaseModelMethodOptions & { returning?: R } = {
       updateOnConflict: true,
-    },
-  ): Promise<ModelQueryResult<T>> {
+    } as Omit<UpsertOptions<T>, "returning"> &
+      BaseModelMethodOptions & { returning?: R },
+  ): Promise<WriteReturnType<T, R>> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
     const hasSearchCriteria = Object.keys(searchCriteria).length > 0;
+    const shouldDisableReturning =
+      !options.returning || options.returning.length === 0;
 
-    // If no search criteria is given, it is given for granted that record must be created
     const doesExist = !hasSearchCriteria
       ? null
       : await modelManager.findOne({
@@ -578,39 +614,54 @@ export abstract class Model<T extends Model<T> = any> extends Entity {
         typeofModel.primaryKey as keyof ModelWithoutRelations<T>
       ];
 
-      if (options.updateOnConflict) {
+      if (options.updateOnConflict ?? true) {
+        if (shouldDisableReturning) {
+          await modelManager.updateRecord(data as T);
+          return undefined as WriteReturnType<T, R>;
+        }
         return (await modelManager.updateRecord(data as T, {
           returning: options.returning as ModelKey<T>[] | undefined,
-        })) as ModelQueryResult<T>;
+        })) as WriteReturnType<T, R>;
       }
 
-      return doesExist as ModelQueryResult<T>;
+      if (shouldDisableReturning) {
+        return undefined as WriteReturnType<T, R>;
+      }
+      return doesExist as WriteReturnType<T, R>;
     }
 
     return (await modelManager.insert(data as T, {
       ignoreHooks: options.ignoreHooks,
-      returning: options.returning ?? (["*"] as ModelKey<T>[]),
-    })) as ModelQueryResult<T>;
+      returning: options.returning as ReturningKey<T>[] | undefined,
+    })) as WriteReturnType<T, R>;
   }
 
   /**
    * @description Updates or creates multiple records
    * @param {updateOnConflict} If true, the record will be updated if it exists, otherwise it will be ignored
+   * @typeParam R - The returning columns (literal tuple for type inference). Defaults to void.
    */
-  static async upsertMany<T extends Model>(
+  static async upsertMany<
+    T extends Model,
+    const R extends ReturningColumns<T> = undefined,
+  >(
     this: new () => T | typeof Model,
     conflictColumns: ModelKey<T>[],
     data: Partial<ModelWithoutRelations<T>>[],
-    options: UpsertOptions<T> & BaseModelMethodOptions = {
+    options: Omit<UpsertOptions<T>, "returning"> &
+      BaseModelMethodOptions & { returning?: R } = {
       updateOnConflict: true,
-    },
-  ): Promise<ModelQueryResult<T>[]> {
+    } as Omit<UpsertOptions<T>, "returning"> &
+      BaseModelMethodOptions & { returning?: R },
+  ): Promise<WriteReturnType<T, R>[]> {
     if (!data.length) {
-      return [];
+      return [] as unknown as WriteReturnType<T, R>[];
     }
 
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
+    const shouldDisableReturning =
+      !options.returning || options.returning.length === 0;
 
     if (
       !data.every((record) => {
@@ -631,23 +682,27 @@ export abstract class Model<T extends Model<T> = any> extends Entity {
       data as ModelWithoutRelations<T>[],
       {
         ignoreHooks: options.ignoreHooks,
-        returning: options.returning,
+        returning: options.returning as ReturningKey<T>[] | undefined,
         updateOnConflict: options.updateOnConflict ?? true,
       },
     );
+
+    if (shouldDisableReturning) {
+      return undefined as unknown as WriteReturnType<T, R>[];
+    }
 
     const dbType = typeofModel.sqlInstance.getDbType();
     if (databasesWithReturning.includes(dbType)) {
       return (await serializeModel(
         upsertResult as T[],
         typeofModel,
-        options.returning as string[],
-      )) as unknown as ModelQueryResult<T>[];
+        options.returning as unknown as string[],
+      )) as unknown as WriteReturnType<T, R>[];
     }
 
     const lookupQuery = modelManager.query();
     if (options.returning?.length) {
-      lookupQuery.select(...options.returning);
+      lookupQuery.select(...(options.returning as ModelKey<T>[]));
     }
 
     const conflictMap = new Map<string, any>();
@@ -668,7 +723,7 @@ export abstract class Model<T extends Model<T> = any> extends Entity {
 
     return lookupQuery.many({
       ignoreHooks: options.ignoreHooks ? ["afterFetch", "beforeFetch"] : [],
-    });
+    }) as Promise<WriteReturnType<T, R>[]>;
   }
 
   /**
@@ -682,6 +737,54 @@ export abstract class Model<T extends Model<T> = any> extends Entity {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
     return modelManager.deleteRecord(modelSqlInstance);
+  }
+
+  /**
+   * @description Saves (inserts or updates) a model instance to the database
+   * @description If the primary key is not set, performs an insert. If set, performs an update.
+   * @description After saving, the instance is updated with the result from the database
+   * @param modelSqlInstance The model instance to save
+   * @param options Optional transaction, connection, or ignoreHooks options
+   * @throws {HysteriaError} If the model has no primary key defined
+   */
+  static async save<T extends Model>(
+    this: new () => T | typeof Model,
+    modelSqlInstance: Partial<T>,
+    options: Omit<BaseModelMethodOptions, "ignoreHooks"> = {},
+  ): Promise<ModelQueryResult<T>> {
+    const typeofModel = this as unknown as typeof Model;
+    const primaryKey = typeofModel.primaryKey as keyof T;
+    if (!primaryKey) {
+      throw new HysteriaError(
+        typeofModel.name + "::save",
+        "MODEL_HAS_NO_PRIMARY_KEY",
+      );
+    }
+
+    const primaryKeyValue: string | number | undefined = modelSqlInstance[
+      primaryKey as keyof typeof modelSqlInstance
+    ] as string | number | undefined;
+
+    const searchCriteria = primaryKeyValue
+      ? ({
+          [primaryKey]: primaryKeyValue,
+        } as unknown as ModelWithoutRelations<T>)
+      : {};
+
+    const payload = modelSqlInstance as unknown as ModelWithoutRelations<T>;
+    const result = await (typeofModel.upsert as typeof Model.upsert<T>).call(
+      this,
+      searchCriteria,
+      payload,
+      {
+        updateOnConflict: true,
+        returning: ["*"] as any,
+        ...options,
+      },
+    );
+
+    typeofModel.combineProps(modelSqlInstance, result as unknown as Partial<T>);
+    return modelSqlInstance as ModelQueryResult<T>;
   }
 
   /**
@@ -880,7 +983,13 @@ export abstract class Model<T extends Model<T> = any> extends Entity {
     columnName: string,
     ...args: Parameters<(typeof column)["date"]>
   ): void {
-    column.date(...args)(this.prototype, columnName);
+    column.date(...args)(
+      this.prototype as unknown as Record<
+        string,
+        Date | string | null | undefined
+      >,
+      columnName,
+    );
   }
 
   /**
@@ -891,7 +1000,13 @@ export abstract class Model<T extends Model<T> = any> extends Entity {
     columnName: string,
     ...args: Parameters<(typeof column)["datetime"]>
   ): void {
-    column.datetime(...args)(this.prototype, columnName);
+    column.datetime(...args)(
+      this.prototype as unknown as Record<
+        string,
+        Date | string | null | undefined
+      >,
+      columnName,
+    );
   }
 
   /**
@@ -902,7 +1017,13 @@ export abstract class Model<T extends Model<T> = any> extends Entity {
     columnName: string,
     ...args: Parameters<(typeof column)["timestamp"]>
   ): void {
-    column.timestamp(...args)(this.prototype, columnName);
+    column.timestamp(...args)(
+      this.prototype as unknown as Record<
+        string,
+        Date | string | null | undefined
+      >,
+      columnName,
+    );
   }
 
   /**
@@ -913,7 +1034,13 @@ export abstract class Model<T extends Model<T> = any> extends Entity {
     columnName: string,
     ...args: Parameters<(typeof column)["time"]>
   ): void {
-    column.time(...args)(this.prototype, columnName);
+    column.time(...args)(
+      this.prototype as unknown as Record<
+        string,
+        Date | string | null | undefined
+      >,
+      columnName,
+    );
   }
 
   /**
@@ -924,7 +1051,10 @@ export abstract class Model<T extends Model<T> = any> extends Entity {
     columnName: string,
     ...args: Parameters<(typeof column)["boolean"]>
   ): void {
-    column.boolean(...args)(this.prototype, columnName);
+    column.boolean(...args)(
+      this.prototype as unknown as Record<string, boolean | null | undefined>,
+      columnName,
+    );
   }
 
   /**
@@ -935,7 +1065,10 @@ export abstract class Model<T extends Model<T> = any> extends Entity {
     columnName: string,
     ...args: Parameters<(typeof column)["json"]>
   ): void {
-    column.json(...args)(this.prototype, columnName);
+    column.json(...args)(
+      this.prototype as unknown as Record<string, unknown>,
+      columnName,
+    );
   }
 
   /**
@@ -946,7 +1079,10 @@ export abstract class Model<T extends Model<T> = any> extends Entity {
     columnName: string,
     ...args: Parameters<(typeof column)["uuid"]>
   ): void {
-    column.uuid(...args)(this.prototype, columnName);
+    column.uuid(...args)(
+      this.prototype as unknown as Record<string, string | null | undefined>,
+      columnName,
+    );
   }
 
   /**
@@ -957,7 +1093,10 @@ export abstract class Model<T extends Model<T> = any> extends Entity {
     columnName: string,
     ...args: Parameters<(typeof column)["ulid"]>
   ): void {
-    column.ulid(...args)(this.prototype, columnName);
+    column.ulid(...args)(
+      this.prototype as unknown as Record<string, string | null | undefined>,
+      columnName,
+    );
   }
 
   /**
@@ -968,7 +1107,10 @@ export abstract class Model<T extends Model<T> = any> extends Entity {
     columnName: string,
     ...args: Parameters<(typeof column)["integer"]>
   ): void {
-    column.integer(...args)(this.prototype, columnName);
+    column.integer(...args)(
+      this.prototype as unknown as Record<string, number | null | undefined>,
+      columnName,
+    );
   }
 
   /**
@@ -979,7 +1121,10 @@ export abstract class Model<T extends Model<T> = any> extends Entity {
     columnName: string,
     ...args: Parameters<(typeof column)["float"]>
   ): void {
-    column.float(...args)(this.prototype, columnName);
+    column.float(...args)(
+      this.prototype as unknown as Record<string, number | null | undefined>,
+      columnName,
+    );
   }
 
   /**
@@ -990,7 +1135,10 @@ export abstract class Model<T extends Model<T> = any> extends Entity {
     columnName: string,
     ...args: Parameters<(typeof column)["increment"]>
   ): void {
-    column.increment(...args)(this.prototype, columnName);
+    column.increment(...args)(
+      this.prototype as unknown as Record<string, number | null | undefined>,
+      columnName,
+    );
   }
 
   /**
@@ -1001,7 +1149,10 @@ export abstract class Model<T extends Model<T> = any> extends Entity {
     columnName: string,
     ...args: Parameters<(typeof column)["bigIncrement"]>
   ): void {
-    column.bigIncrement(...args)(this.prototype, columnName);
+    column.bigIncrement(...args)(
+      this.prototype as unknown as Record<string, number | null | undefined>,
+      columnName,
+    );
   }
 
   /**
@@ -1012,7 +1163,10 @@ export abstract class Model<T extends Model<T> = any> extends Entity {
     columnName: string,
     ...args: Parameters<(typeof column)["encryption"]["symmetric"]>
   ): void {
-    column.encryption.symmetric(...args)(this.prototype, columnName);
+    column.encryption.symmetric(...args)(
+      this.prototype as unknown as Record<string, string | null | undefined>,
+      columnName,
+    );
   }
 
   /**
@@ -1023,7 +1177,10 @@ export abstract class Model<T extends Model<T> = any> extends Entity {
     columnName: string,
     ...args: Parameters<(typeof column)["encryption"]["asymmetric"]>
   ): void {
-    column.encryption.asymmetric(...args)(this.prototype, columnName);
+    column.encryption.asymmetric(...args)(
+      this.prototype as unknown as Record<string, string | null | undefined>,
+      columnName,
+    );
   }
 
   /**
@@ -1031,7 +1188,10 @@ export abstract class Model<T extends Model<T> = any> extends Entity {
    * @javascript
    */
   static hasOne(columnName: string, ...args: Parameters<typeof hasOne>): void {
-    hasOne(...args)(this.prototype, columnName);
+    hasOne(...args)(
+      this.prototype as unknown as Record<string, Model | null | undefined>,
+      columnName,
+    );
   }
 
   /**
@@ -1042,7 +1202,10 @@ export abstract class Model<T extends Model<T> = any> extends Entity {
     columnName: string,
     ...args: Parameters<typeof hasMany>
   ): void {
-    hasMany(...args)(this.prototype, columnName);
+    hasMany(...args)(
+      this.prototype as unknown as Record<string, Model[] | null | undefined>,
+      columnName,
+    );
   }
 
   /**
@@ -1053,7 +1216,10 @@ export abstract class Model<T extends Model<T> = any> extends Entity {
     columnName: string,
     ...args: Parameters<typeof belongsTo>
   ): void {
-    belongsTo(...args)(this.prototype, columnName);
+    belongsTo(...args)(
+      this.prototype as unknown as Record<string, Model | null | undefined>,
+      columnName,
+    );
   }
 
   /**
@@ -1064,7 +1230,10 @@ export abstract class Model<T extends Model<T> = any> extends Entity {
     columnName: string,
     ...args: Parameters<typeof manyToMany>
   ): void {
-    manyToMany(...args)(this.prototype, columnName);
+    manyToMany(...args)(
+      this.prototype as unknown as Record<string, Model[] | null | undefined>,
+      columnName,
+    );
   }
 
   /**
@@ -1112,204 +1281,5 @@ export abstract class Model<T extends Model<T> = any> extends Entity {
     }
 
     return modelManager;
-  }
-
-  // instance methods
-
-  /**
-   * @description Merges the provided data with the model instance
-   */
-  mergeProps<T extends Model = this>(
-    this: T,
-    data: Partial<ModelWithoutRelations<T>>,
-  ): void {
-    const instance = this as unknown as new () => T | typeof Model;
-    const typeofModel = instance.constructor as typeof Model &
-      (new () => typeof Model);
-    typeofModel.combineProps(this as unknown as T, data as unknown as T);
-  }
-
-  /**
-   * @description inserts or updates the model to the database, must have a primary key in order to work
-   * @throws {HysteriaError} If the model has no primary key
-   */
-  async save<T extends Model = this>(
-    options: Omit<BaseModelMethodOptions, "ignoreHooks"> = {},
-  ) {
-    const instance = this as unknown as new () => T | typeof Model;
-    const typeofModel = instance.constructor as typeof Model &
-      (new () => typeof Model);
-    const primaryKey = typeofModel.primaryKey as keyof T;
-    if (!primaryKey) {
-      throw new HysteriaError(
-        typeofModel.name + "::save",
-        "MODEL_HAS_NO_PRIMARY_KEY",
-      );
-    }
-
-    const primaryKeyValue: string | number =
-      instance[primaryKey as keyof typeof instance];
-
-    const searchCriteria = primaryKeyValue
-      ? ({
-          [primaryKey]: primaryKeyValue,
-        } as unknown as ModelWithoutRelations<T>)
-      : {};
-
-    const payload = instance as unknown as ModelWithoutRelations<T>;
-    const result = await typeofModel.upsert(
-      searchCriteria,
-      payload as ModelWithoutRelations<T>,
-      {
-        updateOnConflict: true,
-        ...options,
-      },
-    );
-
-    typeofModel.combineProps(this as unknown as T, result as unknown as T);
-    return this as unknown as T;
-  }
-
-  /**
-   * @description Updates the model in the database, must have a primary key in order to work
-   * @throws {HysteriaError} If the model has no primary key valorized in the instance
-   */
-  async update<T extends Model = this>(
-    payload: Partial<ModelWithoutRelations<T>>,
-    options: Omit<BaseModelMethodOptions, "ignoreHooks"> = {},
-  ) {
-    const instance = this as unknown as new () => T | typeof Model;
-    const typeofModel = instance.constructor as typeof Model &
-      (new () => typeof Model);
-
-    const primaryKey = typeofModel.primaryKey as keyof T;
-    if (!primaryKey) {
-      throw new HysteriaError(
-        typeofModel.name + "::save",
-        "MODEL_HAS_NO_PRIMARY_KEY",
-      );
-    }
-
-    const primaryKeyValue: string | number =
-      instance[primaryKey as keyof typeof instance];
-
-    if (!primaryKeyValue) {
-      throw new HysteriaError(
-        typeofModel.name + "::update",
-        "MODEL_HAS_NO_PRIMARY_KEY_VALUE",
-      );
-    }
-
-    await typeofModel.updateRecord(instance as unknown as T, payload, options);
-  }
-
-  /**
-   * @description Soft deletes the model from the database, must have a primary key in order to work
-   * @throws {HysteriaError} If the model has no primary key valorized in the instance
-   */
-  async softDelete<T extends Model = this>(
-    this: T,
-    softDeleteOptions?: {
-      column?: keyof ModelWithoutRelations<T>;
-      value?: string | number | boolean | Date;
-    },
-    options?: Omit<BaseModelMethodOptions, "ignoreHooks">,
-  ) {
-    const instance = this as unknown as new () => T | typeof Model;
-    const typeofModel = instance.constructor as typeof Model &
-      (new () => typeof Model);
-
-    const primaryKey = typeofModel.primaryKey as keyof T;
-    if (!primaryKey) {
-      throw new HysteriaError(
-        typeofModel.name + "::softDelete",
-        "MODEL_HAS_NO_PRIMARY_KEY",
-      );
-    }
-
-    const primaryKeyValue: string | number =
-      instance[primaryKey as keyof typeof instance];
-
-    if (!primaryKeyValue) {
-      throw new HysteriaError(
-        typeofModel.name + "::softDelete",
-        "MODEL_HAS_NO_PRIMARY_KEY_VALUE",
-      );
-    }
-
-    await typeofModel.softDelete(
-      instance as unknown as T,
-      softDeleteOptions as {
-        column?: ModelKey<T>;
-        value?: string | number | boolean | Date;
-      },
-      options,
-    );
-  }
-
-  /**
-   * @description Deletes the model from the database, must have a primary key in order to work
-   * @throws {HysteriaError} If the model has no primary key valorized in the instance
-   */
-  async delete<T extends Model = this>(
-    options: Omit<BaseModelMethodOptions, "ignoreHooks"> = {},
-  ) {
-    const instance = this as unknown as new () => T | typeof Model;
-    const typeofModel = instance.constructor as typeof Model &
-      (new () => typeof Model);
-
-    const primaryKey = typeofModel.primaryKey as keyof T;
-    if (!primaryKey) {
-      throw new HysteriaError(
-        typeofModel.name + "::delete",
-        "MODEL_HAS_NO_PRIMARY_KEY",
-      );
-    }
-
-    const primaryKeyValue: string | number =
-      instance[primaryKey as keyof typeof instance];
-
-    if (!primaryKeyValue) {
-      throw new HysteriaError(
-        typeofModel.name + "::delete",
-        "MODEL_HAS_NO_PRIMARY_KEY_VALUE",
-      );
-    }
-
-    await typeofModel.deleteRecord(this as unknown as T, options);
-  }
-
-  /**
-   * @description Refreshes the model from the database, it both updates the instance and returns the refreshed model
-   * @throws {HysteriaError} If the model has no primary key valorized in the instance
-   */
-  async refresh<T extends Model = this>(
-    options?: Omit<BaseModelMethodOptions, "ignoreHooks">,
-  ) {
-    const instance = this as unknown as new () => T | typeof Model;
-    const typeofModel = instance.constructor as typeof Model &
-      (new () => typeof Model);
-
-    const primaryKey = typeofModel.primaryKey as keyof T;
-    if (!primaryKey) {
-      throw new HysteriaError(
-        typeofModel.name + "::refresh",
-        "MODEL_HAS_NO_PRIMARY_KEY",
-      );
-    }
-
-    const primaryKeyValue: string | number =
-      instance[primaryKey as keyof typeof instance];
-
-    if (!primaryKeyValue) {
-      throw new HysteriaError(
-        typeofModel.name + "::refresh",
-        "MODEL_HAS_NO_PRIMARY_KEY_VALUE",
-      );
-    }
-
-    const refreshed = await typeofModel.refresh(this as unknown as T, options);
-    typeofModel.combineProps(this as unknown as T, refreshed as unknown as T);
-    return this as unknown as T;
   }
 }

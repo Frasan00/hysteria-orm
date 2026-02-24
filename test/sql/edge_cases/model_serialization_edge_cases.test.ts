@@ -48,7 +48,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
       };
 
       const userData = UserFactory.getCommonUserData();
-      const user = await UserWithoutPk.insert(userData);
+      const user = await UserWithoutPk.insert(userData, { returning: ["*"] });
 
       expect(hookCallOrder).toContain("beforeInsert");
       expect(user.name).toContain("_processed");
@@ -89,7 +89,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
           metadata: jsonCase,
         };
 
-        const user = await UserWithoutPk.insert(userData);
+        const user = await UserWithoutPk.insert(userData, { returning: ["*"] });
         const retrievedUser = await UserWithoutPk.findOneBy("name", user.name);
 
         expect(retrievedUser).toBeDefined();
@@ -109,7 +109,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
       name: "HiddenFieldTest",
     };
 
-    const user = await UserWithoutPk.insert(userData);
+    const user = await UserWithoutPk.insert(userData, { returning: ["*"] });
     const retrievedUser = await UserWithoutPk.findOneBy("name", user.name);
 
     // Verify that hidden fields are not in the serialized output
@@ -139,7 +139,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         ...testData,
       };
 
-      const user = await UserWithoutPk.insert(userData);
+      const user = await UserWithoutPk.insert(userData, { returning: ["*"] });
       const retrievedUser = await UserWithoutPk.findOneBy(
         "name",
         testData.name,
@@ -197,7 +197,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
       };
 
       const userData = UserFactory.getCommonUserData();
-      const user = await UserWithoutPk.insert(userData);
+      const user = await UserWithoutPk.insert(userData, { returning: ["*"] });
 
       expect(user.name).toContain("_async");
     } finally {
@@ -230,7 +230,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
       };
 
       try {
-        const user = await UserWithoutPk.insert(userData);
+        const user = await UserWithoutPk.insert(userData, { returning: ["*"] });
         const retrievedUser = await UserWithoutPk.findOneBy(
           "name",
           testData.name,
@@ -288,7 +288,9 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
     };
 
     // Insert
-    const insertedUser = await UserWithoutPk.insert(originalData);
+    const insertedUser = await UserWithoutPk.insert(originalData, {
+      returning: ["*"],
+    });
     expect(insertedUser.name).toBe("ConsistencyTest");
 
     // Find

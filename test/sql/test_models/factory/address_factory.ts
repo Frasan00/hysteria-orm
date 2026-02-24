@@ -9,10 +9,9 @@ export class AddressFactory {
   ): Promise<FactoryReturnType<T, AddressWithBigint>> {
     const addressData = AddressFactory.getCommonAddressData();
     if (howMany === 1) {
-      return (await AddressWithBigint.insert(addressData)) as FactoryReturnType<
-        T,
-        AddressWithBigint
-      >;
+      return (await AddressWithBigint.insert(addressData, {
+        returning: ["*"],
+      })) as FactoryReturnType<T, AddressWithBigint>;
     }
 
     const array = Array.from({ length: howMany });
@@ -20,6 +19,7 @@ export class AddressFactory {
       array.map(() => ({
         ...addressData,
       })),
+      { returning: ["*"] },
     )) as FactoryReturnType<T, AddressWithBigint>;
   }
 
@@ -28,10 +28,9 @@ export class AddressFactory {
   ): Promise<FactoryReturnType<T, AddressWithUuid>> {
     const addressData = AddressFactory.getCommonAddressData();
     if (howMany === 1) {
-      return (await AddressWithUuid.insert(addressData)) as FactoryReturnType<
-        T,
-        AddressWithUuid
-      >;
+      return (await AddressWithUuid.insert(addressData, {
+        returning: ["*"],
+      })) as FactoryReturnType<T, AddressWithUuid>;
     }
 
     const array = Array.from({ length: howMany });
@@ -39,6 +38,7 @@ export class AddressFactory {
       array.map(() => ({
         ...addressData,
       })),
+      { returning: ["*"] },
     )) as FactoryReturnType<T, AddressWithUuid>;
   }
 

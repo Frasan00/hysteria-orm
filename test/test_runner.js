@@ -53,9 +53,6 @@ const SQL_TESTS = [
   // transaction
   "./test/sql/transaction/transaction.test.ts",
 
-  // instance methods
-  "./test/sql/instance_methods/instance_methods.test.ts",
-
   // having related
   "./test/sql/bigint_pk/having_related.test.ts",
   "./test/sql/uuid_pk/having_related.test.ts",

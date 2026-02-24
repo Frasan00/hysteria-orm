@@ -197,14 +197,15 @@ describe(`[${env.DB_TYPE}] Error Handling - Transaction Errors`, () => {
 
     try {
       // Create a user
-      const user = new UserWithUuid();
-      user.id = userId;
-      user.name = "Rollback Test";
-      user.email = "rollback@example.com";
-      user.age = 30;
-      user.status = UserStatus.active;
-      user.isActive = true;
-      await user.save({ trx });
+      const user = {
+        id: userId,
+        name: "Rollback Test",
+        email: "rollback@example.com",
+        age: 30,
+        status: UserStatus.active,
+        isActive: true,
+      };
+      await UserWithUuid.save(user, { trx });
 
       // Force an error
       await trx.sql.rawQuery("INVALID SQL TO FORCE ROLLBACK");
@@ -225,13 +226,14 @@ describe(`[${env.DB_TYPE}] Error Handling - Transaction Errors`, () => {
     const trx = await sql.transaction();
 
     // Create a user
-    const user = new UserWithUuid();
-    user.name = "Commit Failure Test";
-    user.email = "commit-fail@example.com";
-    user.age = 25;
-    user.status = UserStatus.active;
-    user.isActive = true;
-    await user.save({ trx });
+    const user = {
+      name: "Commit Failure Test",
+      email: "commit-fail@example.com",
+      age: 25,
+      status: UserStatus.active,
+      isActive: true,
+    };
+    await UserWithUuid.insert(user, { trx });
 
     // Commit should succeed
     await trx.commit();
@@ -377,15 +379,16 @@ describe(`[${env.DB_TYPE}] Error Handling - Edge Cases`, () => {
     const veryLongString = "a".repeat(10000);
     const uniqueEmail = `long-string-${Date.now()}@example.com`;
 
-    const user = new UserWithUuid();
-    user.name = "Long String Test";
-    user.email = uniqueEmail;
-    user.age = 30;
-    user.status = UserStatus.active;
-    user.isActive = true;
-    user.description = veryLongString;
+    const user = {
+      name: "Long String Test",
+      email: uniqueEmail,
+      age: 30,
+      status: UserStatus.active,
+      isActive: true,
+      description: veryLongString,
+    };
 
-    await user.save();
+    await UserWithUuid.insert(user);
 
     const foundUser = await UserWithUuid.query()
       .where("email", uniqueEmail)
@@ -406,14 +409,15 @@ describe(`[${env.DB_TYPE}] Error Handling - Edge Cases`, () => {
     const specialString = "Test 'with\" \\special/ chars";
     const uniqueEmail = `special-${Date.now()}@example.com`;
 
-    const user = new UserWithUuid();
-    user.name = specialString;
-    user.email = uniqueEmail;
-    user.age = 30;
-    user.status = UserStatus.active;
-    user.isActive = true;
+    const user = {
+      name: specialString,
+      email: uniqueEmail,
+      age: 30,
+      status: UserStatus.active,
+      isActive: true,
+    };
 
-    await user.save();
+    await UserWithUuid.insert(user);
 
     const foundUser = await UserWithUuid.query()
       .where("email", uniqueEmail)
@@ -439,14 +443,15 @@ describe(`[${env.DB_TYPE}] Error Handling - Edge Cases`, () => {
     const unicodeString = "Test 🚀 with 你好 world";
     const uniqueEmail = `unicode-${Date.now()}@example.com`;
 
-    const user = new UserWithUuid();
-    user.name = unicodeString;
-    user.email = uniqueEmail;
-    user.age = 30;
-    user.status = UserStatus.active;
-    user.isActive = true;
+    const user = {
+      name: unicodeString,
+      email: uniqueEmail,
+      age: 30,
+      status: UserStatus.active,
+      isActive: true,
+    };
 
-    await user.save();
+    await UserWithUuid.insert(user);
 
     const foundUser = await UserWithUuid.query()
       .where("email", uniqueEmail)
@@ -460,14 +465,15 @@ describe(`[${env.DB_TYPE}] Error Handling - Edge Cases`, () => {
     const sql = SqlDataSource.instance;
     const uniqueEmail = `zero-${Date.now()}@example.com`;
 
-    const user = new UserWithUuid();
-    user.name = "Zero Test";
-    user.email = uniqueEmail;
-    user.age = 0; // Zero value
-    user.status = UserStatus.active;
-    user.isActive = false; // False value
+    const user = {
+      name: "Zero Test",
+      email: uniqueEmail,
+      age: 0, // Zero value
+      status: UserStatus.active,
+      isActive: false, // False value
+    };
 
-    await user.save();
+    await UserWithUuid.insert(user);
 
     const foundUser = await UserWithUuid.query()
       .where("email", uniqueEmail)
@@ -485,54 +491,7 @@ describe(`[${env.DB_TYPE}] Error Handling - Edge Cases`, () => {
   });
 });
 
-describe(`[${env.DB_TYPE}] Error Handling - Model Errors`, () => {
-  test("should throw error when updating without primary key value", async () => {
-    const user = new UserWithUuid();
-    user.name = "Test User";
-    user.email = "no-pk@example.com";
-    user.age = 30;
-    user.status = UserStatus.active;
-    user.isActive = true;
-    // id is not set
-
-    await expect(user.update({ name: "Updated" })).rejects.toThrow(
-      HysteriaError,
-    );
-    await expect(user.update({ name: "Updated" })).rejects.toThrow(
-      "MODEL_HAS_NO_PRIMARY_KEY_VALUE",
-    );
-  });
-
-  test("should throw error when deleting without primary key value", async () => {
-    const user = new UserWithUuid();
-    user.name = "Test User";
-    user.email = "no-pk-delete@example.com";
-    user.age = 30;
-    user.status = UserStatus.active;
-    user.isActive = true;
-    // id is not set
-
-    await expect(user.delete()).rejects.toThrow(HysteriaError);
-    await expect(user.delete()).rejects.toThrow(
-      "MODEL_HAS_NO_PRIMARY_KEY_VALUE",
-    );
-  });
-
-  test("should throw error when refreshing without primary key value", async () => {
-    const user = new UserWithUuid();
-    user.name = "Test User";
-    user.email = "no-pk-refresh@example.com";
-    user.age = 30;
-    user.status = UserStatus.active;
-    user.isActive = true;
-    // id is not set
-
-    await expect(user.refresh()).rejects.toThrow(HysteriaError);
-    await expect(user.refresh()).rejects.toThrow(
-      "MODEL_HAS_NO_PRIMARY_KEY_VALUE",
-    );
-  });
-});
+// Instance method error tests removed - Models are now pure DTOs without instance methods
 
 describe(`[${env.DB_TYPE}] Error Handling - Query Builder Errors`, () => {
   test("should return null when getting record from empty result", async () => {

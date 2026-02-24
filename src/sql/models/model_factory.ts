@@ -35,15 +35,20 @@ class ModelFactory<M extends Model> {
     }
 
     const insertModel = this.typeofModel as {
-      insert: (data: Partial<M>) => Promise<M>;
-      insertMany: (data: Partial<M>[]) => Promise<M[]>;
+      insert: (
+        data: Partial<M>,
+        options: { returning: string[] },
+      ) => Promise<M>;
+      insertMany: (
+        data: Partial<M>[],
+        options: { returning: string[] },
+      ) => Promise<M[]>;
     };
 
     if (howMany === 1) {
-      return (await insertModel.insert(this.modelData)) as FactoryReturnType<
-        T,
-        M
-      >;
+      return (await insertModel.insert(this.modelData, {
+        returning: ["*"],
+      })) as FactoryReturnType<T, M>;
     }
 
     const array = Array.from({ length: howMany });
@@ -51,6 +56,7 @@ class ModelFactory<M extends Model> {
       array.map(() => ({
         ...this.modelData,
       })),
+      { returning: ["*"] },
     )) as FactoryReturnType<T, M>;
   }
 }

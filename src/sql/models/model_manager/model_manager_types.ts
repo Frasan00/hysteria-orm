@@ -1,6 +1,10 @@
 import { Model } from "../model";
 import { FetchHooks } from "../model_query_builder/model_query_builder_types";
-import { ModelInstanceMethods, ModelWithoutRelations } from "../model_types";
+import {
+  ModelDataProperties,
+  ModelQueryResult,
+  ModelWithoutRelations,
+} from "../model_types";
 
 type NullableAndUndefinable<T> =
   | T
@@ -11,12 +15,12 @@ type NullableAndUndefinable<T> =
 export type UpsertOptions<T extends Model> = {
   ignoreHooks?: boolean;
   updateOnConflict?: boolean;
-  returning?: ModelKey<T>[];
+  returning?: ReturningKey<T>[];
 };
 
 export type InsertOptions<T extends Model> = {
   ignoreHooks?: boolean;
-  returning?: ModelKey<T>[];
+  returning?: ReturningKey<T>[];
 };
 
 export type UpdateOptions<T extends Model> = {
@@ -92,6 +96,19 @@ export type ModelKey<T extends Model> = {
 }[keyof T];
 
 /**
+ * Valid key for the `returning` option: any model column or `"*"` for all columns.
+ */
+export type ReturningKey<T extends Model> = ModelKey<T> | "*";
+
+/**
+ * Generic constraint for the `returning` columns parameter.
+ * Used as a generic bound on insert/upsert/write methods.
+ */
+export type ReturningColumns<T extends Model> =
+  | readonly ReturningKey<T>[]
+  | undefined;
+
+/**
  * Extracts the value type for a model column key, adding `null` for SQL compatibility.
  * Used in type-safe where/having clauses to infer value types from column keys.
  */
@@ -134,11 +151,32 @@ export type FindReturnType<
   T extends Model,
   S extends ModelKey<T>[] = any[],
   R extends ModelRelation<T>[] = never[],
-> = (S extends readonly any[]
+> = S extends readonly any[]
   ? S[number] extends never
     ? ModelWithoutRelations<T> & { [K in R[number] & keyof T]: T[K] }
     : { [K in S[number] & keyof T]: T[K] } & {
         [K in R[number] & keyof T]: T[K];
       }
-  : ModelWithoutRelations<T> & { [K in R[number] & keyof T]: T[K] }) &
-  ModelInstanceMethods<T>;
+  : ModelWithoutRelations<T> & { [K in R[number] & keyof T]: T[K] };
+
+/**
+ * Return type for write operations (insert/upsert) based on the returning columns.
+ * - `undefined` or `[]` -> `void` (no data fetched)
+ * - `["*"]` -> `ModelQueryResult<T>` (full model)
+ * - `["col1", "col2"]` -> `{ col1: ...; col2: ... } & ModelDataProperties`
+ *
+ * @typeParam T - The Model type
+ * @typeParam R - The returning columns array (literal tuple for type inference)
+ */
+export type WriteReturnType<
+  T extends Model,
+  R extends ReturningColumns<T>,
+> = R extends undefined
+  ? void
+  : R extends readonly []
+    ? void
+    : R extends readonly ReturningKey<T>[]
+      ? "*" extends R[number]
+        ? ModelQueryResult<T>
+        : { [K in R[number] & keyof T]: T[K] } & ModelDataProperties
+      : never;

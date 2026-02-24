@@ -10,10 +10,13 @@ export class PostFactory {
   ): Promise<FactoryReturnType<T, PostWithBigint>> {
     const postData = PostFactory.getCommonPostData();
     if (howMany === 1) {
-      return (await PostWithBigint.insert({
-        ...postData,
-        userId,
-      })) as FactoryReturnType<T, PostWithBigint>;
+      return (await PostWithBigint.insert(
+        {
+          ...postData,
+          userId,
+        },
+        { returning: ["*"] },
+      )) as FactoryReturnType<T, PostWithBigint>;
     }
 
     const array = Array.from({ length: howMany });
@@ -22,6 +25,7 @@ export class PostFactory {
         ...postData,
         userId,
       })),
+      { returning: ["*"] },
     )) as FactoryReturnType<T, PostWithBigint>;
   }
 
@@ -31,10 +35,13 @@ export class PostFactory {
   ): Promise<FactoryReturnType<T, PostWithUuid>> {
     const postData = PostFactory.getCommonPostData();
     if (howMany === 1) {
-      return (await PostWithUuid.insert({
-        ...postData,
-        userId,
-      })) as FactoryReturnType<T, PostWithUuid>;
+      return (await PostWithUuid.insert(
+        {
+          ...postData,
+          userId,
+        },
+        { returning: ["*"] },
+      )) as FactoryReturnType<T, PostWithUuid>;
     }
 
     const array = Array.from({ length: howMany });
@@ -43,6 +50,7 @@ export class PostFactory {
         ...postData,
         userId,
       })),
+      { returning: ["*"] },
     )) as FactoryReturnType<T, PostWithUuid>;
   }
 

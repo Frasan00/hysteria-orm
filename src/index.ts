@@ -10,6 +10,14 @@ export * from "./sql/models/model_query_builder/model_query_builder";
 export * from "./sql/models/model_query_builder/model_query_builder_types";
 export * from "./sql/models/model_query_builder/relation_query_builder/relation_query_builder_types";
 export * from "./sql/models/model_types";
+export type {
+  WriteReturnType,
+  ReturningColumns,
+  ReturningKey,
+  ModelKey,
+  FindReturnType,
+  ModelRelation,
+} from "./sql/models/model_manager/model_manager_types";
 
 // Mixins
 export * from "./sql/models/mixins/index";

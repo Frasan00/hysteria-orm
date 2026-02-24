@@ -31,13 +31,14 @@ async function createTestUser(name: string, email: string) {
     ? `${Date.now()}-${Math.random().toString(36).substring(7)}-${email}`
     : email;
 
-  const user = new UserWithUuid();
-  user.name = name;
-  user.email = uniqueEmail;
-  user.age = 30;
-  user.status = UserStatus.active;
-  user.isActive = true;
-  await user.save();
+  const userData = {
+    name: name,
+    email: uniqueEmail,
+    age: 30,
+    status: UserStatus.active,
+    isActive: true,
+  };
+  const user = await UserWithUuid.insert(userData, { returning: ["*"] });
   return user;
 }
 
@@ -138,13 +139,14 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
       const maliciousName = "'; DROP TABLE users_with_uuid; --";
       const maliciousEmail = "hack@example.com";
 
-      const user = new UserWithUuid();
-      user.name = maliciousName;
-      user.email = maliciousEmail;
-      user.age = 30;
-      user.status = UserStatus.active;
-      user.isActive = true;
-      await user.save();
+      const user = {
+        name: maliciousName,
+        email: maliciousEmail,
+        age: 30,
+        status: UserStatus.active,
+        isActive: true,
+      };
+      await UserWithUuid.insert(user);
 
       // Value should be stored as-is, not executed
       const foundUser = await sql
@@ -163,13 +165,14 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
       const sql = SqlDataSource.instance;
       const uniqueEmail = `double-quotes-${Date.now()}@example.com`;
 
-      const user = new UserWithUuid();
-      user.name = 'User \'With "Double Quotes"';
-      user.email = uniqueEmail;
-      user.age = 25;
-      user.status = UserStatus.active;
-      user.isActive = true;
-      await user.save();
+      const user = {
+        name: 'User \'With "Double Quotes"',
+        email: uniqueEmail,
+        age: 25,
+        status: UserStatus.active,
+        isActive: true,
+      };
+      await UserWithUuid.insert(user);
 
       const foundUser = await sql
         .query("users_with_uuid")
@@ -444,13 +447,14 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
       const uniqueMaliciousName = `'; -- ${Date.now()}`;
 
       // Insert malicious value
-      const user = new UserWithUuid();
-      user.name = uniqueMaliciousName;
-      user.email = uniqueEmail;
-      user.age = 30;
-      user.status = UserStatus.active;
-      user.isActive = true;
-      await user.save();
+      const user = {
+        name: uniqueMaliciousName,
+        email: uniqueEmail,
+        age: 30,
+        status: UserStatus.active,
+        isActive: true,
+      };
+      await UserWithUuid.insert(user);
 
       // Use the stored value in another query
       const storedUser = await sql

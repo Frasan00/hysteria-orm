@@ -98,10 +98,13 @@ describe("Slave Replication", () => {
 
   describe("Round Robin Algorithm", () => {
     test("should use master for write operations", async () => {
-      const user = await ReplicationUser.insert({
-        name: "John Doe",
-        email: "john@example.com",
-      });
+      const user = await ReplicationUser.insert(
+        {
+          name: "John Doe",
+          email: "john@example.com",
+        },
+        { returning: ["*"] },
+      );
 
       expect(user).toBeDefined();
       expect(user.id).toBeDefined();
@@ -120,10 +123,13 @@ describe("Slave Replication", () => {
     });
 
     test("should use slaves for read operations with Model.findOne()", async () => {
-      const inserted = await ReplicationUser.insert({
-        name: "Bob Smith",
-        email: "bob@example.com",
-      });
+      const inserted = await ReplicationUser.insert(
+        {
+          name: "Bob Smith",
+          email: "bob@example.com",
+        },
+        { returning: ["*"] },
+      );
 
       const user = await ReplicationUser.findOne({
         where: { id: inserted.id },
@@ -147,10 +153,13 @@ describe("Slave Replication", () => {
     });
 
     test("should use master for update operations", async () => {
-      const user = await ReplicationUser.insert({
-        name: "Update Test",
-        email: "update@example.com",
-      });
+      const user = await ReplicationUser.insert(
+        {
+          name: "Update Test",
+          email: "update@example.com",
+        },
+        { returning: ["*"] },
+      );
 
       await ReplicationUser.query().where("id", user.id).update({
         name: "Updated Name",
@@ -164,10 +173,13 @@ describe("Slave Replication", () => {
     });
 
     test("should use master for delete operations", async () => {
-      const user = await ReplicationUser.insert({
-        name: "Delete Test",
-        email: "delete@example.com",
-      });
+      const user = await ReplicationUser.insert(
+        {
+          name: "Delete Test",
+          email: "delete@example.com",
+        },
+        { returning: ["*"] },
+      );
 
       await ReplicationUser.query().where("id", user.id).delete();
 
@@ -222,6 +234,7 @@ describe("Slave Replication", () => {
         },
         {
           replicationMode: "slave",
+          returning: ["*"],
         },
       );
 
@@ -280,10 +293,13 @@ describe("Slave Replication", () => {
     });
 
     test("should use master for query builder insert", async () => {
-      const user = await ReplicationUser.query().insert({
-        name: "QB Insert",
-        email: "qbinsert@example.com",
-      });
+      const user = await ReplicationUser.query().insert(
+        {
+          name: "QB Insert",
+          email: "qbinsert@example.com",
+        },
+        ["*"],
+      );
       expect(user).toBeDefined();
     });
 

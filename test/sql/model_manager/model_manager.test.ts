@@ -76,13 +76,16 @@ describe(`[${env.DB_TYPE}] Model Manager - CRUD Operations`, () => {
     const sql = SqlDataSource.instance;
     const manager = sql.getModelManager(UserWithUuid);
 
-    const user = await manager.insert({
-      name: "Manager Insert Test",
-      email: `manager-insert-${Date.now()}@example.com`,
-      age: 25,
-      status: UserStatus.active,
-      isActive: true,
-    });
+    const user = await manager.insert(
+      {
+        name: "Manager Insert Test",
+        email: `manager-insert-${Date.now()}@example.com`,
+        age: 25,
+        status: UserStatus.active,
+        isActive: true,
+      },
+      { returning: ["*"] },
+    );
 
     expect(user).toBeDefined();
     expect(user.id).toBeDefined();
@@ -135,13 +138,16 @@ describe(`[${env.DB_TYPE}] Model Manager - With Global Transaction`, () => {
     const sql = SqlDataSource.instance;
     const manager = sql.getModelManager(UserWithUuid);
 
-    const user = await manager.insert({
-      name: "Transaction Test",
-      email: `transaction-test-${Date.now()}@example.com`,
-      age: 30,
-      status: UserStatus.active,
-      isActive: true,
-    });
+    const user = await manager.insert(
+      {
+        name: "Transaction Test",
+        email: `transaction-test-${Date.now()}@example.com`,
+        age: 30,
+        status: UserStatus.active,
+        isActive: true,
+      },
+      { returning: ["*"] },
+    );
 
     expect(user).toBeDefined();
 
@@ -196,29 +202,32 @@ describe(`[${env.DB_TYPE}] Model Manager - Batch Operations`, () => {
     const sql = SqlDataSource.instance;
     const manager = sql.getModelManager(UserWithUuid);
 
-    const users = await manager.insertMany([
-      {
-        name: "Batch 1",
-        email: `batch1-${Date.now()}@example.com`,
-        age: 25,
-        status: UserStatus.active,
-        isActive: true,
-      },
-      {
-        name: "Batch 2",
-        email: `batch2-${Date.now()}@example.com`,
-        age: 26,
-        status: UserStatus.active,
-        isActive: true,
-      },
-      {
-        name: "Batch 3",
-        email: `batch3-${Date.now()}@example.com`,
-        age: 27,
-        status: UserStatus.active,
-        isActive: true,
-      },
-    ]);
+    const users = await manager.insertMany(
+      [
+        {
+          name: "Batch 1",
+          email: `batch1-${Date.now()}@example.com`,
+          age: 25,
+          status: UserStatus.active,
+          isActive: true,
+        },
+        {
+          name: "Batch 2",
+          email: `batch2-${Date.now()}@example.com`,
+          age: 26,
+          status: UserStatus.active,
+          isActive: true,
+        },
+        {
+          name: "Batch 3",
+          email: `batch3-${Date.now()}@example.com`,
+          age: 27,
+          status: UserStatus.active,
+          isActive: true,
+        },
+      ],
+      { returning: ["*"] },
+    );
 
     expect(users).toBeDefined();
     expect(users.length).toBe(3);
