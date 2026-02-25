@@ -23,4 +23,16 @@ describe("uuidMixin", () => {
     const instance = new TestModel();
     expect(instance).toBeInstanceOf(Model);
   });
+
+  test("multiple models using uuidMixin() do not throw MULTIPLE_PRIMARY_KEYS_NOT_ALLOWED", () => {
+    expect(() => {
+      class ModelA extends uuidMixin() {
+        static table = "model_a";
+      }
+      class ModelB extends uuidMixin() {
+        static table = "model_b";
+      }
+      return [ModelA, ModelB];
+    }).not.toThrow();
+  });
 });

@@ -43,8 +43,7 @@ export function incrementMixin<TBase extends AnyConstructor>(
     declare id: number;
 
     static {
-      Model.column("id", {
-        type: "increment",
+      (this as unknown as typeof Model).column("id", {
         openApi: {
           type: "number",
           required: true,

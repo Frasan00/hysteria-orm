@@ -18,7 +18,7 @@ type UuidOptions = Parameters<(typeof column)["uuid"]>[0];
  * class User extends uuidMixin() {
  *   declare name: string;
  * }
- *
+
  * // Composable with other mixins
  * class Post extends timestampMixin(uuidMixin()) {}
  * ```
@@ -44,7 +44,7 @@ export function uuidMixin<TBase extends AnyConstructor>(
     declare id: string;
 
     static {
-      Model.column("id", {
+      (this as unknown as typeof Model).uuidColumn("id", {
         type: "uuid",
         openApi: {
           type: "string",

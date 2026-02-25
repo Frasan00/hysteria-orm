@@ -44,8 +44,7 @@ export function bigIntMixin<TBase extends AnyConstructor>(
     declare id: number;
 
     static {
-      Model.column("id", {
-        type: "bigint",
+      (this as unknown as typeof Model).column("id", {
         openApi: {
           type: "number",
           required: true,

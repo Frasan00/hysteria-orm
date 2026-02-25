@@ -45,7 +45,7 @@ export function ulidMixin<TBase extends AnyConstructor>(
     declare id: string;
 
     static {
-      Model.column("id", {
+      (this as unknown as typeof Model).ulidColumn("id", {
         type: "ulid",
         openApi: {
           type: "string",
