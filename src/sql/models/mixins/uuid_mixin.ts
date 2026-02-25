@@ -1,9 +1,13 @@
 import { Model } from "../model";
 import type { AnyConstructor, Constructor } from "./types";
+import { column } from "../decorators/model_decorators";
+import type { ColumnOptions } from "../decorators/model_decorators_types";
 
 export interface UuidFields {
   id: string;
 }
+
+type UuidOptions = Parameters<(typeof column)["uuid"]>[0];
 
 /**
  * Mixin to add a UUID primary key column.
@@ -19,28 +23,37 @@ export interface UuidFields {
  * class Post extends timestampMixin(uuidMixin()) {}
  * ```
  */
-export function uuidMixin(): typeof Model & Constructor<UuidFields>;
+export function uuidMixin(
+  options?: UuidOptions,
+): typeof Model & Constructor<UuidFields>;
 export function uuidMixin<TBase extends AnyConstructor>(
   Base: TBase,
+  options?: UuidOptions,
 ): TBase & Constructor<UuidFields>;
 export function uuidMixin<TBase extends AnyConstructor>(
-  Base?: TBase,
+  BaseOrOptions?: TBase | UuidOptions,
+  maybeOptions?: UuidOptions,
 ): TBase & Constructor<UuidFields> {
-  const BaseClass = Base ?? Model;
+  const isBase = (v: unknown): v is AnyConstructor => typeof v === "function";
+  const BaseClass = isBase(BaseOrOptions) ? BaseOrOptions : Model;
+  const opts = isBase(BaseOrOptions)
+    ? maybeOptions
+    : (BaseOrOptions as UuidOptions | undefined);
 
   class UuidModel extends (BaseClass as AnyConstructor) {
     declare id: string;
 
     static {
       Model.column("id", {
-        primaryKey: true,
         type: "uuid",
         openApi: {
           type: "string",
           format: "uuid",
           required: true,
         },
-      });
+        ...opts,
+        primaryKey: true,
+      } as ColumnOptions);
     }
   }
 

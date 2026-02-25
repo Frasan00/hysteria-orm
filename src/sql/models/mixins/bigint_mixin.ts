@@ -1,9 +1,13 @@
 import { Model } from "../model";
 import type { AnyConstructor, Constructor } from "./types";
+import { column } from "../decorators/model_decorators";
+import type { ColumnOptions } from "../decorators/model_decorators_types";
 
 export interface BigIntFields {
   id: number;
 }
+
+type BigIntOptions = Parameters<(typeof column)["bigIncrement"]>[0];
 
 /**
  * Mixin to add a bigint primary key column with auto-increment.
@@ -19,27 +23,36 @@ export interface BigIntFields {
  * class Post extends timestampMixin(bigIntMixin()) {}
  * ```
  */
-export function bigIntMixin(): typeof Model & Constructor<BigIntFields>;
+export function bigIntMixin(
+  options?: BigIntOptions,
+): typeof Model & Constructor<BigIntFields>;
 export function bigIntMixin<TBase extends AnyConstructor>(
   Base: TBase,
+  options?: BigIntOptions,
 ): TBase & Constructor<BigIntFields>;
 export function bigIntMixin<TBase extends AnyConstructor>(
-  Base?: TBase,
+  BaseOrOptions?: TBase | BigIntOptions,
+  maybeOptions?: BigIntOptions,
 ): TBase & Constructor<BigIntFields> {
-  const BaseClass = Base ?? Model;
+  const isBase = (v: unknown): v is AnyConstructor => typeof v === "function";
+  const BaseClass = isBase(BaseOrOptions) ? BaseOrOptions : Model;
+  const opts = isBase(BaseOrOptions)
+    ? maybeOptions
+    : (BaseOrOptions as BigIntOptions | undefined);
 
   class BigIntModel extends (BaseClass as AnyConstructor) {
     declare id: number;
 
     static {
       Model.column("id", {
-        primaryKey: true,
         type: "bigint",
         openApi: {
           type: "number",
           required: true,
         },
-      });
+        ...opts,
+        primaryKey: true,
+      } as ColumnOptions);
     }
   }
 

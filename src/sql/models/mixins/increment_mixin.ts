@@ -1,9 +1,13 @@
 import { Model } from "../model";
 import type { AnyConstructor, Constructor } from "./types";
+import { column } from "../decorators/model_decorators";
+import type { ColumnOptions } from "../decorators/model_decorators_types";
 
 export interface IncrementFields {
   id: number;
 }
+
+type IncrementOptions = Parameters<(typeof column)["increment"]>[0];
 
 /**
  * Mixin to add an auto-incrementing integer primary key column.
@@ -18,14 +22,22 @@ export interface IncrementFields {
  * class Post extends timestampMixin(incrementMixin()) {}
  * ```
  */
-export function incrementMixin(): typeof Model & Constructor<IncrementFields>;
+export function incrementMixin(
+  options?: IncrementOptions,
+): typeof Model & Constructor<IncrementFields>;
 export function incrementMixin<TBase extends AnyConstructor>(
   Base: TBase,
+  options?: IncrementOptions,
 ): TBase & Constructor<IncrementFields>;
 export function incrementMixin<TBase extends AnyConstructor>(
-  Base?: TBase,
+  BaseOrOptions?: TBase | IncrementOptions,
+  maybeOptions?: IncrementOptions,
 ): TBase & Constructor<IncrementFields> {
-  const BaseClass = Base ?? Model;
+  const isBase = (v: unknown): v is AnyConstructor => typeof v === "function";
+  const BaseClass = isBase(BaseOrOptions) ? BaseOrOptions : Model;
+  const opts = isBase(BaseOrOptions)
+    ? maybeOptions
+    : (BaseOrOptions as IncrementOptions | undefined);
 
   class IncrementModel extends (BaseClass as AnyConstructor) {
     declare id: number;
@@ -33,12 +45,13 @@ export function incrementMixin<TBase extends AnyConstructor>(
     static {
       Model.column("id", {
         type: "increment",
-        primaryKey: true,
         openApi: {
           type: "number",
           required: true,
         },
-      });
+        ...opts,
+        primaryKey: true,
+      } as ColumnOptions);
     }
   }
 

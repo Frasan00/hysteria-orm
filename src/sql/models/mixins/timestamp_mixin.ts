@@ -1,11 +1,20 @@
 import { Model } from "../model";
 import type { AnyConstructor, Constructor } from "./types";
+import { column } from "../decorators/model_decorators";
 
 export interface TimestampFields {
   createdAt: Date;
   updatedAt: Date;
   deletedAt: Date | null;
 }
+
+type DatetimeOptions = Parameters<(typeof column)["datetime"]>[0];
+
+type TimestampOptions = {
+  createdAt?: DatetimeOptions;
+  updatedAt?: DatetimeOptions;
+  deletedAt?: DatetimeOptions;
+};
 
 /**
  * Mixin to add timestamp columns for tracking record creation and updates.
@@ -22,16 +31,27 @@ export interface TimestampFields {
  *
  * // Composable with other mixins
  * class Post extends timestampMixin(uuidMixin()) {}
+ *
+ * // With per-column options
+ * class Post extends timestampMixin(uuidMixin(), { createdAt: { nullable: true } }) {}
  * ```
  */
-export function timestampMixin(): typeof Model & Constructor<TimestampFields>;
+export function timestampMixin(
+  options?: TimestampOptions,
+): typeof Model & Constructor<TimestampFields>;
 export function timestampMixin<TBase extends AnyConstructor>(
   Base: TBase,
+  options?: TimestampOptions,
 ): TBase & Constructor<TimestampFields>;
 export function timestampMixin<TBase extends AnyConstructor>(
-  Base?: TBase,
+  BaseOrOptions?: TBase | TimestampOptions,
+  maybeOptions?: TimestampOptions,
 ): TBase & Constructor<TimestampFields> {
-  const BaseClass = Base ?? Model;
+  const isBase = (v: unknown): v is AnyConstructor => typeof v === "function";
+  const BaseClass = isBase(BaseOrOptions) ? BaseOrOptions : Model;
+  const opts = isBase(BaseOrOptions)
+    ? maybeOptions
+    : (BaseOrOptions as TimestampOptions | undefined);
 
   class TimestampModel extends (BaseClass as AnyConstructor) {
     declare createdAt: Date;
@@ -47,6 +67,7 @@ export function timestampMixin<TBase extends AnyConstructor>(
           format: "date-time",
           required: true,
         },
+        ...opts?.createdAt,
       });
 
       Model.datetimeColumn("updatedAt", {
@@ -56,6 +77,7 @@ export function timestampMixin<TBase extends AnyConstructor>(
           format: "date-time",
           required: true,
         },
+        ...opts?.updatedAt,
       });
 
       Model.datetimeColumn("deletedAt", {
@@ -65,6 +87,7 @@ export function timestampMixin<TBase extends AnyConstructor>(
           format: "date-time",
           required: false,
         },
+        ...opts?.deletedAt,
       });
     }
   }
