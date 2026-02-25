@@ -28,3 +28,6 @@ export { TagMigration } from "./tag";
 
 // Decorator shortcuts test model
 export { DecoratorShortcutsModel } from "./decorator_shortcuts";
+
+// Edge case models
+export * from "./edge_cases";

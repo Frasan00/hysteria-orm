@@ -359,12 +359,24 @@ export class DropOrderResolver {
     if (!relation.relation.name) {
       return [];
     }
-    return this.sql
+    const stmts = this.sql
       .schema()
       .alterTable(relation.table, (t) => {
         t.dropConstraint(relation.relation.name);
       })
       .toQueries();
+
+    // MySQL/MariaDB auto-create indexes for FK constraints; dropping the FK
+    // leaves the index behind. Drop it in the same pass to achieve 1-pass
+    // idempotency.
+    const dialect = this.sql.getDbType();
+    if (dialect === "mysql" || dialect === "mariadb") {
+      stmts.push(
+        `DROP INDEX \`${relation.relation.name}\` ON \`${relation.table}\``,
+      );
+    }
+
+    return stmts;
   }
 
   private generateDropPrimaryKeySql(table: string): string[] {

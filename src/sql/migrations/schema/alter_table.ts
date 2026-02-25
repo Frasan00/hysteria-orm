@@ -178,7 +178,8 @@ export class AlterTableBuilder extends BaseBuilder {
     if (hasDefault) {
       if (
         hasDefault.defaultValue === undefined ||
-        hasDefault.defaultValue === null
+        hasDefault.defaultValue === null ||
+        hasDefault.defaultValue === "NULL"
       ) {
         alterColumnOptions.dropDefault = true;
       } else {
@@ -219,7 +220,8 @@ export class AlterTableBuilder extends BaseBuilder {
     if (hasDefault && this.sqlType !== "mysql" && this.sqlType !== "mariadb") {
       if (
         hasDefault.defaultValue === undefined ||
-        hasDefault.defaultValue === null
+        hasDefault.defaultValue === null ||
+        hasDefault.defaultValue === "NULL"
       ) {
         this.nodes.push(new DropDefaultNode(getColumnValue(columnName)));
       } else {

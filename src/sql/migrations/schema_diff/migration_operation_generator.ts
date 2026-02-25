@@ -578,6 +578,12 @@ export class MigrationOperationGenerator {
           // Add constraints based on the model column
           if (columnData.modelColumn.constraints?.default !== undefined) {
             columnBuilder.default(columnData.modelColumn.constraints.default);
+          } else if (
+            columnData.dbColumns.defaultValue != null &&
+            columnData.dbColumns.defaultValue !== ""
+          ) {
+            // DB has a default but model doesn't — explicitly drop it
+            columnBuilder.default(null);
           }
 
           if (columnData.modelColumn.constraints?.nullable === false) {

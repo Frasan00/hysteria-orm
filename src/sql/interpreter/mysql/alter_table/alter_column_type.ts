@@ -24,7 +24,8 @@ class MysqlAlterColumnTypeInterpreter implements Interpreter {
     }
 
     if (a.options.dropDefault) {
-      resultSql += " drop default";
+      // MySQL MODIFY COLUMN rewrites the entire column definition;
+      // omitting the DEFAULT clause effectively drops the default.
     } else if (a.options.default !== undefined) {
       let defaultValue = a.options.default;
       if (defaultValue === null) {

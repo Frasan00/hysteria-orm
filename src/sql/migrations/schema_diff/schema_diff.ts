@@ -871,6 +871,10 @@ export class SchemaDiff {
       if (/^current_timestamp(?:\(\d+\))?$/i.test(v)) {
         return "current_timestamp";
       }
+      if (dataType === "boolean") {
+        if (/^1$/.test(v)) return "true";
+        if (/^0$/.test(v)) return "false";
+      }
       return v;
     }
     if (dialect === "sqlite") {

@@ -25,7 +25,13 @@ const ALL_SQL_ENVIRONMENTS = {
 const VALID_DB_TYPES = Object.keys(ALL_SQL_ENVIRONMENTS);
 
 const SQL_TESTS = [
+  // schema diff (migration generation)
+  "./test/sql/schema_diff/schema_diff_edge_cases.test.ts",
+  "./test/sql/schema_diff/schema_diff.test.ts",
+
+  // select query builder
   "./test/sql/query_builder/select_subquery.test.ts",
+
   // write operation
   "./test/sql/write_operation/write_operation.test.ts",
 
@@ -82,9 +88,6 @@ const SQL_TESTS = [
   "./test/sql/uuid_pk/relations.test.ts",
   "./test/sql/uuid_pk/crud.test.ts",
   "./test/sql/uuid_pk/join.test.ts",
-
-  // schema diff (migration generation)
-  "./test/sql/schema_diff/schema_diff.test.ts",
 ];
 
 const NON_SQL_TESTS = [
@@ -129,7 +132,7 @@ const fileContainsTests = (filePath, testNames) => {
 const runSqlTest = async (file, environment, testNames = [], logs = false) => {
   if (file.includes("bigint_pk") && environment.type === "cockroachdb") {
     console.log(
-      `  ⊘ Skipping ${file} on ${environment.type} (bigint pk not supported)`
+      `  ⊘ Skipping ${file} on ${environment.type} (bigint pk not supported)`,
     );
     return;
   }
@@ -181,7 +184,7 @@ const runNonSqlTest = (test) => {
     `npx jest --config=jest.config.js --colors --forceExit ${runInBandFlag} ${test.path}`,
     {
       stdio: "inherit",
-    }
+    },
   );
 };
 
@@ -196,7 +199,7 @@ const runTests = async (options) => {
   const invalidDbs = databases.filter((db) => !VALID_DB_TYPES.includes(db));
   if (invalidDbs.length > 0) {
     console.error(
-      `Invalid database types: ${invalidDbs.join(", ")}. Valid types are: ${VALID_DB_TYPES.join(", ")}`
+      `Invalid database types: ${invalidDbs.join(", ")}. Valid types are: ${VALID_DB_TYPES.join(", ")}`,
     );
     process.exit(1);
   }
@@ -218,7 +221,7 @@ const runTests = async (options) => {
     nonSqlTestsToRun = NON_SQL_TESTS.filter((test) => {
       const fileName = test.path.split("/").pop();
       return files.some(
-        (file) => test.path === file || fileName === file || test.name === file
+        (file) => test.path === file || fileName === file || test.name === file,
       );
     });
 
@@ -230,19 +233,19 @@ const runTests = async (options) => {
 
   if (testCases.length && !files.length) {
     console.log(
-      `🔍 Scanning test files for matching test cases: ${testCases.join(", ")}...\n`
+      `🔍 Scanning test files for matching test cases: ${testCases.join(", ")}...\n`,
     );
     sqlTestsToRun = sqlTestsToRun.filter((test) =>
-      fileContainsTests(test, testCases)
+      fileContainsTests(test, testCases),
     );
     if (sqlTestsToRun.length === 0) {
       console.error(
-        `No test files found containing test cases: ${testCases.join(", ")}`
+        `No test files found containing test cases: ${testCases.join(", ")}`,
       );
       process.exit(1);
     }
     console.log(
-      `✓ Found ${sqlTestsToRun.length} test file(s) with matching tests\n`
+      `✓ Found ${sqlTestsToRun.length} test file(s) with matching tests\n`,
     );
   }
 
@@ -253,7 +256,7 @@ const runTests = async (options) => {
       console.log(`${"=".repeat(80)}\n`);
 
       console.log(
-        `🔄 Running sequentially across ${environmentsToRun.length} database(s)...\n`
+        `🔄 Running sequentially across ${environmentsToRun.length} database(s)...\n`,
       );
       for (const environment of environmentsToRun) {
         try {
@@ -276,7 +279,7 @@ const runTests = async (options) => {
   if (shouldRunAllNonSqlTests) {
     console.log(`\n${"=".repeat(80)}`);
     console.log(
-      `📦 Running Non-SQL specific Tests (Mongo, Redis, Cache, Replication)`
+      `📦 Running Non-SQL specific Tests (Mongo, Redis, Cache, Replication)`,
     );
     console.log(`${"=".repeat(80)}\n`);
 
@@ -325,17 +328,17 @@ program
   .option(
     "-d, --database <databases...>",
     `Run tests for specific database(s), valid databases are: ${VALID_DB_TYPES.join(", ")}`,
-    []
+    [],
   )
   .option(
     "-t, --test-case <testCases...>",
     "Run specific test name(s) within files (passed to Jest -t)",
-    []
+    [],
   )
   .option(
     "-f, --file <files...>",
     "Run specific file(s) by filename or full path",
-    []
+    [],
   )
   .option("-l, --logs", "Enable database query logs (DB_LOGS=true)", false)
   .action(async (options) => {

@@ -109,7 +109,6 @@ conditionalDescribe(`[${dbType}] Schema Diff Migration Generation`, () => {
           const statements = diff.getSqlStatements();
 
           // Debug: log what we got
-          console.log("v1 statements:", JSON.stringify(statements, null, 2));
 
           // Should have statements for creating a new table
           expect(statements.length).toBeGreaterThan(0);
@@ -145,8 +144,6 @@ conditionalDescribe(`[${dbType}] Schema Diff Migration Generation`, () => {
           const diff = await SchemaDiff.makeDiff(sql);
           const statements = diff.getSqlStatements();
 
-          console.log("v2 statements:", JSON.stringify(statements, null, 2));
-
           expect(statements.length).toBeGreaterThan(0);
 
           // Should have ALTER TABLE ADD COLUMN for the new age column
@@ -173,8 +170,6 @@ conditionalDescribe(`[${dbType}] Schema Diff Migration Generation`, () => {
         async (sql) => {
           const diff = await SchemaDiff.makeDiff(sql);
           const statements = diff.getSqlStatements();
-
-          console.log("v3 statements:", JSON.stringify(statements, null, 2));
 
           expect(statements.length).toBeGreaterThan(0);
 
@@ -203,8 +198,6 @@ conditionalDescribe(`[${dbType}] Schema Diff Migration Generation`, () => {
           const diff = await SchemaDiff.makeDiff(sql);
           const statements = diff.getSqlStatements();
 
-          console.log("v4 statements:", JSON.stringify(statements, null, 2));
-
           expect(statements.length).toBeGreaterThan(0);
 
           // Should add the bio column
@@ -229,8 +222,6 @@ conditionalDescribe(`[${dbType}] Schema Diff Migration Generation`, () => {
         async (sql) => {
           const diff = await SchemaDiff.makeDiff(sql);
           const statements = diff.getSqlStatements();
-
-          console.log("v5 statements:", JSON.stringify(statements, null, 2));
 
           expect(statements.length).toBeGreaterThan(0);
 
@@ -259,8 +250,6 @@ conditionalDescribe(`[${dbType}] Schema Diff Migration Generation`, () => {
           const diff = await SchemaDiff.makeDiff(sql);
           const statements = diff.getSqlStatements();
 
-          console.log("v6 statements:", JSON.stringify(statements, null, 2));
-
           expect(statements.length).toBeGreaterThan(0);
 
           // Should add unique constraint on email
@@ -287,8 +276,6 @@ conditionalDescribe(`[${dbType}] Schema Diff Migration Generation`, () => {
         async (sql) => {
           const diff = await SchemaDiff.makeDiff(sql);
           const statements = diff.getSqlStatements();
-
-          console.log("v7 statements:", JSON.stringify(statements, null, 2));
 
           expect(statements.length).toBeGreaterThan(0);
 
@@ -317,8 +304,6 @@ conditionalDescribe(`[${dbType}] Schema Diff Migration Generation`, () => {
           const diff = await SchemaDiff.makeDiff(sql);
           const statements = diff.getSqlStatements();
 
-          console.log("v8 statements:", JSON.stringify(statements, null, 2));
-
           expect(statements.length).toBeGreaterThan(0);
 
           // Should add metadata JSON column
@@ -346,8 +331,6 @@ conditionalDescribe(`[${dbType}] Schema Diff Migration Generation`, () => {
           const diff = await SchemaDiff.makeDiff(sql);
           const statements = diff.getSqlStatements();
 
-          console.log("v9 statements:", JSON.stringify(statements, null, 2));
-
           expect(statements.length).toBeGreaterThan(0);
 
           // Should modify bio with new default value
@@ -372,8 +355,6 @@ conditionalDescribe(`[${dbType}] Schema Diff Migration Generation`, () => {
         async (sql) => {
           const diff = await SchemaDiff.makeDiff(sql);
           const statements = diff.getSqlStatements();
-
-          console.log("v10 statements:", JSON.stringify(statements, null, 2));
 
           expect(statements.length).toBeGreaterThan(0);
 
@@ -409,11 +390,6 @@ conditionalDescribe(`[${dbType}] Schema Diff Migration Generation`, () => {
         async (sql) => {
           const diff = await SchemaDiff.makeDiff(sql);
           const statements = diff.getSqlStatements();
-
-          console.log(
-            "Post v1 statements:",
-            JSON.stringify(statements, null, 2),
-          );
 
           expect(statements.length).toBeGreaterThan(0);
 
@@ -454,11 +430,6 @@ conditionalDescribe(`[${dbType}] Schema Diff Migration Generation`, () => {
           const diff = await SchemaDiff.makeDiff(sql);
           const statements = diff.getSqlStatements();
 
-          console.log(
-            "Post v2 statements:",
-            JSON.stringify(statements, null, 2),
-          );
-
           // Should have CASCADE changes or FK modifications
           // Also should have age column addition from User v2
           const hasChanges =
@@ -488,11 +459,6 @@ conditionalDescribe(`[${dbType}] Schema Diff Migration Generation`, () => {
           const diff = await SchemaDiff.makeDiff(sql);
           const statements = diff.getSqlStatements();
 
-          console.log(
-            "Post v3 statements:",
-            JSON.stringify(statements, null, 2),
-          );
-
           expect(statements.length).toBeGreaterThan(0);
 
           // Should add editorId column
@@ -517,11 +483,6 @@ conditionalDescribe(`[${dbType}] Schema Diff Migration Generation`, () => {
         async (sql) => {
           const diff = await SchemaDiff.makeDiff(sql);
           const statements = diff.getSqlStatements();
-
-          console.log(
-            "Post v4 statements:",
-            JSON.stringify(statements, null, 2),
-          );
 
           expect(statements.length).toBeGreaterThan(0);
 
@@ -551,11 +512,6 @@ conditionalDescribe(`[${dbType}] Schema Diff Migration Generation`, () => {
           const diff = await SchemaDiff.makeDiff(sql);
           const statements = diff.getSqlStatements();
 
-          console.log(
-            "Post v5 statements:",
-            JSON.stringify(statements, null, 2),
-          );
-
           // Should create pivot table or add index
           const hasChanges = statements.some(
             (s) =>
@@ -582,11 +538,6 @@ conditionalDescribe(`[${dbType}] Schema Diff Migration Generation`, () => {
           const diff = await SchemaDiff.makeDiff(sql);
           const statements = diff.getSqlStatements();
 
-          console.log(
-            "Post v6 statements:",
-            JSON.stringify(statements, null, 2),
-          );
-
           // May or may not have changes depending on implementation
           await sql.syncSchema();
         },
@@ -604,11 +555,6 @@ conditionalDescribe(`[${dbType}] Schema Diff Migration Generation`, () => {
         async (sql) => {
           const diff = await SchemaDiff.makeDiff(sql);
           const statements = diff.getSqlStatements();
-
-          console.log(
-            "Post v7 statements:",
-            JSON.stringify(statements, null, 2),
-          );
 
           expect(statements.length).toBeGreaterThan(0);
 
@@ -638,11 +584,6 @@ conditionalDescribe(`[${dbType}] Schema Diff Migration Generation`, () => {
           const diff = await SchemaDiff.makeDiff(sql);
           const statements = diff.getSqlStatements();
 
-          console.log(
-            "Post v8 statements:",
-            JSON.stringify(statements, null, 2),
-          );
-
           expect(statements.length).toBeGreaterThan(0);
 
           // Should add rating decimal column
@@ -670,11 +611,6 @@ conditionalDescribe(`[${dbType}] Schema Diff Migration Generation`, () => {
         async (sql) => {
           const diff = await SchemaDiff.makeDiff(sql);
           const statements = diff.getSqlStatements();
-
-          console.log(
-            "Post v9 statements:",
-            JSON.stringify(statements, null, 2),
-          );
 
           expect(statements.length).toBeGreaterThan(0);
 
@@ -704,11 +640,6 @@ conditionalDescribe(`[${dbType}] Schema Diff Migration Generation`, () => {
           const diff = await SchemaDiff.makeDiff(sql);
           const statements = diff.getSqlStatements();
 
-          console.log(
-            "Post v10 statements:",
-            JSON.stringify(statements, null, 2),
-          );
-
           expect(statements.length).toBeGreaterThan(0);
 
           // Should add unique constraint or external_id column
@@ -724,10 +655,6 @@ conditionalDescribe(`[${dbType}] Schema Diff Migration Generation`, () => {
           // After final sync, there should be no more changes
           const finalDiff = await SchemaDiff.makeDiff(sql);
           const finalStatements = finalDiff.getSqlStatements();
-          console.log(
-            "Final statements (should be empty):",
-            JSON.stringify(finalStatements, null, 2),
-          );
           expect(finalStatements.length).toBe(0);
         },
       );
@@ -795,12 +722,6 @@ conditionalDescribe(`[${dbType}] Schema Diff Migration Generation`, () => {
             const diff = await SchemaDiff.makeDiff(sql);
             const statements = diff.getSqlStatements();
 
-            console.log(
-              `Evolution ${description}:`,
-              statements.length,
-              "statements",
-            );
-
             // First version should always have changes (creating tables)
             if (i === 0) {
               expect(statements.length).toBeGreaterThan(0);
@@ -847,11 +768,6 @@ conditionalDescribe(`[${dbType}] Schema Diff Migration Generation`, () => {
           const firstDiff = await SchemaDiff.makeDiff(sql);
           const firstStatements = firstDiff.getSqlStatements();
 
-          console.log(
-            "First sync statements:",
-            JSON.stringify(firstStatements, null, 2),
-          );
-
           expect(firstStatements.length).toBeGreaterThan(0);
           expect(
             firstStatements.some((s) =>
@@ -865,21 +781,11 @@ conditionalDescribe(`[${dbType}] Schema Diff Migration Generation`, () => {
           const secondDiff = await SchemaDiff.makeDiff(sql);
           const secondStatements = secondDiff.getSqlStatements();
 
-          console.log(
-            "Second sync statements (should be empty):",
-            JSON.stringify(secondStatements, null, 2),
-          );
-
           expect(secondStatements.length).toBe(0);
 
           // Third sync - should still have NO changes
           const thirdDiff = await SchemaDiff.makeDiff(sql);
           const thirdStatements = thirdDiff.getSqlStatements();
-
-          console.log(
-            "Third sync statements (should be empty):",
-            JSON.stringify(thirdStatements, null, 2),
-          );
 
           expect(thirdStatements.length).toBe(0);
         },
