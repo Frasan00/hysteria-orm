@@ -115,6 +115,15 @@ export type DateColumnOptions = {
   autoCreate?: boolean;
 } & ColumnOptions;
 
+/**
+ * @description Options for @column.datetime and @column.timestamp decorators.
+ * Extends DateColumnOptions with date-specific options (precision, withTimezone).
+ * If `timezone` is provided, `withTimezone` defaults to true in migration generation
+ * unless explicitly overridden with `withTimezone: false`.
+ */
+export type DatetimeColumnOptions = Omit<DateColumnOptions, "format"> &
+  Pick<ColumnDataTypeOptionWithDatePrecision, "withTimezone" | "precision">;
+
 export type SymmetricEncryptionOptions = {
   /**
    * @description The key to use for the symmetric encryption

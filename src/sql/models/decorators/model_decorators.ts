@@ -41,6 +41,7 @@ import type {
   ColumnOptions,
   ColumnType,
   DateColumnOptions,
+  DatetimeColumnOptions,
   IndexType,
   LazyRelationType,
   ManyToManyOptions,
@@ -277,7 +278,7 @@ function floatColumn(
       }
 
       if (typeof value === "string") {
-        return +value;
+        return Number.parseInt(value);
       }
 
       return Number.parseFloat(value);
@@ -527,11 +528,13 @@ function bigintColumn(
         return value;
       }
 
-      if (typeof value === "bigint") {
-        return value;
+      if (typeof value === "string") {
+        return Number.parseInt(value);
       }
 
-      return BigInt(value);
+      if (typeof value === "bigint") {
+        return Number(value);
+      }
     },
     openApi: {
       type: "integer",
@@ -808,37 +811,41 @@ function dateOnlyColumn(
  * @param options.serialize Optional custom serialize function that receives the pre-handled value
  */
 function datetimeColumn(
-  options: Omit<DateColumnOptions, "format"> = {},
+  options: DatetimeColumnOptions = {},
 ): TypedPropertyDecorator<Date | string | null | undefined> {
   const {
-    timezone = "UTC",
+    timezone,
+    withTimezone,
     autoUpdate = false,
     autoCreate = false,
     prepare: customPrepare,
     serialize: customSerialize,
     ...rest
   } = options;
+  const effectiveTimezone = timezone ?? "UTC";
+  const effectiveWithTimezone =
+    withTimezone ?? (timezone !== undefined ? true : false);
 
   const preHandlerPrepare = (
     value?: Date | string | null,
   ): string | null | undefined => {
     if (!value) {
       if (autoCreate) {
-        return getDate(new Date(), "ISO", timezone);
+        return getDate(new Date(), "ISO", effectiveTimezone);
       }
 
       return null;
     }
 
     if (autoUpdate) {
-      return getDate(new Date(), "ISO", timezone);
+      return getDate(new Date(), "ISO", effectiveTimezone);
     }
 
     if (typeof value === "string") {
       return value;
     }
 
-    return getDate(value, "ISO", timezone);
+    return getDate(value, "ISO", effectiveTimezone);
   };
 
   const preHandlerSerialize = (
@@ -852,12 +859,13 @@ function datetimeColumn(
       return null;
     }
 
-    return parseDate(value, undefined, timezone);
+    return parseDate(value, undefined, effectiveTimezone);
   };
 
   return column({
     type: "datetime",
     ...(rest as ColumnOptions),
+    withTimezone: effectiveWithTimezone,
     autoUpdate,
     prepare: (value?: Date | string | null) => {
       const preHandled = preHandlerPrepare(value);
@@ -897,37 +905,41 @@ function datetimeColumn(
  * @param options.serialize Optional custom serialize function that receives the pre-handled value
  */
 function timestampColumn(
-  options: Omit<DateColumnOptions, "format"> = {},
+  options: DatetimeColumnOptions = {},
 ): TypedPropertyDecorator<Date | string | null | undefined> {
   const {
-    timezone = "UTC",
+    timezone,
+    withTimezone,
     autoUpdate = false,
     autoCreate = false,
     prepare: customPrepare,
     serialize: customSerialize,
     ...rest
   } = options;
+  const effectiveTimezone = timezone ?? "UTC";
+  const effectiveWithTimezone =
+    withTimezone ?? (timezone !== undefined ? true : false);
 
   const preHandlerPrepare = (
     value?: Date | string | null,
   ): string | null | undefined => {
     if (!value) {
       if (autoCreate) {
-        return getDate(new Date(), "TIMESTAMP", timezone);
+        return getDate(new Date(), "TIMESTAMP", effectiveTimezone);
       }
 
       return null;
     }
 
     if (autoUpdate) {
-      return getDate(new Date(), "TIMESTAMP", timezone);
+      return getDate(new Date(), "TIMESTAMP", effectiveTimezone);
     }
 
     if (typeof value === "string") {
       return value;
     }
 
-    return getDate(value, "TIMESTAMP", timezone);
+    return getDate(value, "TIMESTAMP", effectiveTimezone);
   };
 
   const preHandlerSerialize = (
@@ -941,12 +953,13 @@ function timestampColumn(
       return null;
     }
 
-    return parseDate(value, undefined, timezone);
+    return parseDate(value, undefined, effectiveTimezone);
   };
 
   return column({
     type: "timestamp",
     ...(rest as ColumnOptions),
+    withTimezone: effectiveWithTimezone,
     autoUpdate,
     prepare: (value?: Date | string | null) => {
       const preHandled = preHandlerPrepare(value);
