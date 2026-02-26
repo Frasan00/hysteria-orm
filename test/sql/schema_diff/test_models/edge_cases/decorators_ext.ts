@@ -19,7 +19,7 @@ export class DecoratorsExtModel extends Model {
   @column.integer()
   declare intCol: number;
 
-  @column.bigint({ nullable: true })
+  @column.bigInteger({ nullable: true })
   declare bigintCol: number | null;
 
   @column.float({ nullable: true })
