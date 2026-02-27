@@ -22,25 +22,25 @@ export type TransactionExecutionOptions = {
 
 export type TransactionOptionsOrCallback =
   | StartTransactionOptions
-  | ((trx: Transaction) => Promise<void>);
+  | ((trx: Transaction) => Promise<unknown>);
 
 export type StartTransactionReturnType<T extends TransactionOptionsOrCallback> =
   T extends StartTransactionOptions
     ? Transaction
-    : T extends (trx: Transaction) => Promise<void>
-      ? void
+    : T extends (trx: Transaction) => Promise<infer R>
+      ? R
       : Transaction;
 
 /**
  * @description Callback type for nested transactions (no options supported)
  */
-export type NestedTransactionCallback = (trx: Transaction) => Promise<void>;
+export type NestedTransactionCallback = (trx: Transaction) => Promise<unknown>;
 
 /**
  * @description Conditional return type for `nestedTransaction`
- * - With callback: void
+ * - With callback: the return type of the callback
  * - Without callback: Transaction
  */
 export type NestedTransactionReturnType<
   T extends NestedTransactionCallback | undefined,
-> = T extends NestedTransactionCallback ? void : Transaction;
+> = T extends (trx: Transaction) => Promise<infer R> ? R : Transaction;

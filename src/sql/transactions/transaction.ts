@@ -8,8 +8,6 @@ import logger, { log } from "../../utils/logger";
 import { SqlDataSource } from "../sql_data_source";
 import { GetConnectionReturnType } from "../sql_data_source_types";
 import {
-  NestedTransactionCallback,
-  NestedTransactionReturnType,
   TransactionExecutionOptions,
   TransactionIsolationLevel,
 } from "./transaction_types";
@@ -73,12 +71,10 @@ export class Transaction {
    * @description If a callback is provided, it will execute the callback and commit or rollback the nested transaction save points based on the callback's success or failure
    */
   async nestedTransaction(): Promise<Transaction>;
-  async nestedTransaction(
-    cb: (trx: Transaction) => Promise<void>,
-  ): Promise<void>;
-  async nestedTransaction<T extends NestedTransactionCallback | undefined>(
-    cb?: T,
-  ): Promise<NestedTransactionReturnType<T>> {
+  async nestedTransaction<T>(cb: (trx: Transaction) => Promise<T>): Promise<T>;
+  async nestedTransaction<T>(
+    cb?: (trx: Transaction) => Promise<T>,
+  ): Promise<Transaction | T> {
     const trx = new Transaction(
       this.sql as SqlDataSource,
       this.isolationLevel,
@@ -90,15 +86,16 @@ export class Transaction {
 
     if (cb) {
       try {
-        await cb(trx);
+        const result = await cb(trx);
         await trx.commit();
+        return result;
       } catch (error) {
         await trx.rollback();
         throw error;
       }
     }
 
-    return trx as NestedTransactionReturnType<T>;
+    return trx;
   }
 
   /**

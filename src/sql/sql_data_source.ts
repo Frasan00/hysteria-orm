@@ -69,9 +69,7 @@ import { RawQueryResponseType } from "./sql_runner/sql_runner_types";
 import { Transaction } from "./transactions/transaction";
 import {
   StartTransactionOptions,
-  StartTransactionReturnType,
   TransactionExecutionOptions,
-  TransactionOptionsOrCallback,
 } from "./transactions/transaction_types";
 
 /**
@@ -814,32 +812,24 @@ export class SqlDataSource<
    * @sqlite ignores the isolation level
    */
   async transaction(options?: StartTransactionOptions): Promise<Transaction>;
-  async transaction(
-    cb: (trx: Transaction) => Promise<void>,
+  async transaction<T>(
+    cb: (trx: Transaction) => Promise<T>,
     options?: StartTransactionOptions,
-  ): Promise<void>;
-  async transaction<TOption extends TransactionOptionsOrCallback>(
-    optionsOrCb?:
-      | StartTransactionOptions
-      | ((trx: Transaction) => Promise<void>),
+  ): Promise<T>;
+  async transaction<T>(
+    optionsOrCb?: StartTransactionOptions | ((trx: Transaction) => Promise<T>),
     maybeOptions?: StartTransactionOptions,
-  ): Promise<StartTransactionReturnType<TOption>> {
+  ): Promise<Transaction | T> {
     const options =
       typeof optionsOrCb === "function" ? maybeOptions : optionsOrCb;
 
     // If a global transaction is active, create a nested transaction on the same connection
     if (this.globalTransaction?.isActive) {
       if (typeof optionsOrCb === "function") {
-        try {
-          await this.globalTransaction.nestedTransaction(optionsOrCb);
-          return undefined as StartTransactionReturnType<TOption>;
-        } catch (error) {
-          throw error;
-        }
+        return this.globalTransaction.nestedTransaction(optionsOrCb);
       }
 
-      const nested = await this.globalTransaction.nestedTransaction();
-      return nested as StartTransactionReturnType<TOption>;
+      return this.globalTransaction.nestedTransaction();
     }
 
     const cloned = await this.clone();
@@ -849,11 +839,11 @@ export class SqlDataSource<
 
     if (typeof optionsOrCb === "function") {
       try {
-        await optionsOrCb(sqlTrx);
+        const result = await optionsOrCb(sqlTrx);
         await sqlTrx.commit({
           throwErrorOnInactiveTransaction: false,
         });
-        return undefined as StartTransactionReturnType<TOption>;
+        return result;
       } catch (error) {
         await sqlTrx.rollback({
           throwErrorOnInactiveTransaction: false,
@@ -862,7 +852,7 @@ export class SqlDataSource<
       }
     }
 
-    return sqlTrx as StartTransactionReturnType<TOption>;
+    return sqlTrx;
   }
 
   /**
