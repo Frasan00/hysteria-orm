@@ -6,6 +6,86 @@ export type CustomLogger = {
   warn(message: string): void;
 };
 
+/**
+ * @description Configuration for logging behavior
+ * @warning Logs are synchronous by default and add overhead — do not use in production unless you override with an async custom logger. Logs are mainly for debugging.
+ */
+export type LoggerConfig = {
+  /**
+   * @description Minimum log level. Messages below this level are suppressed.
+   * @default "info"
+   */
+  level?: "info" | "warn" | "error";
+
+  /**
+   * @description Whether to log SQL/Mongo queries.
+   * @default true
+   */
+  logQueries?: boolean;
+
+  /**
+   * @description Custom logger instance. When provided, replaces the default console logger.
+   */
+  customLogger?: CustomLogger;
+};
+
+const LOG_LEVEL_PRIORITY: Record<string, number> = {
+  info: 0,
+  warn: 1,
+  error: 2,
+};
+
+/**
+ * @description Resolves a boolean | LoggerConfig into a normalized LoggerConfig
+ */
+export function resolveLoggerConfig(
+  logs: boolean | LoggerConfig | undefined,
+): LoggerConfig | null {
+  if (!logs) {
+    return null;
+  }
+
+  if (logs === true) {
+    return { level: "info", logQueries: true };
+  }
+
+  return {
+    level: logs.level ?? "info",
+    logQueries: logs.logQueries ?? true,
+    customLogger: logs.customLogger,
+  };
+}
+
+/**
+ * @description Checks if logging is enabled for a given level based on the config
+ */
+export function isLogEnabled(
+  logs: boolean | LoggerConfig | undefined,
+  level: "info" | "warn" | "error" = "info",
+): boolean {
+  const config = resolveLoggerConfig(logs);
+  if (!config) {
+    return false;
+  }
+
+  const minLevel = config.level ?? "info";
+  return LOG_LEVEL_PRIORITY[level] >= LOG_LEVEL_PRIORITY[minLevel];
+}
+
+/**
+ * @description Checks if query logging is enabled
+ */
+export function shouldLogQueries(
+  logs: boolean | LoggerConfig | undefined,
+): boolean {
+  const config = resolveLoggerConfig(logs);
+  if (!config) {
+    return false;
+  }
+
+  return config.logQueries ?? true;
+}
+
 const colors = {
   info: "\x1b[32m",
   warn: "\x1b[33m",
@@ -97,8 +177,12 @@ function formatParams(params: any[]): string {
     .join(", ");
 }
 
-export function log(query: string, logs: boolean, params?: any[]) {
-  if (!logs) {
+export function log(
+  query: string,
+  logs: boolean | LoggerConfig,
+  params?: any[],
+) {
+  if (!shouldLogQueries(logs)) {
     return;
   }
 
@@ -123,9 +207,9 @@ export function log(query: string, logs: boolean, params?: any[]) {
 export function logMessage(
   message: string,
   type: "info" | "error" | "warn",
-  logs: boolean = false,
+  logs: boolean | LoggerConfig = false,
 ) {
-  if (!logs) {
+  if (!isLogEnabled(logs, type)) {
     return;
   }
 

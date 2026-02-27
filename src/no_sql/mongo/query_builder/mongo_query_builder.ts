@@ -5,7 +5,7 @@ import type {
 } from "mongodb";
 import type { MongoClientImport } from "../../../drivers/driver_types";
 import { HysteriaError } from "../../../errors/hysteria_error";
-import logger from "../../../utils/logger";
+import logger, { type LoggerConfig } from "../../../utils/logger";
 import { MongoDataSource } from "../mongo_data_source";
 import { Collection } from "../mongo_models/mongo_collection";
 import type {
@@ -52,7 +52,7 @@ export class MongoQueryBuilder<T extends Collection> {
   protected mongoDataSource: MongoDataSource;
   protected collection: DriverCollection<T>;
   protected model: typeof Collection;
-  protected logs: boolean;
+  protected logs: boolean | LoggerConfig;
 
   protected session?: ReturnType<MongoDataSource["startSession"]>;
 
@@ -60,7 +60,7 @@ export class MongoQueryBuilder<T extends Collection> {
     model: typeof Collection,
     mongoDataSource: MongoDataSource,
     _session?: ReturnType<MongoDataSource["startSession"]>,
-    logs: boolean = false,
+    logs: boolean | LoggerConfig = false,
   ) {
     this.model = model;
     this.idObject = {};

@@ -1,4 +1,5 @@
 import type { MongoConnectionOptions } from "../drivers/driver_types";
+import type { LoggerConfig } from "../utils/logger";
 
 /**
  * @description Creates a datasource for the selected database type with the provided credentials
@@ -33,7 +34,7 @@ export interface OracleDBDataSourceInput extends CommonDataSourceInput {
 
 export interface CommonDataSourceInput {
   readonly type?: DataSourceType;
-  readonly logs?: boolean;
+  readonly logs?: boolean | LoggerConfig;
 }
 
 export interface MongoDataSourceInput extends CommonDataSourceInput {

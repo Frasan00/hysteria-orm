@@ -322,6 +322,12 @@ export type WhereOnlyQueryBuilder<T extends Model> = Pick<
   | "whereExists"
   | "orWhereExists"
   | "andWhereExists"
+  | "whereNotExists"
+  | "orWhereNotExists"
+  | "andWhereNotExists"
+  | "whereColumn"
+  | "andWhereColumn"
+  | "orWhereColumn"
 > &
   Pick<
     JsonQueryBuilder<T>,

@@ -13,6 +13,8 @@ import {
 import { HysteriaError } from "../../../errors/hysteria_error";
 import type { MongoClientImport } from "../../../drivers/driver_types";
 
+import type { LoggerConfig } from "../../../utils/logger";
+
 export type MongoFindOneOptions<T extends Collection> = {
   ignoreHooks?: FetchHooks[];
   select?: MongoCollectionKey<T>[];
@@ -40,7 +42,7 @@ export type MongoUnrestrictedFindManyOptions<T extends Collection> =
   };
 
 export class CollectionManager<T extends Collection> {
-  protected logs: boolean;
+  protected logs: boolean | LoggerConfig;
   protected collection: typeof Collection;
   protected mongoClient: ReturnType<MongoDataSource["getCurrentConnection"]>;
   protected mongoDataSource: MongoDataSource;
@@ -51,7 +53,7 @@ export class CollectionManager<T extends Collection> {
     _collection: typeof Collection,
     mongoDataSource: MongoDataSource,
     session?: ReturnType<MongoDataSource["startSession"]>,
-    logs: boolean = false,
+    logs: boolean | LoggerConfig = false,
   ) {
     this.logs = logs;
     this.session = session;

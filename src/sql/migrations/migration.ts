@@ -5,9 +5,9 @@ import { SqlDataSource } from "../sql_data_source";
 import { SqlDataSourceType } from "../sql_data_source_types";
 
 export abstract class Migration {
-  declare dbType: SqlDataSourceType;
-  declare migrationName: string;
-  declare schema: Schema;
+  declare readonly dbType: SqlDataSourceType;
+  declare readonly migrationName: string;
+  declare readonly schema: Schema;
 
   constructor(dbType: SqlDataSourceType) {
     this.dbType = dbType;

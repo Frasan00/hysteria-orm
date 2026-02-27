@@ -17,6 +17,7 @@ import { Model } from "../model";
 import { ModelQueryBuilder } from "../model_query_builder/model_query_builder";
 import { ModelWithoutRelations } from "../model_types";
 import { getBaseModelInstance } from "../model_utils";
+import type { LoggerConfig } from "../../../utils/logger";
 import {
   FindOneType,
   FindType,
@@ -31,7 +32,7 @@ import {
 export class ModelManager<T extends Model> {
   protected sqlDataSource: SqlDataSource;
   protected sqlType: SqlDataSourceType;
-  protected logs: boolean;
+  protected logs: boolean | LoggerConfig;
   protected model: typeof Model;
   protected modelInstance: T;
   protected astParser: AstParser;

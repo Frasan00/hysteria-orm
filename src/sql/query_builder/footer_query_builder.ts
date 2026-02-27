@@ -1,4 +1,4 @@
-import logger from "../../utils/logger";
+import logger, { type LoggerConfig } from "../../utils/logger";
 import { GroupByNode } from "../ast/query/node/group_by/group_by";
 import { LimitNode } from "../ast/query/node/limit/limit";
 import { OffsetNode } from "../ast/query/node/offset/offset";
@@ -24,7 +24,7 @@ export abstract class FooterQueryBuilder<
   protected offsetNode: OffsetNode | null;
   protected modelColumns: ColumnType[];
   protected modelColumnsMap: Map<string, ColumnType>;
-  protected logs: boolean;
+  protected logs: boolean | LoggerConfig;
 
   protected constructor(model: typeof Model, sqlDataSource: SqlDataSource) {
     this.model = model;

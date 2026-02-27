@@ -1,4 +1,5 @@
 import { HavingNode } from "../ast/query/node/having";
+import { RawNode } from "../ast/query/node/raw/raw_node";
 import type {
   BaseValues,
   BinaryOperatorType,
@@ -354,6 +355,135 @@ export abstract class WhereQueryBuilder<
 
     this.whereNodes.push(
       new WhereNode(columnOrCb as string, "or", false, operator, actualValue),
+    );
+    return this;
+  }
+
+  /**
+   * @description Adds a WHERE condition comparing two columns.
+   */
+  whereColumn<K extends ModelKey<T>>(
+    column: K,
+    referenceColumn: ModelKey<T>,
+  ): this;
+  whereColumn<K extends ModelKey<T>>(
+    column: K,
+    operator: BinaryOperatorType,
+    referenceColumn: ModelKey<T>,
+  ): this;
+  whereColumn(
+    column: `${string}.${string}`,
+    referenceColumn: `${string}.${string}`,
+  ): this;
+  whereColumn(
+    column: `${string}.${string}`,
+    operator: BinaryOperatorType,
+    referenceColumn: `${string}.${string}`,
+  ): this;
+  whereColumn(
+    column: ModelKey<T> | SelectableColumn<string>,
+    operatorOrRef: BinaryOperatorType | ModelKey<T> | SelectableColumn<string>,
+    referenceColumn?: ModelKey<T> | SelectableColumn<string>,
+  ): this {
+    return this.andWhereColumn(
+      column as any,
+      operatorOrRef as any,
+      referenceColumn as any,
+    );
+  }
+
+  /**
+   * @description Adds an AND WHERE condition comparing two columns.
+   */
+  andWhereColumn<K extends ModelKey<T>>(
+    column: K,
+    referenceColumn: ModelKey<T>,
+  ): this;
+  andWhereColumn<K extends ModelKey<T>>(
+    column: K,
+    operator: BinaryOperatorType,
+    referenceColumn: ModelKey<T>,
+  ): this;
+  andWhereColumn(
+    column: `${string}.${string}`,
+    referenceColumn: `${string}.${string}`,
+  ): this;
+  andWhereColumn(
+    column: `${string}.${string}`,
+    operator: BinaryOperatorType,
+    referenceColumn: `${string}.${string}`,
+  ): this;
+  andWhereColumn(
+    column: ModelKey<T> | SelectableColumn<string>,
+    operatorOrRef: BinaryOperatorType | ModelKey<T> | SelectableColumn<string>,
+    referenceColumn?: ModelKey<T> | SelectableColumn<string>,
+  ): this {
+    let operator: BinaryOperatorType = "=";
+    let refColumn: string;
+
+    if (referenceColumn !== undefined) {
+      operator = operatorOrRef as BinaryOperatorType;
+      refColumn = referenceColumn as string;
+    } else {
+      refColumn = operatorOrRef as string;
+    }
+
+    this.whereNodes.push(
+      new WhereNode(
+        column as string,
+        "and",
+        false,
+        operator,
+        new RawNode(refColumn),
+      ),
+    );
+    return this;
+  }
+
+  /**
+   * @description Adds an OR WHERE condition comparing two columns.
+   */
+  orWhereColumn<K extends ModelKey<T>>(
+    column: K,
+    referenceColumn: ModelKey<T>,
+  ): this;
+  orWhereColumn<K extends ModelKey<T>>(
+    column: K,
+    operator: BinaryOperatorType,
+    referenceColumn: ModelKey<T>,
+  ): this;
+  orWhereColumn(
+    column: `${string}.${string}`,
+    referenceColumn: `${string}.${string}`,
+  ): this;
+  orWhereColumn(
+    column: `${string}.${string}`,
+    operator: BinaryOperatorType,
+    referenceColumn: `${string}.${string}`,
+  ): this;
+  orWhereColumn(
+    column: ModelKey<T> | SelectableColumn<string>,
+    operatorOrRef: BinaryOperatorType | ModelKey<T> | SelectableColumn<string>,
+    referenceColumn?: ModelKey<T> | SelectableColumn<string>,
+  ): this {
+    let operator: BinaryOperatorType = "=";
+    let refColumn: string;
+
+    if (referenceColumn !== undefined) {
+      operator = operatorOrRef as BinaryOperatorType;
+      refColumn = referenceColumn as string;
+    } else {
+      refColumn = operatorOrRef as string;
+    }
+
+    this.whereNodes.push(
+      new WhereNode(
+        column as string,
+        "or",
+        false,
+        operator,
+        new RawNode(refColumn),
+      ),
     );
     return this;
   }

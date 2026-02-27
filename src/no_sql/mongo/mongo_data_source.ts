@@ -11,10 +11,12 @@ import { CollectionManager } from "./mongo_models/mongo_collection_manager";
 
 type MongoClientInstance = InstanceType<MongoClientImport["MongoClient"]>;
 
+import type { LoggerConfig } from "../../utils/logger";
+
 export interface MongoDataSourceInput {
   url?: string;
   options?: MongoConnectionOptions;
-  logs?: boolean;
+  logs?: boolean | LoggerConfig;
 }
 
 export class MongoDataSource extends DataSource {

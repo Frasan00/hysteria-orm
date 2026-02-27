@@ -30,6 +30,7 @@ import type {
   Sqlite3Import,
 } from "../drivers/driver_types";
 import type { Model } from "./models/model";
+import type { LoggerConfig } from "../utils/logger";
 
 export type Sqlite3ConnectionOptions = {
   mode: number;
@@ -153,9 +154,11 @@ type SqlDataSourceInputBase<
   D extends SqlDataSourceType = SqlDataSourceType,
 > = {
   /**
-   * @description Whether to log the sql queries and other debug information
+   * @description Whether to log the sql queries and other debug information. Can be a boolean or a LoggerConfig object for granular control.
+   * @warning Logs are synchronous by default and add overhead — do not use in production unless you override with an async custom logger.
+   * @default false
    */
-  readonly logs?: boolean;
+  readonly logs?: boolean | LoggerConfig;
   /**
    * @description The connection policies to use for the sql data source that are not configured in the driverOptions
    */
@@ -301,7 +304,7 @@ export type UseConnectionInput<
    * @description The type of the database to connect to
    */
   readonly type: D;
-  readonly logs?: boolean;
+  readonly logs?: boolean | LoggerConfig;
   readonly models?: T;
   readonly driverOptions?: SqlDriverSpecificOptions<D>;
   connectionPolicies?: ConnectionPolicies;

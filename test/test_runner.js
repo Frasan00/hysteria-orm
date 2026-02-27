@@ -74,6 +74,7 @@ const SQL_TESTS = [
   "./test/sql/query_builder/embedded_models.test.ts",
   "./test/sql/query_builder/json_select.test.ts",
   "./test/sql/query_builder/join_edge_cases.test.ts",
+  "./test/sql/query_builder/where_column.test.ts",
 
   // without primary key tests
   "./test/sql/without_pk/user_without_pk_json.test.ts",

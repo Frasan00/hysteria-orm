@@ -62,6 +62,7 @@ export { RawNode } from "./sql/ast/query/node/raw/raw_node";
 
 // Utils
 export { default as logger } from "./utils/logger";
+export type { CustomLogger, LoggerConfig } from "./utils/logger";
 export { withPerformance } from "./utils/performance";
 
 // Errors

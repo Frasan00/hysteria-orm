@@ -1,7 +1,7 @@
 import { PassThrough } from "node:stream";
 import { DriverNotFoundError } from "../../drivers/driver_constants";
 import { HysteriaError } from "../../errors/hysteria_error";
-import { log, logMessage } from "../../utils/logger";
+import { log, logMessage, type LoggerConfig } from "../../utils/logger";
 import {
   convertDateStringToDateForOracle,
   processOracleRow,
@@ -561,7 +561,7 @@ export const execSqlStreaming = async <
 async function withRetry<T>(
   fn: () => Promise<T>,
   retryConfig: ConnectionPolicies["retry"] = { maxRetries: 0, delay: 0 },
-  logs: boolean = false,
+  logs: boolean | LoggerConfig = false,
 ): Promise<T> {
   let retries = 0;
   const maxRetries = retryConfig.maxRetries || 0;

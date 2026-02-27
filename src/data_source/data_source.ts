@@ -9,6 +9,10 @@ import type {
   SqliteDataSourceInput,
 } from "./data_source_types";
 import { env } from "../env/env";
+import HysteriaLogger, {
+  type LoggerConfig,
+  resolveLoggerConfig,
+} from "../utils/logger";
 
 export abstract class DataSource {
   declare type: DataSourceType;
@@ -18,7 +22,7 @@ export abstract class DataSource {
   declare password: string;
   declare database: string;
   declare url: string;
-  declare logs: boolean;
+  declare logs: boolean | LoggerConfig;
 
   protected constructor(input?: DataSourceInput) {
     this.type = input?.type || (env.DB_TYPE as DataSourceType);
@@ -51,6 +55,11 @@ export abstract class DataSource {
 Valid database types are: [mongo, postgres, cockroachdb, mysql, mariadb, sqlite]`,
           `UNSUPPORTED_DATABASE_TYPE_${this.type}`,
         );
+    }
+
+    const config = resolveLoggerConfig(this.logs);
+    if (config?.customLogger) {
+      HysteriaLogger.setCustomLogger(config.customLogger);
     }
   }
 
