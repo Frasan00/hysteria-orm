@@ -1,3 +1,4 @@
+import type { AnyModelConstructor } from "../define_model_types";
 import { Model } from "../../models/model";
 import { ModelKey, ModelRelation } from "../model_manager/model_manager_types";
 import { ModelDataProperties, ModelWithoutRelations } from "../model_types";
@@ -8,7 +9,7 @@ import { ModelDataProperties, ModelWithoutRelations } from "../model_types";
  * @example
  * type UserInstance = ModelInstanceType<typeof User>; // User
  */
-export type ModelInstanceType<O> = O extends typeof Model
+export type ModelInstanceType<O> = O extends AnyModelConstructor
   ? InstanceType<O>
   : never;
 

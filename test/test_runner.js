@@ -93,6 +93,11 @@ const SQL_TESTS = [
 
 const NON_SQL_TESTS = [
   {
+    name: "define_model",
+    path: "./test/sql/define_model/",
+    runInBand: true,
+  },
+  {
     name: "mixins",
     path: "./test/sql/mixins/",
     runInBand: true,

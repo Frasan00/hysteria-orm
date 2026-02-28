@@ -278,7 +278,7 @@ export class ModelQueryBuilder<
   }
 
   override async paginateWithCursor<K extends ModelKey<T>>(
-    page: number,
+    limit: number,
     options?: PaginateWithCursorOptions<T, K>,
     cursor?: Cursor<T, K>,
   ): Promise<[CursorPaginatedData<T, S, R>, Cursor<T, K>]> {
@@ -295,7 +295,7 @@ export class ModelQueryBuilder<
       };
     }
 
-    return super.paginateWithCursor(page, options, cursor) as Promise<
+    return super.paginateWithCursor(limit, options, cursor) as Promise<
       [CursorPaginatedData<T, S, R>, Cursor<T, K>]
     >;
   }

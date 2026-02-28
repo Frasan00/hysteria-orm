@@ -12,6 +12,7 @@ import { Model } from "../../models/model";
 import { RelationEnum } from "../../models/relations/relation";
 import { getColumnValue } from "../../resources/utils";
 import { SqlDataSource } from "../../sql_data_source";
+import type { SqlDataSourceModel } from "../../sql_data_source_types";
 import { CreateTableBuilder } from "../schema/create_table";
 import Schema from "../schema/schema";
 import { OnUpdateOrDelete } from "../schema/schema_types";
@@ -25,7 +26,7 @@ import {
 
 export class MigrationOperationGenerator {
   private sql: SqlDataSource;
-  private models: (typeof Model)[];
+  private models: SqlDataSourceModel[];
   private dropResolver: DropOrderResolver;
 
   constructor(sql: SqlDataSource) {

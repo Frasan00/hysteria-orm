@@ -6,6 +6,7 @@ import type {
   WhereSubqueryNode,
 } from "../ast/query/node/where";
 import { BinaryOperatorType } from "../ast/query/node/where";
+import type { AnyModelConstructor } from "../models/define_model_types";
 import { Model } from "../models/model";
 import { ModelKey } from "../models/model_manager/model_manager_types";
 import { SqlDataSource } from "../sql_data_source";
@@ -145,13 +146,13 @@ export abstract class JoinQueryBuilder<
     primaryColumn?: JoinableColumn,
     operator?: BinaryOperatorType,
   ): this;
-  innerJoin<R extends typeof Model>(
+  innerJoin<R extends AnyModelConstructor>(
     relationModel: R,
     referencingColumn: ModelKey<InstanceType<R>>,
     primaryColumn: ModelKey<T>,
     operator?: BinaryOperatorType,
   ): this;
-  innerJoin<R extends typeof Model>(
+  innerJoin<R extends AnyModelConstructor>(
     relationModel: R,
     referencingColumn: ModelKey<InstanceType<R>>,
     primaryColumn?: ModelKey<T>,
@@ -170,20 +171,20 @@ export abstract class JoinQueryBuilder<
     primaryColumn: JoinableColumn,
     callback: JoinOnCallback,
   ): this;
-  innerJoin<R extends typeof Model>(
+  innerJoin<R extends AnyModelConstructor>(
     relationModel: R,
     referencingColumn: ModelKey<InstanceType<R>>,
     primaryColumn: ModelKey<T>,
     operator: BinaryOperatorType,
     callback: JoinOnCallback,
   ): this;
-  innerJoin<R extends typeof Model>(
+  innerJoin<R extends AnyModelConstructor>(
     relationModel: R,
     referencingColumn: ModelKey<InstanceType<R>>,
     primaryColumn: ModelKey<T>,
     callback: JoinOnCallback,
   ): this;
-  innerJoin<R extends typeof Model>(
+  innerJoin<R extends AnyModelConstructor>(
     relationTable: string | R,
     referencingColumnOrPrimaryColumn:
       | JoinableColumn
@@ -241,13 +242,13 @@ export abstract class JoinQueryBuilder<
     primaryColumn?: JoinableColumn,
     operator?: BinaryOperatorType,
   ): this;
-  join<R extends typeof Model>(
+  join<R extends AnyModelConstructor>(
     relationModel: R,
     referencingColumn: ModelKey<InstanceType<R>>,
     primaryColumn: ModelKey<T>,
     operator?: BinaryOperatorType,
   ): this;
-  join<R extends typeof Model>(
+  join<R extends AnyModelConstructor>(
     relationModel: R,
     referencingColumn: ModelKey<InstanceType<R>>,
     primaryColumn?: ModelKey<T>,
@@ -266,20 +267,20 @@ export abstract class JoinQueryBuilder<
     primaryColumn: JoinableColumn,
     callback: JoinOnCallback,
   ): this;
-  join<R extends typeof Model>(
+  join<R extends AnyModelConstructor>(
     relationModel: R,
     referencingColumn: ModelKey<InstanceType<R>>,
     primaryColumn: ModelKey<T>,
     operator: BinaryOperatorType,
     callback: JoinOnCallback,
   ): this;
-  join<R extends typeof Model>(
+  join<R extends AnyModelConstructor>(
     relationModel: R,
     referencingColumn: ModelKey<InstanceType<R>>,
     primaryColumn: ModelKey<T>,
     callback: JoinOnCallback,
   ): this;
-  join<R extends typeof Model>(
+  join<R extends AnyModelConstructor>(
     relationTable: string | R,
     referencingColumnOrPrimaryColumn:
       | JoinableColumn
@@ -357,13 +358,13 @@ export abstract class JoinQueryBuilder<
     primaryColumn?: JoinableColumn,
     operator?: BinaryOperatorType,
   ): this;
-  leftJoin<R extends typeof Model>(
+  leftJoin<R extends AnyModelConstructor>(
     relationModel: R,
     referencingColumn: ModelKey<InstanceType<R>>,
     primaryColumn: ModelKey<T>,
     operator?: BinaryOperatorType,
   ): this;
-  leftJoin<R extends typeof Model>(
+  leftJoin<R extends AnyModelConstructor>(
     relationModel: R,
     referencingColumn: ModelKey<InstanceType<R>>,
     primaryColumn?: ModelKey<T>,
@@ -382,20 +383,20 @@ export abstract class JoinQueryBuilder<
     primaryColumn: JoinableColumn,
     callback: JoinOnCallback,
   ): this;
-  leftJoin<R extends typeof Model>(
+  leftJoin<R extends AnyModelConstructor>(
     relationModel: R,
     referencingColumn: ModelKey<InstanceType<R>>,
     primaryColumn: ModelKey<T>,
     operator: BinaryOperatorType,
     callback: JoinOnCallback,
   ): this;
-  leftJoin<R extends typeof Model>(
+  leftJoin<R extends AnyModelConstructor>(
     relationModel: R,
     referencingColumn: ModelKey<InstanceType<R>>,
     primaryColumn: ModelKey<T>,
     callback: JoinOnCallback,
   ): this;
-  leftJoin<R extends typeof Model>(
+  leftJoin<R extends AnyModelConstructor>(
     relationTable: string | R,
     referencingColumnOrPrimaryColumn:
       | JoinableColumn
@@ -473,7 +474,7 @@ export abstract class JoinQueryBuilder<
     primaryColumn?: JoinableColumn,
     operator?: BinaryOperatorType,
   ): this;
-  rightJoin<R extends typeof Model>(
+  rightJoin<R extends AnyModelConstructor>(
     relationTable: string | R,
     referencingColumnOrPrimaryColumn:
       | ModelKey<InstanceType<R>>
@@ -495,7 +496,7 @@ export abstract class JoinQueryBuilder<
     primaryColumn: JoinableColumn,
     callback: JoinOnCallback,
   ): this;
-  rightJoin<R extends typeof Model>(
+  rightJoin<R extends AnyModelConstructor>(
     relationTable: string | R,
     referencingColumnOrPrimaryColumn:
       | ModelKey<InstanceType<R>>
@@ -573,7 +574,7 @@ export abstract class JoinQueryBuilder<
     primaryColumn?: JoinableColumn,
     operator?: BinaryOperatorType,
   ): this;
-  fullJoin<R extends typeof Model>(
+  fullJoin<R extends AnyModelConstructor>(
     relationTable: string | R,
     referencingColumnOrPrimaryColumn:
       | ModelKey<InstanceType<R>>
@@ -595,7 +596,7 @@ export abstract class JoinQueryBuilder<
     primaryColumn: JoinableColumn,
     callback: JoinOnCallback,
   ): this;
-  fullJoin<R extends typeof Model>(
+  fullJoin<R extends AnyModelConstructor>(
     relationTable: string | R,
     referencingColumnOrPrimaryColumn:
       | ModelKey<InstanceType<R>>

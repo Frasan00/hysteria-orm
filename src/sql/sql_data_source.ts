@@ -32,6 +32,7 @@ import { SchemaBuilder } from "./migrations/schema/schema_builder";
 import { SchemaDiff } from "./migrations/schema_diff/schema_diff";
 import { normalizeColumnType } from "./migrations/schema_diff/type_normalizer";
 import { Model } from "./models/model";
+import type { AnyModelConstructor } from "./models/define_model_types";
 import { ModelManager } from "./models/model_manager/model_manager";
 import { ModelQueryBuilder } from "./models/model_query_builder/model_query_builder";
 import { RawModelOptions } from "./models/model_types";
@@ -716,8 +717,10 @@ export class SqlDataSource<
    * @description Returns a ModelQueryBuilder instance for the given model
    * @param Model The model to create the query builder from
    */
-  from<T extends typeof Model>(Model: T): ModelQueryBuilder<InstanceType<T>> {
-    return new ModelQueryBuilder(Model, this);
+  from<T extends AnyModelConstructor>(
+    model: T,
+  ): ModelQueryBuilder<InstanceType<T>> {
+    return new ModelQueryBuilder(model as unknown as typeof Model, this);
   }
 
   /**

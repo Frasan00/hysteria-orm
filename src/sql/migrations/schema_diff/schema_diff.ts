@@ -16,6 +16,7 @@ import {
   TablePrimaryKeyInfo,
 } from "../../schema_introspection_types";
 import { SqlDataSource } from "../../sql_data_source";
+import type { SqlDataSourceModel } from "../../sql_data_source_types";
 import { MigrationOperationGenerator } from "./migration_operation_generator";
 import {
   ExecutionPhase,
@@ -26,7 +27,7 @@ import { normalizeColumnType } from "./type_normalizer";
 
 export class SchemaDiff {
   private sql: SqlDataSource;
-  private models: (typeof Model)[];
+  private models: SqlDataSourceModel[];
   private data: GenerateTableDiffReturnType;
   private readonly emptyStatements = [/^alter table [`'"]?[\w]+[`'"]?\s*$/i];
 
@@ -87,7 +88,7 @@ export class SchemaDiff {
             }
           }
 
-          const modelUniques = (model as typeof Model).getUniques?.() || [];
+          const modelUniques = model.getUniques?.() || [];
           for (const uq of modelUniques) {
             diff.data.uniquesToAdd!.push({
               table: model.table,
@@ -96,7 +97,7 @@ export class SchemaDiff {
             });
           }
 
-          const modelChecksNew = (model as typeof Model).getChecks?.() || [];
+          const modelChecksNew = model.getChecks?.() || [];
           for (const chk of modelChecksNew) {
             diff.data.checksToAdd.push({
               table: model.table,
@@ -176,7 +177,7 @@ export class SchemaDiff {
         }
 
         // Unique constraints to add (via decorator)
-        const modelUniques = (model as typeof Model).getUniques?.() || [];
+        const modelUniques = model.getUniques?.() || [];
         for (const uq of modelUniques) {
           const exists = databaseData.indexes.some(
             (dbIndex) => dbIndex.name === uq.name && dbIndex.isUnique,
@@ -221,7 +222,7 @@ export class SchemaDiff {
           if (dbIndex.name === "PRIMARY") {
             continue;
           }
-          const existsInModel = ((model as typeof Model).getUniques?.() || [])
+          const existsInModel = (model.getUniques?.() || [])
             .map((u) => u.name)
             .includes(dbIndex.name);
           if (!existsInModel) {
@@ -233,7 +234,7 @@ export class SchemaDiff {
         }
 
         // Check constraints to add
-        const modelChecks = (model as typeof Model).getChecks?.() || [];
+        const modelChecks = model.getChecks?.() || [];
         for (const chk of modelChecks) {
           const exists = databaseData.checkConstraints.some(
             (dbChk) => dbChk.name === chk.name,
@@ -650,20 +651,20 @@ export class SchemaDiff {
   }
 
   private relationMatchesDbRelation(
-    model: typeof Model,
+    model: SqlDataSourceModel,
     modelRelation: LazyRelationType,
     dbRelation: TableForeignKeyInfo,
   ): boolean {
-    let relatedModel: typeof Model | undefined;
+    let relatedModel: SqlDataSourceModel | undefined;
     const mr: any = modelRelation as any;
     if (mr && mr.model) {
       if (typeof mr.model === "function" && mr.model.table) {
-        relatedModel = mr.model as typeof Model;
+        relatedModel = mr.model as SqlDataSourceModel;
       } else if (typeof mr.model === "function") {
         try {
           const v = mr.model();
           if (v && v.table) {
-            relatedModel = v as typeof Model;
+            relatedModel = v as SqlDataSourceModel;
           }
         } catch (_) {}
       }
@@ -1302,8 +1303,8 @@ export class SchemaDiff {
 
   private pushM2mFkRelations(input: {
     throughTable: string;
-    leftModel: typeof Model;
-    rightModel: typeof Model;
+    leftModel: SqlDataSourceModel;
+    rightModel: SqlDataSourceModel;
     leftFkName: string;
     rightFkName: string;
     onDelete?: string;
@@ -1334,7 +1335,7 @@ export class SchemaDiff {
 
   private buildBelongsToRelation(
     table: string,
-    relatedModel: () => typeof Model,
+    relatedModel: () => SqlDataSourceModel,
     sourceColumnName: string,
     relatedPkName: string,
     constraintName?: string | (() => string),

@@ -4,6 +4,7 @@
  */
 
 import type { Model } from "../sql/models/model";
+import type { SqlDataSourceModel } from "../sql/sql_data_source_types";
 import type express from "express";
 
 /**
@@ -31,7 +32,7 @@ export type AdminJsOptions = {
    * @description Models to expose in the AdminJS panel
    * @description If not provided, all models registered in the SqlDataSource will be used
    */
-  resources?: (typeof Model)[];
+  resources?: SqlDataSourceModel[];
 
   /**
    * @description Custom resource options for specific models

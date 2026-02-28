@@ -145,7 +145,7 @@ export async function getMigrations(
     );
 
     const migration: Migration = new migrationModule(dbType || env.DB_TYPE);
-    migration.migrationName = migrationName;
+    (migration as any).migrationName = migrationName;
     migrations.push(migration);
   }
 

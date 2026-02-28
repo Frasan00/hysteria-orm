@@ -12,6 +12,7 @@ import { Reflect } from "../../../utils/reflect_metadata";
 import { generateULID } from "../../../utils/ulid";
 import { OnUpdateOrDelete } from "../../migrations/schema/schema_types";
 import { getColumnValue } from "../../resources/utils";
+import type { AnyModelConstructor } from "../define_model_types";
 import { Model } from "../model";
 import { ModelKey } from "../model_manager/model_manager_types";
 import { ModelQueryBuilder } from "../model_query_builder/model_query_builder";
@@ -1158,7 +1159,7 @@ function jsonColumn(
   }) as unknown as TypedPropertyDecorator<unknown>;
 }
 
-export function getModelColumns(target: typeof Model): ColumnType[] {
+export function getModelColumns(target: AnyModelConstructor): ColumnType[] {
   try {
     return Reflect.getMetadata(COLUMN_METADATA_KEY, target.prototype) || [];
   } catch (_) {
@@ -1179,19 +1180,19 @@ export function getModelColumns(target: typeof Model): ColumnType[] {
  * ```
  */
 export function belongsTo<
-  M extends typeof Model = any,
-  R extends typeof Model = any,
+  M extends AnyModelConstructor = any,
+  R extends AnyModelConstructor = any,
 >(
   model: () => R,
   foreignKey?: ModelKey<InstanceType<M>>,
   options?: BaseModelRelationType,
 ): TypedPropertyDecorator<InstanceType<R> | null | undefined>;
-export function belongsTo<R extends typeof Model = any>(
+export function belongsTo<R extends AnyModelConstructor = any>(
   model: () => R,
   foreignKey?: string,
   options?: BaseModelRelationType,
 ): TypedPropertyDecorator<InstanceType<R> | null | undefined>;
-export function belongsTo<R extends typeof Model = any>(
+export function belongsTo<R extends AnyModelConstructor = any>(
   model: () => R,
   foreignKey?: string | ModelKey<InstanceType<R>>,
   options?: BaseModelRelationType,
@@ -1232,15 +1233,15 @@ export function belongsTo<R extends typeof Model = any>(
  * @default foreignKey by default will be the singular of the model name plus "_id"
  * @example User will have foreignKey "user_id" on the Post model
  */
-export function hasOne<T extends typeof Model>(
+export function hasOne<T extends AnyModelConstructor>(
   model: () => T,
   foreignKey?: ModelKey<InstanceType<T>>,
 ): TypedPropertyDecorator<InstanceType<T> | null | undefined>;
-export function hasOne<T extends typeof Model>(
+export function hasOne<T extends AnyModelConstructor>(
   model: () => T,
   foreignKey?: string,
 ): TypedPropertyDecorator<InstanceType<T> | null | undefined>;
-export function hasOne<T extends typeof Model>(
+export function hasOne<T extends AnyModelConstructor>(
   model: () => T,
   foreignKey?: string | ModelKey<InstanceType<T>>,
 ): TypedPropertyDecorator<InstanceType<T> | null | undefined> {
@@ -1269,15 +1270,15 @@ export function hasOne<T extends typeof Model>(
  * @default foreignKey by default will be the singular of the model name plus "_id"
  * @example User will have foreignKey "user_id" on the Post model
  */
-export function hasMany<T extends typeof Model>(
+export function hasMany<T extends AnyModelConstructor>(
   model: () => T,
   foreignKey?: ModelKey<InstanceType<T>>,
 ): TypedPropertyDecorator<InstanceType<T>[] | null | undefined>;
-export function hasMany<T extends typeof Model>(
+export function hasMany<T extends AnyModelConstructor>(
   model: () => T,
   foreignKey?: string,
 ): TypedPropertyDecorator<InstanceType<T>[] | null | undefined>;
-export function hasMany<T extends typeof Model>(
+export function hasMany<T extends AnyModelConstructor>(
   model: () => T,
   foreignKey?: string | ModelKey<InstanceType<T>>,
 ): TypedPropertyDecorator<InstanceType<T>[] | null | undefined> {
@@ -1312,8 +1313,8 @@ export function hasMany<T extends typeof Model>(
  * @example User will have foreignKey "user_id" on the Join table by default
  */
 export function manyToMany<
-  R extends typeof Model,
-  T extends typeof Model,
+  R extends AnyModelConstructor,
+  T extends AnyModelConstructor,
   TM extends ThroughModel<T>,
 >(
   model: () => R,
@@ -1321,15 +1322,15 @@ export function manyToMany<
   throughModelKeys?: ManyToManyOptions<T, TM>,
   options?: BaseModelRelationType,
 ): TypedPropertyDecorator<InstanceType<R>[] | null | undefined>;
-export function manyToMany<R extends typeof Model>(
+export function manyToMany<R extends AnyModelConstructor>(
   model: () => R,
-  throughModel: string | (() => typeof Model),
+  throughModel: string | (() => AnyModelConstructor),
   throughModelKeys?: ManyToManyStringOptions,
   options?: BaseModelRelationType,
 ): TypedPropertyDecorator<InstanceType<R>[] | null | undefined>;
-export function manyToMany<R extends typeof Model>(
+export function manyToMany<R extends AnyModelConstructor>(
   model: () => R,
-  throughModel: string | (() => typeof Model),
+  throughModel: string | (() => AnyModelConstructor),
   throughModelKeys?: ManyToManyStringOptions,
   options?: BaseModelRelationType,
 ): TypedPropertyDecorator<InstanceType<R>[] | null | undefined> {
@@ -1381,14 +1382,16 @@ export function manyToMany<R extends typeof Model>(
   }) as unknown as TypedPropertyDecorator<InstanceType<R>[] | null | undefined>;
 }
 
-export function getRelationsMetadata(target: typeof Model): LazyRelationType[] {
+export function getRelationsMetadata(
+  target: AnyModelConstructor,
+): LazyRelationType[] {
   return Reflect.getMetadata(RELATION_METADATA_KEY, target.prototype) || [];
 }
 
 /**
  * @description Returns the relations of the model
  */
-export function getRelations(target: typeof Model): Relation[] {
+export function getRelations(target: AnyModelConstructor): Relation[] {
   const relations =
     Reflect.getMetadata<LazyRelationType[]>(
       RELATION_METADATA_KEY,
@@ -1399,7 +1402,7 @@ export function getRelations(target: typeof Model): Relation[] {
 
     const resolvedForeignKey = getColumnValue(foreignKey);
 
-    const lazyLoadedModel = model();
+    const lazyLoadedModel = model() as typeof Model;
     switch (type) {
       case RelationEnum.belongsTo:
         return new BelongsTo(lazyLoadedModel, columnName, resolvedForeignKey);
@@ -1415,7 +1418,7 @@ export function getRelations(target: typeof Model): Relation[] {
           );
         }
 
-        const relatedModel = model();
+        const relatedModel = model() as typeof Model;
         return new ManyToMany(relatedModel, columnName, {
           primaryModel: relation.manyToManyOptions.primaryModel,
           throughModel: getColumnValue(relation.manyToManyOptions.throughModel),
@@ -1438,7 +1441,7 @@ export function getRelations(target: typeof Model): Relation[] {
 /**
  * @description Returns the primary key of the model
  */
-export function getPrimaryKey(target: typeof Model): string | undefined {
+export function getPrimaryKey(target: AnyModelConstructor): string | undefined {
   // Check both prototype and constructor for compatibility
   return (
     Reflect.getMetadata<string>(PRIMARY_KEY_METADATA_KEY, target) ||
@@ -1446,14 +1449,14 @@ export function getPrimaryKey(target: typeof Model): string | undefined {
   );
 }
 
-export function getIndexes(target: typeof Model): IndexType[] {
+export function getIndexes(target: AnyModelConstructor): IndexType[] {
   return Reflect.getMetadata(INDEX_METADATA_KEY, target.prototype) || [];
 }
 
-export function getUniques(target: typeof Model): UniqueType[] {
+export function getUniques(target: AnyModelConstructor): UniqueType[] {
   return Reflect.getMetadata(UNIQUE_METADATA_KEY, target.prototype) || [];
 }
 
-export function getChecks(target: typeof Model): CheckType[] {
+export function getChecks(target: AnyModelConstructor): CheckType[] {
   return Reflect.getMetadata(CHECK_METADATA_KEY, target.prototype) || [];
 }

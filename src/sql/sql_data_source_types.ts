@@ -30,6 +30,7 @@ import type {
   Sqlite3Import,
 } from "../drivers/driver_types";
 import type { Model } from "./models/model";
+import type { AnyModelConstructor } from "./models/define_model_types";
 import type { LoggerConfig } from "../utils/logger";
 
 export type Sqlite3ConnectionOptions = {
@@ -76,7 +77,11 @@ export type ConnectionPolicies = {
   };
 };
 
-export type SqlDataSourceModel = typeof Model;
+/**
+ * Accepts both decorator-based model classes (`typeof Model` subclasses)
+ * and programmatic models created via `defineModel`.
+ */
+export type SqlDataSourceModel = AnyModelConstructor;
 
 /**
  * @description Base migration configuration options available for all databases

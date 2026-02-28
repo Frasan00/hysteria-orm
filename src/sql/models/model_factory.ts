@@ -1,15 +1,16 @@
 import { FactoryReturnType } from "../../../test/sql/test_models/factory/factory_types";
+import type { AnyModelConstructor } from "./define_model_types";
 import { Model } from "./model";
 import { ModelWithoutRelations } from "./model_types";
 
 class ModelFactory<M extends Model> {
-  private typeofModel: typeof Model;
+  private typeofModel: AnyModelConstructor;
   private modelData: Partial<M>;
 
   /**
    * @description Constructor for the model factory
    */
-  constructor(typeofModel: typeof Model, modelData: Partial<M>) {
+  constructor(typeofModel: AnyModelConstructor, modelData: Partial<M>) {
     this.typeofModel = typeofModel;
     this.modelData = modelData;
   }
@@ -62,7 +63,7 @@ class ModelFactory<M extends Model> {
 }
 
 export const createModelFactory = <M extends Model>(
-  typeofModel: typeof Model,
+  typeofModel: AnyModelConstructor,
   modelData: Partial<ModelWithoutRelations<M>>,
 ) => {
   return new ModelFactory<M>(typeofModel, modelData as M);

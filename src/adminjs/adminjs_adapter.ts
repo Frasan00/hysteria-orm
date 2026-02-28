@@ -11,6 +11,7 @@ import type {
   PropertyType,
 } from "adminjs";
 import { DriverNotFoundError } from "../drivers/driver_constants";
+import type { AnyModelConstructor } from "../sql/models/define_model_types";
 import type { Model } from "../sql/models/model";
 import type { SqlDataSource } from "../sql/sql_data_source";
 import {
@@ -19,7 +20,7 @@ import {
   type AdminJsOptions,
 } from "./adminjs_types";
 
-type AnyModel = typeof Model & { new (): any };
+type AnyModel = AnyModelConstructor & { new (): any };
 
 // Store the sqlDataSource reference for resources to use
 let globalSqlDataSource: SqlDataSource | null = null;

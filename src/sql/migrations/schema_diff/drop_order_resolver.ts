@@ -1,6 +1,7 @@
 import { Model } from "../../models/model";
 import { RelationEnum } from "../../models/relations/relation";
 import { SqlDataSource } from "../../sql_data_source";
+import type { SqlDataSourceModel } from "../../sql_data_source_types";
 import {
   DropDependencies,
   ExecutionPhase,
@@ -10,7 +11,7 @@ import {
 
 export class DropOrderResolver {
   private sql: SqlDataSource;
-  private models: (typeof Model)[];
+  private models: SqlDataSourceModel[];
 
   constructor(sql: SqlDataSource) {
     this.sql = sql;

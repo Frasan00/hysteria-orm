@@ -485,8 +485,10 @@ export class QueryBuilder<
 
     this.limit(limit);
 
-    const data = await this.many();
-    const count = await countQueryBuilder.getCount();
+    const [data, count] = await this.executePaginateQueries(
+      () => this.many(),
+      () => countQueryBuilder.getCount(),
+    );
 
     const lastItem = data[data.length - 1];
     const lastItemValue = lastItem

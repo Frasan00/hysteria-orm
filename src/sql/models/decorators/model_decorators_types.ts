@@ -2,6 +2,7 @@ import { OpenApiModelPropertyType } from "../../../openapi/openapi_types";
 import { DateFormat, Timezone } from "../../../utils/date_utils";
 import { CreateTableBuilder } from "../../migrations/schema/create_table";
 import { OnUpdateOrDelete } from "../../migrations/schema/schema_types";
+import type { AnyModelConstructor } from "../define_model_types";
 import { Model } from "../model";
 import { ModelKey } from "../model_manager/model_manager_types";
 import { RelationEnum } from "../relations/relation";
@@ -74,7 +75,7 @@ export type ColumnDataTypeOption =
 export type LazyRelationType = {
   type?: RelationEnum;
   columnName: string;
-  model: () => typeof Model;
+  model: () => AnyModelConstructor;
   foreignKey: string | (() => string);
   constraintName: string | (() => string);
   onDelete?: OnUpdateOrDelete;
@@ -225,9 +226,9 @@ export type ColumnType = {
   };
 };
 
-type ThroughModelCallback<T extends typeof Model> = () => T;
+type ThroughModelCallback<T extends AnyModelConstructor> = () => T;
 type ThroughModelString = string;
-export type ThroughModel<T extends typeof Model> =
+export type ThroughModel<T extends AnyModelConstructor> =
   | ThroughModelCallback<T>
   | ThroughModelString;
 
@@ -235,7 +236,7 @@ type ExtractModelFromTM<TM extends ThroughModel<any>> =
   TM extends ThroughModelCallback<infer T> ? T : never;
 
 export type ManyToManyOptions<
-  T extends typeof Model,
+  T extends AnyModelConstructor,
   TM extends ThroughModel<T>,
 > = {
   /**

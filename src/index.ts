@@ -5,6 +5,13 @@ export * from "./sql/models/decorators/model_decorators_types";
 
 // Models & Factories
 export { Model } from "./sql/models/model";
+export { defineModel, col, rel } from "./sql/models/define_model";
+export type {
+  ColumnDef,
+  RelationDef,
+  DefinedModel,
+  AnyModelConstructor,
+} from "./sql/models/define_model_types";
 export { createModelFactory } from "./sql/models/model_factory";
 export * from "./sql/models/model_query_builder/model_query_builder";
 export * from "./sql/models/model_query_builder/model_query_builder_types";
