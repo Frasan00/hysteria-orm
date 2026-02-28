@@ -1,3 +1,4 @@
+export * from "./check_constraint_info";
 export * from "./foreign_key_info";
 export * from "./index_info";
 export * from "./primary_key_info";

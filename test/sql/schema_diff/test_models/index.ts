@@ -26,6 +26,11 @@ export { PostMigrationV9 } from "./post_v9";
 export { PostTagMigration } from "./post_tag";
 export { TagMigration } from "./tag";
 
+// Check constraint test models
+export { CheckModelV1 } from "./check_v1";
+export { CheckModelV2 } from "./check_v2";
+export { CheckModelV3 } from "./check_v3";
+
 // Decorator shortcuts test model
 export { DecoratorShortcutsModel } from "./decorator_shortcuts";
 

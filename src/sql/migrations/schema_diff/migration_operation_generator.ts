@@ -309,6 +309,40 @@ export class MigrationOperationGenerator {
       });
     }
 
+    // 6. Drop CHECK constraints
+    for (const chk of changes.checksToDrop || []) {
+      const schema = new Schema(this.sql.getDbType());
+      schema.dropCheck(chk.table, chk.name);
+      const dropCheckSql = schema.queryStatements;
+      operations.push({
+        type: OperationType.DROP_CONSTRAINT,
+        phase: ExecutionPhase.CONSTRAINT_CREATION,
+        table: chk.table,
+        constraint: chk.name,
+        data: chk,
+        dependencies: [`table.${chk.table}`],
+        sqlStatements: dropCheckSql,
+      });
+    }
+
+    // 7. Add CHECK constraints
+    for (const chk of changes.checksToAdd || []) {
+      const schema = new Schema(this.sql.getDbType());
+      schema.addCheck(chk.table, chk.expression, {
+        constraintName: chk.name,
+      });
+      const addCheckSql = schema.queryStatements;
+      operations.push({
+        type: OperationType.ADD_CHECK_CONSTRAINT,
+        phase: ExecutionPhase.CONSTRAINT_CREATION,
+        table: chk.table,
+        constraint: chk.name,
+        data: chk,
+        dependencies: [`table.${chk.table}`],
+        sqlStatements: addCheckSql,
+      });
+    }
+
     return operations;
   }
 

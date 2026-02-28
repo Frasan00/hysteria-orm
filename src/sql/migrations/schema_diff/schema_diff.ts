@@ -41,6 +41,8 @@ export class SchemaDiff {
       indexesToDrop: [],
       uniquesToAdd: [],
       uniquesToDrop: [],
+      checksToAdd: [],
+      checksToDrop: [],
       tablesToAdd: [],
       relationsToAdd: [],
       relationsToDrop: [],
@@ -91,6 +93,15 @@ export class SchemaDiff {
               table: model.table,
               name: uq.name || "mandatory",
               columns: uq.columns,
+            });
+          }
+
+          const modelChecksNew = (model as typeof Model).getChecks?.() || [];
+          for (const chk of modelChecksNew) {
+            diff.data.checksToAdd.push({
+              table: model.table,
+              name: chk.name,
+              expression: chk.expression,
             });
           }
 
@@ -217,6 +228,32 @@ export class SchemaDiff {
             diff.data.uniquesToDrop!.push({
               table: model.table,
               name: dbIndex.name,
+            });
+          }
+        }
+
+        // Check constraints to add
+        const modelChecks = (model as typeof Model).getChecks?.() || [];
+        for (const chk of modelChecks) {
+          const exists = databaseData.checkConstraints.some(
+            (dbChk) => dbChk.name === chk.name,
+          );
+          if (!exists) {
+            diff.data.checksToAdd.push({
+              table: model.table,
+              name: chk.name,
+              expression: chk.expression,
+            });
+          }
+        }
+
+        // Check constraints to drop
+        const modelCheckNames = new Set(modelChecks.map((c) => c.name));
+        for (const dbChk of databaseData.checkConstraints) {
+          if (!modelCheckNames.has(dbChk.name)) {
+            diff.data.checksToDrop.push({
+              table: model.table,
+              name: dbChk.name,
             });
           }
         }

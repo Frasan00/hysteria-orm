@@ -2,6 +2,9 @@ import { env } from "../../../src/env/env";
 import { Model } from "../../../src/sql/models/model";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import {
+  CheckModelV1,
+  CheckModelV2,
+  CheckModelV3,
   DecoratorShortcutsModel,
   PostMigrationV1,
   PostMigrationV10,
@@ -33,6 +36,7 @@ const TEST_TABLES = [
   "schema_diff_tags",
   "schema_diff_users",
   "schema_diff_decorator_shortcuts",
+  "schema_diff_check_items",
 ];
 
 const dbType = env.DB_TYPE || "mysql";
@@ -788,6 +792,146 @@ conditionalDescribe(`[${dbType}] Schema Diff Migration Generation`, () => {
           const thirdStatements = thirdDiff.getSqlStatements();
 
           expect(thirdStatements.length).toBe(0);
+        },
+      );
+    });
+  });
+
+  describe("Check Constraint Decorator", () => {
+    beforeAll(async () => {
+      await dropAllTestTables(baseSql);
+    });
+
+    afterAll(async () => {
+      await dropAllTestTables(baseSql);
+    });
+
+    test("v1: should detect check constraint creation on new table", async () => {
+      const SchemaDiff = await getSchemaDiff();
+
+      await SqlDataSource.useConnection(
+        {
+          ...getConnectionConfig(),
+          models: { CheckModelV1 },
+        },
+        async (sql) => {
+          const diff = await SchemaDiff.makeDiff(sql);
+          const statements = diff.getSqlStatements();
+
+          expect(statements.length).toBeGreaterThan(0);
+
+          const hasCreateTable = statements.some((s) =>
+            s.toLowerCase().includes("create table"),
+          );
+          expect(hasCreateTable).toBe(true);
+
+          const hasCheck = statements.some(
+            (s) =>
+              s.toLowerCase().includes("check") &&
+              s.toLowerCase().includes("age"),
+          );
+          expect(hasCheck).toBe(true);
+
+          await sql.syncSchema();
+
+          // After sync, no more changes expected
+          const secondDiff = await SchemaDiff.makeDiff(sql);
+          const secondStatements = secondDiff.getSqlStatements();
+          expect(secondStatements.length).toBe(0);
+        },
+      );
+    });
+
+    test("v2: should detect check constraint addition on existing table", async () => {
+      const SchemaDiff = await getSchemaDiff();
+
+      await SqlDataSource.useConnection(
+        {
+          ...getConnectionConfig(),
+          models: { CheckModelV2 },
+        },
+        async (sql) => {
+          const diff = await SchemaDiff.makeDiff(sql);
+          const statements = diff.getSqlStatements();
+
+          expect(statements.length).toBeGreaterThan(0);
+
+          const hasStatusCheck = statements.some(
+            (s) =>
+              s.toLowerCase().includes("check") &&
+              s.toLowerCase().includes("status"),
+          );
+          expect(hasStatusCheck).toBe(true);
+
+          await sql.syncSchema();
+
+          // After sync, no more changes expected
+          const secondDiff = await SchemaDiff.makeDiff(sql);
+          const secondStatements = secondDiff.getSqlStatements();
+          expect(secondStatements.length).toBe(0);
+        },
+      );
+    });
+
+    test("v3: should detect check constraint removal", async () => {
+      const SchemaDiff = await getSchemaDiff();
+
+      await SqlDataSource.useConnection(
+        {
+          ...getConnectionConfig(),
+          models: { CheckModelV3 },
+        },
+        async (sql) => {
+          const diff = await SchemaDiff.makeDiff(sql);
+          const statements = diff.getSqlStatements();
+
+          expect(statements.length).toBeGreaterThan(0);
+
+          // Should drop the age check constraint
+          const hasDropConstraint = statements.some(
+            (s) =>
+              s.toLowerCase().includes("drop") &&
+              s
+                .toLowerCase()
+                .includes("chk_schema_diff_check_items_age_positive"),
+          );
+          expect(hasDropConstraint).toBe(true);
+
+          await sql.syncSchema();
+
+          // After sync, no more changes expected
+          const finalDiff = await SchemaDiff.makeDiff(sql);
+          const finalStatements = finalDiff.getSqlStatements();
+          expect(finalStatements.length).toBe(0);
+        },
+      );
+    });
+
+    test("should be idempotent with @check() decorator", async () => {
+      const SchemaDiff = await getSchemaDiff();
+
+      await dropAllTestTables(baseSql);
+
+      await SqlDataSource.useConnection(
+        {
+          ...getConnectionConfig(),
+          models: { CheckModelV2 },
+        },
+        async (sql) => {
+          // First sync - create table and both check constraints
+          const firstDiff = await SchemaDiff.makeDiff(sql);
+          const firstStatements = firstDiff.getSqlStatements();
+
+          expect(firstStatements.length).toBeGreaterThan(0);
+          await sql.syncSchema();
+
+          // Second sync - no changes
+          const secondDiff = await SchemaDiff.makeDiff(sql);
+          expect(secondDiff.getSqlStatements().length).toBe(0);
+
+          // Third sync - still no changes
+          const thirdDiff = await SchemaDiff.makeDiff(sql);
+          expect(thirdDiff.getSqlStatements().length).toBe(0);
         },
       );
     });

@@ -270,6 +270,11 @@ export type UniqueType = {
   name: string;
 };
 
+export type CheckType = {
+  expression: string;
+  name: string;
+};
+
 /**
  * @description A property decorator that constrains the decorated property to type V.
  * TypeScript infers K from the property name and T from the class, then checks

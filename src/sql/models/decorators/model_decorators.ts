@@ -21,11 +21,13 @@ import { HasOne } from "../relations/has_one";
 import { ManyToMany } from "../relations/many_to_many";
 import { Relation, RelationEnum } from "../relations/relation";
 import {
+  CHECK_METADATA_KEY,
   COLUMN_METADATA_KEY,
   INDEX_METADATA_KEY,
   PRIMARY_KEY_METADATA_KEY,
   RELATION_METADATA_KEY,
   UNIQUE_METADATA_KEY,
+  getDefaultCheckConstraintName,
   getDefaultFkConstraintName,
   getDefaultForeignKey,
   getDefaultIndexName,
@@ -34,6 +36,7 @@ import {
 } from "./model_decorators_constants";
 import type {
   AsymmetricEncryptionOptions,
+  CheckType,
   ColumnDataTypeOptionWithDatePrecision,
   ColumnDataTypeOptionWithLength,
   ColumnDataTypeOptionWithPrecision,
@@ -128,6 +131,52 @@ export function unique(
     Reflect.defineMetadata(
       UNIQUE_METADATA_KEY,
       existingUniques,
+      target.prototype,
+    );
+  };
+}
+
+/**
+ * @description Decorator to define a CHECK constraint on the model's table
+ * @param expression - The SQL expression for the check constraint (e.g., "age >= 18", "price > 0")
+ * @param constraintName - Optional custom name for the constraint
+ * @example
+ * ```ts
+ * @check("age >= 0")
+ * class User extends Model {
+ *   @column()
+ *   age!: number;
+ * }
+ *
+ * @check("price > 0", "products_price_positive")
+ * class Product extends Model {
+ *   @column()
+ *   price!: number;
+ * }
+ * ```
+ */
+export function check(
+  expression: string,
+  constraintName?: string,
+): ClassDecorator {
+  return (target: Function) => {
+    const existingChecks =
+      Reflect.getMetadata<{ expression: string; name: string }[]>(
+        CHECK_METADATA_KEY,
+        target.prototype,
+      ) || [];
+    existingChecks.push({
+      expression,
+      name:
+        constraintName ??
+        getDefaultCheckConstraintName(
+          (target as typeof Model).table,
+          expression,
+        ),
+    });
+    Reflect.defineMetadata(
+      CHECK_METADATA_KEY,
+      existingChecks,
       target.prototype,
     );
   };
@@ -1403,4 +1452,8 @@ export function getIndexes(target: typeof Model): IndexType[] {
 
 export function getUniques(target: typeof Model): UniqueType[] {
   return Reflect.getMetadata(UNIQUE_METADATA_KEY, target.prototype) || [];
+}
+
+export function getChecks(target: typeof Model): CheckType[] {
+  return Reflect.getMetadata(CHECK_METADATA_KEY, target.prototype) || [];
 }

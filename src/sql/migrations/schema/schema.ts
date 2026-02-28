@@ -486,7 +486,23 @@ export default class Schema {
    * ```
    */
   dropCheck(table: string, constraintName: string): void {
-    this.dropConstraint(table, constraintName);
+    if (this.sqlType === "mysql" || this.sqlType === "mariadb") {
+      this.rawQuery(
+        `ALTER TABLE \`${table}\` DROP CHECK \`${constraintName}\``,
+      );
+      return;
+    }
+
+    const dropNode = new DropConstraintNode(constraintName);
+    const alterNode = new AlterTableNode(table, [dropNode]);
+
+    const astParser = this.generateAstInstance({
+      table,
+      databaseCaseConvention: "preserve",
+      modelCaseConvention: "preserve",
+    } as typeof Model);
+
+    this.rawQuery(astParser.parse([alterNode]).sql);
   }
 
   /**

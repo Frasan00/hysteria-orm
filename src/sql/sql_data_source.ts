@@ -23,6 +23,7 @@ import {
 } from "../utils/query";
 import { AstParser } from "./ast/parser";
 import { RawNode } from "./ast/query/node/raw/raw_node";
+import { CheckConstraintInfoNode } from "./ast/query/node/schema/check_constraint_info";
 import { ForeignKeyInfoNode } from "./ast/query/node/schema";
 import { IndexInfoNode } from "./ast/query/node/schema/index_info";
 import { PrimaryKeyInfoNode } from "./ast/query/node/schema/primary_key_info";
@@ -37,6 +38,7 @@ import { RawModelOptions } from "./models/model_types";
 import { QueryBuilder } from "./query_builder/query_builder";
 import { getRawQueryBuilderModel } from "./query_builder/query_builder_utils";
 import type {
+  TableCheckConstraintInfo,
   TableColumnInfo,
   TableForeignKeyInfo,
   TableIndexInfo,
@@ -1168,14 +1170,16 @@ export class SqlDataSource<
    * @description Retrieves information from the database for the given table
    */
   async getTableSchema(table: string): Promise<TableSchemaInfo> {
-    const [columns, indexes, foreignKeys, primaryKey] = await Promise.all([
-      this.getTableInfo(table),
-      this.getIndexInfo(table),
-      this.getForeignKeyInfo(table),
-      this.getPrimaryKeyInfo(table),
-    ]);
+    const [columns, indexes, foreignKeys, primaryKey, checkConstraints] =
+      await Promise.all([
+        this.getTableInfo(table),
+        this.getIndexInfo(table),
+        this.getForeignKeyInfo(table),
+        this.getPrimaryKeyInfo(table),
+        this.getCheckConstraintInfo(table),
+      ]);
 
-    return { columns, indexes, foreignKeys, primaryKey };
+    return { columns, indexes, foreignKeys, primaryKey, checkConstraints };
   }
 
   /**
@@ -1530,6 +1534,39 @@ export class SqlDataSource<
       name: name || undefined,
       columns,
     };
+  }
+
+  /**
+   * @description Introspects table CHECK constraints from the database
+   */
+  async getCheckConstraintInfo(
+    table: string,
+  ): Promise<TableCheckConstraintInfo[]> {
+    const ast = new AstParser(
+      {
+        table,
+        databaseCaseConvention: "preserve",
+        modelCaseConvention: "preserve",
+      } as typeof Model,
+      this.getDbType(),
+    );
+
+    const sql = ast.parse([new CheckConstraintInfoNode(table)]).sql;
+    let rows: any[] = [];
+    try {
+      const rawResult = await this.rawQuery(sql);
+      rows = this.extractRowsFromRawResult(rawResult);
+    } catch (err: any) {
+      if (isTableMissingError(this.getDbType(), err)) {
+        return [];
+      }
+      throw err;
+    }
+
+    return rows.map((row) => ({
+      name: String(row.name),
+      expression: String(row.expression),
+    }));
   }
 
   /**

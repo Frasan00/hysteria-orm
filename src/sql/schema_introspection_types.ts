@@ -20,11 +20,17 @@ export type TablePrimaryKeyInfo = {
   columns: string[];
 };
 
+export type TableCheckConstraintInfo = {
+  name: string;
+  expression: string;
+};
+
 export type TableSchemaInfo = {
   columns: TableColumnInfo[];
   indexes: TableIndexInfo[];
   foreignKeys: TableForeignKeyInfo[];
   primaryKey?: TablePrimaryKeyInfo;
+  checkConstraints: TableCheckConstraintInfo[];
 };
 
 export type TableForeignKeyInfo = {

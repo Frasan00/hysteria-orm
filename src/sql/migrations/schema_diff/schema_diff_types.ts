@@ -51,6 +51,17 @@ type UniqueToDrop = {
   name: string;
 };
 
+type CheckToAdd = {
+  table: string;
+  name: string;
+  expression: string;
+};
+
+type CheckToDrop = {
+  table: string;
+  name: string;
+};
+
 export type RelationsToAdd = {
   table: string;
   relation: LazyRelationType;
@@ -97,6 +108,8 @@ export type GenerateTableDiffReturnType = {
   indexesToDrop: IndexesToDrop[];
   uniquesToAdd?: UniqueToAdd[];
   uniquesToDrop?: UniqueToDrop[];
+  checksToAdd: CheckToAdd[];
+  checksToDrop: CheckToDrop[];
   relationsToAdd: RelationsToAdd[];
   relationsToDrop: RelationsToDrop[];
   relationsToModify: RelationsToModify[];

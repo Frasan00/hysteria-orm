@@ -35,6 +35,7 @@ import { databasesWithReturning } from "../sql_runner/sql_runner_constants";
 import {
   belongsTo,
   column,
+  getChecks,
   getIndexes,
   getModelColumns,
   getPrimaryKey,
@@ -46,6 +47,7 @@ import {
   manyToMany,
 } from "./decorators/model_decorators";
 import {
+  CheckType,
   ColumnType,
   IndexType,
   LazyRelationType,
@@ -963,6 +965,10 @@ export abstract class Model<T extends Model<T> = any> extends Entity {
 
   static getUniques(): UniqueType[] {
     return getUniques(this);
+  }
+
+  static getChecks(): CheckType[] {
+    return getChecks(this);
   }
 
   // JS Static methods
