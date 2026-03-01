@@ -106,11 +106,13 @@ export type DateColumnOptions = {
   timezone?: Timezone;
   /**
    * @description Whether to automatically update the timestamp on record updates, uses timezone and format from the dateColumn options
+   * @warning This is a code wise implementation it does not generate a trigger in the database, works with bulk updates too
    * @default false
    */
   autoUpdate?: boolean;
   /**
    * @description Whether to automatically set the timestamp on record creation, uses timezone and format from the dateColumn options
+   * @warning This is a code wise implementation it does not generate a trigger in the database, works with bulk creations too
    * @default false
    */
   autoCreate?: boolean;

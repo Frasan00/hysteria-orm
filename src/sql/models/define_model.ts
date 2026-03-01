@@ -10,26 +10,48 @@ import {
 } from "./decorators/model_decorators";
 import type { BaseModelRelationType } from "./decorators/model_decorators";
 import type {
-  AsymmetricEncryptionOptions,
   ColumnOptions,
-  DateColumnOptions,
-  DatetimeColumnOptions,
-  ManyToManyOptions,
   ManyToManyStringOptions,
-  SymmetricEncryptionOptions,
   ThroughModel,
 } from "./decorators/model_decorators_types";
+import type { AnyModelConstructor } from "./define_model_types";
 import { Model } from "./model";
 import type {
   CheckDefinition,
+  ColAsymmetricOptions,
+  ColBigIncrementOptions,
+  ColBigIntegerOptions,
+  ColBinaryOptions,
+  ColBooleanOptions,
+  ColDateOptions,
+  ColDatetimeOptions,
+  ColDecimalOptions,
+  ColEnumOptions,
+  ColFloatOptions,
+  ColJsonOptions,
+  ColIncrementOptions,
+  ColIntegerOptions,
   ColNamespace,
+  ColOptions,
+  ColPrimaryOptions,
+  ColStringOptions,
+  ColSymmetricOptions,
+  ColTextOptions,
+  ColTimeOptions,
+  ColTimestampOptions,
+  ColUlidOptions,
+  ColUuidOptions,
   ColumnDef,
   DefinedModel,
   IndexDefinition,
   ModelDefinition,
+  NullableColumn,
   RelationConstraintOptions,
   RelationDef,
+  RelationNullableOption,
   RelNamespace,
+  TypedPrepare,
+  TypedSerialize,
   UniqueDefinition,
 } from "./define_model_types";
 
@@ -59,179 +81,199 @@ function makeRelationDef<T>(
 // col – column descriptor namespace
 // ---------------------------------------------------------------------------
 
-function colBase(options: ColumnOptions = {}): ColumnDef<any> {
+function colBase<T = unknown>(
+  options: ColOptions & TypedSerialize<T> & TypedPrepare<T> = {} as any,
+): ColumnDef<T> {
   return makeColumnDef((target, key) => {
-    column(options)(target, key);
+    column(options as ColumnOptions)(target, key);
   });
 }
 
-colBase.primary = function colPrimary(
-  options: Omit<ColumnOptions, "primaryKey"> = {},
-): ColumnDef<any> {
+colBase.primary = function colPrimary<T = string | number>(
+  options: ColPrimaryOptions & TypedSerialize<T> & TypedPrepare<T> = {} as any,
+): ColumnDef<T> {
   return makeColumnDef((target, key) => {
-    column.primary(options)(target, key);
+    column.primary(options as any)(target, key);
   });
 };
 
-colBase.string = function colString(
-  options: Omit<ColumnOptions, "type"> & { length?: number } = {},
-): ColumnDef<string | null | undefined> {
+colBase.string = function colString<
+  O extends ColStringOptions = ColStringOptions,
+>(
+  options?: O &
+    TypedSerialize<NullableColumn<string, O>> &
+    TypedPrepare<NullableColumn<string, O>>,
+): ColumnDef<NullableColumn<string, O>> {
   return makeColumnDef((target, key) => {
-    column.string(options)(target as any, key);
+    column.string((options ?? {}) as any)(target as any, key);
   });
 };
 
-colBase.text = function colText(
-  options: Omit<ColumnOptions, "type"> = {},
-): ColumnDef<string | null | undefined> {
+colBase.text = function colText<O extends ColTextOptions = ColTextOptions>(
+  options?: O &
+    TypedSerialize<NullableColumn<string, O>> &
+    TypedPrepare<NullableColumn<string, O>>,
+): ColumnDef<NullableColumn<string, O>> {
   return makeColumnDef((target, key) => {
-    column.text(options)(target as any, key);
+    column.text((options ?? {}) as any)(target as any, key);
   });
 };
 
-colBase.integer = function colInteger(
-  options: Omit<ColumnOptions, "serialize"> = {},
-): ColumnDef<number | null | undefined> {
+colBase.integer = function colInteger<
+  O extends ColIntegerOptions = ColIntegerOptions,
+>(
+  options?: O & TypedPrepare<NullableColumn<number, O>>,
+): ColumnDef<NullableColumn<number, O>> {
   return makeColumnDef((target, key) => {
-    column.integer(options)(target as any, key);
+    column.integer((options ?? {}) as any)(target as any, key);
   });
 };
 
-colBase.bigInteger = function colBigInteger(
-  options: Omit<ColumnOptions, "serialize"> = {},
-): ColumnDef<number | bigint | null | undefined> {
+colBase.bigInteger = function colBigInteger<
+  O extends ColBigIntegerOptions = ColBigIntegerOptions,
+>(
+  options?: O & TypedPrepare<NullableColumn<number | bigint, O>>,
+): ColumnDef<NullableColumn<number | bigint, O>> {
   return makeColumnDef((target, key) => {
-    column.bigInteger(options)(target as any, key);
+    column.bigInteger((options ?? {}) as any)(target as any, key);
   });
 };
 
-colBase.float = function colFloat(
-  options: Omit<ColumnOptions, "serialize"> = {},
-): ColumnDef<number | null | undefined> {
+colBase.float = function colFloat<O extends ColFloatOptions = ColFloatOptions>(
+  options?: O & TypedPrepare<NullableColumn<number, O>>,
+): ColumnDef<NullableColumn<number, O>> {
   return makeColumnDef((target, key) => {
-    column.float(options)(target as any, key);
+    column.float((options ?? {}) as any)(target as any, key);
   });
 };
 
-colBase.decimal = function colDecimal(
-  options: Omit<ColumnOptions, "serialize"> & {
-    precision?: number;
-    scale?: number;
-  } = {},
-): ColumnDef<number | null | undefined> {
+colBase.decimal = function colDecimal<
+  O extends ColDecimalOptions = ColDecimalOptions,
+>(
+  options?: O & TypedPrepare<NullableColumn<number, O>>,
+): ColumnDef<NullableColumn<number, O>> {
   return makeColumnDef((target, key) => {
-    column.decimal(options)(target as any, key);
+    column.decimal((options ?? {}) as any)(target as any, key);
   });
 };
 
 colBase.increment = function colIncrement(
-  options: Omit<ColumnOptions, "serialize" | "primaryKey" | "nullable"> = {},
-): ColumnDef<number | null | undefined> {
+  options: ColIncrementOptions & TypedPrepare<number> = {} as any,
+): ColumnDef<number> {
   return makeColumnDef((target, key) => {
-    column.increment(options)(target as any, key);
+    column.increment(options as any)(target as any, key);
   });
 };
 
 colBase.bigIncrement = function colBigIncrement(
-  options: Omit<ColumnOptions, "serialize" | "primaryKey" | "nullable"> = {},
-): ColumnDef<number | null | undefined> {
+  options: ColBigIncrementOptions & TypedPrepare<number> = {} as any,
+): ColumnDef<number> {
   return makeColumnDef((target, key) => {
-    column.bigIncrement(options)(target as any, key);
+    column.bigIncrement(options as any)(target as any, key);
   });
 };
 
-colBase.boolean = function colBoolean(
-  options: Omit<ColumnOptions, "prepare" | "serialize"> = {},
-): ColumnDef<boolean | null | undefined> {
+colBase.boolean = function colBoolean<
+  O extends ColBooleanOptions = ColBooleanOptions,
+>(options?: O): ColumnDef<NullableColumn<boolean, O>> {
   return makeColumnDef((target, key) => {
-    column.boolean(options)(target as any, key);
+    column.boolean((options ?? {}) as any)(target as any, key);
   });
 };
 
-colBase.date = function colDate(
-  options: Omit<DateColumnOptions, "format"> = {},
-): ColumnDef<Date | string | null | undefined> {
+colBase.date = function colDate<T extends Date | string = Date>(
+  options?: ColDateOptions,
+): ColumnDef<T> {
   return makeColumnDef((target, key) => {
-    column.date(options)(target as any, key);
+    column.date((options ?? {}) as any)(target as any, key);
   });
 };
 
-colBase.datetime = function colDatetime(
-  options: DatetimeColumnOptions = {},
-): ColumnDef<Date | string | null | undefined> {
+colBase.datetime = function colDatetime<T extends Date | string = Date>(
+  options?: ColDatetimeOptions,
+): ColumnDef<T> {
   return makeColumnDef((target, key) => {
-    column.datetime(options)(target as any, key);
+    column.datetime((options ?? {}) as any)(target as any, key);
   });
 };
 
-colBase.timestamp = function colTimestamp(
-  options: DatetimeColumnOptions = {},
-): ColumnDef<Date | string | null | undefined> {
+colBase.timestamp = function colTimestamp<T extends Date | string = Date>(
+  options?: ColTimestampOptions,
+): ColumnDef<T> {
   return makeColumnDef((target, key) => {
-    column.timestamp(options)(target as any, key);
+    column.timestamp((options ?? {}) as any)(target as any, key);
   });
 };
 
-colBase.time = function colTime(
-  options: Omit<DateColumnOptions, "format"> = {},
-): ColumnDef<Date | string | null | undefined> {
+colBase.time = function colTime<T extends Date | string = Date>(
+  options?: ColTimeOptions,
+): ColumnDef<T> {
   return makeColumnDef((target, key) => {
-    column.time(options)(target as any, key);
+    column.time((options ?? {}) as any)(target as any, key);
   });
 };
 
-colBase.json = function colJson(
-  options: Omit<ColumnOptions, "prepare" | "serialize"> = {},
-): ColumnDef<unknown> {
+colBase.json = function colJson<T = unknown>(
+  options?: ColJsonOptions,
+): ColumnDef<T> {
   return makeColumnDef((target, key) => {
-    column.json(options)(target as any, key);
+    column.json((options ?? {}) as any)(target as any, key);
   });
 };
 
-colBase.uuid = function colUuid(
-  options: Omit<ColumnOptions, "prepare"> = {},
-): ColumnDef<string | null | undefined> {
+colBase.uuid = function colUuid<O extends ColUuidOptions = ColUuidOptions>(
+  options?: O & TypedSerialize<NullableColumn<string, O>>,
+): ColumnDef<NullableColumn<string, O>> {
   return makeColumnDef((target, key) => {
-    column.uuid(options)(target as any, key);
+    column.uuid((options ?? {}) as any)(target as any, key);
   });
 };
 
-colBase.ulid = function colUlid(
-  options: Omit<ColumnOptions, "prepare"> = {},
-): ColumnDef<string | null | undefined> {
+colBase.ulid = function colUlid<O extends ColUlidOptions = ColUlidOptions>(
+  options?: O & TypedSerialize<NullableColumn<string, O>>,
+): ColumnDef<NullableColumn<string, O>> {
   return makeColumnDef((target, key) => {
-    column.ulid(options)(target as any, key);
+    column.ulid((options ?? {}) as any)(target as any, key);
   });
 };
 
-colBase.binary = function colBinary(
-  options: Omit<ColumnOptions, "type"> = {},
-): ColumnDef<Buffer | Uint8Array | string | null | undefined> {
+colBase.binary = function colBinary<
+  O extends ColBinaryOptions = ColBinaryOptions,
+>(
+  options?: O &
+    TypedSerialize<NullableColumn<Buffer | Uint8Array | string, O>> &
+    TypedPrepare<NullableColumn<Buffer | Uint8Array | string, O>>,
+): ColumnDef<NullableColumn<Buffer | Uint8Array | string, O>> {
   return makeColumnDef((target, key) => {
-    column.binary(options)(target as any, key);
+    column.binary((options ?? {}) as any)(target as any, key);
   });
 };
 
-colBase.enum = function colEnum<const V extends readonly string[]>(
+colBase.enum = function colEnum<
+  const V extends readonly string[],
+  O extends ColEnumOptions = ColEnumOptions,
+>(
   values: V,
-  options: Omit<ColumnOptions, "type"> = {},
-): ColumnDef<V[number] | null | undefined> {
+  options?: O &
+    TypedSerialize<NullableColumn<V[number], O>> &
+    TypedPrepare<NullableColumn<V[number], O>>,
+): ColumnDef<NullableColumn<V[number], O>> {
   return makeColumnDef((target, key) => {
-    column.enum(values, options)(target as any, key);
+    column.enum(values, (options ?? {}) as any)(target as any, key);
   });
 };
 
 colBase.encryption = {
-  symmetric(
-    options: Omit<SymmetricEncryptionOptions, "prepare" | "serialize">,
-  ): ColumnDef<string | null | undefined> {
+  symmetric<O extends ColSymmetricOptions = ColSymmetricOptions>(
+    options: O,
+  ): ColumnDef<NullableColumn<string, O>> {
     return makeColumnDef((target, key) => {
       column.encryption.symmetric(options)(target as any, key);
     });
   },
-  asymmetric(
-    options: Omit<AsymmetricEncryptionOptions, "prepare" | "serialize">,
-  ): ColumnDef<string | null | undefined> {
+  asymmetric<O extends ColAsymmetricOptions = ColAsymmetricOptions>(
+    options: O,
+  ): ColumnDef<NullableColumn<string, O>> {
     return makeColumnDef((target, key) => {
       column.encryption.asymmetric(options)(target as any, key);
     });
@@ -248,11 +290,13 @@ type AnyModelClass = abstract new (...args: any[]) => Model;
 
 export const rel: RelNamespace = {
   hasOne<M extends AnyModelClass>(
-    model: () => M,
+    model: (self: AnyModelClass) => M,
     foreignKey?: string,
-  ): RelationDef<InstanceType<M> | null | undefined> {
+    _options?: RelationNullableOption,
+  ): RelationDef<InstanceType<M>> {
     return makeRelationDef((target, key) => {
-      hasOne(model as unknown as () => typeof Model, foreignKey)(
+      const resolvedModel = () => model(target.constructor as AnyModelClass);
+      hasOne(resolvedModel as unknown as () => typeof Model, foreignKey)(
         target as any,
         key,
       );
@@ -260,11 +304,13 @@ export const rel: RelNamespace = {
   },
 
   hasMany<M extends AnyModelClass>(
-    model: () => M,
+    model: (self: AnyModelClass) => M,
     foreignKey?: string,
-  ): RelationDef<InstanceType<M>[] | null | undefined> {
+    _options?: RelationNullableOption,
+  ): RelationDef<InstanceType<M>[]> {
     return makeRelationDef((target, key) => {
-      hasMany(model as unknown as () => typeof Model, foreignKey)(
+      const resolvedModel = () => model(target.constructor as AnyModelClass);
+      hasMany(resolvedModel as unknown as () => typeof Model, foreignKey)(
         target as any,
         key,
       );
@@ -272,13 +318,14 @@ export const rel: RelNamespace = {
   },
 
   belongsTo<M extends AnyModelClass>(
-    model: () => M,
+    model: (self: AnyModelClass) => M,
     foreignKey?: string,
-    options?: RelationConstraintOptions,
-  ): RelationDef<InstanceType<M> | null | undefined> {
+    options?: RelationConstraintOptions & RelationNullableOption,
+  ): RelationDef<InstanceType<M>> {
     return makeRelationDef((target, key) => {
+      const resolvedModel = () => model(target.constructor as AnyModelClass);
       belongsTo(
-        model as unknown as () => typeof Model,
+        resolvedModel as unknown as () => typeof Model,
         foreignKey,
         options as BaseModelRelationType,
       )(target as any, key);
@@ -287,26 +334,27 @@ export const rel: RelNamespace = {
 
   manyToMany<
     M extends AnyModelClass,
-    T extends typeof Model = typeof Model,
+    T extends AnyModelConstructor = AnyModelConstructor,
     TM extends ThroughModel<T> = ThroughModel<T>,
   >(
-    model: () => M,
+    model: (self: AnyModelClass) => M,
     throughModel: TM,
     throughModelKeys?: TM extends string
       ? ManyToManyStringOptions
-      : ManyToManyOptions<T, TM>,
-    options?: RelationConstraintOptions,
-  ): RelationDef<InstanceType<M>[] | null | undefined> {
+      : { leftForeignKey?: string; rightForeignKey?: string },
+    options?: RelationConstraintOptions & RelationNullableOption,
+  ): RelationDef<InstanceType<M>[]> {
     return makeRelationDef((target, key) => {
+      const resolvedModel = () => model(target.constructor as AnyModelClass);
       manyToMany(
-        model as unknown as () => typeof Model,
+        resolvedModel as unknown as () => typeof Model,
         throughModel as string | (() => typeof Model),
         throughModelKeys as ManyToManyStringOptions,
         options as BaseModelRelationType,
       )(target as any, key);
     });
   },
-};
+} as RelNamespace;
 
 // ---------------------------------------------------------------------------
 // defineModel

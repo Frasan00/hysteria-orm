@@ -11,6 +11,11 @@ export type {
   RelationDef,
   DefinedModel,
   AnyModelConstructor,
+  NullableColumn,
+  TypedSerialize,
+  TypedPrepare,
+  RelationNullableOption,
+  RelModelCallback,
 } from "./sql/models/define_model_types";
 export { createModelFactory } from "./sql/models/model_factory";
 export * from "./sql/models/model_query_builder/model_query_builder";
