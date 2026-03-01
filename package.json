@@ -1,12 +1,15 @@
 {
   "name": "hysteria-orm",
-  "version": "10.7.7",
+  "version": "10.7.8",
   "license": "MIT",
   "description": "Yet another orm for Javascript and Typescript no one asked for",
   "type": "module",
   "homepage": "https://github.com/Frasan00/hysteria-orm",
   "repository": "https://github.com/Frasan00/hysteria-orm.git",
   "author": "Frasan00 <francesco.sangiovanni.7@gmail.com>",
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
     "start": "yarn format && yarn build:dev && node lib/index.js",
     "prepare": "husky install",

@@ -12,7 +12,12 @@ class PgAlterColumnTypeInterpreter implements Interpreter {
     const ast = new AstParser(this.model, "postgres" as SqlDataSourceType);
     const { sql } = ast.parse([a.newType]);
     const [, ...restTokens] = sql.trim().split(/\s+/);
-    const typeSql = restTokens.join(" ");
+    let typeSql = restTokens.join(" ");
+
+    // Strip inline CHECK constraints (e.g., from enum columns) since they
+    // are invalid inside ALTER COLUMN TYPE and are managed separately via
+    // ADD CONSTRAINT by the schema diff engine.
+    typeSql = typeSql.replace(/\s*check\s*\(.*\)\s*$/i, "").trim();
 
     // Generate type change SQL
     let resultSql = `alter column "${a.column}" type ${typeSql}`;

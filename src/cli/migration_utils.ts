@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import { createRequire } from "node:module";
-import path, { join } from "node:path";
+import path from "node:path";
 import { pathToFileURL } from "url";
 import { env } from "../env/env";
 import { HysteriaError } from "../errors/hysteria_error";
@@ -134,18 +134,13 @@ export async function getMigrations(
   migrationPath?: string,
   tsconfigPath?: string,
 ): Promise<Migration[]> {
-  const migrationNames = findMigrationNames(migrationPath);
+  const migrationFiles = findMigrationFiles(migrationPath);
   const migrations: Migration[] = [];
 
-  for (const migrationName of migrationNames) {
-    const migrationModule = await findMigrationModule(
-      migrationName,
-      migrationPath,
-      tsconfigPath,
-    );
-
+  for (const { name, fullPath } of migrationFiles) {
+    const migrationModule = await loadMigrationModule(fullPath, tsconfigPath);
     const migration: Migration = new migrationModule(dbType || env.DB_TYPE);
-    (migration as any).migrationName = migrationName;
+    (migration as any).migrationName = name;
     migrations.push(migration);
   }
 
@@ -181,65 +176,41 @@ async function loadMigrationModule(
   return migrationModule.default;
 }
 
-async function findMigrationModule(
-  migrationName: string,
-  migrationModulePath: string = env.MIGRATION_PATH || "database/migrations",
-  tsconfigPath?: string,
-): Promise<new (dbType: SqlDataSourceType) => Migration> {
-  migrationModulePath = join(migrationModulePath, migrationName);
-  const migrationPath = path.resolve(process.cwd(), migrationModulePath);
-  const migrationModule = await loadMigrationModule(
-    migrationPath,
-    tsconfigPath,
-  );
+function findMigrationFiles(
+  inputMigrationPath?: string,
+): { name: string; fullPath: string }[] {
+  const cwd = process.cwd();
+  const migrationPath =
+    inputMigrationPath || env.MIGRATION_PATH || "database/migrations";
+  const isGlob = /[*?{}\[\]]/.test(migrationPath);
 
-  if (!migrationModule) {
-    throw new HysteriaError(
-      "MigrationUtils::findMigrationModule migrations module not found for migration: " +
-        migrationName,
-      "MIGRATION_MODULE_NOT_FOUND",
-    );
+  // For plain directory paths, auto-create if missing and expand to recursive glob
+  if (!isGlob) {
+    const dirPath = path.isAbsolute(migrationPath)
+      ? migrationPath
+      : path.resolve(cwd, migrationPath);
+
+    if (!fs.existsSync(dirPath)) {
+      fs.mkdirSync(dirPath, { recursive: true });
+      return [];
+    }
   }
 
-  return migrationModule;
-}
-
-function findMigrationNames(inputMigrationPath?: string): string[] {
-  const currentUserDirectory = process.cwd();
-  const migrationPath = path.resolve(
-    inputMigrationPath || env.MIGRATION_PATH || "database/migrations",
-  );
-
-  const fullPathToMigrationPath = path.resolve(
-    currentUserDirectory,
-    migrationPath,
-  );
+  const pattern = isGlob
+    ? migrationPath
+    : path.join(migrationPath, "**/*.{ts,js}");
+  const fullPattern = path.isAbsolute(pattern)
+    ? pattern
+    : path.resolve(cwd, pattern);
 
   try {
-    const migrationFiles = fs
-      .readdirSync(fullPathToMigrationPath)
-      .filter((file) => {
-        const ext = path.extname(file);
-        const fullFilePath = path.join(fullPathToMigrationPath, file);
-        const isFile = fs.statSync(fullFilePath).isFile();
-        return isFile && (ext === ".ts" || ext === ".js");
-      });
-
-    if (migrationFiles.length) {
-      return migrationFiles;
-    }
-
-    throw new HysteriaError(
-      "MigrationUtils::findMigrationNames No database migration files found on path: " +
-        fullPathToMigrationPath,
-      "MIGRATION_MODULE_NOT_FOUND",
-    );
-  } catch (error) {
-    throw new HysteriaError(
-      "MigrationUtils::findMigrationNames No database migration files found on path: " +
-        fullPathToMigrationPath,
-      "MIGRATION_MODULE_NOT_FOUND",
-    );
+    const files = fs.globSync(fullPattern);
+    return files
+      .filter((f) => fs.statSync(f).isFile())
+      .sort()
+      .map((f) => ({ name: path.basename(f), fullPath: f }));
+  } catch {
+    return [];
   }
 }
 
