@@ -492,7 +492,9 @@ export class MigrationOperationGenerator {
     args: unknown[],
     applyConstraints: boolean = true,
   ) {
-    const b = (builder[column.type as keyof typeof builder] as any)(...args);
+    const b = Array.isArray(column.type)
+      ? builder.enum(args[0] as string, column.type)
+      : (builder[column.type as keyof typeof builder] as any)(...args);
     if (!applyConstraints) {
       return b;
     }

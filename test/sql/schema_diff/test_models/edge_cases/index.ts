@@ -95,3 +95,8 @@ export { LargeV2 } from "./large_v2";
 
 // Extended Decorator Shortcuts
 export { DecoratorsExtModel } from "./decorators_ext";
+
+// Enum Column Evolution
+export { EnumV1 } from "./enum_v1";
+export { EnumV2 } from "./enum_v2";
+export { EnumV3 } from "./enum_v3";

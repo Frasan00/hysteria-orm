@@ -13,6 +13,7 @@ class MysqlTableInfoInterpreter implements Interpreter {
     const sql =
       `SELECT COLUMN_NAME AS column_name, ` +
       `DATA_TYPE AS data_type, ` +
+      `COLUMN_TYPE AS column_type, ` +
       `IS_NULLABLE AS is_nullable, ` +
       `COLUMN_DEFAULT AS column_default, ` +
       `CHARACTER_MAXIMUM_LENGTH AS char_length, ` +

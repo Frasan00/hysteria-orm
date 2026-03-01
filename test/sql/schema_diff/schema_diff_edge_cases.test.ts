@@ -82,6 +82,10 @@ import {
   LargeV2,
   // Decorator Ext
   DecoratorsExtModel,
+  // Enum Column Evolution
+  EnumV1,
+  EnumV2,
+  EnumV3,
 } from "./test_models";
 
 const SUPPORTED_DB_TYPES = ["mysql", "postgres", "mariadb"];
@@ -111,6 +115,7 @@ const EDGE_CASE_TABLES = [
   "schema_diff_pk_change",
   "schema_diff_large",
   "schema_diff_decorators_ext",
+  "schema_diff_enum_test",
 ];
 
 const dbType = env.DB_TYPE || "mysql";
@@ -1642,6 +1647,104 @@ conditionalDescribe(`[${dbType}] Schema Diff Edge Cases`, () => {
           expect(finalDiff.getSqlStatements().length).toBe(0);
         },
       );
+    });
+  });
+
+  // =========================================================================
+  // Enum Column Evolution
+  // =========================================================================
+  describe("Enum Column Evolution", () => {
+    beforeAll(async () => {
+      await dropAllEdgeCaseTables(baseSql);
+    });
+    afterAll(async () => {
+      await dropAllEdgeCaseTables(baseSql);
+    });
+
+    test("v1: should create table with enum column", async () => {
+      const SchemaDiff = await getSchemaDiff();
+      await SqlDataSource.useConnection(
+        { ...getConnectionConfig(), models: { EnumV1 } },
+        async (sql) => {
+          const diff = await SchemaDiff.makeDiff(sql);
+          const stmts = diff.getSqlStatements();
+          expect(stmts.length).toBeGreaterThan(0);
+          expect(
+            stmts.some((s) => s.toLowerCase().includes("create table")),
+          ).toBe(true);
+          expect(
+            stmts.some((s) =>
+              s.toLowerCase().includes("schema_diff_enum_test"),
+            ),
+          ).toBe(true);
+          await sql.syncSchema();
+        },
+      );
+    });
+
+    test("v2: should detect enum value addition without crashing (active,inactive -> active,inactive,pending)", async () => {
+      const SchemaDiff = await getSchemaDiff();
+      await SqlDataSource.useConnection(
+        { ...getConnectionConfig(), models: { EnumV2 } },
+        async (sql) => {
+          const diff = await SchemaDiff.makeDiff(sql);
+          const stmts = diff.getSqlStatements();
+          expect(stmts.length).toBeGreaterThan(0);
+
+          // Should reference the enum_test table via check constraint changes
+          const hasEnumTableRef = stmts.some((s) =>
+            s.toLowerCase().includes("schema_diff_enum_test"),
+          );
+          expect(hasEnumTableRef).toBe(true);
+
+          await sql.syncSchema();
+        },
+      );
+    });
+
+    test("v3: should detect new enum column addition (priority)", async () => {
+      const SchemaDiff = await getSchemaDiff();
+      await SqlDataSource.useConnection(
+        { ...getConnectionConfig(), models: { EnumV3 } },
+        async (sql) => {
+          const diff = await SchemaDiff.makeDiff(sql);
+          const stmts = diff.getSqlStatements();
+          expect(stmts.length).toBeGreaterThan(0);
+
+          const hasPriorityColumn = stmts.some((s) =>
+            s.toLowerCase().includes("priority"),
+          );
+          expect(hasPriorityColumn).toBe(true);
+
+          await sql.syncSchema();
+        },
+      );
+    });
+
+    test("full enum evolution should not throw", async () => {
+      const SchemaDiff = await getSchemaDiff();
+      await dropAllEdgeCaseTables(baseSql);
+
+      const versions: Array<{
+        models: Record<string, typeof Model>;
+        desc: string;
+      }> = [
+        { models: { EnumV1 }, desc: "Enum v1" },
+        { models: { EnumV2 }, desc: "Enum v2" },
+        { models: { EnumV3 }, desc: "Enum v3" },
+      ];
+
+      for (const { models, desc } of versions) {
+        await SqlDataSource.useConnection(
+          { ...getConnectionConfig(), models },
+          async (sql) => {
+            const diff = await SchemaDiff.makeDiff(sql);
+            // Should not throw for enum columns
+            const stmts = diff.getSqlStatements();
+            await sql.syncSchema();
+          },
+        );
+      }
     });
   });
 });

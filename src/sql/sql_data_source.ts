@@ -1182,6 +1182,31 @@ export class SqlDataSource<
         this.getCheckConstraintInfo(table),
       ]);
 
+    // For PG/MSSQL, extract enum values from CHECK constraints like: ("col" IN ('a','b'))
+    const db = this.getDbType();
+    if (db === "postgres" || db === "mssql") {
+      for (const col of columns) {
+        const matchingCheck = checkConstraints.find((cc) => {
+          const expr = cc.expression;
+          // Match patterns like: ("col" IN ('a', 'b')) or ([col] IN ('a','b'))
+          const re = new RegExp(
+            `[\\["\\[]?${col.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}[\\]"\\]]?\\s*\\)\\s*IN\\s*\\(([^)]+)\\)`,
+            "i",
+          );
+          return re.test(expr);
+        });
+        if (matchingCheck) {
+          const re = new RegExp(`IN\\s*\\(([^)]+)\\)`, "i");
+          const m = matchingCheck.expression.match(re);
+          if (m) {
+            col.enumValues = m[1]
+              .split(",")
+              .map((v) => v.trim().replace(/^'|'$/g, ""));
+          }
+        }
+      }
+    }
+
     return { columns, indexes, foreignKeys, primaryKey, checkConstraints };
   }
 
@@ -1343,6 +1368,17 @@ export class SqlDataSource<
                 r.column_type || r.udt_name || rawType || "",
               ).toLowerCase(),
             );
+
+      // Parse enum values from MySQL/MariaDB COLUMN_TYPE (e.g., "enum('active','inactive')")
+      let enumValues: string[] | null = null;
+      const columnType = String(r.column_type || r.COLUMN_TYPE || "");
+      const enumMatch = columnType.match(/^enum\((.+)\)$/i);
+      if (enumMatch) {
+        enumValues = enumMatch[1]
+          .split(",")
+          .map((v) => v.trim().replace(/^'|'$/g, ""));
+      }
+
       return {
         name,
         dataType,
@@ -1352,6 +1388,7 @@ export class SqlDataSource<
         precision,
         scale,
         withTimezone,
+        enumValues,
       };
     });
   }

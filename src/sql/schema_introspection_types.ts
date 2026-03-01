@@ -7,6 +7,7 @@ export type TableColumnInfo = {
   precision?: number | null;
   scale?: number | null;
   withTimezone?: boolean | null;
+  enumValues?: string[] | null;
 };
 
 export type TableIndexInfo = {

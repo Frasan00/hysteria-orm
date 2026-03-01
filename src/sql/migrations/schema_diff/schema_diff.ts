@@ -248,14 +248,70 @@ export class SchemaDiff {
           }
         }
 
-        // Check constraints to drop
+        // Check constraints to drop — handle auto-generated enum CHECK constraints
         const modelCheckNames = new Set(modelChecks.map((c) => c.name));
+        const enumColumns = modelData.columns.filter((c) =>
+          Array.isArray(c.type),
+        );
+        const enumColumnNames = new Set(
+          enumColumns.map((c) => c.databaseName || c.columnName),
+        );
         for (const dbChk of databaseData.checkConstraints) {
           if (!modelCheckNames.has(dbChk.name)) {
-            diff.data.checksToDrop.push({
-              table: model.table,
-              name: dbChk.name,
+            // Check if this is an auto-generated enum constraint
+            const matchingEnumCol = [...enumColumnNames].find((colName) => {
+              // Match auto-generated enum CHECK constraints like: ("col") IN ('a','b') or ([col]) IN ('a','b')
+              // The closing paren before IN is mandatory (part of CHECK constraint expression wrapper)
+              const re = new RegExp(
+                `[\\["\\[]?${colName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}[\\]"\\]]?\\s*\\)\\s*IN\\s*\\(`,
+                "i",
+              );
+              return re.test(dbChk.expression);
             });
+            if (matchingEnumCol) {
+              // Find the model column and its DB counterpart to check if values changed
+              const modelCol = enumColumns.find(
+                (c) => (c.databaseName || c.columnName) === matchingEnumCol,
+              );
+              const dbCol = databaseData.columns.find(
+                (c) => c.name === matchingEnumCol,
+              );
+              if (
+                modelCol &&
+                dbCol?.enumValues &&
+                Array.isArray(modelCol.type)
+              ) {
+                const modelVals = [...modelCol.type].sort();
+                const dbVals = [...dbCol.enumValues].sort();
+                const valuesMatch =
+                  modelVals.length === dbVals.length &&
+                  modelVals.every((v, i) => v === dbVals[i]);
+                if (!valuesMatch) {
+                  // Enum values changed — drop old check and add new one
+                  diff.data.checksToDrop.push({
+                    table: model.table,
+                    name: dbChk.name,
+                  });
+                  const dialect = diff.sql.getDbType();
+                  const q = dialect === "mssql" ? "[" : '"';
+                  const qEnd = dialect === "mssql" ? "]" : '"';
+                  const values = modelCol.type
+                    .map((v) => `'${v.replace(/'/g, "''")}'`)
+                    .join(", ");
+                  diff.data.checksToAdd.push({
+                    table: model.table,
+                    name: dbChk.name,
+                    expression: `${q}${matchingEnumCol}${qEnd} IN (${values})`,
+                  });
+                }
+                // else: values match — skip (don't drop)
+              }
+            } else {
+              diff.data.checksToDrop.push({
+                table: model.table,
+                name: dbChk.name,
+              });
+            }
           }
         }
 
@@ -536,6 +592,22 @@ export class SchemaDiff {
 
     if (normalizedModelType) {
       baseCondition &&= normalizedDbType === normalizedModelType;
+    }
+
+    // Compare enum values when model column type is an array (enum)
+    // For PG/MSSQL, enum value changes are handled via CHECK constraints, not column type
+    if (Array.isArray(modelColumn.type)) {
+      if (dialect === "mysql" || dialect === "mariadb") {
+        const modelEnumValues = [...modelColumn.type].sort();
+        const dbEnumValues = dbColumn.enumValues
+          ? [...dbColumn.enumValues].sort()
+          : null;
+        if (dbEnumValues) {
+          baseCondition &&=
+            modelEnumValues.length === dbEnumValues.length &&
+            modelEnumValues.every((v, i) => v === dbEnumValues[i]);
+        }
+      }
     }
 
     if (modelColumn.length != null && dbColumn.length != null) {
