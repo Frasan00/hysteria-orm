@@ -561,7 +561,7 @@ function textColumn(
  */
 function bigintColumn(
   options: Omit<ColumnOptions, "serialize"> = {},
-): TypedPropertyDecorator<number | bigint | null | undefined> {
+): TypedPropertyDecorator<number | null | undefined> {
   return column({
     type: "bigint",
     ...(options as ColumnOptions),
@@ -592,7 +592,7 @@ function bigintColumn(
       description: "A bigint number",
       ...(options.openApi || {}),
     },
-  }) as TypedPropertyDecorator<number | bigint | null | undefined>;
+  }) as TypedPropertyDecorator<number | null | undefined>;
 }
 
 /**

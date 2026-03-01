@@ -60,7 +60,7 @@ export type ModelWithoutRelations<T extends Model> = Pick<
 export type ModelQueryResult<T extends Model> = ModelWithoutRelations<T>;
 
 export type NumberModelKey<T extends Model> = {
-  [K in keyof T]: T[K] extends number | bigint ? K : never;
+  [K in keyof T]: T[K] extends number ? K : never;
 }[keyof T];
 
 export type BaseModelMethodOptions = {

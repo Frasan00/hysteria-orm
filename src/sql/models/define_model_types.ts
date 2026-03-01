@@ -215,11 +215,11 @@ export interface ColNamespace {
 
   /**
    * Big integer column for values exceeding 32-bit range.
-   * Type: `number | bigint` (nullable-aware). Only `prepare` is exposed.
+   * Type: `number` (nullable-aware). Only `prepare` is exposed.
    */
   bigInteger<O extends ColBigIntegerOptions = ColBigIntegerOptions>(
-    options?: O & TypedPrepare<NullableColumn<number | bigint, O>>,
-  ): ColumnDef<NullableColumn<number | bigint, O>>;
+    options?: O & TypedPrepare<NullableColumn<number, O>>,
+  ): ColumnDef<NullableColumn<number, O>>;
 
   /**
    * Floating-point column.

@@ -132,8 +132,8 @@ colBase.integer = function colInteger<
 colBase.bigInteger = function colBigInteger<
   O extends ColBigIntegerOptions = ColBigIntegerOptions,
 >(
-  options?: O & TypedPrepare<NullableColumn<number | bigint, O>>,
-): ColumnDef<NullableColumn<number | bigint, O>> {
+  options?: O & TypedPrepare<NullableColumn<number, O>>,
+): ColumnDef<NullableColumn<number, O>> {
   return makeColumnDef((target, key) => {
     column.bigInteger((options ?? {}) as any)(target as any, key);
   });
