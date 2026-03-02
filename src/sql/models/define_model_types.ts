@@ -12,8 +12,6 @@ import type {
   ThroughModel,
 } from "./decorators/model_decorators_types";
 import type { ModelKey } from "./model_manager/model_manager_types";
-import { __selfBrand } from "../../globals";
-
 /**
  * Phantom-typed descriptor for a model column.
  * `T` carries the TypeScript type the column resolves to at the instance level.
@@ -441,7 +439,7 @@ export interface ColNamespace {
 
 type AnyModelClass = abstract new (...args: any[]) => Model;
 
-type SelfModelInstance = Model & { readonly [__selfBrand]: true };
+type SelfModelInstance = Model & { readonly __selfBrand: true };
 type SelfToken = abstract new (...args: any[]) => SelfModelInstance;
 
 /**
