@@ -684,7 +684,7 @@ type InferRelations<
   R extends Record<string, RelationDef>,
 > = {
   [K in keyof R]: R[K] extends RelationDef<infer T>
-    ? ResolveSelfRef<T, InferColumns<C> & Model>
+    ? ResolveSelfRef<T, InferColumns<C> & InferRelations<C, R> & Model>
     : never;
 };
 
