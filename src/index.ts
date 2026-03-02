@@ -1,3 +1,5 @@
+export { __selfBrand } from "./globals";
+
 // Decorators
 export * from "./no_sql/mongo/mongo_models/mongo_collection_decorators";
 export * from "./sql/models/decorators/model_decorators";
