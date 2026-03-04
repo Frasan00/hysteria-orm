@@ -195,8 +195,8 @@ export type ColumnOptions = {
    */
   nullable?: boolean;
   /**
-   * @description The default value for the column in the database
-   * @migration Only affects auto-generated migrations
+   * @description The default value for the column in the database.
+   * @migration Only affects auto-generated migrations (CREATE TABLE / ALTER TABLE). Does NOT set a default value during insert operations — use `prepare` for that.
    */
   default?: string | number | null | boolean;
 } &

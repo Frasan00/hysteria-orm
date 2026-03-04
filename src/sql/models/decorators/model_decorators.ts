@@ -750,7 +750,13 @@ function booleanColumn(
     type: "boolean",
     ...(options as ColumnOptions),
     serialize: (value) => Boolean(value),
-    prepare: (value) => Boolean(value),
+    prepare: (value) => {
+      if (value === undefined || value === null) {
+        return;
+      }
+
+      return Boolean(value);
+    },
     openApi: {
       type: "boolean",
       description: "A boolean value",

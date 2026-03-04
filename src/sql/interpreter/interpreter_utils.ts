@@ -192,7 +192,10 @@ export class InterpreterUtils {
           continue;
         }
 
-        if (mode === "insert" || modelColumn.autoUpdate) {
+        if (
+          (mode === "insert" && modelColumn.prepare) ||
+          modelColumn.autoUpdate
+        ) {
           filteredColumns.push(column);
           const preparedValue = modelColumn.prepare
             ? await modelColumn.prepare(undefined)

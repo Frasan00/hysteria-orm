@@ -53,67 +53,99 @@ export interface RelationDef<T = any> {
 // Column descriptor option types (mirror decorator option types, minus
 // `serialize`/`prepare` which are handled internally by the typed helpers)
 // ---------------------------------------------------------------------------
+// Column option types for defineModel
+// ---------------------------------------------------------------------------
+// The `default` property on all column options below is **migration-only
+// metadata** used by auto-generated migrations (CREATE TABLE / ALTER TABLE).
+// It does NOT enforce a default value during `insert()` — to set a value at
+// insert time, use the `prepare` callback on the column decorator or pass
+// the value explicitly in your insert payload.
+// ---------------------------------------------------------------------------
 
 export type ColOptions = Omit<
   ColumnOptions,
-  "primaryKey" | "serialize" | "prepare"
+  "primaryKey" | "serialize" | "prepare" | "default"
 >;
 export type ColPrimaryOptions = Omit<
   ColumnOptions,
-  "primaryKey" | "serialize" | "prepare"
+  "primaryKey" | "serialize" | "prepare" | "default"
 >;
 export type ColStringOptions = Omit<
   ColumnOptions,
-  "type" | "serialize" | "prepare"
+  "type" | "serialize" | "prepare" | "default"
 > & {
   length?: number;
 };
 export type ColTextOptions = Omit<
   ColumnOptions,
-  "type" | "serialize" | "prepare"
+  "type" | "serialize" | "prepare" | "default"
 >;
-export type ColIntegerOptions = Omit<ColumnOptions, "serialize" | "prepare">;
-export type ColBigIntegerOptions = Omit<ColumnOptions, "serialize" | "prepare">;
-export type ColFloatOptions = Omit<ColumnOptions, "serialize" | "prepare">;
-export type ColDecimalOptions = Omit<ColumnOptions, "serialize" | "prepare"> & {
+export type ColIntegerOptions = Omit<
+  ColumnOptions,
+  "serialize" | "prepare" | "default"
+>;
+export type ColBigIntegerOptions = Omit<
+  ColumnOptions,
+  "serialize" | "prepare" | "default"
+>;
+export type ColFloatOptions = Omit<
+  ColumnOptions,
+  "serialize" | "prepare" | "default"
+>;
+export type ColDecimalOptions = Omit<
+  ColumnOptions,
+  "serialize" | "prepare" | "default"
+> & {
   precision?: number;
   scale?: number;
 };
 export type ColIncrementOptions = Omit<
   ColumnOptions,
-  "serialize" | "prepare" | "primaryKey" | "nullable"
+  "serialize" | "prepare" | "primaryKey" | "nullable" | "default"
 >;
 export type ColBigIncrementOptions = Omit<
   ColumnOptions,
-  "serialize" | "prepare" | "primaryKey" | "nullable"
+  "serialize" | "prepare" | "primaryKey" | "nullable" | "default"
 >;
-export type ColBooleanOptions = Omit<ColumnOptions, "prepare" | "serialize">;
+export type ColBooleanOptions = Omit<
+  ColumnOptions,
+  "prepare" | "serialize" | "default"
+>;
 export type ColDateOptions = Omit<
   DateColumnOptions,
-  "format" | "serialize" | "prepare"
+  "format" | "serialize" | "prepare" | "default"
 >;
 export type ColDatetimeOptions = Omit<
   DatetimeColumnOptions,
-  "serialize" | "prepare"
+  "serialize" | "prepare" | "default"
 >;
 export type ColTimestampOptions = Omit<
   DatetimeColumnOptions,
-  "serialize" | "prepare"
+  "serialize" | "prepare" | "default"
 >;
 export type ColTimeOptions = Omit<
   DateColumnOptions,
-  "format" | "serialize" | "prepare"
+  "format" | "serialize" | "prepare" | "default"
 >;
-export type ColJsonOptions = Omit<ColumnOptions, "prepare" | "serialize">;
-export type ColUuidOptions = Omit<ColumnOptions, "prepare" | "serialize">;
-export type ColUlidOptions = Omit<ColumnOptions, "prepare" | "serialize">;
+export type ColJsonOptions = Omit<
+  ColumnOptions,
+  "prepare" | "serialize" | "default"
+>;
+export type ColUuidOptions = Omit<
+  ColumnOptions,
+  "prepare" | "serialize" | "default"
+>;
+export type ColUlidOptions = Omit<
+  ColumnOptions,
+  "prepare" | "serialize" | "default"
+>;
 export type ColBinaryOptions = Omit<
   ColumnOptions,
-  "type" | "serialize" | "prepare"
+  "type" | "serialize" | "prepare" | "default"
 >;
 export type ColEnumOptions = Omit<
   ColumnOptions,
-  "type" | "serialize" | "prepare"
+  "type" | "serialize" | "prepare" | "default"
 >;
 export type ColSymmetricOptions = Omit<
   SymmetricEncryptionOptions,
@@ -164,6 +196,14 @@ export type NullableColumn<Base, Opts> = Opts extends { nullable: false }
 
 export type TypedSerialize<T> = { serialize?: (value: any) => T };
 export type TypedPrepare<T> = { prepare?: (value: T) => any };
+export type TypedDefault<T> = {
+  /**
+   * Narrows the `default` property to the column's base type.
+   * @migration Migration-only metadata. Sets the DEFAULT clause in CREATE TABLE / ALTER TABLE.
+   * Does **not** enforce a value during `insert()` — pass the value explicitly or use `prepare`.
+   */
+  default?: T | null;
+};
 
 // ---------------------------------------------------------------------------
 // col namespace type
@@ -182,7 +222,10 @@ export interface ColNamespace {
    * ```
    */
   <T = unknown>(
-    options?: ColOptions & TypedSerialize<T> & TypedPrepare<T>,
+    options?: ColOptions &
+      TypedSerialize<T> &
+      TypedPrepare<T> &
+      TypedDefault<T>,
   ): ColumnDef<T>;
 
   /**
@@ -194,7 +237,10 @@ export interface ColNamespace {
    * ```
    */
   primary<T = string | number>(
-    options?: ColPrimaryOptions & TypedSerialize<T> & TypedPrepare<T>,
+    options?: ColPrimaryOptions &
+      TypedSerialize<T> &
+      TypedPrepare<T> &
+      TypedDefault<T>,
   ): PrimaryColumnDef<T>;
 
   /**
@@ -209,7 +255,8 @@ export interface ColNamespace {
   string<O extends ColStringOptions = ColStringOptions>(
     options?: O &
       TypedSerialize<NullableColumn<string, O>> &
-      TypedPrepare<NullableColumn<string, O>>,
+      TypedPrepare<NullableColumn<string, O>> &
+      TypedDefault<string>,
   ): ColumnDef<NullableColumn<string, O>>;
 
   /**
@@ -219,7 +266,8 @@ export interface ColNamespace {
   text<O extends ColTextOptions = ColTextOptions>(
     options?: O &
       TypedSerialize<NullableColumn<string, O>> &
-      TypedPrepare<NullableColumn<string, O>>,
+      TypedPrepare<NullableColumn<string, O>> &
+      TypedDefault<string>,
   ): ColumnDef<NullableColumn<string, O>>;
 
   /**
@@ -227,7 +275,9 @@ export interface ColNamespace {
    * Type: `number` (nullable-aware). Only `prepare` is exposed (no `serialize`).
    */
   integer<O extends ColIntegerOptions = ColIntegerOptions>(
-    options?: O & TypedPrepare<NullableColumn<number, O>>,
+    options?: O &
+      TypedPrepare<NullableColumn<number, O>> &
+      TypedDefault<number>,
   ): ColumnDef<NullableColumn<number, O>>;
 
   /**
@@ -235,7 +285,9 @@ export interface ColNamespace {
    * Type: `number` (nullable-aware). Only `prepare` is exposed.
    */
   bigInteger<O extends ColBigIntegerOptions = ColBigIntegerOptions>(
-    options?: O & TypedPrepare<NullableColumn<number, O>>,
+    options?: O &
+      TypedPrepare<NullableColumn<number, O>> &
+      TypedDefault<number>,
   ): ColumnDef<NullableColumn<number, O>>;
 
   /**
@@ -243,7 +295,9 @@ export interface ColNamespace {
    * Type: `number` (nullable-aware). Only `prepare` is exposed.
    */
   float<O extends ColFloatOptions = ColFloatOptions>(
-    options?: O & TypedPrepare<NullableColumn<number, O>>,
+    options?: O &
+      TypedPrepare<NullableColumn<number, O>> &
+      TypedDefault<number>,
   ): ColumnDef<NullableColumn<number, O>>;
 
   /**
@@ -255,7 +309,9 @@ export interface ColNamespace {
    * ```
    */
   decimal<O extends ColDecimalOptions = ColDecimalOptions>(
-    options?: O & TypedPrepare<NullableColumn<number, O>>,
+    options?: O &
+      TypedPrepare<NullableColumn<number, O>> &
+      TypedDefault<number>,
   ): ColumnDef<NullableColumn<number, O>>;
 
   /**
@@ -263,7 +319,7 @@ export interface ColNamespace {
    * Type: `number`. Only `prepare` is exposed.
    */
   increment(
-    options?: ColIncrementOptions & TypedPrepare<number>,
+    options?: ColIncrementOptions & TypedPrepare<number> & TypedDefault<number>,
   ): PrimaryColumnDef<number>;
 
   /**
@@ -271,7 +327,9 @@ export interface ColNamespace {
    * Type: `number`. Only `prepare` is exposed.
    */
   bigIncrement(
-    options?: ColBigIncrementOptions & TypedPrepare<number>,
+    options?: ColBigIncrementOptions &
+      TypedPrepare<number> &
+      TypedDefault<number>,
   ): PrimaryColumnDef<number>;
 
   /**
@@ -279,7 +337,7 @@ export interface ColNamespace {
    * Type: `boolean` (nullable-aware). No `serialize` or `prepare` exposed.
    */
   boolean<O extends ColBooleanOptions = ColBooleanOptions>(
-    options?: O,
+    options?: O & TypedDefault<boolean>,
   ): ColumnDef<NullableColumn<boolean, O>>;
 
   /**
@@ -295,12 +353,14 @@ export interface ColNamespace {
    */
   date<T extends Date | string = Date>(
     options: ColDateOptions & { nullable: false } & TypedSerialize<T> &
-      TypedPrepare<T>,
+      TypedPrepare<T> &
+      TypedDefault<string>,
   ): ColumnDef<T>;
   date<T extends Date | string = Date>(
     options?: ColDateOptions &
       TypedSerialize<T | null | undefined> &
-      TypedPrepare<T | null | undefined>,
+      TypedPrepare<T | null | undefined> &
+      TypedDefault<string>,
   ): ColumnDef<T | null | undefined>;
 
   /**
@@ -316,12 +376,14 @@ export interface ColNamespace {
    */
   datetime<T extends Date | string = Date>(
     options: ColDatetimeOptions & { nullable: false } & TypedSerialize<T> &
-      TypedPrepare<T>,
+      TypedPrepare<T> &
+      TypedDefault<string>,
   ): ColumnDef<T>;
   datetime<T extends Date | string = Date>(
     options?: ColDatetimeOptions &
       TypedSerialize<T | null | undefined> &
-      TypedPrepare<T | null | undefined>,
+      TypedPrepare<T | null | undefined> &
+      TypedDefault<string>,
   ): ColumnDef<T | null | undefined>;
 
   /**
@@ -337,12 +399,14 @@ export interface ColNamespace {
    */
   timestamp<T extends Date | string = Date>(
     options: ColTimestampOptions & { nullable: false } & TypedSerialize<T> &
-      TypedPrepare<T>,
+      TypedPrepare<T> &
+      TypedDefault<string>,
   ): ColumnDef<T>;
   timestamp<T extends Date | string = Date>(
     options?: ColTimestampOptions &
       TypedSerialize<T | null | undefined> &
-      TypedPrepare<T | null | undefined>,
+      TypedPrepare<T | null | undefined> &
+      TypedDefault<string>,
   ): ColumnDef<T | null | undefined>;
 
   /**
@@ -358,12 +422,14 @@ export interface ColNamespace {
    */
   time<T extends Date | string = Date>(
     options: ColTimeOptions & { nullable: false } & TypedSerialize<T> &
-      TypedPrepare<T>,
+      TypedPrepare<T> &
+      TypedDefault<string>,
   ): ColumnDef<T>;
   time<T extends Date | string = Date>(
     options?: ColTimeOptions &
       TypedSerialize<T | null | undefined> &
-      TypedPrepare<T | null | undefined>,
+      TypedPrepare<T | null | undefined> &
+      TypedDefault<string>,
   ): ColumnDef<T | null | undefined>;
 
   /**
@@ -378,16 +444,20 @@ export interface ColNamespace {
    * ```
    */
   json<T = unknown>(
-    options: ColJsonOptions & { nullable: false },
+    options: ColJsonOptions & { nullable: false } & TypedDefault<string>,
   ): ColumnDef<T>;
-  json<T = unknown>(options?: ColJsonOptions): ColumnDef<T | null | undefined>;
+  json<T = unknown>(
+    options?: ColJsonOptions & TypedDefault<string>,
+  ): ColumnDef<T | null | undefined>;
 
   /**
    * UUID column. Auto-generates a UUID if no value is provided on insert.
    * Type: `string` (nullable-aware). Only `serialize` is exposed.
    */
   uuid<O extends ColUuidOptions = ColUuidOptions>(
-    options?: O & TypedSerialize<NullableColumn<string, O>>,
+    options?: O &
+      TypedSerialize<NullableColumn<string, O>> &
+      TypedDefault<string>,
   ): ColumnDef<NullableColumn<string, O>>;
 
   /**
@@ -395,7 +465,9 @@ export interface ColNamespace {
    * Type: `string` (nullable-aware). Only `serialize` is exposed.
    */
   ulid<O extends ColUlidOptions = ColUlidOptions>(
-    options?: O & TypedSerialize<NullableColumn<string, O>>,
+    options?: O &
+      TypedSerialize<NullableColumn<string, O>> &
+      TypedDefault<string>,
   ): ColumnDef<NullableColumn<string, O>>;
 
   /**
@@ -409,7 +481,8 @@ export interface ColNamespace {
   >(
     options?: O &
       TypedSerialize<NullableColumn<T, O>> &
-      TypedPrepare<NullableColumn<T, O>>,
+      TypedPrepare<NullableColumn<T, O>> &
+      TypedDefault<string>,
   ): ColumnDef<NullableColumn<T, O>>;
 
   /**
@@ -428,7 +501,8 @@ export interface ColNamespace {
     values: V,
     options?: O &
       TypedSerialize<NullableColumn<V[number], O>> &
-      TypedPrepare<NullableColumn<V[number], O>>,
+      TypedPrepare<NullableColumn<V[number], O>> &
+      TypedDefault<V[number]>,
   ): ColumnDef<NullableColumn<V[number], O>>;
 
   /** Encryption column helpers. */

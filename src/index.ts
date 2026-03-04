@@ -16,6 +16,7 @@ export type {
   NullableColumn,
   TypedSerialize,
   TypedPrepare,
+  TypedDefault,
   RelationNullableOption,
   RelModelCallback,
 } from "./sql/models/define_model_types";
