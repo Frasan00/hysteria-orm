@@ -181,10 +181,13 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
 
   test("should update an user", async () => {
     const user = await UserFactory.userWithUuid(1);
-    const updatedUser = await UserWithUuid.updateRecord({
-      ...user,
-      name: "John Doe",
-    });
+    const updatedUser = await UserWithUuid.updateRecord(
+      user.id,
+      {
+        name: "John Doe",
+      },
+      { returning: ["*"] },
+    );
 
     expect(updatedUser.name).toBe("John Doe");
     expect(updatedUser.id).toBe(user.id);
@@ -196,7 +199,7 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
 
   test("should delete an user", async () => {
     const user = await UserFactory.userWithUuid(1);
-    await UserWithUuid.deleteRecord(user);
+    await UserWithUuid.deleteRecord(user.id);
 
     const deletedUser = await UserWithUuid.findOne({
       where: { id: user.id },

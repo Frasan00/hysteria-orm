@@ -316,8 +316,7 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
   test("should not update an user", async () => {
     const user = await UserFactory.userWithoutPk(1);
     try {
-      await UserWithoutPk.updateRecord({
-        ...user,
+      await UserWithoutPk.updateRecord(1, {
         name: "John Doe",
       });
     } catch (error: any) {
@@ -329,7 +328,7 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
   test("should not delete an user", async () => {
     const user = await UserFactory.userWithoutPk(1);
     try {
-      await UserWithoutPk.deleteRecord(user);
+      await UserWithoutPk.deleteRecord(1);
     } catch (error: any) {
       expect(error).toBeInstanceOf(HysteriaError);
       expect(error.code).toBe("MODEL_HAS_NO_PRIMARY_KEY");

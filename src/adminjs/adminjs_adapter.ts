@@ -20,7 +20,15 @@ import {
   type AdminJsOptions,
 } from "./adminjs_types";
 
-type AnyModel = AnyModelConstructor & { new (): any };
+type AnyModel = AnyModelConstructor & {
+  new (): any;
+  updateRecord(
+    pk: string | number,
+    updatePayload: Partial<any>,
+    options?: any,
+  ): Promise<any>;
+  deleteRecord(pk: string | number, options?: any): Promise<void>;
+};
 
 // Store the sqlDataSource reference for resources to use
 let globalSqlDataSource: SqlDataSource | null = null;
@@ -275,11 +283,10 @@ async function createHysteriaResourceClass() {
         throw new Error("Record not found");
       }
 
-      const updatedRecord = await this._model.updateRecord(
-        existingRecord,
-        params,
-        { connection: this._db },
-      );
+      const updatedRecord = await this._model.updateRecord(id, params, {
+        connection: this._db,
+        returning: ["*"],
+      });
 
       return recordToParams(updatedRecord as Model, this._model);
     }
@@ -295,7 +302,7 @@ async function createHysteriaResourceClass() {
       });
 
       if (record) {
-        await this._model.deleteRecord(record, {
+        await this._model.deleteRecord(id, {
           connection: this._db,
         });
       }

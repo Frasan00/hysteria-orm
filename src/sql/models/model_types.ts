@@ -37,23 +37,24 @@ export type ModelWithoutRelations<T extends Model> = Pick<
  * This type is used as the return type for:
  * - Static find methods: find, findOne, findOneOrFail, findBy, findOneBy, findOneByPrimaryKey
  * - Static retrieval methods: all, first
- * - Static mutation methods: insert, insertMany, upsert, upsertMany, updateRecord, softDelete
+ * - Static mutation methods: insert, insertMany, upsert, upsertMany, updateRecord, softDelete, save
  * - Static refresh method: refresh
  *
  * @example
  * ```typescript
- * // All these methods return ModelQueryResult<User> (or arrays/nullables thereof)
+ * // Find methods return ModelQueryResult<User> (or arrays/nullables thereof)
  * const user1 = await User.findOne({ where: { id: 1 } });
- * const user2 = await User.findOneOrFail({ where: { id: 1 } });
  * const users = await User.find({});
- * const allUsers = await User.all();
- * const newUser = await User.insert({ name: "John" });
  *
- * // Results are plain data objects - use static methods for operations
+ * // Mutation methods return void by default; use returning for data
+ * await User.insert({ name: "John" }); // void
+ * const newUser = await User.insert({ name: "John" }, { returning: ["*"] }); // User
+ *
  * if (user1) {
- *   await User.updateRecord(user1, { name: "Jane" });
- *   await User.refresh(user1);
- *   await User.deleteRecord(user1);
+ *   await User.updateRecord(user1.id, { name: "Jane" }); // void
+ *   const updated = await User.updateRecord(user1.id, { name: "Jane" }, { returning: ["*"] }); // User
+ *   const refreshed = await User.refresh(user1.id);
+ *   await User.deleteRecord(user1.id);
  * }
  * ```
  */

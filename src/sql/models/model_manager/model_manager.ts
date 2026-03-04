@@ -648,19 +648,19 @@ export class ModelManager<T extends Model> {
   }
 
   /**
-   * @description Updates a record, returns the updated record
-   * @description Model is retrieved from the database using the primary key regardless of any model hooks
+   * @description Updates a record. When returning is provided, re-fetches and returns the updated record; otherwise returns void.
    * @description Can only be used if the model has a primary key, use a massive update if the model has no primary key
    */
   async updateRecord(
-    model: Partial<T>,
+    pk: string | number,
+    data: Partial<T>,
     options?: { returning?: ModelKey<T>[] },
-  ): Promise<ModelWithoutRelations<T>> {
+  ): Promise<ModelWithoutRelations<T> | void> {
     const modelColumnNames = new Set(
       this.model.getColumns().map((c) => c.columnName),
     );
-    const keys = Object.keys(model).filter((k) => modelColumnNames.has(k));
-    const values = keys.map((k) => (model as any)[k]);
+    const keys = Object.keys(data).filter((k) => modelColumnNames.has(k));
+    const values = keys.map((k) => (data as any)[k]);
 
     let { columns: preparedColumns, values: preparedValues } =
       await this.interpreterUtils.prepareColumns(keys, values, "update");
@@ -686,13 +686,7 @@ export class ModelManager<T extends Model> {
         preparedColumns,
         preparedValues,
       ),
-      new WhereNode(
-        primaryKey as string,
-        "and",
-        false,
-        "=",
-        model[primaryKey as keyof T] as string,
-      ),
+      new WhereNode(primaryKey as string, "and", false, "=", pk as string),
     ]);
 
     await execSql(
@@ -702,9 +696,14 @@ export class ModelManager<T extends Model> {
       this.sqlType as SqlDataSourceType,
       "affectedRows",
     );
+
+    if (!options?.returning || options.returning.length === 0) {
+      return;
+    }
+
     const updatedModel = await this.findOneByPrimaryKey(
-      model[this.model.primaryKey as keyof T] as string,
-      options?.returning ?? undefined,
+      pk as string,
+      options.returning,
     );
 
     if (!updatedModel) {
@@ -721,7 +720,7 @@ export class ModelManager<T extends Model> {
    * @description Deletes a record
    * @description Can only be used if the model has a primary key, use a massive delete if the model has no primary key
    */
-  async deleteRecord(model: T): Promise<void> {
+  async deleteRecord(pk: string | number): Promise<void> {
     if (!this.model.primaryKey) {
       throw new HysteriaError(
         this.model.name + "::deleteRecord",
@@ -734,7 +733,7 @@ export class ModelManager<T extends Model> {
       "and",
       false,
       "=",
-      model[this.model.primaryKey as keyof T] as string,
+      pk as string,
     );
 
     const { sql, bindings } = this.astParser.parse([

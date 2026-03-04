@@ -317,25 +317,24 @@ export abstract class Model<T extends Model<T> = any> extends Entity {
   }
 
   /**
-   * @description Refreshes a model from the database, the model must have a primary key defined
+   * @description Retrieves a fresh copy of a record from the database by primary key
+   * @param pk The primary key value of the record to refresh
+   * @param options Optional transaction/connection options
+   * @returns The refreshed model data or null if not found
    */
   static async refresh<T extends Model>(
     this: new () => T | typeof Model,
-    model: T,
+    pk: string | number,
     options: Omit<BaseModelMethodOptions, "ignoreHooks"> = {},
-  ): Promise<void> {
+  ): Promise<ModelQueryResult<T> | null> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
-    const primaryKey = typeofModel.primaryKey as keyof T;
-    const primaryKeyValue = model[primaryKey];
-    const refreshedModel = await modelManager.findOneByPrimaryKey(
-      primaryKeyValue as string,
-    );
+    const refreshedModel = await modelManager.findOneByPrimaryKey(pk as string);
     if (!refreshedModel) {
-      return;
+      return null;
     }
 
-    Object.assign(model, refreshedModel);
+    return refreshedModel as ModelQueryResult<T>;
   }
 
   /**
@@ -496,24 +495,42 @@ export abstract class Model<T extends Model<T> = any> extends Entity {
   }
 
   /**
-   * @description Updates a record, returns the updated record
-   * @description Model is retrieved from the database using the primary key regardless of any model hooks
+   * @description Updates a record by primary key. By default returns void; when returning is provided, re-fetches and returns the specified columns.
    * @description Can only be used if the model has a primary key, use a massive update if the model has no primary key
+   * @param pk The primary key value of the record to update
+   * @param updatePayload The partial data to update
+   * @param options Optional transaction/connection options and returning columns
+   * @typeParam R - The returning columns (literal tuple for type inference). Defaults to void.
    * @throws {HysteriaError} If the model has no primary key
    */
-  static async updateRecord<T extends Model>(
+  static async updateRecord<
+    T extends Model,
+    const R extends ReturningColumns<T> = undefined,
+  >(
     this: new () => T | typeof Model,
-    modelSqlInstance: Partial<T>,
-    updatePayload?: Partial<ModelWithoutRelations<T>>,
-    options: Omit<BaseModelMethodOptions, "ignoreHooks"> = {},
-  ): Promise<ModelQueryResult<T>> {
+    pk: string | number,
+    updatePayload: Partial<ModelWithoutRelations<T>>,
+    options: Omit<BaseModelMethodOptions, "ignoreHooks"> & {
+      returning?: R;
+    } = {},
+  ): Promise<WriteReturnType<T, R>> {
     try {
       const typeofModel = this as unknown as typeof Model;
       const modelManager = typeofModel.dispatchModelManager<T>(options);
-      updatePayload &&
-        typeofModel.combineProps(modelSqlInstance, updatePayload as Partial<T>);
-      const updatedModel = await modelManager.updateRecord(modelSqlInstance);
-      return updatedModel as ModelQueryResult<T>;
+      const shouldDisableReturning =
+        !options.returning || options.returning.length === 0;
+
+      if (shouldDisableReturning) {
+        await modelManager.updateRecord(pk, updatePayload as Partial<T>);
+        return undefined as WriteReturnType<T, R>;
+      }
+
+      const updatedModel = await modelManager.updateRecord(
+        pk,
+        updatePayload as Partial<T>,
+        { returning: options.returning as ModelKey<T>[] },
+      );
+      return updatedModel as WriteReturnType<T, R>;
     } catch (error) {
       if (
         error instanceof HysteriaError &&
@@ -612,16 +629,16 @@ export abstract class Model<T extends Model<T> = any> extends Entity {
         });
 
     if (doesExist) {
-      (data as T)[typeofModel.primaryKey as keyof T] = (doesExist as T)[
+      const pkValue = (doesExist as T)[
         typeofModel.primaryKey as keyof ModelWithoutRelations<T>
-      ];
+      ] as string | number;
 
       if (options.updateOnConflict ?? true) {
         if (shouldDisableReturning) {
-          await modelManager.updateRecord(data as T);
+          await modelManager.updateRecord(pkValue, data as Partial<T>);
           return undefined as WriteReturnType<T, R>;
         }
-        return (await modelManager.updateRecord(data as T, {
+        return (await modelManager.updateRecord(pkValue, data as Partial<T>, {
           returning: options.returning as ModelKey<T>[] | undefined,
         })) as WriteReturnType<T, R>;
       }
@@ -729,33 +746,41 @@ export abstract class Model<T extends Model<T> = any> extends Entity {
   }
 
   /**
-   * @description Deletes a record to the database
+   * @description Deletes a record from the database by primary key
+   * @param pk The primary key value of the record to delete
+   * @param options Optional transaction/connection options
+   * @throws {HysteriaError} If the model has no primary key
    */
   static async deleteRecord<T extends Model>(
     this: new () => T | typeof Model,
-    modelSqlInstance: T,
+    pk: string | number,
     options?: Omit<BaseModelMethodOptions, "ignoreHooks">,
   ): Promise<void> {
     const typeofModel = this as unknown as typeof Model;
     const modelManager = typeofModel.dispatchModelManager<T>(options);
-    return modelManager.deleteRecord(modelSqlInstance);
+    return modelManager.deleteRecord(pk);
   }
 
   /**
-   * @description Saves (inserts or updates) a model instance to the database
-   * @description If the primary key is not set, performs an insert. If set, performs an update.
-   * @description After saving, the instance is updated with the result from the database
-   * @param modelSqlInstance The model instance to save
-   * @param options Optional transaction, connection, or ignoreHooks options
+   * @description Saves (inserts or updates) model data to the database. By default returns void; when returning is provided, returns the specified columns.
+   * @description If the primary key is present in the data, performs an update. If not, performs an insert.
+   * @param modelData The data to save
+   * @param options Optional transaction, connection options and returning columns
+   * @typeParam R - The returning columns (literal tuple for type inference). Defaults to void.
    * @throws {HysteriaError} If the model has no primary key defined
    */
-  static async save<T extends Model>(
+  static async save<
+    T extends Model,
+    const R extends ReturningColumns<T> = undefined,
+  >(
     this: new () => T | typeof Model,
-    modelSqlInstance: Partial<T>,
-    options: Omit<BaseModelMethodOptions, "ignoreHooks"> = {},
-  ): Promise<ModelQueryResult<T>> {
+    modelData: Partial<ModelWithoutRelations<T>>,
+    options: Omit<BaseModelMethodOptions, "ignoreHooks"> & {
+      returning?: R;
+    } = {},
+  ): Promise<WriteReturnType<T, R>> {
     const typeofModel = this as unknown as typeof Model;
-    const primaryKey = typeofModel.primaryKey as keyof T;
+    const primaryKey = typeofModel.primaryKey as keyof ModelWithoutRelations<T>;
     if (!primaryKey) {
       throw new HysteriaError(
         typeofModel.name + "::save",
@@ -763,8 +788,8 @@ export abstract class Model<T extends Model<T> = any> extends Entity {
       );
     }
 
-    const primaryKeyValue: string | number | undefined = modelSqlInstance[
-      primaryKey as keyof typeof modelSqlInstance
+    const primaryKeyValue: string | number | undefined = modelData[
+      primaryKey as keyof typeof modelData
     ] as string | number | undefined;
 
     const searchCriteria = primaryKeyValue
@@ -773,57 +798,75 @@ export abstract class Model<T extends Model<T> = any> extends Entity {
         } as unknown as ModelWithoutRelations<T>)
       : {};
 
-    const payload = modelSqlInstance as unknown as ModelWithoutRelations<T>;
+    const payload = modelData as unknown as ModelWithoutRelations<T>;
     const result = await (typeofModel.upsert as typeof Model.upsert<T>).call(
       this,
       searchCriteria,
       payload,
       {
         updateOnConflict: true,
-        returning: ["*"] as any,
+        returning: options.returning as any,
         ...options,
       },
     );
 
-    typeofModel.combineProps(modelSqlInstance, result as unknown as Partial<T>);
-    return modelSqlInstance as ModelQueryResult<T>;
+    return result as unknown as WriteReturnType<T, R>;
   }
 
   /**
-   * @description Soft Deletes a record to the database
+   * @description Soft Deletes a record by primary key. By default returns void; when returning is provided, returns the specified columns.
    * @description default column: deletedAt
    * @description default value: The current date and time in UTC timezone in the format "YYYY-MM-DD HH:mm:ss"
    * @description You can override the column and value by providing the column and value on the static properties of the model `softDeleteColumn` and `softDeleteValue`
+   * @param pk The primary key value of the record to soft delete
+   * @param softDeleteOptions Optional column and value overrides
+   * @param options Optional transaction/connection options and returning columns
+   * @typeParam R - The returning columns (literal tuple for type inference). Defaults to void.
    */
-  static async softDelete<T extends Model>(
+  static async softDelete<
+    T extends Model,
+    const R extends ReturningColumns<T> = undefined,
+  >(
     this: new () => T | typeof Model,
-    modelSqlInstance: T,
+    pk: string | number,
     softDeleteOptions?: {
       column?: ModelKey<T>;
       value?: string | number | boolean | Date;
     },
-    options?: Omit<BaseModelMethodOptions, "ignoreHooks">,
-  ): Promise<ModelQueryResult<T>> {
+    options?: Omit<BaseModelMethodOptions, "ignoreHooks"> & {
+      returning?: R;
+    },
+  ): Promise<WriteReturnType<T, R>> {
     const typeofModel = this as unknown as typeof Model;
     const {
       column = typeofModel.softDeleteColumn as ModelKey<T>,
       value = typeofModel.softDeleteValue,
     } = softDeleteOptions || {};
 
-    modelSqlInstance[column as keyof T] = value as T[keyof T];
+    const updatePayload = {
+      [column as string]: value,
+    } as Partial<ModelWithoutRelations<T>>;
+
     const modelManager = typeofModel.dispatchModelManager<T>({
       trx: options?.trx,
       connection: options?.connection,
     });
-    await modelManager.updateRecord(modelSqlInstance);
 
-    if (typeof value === "string") {
-      modelSqlInstance[column as keyof T] = new Date(value) as T[keyof T];
-      return modelSqlInstance as ModelQueryResult<T>;
+    const shouldDisableReturning =
+      !options?.returning || options.returning.length === 0;
+
+    if (shouldDisableReturning) {
+      await modelManager.updateRecord(pk, updatePayload as Partial<T>);
+      return undefined as WriteReturnType<T, R>;
     }
 
-    modelSqlInstance[column as keyof T] = value as T[keyof T];
-    return modelSqlInstance as ModelQueryResult<T>;
+    const updatedModel = await modelManager.updateRecord(
+      pk,
+      updatePayload as Partial<T>,
+      { returning: options!.returning as ModelKey<T>[] },
+    );
+
+    return updatedModel as WriteReturnType<T, R>;
   }
 
   /**

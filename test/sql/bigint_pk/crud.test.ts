@@ -189,10 +189,13 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
     }
 
     const user = await UserFactory.userWithBigint(1);
-    const updatedUser = await UserWithBigint.updateRecord({
-      ...user,
-      name: "John Doe",
-    });
+    const updatedUser = await UserWithBigint.updateRecord(
+      user.id,
+      {
+        name: "John Doe",
+      },
+      { returning: ["*"] },
+    );
 
     expect(updatedUser.name).toBe("John Doe");
     expect(updatedUser.id).toBe(user.id);
@@ -203,7 +206,7 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
 
   test("should delete an user", async () => {
     const user = await UserFactory.userWithBigint(1);
-    await UserWithBigint.deleteRecord(user);
+    await UserWithBigint.deleteRecord(user.id);
 
     const deletedUser = await UserWithBigint.findOne({
       where: { id: user.id },

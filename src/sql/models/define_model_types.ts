@@ -11,14 +11,33 @@ import type {
   SymmetricEncryptionOptions,
   ThroughModel,
 } from "./decorators/model_decorators_types";
-import type { ModelKey } from "./model_manager/model_manager_types";
+import type {
+  ModelKey,
+  ReturningColumns,
+  WriteReturnType,
+} from "./model_manager/model_manager_types";
+import type {
+  BaseModelMethodOptions,
+  ModelQueryResult,
+  ModelWithoutRelations,
+} from "./model_types";
 /**
  * Phantom-typed descriptor for a model column.
  * `T` carries the TypeScript type the column resolves to at the instance level.
  */
 export interface ColumnDef<T = unknown> {
   readonly _phantom: T;
+  readonly _isPrimary?: boolean;
   readonly _apply: (target: Object, propertyKey: string) => void;
+}
+
+/**
+ * A column descriptor marked as a primary key.
+ * Used by `col.primary()`, `col.increment()`, and `col.bigIncrement()` to
+ * carry PK type information for `defineModel` type inference.
+ */
+export interface PrimaryColumnDef<T = unknown> extends ColumnDef<T> {
+  readonly _isPrimary: true;
 }
 
 /**
@@ -176,7 +195,7 @@ export interface ColNamespace {
    */
   primary<T = string | number>(
     options?: ColPrimaryOptions & TypedSerialize<T> & TypedPrepare<T>,
-  ): ColumnDef<T>;
+  ): PrimaryColumnDef<T>;
 
   /**
    * VARCHAR column. Accepts an optional `length` option.
@@ -245,7 +264,7 @@ export interface ColNamespace {
    */
   increment(
     options?: ColIncrementOptions & TypedPrepare<number>,
-  ): ColumnDef<number>;
+  ): PrimaryColumnDef<number>;
 
   /**
    * Auto-incrementing bigint primary key. Always non-nullable.
@@ -253,7 +272,7 @@ export interface ColNamespace {
    */
   bigIncrement(
     options?: ColBigIncrementOptions & TypedPrepare<number>,
-  ): ColumnDef<number>;
+  ): PrimaryColumnDef<number>;
 
   /**
    * Boolean column.
@@ -662,6 +681,21 @@ export type DefineModelOptions<K extends string = string> = {
 // Type inference helpers
 // ---------------------------------------------------------------------------
 
+/**
+ * Extracts the primary key column type from a columns definition.
+ * Looks for columns defined with `PrimaryColumnDef` (col.primary, col.increment, col.bigIncrement).
+ * Falls back to `string | number` if no PK column is found.
+ */
+type ExtractPKType<C extends Record<string, ColumnDef>> = {
+  [K in keyof C]: C[K] extends PrimaryColumnDef<infer T> ? T : never;
+}[keyof C];
+
+export type InferPK<C extends Record<string, ColumnDef>> = [
+  ExtractPKType<C>,
+] extends [never]
+  ? string | number
+  : ExtractPKType<C>;
+
 type InferColumns<C extends Record<string, ColumnDef>> = {
   [K in keyof C]: C[K] extends ColumnDef<infer T> ? T : never;
 };
@@ -721,6 +755,17 @@ export type ConcreteModelStatics = {
 };
 
 /**
+ * Static methods that may have narrowed PK types in DefinedModel.
+ * Excluded from structural checks in AnyModelConstructor.
+ */
+type PKNarrowedMethods =
+  | "updateRecord"
+  | "deleteRecord"
+  | "softDelete"
+  | "save"
+  | "refresh";
+
+/**
  * Union type that accepts both decorator-based model classes (`typeof Model`
  * subclasses) and programmatic models created via `defineModel`.
  *
@@ -729,7 +774,8 @@ export type ConcreteModelStatics = {
  */
 export type AnyModelConstructor =
   | typeof Model
-  | (ConcreteModelStatics & (new (...args: any[]) => Model));
+  | (Omit<ConcreteModelStatics, PKNarrowedMethods> &
+      (new (...args: any[]) => Model));
 
 /**
  * The return type of `defineModel` – a concrete Model constructor whose
@@ -738,7 +784,55 @@ export type AnyModelConstructor =
  * Uses a mapped type over `typeof Model` so the abstract flag is stripped,
  * making the result instantiable while keeping all public static members.
  */
+/**
+ * Overrides for static methods that accept a primary key parameter.
+ * Narrows the PK type from `string | number` to the actual inferred PK type.
+ */
+type DefinedModelPKOverrides<
+  C extends Record<string, ColumnDef>,
+  M extends Model,
+> = {
+  updateRecord<const R extends ReturningColumns<M> = undefined>(
+    pk: InferPK<C>,
+    updatePayload: Partial<ModelWithoutRelations<M>>,
+    options?: Omit<BaseModelMethodOptions, "ignoreHooks"> & {
+      returning?: R;
+    },
+  ): Promise<WriteReturnType<M, R>>;
+
+  deleteRecord(
+    pk: InferPK<C>,
+    options?: Omit<BaseModelMethodOptions, "ignoreHooks">,
+  ): Promise<void>;
+
+  softDelete<const R extends ReturningColumns<M> = undefined>(
+    pk: InferPK<C>,
+    softDeleteOptions?: {
+      column?: ModelKey<M>;
+      value?: string | number | boolean | Date;
+    },
+    options?: Omit<BaseModelMethodOptions, "ignoreHooks"> & {
+      returning?: R;
+    },
+  ): Promise<WriteReturnType<M, R>>;
+
+  save<const R extends ReturningColumns<M> = undefined>(
+    modelData: Partial<ModelWithoutRelations<M>>,
+    options?: Omit<BaseModelMethodOptions, "ignoreHooks"> & {
+      returning?: R;
+    },
+  ): Promise<WriteReturnType<M, R>>;
+
+  refresh(
+    pk: InferPK<C>,
+    options?: Omit<BaseModelMethodOptions, "ignoreHooks">,
+  ): Promise<ModelQueryResult<M> | null>;
+};
+
 export type DefinedModel<
   C extends Record<string, ColumnDef>,
   R extends Record<string, RelationDef>,
-> = ConcreteModelStatics & { new (): InferModel<C, R> & Model };
+> = Omit<ConcreteModelStatics, PKNarrowedMethods> &
+  DefinedModelPKOverrides<C, InferModel<C, R> & Model> & {
+    new (): InferModel<C, R> & Model;
+  };

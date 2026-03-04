@@ -8,8 +8,10 @@ export { Model } from "./sql/models/model";
 export { defineModel, col, rel } from "./sql/models/define_model";
 export type {
   ColumnDef,
+  PrimaryColumnDef,
   RelationDef,
   DefinedModel,
+  InferPK,
   AnyModelConstructor,
   NullableColumn,
   TypedSerialize,
