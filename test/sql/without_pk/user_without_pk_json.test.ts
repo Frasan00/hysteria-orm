@@ -3,28 +3,30 @@ import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { UserFactory } from "../test_models/factory/user_factory";
 import { UserWithoutPk } from "../test_models/without_pk/user_without_pk";
 
+let sql: SqlDataSource;
+
 beforeAll(async () => {
-  const dataSource = new SqlDataSource();
-  await dataSource.connect();
+  sql = new SqlDataSource();
+  await sql.connect();
 });
 
 afterAll(async () => {
-  await SqlDataSource.disconnect();
+  await sql.disconnect();
 });
 
 beforeEach(async () => {
-  await SqlDataSource.startGlobalTransaction();
+  await sql.startGlobalTransaction();
 });
 
 afterEach(async () => {
-  await SqlDataSource.rollbackGlobalTransaction();
+  await sql.rollbackGlobalTransaction();
 });
 
 describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
   describe("Basic JSON Filtering", () => {
     test("should query by full JSON object equality using whereJson", async () => {
       const json = { foo: "bar", arr: [1, 2, 3] };
-      const user = await UserWithoutPk.insert(
+      const user = await sql.from(UserWithoutPk).insert(
         {
           ...UserFactory.getCommonUserData(),
           json,
@@ -33,14 +35,14 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
         { returning: ["*"] },
       );
 
-      const found = await UserWithoutPk.query().whereJson("json", json).one();
+      const found = await sql.from(UserWithoutPk).whereJson("json", json).one();
       expect(found).not.toBeNull();
       expect(found?.json).toEqual(json);
     });
 
     test("should query by nested JSON property using whereJson", async () => {
       const json = { profile: { info: { age: 42 } } };
-      const user = await UserWithoutPk.insert(
+      const user = await sql.from(UserWithoutPk).insert(
         {
           ...UserFactory.getCommonUserData(),
           json,
@@ -49,7 +51,7 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
         { returning: ["*"] },
       );
 
-      const found = await UserWithoutPk.query().whereJson("json", json).one();
+      const found = await sql.from(UserWithoutPk).whereJson("json", json).one();
       expect(found).not.toBeNull();
       expect(found?.json).toEqual(json);
     });
@@ -60,7 +62,7 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
         return;
       }
 
-      const user = await UserWithoutPk.insert(
+      const user = await sql.from(UserWithoutPk).insert(
         {
           ...UserFactory.getCommonUserData(),
           json: {
@@ -78,14 +80,14 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
         a: [{ b: 2 }],
       });
 
-      await UserWithoutPk.query().update({
+      await sql.from(UserWithoutPk).update({
         json: {
-          ...user.json,
+          ...(user.json as Record<string, any>),
           a: [{ b: 3 }],
         },
       });
 
-      const retrievedUser = await UserWithoutPk.findOne({
+      const retrievedUser = await sql.from(UserWithoutPk).findOne({
         where: { email: user.email },
       });
 
@@ -95,7 +97,8 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
         a: [{ b: 3 }],
       });
 
-      const retrievedUserByNestedProperty = await UserWithoutPk.query()
+      const retrievedUserByNestedProperty = await sql
+        .from(UserWithoutPk)
         .whereJson("json", { a: [{ b: 3 }] })
         .one();
 
@@ -112,7 +115,7 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
 
       const jsonA = { logic: "A", status: "active" };
       const jsonB = { logic: "B", status: "active" };
-      const userA = await UserWithoutPk.insert(
+      const userA = await sql.from(UserWithoutPk).insert(
         {
           ...UserFactory.getCommonUserData(),
           json: jsonA,
@@ -120,13 +123,14 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
         },
         { returning: ["*"] },
       );
-      await UserWithoutPk.insert({
+      await sql.from(UserWithoutPk).insert({
         ...UserFactory.getCommonUserData(),
         json: jsonB,
         email: `logicB@json.com`,
       });
 
-      const andFound = await UserWithoutPk.query()
+      const andFound = await sql
+        .from(UserWithoutPk)
         .whereJson("json", { logic: "A" })
         .andWhereJson("json", { status: "active" })
         .one();
@@ -138,7 +142,7 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
     test("should use OR combinations with JSON conditions", async () => {
       const jsonA = { logic: "A" };
       const jsonB = { logic: "B" };
-      const userA = await UserWithoutPk.insert(
+      const userA = await sql.from(UserWithoutPk).insert(
         {
           ...UserFactory.getCommonUserData(),
           json: jsonA,
@@ -146,7 +150,7 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
         },
         { returning: ["*"] },
       );
-      const userB = await UserWithoutPk.insert(
+      const userB = await sql.from(UserWithoutPk).insert(
         {
           ...UserFactory.getCommonUserData(),
           json: jsonB,
@@ -155,7 +159,8 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
         { returning: ["*"] },
       );
 
-      const orFound = await UserWithoutPk.query()
+      const orFound = await sql
+        .from(UserWithoutPk)
         .whereJson("json", jsonA)
         .orWhereJson("json", jsonB)
         .many();
@@ -171,7 +176,7 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
         return;
       }
 
-      const userA = await UserWithoutPk.insert(
+      const userA = await sql.from(UserWithoutPk).insert(
         {
           ...UserFactory.getCommonUserData(),
           json: { category: "A", priority: 1 },
@@ -179,7 +184,7 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
         },
         { returning: ["*"] },
       );
-      const userB = await UserWithoutPk.insert(
+      const userB = await sql.from(UserWithoutPk).insert(
         {
           ...UserFactory.getCommonUserData(),
           json: { category: "B", priority: 2 },
@@ -187,7 +192,7 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
         },
         { returning: ["*"] },
       );
-      const userC = await UserWithoutPk.insert(
+      const userC = await sql.from(UserWithoutPk).insert(
         {
           ...UserFactory.getCommonUserData(),
           json: { category: "A", priority: 2 },
@@ -196,7 +201,8 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
         { returning: ["*"] },
       );
 
-      const complexFound = await UserWithoutPk.query()
+      const complexFound = await sql
+        .from(UserWithoutPk)
         .whereJson("json", { category: "A" })
         .orWhereJson("json", { priority: 2 })
         .many();
@@ -215,7 +221,7 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
         return;
       }
 
-      const userWithArray = await UserWithoutPk.insert(
+      const userWithArray = await sql.from(UserWithoutPk).insert(
         {
           ...UserFactory.getCommonUserData(),
           json: { tags: ["frontend", "typescript"], count: 2 },
@@ -224,7 +230,8 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
         { returning: ["*"] },
       );
 
-      const found = await UserWithoutPk.query()
+      const found = await sql
+        .from(UserWithoutPk)
         .whereJson("json", { tags: ["frontend", "typescript"] })
         .one();
 
@@ -238,7 +245,7 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
         return;
       }
 
-      const userWithNested = await UserWithoutPk.insert(
+      const userWithNested = await sql.from(UserWithoutPk).insert(
         {
           ...UserFactory.getCommonUserData(),
           json: {
@@ -249,7 +256,8 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
         { returning: ["*"] },
       );
 
-      const found = await UserWithoutPk.query()
+      const found = await sql
+        .from(UserWithoutPk)
         .whereJson("json", {
           user: { profile: { settings: { theme: "dark" } } },
         })
@@ -271,7 +279,7 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
       ];
 
       for (const json of jsonVariants) {
-        const user = await UserWithoutPk.insert(
+        const user = await sql.from(UserWithoutPk).insert(
           {
             ...UserFactory.getCommonUserData(),
             json,
@@ -279,7 +287,7 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
           },
           { returning: ["*"] },
         );
-        const retrieved = await UserWithoutPk.findOne({
+        const retrieved = await sql.from(UserWithoutPk).findOne({
           where: { email: user.email },
         });
         expect(retrieved?.json).toEqual(json);
@@ -288,7 +296,7 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
 
     test("should update only part of the JSON object", async () => {
       const json = { a: 1, b: 2 };
-      const user = await UserWithoutPk.insert(
+      const user = await sql.from(UserWithoutPk).insert(
         {
           ...UserFactory.getCommonUserData(),
           json,
@@ -297,11 +305,12 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
         { returning: ["*"] },
       );
 
-      await UserWithoutPk.query()
+      await sql
+        .from(UserWithoutPk)
         .where("email", "=", user.email)
         .update({ json: { ...json, b: 3 } });
 
-      const updated = await UserWithoutPk.findOne({
+      const updated = await sql.from(UserWithoutPk).findOne({
         where: { email: user.email },
       });
       expect(updated?.json).toEqual({ a: 1, b: 3 });
@@ -310,7 +319,7 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
 
   describe("Bulk JSON Operations", () => {
     test("should bulk insert users with different JSON values and query using whereJson", async () => {
-      const users = await UserWithoutPk.insertMany(
+      const users = await sql.from(UserWithoutPk).insertMany(
         [
           {
             ...UserFactory.getCommonUserData(),
@@ -326,10 +335,12 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
         { returning: ["*"] },
       );
 
-      const found1 = await UserWithoutPk.query()
+      const found1 = await sql
+        .from(UserWithoutPk)
         .whereJson("json", { bulk: 1 })
         .one();
-      const found2 = await UserWithoutPk.query()
+      const found2 = await sql
+        .from(UserWithoutPk)
         .whereJson("json", { bulk: 2 })
         .one();
 
@@ -347,7 +358,7 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
 
       const json1 = { bulk: 1, type: "test" };
       const json2 = { bulk: 2, type: "test" };
-      const users = await UserWithoutPk.insertMany(
+      const users = await sql.from(UserWithoutPk).insertMany(
         [
           {
             ...UserFactory.getCommonUserData(),
@@ -363,7 +374,8 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
         { returning: ["*"] },
       );
 
-      const foundByOr = await UserWithoutPk.query()
+      const foundByOr = await sql
+        .from(UserWithoutPk)
         .whereJson("json", { bulk: 1 })
         .orWhereJson("json", { bulk: 2 })
         .many();
@@ -384,7 +396,7 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
 
       const jsonA = { arr: [1, 2, 3], foo: "bar" };
       const jsonB = { arr: [4, 5, 6], foo: "baz" };
-      const userA = await UserWithoutPk.insert(
+      const userA = await sql.from(UserWithoutPk).insert(
         {
           ...UserFactory.getCommonUserData(),
           json: jsonA,
@@ -392,7 +404,7 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
         },
         { returning: ["*"] },
       );
-      const userB = await UserWithoutPk.insert(
+      const userB = await sql.from(UserWithoutPk).insert(
         {
           ...UserFactory.getCommonUserData(),
           json: jsonB,
@@ -401,13 +413,15 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
         { returning: ["*"] },
       );
       // whereJsonContains
-      const foundA = await UserWithoutPk.query()
+      const foundA = await sql
+        .from(UserWithoutPk)
         .whereJsonContains("json", { arr: [1, 2, 3] })
         .one();
       expect(foundA).not.toBeNull();
       expect(foundA?.email).toBe(userA.email);
       // whereJsonNotContains
-      const notFoundA = await UserWithoutPk.query()
+      const notFoundA = await sql
+        .from(UserWithoutPk)
         .whereJsonNotContains("json", { arr: [1, 2, 3] })
         .one();
       expect(notFoundA).not.toBeNull();
@@ -417,12 +431,12 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
     test("should filter using whereNotJson", async () => {
       const jsonA = { foo: "bar" };
       const jsonB = { foo: "baz" };
-      await UserWithoutPk.insert({
+      await sql.from(UserWithoutPk).insert({
         ...UserFactory.getCommonUserData(),
         json: jsonA,
         email: `notjsonA@json.com`,
       });
-      const userB = await UserWithoutPk.insert(
+      const userB = await sql.from(UserWithoutPk).insert(
         {
           ...UserFactory.getCommonUserData(),
           json: jsonB,
@@ -430,19 +444,22 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
         },
         { returning: ["*"] },
       );
-      const found = await UserWithoutPk.query()
+      const found = await sql
+        .from(UserWithoutPk)
         .whereNotJson("json", { foo: "bar" })
         .one();
       expect(found).not.toBeNull();
       expect(found?.json).not.toBeNull();
-      expect(found?.json && found?.json.foo).toBe("baz");
+      expect(found?.json && (found?.json as Record<string, any>).foo).toBe(
+        "baz",
+      );
     });
   });
 
   describe("Selecting JSON Column", () => {
     test("should select only the JSON column", async () => {
       const json = { foo: "bar", arr: [1, 2, 3] };
-      const user = await UserWithoutPk.insert(
+      const user = await sql.from(UserWithoutPk).insert(
         {
           ...UserFactory.getCommonUserData(),
           json,
@@ -450,7 +467,8 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
         },
         { returning: ["*"] },
       );
-      const found = await UserWithoutPk.query()
+      const found = await sql
+        .from(UserWithoutPk)
         .select("json")
         .where("email", "=", user.email)
         .one();
@@ -462,7 +480,7 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
 
     test("should select JSON column and another column", async () => {
       const json = { foo: "baz" };
-      const user = await UserWithoutPk.insert(
+      const user = await sql.from(UserWithoutPk).insert(
         {
           ...UserFactory.getCommonUserData(),
           json,
@@ -470,7 +488,8 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
         },
         { returning: ["*"] },
       );
-      const found = await UserWithoutPk.query()
+      const found = await sql
+        .from(UserWithoutPk)
         .select("json", "email")
         .where("email", "=", user.email)
         .one();
@@ -480,7 +499,7 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
     });
 
     test("should select JSON column when it is null", async () => {
-      const user = await UserWithoutPk.insert(
+      const user = await sql.from(UserWithoutPk).insert(
         {
           ...UserFactory.getCommonUserData(),
           json: null,
@@ -488,7 +507,8 @@ describe(`[${env.DB_TYPE}] JSON Query Operations`, () => {
         },
         { returning: ["*"] },
       );
-      const found = await UserWithoutPk.query()
+      const found = await sql
+        .from(UserWithoutPk)
         .select("json")
         .where("email", "=", user.email)
         .one();

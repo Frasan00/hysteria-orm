@@ -1,44 +1,14 @@
-import {
-  belongsTo,
-  column,
-} from "../../../../src/sql/models/decorators/model_decorators";
-import { Model } from "../../../../src/sql/models/model";
-import { UserWithBigint } from "./user_bigint";
+import { defineModel, col } from "../../../../src/sql/models/define_model";
 
-export class PostWithBigint extends Model {
-  static table = "posts_with_bigint";
-
-  @column.integer({
-    primaryKey: true,
-  })
-  declare id: number;
-
-  @column.integer()
-  declare userId: number;
-
-  @column()
-  declare title: string;
-
-  @column()
-  declare content: string;
-
-  @column()
-  declare shortDescription: string;
-
-  @column.datetime({
-    autoCreate: true,
-  })
-  declare createdAt: Date;
-
-  @column.datetime({
-    autoCreate: true,
-    autoUpdate: true,
-  })
-  declare updatedAt: Date;
-
-  @column.datetime()
-  declare deletedAt: Date | null;
-
-  @belongsTo(() => UserWithBigint, "userId")
-  declare user: UserWithBigint;
-}
+export const PostWithBigint = defineModel("posts_with_bigint", {
+  columns: {
+    id: col.integer({ primaryKey: true }),
+    userId: col.integer(),
+    title: col.string(),
+    content: col.string(),
+    shortDescription: col.string(),
+    createdAt: col.datetime({ autoCreate: true }),
+    updatedAt: col.datetime({ autoCreate: true, autoUpdate: true }),
+    deletedAt: col.datetime(),
+  },
+});

@@ -79,7 +79,7 @@ export class MongoQueryBuilder<T extends Collection> {
     options: OneOptions = { throwErrorOnNull: false },
   ): Promise<T | null> {
     if (!options.ignoreHooks?.includes("beforeFetch")) {
-      this.model.beforeFetch(this);
+      this.model.beforeFetch?.(this);
     }
 
     const queryPayload: MongoClientImport["Collection"]["prototype"]["find"]["prototype"]["filter"] =
@@ -103,7 +103,11 @@ export class MongoQueryBuilder<T extends Collection> {
     );
 
     return !options.ignoreHooks?.includes("afterFetch")
-      ? ((await this.model.afterFetch([serializedModel]))[0] as T)
+      ? ((
+          await (this.model.afterFetch?.([serializedModel]) ?? [
+            serializedModel,
+          ])
+        )[0] as T)
       : (serializedModel as T);
   }
 
@@ -120,7 +124,7 @@ export class MongoQueryBuilder<T extends Collection> {
 
   async many(options: ManyOptions = {}): Promise<T[]> {
     if (!options.ignoreHooks?.includes("beforeFetch")) {
-      this.model.beforeFetch(this);
+      this.model.beforeFetch?.(this);
     }
 
     const queryPayload: MongoClientImport["Collection"]["prototype"]["find"]["prototype"]["filter"] =
@@ -149,7 +153,8 @@ export class MongoQueryBuilder<T extends Collection> {
     );
 
     return !options.ignoreHooks?.includes("afterFetch")
-      ? ((await this.model.afterFetch(serializedModels)) as T[])
+      ? ((await (this.model.afterFetch?.(serializedModels) ??
+          serializedModels)) as T[])
       : (serializedModels as T[]);
   }
 
@@ -162,7 +167,7 @@ export class MongoQueryBuilder<T extends Collection> {
     options: { ignoreHooks?: boolean; returning?: boolean } = {},
   ): Promise<O & { id: string }> {
     if (!options.ignoreHooks) {
-      this.model.beforeInsert(modelData);
+      this.model.beforeInsert?.(modelData);
     }
 
     const result = await this.collection.insertOne(
@@ -200,7 +205,7 @@ export class MongoQueryBuilder<T extends Collection> {
     options: { ignoreHooks?: boolean; returning?: boolean } = {},
   ): Promise<(O & { id: string })[]> {
     if (!options.ignoreHooks) {
-      this.model.beforeInsert(modelData);
+      this.model.beforeInsert?.(modelData);
     }
 
     const result = await this.collection.insertMany(
@@ -244,7 +249,7 @@ export class MongoQueryBuilder<T extends Collection> {
     options: { ignoreHooks?: boolean } = {},
   ): Promise<T[]> {
     if (!options.ignoreHooks) {
-      this.model.beforeUpdate(this);
+      this.model.beforeUpdate?.(this);
     }
 
     const result = await this.collection.updateMany(
@@ -285,7 +290,7 @@ export class MongoQueryBuilder<T extends Collection> {
    */
   async delete(options: { ignoreHooks?: boolean } = {}): Promise<void> {
     if (!options.ignoreHooks) {
-      this.model.beforeDelete(this);
+      this.model.beforeDelete?.(this);
     }
 
     await this.collection.deleteMany(this.whereObject, {
@@ -299,7 +304,7 @@ export class MongoQueryBuilder<T extends Collection> {
    */
   async count(options: { ignoreHooks?: boolean } = {}): Promise<number> {
     if (!options.ignoreHooks) {
-      this.model.beforeFetch(this);
+      this.model.beforeFetch?.(this);
     }
 
     return this.collection.countDocuments(this.whereObject, {

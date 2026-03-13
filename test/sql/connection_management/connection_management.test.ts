@@ -2,67 +2,35 @@ import { env } from "../../../src/env/env";
 import { HysteriaError } from "../../../src/errors/hysteria_error";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { UserFactory } from "../test_models/factory/user_factory";
-import { UserStatus, UserWithUuid } from "../test_models/uuid/user_uuid";
+import { UserStatus, UserWithUuid } from "../test_models/uuid/schema";
+
+let sql: SqlDataSource;
 
 const isMssql = env.DB_TYPE === "mssql";
 
 beforeAll(async () => {
-  const dataSource = new SqlDataSource();
-  await dataSource.connect();
+  sql = new SqlDataSource();
+  await sql.connect();
 });
 
 beforeEach(async () => {
   if (!isMssql) {
-    await SqlDataSource.startGlobalTransaction();
+    await sql.startGlobalTransaction();
   }
 });
 
 afterEach(async () => {
   if (!isMssql) {
-    await SqlDataSource.rollbackGlobalTransaction();
+    await sql.rollbackGlobalTransaction();
   } else {
-    await UserWithUuid.query().delete();
+    await sql.from(UserWithUuid).delete();
   }
-});
-
-describe(`[${env.DB_TYPE}] Connection Management - connect()`, () => {
-  test("should throw error when connection already exists", async () => {
-    // First connection is already established in beforeAll
-    // This test verifies that the singleton pattern is working
-    // The primary instance is already set, so we can't test this without affecting other tests
-    // Instead, we verify that SqlDataSource.instance exists
-    const primaryInstance = SqlDataSource.instance;
-    expect(primaryInstance).toBeDefined();
-    expect(primaryInstance.isConnected).toBe(true);
-  });
-
-  test("should connectToSecondarySource successfully", async () => {
-    // This tests the connectToSecondarySource method
-    // which requires an input parameter (uses env vars by default from DataSource base class)
-    const slave = await SqlDataSource.connectToSecondarySource({
-      type: env.DB_TYPE as any,
-      logs: false,
-    });
-
-    expect(slave.isConnected).toBe(true);
-    await slave.disconnect();
-  }, 15000);
 });
 
 describe(`[${env.DB_TYPE}] Connection Management - isConnected`, () => {
   test("should return true when connection is established via pool", async () => {
-    const sql = SqlDataSource.instance;
     expect(sql.isConnected).toBe(true);
   });
-
-  test("should return true when connection is established via direct connection", async () => {
-    const slave = await SqlDataSource.connectToSecondarySource({
-      type: env.DB_TYPE as any,
-      logs: false,
-    });
-    expect(slave.isConnected).toBe(true);
-    await slave.disconnect();
-  }, 15000);
 
   test("should return false when connection is not established", async () => {
     const dataSource = new SqlDataSource();
@@ -72,7 +40,6 @@ describe(`[${env.DB_TYPE}] Connection Management - isConnected`, () => {
 
 describe(`[${env.DB_TYPE}] Connection Management - getConnection()`, () => {
   test("should get connection from pool", async () => {
-    const sql = SqlDataSource.instance;
     const connection = await sql.getConnection();
 
     expect(connection).toBeDefined();
@@ -92,7 +59,6 @@ describe(`[${env.DB_TYPE}] Connection Management - getConnection()`, () => {
       return;
     }
 
-    const sql = SqlDataSource.instance;
     const conn1 = await sql.getConnection();
     const conn2 = await sql.getConnection();
 
@@ -103,7 +69,6 @@ describe(`[${env.DB_TYPE}] Connection Management - getConnection()`, () => {
 
 describe(`[${env.DB_TYPE}] Connection Management - getPool()`, () => {
   test("should return pool when connection is established", async () => {
-    const sql = SqlDataSource.instance;
     const pool = sql.getPool();
 
     expect(pool).toBeDefined();
@@ -119,7 +84,6 @@ describe(`[${env.DB_TYPE}] Connection Management - getPool()`, () => {
 
 describe(`[${env.DB_TYPE}] Connection Management - getConnectionDetails()`, () => {
   test("should return connection details", async () => {
-    const sql = SqlDataSource.instance;
     const details = sql.getConnectionDetails();
 
     expect(details).toBeDefined();
@@ -128,62 +92,9 @@ describe(`[${env.DB_TYPE}] Connection Management - getConnectionDetails()`, () =
 });
 
 describe(`[${env.DB_TYPE}] Connection Management - disconnect()`, () => {
-  test("should disconnect connection successfully", async () => {
-    const slave = await SqlDataSource.connectToSecondarySource({
-      type: env.DB_TYPE as any,
-      logs: false,
-    });
-    expect(slave.isConnected).toBe(true);
-
-    await slave.disconnect();
-    expect(slave.isConnected).toBe(false);
-  }, 15000);
-
-  test("should handle disconnect when already disconnected", async () => {
-    const slave = await SqlDataSource.connectToSecondarySource({
-      type: env.DB_TYPE as any,
-      logs: false,
-    });
-    await slave.disconnect();
-
-    // Should not throw when disconnecting again
-    await slave.disconnect();
-    expect(slave.isConnected).toBe(false);
-  }, 15000);
-
-  test("should rollback global transaction before disconnecting", async () => {
-    const slave = await SqlDataSource.connectToSecondarySource({
-      type: env.DB_TYPE as any,
-      logs: false,
-    });
-
-    // Start a global transaction on the slave
-    await slave.startGlobalTransaction();
-
-    // Create a user within the slave's transaction context
-    const user = {
-      name: "Transaction Test",
-      email: "transaction-disconnect@example.com",
-      age: 25,
-      status: UserStatus.active,
-      isActive: true,
-    };
-    await UserWithUuid.save(user, { connection: slave });
-
-    // Disconnect should rollback the transaction on the slave
-    await slave.disconnect();
-
-    // User should not exist on main instance after rollback
-    const foundUser = await UserWithUuid.query()
-      .where("email", "transaction-disconnect@example.com")
-      .one();
-
-    expect(foundUser).toBeNull();
-  }, 15000);
-
   test("should disconnect all slaves when master disconnects", async () => {
     // Create a data source with slaves using environment variables
-    const mainInstance = SqlDataSource.instance;
+    const mainInstance = sql;
 
     // Verify the instance has slaves property
     expect(mainInstance.slaves).toBeDefined();
@@ -198,7 +109,6 @@ describe(`[${env.DB_TYPE}] Connection Management - disconnect()`, () => {
 
 describe(`[${env.DB_TYPE}] Connection Management - clone()`, () => {
   test("should clone data source successfully", async () => {
-    const sql = SqlDataSource.instance;
     const cloned = await sql.clone();
 
     expect(cloned.isConnected).toBe(true);
@@ -206,7 +116,6 @@ describe(`[${env.DB_TYPE}] Connection Management - clone()`, () => {
   }, 15000);
 
   test("should not affect original when cloned is disconnected", async () => {
-    const sql = SqlDataSource.instance;
     const cloned = await sql.clone({ shouldRecreatePool: true });
 
     await cloned.disconnect();
@@ -216,7 +125,6 @@ describe(`[${env.DB_TYPE}] Connection Management - clone()`, () => {
   }, 15000);
 
   test("should create new pool when shouldRecreatePool is true", async () => {
-    const sql = SqlDataSource.instance;
     const cloned = await sql.clone({ shouldRecreatePool: true });
 
     expect(cloned.isConnected).toBe(true);
@@ -227,7 +135,6 @@ describe(`[${env.DB_TYPE}] Connection Management - clone()`, () => {
   }, 15000);
 
   test("should share pool when shouldRecreatePool is false (default)", async () => {
-    const sql = SqlDataSource.instance;
     const cloned = await sql.clone();
 
     expect(cloned.isConnected).toBe(true);
@@ -240,7 +147,6 @@ describe(`[${env.DB_TYPE}] Connection Management - clone()`, () => {
 
 describe(`[${env.DB_TYPE}] Connection Management - getDbType()`, () => {
   test("should return correct database type", () => {
-    const sql = SqlDataSource.instance;
     const dbType = sql.getDbType();
 
     expect(dbType).toBe(env.DB_TYPE);
@@ -256,50 +162,14 @@ describe(`[${env.DB_TYPE}] Connection Management - getDbType()`, () => {
 });
 
 describe(`[${env.DB_TYPE}] Connection Management - Integration`, () => {
-  test("should handle query after reconnect", async () => {
-    const slave = await SqlDataSource.connectToSecondarySource({
-      type: env.DB_TYPE as any,
-      logs: false,
-    });
-
-    // Create a user
-    const user1 = {
-      name: "Before Reconnect",
-      email: `before-${Date.now()}@example.com`,
-      age: 30,
-      status: UserStatus.active,
-      isActive: true,
-    };
-    await UserWithUuid.insert(user1);
-
-    // Disconnect
-    await slave.disconnect();
-    expect(slave.isConnected).toBe(false);
-
-    // The main instance should still be connected
-    const foundUser = await UserWithUuid.query()
-      .where("email", user1.email)
-      .one();
-
-    expect(foundUser).not.toBeNull();
-    expect(foundUser?.name).toBe("Before Reconnect");
-
-    // Clean up for MSSQL (no transaction rollback)
-    if (isMssql && foundUser) {
-      await UserWithUuid.query().where("id", foundUser.id).delete();
-    }
-  }, 15000);
-
   test("should maintain connection state across operations", async () => {
-    const sql = SqlDataSource.instance;
-
     // Perform multiple operations
     expect(sql.isConnected).toBe(true);
 
-    const user = await UserFactory.userWithUuid(1);
+    const user = await UserFactory.userWithUuid(sql, 1);
     expect(user).toBeDefined();
 
-    const foundUser = await UserWithUuid.query().where("id", user.id).one();
+    const foundUser = await sql.from(UserWithUuid).where("id", user.id).one();
 
     expect(foundUser).not.toBeNull();
 
@@ -308,7 +178,7 @@ describe(`[${env.DB_TYPE}] Connection Management - Integration`, () => {
 
     // Clean up for MSSQL (no transaction rollback)
     if (isMssql && foundUser) {
-      await UserWithUuid.query().where("id", foundUser.id).delete();
+      await sql.from(UserWithUuid).where("id", foundUser.id).delete();
     }
   }, 15000);
 

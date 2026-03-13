@@ -24,27 +24,48 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await SqlDataSource.disconnect();
+  await sql.disconnect();
 });
 
 describe(`[${env.DB_TYPE}] Query Builder with embedded models with cloned connection`, () => {
   test("Embedding should work with cloned connection", async () => {
     const clonedSql = await sql.clone({ shouldRecreatePool: true });
     await clonedSql.startGlobalTransaction();
-    await clonedSql.models.userWithoutPk.insert(
-      {
-        name: "John",
-      },
-      { connection: clonedSql },
-    );
+    await clonedSql.from(UserWithoutPk).insert({
+      name: "John",
+    });
 
-    const user = await clonedSql.models.userWithoutPk
-      .query({ connection: clonedSql })
-      .one();
+    const user = await clonedSql.from(UserWithoutPk).one();
     expect(user).toBeDefined();
     expect(user?.name).toBe("John");
 
     await clonedSql.rollbackGlobalTransaction();
     await clonedSql.disconnect();
+  });
+});
+
+describe(`[${env.DB_TYPE}] sql.models proxy`, () => {
+  beforeEach(async () => {
+    await sql.startGlobalTransaction();
+  });
+
+  afterEach(async () => {
+    await sql.rollbackGlobalTransaction();
+  });
+
+  test("sql.models.X should return a ModelQueryBuilder (no sql.from needed)", async () => {
+    await sql.models.userWithoutPk.insert({ name: "ProxyUser" });
+    const user = await sql.models.userWithoutPk
+      .where("name", "ProxyUser")
+      .one();
+    expect(user).toBeDefined();
+    expect(user?.name).toBe("ProxyUser");
+  });
+
+  test("each sql.models.X access returns a fresh builder", async () => {
+    await sql.models.userWithoutPk.insert({ name: "A", email: "a@test.com" });
+    await sql.models.userWithoutPk.insert({ name: "B", email: "b@test.com" });
+    const users = await sql.models.userWithoutPk.many();
+    expect(users.length).toBe(2);
   });
 });

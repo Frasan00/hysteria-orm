@@ -168,8 +168,9 @@ class MssqlColumnTypeInterpreter implements Interpreter {
       return { sql: `${columnName} geometry`, bindings: [] };
     }
 
+    const lengthPart = colNode.length ? `(${colNode.length})` : "";
     return {
-      sql: `${columnName} ${dt}${colNode.length ? `(${colNode.length})` : ""}`,
+      sql: `${columnName} ${dt}${lengthPart}`,
       bindings: [],
     };
   }

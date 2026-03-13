@@ -100,3 +100,47 @@ export { DecoratorsExtModel } from "./decorators_ext";
 export { EnumV1 } from "./enum_v1";
 export { EnumV2 } from "./enum_v2";
 export { EnumV3 } from "./enum_v3";
+
+// Index Drop Extreme
+export { IndexDropExtremeV1 } from "./index_drop_extreme_v1";
+export { IndexDropExtremeV2 } from "./index_drop_extreme_v2";
+export { IndexDropExtremeV3 } from "./index_drop_extreme_v3";
+
+// Check Drop Extreme
+export { CheckDropExtremeV1 } from "./check_drop_extreme_v1";
+export { CheckDropExtremeV2 } from "./check_drop_extreme_v2";
+export { CheckDropExtremeV3 } from "./check_drop_extreme_v3";
+
+// Index Composite
+export { IndexCompositeV1 } from "./index_composite_v1";
+export { IndexCompositeV2 } from "./index_composite_v2";
+export { IndexCompositeV3 } from "./index_composite_v3";
+
+// Unique Modify
+export { UniqueModifyV1 } from "./unique_modify_v1";
+export { UniqueModifyV2 } from "./unique_modify_v2";
+export { UniqueModifyV3 } from "./unique_modify_v3";
+
+// Combined Drops
+export { CombinedDropsV1 } from "./combined_drops_v1";
+export { CombinedDropsV2 } from "./combined_drops_v2";
+export { CombinedDropsV3 } from "./combined_drops_v3";
+
+// FK Drop Multiple
+export {
+  FkDropAnchor,
+  FkDropMultipleV1,
+  FkDropMultipleV1Relations,
+} from "./fk_drop_multiple_v1";
+export {
+  FkDropMultipleV2,
+  FkDropMultipleV2Relations,
+} from "./fk_drop_multiple_v2";
+export { FkDropMultipleV3 } from "./fk_drop_multiple_v3";
+
+// Constraint Collision
+export { ConstraintCollisionV1 } from "./constraint_collision_v1";
+export { ConstraintCollisionV2 } from "./constraint_collision_v2";
+
+// Custom Types (e.g., string)
+export { CustomTypeV1 } from "./custom_type_v1";

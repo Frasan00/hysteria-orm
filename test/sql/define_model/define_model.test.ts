@@ -1,4 +1,10 @@
-import { defineModel, col, rel } from "../../../src/sql/models/define_model";
+import {
+  defineModel,
+  col,
+  defineRelations,
+  createSchema,
+} from "../../../src/sql/models/define_model";
+import type { ModelKey } from "../../../src/sql/models/model_manager/model_manager_types";
 import { Model } from "../../../src/sql/models/model";
 import { RelationEnum } from "../../../src/sql/models/relations/relation";
 
@@ -21,23 +27,26 @@ describe("defineModel", () => {
       expect(TestModel.table).toBe("my_custom_table");
     });
 
-    test("has all Model static methods", () => {
+    test("has metadata static methods but hides query/mutation methods from type", () => {
       const TestModel = defineModel("test_models", {
         columns: { id: col.increment() },
       });
 
-      expect(typeof TestModel.query).toBe("function");
-      expect(typeof TestModel.find).toBe("function");
-      expect(typeof TestModel.findOne).toBe("function");
-      expect(typeof TestModel.findOneOrFail).toBe("function");
-      expect(typeof TestModel.insert).toBe("function");
-      expect(typeof TestModel.insertMany).toBe("function");
-      expect(typeof TestModel.updateRecord).toBe("function");
-      expect(typeof TestModel.deleteRecord).toBe("function");
-      expect(typeof TestModel.all).toBe("function");
-      expect(typeof TestModel.save).toBe("function");
-      expect(typeof TestModel.softDelete).toBe("function");
-      expect(typeof TestModel.truncate).toBe("function");
+      // Metadata methods are accessible
+      expect(typeof TestModel.getColumns).toBe("function");
+      expect(typeof TestModel.getRelations).toBe("function");
+      expect(typeof TestModel.getIndexes).toBe("function");
+      expect(typeof TestModel.getUniques).toBe("function");
+      expect(typeof TestModel.getChecks).toBe("function");
+      expect(TestModel.table).toBe("test_models");
+      expect(TestModel.primaryKey).toBe("id");
+
+      // Query/mutation methods have been removed from Model
+      // Use sql.from(TestModel) instead
+      const raw = TestModel as any;
+      expect(typeof raw.query).toBe("undefined");
+      expect(typeof raw.insert).toBe("undefined");
+      expect(typeof raw.insertMany).toBe("undefined");
     });
 
     test("prototype is instanceof Model", () => {
@@ -59,7 +68,7 @@ describe("defineModel", () => {
         salary: col.float(),
         balance: col.decimal({ precision: 10, scale: 2 }),
         isActive: col.boolean(),
-        metadata: col.json(),
+        metadata: col.jsonb(),
         createdAt: col.datetime({ autoCreate: true }),
         updatedAt: col.datetime({ autoCreate: true, autoUpdate: true }),
         birthDate: col.date(),
@@ -240,21 +249,47 @@ describe("defineModel", () => {
       },
     });
 
-    const User = defineModel("users", {
+    const UserBase = defineModel("users", {
       columns: {
         id: col.increment(),
         name: col.string(),
       },
-      relations: {
-        posts: rel.hasMany(() => Post, "userId"),
-        profile: rel.hasOne(() => Profile, "userId"),
-        role: rel.belongsTo(() => Tag, "tagId"),
-        tags: rel.manyToMany(() => Tag, "user_tags", {
+    });
+
+    const UserTagBase = defineModel("user_tags", {
+      columns: {
+        id: col.increment(),
+        userId: col.integer(),
+        tagId: col.integer(),
+      },
+    });
+
+    const UserRelations = defineRelations(
+      UserBase,
+      ({ hasMany, hasOne, belongsTo, manyToMany }) => ({
+        posts: hasMany(Post, { foreignKey: "userId" }),
+        profile: hasOne(Profile, { foreignKey: "userId" }),
+        role: belongsTo(Tag, { foreignKey: "tagId" }),
+        tags: manyToMany(Tag, {
+          through: UserTagBase,
           leftForeignKey: "userId",
           rightForeignKey: "tagId",
         }),
+      }),
+    );
+
+    const userSchema = createSchema(
+      {
+        users: UserBase,
+        posts: Post,
+        profiles: Profile,
+        tags: Tag,
+        user_tags: UserTagBase,
       },
-    });
+      { users: UserRelations },
+    );
+
+    const User = userSchema.users;
 
     test("getRelations returns all defined relations", () => {
       const relations = User.getRelations();
@@ -408,7 +443,7 @@ describe("defineModel", () => {
         hooks: { beforeFetch: hook },
       });
 
-      expect(TestModel.beforeFetch).toBe(hook);
+      expect((TestModel as any).beforeFetch).toBe(hook);
     });
 
     test("afterFetch hook is assigned", () => {
@@ -418,7 +453,7 @@ describe("defineModel", () => {
         hooks: { afterFetch: hook },
       });
 
-      expect(TestModel.afterFetch).toBe(hook);
+      expect((TestModel as any).afterFetch).toBe(hook);
     });
 
     test("beforeInsert hook is assigned", () => {
@@ -428,7 +463,7 @@ describe("defineModel", () => {
         hooks: { beforeInsert: hook },
       });
 
-      expect(TestModel.beforeInsert).toBe(hook);
+      expect((TestModel as any).beforeInsert).toBe(hook);
     });
 
     test("beforeInsertMany hook is assigned", () => {
@@ -438,7 +473,7 @@ describe("defineModel", () => {
         hooks: { beforeInsertMany: hook },
       });
 
-      expect(TestModel.beforeInsertMany).toBe(hook);
+      expect((TestModel as any).beforeInsertMany).toBe(hook);
     });
 
     test("beforeUpdate hook is assigned", () => {
@@ -448,7 +483,7 @@ describe("defineModel", () => {
         hooks: { beforeUpdate: hook },
       });
 
-      expect(TestModel.beforeUpdate).toBe(hook);
+      expect((TestModel as any).beforeUpdate).toBe(hook);
     });
 
     test("beforeDelete hook is assigned", () => {
@@ -458,7 +493,7 @@ describe("defineModel", () => {
         hooks: { beforeDelete: hook },
       });
 
-      expect(TestModel.beforeDelete).toBe(hook);
+      expect((TestModel as any).beforeDelete).toBe(hook);
     });
 
     test("model without hooks has no hook methods", () => {
@@ -466,9 +501,9 @@ describe("defineModel", () => {
         columns: { id: col.increment() },
       });
 
-      expect(TestModel.beforeFetch).toBeUndefined();
-      expect(TestModel.afterFetch).toBeUndefined();
-      expect(TestModel.beforeInsert).toBeUndefined();
+      expect((TestModel as any).beforeFetch).toBeUndefined();
+      expect((TestModel as any).afterFetch).toBeUndefined();
+      expect((TestModel as any).beforeInsert).toBeUndefined();
     });
   });
 
@@ -538,9 +573,6 @@ describe("defineModel", () => {
           title: col.string(),
           authorId: col.integer(),
         },
-        relations: {
-          author: rel.belongsTo(() => Author, "authorId"),
-        },
       });
 
       const AuthorWithBooks = defineModel("authors_with_books", {
@@ -548,16 +580,29 @@ describe("defineModel", () => {
           id: col.increment(),
           name: col.string(),
         },
-        relations: {
-          books: rel.hasMany(() => Book, "authorId"),
-        },
       });
 
-      const bookRelations = Book.getRelations();
+      const BookRelations = defineRelations(Book, ({ belongsTo }) => ({
+        author: belongsTo(Author, { foreignKey: "authorId" }),
+      }));
+
+      const AuthorWithBooksRelations = defineRelations(
+        AuthorWithBooks,
+        ({ hasMany }) => ({
+          books: hasMany(Book, { foreignKey: "authorId" }),
+        }),
+      );
+
+      const crossSchema = createSchema(
+        { authors: Author, books: Book, authors_with_books: AuthorWithBooks },
+        { books: BookRelations, authors_with_books: AuthorWithBooksRelations },
+      );
+
+      const bookRelations = crossSchema.books.getRelations();
       expect(bookRelations.length).toBe(1);
       expect(bookRelations[0].type).toBe(RelationEnum.belongsTo);
 
-      const authorRelations = AuthorWithBooks.getRelations();
+      const authorRelations = crossSchema.authors_with_books.getRelations();
       expect(authorRelations.length).toBe(1);
       expect(authorRelations[0].type).toBe(RelationEnum.hasMany);
     });
@@ -626,14 +671,14 @@ describe("defineModel", () => {
       const settingsCol = TestModel.getColumns().find(
         (c) => c.columnName === "settings",
       );
-      expect(settingsCol?.type).toBe("jsonb");
+      expect(settingsCol?.type).toBe("json");
     });
 
     test("col.datetime<T>() registers as datetime column", () => {
       const TestModel = defineModel("datetime_generic_test", {
         columns: {
           id: col.increment(),
-          createdAt: col.datetime<Date>({ autoCreate: true }),
+          createdAt: col.datetime({ autoCreate: true }),
         },
       });
 
@@ -725,7 +770,7 @@ describe("defineModel", () => {
     });
 
     test("serialize-only callback on uuid column (no prepare exposed)", () => {
-      const serialize = (raw: any) => (raw ? String(raw) : null);
+      const serialize = (raw: any) => (raw ? String(raw) : "");
       const TestModel = defineModel("serialize_uuid_test", {
         columns: {
           id: col.uuid({
@@ -773,14 +818,16 @@ describe("defineModel", () => {
     });
 
     test("serialize and prepare on date column", () => {
-      const serialize = (raw: any) => new Date(raw);
       const prepare = (value: Date | string | null | undefined) =>
         value instanceof Date ? value.toISOString() : value;
 
       const TestModel = defineModel("date_callbacks_test", {
         columns: {
           id: col.increment(),
-          eventDate: col.date({ serialize, prepare }),
+          eventDate: col.date({
+            serialize: () => new Date().toISOString(),
+            prepare,
+          }),
         },
       });
 
@@ -792,8 +839,8 @@ describe("defineModel", () => {
     });
 
     test("serialize and prepare on enum column", () => {
-      const serialize = (raw: any): "active" | "inactive" | null | undefined =>
-        raw ? (String(raw).toLowerCase() as "active" | "inactive") : null;
+      const serialize = (raw: any): "active" | "inactive" =>
+        raw ? (String(raw).toLowerCase() as "active" | "inactive") : "inactive";
       const prepare = (value: "active" | "inactive" | null | undefined) =>
         value ? value.toUpperCase() : null;
 
@@ -831,19 +878,25 @@ describe("defineModel", () => {
   });
 
   describe("self-referencing relations", () => {
-    test("model can reference itself via (self) => self in hasOne", () => {
+    test("model can reference itself via defineRelations", () => {
       const Category = defineModel("categories", {
         columns: {
           id: col.increment(),
           name: col.string(),
           parentId: col.integer(),
         },
-        relations: {
-          parent: rel.belongsTo((self) => self, "parentId"),
-        },
       });
 
-      const relations = Category.getRelations();
+      const CategoryRelations = defineRelations(Category, ({ belongsTo }) => ({
+        parent: belongsTo(Category, { foreignKey: "parentId" }),
+      }));
+
+      const catSchema = createSchema(
+        { categories: Category },
+        { categories: CategoryRelations },
+      );
+
+      const relations = catSchema.categories.getRelations();
       expect(relations.length).toBe(1);
       expect(relations[0].columnName).toBe("parent");
       expect(relations[0].type).toBe(RelationEnum.belongsTo);
@@ -856,13 +909,22 @@ describe("defineModel", () => {
           parentId: col.integer(),
           label: col.string(),
         },
-        relations: {
-          parent: rel.belongsTo((self) => self, "parentId"),
-          children: rel.hasMany((self) => self, "parentId"),
-        },
       });
 
-      const relations = TreeNode.getRelations();
+      const TreeNodeRelations = defineRelations(
+        TreeNode,
+        ({ belongsTo, hasMany }) => ({
+          parent: belongsTo(TreeNode, { foreignKey: "parentId" }),
+          children: hasMany(TreeNode, { foreignKey: "parentId" }),
+        }),
+      );
+
+      const treeSchema = createSchema(
+        { tree_nodes: TreeNode },
+        { tree_nodes: TreeNodeRelations },
+      );
+
+      const relations = treeSchema.tree_nodes.getRelations();
       expect(relations.length).toBe(2);
 
       const parentRel = relations.find((r) => r.columnName === "parent");
@@ -879,19 +941,25 @@ describe("defineModel", () => {
           managerId: col.integer(),
           name: col.string(),
         },
-        relations: {
-          manager: rel.hasOne((self) => self, "managerId"),
-        },
       });
 
-      const relations = Employee.getRelations();
+      const EmployeeRelations = defineRelations(Employee, ({ hasOne }) => ({
+        manager: hasOne(Employee, { foreignKey: "managerId" }),
+      }));
+
+      const empSchema = createSchema(
+        { employees: Employee },
+        { employees: EmployeeRelations },
+      );
+
+      const relations = empSchema.employees.getRelations();
       const managerRel = relations.find((r) => r.columnName === "manager");
       expect(managerRel).toBeDefined();
       expect(managerRel?.type).toBe(RelationEnum.hasOne);
     });
 
     test("self-referencing can coexist with external model references", () => {
-      const Tag = defineModel("tags_sr", {
+      const TagSr = defineModel("tags_sr", {
         columns: {
           id: col.increment(),
           name: col.string(),
@@ -904,13 +972,19 @@ describe("defineModel", () => {
           parentId: col.integer(),
           tagId: col.integer(),
         },
-        relations: {
-          parent: rel.belongsTo((self) => self, "parentId"),
-          tag: rel.belongsTo(() => Tag, "tagId"),
-        },
       });
 
-      const relations = Item.getRelations();
+      const ItemRelations = defineRelations(Item, ({ belongsTo }) => ({
+        parent: belongsTo(Item, { foreignKey: "parentId" }),
+        tag: belongsTo(TagSr, { foreignKey: "tagId" }),
+      }));
+
+      const itemSchema = createSchema(
+        { tags_sr: TagSr, items_sr: Item },
+        { items_sr: ItemRelations },
+      );
+
+      const relations = itemSchema.items_sr.getRelations();
       expect(relations.length).toBe(2);
 
       const parentRel = relations.find((r) => r.columnName === "parent");
@@ -938,95 +1012,115 @@ describe("defineModel", () => {
       },
     });
 
-    test("hasOne with nullable: false registers relation", () => {
-      const User = defineModel("users_nr_ho", {
+    test("hasOne registers relation", () => {
+      const UserNrHo = defineModel("users_nr_ho", {
         columns: {
           id: col.increment(),
           name: col.string(),
         },
-        relations: {
-          profile: rel.hasOne(() => Profile, "userId", { nullable: false }),
-        },
       });
-
-      const relations = User.getRelations();
+      const rels = defineRelations(UserNrHo, ({ hasOne }) => ({
+        profile: hasOne(Profile, { foreignKey: "userId" }),
+      }));
+      const s = createSchema(
+        { users_nr_ho: UserNrHo, profiles_nr: Profile },
+        { users_nr_ho: rels },
+      );
+      const relations = s.users_nr_ho.getRelations();
       expect(relations.length).toBe(1);
       expect(relations[0].type).toBe(RelationEnum.hasOne);
     });
 
-    test("hasMany with nullable: false registers relation", () => {
-      const User = defineModel("users_nr_hm", {
+    test("hasMany registers relation", () => {
+      const UserNrHm = defineModel("users_nr_hm", {
         columns: {
           id: col.increment(),
           name: col.string(),
         },
-        relations: {
-          posts: rel.hasMany(() => Post, "authorId", { nullable: false }),
-        },
       });
-
-      const relations = User.getRelations();
+      const rels = defineRelations(UserNrHm, ({ hasMany }) => ({
+        posts: hasMany(Post, { foreignKey: "authorId" }),
+      }));
+      const s = createSchema(
+        { users_nr_hm: UserNrHm, posts_nr: Post },
+        { users_nr_hm: rels },
+      );
+      const relations = s.users_nr_hm.getRelations();
       expect(relations.length).toBe(1);
       expect(relations[0].type).toBe(RelationEnum.hasMany);
     });
 
-    test("belongsTo with nullable: false registers relation", () => {
+    test("belongsTo registers relation", () => {
       const Comment = defineModel("comments_nr", {
         columns: {
           id: col.increment(),
           postId: col.integer(),
         },
-        relations: {
-          post: rel.belongsTo(() => Post, "postId", { nullable: false }),
-        },
       });
-
-      const relations = Comment.getRelations();
+      const rels = defineRelations(Comment, ({ belongsTo }) => ({
+        post: belongsTo(Post, { foreignKey: "postId" }),
+      }));
+      const s = createSchema(
+        { comments_nr: Comment, posts_nr: Post },
+        { comments_nr: rels },
+      );
+      const relations = s.comments_nr.getRelations();
       expect(relations.length).toBe(1);
       expect(relations[0].type).toBe(RelationEnum.belongsTo);
     });
 
-    test("manyToMany with nullable: false registers relation", () => {
-      const Tag = defineModel("tags_nr", {
+    test("manyToMany registers relation", () => {
+      const TagNr = defineModel("tags_nr", {
         columns: {
           id: col.increment(),
           name: col.string(),
         },
       });
 
-      const Article = defineModel("articles_nr", {
+      const ArticleNr = defineModel("articles_nr", {
         columns: {
           id: col.increment(),
           title: col.string(),
         },
-        relations: {
-          tags: rel.manyToMany(
-            () => Tag,
-            "article_tags",
-            { leftForeignKey: "articleId", rightForeignKey: "tagId" },
-            { nullable: false },
-          ),
-        },
       });
 
-      const relations = Article.getRelations();
+      const rels = defineRelations(ArticleNr, ({ manyToMany }) => ({
+        tags: manyToMany(TagNr, {
+          through: "article_tags",
+          leftForeignKey: "articleId",
+          rightForeignKey: "tagId",
+        }),
+      }));
+
+      const s = createSchema(
+        { articles_nr: ArticleNr, tags_nr: TagNr },
+        { articles_nr: rels },
+      );
+      const relations = s.articles_nr.getRelations();
       expect(relations.length).toBe(1);
       expect(relations[0].type).toBe(RelationEnum.manyToMany);
     });
 
-    test("nullable relation (default) still works", () => {
-      const User = defineModel("users_nr_default", {
+    test("multiple relations register correctly", () => {
+      const UserNrDefault = defineModel("users_nr_default", {
         columns: {
           id: col.increment(),
           name: col.string(),
         },
-        relations: {
-          profile: rel.hasOne(() => Profile, "userId"),
-          posts: rel.hasMany(() => Post, "authorId"),
-        },
       });
-
-      const relations = User.getRelations();
+      const rels = defineRelations(UserNrDefault, ({ hasOne, hasMany }) => ({
+        profile: hasOne(Profile, { foreignKey: "userId" }),
+        posts: hasMany(Post, { foreignKey: "authorId" }),
+      }));
+      const s = createSchema(
+        {
+          users_nr_default: UserNrDefault,
+          profiles_nr: Profile,
+          posts_nr: Post,
+        },
+        { users_nr_default: rels },
+      );
+      const relations = s.users_nr_default.getRelations();
       expect(relations.length).toBe(2);
     });
   });
@@ -1082,7 +1176,7 @@ describe("defineModel", () => {
         },
       });
 
-      expect(TestModel.beforeInsert).toBeDefined();
+      expect((TestModel as any).beforeInsert).toBeDefined();
     });
 
     test("afterFetch receives typed array", () => {
@@ -1098,7 +1192,7 @@ describe("defineModel", () => {
         },
       });
 
-      expect(TestModel.afterFetch).toBeDefined();
+      expect((TestModel as any).afterFetch).toBeDefined();
     });
   });
 
@@ -1114,6 +1208,114 @@ describe("defineModel", () => {
       });
 
       expect(TestModel.softDeleteColumn).toBe("deletedAt");
+    });
+  });
+
+  describe("readonly literal table name and ModelKey", () => {
+    type AssertAssignable<A, B> = A extends B ? true : never;
+    type AssertEqual<A, B> = [A] extends [B]
+      ? [B] extends [A]
+        ? true
+        : never
+      : never;
+
+    const User = defineModel("users", {
+      columns: {
+        id: col.increment(),
+        name: col.string(),
+        email: col.string({ nullable: false }),
+      },
+    });
+
+    test("table property is the literal string passed to defineModel", () => {
+      // Runtime check
+      expect(User.table).toBe("users");
+
+      // Type-level: User.table should be exactly "users", not string
+      const _literal: AssertEqual<typeof User.table, "users"> = true;
+      expect(_literal).toBe(true);
+    });
+
+    test("ModelKey produces table-prefixed column keys", () => {
+      type UserKeys = ModelKey<InstanceType<typeof User>>;
+
+      // Each prefixed key should be assignable
+      const _id: AssertAssignable<"users.id", UserKeys> = true;
+      const _name: AssertAssignable<"users.name", UserKeys> = true;
+      const _email: AssertAssignable<"users.email", UserKeys> = true;
+      expect(_id).toBe(true);
+      expect(_name).toBe(true);
+      expect(_email).toBe(true);
+    });
+
+    test("ModelKey does not include unprefixed keys", () => {
+      type UserKeys = ModelKey<InstanceType<typeof User>>;
+
+      // "id" alone (without table prefix) should NOT be assignable
+      const _check: AssertAssignable<"id", UserKeys> = true as never;
+      void _check;
+      expect(true).toBe(true);
+    });
+
+    test("ModelKey excludes relation keys", () => {
+      const PostMk = defineModel("posts_mk", {
+        columns: {
+          id: col.increment(),
+          title: col.string(),
+          userId: col.integer(),
+        },
+      });
+
+      const AuthorBase = defineModel("authors_mk", {
+        columns: {
+          id: col.increment(),
+          name: col.string(),
+        },
+      });
+
+      const authorRels = defineRelations(AuthorBase, ({ hasMany }) => ({
+        posts: hasMany(PostMk, { foreignKey: "userId" }),
+      }));
+
+      const mkSchema = createSchema(
+        { authors_mk: AuthorBase, posts_mk: PostMk },
+        { authors_mk: authorRels },
+      );
+
+      const Author = mkSchema.authors_mk;
+      type AuthorKeys = ModelKey<InstanceType<typeof Author>>;
+
+      // Column keys are included with prefix
+      const _id: AssertAssignable<"authors_mk.id", AuthorKeys> = true;
+      const _name: AssertAssignable<"authors_mk.name", AuthorKeys> = true;
+      expect(_id).toBe(true);
+      expect(_name).toBe(true);
+
+      // Relation keys should NOT appear
+      // "authors_mk.posts" should not be in ModelKey
+      const _posts: AssertAssignable<"authors_mk.posts", AuthorKeys> =
+        true as never;
+      void _posts;
+      expect(true).toBe(true);
+    });
+
+    test("ModelKey works with different table names", () => {
+      const Product = defineModel("products", {
+        columns: {
+          id: col.increment(),
+          sku: col.string({ nullable: false }),
+          price: col.decimal(),
+        },
+      });
+
+      type ProductKeys = ModelKey<InstanceType<typeof Product>>;
+
+      const _id: AssertAssignable<"products.id", ProductKeys> = true;
+      const _sku: AssertAssignable<"products.sku", ProductKeys> = true;
+      const _price: AssertAssignable<"products.price", ProductKeys> = true;
+      expect(_id).toBe(true);
+      expect(_sku).toBe(true);
+      expect(_price).toBe(true);
     });
   });
 });

@@ -3,48 +3,47 @@ import { env } from "../../../src/env/env";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { UserWithoutPk } from "../test_models/without_pk/user_without_pk";
 
+let sql: SqlDataSource;
+
 beforeAll(async () => {
-  const dataSource = new SqlDataSource();
-  await dataSource.connect();
+  sql = new SqlDataSource();
+  await sql.connect();
 });
 
 afterAll(async () => {
-  await SqlDataSource.disconnect();
+  await sql.disconnect();
 });
 
 beforeEach(async () => {
-  await SqlDataSource.startGlobalTransaction();
+  await sql.startGlobalTransaction();
 });
 
 afterEach(async () => {
-  await SqlDataSource.rollbackGlobalTransaction();
+  await sql.rollbackGlobalTransaction();
 });
 
 describe(`[${env.DB_TYPE}] Query Builder with uuid`, () => {
   beforeEach(async () => {
-    await SqlDataSource.instance.query("posts_with_uuid").delete();
-    await SqlDataSource.instance.query("users_without_pk").delete();
+    await sql.query("posts_with_uuid").delete();
+    await sql.query("users_without_pk").delete();
   });
 
   afterEach(async () => {
-    await SqlDataSource.instance.query("posts_with_uuid").delete();
-    await SqlDataSource.instance.query("users_without_pk").delete();
+    await sql.query("posts_with_uuid").delete();
+    await sql.query("users_without_pk").delete();
   });
 
   test("should support distinct and distinctOn", async () => {
-    await SqlDataSource.instance.query("posts_with_uuid").insertMany([
+    await sql.query("posts_with_uuid").insertMany([
       { id: crypto.randomUUID(), title: "Hello" },
       { id: crypto.randomUUID(), title: "Hello" },
       { id: crypto.randomUUID(), title: "World" },
     ]);
 
-    const all = await SqlDataSource.instance
-      .query("posts_with_uuid")
-      .select("title")
-      .many();
+    const all = await sql.query("posts_with_uuid").select("title").many();
     expect(all.length).toBeGreaterThanOrEqual(3);
 
-    const distinct = await SqlDataSource.instance
+    const distinct = await sql
       .query("posts_with_uuid")
       .select("title")
       .distinct()
@@ -52,7 +51,7 @@ describe(`[${env.DB_TYPE}] Query Builder with uuid`, () => {
     expect(distinct.length).toBeLessThan(all.length);
 
     if (env.DB_TYPE === "postgres" || env.DB_TYPE === "cockroachdb") {
-      const distinctOn = await SqlDataSource.instance
+      const distinctOn = await sql
         .query("posts_with_uuid")
         .select("title")
         .distinctOn("title")
@@ -62,26 +61,24 @@ describe(`[${env.DB_TYPE}] Query Builder with uuid`, () => {
   });
 
   test("should select a post with exists", async () => {
-    await SqlDataSource.instance.query("posts_with_uuid").insert({
+    await sql.query("posts_with_uuid").insert({
       id: crypto.randomUUID(),
       title: "Hello World",
     });
 
-    const exists = await SqlDataSource.instance
-      .query("posts_with_uuid")
-      .exists();
+    const exists = await sql.query("posts_with_uuid").exists();
     expect(exists).toBe(true);
   });
 
   test("should handle from with an alias", async () => {
-    await SqlDataSource.instance.query("posts_with_uuid").insert({
+    await sql.query("posts_with_uuid").insert({
       id: crypto.randomUUID(),
       title: "Hello World",
     });
 
-    const retrievedPost = await SqlDataSource.instance
+    const retrievedPost = await sql
       .query("posts_with_uuid")
-      .from("posts_with_uuid", "p")
+      .table("posts_with_uuid", "p")
       .where("p.title", "Hello World")
       .oneOrFail();
 
@@ -90,16 +87,16 @@ describe(`[${env.DB_TYPE}] Query Builder with uuid`, () => {
   });
 
   test("should handle from with a callback and an alias", async () => {
-    await SqlDataSource.instance.query("posts_with_uuid").insert({
+    await sql.query("posts_with_uuid").insert({
       id: crypto.randomUUID(),
       title: "Hello World",
     });
 
-    const retrievedPost = await SqlDataSource.instance
+    const retrievedPost = await sql
       .query("posts_with_uuid")
-      .from((qb) => {
+      .table((qb) => {
         qb.select("title")
-          .from("posts_with_uuid", "p")
+          .table("posts_with_uuid", "p")
           .where("p.title", "Hello World");
       }, "p")
       .oneOrFail();
@@ -109,14 +106,12 @@ describe(`[${env.DB_TYPE}] Query Builder with uuid`, () => {
   });
 
   test("should select a post", async () => {
-    await SqlDataSource.instance.query("posts_with_uuid").insert({
+    await sql.query("posts_with_uuid").insert({
       id: crypto.randomUUID(),
       title: "Hello World",
     });
 
-    const retrievedPost = await SqlDataSource.instance
-      .query("posts_with_uuid")
-      .oneOrFail();
+    const retrievedPost = await sql.query("posts_with_uuid").oneOrFail();
 
     expect(retrievedPost).toBeDefined();
     expect(retrievedPost.id).toBeDefined();
@@ -124,12 +119,12 @@ describe(`[${env.DB_TYPE}] Query Builder with uuid`, () => {
   });
 
   test("should select a post with a custom alias", async () => {
-    await SqlDataSource.instance.query("posts_with_uuid").insert({
+    await sql.query("posts_with_uuid").insert({
       id: crypto.randomUUID(),
       title: "Hello World",
     });
 
-    const retrievedPost = await SqlDataSource.instance
+    const retrievedPost = await sql
       .query("posts_with_uuid")
       .select(["title", "postTitle"])
       .oneOrFail();
@@ -139,14 +134,12 @@ describe(`[${env.DB_TYPE}] Query Builder with uuid`, () => {
   });
 
   test("should select posts with pagination", async () => {
-    await SqlDataSource.instance.query("posts_with_uuid").insertMany([
+    await sql.query("posts_with_uuid").insertMany([
       { id: crypto.randomUUID(), title: "Hello World" },
       { id: crypto.randomUUID(), title: "Hello World 2" },
     ]);
 
-    const posts = await SqlDataSource.instance
-      .query("posts_with_uuid")
-      .paginate(1, 1);
+    const posts = await sql.query("posts_with_uuid").paginate(1, 1);
 
     expect(posts).toBeDefined();
     expect(posts.data.length).toBe(1);
@@ -158,12 +151,12 @@ describe(`[${env.DB_TYPE}] Query Builder with uuid`, () => {
   });
 
   test("should get post count", async () => {
-    await SqlDataSource.instance.query("posts_with_uuid").insertMany([
+    await sql.query("posts_with_uuid").insertMany([
       { id: crypto.randomUUID(), title: "Hello World" },
       { id: crypto.randomUUID(), title: "Hello World 2" },
     ]);
 
-    const count = await SqlDataSource.instance
+    const count = await sql
       .query("posts_with_uuid")
       // Should not affect the count query
       .groupBy("not_exists")
@@ -172,16 +165,14 @@ describe(`[${env.DB_TYPE}] Query Builder with uuid`, () => {
   });
 
   test("should create a post", async () => {
-    await SqlDataSource.instance.query("posts_with_uuid").insert({
+    await sql.query("posts_with_uuid").insert({
       id: crypto.randomUUID(),
       title: "Hello World",
       content: "Hello World Content",
       short_description: "Hello World Short Description",
     });
 
-    const retrievedPost = await SqlDataSource.instance
-      .query("posts_with_uuid")
-      .oneOrFail();
+    const retrievedPost = await sql.query("posts_with_uuid").oneOrFail();
 
     expect(retrievedPost).toBeDefined();
     expect(retrievedPost.id).toBeDefined();
@@ -189,7 +180,7 @@ describe(`[${env.DB_TYPE}] Query Builder with uuid`, () => {
   });
 
   test("should create multiple posts", async () => {
-    await SqlDataSource.instance.query("posts_with_uuid").insertMany([
+    await sql.query("posts_with_uuid").insertMany([
       {
         id: crypto.randomUUID(),
         title: "Hello World",
@@ -204,7 +195,7 @@ describe(`[${env.DB_TYPE}] Query Builder with uuid`, () => {
       },
     ]);
 
-    const posts = await SqlDataSource.instance
+    const posts = await sql
       .query("posts_with_uuid")
       .orderBy("title", "asc")
       .many();
@@ -220,52 +211,48 @@ describe(`[${env.DB_TYPE}] Query Builder with uuid`, () => {
   });
 
   test("should update a post", async () => {
-    await SqlDataSource.instance.query("posts_with_uuid").insert({
+    await sql.query("posts_with_uuid").insert({
       id: crypto.randomUUID(),
       title: "Hello World",
     });
 
-    await SqlDataSource.instance.query("posts_with_uuid").update({
+    await sql.query("posts_with_uuid").update({
       title: "Hello World Updated",
     });
 
-    const retrievedPost = await SqlDataSource.instance
-      .query("posts_with_uuid")
-      .oneOrFail();
+    const retrievedPost = await sql.query("posts_with_uuid").oneOrFail();
     expect(retrievedPost.title).toBe("Hello World Updated");
   });
 
   test("should delete a post", async () => {
-    await SqlDataSource.instance.query("posts_with_uuid").insert({
+    await sql.query("posts_with_uuid").insert({
       id: crypto.randomUUID(),
       title: "Hello World",
     });
 
-    await SqlDataSource.instance.query("posts_with_uuid").delete();
+    await sql.query("posts_with_uuid").delete();
 
-    const retrievedPost = await SqlDataSource.instance
-      .query("posts_with_uuid")
-      .one();
+    const retrievedPost = await sql.query("posts_with_uuid").one();
     expect(retrievedPost).toBeNull();
   });
 
   test("should soft delete a post", async () => {
-    await SqlDataSource.instance.query("posts_with_uuid").insert({
+    await sql.query("posts_with_uuid").insert({
       id: crypto.randomUUID(),
       title: "Hello World",
     });
 
-    await SqlDataSource.instance.query("posts_with_uuid").softDelete({
+    await sql.query("posts_with_uuid").softDelete({
       column: "deleted_at",
     });
 
-    const retrievedPost = await SqlDataSource.instance
+    const retrievedPost = await sql
       .query("posts_with_uuid")
       .whereNull("deleted_at")
       .one();
     expect(retrievedPost).toBeNull();
 
-    const retrievedPostWithDeletedAt = await SqlDataSource.instance
+    const retrievedPostWithDeletedAt = await sql
       .query("posts_with_uuid")
       .whereNotNull("deleted_at")
       .oneOrFail();
@@ -275,37 +262,33 @@ describe(`[${env.DB_TYPE}] Query Builder with uuid`, () => {
   });
 
   test("should truncate the table", async () => {
-    await SqlDataSource.instance.query("posts_with_uuid").insert({
+    await sql.query("posts_with_uuid").insert({
       id: crypto.randomUUID(),
       title: "Hello World",
     });
 
-    await SqlDataSource.instance.query("posts_with_uuid").truncate();
+    await sql.query("posts_with_uuid").truncate();
 
-    const retrievedPost = await SqlDataSource.instance
-      .query("posts_with_uuid")
-      .one();
+    const retrievedPost = await sql.query("posts_with_uuid").one();
     expect(retrievedPost).toBeNull();
   });
 });
 
 describe(`[${env.DB_TYPE}] Query Builder with a model without a primary key`, () => {
   beforeEach(async () => {
-    await SqlDataSource.instance.query("users_without_pk").delete();
+    await sql.query("users_without_pk").delete();
   });
 
   afterEach(async () => {
-    await SqlDataSource.instance.query("users_without_pk").delete();
+    await sql.query("users_without_pk").delete();
   });
 
   test("should create a user", async () => {
-    await SqlDataSource.instance.query("users_without_pk").insert({
+    await sql.query("users_without_pk").insert({
       name: "John Doe",
     });
 
-    const retrievedUser = await SqlDataSource.instance
-      .query("users_without_pk")
-      .oneOrFail();
+    const retrievedUser = await sql.query("users_without_pk").oneOrFail();
 
     expect(retrievedUser).toBeDefined();
     expect(retrievedUser.id).not.toBeDefined();
@@ -313,12 +296,12 @@ describe(`[${env.DB_TYPE}] Query Builder with a model without a primary key`, ()
   });
 
   test("should create multiple users", async () => {
-    await SqlDataSource.instance.query("users_without_pk").insertMany([
+    await sql.query("users_without_pk").insertMany([
       { name: "John Doe", email: "john.doe@test.com" },
       { name: "Jane Doe", email: "jane.doe@test.com" },
     ]);
 
-    const retrievedUsers = await SqlDataSource.instance
+    const retrievedUsers = await sql
       .query("users_without_pk")
       .orderBy("name", "desc")
       .many();
@@ -332,49 +315,45 @@ describe(`[${env.DB_TYPE}] Query Builder with a model without a primary key`, ()
   });
 
   test("should update a user", async () => {
-    await SqlDataSource.instance.query("users_without_pk").insert({
+    await sql.query("users_without_pk").insert({
       name: "John Doe",
     });
 
-    await SqlDataSource.instance.query("users_without_pk").update({
+    await sql.query("users_without_pk").update({
       name: "Jane Doe",
     });
 
-    const retrievedUser = await SqlDataSource.instance
-      .query("users_without_pk")
-      .oneOrFail();
+    const retrievedUser = await sql.query("users_without_pk").oneOrFail();
     expect(retrievedUser.name).toBe("Jane Doe");
   });
 
   test("should delete a user", async () => {
-    await SqlDataSource.instance.query("users_without_pk").insert({
+    await sql.query("users_without_pk").insert({
       name: "John Doe",
     });
 
-    await SqlDataSource.instance.query("users_without_pk").delete();
+    await sql.query("users_without_pk").delete();
 
-    const retrievedUser = await SqlDataSource.instance
-      .query("users_without_pk")
-      .one();
+    const retrievedUser = await sql.query("users_without_pk").one();
     expect(retrievedUser).toBeNull();
   });
 
   test("should soft delete a user", async () => {
-    await SqlDataSource.instance.query("users_without_pk").insert({
+    await sql.query("users_without_pk").insert({
       name: "John Doe",
     });
 
-    await SqlDataSource.instance.query("users_without_pk").softDelete({
+    await sql.query("users_without_pk").softDelete({
       column: "deleted_at",
     });
 
-    const retrievedUser = await SqlDataSource.instance
+    const retrievedUser = await sql
       .query("users_without_pk")
       .whereNull("deleted_at")
       .one();
     expect(retrievedUser).toBeNull();
 
-    const retrievedUserWithDeletedAt = await SqlDataSource.instance
+    const retrievedUserWithDeletedAt = await sql
       .query("users_without_pk")
       .whereNotNull("deleted_at")
       .one();
@@ -384,35 +363,33 @@ describe(`[${env.DB_TYPE}] Query Builder with a model without a primary key`, ()
   });
 
   test("should truncate the table", async () => {
-    await SqlDataSource.instance.query("users_without_pk").insert({
+    await sql.query("users_without_pk").insert({
       name: "John Doe",
     });
 
-    await SqlDataSource.instance.query("users_without_pk").truncate();
+    await sql.query("users_without_pk").truncate();
 
-    const retrievedUser = await SqlDataSource.instance
-      .query("users_without_pk")
-      .one();
+    const retrievedUser = await sql.query("users_without_pk").one();
     expect(retrievedUser).toBeNull();
   });
 });
 
 describe(`[${env.DB_TYPE}] Where query builder tests`, () => {
   beforeEach(async () => {
-    await SqlDataSource.instance.query("users_without_pk").delete();
+    await sql.query("users_without_pk").delete();
   });
 
   afterEach(async () => {
-    await SqlDataSource.instance.query("users_without_pk").delete();
+    await sql.query("users_without_pk").delete();
   });
 
   test("when does not enter the callback", async () => {
-    await SqlDataSource.instance.query("users_without_pk").insert({
+    await sql.query("users_without_pk").insert({
       name: "John Doe",
     });
 
     const falseCondition = false;
-    const users = await SqlDataSource.instance
+    const users = await sql
       .query("users_without_pk")
       .where("name", "TEST")
       .when(falseCondition, (qb) => qb.clearWhere().where("name", "John Doe"))
@@ -423,12 +400,12 @@ describe(`[${env.DB_TYPE}] Where query builder tests`, () => {
   });
 
   test("when enters the callback", async () => {
-    await SqlDataSource.instance.query("users_without_pk").insert({
+    await sql.query("users_without_pk").insert({
       name: "John Doe",
     });
 
     const trueCondition = true;
-    const users = await SqlDataSource.instance
+    const users = await sql
       .query("users_without_pk")
       .where("name", "TEST")
       .when(trueCondition, (qb) => qb.clearWhere().where("name", "John Doe"))
@@ -440,12 +417,12 @@ describe(`[${env.DB_TYPE}] Where query builder tests`, () => {
   });
 
   test("strict when does not enter the callback", async () => {
-    await SqlDataSource.instance.query("users_without_pk").insert({
+    await sql.query("users_without_pk").insert({
       name: "John Doe",
     });
 
     const falseCondition = null;
-    const users = await SqlDataSource.instance
+    const users = await sql
       .query("users_without_pk")
       .where("name", "TEST")
       .strictWhen(falseCondition, (qb) =>
@@ -458,12 +435,12 @@ describe(`[${env.DB_TYPE}] Where query builder tests`, () => {
   });
 
   test("strict when enters the callback", async () => {
-    await SqlDataSource.instance.query("users_without_pk").insert({
+    await sql.query("users_without_pk").insert({
       name: "John Doe",
     });
 
     const trueCondition = true;
-    const users = await SqlDataSource.instance
+    const users = await sql
       .query("users_without_pk")
       .where("name", "TEST")
       .strictWhen(trueCondition, (qb) =>
@@ -479,8 +456,8 @@ describe(`[${env.DB_TYPE}] Where query builder tests`, () => {
 
 describe(`[${env.DB_TYPE}] Where query builder (users_without_pk only)`, () => {
   beforeEach(async () => {
-    await SqlDataSource.instance.query("users_without_pk").delete();
-    await SqlDataSource.instance.query("users_without_pk").insertMany([
+    await sql.query("users_without_pk").delete();
+    await sql.query("users_without_pk").insertMany([
       { name: "Alice", email: "alice.where@test.com" },
       { name: "Bob", email: "bob.where@test.com" },
       { name: "Charlie", email: "charlie.where@test.com" },
@@ -489,11 +466,11 @@ describe(`[${env.DB_TYPE}] Where query builder (users_without_pk only)`, () => {
   });
 
   afterEach(async () => {
-    await SqlDataSource.instance.query("users_without_pk").delete();
+    await sql.query("users_without_pk").delete();
   });
 
   test("whereIn returns correct users", async () => {
-    const users = await SqlDataSource.instance
+    const users = await sql
       .query("users_without_pk")
       .whereIn("name", ["Alice", "Charlie"])
       .many();
@@ -502,12 +479,12 @@ describe(`[${env.DB_TYPE}] Where query builder (users_without_pk only)`, () => {
   });
 
   test("whereNotIn returns correct users", async () => {
-    await SqlDataSource.instance.query("users_without_pk").insert({
+    await sql.query("users_without_pk").insert({
       name: "Bob",
       email: "bob2.where@test.com",
     });
 
-    const users = await SqlDataSource.instance
+    const users = await sql
       .query("users_without_pk")
       .whereNotIn("name", ["Alice", "Charlie"])
       .many();
@@ -516,7 +493,7 @@ describe(`[${env.DB_TYPE}] Where query builder (users_without_pk only)`, () => {
   });
 
   test("whereBetween returns no users (string col)", async () => {
-    const users = await SqlDataSource.instance
+    const users = await sql
       .query("users_without_pk")
       .whereBetween("name", "A", "B")
       .many();
@@ -524,16 +501,13 @@ describe(`[${env.DB_TYPE}] Where query builder (users_without_pk only)`, () => {
   });
 
   test("whereNull returns correct users", async () => {
-    const users = await SqlDataSource.instance
-      .query("users_without_pk")
-      .whereNull("name")
-      .many();
+    const users = await sql.query("users_without_pk").whereNull("name").many();
     expect(users.length).toBe(1);
     expect(users[0].name).toBeNull();
   });
 
   test("whereNotNull returns correct users", async () => {
-    const users = await SqlDataSource.instance
+    const users = await sql
       .query("users_without_pk")
       .whereNotNull("name")
       .many();
@@ -547,7 +521,7 @@ describe(`[${env.DB_TYPE}] Where query builder (users_without_pk only)`, () => {
       return;
     }
 
-    const users = await SqlDataSource.instance
+    const users = await sql
       .query("users_without_pk")
       .whereRegexp("name", /^A/)
       .many();
@@ -556,7 +530,7 @@ describe(`[${env.DB_TYPE}] Where query builder (users_without_pk only)`, () => {
   });
 
   test("whereRaw returns correct users", async () => {
-    const users = await SqlDataSource.instance
+    const users = await sql
       .query("users_without_pk")
       .whereRaw("name = 'Bob'")
       .many();
@@ -565,7 +539,7 @@ describe(`[${env.DB_TYPE}] Where query builder (users_without_pk only)`, () => {
   });
 
   test("orWhere returns correct users", async () => {
-    const users = await SqlDataSource.instance
+    const users = await sql
       .query("users_without_pk")
       .where("name", "Alice")
       .orWhere("name", "Bob")
@@ -575,7 +549,7 @@ describe(`[${env.DB_TYPE}] Where query builder (users_without_pk only)`, () => {
   });
 
   test("andWhere chaining returns correct users", async () => {
-    const users = await SqlDataSource.instance
+    const users = await sql
       .query("users_without_pk")
       .where("name", "Alice")
       .andWhere("name", "Alice")
@@ -585,17 +559,14 @@ describe(`[${env.DB_TYPE}] Where query builder (users_without_pk only)`, () => {
   });
 
   test("where with falsy/empty values", async () => {
-    const users = await SqlDataSource.instance
-      .query("users_without_pk")
-      .where("name", "")
-      .many();
+    const users = await sql.query("users_without_pk").where("name", "").many();
     expect(users.length).toBe(0);
   });
 
   test("whereIn with empty array returns no users", async () => {
     // MSSQL doesn't support bare 'false' as a WHERE condition
     if (env.DB_TYPE === "mssql") return;
-    const users = await SqlDataSource.instance
+    const users = await sql
       .query("users_without_pk")
       .whereIn("name", [])
       .many();
@@ -605,7 +576,7 @@ describe(`[${env.DB_TYPE}] Where query builder (users_without_pk only)`, () => {
   test("whereNotIn with empty array returns all users", async () => {
     // MSSQL doesn't support bare 'true' as a WHERE condition
     if (env.DB_TYPE === "mssql") return;
-    const users = await SqlDataSource.instance
+    const users = await sql
       .query("users_without_pk")
       .whereNotIn("name", [])
       .many();
@@ -616,8 +587,8 @@ describe(`[${env.DB_TYPE}] Where query builder (users_without_pk only)`, () => {
 
 describe(`[${env.DB_TYPE}] Where query builder advanced tests (users_without_pk only)`, () => {
   beforeEach(async () => {
-    await SqlDataSource.instance.query("users_without_pk").delete();
-    await SqlDataSource.instance.query("users_without_pk").insertMany([
+    await sql.query("users_without_pk").delete();
+    await sql.query("users_without_pk").insertMany([
       { name: "Alice", email: "alice.adv@test.com" },
       { name: "Bob", email: "bob.adv@test.com" },
       { name: "Charlie", email: "charlie.adv@test.com" },
@@ -626,13 +597,13 @@ describe(`[${env.DB_TYPE}] Where query builder advanced tests (users_without_pk 
   });
 
   afterEach(async () => {
-    await SqlDataSource.instance.query("users_without_pk").delete();
+    await sql.query("users_without_pk").delete();
   });
 
   test("whereIn empty combined with another where returns no users", async () => {
     // MSSQL generates invalid SQL for empty whereIn combined with other clauses
     if (env.DB_TYPE === "mssql") return;
-    const users = await SqlDataSource.instance
+    const users = await sql
       .query("users_without_pk")
       .whereIn("name", [])
       .where("name", "Alice")
@@ -643,7 +614,7 @@ describe(`[${env.DB_TYPE}] Where query builder advanced tests (users_without_pk 
   test("whereNotIn empty combined with another where returns filtered users", async () => {
     // MSSQL generates invalid SQL for empty whereNotIn combined with other clauses
     if (env.DB_TYPE === "mssql") return;
-    const users = await SqlDataSource.instance
+    const users = await sql
       .query("users_without_pk")
       .whereNotIn("name", [])
       .where("name", "Alice")
@@ -655,7 +626,7 @@ describe(`[${env.DB_TYPE}] Where query builder advanced tests (users_without_pk 
   test("nested where with callback and whereIn empty returns no users", async () => {
     // MSSQL generates invalid SQL for empty whereIn in nested callbacks
     if (env.DB_TYPE === "mssql") return;
-    const users = await SqlDataSource.instance
+    const users = await sql
       .query("users_without_pk")
       .where((qb) => {
         qb.whereIn("name", []);
@@ -668,7 +639,7 @@ describe(`[${env.DB_TYPE}] Where query builder advanced tests (users_without_pk 
   test("nested where with callback and whereNotIn empty returns filtered users", async () => {
     // MSSQL generates invalid SQL for empty whereNotIn in nested callbacks
     if (env.DB_TYPE === "mssql") return;
-    const users = await SqlDataSource.instance
+    const users = await sql
       .query("users_without_pk")
       .where((qb) => {
         qb.whereNotIn("name", []);
@@ -682,7 +653,7 @@ describe(`[${env.DB_TYPE}] Where query builder advanced tests (users_without_pk 
   test("deeply nested where with callback and whereIn empty returns no users", async () => {
     // MSSQL generates invalid SQL for empty whereIn in deeply nested callbacks
     if (env.DB_TYPE === "mssql") return;
-    const users = await SqlDataSource.instance
+    const users = await sql
       .query("users_without_pk")
       .where((qb) => {
         qb.where("name", "Alice");
@@ -698,7 +669,7 @@ describe(`[${env.DB_TYPE}] Where query builder advanced tests (users_without_pk 
   test("deeply nested where with callbacks and whereNotIn empty and valid where returns filtered users", async () => {
     // MSSQL generates invalid SQL for empty whereNotIn in deeply nested callbacks
     if (env.DB_TYPE === "mssql") return;
-    const users = await SqlDataSource.instance
+    const users = await sql
       .query("users_without_pk")
       .where((qb) => {
         qb.where("name", "Alice");
@@ -715,7 +686,7 @@ describe(`[${env.DB_TYPE}] Where query builder advanced tests (users_without_pk 
   test("where with callback having both whereIn and whereNotIn empty returns no users", async () => {
     // MSSQL generates invalid SQL for empty whereIn/whereNotIn in callbacks
     if (env.DB_TYPE === "mssql") return;
-    const users = await SqlDataSource.instance
+    const users = await sql
       .query("users_without_pk")
       .where((qb) => {
         qb.whereIn("name", []);
@@ -728,7 +699,7 @@ describe(`[${env.DB_TYPE}] Where query builder advanced tests (users_without_pk 
   test("where with callback having whereIn empty and orWhere with valid value returns Alice", async () => {
     // MSSQL generates invalid SQL for empty whereIn with orWhere in callbacks
     if (env.DB_TYPE === "mssql") return;
-    const users = await SqlDataSource.instance
+    const users = await sql
       .query("users_without_pk")
       .where((qb) => {
         qb.whereIn("name", []);
@@ -742,7 +713,7 @@ describe(`[${env.DB_TYPE}] Where query builder advanced tests (users_without_pk 
   test("where with callback having whereIn empty and andWhere with valid value returns no users", async () => {
     // MSSQL generates invalid SQL for empty whereIn with andWhere in callbacks
     if (env.DB_TYPE === "mssql") return;
-    const users = await SqlDataSource.instance
+    const users = await sql
       .query("users_without_pk")
       .where((qb) => {
         qb.whereIn("name", []);
@@ -756,7 +727,7 @@ describe(`[${env.DB_TYPE}] Where query builder advanced tests (users_without_pk 
   test("where with callback having whereNotIn empty returns all users", async () => {
     // MSSQL generates invalid SQL for empty whereNotIn in callbacks
     if (env.DB_TYPE === "mssql") return;
-    const users = await SqlDataSource.instance
+    const users = await sql
       .query("users_without_pk")
       .where((qb) => {
         qb.whereNotIn("name", []);
@@ -768,7 +739,7 @@ describe(`[${env.DB_TYPE}] Where query builder advanced tests (users_without_pk 
   test("multiple nested where callbacks with mixed empty and non-empty whereIn/whereNotIn", async () => {
     // MSSQL generates invalid SQL for empty whereIn/whereNotIn in nested callbacks
     if (env.DB_TYPE === "mssql") return;
-    const users = await SqlDataSource.instance
+    const users = await sql
       .query("users_without_pk")
       .where((qb) => {
         qb.where((qb2) => {
@@ -787,7 +758,7 @@ describe(`[${env.DB_TYPE}] Where query builder advanced tests (users_without_pk 
   test("chained OR where callbacks: whereIn empty then whereNotIn empty returns all users", async () => {
     // MSSQL generates invalid SQL for empty whereIn/whereNotIn in orWhere callbacks
     if (env.DB_TYPE === "mssql") return;
-    const users = await SqlDataSource.instance
+    const users = await sql
       .query("users_without_pk")
       .orWhere((qb) => {
         qb.whereIn("name", []);
@@ -803,7 +774,7 @@ describe(`[${env.DB_TYPE}] Where query builder advanced tests (users_without_pk 
   test("orWhere with callback whereIn empty then orWhere with valid value returns users matching orWhere", async () => {
     // MSSQL generates invalid SQL for empty whereIn in orWhere callbacks
     if (env.DB_TYPE === "mssql") return;
-    const users = await SqlDataSource.instance
+    const users = await sql
       .query("users_without_pk")
       .orWhere((qb) => {
         qb.whereIn("name", []);
@@ -817,7 +788,7 @@ describe(`[${env.DB_TYPE}] Where query builder advanced tests (users_without_pk 
   test("where callbacks with whereIn non-empty and whereNotIn empty returns filtered users", async () => {
     // MSSQL generates invalid SQL for empty whereNotIn in callbacks
     if (env.DB_TYPE === "mssql") return;
-    const users = await SqlDataSource.instance
+    const users = await sql
       .query("users_without_pk")
       .where((qb) => {
         qb.whereIn("name", ["Alice", "Bob"]);
@@ -831,7 +802,7 @@ describe(`[${env.DB_TYPE}] Where query builder advanced tests (users_without_pk 
   test("where callbacks with whereIn empty and whereNotIn non-empty returns no users", async () => {
     // MSSQL generates invalid SQL for empty whereIn in callbacks
     if (env.DB_TYPE === "mssql") return;
-    const users = await SqlDataSource.instance
+    const users = await sql
       .query("users_without_pk")
       .where((qb) => {
         qb.whereIn("name", []);
@@ -842,10 +813,10 @@ describe(`[${env.DB_TYPE}] Where query builder advanced tests (users_without_pk 
   });
 
   test("where with subquery returns correct users", async () => {
-    const users = await SqlDataSource.instance
+    const users = await sql
       .query("users_without_pk")
       .where("name", (qb) =>
-        qb.select("name").from("users_without_pk").where("name", "Alice"),
+        qb.select("name").table("users_without_pk").where("name", "Alice"),
       )
       .many();
     expect(users.length).toBe(1);
@@ -853,7 +824,7 @@ describe(`[${env.DB_TYPE}] Where query builder advanced tests (users_without_pk 
   });
 
   test("whereNot returns users not equal to value", async () => {
-    const users = await SqlDataSource.instance
+    const users = await sql
       .query("users_without_pk")
       .whereNot("name", "Alice")
       .many();
@@ -861,7 +832,7 @@ describe(`[${env.DB_TYPE}] Where query builder advanced tests (users_without_pk 
   });
 
   test("orWhereNot with callback group returns expected users", async () => {
-    const users = await SqlDataSource.instance
+    const users = await sql
       .query("users_without_pk")
       .where((qb) => {
         qb.where("name", "Alice");
@@ -875,8 +846,8 @@ describe(`[${env.DB_TYPE}] Where query builder advanced tests (users_without_pk 
 
 describe(`[${env.DB_TYPE}] Query Builder: whereSubQuery + whereBuilder integration`, () => {
   beforeEach(async () => {
-    await SqlDataSource.instance.query("users_without_pk").delete();
-    await SqlDataSource.instance.query("users_without_pk").insertMany([
+    await sql.query("users_without_pk").delete();
+    await sql.query("users_without_pk").insertMany([
       { name: "Alice", age: 25, email: "alice.sub@test.com" },
       { name: "Bob", age: 30, email: "bob.sub@test.com" },
       { name: "Charlie", age: 35, email: "charlie.sub@test.com" },
@@ -886,16 +857,16 @@ describe(`[${env.DB_TYPE}] Query Builder: whereSubQuery + whereBuilder integrati
   });
 
   afterEach(async () => {
-    await SqlDataSource.instance.query("users_without_pk").delete();
+    await sql.query("users_without_pk").delete();
   });
 
   test("nested where callback with subquery inside", async () => {
-    const users = await SqlDataSource.instance
+    const users = await sql
       .query("users_without_pk")
       .where((qb) => {
         qb.where("age", ">", 25);
         qb.where("name", (subQb) =>
-          subQb.select("name").from("users_without_pk").where("age", ">", 30),
+          subQb.select("name").table("users_without_pk").where("age", ">", 30),
         );
       })
       .many();
@@ -904,10 +875,10 @@ describe(`[${env.DB_TYPE}] Query Builder: whereSubQuery + whereBuilder integrati
   });
 
   test("where with subquery having nested where callbacks inside", async () => {
-    const users = await SqlDataSource.instance
+    const users = await sql
       .query("users_without_pk")
       .where("name", (subQb) => {
-        subQb.select("name").from("users_without_pk");
+        subQb.select("name").table("users_without_pk");
         subQb.where((qb) => {
           qb.where("age", ">", 30);
           qb.orWhere("name", "Alice");
@@ -919,11 +890,11 @@ describe(`[${env.DB_TYPE}] Query Builder: whereSubQuery + whereBuilder integrati
   });
 
   test("where with callback having orWhere subquery", async () => {
-    const users = await SqlDataSource.instance
+    const users = await sql
       .query("users_without_pk")
       .where((qb) => {
         qb.orWhere("name", (subQb) =>
-          subQb.select("name").from("users_without_pk").where("age", "<", 30),
+          subQb.select("name").table("users_without_pk").where("age", "<", 30),
         );
       })
       .many();
@@ -932,14 +903,14 @@ describe(`[${env.DB_TYPE}] Query Builder: whereSubQuery + whereBuilder integrati
   });
 
   test("deeply nested where callbacks and subqueries", async () => {
-    const users = await SqlDataSource.instance
+    const users = await sql
       .query("users_without_pk")
       .where((qb) => {
         qb.where((qb2) => {
           qb2.where("age", ">", (subQb) =>
             subQb
               .select("age")
-              .from("users_without_pk")
+              .table("users_without_pk")
               .where("name", "Charlie"),
           );
         });
@@ -951,13 +922,13 @@ describe(`[${env.DB_TYPE}] Query Builder: whereSubQuery + whereBuilder integrati
   });
 
   test("should select a user with a subquery", async () => {
-    const retrievedUser = await SqlDataSource.instance
+    const retrievedUser = await sql
       .query("users_without_pk")
       .select("name")
       .select((subq) => {
         subq
           .select("name")
-          .from("users_without_pk")
+          .table("users_without_pk")
           .where("name", "Alice")
           .limit(1);
       }, "user_name")
@@ -972,8 +943,8 @@ describe(`[${env.DB_TYPE}] Query Builder: whereSubQuery + whereBuilder integrati
 
 describe(`[${env.DB_TYPE}] with performance`, () => {
   beforeEach(async () => {
-    await SqlDataSource.instance.query("users_without_pk").delete();
-    await SqlDataSource.instance.query("users_without_pk").insertMany([
+    await sql.query("users_without_pk").delete();
+    await sql.query("users_without_pk").insertMany([
       { name: "Alice", age: 25, email: "alice.perf@test.com" },
       { name: "Bob", age: 30, email: "bob.perf@test.com" },
       { name: "Charlie", age: 35, email: "charlie.perf@test.com" },
@@ -983,11 +954,11 @@ describe(`[${env.DB_TYPE}] with performance`, () => {
   });
 
   afterEach(async () => {
-    await SqlDataSource.instance.query("users_without_pk").delete();
+    await sql.query("users_without_pk").delete();
   });
 
   test("existsWithPerformance", async () => {
-    const users = await SqlDataSource.instance
+    const users = await sql
       .query("users_without_pk")
       .where("name", "Alice")
       .performance.exists();
@@ -997,16 +968,14 @@ describe(`[${env.DB_TYPE}] with performance`, () => {
   });
 
   test("manyWithPerformance", async () => {
-    const users = await SqlDataSource.instance
-      .query("users_without_pk")
-      .performance.many();
+    const users = await sql.query("users_without_pk").performance.many();
 
     expect(users.data).toBeDefined();
     expect(users.time).toBeDefined();
   });
 
   test("oneWithPerformance", async () => {
-    const user = await SqlDataSource.instance
+    const user = await sql
       .query("users_without_pk")
       .where("name", "Alice")
       .performance.one();
@@ -1016,7 +985,7 @@ describe(`[${env.DB_TYPE}] with performance`, () => {
   });
 
   test("oneOrFailWithPerformance", async () => {
-    const user = await SqlDataSource.instance
+    const user = await sql
       .query("users_without_pk")
       .where("name", "Alice")
       .performance.oneOrFail();
@@ -1026,23 +995,22 @@ describe(`[${env.DB_TYPE}] with performance`, () => {
   });
 
   test("oneOrFailWithPerformance with ModelQueryBuilder", async () => {
-    const user = await UserWithoutPk.query().performance.oneOrFail();
+    const user = await sql.from(UserWithoutPk).performance.oneOrFail();
     expect(user.data).toBeDefined();
     expect(user.time).toBeDefined();
   });
 
   test("oneOrFailWithPerformance with ModelQueryBuilder and custom return type", async () => {
-    const user = await UserWithoutPk.query().performance.oneOrFail(
-      {},
-      "seconds",
-    );
+    const user = await sql
+      .from(UserWithoutPk)
+      .performance.oneOrFail({}, "seconds");
 
     expect(user.data).toBeDefined();
     expect(user.time).toBeDefined();
   });
 
   test("paginateWithPerformance", async () => {
-    const users = await SqlDataSource.instance
+    const users = await sql
       .query("users_without_pk")
       .performance.paginate(1, 10);
 
@@ -1051,18 +1019,15 @@ describe(`[${env.DB_TYPE}] with performance`, () => {
   });
 
   test("paginateWithPerformance with ModelQueryBuilder", async () => {
-    const users = await UserWithoutPk.query().performance.paginate(1, 10);
+    const users = await sql.from(UserWithoutPk).performance.paginate(1, 10);
     expect(users.data).toBeDefined();
     expect(users.time).toBeDefined();
   });
 
   test("paginateWithPerformance with ModelQueryBuilder and custom return type", async () => {
-    const users = await UserWithoutPk.query().performance.paginate(
-      1,
-      10,
-      {},
-      "seconds",
-    );
+    const users = await sql
+      .from(UserWithoutPk)
+      .performance.paginate(1, 10, {}, "seconds");
     expect(users.data).toBeDefined();
     expect(users.time).toBeDefined();
   });
@@ -1070,8 +1035,8 @@ describe(`[${env.DB_TYPE}] with performance`, () => {
 
 describe(`[${env.DB_TYPE}] Query Builder chunk method`, () => {
   beforeEach(async () => {
-    await SqlDataSource.instance.query("users_without_pk").delete();
-    await SqlDataSource.instance.query("users_without_pk").insertMany([
+    await sql.query("users_without_pk").delete();
+    await sql.query("users_without_pk").insertMany([
       { name: "User 1", age: 21, email: "chunk1@test.com" },
       { name: "User 2", age: 22, email: "chunk2@test.com" },
       { name: "User 3", age: 23, email: "chunk3@test.com" },
@@ -1083,14 +1048,14 @@ describe(`[${env.DB_TYPE}] Query Builder chunk method`, () => {
   });
 
   afterEach(async () => {
-    await SqlDataSource.instance.query("users_without_pk").delete();
+    await sql.query("users_without_pk").delete();
   });
 
   test("should properly iterate through chunks", async () => {
     const chunkSize = 3;
     const chunks: any[][] = [];
 
-    for await (const chunk of SqlDataSource.instance
+    for await (const chunk of sql
       .query("users_without_pk")
       .orderBy("name", "asc")
       .chunk(chunkSize)) {
@@ -1110,7 +1075,7 @@ describe(`[${env.DB_TYPE}] Query Builder chunk method`, () => {
   test("should properly iterate through chunks with next", async () => {
     const chunkSize = 3;
 
-    const chunksIterator = SqlDataSource.instance
+    const chunksIterator = sql
       .query("users_without_pk")
       .orderBy("name", "asc")
       .chunk(chunkSize);
@@ -1132,7 +1097,8 @@ describe(`[${env.DB_TYPE}] Query Builder chunk method`, () => {
     const chunkSize = 3;
     const chunks = [];
 
-    for await (const chunk of UserWithoutPk.query()
+    for await (const chunk of sql
+      .from(UserWithoutPk)
       .orderBy("name", "asc")
       .chunk(chunkSize)) {
       chunks.push(chunk);
@@ -1151,7 +1117,8 @@ describe(`[${env.DB_TYPE}] Query Builder chunk method`, () => {
   test("should properly iterate through chunks with next with model", async () => {
     const chunkSize = 3;
 
-    const chunksIterator = UserWithoutPk.query()
+    const chunksIterator = sql
+      .from(UserWithoutPk)
       .orderBy("name", "asc")
       .chunk(chunkSize);
 
@@ -1171,8 +1138,8 @@ describe(`[${env.DB_TYPE}] Query Builder chunk method`, () => {
 
 describe(`[${env.DB_TYPE}] Query Builder stream method`, () => {
   beforeEach(async () => {
-    await SqlDataSource.instance.query("users_without_pk").delete();
-    await SqlDataSource.instance.query("users_without_pk").insertMany([
+    await sql.query("users_without_pk").delete();
+    await sql.query("users_without_pk").insertMany([
       { name: "User 1", age: 21, email: "stream1@test.com" },
       { name: "User 2", age: 22, email: "stream2@test.com" },
       { name: "User 3", age: 23, email: "stream3@test.com" },
@@ -1180,12 +1147,12 @@ describe(`[${env.DB_TYPE}] Query Builder stream method`, () => {
   });
 
   afterEach(async () => {
-    await SqlDataSource.instance.query("users_without_pk").delete();
+    await sql.query("users_without_pk").delete();
   });
 
   test("should properly stream results with event listeners", async () => {
     const users: any[] = [];
-    const stream = await SqlDataSource.instance
+    const stream = await sql
       .query("users_without_pk")
       .orderBy("name", "asc")
       .stream();
@@ -1212,7 +1179,7 @@ describe(`[${env.DB_TYPE}] Query Builder stream method`, () => {
 
   test("should properly stream results with async iteration", async () => {
     const users: any[] = [];
-    const stream = await SqlDataSource.instance
+    const stream = await sql
       .query("users_without_pk")
       .orderBy("name", "asc")
       .stream();
@@ -1230,8 +1197,8 @@ describe(`[${env.DB_TYPE}] Query Builder stream method`, () => {
 
 describe(`[${env.DB_TYPE}] Query Builder clone method`, () => {
   beforeEach(async () => {
-    await SqlDataSource.instance.query("users_without_pk").delete();
-    await SqlDataSource.instance.query("users_without_pk").insertMany([
+    await sql.query("users_without_pk").delete();
+    await sql.query("users_without_pk").insertMany([
       { name: "User 1", age: 21, email: "clone1@test.com" },
       { name: "User 2", age: 22, email: "clone2@test.com" },
       { name: "User 3", age: 23, email: "clone3@test.com" },
@@ -1239,11 +1206,11 @@ describe(`[${env.DB_TYPE}] Query Builder clone method`, () => {
   });
 
   afterEach(async () => {
-    await SqlDataSource.instance.query("users_without_pk").delete();
+    await sql.query("users_without_pk").delete();
   });
 
   test("should properly clone the query builder", async () => {
-    const queryBuilder = SqlDataSource.instance
+    const queryBuilder = sql
       .query("users_without_pk")
       .select("name")
       .where("age", ">", 20)
@@ -1253,8 +1220,8 @@ describe(`[${env.DB_TYPE}] Query Builder clone method`, () => {
       .having("name", "User 1")
       .orderBy("name", "asc")
       .offset(10)
-      .unionAll(SqlDataSource.instance.query("posts").select("name"))
-      .with("posts", (qb) => qb.select("name").from("posts"))
+      .unionAll(sql.query("posts").select("name"))
+      .with("posts", (qb) => qb.select("name").table("posts"))
       .lockForUpdate()
       .forShare()
       .limit(1);
@@ -1265,9 +1232,7 @@ describe(`[${env.DB_TYPE}] Query Builder clone method`, () => {
   });
 
   test("copy should not affect the original query builder", async () => {
-    const queryBuilder = SqlDataSource.instance
-      .query("users_without_pk")
-      .select("name");
+    const queryBuilder = sql.query("users_without_pk").select("name");
     const copiedQueryBuilder = queryBuilder.clone().limit(1);
     const users = await queryBuilder.many();
     const copiedUsers = await copiedQueryBuilder.many();
@@ -1279,8 +1244,8 @@ describe(`[${env.DB_TYPE}] Query Builder clone method`, () => {
 
 describe(`[${env.DB_TYPE}] Query Builder paginateWithCursor method`, () => {
   beforeEach(async () => {
-    await SqlDataSource.instance.query("users_without_pk").delete();
-    await SqlDataSource.instance.query("users_without_pk").insertMany([
+    await sql.query("users_without_pk").delete();
+    await sql.query("users_without_pk").insertMany([
       { name: "User 1", age: 21, email: "cursor1@test.com" },
       { name: "User 2", age: 22, email: "cursor2@test.com" },
       { name: "User 3", age: 23, email: "cursor3@test.com" },
@@ -1288,12 +1253,12 @@ describe(`[${env.DB_TYPE}] Query Builder paginateWithCursor method`, () => {
   });
 
   afterEach(async () => {
-    await SqlDataSource.instance.query("users_without_pk").delete();
+    await sql.query("users_without_pk").delete();
   });
 
   test("should properly paginate results with cursor", async () => {
     const toBeChecked1 = env.DB_TYPE === "cockroachdb" ? "21" : 21;
-    const [users, cursor] = await SqlDataSource.instance
+    const [users, cursor] = await sql
       .query("users_without_pk")
       .select("name", "age")
       .paginateWithCursor(1, { discriminator: "age" });
@@ -1302,7 +1267,7 @@ describe(`[${env.DB_TYPE}] Query Builder paginateWithCursor method`, () => {
     expect(cursor.value).toBe(toBeChecked1);
 
     const toBeChecked2 = env.DB_TYPE === "cockroachdb" ? "22" : 22;
-    const [users2, cursor2] = await SqlDataSource.instance
+    const [users2, cursor2] = await sql
       .query("users_without_pk")
       .select("name", "age")
       .paginateWithCursor(1, { discriminator: "age" }, cursor);
@@ -1311,7 +1276,7 @@ describe(`[${env.DB_TYPE}] Query Builder paginateWithCursor method`, () => {
     expect(cursor2.value).toBe(toBeChecked2);
 
     const toBeChecked3 = env.DB_TYPE === "cockroachdb" ? "23" : 23;
-    const [users3, cursor3] = await SqlDataSource.instance
+    const [users3, cursor3] = await sql
       .query("users_without_pk")
       .select("name", "age")
       .paginateWithCursor(1, { discriminator: "age" }, cursor2);
@@ -1323,18 +1288,18 @@ describe(`[${env.DB_TYPE}] Query Builder paginateWithCursor method`, () => {
 
 describe(`[${env.DB_TYPE}] Upsert Query Builder methods`, () => {
   beforeEach(async () => {
-    await SqlDataSource.instance.query("posts_with_uuid").delete();
-    await SqlDataSource.instance.query("users_without_pk").delete();
+    await sql.query("posts_with_uuid").delete();
+    await sql.query("users_without_pk").delete();
   });
 
   afterEach(async () => {
-    await SqlDataSource.instance.query("posts_with_uuid").delete();
-    await SqlDataSource.instance.query("users_without_pk").delete();
+    await sql.query("posts_with_uuid").delete();
+    await sql.query("users_without_pk").delete();
   });
 
   test("should upsert a record (insert when not exists)", async () => {
     const uuid = crypto.randomUUID();
-    const [post] = await SqlDataSource.instance
+    const [post] = await sql
       .query("posts_with_uuid")
       .upsert(
         { id: uuid, title: "Upsert Test", content: "Content" },
@@ -1353,7 +1318,7 @@ describe(`[${env.DB_TYPE}] Upsert Query Builder methods`, () => {
       expect(post.title).toBe("Upsert Test");
     }
 
-    const retrievedPost = await SqlDataSource.instance
+    const retrievedPost = await sql
       .query("posts_with_uuid")
       .where("id", uuid)
       .oneOrFail();
@@ -1363,14 +1328,14 @@ describe(`[${env.DB_TYPE}] Upsert Query Builder methods`, () => {
   test("should upsert a record (update when exists)", async () => {
     // First insert a record
     const uuid = crypto.randomUUID();
-    await SqlDataSource.instance.query("posts_with_uuid").insert({
+    await sql.query("posts_with_uuid").insert({
       id: uuid,
       title: "Original Title",
       content: "Original Content",
     });
 
     // Then upsert to update it
-    const [updatedPost] = await SqlDataSource.instance
+    const [updatedPost] = await sql
       .query("posts_with_uuid")
       .upsert(
         { id: uuid, title: "Updated Title", content: "Updated Content" },
@@ -1389,7 +1354,7 @@ describe(`[${env.DB_TYPE}] Upsert Query Builder methods`, () => {
       expect(updatedPost.title).toBe("Updated Title");
     }
 
-    const retrievedPost = await SqlDataSource.instance
+    const retrievedPost = await sql
       .query("posts_with_uuid")
       .where("id", uuid)
       .oneOrFail();
@@ -1402,27 +1367,26 @@ describe(`[${env.DB_TYPE}] Upsert Query Builder methods`, () => {
     const uuid2 = crypto.randomUUID();
 
     // Insert the first record
-    await SqlDataSource.instance.query("posts_with_uuid").insert({
+    await sql.query("posts_with_uuid").insert({
       id: uuid1,
       title: "First Post",
       content: "First Content",
     });
 
     // Upsert both records (one update, one insert)
-    const posts = await SqlDataSource.instance
-      .query("posts_with_uuid")
-      .upsertMany(
-        ["id"],
-        ["title", "content"],
-        [
-          {
-            id: uuid1,
-            title: "Updated First Post",
-            content: "Updated First Content",
-          },
-          { id: uuid2, title: "Second Post", content: "Second Content" },
-        ],
-      );
+    const posts = await sql.query("posts_with_uuid").upsertMany(
+      ["id"],
+      ["title", "content"],
+      [
+        {
+          id: uuid1,
+          title: "Updated First Post",
+          content: "Updated First Content",
+        },
+        { id: uuid2, title: "Second Post", content: "Second Content" },
+      ],
+      { returning: ["id", "title", "content"] },
+    );
 
     if (
       env.DB_TYPE !== "mysql" &&
@@ -1434,7 +1398,7 @@ describe(`[${env.DB_TYPE}] Upsert Query Builder methods`, () => {
     }
 
     // Verify both records exist with correct data
-    const retrievedPosts = await SqlDataSource.instance
+    const retrievedPosts = await sql
       .query("posts_with_uuid")
       .whereIn("id", [uuid1, uuid2])
       .orderBy("title", "asc")
@@ -1451,14 +1415,14 @@ describe(`[${env.DB_TYPE}] Upsert Query Builder methods`, () => {
   test("should respect updateOnConflict option in upsert", async () => {
     // First insert a record
     const uuid = crypto.randomUUID();
-    await SqlDataSource.instance.query("posts_with_uuid").insert({
+    await sql.query("posts_with_uuid").insert({
       id: uuid,
       title: "Original Title",
       content: "Original Content",
     });
 
     // Then upsert with updateOnConflict = false
-    const result = await SqlDataSource.instance
+    const result = await sql
       .query("posts_with_uuid")
       .upsert(
         { id: uuid, title: "Should Not Update", content: "Should Not Update" },
@@ -1467,7 +1431,7 @@ describe(`[${env.DB_TYPE}] Upsert Query Builder methods`, () => {
       );
 
     // The record should still exist but not be updated
-    const retrievedPost = await SqlDataSource.instance
+    const retrievedPost = await sql
       .query("posts_with_uuid")
       .where("id", uuid)
       .oneOrFail();
@@ -1481,7 +1445,7 @@ describe(`[${env.DB_TYPE}] Upsert Query Builder methods`, () => {
     const uuid2 = crypto.randomUUID();
 
     // Insert both records first
-    await SqlDataSource.instance.query("posts_with_uuid").insertMany([
+    await sql.query("posts_with_uuid").insertMany([
       { id: uuid1, title: "First Original", content: "First Original Content" },
       {
         id: uuid2,
@@ -1492,7 +1456,7 @@ describe(`[${env.DB_TYPE}] Upsert Query Builder methods`, () => {
     ]);
 
     // Upsert with updateOnConflict = false
-    await SqlDataSource.instance.query("posts_with_uuid").upsertMany(
+    await sql.query("posts_with_uuid").upsertMany(
       ["id"],
       ["title", "content"],
       [
@@ -1513,7 +1477,7 @@ describe(`[${env.DB_TYPE}] Upsert Query Builder methods`, () => {
     );
 
     // Verify records were not updated
-    const retrievedPosts = await SqlDataSource.instance
+    const retrievedPosts = await sql
       .query("posts_with_uuid")
       .whereIn("id", [uuid1, uuid2])
       .orderBy("created_at", "asc")
@@ -1527,57 +1491,47 @@ describe(`[${env.DB_TYPE}] Upsert Query Builder methods`, () => {
 
 describe(`[${env.DB_TYPE}] Additional Query Builder methods`, () => {
   beforeEach(async () => {
-    await SqlDataSource.instance.query("posts_with_uuid").delete();
-    await SqlDataSource.instance.query("users_without_pk").delete();
+    await sql.query("posts_with_uuid").delete();
+    await sql.query("users_without_pk").delete();
   });
 
   afterEach(async () => {
-    await SqlDataSource.instance.query("posts_with_uuid").delete();
-    await SqlDataSource.instance.query("users_without_pk").delete();
+    await sql.query("posts_with_uuid").delete();
+    await sql.query("users_without_pk").delete();
   });
 
   test("pluck returns single column array", async () => {
-    await SqlDataSource.instance.query("posts_with_uuid").insertMany([
+    await sql.query("posts_with_uuid").insertMany([
       { id: crypto.randomUUID(), title: "T1" },
       { id: crypto.randomUUID(), title: "T2" },
     ]);
 
-    const titles = await SqlDataSource.instance
-      .query("posts_with_uuid")
-      .pluck("title");
+    const titles = await sql.query("posts_with_uuid").pluck("title");
     expect(Array.isArray(titles)).toBe(true);
     expect(titles.length).toBeGreaterThanOrEqual(2);
     expect(titles).toEqual(expect.arrayContaining(["T1", "T2"]));
   });
 
   test("increment and decrement modify numeric columns", async () => {
-    await SqlDataSource.instance.query("users_without_pk").insert({
+    await sql.query("users_without_pk").insert({
       name: "Counter",
       age: 10,
     });
 
-    const inc = await SqlDataSource.instance
-      .query("users_without_pk")
-      .increment("age" as any, 5);
+    const inc = await sql.query("users_without_pk").increment("age" as any, 5);
     expect(typeof inc).toBe("number");
 
-    const userAfterInc = await SqlDataSource.instance
-      .query("users_without_pk")
-      .oneOrFail();
+    const userAfterInc = await sql.query("users_without_pk").oneOrFail();
     if (env.DB_TYPE === "cockroachdb") {
       expect(userAfterInc.age).toBe("15");
     } else {
       expect(userAfterInc.age).toBe(15);
     }
 
-    const dec = await SqlDataSource.instance
-      .query("users_without_pk")
-      .decrement("age" as any, 3);
+    const dec = await sql.query("users_without_pk").decrement("age" as any, 3);
     expect(typeof dec).toBe("number");
 
-    const userAfterDec = await SqlDataSource.instance
-      .query("users_without_pk")
-      .oneOrFail();
+    const userAfterDec = await sql.query("users_without_pk").oneOrFail();
 
     if (env.DB_TYPE === "cockroachdb") {
       expect(userAfterDec.age).toBe("12");
@@ -1587,24 +1541,16 @@ describe(`[${env.DB_TYPE}] Additional Query Builder methods`, () => {
   });
 
   test("aggregate helpers return correct values", async () => {
-    await SqlDataSource.instance.query("users_without_pk").insertMany([
+    await sql.query("users_without_pk").insertMany([
       { name: "A", age: 1, email: "agg1@test.com" },
       { name: "B", age: 2, email: "agg2@test.com" },
       { name: "C", age: 3, email: "agg3@test.com" },
     ]);
 
-    const max = await SqlDataSource.instance
-      .query("users_without_pk")
-      .getMax("age");
-    const min = await SqlDataSource.instance
-      .query("users_without_pk")
-      .getMin("age");
-    const avg = await SqlDataSource.instance
-      .query("users_without_pk")
-      .getAvg("age");
-    const sum = await SqlDataSource.instance
-      .query("users_without_pk")
-      .getSum("age");
+    const max = await sql.query("users_without_pk").getMax("age");
+    const min = await sql.query("users_without_pk").getMin("age");
+    const avg = await sql.query("users_without_pk").getAvg("age");
+    const sum = await sql.query("users_without_pk").getSum("age");
 
     expect(max).toBe(3);
     expect(min).toBe(1);
@@ -1614,26 +1560,24 @@ describe(`[${env.DB_TYPE}] Additional Query Builder methods`, () => {
 
   test("union and unionAll produce queries (toQuery) and return combined results", async () => {
     // insert into posts_with_uuid
-    await SqlDataSource.instance
+    await sql
       .query("posts_with_uuid")
       .insertMany([{ id: crypto.randomUUID(), title: "P1" }]);
 
     // simple union using raw query strings
-    const qb = SqlDataSource.instance.query("posts_with_uuid").select("title");
+    const qb = sql.query("posts_with_uuid").select("title");
     qb.union("select 'X' as title");
     const q = qb.toQuery();
     expect(typeof q).toBe("string");
 
     // unionAll with callback/querybuilder
-    const qb2 = SqlDataSource.instance.query("posts_with_uuid").select("title");
-    qb2.unionAll((sub) => sub.select("title").from("posts_with_uuid"));
+    const qb2 = sql.query("posts_with_uuid").select("title");
+    qb2.unionAll((sub) => sub.select("title").table("posts_with_uuid"));
     const q2 = qb2.toQuery();
     expect(typeof q2).toBe("string");
 
     // execute unionAll by selecting from a union of constants and the table
-    const unionQb = SqlDataSource.instance
-      .query("posts_with_uuid")
-      .select("title");
+    const unionQb = sql.query("posts_with_uuid").select("title");
     unionQb.union("select 'CONST' as title");
     const results = await unionQb.many();
     expect(results.length).toBeGreaterThanOrEqual(1);
@@ -1644,8 +1588,8 @@ describe(`[${env.DB_TYPE}] Additional Query Builder methods`, () => {
       return;
     }
 
-    const qb = SqlDataSource.instance.query("users_without_pk");
-    qb.with("cte_users", (sub) => sub.select("name").from("users_without_pk"));
+    const qb = sql.query("users_without_pk");
+    qb.with("cte_users", (sub) => sub.select("name").table("users_without_pk"));
     const q = qb.toQuery();
     expect(typeof q).toBe("string");
     // execute the built query to ensure it does not throw
@@ -1653,9 +1597,9 @@ describe(`[${env.DB_TYPE}] Additional Query Builder methods`, () => {
     // the SQL should include the WITH clause for the CTE
     expect(q.toLowerCase().includes("with")).toBe(true);
 
-    const qb2 = SqlDataSource.instance.query("users_without_pk");
+    const qb2 = sql.query("users_without_pk");
     qb2.withRecursive("rcte", (sub) =>
-      sub.select("name").from("users_without_pk"),
+      sub.select("name").table("users_without_pk"),
     );
     const q2 = qb2.toQuery();
     expect(typeof q2).toBe("string");
@@ -1664,9 +1608,9 @@ describe(`[${env.DB_TYPE}] Additional Query Builder methods`, () => {
     await qb2.many();
 
     if (env.DB_TYPE === "postgres" || env.DB_TYPE === "cockroachdb") {
-      const qb3 = SqlDataSource.instance.query("users_without_pk");
+      const qb3 = sql.query("users_without_pk");
       qb3.withMaterialized("mcte", (sub) =>
-        sub.select("name").from("users_without_pk"),
+        sub.select("name").table("users_without_pk"),
       );
       const q3 = qb3.toQuery();
       expect(typeof q3).toBe("string");
@@ -1682,7 +1626,7 @@ describe(`[${env.DB_TYPE}] Additional Query Builder methods`, () => {
       return;
     }
 
-    const qb = SqlDataSource.instance.query("users_without_pk").select("*");
+    const qb = sql.query("users_without_pk").select("*");
     qb.lockForUpdate({ skipLocked: true });
     const q = qb.toQuery();
     await qb.many();
@@ -1697,7 +1641,7 @@ describe(`[${env.DB_TYPE}] Additional Query Builder methods`, () => {
       ).toBe(true);
     }
 
-    const qb2 = SqlDataSource.instance.query("users_without_pk").select("*");
+    const qb2 = sql.query("users_without_pk").select("*");
     qb2.forShare({ noWait: true });
     const q2 = qb2.toQuery();
     await qb2.many();

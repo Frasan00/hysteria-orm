@@ -1,54 +1,48 @@
 import { faker } from "@faker-js/faker";
+import { SqlDataSource } from "../../../../src/sql/sql_data_source";
 import { AddressWithBigint } from "../bigint/address_bigint";
 import { AddressWithUuid } from "../uuid/address_uuid";
-import { FactoryReturnType } from "./factory_types";
 
 export class AddressFactory {
   static async addressWithBigint<T extends number>(
+    sql: SqlDataSource,
     howMany: T,
-  ): Promise<FactoryReturnType<T, AddressWithBigint>> {
+  ) {
     const addressData = AddressFactory.getCommonAddressData();
     if (howMany === 1) {
-      return (await AddressWithBigint.insert(addressData, {
-        returning: ["*"],
-      })) as FactoryReturnType<T, AddressWithBigint>;
+      return await (sql.from(AddressWithBigint as any) as any).insert(
+        addressData,
+        { returning: ["*"] },
+      );
     }
 
     const array = Array.from({ length: howMany });
-    return (await AddressWithBigint.insertMany(
-      array.map(() => ({
-        ...addressData,
-      })),
+    return await (sql.from(AddressWithBigint as any) as any).insertMany(
+      array.map(() => ({ ...addressData })),
       { returning: ["*"] },
-    )) as FactoryReturnType<T, AddressWithBigint>;
+    );
   }
 
   static async addressWithUuid<T extends number>(
+    sql: SqlDataSource,
     howMany: T,
-  ): Promise<FactoryReturnType<T, AddressWithUuid>> {
+  ) {
     const addressData = AddressFactory.getCommonAddressData();
     if (howMany === 1) {
-      return (await AddressWithUuid.insert(addressData, {
-        returning: ["*"],
-      })) as FactoryReturnType<T, AddressWithUuid>;
+      return await (sql.from(AddressWithUuid as any) as any).insert(
+        addressData,
+        { returning: ["*"] },
+      );
     }
 
     const array = Array.from({ length: howMany });
-    return (await AddressWithUuid.insertMany(
-      array.map(() => ({
-        ...addressData,
-      })),
+    return await (sql.from(AddressWithUuid as any) as any).insertMany(
+      array.map(() => ({ ...addressData })),
       { returning: ["*"] },
-    )) as FactoryReturnType<T, AddressWithUuid>;
+    );
   }
 
-  static getCommonAddressData(): {
-    street: string;
-    city: string;
-    state: string;
-    zip: string;
-    country: string;
-  } {
+  static getCommonAddressData() {
     return {
       street: faker.location.street(),
       city: faker.location.city(),

@@ -1,23 +1,25 @@
 import { env } from "../../../src/env/env";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { UserFactory } from "../test_models/factory/user_factory";
-import { UserStatus, UserWithUuid } from "../test_models/uuid/user_uuid";
+import { UserStatus, UserWithUuid } from "../test_models/uuid/schema";
+
+let sql: SqlDataSource;
 
 beforeAll(async () => {
-  const dataSource = new SqlDataSource();
-  await dataSource.connect();
+  sql = new SqlDataSource();
+  await sql.connect();
 });
 
 afterAll(async () => {
-  await SqlDataSource.disconnect();
+  await sql.disconnect();
 });
 
 beforeEach(async () => {
-  await SqlDataSource.startGlobalTransaction();
+  await sql.startGlobalTransaction();
 });
 
 afterEach(async () => {
-  await SqlDataSource.rollbackGlobalTransaction();
+  await sql.rollbackGlobalTransaction();
 });
 
 describe(`[${env.DB_TYPE}] Select`, () => {
@@ -27,13 +29,14 @@ describe(`[${env.DB_TYPE}] Select`, () => {
       return;
     }
 
-    await UserFactory.userWithUuid(2);
-    const users = await UserWithUuid.query().lockForUpdate().many();
+    await UserFactory.userWithUuid(sql, 2);
+    const users = await sql.from(UserWithUuid).lockForUpdate().many();
     expect(users.length).toBe(2);
     expect(users[0]).not.toBeUndefined();
     expect(users[1]).not.toBeUndefined();
 
-    const users2 = await UserWithUuid.query()
+    const users2 = await sql
+      .from(UserWithUuid)
       .lockForUpdate({ skipLocked: true })
       .many();
     expect(users2.length).toBe(2);
@@ -47,60 +50,61 @@ describe(`[${env.DB_TYPE}] Select`, () => {
       return;
     }
 
-    await UserFactory.userWithUuid(2);
-    const users = await UserWithUuid.query().forShare().many();
+    await UserFactory.userWithUuid(sql, 2);
+    const users = await sql.from(UserWithUuid).forShare().many();
     expect(users.length).toBe(2);
     expect(users[0]).not.toBeUndefined();
     expect(users[1]).not.toBeUndefined();
   });
 
   test("pluck", async () => {
-    await UserFactory.userWithUuid(2);
-    const users = await UserWithUuid.query().pluck("name");
+    await UserFactory.userWithUuid(sql, 2);
+    const users = await sql.from(UserWithUuid).pluck("name");
     expect(users.length).toBe(2);
     expect(users[0]).not.toBeUndefined();
     expect(users[1]).not.toBeUndefined();
   });
 
   test("increment", async () => {
-    const user = await UserFactory.userWithUuid(1);
+    const user = await UserFactory.userWithUuid(sql, 1);
     const originalAge = user.age;
-    await UserWithUuid.query().increment("age", 1);
+    await sql.from(UserWithUuid).increment("age", 1);
 
-    const updatedUser = await UserWithUuid.query().one();
+    const updatedUser = await sql.from(UserWithUuid).one();
 
     expect(Number(updatedUser?.age)).toBe(Number(originalAge) + 1);
   });
 
   test("decrement", async () => {
-    const user = await UserFactory.userWithUuid(1);
+    const user = await UserFactory.userWithUuid(sql, 1);
     const originalAge = user.age;
-    await UserWithUuid.query().decrement("age", 1);
+    await sql.from(UserWithUuid).decrement("age", 1);
 
-    const updatedUser = await UserWithUuid.query().one();
+    const updatedUser = await sql.from(UserWithUuid).one();
 
     expect(Number(updatedUser?.age)).toBe(Number(originalAge) - 1);
   });
 
   test("Select all without `select` method call (default behavior)", async () => {
-    await UserFactory.userWithUuid(2);
-    const users = await UserWithUuid.query().many();
+    await UserFactory.userWithUuid(sql, 2);
+    const users = await sql.from(UserWithUuid).many();
     expect(users.length).toBe(2);
     expect(users[0].name).not.toBeUndefined();
     expect(users[1].name).not.toBeUndefined();
   });
 
   test("Select all", async () => {
-    await UserFactory.userWithUuid(2);
-    const users = await UserWithUuid.query().select("*").many();
+    await UserFactory.userWithUuid(sql, 2);
+    const users = await sql.from(UserWithUuid).select("*").many();
     expect(users.length).toBe(2);
     expect(users[0].name).not.toBeUndefined();
     expect(users[1].name).not.toBeUndefined();
   });
 
   test("Multiple select", async () => {
-    await UserFactory.userWithUuid(2);
-    const users = await UserWithUuid.query()
+    await UserFactory.userWithUuid(sql, 2);
+    const users = await sql
+      .from(UserWithUuid)
       .select("name")
       .select("age")
       .many();
@@ -114,8 +118,9 @@ describe(`[${env.DB_TYPE}] Select`, () => {
   });
 
   test("clear select", async () => {
-    await UserFactory.userWithUuid(2);
-    const users = await UserWithUuid.query()
+    await UserFactory.userWithUuid(sql, 2);
+    const users = await sql
+      .from(UserWithUuid)
       .select("name")
       .clearSelect()
       .many();
@@ -128,8 +133,8 @@ describe(`[${env.DB_TYPE}] Select`, () => {
   });
 
   test("Pagination", async () => {
-    await UserFactory.userWithUuid(10);
-    const users = await UserWithUuid.query().paginate(1, 5);
+    await UserFactory.userWithUuid(sql, 10);
+    const users = await sql.from(UserWithUuid).paginate(1, 5);
     expect(users.data.length).toBe(5);
     expect(users.paginationMetadata.total).toBe(10);
     expect(users.paginationMetadata.currentPage).toBe(1);
@@ -137,8 +142,11 @@ describe(`[${env.DB_TYPE}] Select`, () => {
   });
 
   test("Multiple columns select", async () => {
-    await UserFactory.userWithUuid(2);
-    const users = await UserWithUuid.query().select("age", "birthDate").many();
+    await UserFactory.userWithUuid(sql, 2);
+    const users = await sql
+      .from(UserWithUuid)
+      .select("age", "birthDate")
+      .many();
     expect(users.length).toBe(2);
     expect(users[0].age).not.toBeUndefined();
     expect(users[1].age).not.toBeUndefined();
@@ -149,8 +157,9 @@ describe(`[${env.DB_TYPE}] Select`, () => {
   });
 
   test("Multiple columns select with aliases", async () => {
-    await UserFactory.userWithUuid(2);
-    const users = await UserWithUuid.query()
+    await UserFactory.userWithUuid(sql, 2);
+    const users = await sql
+      .from(UserWithUuid)
       .select(["age", "testAge"], ["birthDate", "testBirth"])
       .many();
 
@@ -166,8 +175,8 @@ describe(`[${env.DB_TYPE}] Select`, () => {
 
 describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
   test("should create an user", async () => {
-    const user = await UserFactory.userWithUuid(1);
-    const retrievedUser = await UserWithUuid.findOne({
+    const user = await UserFactory.userWithUuid(sql, 1);
+    const retrievedUser = await sql.from(UserWithUuid).findOne({
       where: {
         email: user.email,
       },
@@ -180,8 +189,8 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
   });
 
   test("should update an user", async () => {
-    const user = await UserFactory.userWithUuid(1);
-    const updatedUser = await UserWithUuid.updateRecord(
+    const user = await UserFactory.userWithUuid(sql, 1);
+    const updatedUser = await sql.from(UserWithUuid).updateRecord(
       user.id,
       {
         name: "John Doe",
@@ -198,10 +207,10 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
   });
 
   test("should delete an user", async () => {
-    const user = await UserFactory.userWithUuid(1);
-    await UserWithUuid.deleteRecord(user.id);
+    const user = await UserFactory.userWithUuid(sql, 1);
+    await sql.from(UserWithUuid).deleteRecord(user.id);
 
-    const deletedUser = await UserWithUuid.findOne({
+    const deletedUser = await sql.from(UserWithUuid).findOne({
       where: { id: user.id },
     });
 
@@ -209,7 +218,7 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
   });
 
   test("should create multiple users", async () => {
-    const users = await UserFactory.userWithUuid(2);
+    const users = await UserFactory.userWithUuid(sql, 2);
 
     expect(users).toHaveLength(2);
     users.forEach((user) => {
@@ -220,16 +229,16 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
   });
 
   test("should find users by name pattern", async () => {
-    await UserFactory.userWithUuid(3);
-    const allUsers = await UserWithUuid.find();
+    await UserFactory.userWithUuid(sql, 3);
+    const allUsers = await sql.from(UserWithUuid).find();
     expect(allUsers.length).toBe(3);
   });
 
   test("should find one user by email", async () => {
-    const user1 = await UserFactory.userWithUuid(1);
-    await UserFactory.userWithUuid(1);
+    const user1 = await UserFactory.userWithUuid(sql, 1);
+    await UserFactory.userWithUuid(sql, 1);
 
-    const foundUser = await UserWithUuid.findOne({
+    const foundUser = await sql.from(UserWithUuid).findOne({
       where: { email: user1.email },
     });
 
@@ -238,43 +247,49 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
   });
 
   test("should handle empty results gracefully", async () => {
-    await UserFactory.userWithUuid(1);
+    await UserFactory.userWithUuid(sql, 1);
 
-    const users = await UserWithUuid.find({
+    const users = await sql.from(UserWithUuid).find({
       where: { name: "NonExistent" },
     });
     expect(users).toHaveLength(0);
 
-    const user = await UserWithUuid.findOne({
+    const user = await sql.from(UserWithUuid).findOne({
       where: { email: "nonexistent@example.com" },
     });
     expect(user).toBeNull();
   });
 
   test("should throw error when trying to findOneOrFail with non-existent criteria", async () => {
-    await UserFactory.userWithUuid(1);
+    await UserFactory.userWithUuid(sql, 1);
 
     await expect(
-      UserWithUuid.findOneOrFail({
+      sql.from(UserWithUuid).findOneOrFail({
         where: { email: "nonexistent@example.com" },
       }),
     ).rejects.toThrow();
   });
 
   test("should handle firstOrInsert operation", async () => {
-    const existingUser = await UserFactory.userWithUuid(1);
+    const existingUser = await UserFactory.userWithUuid(sql, 1);
 
-    const foundUser = await UserWithUuid.firstOrInsert(
-      { email: existingUser.email },
-      { name: "Different Name", email: existingUser.email },
-    );
+    const foundUser = await sql
+      .from(UserWithUuid)
+      .firstOrInsert(
+        { email: existingUser.email },
+        { name: "Different Name", email: existingUser.email },
+      );
 
     expect(foundUser.name).toBe(existingUser.name);
     expect(foundUser.email).toBe(existingUser.email);
 
-    const newUser = await UserWithUuid.firstOrInsert(
+    const newUser = await sql.from(UserWithUuid).firstOrInsert(
       { email: "new@example.com" },
-      { name: "New User", email: "new@example.com", status: UserStatus.active },
+      {
+        name: "New User",
+        email: "new@example.com",
+        status: UserStatus.active,
+      },
     );
 
     expect(newUser.name).toBe("New User");
@@ -282,36 +297,46 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
   });
 
   test("should handle different user statuses", async () => {
-    const activeUser = await UserFactory.userWithUuid(1, UserStatus.active);
-    const inactiveUser = await UserFactory.userWithUuid(1, UserStatus.inactive);
+    const activeUser = await UserFactory.userWithUuid(
+      sql,
+      1,
+      UserStatus.active,
+    );
+    const inactiveUser = await UserFactory.userWithUuid(
+      sql,
+      1,
+      UserStatus.inactive,
+    );
 
     expect(activeUser.status).toBe(UserStatus.active);
     expect(inactiveUser.status).toBe(UserStatus.inactive);
 
-    const activeUsers = await UserWithUuid.find({
+    const activeUsers = await sql.from(UserWithUuid).find({
       where: { status: UserStatus.active },
     });
     expect(activeUsers).toHaveLength(1);
 
-    const inactiveUsers = await UserWithUuid.find({
+    const inactiveUsers = await sql.from(UserWithUuid).find({
       where: { status: UserStatus.inactive },
     });
     expect(inactiveUsers).toHaveLength(1);
   });
 
   test("should firstOrInsert (read) an user", async () => {
-    const existingUser = await UserFactory.userWithUuid(1);
+    const existingUser = await UserFactory.userWithUuid(sql, 1);
 
-    const foundUser = await UserWithUuid.firstOrInsert(
-      { email: existingUser.email },
-      { name: "Different Name", email: existingUser.email },
-    );
+    const foundUser = await sql
+      .from(UserWithUuid)
+      .firstOrInsert(
+        { email: existingUser.email },
+        { name: "Different Name", email: existingUser.email },
+      );
 
-    const newUser = await UserWithUuid.findOne({
+    const newUser = await sql.from(UserWithUuid).findOne({
       where: { email: existingUser.email },
     });
 
-    const allUsers = await UserWithUuid.find();
+    const allUsers = await sql.from(UserWithUuid).find();
     expect(foundUser).toHaveProperty("id");
     expect(newUser).not.toBeNull();
     expect(newUser?.email).toBe(existingUser.email);
@@ -319,23 +344,22 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
   });
 
   test("should firstOrInsert (create) an user", async () => {
-    const foundUser = await UserWithUuid.firstOrInsert(
-      { email: "" },
-      { ...UserFactory.getCommonUserData() },
-    );
+    const foundUser = await sql
+      .from(UserWithUuid)
+      .firstOrInsert({ email: "" }, { ...UserFactory.getCommonUserData() });
 
-    const allUsers = await UserWithUuid.find();
+    const allUsers = await sql.from(UserWithUuid).find();
     expect(foundUser).toHaveProperty("id");
     expect(allUsers).toHaveLength(1);
   });
 
   test("should update user via bulk update", async () => {
-    const user = await UserFactory.userWithUuid(1);
-    await UserWithUuid.query().update({
+    const user = await UserFactory.userWithUuid(sql, 1);
+    await sql.from(UserWithUuid).update({
       name: "John Doe",
     });
 
-    const allUsers = await UserWithUuid.find();
+    const allUsers = await sql.from(UserWithUuid).find();
     expect(allUsers).toHaveLength(1);
     expect(allUsers[0].name).toBe("John Doe");
     expect(allUsers[0].updatedAt).not.toBe(allUsers[0].createdAt);
@@ -346,10 +370,10 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
 describe(`[${env.DB_TYPE}] Where Operations`, () => {
   describe("Simple equality", () => {
     test("should find by simple value equality", async () => {
-      const user = await UserFactory.userWithUuid(1);
-      await UserFactory.userWithUuid(1);
+      const user = await UserFactory.userWithUuid(sql, 1);
+      await UserFactory.userWithUuid(sql, 1);
 
-      const found = await UserWithUuid.find({
+      const found = await sql.from(UserWithUuid).find({
         where: { email: user.email },
       });
 
@@ -358,10 +382,10 @@ describe(`[${env.DB_TYPE}] Where Operations`, () => {
     });
 
     test("should find with $eq operator", async () => {
-      const user = await UserFactory.userWithUuid(1);
-      await UserFactory.userWithUuid(1);
+      const user = await UserFactory.userWithUuid(sql, 1);
+      await UserFactory.userWithUuid(sql, 1);
 
-      const found = await UserWithUuid.find({
+      const found = await sql.from(UserWithUuid).find({
         where: { email: { op: "$eq", value: user.email } },
       });
 
@@ -370,10 +394,10 @@ describe(`[${env.DB_TYPE}] Where Operations`, () => {
     });
 
     test("should find with $ne operator", async () => {
-      const user1 = await UserFactory.userWithUuid(1);
-      await UserFactory.userWithUuid(1);
+      const user1 = await UserFactory.userWithUuid(sql, 1);
+      await UserFactory.userWithUuid(sql, 1);
 
-      const found = await UserWithUuid.find({
+      const found = await sql.from(UserWithUuid).find({
         where: { email: { op: "$ne", value: user1.email } },
       });
 
@@ -384,16 +408,16 @@ describe(`[${env.DB_TYPE}] Where Operations`, () => {
 
   describe("Comparison operators", () => {
     test("should find with $gt operator", async () => {
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         age: 25,
       });
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         age: 35,
       });
 
-      const found = await UserWithUuid.find({
+      const found = await sql.from(UserWithUuid).find({
         where: { age: { op: "$gt", value: 30 } },
       });
 
@@ -402,20 +426,20 @@ describe(`[${env.DB_TYPE}] Where Operations`, () => {
     });
 
     test("should find with $gte operator", async () => {
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         age: 25,
       });
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         age: 30,
       });
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         age: 35,
       });
 
-      const found = await UserWithUuid.find({
+      const found = await sql.from(UserWithUuid).find({
         where: { age: { op: "$gte", value: 30 } },
       });
 
@@ -426,16 +450,16 @@ describe(`[${env.DB_TYPE}] Where Operations`, () => {
     });
 
     test("should find with $lt operator", async () => {
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         age: 25,
       });
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         age: 35,
       });
 
-      const found = await UserWithUuid.find({
+      const found = await sql.from(UserWithUuid).find({
         where: { age: { op: "$lt", value: 30 } },
       });
 
@@ -444,20 +468,20 @@ describe(`[${env.DB_TYPE}] Where Operations`, () => {
     });
 
     test("should find with $lte operator", async () => {
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         age: 25,
       });
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         age: 30,
       });
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         age: 35,
       });
 
-      const found = await UserWithUuid.find({
+      const found = await sql.from(UserWithUuid).find({
         where: { age: { op: "$lte", value: 30 } },
       });
 
@@ -470,20 +494,20 @@ describe(`[${env.DB_TYPE}] Where Operations`, () => {
 
   describe("Between operators", () => {
     test("should find with $between operator", async () => {
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         age: 20,
       });
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         age: 30,
       });
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         age: 40,
       });
 
-      const found = await UserWithUuid.find({
+      const found = await sql.from(UserWithUuid).find({
         where: { age: { op: "$between", value: [25, 35] } },
       });
 
@@ -492,20 +516,20 @@ describe(`[${env.DB_TYPE}] Where Operations`, () => {
     });
 
     test("should find with $not between operator", async () => {
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         age: 20,
       });
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         age: 30,
       });
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         age: 40,
       });
 
-      const found = await UserWithUuid.find({
+      const found = await sql.from(UserWithUuid).find({
         where: { age: { op: "$not between", value: [25, 35] } },
       });
 
@@ -515,19 +539,19 @@ describe(`[${env.DB_TYPE}] Where Operations`, () => {
 
   describe("Null operators", () => {
     test("should find with $is null operator", async () => {
-      const user1 = await UserWithUuid.insert(
+      const user1 = await sql.from(UserWithUuid).insert(
         {
           ...UserFactory.getCommonUserData(),
           shortDescription: null as any,
         },
         { returning: ["*"] },
       );
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         shortDescription: "has description",
       });
 
-      const found = await UserWithUuid.find({
+      const found = await sql.from(UserWithUuid).find({
         where: { shortDescription: { op: "$is null" } },
       });
 
@@ -536,11 +560,11 @@ describe(`[${env.DB_TYPE}] Where Operations`, () => {
     });
 
     test("should find with $is not null operator", async () => {
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         shortDescription: null as any,
       });
-      const user2 = await UserWithUuid.insert(
+      const user2 = await sql.from(UserWithUuid).insert(
         {
           ...UserFactory.getCommonUserData(),
           shortDescription: "has description",
@@ -548,7 +572,7 @@ describe(`[${env.DB_TYPE}] Where Operations`, () => {
         { returning: ["*"] },
       );
 
-      const found = await UserWithUuid.find({
+      const found = await sql.from(UserWithUuid).find({
         where: { shortDescription: { op: "$is not null" } },
       });
 
@@ -559,16 +583,16 @@ describe(`[${env.DB_TYPE}] Where Operations`, () => {
 
   describe("Like operators", () => {
     test("should find with $like operator", async () => {
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         name: "John Doe",
       });
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         name: "Jane Smith",
       });
 
-      const found = await UserWithUuid.find({
+      const found = await sql.from(UserWithUuid).find({
         where: { name: { op: "$like", value: "John%" } },
       });
 
@@ -577,16 +601,16 @@ describe(`[${env.DB_TYPE}] Where Operations`, () => {
     });
 
     test("should find with $not like operator", async () => {
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         name: "John Doe",
       });
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         name: "Jane Smith",
       });
 
-      const found = await UserWithUuid.find({
+      const found = await sql.from(UserWithUuid).find({
         where: { name: { op: "$not like", value: "John%" } },
       });
 
@@ -597,26 +621,26 @@ describe(`[${env.DB_TYPE}] Where Operations`, () => {
 
   describe("In operators", () => {
     test("should find with $in operator", async () => {
-      const user1 = await UserWithUuid.insert(
+      const user1 = await sql.from(UserWithUuid).insert(
         {
           ...UserFactory.getCommonUserData(),
           age: 25,
         },
         { returning: ["*"] },
       );
-      const user2 = await UserWithUuid.insert(
+      const user2 = await sql.from(UserWithUuid).insert(
         {
           ...UserFactory.getCommonUserData(),
           age: 30,
         },
         { returning: ["*"] },
       );
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         age: 35,
       });
 
-      const found = await UserWithUuid.find({
+      const found = await sql.from(UserWithUuid).find({
         where: { age: { op: "$in", value: [25, 30] } },
       });
 
@@ -627,15 +651,15 @@ describe(`[${env.DB_TYPE}] Where Operations`, () => {
     });
 
     test("should find with $nin operator", async () => {
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         age: 25,
       });
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         age: 30,
       });
-      const user3 = await UserWithUuid.insert(
+      const user3 = await sql.from(UserWithUuid).insert(
         {
           ...UserFactory.getCommonUserData(),
           age: 35,
@@ -643,7 +667,7 @@ describe(`[${env.DB_TYPE}] Where Operations`, () => {
         { returning: ["*"] },
       );
 
-      const found = await UserWithUuid.find({
+      const found = await sql.from(UserWithUuid).find({
         where: { age: { op: "$nin", value: [25, 30] } },
       });
 
@@ -654,23 +678,23 @@ describe(`[${env.DB_TYPE}] Where Operations`, () => {
 
   describe("$and operator", () => {
     test("should find with $and combining multiple conditions", async () => {
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         name: "John Doe",
         age: 25,
       });
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         name: "John Doe",
         age: 35,
       });
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         name: "Jane Smith",
         age: 25,
       });
 
-      const found = await UserWithUuid.find({
+      const found = await sql.from(UserWithUuid).find({
         where: {
           $and: [{ name: "John Doe" }, { age: { op: "$gte", value: 30 } }],
         },
@@ -684,23 +708,23 @@ describe(`[${env.DB_TYPE}] Where Operations`, () => {
 
   describe("$or operator", () => {
     test("should find with $or combining multiple conditions", async () => {
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         name: "John Doe",
         age: 25,
       });
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         name: "Jane Smith",
         age: 35,
       });
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         name: "Bob Wilson",
         age: 40,
       });
 
-      const found = await UserWithUuid.find({
+      const found = await sql.from(UserWithUuid).find({
         where: {
           $or: [{ name: "John Doe" }, { name: "Jane Smith" }],
         },
@@ -715,19 +739,19 @@ describe(`[${env.DB_TYPE}] Where Operations`, () => {
 
   describe("Complex nested conditions", () => {
     test("should handle nested $and within $or", async () => {
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         name: "John Doe",
         age: 25,
         status: UserStatus.active,
       });
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         name: "Jane Smith",
         age: 35,
         status: UserStatus.inactive,
       });
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         name: "Bob Wilson",
         age: 40,
@@ -735,7 +759,7 @@ describe(`[${env.DB_TYPE}] Where Operations`, () => {
       });
 
       // Find users who are (active AND age < 30) OR (inactive AND age > 30)
-      const found = await UserWithUuid.find({
+      const found = await sql.from(UserWithUuid).find({
         where: {
           $or: [
             {
@@ -761,19 +785,19 @@ describe(`[${env.DB_TYPE}] Where Operations`, () => {
     });
 
     test("should handle nested $or within $and", async () => {
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         name: "John Doe",
         age: 25,
         status: UserStatus.active,
       });
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         name: "Jane Smith",
         age: 35,
         status: UserStatus.active,
       });
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         name: "Bob Wilson",
         age: 40,
@@ -781,7 +805,7 @@ describe(`[${env.DB_TYPE}] Where Operations`, () => {
       });
 
       // Find users who are active AND (named John Doe OR named Jane Smith)
-      const found = await UserWithUuid.find({
+      const found = await sql.from(UserWithUuid).find({
         where: {
           $and: [
             { status: UserStatus.active },
@@ -799,25 +823,25 @@ describe(`[${env.DB_TYPE}] Where Operations`, () => {
     });
 
     test("should handle deeply nested conditions", async () => {
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         name: "John Doe",
         age: 25,
         status: UserStatus.active,
       });
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         name: "Jane Smith",
         age: 35,
         status: UserStatus.active,
       });
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         name: "Bob Wilson",
         age: 40,
         status: UserStatus.inactive,
       });
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         name: "Alice Brown",
         age: 28,
@@ -826,7 +850,7 @@ describe(`[${env.DB_TYPE}] Where Operations`, () => {
 
       // Complex query:
       // (active AND age between 20-30) OR (inactive AND (age > 35 OR name like 'Alice%'))
-      const found = await UserWithUuid.find({
+      const found = await sql.from(UserWithUuid).find({
         where: {
           $or: [
             {
@@ -858,19 +882,19 @@ describe(`[${env.DB_TYPE}] Where Operations`, () => {
     });
 
     test("should combine top-level fields with $and/$or", async () => {
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         name: "John Doe",
         age: 25,
         status: UserStatus.active,
       });
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         name: "Jane Smith",
         age: 35,
         status: UserStatus.active,
       });
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         name: "Bob Wilson",
         age: 40,
@@ -878,7 +902,7 @@ describe(`[${env.DB_TYPE}] Where Operations`, () => {
       });
 
       // Find active users who are either John Doe or Jane Smith
-      const found = await UserWithUuid.find({
+      const found = await sql.from(UserWithUuid).find({
         where: {
           status: UserStatus.active,
           $or: [{ name: "John Doe" }, { name: "Jane Smith" }],
@@ -892,25 +916,25 @@ describe(`[${env.DB_TYPE}] Where Operations`, () => {
     });
 
     test("should handle multiple operations on same field via $and", async () => {
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         age: 25,
       });
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         age: 30,
       });
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         age: 35,
       });
-      await UserWithUuid.insert({
+      await sql.from(UserWithUuid).insert({
         ...UserFactory.getCommonUserData(),
         age: 40,
       });
 
       // Find users with age > 25 AND age < 40
-      const found = await UserWithUuid.find({
+      const found = await sql.from(UserWithUuid).find({
         where: {
           $and: [
             { age: { op: "$gt", value: 25 } },
@@ -931,9 +955,9 @@ describe(`[${env.DB_TYPE}] Where Operations`, () => {
 
 describe(`[${env.DB_TYPE}] Stream`, () => {
   test("should properly stream results with event listeners", async () => {
-    const users: UserWithUuid[] = [];
-    await UserFactory.userWithUuid(3);
-    const stream = await UserWithUuid.query().orderBy("name", "asc").stream();
+    const users: (typeof UserWithUuid)[] = [];
+    await UserFactory.userWithUuid(sql, 3);
+    const stream = await sql.from(UserWithUuid).orderBy("name", "asc").stream();
 
     await new Promise<void>((resolve, reject) => {
       stream.on("data", (user) => {
@@ -964,15 +988,16 @@ describe(`[${env.DB_TYPE}] Stream`, () => {
     }
 
     const users: any[] = [];
-    await UserFactory.userWithUuid(3);
-    const stream = await UserWithUuid.query()
+    await UserFactory.userWithUuid(sql, 3);
+    const stream = await sql
+      .from(UserWithUuid)
       .select("*")
       .load("post")
       .orderBy("name", "asc")
       .stream();
 
     for await (const user of stream) {
-      users.push(user as unknown as UserWithUuid);
+      users.push(user as unknown as typeof UserWithUuid);
     }
 
     expect(users.length).toBe(3);

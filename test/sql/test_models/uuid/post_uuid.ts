@@ -1,55 +1,25 @@
 import crypto from "node:crypto";
-import {
-  belongsTo,
-  column,
-} from "../../../../src/sql/models/decorators/model_decorators";
-import { Model } from "../../../../src/sql/models/model";
-import { UserWithUuid } from "./user_uuid";
+import { col, defineModel } from "../../../../src/sql/models/define_model";
 
-export class PostWithUuid extends Model {
-  static table = "posts_with_uuid";
-
-  @column({
-    primaryKey: true,
-  })
-  declare id: string;
-
-  @column()
-  declare userId: string;
-
-  @column()
-  declare title: string;
-
-  @column()
-  declare content: string;
-
-  @column()
-  declare shortDescription: string;
-
-  @column.datetime({
-    autoCreate: true,
-  })
-  declare createdAt: Date;
-
-  @column.datetime({
-    autoCreate: true,
-    autoUpdate: true,
-  })
-  declare updatedAt: Date;
-
-  @column.datetime()
-  declare deletedAt: Date | null;
-
-  @belongsTo(() => UserWithUuid, "userId")
-  declare user: UserWithUuid;
-
-  static async beforeInsert(data: PostWithUuid): Promise<void> {
-    data.id = crypto.randomUUID();
-  }
-
-  static async beforeInsertMany(data: PostWithUuid[]): Promise<void> {
-    for (const item of data) {
-      item.id = crypto.randomUUID();
-    }
-  }
-}
+export const PostWithUuid = defineModel("posts_with_uuid", {
+  columns: {
+    id: col.primary<string>(),
+    userId: col.string(),
+    title: col.string(),
+    content: col.string(),
+    shortDescription: col.string(),
+    createdAt: col.datetime({ autoCreate: true }),
+    updatedAt: col.datetime({ autoCreate: true, autoUpdate: true }),
+    deletedAt: col.datetime(),
+  },
+  hooks: {
+    beforeInsert: async (data) => {
+      data.id = crypto.randomUUID();
+    },
+    beforeInsertMany: async (data) => {
+      for (const item of data) {
+        item.id = crypto.randomUUID();
+      }
+    },
+  },
+});

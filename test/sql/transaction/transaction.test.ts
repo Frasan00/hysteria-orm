@@ -4,47 +4,47 @@ import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { UserFactory } from "../test_models/factory/user_factory";
 import { UserWithoutPk } from "../test_models/without_pk/user_without_pk";
 
+let sql: SqlDataSource;
+
 beforeAll(async () => {
-  const dataSource = new SqlDataSource();
-  await dataSource.connect();
+  sql = new SqlDataSource();
+  await sql.connect();
 });
 
 afterAll(async () => {
-  await SqlDataSource.instance.disconnect();
+  await sql.disconnect();
 });
 
 beforeEach(async () => {
-  const users = await UserWithoutPk.query().many();
+  const users = await sql.from(UserWithoutPk).many();
   expect(users.length).toBe(0);
-  await UserWithoutPk.query().delete();
+  await sql.from(UserWithoutPk).delete();
 });
 
 afterEach(async () => {
-  await UserWithoutPk.query().delete();
-  const users = await UserWithoutPk.query().many();
+  await sql.from(UserWithoutPk).delete();
+  const users = await sql.from(UserWithoutPk).many();
   expect(users.length).toBe(0);
 });
 
 describe("Use Transaction", () => {
   test("Should handle transaction correctly using transaction", async () => {
-    await SqlDataSource.instance.transaction(async (trx) => {
-      await UserWithoutPk.insert(
-        { ...UserFactory.getCommonUserData() },
-        { trx },
-      );
+    await sql.transaction(async (trx) => {
+      await sql
+        .from(UserWithoutPk)
+        .insert({ ...UserFactory.getCommonUserData() }, { trx });
     });
 
-    const users = await UserWithoutPk.query().many();
+    const users = await sql.from(UserWithoutPk).many();
     expect(users.length).toBe(1);
   });
 
   test("Should rollback transaction when error occurs in transaction", async () => {
     try {
-      await SqlDataSource.instance.transaction(async (trx) => {
-        await UserWithoutPk.insert(
-          { ...UserFactory.getCommonUserData() },
-          { trx },
-        );
+      await sql.transaction(async (trx) => {
+        await sql
+          .from(UserWithoutPk)
+          .insert({ ...UserFactory.getCommonUserData() }, { trx });
         throw new Error("Test error");
       });
     } catch (error: unknown) {
@@ -54,43 +54,46 @@ describe("Use Transaction", () => {
       }
     }
 
-    const users = await UserWithoutPk.query().many();
+    const users = await sql.from(UserWithoutPk).many();
     expect(users.length).toBe(0);
   });
 
   test("Should handle transaction with custom isolation level", async () => {
-    await SqlDataSource.instance.transaction(
+    await sql.transaction(
       async (trx) => {
-        await UserWithoutPk.insert(
-          { ...UserFactory.getCommonUserData() },
-          { trx },
-        );
+        await sql
+          .from(UserWithoutPk)
+          .insert({ ...UserFactory.getCommonUserData() }, { trx });
       },
       { isolationLevel: "SERIALIZABLE" },
     );
 
-    const users = await UserWithoutPk.query().many();
+    const users = await sql.from(UserWithoutPk).many();
     expect(users.length).toBe(1);
   });
 
   test("Should handle multiple operations in a single transaction", async () => {
-    await SqlDataSource.instance.transaction(async (trx) => {
-      const user1 = await UserWithoutPk.insert(
-        { ...UserFactory.getCommonUserData() },
-        { trx, returning: ["*"] },
-      );
+    await sql.transaction(async (trx) => {
+      const user1 = await sql
+        .from(UserWithoutPk)
+        .insert(
+          { ...UserFactory.getCommonUserData() },
+          { trx, returning: ["*"] },
+        );
 
-      const user2 = await UserWithoutPk.insert(
-        { ...UserFactory.getCommonUserData() },
-        { trx, returning: ["*"] },
-      );
+      const user2 = await sql
+        .from(UserWithoutPk)
+        .insert(
+          { ...UserFactory.getCommonUserData() },
+          { trx, returning: ["*"] },
+        );
 
       expect(user1).toBeDefined();
       expect(user2).toBeDefined();
       expect(user1.email).not.toBe(user2.email);
     });
 
-    const users = await UserWithoutPk.query().many();
+    const users = await sql.from(UserWithoutPk).many();
     expect(users.length).toBe(2);
   });
 });
@@ -101,22 +104,23 @@ describe(`[${env.DB_TYPE}] Transaction`, () => {
   testNested(
     "[Nested] Should handle nested transactions correctly",
     async () => {
-      const outerTrx = await SqlDataSource.instance.transaction();
-      const user1 = await UserWithoutPk.insert(
-        { ...UserFactory.getCommonUserData() },
-        { trx: outerTrx, returning: ["*"] as const },
-      );
+      const outerTrx = await sql.transaction();
+      const user1 = await sql
+        .from(UserWithoutPk)
+        .insert(
+          { ...UserFactory.getCommonUserData() },
+          { trx: outerTrx, returning: ["*"] as const },
+        );
 
-      const innerTrx = await SqlDataSource.instance.transaction();
-      await UserWithoutPk.insert(
-        { ...UserFactory.getCommonUserData() },
-        { trx: innerTrx },
-      );
+      const innerTrx = await sql.transaction();
+      await sql
+        .from(UserWithoutPk)
+        .insert({ ...UserFactory.getCommonUserData() }, { trx: innerTrx });
 
       await innerTrx.rollback();
       await outerTrx.commit();
 
-      const retrievedUsers = await UserWithoutPk.query().many();
+      const retrievedUsers = await sql.from(UserWithoutPk).many();
       expect(retrievedUsers.length).toBe(1);
       expect(retrievedUsers[0].email).toBe(user1.email);
     },
@@ -127,45 +131,45 @@ describe(`[${env.DB_TYPE}] Transaction`, () => {
   testConcurrent(
     "[Concurrent] Should handle concurrent transactions correctly",
     async () => {
-      const trx1 = await SqlDataSource.instance.transaction();
-      const trx2 = await SqlDataSource.instance.transaction();
+      const trx1 = await sql.transaction();
+      const trx2 = await sql.transaction();
 
-      await UserWithoutPk.insert(
-        { ...UserFactory.getCommonUserData() },
-        { trx: trx1 },
-      );
+      await sql
+        .from(UserWithoutPk)
+        .insert({ ...UserFactory.getCommonUserData() }, { trx: trx1 });
 
-      await UserWithoutPk.insert(
-        { ...UserFactory.getCommonUserData() },
-        { trx: trx2 },
-      );
+      await sql
+        .from(UserWithoutPk)
+        .insert({ ...UserFactory.getCommonUserData() }, { trx: trx2 });
 
       await trx1.commit();
       await trx2.commit();
 
-      const retrievedUsers = await UserWithoutPk.query().many();
+      const retrievedUsers = await sql.from(UserWithoutPk).many();
       expect(retrievedUsers.length).toBe(2);
     },
   );
 
   if (env.DB_TYPE === "sqlite") {
     test("[SQLite] Should handle single transaction correctly", async () => {
-      const trx = await SqlDataSource.instance.transaction();
-      const user = await UserWithoutPk.insert(
-        { ...UserFactory.getCommonUserData() },
-        { trx, returning: ["*"] },
-      );
+      const trx = await sql.transaction();
+      const user = await sql
+        .from(UserWithoutPk)
+        .insert(
+          { ...UserFactory.getCommonUserData() },
+          { trx, returning: ["*"] },
+        );
 
       await trx.commit();
-      const retrievedUsers = await UserWithoutPk.query().many();
+      const retrievedUsers = await sql.from(UserWithoutPk).many();
       expect(retrievedUsers.length).toBe(1);
       expect(retrievedUsers[0].email).toBe(user.email);
     });
   }
 
   test("[Commit] Simple transaction passing transaction to the Model methods", async () => {
-    const trx = await SqlDataSource.instance.transaction();
-    const user = await UserWithoutPk.insert(
+    const trx = await sql.transaction();
+    const user = await sql.from(UserWithoutPk).insert(
       {
         ...UserFactory.getCommonUserData(),
       },
@@ -173,35 +177,35 @@ describe(`[${env.DB_TYPE}] Transaction`, () => {
     );
 
     await trx.commit({ throwErrorOnInactiveTransaction: true });
-    const retrievedUsers = await UserWithoutPk.query().many();
+    const retrievedUsers = await sql.from(UserWithoutPk).many();
     expect(retrievedUsers.length).toBe(1);
     expect(retrievedUsers[0]).toBeDefined();
     expect(retrievedUsers[0].email).toBe(user.email);
   });
 
   test("[Commit] Test global transaction", async () => {
-    await SqlDataSource.instance.startGlobalTransaction();
-    const user = await UserWithoutPk.insert(
+    await sql.startGlobalTransaction();
+    const user = await sql.from(UserWithoutPk).insert(
       {
         ...UserFactory.getCommonUserData(),
       },
       { returning: ["*"] },
     );
 
-    await SqlDataSource.instance.commitGlobalTransaction();
+    await sql.commitGlobalTransaction();
 
-    const retrievedUsers = await UserWithoutPk.query().many();
+    const retrievedUsers = await sql.from(UserWithoutPk).many();
     expect(retrievedUsers.length).toBe(1);
     expect(retrievedUsers[0]).toBeDefined();
     expect(retrievedUsers[0].email).toBe(user.email);
   });
 
   test("[Commit] Test global transaction with transaction with custom isolation level", async () => {
-    const trx = await SqlDataSource.instance.transaction({
+    const trx = await sql.transaction({
       isolationLevel: "SERIALIZABLE",
     });
 
-    const user = await UserWithoutPk.insert(
+    const user = await sql.from(UserWithoutPk).insert(
       {
         ...UserFactory.getCommonUserData(),
       },
@@ -209,15 +213,15 @@ describe(`[${env.DB_TYPE}] Transaction`, () => {
     );
 
     await trx.commit({ throwErrorOnInactiveTransaction: true });
-    const retrievedUsers = await UserWithoutPk.query().many();
+    const retrievedUsers = await sql.from(UserWithoutPk).many();
     expect(retrievedUsers.length).toBe(1);
     expect(retrievedUsers[0]).toBeDefined();
     expect(retrievedUsers[0].email).toBe(user.email);
   });
 
   test("[Rollback] Simple transaction passing transaction to the Model methods", async () => {
-    const trx = await SqlDataSource.instance.transaction();
-    await UserWithoutPk.insert(
+    const trx = await sql.transaction();
+    await sql.from(UserWithoutPk).insert(
       {
         ...UserFactory.getCommonUserData(),
       },
@@ -225,24 +229,24 @@ describe(`[${env.DB_TYPE}] Transaction`, () => {
     );
 
     await trx.rollback({ throwErrorOnInactiveTransaction: true });
-    const retrievedUsers = await UserWithoutPk.query().many();
+    const retrievedUsers = await sql.from(UserWithoutPk).many();
     expect(retrievedUsers.length).toBe(0);
   });
 
   test("[Rollback] Test global transaction", async () => {
-    await SqlDataSource.instance.startGlobalTransaction();
-    await UserWithoutPk.insert({
+    await sql.startGlobalTransaction();
+    await sql.from(UserWithoutPk).insert({
       ...UserFactory.getCommonUserData(),
     });
 
-    await SqlDataSource.instance.rollbackGlobalTransaction();
+    await sql.rollbackGlobalTransaction();
 
-    const retrievedUsers = await UserWithoutPk.query().many();
+    const retrievedUsers = await sql.from(UserWithoutPk).many();
     expect(retrievedUsers.length).toBe(0);
   });
 
   test("Should throw error if transaction is not active and throwErrorOnInactiveTransaction is true", async () => {
-    const trx = await SqlDataSource.instance.transaction();
+    const trx = await sql.transaction();
     await trx.rollback();
     expect(trx.isActive).toBe(false);
     expect(
@@ -251,7 +255,7 @@ describe(`[${env.DB_TYPE}] Transaction`, () => {
   });
 
   test("Should not throw error if transaction is not active and throwErrorOnInactiveTransaction is false", async () => {
-    const trx = await SqlDataSource.instance.transaction();
+    const trx = await sql.transaction();
     await trx.rollback();
     expect(trx.isActive).toBe(false);
     expect(
@@ -262,26 +266,26 @@ describe(`[${env.DB_TYPE}] Transaction`, () => {
 
 describe(`[${env.DB_TYPE}] Raw transaction from transaction sql instance should work`, () => {
   test("Simple transaction", async () => {
-    const trx = await SqlDataSource.instance.transaction();
+    const trx = await sql.transaction();
     await trx.sql.rawQuery("SELECT 1");
     await trx.commit();
   });
 
   test("Insert with commit via query builder", async () => {
-    const trx = await SqlDataSource.instance.transaction();
+    const trx = await sql.transaction();
     await trx.sql.query(UserWithoutPk.table).insert({
       email: "test@test.com",
     });
 
     await trx.commit();
 
-    const retrievedUsers = await UserWithoutPk.query().many();
+    const retrievedUsers = await sql.from(UserWithoutPk).many();
     expect(retrievedUsers.length).toBe(1);
     expect(retrievedUsers[0].email).toBe("test@test.com");
   });
 
   test("Insert with rollback via query builder", async () => {
-    const trx = await SqlDataSource.instance.transaction();
+    const trx = await sql.transaction();
     await trx.sql.query(UserWithoutPk.table).insert({
       email: "test@test.com",
     });
@@ -290,18 +294,18 @@ describe(`[${env.DB_TYPE}] Raw transaction from transaction sql instance should 
     // We avoid mid transaction testing for cockroachdb since it's serializable MVCC may cause issues
     // MSSQL also blocks reads on tables with uncommitted writes (lock contention)
     if (env.DB_TYPE !== "cockroachdb" && env.DB_TYPE !== "mssql") {
-      const usersFromStandardConnection = await UserWithoutPk.query().many();
+      const usersFromStandardConnection = await sql.from(UserWithoutPk).many();
       expect(usersFromStandardConnection.length).toBe(0);
     }
 
     await trx.rollback();
 
-    const retrievedUsers = await UserWithoutPk.query().many();
+    const retrievedUsers = await sql.from(UserWithoutPk).many();
     expect(retrievedUsers.length).toBe(0);
   });
 
   test("Insert many with commit via model manager", async () => {
-    const trx = await SqlDataSource.instance.transaction();
+    const trx = await sql.transaction();
     const modelManager = trx.sql.getModelManager(UserWithoutPk);
     await modelManager.insertMany([
       { email: "test@test.com" },
@@ -311,13 +315,13 @@ describe(`[${env.DB_TYPE}] Raw transaction from transaction sql instance should 
     // standard connection should not have this transaction data
     // MSSQL blocks reads on tables with uncommitted writes (lock contention)
     if (env.DB_TYPE !== "cockroachdb" && env.DB_TYPE !== "mssql") {
-      const usersFromStandardConnection = await UserWithoutPk.query().many();
+      const usersFromStandardConnection = await sql.from(UserWithoutPk).many();
       expect(usersFromStandardConnection.length).toBe(0);
     }
 
     await trx.commit();
 
-    const retrievedUsers = await UserWithoutPk.query().many();
+    const retrievedUsers = await sql.from(UserWithoutPk).many();
     expect(retrievedUsers.length).toBe(2);
     expect(retrievedUsers).toContainEqual(
       expect.objectContaining({ email: "test@test.com" }),
@@ -328,7 +332,7 @@ describe(`[${env.DB_TYPE}] Raw transaction from transaction sql instance should 
   });
 
   test("Insert many with rollback via model manager", async () => {
-    const trx = await SqlDataSource.instance.transaction();
+    const trx = await sql.transaction();
     const modelManager = trx.sql.getModelManager(UserWithoutPk);
     await modelManager.insertMany([
       { email: "test@test.com" },
@@ -338,7 +342,7 @@ describe(`[${env.DB_TYPE}] Raw transaction from transaction sql instance should 
     // standard connection should not have this transaction data
     // MSSQL blocks reads on tables with uncommitted writes (lock contention)
     if (env.DB_TYPE !== "cockroachdb" && env.DB_TYPE !== "mssql") {
-      const usersFromStandardConnection = await UserWithoutPk.query().many();
+      const usersFromStandardConnection = await sql.from(UserWithoutPk).many();
       expect(usersFromStandardConnection.length).toBe(0);
     }
 
@@ -346,7 +350,7 @@ describe(`[${env.DB_TYPE}] Raw transaction from transaction sql instance should 
   });
 
   test("Update with commit via query builder", async () => {
-    const trx = await SqlDataSource.instance.transaction();
+    const trx = await sql.transaction();
     await trx.sql.query(UserWithoutPk.table).update({
       email: "test@test.com",
     });
@@ -363,22 +367,23 @@ describe(`[${env.DB_TYPE}] Transaction Alias - static use`, () => {
   testNested(
     "[Nested][Alias-Static] Should handle nested transactions correctly",
     async () => {
-      const outerTrx = await SqlDataSource.instance.transaction();
-      const user1 = await UserWithoutPk.insert(
-        { ...UserFactory.getCommonUserData() },
-        { trx: outerTrx, returning: ["*"] as const },
-      );
+      const outerTrx = await sql.transaction();
+      const user1 = await sql
+        .from(UserWithoutPk)
+        .insert(
+          { ...UserFactory.getCommonUserData() },
+          { trx: outerTrx, returning: ["*"] as const },
+        );
 
-      const innerTrx = await SqlDataSource.instance.transaction();
-      await UserWithoutPk.insert(
-        { ...UserFactory.getCommonUserData() },
-        { trx: innerTrx },
-      );
+      const innerTrx = await sql.transaction();
+      await sql
+        .from(UserWithoutPk)
+        .insert({ ...UserFactory.getCommonUserData() }, { trx: innerTrx });
 
       await innerTrx.rollback();
       await outerTrx.commit();
 
-      const retrievedUsers = await UserWithoutPk.query().many();
+      const retrievedUsers = await sql.from(UserWithoutPk).many();
       expect(retrievedUsers.length).toBe(1);
       expect(retrievedUsers[0].email).toBe(user1.email);
     },
@@ -387,49 +392,51 @@ describe(`[${env.DB_TYPE}] Transaction Alias - static use`, () => {
   testConcurrent(
     "[Concurrent][Alias-Static] Should handle concurrent transactions correctly",
     async () => {
-      const trx1 = await SqlDataSource.instance.transaction();
-      const trx2 = await SqlDataSource.instance.transaction();
+      const trx1 = await sql.transaction();
+      const trx2 = await sql.transaction();
 
-      await UserWithoutPk.insert(
-        { ...UserFactory.getCommonUserData() },
-        { trx: trx1 },
-      );
+      await sql
+        .from(UserWithoutPk)
+        .insert({ ...UserFactory.getCommonUserData() }, { trx: trx1 });
 
-      await UserWithoutPk.insert(
-        { ...UserFactory.getCommonUserData() },
-        { trx: trx2 },
-      );
+      await sql
+        .from(UserWithoutPk)
+        .insert({ ...UserFactory.getCommonUserData() }, { trx: trx2 });
 
       await trx1.commit();
       await trx2.commit();
 
-      const retrievedUsers = await UserWithoutPk.query().many();
+      const retrievedUsers = await sql.from(UserWithoutPk).many();
       expect(retrievedUsers.length).toBe(2);
     },
   );
 
   test("[Commit][Alias-Static] Simple transaction passing trx to Model methods", async () => {
-    const trx = await SqlDataSource.instance.transaction();
-    const user = await UserWithoutPk.insert(
-      { ...UserFactory.getCommonUserData() },
-      { trx, returning: ["*"] },
-    );
+    const trx = await sql.transaction();
+    const user = await sql
+      .from(UserWithoutPk)
+      .insert(
+        { ...UserFactory.getCommonUserData() },
+        { trx, returning: ["*"] },
+      );
     await trx.commit({ throwErrorOnInactiveTransaction: true });
-    const retrievedUsers = await UserWithoutPk.query().many();
+    const retrievedUsers = await sql.from(UserWithoutPk).many();
     expect(retrievedUsers.length).toBe(1);
     expect(retrievedUsers[0].email).toBe(user.email);
   });
 
   test("[Rollback][Alias-Static] Simple transaction passing trx to Model methods", async () => {
-    const trx = await SqlDataSource.instance.transaction();
-    await UserWithoutPk.insert({ ...UserFactory.getCommonUserData() }, { trx });
+    const trx = await sql.transaction();
+    await sql
+      .from(UserWithoutPk)
+      .insert({ ...UserFactory.getCommonUserData() }, { trx });
     await trx.rollback({ throwErrorOnInactiveTransaction: true });
-    const retrievedUsers = await UserWithoutPk.query().many();
+    const retrievedUsers = await sql.from(UserWithoutPk).many();
     expect(retrievedUsers.length).toBe(0);
   });
 
   test("[Raw][Alias-Static] Simple transaction", async () => {
-    const trx = await SqlDataSource.instance.transaction();
+    const trx = await sql.transaction();
     await trx.sql.rawQuery("SELECT 1");
     await trx.commit();
   });
@@ -443,23 +450,23 @@ describe(`[${env.DB_TYPE}] Transaction Alias - instance use`, () => {
   testNested(
     "[Nested][Alias-Instance] Should handle nested transactions correctly",
     async () => {
-      const sql = SqlDataSource.instance;
       const outerTrx = await sql.transaction();
-      const user1 = await UserWithoutPk.insert(
-        { ...UserFactory.getCommonUserData() },
-        { trx: outerTrx, returning: ["*"] as const },
-      );
+      const user1 = await sql
+        .from(UserWithoutPk)
+        .insert(
+          { ...UserFactory.getCommonUserData() },
+          { trx: outerTrx, returning: ["*"] as const },
+        );
 
       const innerTrx = await sql.transaction();
-      await UserWithoutPk.insert(
-        { ...UserFactory.getCommonUserData() },
-        { trx: innerTrx },
-      );
+      await sql
+        .from(UserWithoutPk)
+        .insert({ ...UserFactory.getCommonUserData() }, { trx: innerTrx });
 
       await innerTrx.rollback();
       await outerTrx.commit();
 
-      const retrievedUsers = await UserWithoutPk.query().many();
+      const retrievedUsers = await sql.from(UserWithoutPk).many();
       expect(retrievedUsers.length).toBe(1);
       expect(retrievedUsers[0].email).toBe(user1.email);
     },
@@ -468,73 +475,69 @@ describe(`[${env.DB_TYPE}] Transaction Alias - instance use`, () => {
   testConcurrent(
     "[Concurrent][Alias-Instance] Should handle concurrent transactions correctly",
     async () => {
-      const sql = SqlDataSource.instance;
       const trx1 = await sql.transaction();
       const trx2 = await sql.transaction();
 
-      await UserWithoutPk.insert(
-        { ...UserFactory.getCommonUserData() },
-        { trx: trx1 },
-      );
+      await sql
+        .from(UserWithoutPk)
+        .insert({ ...UserFactory.getCommonUserData() }, { trx: trx1 });
 
-      await UserWithoutPk.insert(
-        { ...UserFactory.getCommonUserData() },
-        { trx: trx2 },
-      );
+      await sql
+        .from(UserWithoutPk)
+        .insert({ ...UserFactory.getCommonUserData() }, { trx: trx2 });
 
       await trx1.commit();
       await trx2.commit();
 
-      const retrievedUsers = await UserWithoutPk.query().many();
+      const retrievedUsers = await sql.from(UserWithoutPk).many();
       expect(retrievedUsers.length).toBe(2);
     },
   );
 
   test("[Commit][Alias-Instance] Simple transaction passing trx to Model methods", async () => {
-    const sql = SqlDataSource.instance;
     const trx = await sql.transaction();
-    const user = await UserWithoutPk.insert(
-      { ...UserFactory.getCommonUserData() },
-      { trx, returning: ["*"] },
-    );
+    const user = await sql
+      .from(UserWithoutPk)
+      .insert(
+        { ...UserFactory.getCommonUserData() },
+        { trx, returning: ["*"] },
+      );
     await trx.commit({ throwErrorOnInactiveTransaction: true });
-    const retrievedUsers = await UserWithoutPk.query().many();
+    const retrievedUsers = await sql.from(UserWithoutPk).many();
     expect(retrievedUsers.length).toBe(1);
     expect(retrievedUsers[0].email).toBe(user.email);
   });
 
   test("[Rollback][Alias-Instance] Simple transaction passing trx to Model methods", async () => {
-    const sql = SqlDataSource.instance;
     const trx = await sql.transaction();
-    await UserWithoutPk.insert({ ...UserFactory.getCommonUserData() }, { trx });
+    await sql
+      .from(UserWithoutPk)
+      .insert({ ...UserFactory.getCommonUserData() }, { trx });
     await trx.rollback({ throwErrorOnInactiveTransaction: true });
-    const retrievedUsers = await UserWithoutPk.query().many();
+    const retrievedUsers = await sql.from(UserWithoutPk).many();
     expect(retrievedUsers.length).toBe(0);
   });
 
   test("[Raw][Alias-Instance] Simple transaction", async () => {
-    const sql = SqlDataSource.instance;
     const trx = await sql.transaction();
     await trx.sql.rawQuery("SELECT 1");
     await trx.commit();
   });
 
   test("[Callback][Alias-Instance] Should handle instance alias transaction with callback", async () => {
-    const sql = SqlDataSource.instance;
     await sql.transaction(async (trx) => {
-      await UserWithoutPk.insert(
-        { ...UserFactory.getCommonUserData() },
-        { trx },
-      );
+      await sql
+        .from(UserWithoutPk)
+        .insert({ ...UserFactory.getCommonUserData() }, { trx });
     });
-    const users = await UserWithoutPk.query().many();
+    const users = await sql.from(UserWithoutPk).many();
     expect(users.length).toBeGreaterThan(0);
   });
 });
 
 describe(`[${env.DB_TYPE}] Nested transactions with savePoints`, () => {
   test("Simple transaction", async () => {
-    const trx = await SqlDataSource.instance.transaction();
+    const trx = await sql.transaction();
     await trx.sql.rawQuery("SELECT 1");
     const nestedTrx = await trx.nestedTransaction();
     await nestedTrx.sql.rawQuery("SELECT 2");
@@ -543,7 +546,7 @@ describe(`[${env.DB_TYPE}] Nested transactions with savePoints`, () => {
   });
 
   test("Nested transaction with callback", async () => {
-    const trx = await SqlDataSource.instance.transaction();
+    const trx = await sql.transaction();
     await trx.sql.rawQuery("SELECT 1");
     await trx.nestedTransaction(async (trx) => {
       await trx.sql.query(UserWithoutPk.table).insert({
@@ -553,13 +556,13 @@ describe(`[${env.DB_TYPE}] Nested transactions with savePoints`, () => {
 
     await trx.commit();
 
-    const retrievedUsers = await UserWithoutPk.query().many();
+    const retrievedUsers = await sql.from(UserWithoutPk).many();
     expect(retrievedUsers.length).toBe(1);
     expect(retrievedUsers[0].email).toBe("test@test.com");
   });
 
   test("Nested transaction with insert", async () => {
-    const trx = await SqlDataSource.instance.transaction();
+    const trx = await sql.transaction();
     await trx.sql.rawQuery("SELECT 1");
     const nestedTrx = await trx.nestedTransaction();
     await nestedTrx.sql.query(UserWithoutPk.table).insert({
@@ -579,7 +582,7 @@ describe(`[${env.DB_TYPE}] Nested transactions with savePoints`, () => {
   });
 
   test("Multi-level nesting commit chain", async () => {
-    const outer = await SqlDataSource.instance.transaction();
+    const outer = await sql.transaction();
     const lvl1 = await outer.nestedTransaction();
     const lvl2 = await lvl1.nestedTransaction();
 
@@ -593,19 +596,19 @@ describe(`[${env.DB_TYPE}] Nested transactions with savePoints`, () => {
     // Before outer commit, data should not be visible from default connection (except cockroachdb caveat)
     // MSSQL also blocks reads on tables with uncommitted writes (lock contention)
     if (env.DB_TYPE !== "cockroachdb" && env.DB_TYPE !== "mssql") {
-      const midUsers = await UserWithoutPk.query().many();
+      const midUsers = await sql.from(UserWithoutPk).many();
       expect(midUsers.length).toBe(0);
     }
 
     await outer.commit();
 
-    const users = await UserWithoutPk.query().many();
+    const users = await sql.from(UserWithoutPk).many();
     expect(users.length).toBe(1);
     expect(users[0].email).toBe("nest2@test.com");
   });
 
   test("Inner rollback, outer commit persists outer work only", async () => {
-    const outer = await SqlDataSource.instance.transaction();
+    const outer = await sql.transaction();
     await outer.sql
       .query(UserWithoutPk.table)
       .insert({ email: "outer@test.com" });
@@ -620,19 +623,19 @@ describe(`[${env.DB_TYPE}] Nested transactions with savePoints`, () => {
     // Inner changes should not be visible; outer still uncommitted
     // MSSQL also blocks reads on tables with uncommitted writes (lock contention)
     if (env.DB_TYPE !== "cockroachdb" && env.DB_TYPE !== "mssql") {
-      const midUsers = await UserWithoutPk.query().many();
+      const midUsers = await sql.from(UserWithoutPk).many();
       expect(midUsers.length).toBe(0);
     }
 
     await outer.commit();
 
-    const users = await UserWithoutPk.query().many();
+    const users = await sql.from(UserWithoutPk).many();
     expect(users.length).toBe(1);
     expect(users[0].email).toBe("outer@test.com");
   });
 
   test("Nested rollback then continue outer", async () => {
-    const outer = await SqlDataSource.instance.transaction();
+    const outer = await sql.transaction();
     const inner = await outer.nestedTransaction();
     await inner.sql
       .query(UserWithoutPk.table)
@@ -646,13 +649,13 @@ describe(`[${env.DB_TYPE}] Nested transactions with savePoints`, () => {
 
     await outer.commit();
 
-    const users = await UserWithoutPk.query().many();
+    const users = await sql.from(UserWithoutPk).many();
     expect(users.length).toBe(1);
     expect(users[0].email).toBe("outer-commit@test.com");
   });
 
   test("Nested inactive error behavior on rollback/commit", async () => {
-    const outer = await SqlDataSource.instance.transaction();
+    const outer = await sql.transaction();
     const inner = await outer.nestedTransaction();
     await inner.sql.rawQuery("SELECT 1");
     await inner.commit();
@@ -671,7 +674,7 @@ describe(`[${env.DB_TYPE}] Nested transactions with savePoints`, () => {
   });
 
   test("Nested transaction with callback", async () => {
-    const trx = await SqlDataSource.instance.transaction();
+    const trx = await sql.transaction();
     await trx.sql.rawQuery("SELECT 1");
     await trx.nestedTransaction(async (trx) => {
       await trx.nestedTransaction(async (trx) => {
@@ -695,7 +698,7 @@ describe(`[${env.DB_TYPE}] Nested transactions with savePoints`, () => {
 
     await trx.commit();
 
-    const users = await UserWithoutPk.query().many();
+    const users = await sql.from(UserWithoutPk).many();
     expect(users.length).toBe(3);
     expect(users[0].email).toBe("test@test.com");
     expect(users[1].email).toBe("test2@test.com");

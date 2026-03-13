@@ -2,6 +2,7 @@ import type { AnyModelConstructor } from "../define_model_types";
 import { Model } from "../../models/model";
 import { ModelKey, ModelRelation } from "../model_manager/model_manager_types";
 import { ModelDataProperties, ModelWithoutRelations } from "../model_types";
+import { Simplify } from "../../../utils/types";
 
 /**
  * Extracts the instance type from a Model class type.
@@ -64,7 +65,7 @@ export type RelatedInstance<M extends Model, K extends ModelRelation<M>> =
 //
 // Example:
 // ```ts
-// const user = await User.query()
+// const user = await sql.from(User).query()
 //   .select("name", ["age", "userAge"])
 //   .one();
 //
@@ -101,7 +102,7 @@ type UnionToIntersection<U> = (U extends any ? (k: U) => void : never) extends (
  * | Table wildcard            | `"users.*"`              | Select all from specific table |
  *
  * @example
- * User.query().select(
+ * sql.from(users).select(
  *   "name",                    // Model column with intellisense
  *   "users.email",             // Qualified column
  *   "*"                        // All columns
@@ -394,7 +395,7 @@ export type ComposeBuildSelect<
  * @typeParam R - Relations type from `load()` calls
  *
  * @example
- * // User.query().select("name").load("posts").one()
+ * // sql.from(users).select("name").load("posts").one()
  * SelectedModel<User, { name: string }, { posts: Post[] }>
  * // Result: { name: string; posts: Post[] }
  */
@@ -402,4 +403,4 @@ export type SelectedModel<
   M extends Model,
   S extends Record<string, any> = {},
   R extends Record<string, any> = {},
-> = S & R;
+> = Simplify<S & R, typeof SELECT_BRAND>;

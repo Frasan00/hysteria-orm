@@ -1,15 +1,8 @@
-import { column } from "../../../../../src/sql/models/decorators/model_decorators";
-import { Model } from "../../../../../src/sql/models/model";
+import { col, defineModel } from "../../../../../src/sql/models/define_model";
 
-/**
- * CircularB v1: B created, no FK to A
- */
-export class CircularBV1 extends Model {
-  static table = "schema_diff_circular_b";
-
-  @column.bigIncrement()
-  declare id: number;
-
-  @column({ type: "varchar", length: 255 })
-  declare label: string;
-}
+export const CircularBV1 = defineModel("schema_diff_circular_b", {
+  columns: {
+    id: col.bigIncrement(),
+    label: col.string({ length: 255 }),
+  },
+});

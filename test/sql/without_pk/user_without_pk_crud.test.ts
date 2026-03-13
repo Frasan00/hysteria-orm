@@ -7,27 +7,30 @@ import {
   UserWithoutPk,
 } from "../test_models/without_pk/user_without_pk";
 
+let sql: SqlDataSource;
+
 beforeAll(async () => {
-  const dataSource = new SqlDataSource();
-  await dataSource.connect();
+  sql = new SqlDataSource();
+  await sql.connect();
 });
 
 afterAll(async () => {
-  await SqlDataSource.disconnect();
+  await sql.disconnect();
 });
 
 beforeEach(async () => {
-  await SqlDataSource.startGlobalTransaction();
+  await sql.startGlobalTransaction();
 });
 
 afterEach(async () => {
-  await SqlDataSource.rollbackGlobalTransaction();
+  await sql.rollbackGlobalTransaction();
 });
 
 describe(`[${env.DB_TYPE}] Select`, () => {
   test("selectRaw with aggregate function", async () => {
-    await UserFactory.userWithoutPk(2);
-    const user = await UserWithoutPk.query()
+    await UserFactory.userWithoutPk(sql, 2);
+    const user = await sql
+      .from(UserWithoutPk)
       .selectRaw<{ maxAge: number }>("max(age) as maxAge")
       .one();
 
@@ -36,8 +39,9 @@ describe(`[${env.DB_TYPE}] Select`, () => {
   });
 
   test("Select with alias", async () => {
-    await UserFactory.userWithoutPk(2);
-    const user = await UserWithoutPk.query()
+    await UserFactory.userWithoutPk(sql, 2);
+    const user = await sql
+      .from(UserWithoutPk)
       .select("name", ["age", "superAge"])
       .one();
 
@@ -47,25 +51,26 @@ describe(`[${env.DB_TYPE}] Select`, () => {
   });
 
   test("Select all without `select` method call (default behavior)", async () => {
-    await UserFactory.userWithoutPk(2);
-    const users = await UserWithoutPk.query().many();
+    await UserFactory.userWithoutPk(sql, 2);
+    const users = await sql.from(UserWithoutPk).many();
     expect(users.length).toBe(2);
     expect(users[0].name).not.toBeUndefined();
     expect(users[1].name).not.toBeUndefined();
   });
 
   test("Select all", async () => {
-    await UserFactory.userWithoutPk(2);
-    const users = await UserWithoutPk.query().select("*").many();
+    await UserFactory.userWithoutPk(sql, 2);
+    const users = await sql.from(UserWithoutPk).select("*").many();
     expect(users.length).toBe(2);
     expect(users[0].name).not.toBeUndefined();
     expect(users[1].name).not.toBeUndefined();
   });
 
   test("Multiple select", async () => {
-    await UserFactory.userWithoutPk(2);
+    await UserFactory.userWithoutPk(sql, 2);
     // Note: Chained select calls accumulate at runtime but type reflects last call
-    const users = await UserWithoutPk.query()
+    const users = await sql
+      .from(UserWithoutPk)
       .select("name")
       .select("age")
       .many();
@@ -79,8 +84,9 @@ describe(`[${env.DB_TYPE}] Select`, () => {
   });
 
   test("clear select", async () => {
-    await UserFactory.userWithoutPk(2);
-    const users = await UserWithoutPk.query()
+    await UserFactory.userWithoutPk(sql, 2);
+    const users = await sql
+      .from(UserWithoutPk)
       .select("name")
       .clearSelect()
       .many();
@@ -93,8 +99,8 @@ describe(`[${env.DB_TYPE}] Select`, () => {
   });
 
   test("Pagination", async () => {
-    await UserFactory.userWithoutPk(10);
-    const users = await UserWithoutPk.query().paginate(1, 5);
+    await UserFactory.userWithoutPk(sql, 10);
+    const users = await sql.from(UserWithoutPk).paginate(1, 5);
     expect(users.data.length).toBe(5);
     expect(users.paginationMetadata.total).toBe(10);
     expect(users.paginationMetadata.currentPage).toBe(1);
@@ -102,8 +108,11 @@ describe(`[${env.DB_TYPE}] Select`, () => {
   });
 
   test("Multiple columns select", async () => {
-    await UserFactory.userWithoutPk(2);
-    const users = await UserWithoutPk.query().select("age", "birthDate").many();
+    await UserFactory.userWithoutPk(sql, 2);
+    const users = await sql
+      .from(UserWithoutPk)
+      .select("age", "birthDate")
+      .many();
     expect(users.length).toBe(2);
     expect(users[0].age).not.toBeUndefined();
     expect(users[1].age).not.toBeUndefined();
@@ -114,8 +123,9 @@ describe(`[${env.DB_TYPE}] Select`, () => {
   });
 
   test("Multiple columns select with aliases", async () => {
-    await UserFactory.userWithoutPk(2);
-    const users = await UserWithoutPk.query()
+    await UserFactory.userWithoutPk(sql, 2);
+    const users = await sql
+      .from(UserWithoutPk)
       .select(["age", "result"], ["birthDate", "result2"])
       .many();
 
@@ -129,10 +139,11 @@ describe(`[${env.DB_TYPE}] Select`, () => {
   });
 
   test("Custom From alias", async () => {
-    await UserFactory.userWithoutPk(2);
-    const users = await UserWithoutPk.query()
+    await UserFactory.userWithoutPk(sql, 2);
+    const users = await sql
+      .from(UserWithoutPk)
       .select("u1.name")
-      .from("users_without_pk as u1")
+      .table("users_without_pk as u1")
       .where("u1.name", "!=", "impossible_name")
       .many({ ignoreHooks: ["beforeFetch"] });
 
@@ -140,15 +151,17 @@ describe(`[${env.DB_TYPE}] Select`, () => {
   });
 
   test("Union", async () => {
-    await UserFactory.userWithoutPk(2);
-    const users = await UserWithoutPk.query()
+    await UserFactory.userWithoutPk(sql, 2);
+    const users = await sql
+      .from(UserWithoutPk)
       .select("name")
       .union((qb) => qb.select("name")) // without duplicates
       .many();
 
     expect(users.length).toBe(2);
 
-    const users2 = await UserWithoutPk.query()
+    const users2 = await sql
+      .from(UserWithoutPk)
       .select("name")
       .union((queryBuilder) => queryBuilder.select("name")) // without duplicates
       .many();
@@ -157,15 +170,17 @@ describe(`[${env.DB_TYPE}] Select`, () => {
   });
 
   test("Union All", async () => {
-    await UserFactory.userWithoutPk(2);
-    const users = await UserWithoutPk.query()
+    await UserFactory.userWithoutPk(sql, 2);
+    const users = await sql
+      .from(UserWithoutPk)
       .select("name")
       .unionAll((qb) => qb.select("name"))
       .many();
 
     expect(users.length).toBe(4); // with duplicates
 
-    const users2 = await UserWithoutPk.query()
+    const users2 = await sql
+      .from(UserWithoutPk)
       .select("name")
       .unionAll((queryBuilder) => queryBuilder.select("name")) // without duplicates
       .many();
@@ -174,29 +189,29 @@ describe(`[${env.DB_TYPE}] Select`, () => {
   });
 
   test("SQL functions built in in Models methods", async () => {
-    await UserFactory.userWithoutPk(10);
-    await UserWithoutPk.insert({
+    await UserFactory.userWithoutPk(sql, 10);
+    await sql.from(UserWithoutPk).insert({
       ...UserFactory.getCommonUserData(),
       deletedAt: new Date(Date.now()),
     });
 
-    const userCount = await UserWithoutPk.query().getCount("*");
-    const userCount2 = await UserWithoutPk.query().getCount("name");
+    const userCount = await sql.from(UserWithoutPk).getCount("*");
+    const userCount2 = await sql.from(UserWithoutPk).getCount("name");
     expect(userCount).toBe(10);
     expect(userCount2).toBe(10);
 
-    const userCountIgnoringHooks = await UserWithoutPk.query().getCount("*", {
+    const userCountIgnoringHooks = await sql.from(UserWithoutPk).getCount("*", {
       ignoreHooks: true,
     });
-    const userCountIgnoringHooks2 = await UserWithoutPk.query().getCount(
-      "name",
-      { ignoreHooks: true },
-    );
+    const userCountIgnoringHooks2 = await sql
+      .from(UserWithoutPk)
+      .getCount("name", { ignoreHooks: true });
 
     expect(userCountIgnoringHooks).toBe(11);
     expect(userCountIgnoringHooks2).toBe(11);
 
-    const userMaxAge = await UserWithoutPk.query()
+    const userMaxAge = await sql
+      .from(UserWithoutPk)
       .select("age")
       .orderBy("age", "asc")
       .groupBy("age")
@@ -204,7 +219,8 @@ describe(`[${env.DB_TYPE}] Select`, () => {
     expect(userMaxAge).toBeGreaterThan(0);
     expect(userMaxAge).toBeLessThan(1000);
 
-    const userAgeMin = await UserWithoutPk.query()
+    const userAgeMin = await sql
+      .from(UserWithoutPk)
       .select("age")
       .orderBy("age", "asc")
       .groupBy("age")
@@ -212,7 +228,8 @@ describe(`[${env.DB_TYPE}] Select`, () => {
     expect(userAgeMin).toBeGreaterThan(0);
     expect(userAgeMin).toBeLessThan(1000);
 
-    const userAgeAvg = await UserWithoutPk.query()
+    const userAgeAvg = await sql
+      .from(UserWithoutPk)
       .select("age")
       .orderBy("age", "asc")
       .groupBy("age")
@@ -220,7 +237,8 @@ describe(`[${env.DB_TYPE}] Select`, () => {
     expect(userAgeAvg).toBeGreaterThan(0);
     expect(userAgeAvg).toBeLessThan(1000);
 
-    const userAgeSum = await UserWithoutPk.query()
+    const userAgeSum = await sql
+      .from(UserWithoutPk)
       .select("age")
       .orderBy("age", "asc")
       .groupBy("age")
@@ -230,8 +248,9 @@ describe(`[${env.DB_TYPE}] Select`, () => {
   });
 
   test("Normal CTE", async () => {
-    await UserFactory.userWithoutPk(2);
-    const users = await UserWithoutPk.query()
+    await UserFactory.userWithoutPk(sql, 2);
+    const users = await sql
+      .from(UserWithoutPk)
       .with("users_cte", (qb) => qb.select("name"))
       .with("users_cte2", (qb) => qb.select("age"))
       .many();
@@ -244,8 +263,9 @@ describe(`[${env.DB_TYPE}] Select`, () => {
       return;
     }
 
-    await UserFactory.userWithoutPk(2);
-    const users = await UserWithoutPk.query()
+    await UserFactory.userWithoutPk(sql, 2);
+    const users = await sql
+      .from(UserWithoutPk)
       .withRecursive("users_cte", (qb) => qb.select("name"))
       .withRecursive("users_cte2", (qb) => qb.select("age"))
       .many();
@@ -258,8 +278,9 @@ describe(`[${env.DB_TYPE}] Select`, () => {
       return;
     }
 
-    await UserFactory.userWithoutPk(2);
-    const users = await UserWithoutPk.query()
+    await UserFactory.userWithoutPk(sql, 2);
+    const users = await sql
+      .from(UserWithoutPk)
       .withMaterialized("users_cte", (qb) => qb.select("name"))
       .withMaterialized("users_cte2", (qb) => qb.select("age"))
       .many();
@@ -272,8 +293,9 @@ describe(`[${env.DB_TYPE}] Select`, () => {
       return;
     }
 
-    await UserFactory.userWithoutPk(2);
-    const users = await UserWithoutPk.query()
+    await UserFactory.userWithoutPk(sql, 2);
+    const users = await sql
+      .from(UserWithoutPk)
       .with("users_cte", (qb) => qb.select("name"))
       .withRecursive("users_cte2", (qb) => qb.select("age"))
       .withMaterialized("users_cte3", (qb) => qb.select("age"))
@@ -283,13 +305,14 @@ describe(`[${env.DB_TYPE}] Select`, () => {
   });
 
   test("CTE with UNION", async () => {
-    await UserFactory.userWithoutPk(2);
-    const users = await UserWithoutPk.query()
+    await UserFactory.userWithoutPk(sql, 2);
+    const users = await sql
+      .from(UserWithoutPk)
       .with("users_cte", (qb) => qb.select("salary"))
       .with("users_cte2", (qb) => qb.select("age"))
       .select("users_cte.salary")
-      .from("users_cte")
-      .unionAll((qb) => qb.select("users_cte2.age").from("users_cte2"))
+      .table("users_cte")
+      .unionAll((qb) => qb.select("users_cte2.age").table("users_cte2"))
       .many({ ignoreHooks: ["beforeFetch"] });
 
     expect(users.length).toBe(4);
@@ -298,8 +321,8 @@ describe(`[${env.DB_TYPE}] Select`, () => {
 
 describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
   test("should create an user", async () => {
-    const user = await UserFactory.userWithoutPk(1);
-    const retrievedUser = await UserWithoutPk.findOne({
+    const user = await UserFactory.userWithoutPk(sql, 1);
+    const retrievedUser = await sql.from(UserWithoutPk).findOne({
       where: {
         email: user.email,
       },
@@ -314,9 +337,9 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
   });
 
   test("should not update an user", async () => {
-    const user = await UserFactory.userWithoutPk(1);
+    const user = await UserFactory.userWithoutPk(sql, 1);
     try {
-      await UserWithoutPk.updateRecord(1, {
+      await sql.from(UserWithoutPk).updateRecord(1, {
         name: "John Doe",
       });
     } catch (error: any) {
@@ -326,9 +349,9 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
   });
 
   test("should not delete an user", async () => {
-    const user = await UserFactory.userWithoutPk(1);
+    const user = await UserFactory.userWithoutPk(sql, 1);
     try {
-      await UserWithoutPk.deleteRecord(1);
+      await sql.from(UserWithoutPk).deleteRecord(1);
     } catch (error: any) {
       expect(error).toBeInstanceOf(HysteriaError);
       expect(error.code).toBe("MODEL_HAS_NO_PRIMARY_KEY");
@@ -336,7 +359,7 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
   });
 
   test("should create multiple users", async () => {
-    const users = await UserFactory.userWithoutPk(2);
+    const users = await UserFactory.userWithoutPk(sql, 2);
 
     expect(users).toHaveLength(2);
     users.forEach((user) => {
@@ -347,16 +370,16 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
   });
 
   test("should find users by name pattern", async () => {
-    await UserFactory.userWithoutPk(3);
-    const allUsers = await UserWithoutPk.find();
+    await UserFactory.userWithoutPk(sql, 3);
+    const allUsers = await sql.from(UserWithoutPk).find();
     expect(allUsers.length).toBe(3);
   });
 
   test("should find one user by email", async () => {
-    const user1 = await UserFactory.userWithoutPk(1);
-    await UserFactory.userWithoutPk(1);
+    const user1 = await UserFactory.userWithoutPk(sql, 1);
+    await UserFactory.userWithoutPk(sql, 1);
 
-    const foundUser = await UserWithoutPk.findOne({
+    const foundUser = await sql.from(UserWithoutPk).findOne({
       where: { email: user1.email },
     });
 
@@ -365,40 +388,42 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
   });
 
   test("should handle empty results gracefully", async () => {
-    await UserFactory.userWithoutPk(1);
+    await UserFactory.userWithoutPk(sql, 1);
 
-    const users = await UserWithoutPk.find({
+    const users = await sql.from(UserWithoutPk).find({
       where: { name: "NonExistent" },
     });
     expect(users).toHaveLength(0);
 
-    const user = await UserWithoutPk.findOne({
+    const user = await sql.from(UserWithoutPk).findOne({
       where: { email: "nonexistent@example.com" },
     });
     expect(user).toBeNull();
   });
 
   test("should throw error when trying to findOneOrFail with non-existent criteria", async () => {
-    await UserFactory.userWithoutPk(1);
+    await UserFactory.userWithoutPk(sql, 1);
 
     await expect(
-      UserWithoutPk.findOneOrFail({
+      sql.from(UserWithoutPk).findOneOrFail({
         where: { email: "nonexistent@example.com" },
       }),
     ).rejects.toThrow();
   });
 
   test("should handle firstOrInsert operation", async () => {
-    const existingUser = await UserFactory.userWithoutPk(1);
-    const foundUser = await UserWithoutPk.firstOrInsert(
-      { email: existingUser.email },
-      { name: "Different Name", email: existingUser.email },
-    );
+    const existingUser = await UserFactory.userWithoutPk(sql, 1);
+    const foundUser = await sql
+      .from(UserWithoutPk)
+      .firstOrInsert(
+        { email: existingUser.email },
+        { name: "Different Name", email: existingUser.email },
+      );
 
     expect(foundUser.name).toBe(existingUser.name);
     expect(foundUser.email).toBe(existingUser.email);
 
-    const newUser = await UserWithoutPk.firstOrInsert(
+    const newUser = await sql.from(UserWithoutPk).firstOrInsert(
       { email: "new@example.com" },
       {
         ...UserFactory.getCommonUserData(),
@@ -412,8 +437,13 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
   });
 
   test("should handle different user statuses", async () => {
-    const activeUser = await UserFactory.userWithoutPk(1, UserStatus.active);
+    const activeUser = await UserFactory.userWithoutPk(
+      sql,
+      1,
+      UserStatus.active,
+    );
     const inactiveUser = await UserFactory.userWithoutPk(
+      sql,
       1,
       UserStatus.inactive,
     );
@@ -421,30 +451,32 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
     expect(activeUser.status).toBe(UserStatus.active);
     expect(inactiveUser.status).toBe(UserStatus.inactive);
 
-    const activeUsers = await UserWithoutPk.find({
+    const activeUsers = await sql.from(UserWithoutPk).find({
       where: { status: UserStatus.active },
     });
     expect(activeUsers).toHaveLength(1);
 
-    const inactiveUsers = await UserWithoutPk.find({
+    const inactiveUsers = await sql.from(UserWithoutPk).find({
       where: { status: UserStatus.inactive },
     });
     expect(inactiveUsers).toHaveLength(1);
   });
 
   test("should firstOrInsert (read) an user", async () => {
-    const existingUser = await UserFactory.userWithoutPk(1);
+    const existingUser = await UserFactory.userWithoutPk(sql, 1);
 
-    const foundUser = await UserWithoutPk.firstOrInsert(
-      { email: existingUser.email },
-      { name: "Different Name", email: existingUser.email },
-    );
+    const foundUser = await sql
+      .from(UserWithoutPk)
+      .firstOrInsert(
+        { email: existingUser.email },
+        { name: "Different Name", email: existingUser.email },
+      );
 
-    const newUser = await UserWithoutPk.findOne({
+    const newUser = await sql.from(UserWithoutPk).findOne({
       where: { email: existingUser.email },
     });
 
-    const allUsers = await UserWithoutPk.find();
+    const allUsers = await sql.from(UserWithoutPk).find();
     expect(foundUser).not.toHaveProperty("id");
     expect(newUser).not.toBeNull();
     expect(newUser?.email).toBe(existingUser.email);
@@ -452,33 +484,32 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
   });
 
   test("should firstOrInsert (create) an user", async () => {
-    const foundUser = await UserWithoutPk.firstOrInsert(
-      { email: "" },
-      { ...UserFactory.getCommonUserData() },
-    );
+    const foundUser = await sql
+      .from(UserWithoutPk)
+      .firstOrInsert({ email: "" }, { ...UserFactory.getCommonUserData() });
 
-    const allUsers = await UserWithoutPk.find();
+    const allUsers = await sql.from(UserWithoutPk).find();
     expect(foundUser).not.toHaveProperty("id");
     expect(allUsers).toHaveLength(1);
   });
 
   test("should truncate the table", async () => {
-    await UserFactory.userWithoutPk(10);
-    const allUsers = await UserWithoutPk.find();
+    await UserFactory.userWithoutPk(sql, 10);
+    const allUsers = await sql.from(UserWithoutPk).find();
     expect(allUsers).toHaveLength(10);
 
-    await UserWithoutPk.truncate();
-    const allUsersAfterTruncate = await UserWithoutPk.find();
+    await sql.from(UserWithoutPk).truncate();
+    const allUsersAfterTruncate = await sql.from(UserWithoutPk).find();
     expect(allUsersAfterTruncate).toHaveLength(0);
   });
 
   test("should update user via bulk update", async () => {
-    const user = await UserFactory.userWithoutPk(1);
-    await UserWithoutPk.query().update({
+    const user = await UserFactory.userWithoutPk(sql, 1);
+    await sql.from(UserWithoutPk).update({
       name: "John Doe",
     });
 
-    const allUsers = await UserWithoutPk.find();
+    const allUsers = await sql.from(UserWithoutPk).find();
     expect(allUsers).toHaveLength(1);
     expect(allUsers[0].name).toBe("John Doe");
     expect(allUsers[0].updatedAt).not.toBe(allUsers[0].createdAt);
@@ -488,7 +519,7 @@ describe(`[${env.DB_TYPE}] Basic Cruds`, () => {
 
 describe(`[${env.DB_TYPE}] Query Builder Paginate With Cursor`, () => {
   test("should paginate with cursor", async () => {
-    await UserWithoutPk.insertMany([
+    await sql.from(UserWithoutPk).insertMany([
       { name: "User 1", age: 21, email: "cursor1@test.com" },
       { name: "User 2", age: 22, email: "cursor2@test.com" },
       { name: "User 3", age: 23, email: "cursor3@test.com" },
@@ -501,17 +532,17 @@ describe(`[${env.DB_TYPE}] Query Builder Paginate With Cursor`, () => {
       { name: "User 10", age: 30, email: "cursor10@test.com" },
     ]);
 
-    const [users, cursor] = await UserWithoutPk.query().paginateWithCursor(5, {
-      discriminator: "age",
-    });
+    const [users, cursor] = await sql
+      .from(UserWithoutPk)
+      .paginateWithCursor(5, {
+        discriminator: "age",
+      });
     expect(users.data.length).toBe(5);
     expect(users.paginationMetadata.total).toBe(10);
 
-    const [users2] = await UserWithoutPk.query().paginateWithCursor(
-      5,
-      { discriminator: "age" },
-      cursor,
-    );
+    const [users2] = await sql
+      .from(UserWithoutPk)
+      .paginateWithCursor(5, { discriminator: "age" }, cursor);
     expect(users2.data.length).toBe(5);
     expect(users2.paginationMetadata.total).toBe(10);
   });

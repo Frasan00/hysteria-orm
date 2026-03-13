@@ -5,40 +5,45 @@ import { AddressFactory } from "../test_models/factory/address_factory";
 import { PostFactory } from "../test_models/factory/post_factory";
 import { UserAddressFactory } from "../test_models/factory/user_address_factory";
 import { UserFactory } from "../test_models/factory/user_factory";
-import { AddressWithUuid } from "../test_models/uuid/address_uuid";
-import { PostWithUuid } from "../test_models/uuid/post_uuid";
-import { UserWithUuid } from "../test_models/uuid/user_uuid";
+import {
+  AddressWithUuid,
+  PostWithUuid,
+  UserWithUuid,
+} from "../test_models/uuid/schema";
+
+let sql: SqlDataSource;
 
 beforeAll(async () => {
-  const dataSource = new SqlDataSource();
-  await dataSource.connect();
+  sql = new SqlDataSource();
+  await sql.connect();
 });
 
 afterAll(async () => {
-  await SqlDataSource.disconnect();
+  await sql.disconnect();
 });
 
 beforeEach(async () => {
-  await SqlDataSource.startGlobalTransaction();
+  await sql.startGlobalTransaction();
 });
 
 afterEach(async () => {
-  await SqlDataSource.rollbackGlobalTransaction();
+  await sql.rollbackGlobalTransaction();
 });
 
 describe(`[${env.DB_TYPE}] uuid pk base relations`, () => {
   test("uuid HasOne relation", async () => {
-    const users = await UserFactory.userWithUuid(3);
+    const users = await UserFactory.userWithUuid(sql, 3);
     const posts = [];
     for (const user of users) {
-      const post = await PostFactory.postWithUuid(user.id, 1);
+      const post = await PostFactory.postWithUuid(sql, user.id, 1);
       posts.push(post);
     }
 
     expect(users).toHaveLength(3);
     expect(posts).toHaveLength(3);
 
-    const userWithLoadedPosts = await UserWithUuid.query()
+    const userWithLoadedPosts = await sql
+      .from(UserWithUuid)
       .whereIn(
         "id",
         users.map((u) => u.id),
@@ -56,17 +61,18 @@ describe(`[${env.DB_TYPE}] uuid pk base relations`, () => {
   });
 
   test("uuid HasOne relation with column selection on relation", async () => {
-    const users = await UserFactory.userWithUuid(3);
+    const users = await UserFactory.userWithUuid(sql, 3);
     const posts = [];
     for (const user of users) {
-      const post = await PostFactory.postWithUuid(user.id, 1);
+      const post = await PostFactory.postWithUuid(sql, user.id, 1);
       posts.push(post);
     }
 
     expect(users).toHaveLength(3);
     expect(posts).toHaveLength(3);
 
-    const userWithLoadedPosts = await UserWithUuid.query()
+    const userWithLoadedPosts = await sql
+      .from(UserWithUuid)
       .whereIn(
         "id",
         users.map((u) => u.id),
@@ -85,17 +91,18 @@ describe(`[${env.DB_TYPE}] uuid pk base relations`, () => {
   });
 
   test("uuid HasMany relation with filtering on the relation", async () => {
-    const user = await UserFactory.userWithUuid(1);
-    const posts: PostWithUuid[] = [];
+    const user = await UserFactory.userWithUuid(sql, 1);
+    const posts: any[] = [];
     for (let i = 0; i < 3; i++) {
-      const post = await PostFactory.postWithUuid(user.id, 1);
+      const post = await PostFactory.postWithUuid(sql, user.id, 1);
       posts.push(post);
     }
 
     expect(user).toBeDefined();
     expect(posts).toHaveLength(3);
 
-    const userWithLoadedPosts = await UserWithUuid.query()
+    const userWithLoadedPosts = await sql
+      .from(UserWithUuid)
       .where("id", user.id)
       .load("posts", (qb) => qb.where("title", posts[0].title))
       .one();
@@ -106,15 +113,16 @@ describe(`[${env.DB_TYPE}] uuid pk base relations`, () => {
   });
 
   test("uuid HasMany relation with select narrows type correctly", async () => {
-    const user = await UserFactory.userWithUuid(1);
-    const posts: PostWithUuid[] = [];
+    const user = await UserFactory.userWithUuid(sql, 1);
+    const posts: any[] = [];
     for (let i = 0; i < 3; i++) {
-      const post = await PostFactory.postWithUuid(user.id, 1);
+      const post = await PostFactory.postWithUuid(sql, user.id, 1);
       posts.push(post);
     }
 
     // Note: userId (foreign key) must be selected for relation mapping to work
-    const userWithLoadedPosts = await UserWithUuid.query()
+    const userWithLoadedPosts = await sql
+      .from(UserWithUuid)
       .where("id", user.id)
       .load("posts", (qb) => qb.select("userId", "title", "content"))
       .one();
@@ -135,11 +143,12 @@ describe(`[${env.DB_TYPE}] uuid pk base relations`, () => {
   });
 
   test("uuid HasOne relation with select narrows type correctly", async () => {
-    const user = await UserFactory.userWithUuid(1);
-    await PostFactory.postWithUuid(user.id, 1);
+    const user = await UserFactory.userWithUuid(sql, 1);
+    await PostFactory.postWithUuid(sql, user.id, 1);
 
     // Note: userId (foreign key) must be selected for relation mapping to work
-    const userWithPost = await UserWithUuid.query()
+    const userWithPost = await sql
+      .from(UserWithUuid)
       .where("id", user.id)
       .load("post", (qb) => qb.select("userId", "content"))
       .one();
@@ -157,11 +166,12 @@ describe(`[${env.DB_TYPE}] uuid pk base relations`, () => {
   });
 
   test("uuid relation with wildcard select returns all columns", async () => {
-    const user = await UserFactory.userWithUuid(1);
-    await PostFactory.postWithUuid(user.id, 1);
+    const user = await UserFactory.userWithUuid(sql, 1);
+    await PostFactory.postWithUuid(sql, user.id, 1);
 
     // Using * should return all columns
-    const userWithPost = await UserWithUuid.query()
+    const userWithPost = await sql
+      .from(UserWithUuid)
       .where("id", user.id)
       .load("post", (qb) => qb.select("*"))
       .one();
@@ -174,11 +184,12 @@ describe(`[${env.DB_TYPE}] uuid pk base relations`, () => {
   });
 
   test("uuid relation with table.* wildcard returns all columns", async () => {
-    const user = await UserFactory.userWithUuid(1);
-    await PostFactory.postWithUuid(user.id, 1);
+    const user = await UserFactory.userWithUuid(sql, 1);
+    await PostFactory.postWithUuid(sql, user.id, 1);
 
     // Using table.* should return all columns from that table
-    const userWithPost = await UserWithUuid.query()
+    const userWithPost = await sql
+      .from(UserWithUuid)
       .where("id", user.id)
       .load("post", (qb) => qb.select("posts_with_uuid.*"))
       .one();
@@ -191,11 +202,12 @@ describe(`[${env.DB_TYPE}] uuid pk base relations`, () => {
   });
 
   test("uuid relation without select callback returns all columns", async () => {
-    const user = await UserFactory.userWithUuid(1);
-    await PostFactory.postWithUuid(user.id, 1);
+    const user = await UserFactory.userWithUuid(sql, 1);
+    await PostFactory.postWithUuid(sql, user.id, 1);
 
     // No callback = all columns should be returned
-    const userWithPost = await UserWithUuid.query()
+    const userWithPost = await sql
+      .from(UserWithUuid)
       .where("id", user.id)
       .load("post")
       .one();
@@ -208,11 +220,12 @@ describe(`[${env.DB_TYPE}] uuid pk base relations`, () => {
   });
 
   test("uuid relation with select using table.column format", async () => {
-    const user = await UserFactory.userWithUuid(1);
-    await PostFactory.postWithUuid(user.id, 1);
+    const user = await UserFactory.userWithUuid(sql, 1);
+    await PostFactory.postWithUuid(sql, user.id, 1);
 
     // Using table.column format
-    const userWithPost = await UserWithUuid.query()
+    const userWithPost = await sql
+      .from(UserWithUuid)
       .where("id", user.id)
       .load("post", (qb) =>
         qb.select("posts_with_uuid.userId", "posts_with_uuid.title"),
@@ -230,11 +243,12 @@ describe(`[${env.DB_TYPE}] uuid pk base relations`, () => {
   });
 
   test("uuid relation with aliased select", async () => {
-    const user = await UserFactory.userWithUuid(1);
-    const createdPost = await PostFactory.postWithUuid(user.id, 1);
+    const user = await UserFactory.userWithUuid(sql, 1);
+    const createdPost = await PostFactory.postWithUuid(sql, user.id, 1);
 
     // Using alias in select
-    const userWithPost = await UserWithUuid.query()
+    const userWithPost = await sql
+      .from(UserWithUuid)
       .where("id", user.id)
       .load("post", (qb) =>
         qb.select("userId", ["title", "postTitle"], ["content", "postContent"]),
@@ -253,11 +267,12 @@ describe(`[${env.DB_TYPE}] uuid pk base relations`, () => {
   });
 
   test("uuid relation with single column select", async () => {
-    const user = await UserFactory.userWithUuid(1);
-    await PostFactory.postWithUuid(user.id, 1);
+    const user = await UserFactory.userWithUuid(sql, 1);
+    await PostFactory.postWithUuid(sql, user.id, 1);
 
     // Selecting only the foreign key (minimum required for relation to work)
-    const userWithPost = await UserWithUuid.query()
+    const userWithPost = await sql
+      .from(UserWithUuid)
       .where("id", user.id)
       .load("post", (qb) => qb.select("userId"))
       .one();
@@ -278,13 +293,14 @@ describe(`[${env.DB_TYPE}] uuid pk base relations`, () => {
       return;
     }
 
-    const user = await UserFactory.userWithUuid(1);
+    const user = await UserFactory.userWithUuid(sql, 1);
     for (let i = 0; i < 5; i++) {
-      await PostFactory.postWithUuid(user.id, 1);
+      await PostFactory.postWithUuid(sql, user.id, 1);
     }
 
     // Select with ordering and limit
-    const userWithPosts = await UserWithUuid.query()
+    const userWithPosts = await sql
+      .from(UserWithUuid)
       .where("id", user.id)
       .load("posts", (qb) =>
         qb.select("userId", "title").orderBy("title", "asc").limit(3),
@@ -303,12 +319,13 @@ describe(`[${env.DB_TYPE}] uuid pk base relations`, () => {
   });
 
   test("uuid nested relation both with select", async () => {
-    const user = await UserFactory.userWithUuid(1);
-    await PostFactory.postWithUuid(user.id, 1);
+    const user = await UserFactory.userWithUuid(sql, 1);
+    await PostFactory.postWithUuid(sql, user.id, 1);
 
     // Both the relation and nested relation use select
     // Note: nested relation needs its primary key (id) for the belongsTo to match
-    const userWithPost = await UserWithUuid.query()
+    const userWithPost = await sql
+      .from(UserWithUuid)
       .where("id", user.id)
       .load("post", (qb) =>
         qb
@@ -339,10 +356,11 @@ describe(`[${env.DB_TYPE}] uuid pk base relations`, () => {
   });
 
   test("uuid relation with empty result still has correct type shape", async () => {
-    const user = await UserFactory.userWithUuid(1);
+    const user = await UserFactory.userWithUuid(sql, 1);
     // Don't create any posts
 
-    const userWithPosts = await UserWithUuid.query()
+    const userWithPosts = await sql
+      .from(UserWithUuid)
       .where("id", user.id)
       .load("posts", (qb) => qb.select("userId", "title"))
       .one();
@@ -353,17 +371,18 @@ describe(`[${env.DB_TYPE}] uuid pk base relations`, () => {
   });
 
   test("uuid HasOne relation nested with a belongs to relation", async () => {
-    const users = await UserFactory.userWithUuid(3);
+    const users = await UserFactory.userWithUuid(sql, 3);
     const posts = [];
     for (const user of users) {
-      const post = await PostFactory.postWithUuid(user.id, 1);
+      const post = await PostFactory.postWithUuid(sql, user.id, 1);
       posts.push(post);
     }
 
     expect(users).toHaveLength(3);
     expect(posts).toHaveLength(3);
 
-    const userWithLoadedPosts = await UserWithUuid.query()
+    const userWithLoadedPosts = await sql
+      .from(UserWithUuid)
       .whereIn(
         "id",
         users.map((u) => u.id),
@@ -378,17 +397,18 @@ describe(`[${env.DB_TYPE}] uuid pk base relations`, () => {
   });
 
   test("uuid with multiple nested relations", async () => {
-    const users = await UserFactory.userWithUuid(3);
+    const users = await UserFactory.userWithUuid(sql, 3);
     const posts = [];
     for (const user of users) {
-      const post = await PostFactory.postWithUuid(user.id, 1);
+      const post = await PostFactory.postWithUuid(sql, user.id, 1);
       posts.push(post);
     }
 
     expect(users).toHaveLength(3);
     expect(posts).toHaveLength(3);
 
-    const userWithLoadedPosts = await UserWithUuid.query()
+    const userWithLoadedPosts = await sql
+      .from(UserWithUuid)
       .whereIn(
         "id",
         users.map((u) => u.id),
@@ -406,17 +426,18 @@ describe(`[${env.DB_TYPE}] uuid pk base relations`, () => {
   });
 
   test("uuid HasMany relation", async () => {
-    const user = await UserFactory.userWithUuid(1);
+    const user = await UserFactory.userWithUuid(sql, 1);
     const posts = [];
     for (let i = 0; i < 3; i++) {
-      const post = await PostFactory.postWithUuid(user.id, 1);
+      const post = await PostFactory.postWithUuid(sql, user.id, 1);
       posts.push(post);
     }
 
     expect(user).toBeDefined();
     expect(posts).toHaveLength(3);
 
-    const userWithLoadedPosts = await UserWithUuid.query()
+    const userWithLoadedPosts = await sql
+      .from(UserWithUuid)
       .where("id", user.id)
       .load("posts")
       .one();
@@ -437,21 +458,24 @@ describe(`[${env.DB_TYPE}] uuid pk base relations`, () => {
 
 describe(`[${env.DB_TYPE}] uuid pk many to many relations`, () => {
   test("uuid many to many relation", async () => {
-    const users = await UserFactory.userWithUuid(10);
-    const addresses = await AddressFactory.addressWithUuid(6);
+    const users = await UserFactory.userWithUuid(sql, 10);
+    const addresses = await AddressFactory.addressWithUuid(sql, 6);
 
     // #region first user has 3 addresses
     await UserAddressFactory.userAddressWithUuid(
+      sql,
       1,
       users[0].id,
       addresses[0].id,
     );
     await UserAddressFactory.userAddressWithUuid(
+      sql,
       1,
       users[0].id,
       addresses[1].id,
     );
     await UserAddressFactory.userAddressWithUuid(
+      sql,
       1,
       users[0].id,
       addresses[2].id,
@@ -461,11 +485,13 @@ describe(`[${env.DB_TYPE}] uuid pk many to many relations`, () => {
 
     // #region second user has 2 addresses
     await UserAddressFactory.userAddressWithUuid(
+      sql,
       1,
       users[1].id,
       addresses[3].id,
     );
     await UserAddressFactory.userAddressWithUuid(
+      sql,
       1,
       users[1].id,
       addresses[4].id,
@@ -474,13 +500,15 @@ describe(`[${env.DB_TYPE}] uuid pk many to many relations`, () => {
 
     // #region third user has 1 address
     await UserAddressFactory.userAddressWithUuid(
+      sql,
       1,
       users[2].id,
       addresses[5].id,
     );
     // #endregion
 
-    const userWithLoadedAddresses = await UserWithUuid.query()
+    const userWithLoadedAddresses = await sql
+      .from(UserWithUuid)
       .whereIn(
         "id",
         users.map((u) => u.id),
@@ -503,15 +531,16 @@ describe(`[${env.DB_TYPE}] uuid pk many to many relations`, () => {
   });
 
   test("uuid ManyToMany relation with select narrows type correctly", async () => {
-    const user = await UserFactory.userWithUuid(1);
-    const addresses = await AddressFactory.addressWithUuid(3);
+    const user = await UserFactory.userWithUuid(sql, 1);
+    const addresses = await AddressFactory.addressWithUuid(sql, 3);
 
     for (const address of addresses) {
-      await UserAddressFactory.userAddressWithUuid(1, user.id, address.id);
+      await UserAddressFactory.userAddressWithUuid(sql, 1, user.id, address.id);
     }
 
     // Select only city and street columns from addresses
-    const userWithAddresses = await UserWithUuid.query()
+    const userWithAddresses = await sql
+      .from(UserWithUuid)
       .where("id", user.id)
       .load("addresses", (qb) => qb.select("city", "street"))
       .one();
@@ -533,22 +562,38 @@ describe(`[${env.DB_TYPE}] uuid pk many to many relations`, () => {
   });
 
   test("uuid many to many relation nested from Address", async () => {
-    const user = await UserFactory.userWithUuid(1);
-    const addresses = await AddressFactory.addressWithUuid(3);
+    const user = await UserFactory.userWithUuid(sql, 1);
+    const addresses = await AddressFactory.addressWithUuid(sql, 3);
 
     // #region first user has 3 addresses
-    await UserAddressFactory.userAddressWithUuid(1, user.id, addresses[0].id);
-    await UserAddressFactory.userAddressWithUuid(1, user.id, addresses[1].id);
-    await UserAddressFactory.userAddressWithUuid(1, user.id, addresses[2].id);
+    await UserAddressFactory.userAddressWithUuid(
+      sql,
+      1,
+      user.id,
+      addresses[0].id,
+    );
+    await UserAddressFactory.userAddressWithUuid(
+      sql,
+      1,
+      user.id,
+      addresses[1].id,
+    );
+    await UserAddressFactory.userAddressWithUuid(
+      sql,
+      1,
+      user.id,
+      addresses[2].id,
+    );
 
     // #region first user has 3 posts
-    await PostFactory.postWithUuid(user.id, 3);
+    await PostFactory.postWithUuid(sql, user.id, 3);
     // #endregion
 
-    const addressesWithLoadedPosts = await AddressWithUuid.query()
+    const addressesWithLoadedPosts = await sql
+      .from(AddressWithUuid)
       .whereIn(
         "id",
-        addresses.map((a) => a.id),
+        addresses.map((a: any) => a.id),
       )
       .load("users", (qb) =>
         qb.load("posts", (qb2) =>
@@ -562,11 +607,11 @@ describe(`[${env.DB_TYPE}] uuid pk many to many relations`, () => {
     expect(addressesWithLoadedPosts).toHaveLength(3);
     expect(addressesWithLoadedPosts[0].users).toHaveLength(1);
     expect(addressesWithLoadedPosts[0].users[0]?.posts).toHaveLength(3);
-    expect(addressesWithLoadedPosts[0].users[0]?.posts[0]?.user?.id).toBe(
-      user.id,
-    );
     expect(
-      addressesWithLoadedPosts[0].users[0]?.posts[0]?.user?.addresses,
+      (addressesWithLoadedPosts[0].users[0] as any)?.posts[0]?.user?.id,
+    ).toBe(user.id);
+    expect(
+      (addressesWithLoadedPosts[0].users[0] as any)?.posts[0]?.user?.addresses,
     ).toHaveLength(3);
   });
 });
@@ -581,12 +626,13 @@ describe(`[${env.DB_TYPE}] uuid pk relations with limit and offset has many`, ()
   }
 
   test("uuid HasMany relation with limit and offset", async () => {
-    const user = await UserFactory.userWithUuid(1);
-    const user2 = await UserFactory.userWithUuid(1);
-    await PostFactory.postWithUuid(user.id, 10);
-    await PostFactory.postWithUuid(user2.id, 10);
+    const user = await UserFactory.userWithUuid(sql, 1);
+    const user2 = await UserFactory.userWithUuid(sql, 1);
+    await PostFactory.postWithUuid(sql, user.id, 10);
+    await PostFactory.postWithUuid(sql, user2.id, 10);
 
-    const userWithLoadedPosts = await UserWithUuid.query()
+    const userWithLoadedPosts = await sql
+      .from(UserWithUuid)
       .load("posts", (qb) =>
         qb
           .select("id", "title", "userId")
@@ -603,12 +649,13 @@ describe(`[${env.DB_TYPE}] uuid pk relations with limit and offset has many`, ()
   });
 
   test("uuid HasMany relation with limit", async () => {
-    const user = await UserFactory.userWithUuid(1);
-    const user2 = await UserFactory.userWithUuid(1);
-    await PostFactory.postWithUuid(user.id, 10);
-    await PostFactory.postWithUuid(user2.id, 10);
+    const user = await UserFactory.userWithUuid(sql, 1);
+    const user2 = await UserFactory.userWithUuid(sql, 1);
+    await PostFactory.postWithUuid(sql, user.id, 10);
+    await PostFactory.postWithUuid(sql, user2.id, 10);
 
-    const userWithLoadedPosts = await UserWithUuid.query()
+    const userWithLoadedPosts = await sql
+      .from(UserWithUuid)
       .load("posts", (qb) =>
         qb
           .select("id", "title", "userId")
@@ -624,12 +671,13 @@ describe(`[${env.DB_TYPE}] uuid pk relations with limit and offset has many`, ()
   });
 
   test("uuid HasMany relation with offset", async () => {
-    const user = await UserFactory.userWithUuid(1);
-    const user2 = await UserFactory.userWithUuid(1);
-    await PostFactory.postWithUuid(user.id, 10);
-    await PostFactory.postWithUuid(user2.id, 10);
+    const user = await UserFactory.userWithUuid(sql, 1);
+    const user2 = await UserFactory.userWithUuid(sql, 1);
+    await PostFactory.postWithUuid(sql, user.id, 10);
+    await PostFactory.postWithUuid(sql, user2.id, 10);
 
-    const userWithLoadedPosts = await UserWithUuid.query()
+    const userWithLoadedPosts = await sql
+      .from(UserWithUuid)
       .load("posts", (qb) =>
         qb
           .select("id", "title", "userId")
@@ -647,16 +695,22 @@ describe(`[${env.DB_TYPE}] uuid pk relations with limit and offset has many`, ()
 
 describe(`[${env.DB_TYPE}] uuid pk relations with limit and offset many to many`, () => {
   test("uuid ManyToMany relation with limit and offset", async () => {
-    const user = await UserFactory.userWithUuid(1);
-    const user2 = await UserFactory.userWithUuid(1);
-    const addresses = await AddressFactory.addressWithUuid(10);
+    const user = await UserFactory.userWithUuid(sql, 1);
+    const user2 = await UserFactory.userWithUuid(sql, 1);
+    const addresses = await AddressFactory.addressWithUuid(sql, 10);
 
     for (const address of addresses) {
-      await UserAddressFactory.userAddressWithUuid(1, user.id, address.id);
-      await UserAddressFactory.userAddressWithUuid(1, user2.id, address.id);
+      await UserAddressFactory.userAddressWithUuid(sql, 1, user.id, address.id);
+      await UserAddressFactory.userAddressWithUuid(
+        sql,
+        1,
+        user2.id,
+        address.id,
+      );
     }
 
-    const usersWithAddresses = await UserWithUuid.query()
+    const usersWithAddresses = await sql
+      .from(UserWithUuid)
       .load("addresses", (qb) =>
         qb.orderBy("address_with_uuid.id", "asc").limit(3).offset(1),
       )
@@ -669,16 +723,22 @@ describe(`[${env.DB_TYPE}] uuid pk relations with limit and offset many to many`
   });
 
   test("uuid ManyToMany relation with limit", async () => {
-    const user = await UserFactory.userWithUuid(1);
-    const user2 = await UserFactory.userWithUuid(1);
-    const addresses = await AddressFactory.addressWithUuid(10);
+    const user = await UserFactory.userWithUuid(sql, 1);
+    const user2 = await UserFactory.userWithUuid(sql, 1);
+    const addresses = await AddressFactory.addressWithUuid(sql, 10);
 
     for (const address of addresses) {
-      await UserAddressFactory.userAddressWithUuid(1, user.id, address.id);
-      await UserAddressFactory.userAddressWithUuid(1, user2.id, address.id);
+      await UserAddressFactory.userAddressWithUuid(sql, 1, user.id, address.id);
+      await UserAddressFactory.userAddressWithUuid(
+        sql,
+        1,
+        user2.id,
+        address.id,
+      );
     }
 
-    const usersWithAddresses = await UserWithUuid.query()
+    const usersWithAddresses = await sql
+      .from(UserWithUuid)
       .load("addresses", (qb) =>
         qb.orderBy("address_with_uuid.id", "asc").limit(3),
       )
@@ -691,16 +751,22 @@ describe(`[${env.DB_TYPE}] uuid pk relations with limit and offset many to many`
   });
 
   test("uuid ManyToMany relation with offset", async () => {
-    const user = await UserFactory.userWithUuid(1);
-    const user2 = await UserFactory.userWithUuid(1);
-    const addresses = await AddressFactory.addressWithUuid(10);
+    const user = await UserFactory.userWithUuid(sql, 1);
+    const user2 = await UserFactory.userWithUuid(sql, 1);
+    const addresses = await AddressFactory.addressWithUuid(sql, 10);
 
     for (const address of addresses) {
-      await UserAddressFactory.userAddressWithUuid(1, user.id, address.id);
-      await UserAddressFactory.userAddressWithUuid(1, user2.id, address.id);
+      await UserAddressFactory.userAddressWithUuid(sql, 1, user.id, address.id);
+      await UserAddressFactory.userAddressWithUuid(
+        sql,
+        1,
+        user2.id,
+        address.id,
+      );
     }
 
-    const usersWithAddresses = await UserWithUuid.query()
+    const usersWithAddresses = await sql
+      .from(UserWithUuid)
       .load("addresses", (qb) =>
         qb.orderBy("address_with_uuid.id", "asc").offset(9),
       )
@@ -715,14 +781,15 @@ describe(`[${env.DB_TYPE}] uuid pk relations with limit and offset many to many`
 
 describe(`[${env.DB_TYPE}] uuid pk sync many to many`, () => {
   test("uuid sync many to many", async () => {
-    const user = await UserFactory.userWithUuid(1);
-    const addresses = await AddressFactory.addressWithUuid(10);
+    const user = await UserFactory.userWithUuid(sql, 1);
+    const addresses = await AddressFactory.addressWithUuid(sql, 10);
 
-    await UserWithUuid.sync("addresses", user, addresses, () => ({
+    await sql.from(UserWithUuid).sync("addresses", user, addresses, () => ({
       id: crypto.randomUUID(),
     }));
 
-    const userWithAddresses = await UserWithUuid.query()
+    const userWithAddresses = await sql
+      .from(UserWithUuid)
       .where("id", user.id)
       .load("addresses")
       .one();
@@ -730,10 +797,11 @@ describe(`[${env.DB_TYPE}] uuid pk sync many to many`, () => {
     expect(userWithAddresses).toBeDefined();
     expect(userWithAddresses?.addresses).toHaveLength(10);
 
-    const addressesWithUsers = await AddressWithUuid.query()
+    const addressesWithUsers = await sql
+      .from(AddressWithUuid)
       .whereIn(
         "id",
-        addresses.map((a) => a.id),
+        addresses.map((a: any) => a.id),
       )
       .load("users")
       .many();

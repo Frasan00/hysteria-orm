@@ -1,37 +1,28 @@
 import {
-  belongsTo,
-  column,
-} from "../../../../../src/sql/models/decorators/model_decorators";
-import { Model } from "../../../../../src/sql/models/model";
+  col,
+  defineModel,
+  defineRelations,
+} from "../../../../../src/sql/models/define_model";
 import { MultiFkAnchor } from "./multi_fk_v1";
 
-/**
- * MultiFk v2: Third FK + onDelete cascade on one
- */
-export class MultiFkV2 extends Model {
-  static table = "schema_diff_mfk";
+export const MultiFkV2 = defineModel("schema_diff_mfk", {
+  columns: {
+    id: col.bigIncrement(),
+    title: col.string({ length: 255 }),
+    createdById: col.bigInteger(),
+    updatedById: col.bigInteger(),
+    approvedById: col.bigInteger({ nullable: true }),
+  },
+});
 
-  @column.bigIncrement()
-  declare id: number;
-
-  @column({ type: "varchar", length: 255 })
-  declare title: string;
-
-  @column({ type: "bigint" })
-  declare createdById: number;
-
-  @column({ type: "bigint" })
-  declare updatedById: number;
-
-  @column({ type: "bigint", nullable: true })
-  declare approvedById: number | null;
-
-  @belongsTo(() => MultiFkAnchor, "createdById", { onDelete: "cascade" })
-  declare createdBy: MultiFkAnchor;
-
-  @belongsTo(() => MultiFkAnchor, "updatedById")
-  declare updatedBy: MultiFkAnchor;
-
-  @belongsTo(() => MultiFkAnchor, "approvedById")
-  declare approvedBy: MultiFkAnchor;
-}
+export const MultiFkV2Relations = defineRelations(
+  MultiFkV2,
+  ({ belongsTo }) => ({
+    createdBy: belongsTo(MultiFkAnchor, {
+      foreignKey: "createdById",
+      onDelete: "cascade",
+    }),
+    updatedBy: belongsTo(MultiFkAnchor, { foreignKey: "updatedById" }),
+    approvedBy: belongsTo(MultiFkAnchor, { foreignKey: "approvedById" }),
+  }),
+);

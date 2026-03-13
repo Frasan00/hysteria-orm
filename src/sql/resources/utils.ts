@@ -70,7 +70,7 @@ export const deepCloneNode = (val: any, seen = new WeakMap()): any => {
   seen.set(val, out);
 
   for (const key of Object.getOwnPropertyNames(val)) {
-    const v = (val as any)[key];
+    const v = val[key];
     if (typeof v === "function") {
       out[key] = v;
       continue;

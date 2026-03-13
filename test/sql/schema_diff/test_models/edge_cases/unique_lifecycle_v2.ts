@@ -1,26 +1,14 @@
-import {
-  column,
-  unique,
-} from "../../../../../src/sql/models/decorators/model_decorators";
-import { Model } from "../../../../../src/sql/models/model";
+import { col, defineModel } from "../../../../../src/sql/models/define_model";
 
-/**
- * UniqueLifecycle v2: Add unique on email + username
- */
-@unique(["email"], "uq_sd_ul_email")
-@unique(["username"], "uq_sd_ul_username")
-export class UniqueLifecycleV2 extends Model {
-  static table = "schema_diff_unique_lifecycle";
-
-  @column.bigIncrement()
-  declare id: number;
-
-  @column({ type: "varchar", length: 255 })
-  declare email: string;
-
-  @column({ type: "varchar", length: 100 })
-  declare username: string;
-
-  @column({ type: "varchar", length: 50 })
-  declare code: string;
-}
+export const UniqueLifecycleV2 = defineModel("schema_diff_unique_lifecycle", {
+  columns: {
+    id: col.bigIncrement(),
+    email: col.string({ length: 255 }),
+    username: col.string({ length: 100 }),
+    code: col.string({ length: 50 }),
+  },
+  uniques: [
+    { columns: ["email"], name: "uq_sd_ul_email" },
+    { columns: ["username"], name: "uq_sd_ul_username" },
+  ],
+});

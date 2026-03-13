@@ -2,15 +2,24 @@ import crypto from "node:crypto";
 import { PassThrough } from "node:stream";
 import { HysteriaError } from "../../../errors/hysteria_error";
 import { convertCase } from "../../../utils/case_utils";
+import type { CaseConvention } from "../../../utils/case_utils";
 import { JsonPathInput } from "../../../utils/json_path_utils";
 import { withPerformance } from "../../../utils/performance";
 import { BaseValues, BinaryOperatorType } from "../../ast/query/node/where";
 import { InterpreterUtils } from "../../interpreter/interpreter_utils";
 import { Model } from "../../models/model";
+import { ModelManager } from "../../models/model_manager/model_manager";
 import type {
+  FindOneType,
+  FindType,
   ModelKey,
   ModelRelation,
-  ReturningColumns,
+  MutationReturningResult,
+  OnlyM2MRelations,
+  RawModelKey,
+  ReturningParam,
+  ReturningResult,
+  ReturningResultMany,
 } from "../../models/model_manager/model_manager_types";
 import SqlModelManagerUtils from "../../models/model_manager/model_manager_utils";
 import {
@@ -23,6 +32,7 @@ import {
   SoftDeleteOptions,
 } from "../../query_builder/delete_query_builder_type";
 import { QueryBuilder } from "../../query_builder/query_builder";
+import type { SubQueryable } from "../../query_builder/query_builder";
 import {
   Cursor,
   PaginateWithCursorOptions,
@@ -40,9 +50,15 @@ import {
 } from "../../resources/utils";
 import { serializeModel } from "../../serializer";
 import { SqlDataSource } from "../../sql_data_source";
+import type { SqlDataSourceType } from "../../sql_data_source_types";
 import { execSqlStreaming } from "../../sql_runner/sql_runner";
+import { Transaction } from "../../transactions/transaction";
 import { ColumnType } from "../decorators/model_decorators_types";
-import { BaseModelMethodOptions, ModelWithoutRelations } from "../model_types";
+import {
+  BaseModelMethodOptions,
+  ModelQueryResult,
+  ModelWithoutRelations,
+} from "../model_types";
 import { ManyToMany } from "../relations/many_to_many";
 import { Relation, RelationEnum } from "../relations/relation";
 import type {
@@ -61,6 +77,7 @@ export class ModelQueryBuilder<
   T extends Model,
   S extends Record<string, any> = ModelWithoutRelations<T>,
   R extends Record<string, any> = {},
+  D extends SqlDataSourceType = SqlDataSourceType,
 > extends QueryBuilder<T> {
   declare relation: Relation;
   protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
@@ -84,6 +101,8 @@ export class ModelQueryBuilder<
     update: this.updateWithPerformance.bind(this),
     softDelete: this.softDeleteWithPerformance.bind(this),
     pluck: this.pluckWithPerformance.bind(this),
+    insert: this.insertWithPerformance.bind(this),
+    insertMany: this.insertManyWithPerformance.bind(this),
   };
 
   constructor(model: typeof Model, sqlDataSource: SqlDataSource) {
@@ -117,7 +136,7 @@ export class ModelQueryBuilder<
   }
 
   /**
-   * @description Creates a new ModelQueryBuilder instance from a model. Will use the main connection to the database by default.
+   * @description Creates a new ModelQueryBuilder instance from a model. Requires either a connection or transaction option.
    */
   static from(
     model: typeof Model,
@@ -131,7 +150,9 @@ export class ModelQueryBuilder<
       return new ModelQueryBuilder(model, options.trx.sql as SqlDataSource);
     }
 
-    return new ModelQueryBuilder(model, model.sqlInstance);
+    throw new Error(
+      "ModelQueryBuilder::from - A connection or transaction is required. Use sql.from(Model) instead.",
+    );
   }
 
   override async one(
@@ -160,10 +181,10 @@ export class ModelQueryBuilder<
     options: ManyOptions = {},
   ): Promise<SelectedModel<T, S, R>[]> {
     !(options.ignoreHooks as string[])?.includes("beforeFetch") &&
-      (await this.model.beforeFetch?.(this as any));
+      (await this.model.beforeFetch?.(this));
     const rows = await super.many();
     const models = rows.map((row) => {
-      return this.addAdditionalColumnsToModel(row, this.model);
+      return this.addAdditionalColumnsToModel(row);
     });
 
     if (!models.length) {
@@ -245,13 +266,13 @@ export class ModelQueryBuilder<
     options: ManyOptions & StreamOptions = {},
   ): Promise<PassThrough & AsyncGenerator<SelectedModel<T, S, R> | T>> {
     !(options.ignoreHooks as string[])?.includes("beforeFetch") &&
-      (await this.model.beforeFetch?.(this as any));
+      (await this.model.beforeFetch?.(this));
 
     const { sql, bindings } = this.unWrap();
     const dataSource = await this.getSqlDataSource("read");
     const stream = await execSqlStreaming(sql, bindings, dataSource, options, {
       onData: async (passThrough, row) => {
-        const model = this.addAdditionalColumnsToModel(row, this.model);
+        const model = this.addAdditionalColumnsToModel(row);
         const serializedModel = await serializeModel(
           [model] as T[],
           this.model,
@@ -301,62 +322,400 @@ export class ModelQueryBuilder<
   }
 
   /**
-   * @description Inserts a new record into the database, it is not advised to use this method directly from the query builder if using a ModelQueryBuilder (`Model.query()`), use the `Model.insert` method instead.
+   * @description Inserts a new record into the database.
    */
   // @ts-expect-error - Override with more specific return type for type-safety
-  override insert<const R extends ReturningColumns<T> = undefined>(
-    ...args: Parameters<typeof Model.insert<T, R>>
-  ): ReturnType<typeof Model.insert<T, R>> {
-    return (this.model as any).insert(...args);
+  override insert<
+    const Ret extends readonly (RawModelKey<T> | "*")[] = never[],
+  >(
+    modelData: Partial<ModelWithoutRelations<T>>,
+    options: { ignoreHooks?: boolean; returning?: Ret; trx?: Transaction } = {},
+  ): WriteOperation<ReturningResult<T, Ret>> {
+    const mm = this.getModelManager(options.trx);
+    return mm.insert(modelData as object, {
+      ignoreHooks: options.ignoreHooks,
+      returning: options.returning as any,
+    }) as any;
   }
 
   /**
-   * @description Inserts multiple records into the database, it is not advised to use this method directly from the query builder if using a ModelQueryBuilder (`Model.query()`), use the `Model.insertMany` method instead.
+   * @description Inserts multiple records into the database.
    */
   // @ts-expect-error - Override with more specific return type for type-safety
-  override insertMany<const R extends ReturningColumns<T> = undefined>(
-    ...args: Parameters<typeof Model.insertMany<T, R>>
-  ): ReturnType<typeof Model.insertMany<T, R>> {
-    return (this.model as any).insertMany(...args);
+  override insertMany<
+    const Ret extends readonly (RawModelKey<T> | "*")[] = never[],
+  >(
+    modelsData: Partial<ModelWithoutRelations<T>>[],
+    options: { ignoreHooks?: boolean; returning?: Ret; trx?: Transaction } = {},
+  ): WriteOperation<ReturningResultMany<T, Ret>> {
+    const mm = this.getModelManager(options.trx);
+    return mm.insertMany(modelsData as object[], {
+      ignoreHooks: options.ignoreHooks,
+      returning: options.returning as any,
+    }) as any;
   }
 
   /**
-   * @description Upserts a record (insert or update on conflict). It is not advised to use this method directly from the query builder if using a ModelQueryBuilder (`Model.query()`), use the `Model.upsert` method instead.
+   * @description Upserts a record (insert or update on conflict).
    */
   // @ts-expect-error - Override with more specific return type for type-safety
-  override upsert<const R extends ReturningColumns<T> = undefined>(
-    ...args: Parameters<typeof Model.upsert<T, R>>
-  ): ReturnType<typeof Model.upsert<T, R>> {
-    return (this.model as any).upsert(...args);
-  }
-
-  /**
-   * @description Upserts multiple records (insert or update on conflict). It is not advised to use this method directly from the query builder if using a ModelQueryBuilder (`Model.query()`), use the `Model.upsertMany` method instead.
-   */
-  // @ts-expect-error - Override with more specific return type for type-safety
-  override upsertMany<const R extends ReturningColumns<T> = undefined>(
-    ...args: Parameters<typeof Model.upsertMany<T, R>>
-  ): ReturnType<typeof Model.upsertMany<T, R>> {
-    return (this.model as any).upsertMany(...args);
-  }
-
-  // @ts-expect-error
-  override update(
+  override upsert<
+    const Ret extends readonly (RawModelKey<T> | "*")[] = never[],
+  >(
+    searchCriteria: Partial<ModelWithoutRelations<T>>,
     data: Partial<ModelWithoutRelations<T>>,
-    options: UpdateOptions = {},
-  ): WriteOperation<number> {
-    const baseWriteOp = super.update(data as Record<string, WriteQueryParam>);
+    options: {
+      updateOnConflict?: boolean;
+      returning?: Ret;
+      trx?: Transaction;
+    } = {
+      updateOnConflict: true,
+    },
+  ): WriteOperation<ReturningResult<T, Ret>> {
+    const mm = this.getModelManager(options.trx);
+    const conflictColumns = Object.keys(searchCriteria);
+    const columnsToUpdate = Object.keys(data);
+    const mergedData = { ...searchCriteria, ...data };
+    return mm
+      .upsertMany(
+        conflictColumns,
+        columnsToUpdate,
+        [mergedData as ModelWithoutRelations<T>],
+        {
+          updateOnConflict: options.updateOnConflict ?? true,
+          returning: options.returning as any,
+        },
+      )
+      .then((result: any) => {
+        if (Array.isArray(result)) {
+          return result[0];
+        }
+        return result;
+      }) as any;
+  }
+
+  /**
+   * @description Upserts multiple records (insert or update on conflict).
+   */
+  // @ts-expect-error - Override with more specific return type for type-safety
+  override upsertMany<
+    const Ret extends readonly (RawModelKey<T> | "*")[] = never[],
+  >(
+    conflictColumns: ModelKey<T>[],
+    data: Partial<ModelWithoutRelations<T>>[],
+    options: {
+      updateOnConflict?: boolean;
+      returning?: Ret;
+      trx?: Transaction;
+    } = {
+      updateOnConflict: true,
+    },
+  ): WriteOperation<ReturningResultMany<T, Ret>> {
+    const mm = this.getModelManager(options.trx);
+    const columnsToUpdate = data.length > 0 ? Object.keys(data[0]) : [];
+    return mm.upsertMany(
+      conflictColumns as string[],
+      columnsToUpdate,
+      data as ModelWithoutRelations<T>[],
+      {
+        updateOnConflict: options.updateOnConflict ?? true,
+        returning: options.returning as any,
+      },
+    ) as any;
+  }
+
+  /**
+   * @description Creates a ModelManager instance for this model and sqlDataSource.
+   * If a transaction is provided, the ModelManager will use the transaction's connection.
+   */
+  private getModelManager(trx?: Transaction): ModelManager<T> {
+    const source = trx
+      ? (trx.sql as SqlDataSource)
+      : (this.sqlDataSource as SqlDataSource);
+    return new ModelManager<T>(this.model, source);
+  }
+
+  /**
+   * @description Finds multiple records.
+   */
+  async find<
+    MK extends ModelKey<T>[] = never[],
+    MR extends ModelRelation<T>[] = never[],
+  >(input?: FindType<T, MK, MR>): Promise<ModelWithoutRelations<T>[]> {
+    return this.getModelManager().find(input);
+  }
+
+  /**
+   * @description Finds a single record.
+   */
+  async findOne<
+    MK extends ModelKey<T>[] = never[],
+    MR extends ModelRelation<T>[] = never[],
+  >(input: FindOneType<T, MK, MR>): Promise<ModelWithoutRelations<T> | null> {
+    return this.getModelManager().findOne(input);
+  }
+
+  /**
+   * @description Finds a single record or throws.
+   */
+  async findOneOrFail<
+    MK extends ModelKey<T>[] = never[],
+    MR extends ModelRelation<T>[] = never[],
+  >(input: FindOneType<T, MK, MR>): Promise<ModelWithoutRelations<T>> {
+    return this.getModelManager().findOneOrFail(input);
+  }
+
+  /**
+   * @description Finds a single record by primary key.
+   */
+  async findOneByPrimaryKey(
+    value: string | number,
+    returning?: ModelKey<T>[],
+  ): Promise<ModelWithoutRelations<T> | null> {
+    return this.getModelManager().findOneByPrimaryKey(value, returning);
+  }
+
+  /**
+   * @description Updates a record by primary key. Supports `returning` on all
+   * database types — the updated row is re-fetched by PK rather than using a
+   * native RETURNING clause.
+   */
+  async updateRecord<
+    const Ret extends readonly (RawModelKey<T> | "*")[] = never[],
+  >(
+    pk: string | number,
+    data: Partial<ModelWithoutRelations<T>>,
+    options?: { returning?: Ret; trx?: Transaction },
+  ): Promise<ReturningResult<T, Ret>> {
+    return this.getModelManager(options?.trx).updateRecord(
+      pk,
+      data as object,
+      options as object,
+    ) as any;
+  }
+
+  /**
+   * @description Deletes a record by primary key.
+   */
+  async deleteRecord(
+    pk: string | number,
+    options?: { trx?: Transaction },
+  ): Promise<void> {
+    return this.getModelManager(options?.trx).deleteRecord(pk);
+  }
+
+  /**
+   * @description Upserts by primary key - inserts if not found, updates if exists.
+   * Supports `returning` on all database types.
+   */
+  async save<const Ret extends readonly (RawModelKey<T> | "*")[] = never[]>(
+    modelData: Partial<ModelWithoutRelations<T>>,
+    options?: { returning?: Ret; trx?: Transaction },
+  ): Promise<ReturningResult<T, Ret>> {
+    const primaryKey = this.model.primaryKey as keyof ModelWithoutRelations<T>;
+    if (!primaryKey) {
+      throw new HysteriaError(
+        this.model.name + "::save",
+        "MODEL_HAS_NO_PRIMARY_KEY",
+      );
+    }
+
+    const primaryKeyValue = modelData[primaryKey as keyof typeof modelData] as
+      | string
+      | number
+      | undefined;
+    const searchCriteria = primaryKeyValue
+      ? ({ [primaryKey]: primaryKeyValue } as unknown as Partial<
+          ModelWithoutRelations<T>
+        >)
+      : {};
+
+    return this.upsert(searchCriteria as object, modelData as object, {
+      updateOnConflict: true,
+      returning: options?.returning,
+      trx: options?.trx,
+    }) as any;
+  }
+
+  /**
+   * @description Soft deletes a record by primary key. Supports `returning` on all
+   * database types — the updated row is re-fetched by PK rather than using a
+   * native RETURNING clause.
+   */
+  async softDeleteRecord<
+    const Ret extends readonly (RawModelKey<T> | "*")[] = never[],
+  >(
+    pk: string | number,
+    softDeleteOptions?: {
+      column?: ModelKey<T>;
+      value?: string | number | boolean | Date;
+    },
+    options?: { returning?: Ret; trx?: Transaction },
+  ): Promise<ReturningResult<T, Ret>> {
+    const {
+      column = this.model.softDeleteColumn as ModelKey<T>,
+      value = this.model.softDeleteValue,
+    } = softDeleteOptions || {};
+
+    const updatePayload = { [column as string]: value } as Partial<
+      ModelWithoutRelations<T>
+    >;
+    return this.getModelManager(options?.trx).updateRecord(
+      pk,
+      updatePayload as object,
+      {
+        returning: options?.returning as any,
+      },
+    ) as any;
+  }
+
+  /**
+   * @description Finds the first record matching searchCriteria, or inserts a new one.
+   * @description Always returns the full record
+   */
+  async firstOrInsert(
+    searchCriteria: Partial<ModelWithoutRelations<T>>,
+    data: Partial<ModelWithoutRelations<T>>,
+    options?: { trx?: Transaction },
+  ): Promise<ModelWithoutRelations<T>> {
+    const mm = this.getModelManager(options?.trx);
+    const existing = await mm.findOne({
+      where: searchCriteria as object,
+      ignoreHooks: ["afterFetch", "beforeFetch"],
+    });
+
+    if (existing) {
+      return existing;
+    }
+
+    const merged = { ...searchCriteria, ...data };
+    return mm.insert(merged as object, { returning: ["*"] }) as Promise<
+      ModelWithoutRelations<T>
+    >;
+  }
+
+  /**
+   * @description Refreshes a record by primary key.
+   */
+  async refresh(pk: string | number): Promise<ModelWithoutRelations<T> | null> {
+    return this.getModelManager().findOneByPrimaryKey(pk);
+  }
+
+  /**
+   * @description Syncs a many-to-many relation by inserting join table records.
+   * Deletes existing join rows for the left model and re-inserts for the provided right models.
+   * @param relation The many-to-many relation key to sync
+   * @param leftModel The source (left) model instance
+   * @param rightModels The target (right) model instances to associate
+   * @param joinTableCustomData Optional function returning extra columns per join row
+   * @param options Optional caseConvention and transaction
+   */
+  async sync<R extends OnlyM2MRelations<T>>(
+    relation: R,
+    leftModel: T | ModelQueryResult<T>,
+    rightModels: (T[R] extends any[] ? T[R] : T[R][]) | any[],
+    joinTableCustomData?: (
+      rightModel: T[R] extends any[] ? T[R][number] : T[R],
+      index: number,
+    ) => Record<string, any>,
+    options: BaseModelMethodOptions & { caseConvention?: CaseConvention } = {},
+  ): Promise<void> {
+    if (!Array.isArray(rightModels)) {
+      rightModels = [rightModels] as T[R] extends any[] ? T[R] : T[R][];
+    }
+
+    if (!(rightModels as any[]).length) {
+      return;
+    }
+
+    const m2mRelation = this.sqlModelManagerUtils.getRelationFromModel(
+      relation as unknown as ModelRelation<T>,
+    ) as ManyToMany;
+
+    if (m2mRelation.type !== RelationEnum.manyToMany) {
+      throw new HysteriaError(
+        `${this.model.name}::sync`,
+        "RELATION_NOT_MANY_TO_MANY",
+      );
+    }
+
+    const casedLeftForeignKey = convertCase(
+      m2mRelation.leftForeignKey,
+      options.caseConvention || this.model.databaseCaseConvention,
+    );
+
+    const casedRightForeignKey = convertCase(
+      m2mRelation.rightForeignKey,
+      options.caseConvention || this.model.databaseCaseConvention,
+    );
+
+    const joinTableModelsToInsert = (rightModels as any[]).map(
+      (rightModel, index) => ({
+        [casedLeftForeignKey]: (leftModel as any)[
+          this.model.primaryKey as string
+        ],
+        [casedRightForeignKey]:
+          rightModel[m2mRelation.model.primaryKey as string],
+        ...(joinTableCustomData ? joinTableCustomData(rightModel, index) : {}),
+      }),
+    );
+
+    class ThroughModel extends Model {
+      static databaseCaseConvention: CaseConvention = "preserve";
+      static modelCaseConvention: CaseConvention = "preserve";
+
+      static get table() {
+        return m2mRelation.throughModel;
+      }
+    }
+
+    const mm = new ModelManager<InstanceType<typeof ThroughModel>>(
+      ThroughModel,
+      options.trx
+        ? (options.trx.sql as SqlDataSource)
+        : (this.sqlDataSource as SqlDataSource),
+    );
+
+    await mm.insertMany(joinTableModelsToInsert);
+  }
+
+  /**
+   * @description Truncates the table by deleting all records.
+   */
+  override truncate(): WriteOperation<void> {
+    return super.truncate();
+  }
+
+  /**
+   * @description Updates records matching the current query conditions.
+   * @param data - The columns and values to update.
+   * @param options - Update options including hooks control and returning columns.
+   * @param options.returning - Columns to return from updated rows. Only supported on PostgreSQL, CockroachDB, and MSSQL. Not available on MySQL or SQLite.
+   * @returns WriteOperation resolving to the number of affected rows, or the returned columns if `returning` is specified (supported databases only).
+   */
+  // @ts-expect-error
+  override update<const Ret extends ReturningParam<T, D> = never[]>(
+    data: Partial<ModelWithoutRelations<T>>,
+    options: UpdateOptions & {
+      returning?: Ret;
+    } = {},
+  ): WriteOperation<MutationReturningResult<T, Ret>> {
+    const returning = options.returning as string[] | undefined;
+    const baseWriteOp = super.update(
+      data as Record<string, WriteQueryParam>,
+      returning,
+    );
 
     return new WriteOperation(
       () => baseWriteOp.unWrap(),
       () => baseWriteOp.toQuery(),
       async () => {
         if (!options.ignoreBeforeUpdateHook) {
-          await this.model.beforeUpdate?.(this as any);
+          await this.model.beforeUpdate?.(this);
         }
         return baseWriteOp;
       },
-    );
+    ) as any;
   }
 
   override softDelete(
@@ -370,26 +729,38 @@ export class ModelQueryBuilder<
       () => baseWriteOp.toQuery(),
       async () => {
         if (!ignoreBeforeUpdateHook) {
-          await this.model.beforeUpdate?.(this as any);
+          await this.model.beforeUpdate?.(this);
         }
         return baseWriteOp;
       },
     );
   }
 
-  delete(options: DeleteOptions = {}): WriteOperation<number> {
-    const baseWriteOp = super.delete();
+  /**
+   * @description Deletes records matching the current query conditions.
+   * @param options - Delete options including hooks control and returning columns.
+   * @param options.returning - Columns to return from deleted rows. Only supported on PostgreSQL, CockroachDB, and MSSQL. Not available on MySQL or SQLite.
+   * @returns WriteOperation resolving to the number of affected rows, or the returned columns if `returning` is specified (supported databases only).
+   */
+  // @ts-expect-error
+  delete<const Ret extends ReturningParam<T, D> = never[]>(
+    options: DeleteOptions & {
+      returning?: Ret;
+    } = {},
+  ): WriteOperation<MutationReturningResult<T, Ret>> {
+    const returning = options.returning as string[] | undefined;
+    const baseWriteOp = super.delete(returning);
 
     return new WriteOperation(
       () => baseWriteOp.unWrap(),
       () => baseWriteOp.toQuery(),
       async () => {
         if (!options.ignoreBeforeDeleteHook) {
-          await this.model.beforeDelete?.(this as any);
+          await this.model.beforeDelete?.(this);
         }
         return baseWriteOp;
       },
-    );
+    ) as any;
   }
 
   override async getCount(
@@ -526,15 +897,36 @@ export class ModelQueryBuilder<
    * @example
    * ```ts
    * // Select specific columns - return type is { id: number, name: string }
-   * const users = await User.query().select("id", "name").many();
+   * const users = await sql.from(users).select("id", "name").many();
    *
    * // Select with alias using tuple - return type includes the alias
-   * const users = await User.query().select(["id", "userId"]).many();
+   * const users = await sql.from(users).select(["id", "userId"]).many();
    *
    * // Select all - return type is the full model
-   * const users = await User.query().select("*").many();
+   * const users = await sql.from(users).select("*").many();
    * ```
    */
+  // @ts-expect-error - intentionally returns different type for type-safety
+  override select<
+    const Columns extends readonly (
+      | ModelKey<T>
+      | `${string}.*`
+      | "*"
+      | readonly [ModelKey<T>, string]
+    )[],
+  >(
+    ...columns: Columns
+  ): ModelQueryBuilder<
+    T,
+    ComposeBuildSelect<
+      S,
+      T,
+      Columns extends readonly (string | readonly [string, string])[]
+        ? Columns
+        : readonly (string | readonly [string, string])[]
+    >,
+    R
+  >;
   // @ts-expect-error - intentionally returns different type for type-safety
   override select<const Columns extends readonly ModelSelectableInput<T>[]>(
     ...columns: Columns
@@ -551,7 +943,9 @@ export class ModelQueryBuilder<
   >;
   // @ts-expect-error - intentionally returns different type for type-safety
   select<ValueType = any, Alias extends string = string>(
-    cbOrQueryBuilder: ((subQuery: QueryBuilder<T>) => void) | QueryBuilder<any>,
+    cbOrQueryBuilder:
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable)
+      | QueryBuilder<any, any>,
     alias: Alias,
   ): ModelQueryBuilder<T, ComposeSelect<S, { [K in Alias]: ValueType }>, R>;
   // @ts-expect-error - intentionally returns different type for type-safety
@@ -575,10 +969,13 @@ export class ModelQueryBuilder<
       typeof columns[1] === "string"
     ) {
       const [cbOrQueryBuilder, alias] = columns as unknown as [
-        ((subQuery: QueryBuilder<T>) => void) | QueryBuilder<any>,
+        (
+          | ((subQuery: QueryBuilder<T>) => void | SubQueryable)
+          | QueryBuilder<any, any>
+        ),
         string,
       ];
-      super.select(cbOrQueryBuilder as any, alias as any);
+      super.select(cbOrQueryBuilder as any, alias);
       return this as any;
     }
     super.select(...(columns as any));
@@ -602,13 +999,13 @@ export class ModelQueryBuilder<
    * @example
    * ```ts
    * // Select raw with type - return type includes the typed columns
-   * const users = await User.query()
+   * const users = await sql.from(users)
    *   .selectRaw<{ count: number }>("count(*) as count")
    *   .many();
    * // users[0].count is typed as number
    *
    * // Can be chained with other selects
-   * const users = await User.query()
+   * const users = await sql.from(users)
    *   .select("id")
    *   .selectRaw<{ total: number }>("sum(amount) as total")
    *   .many();
@@ -632,12 +1029,12 @@ export class ModelQueryBuilder<
    * @param alias The alias for the result
    * @example
    * ```ts
-   * const users = await User.query()
+   * const users = await sql.from(users)
    *   .selectFunc("count", "*", "total")
    *   .many();
    * // users[0].total is typed as number - auto-inferred!
    *
-   * const users = await User.query()
+   * const users = await sql.from(users)
    *   .select("id")
    *   .selectFunc("upper", "name", "upperName")
    *   .many();
@@ -666,7 +1063,7 @@ export class ModelQueryBuilder<
    * @description Clears the SELECT clause and resets to default model type
    * @example
    * ```ts
-   * const users = await User.query()
+   * const users = await sql.from(users)
    *   .select("id")
    *   .clearSelect() // Resets to selecting all model columns
    *   .many();
@@ -691,25 +1088,25 @@ export class ModelQueryBuilder<
    * // All these path formats are supported:
    *
    * // 1. With $ prefix (standard JSON path)
-   * await User.query().selectJson("data", "$.user.name", "userName").one();
+   * await sql.from(users).selectJson("data", "$.user.name", "userName").one();
    *
    * // 2. Without $ prefix ($ is optional)
-   * await User.query().selectJson("data", "user.name", "userName").one();
+   * await sql.from(users).selectJson("data", "user.name", "userName").one();
    *
    * // 3. Array format
-   * await User.query().selectJson("data", ["user", "name"], "userName").one();
+   * await sql.from(users).selectJson("data", ["user", "name"], "userName").one();
    *
    * // 4. Array indices with dot notation
-   * await User.query().selectJson("data", "items.0.name", "firstItemName").one();
+   * await sql.from(users).selectJson("data", "items.0.name", "firstItemName").one();
    *
    * // 5. Array indices with array format
-   * await User.query().selectJson("data", ["items", 0, "name"], "firstItemName").one();
+   * await sql.from(users).selectJson("data", ["items", 0, "name"], "firstItemName").one();
    *
    * // 6. Root object
-   * await User.query().selectJson("data", "$", "allData").one();
+   * await sql.from(users).selectJson("data", "$", "allData").one();
    *
    * // Access the result directly on the model
-   * const user = await User.query().selectJson<string, "userName">("data", "user.name", "userName").one();
+   * const user = await sql.from(users).selectJson<string, "userName">("data", "user.name", "userName").one();
    * console.log(user?.userName); // Typed as string
    * ```
    */
@@ -719,7 +1116,7 @@ export class ModelQueryBuilder<
     path: JsonPathInput,
     alias: Alias,
   ): ModelQueryBuilder<T, ComposeSelect<S, { [K in Alias]: ValueType }>, R> {
-    super.selectJson(column as any, path, alias);
+    super.selectJson(column, path, alias);
     return this as unknown as ModelQueryBuilder<
       T,
       ComposeSelect<S, { [K in Alias]: ValueType }>,
@@ -739,23 +1136,23 @@ export class ModelQueryBuilder<
    * // All these path formats are supported:
    *
    * // 1. With $ prefix
-   * await User.query().selectJsonText("data", "$.user.email", "userEmail").one();
+   * await sql.from(users).selectJsonText("data", "$.user.email", "userEmail").one();
    *
    * // 2. Without $ prefix
-   * await User.query().selectJsonText("data", "user.email", "userEmail").one();
+   * await sql.from(users).selectJsonText("data", "user.email", "userEmail").one();
    *
    * // 3. Array format
-   * await User.query().selectJsonText("data", ["user", "email"], "userEmail").one();
+   * await sql.from(users).selectJsonText("data", ["user", "email"], "userEmail").one();
    *
    * // 4. Array indices
-   * await User.query().selectJsonText("data", "tags.0", "firstTag").one();
-   * await User.query().selectJsonText("data", ["tags", 0], "firstTag").one();
+   * await sql.from(users).selectJsonText("data", "tags.0", "firstTag").one();
+   * await sql.from(users).selectJsonText("data", ["tags", 0], "firstTag").one();
    *
    * // 5. Deep nesting
-   * await User.query().selectJsonText("data", "user.profile.bio", "biography").one();
+   * await sql.from(users).selectJsonText("data", "user.profile.bio", "biography").one();
    *
    * // Access the result directly on the model
-   * const user = await User.query().selectJsonText<string, "userEmail">("data", "user.email", "userEmail").one();
+   * const user = await sql.from(users).selectJsonText<string, "userEmail">("data", "user.email", "userEmail").one();
    * console.log(user?.userEmail); // Typed as string
    * ```
    */
@@ -765,7 +1162,7 @@ export class ModelQueryBuilder<
     path: JsonPathInput,
     alias: Alias,
   ): ModelQueryBuilder<T, ComposeSelect<S, { [K in Alias]: ValueType }>, R> {
-    super.selectJsonText(column as any, path, alias);
+    super.selectJsonText(column, path, alias);
     return this as unknown as ModelQueryBuilder<
       T,
       ComposeSelect<S, { [K in Alias]: ValueType }>,
@@ -786,27 +1183,27 @@ export class ModelQueryBuilder<
    * // All these path formats are supported:
    *
    * // 1. With $ prefix
-   * await User.query().selectJsonArrayLength("data", "$.items", "itemCount").one();
+   * await sql.from(users).selectJsonArrayLength("data", "$.items", "itemCount").one();
    *
    * // 2. Without $ prefix
-   * await User.query().selectJsonArrayLength("data", "items", "itemCount").one();
+   * await sql.from(users).selectJsonArrayLength("data", "items", "itemCount").one();
    *
    * // 3. Array format
-   * await User.query().selectJsonArrayLength("data", ["items"], "itemCount").one();
+   * await sql.from(users).selectJsonArrayLength("data", ["items"], "itemCount").one();
    *
    * // 4. Root array (use "$" or "")
-   * await User.query().selectJsonArrayLength("data", "$", "totalCount").one();
-   * await User.query().selectJsonArrayLength("data", "", "totalCount").one();
+   * await sql.from(users).selectJsonArrayLength("data", "$", "totalCount").one();
+   * await sql.from(users).selectJsonArrayLength("data", "", "totalCount").one();
    *
    * // 5. Nested arrays
-   * await User.query().selectJsonArrayLength("data", "user.roles", "roleCount").one();
-   * await User.query().selectJsonArrayLength("data", ["user", "roles"], "roleCount").one();
+   * await sql.from(users).selectJsonArrayLength("data", "user.roles", "roleCount").one();
+   * await sql.from(users).selectJsonArrayLength("data", ["user", "roles"], "roleCount").one();
    *
    * // 6. Deeply nested arrays
-   * await User.query().selectJsonArrayLength("data", "level1.level2.items", "deepCount").one();
+   * await sql.from(users).selectJsonArrayLength("data", "level1.level2.items", "deepCount").one();
    *
    * // Access the result directly on the model
-   * const user = await User.query().selectJsonArrayLength<number, "count">("data", "items", "count").one();
+   * const user = await sql.from(users).selectJsonArrayLength<number, "count">("data", "items", "count").one();
    * console.log(user?.count); // Typed as number
    * ```
    */
@@ -819,7 +1216,7 @@ export class ModelQueryBuilder<
     path: JsonPathInput,
     alias: Alias,
   ): ModelQueryBuilder<T, ComposeSelect<S, { [K in Alias]: ValueType }>, R> {
-    super.selectJsonArrayLength(column as any, path, alias);
+    super.selectJsonArrayLength(column, path, alias);
     return this as unknown as ModelQueryBuilder<
       T,
       ComposeSelect<S, { [K in Alias]: ValueType }>,
@@ -842,27 +1239,27 @@ export class ModelQueryBuilder<
    * // All these path formats are supported:
    *
    * // 1. With $ prefix
-   * await User.query().selectJsonKeys("data", "$.settings", "settingKeys").one();
+   * await sql.from(users).selectJsonKeys("data", "$.settings", "settingKeys").one();
    *
    * // 2. Without $ prefix
-   * await User.query().selectJsonKeys("data", "settings", "settingKeys").one();
+   * await sql.from(users).selectJsonKeys("data", "settings", "settingKeys").one();
    *
    * // 3. Array format
-   * await User.query().selectJsonKeys("data", ["settings"], "settingKeys").one();
+   * await sql.from(users).selectJsonKeys("data", ["settings"], "settingKeys").one();
    *
    * // 4. Root object (use "$" or "")
-   * await User.query().selectJsonKeys("data", "$", "rootKeys").one();
-   * await User.query().selectJsonKeys("data", "", "rootKeys").one();
+   * await sql.from(users).selectJsonKeys("data", "$", "rootKeys").one();
+   * await sql.from(users).selectJsonKeys("data", "", "rootKeys").one();
    *
    * // 5. Nested objects
-   * await User.query().selectJsonKeys("data", "user.profile", "profileKeys").one();
-   * await User.query().selectJsonKeys("data", ["user", "profile"], "profileKeys").one();
+   * await sql.from(users).selectJsonKeys("data", "user.profile", "profileKeys").one();
+   * await sql.from(users).selectJsonKeys("data", ["user", "profile"], "profileKeys").one();
    *
    * // 6. Deeply nested objects
-   * await User.query().selectJsonKeys("data", "settings.display.theme", "themeKeys").one();
+   * await sql.from(users).selectJsonKeys("data", "settings.display.theme", "themeKeys").one();
    *
    * // Access the result directly on the model
-   * const user = await User.query().selectJsonKeys<string[], "keys">("data", "settings", "keys").one();
+   * const user = await sql.from(users).selectJsonKeys<string[], "keys">("data", "settings", "keys").one();
    * console.log(user?.keys); // Typed as string[] - ["theme", "fontSize", "autoSave"]
    * ```
    */
@@ -872,7 +1269,7 @@ export class ModelQueryBuilder<
     path: JsonPathInput,
     alias: Alias,
   ): ModelQueryBuilder<T, ComposeSelect<S, { [K in Alias]: ValueType }>, R> {
-    super.selectJsonKeys(column as any, path, alias);
+    super.selectJsonKeys(column, path, alias);
     return this as unknown as ModelQueryBuilder<
       T,
       ComposeSelect<S, { [K in Alias]: ValueType }>,
@@ -890,28 +1287,28 @@ export class ModelQueryBuilder<
    * @example
    * ```ts
    * // PostgreSQL - Extract as text with ->> operator
-   * await User.query().selectJsonRaw("data->>'email'", "userEmail").one();
+   * await sql.from(users).selectJsonRaw("data->>'email'", "userEmail").one();
    *
    * // PostgreSQL - Extract nested JSON with -> operator
-   * await User.query().selectJsonRaw("data->'user'->'profile'->>'name'", "profileName").one();
+   * await sql.from(users).selectJsonRaw("data->'user'->'profile'->>'name'", "profileName").one();
    *
    * // PostgreSQL - Array element access
-   * await User.query().selectJsonRaw("data->'items'->0->>'name'", "firstName").one();
+   * await sql.from(users).selectJsonRaw("data->'items'->0->>'name'", "firstName").one();
    *
    * // MySQL - Extract value with json_extract and ->>
-   * await User.query().selectJsonRaw("data->>'$.email'", "userEmail").one();
+   * await sql.from(users).selectJsonRaw("data->>'$.email'", "userEmail").one();
    *
    * // MySQL - Array length with json_length
-   * await User.query().selectJsonRaw("json_length(data, '$.items')", "itemCount").one();
+   * await sql.from(users).selectJsonRaw("json_length(data, '$.items')", "itemCount").one();
    *
    * // MSSQL - Extract value with json_value
-   * await User.query().selectJsonRaw("json_value(data, '$.email')", "userEmail").one();
+   * await sql.from(users).selectJsonRaw("json_value(data, '$.email')", "userEmail").one();
    *
    * // SQLite - Extract value with json_extract
-   * await User.query().selectJsonRaw("json_extract(data, '$.email')", "userEmail").one();
+   * await sql.from(users).selectJsonRaw("json_extract(data, '$.email')", "userEmail").one();
    *
    * // Access the result directly on the model
-   * const user = await User.query().selectJsonRaw<string, "userEmail">("data->>'email'", "userEmail").one();
+   * const user = await sql.from(users).selectJsonRaw<string, "userEmail">("data->>'email'", "userEmail").one();
    * console.log(user?.userEmail); // Typed as string
    * ```
    */
@@ -929,7 +1326,7 @@ export class ModelQueryBuilder<
   }
 
   /**
-   * @description Fills the relations in the model in the serialized response. Relation must be defined in the model.
+   * @description Fills the relations in the model in the serialized response. Relation must be defined with `definerelations` and passed in the `createSchema` function inside the SqlDataSource.
    * @warning Many to many relations have special behavior, since they require a join, a join clause will always be added to the query.
    * @warning Many to many relations uses the model foreign key for mapping, this property will be removed from the model after the relation is filled.
    * @warning Foreign keys should always be selected in the relation query builder, otherwise the relation will not be filled.
@@ -1492,7 +1889,7 @@ export class ModelQueryBuilder<
   // @ts-expect-error - Override has different return type for type-safety
   override clone(): this {
     const queryBuilder = super.clone() as unknown as this;
-    (queryBuilder as any).relationQueryBuilders = deepCloneNode(
+    queryBuilder.relationQueryBuilders = deepCloneNode(
       this.relationQueryBuilders,
     );
     return queryBuilder;
@@ -1653,7 +2050,8 @@ export class ModelQueryBuilder<
           convertCase(relatedPrimaryKey, this.model.modelCaseConvention);
 
         relatedModels.forEach((relatedModel) => {
-          const foreignKeyValue = (relatedModel as any)[casedRelatedPrimaryKey];
+          const foreignKeyValue =
+            relatedModel[casedRelatedPrimaryKey as keyof R];
           if (foreignKeyValue === undefined || foreignKeyValue === null) {
             return;
           }
@@ -1664,7 +2062,7 @@ export class ModelQueryBuilder<
           }
 
           // Remove the internal foreign key used for mapping
-          delete (relatedModel as any)[casedRelatedPrimaryKey];
+          delete relatedModel[casedRelatedPrimaryKey as keyof R];
 
           relatedModelsMapManyToMany.get(foreignKeyStr)!.push(relatedModel);
         });
@@ -1702,7 +2100,7 @@ export class ModelQueryBuilder<
       relationQueryBuilder,
       relation,
       models,
-    ).many();
+    ).many() as Promise<SelectedModel<T, ModelWithoutRelations<T>, R>[]>;
   }
 
   protected getRelatedModelsQueryForRelation(
@@ -1777,7 +2175,7 @@ export class ModelQueryBuilder<
             ),
           );
 
-        return qb.select(...outerSelectedColumnsHasMany).from(withTableName);
+        return qb.select(...outerSelectedColumnsHasMany).table(withTableName);
       case RelationEnum.manyToMany:
         if (!this.model.primaryKey || !relation.model.primaryKey) {
           throw new HysteriaError(
@@ -1883,7 +2281,7 @@ export class ModelQueryBuilder<
             `${withTableNameM2m}.${cteLeftForeignKey}`,
             manyToManyRelation.leftForeignKey,
           ])
-          .from(withTableNameM2m);
+          .table(withTableNameM2m);
       default:
         throw new HysteriaError(
           this.model.name + "::getRelatedModelsForRelation",
@@ -2041,10 +2439,7 @@ export class ModelQueryBuilder<
     }
   }
 
-  protected addAdditionalColumnsToModel(
-    row: any,
-    typeofModel: typeof Model,
-  ): Record<string, any> {
+  protected addAdditionalColumnsToModel(row: any): Record<string, any> {
     const model: Record<string, any> = {};
 
     Object.entries(row).forEach(([key, value]) => {
@@ -2114,17 +2509,6 @@ export class ModelQueryBuilder<
   }
 
   // @ts-expect-error
-  private async firstOrFailWithPerformance(
-    options: OneOptions = {},
-    returnType: "millis" | "seconds" = "millis",
-  ): Promise<{
-    data: SelectedModel<T, S, R>;
-    time: number;
-  }> {
-    return this.oneOrFailWithPerformance(options, returnType);
-  }
-
-  // @ts-expect-error
   private async paginateWithPerformance(
     page: number,
     perPage: number,
@@ -2184,7 +2568,7 @@ export class ModelQueryBuilder<
   }
 
   private async pluckWithPerformance(
-    key: ModelKey<T>,
+    key: RawModelKey<T>,
     returnType: "millis" | "seconds" = "millis",
   ) {
     const [time, data] = await withPerformance(
@@ -2249,6 +2633,38 @@ export class ModelQueryBuilder<
   ) {
     const [time, result] = await withPerformance(
       this.truncate.bind(this),
+      returnType,
+    )();
+
+    return {
+      data: result,
+      time: Number(time),
+    };
+  }
+
+  // @ts-expect-error - more specific return type than base class
+  private async insertWithPerformance(
+    data: Partial<ModelWithoutRelations<T>>,
+    returnType: "millis" | "seconds" = "millis",
+  ) {
+    const [time, result] = await withPerformance(
+      this.insert.bind(this, data),
+      returnType,
+    )();
+
+    return {
+      data: result,
+      time: Number(time),
+    };
+  }
+
+  // @ts-expect-error - more specific return type than base class
+  private async insertManyWithPerformance(
+    data: Partial<ModelWithoutRelations<T>>[],
+    returnType: "millis" | "seconds" = "millis",
+  ) {
+    const [time, result] = await withPerformance(
+      this.insertMany.bind(this, data),
       returnType,
     )();
 

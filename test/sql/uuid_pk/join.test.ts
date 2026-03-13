@@ -2,39 +2,41 @@ import { env } from "../../../src/env/env";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { PostFactory } from "../test_models/factory/post_factory";
 import { UserFactory } from "../test_models/factory/user_factory";
-import { PostWithUuid } from "../test_models/uuid/post_uuid";
-import { UserWithUuid } from "../test_models/uuid/user_uuid";
+import { PostWithUuid, UserWithUuid } from "../test_models/uuid/schema";
+
+let sql: SqlDataSource;
 
 beforeAll(async () => {
-  const dataSource = new SqlDataSource();
-  await dataSource.connect();
+  sql = new SqlDataSource();
+  await sql.connect();
 });
 
 afterAll(async () => {
-  await SqlDataSource.disconnect();
+  await sql.disconnect();
 });
 
 beforeEach(async () => {
-  await SqlDataSource.startGlobalTransaction();
+  await sql.startGlobalTransaction();
 });
 
 afterEach(async () => {
-  await SqlDataSource.rollbackGlobalTransaction();
+  await sql.rollbackGlobalTransaction();
 });
 
 describe(`[${env.DB_TYPE}] uuid pk join`, () => {
   test("uuid pk simple join", async () => {
-    const users = await UserFactory.userWithUuid(3);
+    const users = await UserFactory.userWithUuid(sql, 3);
     const posts = [];
     for (const user of users) {
-      const post = await PostFactory.postWithUuid(user.id, 1);
+      const post = await PostFactory.postWithUuid(sql, user.id, 1);
       posts.push(post);
     }
 
     expect(users).toHaveLength(3);
     expect(posts).toHaveLength(3);
 
-    const postsWithUsers = await PostWithUuid.query()
+    const postsWithUsers = await sql
+      .from(PostWithUuid)
       .select("posts_with_uuid.*")
       .select(["users_with_uuid.name", "userName"])
       .leftJoin(
@@ -59,17 +61,18 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
   });
 
   test("uuid pk simple left join", async () => {
-    const users = await UserFactory.userWithUuid(3);
+    const users = await UserFactory.userWithUuid(sql, 3);
     const posts = [];
     for (const user of users) {
-      const post = await PostFactory.postWithUuid(user.id, 1);
+      const post = await PostFactory.postWithUuid(sql, user.id, 1);
       posts.push(post);
     }
 
     expect(users).toHaveLength(3);
     expect(posts).toHaveLength(3);
 
-    const postsWithUsers = await PostWithUuid.query()
+    const postsWithUsers = await sql
+      .from(PostWithUuid)
       .select("posts_with_uuid.*")
       .select(["users_with_uuid.name", "userName"])
       .leftJoin(
@@ -89,17 +92,18 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
   });
 
   test("uuid pk simple right join", async () => {
-    const users = await UserFactory.userWithUuid(3);
+    const users = await UserFactory.userWithUuid(sql, 3);
     const posts = [];
     for (const user of users) {
-      const post = await PostFactory.postWithUuid(user.id, 1);
+      const post = await PostFactory.postWithUuid(sql, user.id, 1);
       posts.push(post);
     }
 
     expect(users).toHaveLength(3);
     expect(posts).toHaveLength(3);
 
-    const postsWithUsers = await PostWithUuid.query()
+    const postsWithUsers = await sql
+      .from(PostWithUuid)
       .select("posts_with_uuid.*")
       .select(["users_with_uuid.name", "userName"])
       .rightJoin(
@@ -119,17 +123,18 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
   });
 
   test("uuid pk simple Model join", async () => {
-    const users = await UserFactory.userWithUuid(3);
+    const users = await UserFactory.userWithUuid(sql, 3);
     const posts = [];
     for (const user of users) {
-      const post = await PostFactory.postWithUuid(user.id, 1);
+      const post = await PostFactory.postWithUuid(sql, user.id, 1);
       posts.push(post);
     }
 
     expect(users).toHaveLength(3);
     expect(posts).toHaveLength(3);
 
-    const postsWithUsers = await PostWithUuid.query()
+    const postsWithUsers = await sql
+      .from(PostWithUuid)
       .select("posts_with_uuid.*")
       .select(["users_with_uuid.name", "userName"])
       .join(UserWithUuid, "id", "userId")
@@ -145,17 +150,18 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
   });
 
   test("uuid pk simple Model left join", async () => {
-    const users = await UserFactory.userWithUuid(3);
+    const users = await UserFactory.userWithUuid(sql, 3);
     const posts = [];
     for (const user of users) {
-      const post = await PostFactory.postWithUuid(user.id, 1);
+      const post = await PostFactory.postWithUuid(sql, user.id, 1);
       posts.push(post);
     }
 
     expect(users).toHaveLength(3);
     expect(posts).toHaveLength(3);
 
-    const postsWithUsers = await PostWithUuid.query()
+    const postsWithUsers = await sql
+      .from(PostWithUuid)
       .select("posts_with_uuid.*")
       .select(["users_with_uuid.name", "userName"])
       .leftJoin(UserWithUuid, "id", "userId")
@@ -171,17 +177,18 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
   });
 
   test("uuid pk join with a custom operator", async () => {
-    const users = await UserFactory.userWithUuid(3);
+    const users = await UserFactory.userWithUuid(sql, 3);
     const posts = [];
     for (const user of users) {
-      const post = await PostFactory.postWithUuid(user.id, 1);
+      const post = await PostFactory.postWithUuid(sql, user.id, 1);
       posts.push(post);
     }
 
     expect(users).toHaveLength(3);
     expect(posts).toHaveLength(3);
 
-    const postsWithUsers = await PostWithUuid.query()
+    const postsWithUsers = await sql
+      .from(PostWithUuid)
       .select("posts_with_uuid.*")
       .select(["users_with_uuid.name", "userName"])
       .join(UserWithUuid, "id", "userId", ">")
@@ -196,17 +203,18 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
   });
 
   test("uuid pk simple raw join", async () => {
-    const users = await UserFactory.userWithUuid(3);
+    const users = await UserFactory.userWithUuid(sql, 3);
     const posts = [];
     for (const user of users) {
-      const post = await PostFactory.postWithUuid(user.id, 1);
+      const post = await PostFactory.postWithUuid(sql, user.id, 1);
       posts.push(post);
     }
 
     expect(users).toHaveLength(3);
     expect(posts).toHaveLength(3);
 
-    const postsWithUsers = await PostWithUuid.query()
+    const postsWithUsers = await sql
+      .from(PostWithUuid)
       .select("posts_with_uuid.*")
       .select(["users_with_uuid.name", "userName"])
       .joinRaw(
@@ -226,17 +234,18 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
   });
 
   test("uuid pk simple raw left join", async () => {
-    const users = await UserFactory.userWithUuid(3);
+    const users = await UserFactory.userWithUuid(sql, 3);
     const posts = [];
     for (const user of users) {
-      const post = await PostFactory.postWithUuid(user.id, 1);
+      const post = await PostFactory.postWithUuid(sql, user.id, 1);
       posts.push(post);
     }
 
     expect(users).toHaveLength(3);
     expect(posts).toHaveLength(3);
 
-    const postsWithUsers = await PostWithUuid.query()
+    const postsWithUsers = await sql
+      .from(PostWithUuid)
       .select("posts_with_uuid.*")
       .select(["users_with_uuid.name", "userName"])
       .leftJoinRaw(
@@ -256,17 +265,18 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
   });
 
   test("uuid pk simple raw right join", async () => {
-    const users = await UserFactory.userWithUuid(3);
+    const users = await UserFactory.userWithUuid(sql, 3);
     const posts = [];
     for (const user of users) {
-      const post = await PostFactory.postWithUuid(user.id, 1);
+      const post = await PostFactory.postWithUuid(sql, user.id, 1);
       posts.push(post);
     }
 
     expect(users).toHaveLength(3);
     expect(posts).toHaveLength(3);
 
-    const postsWithUsers = await PostWithUuid.query()
+    const postsWithUsers = await sql
+      .from(PostWithUuid)
       .select("posts_with_uuid.*")
       .select(["users_with_uuid.name", "userName"])
       .rightJoinRaw(
@@ -286,10 +296,10 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
   });
 
   test("uuid pk join with callback additional conditions", async () => {
-    const users = await UserFactory.userWithUuid(3);
+    const users = await UserFactory.userWithUuid(sql, 3);
     const posts = [];
     for (const user of users) {
-      const post = await PostFactory.postWithUuid(user.id, 1);
+      const post = await PostFactory.postWithUuid(sql, user.id, 1);
       posts.push(post);
     }
 
@@ -300,7 +310,8 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
     const targetUser = users[0];
 
     // Use INNER JOIN to filter results based on join condition
-    const postsWithUsers = await PostWithUuid.query()
+    const postsWithUsers = await sql
+      .from(PostWithUuid)
       .select("posts_with_uuid.*")
       .select(["users_with_uuid.name", "userName"])
       .join(
@@ -323,10 +334,10 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
   });
 
   test("uuid pk join with callback multiple conditions", async () => {
-    const users = await UserFactory.userWithUuid(3);
+    const users = await UserFactory.userWithUuid(sql, 3);
     const posts = [];
     for (const user of users) {
-      const post = await PostFactory.postWithUuid(user.id, 1);
+      const post = await PostFactory.postWithUuid(sql, user.id, 1);
       posts.push(post);
     }
 
@@ -338,7 +349,8 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
     const targetUser2 = users[1];
 
     // Use INNER JOIN to filter results based on join condition
-    const postsWithUsers = await PostWithUuid.query()
+    const postsWithUsers = await sql
+      .from(PostWithUuid)
       .select("posts_with_uuid.*")
       .select(["users_with_uuid.name", "userName"])
       .join(
@@ -362,17 +374,18 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
   });
 
   test("uuid pk innerJoin with all params", async () => {
-    const users = await UserFactory.userWithUuid(3);
+    const users = await UserFactory.userWithUuid(sql, 3);
     const posts = [];
     for (const user of users) {
-      const post = await PostFactory.postWithUuid(user.id, 1);
+      const post = await PostFactory.postWithUuid(sql, user.id, 1);
       posts.push(post);
     }
 
     expect(users).toHaveLength(3);
     expect(posts).toHaveLength(3);
 
-    const postsWithUsers = await PostWithUuid.query()
+    const postsWithUsers = await sql
+      .from(PostWithUuid)
       .select("posts_with_uuid.*")
       .select(["users_with_uuid.name", "userName"])
       .innerJoin(
@@ -393,17 +406,18 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
   });
 
   test("uuid pk innerJoin with optional primaryColumn", async () => {
-    const users = await UserFactory.userWithUuid(3);
+    const users = await UserFactory.userWithUuid(sql, 3);
     const posts = [];
     for (const user of users) {
-      const post = await PostFactory.postWithUuid(user.id, 1);
+      const post = await PostFactory.postWithUuid(sql, user.id, 1);
       posts.push(post);
     }
 
     expect(users).toHaveLength(3);
     expect(posts).toHaveLength(3);
 
-    const postsWithUsers = await PostWithUuid.query()
+    const postsWithUsers = await sql
+      .from(PostWithUuid)
       .select("posts_with_uuid.*")
       .select(["users_with_uuid.name", "userName"])
       .innerJoin(
@@ -423,17 +437,18 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
   });
 
   test("uuid pk innerJoin with default operator", async () => {
-    const users = await UserFactory.userWithUuid(3);
+    const users = await UserFactory.userWithUuid(sql, 3);
     const posts = [];
     for (const user of users) {
-      const post = await PostFactory.postWithUuid(user.id, 1);
+      const post = await PostFactory.postWithUuid(sql, user.id, 1);
       posts.push(post);
     }
 
     expect(users).toHaveLength(3);
     expect(posts).toHaveLength(3);
 
-    const postsWithUsers = await PostWithUuid.query()
+    const postsWithUsers = await sql
+      .from(PostWithUuid)
       .select("posts_with_uuid.*")
       .select(["users_with_uuid.name", "userName"])
       .innerJoin(
@@ -453,17 +468,18 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
   });
 
   test("uuid pk innerJoin with Model and all params", async () => {
-    const users = await UserFactory.userWithUuid(3);
+    const users = await UserFactory.userWithUuid(sql, 3);
     const posts = [];
     for (const user of users) {
-      const post = await PostFactory.postWithUuid(user.id, 1);
+      const post = await PostFactory.postWithUuid(sql, user.id, 1);
       posts.push(post);
     }
 
     expect(users).toHaveLength(3);
     expect(posts).toHaveLength(3);
 
-    const postsWithUsers = await PostWithUuid.query()
+    const postsWithUsers = await sql
+      .from(PostWithUuid)
       .select("posts_with_uuid.*")
       .select(["users_with_uuid.name", "userName"])
       .innerJoin(UserWithUuid, "id", "userId", "=")
@@ -479,17 +495,18 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
   });
 
   test("uuid pk innerJoin with Model and optional primaryColumn", async () => {
-    const users = await UserFactory.userWithUuid(3);
+    const users = await UserFactory.userWithUuid(sql, 3);
     const posts = [];
     for (const user of users) {
-      const post = await PostFactory.postWithUuid(user.id, 1);
+      const post = await PostFactory.postWithUuid(sql, user.id, 1);
       posts.push(post);
     }
 
     expect(users).toHaveLength(3);
     expect(posts).toHaveLength(3);
 
-    const postsWithUsers = await PostWithUuid.query()
+    const postsWithUsers = await sql
+      .from(PostWithUuid)
       .select("posts_with_uuid.*")
       .select(["users_with_uuid.name", "userName"])
       .innerJoin(UserWithUuid, "id", "userId")
@@ -505,17 +522,18 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
   });
 
   test("uuid pk innerJoin with Model and default operator", async () => {
-    const users = await UserFactory.userWithUuid(3);
+    const users = await UserFactory.userWithUuid(sql, 3);
     const posts = [];
     for (const user of users) {
-      const post = await PostFactory.postWithUuid(user.id, 1);
+      const post = await PostFactory.postWithUuid(sql, user.id, 1);
       posts.push(post);
     }
 
     expect(users).toHaveLength(3);
     expect(posts).toHaveLength(3);
 
-    const postsWithUsers = await PostWithUuid.query()
+    const postsWithUsers = await sql
+      .from(PostWithUuid)
       .select("posts_with_uuid.*")
       .select(["users_with_uuid.name", "userName"])
       .innerJoin(UserWithUuid, "id", "userId")
@@ -531,10 +549,10 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
   });
 
   test("uuid pk innerJoin with callback", async () => {
-    const users = await UserFactory.userWithUuid(3);
+    const users = await UserFactory.userWithUuid(sql, 3);
     const posts = [];
     for (const user of users) {
-      const post = await PostFactory.postWithUuid(user.id, 1);
+      const post = await PostFactory.postWithUuid(sql, user.id, 1);
       posts.push(post);
     }
 
@@ -543,7 +561,8 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
 
     const targetUser = users[0];
 
-    const postsWithUsers = await PostWithUuid.query()
+    const postsWithUsers = await sql
+      .from(PostWithUuid)
       .select("posts_with_uuid.*")
       .select(["users_with_uuid.name", "userName"])
       .innerJoin(
@@ -565,10 +584,10 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
   });
 
   test("uuid pk innerJoin with callback and explicit operator", async () => {
-    const users = await UserFactory.userWithUuid(3);
+    const users = await UserFactory.userWithUuid(sql, 3);
     const posts = [];
     for (const user of users) {
-      const post = await PostFactory.postWithUuid(user.id, 1);
+      const post = await PostFactory.postWithUuid(sql, user.id, 1);
       posts.push(post);
     }
 
@@ -577,7 +596,8 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
 
     const targetUser = users[0];
 
-    const postsWithUsers = await PostWithUuid.query()
+    const postsWithUsers = await sql
+      .from(PostWithUuid)
       .select("posts_with_uuid.*")
       .select(["users_with_uuid.name", "userName"])
       .innerJoin(
@@ -600,10 +620,10 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
   });
 
   test("uuid pk innerJoin with Model and callback", async () => {
-    const users = await UserFactory.userWithUuid(3);
+    const users = await UserFactory.userWithUuid(sql, 3);
     const posts = [];
     for (const user of users) {
-      const post = await PostFactory.postWithUuid(user.id, 1);
+      const post = await PostFactory.postWithUuid(sql, user.id, 1);
       posts.push(post);
     }
 
@@ -612,7 +632,8 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
 
     const targetUser = users[0];
 
-    const postsWithUsers = await PostWithUuid.query()
+    const postsWithUsers = await sql
+      .from(PostWithUuid)
       .select("posts_with_uuid.*")
       .select(["users_with_uuid.name", "userName"])
       .innerJoin(UserWithUuid, "id", "userId", (q) =>
@@ -631,10 +652,10 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
   });
 
   test("uuid pk innerJoin with Model, operator and callback", async () => {
-    const users = await UserFactory.userWithUuid(3);
+    const users = await UserFactory.userWithUuid(sql, 3);
     const posts = [];
     for (const user of users) {
-      const post = await PostFactory.postWithUuid(user.id, 1);
+      const post = await PostFactory.postWithUuid(sql, user.id, 1);
       posts.push(post);
     }
 
@@ -643,7 +664,8 @@ describe(`[${env.DB_TYPE}] uuid pk join`, () => {
 
     const targetUser = users[0];
 
-    const postsWithUsers = await PostWithUuid.query()
+    const postsWithUsers = await sql
+      .from(PostWithUuid)
       .select("posts_with_uuid.*")
       .select(["users_with_uuid.name", "userName"])
       .innerJoin(UserWithUuid, "id", "userId", "=", (q) =>

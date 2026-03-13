@@ -1,14 +1,15 @@
 import { MongoDataSource } from "../../src/no_sql/mongo/mongo_data_source";
-import { Collection } from "../../src/no_sql/mongo/mongo_models/mongo_collection";
-import { property } from "../../src/no_sql/mongo/mongo_models/mongo_collection_decorators";
+import {
+  defineCollection,
+  prop,
+} from "../../src/no_sql/mongo/mongo_models/define_collection";
 
-class TestModel extends Collection {
-  @property()
-  declare name: string;
-
-  @property()
-  declare email: string;
-}
+const TestModel = defineCollection("test_models", {
+  properties: {
+    name: prop.string(),
+    email: prop.string(),
+  },
+});
 
 describe("TestModel", () => {
   let mongoDataSource: MongoDataSource;
@@ -21,11 +22,11 @@ describe("TestModel", () => {
   });
 
   beforeEach(async () => {
-    await TestModel.query().delete();
+    await mongoDataSource.from(TestModel).query().delete();
   });
 
   afterAll(async () => {
-    await TestModel.query().delete();
+    await mongoDataSource.from(TestModel).query().delete();
     await mongoDataSource.disconnect();
   });
 
@@ -33,13 +34,12 @@ describe("TestModel", () => {
     it("should start and commitTransaction a session", async () => {
       const session = mongoDataSource.startSession();
       try {
-        await TestModel.insert(
-          { name: "Test Name", email: "test@example.com" },
-          { session },
-        );
+        await mongoDataSource
+          .from(TestModel, { session })
+          .insert({ name: "Test Name", email: "test@example.com" });
         await session.commitTransaction();
 
-        const count = await TestModel.query().count();
+        const count = await mongoDataSource.from(TestModel).query().count();
         expect(count).toBe(1);
       } catch (error) {
         await session.abortTransaction();
@@ -50,15 +50,14 @@ describe("TestModel", () => {
     it("should abortTransaction a session", async () => {
       const session = mongoDataSource.startSession();
       try {
-        await TestModel.insert(
-          { name: "Test Name", email: "test@example.com" },
-          { session },
-        );
+        await mongoDataSource
+          .from(TestModel, { session })
+          .insert({ name: "Test Name", email: "test@example.com" });
         throw new Error("Intentional Error");
         await session.commitTransaction();
       } catch (error) {
         await session.abortTransaction();
-        const count = await TestModel.query().count();
+        const count = await mongoDataSource.from(TestModel).query().count();
         expect(count).toBe(0);
       }
     });
@@ -69,7 +68,9 @@ describe("TestModel", () => {
     const session = mongoDataSource.startSession();
     try {
       const modelData = { name: "Test Name", email: "test" };
-      const insertedModel = await TestModel.insert(modelData, { session });
+      const insertedModel = await mongoDataSource
+        .from(TestModel, { session })
+        .insert(modelData);
       await session.commitTransaction();
       expect(insertedModel.name).toBe("Test Name");
       expect(insertedModel.email).toBe("test");
@@ -86,7 +87,9 @@ describe("TestModel", () => {
         { name: "Test Name 1", email: "asdasd" },
         { name: "Test Name 2", email: "asdasd" },
       ];
-      const insertedModels = await TestModel.insertMany(modelData, { session });
+      const insertedModels = await mongoDataSource
+        .from(TestModel, { session })
+        .insertMany(modelData);
       await session.commitTransaction();
       expect(insertedModels.length).toBe(2);
       expect(insertedModels[0].name).toBe("Test Name 1");
@@ -103,12 +106,12 @@ describe("TestModel", () => {
     const session = mongoDataSource.startSession();
     try {
       const modelData = { name: "Test Name", email: "test" };
-      await TestModel.insert(modelData, { session });
+      await mongoDataSource.from(TestModel, { session }).insert(modelData);
       throw new Error("Intentional Error");
       await session.commitTransaction();
     } catch (error) {
       await session.abortTransaction();
-      const count = await TestModel.query().count();
+      const count = await mongoDataSource.from(TestModel).query().count();
       expect(count).toBe(0);
     }
   });

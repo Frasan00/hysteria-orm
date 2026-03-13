@@ -3,21 +3,23 @@ import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { UserFactory } from "../test_models/factory/user_factory";
 import { UserWithoutPk } from "../test_models/without_pk/user_without_pk";
 
+let sql: SqlDataSource;
+
 beforeAll(async () => {
-  const dataSource = new SqlDataSource();
-  await dataSource.connect();
+  sql = new SqlDataSource();
+  await sql.connect();
 });
 
 afterAll(async () => {
-  await SqlDataSource.disconnect();
+  await sql.disconnect();
 });
 
 beforeEach(async () => {
-  await SqlDataSource.startGlobalTransaction();
+  await sql.startGlobalTransaction();
 });
 
 afterEach(async () => {
-  await SqlDataSource.rollbackGlobalTransaction();
+  await sql.rollbackGlobalTransaction();
 });
 
 describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
@@ -48,14 +50,19 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
       };
 
       const userData = UserFactory.getCommonUserData();
-      const user = await UserWithoutPk.insert(userData, { returning: ["*"] });
+      const user = await sql
+        .from(UserWithoutPk)
+        .insert(userData, { returning: ["*"] });
 
       expect(hookCallOrder).toContain("beforeInsert");
       expect(user.name).toContain("_processed");
 
       hookCallOrder = []; // Reset for next test
 
-      const retrievedUser = await UserWithoutPk.findOneBy("name", user.name);
+      const retrievedUser = await sql
+        .from(UserWithoutPk)
+        .where("name", "=", user.name)
+        .one();
       expect(hookCallOrder).toContain("afterFetch");
       expect((retrievedUser as any).processed).toBe(true);
     } finally {
@@ -89,8 +96,13 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
           metadata: jsonCase,
         };
 
-        const user = await UserWithoutPk.insert(userData, { returning: ["*"] });
-        const retrievedUser = await UserWithoutPk.findOneBy("name", user.name);
+        const user = await sql
+          .from(UserWithoutPk)
+          .insert(userData, { returning: ["*"] });
+        const retrievedUser = await sql
+          .from(UserWithoutPk)
+          .where("name", "=", user.name)
+          .one();
 
         expect(retrievedUser).toBeDefined();
         // JSON should be stored and retrieved correctly or fail gracefully
@@ -109,8 +121,13 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
       name: "HiddenFieldTest",
     };
 
-    const user = await UserWithoutPk.insert(userData, { returning: ["*"] });
-    const retrievedUser = await UserWithoutPk.findOneBy("name", user.name);
+    const user = await sql
+      .from(UserWithoutPk)
+      .insert(userData, { returning: ["*"] });
+    const retrievedUser = await sql
+      .from(UserWithoutPk)
+      .where("name", "=", user.name)
+      .one();
 
     // Verify that hidden fields are not in the serialized output
     const serializedUser = JSON.parse(JSON.stringify(retrievedUser));
@@ -139,11 +156,13 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         ...testData,
       };
 
-      const user = await UserWithoutPk.insert(userData, { returning: ["*"] });
-      const retrievedUser = await UserWithoutPk.findOneBy(
-        "name",
-        testData.name,
-      );
+      const user = await sql
+        .from(UserWithoutPk)
+        .insert(userData, { returning: ["*"] });
+      const retrievedUser = await sql
+        .from(UserWithoutPk)
+        .where("name", "=", testData.name)
+        .one();
 
       expect(retrievedUser).toBeDefined();
       expect(retrievedUser?.name).toBe(testData.name);
@@ -162,10 +181,11 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
     }));
 
     // Insert large dataset
-    await UserWithoutPk.insertMany(largeDataset);
+    await sql.from(UserWithoutPk).insertMany(largeDataset);
 
     // Retrieve and process large dataset
-    const retrievedUsers = await UserWithoutPk.query()
+    const retrievedUsers = await sql
+      .from(UserWithoutPk)
       .where("name", "like", "LargeDataset%")
       .many();
 
@@ -175,7 +195,8 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
     expect(retrievedUsers.length).toBe(100);
 
     // Verify memory isn't holding onto unnecessary references
-    const memoryTestQuery = await UserWithoutPk.query()
+    const memoryTestQuery = await sql
+      .from(UserWithoutPk)
       .where("name", "like", "LargeDataset%")
       .limit(10)
       .many();
@@ -197,7 +218,9 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
       };
 
       const userData = UserFactory.getCommonUserData();
-      const user = await UserWithoutPk.insert(userData, { returning: ["*"] });
+      const user = await sql
+        .from(UserWithoutPk)
+        .insert(userData, { returning: ["*"] });
 
       expect(user.name).toContain("_async");
     } finally {
@@ -230,11 +253,13 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
       };
 
       try {
-        const user = await UserWithoutPk.insert(userData, { returning: ["*"] });
-        const retrievedUser = await UserWithoutPk.findOneBy(
-          "name",
-          testData.name,
-        );
+        const user = await sql
+          .from(UserWithoutPk)
+          .insert(userData, { returning: ["*"] });
+        const retrievedUser = await sql
+          .from(UserWithoutPk)
+          .where("name", "=", testData.name)
+          .one();
 
         expect(retrievedUser).toBeDefined();
         expect(retrievedUser?.name).toBe(testData.name);
@@ -262,11 +287,11 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         description: testData.description as string | undefined,
       };
 
-      await UserWithoutPk.insert(userData);
-      const retrievedUser = await UserWithoutPk.findOneBy(
-        "name",
-        testData.name,
-      );
+      await sql.from(UserWithoutPk).insert(userData);
+      const retrievedUser = await sql
+        .from(UserWithoutPk)
+        .where("name", "=", testData.name)
+        .one();
 
       expect(retrievedUser).toBeDefined();
       expect(retrievedUser?.name).toBe(testData.name);
@@ -288,13 +313,16 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
     };
 
     // Insert
-    const insertedUser = await UserWithoutPk.insert(originalData, {
+    const insertedUser = await sql.from(UserWithoutPk).insert(originalData, {
       returning: ["*"],
     });
     expect(insertedUser.name).toBe("ConsistencyTest");
 
     // Find
-    const foundUser = await UserWithoutPk.findOneBy("name", "ConsistencyTest");
+    const foundUser = await sql
+      .from(UserWithoutPk)
+      .where("name", "=", "ConsistencyTest")
+      .one();
     expect(foundUser?.name).toBe(insertedUser.name);
 
     // Verify serialization consistency
@@ -312,10 +340,11 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
       age: 30,
     };
 
-    await UserWithoutPk.insert(userData);
+    await sql.from(UserWithoutPk).insert(userData);
 
     // Query with select aliases
-    const user = await UserWithoutPk.query()
+    const user = await sql
+      .from(UserWithoutPk)
       .select("name", "age", ["age", "userAge"], ["name", "userName"])
       .where("name", "JsonFlattenTest")
       .one();
@@ -347,10 +376,11 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
       json: jsonData,
     };
 
-    await UserWithoutPk.insert(userData);
+    await sql.from(UserWithoutPk).insert(userData);
 
     // Query with JSON select methods
-    const user = await UserWithoutPk.query()
+    const user = await sql
+      .from(UserWithoutPk)
       .select("name")
       .selectJsonText("json", "user.name", "extractedName")
       .where("name", "JsonSelectTest")
@@ -370,10 +400,11 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         email: "collision1@test.com",
       };
 
-      await UserWithoutPk.insert(userData);
+      await sql.from(UserWithoutPk).insert(userData);
 
       // selectRaw for aggregate functions
-      const user = await UserWithoutPk.query()
+      const user = await sql
+        .from(UserWithoutPk)
         .select("name", "age", "email")
         .selectRaw<{
           maxAge: number;
@@ -387,7 +418,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
 
       // Original model fields should still be present
       expect(user!.name).toBe("CollisionTest1");
-      expect(+user!.age).toBe(25);
+      expect(+user!.age!).toBe(25);
       expect(user!.email).toBe("collision1@test.com");
 
       // Aggregate results should be directly accessible
@@ -397,7 +428,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
       expect(+user!.totalCount).toBeGreaterThanOrEqual(1);
 
       // Model fields should still have their original values
-      expect(+user!.age).toBe(25);
+      expect(+user!.age!).toBe(25);
       expect(user!.email).toBe("collision1@test.com");
     });
 
@@ -419,10 +450,11 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         json: jsonData,
       };
 
-      await UserWithoutPk.insert(userData);
+      await sql.from(UserWithoutPk).insert(userData);
 
       // Select JSON with aliases
-      const user = await UserWithoutPk.query()
+      const user = await sql
+        .from(UserWithoutPk)
         .select("name", "email")
         .selectJsonText("json", "username", "jsonName")
         .selectJsonText("json", "userAge", "jsonAge")
@@ -451,10 +483,11 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         email: "collision3@test.com",
       };
 
-      await UserWithoutPk.insert(userData);
+      await sql.from(UserWithoutPk).insert(userData);
 
       // Multiple aliases using select
-      const user = await UserWithoutPk.query()
+      const user = await sql
+        .from(UserWithoutPk)
         .select("name", "email", ["name", "nameAlias"])
         .selectRaw<{ totalRecords: number }>("count(*) as totalRecords")
         .where("email", "collision3@test.com")
@@ -483,10 +516,11 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         email: "collision5@test.com",
       };
 
-      await UserWithoutPk.insert(userData);
+      await sql.from(UserWithoutPk).insert(userData);
 
       // Using selectRaw with typed generics
-      const user = await UserWithoutPk.query()
+      const user = await sql
+        .from(UserWithoutPk)
         .select("name", "age")
         .selectRaw<{ maxAge: number }>("max(age) as maxAge")
         .where("email", "collision5@test.com")
@@ -503,11 +537,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
       // Original model field should still be accessible
       expect(user?.age).toBeDefined();
       // CockroachDB returns age as string due to type coercion
-      if (env.DB_TYPE === "cockroachdb") {
-        expect(+user!.age).toBe(35);
-      } else {
-        expect(user?.age).toBe(35);
-      }
+      expect(user?.age).toBe(35);
     });
 
     test("selectRaw with CAST expression should not quote the type", async () => {
@@ -518,7 +548,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         email: "cast@test.com",
       };
 
-      await UserWithoutPk.insert(userData);
+      await sql.from(UserWithoutPk).insert(userData);
 
       // CAST(x AS type) should work - the "AS type" inside CAST should not be quoted
       // while "AS alias" outside should be quoted for case preservation
@@ -527,7 +557,8 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         env.DB_TYPE === "postgres" || env.DB_TYPE === "cockroachdb"
           ? "VARCHAR"
           : "CHAR(10)";
-      const user = await UserWithoutPk.query()
+      const user = await sql
+        .from(UserWithoutPk)
         .selectRaw<{
           ageAsText: string;
         }>(`CAST(age AS ${castType}) as ageAsText`)
@@ -548,9 +579,10 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         { ...UserFactory.getCommonUserData(), name: "CountTest3", age: 35 },
       ];
 
-      await UserWithoutPk.insertMany(userData);
+      await sql.from(UserWithoutPk).insertMany(userData);
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .selectFunc("count", "*", "totalUsers")
         .where("name", "like", "CountTest%")
         .one();
@@ -570,9 +602,10 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         },
       ];
 
-      await UserWithoutPk.insertMany(userData);
+      await sql.from(UserWithoutPk).insertMany(userData);
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .selectFunc("count", "age", "ageCount")
         .where("name", "like", "CountCol%")
         .one();
@@ -590,9 +623,10 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         { ...UserFactory.getCommonUserData(), name: "SumTest3", age: 30 },
       ];
 
-      await UserWithoutPk.insertMany(userData);
+      await sql.from(UserWithoutPk).insertMany(userData);
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .selectFunc("sum", "age", "totalAge")
         .where("name", "like", "SumTest%")
         .one();
@@ -609,9 +643,10 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         { ...UserFactory.getCommonUserData(), name: "AvgTest3", age: 40 },
       ];
 
-      await UserWithoutPk.insertMany(userData);
+      await sql.from(UserWithoutPk).insertMany(userData);
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .selectFunc("avg", "age", "averageAge")
         .where("name", "like", "AvgTest%")
         .one();
@@ -629,9 +664,10 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         { ...UserFactory.getCommonUserData(), name: "MinTest3", age: 35 },
       ];
 
-      await UserWithoutPk.insertMany(userData);
+      await sql.from(UserWithoutPk).insertMany(userData);
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .selectFunc("min", "age", "youngestAge")
         .where("name", "like", "MinTest%")
         .one();
@@ -648,9 +684,10 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         { ...UserFactory.getCommonUserData(), name: "MaxTest3", age: 35 },
       ];
 
-      await UserWithoutPk.insertMany(userData);
+      await sql.from(UserWithoutPk).insertMany(userData);
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .selectFunc("max", "age", "oldestAge")
         .where("name", "like", "MaxTest%")
         .one();
@@ -667,9 +704,10 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         { ...UserFactory.getCommonUserData(), name: "ChainTest3", age: 40 },
       ];
 
-      await UserWithoutPk.insertMany(userData);
+      await sql.from(UserWithoutPk).insertMany(userData);
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .selectFunc("count", "*", "total")
         .selectFunc("sum", "age", "sumAge")
         .selectFunc("avg", "age", "avgAge")
@@ -694,9 +732,10 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         email: "combine@test.com",
       };
 
-      await UserWithoutPk.insert(userData);
+      await sql.from(UserWithoutPk).insert(userData);
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .select("name", "email")
         .selectFunc("count", "*", "recordCount")
         .selectFunc("max", "age", "maxAge")
@@ -725,9 +764,10 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         },
       ];
 
-      await UserWithoutPk.insertMany(userData);
+      await sql.from(UserWithoutPk).insertMany(userData);
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .selectFunc("sum", "users_without_pk.age", "totalAge")
         .where("name", "like", "TablePrefixTest%")
         .one();
@@ -749,9 +789,10 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         isActive: true,
       };
 
-      await UserWithoutPk.insert(userData);
+      await sql.from(UserWithoutPk).insert(userData);
 
-      const user = await UserWithoutPk.query()
+      const user = await sql
+        .from(UserWithoutPk)
         .select("name", "shortDescription", "isActive")
         .where("name", "CaseConversionTest")
         .one();
@@ -782,10 +823,11 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         height: 180,
       };
 
-      await UserWithoutPk.insert(userData);
+      await sql.from(UserWithoutPk).insert(userData);
 
       // Test snake_case alias - should remain exactly as written
-      const user = await UserWithoutPk.query()
+      const user = await sql
+        .from(UserWithoutPk)
         .select(
           "name",
           ["age", "user_age"], // snake_case alias
@@ -801,9 +843,9 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
 
       // Aliases should remain EXACTLY as specified (snake_case preserved)
       expect(user!.user_age).toBeDefined();
-      expect(+user!.user_age).toBe(25);
+      expect(+user!.user_age!).toBe(25);
       expect(user!.user_height).toBeDefined();
-      expect(+user!.user_height).toBe(180);
+      expect(+user!.user_height!).toBe(180);
 
       // camelCase versions should NOT exist (aliases not converted)
       expect(Object.prototype.hasOwnProperty.call(user, "userAge")).toBe(false);
@@ -822,9 +864,10 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         height: 175,
       };
 
-      await UserWithoutPk.insert(userData);
+      await sql.from(UserWithoutPk).insert(userData);
 
-      const user = await UserWithoutPk.query()
+      const user = await sql
+        .from(UserWithoutPk)
         .select("name")
         .selectRaw<{
           total_records: number;
@@ -868,9 +911,10 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         },
       ];
 
-      await UserWithoutPk.insertMany(userData);
+      await sql.from(UserWithoutPk).insertMany(userData);
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .selectFunc("count", "*", "total_count")
         .selectFunc("sum", "age", "sum_of_ages")
         .selectFunc("avg", "age", "average_age")
@@ -911,9 +955,10 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         height: 170,
       };
 
-      await UserWithoutPk.insert(userData);
+      await sql.from(UserWithoutPk).insert(userData);
 
-      const user = await UserWithoutPk.query()
+      const user = await sql
+        .from(UserWithoutPk)
         .select(
           "name",
           "shortDescription", // model column - should be camelCase
@@ -933,7 +978,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
 
       // Aliases should remain EXACTLY as specified (no conversion)
       expect(user!.user_age_value).toBeDefined();
-      expect(+user!.user_age_value).toBe(35);
+      expect(+user!.user_age_value!).toBe(35);
       expect(user!.computed_value).toBeDefined();
       expect(+user!.computed_value).toBe(180); // 170 + 10
 
@@ -963,9 +1008,10 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         age: 28,
       };
 
-      await UserWithoutPk.insert(userData);
+      await sql.from(UserWithoutPk).insert(userData);
 
-      const user = await UserWithoutPk.query()
+      const user = await sql
+        .from(UserWithoutPk)
         .select("name", ["age", "userAge"], ["name", "fullName"])
         .where("name", "CamelCaseAliasTest")
         .one();
@@ -977,7 +1023,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
 
       // camelCase aliases should remain as camelCase
       expect(user!.userAge).toBeDefined();
-      expect(+user!.userAge).toBe(28);
+      expect(+user!.userAge!).toBe(28);
       expect(user!.fullName).toBe("CamelCaseAliasTest");
 
       // snake_case versions should NOT exist (aliases not converted)
@@ -998,9 +1044,10 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         age: 42,
       };
 
-      await UserWithoutPk.insert(userData);
+      await sql.from(UserWithoutPk).insert(userData);
 
-      const user = await UserWithoutPk.query()
+      const user = await sql
+        .from(UserWithoutPk)
         .select("name")
         .where("name", "TypeNarrowTest")
         .one();
@@ -1021,9 +1068,10 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         age: 30,
       };
 
-      await UserWithoutPk.insert(userData);
+      await sql.from(UserWithoutPk).insert(userData);
 
-      const user = await UserWithoutPk.query()
+      const user = await sql
+        .from(UserWithoutPk)
         .select("*")
         .where("name", "SelectAllTest")
         .one();
@@ -1031,7 +1079,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
       expect(user).not.toBeNull();
       expect(user!.name).toBe("SelectAllTest");
       // CockroachDB may return numbers as strings
-      expect(+user!.age).toBe(30);
+      expect(+user!.age!).toBe(30);
       expect(user!.email).toBeDefined();
       expect(user!.status).toBeDefined();
     });
@@ -1043,9 +1091,10 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         age: 25,
       };
 
-      await UserWithoutPk.insert(userData);
+      await sql.from(UserWithoutPk).insert(userData);
 
-      const user = await UserWithoutPk.query()
+      const user = await sql
+        .from(UserWithoutPk)
         .select("users_without_pk.*")
         .where("name", "TableWildcardTest")
         .one();
@@ -1069,9 +1118,10 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         age: 35,
       };
 
-      await UserWithoutPk.insert(userData);
+      await sql.from(UserWithoutPk).insert(userData);
 
-      const user = await UserWithoutPk.query()
+      const user = await sql
+        .from(UserWithoutPk)
         .select("name", "name", "age", "age")
         .where("name", "DuplicateSelectTest")
         .one();
@@ -1079,7 +1129,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
       expect(user).not.toBeNull();
       expect(user!.name).toBe("DuplicateSelectTest");
       // CockroachDB may return numbers as strings
-      expect(+user!.age).toBe(35);
+      expect(+user!.age!).toBe(35);
     });
 
     test("select with mixed aliases and direct columns", async () => {
@@ -1089,9 +1139,10 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         age: 40,
       };
 
-      await UserWithoutPk.insert(userData);
+      await sql.from(UserWithoutPk).insert(userData);
 
-      const user = await UserWithoutPk.query()
+      const user = await sql
+        .from(UserWithoutPk)
         .select("name", ["age", "userAge"], ["email", "userEmail"])
         .where("name", "MixedSelectTest")
         .one();
@@ -1099,7 +1150,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
       expect(user).not.toBeNull();
       expect(user!.name).toBe("MixedSelectTest");
       // CockroachDB may return numbers as strings
-      expect(+user!.userAge).toBe(40);
+      expect(+user!.userAge!).toBe(40);
       expect(user!.userEmail).toBeDefined();
 
       // Original names when aliased should not exist
@@ -1114,9 +1165,10 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         age: 50,
       };
 
-      await UserWithoutPk.insert(userData);
+      await sql.from(UserWithoutPk).insert(userData);
 
-      const user = await UserWithoutPk.query()
+      const user = await sql
+        .from(UserWithoutPk)
         .select("name")
         .selectRaw<{ doubleAge: number }>("age * 2 as doubleAge")
         .where("name", "CombinedSelectTest")
@@ -1134,17 +1186,18 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         age: 28,
       };
 
-      await UserWithoutPk.insert(userData);
+      await sql.from(UserWithoutPk).insert(userData);
 
       // Calling query without select should return all columns
-      const user = await UserWithoutPk.query()
+      const user = await sql
+        .from(UserWithoutPk)
         .where("name", "EmptySelectTest")
         .one();
 
       expect(user).not.toBeNull();
       expect(user!.name).toBe("EmptySelectTest");
       // CockroachDB may return numbers as strings
-      expect(+user!.age).toBe(28);
+      expect(+user!.age!).toBe(28);
       expect(user!.email).toBeDefined();
       expect(user!.status).toBeDefined();
     });
@@ -1156,9 +1209,10 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         age: 33,
       };
 
-      await UserWithoutPk.insert(userData);
+      await sql.from(UserWithoutPk).insert(userData);
 
-      const user = await UserWithoutPk.query()
+      const user = await sql
+        .from(UserWithoutPk)
         .select("name")
         .clearSelect()
         .where("name", "ClearSelectTest")
@@ -1167,7 +1221,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
       expect(user).not.toBeNull();
       expect(user!.name).toBe("ClearSelectTest");
       // CockroachDB may return numbers as strings
-      expect(+user!.age).toBe(33);
+      expect(+user!.age!).toBe(33);
       expect(user!.email).toBeDefined();
     });
 
@@ -1178,13 +1232,14 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         age: 22,
       };
 
-      await UserWithoutPk.insert(userData);
+      await sql.from(UserWithoutPk).insert(userData);
 
       // Selecting a column that doesn't exist
       // Depending on database, this might error or return undefined
       // This tests the edge case handling
       try {
-        const user = await UserWithoutPk.query()
+        const user = await sql
+          .from(UserWithoutPk)
           .select("name", "nonExistentColumn" as any)
           .where("name", "NonExistentColTest")
           .one();
@@ -1205,9 +1260,10 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         age: null as unknown as number,
       };
 
-      await UserWithoutPk.insert(userData);
+      await sql.from(UserWithoutPk).insert(userData);
 
-      const user = await UserWithoutPk.query()
+      const user = await sql
+        .from(UserWithoutPk)
         .select("name", "age")
         .where("name", "NullPreserveTest")
         .one();
@@ -1223,9 +1279,10 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         { ...UserFactory.getCommonUserData(), name: "AggOnlyTest2", age: 20 },
       ];
 
-      await UserWithoutPk.insertMany(userData);
+      await sql.from(UserWithoutPk).insertMany(userData);
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .selectFunc("count", "*", "total")
         .where("name", "like", "AggOnlyTest%")
         .one();
@@ -1248,9 +1305,10 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         { ...UserFactory.getCommonUserData(), name: "DistinctTest4", age: 35 },
       ];
 
-      await UserWithoutPk.insertMany(userData);
+      await sql.from(UserWithoutPk).insertMany(userData);
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .selectRaw<{ uniqueAges: number }>("count(distinct age) as uniqueAges")
         .where("name", "like", "DistinctTest%")
         .one();
@@ -1266,9 +1324,10 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         name: "UpperTest",
       };
 
-      await UserWithoutPk.insert(userData);
+      await sql.from(UserWithoutPk).insert(userData);
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .select("name")
         .selectFunc("upper", "name", "upperName")
         .where("name", "UpperTest")
@@ -1285,9 +1344,10 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         name: "LowerTest",
       };
 
-      await UserWithoutPk.insert(userData);
+      await sql.from(UserWithoutPk).insert(userData);
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .select("name")
         .selectFunc("lower", "name", "lowerName")
         .where("name", "LowerTest")
@@ -1307,9 +1367,10 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         name: "LengthTest",
       };
 
-      await UserWithoutPk.insert(userData);
+      await sql.from(UserWithoutPk).insert(userData);
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .select("name")
         .selectFunc("length", "name", "nameLength")
         .where("name", "LengthTest")
@@ -1326,9 +1387,10 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         name: "  TrimTest  ",
       };
 
-      await UserWithoutPk.insert(userData);
+      await sql.from(UserWithoutPk).insert(userData);
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .select("name")
         .selectFunc("trim", "name", "trimmedName")
         .where("name", "  TrimTest  ")
@@ -1346,9 +1408,10 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         height: -100,
       };
 
-      await UserWithoutPk.insert(userData);
+      await sql.from(UserWithoutPk).insert(userData);
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .select("name", "height")
         .selectFunc("abs", "height", "absoluteHeight")
         .where("name", "AbsTest")
@@ -1356,7 +1419,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
 
       expect(result).not.toBeNull();
       expect(result!.name).toBe("AbsTest");
-      expect(+result!.height).toBe(-100);
+      expect(+result!.height!).toBe(-100);
       expect(+result!.absoluteHeight).toBe(100);
     });
 
@@ -1377,9 +1440,10 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         height: 123,
       };
 
-      await UserWithoutPk.insert(userData);
+      await sql.from(UserWithoutPk).insert(userData);
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .select("name")
         .selectRaw<{
           roundedHeight: number;
@@ -1399,9 +1463,10 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         description: null as unknown as string,
       };
 
-      await UserWithoutPk.insert(userData);
+      await sql.from(UserWithoutPk).insert(userData);
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .select("name")
         .selectRaw<{
           displayDesc: string;
@@ -1421,9 +1486,10 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         description: "ActualValue",
       };
 
-      await UserWithoutPk.insert(userData);
+      await sql.from(UserWithoutPk).insert(userData);
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .select("name")
         .selectRaw<{
           displayDesc: string;
@@ -1446,9 +1512,10 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         height: 123,
       };
 
-      await UserWithoutPk.insert(userData);
+      await sql.from(UserWithoutPk).insert(userData);
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .select("name", "height")
         .selectFunc("ceil", "height", "ceilHeight")
         .where("name", "CeilTest")
@@ -1469,9 +1536,10 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         height: 123,
       };
 
-      await UserWithoutPk.insert(userData);
+      await sql.from(UserWithoutPk).insert(userData);
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .select("name", "height")
         .selectFunc("floor", "height", "floorHeight")
         .where("name", "FloorTest")
@@ -1493,9 +1561,10 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         age: 25,
       };
 
-      await UserWithoutPk.insert(userData);
+      await sql.from(UserWithoutPk).insert(userData);
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .select("name", "age")
         .selectFunc("sqrt", "age", "sqrtAge")
         .where("name", "SqrtTest")
@@ -1503,7 +1572,7 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
 
       expect(result).not.toBeNull();
       expect(result!.name).toBe("SqrtTest");
-      expect(+result!.age).toBe(25);
+      expect(+result!.age!).toBe(25);
       expect(+result!.sqrtAge).toBe(5);
     });
 
@@ -1519,9 +1588,10 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         height: -50,
       };
 
-      await UserWithoutPk.insert(userData);
+      await sql.from(UserWithoutPk).insert(userData);
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .select("name")
         .selectFunc("trim", "name", "trimmedName")
         .selectFunc("upper", "name", "upperName")
@@ -1547,9 +1617,10 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         { ...UserFactory.getCommonUserData(), name: "CombinedFunc3", age: 20 },
       ];
 
-      await UserWithoutPk.insertMany(userData);
+      await sql.from(UserWithoutPk).insertMany(userData);
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .selectFunc("count", "*", "total")
         .selectRaw<{ uniqueAges: number }>("count(distinct age) as uniqueAges")
         .selectFunc("sum", "age", "sumAge")
@@ -1574,9 +1645,10 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
         age: 36,
       };
 
-      await UserWithoutPk.insert(userData);
+      await sql.from(UserWithoutPk).insert(userData);
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .select("name")
         .selectFunc("sqrt", "users_without_pk.age", "sqrtAge")
         .where("name", "TablePrefixFunc")

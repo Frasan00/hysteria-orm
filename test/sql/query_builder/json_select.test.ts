@@ -3,26 +3,28 @@ import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { UserFactory } from "../test_models/factory/user_factory";
 import { UserWithoutPk } from "../test_models/without_pk/user_without_pk";
 
+let sql: SqlDataSource;
+
 beforeAll(async () => {
-  const dataSource = new SqlDataSource();
-  await dataSource.connect();
+  sql = new SqlDataSource();
+  await sql.connect();
 });
 
 afterAll(async () => {
-  await SqlDataSource.disconnect();
+  await sql.disconnect();
 });
 
 beforeEach(async () => {
-  await SqlDataSource.startGlobalTransaction();
+  await sql.startGlobalTransaction();
 });
 
 afterEach(async () => {
-  await SqlDataSource.rollbackGlobalTransaction();
+  await sql.rollbackGlobalTransaction();
 });
 
 describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
   beforeEach(async () => {
-    await UserWithoutPk.query().delete();
+    await sql.from(UserWithoutPk).delete();
   });
 
   describe("selectJson - Extract JSON values", () => {
@@ -37,13 +39,14 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         },
       };
 
-      await UserWithoutPk.insert({
+      await sql.from(UserWithoutPk).insert({
         ...UserFactory.getCommonUserData(),
         json,
         email: "json-select-1@test.com",
       });
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .selectJson("json", "$.user.name", "userName")
         .selectJson("json", "$.settings.theme", "userTheme")
         .one();
@@ -61,13 +64,14 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         },
       };
 
-      await UserWithoutPk.insert({
+      await sql.from(UserWithoutPk).insert({
         ...UserFactory.getCommonUserData(),
         json,
         email: "json-select-2@test.com",
       });
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .selectJson("json", "profile.age", "userAge")
         .selectJson("json", "profile.city", "userCity")
         .one();
@@ -86,13 +90,14 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         },
       };
 
-      await UserWithoutPk.insert({
+      await sql.from(UserWithoutPk).insert({
         ...UserFactory.getCommonUserData(),
         json,
         email: "json-select-3@test.com",
       });
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .selectJson("json", ["contact", "phone", "mobile"], "phoneNumber")
         .one();
 
@@ -109,13 +114,14 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         ],
       };
 
-      await UserWithoutPk.insert({
+      await sql.from(UserWithoutPk).insert({
         ...UserFactory.getCommonUserData(),
         json,
         email: "json-select-4@test.com",
       });
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .selectJson("json", "items.0.name", "firstItemName")
         .selectJson("json", ["items", 1, "name"], "secondItemName")
         .one();
@@ -130,13 +136,14 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         simpleValue: "test123",
       };
 
-      await UserWithoutPk.insert({
+      await sql.from(UserWithoutPk).insert({
         ...UserFactory.getCommonUserData(),
         json,
         email: "json-select-5@test.com",
       });
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .selectJson("json", "simpleValue", "value")
         .one();
 
@@ -154,13 +161,14 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         },
       };
 
-      await UserWithoutPk.insert({
+      await sql.from(UserWithoutPk).insert({
         ...UserFactory.getCommonUserData(),
         json,
         email: "json-text-1@test.com",
       });
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .selectJsonText("json", "$.data.message", "message")
         .selectJsonText("json", "data.status", "userStatus")
         .one();
@@ -179,13 +187,14 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         },
       };
 
-      await UserWithoutPk.insert({
+      await sql.from(UserWithoutPk).insert({
         ...UserFactory.getCommonUserData(),
         json,
         email: "json-text-2@test.com",
       });
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .selectJsonText("json", ["user", "info", "bio"], "biography")
         .one();
 
@@ -198,13 +207,14 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         tags: ["javascript", "typescript", "nodejs"],
       };
 
-      await UserWithoutPk.insert({
+      await sql.from(UserWithoutPk).insert({
         ...UserFactory.getCommonUserData(),
         json,
         email: "json-text-3@test.com",
       });
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .selectJsonText("json", "tags.0", "firstTag")
         .selectJsonText("json", ["tags", 1], "secondTag")
         .one();
@@ -225,13 +235,14 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         items: [1, 2, 3, 4, 5],
       };
 
-      await UserWithoutPk.insert({
+      await sql.from(UserWithoutPk).insert({
         ...UserFactory.getCommonUserData(),
         json,
         email: "json-length-1@test.com",
       });
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .selectJsonArrayLength("json", "$.items", "itemCount")
         .one();
 
@@ -251,13 +262,14 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         },
       };
 
-      await UserWithoutPk.insert({
+      await sql.from(UserWithoutPk).insert({
         ...UserFactory.getCommonUserData(),
         json,
         email: "json-length-2@test.com",
       });
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .selectJsonArrayLength("json", "user.tags", "tagCount")
         .selectJsonArrayLength("json", ["user", "scores"], "scoreCount")
         .one();
@@ -282,13 +294,14 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         },
       };
 
-      await UserWithoutPk.insert({
+      await sql.from(UserWithoutPk).insert({
         ...UserFactory.getCommonUserData(),
         json,
         email: "json-length-3@test.com",
       });
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .selectJsonArrayLength(
           "json",
           "data.nested.deep.array",
@@ -314,13 +327,14 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         active: true,
       };
 
-      await UserWithoutPk.insert({
+      await sql.from(UserWithoutPk).insert({
         ...UserFactory.getCommonUserData(),
         json,
         email: "json-keys-1@test.com",
       });
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .selectJsonKeys("json", "$", "allKeys")
         .one();
 
@@ -343,13 +357,14 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         },
       };
 
-      await UserWithoutPk.insert({
+      await sql.from(UserWithoutPk).insert({
         ...UserFactory.getCommonUserData(),
         json,
         email: "json-keys-2@test.com",
       });
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .selectJsonKeys("json", "user.profile", "profileKeys")
         .one();
 
@@ -372,13 +387,14 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         },
       };
 
-      await UserWithoutPk.insert({
+      await sql.from(UserWithoutPk).insert({
         ...UserFactory.getCommonUserData(),
         json,
         email: "json-keys-3@test.com",
       });
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .selectJsonKeys("json", ["settings", "display"], "displayKeys")
         .one();
 
@@ -399,13 +415,14 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         },
       };
 
-      await UserWithoutPk.insert({
+      await sql.from(UserWithoutPk).insert({
         ...UserFactory.getCommonUserData(),
         json,
         email: "json-raw-1@test.com",
       });
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .selectJsonRaw("json->>'user'", "userJson")
         .one();
 
@@ -424,13 +441,14 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         },
       };
 
-      await UserWithoutPk.insert({
+      await sql.from(UserWithoutPk).insert({
         ...UserFactory.getCommonUserData(),
         json,
         email: "json-raw-2@test.com",
       });
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .selectJsonRaw(
           "JSON_UNQUOTE(JSON_EXTRACT(json, '$.data.value'))",
           "extractedValue",
@@ -464,13 +482,14 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         },
       };
 
-      await UserWithoutPk.insert({
+      await sql.from(UserWithoutPk).insert({
         ...UserFactory.getCommonUserData(),
         json,
         email: "json-combined-1@test.com",
       });
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .selectJson("json", "user.name", "userName")
         .selectJsonText("json", "user.email", "userEmail")
         .selectJsonText("json", "user.profile.bio", "userBio")
@@ -492,13 +511,14 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         },
       };
 
-      await UserWithoutPk.insert({
+      await sql.from(UserWithoutPk).insert({
         ...UserFactory.getCommonUserData(),
         json,
         email: "json-combined-2@test.com",
       });
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .select("email", "name")
         .selectJson("json", "preferences.theme", "theme")
         .selectJsonText("json", "preferences.language", "language")
@@ -522,19 +542,20 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         priority: "low",
       };
 
-      await UserWithoutPk.insert({
+      await sql.from(UserWithoutPk).insert({
         ...UserFactory.getCommonUserData(),
         json: json1,
         email: "json-where-1@test.com",
       });
 
-      await UserWithoutPk.insert({
+      await sql.from(UserWithoutPk).insert({
         ...UserFactory.getCommonUserData(),
         json: json2,
         email: "json-where-2@test.com",
       });
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .selectJson("json", "status", "userStatus")
         .selectJson("json", "priority", "userPriority")
         .where("email", "json-where-1@test.com")
@@ -557,14 +578,15 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
       ];
 
       for (let i = 0; i < jsons.length; i++) {
-        await UserWithoutPk.insert({
+        await sql.from(UserWithoutPk).insert({
           ...UserFactory.getCommonUserData(),
           json: jsons[i],
           email: `json-order-${i}@test.com`,
         });
       }
 
-      const results = await UserWithoutPk.query()
+      const results = await sql
+        .from(UserWithoutPk)
         .selectJson("json", "score", "userScore")
         .selectJson("json", "rank", "userRank")
         .orderBy("email", "asc")
@@ -587,21 +609,24 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         },
       };
 
-      await UserWithoutPk.insert({
+      await sql.from(UserWithoutPk).insert({
         ...UserFactory.getCommonUserData(),
         json,
         email: "json-format-1@test.com",
       });
 
-      const result1 = await UserWithoutPk.query()
+      const result1 = await sql
+        .from(UserWithoutPk)
         .selectJsonText("json", "$.data.nested.value", "value1")
         .one();
 
-      const result2 = await UserWithoutPk.query()
+      const result2 = await sql
+        .from(UserWithoutPk)
         .selectJsonText("json", "data.nested.value", "value2")
         .one();
 
-      const result3 = await UserWithoutPk.query()
+      const result3 = await sql
+        .from(UserWithoutPk)
         .selectJsonText("json", ["data", "nested", "value"], "value3")
         .one();
 
@@ -615,17 +640,19 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         items: ["first", "second", "third"],
       };
 
-      await UserWithoutPk.insert({
+      await sql.from(UserWithoutPk).insert({
         ...UserFactory.getCommonUserData(),
         json,
         email: "json-format-2@test.com",
       });
 
-      const result1 = await UserWithoutPk.query()
+      const result1 = await sql
+        .from(UserWithoutPk)
         .selectJsonText("json", "items.0", "item1")
         .one();
 
-      const result2 = await UserWithoutPk.query()
+      const result2 = await sql
+        .from(UserWithoutPk)
         .selectJsonText("json", ["items", 0], "item2")
         .one();
 
@@ -638,13 +665,13 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
     test("should handle empty JSON object", async () => {
       const json = {};
 
-      await UserWithoutPk.insert({
+      await sql.from(UserWithoutPk).insert({
         ...UserFactory.getCommonUserData(),
         json,
         email: "json-edge-1@test.com",
       });
 
-      const result = await UserWithoutPk.query().select("email").one();
+      const result = await sql.from(UserWithoutPk).select("email").one();
 
       expect(result).not.toBeNull();
       expect(result?.email).toBe("json-edge-1@test.com");
@@ -656,13 +683,14 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         validValue: "test",
       };
 
-      await UserWithoutPk.insert({
+      await sql.from(UserWithoutPk).insert({
         ...UserFactory.getCommonUserData(),
         json,
         email: "json-edge-2@test.com",
       });
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .selectJson("json", "validValue", "valid")
         .one();
 
@@ -685,13 +713,14 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         },
       };
 
-      await UserWithoutPk.insert({
+      await sql.from(UserWithoutPk).insert({
         ...UserFactory.getCommonUserData(),
         json,
         email: "json-edge-3@test.com",
       });
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .selectJsonText(
           "json",
           "level1.level2.level3.level4.level5.value",
@@ -712,13 +741,14 @@ describe(`[${env.DB_TYPE}] JSON Select Operations`, () => {
         object: { nested: "value" },
       };
 
-      await UserWithoutPk.insert({
+      await sql.from(UserWithoutPk).insert({
         ...UserFactory.getCommonUserData(),
         json,
         email: "json-edge-4@test.com",
       });
 
-      const result = await UserWithoutPk.query()
+      const result = await sql
+        .from(UserWithoutPk)
         .selectJsonText("json", "string", "stringVal")
         .selectJson("json", "number", "numberVal")
         .selectJson("json", "boolean", "boolVal")

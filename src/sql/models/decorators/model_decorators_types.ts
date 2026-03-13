@@ -7,9 +7,19 @@ import { Model } from "../model";
 import { ModelKey } from "../model_manager/model_manager_types";
 import { RelationEnum } from "../relations/relation";
 
-type ColumnDataType =
-  | Exclude<keyof CreateTableBuilder, "enum" | "rawColumn" | "custom">
-  | readonly string[];
+type BaseColumnDataType = Exclude<
+  keyof CreateTableBuilder,
+  "enum" | "rawColumn" | "custom"
+>;
+
+/**
+ * Column data type - supports built-in types with intellisense and custom string types.
+ * Built-in types get autocomplete, custom types pass through as-is for extensions like pgvector.
+ * @example
+ * col<string>({ type: "varchar", length: 255 }) // built-in
+ * col<string>({ type: "vector", length: 1536 })  // custom (pgvector)
+ */
+type ColumnDataType = BaseColumnDataType | (string & {}) | readonly string[];
 
 export type ColumnDataTypeOptionWithLength = {
   type?:
@@ -62,6 +72,25 @@ export type ColumnDataTypeOptionSimple = {
   type?: "year" | "boolean" | "json" | "jsonb";
 };
 
+/**
+ * Custom column type for database extensions (e.g., pgvector).
+ * The type string is passed through as-is to the SQL interpreter.
+ * @example
+ * col<string>({ type: "vector", length: 1536 }) // PostgreSQL pgvector
+ * col<string>({ type: "geometry" })              // PostGIS
+ */
+export type ColumnDataTypeOptionCustom = {
+  /**
+   * Custom database column type. Passes through as-is to SQL.
+   * Supports extensions like pgvector, PostGIS, etc.
+   */
+  type?: string & {};
+  /**
+   * Optional length for custom types (e.g., vector(1536)).
+   */
+  length?: number;
+};
+
 export type ColumnDataTypeOption =
   | ColumnDataTypeOptionWithLength
   | ColumnDataTypeOptionWithPrecision
@@ -70,7 +99,8 @@ export type ColumnDataTypeOption =
   | ColumnDataTypeOptionWithBinary
   | ColumnDataTypeOptionWithDatePrecision
   | ColumnDataTypeOptionWithEnum
-  | ColumnDataTypeOptionSimple;
+  | ColumnDataTypeOptionSimple
+  | ColumnDataTypeOptionCustom;
 
 export type LazyRelationType = {
   type?: RelationEnum;

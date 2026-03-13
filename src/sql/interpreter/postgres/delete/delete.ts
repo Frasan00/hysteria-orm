@@ -22,12 +22,25 @@ class PostgresDeleteInterpreter implements Interpreter {
       };
     }
 
-    const formattedTable = new InterpreterUtils(
-      this.model,
-    ).getFromForWriteOperations("postgres", deleteNode.fromNode as FromNode);
+    const interpreterUtils = new InterpreterUtils(this.model);
+    const formattedTable = interpreterUtils.getFromForWriteOperations(
+      "postgres",
+      deleteNode.fromNode as FromNode,
+    );
+
+    let sql = formattedTable;
+
+    if (deleteNode.returning && deleteNode.returning.length) {
+      const returningCols = deleteNode.returning
+        .map((column) =>
+          interpreterUtils.formatStringColumn("postgres", column),
+        )
+        .join(", ");
+      sql += ` returning ${returningCols}`;
+    }
 
     return {
-      sql: formattedTable,
+      sql,
       bindings: [],
     };
   }

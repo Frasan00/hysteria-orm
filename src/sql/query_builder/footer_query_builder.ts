@@ -34,7 +34,7 @@ export abstract class FooterQueryBuilder<
     this.limitNode = null;
     this.offsetNode = null;
     this.logs = this.sqlDataSource.logs;
-    const getColumnsFn = (this.model as any)?.getColumns;
+    const getColumnsFn = this.model?.getColumns;
     this.modelColumns =
       typeof getColumnsFn === "function" ? getColumnsFn.call(this.model) : [];
     this.modelColumnsMap = new Map(

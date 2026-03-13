@@ -1,85 +1,40 @@
-import { column } from "../../../../src/sql/models/decorators/model_decorators";
-import { Model } from "../../../../src/sql/models/model";
-import { ModelQueryBuilder } from "../../models/model_query_builder/model_query_builder";
+import { defineModel, col } from "../../../../src/sql/models/define_model";
 
 export enum UserStatus {
   active = "active",
   inactive = "inactive",
 }
 
-export class UserWithoutPk extends Model {
-  static table = "users_without_pk";
-
-  @column()
-  declare name: string;
-
-  @column()
-  declare email: string;
-
-  @column({
-    hidden: true,
-  })
-  declare password: string;
-
-  @column()
-  declare status: UserStatus;
-
-  @column()
-  declare age: number;
-
-  @column()
-  declare salary: number;
-
-  @column()
-  declare gender: string;
-
-  @column()
-  declare image: boolean;
-
-  @column()
-  declare height: number;
-
-  @column()
-  declare weight: number;
-
-  @column()
-  declare description: string;
-
-  @column()
-  declare shortDescription: string;
-
-  @column.boolean()
-  declare isActive: boolean;
-
-  @column.json()
-  declare json: Record<string, any> | null;
-
-  @column.date()
-  declare birthDate: Date;
-
-  @column.datetime({
-    autoCreate: true,
-  })
-  declare createdAt: Date;
-
-  @column.datetime({
-    autoCreate: true,
-    autoUpdate: true,
-  })
-  declare updatedAt: Date;
-
-  @column.datetime()
-  declare deletedAt: Date | null;
-
-  static beforeUpdate(queryBuilder: ModelQueryBuilder<UserWithoutPk>): void {
-    queryBuilder.whereNull("users_without_pk.deleted_at");
-  }
-
-  static beforeDelete(queryBuilder: ModelQueryBuilder<UserWithoutPk>): void {
-    queryBuilder.whereNull("users_without_pk.deleted_at");
-  }
-
-  static beforeFetch(queryBuilder: ModelQueryBuilder<UserWithoutPk>): void {
-    queryBuilder.whereNull("users_without_pk.deleted_at");
-  }
-}
+export const UserWithoutPk = defineModel("users_without_pk", {
+  columns: {
+    name: col.string(),
+    email: col.string(),
+    password: col.string({ hidden: true }),
+    status: col.string(),
+    age: col.integer(),
+    salary: col.integer(),
+    gender: col.string(),
+    image: col.boolean(),
+    height: col.integer(),
+    weight: col.integer(),
+    description: col.string(),
+    shortDescription: col.string(),
+    isActive: col.boolean(),
+    json: col.json(),
+    birthDate: col.date(),
+    createdAt: col.datetime({ autoCreate: true }),
+    updatedAt: col.datetime({ autoCreate: true, autoUpdate: true }),
+    deletedAt: col.datetime(),
+  },
+  hooks: {
+    beforeUpdate: (queryBuilder) => {
+      queryBuilder.whereNull("users_without_pk.deleted_at");
+    },
+    beforeDelete: (queryBuilder) => {
+      queryBuilder.whereNull("users_without_pk.deleted_at");
+    },
+    beforeFetch: (queryBuilder) => {
+      queryBuilder.whereNull("users_without_pk.deleted_at");
+    },
+  },
+});

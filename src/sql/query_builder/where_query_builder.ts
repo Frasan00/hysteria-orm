@@ -11,10 +11,13 @@ import { WhereSubqueryNode } from "../ast/query/node/where/where_subquery";
 import { Model } from "../models/model";
 import type {
   ModelKey,
+  ResolveWhereValue,
+  StripTablePrefix,
   WhereColumnValue,
 } from "../models/model_manager/model_manager_types";
 import { SqlDataSource } from "../sql_data_source";
 import { QueryBuilder } from "./query_builder";
+import type { SubQueryable } from "./query_builder";
 import type { WhereOnlyQueryBuilder } from "./query_builder_types";
 import { SelectableColumn } from "./query_builder_types";
 import { SelectQueryBuilder } from "./select_query_builder";
@@ -80,12 +83,16 @@ export abstract class WhereQueryBuilder<
   where(cb: (queryBuilder: WhereOnlyQueryBuilder<T>) => void): this;
   where(
     column: string,
-    subQuery: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+    subQuery:
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
   ): this;
   where(
     column: string,
     operator: SubqueryOperatorType,
-    subQuery: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+    subQuery:
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
   ): this;
   where<K extends ModelKey<T>>(
     column: K,
@@ -93,12 +100,15 @@ export abstract class WhereQueryBuilder<
     value: WhereColumnValue<T, K>,
   ): this;
   where<K extends ModelKey<T>>(column: K, value: WhereColumnValue<T, K>): this;
-  where(
-    column: `${string}.${string}`,
+  where<K extends `${string}.${string}`>(
+    column: K,
     operator: BinaryOperatorType,
-    value: BaseValues,
+    value: ResolveWhereValue<T, K>,
   ): this;
-  where(column: `${string}.${string}`, value: BaseValues): this;
+  where<K extends `${string}.${string}`>(
+    column: K,
+    value: ResolveWhereValue<T, K>,
+  ): this;
   where(
     columnOrCb:
       | ModelKey<T>
@@ -109,11 +119,11 @@ export abstract class WhereQueryBuilder<
       | BaseValues
       | SubqueryOperatorType
       | QueryBuilder<T>
-      | ((subQuery: QueryBuilder<T>) => void),
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
     value?:
       | BaseValues
       | QueryBuilder<T>
-      | ((subQuery: QueryBuilder<T>) => void),
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
   ): this {
     if (typeof columnOrCb === "function") {
       return this.andWhereGroup(
@@ -125,7 +135,7 @@ export abstract class WhereQueryBuilder<
       return this.andWhereSubQuery(
         columnOrCb as string,
         "in",
-        operatorOrValue as (subQuery: QueryBuilder<T>) => void,
+        operatorOrValue as (subQuery: QueryBuilder<T>) => void | SubQueryable,
       );
     }
 
@@ -146,7 +156,9 @@ export abstract class WhereQueryBuilder<
       return this.andWhereSubQuery(
         columnOrCb as string,
         operatorOrValue as SubqueryOperatorType,
-        value as QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+        value as
+          | QueryBuilder<T>
+          | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
       );
     }
 
@@ -163,12 +175,16 @@ export abstract class WhereQueryBuilder<
   andWhere(cb: (queryBuilder: WhereOnlyQueryBuilder<T>) => void): this;
   andWhere(
     column: string,
-    subQuery: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+    subQuery:
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
   ): this;
   andWhere(
     column: string,
     operator: SubqueryOperatorType,
-    subQuery: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+    subQuery:
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
   ): this;
   andWhere<K extends ModelKey<T>>(
     column: K,
@@ -179,12 +195,15 @@ export abstract class WhereQueryBuilder<
     column: K,
     value: WhereColumnValue<T, K>,
   ): this;
-  andWhere(
-    column: `${string}.${string}`,
+  andWhere<K extends `${string}.${string}`>(
+    column: K,
     operator: BinaryOperatorType,
-    value: BaseValues,
+    value: ResolveWhereValue<T, K>,
   ): this;
-  andWhere(column: `${string}.${string}`, value: BaseValues): this;
+  andWhere<K extends `${string}.${string}`>(
+    column: K,
+    value: ResolveWhereValue<T, K>,
+  ): this;
   andWhere<S extends string>(
     columnOrCb:
       | ModelKey<T>
@@ -195,11 +214,11 @@ export abstract class WhereQueryBuilder<
       | BaseValues
       | SubqueryOperatorType
       | QueryBuilder<T>
-      | ((subQuery: QueryBuilder<T>) => void),
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
     value?:
       | BaseValues
       | QueryBuilder<T>
-      | ((subQuery: QueryBuilder<T>) => void),
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
   ): this {
     if (typeof columnOrCb === "function") {
       return this.andWhereGroup(
@@ -211,7 +230,7 @@ export abstract class WhereQueryBuilder<
       return this.andWhereSubQuery(
         columnOrCb as string,
         "in",
-        operatorOrValue as (subQuery: QueryBuilder<T>) => void,
+        operatorOrValue as (subQuery: QueryBuilder<T>) => void | SubQueryable,
       );
     }
 
@@ -232,7 +251,9 @@ export abstract class WhereQueryBuilder<
       return this.andWhereSubQuery(
         columnOrCb as string,
         operatorOrValue as SubqueryOperatorType,
-        value as QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+        value as
+          | QueryBuilder<T>
+          | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
       );
     }
 
@@ -264,12 +285,16 @@ export abstract class WhereQueryBuilder<
   orWhere(cb: (queryBuilder: WhereOnlyQueryBuilder<T>) => void): this;
   orWhere(
     column: string,
-    subQuery: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+    subQuery:
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
   ): this;
   orWhere(
     column: string,
     operator: SubqueryOperatorType,
-    subQuery: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+    subQuery:
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
   ): this;
   orWhere<K extends ModelKey<T>>(
     column: K,
@@ -280,12 +305,15 @@ export abstract class WhereQueryBuilder<
     column: K,
     value: WhereColumnValue<T, K>,
   ): this;
-  orWhere(
-    column: `${string}.${string}`,
+  orWhere<K extends `${string}.${string}`>(
+    column: K,
     operator: BinaryOperatorType,
-    value: BaseValues,
+    value: ResolveWhereValue<T, K>,
   ): this;
-  orWhere(column: `${string}.${string}`, value: BaseValues): this;
+  orWhere<K extends `${string}.${string}`>(
+    column: K,
+    value: ResolveWhereValue<T, K>,
+  ): this;
   orWhere<S extends string>(
     columnOrCb:
       | ModelKey<T>
@@ -296,11 +324,11 @@ export abstract class WhereQueryBuilder<
       | BaseValues
       | SubqueryOperatorType
       | QueryBuilder<T>
-      | ((subQuery: QueryBuilder<T>) => void),
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
     value?:
       | BaseValues
       | QueryBuilder<T>
-      | ((subQuery: QueryBuilder<T>) => void),
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
   ): this {
     if (typeof columnOrCb === "function") {
       return this.orWhereGroup(
@@ -312,7 +340,7 @@ export abstract class WhereQueryBuilder<
       return this.orWhereSubQuery(
         columnOrCb as string,
         "in",
-        operatorOrValue as (subQuery: QueryBuilder<T>) => void,
+        operatorOrValue as (subQuery: QueryBuilder<T>) => void | SubQueryable,
       );
     }
 
@@ -333,7 +361,9 @@ export abstract class WhereQueryBuilder<
       return this.orWhereSubQuery(
         columnOrCb as string,
         operatorOrValue as SubqueryOperatorType,
-        value as QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+        value as
+          | QueryBuilder<T>
+          | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
       );
     }
 
@@ -493,12 +523,16 @@ export abstract class WhereQueryBuilder<
    */
   whereNot(
     column: string,
-    subQuery: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+    subQuery:
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
   ): this;
   whereNot(
     column: string,
     operator: SubqueryOperatorType,
-    subQuery: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+    subQuery:
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
   ): this;
   whereNot<K extends ModelKey<T>>(
     column: K,
@@ -509,12 +543,15 @@ export abstract class WhereQueryBuilder<
     column: K,
     value: WhereColumnValue<T, K>,
   ): this;
-  whereNot(
-    column: `${string}.${string}`,
+  whereNot<K extends `${string}.${string}`>(
+    column: K,
     operator: BinaryOperatorType,
-    value: BaseValues,
+    value: ResolveWhereValue<T, K>,
   ): this;
-  whereNot(column: `${string}.${string}`, value: BaseValues): this;
+  whereNot<K extends `${string}.${string}`>(
+    column: K,
+    value: ResolveWhereValue<T, K>,
+  ): this;
   whereNot<S extends string>(
     column: ModelKey<T> | SelectableColumn<S>,
     operatorOrValue:
@@ -522,17 +559,17 @@ export abstract class WhereQueryBuilder<
       | BaseValues
       | SubqueryOperatorType
       | QueryBuilder<T>
-      | ((subQuery: QueryBuilder<T>) => void),
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
     value?:
       | BaseValues
       | QueryBuilder<T>
-      | ((subQuery: QueryBuilder<T>) => void),
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
   ): this {
     if (typeof operatorOrValue === "function" && value === undefined) {
       return this.andWhereSubQuery(
         column as string,
         "not in",
-        operatorOrValue as (subQuery: QueryBuilder<T>) => void,
+        operatorOrValue as (subQuery: QueryBuilder<T>) => void | SubQueryable,
       );
     }
 
@@ -552,7 +589,9 @@ export abstract class WhereQueryBuilder<
       return this.andWhereSubQuery(
         column as string,
         operatorOrValue as SubqueryOperatorType,
-        value as QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+        value as
+          | QueryBuilder<T>
+          | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
       );
     }
 
@@ -583,12 +622,16 @@ export abstract class WhereQueryBuilder<
    */
   andWhereNot(
     column: string,
-    subQuery: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+    subQuery:
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
   ): this;
   andWhereNot(
     column: string,
     operator: SubqueryOperatorType,
-    subQuery: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+    subQuery:
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
   ): this;
   andWhereNot<K extends ModelKey<T>>(
     column: K,
@@ -599,12 +642,15 @@ export abstract class WhereQueryBuilder<
     column: K,
     value: WhereColumnValue<T, K>,
   ): this;
-  andWhereNot(
-    column: `${string}.${string}`,
+  andWhereNot<K extends `${string}.${string}`>(
+    column: K,
     operator: BinaryOperatorType,
-    value: BaseValues,
+    value: ResolveWhereValue<T, K>,
   ): this;
-  andWhereNot(column: `${string}.${string}`, value: BaseValues): this;
+  andWhereNot<K extends `${string}.${string}`>(
+    column: K,
+    value: ResolveWhereValue<T, K>,
+  ): this;
   andWhereNot<S extends string>(
     column: ModelKey<T> | SelectableColumn<S>,
     operatorOrValue:
@@ -612,17 +658,17 @@ export abstract class WhereQueryBuilder<
       | BaseValues
       | SubqueryOperatorType
       | QueryBuilder<T>
-      | ((subQuery: QueryBuilder<T>) => void),
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
     value?:
       | BaseValues
       | QueryBuilder<T>
-      | ((subQuery: QueryBuilder<T>) => void),
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
   ): this {
     if (typeof operatorOrValue === "function" && value === undefined) {
       return this.andWhereSubQuery(
         column as string,
         "not in",
-        operatorOrValue as (subQuery: QueryBuilder<T>) => void,
+        operatorOrValue as (subQuery: QueryBuilder<T>) => void | SubQueryable,
       );
     }
 
@@ -642,7 +688,9 @@ export abstract class WhereQueryBuilder<
       return this.andWhereSubQuery(
         column as string,
         operatorOrValue as SubqueryOperatorType,
-        value as QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+        value as
+          | QueryBuilder<T>
+          | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
       );
     }
 
@@ -673,12 +721,16 @@ export abstract class WhereQueryBuilder<
    */
   orWhereNot(
     column: string,
-    subQuery: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+    subQuery:
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
   ): this;
   orWhereNot(
     column: string,
     operator: SubqueryOperatorType,
-    subQuery: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+    subQuery:
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
   ): this;
   orWhereNot<K extends ModelKey<T>>(
     column: K,
@@ -689,12 +741,15 @@ export abstract class WhereQueryBuilder<
     column: K,
     value: WhereColumnValue<T, K>,
   ): this;
-  orWhereNot(
-    column: `${string}.${string}`,
+  orWhereNot<K extends `${string}.${string}`>(
+    column: K,
     operator: BinaryOperatorType,
-    value: BaseValues,
+    value: ResolveWhereValue<T, K>,
   ): this;
-  orWhereNot(column: `${string}.${string}`, value: BaseValues): this;
+  orWhereNot<K extends `${string}.${string}`>(
+    column: K,
+    value: ResolveWhereValue<T, K>,
+  ): this;
   orWhereNot<S extends string>(
     column: ModelKey<T> | SelectableColumn<S>,
     operatorOrValue:
@@ -702,17 +757,17 @@ export abstract class WhereQueryBuilder<
       | BaseValues
       | SubqueryOperatorType
       | QueryBuilder<T>
-      | ((subQuery: QueryBuilder<T>) => void),
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
     value?:
       | BaseValues
       | QueryBuilder<T>
-      | ((subQuery: QueryBuilder<T>) => void),
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
   ): this {
     if (typeof operatorOrValue === "function" && value === undefined) {
       return this.orWhereSubQuery(
         column as string,
         "not in",
-        operatorOrValue as (subQuery: QueryBuilder<T>) => void,
+        operatorOrValue as (subQuery: QueryBuilder<T>) => void | SubQueryable,
       );
     }
 
@@ -732,7 +787,9 @@ export abstract class WhereQueryBuilder<
       return this.orWhereSubQuery(
         column as string,
         operatorOrValue as SubqueryOperatorType,
-        value as QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+        value as
+          | QueryBuilder<T>
+          | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
       );
     }
 
@@ -761,11 +818,15 @@ export abstract class WhereQueryBuilder<
   /**
    * @description Adds a WHERE BETWEEN condition to the query.
    */
-  whereBetween<K extends ModelKey<T>>(column: K, min: T[K], max: T[K]): this;
-  whereBetween(
-    column: `${string}.${string}`,
-    min: BaseValues,
-    max: BaseValues,
+  whereBetween<K extends ModelKey<T>>(
+    column: K,
+    min: T[StripTablePrefix<K & string> & keyof T],
+    max: T[StripTablePrefix<K & string> & keyof T],
+  ): this;
+  whereBetween<K extends `${string}.${string}`>(
+    column: K,
+    min: ResolveWhereValue<T, K>,
+    max: ResolveWhereValue<T, K>,
   ): this;
   whereBetween(
     column: ModelKey<T> | SelectableColumn<string>,
@@ -778,11 +839,15 @@ export abstract class WhereQueryBuilder<
   /**
    * @description Adds an AND WHERE BETWEEN condition to the query.
    */
-  andWhereBetween<K extends ModelKey<T>>(column: K, min: T[K], max: T[K]): this;
-  andWhereBetween(
-    column: `${string}.${string}`,
-    min: BaseValues,
-    max: BaseValues,
+  andWhereBetween<K extends ModelKey<T>>(
+    column: K,
+    min: T[StripTablePrefix<K & string> & keyof T],
+    max: T[StripTablePrefix<K & string> & keyof T],
+  ): this;
+  andWhereBetween<K extends `${string}.${string}`>(
+    column: K,
+    min: ResolveWhereValue<T, K>,
+    max: ResolveWhereValue<T, K>,
   ): this;
   andWhereBetween(
     column: ModelKey<T> | SelectableColumn<string>,
@@ -798,11 +863,15 @@ export abstract class WhereQueryBuilder<
   /**
    * @description Adds an OR WHERE BETWEEN condition to the query.
    */
-  orWhereBetween<K extends ModelKey<T>>(column: K, min: T[K], max: T[K]): this;
-  orWhereBetween(
-    column: `${string}.${string}`,
-    min: BaseValues,
-    max: BaseValues,
+  orWhereBetween<K extends ModelKey<T>>(
+    column: K,
+    min: T[StripTablePrefix<K & string> & keyof T],
+    max: T[StripTablePrefix<K & string> & keyof T],
+  ): this;
+  orWhereBetween<K extends `${string}.${string}`>(
+    column: K,
+    min: ResolveWhereValue<T, K>,
+    max: ResolveWhereValue<T, K>,
   ): this;
   orWhereBetween(
     column: ModelKey<T> | SelectableColumn<string>,
@@ -818,11 +887,15 @@ export abstract class WhereQueryBuilder<
   /**
    * @description Adds a WHERE NOT BETWEEN condition to the query.
    */
-  whereNotBetween<K extends ModelKey<T>>(column: K, min: T[K], max: T[K]): this;
-  whereNotBetween(
-    column: `${string}.${string}`,
-    min: BaseValues,
-    max: BaseValues,
+  whereNotBetween<K extends ModelKey<T>>(
+    column: K,
+    min: T[StripTablePrefix<K & string> & keyof T],
+    max: T[StripTablePrefix<K & string> & keyof T],
+  ): this;
+  whereNotBetween<K extends `${string}.${string}`>(
+    column: K,
+    min: ResolveWhereValue<T, K>,
+    max: ResolveWhereValue<T, K>,
   ): this;
   whereNotBetween(
     column: ModelKey<T> | SelectableColumn<string>,
@@ -841,13 +914,13 @@ export abstract class WhereQueryBuilder<
    */
   andWhereNotBetween<K extends ModelKey<T>>(
     column: K,
-    min: T[K],
-    max: T[K],
+    min: T[StripTablePrefix<K & string> & keyof T],
+    max: T[StripTablePrefix<K & string> & keyof T],
   ): this;
-  andWhereNotBetween(
-    column: `${string}.${string}`,
-    min: BaseValues,
-    max: BaseValues,
+  andWhereNotBetween<K extends `${string}.${string}`>(
+    column: K,
+    min: ResolveWhereValue<T, K>,
+    max: ResolveWhereValue<T, K>,
   ): this;
   andWhereNotBetween(
     column: ModelKey<T> | SelectableColumn<string>,
@@ -865,13 +938,13 @@ export abstract class WhereQueryBuilder<
    */
   orWhereNotBetween<K extends ModelKey<T>>(
     column: K,
-    min: T[K],
-    max: T[K],
+    min: T[StripTablePrefix<K & string> & keyof T],
+    max: T[StripTablePrefix<K & string> & keyof T],
   ): this;
-  orWhereNotBetween(
-    column: `${string}.${string}`,
-    min: BaseValues,
-    max: BaseValues,
+  orWhereNotBetween<K extends `${string}.${string}`>(
+    column: K,
+    min: ResolveWhereValue<T, K>,
+    max: ResolveWhereValue<T, K>,
   ): this;
   orWhereNotBetween(
     column: ModelKey<T> | SelectableColumn<string>,
@@ -908,7 +981,7 @@ export abstract class WhereQueryBuilder<
     column: ModelKey<T> | SelectableColumn<string>,
     value: string,
   ): this {
-    this.where(column as ModelKey<T>, "like" as any, value as any);
+    this.where(column as ModelKey<T>, "like", value as any);
     return this;
   }
 
@@ -924,7 +997,7 @@ export abstract class WhereQueryBuilder<
     column: ModelKey<T> | SelectableColumn<string>,
     value: string,
   ): this {
-    this.orWhere(column as ModelKey<T>, "like" as any, value as any);
+    this.orWhere(column as ModelKey<T>, "like", value as any);
     return this;
   }
 
@@ -955,7 +1028,7 @@ export abstract class WhereQueryBuilder<
     column: ModelKey<T> | SelectableColumn<string>,
     value: string,
   ): this {
-    this.where(column as ModelKey<T>, "ilike" as any, value as any);
+    this.where(column as ModelKey<T>, "ilike", value as any);
     return this;
   }
 
@@ -971,7 +1044,7 @@ export abstract class WhereQueryBuilder<
     column: ModelKey<T> | SelectableColumn<string>,
     value: string,
   ): this {
-    this.orWhere(column as ModelKey<T>, "ilike" as any, value as any);
+    this.orWhere(column as ModelKey<T>, "ilike", value as any);
     return this;
   }
 
@@ -1002,7 +1075,7 @@ export abstract class WhereQueryBuilder<
     column: ModelKey<T> | SelectableColumn<string>,
     value: string,
   ): this {
-    this.where(column as ModelKey<T>, "not like" as any, value as any);
+    this.where(column as ModelKey<T>, "not like", value as any);
     return this;
   }
 
@@ -1018,7 +1091,7 @@ export abstract class WhereQueryBuilder<
     column: ModelKey<T> | SelectableColumn<string>,
     value: string,
   ): this {
-    this.orWhere(column as ModelKey<T>, "not like" as any, value as any);
+    this.orWhere(column as ModelKey<T>, "not like", value as any);
     return this;
   }
 
@@ -1049,7 +1122,7 @@ export abstract class WhereQueryBuilder<
     column: ModelKey<T> | SelectableColumn<string>,
     value: string,
   ): this {
-    this.where(column as ModelKey<T>, "not ilike" as any, value as any);
+    this.where(column as ModelKey<T>, "not ilike", value as any);
     return this;
   }
 
@@ -1065,7 +1138,7 @@ export abstract class WhereQueryBuilder<
     column: ModelKey<T> | SelectableColumn<string>,
     value: string,
   ): this {
-    this.orWhere(column as ModelKey<T>, "not ilike" as any, value as any);
+    this.orWhere(column as ModelKey<T>, "not ilike", value as any);
     return this;
   }
 
@@ -1075,16 +1148,24 @@ export abstract class WhereQueryBuilder<
    */
   whereIn(
     column: string,
-    values: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+    values:
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
   ): this;
-  whereIn<K extends ModelKey<T>>(column: K, values: T[K][]): this;
-  whereIn(column: `${string}.${string}`, values: BaseValues[]): this;
+  whereIn<K extends ModelKey<T>>(
+    column: K,
+    values: T[StripTablePrefix<K & string> & keyof T][],
+  ): this;
+  whereIn<K extends `${string}.${string}`>(
+    column: K,
+    values: ResolveWhereValue<T, K>[],
+  ): this;
   whereIn(
     column: ModelKey<T> | SelectableColumn<string>,
     values:
       | BaseValues[]
       | QueryBuilder<T>
-      | ((subQuery: QueryBuilder<T>) => void),
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
   ): this {
     return this.andWhereIn(column as ModelKey<T>, values as any);
   }
@@ -1095,16 +1176,24 @@ export abstract class WhereQueryBuilder<
    */
   andWhereIn(
     column: string,
-    values: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+    values:
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
   ): this;
-  andWhereIn<K extends ModelKey<T>>(column: K, values: T[K][]): this;
-  andWhereIn(column: `${string}.${string}`, values: BaseValues[]): this;
+  andWhereIn<K extends ModelKey<T>>(
+    column: K,
+    values: T[StripTablePrefix<K & string> & keyof T][],
+  ): this;
+  andWhereIn<K extends `${string}.${string}`>(
+    column: K,
+    values: ResolveWhereValue<T, K>[],
+  ): this;
   andWhereIn(
     column: ModelKey<T> | SelectableColumn<string>,
     values:
       | BaseValues[]
       | QueryBuilder<T>
-      | ((subQuery: QueryBuilder<T>) => void),
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
   ): this {
     if (Array.isArray(values)) {
       if (!values.length) {
@@ -1123,7 +1212,9 @@ export abstract class WhereQueryBuilder<
     return this.andWhereSubQuery(
       column as string,
       "in",
-      values as QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+      values as
+        | QueryBuilder<T>
+        | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
     );
   }
 
@@ -1133,16 +1224,24 @@ export abstract class WhereQueryBuilder<
    */
   orWhereIn(
     column: string,
-    values: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+    values:
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
   ): this;
-  orWhereIn<K extends ModelKey<T>>(column: K, values: T[K][]): this;
-  orWhereIn(column: `${string}.${string}`, values: BaseValues[]): this;
+  orWhereIn<K extends ModelKey<T>>(
+    column: K,
+    values: T[StripTablePrefix<K & string> & keyof T][],
+  ): this;
+  orWhereIn<K extends `${string}.${string}`>(
+    column: K,
+    values: ResolveWhereValue<T, K>[],
+  ): this;
   orWhereIn(
     column: ModelKey<T> | SelectableColumn<string>,
     values:
       | BaseValues[]
       | QueryBuilder<T>
-      | ((subQuery: QueryBuilder<T>) => void),
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
   ): this {
     if (Array.isArray(values)) {
       if (!values.length) {
@@ -1159,7 +1258,9 @@ export abstract class WhereQueryBuilder<
     return this.orWhereSubQuery(
       column as string,
       "in",
-      values as QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+      values as
+        | QueryBuilder<T>
+        | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
     );
   }
 
@@ -1169,16 +1270,24 @@ export abstract class WhereQueryBuilder<
    */
   whereNotIn(
     column: string,
-    values: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+    values:
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
   ): this;
-  whereNotIn<K extends ModelKey<T>>(column: K, values: T[K][]): this;
-  whereNotIn(column: `${string}.${string}`, values: BaseValues[]): this;
+  whereNotIn<K extends ModelKey<T>>(
+    column: K,
+    values: T[StripTablePrefix<K & string> & keyof T][],
+  ): this;
+  whereNotIn<K extends `${string}.${string}`>(
+    column: K,
+    values: ResolveWhereValue<T, K>[],
+  ): this;
   whereNotIn(
     column: ModelKey<T> | SelectableColumn<string>,
     values:
       | BaseValues[]
       | QueryBuilder<T>
-      | ((subQuery: QueryBuilder<T>) => void),
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
   ): this {
     return this.andWhereNotIn(column as ModelKey<T>, values as any);
   }
@@ -1189,16 +1298,24 @@ export abstract class WhereQueryBuilder<
    */
   andWhereNotIn(
     column: string,
-    values: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+    values:
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
   ): this;
-  andWhereNotIn<K extends ModelKey<T>>(column: K, values: T[K][]): this;
-  andWhereNotIn(column: `${string}.${string}`, values: BaseValues[]): this;
+  andWhereNotIn<K extends ModelKey<T>>(
+    column: K,
+    values: T[StripTablePrefix<K & string> & keyof T][],
+  ): this;
+  andWhereNotIn<K extends `${string}.${string}`>(
+    column: K,
+    values: ResolveWhereValue<T, K>[],
+  ): this;
   andWhereNotIn(
     column: ModelKey<T> | SelectableColumn<string>,
     values:
       | BaseValues[]
       | QueryBuilder<T>
-      | ((subQuery: QueryBuilder<T>) => void),
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
   ): this {
     if (Array.isArray(values)) {
       if (!values.length) {
@@ -1215,7 +1332,9 @@ export abstract class WhereQueryBuilder<
     return this.andWhereSubQuery(
       column as string,
       "not in",
-      values as QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+      values as
+        | QueryBuilder<T>
+        | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
     );
   }
 
@@ -1225,16 +1344,24 @@ export abstract class WhereQueryBuilder<
    */
   orWhereNotIn(
     column: string,
-    values: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+    values:
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
   ): this;
-  orWhereNotIn<K extends ModelKey<T>>(column: K, values: T[K][]): this;
-  orWhereNotIn(column: `${string}.${string}`, values: BaseValues[]): this;
+  orWhereNotIn<K extends ModelKey<T>>(
+    column: K,
+    values: T[StripTablePrefix<K & string> & keyof T][],
+  ): this;
+  orWhereNotIn<K extends `${string}.${string}`>(
+    column: K,
+    values: ResolveWhereValue<T, K>[],
+  ): this;
   orWhereNotIn(
     column: ModelKey<T> | SelectableColumn<string>,
     values:
       | BaseValues[]
       | QueryBuilder<T>
-      | ((subQuery: QueryBuilder<T>) => void),
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
   ): this {
     if (Array.isArray(values)) {
       if (!values.length) {
@@ -1251,7 +1378,9 @@ export abstract class WhereQueryBuilder<
     return this.orWhereSubQuery(
       column as string,
       "not in",
-      values as QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+      values as
+        | QueryBuilder<T>
+        | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
     );
   }
 
@@ -1645,11 +1774,14 @@ export abstract class WhereQueryBuilder<
     operator: BinaryOperatorType,
     value: WhereColumnValue<T, K>,
   ): this;
-  having(column: `${string}.${string}`, value: any): this;
-  having(
-    column: `${string}.${string}`,
+  having<K extends `${string}.${string}`>(
+    column: K,
+    value: ResolveWhereValue<T, K>,
+  ): this;
+  having<K extends `${string}.${string}`>(
+    column: K,
     operator: BinaryOperatorType,
-    value: any,
+    value: ResolveWhereValue<T, K>,
   ): this;
   having(
     column: ModelKey<T> | SelectableColumn<string>,
@@ -1675,11 +1807,14 @@ export abstract class WhereQueryBuilder<
     operator: BinaryOperatorType,
     value: WhereColumnValue<T, K>,
   ): this;
-  andHaving(column: `${string}.${string}`, value: any): this;
-  andHaving(
-    column: `${string}.${string}`,
+  andHaving<K extends `${string}.${string}`>(
+    column: K,
+    value: ResolveWhereValue<T, K>,
+  ): this;
+  andHaving<K extends `${string}.${string}`>(
+    column: K,
     operator: BinaryOperatorType,
-    value: any,
+    value: ResolveWhereValue<T, K>,
   ): this;
   andHaving(
     column: ModelKey<T>,
@@ -1786,27 +1921,33 @@ export abstract class WhereQueryBuilder<
   }
 
   private buildSubQuery(
-    subQueryOrCb: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
-  ): QueryBuilder<T> {
+    subQueryOrCb:
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
+  ): SubQueryable {
     if (subQueryOrCb instanceof QueryBuilder) {
       return subQueryOrCb;
     }
     const subQuery = new QueryBuilder(this.model, this.sqlDataSource);
-    (subQueryOrCb as (qb: QueryBuilder<T>) => void)(subQuery);
-    return subQuery;
+    const result = (
+      subQueryOrCb as (qb: QueryBuilder<T>) => void | SubQueryable
+    )(subQuery);
+    return result != null && "extractQueryNodes" in result ? result : subQuery;
   }
 
   private andWhereSubQuery(
     column: string,
     operator: SubqueryOperatorType,
-    subQueryOrCb: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+    subQueryOrCb:
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
   ): this {
     const subQuery = this.buildSubQuery(subQueryOrCb);
     this.whereNodes.push(
       new WhereSubqueryNode(
         column,
         operator,
-        (subQuery as any).extractQueryNodes(),
+        subQuery.extractQueryNodes(),
         "and",
       ),
     );
@@ -1816,14 +1957,16 @@ export abstract class WhereQueryBuilder<
   private orWhereSubQuery(
     column: string,
     operator: SubqueryOperatorType,
-    subQueryOrCb: QueryBuilder<T> | ((subQuery: QueryBuilder<T>) => void),
+    subQueryOrCb:
+      | QueryBuilder<T>
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable),
   ): this {
     const subQuery = this.buildSubQuery(subQueryOrCb);
     this.whereNodes.push(
       new WhereSubqueryNode(
         column,
         operator,
-        (subQuery as any).extractQueryNodes(),
+        subQuery.extractQueryNodes(),
         "or",
       ),
     );

@@ -1,21 +1,10 @@
-import { column } from "../../../../../src/sql/models/decorators/model_decorators";
-import { Model } from "../../../../../src/sql/models/model";
+import { col, defineModel } from "../../../../../src/sql/models/define_model";
 
-/**
- * TypeChange v3: Revert count→integer, price→text
- */
-export class TypeChangeV3 extends Model {
-  static table = "schema_diff_type_change";
-
-  @column.bigIncrement()
-  declare id: number;
-
-  @column({ type: "integer" })
-  declare count: number;
-
-  @column({ type: "text" })
-  declare price: string;
-
-  @column({ type: "text" })
-  declare status: string;
-}
+export const TypeChangeV3 = defineModel("schema_diff_type_change", {
+  columns: {
+    id: col.bigIncrement(),
+    count: col.integer(),
+    price: col.text(),
+    status: col.text(),
+  },
+});

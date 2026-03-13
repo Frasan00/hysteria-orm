@@ -86,6 +86,36 @@ import {
   EnumV1,
   EnumV2,
   EnumV3,
+  // Index Drop Extreme
+  IndexDropExtremeV1,
+  IndexDropExtremeV2,
+  IndexDropExtremeV3,
+  // Check Drop Extreme
+  CheckDropExtremeV1,
+  CheckDropExtremeV2,
+  CheckDropExtremeV3,
+  // Index Composite
+  IndexCompositeV1,
+  IndexCompositeV2,
+  IndexCompositeV3,
+  // Unique Modify
+  UniqueModifyV1,
+  UniqueModifyV2,
+  UniqueModifyV3,
+  // Combined Drops
+  CombinedDropsV1,
+  CombinedDropsV2,
+  CombinedDropsV3,
+  // FK Drop Multiple
+  FkDropAnchor,
+  FkDropMultipleV1,
+  FkDropMultipleV2,
+  FkDropMultipleV3,
+  // Constraint Collision
+  ConstraintCollisionV1,
+  ConstraintCollisionV2,
+  // Custom Types
+  CustomTypeV1,
 } from "./test_models";
 
 const SUPPORTED_DB_TYPES = ["mysql", "postgres", "mariadb"];
@@ -116,6 +146,15 @@ const EDGE_CASE_TABLES = [
   "schema_diff_large",
   "schema_diff_decorators_ext",
   "schema_diff_enum_test",
+  "schema_diff_idx_extreme",
+  "schema_diff_chk_extreme",
+  "schema_diff_idx_composite",
+  "schema_diff_uq_modify",
+  "schema_diff_combined",
+  "schema_diff_fk_anchor",
+  "schema_diff_fk_multiple",
+  "schema_diff_collision",
+  "schema_diff_custom_type",
 ];
 
 const dbType = env.DB_TYPE || "mysql";
@@ -1745,6 +1784,508 @@ conditionalDescribe(`[${dbType}] Schema Diff Edge Cases`, () => {
           },
         );
       }
+    });
+  });
+
+  // =========================================================================
+  // 22. Index Drop Extreme (All indexes at once)
+  // =========================================================================
+  describe("Index Drop Extreme", () => {
+    beforeAll(async () => {
+      await dropAllEdgeCaseTables(baseSql);
+    });
+    afterAll(async () => {
+      await dropAllEdgeCaseTables(baseSql);
+    });
+
+    test("v1: should create table with 5 indexes", async () => {
+      const SchemaDiff = await getSchemaDiff();
+      await SqlDataSource.useConnection(
+        { ...getConnectionConfig(), models: { IndexDropExtremeV1 } },
+        async (sql) => {
+          const diff = await SchemaDiff.makeDiff(sql);
+          const stmts = diff.getSqlStatements();
+          expect(stmts.length).toBeGreaterThan(0);
+          expect(
+            stmts.some((s) => s.toLowerCase().includes("create table")),
+          ).toBe(true);
+          await sql.syncSchema();
+
+          const check = await SchemaDiff.makeDiff(sql);
+          expect(check.getSqlStatements().length).toBe(0);
+        },
+      );
+    });
+
+    test("v2: should drop ALL 5 indexes simultaneously", async () => {
+      const SchemaDiff = await getSchemaDiff();
+      await SqlDataSource.useConnection(
+        { ...getConnectionConfig(), models: { IndexDropExtremeV2 } },
+        async (sql) => {
+          const diff = await SchemaDiff.makeDiff(sql);
+          const stmts = diff.getSqlStatements();
+          expect(stmts.length).toBeGreaterThan(0);
+
+          const dropIndexStmts = stmts.filter((s) =>
+            s.toLowerCase().includes("drop index"),
+          );
+          expect(dropIndexStmts.length).toBeGreaterThanOrEqual(3);
+
+          await sql.syncSchema();
+
+          const check = await SchemaDiff.makeDiff(sql);
+          expect(check.getSqlStatements().length).toBe(0);
+        },
+      );
+    });
+
+    test("v3: should re-add 2 new indexes with different names", async () => {
+      const SchemaDiff = await getSchemaDiff();
+      await SqlDataSource.useConnection(
+        { ...getConnectionConfig(), models: { IndexDropExtremeV3 } },
+        async (sql) => {
+          const diff = await SchemaDiff.makeDiff(sql);
+          const stmts = diff.getSqlStatements();
+          expect(stmts.length).toBeGreaterThan(0);
+
+          expect(
+            stmts.some((s) => s.toLowerCase().includes("idx_ide_new_a")),
+          ).toBe(true);
+          expect(
+            stmts.some((s) => s.toLowerCase().includes("idx_ide_new_b")),
+          ).toBe(true);
+
+          await sql.syncSchema();
+
+          const check = await SchemaDiff.makeDiff(sql);
+          expect(check.getSqlStatements().length).toBe(0);
+        },
+      );
+    });
+  });
+
+  // =========================================================================
+  // 23. Check Constraint Drop Extreme (All checks at once)
+  // =========================================================================
+  describe("Check Constraint Drop Extreme", () => {
+    beforeAll(async () => {
+      await dropAllEdgeCaseTables(baseSql);
+    });
+    afterAll(async () => {
+      await dropAllEdgeCaseTables(baseSql);
+    });
+
+    test("v1: should create table with 4 check constraints", async () => {
+      const SchemaDiff = await getSchemaDiff();
+      await SqlDataSource.useConnection(
+        { ...getConnectionConfig(), models: { CheckDropExtremeV1 } },
+        async (sql) => {
+          const diff = await SchemaDiff.makeDiff(sql);
+          const stmts = diff.getSqlStatements();
+          expect(stmts.length).toBeGreaterThan(0);
+          expect(
+            stmts.some((s) => s.toLowerCase().includes("create table")),
+          ).toBe(true);
+          await sql.syncSchema();
+
+          const check = await SchemaDiff.makeDiff(sql);
+          expect(check.getSqlStatements().length).toBe(0);
+        },
+      );
+    });
+
+    test("v2: should drop ALL 4 check constraints simultaneously", async () => {
+      const SchemaDiff = await getSchemaDiff();
+      await SqlDataSource.useConnection(
+        { ...getConnectionConfig(), models: { CheckDropExtremeV2 } },
+        async (sql) => {
+          const diff = await SchemaDiff.makeDiff(sql);
+          const stmts = diff.getSqlStatements();
+
+          await sql.syncSchema();
+
+          const check = await SchemaDiff.makeDiff(sql);
+          expect(check.getSqlStatements().length).toBe(0);
+        },
+      );
+    });
+
+    test("v3: should re-add 2 checks with modified expressions", async () => {
+      const SchemaDiff = await getSchemaDiff();
+      await SqlDataSource.useConnection(
+        { ...getConnectionConfig(), models: { CheckDropExtremeV3 } },
+        async (sql) => {
+          const diff = await SchemaDiff.makeDiff(sql);
+          const stmts = diff.getSqlStatements();
+          expect(stmts.length).toBeGreaterThan(0);
+
+          expect(
+            stmts.some((s) => s.toLowerCase().includes("chk_cde_age_adult")),
+          ).toBe(true);
+          expect(
+            stmts.some((s) =>
+              s.toLowerCase().includes("chk_cde_status_extended"),
+            ),
+          ).toBe(true);
+
+          await sql.syncSchema();
+
+          const check = await SchemaDiff.makeDiff(sql);
+          expect(check.getSqlStatements().length).toBe(0);
+        },
+      );
+    });
+  });
+
+  // =========================================================================
+  // 24. Composite Index Lifecycle
+  // =========================================================================
+  describe("Composite Index Lifecycle", () => {
+    beforeAll(async () => {
+      await dropAllEdgeCaseTables(baseSql);
+    });
+    afterAll(async () => {
+      await dropAllEdgeCaseTables(baseSql);
+    });
+
+    test("v1: should create table with 2 composite indexes", async () => {
+      const SchemaDiff = await getSchemaDiff();
+      await SqlDataSource.useConnection(
+        { ...getConnectionConfig(), models: { IndexCompositeV1 } },
+        async (sql) => {
+          const diff = await SchemaDiff.makeDiff(sql);
+          const stmts = diff.getSqlStatements();
+          expect(stmts.length).toBeGreaterThan(0);
+          await sql.syncSchema();
+
+          const check = await SchemaDiff.makeDiff(sql);
+          expect(check.getSqlStatements().length).toBe(0);
+        },
+      );
+    });
+
+    test("v2: should drop both composites and add 2 single indexes", async () => {
+      const SchemaDiff = await getSchemaDiff();
+      await SqlDataSource.useConnection(
+        { ...getConnectionConfig(), models: { IndexCompositeV2 } },
+        async (sql) => {
+          const diff = await SchemaDiff.makeDiff(sql);
+          const stmts = diff.getSqlStatements();
+          expect(stmts.length).toBeGreaterThan(0);
+
+          await sql.syncSchema();
+
+          const check = await SchemaDiff.makeDiff(sql);
+          expect(check.getSqlStatements().length).toBe(0);
+        },
+      );
+    });
+
+    test("v3: should swap back to composites with same names", async () => {
+      const SchemaDiff = await getSchemaDiff();
+      await SqlDataSource.useConnection(
+        { ...getConnectionConfig(), models: { IndexCompositeV3 } },
+        async (sql) => {
+          const diff = await SchemaDiff.makeDiff(sql);
+          const stmts = diff.getSqlStatements();
+          expect(stmts.length).toBeGreaterThan(0);
+
+          await sql.syncSchema();
+
+          const check = await SchemaDiff.makeDiff(sql);
+          expect(check.getSqlStatements().length).toBe(0);
+        },
+      );
+    });
+  });
+
+  // =========================================================================
+  // 25. Unique Constraint Modification
+  // =========================================================================
+  describe("Unique Constraint Modification", () => {
+    beforeAll(async () => {
+      await dropAllEdgeCaseTables(baseSql);
+    });
+    afterAll(async () => {
+      await dropAllEdgeCaseTables(baseSql);
+    });
+
+    test("v1: should create table with unique on email", async () => {
+      const SchemaDiff = await getSchemaDiff();
+      await SqlDataSource.useConnection(
+        { ...getConnectionConfig(), models: { UniqueModifyV1 } },
+        async (sql) => {
+          const diff = await SchemaDiff.makeDiff(sql);
+          const stmts = diff.getSqlStatements();
+          expect(stmts.length).toBeGreaterThan(0);
+          expect(
+            stmts.some((s) => s.toLowerCase().includes("uq_um_email")),
+          ).toBe(true);
+          await sql.syncSchema();
+
+          const check = await SchemaDiff.makeDiff(sql);
+          expect(check.getSqlStatements().length).toBe(0);
+        },
+      );
+    });
+
+    test("v2: should modify unique to different column (same constraint name)", async () => {
+      const SchemaDiff = await getSchemaDiff();
+      await SqlDataSource.useConnection(
+        { ...getConnectionConfig(), models: { UniqueModifyV2 } },
+        async (sql) => {
+          const diff = await SchemaDiff.makeDiff(sql);
+          const stmts = diff.getSqlStatements();
+
+          await sql.syncSchema();
+
+          const check = await SchemaDiff.makeDiff(sql);
+          expect(check.getSqlStatements().length).toBe(0);
+        },
+      );
+    });
+
+    test("v3: should change to composite unique with new name", async () => {
+      const SchemaDiff = await getSchemaDiff();
+      await SqlDataSource.useConnection(
+        { ...getConnectionConfig(), models: { UniqueModifyV3 } },
+        async (sql) => {
+          const diff = await SchemaDiff.makeDiff(sql);
+          const stmts = diff.getSqlStatements();
+          expect(stmts.length).toBeGreaterThan(0);
+
+          await sql.syncSchema();
+
+          const check = await SchemaDiff.makeDiff(sql);
+          expect(check.getSqlStatements().length).toBe(0);
+        },
+      );
+    });
+  });
+
+  // =========================================================================
+  // 26. Combined Drops (Index + Check + Column)
+  // =========================================================================
+  describe("Combined Drops", () => {
+    beforeAll(async () => {
+      await dropAllEdgeCaseTables(baseSql);
+    });
+    afterAll(async () => {
+      await dropAllEdgeCaseTables(baseSql);
+    });
+
+    test("v1: should create table with index, check, and 4 columns", async () => {
+      const SchemaDiff = await getSchemaDiff();
+      await SqlDataSource.useConnection(
+        { ...getConnectionConfig(), models: { CombinedDropsV1 } },
+        async (sql) => {
+          const diff = await SchemaDiff.makeDiff(sql);
+          const stmts = diff.getSqlStatements();
+          expect(stmts.length).toBeGreaterThan(0);
+          await sql.syncSchema();
+
+          const check = await SchemaDiff.makeDiff(sql);
+          expect(check.getSqlStatements().length).toBe(0);
+        },
+      );
+    });
+
+    test("v2: should drop index + check + column simultaneously", async () => {
+      const SchemaDiff = await getSchemaDiff();
+      await SqlDataSource.useConnection(
+        { ...getConnectionConfig(), models: { CombinedDropsV2 } },
+        async (sql) => {
+          const diff = await SchemaDiff.makeDiff(sql);
+          const stmts = diff.getSqlStatements();
+          expect(stmts.length).toBeGreaterThan(0);
+
+          const hasDropIndex = stmts.some((s) =>
+            s.toLowerCase().includes("drop index"),
+          );
+          const hasDropCheck = stmts.some((s) =>
+            s.toLowerCase().includes("drop constraint"),
+          );
+          const hasDropColumn = stmts.some((s) =>
+            s.toLowerCase().includes("drop column"),
+          );
+
+          expect(hasDropIndex || hasDropCheck || hasDropColumn).toBe(true);
+
+          await sql.syncSchema();
+
+          const check = await SchemaDiff.makeDiff(sql);
+          expect(check.getSqlStatements().length).toBe(0);
+        },
+      );
+    });
+
+    test("v3: should add back different index and check", async () => {
+      const SchemaDiff = await getSchemaDiff();
+      await SqlDataSource.useConnection(
+        { ...getConnectionConfig(), models: { CombinedDropsV3 } },
+        async (sql) => {
+          const diff = await SchemaDiff.makeDiff(sql);
+          const stmts = diff.getSqlStatements();
+          expect(stmts.length).toBeGreaterThan(0);
+
+          expect(
+            stmts.some((s) => s.toLowerCase().includes("idx_cd_status")),
+          ).toBe(true);
+
+          await sql.syncSchema();
+
+          const check = await SchemaDiff.makeDiff(sql);
+          expect(check.getSqlStatements().length).toBe(0);
+        },
+      );
+    });
+  });
+
+  // =========================================================================
+  // 27. Multiple FK Drops
+  // =========================================================================
+  describe("Multiple FK Drops", () => {
+    beforeAll(async () => {
+      await dropAllEdgeCaseTables(baseSql);
+    });
+    afterAll(async () => {
+      await dropAllEdgeCaseTables(baseSql);
+    });
+
+    test("v1: should create table with 3 FKs to same anchor", async () => {
+      const SchemaDiff = await getSchemaDiff();
+      await SqlDataSource.useConnection(
+        {
+          ...getConnectionConfig(),
+          models: { FkDropAnchor, FkDropMultipleV1 },
+        },
+        async (sql) => {
+          const diff = await SchemaDiff.makeDiff(sql);
+          const stmts = diff.getSqlStatements();
+          expect(stmts.length).toBeGreaterThan(0);
+          await sql.syncSchema();
+
+          const check = await SchemaDiff.makeDiff(sql);
+          expect(check.getSqlStatements().length).toBe(0);
+        },
+      );
+    });
+
+    test("v2: should drop 2 of 3 FKs", async () => {
+      const SchemaDiff = await getSchemaDiff();
+      await SqlDataSource.useConnection(
+        {
+          ...getConnectionConfig(),
+          models: { FkDropAnchor, FkDropMultipleV2 },
+        },
+        async (sql) => {
+          const diff = await SchemaDiff.makeDiff(sql);
+          const stmts = diff.getSqlStatements();
+
+          await sql.syncSchema();
+
+          const check = await SchemaDiff.makeDiff(sql);
+          expect(check.getSqlStatements().length).toBe(0);
+        },
+      );
+    });
+
+    test("v3: should drop remaining FK", async () => {
+      const SchemaDiff = await getSchemaDiff();
+      await SqlDataSource.useConnection(
+        {
+          ...getConnectionConfig(),
+          models: { FkDropAnchor, FkDropMultipleV3 },
+        },
+        async (sql) => {
+          const diff = await SchemaDiff.makeDiff(sql);
+          const stmts = diff.getSqlStatements();
+
+          await sql.syncSchema();
+
+          const check = await SchemaDiff.makeDiff(sql);
+          expect(check.getSqlStatements().length).toBe(0);
+        },
+      );
+    });
+  });
+
+  // =========================================================================
+  // 28. Constraint Naming Collision
+  // =========================================================================
+  describe("Constraint Naming Collision", () => {
+    beforeAll(async () => {
+      await dropAllEdgeCaseTables(baseSql);
+    });
+    afterAll(async () => {
+      await dropAllEdgeCaseTables(baseSql);
+    });
+
+    test("v1: should create table with index named idx_collision on colA", async () => {
+      const SchemaDiff = await getSchemaDiff();
+      await SqlDataSource.useConnection(
+        { ...getConnectionConfig(), models: { ConstraintCollisionV1 } },
+        async (sql) => {
+          const diff = await SchemaDiff.makeDiff(sql);
+          const stmts = diff.getSqlStatements();
+          expect(stmts.length).toBeGreaterThan(0);
+          expect(
+            stmts.some((s) => s.toLowerCase().includes("idx_collision")),
+          ).toBe(true);
+          await sql.syncSchema();
+
+          const check = await SchemaDiff.makeDiff(sql);
+          expect(check.getSqlStatements().length).toBe(0);
+        },
+      );
+    });
+
+    test("v2: should drop idx_collision and re-add on colB with same name", async () => {
+      const SchemaDiff = await getSchemaDiff();
+      await SqlDataSource.useConnection(
+        { ...getConnectionConfig(), models: { ConstraintCollisionV2 } },
+        async (sql) => {
+          const diff = await SchemaDiff.makeDiff(sql);
+          const stmts = diff.getSqlStatements();
+
+          await sql.syncSchema();
+
+          const check = await SchemaDiff.makeDiff(sql);
+          expect(check.getSqlStatements().length).toBe(0);
+        },
+      );
+    });
+  });
+
+  // =========================================================================
+  // 29. Custom Types (e.g., pgvector)
+  // =========================================================================
+  describe("Custom Types (pgvector-like)", () => {
+    beforeAll(async () => {
+      await dropAllEdgeCaseTables(baseSql);
+    });
+    afterAll(async () => {
+      await dropAllEdgeCaseTables(baseSql);
+    });
+
+    test("v1: should create table with custom varchar type with length", async () => {
+      const SchemaDiff = await getSchemaDiff();
+      await SqlDataSource.useConnection(
+        { ...getConnectionConfig(), models: { CustomTypeV1 } },
+        async (sql) => {
+          const diff = await SchemaDiff.makeDiff(sql);
+          const stmts = diff.getSqlStatements();
+          console.log("Custom Type v1 SQL statements:", stmts);
+          expect(stmts.length).toBeGreaterThan(0);
+          expect(
+            stmts.some((s) => s.toLowerCase().includes("varchar(255)")),
+          ).toBe(true);
+          await sql.syncSchema();
+
+          const check = await SchemaDiff.makeDiff(sql);
+          expect(check.getSqlStatements().length).toBe(0);
+        },
+      );
     });
   });
 });

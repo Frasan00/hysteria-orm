@@ -35,6 +35,20 @@ async function loadDatasource(
     default: SqlDataSource;
   }>(path.resolve(process.cwd(), datasourcePath), tsconfigPath);
 
+  if (!sqlDs) {
+    logger.error(
+      `The provided datasource file does not export a default export: ${datasourcePath}`,
+    );
+    process.exit(1);
+  }
+
+  if (!SqlDataSource.isSqlDataSource(sqlDs)) {
+    logger.error(
+      `The provided datasource file does not export a valid SqlDataSource instance: ${datasourcePath}`,
+    );
+    process.exit(1);
+  }
+
   if (!sqlDs.isConnected) {
     await sqlDs.connect();
   }

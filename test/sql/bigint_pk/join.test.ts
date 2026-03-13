@@ -1,25 +1,26 @@
 import { env } from "../../../src/env/env";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
-import { PostWithBigint } from "../test_models/bigint/post_bigint";
-import { UserWithBigint } from "../test_models/bigint/user_bigint";
+import { PostWithBigint, UserWithBigint } from "../test_models/bigint/schema";
 import { PostFactory } from "../test_models/factory/post_factory";
 import { UserFactory } from "../test_models/factory/user_factory";
 
+let sql: SqlDataSource;
+
 beforeAll(async () => {
-  const dataSource = new SqlDataSource();
-  await dataSource.connect();
+  sql = new SqlDataSource();
+  await sql.connect();
 });
 
 afterAll(async () => {
-  await SqlDataSource.disconnect();
+  await sql.disconnect();
 });
 
 beforeEach(async () => {
-  await SqlDataSource.startGlobalTransaction();
+  await sql.startGlobalTransaction();
 });
 
 afterEach(async () => {
-  await SqlDataSource.rollbackGlobalTransaction();
+  await sql.rollbackGlobalTransaction();
 });
 
 describe(`[${env.DB_TYPE}] bigint pk join`, () => {
@@ -29,16 +30,17 @@ describe(`[${env.DB_TYPE}] bigint pk join`, () => {
       return;
     }
 
-    const users = await UserFactory.userWithBigint(3);
+    const users = await UserFactory.userWithBigint(sql, 3);
     const posts = [];
     for (const user of users) {
-      posts.push(await PostFactory.postWithBigint(+user.id, 1));
+      posts.push(await PostFactory.postWithBigint(sql, +user.id, 1));
     }
 
     expect(users).toHaveLength(3);
     expect(posts).toHaveLength(3);
 
-    const postsWithUsers = await PostWithBigint.query()
+    const postsWithUsers = await sql
+      .from(PostWithBigint)
       .select("posts_with_bigint.*", ["users_with_bigint.name", "userName"])
       .leftJoin(
         "users_with_bigint",
@@ -67,16 +69,17 @@ describe(`[${env.DB_TYPE}] bigint pk join`, () => {
       return;
     }
 
-    const users = await UserFactory.userWithBigint(3);
+    const users = await UserFactory.userWithBigint(sql, 3);
     const posts = [];
     for (const user of users) {
-      posts.push(await PostFactory.postWithBigint(user.id, 1));
+      posts.push(await PostFactory.postWithBigint(sql, user.id, 1));
     }
 
     expect(users).toHaveLength(3);
     expect(posts).toHaveLength(3);
 
-    const postsWithUsers = await PostWithBigint.query()
+    const postsWithUsers = await sql
+      .from(PostWithBigint)
       .select("posts_with_bigint.*", ["users_with_bigint.name", "userName"])
       .leftJoin(
         "users_with_bigint",
@@ -100,16 +103,17 @@ describe(`[${env.DB_TYPE}] bigint pk join`, () => {
       return;
     }
 
-    const users = await UserFactory.userWithBigint(3);
+    const users = await UserFactory.userWithBigint(sql, 3);
     const posts = [];
     for (const user of users) {
-      posts.push(await PostFactory.postWithBigint(user.id, 1));
+      posts.push(await PostFactory.postWithBigint(sql, user.id, 1));
     }
 
     expect(users).toHaveLength(3);
     expect(posts).toHaveLength(3);
 
-    const postsWithUsers = await PostWithBigint.query()
+    const postsWithUsers = await sql
+      .from(PostWithBigint)
       .select("posts_with_bigint.*", ["users_with_bigint.name", "userName"])
       .rightJoin(
         "users_with_bigint",
@@ -133,16 +137,17 @@ describe(`[${env.DB_TYPE}] bigint pk join`, () => {
       return;
     }
 
-    const users = await UserFactory.userWithBigint(3);
+    const users = await UserFactory.userWithBigint(sql, 3);
     const posts = [];
     for (const user of users) {
-      posts.push(await PostFactory.postWithBigint(user.id, 1));
+      posts.push(await PostFactory.postWithBigint(sql, user.id, 1));
     }
 
     expect(users).toHaveLength(3);
     expect(posts).toHaveLength(3);
 
-    const postsWithUsers = await PostWithBigint.query()
+    const postsWithUsers = await sql
+      .from(PostWithBigint)
       .select("posts_with_bigint.*", ["users_with_bigint.name", "userName"])
       .join(UserWithBigint, "id", "userId")
       .whereIn(
@@ -162,16 +167,17 @@ describe(`[${env.DB_TYPE}] bigint pk join`, () => {
       return;
     }
 
-    const users = await UserFactory.userWithBigint(3);
+    const users = await UserFactory.userWithBigint(sql, 3);
     const posts = [];
     for (const user of users) {
-      posts.push(await PostFactory.postWithBigint(user.id, 1));
+      posts.push(await PostFactory.postWithBigint(sql, user.id, 1));
     }
 
     expect(users).toHaveLength(3);
     expect(posts).toHaveLength(3);
 
-    const postsWithUsers = await PostWithBigint.query()
+    const postsWithUsers = await sql
+      .from(PostWithBigint)
       .select("posts_with_bigint.*", ["users_with_bigint.name", "userName"])
       .leftJoin(UserWithBigint, "id", "userId")
       .whereIn(
@@ -190,16 +196,17 @@ describe(`[${env.DB_TYPE}] bigint pk join`, () => {
       return;
     }
 
-    const users = await UserFactory.userWithBigint(3);
+    const users = await UserFactory.userWithBigint(sql, 3);
     const posts = [];
     for (const user of users) {
-      posts.push(await PostFactory.postWithBigint(user.id, 1));
+      posts.push(await PostFactory.postWithBigint(sql, user.id, 1));
     }
 
     expect(users).toHaveLength(3);
     expect(posts).toHaveLength(3);
 
-    const postsWithUsers = await PostWithBigint.query()
+    const postsWithUsers = await sql
+      .from(PostWithBigint)
       .select("posts_with_bigint.*", ["users_with_bigint.name", "userName"])
       .join(UserWithBigint, "id", "userId", ">")
       .whereIn(

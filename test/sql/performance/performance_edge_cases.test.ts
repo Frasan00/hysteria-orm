@@ -2,26 +2,26 @@ import crypto from "crypto";
 import { env } from "../../../src/env/env";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { UserFactory } from "../test_models/factory/user_factory";
-import { UserWithUuid } from "../test_models/uuid/user_uuid";
+import { UserWithUuid } from "../test_models/uuid/schema";
+
+let sql: SqlDataSource;
 
 beforeAll(async () => {
-  const dataSource = new SqlDataSource();
-  await dataSource.connect();
+  sql = new SqlDataSource();
+  await sql.connect();
 });
 
 beforeEach(async () => {
-  await SqlDataSource.startGlobalTransaction();
+  await sql.startGlobalTransaction();
 });
 
 afterEach(async () => {
-  await SqlDataSource.rollbackGlobalTransaction();
+  await sql.rollbackGlobalTransaction();
 });
 
 describe(`[${env.DB_TYPE}] Performance - Large LIMIT/OFFSET`, () => {
   test("should handle large OFFSET values", async () => {
-    const sql = SqlDataSource.instance;
-
-    await UserFactory.userWithUuid(10);
+    await UserFactory.userWithUuid(sql, 10);
 
     const result = await sql
       .query("users_with_uuid")
@@ -33,9 +33,7 @@ describe(`[${env.DB_TYPE}] Performance - Large LIMIT/OFFSET`, () => {
   });
 
   test("should handle large LIMIT values", async () => {
-    const sql = SqlDataSource.instance;
-
-    await UserFactory.userWithUuid(10);
+    await UserFactory.userWithUuid(sql, 10);
 
     const result = await sql.query("users_with_uuid").limit(100).many();
 
@@ -43,9 +41,7 @@ describe(`[${env.DB_TYPE}] Performance - Large LIMIT/OFFSET`, () => {
   });
 
   test("should handle LIMIT and OFFSET combination", async () => {
-    const sql = SqlDataSource.instance;
-
-    await UserFactory.userWithUuid(20);
+    await UserFactory.userWithUuid(sql, 20);
 
     const result = await sql
       .query("users_with_uuid")
@@ -61,9 +57,7 @@ describe(`[${env.DB_TYPE}] Performance - Large LIMIT/OFFSET`, () => {
 
 describe(`[${env.DB_TYPE}] Performance - Large IN Clauses`, () => {
   test("should handle IN clause with 100 values", async () => {
-    const sql = SqlDataSource.instance;
-
-    await UserFactory.userWithUuid(50);
+    await UserFactory.userWithUuid(sql, 50);
 
     const emails = Array.from(
       { length: 100 },
@@ -79,9 +73,7 @@ describe(`[${env.DB_TYPE}] Performance - Large IN Clauses`, () => {
   });
 
   test("should handle IN clause with 500 values", async () => {
-    const sql = SqlDataSource.instance;
-
-    await UserFactory.userWithUuid(100);
+    await UserFactory.userWithUuid(sql, 100);
 
     const ages = Array.from({ length: 500 }, (_, i) => i + 20);
 
@@ -94,9 +86,7 @@ describe(`[${env.DB_TYPE}] Performance - Large IN Clauses`, () => {
   });
 
   test("should handle IN clause with 1000 values", async () => {
-    const sql = SqlDataSource.instance;
-
-    await UserFactory.userWithUuid(100);
+    await UserFactory.userWithUuid(sql, 100);
 
     const ages = Array.from({ length: 1000 }, (_, i) => i + 20);
 
@@ -111,9 +101,7 @@ describe(`[${env.DB_TYPE}] Performance - Large IN Clauses`, () => {
 
 describe(`[${env.DB_TYPE}] Performance - Complex Aggregations`, () => {
   test("should handle multiple aggregations in single query", async () => {
-    const sql = SqlDataSource.instance;
-
-    await UserFactory.userWithUuid(10);
+    await UserFactory.userWithUuid(sql, 10);
 
     const result = await sql
       .query("users_with_uuid")
@@ -129,9 +117,7 @@ describe(`[${env.DB_TYPE}] Performance - Complex Aggregations`, () => {
   });
 
   test("should handle aggregation with GROUP BY", async () => {
-    const sql = SqlDataSource.instance;
-
-    await UserFactory.userWithUuid(10);
+    await UserFactory.userWithUuid(sql, 10);
 
     const result = await sql
       .query("users_with_uuid")
@@ -145,9 +131,7 @@ describe(`[${env.DB_TYPE}] Performance - Complex Aggregations`, () => {
   });
 
   test("should handle aggregation with HAVING", async () => {
-    const sql = SqlDataSource.instance;
-
-    await UserFactory.userWithUuid(10);
+    await UserFactory.userWithUuid(sql, 10);
 
     const result = await sql
       .query("users_with_uuid")
@@ -163,9 +147,7 @@ describe(`[${env.DB_TYPE}] Performance - Complex Aggregations`, () => {
 
 describe(`[${env.DB_TYPE}] Performance - Deep Nested WHERE`, () => {
   test("should handle deeply nested AND conditions", async () => {
-    const sql = SqlDataSource.instance;
-
-    await UserFactory.userWithUuid(5);
+    await UserFactory.userWithUuid(sql, 5);
 
     const result = await sql
       .query("users_with_uuid")
@@ -180,9 +162,7 @@ describe(`[${env.DB_TYPE}] Performance - Deep Nested WHERE`, () => {
   });
 
   test("should handle deeply nested OR conditions", async () => {
-    const sql = SqlDataSource.instance;
-
-    await UserFactory.userWithUuid(5);
+    await UserFactory.userWithUuid(sql, 5);
 
     const result = await sql
       .query("users_with_uuid")
@@ -195,9 +175,7 @@ describe(`[${env.DB_TYPE}] Performance - Deep Nested WHERE`, () => {
   });
 
   test("should handle mixed AND/OR with parentheses", async () => {
-    const sql = SqlDataSource.instance;
-
-    await UserFactory.userWithUuid(5);
+    await UserFactory.userWithUuid(sql, 5);
 
     const result = await sql
       .query("users_with_uuid")
@@ -213,9 +191,7 @@ describe(`[${env.DB_TYPE}] Performance - Deep Nested WHERE`, () => {
 
 describe(`[${env.DB_TYPE}] Performance - Multiple Joins`, () => {
   test("should handle multiple JOINs in single query", async () => {
-    const sql = SqlDataSource.instance;
-
-    await UserFactory.userWithUuid(3);
+    await UserFactory.userWithUuid(sql, 3);
 
     const result = await sql
       .query("users_with_uuid")
@@ -226,9 +202,7 @@ describe(`[${env.DB_TYPE}] Performance - Multiple Joins`, () => {
   });
 
   test("should handle LEFT JOINs", async () => {
-    const sql = SqlDataSource.instance;
-
-    await UserFactory.userWithUuid(3);
+    await UserFactory.userWithUuid(sql, 3);
 
     const result = await sql
       .query("users_with_uuid")
@@ -245,9 +219,7 @@ describe(`[${env.DB_TYPE}] Performance - Multiple Joins`, () => {
 
 describe(`[${env.DB_TYPE}] Performance - Bulk Operations`, () => {
   test("should handle bulk update", async () => {
-    const sql = SqlDataSource.instance;
-
-    await UserFactory.userWithUuid(50);
+    await UserFactory.userWithUuid(sql, 50);
 
     const startTime = Date.now();
     const updated = await sql
@@ -260,8 +232,6 @@ describe(`[${env.DB_TYPE}] Performance - Bulk Operations`, () => {
   });
 
   test("should handle bulk delete", async () => {
-    const sql = SqlDataSource.instance;
-
     // Create test users
     const emails = Array.from(
       { length: 50 },
@@ -291,9 +261,7 @@ describe(`[${env.DB_TYPE}] Performance - Bulk Operations`, () => {
 
 describe(`[${env.DB_TYPE}] Performance - Order By Performance`, () => {
   test("should handle ORDER BY with multiple columns", async () => {
-    const sql = SqlDataSource.instance;
-
-    await UserFactory.userWithUuid(10);
+    await UserFactory.userWithUuid(sql, 10);
 
     const result = await sql
       .query("users_with_uuid")
@@ -306,9 +274,7 @@ describe(`[${env.DB_TYPE}] Performance - Order By Performance`, () => {
   });
 
   test("should handle ORDER BY with expressions", async () => {
-    const sql = SqlDataSource.instance;
-
-    await UserFactory.userWithUuid(10);
+    await UserFactory.userWithUuid(sql, 10);
 
     const result = await sql
       .query("users_with_uuid")
@@ -321,8 +287,6 @@ describe(`[${env.DB_TYPE}] Performance - Order By Performance`, () => {
 
 describe(`[${env.DB_TYPE}] Performance - String Operations`, () => {
   test("should handle long string values", async () => {
-    const sql = SqlDataSource.instance;
-
     const longString = "a".repeat(10000);
 
     const user = await sql.query("users_with_uuid").insert(
@@ -341,15 +305,14 @@ describe(`[${env.DB_TYPE}] Performance - String Operations`, () => {
     expect(user).toBeDefined();
 
     // Cleanup
-    await UserWithUuid.query()
+    await sql
+      .from(UserWithUuid)
       .where("email", "longstring@example.com")
       .delete();
   });
 
   test("should handle many string concatenations", async () => {
-    const sql = SqlDataSource.instance;
-
-    await UserFactory.userWithUuid(5);
+    await UserFactory.userWithUuid(sql, 5);
 
     let concatExpr;
     if (env.DB_TYPE === "postgres" || env.DB_TYPE === "cockroachdb") {
@@ -373,9 +336,7 @@ describe(`[${env.DB_TYPE}] Performance - String Operations`, () => {
 
 describe(`[${env.DB_TYPE}] Performance - Concurrent Operations`, () => {
   test("should handle concurrent reads", async () => {
-    const sql = SqlDataSource.instance;
-
-    await UserFactory.userWithUuid(20);
+    await UserFactory.userWithUuid(sql, 20);
 
     const promises = Array.from({ length: 10 }, () =>
       sql.query("users_with_uuid").many(),
@@ -389,8 +350,6 @@ describe(`[${env.DB_TYPE}] Performance - Concurrent Operations`, () => {
   });
 
   test("should handle concurrent writes", async () => {
-    const sql = SqlDataSource.instance;
-
     const promises = Array.from({ length: 10 }, (_, i) =>
       sql.query("users_with_uuid").insert(
         {
@@ -422,9 +381,7 @@ describe(`[${env.DB_TYPE}] Performance - Concurrent Operations`, () => {
 
 describe(`[${env.DB_TYPE}] Performance - Memory Efficiency`, () => {
   test("should handle large result set efficiently", async () => {
-    const sql = SqlDataSource.instance;
-
-    await UserFactory.userWithUuid(50);
+    await UserFactory.userWithUuid(sql, 50);
 
     const result = await sql
       .query("users_with_uuid")
@@ -436,9 +393,7 @@ describe(`[${env.DB_TYPE}] Performance - Memory Efficiency`, () => {
   });
 
   test("should handle streaming/chunking", async () => {
-    const sql = SqlDataSource.instance;
-
-    await UserFactory.userWithUuid(30);
+    await UserFactory.userWithUuid(sql, 30);
 
     const chunks = [];
     for await (const chunk of sql.query("users_with_uuid").chunk(10)) {
@@ -451,9 +406,7 @@ describe(`[${env.DB_TYPE}] Performance - Memory Efficiency`, () => {
 
 describe(`[${env.DB_TYPE}] Performance - Index Utilization`, () => {
   test("should use index for WHERE clause", async () => {
-    const sql = SqlDataSource.instance;
-
-    await UserFactory.userWithUuid(10);
+    await UserFactory.userWithUuid(sql, 10);
 
     const result = await sql
       .query("users_with_uuid")
@@ -464,9 +417,7 @@ describe(`[${env.DB_TYPE}] Performance - Index Utilization`, () => {
   });
 
   test("should use index for JOIN condition", async () => {
-    const sql = SqlDataSource.instance;
-
-    await UserFactory.userWithUuid(5);
+    await UserFactory.userWithUuid(sql, 5);
 
     const result = await sql
       .query("users_with_uuid")

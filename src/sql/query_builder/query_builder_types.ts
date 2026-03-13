@@ -1,13 +1,18 @@
 import { RawNode } from "../ast/query/node/raw/raw_node";
 import type { Model } from "../models/model";
-import type { ModelKey } from "../models/model_manager/model_manager_types";
+import type {
+  ModelKey,
+  RawModelKey,
+  StripTablePrefix,
+} from "../models/model_manager/model_manager_types";
+import type { Simplify } from "../../utils/types";
 import { JsonQueryBuilder } from "./json_query_builder";
 import type { WhereQueryBuilder } from "./where_query_builder";
 
 export type PluckReturnType<
   T extends Model,
-  K extends ModelKey<T>,
-> = T[K] extends infer U ? U[] : never;
+  K extends RawModelKey<T>,
+> = T[StripTablePrefix<K & string> & keyof T] extends infer U ? U[] : never;
 
 /**
  * Common SQL functions with intellisense support.
@@ -213,7 +218,11 @@ export type BuildRawSelectType<Columns extends readonly Selectable[]> =
  * Composes a new selection with the existing selection state for raw queries.
  *
  * - If S is the default Record<string, any> (no previous select), returns just the new selection
- * - If S already has RawSelectBrand (from a previous select), composes with new selection
+ * - If S is a typed selection from a prior select/selectRaw, composes with new selection
+ *
+ * Detection uses `string extends keyof S`: true for untyped `Record<string, any>`, false for any
+ * specific typed record (e.g. `{ userName: any }`). This avoids relying on the RAW_SELECT_BRAND
+ * symbol, which gets stripped by Simplify in intermediate types.
  *
  * @typeParam S - Current selection state
  * @typeParam Added - New fields being added by the select
@@ -221,17 +230,20 @@ export type BuildRawSelectType<Columns extends readonly Selectable[]> =
  * @example
  * // First selectRaw - creates new selection
  * ComposeRawSelect<Record<string, any>, { count: number }>
- * // Result: RawSelectBrand & { count: number }
+ * // Result: { count: number }
  *
  * @example
- * // Chained selectRaw - composes with previous
- * ComposeRawSelect<{ count: number } & RawSelectBrand, { userName: string }>
- * // Result: { count: number } & RawSelectBrand & { userName: string }
+ * // Chained after select - composes with previous
+ * ComposeRawSelect<{ userName: any }, { nameLength: number }>
+ * // Result: { userName: any; nameLength: number }
  */
 export type ComposeRawSelect<
   S extends Record<string, any>,
   Added extends Record<string, any>,
-> = (typeof RAW_SELECT_BRAND extends keyof S ? S : RawSelectBrand) & Added;
+> = Simplify<
+  (string extends keyof S ? RawSelectBrand : S) & Added,
+  typeof RAW_SELECT_BRAND
+>;
 
 /**
  * Composes a BuildRawSelectType result with the existing selection state.
@@ -244,8 +256,10 @@ export type ComposeRawSelect<
 export type ComposeBuildRawSelect<
   S extends Record<string, any>,
   Columns extends readonly Selectable[],
-> = (typeof RAW_SELECT_BRAND extends keyof S ? S : {}) &
-  BuildRawSelectType<Columns>;
+> = Simplify<
+  (string extends keyof S ? {} : S) & BuildRawSelectType<Columns>,
+  typeof RAW_SELECT_BRAND
+>;
 
 /**
  * Composes a new selection with the existing selection state for select* methods.
@@ -351,9 +365,8 @@ export type WhereOnlyQueryBuilder<T extends Model> = Pick<
     | "orWhereJsonNotContains"
   >;
 
-export type RelationRetrieveMethod<P extends any> = P extends any[]
-  ? "many"
-  : "one";
+export type RelationRetrieveMethod<P> =
+  NonNullable<P> extends any[] ? "many" : "one";
 
 /**
  * Validates a column string for raw query builder select().

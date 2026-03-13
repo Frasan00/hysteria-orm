@@ -103,8 +103,9 @@ class SqliteColumnTypeInterpreter implements Interpreter {
       return { sql: `${columnName} ${dt}`, bindings: [] };
     }
 
+    const lengthPart = colNode.length ? `(${colNode.length})` : "";
     return {
-      sql: `${columnName} ${dt} ${colNode.length ? `(${colNode.length})` : ""}`,
+      sql: `${columnName} ${dt}${lengthPart}`,
       bindings: [],
     };
   }

@@ -1,25 +1,28 @@
 import {
-  belongsTo,
-  column,
-} from "../../../../../src/sql/models/decorators/model_decorators";
-import { Model } from "../../../../../src/sql/models/model";
+  col,
+  defineModel,
+  defineRelations,
+} from "../../../../../src/sql/models/define_model";
 import { CircularBV2 } from "./circular_b_v2";
 
-/**
- * CircularA v2: A has FK → B (unchanged)
- */
-export class CircularAV2 extends Model {
-  static table = "schema_diff_circular_a";
+export const CircularAV2 = defineModel("schema_diff_circular_a", {
+  columns: {
+    id: col.bigIncrement(),
+    name: col.string({ length: 255 }),
+    bId: col.bigInteger(),
+  },
+});
 
-  @column.bigIncrement()
-  declare id: number;
+export const CircularAV2Relations = defineRelations(
+  CircularAV2,
+  ({ belongsTo }) => ({
+    b: belongsTo(CircularBV2, { foreignKey: "bId" }),
+  }),
+);
 
-  @column({ type: "varchar", length: 255 })
-  declare name: string;
-
-  @column({ type: "bigint" })
-  declare bId: number;
-
-  @belongsTo(() => CircularBV2, "bId")
-  declare b: CircularBV2;
-}
+export const CircularBV2Relations = defineRelations(
+  CircularBV2,
+  ({ belongsTo }) => ({
+    a: belongsTo(CircularAV2, { foreignKey: "aId" }),
+  }),
+);

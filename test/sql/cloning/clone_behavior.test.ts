@@ -1,22 +1,23 @@
 import { env } from "../../../src/env/env";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
 
+let sql: SqlDataSource;
+
 beforeAll(async () => {
-  const dataSource = new SqlDataSource();
-  await dataSource.connect();
+  sql = new SqlDataSource();
+  await sql.connect();
 });
 
 beforeEach(async () => {
-  await SqlDataSource.startGlobalTransaction();
+  await sql.startGlobalTransaction();
 });
 
 afterEach(async () => {
-  await SqlDataSource.rollbackGlobalTransaction();
+  await sql.rollbackGlobalTransaction();
 });
 
 describe(`[${env.DB_TYPE}] Clone Method - Basic Cloning`, () => {
   test("should clone SqlDataSource instance", async () => {
-    const sql = SqlDataSource.instance;
     const cloned = await sql.clone();
 
     expect(cloned).toBeDefined();
@@ -25,7 +26,6 @@ describe(`[${env.DB_TYPE}] Clone Method - Basic Cloning`, () => {
   });
 
   test("should clone with same connection details", async () => {
-    const sql = SqlDataSource.instance;
     const cloned = await sql.clone();
 
     expect(cloned.host).toBe(sql.host);
@@ -34,7 +34,6 @@ describe(`[${env.DB_TYPE}] Clone Method - Basic Cloning`, () => {
   });
 
   test("should create independent clone", async () => {
-    const sql = SqlDataSource.instance;
     const cloned = await sql.clone({ shouldRecreatePool: true });
 
     // Disconnecting clone should not affect original
@@ -47,7 +46,6 @@ describe(`[${env.DB_TYPE}] Clone Method - Basic Cloning`, () => {
 
 describe(`[${env.DB_TYPE}] Clone Method - Pool Recreation`, () => {
   test("should share pool by default", async () => {
-    const sql = SqlDataSource.instance;
     const cloned = await sql.clone();
 
     expect(cloned.isConnected).toBe(true);
@@ -62,7 +60,6 @@ describe(`[${env.DB_TYPE}] Clone Method - Pool Recreation`, () => {
   });
 
   test("should create new pool when shouldRecreatePool is true", async () => {
-    const sql = SqlDataSource.instance;
     const cloned = await sql.clone({ shouldRecreatePool: true });
 
     expect(cloned.isConnected).toBe(true);
@@ -76,7 +73,6 @@ describe(`[${env.DB_TYPE}] Clone Method - Pool Recreation`, () => {
   });
 
   test("should handle disconnection with shared pool", async () => {
-    const sql = SqlDataSource.instance;
     const cloned = await sql.clone();
 
     // Cloned instance shares pool, so disconnecting should not close pool
@@ -93,7 +89,6 @@ describe(`[${env.DB_TYPE}] Clone Method - Database Types`, () => {
       return;
     }
 
-    const sql = SqlDataSource.instance;
     const cloned = await sql.clone();
 
     expect(cloned.getDbType()).toBe(env.DB_TYPE);
@@ -107,7 +102,6 @@ describe(`[${env.DB_TYPE}] Clone Method - Database Types`, () => {
       return;
     }
 
-    const sql = SqlDataSource.instance;
     const cloned = await sql.clone();
 
     expect(cloned.getDbType()).toBe(env.DB_TYPE);
@@ -121,7 +115,6 @@ describe(`[${env.DB_TYPE}] Clone Method - Database Types`, () => {
       return;
     }
 
-    const sql = SqlDataSource.instance;
     const cloned = await sql.clone();
 
     // SQLite always recreates pool
@@ -136,7 +129,6 @@ describe(`[${env.DB_TYPE}] Clone Method - Database Types`, () => {
       return;
     }
 
-    const sql = SqlDataSource.instance;
     const cloned = await sql.clone();
 
     expect(cloned.getDbType()).toBe("mssql");
@@ -148,8 +140,6 @@ describe(`[${env.DB_TYPE}] Clone Method - Database Types`, () => {
 
 describe(`[${env.DB_TYPE}] Clone Method - Multiple Clones`, () => {
   test("should create multiple independent clones", async () => {
-    const sql = SqlDataSource.instance;
-
     const clone1 = await sql.clone({ shouldRecreatePool: true });
     const clone2 = await sql.clone({ shouldRecreatePool: true });
     const clone3 = await sql.clone({ shouldRecreatePool: true });
@@ -171,8 +161,6 @@ describe(`[${env.DB_TYPE}] Clone Method - Multiple Clones`, () => {
 
 describe(`[${env.DB_TYPE}] Clone Method - Edge Cases`, () => {
   test("should clone with slaves configuration", async () => {
-    const sql = SqlDataSource.instance;
-
     // Verify slaves property exists
     expect(sql.slaves).toBeDefined();
     expect(Array.isArray(sql.slaves)).toBe(true);
@@ -184,7 +172,6 @@ describe(`[${env.DB_TYPE}] Clone Method - Edge Cases`, () => {
   });
 
   test("should clone with cache configuration", async () => {
-    const sql = SqlDataSource.instance;
     const cloned = await sql.clone();
 
     expect(cloned.cacheAdapter).toBeDefined();
@@ -209,7 +196,7 @@ describe(`[${env.DB_TYPE}] Clone Method - Edge Cases`, () => {
   });
 
   test("should clone and execute query", async () => {
-    const cloned = await SqlDataSource.instance.clone();
+    const cloned = await sql.clone();
 
     const query = cloned
       .query("users_with_uuid")

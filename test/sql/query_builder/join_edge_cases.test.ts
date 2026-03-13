@@ -4,30 +4,32 @@ import { AddressFactory } from "../test_models/factory/address_factory";
 import { PostFactory } from "../test_models/factory/post_factory";
 import { UserAddressFactory } from "../test_models/factory/user_address_factory";
 import { UserFactory } from "../test_models/factory/user_factory";
-import { PostWithUuid } from "../test_models/uuid/post_uuid";
+import { PostWithUuid } from "../test_models/uuid/schema";
+
+let sql: SqlDataSource;
 
 beforeAll(async () => {
-  const dataSource = new SqlDataSource();
-  await dataSource.connect();
+  sql = new SqlDataSource();
+  await sql.connect();
 });
 
 afterAll(async () => {
-  await SqlDataSource.disconnect();
+  await sql.disconnect();
 });
 
 beforeEach(async () => {
-  await SqlDataSource.startGlobalTransaction();
+  await sql.startGlobalTransaction();
 });
 
 afterEach(async () => {
-  await SqlDataSource.rollbackGlobalTransaction();
+  await sql.rollbackGlobalTransaction();
 });
 
 describe(`[${env.DB_TYPE}] uuid pk join edge cases`, () => {
   test("left join with null foreign key returns rows and undefined columns", async () => {
-    const user = await UserFactory.userWithUuid(1);
-    const linkedPost = await PostFactory.postWithUuid(user.id, 1);
-    const orphanPost = await PostWithUuid.insert(
+    const user = await UserFactory.userWithUuid(sql, 1);
+    const linkedPost = await PostFactory.postWithUuid(sql, user.id, 1);
+    const orphanPost = await sql.from(PostWithUuid).insert(
       {
         ...PostFactory.getCommonPostData(),
         userId: null as unknown as string,
@@ -35,7 +37,8 @@ describe(`[${env.DB_TYPE}] uuid pk join edge cases`, () => {
       { returning: ["*"] },
     );
 
-    const postsWithUsers = await PostWithUuid.query()
+    const postsWithUsers = await sql
+      .from(PostWithUuid)
       .select("posts_with_uuid.*", ["users_with_uuid.name", "userName"])
       .leftJoin(
         "users_with_uuid",
@@ -60,23 +63,25 @@ describe(`[${env.DB_TYPE}] uuid pk join edge cases`, () => {
   });
 
   test("multi-join chain through pivot to addresses", async () => {
-    const users = await UserFactory.userWithUuid(3);
+    const users = await UserFactory.userWithUuid(sql, 3);
     const posts = [] as { id: string }[];
     for (const user of users) {
-      const post = await PostFactory.postWithUuid(user.id, 1);
+      const post = await PostFactory.postWithUuid(sql, user.id, 1);
       posts.push(post);
     }
 
-    const addresses = await AddressFactory.addressWithUuid(3);
+    const addresses = await AddressFactory.addressWithUuid(sql, 3);
     for (let i = 0; i < users.length; i++) {
       await UserAddressFactory.userAddressWithUuid(
+        sql,
         1,
         users[i].id,
         addresses[i].id,
       );
     }
 
-    const rows = await PostWithUuid.query()
+    const rows = await sql
+      .from(PostWithUuid)
       .select(
         "posts_with_uuid.*",
         ["users_with_uuid.name", "userName"],
@@ -110,25 +115,26 @@ describe(`[${env.DB_TYPE}] uuid pk join edge cases`, () => {
   });
 
   test("raw alias join chain using from aliases", async () => {
-    const users = await UserFactory.userWithUuid(2);
+    const users = await UserFactory.userWithUuid(sql, 2);
     const posts = [] as { id: string }[];
     for (const user of users) {
-      const post = await PostFactory.postWithUuid(user.id, 1);
+      const post = await PostFactory.postWithUuid(sql, user.id, 1);
       posts.push(post);
     }
 
-    const addresses = await AddressFactory.addressWithUuid(2);
+    const addresses = await AddressFactory.addressWithUuid(sql, 2);
     for (let i = 0; i < users.length; i++) {
       await UserAddressFactory.userAddressWithUuid(
+        sql,
         1,
         users[i].id,
         addresses[i].id,
       );
     }
 
-    const rows = await SqlDataSource.instance
+    const rows = await sql
       .query("posts_with_uuid")
-      .from("posts_with_uuid", "p")
+      .table("posts_with_uuid", "p")
       .select("p.*", ["u.name", "mustBe1"], ["a.city", "mustBe2"])
       .leftJoinRaw("users_with_uuid u ON u.id = p.user_id")
       .leftJoinRaw("user_address_with_uuid ua ON ua.user_id = u.id")
@@ -152,10 +158,11 @@ describe(`[${env.DB_TYPE}] uuid pk join edge cases`, () => {
       return;
     }
 
-    const users = await UserFactory.userWithUuid(1);
-    const post = await PostFactory.postWithUuid(users.id, 1);
+    const users = await UserFactory.userWithUuid(sql, 1);
+    const post = await PostFactory.postWithUuid(sql, users.id, 1);
 
-    const rows = await PostWithUuid.query()
+    const rows = await sql
+      .from(PostWithUuid)
       .select("posts_with_uuid.*", "users_with_uuid.*")
       .leftJoin(
         "users_with_uuid",
@@ -170,10 +177,11 @@ describe(`[${env.DB_TYPE}] uuid pk join edge cases`, () => {
   });
 
   test("invalid join column rejects", async () => {
-    const user = await UserFactory.userWithUuid(1);
-    const post = await PostFactory.postWithUuid(user.id, 1);
+    const user = await UserFactory.userWithUuid(sql, 1);
+    const post = await PostFactory.postWithUuid(sql, user.id, 1);
 
-    const q = PostWithUuid.query()
+    const q = sql
+      .from(PostWithUuid)
       .select("posts_with_uuid.*")
       .leftJoin(
         "users_with_uuid",

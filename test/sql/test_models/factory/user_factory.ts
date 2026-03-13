@@ -1,25 +1,50 @@
 import { faker } from "@faker-js/faker";
+import { ModelQueryResult } from "../../../../src/sql/models/model_types";
+import { SqlDataSource } from "../../../../src/sql/sql_data_source";
 import { UserWithBigint } from "../bigint/user_bigint";
 import { UserWithUuid } from "../uuid/user_uuid";
-import { UserStatus, UserWithoutPk } from "../without_pk/user_without_pk";
-import { FactoryReturnType } from "./factory_types";
+import { UserWithoutPk } from "../without_pk/user_without_pk";
+
+export enum UserStatus {
+  active = "active",
+  inactive = "inactive",
+}
+
+type UserWithoutPkInstance = InstanceType<typeof UserWithoutPk>;
+type UserWithUuidInstance = InstanceType<typeof UserWithUuid>;
+type UserWithBigintInstance = InstanceType<typeof UserWithBigint>;
 
 export class UserFactory {
-  static async userWithoutPk<T extends number>(
-    howMany: T,
+  static async userWithoutPk(
+    sql: SqlDataSource,
+    howMany: 1,
+    status?: UserStatus,
+    isActive?: boolean,
+    jsonData?: Record<string, any>,
+  ): Promise<ModelQueryResult<UserWithoutPkInstance>>;
+  static async userWithoutPk(
+    sql: SqlDataSource,
+    howMany: number,
+    status?: UserStatus,
+    isActive?: boolean,
+    jsonData?: Record<string, any>,
+  ): Promise<ModelQueryResult<UserWithoutPkInstance>[]>;
+  static async userWithoutPk(
+    sql: SqlDataSource,
+    howMany: number,
     status: UserStatus = UserStatus.active,
     isActive: boolean = true,
     jsonData: Record<string, any> = { test: "test" },
-  ): Promise<FactoryReturnType<T, UserWithoutPk>> {
+  ) {
     const userData = UserFactory.getCommonUserData(status, isActive, jsonData);
     if (howMany === 1) {
-      return (await UserWithoutPk.insert(userData, {
+      return await sql.from(UserWithoutPk).insert(userData, {
         returning: ["*"],
-      })) as FactoryReturnType<T, UserWithoutPk>;
+      });
     }
 
     const array = Array.from({ length: howMany });
-    return (await UserWithoutPk.insertMany(
+    return await sql.from(UserWithoutPk).insertMany(
       array.map(() => ({
         ...userData,
         name: faker.person.fullName(),
@@ -27,24 +52,39 @@ export class UserFactory {
         password: faker.internet.password(),
       })),
       { returning: ["*"] },
-    )) as FactoryReturnType<T, UserWithoutPk>;
+    );
   }
 
-  static async userWithUuid<T extends number>(
-    howMany: T,
+  static async userWithUuid(
+    sql: SqlDataSource,
+    howMany: 1,
+    status?: UserStatus,
+    isActive?: boolean,
+    jsonData?: Record<string, any>,
+  ): Promise<ModelQueryResult<UserWithUuidInstance>>;
+  static async userWithUuid(
+    sql: SqlDataSource,
+    howMany: number,
+    status?: UserStatus,
+    isActive?: boolean,
+    jsonData?: Record<string, any>,
+  ): Promise<ModelQueryResult<UserWithUuidInstance>[]>;
+  static async userWithUuid(
+    sql: SqlDataSource,
+    howMany: number,
     status: UserStatus = UserStatus.active,
     isActive: boolean = true,
     jsonData: Record<string, any> = { test: "test" },
-  ): Promise<FactoryReturnType<T, UserWithUuid>> {
+  ) {
     const userData = UserFactory.getCommonUserData(status, isActive, jsonData);
     if (howMany === 1) {
-      return (await UserWithUuid.insert(userData, {
+      return await sql.from(UserWithUuid).insert(userData, {
         returning: ["*"],
-      })) as FactoryReturnType<T, UserWithUuid>;
+      });
     }
 
     const array = Array.from({ length: howMany });
-    return (await UserWithUuid.insertMany(
+    return await sql.from(UserWithUuid).insertMany(
       array.map(() => ({
         ...userData,
         name: faker.person.fullName(),
@@ -52,24 +92,39 @@ export class UserFactory {
         password: faker.internet.password(),
       })),
       { returning: ["*"] },
-    )) as FactoryReturnType<T, UserWithUuid>;
+    );
   }
 
-  static async userWithBigint<T extends number>(
-    howMany: T,
+  static async userWithBigint(
+    sql: SqlDataSource,
+    howMany: 1,
+    status?: UserStatus,
+    isActive?: boolean,
+    jsonData?: Record<string, any>,
+  ): Promise<ModelQueryResult<UserWithBigintInstance>>;
+  static async userWithBigint(
+    sql: SqlDataSource,
+    howMany: number,
+    status?: UserStatus,
+    isActive?: boolean,
+    jsonData?: Record<string, any>,
+  ): Promise<ModelQueryResult<UserWithBigintInstance>[]>;
+  static async userWithBigint(
+    sql: SqlDataSource,
+    howMany: number,
     status: UserStatus = UserStatus.active,
     isActive: boolean = true,
     jsonData: Record<string, any> = { test: "test" },
-  ): Promise<FactoryReturnType<T, UserWithBigint>> {
+  ) {
     const userData = UserFactory.getCommonUserData(status, isActive, jsonData);
     if (howMany === 1) {
-      return (await UserWithBigint.insert(userData, {
+      return await sql.from(UserWithBigint).insert(userData, {
         returning: ["*"],
-      })) as FactoryReturnType<T, UserWithBigint>;
+      });
     }
 
     const array = Array.from({ length: howMany });
-    return (await UserWithBigint.insertMany(
+    return await sql.from(UserWithBigint).insertMany(
       array.map(() => ({
         ...userData,
         name: faker.person.fullName(),
@@ -77,14 +132,14 @@ export class UserFactory {
         password: faker.internet.password(),
       })),
       { returning: ["*"] },
-    )) as FactoryReturnType<T, UserWithBigint>;
+    );
   }
 
   static getCommonUserData(
     status: UserStatus = UserStatus.active,
     isActive: boolean = true,
     jsonData: Record<string, any> = { test: "test" },
-  ): Partial<UserWithoutPk> {
+  ) {
     return {
       name: faker.person.fullName(),
       email: faker.internet.email(),

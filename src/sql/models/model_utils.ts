@@ -1,12 +1,4 @@
-import plural from "pluralize";
-import { convertCase } from "../../utils/case_utils";
 import { Model } from "./model";
-
-export function getBaseTableName(target: typeof Model): string {
-  const className = target.name.replace(/^_/, "");
-  const snakeCaseName = convertCase(className, "snake");
-  return plural(snakeCaseName);
-}
 
 export function getBaseModelInstance<T extends Model>(): T {
   return {} as T;

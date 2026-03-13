@@ -185,8 +185,8 @@ export function check(
 
 /**
  * @description Decorator to define a view on the model
- * @description This will automatically create a view on the database with the given statement
- * @description Since a view is intended to get data from other tables, a migration is not necessary
+ * @description Stores the view statement as metadata on the model class
+ * @description The statement will be applied by the query builder when building queries
  * @example
  * ```ts
  * @view((query) => {
@@ -198,17 +198,12 @@ export function check(
  * }
  * ```
  */
+export const viewStatementKey = Symbol("viewStatement");
 export function view(
   statement: (query: ModelQueryBuilder<any>) => void,
 ): ClassDecorator {
   return (target: Function) => {
-    const targetClass = target as typeof Model;
-    const originalQuery = targetClass.query;
-    targetClass.query = function (...args: Parameters<typeof originalQuery>) {
-      const query = originalQuery.bind(this).call(this, ...args);
-      statement(query);
-      return query;
-    } as typeof originalQuery;
+    (target as any)[viewStatementKey] = statement;
   };
 }
 

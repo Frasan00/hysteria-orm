@@ -174,8 +174,8 @@ export class AstParser {
           if (keywordToEmit === "select") {
             const topClause = useMssqlTop ? `top (@${startBindingIndex}) ` : "";
             if (distinctOnNode) {
-              const columns = Array.isArray((distinctOnNode as any).columns)
-                ? (distinctOnNode as any).columns.join(", ")
+              const columns = Array.isArray(distinctOnNode.columns)
+                ? distinctOnNode.columns.join(", ")
                 : "";
               sqlParts.push(
                 `select ${topClause}distinct on (${columns}) ${sqlStatement.sql}${chainWith}`,

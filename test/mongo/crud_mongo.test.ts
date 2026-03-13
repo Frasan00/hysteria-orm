@@ -13,18 +13,20 @@ describe("TestModel", () => {
   });
 
   beforeEach(async () => {
-    await TestModel.query().delete();
+    await mongoDataSource.from(TestModel).query().delete();
   });
 
   afterAll(async () => {
-    await TestModel.query().delete();
+    await mongoDataSource.from(TestModel).query().delete();
     await mongoDataSource.disconnect();
   });
 
   describe("model methods", () => {
     test("should insert a record", async () => {
       const modelData = { name: "Test Name", email: "test@example.com" };
-      const insertedModel = await TestModel.insert(modelData);
+      const insertedModel = await mongoDataSource
+        .from(TestModel)
+        .insert(modelData);
       expect(insertedModel.name).toBe("Test Name");
       expect(insertedModel.email).toBe("test@example.com");
     });
@@ -34,7 +36,9 @@ describe("TestModel", () => {
         { name: "Test Name 1", email: "test1@example.com" },
         { name: "Test Name 2", email: "test2@example.com" },
       ];
-      const insertedModels = await TestModel.insertMany(modelData);
+      const insertedModels = await mongoDataSource
+        .from(TestModel)
+        .insertMany(modelData);
       expect(insertedModels.length).toBe(2);
       expect(insertedModels[0].name).toBe("Test Name 1");
       expect(insertedModels[0].email).toBe("test1@example.com");
@@ -43,21 +47,21 @@ describe("TestModel", () => {
     });
 
     test("should find records", async () => {
-      await TestModel.insertMany([
+      await mongoDataSource.from(TestModel).insertMany([
         { name: "Test Name 1", email: "test1@example.com" },
         { name: "Test Name 2", email: "test2@example.com" },
       ]);
 
-      const foundModels = await TestModel.find();
+      const foundModels = await mongoDataSource.from(TestModel).find();
       expect(foundModels.length).toBe(2);
     });
 
     test("should find one record", async () => {
-      const insertedModel = await TestModel.insert({
+      const insertedModel = await mongoDataSource.from(TestModel).insert({
         name: "Test Name",
         email: "test@example.com",
       });
-      const foundModel = await TestModel.findOne({
+      const foundModel = await mongoDataSource.from(TestModel).findOne({
         where: { id: insertedModel.id },
       });
       expect(foundModel?.name).toBe("Test Name");
@@ -65,12 +69,12 @@ describe("TestModel", () => {
     });
 
     test("should find one record or fail", async () => {
-      const insertedModel = await TestModel.insert({
+      const insertedModel = await mongoDataSource.from(TestModel).insert({
         name: "Test Name",
         email: "test@example.com",
       });
 
-      const foundModel = await TestModel.findOneOrFail({
+      const foundModel = await mongoDataSource.from(TestModel).findOneOrFail({
         where: { id: insertedModel.id },
       });
 
@@ -79,38 +83,42 @@ describe("TestModel", () => {
     });
 
     test("should update a record", async () => {
-      const insertedModel = await TestModel.insert({
+      const insertedModel = await mongoDataSource.from(TestModel).insert({
         name: "Test Name",
         email: "test@example.com",
       });
       insertedModel.name = "Updated Name";
       insertedModel.email = "updated@example.com";
-      const updatedModel = await TestModel.updateRecord(insertedModel);
+      const updatedModel = await mongoDataSource
+        .from(TestModel)
+        .updateRecord(insertedModel);
       expect(updatedModel.name).toBe("Updated Name");
       expect(updatedModel.email).toBe("updated@example.com");
     });
 
     test("should delete a record", async () => {
-      const insertedModel = await TestModel.insert({
+      const insertedModel = await mongoDataSource.from(TestModel).insert({
         name: "Test Name",
         email: "test@example.com",
       });
 
-      await TestModel.deleteRecord(insertedModel);
-      const foundModel = await TestModel.findOne({
+      await mongoDataSource.from(TestModel).deleteRecord(insertedModel);
+      const foundModel = await mongoDataSource.from(TestModel).findOne({
         where: { id: insertedModel.id },
       });
       expect(foundModel).toBeNull();
     });
 
     test("should query records using orWhere", async () => {
-      await TestModel.insertMany([
+      await mongoDataSource.from(TestModel).insertMany([
         { name: "Test Name 1", email: "test1@example.com" },
         { name: "Test Name 2", email: "test2@example.com" },
         { name: "Test Name 3", email: "test3@example.com" },
       ]);
 
-      const foundModels = await TestModel.query()
+      const foundModels = await mongoDataSource
+        .from(TestModel)
+        .query()
         .orWhere("name", "Test Name 1")
         .orWhere("name", "Test Name 2")
         .many();
@@ -125,13 +133,17 @@ describe("TestModel", () => {
     });
 
     test("should sort records", async () => {
-      await TestModel.insertMany([
+      await mongoDataSource.from(TestModel).insertMany([
         { name: "Test Name 1", email: "test1@example.com" },
         { name: "Test Name 2", email: "test2@example.com" },
         { name: "Test Name 3", email: "test3@example.com" },
       ]);
 
-      const foundModels = await TestModel.query().sort({ name: -1 }).many();
+      const foundModels = await mongoDataSource
+        .from(TestModel)
+        .query()
+        .sort({ name: -1 })
+        .many();
 
       expect(foundModels.length).toBe(3);
       expect(foundModels[0].name).toBe("Test Name 3");
@@ -140,25 +152,31 @@ describe("TestModel", () => {
     });
 
     test("should limit records", async () => {
-      await TestModel.insertMany([
+      await mongoDataSource.from(TestModel).insertMany([
         { name: "Test Name 1", email: "test1@example.com" },
         { name: "Test Name 2", email: "test2@example.com" },
         { name: "Test Name 3", email: "test3@example.com" },
       ]);
 
-      const foundModels = await TestModel.query().limit(2).many();
+      const foundModels = await mongoDataSource
+        .from(TestModel)
+        .query()
+        .limit(2)
+        .many();
 
       expect(foundModels.length).toBe(2);
     });
 
     test("should find records using whereIn", async () => {
-      await TestModel.insertMany([
+      await mongoDataSource.from(TestModel).insertMany([
         { name: "Test Name 1", email: "test" },
         { name: "Test Name 2", email: "test" },
         { name: "Test Name 3", email: "test" },
       ]);
 
-      const foundModels = await TestModel.query()
+      const foundModels = await mongoDataSource
+        .from(TestModel)
+        .query()
         .whereIn("name", ["Test Name 1", "Test Name 2"])
         .many();
 
@@ -166,36 +184,50 @@ describe("TestModel", () => {
     });
 
     test("should find records using whereNull", async () => {
-      const users = await TestModel.insertMany([
-        { name: "Test Name 1", email: "test" },
-        { name: "Test Name 2" },
-        { name: "Test Name 3" },
-      ]);
+      const users = await mongoDataSource
+        .from(TestModel)
+        .insertMany([
+          { name: "Test Name 1", email: "test" },
+          { name: "Test Name 2" },
+          { name: "Test Name 3" },
+        ]);
 
-      const foundModels = await TestModel.query().whereNull("email").many();
+      const foundModels = await mongoDataSource
+        .from(TestModel)
+        .query()
+        .whereNull("email")
+        .many();
       expect(foundModels.length).toBe(2);
     });
 
     test("should find records using raw query", async () => {
-      await TestModel.insertMany([
-        { name: "Test Name 1", email: "test" },
-        { name: "Test Name 2" },
-        { name: "Test Name 3" },
-      ]);
+      await mongoDataSource
+        .from(TestModel)
+        .insertMany([
+          { name: "Test Name 1", email: "test" },
+          { name: "Test Name 2" },
+          { name: "Test Name 3" },
+        ]);
 
-      const foundModels = await TestModel.query()
+      const foundModels = await mongoDataSource
+        .from(TestModel)
+        .query()
         .whereRaw({
           email: { $exists: false },
         })
         .many();
 
-      const foundModels2 = await TestModel.query()
+      const foundModels2 = await mongoDataSource
+        .from(TestModel)
+        .query()
         .andRawWhere({
           email: { $exists: false },
         })
         .many();
 
-      const foundModels3 = await TestModel.query()
+      const foundModels3 = await mongoDataSource
+        .from(TestModel)
+        .query()
         .orRawWhere({
           email: { $exists: false },
         })
@@ -207,13 +239,17 @@ describe("TestModel", () => {
     });
 
     test("should find records using whereBetween", async () => {
-      await TestModel.insertMany([
-        { name: "Test Name 1", email: "test" },
-        { name: "Test Name 2" },
-        { name: "Test Name 3" },
-      ]);
+      await mongoDataSource
+        .from(TestModel)
+        .insertMany([
+          { name: "Test Name 1", email: "test" },
+          { name: "Test Name 2" },
+          { name: "Test Name 3" },
+        ]);
 
-      const foundModels = await TestModel.query()
+      const foundModels = await mongoDataSource
+        .from(TestModel)
+        .query()
         .whereBetween("name", ["Test Name 1", "Test Name 2"])
         .many();
 
@@ -221,13 +257,17 @@ describe("TestModel", () => {
     });
 
     test("should find records using whereNotIn", async () => {
-      await TestModel.insertMany([
-        { name: "Test Name 1", email: "test" },
-        { name: "Test Name 2" },
-        { name: "Test Name 3" },
-      ]);
+      await mongoDataSource
+        .from(TestModel)
+        .insertMany([
+          { name: "Test Name 1", email: "test" },
+          { name: "Test Name 2" },
+          { name: "Test Name 3" },
+        ]);
 
-      const foundModels = await TestModel.query()
+      const foundModels = await mongoDataSource
+        .from(TestModel)
+        .query()
         .whereNotIn("name", ["Test Name 1", "Test Name 2"])
         .many();
 
@@ -235,13 +275,17 @@ describe("TestModel", () => {
     });
 
     test("should find records using whereNot", async () => {
-      await TestModel.insertMany([
-        { name: "Test Name 1", email: "test" },
-        { name: "Test Name 2" },
-        { name: "Test Name 3" },
-      ]);
+      await mongoDataSource
+        .from(TestModel)
+        .insertMany([
+          { name: "Test Name 1", email: "test" },
+          { name: "Test Name 2" },
+          { name: "Test Name 3" },
+        ]);
 
-      const foundModels = await TestModel.query()
+      const foundModels = await mongoDataSource
+        .from(TestModel)
+        .query()
         .where("email", "$ne", "test")
         .many();
 
@@ -249,13 +293,17 @@ describe("TestModel", () => {
     });
 
     test("should find records using where and andWhere", async () => {
-      await TestModel.insertMany([
-        { name: "Test Name 1", email: "test" },
-        { name: "Test Name 2", email: "test" },
-        { name: "Test Name 3" },
-      ]);
+      await mongoDataSource
+        .from(TestModel)
+        .insertMany([
+          { name: "Test Name 1", email: "test" },
+          { name: "Test Name 2", email: "test" },
+          { name: "Test Name 3" },
+        ]);
 
-      const foundModels = await TestModel.query()
+      const foundModels = await mongoDataSource
+        .from(TestModel)
+        .query()
         .where("email", "test")
         .andWhere("name", "Test Name 1")
         .many();
@@ -264,11 +312,13 @@ describe("TestModel", () => {
     });
 
     test("should find records using where and andWhere", async () => {
-      const inserted = await TestModel.insertMany([
-        { name: "Test Name 1", email: "test" },
-      ]);
+      const inserted = await mongoDataSource
+        .from(TestModel)
+        .insertMany([{ name: "Test Name 1", email: "test" }]);
 
-      const foundModels = await TestModel.query()
+      const foundModels = await mongoDataSource
+        .from(TestModel)
+        .query()
         .where("id", inserted[0].id)
         .many();
 
@@ -286,32 +336,46 @@ describe("TestModel", () => {
         },
       };
 
-      const insertedModel = await TestModel.insert(modelData);
+      const insertedModel = await mongoDataSource
+        .from(TestModel)
+        .insert(modelData);
       expect(insertedModel.name).toBe("Test Name");
       expect(insertedModel.email).toBe("test");
       expect(insertedModel.userProfile.age).toBe(20);
 
-      const sorted = await TestModel.query()
+      const sorted = await mongoDataSource
+        .from(TestModel)
+        .query()
         .sort({ "userProfile.age": -1 })
         .many();
       expect(sorted[0].userProfile.age).toBe(20);
 
-      const filtered = await TestModel.query()
+      const filtered = await mongoDataSource
+        .from(TestModel)
+        .query()
         .where("userProfile.age", 20)
         .many();
       expect(filtered.length).toBe(1);
     });
 
     test("should find records using whereExists and whereNotExists", async () => {
-      await TestModel.insertMany([
-        { name: "Test Name 1", email: "test" },
-        { name: "Test Name 2" },
-        { name: "Test Name 3" },
-      ]);
+      await mongoDataSource
+        .from(TestModel)
+        .insertMany([
+          { name: "Test Name 1", email: "test" },
+          { name: "Test Name 2" },
+          { name: "Test Name 3" },
+        ]);
 
-      const foundModels = await TestModel.query().whereExists("email").many();
+      const foundModels = await mongoDataSource
+        .from(TestModel)
+        .query()
+        .whereExists("email")
+        .many();
 
-      const foundModels2 = await TestModel.query()
+      const foundModels2 = await mongoDataSource
+        .from(TestModel)
+        .query()
         .whereNotExists("email")
         .many();
 
@@ -320,33 +384,47 @@ describe("TestModel", () => {
     });
 
     test("should find records using whereLike and whereNotLike", async () => {
-      await TestModel.insertMany([
-        { name: "Test Name 1", email: "test" },
-        { name: "Test Name 2", email: "test" },
-        { name: "Test Name 3" },
-      ]);
+      await mongoDataSource
+        .from(TestModel)
+        .insertMany([
+          { name: "Test Name 1", email: "test" },
+          { name: "Test Name 2", email: "test" },
+          { name: "Test Name 3" },
+        ]);
 
-      const foundModels = await TestModel.query()
+      const foundModels = await mongoDataSource
+        .from(TestModel)
+        .query()
         .whereLike("email", "test")
         .many();
 
-      const foundModels2 = await TestModel.query()
+      const foundModels2 = await mongoDataSource
+        .from(TestModel)
+        .query()
         .whereNotLike("email", "test")
         .many();
 
-      const foundModels3 = await TestModel.query()
+      const foundModels3 = await mongoDataSource
+        .from(TestModel)
+        .query()
         .andWhereLike("email", "test")
         .many();
 
-      const foundModels4 = await TestModel.query()
+      const foundModels4 = await mongoDataSource
+        .from(TestModel)
+        .query()
         .andWhereNotLike("email", "test")
         .many();
 
-      const foundModels5 = await TestModel.query()
+      const foundModels5 = await mongoDataSource
+        .from(TestModel)
+        .query()
         .orWhereLike("email", "test")
         .many();
 
-      const foundModels6 = await TestModel.query()
+      const foundModels6 = await mongoDataSource
+        .from(TestModel)
+        .query()
         .orWhereNotLike("email", "test")
         .many();
 
@@ -361,7 +439,7 @@ describe("TestModel", () => {
 
   describe("query builder", () => {
     test("should insert and return the inserted document", async () => {
-      const insertedModel = await MongoDataSource.query("test").insert(
+      const insertedModel = await mongoDataSource.query("test").insert(
         {
           name: "Test Name",
           email: "test",
@@ -377,7 +455,7 @@ describe("TestModel", () => {
     });
 
     test("should insert and return only the id of the inserted document", async () => {
-      const insertedModel = await MongoDataSource.query("test").insert({
+      const insertedModel = await mongoDataSource.query("test").insert({
         name: "Test Name",
         email: "test",
       });
@@ -386,7 +464,7 @@ describe("TestModel", () => {
     });
 
     test("should insert multiple records and return the inserted documents", async () => {
-      const insertedModels = await MongoDataSource.query("test").insertMany(
+      const insertedModels = await mongoDataSource.query("test").insertMany(
         [
           { name: "Test Name 1", email: "test" },
           { name: "Test Name 2", email: "test" },
@@ -402,7 +480,7 @@ describe("TestModel", () => {
     });
 
     test("should insert multiple records and return the inserted documents", async () => {
-      const insertedModels = await MongoDataSource.query("test").insertMany([
+      const insertedModels = await mongoDataSource.query("test").insertMany([
         { name: "Test Name 1", email: "test" },
         { name: "Test Name 2", email: "test" },
       ]);
@@ -425,16 +503,19 @@ describe("TestModel rawCollection", () => {
   });
 
   beforeEach(async () => {
-    await TestModel.query().delete();
+    await mongoDataSource.from(TestModel).query().delete();
   });
 
   afterAll(async () => {
-    await TestModel.query().delete();
+    await mongoDataSource.from(TestModel).query().delete();
     await mongoDataSource.disconnect();
   });
 
   test("should get the raw collection", async () => {
-    const rawCollection = TestModel.rawCollection();
+    const rawCollection = mongoDataSource
+      .getCurrentConnection()
+      .db()
+      .collection("test_models");
     expect(rawCollection).toBeDefined();
 
     const insertedModel = await rawCollection.insertOne({

@@ -1,18 +1,12 @@
-import { column } from "../../../../src/sql/models/decorators/model_decorators";
-import { Model } from "../../../../src/sql/models/model";
+import { col, defineModel } from "../../../../src/sql/models/define_model";
 
 /**
  * Tag model for manyToMany relation testing
  */
-export class TagMigration extends Model {
-  static table = "schema_diff_tags";
-
-  @column.bigIncrement()
-  declare id: number;
-
-  @column({ type: "varchar", length: 100 })
-  declare name: string;
-
-  @column({ type: "varchar", length: 50, nullable: true })
-  declare slug: string | null;
-}
+export const TagMigration = defineModel("schema_diff_tags", {
+  columns: {
+    id: col.bigIncrement(),
+    name: col.string({ length: 100 }),
+    slug: col.string({ length: 50, nullable: true }),
+  },
+});

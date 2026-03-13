@@ -1,29 +1,35 @@
 import {
-  belongsTo,
-  column,
-} from "../../../../src/sql/models/decorators/model_decorators";
-import { Model } from "../../../../src/sql/models/model";
+  col,
+  createSchema,
+  defineModel,
+  defineRelations,
+} from "../../../../src/sql/models/define_model";
 import { UserMigrationV2 } from "./user_v2";
 
 /**
  * Post v2: Modify relation - add onDelete CASCADE
  * Tests: relationsToModify
  */
-export class PostMigrationV2 extends Model {
-  static table = "schema_diff_posts";
+export const PostMigrationV2 = defineModel("schema_diff_posts", {
+  columns: {
+    id: col.bigIncrement(),
+    title: col.string({ length: 255 }),
+    content: col.text({ nullable: true }),
+    userId: col.bigInteger(),
+  },
+});
 
-  @column.bigIncrement()
-  declare id: number;
+export const PostMigrationV2Relations = defineRelations(
+  PostMigrationV2,
+  ({ belongsTo }) => ({
+    user: belongsTo(UserMigrationV2, {
+      foreignKey: "userId",
+      onDelete: "cascade",
+    }),
+  }),
+);
 
-  @column({ type: "varchar", length: 255 })
-  declare title: string;
-
-  @column({ type: "text", nullable: true })
-  declare content: string | null;
-
-  @column({ type: "bigint" })
-  declare userId: number;
-
-  @belongsTo(() => UserMigrationV2, "userId", { onDelete: "cascade" })
-  declare user: UserMigrationV2;
-}
+createSchema(
+  { PostMigrationV2 },
+  { PostMigrationV2: PostMigrationV2Relations },
+);

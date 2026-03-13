@@ -1,62 +1,26 @@
 import crypto from "node:crypto";
-import {
-  column,
-  manyToMany,
-} from "../../../../src/sql/models/decorators/model_decorators";
-import { Model } from "../../../../src/sql/models/model";
-import { UserAddressWithUuid } from "./user_address_uuid";
-import { UserWithUuid } from "./user_uuid";
+import { defineModel, col } from "../../../../src/sql/models/define_model";
 
-export class AddressWithUuid extends Model {
-  static table = "address_with_uuid";
-
-  @column({
-    primaryKey: true,
-  })
-  declare id: string;
-
-  @column()
-  declare street: string;
-
-  @column()
-  declare city: string;
-
-  @column()
-  declare state: string;
-
-  @column()
-  declare zip: string;
-
-  @column()
-  declare country: string;
-
-  @column.datetime({
-    autoCreate: true,
-  })
-  declare createdAt: Date;
-
-  @column.datetime({
-    autoCreate: true,
-    autoUpdate: true,
-  })
-  declare updatedAt: Date;
-
-  @column.datetime()
-  declare deletedAt: Date | null;
-
-  @manyToMany(() => UserWithUuid, () => UserAddressWithUuid, {
-    leftForeignKey: "addressId",
-    rightForeignKey: "userId",
-  })
-  declare users: UserWithUuid[];
-
-  static async beforeInsert(data: AddressWithUuid): Promise<void> {
-    data.id = crypto.randomUUID();
-  }
-
-  static async beforeInsertMany(data: AddressWithUuid[]): Promise<void> {
-    for (const item of data) {
-      item.id = crypto.randomUUID();
-    }
-  }
-}
+export const AddressWithUuid = defineModel("address_with_uuid", {
+  columns: {
+    id: col.primary<string>(),
+    street: col.string(),
+    city: col.string(),
+    state: col.string(),
+    zip: col.string(),
+    country: col.string(),
+    createdAt: col.datetime({ autoCreate: true }),
+    updatedAt: col.datetime({ autoCreate: true, autoUpdate: true }),
+    deletedAt: col.datetime(),
+  },
+  hooks: {
+    beforeInsert: async (data) => {
+      data.id = crypto.randomUUID();
+    },
+    beforeInsertMany: async (data) => {
+      for (const item of data) {
+        item.id = crypto.randomUUID();
+      }
+    },
+  },
+});

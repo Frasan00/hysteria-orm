@@ -127,8 +127,9 @@ class PostgresColumnTypeInterpreter implements Interpreter {
       return { sql: `${columnName} multipoint`, bindings: [] };
     }
 
+    const lengthPart = colNode.length ? `(${colNode.length})` : "";
     return {
-      sql: `${columnName} ${dt} ${colNode.length ? `(${colNode.length})` : ""}`,
+      sql: `${columnName} ${dt}${lengthPart}`,
       bindings: [],
     };
   }

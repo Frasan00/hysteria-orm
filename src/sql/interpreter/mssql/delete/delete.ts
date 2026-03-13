@@ -22,12 +22,26 @@ class MssqlDeleteInterpreter implements Interpreter {
       };
     }
 
-    const formattedTable = new InterpreterUtils(
-      this.model,
-    ).getFromForWriteOperations("mssql", deleteNode.fromNode as FromNode);
+    const interpreterUtils = new InterpreterUtils(this.model);
+    const formattedTable = interpreterUtils.getFromForWriteOperations(
+      "mssql",
+      deleteNode.fromNode as FromNode,
+    );
+
+    let sql = formattedTable;
+
+    if (deleteNode.returning && deleteNode.returning.length) {
+      const returningCols = deleteNode.returning
+        .map(
+          (column) =>
+            `deleted.${interpreterUtils.formatStringColumn("mssql", column)}`,
+        )
+        .join(", ");
+      sql += ` output ${returningCols}`;
+    }
 
     return {
-      sql: formattedTable,
+      sql,
       bindings: [],
     };
   }

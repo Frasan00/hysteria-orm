@@ -1,22 +1,17 @@
 import {
-  column,
-  hasMany,
-} from "../../../../../src/sql/models/decorators/model_decorators";
-import { Model } from "../../../../../src/sql/models/model";
+  col,
+  defineModel,
+  defineRelations,
+} from "../../../../../src/sql/models/define_model";
 import { ChildV1 } from "./child_v1";
 
-/**
- * Parent v1: Has @hasMany → Child
- */
-export class ParentV1 extends Model {
-  static table = "schema_diff_parent";
+export const ParentV1 = defineModel("schema_diff_parent", {
+  columns: {
+    id: col.bigIncrement(),
+    name: col.string({ length: 255 }),
+  },
+});
 
-  @column.bigIncrement()
-  declare id: number;
-
-  @column({ type: "varchar", length: 255 })
-  declare name: string;
-
-  @hasMany(() => ChildV1, "parentId")
-  declare children: ChildV1[];
-}
+export const ParentV1Relations = defineRelations(ParentV1, ({ hasMany }) => ({
+  children: hasMany(ChildV1, { foreignKey: "parentId" }),
+}));

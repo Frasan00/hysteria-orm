@@ -3,27 +3,29 @@ import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { UserFactory } from "../test_models/factory/user_factory";
 import { UserWithoutPk } from "../test_models/without_pk/user_without_pk";
 
+let sql: SqlDataSource;
+
 beforeAll(async () => {
-  const dataSource = new SqlDataSource();
-  await dataSource.connect();
+  sql = new SqlDataSource();
+  await sql.connect();
 });
 
 afterAll(async () => {
-  await SqlDataSource.disconnect();
+  await sql.disconnect();
 });
 
 beforeEach(async () => {
-  await SqlDataSource.startGlobalTransaction();
+  await sql.startGlobalTransaction();
 });
 
 afterEach(async () => {
-  await SqlDataSource.rollbackGlobalTransaction();
+  await sql.rollbackGlobalTransaction();
 });
 
 describe(`[${env.DB_TYPE}] Query Builder Complex Edge Cases`, () => {
   test("Should handle deeply nested where conditions without stack overflow", async () => {
     // Edge case: Test for stack overflow with many chained conditions
-    let queryBuilder = UserWithoutPk.query();
+    let queryBuilder = sql.from(UserWithoutPk);
 
     // Create many chained where conditions (potential performance issues)
     for (let i = 0; i < 100; i++) {
@@ -38,7 +40,8 @@ describe(`[${env.DB_TYPE}] Query Builder Complex Edge Cases`, () => {
 
   test("Should handle complex query chains", async () => {
     // Edge case: Complex nested queries that could cause issues
-    const complexQuery = UserWithoutPk.query()
+    const complexQuery = sql
+      .from(UserWithoutPk)
       .where("name", "like", "%test%")
       .orWhere("email", "like", "%@example.com%")
       .where("description", "!=", "spam");
@@ -48,7 +51,7 @@ describe(`[${env.DB_TYPE}] Query Builder Complex Edge Cases`, () => {
 
   test("Should handle memory-intensive query chain operations", async () => {
     // Edge case: Long chain of query operations that could cause memory issues
-    let query = UserWithoutPk.query();
+    let query = sql.from(UserWithoutPk);
 
     // Chain many operations
     for (let i = 0; i < 100; i++) {
@@ -70,7 +73,7 @@ describe(`[${env.DB_TYPE}] Query Builder Complex Edge Cases`, () => {
       (_, i) => `test${i}@example.com`,
     );
 
-    const query = UserWithoutPk.query().whereIn("email", massiveArray);
+    const query = sql.from(UserWithoutPk).whereIn("email", massiveArray);
 
     // Should handle gracefully without SQL errors
     await expect(query.many()).resolves.not.toThrow();
@@ -87,7 +90,8 @@ describe(`[${env.DB_TYPE}] Query Builder Complex Edge Cases`, () => {
     ];
 
     for (const maliciousInput of maliciousInputs) {
-      const query = UserWithoutPk.query()
+      const query = sql
+        .from(UserWithoutPk)
         .where("name", maliciousInput)
         .orWhere("email", maliciousInput)
         .orWhere("description", "like", `%${maliciousInput}%`);
@@ -101,7 +105,8 @@ describe(`[${env.DB_TYPE}] Query Builder Complex Edge Cases`, () => {
     // Edge case: Many concurrent query operations
     // Note: MSSQL transactions don't support concurrent requests, so we run sequentially for MSSQL
     const queryBuilders = Array.from({ length: 50 }, (_, i) =>
-      UserWithoutPk.query()
+      sql
+        .from(UserWithoutPk)
         .where("name", "like", `%test${i}%`)
         .orWhere("email", "like", `%${i}@example.com%`)
         .orderBy("name", "asc")
@@ -147,7 +152,8 @@ describe(`[${env.DB_TYPE}] Query Builder Complex Edge Cases`, () => {
 
     for (const specialString of specialStrings) {
       await expect(
-        UserWithoutPk.query()
+        sql
+          .from(UserWithoutPk)
           .where("name", specialString)
           .orWhere("description", "like", `%${specialString}%`)
           .many(),
@@ -166,13 +172,13 @@ describe(`[${env.DB_TYPE}] Query Builder Complex Edge Cases`, () => {
 
     if (env.DB_TYPE === "postgres" || env.DB_TYPE === "cockroachdb") {
       dbSpecificQueries.push(
-        UserWithoutPk.query().where("name", "ilike", "%test%"),
+        sql.from(UserWithoutPk).where("name", "ilike", "%test%"),
       );
     }
 
     if (env.DB_TYPE === "sqlite") {
       dbSpecificQueries.push(
-        UserWithoutPk.query().where("name", "like", "*test*"),
+        sql.from(UserWithoutPk).where("name", "like", "*test*"),
       );
     }
 
@@ -198,10 +204,11 @@ describe(`[${env.DB_TYPE}] Query Builder Complex Edge Cases`, () => {
       };
     });
 
-    await UserWithoutPk.insertMany(testUsers);
+    await sql.from(UserWithoutPk).insertMany(testUsers);
 
     // Now query large result set
-    const largeResultQuery = UserWithoutPk.query()
+    const largeResultQuery = sql
+      .from(UserWithoutPk)
       .where("name", "like", "TestUser%")
       .orderBy("name", "asc")
       .limit(100);
@@ -210,11 +217,9 @@ describe(`[${env.DB_TYPE}] Query Builder Complex Edge Cases`, () => {
     expect(results.length).toBeLessThanOrEqual(100);
 
     // Verify memory isn't holding onto unnecessary references
-    const memoryQuery = UserWithoutPk.query().where(
-      "name",
-      "like",
-      "TestUser%",
-    );
+    const memoryQuery = sql
+      .from(UserWithoutPk)
+      .where("name", "like", "TestUser%");
     await memoryQuery.many();
 
     // Should be able to run multiple large queries
@@ -224,11 +229,11 @@ describe(`[${env.DB_TYPE}] Query Builder Complex Edge Cases`, () => {
   test("Should handle empty and null value edge cases", async () => {
     // Edge case: Various empty/null combinations
     const edgeCaseQueries = [
-      UserWithoutPk.query().where("name", "=", ""),
-      UserWithoutPk.query().whereNull("description"),
-      UserWithoutPk.query().whereNotNull("name"),
-      UserWithoutPk.query().where("email", "!=", ""),
-      UserWithoutPk.query().where("name", "like", "%%"),
+      sql.from(UserWithoutPk).where("name", "=", ""),
+      sql.from(UserWithoutPk).whereNull("description"),
+      sql.from(UserWithoutPk).whereNotNull("name"),
+      sql.from(UserWithoutPk).where("email", "!=", ""),
+      sql.from(UserWithoutPk).where("name", "like", "%%"),
     ];
 
     for (const query of edgeCaseQueries) {
@@ -238,7 +243,8 @@ describe(`[${env.DB_TYPE}] Query Builder Complex Edge Cases`, () => {
 
   test("Should handle complex ordering and limiting scenarios", async () => {
     // Edge case: Complex sorting and pagination
-    const complexQuery = UserWithoutPk.query()
+    const complexQuery = sql
+      .from(UserWithoutPk)
       .orderBy("name", "asc")
       .orderBy("email", "desc")
       .orderBy("created_at", "asc")
@@ -248,7 +254,8 @@ describe(`[${env.DB_TYPE}] Query Builder Complex Edge Cases`, () => {
     await expect(complexQuery.many()).resolves.not.toThrow();
 
     // Test with very large limit
-    const largeLimitQuery = UserWithoutPk.query()
+    const largeLimitQuery = sql
+      .from(UserWithoutPk)
       .orderBy("name", "asc")
       .limit(999999);
 

@@ -1,4 +1,9 @@
-import { defineModel, col, rel } from "../../../src/sql/models/define_model";
+import {
+  defineModel,
+  col,
+  defineRelations,
+  createSchema,
+} from "../../../src/sql/models/define_model";
 import type { ModelRelation } from "../../../src/sql/models/model_manager/model_manager_types";
 import type { RelatedInstance } from "../../../src/sql/models/model_query_builder/model_query_builder_types";
 
@@ -9,22 +14,30 @@ import type { RelatedInstance } from "../../../src/sql/models/model_query_builde
 type AssertAssignable<A, B> = A extends B ? true : never;
 
 describe("defineModel – nested self-referencing relation types", () => {
-  const User = defineModel("users_self_ref", {
+  const UserBase = defineModel("users_self_ref", {
     columns: {
       id: col.bigIncrement(),
       refUserId: col.bigInteger(),
       email: col.string({ length: 100, nullable: false }),
-      createdAt: col.timestamp<string>({
+      createdAt: col.timestamp({
         nullable: false,
         autoCreate: true,
         serialize: (value: Date | string) =>
           value instanceof Date ? value.toISOString() : value,
       }),
     },
-    relations: {
-      refUser: rel.belongsTo((self) => self, "refUserId"),
-    },
   });
+
+  const UserRelations = defineRelations(UserBase, ({ belongsTo }) => ({
+    refUser: belongsTo(UserBase, { foreignKey: "refUserId" }),
+  }));
+
+  const selfRefSchema = createSchema(
+    { users_self_ref: UserBase },
+    { users_self_ref: UserRelations },
+  );
+
+  const User = selfRefSchema.users_self_ref;
 
   type UserInstance = InstanceType<typeof User>;
 
@@ -51,13 +64,6 @@ describe("defineModel – nested self-referencing relation types", () => {
   });
 
   test("nested self-referencing load types compile correctly", () => {
-    // Type-level: this verifies the exact user scenario that was failing.
-    // If InferRelations doesn't include relations in SelfType,
-    // the inner qb.load("refUser") would error with:
-    //   Argument of type '"refUser"' is not assignable to parameter of type 'never'.
-    //
-    // We verify by checking that the RelatedInstance's ModelRelation
-    // includes the self-ref key, which is what load() uses as its first param.
     type NestedRelated = RelatedInstance<UserInstance, "refUser">;
     type NestedRelations = ModelRelation<NestedRelated>;
     const _check: AssertAssignable<"refUser", NestedRelations> = true;
@@ -65,7 +71,6 @@ describe("defineModel – nested self-referencing relation types", () => {
   });
 
   test("triple-nested self-referencing types compile", () => {
-    // Type-level: third level of nesting should also work
     type Level1 = RelatedInstance<UserInstance, "refUser">;
     type Level2 = RelatedInstance<Level1, "refUser">;
     type Level2Relations = ModelRelation<Level2>;
@@ -82,25 +87,33 @@ describe("defineModel – nested self-referencing relation types", () => {
       },
     });
 
-    const Author = defineModel("authors_self_ref", {
+    const AuthorBase = defineModel("authors_self_ref", {
       columns: {
         id: col.bigIncrement(),
         mentorId: col.bigInteger(),
         name: col.string({ nullable: false }),
       },
-      relations: {
-        mentor: rel.belongsTo((self) => self, "mentorId"),
-        posts: rel.hasMany(() => Post, "authorId"),
-      },
     });
 
+    const AuthorRelations = defineRelations(
+      AuthorBase,
+      ({ belongsTo, hasMany }) => ({
+        mentor: belongsTo(AuthorBase, { foreignKey: "mentorId" }),
+        posts: hasMany(Post, { foreignKey: "authorId" }),
+      }),
+    );
+
+    const authorSchema = createSchema(
+      { authors_self_ref: AuthorBase, posts_self_ref: Post },
+      { authors_self_ref: AuthorRelations },
+    );
+
+    const Author = authorSchema.authors_self_ref;
     type AuthorInstance = InstanceType<typeof Author>;
-    type AuthorRelations = ModelRelation<AuthorInstance>;
+    type AuthorRelationsT = ModelRelation<AuthorInstance>;
 
     // Both relation keys should be valid
-    const _checkMentor: AssertAssignable<"mentor", AuthorRelations> = true;
-    // "posts" is not a self-ref, it's a regular relation — should also be valid
-    // (but posts is Model[] typed, so it's a relation not a ModelKey)
+    const _checkMentor: AssertAssignable<"mentor", AuthorRelationsT> = true;
     expect(_checkMentor).toBe(true);
 
     // Nested: mentor's mentor should still have relations
@@ -125,13 +138,23 @@ describe("defineModel – nested self-referencing relation types", () => {
         parentId: col.bigInteger(),
         label: col.string(),
       },
-      relations: {
-        parent: rel.belongsTo((self) => self, "parentId"),
-        children: rel.hasMany((self) => self, "parentId"),
-      },
     });
 
-    type TreeInstance = InstanceType<typeof TreeNode>;
+    const TreeNodeRelations = defineRelations(
+      TreeNode,
+      ({ belongsTo, hasMany }) => ({
+        parent: belongsTo(TreeNode, { foreignKey: "parentId" }),
+        children: hasMany(TreeNode, { foreignKey: "parentId" }),
+      }),
+    );
+
+    const treeSchema = createSchema(
+      { tree_nodes_nested: TreeNode },
+      { tree_nodes_nested: TreeNodeRelations },
+    );
+
+    const TreeNodeModel = treeSchema.tree_nodes_nested;
+    type TreeInstance = InstanceType<typeof TreeNodeModel>;
 
     // Nested children's children should also be loadable
     type ChildRelated = RelatedInstance<TreeInstance, "children">;
@@ -149,12 +172,19 @@ describe("defineModel – nested self-referencing relation types", () => {
         managerId: col.bigInteger(),
         name: col.string({ nullable: false }),
       },
-      relations: {
-        manager: rel.hasOne((self) => self, "managerId"),
-      },
     });
 
-    type EmpInstance = InstanceType<typeof Employee>;
+    const EmployeeRelations = defineRelations(Employee, ({ hasOne }) => ({
+      manager: hasOne(Employee, { foreignKey: "managerId" }),
+    }));
+
+    const empSchema = createSchema(
+      { employees_nested: Employee },
+      { employees_nested: EmployeeRelations },
+    );
+
+    const EmployeeModel = empSchema.employees_nested;
+    type EmpInstance = InstanceType<typeof EmployeeModel>;
     type ManagerRelated = RelatedInstance<EmpInstance, "manager">;
     type ManagerRelations = ModelRelation<ManagerRelated>;
     const _check: AssertAssignable<"manager", ManagerRelations> = true;

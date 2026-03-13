@@ -1,12 +1,13 @@
 import type { Interpreter } from "../../interpreter";
 import { QueryNode } from "../../../ast/query/query";
 import { Model } from "../../../models/model";
+import { SetTableOptionsNode } from "../../../ast/query/node";
 
 class MysqlSetTableOptionsInterpreter implements Interpreter {
   declare model: typeof Model;
 
   toSql(node: QueryNode): { sql: string; bindings: any[] } {
-    const n = node as any; // SetTableOptionsNode
+    const n = node as SetTableOptionsNode;
     const parts: string[] = [];
 
     if (n.engine) {

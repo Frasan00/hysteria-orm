@@ -1,18 +1,18 @@
 import { env } from "../../../src/env/env";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
 
+let sql: SqlDataSource;
+
 const USERS_TABLE = "users_with_uuid";
 const POSTS_TABLE = "posts_with_uuid";
 
 beforeAll(async () => {
-  const dataSource = new SqlDataSource();
-  await dataSource.connect();
+  sql = new SqlDataSource();
+  await sql.connect();
 });
 
 // Helper function to check if table exists
 async function tableExists(tableName: string): Promise<boolean> {
-  const sql = SqlDataSource.instance;
-
   try {
     const info = await sql.getTableInfo(tableName);
     return info.length > 0;
@@ -28,7 +28,6 @@ describe(`[${env.DB_TYPE}] Schema Introspection - getTableInfo()`, () => {
       return;
     }
 
-    const sql = SqlDataSource.instance;
     const columns = await sql.getTableInfo(USERS_TABLE);
 
     expect(columns.length).toBeGreaterThan(0);
@@ -43,7 +42,6 @@ describe(`[${env.DB_TYPE}] Schema Introspection - getTableInfo()`, () => {
       return;
     }
 
-    const sql = SqlDataSource.instance;
     const columns = await sql.getTableInfo(USERS_TABLE);
 
     const columnNames = columns.map((c) => c.name);
@@ -60,7 +58,6 @@ describe(`[${env.DB_TYPE}] Schema Introspection - getTableInfo()`, () => {
       return;
     }
 
-    const sql = SqlDataSource.instance;
     const columns = await sql.getTableInfo(USERS_TABLE);
 
     const idColumn = columns.find((c) => c.name === "id");
@@ -78,7 +75,6 @@ describe(`[${env.DB_TYPE}] Schema Introspection - getTableInfo()`, () => {
       return;
     }
 
-    const sql = SqlDataSource.instance;
     const columns = await sql.getTableInfo(USERS_TABLE);
 
     columns.forEach((column) => {
@@ -93,7 +89,6 @@ describe(`[${env.DB_TYPE}] Schema Introspection - getTableInfo()`, () => {
       return;
     }
 
-    const sql = SqlDataSource.instance;
     const columns = await sql.getTableInfo(USERS_TABLE);
 
     columns.forEach((column) => {
@@ -103,7 +98,6 @@ describe(`[${env.DB_TYPE}] Schema Introspection - getTableInfo()`, () => {
   });
 
   test("should handle missing table gracefully", async () => {
-    const sql = SqlDataSource.instance;
     const columns = await sql.getTableInfo("non_existent_table");
 
     expect(columns).toEqual([]);
@@ -120,7 +114,6 @@ describe(`[${env.DB_TYPE}] Schema Introspection - getTableInfo()`, () => {
       return;
     }
 
-    const sql = SqlDataSource.instance;
     const columns = await sql.getTableInfo(USERS_TABLE);
 
     const emailColumn = columns.find((c) => c.name === "email");
@@ -141,7 +134,6 @@ describe(`[${env.DB_TYPE}] Schema Introspection - getTableInfo()`, () => {
       return;
     }
 
-    const sql = SqlDataSource.instance;
     const columns = await sql.getTableInfo(USERS_TABLE);
 
     const ageColumn = columns.find((c) => c.name === "age");
@@ -157,7 +149,6 @@ describe(`[${env.DB_TYPE}] Schema Introspection - getTableInfo()`, () => {
       return;
     }
 
-    const sql = SqlDataSource.instance;
     const columns = await sql.getTableInfo(USERS_TABLE);
 
     const createdAtColumn = columns.find((c) => c.name === "createdAt");
@@ -174,7 +165,6 @@ describe(`[${env.DB_TYPE}] Schema Introspection - getIndexInfo()`, () => {
       return;
     }
 
-    const sql = SqlDataSource.instance;
     const indexes = await sql.getIndexInfo(USERS_TABLE);
 
     // At minimum, should have primary key index
@@ -187,7 +177,6 @@ describe(`[${env.DB_TYPE}] Schema Introspection - getIndexInfo()`, () => {
       return;
     }
 
-    const sql = SqlDataSource.instance;
     const indexes = await sql.getIndexInfo(USERS_TABLE);
 
     indexes.forEach((index) => {
@@ -202,7 +191,6 @@ describe(`[${env.DB_TYPE}] Schema Introspection - getIndexInfo()`, () => {
       return;
     }
 
-    const sql = SqlDataSource.instance;
     const indexes = await sql.getIndexInfo(USERS_TABLE);
 
     indexes.forEach((index) => {
@@ -218,7 +206,6 @@ describe(`[${env.DB_TYPE}] Schema Introspection - getIndexInfo()`, () => {
       return;
     }
 
-    const sql = SqlDataSource.instance;
     const indexes = await sql.getIndexInfo(USERS_TABLE);
 
     indexes.forEach((index) => {
@@ -234,7 +221,6 @@ describe(`[${env.DB_TYPE}] Schema Introspection - getIndexInfo()`, () => {
       return;
     }
 
-    const sql = SqlDataSource.instance;
     const indexes = await sql.getIndexInfo(POSTS_TABLE);
 
     // Check if any index has multiple columns
@@ -248,7 +234,6 @@ describe(`[${env.DB_TYPE}] Schema Introspection - getIndexInfo()`, () => {
   });
 
   test("should handle missing table gracefully", async () => {
-    const sql = SqlDataSource.instance;
     const indexes = await sql.getIndexInfo("non_existent_table");
 
     expect(indexes).toEqual([]);
@@ -262,7 +247,6 @@ describe(`[${env.DB_TYPE}] Schema Introspection - getForeignKeyInfo()`, () => {
       return;
     }
 
-    const sql = SqlDataSource.instance;
     const foreignKeys = await sql.getForeignKeyInfo(POSTS_TABLE);
 
     // Posts table should have foreign key to users
@@ -276,7 +260,6 @@ describe(`[${env.DB_TYPE}] Schema Introspection - getForeignKeyInfo()`, () => {
       return;
     }
 
-    const sql = SqlDataSource.instance;
     const foreignKeys = await sql.getForeignKeyInfo(POSTS_TABLE);
 
     foreignKeys.forEach((fk) => {
@@ -294,7 +277,6 @@ describe(`[${env.DB_TYPE}] Schema Introspection - getForeignKeyInfo()`, () => {
       return;
     }
 
-    const sql = SqlDataSource.instance;
     const foreignKeys = await sql.getForeignKeyInfo(POSTS_TABLE);
 
     foreignKeys.forEach((fk) => {
@@ -313,7 +295,6 @@ describe(`[${env.DB_TYPE}] Schema Introspection - getForeignKeyInfo()`, () => {
       return;
     }
 
-    const sql = SqlDataSource.instance;
     const foreignKeys = await sql.getForeignKeyInfo(POSTS_TABLE);
 
     foreignKeys.forEach((fk) => {
@@ -333,7 +314,6 @@ describe(`[${env.DB_TYPE}] Schema Introspection - getForeignKeyInfo()`, () => {
       return;
     }
 
-    const sql = SqlDataSource.instance;
     const foreignKeys = await sql.getForeignKeyInfo(POSTS_TABLE);
 
     foreignKeys.forEach((fk) => {
@@ -344,7 +324,6 @@ describe(`[${env.DB_TYPE}] Schema Introspection - getForeignKeyInfo()`, () => {
   });
 
   test("should handle missing table gracefully", async () => {
-    const sql = SqlDataSource.instance;
     const foreignKeys = await sql.getForeignKeyInfo("non_existent_table");
 
     expect(foreignKeys).toEqual([]);
@@ -357,7 +336,6 @@ describe(`[${env.DB_TYPE}] Schema Introspection - getForeignKeyInfo()`, () => {
       return;
     }
 
-    const sql = SqlDataSource.instance;
     const foreignKeys = await sql.getForeignKeyInfo(POSTS_TABLE);
 
     // Check for composite foreign keys (multiple columns)
@@ -376,7 +354,6 @@ describe(`[${env.DB_TYPE}] Schema Introspection - getPrimaryKeyInfo()`, () => {
       return;
     }
 
-    const sql = SqlDataSource.instance;
     const primaryKey = await sql.getPrimaryKeyInfo(USERS_TABLE);
 
     expect(primaryKey).toBeDefined();
@@ -390,7 +367,6 @@ describe(`[${env.DB_TYPE}] Schema Introspection - getPrimaryKeyInfo()`, () => {
       return;
     }
 
-    const sql = SqlDataSource.instance;
     const primaryKey = await sql.getPrimaryKeyInfo(USERS_TABLE);
 
     expect(primaryKey?.columns).toContain("id");
@@ -402,7 +378,6 @@ describe(`[${env.DB_TYPE}] Schema Introspection - getPrimaryKeyInfo()`, () => {
       return;
     }
 
-    const sql = SqlDataSource.instance;
     const primaryKey = await sql.getPrimaryKeyInfo(USERS_TABLE);
 
     expect(primaryKey).toHaveProperty("name");
@@ -420,7 +395,6 @@ describe(`[${env.DB_TYPE}] Schema Introspection - getPrimaryKeyInfo()`, () => {
       return;
     }
 
-    const sql = SqlDataSource.instance;
     const primaryKey = await sql.getPrimaryKeyInfo(USERS_TABLE);
 
     if (primaryKey && primaryKey.columns.length > 1) {
@@ -432,8 +406,6 @@ describe(`[${env.DB_TYPE}] Schema Introspection - getPrimaryKeyInfo()`, () => {
   });
 
   test("should return undefined or implicit primary key for table without primary key", async () => {
-    const sql = SqlDataSource.instance;
-
     // Create a temporary table without primary key
     const tempTable = `temp_table_no_pk_${Date.now()}`;
 
@@ -457,7 +429,6 @@ describe(`[${env.DB_TYPE}] Schema Introspection - getPrimaryKeyInfo()`, () => {
   });
 
   test("should handle missing table gracefully", async () => {
-    const sql = SqlDataSource.instance;
     const primaryKey = await sql.getPrimaryKeyInfo("non_existent_table");
 
     expect(primaryKey).toBeUndefined();
@@ -471,7 +442,6 @@ describe(`[${env.DB_TYPE}] Schema Introspection - getTableSchema()`, () => {
       return;
     }
 
-    const sql = SqlDataSource.instance;
     const schema = await sql.getTableSchema(USERS_TABLE);
 
     expect(schema).toHaveProperty("columns");
@@ -486,7 +456,6 @@ describe(`[${env.DB_TYPE}] Schema Introspection - getTableSchema()`, () => {
       return;
     }
 
-    const sql = SqlDataSource.instance;
     const schema = await sql.getTableSchema(USERS_TABLE);
 
     // Verify columns
@@ -506,7 +475,6 @@ describe(`[${env.DB_TYPE}] Schema Introspection - getTableSchema()`, () => {
   });
 
   test("should handle missing table gracefully", async () => {
-    const sql = SqlDataSource.instance;
     const schema = await sql.getTableSchema("non_existent_table");
 
     expect(schema.columns).toEqual([]);
@@ -520,8 +488,6 @@ describe(`[${env.DB_TYPE}] Schema Introspection - getTableSchema()`, () => {
     if (!hasTable) {
       return;
     }
-
-    const sql = SqlDataSource.instance;
 
     // Get individual components
     const columns = await sql.getTableInfo(USERS_TABLE);
@@ -546,7 +512,6 @@ describe(`[${env.DB_TYPE}] Schema Introspection - Database Specific`, () => {
       return;
     }
 
-    const sql = SqlDataSource.instance;
     const columns = await sql.getTableInfo(USERS_TABLE);
 
     // SQLite has specific column type handling
@@ -567,7 +532,6 @@ describe(`[${env.DB_TYPE}] Schema Introspection - Database Specific`, () => {
       return;
     }
 
-    const sql = SqlDataSource.instance;
     const columns = await sql.getTableInfo(USERS_TABLE);
 
     // PostgreSQL has rich type information
@@ -586,7 +550,6 @@ describe(`[${env.DB_TYPE}] Schema Introspection - Database Specific`, () => {
       return;
     }
 
-    const sql = SqlDataSource.instance;
     const columns = await sql.getTableInfo(USERS_TABLE);
 
     // MySQL has specific type handling

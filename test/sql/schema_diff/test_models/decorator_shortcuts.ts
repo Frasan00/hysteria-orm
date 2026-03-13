@@ -1,35 +1,22 @@
-import { column } from "../../../../src/sql/models/decorators/model_decorators";
-import { Model } from "../../../../src/sql/models/model";
+import { col, defineModel } from "../../../../src/sql/models/define_model";
 
 /**
  * Model specifically for testing decorator shortcuts idempotency
- * Uses @column.string(), @column.text(), etc. instead of @column({ type: "varchar" })
- * This ensures schema sync is idempotent when using decorator shortcuts
+ * Uses col.string(), col.text(), etc.
+ * This ensures schema sync is idempotent when using col shortcuts
  */
-export class DecoratorShortcutsModel extends Model {
-  static table = "schema_diff_decorator_shortcuts";
-
-  @column.bigIncrement()
-  declare id: number;
-
-  @column.string({ length: 100 })
-  declare name: string;
-
-  @column.string({ length: 255 })
-  declare email: string;
-
-  @column.integer()
-  declare age: number;
-
-  @column.boolean()
-  declare isActive: boolean;
-
-  @column.decimal({ precision: 10, scale: 2 })
-  declare balance: number;
-
-  @column.date()
-  declare birthDate: Date;
-
-  @column.timestamp()
-  declare createdAt: Date;
-}
+export const DecoratorShortcutsModel = defineModel(
+  "schema_diff_decorator_shortcuts",
+  {
+    columns: {
+      id: col.bigIncrement(),
+      name: col.string({ length: 100 }),
+      email: col.string({ length: 255 }),
+      age: col.integer(),
+      isActive: col.boolean(),
+      balance: col.decimal({ precision: 10, scale: 2 }),
+      birthDate: col.date(),
+      createdAt: col.timestamp(),
+    },
+  },
+);

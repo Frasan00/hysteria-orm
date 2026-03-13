@@ -31,7 +31,7 @@ export class MigrationOperationGenerator {
 
   constructor(sql: SqlDataSource) {
     this.sql = sql;
-    this.models = Object.values(this.sql.models);
+    this.models = Object.values(this.sql._models);
     this.dropResolver = new DropOrderResolver(sql);
   }
 
@@ -483,6 +483,53 @@ export class MigrationOperationGenerator {
   }
 
   /**
+   * Built-in column type methods available on CreateTableBuilder
+   */
+  private static readonly BUILTIN_COLUMN_TYPES = new Set([
+    "char",
+    "varchar",
+    "string",
+    "text",
+    "longtext",
+    "mediumtext",
+    "tinytext",
+    "uuid",
+    "ulid",
+    "integer",
+    "tinyint",
+    "smallint",
+    "mediumint",
+    "bigint",
+    "biginteger",
+    "float",
+    "double",
+    "real",
+    "decimal",
+    "numeric",
+    "increment",
+    "bigIncrement",
+    "boolean",
+    "date",
+    "time",
+    "datetime",
+    "timestamp",
+    "year",
+    "json",
+    "jsonb",
+    "binary",
+    "varbinary",
+    "blob",
+    "tinyblob",
+    "mediumblob",
+    "longblob",
+    "geometry",
+    "point",
+    "linestring",
+    "polygon",
+    "multiPoint",
+  ]);
+
+  /**
    * Executes builder method for column creation
    */
   private executeBuilderMethod(
@@ -492,9 +539,23 @@ export class MigrationOperationGenerator {
     args: unknown[],
     applyConstraints: boolean = true,
   ) {
-    const b = Array.isArray(column.type)
-      ? builder.enum(args[0] as string, column.type)
-      : (builder[column.type as keyof typeof builder] as any)(...args);
+    let b: ReturnType<CreateTableBuilder["string"]>;
+
+    if (Array.isArray(column.type)) {
+      b = builder.enum(args[0] as string, column.type);
+    } else if (
+      typeof column.type === "string" &&
+      MigrationOperationGenerator.BUILTIN_COLUMN_TYPES.has(column.type)
+    ) {
+      b = (builder[column.type as keyof typeof builder] as any)(...args);
+    } else if (typeof column.type === "string") {
+      b = builder.custom(args[0] as string, column.type, column.length);
+    } else {
+      throw new Error(
+        `Unknown column type: ${String(column.type)} for column ${column.columnName}`,
+      );
+    }
+
     if (!applyConstraints) {
       return b;
     }

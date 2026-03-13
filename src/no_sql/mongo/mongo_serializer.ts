@@ -5,6 +5,20 @@ import {
 } from "./mongo_models/mongo_collection";
 import { getCollectionProperties } from "./mongo_models/mongo_collection_decorators";
 
+function isRawCollectionModel(collection: typeof Collection): boolean {
+  return typeof collection !== "function" || !collection.prototype;
+}
+
+function serializeRawData<T extends Collection>(data: any): T & { id: string } {
+  const result: Record<string, any> = { id: data._id?.toString() };
+  for (const key of Object.keys(data)) {
+    if (key !== "_id") {
+      result[key] = data[key];
+    }
+  }
+  return result as T & { id: string };
+}
+
 export async function serializeCollection<T extends Collection>(
   collection: typeof Collection,
   data: any,
@@ -12,6 +26,10 @@ export async function serializeCollection<T extends Collection>(
 ): Promise<T | null> {
   if (!data) {
     return null;
+  }
+
+  if (isRawCollectionModel(collection)) {
+    return serializeRawData<T>(data);
   }
 
   const serializedCollection = getBaseCollectionInstance<T>() as Record<

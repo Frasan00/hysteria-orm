@@ -1,18 +1,9 @@
-import { column } from "../../../../../src/sql/models/decorators/model_decorators";
-import { Model } from "../../../../../src/sql/models/model";
+import { col, defineModel } from "../../../../../src/sql/models/define_model";
 
-/**
- * CircularA v3: Remove FK to B, keep bId column
- */
-export class CircularAV3 extends Model {
-  static table = "schema_diff_circular_a";
-
-  @column.bigIncrement()
-  declare id: number;
-
-  @column({ type: "varchar", length: 255 })
-  declare name: string;
-
-  @column({ type: "bigint" })
-  declare bId: number;
-}
+export const CircularAV3 = defineModel("schema_diff_circular_a", {
+  columns: {
+    id: col.bigIncrement(),
+    name: col.string({ length: 255 }),
+    bId: col.bigInteger(),
+  },
+});

@@ -1,54 +1,21 @@
-import { column } from "../../../../../src/sql/models/decorators/model_decorators";
-import { Model } from "../../../../../src/sql/models/model";
+import { col, defineModel } from "../../../../../src/sql/models/define_model";
 
-/**
- * Extended Decorator Shortcuts — all shortcut types for idempotency testing
- */
-export class DecoratorsExtModel extends Model {
-  static table = "schema_diff_decorators_ext";
-
-  @column.bigIncrement()
-  declare id: number;
-
-  @column.string({ length: 150 })
-  declare strCol: string;
-
-  @column.text({ nullable: true })
-  declare textCol: string | null;
-
-  @column.integer()
-  declare intCol: number;
-
-  @column.bigInteger({ nullable: true })
-  declare bigintCol: number | null;
-
-  @column.float({ nullable: true })
-  declare floatCol: number | null;
-
-  @column.decimal({ precision: 12, scale: 3 })
-  declare decCol: number;
-
-  @column.boolean({ default: false })
-  declare boolCol: boolean;
-
-  @column.json({ nullable: true })
-  declare jsonCol: Record<string, unknown> | null;
-
-  @column.date({ nullable: true })
-  declare dateCol: Date | null;
-
-  @column.datetime({ nullable: true })
-  declare datetimeCol: Date | null;
-
-  @column.timestamp({ nullable: true })
-  declare tsCol: Date | null;
-
-  @column.time({ nullable: true })
-  declare timeCol: string | null;
-
-  @column.binary({ nullable: true })
-  declare binCol: Buffer | null;
-
-  @column.uuid({ nullable: true })
-  declare uuidCol: string | null;
-}
+export const DecoratorsExtModel = defineModel("schema_diff_decorators_ext", {
+  columns: {
+    id: col.bigIncrement(),
+    strCol: col.string({ length: 150 }),
+    textCol: col.text({ nullable: true }),
+    intCol: col.integer(),
+    bigintCol: col.bigInteger({ nullable: true }),
+    floatCol: col.float({ nullable: true }),
+    decCol: col.decimal({ precision: 12, scale: 3 }),
+    boolCol: col.boolean({ default: false }),
+    jsonCol: col.json({ nullable: true }),
+    dateCol: col.date({ nullable: true }),
+    datetimeCol: col.datetime({ nullable: true }),
+    tsCol: col.timestamp({ nullable: true }),
+    timeCol: col.time({ nullable: true }),
+    binCol: col.binary({ nullable: true }),
+    uuidCol: col.uuid({ nullable: true }),
+  },
+});

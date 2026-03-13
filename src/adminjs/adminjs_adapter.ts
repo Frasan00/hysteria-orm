@@ -11,8 +11,8 @@ import type {
   PropertyType,
 } from "adminjs";
 import { DriverNotFoundError } from "../drivers/driver_constants";
-import type { AnyModelConstructor } from "../sql/models/define_model_types";
 import type { Model } from "../sql/models/model";
+import { Model as ModelClass } from "../sql/models/model";
 import type { SqlDataSource } from "../sql/sql_data_source";
 import {
   HYSTERIA_TO_ADMINJS_TYPE_MAP,
@@ -20,21 +20,19 @@ import {
   type AdminJsOptions,
 } from "./adminjs_types";
 
-type AnyModel = AnyModelConstructor & {
+type AnyModel = typeof ModelClass & {
   new (): any;
-  updateRecord(
-    pk: string | number,
-    updatePayload: Partial<any>,
-    options?: any,
-  ): Promise<any>;
-  deleteRecord(pk: string | number, options?: any): Promise<void>;
 };
 
 // Store the sqlDataSource reference for resources to use
 let globalSqlDataSource: SqlDataSource | null = null;
 
+function getModelManager(model: AnyModel, db: SqlDataSource) {
+  return db.getModelManager(model);
+}
+
 function applyFilter(
-  query: ReturnType<AnyModel["query"]>,
+  query: ReturnType<ReturnType<typeof getModelManager>["query"]>,
   filter: unknown,
   model: AnyModel,
 ): void {
@@ -58,12 +56,12 @@ function applyFilter(
     const propertyType = HYSTERIA_TO_ADMINJS_TYPE_MAP[typeString] || "string";
 
     if (propertyType === "string" || propertyType === "textarea") {
-      query.whereLike(key as any, `%${value}%`);
+      query.whereLike(key, `%${value}%`);
       continue;
     }
 
     if (propertyType === "boolean") {
-      query.where(key as any, value === "true" || value === true);
+      query.where(key, value === "true" || value === true);
       continue;
     }
 
@@ -71,18 +69,18 @@ function applyFilter(
       if (typeof value === "object" && value !== null) {
         const dateFilter = value as { from?: string; to?: string };
         if (dateFilter.from) {
-          query.where(key as any, ">=", dateFilter.from);
+          query.where(key, ">=", dateFilter.from);
         }
         if (dateFilter.to) {
-          query.where(key as any, "<=", dateFilter.to);
+          query.where(key, "<=", dateFilter.to);
         }
         continue;
       }
-      query.where(key as any, value as string);
+      query.where(key, value as string);
       continue;
     }
 
-    query.where(key as any, value as string | number | boolean);
+    query.where(key, value as string | number | boolean);
   }
 }
 
@@ -185,7 +183,8 @@ async function createHysteriaResourceClass() {
     }
 
     async count(filter: Filter): Promise<number> {
-      const query = this._model.query({ connection: this._db });
+      const mm = getModelManager(this._model, this._db);
+      const query = mm.query();
       applyFilter(query, filter, this._model);
       return query.getCount();
     }
@@ -198,7 +197,8 @@ async function createHysteriaResourceClass() {
         sort?: { sortBy?: string; direction?: "asc" | "desc" };
       } = {},
     ): Promise<BaseRecord[]> {
-      const query = this._model.query({ connection: this._db });
+      const mm = getModelManager(this._model, this._db);
+      const query = mm.query();
       applyFilter(query, filter, this._model);
 
       if (options.limit) {
@@ -225,9 +225,8 @@ async function createHysteriaResourceClass() {
       const primaryKey = this._model.primaryKey;
       if (!primaryKey) return null;
 
-      const record = await this._model.findOneByPrimaryKey(id as string, {
-        connection: this._db,
-      });
+      const mm = getModelManager(this._model, this._db);
+      const record = await mm.findOneByPrimaryKey(id as string);
 
       if (!record) return null;
 
@@ -241,10 +240,8 @@ async function createHysteriaResourceClass() {
       const primaryKey = this._model.primaryKey;
       if (!primaryKey) return [];
 
-      const records = await this._model
-        .query({ connection: this._db })
-        .whereIn(primaryKey, ids)
-        .many();
+      const mm = getModelManager(this._model, this._db);
+      const records = await mm.query().whereIn(primaryKey, ids).many();
 
       return records.map(
         (record: unknown) =>
@@ -256,8 +253,8 @@ async function createHysteriaResourceClass() {
     }
 
     async create(params: Record<string, unknown>): Promise<ParamsType> {
-      const record = await this._model.insert(params, {
-        connection: this._db,
+      const mm = getModelManager(this._model, this._db);
+      const record = await mm.insert(params, {
         returning: ["*"],
       });
       return recordToParams(record as Model, this._model);
@@ -272,19 +269,14 @@ async function createHysteriaResourceClass() {
         throw new Error("Model has no primary key");
       }
 
-      const existingRecord = await this._model.findOneByPrimaryKey(
-        id as string,
-        {
-          connection: this._db,
-        },
-      );
+      const mm = getModelManager(this._model, this._db);
+      const existingRecord = await mm.findOneByPrimaryKey(id as string);
 
       if (!existingRecord) {
         throw new Error("Record not found");
       }
 
-      const updatedRecord = await this._model.updateRecord(id, params, {
-        connection: this._db,
+      const updatedRecord = await mm.updateRecord(id, params, {
         returning: ["*"],
       });
 
@@ -297,14 +289,11 @@ async function createHysteriaResourceClass() {
         throw new Error("Model has no primary key");
       }
 
-      const record = await this._model.findOneByPrimaryKey(id as string, {
-        connection: this._db,
-      });
+      const mm = getModelManager(this._model, this._db);
+      const record = await mm.findOneByPrimaryKey(id as string);
 
       if (record) {
-        await this._model.deleteRecord(id, {
-          connection: this._db,
-        });
+        await mm.deleteRecord(id);
       }
     }
   };

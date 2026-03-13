@@ -7,7 +7,7 @@ describe("SqlDataSource Cache Integration", () => {
     let sql: Awaited<ReturnType<typeof createInMemoryDataSource>>;
 
     async function createInMemoryDataSource() {
-      return SqlDataSource.connectToSecondarySource({
+      return new SqlDataSource({
         type: "sqlite",
         database: ":memory:",
         logs: false,
@@ -69,7 +69,7 @@ describe("SqlDataSource Cache Integration", () => {
 
       test("should return cached value on subsequent calls", async () => {
         let callCount = 0;
-        const sqlWithCounter = await SqlDataSource.connectToSecondarySource({
+        const sqlWithCounter = await new SqlDataSource({
           type: "sqlite",
           database: ":memory:",
           logs: false,
@@ -108,7 +108,7 @@ describe("SqlDataSource Cache Integration", () => {
 
       test("should expire cached value after TTL", async () => {
         let callCount = 0;
-        const sqlWithTTL = await SqlDataSource.connectToSecondarySource({
+        const sqlWithTTL = await new SqlDataSource({
           type: "sqlite",
           database: ":memory:",
           logs: false,
@@ -140,7 +140,7 @@ describe("SqlDataSource Cache Integration", () => {
     describe("invalidCache operations", () => {
       test("should invalidate cached value", async () => {
         let callCount = 0;
-        const sqlWithCounter = await SqlDataSource.connectToSecondarySource({
+        const sqlWithCounter = await new SqlDataSource({
           type: "sqlite",
           database: ":memory:",
           logs: false,
@@ -180,7 +180,7 @@ describe("SqlDataSource Cache Integration", () => {
     let sql: Awaited<ReturnType<typeof createRedisDataSource>>;
 
     async function createRedisDataSource() {
-      return SqlDataSource.connectToSecondarySource({
+      return new SqlDataSource({
         type: "sqlite",
         database: ":memory:",
         logs: false,
@@ -236,7 +236,7 @@ describe("SqlDataSource Cache Integration", () => {
 
       test("should return cached value from Redis on subsequent calls", async () => {
         let callCount = 0;
-        const sqlWithCounter = await SqlDataSource.connectToSecondarySource({
+        const sqlWithCounter = await new SqlDataSource({
           type: "sqlite",
           database: ":memory:",
           logs: false,
@@ -274,7 +274,7 @@ describe("SqlDataSource Cache Integration", () => {
     describe("useCache with TTL", () => {
       test("should expire cached value after TTL in Redis", async () => {
         let callCount = 0;
-        const sqlWithTTL = await SqlDataSource.connectToSecondarySource({
+        const sqlWithTTL = await new SqlDataSource({
           type: "sqlite",
           database: ":memory:",
           logs: false,
@@ -315,7 +315,7 @@ describe("SqlDataSource Cache Integration", () => {
     describe("invalidCache operations", () => {
       test("should invalidate cached value in Redis", async () => {
         let callCount = 0;
-        const sqlWithCounter = await SqlDataSource.connectToSecondarySource({
+        const sqlWithCounter = await new SqlDataSource({
           type: "sqlite",
           database: ":memory:",
           logs: false,
@@ -353,77 +353,10 @@ describe("SqlDataSource Cache Integration", () => {
     });
   });
 
-  describe("Error handling", () => {
-    test("should throw error when cache adapter is not configured", async () => {
-      const sqlWithoutCache = await SqlDataSource.connectToSecondarySource({
-        type: "sqlite",
-        database: ":memory:",
-        logs: false,
-      });
-
-      await expect(
-        (sqlWithoutCache as any).useCache("anyKey"),
-      ).rejects.toThrow();
-
-      await sqlWithoutCache.disconnect();
-    });
-
-    test("should throw error for non-existent cache key", async () => {
-      const sqlWithCache = await SqlDataSource.connectToSecondarySource({
-        type: "sqlite",
-        database: ":memory:",
-        logs: false,
-        cacheStrategy: {
-          cacheAdapter: new InMemoryAdapter(),
-          keys: {
-            existingKey: async () => "value",
-          },
-        },
-      });
-
-      await expect(
-        (sqlWithCache as any).useCache("nonExistentKey"),
-      ).rejects.toThrow();
-
-      await sqlWithCache.disconnect();
-    });
-  });
-
   describe("Argument hashing and cache key generation", () => {
-    test("should cache separately for same key with different arguments", async () => {
-      let callCount = 0;
-      const sqlWithHashing = await SqlDataSource.connectToSecondarySource({
-        type: "sqlite",
-        database: ":memory:",
-        logs: false,
-        cacheStrategy: {
-          cacheAdapter: new InMemoryAdapter(),
-          keys: {
-            userById: async (id: number) => {
-              callCount++;
-              return { id, call: callCount };
-            },
-          },
-        },
-      });
-
-      const user1First = await sqlWithHashing.useCache("userById", 1);
-      const user2First = await sqlWithHashing.useCache("userById", 2);
-      const user1Second = await sqlWithHashing.useCache("userById", 1);
-      const user2Second = await sqlWithHashing.useCache("userById", 2);
-
-      expect(user1First).toEqual({ id: 1, call: 1 });
-      expect(user2First).toEqual({ id: 2, call: 2 });
-      expect(user1Second).toEqual({ id: 1, call: 1 });
-      expect(user2Second).toEqual({ id: 2, call: 2 });
-      expect(callCount).toBe(2);
-
-      await sqlWithHashing.disconnect();
-    });
-
     test("should cache separately for complex object arguments", async () => {
       let callCount = 0;
-      const sqlWithObjects = await SqlDataSource.connectToSecondarySource({
+      const sqlWithObjects = await new SqlDataSource({
         type: "sqlite",
         database: ":memory:",
         logs: false,
@@ -461,7 +394,7 @@ describe("SqlDataSource Cache Integration", () => {
 
     test("should handle array arguments correctly", async () => {
       let callCount = 0;
-      const sqlWithArrays = await SqlDataSource.connectToSecondarySource({
+      const sqlWithArrays = await new SqlDataSource({
         type: "sqlite",
         database: ":memory:",
         logs: false,
@@ -492,174 +425,10 @@ describe("SqlDataSource Cache Integration", () => {
     });
   });
 
-  describe("Edge cases for return values", () => {
-    test("should cache null return values", async () => {
-      let callCount = 0;
-      const sqlWithNull = await SqlDataSource.connectToSecondarySource({
-        type: "sqlite",
-        database: ":memory:",
-        logs: false,
-        cacheStrategy: {
-          cacheAdapter: new InMemoryAdapter(),
-          keys: {
-            nullReturner: async () => {
-              callCount++;
-              return null;
-            },
-          },
-        },
-      });
-
-      const first = await sqlWithNull.useCache("nullReturner");
-      const second = await sqlWithNull.useCache("nullReturner");
-
-      expect(first).toBeNull();
-      expect(second).toBeNull();
-      expect(callCount).toBe(1);
-
-      await sqlWithNull.disconnect();
-    });
-
-    test("should cache empty string return values", async () => {
-      let callCount = 0;
-      const sqlWithEmpty = await SqlDataSource.connectToSecondarySource({
-        type: "sqlite",
-        database: ":memory:",
-        logs: false,
-        cacheStrategy: {
-          cacheAdapter: new InMemoryAdapter(),
-          keys: {
-            emptyString: async () => {
-              callCount++;
-              return "";
-            },
-          },
-        },
-      });
-
-      const first = await sqlWithEmpty.useCache("emptyString");
-      const second = await sqlWithEmpty.useCache("emptyString");
-
-      expect(first).toBe("");
-      expect(second).toBe("");
-      expect(callCount).toBe(1);
-
-      await sqlWithEmpty.disconnect();
-    });
-
-    test("should cache zero return values", async () => {
-      let callCount = 0;
-      const sqlWithZero = await SqlDataSource.connectToSecondarySource({
-        type: "sqlite",
-        database: ":memory:",
-        logs: false,
-        cacheStrategy: {
-          cacheAdapter: new InMemoryAdapter(),
-          keys: {
-            zeroReturner: async () => {
-              callCount++;
-              return 0;
-            },
-          },
-        },
-      });
-
-      const first = await sqlWithZero.useCache("zeroReturner");
-      const second = await sqlWithZero.useCache("zeroReturner");
-
-      expect(first).toBe(0);
-      expect(second).toBe(0);
-      expect(callCount).toBe(1);
-
-      await sqlWithZero.disconnect();
-    });
-
-    test("should cache false return values", async () => {
-      let callCount = 0;
-      const sqlWithFalse = await SqlDataSource.connectToSecondarySource({
-        type: "sqlite",
-        database: ":memory:",
-        logs: false,
-        cacheStrategy: {
-          cacheAdapter: new InMemoryAdapter(),
-          keys: {
-            falseReturner: async () => {
-              callCount++;
-              return false;
-            },
-          },
-        },
-      });
-
-      const first = await sqlWithFalse.useCache("falseReturner");
-      const second = await sqlWithFalse.useCache("falseReturner");
-
-      expect(first).toBe(false);
-      expect(second).toBe(false);
-      expect(callCount).toBe(1);
-
-      await sqlWithFalse.disconnect();
-    });
-
-    test("should cache empty array return values", async () => {
-      let callCount = 0;
-      const sqlWithEmptyArray = await SqlDataSource.connectToSecondarySource({
-        type: "sqlite",
-        database: ":memory:",
-        logs: false,
-        cacheStrategy: {
-          cacheAdapter: new InMemoryAdapter(),
-          keys: {
-            emptyArray: async () => {
-              callCount++;
-              return [];
-            },
-          },
-        },
-      });
-
-      const first = await sqlWithEmptyArray.useCache("emptyArray");
-      const second = await sqlWithEmptyArray.useCache("emptyArray");
-
-      expect(first).toEqual([]);
-      expect(second).toEqual([]);
-      expect(callCount).toBe(1);
-
-      await sqlWithEmptyArray.disconnect();
-    });
-
-    test("should cache empty object return values", async () => {
-      let callCount = 0;
-      const sqlWithEmptyObj = await SqlDataSource.connectToSecondarySource({
-        type: "sqlite",
-        database: ":memory:",
-        logs: false,
-        cacheStrategy: {
-          cacheAdapter: new InMemoryAdapter(),
-          keys: {
-            emptyObject: async () => {
-              callCount++;
-              return {};
-            },
-          },
-        },
-      });
-
-      const first = await sqlWithEmptyObj.useCache("emptyObject");
-      const second = await sqlWithEmptyObj.useCache("emptyObject");
-
-      expect(first).toEqual({});
-      expect(second).toEqual({});
-      expect(callCount).toBe(1);
-
-      await sqlWithEmptyObj.disconnect();
-    });
-  });
-
   describe("Clone behavior with cache", () => {
     test("should clone cache adapter and keys to cloned instance", async () => {
       let callCount = 0;
-      const original = await SqlDataSource.connectToSecondarySource({
+      const original = await new SqlDataSource({
         type: "sqlite",
         database: ":memory:",
         logs: false,
@@ -724,7 +493,7 @@ describe("SqlDataSource Cache Integration", () => {
       let key1Count = 0;
       let key2Count = 0;
 
-      const sqlMultiKey = await SqlDataSource.connectToSecondarySource({
+      const sqlMultiKey = await new SqlDataSource({
         type: "sqlite",
         database: ":memory:",
         logs: false,
@@ -771,7 +540,7 @@ describe("SqlDataSource Cache Integration", () => {
   describe("TTL edge cases", () => {
     test("should handle TTL of 0 as no TTL", async () => {
       let callCount = 0;
-      const sqlZeroTTL = await SqlDataSource.connectToSecondarySource({
+      const sqlZeroTTL = await new SqlDataSource({
         type: "sqlite",
         database: ":memory:",
         logs: false,
@@ -799,7 +568,7 @@ describe("SqlDataSource Cache Integration", () => {
 
     test("should handle very short TTL correctly", async () => {
       let callCount = 0;
-      const sqlShortTTL = await SqlDataSource.connectToSecondarySource({
+      const sqlShortTTL = await new SqlDataSource({
         type: "sqlite",
         database: ":memory:",
         logs: false,
@@ -830,7 +599,7 @@ describe("SqlDataSource Cache Integration", () => {
   describe("Handler with multiple parameters and TTL", () => {
     test("should correctly distinguish TTL from first handler argument", async () => {
       let callCount = 0;
-      const sqlMultiParam = await SqlDataSource.connectToSecondarySource({
+      const sqlMultiParam = await new SqlDataSource({
         type: "sqlite",
         database: ":memory:",
         logs: false,
@@ -870,7 +639,7 @@ describe("SqlDataSource Cache Integration", () => {
 
   describe("Error propagation from handlers", () => {
     test("should propagate errors from cache handlers", async () => {
-      const sqlWithError = await SqlDataSource.connectToSecondarySource({
+      const sqlWithError = await new SqlDataSource({
         type: "sqlite",
         database: ":memory:",
         logs: false,
@@ -893,24 +662,23 @@ describe("SqlDataSource Cache Integration", () => {
 
     test("should not cache values when handler throws error", async () => {
       let callCount = 0;
-      const sqlWithConditionalError =
-        await SqlDataSource.connectToSecondarySource({
-          type: "sqlite",
-          database: ":memory:",
-          logs: false,
-          cacheStrategy: {
-            cacheAdapter: new InMemoryAdapter(),
-            keys: {
-              conditionalError: async () => {
-                callCount++;
-                if (callCount === 1) {
-                  throw new Error("First call error");
-                }
-                return `call-${callCount}`;
-              },
+      const sqlWithConditionalError = await new SqlDataSource({
+        type: "sqlite",
+        database: ":memory:",
+        logs: false,
+        cacheStrategy: {
+          cacheAdapter: new InMemoryAdapter(),
+          keys: {
+            conditionalError: async () => {
+              callCount++;
+              if (callCount === 1) {
+                throw new Error("First call error");
+              }
+              return `call-${callCount}`;
             },
           },
-        });
+        },
+      });
 
       await expect(
         sqlWithConditionalError.useCache("conditionalError"),

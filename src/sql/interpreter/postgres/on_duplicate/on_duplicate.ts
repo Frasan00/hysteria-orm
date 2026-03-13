@@ -24,8 +24,17 @@ class PostgresOnDuplicateInterpreter implements Interpreter {
       .join(", ");
 
     if (onDuplicateNode.mode === "ignore") {
+      let sql = `on conflict (${formattedConflictColumns}) do nothing`;
+      if (onDuplicateNode.returning && onDuplicateNode.returning.length) {
+        const returningCols = onDuplicateNode.returning
+          .map((column) =>
+            interpreterUtils.formatStringColumn("postgres", column),
+          )
+          .join(", ");
+        sql += ` returning ${returningCols}`;
+      }
       return {
-        sql: `on conflict (${formattedConflictColumns}) do nothing`,
+        sql,
         bindings: [],
       };
     }
@@ -46,8 +55,6 @@ class PostgresOnDuplicateInterpreter implements Interpreter {
         )
         .join(", ");
       sql += ` returning ${returningCols}`;
-    } else {
-      sql += " returning *";
     }
 
     return {

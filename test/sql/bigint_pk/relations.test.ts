@@ -1,28 +1,32 @@
 import { env } from "../../../src/env/env";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
-import { AddressWithBigint } from "../test_models/bigint/address_bigint";
-import { PostWithBigint } from "../test_models/bigint/post_bigint";
-import { UserWithBigint } from "../test_models/bigint/user_bigint";
+import {
+  AddressWithBigint,
+  PostWithBigint,
+  UserWithBigint,
+} from "../test_models/bigint/schema";
 import { AddressFactory } from "../test_models/factory/address_factory";
 import { PostFactory } from "../test_models/factory/post_factory";
 import { UserAddressFactory } from "../test_models/factory/user_address_factory";
 import { UserFactory } from "../test_models/factory/user_factory";
 
+let sql: SqlDataSource;
+
 beforeAll(async () => {
-  const dataSource = new SqlDataSource();
-  await dataSource.connect();
+  sql = new SqlDataSource();
+  await sql.connect();
 });
 
 afterAll(async () => {
-  await SqlDataSource.disconnect();
+  await sql.disconnect();
 });
 
 beforeEach(async () => {
-  await SqlDataSource.startGlobalTransaction();
+  await sql.startGlobalTransaction();
 });
 
 afterEach(async () => {
-  await SqlDataSource.rollbackGlobalTransaction();
+  await sql.rollbackGlobalTransaction();
 });
 
 describe(`[${env.DB_TYPE}] bigint pk base relations`, () => {
@@ -36,17 +40,18 @@ describe(`[${env.DB_TYPE}] bigint pk base relations`, () => {
   }
 
   test("bigint HasOne relation", async () => {
-    const users = await UserFactory.userWithBigint(3);
+    const users = await UserFactory.userWithBigint(sql, 3);
     const posts = [];
     for (const user of users) {
-      const post = await PostFactory.postWithBigint(user.id, 1);
+      const post = await PostFactory.postWithBigint(sql, user.id, 1);
       posts.push(post);
     }
 
     expect(users).toHaveLength(3);
     expect(posts).toHaveLength(3);
 
-    const userWithLoadedPosts = await UserWithBigint.query()
+    const userWithLoadedPosts = await sql
+      .from(UserWithBigint)
       .load("post")
       .many();
 
@@ -56,17 +61,18 @@ describe(`[${env.DB_TYPE}] bigint pk base relations`, () => {
   });
 
   test("bigint HasOne relation with column selection on relation", async () => {
-    const users = await UserFactory.userWithBigint(3);
+    const users = await UserFactory.userWithBigint(sql, 3);
     const posts = [];
     for (const user of users) {
-      const post = await PostFactory.postWithBigint(user.id, 1);
+      const post = await PostFactory.postWithBigint(sql, user.id, 1);
       posts.push(post);
     }
 
     expect(users).toHaveLength(3);
     expect(posts).toHaveLength(3);
 
-    const userWithLoadedPosts = await UserWithBigint.query()
+    const userWithLoadedPosts = await sql
+      .from(UserWithBigint)
       .whereIn(
         "id",
         users.map((u) => u.id),
@@ -85,17 +91,18 @@ describe(`[${env.DB_TYPE}] bigint pk base relations`, () => {
   });
 
   test("bigint HasMany relation with filtering on the relation", async () => {
-    const user = await UserFactory.userWithBigint(1);
-    const posts: PostWithBigint[] = [];
+    const user = await UserFactory.userWithBigint(sql, 1);
+    const posts: any[] = [];
     for (let i = 0; i < 3; i++) {
-      const post = await PostFactory.postWithBigint(user.id, 1);
+      const post = await PostFactory.postWithBigint(sql, user.id, 1);
       posts.push(post);
     }
 
     expect(user).toBeDefined();
     expect(posts).toHaveLength(3);
 
-    const userWithLoadedPosts = await UserWithBigint.query()
+    const userWithLoadedPosts = await sql
+      .from(UserWithBigint)
       .where("id", user.id)
       .load("posts", (qb) => qb.where("title", posts[0].title))
       .one();
@@ -106,17 +113,18 @@ describe(`[${env.DB_TYPE}] bigint pk base relations`, () => {
   });
 
   test("bigint HasOne relation nested with a belongs to relation", async () => {
-    const users = await UserFactory.userWithBigint(3);
+    const users = await UserFactory.userWithBigint(sql, 3);
     const posts = [];
     for (const user of users) {
-      const post = await PostFactory.postWithBigint(user.id, 1);
+      const post = await PostFactory.postWithBigint(sql, user.id, 1);
       posts.push(post);
     }
 
     expect(users).toHaveLength(3);
     expect(posts).toHaveLength(3);
 
-    const userWithLoadedPosts = await UserWithBigint.query()
+    const userWithLoadedPosts = await sql
+      .from(UserWithBigint)
       .load("post", (qb) => qb.load("user"))
       .many();
 
@@ -127,17 +135,18 @@ describe(`[${env.DB_TYPE}] bigint pk base relations`, () => {
   });
 
   test("bigint with multiple nested relations", async () => {
-    const users = await UserFactory.userWithBigint(3);
+    const users = await UserFactory.userWithBigint(sql, 3);
     const posts = [];
     for (const user of users) {
-      const post = await PostFactory.postWithBigint(user.id, 1);
+      const post = await PostFactory.postWithBigint(sql, user.id, 1);
       posts.push(post);
     }
 
     expect(users).toHaveLength(3);
     expect(posts).toHaveLength(3);
 
-    const userWithLoadedPosts = await UserWithBigint.query()
+    const userWithLoadedPosts = await sql
+      .from(UserWithBigint)
       .load("post", (qb) =>
         qb.load("user", (qb2) => qb2.load("post", (qb3) => qb3.load("user"))),
       )
@@ -151,20 +160,21 @@ describe(`[${env.DB_TYPE}] bigint pk base relations`, () => {
   });
 
   test("bigint HasMany relation", async () => {
-    const user = await UserFactory.userWithBigint(1);
+    const user = await UserFactory.userWithBigint(sql, 1);
     const posts = [];
     for (let i = 0; i < 3; i++) {
-      const post = await PostFactory.postWithBigint(user.id, 1);
+      const post = await PostFactory.postWithBigint(sql, user.id, 1);
       posts.push(post);
     }
 
     expect(user).toBeDefined();
     expect(posts).toHaveLength(3);
 
-    const userWithLoadedPosts = (await UserWithBigint.query()
+    const userWithLoadedPosts = await sql
+      .from(UserWithBigint)
       .where("id", user.id)
       .load("posts")
-      .one()) as UserWithBigint;
+      .oneOrFail();
 
     expect(userWithLoadedPosts).toBeDefined();
     expect(userWithLoadedPosts.posts).toHaveLength(3);
@@ -188,21 +198,24 @@ describe(`[${env.DB_TYPE}] bigint pk many to many relations`, () => {
   }
 
   test("bigint many to many relation", async () => {
-    const users = await UserFactory.userWithBigint(10);
-    const addresses = await AddressFactory.addressWithBigint(6);
+    const users = await UserFactory.userWithBigint(sql, 10);
+    const addresses = await AddressFactory.addressWithBigint(sql, 6);
 
     // #region first user has 3 addresses
     await UserAddressFactory.userAddressWithBigint(
+      sql,
       1,
       users[0].id,
       addresses[0].id,
     );
     await UserAddressFactory.userAddressWithBigint(
+      sql,
       1,
       users[0].id,
       addresses[1].id,
     );
     await UserAddressFactory.userAddressWithBigint(
+      sql,
       1,
       users[0].id,
       addresses[2].id,
@@ -212,11 +225,13 @@ describe(`[${env.DB_TYPE}] bigint pk many to many relations`, () => {
 
     // #region second user has 2 addresses
     await UserAddressFactory.userAddressWithBigint(
+      sql,
       1,
       users[1].id,
       addresses[3].id,
     );
     await UserAddressFactory.userAddressWithBigint(
+      sql,
       1,
       users[1].id,
       addresses[4].id,
@@ -225,13 +240,15 @@ describe(`[${env.DB_TYPE}] bigint pk many to many relations`, () => {
 
     // #region third user has 1 address
     await UserAddressFactory.userAddressWithBigint(
+      sql,
       1,
       users[2].id,
       addresses[5].id,
     );
     // #endregion
 
-    const userWithLoadedAddresses = await UserWithBigint.query()
+    const userWithLoadedAddresses = await sql
+      .from(UserWithBigint)
       .load("addresses", (qb) => qb.load("users"))
       .many();
 
@@ -250,19 +267,35 @@ describe(`[${env.DB_TYPE}] bigint pk many to many relations`, () => {
   });
 
   test("bigint many to many relation nested from Address", async () => {
-    const user = await UserFactory.userWithBigint(1);
-    const addresses = await AddressFactory.addressWithBigint(3);
+    const user = await UserFactory.userWithBigint(sql, 1);
+    const addresses = await AddressFactory.addressWithBigint(sql, 3);
 
     // #region first user has 3 addresses
-    await UserAddressFactory.userAddressWithBigint(1, user.id, addresses[0].id);
-    await UserAddressFactory.userAddressWithBigint(1, user.id, addresses[1].id);
-    await UserAddressFactory.userAddressWithBigint(1, user.id, addresses[2].id);
+    await UserAddressFactory.userAddressWithBigint(
+      sql,
+      1,
+      user.id,
+      addresses[0].id,
+    );
+    await UserAddressFactory.userAddressWithBigint(
+      sql,
+      1,
+      user.id,
+      addresses[1].id,
+    );
+    await UserAddressFactory.userAddressWithBigint(
+      sql,
+      1,
+      user.id,
+      addresses[2].id,
+    );
 
     // #region first user has 3 posts
-    await PostFactory.postWithBigint(user.id, 3);
+    await PostFactory.postWithBigint(sql, user.id, 3);
     // #endregion
 
-    const addressesWithLoadedPosts = await AddressWithBigint.query()
+    const addressesWithLoadedPosts = await sql
+      .from(AddressWithBigint)
       .load("users", (qb) =>
         qb.load("posts", (qb2) =>
           qb2.load("user", (qb3) =>
@@ -275,11 +308,11 @@ describe(`[${env.DB_TYPE}] bigint pk many to many relations`, () => {
     expect(addressesWithLoadedPosts).toHaveLength(3);
     expect(addressesWithLoadedPosts[0].users).toHaveLength(1);
     expect(addressesWithLoadedPosts[0].users[0]?.posts).toHaveLength(3);
-    expect(addressesWithLoadedPosts[0].users[0]?.posts[0]?.user?.id).toBe(
-      user.id,
-    );
     expect(
-      addressesWithLoadedPosts[0].users[0]?.posts[0]?.user?.addresses,
+      (addressesWithLoadedPosts[0].users[0] as any)?.posts[0]?.user?.id,
+    ).toBe(user.id);
+    expect(
+      (addressesWithLoadedPosts[0].users[0] as any)?.posts[0]?.user?.addresses,
     ).toHaveLength(3);
   });
 });
@@ -294,12 +327,13 @@ describe(`[${env.DB_TYPE}] bigint pk relations with limit and offset has many`, 
   }
 
   test("bigint HasMany relation with limit and offset", async () => {
-    const user = await UserFactory.userWithBigint(1);
-    const user2 = await UserFactory.userWithBigint(1);
-    await PostFactory.postWithBigint(user.id, 10);
-    await PostFactory.postWithBigint(user2.id, 10);
+    const user = await UserFactory.userWithBigint(sql, 1);
+    const user2 = await UserFactory.userWithBigint(sql, 1);
+    await PostFactory.postWithBigint(sql, user.id, 10);
+    await PostFactory.postWithBigint(sql, user2.id, 10);
 
-    const userWithLoadedPosts = await UserWithBigint.query()
+    const userWithLoadedPosts = await sql
+      .from(UserWithBigint)
       .load("posts", (qb) =>
         qb
           .select("id", "title", "userId")
@@ -316,12 +350,13 @@ describe(`[${env.DB_TYPE}] bigint pk relations with limit and offset has many`, 
   });
 
   test("bigint HasMany relation with limit", async () => {
-    const user = await UserFactory.userWithBigint(1);
-    const user2 = await UserFactory.userWithBigint(1);
-    await PostFactory.postWithBigint(user.id, 10);
-    await PostFactory.postWithBigint(user2.id, 10);
+    const user = await UserFactory.userWithBigint(sql, 1);
+    const user2 = await UserFactory.userWithBigint(sql, 1);
+    await PostFactory.postWithBigint(sql, user.id, 10);
+    await PostFactory.postWithBigint(sql, user2.id, 10);
 
-    const userWithLoadedPosts = await UserWithBigint.query()
+    const userWithLoadedPosts = await sql
+      .from(UserWithBigint)
       .load("posts", (qb) =>
         qb
           .select("id", "title", "userId")
@@ -337,12 +372,13 @@ describe(`[${env.DB_TYPE}] bigint pk relations with limit and offset has many`, 
   });
 
   test("bigint HasMany relation with offset", async () => {
-    const user = await UserFactory.userWithBigint(1);
-    const user2 = await UserFactory.userWithBigint(1);
-    await PostFactory.postWithBigint(user.id, 10);
-    await PostFactory.postWithBigint(user2.id, 10);
+    const user = await UserFactory.userWithBigint(sql, 1);
+    const user2 = await UserFactory.userWithBigint(sql, 1);
+    await PostFactory.postWithBigint(sql, user.id, 10);
+    await PostFactory.postWithBigint(sql, user2.id, 10);
 
-    const userWithLoadedPosts = await UserWithBigint.query()
+    const userWithLoadedPosts = await sql
+      .from(UserWithBigint)
       .load("posts", (qb) =>
         qb
           .select("id", "title", "userId")
@@ -368,16 +404,27 @@ describe(`[${env.DB_TYPE}] bigint pk relations with limit and offset many to man
   }
 
   test("bigint ManyToMany relation with limit and offset", async () => {
-    const user = await UserFactory.userWithBigint(1);
-    const user2 = await UserFactory.userWithBigint(1);
-    const addresses = await AddressFactory.addressWithBigint(10);
+    const user = await UserFactory.userWithBigint(sql, 1);
+    const user2 = await UserFactory.userWithBigint(sql, 1);
+    const addresses = await AddressFactory.addressWithBigint(sql, 10);
 
     for (const address of addresses) {
-      await UserAddressFactory.userAddressWithBigint(1, user.id, address.id);
-      await UserAddressFactory.userAddressWithBigint(1, user2.id, address.id);
+      await UserAddressFactory.userAddressWithBigint(
+        sql,
+        1,
+        user.id,
+        address.id,
+      );
+      await UserAddressFactory.userAddressWithBigint(
+        sql,
+        1,
+        user2.id,
+        address.id,
+      );
     }
 
-    const usersWithAddresses = await UserWithBigint.query()
+    const usersWithAddresses = await sql
+      .from(UserWithBigint)
       .load("addresses", (qb) =>
         qb.orderBy("address_with_bigint.id", "asc").limit(3).offset(1),
       )
@@ -390,16 +437,27 @@ describe(`[${env.DB_TYPE}] bigint pk relations with limit and offset many to man
   });
 
   test("bigint ManyToMany relation with limit", async () => {
-    const user = await UserFactory.userWithBigint(1);
-    const user2 = await UserFactory.userWithBigint(1);
-    const addresses = await AddressFactory.addressWithBigint(10);
+    const user = await UserFactory.userWithBigint(sql, 1);
+    const user2 = await UserFactory.userWithBigint(sql, 1);
+    const addresses = await AddressFactory.addressWithBigint(sql, 10);
 
     for (const address of addresses) {
-      await UserAddressFactory.userAddressWithBigint(1, user.id, address.id);
-      await UserAddressFactory.userAddressWithBigint(1, user2.id, address.id);
+      await UserAddressFactory.userAddressWithBigint(
+        sql,
+        1,
+        user.id,
+        address.id,
+      );
+      await UserAddressFactory.userAddressWithBigint(
+        sql,
+        1,
+        user2.id,
+        address.id,
+      );
     }
 
-    const usersWithAddresses = await UserWithBigint.query()
+    const usersWithAddresses = await sql
+      .from(UserWithBigint)
       .load("addresses", (qb) =>
         qb.orderBy("address_with_bigint.id", "asc").limit(3),
       )
@@ -412,16 +470,27 @@ describe(`[${env.DB_TYPE}] bigint pk relations with limit and offset many to man
   });
 
   test("bigint ManyToMany relation with offset", async () => {
-    const user = await UserFactory.userWithBigint(1);
-    const user2 = await UserFactory.userWithBigint(1);
-    const addresses = await AddressFactory.addressWithBigint(10);
+    const user = await UserFactory.userWithBigint(sql, 1);
+    const user2 = await UserFactory.userWithBigint(sql, 1);
+    const addresses = await AddressFactory.addressWithBigint(sql, 10);
 
     for (const address of addresses) {
-      await UserAddressFactory.userAddressWithBigint(1, user.id, address.id);
-      await UserAddressFactory.userAddressWithBigint(1, user2.id, address.id);
+      await UserAddressFactory.userAddressWithBigint(
+        sql,
+        1,
+        user.id,
+        address.id,
+      );
+      await UserAddressFactory.userAddressWithBigint(
+        sql,
+        1,
+        user2.id,
+        address.id,
+      );
     }
 
-    const usersWithAddresses = await UserWithBigint.query()
+    const usersWithAddresses = await sql
+      .from(UserWithBigint)
       .load("addresses", (qb) =>
         qb.orderBy("address_with_bigint.id", "asc").offset(9),
       )
@@ -436,12 +505,13 @@ describe(`[${env.DB_TYPE}] bigint pk relations with limit and offset many to man
 
 describe(`[${env.DB_TYPE}] bigint pk sync many to many`, () => {
   test("bigint sync many to many", async () => {
-    const user = await UserFactory.userWithBigint(1);
-    const addresses = await AddressFactory.addressWithBigint(10);
+    const user = await UserFactory.userWithBigint(sql, 1);
+    const addresses = await AddressFactory.addressWithBigint(sql, 10);
 
-    await UserWithBigint.sync("addresses", user, addresses);
+    await sql.from(UserWithBigint).sync("addresses", user, addresses);
 
-    const userWithAddresses = await UserWithBigint.query()
+    const userWithAddresses = await sql
+      .from(UserWithBigint)
       .where("id", user.id)
       .load("addresses")
       .one();
@@ -449,10 +519,11 @@ describe(`[${env.DB_TYPE}] bigint pk sync many to many`, () => {
     expect(userWithAddresses).toBeDefined();
     expect(userWithAddresses?.addresses).toHaveLength(10);
 
-    const addressesWithUsers = await AddressWithBigint.query()
+    const addressesWithUsers = await sql
+      .from(AddressWithBigint)
       .whereIn(
         "id",
-        addresses.map((a) => a.id),
+        addresses.map((a: any) => a.id),
       )
       .load("users")
       .many();

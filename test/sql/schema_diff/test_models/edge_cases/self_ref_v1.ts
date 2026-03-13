@@ -1,24 +1,23 @@
 import {
-  belongsTo,
-  column,
-} from "../../../../../src/sql/models/decorators/model_decorators";
-import { Model } from "../../../../../src/sql/models/model";
+  col,
+  createSchema,
+  defineModel,
+  defineRelations,
+} from "../../../../../src/sql/models/define_model";
 
-/**
- * SelfRef v1: Self-referencing FK (parentId → self)
- */
-export class SelfRefV1 extends Model {
-  static table = "schema_diff_self_ref";
+export const SelfRefV1 = defineModel("schema_diff_self_ref", {
+  columns: {
+    id: col.bigIncrement(),
+    name: col.string({ length: 255 }),
+    parentId: col.bigInteger({ nullable: true }),
+  },
+});
 
-  @column.bigIncrement()
-  declare id: number;
+export const SelfRefV1Relations = defineRelations(
+  SelfRefV1,
+  ({ belongsTo }) => ({
+    parent: belongsTo(SelfRefV1, { foreignKey: "parentId" }),
+  }),
+);
 
-  @column({ type: "varchar", length: 255 })
-  declare name: string;
-
-  @column({ type: "bigint", nullable: true })
-  declare parentId: number | null;
-
-  @belongsTo(() => SelfRefV1, "parentId")
-  declare parent: SelfRefV1;
-}
+createSchema({ SelfRefV1 }, { SelfRefV1: SelfRefV1Relations });

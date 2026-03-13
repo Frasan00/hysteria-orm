@@ -1,4 +1,26 @@
-import pluralize from "pluralize";
+/**
+ * Simple singularize: strips trailing "s" (or "es" after certain consonants).
+ * Covers the common ORM case where table names are like "users" → "user",
+ * "addresses" → "address", "posts" → "post".
+ */
+function simpleSingularize(word: string): string {
+  if (word.endsWith("ies")) {
+    return word.slice(0, -3) + "y";
+  }
+  if (
+    word.endsWith("sses") ||
+    word.endsWith("shes") ||
+    word.endsWith("ches") ||
+    word.endsWith("xes") ||
+    word.endsWith("zes")
+  ) {
+    return word.slice(0, -2);
+  }
+  if (word.endsWith("s") && !word.endsWith("ss")) {
+    return word.slice(0, -1);
+  }
+  return word;
+}
 
 export const COLUMN_METADATA_KEY = Symbol("columns");
 export const PRIMARY_KEY_METADATA_KEY = Symbol("primaryKey");
@@ -8,7 +30,7 @@ export const UNIQUE_METADATA_KEY = Symbol("uniques");
 export const CHECK_METADATA_KEY = Symbol("checks");
 
 export const getDefaultForeignKey = (table: string) => {
-  return `${pluralize.singular(table)}_id`;
+  return `${simpleSingularize(table)}_id`;
 };
 
 export const getDefaultIndexName = (table: string, column: string) => {

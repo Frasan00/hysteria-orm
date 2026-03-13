@@ -54,10 +54,10 @@ When using Hysteria ORM, follow these security best practices:
 Example of safe query:
 ```typescript
 // Safe - uses parameterization
-await User.query().where('email', email).one();
+await sql.from(users).where('email', email).one();
 
 // Unsafe - avoid raw queries with user input
-await User.query().raw(`SELECT * FROM users WHERE email = '${email}'`);
+await sql.from(users).raw(`SELECT * FROM users WHERE email = '${email}'`);
 ```
 
 ### 3. Connection Security

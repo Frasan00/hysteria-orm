@@ -1,16 +1,26 @@
+import {
+  AnyModelConstructor,
+  SqlDataSourceModel,
+  SqlDataSourceType,
+} from "../..";
 import { CaseConvention } from "../../utils/case_utils";
 import { SqlDataSource } from "../sql_data_source";
 import { ReplicationType } from "../sql_data_source_types";
 import { Transaction } from "../transactions/transaction";
 import { Model } from "./model";
 import { ExcludeRelations } from "./model_manager/model_manager_types";
+import { ModelQueryBuilder } from "./model_query_builder/model_query_builder";
 
 /**
  * Extracts only non-method keys from a type.
  * Excludes any property that is a function.
  */
 export type ExcludeMethods<T> = {
-  [K in keyof T]: T[K] extends (...args: any[]) => any ? never : K;
+  [K in keyof T]: K extends "__tableName"
+    ? never
+    : T[K] extends (...args: any[]) => any
+      ? never
+      : K;
 }[keyof T];
 
 /**
@@ -43,44 +53,41 @@ export type ModelWithoutRelations<T extends Model> = Pick<
  * @example
  * ```typescript
  * // Find methods return ModelQueryResult<User> (or arrays/nullables thereof)
- * const user1 = await User.findOne({ where: { id: 1 } });
- * const users = await User.find({});
+ * const user1 = await sql.from(User).findOne({ where: { id: 1 } });
+ * const users = await sql.from(User).find({});
  *
  * // Mutation methods return void by default; use returning for data
- * await User.insert({ name: "John" }); // void
- * const newUser = await User.insert({ name: "John" }, { returning: ["*"] }); // User
+ * await sql.from(User).insert({ name: "John" }); // void
+ * const newUser = await sql.from(User).insert({ name: "John" }, { returning: ["*"] }); // Whole User object
  *
  * if (user1) {
- *   await User.updateRecord(user1.id, { name: "Jane" }); // void
- *   const updated = await User.updateRecord(user1.id, { name: "Jane" }, { returning: ["*"] }); // User
- *   const refreshed = await User.refresh(user1.id);
- *   await User.deleteRecord(user1.id);
+ *   await sql.from(User).updateRecord(user1.id, { name: "Jane" }); // void
+ *   const updated = await sql.from(User).updateRecord(user1.id, { name: "Jane" }, { returning: ["*"] }); // Whole User object
+ *   const refreshed = await sql.from(User).refresh(user1.id);
+ *   await sql.from(User).deleteRecord(user1.id);
  * }
  * ```
  */
 export type ModelQueryResult<T extends Model> = ModelWithoutRelations<T>;
 
 export type NumberModelKey<T extends Model> = {
-  [K in keyof T]: T[K] extends number ? K : never;
+  [K in keyof T]: K extends "__tableName"
+    ? never
+    : T[K] extends number
+      ? K
+      : never;
 }[keyof T];
 
 export type BaseModelMethodOptions = {
   /**
-   * @description The connection to use for the model, by default the main connection will be used
-   * @description The main connection is the one created via `new SqlDataSource().connect()`
+   * @description The connection to use for the model
    * @example
    * ```ts
    * import { SqlDataSource } from "hysteria-orm";
-   * const customConnection = await SqlDataSource.connectToSecondarySource({
-   *   type: "postgres",
-   *   host: "localhost",
-   *   username: "root",
-   *   password: "root",
-   *   database: "test",
-   *   port: 5432,
-   * });
+   * const sql = new SqlDataSource({ type: "postgres", ... });
+   * await sql.connect();
    *
-   * const user = await User.query({ connection: customConnection }).one();
+   * const users = await sql.from(User).many();
    * ```
    */
   connection?: SqlDataSource;
@@ -122,4 +129,22 @@ export type RawModelOptions = {
    * Column to use for soft deleted, by default is date in format: "YYYY-MM-DD HH:mm:ss" in UTC timezone
    */
   softDeleteValue?: string | boolean;
+};
+
+/**
+ * Maps each model in a SqlDataSource models registry to its corresponding
+ * ModelQueryBuilder, allowing `sql.models.users` instead of `sql.from(User)`.
+ */
+export type ModelsProxy<
+  T extends Record<string, SqlDataSourceModel>,
+  D extends SqlDataSourceType,
+> = {
+  readonly [K in keyof T]: T[K] extends AnyModelConstructor
+    ? ModelQueryBuilder<
+        InstanceType<T[K]>,
+        ModelWithoutRelations<InstanceType<T[K]>>,
+        {},
+        D
+      >
+    : never;
 };

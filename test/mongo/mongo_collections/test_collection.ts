@@ -1,18 +1,17 @@
 import { DateTime } from "luxon";
-import { Collection } from "../../../src/no_sql/mongo/mongo_models/mongo_collection";
-import { property } from "../../../src/no_sql/mongo/mongo_models/mongo_collection_decorators";
+import {
+  defineCollection,
+  prop,
+} from "../../../src/no_sql/mongo/mongo_models/define_collection";
 
-export class TestModel extends Collection {
-  @property()
-  declare name: string;
-
-  @property()
-  declare email: string;
-
-  @property()
-  declare userProfile: {
-    birthData: DateTime;
-    age: number;
-    preferredName: string;
-  };
-}
+export const TestModel = defineCollection("test_models", {
+  properties: {
+    name: prop.string(),
+    email: prop.string(),
+    userProfile: prop.object<{
+      birthData: DateTime;
+      age: number;
+      preferredName: string;
+    }>(),
+  },
+});

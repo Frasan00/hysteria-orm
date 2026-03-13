@@ -1,41 +1,56 @@
-// Decorators
-export * from "./no_sql/mongo/mongo_models/mongo_collection_decorators";
-export * from "./sql/models/decorators/model_decorators";
-export * from "./sql/models/decorators/model_decorators_types";
-
 // Models & Factories
-export { Model } from "./sql/models/model";
-export { defineModel, col, rel } from "./sql/models/define_model";
+export {
+  col,
+  createSchema,
+  defineModel,
+  defineRelations,
+  defineView,
+} from "./sql/models/define_model";
 export type {
+  AnyModelConstructor,
+  ColCharOptions,
+  ColJsonbOptions,
+  ColMediumIntOptions,
+  ColSmallIntOptions,
+  ColTinyIntOptions,
+  ColVarbinaryOptions,
   ColumnDef,
+  CreateSchemaResult,
+  DefinedModel,
+  DefinedView,
+  InferPK,
+  NullableColumn,
   PrimaryColumnDef,
   RelationDef,
-  DefinedModel,
-  InferPK,
-  AnyModelConstructor,
-  NullableColumn,
-  TypedSerialize,
-  TypedPrepare,
+  RelationDefinitions,
+  RelationHelpers,
+  SchemaLookup,
+  SchemaRelDef,
   TypedDefault,
-  RelationNullableOption,
-  RelModelCallback,
+  TypedPrepare,
+  TypedSerialize,
+  ViewDefinition,
 } from "./sql/models/define_model_types";
-export { createModelFactory } from "./sql/models/model_factory";
+export { defineModelFactory } from "./sql/models/model_factory";
+export type {
+  FindReturnType,
+  ModelKey,
+  ModelRelation,
+  MutationReturningResult,
+  RawModelKey,
+  ReturningColumns,
+  ReturningKey,
+  ReturningParam,
+  ReturningResult,
+  ReturningResultMany,
+  ReturningSupported,
+  StripTablePrefix,
+  WriteReturnType,
+} from "./sql/models/model_manager/model_manager_types";
 export * from "./sql/models/model_query_builder/model_query_builder";
 export * from "./sql/models/model_query_builder/model_query_builder_types";
 export * from "./sql/models/model_query_builder/relation_query_builder/relation_query_builder_types";
 export * from "./sql/models/model_types";
-export type {
-  WriteReturnType,
-  ReturningColumns,
-  ReturningKey,
-  ModelKey,
-  FindReturnType,
-  ModelRelation,
-} from "./sql/models/model_manager/model_manager_types";
-
-// Mixins
-export * from "./sql/models/mixins/index";
 
 // Cache
 export * from "./cache/adapters/in_memory";
@@ -69,7 +84,10 @@ export { BaseSeeder } from "./sql/seeders/base_seeder";
 
 // Query Builder
 export type { ModelQueryBuilder } from "./sql/models/model_query_builder/model_query_builder";
-export type { QueryBuilder } from "./sql/query_builder/query_builder";
+export type {
+  QueryBuilder,
+  SubQueryable,
+} from "./sql/query_builder/query_builder";
 export { WriteOperation } from "./sql/query_builder/write_operation";
 
 // Raw SQL
@@ -85,6 +103,16 @@ export { HysteriaError } from "./errors/hysteria_error";
 
 // Mongo
 export { Collection } from "./no_sql/mongo/mongo_models/mongo_collection";
+export {
+  defineCollection,
+  prop,
+} from "./no_sql/mongo/mongo_models/define_collection";
+export type {
+  DefinedCollection,
+  CollectionDefinition,
+  PropertyDef,
+  PropNamespace,
+} from "./no_sql/mongo/mongo_models/define_collection_types";
 
 // Redis
 export type {

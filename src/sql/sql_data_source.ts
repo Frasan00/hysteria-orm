@@ -23,19 +23,26 @@ import {
 } from "../utils/query";
 import { AstParser } from "./ast/parser";
 import { RawNode } from "./ast/query/node/raw/raw_node";
-import { CheckConstraintInfoNode } from "./ast/query/node/schema/check_constraint_info";
 import { ForeignKeyInfoNode } from "./ast/query/node/schema";
+import { CheckConstraintInfoNode } from "./ast/query/node/schema/check_constraint_info";
 import { IndexInfoNode } from "./ast/query/node/schema/index_info";
 import { PrimaryKeyInfoNode } from "./ast/query/node/schema/primary_key_info";
 import { TableInfoNode } from "./ast/query/node/schema/table_info";
 import { SchemaBuilder } from "./migrations/schema/schema_builder";
 import { SchemaDiff } from "./migrations/schema_diff/schema_diff";
 import { normalizeColumnType } from "./migrations/schema_diff/type_normalizer";
+import type {
+  AnyModelConstructor,
+  SchemaLookup,
+} from "./models/define_model_types";
 import { Model } from "./models/model";
-import type { AnyModelConstructor } from "./models/define_model_types";
 import { ModelManager } from "./models/model_manager/model_manager";
 import { ModelQueryBuilder } from "./models/model_query_builder/model_query_builder";
-import { RawModelOptions } from "./models/model_types";
+import {
+  ModelsProxy,
+  ModelWithoutRelations,
+  RawModelOptions,
+} from "./models/model_types";
 import { QueryBuilder } from "./query_builder/query_builder";
 import { getRawQueryBuilderModel } from "./query_builder/query_builder_utils";
 import type {
@@ -75,10 +82,17 @@ import {
   TransactionExecutionOptions,
 } from "./transactions/transaction_types";
 
+const SQL_DATA_SOURCE_SYMBOL = Symbol.for("hysteria.orm.SqlDataSource");
+
 /**
  * @description The SqlDataSource class is the main class for interacting with the database, it's used to create connections, execute queries, and manage transactions
  * @example
  * ```ts
+ * import {
+ *   SqlDataSource,
+ *   createSchema,
+ * } from "./sql/models/define_model";
+ *
  * // Create and connect to a database
  * const sql = new SqlDataSource({
  *   type: "mysql",
@@ -86,24 +100,43 @@ import {
  *   username: "root",
  *   password: "password",
  *   database: "mydb",
- *   models: { User, Post }
+ *   models: createSchema(
+ *     { ...models },
+ *     { ...relations },
+ *   )
  * });
+ *
  * await sql.connect();
  *
  * // Now you can use the connection
  * const users = await sql.query("users").many();
  * ```
  */
+
 export class SqlDataSource<
   D extends SqlDataSourceType = SqlDataSourceType,
   T extends Record<string, SqlDataSourceModel> = {},
   C extends CacheKeys = {},
 > extends DataSource {
-  static #instance: SqlDataSource | null = null;
+  private readonly [SQL_DATA_SOURCE_SYMBOL] = true;
   private globalTransaction: Transaction | null = null;
   private sqlType: D;
-  private _models: T;
   private ownsPool: boolean = false;
+
+  static isSqlDataSource(value: unknown): value is SqlDataSource {
+    return (
+      typeof value === "object" &&
+      value !== null &&
+      SQL_DATA_SOURCE_SYMBOL in value &&
+      (value as Record<symbol, unknown>)[SQL_DATA_SOURCE_SYMBOL] === true
+    );
+  }
+
+  /**
+   * Raw Model definitions, use `sql.models` to access them as query builders directly
+   * @internal
+   */
+  _models: T;
 
   /**
    * @description The slaves data sources to use for the sql data source, slaves are automatically used for read operations unless specified otherwise
@@ -198,143 +231,6 @@ export class SqlDataSource<
    */
   getOnSlaveServerFailure() {
     return this.onSlaveServerFailure;
-  }
-
-  // ============================================
-  // Static Methods
-  // ============================================
-
-  /**
-   * @description Returns the primary instance of the SqlDataSource (set via connect with setPrimary: true)
-   * All models by default will use this instance to execute queries unless you pass a different connection/transaction in the query options
-   */
-  static get instance(): SqlDataSource {
-    if (!this.#instance) {
-      throw new HysteriaError(
-        "SqlDataSource::instance",
-        "CONNECTION_NOT_ESTABLISHED",
-      );
-    }
-
-    return this.#instance;
-  }
-
-  /**
-   * @description Creates a secondary database connection that won't be set as the primary instance
-   * @description By default not used by the Models, you have to pass it as a parameter to the Models to use it
-   * @example
-   * ```ts
-   * const secondaryDb = await SqlDataSource.connectToSecondarySource({
-   *   type: "postgres",
-   *   host: "replica.db.com",
-   *   ...
-   * });
-   *
-   * const user = await User.query({ connection: secondaryDb }).many();
-   * ```
-   */
-  static async connectToSecondarySource<
-    U extends SqlDataSourceType,
-    M extends Record<string, SqlDataSourceModel> = {},
-    K extends CacheKeys = {},
-  >(
-    input: Omit<SqlDataSourceInput<U, M, K>, "slaves">,
-    cb?: (sqlDataSource: SqlDataSource<U, M, K>) => Promise<void> | void,
-  ): Promise<SqlDataSource<U, M, K>> {
-    const sqlDataSource = new SqlDataSource(
-      input as SqlDataSourceInput<U, M, K>,
-    );
-    await sqlDataSource.connectWithoutSettingPrimary();
-    const result = sqlDataSource as SqlDataSource<U, M, K>;
-    await cb?.(result);
-    return result;
-  }
-
-  /**
-   * @description Creates a temporary connection that is automatically closed after the callback is executed
-   * @example
-   * ```ts
-   * await SqlDataSource.useConnection({
-   *   type: "mysql",
-   *   ...connectionData
-   * }, async (sql) => {
-   *   const user = await User.query({ connection: sql }).many();
-   * });
-   * // Connection is automatically closed here
-   * ```
-   */
-  static async useConnection<
-    U extends SqlDataSourceType,
-    M extends Record<string, SqlDataSourceModel> = {},
-    K extends CacheKeys = {},
-  >(
-    connectionDetails: UseConnectionInput<U, M, K>,
-    cb: (sqlDataSource: SqlDataSource<U, M, K>) => Promise<void>,
-  ): Promise<void> {
-    const sqlDataSource = new SqlDataSource(
-      connectionDetails as SqlDataSourceInput<U, M, K>,
-    );
-    await sqlDataSource.connectWithoutSettingPrimary();
-
-    const result = sqlDataSource as SqlDataSource<U, M, K>;
-
-    try {
-      await cb(result);
-      if (sqlDataSource.isConnected) {
-        await sqlDataSource.disconnect();
-      }
-    } catch (error) {
-      if (sqlDataSource.isConnected) {
-        await sqlDataSource.disconnect();
-      }
-      throw error;
-    }
-  }
-
-  /**
-   * @description Closes the primary connection (singleton instance)
-   */
-  static async disconnect(): Promise<void> {
-    if (!this.#instance) {
-      logger.warn("Connection already closed");
-      return;
-    }
-
-    await this.#instance.disconnect();
-    this.#instance = null;
-  }
-
-  /**
-   * @description Starts a global transaction on the primary database connection
-   * @description Intended for testing purposes - wraps all operations in a transaction that can be rolled back
-   */
-  static async startGlobalTransaction(
-    options?: StartTransactionOptions,
-  ): Promise<Transaction> {
-    return this.instance.startGlobalTransaction(options);
-  }
-
-  /**
-   * @description Commits a global transaction on the primary database connection
-   * @throws {HysteriaError} If the global transaction is not started
-   */
-  static async commitGlobalTransaction(): Promise<void> {
-    await this.instance.commitGlobalTransaction();
-  }
-
-  /**
-   * @description Rolls back a global transaction on the primary database connection
-   * @throws {HysteriaError} If the global transaction is not started
-   */
-  static async rollbackGlobalTransaction(): Promise<void> {
-    await this.instance.rollbackGlobalTransaction();
-  }
-
-  /**
-   * @description Returns true if the primary instance is in a global transaction
-   */
-  static get isInGlobalTransaction(): boolean {
-    return !!this.#instance?.globalTransaction;
   }
 
   // ============================================
@@ -443,12 +339,55 @@ export class SqlDataSource<
   }
 
   // ============================================
+  // Static Methods
+  // ============================================
+
+  /**
+   * @description Creates a temporary connection that is automatically closed after the callback is executed
+   * @example
+   * ```ts
+   * await SqlDataSource.useConnection({
+   *   type: "mysql",
+   *   ...connectionData
+   * }, async (sql) => {
+   *   const users = await sql.from(User).many();
+   * });
+   * // Connection is automatically closed here
+   * ```
+   */
+  static async useConnection<
+    U extends SqlDataSourceType,
+    M extends Record<string, SqlDataSourceModel> = {},
+    K extends CacheKeys = {},
+  >(
+    connectionDetails: UseConnectionInput<U, M, K>,
+    cb: (sqlDataSource: SqlDataSource<U, M, K>) => Promise<void>,
+  ): Promise<void> {
+    const sqlDataSource = new SqlDataSource(
+      connectionDetails as SqlDataSourceInput<U, M, K>,
+    );
+    await sqlDataSource.connect();
+
+    try {
+      await cb(sqlDataSource);
+      if (sqlDataSource.isConnected) {
+        await sqlDataSource.disconnect();
+      }
+    } catch (error) {
+      if (sqlDataSource.isConnected) {
+        await sqlDataSource.disconnect();
+      }
+      throw error;
+    }
+  }
+
+  // ============================================
   // Connect Method
   // ============================================
 
   /**
-   * @description Establishes the database connection and sets this instance as the primary connection, it also connects to the slaves if any are configured
-   * @throws {HysteriaError} If the connection is already established, use `SqlDataSource.useConnection` or `SqlDataSource.connectToSecondarySource` for auxiliary connections
+   * @description Establishes the database connection pool and connects to slaves if configured
+   * @throws {HysteriaError} If this instance is already connected
    * @example
    * ```ts
    * const sql = new SqlDataSource({ type: "mysql", ... });
@@ -456,7 +395,7 @@ export class SqlDataSource<
    * ```
    */
   async connect(): Promise<void> {
-    if (SqlDataSource.#instance) {
+    if (this.isConnected) {
       throw new HysteriaError(
         "SqlDataSource::connect",
         "CONNECTION_ALREADY_ESTABLISHED",
@@ -479,9 +418,6 @@ export class SqlDataSource<
         }),
       );
     }
-
-    // Set as primary instance
-    SqlDataSource.#instance = this;
   }
 
   // ============================================
@@ -504,9 +440,19 @@ export class SqlDataSource<
 
   /**
    * @description Returns the models configured on this SqlDataSource instance
+   * as query builders — accessing `sql.models.users` is equivalent to
+   * calling `sql.from(User)` and returns a fresh ModelQueryBuilder.
    */
-  get models(): T {
-    return this._models;
+  get models(): ModelsProxy<T, D> {
+    const self = this;
+    return new Proxy(this._models, {
+      get(target, key) {
+        if (typeof key === "string" && key in target) {
+          return self.from(target[key as keyof T] as AnyModelConstructor);
+        }
+        return;
+      },
+    }) as any;
   }
 
   /**
@@ -707,7 +653,7 @@ export class SqlDataSource<
     );
 
     if (options?.alias) {
-      qb.from(table, options.alias);
+      qb.table(table, options.alias);
     }
 
     return qb;
@@ -717,10 +663,22 @@ export class SqlDataSource<
    * @description Returns a ModelQueryBuilder instance for the given model
    * @param Model The model to create the query builder from
    */
-  from<T extends AnyModelConstructor>(
-    model: T,
-  ): ModelQueryBuilder<InstanceType<T>> {
-    return new ModelQueryBuilder(model as unknown as typeof Model, this);
+  from<M extends AnyModelConstructor>(
+    model: M,
+  ): ModelQueryBuilder<
+    InstanceType<SchemaLookup<T, M>>,
+    ModelWithoutRelations<InstanceType<SchemaLookup<T, M>>>,
+    {},
+    D
+  > {
+    const sqlForQueryBuilder =
+      this.isInGlobalTransaction && this.globalTransaction?.isActive
+        ? this.globalTransaction.sql
+        : this;
+    return new ModelQueryBuilder(
+      model as unknown as typeof Model,
+      sqlForQueryBuilder as SqlDataSource,
+    ) as any;
   }
 
   /**
@@ -1843,14 +1801,5 @@ export class SqlDataSource<
 
       throw err;
     }
-  }
-
-  /**
-   * @description Internal method to establish connection without setting as primary instance
-   * @description Used by connectToSecondarySource and useConnection
-   */
-  private async connectWithoutSettingPrimary(): Promise<void> {
-    this.sqlPool = await createSqlPool(this.sqlType, this.inputDetails);
-    this.ownsPool = true;
   }
 }

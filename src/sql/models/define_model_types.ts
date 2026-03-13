@@ -4,23 +4,19 @@ import type { Model } from "./model";
 import type { ModelQueryBuilder } from "./model_query_builder/model_query_builder";
 import type {
   AsymmetricEncryptionOptions,
+  CheckType,
   ColumnOptions,
+  ColumnType,
   DateColumnOptions,
   DatetimeColumnOptions,
+  IndexType,
+  LazyRelationType,
   ManyToManyStringOptions,
   SymmetricEncryptionOptions,
   ThroughModel,
+  UniqueType,
 } from "./decorators/model_decorators_types";
-import type {
-  ModelKey,
-  ReturningColumns,
-  WriteReturnType,
-} from "./model_manager/model_manager_types";
-import type {
-  BaseModelMethodOptions,
-  ModelQueryResult,
-  ModelWithoutRelations,
-} from "./model_types";
+import type { ModelKey } from "./model_manager/model_manager_types";
 /**
  * Phantom-typed descriptor for a model column.
  * `T` carries the TypeScript type the column resolves to at the instance level.
@@ -65,7 +61,9 @@ export interface RelationDef<T = any> {
 export type ColOptions = Omit<
   ColumnOptions,
   "primaryKey" | "serialize" | "prepare" | "default"
->;
+> & {
+  length?: number;
+};
 export type ColPrimaryOptions = Omit<
   ColumnOptions,
   "primaryKey" | "serialize" | "prepare" | "default"
@@ -131,6 +129,10 @@ export type ColJsonOptions = Omit<
   ColumnOptions,
   "prepare" | "serialize" | "default"
 >;
+export type ColJsonbOptions = Omit<
+  ColumnOptions,
+  "prepare" | "serialize" | "default"
+>;
 export type ColUuidOptions = Omit<
   ColumnOptions,
   "prepare" | "serialize" | "default"
@@ -154,6 +156,30 @@ export type ColSymmetricOptions = Omit<
 export type ColAsymmetricOptions = Omit<
   AsymmetricEncryptionOptions,
   "prepare" | "serialize"
+>;
+export type ColCharOptions = Omit<
+  ColumnOptions,
+  "type" | "serialize" | "prepare" | "default"
+> & {
+  length?: number;
+};
+export type ColVarbinaryOptions = Omit<
+  ColumnOptions,
+  "type" | "serialize" | "prepare" | "default"
+> & {
+  length?: number;
+};
+export type ColTinyIntOptions = Omit<
+  ColumnOptions,
+  "type" | "serialize" | "prepare" | "default"
+>;
+export type ColSmallIntOptions = Omit<
+  ColumnOptions,
+  "type" | "serialize" | "prepare" | "default"
+>;
+export type ColMediumIntOptions = Omit<
+  ColumnOptions,
+  "type" | "serialize" | "prepare" | "default"
 >;
 
 // ---------------------------------------------------------------------------
@@ -183,12 +209,14 @@ export type RelationNullableOption = { nullable?: boolean };
 
 /**
  * Resolves to `Base` when `Opts` has `{ nullable: false }`, otherwise
- * `Base | null | undefined`. This powers nullable-aware type inference
+ * `Base | null`. This powers nullable-aware type inference
  * for `col.*()` methods.
  */
 export type NullableColumn<Base, Opts> = Opts extends { nullable: false }
   ? Base
-  : Base | null | undefined;
+  : Opts extends { primaryKey: true }
+    ? Base
+    : Base | null;
 
 // ---------------------------------------------------------------------------
 // Typed serialize / prepare callback helpers
@@ -231,9 +259,10 @@ export interface ColNamespace {
   /**
    * Generic primary key column. Defaults to `string | number`.
    * Override the generic when you know the exact type.
+   * If using Auto Generated Migrations, ensure to add a `type` property in the options to help migrations generate the correct column type.
    *
    * ```ts
-   * col.primary<number>({ nullable: false })
+   * col.primary<number>({ type: "bigIncrement", nullable: false })
    * ```
    */
   primary<T = string | number>(
@@ -249,7 +278,7 @@ export interface ColNamespace {
    *
    * ```ts
    * col.string({ length: 255, nullable: false }) // string
-   * col.string()                                  // string | null | undefined
+   * col.string()                                  // string | null
    * ```
    */
   string<O extends ColStringOptions = ColStringOptions>(
@@ -344,103 +373,151 @@ export interface ColNamespace {
    * DATE column (YYYY-MM-DD). Defaults to `Date` because database drivers
    * return `Date` objects.
    *
-   * To type as `string`, use `col.date<string>()` and provide a `serialize`
-   * function that converts the driver `Date` into a string:
+   * Pass a `serialize` function to type the column as `string` instead:
    *
    * ```ts
-   * col.date<string>({ serialize: (raw) => raw.toISOString().split("T")[0] })
+   * col.date({ nullable: false, serialize: (raw) => raw.toISOString().split("T")[0] }) // string
+   * col.date({ nullable: false })                                                       // Date
+   * col.date({ serialize: (raw) => raw.toISOString().split("T")[0] })                  // string | null
+   * col.date()                                                                          // Date | null
    * ```
+   * @warning Serialize functions for Date columns can only return a string
    */
-  date<T extends Date | string = Date>(
-    options: ColDateOptions & { nullable: false } & TypedSerialize<T> &
-      TypedPrepare<T> &
+  date(
+    options: ColDateOptions & { nullable: false } & {
+      serialize: (value: any) => string;
+    } & TypedPrepare<string> &
       TypedDefault<string>,
-  ): ColumnDef<T>;
-  date<T extends Date | string = Date>(
-    options?: ColDateOptions &
-      TypedSerialize<T | null | undefined> &
-      TypedPrepare<T | null | undefined> &
+  ): ColumnDef<string>;
+  date(
+    options: ColDateOptions & { nullable: false } & TypedPrepare<Date> &
       TypedDefault<string>,
-  ): ColumnDef<T | null | undefined>;
+  ): ColumnDef<Date>;
+  date(
+    options: ColDateOptions & {
+      serialize: (value: any) => string | null;
+    } & TypedPrepare<string | null> &
+      TypedDefault<string>,
+  ): ColumnDef<string | null>;
+  date(
+    options?: ColDateOptions & TypedPrepare<Date | null> & TypedDefault<string>,
+  ): ColumnDef<Date | null>;
 
   /**
    * DATETIME column. Defaults to `Date` because database drivers return
    * `Date` objects.
    *
-   * To type as `string`, use `col.datetime<string>()` and provide a
-   * `serialize` function that converts the driver `Date` into a string:
+   * Pass a `serialize` function to type the column as `string` instead:
    *
    * ```ts
-   * col.datetime<string>({ serialize: (raw) => new Date(raw).toISOString() })
+   * col.datetime({ nullable: false, serialize: (raw) => new Date(raw).toISOString() }) // string
+   * col.datetime({ nullable: false })                                                   // Date
+   * col.datetime({ serialize: (raw) => new Date(raw).toISOString() })                  // string | null
+   * col.datetime()                                                                      // Date | null
    * ```
+   * @warning Serialize functions for Date columns can only return a string
    */
-  datetime<T extends Date | string = Date>(
-    options: ColDatetimeOptions & { nullable: false } & TypedSerialize<T> &
-      TypedPrepare<T> &
+  datetime(
+    options: ColDatetimeOptions & { nullable: false } & {
+      serialize: (value: any) => string;
+    } & TypedPrepare<string> &
       TypedDefault<string>,
-  ): ColumnDef<T>;
-  datetime<T extends Date | string = Date>(
+  ): ColumnDef<string>;
+  datetime(
+    options: ColDatetimeOptions & { nullable: false } & TypedPrepare<Date> &
+      TypedDefault<string>,
+  ): ColumnDef<Date>;
+  datetime(
+    options: ColDatetimeOptions & {
+      serialize: (value: any) => string | null;
+    } & TypedPrepare<string | null> &
+      TypedDefault<string>,
+  ): ColumnDef<string | null>;
+  datetime(
     options?: ColDatetimeOptions &
-      TypedSerialize<T | null | undefined> &
-      TypedPrepare<T | null | undefined> &
+      TypedPrepare<Date | null> &
       TypedDefault<string>,
-  ): ColumnDef<T | null | undefined>;
+  ): ColumnDef<Date | null>;
 
   /**
    * TIMESTAMP column. Defaults to `Date` because database drivers return
    * `Date` objects.
    *
-   * To type as `string`, use `col.timestamp<string>()` and provide a
-   * `serialize` function that converts the driver `Date` into a string:
+   * Pass a `serialize` function to type the column as `string` instead:
    *
    * ```ts
-   * col.timestamp<string>({ serialize: (raw) => new Date(raw).toISOString() })
+   * col.timestamp({ nullable: false, serialize: (raw) => new Date(raw).toISOString() }) // string
+   * col.timestamp({ nullable: false })                                                   // Date
+   * col.timestamp({ serialize: (raw) => new Date(raw).toISOString() })                  // string | null
+   * col.timestamp()                                                                      // Date | null
    * ```
+   * @warning Serialize functions for Date columns can only return a string
    */
-  timestamp<T extends Date | string = Date>(
-    options: ColTimestampOptions & { nullable: false } & TypedSerialize<T> &
-      TypedPrepare<T> &
+  timestamp(
+    options: ColTimestampOptions & { nullable: false } & {
+      serialize: (value: any) => string;
+    } & TypedPrepare<string> &
       TypedDefault<string>,
-  ): ColumnDef<T>;
-  timestamp<T extends Date | string = Date>(
+  ): ColumnDef<string>;
+  timestamp(
+    options: ColTimestampOptions & { nullable: false } & TypedPrepare<Date> &
+      TypedDefault<string>,
+  ): ColumnDef<Date>;
+  timestamp(
+    options: ColTimestampOptions & {
+      serialize: (value: any) => string | null;
+    } & TypedPrepare<string | null> &
+      TypedDefault<string>,
+  ): ColumnDef<string | null>;
+  timestamp(
     options?: ColTimestampOptions &
-      TypedSerialize<T | null | undefined> &
-      TypedPrepare<T | null | undefined> &
+      TypedPrepare<Date | null> &
       TypedDefault<string>,
-  ): ColumnDef<T | null | undefined>;
+  ): ColumnDef<Date | null>;
 
   /**
    * TIME column. Defaults to `Date` because database drivers return
    * `Date` objects.
    *
-   * To type as `string`, use `col.time<string>()` and provide a
-   * `serialize` function that converts the driver `Date` into a string:
+   * Pass a `serialize` function to type the column as `string` instead:
    *
    * ```ts
-   * col.time<string>({ serialize: (raw) => new Date(raw).toTimeString() })
+   * col.time({ nullable: false, serialize: (raw) => new Date(raw).toTimeString() }) // string
+   * col.time({ nullable: false })                                                    // Date
+   * col.time({ serialize: (raw) => new Date(raw).toTimeString() })                  // string | null
+   * col.time()                                                                       // Date | null
    * ```
+   * @warning Serialize functions for Date columns can only return a string
    */
-  time<T extends Date | string = Date>(
-    options: ColTimeOptions & { nullable: false } & TypedSerialize<T> &
-      TypedPrepare<T> &
+  time(
+    options: ColTimeOptions & { nullable: false } & {
+      serialize: (value: any) => string;
+    } & TypedPrepare<string> &
       TypedDefault<string>,
-  ): ColumnDef<T>;
-  time<T extends Date | string = Date>(
-    options?: ColTimeOptions &
-      TypedSerialize<T | null | undefined> &
-      TypedPrepare<T | null | undefined> &
+  ): ColumnDef<string>;
+  time(
+    options: ColTimeOptions & { nullable: false } & TypedPrepare<Date> &
       TypedDefault<string>,
-  ): ColumnDef<T | null | undefined>;
+  ): ColumnDef<Date>;
+  time(
+    options: ColTimeOptions & {
+      serialize: (value: any) => string | null;
+    } & TypedPrepare<string | null> &
+      TypedDefault<string>,
+  ): ColumnDef<string | null>;
+  time(
+    options?: ColTimeOptions & TypedPrepare<Date | null> & TypedDefault<string>,
+  ): ColumnDef<Date | null>;
 
   /**
-   * JSON/JSONB column. Defaults to `unknown`.
+   * JSON column (`type: "json"`). Defaults to `unknown`.
    * Pass a concrete type for structured JSON data: `col.json<MyType>()`.
    *
    * No `serialize` or `prepare` exposed — serialization is handled internally.
    *
    * ```ts
    * col.json<{ theme: string }>({ nullable: false }) // { theme: string }
-   * col.json()                                        // unknown | null | undefined
+   * col.json()                                        // unknown | null
    * ```
    */
   json<T = unknown>(
@@ -448,7 +525,26 @@ export interface ColNamespace {
   ): ColumnDef<T>;
   json<T = unknown>(
     options?: ColJsonOptions & TypedDefault<string>,
-  ): ColumnDef<T | null | undefined>;
+  ): ColumnDef<T | null>;
+
+  /**
+   * JSONB column (`type: "jsonb"`). Defaults to `unknown`.
+   * Prefer over `col.json()` on PostgreSQL for indexing support.
+   * Pass a concrete type for structured JSON data: `col.jsonb<MyType>()`.
+   *
+   * No `serialize` or `prepare` exposed — serialization is handled internally.
+   *
+   * ```ts
+   * col.jsonb<{ theme: string }>({ nullable: false }) // { theme: string }
+   * col.jsonb()                                        // unknown | null
+   * ```
+   */
+  jsonb<T = unknown>(
+    options: ColJsonbOptions & { nullable: false } & TypedDefault<string>,
+  ): ColumnDef<T>;
+  jsonb<T = unknown>(
+    options?: ColJsonbOptions & TypedDefault<string>,
+  ): ColumnDef<T | null>;
 
   /**
    * UUID column. Auto-generates a UUID if no value is provided on insert.
@@ -490,7 +586,7 @@ export interface ColNamespace {
    * Type: `values[number]` (nullable-aware).
    *
    * ```ts
-   * col.enum(["active", "inactive"] as const)               // "active" | "inactive" | null | undefined
+   * col.enum(["active", "inactive"] as const)               // "active" | "inactive" | null
    * col.enum(["active", "inactive"] as const, { nullable: false }) // "active" | "inactive"
    * ```
    */
@@ -504,6 +600,68 @@ export interface ColNamespace {
       TypedPrepare<NullableColumn<V[number], O>> &
       TypedDefault<V[number]>,
   ): ColumnDef<NullableColumn<V[number], O>>;
+
+  /**
+   * CHAR column (fixed-length string). Accepts an optional `length` option.
+   * Type: `string` (nullable-aware).
+   *
+   * ```ts
+   * col.char({ length: 10, nullable: false }) // string
+   * col.char({ length: 2 })                   // string | null
+   * ```
+   */
+  char<O extends ColCharOptions = ColCharOptions>(
+    options?: O &
+      TypedSerialize<NullableColumn<string, O>> &
+      TypedPrepare<NullableColumn<string, O>> &
+      TypedDefault<string>,
+  ): ColumnDef<NullableColumn<string, O>>;
+
+  /**
+   * VARBINARY column. Accepts an optional `length` option.
+   * Type: `Buffer | Uint8Array | string` (nullable-aware).
+   *
+   * ```ts
+   * col.varbinary({ length: 255, nullable: false }) // Buffer | Uint8Array | string
+   * col.varbinary()                                  // Buffer | Uint8Array | string | null
+   * ```
+   */
+  varbinary<O extends ColVarbinaryOptions = ColVarbinaryOptions>(
+    options?: O &
+      TypedSerialize<NullableColumn<Buffer | Uint8Array | string, O>> &
+      TypedPrepare<NullableColumn<Buffer | Uint8Array | string, O>> &
+      TypedDefault<string>,
+  ): ColumnDef<NullableColumn<Buffer | Uint8Array | string, O>>;
+
+  /**
+   * TINYINT column.
+   * Type: `number` (nullable-aware). Only `prepare` is exposed.
+   */
+  tinyint<O extends ColTinyIntOptions = ColTinyIntOptions>(
+    options?: O &
+      TypedPrepare<NullableColumn<number, O>> &
+      TypedDefault<number>,
+  ): ColumnDef<NullableColumn<number, O>>;
+
+  /**
+   * SMALLINT column.
+   * Type: `number` (nullable-aware). Only `prepare` is exposed.
+   */
+  smallint<O extends ColSmallIntOptions = ColSmallIntOptions>(
+    options?: O &
+      TypedPrepare<NullableColumn<number, O>> &
+      TypedDefault<number>,
+  ): ColumnDef<NullableColumn<number, O>>;
+
+  /**
+   * MEDIUMINT column.
+   * Type: `number` (nullable-aware). Only `prepare` is exposed.
+   */
+  mediumint<O extends ColMediumIntOptions = ColMediumIntOptions>(
+    options?: O &
+      TypedPrepare<NullableColumn<number, O>> &
+      TypedDefault<number>,
+  ): ColumnDef<NullableColumn<number, O>>;
 
   /** Encryption column helpers. */
   encryption: {
@@ -527,193 +685,6 @@ export interface ColNamespace {
 }
 
 // ---------------------------------------------------------------------------
-// rel namespace type
-// ---------------------------------------------------------------------------
-
-type AnyModelClass = abstract new (...args: any[]) => Model;
-
-type SelfModelInstance = Model & { readonly __selfBrand: true };
-type SelfToken = abstract new (...args: any[]) => SelfModelInstance;
-
-/**
- * Model callback type for relation definitions.
- * Accepts either `() => OtherModel` or `(self) => self` for self-referencing
- * relations (tree structures, parent/child, etc.).
- */
-export type RelModelCallback<M extends AnyModelClass> = (self: SelfToken) => M;
-
-/**
- * Provides autocomplete for column keys of the related model while still accepting any string
- */
-type ForeignKeyOf<M extends AnyModelClass> =
-  | ModelKey<InstanceType<M> & Model>
-  | (string & {});
-
-/**
- * Extracts the Model instance type from a through-model callback.
- */
-type InferThroughModelInstance<TM> = TM extends () => infer T
-  ? T extends AnyModelClass
-    ? InstanceType<T> & Model
-    : Model
-  : Model;
-
-export interface RelNamespace {
-  /**
-   * One-to-one relation where the foreign key lives on the **related** model.
-   * The `foreignKey` parameter autocompletes with column keys of `M`.
-   *
-   * Pass `{ nullable: false }` to type the relation as non-nullable.
-   *
-   * ```ts
-   * rel.hasOne(() => Profile, "userId", { nullable: false }) // Profile
-   * rel.hasOne(() => Profile, "userId")                      // Profile | null | undefined
-   * ```
-   *
-   * @param model     Callback returning the related model class (or `(self) => self` for self-referencing).
-   * @param foreignKey Column on the related model that references the current model's primary key.
-   * @param options   `{ nullable: false }` to mark the relation as always present.
-   */
-  hasOne<M extends AnyModelClass>(
-    model: RelModelCallback<M>,
-    foreignKey: ForeignKeyOf<M> | undefined,
-    options: { nullable: false },
-  ): RelationDef<InstanceType<M>>;
-  hasOne<M extends AnyModelClass>(
-    model: RelModelCallback<M>,
-    foreignKey?: ForeignKeyOf<M>,
-    options?: RelationNullableOption,
-  ): RelationDef<InstanceType<M> | null | undefined>;
-
-  /**
-   * One-to-many relation where the foreign key lives on the **related** model.
-   * The `foreignKey` parameter autocompletes with column keys of `M`.
-   *
-   * Pass `{ nullable: false }` to type the relation as non-nullable (always
-   * returns an array, never `null | undefined`).
-   *
-   * ```ts
-   * rel.hasMany(() => Post, "authorId", { nullable: false }) // Post[]
-   * rel.hasMany(() => Post, "authorId")                      // Post[] | null | undefined
-   * ```
-   *
-   * @param model     Callback returning the related model class (or `(self) => self` for self-referencing).
-   * @param foreignKey Column on the related model that references the current model's primary key.
-   * @param options   `{ nullable: false }` to mark the relation as always present.
-   */
-  hasMany<M extends AnyModelClass>(
-    model: RelModelCallback<M>,
-    foreignKey: ForeignKeyOf<M> | undefined,
-    options: { nullable: false },
-  ): RelationDef<InstanceType<M>[]>;
-  hasMany<M extends AnyModelClass>(
-    model: RelModelCallback<M>,
-    foreignKey?: ForeignKeyOf<M>,
-    options?: RelationNullableOption,
-  ): RelationDef<InstanceType<M>[] | null | undefined>;
-
-  /**
-   * Inverse one-to-one / many-to-one relation where the foreign key lives
-   * on the **current** model.
-   *
-   * The `foreignKey` parameter autocompletes with column keys of the related
-   * model `M` as a naming hint; any string is still accepted since the
-   * actual column is on the current model.
-   *
-   * Pass `{ nullable: false }` (inside the constraint options) to type the
-   * relation as non-nullable.
-   *
-   * ```ts
-   * rel.belongsTo(() => User, "userId", { nullable: false }) // User
-   * rel.belongsTo(() => User, "userId")                      // User | null | undefined
-   * rel.belongsTo((self) => self, "parentId")                // self-referencing
-   * ```
-   *
-   * @param model     Callback returning the related model class (or `(self) => self` for self-referencing).
-   * @param foreignKey Column on the **current** model that references the related model's primary key.
-   * @param options   Constraint options (`onDelete`, `onUpdate`, `constraintName`) and `{ nullable: false }`.
-   */
-  belongsTo<M extends AnyModelClass>(
-    model: RelModelCallback<M>,
-    foreignKey: ForeignKeyOf<M> | undefined,
-    options: RelationConstraintOptions & { nullable: false },
-  ): RelationDef<InstanceType<M>>;
-  belongsTo<M extends AnyModelClass>(
-    model: RelModelCallback<M>,
-    foreignKey?: ForeignKeyOf<M>,
-    options?: RelationConstraintOptions & RelationNullableOption,
-  ): RelationDef<InstanceType<M> | null | undefined>;
-
-  /**
-   * Many-to-many relation through a pivot (join) table.
-   *
-   * - `throughModel`: either a string (pivot table name) or a callback
-   *   returning a Model class (`() => PivotModel`).
-   * - When a Model callback is provided:
-   *   - `leftForeignKey` autocompletes with the **through model**'s column
-   *     keys (the FK on the pivot table referencing the current model).
-   *   - `rightForeignKey` autocompletes with the **related model** `M`'s
-   *     column keys (the FK on the pivot table referencing the related model).
-   * - When a plain string is provided, both keys accept any string.
-   *
-   * Pass `{ nullable: false }` to type the relation as non-nullable.
-   *
-   * ```ts
-   * // Through model as callback — typed FK autocomplete
-   * rel.manyToMany(() => Tag, () => PostTag, {
-   *   leftForeignKey: "postId",  // autocompletes with PostTag keys
-   *   rightForeignKey: "tagId",  // autocompletes with Tag keys
-   * })
-   *
-   * // Through model as string — plain string FKs
-   * rel.manyToMany(() => Tag, "post_tags", {
-   *   leftForeignKey: "post_id",
-   *   rightForeignKey: "tag_id",
-   * })
-   * ```
-   *
-   * @param model            Callback returning the related model class.
-   * @param throughModel      Pivot model callback or table name string.
-   * @param throughModelKeys  Foreign key mapping on the pivot table.
-   * @param options          Constraint options and `{ nullable: false }`.
-   */
-  manyToMany<
-    M extends AnyModelClass,
-    T extends AnyModelConstructor = AnyModelConstructor,
-    TM extends ThroughModel<T> = ThroughModel<T>,
-  >(
-    model: RelModelCallback<M>,
-    throughModel: TM,
-    throughModelKeys: TM extends string
-      ? ManyToManyStringOptions
-      : {
-          leftForeignKey?:
-            | ModelKey<InferThroughModelInstance<TM>>
-            | (string & {});
-          rightForeignKey?: ForeignKeyOf<M>;
-        },
-    options: RelationConstraintOptions & { nullable: false },
-  ): RelationDef<InstanceType<M>[]>;
-  manyToMany<
-    M extends AnyModelClass,
-    T extends AnyModelConstructor = AnyModelConstructor,
-    TM extends ThroughModel<T> = ThroughModel<T>,
-  >(
-    model: RelModelCallback<M>,
-    throughModel: TM,
-    throughModelKeys?: TM extends string
-      ? ManyToManyStringOptions
-      : {
-          leftForeignKey?:
-            | ModelKey<InferThroughModelInstance<TM>>
-            | (string & {});
-          rightForeignKey?: ForeignKeyOf<M>;
-        },
-    options?: RelationConstraintOptions & RelationNullableOption,
-  ): RelationDef<InstanceType<M>[] | null | undefined>;
-}
-
-// ---------------------------------------------------------------------------
 // Index / Unique / Check definition types (user-facing)
 // ---------------------------------------------------------------------------
 
@@ -731,13 +702,13 @@ export type CheckDefinition = string | { expression: string; name?: string };
 // Hooks definition
 // ---------------------------------------------------------------------------
 
-export type HooksDefinition<T = any> = {
-  beforeFetch?: (queryBuilder: ModelQueryBuilder<any>) => Promise<void> | void;
+export type HooksDefinition<T = any, M extends Model = any> = {
+  beforeFetch?: (queryBuilder: ModelQueryBuilder<M>) => Promise<void> | void;
   afterFetch?: (data: T[]) => Promise<T[]> | T[];
   beforeInsert?: (data: Partial<T>) => Promise<void> | void;
   beforeInsertMany?: (data: Partial<T>[]) => Promise<void> | void;
-  beforeUpdate?: (queryBuilder: ModelQueryBuilder<any>) => Promise<void> | void;
-  beforeDelete?: (queryBuilder: ModelQueryBuilder<any>) => Promise<void> | void;
+  beforeUpdate?: (queryBuilder: ModelQueryBuilder<M>) => Promise<void> | void;
+  beforeDelete?: (queryBuilder: ModelQueryBuilder<M>) => Promise<void> | void;
 };
 
 // ---------------------------------------------------------------------------
@@ -774,50 +745,37 @@ type InferColumns<C extends Record<string, ColumnDef>> = {
   [K in keyof C]: C[K] extends ColumnDef<infer T> ? T : never;
 };
 
-/**
- * Detects self-referencing relations (branded with `SelfModelInstance`) and
- * replaces them with the actual column types of the defining model.
- * Non-self relations pass through unchanged.
- */
-type ResolveSelfRef<T, SelfType> = [T] extends [
-  SelfModelInstance[] | null | undefined,
-]
-  ? SelfType[] | Extract<T, null | undefined>
-  : [T] extends [SelfModelInstance | null | undefined]
-    ? SelfType | Extract<T, null | undefined>
-    : T;
-
-type InferRelations<
-  C extends Record<string, ColumnDef>,
-  R extends Record<string, RelationDef>,
-> = {
-  [K in keyof R]: R[K] extends RelationDef<infer T>
-    ? ResolveSelfRef<T, InferColumns<C> & InferRelations<C, R> & Model>
-    : never;
+type InferRelations<R extends Record<string, RelationDef>> = {
+  [K in keyof R]: R[K] extends RelationDef<infer V> ? V : never;
 };
 
 /**
  * Infers the instance type of a model defined with `defineModel`.
+ * Includes a phantom `__tableName` property carrying the literal table name
+ * for use in table-prefixed column key inference.
  */
 export type InferModel<
+  T extends string,
   C extends Record<string, ColumnDef>,
   R extends Record<string, RelationDef>,
-> = InferColumns<C> & InferRelations<C, R>;
+> = { readonly __tableName: T } & InferColumns<C> & InferRelations<R>;
 
 // ---------------------------------------------------------------------------
 // Full model definition
 // ---------------------------------------------------------------------------
 
 export type ModelDefinition<
+  T extends string = string,
   C extends Record<string, ColumnDef> = Record<string, ColumnDef>,
-  R extends Record<string, RelationDef> = Record<string, RelationDef>,
 > = {
   columns: C;
-  relations?: R;
   indexes?: IndexDefinition<keyof C & string>[];
   uniques?: UniqueDefinition<keyof C & string>[];
   checks?: CheckDefinition[];
-  hooks?: HooksDefinition<InferColumns<C>>;
+  hooks?: HooksDefinition<
+    InferColumns<C>,
+    { readonly __tableName: T } & InferColumns<C> & Model
+  >;
   options?: DefineModelOptions<keyof C & string>;
 };
 
@@ -829,84 +787,361 @@ export type ConcreteModelStatics = {
 };
 
 /**
- * Static methods that may have narrowed PK types in DefinedModel.
- * Excluded from structural checks in AnyModelConstructor.
+ * Static methods and properties hidden from the public `DefinedModel` type.
+ * These are still present at runtime but not accessible through the type system.
  */
-type PKNarrowedMethods =
+type HiddenModelStatics =
+  // Query methods
+  | "query"
+  | "all"
+  | "first"
+  | "find"
+  | "findOneOrFail"
+  | "findOne"
+  | "findBy"
+  | "findOneBy"
+  | "findOneByPrimaryKey"
+  | "refresh"
+  | "sync"
+  // Mutation methods
+  | "insert"
+  | "insertMany"
   | "updateRecord"
+  | "firstOrInsert"
+  | "upsert"
+  | "upsertMany"
   | "deleteRecord"
-  | "softDelete"
   | "save"
-  | "refresh";
+  | "softDelete"
+  | "truncate"
+  // Internal methods
+  | "sqlInstance"
+  // Schema introspection (now through sql instance)
+  | "getTableInfo"
+  | "getIndexInfo"
+  | "getTableSchema"
+  // Hook declarations (set via defineModel options, not accessed directly)
+  | "beforeFetch"
+  | "afterFetch"
+  | "beforeInsert"
+  | "beforeInsertMany"
+  | "beforeUpdate"
+  | "beforeDelete"
+  // Table (overridden with readonly literal)
+  | "table";
 
 /**
  * Union type that accepts both decorator-based model classes (`typeof Model`
  * subclasses) and programmatic models created via `defineModel`.
  *
- * Use this instead of `typeof Model` in any user-facing API that should
- * accept either kind of model.
+ * Includes metadata methods needed by internal infrastructure.
+ * Internal code needing full Model statics (query, insert, etc.) should cast to `typeof Model`.
  */
 export type AnyModelConstructor =
   | typeof Model
-  | (Omit<ConcreteModelStatics, PKNarrowedMethods> &
-      (new (...args: any[]) => Model));
+  | ({
+      table: string;
+      primaryKey?: string;
+      softDeleteColumn?: string;
+      softDeleteValue?: boolean | string;
+      modelCaseConvention?: CaseConvention;
+      databaseCaseConvention?: CaseConvention;
+      getColumns(): ColumnType[];
+      getRelations(): LazyRelationType[];
+      getIndexes(): IndexType[];
+      getUniques(): UniqueType[];
+      getChecks(): CheckType[];
+    } & (new (...args: any[]) => Model));
 
 /**
- * The return type of `defineModel` – a concrete Model constructor whose
- * instances carry the inferred column + relation properties.
+ * The return type of `defineModel` – a metadata descriptor that carries
+ * the table name, column types, and relation types.
  *
- * Uses a mapped type over `typeof Model` so the abstract flag is stripped,
- * making the result instantiable while keeping all public static members.
+ * All query and mutation methods are hidden; use `sql.from(Model)` instead.
+ * Internally still a Model subclass for engine compatibility.
  */
-/**
- * Overrides for static methods that accept a primary key parameter.
- * Narrows the PK type from `string | number` to the actual inferred PK type.
- */
-type DefinedModelPKOverrides<
-  C extends Record<string, ColumnDef>,
-  M extends Model,
-> = {
-  updateRecord<const R extends ReturningColumns<M> = undefined>(
-    pk: InferPK<C>,
-    updatePayload: Partial<ModelWithoutRelations<M>>,
-    options?: Omit<BaseModelMethodOptions, "ignoreHooks"> & {
-      returning?: R;
-    },
-  ): Promise<WriteReturnType<M, R>>;
-
-  deleteRecord(
-    pk: InferPK<C>,
-    options?: Omit<BaseModelMethodOptions, "ignoreHooks">,
-  ): Promise<void>;
-
-  softDelete<const R extends ReturningColumns<M> = undefined>(
-    pk: InferPK<C>,
-    softDeleteOptions?: {
-      column?: ModelKey<M>;
-      value?: string | number | boolean | Date;
-    },
-    options?: Omit<BaseModelMethodOptions, "ignoreHooks"> & {
-      returning?: R;
-    },
-  ): Promise<WriteReturnType<M, R>>;
-
-  save<const R extends ReturningColumns<M> = undefined>(
-    modelData: Partial<ModelWithoutRelations<M>>,
-    options?: Omit<BaseModelMethodOptions, "ignoreHooks"> & {
-      returning?: R;
-    },
-  ): Promise<WriteReturnType<M, R>>;
-
-  refresh(
-    pk: InferPK<C>,
-    options?: Omit<BaseModelMethodOptions, "ignoreHooks">,
-  ): Promise<ModelQueryResult<M> | null>;
-};
-
 export type DefinedModel<
+  T extends string,
   C extends Record<string, ColumnDef>,
   R extends Record<string, RelationDef>,
-> = Omit<ConcreteModelStatics, PKNarrowedMethods> &
-  DefinedModelPKOverrides<C, InferModel<C, R> & Model> & {
-    new (): InferModel<C, R> & Model;
+> = Omit<ConcreteModelStatics, HiddenModelStatics> & {
+  readonly table: T;
+  new (): InferModel<T, C, R> & Model;
+  // Typed lifecycle hooks (override the `any`-typed hooks from Model)
+  beforeFetch?: (
+    queryBuilder: ModelQueryBuilder<
+      { readonly __tableName: T } & InferColumns<C> & Model
+    >,
+  ) => Promise<void> | void;
+  afterFetch?: (
+    data: InferColumns<C>[],
+  ) => Promise<InferColumns<C>[]> | InferColumns<C>[];
+  beforeInsert?: (data: Partial<InferColumns<C>>) => Promise<void> | void;
+  beforeInsertMany?: (data: Partial<InferColumns<C>>[]) => Promise<void> | void;
+  beforeUpdate?: (
+    queryBuilder: ModelQueryBuilder<
+      { readonly __tableName: T } & InferColumns<C> & Model
+    >,
+  ) => Promise<void> | void;
+  beforeDelete?: (
+    queryBuilder: ModelQueryBuilder<
+      { readonly __tableName: T } & InferColumns<C> & Model
+    >,
+  ) => Promise<void> | void;
+};
+
+// ---------------------------------------------------------------------------
+// Schema relation definition types (for defineRelations + createSchema)
+// ---------------------------------------------------------------------------
+
+/**
+ * Runtime relation descriptor returned by `defineRelations` helpers.
+ * Carries enough info for `createSchema` to call the appropriate decorator.
+ */
+export interface SchemaRelDef<
+  _Kind extends "hasOne" | "hasMany" | "belongsTo" | "manyToMany" =
+    | "hasOne"
+    | "hasMany"
+    | "belongsTo"
+    | "manyToMany",
+  _Target extends AnyModelConstructor = AnyModelConstructor,
+> {
+  readonly _kind: _Kind;
+  readonly _target: _Target;
+  readonly _foreignKey: string;
+  readonly _throughModel?: string | (() => AnyModelConstructor);
+  readonly _throughModelKeys?: {
+    leftForeignKey: string;
+    rightForeignKey: string;
   };
+  readonly _constraintOptions?: RelationConstraintOptions;
+  readonly _phantom: unknown;
+}
+
+export type HasOneRelDef<T extends AnyModelConstructor> = SchemaRelDef<
+  "hasOne",
+  T
+>;
+export type HasManyRelDef<T extends AnyModelConstructor> = SchemaRelDef<
+  "hasMany",
+  T
+>;
+export type BelongsToRelDef<T extends AnyModelConstructor> = SchemaRelDef<
+  "belongsTo",
+  T
+>;
+export type ManyToManyRelDef<T extends AnyModelConstructor> = SchemaRelDef<
+  "manyToMany",
+  T
+>;
+
+/**
+ * Structural constraint for a defined model — avoids variance issues with
+ * `DefinedModel<any, any, any>` (contravariant hooks).
+ */
+type DefinedModelLike = { readonly table: string; new (...args: any[]): Model };
+
+/**
+ * Typed helpers passed to the `defineRelations` callback.
+ * Foreign keys are type-checked against the appropriate model's columns.
+ */
+export interface RelationHelpers<Source extends DefinedModelLike> {
+  hasOne<Target extends AnyModelConstructor>(
+    target: Target,
+    opts: {
+      foreignKey: ModelKey<InstanceType<Target> & Model> | (string & {});
+    },
+  ): HasOneRelDef<Target>;
+
+  hasMany<Target extends AnyModelConstructor>(
+    target: Target,
+    opts: {
+      foreignKey: ModelKey<InstanceType<Target> & Model> | (string & {});
+    },
+  ): HasManyRelDef<Target>;
+
+  belongsTo<Target extends AnyModelConstructor>(
+    target: Target,
+    opts: {
+      foreignKey: ModelKey<InstanceType<Source> & Model> | (string & {});
+    } & RelationConstraintOptions,
+  ): BelongsToRelDef<Target>;
+
+  manyToMany<
+    Target extends AnyModelConstructor,
+    Through extends AnyModelConstructor,
+  >(
+    target: Target,
+    opts: {
+      through: Through;
+      leftForeignKey: ModelKey<InstanceType<Through> & Model> | (string & {});
+      rightForeignKey: ModelKey<InstanceType<Through> & Model> | (string & {});
+    } & RelationConstraintOptions,
+  ): ManyToManyRelDef<Target>;
+  manyToMany<Target extends AnyModelConstructor>(
+    target: Target,
+    opts: {
+      through: string;
+      leftForeignKey: string;
+      rightForeignKey: string;
+    } & RelationConstraintOptions,
+  ): ManyToManyRelDef<Target>;
+}
+
+/**
+ * Return type of `defineRelations` — carries the source model type
+ * so `createSchema` can validate model↔relation matching.
+ */
+export type RelationDefinitions<
+  _Source extends DefinedModelLike = DefinedModelLike,
+  R extends Record<string, SchemaRelDef> = Record<string, SchemaRelDef>,
+> = {
+  readonly _source: _Source;
+  readonly _defs: R;
+};
+
+// ---------------------------------------------------------------------------
+// createSchema type resolution
+// ---------------------------------------------------------------------------
+
+/**
+ * Find the key in model record `M` whose model has table name `TN`.
+ */
+export type SchemaKeyByTable<M, TN extends string> = {
+  [K in keyof M]: M[K] extends { readonly table: TN } ? K : never;
+}[keyof M];
+
+/**
+ * Look up the augmented model from schema for a given target model.
+ * If not found in the schema, returns the target model itself.
+ */
+export type AugmentedModelByRef<
+  M extends Record<string, AnyModelConstructor>,
+  R extends Partial<Record<keyof M, RelationDefinitions<any, any>>>,
+  Target extends AnyModelConstructor,
+> = Target extends { readonly table: infer TN extends string }
+  ? SchemaKeyByTable<M, TN> extends infer K extends keyof M
+    ? AugmentedModelByKey<M, R, K & string>
+    : Target
+  : Target;
+
+/**
+ * Augment a single model from the schema (by key) with its resolved relations.
+ */
+export type AugmentedModelByKey<
+  M extends Record<string, AnyModelConstructor>,
+  R extends Partial<Record<keyof M, RelationDefinitions<any, any>>>,
+  K extends keyof M & string,
+> =
+  M[K] extends DefinedModel<infer T, infer C, any>
+    ? K extends keyof R
+      ? R[K] extends RelationDefinitions<any, infer Defs>
+        ? DefinedModel<T, C, AugmentedRelationDefs<M, R, Defs>>
+        : M[K]
+      : M[K]
+    : M[K];
+
+/**
+ * Map raw `SchemaRelDef` records into `RelationDef` records with resolved types.
+ */
+export type AugmentedRelationDefs<
+  M extends Record<string, AnyModelConstructor>,
+  R extends Partial<Record<keyof M, RelationDefinitions<any, any>>>,
+  Defs extends Record<string, SchemaRelDef>,
+> = {
+  [K in keyof Defs]: AugmentedRelationDef<M, R, Defs[K]>;
+};
+
+/**
+ * Resolve a single `SchemaRelDef` to a typed `RelationDef`.
+ */
+export type AugmentedRelationDef<
+  M extends Record<string, AnyModelConstructor>,
+  R extends Partial<Record<keyof M, RelationDefinitions<any, any>>>,
+  Def extends SchemaRelDef,
+> =
+  Def extends SchemaRelDef<"hasMany", infer Target>
+    ? RelationDef<InstanceType<AugmentedModelByRef<M, R, Target>>[]>
+    : Def extends SchemaRelDef<"hasOne", infer Target>
+      ? RelationDef<InstanceType<AugmentedModelByRef<M, R, Target>> | null>
+      : Def extends SchemaRelDef<"belongsTo", infer Target>
+        ? RelationDef<InstanceType<AugmentedModelByRef<M, R, Target>> | null>
+        : Def extends SchemaRelDef<"manyToMany", infer Target>
+          ? RelationDef<InstanceType<AugmentedModelByRef<M, R, Target>>[]>
+          : RelationDef;
+
+/**
+ * Result of `createSchema(models, relations)` — each model augmented with resolved relation types.
+ */
+export type CreateSchemaResult<
+  M extends Record<string, AnyModelConstructor>,
+  R extends Partial<Record<keyof M, RelationDefinitions<any, any>>>,
+> = {
+  [K in keyof M]: AugmentedModelByKey<M, R, K & string>;
+};
+
+/**
+ * Finds the augmented model in a schema record by table name.
+ * Falls back to the original model when no schema is provided.
+ */
+export type FindByTable<
+  Schema extends Record<string, AnyModelConstructor>,
+  TN extends string,
+> =
+  SchemaKeyByTable<Schema, TN> extends infer K extends keyof Schema
+    ? Schema[K]
+    : never;
+
+/**
+ * Used by `SqlDataSource.from()` to resolve a plain model reference to its
+ * schema-augmented version (when a schema is registered).
+ * When no schema is provided (`Schema = {}`), falls back to the model itself.
+ */
+export type SchemaLookup<
+  Schema extends Record<string, AnyModelConstructor>,
+  M extends AnyModelConstructor,
+> = M extends { readonly table: infer TN extends string }
+  ? FindByTable<Schema, TN> extends infer Found
+    ? [Found] extends [never]
+      ? M
+      : Found extends AnyModelConstructor
+        ? Found
+        : M
+    : M
+  : M;
+
+// ---------------------------------------------------------------------------
+// View definition
+// ---------------------------------------------------------------------------
+
+/**
+ * Definition object for `defineView`.
+ * Views are read-only — no relations, indexes, uniques, checks, or mutation hooks.
+ */
+export type ViewDefinition<
+  C extends Record<string, ColumnDef> = Record<string, ColumnDef>,
+> = {
+  columns: C;
+  statement: (query: ModelQueryBuilder<any>) => void;
+  hooks?: Pick<HooksDefinition<InferColumns<C>>, "beforeFetch" | "afterFetch">;
+  options?: Pick<
+    DefineModelOptions<keyof C & string>,
+    "modelCaseConvention" | "databaseCaseConvention"
+  >;
+};
+
+/**
+ * Statics hidden from a view model (views are read-only, no mutations).
+ */
+type HiddenViewStatics = HiddenModelStatics;
+
+/**
+ * Return type of `defineView` — a read-only model backed by a SQL view statement.
+ */
+export type DefinedView<
+  T extends string,
+  C extends Record<string, ColumnDef>,
+> = Omit<ConcreteModelStatics, HiddenViewStatics> & {
+  readonly table: T;
+  new (): InferModel<T, C, {}> & Model;
+};

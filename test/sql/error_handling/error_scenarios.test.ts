@@ -3,27 +3,29 @@ import { env } from "../../../src/env/env";
 import { HysteriaError } from "../../../src/errors/hysteria_error";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { UserFactory } from "../test_models/factory/user_factory";
-import { UserStatus, UserWithUuid } from "../test_models/uuid/user_uuid";
+import { UserStatus, UserWithUuid } from "../test_models/uuid/schema";
+
+let sql: SqlDataSource;
 
 const isMssql = env.DB_TYPE === "mssql";
 
 beforeAll(async () => {
-  const dataSource = new SqlDataSource();
-  await dataSource.connect();
+  sql = new SqlDataSource();
+  await sql.connect();
 });
 
 beforeEach(async () => {
   // MSSQL has issues with global transactions when errors occur
   if (!isMssql) {
-    await SqlDataSource.startGlobalTransaction();
+    await sql.startGlobalTransaction();
   }
 });
 
 afterEach(async () => {
   if (!isMssql) {
-    await SqlDataSource.rollbackGlobalTransaction();
+    await sql.rollbackGlobalTransaction();
   } else {
-    await UserWithUuid.query().delete();
+    await sql.from(UserWithUuid).delete();
   }
 });
 
@@ -31,24 +33,17 @@ describe(`[${env.DB_TYPE}] Error Handling - Connection Scenarios`, () => {
   test("should throw error when querying without connection", async () => {
     const dataSource = new SqlDataSource({
       type: env.DB_TYPE as any,
-      host: "invalid-host",
-      username: "invalid-user",
-      password: "invalid-pass",
-      database: "invalid-db",
-      connectionPolicies: {
-        retry: {
-          maxRetries: 0,
-          delay: 0,
-        },
-      },
+      host: env.DB_HOST || "localhost",
+      username: env.DB_USER || "root",
+      password: env.DB_PASSWORD || "root",
+      database: env.DB_DATABASE || "test",
     } as any);
 
-    await expect(dataSource.connect()).rejects.toThrow();
+    // No connect() call — rawQuery must throw CONNECTION_NOT_ESTABLISHED
+    await expect(dataSource.rawQuery("SELECT 1")).rejects.toThrow();
   });
 
   test("should throw error for invalid SQL syntax", async () => {
-    const sql = SqlDataSource.instance;
-
     await expect(sql.rawQuery("INVALID SQL SYNTAX HERE")).rejects.toThrow();
   });
 });
@@ -59,8 +54,6 @@ describe(`[${env.DB_TYPE}] Error Handling - Invalid Column References`, () => {
     if (env.DB_TYPE === "sqlite") {
       return;
     }
-
-    const sql = SqlDataSource.instance;
 
     // Using a column that doesn't exist
     const query = sql
@@ -76,8 +69,6 @@ describe(`[${env.DB_TYPE}] Error Handling - Invalid Column References`, () => {
       return;
     }
 
-    const sql = SqlDataSource.instance;
-
     const query = sql
       .query("users_with_uuid")
       .select("id", "non_existent_column");
@@ -89,8 +80,6 @@ describe(`[${env.DB_TYPE}] Error Handling - Invalid Column References`, () => {
     if (env.DB_TYPE === "sqlite") {
       return;
     }
-
-    const sql = SqlDataSource.instance;
 
     const query = sql
       .query("users_with_uuid")
@@ -109,8 +98,6 @@ describe(`[${env.DB_TYPE}] Error Handling - Invalid Column References`, () => {
       return;
     }
 
-    const sql = SqlDataSource.instance;
-
     const query = sql
       .query("users_with_uuid")
       .orderBy("non_existent_column", "asc");
@@ -124,8 +111,6 @@ describe(`[${env.DB_TYPE}] Error Handling - Invalid Column References`, () => {
       return;
     }
 
-    const sql = SqlDataSource.instance;
-
     const query = sql
       .query("users_with_uuid")
       .select("age")
@@ -137,8 +122,7 @@ describe(`[${env.DB_TYPE}] Error Handling - Invalid Column References`, () => {
 
 describe(`[${env.DB_TYPE}] Error Handling - NULL Handling`, () => {
   test("should handle NULL in BETWEEN clause correctly", async () => {
-    const user = await UserFactory.userWithUuid(1);
-    const sql = SqlDataSource.instance;
+    const user = await UserFactory.userWithUuid(sql, 1);
 
     // NULL values should not match BETWEEN
     const result = await sql
@@ -151,8 +135,6 @@ describe(`[${env.DB_TYPE}] Error Handling - NULL Handling`, () => {
   });
 
   test("should handle NULL in LIKE pattern", async () => {
-    const sql = SqlDataSource.instance;
-
     // NULL values should not match LIKE
     const result = await sql
       .query("users_with_uuid")
@@ -163,8 +145,6 @@ describe(`[${env.DB_TYPE}] Error Handling - NULL Handling`, () => {
   });
 
   test("should handle NULL comparison correctly", async () => {
-    const sql = SqlDataSource.instance;
-
     // NULL should not match equality
     const result = await sql
       .query("users_with_uuid")
@@ -175,8 +155,6 @@ describe(`[${env.DB_TYPE}] Error Handling - NULL Handling`, () => {
   });
 
   test("should handle NULL in IN clause", async () => {
-    const sql = SqlDataSource.instance;
-
     // NULL in array should be handled
     const result = await sql
       .query("users_with_uuid")
@@ -189,7 +167,6 @@ describe(`[${env.DB_TYPE}] Error Handling - NULL Handling`, () => {
 
 describe(`[${env.DB_TYPE}] Error Handling - Transaction Errors`, () => {
   test("should rollback transaction on error", async () => {
-    const sql = SqlDataSource.instance;
     const trx = await sql.transaction();
 
     // Use a valid UUID format for PostgreSQL/CockroachDB
@@ -205,7 +182,7 @@ describe(`[${env.DB_TYPE}] Error Handling - Transaction Errors`, () => {
         status: UserStatus.active,
         isActive: true,
       };
-      await UserWithUuid.save(user, { trx });
+      await sql.from(UserWithUuid).save(user, { trx });
 
       // Force an error
       await trx.sql.rawQuery("INVALID SQL TO FORCE ROLLBACK");
@@ -216,13 +193,12 @@ describe(`[${env.DB_TYPE}] Error Handling - Transaction Errors`, () => {
     }
 
     // User should not exist after rollback
-    const foundUser = await UserWithUuid.query().where("id", userId).one();
+    const foundUser = await sql.from(UserWithUuid).where("id", userId).one();
 
     expect(foundUser).toBeNull();
   });
 
   test("should handle transaction commit failure", async () => {
-    const sql = SqlDataSource.instance;
     const trx = await sql.transaction();
 
     // Create a user
@@ -233,13 +209,14 @@ describe(`[${env.DB_TYPE}] Error Handling - Transaction Errors`, () => {
       status: UserStatus.active,
       isActive: true,
     };
-    await UserWithUuid.insert(user, { trx });
+    await sql.from(UserWithUuid).insert(user, { trx });
 
     // Commit should succeed
     await trx.commit();
 
     // Verify user was saved
-    const foundUser = await UserWithUuid.query()
+    const foundUser = await sql
+      .from(UserWithUuid)
       .where("email", "commit-fail@example.com")
       .one();
 
@@ -247,13 +224,13 @@ describe(`[${env.DB_TYPE}] Error Handling - Transaction Errors`, () => {
     expect(foundUser?.name).toBe("Commit Failure Test");
 
     // Cleanup
-    await UserWithUuid.query()
+    await sql
+      .from(UserWithUuid)
       .where("email", "commit-fail@example.com")
       .delete();
   });
 
   test("should handle inactive transaction operations", async () => {
-    const sql = SqlDataSource.instance;
     const trx = await sql.transaction();
 
     await trx.commit();
@@ -276,8 +253,6 @@ describe(`[${env.DB_TYPE}] Error Handling - Constraint Violations`, () => {
       return;
     }
 
-    const sql = SqlDataSource.instance;
-
     // Try to insert a post with non-existent user ID
     const fakeUserId = "00000000-0000-0000-0000-000000000000";
 
@@ -291,8 +266,6 @@ describe(`[${env.DB_TYPE}] Error Handling - Constraint Violations`, () => {
   }, 15000);
 
   test("should handle invalid SQL syntax", async () => {
-    const sql = SqlDataSource.instance;
-
     // Invalid SQL should throw
     await expect(sql.rawQuery("INVALID SQL SYNTAX HERE")).rejects.toThrow();
   });
@@ -300,8 +273,6 @@ describe(`[${env.DB_TYPE}] Error Handling - Constraint Violations`, () => {
 
 describe(`[${env.DB_TYPE}] Error Handling - Type Conversion Errors`, () => {
   test("should handle invalid integer comparison", async () => {
-    const sql = SqlDataSource.instance;
-
     const query = sql.query("users_with_uuid").where("age", "not-a-number");
 
     // PostgreSQL/CockroachDB/MSSQL throw on type mismatches
@@ -325,8 +296,6 @@ describe(`[${env.DB_TYPE}] Error Handling - Type Conversion Errors`, () => {
       return;
     }
 
-    const sql = SqlDataSource.instance;
-
     // Most databases throw on invalid timestamp values
     await expect(
       sql.rawQuery(
@@ -336,8 +305,6 @@ describe(`[${env.DB_TYPE}] Error Handling - Type Conversion Errors`, () => {
   });
 
   test("should handle string comparison on boolean column", async () => {
-    const sql = SqlDataSource.instance;
-
     const query = sql
       .query("users_with_uuid")
       .where("is_active", "not-boolean");
@@ -365,8 +332,6 @@ describe(`[${env.DB_TYPE}] Error Handling - Edge Cases`, () => {
       return;
     }
 
-    const sql = SqlDataSource.instance;
-
     // Empty array should create impossible condition
     const result = await sql.query("users_with_uuid").whereIn("id", []).many();
 
@@ -374,8 +339,6 @@ describe(`[${env.DB_TYPE}] Error Handling - Edge Cases`, () => {
   });
 
   test("should handle very long string values", async () => {
-    const sql = SqlDataSource.instance;
-
     const veryLongString = "a".repeat(10000);
     const uniqueEmail = `long-string-${Date.now()}@example.com`;
 
@@ -388,9 +351,10 @@ describe(`[${env.DB_TYPE}] Error Handling - Edge Cases`, () => {
       description: veryLongString,
     };
 
-    await UserWithUuid.insert(user);
+    await sql.from(UserWithUuid).insert(user);
 
-    const foundUser = await UserWithUuid.query()
+    const foundUser = await sql
+      .from(UserWithUuid)
       .where("email", uniqueEmail)
       .one();
 
@@ -399,13 +363,11 @@ describe(`[${env.DB_TYPE}] Error Handling - Edge Cases`, () => {
 
     // Clean up for MSSQL
     if (isMssql && foundUser) {
-      await UserWithUuid.query().where("id", foundUser.id).delete();
+      await sql.from(UserWithUuid).where("id", foundUser.id).delete();
     }
   });
 
   test("should handle special characters in strings", async () => {
-    const sql = SqlDataSource.instance;
-
     const specialString = "Test 'with\" \\special/ chars";
     const uniqueEmail = `special-${Date.now()}@example.com`;
 
@@ -417,9 +379,10 @@ describe(`[${env.DB_TYPE}] Error Handling - Edge Cases`, () => {
       isActive: true,
     };
 
-    await UserWithUuid.insert(user);
+    await sql.from(UserWithUuid).insert(user);
 
-    const foundUser = await UserWithUuid.query()
+    const foundUser = await sql
+      .from(UserWithUuid)
       .where("email", uniqueEmail)
       .one();
 
@@ -428,7 +391,7 @@ describe(`[${env.DB_TYPE}] Error Handling - Edge Cases`, () => {
 
     // Clean up for MSSQL
     if (isMssql && foundUser) {
-      await UserWithUuid.query().where("id", foundUser.id).delete();
+      await sql.from(UserWithUuid).where("id", foundUser.id).delete();
     }
   });
 
@@ -437,8 +400,6 @@ describe(`[${env.DB_TYPE}] Error Handling - Edge Cases`, () => {
     if (isMssql) {
       return;
     }
-
-    const sql = SqlDataSource.instance;
 
     const unicodeString = "Test 🚀 with 你好 world";
     const uniqueEmail = `unicode-${Date.now()}@example.com`;
@@ -451,9 +412,10 @@ describe(`[${env.DB_TYPE}] Error Handling - Edge Cases`, () => {
       isActive: true,
     };
 
-    await UserWithUuid.insert(user);
+    await sql.from(UserWithUuid).insert(user);
 
-    const foundUser = await UserWithUuid.query()
+    const foundUser = await sql
+      .from(UserWithUuid)
       .where("email", uniqueEmail)
       .one();
 
@@ -462,7 +424,6 @@ describe(`[${env.DB_TYPE}] Error Handling - Edge Cases`, () => {
   });
 
   test("should handle zero values correctly", async () => {
-    const sql = SqlDataSource.instance;
     const uniqueEmail = `zero-${Date.now()}@example.com`;
 
     const user = {
@@ -473,9 +434,10 @@ describe(`[${env.DB_TYPE}] Error Handling - Edge Cases`, () => {
       isActive: false, // False value
     };
 
-    await UserWithUuid.insert(user);
+    await sql.from(UserWithUuid).insert(user);
 
-    const foundUser = await UserWithUuid.query()
+    const foundUser = await sql
+      .from(UserWithUuid)
       .where("email", uniqueEmail)
       .one();
 
@@ -486,7 +448,7 @@ describe(`[${env.DB_TYPE}] Error Handling - Edge Cases`, () => {
 
     // Clean up for MSSQL
     if (isMssql && foundUser) {
-      await UserWithUuid.query().where("id", foundUser.id).delete();
+      await sql.from(UserWithUuid).where("id", foundUser.id).delete();
     }
   });
 });
@@ -495,8 +457,6 @@ describe(`[${env.DB_TYPE}] Error Handling - Edge Cases`, () => {
 
 describe(`[${env.DB_TYPE}] Error Handling - Query Builder Errors`, () => {
   test("should return null when getting record from empty result", async () => {
-    const sql = SqlDataSource.instance;
-
     const result = await sql
       .query("users_with_uuid")
       .where("email", "non-existent@example.com")
@@ -511,8 +471,6 @@ describe(`[${env.DB_TYPE}] Error Handling - Query Builder Errors`, () => {
       return;
     }
 
-    const sql = SqlDataSource.instance;
-
     // Try to use invalid aggregate
     const query = sql
       .query("users_with_uuid")
@@ -522,8 +480,6 @@ describe(`[${env.DB_TYPE}] Error Handling - Query Builder Errors`, () => {
   });
 
   test("should handle invalid table name", async () => {
-    const sql = SqlDataSource.instance;
-
     await expect(
       sql.query("totally_fake_table_name_12345").many(),
     ).rejects.toThrow();

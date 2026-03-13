@@ -1,22 +1,14 @@
-import { column } from "../../src/sql/models/decorators/model_decorators";
-import { Model } from "../../src/sql/models/model";
+import { col, defineModel } from "../../src/sql/models/define_model";
 import { SqlDataSource } from "../../src/sql/sql_data_source";
 
-class ReplicationUser extends Model {
-  static table = "replication_users";
-
-  @column.bigIncrement()
-  declare id: number;
-
-  @column()
-  declare name: string;
-
-  @column()
-  declare email: string;
-
-  @column.datetime({ autoCreate: true })
-  declare createdAt: Date;
-}
+const ReplicationUser = defineModel("replication_users", {
+  columns: {
+    id: col.bigIncrement(),
+    name: col.string(),
+    email: col.string(),
+    createdAt: col.datetime(),
+  },
+});
 
 describe("Slave Replication", () => {
   let sql: SqlDataSource;
@@ -98,7 +90,7 @@ describe("Slave Replication", () => {
 
   describe("Round Robin Algorithm", () => {
     test("should use master for write operations", async () => {
-      const user = await ReplicationUser.insert(
+      const user = await sql.from(ReplicationUser).insert(
         {
           name: "John Doe",
           email: "john@example.com",
@@ -112,18 +104,18 @@ describe("Slave Replication", () => {
     });
 
     test("should use slaves for read operations with Model.find()", async () => {
-      await ReplicationUser.insert({
+      await sql.from(ReplicationUser).insert({
         name: "Jane Doe",
         email: "jane@example.com",
       });
 
-      const users = await ReplicationUser.find();
+      const users = await sql.from(ReplicationUser).find();
       expect(users.length).toBe(1);
       expect(users[0].name).toBe("Jane Doe");
     });
 
     test("should use slaves for read operations with Model.findOne()", async () => {
-      const inserted = await ReplicationUser.insert(
+      const inserted = await sql.from(ReplicationUser).insert(
         {
           name: "Bob Smith",
           email: "bob@example.com",
@@ -131,7 +123,7 @@ describe("Slave Replication", () => {
         { returning: ["*"] },
       );
 
-      const user = await ReplicationUser.findOne({
+      const user = await sql.from(ReplicationUser).findOne({
         where: { id: inserted.id },
       });
 
@@ -140,12 +132,13 @@ describe("Slave Replication", () => {
     });
 
     test("should use slaves for read operations with query builder", async () => {
-      await ReplicationUser.insert({
+      await sql.from(ReplicationUser).insert({
         name: "Alice Johnson",
         email: "alice@example.com",
       });
 
-      const users = await ReplicationUser.query()
+      const users = await sql
+        .from(ReplicationUser)
         .where("name", "Alice Johnson")
         .many();
       expect(users.length).toBe(1);
@@ -153,7 +146,7 @@ describe("Slave Replication", () => {
     });
 
     test("should use master for update operations", async () => {
-      const user = await ReplicationUser.insert(
+      const user = await sql.from(ReplicationUser).insert(
         {
           name: "Update Test",
           email: "update@example.com",
@@ -161,11 +154,11 @@ describe("Slave Replication", () => {
         { returning: ["*"] },
       );
 
-      await ReplicationUser.query().where("id", user.id).update({
+      await sql.from(ReplicationUser).where("id", user.id).update({
         name: "Updated Name",
       });
 
-      const updated = await ReplicationUser.findOne({
+      const updated = await sql.from(ReplicationUser).findOne({
         where: { id: user.id },
       });
 
@@ -173,7 +166,7 @@ describe("Slave Replication", () => {
     });
 
     test("should use master for delete operations", async () => {
-      const user = await ReplicationUser.insert(
+      const user = await sql.from(ReplicationUser).insert(
         {
           name: "Delete Test",
           email: "delete@example.com",
@@ -181,9 +174,9 @@ describe("Slave Replication", () => {
         { returning: ["*"] },
       );
 
-      await ReplicationUser.query().where("id", user.id).delete();
+      await sql.from(ReplicationUser).where("id", user.id).delete();
 
-      const deleted = await ReplicationUser.findOne({
+      const deleted = await sql.from(ReplicationUser).findOne({
         where: { id: user.id },
       });
 
@@ -193,49 +186,42 @@ describe("Slave Replication", () => {
 
   describe("Replication Mode Override", () => {
     test("should force master for reads when replicationMode is master", async () => {
-      await ReplicationUser.insert({
+      await sql.from(ReplicationUser).insert({
         name: "Master Read",
         email: "master@example.com",
       });
 
-      const users = await ReplicationUser.find(
-        {},
-        {
-          replicationMode: "master",
-        },
-      );
+      const users = await sql
+        .from(ReplicationUser)
+        .setReplicationMode("master")
+        .find();
 
       expect(users.length).toBe(1);
       expect(users[0].name).toBe("Master Read");
     });
 
     test("should force slave for reads when replicationMode is slave", async () => {
-      await ReplicationUser.insert({
+      await sql.from(ReplicationUser).insert({
         name: "Slave Read",
         email: "slave@example.com",
       });
 
-      const users = await ReplicationUser.find(
-        {},
-        {
-          replicationMode: "slave",
-        },
-      );
+      const users = await sql
+        .from(ReplicationUser)
+        .setReplicationMode("slave")
+        .find();
 
       expect(users.length).toBe(1);
       expect(users[0].name).toBe("Slave Read");
     });
 
     test("should use master for writes even with replicationMode slave", async () => {
-      const user = await ReplicationUser.insert(
+      const user = await sql.from(ReplicationUser).insert(
         {
           name: "Write Test",
           email: "write@example.com",
         },
-        {
-          replicationMode: "slave",
-          returning: ["*"],
-        },
+        { returning: ["*"] },
       );
 
       expect(user).toBeDefined();
@@ -243,12 +229,14 @@ describe("Slave Replication", () => {
     });
 
     test("should respect replicationMode on query builder", async () => {
-      await ReplicationUser.insert({
+      await sql.from(ReplicationUser).insert({
         name: "QB Mode Test",
         email: "qb@example.com",
       });
 
-      const users = await ReplicationUser.query({ replicationMode: "master" })
+      const users = await sql
+        .from(ReplicationUser)
+        .setReplicationMode("master")
         .where("name", "QB Mode Test")
         .many();
 
@@ -258,42 +246,43 @@ describe("Slave Replication", () => {
 
   describe("Query Builder Operations", () => {
     test("should use slaves for query builder select operations", async () => {
-      await ReplicationUser.insertMany([
+      await sql.from(ReplicationUser).insertMany([
         { name: "User 1", email: "user1@example.com" },
         { name: "User 2", email: "user2@example.com" },
         { name: "User 3", email: "user3@example.com" },
       ]);
 
-      const users = await ReplicationUser.query()
+      const users = await sql
+        .from(ReplicationUser)
         .select("name", "email")
         .many();
       expect(users.length).toBe(3);
     });
 
     test("should use slaves for query builder count operations", async () => {
-      await ReplicationUser.insertMany([
+      await sql.from(ReplicationUser).insertMany([
         { name: "Count 1", email: "count1@example.com" },
         { name: "Count 2", email: "count2@example.com" },
       ]);
 
-      const count = await ReplicationUser.query().getCount();
+      const count = await sql.from(ReplicationUser).getCount();
       expect(count).toBe(2);
     });
 
     test("should use slaves for query builder pagination", async () => {
-      await ReplicationUser.insertMany([
+      await sql.from(ReplicationUser).insertMany([
         { name: "Page 1", email: "page1@example.com" },
         { name: "Page 2", email: "page2@example.com" },
         { name: "Page 3", email: "page3@example.com" },
       ]);
 
-      const result = await ReplicationUser.query().paginate(1, 2);
+      const result = await sql.from(ReplicationUser).paginate(1, 2);
       expect(result.data.length).toBe(2);
       expect(result.paginationMetadata.total).toBe(3);
     });
 
     test("should use master for query builder insert", async () => {
-      const user = await ReplicationUser.query().insert(
+      const user = await sql.from(ReplicationUser).insert(
         {
           name: "QB Insert",
           email: "qbinsert@example.com",
@@ -318,7 +307,7 @@ describe("Slave Replication", () => {
 
   describe("Random Algorithm", () => {
     test("should use random slave selection for reads", async () => {
-      await ReplicationUser.insert({
+      await sql.from(ReplicationUser).insert({
         name: "Random Test",
         email: "random@example.com",
       });
@@ -330,7 +319,7 @@ describe("Slave Replication", () => {
 
   describe("No Slaves Configuration", () => {
     test("should use master for reads when no slaves configured", async () => {
-      await ReplicationUser.insert({
+      await sql.from(ReplicationUser).insert({
         name: "No Slaves",
         email: "noslaves@example.com",
       });
@@ -346,10 +335,6 @@ describe("Slave Failure Handling", () => {
   let onSlaveServerFailure: jest.Mock;
 
   beforeAll(async () => {
-    try {
-      await SqlDataSource.disconnect();
-    } catch {}
-
     onSlaveServerFailure = jest.fn();
 
     sqlFailure = new SqlDataSource({
@@ -403,12 +388,12 @@ describe("Slave Failure Handling", () => {
   });
 
   test("should fallback to master when slave fails and call onSlaveServerFailure", async () => {
-    await ReplicationUser.insert({
+    await sqlFailure.from(ReplicationUser).insert({
       name: "Failure Test",
       email: "failure@example.com",
     });
 
-    const users = await ReplicationUser.find({
+    const users = await sqlFailure.from(ReplicationUser).find({
       where: { email: "failure@example.com" },
     });
 

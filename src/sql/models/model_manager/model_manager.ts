@@ -1,4 +1,5 @@
 import { HysteriaError } from "../../../errors/hysteria_error";
+import type { LoggerConfig } from "../../../utils/logger";
 import { bindParamsIntoQuery, formatQuery } from "../../../utils/query";
 import { AstParser } from "../../ast/parser";
 import { DeleteNode } from "../../ast/query/node/delete";
@@ -17,7 +18,6 @@ import { Model } from "../model";
 import { ModelQueryBuilder } from "../model_query_builder/model_query_builder";
 import { ModelWithoutRelations } from "../model_types";
 import { getBaseModelInstance } from "../model_utils";
-import type { LoggerConfig } from "../../../utils/logger";
 import {
   FindOneType,
   FindType,
@@ -72,12 +72,14 @@ export class ModelManager<T extends Model> {
     R extends ModelRelation<T>[] = never[],
   >(input?: FindType<T, S, R>): Promise<ModelWithoutRelations<T>[]> {
     if (!input) {
-      return this.query().many();
+      return this.query().many() as unknown as Promise<
+        ModelWithoutRelations<T>[]
+      >;
     }
 
     const query = this.query();
     if (input.select) {
-      query.select(...(input.select as any[]));
+      query.select(...input.select);
     }
 
     if (input.relations) {
@@ -108,7 +110,9 @@ export class ModelManager<T extends Model> {
       query.groupBy(...(input.groupBy as string[]));
     }
 
-    return query.many({ ignoreHooks: input.ignoreHooks || [] });
+    return query.many({
+      ignoreHooks: input.ignoreHooks || [],
+    }) as unknown as Promise<ModelWithoutRelations<T>[]>;
   }
 
   /**
@@ -201,7 +205,9 @@ export class ModelManager<T extends Model> {
         this.model.primaryKey as ModelKey<T>,
         value as WhereColumnValue<T, ModelKey<T>>,
       )
-      .one({ ignoreHooks: ["afterFetch", "beforeFetch"] });
+      .one({
+        ignoreHooks: ["afterFetch", "beforeFetch"],
+      }) as unknown as Promise<ModelWithoutRelations<T> | null>;
   }
 
   /**
@@ -213,7 +219,7 @@ export class ModelManager<T extends Model> {
     options: InsertOptions<T> = {},
   ): WriteOperation<ModelWithoutRelations<T>> {
     const rawInsertObject = Object.fromEntries(
-      Object.keys(model).map((col) => [col, (model as any)[col]]),
+      Object.keys(model).map((col) => [col, model[col as keyof typeof model]]),
     );
 
     const shouldDisableReturning =
@@ -255,7 +261,7 @@ export class ModelManager<T extends Model> {
       preparedColumns.forEach((column, index) => {
         const value = preparedValues[index];
         insertObject[column] = value;
-        (model as any)[column] ??= value;
+        model[column as keyof typeof model] ??= value;
       });
 
       const shouldDisableReturning =
@@ -286,7 +292,7 @@ export class ModelManager<T extends Model> {
       );
 
       if (shouldDisableReturning) {
-        return undefined as any;
+        return undefined as Awaited<ReturnType<typeof execSql>>;
       }
 
       if (this.sqlType === "mysql" || this.sqlType === "mariadb") {
@@ -323,7 +329,10 @@ export class ModelManager<T extends Model> {
   ): WriteOperation<ModelWithoutRelations<T>[]> {
     const rawInsertObjects = models.map((model) =>
       Object.fromEntries(
-        Object.keys(model).map((col) => [col, (model as any)[col]]),
+        Object.keys(model).map((col) => [
+          col,
+          model[col as keyof typeof model],
+        ]),
       ),
     );
 
@@ -379,7 +388,7 @@ export class ModelManager<T extends Model> {
         preparedColumns.forEach((column, index) => {
           const value = preparedValues[index];
           insertObject[column] = value;
-          (model as any)[column] ??= value;
+          model[column as keyof typeof model] ??= value;
         });
 
         insertObjects.push(insertObject);
@@ -453,7 +462,10 @@ export class ModelManager<T extends Model> {
   ): WriteOperation<ModelWithoutRelations<T>[]> {
     const rawInsertObjects = data.map((model) =>
       Object.fromEntries(
-        Object.keys(model).map((col) => [col, (model as any)[col]]),
+        Object.keys(model).map((col) => [
+          col,
+          model[col as keyof typeof model],
+        ]),
       ),
     );
 
@@ -463,12 +475,18 @@ export class ModelManager<T extends Model> {
       undefined,
       true,
     );
+    const previewReturning =
+      options.returning?.length &&
+      (this.sqlType === "postgres" || this.sqlType === "cockroachdb")
+        ? (options.returning as string[])
+        : undefined;
+
     const onDuplicateNode = new OnDuplicateNode(
       this.model.table,
       conflictColumns,
       columnsToUpdate,
       (options.updateOnConflict ?? true) ? "update" : "ignore",
-      options.returning as string[],
+      previewReturning,
     );
 
     const unWrapFn = () => {
@@ -518,6 +536,17 @@ export class ModelManager<T extends Model> {
         );
       }
 
+      const shouldDisableReturning =
+        !options.returning || options.returning.length === 0;
+
+      // For postgres/cockroachdb: pass returning to OnDuplicateNode so the
+      // interpreter appends RETURNING directly to the upsert statement.
+      const nativeReturning =
+        !shouldDisableReturning &&
+        (this.sqlType === "postgres" || this.sqlType === "cockroachdb")
+          ? (options.returning as string[])
+          : undefined;
+
       const { sql, bindings } = this.astParser.parse([
         new InsertNode(
           new FromNode(this.model.table),
@@ -530,7 +559,7 @@ export class ModelManager<T extends Model> {
           conflictColumns,
           columnsToUpdate,
           (options.updateOnConflict ?? true) ? "update" : "ignore",
-          options.returning as string[],
+          nativeReturning,
         ),
       ]);
 
@@ -549,7 +578,51 @@ export class ModelManager<T extends Model> {
         },
       );
 
-      return rows as T[];
+      if (shouldDisableReturning) {
+        return [];
+      }
+
+      // Postgres/CockroachDB: RETURNING was part of the SQL — rows are already populated.
+      // When DO NOTHING fires on a conflict, PostgreSQL returns no rows for conflicting
+      // records even with RETURNING. Fall back to re-fetching when results are incomplete.
+      if (this.sqlType === "postgres" || this.sqlType === "cockroachdb") {
+        if (rows.length < data.length && !(options.updateOnConflict ?? true)) {
+          const conflictKey = conflictColumns[0];
+          const conflictValues = data.map(
+            (d) => d[conflictKey as keyof typeof d],
+          );
+          const fetchedModels = await this.query()
+            .select(
+              ...((options.returning?.length
+                ? options.returning
+                : ["*"]) as any[]),
+            )
+            .whereIn(conflictKey, conflictValues as any)
+            .many();
+          return fetchedModels as unknown as T[];
+        }
+
+        const returnedModels = rows as T[];
+        await this.model.afterFetch?.(returnedModels);
+        const results = await serializeModel(
+          returnedModels,
+          this.model,
+          options.returning as string[],
+        );
+        return (results || []) as T[];
+      }
+
+      // MySQL, MariaDB, SQLite: re-fetch by conflict column values.
+      const conflictKey = conflictColumns[0];
+      const conflictValues = data.map((d) => d[conflictKey as keyof typeof d]);
+      const fetchedModels = await this.query()
+        .select(
+          ...((options.returning?.length ? options.returning : ["*"]) as any[]),
+        )
+        .whereIn(conflictKey, conflictValues as any)
+        .many();
+
+      return fetchedModels as unknown as T[];
     });
   }
 
@@ -644,6 +717,21 @@ export class ModelManager<T extends Model> {
       },
     );
 
+    // When DO NOTHING fires (updateOnConflict: false and a conflict occurred), the MERGE
+    // statement produces no output rows because neither INSERT nor UPDATE happened.
+    // Fall back to re-fetching the existing records by conflict column values.
+    if (rows.length === 0 && !(options.updateOnConflict ?? true)) {
+      const conflictKey = conflictColumns[0];
+      const conflictValues = data.map((d) => d[conflictKey as keyof typeof d]);
+      const fetchedModels = await this.query()
+        .select(
+          ...((options.returning?.length ? options.returning : ["*"]) as any[]),
+        )
+        .whereIn(conflictKey, conflictValues as any)
+        .many();
+      return fetchedModels as unknown as T[];
+    }
+
     return rows as T[];
   }
 
@@ -660,7 +748,7 @@ export class ModelManager<T extends Model> {
       this.model.getColumns().map((c) => c.columnName),
     );
     const keys = Object.keys(data).filter((k) => modelColumnNames.has(k));
-    const values = keys.map((k) => (data as any)[k]);
+    const values = keys.map((k) => data[k as keyof typeof data]);
 
     let { columns: preparedColumns, values: preparedValues } =
       await this.interpreterUtils.prepareColumns(keys, values, "update");
@@ -858,7 +946,7 @@ export class ModelManager<T extends Model> {
       preparedColumns.forEach((column, index) => {
         const value = preparedValues[index];
         insertObject[column] = value;
-        (model as any)[column] ??= value;
+        model[column as keyof typeof model] ??= value;
       });
 
       // Execute the insert
@@ -903,12 +991,13 @@ export class ModelManager<T extends Model> {
       });
 
       if (insertedRow) {
+        const typedRow = insertedRow as unknown as ModelWithoutRelations<T>;
         if (
           primaryKey &&
-          insertedRow[primaryKey as keyof ModelWithoutRelations<T>]
+          typedRow[primaryKey as keyof ModelWithoutRelations<T>]
         ) {
           (model as any)[primaryKey] =
-            insertedRow[primaryKey as keyof ModelWithoutRelations<T>];
+            typedRow[primaryKey as keyof ModelWithoutRelations<T>];
         }
         results.push(insertedRow as T);
       } else {
@@ -974,13 +1063,11 @@ export class ModelManager<T extends Model> {
       typeof condition !== "object"
     ) {
       if (condition === null) {
-        useOr
-          ? query.orWhereNull(column as any)
-          : query.whereNull(column as any);
+        useOr ? query.orWhereNull(column) : query.whereNull(column);
       } else {
         useOr
-          ? query.orWhere(column as any, "=", condition as any)
-          : query.where(column as any, "=", condition as any);
+          ? query.orWhere(column as any, "=", condition)
+          : query.where(column as any, "=", condition);
       }
 
       return;
@@ -993,58 +1080,54 @@ export class ModelManager<T extends Model> {
     switch (op) {
       case "$eq":
         if (value === null) {
-          useOr
-            ? query.orWhereNull(column as any)
-            : query.whereNull(column as any);
+          useOr ? query.orWhereNull(column) : query.whereNull(column);
         } else {
           useOr
-            ? query.orWhere(column as any, "=", value as any)
-            : query.where(column as any, "=", value as any);
+            ? query.orWhere(column as any, "=", value)
+            : query.where(column as any, "=", value);
         }
         break;
       case "$ne":
         if (value === null) {
-          useOr
-            ? query.orWhereNotNull(column as any)
-            : query.whereNotNull(column as any);
+          useOr ? query.orWhereNotNull(column) : query.whereNotNull(column);
         } else {
           useOr
-            ? query.orWhere(column as any, "!=", value as any)
-            : query.where(column as any, "!=", value as any);
+            ? query.orWhere(column as any, "!=", value)
+            : query.where(column as any, "!=", value);
         }
         break;
       case "$gt":
         useOr
-          ? query.orWhere(column as any, ">", value as any)
-          : query.where(column as any, ">", value as any);
+          ? query.orWhere(column as any, ">", value)
+          : query.where(column as any, ">", value);
         break;
       case "$gte":
         useOr
-          ? query.orWhere(column as any, ">=", value as any)
-          : query.where(column as any, ">=", value as any);
+          ? query.orWhere(column as any, ">=", value)
+          : query.where(column as any, ">=", value);
         break;
       case "$lt":
         useOr
-          ? query.orWhere(column as any, "<", value as any)
-          : query.where(column as any, "<", value as any);
+          ? query.orWhere(column as any, "<", value)
+          : query.where(column as any, "<", value);
         break;
       case "$lte":
         useOr
-          ? query.orWhere(column as any, "<=", value as any)
-          : query.where(column as any, "<=", value as any);
+          ? query.orWhere(column as any, "<=", value)
+          : query.where(column as any, "<=", value);
         break;
       case "$between": {
         const [min, max] = value as [unknown, unknown];
         useOr
-          ? query.orWhereBetween(column as any, min as any, max as any)
-          : query.whereBetween(column as any, min as any, max as any);
+          ? query.orWhereBetween(column as any, min, max)
+          : query.whereBetween(column as any, min, max);
         break;
       }
       case "$not between": {
         const [notMin, notMax] = value as [unknown, unknown];
         useOr
-          ? query.orWhereNotBetween(column as any, notMin as any, notMax as any)
-          : query.whereNotBetween(column as any, notMin as any, notMax as any);
+          ? query.orWhereNotBetween(column as any, notMin, notMax)
+          : query.whereNotBetween(column as any, notMin, notMax);
         break;
       }
       case "$regexp":
@@ -1058,34 +1141,30 @@ export class ModelManager<T extends Model> {
           : query.whereNotRegexp(column as any, value as RegExp);
         break;
       case "$is null":
-        useOr
-          ? query.orWhereNull(column as any)
-          : query.whereNull(column as any);
+        useOr ? query.orWhereNull(column) : query.whereNull(column);
         break;
       case "$is not null":
-        useOr
-          ? query.orWhereNotNull(column as any)
-          : query.whereNotNull(column as any);
+        useOr ? query.orWhereNotNull(column) : query.whereNotNull(column);
         break;
       case "$like":
         useOr
-          ? query.orWhereLike(column as any, value as string)
-          : query.whereLike(column as any, value as string);
+          ? query.orWhereLike(column, value as string)
+          : query.whereLike(column, value as string);
         break;
       case "$not like":
         useOr
-          ? query.orWhereNotLike(column as any, value as string)
-          : query.whereNotLike(column as any, value as string);
+          ? query.orWhereNotLike(column, value as string)
+          : query.whereNotLike(column, value as string);
         break;
       case "$ilike":
         useOr
-          ? query.orWhereILike(column as any, value as string)
-          : query.whereILike(column as any, value as string);
+          ? query.orWhereILike(column, value as string)
+          : query.whereILike(column, value as string);
         break;
       case "$not ilike":
         useOr
-          ? query.orWhereNotILike(column as any, value as string)
-          : query.whereNotILike(column as any, value as string);
+          ? query.orWhereNotILike(column, value as string)
+          : query.whereNotILike(column, value as string);
         break;
       case "$in":
         useOr
@@ -1099,8 +1178,8 @@ export class ModelManager<T extends Model> {
         break;
       default:
         useOr
-          ? query.orWhere(column as any, "=", condition as any)
-          : query.where(column as any, "=", condition as any);
+          ? query.orWhere(column as any, "=", condition)
+          : query.where(column as any, "=", condition);
     }
   }
 }

@@ -1,25 +1,11 @@
-import {
-  column,
-  index,
-} from "../../../../../src/sql/models/decorators/model_decorators";
-import { Model } from "../../../../../src/sql/models/model";
+import { col, defineModel } from "../../../../../src/sql/models/define_model";
 
-/**
- * IndexLifecycle v4: Drop composite, add new single on colB
- */
-@index(["colB"], "idx_sd_il_col_b")
-export class IndexLifecycleV4 extends Model {
-  static table = "schema_diff_index_lifecycle";
-
-  @column.bigIncrement()
-  declare id: number;
-
-  @column({ type: "varchar", length: 255 })
-  declare colA: string;
-
-  @column({ type: "varchar", length: 255 })
-  declare colB: string;
-
-  @column({ type: "varchar", length: 255 })
-  declare colC: string;
-}
+export const IndexLifecycleV4 = defineModel("schema_diff_index_lifecycle", {
+  columns: {
+    id: col.bigIncrement(),
+    colA: col.string({ length: 255 }),
+    colB: col.string({ length: 255 }),
+    colC: col.string({ length: 255 }),
+  },
+  indexes: [{ columns: ["colB"], name: "idx_sd_il_col_b" }],
+});

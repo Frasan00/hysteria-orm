@@ -6,7 +6,6 @@ import {
   ColumnType,
   LazyRelationType,
 } from "../../models/decorators/model_decorators_types";
-import { Model } from "../../models/model";
 import { RelationEnum } from "../../models/relations/relation";
 import { getColumnValue } from "../../resources/utils";
 import {
@@ -33,7 +32,7 @@ export class SchemaDiff {
 
   private constructor(sql: SqlDataSource) {
     this.sql = sql;
-    this.models = Object.values(this.sql.models);
+    this.models = Object.values(this.sql._models);
     this.data = {
       columnsToAdd: [],
       columnsToDrop: [],
@@ -148,8 +147,12 @@ export class SchemaDiff {
         }
 
         // Columns to drop
+        // Use ALL model columns (with or without type) to protect from dropping
+        // Columns not defined in model at all will be dropped
+        const allModelColumns = model.getColumns();
+
         for (const column of databaseData.columns) {
-          const existsInModel = modelData.columns.some(
+          const existsInModel = allModelColumns.some(
             (modelColumn) =>
               modelColumn.databaseName === column.name ||
               modelColumn.columnName === column.name,
@@ -448,11 +451,7 @@ export class SchemaDiff {
             ) {
               return false;
             }
-            return diff.relationMatchesDbRelation(
-              model,
-              rel as any,
-              dbRelation,
-            );
+            return diff.relationMatchesDbRelation(model, rel, dbRelation);
           });
 
           if (!modelRelation) {
@@ -728,7 +727,7 @@ export class SchemaDiff {
     dbRelation: TableForeignKeyInfo,
   ): boolean {
     let relatedModel: SqlDataSourceModel | undefined;
-    const mr: any = modelRelation as any;
+    const mr: any = modelRelation;
     if (mr && mr.model) {
       if (typeof mr.model === "function" && mr.model.table) {
         relatedModel = mr.model as SqlDataSourceModel;
@@ -896,9 +895,7 @@ export class SchemaDiff {
     }
     if (modelHasDefault && dbHasDefault) {
       const dbDefault = String(columnData.dbColumns.defaultValue);
-      const modelDefault = String(
-        columnData.modelColumn.constraints?.default as any,
-      );
+      const modelDefault = String(columnData.modelColumn.constraints?.default);
 
       const dbNorm = this.normalizeDefaultValue(
         dialect,
@@ -1214,7 +1211,7 @@ export class SchemaDiff {
         const mc = model.getColumns().find((c) => c.columnName === srcColRaw);
         const srcDb = mc?.databaseName || srcColRaw;
         const name =
-          getColumnValue((rel as any).constraintName) ||
+          getColumnValue(rel.constraintName) ||
           getDefaultFkConstraintName(model.table, srcDb, rel.model().table);
         expected.add(name);
       }
@@ -1227,10 +1224,10 @@ export class SchemaDiff {
         const model = this.models.find((m) => m.table === r.table);
         const modelCols = model?.getColumns() || [];
 
-        let sourceCol = (r.relation as any).columnName;
+        let sourceCol = r.relation.columnName;
         if (r.relation.type === RelationEnum.belongsTo) {
           const fkModelCol = modelCols.find(
-            (c) => c.columnName === (r.relation as any).foreignKey,
+            (c) => c.columnName === r.relation.foreignKey,
           );
           sourceCol =
             fkModelCol?.databaseName || (r.relation as any).foreignKey;
@@ -1240,7 +1237,7 @@ export class SchemaDiff {
         }
 
         let referencedTable = r.table;
-        let referencedCol = (r.relation as any).foreignKey;
+        let referencedCol = r.relation.foreignKey;
         if (r.relation.type === RelationEnum.belongsTo) {
           const relModel = r.relation.model();
           referencedTable = relModel.table;
@@ -1252,9 +1249,7 @@ export class SchemaDiff {
         }
 
         const candidateCols = new Set<string>(
-          [sourceCol, (r.relation as any).columnName].filter(
-            Boolean,
-          ) as string[],
+          [sourceCol, r.relation.columnName].filter(Boolean) as string[],
         );
         const existsStructurally = dbSchema.foreignKeys.some((fk) => {
           if (fk.columns.length !== 1 || fk.referencedColumns.length !== 1) {
@@ -1267,7 +1262,7 @@ export class SchemaDiff {
         });
 
         const expectedName =
-          getColumnValue((r.relation as any).constraintName) ||
+          getColumnValue(r.relation.constraintName) ||
           getDefaultFkConstraintName(r.table, sourceCol, referencedTable);
         const dbFks = tableToDbFks.get(r.table) || new Set<string>();
 

@@ -49,8 +49,19 @@ class PostgresUpdateInterpreter implements Interpreter {
       })
       .join(", ");
 
+    let sql = `${formattedTable} set ${setClause}`;
+
+    if (updateNode.returning && updateNode.returning.length) {
+      const returningCols = updateNode.returning
+        .map((column) =>
+          interpreterUtils.formatStringColumn("postgres", column),
+        )
+        .join(", ");
+      sql += ` returning ${returningCols}`;
+    }
+
     return {
-      sql: `${formattedTable} set ${setClause}`,
+      sql,
       bindings: finalBindings,
     };
   }

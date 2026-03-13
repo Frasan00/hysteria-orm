@@ -2,32 +2,31 @@ import { env } from "../../../src/env/env";
 import { HysteriaError } from "../../../src/errors/hysteria_error";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { UserFactory } from "../test_models/factory/user_factory";
-import { UserWithUuid, UserStatus } from "../test_models/uuid/user_uuid";
+import { UserWithUuid, UserStatus } from "../test_models/uuid/schema";
+
+let sql: SqlDataSource;
 
 beforeAll(async () => {
-  const dataSource = new SqlDataSource();
-  await dataSource.connect();
+  sql = new SqlDataSource();
+  await sql.connect();
 });
 
 beforeEach(async () => {
-  await SqlDataSource.startGlobalTransaction();
+  await sql.startGlobalTransaction();
 });
 
 afterEach(async () => {
-  await SqlDataSource.rollbackGlobalTransaction();
+  await sql.rollbackGlobalTransaction();
 });
 
 describe(`[${env.DB_TYPE}] Model Manager - Basic Operations`, () => {
   test("should get model manager for UserWithUuid model", () => {
-    const sql = SqlDataSource.instance;
     const manager = sql.getModelManager(UserWithUuid);
 
     expect(manager).toBeDefined();
   });
 
   test("should get model manager with different models", () => {
-    const sql = SqlDataSource.instance;
-
     const userManager = sql.getModelManager(UserWithUuid);
     expect(userManager).toBeDefined();
   });
@@ -48,10 +47,9 @@ describe(`[${env.DB_TYPE}] Model Manager - Basic Operations`, () => {
 
 describe(`[${env.DB_TYPE}] Model Manager - Query Operations`, () => {
   test("should perform query through model manager", async () => {
-    const sql = SqlDataSource.instance;
     const manager = sql.getModelManager(UserWithUuid);
 
-    await UserFactory.userWithUuid(1);
+    await UserFactory.userWithUuid(sql, 1);
 
     const users = await manager.query().many();
     expect(Array.isArray(users)).toBe(true);
@@ -59,10 +57,9 @@ describe(`[${env.DB_TYPE}] Model Manager - Query Operations`, () => {
   });
 
   test("should perform one query through model manager", async () => {
-    const sql = SqlDataSource.instance;
     const manager = sql.getModelManager(UserWithUuid);
 
-    const user = await UserFactory.userWithUuid(1);
+    const user = await UserFactory.userWithUuid(sql, 1);
 
     const foundUser = await manager.query().where("id", user.id).one();
 
@@ -73,7 +70,6 @@ describe(`[${env.DB_TYPE}] Model Manager - Query Operations`, () => {
 
 describe(`[${env.DB_TYPE}] Model Manager - CRUD Operations`, () => {
   test("should insert record through model manager", async () => {
-    const sql = SqlDataSource.instance;
     const manager = sql.getModelManager(UserWithUuid);
 
     const user = await manager.insert(
@@ -93,10 +89,9 @@ describe(`[${env.DB_TYPE}] Model Manager - CRUD Operations`, () => {
   });
 
   test("should update record through model manager", async () => {
-    const sql = SqlDataSource.instance;
     const manager = sql.getModelManager(UserWithUuid);
 
-    const user = await UserFactory.userWithUuid(1);
+    const user = await UserFactory.userWithUuid(sql, 1);
 
     await manager
       .query()
@@ -109,10 +104,9 @@ describe(`[${env.DB_TYPE}] Model Manager - CRUD Operations`, () => {
   });
 
   test("should delete record through model manager", async () => {
-    const sql = SqlDataSource.instance;
     const manager = sql.getModelManager(UserWithUuid);
 
-    const user = await UserFactory.userWithUuid(1);
+    const user = await UserFactory.userWithUuid(sql, 1);
 
     await manager.query().where("id", user.id).delete();
 
@@ -122,10 +116,9 @@ describe(`[${env.DB_TYPE}] Model Manager - CRUD Operations`, () => {
   });
 
   test("should find by primary key through model manager", async () => {
-    const sql = SqlDataSource.instance;
     const manager = sql.getModelManager(UserWithUuid);
 
-    const user = await UserFactory.userWithUuid(1);
+    const user = await UserFactory.userWithUuid(sql, 1);
 
     const foundUser = await manager.findOneByPrimaryKey(user.id);
     expect(foundUser).not.toBeNull();
@@ -135,7 +128,6 @@ describe(`[${env.DB_TYPE}] Model Manager - CRUD Operations`, () => {
 
 describe(`[${env.DB_TYPE}] Model Manager - With Global Transaction`, () => {
   test("should use model manager within global transaction", async () => {
-    const sql = SqlDataSource.instance;
     const manager = sql.getModelManager(UserWithUuid);
 
     const user = await manager.insert(
@@ -152,9 +144,10 @@ describe(`[${env.DB_TYPE}] Model Manager - With Global Transaction`, () => {
     expect(user).toBeDefined();
 
     // Rollback - user should not exist
-    await SqlDataSource.rollbackGlobalTransaction();
+    await sql.rollbackGlobalTransaction();
 
-    const foundUser = await UserWithUuid.query()
+    const foundUser = await sql
+      .from(UserWithUuid)
       .where("email", user.email)
       .one();
 
@@ -164,10 +157,9 @@ describe(`[${env.DB_TYPE}] Model Manager - With Global Transaction`, () => {
 
 describe(`[${env.DB_TYPE}] Model Manager - Advanced Operations`, () => {
   test("should perform complex query through model manager", async () => {
-    const sql = SqlDataSource.instance;
     const manager = sql.getModelManager(UserWithUuid);
 
-    await UserFactory.userWithUuid(3);
+    await UserFactory.userWithUuid(sql, 3);
 
     const users = await manager
       .query()
@@ -182,10 +174,9 @@ describe(`[${env.DB_TYPE}] Model Manager - Advanced Operations`, () => {
   });
 
   test("should perform join query through model manager", async () => {
-    const sql = SqlDataSource.instance;
     const manager = sql.getModelManager(UserWithUuid);
 
-    const user = await UserFactory.userWithUuid(1);
+    const user = await UserFactory.userWithUuid(sql, 1);
 
     const result = await manager
       .query()
@@ -199,7 +190,6 @@ describe(`[${env.DB_TYPE}] Model Manager - Advanced Operations`, () => {
 
 describe(`[${env.DB_TYPE}] Model Manager - Batch Operations`, () => {
   test("should insert many records through model manager", async () => {
-    const sql = SqlDataSource.instance;
     const manager = sql.getModelManager(UserWithUuid);
 
     const users = await manager.insertMany(

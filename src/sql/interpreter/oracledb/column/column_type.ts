@@ -148,8 +148,9 @@ class OracleColumnTypeInterpreter implements Interpreter {
       return { sql: `${columnName} sdo_geometry`, bindings: [] };
     }
 
+    const lengthPart = colNode.length ? `(${colNode.length})` : "";
     return {
-      sql: `${columnName} ${dt} ${colNode.length ? `(${colNode.length})` : ""}`,
+      sql: `${columnName} ${dt}${lengthPart}`,
       bindings: [],
     };
   }

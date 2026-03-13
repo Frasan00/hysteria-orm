@@ -98,11 +98,6 @@ const NON_SQL_TESTS = [
     runInBand: true,
   },
   {
-    name: "mixins",
-    path: "./test/sql/mixins/",
-    runInBand: true,
-  },
-  {
     name: "use_connection",
     path: "./test/sql/use_connection/use_connection.test.ts",
   },

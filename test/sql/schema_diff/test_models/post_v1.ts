@@ -1,29 +1,32 @@
 import {
-  belongsTo,
-  column,
-} from "../../../../src/sql/models/decorators/model_decorators";
-import { Model } from "../../../../src/sql/models/model";
+  col,
+  createSchema,
+  defineModel,
+  defineRelations,
+} from "../../../../src/sql/models/define_model";
 import { UserMigrationV1 } from "./user_v1";
 
 /**
  * Post v1: Create table with belongsTo User (userId)
  * Tests: tablesToAdd, relationsToAdd
  */
-export class PostMigrationV1 extends Model {
-  static table = "schema_diff_posts";
+export const PostMigrationV1 = defineModel("schema_diff_posts", {
+  columns: {
+    id: col.bigIncrement(),
+    title: col.string({ length: 255 }),
+    content: col.text({ nullable: true }),
+    userId: col.bigInteger(),
+  },
+});
 
-  @column.bigIncrement()
-  declare id: number;
+export const PostMigrationV1Relations = defineRelations(
+  PostMigrationV1,
+  ({ belongsTo }) => ({
+    user: belongsTo(UserMigrationV1, { foreignKey: "userId" }),
+  }),
+);
 
-  @column({ type: "varchar", length: 255 })
-  declare title: string;
-
-  @column({ type: "text", nullable: true })
-  declare content: string | null;
-
-  @column({ type: "bigint" })
-  declare userId: number;
-
-  @belongsTo(() => UserMigrationV1, "userId")
-  declare user: UserMigrationV1;
-}
+createSchema(
+  { PostMigrationV1 },
+  { PostMigrationV1: PostMigrationV1Relations },
+);

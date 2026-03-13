@@ -1,8 +1,9 @@
 import {
-  belongsTo,
-  column,
-} from "../../../../src/sql/models/decorators/model_decorators";
-import { Model } from "../../../../src/sql/models/model";
+  col,
+  createSchema,
+  defineModel,
+  defineRelations,
+} from "../../../../src/sql/models/define_model";
 import { PostMigrationV5 } from "./post_v5";
 import { TagMigration } from "./tag";
 
@@ -10,18 +11,22 @@ import { TagMigration } from "./tag";
  * PostTag pivot model for manyToMany relation testing
  * This model explicitly defines the pivot table structure
  */
-export class PostTagMigration extends Model {
-  static table = "schema_diff_post_tags";
+export const PostTagMigration = defineModel("schema_diff_post_tags", {
+  columns: {
+    postId: col.bigInteger(),
+    tagId: col.bigInteger(),
+  },
+});
 
-  @column({ type: "bigint" })
-  declare postId: number;
+export const PostTagMigrationRelations = defineRelations(
+  PostTagMigration,
+  ({ belongsTo }) => ({
+    post: belongsTo(PostMigrationV5, { foreignKey: "postId" }),
+    tag: belongsTo(TagMigration, { foreignKey: "tagId" }),
+  }),
+);
 
-  @column({ type: "bigint" })
-  declare tagId: number;
-
-  @belongsTo(() => PostMigrationV5, "postId")
-  declare post: PostMigrationV5;
-
-  @belongsTo(() => TagMigration, "tagId")
-  declare tag: TagMigration;
-}
+createSchema(
+  { PostTagMigration },
+  { PostTagMigration: PostTagMigrationRelations },
+);

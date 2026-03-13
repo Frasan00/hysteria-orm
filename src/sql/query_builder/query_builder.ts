@@ -22,6 +22,7 @@ import { InterpreterUtils } from "../interpreter/interpreter_utils";
 import type { Model } from "../models/model";
 import type {
   ModelKey,
+  RawModelKey,
   WhereColumnValue,
 } from "../models/model_manager/model_manager_types";
 import type { NumberModelKey } from "../models/model_types";
@@ -52,10 +53,23 @@ import type {
 } from "./query_builder_types";
 import { WriteOperation } from "./write_operation";
 
+/**
+ * @description Minimal interface satisfied by both QueryBuilder and ModelQueryBuilder.
+ * Used as the return type for subquery callbacks so that both QB and MQB can be
+ * returned without TypeScript complaining about structural incompatibilities in
+ * the `performance` property.
+ */
+export interface SubQueryable {
+  extractQueryNodes(): QueryNode[];
+}
+
 export class QueryBuilder<
   T extends Model = any,
   S extends Record<string, any> = Record<string, any>,
-> extends JsonQueryBuilder<T, S> {
+>
+  extends JsonQueryBuilder<T, S>
+  implements SubQueryable
+{
   model: typeof Model;
   protected astParser: AstParser;
   protected unionNodes: UnionNode[];
@@ -89,10 +103,7 @@ export class QueryBuilder<
     pluck: this.pluckWithPerformance.bind(this),
   };
 
-  constructor(
-    model: typeof Model,
-    sqlDataSource: SqlDataSource = SqlDataSource.instance,
-  ) {
+  constructor(model: typeof Model, sqlDataSource: SqlDataSource) {
     super(model, sqlDataSource);
     this.dbType = sqlDataSource.getDbType();
     this.isNestedCondition = false;
@@ -135,7 +146,9 @@ export class QueryBuilder<
   ): QueryBuilder<T, ComposeBuildRawSelect<S, Columns>>;
   // @ts-expect-error - intentionally returns different type for type-safety
   select<ValueType = any, Alias extends string = string>(
-    cbOrQueryBuilder: ((subQuery: QueryBuilder<T>) => void) | QueryBuilder<any>,
+    cbOrQueryBuilder:
+      | ((subQuery: QueryBuilder<T>) => void | SubQueryable)
+      | QueryBuilder<any>,
     alias: Alias,
   ): QueryBuilder<T, ComposeRawSelect<S, { [K in Alias]: ValueType }>>;
   // @ts-expect-error - intentionally returns different type for type-safety
@@ -149,14 +162,19 @@ export class QueryBuilder<
       typeof columns[1] === "string"
     ) {
       const [cbOrQueryBuilder, alias] = columns as unknown as [
-        ((subQuery: QueryBuilder<T>) => void) | QueryBuilder<any>,
+        (
+          | ((subQuery: QueryBuilder<T>) => void | SubQueryable)
+          | QueryBuilder<any>
+        ),
         string,
       ];
       if (typeof cbOrQueryBuilder === "function") {
         const subQuery = new QueryBuilder<T>(this.model, this.sqlDataSource);
-        cbOrQueryBuilder(subQuery);
+        const result = cbOrQueryBuilder(subQuery);
+        const resolvedQuery: SubQueryable =
+          result != null && "extractQueryNodes" in result ? result : subQuery;
         this.selectNodes.push(
-          new SelectNode(subQuery.extractQueryNodes(), alias),
+          new SelectNode(resolvedQuery.extractQueryNodes(), alias),
         );
         return this as any;
       }
@@ -347,7 +365,9 @@ export class QueryBuilder<
    * @description Executes the query and retrieves a single column from the results.
    * @param key - The column to retrieve from the results, must be a Model Column
    */
-  async pluck<K extends ModelKey<T>>(key: K): Promise<PluckReturnType<T, K>> {
+  async pluck<K extends RawModelKey<T>>(
+    key: K,
+  ): Promise<PluckReturnType<T, K>> {
     const result = await this.many();
     return result.map(
       (item) => (item as Record<string, any>)[key as string],
@@ -698,17 +718,21 @@ export class QueryBuilder<
 
   /**
    * @description Overrides the from clause in the query.
+   * @description If subquery is provided, alias must be provided too
    */
-  from<S extends string>(table: TableFormat<S>, alias?: string): this;
-  from(cb: (qb: QueryBuilder<T>) => void, alias: string): this;
-  from<S extends string>(
-    tableOrCb: TableFormat<S> | ((qb: QueryBuilder<T>) => void),
+  table<S extends string>(table: TableFormat<S>, maybeAlias?: string): this;
+  table<S extends string>(
+    cb: (qb: QueryBuilder<T>) => void | SubQueryable,
+    alias: string,
+  ): this;
+  table<S extends string>(
+    tableOrCb: TableFormat<S> | ((qb: QueryBuilder<T>) => void | SubQueryable),
     maybeAlias?: string,
   ): this {
     if (typeof tableOrCb === "function") {
       if (!maybeAlias) {
         throw new HysteriaError(
-          "QueryBuilder::from",
+          "QueryBuilder::table",
           "MISSING_ALIAS_FOR_SUBQUERY",
         );
       }
@@ -718,8 +742,12 @@ export class QueryBuilder<
         this.sqlDataSource,
       );
 
-      tableOrCb(subQueryBuilder);
-      const subQueryNodes = subQueryBuilder.extractQueryNodes();
+      const cbResult = tableOrCb(subQueryBuilder);
+      const resolvedFrom: SubQueryable =
+        cbResult != null && "extractQueryNodes" in cbResult
+          ? cbResult
+          : subQueryBuilder;
+      const subQueryNodes = resolvedFrom.extractQueryNodes();
       this.fromNode = new FromNode(subQueryNodes, maybeAlias);
       return this;
     }
@@ -731,11 +759,14 @@ export class QueryBuilder<
   /**
    * @description Adds a CTE to the query using a callback to build the subquery.
    */
-  with(alias: string, cb: (qb: QueryBuilder<T>) => void): this {
+  with(alias: string, cb: (qb: QueryBuilder<T>) => void | SubQueryable): this {
     const subQuery = new QueryBuilder<T>(this.model, this.sqlDataSource);
-    cb(subQuery);
-    const nodes = subQuery.extractQueryNodes();
-    this.withNodes.push(new WithNode("normal", alias, nodes));
+    const result = cb(subQuery);
+    const resolved: SubQueryable =
+      result != null && "extractQueryNodes" in result ? result : subQuery;
+    this.withNodes.push(
+      new WithNode("normal", alias, resolved.extractQueryNodes()),
+    );
     return this;
   }
 
@@ -743,11 +774,17 @@ export class QueryBuilder<
    * @description Adds a recursive CTE to the query using a callback to build the subquery.
    * @mssql not supported
    */
-  withRecursive(alias: string, cb: (qb: QueryBuilder<T>) => void): this {
+  withRecursive(
+    alias: string,
+    cb: (qb: QueryBuilder<T>) => void | SubQueryable,
+  ): this {
     const subQuery = new QueryBuilder<T>(this.model, this.sqlDataSource);
-    cb(subQuery);
-    const nodes = subQuery.extractQueryNodes();
-    this.withNodes.push(new WithNode("recursive", alias, nodes));
+    const result = cb(subQuery);
+    const resolved: SubQueryable =
+      result != null && "extractQueryNodes" in result ? result : subQuery;
+    this.withNodes.push(
+      new WithNode("recursive", alias, resolved.extractQueryNodes()),
+    );
     return this;
   }
 
@@ -756,7 +793,10 @@ export class QueryBuilder<
    * @postgres only
    * @throws HysteriaError if the database type is not postgres
    */
-  withMaterialized(alias: string, cb: (qb: QueryBuilder<T>) => void): this {
+  withMaterialized(
+    alias: string,
+    cb: (qb: QueryBuilder<T>) => void | SubQueryable,
+  ): this {
     if (this.dbType !== "postgres" && this.dbType !== "cockroachdb") {
       throw new HysteriaError(
         "QueryBuilder::withMaterialized",
@@ -766,9 +806,12 @@ export class QueryBuilder<
     }
 
     const subQuery = new QueryBuilder<T>(this.model, this.sqlDataSource);
-    cb(subQuery);
-    const nodes = subQuery.extractQueryNodes();
-    this.withNodes.push(new WithNode("materialized", alias, nodes));
+    const result = cb(subQuery);
+    const resolved: SubQueryable =
+      result != null && "extractQueryNodes" in result ? result : subQuery;
+    this.withNodes.push(
+      new WithNode("materialized", alias, resolved.extractQueryNodes()),
+    );
     return this;
   }
 
@@ -1247,13 +1290,28 @@ export class QueryBuilder<
 
   /**
    * @description Updates records from a table, you can use raw statements in the data object for literal references to other columns
-   * @returns WriteOperation that resolves to the number of affected rows
+   * @param data - Object with column-value pairs to update
+   * @param returning - Optional array of column names to return from the updated rows.
+   *   **Note:** The `returning` parameter is only supported on PostgreSQL, CockroachDB, and MSSQL.
+   *   For MySQL and SQLite, do not pass `returning` — the method will return the number of affected rows instead.
+   * @returns WriteOperation that resolves to the number of affected rows, or the specified columns if `returning` is provided
    */
-  update(data: Record<string, WriteQueryParam>): WriteOperation<number> {
+  update(
+    data: Record<string, WriteQueryParam>,
+    returning?: string[],
+  ): WriteOperation<any> {
     const rawColumns = Object.keys(data);
     const rawValues = Object.values(data);
 
-    this.updateNode = new UpdateNode(this.fromNode, rawColumns, rawValues);
+    this.updateNode = new UpdateNode(
+      this.fromNode,
+      rawColumns,
+      rawValues,
+      false,
+      returning,
+    );
+
+    const hasReturning = returning && returning.length > 0;
 
     return new WriteOperation(
       () => this.unWrap(),
@@ -1265,7 +1323,13 @@ export class QueryBuilder<
           "update",
         );
 
-        this.updateNode = new UpdateNode(this.fromNode, columns, values);
+        this.updateNode = new UpdateNode(
+          this.fromNode,
+          columns,
+          values,
+          false,
+          returning,
+        );
         const { sql, bindings } = this.astParser.parse([
           this.updateNode,
           ...this.whereNodes,
@@ -1273,9 +1337,19 @@ export class QueryBuilder<
         ]);
 
         const dataSource = await this.getSqlDataSource("write");
-        return execSql(sql, bindings, dataSource, this.dbType, "affectedRows", {
-          sqlLiteOptions: { typeofModel: this.model, mode: "affectedRows" },
-        });
+        return execSql(
+          sql,
+          bindings,
+          dataSource,
+          this.dbType,
+          hasReturning ? "rows" : "affectedRows",
+          {
+            sqlLiteOptions: {
+              typeofModel: this.model,
+              mode: hasReturning ? "fetch" : "affectedRows",
+            },
+          },
+        );
       },
     );
   }
@@ -1301,10 +1375,15 @@ export class QueryBuilder<
 
   /**
    * @description Deletes records from a table
-   * @returns WriteOperation that resolves to the number of affected rows
+   * @param returning - Optional array of column names to return from the deleted rows.
+   *   **Note:** The `returning` parameter is only supported on PostgreSQL, CockroachDB, and MSSQL.
+   *   For MySQL and SQLite, do not pass `returning` — the method will return the number of affected rows instead.
+   * @returns WriteOperation that resolves to the number of affected rows, or the specified columns if `returning` is provided
    */
-  delete(): WriteOperation<number> {
-    this.deleteNode = new DeleteNode(this.fromNode);
+  delete(returning?: string[]): WriteOperation<any> {
+    this.deleteNode = new DeleteNode(this.fromNode, false, returning);
+
+    const hasReturning = returning && returning.length > 0;
 
     return new WriteOperation(
       () => this.unWrap(),
@@ -1317,12 +1396,19 @@ export class QueryBuilder<
         ]);
 
         const dataSource = await this.getSqlDataSource("write");
-        return execSql(sql, bindings, dataSource, this.dbType, "affectedRows", {
-          sqlLiteOptions: {
-            typeofModel: this.model,
-            mode: "affectedRows",
+        return execSql(
+          sql,
+          bindings,
+          dataSource,
+          this.dbType,
+          hasReturning ? "rows" : "affectedRows",
+          {
+            sqlLiteOptions: {
+              typeofModel: this.model,
+              mode: hasReturning ? "fetch" : "affectedRows",
+            },
           },
-        });
+        );
       },
     );
   }
@@ -1374,8 +1460,9 @@ export class QueryBuilder<
   }
 
   /**
-   * @description Returns the query with the parameters bound to the query
+   * @description Returns the query with the parameters bound to the query, mainly to use for debugging purposes
    * @warning Does not apply any hook from the model
+   * @warning Does not show any `load` operations in the query, it only shows the operations that directly belong to the query builder instance
    */
   toQuery(): string {
     const { sql, bindings } = this.unWrap();
@@ -1384,7 +1471,9 @@ export class QueryBuilder<
 
   /**
    * @description Returns the query with database driver placeholders and the params
+   * @description To be used for executing the query with the database driver
    * @warning Does not apply any hook from the model
+   * @warning Does not show any `load` operations in the query, it only shows the operations that directly belong to the query builder instance
    */
   unWrap(): ReturnType<typeof AstParser.prototype.parse> {
     if (!this.selectNodes.length) {
@@ -1448,7 +1537,7 @@ export class QueryBuilder<
   clear(): QueryBuilder<T, Record<string, any>> {
     const qb = new QueryBuilder(this.model, this.sqlDataSource);
     if (this.fromNode.alias) {
-      qb.from(qb.model.table, this.fromNode.alias);
+      qb.table(qb.model.table, this.fromNode.alias);
     }
 
     return qb as QueryBuilder<T, Record<string, any>>;
@@ -1658,7 +1747,7 @@ export class QueryBuilder<
   }
 
   private async pluckWithPerformance(
-    key: ModelKey<T>,
+    key: RawModelKey<T>,
     returnType: "millis" | "seconds" = "millis",
   ) {
     const [time, data] = await withPerformance(

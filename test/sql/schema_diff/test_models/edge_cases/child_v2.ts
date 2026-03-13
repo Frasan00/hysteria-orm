@@ -1,25 +1,18 @@
 import {
-  belongsTo,
-  column,
-} from "../../../../../src/sql/models/decorators/model_decorators";
-import { Model } from "../../../../../src/sql/models/model";
+  col,
+  defineModel,
+  defineRelations,
+} from "../../../../../src/sql/models/define_model";
 import { ParentV2 } from "./parent_v2";
 
-/**
- * Child v2: Same as v1 — belongs to Parent v2
- */
-export class ChildV2 extends Model {
-  static table = "schema_diff_child";
+export const ChildV2 = defineModel("schema_diff_child", {
+  columns: {
+    id: col.bigIncrement(),
+    value: col.string({ length: 255 }),
+    parentId: col.bigInteger(),
+  },
+});
 
-  @column.bigIncrement()
-  declare id: number;
-
-  @column({ type: "varchar", length: 255 })
-  declare value: string;
-
-  @column({ type: "bigint" })
-  declare parentId: number;
-
-  @belongsTo(() => ParentV2, "parentId")
-  declare parent: ParentV2;
-}
+export const ChildV2Relations = defineRelations(ChildV2, ({ belongsTo }) => ({
+  parent: belongsTo(ParentV2, { foreignKey: "parentId" }),
+}));

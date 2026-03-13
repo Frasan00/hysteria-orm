@@ -1,3 +1,5 @@
+import type { MongoClientImport } from "../../../drivers/driver_types";
+import { HysteriaError } from "../../../errors/hysteria_error";
 import { MongoDataSource } from "../mongo_data_source";
 import { serializeCollection } from "../mongo_serializer";
 import {
@@ -6,12 +8,10 @@ import {
 } from "../query_builder/mongo_query_builder";
 import { Collection } from "./mongo_collection";
 import {
-  MongoCollectionKey,
   ModelKeyOrAny,
   ModelKeyOrAnySort,
+  MongoCollectionKey,
 } from "./mongo_collection_types";
-import { HysteriaError } from "../../../errors/hysteria_error";
-import type { MongoClientImport } from "../../../drivers/driver_types";
 
 import type { LoggerConfig } from "../../../utils/logger";
 
@@ -58,7 +58,7 @@ export class CollectionManager<T extends Collection> {
     this.logs = logs;
     this.session = session;
     this.mongoDataSource = mongoDataSource;
-    this.collection = Collection;
+    this.collection = _collection;
     this.mongoClient = this.mongoDataSource.getCurrentConnection();
     this.collectionInstance = this.mongoClient
       .db()
@@ -71,7 +71,7 @@ export class CollectionManager<T extends Collection> {
   async find(
     options?: MongoUnrestrictedFindManyOptions<T> | MongoFindManyOptions<T>,
   ): Promise<T[]> {
-    const queryBuilder = this.query<T>();
+    const queryBuilder = this.query();
     if (!options) {
       return queryBuilder.many();
     }
@@ -107,7 +107,7 @@ export class CollectionManager<T extends Collection> {
   async findOne(
     options: UnrestrictedMongoFindOneOptions<T> | MongoFindOneOptions<T>,
   ): Promise<T | null> {
-    const queryBuilder = this.query<T>();
+    const queryBuilder = this.query();
     if (!options) {
       return queryBuilder.oneOrFail();
     }
@@ -129,7 +129,7 @@ export class CollectionManager<T extends Collection> {
       customError?: Error;
     },
   ): Promise<T> {
-    const queryBuilder = this.query<T>();
+    const queryBuilder = this.query();
     if (!options) {
       return queryBuilder.oneOrFail();
     }
@@ -162,7 +162,7 @@ export class CollectionManager<T extends Collection> {
   /**
    * @description Starts a query builder chain
    */
-  query<T extends Collection>() {
+  query() {
     return new MongoQueryBuilder<T>(
       this.collection,
       this.mongoDataSource,
@@ -172,7 +172,7 @@ export class CollectionManager<T extends Collection> {
   }
 
   /**
-   * @description Finds a record by its primary key
+   * @description Inserts a new record in the mongo collection
    */
   async insert(
     modelData: ModelKeyOrAny<T>,
@@ -182,7 +182,7 @@ export class CollectionManager<T extends Collection> {
       this.collection.beforeInsert(modelData);
     }
 
-    const result = await this.collectionInstance.insertOne(modelData as any);
+    const result = await this.collectionInstance.insertOne(modelData);
     const insertedId = result.insertedId;
     const record = await this.collectionInstance.findOne(
       {
@@ -207,7 +207,7 @@ export class CollectionManager<T extends Collection> {
       });
     }
 
-    const result = await this.collectionInstance.insertMany(modelData as any);
+    const result = await this.collectionInstance.insertMany(modelData);
     const insertedIds = result.insertedIds;
     const insertedDocuments = await this.collectionInstance
       .find(

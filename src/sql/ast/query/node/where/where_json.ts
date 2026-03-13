@@ -21,7 +21,7 @@ export class WhereJsonNode extends WhereNode {
     isRawValue: boolean = false,
   ) {
     // Use the basic operator from WhereNode, but we'll override it in interpreters
-    super(column, chainsWith, isNegated, "=", value as any, isRawValue);
+    super(column, chainsWith, isNegated, "=", value, isRawValue);
     this.jsonOperator = operator;
     this.value = value;
   }

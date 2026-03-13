@@ -1,16 +1,24 @@
 import { FactoryReturnType } from "../../../test/sql/test_models/factory/factory_types";
+import { SqlDataSource } from "../sql_data_source";
 import type { AnyModelConstructor } from "./define_model_types";
 import { Model } from "./model";
+import { ModelQueryBuilder } from "./model_query_builder/model_query_builder";
 import { ModelWithoutRelations } from "./model_types";
 
 class ModelFactory<M extends Model> {
   private typeofModel: AnyModelConstructor;
+  private sqlDataSource: SqlDataSource;
   private modelData: Partial<M>;
 
   /**
    * @description Constructor for the model factory
    */
-  constructor(typeofModel: AnyModelConstructor, modelData: Partial<M>) {
+  constructor(
+    sqlDataSource: SqlDataSource,
+    typeofModel: AnyModelConstructor,
+    modelData: Partial<M>,
+  ) {
+    this.sqlDataSource = sqlDataSource;
     this.typeofModel = typeofModel;
     this.modelData = modelData;
   }
@@ -25,6 +33,13 @@ class ModelFactory<M extends Model> {
     };
   }
 
+  private getQueryBuilder(): ModelQueryBuilder<M> {
+    return new ModelQueryBuilder<M>(
+      this.typeofModel as unknown as typeof Model,
+      this.sqlDataSource,
+    );
+  }
+
   /**
    * @description Create a model
    * @param howMany - The number of models to create
@@ -35,36 +50,28 @@ class ModelFactory<M extends Model> {
       return [] as unknown as FactoryReturnType<T, M>;
     }
 
-    const insertModel = this.typeofModel as {
-      insert: (
-        data: Partial<M>,
-        options: { returning: string[] },
-      ) => Promise<M>;
-      insertMany: (
-        data: Partial<M>[],
-        options: { returning: string[] },
-      ) => Promise<M[]>;
-    };
+    const qb = this.getQueryBuilder();
 
     if (howMany === 1) {
-      return (await insertModel.insert(this.modelData, {
+      return (await qb.insert(this.modelData, {
         returning: ["*"],
-      })) as FactoryReturnType<T, M>;
+      })) as unknown as FactoryReturnType<T, M>;
     }
 
     const array = Array.from({ length: howMany });
-    return (await insertModel.insertMany(
+    return (await qb.insertMany(
       array.map(() => ({
         ...this.modelData,
       })),
       { returning: ["*"] },
-    )) as FactoryReturnType<T, M>;
+    )) as unknown as FactoryReturnType<T, M>;
   }
 }
 
-export const createModelFactory = <M extends Model>(
+export const defineModelFactory = <M extends Model>(
+  sqlDataSource: SqlDataSource,
   typeofModel: AnyModelConstructor,
   modelData: Partial<ModelWithoutRelations<M>>,
 ) => {
-  return new ModelFactory<M>(typeofModel, modelData as M);
+  return new ModelFactory<M>(sqlDataSource, typeofModel, modelData as M);
 };

@@ -16,8 +16,8 @@ export class Migrator {
   private sql: SqlDataSource;
   private readonly migrationTable = "migrations";
 
-  constructor(sql?: SqlDataSource) {
-    this.sql = sql || SqlDataSource.instance;
+  constructor(sql: SqlDataSource) {
+    this.sql = sql;
   }
 
   async upMigrations(migrations: Migration[]): Promise<void> {

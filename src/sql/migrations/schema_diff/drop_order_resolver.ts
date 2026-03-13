@@ -15,7 +15,7 @@ export class DropOrderResolver {
 
   constructor(sql: SqlDataSource) {
     this.sql = sql;
-    this.models = Object.values(this.sql.models);
+    this.models = Object.values(this.sql._models);
   }
 
   /**

@@ -24,7 +24,6 @@ export class MongoDataSource extends DataSource {
   declare isConnected: boolean;
   private mongoClient: MongoClientInstance | null = null;
   private mongoOptions?: MongoConnectionOptions;
-  private static instance: MongoDataSource | null = null;
 
   constructor(input?: MongoDataSourceInput) {
     super({ type: "mongo", url: input?.url, logs: input?.logs });
@@ -37,28 +36,9 @@ export class MongoDataSource extends DataSource {
   }
 
   /**
-   * @description Establishes the connection to MongoDB and sets this as the primary instance
+   * @description Establishes the connection to MongoDB
    */
   async connect(): Promise<void> {
-    if (!this.url) {
-      throw new HysteriaError(
-        "MongoDataSource::connect url is required to connect to mongo database and was not provided in the options nor the environment variables",
-        "REQUIRED_VALUE_NOT_SET",
-      );
-    }
-
-    const driver = (await DriverFactory.getDriver("mongo"))
-      .client as MongoClientImport;
-    this.mongoClient = new driver.MongoClient(this.url, this.mongoOptions);
-    await this.mongoClient.connect();
-    this.isConnected = true;
-    MongoDataSource.instance = this;
-  }
-
-  /**
-   * @description Establishes the connection without setting this as the primary instance
-   */
-  private async connectWithoutSettingPrimary(): Promise<void> {
     if (!this.url) {
       throw new HysteriaError(
         "MongoDataSource::connect url is required to connect to mongo database and was not provided in the options nor the environment variables",
@@ -87,28 +67,6 @@ export class MongoDataSource extends DataSource {
   }
 
   /**
-   * @description Creates a secondary connection to MongoDB (does not become the primary instance)
-   */
-  static async connectToSecondarySource(
-    input: MongoDataSourceInput,
-  ): Promise<MongoDataSource> {
-    const mongoDataSource = new MongoDataSource(input);
-    await mongoDataSource.connectWithoutSettingPrimary();
-    return mongoDataSource;
-  }
-
-  static getInstance(): MongoDataSource {
-    if (!MongoDataSource.instance) {
-      throw new HysteriaError(
-        "MongoDataSource::getInstance mongo database connection not established",
-        "CONNECTION_NOT_ESTABLISHED",
-      );
-    }
-
-    return MongoDataSource.instance;
-  }
-
-  /**
    * @description Starts a new session and transaction using the current connection
    */
   startSession(): InstanceType<MongoClientImport["ClientSession"]> {
@@ -121,20 +79,6 @@ export class MongoDataSource extends DataSource {
     const session = this.mongoClient.startSession();
     session.startTransaction();
     return session;
-  }
-
-  /**
-   * @description Disconnects from the mongo database using the current connection established by the `connect` method
-   */
-  static async disconnect(): Promise<void> {
-    if (!this.instance) {
-      throw new HysteriaError(
-        "MongoDataSource::disconnect mongo database connection not established",
-        "CONNECTION_NOT_ESTABLISHED",
-      );
-    }
-
-    await this.instance.disconnect();
   }
 
   /**
@@ -156,35 +100,9 @@ export class MongoDataSource extends DataSource {
   }
 
   /**
-   * @description Executes a callback function with the provided connection details
-   * @alias disconnect
+   * @description Returns a raw MongoQueryBuilder for a collection name string
    */
-  static async closeConnection(): Promise<void> {
-    await this.disconnect();
-  }
-
-  /**
-   * @description Executes a callback function with the provided connection details, automatically closing the connection when done
-   */
-  static async useConnection(
-    this: typeof MongoDataSource,
-    input: MongoDataSourceInput,
-    cb: (mongoDataSource: MongoDataSource) => Promise<void>,
-  ): Promise<void> {
-    const mongoDataSource = new MongoDataSource(input);
-    await mongoDataSource.connectWithoutSettingPrimary();
-    try {
-      await cb(mongoDataSource);
-    } finally {
-      await mongoDataSource.disconnect();
-    }
-  }
-
-  static query(collection: string) {
-    return this.getInstance().query(collection);
-  }
-
-  query(collection: string) {
+  query(collectionName: string) {
     if (!this.isConnected) {
       throw new HysteriaError(
         "MongoDataSource::query",
@@ -192,10 +110,39 @@ export class MongoDataSource extends DataSource {
       );
     }
 
-    return this.getModelManager(
-      { _collection: collection } as typeof Collection,
+    const model = {
+      _collection: collectionName,
+      collection: collectionName,
+      beforeInsert: undefined,
+      beforeFetch: undefined,
+      beforeUpdate: undefined,
+      beforeDelete: undefined,
+      afterFetch: undefined,
+    } as unknown as typeof Collection;
+
+    return this.getModelManager(model, this).query();
+  }
+
+  /**
+   * @description Returns a CollectionManager for the given collection class,
+   * providing query(), find(), findOne(), insert(), etc.
+   */
+  from<T extends Collection>(
+    collection: (new (...args: any[]) => T) & Record<string, any>,
+    options?: { session?: InstanceType<MongoClientImport["ClientSession"]> },
+  ): CollectionManager<T> {
+    if (!this.isConnected) {
+      throw new HysteriaError(
+        "MongoDataSource::from",
+        "CONNECTION_NOT_ESTABLISHED",
+      );
+    }
+
+    return this.getModelManager<T>(
+      collection as unknown as typeof Collection,
       this,
-    ).query();
+      options?.session,
+    );
   }
 
   getModelManager<T extends Collection>(

@@ -1,15 +1,15 @@
 import { env } from "../../../src/env/env";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
 
+let sql: SqlDataSource;
+
 beforeAll(async () => {
-  const dataSource = new SqlDataSource();
-  await dataSource.connect();
+  sql = new SqlDataSource();
+  await sql.connect();
 });
 
 describe(`[${env.DB_TYPE}] Advisory Locks - acquireLock()`, () => {
   test("should acquire lock with default key", async () => {
-    const sql = SqlDataSource.instance;
-
     const acquired = await sql.acquireLock();
 
     // Should successfully acquire lock
@@ -20,8 +20,6 @@ describe(`[${env.DB_TYPE}] Advisory Locks - acquireLock()`, () => {
   });
 
   test("should acquire lock with custom key", async () => {
-    const sql = SqlDataSource.instance;
-
     const customKey = "my_custom_lock_key";
     const acquired = await sql.acquireLock(customKey);
 
@@ -32,8 +30,6 @@ describe(`[${env.DB_TYPE}] Advisory Locks - acquireLock()`, () => {
   });
 
   test("should acquire lock with timeout", async () => {
-    const sql = SqlDataSource.instance;
-
     const acquired = await sql.acquireLock("timeout_lock", 5000);
 
     expect(acquired).toBe(true);
@@ -42,8 +38,6 @@ describe(`[${env.DB_TYPE}] Advisory Locks - acquireLock()`, () => {
   });
 
   test("should return false when lock is already held", async () => {
-    const sql = SqlDataSource.instance;
-
     const lockKey = "concurrent_lock_test";
 
     // Acquire first lock
@@ -61,8 +55,6 @@ describe(`[${env.DB_TYPE}] Advisory Locks - acquireLock()`, () => {
   });
 
   test("should handle different lock keys independently", async () => {
-    const sql = SqlDataSource.instance;
-
     const lock1 = await sql.acquireLock("lock_1");
     const lock2 = await sql.acquireLock("lock_2");
 
@@ -76,8 +68,6 @@ describe(`[${env.DB_TYPE}] Advisory Locks - acquireLock()`, () => {
   });
 
   test("should handle special characters in lock keys", async () => {
-    const sql = SqlDataSource.instance;
-
     const specialKey = "lock_with-special.chars@123";
     const acquired = await sql.acquireLock(specialKey);
 
@@ -87,8 +77,6 @@ describe(`[${env.DB_TYPE}] Advisory Locks - acquireLock()`, () => {
   });
 
   test("should handle moderate length lock keys", async () => {
-    const sql = SqlDataSource.instance;
-
     // MySQL GET_LOCK has a max key length of 64 characters
     // Use a reasonable length that works across all databases
     const longKey = "a".repeat(60);
@@ -100,8 +88,6 @@ describe(`[${env.DB_TYPE}] Advisory Locks - acquireLock()`, () => {
   });
 
   test("should handle alphanumeric lock keys", async () => {
-    const sql = SqlDataSource.instance;
-
     // Use safe ASCII characters that work across all databases
     const safeKey = "lock_test_key_12345";
     const acquired = await sql.acquireLock(safeKey);
@@ -114,8 +100,6 @@ describe(`[${env.DB_TYPE}] Advisory Locks - acquireLock()`, () => {
 
 describe(`[${env.DB_TYPE}] Advisory Locks - releaseLock()`, () => {
   test("should release acquired lock", async () => {
-    const sql = SqlDataSource.instance;
-
     const lockKey = "release_test";
 
     // Acquire lock
@@ -134,8 +118,6 @@ describe(`[${env.DB_TYPE}] Advisory Locks - releaseLock()`, () => {
   });
 
   test("should return false when releasing non-existent lock", async () => {
-    const sql = SqlDataSource.instance;
-
     // Release lock that was never acquired
     const released = await sql.releaseLock("non_existent_lock");
 
@@ -144,8 +126,6 @@ describe(`[${env.DB_TYPE}] Advisory Locks - releaseLock()`, () => {
   });
 
   test("should handle releasing default key", async () => {
-    const sql = SqlDataSource.instance;
-
     await sql.acquireLock();
     const released = await sql.releaseLock();
 
@@ -153,8 +133,6 @@ describe(`[${env.DB_TYPE}] Advisory Locks - releaseLock()`, () => {
   });
 
   test("should handle releasing with custom key", async () => {
-    const sql = SqlDataSource.instance;
-
     const customKey = "custom_release_key";
 
     await sql.acquireLock(customKey);
@@ -166,7 +144,6 @@ describe(`[${env.DB_TYPE}] Advisory Locks - releaseLock()`, () => {
 
 describe(`[${env.DB_TYPE}] Advisory Locks - Concurrent Access`, () => {
   test("should handle sequential lock attempts in same session", async () => {
-    const sql = SqlDataSource.instance;
     const lockKey = "sequential_access_test";
 
     // Sequential lock attempts in same session
@@ -185,7 +162,6 @@ describe(`[${env.DB_TYPE}] Advisory Locks - Concurrent Access`, () => {
   });
 
   test("should serialize access using locks sequentially", async () => {
-    const sql = SqlDataSource.instance;
     const lockKey = "serialized_access_test";
 
     let counter = 0;
@@ -220,8 +196,6 @@ describe(`[${env.DB_TYPE}] Advisory Locks - Database Specific`, () => {
         return;
       }
 
-      const sql = SqlDataSource.instance;
-
       const lockKey = "postgres_lock_test";
       const acquired = await sql.acquireLock(lockKey);
 
@@ -234,8 +208,6 @@ describe(`[${env.DB_TYPE}] Advisory Locks - Database Specific`, () => {
       if (env.DB_TYPE !== "postgres" && env.DB_TYPE !== "cockroachdb") {
         return;
       }
-
-      const sql = SqlDataSource.instance;
 
       const lockKey1 = "test_key";
       const lockKey2 = "test_key";
@@ -260,8 +232,6 @@ describe(`[${env.DB_TYPE}] Advisory Locks - Database Specific`, () => {
         return;
       }
 
-      const sql = SqlDataSource.instance;
-
       const lockKey = "mysql_lock_test";
       const acquired = await sql.acquireLock(lockKey);
 
@@ -274,8 +244,6 @@ describe(`[${env.DB_TYPE}] Advisory Locks - Database Specific`, () => {
       if (env.DB_TYPE !== "mysql" && env.DB_TYPE !== "mariadb") {
         return;
       }
-
-      const sql = SqlDataSource.instance;
 
       const lockKey = "mysql_timeout_test";
 
@@ -300,8 +268,6 @@ describe(`[${env.DB_TYPE}] Advisory Locks - Database Specific`, () => {
         return;
       }
 
-      const sql = SqlDataSource.instance;
-
       const acquired = await sql.acquireLock("sqlite_lock_test");
 
       // SQLite uses file-based locking, so returns true
@@ -318,8 +284,6 @@ describe(`[${env.DB_TYPE}] Advisory Locks - Database Specific`, () => {
         return;
       }
 
-      const sql = SqlDataSource.instance;
-
       const lockKey = "mssql_lock_test";
       const acquired = await sql.acquireLock(lockKey);
 
@@ -334,8 +298,6 @@ describe(`[${env.DB_TYPE}] Advisory Locks - Database Specific`, () => {
       if (env.DB_TYPE !== "oracledb") {
         return;
       }
-
-      const sql = SqlDataSource.instance;
 
       const lockKey = "oracle_lock_test";
       const acquired = await sql.acquireLock(lockKey);
@@ -352,8 +314,6 @@ describe(`[${env.DB_TYPE}] Advisory Locks - Database Specific`, () => {
 
 describe(`[${env.DB_TYPE}] Advisory Locks - Edge Cases`, () => {
   test("should handle empty lock key", async () => {
-    const sql = SqlDataSource.instance;
-
     const acquired = await sql.acquireLock("");
 
     // Should handle empty key
@@ -365,8 +325,6 @@ describe(`[${env.DB_TYPE}] Advisory Locks - Edge Cases`, () => {
   });
 
   test("should handle very short timeout", async () => {
-    const sql = SqlDataSource.instance;
-
     const lockKey = "short_timeout_test";
 
     // Acquire lock
@@ -382,8 +340,6 @@ describe(`[${env.DB_TYPE}] Advisory Locks - Edge Cases`, () => {
   });
 
   test("should handle zero timeout", async () => {
-    const sql = SqlDataSource.instance;
-
     const lockKey = "zero_timeout_test";
 
     // Acquire lock
@@ -399,8 +355,6 @@ describe(`[${env.DB_TYPE}] Advisory Locks - Edge Cases`, () => {
   });
 
   test("should handle multiple acquire and release cycles", async () => {
-    const sql = SqlDataSource.instance;
-
     const lockKey = "cycle_test";
 
     for (let i = 0; i < 10; i++) {
@@ -414,8 +368,6 @@ describe(`[${env.DB_TYPE}] Advisory Locks - Edge Cases`, () => {
 
 describe(`[${env.DB_TYPE}] Advisory Locks - Integration`, () => {
   test("should use locks to protect critical sections sequentially", async () => {
-    const sql = SqlDataSource.instance;
-
     const lockKey = "race_condition_test";
     const sharedResource: string[] = [];
 
@@ -441,8 +393,6 @@ describe(`[${env.DB_TYPE}] Advisory Locks - Integration`, () => {
   });
 
   test("should handle re-acquiring lock within same session", async () => {
-    const sql = SqlDataSource.instance;
-
     const lockKey = "reacquire_integration_test";
 
     // Acquire lock

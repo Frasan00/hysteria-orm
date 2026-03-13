@@ -1,26 +1,28 @@
 import { env } from "../../../src/env/env";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
-import { UserStatus, UserWithUuid } from "../test_models/uuid/user_uuid";
+import { UserStatus, UserWithUuid } from "../test_models/uuid/schema";
+
+let sql: SqlDataSource;
 
 // CockroachDB has timing issues with global transactions
 const skipGlobalTransaction = env.DB_TYPE === "cockroachdb";
 
 beforeAll(async () => {
-  const dataSource = new SqlDataSource();
-  await dataSource.connect();
+  sql = new SqlDataSource();
+  await sql.connect();
 });
 
 beforeEach(async () => {
   if (!skipGlobalTransaction) {
-    await SqlDataSource.startGlobalTransaction();
+    await sql.startGlobalTransaction();
   }
 });
 
 afterEach(async () => {
   if (!skipGlobalTransaction) {
-    await SqlDataSource.rollbackGlobalTransaction();
+    await sql.rollbackGlobalTransaction();
   } else {
-    await UserWithUuid.query().delete();
+    await sql.from(UserWithUuid).delete();
   }
 });
 
@@ -38,15 +40,15 @@ async function createTestUser(name: string, email: string) {
     status: UserStatus.active,
     isActive: true,
   };
-  const user = await UserWithUuid.insert(userData, { returning: ["*"] });
+  const user = await sql
+    .from(UserWithUuid)
+    .insert(userData, { returning: ["*"] });
   return user;
 }
 
 describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
   describe("WHERE Clause Injection Prevention", () => {
     test("should sanitize string values in WHERE clause", async () => {
-      const sql = SqlDataSource.instance;
-
       const maliciousValue = "'; DROP TABLE users_with_uuid; --";
 
       // Should not execute the malicious SQL
@@ -64,8 +66,6 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
     });
 
     test("should handle single quotes in WHERE values", async () => {
-      const sql = SqlDataSource.instance;
-
       const user = await createTestUser(
         "Test User 'With Quotes'",
         "quotes1@example.com",
@@ -81,8 +81,6 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
     });
 
     test("should handle backslash in WHERE values", async () => {
-      const sql = SqlDataSource.instance;
-
       const user = await createTestUser(
         "Test User \\With Backslash",
         "backslash@example.com",
@@ -98,8 +96,6 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
     });
 
     test("should handle comment syntax in WHERE values", async () => {
-      const sql = SqlDataSource.instance;
-
       const maliciousValue = "test' OR '1'='1' --";
 
       await createTestUser("Safe User", "safe@example.com");
@@ -115,8 +111,6 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
     });
 
     test("should handle union-based injection attempts", async () => {
-      const sql = SqlDataSource.instance;
-
       const maliciousValue = "test' UNION SELECT * FROM posts_with_uuid --";
 
       await createTestUser("Safe User 2", "safe2@example.com");
@@ -134,8 +128,6 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
 
   describe("INSERT Statement Injection Prevention", () => {
     test("should sanitize values in INSERT", async () => {
-      const sql = SqlDataSource.instance;
-
       const maliciousName = "'; DROP TABLE users_with_uuid; --";
       const maliciousEmail = "hack@example.com";
 
@@ -146,7 +138,7 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
         status: UserStatus.active,
         isActive: true,
       };
-      await UserWithUuid.insert(user);
+      await sql.from(UserWithUuid).insert(user);
 
       // Value should be stored as-is, not executed
       const foundUser = await sql
@@ -158,11 +150,10 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
       expect(foundUser?.name).toBe(maliciousName);
 
       // Cleanup
-      await UserWithUuid.query().where("email", "hack@example.com").delete();
+      await sql.from(UserWithUuid).where("email", "hack@example.com").delete();
     });
 
     test("should handle quotes in INSERT", async () => {
-      const sql = SqlDataSource.instance;
       const uniqueEmail = `double-quotes-${Date.now()}@example.com`;
 
       const user = {
@@ -172,7 +163,7 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
         status: UserStatus.active,
         isActive: true,
       };
-      await UserWithUuid.insert(user);
+      await sql.from(UserWithUuid).insert(user);
 
       const foundUser = await sql
         .query("users_with_uuid")
@@ -186,8 +177,6 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
 
   describe("UPDATE Statement Injection Prevention", () => {
     test("should sanitize values in UPDATE", async () => {
-      const sql = SqlDataSource.instance;
-
       const user = await createTestUser(
         "Original Name",
         "update-test@example.com",
@@ -211,8 +200,6 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
     });
 
     test("should handle multiple malicious values in UPDATE", async () => {
-      const sql = SqlDataSource.instance;
-
       const user = await createTestUser(
         "Original Name 2",
         "update-test2@example.com",
@@ -237,8 +224,6 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
 
   describe("JOIN Condition Injection Prevention", () => {
     test("should sanitize JOIN conditions", async () => {
-      const sql = SqlDataSource.instance;
-
       // Create test data
       await createTestUser("Join Test User", "join-test@example.com");
 
@@ -263,8 +248,6 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
 
   describe("IN Clause Injection Prevention", () => {
     test("should sanitize values in IN clause", async () => {
-      const sql = SqlDataSource.instance;
-
       const user1 = await createTestUser("IN Test 1", "in1@example.com");
       await createTestUser("IN Test 2", "in2@example.com");
 
@@ -282,15 +265,13 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
     });
 
     test("should handle large IN clause", async () => {
-      const sql = SqlDataSource.instance;
-
       const emails: string[] = [];
       for (let i = 0; i < 100; i++) {
         const user = await createTestUser(
           `User ${i}`,
           `in-large${i}@example.com`,
         );
-        emails.push(user.email);
+        emails.push(user.email as string);
       }
 
       const result = await sql
@@ -304,8 +285,6 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
 
   describe("LIKE Clause Injection Prevention", () => {
     test("should sanitize LIKE patterns", async () => {
-      const sql = SqlDataSource.instance;
-
       await createTestUser("LIKE Test", "like@example.com");
 
       const maliciousPattern = "%'; DROP TABLE users_with_uuid; --%";
@@ -321,8 +300,6 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
     });
 
     test("should handle wildcard characters in LIKE", async () => {
-      const sql = SqlDataSource.instance;
-
       await createTestUser("Wildcard Test User", "wildcard@example.com");
 
       // Proper wildcards should work
@@ -338,8 +315,6 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
 
   describe("ORDER BY Injection Prevention", () => {
     test("should handle malicious ORDER BY values", async () => {
-      const sql = SqlDataSource.instance;
-
       const user = await createTestUser("Order By Test", "orderby@example.com");
 
       // Column names should be validated
@@ -355,8 +330,6 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
 
   describe("LIMIT and OFFSET Injection Prevention", () => {
     test("should sanitize LIMIT values", async () => {
-      const sql = SqlDataSource.instance;
-
       const user1 = await createTestUser("Limit Test 1", "limit1@example.com");
       const user2 = await createTestUser("Limit Test 2", "limit2@example.com");
 
@@ -371,8 +344,6 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
     });
 
     test("should sanitize OFFSET values", async () => {
-      const sql = SqlDataSource.instance;
-
       const user1 = await createTestUser(
         "Offset Test 1",
         "offset1@example.com",
@@ -397,8 +368,6 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
 
   describe("Boolean Blind Injection Prevention", () => {
     test("should not leak information through boolean responses", async () => {
-      const sql = SqlDataSource.instance;
-
       await createTestUser("Boolean Test", "boolean@example.com");
 
       const maliciousValue =
@@ -417,8 +386,6 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
 
   describe("Time-Based Injection Prevention", () => {
     test("should not be vulnerable to time-based injection", async () => {
-      const sql = SqlDataSource.instance;
-
       await createTestUser("Time Test", "time@example.com");
 
       const maliciousValue = "'; WAITFOR DELAY '00:00:05' --";
@@ -441,8 +408,6 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
 
   describe("Second-Order Injection Prevention", () => {
     test("should handle stored malicious values safely", async () => {
-      const sql = SqlDataSource.instance;
-
       const uniqueEmail = `second-order-${Date.now()}@example.com`;
       const uniqueMaliciousName = `'; -- ${Date.now()}`;
 
@@ -454,7 +419,7 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
         status: UserStatus.active,
         isActive: true,
       };
-      await UserWithUuid.insert(user);
+      await sql.from(UserWithUuid).insert(user);
 
       // Use the stored value in another query
       const storedUser = await sql

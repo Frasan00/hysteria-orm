@@ -131,8 +131,8 @@ class MysqlColumnTypeInterpreter implements Interpreter {
     } else if (dt === "multipoint") {
       typeSql = `${columnName} multipoint`;
     } else {
-      typeSql =
-        `${columnName} ${dt} ${colNode.length ? `(${colNode.length})` : ""}`.trim();
+      const lengthPart = colNode.length ? `(${colNode.length})` : "";
+      typeSql = `${columnName} ${dt}${lengthPart}`;
     }
 
     if (colNode.collate) {

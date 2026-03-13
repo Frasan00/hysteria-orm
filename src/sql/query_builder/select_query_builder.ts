@@ -154,15 +154,6 @@ export class SelectQueryBuilder<
   /**
    * @description Sets the table to select from, by default is the table defined in the Model
    */
-  from<F extends string>(table: TableFormat<F>): this {
-    this.fromNode = new FromNode(table);
-    return this;
-  }
-
-  /**
-   * @description Sets the table to select from, by default is the table defined in the Model
-   * @alias from
-   */
   table(table: string): this {
     this.fromNode = new FromNode(table);
     return this;

@@ -1,27 +1,24 @@
 import {
-  belongsTo,
-  column,
-} from "../../../../../src/sql/models/decorators/model_decorators";
-import { Model } from "../../../../../src/sql/models/model";
+  col,
+  defineModel,
+  defineRelations,
+} from "../../../../../src/sql/models/define_model";
 
-/**
- * SelfRef v3: Remove parentId FK, add managerId self-ref FK
- */
-export class SelfRefV3 extends Model {
-  static table = "schema_diff_self_ref";
+export const SelfRefV3 = defineModel("schema_diff_self_ref", {
+  columns: {
+    id: col.bigIncrement(),
+    name: col.string({ length: 255 }),
+    parentId: col.bigInteger({ nullable: true }),
+    managerId: col.bigInteger({ nullable: true }),
+  },
+});
 
-  @column.bigIncrement()
-  declare id: number;
-
-  @column({ type: "varchar", length: 255 })
-  declare name: string;
-
-  @column({ type: "bigint", nullable: true })
-  declare parentId: number | null;
-
-  @column({ type: "bigint", nullable: true })
-  declare managerId: number | null;
-
-  @belongsTo(() => SelfRefV3, "managerId", { onDelete: "set null" })
-  declare manager: SelfRefV3;
-}
+export const SelfRefV3Relations = defineRelations(
+  SelfRefV3,
+  ({ belongsTo }) => ({
+    manager: belongsTo(SelfRefV3, {
+      foreignKey: "managerId",
+      onDelete: "set null",
+    }),
+  }),
+);
