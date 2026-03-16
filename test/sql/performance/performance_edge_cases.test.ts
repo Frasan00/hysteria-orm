@@ -24,7 +24,7 @@ describe(`[${env.DB_TYPE}] Performance - Large LIMIT/OFFSET`, () => {
     await UserFactory.userWithUuid(sql, 10);
 
     const result = await sql
-      .query("users_with_uuid")
+      .from("users_with_uuid")
       .orderBy("id", "asc")
       .offset(5)
       .many();
@@ -35,7 +35,7 @@ describe(`[${env.DB_TYPE}] Performance - Large LIMIT/OFFSET`, () => {
   test("should handle large LIMIT values", async () => {
     await UserFactory.userWithUuid(sql, 10);
 
-    const result = await sql.query("users_with_uuid").limit(100).many();
+    const result = await sql.from("users_with_uuid").limit(100).many();
 
     expect(Array.isArray(result)).toBe(true);
   });
@@ -44,7 +44,7 @@ describe(`[${env.DB_TYPE}] Performance - Large LIMIT/OFFSET`, () => {
     await UserFactory.userWithUuid(sql, 20);
 
     const result = await sql
-      .query("users_with_uuid")
+      .from("users_with_uuid")
       .orderBy("id", "asc")
       .limit(5)
       .offset(10)
@@ -65,7 +65,7 @@ describe(`[${env.DB_TYPE}] Performance - Large IN Clauses`, () => {
     );
 
     const result = await sql
-      .query("users_with_uuid")
+      .from("users_with_uuid")
       .whereIn("email", emails)
       .many();
 
@@ -78,7 +78,7 @@ describe(`[${env.DB_TYPE}] Performance - Large IN Clauses`, () => {
     const ages = Array.from({ length: 500 }, (_, i) => i + 20);
 
     const result = await sql
-      .query("users_with_uuid")
+      .from("users_with_uuid")
       .whereIn("age", ages)
       .many();
 
@@ -91,7 +91,7 @@ describe(`[${env.DB_TYPE}] Performance - Large IN Clauses`, () => {
     const ages = Array.from({ length: 1000 }, (_, i) => i + 20);
 
     const result = await sql
-      .query("users_with_uuid")
+      .from("users_with_uuid")
       .whereIn("age", ages)
       .many();
 
@@ -104,7 +104,7 @@ describe(`[${env.DB_TYPE}] Performance - Complex Aggregations`, () => {
     await UserFactory.userWithUuid(sql, 10);
 
     const result = await sql
-      .query("users_with_uuid")
+      .from("users_with_uuid")
       .select("count", "avg_age", "max_age", "min_age", "sum_age")
       .selectFunc("count", "*", "count")
       .selectFunc("avg", "age", "avg_age")
@@ -120,7 +120,7 @@ describe(`[${env.DB_TYPE}] Performance - Complex Aggregations`, () => {
     await UserFactory.userWithUuid(sql, 10);
 
     const result = await sql
-      .query("users_with_uuid")
+      .from("users_with_uuid")
       .select("status")
       .selectFunc("count", "*", "count")
       .selectFunc("avg", "age", "avg_age")
@@ -134,7 +134,7 @@ describe(`[${env.DB_TYPE}] Performance - Complex Aggregations`, () => {
     await UserFactory.userWithUuid(sql, 10);
 
     const result = await sql
-      .query("users_with_uuid")
+      .from("users_with_uuid")
       .select("status")
       .selectFunc("count", "id", "count")
       .groupBy("status")
@@ -150,7 +150,7 @@ describe(`[${env.DB_TYPE}] Performance - Deep Nested WHERE`, () => {
     await UserFactory.userWithUuid(sql, 5);
 
     const result = await sql
-      .query("users_with_uuid")
+      .from("users_with_uuid")
       .where("age", ">", 20)
       .andWhere("age", "<", 50)
       .andWhere("status", "active")
@@ -165,7 +165,7 @@ describe(`[${env.DB_TYPE}] Performance - Deep Nested WHERE`, () => {
     await UserFactory.userWithUuid(sql, 5);
 
     const result = await sql
-      .query("users_with_uuid")
+      .from("users_with_uuid")
       .where("age", "<", 25)
       .orWhere("age", ">", 40)
       .orWhere("status", "inactive")
@@ -178,7 +178,7 @@ describe(`[${env.DB_TYPE}] Performance - Deep Nested WHERE`, () => {
     await UserFactory.userWithUuid(sql, 5);
 
     const result = await sql
-      .query("users_with_uuid")
+      .from("users_with_uuid")
       .where((query) => {
         query.where("age", "<", 25).orWhere("age", ">", 40);
       })
@@ -194,7 +194,7 @@ describe(`[${env.DB_TYPE}] Performance - Multiple Joins`, () => {
     await UserFactory.userWithUuid(sql, 3);
 
     const result = await sql
-      .query("users_with_uuid")
+      .from("users_with_uuid")
       .join("posts_with_uuid", "users_with_uuid.id", "posts_with_uuid.user_id")
       .many();
 
@@ -205,7 +205,7 @@ describe(`[${env.DB_TYPE}] Performance - Multiple Joins`, () => {
     await UserFactory.userWithUuid(sql, 3);
 
     const result = await sql
-      .query("users_with_uuid")
+      .from("users_with_uuid")
       .leftJoin(
         "posts_with_uuid",
         "users_with_uuid.id",
@@ -223,7 +223,7 @@ describe(`[${env.DB_TYPE}] Performance - Bulk Operations`, () => {
 
     const startTime = Date.now();
     const updated = await sql
-      .query("users_with_uuid")
+      .from("users_with_uuid")
       .where("age", "<", 30)
       .update({ status: "bulk_updated" });
     const endTime = Date.now();
@@ -237,7 +237,7 @@ describe(`[${env.DB_TYPE}] Performance - Bulk Operations`, () => {
       { length: 50 },
       (_, i) => `delete${i}@example.com`,
     );
-    await sql.query("users_with_uuid").insertMany(
+    await sql.from("users_with_uuid").insertMany(
       emails.map((email) => ({
         id: crypto.randomUUID(),
         name: `Delete ${email}`,
@@ -250,7 +250,7 @@ describe(`[${env.DB_TYPE}] Performance - Bulk Operations`, () => {
 
     const startTime = Date.now();
     const deleted = await sql
-      .query("users_with_uuid")
+      .from("users_with_uuid")
       .whereIn("email", emails)
       .delete();
     const endTime = Date.now();
@@ -264,7 +264,7 @@ describe(`[${env.DB_TYPE}] Performance - Order By Performance`, () => {
     await UserFactory.userWithUuid(sql, 10);
 
     const result = await sql
-      .query("users_with_uuid")
+      .from("users_with_uuid")
       .orderBy("status", "asc")
       .orderBy("age", "desc")
       .orderBy("name", "asc")
@@ -277,7 +277,7 @@ describe(`[${env.DB_TYPE}] Performance - Order By Performance`, () => {
     await UserFactory.userWithUuid(sql, 10);
 
     const result = await sql
-      .query("users_with_uuid")
+      .from("users_with_uuid")
       .orderByRaw("age * 2 DESC")
       .many();
 
@@ -289,7 +289,7 @@ describe(`[${env.DB_TYPE}] Performance - String Operations`, () => {
   test("should handle long string values", async () => {
     const longString = "a".repeat(10000);
 
-    const user = await sql.query("users_with_uuid").insert(
+    const user = await sql.from("users_with_uuid").insert(
       {
         id: crypto.randomUUID(),
         name: "Long String Test",
@@ -326,7 +326,7 @@ describe(`[${env.DB_TYPE}] Performance - String Operations`, () => {
     }
 
     const result = await sql
-      .query("users_with_uuid")
+      .from("users_with_uuid")
       .selectRaw(concatExpr)
       .many();
 
@@ -339,7 +339,7 @@ describe(`[${env.DB_TYPE}] Performance - Concurrent Operations`, () => {
     await UserFactory.userWithUuid(sql, 20);
 
     const promises = Array.from({ length: 10 }, () =>
-      sql.query("users_with_uuid").many(),
+      sql.from("users_with_uuid").many(),
     );
 
     const results = await Promise.all(promises);
@@ -351,7 +351,7 @@ describe(`[${env.DB_TYPE}] Performance - Concurrent Operations`, () => {
 
   test("should handle concurrent writes", async () => {
     const promises = Array.from({ length: 10 }, (_, i) =>
-      sql.query("users_with_uuid").insert(
+      sql.from("users_with_uuid").insert(
         {
           id: crypto.randomUUID(),
           name: `Concurrent ${i}`,
@@ -370,7 +370,7 @@ describe(`[${env.DB_TYPE}] Performance - Concurrent Operations`, () => {
 
     // Cleanup
     await sql
-      .query("users_with_uuid")
+      .from("users_with_uuid")
       .whereIn(
         "email",
         Array.from({ length: 10 }, (_, i) => `concurrent${i}@example.com`),
@@ -384,7 +384,7 @@ describe(`[${env.DB_TYPE}] Performance - Memory Efficiency`, () => {
     await UserFactory.userWithUuid(sql, 50);
 
     const result = await sql
-      .query("users_with_uuid")
+      .from("users_with_uuid")
       .select("id", "name", "email")
       .many();
 
@@ -396,7 +396,7 @@ describe(`[${env.DB_TYPE}] Performance - Memory Efficiency`, () => {
     await UserFactory.userWithUuid(sql, 30);
 
     const chunks = [];
-    for await (const chunk of sql.query("users_with_uuid").chunk(10)) {
+    for await (const chunk of sql.from("users_with_uuid").chunk(10)) {
       chunks.push(chunk);
     }
 
@@ -409,7 +409,7 @@ describe(`[${env.DB_TYPE}] Performance - Index Utilization`, () => {
     await UserFactory.userWithUuid(sql, 10);
 
     const result = await sql
-      .query("users_with_uuid")
+      .from("users_with_uuid")
       .where("id", "!=", null)
       .many();
 
@@ -420,7 +420,7 @@ describe(`[${env.DB_TYPE}] Performance - Index Utilization`, () => {
     await UserFactory.userWithUuid(sql, 5);
 
     const result = await sql
-      .query("users_with_uuid")
+      .from("users_with_uuid")
       .join("posts_with_uuid", "users_with_uuid.id", "posts_with_uuid.user_id")
       .many();
 

@@ -169,13 +169,13 @@ export const parseDatabaseDataIntoModelResponse = async <
  * This prevents data bleeding when using JOINs:
  * ```ts
  * // Without this protection, `name` from users would appear on Post model
- * Post.query()
+ * sql.from(posts)
  *   .select("posts.*", "users.*")
  *   .leftJoin("users", "users.id", "posts.user_id")
  *   .many();
  *
  * // Correct approach: use explicit aliases for joined table columns
- * Post.query()
+ * sql.from(posts)
  *   .select("posts.*", "users.name as authorName")
  *   .leftJoin("users", "users.id", "posts.user_id")
  *   .many();

@@ -273,7 +273,7 @@ describe(`[${env.DB_TYPE}] Raw transaction from transaction sql instance should 
 
   test("Insert with commit via query builder", async () => {
     const trx = await sql.transaction();
-    await trx.sql.query(UserWithoutPk.table).insert({
+    await trx.sql.from(UserWithoutPk.table).insert({
       email: "test@test.com",
     });
 
@@ -286,7 +286,7 @@ describe(`[${env.DB_TYPE}] Raw transaction from transaction sql instance should 
 
   test("Insert with rollback via query builder", async () => {
     const trx = await sql.transaction();
-    await trx.sql.query(UserWithoutPk.table).insert({
+    await trx.sql.from(UserWithoutPk.table).insert({
       email: "test@test.com",
     });
 
@@ -351,7 +351,7 @@ describe(`[${env.DB_TYPE}] Raw transaction from transaction sql instance should 
 
   test("Update with commit via query builder", async () => {
     const trx = await sql.transaction();
-    await trx.sql.query(UserWithoutPk.table).update({
+    await trx.sql.from(UserWithoutPk.table).update({
       email: "test@test.com",
     });
 
@@ -549,7 +549,7 @@ describe(`[${env.DB_TYPE}] Nested transactions with savePoints`, () => {
     const trx = await sql.transaction();
     await trx.sql.rawQuery("SELECT 1");
     await trx.nestedTransaction(async (trx) => {
-      await trx.sql.query(UserWithoutPk.table).insert({
+      await trx.sql.from(UserWithoutPk.table).insert({
         email: "test@test.com",
       });
     });
@@ -565,12 +565,12 @@ describe(`[${env.DB_TYPE}] Nested transactions with savePoints`, () => {
     const trx = await sql.transaction();
     await trx.sql.rawQuery("SELECT 1");
     const nestedTrx = await trx.nestedTransaction();
-    await nestedTrx.sql.query(UserWithoutPk.table).insert({
+    await nestedTrx.sql.from(UserWithoutPk.table).insert({
       email: "test@test.com",
     });
 
     const lookupQuery = await nestedTrx.sql
-      .query(UserWithoutPk.table)
+      .from(UserWithoutPk.table)
       .where("email", "test@test.com")
       .one();
 
@@ -587,7 +587,7 @@ describe(`[${env.DB_TYPE}] Nested transactions with savePoints`, () => {
     const lvl2 = await lvl1.nestedTransaction();
 
     await lvl2.sql
-      .query(UserWithoutPk.table)
+      .from(UserWithoutPk.table)
       .insert({ email: "nest2@test.com" });
 
     await lvl2.commit();
@@ -610,12 +610,12 @@ describe(`[${env.DB_TYPE}] Nested transactions with savePoints`, () => {
   test("Inner rollback, outer commit persists outer work only", async () => {
     const outer = await sql.transaction();
     await outer.sql
-      .query(UserWithoutPk.table)
+      .from(UserWithoutPk.table)
       .insert({ email: "outer@test.com" });
 
     const inner = await outer.nestedTransaction();
     await inner.sql
-      .query(UserWithoutPk.table)
+      .from(UserWithoutPk.table)
       .insert({ email: "inner@test.com" });
 
     await inner.rollback(); // rollback savepoint
@@ -638,13 +638,13 @@ describe(`[${env.DB_TYPE}] Nested transactions with savePoints`, () => {
     const outer = await sql.transaction();
     const inner = await outer.nestedTransaction();
     await inner.sql
-      .query(UserWithoutPk.table)
+      .from(UserWithoutPk.table)
       .insert({ email: "inner-rollback@test.com" });
     await inner.rollback();
 
     // Continue working on outer
     await outer.sql
-      .query(UserWithoutPk.table)
+      .from(UserWithoutPk.table)
       .insert({ email: "outer-commit@test.com" });
 
     await outer.commit();
@@ -678,17 +678,17 @@ describe(`[${env.DB_TYPE}] Nested transactions with savePoints`, () => {
     await trx.sql.rawQuery("SELECT 1");
     await trx.nestedTransaction(async (trx) => {
       await trx.nestedTransaction(async (trx) => {
-        await trx.sql.query(UserWithoutPk.table).insert({
+        await trx.sql.from(UserWithoutPk.table).insert({
           email: "test@test.com",
         });
 
         await trx.nestedTransaction(async (trx) => {
-          await trx.sql.query(UserWithoutPk.table).insert({
+          await trx.sql.from(UserWithoutPk.table).insert({
             email: "test2@test.com",
           });
 
           await trx.nestedTransaction(async (trx) => {
-            await trx.sql.query(UserWithoutPk.table).insert({
+            await trx.sql.from(UserWithoutPk.table).insert({
               email: "test3@test.com",
             });
           });

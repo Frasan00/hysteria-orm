@@ -133,7 +133,7 @@ describe(`[${env.DB_TYPE}] uuid pk join edge cases`, () => {
     }
 
     const rows = await sql
-      .query("posts_with_uuid")
+      .from("posts_with_uuid")
       .table("posts_with_uuid", "p")
       .select("p.*", ["u.name", "mustBe1"], ["a.city", "mustBe2"])
       .leftJoinRaw("users_with_uuid u ON u.id = p.user_id")

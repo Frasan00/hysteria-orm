@@ -133,10 +133,10 @@ export class QueryBuilder<
    * @description Supports: "column", "table.column", "*", "table.*", or [column, alias] tuples
    * @example
    * ```ts
-   * const user = await sql.query("users").select("name", "age").one();
+   * const user = await sql.from("users").select("name", "age").one();
    * // user type: { name: any, age: any } | null
    *
-   * const user = await sql.query("users").select(["name", "userName"]).one();
+   * const user = await sql.from("users").select(["name", "userName"]).one();
    * // user type: { userName: any } | null
    * ```
    */
@@ -195,7 +195,7 @@ export class QueryBuilder<
    * @description Use the generic parameter to specify the type of the selected columns.
    * @example
    * ```ts
-   * const result = await sql.query("users")
+   * const result = await sql.from("users")
    *   .selectRaw<{ total: number }>("count(*) as total")
    *   .one();
    * // result type: { total: number } | null
@@ -227,7 +227,7 @@ export class QueryBuilder<
    * @param alias The alias for the result
    * @example
    * ```ts
-   * const result = await sql.query("users")
+   * const result = await sql.from("users")
    *   .selectFunc("count", "*", "total")
    *   .one();
    * // result type: { total: number } | null - auto-inferred!
@@ -450,7 +450,7 @@ export class QueryBuilder<
    * @example
    * const chunkSize = 3;
    * const chunks = [];
-   * const query = sql.query("users").orderBy("name", "asc");
+   * const query = sql.from("users").orderBy("name", "asc");
    * for await (const chunk of sql.chunk(chunkSize)) {
    *   chunks.push(chunk);
    * }
@@ -791,7 +791,7 @@ export class QueryBuilder<
   /**
    * @description Adds a materialized CTE to the query using a callback to build the subquery.
    * @postgres only
-   * @throws HysteriaError if the database type is not postgres
+   * @throws HysteriaError if the database type is not postgres or cockroachdb
    */
   withMaterialized(
     alias: string,

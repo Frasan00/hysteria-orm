@@ -199,7 +199,7 @@ describe(`[${env.DB_TYPE}] Clone Method - Edge Cases`, () => {
     const cloned = await sql.clone();
 
     const query = cloned
-      .query("users_with_uuid")
+      .from("users_with_uuid")
       .select("name")
       .where("age", ">", 25);
     const sqlString = query.toQuery();

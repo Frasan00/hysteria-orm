@@ -7,10 +7,10 @@ import type { AstParser } from "../ast/parser";
  * @example
  * ```ts
  * // Get SQL without executing
- * const sql = sql.query("users").insert({ name: "John" }).toQuery();
+ * const sql = sql.from("users").insert({ name: "John" }).toQuery();
  *
  * // Execute the operation
- * const result = await sql.query("users").insert({ name: "John" });
+ * const result = await sql.from("users").insert({ name: "John" });
  * ```
  */
 export class WriteOperation<T> implements PromiseLike<T> {

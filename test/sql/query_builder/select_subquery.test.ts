@@ -23,8 +23,8 @@ afterEach(async () => {
 
 describe(`[${env.DB_TYPE}] QueryBuilder select with subquery`, () => {
   beforeEach(async () => {
-    await sql.query("users_without_pk").delete();
-    await sql.query("users_without_pk").insertMany([
+    await sql.from("users_without_pk").delete();
+    await sql.from("users_without_pk").insertMany([
       { name: "Alice", age: 25, email: "alice@test.com" },
       { name: "Bob", age: 30, email: "bob@test.com" },
       { name: "Charlie", age: 35, email: "charlie@test.com" },
@@ -32,12 +32,12 @@ describe(`[${env.DB_TYPE}] QueryBuilder select with subquery`, () => {
   });
 
   afterEach(async () => {
-    await sql.query("users_without_pk").delete();
+    await sql.from("users_without_pk").delete();
   });
 
   test("should select with callback subquery", async () => {
     const users = await sql
-      .query("users_without_pk")
+      .from("users_without_pk")
       .select("name")
       .select<number>((subQuery) => {
         subQuery
@@ -58,13 +58,13 @@ describe(`[${env.DB_TYPE}] QueryBuilder select with subquery`, () => {
 
   test("should select with QueryBuilder instance subquery", async () => {
     const subQuery = sql
-      .query("users_without_pk")
+      .from("users_without_pk")
       .selectRaw<{ olderOrEqualCount: number }>("COUNT(*) as olderOrEqualCount")
       .table("users_without_pk as u2")
       .whereRaw("u2.age >= users_without_pk.age");
 
     const users = await sql
-      .query("users_without_pk")
+      .from("users_without_pk")
       .select("name")
       .select<number>(subQuery, "olderOrEqualCount")
       .orderBy("name", "asc")
@@ -77,7 +77,7 @@ describe(`[${env.DB_TYPE}] QueryBuilder select with subquery`, () => {
 
   test("should chain multiple subquery selects", async () => {
     const users = await sql
-      .query("users_without_pk")
+      .from("users_without_pk")
       .select("name", "age")
       .select<number>((subQuery) => {
         subQuery
@@ -102,7 +102,7 @@ describe(`[${env.DB_TYPE}] QueryBuilder select with subquery`, () => {
 
   test("should work with subquery and regular columns", async () => {
     const users = await sql
-      .query("users_without_pk")
+      .from("users_without_pk")
       .select("name", "email")
       .select<number>((subQuery) => {
         subQuery
@@ -121,7 +121,7 @@ describe(`[${env.DB_TYPE}] QueryBuilder select with subquery`, () => {
     if (env.DB_TYPE === "mssql") return;
 
     const users = await sql
-      .query("users_without_pk")
+      .from("users_without_pk")
       .select("name")
       .selectRaw<{ nameLength: number }>("length(name) as nameLength")
       .select<number>((subQuery) => {
@@ -139,7 +139,7 @@ describe(`[${env.DB_TYPE}] QueryBuilder select with subquery`, () => {
 
   test("should work with subquery and selectFunc", async () => {
     const users = await sql
-      .query("users_without_pk")
+      .from("users_without_pk")
       .select("name")
       .selectFunc("upper", "name", "upperName")
       .select<number>((subQuery) => {
@@ -157,7 +157,7 @@ describe(`[${env.DB_TYPE}] QueryBuilder select with subquery`, () => {
 
   test("should handle subquery in pagination", async () => {
     const page = await sql
-      .query("users_without_pk")
+      .from("users_without_pk")
       .select("name")
       .select<number>((subQuery) => {
         subQuery
@@ -175,7 +175,7 @@ describe(`[${env.DB_TYPE}] QueryBuilder select with subquery`, () => {
 
   test("should handle subquery with pluck", async () => {
     const names = await sql
-      .query("users_without_pk")
+      .from("users_without_pk")
       .select("name")
       .select<number>((subQuery) => {
         subQuery
@@ -192,7 +192,7 @@ describe(`[${env.DB_TYPE}] QueryBuilder select with subquery`, () => {
   test("should handle subquery with chunk", async () => {
     const chunks: any[][] = [];
     for await (const chunk of sql
-      .query("users_without_pk")
+      .from("users_without_pk")
       .select("name")
       .select<number>((subQuery) => {
         subQuery
@@ -212,7 +212,7 @@ describe(`[${env.DB_TYPE}] QueryBuilder select with subquery`, () => {
 
   test("should work with clearSelect and subquery", async () => {
     const users = await sql
-      .query("users_without_pk")
+      .from("users_without_pk")
       .select("*")
       .clearSelect()
       .select("name")
@@ -231,7 +231,7 @@ describe(`[${env.DB_TYPE}] QueryBuilder select with subquery`, () => {
 
   test("toQuery should generate correct SQL with subquery", async () => {
     const query = sql
-      .query("users_without_pk")
+      .from("users_without_pk")
       .select("name")
       .select<number>((subQuery) => {
         subQuery
@@ -247,7 +247,7 @@ describe(`[${env.DB_TYPE}] QueryBuilder select with subquery`, () => {
 
 describe(`[${env.DB_TYPE}] ModelQueryBuilder select with subquery`, () => {
   beforeEach(async () => {
-    await sql.query("users_without_pk").delete();
+    await sql.from("users_without_pk").delete();
     await sql.from(UserWithoutPk).insertMany([
       { name: "Alice", age: 25, email: "alice@test.com" },
       { name: "Bob", age: 30, email: "bob@test.com" },
@@ -256,7 +256,7 @@ describe(`[${env.DB_TYPE}] ModelQueryBuilder select with subquery`, () => {
   });
 
   afterEach(async () => {
-    await sql.query("users_without_pk").delete();
+    await sql.from("users_without_pk").delete();
   });
 
   test("should select with callback subquery", async () => {
@@ -282,7 +282,7 @@ describe(`[${env.DB_TYPE}] ModelQueryBuilder select with subquery`, () => {
 
   test("should select with QueryBuilder instance subquery", async () => {
     const subQuery = sql
-      .query("users_without_pk")
+      .from("users_without_pk")
       .selectRaw<{ olderOrEqualCount: number }>("COUNT(*) as olderOrEqualCount")
       .table("users_without_pk as u2")
       .whereRaw("u2.age >= users_without_pk.age");
@@ -534,19 +534,19 @@ describe(`[${env.DB_TYPE}] ModelQueryBuilder select with subquery`, () => {
 
 describe(`[${env.DB_TYPE}] Select subquery edge cases`, () => {
   beforeEach(async () => {
-    await sql.query("users_without_pk").delete();
+    await sql.from("users_without_pk").delete();
     await sql
-      .query("users_without_pk")
+      .from("users_without_pk")
       .insertMany([{ name: "Alice", age: 25, email: "alice@test.com" }]);
   });
 
   afterEach(async () => {
-    await sql.query("users_without_pk").delete();
+    await sql.from("users_without_pk").delete();
   });
 
   test("should handle complex subquery with multiple conditions", async () => {
     const user = await sql
-      .query("users_without_pk")
+      .from("users_without_pk")
       .select("name")
       .select<number>((subQuery) => {
         subQuery
@@ -563,13 +563,13 @@ describe(`[${env.DB_TYPE}] Select subquery edge cases`, () => {
   });
 
   test("should handle subquery with groupBy", async () => {
-    await sql.query("users_without_pk").insertMany([
+    await sql.from("users_without_pk").insertMany([
       { name: "Bob", age: 30, email: "bob@test.com" },
       { name: "Charlie", age: 35, email: "charlie@test.com" },
     ]);
 
     const users = await sql
-      .query("users_without_pk")
+      .from("users_without_pk")
       .select("name")
       .select<number>((subQuery) => {
         subQuery
@@ -586,7 +586,7 @@ describe(`[${env.DB_TYPE}] Select subquery edge cases`, () => {
 
   test("should handle subquery with limit", async () => {
     const user = await sql
-      .query("users_without_pk")
+      .from("users_without_pk")
       .select("name")
       .select<number>((subQuery) => {
         subQuery

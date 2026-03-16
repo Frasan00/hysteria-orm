@@ -1,6 +1,5 @@
 import crypto from "crypto";
 import { env } from "../../../src/env/env";
-import { HysteriaError } from "../../../src/errors/hysteria_error";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
 import { UserFactory } from "../test_models/factory/user_factory";
 import { UserStatus, UserWithUuid } from "../test_models/uuid/schema";
@@ -57,7 +56,7 @@ describe(`[${env.DB_TYPE}] Error Handling - Invalid Column References`, () => {
 
     // Using a column that doesn't exist
     const query = sql
-      .query("users_with_uuid")
+      .from("users_with_uuid")
       .where("non_existent_column", "value");
 
     await expect(query.one()).rejects.toThrow();
@@ -70,7 +69,7 @@ describe(`[${env.DB_TYPE}] Error Handling - Invalid Column References`, () => {
     }
 
     const query = sql
-      .query("users_with_uuid")
+      .from("users_with_uuid")
       .select("id", "non_existent_column");
     await expect(query.many()).rejects.toThrow();
   });
@@ -82,7 +81,7 @@ describe(`[${env.DB_TYPE}] Error Handling - Invalid Column References`, () => {
     }
 
     const query = sql
-      .query("users_with_uuid")
+      .from("users_with_uuid")
       .join(
         "posts_with_uuid",
         "users_with_uuid.id",
@@ -99,7 +98,7 @@ describe(`[${env.DB_TYPE}] Error Handling - Invalid Column References`, () => {
     }
 
     const query = sql
-      .query("users_with_uuid")
+      .from("users_with_uuid")
       .orderBy("non_existent_column", "asc");
 
     await expect(query.many()).rejects.toThrow();
@@ -112,7 +111,7 @@ describe(`[${env.DB_TYPE}] Error Handling - Invalid Column References`, () => {
     }
 
     const query = sql
-      .query("users_with_uuid")
+      .from("users_with_uuid")
       .select("age")
       .groupBy("non_existent_column");
 
@@ -126,7 +125,7 @@ describe(`[${env.DB_TYPE}] Error Handling - NULL Handling`, () => {
 
     // NULL values should not match BETWEEN
     const result = await sql
-      .query("users_with_uuid")
+      .from("users_with_uuid")
       .whereBetween("deleted_at", "2020-01-01", "2025-01-01")
       .many();
 
@@ -137,7 +136,7 @@ describe(`[${env.DB_TYPE}] Error Handling - NULL Handling`, () => {
   test("should handle NULL in LIKE pattern", async () => {
     // NULL values should not match LIKE
     const result = await sql
-      .query("users_with_uuid")
+      .from("users_with_uuid")
       .whereLike("name", "%test%")
       .many();
 
@@ -147,7 +146,7 @@ describe(`[${env.DB_TYPE}] Error Handling - NULL Handling`, () => {
   test("should handle NULL comparison correctly", async () => {
     // NULL should not match equality
     const result = await sql
-      .query("users_with_uuid")
+      .from("users_with_uuid")
       .where("deleted_at", null)
       .many();
 
@@ -157,7 +156,7 @@ describe(`[${env.DB_TYPE}] Error Handling - NULL Handling`, () => {
   test("should handle NULL in IN clause", async () => {
     // NULL in array should be handled
     const result = await sql
-      .query("users_with_uuid")
+      .from("users_with_uuid")
       .whereIn("deleted_at", [null])
       .many();
 
@@ -273,7 +272,7 @@ describe(`[${env.DB_TYPE}] Error Handling - Constraint Violations`, () => {
 
 describe(`[${env.DB_TYPE}] Error Handling - Type Conversion Errors`, () => {
   test("should handle invalid integer comparison", async () => {
-    const query = sql.query("users_with_uuid").where("age", "not-a-number");
+    const query = sql.from("users_with_uuid").where("age", "not-a-number");
 
     // PostgreSQL/CockroachDB/MSSQL throw on type mismatches
     if (
@@ -305,9 +304,7 @@ describe(`[${env.DB_TYPE}] Error Handling - Type Conversion Errors`, () => {
   });
 
   test("should handle string comparison on boolean column", async () => {
-    const query = sql
-      .query("users_with_uuid")
-      .where("is_active", "not-boolean");
+    const query = sql.from("users_with_uuid").where("is_active", "not-boolean");
 
     // PostgreSQL/CockroachDB/MSSQL throw on type mismatches
     if (
@@ -333,7 +330,7 @@ describe(`[${env.DB_TYPE}] Error Handling - Edge Cases`, () => {
     }
 
     // Empty array should create impossible condition
-    const result = await sql.query("users_with_uuid").whereIn("id", []).many();
+    const result = await sql.from("users_with_uuid").whereIn("id", []).many();
 
     expect(result).toEqual([]);
   });
@@ -458,7 +455,7 @@ describe(`[${env.DB_TYPE}] Error Handling - Edge Cases`, () => {
 describe(`[${env.DB_TYPE}] Error Handling - Query Builder Errors`, () => {
   test("should return null when getting record from empty result", async () => {
     const result = await sql
-      .query("users_with_uuid")
+      .from("users_with_uuid")
       .where("email", "non-existent@example.com")
       .one();
 
@@ -473,7 +470,7 @@ describe(`[${env.DB_TYPE}] Error Handling - Query Builder Errors`, () => {
 
     // Try to use invalid aggregate
     const query = sql
-      .query("users_with_uuid")
+      .from("users_with_uuid")
       .selectFunc("sum", "invalid_column", "invalid_column");
 
     await expect(query.one()).rejects.toThrow();
@@ -481,7 +478,7 @@ describe(`[${env.DB_TYPE}] Error Handling - Query Builder Errors`, () => {
 
   test("should handle invalid table name", async () => {
     await expect(
-      sql.query("totally_fake_table_name_12345").many(),
+      sql.from("totally_fake_table_name_12345").many(),
     ).rejects.toThrow();
   });
 });

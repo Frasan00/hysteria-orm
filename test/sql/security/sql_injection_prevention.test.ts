@@ -53,7 +53,7 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
 
       // Should not execute the malicious SQL
       const result = await sql
-        .query("users_with_uuid")
+        .from("users_with_uuid")
         .where("name", maliciousValue)
         .many();
 
@@ -61,7 +61,7 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
       expect(Array.isArray(result)).toBe(true);
 
       // Verify the table still exists by running another query
-      const tableExists = await sql.query("users_with_uuid").limit(1).many();
+      const tableExists = await sql.from("users_with_uuid").limit(1).many();
       expect(Array.isArray(tableExists)).toBe(true);
     });
 
@@ -72,7 +72,7 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
       );
 
       const foundUser = await sql
-        .query("users_with_uuid")
+        .from("users_with_uuid")
         .where("email", user.email)
         .one();
 
@@ -87,7 +87,7 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
       );
 
       const foundUser = await sql
-        .query("users_with_uuid")
+        .from("users_with_uuid")
         .where("email", user.email)
         .one();
 
@@ -102,7 +102,7 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
 
       // Should not inject the OR condition
       const result = await sql
-        .query("users_with_uuid")
+        .from("users_with_uuid")
         .where("name", maliciousValue)
         .many();
 
@@ -117,7 +117,7 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
 
       // Should not execute the UNION
       const result = await sql
-        .query("users_with_uuid")
+        .from("users_with_uuid")
         .where("name", maliciousValue)
         .many();
 
@@ -142,7 +142,7 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
 
       // Value should be stored as-is, not executed
       const foundUser = await sql
-        .query("users_with_uuid")
+        .from("users_with_uuid")
         .where("email", "hack@example.com")
         .one();
 
@@ -166,7 +166,7 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
       await sql.from(UserWithUuid).insert(user);
 
       const foundUser = await sql
-        .query("users_with_uuid")
+        .from("users_with_uuid")
         .where("email", uniqueEmail)
         .one();
 
@@ -185,13 +185,13 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
       const maliciousValue = "'; DROP TABLE users_with_uuid; --";
 
       await sql
-        .query("users_with_uuid")
+        .from("users_with_uuid")
         .where("email", user.email)
         .update({ name: maliciousValue });
 
       // Should update the value, not execute malicious SQL
       const foundUser = await sql
-        .query("users_with_uuid")
+        .from("users_with_uuid")
         .where("email", user.email)
         .one();
 
@@ -205,13 +205,13 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
         "update-test2@example.com",
       );
 
-      await sql.query("users_with_uuid").where("email", user.email).update({
+      await sql.from("users_with_uuid").where("email", user.email).update({
         name: "'; --",
         status: UserStatus.active,
       });
 
       const foundUser = await sql
-        .query("users_with_uuid")
+        .from("users_with_uuid")
         .where("email", user.email)
         .one();
 
@@ -231,7 +231,7 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
       const maliciousValue = "users_with_uuid.id' OR '1'='1";
 
       const query = sql
-        .query("users_with_uuid")
+        .from("users_with_uuid")
         .join(
           "posts_with_uuid",
           "users_with_uuid.id",
@@ -255,7 +255,7 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
 
       // Should not execute malicious SQL
       const result = await sql
-        .query("users_with_uuid")
+        .from("users_with_uuid")
         .whereIn("email", [user1.email, maliciousValue])
         .many();
 
@@ -275,7 +275,7 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
       }
 
       const result = await sql
-        .query("users_with_uuid")
+        .from("users_with_uuid")
         .whereIn("email", emails)
         .many();
 
@@ -291,7 +291,7 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
 
       // Should not execute malicious SQL
       const result = await sql
-        .query("users_with_uuid")
+        .from("users_with_uuid")
         .whereLike("name", maliciousPattern)
         .many();
 
@@ -304,7 +304,7 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
 
       // Proper wildcards should work
       const result = await sql
-        .query("users_with_uuid")
+        .from("users_with_uuid")
         .whereLike("name", "%Wildcard%")
         .many();
 
@@ -319,7 +319,7 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
 
       // Column names should be validated
       const result = await sql
-        .query("users_with_uuid")
+        .from("users_with_uuid")
         .where("email", user.email)
         .orderBy("name", "asc")
         .many();
@@ -334,7 +334,7 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
       const user2 = await createTestUser("Limit Test 2", "limit2@example.com");
 
       const result = await sql
-        .query("users_with_uuid")
+        .from("users_with_uuid")
         .whereIn("email", [user1.email, user2.email])
         .limit(1)
         .many();
@@ -354,7 +354,7 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
       );
 
       const result = await sql
-        .query("users_with_uuid")
+        .from("users_with_uuid")
         .whereIn("email", [user1.email, user2.email])
         .orderBy("email", "asc")
         .limit(1)
@@ -375,7 +375,7 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
 
       // Should not inject subquery
       const result = await sql
-        .query("users_with_uuid")
+        .from("users_with_uuid")
         .where("name", maliciousValue)
         .many();
 
@@ -394,7 +394,7 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
 
       // Should not execute delay
       const result = await sql
-        .query("users_with_uuid")
+        .from("users_with_uuid")
         .where("name", maliciousValue)
         .many();
 
@@ -423,7 +423,7 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
 
       // Use the stored value in another query
       const storedUser = await sql
-        .query("users_with_uuid")
+        .from("users_with_uuid")
         .where("email", uniqueEmail)
         .one();
 
@@ -432,7 +432,7 @@ describe(`[${env.DB_TYPE}] Security - SQL Injection Prevention`, () => {
 
       // Use the stored name in another query
       const result = await sql
-        .query("users_with_uuid")
+        .from("users_with_uuid")
         .where("name", storedUser!.name)
         .many();
 

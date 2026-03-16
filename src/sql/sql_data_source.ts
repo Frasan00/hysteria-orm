@@ -109,7 +109,7 @@ const SQL_DATA_SOURCE_SYMBOL = Symbol.for("hysteria.orm.SqlDataSource");
  * await sql.connect();
  *
  * // Now you can use the connection
- * const users = await sql.query("users").many();
+ * const users = await sql.from("users").many();
  * ```
  */
 
@@ -634,34 +634,14 @@ export class SqlDataSource<
   }
 
   /**
-   * @description Returns a QueryBuilder instance for raw queries
-   * @description Query builder from the SqlDataSource instance returns raw data from the database
-   * @param table The table name to query from
-   */
-  query<S extends string>(
-    table: TableFormat<S>,
-    options?: RawModelOptions,
-  ): QueryBuilder {
-    const sqlForQueryBuilder =
-      this.isInGlobalTransaction && this.globalTransaction?.isActive
-        ? this.globalTransaction.sql
-        : this;
-
-    const qb = new QueryBuilder(
-      getRawQueryBuilderModel(table, options),
-      sqlForQueryBuilder as SqlDataSource,
-    );
-
-    if (options?.alias) {
-      qb.table(table, options.alias);
-    }
-
-    return qb;
-  }
-
-  /**
    * @description Returns a ModelQueryBuilder instance for the given model
-   * @param Model The model to create the query builder from
+   * @description Model-based queries provide type safety, hooks, relations, and serialization
+   * @param model The model class to create the query builder from
+   * @example
+   * ```ts
+   * const users = await sql.from(User).select("name").many();
+   * // users is typed as User[]
+   * ```
    */
   from<M extends AnyModelConstructor>(
     model: M,
@@ -670,13 +650,55 @@ export class SqlDataSource<
     ModelWithoutRelations<InstanceType<SchemaLookup<T, M>>>,
     {},
     D
-  > {
+  >;
+
+  /**
+   * @description Returns a QueryBuilder instance for raw table queries
+   * @description Raw table queries return untyped data - use models for type safety
+   * @param table The table name to query from
+   * @param options Optional configuration for case convention and alias
+   * @example
+   * ```ts
+   * const rows = await sql.from("users").select("name").many();
+   * // rows is typed as Record<string, any>[]
+   * ```
+   */
+  from<S extends string>(
+    table: TableFormat<S>,
+    options?: RawModelOptions,
+  ): QueryBuilder;
+
+  from<M extends AnyModelConstructor, S extends string>(
+    modelOrTable: M | TableFormat<S>,
+    options?: RawModelOptions,
+  ):
+    | ModelQueryBuilder<
+        InstanceType<SchemaLookup<T, M>>,
+        ModelWithoutRelations<InstanceType<SchemaLookup<T, M>>>,
+        {},
+        D
+      >
+    | QueryBuilder {
     const sqlForQueryBuilder =
       this.isInGlobalTransaction && this.globalTransaction?.isActive
         ? this.globalTransaction.sql
         : this;
+
+    if (typeof modelOrTable === "string") {
+      const qb = new QueryBuilder(
+        getRawQueryBuilderModel(modelOrTable, options),
+        sqlForQueryBuilder as SqlDataSource,
+      );
+
+      if (options?.alias) {
+        qb.table(modelOrTable, options.alias);
+      }
+
+      return qb;
+    }
+
     return new ModelQueryBuilder(
-      model as unknown as typeof Model,
+      modelOrTable as unknown as typeof Model,
       sqlForQueryBuilder as SqlDataSource,
     ) as any;
   }

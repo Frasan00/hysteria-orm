@@ -294,7 +294,7 @@ describe("Slave Replication", () => {
 
     test("should use master for raw query builder upsert", async () => {
       const user = await sql
-        .query("replication_users")
+        .from("replication_users")
         .upsert(
           { name: "Upsert User", email: "upsert@example.com" },
           { email: "upsert@example.com" },
@@ -312,7 +312,7 @@ describe("Slave Replication", () => {
         email: "random@example.com",
       });
 
-      const users = await sql.query("replication_users").many();
+      const users = await sql.from("replication_users").many();
       expect(users.length).toBeGreaterThanOrEqual(1);
     });
   });
@@ -324,7 +324,7 @@ describe("Slave Replication", () => {
         email: "noslaves@example.com",
       });
 
-      const users = await sql.query("replication_users").many();
+      const users = await sql.from("replication_users").many();
       expect(users.length).toBeGreaterThanOrEqual(1);
     });
   });

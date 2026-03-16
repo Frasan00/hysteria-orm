@@ -21,7 +21,7 @@ afterEach(async () => {
 describe(`[${env.DB_TYPE}] WriteOperation - Lazy Execution`, () => {
   describe("QueryBuilder.insert", () => {
     test("should NOT execute when calling toQuery()", async () => {
-      const writeOp = sql.query("users_with_uuid").insert({
+      const writeOp = sql.from("users_with_uuid").insert({
         id: crypto.randomUUID(),
         name: "Test User",
         email: "test@example.com",
@@ -32,12 +32,12 @@ describe(`[${env.DB_TYPE}] WriteOperation - Lazy Execution`, () => {
       expect(sqlString.toLowerCase()).toContain("insert");
       expect(sqlString).toContain("users_with_uuid");
 
-      const count = await sql.query("users_with_uuid").getCount();
+      const count = await sql.from("users_with_uuid").getCount();
       expect(count).toBe(0);
     });
 
     test("should NOT execute when calling unWrap()", async () => {
-      const writeOp = sql.query("users_with_uuid").insert({
+      const writeOp = sql.from("users_with_uuid").insert({
         id: crypto.randomUUID(),
         name: "Test User 2",
         email: "test2@example.com",
@@ -49,12 +49,12 @@ describe(`[${env.DB_TYPE}] WriteOperation - Lazy Execution`, () => {
       expect(bindings).toBeDefined();
       expect(Array.isArray(bindings)).toBe(true);
 
-      const count = await sql.query("users_with_uuid").getCount();
+      const count = await sql.from("users_with_uuid").getCount();
       expect(count).toBe(0);
     });
 
     test("should execute when awaited", async () => {
-      const writeOp = sql.query("users_with_uuid").insert({
+      const writeOp = sql.from("users_with_uuid").insert({
         id: crypto.randomUUID(),
         name: "Executed User",
         email: "executed@example.com",
@@ -62,14 +62,14 @@ describe(`[${env.DB_TYPE}] WriteOperation - Lazy Execution`, () => {
 
       await writeOp;
 
-      const count = await sql.query("users_with_uuid").getCount();
+      const count = await sql.from("users_with_uuid").getCount();
       expect(count).toBe(1);
     });
   });
 
   describe("QueryBuilder.insertMany", () => {
     test("should NOT execute when calling toQuery()", async () => {
-      const writeOp = sql.query("users_with_uuid").insertMany([
+      const writeOp = sql.from("users_with_uuid").insertMany([
         { id: crypto.randomUUID(), name: "User 1", email: "user1@example.com" },
         { id: crypto.randomUUID(), name: "User 2", email: "user2@example.com" },
       ]);
@@ -78,31 +78,31 @@ describe(`[${env.DB_TYPE}] WriteOperation - Lazy Execution`, () => {
 
       expect(sqlString.toLowerCase()).toContain("insert");
 
-      const count = await sql.query("users_with_uuid").getCount();
+      const count = await sql.from("users_with_uuid").getCount();
       expect(count).toBe(0);
     });
 
     test("should execute when awaited", async () => {
-      await sql.query("users_with_uuid").insertMany([
+      await sql.from("users_with_uuid").insertMany([
         { id: crypto.randomUUID(), name: "User 1", email: "user1@example.com" },
         { id: crypto.randomUUID(), name: "User 2", email: "user2@example.com" },
       ]);
 
-      const count = await sql.query("users_with_uuid").getCount();
+      const count = await sql.from("users_with_uuid").getCount();
       expect(count).toBe(2);
     });
   });
 
   describe("QueryBuilder.update", () => {
     test("should NOT execute when calling toQuery()", async () => {
-      await sql.query("users_with_uuid").insert({
+      await sql.from("users_with_uuid").insert({
         id: crypto.randomUUID(),
         name: "Original Name",
         email: "original@example.com",
       });
 
       const writeOp = sql
-        .query("users_with_uuid")
+        .from("users_with_uuid")
         .where("id", "uuid-update")
         .update({ name: "Updated Name" });
 
@@ -110,34 +110,34 @@ describe(`[${env.DB_TYPE}] WriteOperation - Lazy Execution`, () => {
 
       expect(sqlString.toLowerCase()).toContain("update");
 
-      const user = await sql.query("users_with_uuid").one();
+      const user = await sql.from("users_with_uuid").one();
       expect(user?.name).toBe("Original Name");
     });
 
     test("should execute when awaited", async () => {
-      await sql.query("users_with_uuid").insert({
+      await sql.from("users_with_uuid").insert({
         id: crypto.randomUUID(),
         name: "Original Name",
         email: "original2@example.com",
       });
 
-      await sql.query("users_with_uuid").update({ name: "Updated Name" });
+      await sql.from("users_with_uuid").update({ name: "Updated Name" });
 
-      const user = await sql.query("users_with_uuid").one();
+      const user = await sql.from("users_with_uuid").one();
       expect(user?.name).toBe("Updated Name");
     });
   });
 
   describe("QueryBuilder.delete", () => {
     test("should NOT execute when calling toQuery()", async () => {
-      await sql.query("users_with_uuid").insert({
+      await sql.from("users_with_uuid").insert({
         id: crypto.randomUUID(),
         name: "To Delete",
         email: "delete@example.com",
       });
 
       const writeOp = sql
-        .query("users_with_uuid")
+        .from("users_with_uuid")
         .where("id", "uuid-delete")
         .delete();
 
@@ -145,20 +145,20 @@ describe(`[${env.DB_TYPE}] WriteOperation - Lazy Execution`, () => {
 
       expect(sqlString.toLowerCase()).toContain("delete");
 
-      const count = await sql.query("users_with_uuid").getCount();
+      const count = await sql.from("users_with_uuid").getCount();
       expect(count).toBe(1);
     });
 
     test("should execute when awaited", async () => {
-      await sql.query("users_with_uuid").insert({
+      await sql.from("users_with_uuid").insert({
         id: crypto.randomUUID(),
         name: "To Delete 2",
         email: "delete2@example.com",
       });
 
-      await sql.query("users_with_uuid").delete();
+      await sql.from("users_with_uuid").delete();
 
-      const count = await sql.query("users_with_uuid").getCount();
+      const count = await sql.from("users_with_uuid").getCount();
       expect(count).toBe(0);
     });
   });
@@ -241,7 +241,7 @@ describe(`[${env.DB_TYPE}] WriteOperation - Promise-like behavior`, () => {
   test("should work with .then()", async () => {
     let resolved = false;
     await sql
-      .query("users_with_uuid")
+      .from("users_with_uuid")
       .insert({
         id: crypto.randomUUID(),
         name: "Then User",
@@ -252,14 +252,14 @@ describe(`[${env.DB_TYPE}] WriteOperation - Promise-like behavior`, () => {
       });
 
     expect(resolved).toBe(true);
-    const count = await sql.query("users_with_uuid").getCount();
+    const count = await sql.from("users_with_uuid").getCount();
     expect(count).toBe(1);
   });
 
   test("should work with .catch()", async () => {
     let caught = false;
     await sql
-      .query("nonexistent_table")
+      .from("nonexistent_table")
       .insert({ id: crypto.randomUUID() })
       .catch(() => {
         caught = true;
@@ -271,7 +271,7 @@ describe(`[${env.DB_TYPE}] WriteOperation - Promise-like behavior`, () => {
   test("should work with .finally()", async () => {
     let finalized = false;
     await sql
-      .query("users_with_uuid")
+      .from("users_with_uuid")
       .insert({
         id: crypto.randomUUID(),
         name: "Finally User",

@@ -23,8 +23,8 @@ afterEach(async () => {
 
 describe(`[${env.DB_TYPE}] QueryBuilder tuple-based select syntax`, () => {
   beforeEach(async () => {
-    await sql.query("users_without_pk").delete();
-    await sql.query("users_without_pk").insertMany([
+    await sql.from("users_without_pk").delete();
+    await sql.from("users_without_pk").insertMany([
       { name: "Alice", age: 25, email: "alice@test.com" },
       { name: "Bob", age: 30, email: "bob@test.com" },
       { name: "Charlie", age: 35, email: "charlie@test.com" },
@@ -32,12 +32,12 @@ describe(`[${env.DB_TYPE}] QueryBuilder tuple-based select syntax`, () => {
   });
 
   afterEach(async () => {
-    await sql.query("users_without_pk").delete();
+    await sql.from("users_without_pk").delete();
   });
 
   test("should select single column with tuple alias", async () => {
     const user = await sql
-      .query("users_without_pk")
+      .from("users_without_pk")
       .select(["name", "userName"])
       .where("name", "Alice")
       .oneOrFail();
@@ -49,7 +49,7 @@ describe(`[${env.DB_TYPE}] QueryBuilder tuple-based select syntax`, () => {
 
   test("should select multiple columns with tuple aliases", async () => {
     const user = await sql
-      .query("users_without_pk")
+      .from("users_without_pk")
       .select(["name", "userName"], ["email", "userEmail"])
       .where("name", "Alice")
       .oneOrFail();
@@ -61,7 +61,7 @@ describe(`[${env.DB_TYPE}] QueryBuilder tuple-based select syntax`, () => {
 
   test("should mix regular columns and tuple aliases", async () => {
     const user = await sql
-      .query("users_without_pk")
+      .from("users_without_pk")
       .select("age", ["name", "userName"], ["email", "userEmail"])
       .where("name", "Alice")
       .oneOrFail();
@@ -74,7 +74,7 @@ describe(`[${env.DB_TYPE}] QueryBuilder tuple-based select syntax`, () => {
 
   test("should chain select calls with tuples", async () => {
     const user = await sql
-      .query("users_without_pk")
+      .from("users_without_pk")
       .select(["name", "userName"])
       .select(["email", "userEmail"])
       .where("name", "Alice")
@@ -87,7 +87,7 @@ describe(`[${env.DB_TYPE}] QueryBuilder tuple-based select syntax`, () => {
 
   test("should select with tuple and wildcard", async () => {
     const user = await sql
-      .query("users_without_pk")
+      .from("users_without_pk")
       .select("*", ["name", "aliasedName"])
       .where("name", "Alice")
       .oneOrFail();
@@ -100,7 +100,7 @@ describe(`[${env.DB_TYPE}] QueryBuilder tuple-based select syntax`, () => {
 
   test("should work with many() returning multiple results", async () => {
     const users = await sql
-      .query("users_without_pk")
+      .from("users_without_pk")
       .select(["name", "userName"], ["age", "userAge"])
       .orderBy("name", "asc")
       .many();
@@ -114,7 +114,7 @@ describe(`[${env.DB_TYPE}] QueryBuilder tuple-based select syntax`, () => {
   test("should combine tuple select with selectRaw", async () => {
     if (env.DB_TYPE === "mssql") return;
     const user = await sql
-      .query("users_without_pk")
+      .from("users_without_pk")
       .select(["name", "userName"])
       .selectRaw<{ nameLength: number }>("length(name) as nameLength")
       .where("name", "Alice")
@@ -128,7 +128,7 @@ describe(`[${env.DB_TYPE}] QueryBuilder tuple-based select syntax`, () => {
   test("should combine tuple select with selectFunc", async () => {
     if (env.DB_TYPE === "mssql") return;
     const result = await sql
-      .query("users_without_pk")
+      .from("users_without_pk")
       .select(["name", "userName"])
       .selectFunc("count", "*", "total")
       .groupBy("name")
@@ -142,7 +142,7 @@ describe(`[${env.DB_TYPE}] QueryBuilder tuple-based select syntax`, () => {
 
   test("should handle tuples in pagination", async () => {
     const page = await sql
-      .query("users_without_pk")
+      .from("users_without_pk")
       .select(["name", "userName"], ["email", "userEmail"])
       .orderBy("name", "asc")
       .paginate(1, 2);
@@ -156,7 +156,7 @@ describe(`[${env.DB_TYPE}] QueryBuilder tuple-based select syntax`, () => {
 
 describe(`[${env.DB_TYPE}] ModelQueryBuilder tuple-based select syntax`, () => {
   beforeEach(async () => {
-    await sql.query("users_without_pk").delete();
+    await sql.from("users_without_pk").delete();
     await sql.from(UserWithoutPk).insertMany([
       { name: "Alice", age: 25, email: "alice@test.com" },
       { name: "Bob", age: 30, email: "bob@test.com" },
@@ -165,7 +165,7 @@ describe(`[${env.DB_TYPE}] ModelQueryBuilder tuple-based select syntax`, () => {
   });
 
   afterEach(async () => {
-    await sql.query("users_without_pk").delete();
+    await sql.from("users_without_pk").delete();
   });
 
   test("should select single column with tuple alias", async () => {
@@ -335,23 +335,23 @@ describe(`[${env.DB_TYPE}] ModelQueryBuilder tuple-based select syntax`, () => {
 
 describe(`[${env.DB_TYPE}] Tuple select with joins`, () => {
   beforeEach(async () => {
-    await sql.query("users_without_pk").delete();
-    await sql.query("posts_with_uuid").delete();
+    await sql.from("users_without_pk").delete();
+    await sql.from("posts_with_uuid").delete();
 
-    await sql.query("users_without_pk").insertMany([
+    await sql.from("users_without_pk").insertMany([
       { name: "Alice", age: 25, email: "alice@test.com" },
       { name: "Bob", age: 30, email: "bob@test.com" },
     ]);
   });
 
   afterEach(async () => {
-    await sql.query("users_without_pk").delete();
-    await sql.query("posts_with_uuid").delete();
+    await sql.from("users_without_pk").delete();
+    await sql.from("posts_with_uuid").delete();
   });
 
   test("should select with tuple alias in joined query (QueryBuilder)", async () => {
     const users = await sql
-      .query("users_without_pk")
+      .from("users_without_pk")
       .select(["users_without_pk.name", "authorName"], ["email", "authorEmail"])
       .orderBy("name", "asc")
       .many();
@@ -376,19 +376,19 @@ describe(`[${env.DB_TYPE}] Tuple select with joins`, () => {
 
 describe(`[${env.DB_TYPE}] Tuple select edge cases`, () => {
   beforeEach(async () => {
-    await sql.query("users_without_pk").delete();
+    await sql.from("users_without_pk").delete();
     await sql
-      .query("users_without_pk")
+      .from("users_without_pk")
       .insertMany([{ name: "Alice", age: 25, email: "alice@test.com" }]);
   });
 
   afterEach(async () => {
-    await sql.query("users_without_pk").delete();
+    await sql.from("users_without_pk").delete();
   });
 
   test("should handle empty select then tuple select", async () => {
     const user = await sql
-      .query("users_without_pk")
+      .from("users_without_pk")
       .select(["name", "userName"])
       .where("name", "Alice")
       .oneOrFail();
@@ -398,7 +398,7 @@ describe(`[${env.DB_TYPE}] Tuple select edge cases`, () => {
 
   test("should handle clearSelect followed by tuple select", async () => {
     const user = await sql
-      .query("users_without_pk")
+      .from("users_without_pk")
       .select("*")
       .clearSelect()
       .select(["name", "userName"])
@@ -411,7 +411,7 @@ describe(`[${env.DB_TYPE}] Tuple select edge cases`, () => {
 
   test("should handle tuple with same column and alias name", async () => {
     const user = await sql
-      .query("users_without_pk")
+      .from("users_without_pk")
       .select(["name", "name"])
       .where("name", "Alice")
       .oneOrFail();
@@ -420,9 +420,7 @@ describe(`[${env.DB_TYPE}] Tuple select edge cases`, () => {
   });
 
   test("should work with clone() and tuple select", async () => {
-    const baseQuery = sql
-      .query("users_without_pk")
-      .select(["name", "userName"]);
+    const baseQuery = sql.from("users_without_pk").select(["name", "userName"]);
 
     const clonedQuery = baseQuery.clone().where("name", "Alice");
     const user = await clonedQuery.oneOrFail();
@@ -432,11 +430,11 @@ describe(`[${env.DB_TYPE}] Tuple select edge cases`, () => {
 
   test("should work with pluck after tuple select", async () => {
     await sql
-      .query("users_without_pk")
+      .from("users_without_pk")
       .insertMany([{ name: "Bob", age: 30, email: "bob@test.com" }]);
 
     const names = await sql
-      .query("users_without_pk")
+      .from("users_without_pk")
       .select(["name", "userName"])
       .pluck("userName");
 
@@ -445,14 +443,14 @@ describe(`[${env.DB_TYPE}] Tuple select edge cases`, () => {
   });
 
   test("should handle chunk with tuple select", async () => {
-    await sql.query("users_without_pk").insertMany([
+    await sql.from("users_without_pk").insertMany([
       { name: "Bob", age: 30, email: "bob@test.com" },
       { name: "Charlie", age: 35, email: "charlie@test.com" },
     ]);
 
     const chunks: any[][] = [];
     for await (const chunk of sql
-      .query("users_without_pk")
+      .from("users_without_pk")
       .select(["name", "userName"])
       .orderBy("name", "asc")
       .chunk(2)) {
@@ -467,7 +465,7 @@ describe(`[${env.DB_TYPE}] Tuple select edge cases`, () => {
 
   test("toQuery should generate correct SQL with tuple alias", async () => {
     const query = sql
-      .query("users_without_pk")
+      .from("users_without_pk")
       .select(["name", "userName"], ["email", "userEmail"])
       .toQuery();
 

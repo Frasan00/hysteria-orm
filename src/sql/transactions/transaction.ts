@@ -31,8 +31,11 @@ export class Transaction {
    * const modelManager = trx.sql.getModelManager(User);
    * await modelManager.insert({ name: "John Doe" });
    *
-   * // Query builder
-   * await trx.query(User.table).insert({ name: "John Doe" });
+   * // Query builder with model
+   * await trx.sql.from(User).insert({ name: "John Doe" });
+   *
+   * // Query builder with table name
+   * await trx.sql.from("users").insert({ name: "John Doe" });
    *
    * await trx.commit();
    * ```

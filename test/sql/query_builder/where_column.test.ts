@@ -23,8 +23,8 @@ afterEach(async () => {
 
 describe(`[${env.DB_TYPE}] QueryBuilder whereColumn`, () => {
   beforeEach(async () => {
-    await sql.query("users_without_pk").delete();
-    await sql.query("users_without_pk").insertMany([
+    await sql.from("users_without_pk").delete();
+    await sql.from("users_without_pk").insertMany([
       {
         name: "Alice",
         email: "alice@wc.test",
@@ -53,12 +53,12 @@ describe(`[${env.DB_TYPE}] QueryBuilder whereColumn`, () => {
   });
 
   afterEach(async () => {
-    await sql.query("users_without_pk").delete();
+    await sql.from("users_without_pk").delete();
   });
 
   test("whereColumn with 2 args defaults to equality", async () => {
     const results = await sql
-      .query("users_without_pk")
+      .from("users_without_pk")
       .whereColumn("age", "salary")
       .many();
 
@@ -68,7 +68,7 @@ describe(`[${env.DB_TYPE}] QueryBuilder whereColumn`, () => {
 
   test("whereColumn with 3 args uses custom operator", async () => {
     const results = await sql
-      .query("users_without_pk")
+      .from("users_without_pk")
       .whereColumn("age", ">", "salary")
       .many();
 
@@ -78,7 +78,7 @@ describe(`[${env.DB_TYPE}] QueryBuilder whereColumn`, () => {
 
   test("andWhereColumn chains with AND", async () => {
     const results = await sql
-      .query("users_without_pk")
+      .from("users_without_pk")
       .where("age", ">", 20)
       .andWhereColumn("age", ">=", "salary")
       .many();
@@ -90,7 +90,7 @@ describe(`[${env.DB_TYPE}] QueryBuilder whereColumn`, () => {
 
   test("orWhereColumn chains with OR", async () => {
     const results = await sql
-      .query("users_without_pk")
+      .from("users_without_pk")
       .where("name", "Alice")
       .orWhereColumn("age", "salary")
       .many();
@@ -102,7 +102,7 @@ describe(`[${env.DB_TYPE}] QueryBuilder whereColumn`, () => {
 
   test("whereColumn with table-qualified columns", async () => {
     const results = await sql
-      .query("users_without_pk")
+      .from("users_without_pk")
       .whereColumn("users_without_pk.age", "users_without_pk.salary")
       .many();
 
@@ -112,7 +112,7 @@ describe(`[${env.DB_TYPE}] QueryBuilder whereColumn`, () => {
 
   test("whereColumn with 3 args and table-qualified columns", async () => {
     const results = await sql
-      .query("users_without_pk")
+      .from("users_without_pk")
       .whereColumn("users_without_pk.age", "<", "users_without_pk.salary")
       .many();
 
@@ -122,7 +122,7 @@ describe(`[${env.DB_TYPE}] QueryBuilder whereColumn`, () => {
 
   test("toQuery generates correct SQL with whereColumn", async () => {
     const query = sql
-      .query("users_without_pk")
+      .from("users_without_pk")
       .whereColumn("age", ">", "salary")
       .toQuery();
 
@@ -135,7 +135,7 @@ describe(`[${env.DB_TYPE}] QueryBuilder whereColumn`, () => {
 
 describe(`[${env.DB_TYPE}] ModelQueryBuilder whereColumn`, () => {
   beforeEach(async () => {
-    await sql.query("users_without_pk").delete();
+    await sql.from("users_without_pk").delete();
     await sql.from(UserWithoutPk).insertMany([
       {
         name: "Alice",
@@ -165,7 +165,7 @@ describe(`[${env.DB_TYPE}] ModelQueryBuilder whereColumn`, () => {
   });
 
   afterEach(async () => {
-    await sql.query("users_without_pk").delete();
+    await sql.from("users_without_pk").delete();
   });
 
   test("whereColumn with 2 args defaults to equality", async () => {
