@@ -1,4 +1,7 @@
+import { format } from "sql-formatter";
 import { highlight } from "sql-highlight";
+import { getSqlDialect } from "./query";
+import type { SqlDataSourceType } from "../sql/sql_data_source_types";
 
 export type CustomLogger = {
   info(message: string): void;
@@ -181,12 +184,30 @@ export function log(
   query: string,
   logs: boolean | LoggerConfig,
   params?: any[],
+  formatOptions?: Parameters<typeof format>[1],
+  dialect?: SqlDataSourceType,
 ) {
   if (!shouldLogQueries(logs)) {
     return;
   }
 
-  query = highlight(query, {
+  let formattedQuery = query;
+
+  if (formatOptions || dialect) {
+    try {
+      formattedQuery = format(query, {
+        ...formatOptions,
+        language:
+          formatOptions?.language ??
+          (dialect ? getSqlDialect(dialect) : undefined),
+      });
+    } catch {
+      // If formatting fails, we use the original query
+      formattedQuery = query;
+    }
+  }
+
+  const highlightedQuery = highlight(formattedQuery, {
     colors: {
       keyword: "\x1b[34m",
       string: "\x1b[32m",
@@ -200,7 +221,7 @@ export function log(
     },
   });
 
-  const logMessage = `${query} [${formatParams(params || [])}]`;
+  const logMessage = `${highlightedQuery} [${formatParams(params || [])}]`;
   HysteriaLogger.loggerInstance.info(logMessage);
 }
 

@@ -8,6 +8,8 @@ export type TableColumnInfo = {
   scale?: number | null;
   withTimezone?: boolean | null;
   enumValues?: string[] | null;
+  unsigned?: boolean | null;
+  zerofill?: boolean | null;
 };
 
 export type TableIndexInfo = {

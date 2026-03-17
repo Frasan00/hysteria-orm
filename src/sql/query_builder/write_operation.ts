@@ -18,6 +18,7 @@ export class WriteOperation<T> implements PromiseLike<T> {
 
   constructor(
     private unWrapFn: () => ReturnType<typeof AstParser.prototype.parse>,
+    private toSqlFn: () => ReturnType<typeof AstParser.prototype.parse>,
     private toQueryFn: () => string,
     private executor: () => Promise<T>,
   ) {}
@@ -57,7 +58,16 @@ export class WriteOperation<T> implements PromiseLike<T> {
   }
 
   /**
-   * @description Returns the query with database driver placeholders and the params
+   * @description Returns the formatted query with database driver placeholders and the params
+   * @description Use this for debugging purposes to see the formatted SQL
+   * @warning Does not apply any hook from the model
+   */
+  toSql(): ReturnType<typeof AstParser.prototype.parse> {
+    return this.toSqlFn();
+  }
+
+  /**
+   * @description Returns the raw query with database driver placeholders and the params
    * @warning Does not apply any hook from the model
    */
   unWrap(): ReturnType<typeof AstParser.prototype.parse> {

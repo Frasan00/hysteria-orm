@@ -34,5 +34,10 @@ export { CheckModelV3 } from "./check_v3";
 // Decorator shortcuts test model
 export { DecoratorShortcutsModel } from "./decorator_shortcuts";
 
+// Unsigned/zerofill test models
+export { UnsignedV1 } from "./unsigned_v1";
+export { UnsignedV2 } from "./unsigned_v2";
+export { UnsignedV3 } from "./unsigned_v3";
+
 // Edge case models
 export * from "./edge_cases";

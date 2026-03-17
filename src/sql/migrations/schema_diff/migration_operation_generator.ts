@@ -568,6 +568,14 @@ export class MigrationOperationGenerator {
       });
     }
 
+    if (column.unsigned) {
+      b.unsigned();
+    }
+
+    if (column.zerofill) {
+      b.zerofill();
+    }
+
     if (column.constraints?.default !== undefined) {
       b.default(column.constraints.default);
     }

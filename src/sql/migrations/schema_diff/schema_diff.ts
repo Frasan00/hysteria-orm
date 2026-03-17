@@ -667,6 +667,26 @@ export class SchemaDiff {
       baseCondition = baseCondition && nullableMatch;
     }
 
+    // Compare unsigned/zerofill for MySQL/MariaDB numeric columns
+    if (dialect === "mysql" || dialect === "mariadb") {
+      if (
+        modelColumn.unsigned !== undefined ||
+        dbColumn.unsigned !== undefined
+      ) {
+        const modelUnsigned = modelColumn.unsigned ?? false;
+        const dbUnsigned = dbColumn.unsigned ?? false;
+        baseCondition &&= modelUnsigned === dbUnsigned;
+      }
+      if (
+        modelColumn.zerofill !== undefined ||
+        dbColumn.zerofill !== undefined
+      ) {
+        const modelZerofill = modelColumn.zerofill ?? false;
+        const dbZerofill = dbColumn.zerofill ?? false;
+        baseCondition &&= modelZerofill === dbZerofill;
+      }
+    }
+
     return baseCondition;
   }
 

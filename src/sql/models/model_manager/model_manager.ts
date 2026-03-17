@@ -235,17 +235,25 @@ export class ModelManager<T extends Model> {
     const unWrapFn = () => {
       const result = this.astParser.parse([insertNode]);
       return {
+        sql: result.sql,
+        bindings: result.bindings,
+      };
+    };
+
+    const toSqlFn = () => {
+      const result = this.astParser.parse([insertNode]);
+      return {
         sql: formatQuery(this.sqlDataSource, result.sql),
         bindings: result.bindings,
       };
     };
 
     const toQueryFn = () => {
-      const { sql, bindings } = unWrapFn();
+      const { sql, bindings } = toSqlFn();
       return bindParamsIntoQuery(sql, bindings);
     };
 
-    return new WriteOperation(unWrapFn, toQueryFn, async () => {
+    return new WriteOperation(unWrapFn, toSqlFn, toQueryFn, async () => {
       if (!options.ignoreHooks) {
         await this.model.beforeInsert?.(model as T);
       }
@@ -349,17 +357,25 @@ export class ModelManager<T extends Model> {
     const unWrapFn = () => {
       const result = this.astParser.parse([insertNode]);
       return {
+        sql: result.sql,
+        bindings: result.bindings,
+      };
+    };
+
+    const toSqlFn = () => {
+      const result = this.astParser.parse([insertNode]);
+      return {
         sql: formatQuery(this.sqlDataSource, result.sql),
         bindings: result.bindings,
       };
     };
 
     const toQueryFn = () => {
-      const { sql, bindings } = unWrapFn();
+      const { sql, bindings } = toSqlFn();
       return bindParamsIntoQuery(sql, bindings);
     };
 
-    return new WriteOperation(unWrapFn, toQueryFn, async () => {
+    return new WriteOperation(unWrapFn, toSqlFn, toQueryFn, async () => {
       await this.model.beforeInsertMany?.(models as T[]);
 
       // Oracle with identity columns doesn't support INSERT ALL properly
@@ -490,7 +506,15 @@ export class ModelManager<T extends Model> {
     );
 
     const unWrapFn = () => {
-      const result = this.astParser.parse([insertNode, onDuplicateNode]);
+      const result = this.astParser.parse([insertNode]);
+      return {
+        sql: result.sql,
+        bindings: result.bindings,
+      };
+    };
+
+    const toSqlFn = () => {
+      const result = this.astParser.parse([insertNode]);
       return {
         sql: formatQuery(this.sqlDataSource, result.sql),
         bindings: result.bindings,
@@ -498,11 +522,11 @@ export class ModelManager<T extends Model> {
     };
 
     const toQueryFn = () => {
-      const { sql, bindings } = unWrapFn();
+      const { sql, bindings } = toSqlFn();
       return bindParamsIntoQuery(sql, bindings);
     };
 
-    return new WriteOperation(unWrapFn, toQueryFn, async () => {
+    return new WriteOperation(unWrapFn, toSqlFn, toQueryFn, async () => {
       const insertObjects: Record<string, any>[] = [];
       await this.model.beforeInsertMany?.(data as T[]);
       await Promise.all(

@@ -252,6 +252,8 @@ export type ColumnType = {
   precision?: number;
   scale?: number;
   withTimezone?: boolean;
+  unsigned?: boolean;
+  zerofill?: boolean;
   constraints?: {
     nullable?: boolean;
     default?: string | number | null | boolean;

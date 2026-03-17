@@ -12,6 +12,8 @@ export class ColumnTypeNode extends QueryNode {
   autoCreate?: boolean;
   autoUpdate?: boolean;
   collate?: string;
+  unsigned?: boolean;
+  zerofill?: boolean;
   chainsWith = ",";
   canKeywordBeSeenMultipleTimes = true;
   folder = "column";
@@ -32,6 +34,8 @@ export class ColumnTypeNode extends QueryNode {
       autoUpdate?: boolean;
       collate?: string;
       isRawValue?: boolean;
+      unsigned?: boolean;
+      zerofill?: boolean;
     } = {},
   ) {
     super("");
@@ -47,5 +51,7 @@ export class ColumnTypeNode extends QueryNode {
     this.autoUpdate = opts.autoUpdate;
     this.collate = opts.collate;
     this.isRawValue = opts.isRawValue ?? false;
+    this.unsigned = opts.unsigned;
+    this.zerofill = opts.zerofill;
   }
 }

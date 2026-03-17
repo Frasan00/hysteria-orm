@@ -16,11 +16,7 @@ import { HysteriaError } from "../errors/hysteria_error";
 import { generateOpenApiModelWithMetadata } from "../openapi/openapi";
 import { hashString } from "../utils/hash";
 import logger, { log } from "../utils/logger";
-import {
-  formatQuery,
-  getSqlDialect,
-  isTableMissingError,
-} from "../utils/query";
+import { getSqlDialect, isTableMissingError } from "../utils/query";
 import { AstParser } from "./ast/parser";
 import { RawNode } from "./ast/query/node/raw/raw_node";
 import { ForeignKeyInfoNode } from "./ast/query/node/schema";
@@ -1114,13 +1110,12 @@ export class SqlDataSource<
       );
     }
 
-    const formattedQuery = formatQuery(this, query);
     const replicationMode = options?.replicationMode || "master";
 
     if (replicationMode === "slave") {
       return this.executeOnSlave(async (slaveInstance) => {
         return execSql(
-          formattedQuery,
+          query,
           params,
           slaveInstance,
           this.getDbType(),
@@ -1129,7 +1124,7 @@ export class SqlDataSource<
       });
     }
 
-    return execSql(formattedQuery, params, this, this.getDbType(), "raw") as R;
+    return execSql(query, params, this, this.getDbType(), "raw") as R;
   }
 
   /**
@@ -1359,6 +1354,11 @@ export class SqlDataSource<
           .map((v) => v.trim().replace(/^'|'$/g, ""));
       }
 
+      // Parse unsigned/zerofill from column type for MySQL/MariaDB
+      const columnTypeLower = columnType.toLowerCase();
+      const unsigned = columnTypeLower.includes(" unsigned");
+      const zerofill = columnTypeLower.includes(" zerofill");
+
       return {
         name,
         dataType,
@@ -1369,6 +1369,8 @@ export class SqlDataSource<
         scale,
         withTimezone,
         enumValues,
+        unsigned,
+        zerofill,
       };
     });
   }

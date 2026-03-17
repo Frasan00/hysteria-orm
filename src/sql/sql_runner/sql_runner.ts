@@ -41,7 +41,13 @@ export const execSql = async <
   },
 ): Promise<SqlRunnerReturnType<T, D>> => {
   if (!options?.shouldNotLog) {
-    log(query, sqlDataSource.logs, params);
+    log(
+      query,
+      sqlDataSource.logs,
+      params,
+      sqlDataSource.inputDetails.queryFormatOptions,
+      sqlType,
+    );
   }
 
   switch (sqlType) {

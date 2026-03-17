@@ -708,6 +708,7 @@ export class ModelQueryBuilder<
 
     return new WriteOperation(
       () => baseWriteOp.unWrap(),
+      () => baseWriteOp.toSql(),
       () => baseWriteOp.toQuery(),
       async () => {
         if (!options.ignoreBeforeUpdateHook) {
@@ -726,6 +727,7 @@ export class ModelQueryBuilder<
 
     return new WriteOperation(
       () => baseWriteOp.unWrap(),
+      () => baseWriteOp.toSql(),
       () => baseWriteOp.toQuery(),
       async () => {
         if (!ignoreBeforeUpdateHook) {
@@ -753,6 +755,7 @@ export class ModelQueryBuilder<
 
     return new WriteOperation(
       () => baseWriteOp.unWrap(),
+      () => baseWriteOp.toSql(),
       () => baseWriteOp.toQuery(),
       async () => {
         if (!options.ignoreBeforeDeleteHook) {

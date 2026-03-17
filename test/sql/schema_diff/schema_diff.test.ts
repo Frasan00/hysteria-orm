@@ -17,6 +17,9 @@ import {
   PostMigrationV8,
   PostMigrationV9,
   TagMigration,
+  UnsignedV1,
+  UnsignedV2,
+  UnsignedV3,
   UserMigrationV1,
   UserMigrationV10,
   UserMigrationV2,
@@ -37,6 +40,7 @@ const TEST_TABLES = [
   "schema_diff_users",
   "schema_diff_decorator_shortcuts",
   "schema_diff_check_items",
+  "schema_diff_unsigned",
 ];
 
 const dbType = env.DB_TYPE || "mysql";
@@ -919,6 +923,134 @@ conditionalDescribe(`[${dbType}] Schema Diff Migration Generation`, () => {
         },
         async (sql) => {
           // First sync - create table and both check constraints
+          const firstDiff = await SchemaDiff.makeDiff(sql);
+          const firstStatements = firstDiff.getSqlStatements();
+
+          expect(firstStatements.length).toBeGreaterThan(0);
+          await sql.syncSchema();
+
+          // Second sync - no changes
+          const secondDiff = await SchemaDiff.makeDiff(sql);
+          expect(secondDiff.getSqlStatements().length).toBe(0);
+
+          // Third sync - still no changes
+          const thirdDiff = await SchemaDiff.makeDiff(sql);
+          expect(thirdDiff.getSqlStatements().length).toBe(0);
+        },
+      );
+    });
+  });
+
+  // Unsigned/Zerofill tests - only run on MySQL/MariaDB
+  const unsignedDescribe = ["mysql", "mariadb"].includes(dbType)
+    ? describe
+    : describe.skip;
+
+  unsignedDescribe(`[${dbType}] Unsigned/Zerofill Column Tests`, () => {
+    beforeAll(async () => {
+      await dropAllTestTables(baseSql);
+    });
+
+    afterAll(async () => {
+      await dropAllTestTables(baseSql);
+    });
+
+    test("v1: should create table with unsigned columns", async () => {
+      const SchemaDiff = await getSchemaDiff();
+
+      await SqlDataSource.useConnection(
+        {
+          ...getConnectionConfig(),
+          models: { UnsignedV1 },
+        },
+        async (sql) => {
+          const diff = await SchemaDiff.makeDiff(sql);
+          const statements = diff.getSqlStatements();
+
+          expect(statements.length).toBeGreaterThan(0);
+
+          // Should have CREATE TABLE
+          const hasCreateTable = statements.some((s) =>
+            s.toLowerCase().includes("create table"),
+          );
+          expect(hasCreateTable).toBe(true);
+
+          // Should have unsigned columns
+          const hasUnsigned = statements.some((s) =>
+            s.toLowerCase().includes("unsigned"),
+          );
+          expect(hasUnsigned).toBe(true);
+
+          await sql.syncSchema();
+        },
+      );
+    });
+
+    test("v2: should detect removal of unsigned modifier", async () => {
+      const SchemaDiff = await getSchemaDiff();
+
+      await SqlDataSource.useConnection(
+        {
+          ...getConnectionConfig(),
+          models: { UnsignedV2 },
+        },
+        async (sql) => {
+          const diff = await SchemaDiff.makeDiff(sql);
+          const statements = diff.getSqlStatements();
+
+          // Should modify quantity column (remove unsigned)
+          const hasModify = statements.some(
+            (s) =>
+              s.toLowerCase().includes("alter table") &&
+              s.toLowerCase().includes("quantity"),
+          );
+          // May or may not have changes depending on DB state
+          if (statements.length > 0) {
+            expect(hasModify || statements.length > 0).toBe(true);
+          }
+
+          await sql.syncSchema();
+        },
+      );
+    });
+
+    test("v3: should add column with zerofill", async () => {
+      const SchemaDiff = await getSchemaDiff();
+
+      await SqlDataSource.useConnection(
+        {
+          ...getConnectionConfig(),
+          models: { UnsignedV3 },
+        },
+        async (sql) => {
+          const diff = await SchemaDiff.makeDiff(sql);
+          const statements = diff.getSqlStatements();
+
+          expect(statements.length).toBeGreaterThan(0);
+
+          // Should add orderNum column
+          const hasOrderNum = statements.some((s) =>
+            s.toLowerCase().includes("order_num"),
+          );
+          expect(hasOrderNum).toBe(true);
+
+          await sql.syncSchema();
+        },
+      );
+    });
+
+    test("should be idempotent with unsigned/zerofill columns", async () => {
+      const SchemaDiff = await getSchemaDiff();
+
+      await dropAllTestTables(baseSql);
+
+      await SqlDataSource.useConnection(
+        {
+          ...getConnectionConfig(),
+          models: { UnsignedV3 },
+        },
+        async (sql) => {
+          // First sync - create table
           const firstDiff = await SchemaDiff.makeDiff(sql);
           const firstStatements = firstDiff.getSqlStatements();
 

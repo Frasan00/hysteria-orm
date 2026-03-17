@@ -844,6 +844,7 @@ export class QueryBuilder<
 
     return new WriteOperation(
       () => this.unWrap(),
+      () => this.toSql(),
       () => this.toQuery(),
       async () => {
         const { columns: preparedColumns, values: preparedValues } =
@@ -925,6 +926,7 @@ export class QueryBuilder<
 
     return new WriteOperation(
       () => this.unWrap(),
+      () => this.toSql(),
       () => this.toQuery(),
       async () => {
         if (!data.length) {
@@ -1018,6 +1020,7 @@ export class QueryBuilder<
 
     return new WriteOperation(
       () => this.unWrap(),
+      () => this.toSql(),
       () => this.toQuery(),
       async () => {
         const { columns: preparedColumns, values: preparedValues } =
@@ -1119,6 +1122,7 @@ export class QueryBuilder<
 
     return new WriteOperation(
       () => this.unWrap(),
+      () => this.toSql(),
       () => this.toQuery(),
       async () => {
         const insertObjects: Record<string, any>[] = [];
@@ -1315,6 +1319,7 @@ export class QueryBuilder<
 
     return new WriteOperation(
       () => this.unWrap(),
+      () => this.toSql(),
       () => this.toQuery(),
       async () => {
         const { columns, values } = await this.interpreterUtils.prepareColumns(
@@ -1364,6 +1369,7 @@ export class QueryBuilder<
 
     return new WriteOperation(
       () => this.unWrap(),
+      () => this.toSql(),
       () => this.toQuery(),
       async () => {
         const { sql, bindings } = this.astParser.parse([this.truncateNode!]);
@@ -1387,6 +1393,7 @@ export class QueryBuilder<
 
     return new WriteOperation(
       () => this.unWrap(),
+      () => this.toSql(),
       () => this.toQuery(),
       async () => {
         const { sql, bindings } = this.astParser.parse([
@@ -1433,6 +1440,7 @@ export class QueryBuilder<
 
     return new WriteOperation(
       () => this.unWrap(),
+      () => this.toSql(),
       () => this.toQuery(),
       async () => {
         const { columns, values } = await this.interpreterUtils.prepareColumns(
@@ -1465,12 +1473,30 @@ export class QueryBuilder<
    * @warning Does not show any `load` operations in the query, it only shows the operations that directly belong to the query builder instance
    */
   toQuery(): string {
-    const { sql, bindings } = this.unWrap();
+    const { sql, bindings } = this.toSql();
     return bindParamsIntoQuery(sql, bindings);
   }
 
   /**
-   * @description Returns the query with database driver placeholders and the params
+   * @description Returns the formatted query with database driver placeholders and the params
+   * @description Use this for debugging purposes to see the formatted SQL
+   * @warning Does not apply any hook from the model
+   * @warning Does not show any `load` operations in the query, it only shows the operations that directly belong to the query builder instance
+   */
+  toSql(): ReturnType<typeof AstParser.prototype.parse> {
+    const { sql, bindings } = this.unWrap();
+    const formattedQuery = formatQuery(this.sqlDataSource, sql);
+    const finalQuery = this.withQuery
+      ? `${this.withQuery} ${formattedQuery}`
+      : formattedQuery;
+    return {
+      sql: finalQuery,
+      bindings: [...(bindings || [])],
+    };
+  }
+
+  /**
+   * @description Returns the raw query with database driver placeholders and the params
    * @description To be used for executing the query with the database driver
    * @warning Does not apply any hook from the model
    * @warning Does not show any `load` operations in the query, it only shows the operations that directly belong to the query builder instance
@@ -1482,11 +1508,7 @@ export class QueryBuilder<
 
     const { sql, bindings } = this.astParser.parse(this.extractQueryNodes());
 
-    const formattedQuery = formatQuery(this.sqlDataSource, sql);
-
-    const finalQuery = this.withQuery
-      ? `${this.withQuery} ${formattedQuery}`
-      : formattedQuery;
+    const finalQuery = this.withQuery ? `${this.withQuery} ${sql}` : sql;
 
     return {
       sql: finalQuery,

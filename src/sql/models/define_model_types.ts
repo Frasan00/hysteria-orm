@@ -81,21 +81,32 @@ export type ColTextOptions = Omit<
 export type ColIntegerOptions = Omit<
   ColumnOptions,
   "serialize" | "prepare" | "default"
->;
+> & {
+  unsigned?: boolean;
+  zerofill?: boolean;
+};
 export type ColBigIntegerOptions = Omit<
   ColumnOptions,
   "serialize" | "prepare" | "default"
->;
+> & {
+  unsigned?: boolean;
+  zerofill?: boolean;
+};
 export type ColFloatOptions = Omit<
   ColumnOptions,
   "serialize" | "prepare" | "default"
->;
+> & {
+  unsigned?: boolean;
+  zerofill?: boolean;
+};
 export type ColDecimalOptions = Omit<
   ColumnOptions,
   "serialize" | "prepare" | "default"
 > & {
   precision?: number;
   scale?: number;
+  unsigned?: boolean;
+  zerofill?: boolean;
 };
 export type ColIncrementOptions = Omit<
   ColumnOptions,
@@ -172,15 +183,24 @@ export type ColVarbinaryOptions = Omit<
 export type ColTinyIntOptions = Omit<
   ColumnOptions,
   "type" | "serialize" | "prepare" | "default"
->;
+> & {
+  unsigned?: boolean;
+  zerofill?: boolean;
+};
 export type ColSmallIntOptions = Omit<
   ColumnOptions,
   "type" | "serialize" | "prepare" | "default"
->;
+> & {
+  unsigned?: boolean;
+  zerofill?: boolean;
+};
 export type ColMediumIntOptions = Omit<
   ColumnOptions,
   "type" | "serialize" | "prepare" | "default"
->;
+> & {
+  unsigned?: boolean;
+  zerofill?: boolean;
+};
 
 // ---------------------------------------------------------------------------
 // Relation descriptor option types

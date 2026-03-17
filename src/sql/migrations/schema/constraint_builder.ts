@@ -138,6 +138,27 @@ export class ConstraintBuilder extends BaseBuilder {
     return this;
   }
 
+  /**
+   * @description Sets the column to UNSIGNED (MySQL/MariaDB only)
+   * Restricts the column to non-negative values.
+   * @mysql Only supported by MySQL/MariaDB. Other databases silently ignore this.
+   */
+  unsigned(): this {
+    this.columnNode.unsigned = true;
+    return this;
+  }
+
+  /**
+   * @description Sets the column to ZEROFILL (MySQL/MariaDB only)
+   * Pads the column value with zeros up to the display width.
+   * Note: ZEROFILL implicitly makes the column UNSIGNED.
+   * @mysql Only supported by MySQL/MariaDB. Other databases silently ignore this.
+   */
+  zerofill(): this {
+    this.columnNode.zerofill = true;
+    return this;
+  }
+
   // #endregion
 
   // #region not nullable

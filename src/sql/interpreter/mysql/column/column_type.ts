@@ -23,6 +23,8 @@ class MysqlColumnTypeInterpreter implements Interpreter {
     const dt = colNode.dataType.toLowerCase();
 
     let typeSql: string;
+    let isNumericType = false;
+    let hasAutoIncrement = false;
 
     if (dt === "char") {
       const len = colNode.length ?? 1;
@@ -42,34 +44,38 @@ class MysqlColumnTypeInterpreter implements Interpreter {
     ) {
       typeSql = `${columnName} ${dt}`;
     } else if (dt === "integer" || dt === "int") {
-      typeSql = "int";
-      if (colNode.autoIncrement) {
-        typeSql += " auto_increment";
-      }
-      typeSql = `${columnName} ${typeSql}`;
+      isNumericType = true;
+      hasAutoIncrement = !!colNode.autoIncrement;
+      typeSql = `${columnName} int`;
     } else if (dt === "tinyint") {
+      isNumericType = true;
       typeSql = `${columnName} tinyint`;
     } else if (dt === "smallint") {
+      isNumericType = true;
       typeSql = `${columnName} smallint`;
     } else if (dt === "mediumint") {
+      isNumericType = true;
       typeSql = `${columnName} mediumint`;
     } else if (dt === "bigint") {
-      typeSql = "bigint";
-      if (colNode.autoIncrement) {
-        typeSql += " auto_increment";
-      }
-      typeSql = `${columnName} ${typeSql}`;
+      isNumericType = true;
+      hasAutoIncrement = !!colNode.autoIncrement;
+      typeSql = `${columnName} bigint`;
     } else if (dt === "float") {
+      isNumericType = true;
       typeSql = `${columnName} float`;
     } else if (dt === "double") {
+      isNumericType = true;
       typeSql = `${columnName} double`;
     } else if (dt === "real") {
+      isNumericType = true;
       typeSql = `${columnName} double`;
     } else if (dt === "decimal") {
+      isNumericType = true;
       const precision = colNode.precision ?? 10;
       const scale = colNode.scale ?? 0;
       typeSql = `${columnName} decimal(${precision}, ${scale})`;
     } else if (dt === "numeric") {
+      isNumericType = true;
       const precision = colNode.precision ?? 10;
       const scale = colNode.scale ?? 0;
       typeSql = `${columnName} numeric(${precision}, ${scale})`;
@@ -133,6 +139,17 @@ class MysqlColumnTypeInterpreter implements Interpreter {
     } else {
       const lengthPart = colNode.length ? `(${colNode.length})` : "";
       typeSql = `${columnName} ${dt}${lengthPart}`;
+    }
+
+    if (isNumericType) {
+      if (colNode.zerofill) {
+        typeSql += " ZEROFILL";
+      } else if (colNode.unsigned) {
+        typeSql += " UNSIGNED";
+      }
+      if (hasAutoIncrement) {
+        typeSql += " AUTO_INCREMENT";
+      }
     }
 
     if (colNode.collate) {

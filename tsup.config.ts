@@ -1,16 +1,9 @@
 import { defineConfig } from "tsup";
+import pkg from "./package.json";
 
 const external = [
-  "ioredis",
-  "mongodb",
-  "pg",
-  "mysql2",
-  "sqlite3",
-  "esbuild",
-  "sql-formatter",
-  "sql-highlight",
-  "dayjs",
-  "commander",
+  ...Object.keys(pkg.dependencies || {}),
+  ...Object.keys(pkg.devDependencies || {}),
 ];
 
 export default defineConfig([
