@@ -258,7 +258,7 @@ export const generateOpenApiModelWithMetadata = <T extends new () => Model>(
 ): Array<OpenApiModelType & { modelName: string; $id?: string }> => {
   return models.map((model) => ({
     ...generateModelSchema(model as unknown as typeof Model),
-    modelName: model.name,
-    $id: model.name,
+    modelName: (model as unknown as typeof Model).table,
+    $id: (model as unknown as typeof Model).table,
   }));
 };
