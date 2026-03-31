@@ -274,6 +274,33 @@ colBase.enum = function colEnum<
   });
 };
 
+colBase.nativeEnum = function colNativeEnum<
+  E extends Record<string, string | number>,
+  O extends ColEnumOptions = ColEnumOptions,
+>(
+  enumObj: E,
+  options?: O &
+    TypedSerialize<NullableColumn<E[keyof E], O>> &
+    TypedPrepare<NullableColumn<E[keyof E], O>>,
+): ColumnDef<NullableColumn<E[keyof E], O>> {
+  const values = Object.values(enumObj).filter(
+    (v): v is string | number => typeof v === "string" || typeof v === "number",
+  );
+  const hasNumeric = values.some((v) => typeof v === "number");
+  const enumValues = hasNumeric
+    ? values
+        .filter((v): v is number => typeof v === "number")
+        .map((v) => String(v))
+    : values.filter((v): v is string => typeof v === "string");
+
+  return makeColumnDef((target, key) => {
+    column.enum(enumValues as readonly string[], options ?? {})(
+      target as any,
+      key,
+    );
+  });
+};
+
 colBase.char = function colChar<O extends ColCharOptions = ColCharOptions>(
   options?: O &
     TypedSerialize<NullableColumn<string, O>> &

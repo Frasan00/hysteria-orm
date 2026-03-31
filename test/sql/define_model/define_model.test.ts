@@ -210,6 +210,87 @@ describe("defineModel", () => {
       expect(statusCol?.type).toEqual(["active", "inactive", "banned"]);
     });
 
+    test("nativeEnum column with string enum", () => {
+      enum Status {
+        Active = "active",
+        Inactive = "inactive",
+        Banned = "banned",
+      }
+      const StatusModel = defineModel("statuses", {
+        columns: {
+          id: col.increment(),
+          status: col.nativeEnum(Status),
+        },
+      });
+
+      const statusCol = StatusModel.getColumns().find(
+        (c) => c.columnName === "status",
+      );
+      expect(statusCol?.type).toEqual(["active", "inactive", "banned"]);
+    });
+
+    test("nativeEnum column with numeric enum", () => {
+      enum Priority {
+        Low = 0,
+        Medium = 1,
+        High = 2,
+      }
+      const PriorityModel = defineModel("priorities", {
+        columns: {
+          id: col.increment(),
+          priority: col.nativeEnum(Priority),
+        },
+      });
+
+      const priorityCol = PriorityModel.getColumns().find(
+        (c) => c.columnName === "priority",
+      );
+      expect(priorityCol?.type).toEqual(["0", "1", "2"]);
+    });
+
+    test("nativeEnum column with nullable option", () => {
+      enum Status {
+        Active = "active",
+        Inactive = "inactive",
+      }
+      const StatusModel = defineModel("statuses", {
+        columns: {
+          id: col.increment(),
+          status: col.nativeEnum(Status, { nullable: false }),
+        },
+      });
+
+      const statusCol = StatusModel.getColumns().find(
+        (c) => c.columnName === "status",
+      );
+      expect(statusCol?.type).toEqual(["active", "inactive"]);
+      expect(statusCol?.constraints?.nullable).toBe(false);
+    });
+
+    test("nativeEnum column with serialize and prepare", () => {
+      enum Status {
+        Active = "active",
+        Inactive = "inactive",
+      }
+      const serialize = (value: Status | null): Status | null =>
+        value ? (value.toUpperCase() as Status) : null;
+      const prepare = (value: string | null): Status | null =>
+        value ? (value.toLowerCase() as Status) : null;
+
+      const TestModel = defineModel("native_enum_callbacks_test", {
+        columns: {
+          id: col.increment(),
+          status: col.nativeEnum(Status, { serialize, prepare }),
+        },
+      });
+
+      const statusCol = TestModel.getColumns().find(
+        (c) => c.columnName === "status",
+      );
+      expect(statusCol?.serialize).toBeDefined();
+      expect(statusCol?.prepare).toBeDefined();
+    });
+
     test("binary column type", () => {
       const BinaryModel = defineModel("blobs", {
         columns: {

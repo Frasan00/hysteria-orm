@@ -622,6 +622,31 @@ export interface ColNamespace {
   ): ColumnDef<NullableColumn<V[number], O>>;
 
   /**
+   * Native enum column from a TypeScript enum object.
+   * Handles both string and numeric enums (numeric values are coerced to strings).
+   * Type: `E[keyof E]` (nullable-aware).
+   *
+   * ```ts
+   * enum Status { Active = "active", Inactive = "inactive" }
+   * col.nativeEnum(Status)                           // Status | null
+   * col.nativeEnum(Status, { nullable: false })      // Status
+   *
+   * enum Priority { Low = 0, Medium = 1, High = 2 }
+   * col.nativeEnum(Priority)                         // Priority | null
+   * ```
+   */
+  nativeEnum<
+    E extends Record<string, string | number>,
+    O extends ColEnumOptions = ColEnumOptions,
+  >(
+    enumObj: E,
+    options?: O &
+      TypedSerialize<NullableColumn<E[keyof E], O>> &
+      TypedPrepare<NullableColumn<E[keyof E], O>> &
+      TypedDefault<E[keyof E]>,
+  ): ColumnDef<NullableColumn<E[keyof E], O>>;
+
+  /**
    * CHAR column (fixed-length string). Accepts an optional `length` option.
    * Type: `string` (nullable-aware).
    *
