@@ -19,6 +19,8 @@ import {
   UniqueType,
 } from "./decorators/model_decorators_types";
 
+import { ModelColumnCache } from "./model_column_cache";
+
 /**
  * @description Represents a Table in the Database
  * @internal Base class for models created via `defineModel`. Not meant for direct use.
@@ -103,7 +105,38 @@ export abstract class Model<T extends Model<T> = any> extends Entity {
   // #endregion Lifecycle hooks
 
   static getColumns(): ColumnType[] {
-    return getModelColumns(this);
+    let cached = ModelColumnCache.columns.get(this);
+    if (!cached) {
+      cached = getModelColumns(this);
+      ModelColumnCache.columns.set(this, cached);
+    }
+    return cached;
+  }
+
+  /**
+   * @description Returns a cached Map of model column name → ColumnType for O(1) lookup.
+   * Computed once per model class and reused across all queries.
+   */
+  static getColumnsByName(): Map<string, ColumnType> {
+    let cached = ModelColumnCache.byName.get(this);
+    if (!cached) {
+      cached = new Map(this.getColumns().map((col) => [col.columnName, col]));
+      ModelColumnCache.byName.set(this, cached);
+    }
+    return cached;
+  }
+
+  /**
+   * @description Returns a cached Map of database column name → ColumnType for O(1) lookup.
+   * Computed once per model class and reused across all queries.
+   */
+  static getColumnsByDatabaseName(): Map<string, ColumnType> {
+    let cached = ModelColumnCache.byDatabaseName.get(this);
+    if (!cached) {
+      cached = new Map(this.getColumns().map((col) => [col.databaseName, col]));
+      ModelColumnCache.byDatabaseName.set(this, cached);
+    }
+    return cached;
   }
 
   static getRelations(): LazyRelationType[] {

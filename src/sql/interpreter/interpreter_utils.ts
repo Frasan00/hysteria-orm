@@ -2,7 +2,6 @@ import { convertCase } from "../../utils/case_utils";
 import { AstParser } from "../ast/parser";
 import { FromNode } from "../ast/query/node/from";
 import { QueryNode } from "../ast/query/query";
-import { getModelColumns } from "../models/decorators/model_decorators";
 import { ColumnType } from "../models/decorators/model_decorators_types";
 import { Model } from "../models/model";
 import { SqlDataSourceType } from "../sql_data_source_types";
@@ -30,12 +29,30 @@ const isPlainObjectOrArray = (value: unknown): boolean => {
 
 export class InterpreterUtils {
   private readonly modelColumnsMap: Map<string, ColumnType>;
+  // Pre-computed at construction: columns that always need processing during writes.
+  // Avoids scanning all model columns on every prepareColumns() call.
+  private readonly autoInsertColumns: ColumnType[];
+  private readonly autoUpdateColumns: ColumnType[];
 
   constructor(private readonly model: typeof Model) {
-    const modelColumns = getModelColumns(model);
-    this.modelColumnsMap = new Map(
-      modelColumns.map((modelColumn) => [modelColumn.columnName, modelColumn]),
-    );
+    // Raw models (from sql.from("table")) are plain objects without Model methods.
+    // Fall back to an empty Map — prepareColumns will JSON-stringify plain objects
+    // and skip all prepare/autoUpdate logic (correct for schema-less raw queries).
+    this.modelColumnsMap =
+      typeof model.getColumnsByName === "function"
+        ? model.getColumnsByName()
+        : new Map();
+
+    const autoInsert: ColumnType[] = [];
+    const autoUpdate: ColumnType[] = [];
+    for (const col of this.modelColumnsMap.values()) {
+      // Insert auto-columns: those with prepare OR autoUpdate (mirrors the original condition)
+      if (col.prepare || col.autoUpdate) autoInsert.push(col);
+      // Update auto-columns: only autoUpdate ones (prepare-only columns are not auto-added on update)
+      if (col.autoUpdate) autoUpdate.push(col);
+    }
+    this.autoInsertColumns = autoInsert;
+    this.autoUpdateColumns = autoUpdate;
   }
 
   formatStringColumn(dbType: SqlDataSourceType, column: string): string {
@@ -155,54 +172,70 @@ export class InterpreterUtils {
       filteredValues.push(value);
     }
 
-    await Promise.all(
-      filteredColumns.map(async (_, i) => {
-        const column = filteredColumns[i];
-        const value = filteredValues[i];
+    // Track which columns are already present for O(1) lookup when adding auto-columns
+    const presentColumnsSet = new Set<string>(filteredColumns);
 
-        const modelColumn = this.modelColumnsMap.get(column);
+    // Deferred async prepare calls — avoids Promise overhead for sync prepare functions
+    let deferredAsync: Array<{ index: number; promise: Promise<any> }> | null =
+      null;
 
-        let preparedValue = value;
-        if (modelColumn) {
-          if (mode === "insert" && modelColumn.prepare) {
-            preparedValue = await modelColumn.prepare(value);
-          } else if (mode === "update") {
-            preparedValue = (await modelColumn.prepare?.(value)) ?? value;
+    for (let i = 0; i < filteredColumns.length; i++) {
+      const column = filteredColumns[i];
+      const value = filteredValues[i];
+
+      const modelColumn = this.modelColumnsMap.get(column);
+
+      if (modelColumn) {
+        if (modelColumn.prepare) {
+          const prepared =
+            mode === "insert"
+              ? modelColumn.prepare(value)
+              : (modelColumn.prepare(value) ?? value);
+
+          if (
+            prepared !== null &&
+            typeof (prepared as any)?.then === "function"
+          ) {
+            if (!deferredAsync) deferredAsync = [];
+            deferredAsync.push({ index: i, promise: prepared as Promise<any> });
+          } else {
+            filteredValues[i] = prepared;
           }
-        } else if (isPlainObjectOrArray(value)) {
-          preparedValue = JSON.stringify(value);
         }
-
-        filteredValues[i] = preparedValue;
-      }),
-    );
-
-    for (const column of this.modelColumnsMap.keys()) {
-      if (!filteredColumns.includes(column)) {
-        const modelColumn = this.modelColumnsMap.get(column);
-        if (!modelColumn) {
-          continue;
-        }
-
-        if (
-          mode === "insert" &&
-          column === (this.model as typeof Model).primaryKey &&
-          !modelColumn.prepare
-        ) {
-          continue;
-        }
-
-        if (
-          (mode === "insert" && modelColumn.prepare) ||
-          modelColumn.autoUpdate
-        ) {
-          filteredColumns.push(column);
-          const preparedValue = modelColumn.prepare
-            ? await modelColumn.prepare(undefined)
-            : undefined;
-          filteredValues.push(preparedValue ?? undefined);
-        }
+      } else if (isPlainObjectOrArray(value)) {
+        filteredValues[i] = JSON.stringify(value);
       }
+    }
+
+    // Resolve any async prepare calls collected during the sync pass all at once
+    if (deferredAsync) {
+      const resolved = await Promise.all(deferredAsync.map((d) => d.promise));
+      for (let i = 0; i < deferredAsync.length; i++) {
+        filteredValues[deferredAsync[i].index] = resolved[i];
+      }
+    }
+
+    // Add columns that need automatic processing but weren't in the provided payload.
+    // Uses pre-computed lists to avoid scanning all model columns on every call.
+    const primaryKey = (this.model as typeof Model).primaryKey;
+    const autoColumns =
+      mode === "insert" ? this.autoInsertColumns : this.autoUpdateColumns;
+
+    for (const modelColumn of autoColumns) {
+      const column = modelColumn.columnName;
+      if (presentColumnsSet.has(column)) {
+        continue;
+      }
+
+      if (mode === "insert" && column === primaryKey && !modelColumn.prepare) {
+        continue;
+      }
+
+      filteredColumns.push(column);
+      const preparedValue = modelColumn.prepare
+        ? await modelColumn.prepare(undefined)
+        : undefined;
+      filteredValues.push(preparedValue ?? undefined);
     }
 
     return { columns: filteredColumns, values: filteredValues };

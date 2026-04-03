@@ -115,16 +115,12 @@ export class ModelQueryBuilder<
 
     this.relationQueryBuilders = [];
     this.modelSelectedColumns = [];
-    this.modelColumnsMap = new Map<string, ColumnType>();
+    // Use cached Maps from the Model class — no Reflect call or Map allocation per instance
+    this.modelColumnsMap = this.model.getColumnsByDatabaseName();
     this.modelColumnsDatabaseNames = new Map<string, string>();
-    const modelColumns = this.model.getColumns();
-    modelColumns.forEach((column) => {
-      this.modelColumnsMap.set(column.databaseName, column);
-      this.modelColumnsDatabaseNames.set(
-        column.databaseName,
-        column.columnName,
-      );
-    });
+    for (const [dbName, col] of this.modelColumnsMap) {
+      this.modelColumnsDatabaseNames.set(dbName, col.columnName);
+    }
   }
 
   /**

@@ -10,7 +10,7 @@ export const UserWithUuid = defineModel("users_with_uuid", {
     id: col.uuid({ primaryKey: true }),
     name: col.string(),
     email: col.string(),
-    password: col.string({ hidden: true }),
+    password: col.string(),
     status: col.string(),
     age: col.integer(),
     salary: col.integer(),

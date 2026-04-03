@@ -1,4 +1,4 @@
-import { Model } from "../model";
+import type { Model } from "../model";
 
 /**
  * @description Options for the relation
@@ -18,7 +18,7 @@ export enum RelationEnum {
  */
 export abstract class Relation {
   abstract type: RelationEnum;
-  model: typeof Model = Model;
+  model: typeof Model;
   columnName: string = "";
   foreignKey?: string;
   relatedModel: string = "";

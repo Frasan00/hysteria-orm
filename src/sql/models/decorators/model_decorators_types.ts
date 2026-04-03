@@ -3,7 +3,6 @@ import { DateFormat, Timezone } from "../../../utils/date_utils";
 import { CreateTableBuilder } from "../../migrations/schema/create_table";
 import { OnUpdateOrDelete } from "../../migrations/schema/schema_types";
 import type { AnyModelConstructor } from "../define_model_types";
-import { Model } from "../model";
 import { ModelKey } from "../model_manager/model_manager_types";
 import { RelationEnum } from "../relations/relation";
 
@@ -201,11 +200,6 @@ export type ColumnOptions = {
    */
   prepare?: (value: any) => any;
   /**
-   * @description Whether the column is returned in the serialization output, this column will always be undefined
-   * @default false
-   */
-  hidden?: boolean;
-  /**
    * @description If true, the prepare function will always be called on update regardless of whether the value has been provided in the update payload
    * @default false
    */
@@ -241,7 +235,6 @@ export type ColumnType = {
   databaseName: string;
   serialize?: (value: any) => any | Promise<any>;
   prepare?: (value: any) => any | Promise<any>;
-  hidden?: boolean;
   autoUpdate?: boolean;
   isPrimary: boolean;
   openApi?: OpenApiModelPropertyType & { required?: boolean };

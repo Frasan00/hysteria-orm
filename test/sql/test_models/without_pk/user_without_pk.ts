@@ -9,7 +9,7 @@ export const UserWithoutPk = defineModel("users_without_pk", {
   columns: {
     name: col.string(),
     email: col.string(),
-    password: col.string({ hidden: true }),
+    password: col.string(),
     status: col.string(),
     age: col.integer(),
     salary: col.integer(),

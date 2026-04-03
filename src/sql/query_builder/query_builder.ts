@@ -76,7 +76,13 @@ export class QueryBuilder<
   protected withNodes: WithNode[];
   protected lockQueryNodes: LockNode[];
   protected isNestedCondition = false;
-  protected interpreterUtils: InterpreterUtils;
+  protected _interpreterUtils: InterpreterUtils | null = null;
+  protected get interpreterUtils(): InterpreterUtils {
+    if (!this._interpreterUtils) {
+      this._interpreterUtils = new InterpreterUtils(this.model);
+    }
+    return this._interpreterUtils;
+  }
   protected insertNode: InsertNode | null = null;
   protected onDuplicateNode: OnDuplicateNode | null = null;
   protected updateNode: UpdateNode | null = null;
@@ -112,7 +118,6 @@ export class QueryBuilder<
     this.lockQueryNodes = [];
     this.withNodes = [];
     this.astParser = new AstParser(this.model, this.dbType);
-    this.interpreterUtils = new InterpreterUtils(this.model);
   }
 
   /**

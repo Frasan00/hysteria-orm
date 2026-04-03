@@ -7,7 +7,7 @@ import type { PoolAttributes } from "oracledb";
 
 export type Mysql2Import = typeof import("mysql2/promise");
 export type Mysql2SyncImport = typeof import("mysql2");
-export type PgImport = typeof import("pg");
+export type PgImport = (typeof import("pg"))["default"];
 export type Sqlite3Import = typeof import("sqlite3");
 export type MongoClientImport = typeof import("mongodb");
 export type MssqlImport = typeof import("mssql");

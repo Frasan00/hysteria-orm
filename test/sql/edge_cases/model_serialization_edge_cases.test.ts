@@ -112,31 +112,6 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
     }
   });
 
-  test("Should handle hidden field serialization behavior", async () => {
-    // Note: MSSQL has type conversion issues with binary columns and OUTPUT inserted.*
-    if (env.DB_TYPE === "mssql") return;
-    // Edge case: Hidden fields should not appear in serialized output
-    const userData = {
-      ...UserFactory.getCommonUserData(),
-      name: "HiddenFieldTest",
-    };
-
-    const user = await sql
-      .from(UserWithoutPk)
-      .insert(userData, { returning: ["*"] });
-    const retrievedUser = await sql
-      .from(UserWithoutPk)
-      .where("name", "=", user.name)
-      .one();
-
-    // Verify that hidden fields are not in the serialized output
-    const serializedUser = JSON.parse(JSON.stringify(retrievedUser));
-
-    // Check that the user object doesn't contain sensitive hidden fields
-    expect(serializedUser).toBeDefined();
-    expect(serializedUser.name).toBe("HiddenFieldTest");
-  });
-
   test("Should handle data type serialization edge cases", async () => {
     // Note: MSSQL has type conversion issues with binary columns and OUTPUT inserted.*
     if (env.DB_TYPE === "mssql") return;

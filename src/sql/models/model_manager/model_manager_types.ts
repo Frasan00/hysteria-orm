@@ -1,6 +1,6 @@
 import type { BaseValues } from "../../ast/query/node/where/where";
 import type { SqlDataSourceType } from "../../sql_data_source_types";
-import { Model } from "../model";
+import type { Model } from "../model";
 import { FetchHooks } from "../model_query_builder/model_query_builder_types";
 import {
   ModelDataProperties,

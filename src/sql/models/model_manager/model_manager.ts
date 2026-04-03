@@ -391,24 +391,26 @@ export class ModelManager<T extends Model> {
         }
       }
 
-      const insertObjects: Record<string, any>[] = [];
-      for (const model of models) {
-        const { columns: preparedColumns, values: preparedValues } =
-          await this.interpreterUtils.prepareColumns(
-            Object.keys(model),
-            Object.values(model),
-            "insert",
-          );
+      const insertObjects: Record<string, any>[] = new Array(models.length);
+      await Promise.all(
+        models.map(async (model, index) => {
+          const { columns: preparedColumns, values: preparedValues } =
+            await this.interpreterUtils.prepareColumns(
+              Object.keys(model),
+              Object.values(model),
+              "insert",
+            );
 
-        const insertObject: Record<string, any> = {};
-        preparedColumns.forEach((column, index) => {
-          const value = preparedValues[index];
-          insertObject[column] = value;
-          model[column as keyof typeof model] ??= value;
-        });
+          const insertObject: Record<string, any> = {};
+          preparedColumns.forEach((column, i) => {
+            const value = preparedValues[i];
+            insertObject[column] = value;
+            model[column as keyof typeof model] ??= value;
+          });
 
-        insertObjects.push(insertObject);
-      }
+          insertObjects[index] = insertObject;
+        }),
+      );
 
       const shouldDisableReturning =
         !options.returning || options.returning.length === 0;

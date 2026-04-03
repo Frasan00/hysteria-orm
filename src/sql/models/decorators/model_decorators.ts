@@ -241,7 +241,6 @@ export function column(
       columnName: propertyKey as string,
       serialize: options.serialize,
       prepare: options.prepare,
-      hidden: options.hidden,
       isPrimary: isPrimaryKey,
       primaryKeyConstraintName:
         options.primaryKeyConstraintName ??

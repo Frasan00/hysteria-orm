@@ -13,4 +13,5 @@ export type OpenApiModelPropertyType = {
   example?: any;
   default?: any;
   nullable?: boolean;
+  excludeFromSwagger?: boolean;
 };

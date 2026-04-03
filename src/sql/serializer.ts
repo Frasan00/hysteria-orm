@@ -13,24 +13,24 @@ import { Model } from "./models/model";
  *    - When `hasWildcards` is true (e.g., `SELECT *`), all model columns are included
  *    - When `hasWildcards` is false, only explicitly selected columns are included
  *
- * 3. **Hidden Columns**: Columns marked as `hidden` in the model decorator are
- *    automatically excluded from the response.
- *
- * 4. **Custom Serializers**: If a column has a custom `serialize` function defined,
+ * 3. **Custom Serializers**: If a column has a custom `serialize` function defined,
  *    it's applied to transform the database value (e.g., parsing JSON strings).
  *
- * 5. **Wildcard Protection**: When wildcards like `table.*` are used with JOINs,
+ * 4. **Wildcard Protection**: When wildcards like `table.*` are used with JOINs,
  *    columns from other tables are filtered out to prevent data bleeding.
  *    Only explicitly selected columns (via aliases) are included from joined tables.
  *
- * 6. **Model Instance**: Creates an actual Model instance with prototype chain for
+ * 5. **Model Instance**: Creates an actual Model instance with prototype chain for
  *    proper column serialization and type handling.
+ *
+ * All Maps and Sets are pre-computed once per batch in `serializeModel` and passed
+ * in as parameters to avoid redundant allocations per row.
  *
  * @param model - Raw database row as key-value pairs
  * @param typeofModel - The Model class to create instances from
- * @param modelColumns - Array of column definitions from the model
- * @param modelColumnsMap - Map of column name -> column definition for O(1) lookup
- * @param modelSelectedColumns - Array of selected column names (in model case convention)
+ * @param columnsByName - Pre-computed map of model column name -> ColumnType (once per batch)
+ * @param columnsByDbName - Pre-computed map of database column name -> ColumnType (once per batch)
+ * @param modelSelectedColumnsSet - Pre-computed Set of selected column names, null means all (once per batch)
  * @param hasWildcards - Whether the query used wildcards (*, table.*)
  * @returns Promise resolving to the serialized model instance with proper typing
  */
@@ -39,9 +39,9 @@ export const parseDatabaseDataIntoModelResponse = async <
 >(
   model: T,
   typeofModel: typeof Model,
-  modelColumns: ColumnType[],
-  modelColumnsMap: Map<string, ColumnType>,
-  modelSelectedColumns: string[] = [],
+  columnsByName: Map<string, ColumnType>,
+  columnsByDbName: Map<string, ColumnType>,
+  modelSelectedColumnsSet: Set<string> | null,
   hasWildcards: boolean = false,
 ): Promise<T> => {
   const casedModel = Object.create(typeofModel.prototype) as Record<
@@ -49,84 +49,80 @@ export const parseDatabaseDataIntoModelResponse = async <
     any
   >;
 
-  // Pre-compute hidden columns for O(1) lookup during iteration
-  const hiddenColumnsSet = new Set<string>(
-    modelColumns
-      .filter((column) => column.hidden)
-      .map((column) => column.columnName),
-  );
+  // Collect deferred async serialize results to avoid Promise overhead for sync serializers.
+  // In the common case (all serializers sync), this stays null and no Promises are created.
+  let deferredAsync: Array<{ key: string; promise: Promise<any> }> | null =
+    null;
 
-  // Map database column names to model column definitions for reverse lookup
-  const databaseColumnsMap = new Map<string, ColumnType>(
-    modelColumns.map((modelColumn) => [modelColumn.databaseName, modelColumn]),
-  );
+  for (const key of Object.keys(model)) {
+    const databaseValue = model[key];
 
-  // Create a Set for O(1) lookup of selected columns (null means all columns)
-  const modelSelectedColumnsSet = modelSelectedColumns.length
-    ? new Set<string>(modelSelectedColumns)
-    : null;
+    // Convert database column name to model property name
+    const modelKey = columnsByDbName.get(key)?.columnName ?? key;
 
-  await Promise.all(
-    Object.keys(model).map(async (key) => {
-      const databaseValue = model[key];
+    const isModelColumn = columnsByName.has(modelKey);
 
-      // Convert database column name to model property name
-      // First check if it's a known model column, otherwise preserve as-is
-      const modelKey = databaseColumnsMap.get(key)?.columnName ?? key;
+    // Determine if this column should be included based on selection
+    const isSelected = hasWildcards
+      ? true
+      : modelSelectedColumnsSet
+        ? modelSelectedColumnsSet.has(modelKey)
+        : true;
 
-      const isModelColumn = modelColumnsMap.has(modelKey);
-      const isHidden = hiddenColumnsSet.has(modelKey);
-
-      // Determine if this column should be included based on selection
-      // - With wildcards: include all model columns (wildcards mean "select all from this table")
-      // - Without wildcards: only include if explicitly in the selection list
-      const isSelected = hasWildcards
-        ? true
-        : modelSelectedColumnsSet
-          ? modelSelectedColumnsSet.has(modelKey)
-          : true;
-
-      // Handle model columns (columns defined in the Model class)
-      if (isModelColumn) {
-        // Skip hidden columns and non-selected columns
-        if (isHidden || !isSelected) {
-          return;
-        }
-
-        // Preserve null values as-is (don't skip them)
-        if (databaseValue === null) {
-          casedModel[modelKey] = null;
-          return;
-        }
-
-        // Apply custom serializer if defined (e.g., JSON parsing, date formatting)
-        const modelColumn = modelColumnsMap.get(modelKey);
-        if (modelColumn && modelColumn.serialize) {
-          casedModel[modelKey] = await modelColumn.serialize(databaseValue);
-          return;
-        }
-
-        casedModel[modelKey] = databaseValue;
-        return;
+    // Handle model columns (columns defined in the Model class)
+    if (isModelColumn) {
+      if (!isSelected) {
+        continue;
       }
 
-      // Handle non-model columns (aliases, selectRaw results, joined table columns)
-      // This is where wildcard protection kicks in:
-      // - When NO wildcards used: include all extra columns (they came from explicit selection)
-      // - When wildcards used: only include if EXPLICITLY in the selection list
-      //   This prevents columns from joined tables bleeding into the model when using
-      //   queries like: .select("posts.*", "users.*") - users columns won't appear on Post model
-      if (
-        !hasWildcards ||
-        (modelSelectedColumnsSet && modelSelectedColumnsSet.has(modelKey))
-      ) {
-        casedModel[modelKey] = databaseValue;
+      // Preserve null values as-is
+      if (databaseValue === null) {
+        casedModel[modelKey] = null;
+        continue;
       }
-    }),
-  );
+
+      // Apply custom serializer if defined (e.g., JSON parsing, date formatting)
+      const modelColumn = columnsByName.get(modelKey);
+      if (modelColumn?.serialize) {
+        const result = modelColumn.serialize(databaseValue);
+        // Only defer to the async path if the serializer actually returns a Promise.
+        // This avoids Promise allocation overhead for synchronous serializers (the common case).
+        if (result !== null && typeof (result as any)?.then === "function") {
+          if (!deferredAsync) deferredAsync = [];
+          deferredAsync.push({
+            key: modelKey,
+            promise: result as Promise<any>,
+          });
+        } else {
+          casedModel[modelKey] = result;
+        }
+        continue;
+      }
+
+      casedModel[modelKey] = databaseValue;
+      continue;
+    }
+
+    // Handle non-model columns (aliases, selectRaw results, joined table columns).
+    // Wildcard protection: when wildcards are used, only include columns that were
+    // explicitly selected to prevent joined-table columns bleeding into the model.
+    if (
+      !hasWildcards ||
+      (modelSelectedColumnsSet && modelSelectedColumnsSet.has(modelKey))
+    ) {
+      casedModel[modelKey] = databaseValue;
+    }
+  }
+
+  // Resolve any async serializers collected during the sync pass
+  if (deferredAsync) {
+    const resolved = await Promise.all(deferredAsync.map((d) => d.promise));
+    for (let i = 0; i < deferredAsync.length; i++) {
+      casedModel[deferredAsync[i].key] = resolved[i];
+    }
+  }
 
   // Ensure all selected columns exist on the model, even if not returned by database
-  // This handles cases where a column is selected but has no data (e.g., LEFT JOIN with no match)
   if (modelSelectedColumnsSet) {
     for (const column of modelSelectedColumnsSet) {
       if (!(column in casedModel)) {
@@ -144,7 +140,6 @@ export const parseDatabaseDataIntoModelResponse = async <
  * This is the entry point for all query result serialization. It processes the raw
  * database rows and converts them into properly typed Model instances with:
  * - Correct property names (case conversion)
- * - Hidden columns filtered out
  * - Only selected columns included
  * - Custom serializers applied
  *
@@ -195,18 +190,15 @@ export const serializeModel = async <T extends Model>(
     return null;
   }
 
-  const modelColumns = typeofModel.getColumns();
-  const modelColumnsMap = new Map<string, ColumnType>(
-    modelColumns.map((modelColumn) => [modelColumn.columnName, modelColumn]),
-  );
+  // Use cached column Maps — computed once per model class, never per call
+  const columnsByName = typeofModel.getColumnsByName();
+  const columnsByDbName = typeofModel.getColumnsByDatabaseName();
 
   // Detect if wildcards were used (*, table.*)
-  // When wildcards are present, we need special handling to prevent columns
-  // from joined tables bleeding into the model (see function docs above)
   const hasWildcards = modelSelectedColumns.some((col) => col.includes("*"));
 
-  // Process selected columns from database convention to model convention
-  // This normalizes various input formats (table.column, column as alias, etc.)
+  // Process selected columns from user input to normalized model property names.
+  // This runs once per batch, not per row.
   const processedSelectedColumns: string[] = [];
   for (const databaseColumn of modelSelectedColumns) {
     // Handle aliased columns: "column as alias" -> extract "alias"
@@ -214,7 +206,6 @@ export const serializeModel = async <T extends Model>(
     if (lowerColumn.includes(" as ")) {
       const aliasMatch = databaseColumn.match(/\s+as\s+(.+)$/i);
       if (aliasMatch) {
-        // Preserve alias as-is without case conversion
         processedSelectedColumns.push(aliasMatch[1].trim());
       }
       continue;
@@ -227,32 +218,31 @@ export const serializeModel = async <T extends Model>(
       processedColumn = processedColumn.split(".").pop() as string;
     }
 
-    // Skip wildcards (they're tracked separately via hasWildcards flag)
-    if (processedColumn === "*") {
-      continue;
-    }
+    // Skip wildcards (tracked separately via hasWildcards flag)
+    if (processedColumn === "*") continue;
 
     // Use model column name if known, otherwise preserve as-is
     const columnName =
-      modelColumnsMap.get(processedColumn)?.columnName ?? processedColumn;
+      columnsByName.get(processedColumn)?.columnName ?? processedColumn;
     processedSelectedColumns.push(columnName);
   }
-  modelSelectedColumns = processedSelectedColumns;
 
-  // Serialize each model in parallel for better performance
+  // Pre-compute the selected columns Set once — shared across all rows in this batch
+  const modelSelectedColumnsSet = processedSelectedColumns.length
+    ? new Set<string>(processedSelectedColumns)
+    : null;
+
   const serializedModels = await Promise.all(
-    models.map(async (model) => {
-      const serializedModel = await parseDatabaseDataIntoModelResponse(
+    models.map((model) =>
+      parseDatabaseDataIntoModelResponse(
         model,
         typeofModel,
-        modelColumns,
-        modelColumnsMap,
-        modelSelectedColumns,
+        columnsByName,
+        columnsByDbName,
+        modelSelectedColumnsSet,
         hasWildcards,
-      );
-
-      return serializedModel;
-    }),
+      ),
+    ),
   );
 
   return serializedModels.length === 1 ? serializedModels[0] : serializedModels;

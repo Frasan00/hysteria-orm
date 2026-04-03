@@ -10,7 +10,7 @@ export const UserWithBigint = defineModel("users_with_bigint", {
     id: col.integer({ primaryKey: true }),
     name: col.string(),
     email: col.string(),
-    password: col.string({ hidden: true }),
+    password: col.string(),
     status: col.string(),
     age: col.integer(),
     salary: col.integer(),

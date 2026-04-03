@@ -26,6 +26,8 @@ export abstract class FooterQueryBuilder<
   protected modelColumnsMap: Map<string, ColumnType>;
   protected logs: boolean | LoggerConfig;
 
+  private static readonly EMPTY_MAP: Map<string, ColumnType> = new Map();
+
   protected constructor(model: typeof Model, sqlDataSource: SqlDataSource) {
     this.model = model;
     this.sqlDataSource = sqlDataSource;
@@ -34,15 +36,22 @@ export abstract class FooterQueryBuilder<
     this.limitNode = null;
     this.offsetNode = null;
     this.logs = this.sqlDataSource.logs;
-    const getColumnsFn = this.model?.getColumns;
-    this.modelColumns =
-      typeof getColumnsFn === "function" ? getColumnsFn.call(this.model) : [];
-    this.modelColumnsMap = new Map(
-      this.modelColumns.map((modelColumn) => [
-        modelColumn.columnName,
-        modelColumn,
-      ]),
-    );
+    if (typeof model.getColumns === "function") {
+      this.modelColumns = model.getColumns();
+      // Use the cached Map from the Model class — no re-allocation per instance
+      this.modelColumnsMap =
+        model.getColumnsByName?.() ??
+        new Map(
+          this.modelColumns.map((modelColumn) => [
+            modelColumn.columnName,
+            modelColumn,
+          ]),
+        );
+    } else {
+      // Raw model (plain object from getRawQueryBuilderModel) — no column metadata
+      this.modelColumns = [];
+      this.modelColumnsMap = FooterQueryBuilder.EMPTY_MAP;
+    }
   }
 
   /**

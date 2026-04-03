@@ -25,7 +25,10 @@ export class PgDriver extends Driver {
       throw new DriverNotFoundError("pg");
     });
 
-    this.pgClient = (pgModule as { default?: PgImport }).default ?? pgModule;
+    if ("default" in pgModule) {
+      pgModule.default;
+      this.pgClient = pgModule.default ?? pgModule;
+    }
 
     if (!this.pgClient) {
       throw new DriverNotFoundError("pg");

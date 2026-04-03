@@ -190,7 +190,7 @@ const generateColumnProperties = (
   const properties: Record<string, OpenApiModelPropertyType> = {};
 
   for (const column of columns) {
-    if (column.hidden) {
+    if (column.openApi?.excludeFromSwagger) {
       continue;
     }
 
