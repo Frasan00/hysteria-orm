@@ -1005,18 +1005,6 @@ function timestampColumn(
 
 /**
  * @description Decorator to define a TIME_ONLY column in the model (HH:mm:ss)
- * @description This will automatically convert the date to TIME_ONLY format
- * @description Handles timezone conversion between UTC and local time
- * @description Can automatically update/create timestamps
- * @param options Configuration options for the time column
- * @param options.timezone The timezone to use ('UTC' or 'LOCAL')
- * @param options.autoUpdate Whether to automatically update the time on record updates
- * @param options.autoCreate Whether to automatically set the time on record creation
- * @param options.prepare Optional custom prepare function that receives the pre-handled value
- * @param options.serialize Optional custom serialize function that receives the pre-handled value
- */
-/**
- * @description Decorator to define a TIME_ONLY column in the model (HH:mm:ss)
  * @description In Date mode (default): values are passed as Date objects to the driver and serialized as Date objects
  * @description In String mode: values are passed as strings untouched to the driver and serialized as strings
  * @param options Configuration options for the time column

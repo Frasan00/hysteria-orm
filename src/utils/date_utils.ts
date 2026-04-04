@@ -61,8 +61,6 @@ export const getDate = (
 
 export const parseDate = (
   value: string | Date | null,
-  _format?: string,
-  _timezone: Timezone = "UTC",
 ): Date | null => {
   if (value === null) {
     return null;
