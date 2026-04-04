@@ -17,6 +17,7 @@ import {
 import { SqlDataSource } from "../../sql_data_source";
 import type { SqlDataSourceModel } from "../../sql_data_source_types";
 import { MigrationOperationGenerator } from "./migration_operation_generator";
+import { MigrationCodeGenerator } from "./migration_code_generator";
 import {
   ExecutionPhase,
   GenerateTableDiffReturnType,
@@ -549,6 +550,17 @@ export class SchemaDiff {
       }
       return !this.emptyStatements.some((pattern) => pattern.test(trimmed));
     });
+  }
+
+  /**
+   * Gets TypeScript code statements using the schema builder API.
+   * Returns { up, down } arrays of code lines for the migration template.
+   */
+  getCodeStatements(): { up: string[]; down: string[] } {
+    const operationGenerator = new MigrationOperationGenerator(this.sql);
+    const operations = operationGenerator.generateOperations(this.data);
+    const codeGenerator = new MigrationCodeGenerator(this.sql);
+    return codeGenerator.generateCode(operations);
   }
 
   /**

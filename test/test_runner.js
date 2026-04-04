@@ -26,6 +26,7 @@ const VALID_DB_TYPES = Object.keys(ALL_SQL_ENVIRONMENTS);
 
 const SQL_TESTS = [
   // schema diff (migration generation)
+  "./test/sql/schema_diff/schema_diff_code_gen.test.ts",
   "./test/sql/schema_diff/schema_diff_edge_cases.test.ts",
   "./test/sql/schema_diff/schema_diff.test.ts",
 

@@ -649,6 +649,11 @@ program
   )
   .option("-m, --migration-path [path]", "Path to the migrations", undefined)
   .option("-n, --name [name]", "Name of the migration", undefined)
+  .option(
+    "-o, --output [mode]",
+    "Output mode: 'code' generates schema builder calls, 'raw' generates raw SQL (default: code)",
+    "code",
+  )
   .action(
     async (option?: {
       tsconfigPath: string;
@@ -657,6 +662,7 @@ program
       javascript: boolean;
       name: string;
       dry?: boolean;
+      output?: string;
     }) => {
       if (!option?.datasource) {
         logger.error("SqlDataSource file path is required (-d|--datasource)");
@@ -692,37 +698,80 @@ program
 
       try {
         const diff = await SchemaDiff.makeDiff(sqlDs);
-        const sqlStatements = diff.getSqlStatements();
-        if (!sqlStatements.length) {
-          logger.info(
-            `No new changes detected between database schema and models metadata`,
-          );
-          process.exit(0);
-        }
+        const outputMode = option.output === "raw" ? "raw" : "code";
 
-        if (option.dry) {
-          for (const sql of sqlStatements) {
-            console.log(sql);
+        if (outputMode === "code") {
+          const codeStatements = diff.getCodeStatements();
+          if (!codeStatements.up.length) {
+            logger.info(
+              `No new changes detected between database schema and models metadata`,
+            );
+            process.exit(0);
           }
 
-          process.exit(0);
+          if (option.dry) {
+            console.log("// up()");
+            for (const line of codeStatements.up) {
+              console.log(line);
+            }
+            console.log("\n// down()");
+            for (const line of codeStatements.down) {
+              console.log(line);
+            }
+            process.exit(0);
+          }
+
+          if (!fs.existsSync(migrationPath)) {
+            fs.mkdirSync(migrationPath, { recursive: true });
+          }
+
+          const template = await GenerateMigrationTemplate.generate(
+            codeStatements,
+            "code",
+          );
+
+          const extension = option?.javascript ? ".js" : ".ts";
+          fs.writeFileSync(
+            `${migrationPath}/${option?.name}${extension}`,
+            template,
+          );
+          logger.info(
+            `Migration file created successfully: ${option?.name}${extension}`,
+          );
+        } else {
+          const sqlStatements = diff.getSqlStatements();
+          if (!sqlStatements.length) {
+            logger.info(
+              `No new changes detected between database schema and models metadata`,
+            );
+            process.exit(0);
+          }
+
+          if (option.dry) {
+            for (const sql of sqlStatements) {
+              console.log(sql);
+            }
+            process.exit(0);
+          }
+
+          if (!fs.existsSync(migrationPath)) {
+            fs.mkdirSync(migrationPath, { recursive: true });
+          }
+
+          const template = await GenerateMigrationTemplate.generate(
+            sqlStatements,
+            "raw",
+          );
+
+          const extension = option?.javascript ? ".js" : ".ts";
+          fs.writeFileSync(
+            `${migrationPath}/${option?.name}${extension}`,
+            template,
+          );
+          logger.info(
+            `Migration file created successfully: ${option?.name}${extension}`,
+          );
         }
-
-        if (!fs.existsSync(migrationPath)) {
-          fs.mkdirSync(migrationPath, { recursive: true });
-        }
-
-        const template =
-          await GenerateMigrationTemplate.generate(sqlStatements);
-
-        const extension = option?.javascript ? ".js" : ".ts";
-        fs.writeFileSync(
-          `${migrationPath}/${option?.name}${extension}`,
-          template,
-        );
-        logger.info(
-          `Migration file created successfully: ${option?.name}${extension}`,
-        );
 
         await sqlDs.disconnect();
         process.exit(0);
