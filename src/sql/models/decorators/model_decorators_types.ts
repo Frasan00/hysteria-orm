@@ -145,7 +145,7 @@ export type DateColumnOptions = {
    * @default false
    */
   autoCreate?: boolean;
-} & ColumnOptions;
+} & Omit<ColumnOptions, "serialize" | "prepare">;
 
 /**
  * @description Options for @column.datetime and @column.timestamp decorators.

@@ -97,7 +97,6 @@
   },
   "dependencies": {
     "commander": "^14.0.3",
-    "dayjs": "^1.11.19",
     "sql-formatter": "^15.7.2",
     "sql-highlight": "^6.1.0"
   },
