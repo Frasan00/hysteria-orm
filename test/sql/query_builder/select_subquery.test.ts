@@ -548,9 +548,9 @@ describe(`[${env.DB_TYPE}] Select subquery edge cases`, () => {
     const user = await sql
       .from("users_without_pk")
       .select("name")
-      .select<number>((subQuery) => {
+      .select((subQuery) => {
         subQuery
-          .selectRaw<{ ageRangeCount: number }>("COUNT(*) as ageRangeCount")
+          .selectRaw("COUNT(*) as ageRangeCount")
           .table("users_without_pk as u2")
           .where("u2.age", ">", 20)
           .where("u2.age", "<", 40);

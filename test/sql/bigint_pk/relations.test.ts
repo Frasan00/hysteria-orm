@@ -503,6 +503,285 @@ describe(`[${env.DB_TYPE}] bigint pk relations with limit and offset many to man
   });
 });
 
+describe(`[${env.DB_TYPE}] bigint pk relation edge cases`, () => {
+  if (env.DB_TYPE === "cockroachdb") {
+    test.skip("skipped on cockroachdb", () => {});
+    return;
+  }
+
+  // ── Column selection edge cases ──────────────────────────────────────────
+
+  test("bigint wildcard select(*) returns all columns on relation", async () => {
+    const user = await UserFactory.userWithBigint(sql, 1);
+    await PostFactory.postWithBigint(sql, user.id, 1);
+
+    const result = await sql
+      .from(UserWithBigint)
+      .where("id", user.id)
+      .load("post", (qb) => qb.select("*"))
+      .one();
+
+    expect(result?.post).not.toBeNull();
+    expect(result?.post?.id).toBeDefined();
+    expect(result?.post?.title).toBeDefined();
+    expect(result?.post?.userId).toBeDefined();
+  });
+
+  test("bigint table.* wildcard select returns all columns on relation", async () => {
+    const user = await UserFactory.userWithBigint(sql, 1);
+    await PostFactory.postWithBigint(sql, user.id, 1);
+
+    const result = await sql
+      .from(UserWithBigint)
+      .where("id", user.id)
+      .load("post", (qb) => qb.select("posts_with_bigint.*"))
+      .one();
+
+    expect(result?.post).not.toBeNull();
+    expect(result?.post?.id).toBeDefined();
+    expect(result?.post?.title).toBeDefined();
+    expect(result?.post?.userId).toBeDefined();
+  });
+
+  test("bigint table.column format select works on relation", async () => {
+    const user = await UserFactory.userWithBigint(sql, 1);
+    const post = await PostFactory.postWithBigint(sql, user.id, 1);
+
+    const result = await sql
+      .from(UserWithBigint)
+      .where("id", user.id)
+      .load("post", (qb) =>
+        qb.select("posts_with_bigint.userId", "posts_with_bigint.title"),
+      )
+      .one();
+
+    expect(result?.post?.userId).toBe(user.id);
+    expect(result?.post?.title).toBe((post as any).title);
+  });
+
+  test("bigint alias tuple select gives aliased keys on relation", async () => {
+    const user = await UserFactory.userWithBigint(sql, 1);
+    const post = await PostFactory.postWithBigint(sql, user.id, 1);
+
+    const result = await sql
+      .from(UserWithBigint)
+      .where("id", user.id)
+      .load("post", (qb) => qb.select("userId", ["title", "postTitle"] as any))
+      .one();
+
+    expect((result?.post as any)?.postTitle).toBe((post as any).title);
+    expect(result?.post?.userId).toBe(user.id);
+  });
+
+  test("bigint type narrowing with select: only selected keys present", async () => {
+    const user = await UserFactory.userWithBigint(sql, 1);
+    await PostFactory.postWithBigint(sql, user.id, 1);
+
+    const result = await sql
+      .from(UserWithBigint)
+      .where("id", user.id)
+      .load("post", (qb) => qb.select("id", "userId"))
+      .one();
+
+    expect(result?.post?.id).toBeDefined();
+    expect(result?.post?.userId).toBe(user.id);
+    expect(Object.prototype.hasOwnProperty.call(result?.post, "title")).toBe(
+      false,
+    );
+  });
+
+  test("bigint hasMany column selection with select", async () => {
+    const user = await UserFactory.userWithBigint(sql, 1);
+    await PostFactory.postWithBigint(sql, user.id, 3);
+
+    const result = await sql
+      .from(UserWithBigint)
+      .where("id", user.id)
+      .load("posts", (qb) => qb.select("id", "userId", "title"))
+      .one();
+
+    expect(result?.posts).toHaveLength(3);
+    for (const post of result?.posts ?? []) {
+      expect(post.id).toBeDefined();
+      expect(post.userId).toBe(user.id);
+      expect(post.title).toBeDefined();
+      expect(Object.prototype.hasOwnProperty.call(post, "content")).toBe(false);
+    }
+  });
+
+  test("bigint manyToMany column selection with select", async () => {
+    const user = await UserFactory.userWithBigint(sql, 1);
+    const addresses = await AddressFactory.addressWithBigint(sql, 3);
+    for (const address of addresses) {
+      await UserAddressFactory.userAddressWithBigint(
+        sql,
+        1,
+        user.id,
+        address.id,
+      );
+    }
+
+    const result = await sql
+      .from(UserWithBigint)
+      .where("id", user.id)
+      .load("addresses", (qb) => qb.select("id", "city"))
+      .one();
+
+    expect(result?.addresses).toHaveLength(3);
+    for (const address of result?.addresses ?? []) {
+      expect(address.id).toBeDefined();
+      expect(address.city).toBeDefined();
+      expect(Object.prototype.hasOwnProperty.call(address, "street")).toBe(
+        false,
+      );
+    }
+  });
+
+  // ── Standalone belongsTo ─────────────────────────────────────────────────
+
+  test("bigint standalone belongsTo loads the parent user", async () => {
+    const user = await UserFactory.userWithBigint(sql, 1);
+    await PostFactory.postWithBigint(sql, user.id, 3);
+
+    const posts = await sql
+      .from(PostWithBigint)
+      .where("userId", user.id)
+      .load("user")
+      .many();
+
+    expect(posts.length).toBeGreaterThan(0);
+    for (const post of posts) {
+      expect(post.user?.id).toBe(user.id);
+    }
+  });
+
+  // ── All parents have no related records ─────────────────────────────────
+
+  test("bigint hasMany returns empty array when no related records exist", async () => {
+    const users = await UserFactory.userWithBigint(sql, 3);
+
+    const result = await sql
+      .from(UserWithBigint)
+      .whereIn(
+        "id",
+        users.map((u) => u.id),
+      )
+      .load("posts")
+      .many();
+
+    expect(result).toHaveLength(3);
+    for (const user of result) {
+      expect(user.posts).toEqual([]);
+    }
+  });
+
+  test("bigint hasOne returns null when no related record exists", async () => {
+    const users = await UserFactory.userWithBigint(sql, 3);
+
+    const result = await sql
+      .from(UserWithBigint)
+      .whereIn(
+        "id",
+        users.map((u) => u.id),
+      )
+      .load("post")
+      .many();
+
+    expect(result).toHaveLength(3);
+    for (const user of result) {
+      expect(user.post).toBeNull();
+    }
+  });
+
+  test("bigint manyToMany returns empty array when no relations exist", async () => {
+    const users = await UserFactory.userWithBigint(sql, 2);
+
+    const result = await sql
+      .from(UserWithBigint)
+      .whereIn(
+        "id",
+        users.map((u) => u.id),
+      )
+      .load("addresses")
+      .many();
+
+    expect(result).toHaveLength(2);
+    for (const user of result) {
+      expect(user.addresses).toEqual([]);
+    }
+  });
+
+  // ── Multiple loads on same query ─────────────────────────────────────────
+
+  test("bigint multiple loads on same query return all relations", async () => {
+    const user = await UserFactory.userWithBigint(sql, 1);
+    await PostFactory.postWithBigint(sql, user.id, 2);
+    const addresses = await AddressFactory.addressWithBigint(sql, 3);
+    for (const address of addresses) {
+      await UserAddressFactory.userAddressWithBigint(
+        sql,
+        1,
+        user.id,
+        address.id,
+      );
+    }
+
+    const result = await sql
+      .from(UserWithBigint)
+      .where("id", user.id)
+      .load("posts")
+      .load("addresses")
+      .one();
+
+    expect(result?.posts).toHaveLength(2);
+    expect(result?.addresses).toHaveLength(3);
+  });
+
+  // ── OrderBy on relation ──────────────────────────────────────────────────
+
+  test("bigint orderBy on relation returns posts in correct order", async () => {
+    const user = await UserFactory.userWithBigint(sql, 1);
+    for (let i = 0; i < 3; i++) {
+      await PostFactory.postWithBigint(sql, user.id, 1);
+    }
+
+    const result = await sql
+      .from(UserWithBigint)
+      .where("id", user.id)
+      .load("posts", (qb) => qb.orderBy("posts_with_bigint.id", "desc"))
+      .one();
+
+    expect(result?.posts).toHaveLength(3);
+    const ids = result?.posts.map((p) => p.id as number) ?? [];
+    expect(ids[0]).toBeGreaterThan(ids[1]);
+    expect(ids[1]).toBeGreaterThan(ids[2]);
+  });
+
+  // ── OrWhere on relation ──────────────────────────────────────────────────
+
+  test("bigint orWhere on relation filters correctly", async () => {
+    const user = await UserFactory.userWithBigint(sql, 1);
+    const post1 = await PostFactory.postWithBigint(sql, user.id, 1);
+    const post2 = await PostFactory.postWithBigint(sql, user.id, 1);
+    await PostFactory.postWithBigint(sql, user.id, 1);
+
+    const result = await sql
+      .from(UserWithBigint)
+      .where("id", user.id)
+      .load("posts", (qb) =>
+        qb
+          .where("title", (post1 as any).title)
+          .orWhere("title", (post2 as any).title),
+      )
+      .one();
+
+    expect(result?.posts).toHaveLength(2);
+    const titles = result?.posts.map((p) => p.title);
+    expect(titles).toContain((post1 as any).title);
+    expect(titles).toContain((post2 as any).title);
+  });
+});
+
 describe(`[${env.DB_TYPE}] bigint pk sync many to many`, () => {
   test("bigint sync many to many", async () => {
     const user = await UserFactory.userWithBigint(sql, 1);

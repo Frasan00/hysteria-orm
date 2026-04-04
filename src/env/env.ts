@@ -25,6 +25,10 @@ const envBase: Env = {
 };
 
 const fillEnvWithDatabaseEnvs = (): Env => {
+  if (!fs.existsSync(".env")) {
+    return envBase;
+  }
+
   try {
     const envs = fs.readFileSync(".env", "utf8");
     const envVars = envs.split("\n");

@@ -57,6 +57,9 @@ CHANGELOG.md
 KNOWN_ISSUES.MD
 CLAUDE.md
 
+# Benchmark
+benchmark/
+
 # Misc
 .npmignore
 .DS_Store

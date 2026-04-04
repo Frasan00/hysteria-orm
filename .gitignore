@@ -149,6 +149,10 @@ stop.sh
 roll_and_run_migrations.sh
 lib
 tmp
+
+# Benchmark artifacts
+benchmark/results/
+benchmark/adapters/prisma/generated/
 docker
 dist
 buildcache

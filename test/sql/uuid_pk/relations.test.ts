@@ -779,6 +779,154 @@ describe(`[${env.DB_TYPE}] uuid pk relations with limit and offset many to many`
   });
 });
 
+describe(`[${env.DB_TYPE}] uuid pk relation edge cases`, () => {
+  // ── Standalone belongsTo ─────────────────────────────────────────────────
+
+  test("uuid standalone belongsTo loads the parent user", async () => {
+    const user = await UserFactory.userWithUuid(sql, 1);
+    await PostFactory.postWithUuid(sql, user.id, 3);
+
+    const posts = await sql
+      .from(PostWithUuid)
+      .where("userId", user.id)
+      .load("user")
+      .many();
+
+    expect(posts.length).toBeGreaterThan(0);
+    for (const post of posts) {
+      expect(post.user?.id).toBe(user.id);
+    }
+  });
+
+  // ── All parents have no related records ─────────────────────────────────
+
+  test("uuid hasMany returns empty array when no related records exist", async () => {
+    const users = await UserFactory.userWithUuid(sql, 3);
+
+    const result = await sql
+      .from(UserWithUuid)
+      .whereIn(
+        "id",
+        users.map((u) => u.id),
+      )
+      .load("posts")
+      .many();
+
+    expect(result).toHaveLength(3);
+    for (const user of result) {
+      expect(user.posts).toEqual([]);
+    }
+  });
+
+  test("uuid hasOne returns null when no related record exists", async () => {
+    const users = await UserFactory.userWithUuid(sql, 3);
+
+    const result = await sql
+      .from(UserWithUuid)
+      .whereIn(
+        "id",
+        users.map((u) => u.id),
+      )
+      .load("post")
+      .many();
+
+    expect(result).toHaveLength(3);
+    for (const user of result) {
+      expect(user.post).toBeNull();
+    }
+  });
+
+  test("uuid manyToMany returns empty array when no relations exist", async () => {
+    const users = await UserFactory.userWithUuid(sql, 2);
+
+    const result = await sql
+      .from(UserWithUuid)
+      .whereIn(
+        "id",
+        users.map((u) => u.id),
+      )
+      .load("addresses")
+      .many();
+
+    expect(result).toHaveLength(2);
+    for (const user of result) {
+      expect(user.addresses).toEqual([]);
+    }
+  });
+
+  // ── Multiple loads on same query ─────────────────────────────────────────
+
+  test("uuid multiple loads on same query return all relations", async () => {
+    const user = await UserFactory.userWithUuid(sql, 1);
+    await PostFactory.postWithUuid(sql, user.id, 2);
+    const addresses = await AddressFactory.addressWithUuid(sql, 3);
+
+    await sql.from(UserWithUuid).sync("addresses", user, addresses, () => ({
+      id: crypto.randomUUID(),
+    }));
+
+    const result = await sql
+      .from(UserWithUuid)
+      .where("id", user.id)
+      .load("posts")
+      .load("addresses")
+      .one();
+
+    expect(result?.posts).toHaveLength(2);
+    expect(result?.addresses).toHaveLength(3);
+  });
+
+  // ── OrderBy + where combined ─────────────────────────────────────────────
+
+  test("uuid orderBy + where combined on relation", async () => {
+    const user = await UserFactory.userWithUuid(sql, 1);
+    const post1 = await PostFactory.postWithUuid(sql, user.id, 1);
+    const post2 = await PostFactory.postWithUuid(sql, user.id, 1);
+    const post3 = await PostFactory.postWithUuid(sql, user.id, 1);
+
+    const result = await sql
+      .from(UserWithUuid)
+      .where("id", user.id)
+      .load("posts", (qb) =>
+        qb
+          .where("title", (post1 as any).title)
+          .orWhere("title", (post3 as any).title)
+          .orderBy("posts_with_uuid.id", "asc"),
+      )
+      .one();
+
+    expect(result?.posts).toHaveLength(2);
+    const titles = result?.posts.map((p) => (p as any).title);
+    expect(titles).toContain((post1 as any).title);
+    expect(titles).toContain((post3 as any).title);
+    expect(titles).not.toContain((post2 as any).title);
+  });
+
+  // ── OrWhere on relation ──────────────────────────────────────────────────
+
+  test("uuid orWhere on relation filters correctly", async () => {
+    const user = await UserFactory.userWithUuid(sql, 1);
+    const post1 = await PostFactory.postWithUuid(sql, user.id, 1);
+    const post2 = await PostFactory.postWithUuid(sql, user.id, 1);
+    await PostFactory.postWithUuid(sql, user.id, 1);
+
+    const result = await sql
+      .from(UserWithUuid)
+      .where("id", user.id)
+      .load("posts", (qb) =>
+        qb
+          .where("title", (post1 as any).title)
+          .orWhere("title", (post2 as any).title),
+      )
+      .one();
+
+    expect(result?.posts).toHaveLength(2);
+    const titles = result?.posts.map((p) => (p as any).title);
+    expect(titles).toContain((post1 as any).title);
+    expect(titles).toContain((post2 as any).title);
+  });
+});
+
 describe(`[${env.DB_TYPE}] uuid pk sync many to many`, () => {
   test("uuid sync many to many", async () => {
     const user = await UserFactory.userWithUuid(sql, 1);

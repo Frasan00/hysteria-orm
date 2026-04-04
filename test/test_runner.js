@@ -84,6 +84,7 @@ const SQL_TESTS = [
   "./test/sql/bigint_pk/relations.test.ts",
   "./test/sql/bigint_pk/crud.test.ts",
   "./test/sql/bigint_pk/join.test.ts",
+  "./test/sql/bigint_pk/relation_strategy.test.ts",
 
   // uuid
   "./test/sql/uuid_pk/relations.test.ts",

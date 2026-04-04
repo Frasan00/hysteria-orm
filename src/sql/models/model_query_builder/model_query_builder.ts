@@ -5,7 +5,13 @@ import { convertCase } from "../../../utils/case_utils";
 import type { CaseConvention } from "../../../utils/case_utils";
 import { JsonPathInput } from "../../../utils/json_path_utils";
 import { withPerformance } from "../../../utils/performance";
-import { BaseValues, BinaryOperatorType } from "../../ast/query/node/where";
+import {
+  BaseValues,
+  BinaryOperatorType,
+  WhereNode,
+} from "../../ast/query/node/where";
+import { WhereGroupNode } from "../../ast/query/node/where/where_group";
+import { WhereSubqueryNode } from "../../ast/query/node/where/where_subquery";
 import { InterpreterUtils } from "../../interpreter/interpreter_utils";
 import { Model } from "../../models/model";
 import { ModelManager } from "../../models/model_manager/model_manager";
@@ -61,10 +67,12 @@ import {
 } from "../model_types";
 import { ManyToMany } from "../relations/many_to_many";
 import { Relation, RelationEnum } from "../relations/relation";
+import { determineRelationStrategy } from "./relation_strategy";
 import type {
   ComposeBuildSelect,
   ComposeSelect,
   FetchHooks,
+  LoadOptions,
   ManyOptions,
   ModelSelectableInput,
   OneOptions,
@@ -87,6 +95,8 @@ export class ModelQueryBuilder<
   private modelColumnsDatabaseNames: Map<string, string>;
   protected limitValue?: number;
   protected offsetValue?: number;
+  /** Options for relation loading strategy */
+  protected loadOptions: LoadOptions = { strategy: "auto" };
 
   // @ts-expect-error
   override performance = {
@@ -206,7 +216,7 @@ export class ModelQueryBuilder<
     }
 
     if (this.relationQueryBuilders.length) {
-      await this.processRelationsRecursively(serializedModelsArray);
+      await this.processRelationsWithStrategy(serializedModelsArray);
     }
 
     return serializedModelsArray as unknown as SelectedModel<T, S, R>[];
@@ -1331,7 +1341,44 @@ export class ModelQueryBuilder<
    * @warning Foreign keys should always be selected in the relation query builder, otherwise the relation will not be filled.
    * @mssql HasMany relations with limit/offset and orderByRaw may fail with "Ambiguous column name" error - use fully qualified column names (e.g., `table.column`) in orderByRaw
    * @cockroachdb HasMany relations with limit/offset and orderByRaw may fail with "Ambiguous column name" error - use fully qualified column names (e.g., `table.column`) in orderByRaw
+   *
+   * @example
+   * // Load with default auto strategy
+   * sql.from(User).load('posts').one();
+   *
+   * @example
+   * // Load with query builder callback (auto strategy)
+   * sql.from(User).load('posts', qb => qb.where('published', true)).one();
+   *
+   * @example
+   * // Load with explicit options (no query builder)
+   * sql.from(User).load('posts', { strategy: 'join' }).one();
+   *
+   * @example
+   * // Load with query builder and explicit options
+   * sql.from(User).load('posts', qb => qb.where('published', true), { strategy: 'batched' }).one();
    */
+
+  // OVERLOAD 1: No options, no query builder (backward compatible)
+  load<RelationKey extends ModelRelation<T>>(
+    relation: RelationKey,
+  ): ModelQueryBuilder<
+    T,
+    S,
+    R & {
+      [K in RelationKey]: Awaited<
+        ReturnType<
+          ModelQueryBuilder<
+            RelatedInstance<T, K>,
+            ModelWithoutRelations<RelatedInstance<T, K>>,
+            {}
+          >[RelationRetrieveMethod<T[K]>]
+        >
+      >;
+    }
+  >;
+
+  // OVERLOAD 2a: Query builder that returns typed qb (enables nested relation types)
   load<
     RelationKey extends ModelRelation<T>,
     IS extends Record<string, any> = ModelWithoutRelations<
@@ -1340,7 +1387,7 @@ export class ModelQueryBuilder<
     IR extends Record<string, any> = {},
   >(
     relation: RelationKey,
-    cb: (
+    queryBuilder: (
       queryBuilder: RelationQueryBuilderType<
         RelatedInstance<T, RelationKey>,
         ModelWithoutRelations<RelatedInstance<T, RelationKey>>,
@@ -1362,9 +1409,11 @@ export class ModelQueryBuilder<
       >;
     }
   >;
+
+  // OVERLOAD 2b: Query builder that returns void (backward compatible)
   load<RelationKey extends ModelRelation<T>>(
     relation: RelationKey,
-    cb?: (
+    queryBuilder: (
       queryBuilder: RelationQueryBuilderType<
         RelatedInstance<T, RelationKey>,
         ModelWithoutRelations<RelatedInstance<T, RelationKey>>,
@@ -1386,6 +1435,28 @@ export class ModelQueryBuilder<
       >;
     }
   >;
+
+  // OVERLOAD 3: Options only (no query builder)
+  load<RelationKey extends ModelRelation<T>>(
+    relation: RelationKey,
+    options: LoadOptions,
+  ): ModelQueryBuilder<
+    T,
+    S,
+    R & {
+      [K in RelationKey]: Awaited<
+        ReturnType<
+          ModelQueryBuilder<
+            RelatedInstance<T, K>,
+            ModelWithoutRelations<RelatedInstance<T, K>>,
+            {}
+          >[RelationRetrieveMethod<T[K]>]
+        >
+      >;
+    }
+  >;
+
+  // OVERLOAD 4a: Query builder (typed return) + options
   load<
     RelationKey extends ModelRelation<T>,
     IS extends Record<string, any> = ModelWithoutRelations<
@@ -1394,17 +1465,14 @@ export class ModelQueryBuilder<
     IR extends Record<string, any> = {},
   >(
     relation: RelationKey,
-    cb?: (
+    queryBuilder: (
       queryBuilder: RelationQueryBuilderType<
         RelatedInstance<T, RelationKey>,
         ModelWithoutRelations<RelatedInstance<T, RelationKey>>,
         {}
       >,
-    ) => RelationQueryBuilderType<
-      RelatedInstance<T, RelationKey>,
-      IS,
-      IR
-    > | void,
+    ) => RelationQueryBuilderType<RelatedInstance<T, RelationKey>, IS, IR>,
+    options: LoadOptions,
   ): ModelQueryBuilder<
     T,
     S,
@@ -1419,7 +1487,87 @@ export class ModelQueryBuilder<
         >
       >;
     }
+  >;
+
+  // OVERLOAD 4b: Query builder (void return) + options
+  load<RelationKey extends ModelRelation<T>>(
+    relation: RelationKey,
+    queryBuilder: (
+      queryBuilder: RelationQueryBuilderType<
+        RelatedInstance<T, RelationKey>,
+        ModelWithoutRelations<RelatedInstance<T, RelationKey>>,
+        {}
+      >,
+    ) => void,
+    options: LoadOptions,
+  ): ModelQueryBuilder<
+    T,
+    S,
+    R & {
+      [K in RelationKey]: Awaited<
+        ReturnType<
+          ModelQueryBuilder<
+            RelatedInstance<T, K>,
+            ModelWithoutRelations<RelatedInstance<T, K>>,
+            {}
+          >[RelationRetrieveMethod<T[K]>]
+        >
+      >;
+    }
+  >;
+
+  load<RelationKey extends ModelRelation<T>>(
+    relation: RelationKey,
+    queryBuilderOrOptions?:
+      | ((
+          queryBuilder: RelationQueryBuilderType<
+            RelatedInstance<T, RelationKey>,
+            ModelWithoutRelations<RelatedInstance<T, RelationKey>>,
+            {}
+          >,
+        ) => void)
+      | LoadOptions,
+    options?: LoadOptions,
+  ): ModelQueryBuilder<
+    T,
+    S,
+    R & {
+      [K in RelationKey]: Awaited<
+        ReturnType<
+          ModelQueryBuilder<
+            RelatedInstance<T, K>,
+            ModelWithoutRelations<RelatedInstance<T, K>>,
+            {}
+          >[RelationRetrieveMethod<T[K]>]
+        >
+      >;
+    }
   > {
+    // Parse arguments based on type
+    let queryBuilder:
+      | ((
+          queryBuilder: RelationQueryBuilderType<
+            RelatedInstance<T, RelationKey>,
+            ModelWithoutRelations<RelatedInstance<T, RelationKey>>,
+            {}
+          >,
+        ) => void)
+      | undefined;
+    let loadOptions: LoadOptions = { strategy: "auto" };
+
+    if (typeof queryBuilderOrOptions === "function") {
+      queryBuilder = queryBuilderOrOptions;
+      if (options) {
+        loadOptions = options;
+      }
+    } else if (
+      queryBuilderOrOptions &&
+      typeof queryBuilderOrOptions === "object"
+    ) {
+      // Signature: load(relation, options)
+      loadOptions = queryBuilderOrOptions;
+    }
+
     const modelRelation =
       this.sqlModelManagerUtils.getRelationFromModel(relation);
 
@@ -1428,13 +1576,16 @@ export class ModelQueryBuilder<
     >(modelRelation.model, this.sqlDataSource);
 
     relationQueryBuilder.relation = modelRelation;
-    cb?.(
+    relationQueryBuilder.loadOptions = loadOptions;
+
+    queryBuilder?.(
       relationQueryBuilder as unknown as RelationQueryBuilderType<
         RelatedInstance<T, RelationKey>,
         ModelWithoutRelations<RelatedInstance<T, RelationKey>>,
         {}
       >,
     );
+
     this.relationQueryBuilders.push(relationQueryBuilder);
 
     return this as unknown as ModelQueryBuilder<
@@ -1445,8 +1596,8 @@ export class ModelQueryBuilder<
           ReturnType<
             ModelQueryBuilder<
               RelatedInstance<T, K>,
-              IS,
-              IR
+              ModelWithoutRelations<RelatedInstance<T, K>>,
+              {}
             >[RelationRetrieveMethod<T[K]>]
           >
         >;
@@ -1896,6 +2047,7 @@ export class ModelQueryBuilder<
 
   /**
    * @description Recursively processes all relations, including nested ones
+   * @deprecated Use processRelationsWithStrategy instead - this is the batched loading implementation
    */
   protected async processRelationsRecursively(models: T[]): Promise<void> {
     await Promise.all(
@@ -1916,6 +2068,406 @@ export class ModelQueryBuilder<
             relatedModels,
           );
         }),
+    );
+  }
+
+  /**
+   * @description Process relations using auto-detected or explicitly specified strategy
+   */
+  protected async processRelationsWithStrategy(models: T[]): Promise<void> {
+    const parentCount = models.length;
+
+    const activeRelations = this.relationQueryBuilders.filter(
+      (rqb) => rqb.isRelationQueryBuilder,
+    );
+
+    const processOne = async (
+      relationQueryBuilder: ModelQueryBuilder<any>,
+    ): Promise<void> => {
+      const strategy = determineRelationStrategy(
+        {
+          parentCount,
+          relationType: relationQueryBuilder.relation.type,
+          hasLimitOffset:
+            !!relationQueryBuilder.limitNode ||
+            !!relationQueryBuilder.offsetNode,
+          hasOrderBy: relationQueryBuilder.orderByNodes.length > 0,
+        },
+        relationQueryBuilder.loadOptions,
+      );
+
+      // Fall back to batched if the relation has nested loads (JOIN extracts
+      // plain objects without processing nested relation query builders)
+      const hasNestedLoads =
+        relationQueryBuilder.relationQueryBuilders.length > 0;
+
+      if (strategy === "join" && !hasNestedLoads) {
+        await this.loadRelationViaJoin(relationQueryBuilder, models);
+      } else {
+        await this.loadRelationViaBatch(relationQueryBuilder, models);
+      }
+    };
+
+    // MSSQL (tedious) does not allow concurrent requests on the same connection;
+    // all other drivers support parallel execution safely.
+    if (this.dbType === "mssql") {
+      for (const rqb of activeRelations) {
+        await processOne(rqb);
+      }
+
+      return;
+    }
+
+    // All other databases process sequentially
+    await Promise.all(activeRelations.map(processOne));
+  }
+
+  /**
+   * @description Load relation using JOIN strategy (single query)
+   */
+  protected async loadRelationViaJoin(
+    relationQueryBuilder: ModelQueryBuilder<any>,
+    parentModels: T[],
+  ): Promise<void> {
+    const relation = relationQueryBuilder.relation;
+    const separator = relationQueryBuilder.loadOptions.joinSeparator || "__";
+
+    // Clone the main query to build a JOIN query
+    const joinQb = this.buildJoinQuery(
+      relationQueryBuilder,
+      relation,
+      separator,
+    );
+
+    // Execute the JOIN query, skipping hooks since the parent's WHERE nodes
+    // already include hook-added conditions (e.g., beforeFetch soft-delete filters)
+    const joinedRows = await joinQb.many({
+      ignoreHooks: ["beforeFetch", "afterFetch"],
+    });
+
+    // Map the joined results back to parent models
+    this.mapJoinedResultsToModels(
+      joinedRows,
+      parentModels,
+      relation,
+      separator,
+    );
+  }
+
+  /**
+   * @description Build a JOIN query for the relation
+   */
+  private buildJoinQuery(
+    relationQueryBuilder: ModelQueryBuilder<any>,
+    relation: Relation,
+    separator: string,
+  ): ModelQueryBuilder<any> {
+    // Create a new query builder for the JOIN
+    const joinQb = new ModelQueryBuilder<any>(this.model, this.sqlDataSource);
+
+    // Use modelSelectedColumns to determine if user explicitly called .select()
+    // Note: this.selectNodes is unreliable here because extractQueryNodes()
+    // mutates it to [SelectNode('*')] during the parent query execution
+    if (this.modelSelectedColumns.length > 0) {
+      for (const selectNode of this.selectNodes) {
+        joinQb.selectNodes.push(deepCloneNode(selectNode));
+      }
+    } else {
+      // Explicitly select all parent columns with table prefix to prevent
+      // ambiguous column names when JOINing (e.g., both tables having 'id')
+      for (const [dbName] of this.model.getColumnsByDatabaseName()) {
+        joinQb.selectRaw(`${this.model.table}.${dbName}`);
+      }
+    }
+
+    // Add WHERE conditions from original query, table-qualifying unqualified columns
+    // to avoid ambiguous column references in JOIN context
+    for (const whereNode of this.whereNodes) {
+      const cloned = deepCloneNode(whereNode);
+      this.qualifyWhereNodeColumns(cloned, this.model.table);
+      joinQb.whereNodes.push(cloned);
+    }
+
+    // Add GROUP BY from original query
+    for (const groupByNode of this.groupByNodes) {
+      joinQb.groupByNodes.push(deepCloneNode(groupByNode));
+    }
+
+    // Add ORDER BY from original query
+    for (const orderByNode of this.orderByNodes) {
+      joinQb.orderByNodes.push(deepCloneNode(orderByNode));
+    }
+
+    // Copy LIMIT and OFFSET from original query only for single-result relations
+    // (hasOne, belongsTo). For hasMany/manyToMany, JOIN produces multiple rows per
+    // parent — applying LIMIT would truncate related rows, not limit parents.
+    if (
+      relation.type === RelationEnum.hasOne ||
+      relation.type === RelationEnum.belongsTo
+    ) {
+      if (this.limitNode) {
+        joinQb.limitNode = deepCloneNode(this.limitNode);
+      }
+      if (this.offsetNode) {
+        joinQb.offsetNode = deepCloneNode(this.offsetNode);
+      }
+    }
+
+    // Apply JOIN based on relation type
+    switch (relation.type) {
+      case RelationEnum.hasOne:
+      case RelationEnum.hasMany:
+        joinQb.leftJoin(
+          relation.model.table,
+          `${this.model.table}.${this.model.primaryKey}`,
+          `${relation.model.table}.${relation.foreignKey}`,
+        );
+        break;
+
+      case RelationEnum.belongsTo:
+        joinQb.leftJoin(
+          relation.model.table,
+          `${this.model.table}.${relation.foreignKey}`,
+          `${relation.model.table}.${relation.model.primaryKey}`,
+        );
+        break;
+
+      case RelationEnum.manyToMany: {
+        const m2m = relation as ManyToMany;
+        // First join: main table -> junction table
+        joinQb.leftJoin(
+          m2m.throughModel,
+          `${this.model.table}.${this.model.primaryKey}`,
+          `${m2m.throughModel}.${m2m.leftForeignKey}`,
+        );
+        // Second join: junction table -> target table
+        joinQb.leftJoin(
+          m2m.model.table,
+          `${m2m.throughModel}.${m2m.rightForeignKey}`,
+          `${m2m.model.table}.${m2m.model.primaryKey}`,
+        );
+        break;
+      }
+    }
+
+    // Select relation columns with alias prefix
+    this.selectRelationColumnsWithAlias(
+      joinQb,
+      relation,
+      relationQueryBuilder,
+      separator,
+    );
+
+    // Apply WHERE conditions from relation query builder
+    for (const whereNode of relationQueryBuilder.whereNodes) {
+      joinQb.whereNodes.push(deepCloneNode(whereNode));
+    }
+
+    // Apply ORDER BY from relation query builder
+    for (const orderByNode of relationQueryBuilder.orderByNodes) {
+      joinQb.orderByNodes.push(deepCloneNode(orderByNode));
+    }
+
+    return joinQb;
+  }
+
+  /**
+   * @description Select relation columns with alias to avoid column name collisions
+   */
+  private selectRelationColumnsWithAlias(
+    joinQb: ModelQueryBuilder<any>,
+    relation: Relation,
+    relationQueryBuilder: ModelQueryBuilder<any>,
+    separator: string,
+  ): void {
+    const alias = relation.columnName;
+    const relatedModel = relation.model;
+    const columnsByName = relatedModel.getColumnsByName();
+    const columnsByDbName = relatedModel.getColumnsByDatabaseName();
+
+    const relNodes = relationQueryBuilder.selectNodes.filter(
+      (n) => typeof n.column === "string",
+    ) as Array<{ column: string; alias?: string }>;
+
+    // Wildcards can't be aliased in SQL (table.* as alias__*).
+    // Treat them as "select everything" and expand to individual columns.
+    const hasWildcard = relNodes.some(
+      (n) => n.column === "*" || n.column.endsWith(".*"),
+    );
+
+    if (relNodes.length === 0 || hasWildcard) {
+      // Default: select all columns from the related model individually
+      for (const [dbName, colDef] of columnsByDbName) {
+        joinQb.selectRaw(
+          `${relatedModel.table}.${dbName} as ${alias}${separator}${colDef.columnName}`,
+        );
+      }
+    } else {
+      // Explicit column selection — resolve each node to its DB name and output alias
+      for (const node of relNodes) {
+        // Strip table prefix if present (e.g., "posts_with_uuid.user_id" → "user_id")
+        const rawCol = node.column;
+        const bareCol = rawCol.includes(".")
+          ? rawCol.split(".").pop()!
+          : rawCol;
+
+        const colDef =
+          columnsByDbName.get(bareCol) || columnsByName.get(bareCol);
+        const dbName = colDef?.databaseName ?? bareCol;
+        // Prefer user-provided alias, then JS property name, then the raw column string
+        const outputAlias = node.alias ?? colDef?.columnName ?? bareCol;
+        joinQb.selectRaw(
+          `${relatedModel.table}.${dbName} as ${alias}${separator}${outputAlias}`,
+        );
+      }
+    }
+  }
+
+  /**
+   * @description Map JOIN results back to parent models
+   */
+  private mapJoinedResultsToModels(
+    joinedRows: any[],
+    parentModels: T[],
+    relation: Relation,
+    separator: string,
+  ): void {
+    const { columnName, type } = relation;
+    const columnsByName = relation.model.getColumnsByName();
+
+    if (type === RelationEnum.hasMany || type === RelationEnum.manyToMany) {
+      // Group related rows by parent primary key
+      const groupedByParentPk = new Map<any, any[]>();
+
+      joinedRows.forEach((row) => {
+        const parentPk = row[this.model.primaryKey as string];
+        if (!groupedByParentPk.has(parentPk)) {
+          groupedByParentPk.set(parentPk, []);
+        }
+
+        // Extract relation data from aliased columns
+        const relationData = this.extractRelationDataFromRow(
+          row,
+          columnName,
+          separator,
+        );
+        if (relationData) {
+          this.serializeRelationData(relationData, columnsByName);
+          groupedByParentPk.get(parentPk)!.push(relationData);
+        }
+      });
+
+      // Assign to parent models
+      parentModels.forEach((model) => {
+        const pk = model[this.model.primaryKey as keyof T];
+        model[columnName as keyof T] = groupedByParentPk.get(pk) || ([] as any);
+      });
+    } else {
+      // hasOne or belongsTo: single object (use first match)
+      const byParentPk = new Map<any, any>();
+
+      joinedRows.forEach((row) => {
+        const parentPk = row[this.model.primaryKey as string];
+        if (!byParentPk.has(parentPk)) {
+          const relationData = this.extractRelationDataFromRow(
+            row,
+            columnName,
+            separator,
+          );
+          if (relationData) {
+            this.serializeRelationData(relationData, columnsByName);
+            byParentPk.set(parentPk, relationData);
+          }
+        }
+      });
+
+      parentModels.forEach((model) => {
+        const pk = model[this.model.primaryKey as keyof T];
+        model[columnName as keyof T] = byParentPk.get(pk) || null;
+      });
+    }
+  }
+
+  /**
+   * @description Extract relation data from a joined row using aliased column names
+   */
+  private extractRelationDataFromRow(
+    row: any,
+    relationName: string,
+    separator: string,
+  ): any | null {
+    const prefix = `${relationName}${separator}`;
+    const data: Record<string, any> = {};
+    let hasData = false;
+    let hasNonNullValue = false;
+
+    for (const key of Object.keys(row)) {
+      if (key.startsWith(prefix)) {
+        const column = key.substring(prefix.length);
+        data[column] = row[key];
+        hasData = true;
+        if (row[key] !== null && row[key] !== undefined) {
+          hasNonNullValue = true;
+        }
+      }
+    }
+
+    return hasData && hasNonNullValue ? data : null;
+  }
+
+  /**
+   * @description Recursively table-qualify unqualified column names in WHERE nodes
+   * to prevent ambiguous column references in JOIN queries
+   */
+  private qualifyWhereNodeColumns(node: any, tableName: string): void {
+    if (node instanceof WhereNode) {
+      if (!node.column.includes(".")) {
+        node.column = `${tableName}.${node.column}`;
+      }
+    } else if (node instanceof WhereSubqueryNode) {
+      if (!node.column.includes(".")) {
+        node.column = `${tableName}.${node.column}`;
+      }
+    } else if (node instanceof WhereGroupNode) {
+      for (const child of node.nodes) {
+        this.qualifyWhereNodeColumns(child, tableName);
+      }
+    }
+  }
+
+  /**
+   * @description Apply the related model's column serializers to extracted relation data.
+   * This ensures values have correct types (e.g., PG bigint strings → proper types).
+   */
+  private serializeRelationData(
+    data: Record<string, any>,
+    columnsByName: Map<string, ColumnType>,
+  ): void {
+    for (const key of Object.keys(data)) {
+      const colDef = columnsByName.get(key);
+      if (colDef?.serialize && data[key] !== null && data[key] !== undefined) {
+        data[key] = colDef.serialize(data[key]);
+      }
+    }
+  }
+
+  /**
+   * @description Load relation using batched strategy (multiple queries)
+   */
+  protected async loadRelationViaBatch(
+    relationQueryBuilder: ModelQueryBuilder<any>,
+    models: T[],
+  ): Promise<void> {
+    const relatedModels = await this.getRelatedModelsForRelation(
+      relationQueryBuilder,
+      relationQueryBuilder.relation,
+      models,
+    );
+
+    this.mapRelatedModelsToModels(
+      relationQueryBuilder.relation,
+      models,
+      relatedModels,
     );
   }
 

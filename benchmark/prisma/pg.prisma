@@ -1,0 +1,54 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../adapters/prisma/generated/pg"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model BenchUser {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(255)
+  email     String   @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  posts         BenchPost[]
+  userAddresses BenchUserAddress[]
+
+  @@map("bench_users")
+}
+
+model BenchPost {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  title     String   @db.VarChar(255)
+  content   String   @db.Text
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user BenchUser @relation(fields: [userId], references: [id])
+
+  @@map("bench_posts")
+}
+
+model BenchAddress {
+  id        Int      @id @default(autoincrement())
+  street    String   @db.VarChar(255)
+  city      String   @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  userAddresses BenchUserAddress[]
+
+  @@map("bench_addresses")
+}
+
+model BenchUserAddress {
+  id        Int @id @default(autoincrement())
+  userId    Int @map("user_id")
+  addressId Int @map("address_id")
+
+  user    BenchUser    @relation(fields: [userId], references: [id])
+  address BenchAddress @relation(fields: [addressId], references: [id])
+
+  @@map("bench_user_addresses")
+}

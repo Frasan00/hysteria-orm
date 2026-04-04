@@ -1,0 +1,38 @@
+DROP TABLE IF EXISTS bench_user_addresses CASCADE;
+DROP TABLE IF EXISTS bench_posts CASCADE;
+DROP TABLE IF EXISTS bench_addresses CASCADE;
+DROP TABLE IF EXISTS bench_users CASCADE;
+
+CREATE TABLE bench_users (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE bench_posts (
+  id SERIAL PRIMARY KEY,
+  user_id INT NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  content TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_bench_posts_user FOREIGN KEY (user_id)
+    REFERENCES bench_users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE bench_addresses (
+  id SERIAL PRIMARY KEY,
+  street VARCHAR(255) NOT NULL,
+  city VARCHAR(255) NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE bench_user_addresses (
+  id SERIAL PRIMARY KEY,
+  user_id INT NOT NULL,
+  address_id INT NOT NULL,
+  CONSTRAINT fk_bench_ua_user FOREIGN KEY (user_id)
+    REFERENCES bench_users(id) ON DELETE CASCADE,
+  CONSTRAINT fk_bench_ua_address FOREIGN KEY (address_id)
+    REFERENCES bench_addresses(id) ON DELETE CASCADE
+);

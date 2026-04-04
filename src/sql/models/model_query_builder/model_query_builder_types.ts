@@ -5,6 +5,46 @@ import { ModelDataProperties, ModelWithoutRelations } from "../model_types";
 import { Simplify } from "../../../utils/types";
 
 /**
+ * Strategy for loading relations
+ *
+ * @property 'auto' - Automatically choose based on query context (DEFAULT)
+ *   - Single parent (limit 1) → JOIN
+ *   - Small parent set (<10) → JOIN
+ *   - ManyToMany with small parent set → JOIN
+ *   - Large parent set or hasMany with limit/offset → BATCHED
+ *
+ * @property 'join' - Always use JOIN (single query)
+ *   - Faster for single/small parent sets
+ *   - May cause Cartesian product issues with large datasets
+ *   - ManyToMany uses nested JOINs
+ *   - Ignores beforeFetch/afterFetch hooks on the related model
+ *
+ * @property 'batched' - Always use batched queries (multiple queries)
+ *   - N+1 protection
+ *   - Better for large datasets
+ *   - Consistent performance
+ *   - Makes one query with a whereIn for all parent IDs and then dispatches results in memory
+ */
+export type RelationLoadStrategy = "auto" | "join" | "batched";
+
+/**
+ * Options for relation loading via the load() method
+ */
+export interface LoadOptions {
+  /**
+   * Relation loading strategy
+   * @default 'auto'
+   */
+  strategy?: RelationLoadStrategy;
+
+  /**
+   * Custom separator for JOIN column aliases to avoid name collisions
+   * @default '__'
+   */
+  joinSeparator?: string;
+}
+
+/**
  * Extracts the instance type from a Model class type.
  *
  * @example
