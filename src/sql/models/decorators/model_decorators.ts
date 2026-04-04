@@ -44,6 +44,7 @@ import type {
   ColumnDataTypeOptionWithScaleAndPrecision,
   ColumnOptions,
   ColumnType,
+  DateAutoHook,
   DateColumnOptions,
   DatetimeColumnOptions,
   IndexType,
@@ -775,33 +776,55 @@ function dateOnlyColumn(
 ): TypedPropertyDecorator<Date | string | null | undefined> {
   const {
     timezone = "UTC",
-    autoUpdate = false,
-    autoCreate = false,
+    autoUpdate: autoUpdateOpt = false,
+    autoCreate: autoCreateOpt = false,
     ...rest
   } = options;
+
+  const hasAutoCreate = !!autoCreateOpt;
+  const hasAutoUpdate = !!autoUpdateOpt;
+
+  const defaultCreateDate = () => new Date();
+  const defaultCreateString = () => getDate(new Date(), "DATE_ONLY", timezone);
+
+  const resolveAutoCreate = stringMode
+    ? typeof autoCreateOpt === "function"
+      ? (autoCreateOpt as () => string)
+      : defaultCreateString
+    : typeof autoCreateOpt === "function"
+      ? (autoCreateOpt as () => Date)
+      : defaultCreateDate;
+
+  const resolveAutoUpdate = stringMode
+    ? typeof autoUpdateOpt === "function"
+      ? (autoUpdateOpt as () => string)
+      : defaultCreateString
+    : typeof autoUpdateOpt === "function"
+      ? (autoUpdateOpt as () => Date)
+      : defaultCreateDate;
 
   const prepareFn = stringMode
     ? (value?: string | null): string | null | undefined => {
         if (!value) {
-          if (autoCreate) {
-            return getDate(new Date(), "DATE_ONLY", timezone);
+          if (hasAutoCreate) {
+            return resolveAutoCreate() as string;
           }
           return null;
         }
-        if (autoUpdate) {
-          return getDate(new Date(), "DATE_ONLY", timezone);
+        if (hasAutoUpdate) {
+          return resolveAutoUpdate() as string;
         }
         return value;
       }
     : (value?: Date | null): Date | string | null | undefined => {
         if (!value) {
-          if (autoCreate) {
-            return new Date();
+          if (hasAutoCreate) {
+            return resolveAutoCreate() as Date;
           }
           return null;
         }
-        if (autoUpdate) {
-          return new Date();
+        if (hasAutoUpdate) {
+          return resolveAutoUpdate() as Date;
         }
         return value;
       };
@@ -825,7 +848,7 @@ function dateOnlyColumn(
   return column({
     type: "date",
     ...(rest as ColumnOptions),
-    autoUpdate,
+    autoUpdate: hasAutoUpdate,
     prepare: prepareFn as (value: any) => any,
     serialize: serializeFn as (value: any) => any,
     openApi: {
@@ -854,36 +877,59 @@ function datetimeColumn(
   const {
     timezone,
     withTimezone,
-    autoUpdate = false,
-    autoCreate = false,
+    autoUpdate: autoUpdateOpt = false,
+    autoCreate: autoCreateOpt = false,
     ...rest
   } = options;
   const effectiveTimezone = timezone ?? "UTC";
   const effectiveWithTimezone =
     withTimezone ?? (timezone !== undefined ? true : false);
 
+  const hasAutoCreate = !!autoCreateOpt;
+  const hasAutoUpdate = !!autoUpdateOpt;
+
+  const defaultCreateDate = () => new Date();
+  const defaultCreateString = () =>
+    getDate(new Date(), "ISO", effectiveTimezone);
+
+  const resolveAutoCreate = stringMode
+    ? typeof autoCreateOpt === "function"
+      ? (autoCreateOpt as () => string)
+      : defaultCreateString
+    : typeof autoCreateOpt === "function"
+      ? (autoCreateOpt as () => Date)
+      : defaultCreateDate;
+
+  const resolveAutoUpdate = stringMode
+    ? typeof autoUpdateOpt === "function"
+      ? (autoUpdateOpt as () => string)
+      : defaultCreateString
+    : typeof autoUpdateOpt === "function"
+      ? (autoUpdateOpt as () => Date)
+      : defaultCreateDate;
+
   const prepareFn = stringMode
     ? (value?: string | null): string | null | undefined => {
         if (!value) {
-          if (autoCreate) {
-            return getDate(new Date(), "ISO", effectiveTimezone);
+          if (hasAutoCreate) {
+            return resolveAutoCreate() as string;
           }
           return null;
         }
-        if (autoUpdate) {
-          return getDate(new Date(), "ISO", effectiveTimezone);
+        if (hasAutoUpdate) {
+          return resolveAutoUpdate() as string;
         }
         return value;
       }
     : (value?: Date | null): Date | string | null | undefined => {
         if (!value) {
-          if (autoCreate) {
-            return new Date();
+          if (hasAutoCreate) {
+            return resolveAutoCreate() as Date;
           }
           return null;
         }
-        if (autoUpdate) {
-          return new Date();
+        if (hasAutoUpdate) {
+          return resolveAutoUpdate() as Date;
         }
         return value;
       };
@@ -908,7 +954,7 @@ function datetimeColumn(
     type: "datetime",
     ...(rest as ColumnOptions),
     withTimezone: effectiveWithTimezone,
-    autoUpdate,
+    autoUpdate: hasAutoUpdate,
     prepare: prepareFn as (value: any) => any,
     serialize: serializeFn as (value: any) => any,
     openApi: {
@@ -937,36 +983,59 @@ function timestampColumn(
   const {
     timezone,
     withTimezone,
-    autoUpdate = false,
-    autoCreate = false,
+    autoUpdate: autoUpdateOpt = false,
+    autoCreate: autoCreateOpt = false,
     ...rest
   } = options;
   const effectiveTimezone = timezone ?? "UTC";
   const effectiveWithTimezone =
     withTimezone ?? (timezone !== undefined ? true : false);
 
+  const hasAutoCreate = !!autoCreateOpt;
+  const hasAutoUpdate = !!autoUpdateOpt;
+
+  const defaultCreateDate = () => new Date();
+  const defaultCreateString = () =>
+    getDate(new Date(), "TIMESTAMP", effectiveTimezone);
+
+  const resolveAutoCreate = stringMode
+    ? typeof autoCreateOpt === "function"
+      ? (autoCreateOpt as () => string)
+      : defaultCreateString
+    : typeof autoCreateOpt === "function"
+      ? (autoCreateOpt as () => Date)
+      : defaultCreateDate;
+
+  const resolveAutoUpdate = stringMode
+    ? typeof autoUpdateOpt === "function"
+      ? (autoUpdateOpt as () => string)
+      : defaultCreateString
+    : typeof autoUpdateOpt === "function"
+      ? (autoUpdateOpt as () => Date)
+      : defaultCreateDate;
+
   const prepareFn = stringMode
     ? (value?: string | null): string | null | undefined => {
         if (!value) {
-          if (autoCreate) {
-            return getDate(new Date(), "TIMESTAMP", effectiveTimezone);
+          if (hasAutoCreate) {
+            return resolveAutoCreate() as string;
           }
           return null;
         }
-        if (autoUpdate) {
-          return getDate(new Date(), "TIMESTAMP", effectiveTimezone);
+        if (hasAutoUpdate) {
+          return resolveAutoUpdate() as string;
         }
         return value;
       }
     : (value?: Date | null): Date | string | null | undefined => {
         if (!value) {
-          if (autoCreate) {
-            return new Date();
+          if (hasAutoCreate) {
+            return resolveAutoCreate() as Date;
           }
           return null;
         }
-        if (autoUpdate) {
-          return new Date();
+        if (hasAutoUpdate) {
+          return resolveAutoUpdate() as Date;
         }
         return value;
       };
@@ -991,7 +1060,7 @@ function timestampColumn(
     type: "timestamp",
     ...(rest as ColumnOptions),
     withTimezone: effectiveWithTimezone,
-    autoUpdate,
+    autoUpdate: hasAutoUpdate,
     prepare: prepareFn as (value: any) => any,
     serialize: serializeFn as (value: any) => any,
     openApi: {
@@ -1019,33 +1088,55 @@ function timeOnlyColumn(
 ): TypedPropertyDecorator<Date | string | null | undefined> {
   const {
     timezone = "UTC",
-    autoUpdate = false,
-    autoCreate = false,
+    autoUpdate: autoUpdateOpt = false,
+    autoCreate: autoCreateOpt = false,
     ...rest
   } = options;
+
+  const hasAutoCreate = !!autoCreateOpt;
+  const hasAutoUpdate = !!autoUpdateOpt;
+
+  const defaultCreateDate = () => new Date();
+  const defaultCreateString = () => getDate(new Date(), "TIME_ONLY", timezone);
+
+  const resolveAutoCreate = stringMode
+    ? typeof autoCreateOpt === "function"
+      ? (autoCreateOpt as () => string)
+      : defaultCreateString
+    : typeof autoCreateOpt === "function"
+      ? (autoCreateOpt as () => Date)
+      : defaultCreateDate;
+
+  const resolveAutoUpdate = stringMode
+    ? typeof autoUpdateOpt === "function"
+      ? (autoUpdateOpt as () => string)
+      : defaultCreateString
+    : typeof autoUpdateOpt === "function"
+      ? (autoUpdateOpt as () => Date)
+      : defaultCreateDate;
 
   const prepareFn = stringMode
     ? (value?: string | null): string | null | undefined => {
         if (!value) {
-          if (autoCreate) {
-            return getDate(new Date(), "TIME_ONLY", timezone);
+          if (hasAutoCreate) {
+            return resolveAutoCreate() as string;
           }
           return null;
         }
-        if (autoUpdate) {
-          return getDate(new Date(), "TIME_ONLY", timezone);
+        if (hasAutoUpdate) {
+          return resolveAutoUpdate() as string;
         }
         return value;
       }
     : (value?: Date | null): Date | string | null | undefined => {
         if (!value) {
-          if (autoCreate) {
-            return new Date();
+          if (hasAutoCreate) {
+            return resolveAutoCreate() as Date;
           }
           return null;
         }
-        if (autoUpdate) {
-          return new Date();
+        if (hasAutoUpdate) {
+          return resolveAutoUpdate() as Date;
         }
         return value;
       };
@@ -1069,7 +1160,7 @@ function timeOnlyColumn(
   return column({
     type: "time",
     ...(rest as ColumnOptions),
-    autoUpdate,
+    autoUpdate: hasAutoUpdate,
     prepare: prepareFn as (value: any) => any,
     serialize: serializeFn as (value: any) => any,
     openApi: {

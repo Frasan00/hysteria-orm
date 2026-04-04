@@ -7,6 +7,7 @@ import type {
   CheckType,
   ColumnOptions,
   ColumnType,
+  DateAutoHook,
   DateColumnOptions,
   DatetimeColumnOptions,
   IndexType,
@@ -124,6 +125,7 @@ export type ColDateOptions = Omit<DateColumnOptions, "format" | "default">;
 export type ColDatetimeOptions = Omit<DatetimeColumnOptions, "default">;
 export type ColTimestampOptions = Omit<DatetimeColumnOptions, "default">;
 export type ColTimeOptions = Omit<DateColumnOptions, "format" | "default">;
+export type { DateAutoHook } from "./decorators/model_decorators_types";
 export type ColJsonOptions = Omit<
   ColumnOptions,
   "prepare" | "serialize" | "default"

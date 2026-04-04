@@ -122,6 +122,13 @@ export type LazyRelationType = {
   };
 };
 
+/**
+ * Callback type for autoCreate/autoUpdate hooks on date columns.
+ * Returns `Date` when used with date-mode columns (e.g. `col.datetime()`),
+ * returns `string` when used with string-mode columns (e.g. `col.datetime.string()`).
+ */
+export type DateAutoHook = (() => Date) | (() => string);
+
 export type DateColumnOptions = {
   /**
    * @description The format to store dates in ('ISO' or 'TIMESTAMP')
@@ -135,17 +142,19 @@ export type DateColumnOptions = {
   timezone?: Timezone;
   /**
    * @description Whether to automatically update the timestamp on record updates, uses timezone and format from the dateColumn options
+   * @description If true, uses the default implementation (current date). If a callback, calls it to get the value.
    * @warning This is a code wise implementation it does not generate a trigger in the database, works with bulk updates too
    * @default false
    */
-  autoUpdate?: boolean;
+  autoUpdate?: boolean | DateAutoHook;
   /**
    * @description Whether to automatically set the timestamp on record creation, uses timezone and format from the dateColumn options
+   * @description If true, uses the default implementation (current date). If a callback, calls it to get the value.
    * @warning This is a code wise implementation it does not generate a trigger in the database, works with bulk creations too
    * @default false
    */
-  autoCreate?: boolean;
-} & Omit<ColumnOptions, "serialize" | "prepare">;
+  autoCreate?: boolean | DateAutoHook;
+} & Omit<ColumnOptions, "serialize" | "prepare" | "autoUpdate">;
 
 /**
  * @description Options for @column.datetime and @column.timestamp decorators.

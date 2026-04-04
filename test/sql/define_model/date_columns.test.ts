@@ -572,6 +572,254 @@ describe("date columns – refactored API", () => {
   });
 
   // -------------------------------------------------------------------------
+  // autoCreate / autoUpdate with callback hooks
+  // -------------------------------------------------------------------------
+
+  describe("callback-based autoCreate / autoUpdate hooks", () => {
+    test("col.datetime({ autoCreate: () => Date }) uses callback on create (Date mode)", () => {
+      const fixedDate = new Date("2030-01-01T00:00:00Z");
+      const M = defineModel("dt_cb_ac", {
+        columns: {
+          id: col.increment(),
+          ts: col.datetime({ autoCreate: () => fixedDate }),
+        },
+      });
+
+      const c = M.getColumns().find((c) => c.columnName === "ts")!;
+      const result = c.prepare!(null);
+      expect(result).toBeInstanceOf(Date);
+      expect(result.getTime()).toBe(fixedDate.getTime());
+    });
+
+    test("col.datetime.string({ autoCreate: () => string }) uses callback on create (String mode)", () => {
+      const M = defineModel("dt_str_cb_ac", {
+        columns: {
+          id: col.increment(),
+          ts: col.datetime.string({
+            autoCreate: () => "2030-01-01 00:00:00",
+          }),
+        },
+      });
+
+      const c = M.getColumns().find((c) => c.columnName === "ts")!;
+      const result = c.prepare!(null);
+      expect(result).toBe("2030-01-01 00:00:00");
+    });
+
+    test("col.datetime({ autoUpdate: () => Date }) uses callback on update (Date mode)", () => {
+      const fixedDate = new Date("2030-06-15T12:00:00Z");
+      const M = defineModel("dt_cb_au", {
+        columns: {
+          id: col.increment(),
+          ts: col.datetime({
+            autoCreate: true,
+            autoUpdate: () => fixedDate,
+          }),
+        },
+      });
+
+      const c = M.getColumns().find((c) => c.columnName === "ts")!;
+      expect(c.autoUpdate).toBe(true);
+
+      // On update, the callback value should be used
+      const oldDate = new Date("2020-01-01T00:00:00Z");
+      const result = c.prepare!(oldDate);
+      expect(result).toBeInstanceOf(Date);
+      expect(result.getTime()).toBe(fixedDate.getTime());
+    });
+
+    test("col.datetime.string({ autoUpdate: () => string }) uses callback on update (String mode)", () => {
+      const M = defineModel("dt_str_cb_au", {
+        columns: {
+          id: col.increment(),
+          ts: col.datetime.string({
+            autoCreate: true,
+            autoUpdate: () => "2030-06-15 12:00:00",
+          }),
+        },
+      });
+
+      const c = M.getColumns().find((c) => c.columnName === "ts")!;
+      expect(c.autoUpdate).toBe(true);
+
+      const result = c.prepare!("2020-01-01 00:00:00");
+      expect(result).toBe("2030-06-15 12:00:00");
+    });
+
+    test("col.date({ autoCreate: () => Date }) uses callback (Date mode)", () => {
+      const fixedDate = new Date("2030-03-25");
+      const M = defineModel("d_cb_ac", {
+        columns: {
+          id: col.increment(),
+          d: col.date({ autoCreate: () => fixedDate }),
+        },
+      });
+
+      const c = M.getColumns().find((c) => c.columnName === "d")!;
+      const result = c.prepare!(null);
+      expect(result).toBeInstanceOf(Date);
+      expect(result.getTime()).toBe(fixedDate.getTime());
+    });
+
+    test("col.date.string({ autoCreate: () => string }) uses callback (String mode)", () => {
+      const M = defineModel("d_str_cb_ac", {
+        columns: {
+          id: col.increment(),
+          d: col.date.string({ autoCreate: () => "2030-03-25" }),
+        },
+      });
+
+      const c = M.getColumns().find((c) => c.columnName === "d")!;
+      const result = c.prepare!(null);
+      expect(result).toBe("2030-03-25");
+    });
+
+    test("col.timestamp({ autoCreate: () => Date }) uses callback (Date mode)", () => {
+      const fixedDate = new Date("2030-01-01T00:00:00Z");
+      const M = defineModel("ts_cb_ac", {
+        columns: {
+          id: col.increment(),
+          ts: col.timestamp({ autoCreate: () => fixedDate }),
+        },
+      });
+
+      const c = M.getColumns().find((c) => c.columnName === "ts")!;
+      const result = c.prepare!(null);
+      expect(result).toBeInstanceOf(Date);
+      expect(result.getTime()).toBe(fixedDate.getTime());
+    });
+
+    test("col.timestamp.string({ autoCreate: () => string }) uses callback (String mode)", () => {
+      const M = defineModel("ts_str_cb_ac", {
+        columns: {
+          id: col.increment(),
+          ts: col.timestamp.string({ autoCreate: () => "1893456000" }),
+        },
+      });
+
+      const c = M.getColumns().find((c) => c.columnName === "ts")!;
+      const result = c.prepare!(null);
+      expect(result).toBe("1893456000");
+    });
+
+    test("col.time({ autoCreate: () => Date }) uses callback (Date mode)", () => {
+      const fixedDate = new Date("2030-01-01T09:30:00Z");
+      const M = defineModel("time_cb_ac", {
+        columns: {
+          id: col.increment(),
+          t: col.time({ autoCreate: () => fixedDate }),
+        },
+      });
+
+      const c = M.getColumns().find((c) => c.columnName === "t")!;
+      const result = c.prepare!(null);
+      expect(result).toBeInstanceOf(Date);
+      expect(result.getTime()).toBe(fixedDate.getTime());
+    });
+
+    test("col.time.string({ autoCreate: () => string }) uses callback (String mode)", () => {
+      const M = defineModel("time_str_cb_ac", {
+        columns: {
+          id: col.increment(),
+          t: col.time.string({ autoCreate: () => "09:30:00" }),
+        },
+      });
+
+      const c = M.getColumns().find((c) => c.columnName === "t")!;
+      const result = c.prepare!(null);
+      expect(result).toBe("09:30:00");
+    });
+
+    test("callback autoCreate does NOT override user-supplied value (Date mode)", () => {
+      const fixedDate = new Date("2030-01-01T00:00:00Z");
+      const M = defineModel("dt_cb_ac_no_override", {
+        columns: {
+          id: col.increment(),
+          ts: col.datetime({ autoCreate: () => fixedDate }),
+        },
+      });
+
+      const c = M.getColumns().find((c) => c.columnName === "ts")!;
+      const userDate = new Date("2020-01-01T00:00:00Z");
+      const result = c.prepare!(userDate);
+      expect(result).toBeInstanceOf(Date);
+      expect(result.getTime()).toBe(userDate.getTime());
+    });
+
+    test("callback autoCreate does NOT override user-supplied value (String mode)", () => {
+      const M = defineModel("dt_str_cb_ac_no_override", {
+        columns: {
+          id: col.increment(),
+          ts: col.datetime.string({
+            autoCreate: () => "2030-01-01 00:00:00",
+          }),
+        },
+      });
+
+      const c = M.getColumns().find((c) => c.columnName === "ts")!;
+      const userStr = "2020-01-01 00:00:00";
+      const result = c.prepare!(userStr);
+      expect(result).toBe(userStr);
+    });
+
+    test("mixed: autoCreate=true (default) + autoUpdate=callback", () => {
+      const fixedUpdateDate = new Date("2030-12-31T23:59:59Z");
+      const M = defineModel("dt_mixed_hooks", {
+        columns: {
+          id: col.increment(),
+          ts: col.datetime({
+            autoCreate: true,
+            autoUpdate: () => fixedUpdateDate,
+          }),
+        },
+      });
+
+      const c = M.getColumns().find((c) => c.columnName === "ts")!;
+
+      // autoCreate uses default (new Date())
+      const before = Date.now();
+      const created = c.prepare!(null);
+      const after = Date.now();
+      expect(created).toBeInstanceOf(Date);
+      expect(created.getTime()).toBeGreaterThanOrEqual(before);
+      expect(created.getTime()).toBeLessThanOrEqual(after);
+
+      // autoUpdate uses the callback
+      const updated = c.prepare!(new Date("2020-01-01"));
+      expect(updated).toBeInstanceOf(Date);
+      expect(updated.getTime()).toBe(fixedUpdateDate.getTime());
+    });
+
+    test("mixed: autoCreate=callback + autoUpdate=true (default)", () => {
+      const fixedCreateDate = new Date("2030-01-01T00:00:00Z");
+      const M = defineModel("dt_mixed_hooks2", {
+        columns: {
+          id: col.increment(),
+          ts: col.datetime({
+            autoCreate: () => fixedCreateDate,
+            autoUpdate: true,
+          }),
+        },
+      });
+
+      const c = M.getColumns().find((c) => c.columnName === "ts")!;
+
+      // autoCreate uses the callback
+      const created = c.prepare!(null);
+      expect(created).toBeInstanceOf(Date);
+      expect(created.getTime()).toBe(fixedCreateDate.getTime());
+
+      // autoUpdate uses default (new Date())
+      const before = Date.now();
+      const updated = c.prepare!(new Date("2020-01-01"));
+      const after = Date.now();
+      expect(updated).toBeInstanceOf(Date);
+      expect(updated.getTime()).toBeGreaterThanOrEqual(before);
+      expect(updated.getTime()).toBeLessThanOrEqual(after);
+    });
+  });
+
+  // -------------------------------------------------------------------------
   // Timezone support using luxon
   // -------------------------------------------------------------------------
 
