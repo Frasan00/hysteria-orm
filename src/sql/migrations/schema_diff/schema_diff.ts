@@ -264,13 +264,20 @@ export class SchemaDiff {
           if (!modelCheckNames.has(dbChk.name)) {
             // Check if this is an auto-generated enum constraint
             const matchingEnumCol = [...enumColumnNames].find((colName) => {
-              // Match auto-generated enum CHECK constraints like: ("col") IN ('a','b') or ([col]) IN ('a','b')
-              // The closing paren before IN is mandatory (part of CHECK constraint expression wrapper)
-              const re = new RegExp(
-                `[\\["\\[]?${colName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}[\\]"\\]]?\\s*\\)\\s*IN\\s*\\(`,
+              const escaped = colName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+              // Match MSSQL/legacy: ("col") IN ('a','b') or ([col]) IN ('a','b')
+              const reIn = new RegExp(
+                `[\\["\\[]?${escaped}[\\]"\\]]?\\s*\\)\\s*IN\\s*\\(`,
                 "i",
               );
-              return re.test(dbChk.expression);
+              // Match PG: col = ANY (ARRAY[...]) or (col)::text = ANY (
+              const reAny = new RegExp(
+                `[\\("\\[]?${escaped}[\\)"\\]]?(?:::text)?\\s*=\\s*ANY\\s*\\(`,
+                "i",
+              );
+              return (
+                reIn.test(dbChk.expression) || reAny.test(dbChk.expression)
+              );
             });
             if (matchingEnumCol) {
               // Find the model column and its DB counterpart to check if values changed

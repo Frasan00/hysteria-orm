@@ -101,6 +101,10 @@ export { EnumV1 } from "./enum_v1";
 export { EnumV2 } from "./enum_v2";
 export { EnumV3 } from "./enum_v3";
 
+// Enum No Change (add column without touching enum)
+export { EnumNoChangeV1 } from "./enum_no_change_v1";
+export { EnumNoChangeV2 } from "./enum_no_change_v2";
+
 // Index Drop Extreme
 export { IndexDropExtremeV1 } from "./index_drop_extreme_v1";
 export { IndexDropExtremeV2 } from "./index_drop_extreme_v2";

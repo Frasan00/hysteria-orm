@@ -86,6 +86,9 @@ import {
   EnumV1,
   EnumV2,
   EnumV3,
+  // Enum No Change
+  EnumNoChangeV1,
+  EnumNoChangeV2,
   // Index Drop Extreme
   IndexDropExtremeV1,
   IndexDropExtremeV2,
@@ -146,6 +149,7 @@ const EDGE_CASE_TABLES = [
   "schema_diff_large",
   "schema_diff_decorators_ext",
   "schema_diff_enum_test",
+  "schema_diff_enum_no_change_test",
   "schema_diff_idx_extreme",
   "schema_diff_chk_extreme",
   "schema_diff_idx_composite",
@@ -1779,6 +1783,112 @@ conditionalDescribe(`[${dbType}] Schema Diff Edge Cases`, () => {
           async (sql) => {
             const diff = await SchemaDiff.makeDiff(sql);
             // Should not throw for enum columns
+            const stmts = diff.getSqlStatements();
+            await sql.syncSchema();
+          },
+        );
+      }
+    });
+  });
+
+  // =========================================================================
+  // 21b. Enum Column No Change (add non-enum column, enum stays the same)
+  // =========================================================================
+  describe("Enum Column No Change", () => {
+    beforeAll(async () => {
+      await dropAllEdgeCaseTables(baseSql);
+    });
+    afterAll(async () => {
+      await dropAllEdgeCaseTables(baseSql);
+    });
+
+    test("v1: should create table with enum column", async () => {
+      const SchemaDiff = await getSchemaDiff();
+      await SqlDataSource.useConnection(
+        { ...getConnectionConfig(), models: { EnumNoChangeV1 } },
+        async (sql) => {
+          const diff = await SchemaDiff.makeDiff(sql);
+          const stmts = diff.getSqlStatements();
+          expect(stmts.length).toBeGreaterThan(0);
+          expect(
+            stmts.some((s) => s.toLowerCase().includes("create table")),
+          ).toBe(true);
+          await sql.syncSchema();
+        },
+      );
+    });
+
+    test("v1 idempotent: re-diffing with same model should produce no changes", async () => {
+      const SchemaDiff = await getSchemaDiff();
+      await SqlDataSource.useConnection(
+        { ...getConnectionConfig(), models: { EnumNoChangeV1 } },
+        async (sql) => {
+          const diff = await SchemaDiff.makeDiff(sql);
+          const stmts = diff.getSqlStatements();
+          expect(stmts.length).toBe(0);
+        },
+      );
+    });
+
+    test("v2: adding non-enum column should NOT drop the enum check constraint", async () => {
+      const SchemaDiff = await getSchemaDiff();
+      await SqlDataSource.useConnection(
+        { ...getConnectionConfig(), models: { EnumNoChangeV2 } },
+        async (sql) => {
+          const diff = await SchemaDiff.makeDiff(sql);
+          const stmts = diff.getSqlStatements();
+          expect(stmts.length).toBeGreaterThan(0);
+
+          // Should add the description column
+          const hasDescriptionAdd = stmts.some(
+            (s) =>
+              s.toLowerCase().includes("description") ||
+              s.toLowerCase().includes("add"),
+          );
+          expect(hasDescriptionAdd).toBe(true);
+
+          // Should NOT contain any constraint drop for the enum check
+          const hasConstraintDrop = stmts.some(
+            (s) =>
+              s.toLowerCase().includes("drop constraint") ||
+              s.toLowerCase().includes("drop_constraint"),
+          );
+          expect(hasConstraintDrop).toBe(false);
+
+          await sql.syncSchema();
+        },
+      );
+    });
+
+    test("v2 idempotent: re-diffing after sync should produce no changes", async () => {
+      const SchemaDiff = await getSchemaDiff();
+      await SqlDataSource.useConnection(
+        { ...getConnectionConfig(), models: { EnumNoChangeV2 } },
+        async (sql) => {
+          const diff = await SchemaDiff.makeDiff(sql);
+          const stmts = diff.getSqlStatements();
+          expect(stmts.length).toBe(0);
+        },
+      );
+    });
+
+    test("full enum-no-change evolution should not throw", async () => {
+      const SchemaDiff = await getSchemaDiff();
+      await dropAllEdgeCaseTables(baseSql);
+
+      const versions: Array<{
+        models: Record<string, typeof Model>;
+        desc: string;
+      }> = [
+        { models: { EnumNoChangeV1 }, desc: "EnumNoChange v1" },
+        { models: { EnumNoChangeV2 }, desc: "EnumNoChange v2" },
+      ];
+
+      for (const { models, desc } of versions) {
+        await SqlDataSource.useConnection(
+          { ...getConnectionConfig(), models },
+          async (sql) => {
+            const diff = await SchemaDiff.makeDiff(sql);
             const stmts = diff.getSqlStatements();
             await sql.syncSchema();
           },

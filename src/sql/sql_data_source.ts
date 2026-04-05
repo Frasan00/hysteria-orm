@@ -1157,31 +1157,6 @@ export class SqlDataSource<
         this.getCheckConstraintInfo(table),
       ]);
 
-    // For PG/MSSQL, extract enum values from CHECK constraints like: ("col" IN ('a','b'))
-    const db = this.getDbType();
-    if (db === "postgres" || db === "mssql") {
-      for (const col of columns) {
-        const matchingCheck = checkConstraints.find((cc) => {
-          const expr = cc.expression;
-          // Match patterns like: ("col" IN ('a', 'b')) or ([col] IN ('a','b'))
-          const re = new RegExp(
-            `[\\["\\[]?${col.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}[\\]"\\]]?\\s*\\)\\s*IN\\s*\\(([^)]+)\\)`,
-            "i",
-          );
-          return re.test(expr);
-        });
-        if (matchingCheck) {
-          const re = new RegExp(`IN\\s*\\(([^)]+)\\)`, "i");
-          const m = matchingCheck.expression.match(re);
-          if (m) {
-            col.enumValues = m[1]
-              .split(",")
-              .map((v) => v.trim().replace(/^'|'$/g, ""));
-          }
-        }
-      }
-    }
-
     return { columns, indexes, foreignKeys, primaryKey, checkConstraints };
   }
 
@@ -1300,7 +1275,7 @@ export class SqlDataSource<
       });
     }
 
-    return rows.map((r: any) => {
+    const mappedRows = rows.map((r: any) => {
       const name = String(r.column_name || r.COLUMN_NAME || r.name || "");
       const rawType = String(
         r.data_type || r.DATA_TYPE || r.type || "",
@@ -1373,6 +1348,55 @@ export class SqlDataSource<
         zerofill,
       };
     });
+
+    // For PG/MSSQL, enums are stored as CHECK constraints, not in column metadata.
+    // Enrich columns with enum values extracted from those constraints.
+    if (db === "postgres" || db === "mssql") {
+      let checkConstraints: { expression: string }[] = [];
+      try {
+        checkConstraints = await this.getCheckConstraintInfo(table);
+      } catch {
+        // if check constraints can't be fetched, skip enrichment
+      }
+      if (checkConstraints.length > 0) {
+        for (const col of mappedRows) {
+          const escapedName = col.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          const matchingCheck = checkConstraints.find((cc) => {
+            const expr = cc.expression;
+            const reIn = new RegExp(
+              `[\\["\\[]?${escapedName}[\\]"\\]]?\\s*\\)\\s*IN\\s*\\(`,
+              "i",
+            );
+            const reAny = new RegExp(
+              `[\\("\\[]?${escapedName}[\\)"\\]]?(?:::text)?\\s*=\\s*ANY\\s*\\(`,
+              "i",
+            );
+            return reIn.test(expr) || reAny.test(expr);
+          });
+          if (matchingCheck) {
+            const expr = matchingCheck.expression;
+            const mIn = expr.match(/IN\s*\(([^)]+)\)/i);
+            if (mIn) {
+              col.enumValues = mIn[1]
+                .split(",")
+                .map((v) => v.trim().replace(/^'|'$/g, ""));
+            } else {
+              const mArray = expr.match(/ARRAY\[([^\]]+)\]/i);
+              if (mArray) {
+                col.enumValues = mArray[1].split(",").map((v) =>
+                  v
+                    .trim()
+                    .replace(/::[a-z ]+$/i, "")
+                    .replace(/^'|'$/g, ""),
+                );
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return mappedRows;
   }
 
   /**
