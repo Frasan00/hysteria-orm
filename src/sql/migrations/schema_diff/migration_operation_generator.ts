@@ -102,8 +102,8 @@ export class MigrationOperationGenerator {
         .schema()
         .createTable(table.table, (builder) => {
           for (const column of table.columns) {
-            if (Array.isArray(column.type)) {
-              builder.enum(column.databaseName, column.type);
+            if (column.enumValues && column.enumValues.length > 0) {
+              builder.enum(column.databaseName, column.enumValues);
               continue;
             }
 
@@ -530,7 +530,8 @@ export class MigrationOperationGenerator {
   ]);
 
   /**
-   * Executes builder method for column creation
+   * Executes builder method for column creation.
+   * Enum columns are identified via `column.enumValues` rather than checking if `column.type` is an array.
    */
   private executeBuilderMethod(
     table: string,
@@ -541,8 +542,8 @@ export class MigrationOperationGenerator {
   ) {
     let b: ReturnType<CreateTableBuilder["string"]>;
 
-    if (Array.isArray(column.type)) {
-      b = builder.enum(args[0] as string, column.type);
+    if (column.enumValues && column.enumValues.length > 0) {
+      b = builder.enum(args[0] as string, column.enumValues);
     } else if (
       typeof column.type === "string" &&
       MigrationOperationGenerator.BUILTIN_COLUMN_TYPES.has(column.type)

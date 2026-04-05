@@ -629,9 +629,9 @@ export class MigrationCodeGenerator {
   private generateColumnTypeCode(column: ColumnType): string {
     const name = column.databaseName;
 
-    // Enum type
-    if (Array.isArray(column.type)) {
-      const values = column.type.map((v) => this.quote(v)).join(", ");
+    // Enum type: use enumValues field instead of checking if type is an array
+    if (column.enumValues && column.enumValues.length > 0) {
+      const values = column.enumValues.map((v) => this.quote(v)).join(", ");
       return `table.enum(${this.quote(name)}, [${values}])`;
     }
 

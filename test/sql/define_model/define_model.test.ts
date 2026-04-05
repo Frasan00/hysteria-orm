@@ -207,7 +207,8 @@ describe("defineModel", () => {
       const statusCol = StatusModel.getColumns().find(
         (c) => c.columnName === "status",
       );
-      expect(statusCol?.type).toEqual(["active", "inactive", "banned"]);
+      expect(statusCol?.type).toBe("enum");
+      expect(statusCol?.enumValues).toEqual(["active", "inactive", "banned"]);
     });
 
     test("nativeEnum column with string enum", () => {
@@ -226,7 +227,8 @@ describe("defineModel", () => {
       const statusCol = StatusModel.getColumns().find(
         (c) => c.columnName === "status",
       );
-      expect(statusCol?.type).toEqual(["active", "inactive", "banned"]);
+      expect(statusCol?.type).toBe("enum");
+      expect(statusCol?.enumValues).toEqual(["active", "inactive", "banned"]);
     });
 
     test("nativeEnum column with numeric enum", () => {
@@ -245,7 +247,8 @@ describe("defineModel", () => {
       const priorityCol = PriorityModel.getColumns().find(
         (c) => c.columnName === "priority",
       );
-      expect(priorityCol?.type).toEqual(["0", "1", "2"]);
+      expect(priorityCol?.type).toBe("enum");
+      expect(priorityCol?.enumValues).toEqual(["0", "1", "2"]);
     });
 
     test("nativeEnum column with nullable option", () => {
@@ -263,7 +266,8 @@ describe("defineModel", () => {
       const statusCol = StatusModel.getColumns().find(
         (c) => c.columnName === "status",
       );
-      expect(statusCol?.type).toEqual(["active", "inactive"]);
+      expect(statusCol?.type).toBe("enum");
+      expect(statusCol?.enumValues).toEqual(["active", "inactive"]);
       expect(statusCol?.constraints?.nullable).toBe(false);
     });
 

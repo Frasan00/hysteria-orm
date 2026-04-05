@@ -39,6 +39,7 @@ import type {
   AsymmetricEncryptionOptions,
   CheckType,
   ColumnDataTypeOptionWithDatePrecision,
+  ColumnDataTypeOptionWithEnum,
   ColumnDataTypeOptionWithLength,
   ColumnDataTypeOptionWithPrecision,
   ColumnDataTypeOptionWithScaleAndPrecision,
@@ -253,6 +254,7 @@ export function column(
       databaseName,
       openApi: options.openApi,
       type: options.type,
+      enumValues: (options as ColumnDataTypeOptionWithEnum)?.enumValues,
       length: (options as ColumnDataTypeOptionWithLength)?.length,
       precision: (options as ColumnDataTypeOptionWithPrecision)?.precision,
       scale: (options as ColumnDataTypeOptionWithScaleAndPrecision)?.scale,
@@ -658,17 +660,20 @@ function binaryColumn(
 }
 
 /**
- * @description Decorator to define an enum column in the model
- * @description Defaults type to enum for migration generation
+ * @description Decorator to define an enum column in the model.
+ * @description Stores `type: "enum"` and the allowed values in `enumValues` for migration generation.
+ * - **PostgreSQL / CockroachDB**: rendered as `TEXT` with a `CHECK (...) IN (...)` constraint.
+ * - **MySQL / MariaDB**: rendered as a native `ENUM(...)` column.
  * @param values The allowed enum values
  * @param options Additional column options
  */
 function enumColumn<const V extends readonly string[]>(
   values: V,
-  options: Omit<ColumnOptions, "type"> = {},
+  options: Omit<ColumnOptions, "type" | "enumValues"> = {},
 ): TypedPropertyDecorator<V[number] | null | undefined> {
   return column({
-    type: values,
+    type: "enum",
+    enumValues: values,
     ...(options as ColumnOptions),
     openApi: {
       type: "string",

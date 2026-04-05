@@ -197,6 +197,8 @@ export function normalizeColumnType(
           return "jsonb";
         case "json":
           return "json";
+        case "enum":
+          return "text";
         case "date":
           return "date";
         default:

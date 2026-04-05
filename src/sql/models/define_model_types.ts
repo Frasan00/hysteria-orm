@@ -148,7 +148,7 @@ export type ColBinaryOptions = Omit<
 >;
 export type ColEnumOptions = Omit<
   ColumnOptions,
-  "type" | "serialize" | "prepare" | "default"
+  "type" | "enumValues" | "serialize" | "prepare" | "default"
 >;
 export type ColSymmetricOptions = Omit<
   SymmetricEncryptionOptions,
@@ -554,6 +554,10 @@ export interface ColNamespace {
   /**
    * Enum column constrained to the given values array.
    * Type: `values[number]` (nullable-aware).
+   *
+   * Internally, the column is stored with `type: "enum"` and `enumValues: values`.
+   * - **PostgreSQL / CockroachDB**: rendered as `TEXT` with a `CHECK (...) IN (...)` constraint.
+   * - **MySQL / MariaDB**: rendered as a native `ENUM(...)` column.
    *
    * ```ts
    * col.enum(["active", "inactive"] as const)               // "active" | "inactive" | null

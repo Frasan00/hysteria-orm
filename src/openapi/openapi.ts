@@ -23,12 +23,12 @@ const detectColumnType = (column: ColumnType): OpenApiModelPropertyType => {
     };
   }
 
-  // enum (array of allowed string values)
-  if (Array.isArray(column.type)) {
+  // enum column: allowed string values are stored in enumValues
+  if (column.enumValues && column.enumValues.length > 0) {
     return {
       ...baseType,
       type: "string",
-      enum: column.type as string[],
+      enum: column.enumValues as string[],
     };
   }
 

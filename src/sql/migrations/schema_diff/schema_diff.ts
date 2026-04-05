@@ -254,8 +254,8 @@ export class SchemaDiff {
 
         // Check constraints to drop — handle auto-generated enum CHECK constraints
         const modelCheckNames = new Set(modelChecks.map((c) => c.name));
-        const enumColumns = modelData.columns.filter((c) =>
-          Array.isArray(c.type),
+        const enumColumns = modelData.columns.filter(
+          (c) => c.enumValues && c.enumValues.length > 0,
         );
         const enumColumnNames = new Set(
           enumColumns.map((c) => c.databaseName || c.columnName),
@@ -280,12 +280,8 @@ export class SchemaDiff {
               const dbCol = databaseData.columns.find(
                 (c) => c.name === matchingEnumCol,
               );
-              if (
-                modelCol &&
-                dbCol?.enumValues &&
-                Array.isArray(modelCol.type)
-              ) {
-                const modelVals = [...modelCol.type].sort();
+              if (modelCol?.enumValues && dbCol?.enumValues) {
+                const modelVals = [...modelCol.enumValues].sort();
                 const dbVals = [...dbCol.enumValues].sort();
                 const valuesMatch =
                   modelVals.length === dbVals.length &&
@@ -299,7 +295,7 @@ export class SchemaDiff {
                   const dialect = diff.sql.getDbType();
                   const q = dialect === "mssql" ? "[" : '"';
                   const qEnd = dialect === "mssql" ? "]" : '"';
-                  const values = modelCol.type
+                  const values = modelCol.enumValues
                     .map((v) => `'${v.replace(/'/g, "''")}'`)
                     .join(", ");
                   diff.data.checksToAdd.push({
@@ -605,11 +601,13 @@ export class SchemaDiff {
       baseCondition &&= normalizedDbType === normalizedModelType;
     }
 
-    // Compare enum values when model column type is an array (enum)
-    // For PG/MSSQL, enum value changes are handled via CHECK constraints, not column type
-    if (Array.isArray(modelColumn.type)) {
+    // Compare enum values when model column has enumValues set
+    // For PostgreSQL / CockroachDB, enum value changes are handled via CHECK constraints,
+    // not via a column type change (enums are stored as TEXT).
+    // For MySQL / MariaDB, enum values are part of the native ENUM column type.
+    if (modelColumn.enumValues && modelColumn.enumValues.length > 0) {
       if (dialect === "mysql" || dialect === "mariadb") {
-        const modelEnumValues = [...modelColumn.type].sort();
+        const modelEnumValues = [...modelColumn.enumValues].sort();
         const dbEnumValues = dbColumn.enumValues
           ? [...dbColumn.enumValues].sort()
           : null;

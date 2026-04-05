@@ -18,7 +18,7 @@ type BaseColumnDataType = Exclude<
  * col<string>({ type: "varchar", length: 255 }) // built-in
  * col<string>({ type: "vector", length: 1536 })  // custom (pgvector)
  */
-type ColumnDataType = BaseColumnDataType | (string & {}) | readonly string[];
+type ColumnDataType = BaseColumnDataType | (string & {});
 
 export type ColumnDataTypeOptionWithLength = {
   type?:
@@ -38,8 +38,16 @@ export type ColumnDataTypeOptionWithLength = {
   length?: number;
 };
 
+/**
+ * Enum column type option.
+ * The `type` is always `"enum"` and the allowed values are stored in `enumValues`.
+ * - In **PostgreSQL / CockroachDB**: stored as `TEXT` with a `CHECK (...) IN (...)` constraint.
+ * - In **MySQL / MariaDB**: stored as a native `ENUM(...)` column.
+ */
 export type ColumnDataTypeOptionWithEnum = {
-  type?: readonly string[];
+  type?: "enum";
+  /** The set of allowed string values for the enum column. */
+  enumValues?: readonly string[];
 };
 
 export type ColumnDataTypeOptionWithPrecision = {
@@ -250,6 +258,13 @@ export type ColumnType = {
   /** Database specific data for migrations, must be provided or it'll be ignored for auto-generated migrations */
   primaryKeyConstraintName?: string;
   type?: ColumnDataType;
+  /**
+   * Allowed string values for an enum column.
+   * When set, `type` is `"enum"`.
+   * - PostgreSQL / CockroachDB: rendered as `TEXT` with a `CHECK (...) IN (...)` constraint.
+   * - MySQL / MariaDB: rendered as a native `ENUM(...)` column.
+   */
+  enumValues?: readonly string[];
   length?: number;
   precision?: number;
   scale?: number;
