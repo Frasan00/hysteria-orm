@@ -181,37 +181,61 @@ colBase.boolean = function colBoolean<
   });
 };
 
-colBase.date = function colDate(
-  options?: ColDateOptions & Record<string, any>,
+function colDateFn(options?: ColDateOptions): ColumnDef<any> {
+  return makeColumnDef((target, key) => {
+    column.date(options ?? {}, false)(target as any, key);
+  });
+}
+colDateFn.string = function colDateString(
+  options?: ColDateOptions,
 ): ColumnDef<any> {
   return makeColumnDef((target, key) => {
-    column.date(options ?? {})(target as any, key);
+    column.date(options ?? {}, true)(target as any, key);
   });
 };
+colBase.date = colDateFn;
 
-colBase.datetime = function colDatetime(
-  options?: ColDatetimeOptions & Record<string, any>,
+function colDatetimeFn(options?: ColDatetimeOptions): ColumnDef<any> {
+  return makeColumnDef((target, key) => {
+    column.datetime(options ?? {}, false)(target as any, key);
+  });
+}
+colDatetimeFn.string = function colDatetimeString(
+  options?: ColDatetimeOptions,
 ): ColumnDef<any> {
   return makeColumnDef((target, key) => {
-    column.datetime(options ?? {})(target as any, key);
+    column.datetime(options ?? {}, true)(target as any, key);
   });
 };
+colBase.datetime = colDatetimeFn;
 
-colBase.timestamp = function colTimestamp(
-  options?: ColTimestampOptions & Record<string, any>,
+function colTimestampFn(options?: ColTimestampOptions): ColumnDef<any> {
+  return makeColumnDef((target, key) => {
+    column.timestamp(options ?? {}, false)(target as any, key);
+  });
+}
+colTimestampFn.string = function colTimestampString(
+  options?: ColTimestampOptions,
 ): ColumnDef<any> {
   return makeColumnDef((target, key) => {
-    column.timestamp(options ?? {})(target as any, key);
+    column.timestamp(options ?? {}, true)(target as any, key);
   });
 };
+colBase.timestamp = colTimestampFn;
 
-colBase.time = function colTime(
-  options?: ColTimeOptions & Record<string, any>,
+function colTimeFn(options?: ColTimeOptions): ColumnDef<any> {
+  return makeColumnDef((target, key) => {
+    column.time(options ?? {}, false)(target as any, key);
+  });
+}
+colTimeFn.string = function colTimeString(
+  options?: ColTimeOptions,
 ): ColumnDef<any> {
   return makeColumnDef((target, key) => {
-    column.time(options ?? {})(target as any, key);
+    column.time(options ?? {}, true)(target as any, key);
   });
 };
+colBase.time = colTimeFn;
 
 colBase.json = function colJson<T = unknown>(
   options?: ColJsonOptions,

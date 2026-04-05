@@ -1,15 +1,49 @@
-import dayjs from "dayjs";
-import customParseFormat from "dayjs/plugin/customParseFormat.js";
-import timezone from "dayjs/plugin/timezone.js";
-import utc from "dayjs/plugin/utc.js";
 import { HysteriaError } from "../errors/hysteria_error";
-
-dayjs.extend(utc);
-dayjs.extend(timezone);
-dayjs.extend(customParseFormat);
 
 export type DateFormat = "ISO" | "TIMESTAMP" | "DATE_ONLY" | "TIME_ONLY";
 export type Timezone = "UTC" | "LOCAL";
+
+function pad(n: number): string {
+  return String(n).padStart(2, "0");
+}
+
+function formatLocal(date: Date, format: DateFormat): string {
+  const Y = date.getFullYear();
+  const M = pad(date.getMonth() + 1);
+  const D = pad(date.getDate());
+  const h = pad(date.getHours());
+  const m = pad(date.getMinutes());
+  const s = pad(date.getSeconds());
+  switch (format) {
+    case "ISO":
+      return `${Y}-${M}-${D} ${h}:${m}:${s}`;
+    case "DATE_ONLY":
+      return `${Y}-${M}-${D}`;
+    case "TIME_ONLY":
+      return `${h}:${m}:${s}`;
+    case "TIMESTAMP":
+      return Math.floor(date.getTime() / 1000).toString();
+  }
+}
+
+function formatUTC(date: Date, format: DateFormat): string {
+  const Y = date.getUTCFullYear();
+  const M = pad(date.getUTCMonth() + 1);
+  const D = pad(date.getUTCDate());
+  const h = pad(date.getUTCHours());
+  const m = pad(date.getUTCMinutes());
+  const s = pad(date.getUTCSeconds());
+  switch (format) {
+    case "ISO":
+      return `${Y}-${M}-${D} ${h}:${m}:${s}`;
+    case "DATE_ONLY":
+      return `${Y}-${M}-${D}`;
+    case "TIME_ONLY":
+      return `${h}:${m}:${s}`;
+    case "TIMESTAMP":
+      return Math.floor(date.getTime() / 1000).toString();
+  }
+}
 
 export const getDate = (
   date: Date,
@@ -20,40 +54,12 @@ export const getDate = (
     throw new Error("Invalid date provided");
   }
 
-  const d = dayjs(date);
-
-  if (timezone === "LOCAL") {
-    const localDate = d.local();
-    switch (format) {
-      case "ISO":
-        return localDate.format("YYYY-MM-DD HH:mm:ss");
-      case "DATE_ONLY":
-        return localDate.format("YYYY-MM-DD");
-      case "TIME_ONLY":
-        return localDate.format("HH:mm:ss");
-      default:
-        return localDate.unix().toString();
-    }
-  }
-
-  const utcDate = d.utc();
-  switch (format) {
-    case "ISO":
-      return utcDate.format("YYYY-MM-DD HH:mm:ss");
-    case "DATE_ONLY":
-      return utcDate.format("YYYY-MM-DD");
-    case "TIME_ONLY":
-      return utcDate.format("HH:mm:ss");
-    default:
-      return utcDate.unix().toString();
-  }
+  return timezone === "LOCAL"
+    ? formatLocal(date, format)
+    : formatUTC(date, format);
 };
 
-export const parseDate = (
-  value: string | Date | null,
-  format?: string,
-  timezone: Timezone = "UTC",
-): Date | null => {
+export const parseDate = (value: string | Date | null): Date | null => {
   if (value === null) {
     return null;
   }
@@ -66,12 +72,12 @@ export const parseDate = (
   }
 
   try {
-    const parsed = format ? dayjs(value, format) : dayjs(value);
-    if (!parsed.isValid()) {
+    const parsed = new Date(value);
+    if (isNaN(parsed.getTime())) {
       throw new HysteriaError("DateUtils::parseDate", "INVALID_DATE_STRING");
     }
 
-    return timezone === "UTC" ? parsed.utc().toDate() : parsed.local().toDate();
+    return parsed;
   } catch (error) {
     throw new HysteriaError(
       "DateUtils::parseDate",
@@ -82,5 +88,5 @@ export const parseDate = (
 };
 
 export const baseSoftDeleteDate = (date: Date = new Date()): string => {
-  return dayjs(date).utc().format("YYYY-MM-DD HH:mm:ss");
+  return formatUTC(date, "ISO");
 };

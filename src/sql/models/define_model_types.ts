@@ -7,6 +7,7 @@ import type {
   CheckType,
   ColumnOptions,
   ColumnType,
+  DateAutoHook,
   DateColumnOptions,
   DatetimeColumnOptions,
   IndexType,
@@ -120,22 +121,11 @@ export type ColBooleanOptions = Omit<
   ColumnOptions,
   "prepare" | "serialize" | "default"
 >;
-export type ColDateOptions = Omit<
-  DateColumnOptions,
-  "format" | "serialize" | "prepare" | "default"
->;
-export type ColDatetimeOptions = Omit<
-  DatetimeColumnOptions,
-  "serialize" | "prepare" | "default"
->;
-export type ColTimestampOptions = Omit<
-  DatetimeColumnOptions,
-  "serialize" | "prepare" | "default"
->;
-export type ColTimeOptions = Omit<
-  DateColumnOptions,
-  "format" | "serialize" | "prepare" | "default"
->;
+export type ColDateOptions = Omit<DateColumnOptions, "format" | "default">;
+export type ColDatetimeOptions = Omit<DatetimeColumnOptions, "default">;
+export type ColTimestampOptions = Omit<DatetimeColumnOptions, "default">;
+export type ColTimeOptions = Omit<DateColumnOptions, "format" | "default">;
+export type { DateAutoHook } from "./decorators/model_decorators_types";
 export type ColJsonOptions = Omit<
   ColumnOptions,
   "prepare" | "serialize" | "default"
@@ -390,144 +380,104 @@ export interface ColNamespace {
   ): ColumnDef<NullableColumn<boolean, O>>;
 
   /**
-   * DATE column (YYYY-MM-DD). Defaults to `Date` because database drivers
-   * return `Date` objects.
+   * DATE column (YYYY-MM-DD). Returns `Date` objects.
    *
-   * Pass a `serialize` function to type the column as `string` instead:
+   * Use `col.date.string()` to get string values instead.
    *
    * ```ts
-   * col.date({ nullable: false, serialize: (raw) => raw.toISOString().split("T")[0] }) // string
-   * col.date({ nullable: false })                                                       // Date
-   * col.date({ serialize: (raw) => raw.toISOString().split("T")[0] })                  // string | null
-   * col.date()                                                                          // Date | null
+   * col.date({ nullable: false })    // Date
+   * col.date()                       // Date | null
+   * col.date.string()                // string | null
+   * col.date.string({ nullable: false }) // string
    * ```
-   * @warning Serialize functions for Date columns can only return a string
    */
-  date(
-    options: ColDateOptions & { nullable: false } & {
-      serialize: (value: any) => string;
-    } & TypedPrepare<string> &
-      TypedDefault<string>,
-  ): ColumnDef<string>;
-  date(
-    options: ColDateOptions & { nullable: false } & TypedPrepare<Date> &
-      TypedDefault<string>,
-  ): ColumnDef<Date>;
-  date(
-    options: ColDateOptions & {
-      serialize: (value: any) => string | null;
-    } & TypedPrepare<string | null> &
-      TypedDefault<string>,
-  ): ColumnDef<string | null>;
-  date(
-    options?: ColDateOptions & TypedPrepare<Date | null> & TypedDefault<string>,
-  ): ColumnDef<Date | null>;
+  date: {
+    (options: ColDateOptions & { nullable: false }): ColumnDef<Date>;
+    (options?: ColDateOptions): ColumnDef<Date | null>;
+    /**
+     * DATE column (YYYY-MM-DD) typed as `string`.
+     * Values are passed through untouched as strings.
+     */
+    string: {
+      (options: ColDateOptions & { nullable: false }): ColumnDef<string>;
+      (options?: ColDateOptions): ColumnDef<string | null>;
+    };
+  };
 
   /**
-   * DATETIME column. Defaults to `Date` because database drivers return
-   * `Date` objects.
+   * DATETIME column. Returns `Date` objects.
    *
-   * Pass a `serialize` function to type the column as `string` instead:
+   * Use `col.datetime.string()` to get string values instead.
    *
    * ```ts
-   * col.datetime({ nullable: false, serialize: (raw) => new Date(raw).toISOString() }) // string
-   * col.datetime({ nullable: false })                                                   // Date
-   * col.datetime({ serialize: (raw) => new Date(raw).toISOString() })                  // string | null
-   * col.datetime()                                                                      // Date | null
+   * col.datetime({ nullable: false })    // Date
+   * col.datetime()                       // Date | null
+   * col.datetime.string()                // string | null
+   * col.datetime.string({ nullable: false }) // string
    * ```
-   * @warning Serialize functions for Date columns can only return a string
    */
-  datetime(
-    options: ColDatetimeOptions & { nullable: false } & {
-      serialize: (value: any) => string;
-    } & TypedPrepare<string> &
-      TypedDefault<string>,
-  ): ColumnDef<string>;
-  datetime(
-    options: ColDatetimeOptions & { nullable: false } & TypedPrepare<Date> &
-      TypedDefault<string>,
-  ): ColumnDef<Date>;
-  datetime(
-    options: ColDatetimeOptions & {
-      serialize: (value: any) => string | null;
-    } & TypedPrepare<string | null> &
-      TypedDefault<string>,
-  ): ColumnDef<string | null>;
-  datetime(
-    options?: ColDatetimeOptions &
-      TypedPrepare<Date | null> &
-      TypedDefault<string>,
-  ): ColumnDef<Date | null>;
+  datetime: {
+    (options: ColDatetimeOptions & { nullable: false }): ColumnDef<Date>;
+    (options?: ColDatetimeOptions): ColumnDef<Date | null>;
+    /**
+     * DATETIME column typed as `string`.
+     * Values are passed through untouched as strings.
+     */
+    string: {
+      (options: ColDatetimeOptions & { nullable: false }): ColumnDef<string>;
+      (options?: ColDatetimeOptions): ColumnDef<string | null>;
+    };
+  };
 
   /**
-   * TIMESTAMP column. Defaults to `Date` because database drivers return
-   * `Date` objects.
+   * TIMESTAMP column. Returns `Date` objects.
    *
-   * Pass a `serialize` function to type the column as `string` instead:
+   * Use `col.timestamp.string()` to get string values instead.
    *
    * ```ts
-   * col.timestamp({ nullable: false, serialize: (raw) => new Date(raw).toISOString() }) // string
-   * col.timestamp({ nullable: false })                                                   // Date
-   * col.timestamp({ serialize: (raw) => new Date(raw).toISOString() })                  // string | null
-   * col.timestamp()                                                                      // Date | null
+   * col.timestamp({ nullable: false })    // Date
+   * col.timestamp()                       // Date | null
+   * col.timestamp.string()                // string | null
+   * col.timestamp.string({ nullable: false }) // string
    * ```
-   * @warning Serialize functions for Date columns can only return a string
    */
-  timestamp(
-    options: ColTimestampOptions & { nullable: false } & {
-      serialize: (value: any) => string;
-    } & TypedPrepare<string> &
-      TypedDefault<string>,
-  ): ColumnDef<string>;
-  timestamp(
-    options: ColTimestampOptions & { nullable: false } & TypedPrepare<Date> &
-      TypedDefault<string>,
-  ): ColumnDef<Date>;
-  timestamp(
-    options: ColTimestampOptions & {
-      serialize: (value: any) => string | null;
-    } & TypedPrepare<string | null> &
-      TypedDefault<string>,
-  ): ColumnDef<string | null>;
-  timestamp(
-    options?: ColTimestampOptions &
-      TypedPrepare<Date | null> &
-      TypedDefault<string>,
-  ): ColumnDef<Date | null>;
+  timestamp: {
+    (options: ColTimestampOptions & { nullable: false }): ColumnDef<Date>;
+    (options?: ColTimestampOptions): ColumnDef<Date | null>;
+    /**
+     * TIMESTAMP column typed as `string`.
+     * Values are passed through untouched as strings.
+     */
+    string: {
+      (options: ColTimestampOptions & { nullable: false }): ColumnDef<string>;
+      (options?: ColTimestampOptions): ColumnDef<string | null>;
+    };
+  };
 
   /**
-   * TIME column. Defaults to `Date` because database drivers return
-   * `Date` objects.
+   * TIME column (HH:mm:ss). Returns `Date` objects.
    *
-   * Pass a `serialize` function to type the column as `string` instead:
+   * Use `col.time.string()` to get string values instead.
    *
    * ```ts
-   * col.time({ nullable: false, serialize: (raw) => new Date(raw).toTimeString() }) // string
-   * col.time({ nullable: false })                                                    // Date
-   * col.time({ serialize: (raw) => new Date(raw).toTimeString() })                  // string | null
-   * col.time()                                                                       // Date | null
+   * col.time({ nullable: false })    // Date
+   * col.time()                       // Date | null
+   * col.time.string()                // string | null
+   * col.time.string({ nullable: false }) // string
    * ```
-   * @warning Serialize functions for Date columns can only return a string
    */
-  time(
-    options: ColTimeOptions & { nullable: false } & {
-      serialize: (value: any) => string;
-    } & TypedPrepare<string> &
-      TypedDefault<string>,
-  ): ColumnDef<string>;
-  time(
-    options: ColTimeOptions & { nullable: false } & TypedPrepare<Date> &
-      TypedDefault<string>,
-  ): ColumnDef<Date>;
-  time(
-    options: ColTimeOptions & {
-      serialize: (value: any) => string | null;
-    } & TypedPrepare<string | null> &
-      TypedDefault<string>,
-  ): ColumnDef<string | null>;
-  time(
-    options?: ColTimeOptions & TypedPrepare<Date | null> & TypedDefault<string>,
-  ): ColumnDef<Date | null>;
+  time: {
+    (options: ColTimeOptions & { nullable: false }): ColumnDef<Date>;
+    (options?: ColTimeOptions): ColumnDef<Date | null>;
+    /**
+     * TIME column (HH:mm:ss) typed as `string`.
+     * Values are passed through untouched as strings.
+     */
+    string: {
+      (options: ColTimeOptions & { nullable: false }): ColumnDef<string>;
+      (options?: ColTimeOptions): ColumnDef<string | null>;
+    };
+  };
 
   /**
    * JSON column (`type: "json"`). Defaults to `unknown`.

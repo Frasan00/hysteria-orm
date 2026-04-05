@@ -19,11 +19,9 @@ describe("defineModel – nested self-referencing relation types", () => {
       id: col.bigIncrement(),
       refUserId: col.bigInteger(),
       email: col.string({ length: 100, nullable: false }),
-      createdAt: col.timestamp({
+      createdAt: col.timestamp.string({
         nullable: false,
         autoCreate: true,
-        serialize: (value: Date | string) =>
-          value instanceof Date ? value.toISOString() : value,
       }),
     },
   });

@@ -898,17 +898,26 @@ describe("defineModel", () => {
       expect(idCol?.prepare).toBeDefined();
     });
 
-    test("serialize and prepare on date column", () => {
-      const prepare = (value: Date | string | null | undefined) =>
-        value instanceof Date ? value.toISOString() : value;
-
+    test("serialize and prepare on date column (date mode)", () => {
       const TestModel = defineModel("date_callbacks_test", {
         columns: {
           id: col.increment(),
-          eventDate: col.date({
-            serialize: () => new Date().toISOString(),
-            prepare,
-          }),
+          eventDate: col.date(),
+        },
+      });
+
+      const dateCol = TestModel.getColumns().find(
+        (c) => c.columnName === "eventDate",
+      );
+      expect(dateCol?.serialize).toBeDefined();
+      expect(dateCol?.prepare).toBeDefined();
+    });
+
+    test("date column string mode", () => {
+      const TestModel = defineModel("date_string_test", {
+        columns: {
+          id: col.increment(),
+          eventDate: col.date.string(),
         },
       });
 

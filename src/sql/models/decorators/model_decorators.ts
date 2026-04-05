@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { HysteriaError } from "../../../errors/hysteria_error";
 import { convertCase } from "../../../utils/case_utils";
-import { getDate, parseDate } from "../../../utils/date_utils";
+import { getDate } from "../../../utils/date_utils";
 import {
   decryptAsymmetric,
   decryptSymmetric,
@@ -44,6 +44,7 @@ import type {
   ColumnDataTypeOptionWithScaleAndPrecision,
   ColumnOptions,
   ColumnType,
+  DateAutoHook,
   DateColumnOptions,
   DatetimeColumnOptions,
   IndexType,
@@ -761,84 +762,95 @@ function booleanColumn(
 
 /**
  * @description Decorator to define a DATE_ONLY column in the model (YYYY-MM-DD)
- * @description This will automatically convert the date to DATE_ONLY format
- * @description Handles timezone conversion between UTC and local time
- * @description Can automatically update/create timestamps
+ * @description In Date mode (default): values are passed as Date objects to the driver and serialized as Date objects
+ * @description In String mode: values are passed as strings untouched to the driver and serialized as strings
  * @param options Configuration options for the date column
  * @param options.timezone The timezone to use ('UTC' or 'LOCAL')
  * @param options.autoUpdate Whether to automatically update the date on record updates
  * @param options.autoCreate Whether to automatically set the date on record creation
- * @param options.prepare Optional custom prepare function that receives the pre-handled value
- * @param options.serialize Optional custom serialize function that receives the pre-handled value
+ * @param stringMode If true, column uses string values instead of Date objects
  */
 function dateOnlyColumn(
   options: Omit<DateColumnOptions, "format"> = {},
+  stringMode: boolean = false,
 ): TypedPropertyDecorator<Date | string | null | undefined> {
   const {
     timezone = "UTC",
-    autoUpdate = false,
-    autoCreate = false,
-    prepare: customPrepare,
-    serialize: customSerialize,
+    autoUpdate: autoUpdateOpt = false,
+    autoCreate: autoCreateOpt = false,
     ...rest
   } = options;
 
-  const preHandlerPrepare = (
-    value?: Date | string | null,
-  ): string | null | undefined => {
-    if (!value) {
-      if (autoCreate) {
-        return getDate(new Date(), "DATE_ONLY", timezone);
+  const hasAutoCreate = !!autoCreateOpt;
+  const hasAutoUpdate = !!autoUpdateOpt;
+
+  const defaultCreateDate = () => new Date();
+  const defaultCreateString = () => getDate(new Date(), "DATE_ONLY", timezone);
+
+  const resolveAutoCreate = stringMode
+    ? typeof autoCreateOpt === "function"
+      ? (autoCreateOpt as () => string)
+      : defaultCreateString
+    : typeof autoCreateOpt === "function"
+      ? (autoCreateOpt as () => Date)
+      : defaultCreateDate;
+
+  const resolveAutoUpdate = stringMode
+    ? typeof autoUpdateOpt === "function"
+      ? (autoUpdateOpt as () => string)
+      : defaultCreateString
+    : typeof autoUpdateOpt === "function"
+      ? (autoUpdateOpt as () => Date)
+      : defaultCreateDate;
+
+  const prepareFn = stringMode
+    ? (value?: string | null): string | null | undefined => {
+        if (!value) {
+          if (hasAutoCreate) {
+            return resolveAutoCreate() as string;
+          }
+          return null;
+        }
+        if (hasAutoUpdate) {
+          return resolveAutoUpdate() as string;
+        }
+        return value;
       }
+    : (value?: Date | null): Date | string | null | undefined => {
+        if (!value) {
+          if (hasAutoCreate) {
+            return resolveAutoCreate() as Date;
+          }
+          return null;
+        }
+        if (hasAutoUpdate) {
+          return resolveAutoUpdate() as Date;
+        }
+        return value;
+      };
 
-      return null;
-    }
-
-    if (autoUpdate) {
-      return getDate(new Date(), "DATE_ONLY", timezone);
-    }
-
-    if (typeof value === "string") {
-      return value;
-    }
-
-    return getDate(value, "DATE_ONLY", timezone);
-  };
-
-  const preHandlerSerialize = (
-    value?: Date | string | null,
-  ): Date | null | undefined => {
-    if (value === undefined) {
-      return;
-    }
-
-    if (value === null) {
-      return null;
-    }
-
-    return parseDate(value, undefined, timezone);
-  };
+  const serializeFn = stringMode
+    ? (value?: Date | string | null): string | null | undefined => {
+        if (value === undefined) return;
+        if (value === null) return null;
+        if (value instanceof Date) {
+          return getDate(value, "DATE_ONLY", timezone);
+        }
+        return String(value);
+      }
+    : (value?: Date | string | null): Date | null | undefined => {
+        if (value === undefined) return;
+        if (value === null) return null;
+        if (value instanceof Date) return value;
+        return new Date(value);
+      };
 
   return column({
     type: "date",
     ...(rest as ColumnOptions),
-    autoUpdate,
-    prepare: (value?: Date | string | null) => {
-      const preHandled = preHandlerPrepare(value);
-      if (customPrepare) {
-        return customPrepare(preHandled);
-      }
-
-      return preHandled;
-    },
-    serialize: (value?: Date | string | null) => {
-      const preHandled = preHandlerSerialize(value);
-      if (customSerialize) {
-        return customSerialize(preHandled);
-      }
-
-      return preHandled;
-    },
+    autoUpdate: hasAutoUpdate,
+    prepare: prepareFn as (value: any) => any,
+    serialize: serializeFn as (value: any) => any,
     openApi: {
       type: "string",
       format: "date",
@@ -850,89 +862,101 @@ function dateOnlyColumn(
 
 /**
  * @description Decorator to define a DATETIME column in the model (YYYY-MM-DD HH:mm:ss)
- * @description This will automatically convert the date to ISO format
- * @description Handles timezone conversion between UTC and local time
- * @description Can automatically update/create timestamps
+ * @description In Date mode (default): values are passed as Date objects to the driver and serialized as Date objects
+ * @description In String mode: values are passed as strings untouched to the driver and serialized as strings
  * @param options Configuration options for the datetime column
  * @param options.timezone The timezone to use ('UTC' or 'LOCAL')
  * @param options.autoUpdate Whether to automatically update the timestamp on record updates
  * @param options.autoCreate Whether to automatically set the timestamp on record creation
- * @param options.prepare Optional custom prepare function that receives the pre-handled value
- * @param options.serialize Optional custom serialize function that receives the pre-handled value
+ * @param stringMode If true, column uses string values instead of Date objects
  */
 function datetimeColumn(
   options: DatetimeColumnOptions = {},
+  stringMode: boolean = false,
 ): TypedPropertyDecorator<Date | string | null | undefined> {
   const {
     timezone,
     withTimezone,
-    autoUpdate = false,
-    autoCreate = false,
-    prepare: customPrepare,
-    serialize: customSerialize,
+    autoUpdate: autoUpdateOpt = false,
+    autoCreate: autoCreateOpt = false,
     ...rest
   } = options;
   const effectiveTimezone = timezone ?? "UTC";
   const effectiveWithTimezone =
     withTimezone ?? (timezone !== undefined ? true : false);
 
-  const preHandlerPrepare = (
-    value?: Date | string | null,
-  ): string | null | undefined => {
-    if (!value) {
-      if (autoCreate) {
-        return getDate(new Date(), "ISO", effectiveTimezone);
+  const hasAutoCreate = !!autoCreateOpt;
+  const hasAutoUpdate = !!autoUpdateOpt;
+
+  const defaultCreateDate = () => new Date();
+  const defaultCreateString = () =>
+    getDate(new Date(), "ISO", effectiveTimezone);
+
+  const resolveAutoCreate = stringMode
+    ? typeof autoCreateOpt === "function"
+      ? (autoCreateOpt as () => string)
+      : defaultCreateString
+    : typeof autoCreateOpt === "function"
+      ? (autoCreateOpt as () => Date)
+      : defaultCreateDate;
+
+  const resolveAutoUpdate = stringMode
+    ? typeof autoUpdateOpt === "function"
+      ? (autoUpdateOpt as () => string)
+      : defaultCreateString
+    : typeof autoUpdateOpt === "function"
+      ? (autoUpdateOpt as () => Date)
+      : defaultCreateDate;
+
+  const prepareFn = stringMode
+    ? (value?: string | null): string | null | undefined => {
+        if (!value) {
+          if (hasAutoCreate) {
+            return resolveAutoCreate() as string;
+          }
+          return null;
+        }
+        if (hasAutoUpdate) {
+          return resolveAutoUpdate() as string;
+        }
+        return value;
       }
+    : (value?: Date | null): Date | string | null | undefined => {
+        if (!value) {
+          if (hasAutoCreate) {
+            return resolveAutoCreate() as Date;
+          }
+          return null;
+        }
+        if (hasAutoUpdate) {
+          return resolveAutoUpdate() as Date;
+        }
+        return value;
+      };
 
-      return null;
-    }
-
-    if (autoUpdate) {
-      return getDate(new Date(), "ISO", effectiveTimezone);
-    }
-
-    if (typeof value === "string") {
-      return value;
-    }
-
-    return getDate(value, "ISO", effectiveTimezone);
-  };
-
-  const preHandlerSerialize = (
-    value?: Date | string | null,
-  ): Date | null | undefined => {
-    if (value === undefined) {
-      return;
-    }
-
-    if (value === null) {
-      return null;
-    }
-
-    return parseDate(value, undefined, effectiveTimezone);
-  };
+  const serializeFn = stringMode
+    ? (value?: Date | string | null): string | null | undefined => {
+        if (value === undefined) return;
+        if (value === null) return null;
+        if (value instanceof Date) {
+          return getDate(value, "ISO", effectiveTimezone);
+        }
+        return String(value);
+      }
+    : (value?: Date | string | null): Date | null | undefined => {
+        if (value === undefined) return;
+        if (value === null) return null;
+        if (value instanceof Date) return value;
+        return new Date(value);
+      };
 
   return column({
     type: "datetime",
     ...(rest as ColumnOptions),
     withTimezone: effectiveWithTimezone,
-    autoUpdate,
-    prepare: (value?: Date | string | null) => {
-      const preHandled = preHandlerPrepare(value);
-      if (customPrepare) {
-        return customPrepare(preHandled);
-      }
-
-      return preHandled;
-    },
-    serialize: (value?: Date | string | null) => {
-      const preHandled = preHandlerSerialize(value);
-      if (customSerialize) {
-        return customSerialize(preHandled);
-      }
-
-      return preHandled;
-    },
+    autoUpdate: hasAutoUpdate,
+    prepare: prepareFn as (value: any) => any,
+    serialize: serializeFn as (value: any) => any,
     openApi: {
       type: "string",
       format: "date-time",
@@ -944,89 +968,101 @@ function datetimeColumn(
 
 /**
  * @description Decorator to define a TIMESTAMP column in the model (Unix timestamp)
- * @description This will automatically convert the date to Unix timestamp format
- * @description Handles timezone conversion between UTC and local time
- * @description Can automatically update/create timestamps
+ * @description In Date mode (default): values are passed as Date objects to the driver and serialized as Date objects
+ * @description In String mode: values are passed as strings untouched to the driver and serialized as strings
  * @param options Configuration options for the timestamp column
  * @param options.timezone The timezone to use ('UTC' or 'LOCAL')
  * @param options.autoUpdate Whether to automatically update the timestamp on record updates
  * @param options.autoCreate Whether to automatically set the timestamp on record creation
- * @param options.prepare Optional custom prepare function that receives the pre-handled value
- * @param options.serialize Optional custom serialize function that receives the pre-handled value
+ * @param stringMode If true, column uses string values instead of Date objects
  */
 function timestampColumn(
   options: DatetimeColumnOptions = {},
+  stringMode: boolean = false,
 ): TypedPropertyDecorator<Date | string | null | undefined> {
   const {
     timezone,
     withTimezone,
-    autoUpdate = false,
-    autoCreate = false,
-    prepare: customPrepare,
-    serialize: customSerialize,
+    autoUpdate: autoUpdateOpt = false,
+    autoCreate: autoCreateOpt = false,
     ...rest
   } = options;
   const effectiveTimezone = timezone ?? "UTC";
   const effectiveWithTimezone =
     withTimezone ?? (timezone !== undefined ? true : false);
 
-  const preHandlerPrepare = (
-    value?: Date | string | null,
-  ): string | null | undefined => {
-    if (!value) {
-      if (autoCreate) {
-        return getDate(new Date(), "TIMESTAMP", effectiveTimezone);
+  const hasAutoCreate = !!autoCreateOpt;
+  const hasAutoUpdate = !!autoUpdateOpt;
+
+  const defaultCreateDate = () => new Date();
+  const defaultCreateString = () =>
+    getDate(new Date(), "TIMESTAMP", effectiveTimezone);
+
+  const resolveAutoCreate = stringMode
+    ? typeof autoCreateOpt === "function"
+      ? (autoCreateOpt as () => string)
+      : defaultCreateString
+    : typeof autoCreateOpt === "function"
+      ? (autoCreateOpt as () => Date)
+      : defaultCreateDate;
+
+  const resolveAutoUpdate = stringMode
+    ? typeof autoUpdateOpt === "function"
+      ? (autoUpdateOpt as () => string)
+      : defaultCreateString
+    : typeof autoUpdateOpt === "function"
+      ? (autoUpdateOpt as () => Date)
+      : defaultCreateDate;
+
+  const prepareFn = stringMode
+    ? (value?: string | null): string | null | undefined => {
+        if (!value) {
+          if (hasAutoCreate) {
+            return resolveAutoCreate() as string;
+          }
+          return null;
+        }
+        if (hasAutoUpdate) {
+          return resolveAutoUpdate() as string;
+        }
+        return value;
       }
+    : (value?: Date | null): Date | string | null | undefined => {
+        if (!value) {
+          if (hasAutoCreate) {
+            return resolveAutoCreate() as Date;
+          }
+          return null;
+        }
+        if (hasAutoUpdate) {
+          return resolveAutoUpdate() as Date;
+        }
+        return value;
+      };
 
-      return null;
-    }
-
-    if (autoUpdate) {
-      return getDate(new Date(), "TIMESTAMP", effectiveTimezone);
-    }
-
-    if (typeof value === "string") {
-      return value;
-    }
-
-    return getDate(value, "TIMESTAMP", effectiveTimezone);
-  };
-
-  const preHandlerSerialize = (
-    value?: Date | string | null,
-  ): Date | null | undefined => {
-    if (value === undefined) {
-      return;
-    }
-
-    if (value === null) {
-      return null;
-    }
-
-    return parseDate(value, undefined, effectiveTimezone);
-  };
+  const serializeFn = stringMode
+    ? (value?: Date | string | null): string | null | undefined => {
+        if (value === undefined) return;
+        if (value === null) return null;
+        if (value instanceof Date) {
+          return getDate(value, "TIMESTAMP", effectiveTimezone);
+        }
+        return String(value);
+      }
+    : (value?: Date | string | null): Date | null | undefined => {
+        if (value === undefined) return;
+        if (value === null) return null;
+        if (value instanceof Date) return value;
+        return new Date(value);
+      };
 
   return column({
     type: "timestamp",
     ...(rest as ColumnOptions),
     withTimezone: effectiveWithTimezone,
-    autoUpdate,
-    prepare: (value?: Date | string | null) => {
-      const preHandled = preHandlerPrepare(value);
-      if (customPrepare) {
-        return customPrepare(preHandled);
-      }
-
-      return preHandled;
-    },
-    serialize: (value?: Date | string | null) => {
-      const preHandled = preHandlerSerialize(value);
-      if (customSerialize) {
-        return customSerialize(preHandled);
-      }
-
-      return preHandled;
-    },
+    autoUpdate: hasAutoUpdate,
+    prepare: prepareFn as (value: any) => any,
+    serialize: serializeFn as (value: any) => any,
     openApi: {
       type: "string",
       format: "date-time",
@@ -1038,84 +1074,95 @@ function timestampColumn(
 
 /**
  * @description Decorator to define a TIME_ONLY column in the model (HH:mm:ss)
- * @description This will automatically convert the date to TIME_ONLY format
- * @description Handles timezone conversion between UTC and local time
- * @description Can automatically update/create timestamps
+ * @description In Date mode (default): values are passed as Date objects to the driver and serialized as Date objects
+ * @description In String mode: values are passed as strings untouched to the driver and serialized as strings
  * @param options Configuration options for the time column
  * @param options.timezone The timezone to use ('UTC' or 'LOCAL')
  * @param options.autoUpdate Whether to automatically update the time on record updates
  * @param options.autoCreate Whether to automatically set the time on record creation
- * @param options.prepare Optional custom prepare function that receives the pre-handled value
- * @param options.serialize Optional custom serialize function that receives the pre-handled value
+ * @param stringMode If true, column uses string values instead of Date objects
  */
 function timeOnlyColumn(
   options: Omit<DateColumnOptions, "format"> = {},
+  stringMode: boolean = false,
 ): TypedPropertyDecorator<Date | string | null | undefined> {
   const {
     timezone = "UTC",
-    autoUpdate = false,
-    autoCreate = false,
-    prepare: customPrepare,
-    serialize: customSerialize,
+    autoUpdate: autoUpdateOpt = false,
+    autoCreate: autoCreateOpt = false,
     ...rest
   } = options;
 
-  const preHandlerPrepare = (
-    value?: Date | string | null,
-  ): string | null | undefined => {
-    if (!value) {
-      if (autoCreate) {
-        return getDate(new Date(), "TIME_ONLY", timezone);
+  const hasAutoCreate = !!autoCreateOpt;
+  const hasAutoUpdate = !!autoUpdateOpt;
+
+  const defaultCreateDate = () => new Date();
+  const defaultCreateString = () => getDate(new Date(), "TIME_ONLY", timezone);
+
+  const resolveAutoCreate = stringMode
+    ? typeof autoCreateOpt === "function"
+      ? (autoCreateOpt as () => string)
+      : defaultCreateString
+    : typeof autoCreateOpt === "function"
+      ? (autoCreateOpt as () => Date)
+      : defaultCreateDate;
+
+  const resolveAutoUpdate = stringMode
+    ? typeof autoUpdateOpt === "function"
+      ? (autoUpdateOpt as () => string)
+      : defaultCreateString
+    : typeof autoUpdateOpt === "function"
+      ? (autoUpdateOpt as () => Date)
+      : defaultCreateDate;
+
+  const prepareFn = stringMode
+    ? (value?: string | null): string | null | undefined => {
+        if (!value) {
+          if (hasAutoCreate) {
+            return resolveAutoCreate() as string;
+          }
+          return null;
+        }
+        if (hasAutoUpdate) {
+          return resolveAutoUpdate() as string;
+        }
+        return value;
       }
+    : (value?: Date | null): Date | string | null | undefined => {
+        if (!value) {
+          if (hasAutoCreate) {
+            return resolveAutoCreate() as Date;
+          }
+          return null;
+        }
+        if (hasAutoUpdate) {
+          return resolveAutoUpdate() as Date;
+        }
+        return value;
+      };
 
-      return null;
-    }
-
-    if (autoUpdate) {
-      return getDate(new Date(), "TIME_ONLY", timezone);
-    }
-
-    if (typeof value === "string") {
-      return value;
-    }
-
-    return getDate(value, "TIME_ONLY", timezone);
-  };
-
-  const preHandlerSerialize = (
-    value?: Date | string | null,
-  ): Date | null | undefined => {
-    if (value === undefined) {
-      return;
-    }
-
-    if (value === null) {
-      return null;
-    }
-
-    return parseDate(value, undefined, timezone);
-  };
+  const serializeFn = stringMode
+    ? (value?: Date | string | null): string | null | undefined => {
+        if (value === undefined) return;
+        if (value === null) return null;
+        if (value instanceof Date) {
+          return getDate(value, "TIME_ONLY", timezone);
+        }
+        return String(value);
+      }
+    : (value?: Date | string | null): Date | null | undefined => {
+        if (value === undefined) return;
+        if (value === null) return null;
+        if (value instanceof Date) return value;
+        return new Date(value);
+      };
 
   return column({
     type: "time",
     ...(rest as ColumnOptions),
-    autoUpdate,
-    prepare: (value?: Date | string | null) => {
-      const preHandled = preHandlerPrepare(value);
-      if (customPrepare) {
-        return customPrepare(preHandled);
-      }
-
-      return preHandled;
-    },
-    serialize: (value?: Date | string | null) => {
-      const preHandled = preHandlerSerialize(value);
-      if (customSerialize) {
-        return customSerialize(preHandled);
-      }
-
-      return preHandled;
-    },
+    autoUpdate: hasAutoUpdate,
+    prepare: prepareFn as (value: any) => any,
+    serialize: serializeFn as (value: any) => any,
     openApi: {
       type: "string",
       format: "time",

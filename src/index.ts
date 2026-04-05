@@ -16,6 +16,7 @@ export type {
   ColVarbinaryOptions,
   ColumnDef,
   CreateSchemaResult,
+  DateAutoHook,
   DefinedModel,
   DefinedView,
   InferPK,

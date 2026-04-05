@@ -85,6 +85,7 @@ export const installBaseDependencies = async (
   switch (type) {
     case "mariadb":
     case "mysql":
+      driverDependency = `mysql2@${deps.mysql2}`;
       break;
     case "cockroachdb":
     case "postgres":
