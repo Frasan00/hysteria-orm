@@ -59,9 +59,7 @@ export const getDate = (
     : formatUTC(date, format);
 };
 
-export const parseDate = (
-  value: string | Date | null,
-): Date | null => {
+export const parseDate = (value: string | Date | null): Date | null => {
   if (value === null) {
     return null;
   }

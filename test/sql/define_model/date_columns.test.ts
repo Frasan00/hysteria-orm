@@ -1,7 +1,4 @@
-import {
-  defineModel,
-  col,
-} from "../../../src/sql/models/define_model";
+import { defineModel, col } from "../../../src/sql/models/define_model";
 import { DateTime } from "luxon";
 
 /**
