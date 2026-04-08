@@ -883,6 +883,34 @@ export type DefinedModel<
       { readonly __tableName: T } & InferColumns<C> & Model
     >,
   ) => Promise<void> | void;
+} & ModelColumns<T, C>;
+
+// ---------------------------------------------------------------------------
+// Column references – type-safe "table.column" strings from defineModel
+// ---------------------------------------------------------------------------
+
+/**
+ * Maps a model's column definitions to their fully-qualified `"table.column"`
+ * string values. These are placed directly on the model class as static
+ * properties by `defineModel` and `defineView`.
+ *
+ * @example
+ * ```typescript
+ * const User = defineModel("users", {
+ *   columns: { id: col.increment(), name: col.string() },
+ * });
+ * // User.id  → "users.id"  (type: "users.id")
+ * // User.name → "users.name" (type: "users.name")
+ *
+ * const users = User;
+ * sql.from(User).select(users.id, [users.name, "userName"]);
+ * ```
+ */
+export type ModelColumns<
+  T extends string,
+  C extends Record<string, ColumnDef>,
+> = {
+  readonly [K in keyof C & string]: `${T}.${K}`;
 };
 
 // ---------------------------------------------------------------------------
@@ -1139,4 +1167,4 @@ export type DefinedView<
 > = Omit<ConcreteModelStatics, HiddenViewStatics> & {
   readonly table: T;
   new (): InferModel<T, C, {}> & Model;
-};
+} & ModelColumns<T, C>;

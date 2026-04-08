@@ -20,6 +20,7 @@ export type {
   DefinedModel,
   DefinedView,
   InferPK,
+  ModelColumns,
   NullableColumn,
   PrimaryColumnDef,
   RelationDef,

@@ -65,6 +65,65 @@ import type {
 import { Model } from "./model";
 
 // ---------------------------------------------------------------------------
+// Reserved property names that cannot be used as column names.
+// These are ORM-specific statics on Model that would break if overwritten.
+// ---------------------------------------------------------------------------
+
+const RESERVED_MODEL_PROPERTIES = new Set([
+  // Core statics
+  "table",
+  "primaryKey",
+  "softDeleteColumn",
+  "softDeleteValue",
+  "modelCaseConvention",
+  "databaseCaseConvention",
+  // Metadata accessors
+  "getColumns",
+  "getColumnsByName",
+  "getColumnsByDatabaseName",
+  "getRelations",
+  "getIndexes",
+  "getUniques",
+  "getChecks",
+  // Lifecycle hooks
+  "beforeFetch",
+  "afterFetch",
+  "beforeInsert",
+  "beforeInsertMany",
+  "beforeUpdate",
+  "beforeDelete",
+  // Query / mutation (hidden from type but present at runtime)
+  "query",
+  "all",
+  "first",
+  "find",
+  "findOneOrFail",
+  "findOne",
+  "findBy",
+  "findOneBy",
+  "findOneByPrimaryKey",
+  "refresh",
+  "sync",
+  "insert",
+  "insertMany",
+  "updateRecord",
+  "firstOrInsert",
+  "upsert",
+  "upsertMany",
+  "deleteRecord",
+  "save",
+  "softDelete",
+  "truncate",
+  "sqlInstance",
+  "getTableInfo",
+  "getIndexInfo",
+  "getTableSchema",
+  // JS class essentials
+  "prototype",
+  "constructor",
+]);
+
+// ---------------------------------------------------------------------------
 // Internal helper – creates a ColumnDef wrapping a decorator apply function
 // ---------------------------------------------------------------------------
 
@@ -431,6 +490,13 @@ export const col: ColNamespace = colBase as ColNamespace;
  *     beforeFetch(qb) { qb.whereNull("deleted_at"); },
  *   },
  * });
+ *
+ * // Type-safe column references directly on the model
+ * // User.id → "users.id", User.email → "users.email", etc.
+ * sql.from(User)
+ *   .select(User.id, [User.email, "userEmail"])
+ *   .where(User.id, ">", 5)
+ *   .orderBy(User.email, "asc");
  * ```
  */
 export function defineModel<
@@ -459,9 +525,21 @@ export function defineModel<
     DefinedModelClass.softDeleteValue = options.softDeleteValue;
   }
 
-  // 4. Register columns
+  // 4. Register columns and attach column references as static properties
   for (const [columnName, colDef] of Object.entries(columns)) {
     colDef._apply(DefinedModelClass.prototype, columnName);
+
+    if (RESERVED_MODEL_PROPERTIES.has(columnName)) {
+      throw new Error(
+        `defineModel("${table}"): column name "${columnName}" conflicts with an existing model property. Please rename this column.`,
+      );
+    }
+    Object.defineProperty(DefinedModelClass, columnName, {
+      value: `${table}.${columnName}`,
+      writable: false,
+      enumerable: true,
+      configurable: true,
+    });
   }
 
   // 5. Register indexes
@@ -716,6 +794,18 @@ export function defineView<
 
   for (const [columnName, colDef] of Object.entries(columns)) {
     colDef._apply(DefinedViewClass.prototype, columnName);
+
+    if (RESERVED_MODEL_PROPERTIES.has(columnName)) {
+      throw new Error(
+        `defineView("${table}"): column name "${columnName}" conflicts with an existing model property. Please rename this column.`,
+      );
+    }
+    Object.defineProperty(DefinedViewClass, columnName, {
+      value: `${table}.${columnName}`,
+      writable: false,
+      enumerable: true,
+      configurable: true,
+    });
   }
 
   if (hooks) {

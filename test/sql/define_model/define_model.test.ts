@@ -1,5 +1,6 @@
 import {
   defineModel,
+  defineView,
   col,
   defineRelations,
   createSchema,
@@ -1406,6 +1407,166 @@ describe("defineModel", () => {
       expect(_id).toBe(true);
       expect(_sku).toBe(true);
       expect(_price).toBe(true);
+    });
+  });
+
+  describe("column references on model root", () => {
+    type AssertEqual<A, B> = [A] extends [B]
+      ? [B] extends [A]
+        ? true
+        : never
+      : never;
+
+    const User = defineModel("users", {
+      columns: {
+        id: col.increment(),
+        email: col.string({ nullable: false }),
+        isActive: col.boolean(),
+      },
+    });
+
+    const Post = defineModel("posts", {
+      columns: {
+        id: col.increment(),
+        title: col.string(),
+        userId: col.integer(),
+      },
+    });
+
+    test("column refs exist directly on the model", () => {
+      expect(User.id).toBe("users.id");
+      expect(User.email).toBe("users.email");
+      expect(User.isActive).toBe("users.isActive");
+    });
+
+    test("column refs work across multiple models", () => {
+      expect(Post.id).toBe("posts.id");
+      expect(Post.title).toBe("posts.title");
+      expect(Post.userId).toBe("posts.userId");
+    });
+
+    test("column refs are usable as select arguments (string compatible)", () => {
+      const selectArgs: string[] = [User.id, User.email];
+      expect(selectArgs).toEqual(["users.id", "users.email"]);
+    });
+
+    test("column refs work in alias tuple format [col, alias]", () => {
+      const tuple: [string, string] = [User.id, "superId"];
+      expect(tuple).toEqual(["users.id", "superId"]);
+    });
+
+    test("column refs work for join column references", () => {
+      expect(Post.userId).toBe("posts.userId");
+      expect(User.id).toBe("users.id");
+      // Both are in "table.column" format, valid for join
+      expect(Post.userId).toMatch(/^.+\..+$/);
+      expect(User.id).toMatch(/^.+\..+$/);
+    });
+
+    test("column ref types are literal 'table.column' strings", () => {
+      const _id: AssertEqual<typeof User.id, "users.id"> = true;
+      const _email: AssertEqual<typeof User.email, "users.email"> = true;
+      const _isActive: AssertEqual<typeof User.isActive, "users.isActive"> =
+        true;
+      expect(_id).toBe(true);
+      expect(_email).toBe(true);
+      expect(_isActive).toBe(true);
+    });
+
+    test("throws if column name conflicts with existing model property", () => {
+      expect(() =>
+        defineModel("bad_table", {
+          columns: {
+            id: col.increment(),
+            table: col.string(),
+          },
+        }),
+      ).toThrow(/conflicts with an existing model property/);
+
+      expect(() =>
+        defineModel("bad_table2", {
+          columns: {
+            id: col.increment(),
+            getColumns: col.string(),
+          },
+        }),
+      ).toThrow(/conflicts with an existing model property/);
+    });
+
+    test("defineView also has column refs on root", () => {
+      const UserStats = defineView("user_stats", {
+        columns: {
+          id: col.integer(),
+          total: col.integer(),
+        },
+        statement(_query) {
+          // no-op for test
+        },
+      });
+
+      expect(UserStats.id).toBe("user_stats.id");
+      expect(UserStats.total).toBe("user_stats.total");
+
+      const _id: AssertEqual<typeof UserStats.id, "user_stats.id"> = true;
+      const _total: AssertEqual<typeof UserStats.total, "user_stats.total"> =
+        true;
+      expect(_id).toBe(true);
+      expect(_total).toBe(true);
+    });
+
+    test("defineView throws on column name conflict", () => {
+      expect(() =>
+        defineView("bad_view", {
+          columns: {
+            id: col.integer(),
+            table: col.integer(),
+          },
+          statement(_query) {},
+        }),
+      ).toThrow(/conflicts with an existing model property/);
+    });
+
+    test("createSchema preserves column refs", () => {
+      const UserBase = defineModel("schema_users", {
+        columns: {
+          id: col.increment(),
+          userName: col.string(),
+        },
+      });
+
+      const PostBase = defineModel("schema_posts", {
+        columns: {
+          id: col.increment(),
+          title: col.string(),
+          userId: col.integer(),
+        },
+      });
+
+      const postRels = defineRelations(PostBase, ({ belongsTo }) => ({
+        user: belongsTo(UserBase, { foreignKey: "userId" }),
+      }));
+
+      const schema = createSchema(
+        { schema_users: UserBase, schema_posts: PostBase },
+        { schema_posts: postRels },
+      );
+
+      expect(schema.schema_users.id).toBe("schema_users.id");
+      expect(schema.schema_users.userName).toBe("schema_users.userName");
+      expect(schema.schema_posts.id).toBe("schema_posts.id");
+      expect(schema.schema_posts.title).toBe("schema_posts.title");
+      expect(schema.schema_posts.userId).toBe("schema_posts.userId");
+    });
+
+    test("defineModel with column name conflict throws error", () => {
+      expect(() =>
+        defineModel("conflict_test", {
+          columns: {
+            id: col.increment(),
+            getColumns: col.string(),
+          },
+        }),
+      ).toThrow(/conflicts with an existing model property/);
     });
   });
 });
