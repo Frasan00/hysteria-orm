@@ -202,6 +202,12 @@ type SqlDataSourceInputBase<
    * @description To use AdminJS, install: `npm install adminjs`
    */
   adminJs?: AdminJsOptions;
+
+  /**
+   * @description If true, the data source will not throw when unconnected — it will auto-connect on the first query execution.
+   * @default false
+   */
+  lazyLoad?: boolean;
 };
 
 /**

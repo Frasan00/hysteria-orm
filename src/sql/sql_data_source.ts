@@ -222,6 +222,9 @@ export class SqlDataSource<
     context: SlaveContext,
   ) => void | Promise<void>;
 
+  private lazyLoad: boolean = false;
+  private connecting: Promise<void> | null = null;
+
   /**
    * @description Returns the configured slave failure callback
    */
@@ -332,6 +335,7 @@ export class SqlDataSource<
 
     // Set slave failure callback
     this.onSlaveServerFailure = input?.replication?.onSlaveServerFailure;
+    this.lazyLoad = input?.lazyLoad ?? false;
   }
 
   // ============================================
@@ -425,6 +429,30 @@ export class SqlDataSource<
    */
   get isConnected(): boolean {
     return !!this.sqlPool || !!this.sqlConnection;
+  }
+
+  /**
+   * @description Ensures the connection is established. If lazyLoad is true and not connected, connects automatically.
+   */
+  async ensureConnected(): Promise<void> {
+    if (this.isConnected) {
+      return;
+    }
+
+    if (!this.lazyLoad) {
+      throw new HysteriaError(
+        "SqlDataSource::ensureConnected",
+        "CONNECTION_NOT_ESTABLISHED",
+      );
+    }
+
+    if (!this.connecting) {
+      this.connecting = this.connect().finally(() => {
+        this.connecting = null;
+      });
+    }
+
+    await this.connecting;
   }
 
   /**
@@ -723,7 +751,7 @@ export class SqlDataSource<
    * ```
    */
   schema(): SchemaBuilder {
-    if (!this.isConnected) {
+    if (!this.isConnected && !this.lazyLoad) {
       throw new HysteriaError(
         "SqlDataSource::schema",
         "CONNECTION_NOT_ESTABLISHED",
@@ -842,7 +870,7 @@ export class SqlDataSource<
   getModelManager<M extends Model>(
     model: { new (): M } | typeof Model,
   ): ModelManager<M> {
-    if (!this.isConnected) {
+    if (!this.isConnected && !this.lazyLoad) {
       throw new HysteriaError(
         "SqlDataSource::getModelManager",
         "CONNECTION_NOT_ESTABLISHED",
@@ -865,6 +893,12 @@ export class SqlDataSource<
    */
   getPool(): getPoolReturnType<D> {
     if (!this.sqlPool) {
+      if (this.lazyLoad) {
+        throw new HysteriaError(
+          "SqlDataSource::getPool - call ensureConnected() or connect() first when using lazyLoad",
+          "CONNECTION_NOT_ESTABLISHED",
+        );
+      }
       throw new HysteriaError(
         "SqlDataSource::getPool",
         "CONNECTION_NOT_ESTABLISHED",
@@ -883,12 +917,7 @@ export class SqlDataSource<
       return this.sqlConnection as GetConnectionReturnType<D>;
     }
 
-    if (!this.sqlPool) {
-      throw new HysteriaError(
-        "SqlDataSource::getConnection",
-        "CONNECTION_NOT_ESTABLISHED",
-      );
-    }
+    await this.ensureConnected();
 
     switch (this.sqlType) {
       case "mysql":
@@ -1103,12 +1132,7 @@ export class SqlDataSource<
     params: any[] = [],
     options?: RawQueryOptions,
   ): Promise<R> {
-    if (!this.isConnected) {
-      throw new HysteriaError(
-        "SqlDataSource::rawQuery",
-        "CONNECTION_NOT_ESTABLISHED",
-      );
-    }
+    await this.ensureConnected();
 
     const replicationMode = options?.replicationMode || "master";
 

@@ -439,7 +439,7 @@ describe("TestModel", () => {
 
   describe("query builder", () => {
     test("should insert and return the inserted document", async () => {
-      const insertedModel = await mongoDataSource.query("test").insert(
+      const insertedModel = await mongoDataSource.from("test").insert(
         {
           name: "Test Name",
           email: "test",
@@ -455,7 +455,7 @@ describe("TestModel", () => {
     });
 
     test("should insert and return only the id of the inserted document", async () => {
-      const insertedModel = await mongoDataSource.query("test").insert({
+      const insertedModel = await mongoDataSource.from("test").insert({
         name: "Test Name",
         email: "test",
       });
@@ -464,7 +464,7 @@ describe("TestModel", () => {
     });
 
     test("should insert multiple records and return the inserted documents", async () => {
-      const insertedModels = await mongoDataSource.query("test").insertMany(
+      const insertedModels = await mongoDataSource.from("test").insertMany(
         [
           { name: "Test Name 1", email: "test" },
           { name: "Test Name 2", email: "test" },
@@ -480,7 +480,7 @@ describe("TestModel", () => {
     });
 
     test("should insert multiple records and return the inserted documents", async () => {
-      const insertedModels = await mongoDataSource.query("test").insertMany([
+      const insertedModels = await mongoDataSource.from("test").insertMany([
         { name: "Test Name 1", email: "test" },
         { name: "Test Name 2", email: "test" },
       ]);

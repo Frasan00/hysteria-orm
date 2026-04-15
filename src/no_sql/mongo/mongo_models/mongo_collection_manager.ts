@@ -44,9 +44,9 @@ export type MongoUnrestrictedFindManyOptions<T extends Collection> =
 export class CollectionManager<T extends Collection> {
   protected logs: boolean | LoggerConfig;
   protected collection: typeof Collection;
-  protected mongoClient: ReturnType<MongoDataSource["getCurrentConnection"]>;
+  protected mongoClient!: ReturnType<MongoDataSource["getCurrentConnection"]>;
   protected mongoDataSource: MongoDataSource;
-  protected collectionInstance: MongoClientImport["Collection"]["prototype"];
+  protected collectionInstance!: MongoClientImport["Collection"]["prototype"];
   protected session?: ReturnType<MongoDataSource["startSession"]>;
 
   constructor(
@@ -59,10 +59,24 @@ export class CollectionManager<T extends Collection> {
     this.session = session;
     this.mongoDataSource = mongoDataSource;
     this.collection = _collection;
+
+    if (mongoDataSource.isConnected) {
+      this.initConnection();
+    }
+  }
+
+  private initConnection(): void {
     this.mongoClient = this.mongoDataSource.getCurrentConnection();
     this.collectionInstance = this.mongoClient
       .db()
       .collection(this.collection.collection);
+  }
+
+  protected async ensureInitialized(): Promise<void> {
+    await this.mongoDataSource.ensureConnected();
+    if (!this.collectionInstance) {
+      this.initConnection();
+    }
   }
 
   /**
@@ -71,6 +85,7 @@ export class CollectionManager<T extends Collection> {
   async find(
     options?: MongoUnrestrictedFindManyOptions<T> | MongoFindManyOptions<T>,
   ): Promise<T[]> {
+    await this.ensureInitialized();
     const queryBuilder = this.query();
     if (!options) {
       return queryBuilder.many();
@@ -107,6 +122,7 @@ export class CollectionManager<T extends Collection> {
   async findOne(
     options: UnrestrictedMongoFindOneOptions<T> | MongoFindOneOptions<T>,
   ): Promise<T | null> {
+    await this.ensureInitialized();
     const queryBuilder = this.query();
     if (!options) {
       return queryBuilder.oneOrFail();
@@ -129,6 +145,7 @@ export class CollectionManager<T extends Collection> {
       customError?: Error;
     },
   ): Promise<T> {
+    await this.ensureInitialized();
     const queryBuilder = this.query();
     if (!options) {
       return queryBuilder.oneOrFail();
@@ -178,6 +195,7 @@ export class CollectionManager<T extends Collection> {
     modelData: ModelKeyOrAny<T>,
     options: { ignoreHooks?: boolean } = {},
   ): Promise<T> {
+    await this.ensureInitialized();
     if (!options.ignoreHooks) {
       this.collection.beforeInsert(modelData);
     }
@@ -201,6 +219,7 @@ export class CollectionManager<T extends Collection> {
     modelData: ModelKeyOrAny<T>[],
     options: { ignoreHooks?: boolean } = {},
   ): Promise<T[]> {
+    await this.ensureInitialized();
     if (!options.ignoreHooks) {
       modelData.forEach((data) => {
         this.collection.beforeInsert(data);
@@ -229,6 +248,7 @@ export class CollectionManager<T extends Collection> {
    * @description Updates a record
    */
   async updateRecord(modelData: T): Promise<T> {
+    await this.ensureInitialized();
     const id = modelData.id;
     if (!id) {
       throw new HysteriaError(
@@ -264,6 +284,7 @@ export class CollectionManager<T extends Collection> {
    * @description Deletes a record
    */
   async deleteRecord(model: T): Promise<T> {
+    await this.ensureInitialized();
     const id = model.id;
     if (!id) {
       throw new HysteriaError(

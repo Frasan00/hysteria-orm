@@ -40,6 +40,8 @@ export const execSql = async <
     shouldNotLog?: boolean;
   },
 ): Promise<SqlRunnerReturnType<T, D>> => {
+  await sqlDataSource.ensureConnected();
+
   if (!options?.shouldNotLog) {
     log(
       query,

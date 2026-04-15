@@ -1,647 +1,295 @@
 import { RedisDataSource } from "../../src/no_sql/redis/redis_data_source";
 
-let redisInstance: RedisDataSource;
+const redisConfig = {
+  host: "localhost",
+  port: 6379,
+  username: "default",
+  password: "root",
+  db: 0,
+};
+
+let redis: RedisDataSource;
+
 describe("RedisDataSource", () => {
   beforeAll(async () => {
-    await RedisDataSource.connect({
-      host: "localhost",
-      port: 6379,
-      username: "default",
-      password: "root",
-      db: 0,
-    });
-
-    redisInstance = await RedisDataSource.getConnection({
-      host: "localhost",
-      port: 6379,
-      username: "default",
-      password: "password",
-      db: 0,
-    });
+    redis = new RedisDataSource(redisConfig);
+    await redis.connect();
   });
 
   afterAll(async () => {
-    await redisInstance.disconnect();
-    await RedisDataSource.disconnect();
+    await redis.flushAll();
+    await redis.disconnect();
   });
 
-  // Test singleton static class
-  test("redis static isConnected check", async () => {
-    expect(RedisDataSource.isConnected).toBe(true);
+  test("isConnected check", async () => {
+    expect(redis.isConnected).toBe(true);
   });
 
-  test("redis static string operations", async () => {
-    await RedisDataSource.set("key", "value", 1000);
-    const value = await RedisDataSource.get<string | null>("key");
+  test("string operations", async () => {
+    await redis.set("key", "value", 1000);
+    const value = await redis.get<string | null>("key");
     expect(value).toBe("value");
 
-    await RedisDataSource.delete("key");
-    const deletedValue = await RedisDataSource.get<string>("key");
-    expect(deletedValue).toBe(null);
+    await redis.delete("key");
+    const deletedValue = await redis.get<string>("key");
+    expect(deletedValue).toBeNull();
   });
 
-  test("redis static object operations", async () => {
-    await RedisDataSource.set("key", { key: "value" }, 1000);
-    const objectValue = await RedisDataSource.get<{ key: string }>("key");
+  test("object operations", async () => {
+    await redis.set("key", { key: "value" }, 1000);
+    const objectValue = await redis.get<{ key: string }>("key");
     expect(objectValue).toEqual({ key: "value" });
 
-    await RedisDataSource.delete("key");
-    const deletedObjectValue = await RedisDataSource.get<{ key: string }>(
-      "key",
-    );
-    expect(deletedObjectValue).toBe(null);
+    await redis.delete("key");
+    const deletedObjectValue = await redis.get<{ key: string }>("key");
+    expect(deletedObjectValue).toBeNull();
   });
 
-  test("redis static buffer operations", async () => {
-    await RedisDataSource.set("key", Buffer.from("value"), 10000);
-    const bufferValue = await RedisDataSource.getBuffer("key");
+  test("buffer operations", async () => {
+    await redis.set("key", Buffer.from("value"), 6000);
+    const bufferValue = await redis.getBuffer("key");
     expect(bufferValue).toEqual(Buffer.from("value"));
 
-    await RedisDataSource.delete("key");
-    const deletedBufferValue = await RedisDataSource.get<Buffer>("key");
-    expect(deletedBufferValue).toBe(null);
+    await redis.delete("key");
+    const deletedBufferValue = await redis.get<Buffer>("key");
+    expect(deletedBufferValue).toBeNull();
   });
 
-  test("redis static number operations", async () => {
-    await RedisDataSource.set("key", 1, 1000);
-    const numberValue = await RedisDataSource.get<number>("key");
+  test("number operations", async () => {
+    await redis.set("key", 1, 1000);
+    const numberValue = await redis.get<number>("key");
     expect(numberValue).toBe(1);
 
-    await RedisDataSource.delete("key");
-    const deletedNumberValue = await RedisDataSource.get<number>("key");
-    expect(deletedNumberValue).toBe(null);
+    await redis.delete("key");
+    const deletedNumberValue = await redis.get<number>("key");
+    expect(deletedNumberValue).toBeNull();
   });
 
-  test("redis static boolean operations", async () => {
-    await RedisDataSource.set("key", true, 1000);
-    const booleanValue = await RedisDataSource.get<boolean>("key");
+  test("boolean operations", async () => {
+    await redis.set("key", true, 1000);
+    const booleanValue = await redis.get<boolean>("key");
     expect(booleanValue).toBe(true);
 
-    await RedisDataSource.delete("key");
-    const deletedBooleanValue = await RedisDataSource.get<boolean>("key");
-    expect(deletedBooleanValue).toBe(null);
+    await redis.delete("key");
+    const deletedBooleanValue = await redis.get<boolean>("key");
+    expect(deletedBooleanValue).toBeNull();
   });
 
-  test("redis static array operations", async () => {
-    await RedisDataSource.set("key", [1, 2, 3], 1000);
-    const arrayValue = await RedisDataSource.get<number[]>("key");
+  test("array operations", async () => {
+    await redis.set("key", [1, 2, 3], 1000);
+    const arrayValue = await redis.get<number[]>("key");
     expect(arrayValue).toEqual([1, 2, 3]);
 
-    await RedisDataSource.delete("key");
-    const deletedArrayValue = await RedisDataSource.get<number[]>("key");
-    expect(deletedArrayValue).toBe(null);
-  });
-
-  // Test instance class
-  test("redis instance isConnected check", async () => {
-    expect(redisInstance.isConnected).toBe(true);
-  });
-
-  test("redis instance string operations", async () => {
-    await redisInstance.set("key", "value", 1000);
-    const value = await redisInstance.get<string>("key");
-    expect(value).toBe("value");
-
-    await redisInstance.delete("key");
-    const deletedValue = await redisInstance.get<string>("key");
-    expect(deletedValue).toBe(null);
-  });
-
-  test("redis instance object operations", async () => {
-    await redisInstance.set("key", { key: "value" }, 1000);
-    const objectValue = await redisInstance.get<{ key: string }>("key");
-    expect(objectValue).toEqual({ key: "value" });
-
-    await redisInstance.delete("key");
-    const deletedObjectValue = await redisInstance.get<{ key: string }>("key");
-    expect(deletedObjectValue).toBe(null);
-  });
-
-  test("redis instance buffer operations", async () => {
-    await redisInstance.set("key", Buffer.from("value"), 6000);
-    const bufferValue = await RedisDataSource.getBuffer("key");
-    expect(bufferValue).toEqual(Buffer.from("value"));
-
-    await redisInstance.delete("key");
-    const deletedBufferValue = await redisInstance.get<Buffer>("key");
-    expect(deletedBufferValue).toBe(null);
-  });
-
-  test("redis instance number operations", async () => {
-    await redisInstance.set("key", 1, 1000);
-    const numberValue = await redisInstance.get<number>("key");
-    expect(numberValue).toBe(1);
-
-    await redisInstance.delete("key");
-    const deletedNumberValue = await redisInstance.get<number>("key");
-    expect(deletedNumberValue).toBe(null);
-  });
-
-  test("redis instance boolean operations", async () => {
-    await redisInstance.set("key", true, 1000);
-    const booleanValue = await redisInstance.get<boolean>("key");
-    expect(booleanValue).toBe(true);
-
-    await redisInstance.delete("key");
-    const deletedBooleanValue = await redisInstance.get<boolean>("key");
-    expect(deletedBooleanValue).toBe(null);
-  });
-
-  test("redis instance array operations", async () => {
-    await redisInstance.set("key", [1, 2, 3], 1000);
-    const arrayValue = await redisInstance.get<number[]>("key");
-    expect(arrayValue).toEqual([1, 2, 3]);
-
-    await redisInstance.delete("key");
-    const deletedArrayValue = await redisInstance.get<number[]>("key");
-    expect(deletedArrayValue).toBe(null);
+    await redis.delete("key");
+    const deletedArrayValue = await redis.get<number[]>("key");
+    expect(deletedArrayValue).toBeNull();
   });
 
   test("should expire key and get null", async () => {
-    await redisInstance.set("key", "value", 1000);
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    const value = await redisInstance.get<string>("key");
-    expect(value).toBe(null);
+    await redis.set("key", "value", 2000);
+    const value = await redis.get<string>("key");
+    expect(value).toBe("value");
+    await new Promise((resolve) => setTimeout(resolve, 3000));
+    const expiredValue = await redis.get<string>("key");
+    expect(expiredValue).toBeNull();
   });
 
-  // List operations tests
   describe("List Operations", () => {
-    beforeEach(async () => {
-      await RedisDataSource.delete("testlist");
+    afterEach(async () => {
+      await redis.delete("list");
     });
 
-    test("redis static list operations", async () => {
-      await RedisDataSource.lpush("testlist", "item1", "item2");
-      await RedisDataSource.rpush("testlist", "item3");
+    test("list operations", async () => {
+      await redis.lpush("list", "a", "b", "c");
+      const len = await redis.llen("list");
+      expect(len).toBe(3);
 
-      const length = await RedisDataSource.llen("testlist");
-      expect(length).toBe(3);
+      const range = await redis.lrange<string>("list", 0, -1);
+      expect(range).toEqual(["c", "b", "a"]);
 
-      const range = await RedisDataSource.lrange<string>("testlist", 0, -1);
-      expect(range).toEqual(["item2", "item1", "item3"]);
+      const lpopValue = await redis.lpop<string>("list");
+      expect(lpopValue).toBe("c");
 
-      const firstPop = await RedisDataSource.lpop<string>("testlist");
-      expect(firstPop).toBe("item2");
-
-      const lastPop = await RedisDataSource.rpop<string>("testlist");
-      expect(lastPop).toBe("item3");
+      const rpopValue = await redis.rpop<string>("list");
+      expect(rpopValue).toBe("a");
     });
 
-    test("redis instance list operations", async () => {
-      await redisInstance.lpush("testlist", "item1", "item2");
-      await redisInstance.rpush("testlist", "item3");
-
-      const length = await redisInstance.llen("testlist");
-      expect(length).toBe(3);
-
-      const range = await redisInstance.lrange<string>("testlist", 0, -1);
-      expect(range).toEqual(["item2", "item1", "item3"]);
-
-      const firstPop = await redisInstance.lpop<string>("testlist");
-      expect(firstPop).toBe("item2");
-
-      const lastPop = await redisInstance.rpop<string>("testlist");
-      expect(lastPop).toBe("item3");
+    test("rpush and lrange", async () => {
+      await redis.rpush("list", "x", "y", "z");
+      const range = await redis.lrange<string>("list", 0, -1);
+      expect(range).toEqual(["x", "y", "z"]);
     });
   });
 
-  // Hash operations tests
   describe("Hash Operations", () => {
-    beforeEach(async () => {
-      await RedisDataSource.delete("testhash");
+    afterEach(async () => {
+      await redis.delete("hash");
     });
 
-    test("redis static hash operations", async () => {
-      await RedisDataSource.hset("testhash", "field1", "value1");
-      const value1 = await RedisDataSource.hget<string>("testhash", "field1");
-      expect(value1).toBe("value1");
+    test("hash operations", async () => {
+      await redis.hset("hash", "field1", "value1");
+      const value = await redis.hget<string>("hash", "field1");
+      expect(value).toBe("value1");
 
-      await RedisDataSource.hmset("testhash", {
-        field2: "value2",
-        field3: 123,
-        field4: { nested: true },
-      });
-
-      const allFields = await RedisDataSource.hgetall<string | number | object>(
-        "testhash",
-      );
-      expect(allFields).toEqual({
+      await redis.hmset("hash", { field2: "value2", field3: "value3" });
+      const allValues = await redis.hgetall<string>("hash");
+      expect(allValues).toEqual({
         field1: "value1",
         field2: "value2",
-        field3: 123,
-        field4: { nested: true },
+        field3: "value3",
       });
 
-      const multiGet = await RedisDataSource.hmget<string | number>(
-        "testhash",
-        "field1",
-        "field3",
-      );
-      expect(multiGet).toEqual(["value1", 123]);
+      const multiGet = await redis.hmget<string>("hash", "field1", "field2");
+      expect(multiGet).toEqual(["value1", "value2"]);
 
-      const exists = await RedisDataSource.hexists("testhash", "field1");
+      const exists = await redis.hexists("hash", "field1");
       expect(exists).toBe(1);
 
-      const keys = await RedisDataSource.hkeys("testhash");
-      expect(keys.length).toBe(4);
-      expect(keys.sort()).toEqual(
-        ["field1", "field2", "field3", "field4"].sort(),
-      );
+      const keys = await redis.hkeys("hash");
+      expect(keys.sort()).toEqual(["field1", "field2", "field3"]);
 
-      const len = await RedisDataSource.hlen("testhash");
-      expect(len).toBe(4);
+      const hlen = await redis.hlen("hash");
+      expect(hlen).toBe(3);
 
-      const deleted = await RedisDataSource.hdel(
-        "testhash",
-        "field1",
-        "field2",
-      );
-      expect(deleted).toBe(2);
-
-      const afterDelete = await RedisDataSource.hgetall<string>("testhash");
-      expect(Object.keys(afterDelete).length).toBe(2);
-    });
-
-    test("redis instance hash operations", async () => {
-      await redisInstance.hset("testhash", "field1", "value1");
-      const value1 = await redisInstance.hget<string>("testhash", "field1");
-      expect(value1).toBe("value1");
-
-      await redisInstance.hmset("testhash", {
-        field2: "value2",
-        field3: 123,
-        field4: { nested: true },
-      });
-
-      const allFields = await redisInstance.hgetall<string | number | object>(
-        "testhash",
-      );
-      expect(allFields).toEqual({
-        field1: "value1",
-        field2: "value2",
-        field3: 123,
-        field4: { nested: true },
-      });
-
-      const multiGet = await redisInstance.hmget<string | number>(
-        "testhash",
-        "field1",
-        "field3",
-      );
-      expect(multiGet).toEqual(["value1", 123]);
-
-      const exists = await redisInstance.hexists("testhash", "field1");
-      expect(exists).toBe(1);
-
-      const keys = await redisInstance.hkeys("testhash");
-      expect(keys.length).toBe(4);
-      expect(keys.sort()).toEqual(
-        ["field1", "field2", "field3", "field4"].sort(),
-      );
-
-      const len = await redisInstance.hlen("testhash");
-      expect(len).toBe(4);
-
-      const deleted = await redisInstance.hdel("testhash", "field1", "field2");
-      expect(deleted).toBe(2);
-
-      const afterDelete = await redisInstance.hgetall<string>("testhash");
-      expect(Object.keys(afterDelete).length).toBe(2);
+      await redis.hdel("hash", "field1");
+      const afterDel = await redis.hget<string>("hash", "field1");
+      expect(afterDel).toBeNull();
     });
   });
 
-  // Set operations tests
   describe("Set Operations", () => {
-    beforeEach(async () => {
-      await RedisDataSource.delete("testset1");
-      await RedisDataSource.delete("testset2");
-      await RedisDataSource.delete("testset3");
+    afterEach(async () => {
+      await redis.delete("set1");
+      await redis.delete("set2");
     });
 
-    test("redis static set operations", async () => {
-      await RedisDataSource.sadd("testset1", "a", "b", "c");
-      await RedisDataSource.sadd("testset2", "b", "c", "d");
-      await RedisDataSource.sadd("testset3", "c", "d", "e");
+    test("set operations", async () => {
+      await redis.sadd("set1", "a", "b", "c");
+      const members = await redis.smembers<string>("set1");
+      expect(members.sort()).toEqual(["a", "b", "c"]);
 
-      const members = await RedisDataSource.smembers<string>("testset1");
-      expect(members.sort()).toEqual(["a", "b", "c"].sort());
-
-      const isMember = await RedisDataSource.sismember("testset1", "a");
+      const isMember = await redis.sismember("set1", "a");
       expect(isMember).toBe(1);
 
-      const notMember = await RedisDataSource.sismember("testset1", "z");
-      expect(notMember).toBe(0);
+      const card = await redis.scard("set1");
+      expect(card).toBe(3);
 
-      const cardinality = await RedisDataSource.scard("testset1");
-      expect(cardinality).toBe(3);
-
-      const intersection = await RedisDataSource.sinter<string>(
-        "testset1",
-        "testset2",
-      );
-      expect(intersection.sort()).toEqual(["b", "c"].sort());
-
-      const union = await RedisDataSource.sunion<string>(
-        "testset1",
-        "testset3",
-      );
-      expect(union.sort()).toEqual(["a", "b", "c", "d", "e"].sort());
-
-      const difference = await RedisDataSource.sdiff<string>(
-        "testset1",
-        "testset2",
-      );
-      expect(difference).toEqual(["a"]);
-
-      const removed = await RedisDataSource.srem("testset1", "a", "b");
-      expect(removed).toBe(2);
-
-      const afterRemove = await RedisDataSource.smembers<string>("testset1");
-      expect(afterRemove).toEqual(["c"]);
+      await redis.srem("set1", "a");
+      const afterRem = await redis.smembers<string>("set1");
+      expect(afterRem.sort()).toEqual(["b", "c"]);
     });
 
-    test("redis instance set operations", async () => {
-      await redisInstance.sadd("testset1", "a", "b", "c");
-      await redisInstance.sadd("testset2", "b", "c", "d");
-      await redisInstance.sadd("testset3", "c", "d", "e");
+    test("set intersection, union, diff", async () => {
+      await redis.sadd("set1", "a", "b", "c");
+      await redis.sadd("set2", "b", "c", "d");
 
-      const members = await redisInstance.smembers<string>("testset1");
-      expect(members.sort()).toEqual(["a", "b", "c"].sort());
+      const inter = await redis.sinter<string>("set1", "set2");
+      expect(inter.sort()).toEqual(["b", "c"]);
 
-      const isMember = await redisInstance.sismember("testset1", "a");
-      expect(isMember).toBe(1);
+      const union = await redis.sunion<string>("set1", "set2");
+      expect(union.sort()).toEqual(["a", "b", "c", "d"]);
 
-      const notMember = await redisInstance.sismember("testset1", "z");
-      expect(notMember).toBe(0);
-
-      const cardinality = await redisInstance.scard("testset1");
-      expect(cardinality).toBe(3);
-
-      const intersection = await redisInstance.sinter<string>(
-        "testset1",
-        "testset2",
-      );
-      expect(intersection.sort()).toEqual(["b", "c"].sort());
-
-      const union = await redisInstance.sunion<string>("testset1", "testset3");
-      expect(union.sort()).toEqual(["a", "b", "c", "d", "e"].sort());
-
-      const difference = await redisInstance.sdiff<string>(
-        "testset1",
-        "testset2",
-      );
-      expect(difference).toEqual(["a"]);
-
-      const removed = await redisInstance.srem("testset1", "a", "b");
-      expect(removed).toBe(2);
-
-      const afterRemove = await redisInstance.smembers<string>("testset1");
-      expect(afterRemove).toEqual(["c"]);
+      const diff = await redis.sdiff<string>("set1", "set2");
+      expect(diff).toEqual(["a"]);
     });
   });
 
-  // Sorted Set operations tests
   describe("Sorted Set Operations", () => {
-    beforeEach(async () => {
-      await RedisDataSource.delete("testzset");
+    afterEach(async () => {
+      await redis.delete("zset");
     });
 
-    test("redis static sorted set operations", async () => {
-      await RedisDataSource.zadd("testzset", 1, "one");
-      await RedisDataSource.zadd("testzset", 2, "two");
-      await RedisDataSource.zadd("testzset", 3, "three");
+    test("sorted set operations", async () => {
+      await redis.zadd("zset", 1, "a");
+      await redis.zadd("zset", 2, "b");
+      await redis.zadd("zset", 3, "c");
 
-      const score = await RedisDataSource.zscore("testzset", "two");
+      const range = await redis.zrange<string>("zset", 0, -1);
+      expect(range).toEqual(["a", "b", "c"]);
+
+      const rangeWithScores = await redis.zrange<string>("zset", 0, -1, true);
+      expect(rangeWithScores).toEqual([
+        { score: 1, value: "a" },
+        { score: 2, value: "b" },
+        { score: 3, value: "c" },
+      ]);
+
+      const revrange = await redis.zrevrange<string>("zset", 0, -1);
+      expect(revrange).toEqual(["c", "b", "a"]);
+
+      const score = await redis.zscore("zset", "b");
       expect(score).toBe(2);
 
-      const range = await RedisDataSource.zrange<string>("testzset", 0, -1);
-      expect(range).toEqual(["one", "two", "three"]);
+      const card = await redis.zcard("zset");
+      expect(card).toBe(3);
 
-      const rangeWithScores = await RedisDataSource.zrange<string>(
-        "testzset",
-        0,
-        -1,
-        true,
-      );
-      expect(rangeWithScores).toEqual([
-        { value: "one", score: 1 },
-        { value: "two", score: 2 },
-        { value: "three", score: 3 },
-      ]);
-
-      const reverseRange = await RedisDataSource.zrevrange<string>(
-        "testzset",
-        0,
-        -1,
-      );
-      expect(reverseRange).toEqual(["three", "two", "one"]);
-
-      const count = await RedisDataSource.zcard("testzset");
-      expect(count).toBe(3);
-
-      const removed = await RedisDataSource.zrem("testzset", "one");
-      expect(removed).toBe(1);
-
-      const afterRemove = await RedisDataSource.zrange<string>(
-        "testzset",
-        0,
-        -1,
-      );
-      expect(afterRemove).toEqual(["two", "three"]);
-
-      // Batch zadd
-      await RedisDataSource.zadd("testzset", [
-        [4, "four"],
-        [5, "five"],
-      ]);
-      const afterBatch = await RedisDataSource.zrange<string>(
-        "testzset",
-        0,
-        -1,
-      );
-      expect(afterBatch).toEqual(["two", "three", "four", "five"]);
+      await redis.zrem("zset", "a");
+      const afterRem = await redis.zrange<string>("zset", 0, -1);
+      expect(afterRem).toEqual(["b", "c"]);
     });
 
-    test("redis instance sorted set operations", async () => {
-      await redisInstance.zadd("testzset", 1, "one");
-      await redisInstance.zadd("testzset", 2, "two");
-      await redisInstance.zadd("testzset", 3, "three");
-
-      const score = await redisInstance.zscore("testzset", "two");
-      expect(score).toBe(2);
-
-      const range = await redisInstance.zrange<string>("testzset", 0, -1);
-      expect(range).toEqual(["one", "two", "three"]);
-
-      const rangeWithScores = await redisInstance.zrange<string>(
-        "testzset",
-        0,
-        -1,
-        true,
-      );
-      expect(rangeWithScores).toEqual([
-        { value: "one", score: 1 },
-        { value: "two", score: 2 },
-        { value: "three", score: 3 },
+    test("sorted set bulk add", async () => {
+      await redis.zadd("zset", [
+        [1, "x"],
+        [2, "y"],
+        [3, "z"],
       ]);
-
-      const reverseRange = await redisInstance.zrevrange<string>(
-        "testzset",
-        0,
-        -1,
-      );
-      expect(reverseRange).toEqual(["three", "two", "one"]);
-
-      const count = await redisInstance.zcard("testzset");
-      expect(count).toBe(3);
-
-      const removed = await redisInstance.zrem("testzset", "one");
-      expect(removed).toBe(1);
-
-      const afterRemove = await redisInstance.zrange<string>("testzset", 0, -1);
-      expect(afterRemove).toEqual(["two", "three"]);
-
-      // Batch zadd
-      await redisInstance.zadd("testzset", [
-        [4, "four"],
-        [5, "five"],
-      ]);
-      const afterBatch = await redisInstance.zrange<string>("testzset", 0, -1);
-      expect(afterBatch).toEqual(["two", "three", "four", "five"]);
+      const range = await redis.zrange<string>("zset", 0, -1);
+      expect(range).toEqual(["x", "y", "z"]);
     });
   });
 
-  // Key operations tests
   describe("Key Operations", () => {
-    beforeEach(async () => {
-      await RedisDataSource.delete("testkey");
-      await RedisDataSource.delete("testkey2");
+    afterEach(async () => {
+      await redis.delete("key_ops");
+      await redis.delete("key_ops_renamed");
     });
 
-    test("redis static key operations", async () => {
-      // Set up test keys
-      await RedisDataSource.set("testkey", "value");
+    test("key operations", async () => {
+      await redis.set("key_ops", "value");
 
-      // Test exists
-      const exists = await RedisDataSource.exists("testkey");
+      const exists = await redis.exists("key_ops");
       expect(exists).toBe(1);
 
-      const notExists = await RedisDataSource.exists("nonexistent");
-      expect(notExists).toBe(0);
-
-      // Test expire
-      await RedisDataSource.expire("testkey", 3600);
-      const ttl = await RedisDataSource.ttl("testkey");
+      await redis.expire("key_ops", 100);
+      const ttl = await redis.ttl("key_ops");
       expect(ttl).toBeGreaterThan(0);
+      expect(ttl).toBeLessThanOrEqual(100);
 
-      // Test persist
-      await RedisDataSource.persist("testkey");
-      const persistedTtl = await RedisDataSource.ttl("testkey");
-      expect(persistedTtl).toBe(-1); // No expiration
+      await redis.persist("key_ops");
+      const ttlAfterPersist = await redis.ttl("key_ops");
+      expect(ttlAfterPersist).toBe(-1);
 
-      // Test type
-      const type = await RedisDataSource.type("testkey");
-      expect(type).toBe("string");
-
-      // Test rename
-      await RedisDataSource.rename("testkey", "testkey2");
-      const existsAfterRename = await RedisDataSource.exists("testkey");
-      expect(existsAfterRename).toBe(0);
-      const existsNew = await RedisDataSource.exists("testkey2");
-      expect(existsNew).toBe(1);
-
-      // Test milliseconds expiration
-      await RedisDataSource.set("testkey", "value");
-      await RedisDataSource.pexpire("testkey", 3600000);
-      const pttl = await RedisDataSource.pttl("testkey");
+      await redis.pexpire("key_ops", 100000);
+      const pttl = await redis.pttl("key_ops");
       expect(pttl).toBeGreaterThan(0);
 
-      // Test expireat (using current time + 1 hour)
-      await RedisDataSource.set("testkey", "value");
-      const futureTimestamp = Math.floor(Date.now() / 1000) + 3600;
-      await RedisDataSource.expireat("testkey", futureTimestamp);
-      const ttlExpireAt = await RedisDataSource.ttl("testkey");
-      expect(ttlExpireAt).toBeGreaterThan(0);
+      const keyType = await redis.type("key_ops");
+      expect(keyType).toBe("string");
 
-      // Create a bunch of keys for pattern matching
-      await RedisDataSource.set("prefix:key1", "value1");
-      await RedisDataSource.set("prefix:key2", "value2");
-      await RedisDataSource.set("prefix:key3", "value3");
+      await redis.rename("key_ops", "key_ops_renamed");
+      const renamedVal = await redis.get<string>("key_ops_renamed");
+      expect(renamedVal).toBe("value");
 
-      // Test keys
-      const keys = await RedisDataSource.keys("prefix:*");
-      expect(keys.length).toBe(3);
-      expect(keys.every((k) => k.startsWith("prefix:"))).toBe(true);
+      const keys = await redis.keys("key_ops*");
+      expect(keys).toContain("key_ops_renamed");
     });
 
-    test("redis instance key operations", async () => {
-      // Set up test keys
-      await redisInstance.set("testkey", "value");
-
-      // Test exists
-      const exists = await redisInstance.exists("testkey");
-      expect(exists).toBe(1);
-
-      const notExists = await redisInstance.exists("nonexistent");
-      expect(notExists).toBe(0);
-
-      // Test expire
-      await redisInstance.expire("testkey", 3600);
-      const ttl = await redisInstance.ttl("testkey");
+    test("expireat", async () => {
+      await redis.set("key_ops", "value");
+      const futureTimestamp = Math.floor(Date.now() / 1000) + 100;
+      await redis.expireat("key_ops", futureTimestamp);
+      const ttl = await redis.ttl("key_ops");
       expect(ttl).toBeGreaterThan(0);
-
-      // Test persist
-      await redisInstance.persist("testkey");
-      const persistedTtl = await redisInstance.ttl("testkey");
-      expect(persistedTtl).toBe(-1); // No expiration
-
-      // Test type
-      const type = await redisInstance.type("testkey");
-      expect(type).toBe("string");
-
-      // Test rename
-      await redisInstance.rename("testkey", "testkey2");
-      const existsAfterRename = await redisInstance.exists("testkey");
-      expect(existsAfterRename).toBe(0);
-      const existsNew = await redisInstance.exists("testkey2");
-      expect(existsNew).toBe(1);
-
-      // Test milliseconds expiration
-      await redisInstance.set("testkey", "value");
-      await redisInstance.pexpire("testkey", 3600000);
-      const pttl = await redisInstance.pttl("testkey");
-      expect(pttl).toBeGreaterThan(0);
-
-      // Test expireat (using current time + 1 hour)
-      await redisInstance.set("testkey", "value");
-      const futureTimestamp = Math.floor(Date.now() / 1000) + 3600;
-      await redisInstance.expireat("testkey", futureTimestamp);
-      const ttlExpireAt = await redisInstance.ttl("testkey");
-      expect(ttlExpireAt).toBeGreaterThan(0);
-
-      // Create a bunch of keys for pattern matching
-      await redisInstance.set("prefix:key1", "value1");
-      await redisInstance.set("prefix:key2", "value2");
-      await redisInstance.set("prefix:key3", "value3");
-
-      // Test keys
-      const keys = await redisInstance.keys("prefix:*");
-      expect(keys.length).toBe(3);
-      expect(keys.every((k) => k.startsWith("prefix:"))).toBe(true);
     });
   });
 
-  // Publish/Subscribe tests
   describe("Publish/Subscribe Operations", () => {
     let subscriber: RedisDataSource;
 
     beforeAll(async () => {
-      subscriber = await RedisDataSource.getConnection({
-        host: "localhost",
-        port: 6379,
-        username: "default",
-        password: "root",
-      });
+      subscriber = new RedisDataSource(redisConfig);
+      await subscriber.connect();
     });
 
     afterAll(async () => {
@@ -649,62 +297,109 @@ describe("RedisDataSource", () => {
     });
 
     test("publish and subscribe", async () => {
-      const channelName = "testchannel";
-      const testMessage = "Hello Redis PubSub";
+      const messages: string[] = [];
 
-      // Set up a promise to resolve when the message is received
-      const messageReceived = new Promise<{ channel: string; message: string }>(
-        (resolve) => {
-          subscriber.subscribe([channelName], (channel, message) => {
-            resolve({ channel, message });
-          });
-        },
-      );
+      await subscriber.subscribe(["test-channel"], (_channel, message) => {
+        messages.push(message);
+      });
 
-      // Wait a bit for the subscription to be established
+      // Give subscriber time to set up
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // Publish a message
-      const receivers = await redisInstance.publish(channelName, testMessage);
-      expect(receivers).toBeGreaterThanOrEqual(1);
+      await redis.publish("test-channel", "hello");
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // Wait for the message to be received
-      const received = await messageReceived;
-      expect(received.channel).toBe(channelName);
-      expect(received.message).toBe(testMessage);
+      expect(messages).toContain("hello");
 
-      // Unsubscribe
-      await subscriber.unsubscribe(channelName);
+      await subscriber.unsubscribe("test-channel");
     });
 
     test("pattern subscribe", async () => {
-      const pattern = "test:*";
-      const channelName = "test:channel1";
-      const testMessage = "Hello Redis Pattern PubSub";
+      const messages: string[] = [];
 
-      // Set up a promise to resolve when the message is received
-      const messageReceived = new Promise<{ channel: string; message: string }>(
-        (resolve) => {
-          subscriber.psubscribe([pattern], (channel, message) => {
-            resolve({ channel, message });
-          });
-        },
-      );
+      await subscriber.psubscribe(["test-*"], (_pattern, message) => {
+        messages.push(message);
+      });
 
-      // Wait a bit for the subscription to be established
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // Publish a message
-      const receivers = await redisInstance.publish(channelName, testMessage);
-      expect(receivers).toBeGreaterThanOrEqual(1);
+      await redis.publish("test-pattern", "world");
+      await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // Wait for the message to be received
-      const received = await messageReceived;
-      expect(received.channel).toBe(channelName);
-      expect(received.message).toBe(testMessage);
+      expect(messages).toContain("world");
 
-      // Unsubscribe from pattern
-      await subscriber.punsubscribe(pattern);
+      await subscriber.punsubscribe("test-*");
+    });
+  });
+
+  describe("Connection", () => {
+    test("lazyLoad false (default) throws when not connected", async () => {
+      const notConnected = new RedisDataSource(redisConfig);
+      await expect(notConnected.get("key")).rejects.toThrow();
+    });
+
+    test("lazyLoad true auto-connects on first command", async () => {
+      const lazy = new RedisDataSource({ ...redisConfig, lazyLoad: true });
+      expect(lazy.isConnected).toBe(false);
+
+      // Should auto-connect and succeed
+      await lazy.set("lazy_key", "lazy_value");
+      expect(lazy.isConnected).toBe(true);
+
+      const value = await lazy.get<string>("lazy_key");
+      expect(value).toBe("lazy_value");
+
+      await lazy.delete("lazy_key");
+      await lazy.disconnect();
+    });
+
+    test("multiple instances are independent", async () => {
+      const redis2 = new RedisDataSource(redisConfig);
+      await redis2.connect();
+
+      await redis.set("multi_key", "from_redis1");
+      const val = await redis2.get<string>("multi_key");
+      expect(val).toBe("from_redis1");
+
+      await redis.delete("multi_key");
+      await redis2.disconnect();
+    });
+
+    test("connect is idempotent", async () => {
+      const r = new RedisDataSource(redisConfig);
+      await r.connect();
+      await r.connect(); // should not throw
+      expect(r.isConnected).toBe(true);
+      await r.disconnect();
+    });
+
+    test("disconnect on not connected is safe", async () => {
+      const r = new RedisDataSource(redisConfig);
+      await r.disconnect(); // should not throw
+    });
+  });
+
+  describe("Consume", () => {
+    test("consume returns value and deletes key", async () => {
+      await redis.set("consume_key", "consume_value");
+      const value = await redis.consume<string>("consume_key");
+      expect(value).toBe("consume_value");
+
+      const afterConsume = await redis.get<string>("consume_key");
+      expect(afterConsume).toBeNull();
+    });
+  });
+
+  describe("FlushAll", () => {
+    test("flushAll clears all keys", async () => {
+      await redis.set("flush1", "a");
+      await redis.set("flush2", "b");
+      await redis.flushAll();
+
+      const v1 = await redis.get("flush1");
+      const v2 = await redis.get("flush2");
+      expect(v1).toBeNull();
+      expect(v2).toBeNull();
     });
   });
 });

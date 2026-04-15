@@ -50,7 +50,7 @@ export class MongoQueryBuilder<T extends Collection> {
   protected limitNumber?: number;
   protected offsetNumber?: number;
   protected mongoDataSource: MongoDataSource;
-  protected collection: DriverCollection<T>;
+  protected collection!: DriverCollection<T>;
   protected model: typeof Collection;
   protected logs: boolean | LoggerConfig;
 
@@ -69,15 +69,30 @@ export class MongoQueryBuilder<T extends Collection> {
     this.session;
 
     this.mongoDataSource = mongoDataSource;
+
+    if (mongoDataSource.isConnected) {
+      this.initCollection();
+    }
+  }
+
+  private initCollection(): void {
     this.collection = this.mongoDataSource
       .getCurrentConnection()
       .db()
       .collection(this.model.collection);
   }
 
+  protected async ensureInitialized(): Promise<void> {
+    await this.mongoDataSource.ensureConnected();
+    if (!this.collection) {
+      this.initCollection();
+    }
+  }
+
   async one(
     options: OneOptions = { throwErrorOnNull: false },
   ): Promise<T | null> {
+    await this.ensureInitialized();
     if (!options.ignoreHooks?.includes("beforeFetch")) {
       this.model.beforeFetch?.(this);
     }
@@ -123,6 +138,7 @@ export class MongoQueryBuilder<T extends Collection> {
   }
 
   async many(options: ManyOptions = {}): Promise<T[]> {
+    await this.ensureInitialized();
     if (!options.ignoreHooks?.includes("beforeFetch")) {
       this.model.beforeFetch?.(this);
     }
@@ -166,6 +182,7 @@ export class MongoQueryBuilder<T extends Collection> {
     modelData: O,
     options: { ignoreHooks?: boolean; returning?: boolean } = {},
   ): Promise<O & { id: string }> {
+    await this.ensureInitialized();
     if (!options.ignoreHooks) {
       this.model.beforeInsert?.(modelData);
     }
@@ -204,6 +221,7 @@ export class MongoQueryBuilder<T extends Collection> {
     modelData: O[],
     options: { ignoreHooks?: boolean; returning?: boolean } = {},
   ): Promise<(O & { id: string })[]> {
+    await this.ensureInitialized();
     if (!options.ignoreHooks) {
       this.model.beforeInsert?.(modelData);
     }
@@ -248,6 +266,7 @@ export class MongoQueryBuilder<T extends Collection> {
     modelData: ModelKeyOrAny<T>,
     options: { ignoreHooks?: boolean } = {},
   ): Promise<T[]> {
+    await this.ensureInitialized();
     if (!options.ignoreHooks) {
       this.model.beforeUpdate?.(this);
     }
@@ -289,6 +308,7 @@ export class MongoQueryBuilder<T extends Collection> {
    * @returns
    */
   async delete(options: { ignoreHooks?: boolean } = {}): Promise<void> {
+    await this.ensureInitialized();
     if (!options.ignoreHooks) {
       this.model.beforeDelete?.(this);
     }
@@ -303,6 +323,7 @@ export class MongoQueryBuilder<T extends Collection> {
    * @returns - The count of the query
    */
   async count(options: { ignoreHooks?: boolean } = {}): Promise<number> {
+    await this.ensureInitialized();
     if (!options.ignoreHooks) {
       this.model.beforeFetch?.(this);
     }
