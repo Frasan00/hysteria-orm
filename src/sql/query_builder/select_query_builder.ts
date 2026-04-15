@@ -1,5 +1,9 @@
 import { convertCase } from "../../utils/case_utils";
-import { JsonPathInput } from "../../utils/json_path_utils";
+import {
+  JsonPathInput,
+  ResolveColumnType,
+  TypedJsonPathInput,
+} from "../../utils/json_path_utils";
 import { DistinctNode } from "../ast/query/node/distinct/distinct";
 import { DistinctOnNode } from "../ast/query/node/distinct/distinct_on";
 import { FromNode } from "../ast/query/node/from/from";
@@ -181,11 +185,17 @@ export class SelectQueryBuilder<
   }
 
   /**
-   * @description Selects a JSON value at the specified path and returns it as JSON
+   * @description Selects a JSON value at the specified path and returns it as JSON.
+   * @description Path format is standardized across all databases — the ORM converts to DB-specific syntax.
+   * @param column - The column containing JSON data (model column name or raw string).
+   * @param path - The JSON path to extract. Accepts dot notation (`"user.name"`), `$`-prefixed
+   *   paths (`"$.user.name"`), or an array of segments (`["user", "name"]`).
+   *   When the column has a typed JSON schema, IDE autocompletion suggests valid paths.
+   * @param alias - The alias for the extracted value in the result set.
    */
-  selectJson<A extends string>(
-    column: ModelKey<T>,
-    path: JsonPathInput,
+  selectJson<K extends ModelKey<T>, A extends string>(
+    column: K,
+    path: TypedJsonPathInput<ResolveColumnType<T, K & string>>,
     alias: A,
   ): this;
   selectJson<A extends string>(
@@ -205,11 +215,17 @@ export class SelectQueryBuilder<
   }
 
   /**
-   * @description Selects a JSON value at the specified path and returns it as text
+   * @description Selects a JSON value at the specified path and returns it as text.
+   * @description Path format is standardized across all databases — the ORM converts to DB-specific syntax.
+   * @param column - The column containing JSON data (model column name or raw string).
+   * @param path - The JSON path to extract. Accepts dot notation (`"user.name"`), `$`-prefixed
+   *   paths (`"$.user.name"`), or an array of segments (`["user", "name"]`).
+   *   When the column has a typed JSON schema, IDE autocompletion suggests valid paths.
+   * @param alias - The alias for the extracted text value in the result set.
    */
-  selectJsonText<A extends string>(
-    column: ModelKey<T>,
-    path: JsonPathInput,
+  selectJsonText<K extends ModelKey<T>, A extends string>(
+    column: K,
+    path: TypedJsonPathInput<ResolveColumnType<T, K & string>>,
     alias: A,
   ): this;
   selectJsonText<A extends string>(
@@ -229,11 +245,16 @@ export class SelectQueryBuilder<
   }
 
   /**
-   * @description Selects the length of a JSON array
+   * @description Selects the length of a JSON array at the specified path.
+   * @description Path format is standardized across all databases — the ORM converts to DB-specific syntax.
+   * @param column - The column containing JSON array data (model column name or raw string).
+   * @param path - The JSON path to the array. Use `"$"` or `""` for the root array.
+   *   When the column has a typed JSON schema, IDE autocompletion suggests valid paths.
+   * @param alias - The alias for the array length value in the result set.
    */
-  selectJsonArrayLength<A extends string>(
-    column: ModelKey<T>,
-    path: JsonPathInput,
+  selectJsonArrayLength<K extends ModelKey<T>, A extends string>(
+    column: K,
+    path: TypedJsonPathInput<ResolveColumnType<T, K & string>>,
     alias: A,
   ): this;
   selectJsonArrayLength<A extends string>(
@@ -253,11 +274,16 @@ export class SelectQueryBuilder<
   }
 
   /**
-   * @description Selects the keys of a JSON object
+   * @description Selects the keys of a JSON object at the specified path.
+   * @description Path format is standardized across all databases — the ORM converts to DB-specific syntax.
+   * @param column - The column containing JSON object data (model column name or raw string).
+   * @param path - The JSON path to the object. Use `"$"` or `""` for the root object.
+   *   When the column has a typed JSON schema, IDE autocompletion suggests valid paths.
+   * @param alias - The alias for the keys array in the result set.
    */
-  selectJsonKeys<A extends string>(
-    column: ModelKey<T>,
-    path: JsonPathInput,
+  selectJsonKeys<K extends ModelKey<T>, A extends string>(
+    column: K,
+    path: TypedJsonPathInput<ResolveColumnType<T, K & string>>,
     alias: A,
   ): this;
   selectJsonKeys<A extends string>(
@@ -277,7 +303,10 @@ export class SelectQueryBuilder<
   }
 
   /**
-   * @description Adds a raw JSON select expression
+   * @description Adds a raw JSON select expression using database-specific SQL syntax.
+   * @description Bypasses path standardization — you must write DB-specific SQL.
+   * @param raw - The raw SQL expression (e.g., `"data->>'email'"` for PostgreSQL).
+   * @param alias - The alias for the result in the result set.
    */
   selectJsonRaw<A extends string>(raw: string, alias: A): this {
     this.selectNodes.push(new SelectJsonNode(raw, "", alias, "raw", true));

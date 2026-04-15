@@ -24,7 +24,8 @@ export type BinaryOperatorType =
   | "not between"
   | "regexp"
   | "not regexp"
-  | "not ilike";
+  | "not ilike"
+  | (string & {});
 
 export class WhereNode extends QueryNode {
   column: string;

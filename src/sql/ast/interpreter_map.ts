@@ -672,8 +672,6 @@ export const interpreterMap = {
       select: postgres_select_select,
       select_json: postgres_select_select_json,
     },
-    transaction: {
-    },
     truncate: {
       truncate: postgres_truncate_truncate,
     },
@@ -780,8 +778,6 @@ export const interpreterMap = {
     select: {
       select: sqlite_select_select,
       select_json: sqlite_select_select_json,
-    },
-    transaction: {
     },
     truncate: {
       truncate: sqlite_truncate_truncate,

@@ -3,7 +3,12 @@ import { PassThrough } from "node:stream";
 import { HysteriaError } from "../../../errors/hysteria_error";
 import { convertCase } from "../../../utils/case_utils";
 import type { CaseConvention } from "../../../utils/case_utils";
-import { JsonPathInput } from "../../../utils/json_path_utils";
+import {
+  JsonPathInput,
+  ResolveColumnType,
+  ResolveJsonPathType,
+  TypedJsonPathInput,
+} from "../../../utils/json_path_utils";
 import { withPerformance } from "../../../utils/performance";
 import {
   BaseValues,
@@ -1086,12 +1091,16 @@ export class ModelQueryBuilder<
   }
 
   /**
-   * @description Selects a JSON value at the specified path and returns it as JSON
-   * @param column The column containing JSON data
-   * @param path The JSON path to extract (standardized format: "$.user.name", "user.name", or ["user", "name"])
-   * @param alias The alias for the selected value
-   * @description Path format is standardized across all databases - ORM converts to DB-specific syntax
-   * @description Result is available as a direct property on the model with the alias name
+   * @description Selects a JSON value at the specified path and returns it as JSON.
+   * @param column - The column containing JSON data. Accepts model column names (with IDE autocompletion)
+   *   or raw column strings for joins/aliases.
+   * @param path - The JSON path to extract. Accepts dot notation (`"user.name"`), `$`-prefixed paths
+   *   (`"$.user.name"`), or an array of segments (`["user", "name"]`).
+   *   When the column has a typed JSON schema (e.g. `col.jsonb<{ user: { name: string } }>()`),
+   *   IDE autocompletion suggests valid paths into the JSON structure.
+   * @param alias - The alias for the extracted value. The result is available as a typed property
+   *   on the returned model with this alias name.
+   * @description Path format is standardized across all databases - ORM converts to DB-specific syntax.
    * @example
    * ```ts
    * // All these path formats are supported:
@@ -1120,26 +1129,51 @@ export class ModelQueryBuilder<
    * ```
    */
   // @ts-expect-error - intentionally returns different type for type-safety
-  override selectJson<ValueType = any, Alias extends string = string>(
-    column: ModelKey<T> | string,
-    path: JsonPathInput,
+  override selectJson<
+    K extends ModelKey<T> | (string & {}),
+    P extends [K] extends [ModelKey<T>]
+      ? TypedJsonPathInput<ResolveColumnType<T, K & string>>
+      : JsonPathInput,
+    Alias extends string = string,
+  >(
+    column: K,
+    path: P,
     alias: Alias,
-  ): ModelQueryBuilder<T, ComposeSelect<S, { [K in Alias]: ValueType }>, R> {
-    super.selectJson(column, path, alias);
-    return this as unknown as ModelQueryBuilder<
-      T,
-      ComposeSelect<S, { [K in Alias]: ValueType }>,
-      R
-    >;
+  ): ModelQueryBuilder<
+    T,
+    ComposeSelect<
+      S,
+      {
+        [Q in Alias]: [K] extends [ModelKey<T>]
+          ? P extends string
+            ? ResolveJsonPathType<
+                NonNullable<ResolveColumnType<T, K & string>>,
+                P
+              > extends infer R
+              ? unknown extends R
+                ? any
+                : R
+              : any
+            : any
+          : any;
+      }
+    >,
+    R
+  > {
+    super.selectJson(column as string, path as JsonPathInput, alias);
+    return this as any;
   }
 
   /**
-   * @description Selects a JSON value at the specified path and returns it as text
-   * @param column The column containing JSON data
-   * @param path The JSON path to extract (standardized format)
-   * @param alias The alias for the selected value
-   * @description Path format is standardized across all databases - ORM converts to DB-specific syntax
-   * @description Result is available as a direct property on the model with the alias name
+   * @description Selects a JSON value at the specified path and returns it as text.
+   * @param column - The column containing JSON data. Accepts model column names (with IDE autocompletion)
+   *   or raw column strings for joins/aliases.
+   * @param path - The JSON path to extract. Accepts dot notation (`"user.email"`), `$`-prefixed paths
+   *   (`"$.user.email"`), or an array of segments (`["user", "email"]`).
+   *   When the column has a typed JSON schema, IDE autocompletion suggests valid paths.
+   * @param alias - The alias for the extracted text value. The result is available as a typed property
+   *   on the returned model with this alias name.
+   * @description Path format is standardized across all databases - ORM converts to DB-specific syntax.
    * @example
    * ```ts
    * // All these path formats are supported:
@@ -1166,27 +1200,35 @@ export class ModelQueryBuilder<
    * ```
    */
   // @ts-expect-error - intentionally returns different type for type-safety
-  override selectJsonText<ValueType = string, Alias extends string = string>(
-    column: ModelKey<T> | string,
-    path: JsonPathInput,
+  override selectJsonText<
+    K extends ModelKey<T> | (string & {}),
+    ValueType = string,
+    Alias extends string = string,
+  >(
+    column: K,
+    path: K extends ModelKey<T>
+      ? TypedJsonPathInput<ResolveColumnType<T, K & string>>
+      : JsonPathInput,
     alias: Alias,
-  ): ModelQueryBuilder<T, ComposeSelect<S, { [K in Alias]: ValueType }>, R> {
-    super.selectJsonText(column, path, alias);
+  ): ModelQueryBuilder<T, ComposeSelect<S, { [P in Alias]: ValueType }>, R> {
+    super.selectJsonText(column as string, path as JsonPathInput, alias);
     return this as unknown as ModelQueryBuilder<
       T,
-      ComposeSelect<S, { [K in Alias]: ValueType }>,
+      ComposeSelect<S, { [P in Alias]: ValueType }>,
       R
     >;
   }
 
   /**
-   * @description Selects the length of a JSON array
-   * @param column The column containing JSON array data
-   * @param path The JSON path to the array (standardized format, use "$" or "" for root)
-   * @param alias The alias for the length value
-   * @description Path format is standardized across all databases - ORM converts to DB-specific syntax
-   * @description Result is available as a direct property on the model with the alias name
-   * @warning Not supported in SQLite
+   * @description Selects the length of a JSON array at the specified path.
+   * @param column - The column containing JSON array data. Accepts model column names (with IDE autocompletion)
+   *   or raw column strings for joins/aliases.
+   * @param path - The JSON path to the array. Use `"$"` or `""` for root.
+   *   When the column has a typed JSON schema, IDE autocompletion suggests valid paths.
+   * @param alias - The alias for the array length value. The result is available as a typed property
+   *   on the returned model with this alias name.
+   * @description Path format is standardized across all databases - ORM converts to DB-specific syntax.
+   * @warning Not supported in SQLite.
    * @example
    * ```ts
    * // All these path formats are supported:
@@ -1218,31 +1260,36 @@ export class ModelQueryBuilder<
    */
   // @ts-expect-error - intentionally returns different type for type-safety
   override selectJsonArrayLength<
+    K extends ModelKey<T> | (string & {}),
     ValueType = number,
     Alias extends string = string,
   >(
-    column: ModelKey<T> | string,
-    path: JsonPathInput,
+    column: K,
+    path: K extends ModelKey<T>
+      ? TypedJsonPathInput<ResolveColumnType<T, K & string>>
+      : JsonPathInput,
     alias: Alias,
-  ): ModelQueryBuilder<T, ComposeSelect<S, { [K in Alias]: ValueType }>, R> {
-    super.selectJsonArrayLength(column, path, alias);
+  ): ModelQueryBuilder<T, ComposeSelect<S, { [P in Alias]: ValueType }>, R> {
+    super.selectJsonArrayLength(column as string, path as JsonPathInput, alias);
     return this as unknown as ModelQueryBuilder<
       T,
-      ComposeSelect<S, { [K in Alias]: ValueType }>,
+      ComposeSelect<S, { [P in Alias]: ValueType }>,
       R
     >;
   }
 
   /**
-   * @description Selects the keys of a JSON object
-   * @param column The column containing JSON object data
-   * @param path The JSON path to the object (standardized format, use "$" or "" for root)
-   * @param alias The alias for the keys
-   * @description Path format is standardized across all databases - ORM converts to DB-specific syntax
-   * @description Result is available as a direct property on the model with the alias name
-   * @warning Not supported in SQLite or MSSQL
-   * @postgresql Returns a native array of keys
-   * @mysql Returns a JSON array of keys
+   * @description Selects the keys of a JSON object at the specified path.
+   * @param column - The column containing JSON object data. Accepts model column names (with IDE autocompletion)
+   *   or raw column strings for joins/aliases.
+   * @param path - The JSON path to the object. Use `"$"` or `""` for root.
+   *   When the column has a typed JSON schema, IDE autocompletion suggests valid paths.
+   * @param alias - The alias for the keys array. The result is available as a typed property
+   *   on the returned model with this alias name.
+   * @description Path format is standardized across all databases - ORM converts to DB-specific syntax.
+   * @warning Not supported in SQLite or MSSQL.
+   * @postgresql Returns a native array of keys.
+   * @mysql Returns a JSON array of keys.
    * @example
    * ```ts
    * // All these path formats are supported:
@@ -1273,26 +1320,34 @@ export class ModelQueryBuilder<
    * ```
    */
   // @ts-expect-error - intentionally returns different type for type-safety
-  override selectJsonKeys<ValueType = string[], Alias extends string = string>(
-    column: ModelKey<T> | string,
-    path: JsonPathInput,
+  override selectJsonKeys<
+    K extends ModelKey<T> | (string & {}),
+    ValueType = string[],
+    Alias extends string = string,
+  >(
+    column: K,
+    path: K extends ModelKey<T>
+      ? TypedJsonPathInput<ResolveColumnType<T, K & string>>
+      : JsonPathInput,
     alias: Alias,
-  ): ModelQueryBuilder<T, ComposeSelect<S, { [K in Alias]: ValueType }>, R> {
-    super.selectJsonKeys(column, path, alias);
+  ): ModelQueryBuilder<T, ComposeSelect<S, { [P in Alias]: ValueType }>, R> {
+    super.selectJsonKeys(column as string, path as JsonPathInput, alias);
     return this as unknown as ModelQueryBuilder<
       T,
-      ComposeSelect<S, { [K in Alias]: ValueType }>,
+      ComposeSelect<S, { [P in Alias]: ValueType }>,
       R
     >;
   }
 
   /**
-   * @description Adds a raw JSON select expression for database-specific operations
-   * @param raw The raw SQL expression (database-specific syntax)
-   * @param alias The alias for the selected value
-   * @description Result is available as a direct property on the model with the alias name
-   * @description Use this for advanced JSON operations not covered by other selectJson* methods
-   * @warning This bypasses path standardization - you must write database-specific SQL
+   * @description Adds a raw JSON select expression using database-specific SQL syntax.
+   * @param raw - The raw SQL expression (database-specific syntax). Bypasses path standardization —
+   *   you must write DB-specific SQL (e.g., `"data->>'email'"` for PostgreSQL,
+   *   `"json_extract(data, '$.email')"` for SQLite).
+   * @param alias - The alias for the extracted value. The result is available as a typed property
+   *   on the returned model with this alias name.
+   * @description Use this for advanced JSON operations not covered by other selectJson* methods.
+   * @warning This bypasses path standardization - you must write database-specific SQL.
    * @example
    * ```ts
    * // PostgreSQL - Extract as text with ->> operator

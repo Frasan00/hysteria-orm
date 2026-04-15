@@ -10,7 +10,8 @@ export type SubqueryOperatorType =
   | ">"
   | "<"
   | ">="
-  | "<=";
+  | "<="
+  | (string & {});
 
 export class WhereSubqueryNode extends QueryNode {
   column: string;

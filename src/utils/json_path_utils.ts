@@ -1,8 +1,138 @@
+import type { Model } from "../sql/models/model";
+import type { StripTablePrefix } from "../sql/models/model_manager/model_manager_types";
 import { SqlDataSourceType } from "../sql/sql_data_source_types";
 
 export type JsonPathInput = string | (string | number)[];
 
 export type JsonPathSegment = string | number;
+
+// ---------------------------------------------------------------------------
+// Type-safe JSON path utilities
+// ---------------------------------------------------------------------------
+
+/**
+ * Recursively generates all valid dot-separated JSON path strings from an
+ * object type `T`.
+ *
+ * Handles nested objects, arrays (via numeric indices), and stops recursion at
+ * a configurable depth (default 5) to prevent infinite expansion with deeply
+ * nested or self-referential types.
+ *
+ * @typeParam T - The root object type to extract paths from.
+ *
+ * @example
+ * ```ts
+ * type Data = { user: { name: string; roles: string[] }; count: number };
+ * type P = JsonPaths<Data>;
+ * // "user" | "user.name" | "user.roles" | "user.roles.${number}" | "count"
+ * ```
+ */
+export type JsonPaths<
+  T,
+  Depth extends number[] = [],
+> = Depth["length"] extends 5
+  ? never
+  : T extends readonly (infer E)[]
+    ?
+        | `${number}`
+        | (NonNullable<E> extends object
+            ? `${number}.${JsonPaths<NonNullable<E>, [...Depth, 1]>}`
+            : never)
+    : T extends object
+      ? {
+          [K in keyof T & string]:
+            | K
+            | (NonNullable<T[K]> extends object
+                ? `${K}.${JsonPaths<NonNullable<T[K]>, [...Depth, 1]>}`
+                : never);
+        }[keyof T & string]
+      : never;
+
+/**
+ * Resolves the TypeScript type of a model column given its `ModelKey` string.
+ * Strips any table prefix (e.g. `"users.metadata"` → `"metadata"`) before
+ * indexing into the model.
+ *
+ * @typeParam T - The Model instance type.
+ * @typeParam K - The column key (plain or table-prefixed).
+ */
+export type ResolveColumnType<
+  T extends Model,
+  K extends string,
+> = T[StripTablePrefix<K> & keyof T];
+
+/**
+ * Type-safe JSON path input that provides IDE autocompletion for known JSON
+ * column structures while still accepting arbitrary strings as a fallback.
+ *
+ * - When `ColumnType` is a known object/array type: suggests all valid
+ *   dot-separated paths via {@link JsonPaths}, plus `(string & {})` as a
+ *   catch-all and `(string | number)[]` for the array form.
+ * - When `ColumnType` is `unknown`, a primitive, or `never`: falls back to the
+ *   original untyped {@link JsonPathInput}.
+ *
+ * Uses the `SpecificLiteral | (string & {})` pattern so TypeScript's
+ * autocomplete shows the known paths first without blocking custom strings.
+ *
+ * @typeParam ColumnType - The TypeScript type of the JSON column value.
+ *
+ * @example
+ * ```ts
+ * type Settings = { theme: string; notifications: { email: boolean } };
+ * type P = TypedJsonPathInput<Settings | null>;
+ * // "theme" | "notifications" | "notifications.email" | (string & {}) | (string | number)[]
+ * ```
+ */
+/**
+ * Resolves the TypeScript type at a given dot-separated JSON path within a
+ * root type. Handles `$` prefix, dot notation, and array numeric indices.
+ *
+ * Falls back to `unknown` when the path does not match the type structure.
+ *
+ * @typeParam T - The root JSON object type to traverse.
+ * @typeParam Path - A dot-separated string path.
+ *
+ * @example
+ * ```ts
+ * type Data = { user: { name: string; roles: string[] } };
+ * type A = ResolveJsonPathType<Data, "user.name">;    // string
+ * type B = ResolveJsonPathType<Data, "user.roles">;   // string[]
+ * type C = ResolveJsonPathType<Data, "user">;          // { name: string; roles: string[] }
+ * type D = ResolveJsonPathType<Data, "$">;             // Data
+ * ```
+ */
+export type ResolveJsonPathType<
+  T,
+  Path extends string,
+> = Path extends `$.${infer Rest}`
+  ? ResolveJsonPathType<T, Rest>
+  : Path extends "$" | ""
+    ? T
+    : Path extends `${infer Head}.${infer Rest}`
+      ? Head extends keyof NonNullable<T>
+        ? ResolveJsonPathType<NonNullable<T>[Head], Rest>
+        : NonNullable<T> extends readonly (infer E)[]
+          ? Head extends `${number}`
+            ? ResolveJsonPathType<E, Rest>
+            : unknown
+          : unknown
+      : Path extends keyof NonNullable<T>
+        ? NonNullable<T>[Path]
+        : NonNullable<T> extends readonly (infer E)[]
+          ? Path extends `${number}`
+            ? E
+            : unknown
+          : unknown;
+
+export type TypedJsonPathInput<ColumnType> = [NonNullable<ColumnType>] extends [
+  never,
+]
+  ? JsonPathInput
+  : unknown extends NonNullable<ColumnType>
+    ? JsonPathInput
+    : NonNullable<ColumnType> extends object
+      ? JsonPaths<NonNullable<ColumnType>> | (string & {}) | (string | number)[]
+      : JsonPathInput;
 
 /**
  * @description Standardized JSON path representation for the ORM

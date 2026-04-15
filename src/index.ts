@@ -99,6 +99,13 @@ export { RawNode } from "./sql/ast/query/node/raw/raw_node";
 export { default as logger } from "./utils/logger";
 export type { CustomLogger, LoggerConfig } from "./utils/logger";
 export { withPerformance } from "./utils/performance";
+export type {
+  JsonPathInput,
+  JsonPaths,
+  ResolveColumnType,
+  ResolveJsonPathType,
+  TypedJsonPathInput,
+} from "./utils/json_path_utils";
 
 // Errors
 export { HysteriaError } from "./errors/hysteria_error";
