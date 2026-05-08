@@ -12,3 +12,13 @@ export class HysteriaError extends Error {
     this.error = error;
   }
 }
+
+// Validation error dedicated to per-column validation failures
+export class ValidationError extends HysteriaError {
+  errors: Record<string, string[]>;
+
+  constructor(errors: Record<string, string[]>) {
+    super("ValidationError", "VALIDATION_ERROR");
+    this.errors = errors;
+  }
+}

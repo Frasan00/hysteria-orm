@@ -5,6 +5,7 @@ import { OnUpdateOrDelete } from "../../migrations/schema/schema_types";
 import type { AnyModelConstructor } from "../define_model_types";
 import { ModelKey } from "../model_manager/model_manager_types";
 import { RelationEnum } from "../relations/relation";
+import type { Validator } from "../validators/validator";
 
 type BaseColumnDataType = Exclude<
   keyof CreateTableBuilder,
@@ -232,6 +233,10 @@ export type ColumnOptions = {
    * @migration Only affects auto-generated migrations (CREATE TABLE / ALTER TABLE). Does NOT set a default value during insert operations — use `prepare` for that.
    */
   default?: string | number | null | boolean;
+  /**
+   * @description Per-column validators applied on insert/update
+   */
+  validate?: Validator | Validator[];
 } &
   /**
    * @description The data type of the column
@@ -260,6 +265,7 @@ export type ColumnType = {
     nullable?: boolean;
     default?: string | number | null | boolean;
   };
+  validate?: Validator | Validator[];
 };
 
 type ThroughModelCallback<T extends AnyModelConstructor> = () => T;

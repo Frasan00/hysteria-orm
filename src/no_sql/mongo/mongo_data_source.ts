@@ -179,4 +179,37 @@ export class MongoDataSource extends DataSource {
   ): CollectionManager<T> {
     return new CollectionManager<T>(model, mongoDataSource, session, this.logs);
   }
+
+  /**
+   * @description Executes a lightweight health check ping
+   * @returns Promise resolving to PingResult with ok status, latency in ms, and dialect 'mongo'
+   */
+  async ping(): Promise<{ ok: boolean; latencyMs: number; dialect: "mongo" }> {
+    const start = Date.now();
+
+    try {
+      await this.ensureConnected();
+
+      if (!this.mongoClient) {
+        return { ok: false, latencyMs: Date.now() - start, dialect: "mongo" };
+      }
+
+      await this.mongoClient.db().command({ ping: 1 });
+      return { ok: true, latencyMs: Date.now() - start, dialect: "mongo" };
+    } catch {
+      return { ok: false, latencyMs: Date.now() - start, dialect: "mongo" };
+    }
+  }
+
+  /**
+   * @description Returns true if the MongoDB connection is healthy, false on error (never throws)
+   */
+  async isHealthy(): Promise<boolean> {
+    try {
+      const result = await this.ping();
+      return result.ok;
+    } catch {
+      return false;
+    }
+  }
 }

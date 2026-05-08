@@ -13,7 +13,6 @@ import {
 import type {
   ColumnOptions,
   ManyToManyStringOptions,
-  ThroughModel,
 } from "./decorators/model_decorators_types";
 import type {
   AnyModelConstructor,
@@ -61,8 +60,10 @@ import type {
   TypedSerialize,
   UniqueDefinition,
   ViewDefinition,
+  InferColumns,
 } from "./define_model_types";
 import { Model } from "./model";
+import { ModelQueryBuilder } from "./model_query_builder/model_query_builder";
 
 // ---------------------------------------------------------------------------
 // Reserved property names that cannot be used as column names.
@@ -402,7 +403,7 @@ colBase.varbinary = function colVarbinary<
     TypedPrepare<NullableColumn<Buffer | Uint8Array | string, O>>,
 ): ColumnDef<NullableColumn<Buffer | Uint8Array | string, O>> {
   return makeColumnDef((target, key) => {
-    column({ type: "varbinary", ...options } as any)(target as any, key);
+    column({ type: "varbinary", ...options })(target as any, key);
   });
 };
 
@@ -534,6 +535,7 @@ export function defineModel<
         `defineModel("${table}"): column name "${columnName}" conflicts with an existing model property. Please rename this column.`,
       );
     }
+
     Object.defineProperty(DefinedModelClass, columnName, {
       value: `${table}.${columnName}`,
       writable: false,

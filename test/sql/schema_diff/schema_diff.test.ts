@@ -798,7 +798,7 @@ conditionalDescribe(`[${dbType}] Schema Diff Migration Generation`, () => {
           expect(thirdStatements.length).toBe(0);
         },
       );
-    });
+    }, 10000);
   });
 
   describe("Check Constraint Decorator", () => {

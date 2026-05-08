@@ -66,6 +66,8 @@ export { MongoDataSource } from "./no_sql/mongo/mongo_data_source";
 export { RedisDataSource as redis } from "./no_sql/redis/redis_data_source";
 export { SqlDataSource } from "./sql/sql_data_source";
 export * from "./sql/sql_data_source_types";
+export type { PingResult } from "./sql/sql_data_source_types";
+export * from "./sql/observers";
 
 // Transactions
 export type { Transaction } from "./sql/transactions/transaction";
@@ -98,7 +100,6 @@ export { RawNode } from "./sql/ast/query/node/raw/raw_node";
 // Utils
 export { default as logger } from "./utils/logger";
 export type { CustomLogger, LoggerConfig } from "./utils/logger";
-export { withPerformance } from "./utils/performance";
 export type {
   JsonPathInput,
   JsonPaths,
@@ -108,7 +109,10 @@ export type {
 } from "./utils/json_path_utils";
 
 // Errors
-export { HysteriaError } from "./errors/hysteria_error";
+export { HysteriaError, ValidationError } from "./errors/hysteria_error";
+// Validation framework exposure
+export * from "./sql/models/validators/validator";
+export * from "./sql/models/validators/builtin_validators";
 
 // Mongo
 export { Collection } from "./no_sql/mongo/mongo_models/mongo_collection";
@@ -145,3 +149,5 @@ export type {
   AdminJsResourceOptions,
   AdminJsSettings,
 } from "./adminjs/adminjs_types";
+
+export * from "./sql/introspection_types";

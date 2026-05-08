@@ -394,3 +394,15 @@ export type SlaveAlgorithm = "roundRobin" | "random";
 export type RawQueryOptions = {
   replicationMode?: ReplicationType;
 };
+
+/**
+ * @description Result of a health check ping operation
+ */
+export type PingResult = {
+  /** Whether the ping was successful */
+  ok: boolean;
+  /** Latency in milliseconds */
+  latencyMs: number;
+  /** Database dialect/type */
+  dialect: SqlDataSourceType;
+};

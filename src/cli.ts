@@ -10,6 +10,7 @@ import { InitTemplates } from "./cli/resources/init_templates";
 import runSqlConnector from "./cli/run_sql_connector";
 import seederCreateConnector from "./cli/seeder_create_connector";
 import runSeedersConnector from "./cli/seeder_run_connector";
+import dbPullConnector from "./cli/db_pull_connector";
 import { SchemaDiff } from "./sql/migrations/schema_diff/schema_diff";
 import { SqlDataSource } from "./sql/sql_data_source";
 import { SqlDataSourceType } from "./sql/sql_data_source_types";
@@ -959,6 +960,72 @@ program
         await runSeedersConnector(sqlDs, seederPaths, tsconfig);
         await sqlDs.disconnect();
         logger.info("Seeding completed successfully");
+        process.exit(0);
+      } catch (error) {
+        console.error(error);
+        await sqlDs.disconnect();
+        process.exit(1);
+      }
+    },
+  );
+
+program
+  .command("db:pull")
+  .description(
+    "Generate TypeScript model files from database schema introspection",
+  )
+  .option(
+    "-d, --datasource [path]",
+    "Path to SqlDataSource (default export)",
+    undefined,
+  )
+  .option(
+    "-o, --out [path]",
+    "Output directory for generated models",
+    "./database/models",
+  )
+  .option(
+    "--naming [convention]",
+    "Naming convention for model names (camel, snake, pascal)",
+    "camel",
+  )
+  .option("--dry", "Preview generated code without writing files", false)
+  .option(
+    "-c, --tsconfig [tsconfigPath]",
+    "Path to the tsconfig.json file, defaults to ./tsconfig.json",
+    undefined,
+  )
+  .action(
+    async (option?: {
+      datasource?: string;
+      out?: string;
+      naming?: string;
+      dry?: boolean;
+      tsconfig?: string;
+    }) => {
+      if (!option?.datasource) {
+        logger.error("SqlDataSource file path is required (-d|--datasource)");
+        process.exit(1);
+      }
+
+      const validNaming = ["camel", "snake", "pascal"];
+      const naming = option?.naming || "camel";
+      if (!validNaming.includes(naming)) {
+        logger.error(
+          `Invalid naming convention: ${naming}. Must be one of: ${validNaming.join(", ")}`,
+        );
+        process.exit(1);
+      }
+
+      const sqlDs = await loadDatasource(option.datasource, option?.tsconfig);
+
+      try {
+        await dbPullConnector(sqlDs, {
+          outDir: option?.out || "./database/models",
+          naming: naming as "camel" | "snake" | "pascal",
+          dry: option?.dry || false,
+        });
+        await sqlDs.disconnect();
         process.exit(0);
       } catch (error) {
         console.error(error);

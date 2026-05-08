@@ -192,10 +192,7 @@ export class InterpreterUtils {
               ? modelColumn.prepare(value)
               : (modelColumn.prepare(value) ?? value);
 
-          if (
-            prepared !== null &&
-            typeof (prepared as any)?.then === "function"
-          ) {
+          if (prepared !== null && typeof prepared?.then === "function") {
             if (!deferredAsync) deferredAsync = [];
             deferredAsync.push({ index: i, promise: prepared as Promise<any> });
           } else {

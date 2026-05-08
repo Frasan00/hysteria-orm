@@ -263,6 +263,7 @@ export function column(
         default: options.default,
       },
     };
+    column.validate = options.validate;
     const existingColumns =
       Reflect.getMetadata<ColumnType[]>(COLUMN_METADATA_KEY, target) || [];
     existingColumns.push(column);

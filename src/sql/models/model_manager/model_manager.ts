@@ -254,6 +254,13 @@ export class ModelManager<T extends Model> {
     };
 
     return new WriteOperation(unWrapFn, toSqlFn, toQueryFn, async () => {
+      // Run validation prior to lifecycle hooks
+      try {
+        await (this.model as any).validate?.(model);
+      } catch (e) {
+        // ValidationError is thrown with details; propagate
+        throw e;
+      }
       if (!options.ignoreHooks) {
         await this.model.beforeInsert?.(model as T);
       }
@@ -376,6 +383,12 @@ export class ModelManager<T extends Model> {
     };
 
     return new WriteOperation(unWrapFn, toSqlFn, toQueryFn, async () => {
+      // Run validation prior to lifecycle hooks
+      try {
+        await (this.model as any).validate?.(models as T[]);
+      } catch (e) {
+        throw e;
+      }
       await this.model.beforeInsertMany?.(models as T[]);
 
       // Oracle with identity columns doesn't support INSERT ALL properly

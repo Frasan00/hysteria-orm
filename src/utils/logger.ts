@@ -236,5 +236,6 @@ export function logMessage(
 
   HysteriaLogger.loggerInstance[type](message);
 }
+1;
 
 export default HysteriaLogger;

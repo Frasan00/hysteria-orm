@@ -87,7 +87,7 @@ export const parseDatabaseDataIntoModelResponse = async <
         const result = modelColumn.serialize(databaseValue);
         // Only defer to the async path if the serializer actually returns a Promise.
         // This avoids Promise allocation overhead for synchronous serializers (the common case).
-        if (result !== null && typeof (result as any)?.then === "function") {
+        if (result !== null && typeof result?.then === "function") {
           if (!deferredAsync) deferredAsync = [];
           deferredAsync.push({
             key: modelKey,

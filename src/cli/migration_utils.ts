@@ -140,7 +140,7 @@ export async function getMigrations(
   for (const { name, fullPath } of migrationFiles) {
     const migrationModule = await loadMigrationModule(fullPath, tsconfigPath);
     const migration: Migration = new migrationModule(dbType || env.DB_TYPE);
-    (migration as any).migrationName = name;
+    (migration as { migrationName: string }).migrationName = name;
     migrations.push(migration);
   }
 

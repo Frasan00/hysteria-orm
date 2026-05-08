@@ -2,6 +2,7 @@ import type { CaseConvention } from "../../utils/case_utils";
 import type { OnUpdateOrDelete } from "../migrations/schema/schema_types";
 import type { Model } from "./model";
 import type { ModelQueryBuilder } from "./model_query_builder/model_query_builder";
+import type { Validator } from "./validators/validator";
 import type {
   AsymmetricEncryptionOptions,
   CheckType,
@@ -64,6 +65,8 @@ export type ColOptions = Omit<
   "primaryKey" | "serialize" | "prepare" | "default"
 > & {
   length?: number;
+  /** Per-column validators (optional) */
+  validate?: Validator | Validator[];
 };
 export type ColPrimaryOptions = Omit<
   ColumnOptions,
@@ -236,7 +239,6 @@ export type TypedSerialize<T> = { serialize?: (value: any) => T };
 export type TypedPrepare<T> = { prepare?: (value: T) => any };
 export type TypedDefault<T> = {
   /**
-   * Narrows the `default` property to the column's base type.
    * @migration Migration-only metadata. Sets the DEFAULT clause in CREATE TABLE / ALTER TABLE.
    * Does **not** enforce a value during `insert()` — pass the value explicitly or use `prepare`.
    */
@@ -736,7 +738,7 @@ export type InferPK<C extends Record<string, ColumnDef>> = [
   ? string | number
   : ExtractPKType<C>;
 
-type InferColumns<C extends Record<string, ColumnDef>> = {
+export type InferColumns<C extends Record<string, ColumnDef>> = {
   [K in keyof C]: C[K] extends ColumnDef<infer T> ? T : never;
 };
 

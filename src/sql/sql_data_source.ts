@@ -28,6 +28,10 @@ import { SchemaBuilder } from "./migrations/schema/schema_builder";
 import { SchemaDiff } from "./migrations/schema_diff/schema_diff";
 import { normalizeColumnType } from "./migrations/schema_diff/type_normalizer";
 import type {
+  IntrospectedSchema,
+  IntrospectedTable,
+} from "./introspection_types";
+import type {
   AnyModelConstructor,
   SchemaLookup,
 } from "./models/define_model_types";
@@ -58,6 +62,7 @@ import type {
   MysqlConnectionInstance,
   OracleDBPoolInstance,
   PgPoolClientInstance,
+  PingResult,
   RawQueryOptions,
   SlaveAlgorithm,
   SlaveContext,
@@ -73,6 +78,8 @@ import type {
 import { execSql } from "./sql_runner/sql_runner";
 import { RawQueryResponseType } from "./sql_runner/sql_runner_types";
 import { Transaction } from "./transactions/transaction";
+import type { QueryObserver, QueryContext } from "./observers/observer";
+import { ObserverChain } from "./observers/observer";
 import {
   StartTransactionOptions,
   TransactionExecutionOptions,
@@ -205,6 +212,11 @@ export class SqlDataSource<
   };
 
   /**
+   * Optional observer chain for query middleware. See src/sql/observers for details.
+   */
+  observerChain?: ObserverChain;
+
+  /**
    * @description AdminJS configuration options
    */
   private adminJsOptions?: AdminJsOptions;
@@ -230,6 +242,27 @@ export class SqlDataSource<
    */
   getOnSlaveServerFailure() {
     return this.onSlaveServerFailure;
+  }
+
+  /**
+   * @description Add a single observer to the query middleware chain.
+   * Can be called multiple times to add multiple observers.
+   * @param observer A QueryObserver with onBeforeQuery, onAfterQuery, and/or onQueryError handlers
+   * @example
+   * ```ts
+   * sql.addObserver({
+   *   onBeforeQuery: (ctx) => console.log("Before:", ctx.sql),
+   *   onAfterQuery: (ctx) => console.log("After:", ctx.sql),
+   *   onQueryError: (ctx) => console.log("Error:", ctx.sql)
+   * });
+   * ```
+   */
+  addObserver(observer: QueryObserver): this {
+    if (!this.observerChain) {
+      this.observerChain = new ObserverChain([]);
+    }
+    this.observerChain!.add(observer);
+    return this;
   }
 
   // ============================================
@@ -724,7 +757,7 @@ export class SqlDataSource<
     return new ModelQueryBuilder(
       modelOrTable as unknown as typeof Model,
       sqlForQueryBuilder as SqlDataSource,
-    ) as any;
+    );
   }
 
   /**
@@ -1040,6 +1073,79 @@ export class SqlDataSource<
         .connectionPolicies as ConnectionPolicies,
       queryFormatOptions: this.inputDetails.queryFormatOptions,
     } as unknown as SqlDataSourceInput<D, T, C>;
+  }
+
+  /**
+   * @description Introspects database schema and returns a basic introspection structure.
+   * This is a scaffold for dialect-aware introspection to be expanded.
+   */
+  async introspectSchema(): Promise<IntrospectedSchema[]> {
+    const dialect = this.getDbType();
+
+    let sql: string;
+    if (dialect === "postgres" || dialect === "cockroachdb") {
+      sql = `
+        SELECT table_schema AS schema_name, table_name
+        FROM information_schema.tables
+        WHERE table_type = 'BASE TABLE'
+          AND table_schema NOT IN ('information_schema', 'pg_catalog')
+          AND table_schema NOT LIKE 'pg_%'
+        ORDER BY table_schema, table_name;
+      `;
+    } else if (dialect === "mysql" || dialect === "mariadb") {
+      sql = `
+        SELECT table_schema AS schema_name, table_name
+        FROM information_schema.tables
+        WHERE table_type = 'BASE TABLE'
+          AND table_schema = DATABASE()
+          AND table_schema NOT IN ('information_schema', 'mysql', 'sys', 'performance_schema')
+        ORDER BY table_schema, table_name;
+      `;
+    } else if (dialect === "sqlite") {
+      sql = `
+        SELECT 'main' AS schema_name, name AS table_name
+        FROM sqlite_master
+        WHERE type = 'table'
+          AND name NOT LIKE 'sqlite_%'
+        ORDER BY name;
+      `;
+    } else {
+      sql = `
+        SELECT table_schema AS schema_name, table_name
+        FROM information_schema.tables
+        WHERE table_type = 'BASE TABLE'
+          AND table_schema NOT IN ('information_schema', 'pg_catalog', 'mysql', 'sys', 'performance_schema')
+        ORDER BY table_schema, table_name;
+      `;
+    }
+
+    try {
+      const rawResult = await this.rawQuery(sql);
+      const rows = this.extractRowsFromRawResult(rawResult);
+
+      const schema: IntrospectedSchema = { dialect, tables: [] };
+      const map: Record<string, IntrospectedTable> = {};
+
+      for (const row of rows) {
+        const schemaName = String(
+          row.schema_name || row.SCHEMA_NAME || "public",
+        );
+        const tableName = String(
+          row.table_name || row.TABLE_NAME || row.name || "",
+        );
+        const key = `${schemaName}.${tableName}`;
+
+        if (!map[key] && tableName) {
+          map[key] = { name: tableName, columns: [] };
+          schema.tables.push(map[key]);
+        }
+      }
+
+      return [schema];
+    } catch (err: any) {
+      logger.warn(`Failed to introspect schema: ${err.message}`);
+      return [];
+    }
   }
 
   /**
@@ -1736,6 +1842,61 @@ export class SqlDataSource<
       logger.error(
         `Failed to acquire lock: ${err.message || JSON.stringify(error)} (dbType: ${dbType}, lockKey: ${lockKey}). Full error: ${JSON.stringify(error)}`,
       );
+      return false;
+    }
+  }
+
+  /**
+   * @description Executes a lightweight health check query
+   * @returns Promise resolving to PingResult with ok status, latency in ms, and dialect
+   */
+  async ping(): Promise<PingResult> {
+    const dialect = this.getDbType();
+    const start = Date.now();
+
+    try {
+      await this.ensureConnected();
+
+      let query: string;
+      switch (dialect) {
+        case "mysql":
+        case "mariadb":
+        case "postgres":
+        case "cockroachdb":
+        case "mssql":
+        case "oracledb":
+          query = "SELECT 1";
+          break;
+        case "sqlite":
+          query = "PRAGMA integrity_check";
+          break;
+        default:
+          query = "SELECT 1";
+      }
+
+      await this.rawQuery(query);
+      return {
+        ok: true,
+        latencyMs: Date.now() - start,
+        dialect,
+      };
+    } catch {
+      return {
+        ok: false,
+        latencyMs: Date.now() - start,
+        dialect,
+      };
+    }
+  }
+
+  /**
+   * @description Returns true if the database connection is healthy, false on error (never throws)
+   */
+  async isHealthy(): Promise<boolean> {
+    try {
+      const result = await this.ping();
+      return result.ok;
+    } catch {
       return false;
     }
   }

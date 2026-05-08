@@ -1,7 +1,8 @@
 import { PassThrough } from "node:stream";
+import { performance } from "node:perf_hooks";
 import { DriverNotFoundError } from "../../drivers/driver_constants";
 import { HysteriaError } from "../../errors/hysteria_error";
-import { log, logMessage, type LoggerConfig } from "../../utils/logger";
+import logger, { log, logMessage, type LoggerConfig } from "../../utils/logger";
 import {
   convertDateStringToDateForOracle,
   processOracleRow,
@@ -23,6 +24,16 @@ import {
   SqlRunnerReturnType,
 } from "./sql_runner_types";
 import { promisifySqliteQuery, SQLiteStream } from "./sql_runner_utils";
+import {
+  deriveOperationFromQuery,
+  QueryContext,
+} from "../../sql/observers/observer";
+import { ObserverChain } from "../../sql/observers/observer";
+
+function formatDuration(start: number): number {
+  const duration = performance.now() - start;
+  return Math.round(duration * 100) / 100;
+}
 
 export const execSql = async <
   S extends SqlDataSource,
@@ -42,6 +53,24 @@ export const execSql = async <
 ): Promise<SqlRunnerReturnType<T, D>> => {
   await sqlDataSource.ensureConnected();
 
+  // Prepare and fire before-query observers if any
+  const context: QueryContext = {
+    sql: query,
+    params,
+    model: undefined,
+    operation: deriveOperationFromQuery(query),
+    timestamp: performance.now(),
+  };
+
+  try {
+    const chain = sqlDataSource.observerChain as ObserverChain | undefined;
+    if (chain && typeof chain.notifyBefore === "function") {
+      await chain.notifyBefore(context);
+    }
+  } catch {
+    // ignore observer errors during before phase to not block query
+  }
+
   if (!options?.shouldNotLog) {
     log(
       query,
@@ -51,6 +80,7 @@ export const execSql = async <
       sqlType,
     );
   }
+  const start = performance.now();
 
   switch (sqlType) {
     case "mysql":
@@ -64,6 +94,17 @@ export const execSql = async <
         sqlDataSource.inputDetails.connectionPolicies?.retry,
         sqlDataSource.logs,
       );
+      // After-query observers
+      try {
+        const duration = formatDuration(start);
+        const chain = sqlDataSource.observerChain as ObserverChain | undefined;
+        if (chain && typeof chain.notifyAfter === "function") {
+          const afterCtx = { ...context, duration, result: mysqlResult };
+          await chain.notifyAfter(afterCtx);
+        }
+      } catch {
+        // ignore observer errors in after phase
+      }
 
       if (returning === "affectedRows") {
         return (mysqlResult[0] as { affectedRows: number })
@@ -91,6 +132,18 @@ export const execSql = async <
         sqlDataSource.logs,
       );
 
+      // After-query observers for PostgreSQL
+      try {
+        const duration = formatDuration(start);
+        const chain = sqlDataSource.observerChain as ObserverChain | undefined;
+        if (chain && typeof chain.notifyAfter === "function") {
+          const afterCtx = { ...context, duration, result: pgResult };
+          await chain.notifyAfter(afterCtx);
+        }
+      } catch {
+        // ignore observer errors in after phase
+      }
+
       if (returning === "rows") {
         return pgResult.rows as SqlRunnerReturnType<T, D>;
       }
@@ -111,6 +164,21 @@ export const execSql = async <
         sqlDataSource.inputDetails.connectionPolicies?.retry,
         sqlDataSource.logs,
       );
+
+      const sqliteDuration = formatDuration(start);
+      try {
+        const chain = sqlDataSource.observerChain as ObserverChain | undefined;
+        if (chain && typeof chain.notifyAfter === "function") {
+          const afterCtx = {
+            ...context,
+            duration: sqliteDuration,
+            result: sqliteResult,
+          };
+          await chain.notifyAfter(afterCtx);
+        }
+      } catch {
+        // ignore observer errors
+      }
 
       if (returning === "raw") {
         return !Array.isArray(sqliteResult)
@@ -142,6 +210,21 @@ export const execSql = async <
         sqlDataSource.inputDetails.connectionPolicies?.retry,
         sqlDataSource.logs,
       );
+
+      const mssqlDuration = formatDuration(start);
+      try {
+        const chain = sqlDataSource.observerChain as ObserverChain | undefined;
+        if (chain && typeof chain.notifyAfter === "function") {
+          const afterCtx = {
+            ...context,
+            duration: mssqlDuration,
+            result: mssqlResult,
+          };
+          await chain.notifyAfter(afterCtx);
+        }
+      } catch {
+        // ignore observer errors
+      }
 
       if (returning === "affectedRows") {
         return mssqlResult.rowsAffected[0] as SqlRunnerReturnType<T, D>;
@@ -181,6 +264,23 @@ export const execSql = async <
           sqlDataSource.inputDetails.connectionPolicies?.retry,
           sqlDataSource.logs,
         );
+
+        const oracleDuration = formatDuration(start);
+        try {
+          const chain = sqlDataSource.observerChain as
+            | ObserverChain
+            | undefined;
+          if (chain && typeof chain.notifyAfter === "function") {
+            const afterCtx = {
+              ...context,
+              duration: oracleDuration,
+              result: oracledbResult,
+            };
+            await chain.notifyAfter(afterCtx);
+          }
+        } catch {
+          // ignore observer errors
+        }
 
         if (returning === "affectedRows") {
           return oracledbResult.rowsAffected as SqlRunnerReturnType<T, D>;

@@ -155,7 +155,10 @@ export class AstParser {
                 j < filteredNodes.length &&
                 filteredNodes[j].keyword === node.keyword
               ) {
-                const candidate = filteredNodes[j] as any;
+                const candidate = filteredNodes[j] as QueryNode & {
+                  folder: string;
+                  clause: string;
+                };
                 if (
                   candidate.folder === "with" &&
                   candidate.clause === "recursive"

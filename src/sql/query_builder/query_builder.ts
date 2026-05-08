@@ -3,7 +3,7 @@ import { HysteriaError } from "../../errors/hysteria_error";
 import { baseSoftDeleteDate } from "../../utils/date_utils";
 import { JsonPathInput } from "../../utils/json_path_utils";
 import logger from "../../utils/logger";
-import { withPerformance } from "../../utils/performance";
+
 import { bindParamsIntoQuery, formatQuery } from "../../utils/query";
 import { coerceToNumber } from "../../utils/types";
 import { AstParser } from "../ast/parser";
@@ -56,8 +56,7 @@ import { WriteOperation } from "./write_operation";
 /**
  * @description Minimal interface satisfied by both QueryBuilder and ModelQueryBuilder.
  * Used as the return type for subquery callbacks so that both QB and MQB can be
- * returned without TypeScript complaining about structural incompatibilities in
- * the `performance` property.
+ * returned without TypeScript complaining about structural incompatibilities.
  */
 export interface SubQueryable {
   extractQueryNodes(): QueryNode[];
@@ -89,25 +88,6 @@ export class QueryBuilder<
   protected deleteNode: DeleteNode | null = null;
   protected truncateNode: TruncateNode | null = null;
   protected replicationMode: ReplicationType | null = null;
-
-  /**
-   * @description Performance methods that return the time that took to execute the query with the result
-   */
-  performance = {
-    many: this.manyWithPerformance.bind(this),
-    one: this.oneWithPerformance.bind(this),
-    oneOrFail: this.oneOrFailWithPerformance.bind(this),
-    paginate: this.paginateWithPerformance.bind(this),
-    paginateWithCursor: this.paginateWithCursorWithPerformance.bind(this),
-    exists: this.existsWithPerformance.bind(this),
-    truncate: this.truncateWithPerformance.bind(this),
-    delete: this.deleteWithPerformance.bind(this),
-    insert: this.insertWithPerformance.bind(this),
-    insertMany: this.insertManyWithPerformance.bind(this),
-    update: this.updateWithPerformance.bind(this),
-    softDelete: this.softDeleteWithPerformance.bind(this),
-    pluck: this.pluckWithPerformance.bind(this),
-  };
 
   constructor(model: typeof Model, sqlDataSource: SqlDataSource) {
     super(model, sqlDataSource);
@@ -1655,225 +1635,6 @@ export class QueryBuilder<
     this.clearLimit();
     this.clearOffset();
     return this;
-  }
-
-  /**
-   * @description Makes a many query and returns the time that took to execute that query
-   */
-  private async manyWithPerformance(
-    returnType: "millis" | "seconds" = "millis",
-  ): Promise<{
-    data: S[];
-    time: number;
-  }> {
-    const [time, data] = await withPerformance(
-      this.many.bind(this),
-      returnType,
-    )();
-
-    return {
-      data: data as S[],
-      time: Number(time),
-    };
-  }
-
-  /**
-   * @description Makes a one query and returns the time that took to execute that query
-   */
-  private async oneWithPerformance(
-    returnType: "millis" | "seconds" = "millis",
-  ): Promise<{
-    data: S | null;
-    time: number;
-  }> {
-    const [time, data] = await withPerformance(
-      this.one.bind(this),
-      returnType,
-    )();
-
-    return {
-      data: data as S | null,
-      time: Number(time),
-    };
-  }
-
-  /**
-   * @alias oneOrFailWithPerformance
-   */
-  private async firstOrFailWithPerformance(
-    returnType: "millis" | "seconds" = "millis",
-  ) {
-    return this.oneOrFailWithPerformance(returnType);
-  }
-
-  private async paginateWithPerformance(
-    page: number,
-    perPage: number,
-    returnType: "millis" | "seconds" = "millis",
-  ) {
-    const [time, data] = await withPerformance(
-      this.paginate.bind(this, page, perPage),
-      returnType,
-    )();
-
-    return {
-      data,
-      time: Number(time),
-    };
-  }
-
-  private async paginateWithCursorWithPerformance(
-    page: number,
-    options: PaginateWithCursorOptions<T, ModelKey<T>>,
-    cursor?: Cursor<T, ModelKey<T>>,
-    returnType: "millis" | "seconds" = "millis",
-  ) {
-    const [time, data] = await withPerformance(
-      this.paginateWithCursor.bind(this, page, options, cursor),
-      returnType,
-    )();
-
-    return {
-      data,
-      time: Number(time),
-    };
-  }
-
-  /**
-   * @description Makes a one or fail query and returns the time that took to execute that query
-   */
-  private async oneOrFailWithPerformance(
-    returnType: "millis" | "seconds" = "millis",
-  ) {
-    const [time, data] = await withPerformance(
-      this.oneOrFail.bind(this),
-      returnType,
-    )();
-
-    return {
-      data,
-      time: Number(time),
-    };
-  }
-
-  /**
-   * @description Executes the query and returns true if the query returns at least one result, false otherwise.
-   * @description Returns the time that took to execute the query
-   */
-  private async existsWithPerformance(
-    returnType: "millis" | "seconds" = "millis",
-  ): Promise<{
-    data: boolean;
-    time: number;
-  }> {
-    const [time, data] = await withPerformance(
-      this.exists.bind(this),
-      returnType,
-    )();
-    return { data, time: Number(time) };
-  }
-
-  private async pluckWithPerformance(
-    key: RawModelKey<T>,
-    returnType: "millis" | "seconds" = "millis",
-  ) {
-    const [time, data] = await withPerformance(
-      this.pluck.bind(this, key),
-      returnType,
-    )();
-
-    return {
-      data,
-      time: Number(time),
-    };
-  }
-
-  private async updateWithPerformance(
-    data: Record<string, any>,
-    returnType: "millis" | "seconds" = "millis",
-  ) {
-    const [time, result] = await withPerformance(
-      this.update.bind(this, data),
-      returnType,
-    )();
-
-    return {
-      data: result,
-      time: Number(time),
-    };
-  }
-
-  private async insertWithPerformance(
-    data: Record<string, any>,
-    returnType: "millis" | "seconds" = "millis",
-  ) {
-    const [time, result] = await withPerformance(
-      this.insert.bind(this, data),
-      returnType,
-    )();
-
-    return {
-      data: result,
-      time: Number(time),
-    };
-  }
-
-  private async insertManyWithPerformance(
-    data: Record<string, any>[],
-    returnType: "millis" | "seconds" = "millis",
-  ) {
-    const [time, result] = await withPerformance(
-      this.insertMany.bind(this, data),
-      returnType,
-    )();
-
-    return {
-      data: result,
-      time: Number(time),
-    };
-  }
-
-  private async softDeleteWithPerformance(
-    options: Omit<SoftDeleteOptions<T>, "ignoreBeforeDeleteHook"> = {},
-    returnType: "millis" | "seconds" = "millis",
-  ) {
-    const [time, data] = await withPerformance(
-      this.softDelete.bind(this, options),
-      returnType,
-    )();
-
-    return {
-      data,
-      time: Number(time),
-    };
-  }
-
-  private async deleteWithPerformance(
-    returnType: "millis" | "seconds" = "millis",
-  ) {
-    const [time, data] = await withPerformance(
-      this.delete.bind(this),
-      returnType,
-    )();
-
-    return {
-      data,
-      time: Number(time),
-    };
-  }
-
-  private async truncateWithPerformance(
-    returnType: "millis" | "seconds" = "millis",
-  ) {
-    const [time, result] = await withPerformance(
-      this.truncate.bind(this),
-      returnType,
-    )();
-
-    return {
-      data: result,
-      time: Number(time),
-    };
   }
 
   /**

@@ -42,6 +42,17 @@ const SQL_TESTS = [
   // schema introspection
   "./test/sql/schema_introspection/schema_introspection.test.ts",
 
+  // db pull introspection
+  "./test/sql/introspection/pg_introspect.test.ts",
+  "./test/sql/introspection/mysql_introspect.test.ts",
+  "./test/sql/introspection/sqlite_introspect.test.ts",
+
+  // db pull CLI feature
+  "./test/sql/db_pull/type_mapping.test.ts",
+  "./test/sql/db_pull/naming.test.ts",
+  "./test/sql/db_pull/code_generation.test.ts",
+  "./test/sql/db_pull/integration.test.ts",
+
   // error handling
   "./test/sql/error_handling/error_scenarios.test.ts",
 
@@ -50,6 +61,12 @@ const SQL_TESTS = [
 
   // locking
   "./test/sql/locking/advisory_locks.test.ts",
+
+  // health checks
+  "./test/sql/health/health_check.test.ts",
+
+  // validation
+  "./test/sql/validation/builtin_validators.test.ts",
 
   // model manager
   "./test/sql/model_manager/model_manager.test.ts",
@@ -76,6 +93,9 @@ const SQL_TESTS = [
   "./test/sql/query_builder/json_select.test.ts",
   "./test/sql/query_builder/join_edge_cases.test.ts",
   "./test/sql/query_builder/where_column.test.ts",
+
+  // Observer middleware tests
+  "./test/sql/observers/add_observer.test.ts",
 
   // without primary key tests
   "./test/sql/without_pk/user_without_pk_json.test.ts",

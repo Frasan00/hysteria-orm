@@ -1,11 +1,12 @@
 export type CaseConvention =
   | "camel"
   | "snake"
+  | "pascal"
   | "preserve"
   | RegExp
   | ((column: string) => string);
 
-function toSnake(str: any) {
+export function toSnake(str: any) {
   if (typeof str !== "string" || !str) {
     return str;
   }
@@ -16,7 +17,7 @@ function toSnake(str: any) {
     .toLowerCase();
 }
 
-function toCamel(str: any) {
+export function toCamel(str: any) {
   if (typeof str !== "string" || !str) {
     return str;
   }
@@ -24,6 +25,23 @@ function toCamel(str: any) {
   return str.replace(/([-_][a-z])/g, (group) =>
     group.toUpperCase().replace("-", "").replace("_", ""),
   );
+}
+
+/**
+ * Convert a string to PascalCase
+ * Examples:
+ * - user_account → UserAccount
+ * - userAccount → UserAccount
+ * - user → User
+ */
+export function toPascal(str: string): string {
+  if (typeof str !== "string" || !str) {
+    return str;
+  }
+
+  // First convert to camelCase, then capitalize first letter
+  const camel = toCamel(str);
+  return camel.charAt(0).toUpperCase() + camel.slice(1);
 }
 
 export function convertCase(value: any, to: CaseConvention) {
@@ -37,6 +55,10 @@ export function convertCase(value: any, to: CaseConvention) {
 
   if (to === "camel") {
     return toCamel(value);
+  }
+
+  if (to === "pascal") {
+    return toPascal(value);
   }
 
   if (to instanceof RegExp) {

@@ -1,6 +1,5 @@
 import type { ModelQueryBuilder } from "./model_query_builder/model_query_builder";
 import type { ModelWithoutRelations } from "./model_types";
-
 import { Entity } from "../../entity";
 import { baseSoftDeleteDate } from "../../utils/date_utils";
 import {
@@ -18,8 +17,8 @@ import {
   LazyRelationType,
   UniqueType,
 } from "./decorators/model_decorators_types";
-
 import { ModelColumnCache } from "./model_column_cache";
+import { ValidationError } from "../../errors/hysteria_error";
 
 /**
  * @description Represents a Table in the Database
@@ -153,5 +152,43 @@ export abstract class Model<T extends Model<T> = any> extends Entity {
 
   static getChecks(): CheckType[] {
     return getChecks(this);
+  }
+
+  static async validate(
+    data: any,
+  ): Promise<{ valid: boolean; errors?: Record<string, string[]> }> {
+    const columns = this.getColumns();
+    const errors: Record<string, string[]> = {};
+    const primaryKey = this.primaryKey;
+    const operation: "insert" | "update" =
+      primaryKey && data?.[primaryKey] !== undefined ? "update" : "insert";
+
+    for (const col of columns) {
+      const validators = col.validate;
+      if (!validators) continue;
+      const value = data ? data[col.columnName] : undefined;
+      const vList = Array.isArray(validators) ? validators : [validators];
+      for (const v of vList) {
+        try {
+          const res = await v(value, {
+            model: this,
+            column: col.columnName,
+            operation,
+            data,
+          });
+          if (!(res && res.valid)) {
+            const msg = (res && res.message) || "Validation failed";
+            (errors[col.columnName] ||= []).push(msg);
+          }
+        } catch {
+          (errors[col.columnName] ||= []).push("Validation error");
+        }
+      }
+    }
+
+    if (Object.keys(errors).length > 0) {
+      throw new ValidationError(errors);
+    }
+    return { valid: true };
   }
 }
