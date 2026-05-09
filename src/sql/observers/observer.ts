@@ -4,6 +4,7 @@ import { HysteriaError } from "../../errors/hysteria_error";
 export type Operation = "SELECT" | "INSERT" | "UPDATE" | "DELETE" | "OTHER";
 
 export interface QueryContext {
+  id: string;
   sql: string;
   params: any[];
   model?: any;

@@ -1,8 +1,9 @@
 import { PassThrough } from "node:stream";
 import { performance } from "node:perf_hooks";
+import { randomUUID } from "node:crypto";
 import { DriverNotFoundError } from "../../drivers/driver_constants";
 import { HysteriaError } from "../../errors/hysteria_error";
-import logger, { log, logMessage, type LoggerConfig } from "../../utils/logger";
+import { log, logMessage, type LoggerConfig } from "../../utils/logger";
 import {
   convertDateStringToDateForOracle,
   processOracleRow,
@@ -55,6 +56,7 @@ export const execSql = async <
 
   // Prepare and fire before-query observers if any
   const context: QueryContext = {
+    id: randomUUID(),
     sql: query,
     params,
     model: undefined,

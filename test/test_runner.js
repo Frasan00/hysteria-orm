@@ -96,6 +96,7 @@ const SQL_TESTS = [
 
   // Observer middleware tests
   "./test/sql/observers/add_observer.test.ts",
+  "./test/sql/observers/observer_query_id.test.ts",
 
   // without primary key tests
   "./test/sql/without_pk/user_without_pk_json.test.ts",
