@@ -1,3 +1,4 @@
+import { HysteriaError } from "../../errors/hysteria_error";
 import type { BaseModelRelationType } from "./decorators/model_decorators";
 import {
   belongsTo as belongsToDecorator,
@@ -587,6 +588,8 @@ export function defineModel<
     }
   }
 
+  applyToZodSchema(DefinedModelClass);
+
   return DefinedModelClass as unknown as DefinedModel<T, C, {}>;
 }
 
@@ -751,10 +754,9 @@ export function createSchema<
 // ---------------------------------------------------------------------------
 
 /**
- * Creates a fully-typed read-only Model subclass backed by a SQL view.
- *
  * The returned class works with `sql.from(View).many()` and other read operations.
  * Mutation operations (insert, update, delete) are not intended for views.
+ * Does not create a real database view, this is just a shortcut for common query results
  *
  * @example
  * ```typescript
@@ -819,7 +821,94 @@ export function defineView<
     }
   }
 
+  applyToZodSchema(DefinedViewClass);
+
   return DefinedViewClass as unknown as DefinedView<T, C>;
+}
+
+function applyToZodSchema(target: any): void {
+  target.toZodSchema = function () {
+    const z = (this as any).zodEngine || (Model as any).zodEngine;
+    if (!z) {
+      throw new HysteriaError(
+        "Model::toZodSchema",
+        "ZOD_ENGINE_NOT_LOADED",
+        new Error(
+          "Zod engine not loaded. Please call sql.loadZodEngine(z) before using toZodSchema().",
+        ),
+      );
+    }
+    const columns = (this as typeof Model).getColumns();
+    const shape: Record<string, any> = {};
+
+    for (const col of columns) {
+      let zType: any;
+
+      if (Array.isArray(col.type)) {
+        zType = z.enum(col.type as [string, ...string[]]);
+      } else {
+        const type = col.type as string;
+        switch (type) {
+          case "string":
+          case "varchar":
+          case "char":
+          case "text":
+          case "longtext":
+          case "mediumtext":
+          case "tinytext":
+          case "uuid":
+          case "ulid":
+            zType = z.string();
+            break;
+          case "integer":
+          case "tinyint":
+          case "smallint":
+          case "mediumint":
+          case "bigint":
+          case "float":
+          case "double":
+          case "real":
+          case "decimal":
+          case "numeric":
+          case "increment":
+          case "bigIncrement":
+            zType = z.number();
+            break;
+          case "boolean":
+            zType = z.boolean();
+            break;
+          case "date":
+          case "datetime":
+          case "timestamp":
+          case "time":
+            zType = z.date();
+            break;
+          case "json":
+          case "jsonb":
+            zType = z.any();
+            break;
+          case "binary":
+          case "varbinary":
+          case "blob":
+          case "tinyblob":
+          case "mediumblob":
+          case "longblob":
+            zType = z.any();
+            break;
+          default:
+            zType = z.any();
+        }
+      }
+
+      if (col.constraints?.nullable !== false && !col.isPrimary) {
+        zType = zType.nullable();
+      }
+
+      shape[col.columnName] = zType;
+    }
+
+    return z.object(shape);
+  };
 }
 
 // ---------------------------------------------------------------------------

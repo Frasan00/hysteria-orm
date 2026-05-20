@@ -1,3 +1,4 @@
+import type { z } from "zod";
 import type { ModelQueryBuilder } from "./model_query_builder/model_query_builder";
 import type { ModelWithoutRelations } from "./model_types";
 import { Entity } from "../../entity";
@@ -26,6 +27,11 @@ import { ValidationError } from "../../errors/hysteria_error";
  */
 export abstract class Model<T extends Model<T> = any> extends Entity {
   declare private "*": string;
+
+  /**
+   * @description The zod instance to use for creating zod schemas, if not set, toZodSchema will throw an error
+   */
+  static zodEngine: typeof z | null = null;
 
   /**
    * @description The column used to soft delete a record, default is deletedAt

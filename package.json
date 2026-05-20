@@ -1,6 +1,6 @@
 {
   "name": "hysteria-orm",
-  "version": "11.0.3",
+  "version": "11.0.4",
   "license": "MIT",
   "description": "Yet another orm for Javascript and Typescript no one asked for",
   "type": "module",
@@ -93,7 +93,8 @@
     "tsup": "^8.5.1",
     "tsx": "^4.21.0",
     "typeorm": "^0.3.28",
-    "typescript": "^6.0.2"
+    "typescript": "^6.0.2",
+    "zod": "^4.4.3"
   },
   "dependencies": {
     "commander": "^14.0.3",
@@ -104,12 +105,13 @@
     "esbuild": "^0.28.0",
     "ioredis": "^5.10.1",
     "mongodb": "^7.1.1",
-    "oracledb": "^6.10.0",
     "mssql": "^12.2.1",
     "mysql2": "^3.20.0",
+    "oracledb": "^6.10.0",
     "pg": "^8.20.0",
     "sqlite3": "^6.0.1",
-    "typescript": "^6.0.2"
+    "typescript": "^6.0.2",
+    "zod": "^4.4.3"
   },
   "peerDependenciesMeta": {
     "esbuild": {
@@ -121,13 +123,13 @@
     "mongodb": {
       "optional": true
     },
-    "oracledb": {
-      "optional": true
-    },
     "mssql": {
       "optional": true
     },
     "mysql2": {
+      "optional": true
+    },
+    "oracledb": {
       "optional": true
     },
     "pg": {
@@ -137,6 +139,9 @@
       "optional": true
     },
     "typescript": {
+      "optional": true
+    },
+    "zod": {
       "optional": true
     }
   },

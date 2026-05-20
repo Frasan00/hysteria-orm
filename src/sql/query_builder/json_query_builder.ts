@@ -1,9 +1,17 @@
 import { WhereJsonNode } from "../ast/query/node/where";
 import { Model } from "../models/model";
-import { ModelKey } from "../models/model_manager/model_manager_types";
+import {
+  ModelKey,
+  StripTablePrefix,
+} from "../models/model_manager/model_manager_types";
 import { WhereQueryBuilder } from "./where_query_builder";
 
-type JsonParam = Record<string, unknown> | any[];
+type DefaultJsonParam = Record<string, any> | any[];
+
+type JsonValueForColumn<T extends Model, K extends string> =
+  K extends ModelKey<T>
+    ? NonNullable<T[StripTablePrefix<K> & keyof T]>
+    : DefaultJsonParam;
 
 export class JsonQueryBuilder<
   T extends Model,
@@ -12,9 +20,10 @@ export class JsonQueryBuilder<
   /**
    * @description Filters records matching exact JSON value.
    */
-  whereJson(column: ModelKey<T>, value: JsonParam): this;
-  whereJson(column: string, value: JsonParam): this;
-  whereJson(column: ModelKey<T> | string, value: JsonParam): this {
+  whereJson<K extends string>(
+    column: K,
+    value: JsonValueForColumn<T, K>,
+  ): this {
     return this.andWhereJson(column as string, value);
   }
 
@@ -22,9 +31,10 @@ export class JsonQueryBuilder<
    * @description Filters records matching the given JSON value.
    * @mssql Partial JSON matching not supported - only exact matches work
    */
-  andWhereJson(column: ModelKey<T>, value: JsonParam): this;
-  andWhereJson(column: string, value: JsonParam): this;
-  andWhereJson(column: ModelKey<T> | string, value: JsonParam): this {
+  andWhereJson<K extends string>(
+    column: K,
+    value: JsonValueForColumn<T, K>,
+  ): this {
     this.whereNodes.push(
       new WhereJsonNode(
         column as string,
@@ -41,9 +51,10 @@ export class JsonQueryBuilder<
    * @description Filters records matching the given JSON value.
    * @mssql Partial JSON matching not supported - only exact matches work
    */
-  orWhereJson(column: ModelKey<T>, value: JsonParam): this;
-  orWhereJson(column: string, value: JsonParam): this;
-  orWhereJson(column: ModelKey<T> | string, value: JsonParam): this {
+  orWhereJson<K extends string>(
+    column: K,
+    value: JsonValueForColumn<T, K>,
+  ): this {
     this.whereNodes.push(
       new WhereJsonNode(
         column as string,
@@ -61,9 +72,10 @@ export class JsonQueryBuilder<
    * @sqlite might not work for all cases, suggest using the whereJsonRaw method instead
    * @mssql not supported - CHARINDEX cannot do partial JSON containment
    */
-  whereJsonNotContains(column: ModelKey<T>, value: JsonParam): this;
-  whereJsonNotContains(column: string, value: JsonParam): this;
-  whereJsonNotContains(column: ModelKey<T> | string, value: JsonParam): this {
+  whereJsonNotContains<K extends string>(
+    column: K,
+    value: JsonValueForColumn<T, K>,
+  ): this {
     return this.andWhereJsonNotContains(column as string, value);
   }
 
@@ -72,11 +84,9 @@ export class JsonQueryBuilder<
    * @sqlite might not work for all cases, suggest using the whereJsonRaw method instead
    * @mssql not supported - CHARINDEX cannot do partial JSON containment
    */
-  andWhereJsonNotContains(column: ModelKey<T>, value: JsonParam): this;
-  andWhereJsonNotContains(column: string, value: JsonParam): this;
-  andWhereJsonNotContains(
-    column: ModelKey<T> | string,
-    value: JsonParam,
+  andWhereJsonNotContains<K extends string>(
+    column: K,
+    value: JsonValueForColumn<T, K>,
   ): this {
     this.whereNodes.push(
       new WhereJsonNode(
@@ -95,9 +105,10 @@ export class JsonQueryBuilder<
    * @sqlite might not work for all cases, suggest using the whereJsonRaw method instead
    * @mssql not supported - CHARINDEX cannot do partial JSON containment
    */
-  orWhereJsonNotContains(column: ModelKey<T>, value: JsonParam): this;
-  orWhereJsonNotContains(column: string, value: JsonParam): this;
-  orWhereJsonNotContains(column: ModelKey<T> | string, value: JsonParam): this {
+  orWhereJsonNotContains<K extends string>(
+    column: K,
+    value: JsonValueForColumn<T, K>,
+  ): this {
     this.whereNodes.push(
       new WhereJsonNode(
         column as string,
@@ -115,9 +126,10 @@ export class JsonQueryBuilder<
    * @sqlite might not work for all cases, suggest using the whereJsonRaw method instead
    * @mssql not supported - CHARINDEX cannot do partial JSON containment
    */
-  whereJsonContains(column: ModelKey<T>, value: JsonParam): this;
-  whereJsonContains(column: string, value: JsonParam): this;
-  whereJsonContains(column: ModelKey<T> | string, value: JsonParam): this {
+  whereJsonContains<K extends string>(
+    column: K,
+    value: JsonValueForColumn<T, K>,
+  ): this {
     return this.andWhereJsonContains(column as string, value);
   }
 
@@ -126,9 +138,10 @@ export class JsonQueryBuilder<
    * @sqlite might not work for all cases, suggest using the whereJsonRaw method instead
    * @mssql not supported - CHARINDEX cannot do partial JSON containment
    */
-  andWhereJsonContains(column: ModelKey<T>, value: JsonParam): this;
-  andWhereJsonContains(column: string, value: JsonParam): this;
-  andWhereJsonContains(column: ModelKey<T> | string, value: JsonParam): this {
+  andWhereJsonContains<K extends string>(
+    column: K,
+    value: JsonValueForColumn<T, K>,
+  ): this {
     this.whereNodes.push(
       new WhereJsonNode(
         column as string,
@@ -146,9 +159,10 @@ export class JsonQueryBuilder<
    * @sqlite might not work for all cases, suggest using the whereJsonRaw method instead
    * @mssql not supported - CHARINDEX cannot do partial JSON containment
    */
-  orWhereJsonContains(column: ModelKey<T>, value: JsonParam): this;
-  orWhereJsonContains(column: string, value: JsonParam): this;
-  orWhereJsonContains(column: ModelKey<T> | string, value: JsonParam): this {
+  orWhereJsonContains<K extends string>(
+    column: K,
+    value: JsonValueForColumn<T, K>,
+  ): this {
     this.whereNodes.push(
       new WhereJsonNode(
         column as string,
@@ -164,18 +178,20 @@ export class JsonQueryBuilder<
   /**
    * @description Filters records where JSON column does NOT match the given value.
    */
-  whereNotJson(column: ModelKey<T>, value: JsonParam): this;
-  whereNotJson(column: string, value: JsonParam): this;
-  whereNotJson(column: ModelKey<T> | string, value: JsonParam): this {
+  whereNotJson<K extends string>(
+    column: K,
+    value: JsonValueForColumn<T, K>,
+  ): this {
     return this.andWhereNotJson(column as string, value);
   }
 
   /**
    * @description Filters records where JSON column does NOT match the given value (AND).
    */
-  andWhereNotJson(column: ModelKey<T>, value: JsonParam): this;
-  andWhereNotJson(column: string, value: JsonParam): this;
-  andWhereNotJson(column: ModelKey<T> | string, value: JsonParam): this {
+  andWhereNotJson<K extends string>(
+    column: K,
+    value: JsonValueForColumn<T, K>,
+  ): this {
     this.whereNodes.push(
       new WhereJsonNode(
         column as string,
@@ -191,9 +207,10 @@ export class JsonQueryBuilder<
   /**
    * @description Filters records where JSON column does NOT match the given value (OR).
    */
-  orWhereNotJson(column: ModelKey<T>, value: JsonParam): this;
-  orWhereNotJson(column: string, value: JsonParam): this;
-  orWhereNotJson(column: ModelKey<T> | string, value: JsonParam): this {
+  orWhereNotJson<K extends string>(
+    column: K,
+    value: JsonValueForColumn<T, K>,
+  ): this {
     this.whereNodes.push(
       new WhereJsonNode(
         column as string,

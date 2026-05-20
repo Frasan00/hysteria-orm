@@ -1,3 +1,4 @@
+import type { z } from "zod";
 import type { CaseConvention } from "../../utils/case_utils";
 import type { OnUpdateOrDelete } from "../migrations/schema/schema_types";
 import type { Model } from "./model";
@@ -8,14 +9,11 @@ import type {
   CheckType,
   ColumnOptions,
   ColumnType,
-  DateAutoHook,
   DateColumnOptions,
   DatetimeColumnOptions,
   IndexType,
   LazyRelationType,
-  ManyToManyStringOptions,
   SymmetricEncryptionOptions,
-  ThroughModel,
   UniqueType,
 } from "./decorators/model_decorators_types";
 import type { ModelKey } from "./model_manager/model_manager_types";
@@ -885,6 +883,12 @@ export type DefinedModel<
       { readonly __tableName: T } & InferColumns<C> & Model
     >,
   ) => Promise<void> | void;
+  /**
+   * Translates the model definition to a Zod schema.
+   * @throws {HysteriaError} If the zod engine is not loaded. Call `sql.loadZodEngine(z)` first.
+   * @returns A ZodObject representing the model's columns.
+   */
+  toZodSchema(): z.ZodObject<{ [K in keyof C]: z.ZodType<InferColumns<C>[K]> }>;
 } & ModelColumns<T, C>;
 
 // ---------------------------------------------------------------------------
@@ -1169,4 +1173,10 @@ export type DefinedView<
 > = Omit<ConcreteModelStatics, HiddenViewStatics> & {
   readonly table: T;
   new (): InferModel<T, C, {}> & Model;
+  /**
+   * Translates the model definition to a Zod schema.
+   * @throws {HysteriaError} If the zod engine is not loaded. Call `sql.loadZodEngine(z)` first.
+   * @returns A ZodObject representing the model's columns.
+   */
+  toZodSchema(): z.ZodObject<{ [K in keyof C]: z.ZodType<InferColumns<C>[K]> }>;
 } & ModelColumns<T, C>;

@@ -1,3 +1,4 @@
+import type { z } from "zod";
 import {
   initializeAdminJs,
   initializeAdminJsExpress,
@@ -225,6 +226,11 @@ export class SqlDataSource<
    * @description Cached AdminJS instance
    */
   private adminJsInstance?: AdminJsInstance;
+
+  /**
+   * @description Optional zod instance for schema generation
+   */
+  zodEngine: typeof z | null = null;
 
   /**
    * @description Callback to handle slave server failures
@@ -1357,6 +1363,16 @@ export class SqlDataSource<
    */
   getAdminJsOptions(): AdminJsOptions | undefined {
     return this.adminJsOptions;
+  }
+
+  /**
+   * @description Loads the zod engine into the data source
+   * @param zod The zod namespace import
+   */
+  loadZodEngine(zod: typeof z): this {
+    this.zodEngine = zod;
+    Model.zodEngine = zod;
+    return this;
   }
 
   /**

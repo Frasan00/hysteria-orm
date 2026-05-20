@@ -303,6 +303,8 @@ export const interpreterMap = {
     from: {
       from: mssql_from_from,
     },
+    fts: {
+    },
     group_by: {
       group_by: mssql_group_by_group_by,
     },
@@ -356,6 +358,8 @@ export const interpreterMap = {
     },
     update: {
       update: mssql_update_update,
+    },
+    vector: {
     },
     where: {
       where: mssql_where_where,
@@ -411,6 +415,8 @@ export const interpreterMap = {
     from: {
       from: mysql_from_from,
     },
+    fts: {
+    },
     group_by: {
       group_by: mysql_group_by_group_by,
     },
@@ -464,6 +470,8 @@ export const interpreterMap = {
     },
     update: {
       update: mysql_update_update,
+    },
+    vector: {
     },
     where: {
       where: mysql_where_where,
@@ -519,6 +527,8 @@ export const interpreterMap = {
     from: {
       from: oracledb_from_from,
     },
+    fts: {
+    },
     group_by: {
       group_by: oracledb_group_by_group_by,
     },
@@ -572,6 +582,8 @@ export const interpreterMap = {
     },
     update: {
       update: oracledb_update_update,
+    },
+    vector: {
     },
     where: {
       where: oracledb_where_where,
@@ -627,6 +639,8 @@ export const interpreterMap = {
     from: {
       from: postgres_from_from,
     },
+    fts: {
+    },
     group_by: {
       group_by: postgres_group_by_group_by,
     },
@@ -681,6 +695,8 @@ export const interpreterMap = {
     update: {
       update: postgres_update_update,
     },
+    vector: {
+    },
     where: {
       where: postgres_where_where,
       where_group: postgres_where_where_group,
@@ -733,6 +749,8 @@ export const interpreterMap = {
     },
     from: {
       from: sqlite_from_from,
+    },
+    fts: {
     },
     group_by: {
       group_by: sqlite_group_by_group_by,
@@ -787,6 +805,8 @@ export const interpreterMap = {
     },
     update: {
       update: sqlite_update_update,
+    },
+    vector: {
     },
     where: {
       where: sqlite_where_where,
