@@ -84,6 +84,29 @@ export type ConnectionPolicies = {
 export type SqlDataSourceModel = AnyModelConstructor;
 
 /**
+ * @description Migration lock configuration
+ */
+export type MigrationLockConfig = {
+  /**
+   * @description Enable/disable migration locking
+   * @default true
+   */
+  enabled?: boolean;
+
+  /**
+   * @description Lock timeout in milliseconds for migration advisory lock acquisition
+   * @default 30000
+   */
+  timeout?: number;
+
+  /**
+   * @description Custom lock key value - can be string, number, or function returning string|number
+   * @default "hysteria_migration_lock"
+   */
+  customValue?: string | number | (() => string | number);
+};
+
+/**
  * @description Base migration configuration options available for all databases
  */
 export type MigrationConfigBase = {
@@ -100,13 +123,14 @@ export type MigrationConfigBase = {
   tsconfig?: string;
 
   /**
-   * @description Acquire advisory lock before running migrations to prevent concurrent execution, can be overridden in the cli command
+   * @description Migration lock configuration - can be boolean to enable/disable, or an object for advanced options
    * @default true
    */
-  lock?: boolean;
+  lock?: boolean | MigrationLockConfig;
 
   /**
-   * @description Lock timeout in milliseconds for migration advisory lock acquisition, can be overridden in the cli command
+   * @deprecated Use lock.timeout instead. Kept for backward compatibility.
+   * @description Lock timeout in milliseconds for migration advisory lock acquisition
    * @default 30000
    */
   lockTimeout?: number;

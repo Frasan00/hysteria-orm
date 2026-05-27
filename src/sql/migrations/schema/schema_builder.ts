@@ -301,6 +301,161 @@ export class SchemaBuilder implements PromiseLike<void> {
   }
 
   // ============================================
+  // Schema introspection methods
+  // ============================================
+
+  /**
+   * @description Checks if a table exists in the database
+   * @param tableName - The name of the table to check
+   * @returns Promise<boolean> - true if table exists, false otherwise
+   */
+  async hasTable(tableName: string): Promise<boolean> {
+    return this.dataSource.hasTable(tableName);
+  }
+
+  /**
+   * @description Checks if a column exists in a table
+   * @param tableName - The name of the table
+   * @param columnName - The name of the column to check
+   * @returns Promise<boolean> - true if column exists in table, false otherwise
+   */
+  async hasColumn(tableName: string, columnName: string): Promise<boolean> {
+    return this.dataSource.hasColumn(tableName, columnName);
+  }
+
+  /**
+   * @description Checks if multiple columns exist in a table
+   * @param tableName - The name of the table
+   * @param columnNames - Array of column names to check
+   * @returns Promise<boolean> - true if all columns exist in table, false otherwise
+   */
+  async hasColumns(
+    tableName: string,
+    ...columnNames: string[]
+  ): Promise<boolean> {
+    return this.dataSource.hasColumns(tableName, ...columnNames);
+  }
+
+  /**
+   * @description Checks if an index exists on a table
+   * @param tableName - The name of the table
+   * @param indexName - The name of the index to check
+   * @returns Promise<boolean> - true if index exists on table, false otherwise
+   */
+  async hasIndex(tableName: string, indexName: string): Promise<boolean> {
+    return this.dataSource.hasIndex(tableName, indexName);
+  }
+
+  /**
+   * @description Checks if a table has a primary key
+   * @param tableName - The name of the table
+   * @returns Promise<boolean> - true if table has primary key, false otherwise
+   */
+  async hasPrimaryKey(tableName: string): Promise<boolean> {
+    return this.dataSource.hasPrimaryKey(tableName);
+  }
+
+  /**
+   * @description Checks if a unique constraint exists on a table for given columns
+   * @param tableName - The name of the table
+   * @param columns - Array of column names (or single string) that form the unique constraint
+   * @returns Promise<boolean> - true if unique constraint exists, false otherwise
+   */
+  async hasUnique(
+    tableName: string,
+    columns: string[] | string,
+  ): Promise<boolean> {
+    return this.dataSource.hasUnique(tableName, columns);
+  }
+
+  /**
+   * @description Checks if a foreign key constraint exists on a table for given columns
+   * @param tableName - The name of the table
+   * @param columns - Array of column names that form the foreign key
+   * @returns Promise<boolean> - true if foreign key exists, false otherwise
+   */
+  async hasForeignKey(tableName: string, columns: string[]): Promise<boolean> {
+    return this.dataSource.hasForeignKey(tableName, columns);
+  }
+
+  /**
+   * @description Checks if a check constraint exists on a table
+   * @param tableName - The name of the table
+   * @param constraintName - The name of the check constraint to check
+   * @returns Promise<boolean> - true if check constraint exists, false otherwise
+   */
+  async hasCheckConstraint(
+    tableName: string,
+    constraintName: string,
+  ): Promise<boolean> {
+    return this.dataSource.hasCheckConstraint(tableName, constraintName);
+  }
+
+  /**
+   * @description Gets all table names in the database
+   * @returns Promise<string[]> - Array of table names
+   */
+  async getTables(): Promise<string[]> {
+    return this.dataSource.getTables();
+  }
+
+  /**
+   * @description Gets all column names for a table
+   * @param tableName - The name of the table
+   * @returns Promise<string[]> - Array of column names
+   */
+  async getColumnListing(tableName: string): Promise<string[]> {
+    return this.dataSource.getColumnListing(tableName);
+  }
+
+  // ============================================
+  // Convenience methods
+  // ============================================
+
+  /**
+   * @description Drops a table if it exists
+   * @param table - The name of the table to drop
+   * @returns this for chaining
+   */
+  dropTableIfExists(table: string): this {
+    this.schema.dropTable(table, true);
+    return this;
+  }
+
+  /**
+   * @description Drops an index if it exists
+   * @param indexName - The name of the index
+   * @param table - Table name (required for existence check)
+   * @returns Promise<void> - executes immediately, not chainable
+   * @mysql requires table name for existence check
+   */
+  async dropIndexIfExists(indexName: string, table: string): Promise<void> {
+    const exists = await this.dataSource.hasIndex(table, indexName);
+    if (exists) {
+      const tempSchema = new Schema(this.dataSource.getDbType());
+      tempSchema.dropIndex(indexName, table);
+      const sql = tempSchema.queryStatements[0];
+      if (sql) {
+        await this.dataSource.rawQuery(sql);
+      }
+    }
+  }
+
+  /**
+   * @description Renames a column in a table
+   * @param tableName - The name of the table
+   * @param oldName - The current column name
+   * @param newName - The new column name
+   * @returns this for chaining
+   */
+  renameColumn(tableName: string, oldName: string, newName: string): this {
+    this.schema.alterTable(tableName, (table) => {
+      table.renameColumn(oldName, newName);
+    });
+    return this;
+  }
+
+  // ============================================
   // Private execution logic
   // ============================================
 

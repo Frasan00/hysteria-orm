@@ -37,6 +37,13 @@ import mssql_order_by_order_by from '../interpreter/mssql/order_by/order_by';
 import mssql_raw_raw from '../interpreter/mssql/raw/raw';
 import mssql_schema_check_constraint_info from '../interpreter/mssql/schema/check_constraint_info';
 import mssql_schema_foreign_key_info from '../interpreter/mssql/schema/foreign_key_info';
+import mssql_schema_get_column_listing from '../interpreter/mssql/schema/get_column_listing';
+import mssql_schema_get_tables from '../interpreter/mssql/schema/get_tables';
+import mssql_schema_has_check_constraint from '../interpreter/mssql/schema/has_check_constraint';
+import mssql_schema_has_column from '../interpreter/mssql/schema/has_column';
+import mssql_schema_has_index from '../interpreter/mssql/schema/has_index';
+import mssql_schema_has_primary_key from '../interpreter/mssql/schema/has_primary_key';
+import mssql_schema_has_table from '../interpreter/mssql/schema/has_table';
 import mssql_schema_index_info from '../interpreter/mssql/schema/index_info';
 import mssql_schema_primary_key_info from '../interpreter/mssql/schema/primary_key_info';
 import mssql_schema_table_info from '../interpreter/mssql/schema/table_info';
@@ -89,6 +96,13 @@ import mysql_order_by_order_by from '../interpreter/mysql/order_by/order_by';
 import mysql_raw_raw from '../interpreter/mysql/raw/raw';
 import mysql_schema_check_constraint_info from '../interpreter/mysql/schema/check_constraint_info';
 import mysql_schema_foreign_key_info from '../interpreter/mysql/schema/foreign_key_info';
+import mysql_schema_get_column_listing from '../interpreter/mysql/schema/get_column_listing';
+import mysql_schema_get_tables from '../interpreter/mysql/schema/get_tables';
+import mysql_schema_has_check_constraint from '../interpreter/mysql/schema/has_check_constraint';
+import mysql_schema_has_column from '../interpreter/mysql/schema/has_column';
+import mysql_schema_has_index from '../interpreter/mysql/schema/has_index';
+import mysql_schema_has_primary_key from '../interpreter/mysql/schema/has_primary_key';
+import mysql_schema_has_table from '../interpreter/mysql/schema/has_table';
 import mysql_schema_index_info from '../interpreter/mysql/schema/index_info';
 import mysql_schema_primary_key_info from '../interpreter/mysql/schema/primary_key_info';
 import mysql_schema_table_info from '../interpreter/mysql/schema/table_info';
@@ -141,6 +155,13 @@ import oracledb_order_by_order_by from '../interpreter/oracledb/order_by/order_b
 import oracledb_raw_raw from '../interpreter/oracledb/raw/raw';
 import oracledb_schema_check_constraint_info from '../interpreter/oracledb/schema/check_constraint_info';
 import oracledb_schema_foreign_key_info from '../interpreter/oracledb/schema/foreign_key_info';
+import oracledb_schema_get_column_listing from '../interpreter/oracledb/schema/get_column_listing';
+import oracledb_schema_get_tables from '../interpreter/oracledb/schema/get_tables';
+import oracledb_schema_has_check_constraint from '../interpreter/oracledb/schema/has_check_constraint';
+import oracledb_schema_has_column from '../interpreter/oracledb/schema/has_column';
+import oracledb_schema_has_index from '../interpreter/oracledb/schema/has_index';
+import oracledb_schema_has_primary_key from '../interpreter/oracledb/schema/has_primary_key';
+import oracledb_schema_has_table from '../interpreter/oracledb/schema/has_table';
 import oracledb_schema_index_info from '../interpreter/oracledb/schema/index_info';
 import oracledb_schema_primary_key_info from '../interpreter/oracledb/schema/primary_key_info';
 import oracledb_schema_table_info from '../interpreter/oracledb/schema/table_info';
@@ -193,6 +214,13 @@ import postgres_order_by_order_by from '../interpreter/postgres/order_by/order_b
 import postgres_raw_raw from '../interpreter/postgres/raw/raw';
 import postgres_schema_check_constraint_info from '../interpreter/postgres/schema/check_constraint_info';
 import postgres_schema_foreign_key_info from '../interpreter/postgres/schema/foreign_key_info';
+import postgres_schema_get_column_listing from '../interpreter/postgres/schema/get_column_listing';
+import postgres_schema_get_tables from '../interpreter/postgres/schema/get_tables';
+import postgres_schema_has_check_constraint from '../interpreter/postgres/schema/has_check_constraint';
+import postgres_schema_has_column from '../interpreter/postgres/schema/has_column';
+import postgres_schema_has_index from '../interpreter/postgres/schema/has_index';
+import postgres_schema_has_primary_key from '../interpreter/postgres/schema/has_primary_key';
+import postgres_schema_has_table from '../interpreter/postgres/schema/has_table';
 import postgres_schema_index_info from '../interpreter/postgres/schema/index_info';
 import postgres_schema_primary_key_info from '../interpreter/postgres/schema/primary_key_info';
 import postgres_schema_table_info from '../interpreter/postgres/schema/table_info';
@@ -244,6 +272,13 @@ import sqlite_order_by_order_by from '../interpreter/sqlite/order_by/order_by';
 import sqlite_raw_raw from '../interpreter/sqlite/raw/raw';
 import sqlite_schema_check_constraint_info from '../interpreter/sqlite/schema/check_constraint_info';
 import sqlite_schema_foreign_key_info from '../interpreter/sqlite/schema/foreign_key_info';
+import sqlite_schema_get_column_listing from '../interpreter/sqlite/schema/get_column_listing';
+import sqlite_schema_get_tables from '../interpreter/sqlite/schema/get_tables';
+import sqlite_schema_has_check_constraint from '../interpreter/sqlite/schema/has_check_constraint';
+import sqlite_schema_has_column from '../interpreter/sqlite/schema/has_column';
+import sqlite_schema_has_index from '../interpreter/sqlite/schema/has_index';
+import sqlite_schema_has_primary_key from '../interpreter/sqlite/schema/has_primary_key';
+import sqlite_schema_has_table from '../interpreter/sqlite/schema/has_table';
 import sqlite_schema_index_info from '../interpreter/sqlite/schema/index_info';
 import sqlite_schema_primary_key_info from '../interpreter/sqlite/schema/primary_key_info';
 import sqlite_schema_table_info from '../interpreter/sqlite/schema/table_info';
@@ -303,8 +338,6 @@ export const interpreterMap = {
     from: {
       from: mssql_from_from,
     },
-    fts: {
-    },
     group_by: {
       group_by: mssql_group_by_group_by,
     },
@@ -342,6 +375,13 @@ export const interpreterMap = {
     schema: {
       check_constraint_info: mssql_schema_check_constraint_info,
       foreign_key_info: mssql_schema_foreign_key_info,
+      get_column_listing: mssql_schema_get_column_listing,
+      get_tables: mssql_schema_get_tables,
+      has_check_constraint: mssql_schema_has_check_constraint,
+      has_column: mssql_schema_has_column,
+      has_index: mssql_schema_has_index,
+      has_primary_key: mssql_schema_has_primary_key,
+      has_table: mssql_schema_has_table,
       index_info: mssql_schema_index_info,
       primary_key_info: mssql_schema_primary_key_info,
       table_info: mssql_schema_table_info,
@@ -358,8 +398,6 @@ export const interpreterMap = {
     },
     update: {
       update: mssql_update_update,
-    },
-    vector: {
     },
     where: {
       where: mssql_where_where,
@@ -415,8 +453,6 @@ export const interpreterMap = {
     from: {
       from: mysql_from_from,
     },
-    fts: {
-    },
     group_by: {
       group_by: mysql_group_by_group_by,
     },
@@ -454,6 +490,13 @@ export const interpreterMap = {
     schema: {
       check_constraint_info: mysql_schema_check_constraint_info,
       foreign_key_info: mysql_schema_foreign_key_info,
+      get_column_listing: mysql_schema_get_column_listing,
+      get_tables: mysql_schema_get_tables,
+      has_check_constraint: mysql_schema_has_check_constraint,
+      has_column: mysql_schema_has_column,
+      has_index: mysql_schema_has_index,
+      has_primary_key: mysql_schema_has_primary_key,
+      has_table: mysql_schema_has_table,
       index_info: mysql_schema_index_info,
       primary_key_info: mysql_schema_primary_key_info,
       table_info: mysql_schema_table_info,
@@ -470,8 +513,6 @@ export const interpreterMap = {
     },
     update: {
       update: mysql_update_update,
-    },
-    vector: {
     },
     where: {
       where: mysql_where_where,
@@ -527,8 +568,6 @@ export const interpreterMap = {
     from: {
       from: oracledb_from_from,
     },
-    fts: {
-    },
     group_by: {
       group_by: oracledb_group_by_group_by,
     },
@@ -566,6 +605,13 @@ export const interpreterMap = {
     schema: {
       check_constraint_info: oracledb_schema_check_constraint_info,
       foreign_key_info: oracledb_schema_foreign_key_info,
+      get_column_listing: oracledb_schema_get_column_listing,
+      get_tables: oracledb_schema_get_tables,
+      has_check_constraint: oracledb_schema_has_check_constraint,
+      has_column: oracledb_schema_has_column,
+      has_index: oracledb_schema_has_index,
+      has_primary_key: oracledb_schema_has_primary_key,
+      has_table: oracledb_schema_has_table,
       index_info: oracledb_schema_index_info,
       primary_key_info: oracledb_schema_primary_key_info,
       table_info: oracledb_schema_table_info,
@@ -582,8 +628,6 @@ export const interpreterMap = {
     },
     update: {
       update: oracledb_update_update,
-    },
-    vector: {
     },
     where: {
       where: oracledb_where_where,
@@ -639,8 +683,6 @@ export const interpreterMap = {
     from: {
       from: postgres_from_from,
     },
-    fts: {
-    },
     group_by: {
       group_by: postgres_group_by_group_by,
     },
@@ -678,6 +720,13 @@ export const interpreterMap = {
     schema: {
       check_constraint_info: postgres_schema_check_constraint_info,
       foreign_key_info: postgres_schema_foreign_key_info,
+      get_column_listing: postgres_schema_get_column_listing,
+      get_tables: postgres_schema_get_tables,
+      has_check_constraint: postgres_schema_has_check_constraint,
+      has_column: postgres_schema_has_column,
+      has_index: postgres_schema_has_index,
+      has_primary_key: postgres_schema_has_primary_key,
+      has_table: postgres_schema_has_table,
       index_info: postgres_schema_index_info,
       primary_key_info: postgres_schema_primary_key_info,
       table_info: postgres_schema_table_info,
@@ -694,8 +743,6 @@ export const interpreterMap = {
     },
     update: {
       update: postgres_update_update,
-    },
-    vector: {
     },
     where: {
       where: postgres_where_where,
@@ -750,8 +797,6 @@ export const interpreterMap = {
     from: {
       from: sqlite_from_from,
     },
-    fts: {
-    },
     group_by: {
       group_by: sqlite_group_by_group_by,
     },
@@ -789,6 +834,13 @@ export const interpreterMap = {
     schema: {
       check_constraint_info: sqlite_schema_check_constraint_info,
       foreign_key_info: sqlite_schema_foreign_key_info,
+      get_column_listing: sqlite_schema_get_column_listing,
+      get_tables: sqlite_schema_get_tables,
+      has_check_constraint: sqlite_schema_has_check_constraint,
+      has_column: sqlite_schema_has_column,
+      has_index: sqlite_schema_has_index,
+      has_primary_key: sqlite_schema_has_primary_key,
+      has_table: sqlite_schema_has_table,
       index_info: sqlite_schema_index_info,
       primary_key_info: sqlite_schema_primary_key_info,
       table_info: sqlite_schema_table_info,
@@ -805,8 +857,6 @@ export const interpreterMap = {
     },
     update: {
       update: sqlite_update_update,
-    },
-    vector: {
     },
     where: {
       where: sqlite_where_where,

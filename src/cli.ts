@@ -13,7 +13,10 @@ import runSeedersConnector from "./cli/seeder_run_connector";
 import dbPullConnector from "./cli/db_pull_connector";
 import { SchemaDiff } from "./sql/migrations/schema_diff/schema_diff";
 import { SqlDataSource } from "./sql/sql_data_source";
-import { SqlDataSourceType } from "./sql/sql_data_source_types";
+import {
+  type MigrationLockConfig,
+  SqlDataSourceType,
+} from "./sql/sql_data_source_types";
 import { importTsUniversal } from "./utils/importer";
 import logger from "./utils/logger";
 import { getPackageManager, installBaseDependencies } from "./utils/package";
@@ -55,6 +58,38 @@ async function loadDatasource(
   }
 
   return sqlDs;
+}
+
+type ResolvedLockConfig = {
+  enabled: boolean;
+  timeout: number;
+  key: string | number;
+};
+
+function resolveMigrationLockConfig(
+  cliLock: boolean | undefined,
+  cliTimeout: string | undefined,
+  dsLock: boolean | MigrationLockConfig | undefined,
+  dsTimeout: number | undefined,
+): ResolvedLockConfig {
+  const enabled =
+    typeof dsLock === "boolean"
+      ? (cliLock ?? dsLock)
+      : (cliLock ?? dsLock?.enabled ?? true);
+
+  const dsTimeoutVal = typeof dsLock === "object" ? dsLock?.timeout : dsTimeout;
+  const timeout = cliTimeout
+    ? parseInt(cliTimeout, 10)
+    : (dsTimeoutVal ?? 30000);
+
+  const key =
+    typeof dsLock === "object" && dsLock.customValue !== undefined
+      ? typeof dsLock.customValue === "function"
+        ? dsLock.customValue()
+        : dsLock.customValue
+      : "hysteria_migration_lock";
+
+  return { enabled, timeout, key };
 }
 
 const program = new Command();
@@ -343,23 +378,24 @@ program
         option?.tsconfigPath,
       );
 
-      // Priority: CLI option > DataSource config > Default
       const migrationPath = option?.migrationPath || sqlDs.migrationConfig.path;
       const tsconfig = option?.tsconfigPath || sqlDs.migrationConfig.tsconfig;
-      const useLock = option?.lock ?? sqlDs.migrationConfig.lock;
-      const lockTimeout = option?.lockTimeout
-        ? parseInt(option.lockTimeout, 10)
-        : sqlDs.migrationConfig.lockTimeout;
       const transactional =
         option?.transactional ?? sqlDs.migrationConfig.transactional;
+      const lock = resolveMigrationLockConfig(
+        option?.lock,
+        option?.lockTimeout,
+        sqlDs.migrationConfig.lock,
+        sqlDs.migrationConfig.lockTimeout,
+      );
       let lockAcquired = false;
 
       try {
-        if (useLock) {
+        if (lock.enabled) {
           logger.info("Acquiring migration lock");
           lockAcquired = await sqlDs.acquireLock(
-            "hysteria_migration_lock",
-            lockTimeout,
+            typeof lock.key === "string" ? lock.key : String(lock.key),
+            lock.timeout,
           );
 
           if (!lockAcquired) {
@@ -383,9 +419,11 @@ program
         console.error(error);
         throw error;
       } finally {
-        if (useLock && lockAcquired) {
+        if (lock.enabled && lockAcquired) {
           logger.info("Releasing migration lock");
-          const released = await sqlDs.releaseLock("hysteria_migration_lock");
+          const released = await sqlDs.releaseLock(
+            typeof lock.key === "string" ? lock.key : String(lock.key),
+          );
 
           if (!released) {
             logger.warn("Failed to release migration lock");
@@ -452,23 +490,24 @@ program
         option?.tsconfigPath,
       );
 
-      // Priority: CLI option > DataSource config > Default
       const migrationPath = option?.migrationPath || sqlDs.migrationConfig.path;
       const tsconfig = option?.tsconfigPath || sqlDs.migrationConfig.tsconfig;
-      const useLock = option?.lock ?? sqlDs.migrationConfig.lock;
-      const lockTimeout = option?.lockTimeout
-        ? parseInt(option.lockTimeout, 10)
-        : sqlDs.migrationConfig.lockTimeout;
       const transactional =
         option?.transactional ?? sqlDs.migrationConfig.transactional;
+      const lock = resolveMigrationLockConfig(
+        option?.lock,
+        option?.lockTimeout,
+        sqlDs.migrationConfig.lock,
+        sqlDs.migrationConfig.lockTimeout,
+      );
       let lockAcquired = false;
 
       try {
-        if (useLock) {
+        if (lock.enabled) {
           logger.info("Acquiring migration lock");
           lockAcquired = await sqlDs.acquireLock(
-            "hysteria_migration_lock",
-            lockTimeout,
+            typeof lock.key === "string" ? lock.key : String(lock.key),
+            lock.timeout,
           );
 
           if (!lockAcquired) {
@@ -492,9 +531,11 @@ program
         console.error(error);
         throw error;
       } finally {
-        if (useLock && lockAcquired) {
+        if (lock.enabled && lockAcquired) {
           logger.info("Releasing migration lock");
-          const released = await sqlDs.releaseLock("hysteria_migration_lock");
+          const released = await sqlDs.releaseLock(
+            typeof lock.key === "string" ? lock.key : String(lock.key),
+          );
 
           if (!released) {
             logger.warn("Failed to release migration lock");
@@ -561,23 +602,24 @@ program
         option?.tsconfigPath,
       );
 
-      // Priority: CLI option > DataSource config > Default
       const migrationPath = option?.migrationPath || sqlDs.migrationConfig.path;
       const tsconfig = option?.tsconfigPath || sqlDs.migrationConfig.tsconfig;
-      const useLock = option?.lock ?? sqlDs.migrationConfig.lock;
-      const lockTimeout = option?.lockTimeout
-        ? parseInt(option.lockTimeout, 10)
-        : sqlDs.migrationConfig.lockTimeout;
       const transactional =
         option?.transactional ?? sqlDs.migrationConfig.transactional;
+      const lock = resolveMigrationLockConfig(
+        option?.lock,
+        option?.lockTimeout,
+        sqlDs.migrationConfig.lock,
+        sqlDs.migrationConfig.lockTimeout,
+      );
       let lockAcquired = false;
 
       try {
-        if (useLock) {
+        if (lock.enabled) {
           logger.info("Acquiring migration lock for refresh operation");
           lockAcquired = await sqlDs.acquireLock(
-            "hysteria_migration_lock",
-            lockTimeout,
+            typeof lock.key === "string" ? lock.key : String(lock.key),
+            lock.timeout,
           );
 
           if (!lockAcquired) {
@@ -610,9 +652,11 @@ program
       } catch (error) {
         console.error(error);
       } finally {
-        if (useLock && lockAcquired) {
+        if (lock.enabled && lockAcquired) {
           logger.info("Releasing migration lock");
-          const released = await sqlDs.releaseLock("hysteria_migration_lock");
+          const released = await sqlDs.releaseLock(
+            typeof lock.key === "string" ? lock.key : String(lock.key),
+          );
 
           if (!released) {
             logger.warn("Failed to release migration lock");

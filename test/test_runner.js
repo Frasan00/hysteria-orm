@@ -25,6 +25,13 @@ const ALL_SQL_ENVIRONMENTS = {
 const VALID_DB_TYPES = Object.keys(ALL_SQL_ENVIRONMENTS);
 
 const SQL_TESTS = [
+    // schema introspection
+  "./test/sql/schema_introspection/convenience_methods.test.ts",
+  "./test/sql/schema_introspection/get_tables.test.ts",
+  "./test/sql/schema_introspection/has_column.test.ts",
+  "./test/sql/schema_introspection/has_index.test.ts",
+  "./test/sql/schema_introspection/has_table.test.ts",
+
   // schema diff (migration generation)
   "./test/sql/schema_diff/schema_diff_code_gen.test.ts",
   "./test/sql/schema_diff/schema_diff_edge_cases.test.ts",
@@ -40,7 +47,13 @@ const SQL_TESTS = [
   "./test/sql/connection_management/connection_management.test.ts",
 
   // schema introspection
-  "./test/sql/schema_introspection/schema_introspection.test.ts",
+  "./test/sql/schema_introspection/convenience_methods.test.ts",
+  "./test/sql/schema_introspection/get_tables.test.ts",
+  "./test/sql/schema_introspection/has_column.test.ts",
+  "./test/sql/schema_introspection/has_constraint.test.ts",
+  "./test/sql/schema_introspection/has_index.test.ts",
+  "./test/sql/schema_introspection/has_table.test.ts",
+  "./test/sql/schema_introspection/schema_builder.test.ts",
 
   // db pull introspection
   "./test/sql/introspection/pg_introspect.test.ts",

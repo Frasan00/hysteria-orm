@@ -25,6 +25,13 @@ import { CheckConstraintInfoNode } from "./ast/query/node/schema/check_constrain
 import { IndexInfoNode } from "./ast/query/node/schema/index_info";
 import { PrimaryKeyInfoNode } from "./ast/query/node/schema/primary_key_info";
 import { TableInfoNode } from "./ast/query/node/schema/table_info";
+import { HasTableNode } from "./ast/query/node/schema/has_table";
+import { HasColumnNode } from "./ast/query/node/schema/has_column";
+import { HasIndexNode } from "./ast/query/node/schema/has_index";
+import { HasPrimaryKeyNode } from "./ast/query/node/schema/has_primary_key";
+import { HasCheckConstraintNode } from "./ast/query/node/schema/has_check_constraint";
+import { GetTablesNode } from "./ast/query/node/schema/get_tables";
+import { GetColumnListingNode } from "./ast/query/node/schema/get_column_listing";
 import { SchemaBuilder } from "./migrations/schema/schema_builder";
 import { SchemaDiff } from "./migrations/schema_diff/schema_diff";
 import { normalizeColumnType } from "./migrations/schema_diff/type_normalizer";
@@ -192,7 +199,7 @@ export class SqlDataSource<
   migrationConfig: {
     path: string;
     tsconfig?: string;
-    lock: boolean;
+    lock: boolean | import("./sql_data_source_types").MigrationLockConfig;
     transactional: boolean;
     lockTimeout?: number;
   } = {
@@ -1543,6 +1550,388 @@ export class SqlDataSource<
     }
 
     return mappedRows;
+  }
+
+  /**
+   * @description Checks if a table exists in the database
+   * @param tableName - The name of the table to check
+   * @returns Promise<boolean> - true if table exists, false otherwise
+   */
+  async hasTable(tableName: string): Promise<boolean> {
+    const ast = new AstParser(
+      {
+        table: tableName,
+        databaseCaseConvention: "preserve",
+        modelCaseConvention: "preserve",
+      } as typeof Model,
+      this.getDbType(),
+    );
+
+    const sql = ast.parse([new HasTableNode(tableName)]).sql;
+    const db = this.getDbType() as string;
+    let rows: any[] = [];
+    try {
+      const rawResult = await this.rawQuery(sql);
+      rows = this.extractRowsFromRawResult(rawResult);
+    } catch (err: any) {
+      return false;
+    }
+
+    // PostgreSQL/CockroachDB returns EXISTS result
+    if (db === "postgres" || db === "cockroachdb") {
+      return rows.length > 0 && rows[0].exists === true;
+    }
+
+    // MySQL/MariaDB/MSSQL/OracleDB return COUNT(*)
+    if (
+      db === "mysql" ||
+      db === "mariadb" ||
+      db === "mssql" ||
+      db === "oracledb"
+    ) {
+      return rows.length > 0 && parseInt(rows[0].count) > 0;
+    }
+
+    // SQLite returns table name if exists
+    if (db === "sqlite") {
+      return rows.length > 0;
+    }
+
+    return false;
+  }
+
+  /**
+   * @description Checks if a column exists in a table
+   * @param tableName - The name of the table
+   * @param columnName - The name of the column to check
+   * @returns Promise<boolean> - true if column exists in table, false otherwise
+   */
+  async hasColumn(tableName: string, columnName: string): Promise<boolean> {
+    const ast = new AstParser(
+      {
+        table: tableName,
+        databaseCaseConvention: "preserve",
+        modelCaseConvention: "preserve",
+      } as typeof Model,
+      this.getDbType(),
+    );
+
+    const sql = ast.parse([new HasColumnNode(tableName, columnName)]).sql;
+    const db = this.getDbType() as string;
+    let rows: any[] = [];
+    try {
+      const rawResult = await this.rawQuery(sql);
+      rows = this.extractRowsFromRawResult(rawResult);
+    } catch (err: any) {
+      return false;
+    }
+
+    // PostgreSQL/CockroachDB return EXISTS result
+    if (db === "postgres" || db === "cockroachdb") {
+      return rows.length > 0 && rows[0].exists === true;
+    }
+
+    // MySQL/MariaDB/MSSQL/OracleDB return COUNT(*)
+    if (
+      db === "mysql" ||
+      db === "mariadb" ||
+      db === "mssql" ||
+      db === "oracledb"
+    ) {
+      return rows.length > 0 && parseInt(rows[0].count) > 0;
+    }
+
+    // SQLite - check if column name exists in PRAGMA result
+    if (db === "sqlite") {
+      return rows.some((row: any) => row.name === columnName);
+    }
+
+    return false;
+  }
+
+  /**
+   * @description Checks if multiple columns exist in a table
+   * @param tableName - The name of the table
+   * @param columnNames - Array of column names to check
+   * @returns Promise<boolean> - true if all columns exist in table, false otherwise
+   */
+  async hasColumns(
+    tableName: string,
+    ...columnNames: string[]
+  ): Promise<boolean> {
+    if (!columnNames.length) return true;
+
+    for (const columnName of columnNames) {
+      if (!(await this.hasColumn(tableName, columnName))) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /**
+   * @description Checks if an index exists on a table
+   * @param tableName - The name of the table
+   * @param indexName - The name of the index to check
+   * @returns Promise<boolean> - true if index exists on table, false otherwise
+   */
+  async hasIndex(tableName: string, indexName: string): Promise<boolean> {
+    const ast = new AstParser(
+      {
+        table: tableName,
+        databaseCaseConvention: "preserve",
+        modelCaseConvention: "preserve",
+      } as typeof Model,
+      this.getDbType(),
+    );
+
+    const sql = ast.parse([new HasIndexNode(tableName, indexName)]).sql;
+    const db = this.getDbType() as string;
+    let rows: any[] = [];
+    try {
+      const rawResult = await this.rawQuery(sql);
+      rows = this.extractRowsFromRawResult(rawResult);
+    } catch (err: any) {
+      return false;
+    }
+
+    // PostgreSQL/CockroachDB return EXISTS result
+    if (db === "postgres" || db === "cockroachdb") {
+      return rows.length > 0 && rows[0].exists === true;
+    }
+
+    // MySQL/MariaDB/MSSQL/OracleDB return COUNT(*)
+    if (
+      db === "mysql" ||
+      db === "mariadb" ||
+      db === "mssql" ||
+      db === "oracledb"
+    ) {
+      return rows.length > 0 && parseInt(rows[0].count) > 0;
+    }
+
+    // SQLite returns index name if exists
+    if (db === "sqlite") {
+      return rows.length > 0;
+    }
+
+    return false;
+  }
+
+  /**
+   * @description Checks if a table has a primary key
+   * @param tableName - The name of the table
+   * @returns Promise<boolean> - true if table has primary key, false otherwise
+   */
+  async hasPrimaryKey(tableName: string): Promise<boolean> {
+    const ast = new AstParser(
+      {
+        table: tableName,
+        databaseCaseConvention: "preserve",
+        modelCaseConvention: "preserve",
+      } as typeof Model,
+      this.getDbType(),
+    );
+
+    const sql = ast.parse([new HasPrimaryKeyNode(tableName)]).sql;
+    const db = this.getDbType() as string;
+    let rows: any[] = [];
+    try {
+      const rawResult = await this.rawQuery(sql);
+      rows = this.extractRowsFromRawResult(rawResult);
+    } catch (err: any) {
+      return false;
+    }
+
+    // PostgreSQL/CockroachDB return EXISTS result
+    if (db === "postgres" || db === "cockroachdb") {
+      return rows.length > 0 && rows[0].exists === true;
+    }
+
+    // MySQL/MariaDB/MSSQL/OracleDB return COUNT(*)
+    if (
+      db === "mysql" ||
+      db === "mariadb" ||
+      db === "mssql" ||
+      db === "oracledb"
+    ) {
+      return rows.length > 0 && parseInt(rows[0].count) > 0;
+    }
+
+    // SQLite - check if any row has pk > 0
+    if (db === "sqlite") {
+      return rows.some((row: any) => row.pk > 0);
+    }
+
+    return false;
+  }
+
+  /**
+   * @description Checks if a unique constraint exists on a table for given columns
+   * @param tableName - The name of the table
+   * @param columns - Array of column names (or single string) that form the unique constraint
+   * @returns Promise<boolean> - true if unique constraint exists, false otherwise
+   */
+  async hasUnique(
+    tableName: string,
+    columns: string[] | string,
+  ): Promise<boolean> {
+    const cols = Array.isArray(columns) ? columns : [columns];
+
+    try {
+      const indexes = await this.getIndexInfo(tableName);
+      return indexes.some((idx: any) => {
+        // Handle both 'unique' and 'isUnique' variants from different database implementations
+        const uniqueValue = idx.unique ?? idx.isUnique ?? idx.Non_unique;
+        const isUnique =
+          uniqueValue === true ||
+          uniqueValue === "true" ||
+          uniqueValue === "1" ||
+          uniqueValue === 0;
+        const idxColumns = Array.isArray(idx.columns)
+          ? idx.columns
+          : [idx.column_name];
+        return (
+          isUnique &&
+          idxColumns.length === cols.length &&
+          idxColumns.every((c: string, i: number) => c === cols[i])
+        );
+      });
+    } catch (error) {
+      return false;
+    }
+  }
+
+  /**
+   * @description Checks if a foreign key constraint exists on a table for given columns
+   * @param tableName - The name of the table
+   * @param columns - Array of column names that form the foreign key
+   * @returns Promise<boolean> - true if foreign key exists, false otherwise
+   */
+  async hasForeignKey(tableName: string, columns: string[]): Promise<boolean> {
+    try {
+      const foreignKeys = await this.getForeignKeyInfo(tableName);
+      const fkColumns = foreignKeys.flatMap(
+        (fk: any) => fk.columns || fk.column || [fk.from],
+      );
+      const hasFk = columns.every((col) => fkColumns.includes(col));
+      return hasFk && fkColumns.length >= columns.length;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  /**
+   * @description Checks if a check constraint exists on a table
+   * @param tableName - The name of the table
+   * @param constraintName - The name of the check constraint to check
+   * @returns Promise<boolean> - true if check constraint exists, false otherwise
+   */
+  async hasCheckConstraint(
+    tableName: string,
+    constraintName: string,
+  ): Promise<boolean> {
+    const ast = new AstParser(
+      {
+        table: tableName,
+        databaseCaseConvention: "preserve",
+        modelCaseConvention: "preserve",
+      } as typeof Model,
+      this.getDbType(),
+    );
+
+    const sql = ast.parse([
+      new HasCheckConstraintNode(tableName, constraintName),
+    ]).sql;
+    const db = this.getDbType() as string;
+    let rows: any[] = [];
+    try {
+      const rawResult = await this.rawQuery(sql);
+      rows = this.extractRowsFromRawResult(rawResult);
+    } catch (err: any) {
+      return false;
+    }
+
+    // PostgreSQL/CockroachDB/MSSQL/OracleDB return EXISTS or COUNT
+    if (db === "postgres" || db === "cockroachdb") {
+      return rows.length > 0 && rows[0].exists === true;
+    }
+
+    if (
+      db === "mysql" ||
+      db === "mariadb" ||
+      db === "mssql" ||
+      db === "oracledb"
+    ) {
+      return rows.length > 0 && parseInt(rows[0].count) > 0;
+    }
+
+    // SQLite - check SQL string
+    if (db === "sqlite") {
+      if (rows.length > 0 && rows[0].sql) {
+        return (
+          rows[0].sql.includes("CHECK") && rows[0].sql.includes(constraintName)
+        );
+      }
+      return false;
+    }
+
+    return false;
+  }
+
+  /**
+   * @description Gets all table names in the database
+   * @returns Promise<string[]> - Array of table names
+   */
+  async getTables(): Promise<string[]> {
+    const ast = new AstParser(
+      {
+        databaseCaseConvention: "preserve",
+        modelCaseConvention: "preserve",
+      } as typeof Model,
+      this.getDbType(),
+    );
+
+    const sql = ast.parse([new GetTablesNode()]).sql;
+    let rows: any[] = [];
+    try {
+      const rawResult = await this.rawQuery(sql);
+      rows = this.extractRowsFromRawResult(rawResult);
+    } catch (err: any) {
+      return [];
+    }
+
+    const tableKey = rows[0]?.table_name || "name";
+    return rows.map((row: any) => row[tableKey] || row.name);
+  }
+
+  /**
+   * @description Gets all column names for a table
+   * @param tableName - The name of the table
+   * @returns Promise<string[]> - Array of column names
+   */
+  async getColumnListing(tableName: string): Promise<string[]> {
+    const ast = new AstParser(
+      {
+        table: tableName,
+        databaseCaseConvention: "preserve",
+        modelCaseConvention: "preserve",
+      } as typeof Model,
+      this.getDbType(),
+    );
+
+    const sql = ast.parse([new GetColumnListingNode(tableName)]).sql;
+    let rows: any[] = [];
+    try {
+      const rawResult = await this.rawQuery(sql);
+      rows = this.extractRowsFromRawResult(rawResult);
+    } catch (err: any) {
+      return [];
+    }
+
+    // Handle different column name formats across databases
+    // MySQL/MariaDB/SQLite may use 'name', others use 'column_name'
+    return rows.map((row: any) => row.name ?? row.column_name);
   }
 
   /**
