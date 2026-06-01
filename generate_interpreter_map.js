@@ -18,7 +18,7 @@ function walk(dir, dbType, scope) {
       const type = file.replace('.ts', '');
       const importName = [dbType, scope, type].join('_');
       const importPath = `../interpreter/${dbType}/${scope}/${type}`;
-      output.push(`import ${importName} from '${importPath}';`);
+      output.push(`import ${importName} from "${importPath}";`);
     }
   });
 }
