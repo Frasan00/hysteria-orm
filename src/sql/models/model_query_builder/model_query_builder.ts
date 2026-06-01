@@ -425,7 +425,10 @@ export class ModelQueryBuilder<
   private getModelManager(trx?: Transaction): ModelManager<T> {
     const source = trx
       ? (trx.sql as SqlDataSource)
-      : (this.sqlDataSource as SqlDataSource);
+      : ((
+          this.sqlDataSource as SqlDataSource
+        ).getTransactionBoundSqlDataSource() ??
+        (this.sqlDataSource as SqlDataSource));
     return new ModelManager<T>(this.model, source);
   }
 

@@ -17,6 +17,7 @@ import { HysteriaError } from "../errors/hysteria_error";
 import { generateOpenApiModelWithMetadata } from "../openapi/openapi";
 import { hashString } from "../utils/hash";
 import logger, { log } from "../utils/logger";
+import { randomUUID } from "node:crypto";
 import { getSqlDialect, isTableMissingError } from "../utils/query";
 import { AstParser } from "./ast/parser";
 import { RawNode } from "./ast/query/node/raw/raw_node";
@@ -86,6 +87,7 @@ import type {
 import { execSql } from "./sql_runner/sql_runner";
 import { RawQueryResponseType } from "./sql_runner/sql_runner_types";
 import { Transaction } from "./transactions/transaction";
+import { TransactionContext } from "./transactions/transaction_context";
 import type { QueryObserver, QueryContext } from "./observers/observer";
 import { ObserverChain } from "./observers/observer";
 import {
@@ -182,6 +184,17 @@ export class SqlDataSource<
    * @description Options provided in the sql data source initialization
    */
   inputDetails: SqlDataSourceInput<D, T, C>;
+
+  /**
+   * @description Unique identifier shared across all clones of the same logical data source.
+   * Used to verify ALS transactions belong to this instance.
+   */
+  id: string = randomUUID();
+
+  /**
+   * @description Whether AsyncLocalStorage (CLS) transaction auto-propagation is enabled.
+   */
+  private readonly clsEnabled: boolean;
 
   /**
    * @description Adapter for `useCache`, uses an in memory strategy by default
@@ -382,6 +395,7 @@ export class SqlDataSource<
     // Set slave failure callback
     this.onSlaveServerFailure = input?.replication?.onSlaveServerFailure;
     this.lazyLoad = input?.lazyLoad ?? false;
+    this.clsEnabled = input?.clsEnabled ?? true;
   }
 
   // ============================================
@@ -544,6 +558,25 @@ export class SqlDataSource<
   }
 
   /**
+   * @description Returns the SqlDataSource that should execute the next query,
+   * respecting (in order): explicit global transaction, ALS transaction, then self.
+   */
+  getTransactionBoundSqlDataSource(): SqlDataSource | null {
+    if (this.globalTransaction?.isActive) {
+      return this.globalTransaction.sql as SqlDataSource;
+    }
+
+    if (this.clsEnabled) {
+      const alsTrx = TransactionContext.getTransaction();
+      if (alsTrx?.isActive && (alsTrx.sql as SqlDataSource).id === this.id) {
+        return alsTrx.sql as SqlDataSource;
+      }
+    }
+
+    return null;
+  }
+
+  /**
    * @description Uses the cache adapter to get a value from the cache
    * @param key The key to get the value from
    * @param args The arguments to pass to the key handler
@@ -679,6 +712,7 @@ export class SqlDataSource<
    */
   async clone(options?: SqlCloneOptions): Promise<this> {
     const cloned = new SqlDataSource(this.inputDetails) as this;
+    cloned.id = this.id;
     const mustCreateNewPool =
       cloned.sqlType === "sqlite" || !!options?.shouldRecreatePool;
 
@@ -749,10 +783,7 @@ export class SqlDataSource<
         D
       >
     | QueryBuilder {
-    const sqlForQueryBuilder =
-      this.isInGlobalTransaction && this.globalTransaction?.isActive
-        ? this.globalTransaction.sql
-        : this;
+    const sqlForQueryBuilder = this.getTransactionBoundSqlDataSource() ?? this;
 
     if (typeof modelOrTable === "string") {
       const qb = new QueryBuilder(
@@ -865,6 +896,9 @@ export class SqlDataSource<
    * @param cb if a callback is provided, it will execute the callback and commit or rollback the transaction based on the callback's success or failure
    * @param options.isolationLevel The isolation level to use for the transaction
    * @sqlite ignores the isolation level
+   * @warning SQLite `:memory:` databases use `file::memory:?cache=shared`
+   * to allow transaction connections to share the same in-memory database.
+   * Without shared cache each connection would see an empty fresh database.
    */
   async transaction(options?: StartTransactionOptions): Promise<Transaction>;
   async transaction<T>(
@@ -887,6 +921,17 @@ export class SqlDataSource<
       return this.globalTransaction.nestedTransaction();
     }
 
+    // Check ALS for an active transaction belonging to this data source
+    const alsTrx = this.clsEnabled
+      ? TransactionContext.getTransaction()
+      : undefined;
+    if (alsTrx?.isActive && (alsTrx.sql as SqlDataSource).id === this.id) {
+      if (typeof optionsOrCb === "function") {
+        return alsTrx.nestedTransaction(optionsOrCb);
+      }
+      return alsTrx.nestedTransaction();
+    }
+
     const cloned = await this.clone();
     cloned.sqlConnection = await cloned.getConnection();
     const sqlTrx = new Transaction(cloned, options?.isolationLevel);
@@ -894,7 +939,9 @@ export class SqlDataSource<
 
     if (typeof optionsOrCb === "function") {
       try {
-        const result = await optionsOrCb(sqlTrx);
+        const result = this.clsEnabled
+          ? await TransactionContext.run(sqlTrx, () => optionsOrCb(sqlTrx))
+          : await optionsOrCb(sqlTrx);
         await sqlTrx.commit({
           throwErrorOnInactiveTransaction: false,
         });
@@ -923,14 +970,8 @@ export class SqlDataSource<
       );
     }
 
-    if (this.globalTransaction?.isActive) {
-      return new ModelManager(
-        model as typeof Model,
-        this.globalTransaction.sql as SqlDataSource,
-      );
-    }
-
-    return new ModelManager(model as typeof Model, this);
+    const source = this.getTransactionBoundSqlDataSource() ?? this;
+    return new ModelManager(model as typeof Model, source);
   }
 
   /**
@@ -1267,7 +1308,8 @@ export class SqlDataSource<
       });
     }
 
-    return execSql(query, params, this, this.getDbType(), "raw") as R;
+    const source = this.getTransactionBoundSqlDataSource() ?? this;
+    return execSql(query, params, source, this.getDbType(), "raw") as R;
   }
 
   /**

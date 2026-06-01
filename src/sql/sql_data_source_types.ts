@@ -188,6 +188,15 @@ type SqlDataSourceInputBase<
    * @default false
    */
   readonly logs?: boolean | LoggerConfig;
+
+  /**
+   * @description Enable AsyncLocalStorage (CLS) for automatic transaction propagation.
+   * When enabled, queries inside `sql.transaction(callback)` automatically use the active
+   * transaction without explicit passing.
+   * @default true
+   */
+  readonly clsEnabled?: boolean;
+
   /**
    * @description The connection policies to use for the sql data source that are not configured in the driverOptions
    */

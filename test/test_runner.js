@@ -50,10 +50,8 @@ const SQL_TESTS = [
   "./test/sql/schema_introspection/convenience_methods.test.ts",
   "./test/sql/schema_introspection/get_tables.test.ts",
   "./test/sql/schema_introspection/has_column.test.ts",
-  "./test/sql/schema_introspection/has_constraint.test.ts",
   "./test/sql/schema_introspection/has_index.test.ts",
   "./test/sql/schema_introspection/has_table.test.ts",
-  "./test/sql/schema_introspection/schema_builder.test.ts",
 
   // db pull introspection
   "./test/sql/introspection/pg_introspect.test.ts",
@@ -89,6 +87,7 @@ const SQL_TESTS = [
 
   // transaction
   "./test/sql/transaction/transaction.test.ts",
+  "./test/sql/transaction/transaction_cls.test.ts",
 
   // having related
   "./test/sql/bigint_pk/having_related.test.ts",

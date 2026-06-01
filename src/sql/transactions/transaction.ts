@@ -11,6 +11,7 @@ import {
   TransactionExecutionOptions,
   TransactionIsolationLevel,
 } from "./transaction_types";
+import { TransactionContext } from "./transaction_context";
 
 /**
  * @description Transaction class, not meant to be used directly, use sql.transaction() instead
@@ -89,7 +90,7 @@ export class Transaction {
 
     if (cb) {
       try {
-        const result = await cb(trx);
+        const result = await TransactionContext.run(trx, () => cb(trx));
         await trx.commit();
         return result;
       } catch (error) {
