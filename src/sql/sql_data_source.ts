@@ -197,6 +197,13 @@ export class SqlDataSource<
   private readonly clsEnabled: boolean;
 
   /**
+   * @description Whether AsyncLocalStorage (CLS) transaction auto-propagation is enabled.
+   */
+  get isClsEnabled(): boolean {
+    return this.clsEnabled;
+  }
+
+  /**
    * @description Adapter for `useCache`, uses an in memory strategy by default
    */
   cacheAdapter: CacheAdapter = new InMemoryAdapter();

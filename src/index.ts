@@ -70,6 +70,8 @@ export type { PingResult } from "./sql/sql_data_source_types";
 export * from "./sql/observers";
 
 // Transactions
+export { atomic } from "./sql/transactions/atomic";
+export type { AtomicOptions } from "./sql/transactions/atomic";
 export type { Transaction } from "./sql/transactions/transaction";
 export type {
   StartTransactionOptions,
@@ -150,4 +152,9 @@ export type {
   AdminJsSettings,
 } from "./adminjs/adminjs_types";
 
+// Errors
+export * from "./errors/hysteria_error";
+export * from "./errors/hysteria_error.types";
+
+// Introspection
 export * from "./sql/introspection_types";

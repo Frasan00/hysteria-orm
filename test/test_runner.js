@@ -25,7 +25,7 @@ const ALL_SQL_ENVIRONMENTS = {
 const VALID_DB_TYPES = Object.keys(ALL_SQL_ENVIRONMENTS);
 
 const SQL_TESTS = [
-    // schema introspection
+  // schema introspection
   "./test/sql/schema_introspection/convenience_methods.test.ts",
   "./test/sql/schema_introspection/get_tables.test.ts",
   "./test/sql/schema_introspection/has_column.test.ts",
@@ -88,6 +88,7 @@ const SQL_TESTS = [
   // transaction
   "./test/sql/transaction/transaction.test.ts",
   "./test/sql/transaction/transaction_cls.test.ts",
+  "./test/sql/transaction/transaction_atomic.test.ts",
 
   // having related
   "./test/sql/bigint_pk/having_related.test.ts",
