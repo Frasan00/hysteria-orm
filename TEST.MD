@@ -138,3 +138,20 @@ node test/test_runner.js -d mysql -l
 - Ensure all required ports are available before starting the containers
 - Multiple values can be provided for `-d`, `-t`, and `-f` flags
 - Flags are composable - you can combine them as needed
+
+## Connection & Transaction Invariants
+
+The `test/sql/connection_and_transaction_invariants.test.ts` file pins down 10 invariants of the connection/transaction contract. These are the contracts the connection-handling audit (2026-06-03) established and verified across all supported SQL dialects.
+
+- **I1** — After `sql.disconnect()`, all queries throw `CONNECTION_NOT_ESTABLISHED`.
+- **I2** — A successful `trx.commit()` does not change the pool's total connection count.
+- **I3** — Rollback after commit (or vice-versa) is a no-op (does not throw when `throwErrorOnInactiveTransaction: false`).
+- **I4** — A nested transaction rollback preserves the outer transaction.
+- **I5** — `clsEnabled: false` disables ALS auto-propagation between data sources.
+- **I6** — Two distinct `SqlDataSource` instances produce two distinct pools.
+- **I7** — `TransactionContext.getTransaction()` returns `undefined` outside a callback-form transaction.
+- **I8** — `@atomic()` on a host class without a `sql` property and without a global `atomic.sqlDataSource` throws `ATOMIC_DATASOURCE_RESOLUTION_FAILED`.
+- **I9** — `@atomic()` on a host whose data source has `clsEnabled: false` throws `ATOMIC_CLS_DISABLED`.
+- **I10** — `trx.commit()` failure leaves `isActive === false` (F008 contract).
+
+See `docs/superpowers/plans/2026-06-03-connection-audit-findings.md` for the audit's full defect list and `docs/superpowers/plans/2026-06-03-connection-and-transaction-audit.md` for the plan that produced the fixes.

@@ -201,27 +201,27 @@ export class Transaction {
       return;
     }
 
-    try {
-      // Nested transactions should release their savepoint and keep the outer transaction/connection
-      if (this.isNested) {
-        const savepoint = this.getSavePointName();
-        switch (this.sql.type) {
-          case "mssql":
-          case "oracledb":
-            // MSSQL and Oracle don't support RELEASE SAVEPOINT - savepoints are automatically released on commit
-            break;
-          case "mysql":
-          case "mariadb":
-          case "postgres":
-          case "cockroachdb":
-          case "sqlite":
-            await this.sql.rawQuery(`RELEASE SAVEPOINT ${savepoint}`);
-            break;
-        }
-        this.isActive = false;
-        return;
+    // Nested transactions should release their savepoint and keep the outer transaction/connection
+    if (this.isNested) {
+      const savepoint = this.getSavePointName();
+      switch (this.sql.type) {
+        case "mssql":
+        case "oracledb":
+          // MSSQL and Oracle don't support RELEASE SAVEPOINT - savepoints are automatically released on commit
+          break;
+        case "mysql":
+        case "mariadb":
+        case "postgres":
+        case "cockroachdb":
+        case "sqlite":
+          await this.sql.rawQuery(`RELEASE SAVEPOINT ${savepoint}`);
+          break;
       }
+      this.isActive = false;
+      return;
+    }
 
+    try {
       switch (this.sql.type) {
         case "mssql":
           log("COMMIT", this.sql.logs);
@@ -253,10 +253,10 @@ export class Transaction {
     } catch (error: any) {
       logger.error(error);
       throw error;
+    } finally {
+      await this.releaseConnection();
+      this.isActive = false;
     }
-
-    await this.releaseConnection();
-    this.isActive = false;
   }
 
   /**
@@ -277,34 +277,34 @@ export class Transaction {
       return;
     }
 
-    try {
-      // Nested transactions should rollback to their savepoint and keep the outer transaction/connection
-      if (this.isNested) {
-        const savepoint = this.getSavePointName();
-        switch (this.sql.type) {
-          case "mssql":
-            await this.sql.rawQuery(`ROLLBACK TRANSACTION ${savepoint}`);
-            break;
-          case "mysql":
-          case "mariadb":
-          case "postgres":
-          case "cockroachdb":
-          case "oracledb":
-            await this.sql.rawQuery(`ROLLBACK TO SAVEPOINT ${savepoint}`);
-            break;
-          case "sqlite":
-            await this.sql.rawQuery(`ROLLBACK TO ${savepoint}`);
-            break;
-          default:
-            throw new HysteriaError(
-              "TRANSACTION::rollback",
-              `UNSUPPORTED_DATABASE_TYPE_${this.sql.type}`,
-            );
-        }
-        this.isActive = false;
-        return;
+    // Nested transactions should rollback to their savepoint and keep the outer transaction/connection
+    if (this.isNested) {
+      const savepoint = this.getSavePointName();
+      switch (this.sql.type) {
+        case "mssql":
+          await this.sql.rawQuery(`ROLLBACK TRANSACTION ${savepoint}`);
+          break;
+        case "mysql":
+        case "mariadb":
+        case "postgres":
+        case "cockroachdb":
+        case "oracledb":
+          await this.sql.rawQuery(`ROLLBACK TO SAVEPOINT ${savepoint}`);
+          break;
+        case "sqlite":
+          await this.sql.rawQuery(`ROLLBACK TO ${savepoint}`);
+          break;
+        default:
+          throw new HysteriaError(
+            "TRANSACTION::rollback",
+            `UNSUPPORTED_DATABASE_TYPE_${this.sql.type}`,
+          );
       }
+      this.isActive = false;
+      return;
+    }
 
+    try {
       switch (this.sql.type) {
         case "mssql":
           log("ROLLBACK", this.sql.logs);
@@ -341,10 +341,10 @@ export class Transaction {
     } catch (error: any) {
       logger.error(error);
       throw error;
+    } finally {
+      await this.releaseConnection();
+      this.isActive = false;
     }
-
-    await this.releaseConnection();
-    this.isActive = false;
   }
 
   /**
@@ -355,6 +355,7 @@ export class Transaction {
       return;
     }
 
+    let releaseError: any = null;
     try {
       switch (this.sql.type) {
         case "mssql":
@@ -387,12 +388,24 @@ export class Transaction {
           );
       }
     } catch (error: any) {
+      releaseError = error;
       logger.error(error);
     }
 
-    await this.sql.disconnect();
+    try {
+      await this.sql.disconnect();
+    } catch (err: any) {
+      logger.warn(
+        `Transaction::releaseConnection - disconnect failed: ${err?.message ?? err}`,
+      );
+    }
+
     this.sql.sqlConnection = null;
     this.connectionReleased = true;
+
+    if (releaseError) {
+      throw releaseError;
+    }
   }
 
   private getIsolationLevelQuery(): string {

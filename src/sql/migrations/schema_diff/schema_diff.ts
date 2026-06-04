@@ -608,8 +608,15 @@ export class SchemaDiff {
         ? normalizeColumnType(dialect, modelColumn.type)
         : undefined;
 
+    // strip modifier tokens from the DB-side type before comparing, so the
+    // type-string comparison covers only the base SQL type. Modifier equality
+    // is enforced separately via the unsigned/zerofill flag comparison below.
+    const strippedDbType = normalizedDbType
+      .split(" ")
+      .filter((t) => t !== "unsigned" && t !== "zerofill")
+      .join(" ");
     if (normalizedModelType) {
-      baseCondition &&= normalizedDbType === normalizedModelType;
+      baseCondition &&= strippedDbType === normalizedModelType;
     }
 
     // Compare enum values when model column type is an array (enum)
@@ -688,22 +695,34 @@ export class SchemaDiff {
 
     // Compare unsigned/zerofill for MySQL/MariaDB numeric columns
     if (dialect === "mysql" || dialect === "mariadb") {
-      if (
-        modelColumn.unsigned !== undefined ||
-        dbColumn.unsigned !== undefined
-      ) {
+      // Only compare unsigned when the model explicitly declares it. If the
+      // model only declares zerofill, MySQL implicitly sets unsigned=true,
+      // and comparing the two would produce a spurious diff that drops both.
+      if (modelColumn.unsigned !== undefined) {
         const modelUnsigned = modelColumn.unsigned ?? false;
         const dbUnsigned = dbColumn.unsigned ?? false;
         baseCondition &&= modelUnsigned === dbUnsigned;
       }
-      if (
-        modelColumn.zerofill !== undefined ||
-        dbColumn.zerofill !== undefined
-      ) {
+      // Only compare zerofill when the model explicitly declares it, for the
+      // same reason as above (symmetric narrowing to avoid spurious diffs).
+      if (modelColumn.zerofill !== undefined) {
         const modelZerofill = modelColumn.zerofill ?? false;
         const dbZerofill = dbColumn.zerofill ?? false;
         baseCondition &&= modelZerofill === dbZerofill;
       }
+    }
+
+    // Compare stringMode: the model may request a string-stored variant of a
+    // datetime/date column (e.g. `col.datetime.string()`). The introspector
+    // sets `dbColumn.stringMode` to `true` when the storage type is a
+    // character-based type (text/varchar/char/...) and `false` otherwise. We
+    // only enforce the comparison when the model explicitly declares
+    // `stringMode`; otherwise (e.g. `col.string()`) we leave the storage
+    // type to the existing data-type equality check.
+    if (modelColumn.stringMode !== undefined) {
+      const modelStringMode = modelColumn.stringMode ?? false;
+      const dbStringMode = dbColumn.stringMode ?? false;
+      baseCondition &&= modelStringMode === dbStringMode;
     }
 
     return baseCondition;

@@ -302,13 +302,15 @@ export default class Schema {
    * @description Adds a primary key to a table
    */
   addPrimaryKey(table: string, columns: string[]): void {
-    const node = new AddPrimaryKeyNode(columns);
+    const alterNode = new AlterTableNode(table, [
+      new AddPrimaryKeyNode(columns),
+    ]);
     const astParser = this.generateAstInstance({
       table,
       databaseCaseConvention: "preserve",
       modelCaseConvention: "preserve",
     } as typeof Model);
-    this.rawQuery(astParser.parse([node]).sql);
+    this.rawQuery(astParser.parse([alterNode]).sql);
   }
 
   /**

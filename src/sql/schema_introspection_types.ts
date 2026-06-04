@@ -10,6 +10,7 @@ export type TableColumnInfo = {
   enumValues?: string[] | null;
   unsigned?: boolean | null;
   zerofill?: boolean | null;
+  stringMode?: boolean | null;
 };
 
 export type TableIndexInfo = {

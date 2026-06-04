@@ -15,6 +15,34 @@ function stripLengthSuffix(value: string): string {
   return value.replace(/\s*\([^)]*\)/g, "").trim();
 }
 
+/**
+ * Detect the `unsigned` and `zerofill` modifiers (MySQL/MariaDB) and
+ * return them along with the bare base type with the modifier tokens
+ * stripped out. The returned `modifiers` array preserves the order
+ * in which the modifiers appeared in the input.
+ */
+function detectModifier(base: string): {
+  bareBase: string;
+  modifiers: string[];
+} {
+  const tokens = base.split(/\s+/).filter((t) => t.length > 0);
+  const modifiers: string[] = [];
+  const kept: string[] = [];
+  for (const token of tokens) {
+    if (token === "unsigned" || token === "zerofill") {
+      modifiers.push(token);
+    } else {
+      kept.push(token);
+    }
+  }
+  return { bareBase: kept.join(" "), modifiers };
+}
+
+function appendModifier(base: string, modifiers: string[]): string {
+  if (modifiers.length === 0) return base;
+  return `${base} ${modifiers.join(" ")}`;
+}
+
 export function normalizeColumnType(
   dialect: SupportedSqlDialect,
   rawType: string,
@@ -62,76 +90,139 @@ export function normalizeColumnType(
 
     case "mysql":
     case "mariadb": {
-      if (base.endsWith("text") || base === "text") return "text";
-      switch (base) {
+      const { bareBase, modifiers } = detectModifier(base);
+      const numericTypes = new Set<string>([
+        "int",
+        "integer",
+        "increment",
+        "tinyint",
+        "smallint",
+        "mediumint",
+        "bigint",
+        "bigincrement",
+        "float",
+        "double",
+        "double precision",
+        "real",
+        "decimal",
+        "numeric",
+        "year",
+        "bool",
+        "boolean",
+      ]);
+      const isNumeric = numericTypes.has(bareBase);
+
+      if (bareBase.endsWith("text") || bareBase === "text") {
+        // `text` and its variants are non-numeric: drop any modifier.
+        return "text";
+      }
+      let normalized: string;
+      switch (bareBase) {
         case "int":
         case "integer":
         case "increment":
-          return "integer";
+          normalized = "integer";
+          break;
         case "tinyint":
-          return "boolean";
+          normalized = "boolean";
+          break;
         case "smallint":
-          return "smallint";
+          normalized = "smallint";
+          break;
         case "mediumint":
-          return "mediumint";
+          normalized = "mediumint";
+          break;
         case "bigint":
         case "bigincrement":
-          return "bigint";
+          normalized = "bigint";
+          break;
         case "float":
-          return "float";
+          normalized = "float";
+          break;
         case "double":
         case "double precision":
-          return "double";
+          normalized = "double";
+          break;
         case "real":
-          return "double";
+          normalized = "double";
+          break;
         case "decimal":
         case "numeric":
-          return "numeric";
+          normalized = "numeric";
+          break;
         case "string":
         case "varchar":
         case "character varying":
-          return "varchar";
+          normalized = "varchar";
+          break;
         case "char":
         case "character":
-          return "char";
+          normalized = "char";
+          break;
         case "uuid":
-          return "varchar";
+          normalized = "varchar";
+          break;
         case "ulid":
-          return "varchar";
+          normalized = "varchar";
+          break;
         case "date":
-          return "date";
+          normalized = "date";
+          break;
         case "datetime":
-          return "datetime";
+          normalized = "datetime";
+          break;
         case "timestamp":
-          return "timestamp";
+          normalized = "timestamp";
+          break;
         case "time":
-          return "time";
+          normalized = "time";
+          break;
         case "year":
-          return "year";
+          normalized = "year";
+          break;
         case "jsonb":
-          return "json";
+          normalized = "json";
+          break;
         case "json":
-          return "json";
+          normalized = "json";
+          break;
         case "enum":
-          return "enum";
+          normalized = "enum";
+          break;
         case "binary":
-          return "binary";
+          normalized = "binary";
+          break;
         case "varbinary":
-          return "varbinary";
+          normalized = "varbinary";
+          break;
         case "tinyblob":
-          return "tinyblob";
+          normalized = "tinyblob";
+          break;
         case "mediumblob":
-          return "mediumblob";
+          normalized = "mediumblob";
+          break;
         case "longblob":
-          return "longblob";
+          normalized = "longblob";
+          break;
         case "blob":
-          return "blob";
+          normalized = "blob";
+          break;
         case "boolean":
         case "bool":
-          return "boolean";
+          normalized = "boolean";
+          break;
         default:
-          return base;
+          normalized = bareBase;
+          break;
       }
+
+      // Preserve the `unsigned` / `zerofill` modifier only on numeric
+      // types; on non-numeric types the modifier is irrelevant and is
+      // silently dropped.
+      if (isNumeric && modifiers.length > 0) {
+        return appendModifier(normalized, modifiers);
+      }
+      return normalized;
     }
 
     case "postgres":

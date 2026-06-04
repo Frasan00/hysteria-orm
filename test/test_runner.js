@@ -25,17 +25,18 @@ const ALL_SQL_ENVIRONMENTS = {
 const VALID_DB_TYPES = Object.keys(ALL_SQL_ENVIRONMENTS);
 
 const SQL_TESTS = [
+  // schema diff (migration generation)
+  "./test/sql/schema_diff/schema_diff_pg_mysql.test.ts",
+  "./test/sql/schema_diff/schema_diff_code_gen.test.ts",
+  "./test/sql/schema_diff/schema_diff_edge_cases.test.ts",
+  "./test/sql/schema_diff/schema_diff.test.ts",
+
   // schema introspection
   "./test/sql/schema_introspection/convenience_methods.test.ts",
   "./test/sql/schema_introspection/get_tables.test.ts",
   "./test/sql/schema_introspection/has_column.test.ts",
   "./test/sql/schema_introspection/has_index.test.ts",
   "./test/sql/schema_introspection/has_table.test.ts",
-
-  // schema diff (migration generation)
-  "./test/sql/schema_diff/schema_diff_code_gen.test.ts",
-  "./test/sql/schema_diff/schema_diff_edge_cases.test.ts",
-  "./test/sql/schema_diff/schema_diff.test.ts",
 
   // select query builder
   "./test/sql/query_builder/select_subquery.test.ts",

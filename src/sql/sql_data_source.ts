@@ -133,6 +133,7 @@ export class SqlDataSource<
 > extends DataSource {
   private readonly [SQL_DATA_SOURCE_SYMBOL] = true;
   private globalTransaction: Transaction | null = null;
+  private globalTransactionLock: Promise<void> | null = null;
   private sqlType: D;
   private ownsPool: boolean = false;
 
@@ -186,10 +187,19 @@ export class SqlDataSource<
   inputDetails: SqlDataSourceInput<D, T, C>;
 
   /**
-   * @description Unique identifier shared across all clones of the same logical data source.
-   * Used to verify ALS transactions belong to this instance.
+   * @description Per-construction UUID. May be shared with clones produced by
+   * clone() (legacy behavior, preserved for backward compatibility).
+   * For ALS scope checks, use logicalSourceId.
    */
   id: string = randomUUID();
+
+  /**
+   * Shared across all clones of the same logical data source.
+   * Used by the ALS transaction guard to verify that a propagated
+   * transaction belongs to the same logical source as the calling
+   * instance (not necessarily the same instance).
+   */
+  logicalSourceId: string = randomUUID();
 
   /**
    * @description Whether AsyncLocalStorage (CLS) transaction auto-propagation is enabled.
@@ -469,21 +479,53 @@ export class SqlDataSource<
       );
     }
 
-    // Create the connection pool
-    this.sqlPool = await createSqlPool(this.sqlType, this.inputDetails);
-    this.ownsPool = true;
+    // F001 fix: wrap pool creation so any rejection (master or slave)
+    // explicitly nulls out `sqlPool`/`ownsPool` on this instance and on
+    // every slave that was partially set. Without this, a slave
+    // `createSqlPool` failure after the master succeeded leaves the
+    // master pool in place, `isConnected === true`, and `ensureConnected`
+    // is unable to retry.
+    try {
+      // Create the connection pool
+      this.sqlPool = await createSqlPool(this.sqlType, this.inputDetails);
+      this.ownsPool = true;
 
-    // Connect to the slaves if any are configured
-    if (this.slaves.length) {
-      await Promise.all(
-        this.slaves.map(async (slave) => {
-          slave.sqlPool = await createSqlPool(
-            slave.sqlType,
-            slave.inputDetails,
-          );
-          slave.ownsPool = true;
-        }),
-      );
+      // Connect to the slaves if any are configured
+      if (this.slaves.length) {
+        await Promise.all(
+          this.slaves.map(async (slave) => {
+            slave.sqlPool = await createSqlPool(
+              slave.sqlType,
+              slave.inputDetails,
+            );
+            slave.ownsPool = true;
+          }),
+        );
+      }
+    } catch (err) {
+      // Cleanup partial state so a future connect()/ensureConnected()
+      // call can retry from a clean slate. We null the fields explicitly
+      // even though `await createSqlPool` throws before the master
+      // assignment in the single-pool case, because:
+      //   1. The slave `Promise.all` failure path lands here AFTER the
+      //      master pool was already set — that was the F001 bug.
+      //   2. Defense-in-depth: any future synchronous assignment that
+      //      runs before the await must not leave a stale reference.
+      this.sqlPool = null;
+      this.ownsPool = false;
+      // Also clean up any slave that succeeded before the failure
+      // surfaced. Best-effort: null the field; do NOT call .end() here
+      // because the driver pool object may itself be in a half-constructed
+      // state and calling .end() could hang. The garbage collector will
+      // release the underlying handles when the slave SqlDataSource is
+      // unreferenced.
+      for (const slave of this.slaves) {
+        if (slave.ownsPool) {
+          slave.sqlPool = null;
+          slave.ownsPool = false;
+        }
+      }
+      throw err;
     }
   }
 
@@ -575,7 +617,10 @@ export class SqlDataSource<
 
     if (this.clsEnabled) {
       const alsTrx = TransactionContext.getTransaction();
-      if (alsTrx?.isActive && (alsTrx.sql as SqlDataSource).id === this.id) {
+      if (
+        alsTrx?.isActive &&
+        (alsTrx.sql as SqlDataSource).logicalSourceId === this.logicalSourceId
+      ) {
         return alsTrx.sql as SqlDataSource;
       }
     }
@@ -720,6 +765,7 @@ export class SqlDataSource<
   async clone(options?: SqlCloneOptions): Promise<this> {
     const cloned = new SqlDataSource(this.inputDetails) as this;
     cloned.id = this.id;
+    cloned.logicalSourceId = this.logicalSourceId;
     const mustCreateNewPool =
       cloned.sqlType === "sqlite" || !!options?.shouldRecreatePool;
 
@@ -848,15 +894,42 @@ export class SqlDataSource<
   /**
    * @description Starts a global transaction on the database
    * @description Intended for testing purposes - wraps all operations in a transaction that can be rolled back
+   * @description Concurrent calls serialize: the second caller waits for the
+   * @description first to settle, then rejects with GLOBAL_TRANSACTION_ALREADY_STARTED
+   * @description if a global transaction is still active.
    */
   async startGlobalTransaction(
     options?: StartTransactionOptions,
   ): Promise<Transaction> {
-    const cloned = await this.clone();
-    cloned.sqlConnection = await cloned.getConnection();
-    this.globalTransaction = new Transaction(cloned, options?.isolationLevel);
-    await this.globalTransaction.transaction();
-    return this.globalTransaction;
+    // F005 fix: serialize concurrent startGlobalTransaction calls. While a
+    // previous call is in flight, wait for it. Once it settles, if a global
+    // transaction is still active, throw.
+    while (this.globalTransactionLock) {
+      await this.globalTransactionLock;
+    }
+
+    if (this.globalTransaction?.isActive) {
+      throw new HysteriaError(
+        "SqlDataSource::startGlobalTransaction",
+        "GLOBAL_TRANSACTION_ALREADY_STARTED",
+      );
+    }
+
+    let releaseLock: () => void = () => {};
+    this.globalTransactionLock = new Promise<void>((resolve) => {
+      releaseLock = resolve;
+    });
+
+    try {
+      const cloned = await this.clone();
+      cloned.sqlConnection = await cloned.getConnection();
+      this.globalTransaction = new Transaction(cloned, options?.isolationLevel);
+      await this.globalTransaction.transaction();
+      return this.globalTransaction;
+    } finally {
+      releaseLock();
+      this.globalTransactionLock = null;
+    }
   }
 
   /**
@@ -873,10 +946,14 @@ export class SqlDataSource<
       );
     }
 
-    await this.globalTransaction.commit({
-      throwErrorOnInactiveTransaction: options?.throwErrorOnInactiveTransaction,
-    });
-    this.globalTransaction = null;
+    try {
+      await this.globalTransaction.commit({
+        throwErrorOnInactiveTransaction:
+          options?.throwErrorOnInactiveTransaction,
+      });
+    } finally {
+      this.globalTransaction = null;
+    }
   }
 
   /**
@@ -892,10 +969,14 @@ export class SqlDataSource<
       return;
     }
 
-    await this.globalTransaction.rollback({
-      throwErrorOnInactiveTransaction: options?.throwErrorOnInactiveTransaction,
-    });
-    this.globalTransaction = null;
+    try {
+      await this.globalTransaction.rollback({
+        throwErrorOnInactiveTransaction:
+          options?.throwErrorOnInactiveTransaction,
+      });
+    } finally {
+      this.globalTransaction = null;
+    }
   }
 
   /**
@@ -932,7 +1013,10 @@ export class SqlDataSource<
     const alsTrx = this.clsEnabled
       ? TransactionContext.getTransaction()
       : undefined;
-    if (alsTrx?.isActive && (alsTrx.sql as SqlDataSource).id === this.id) {
+    if (
+      alsTrx?.isActive &&
+      (alsTrx.sql as SqlDataSource).logicalSourceId === this.logicalSourceId
+    ) {
       if (typeof optionsOrCb === "function") {
         return alsTrx.nestedTransaction(optionsOrCb);
       }
@@ -1050,6 +1134,31 @@ export class SqlDataSource<
     }
 
     if (!this.ownsPool) {
+      // F002 fix: defense-in-depth. We borrowed a connection from a shared
+      // pool; we must return it before nulling the field, even if the caller
+      // never went through Transaction.releaseConnection().
+      if (this.sqlConnection) {
+        try {
+          switch (this.sqlType) {
+            case "mysql":
+            case "mariadb":
+              (this.sqlConnection as any).release?.();
+              break;
+            case "postgres":
+            case "cockroachdb":
+              (this.sqlConnection as any).release?.();
+              break;
+            case "oracledb":
+              await (this.sqlConnection as any).close?.();
+              break;
+            // mssql: auto-released; sqlite: shared, no-op
+          }
+        } catch (err: any) {
+          logger.warn(
+            `SqlDataSource::disconnect - releasing borrowed connection failed: ${err?.message ?? err}`,
+          );
+        }
+      }
       this.sqlConnection = null;
       return;
     }
@@ -1467,12 +1576,14 @@ export class SqlDataSource<
       return rows.map((r: any) => {
         const rawType = String(r.type || "").toLowerCase();
         const dataType = normalizeColumnType(db, rawType);
+        const stringStorageTypes = new Set<string>(["text", "varchar", "char"]);
         return {
           name: r.name,
           dataType,
           isNullable: r.notnull === 0,
           defaultValue: r.dflt_value ?? null,
           withTimezone: null,
+          stringMode: stringStorageTypes.has(dataType),
         };
       });
     }
@@ -1502,12 +1613,18 @@ export class SqlDataSource<
         return true;
       })();
 
-      const defaultValue =
+      const rawDefault =
         r.column_default ??
         r.COLUMN_DEFAULT ??
         r.defaultValue ??
         r.dflt_value ??
         null;
+      // MariaDB's information_schema reports the literal string "NULL" for
+      // columns that have no default, while MySQL/Postgres/SQL Server all
+      // report JavaScript null in that case. Collapse the MariaDB sentinel
+      // to null so the diff sees "no default" consistently across dialects.
+      const defaultValue =
+        db === "mariadb" && rawDefault === "NULL" ? null : rawDefault;
       const length = r.char_length != null ? Number(r.char_length) : null;
       const precision =
         r.numeric_precision != null ? Number(r.numeric_precision) : null;
@@ -1536,6 +1653,25 @@ export class SqlDataSource<
       const unsigned = columnTypeLower.includes(" unsigned");
       const zerofill = columnTypeLower.includes(" zerofill");
 
+      // Detect "string-stored" columns: a column whose storage type is a
+      // character-based type (text/varchar/char or their variants). This
+      // drives the `stringMode` flag used by the diff to detect that the
+      // model has switched a datetime/date column to a string-stored variant.
+      const stringStorageTypes = new Set<string>([
+        "text",
+        "tinytext",
+        "mediumtext",
+        "longtext",
+        "varchar",
+        "char",
+        "nvarchar",
+        "nchar",
+        "ntext",
+        "character varying",
+        "character",
+      ]);
+      const stringMode = stringStorageTypes.has(dataType);
+
       return {
         name,
         dataType,
@@ -1548,6 +1684,7 @@ export class SqlDataSource<
         enumValues,
         unsigned,
         zerofill,
+        stringMode,
       };
     });
 

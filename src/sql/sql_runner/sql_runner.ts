@@ -412,9 +412,16 @@ export const execSqlStreaming = async <
     case "cockroachdb":
     case "postgres": {
       const pgPool = sqlDataSource.getPool() as PgPoolClientInstance;
-      const pgDriver =
-        (sqlDataSource.sqlConnection as GetConnectionReturnType<"postgres">) ??
-        (await pgPool.connect());
+      // If the caller already holds a connection (e.g. inside a global
+      // transaction), reuse it. The stream must NOT release it on finish —
+      // that's the transaction's job, and releasing it here would cause
+      // pg-pool to throw "Release called on client which has already been
+      // released" when the transaction later rolls back.
+      const transactionConnection = sqlDataSource.sqlConnection as
+        | GetConnectionReturnType<"postgres">
+        | undefined;
+      const ownsConnection = !transactionConnection;
+      const pgDriver = transactionConnection ?? (await pgPool.connect());
 
       const pgQueryStreamDriver = await import("pg-query-stream").catch(() => {
         throw new DriverNotFoundError("pg-query-stream");
@@ -450,6 +457,7 @@ export const execSqlStreaming = async <
       let hasError = false;
 
       const tryRelease = (err?: any) => {
+        if (!ownsConnection) return;
         try {
           pgDriver.release(err);
         } catch {}

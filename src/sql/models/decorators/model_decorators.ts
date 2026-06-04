@@ -258,6 +258,9 @@ export function column(
       scale: (options as ColumnDataTypeOptionWithScaleAndPrecision)?.scale,
       withTimezone: (options as ColumnDataTypeOptionWithDatePrecision)
         ?.withTimezone,
+      unsigned: options.unsigned,
+      zerofill: options.zerofill,
+      stringMode: (options as any).stringMode,
       constraints: {
         nullable: options.nullable,
         default: options.default,
@@ -958,6 +961,7 @@ function datetimeColumn(
     autoUpdate: hasAutoUpdate,
     prepare: prepareFn as (value: any) => any,
     serialize: serializeFn as (value: any) => any,
+    ...({ stringMode } as any),
     openApi: {
       type: "string",
       format: "date-time",
@@ -1064,6 +1068,7 @@ function timestampColumn(
     autoUpdate: hasAutoUpdate,
     prepare: prepareFn as (value: any) => any,
     serialize: serializeFn as (value: any) => any,
+    ...({ stringMode } as any),
     openApi: {
       type: "string",
       format: "date-time",
@@ -1164,6 +1169,7 @@ function timeOnlyColumn(
     autoUpdate: hasAutoUpdate,
     prepare: prepareFn as (value: any) => any,
     serialize: serializeFn as (value: any) => any,
+    ...({ stringMode } as any),
     openApi: {
       type: "string",
       format: "time",

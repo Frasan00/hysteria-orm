@@ -237,6 +237,16 @@ export type ColumnOptions = {
    * @description Per-column validators applied on insert/update
    */
   validate?: Validator | Validator[];
+  /**
+   * @description MySQL/MariaDB only: declare the numeric column as UNSIGNED
+   * @migration Only affects auto-generated migrations
+   */
+  unsigned?: boolean;
+  /**
+   * @description MySQL/MariaDB only: declare the numeric column with ZEROFILL display attribute
+   * @migration Only affects auto-generated migrations
+   */
+  zerofill?: boolean;
 } &
   /**
    * @description The data type of the column
@@ -261,6 +271,7 @@ export type ColumnType = {
   withTimezone?: boolean;
   unsigned?: boolean;
   zerofill?: boolean;
+  stringMode?: boolean;
   constraints?: {
     nullable?: boolean;
     default?: string | number | null | boolean;

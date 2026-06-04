@@ -1,48 +1,53 @@
 services:
   mysql:
-    container_name: "hysteria-mysql"
     image: mysql:8.0
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: test
-    ports:
-      - "3306:3306"
+    # No host port mapping — internal-only network.
 
   postgres:
     image: postgres:16.8
-    container_name: "hysteria-postgres"
     environment:
       POSTGRES_USER: root
       POSTGRES_PASSWORD: root
       POSTGRES_DB: test
-    ports:
-      - "5432:5432"
+    # No host port mapping.
 
   mariadb:
     image: mariadb:10.5
-    container_name: "hysteria-mariadb"
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: test
-    ports:
-      - "3307:3306"
+    # No host port mapping.
 
   redis:
     image: redis:6
-    container_name: "hysteria-redis"
     environment:
       - REDIS_PASSWORD=root
-    ports:
-      - "6379:6379"
+    # No host port mapping.
 
   mongo:
     image: mongo:4.4
-    container_name: "hysteria-mongo"
     environment:
       MONGO_INITDB_ROOT_USERNAME: root
       MONGO_INITDB_ROOT_PASSWORD: root
-    ports:
-      - "27017:27017"
+    # No host port mapping.
+
+  cockroachdb:
+    image: "cockroachdb/cockroach:v25.1.1"
+    command: start-single-node --insecure
+    environment:
+      COCKROACH_USER: root
+      COCKROACH_PASSWORD: root
+    volumes:
+      - cockroach-data:/cockroach/cockroach-data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health?ready=1"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    # No host port mapping.
 
   cockroach-init:
     image: "cockroachdb/cockroach:v25.1.1"
@@ -54,47 +59,24 @@ services:
     entrypoint: "/bin/bash"
     command: /init_cockroachdb.sh
 
-  cockroachdb:
-    image: "cockroachdb/cockroach:v25.1.1"
-    container_name: "hysteria-cockroachdb"
-    command: start-single-node --insecure
-    environment:
-      COCKROACH_USER: root
-      COCKROACH_PASSWORD: root
-    ports:
-      - "26257:26257"
-      - "8080:8080"
-    volumes:
-      - cockroach-data:/cockroach/cockroach-data
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health?ready=1"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
   mssql:
     image: mcr.microsoft.com/azure-sql-edge:latest
-    container_name: "hysteria-mssql"
     environment:
       ACCEPT_EULA: Y
       SA_PASSWORD: Password123!
-    ports:
-      - "1433:1433"
+    # No host port mapping.
 
   oracle:
     image: "container-registry.oracle.com/database/free:23.7.0.0-lite"
-    container_name: "hysteria-oracle"
-    ports:
-      - "1521:1521"
     environment:
       ORACLE_PWD: "oracle"
       ORACLE_SID: "FREE"
     volumes:
       - ./scripts/oracle:/opt/oracle/scripts/startup:ro
+    # No host port mapping.
 
   node:
     image: node:22
-    container_name: "hysteria-node"
     working_dir: /app
     volumes:
       - .:/app
