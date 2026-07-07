@@ -20,6 +20,7 @@ import { ModelWithoutRelations } from "../model_types";
 import { getBaseModelInstance } from "../model_utils";
 import {
   FindOneType,
+  FindReturnType,
   FindType,
   InsertOptions,
   ModelKey,
@@ -66,14 +67,14 @@ export class ModelManager<T extends Model> {
   async find<
     S extends ModelKey<T>[] = never[],
     R extends ModelRelation<T>[] = never[],
-  >(input?: FindType<T, S, R>): Promise<ModelWithoutRelations<T>[]>;
+  >(input?: FindType<T, S, R>): Promise<FindReturnType<T, S, R>[]>;
   async find<
     S extends ModelKey<T>[] = never[],
     R extends ModelRelation<T>[] = never[],
-  >(input?: FindType<T, S, R>): Promise<ModelWithoutRelations<T>[]> {
+  >(input?: FindType<T, S, R>): Promise<FindReturnType<T, S, R>[]> {
     if (!input) {
       return this.query().many() as unknown as Promise<
-        ModelWithoutRelations<T>[]
+        FindReturnType<T, S, R>[]
       >;
     }
 
@@ -112,7 +113,7 @@ export class ModelManager<T extends Model> {
 
     return query.many({
       ignoreHooks: input.ignoreHooks || [],
-    }) as unknown as Promise<ModelWithoutRelations<T>[]>;
+    }) as unknown as Promise<FindReturnType<T, S, R>[]>;
   }
 
   /**
@@ -121,11 +122,11 @@ export class ModelManager<T extends Model> {
   async findOne<
     S extends ModelKey<T>[] = never[],
     R extends ModelRelation<T>[] = never[],
-  >(input: FindOneType<T, S, R>): Promise<ModelWithoutRelations<T> | null>;
+  >(input: FindOneType<T, S, R>): Promise<FindReturnType<T, S, R> | null>;
   async findOne<
     S extends ModelKey<T>[] = never[],
     R extends ModelRelation<T>[] = never[],
-  >(input: FindOneType<T, S, R>): Promise<ModelWithoutRelations<T> | null> {
+  >(input: FindOneType<T, S, R>): Promise<FindReturnType<T, S, R> | null> {
     const results = await this.find({
       groupBy: input.groupBy,
       orderBy: input.orderBy,
@@ -150,7 +151,7 @@ export class ModelManager<T extends Model> {
   async findOneOrFail<
     S extends ModelKey<T>[] = never[],
     R extends ModelRelation<T>[] = never[],
-  >(input: FindOneType<T, S, R>): Promise<ModelWithoutRelations<T>>;
+  >(input: FindOneType<T, S, R>): Promise<FindReturnType<T, S, R>>;
   async findOneOrFail<
     S extends ModelKey<T>[] = never[],
     R extends ModelRelation<T>[] = never[],
@@ -158,7 +159,7 @@ export class ModelManager<T extends Model> {
     input: FindOneType<T, S, R> & {
       customError?: Error;
     },
-  ): Promise<ModelWithoutRelations<T>> {
+  ): Promise<FindReturnType<T, S, R>> {
     const result = await this.findOne({
       groupBy: input.groupBy,
       orderBy: input.orderBy,

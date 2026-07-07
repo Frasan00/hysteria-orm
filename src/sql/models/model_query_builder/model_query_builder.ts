@@ -22,6 +22,7 @@ import { Model } from "../../models/model";
 import { ModelManager } from "../../models/model_manager/model_manager";
 import type {
   FindOneType,
+  FindReturnType,
   FindType,
   ModelKey,
   ModelRelation,
@@ -438,8 +439,10 @@ export class ModelQueryBuilder<
   async find<
     MK extends ModelKey<T>[] = never[],
     MR extends ModelRelation<T>[] = never[],
-  >(input?: FindType<T, MK, MR>): Promise<ModelWithoutRelations<T>[]> {
-    return this.getModelManager().find(input);
+  >(input?: FindType<T, MK, MR>): Promise<FindReturnType<T, MK, MR>[]> {
+    return this.getModelManager().find(input) as unknown as Promise<
+      FindReturnType<T, MK, MR>[]
+    >;
   }
 
   /**
@@ -448,8 +451,10 @@ export class ModelQueryBuilder<
   async findOne<
     MK extends ModelKey<T>[] = never[],
     MR extends ModelRelation<T>[] = never[],
-  >(input: FindOneType<T, MK, MR>): Promise<ModelWithoutRelations<T> | null> {
-    return this.getModelManager().findOne(input);
+  >(input: FindOneType<T, MK, MR>): Promise<FindReturnType<T, MK, MR> | null> {
+    return this.getModelManager().findOne(
+      input,
+    ) as unknown as Promise<FindReturnType<T, MK, MR> | null>;
   }
 
   /**
@@ -458,8 +463,10 @@ export class ModelQueryBuilder<
   async findOneOrFail<
     MK extends ModelKey<T>[] = never[],
     MR extends ModelRelation<T>[] = never[],
-  >(input: FindOneType<T, MK, MR>): Promise<ModelWithoutRelations<T>> {
-    return this.getModelManager().findOneOrFail(input);
+  >(input: FindOneType<T, MK, MR>): Promise<FindReturnType<T, MK, MR>> {
+    return this.getModelManager().findOneOrFail(input) as unknown as Promise<
+      FindReturnType<T, MK, MR>
+    >;
   }
 
   /**
