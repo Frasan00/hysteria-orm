@@ -20,7 +20,9 @@ class PostgresOnDuplicateInterpreter implements Interpreter {
 
     const interpreterUtils = new InterpreterUtils(this.model);
     const formattedConflictColumns = onDuplicateNode.conflictColumns
-      .map((column) => interpreterUtils.formatStringColumn("postgres", column))
+      .map((column) =>
+        interpreterUtils.formatStringColumnBare("postgres", column),
+      )
       .join(", ");
 
     if (onDuplicateNode.mode === "ignore") {
@@ -42,7 +44,7 @@ class PostgresOnDuplicateInterpreter implements Interpreter {
     const updateSet = onDuplicateNode.columnsToUpdate
       .map(
         (column) =>
-          `${interpreterUtils.formatStringColumn("postgres", column)} = excluded.${interpreterUtils.formatStringColumn("postgres", column)}`,
+          `${interpreterUtils.formatStringColumnBare("postgres", column)} = excluded.${interpreterUtils.formatStringColumnBare("postgres", column)}`,
       )
       .join(", ");
 

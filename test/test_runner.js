@@ -139,6 +139,10 @@ const NON_SQL_TESTS = [
     path: "./test/sql/use_connection/use_connection.test.ts",
   },
   { name: "mongo", path: "./test/mongo/crud_mongo.test.ts" },
+  {
+    name: "on_conflict_sql_output",
+    path: "./test/sql/on_conflict_sql_output.test.ts",
+  },
   { name: "redis", path: "./test/redis/redis.test.ts" },
   {
     name: "cache_in_memory",

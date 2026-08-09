@@ -20,7 +20,9 @@ class SqliteOnDuplicateInterpreter implements Interpreter {
 
     const interpreterUtils = new InterpreterUtils(this.model);
     const formattedConflictColumns = onDuplicateNode.conflictColumns
-      .map((column) => interpreterUtils.formatStringColumn("sqlite", column))
+      .map((column) =>
+        interpreterUtils.formatStringColumnBare("sqlite", column),
+      )
       .join(", ");
 
     if (onDuplicateNode.mode === "ignore") {
@@ -33,7 +35,7 @@ class SqliteOnDuplicateInterpreter implements Interpreter {
     const updateSet = onDuplicateNode.columnsToUpdate
       .map(
         (column) =>
-          `${interpreterUtils.formatStringColumn("sqlite", column)} = EXCLUDED.${interpreterUtils.formatStringColumn("sqlite", column)}`,
+          `${interpreterUtils.formatStringColumnBare("sqlite", column)} = EXCLUDED.${interpreterUtils.formatStringColumnBare("sqlite", column)}`,
       )
       .join(", ");
 

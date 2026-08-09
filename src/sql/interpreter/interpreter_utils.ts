@@ -122,6 +122,18 @@ export class InterpreterUtils {
   }
 
   /**
+   * @description Formats a column WITHOUT table qualification.
+   * ON CONFLICT target lists (Postgres/SQLite) and `excluded.<col>` refs require
+   * bare column names; table-qualified ModelKey refs like "sets.id" must reduce to
+   * "id". Mirrors formatStringColumn's qualified branch (split(".")[1]) so the
+   * bare output is identical minus the "table". prefix.
+   */
+  formatStringColumnBare(dbType: SqlDataSourceType, column: string): string {
+    const bareColumn = column.includes(".") ? column.split(".")[1] : column;
+    return this.formatStringColumn(dbType, bareColumn);
+  }
+
+  /**
    * @description Formats the table name for the database type, idempotent for quoting
    */
   formatStringTable(dbType: SqlDataSourceType, table: string): string {
