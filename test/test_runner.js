@@ -126,6 +126,11 @@ const SQL_TESTS = [
   "./test/sql/uuid_pk/relations.test.ts",
   "./test/sql/uuid_pk/crud.test.ts",
   "./test/sql/uuid_pk/join.test.ts",
+
+  // better-auth adapter (self-skips on unsupported dialects)
+  "./test/better_auth/better_auth_adapter.test.ts",
+  "./test/better_auth/better_auth_organization_plugin.test.ts",
+  "./test/better_auth/better_auth_serial_id.test.ts",
 ];
 
 const NON_SQL_TESTS = [
@@ -187,13 +192,19 @@ const runSqlTest = async (file, environment, testNames = [], logs = false) => {
   console.log(`  → Running on ${environment.type.toUpperCase()}...`);
 
   const dbLogsValue = logs ? "true" : "false";
+  // better-auth is ESM-only (no CJS build); Jest can only load it via Node's native ESM loader,
+  // which requires this flag. Scoped to just this file so the rest of the suite is unaffected.
+  const nodeOptionsValue = file.includes("better_auth")
+    ? "--experimental-vm-modules"
+    : "";
   const command =
-    `DB_LOGS=${dbLogsValue} MSSQL_TRUST_SERVER_CERTIFICATE=true DB_TYPE=${environment.type} DB_HOST=${environment.host} DB_USER=${environment.user} DB_PASSWORD=${environment.password} DB_DATABASE=${environment.database} npx jest --config=jest.config.js --colors --forceExit ${file} ${testNameFlags}`.trim();
+    `NODE_OPTIONS="${nodeOptionsValue}" DB_LOGS=${dbLogsValue} MSSQL_TRUST_SERVER_CERTIFICATE=true DB_TYPE=${environment.type} DB_HOST=${environment.host} DB_USER=${environment.user} DB_PASSWORD=${environment.password} DB_DATABASE=${environment.database} npx jest --config=jest.config.js --colors --forceExit ${file} ${testNameFlags}`.trim();
 
   try {
     const { stdout, stderr } = await execAsync(command, {
       env: {
         ...process.env,
+        NODE_OPTIONS: nodeOptionsValue,
         DB_LOGS: dbLogsValue,
         MSSQL_TRUST_SERVER_CERTIFICATE: "true",
         DB_TYPE: environment.type,

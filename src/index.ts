@@ -152,6 +152,10 @@ export type {
   AdminJsSettings,
 } from "./adminjs/adminjs_types";
 
+// Better Auth
+export { betterAuthAdapter } from "./better_auth/better_auth_adapter";
+export type { BetterAuthAdapterConfig } from "./better_auth/better_auth_adapter";
+
 // Errors
 export * from "./errors/hysteria_error";
 export * from "./errors/hysteria_error.types";

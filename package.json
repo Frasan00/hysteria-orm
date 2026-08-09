@@ -1,6 +1,6 @@
 {
   "name": "hysteria-orm",
-  "version": "11.0.9",
+  "version": "11.0.10",
   "license": "MIT",
   "description": "Yet another orm for Javascript and Typescript no one asked for",
   "type": "module",
@@ -67,6 +67,7 @@
     "@types/pino": "^7.0.5",
     "@types/sqlite3": "^5.1.0",
     "adminjs": "^7.8.17",
+    "better-auth": "^1.6.26",
     "drizzle-orm": "^0.45.2",
     "esbuild": "^0.28.0",
     "express": "^5.2.1",
@@ -102,6 +103,7 @@
     "sql-highlight": "^6.1.0"
   },
   "peerDependencies": {
+    "better-auth": "^1.6.0",
     "esbuild": "^0.28.0",
     "ioredis": "^5.10.1",
     "mongodb": "^7.1.1",
@@ -114,6 +116,9 @@
     "zod": "^4.4.3"
   },
   "peerDependenciesMeta": {
+    "better-auth": {
+      "optional": true
+    },
     "esbuild": {
       "optional": true
     },

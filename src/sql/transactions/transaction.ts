@@ -392,6 +392,11 @@ export class Transaction {
       logger.error(error);
     }
 
+    // Null before disconnect() - it re-releases sqlConnection if still set, double-releasing
+    // the pool client (harmless on postgres, but a real steal-another-caller's-client risk
+    // under a saturated pool).
+    this.sql.sqlConnection = null;
+
     try {
       await this.sql.disconnect();
     } catch (err: any) {
@@ -400,7 +405,6 @@ export class Transaction {
       );
     }
 
-    this.sql.sqlConnection = null;
     this.connectionReleased = true;
 
     if (releaseError) {
