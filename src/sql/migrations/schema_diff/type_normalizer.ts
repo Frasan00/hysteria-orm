@@ -181,10 +181,12 @@ export function normalizeColumnType(
           normalized = "year";
           break;
         case "jsonb":
-          normalized = "json";
-          break;
         case "json":
-          normalized = "json";
+          // MariaDB has no real JSON type — `JSON` is just an alias for
+          // LONGTEXT, and introspection reports it back as `longtext`
+          // (normalized to "text" above). Match that here so the model
+          // side doesn't perpetually diff against itself.
+          normalized = dialect === "mariadb" ? "text" : "json";
           break;
         case "enum":
           normalized = "enum";

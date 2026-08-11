@@ -530,6 +530,30 @@ export class MigrationOperationGenerator {
   ]);
 
   /**
+   * Applies NOT NULL / NULL to a column builder based on the model's
+   * `nullable` constraint.
+   *
+   * MariaDB (with the default `explicit_defaults_for_timestamp=OFF`)
+   * silently promotes a column with no stated nullability to
+   * `NOT NULL DEFAULT current_timestamp()` for TIMESTAMP columns. Since the
+   * model never said "not nullable", an unset `nullable` is treated as an
+   * explicit NULL on MariaDB so the diff stops re-detecting that server-side
+   * promotion on every sync. Other dialects don't rewrite unset nullability,
+   * so they leave it alone.
+   */
+  private applyNullableConstraint<
+    T extends { notNullable(): T; nullable(): T },
+  >(builder: T, nullable: boolean | undefined): T {
+    if (nullable === false) {
+      return builder.notNullable();
+    }
+    if (nullable === true || this.sql.getDbType() === "mariadb") {
+      return builder.nullable();
+    }
+    return builder;
+  }
+
+  /**
    * Executes builder method for column creation
    */
   private executeBuilderMethod(
@@ -580,11 +604,7 @@ export class MigrationOperationGenerator {
       b.default(column.constraints.default);
     }
 
-    if (column.constraints?.nullable === false) {
-      b.notNullable();
-    } else if (column.constraints?.nullable === true) {
-      b.nullable();
-    }
+    this.applyNullableConstraint(b, column.constraints?.nullable);
 
     return b;
   }
@@ -629,11 +649,10 @@ export class MigrationOperationGenerator {
             columnBuilder.default(columnData.column.constraints.default);
           }
 
-          if (columnData.column.constraints?.nullable === false) {
-            columnBuilder.notNullable();
-          } else if (columnData.column.constraints?.nullable === true) {
-            columnBuilder.nullable();
-          }
+          this.applyNullableConstraint(
+            columnBuilder,
+            columnData.column.constraints?.nullable,
+          );
 
           return columnBuilder;
         });
@@ -692,11 +711,10 @@ export class MigrationOperationGenerator {
             columnBuilder.default(null);
           }
 
-          if (columnData.modelColumn.constraints?.nullable === false) {
-            columnBuilder.notNullable();
-          } else if (columnData.modelColumn.constraints?.nullable === true) {
-            columnBuilder.nullable();
-          }
+          this.applyNullableConstraint(
+            columnBuilder,
+            columnData.modelColumn.constraints?.nullable,
+          );
 
           return columnBuilder;
         });

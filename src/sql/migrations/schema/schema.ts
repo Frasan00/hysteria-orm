@@ -488,7 +488,9 @@ export default class Schema {
    * ```
    */
   dropCheck(table: string, constraintName: string): void {
-    if (this.sqlType === "mysql" || this.sqlType === "mariadb") {
+    // MariaDB never got MySQL's `DROP CHECK` syntax — it only understands
+    // the standard `DROP CONSTRAINT`, which MySQL also accepts from 8.0.19+.
+    if (this.sqlType === "mysql") {
       this.rawQuery(
         `ALTER TABLE \`${table}\` DROP CHECK \`${constraintName}\``,
       );

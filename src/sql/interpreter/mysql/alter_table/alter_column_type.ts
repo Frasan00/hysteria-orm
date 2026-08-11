@@ -17,9 +17,12 @@ class MysqlAlterColumnTypeInterpreter implements Interpreter {
     // Generate type change SQL
     let resultSql = `modify column \`${a.column}\` ${typeSql}`;
 
-    // Add constraint modifications
+    // Add constraint modifications. An explicit " null" (rather than
+    // omitting it) matters on MariaDB: MODIFY COLUMN with no nullability
+    // clause lets the server fall back to its own default, which for
+    // TIMESTAMP columns is `NOT NULL DEFAULT current_timestamp()`.
     if (a.options.nullable !== undefined) {
-      const nullableSql = a.options.nullable ? "" : " not null";
+      const nullableSql = a.options.nullable ? " null" : " not null";
       resultSql += nullableSql;
     }
 

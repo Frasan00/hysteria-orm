@@ -2330,10 +2330,18 @@ export class SqlDataSource<
       throw err;
     }
 
-    return rows.map((row) => ({
-      name: String(row.name),
-      expression: String(row.expression),
-    }));
+    // MariaDB auto-generates a column-level `CHECK (json_valid(\`col\`))` for
+    // every JSON column; it's not something the model ever declared, so it
+    // must not show up as a constraint to drop.
+    const isMariadbImplicitJsonCheck = (expression: string) =>
+      this.getDbType() === "mariadb" && /^json_valid\(/i.test(expression);
+
+    return rows
+      .filter((row) => !isMariadbImplicitJsonCheck(String(row.expression)))
+      .map((row) => ({
+        name: String(row.name),
+        expression: String(row.expression),
+      }));
   }
 
   /**
