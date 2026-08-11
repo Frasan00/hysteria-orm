@@ -2,11 +2,11 @@ import { SqlDataSource } from "../../src/sql/sql_data_source";
 
 const sql = new SqlDataSource({
   type: "mysql",
-  host: "localhost",
-  port: 3306,
-  username: "root",
-  password: "root",
-  database: "test",
+  host: process.env.DB_HOST || "localhost",
+  port: process.env.DB_PORT ? Number(process.env.DB_PORT) : 3306,
+  username: process.env.DB_USER || "root",
+  password: process.env.DB_PASSWORD || "root",
+  database: process.env.DB_DATABASE || "test",
   logs: true,
 });
 

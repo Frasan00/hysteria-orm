@@ -1,15 +1,16 @@
 import { SqlDataSource } from "../../src/sql/sql_data_source";
 
+const host = process.env.DB_HOST || "localhost";
 const sql = new SqlDataSource({
   type: "mssql",
-  host: "localhost",
-  port: 1433,
-  username: "sa",
-  password: "Password123!",
-  database: "master",
+  host,
+  port: process.env.DB_PORT ? Number(process.env.DB_PORT) : 1433,
+  username: process.env.DB_USER || "sa",
+  password: process.env.DB_PASSWORD || "Password123!",
+  database: process.env.DB_DATABASE || "master",
   logs: true,
   driverOptions: {
-    server: "localhost",
+    server: host,
     options: {
       trustServerCertificate: true,
       encrypt: false,

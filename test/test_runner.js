@@ -198,7 +198,7 @@ const runSqlTest = async (file, environment, testNames = [], logs = false) => {
     ? "--experimental-vm-modules"
     : "";
   const command =
-    `NODE_OPTIONS="${nodeOptionsValue}" DB_LOGS=${dbLogsValue} MSSQL_TRUST_SERVER_CERTIFICATE=true DB_TYPE=${environment.type} DB_HOST=${environment.host} DB_USER=${environment.user} DB_PASSWORD=${environment.password} DB_DATABASE=${environment.database} npx jest --config=jest.config.js --colors --forceExit ${file} ${testNameFlags}`.trim();
+    `NODE_OPTIONS="${nodeOptionsValue}" DB_LOGS=${dbLogsValue} MSSQL_TRUST_SERVER_CERTIFICATE=true DB_TYPE=${environment.type} DB_HOST=${environment.host} DB_PORT=${environment.port} DB_USER=${environment.user} DB_PASSWORD=${environment.password} DB_DATABASE=${environment.database} npx jest --config=jest.config.js --colors --forceExit ${file} ${testNameFlags}`.trim();
 
   try {
     const { stdout, stderr } = await execAsync(command, {
@@ -209,6 +209,7 @@ const runSqlTest = async (file, environment, testNames = [], logs = false) => {
         MSSQL_TRUST_SERVER_CERTIFICATE: "true",
         DB_TYPE: environment.type,
         DB_HOST: environment.host,
+        DB_PORT: String(environment.port),
         DB_USER: environment.user,
         DB_PASSWORD: environment.password,
         DB_DATABASE: environment.database,
