@@ -12,9 +12,19 @@ class PostgresWhereInterpreter implements Interpreter {
   toSql(node: QueryNode): ReturnType<typeof AstParser.prototype.parse> {
     const whereNode = node as WhereNode;
     if (whereNode.isRawValue) {
+      const bindings = (whereNode.value as any[]) ?? [];
+      if (bindings.length === 0) {
+        return {
+          sql: whereNode.column,
+          bindings: [],
+        };
+      }
+
+      let paramIndex = whereNode.currParamIndex;
+      const sql = whereNode.column.replace(/\?/g, () => `$${paramIndex++}`);
       return {
-        sql: whereNode.column,
-        bindings: (whereNode.value as any[]) ?? [],
+        sql,
+        bindings,
       };
     }
 

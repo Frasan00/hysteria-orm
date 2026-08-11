@@ -158,10 +158,45 @@ describe(`[${env.DB_TYPE}] Query Builder with uuid`, () => {
 
     const count = await sql
       .from("posts_with_uuid")
-      // Should not affect the count query
-      .groupBy("not_exists")
+      // No grouping clause, should count all rows
       .getCount();
     expect(count).toBe(2);
+  });
+
+  test("should get count of groups when grouping", async () => {
+    await sql.from("users_without_pk").insertMany([
+      { name: "Alice", gender: "F", email: "alice1@test.com" },
+      { name: "Bob", gender: "M", email: "bob1@test.com" },
+      { name: "Carol", gender: "F", email: "carol1@test.com" },
+    ]);
+
+    const count = await sql
+      .from("users_without_pk")
+      .selectRaw("gender AS gkey, count(*) AS n")
+      .groupByRaw("gender")
+      .getCount();
+
+    // 3 rows grouped by gender (F, M) => 2 distinct groups
+    expect(count).toBe(2);
+  });
+
+  test("should paginate a grouped query with the group total", async () => {
+    await sql.from("users_without_pk").insertMany([
+      { name: "Alice", gender: "F", email: "alice1@test.com" },
+      { name: "Bob", gender: "M", email: "bob1@test.com" },
+      { name: "Carol", gender: "F", email: "carol1@test.com" },
+      { name: "Dave", gender: "M", email: "dave1@test.com" },
+    ]);
+
+    const result = await sql
+      .from("users_without_pk")
+      .selectRaw("gender AS gkey, count(*) AS n")
+      .groupByRaw("gender")
+      .paginate(1, 10);
+
+    // 4 rows grouped by gender (F, M) => 2 distinct groups
+    expect(result.data).toHaveLength(2);
+    expect(result.paginationMetadata.total).toBe(2);
   });
 
   test("should create a post", async () => {
@@ -536,6 +571,49 @@ describe(`[${env.DB_TYPE}] Where query builder (users_without_pk only)`, () => {
       .many();
     expect(users.length).toBe(1);
     expect(users[0].name).toBe("Bob");
+  });
+
+  test("whereRaw with bindings mixes with typed clauses without placeholder collision", async () => {
+    await sql.from("users_without_pk").insertMany([
+      { name: "Alice", age: 25, email: "alice1@test.com" },
+      { name: "Bob", age: 30, email: "bob1@test.com" },
+      { name: "Carol", age: 35, email: "carol1@test.com" },
+    ]);
+
+    // Typed clauses emit $1/$2, the raw `?` placeholders must continue at $3+.
+    const users = await sql
+      .from("users_without_pk")
+      .where("name", "Alice")
+      .whereRaw("age > ? and age < ?", [20, 40])
+      .many();
+
+    expect(users.length).toBe(1);
+    expect(users[0].name).toBe("Alice");
+  });
+
+  test("whereRaw with bindings numbers placeholders sequentially at compile time", async () => {
+    await sql.from("users_without_pk").insertMany([
+      { name: "Alice", age: 25, email: "alice1@test.com" },
+      { name: "Bob", age: 30, email: "bob1@test.com" },
+    ]);
+
+    const { sql: query, bindings } = sql
+      .from("users_without_pk")
+      .where("name", "Alice")
+      .whereRaw("age > ? and age < ?", [20, 40])
+      .toSql();
+
+    expect(bindings).toEqual(["Alice", 20, 40]);
+
+    if (
+      env.DB_TYPE === "postgres" ||
+      env.DB_TYPE === "cockroachdb" ||
+      env.DB_TYPE === "oracledb"
+    ) {
+      // No literal `?` may remain, and no placeholder may collide with typed $1.
+      expect(query).not.toContain("?");
+      expect(query).not.toContain("$1 and");
+    }
   });
 
   test("orWhere returns correct users", async () => {

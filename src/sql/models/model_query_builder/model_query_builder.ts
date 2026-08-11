@@ -774,8 +774,7 @@ export class ModelQueryBuilder<
     column: (ModelKey<T> & string) | "*" | (string & {}) = "*",
     options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<number> {
-    this.clearForFunctions();
-    this.selectRaw(`count(${column}) as total`);
+    this.buildCountQuery(column);
     const ignoredHooks: string[] = options.ignoreHooks ? ["beforeFetch"] : [];
 
     const result = (await this.one({

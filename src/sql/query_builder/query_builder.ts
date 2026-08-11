@@ -628,10 +628,59 @@ export class QueryBuilder<
    * @description Executes the query and retrieves the count of results, it ignores all select, group by, order by, limit and offset clauses if they are present.
    */
   async getCount(column: string = "*"): Promise<number> {
-    this.clearForFunctions();
-    this.selectRaw(`count(${column}) as total`);
+    this.buildCountQuery(column);
     const result = (await this.one()) as { total: number } | null;
     return result ? coerceToNumber(result.total) : 0;
+  }
+
+  /**
+   * @description Whether the query's row cardinality differs from the number of underlying
+   * rows (e.g. GROUP BY, HAVING, DISTINCT). When true, a plain `count(*)` after clearing the
+   * clauses would return the wrong number, so the query must be wrapped as a derived table.
+   */
+  protected needsDerivedTableCount(): boolean {
+    return (
+      this.groupByNodes.length > 0 ||
+      this.havingNodes.length > 0 ||
+      this.distinctNode !== null ||
+      this.distinctOnNode !== null
+    );
+  }
+
+  /**
+   * @description Mutates this query builder into a `count(*)` query. For queries whose
+   * cardinality differs from the underlying row count (GROUP BY / HAVING / DISTINCT), the
+   * original query is wrapped as a derived table so the count reflects the number of groups
+   * / distinct rows instead of the raw row count. Otherwise behaves like the historical
+   * behavior of clearing select/group/order/limit/offset.
+   */
+  protected buildCountQuery(column: string = "*"): void {
+    if (!this.needsDerivedTableCount()) {
+      this.clearForFunctions();
+      this.selectRaw(`count(${column}) as total`);
+      return;
+    }
+
+    // Keep select/from/join/where/groupBy/having/distinct/unions inside the derived table,
+    // dropping only the clauses that are irrelevant to a count.
+    this.clearOrderBy();
+    this.clearLimit();
+    this.clearOffset();
+    const innerNodes = this.extractQueryNodes();
+
+    // Reset this to be the outer count query over the derived table.
+    this.withNodes = [];
+    this.distinctNode = null;
+    this.distinctOnNode = null;
+    this.clearSelect();
+    this.fromNode = new FromNode(innerNodes, "g");
+    this.joinNodes = [];
+    this.whereNodes = [];
+    this.groupByNodes = [];
+    this.havingNodes = [];
+    this.lockQueryNodes = [];
+    this.unionNodes = [];
+    this.selectRaw(`count(${column}) as total`);
   }
 
   /**
