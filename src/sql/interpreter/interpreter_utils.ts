@@ -60,6 +60,14 @@ export class InterpreterUtils {
       return "*";
     }
 
+    // Computed (virtual) columns resolve to their raw SQL expression so that
+    // references in WHERE / ORDER BY / GROUP BY / HAVING / JOIN ON evaluate the
+    // expression at query time instead of referencing a non-existent column.
+    const computedExpression = this.resolveComputedExpression(column);
+    if (computedExpression !== undefined) {
+      return `(${computedExpression})`;
+    }
+
     const hasTable = column.includes(".");
     if (hasTable) {
       const [table, foundColumn] = column.split(".");
@@ -119,6 +127,20 @@ export class InterpreterUtils {
       default:
         throw new Error(`Unsupported database type: ${dbType}`);
     }
+  }
+
+  /**
+   * @description Returns the raw SQL expression of a computed column, if the given
+   * reference points to one. Strips an optional table prefix before looking up the
+   * model column metadata. Returns `undefined` for non-computed columns.
+   * @internal
+   */
+  resolveComputedExpression(column: string): string | undefined {
+    const bareColumn = column.includes(".")
+      ? column.split(".").pop() as string
+      : column;
+    const meta = this.modelColumnsMap.get(bareColumn);
+    return meta?.expression;
   }
 
   /**
@@ -197,6 +219,14 @@ export class InterpreterUtils {
 
       const modelColumn = this.modelColumnsMap.get(column);
 
+      // Computed columns are never persisted — drop them silently from insert/update.
+      if (modelColumn?.expression) {
+        filteredColumns.splice(i, 1);
+        filteredValues.splice(i, 1);
+        i--;
+        continue;
+      }
+
       if (modelColumn) {
         if (modelColumn.prepare) {
           const prepared =
@@ -232,6 +262,9 @@ export class InterpreterUtils {
 
     for (const modelColumn of autoColumns) {
       const column = modelColumn.columnName;
+      if (modelColumn.expression) {
+        continue;
+      }
       if (presentColumnsSet.has(column)) {
         continue;
       }

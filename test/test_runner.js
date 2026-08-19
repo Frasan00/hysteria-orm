@@ -98,6 +98,7 @@ const SQL_TESTS = [
   // edge cases
   "./test/sql/edge_cases/query_builder_complex_edge_cases.test.ts",
   "./test/sql/edge_cases/model_serialization_edge_cases.test.ts",
+  "./test/sql/edge_cases/computed_columns.test.ts",
 
   // query builder
   "./test/sql/query_builder/select_tuple.test.ts",

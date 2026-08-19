@@ -37,6 +37,25 @@ export interface PrimaryColumnDef<T = unknown> extends ColumnDef<T> {
 }
 
 /**
+ * A column descriptor for a computed (virtual) column defined with
+ * `col.computed()` / `@column.computed()`.
+ *
+ * The value is computed by the database at query time from a raw SQL expression.
+ * Computed columns:
+ * - are excluded from auto-generated migrations (they carry no `type`)
+ * - are never written on insert/update
+ * - only appear in query results when explicitly selected
+ * - resolve to the raw expression when referenced in WHERE/ORDER BY/GROUP BY/HAVING
+ *
+ * `T` carries the TypeScript type the column resolves to when selected.
+ * Inferred instance types treat computed columns as `T | undefined` since they
+ * are absent from results unless explicitly selected.
+ */
+export interface ComputedColumnDef<T = unknown> extends ColumnDef<T> {
+  readonly __computed: true;
+}
+
+/**
  * Phantom-typed descriptor for a model relation.
  * `T` carries the TypeScript type the relation resolves to at the instance level.
  */
@@ -191,6 +210,17 @@ export type ColMediumIntOptions = Omit<
 > & {
   unsigned?: boolean;
   zerofill?: boolean;
+};
+
+export type ColComputedOptions = Omit<
+  ColumnOptions,
+  "type" | "primaryKey" | "serialize" | "prepare" | "default" | "autoUpdate"
+> & {
+  /**
+   * Optional callback applied to the value returned from the database before
+   * it is placed on the model instance.
+   */
+  serialize?: (value: any) => any;
 };
 
 // ---------------------------------------------------------------------------
@@ -677,6 +707,51 @@ export interface ColNamespace {
       options: O,
     ): ColumnDef<NullableColumn<string, O>>;
   };
+
+  /**
+   * Computed (virtual) column. The value is computed by the database at query
+   * time from the given raw SQL expression instead of being stored as a
+   * physical column (and instead of being computed in TypeScript). Because the
+   * expression is pushed down into the generated SQL, the computation is done
+   * by the database engine — efficient for filtering, sorting and aggregation
+   * directly on the server.
+   *
+   * @param expression The raw SQL expression evaluated by the database at
+   *   query time. It references physical columns as they exist in the database
+   *   (no case conversion is applied), so it must be written in the database's
+   *   own dialect, e.g. `"concat(first_name, last_name)"` or
+   *   `"price * quantity"`.
+   * @param options Optional column options (e.g. `databaseName` for a custom
+   *   result alias, or `serialize` to transform the returned value).
+   *
+   * Computed columns:
+   * - are excluded from auto-generated migrations
+   * - are never written on insert/update
+   * - only appear in results when explicitly selected (`.select(User.fullName)`
+   *   or `[User.fullName, "alias"]` tuples)
+   * - resolve to the raw expression when referenced in WHERE / ORDER BY /
+   *   GROUP BY / HAVING
+   *
+   * ```ts
+   * const User = defineModel("users", {
+   *   columns: {
+   *     id: col.increment(),
+   *     firstName: col.string(),
+   *     lastName: col.string(),
+   *     fullName: col.computed<string>("concat(first_name, last_name)"),
+   *   },
+   * });
+   *
+   * // Selected explicitly - result has fullName: string (computed by the DB)
+   * const user = await sql.from(User).select(User.fullName).one();
+   * // Not selected - fullName is absent from the result
+   * const user = await sql.from(User).one();
+   * ```
+   */
+  computed<T = unknown>(
+    expression: string,
+    options?: ColComputedOptions,
+  ): ComputedColumnDef<T>;
 }
 
 // ---------------------------------------------------------------------------
@@ -737,7 +812,11 @@ export type InferPK<C extends Record<string, ColumnDef>> = [
   : ExtractPKType<C>;
 
 export type InferColumns<C extends Record<string, ColumnDef>> = {
-  [K in keyof C]: C[K] extends ColumnDef<infer T> ? T : never;
+  [K in keyof C]: C[K] extends ComputedColumnDef<infer T>
+    ? T | undefined
+    : C[K] extends ColumnDef<infer T>
+      ? T
+      : never;
 };
 
 type InferRelations<R extends Record<string, RelationDef>> = {

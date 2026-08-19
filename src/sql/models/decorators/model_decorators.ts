@@ -261,6 +261,7 @@ export function column(
       unsigned: options.unsigned,
       zerofill: options.zerofill,
       stringMode: (options as any).stringMode,
+      expression: options.expression,
       constraints: {
         nullable: options.nullable,
         default: options.default,
@@ -297,6 +298,7 @@ column.encryption = {
   symmetric,
   asymmetric,
 };
+column.computed = computedColumn;
 
 function primaryKeyColumn(
   options: Omit<ColumnOptions, "primaryKey"> = {},
@@ -1211,6 +1213,32 @@ function jsonColumn(
       ...(options.openApi || {}),
     },
   }) as unknown as TypedPropertyDecorator<unknown>;
+}
+
+/**
+ * @description Decorator to define a computed (virtual) column.
+ * @description The value is computed by the database at query time from the given
+ * raw SQL expression instead of being stored as a physical column.
+ * @description Computed columns are excluded from migrations (no `type`), never
+ * written on insert/update, and only appear in results when explicitly selected.
+ * @param expression The raw SQL expression evaluated by the database at query time
+ * @param options Optional column options (e.g. `databaseName` for a custom alias)
+ * @example
+ * ```ts
+ * class User extends Model {
+ *   @column.computed("concat(first_name, last_name)")
+ *   fullName!: string | undefined;
+ * }
+ * ```
+ */
+function computedColumn(
+  expression: string,
+  options: Omit<ColumnOptions, "type"> = {},
+): TypedPropertyDecorator<any> {
+  return column({
+    ...options,
+    expression,
+  } as ColumnOptions) as TypedPropertyDecorator<any>;
 }
 
 export function getModelColumns(target: AnyModelConstructor): ColumnType[] {

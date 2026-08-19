@@ -11,6 +11,7 @@ import { SelectNode } from "../ast/query/node/select/basic_select";
 import { SelectJsonNode } from "../ast/query/node/select/select_json";
 import { Model } from "../models/model";
 import { ModelKey } from "../models/model_manager/model_manager_types";
+import { ColumnType } from "../models/decorators/model_decorators_types";
 import { SqlDataSource } from "../sql_data_source";
 import { SqlDataSourceType, TableFormat } from "../sql_data_source_types";
 import { JoinQueryBuilder } from "./join_query_builder";
@@ -61,6 +62,18 @@ export class SelectQueryBuilder<
       if (Array.isArray(column)) {
         const [columnPart, alias] = column as [string, string];
         this.modelSelectedColumns.push(alias);
+        const computed = this.resolveComputedColumn(columnPart);
+        if (computed) {
+          this.selectNodes.push(
+            new SelectNode(
+              `(${computed.expression}) as ${alias}`,
+              undefined,
+              undefined,
+              true,
+            ),
+          );
+          return;
+        }
         const casedColumn = convertCase(
           columnPart,
           this.model.databaseCaseConvention,
@@ -71,6 +84,18 @@ export class SelectQueryBuilder<
 
       const columnStr = column as string;
       this.modelSelectedColumns.push(columnStr);
+      const computed = this.resolveComputedColumn(columnStr);
+      if (computed) {
+        this.selectNodes.push(
+          new SelectNode(
+            `(${computed.expression}) as ${computed.alias}`,
+            undefined,
+            undefined,
+            true,
+          ),
+        );
+        return;
+      }
       const casedColumn = convertCase(
         columnStr,
         this.model.databaseCaseConvention,
@@ -130,6 +155,36 @@ export class SelectQueryBuilder<
     this.selectNodes = [];
     return this;
   }
+
+  /**
+   * @description Resolves a column reference to a computed column definition, if any.
+   * @description Strips an optional table prefix, looks the column up in the model's
+   * column metadata, and returns its raw SQL expression plus the database-convention
+   * alias to use in the SELECT clause. Returns `undefined` for non-computed columns.
+   * @internal
+   */
+  protected resolveComputedColumn(
+    column: string,
+  ): { expression: string; alias: string } | undefined {
+    const columnsByName = this.model.getColumnsByName?.();
+    if (!columnsByName || columnsByName.size === 0) {
+      return undefined;
+    }
+
+    const bareColumn = column.includes(".")
+      ? column.split(".").pop() as string
+      : column;
+    const meta: ColumnType | undefined = columnsByName.get(bareColumn);
+    if (!meta?.expression) {
+      return undefined;
+    }
+
+    return {
+      expression: meta.expression,
+      alias: meta.databaseName || bareColumn,
+    };
+  }
+
 
   /**
    * @description Clears the FROM clause

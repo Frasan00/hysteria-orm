@@ -24,6 +24,7 @@ import type {
   ColBinaryOptions,
   ColBooleanOptions,
   ColCharOptions,
+  ColComputedOptions,
   ColDateOptions,
   ColDatetimeOptions,
   ColDecimalOptions,
@@ -48,6 +49,7 @@ import type {
   ColumnDef,
   ColUuidOptions,
   ColVarbinaryOptions,
+  ComputedColumnDef,
   CreateSchemaResult,
   DefinedModel,
   DefinedView,
@@ -439,6 +441,15 @@ colBase.mediumint = function colMediumInt<
       key,
     );
   });
+};
+
+colBase.computed = function colComputed<T = unknown>(
+  expression: string,
+  options: ColComputedOptions = {},
+): ComputedColumnDef<T> {
+  return makeColumnDef<T>((target, key) => {
+    column.computed(expression, options as any)(target as any, key);
+  }) as ComputedColumnDef<T>;
 };
 
 colBase.encryption = {
@@ -843,6 +854,11 @@ function applyToZodSchema(target: any): void {
 
     for (const col of columns) {
       let zType: any;
+
+      if (col.expression) {
+        shape[col.columnName] = z.any().optional();
+        continue;
+      }
 
       if (Array.isArray(col.type)) {
         zType = z.enum(col.type as [string, ...string[]]);

@@ -2222,7 +2222,11 @@ export class ModelQueryBuilder<
     } else {
       // Explicitly select all parent columns with table prefix to prevent
       // ambiguous column names when JOINing (e.g., both tables having 'id')
-      for (const [dbName] of this.model.getColumnsByDatabaseName()) {
+      for (const [dbName, meta] of this.model.getColumnsByDatabaseName()) {
+        // Computed columns have no physical table column — skip them here.
+        if (meta.expression) {
+          continue;
+        }
         joinQb.selectRaw(`${this.model.table}.${dbName}`);
       }
     }

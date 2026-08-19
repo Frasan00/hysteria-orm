@@ -247,6 +247,15 @@ export type ColumnOptions = {
    * @migration Only affects auto-generated migrations
    */
   zerofill?: boolean;
+  /**
+   * @description Marks the column as a computed (virtual) column. The value is
+   * computed by the database at query time from this raw SQL expression instead
+   * of being stored as a physical column.
+   * @description Computed columns are excluded from migrations and never written
+   * on insert/update. They only appear in results when explicitly selected.
+   * @internal Set via `col.computed()` / `@column.computed()`.
+   */
+  expression?: string;
 } &
   /**
    * @description The data type of the column
@@ -277,6 +286,12 @@ export type ColumnType = {
     default?: string | number | null | boolean;
   };
   validate?: Validator | Validator[];
+  /**
+   * @description Raw SQL expression for computed (virtual) columns set via
+   * `col.computed()` / `@column.computed()`. The value is computed by the
+   * database at query time and is not a physical column.
+   */
+  expression?: string;
 };
 
 type ThroughModelCallback<T extends AnyModelConstructor> = () => T;

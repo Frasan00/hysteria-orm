@@ -170,6 +170,7 @@ export abstract class Model<T extends Model<T> = any> extends Entity {
       primaryKey && data?.[primaryKey] !== undefined ? "update" : "insert";
 
     for (const col of columns) {
+      if (col.expression) continue;
       const validators = col.validate;
       if (!validators) continue;
       const value = data ? data[col.columnName] : undefined;
