@@ -462,7 +462,7 @@ export class QueryBuilder<
    * @description Allows to avoid offset clause that can be inefficient for large datasets
    * @description If using a model query builder, primary key is used as discriminator by default
    * @param options - The options for the paginate with cursor
-   * @param options.discriminator - The discriminator to use for the paginate with Cursor pagination
+   * @param options.discriminator - The discriminator (or array of discriminators) to use for the paginate with Cursor pagination. Passing an array enables composite cursor pagination across multiple columns.
    * @param options.operator - The operator to use for the paginate with Cursor pagination
    * @param options.orderBy - The order by to use for the paginate with Cursor pagination
    * @param cursor - The cursor to use for the paginate with Cursor pagination
@@ -475,17 +475,41 @@ export class QueryBuilder<
     cursor?: Cursor<T, K>,
   ): Promise<[RawCursorPaginatedData<S>, Cursor<T, K>]> {
     const countQueryBuilder = this.clone();
+    const discriminators = Array.isArray(options.discriminator)
+      ? options.discriminator
+      : [options.discriminator];
+    const operator = options.operator || ">";
+    const orderBy = options.orderBy || "asc";
 
     if (!this.orderByNodes.length) {
-      this.orderBy(options.discriminator, options.orderBy || "asc");
+      for (const discriminator of discriminators) {
+        this.orderBy(discriminator, orderBy);
+      }
     }
 
     if (cursor) {
-      this.where(
-        cursor.key,
-        options.operator || ">",
-        cursor.value as WhereColumnValue<T, K>,
-      );
+      if (Array.isArray(cursor.key)) {
+        const keys = cursor.key;
+        const values = Array.isArray(cursor.value)
+          ? cursor.value
+          : [cursor.value];
+
+        for (let i = 0; i < keys.length; i++) {
+          const j = i;
+          this.orWhere((query) => {
+            for (let k = 0; k < j; k++) {
+              query.where(keys[k], "=", values[k] as WhereColumnValue<T, K>);
+            }
+            query.where(keys[j], operator, values[j] as WhereColumnValue<T, K>);
+          });
+        }
+      } else {
+        this.where(
+          cursor.key,
+          operator,
+          cursor.value as WhereColumnValue<T, K>,
+        );
+      }
     }
 
     this.limit(limit);
@@ -496,11 +520,6 @@ export class QueryBuilder<
     );
 
     const lastItem = data[data.length - 1];
-    const lastItemValue = lastItem
-      ? (lastItem[options.discriminator as keyof typeof lastItem] as
-          | string
-          | number)
-      : null;
     const paginationMetadata = getCursorPaginationMetadata(limit, count);
 
     return [
@@ -508,10 +527,26 @@ export class QueryBuilder<
         paginationMetadata: paginationMetadata,
         data,
       },
-      {
-        key: options.discriminator,
-        value: lastItemValue as string | number,
-      },
+      lastItem
+        ? {
+            key: options.discriminator,
+            value:
+              discriminators.length === 1
+                ? (lastItem[discriminators[0] as keyof typeof lastItem] as
+                    | string
+                    | number)
+                : discriminators.map(
+                    (d) =>
+                      lastItem[d as keyof typeof lastItem] as string | number,
+                  ),
+          }
+        : {
+            key: options.discriminator,
+            value:
+              discriminators.length === 1
+                ? (null as unknown as string)
+                : discriminators.map(() => null as unknown as string),
+          },
     ];
   }
 
