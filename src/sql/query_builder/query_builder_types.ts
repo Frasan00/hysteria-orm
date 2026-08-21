@@ -411,16 +411,18 @@ export type StreamOptions = {
   objectMode?: boolean;
 };
 
+export type CursorValue = string | number;
+
 export type Cursor<T extends Model, K extends ModelKey<T>> = {
-  key: K;
-  value: string | number;
+  key: K | K[];
+  value: CursorValue | CursorValue[];
 };
 
 export type PaginateWithCursorOptions<
   T extends Model,
   K extends ModelKey<T>,
 > = {
-  discriminator: K;
+  discriminator: K | K[];
   operator?: "<" | ">";
   orderBy?: "asc" | "desc";
 };

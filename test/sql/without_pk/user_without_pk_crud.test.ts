@@ -546,4 +546,29 @@ describe(`[${env.DB_TYPE}] Query Builder Paginate With Cursor`, () => {
     expect(users2.data.length).toBe(5);
     expect(users2.paginationMetadata.total).toBe(10);
   });
+
+  test("should paginate with a composite cursor", async () => {
+    await sql.from(UserWithoutPk).insertMany([
+      { name: "A", age: 20, email: "comp1@test.com" },
+      { name: "B", age: 20, email: "comp2@test.com" },
+      { name: "C", age: 21, email: "comp3@test.com" },
+      { name: "D", age: 22, email: "comp4@test.com" },
+    ]);
+
+    const [users, cursor] = await sql
+      .from(UserWithoutPk)
+      .orderBy("age", "asc")
+      .orderBy("name", "asc")
+      .paginateWithCursor(2, { discriminator: ["age", "name"] });
+    expect(users.data.map((u) => u.name)).toEqual(["A", "B"]);
+    expect(Array.isArray(cursor.key)).toBe(true);
+    expect(cursor.key).toEqual(["age", "name"]);
+
+    const [users2] = await sql
+      .from(UserWithoutPk)
+      .orderBy("age", "asc")
+      .orderBy("name", "asc")
+      .paginateWithCursor(2, { discriminator: ["age", "name"] }, cursor);
+    expect(users2.data.map((u) => u.name)).toEqual(["C", "D"]);
+  });
 });

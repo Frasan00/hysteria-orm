@@ -1267,6 +1267,39 @@ describe(`[${env.DB_TYPE}] Query Builder paginateWithCursor method`, () => {
     expect(cursor3.key).toBe("age");
     expect(cursor3.value).toBe(toBeChecked3);
   });
+
+  test("should paginate results with a composite discriminator", async () => {
+    await sql.from("users_without_pk").delete();
+    await sql.from("users_without_pk").insertMany([
+      { name: "A", age: 20, email: "comp1@test.com" },
+      { name: "B", age: 20, email: "comp2@test.com" },
+      { name: "C", age: 21, email: "comp3@test.com" },
+      { name: "D", age: 22, email: "comp4@test.com" },
+    ]);
+
+    const first = await sql
+      .from("users_without_pk")
+      .select("name", "age")
+      .orderBy("age", "asc")
+      .orderBy("name", "asc")
+      .paginateWithCursor(2, { discriminator: ["age", "name"] });
+
+    const [users1, cursor1] = first;
+    expect(users1.data.length).toBe(2);
+    expect(users1.data.map((u) => u.name)).toEqual(["A", "B"]);
+    expect(Array.isArray(cursor1.key)).toBe(true);
+    expect(cursor1.key).toEqual(["age", "name"]);
+    expect(Array.isArray(cursor1.value)).toBe(true);
+
+    const [users2] = await sql
+      .from("users_without_pk")
+      .select("name", "age")
+      .orderBy("age", "asc")
+      .orderBy("name", "asc")
+      .paginateWithCursor(2, { discriminator: ["age", "name"] }, cursor1);
+    expect(users2.data.length).toBe(2);
+    expect(users2.data.map((u) => u.name)).toEqual(["C", "D"]);
+  });
 });
 
 describe(`[${env.DB_TYPE}] Upsert Query Builder methods`, () => {
