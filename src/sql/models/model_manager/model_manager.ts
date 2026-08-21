@@ -219,8 +219,13 @@ export class ModelManager<T extends Model> {
     model: Partial<T>,
     options: InsertOptions<T> = {},
   ): WriteOperation<ModelWithoutRelations<T>> {
-    const rawInsertObject = Object.fromEntries(
-      Object.keys(model).map((col) => [col, model[col as keyof typeof model]]),
+    const rawInsertObject = this.interpreterUtils.stripComputedFromData(
+      Object.fromEntries(
+        Object.keys(model).map((col) => [
+          col,
+          model[col as keyof typeof model],
+        ]),
+      ),
     );
 
     const shouldDisableReturning =
@@ -344,11 +349,13 @@ export class ModelManager<T extends Model> {
     options: InsertOptions<T> = {},
   ): WriteOperation<ModelWithoutRelations<T>[]> {
     const rawInsertObjects = models.map((model) =>
-      Object.fromEntries(
-        Object.keys(model).map((col) => [
-          col,
-          model[col as keyof typeof model],
-        ]),
+      this.interpreterUtils.stripComputedFromData(
+        Object.fromEntries(
+          Object.keys(model).map((col) => [
+            col,
+            model[col as keyof typeof model],
+          ]),
+        ),
       ),
     );
 
@@ -492,12 +499,16 @@ export class ModelManager<T extends Model> {
       updateOnConflict: true,
     },
   ): WriteOperation<ModelWithoutRelations<T>[]> {
+    const filteredColumnsToUpdate =
+      this.interpreterUtils.filterComputedColumns(columnsToUpdate);
     const rawInsertObjects = data.map((model) =>
-      Object.fromEntries(
-        Object.keys(model).map((col) => [
-          col,
-          model[col as keyof typeof model],
-        ]),
+      this.interpreterUtils.stripComputedFromData(
+        Object.fromEntries(
+          Object.keys(model).map((col) => [
+            col,
+            model[col as keyof typeof model],
+          ]),
+        ),
       ),
     );
 
@@ -516,7 +527,7 @@ export class ModelManager<T extends Model> {
     const onDuplicateNode = new OnDuplicateNode(
       this.model.table,
       conflictColumns,
-      columnsToUpdate,
+      filteredColumnsToUpdate,
       (options.updateOnConflict ?? true) ? "update" : "ignore",
       previewReturning,
     );
@@ -570,7 +581,7 @@ export class ModelManager<T extends Model> {
         return this.executeMssqlMerge(
           insertObjects,
           conflictColumns,
-          columnsToUpdate,
+          filteredColumnsToUpdate,
           options,
           data,
         );
@@ -597,7 +608,7 @@ export class ModelManager<T extends Model> {
         new OnDuplicateNode(
           this.model.table,
           conflictColumns,
-          columnsToUpdate,
+          filteredColumnsToUpdate,
           (options.updateOnConflict ?? true) ? "update" : "ignore",
           nativeReturning,
         ),

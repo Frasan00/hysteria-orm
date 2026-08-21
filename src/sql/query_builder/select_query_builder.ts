@@ -172,7 +172,7 @@ export class SelectQueryBuilder<
     }
 
     const bareColumn = column.includes(".")
-      ? column.split(".").pop() as string
+      ? (column.split(".").pop() as string)
       : column;
     const meta: ColumnType | undefined = columnsByName.get(bareColumn);
     if (!meta?.expression) {
@@ -184,7 +184,6 @@ export class SelectQueryBuilder<
       alias: meta.databaseName || bareColumn,
     };
   }
-
 
   /**
    * @description Clears the FROM clause

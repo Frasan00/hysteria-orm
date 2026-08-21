@@ -295,7 +295,19 @@ describe(`[${env.DB_TYPE}] Error Handling - Type Conversion Errors`, () => {
       return;
     }
 
-    // Most databases throw on invalid timestamp values
+    // MariaDB coerces invalid date literals to '0000-00-00 00:00:00'
+    // (with a warning) and returns an empty result set instead of throwing.
+    if (env.DB_TYPE === "mariadb") {
+      const rawResult = await sql.rawQuery(
+        `SELECT * FROM users_with_uuid WHERE created_at = 'not-a-date'`,
+      );
+      const rows = Array.isArray(rawResult) ? rawResult[0] : rawResult;
+      expect(Array.isArray(rows) ? rows : []).toHaveLength(0);
+      return;
+    }
+
+    // MySQL (strict mode), PostgreSQL/CockroachDB/MSSQL/Oracle throw on
+    // invalid timestamp values
     await expect(
       sql.rawQuery(
         `SELECT * FROM users_with_uuid WHERE created_at = 'not-a-date'`,

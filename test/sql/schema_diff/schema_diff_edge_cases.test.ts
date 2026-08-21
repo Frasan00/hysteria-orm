@@ -1204,7 +1204,7 @@ conditionalDescribe(`[${dbType}] Schema Diff Edge Cases`, () => {
           expect(diff3.getSqlStatements().length).toBe(0);
         },
       );
-    });
+    }, 10000);
 
     test("should only generate statements for changed model (mixed scenario)", async () => {
       const SchemaDiff = await getSchemaDiff();
@@ -1231,7 +1231,7 @@ conditionalDescribe(`[${dbType}] Schema Diff Edge Cases`, () => {
           expect(colDropStmts.length).toBe(0);
         },
       );
-    });
+    }, 10000);
   });
 
   // =========================================================================

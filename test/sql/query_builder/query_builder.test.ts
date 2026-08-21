@@ -1612,7 +1612,10 @@ describe(`[${env.DB_TYPE}] Additional Query Builder methods`, () => {
     const qb = sql.from("users_without_pk").select("*");
     qb.lockForUpdate({ skipLocked: true });
     const q = qb.toQuery();
-    await qb.many();
+    // MariaDB doesn't support SKIP LOCKED — only verify SQL shape, skip execution
+    if (env.DB_TYPE !== "mariadb") {
+      await qb.many();
+    }
     expect(typeof q).toBe("string");
     if (env.DB_TYPE !== "sqlite") {
       expect(
@@ -1627,7 +1630,10 @@ describe(`[${env.DB_TYPE}] Additional Query Builder methods`, () => {
     const qb2 = sql.from("users_without_pk").select("*");
     qb2.forShare({ noWait: true });
     const q2 = qb2.toQuery();
-    await qb2.many();
+    // MariaDB doesn't support NOWAIT on LOCK IN SHARE MODE
+    if (env.DB_TYPE !== "mariadb") {
+      await qb2.many();
+    }
     expect(typeof q2).toBe("string");
   });
 });

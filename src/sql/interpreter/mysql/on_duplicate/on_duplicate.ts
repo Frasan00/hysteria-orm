@@ -28,7 +28,7 @@ class MysqlOnDuplicateInterpreter implements Interpreter {
         `${onDuplicateNode.table}.${noOpColumn}`,
       );
       return {
-        sql: `AS new ON DUPLICATE KEY UPDATE ${formattedNoOpColumn} = ${formattedNoOpColumn}`,
+        sql: `ON DUPLICATE KEY UPDATE ${formattedNoOpColumn} = ${formattedNoOpColumn}`,
         bindings: [],
       };
     }
@@ -36,12 +36,12 @@ class MysqlOnDuplicateInterpreter implements Interpreter {
     const formattedColumns = onDuplicateNode.columnsToUpdate
       .map(
         (column) =>
-          `${interpreterUtils.formatStringColumn("mysql", column)} = new.${interpreterUtils.formatStringColumn("mysql", column)}`,
+          `${interpreterUtils.formatStringColumn("mysql", column)} = VALUES(${interpreterUtils.formatStringColumn("mysql", column)})`,
       )
       .join(", ");
 
     return {
-      sql: `AS new ON DUPLICATE KEY UPDATE ${formattedColumns}`,
+      sql: `ON DUPLICATE KEY UPDATE ${formattedColumns}`,
       bindings: [],
     };
   }

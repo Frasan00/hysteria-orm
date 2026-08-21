@@ -137,10 +137,47 @@ export class InterpreterUtils {
    */
   resolveComputedExpression(column: string): string | undefined {
     const bareColumn = column.includes(".")
-      ? column.split(".").pop() as string
+      ? (column.split(".").pop() as string)
       : column;
     const meta = this.modelColumnsMap.get(bareColumn);
     return meta?.expression;
+  }
+
+  /**
+   * @description Returns true if the given column name (model property name)
+   * refers to a computed (virtual) column.
+   * @internal
+   */
+  isComputedColumn(column: string): boolean {
+    return !!this.modelColumnsMap.get(column)?.expression;
+  }
+
+  /**
+   * @description Removes computed (virtual) columns from a list of column names.
+   * Computed columns are never persisted and must not appear in INSERT, UPDATE,
+   * or ON CONFLICT / ON DUPLICATE KEY UPDATE clauses.
+   * @internal
+   */
+  filterComputedColumns(columns: string[]): string[] {
+    if (this.modelColumnsMap.size === 0) return columns;
+    return columns.filter((col) => !this.isComputedColumn(col));
+  }
+
+  /**
+   * @description Strips computed (virtual) columns from a data object.
+   * Used before building AST nodes so computed columns never appear in
+   * generated SQL (neither in execution nor in `toSql()` / `unWrap()` previews).
+   * @internal
+   */
+  stripComputedFromData<T extends Record<string, any>>(data: T): T {
+    if (this.modelColumnsMap.size === 0) return data;
+    const result: Record<string, any> = {};
+    for (const key of Object.keys(data)) {
+      if (!this.isComputedColumn(key)) {
+        result[key] = data[key];
+      }
+    }
+    return result as T;
   }
 
   /**

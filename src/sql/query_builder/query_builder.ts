@@ -871,7 +871,7 @@ export class QueryBuilder<
 
     this.insertNode = new InsertNode(
       this.fromNode,
-      [insertObject],
+      [this.interpreterUtils.stripComputedFromData(insertObject)],
       returning as string[] | undefined,
       shouldDisableReturning,
     );
@@ -944,8 +944,10 @@ export class QueryBuilder<
     returning?: string[],
   ): WriteOperation<T[] | void> {
     const rawModels = data.map((model) =>
-      Object.fromEntries(
-        Object.keys(model).map((column) => [column, model[column]]),
+      this.interpreterUtils.stripComputedFromData(
+        Object.fromEntries(
+          Object.keys(model).map((column) => [column, model[column]]),
+        ),
       ),
     );
 
@@ -1032,10 +1034,14 @@ export class QueryBuilder<
       updateOnConflict: true,
     },
   ): WriteOperation<T[]> {
-    const columnsToUpdate = Object.keys(data);
+    const columnsToUpdate = this.interpreterUtils.filterComputedColumns(
+      Object.keys(data),
+    );
     const conflictColumns = Object.keys(searchCriteria);
-    const rawInsertObject = Object.fromEntries(
-      Object.keys(data).map((column) => [column, data[column]]),
+    const rawInsertObject = this.interpreterUtils.stripComputedFromData(
+      Object.fromEntries(
+        Object.keys(data).map((column) => [column, data[column]]),
+      ),
     );
 
     this.insertNode = new InsertNode(
@@ -1134,9 +1140,13 @@ export class QueryBuilder<
       updateOnConflict: true,
     },
   ): WriteOperation<T[]> {
+    const filteredColumnsToUpdate =
+      this.interpreterUtils.filterComputedColumns(columnsToUpdate);
     const rawInsertObjects = data.map((record) =>
-      Object.fromEntries(
-        Object.keys(record).map((column) => [column, record[column]]),
+      this.interpreterUtils.stripComputedFromData(
+        Object.fromEntries(
+          Object.keys(record).map((column) => [column, record[column]]),
+        ),
       ),
     );
 
@@ -1149,7 +1159,7 @@ export class QueryBuilder<
     this.onDuplicateNode = new OnDuplicateNode(
       this.model.table,
       conflictColumns,
-      columnsToUpdate,
+      filteredColumnsToUpdate,
       (options.updateOnConflict ?? true) ? "update" : "ignore",
       options.returning as string[],
     );
@@ -1185,7 +1195,7 @@ export class QueryBuilder<
           return this.executeMssqlMergeRaw(
             insertObjects,
             conflictColumns,
-            columnsToUpdate,
+            filteredColumnsToUpdate,
             options,
             data,
           );
@@ -1201,7 +1211,7 @@ export class QueryBuilder<
           new OnDuplicateNode(
             this.model.table,
             conflictColumns,
-            columnsToUpdate,
+            filteredColumnsToUpdate,
             (options.updateOnConflict ?? true) ? "update" : "ignore",
             options.returning as string[],
           ),
@@ -1338,8 +1348,9 @@ export class QueryBuilder<
     data: Record<string, WriteQueryParam>,
     returning?: string[],
   ): WriteOperation<any> {
-    const rawColumns = Object.keys(data);
-    const rawValues = Object.values(data);
+    const strippedData = this.interpreterUtils.stripComputedFromData(data);
+    const rawColumns = Object.keys(strippedData);
+    const rawValues = Object.values(strippedData);
 
     this.updateNode = new UpdateNode(
       this.fromNode,

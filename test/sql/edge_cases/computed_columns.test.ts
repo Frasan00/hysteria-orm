@@ -1,9 +1,6 @@
 import { env } from "../../../src/env/env";
 import { SqlDataSource } from "../../../src/sql/sql_data_source";
-import {
-  col,
-  defineModel,
-} from "../../../src/sql/models/define_model";
+import { col, defineModel } from "../../../src/sql/models/define_model";
 import { column } from "../../../src/sql/models/decorators/model_decorators";
 import { Model } from "../../../src/sql/models/model";
 import type {
@@ -105,10 +102,7 @@ describe(`[${env.DB_TYPE}] computed columns`, () => {
     expect((plain as any).fullName).toBeUndefined();
 
     // Explicitly selected -> present, aliased to the model column name
-    const selected = await sql
-      .from(User)
-      .select(User.fullName)
-      .one();
+    const selected = await sql.from(User).select(User.fullName).one();
     expect(selected).not.toBeNull();
     expect((selected as any).fullName).toBe("John Doe");
   });
@@ -155,10 +149,7 @@ describe(`[${env.DB_TYPE}] computed columns`, () => {
       .orderBy(User.fullName, "asc")
       .many();
 
-    expect(rows.map((r: any) => r.fullName)).toEqual([
-      "Ann Alpha",
-      "Zed Zulu",
-    ]);
+    expect(rows.map((r: any) => r.fullName)).toEqual(["Ann Alpha", "Zed Zulu"]);
   });
 
   test("computed column is dropped from insert/update payloads", async () => {
@@ -169,6 +160,47 @@ describe(`[${env.DB_TYPE}] computed columns`, () => {
     });
 
     const row = await sql.from(User).one();
+    expect((row as any).firstName).toBe("Eve");
+    expect((row as any).lastName).toBe("Adams");
+  });
+
+  test("computed column never appears in generated INSERT SQL", async () => {
+    const sqlStr = sql
+      .from(User)
+      .insert({
+        firstName: "Eve",
+        lastName: "Adams",
+        fullName: "should be ignored" as any,
+      })
+      .toSql().sql;
+    expect(sqlStr.toLowerCase()).not.toContain("full_name");
+    expect(sqlStr.toLowerCase()).not.toContain("fullname");
+  });
+
+  test("computed column never appears in generated UPDATE SQL", async () => {
+    const sqlStr = sql
+      .from(User)
+      .where("id", 1)
+      .update({
+        firstName: "Eve2",
+        fullName: "should be ignored" as any,
+      })
+      .toSql().sql;
+    expect(sqlStr.toLowerCase()).not.toContain("full_name");
+    expect(sqlStr.toLowerCase()).not.toContain("fullname");
+  });
+
+  test("computed column never appears in generated upsert SQL", async () => {
+    // ModelQueryBuilder.upsertMany executes immediately (.then() on WriteOperation).
+    // If fullName leaked into the SQL, SQLite would reject the column in the
+    // ON CONFLICT DO UPDATE SET clause. columnsToUpdate is derived from data
+    // keys, so passing fullName in data tests that it's stripped before SQL gen.
+    await sql
+      .from(User)
+      .upsertMany(["id"] as any, [
+        { id: 1, firstName: "Eve", lastName: "Adams", fullName: "x" as any },
+      ]);
+    const row = await sql.from(User).where("id", 1).one();
     expect((row as any).firstName).toBe("Eve");
     expect((row as any).lastName).toBe("Adams");
   });
