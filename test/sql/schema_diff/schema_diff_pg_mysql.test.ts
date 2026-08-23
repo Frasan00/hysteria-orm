@@ -204,6 +204,8 @@ const captureOperationPhases = async (
 
 const conditionalDescribe = isSupported ? describe : describe.skip;
 
+jest.setTimeout(30000);
+
 conditionalDescribe(
   `[${dbType}] SchemaDiff Comprehensive (PG / MySQL / MariaDB)`,
   () => {

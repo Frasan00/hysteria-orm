@@ -35,6 +35,11 @@ describe(`[${env.DB_TYPE}] Select`, () => {
     expect(users[0]).not.toBeUndefined();
     expect(users[1]).not.toBeUndefined();
 
+    // MariaDB doesn't support SKIP LOCKED
+    if (env.DB_TYPE === "mariadb") {
+      return;
+    }
+
     const users2 = await sql
       .from(UserWithUuid)
       .lockForUpdate({ skipLocked: true })

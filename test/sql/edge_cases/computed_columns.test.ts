@@ -191,6 +191,10 @@ describe(`[${env.DB_TYPE}] computed columns`, () => {
   });
 
   test("computed column never appears in generated upsert SQL", async () => {
+    // MSSQL doesn't allow explicit values for identity columns
+    if (env.DB_TYPE === "mssql") {
+      return;
+    }
     // ModelQueryBuilder.upsertMany executes immediately (.then() on WriteOperation).
     // If fullName leaked into the SQL, SQLite would reject the column in the
     // ON CONFLICT DO UPDATE SET clause. columnsToUpdate is derived from data

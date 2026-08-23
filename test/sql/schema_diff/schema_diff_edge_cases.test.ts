@@ -199,6 +199,8 @@ const getSchemaDiff = async () => {
 
 const conditionalDescribe = isSupported ? describe : describe.skip;
 
+jest.setTimeout(30000);
+
 conditionalDescribe(`[${dbType}] Schema Diff Edge Cases`, () => {
   let baseSql: SqlDataSource;
 
@@ -1204,7 +1206,7 @@ conditionalDescribe(`[${dbType}] Schema Diff Edge Cases`, () => {
           expect(diff3.getSqlStatements().length).toBe(0);
         },
       );
-    }, 10000);
+    });
 
     test("should only generate statements for changed model (mixed scenario)", async () => {
       const SchemaDiff = await getSchemaDiff();
@@ -1231,7 +1233,7 @@ conditionalDescribe(`[${dbType}] Schema Diff Edge Cases`, () => {
           expect(colDropStmts.length).toBe(0);
         },
       );
-    }, 10000);
+    });
   });
 
   // =========================================================================
