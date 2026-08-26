@@ -186,7 +186,7 @@ describe("SqlDataSource Cache Integration", () => {
         logs: false,
         cacheStrategy: {
           cacheAdapter: new RedisCacheAdapter({
-            host: "localhost",
+            host: process.env.REDIS_HOST || "localhost",
             port: 6379,
             username: "default",
             password: "root",
@@ -242,7 +242,7 @@ describe("SqlDataSource Cache Integration", () => {
           logs: false,
           cacheStrategy: {
             cacheAdapter: new RedisCacheAdapter({
-              host: "localhost",
+              host: process.env.REDIS_HOST || "localhost",
               port: 6379,
               username: "default",
               password: "root",
@@ -280,7 +280,7 @@ describe("SqlDataSource Cache Integration", () => {
           logs: false,
           cacheStrategy: {
             cacheAdapter: new RedisCacheAdapter({
-              host: "localhost",
+              host: process.env.REDIS_HOST || "localhost",
               port: 6379,
               username: "default",
               password: "root",
@@ -321,7 +321,7 @@ describe("SqlDataSource Cache Integration", () => {
           logs: false,
           cacheStrategy: {
             cacheAdapter: new RedisCacheAdapter({
-              host: "localhost",
+              host: process.env.REDIS_HOST || "localhost",
               port: 6379,
               username: "default",
               password: "root",

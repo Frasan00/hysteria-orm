@@ -1,0 +1,11 @@
+<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+  <!-- Simplified database layers for small icon -->
+  <ellipse cx="16" cy="9" rx="12" ry="3.5" fill="#6366f1"/>
+  <path d="M 4 9 L 4 13 Q 4 16.5 16 16.5 Q 28 16.5 28 13 L 28 9" fill="#6366f1" opacity="0.8"/>
+
+  <ellipse cx="16" cy="18" rx="12" ry="3.5" fill="#6366f1" opacity="0.7"/>
+  <path d="M 4 18 L 4 22 Q 4 25.5 16 25.5 Q 28 25.5 28 22 L 28 18" fill="#6366f1" opacity="0.6"/>
+
+  <!-- Lightning bolt -->
+  <path d="M 16 4 L 14 12 L 17 12 L 15 20 L 20 11 L 17 11 Z" fill="#fbbf24" stroke="#f59e0b" stroke-width="0.8"/>
+</svg>

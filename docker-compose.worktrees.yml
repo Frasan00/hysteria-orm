@@ -66,17 +66,8 @@ services:
       SA_PASSWORD: Password123!
     # No host port mapping.
 
-  oracle:
-    image: "container-registry.oracle.com/database/free:23.7.0.0-lite"
-    environment:
-      ORACLE_PWD: "oracle"
-      ORACLE_SID: "FREE"
-    volumes:
-      - ./scripts/oracle:/opt/oracle/scripts/startup:ro
-    # No host port mapping.
-
   node:
-    image: node:22
+    image: node:22-trixie-slim
     working_dir: /app
     volumes:
       - .:/app
@@ -90,7 +81,6 @@ services:
       - mongo
       - cockroachdb
       - mssql
-      - oracle
 
 volumes:
   cockroach-data:

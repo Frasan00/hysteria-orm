@@ -1,0 +1,41 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background gradient -->
+  <defs>
+    <linearGradient id="bg-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#4338ca;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#6366f1;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg-gradient)"/>
+
+  <!-- Logo -->
+  <g transform="translate(450, 150)">
+    <!-- Database layers -->
+    <ellipse cx="150" cy="75" rx="105" ry="30" fill="#ffffff" opacity="0.9"/>
+    <path d="M 45 75 L 45 105 Q 45 135 150 135 Q 255 135 255 105 L 255 75" fill="#ffffff" opacity="0.8"/>
+
+    <ellipse cx="150" cy="150" rx="105" ry="30" fill="#ffffff" opacity="0.7"/>
+    <path d="M 45 150 L 45 180 Q 45 210 150 210 Q 255 210 255 180 L 255 150" fill="#ffffff" opacity="0.6"/>
+
+    <ellipse cx="150" cy="225" rx="105" ry="30" fill="#ffffff" opacity="0.5"/>
+
+    <!-- Lightning bolt -->
+    <path d="M 150 45 L 135 105 L 156 105 L 144 150 L 174 90 L 153 90 Z" fill="#fbbf24" stroke="#f59e0b" stroke-width="3"/>
+  </g>
+
+  <!-- Title -->
+  <text x="600" y="420" font-family="system-ui, -apple-system, sans-serif" font-size="80" font-weight="bold" fill="#ffffff" text-anchor="middle">
+    Hysteria ORM
+  </text>
+
+  <!-- Subtitle -->
+  <text x="600" y="480" font-family="system-ui, -apple-system, sans-serif" font-size="32" fill="#e0e7ff" text-anchor="middle">
+    TypeScript ORM for SQL, MongoDB &amp; Redis
+  </text>
+
+  <!-- Bottom text -->
+  <text x="600" y="560" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#c7d2fe" text-anchor="middle">
+    github.com/Frasan00/hysteria-orm
+  </text>
+</svg>

@@ -1,2 +1,26 @@
-yarn test:with:migrations
+#!/usr/bin/env sh
+set -eu
+
+COMPOSE_FILE="docker-compose.worktrees.yml"
+COMPOSE="docker compose -f $COMPOSE_FILE"
+
+cleanup() {
+  $COMPOSE down -v
+}
+
+trap cleanup EXIT HUP INT TERM
+
+$COMPOSE up -d --wait
+$COMPOSE exec -T \
+  -e HYSTERIA_WORKTREE_COMPOSE=1 \
+  -e DB_HOST=postgres \
+  -e DB_HOST_MYSQL=mysql \
+  -e DB_HOST_MARIADB=mariadb \
+  -e DB_PORT_MARIADB=3306 \
+  -e DB_HOST_POSTGRES=postgres \
+  -e DB_HOST_COCKROACHDB=cockroachdb \
+  -e DB_HOST_MSSQL=mssql \
+  -e MONGO_URL=mongodb://root:root@mongo:27017 \
+  -e REDIS_HOST=redis \
+  node sh -c "yarn install --frozen-lockfile && yarn test:with:migrations"
 git add .

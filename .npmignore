@@ -23,6 +23,8 @@ generate_interpreter_map.js
 .gitignore
 .github/
 .husky/
+.Codex/
+.sisyphus/
 
 # IDE and editor files
 .idea/
@@ -40,6 +42,7 @@ package-lock.json
 docker/
 docker-compose.yaml
 docker-compose.yml
+docker-compose.worktrees.yml
 scripts/
 
 # Database files
@@ -47,7 +50,7 @@ scripts/
 *.sqlite
 *.sqlite3
 
-# Documentation and community files
+# Documentation and community files (the package.json `files` allowlist publishes only lib/)
 website/
 docs/
 CONTRIBUTING.md

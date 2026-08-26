@@ -9,7 +9,12 @@ describe("useConnection test", () => {
     await SqlDataSource.useConnection(
       {
         type: "postgres",
-        host: "localhost",
+        host:
+          process.env.DB_HOST_POSTGRES ||
+          process.env.DB_HOST ||
+          (process.env.HYSTERIA_WORKTREE_COMPOSE === "1"
+            ? "postgres"
+            : "localhost"),
         username: "root",
         password: "root",
         database: "test",
@@ -45,7 +50,12 @@ describe("useConnection test", () => {
     await SqlDataSource.useConnection(
       {
         type: "mysql",
-        host: "localhost",
+        host:
+          process.env.DB_HOST_MYSQL ||
+          process.env.DB_HOST ||
+          (process.env.HYSTERIA_WORKTREE_COMPOSE === "1"
+            ? "mysql"
+            : "localhost"),
         username: "root",
         password: "root",
         database: "test",
@@ -79,7 +89,12 @@ describe("useConnection test", () => {
     await SqlDataSource.useConnection(
       {
         type: "mariadb",
-        host: "localhost",
+        host:
+          process.env.DB_HOST_MARIADB ||
+          process.env.DB_HOST ||
+          (process.env.HYSTERIA_WORKTREE_COMPOSE === "1"
+            ? "mariadb"
+            : "localhost"),
         username: "root",
         password: "root",
         database: "test",

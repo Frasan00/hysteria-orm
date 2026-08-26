@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://frasan00.github.io/hysteria-orm/sitemap.xml

@@ -7,7 +7,7 @@ describe("TestModel", () => {
 
   beforeAll(async () => {
     mongoDataSource = new MongoDataSource({
-      url: "mongodb://root:root@localhost:27017",
+      url: process.env.MONGO_URL || "mongodb://root:root@localhost:27017",
     });
     await mongoDataSource.connect();
   });
@@ -497,7 +497,7 @@ describe("TestModel rawCollection", () => {
 
   beforeAll(async () => {
     mongoDataSource = new MongoDataSource({
-      url: "mongodb://root:root@localhost:27017",
+      url: process.env.MONGO_URL || "mongodb://root:root@localhost:27017",
     });
     await mongoDataSource.connect();
   });

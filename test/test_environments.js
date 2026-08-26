@@ -1,3 +1,15 @@
+const useWorktreeCompose = process.env.HYSTERIA_WORKTREE_COMPOSE === "1";
+
+const hostFor = (database) =>
+  process.env[`DB_HOST_${database.toUpperCase()}`] ||
+  (useWorktreeCompose ? database : process.env.DB_HOST || "localhost");
+
+const portFor = (database, localPort, composePort = localPort) =>
+  Number(
+    process.env[`DB_PORT_${database.toUpperCase()}`] ||
+      (useWorktreeCompose ? composePort : process.env.DB_PORT || localPort),
+  );
+
 export const sqliteConfig = {
   type: "sqlite",
   database: "./sqlite.db",
@@ -6,8 +18,8 @@ export const sqliteConfig = {
 
 export const mysqlConfig = {
   type: "mysql",
-  host: process.env.DB_HOST || "localhost",
-  port: process.env.DB_PORT ? Number(process.env.DB_PORT) : 3306,
+  host: hostFor("mysql"),
+  port: portFor("mysql", 3306),
   user: process.env.DB_USER || "root",
   password: process.env.DB_PASSWORD || "root",
   database: process.env.DB_DATABASE || "test",
@@ -16,8 +28,8 @@ export const mysqlConfig = {
 
 export const mariadbConfig = {
   type: "mariadb",
-  host: process.env.DB_HOST || "localhost",
-  port: process.env.DB_PORT ? Number(process.env.DB_PORT) : 3307,
+  host: hostFor("mariadb"),
+  port: portFor("mariadb", 3307, 3306),
   user: process.env.DB_USER || "root",
   password: process.env.DB_PASSWORD || "root",
   database: process.env.DB_DATABASE || "test",
@@ -26,8 +38,8 @@ export const mariadbConfig = {
 
 export const pgConfig = {
   type: "postgres",
-  host: process.env.DB_HOST || "localhost",
-  port: process.env.DB_PORT ? Number(process.env.DB_PORT) : 5432,
+  host: hostFor("postgres"),
+  port: portFor("postgres", 5432),
   user: process.env.DB_USER || "root",
   password: process.env.DB_PASSWORD || "root",
   database: process.env.DB_DATABASE || "test",
@@ -36,8 +48,8 @@ export const pgConfig = {
 
 export const cockroachdbConfig = {
   type: "cockroachdb",
-  host: process.env.DB_HOST || "localhost",
-  port: process.env.DB_PORT ? Number(process.env.DB_PORT) : 26257,
+  host: hostFor("cockroachdb"),
+  port: portFor("cockroachdb", 26257),
   user: process.env.DB_USER || "root",
   password: process.env.DB_PASSWORD || "root",
   database: process.env.DB_DATABASE || "test",
@@ -46,8 +58,8 @@ export const cockroachdbConfig = {
 
 export const mssqlConfig = {
   type: "mssql",
-  host: process.env.DB_HOST || "localhost",
-  port: process.env.DB_PORT ? Number(process.env.DB_PORT) : 1433,
+  host: hostFor("mssql"),
+  port: portFor("mssql", 1433),
   user: process.env.DB_USER || "sa",
   password: process.env.DB_PASSWORD || "Password123!",
   database: process.env.DB_DATABASE || "master",

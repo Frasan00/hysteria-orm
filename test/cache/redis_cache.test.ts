@@ -5,7 +5,7 @@ describe("RedisCacheAdapter", () => {
 
   beforeAll(() => {
     adapter = new RedisCacheAdapter({
-      host: "localhost",
+      host: process.env.REDIS_HOST || "localhost",
       port: 6379,
       username: "default",
       password: "root",
