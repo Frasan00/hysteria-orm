@@ -73,249 +73,274 @@ export const execSql = async <
     // ignore observer errors during before phase to not block query
   }
 
-  if (!options?.shouldNotLog) {
+  const start = performance.now();
+
+  const logQuery = (durationMs?: number) => {
+    if (options?.shouldNotLog) {
+      return;
+    }
     log(
       query,
       sqlDataSource.logs,
       params,
       sqlDataSource.inputDetails.queryFormatOptions,
       sqlType,
+      durationMs,
     );
-  }
-  const start = performance.now();
+  };
 
-  switch (sqlType) {
-    case "mysql":
-    case "mariadb":
-      const mysqlDriver =
-        (sqlDataSource.sqlConnection as GetConnectionReturnType<"mysql">) ??
-        sqlDataSource.getPool();
+  try {
+    const result = await (async () => {
+      switch (sqlType) {
+        case "mysql":
+        case "mariadb":
+          const mysqlDriver =
+            (sqlDataSource.sqlConnection as GetConnectionReturnType<"mysql">) ??
+            sqlDataSource.getPool();
 
-      const mysqlResult = await withRetry(
-        () => mysqlDriver.query(query, params),
-        sqlDataSource.inputDetails.connectionPolicies?.retry,
-        sqlDataSource.logs,
-      );
-      // After-query observers
-      try {
-        const duration = formatDuration(start);
-        const chain = sqlDataSource.observerChain as ObserverChain | undefined;
-        if (chain && typeof chain.notifyAfter === "function") {
-          const afterCtx = { ...context, duration, result: mysqlResult };
-          await chain.notifyAfter(afterCtx);
-        }
-      } catch {
-        // ignore observer errors in after phase
-      }
-
-      if (returning === "affectedRows") {
-        return (mysqlResult[0] as { affectedRows: number })
-          .affectedRows as SqlRunnerReturnType<T, D>;
-      }
-
-      if (returning === "raw") {
-        return mysqlResult as SqlRunnerReturnType<T, D>;
-      }
-
-      return mysqlResult[0] as SqlRunnerReturnType<T, D>;
-    case "postgres":
-    case "cockroachdb":
-      const pgDriver =
-        (sqlDataSource.sqlConnection as GetConnectionReturnType<"postgres">) ??
-        sqlDataSource.getPool();
-
-      // Convert MySQL-style (?) placeholders to PostgreSQL-style ($1, $2, ...)
-      let pgParamIdx = 0;
-      const pgQuery = query.replace(/\?/g, () => `$${++pgParamIdx}`);
-
-      const pgResult = await withRetry(
-        () => pgDriver.query(pgQuery, params),
-        sqlDataSource.inputDetails.connectionPolicies?.retry,
-        sqlDataSource.logs,
-      );
-
-      // After-query observers for PostgreSQL
-      try {
-        const duration = formatDuration(start);
-        const chain = sqlDataSource.observerChain as ObserverChain | undefined;
-        if (chain && typeof chain.notifyAfter === "function") {
-          const afterCtx = { ...context, duration, result: pgResult };
-          await chain.notifyAfter(afterCtx);
-        }
-      } catch {
-        // ignore observer errors in after phase
-      }
-
-      if (returning === "rows") {
-        return pgResult.rows as SqlRunnerReturnType<T, D>;
-      }
-
-      if (returning === "raw") {
-        return pgResult as SqlRunnerReturnType<T, D>;
-      }
-
-      return pgResult.rowCount as number as SqlRunnerReturnType<T, D>;
-    case "sqlite":
-      const sqliteResult = await withRetry(
-        () =>
-          promisifySqliteQuery<M>(query, params, sqlDataSource, {
-            typeofModel: options?.sqlLiteOptions?.typeofModel,
-            mode: options?.sqlLiteOptions?.mode || "fetch",
-            models: options?.sqlLiteOptions?.models,
-          }),
-        sqlDataSource.inputDetails.connectionPolicies?.retry,
-        sqlDataSource.logs,
-      );
-
-      const sqliteDuration = formatDuration(start);
-      try {
-        const chain = sqlDataSource.observerChain as ObserverChain | undefined;
-        if (chain && typeof chain.notifyAfter === "function") {
-          const afterCtx = {
-            ...context,
-            duration: sqliteDuration,
-            result: sqliteResult,
-          };
-          await chain.notifyAfter(afterCtx);
-        }
-      } catch {
-        // ignore observer errors
-      }
-
-      if (returning === "raw") {
-        return !Array.isArray(sqliteResult)
-          ? ([sqliteResult] as SqlRunnerReturnType<T, D>)
-          : (sqliteResult as SqlRunnerReturnType<T, D>);
-      }
-
-      return sqliteResult as SqlRunnerReturnType<T, D>;
-    case "mssql":
-      const mssqlPool = sqlDataSource.getPool() as MssqlPoolInstance;
-      const mssqlRequest = sqlDataSource.sqlConnection
-        ? (
-            sqlDataSource.sqlConnection as GetConnectionReturnType<"mssql">
-          ).request()
-        : mssqlPool.request();
-
-      params.forEach((param, index) => {
-        mssqlRequest.input(`p${index}`, param);
-      });
-
-      let mssqlParamIdx = 0;
-      const mssqlQuery = query.replace(
-        /\?|@(\d+)/g,
-        () => `@p${mssqlParamIdx++}`,
-      );
-
-      const mssqlResult = await withRetry(
-        () => mssqlRequest.query(mssqlQuery),
-        sqlDataSource.inputDetails.connectionPolicies?.retry,
-        sqlDataSource.logs,
-      );
-
-      const mssqlDuration = formatDuration(start);
-      try {
-        const chain = sqlDataSource.observerChain as ObserverChain | undefined;
-        if (chain && typeof chain.notifyAfter === "function") {
-          const afterCtx = {
-            ...context,
-            duration: mssqlDuration,
-            result: mssqlResult,
-          };
-          await chain.notifyAfter(afterCtx);
-        }
-      } catch {
-        // ignore observer errors
-      }
-
-      if (returning === "affectedRows") {
-        return mssqlResult.rowsAffected[0] as SqlRunnerReturnType<T, D>;
-      }
-
-      if (returning === "raw") {
-        return mssqlResult as SqlRunnerReturnType<T, D>;
-      }
-
-      return mssqlResult.recordset as SqlRunnerReturnType<T, D>;
-    case "oracledb":
-      const ORACLE_OUT_FORMAT_OBJECT = 4002 as const;
-
-      let oracledbConnection: GetConnectionReturnType<"oracledb"> | null = null;
-      const isInTransaction = !!sqlDataSource.sqlConnection;
-      try {
-        oracledbConnection = sqlDataSource.sqlConnection
-          ? (sqlDataSource.sqlConnection as GetConnectionReturnType<"oracledb">)
-          : ((await sqlDataSource.getConnection()) as GetConnectionReturnType<"oracledb">);
-
-        const oracleParams = params.map(convertDateStringToDateForOracle);
-
-        // Convert MySQL-style (?) placeholders to Oracle-style (:1, :2, ...)
-        let oracleParamIdx = 0;
-        const oracleQuery = query.replace(/\?/g, () => `:${++oracleParamIdx}`);
-
-        const oracledbResult = await withRetry(
-          () =>
-            (oracledbConnection as GetConnectionReturnType<"oracledb">).execute(
-              oracleQuery,
-              oracleParams,
-              {
-                outFormat: ORACLE_OUT_FORMAT_OBJECT,
-                autoCommit: !isInTransaction,
-              },
-            ),
-          sqlDataSource.inputDetails.connectionPolicies?.retry,
-          sqlDataSource.logs,
-        );
-
-        const oracleDuration = formatDuration(start);
-        try {
-          const chain = sqlDataSource.observerChain as
-            | ObserverChain
-            | undefined;
-          if (chain && typeof chain.notifyAfter === "function") {
-            const afterCtx = {
-              ...context,
-              duration: oracleDuration,
-              result: oracledbResult,
-            };
-            await chain.notifyAfter(afterCtx);
-          }
-        } catch {
-          // ignore observer errors
-        }
-
-        if (returning === "affectedRows") {
-          return oracledbResult.rowsAffected as SqlRunnerReturnType<T, D>;
-        }
-
-        if (returning === "raw") {
-          return oracledbResult as SqlRunnerReturnType<T, D>;
-        }
-
-        // Oracle returns column names in UPPERCASE - normalize to lowercase
-        // Also convert any Lob objects (CLOB/BLOB) to strings/buffers
-        const normalizedRows = await Promise.all(
-          (oracledbResult.rows as any[])?.map(async (row) => {
-            const processedRow = await processOracleRow(row);
-            const normalizedRow: Record<string, any> = {};
-            for (const key in processedRow) {
-              normalizedRow[key.toLowerCase()] = processedRow[key];
+          const mysqlResult = await withRetry(
+            () => mysqlDriver.query(query, params),
+            sqlDataSource.inputDetails.connectionPolicies?.retry,
+            sqlDataSource.logs,
+          );
+          // After-query observers
+          try {
+            const duration = formatDuration(start);
+            const chain = sqlDataSource.observerChain as
+              | ObserverChain
+              | undefined;
+            if (chain && typeof chain.notifyAfter === "function") {
+              const afterCtx = { ...context, duration, result: mysqlResult };
+              await chain.notifyAfter(afterCtx);
             }
-            return normalizedRow;
-          }) ?? [],
-        );
+          } catch {
+            // ignore observer errors in after phase
+          }
 
-        return normalizedRows as SqlRunnerReturnType<T, D>;
-      } finally {
-        if (oracledbConnection && !isInTransaction) {
-          await oracledbConnection.close();
-        }
+          if (returning === "affectedRows") {
+            return (mysqlResult[0] as { affectedRows: number })
+              .affectedRows as SqlRunnerReturnType<T, D>;
+          }
+
+          if (returning === "raw") {
+            return mysqlResult as SqlRunnerReturnType<T, D>;
+          }
+
+          return mysqlResult[0] as SqlRunnerReturnType<T, D>;
+        case "postgres":
+        case "cockroachdb":
+          const pgDriver =
+            (sqlDataSource.sqlConnection as GetConnectionReturnType<"postgres">) ??
+            sqlDataSource.getPool();
+
+          // Convert MySQL-style (?) placeholders to PostgreSQL-style ($1, $2, ...)
+          let pgParamIdx = 0;
+          const pgQuery = query.replace(/\?/g, () => `$${++pgParamIdx}`);
+
+          const pgResult = await withRetry(
+            () => pgDriver.query(pgQuery, params),
+            sqlDataSource.inputDetails.connectionPolicies?.retry,
+            sqlDataSource.logs,
+          );
+
+          // After-query observers for PostgreSQL
+          try {
+            const duration = formatDuration(start);
+            const chain = sqlDataSource.observerChain as
+              | ObserverChain
+              | undefined;
+            if (chain && typeof chain.notifyAfter === "function") {
+              const afterCtx = { ...context, duration, result: pgResult };
+              await chain.notifyAfter(afterCtx);
+            }
+          } catch {
+            // ignore observer errors in after phase
+          }
+
+          if (returning === "rows") {
+            return pgResult.rows as SqlRunnerReturnType<T, D>;
+          }
+
+          if (returning === "raw") {
+            return pgResult as SqlRunnerReturnType<T, D>;
+          }
+
+          return pgResult.rowCount as number as SqlRunnerReturnType<T, D>;
+        case "sqlite":
+          const sqliteResult = await withRetry(
+            () =>
+              promisifySqliteQuery<M>(query, params, sqlDataSource, {
+                typeofModel: options?.sqlLiteOptions?.typeofModel,
+                mode: options?.sqlLiteOptions?.mode || "fetch",
+                models: options?.sqlLiteOptions?.models,
+              }),
+            sqlDataSource.inputDetails.connectionPolicies?.retry,
+            sqlDataSource.logs,
+          );
+
+          const sqliteDuration = formatDuration(start);
+          try {
+            const chain = sqlDataSource.observerChain as
+              | ObserverChain
+              | undefined;
+            if (chain && typeof chain.notifyAfter === "function") {
+              const afterCtx = {
+                ...context,
+                duration: sqliteDuration,
+                result: sqliteResult,
+              };
+              await chain.notifyAfter(afterCtx);
+            }
+          } catch {
+            // ignore observer errors
+          }
+
+          if (returning === "raw") {
+            return !Array.isArray(sqliteResult)
+              ? ([sqliteResult] as SqlRunnerReturnType<T, D>)
+              : (sqliteResult as SqlRunnerReturnType<T, D>);
+          }
+
+          return sqliteResult as SqlRunnerReturnType<T, D>;
+        case "mssql":
+          const mssqlPool = sqlDataSource.getPool() as MssqlPoolInstance;
+          const mssqlRequest = sqlDataSource.sqlConnection
+            ? (
+                sqlDataSource.sqlConnection as GetConnectionReturnType<"mssql">
+              ).request()
+            : mssqlPool.request();
+
+          params.forEach((param, index) => {
+            mssqlRequest.input(`p${index}`, param);
+          });
+
+          let mssqlParamIdx = 0;
+          const mssqlQuery = query.replace(
+            /\?|@(\d+)/g,
+            () => `@p${mssqlParamIdx++}`,
+          );
+
+          const mssqlResult = await withRetry(
+            () => mssqlRequest.query(mssqlQuery),
+            sqlDataSource.inputDetails.connectionPolicies?.retry,
+            sqlDataSource.logs,
+          );
+
+          const mssqlDuration = formatDuration(start);
+          try {
+            const chain = sqlDataSource.observerChain as
+              | ObserverChain
+              | undefined;
+            if (chain && typeof chain.notifyAfter === "function") {
+              const afterCtx = {
+                ...context,
+                duration: mssqlDuration,
+                result: mssqlResult,
+              };
+              await chain.notifyAfter(afterCtx);
+            }
+          } catch {
+            // ignore observer errors
+          }
+
+          if (returning === "affectedRows") {
+            return mssqlResult.rowsAffected[0] as SqlRunnerReturnType<T, D>;
+          }
+
+          if (returning === "raw") {
+            return mssqlResult as SqlRunnerReturnType<T, D>;
+          }
+
+          return mssqlResult.recordset as SqlRunnerReturnType<T, D>;
+        case "oracledb":
+          const ORACLE_OUT_FORMAT_OBJECT = 4002 as const;
+
+          let oracledbConnection: GetConnectionReturnType<"oracledb"> | null =
+            null;
+          const isInTransaction = !!sqlDataSource.sqlConnection;
+          try {
+            oracledbConnection = sqlDataSource.sqlConnection
+              ? (sqlDataSource.sqlConnection as GetConnectionReturnType<"oracledb">)
+              : ((await sqlDataSource.getConnection()) as GetConnectionReturnType<"oracledb">);
+
+            const oracleParams = params.map(convertDateStringToDateForOracle);
+
+            // Convert MySQL-style (?) placeholders to Oracle-style (:1, :2, ...)
+            let oracleParamIdx = 0;
+            const oracleQuery = query.replace(
+              /\?/g,
+              () => `:${++oracleParamIdx}`,
+            );
+
+            const oracledbResult = await withRetry(
+              () =>
+                (
+                  oracledbConnection as GetConnectionReturnType<"oracledb">
+                ).execute(oracleQuery, oracleParams, {
+                  outFormat: ORACLE_OUT_FORMAT_OBJECT,
+                  autoCommit: !isInTransaction,
+                }),
+              sqlDataSource.inputDetails.connectionPolicies?.retry,
+              sqlDataSource.logs,
+            );
+
+            const oracleDuration = formatDuration(start);
+            try {
+              const chain = sqlDataSource.observerChain as
+                | ObserverChain
+                | undefined;
+              if (chain && typeof chain.notifyAfter === "function") {
+                const afterCtx = {
+                  ...context,
+                  duration: oracleDuration,
+                  result: oracledbResult,
+                };
+                await chain.notifyAfter(afterCtx);
+              }
+            } catch {
+              // ignore observer errors
+            }
+
+            if (returning === "affectedRows") {
+              return oracledbResult.rowsAffected as SqlRunnerReturnType<T, D>;
+            }
+
+            if (returning === "raw") {
+              return oracledbResult as SqlRunnerReturnType<T, D>;
+            }
+
+            // Oracle returns column names in UPPERCASE - normalize to lowercase
+            // Also convert any Lob objects (CLOB/BLOB) to strings/buffers
+            const normalizedRows = await Promise.all(
+              (oracledbResult.rows as any[])?.map(async (row) => {
+                const processedRow = await processOracleRow(row);
+                const normalizedRow: Record<string, any> = {};
+                for (const key in processedRow) {
+                  normalizedRow[key.toLowerCase()] = processedRow[key];
+                }
+                return normalizedRow;
+              }) ?? [],
+            );
+
+            return normalizedRows as SqlRunnerReturnType<T, D>;
+          } finally {
+            if (oracledbConnection && !isInTransaction) {
+              await oracledbConnection.close();
+            }
+          }
+        default:
+          throw new HysteriaError(
+            "ExecSql",
+            `UNSUPPORTED_DATABASE_TYPE_${sqlType}`,
+          );
       }
-    default:
-      throw new HysteriaError(
-        "ExecSql",
-        `UNSUPPORTED_DATABASE_TYPE_${sqlType}`,
-      );
+    })();
+
+    logQuery(formatDuration(start));
+    return result;
+  } catch (error) {
+    logQuery(formatDuration(start));
+    throw error;
   }
 };
 

@@ -89,51 +89,154 @@ export function shouldLogQueries(
   return config.logQueries ?? true;
 }
 
-const colors = {
-  info: "\x1b[32m",
-  warn: "\x1b[33m",
-  error: "\x1b[31m",
-  reset: "\x1b[0m",
-};
+const ANSI = {
+  info: "32",
+  warn: "33",
+  error: "31",
+  query: "35",
+  dim: "2",
+  cyan: "36",
+} as const;
+
+const useColor =
+  typeof process !== "undefined" &&
+  Boolean(process.stdout?.isTTY) &&
+  !process.env.NO_COLOR;
+
+const paint = (code: string, text: string): string =>
+  useColor ? `\x1b[${code}m${text}\x1b[0m` : text;
 
 function getTimestamp(): string {
   const now = new Date();
   const pad = (n: number) => n.toString().padStart(2, "0");
+  const ms = now.getMilliseconds().toString().padStart(3, "0");
 
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+  return `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}.${ms}`;
 }
 
-function formatLogMessage(level: string, message: string): string {
-  const timestamp = getTimestamp();
-  const levelUpper = level.toUpperCase();
-
-  if (level === "error") {
-    return `${colors.error}[${levelUpper}] ${timestamp}\n${message}${colors.reset}\n`;
-  }
-
-  if (level === "warn") {
-    return `${colors.warn}[${levelUpper}] ${timestamp}\n${message}${colors.reset}\n`;
-  }
-
-  if (level === "info") {
-    return `${colors.info}[${levelUpper}] ${timestamp}\n${message}${colors.reset}\n`;
-  }
-
-  return `[${levelUpper}] ${timestamp}\n${message}\n`;
+function formatLogMessage(
+  level: "info" | "warn" | "error",
+  message: string,
+): string {
+  const ts = paint(ANSI.dim, `[${getTimestamp()}]`);
+  const badge = paint(ANSI[level], level.toUpperCase().padEnd(5));
+  return `${ts} ${badge} ${message}`;
 }
+
+const DEFAULT_MAX_STRING_LENGTH = 60;
+const DEFAULT_MAX_PARAMS = 10;
+const DEFAULT_MAX_PARAMS_LINE = 400;
+
+function truncate(value: string, max = DEFAULT_MAX_STRING_LENGTH): string {
+  if (value.length <= max) {
+    return value;
+  }
+  return `${value.slice(0, max)}…`;
+}
+
+function formatParam(param: any): string {
+  if (param === null || param === undefined) {
+    return "null";
+  }
+
+  if (typeof param === "string") {
+    return `'${truncate(param)}'`;
+  }
+
+  if (typeof param === "number" || typeof param === "bigint") {
+    return String(param);
+  }
+
+  if (typeof param === "boolean") {
+    return param ? "true" : "false";
+  }
+
+  if (param instanceof Date) {
+    return `'${truncate(param.toISOString())}'`;
+  }
+
+  if (typeof param === "object") {
+    let json: string;
+    try {
+      json = JSON.stringify(param);
+    } catch {
+      json = String(param);
+    }
+    return `'${truncate(json)}'`;
+  }
+
+  return truncate(String(param));
+}
+
+export function formatParams(params: any[] | undefined): string {
+  if (!params || params.length === 0) {
+    return "[]";
+  }
+
+  const shown = params.slice(0, DEFAULT_MAX_PARAMS).map(formatParam);
+  const hidden = params.length - shown.length;
+  if (hidden > 0) {
+    shown.push(`… (${hidden} more)`);
+  }
+
+  let line = `[${shown.join(", ")}]`;
+  if (line.length > DEFAULT_MAX_PARAMS_LINE) {
+    line = `${line.slice(0, DEFAULT_MAX_PARAMS_LINE)}…`;
+  }
+
+  return line;
+}
+
+const indent = (text: string, spaces: number): string => {
+  const pad = " ".repeat(spaces);
+  return text
+    .split("\n")
+    .map((line) => `${pad}${line}`)
+    .join("\n");
+};
+
+function colorizeDuration(ms: number): string {
+  const code = ms < 10 ? ANSI.info : ms < 100 ? ANSI.warn : ANSI.error;
+  return paint(code, `(${ms}ms)`);
+}
+
+function buildQueryMessage(
+  highlightedQuery: string,
+  params?: any[],
+  durationMs?: number,
+): string {
+  const ts = paint(ANSI.dim, `[${getTimestamp()}]`);
+  const badge = paint(ANSI.query, "QUERY");
+  const head =
+    durationMs === undefined
+      ? `${ts} ${badge}`
+      : `${ts} ${badge} ${colorizeDuration(durationMs)}`;
+
+  const lines = [head, indent(highlightedQuery, 2)];
+
+  if (params && params.length > 0) {
+    lines.push(
+      indent(`parameters: ${paint(ANSI.cyan, formatParams(params))}`, 4),
+    );
+  }
+
+  return lines.join("\n");
+}
+
+const defaultCustomLogger: CustomLogger = {
+  info(message: string): void {
+    console.log(formatLogMessage("info", message));
+  },
+  error(message: string): void {
+    console.error(formatLogMessage("error", message));
+  },
+  warn(message: string): void {
+    console.warn(formatLogMessage("warn", message));
+  },
+};
 
 class HysteriaLogger {
-  static loggerInstance: CustomLogger = {
-    info(message: string): void {
-      console.log(formatLogMessage("info", message));
-    },
-    error(message: string): void {
-      console.error(formatLogMessage("error", message));
-    },
-    warn(message: string): void {
-      console.warn(formatLogMessage("warn", message));
-    },
-  };
+  static loggerInstance: CustomLogger = defaultCustomLogger;
 
   static setCustomLogger(customLogger: CustomLogger) {
     this.loggerInstance = customLogger;
@@ -144,40 +247,22 @@ class HysteriaLogger {
   }
 
   static error(message: string | Error): void {
-    if (message instanceof Error) {
-      this.loggerInstance.error(String(message));
-      return;
-    }
-    this.loggerInstance.error(message);
+    this.loggerInstance.error(
+      message instanceof Error ? String(message) : message,
+    );
   }
 
   static warn(message: string): void {
     this.loggerInstance.warn(message);
   }
-}
 
-function formatParams(params: any[]): string {
-  return params
-    .map((param) => {
-      if (typeof param === "object") {
-        return JSON.stringify(param);
-      }
-
-      if (typeof param === "string") {
-        return `'${param}'`;
-      }
-
-      if (typeof param === "number") {
-        return param;
-      }
-
-      if (typeof param === "boolean") {
-        return param ? "true" : "false";
-      }
-
-      return param;
-    })
-    .join(", ");
+  static query(message: string): void {
+    if (this.loggerInstance === defaultCustomLogger) {
+      console.log(message);
+      return;
+    }
+    this.loggerInstance.info(message);
+  }
 }
 
 export function log(
@@ -186,6 +271,7 @@ export function log(
   params?: any[],
   formatOptions?: Parameters<typeof format>[1],
   dialect?: SqlDataSourceType,
+  durationMs?: number,
 ) {
   if (!shouldLogQueries(logs)) {
     return;
@@ -202,7 +288,6 @@ export function log(
           (dialect ? getSqlDialect(dialect) : undefined),
       });
     } catch {
-      // If formatting fails, we use the original query
       formattedQuery = query;
     }
   }
@@ -221,8 +306,7 @@ export function log(
     },
   });
 
-  const logMessage = `${highlightedQuery} [${formatParams(params || [])}]`;
-  HysteriaLogger.loggerInstance.info(logMessage);
+  HysteriaLogger.query(buildQueryMessage(highlightedQuery, params, durationMs));
 }
 
 export function logMessage(
@@ -236,6 +320,5 @@ export function logMessage(
 
   HysteriaLogger.loggerInstance[type](message);
 }
-1;
 
 export default HysteriaLogger;
