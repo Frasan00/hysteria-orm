@@ -70,72 +70,67 @@ console.log(result.paginationMetadata);
 
 ## Cursor-Based Pagination
 
-### `paginateWithCursor(limit, options, cursor?)`
+### `paginateWithCursor(limit, cursor?)`
 
-Cursor-based pagination is ideal for infinite-scroll UIs or real-time feeds where items may be inserted between page loads. Instead of using an offset, it uses a **discriminator column** value to determine where the next page starts.
+Cursor-based pagination is ideal for infinite-scroll UIs or real-time feeds where items may be inserted between page loads. Instead of using an offset, it uses the **`orderBy` clause** as the source of truth: the cursor is the value of the last row's sort column(s), and the next page starts after that value.
+
+It fetches `limit + 1` rows to determine whether more results exist, so it never runs a `COUNT(*)` query — keeping cost constant regardless of depth.
+
+:::warning
+An `orderBy` clause is **required** before calling `paginateWithCursor`. Calling it without one throws an error. `orderByRaw` is not supported for cursor pagination.
+:::
 
 ```typescript
 // First page
-const [firstPage, cursor] = await sql.from(User).paginateWithCursor(10, {
-  discriminator: "id",
-  orderBy: "asc",
-});
+const { data, nextCursor, hasMore } = await sql
+  .from(User)
+  .orderBy("id", "asc")
+  .paginateWithCursor(10);
 
-console.log(firstPage.data); // User[]
-console.log(cursor); // { key: "id", value: 42 }
+console.log(data); // User[]
+console.log(nextCursor); // { key: "id", value: 42 } | null
+console.log(hasMore); // boolean
 
 // Next page — pass the cursor from the previous response
-const [nextPage, nextCursor] = await sql.from(User).paginateWithCursor(
-  10,
-  {
-    discriminator: "id",
-    orderBy: "asc",
-  },
-  cursor,
-);
+const next = await sql
+  .from(User)
+  .orderBy("id", "asc")
+  .paginateWithCursor(10, nextCursor);
 ```
 
-### Composite Discriminators
+### Composite Cursors
 
-Pass an array of columns as `discriminator` to paginate on a composite key. This is useful when a single column is not unique enough to guarantee stable ordering (e.g., paginating by `(tenantId, createdAt)` within a multi-tenant table).
+Add multiple `orderBy` calls to paginate on a composite key. This is useful when a single column is not unique enough to guarantee stable ordering (e.g., paginating by `(tenantId, createdAt)` within a multi-tenant table).
 
 ```typescript
 // First page — composite cursor on (tenantId, createdAt)
-const [firstPage, cursor] = await sql.from(Event).paginateWithCursor(10, {
-  discriminator: ["tenantId", "createdAt"],
-  orderBy: "asc",
-});
+const { data, nextCursor } = await sql
+  .from(Event)
+  .orderBy("tenantId", "asc")
+  .orderBy("createdAt", "asc")
+  .paginateWithCursor(10);
 
-console.log(cursor); // { key: ["tenantId", "createdAt"], value: [5, "2026-01-15..."] }
+console.log(nextCursor); // { key: ["tenantId", "createdAt"], value: [5, "2026-01-15..."] }
 
 // Next page — pass the composite cursor back
-const [nextPage, nextCursor] = await sql.from(Event).paginateWithCursor(
-  10,
-  { discriminator: ["tenantId", "createdAt"], orderBy: "asc" },
-  cursor,
-);
+const next = await sql
+  .from(Event)
+  .orderBy("tenantId", "asc")
+  .orderBy("createdAt", "asc")
+  .paginateWithCursor(10, nextCursor);
 ```
 
 With a composite cursor, the generated `WHERE` clause uses tuple comparison semantics — it returns rows that are strictly greater than the cursor tuple across all columns, handling ties on the first column by comparing the second, and so on.
 
-### Cursor Options
+### Cursor Pagination Result
 
-| Option          | Type                          | Description                                                        |
-| --------------- | ----------------------------- | ------------------------------------------------------------------ |
-| `discriminator` | `keyof Model` \| `ModelKey[]` | Column (or array of columns) to paginate on. An array enables composite cursor pagination. |
-| `orderBy`       | `"asc"` \| `"desc"`           | Sort direction (default: `"asc"`). Applied to all discriminator columns. |
-| `operator`      | `">"` \| `"<"` etc.           | Comparison operator for cursor (default: `">"`).                   |
+| Property     | Type                          | Description                                                       |
+| ------------ | ----------------------------- | ----------------------------------------------------------------- |
+| `data`       | `Model[]`                     | Up to `limit` rows for the current page.                          |
+| `nextCursor` | `Cursor \| null`              | Cursor to pass to the next call, or `null` when the page is empty. |
+| `hasMore`    | `boolean`                     | `true` if there are more rows after this page.                    |
 
-### Cursor Pagination Metadata
-
-The cursor pagination metadata is simpler:
-
-| Property    | Type      | Description                      |
-| ----------- | --------- | -------------------------------- |
-| `total`     | `number`  | Total number of matching records |
-| `perPage`   | `number`  | Number of records per page       |
-| `firstPage` | `number`  | Always `1`                       |
-| `isEmpty`   | `boolean` | `true` if total is `0`           |
+> `hasMore` is derived from the `limit + 1` fetch: it is `true` when the page returned exactly `limit` rows. A page that ends exactly on the last row may report `hasMore: true`; the next call simply returns an empty page.
 
 ## Chunking Large Datasets
 

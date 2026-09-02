@@ -681,7 +681,14 @@ export function defineRelations<
   };
 
   const defs = callback(helpers);
-  return { _source: model, _defs: defs } as RelationDefinitions<Source, R>;
+  const relationRefs = Object.fromEntries(
+    Object.keys(defs).map((name) => [name, name]),
+  );
+  return {
+    _source: model,
+    _defs: defs,
+    ...relationRefs,
+  } as RelationDefinitions<Source, R>;
 }
 
 // ---------------------------------------------------------------------------

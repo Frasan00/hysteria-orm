@@ -1,5 +1,7 @@
 import { Model } from "./models/model";
 import { SelectedModel } from "./models/model_query_builder/model_query_builder_types";
+import type { ModelKey } from "./models/model_manager/model_manager_types";
+import type { Cursor } from "./query_builder/query_builder_types";
 
 export type PaginationMetadata = {
   perPage: number;
@@ -10,13 +12,6 @@ export type PaginationMetadata = {
   lastPage: number;
   hasMorePages: boolean;
   hasPages: boolean;
-};
-
-export type CursorPaginationMetadata = {
-  perPage: number;
-  firstPage: number;
-  isEmpty: boolean;
-  total: number;
 };
 
 export type PaginatedData<
@@ -33,8 +28,9 @@ export type CursorPaginatedData<
   S extends Record<string, any> = {},
   R extends Record<string, any> = {},
 > = {
-  paginationMetadata: CursorPaginationMetadata;
   data: ([keyof S] extends [never] ? T & R : SelectedModel<T, S, R>)[];
+  nextCursor: Cursor<T, ModelKey<T>> | null;
+  hasMore: boolean;
 };
 
 export function getPaginationMetadata(
@@ -51,17 +47,5 @@ export function getPaginationMetadata(
     lastPage: Math.max(1, Math.ceil(total / limit)),
     hasMorePages: page < Math.max(1, Math.ceil(total / limit)),
     hasPages: total > limit,
-  };
-}
-
-export function getCursorPaginationMetadata(
-  limit: number,
-  total: number,
-): CursorPaginationMetadata {
-  return {
-    perPage: limit,
-    total: total,
-    firstPage: 1,
-    isEmpty: total === 0,
   };
 }

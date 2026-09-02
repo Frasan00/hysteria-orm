@@ -1106,7 +1106,7 @@ export type RelationDefinitions<
 > = {
   readonly _source: _Source;
   readonly _defs: R;
-};
+} & (unknown extends R ? {} : { readonly [K in keyof R]: K & string });
 
 // ---------------------------------------------------------------------------
 // createSchema type resolution

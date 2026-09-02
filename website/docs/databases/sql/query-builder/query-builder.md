@@ -60,19 +60,20 @@ const users = await sql.from("users").where("status", "active").many();
 ### Pagination with Cursor
 
 Paginate with cursor is a pagination method that allows you to paginate the results with a cursor that does not use the offset clause (more efficient for large datasets).
-Discriminator is used to identify the unique value to paginate by.
-By default it generates an order by clause to the query `orderBy(discriminator, "asc")` if not already present.
+The `orderBy` clause is the source of truth for the cursor — it determines the column(s) and direction used to paginate. Calling `paginateWithCursor` without an `orderBy` clause throws an error.
 
 ```typescript
 // Get the first page
-const [users, cursor] = await sql
+const { data: users, nextCursor } = await sql
   .from("users")
-  .paginateWithCursor(1, { discriminator: "age" });
+  .orderBy("age", "asc")
+  .paginateWithCursor(1);
 
 // Get the second page
-const [users2, cursor2] = await sql
+const { data: users2 } = await sql
   .from("users")
-  .paginateWithCursor(1, { discriminator: "age" }, cursor);
+  .orderBy("age", "asc")
+  .paginateWithCursor(1, nextCursor);
 ```
 
 ### Joins

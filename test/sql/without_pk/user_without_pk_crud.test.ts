@@ -532,19 +532,23 @@ describe(`[${env.DB_TYPE}] Query Builder Paginate With Cursor`, () => {
       { name: "User 10", age: 30, email: "cursor10@test.com" },
     ]);
 
-    const [users, cursor] = await sql
+    const {
+      data: users,
+      nextCursor: cursor,
+      hasMore,
+    } = await sql
       .from(UserWithoutPk)
-      .paginateWithCursor(5, {
-        discriminator: "age",
-      });
-    expect(users.data.length).toBe(5);
-    expect(users.paginationMetadata.total).toBe(10);
+      .orderBy("age", "asc")
+      .paginateWithCursor(5);
+    expect(users.length).toBe(5);
+    expect(hasMore).toBe(true);
+    expect(cursor).not.toBeNull();
 
-    const [users2] = await sql
+    const { data: users2 } = await sql
       .from(UserWithoutPk)
-      .paginateWithCursor(5, { discriminator: "age" }, cursor);
-    expect(users2.data.length).toBe(5);
-    expect(users2.paginationMetadata.total).toBe(10);
+      .orderBy("age", "asc")
+      .paginateWithCursor(5, cursor!);
+    expect(users2.length).toBe(5);
   });
 
   test("should paginate with a composite cursor", async () => {
@@ -555,20 +559,21 @@ describe(`[${env.DB_TYPE}] Query Builder Paginate With Cursor`, () => {
       { name: "D", age: 22, email: "comp4@test.com" },
     ]);
 
-    const [users, cursor] = await sql
+    const { data: users, nextCursor: cursor } = await sql
       .from(UserWithoutPk)
       .orderBy("age", "asc")
       .orderBy("name", "asc")
-      .paginateWithCursor(2, { discriminator: ["age", "name"] });
-    expect(users.data.map((u) => u.name)).toEqual(["A", "B"]);
-    expect(Array.isArray(cursor.key)).toBe(true);
-    expect(cursor.key).toEqual(["age", "name"]);
+      .paginateWithCursor(2);
+    expect(users.map((u) => u.name)).toEqual(["A", "B"]);
+    expect(cursor).not.toBeNull();
+    expect(Array.isArray(cursor!.key)).toBe(true);
+    expect(cursor!.key).toEqual(["age", "name"]);
 
-    const [users2] = await sql
+    const { data: users2 } = await sql
       .from(UserWithoutPk)
       .orderBy("age", "asc")
       .orderBy("name", "asc")
-      .paginateWithCursor(2, { discriminator: ["age", "name"] }, cursor);
-    expect(users2.data.map((u) => u.name)).toEqual(["C", "D"]);
+      .paginateWithCursor(2, cursor!);
+    expect(users2.map((u) => u.name)).toEqual(["C", "D"]);
   });
 });

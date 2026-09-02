@@ -180,12 +180,31 @@ describe(`[${env.DB_TYPE}] CLS Transaction Auto-Propagation`, () => {
   testConcurrent(
     "Should isolate concurrent callback transactions",
     async () => {
+      const createBarrier = (participants: number) => {
+        let arrived = 0;
+        let release!: () => void;
+        const allArrived = new Promise<void>((resolve) => {
+          release = resolve;
+        });
+
+        return async () => {
+          arrived += 1;
+          if (arrived === participants) release();
+          await allArrived;
+        };
+      };
+
+      const writesComplete = createBarrier(2);
+      const readsComplete = createBarrier(2);
+
       const p1 = sql.transaction(async () => {
         await sql.from(UserWithoutPk).insert({
           ...UserFactory.getCommonUserData(),
           email: "concurrent1@test.com",
         });
+        await writesComplete();
         const users = await sql.from(UserWithoutPk).many();
+        await readsComplete();
         return users.length;
       });
 
@@ -194,7 +213,9 @@ describe(`[${env.DB_TYPE}] CLS Transaction Auto-Propagation`, () => {
           ...UserFactory.getCommonUserData(),
           email: "concurrent2@test.com",
         });
+        await writesComplete();
         const users = await sql.from(UserWithoutPk).many();
+        await readsComplete();
         return users.length;
       });
 

@@ -47,8 +47,8 @@ import { QueryBuilder } from "../../query_builder/query_builder";
 import type { SubQueryable } from "../../query_builder/query_builder";
 import {
   Cursor,
-  PaginateWithCursorOptions,
   RelationRetrieveMethod,
+  SelectableColumn,
   SqlFunction,
   SqlFunctionReturnType,
   StreamOptions,
@@ -81,6 +81,7 @@ import type {
   LoadOptions,
   ManyOptions,
   ModelSelectableInput,
+  ModelStream,
   OneOptions,
   RelatedInstance,
   SelectedModel,
@@ -92,7 +93,7 @@ export class ModelQueryBuilder<
   S extends Record<string, any> = ModelWithoutRelations<T>,
   R extends Record<string, any> = {},
   D extends SqlDataSourceType = SqlDataSourceType,
-> extends QueryBuilder<T> {
+> extends QueryBuilder<T, Record<string, any>> {
   declare relation: Relation;
   protected sqlModelManagerUtils: SqlModelManagerUtils<T>;
   protected relationQueryBuilders: ModelQueryBuilder<any>[];
@@ -259,7 +260,7 @@ export class ModelQueryBuilder<
   // @ts-expect-error - Override with more specific return type for type-safety
   override async stream(
     options: ManyOptions & StreamOptions = {},
-  ): Promise<PassThrough & AsyncGenerator<SelectedModel<T, S, R> | T>> {
+  ): Promise<ModelStream<SelectedModel<T, S, R> | T>> {
     !(options.ignoreHooks as string[])?.includes("beforeFetch") &&
       (await this.model.beforeFetch?.(this));
 
@@ -290,29 +291,15 @@ export class ModelQueryBuilder<
       },
     });
 
-    return stream as PassThrough & AsyncGenerator<SelectedModel<T, S, R> | T>;
+    return stream as ModelStream<SelectedModel<T, S, R> | T>;
   }
 
-  override async paginateWithCursor<K extends ModelKey<T>>(
+  override async paginateWithCursor(
     limit: number,
-    options?: PaginateWithCursorOptions<T, K>,
-    cursor?: Cursor<T, K>,
-  ): Promise<[CursorPaginatedData<T, S, R>, Cursor<T, K>]> {
-    if (!options) {
-      if (!this.model.primaryKey) {
-        throw new HysteriaError(
-          this.model.name + "::paginateWithCursor",
-          "PRIMARY_KEY_NOT_FOUND",
-        );
-      }
-
-      options = {
-        discriminator: this.model.primaryKey as K,
-      };
-    }
-
-    return super.paginateWithCursor(limit, options, cursor) as Promise<
-      [CursorPaginatedData<T, S, R>, Cursor<T, K>]
+    cursor?: Cursor<T, ModelKey<T>>,
+  ): Promise<CursorPaginatedData<T, S, R>> {
+    return super.paginateWithCursor(limit, cursor) as Promise<
+      CursorPaginatedData<T, S, R>
     >;
   }
 

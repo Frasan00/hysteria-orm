@@ -418,15 +418,6 @@ export type Cursor<T extends Model, K extends ModelKey<T>> = {
   value: CursorValue | CursorValue[];
 };
 
-export type PaginateWithCursorOptions<
-  T extends Model,
-  K extends ModelKey<T>,
-> = {
-  discriminator: K | K[];
-  operator?: "<" | ">";
-  orderBy?: "asc" | "desc";
-};
-
 export type UpsertOptionsRawBuilder = {
   updateOnConflict?: boolean;
   returning?: readonly string[];
@@ -463,11 +454,7 @@ export type RawPaginatedData<S extends Record<string, any>> = {
  * Simple cursor paginated data type for raw query builders (without Model constraint)
  */
 export type RawCursorPaginatedData<S extends Record<string, any>> = {
-  paginationMetadata: {
-    perPage: number;
-    firstPage: number;
-    isEmpty: boolean;
-    total: number;
-  };
   data: S[];
+  nextCursor: Cursor<any, any> | null;
+  hasMore: boolean;
 };

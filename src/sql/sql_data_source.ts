@@ -1129,7 +1129,7 @@ export class SqlDataSource<
    */
   async disconnect(): Promise<void> {
     if (!this.isConnected) {
-      log("Connection already closed or not established", this.logs);
+      logger.warn("Connection already closed or not established");
       return;
     }
 
@@ -1191,7 +1191,7 @@ export class SqlDataSource<
       );
     }
 
-    log("Closing connection", this.logs);
+    logger.warn("Closing connection");
     switch (this.sqlType) {
       case "mysql":
       case "mariadb":

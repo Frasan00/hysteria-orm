@@ -1241,31 +1241,47 @@ describe(`[${env.DB_TYPE}] Query Builder paginateWithCursor method`, () => {
 
   test("should properly paginate results with cursor", async () => {
     const toBeChecked1 = env.DB_TYPE === "cockroachdb" ? "21" : 21;
-    const [users, cursor] = await sql
+    const {
+      data: users,
+      nextCursor: cursor,
+      hasMore,
+    } = await sql
       .from("users_without_pk")
       .select("name", "age")
-      .paginateWithCursor(1, { discriminator: "age" });
-    expect(users.data.length).toBe(1);
-    expect(cursor.key).toBe("age");
-    expect(cursor.value).toBe(toBeChecked1);
+      .orderBy("age", "asc")
+      .paginateWithCursor(1);
+    expect(users.length).toBe(1);
+    expect(hasMore).toBe(true);
+    expect(cursor).not.toBeNull();
+    expect(cursor!.key).toBe("age");
+    expect(cursor!.value).toBe(toBeChecked1);
 
     const toBeChecked2 = env.DB_TYPE === "cockroachdb" ? "22" : 22;
-    const [users2, cursor2] = await sql
+    const { data: users2, nextCursor: cursor2 } = await sql
       .from("users_without_pk")
       .select("name", "age")
-      .paginateWithCursor(1, { discriminator: "age" }, cursor);
-    expect(users2.data.length).toBe(1);
-    expect(cursor2.key).toBe("age");
-    expect(cursor2.value).toBe(toBeChecked2);
+      .orderBy("age", "asc")
+      .paginateWithCursor(1, cursor!);
+    expect(users2.length).toBe(1);
+    expect(cursor2).not.toBeNull();
+    expect(cursor2!.key).toBe("age");
+    expect(cursor2!.value).toBe(toBeChecked2);
 
     const toBeChecked3 = env.DB_TYPE === "cockroachdb" ? "23" : 23;
-    const [users3, cursor3] = await sql
+    const {
+      data: users3,
+      nextCursor: cursor3,
+      hasMore: hasMore3,
+    } = await sql
       .from("users_without_pk")
       .select("name", "age")
-      .paginateWithCursor(1, { discriminator: "age" }, cursor2);
-    expect(users3.data.length).toBe(1);
-    expect(cursor3.key).toBe("age");
-    expect(cursor3.value).toBe(toBeChecked3);
+      .orderBy("age", "asc")
+      .paginateWithCursor(1, cursor2!);
+    expect(users3.length).toBe(1);
+    expect(hasMore3).toBe(false);
+    expect(cursor3).not.toBeNull();
+    expect(cursor3!.key).toBe("age");
+    expect(cursor3!.value).toBe(toBeChecked3);
   });
 
   test("should paginate results with a composite discriminator", async () => {
@@ -1277,28 +1293,28 @@ describe(`[${env.DB_TYPE}] Query Builder paginateWithCursor method`, () => {
       { name: "D", age: 22, email: "comp4@test.com" },
     ]);
 
-    const first = await sql
+    const { data: users1, nextCursor: cursor1 } = await sql
       .from("users_without_pk")
       .select("name", "age")
       .orderBy("age", "asc")
       .orderBy("name", "asc")
-      .paginateWithCursor(2, { discriminator: ["age", "name"] });
+      .paginateWithCursor(2);
 
-    const [users1, cursor1] = first;
-    expect(users1.data.length).toBe(2);
-    expect(users1.data.map((u) => u.name)).toEqual(["A", "B"]);
-    expect(Array.isArray(cursor1.key)).toBe(true);
-    expect(cursor1.key).toEqual(["age", "name"]);
-    expect(Array.isArray(cursor1.value)).toBe(true);
+    expect(users1.length).toBe(2);
+    expect(users1.map((u) => u.name)).toEqual(["A", "B"]);
+    expect(cursor1).not.toBeNull();
+    expect(Array.isArray(cursor1!.key)).toBe(true);
+    expect(cursor1!.key).toEqual(["age", "name"]);
+    expect(Array.isArray(cursor1!.value)).toBe(true);
 
-    const [users2] = await sql
+    const { data: users2 } = await sql
       .from("users_without_pk")
       .select("name", "age")
       .orderBy("age", "asc")
       .orderBy("name", "asc")
-      .paginateWithCursor(2, { discriminator: ["age", "name"] }, cursor1);
-    expect(users2.data.length).toBe(2);
-    expect(users2.data.map((u) => u.name)).toEqual(["C", "D"]);
+      .paginateWithCursor(2, cursor1!);
+    expect(users2.length).toBe(2);
+    expect(users2.map((u) => u.name)).toEqual(["C", "D"]);
   });
 });
 

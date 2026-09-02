@@ -26,10 +26,7 @@ import type {
   WhereColumnValue,
 } from "../models/model_manager/model_manager_types";
 import type { NumberModelKey } from "../models/model_types";
-import {
-  getCursorPaginationMetadata,
-  getPaginationMetadata,
-} from "../pagination";
+import { getPaginationMetadata } from "../pagination";
 import { deepCloneNode } from "../resources/utils";
 import { SqlDataSource } from "../sql_data_source";
 import type { ReplicationType, TableFormat } from "../sql_data_source_types";
@@ -40,11 +37,11 @@ import type {
   ComposeBuildRawSelect,
   ComposeRawSelect,
   Cursor,
-  PaginateWithCursorOptions,
   PluckReturnType,
   RawCursorPaginatedData,
   RawPaginatedData,
   Selectable,
+  SelectableColumn,
   SqlFunction,
   SqlFunctionReturnType,
   StreamOptions,
@@ -418,6 +415,7 @@ export class QueryBuilder<
    * @description It will continue to yield chunks until the query returns no results
    * @description Useful for large queries that need to be processed in chunks
    * @warning overrides limit and offset set before in the query builder
+   * @warning chunk() methods uses limit-offset that could be slow on a large batch, ensure to use a cursor paginated chunking system for better performance
    * @param chunkSize - The size of the chunk
    * @returns a generator of the chunks
    * @example
@@ -459,95 +457,82 @@ export class QueryBuilder<
   /**
    * @description Executes the query and retrieves multiple paginated results.
    * @description Overrides the limit and offset clauses in order to paginate the results.
-   * @description Allows to avoid offset clause that can be inefficient for large datasets
-   * @description If using a model query builder, primary key is used as discriminator by default
-   * @param options - The options for the paginate with cursor
-   * @param options.discriminator - The discriminator (or array of discriminators) to use for the paginate with Cursor pagination. Passing an array enables composite cursor pagination across multiple columns.
-   * @param options.operator - The operator to use for the paginate with Cursor pagination
-   * @param options.orderBy - The order by to use for the paginate with Cursor pagination
-   * @param cursor - The cursor to use for the paginate with Cursor pagination
-   * @warning If no order by clause is present in the query, the query will add an order by clause to the query `orderBy(discriminator, "asc")`
-   * @returns the pagination metadata and the cursor for the next page
+   * @description Requires an `orderBy` clause to be set on the query — it is the source of truth for the cursor.
+   * @throws Throws if no `orderBy` clause is set on the query
+   * @warning orderByRaw is not supported for cursor pagination
    */
-  async paginateWithCursor<K extends ModelKey<T>>(
+  async paginateWithCursor(
     limit: number,
-    options: PaginateWithCursorOptions<T, K>,
-    cursor?: Cursor<T, K>,
-  ): Promise<[RawCursorPaginatedData<S>, Cursor<T, K>]> {
-    const countQueryBuilder = this.clone();
-    const discriminators = Array.isArray(options.discriminator)
-      ? options.discriminator
-      : [options.discriminator];
-    const operator = options.operator || ">";
-    const orderBy = options.orderBy || "asc";
-
+    cursor?: Cursor<T, ModelKey<T>>,
+  ): Promise<RawCursorPaginatedData<S>> {
     if (!this.orderByNodes.length) {
-      for (const discriminator of discriminators) {
-        this.orderBy(discriminator, orderBy);
-      }
+      throw new HysteriaError(
+        this.model.name + "::paginateWithCursor",
+        "ORDER_BY_REQUIRED",
+      );
     }
+
+    const orderByNodes = this.orderByNodes;
+    if (orderByNodes.some((node) => node.isRawValue)) {
+      throw new HysteriaError(
+        this.model.name + "::paginateWithCursor",
+        "ORDER_BY_RAW_NOT_SUPPORTED",
+      );
+    }
+
+    const keys = orderByNodes.map((node) => node.column);
+    const operator = orderByNodes[0].direction === "desc" ? "<" : ">";
 
     if (cursor) {
-      if (Array.isArray(cursor.key)) {
-        const keys = cursor.key;
-        const values = Array.isArray(cursor.value)
-          ? cursor.value
-          : [cursor.value];
+      const values = Array.isArray(cursor.value)
+        ? cursor.value
+        : [cursor.value];
 
-        for (let i = 0; i < keys.length; i++) {
-          const j = i;
-          this.orWhere((query) => {
-            for (let k = 0; k < j; k++) {
-              query.where(keys[k], "=", values[k] as WhereColumnValue<T, K>);
-            }
-            query.where(keys[j], operator, values[j] as WhereColumnValue<T, K>);
-          });
-        }
-      } else {
-        this.where(
-          cursor.key,
-          operator,
-          cursor.value as WhereColumnValue<T, K>,
-        );
+      for (let i = 0; i < keys.length; i++) {
+        const j = i;
+        this.orWhere((query) => {
+          for (let k = 0; k < j; k++) {
+            query.where(
+              keys[k] as ModelKey<T>,
+              "=",
+              values[k] as WhereColumnValue<T, ModelKey<T>>,
+            );
+          }
+          query.where(
+            keys[j] as ModelKey<T>,
+            operator,
+            values[j] as WhereColumnValue<T, ModelKey<T>>,
+          );
+        });
       }
     }
 
-    this.limit(limit);
+    this.limit(limit + 1);
 
-    const [data, count] = await this.executePaginateQueries(
-      () => this.many(),
-      () => countQueryBuilder.getCount(),
-    );
+    const data = await this.many();
+    const hasMore = data.length > limit;
+    const pageData = hasMore ? data.slice(0, limit) : data;
 
-    const lastItem = data[data.length - 1];
-    const paginationMetadata = getCursorPaginationMetadata(limit, count);
+    const lastItem = pageData[pageData.length - 1];
 
-    return [
-      {
-        paginationMetadata: paginationMetadata,
-        data,
-      },
-      lastItem
+    return {
+      data: pageData,
+      hasMore,
+      nextCursor: lastItem
         ? {
-            key: options.discriminator,
+            key: keys.length === 1 ? keys[0] : keys,
             value:
-              discriminators.length === 1
-                ? (lastItem[discriminators[0] as keyof typeof lastItem] as
+              keys.length === 1
+                ? (lastItem[keys[0] as keyof typeof lastItem] as
                     | string
                     | number)
-                : discriminators.map(
+                : keys.map(
                     (d) =>
                       lastItem[d as keyof typeof lastItem] as string | number,
                   ),
           }
-        : {
-            key: options.discriminator,
-            value:
-              discriminators.length === 1
-                ? (null as unknown as string)
-                : discriminators.map(() => null as unknown as string),
-          },
-    ];
+        : null,
+    };
   }
 
   /**

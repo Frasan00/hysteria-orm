@@ -10,8 +10,11 @@ cleanup() {
 
 trap cleanup EXIT HUP INT TERM
 
-$COMPOSE up -d --wait
-$COMPOSE exec -T \
+$COMPOSE up -d --wait \
+  mysql postgres mariadb redis mongo cockroachdb mssql
+$COMPOSE up -d cockroach-init
+$COMPOSE wait cockroach-init
+$COMPOSE run --rm --no-deps -T --build \
   -e HYSTERIA_WORKTREE_COMPOSE=1 \
   -e DB_HOST=postgres \
   -e DB_HOST_MYSQL=mysql \
@@ -22,5 +25,5 @@ $COMPOSE exec -T \
   -e DB_HOST_MSSQL=mssql \
   -e MONGO_URL=mongodb://root:root@mongo:27017 \
   -e REDIS_HOST=redis \
-  node sh -c "yarn install --frozen-lockfile && yarn test:with:migrations"
+  node sh -c "yarn install --frozen-lockfile && (ls node_modules/sqlite3/build/Release/*.node >/dev/null 2>&1 || (cd node_modules/sqlite3 && npx node-gyp rebuild)) && yarn test:with:migrations"
 git add .

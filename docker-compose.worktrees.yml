@@ -67,12 +67,12 @@ services:
     # No host port mapping.
 
   node:
-    image: node:22-trixie-slim
+    build: .
     working_dir: /app
     volumes:
       - .:/app
       - node_modules:/app/node_modules
-    command: sleep infinity
+    command: sh -c "yarn install --frozen-lockfile && (ls node_modules/sqlite3/build/Release/*.node >/dev/null 2>&1 || (cd node_modules/sqlite3 && npx node-gyp rebuild)) && sleep infinity"
     depends_on:
       - mysql
       - postgres

@@ -140,6 +140,23 @@ Always select the foreign key in the relation query builder, otherwise the relat
 const users = await sql.from(UserModel).load("posts").many();
 ```
 
+### Relation References
+
+When relations are declared with `defineRelations`, the returned object exposes each relation name as a string literal — the same way `defineModel` exposes column references like `UserModel.id`. This gives you a type-safe, refactor-proof way to pass relations to `.load()`:
+
+```typescript
+const UserRelations = defineRelations(UserModel, ({ hasMany }) => ({
+  posts: hasMany(PostModel, { foreignKey: "userId" }),
+}));
+
+const schema = createSchema({ users: UserModel, posts: PostModel }, { users: UserRelations });
+
+// UserRelations.posts is the string "posts" — same pattern as UserModel.id
+const users = await sql.from(UserModel).load(UserRelations.posts).many();
+```
+
+Just like column references, the relation reference is a plain string at runtime, so it works anywhere a relation name string is accepted (`.load()`, `.havingRelated()`, etc.).
+
 ### Selecting Columns
 
 The foreign key (`userId`) must be selected for relations to work:

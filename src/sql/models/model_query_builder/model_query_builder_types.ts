@@ -3,6 +3,19 @@ import { Model } from "../../models/model";
 import { ModelKey, ModelRelation } from "../model_manager/model_manager_types";
 import { ModelDataProperties, ModelWithoutRelations } from "../model_types";
 import { Simplify } from "../../../utils/types";
+import type { PassThrough } from "node:stream";
+
+/**
+ * A PassThrough stream that yields typed model rows.
+ * Redeclares the async iterator so `for await` yields `T` instead of `any`
+ * (PassThrough's own iterator is typed `AsyncIterator<any>`).
+ */
+export interface ModelStream<T> extends PassThrough {
+  next(...[value]: [] | [any]): Promise<IteratorResult<T, any>>;
+  return(value?: any | PromiseLike<any>): Promise<IteratorResult<T, any>>;
+  throw(e?: any): Promise<IteratorResult<T, any>>;
+  [Symbol.asyncIterator](): AsyncGenerator<T>;
+}
 
 /**
  * Strategy for loading relations
