@@ -488,23 +488,29 @@ export class QueryBuilder<
         ? cursor.value
         : [cursor.value];
 
-      for (let i = 0; i < keys.length; i++) {
-        const j = i;
-        this.orWhere((query) => {
-          for (let k = 0; k < j; k++) {
-            query.where(
-              keys[k] as ModelKey<T>,
-              "=",
-              values[k] as WhereColumnValue<T, ModelKey<T>>,
+      // One AND-chained group so the keyset predicate composes as
+      // "WHERE <base> AND ((g0) OR (g1) OR ...)" — sibling where nodes are
+      // chained with the NEXT node's chainsWith, so appending bare
+      // orWhere() siblings would OR them against any pre-existing WHERE.
+      this.andWhere((cursorQuery) => {
+        for (let i = 0; i < keys.length; i++) {
+          const j = i;
+          cursorQuery.orWhere((keysetQuery) => {
+            for (let k = 0; k < j; k++) {
+              keysetQuery.where(
+                keys[k] as ModelKey<T>,
+                "=",
+                values[k] as WhereColumnValue<T, ModelKey<T>>,
+              );
+            }
+            keysetQuery.where(
+              keys[j] as ModelKey<T>,
+              operator,
+              values[j] as WhereColumnValue<T, ModelKey<T>>,
             );
-          }
-          query.where(
-            keys[j] as ModelKey<T>,
-            operator,
-            values[j] as WhereColumnValue<T, ModelKey<T>>,
-          );
-        });
-      }
+          });
+        }
+      });
     }
 
     this.limit(limit + 1);
@@ -515,18 +521,24 @@ export class QueryBuilder<
 
     const lastItem = pageData[pageData.length - 1];
 
+    // orderBy columns may be qualified typed refs ("users.age"); returned rows
+    // are keyed by the bare model key ("age"), so resolve before reading.
+    const rowKeys = keys.map((key) =>
+      key.includes(".") ? key.slice(key.lastIndexOf(".") + 1) : key,
+    );
+
     return {
       data: pageData,
       hasMore,
       nextCursor: lastItem
         ? {
-            key: keys.length === 1 ? keys[0] : keys,
+            key: rowKeys.length === 1 ? rowKeys[0] : rowKeys,
             value:
-              keys.length === 1
-                ? (lastItem[keys[0] as keyof typeof lastItem] as
+              rowKeys.length === 1
+                ? (lastItem[rowKeys[0] as keyof typeof lastItem] as
                     | string
                     | number)
-                : keys.map(
+                : rowKeys.map(
                     (d) =>
                       lastItem[d as keyof typeof lastItem] as string | number,
                   ),

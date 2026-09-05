@@ -576,4 +576,35 @@ describe(`[${env.DB_TYPE}] Query Builder Paginate With Cursor`, () => {
       .paginateWithCursor(2, cursor!);
     expect(users2.map((u) => u.name)).toEqual(["C", "D"]);
   });
+
+  test("should paginate with typed (qualified) column references", async () => {
+    await sql.from(UserWithoutPk).insertMany([
+      { name: "t-a", age: 20, email: "t1@test.com" },
+      { name: "t-b", age: 20, email: "t2@test.com" },
+      { name: "t-c", age: 21, email: "t3@test.com" },
+      { name: "t-d", age: 22, email: "t4@test.com" },
+    ]);
+
+    const first = await sql
+      .from(UserWithoutPk)
+      .orderBy(UserWithoutPk.age, "asc")
+      .orderBy(UserWithoutPk.name, "asc")
+      .paginateWithCursor(2);
+    expect(first.data.map((u) => u.name)).toEqual(["t-a", "t-b"]);
+    expect(first.nextCursor!.key).toEqual(["age", "name"]);
+
+    const cursorValue = first.nextCursor!.value;
+    if (!Array.isArray(cursorValue)) {
+      throw new Error("expected an array cursor value for a composite key");
+    }
+    expect(Number(cursorValue[0])).toBe(20);
+    expect(cursorValue[1]).toBe("t-b");
+
+    const second = await sql
+      .from(UserWithoutPk)
+      .orderBy(UserWithoutPk.age, "asc")
+      .orderBy(UserWithoutPk.name, "asc")
+      .paginateWithCursor(2, first.nextCursor!);
+    expect(second.data.map((u) => u.name)).toEqual(["t-c", "t-d"]);
+  });
 });

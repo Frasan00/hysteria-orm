@@ -1316,6 +1316,45 @@ describe(`[${env.DB_TYPE}] Query Builder paginateWithCursor method`, () => {
     expect(users2.length).toBe(2);
     expect(users2.map((u) => u.name)).toEqual(["C", "D"]);
   });
+
+  test("should paginate a filtered query without repeating rows", async () => {
+    await sql.from("users_without_pk").delete();
+    await sql.from("users_without_pk").insertMany([
+      { name: "f-a1", age: 21, email: "f1@test.com", status: "active" },
+      { name: "f-a2", age: 21, email: "f2@test.com", status: "active" },
+      { name: "f-a3", age: 22, email: "f3@test.com", status: "active" },
+      { name: "f-a4", age: 22, email: "f4@test.com", status: "active" },
+      { name: "f-a5", age: 23, email: "f5@test.com", status: "active" },
+      { name: "f-a6", age: 24, email: "f6@test.com", status: "active" },
+      { name: "f-b1", age: 25, email: "f7@test.com", status: "inactive" },
+    ]);
+
+    const first = await sql
+      .from("users_without_pk")
+      .where("status", "active")
+      .orderBy("age", "asc")
+      .orderBy("name", "asc")
+      .paginateWithCursor(2);
+    expect(first.data.map((u) => u.name)).toEqual(["f-a1", "f-a2"]);
+
+    const second = await sql
+      .from("users_without_pk")
+      .where("status", "active")
+      .orderBy("age", "asc")
+      .orderBy("name", "asc")
+      .paginateWithCursor(2, first.nextCursor!);
+    expect(second.data.map((u) => u.name)).toEqual(["f-a3", "f-a4"]);
+
+    const third = await sql
+      .from("users_without_pk")
+      .where("status", "active")
+      .orderBy("age", "asc")
+      .orderBy("name", "asc")
+      .paginateWithCursor(2, second.nextCursor!);
+    expect(third.data.map((u) => u.name)).toEqual(["f-a5", "f-a6"]);
+    expect(third.hasMore).toBe(false);
+    expect(third.nextCursor).not.toBeNull();
+  });
 });
 
 describe(`[${env.DB_TYPE}] Upsert Query Builder methods`, () => {
