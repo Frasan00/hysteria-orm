@@ -24,7 +24,8 @@ const db = new ${importType}({
   database: "${database}",${
     type === "sqlite"
       ? `
-  logs: true,
+  // query logs are synchronous by default — enable only when debugging
+  logs: false,
   migrations: {
     path: "database/migrations",
   },`
@@ -33,7 +34,8 @@ const db = new ${importType}({
   host: "localhost",
   username: "root",
   password: "root",
-  logs: true,
+  // query logs are synchronous by default — enable only when debugging
+  logs: false,
   migrations: {
     path: "database/migrations",
   },`

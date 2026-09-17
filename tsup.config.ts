@@ -4,6 +4,9 @@ import pkg from "./package.json";
 const external = [
   ...Object.keys(pkg.dependencies ?? {}),
   ...Object.keys(pkg.peerDependencies ?? {}),
+  // bun native modules are guarded dynamic imports, never bundled
+  "bun",
+  "bun:sqlite",
 ];
 
 export default defineConfig([

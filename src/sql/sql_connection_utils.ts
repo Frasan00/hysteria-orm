@@ -1,118 +1,55 @@
-import type {
-  MssqlDataSourceInput,
-  MysqlSqlDataSourceInput,
-  PostgresSqlDataSourceInput,
-  SqliteDataSourceInput,
-} from "../data_source/data_source_types";
-import type {
-  MssqlImport,
-  Mysql2Import,
-  PgImport,
-  Sqlite3Import,
-} from "../drivers/driver_types";
-import { DriverFactory } from "../drivers/drivers_factory";
-import { env } from "../env/env";
-import { HysteriaError } from "../errors/hysteria_error";
+import type { DriverAdapter } from "../drivers/driver_adapter";
+import { resolveDriverAdapter } from "../drivers/driver_adapter_registry";
+import "../drivers/adapters/node";
+import { resolveJsEnvironment } from "../platform/js_environment";
 import {
   SqlDataSourceInput,
   SqlDataSourceType,
-  SqlDriverSpecificOptions,
-  Sqlite3ConnectionOptions,
   SqlPoolType,
 } from "./sql_data_source_types";
 
-const getDriverConnection = async (type: SqlDataSourceType) => {
-  const driver = (await DriverFactory.getDriver(type)).client;
-  return driver;
+/**
+ * Registers the bun-native drivers once, when the resolved environment is bun.
+ * Safe to request from node (the guarded imports never run there).
+ */
+const ensureBunDrivers = async (): Promise<void> => {
+  if (
+    (await import("../platform/js_environment")).resolveJsEnvironment() !==
+    "bun"
+  ) {
+    return;
+  }
+  const mod = await import("../drivers/adapters/bun");
+  await mod.registerBunDrivers();
+};
+
+/**
+ * @description Resolves the driver adapter for (type, environment, driver
+ * override) and creates its pool. This is the single seam where execution
+ * drivers are selected; future drivers (mysql, web-sqlite, …) plug in here.
+ */
+export const createSqlDriver = async <T extends SqlDataSourceType>(
+  type: T,
+  input?: SqlDataSourceInput<T>,
+): Promise<DriverAdapter<T>> => {
+  const jsEnvironment = resolveJsEnvironment(input?.jsEnvironment);
+  if (jsEnvironment === "bun") {
+    await ensureBunDrivers();
+  }
+  const adapter = await resolveDriverAdapter(
+    type,
+    jsEnvironment,
+    input?.driver,
+    input,
+  );
+  await adapter.createPool();
+  return adapter;
 };
 
 export const createSqlPool = async <T extends SqlDataSourceType>(
   type: T,
   input?: SqlDataSourceInput<T>,
 ): Promise<SqlPoolType> => {
-  const driver = await getDriverConnection(type);
-  switch (type) {
-    case "mariadb":
-    case "mysql":
-      const mysqlInput = input as MysqlSqlDataSourceInput & {
-        driverOptions?: SqlDriverSpecificOptions<"mysql" | "mariadb">;
-      };
-
-      const mysqlDriver = driver as Mysql2Import;
-      const mysqlPool = mysqlDriver.createPool({
-        host: mysqlInput.host,
-        port: mysqlInput.port,
-        user: mysqlInput.username,
-        password: mysqlInput.password,
-        database: mysqlInput.database,
-        ...mysqlInput?.driverOptions,
-      });
-      return mysqlPool;
-    case "postgres":
-    case "cockroachdb":
-      const pgInput = input as PostgresSqlDataSourceInput & {
-        driverOptions?: SqlDriverSpecificOptions<"postgres" | "cockroachdb">;
-      };
-      const pgDriver = driver as PgImport;
-      const pgPool = new pgDriver.Pool({
-        host: pgInput.host,
-        port: pgInput.port,
-        user: pgInput.username,
-        password: pgInput.password,
-        database: pgInput.database,
-        ...pgInput?.driverOptions,
-      });
-
-      return pgPool;
-    case "sqlite":
-      const sqliteDriver = driver as Sqlite3Import;
-      const sqliteInput = input as SqliteDataSourceInput & {
-        driverOptions?: Sqlite3ConnectionOptions;
-      };
-
-      const database = sqliteInput?.database as string;
-      const sqlitePool = new sqliteDriver.Database(
-        database,
-        sqliteInput?.driverOptions?.mode ?? undefined,
-        (err) => {
-          if (err) {
-            throw new HysteriaError(
-              "SqliteDataSource::createSqlPool",
-              "CONNECTION_NOT_ESTABLISHED",
-            );
-          }
-        },
-      );
-      return sqlitePool;
-    case "mssql":
-      const mssqlDriver = driver as MssqlImport;
-      const mssqlInput = input as MssqlDataSourceInput & {
-        driverOptions?: SqlDriverSpecificOptions<"mssql">;
-      };
-
-      const { options, ...rest } = mssqlInput.driverOptions ?? {};
-      const mssqlPool = new mssqlDriver.ConnectionPool({
-        server: mssqlInput.host ?? "localhost",
-        port: mssqlInput.port,
-        database: mssqlInput.database,
-        user: mssqlInput.username,
-        password: mssqlInput.password,
-        ...rest,
-        options: {
-          trustServerCertificate:
-            env.MSSQL_TRUST_SERVER_CERTIFICATE ?? undefined,
-          ...options,
-          abortTransactionOnError: false,
-          enableImplicitTransactions: false,
-        },
-      });
-      await mssqlPool.connect();
-
-      return mssqlPool;
-    default:
-      throw new HysteriaError(
-        "SqlConnectionUtils::createSqlPool",
-        `UNSUPPORTED_DATABASE_TYPE_${type}`,
-      );
-  }
+  const adapter = await createSqlDriver(type, input);
+  return adapter.pool;
 };

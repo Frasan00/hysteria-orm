@@ -1,4 +1,6 @@
-import crypto from "node:crypto";
+import { bytesToHex, loadPlatform } from "../../../platform/platform_adapter";
+
+const platform = loadPlatform();
 import { HysteriaError } from "../../../errors/hysteria_error";
 import { convertCase } from "../../../utils/case_utils";
 import type { CaseConvention } from "../../../utils/case_utils";
@@ -2703,7 +2705,7 @@ export class ModelQueryBuilder<
           );
         }
 
-        const rn = crypto.randomBytes(6).toString("hex");
+        const rn = bytesToHex(platform.crypto.randomBytes(6));
         const withTableName = `${relation.model.table}_cte_${rn}`;
         const orderByClause = relationQueryBuilder.orderByNodes
           .map((orderByNode) => {
@@ -2787,7 +2789,7 @@ export class ModelQueryBuilder<
             );
         }
 
-        const rnM2m = crypto.randomBytes(6).toString("hex");
+        const rnM2m = bytesToHex(platform.crypto.randomBytes(6));
         const withTableNameM2m = `${relation.model.table}_cte_${rnM2m}`;
         const orderByClauseM2m = relationQueryBuilder.orderByNodes
           .map((orderByNode) => {
@@ -2806,7 +2808,7 @@ export class ModelQueryBuilder<
         relationQueryBuilder.clearOffset();
         relationQueryBuilder.clearOrderBy();
 
-        const cteLeftForeignKey = `${crypto.randomBytes(6).toString("hex")}_left_foreign_key`;
+        const cteLeftForeignKey = `${bytesToHex(platform.crypto.randomBytes(6))}_left_foreign_key`;
         const qbM2m = relationQueryBuilder.with(withTableNameM2m, (innerQb) =>
           innerQb
             .select(...m2mSelectedColumns)

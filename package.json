@@ -33,7 +33,8 @@
     "benchmark:mysql": "tsx benchmark/run.ts --dialect mysql",
     "benchmark:setup:pg": "prisma generate --schema benchmark/prisma/pg.prisma",
     "benchmark:setup:mysql": "prisma generate --schema benchmark/prisma/mysql.prisma",
-    "benchmark:setup": "yarn benchmark:setup:pg && yarn benchmark:setup:mysql"
+    "benchmark:setup": "yarn benchmark:setup:pg && yarn benchmark:setup:mysql",
+    "test:bun": "bun test test/bun/"
   },
   "main": "./lib/index.cjs",
   "module": "./lib/index.js",
@@ -59,6 +60,7 @@
     "@faker-js/faker": "^9.9.0",
     "@prisma/adapter-pg": "^7.6.0",
     "@prisma/client": "^7.6.0",
+    "@types/bun": "^1.2.0",
     "@types/express": "^5.0.6",
     "@types/ioredis": "^5.0.0",
     "@types/jest": "^30.0.0",

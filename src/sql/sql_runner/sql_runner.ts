@@ -1,7 +1,5 @@
 import { PassThrough } from "node:stream";
-import { performance } from "node:perf_hooks";
-import { randomUUID } from "node:crypto";
-import { DriverNotFoundError } from "../../drivers/driver_constants";
+import { loadPlatform } from "../../platform/platform_adapter";
 import { HysteriaError } from "../../errors/hysteria_error";
 import { log, logMessage, type LoggerConfig } from "../../utils/logger";
 import { Model } from "../models/model";
@@ -10,25 +8,25 @@ import { SqlDataSource } from "../sql_data_source";
 import {
   ConnectionPolicies,
   GetConnectionReturnType,
-  MssqlPoolInstance,
-  MysqlConnectionInstance,
-  PgPoolClientInstance,
   SqlDataSourceType,
 } from "../sql_data_source_types";
 import {
   Returning,
   SqlLiteOptions,
   SqlRunnerReturnType,
+  RawQueryResponseType,
 } from "./sql_runner_types";
-import { promisifySqliteQuery, SQLiteStream } from "./sql_runner_utils";
 import {
   deriveOperationFromQuery,
   QueryContext,
+  ObserverChain,
 } from "../../sql/observers/observer";
-import { ObserverChain } from "../../sql/observers/observer";
+import type { DriverAdapter } from "../../drivers/driver_adapter";
+
+const platform = loadPlatform();
 
 function formatDuration(start: number): number {
-  const duration = performance.now() - start;
+  const duration = platform.timing.now() - start;
   return Math.round(duration * 100) / 100;
 }
 
@@ -52,12 +50,12 @@ export const execSql = async <
 
   // Prepare and fire before-query observers if any
   const context: QueryContext = {
-    id: randomUUID(),
+    id: platform.crypto.randomUUID(),
     sql: query,
     params,
     model: undefined,
     operation: deriveOperationFromQuery(query),
-    timestamp: performance.now(),
+    timestamp: platform.timing.now(),
   };
 
   try {
@@ -69,7 +67,7 @@ export const execSql = async <
     // ignore observer errors during before phase to not block query
   }
 
-  const start = performance.now();
+  const start = platform.timing.now();
 
   const logQuery = (durationMs?: number) => {
     if (options?.shouldNotLog) {
@@ -86,178 +84,38 @@ export const execSql = async <
   };
 
   try {
-    const result = await (async () => {
-      switch (sqlType) {
-        case "mysql":
-        case "mariadb":
-          const mysqlDriver =
-            (sqlDataSource.sqlConnection as GetConnectionReturnType<"mysql">) ??
-            sqlDataSource.getPool();
+    const adapter = sqlDataSource.driverAdapter as DriverAdapter<D>;
+    if (!adapter) {
+      throw new HysteriaError("ExecSql", `CONNECTION_NOT_ESTABLISHED`);
+    }
 
-          const mysqlResult = await withRetry(
-            () => mysqlDriver.query(query, params),
-            sqlDataSource.inputDetails.connectionPolicies?.retry,
-            sqlDataSource.logs,
-          );
-          // After-query observers
-          try {
-            const duration = formatDuration(start);
-            const chain = sqlDataSource.observerChain as
-              | ObserverChain
-              | undefined;
-            if (chain && typeof chain.notifyAfter === "function") {
-              const afterCtx = { ...context, duration, result: mysqlResult };
-              await chain.notifyAfter(afterCtx);
-            }
-          } catch {
-            // ignore observer errors in after phase
-          }
+    const result = await withRetry(
+      () =>
+        adapter.execute(query, params, {
+          returning,
+          sqlLiteOptions: options?.sqlLiteOptions,
+          connection: sqlDataSource.sqlConnection as
+            | GetConnectionReturnType<D>
+            | undefined,
+        }),
+      sqlDataSource.inputDetails.connectionPolicies?.retry,
+      sqlDataSource.logs,
+    );
 
-          if (returning === "affectedRows") {
-            return (mysqlResult[0] as { affectedRows: number })
-              .affectedRows as SqlRunnerReturnType<T, D>;
-          }
-
-          if (returning === "raw") {
-            return mysqlResult as SqlRunnerReturnType<T, D>;
-          }
-
-          return mysqlResult[0] as SqlRunnerReturnType<T, D>;
-        case "postgres":
-        case "cockroachdb":
-          const pgDriver =
-            (sqlDataSource.sqlConnection as GetConnectionReturnType<"postgres">) ??
-            sqlDataSource.getPool();
-
-          // Convert MySQL-style (?) placeholders to PostgreSQL-style ($1, $2, ...)
-          let pgParamIdx = 0;
-          const pgQuery = query.replace(/\?/g, () => `$${++pgParamIdx}`);
-
-          const pgResult = await withRetry(
-            () => pgDriver.query(pgQuery, params),
-            sqlDataSource.inputDetails.connectionPolicies?.retry,
-            sqlDataSource.logs,
-          );
-
-          // After-query observers for PostgreSQL
-          try {
-            const duration = formatDuration(start);
-            const chain = sqlDataSource.observerChain as
-              | ObserverChain
-              | undefined;
-            if (chain && typeof chain.notifyAfter === "function") {
-              const afterCtx = { ...context, duration, result: pgResult };
-              await chain.notifyAfter(afterCtx);
-            }
-          } catch {
-            // ignore observer errors in after phase
-          }
-
-          if (returning === "rows") {
-            return pgResult.rows as SqlRunnerReturnType<T, D>;
-          }
-
-          if (returning === "raw") {
-            return pgResult as SqlRunnerReturnType<T, D>;
-          }
-
-          return pgResult.rowCount as number as SqlRunnerReturnType<T, D>;
-        case "sqlite":
-          const sqliteResult = await withRetry(
-            () =>
-              promisifySqliteQuery<M>(query, params, sqlDataSource, {
-                typeofModel: options?.sqlLiteOptions?.typeofModel,
-                mode: options?.sqlLiteOptions?.mode || "fetch",
-                models: options?.sqlLiteOptions?.models,
-              }),
-            sqlDataSource.inputDetails.connectionPolicies?.retry,
-            sqlDataSource.logs,
-          );
-
-          const sqliteDuration = formatDuration(start);
-          try {
-            const chain = sqlDataSource.observerChain as
-              | ObserverChain
-              | undefined;
-            if (chain && typeof chain.notifyAfter === "function") {
-              const afterCtx = {
-                ...context,
-                duration: sqliteDuration,
-                result: sqliteResult,
-              };
-              await chain.notifyAfter(afterCtx);
-            }
-          } catch {
-            // ignore observer errors
-          }
-
-          if (returning === "raw") {
-            return !Array.isArray(sqliteResult)
-              ? ([sqliteResult] as SqlRunnerReturnType<T, D>)
-              : (sqliteResult as SqlRunnerReturnType<T, D>);
-          }
-
-          return sqliteResult as SqlRunnerReturnType<T, D>;
-        case "mssql":
-          const mssqlPool = sqlDataSource.getPool() as MssqlPoolInstance;
-          const mssqlRequest = sqlDataSource.sqlConnection
-            ? (
-                sqlDataSource.sqlConnection as GetConnectionReturnType<"mssql">
-              ).request()
-            : mssqlPool.request();
-
-          params.forEach((param, index) => {
-            mssqlRequest.input(`p${index}`, param);
-          });
-
-          let mssqlParamIdx = 0;
-          const mssqlQuery = query.replace(
-            /\?|@(\d+)/g,
-            () => `@p${mssqlParamIdx++}`,
-          );
-
-          const mssqlResult = await withRetry(
-            () => mssqlRequest.query(mssqlQuery),
-            sqlDataSource.inputDetails.connectionPolicies?.retry,
-            sqlDataSource.logs,
-          );
-
-          const mssqlDuration = formatDuration(start);
-          try {
-            const chain = sqlDataSource.observerChain as
-              | ObserverChain
-              | undefined;
-            if (chain && typeof chain.notifyAfter === "function") {
-              const afterCtx = {
-                ...context,
-                duration: mssqlDuration,
-                result: mssqlResult,
-              };
-              await chain.notifyAfter(afterCtx);
-            }
-          } catch {
-            // ignore observer errors
-          }
-
-          if (returning === "affectedRows") {
-            return mssqlResult.rowsAffected[0] as SqlRunnerReturnType<T, D>;
-          }
-
-          if (returning === "raw") {
-            return mssqlResult as SqlRunnerReturnType<T, D>;
-          }
-
-          return mssqlResult.recordset as SqlRunnerReturnType<T, D>;
-        default:
-          throw new HysteriaError(
-            "ExecSql",
-            `UNSUPPORTED_DATABASE_TYPE_${sqlType}`,
-          );
+    // After-query observers
+    try {
+      const duration = formatDuration(start);
+      const chain = sqlDataSource.observerChain as ObserverChain | undefined;
+      if (chain && typeof chain.notifyAfter === "function") {
+        const afterCtx = { ...context, duration, result };
+        await chain.notifyAfter(afterCtx);
       }
-    })();
+    } catch {
+      // ignore observer errors in after phase
+    }
 
     logQuery(formatDuration(start));
-    return result;
+    return adapter.extract<T>(result, returning);
   } catch (error) {
     logQuery(formatDuration(start));
     throw error;
@@ -281,257 +139,27 @@ export const execSqlStreaming = async <
     ) => void | Promise<void>;
   },
 ): Promise<PassThrough & AsyncGenerator<M & S & R>> => {
-  const sqlType = sqlDataSource.type as SqlDataSourceType;
-
-  switch (sqlType) {
-    case "mariadb":
-    case "mysql": {
-      const pool = sqlDataSource.getPool() as MysqlConnectionInstance;
-      const conn =
-        (sqlDataSource.sqlConnection as GetConnectionReturnType<"mysql">) ??
-        (await pool.getConnection());
-      const passThrough = new PassThrough({
-        objectMode: options.objectMode ?? true,
-        highWaterMark: options.highWaterMark,
-      }) as PassThrough & AsyncGenerator<M & S & R>;
-
-      const rawConn = conn.connection as any;
-      const mysqlStream = rawConn.query(query, params).stream({
-        highWaterMark: options.highWaterMark,
-        objectMode: options.objectMode ?? true,
-      });
-
-      let pending = 0;
-      let ended = false;
-      let hasError = false;
-
-      const tryRelease = () => {
-        try {
-          conn.release();
-        } catch {}
-      };
-
-      mysqlStream.on("data", (row: any) => {
-        if (events.onData) {
-          pending++;
-          Promise.resolve(events.onData(passThrough, row))
-            .then(() => {
-              pending--;
-              if (ended && pending === 0 && !hasError) {
-                tryRelease();
-                passThrough.end();
-              }
-            })
-            .catch((err: any) => {
-              hasError = true;
-              tryRelease();
-              passThrough.destroy(err);
-            });
-          return;
-        }
-
-        passThrough.write(row);
-      });
-
-      mysqlStream.on("end", () => {
-        ended = true;
-        if (pending === 0 && !hasError) {
-          tryRelease();
-          passThrough.end();
-        }
-      });
-
-      mysqlStream.on("error", (err: any) => {
-        hasError = true;
-        tryRelease();
-        passThrough.destroy(err);
-      });
-
-      passThrough.on("close", () => {
-        tryRelease();
-      });
-
-      return passThrough;
-    }
-
-    case "cockroachdb":
-    case "postgres": {
-      const pgPool = sqlDataSource.getPool() as PgPoolClientInstance;
-      // If the caller already holds a connection (e.g. inside a global
-      // transaction), reuse it. The stream must NOT release it on finish —
-      // that's the transaction's job, and releasing it here would cause
-      // pg-pool to throw "Release called on client which has already been
-      // released" when the transaction later rolls back.
-      const transactionConnection = sqlDataSource.sqlConnection as
-        | GetConnectionReturnType<"postgres">
-        | undefined;
-      const ownsConnection = !transactionConnection;
-      const pgDriver = transactionConnection ?? (await pgPool.connect());
-
-      const pgQueryStreamDriver = await import("pg-query-stream").catch(() => {
-        throw new DriverNotFoundError("pg-query-stream");
-      });
-
-      const passThrough = new PassThrough({
-        objectMode: options.objectMode || true,
-        highWaterMark: options.highWaterMark,
-      }) as PassThrough & AsyncGenerator<M & S & R>;
-
-      // Convert MySQL-style (?) placeholders to PostgreSQL-style ($1, $2, ...)
-      let pgStreamParamIdx = 0;
-      const pgStreamQuery = query.replace(
-        /\?/g,
-        () => `$${++pgStreamParamIdx}`,
-      );
-
-      const streamQuery = new pgQueryStreamDriver.default(
-        pgStreamQuery,
-        params,
-        {
-          highWaterMark: options.highWaterMark,
-          rowMode: options.rowMode,
-          batchSize: options.batchSize,
-          types: options.types,
-        },
-      );
-
-      const pgStream = pgDriver.query(streamQuery);
-
-      let pending = 0;
-      let ended = false;
-      let hasError = false;
-
-      const tryRelease = (err?: any) => {
-        if (!ownsConnection) return;
-        try {
-          pgDriver.release(err);
-        } catch {}
-      };
-
-      pgStream.on("data", (row: any) => {
-        if (events.onData) {
-          pending++;
-          Promise.resolve(events.onData(passThrough, row))
-            .then(() => {
-              pending--;
-              if (ended && pending === 0 && !hasError) {
-                tryRelease();
-                passThrough.end();
-              }
-            })
-            .catch((err: any) => {
-              hasError = true;
-              tryRelease(err);
-              passThrough.destroy(err);
-            });
-          return;
-        }
-
-        passThrough.write(row);
-      });
-
-      pgStream.on("end", () => {
-        ended = true;
-        if (pending === 0 && !hasError) {
-          tryRelease();
-          passThrough.end();
-        }
-      });
-
-      pgStream.on("error", (err: any) => {
-        hasError = true;
-        tryRelease(err);
-        passThrough.destroy(err);
-      });
-
-      return passThrough;
-    }
-
-    case "sqlite": {
-      const sqliteDriver =
-        (sqlDataSource.sqlConnection as GetConnectionReturnType<"sqlite">) ??
-        sqlDataSource.getPool();
-      const stream = new SQLiteStream(sqliteDriver, query, params, {
-        onData: events.onData as (
-          _passThrough: any,
-          row: any,
-        ) => void | Promise<void>,
-      });
-
-      return stream as unknown as PassThrough & AsyncGenerator<M & S & R>;
-    }
-
-    case "mssql": {
-      const mssqlDriver =
-        (sqlDataSource.sqlConnection as GetConnectionReturnType<"mssql">) ??
-        sqlDataSource.getPool();
-      const passThrough = new PassThrough({
-        objectMode: options.objectMode ?? true,
-        highWaterMark: options.highWaterMark,
-      }) as PassThrough & AsyncGenerator<M & S & R>;
-
-      const mssqlRequest = mssqlDriver.request();
-      mssqlRequest.stream = true;
-
-      params.forEach((param, index) => {
-        mssqlRequest.input(`p${index}`, param);
-      });
-
-      let mssqlParamIdx = 0;
-      const mssqlQuery = query.replace(
-        /\?|@(\d+)/g,
-        () => `@p${mssqlParamIdx++}`,
-      );
-
-      let pending = 0;
-      let ended = false;
-      let hasError = false;
-
-      mssqlRequest.on("row", (row: any) => {
-        if (hasError) return;
-
-        if (events.onData) {
-          pending++;
-          Promise.resolve(events.onData(passThrough, row))
-            .then(() => {
-              pending--;
-              if (ended && pending === 0 && !hasError) {
-                passThrough.end();
-              }
-            })
-            .catch((err: any) => {
-              hasError = true;
-              passThrough.destroy(err);
-            });
-          return;
-        }
-
-        passThrough.write(row);
-      });
-
-      mssqlRequest.on("error", (err: any) => {
-        hasError = true;
-        passThrough.destroy(err);
-      });
-
-      mssqlRequest.on("done", () => {
-        ended = true;
-        if (pending === 0 && !hasError) {
-          passThrough.end();
-        }
-      });
-
-      mssqlRequest.query(mssqlQuery);
-
-      return passThrough;
-    }
-
-    default:
-      throw new HysteriaError(
-        "ExecSqlStreaming",
-        `UNSUPPORTED_DATABASE_TYPE_${sqlType}`,
-      );
+  const adapter = sqlDataSource.driverAdapter;
+  if (!adapter) {
+    throw new HysteriaError("ExecSqlStreaming", "CONNECTION_NOT_ESTABLISHED");
   }
+
+  const stream = await adapter.stream(
+    query,
+    params,
+    {
+      ...options,
+      connection: sqlDataSource.sqlConnection ?? undefined,
+    },
+    {
+      onData: events.onData as (
+        passThrough: PassThrough & AsyncGenerator<Record<string, unknown>>,
+        row: unknown,
+      ) => void | Promise<void>,
+    },
+  );
+
+  return stream as unknown as PassThrough & AsyncGenerator<M & S & R>;
 };
 
 async function withRetry<T>(

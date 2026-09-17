@@ -1,36 +1,43 @@
-import fs from "node:fs";
+import { loadPlatform } from "../platform/platform_adapter";
 import type { Env } from "./env_types";
 
+const platform = loadPlatform();
+
 const envBase: Env = {
-  DB_TYPE: process.env.DB_TYPE,
-  DB_HOST: process.env.DB_HOST,
-  DB_PORT: process.env.DB_PORT,
-  DB_USER: process.env.DB_USER,
-  DB_PASSWORD: process.env.DB_PASSWORD,
-  DB_DATABASE: process.env.DB_DATABASE,
-  DB_LOGS: process.env.DB_LOGS === "true",
-  MIGRATION_PATH: process.env.MIGRATION_PATH || "database/migrations",
+  DB_TYPE: platform.readEnv("DB_TYPE"),
+  DB_HOST: platform.readEnv("DB_HOST"),
+  DB_PORT: platform.readEnv("DB_PORT"),
+  DB_USER: platform.readEnv("DB_USER"),
+  DB_PASSWORD: platform.readEnv("DB_PASSWORD"),
+  DB_DATABASE: platform.readEnv("DB_DATABASE"),
+  DB_LOGS: platform.readEnv("DB_LOGS") === "true",
+  MIGRATION_PATH: platform.readEnv("MIGRATION_PATH") || "database/migrations",
 
-  REDIS_HOST: process.env.REDIS_HOST,
-  REDIS_PORT: process.env.REDIS_PORT,
-  REDIS_USERNAME: process.env.REDIS_USERNAME,
-  REDIS_PASSWORD: process.env.REDIS_PASSWORD,
-  REDIS_DATABASE: process.env.REDIS_DATABASE,
+  REDIS_HOST: platform.readEnv("REDIS_HOST"),
+  REDIS_PORT: platform.readEnv("REDIS_PORT"),
+  REDIS_USERNAME: platform.readEnv("REDIS_USERNAME"),
+  REDIS_PASSWORD: platform.readEnv("REDIS_PASSWORD"),
+  REDIS_DATABASE: platform.readEnv("REDIS_DATABASE"),
 
-  MONGO_URL: process.env.MONGO_URL,
-  MONGO_LOGS: process.env.MONGO_LOGS === "true",
+  MONGO_URL: platform.readEnv("MONGO_URL"),
+  MONGO_LOGS: platform.readEnv("MONGO_LOGS") === "true",
 
   MSSQL_TRUST_SERVER_CERTIFICATE:
-    process.env.MSSQL_TRUST_SERVER_CERTIFICATE === "true" || false,
+    platform.readEnv("MSSQL_TRUST_SERVER_CERTIFICATE") === "true" || false,
 };
 
 const fillEnvWithDatabaseEnvs = (): Env => {
-  if (!fs.existsSync(".env")) {
-    return envBase;
-  }
-
   try {
-    const envs = fs.readFileSync(".env", "utf8");
+    if (!platform.fs.exists(".env")) {
+      return envBase;
+    }
+
+    const envFile = platform.fs.readFileSync(".env");
+    if (!envFile) {
+      return envBase;
+    }
+
+    const envs = new TextDecoder().decode(envFile);
     const envVars = envs.split("\n");
     envVars.forEach((envVar) => {
       const [key, value] = envVar.split("=");
@@ -84,7 +91,7 @@ const fillEnvWithDatabaseEnvs = (): Env => {
           break;
       }
     });
-  } catch (error) {
+  } catch {
   } finally {
     return envBase;
   }

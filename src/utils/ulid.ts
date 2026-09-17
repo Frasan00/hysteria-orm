@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { loadPlatform } from "../platform/platform_adapter";
 
 const ENCODING = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 const ENCODING_LEN = ENCODING.length;
@@ -22,7 +22,7 @@ const encodeTime = (now: number, length: number): string => {
  * Generates random bytes and encodes them to Base32
  */
 const encodeRandom = (length: number): string => {
-  const bytes = randomBytes(length);
+  const bytes = loadPlatform().crypto.randomBytes(length);
   let str = "";
   for (let i = 0; i < length; i++) {
     const randomByte = bytes[i];

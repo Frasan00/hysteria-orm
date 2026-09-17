@@ -24,6 +24,7 @@ const sidebars: SidebarsConfig = {
       items: [
         "databases/sql/introduction",
         "databases/sql/patterns",
+        "databases/sql/bun-drivers",
         {
           type: "category",
           label: "Models",

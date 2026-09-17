@@ -1,4 +1,5 @@
 import type { MongoConnectionOptions } from "../drivers/driver_types";
+import type { JsEnvironmentValue } from "../platform/js_environment";
 import type { LoggerConfig } from "../utils/logger";
 
 /**
@@ -24,7 +25,23 @@ export interface MssqlDataSourceInput extends CommonDataSourceInput {
 
 export interface CommonDataSourceInput {
   readonly type?: DataSourceType;
+  /**
+   * @description Query logging configuration. Enabled only when explicitly provided.
+   * @default false — query logs are OFF unless you opt in (input or DB_LOGS=true)
+   * @warning When enabled, logs are emitted synchronously by default, which blocks
+   * the event loop on every query — not recommended for production. Override with
+   * `{ customLogger: <async logger> }` via {@link LoggerConfig} to log asynchronously.
+   */
   readonly logs?: boolean | LoggerConfig;
+  /**
+   * @description JS runtime to run as (auto-detected when omitted)
+   * @default "auto"
+   */
+  readonly jsEnvironment?: JsEnvironmentValue;
+  /**
+   * @description Driver name override (e.g. "pg", "mysql2", "sqlite3", "mssql", "bun-sql", "bun-sqlite")
+   */
+  readonly driver?: string;
 }
 
 export interface MongoDataSourceInput extends CommonDataSourceInput {

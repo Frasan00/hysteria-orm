@@ -22,6 +22,7 @@ export abstract class DataSource {
   declare password: string;
   declare database: string;
   declare url: string;
+  /** @see CommonDataSourceInput.logs — off by default; sync when enabled */
   declare logs: boolean | LoggerConfig;
 
   protected constructor(input?: DataSourceInput) {

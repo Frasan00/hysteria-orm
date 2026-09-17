@@ -1,4 +1,4 @@
-import crypto from "node:crypto";
+import { loadPlatform } from "../../../platform/platform_adapter";
 import { HysteriaError } from "../../../errors/hysteria_error";
 import { convertCase } from "../../../utils/case_utils";
 import { getDate } from "../../../utils/date_utils";
@@ -478,7 +478,7 @@ function uuidColumn(
     ...(options as ColumnOptions),
     prepare: (value) => {
       if (!value) {
-        return crypto.randomUUID();
+        return loadPlatform().crypto.randomUUID();
       }
 
       return value;

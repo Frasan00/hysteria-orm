@@ -1,8 +1,6 @@
 // Transaction class does not use the ast parser nor nodes since it's not used in any query builder and the transaction only lives here
 
-import type { IIsolationLevel } from "mssql";
-import crypto from "node:crypto";
-import { DriverNotFoundError } from "../../drivers/driver_constants";
+import { bytesToHex, loadPlatform } from "../../platform/platform_adapter";
 import { HysteriaError } from "../../errors/hysteria_error";
 import logger, { log } from "../../utils/logger";
 import { SqlDataSource } from "../sql_data_source";
@@ -64,7 +62,7 @@ export class Transaction {
   ) {
     this.sql = sql;
     this.isActive = false;
-    this.transactionId = crypto.randomBytes(16).toString("hex");
+    this.transactionId = bytesToHex(loadPlatform().crypto.randomBytes(16));
     this.isolationLevel = isolationLevel;
     this.isNested = isNested;
     this.nestingDepth = nestingDepth;
@@ -106,74 +104,40 @@ export class Transaction {
    * @description Starts a transaction, automatically handled from the sql data source instance in the `transaction` method
    */
   async transaction(): Promise<void> {
-    const levelQuery = this.getIsolationLevelQuery();
+    this.getIsolationLevelQuery(); // validates the isolation level (sqlite accepts SERIALIZABLE only)
     // Nested transactions use SAVEPOINTs and do not begin a new transaction
     if (this.isNested) {
       const savepoint = this.getSavePointName();
-      switch (this.sql.type) {
-        case "mssql":
-          await this.sql.rawQuery(`SAVE TRANSACTION ${savepoint}`);
-          this.isActive = true;
-          return;
-        case "mysql":
-        case "mariadb":
-        case "postgres":
-        case "cockroachdb":
-          await this.sql.rawQuery(`SAVEPOINT ${savepoint}`);
-          this.isActive = true;
-          return;
-        case "sqlite":
-          await this.sql.rawQuery(`SAVEPOINT ${savepoint}`);
-          this.isActive = true;
-          return;
+      if (this.sql.type === "mssql") {
+        await this.sql.rawQuery(`SAVE TRANSACTION ${savepoint}`);
+      } else {
+        await this.sql.rawQuery(`SAVEPOINT ${savepoint}`);
       }
+      this.isActive = true;
+      return;
     }
 
     // Top-level transaction handling
-    switch (this.sql.type) {
-      case "mssql":
-        if (levelQuery) {
-          await this.sql.rawQuery(levelQuery);
-        }
-
-        log("BEGIN TRANSACTION", this.sql.logs);
-        const mssqlTransactionLevel = await this.getMssqlTransactionLevel();
-        await (
-          this.sql.sqlConnection as GetConnectionReturnType<"mssql">
-        ).begin(mssqlTransactionLevel);
-        this.isActive = true;
-        break;
-      case "mysql":
-      case "mariadb":
-        if (levelQuery) {
-          await this.sql.rawQuery(levelQuery);
-        }
-
-        const mysqlConnection = this.sql
-          .sqlConnection as GetConnectionReturnType<"mysql">;
-        log("BEGIN TRANSACTION", this.sql.logs);
-        await mysqlConnection.beginTransaction();
-
-        this.isActive = true;
-        break;
-      case "postgres":
-      case "cockroachdb":
-        await this.sql.rawQuery("BEGIN TRANSACTION");
-        if (levelQuery) {
-          await this.sql.rawQuery(levelQuery);
-        }
-
-        this.isActive = true;
-        break;
-      case "sqlite":
-        if (levelQuery) {
-          await this.sql.rawQuery(levelQuery);
-        }
-
-        await this.sql.rawQuery("BEGIN TRANSACTION");
-        this.isActive = true;
-        break;
+    if (
+      this.sql.type === "mssql" ||
+      this.sql.type === "mysql" ||
+      this.sql.type === "mariadb"
+    ) {
+      log("BEGIN TRANSACTION", this.sql.logs);
     }
+    const adapter = (this.sql as SqlDataSource).driverAdapter;
+    const connection = this.sql.sqlConnection;
+    if (!adapter || !connection) {
+      throw new HysteriaError(
+        "TRANSACTION::transaction",
+        "CONNECTION_NOT_ESTABLISHED",
+      );
+    }
+    await adapter.beginTransaction(connection, {
+      isolationLevel: this.isolationLevel,
+      rawQuery: (query, params) => this.sql.rawQuery(query, params ?? []),
+    });
+    this.isActive = true;
   }
 
   /**
@@ -213,27 +177,19 @@ export class Transaction {
     }
 
     try {
-      switch (this.sql.type) {
-        case "mssql":
-          log("COMMIT", this.sql.logs);
-          await (
-            this.sql.sqlConnection as GetConnectionReturnType<"mssql">
-          ).commit();
-          break;
-        case "mysql":
-        case "mariadb":
-          const mysqlConnection = this.sql
-            .sqlConnection as GetConnectionReturnType<"mysql">;
-          log("COMMIT", this.sql.logs);
-          await mysqlConnection.commit();
-          break;
-        case "postgres":
-        case "cockroachdb":
-          await this.sql.rawQuery("COMMIT");
-          break;
-        case "sqlite":
-          await this.sql.rawQuery("COMMIT");
-          break;
+      const adapter = (this.sql as SqlDataSource).driverAdapter;
+      const connection = this.sql.sqlConnection;
+      if (
+        this.sql.type === "mssql" ||
+        this.sql.type === "mysql" ||
+        this.sql.type === "mariadb"
+      ) {
+        log("COMMIT", this.sql.logs);
+      }
+      if (adapter && connection) {
+        await adapter.commitTransaction(connection, {
+          rawQuery: (query, params) => this.sql.rawQuery(query, params ?? []),
+        });
       }
     } catch (error: any) {
       logger.error(error);
@@ -289,32 +245,19 @@ export class Transaction {
     }
 
     try {
-      switch (this.sql.type) {
-        case "mssql":
-          log("ROLLBACK", this.sql.logs);
-          await (
-            this.sql.sqlConnection as GetConnectionReturnType<"mssql">
-          ).rollback();
-          break;
-        case "mysql":
-        case "mariadb":
-          const mysqlConnection = this.sql
-            .sqlConnection as GetConnectionReturnType<"mysql">;
-          log("ROLLBACK", this.sql.logs);
-          await mysqlConnection.rollback();
-          break;
-        case "postgres":
-        case "cockroachdb":
-          await this.sql.rawQuery("ROLLBACK");
-          break;
-        case "sqlite":
-          await this.sql.rawQuery("ROLLBACK");
-          break;
-        default:
-          throw new HysteriaError(
-            "TRANSACTION::rollback",
-            `UNSUPPORTED_DATABASE_TYPE_${this.sql.type}`,
-          );
+      const adapter = (this.sql as SqlDataSource).driverAdapter;
+      const connection = this.sql.sqlConnection;
+      if (
+        this.sql.type === "mssql" ||
+        this.sql.type === "mysql" ||
+        this.sql.type === "mariadb"
+      ) {
+        log("ROLLBACK", this.sql.logs);
+      }
+      if (adapter && connection) {
+        await adapter.rollbackTransaction(connection, {
+          rawQuery: (query, params) => this.sql.rawQuery(query, params ?? []),
+        });
       }
     } catch (error: any) {
       logger.error(error);
@@ -335,31 +278,9 @@ export class Transaction {
 
     let releaseError: any = null;
     try {
-      switch (this.sql.type) {
-        case "mssql":
-          // Mssql transactions are automatically released when the connection is released
-          break;
-        case "mysql":
-        case "mariadb":
-          (
-            this.sql.sqlConnection as GetConnectionReturnType<"mysql">
-          ).release();
-          break;
-        case "postgres":
-        case "cockroachdb":
-          (
-            this.sql.sqlConnection as GetConnectionReturnType<"postgres">
-          ).release();
-          break;
-        case "sqlite":
-          // Since we are living on a single connection, we don't need to release sqlite
-          break;
-        default:
-          throw new HysteriaError(
-            "TRANSACTION::releaseConnection",
-            `UNSUPPORTED_DATABASE_TYPE_${this.sql.type}`,
-          );
-      }
+      (this.sql as SqlDataSource).driverAdapter?.releaseConnection(
+        this.sql.sqlConnection as GetConnectionReturnType<never>,
+      );
     } catch (error: any) {
       releaseError = error;
       logger.error(error);
@@ -419,36 +340,5 @@ export class Transaction {
   private getSavePointName(): string {
     const shortId = this.transactionId.slice(0, 8).toUpperCase();
     return `sp_${this.nestingDepth}_${shortId}`;
-  }
-
-  private async getMssqlTransactionLevel(): Promise<
-    IIsolationLevel | undefined
-  > {
-    if (!this.isolationLevel) {
-      return;
-    }
-
-    const mssqlTransactionLevels = await import("mssql")
-      .then((module) => module.default.ISOLATION_LEVEL)
-      .catch((error) => {
-        logger.error(error);
-        throw new DriverNotFoundError("mssql");
-      });
-
-    switch (this.isolationLevel) {
-      case "READ UNCOMMITTED":
-        return mssqlTransactionLevels.READ_UNCOMMITTED;
-      case "READ COMMITTED":
-        return mssqlTransactionLevels.READ_COMMITTED;
-      case "REPEATABLE READ":
-        return mssqlTransactionLevels.REPEATABLE_READ;
-      case "SERIALIZABLE":
-        return mssqlTransactionLevels.SERIALIZABLE;
-      default:
-        throw new HysteriaError(
-          "TRANSACTION::getMssqlTransactionLevel",
-          `UNSUPPORTED_ISOLATION_LEVEL_${this.isolationLevel}`,
-        );
-    }
   }
 }

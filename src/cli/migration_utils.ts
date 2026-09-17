@@ -5,14 +5,8 @@ import { pathToFileURL } from "url";
 import { env } from "../env/env";
 import { HysteriaError } from "../errors/hysteria_error";
 import { Migration } from "../sql/migrations/migration";
-import type {
-  MssqlPoolInstance,
-  MysqlConnectionInstance,
-  PgPoolClientInstance,
-  SqlDataSourceType,
-  SqliteConnectionInstance,
-  SqlPoolType,
-} from "../sql/sql_data_source_types";
+import { type SqlDataSource } from "../sql/sql_data_source";
+import { SqlDataSourceType } from "../sql/sql_data_source_types";
 import { importTsUniversal } from "../utils/importer";
 import { MigrationTableType } from "./resources/migration_table_type";
 import MigrationTemplates from "./resources/migration_templates";
@@ -45,53 +39,37 @@ const importMigrationFile = async (filePath: string, tsconfigPath?: string) => {
 
 export async function getMigrationTable(
   dbType: SqlDataSourceType,
-  sqlConnection: SqlPoolType,
+  sql: SqlDataSource,
 ): Promise<MigrationTableType[]> {
   switch (dbType) {
     case "mariadb":
     case "mysql":
-      const mysqlConnection = sqlConnection as MysqlConnectionInstance;
-      await mysqlConnection.query(
-        MigrationTemplates.migrationTableTemplateMysql(),
-      );
-      const result = await mysqlConnection.query(
+      await sql.rawQuery(MigrationTemplates.migrationTableTemplateMysql());
+      const mysqlResult = await sql.rawQuery(
         MigrationTemplates.selectAllFromMigrationsTemplate(),
       );
-      return result[0] as MigrationTableType[];
+      return (mysqlResult as any[])[0] as MigrationTableType[];
 
     case "postgres":
     case "cockroachdb":
-      const pgConnection = sqlConnection as PgPoolClientInstance;
-      await pgConnection.query(MigrationTemplates.migrationTableTemplatePg());
-      const pgResult = await pgConnection.query(
+      await sql.rawQuery(MigrationTemplates.migrationTableTemplatePg());
+      const pgResult = await sql.rawQuery(
         MigrationTemplates.selectAllFromMigrationsTemplate(),
       );
-      return pgResult.rows as MigrationTableType[];
+      return (pgResult as { rows: MigrationTableType[] }).rows;
 
     case "sqlite":
-      await promisifySqliteQuery(
-        MigrationTemplates.migrationTableTemplateSQLite(),
-        [],
-        sqlConnection as SqliteConnectionInstance,
-      );
-
-      return (
-        (await promisifySqliteQuery<MigrationTableType>(
-          MigrationTemplates.selectAllFromMigrationsTemplate(),
-          [],
-          sqlConnection as SqliteConnectionInstance,
-        )) || []
-      );
+      await sql.rawQuery(MigrationTemplates.migrationTableTemplateSQLite());
+      return (await sql.rawQuery(
+        MigrationTemplates.selectAllFromMigrationsTemplate(),
+      )) as MigrationTableType[];
 
     case "mssql":
-      const mssqlConnection = sqlConnection as MssqlPoolInstance;
-      await mssqlConnection
-        .request()
-        .query(MigrationTemplates.migrationTableTemplateMssql());
-      const mssqlResult = await mssqlConnection
-        .request()
-        .query(MigrationTemplates.selectAllFromMigrationsTemplate());
-      return mssqlResult.recordset as MigrationTableType[];
+      await sql.rawQuery(MigrationTemplates.migrationTableTemplateMssql());
+      const mssqlResult = await sql.rawQuery(
+        MigrationTemplates.selectAllFromMigrationsTemplate(),
+      );
+      return (mssqlResult as { recordset: MigrationTableType[] }).recordset;
 
     default:
       throw new HysteriaError(
@@ -184,19 +162,4 @@ function findMigrationFiles(
   } catch {
     return [];
   }
-}
-
-export async function promisifySqliteQuery<T>(
-  query: string,
-  params: any,
-  sqLiteConnection: SqliteConnectionInstance,
-): Promise<T[]> {
-  return new Promise<T[]>((resolve, reject) => {
-    sqLiteConnection.all<T>(query, params, (err, results) => {
-      if (err) {
-        reject(err);
-      }
-      resolve(results);
-    });
-  });
 }

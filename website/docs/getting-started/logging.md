@@ -10,7 +10,8 @@ sidebar_position: 8
 Hysteria ORM provides built-in logging for queries and messages.
 
 :::warning
-Logs are **synchronous** by default and add significant overhead. Do not enable logging in production unless you override with an async custom logger. Logging is mainly intended for **debugging** during development.
+Logging is **disabled by default** — queries are only logged when you explicitly pass `logs` or set `DB_LOGS=true`.
+When enabled, logs are **synchronous** by default and add significant overhead. Do not enable logging in production unless you override with an async custom logger. Logging is mainly intended for **debugging** during development.
 :::
 
 ## Enabling Logs

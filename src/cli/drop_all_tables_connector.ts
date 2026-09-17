@@ -1,5 +1,4 @@
 import fs from "fs/promises";
-import { createSqlPool } from "../sql/sql_connection_utils";
 import { type SqlDataSource } from "../sql/sql_data_source";
 import { SqlDataSourceType } from "../sql/sql_data_source_types";
 import { Transaction } from "../sql/transactions/transaction";
@@ -38,8 +37,7 @@ export default async function dropAllTablesConnector(
       await fs.writeFile(dbDatabase as string, "");
       logger.info("Sqlite database recreated successfully");
 
-      const details = sql.getConnectionDetails();
-      sql.sqlPool = await createSqlPool(sql.getDbType(), details);
+      await sql.connect();
 
       logger.info("All tables dropped successfully");
       return;

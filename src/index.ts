@@ -71,6 +71,33 @@ export * from "./sql/sql_data_source_types";
 export type { PingResult } from "./sql/sql_data_source_types";
 export * from "./sql/observers";
 
+// Driver + platform layer (bun adapter implementations are NOT exported; they
+// register themselves lazily under a bun runtime)
+export type {
+  DriverAdapter,
+  ExecuteOptions,
+  BeginTransactionOptions,
+  EndTransactionOptions,
+} from "./drivers/driver_adapter";
+export type {
+  DriverAdapterFactory,
+  DriverAdapterFactoryContext,
+} from "./drivers/driver_adapter_registry";
+export { registerDriverAdapter } from "./drivers/driver_adapter_registry";
+export type {
+  JsEnvironmentValue,
+  ResolvedJsEnvironment,
+} from "./platform/js_environment";
+export type {
+  PlatformAdapter,
+  PlatformFs,
+  PlatformPath,
+} from "./platform/platform_adapter";
+export {
+  loadPlatform,
+  PlatformUnsupportedError,
+} from "./platform/platform_adapter";
+
 // Transactions
 export { atomic } from "./sql/transactions/atomic";
 export type { AtomicOptions } from "./sql/transactions/atomic";

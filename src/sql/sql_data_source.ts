@@ -17,7 +17,7 @@ import { HysteriaError } from "../errors/hysteria_error";
 import { generateOpenApiModelWithMetadata } from "../openapi/openapi";
 import { hashString } from "../utils/hash";
 import logger, { log } from "../utils/logger";
-import { randomUUID } from "node:crypto";
+import { loadPlatform } from "../platform/platform_adapter";
 import { getSqlDialect, isTableMissingError } from "../utils/query";
 import { AstParser } from "./ast/parser";
 import { RawNode } from "./ast/query/node/raw/raw_node";
@@ -62,7 +62,7 @@ import type {
   TablePrimaryKeyInfo,
   TableSchemaInfo,
 } from "./schema_introspection_types";
-import { createSqlPool } from "./sql_connection_utils";
+import { createSqlDriver, createSqlPool } from "./sql_connection_utils";
 import type {
   ConnectionPolicies,
   GetConnectionReturnType,
@@ -85,6 +85,7 @@ import type {
 } from "./sql_data_source_types";
 import { execSql } from "./sql_runner/sql_runner";
 import { RawQueryResponseType } from "./sql_runner/sql_runner_types";
+import type { DriverAdapter } from "../drivers/driver_adapter";
 import { Transaction } from "./transactions/transaction";
 import { TransactionContext } from "./transactions/transaction_context";
 import type { QueryObserver, QueryContext } from "./observers/observer";
@@ -181,6 +182,13 @@ export class SqlDataSource<
   sqlConnection: GetConnectionReturnType<D> | null = null;
 
   /**
+   * @description The resolved execution driver for this instance (npm driver
+   * under node, native bun under bun unless overridden via `driver`/`jsEnvironment`)
+   * @internal
+   */
+  driverAdapter: DriverAdapter<D> | null = null;
+
+  /**
    * @description Options provided in the sql data source initialization
    */
   inputDetails: SqlDataSourceInput<D, T, C>;
@@ -190,7 +198,7 @@ export class SqlDataSource<
    * clone() (legacy behavior, preserved for backward compatibility).
    * For ALS scope checks, use logicalSourceId.
    */
-  id: string = randomUUID();
+  id: string = loadPlatform().crypto.randomUUID();
 
   /**
    * Shared across all clones of the same logical data source.
@@ -198,7 +206,7 @@ export class SqlDataSource<
    * transaction belongs to the same logical source as the calling
    * instance (not necessarily the same instance).
    */
-  logicalSourceId: string = randomUUID();
+  logicalSourceId: string = loadPlatform().crypto.randomUUID();
 
   /**
    * @description Whether AsyncLocalStorage (CLS) transaction auto-propagation is enabled.
@@ -486,17 +494,22 @@ export class SqlDataSource<
     // is unable to retry.
     try {
       // Create the connection pool
-      this.sqlPool = await createSqlPool(this.sqlType, this.inputDetails);
+      this.driverAdapter = await createSqlDriver<D>(
+        this.sqlType,
+        this.inputDetails,
+      );
+      this.sqlPool = this.driverAdapter.pool ?? null;
       this.ownsPool = true;
 
       // Connect to the slaves if any are configured
       if (this.slaves.length) {
         await Promise.all(
           this.slaves.map(async (slave) => {
-            slave.sqlPool = await createSqlPool(
+            slave.driverAdapter = await createSqlDriver<D>(
               slave.sqlType,
               slave.inputDetails,
             );
+            slave.sqlPool = slave.driverAdapter.pool ?? null;
             slave.ownsPool = true;
           }),
         );
@@ -769,12 +782,14 @@ export class SqlDataSource<
       cloned.sqlType === "sqlite" || !!options?.shouldRecreatePool;
 
     if (mustCreateNewPool) {
-      cloned.sqlPool = await createSqlPool(
+      cloned.driverAdapter = await createSqlDriver<D>(
         cloned.sqlType,
-        this.inputDetails as SqlDataSourceInput<SqlDataSourceType>,
+        this.inputDetails as unknown as SqlDataSourceInput<D>,
       );
+      cloned.sqlPool = cloned.driverAdapter.pool;
       cloned.ownsPool = true;
     } else {
+      cloned.driverAdapter = this.driverAdapter as DriverAdapter<D> | null;
       cloned.sqlPool = this.sqlPool;
       cloned.ownsPool = false;
     }
@@ -1096,26 +1111,14 @@ export class SqlDataSource<
 
     await this.ensureConnected();
 
-    switch (this.sqlType) {
-      case "mysql":
-      case "mariadb":
-        const mysqlPool = this.sqlPool as MysqlConnectionInstance;
-        return (await mysqlPool.getConnection()) as GetConnectionReturnType<D>;
-      case "postgres":
-      case "cockroachdb":
-        const pgPool = this.sqlPool as PgPoolClientInstance;
-        return (await pgPool.connect()) as GetConnectionReturnType<D>;
-      case "sqlite":
-        return this.sqlPool as GetConnectionReturnType<D>;
-      case "mssql":
-        const mssqlPool = this.sqlPool as MssqlPoolInstance;
-        return mssqlPool.transaction() as GetConnectionReturnType<D>;
-      default:
-        throw new HysteriaError(
-          "SqlDataSource::getConnection",
-          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`,
-        );
+    const adapter = this.driverAdapter;
+    if (!adapter) {
+      throw new HysteriaError(
+        "SqlDataSource::getConnection",
+        "CONNECTION_NOT_ESTABLISHED",
+      );
     }
+    return adapter.reserveConnection() as GetConnectionReturnType<D>;
   }
 
   /**
@@ -1135,17 +1138,9 @@ export class SqlDataSource<
       // never went through Transaction.releaseConnection().
       if (this.sqlConnection) {
         try {
-          switch (this.sqlType) {
-            case "mysql":
-            case "mariadb":
-              (this.sqlConnection as any).release?.();
-              break;
-            case "postgres":
-            case "cockroachdb":
-              (this.sqlConnection as any).release?.();
-              break;
-            // mssql: auto-released; sqlite: shared, no-op
-          }
+          this.driverAdapter?.releaseConnection(
+            this.sqlConnection as GetConnectionReturnType<D>,
+          );
         } catch (err: any) {
           logger.warn(
             `SqlDataSource::disconnect - releasing borrowed connection failed: ${err?.message ?? err}`,
@@ -1185,36 +1180,10 @@ export class SqlDataSource<
     }
 
     logger.warn("Closing connection");
-    switch (this.sqlType) {
-      case "mysql":
-      case "mariadb":
-        await (this.sqlPool as MysqlConnectionInstance).end();
-        break;
-      case "postgres":
-      case "cockroachdb":
-        await (this.sqlPool as PgPoolClientInstance).end();
-        break;
-      case "sqlite":
-        await new Promise<void>((resolve, reject) => {
-          (this.sqlPool as SqliteConnectionInstance).close((err) => {
-            if (err) {
-              reject(err);
-            }
-            resolve();
-          });
-        });
-        break;
-      case "mssql":
-        await (this.sqlPool as MssqlPoolInstance).close();
-        break;
-      default:
-        throw new HysteriaError(
-          "SqlDataSource::disconnect",
-          `UNSUPPORTED_DATABASE_TYPE_${this.sqlType}`,
-        );
-    }
+    await this.driverAdapter?.closePool();
 
     this.sqlPool = null;
+    this.driverAdapter = null;
     this.sqlConnection = null;
   }
 
@@ -1232,6 +1201,8 @@ export class SqlDataSource<
       connectionPolicies: this.inputDetails
         .connectionPolicies as ConnectionPolicies,
       queryFormatOptions: this.inputDetails.queryFormatOptions,
+      jsEnvironment: this.inputDetails.jsEnvironment,
+      driver: this.inputDetails.driver,
     } as unknown as SqlDataSourceInput<D, T, C>;
   }
 

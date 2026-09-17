@@ -22,7 +22,7 @@ export default async function runMigrationsConnector(
   try {
     const migrationTable: MigrationTableType[] = await getMigrationTable(
       dbType as SqlDataSourceType,
-      sql.getPool(),
+      sql,
     );
     const migrations: Migration[] = await getMigrations(
       dbType as SqlDataSourceType,
@@ -70,12 +70,12 @@ export default async function runMigrationsConnector(
       return;
     }
 
-    const migrator = new Migrator(sql);
     if (shouldUseTransaction) {
       trx = await sql.transaction();
       sql = trx.sql as SqlDataSource;
     }
 
+    const migrator = new Migrator(sql);
     await migrator.upMigrations(pendingMigrations);
 
     if (shouldUseTransaction) {
