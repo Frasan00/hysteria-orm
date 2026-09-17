@@ -30,7 +30,6 @@ export interface ModelStream<T> extends PassThrough {
  *   - Faster for single/small parent sets
  *   - May cause Cartesian product issues with large datasets
  *   - ManyToMany uses nested JOINs
- *   - Ignores beforeFetch/afterFetch hooks on the related model
  *
  * @property 'batched' - Always use batched queries (multiple queries)
  *   - N+1 protection
@@ -66,25 +65,6 @@ export interface LoadOptions {
 export type ModelInstanceType<O> = O extends AnyModelConstructor
   ? InstanceType<O>
   : never;
-
-/**
- * Available fetch hook combinations for query execution.
- * Hooks can be selectively ignored when fetching data.
- */
-export type FetchHooks =
-  | ["afterFetch"]
-  | ["beforeFetch"]
-  | ["afterFetch", "beforeFetch"]
-  | ["beforeFetch", "afterFetch"]
-  | [];
-
-export type OneOptions = {
-  ignoreHooks?: FetchHooks;
-};
-
-export type ManyOptions = {
-  ignoreHooks?: FetchHooks;
-};
 
 /**
  * Extracts the related Model type from a relation key.

@@ -528,64 +528,12 @@ describe("defineModel", () => {
       expect((TestModel as any).beforeFetch).toBe(hook);
     });
 
-    test("afterFetch hook is assigned", () => {
-      const hook = jest.fn((data) => data);
-      const TestModel = defineModel("hooked_items_af", {
-        columns: { id: col.increment() },
-        hooks: { afterFetch: hook },
-      });
-
-      expect((TestModel as any).afterFetch).toBe(hook);
-    });
-
-    test("beforeInsert hook is assigned", () => {
-      const hook = jest.fn();
-      const TestModel = defineModel("hooked_items_bi", {
-        columns: { id: col.increment() },
-        hooks: { beforeInsert: hook },
-      });
-
-      expect((TestModel as any).beforeInsert).toBe(hook);
-    });
-
-    test("beforeInsertMany hook is assigned", () => {
-      const hook = jest.fn();
-      const TestModel = defineModel("hooked_items_bim", {
-        columns: { id: col.increment() },
-        hooks: { beforeInsertMany: hook },
-      });
-
-      expect((TestModel as any).beforeInsertMany).toBe(hook);
-    });
-
-    test("beforeUpdate hook is assigned", () => {
-      const hook = jest.fn();
-      const TestModel = defineModel("hooked_items_bu", {
-        columns: { id: col.increment() },
-        hooks: { beforeUpdate: hook },
-      });
-
-      expect((TestModel as any).beforeUpdate).toBe(hook);
-    });
-
-    test("beforeDelete hook is assigned", () => {
-      const hook = jest.fn();
-      const TestModel = defineModel("hooked_items_bd", {
-        columns: { id: col.increment() },
-        hooks: { beforeDelete: hook },
-      });
-
-      expect((TestModel as any).beforeDelete).toBe(hook);
-    });
-
     test("model without hooks has no hook methods", () => {
       const TestModel = defineModel("no_hooks", {
         columns: { id: col.increment() },
       });
 
       expect((TestModel as any).beforeFetch).toBeUndefined();
-      expect((TestModel as any).afterFetch).toBeUndefined();
-      expect((TestModel as any).beforeInsert).toBeUndefined();
     });
   });
 
@@ -1251,8 +1199,8 @@ describe("defineModel", () => {
   });
 
   describe("type-safe hooks", () => {
-    test("beforeInsert receives typed data", () => {
-      const insertedData: Array<Record<string, unknown>> = [];
+    test("beforeFetch receives typed queryBuilder", () => {
+      const captured: Array<unknown> = [];
 
       const TestModel = defineModel("hooks_typed_test", {
         columns: {
@@ -1261,29 +1209,14 @@ describe("defineModel", () => {
           email: col.string({ nullable: false }),
         },
         hooks: {
-          beforeInsert: (data) => {
-            insertedData.push(data as Record<string, unknown>);
+          beforeFetch: (queryBuilder) => {
+            captured.push(queryBuilder);
           },
         },
       });
 
-      expect((TestModel as any).beforeInsert).toBeDefined();
-    });
-
-    test("afterFetch receives typed array", () => {
-      const TestModel = defineModel("hooks_after_typed", {
-        columns: {
-          id: col.increment(),
-          title: col.string({ nullable: false }),
-        },
-        hooks: {
-          afterFetch: (data) => {
-            return data;
-          },
-        },
-      });
-
-      expect((TestModel as any).afterFetch).toBeDefined();
+      expect((TestModel as any).beforeFetch).toBeDefined();
+      expect(captured.length).toBe(0); // not called unless a query runs
     });
   });
 

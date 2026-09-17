@@ -172,7 +172,7 @@ describe(`[${env.DB_TYPE}] ModelQueryBuilder whereColumn`, () => {
     const results = await sql
       .from(UserWithoutPk)
       .whereColumn("age", "salary")
-      .many({ ignoreHooks: ["beforeFetch"] });
+      .many();
 
     expect(results.length).toBe(1);
     expect(results[0].name).toBe("Charlie");
@@ -182,7 +182,7 @@ describe(`[${env.DB_TYPE}] ModelQueryBuilder whereColumn`, () => {
     const results = await sql
       .from(UserWithoutPk)
       .whereColumn("age", ">", "salary")
-      .many({ ignoreHooks: ["beforeFetch"] });
+      .many();
 
     expect(results.length).toBe(1);
     expect(results[0].name).toBe("Bob");
@@ -193,7 +193,7 @@ describe(`[${env.DB_TYPE}] ModelQueryBuilder whereColumn`, () => {
       .from(UserWithoutPk)
       .where("age", ">", 20)
       .andWhereColumn("age", ">=", "salary")
-      .many({ ignoreHooks: ["beforeFetch"] });
+      .many();
 
     expect(results.length).toBe(2);
     const names = results.map((r) => r.name).sort();
@@ -205,7 +205,7 @@ describe(`[${env.DB_TYPE}] ModelQueryBuilder whereColumn`, () => {
       .from(UserWithoutPk)
       .where("name", "Alice")
       .orWhereColumn("age", "salary")
-      .many({ ignoreHooks: ["beforeFetch"] });
+      .many();
 
     expect(results.length).toBe(2);
     const names = results.map((r) => r.name).sort();

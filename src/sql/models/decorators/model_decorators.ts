@@ -250,6 +250,7 @@ export function column(
           propertyKey as string,
         ),
       autoUpdate: options.autoUpdate,
+      autoCreate: options.autoCreate,
       databaseName,
       openApi: options.openApi,
       type: options.type,
@@ -789,6 +790,13 @@ function dateOnlyColumn(
 
   const hasAutoCreate = !!autoCreateOpt;
   const hasAutoUpdate = !!autoUpdateOpt;
+  // autoCreate: true → DB-side default; function → keep JS generation via prepare
+  const autoCreateMarker =
+    typeof autoCreateOpt === "function"
+      ? "js"
+      : hasAutoCreate
+        ? true
+        : undefined;
 
   const defaultCreateDate = () => new Date();
   const defaultCreateString = () => getDate(new Date(), "DATE_ONLY", timezone);
@@ -855,6 +863,7 @@ function dateOnlyColumn(
     type: "date",
     ...(rest as ColumnOptions),
     autoUpdate: hasAutoUpdate,
+    autoCreate: autoCreateMarker,
     prepare: prepareFn as (value: any) => any,
     serialize: serializeFn as (value: any) => any,
     openApi: {
@@ -893,6 +902,13 @@ function datetimeColumn(
 
   const hasAutoCreate = !!autoCreateOpt;
   const hasAutoUpdate = !!autoUpdateOpt;
+  // autoCreate: true → DB-side default; function → keep JS generation via prepare
+  const autoCreateMarker =
+    typeof autoCreateOpt === "function"
+      ? "js"
+      : hasAutoCreate
+        ? true
+        : undefined;
 
   const defaultCreateDate = () => new Date();
   const defaultCreateString = () =>
@@ -961,6 +977,7 @@ function datetimeColumn(
     ...(rest as ColumnOptions),
     withTimezone: effectiveWithTimezone,
     autoUpdate: hasAutoUpdate,
+    autoCreate: autoCreateMarker,
     prepare: prepareFn as (value: any) => any,
     serialize: serializeFn as (value: any) => any,
     ...({ stringMode } as any),
@@ -1000,6 +1017,13 @@ function timestampColumn(
 
   const hasAutoCreate = !!autoCreateOpt;
   const hasAutoUpdate = !!autoUpdateOpt;
+  // autoCreate: true → DB-side default; function → keep JS generation via prepare
+  const autoCreateMarker =
+    typeof autoCreateOpt === "function"
+      ? "js"
+      : hasAutoCreate
+        ? true
+        : undefined;
 
   const defaultCreateDate = () => new Date();
   const defaultCreateString = () =>
@@ -1068,6 +1092,7 @@ function timestampColumn(
     ...(rest as ColumnOptions),
     withTimezone: effectiveWithTimezone,
     autoUpdate: hasAutoUpdate,
+    autoCreate: autoCreateMarker,
     prepare: prepareFn as (value: any) => any,
     serialize: serializeFn as (value: any) => any,
     ...({ stringMode } as any),
@@ -1103,6 +1128,13 @@ function timeOnlyColumn(
 
   const hasAutoCreate = !!autoCreateOpt;
   const hasAutoUpdate = !!autoUpdateOpt;
+  // autoCreate: true → DB-side default; function → keep JS generation via prepare
+  const autoCreateMarker =
+    typeof autoCreateOpt === "function"
+      ? "js"
+      : hasAutoCreate
+        ? true
+        : undefined;
 
   const defaultCreateDate = () => new Date();
   const defaultCreateString = () => getDate(new Date(), "TIME_ONLY", timezone);
@@ -1169,6 +1201,7 @@ function timeOnlyColumn(
     type: "time",
     ...(rest as ColumnOptions),
     autoUpdate: hasAutoUpdate,
+    autoCreate: autoCreateMarker,
     prepare: prepareFn as (value: any) => any,
     serialize: serializeFn as (value: any) => any,
     ...({ stringMode } as any),

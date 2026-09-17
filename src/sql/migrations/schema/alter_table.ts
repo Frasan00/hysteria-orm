@@ -38,7 +38,6 @@ import {
   PostgresTableOptions,
   SqliteTableOptions,
   MssqlTableOptions,
-  OracledbTableOptions,
   DatabaseTableOptions,
 } from "./schema_types";
 
@@ -499,13 +498,11 @@ export class AlterTableBuilder extends BaseBuilder {
    * @postgres Supports: tablespace, with storage parameters
    * @sqlite Not supported for ALTER TABLE table options (most table options are CREATE TABLE only)
    * @mssql Supports: onFilegroup, dataCompression
-   * @oracledb Supports: tablespace, compress, storage parameters
    */
   setTableOptions(options: MysqlTableOptions & MysqlAdvancedTableOptions): this;
   setTableOptions(options: PostgresTableOptions): this;
   setTableOptions(options: SqliteTableOptions): this;
   setTableOptions(options: MssqlTableOptions): this;
-  setTableOptions(options: OracledbTableOptions): this;
   setTableOptions(options: {
     engine?: CommonMysqlEngines | string;
     charset?: CommonMysqlCharsets | string;
@@ -552,23 +549,6 @@ export class AlterTableBuilder extends BaseBuilder {
       | "COLUMNSTORE"
       | "COLUMNSTORE_ARCHIVE";
   }): this;
-  setTableOptions(options: {
-    tablespace?: string;
-    compress?: boolean;
-    storage?: {
-      initial?: string;
-      next?: string;
-      minextents?: number;
-      maxextents?: string;
-      pctincrease?: number;
-      pctfree?: number;
-      pctused?: number;
-    };
-    logging?: boolean;
-    cache?: boolean;
-    inMemory?: boolean;
-    compressFor?: "QUERY LOW" | "QUERY HIGH" | "ARCHIVE LOW" | "ARCHIVE HIGH";
-  }): this;
   setTableOptions(
     options: { ifNotExists?: boolean } & DatabaseTableOptions,
   ): this;
@@ -577,7 +557,6 @@ export class AlterTableBuilder extends BaseBuilder {
     const isPostgres =
       this.sqlType === "postgres" || this.sqlType === "cockroachdb";
     const isMssql = this.sqlType === "mssql";
-    const isOracledb = this.sqlType === "oracledb";
     const isSqlite = this.sqlType === "sqlite";
 
     if (isSqlite) {
@@ -589,8 +568,6 @@ export class AlterTableBuilder extends BaseBuilder {
     } else if (isPostgres) {
       this.nodes.push(new SetTableOptionsNode(options));
     } else if (isMssql) {
-      this.nodes.push(new SetTableOptionsNode(options));
-    } else if (isOracledb) {
       this.nodes.push(new SetTableOptionsNode(options));
     }
 

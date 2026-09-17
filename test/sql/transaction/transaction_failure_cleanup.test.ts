@@ -34,7 +34,6 @@ function installCommitFailure(
 
   switch (env.DB_TYPE) {
     case "mssql":
-    case "oracledb":
     case "mysql":
     case "mariadb": {
       original.conn = conn;
@@ -84,7 +83,6 @@ function installRollbackFailure(
 
   switch (env.DB_TYPE) {
     case "mssql":
-    case "oracledb":
     case "mysql":
     case "mariadb": {
       original.conn = conn;

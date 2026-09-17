@@ -279,13 +279,6 @@ export class JsonPath {
   }
 
   /**
-   * @description Converts to Oracle syntax (same as standard JSON path)
-   */
-  toOracle(): string {
-    return this.toStandardJsonPath();
-  }
-
-  /**
    * @description Converts to the appropriate syntax for the given database type
    */
   toDbSyntax(dbType: SqlDataSourceType, asText: boolean = false): string {
@@ -300,8 +293,6 @@ export class JsonPath {
         return this.toSqlite();
       case "mssql":
         return this.toMssql();
-      case "oracledb":
-        return this.toOracle();
       default:
         return this.toStandardJsonPath();
     }

@@ -605,11 +605,7 @@ describe(`[${env.DB_TYPE}] Where query builder (users_without_pk only)`, () => {
 
     expect(bindings).toEqual(["Alice", 20, 40]);
 
-    if (
-      env.DB_TYPE === "postgres" ||
-      env.DB_TYPE === "cockroachdb" ||
-      env.DB_TYPE === "oracledb"
-    ) {
+    if (env.DB_TYPE === "postgres" || env.DB_TYPE === "cockroachdb") {
       // No literal `?` may remain, and no placeholder may collide with typed $1.
       expect(query).not.toContain("?");
       expect(query).not.toContain("$1 and");

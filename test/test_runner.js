@@ -103,6 +103,7 @@ const SQL_TESTS = [
   // query builder
   "./test/sql/query_builder/select_tuple.test.ts",
   "./test/sql/query_builder/select_subquery.test.ts",
+  "./test/sql/query_builder/sql_func.test.ts",
   "./test/sql/query_builder/query_builder.test.ts",
   "./test/sql/query_builder/embedded_models.test.ts",
   "./test/sql/query_builder/json_select.test.ts",

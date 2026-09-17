@@ -27,14 +27,17 @@ export const UserWithoutPk = defineModel("users_without_pk", {
     deletedAt: col.datetime(),
   },
   hooks: {
-    beforeUpdate: (queryBuilder) => {
-      queryBuilder.whereNull("users_without_pk.deleted_at");
-    },
-    beforeDelete: (queryBuilder) => {
-      queryBuilder.whereNull("users_without_pk.deleted_at");
-    },
     beforeFetch: (queryBuilder) => {
-      queryBuilder.whereNull("users_without_pk.deleted_at");
+      const fromNode = (queryBuilder as any).fromNode;
+      const fromStr = typeof fromNode?.table === "string" ? fromNode.table : "";
+      const parts = fromStr.split(/\s+as\s+/i).map((s: string) => s.trim());
+      // If FROM was overridden with a CTE/subquery, the soft-delete filter
+      // cannot reference the base table — skip it.
+      if (parts[0] !== "users_without_pk") {
+        return;
+      }
+      const ref = parts[1] ?? parts[0]; // alias if present, else base table
+      queryBuilder.whereNull(`${ref}.deleted_at`);
     },
   },
 });

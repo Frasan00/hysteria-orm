@@ -29,10 +29,10 @@ const isPlainObjectOrArray = (value: unknown): boolean => {
 
 export class InterpreterUtils {
   private readonly modelColumnsMap: Map<string, ColumnType>;
-  // Pre-computed at construction: columns that always need processing during writes.
+  // Pre-computed at construction: columns that MUST be generated in JS when absent
+  // from an INSERT payload because no DB default covers them (ulid, custom fns).
   // Avoids scanning all model columns on every prepareColumns() call.
-  private readonly autoInsertColumns: ColumnType[];
-  private readonly autoUpdateColumns: ColumnType[];
+  private readonly jsInsertColumns: ColumnType[];
 
   constructor(private readonly model: typeof Model) {
     // Raw models (from sql.from("table")) are plain objects without Model methods.
@@ -43,16 +43,12 @@ export class InterpreterUtils {
         ? model.getColumnsByName()
         : new Map();
 
-    const autoInsert: ColumnType[] = [];
-    const autoUpdate: ColumnType[] = [];
+    const jsInsert: ColumnType[] = [];
     for (const col of this.modelColumnsMap.values()) {
-      // Insert auto-columns: those with prepare OR autoUpdate (mirrors the original condition)
-      if (col.prepare || col.autoUpdate) autoInsert.push(col);
-      // Update auto-columns: only autoUpdate ones (prepare-only columns are not auto-added on update)
-      if (col.autoUpdate) autoUpdate.push(col);
+      if (col.expression) continue;
+      if (col.type === "ulid" || col.autoCreate === "js") jsInsert.push(col);
     }
-    this.autoInsertColumns = autoInsert;
-    this.autoUpdateColumns = autoUpdate;
+    this.jsInsertColumns = jsInsert;
   }
 
   formatStringColumn(dbType: SqlDataSourceType, column: string): string {
@@ -80,7 +76,6 @@ export class InterpreterUtils {
           case "postgres":
           case "cockroachdb":
           case "sqlite":
-          case "oracledb":
             return `"${table}".*`;
           case "mssql":
             return `[${table}].*`;
@@ -100,7 +95,6 @@ export class InterpreterUtils {
         case "postgres":
         case "cockroachdb":
         case "sqlite":
-        case "oracledb":
           return `"${table}"."${casedColumn}"`;
         case "mssql":
           return `[${table}].[${casedColumn}]`;
@@ -120,7 +114,6 @@ export class InterpreterUtils {
       case "postgres":
       case "cockroachdb":
       case "sqlite":
-      case "oracledb":
         return `"${casedColumn}"`;
       case "mssql":
         return `[${casedColumn}]`;
@@ -193,6 +186,31 @@ export class InterpreterUtils {
   }
 
   /**
+   * @description Returns the model-property name the given model-property column
+   * resolves to in the database, or undefined for non-model / unqualified refs.
+   * @internal
+   */
+  resolveColumnAlias(dbType: SqlDataSourceType, column: string): string {
+    const meta = this.modelColumnsMap.get(column);
+    if (!meta || meta.columnName === meta.databaseName) {
+      return "";
+    }
+    switch (dbType) {
+      case "mssql":
+        return ` as [${meta.columnName}]`;
+      case "mysql":
+      case "mariadb":
+        return ` as \`${meta.columnName}\``;
+      case "postgres":
+      case "cockroachdb":
+      case "sqlite":
+        return ` as "${meta.columnName}"`;
+      default:
+        return "";
+    }
+  }
+
+  /**
    * @description Formats the table name for the database type, idempotent for quoting
    */
   formatStringTable(dbType: SqlDataSourceType, table: string): string {
@@ -210,7 +228,6 @@ export class InterpreterUtils {
       case "postgres":
       case "cockroachdb":
       case "sqlite":
-      case "oracledb":
         return `"${table}"${alias ? ` as "${alias}"` : ""}`;
       case "mssql":
         return `[${table}]${alias ? ` as [${alias}]` : ""}`;
@@ -219,11 +236,12 @@ export class InterpreterUtils {
     }
   }
 
-  async prepareColumns(
+  prepareColumns(
     columns: string[],
     values: any[],
     mode: "insert" | "update" = "insert",
-  ): Promise<{ columns: string[]; values: any[] }> {
+    dbType: SqlDataSourceType = "postgres",
+  ): { columns: string[]; values: any[] } {
     if (!columns.length) {
       return { columns, values };
     }
@@ -243,12 +261,9 @@ export class InterpreterUtils {
       filteredValues.push(value);
     }
 
-    // Track which columns are already present for O(1) lookup when adding auto-columns
-    const presentColumnsSet = new Set<string>(filteredColumns);
-
-    // Deferred async prepare calls — avoids Promise overhead for sync prepare functions
-    let deferredAsync: Array<{ index: number; promise: Promise<any> }> | null =
-      null;
+    // MySQL/MariaDB uuid primary keys are generated in JS so handleMysqlInsert can
+    // re-fetch by the explicit id; every other uuid column defers to the DB default.
+    const jsUuidPrimaryKey = dbType === "mysql" || dbType === "mariadb";
 
     for (let i = 0; i < filteredColumns.length; i++) {
       const column = filteredColumns[i];
@@ -264,60 +279,96 @@ export class InterpreterUtils {
         continue;
       }
 
-      if (modelColumn) {
-        if (modelColumn.prepare) {
-          const prepared =
-            mode === "insert"
-              ? modelColumn.prepare(value)
-              : (modelColumn.prepare(value) ?? value);
+      if (!modelColumn) {
+        if (isPlainObjectOrArray(value)) {
+          filteredValues[i] = JSON.stringify(value);
+        }
+        continue;
+      }
 
-          if (prepared !== null && typeof prepared?.then === "function") {
-            if (!deferredAsync) deferredAsync = [];
-            deferredAsync.push({ index: i, promise: prepared as Promise<any> });
-          } else {
-            filteredValues[i] = prepared;
+      // Columns with a DB-side default are omitted when nullish so the database
+      // generates them (uuid → gen_random_uuid()/NEWID()/…, datetime autoCreate → now).
+      // MySQL/MariaDB have no uuid DB default (see mysql column_type), so uuid must
+      // stay in the payload (NULL for nullable columns, same as 11.x).
+      if (value === null || value === undefined) {
+        const dbDefaulted =
+          modelColumn.autoCreate === true ||
+          (modelColumn.type === "uuid" &&
+            dbType !== "mysql" &&
+            dbType !== "mariadb");
+        if (dbDefaulted) {
+          filteredColumns.splice(i, 1);
+          filteredValues.splice(i, 1);
+          i--;
+          continue;
+        }
+      }
+
+      if (modelColumn.prepare) {
+        const prepared =
+          mode === "insert"
+            ? modelColumn.prepare(value)
+            : (modelColumn.prepare(value) ?? value);
+
+        if (prepared !== null && typeof prepared?.then === "function") {
+          throw new Error(
+            `hysteria-orm: prepare on column "${column}" on model "${this.model.name}" returned a Promise, but prepare must be synchronous.`,
+          );
+        }
+
+        filteredValues[i] = prepared;
+      }
+    }
+
+    // Columns with only JS-side generation (ulid, custom autoCreate callbacks, and
+    // MySQL/MariaDB uuid PKs) are added when absent from the payload.
+    if (mode === "insert") {
+      const presentColumnsSet = new Set<string>(columns);
+      for (const modelColumn of this.jsInsertColumns) {
+        if (presentColumnsSet.has(modelColumn.columnName)) continue;
+        this.generateJsInsertColumn(
+          modelColumn,
+          filteredColumns,
+          filteredValues,
+        );
+      }
+
+      if (jsUuidPrimaryKey) {
+        const primaryKey = (this.model as typeof Model).primaryKey;
+        if (primaryKey) {
+          const pkColumn = this.modelColumnsMap.get(primaryKey);
+          if (
+            pkColumn &&
+            pkColumn.type === "uuid" &&
+            pkColumn.isPrimary &&
+            !presentColumnsSet.has(primaryKey)
+          ) {
+            this.generateJsInsertColumn(
+              pkColumn,
+              filteredColumns,
+              filteredValues,
+            );
           }
         }
-      } else if (isPlainObjectOrArray(value)) {
-        filteredValues[i] = JSON.stringify(value);
       }
-    }
-
-    // Resolve any async prepare calls collected during the sync pass all at once
-    if (deferredAsync) {
-      const resolved = await Promise.all(deferredAsync.map((d) => d.promise));
-      for (let i = 0; i < deferredAsync.length; i++) {
-        filteredValues[deferredAsync[i].index] = resolved[i];
-      }
-    }
-
-    // Add columns that need automatic processing but weren't in the provided payload.
-    // Uses pre-computed lists to avoid scanning all model columns on every call.
-    const primaryKey = (this.model as typeof Model).primaryKey;
-    const autoColumns =
-      mode === "insert" ? this.autoInsertColumns : this.autoUpdateColumns;
-
-    for (const modelColumn of autoColumns) {
-      const column = modelColumn.columnName;
-      if (modelColumn.expression) {
-        continue;
-      }
-      if (presentColumnsSet.has(column)) {
-        continue;
-      }
-
-      if (mode === "insert" && column === primaryKey && !modelColumn.prepare) {
-        continue;
-      }
-
-      filteredColumns.push(column);
-      const preparedValue = modelColumn.prepare
-        ? await modelColumn.prepare(undefined)
-        : undefined;
-      filteredValues.push(preparedValue ?? undefined);
     }
 
     return { columns: filteredColumns, values: filteredValues };
+  }
+
+  private generateJsInsertColumn(
+    modelColumn: ColumnType,
+    columns: string[],
+    values: any[],
+  ): void {
+    const prepared = modelColumn.prepare?.(undefined);
+    if (prepared !== null && typeof prepared?.then === "function") {
+      throw new Error(
+        `hysteria-orm: prepare on column "${modelColumn.columnName}" on model "${this.model.name}" returned a Promise, but prepare must be synchronous.`,
+      );
+    }
+    columns.push(modelColumn.columnName);
+    values.push(prepared ?? undefined);
   }
 
   /**

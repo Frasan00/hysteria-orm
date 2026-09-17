@@ -29,9 +29,6 @@ export const getSqlDialect = (
     case "mssql":
       return "transactsql";
 
-    case "oracledb":
-      return "plsql";
-
     default:
       return "sql";
   }
@@ -94,12 +91,6 @@ export const bindParamsIntoQuery = (query: string, params: any[]): string => {
     result = result.replace(mssqlPlaceholder, formatParam(params[i]));
   }
 
-  // Replace Oracle-style placeholders (:1, :2, ...)
-  for (let i = 0; i < params.length; i++) {
-    const oraclePlaceholder = new RegExp(`:${i + 1}(?!\\d)`, "g");
-    result = result.replace(oraclePlaceholder, formatParam(params[i]));
-  }
-
   return result;
 };
 
@@ -125,10 +116,6 @@ export const isTableMissingError = (
 
   if (sqlType === "mssql") {
     return error.number === 208; // Invalid object name
-  }
-
-  if (sqlType === "oracledb") {
-    return error.errorNum === 942; // ORA-00942: table or view does not exist
   }
 
   return false;

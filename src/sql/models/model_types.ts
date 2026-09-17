@@ -96,11 +96,6 @@ export type BaseModelMethodOptions = {
    */
   trx?: Transaction;
   /**
-   * @description Whether to ignore the hooks for the model
-   */
-  ignoreHooks?: boolean;
-
-  /**
    * @description The replication mode to use for the model
    * @description If not specified, read operations will use slave (if available) else master, and write operations will always use master
    * @description If set to "master", all operations will use master

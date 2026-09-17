@@ -1,9 +1,11 @@
 import { AstParser } from "../../../ast/parser";
 import { FromNode } from "../../../ast/query/node/from";
 import { RawNode } from "../../../ast/query/node/raw/raw_node";
+import { SqlFuncNode } from "../../../ast/query/node/sqlfunc/sqlfunc";
 import { UpdateNode } from "../../../ast/query/node/update";
 import { QueryNode } from "../../../ast/query/query";
 import { Model } from "../../../models/model";
+import { SqlDataSourceType } from "../../../sql_data_source_types";
 import { Interpreter } from "../../interpreter";
 import { InterpreterUtils } from "../../interpreter_utils";
 
@@ -44,6 +46,15 @@ class MssqlUpdateInterpreter implements Interpreter {
           return `${interpreterUtils.formatStringColumn("mssql", column)} = ${value.rawValue}`;
         }
 
+        if (value instanceof SqlFuncNode) {
+          rawNodeCount++;
+          const rendered = new AstParser(
+            this.model,
+            "mssql" as SqlDataSourceType,
+          ).parse([value], 1, true).sql;
+          return `${interpreterUtils.formatStringColumn("mssql", column)} = ${rendered}`;
+        }
+
         finalBindings.push(value);
         return `${interpreterUtils.formatStringColumn("mssql", column)} = @${idx}`;
       })
@@ -55,7 +66,7 @@ class MssqlUpdateInterpreter implements Interpreter {
       const returningCols = updateNode.returning
         .map(
           (column) =>
-            `inserted.${interpreterUtils.formatStringColumn("mssql", column)}`,
+            `inserted.${interpreterUtils.formatStringColumn("mssql", column)}${interpreterUtils.resolveColumnAlias("mssql", column)}`,
         )
         .join(", ");
       sql += ` output ${returningCols}`;

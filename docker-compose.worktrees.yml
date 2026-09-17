@@ -4,6 +4,8 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: test
+    command: --binlog-format=ROW
+    # Min supported DB version for v12: MySQL 8.0.13+.
     # No host port mapping — internal-only network.
 
   postgres:
@@ -12,6 +14,7 @@ services:
       POSTGRES_USER: root
       POSTGRES_PASSWORD: root
       POSTGRES_DB: test
+    # Min supported DB version for v12: PostgreSQL 13+.
     # No host port mapping.
 
   mariadb:
@@ -19,6 +22,7 @@ services:
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_DATABASE: test
+    # Min supported DB version for v12: MariaDB 10.5+.
     # No host port mapping.
 
   redis:
@@ -64,6 +68,7 @@ services:
     environment:
       ACCEPT_EULA: Y
       SA_PASSWORD: Password123!
+    # Min supported DB version for v12: SQL Server 2019+ (azure-sql-edge is 2019-based).
     # No host port mapping.
 
   node:

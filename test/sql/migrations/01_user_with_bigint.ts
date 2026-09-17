@@ -22,7 +22,7 @@ export default class extends Migration {
       table
         .timestamp("created_at", { withTimezone: true })
         .default(table.rawStatement("CURRENT_TIMESTAMP"));
-      table.timestamp("updated_at", { withTimezone: true });
+      table.timestamp("updated_at", { withTimezone: true, autoCreate: true });
       table.timestamp("deleted_at").default("NULL").nullable();
     });
 

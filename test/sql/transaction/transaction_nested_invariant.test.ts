@@ -2,11 +2,11 @@
  * F011 — Nested transaction commit/rollback must NOT release the outer
  * connection.
  *
- * Audit's stated concern (mssql/oracledb): the nested commit branch in
+ * Audit's stated concern (mssql): the nested commit branch in
  * `Transaction.commit()` early-returns before `releaseConnection()`, which
  * is correct for the nested case (we keep the outer connection alive). The
  * "silent no-op" risk is for dialects whose nested branch executes no SQL
- * (mssql/oracledb fall through with just a comment and `break`). For those
+ * (mssql falls through with just a comment and `break`). For those
  * dialects, the only thing the nested commit does is `this.isActive = false;
  * return;` — and that is exactly what the outer transaction requires.
  *
@@ -144,7 +144,7 @@ describe(`[${env.DB_TYPE}] Nested transaction invariants (F011)`, () => {
 
       // We should have captured at least one SAVEPOINT-family statement
       // (begin) and at least one RELEASE/ROLLBACK-TO-family statement
-      // (commit), except on mssql/oracledb where the commit branch is a
+      // (commit), except on mssql where the commit branch is a
       // no-op by design (auto-release on outer commit).
       const hasBegin = captured.some(
         (c) =>
@@ -152,7 +152,7 @@ describe(`[${env.DB_TYPE}] Nested transaction invariants (F011)`, () => {
       );
       expect(hasBegin).toBe(true);
 
-      if (env.DB_TYPE === "mssql" || env.DB_TYPE === "oracledb") {
+      if (env.DB_TYPE === "mssql") {
         // Audit's documented behaviour: these dialects have no explicit
         // release / rollback-to at the nested-commit level. Verify the
         // commit did NOT execute a stray RELEASE/ROLLBACK-TO statement

@@ -1,7 +1,6 @@
 import type { BaseValues } from "../../ast/query/node/where/where";
 import type { SqlDataSourceType } from "../../sql_data_source_types";
 import type { Model } from "../model";
-import { FetchHooks } from "../model_query_builder/model_query_builder_types";
 import {
   ModelDataProperties,
   ModelQueryResult,
@@ -16,13 +15,11 @@ type NullableAndUndefinable<T> =
   | (T | null | undefined);
 
 export type UpsertOptions<T extends Model> = {
-  ignoreHooks?: boolean;
   updateOnConflict?: boolean;
   returning?: ReturningKey<T>[];
 };
 
 export type InsertOptions<T extends Model> = {
-  ignoreHooks?: boolean;
   returning?: ReturningKey<T>[];
 };
 
@@ -249,7 +246,6 @@ export type FindOneType<
   orderBy?: OrderByType<T>;
   groupBy?: ModelKey<T>[];
   where?: WhereType<T>;
-  ignoreHooks?: FetchHooks;
 };
 
 export type FindType<

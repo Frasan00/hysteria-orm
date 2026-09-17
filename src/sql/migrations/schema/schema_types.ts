@@ -233,28 +233,6 @@ export type MssqlTableOptions = {
     | "COLUMNSTORE_ARCHIVE";
 };
 
-/**
- * @description OracleDB-specific table options
- * @oracledb only
- */
-export type OracledbTableOptions = {
-  tablespace?: string;
-  compress?: boolean;
-  storage?: {
-    initial?: string;
-    next?: string;
-    minextents?: number;
-    maxextents?: string;
-    pctincrease?: number;
-    pctfree?: number;
-    pctused?: number;
-  };
-  logging?: boolean;
-  cache?: boolean;
-  inMemory?: boolean;
-  compressFor?: "QUERY LOW" | "QUERY HIGH" | "ARCHIVE LOW" | "ARCHIVE HIGH";
-};
-
 export type DateTimeOptions = {
   /**
    * @description Whether to include the timezone in the datetime column
@@ -282,5 +260,4 @@ export type DatabaseTableOptions =
   | PostgresTableOptions
   | SqliteTableOptions
   | MssqlTableOptions
-  | OracledbTableOptions
   | MysqlAdvancedTableOptions;

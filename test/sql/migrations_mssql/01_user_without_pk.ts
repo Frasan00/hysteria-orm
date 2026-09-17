@@ -9,6 +9,7 @@ export default class extends Migration {
       table.integer("age");
       table.decimal("salary", 10, 2);
       table.char("gender", 1);
+      table.binary("image").nullable();
       table.float("height");
       table.text("description");
       table.text("short_description");
@@ -17,9 +18,9 @@ export default class extends Migration {
       table.jsonb("json");
       table.boolean("is_active");
       table.enum("status", ["active", "inactive"]).default("active");
-      table.varchar("created_at");
-      table.varchar("updated_at");
-      table.varchar("deleted_at").nullable();
+      table.timestamp("created_at", { withTimezone: true, autoCreate: true });
+      table.timestamp("updated_at", { withTimezone: true, autoCreate: true });
+      table.timestamp("deleted_at").default(null).nullable();
     });
   }
 

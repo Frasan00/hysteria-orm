@@ -4,10 +4,6 @@ import { randomUUID } from "node:crypto";
 import { DriverNotFoundError } from "../../drivers/driver_constants";
 import { HysteriaError } from "../../errors/hysteria_error";
 import { log, logMessage, type LoggerConfig } from "../../utils/logger";
-import {
-  convertDateStringToDateForOracle,
-  processOracleRow,
-} from "../../utils/oracle_utils";
 import { Model } from "../models/model";
 import { StreamOptions } from "../query_builder/query_builder_types";
 import { SqlDataSource } from "../sql_data_source";
@@ -252,82 +248,6 @@ export const execSql = async <
           }
 
           return mssqlResult.recordset as SqlRunnerReturnType<T, D>;
-        case "oracledb":
-          const ORACLE_OUT_FORMAT_OBJECT = 4002 as const;
-
-          let oracledbConnection: GetConnectionReturnType<"oracledb"> | null =
-            null;
-          const isInTransaction = !!sqlDataSource.sqlConnection;
-          try {
-            oracledbConnection = sqlDataSource.sqlConnection
-              ? (sqlDataSource.sqlConnection as GetConnectionReturnType<"oracledb">)
-              : ((await sqlDataSource.getConnection()) as GetConnectionReturnType<"oracledb">);
-
-            const oracleParams = params.map(convertDateStringToDateForOracle);
-
-            // Convert MySQL-style (?) placeholders to Oracle-style (:1, :2, ...)
-            let oracleParamIdx = 0;
-            const oracleQuery = query.replace(
-              /\?/g,
-              () => `:${++oracleParamIdx}`,
-            );
-
-            const oracledbResult = await withRetry(
-              () =>
-                (
-                  oracledbConnection as GetConnectionReturnType<"oracledb">
-                ).execute(oracleQuery, oracleParams, {
-                  outFormat: ORACLE_OUT_FORMAT_OBJECT,
-                  autoCommit: !isInTransaction,
-                }),
-              sqlDataSource.inputDetails.connectionPolicies?.retry,
-              sqlDataSource.logs,
-            );
-
-            const oracleDuration = formatDuration(start);
-            try {
-              const chain = sqlDataSource.observerChain as
-                | ObserverChain
-                | undefined;
-              if (chain && typeof chain.notifyAfter === "function") {
-                const afterCtx = {
-                  ...context,
-                  duration: oracleDuration,
-                  result: oracledbResult,
-                };
-                await chain.notifyAfter(afterCtx);
-              }
-            } catch {
-              // ignore observer errors
-            }
-
-            if (returning === "affectedRows") {
-              return oracledbResult.rowsAffected as SqlRunnerReturnType<T, D>;
-            }
-
-            if (returning === "raw") {
-              return oracledbResult as SqlRunnerReturnType<T, D>;
-            }
-
-            // Oracle returns column names in UPPERCASE - normalize to lowercase
-            // Also convert any Lob objects (CLOB/BLOB) to strings/buffers
-            const normalizedRows = await Promise.all(
-              (oracledbResult.rows as any[])?.map(async (row) => {
-                const processedRow = await processOracleRow(row);
-                const normalizedRow: Record<string, any> = {};
-                for (const key in processedRow) {
-                  normalizedRow[key.toLowerCase()] = processedRow[key];
-                }
-                return normalizedRow;
-              }) ?? [],
-            );
-
-            return normalizedRows as SqlRunnerReturnType<T, D>;
-          } finally {
-            if (oracledbConnection && !isInTransaction) {
-              await oracledbConnection.close();
-            }
-          }
         default:
           throw new HysteriaError(
             "ExecSql",
@@ -602,93 +522,6 @@ export const execSqlStreaming = async <
       });
 
       mssqlRequest.query(mssqlQuery);
-
-      return passThrough;
-    }
-
-    case "oracledb": {
-      // OracleDB supports result set streaming via queryStream
-      const oraclePool = sqlDataSource.getPool();
-      const oracleConnection =
-        (sqlDataSource.sqlConnection as GetConnectionReturnType<"oracledb">) ??
-        (await (oraclePool as any).getConnection());
-
-      const passThrough = new PassThrough({
-        objectMode: options.objectMode ?? true,
-        highWaterMark: options.highWaterMark,
-      }) as PassThrough & AsyncGenerator<M & S & R>;
-
-      const ORACLE_STREAM_OUT_FORMAT_OBJECT = 4002 as const;
-
-      // Convert MySQL-style (?) placeholders to Oracle-style (:1, :2, ...)
-      let oracleStreamParamIdx = 0;
-      const oracleStreamQuery = query.replace(
-        /\?/g,
-        () => `:${++oracleStreamParamIdx}`,
-      );
-
-      const oracleStreamParams = params.map(convertDateStringToDateForOracle);
-      const oracleStream = oracleConnection.queryStream(
-        oracleStreamQuery,
-        oracleStreamParams,
-        {
-          outFormat: ORACLE_STREAM_OUT_FORMAT_OBJECT,
-        },
-      );
-
-      let pending = 0;
-      let ended = false;
-      let hasError = false;
-
-      const tryRelease = async () => {
-        try {
-          await oracleConnection.close();
-        } catch {}
-      };
-
-      oracleStream.on("data", (row: any) => {
-        if (hasError) return;
-
-        // Oracle returns column names in UPPERCASE - normalize to lowercase
-        const normalizedRow: Record<string, any> = {};
-        for (const key in row) {
-          normalizedRow[key.toLowerCase()] = row[key];
-        }
-
-        if (events.onData) {
-          pending++;
-          Promise.resolve(events.onData(passThrough, normalizedRow))
-            .then(() => {
-              pending--;
-              if (ended && pending === 0 && !hasError) {
-                tryRelease();
-                passThrough.end();
-              }
-            })
-            .catch((err: any) => {
-              hasError = true;
-              tryRelease();
-              passThrough.destroy(err);
-            });
-          return;
-        }
-
-        passThrough.write(normalizedRow);
-      });
-
-      oracleStream.on("end", () => {
-        ended = true;
-        if (pending === 0 && !hasError) {
-          tryRelease();
-          passThrough.end();
-        }
-      });
-
-      oracleStream.on("error", (err: any) => {
-        hasError = true;
-        tryRelease();
-        passThrough.destroy(err);
-      });
 
       return passThrough;
     }

@@ -25,18 +25,17 @@
  *  10. After F008 fix: `trx.commit()` failure leaves `isActive === false`.
  */
 import { env } from "../../src/env/env";
-import { HysteriaError } from "../../errors/hysteria_error";
+import { HysteriaError } from "../../src/errors/hysteria_error";
 import { atomic } from "../../src/sql/transactions/atomic";
 import { SqlDataSource } from "../../src/sql/sql_data_source";
 import { TransactionContext } from "../../src/sql/transactions/transaction_context";
-import { UserFactory } from "../test_models/factory/user_factory";
-import { UserWithoutPk } from "../test_models/without_pk/user_without_pk";
+import { UserFactory } from "./test_models/factory/user_factory";
+import { UserWithoutPk } from "./test_models/without_pk/user_without_pk";
 
 let sql: SqlDataSource;
 
 const isSqlite = env.DB_TYPE === "sqlite";
 const isMssql = env.DB_TYPE === "mssql";
-const isOracle = env.DB_TYPE === "oracledb";
 
 beforeAll(async () => {
   sql = new SqlDataSource();
@@ -106,22 +105,6 @@ describe(`[${env.DB_TYPE}] Connection & Transaction Invariants`, () => {
       const baseline =
         pool?._allConnections?.length ?? pool?.totalCount ?? null;
 
-      if (env.DB_TYPE === "oracledb") {
-        // Oracle pool internals are not exposed. Softer check:
-        // a subsequent transaction() must complete within 3s.
-        const trx = await Promise.race([
-          sql.transaction(),
-          new Promise((_resolve, reject) =>
-            setTimeout(
-              () => reject(new Error("transaction() timed out")),
-              3000,
-            ),
-          ),
-        ]);
-        await (trx as any).commit();
-        return;
-      }
-
       const trx = await sql.transaction();
       await trx.commit();
 
@@ -152,7 +135,7 @@ describe(`[${env.DB_TYPE}] Connection & Transaction Invariants`, () => {
   // ============================================================
   // Invariant 4
   // ============================================================
-  const testNested = isSqlite || isMssql || isOracle ? test.skip : test;
+  const testNested = isSqlite || isMssql ? test.skip : test;
 
   testNested(
     "I4: nested rollback preserves the outer transaction",
@@ -198,7 +181,7 @@ describe(`[${env.DB_TYPE}] Connection & Transaction Invariants`, () => {
   // ============================================================
   // Invariant 5
   // ============================================================
-  const testClsDisabled = isSqlite || isMssql || isOracle ? test.skip : test;
+  const testClsDisabled = isSqlite || isMssql ? test.skip : test;
 
   testClsDisabled(
     "I5: clsEnabled:false prevents ALS auto-propagation between sources",
@@ -219,8 +202,9 @@ describe(`[${env.DB_TYPE}] Connection & Transaction Invariants`, () => {
           // b.transaction() with a conflicting isolationLevel does NOT
           // throw the F017 "isolation level inherited" error — b creates
           // a fresh transaction with its own level.
+          let bTrxS: any;
           try {
-            await b.transaction({ isolationLevel: "SERIALIZABLE" });
+            bTrxS = await b.transaction({ isolationLevel: "SERIALIZABLE" });
             // If b had inherited a's ALS trx, isolationLevel would have
             // been silently inherited (F017) and no error thrown. The
             // promise itself succeeding does not prove CLS is off, so
@@ -230,7 +214,13 @@ describe(`[${env.DB_TYPE}] Connection & Transaction Invariants`, () => {
             // assertion).
             bSawATrx = false;
           } finally {
-            // cleanup
+            // Never leave the leaked SERIALIZABLE transaction open, or
+            // b.disconnect() hangs waiting for pg.Pool to drain.
+            if (bTrxS?.isActive) {
+              await bTrxS.rollback({
+                throwErrorOnInactiveTransaction: false,
+              });
+            }
           }
         });
 
@@ -373,13 +363,12 @@ describe(`[${env.DB_TYPE}] Connection & Transaction Invariants`, () => {
 // ============================================================
 // Helper: force a commit failure on the dialect-specific path.
 // ============================================================
-function installCommitFailure(trx: { sql: SqlDataSource }): () => void {
+function installCommitFailure(trx: any): () => void {
   const trxSql = trx.sql as SqlDataSource;
   const conn = trxSql.sqlConnection as any;
 
   switch (env.DB_TYPE) {
     case "mssql":
-    case "oracledb":
     case "mysql":
     case "mariadb": {
       const original = conn.commit;

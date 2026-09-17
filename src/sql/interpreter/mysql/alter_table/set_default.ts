@@ -1,7 +1,10 @@
+import { AstParser } from "../../../ast/parser";
 import { SetDefaultNode } from "../../../ast/query/node/alter_table/set_default";
 import { RawNode } from "../../../ast/query/node/raw/raw_node";
+import { SqlFuncNode } from "../../../ast/query/node/sqlfunc/sqlfunc";
 import { QueryNode } from "../../../ast/query/query";
 import { Model } from "../../../models/model";
+import { SqlDataSourceType } from "../../../sql_data_source_types";
 import type { Interpreter } from "../../interpreter";
 
 class MysqlSetDefaultInterpreter implements Interpreter {
@@ -12,6 +15,12 @@ class MysqlSetDefaultInterpreter implements Interpreter {
 
     if (n.defaultValue instanceof RawNode) {
       val = n.defaultValue.rawValue;
+    } else if (n.defaultValue instanceof SqlFuncNode) {
+      val = new AstParser(this.model, "mysql" as SqlDataSourceType).parse(
+        [n.defaultValue],
+        1,
+        true,
+      ).sql;
     } else if (n.defaultValue === "NULL") {
       val = "null";
     } else if (n.defaultValue === "TRUE" || n.defaultValue === "FALSE") {

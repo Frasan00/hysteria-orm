@@ -3,7 +3,7 @@
  * (Postgres + MySQL + MariaDB).
  *
  * Hard-guarded to ["mysql", "postgres", "mariadb"]. All other engines
- * (sqlite, mssql, oracle, cockroachdb) hit `describe.skip` so this file
+ * (sqlite, mssql, cockroachdb) hit `describe.skip` so this file
  * never fails in environments that don't have the three target engines.
  *
  * Sections:

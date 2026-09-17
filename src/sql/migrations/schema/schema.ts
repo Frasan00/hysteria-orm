@@ -515,7 +515,6 @@ export default class Schema {
    * @mysql Extensions are not supported - outputs a comment
    * @sqlite Extensions are loaded dynamically - outputs a comment
    * @mssql Extensions are not supported - outputs a comment
-   * @oracledb Extensions are not supported - outputs a comment
    */
   createExtension(
     extensionName: CommonPostgresExtensions,
@@ -574,11 +573,6 @@ export default class Schema {
       case "mssql":
         return [
           `CREATE OR ALTER TRIGGER [${triggerName}] ON [${table}] AFTER UPDATE AS BEGIN SET NOCOUNT ON; UPDATE t SET t.[${column}] = CURRENT_TIMESTAMP FROM [${table}] t INNER JOIN inserted i ON t.[id] = i.[id]; END`,
-        ];
-
-      case "oracledb":
-        return [
-          `CREATE OR REPLACE TRIGGER "${triggerName}" BEFORE UPDATE ON "${table}" FOR EACH ROW BEGIN :NEW."${column}" := CURRENT_TIMESTAMP; END;`,
         ];
 
       default:

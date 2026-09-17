@@ -132,18 +132,7 @@ export class SelectQueryBuilder<
     column: string,
     alias: A,
   ): this {
-    const casedColumn =
-      column === "*"
-        ? "*"
-        : convertCase(column, this.model.databaseCaseConvention);
-    this.selectNodes.push(
-      new SelectNode(
-        `${sqlFunc.toLowerCase()}(${casedColumn}) as ${alias}`,
-        undefined,
-        undefined,
-        true,
-      ),
-    );
+    this.selectNodes.push(new SelectNode(column, alias, sqlFunc));
     return this;
   }
 

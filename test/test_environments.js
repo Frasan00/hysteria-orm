@@ -65,13 +65,3 @@ export const mssqlConfig = {
   database: process.env.DB_DATABASE || "master",
   logs: true,
 };
-
-export const oracledbConfig = {
-  type: "oracledb",
-  host: process.env.DB_HOST || "localhost",
-  user: process.env.DB_USER || "hysteria",
-  password: process.env.DB_PASSWORD || "oracle",
-  database: process.env.DB_DATABASE || "FREEPDB1",
-  port: process.env.DB_PORT ? Number(process.env.DB_PORT) : 1521,
-  logs: true,
-};

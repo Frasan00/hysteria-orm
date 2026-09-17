@@ -73,7 +73,7 @@ class MssqlInsertInterpreter implements Interpreter {
         const returningCols = insertNode.returning
           .map(
             (column) =>
-              `inserted.${interpreterUtils.formatStringColumn("mssql", column)}`,
+              `inserted.${interpreterUtils.formatStringColumn("mssql", column)}${interpreterUtils.resolveColumnAlias("mssql", column)}`,
           )
           .join(", ");
         sql = sql.replace(`) values`, `) output ${returningCols} values`);
@@ -103,7 +103,7 @@ class MssqlInsertInterpreter implements Interpreter {
     return outputColumns
       .map(
         (column) =>
-          `inserted.${interpreterUtils.formatStringColumn("mssql", column)}`,
+          `inserted.${interpreterUtils.formatStringColumn("mssql", column)}${interpreterUtils.resolveColumnAlias("mssql", column)}`,
       )
       .join(", ");
   }

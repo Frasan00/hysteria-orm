@@ -119,7 +119,6 @@ export class Transaction {
         case "mariadb":
         case "postgres":
         case "cockroachdb":
-        case "oracledb":
           await this.sql.rawQuery(`SAVEPOINT ${savepoint}`);
           this.isActive = true;
           return;
@@ -174,13 +173,6 @@ export class Transaction {
         await this.sql.rawQuery("BEGIN TRANSACTION");
         this.isActive = true;
         break;
-      case "oracledb":
-        // Oracle auto-starts transactions, SET TRANSACTION must come first
-        if (levelQuery) {
-          await this.sql.rawQuery(levelQuery);
-        }
-        this.isActive = true;
-        break;
     }
   }
 
@@ -206,8 +198,7 @@ export class Transaction {
       const savepoint = this.getSavePointName();
       switch (this.sql.type) {
         case "mssql":
-        case "oracledb":
-          // MSSQL and Oracle don't support RELEASE SAVEPOINT - savepoints are automatically released on commit
+          // MSSQL doesn't support RELEASE SAVEPOINT - savepoints are automatically released on commit
           break;
         case "mysql":
         case "mariadb":
@@ -242,12 +233,6 @@ export class Transaction {
           break;
         case "sqlite":
           await this.sql.rawQuery("COMMIT");
-          break;
-        case "oracledb":
-          log("COMMIT", this.sql.logs);
-          await (
-            this.sql.sqlConnection as GetConnectionReturnType<"oracledb">
-          ).commit();
           break;
       }
     } catch (error: any) {
@@ -288,7 +273,6 @@ export class Transaction {
         case "mariadb":
         case "postgres":
         case "cockroachdb":
-        case "oracledb":
           await this.sql.rawQuery(`ROLLBACK TO SAVEPOINT ${savepoint}`);
           break;
         case "sqlite":
@@ -325,12 +309,6 @@ export class Transaction {
           break;
         case "sqlite":
           await this.sql.rawQuery("ROLLBACK");
-          break;
-        case "oracledb":
-          log("ROLLBACK", this.sql.logs);
-          await (
-            this.sql.sqlConnection as GetConnectionReturnType<"oracledb">
-          ).rollback();
           break;
         default:
           throw new HysteriaError(
@@ -375,11 +353,6 @@ export class Transaction {
           break;
         case "sqlite":
           // Since we are living on a single connection, we don't need to release sqlite
-          break;
-        case "oracledb":
-          await (
-            this.sql.sqlConnection as GetConnectionReturnType<"oracledb">
-          ).close();
           break;
         default:
           throw new HysteriaError(
@@ -430,11 +403,6 @@ export class Transaction {
     }
 
     if (this.sql.type === "postgres" || this.sql.type === "cockroachdb") {
-      return `SET TRANSACTION ISOLATION LEVEL ${this.isolationLevel}`;
-    }
-
-    if (this.sql.type === "oracledb") {
-      // Oracle uses SET TRANSACTION ISOLATION LEVEL
       return `SET TRANSACTION ISOLATION LEVEL ${this.isolationLevel}`;
     }
 

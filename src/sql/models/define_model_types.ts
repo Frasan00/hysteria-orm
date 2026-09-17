@@ -774,11 +774,6 @@ export type CheckDefinition = string | { expression: string; name?: string };
 
 export type HooksDefinition<T = any, M extends Model = any> = {
   beforeFetch?: (queryBuilder: ModelQueryBuilder<M>) => Promise<void> | void;
-  afterFetch?: (data: T[]) => Promise<T[]> | T[];
-  beforeInsert?: (data: Partial<T>) => Promise<void> | void;
-  beforeInsertMany?: (data: Partial<T>[]) => Promise<void> | void;
-  beforeUpdate?: (queryBuilder: ModelQueryBuilder<M>) => Promise<void> | void;
-  beforeDelete?: (queryBuilder: ModelQueryBuilder<M>) => Promise<void> | void;
 };
 
 // ---------------------------------------------------------------------------
@@ -896,11 +891,6 @@ type HiddenModelStatics =
   | "getTableSchema"
   // Hook declarations (set via defineModel options, not accessed directly)
   | "beforeFetch"
-  | "afterFetch"
-  | "beforeInsert"
-  | "beforeInsertMany"
-  | "beforeUpdate"
-  | "beforeDelete"
   // Table (overridden with readonly literal)
   | "table";
 
@@ -943,21 +933,6 @@ export type DefinedModel<
   new (): InferModel<T, C, R> & Model;
   // Typed lifecycle hooks (override the `any`-typed hooks from Model)
   beforeFetch?: (
-    queryBuilder: ModelQueryBuilder<
-      { readonly __tableName: T } & InferColumns<C> & Model
-    >,
-  ) => Promise<void> | void;
-  afterFetch?: (
-    data: InferColumns<C>[],
-  ) => Promise<InferColumns<C>[]> | InferColumns<C>[];
-  beforeInsert?: (data: Partial<InferColumns<C>>) => Promise<void> | void;
-  beforeInsertMany?: (data: Partial<InferColumns<C>>[]) => Promise<void> | void;
-  beforeUpdate?: (
-    queryBuilder: ModelQueryBuilder<
-      { readonly __tableName: T } & InferColumns<C> & Model
-    >,
-  ) => Promise<void> | void;
-  beforeDelete?: (
     queryBuilder: ModelQueryBuilder<
       { readonly __tableName: T } & InferColumns<C> & Model
     >,
@@ -1231,7 +1206,7 @@ export type ViewDefinition<
 > = {
   columns: C;
   statement: (query: ModelQueryBuilder<any>) => void;
-  hooks?: Pick<HooksDefinition<InferColumns<C>>, "beforeFetch" | "afterFetch">;
+  hooks?: Pick<HooksDefinition<InferColumns<C>>, "beforeFetch">;
   options?: Pick<
     DefineModelOptions<keyof C & string>,
     "modelCaseConvention" | "databaseCaseConvention"

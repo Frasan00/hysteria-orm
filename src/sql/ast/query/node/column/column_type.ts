@@ -14,6 +14,10 @@ export class ColumnTypeNode extends QueryNode {
   collate?: string;
   unsigned?: boolean;
   zerofill?: boolean;
+  /** Set when the column also declares a foreign key (migration DSL) — such
+   *  uuid columns must not get an implicit DB default, or inserts that omit
+   *  the FK would backfill a random value that violates the FK. */
+  isForeignKey?: boolean;
   chainsWith = ",";
   canKeywordBeSeenMultipleTimes = true;
   folder = "column";

@@ -69,7 +69,6 @@ import type {
   getPoolReturnType,
   MssqlPoolInstance,
   MysqlConnectionInstance,
-  OracleDBPoolInstance,
   PgPoolClientInstance,
   PingResult,
   RawQueryOptions,
@@ -1111,9 +1110,6 @@ export class SqlDataSource<
       case "mssql":
         const mssqlPool = this.sqlPool as MssqlPoolInstance;
         return mssqlPool.transaction() as GetConnectionReturnType<D>;
-      case "oracledb":
-        const oracledbPool = this.sqlPool as OracleDBPoolInstance;
-        return (await oracledbPool.getConnection()) as GetConnectionReturnType<D>;
       default:
         throw new HysteriaError(
           "SqlDataSource::getConnection",
@@ -1147,9 +1143,6 @@ export class SqlDataSource<
             case "postgres":
             case "cockroachdb":
               (this.sqlConnection as any).release?.();
-              break;
-            case "oracledb":
-              await (this.sqlConnection as any).close?.();
               break;
             // mssql: auto-released; sqlite: shared, no-op
           }
@@ -1213,9 +1206,6 @@ export class SqlDataSource<
         break;
       case "mssql":
         await (this.sqlPool as MssqlPoolInstance).close();
-        break;
-      case "oracledb":
-        await (this.sqlPool as OracleDBPoolInstance).close();
         break;
       default:
         throw new HysteriaError(
@@ -1396,7 +1386,7 @@ export class SqlDataSource<
       return rawResult;
     }
 
-    // SQLite, MSSQL, OracleDB - return as-is (usually array of rows)
+    // SQLite, MSSQL - return as-is (usually array of rows)
     return Array.isArray(rawResult) ? rawResult : [];
   }
 
@@ -1768,13 +1758,8 @@ export class SqlDataSource<
       return rows.length > 0 && rows[0].exists === true;
     }
 
-    // MySQL/MariaDB/MSSQL/OracleDB return COUNT(*)
-    if (
-      db === "mysql" ||
-      db === "mariadb" ||
-      db === "mssql" ||
-      db === "oracledb"
-    ) {
+    // MySQL/MariaDB/MSSQL return COUNT(*)
+    if (db === "mysql" || db === "mariadb" || db === "mssql") {
       return rows.length > 0 && parseInt(rows[0].count) > 0;
     }
 
@@ -1817,13 +1802,8 @@ export class SqlDataSource<
       return rows.length > 0 && rows[0].exists === true;
     }
 
-    // MySQL/MariaDB/MSSQL/OracleDB return COUNT(*)
-    if (
-      db === "mysql" ||
-      db === "mariadb" ||
-      db === "mssql" ||
-      db === "oracledb"
-    ) {
+    // MySQL/MariaDB/MSSQL return COUNT(*)
+    if (db === "mysql" || db === "mariadb" || db === "mssql") {
       return rows.length > 0 && parseInt(rows[0].count) > 0;
     }
 
@@ -1886,13 +1866,8 @@ export class SqlDataSource<
       return rows.length > 0 && rows[0].exists === true;
     }
 
-    // MySQL/MariaDB/MSSQL/OracleDB return COUNT(*)
-    if (
-      db === "mysql" ||
-      db === "mariadb" ||
-      db === "mssql" ||
-      db === "oracledb"
-    ) {
+    // MySQL/MariaDB/MSSQL return COUNT(*)
+    if (db === "mysql" || db === "mariadb" || db === "mssql") {
       return rows.length > 0 && parseInt(rows[0].count) > 0;
     }
 
@@ -1934,13 +1909,8 @@ export class SqlDataSource<
       return rows.length > 0 && rows[0].exists === true;
     }
 
-    // MySQL/MariaDB/MSSQL/OracleDB return COUNT(*)
-    if (
-      db === "mysql" ||
-      db === "mariadb" ||
-      db === "mssql" ||
-      db === "oracledb"
-    ) {
+    // MySQL/MariaDB/MSSQL return COUNT(*)
+    if (db === "mysql" || db === "mariadb" || db === "mssql") {
       return rows.length > 0 && parseInt(rows[0].count) > 0;
     }
 
@@ -2038,17 +2008,12 @@ export class SqlDataSource<
       return false;
     }
 
-    // PostgreSQL/CockroachDB/MSSQL/OracleDB return EXISTS or COUNT
+    // PostgreSQL/CockroachDB/MSSQL return EXISTS or COUNT
     if (db === "postgres" || db === "cockroachdb") {
       return rows.length > 0 && rows[0].exists === true;
     }
 
-    if (
-      db === "mysql" ||
-      db === "mariadb" ||
-      db === "mssql" ||
-      db === "oracledb"
-    ) {
+    if (db === "mysql" || db === "mariadb" || db === "mssql") {
       return rows.length > 0 && parseInt(rows[0].count) > 0;
     }
 
@@ -2390,40 +2355,6 @@ export class SqlDataSource<
           return lockResult >= 0;
         }
 
-        case "oracledb": {
-          try {
-            const lockHandle = this.hashStringToLockId(lockKey);
-            await this.rawQuery(
-              `BEGIN DBMS_LOCK.ALLOCATE_UNIQUE('${lockKey}', '${lockHandle}'); END;`,
-            );
-            const result = await this.rawQuery<any>(
-              `DECLARE
-                 v_result NUMBER;
-               BEGIN
-                 v_result := DBMS_LOCK.REQUEST(
-                   lockhandle => ${lockHandle},
-                   lockmode => DBMS_LOCK.X_MODE,
-                   timeout => ${Math.floor(timeoutMs / 1000)},
-                   release_on_commit => FALSE
-                 );
-                 IF v_result IN (0, 4) THEN
-                   :result := 1;
-                 ELSE
-                   :result := 0;
-                 END IF;
-               END;`,
-            );
-            return result?.outBinds?.result === 1;
-          } catch (error) {
-            const err =
-              error instanceof Error ? error : new Error(String(error));
-            logger.warn(
-              `Oracle lock allocation may have failed: ${err.message}`,
-            );
-            return false;
-          }
-        }
-
         case "sqlite":
           logger.info(
             "SQLite uses automatic file-based locking, advisory locks not needed",
@@ -2463,7 +2394,6 @@ export class SqlDataSource<
         case "postgres":
         case "cockroachdb":
         case "mssql":
-        case "oracledb":
           query = "SELECT 1";
           break;
         case "sqlite":
@@ -2538,30 +2468,6 @@ export class SqlDataSource<
           )) as any;
           const lockResult = result.recordset?.[0]?.release_result ?? -999;
           return lockResult >= 0;
-        }
-
-        case "oracledb": {
-          try {
-            const lockHandle = this.hashStringToLockId(lockKey);
-            const result = await this.rawQuery<any>(
-              `DECLARE
-                 v_result NUMBER;
-               BEGIN
-                 v_result := DBMS_LOCK.RELEASE(${lockHandle});
-                 IF v_result = 0 THEN
-                   :result := 1;
-                 ELSE
-                   :result := 0;
-                 END IF;
-               END;`,
-            );
-            return result?.outBinds?.result === 1;
-          } catch (error) {
-            const err =
-              error instanceof Error ? error : new Error(String(error));
-            logger.warn(`Oracle lock release may have failed: ${err.message}`);
-            return false;
-          }
         }
 
         case "sqlite":

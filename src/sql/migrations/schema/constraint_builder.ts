@@ -2,6 +2,7 @@ import { ColumnTypeNode } from "../../ast/query/node/column";
 import { ConstraintNode } from "../../ast/query/node/constraint";
 import { AfterConstraintNode } from "../../ast/query/node/constraint/after";
 import { RawNode } from "../../ast/query/node/raw/raw_node";
+import { SqlFuncNode } from "../../ast/query/node/sqlfunc/sqlfunc";
 import { QueryNode } from "../../ast/query/query";
 import {
   getDefaultFkConstraintName,
@@ -93,6 +94,7 @@ export class ConstraintBuilder extends BaseBuilder {
     references: `${string}.${string}`,
     options?: ForeignKeyOptions,
   ): this {
+    this.columnNode.isForeignKey = true;
     const [table, cols] = references.split(".");
     const refCols = cols.split(",");
     const name =
@@ -196,12 +198,13 @@ export class ConstraintBuilder extends BaseBuilder {
   /**
    * @description Sets the default value for the column
    * @param value is the default value for the column
-   * @oracle not supported must be defined manually in a separate statement
    */
-  default(value: string | number | boolean | null | RawNode): this {
-    let defaultVal: string | undefined | RawNode;
+  default(
+    value: string | number | boolean | null | RawNode | SqlFuncNode,
+  ): this {
+    let defaultVal: string | undefined | RawNode | SqlFuncNode;
 
-    if (value instanceof RawNode) {
+    if (value instanceof RawNode || value instanceof SqlFuncNode) {
       defaultVal = value;
     } else if (value === null) {
       defaultVal = "NULL";

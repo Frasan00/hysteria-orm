@@ -1,3 +1,1 @@
-export type UpdateOptions = {
-  ignoreBeforeUpdateHook?: boolean;
-};
+export type UpdateOptions = {};

@@ -1,9 +1,5 @@
 import type { Transaction as MssqlTransaction } from "mssql";
 import type { PoolConnection } from "mysql2/promise";
-import type {
-  Connection as OracleDBConnection,
-  Pool as OracleDBPool,
-} from "oracledb";
 import type { PoolClient } from "pg";
 import { FormatOptionsWithLanguage } from "sql-formatter";
 import type { AdminJsOptions } from "../adminjs/adminjs_types";
@@ -14,11 +10,9 @@ import type {
   MssqlDataSourceInput,
   MysqlSqlDataSourceInput,
   NotNullableMysqlSqlDataSourceInput,
-  NotNullableOracleDBDataSourceInput,
   NotNullableOracleMssqlDataSourceInput,
   NotNullablePostgresSqlDataSourceInput,
   NotNullableSqliteDataSourceInput,
-  OracleDBDataSourceInput,
   PostgresSqlDataSourceInput,
   SqliteDataSourceInput,
 } from "../data_source/data_source_types";
@@ -29,7 +23,6 @@ import type {
   PgImport,
   Sqlite3Import,
 } from "../drivers/driver_types";
-import type { Model } from "./models/model";
 import type { AnyModelConstructor } from "./models/define_model_types";
 import type { LoggerConfig } from "../utils/logger";
 
@@ -49,15 +42,12 @@ export type PgPoolClientInstance = InstanceType<PgImport["Pool"]>;
 
 export type SqliteConnectionInstance = InstanceType<Sqlite3Import["Database"]>;
 
-export type OracleDBPoolInstance = OracleDBPool;
-
 export type MssqlPoolInstance = InstanceType<MssqlImport["ConnectionPool"]>;
 export type MssqlConnectionInstance = Awaited<
   ReturnType<MssqlPoolInstance["connect"]>
 >;
 
 export type SqlPoolType =
-  | OracleDBPoolInstance
   | MysqlConnectionInstance
   | PgPoolClientInstance
   | SqliteConnectionInstance
@@ -256,9 +246,7 @@ type MapSqlDataSourceTypeToInput<D extends SqlDataSourceType> = D extends
       ? SqliteDataSourceInput
       : D extends "mssql"
         ? MssqlDataSourceInput
-        : D extends "oracledb"
-          ? OracleDBDataSourceInput
-          : never;
+        : never;
 
 export type SlaveContext = {
   type: SqlDataSourceType;
@@ -335,9 +323,7 @@ type MapSqlDataSourceTypeToNotNullableInput<D extends SqlDataSourceType> =
         ? NotNullableSqliteDataSourceInput
         : D extends "mssql"
           ? NotNullableOracleMssqlDataSourceInput
-          : D extends "oracledb"
-            ? NotNullableOracleDBDataSourceInput
-            : never;
+          : never;
 
 export type UseConnectionInput<
   D extends SqlDataSourceType = SqlDataSourceType,
@@ -386,9 +372,7 @@ export type getPoolReturnType<T = SqlDataSourceType> = T extends "mysql"
           ? SqliteConnectionInstance
           : T extends "mssql"
             ? MssqlPoolInstance
-            : T extends "oracledb"
-              ? OracleDBPoolInstance
-              : never;
+            : never;
 
 export type GetConnectionReturnType<T = SqlDataSourceType> = T extends "mysql"
   ? PoolConnection
@@ -402,9 +386,7 @@ export type GetConnectionReturnType<T = SqlDataSourceType> = T extends "mysql"
           ? InstanceType<Sqlite3Import["Database"]>
           : T extends "mssql"
             ? MssqlTransaction
-            : T extends "oracledb"
-              ? OracleDBConnection
-              : never;
+            : never;
 
 /** Only accepts formats `string` e `string as string` */
 type NoSpace<S extends string> = S extends `${infer _} ${infer _}` ? never : S;

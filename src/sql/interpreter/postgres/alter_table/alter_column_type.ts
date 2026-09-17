@@ -1,5 +1,6 @@
 import { AstParser } from "../../../ast/parser";
 import { AlterColumnTypeNode } from "../../../ast/query/node/alter_table/alter_column_type";
+import { ColumnTypeNode } from "../../../ast/query/node/column";
 import { QueryNode } from "../../../ast/query/query";
 import { Model } from "../../../models/model";
 import { SqlDataSourceType } from "../../../sql_data_source_types";
@@ -18,6 +19,12 @@ class PgAlterColumnTypeInterpreter implements Interpreter {
     // are invalid inside ALTER COLUMN TYPE and are managed separately via
     // ADD CONSTRAINT by the schema diff engine.
     typeSql = typeSql.replace(/\s*check\s*\(.*\)\s*$/i, "").trim();
+
+    // uuid columns carry an implicit DDL default that must not be re-emitted
+    // inside ALTER COLUMN TYPE — the diff layer manages defaults separately.
+    if ((a.newType as ColumnTypeNode).dataType === "uuid") {
+      typeSql = typeSql.replace(/\s+default\s+.+$/i, "").trim();
+    }
 
     // Generate type change SQL
     let resultSql = `alter column "${a.column}" type ${typeSql}`;

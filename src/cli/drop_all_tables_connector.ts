@@ -89,27 +89,7 @@ export default async function dropAllTablesConnector(
       }
     }
 
-    if (dbType === "oracledb") {
-      const fkResult = await sql.rawQuery<any>(`
-        SELECT constraint_name, table_name
-        FROM user_constraints
-        WHERE constraint_type = 'R'
-      `);
-
-      // Oracle rawQuery returns rows as objects with UPPERCASE column names
-      for (const fk of fkResult.rows || []) {
-        await sql.rawQuery(
-          `ALTER TABLE "${fk.TABLE_NAME}" DROP CONSTRAINT "${fk.CONSTRAINT_NAME}"`,
-        );
-      }
-
-      // Oracle can't execute multiple statements at once, drop each table individually
-      for (const table of parsedTables) {
-        await sql.rawQuery(`DROP TABLE "${table}" CASCADE CONSTRAINTS PURGE`);
-      }
-    } else {
-      await sql.rawQuery(dropAllTablesTemplate);
-    }
+    await sql.rawQuery(dropAllTablesTemplate);
 
     if (dbType === "mysql" || dbType === "mariadb") {
       await sql.rawQuery(`SET FOREIGN_KEY_CHECKS = 1;`);

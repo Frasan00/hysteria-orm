@@ -67,7 +67,6 @@ function capabilitiesFor(
         supportsNumericIds: true,
       };
     case "mssql":
-    case "oracledb":
       return {
         supportsJSON: false,
         supportsDates: true,

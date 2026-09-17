@@ -70,9 +70,6 @@ export class AstParser {
       this.dbType === "mssql" && limitNode && !hasOffset && !hasOrderBy;
     const useMssqlOffsetFetch =
       this.dbType === "mssql" && !useMssqlTop && (limitNode || offsetNode);
-    // Oracle 12c+ uses standard OFFSET/FETCH syntax like MSSQL
-    const useOracleOffsetFetch =
-      this.dbType === "oracledb" && (limitNode || offsetNode);
 
     const sqlParts: string[] = [];
     const allBindings: any[] = [];
@@ -96,13 +93,6 @@ export class AstParser {
         continue;
       }
 
-      if (
-        useOracleOffsetFetch &&
-        (node.folder === "limit" || node.folder === "offset")
-      ) {
-        continue;
-      }
-
       node.currParamIndex = startBindingIndex + allBindings.length;
 
       const interpreter: Interpreter =
@@ -117,6 +107,7 @@ export class AstParser {
       }
 
       interpreter.model = this.model;
+      interpreter.dbType = this.dbType;
       const sqlStatement = interpreter.toSql(node);
 
       if (!sqlStatement.sql || !sqlStatement.sql.trim().length) {
@@ -223,25 +214,6 @@ export class AstParser {
         allBindings.push(limitNode.limit);
         const limitParamIdx = startBindingIndex + allBindings.length - 1;
         paginationSql += ` fetch next @${limitParamIdx} rows only`;
-      }
-
-      sqlParts.push(paginationSql);
-    }
-
-    if (useOracleOffsetFetch) {
-      if (!hasOrderBy) {
-        sqlParts.push("order by null");
-      }
-
-      const offsetVal = offsetNode?.offset ?? 0;
-      allBindings.push(offsetVal);
-      const offsetParamIdx = startBindingIndex + allBindings.length - 1;
-      let paginationSql = `offset :${offsetParamIdx} rows`;
-
-      if (limitNode) {
-        allBindings.push(limitNode.limit);
-        const limitParamIdx = startBindingIndex + allBindings.length - 1;
-        paginationSql += ` fetch next :${limitParamIdx} rows only`;
       }
 
       sqlParts.push(paginationSql);

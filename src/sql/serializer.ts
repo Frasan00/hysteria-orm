@@ -26,15 +26,18 @@ import { Model } from "./models/model";
  * All Maps and Sets are pre-computed once per batch in `serializeModel` and passed
  * in as parameters to avoid redundant allocations per row.
  *
+ * Synchronous: custom `serialize` functions must return plain values. A serializer
+ * returning a Promise throws — the ORM moved all per-row work out of async paths.
+ *
  * @param model - Raw database row as key-value pairs
  * @param typeofModel - The Model class to create instances from
  * @param columnsByName - Pre-computed map of model column name -> ColumnType (once per batch)
  * @param columnsByDbName - Pre-computed map of database column name -> ColumnType (once per batch)
  * @param modelSelectedColumnsSet - Pre-computed Set of selected column names, null means all (once per batch)
  * @param hasWildcards - Whether the query used wildcards (*, table.*)
- * @returns Promise resolving to the serialized model instance with proper typing
+ * @returns The serialized model instance with proper typing
  */
-export const parseDatabaseDataIntoModelResponse = async <
+export const parseDatabaseDataIntoModelResponse = <
   T extends Record<string, any>,
 >(
   model: T,
@@ -43,16 +46,11 @@ export const parseDatabaseDataIntoModelResponse = async <
   columnsByDbName: Map<string, ColumnType>,
   modelSelectedColumnsSet: Set<string> | null,
   hasWildcards: boolean = false,
-): Promise<T> => {
+): T => {
   const casedModel = Object.create(typeofModel.prototype) as Record<
     string,
     any
   >;
-
-  // Collect deferred async serialize results to avoid Promise overhead for sync serializers.
-  // In the common case (all serializers sync), this stays null and no Promises are created.
-  let deferredAsync: Array<{ key: string; promise: Promise<any> }> | null =
-    null;
 
   for (const key of Object.keys(model)) {
     const databaseValue = model[key];
@@ -81,21 +79,19 @@ export const parseDatabaseDataIntoModelResponse = async <
         continue;
       }
 
-      // Apply custom serializer if defined (e.g., JSON parsing, date formatting)
+      // Apply custom serializer if defined (e.g., JSON parsing, date formatting).
+      // Serializers are synchronous — a Promise return is a hard error, never deferred.
       const modelColumn = columnsByName.get(modelKey);
       if (modelColumn?.serialize) {
         const result = modelColumn.serialize(databaseValue);
-        // Only defer to the async path if the serializer actually returns a Promise.
-        // This avoids Promise allocation overhead for synchronous serializers (the common case).
         if (result !== null && typeof result?.then === "function") {
-          if (!deferredAsync) deferredAsync = [];
-          deferredAsync.push({
-            key: modelKey,
-            promise: result as Promise<any>,
-          });
-        } else {
-          casedModel[modelKey] = result;
+          throw new Error(
+            `hysteria-orm: column "${modelKey}" on model "${typeofModel.name}" ` +
+              `has an async serialize function, but serializers must be synchronous. ` +
+              `Move async work to prepare or a getter.`,
+          );
         }
+        casedModel[modelKey] = result;
         continue;
       }
 
@@ -111,14 +107,6 @@ export const parseDatabaseDataIntoModelResponse = async <
       (modelSelectedColumnsSet && modelSelectedColumnsSet.has(modelKey))
     ) {
       casedModel[modelKey] = databaseValue;
-    }
-  }
-
-  // Resolve any async serializers collected during the sync pass
-  if (deferredAsync) {
-    const resolved = await Promise.all(deferredAsync.map((d) => d.promise));
-    for (let i = 0; i < deferredAsync.length; i++) {
-      casedModel[deferredAsync[i].key] = resolved[i];
     }
   }
 
@@ -179,13 +167,13 @@ export const parseDatabaseDataIntoModelResponse = async <
  * @param models - Array of raw database rows to serialize
  * @param typeofModel - The Model class for metadata and type information
  * @param modelSelectedColumns - Array of selected columns in database convention
- * @returns Promise resolving to serialized model(s) or null if empty
+ * @returns Serialized model(s) or null if empty
  */
-export const serializeModel = async <T extends Model>(
+export const serializeModel = <T extends Model>(
   models: T[],
   typeofModel: typeof Model,
   modelSelectedColumns: string[] = [],
-): Promise<T | T[] | null> => {
+): T | T[] | null => {
   if (!models.length) {
     return null;
   }
@@ -232,16 +220,14 @@ export const serializeModel = async <T extends Model>(
     ? new Set<string>(processedSelectedColumns)
     : null;
 
-  const serializedModels = await Promise.all(
-    models.map((model) =>
-      parseDatabaseDataIntoModelResponse(
-        model,
-        typeofModel,
-        columnsByName,
-        columnsByDbName,
-        modelSelectedColumnsSet,
-        hasWildcards,
-      ),
+  const serializedModels = models.map((model) =>
+    parseDatabaseDataIntoModelResponse(
+      model,
+      typeofModel,
+      columnsByName,
+      columnsByDbName,
+      modelSelectedColumnsSet,
+      hasWildcards,
     ),
   );
 

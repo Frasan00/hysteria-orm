@@ -15,8 +15,7 @@ export default async function rollbackMigrationsConnector(
   transactional?: boolean,
 ) {
   const dbType = sql.getDbType();
-  const shouldUseTransaction =
-    transactional && dbType !== "mssql" && dbType !== "oracledb";
+  const shouldUseTransaction = transactional && dbType !== "mssql";
   let trx: Transaction | null = null;
   logger.info("Rolling back migrations for database type: " + dbType);
 

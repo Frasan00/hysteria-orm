@@ -7,7 +7,6 @@ import type {
 import type {
   MssqlImport,
   Mysql2Import,
-  OracleDBImport,
   PgImport,
   Sqlite3Import,
 } from "../drivers/driver_types";
@@ -110,21 +109,6 @@ export const createSqlPool = async <T extends SqlDataSourceType>(
       await mssqlPool.connect();
 
       return mssqlPool;
-    case "oracledb":
-      const oracledbDriver = driver as OracleDBImport;
-      const oracledbInput = input as MssqlDataSourceInput & {
-        driverOptions?: SqlDriverSpecificOptions<"oracledb">;
-      };
-
-      const connectionString = `${oracledbInput.host}/${oracledbInput.database}`;
-      const oracledbPool = await oracledbDriver.createPool({
-        user: oracledbInput.username,
-        password: oracledbInput.password,
-        connectString: connectionString,
-        ...oracledbInput.driverOptions,
-      });
-
-      return oracledbPool;
     default:
       throw new HysteriaError(
         "SqlConnectionUtils::createSqlPool",

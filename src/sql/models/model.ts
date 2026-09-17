@@ -93,20 +93,6 @@ export abstract class Model<T extends Model<T> = any> extends Entity {
     queryBuilder: ModelQueryBuilder<any>,
   ): Promise<void> | void;
 
-  static beforeInsert?(data: any): Promise<void> | void;
-
-  static beforeInsertMany?(data: any[]): Promise<void> | void;
-
-  static beforeUpdate?(
-    queryBuilder: ModelQueryBuilder<any>,
-  ): Promise<void> | void;
-
-  static beforeDelete?(
-    queryBuilder: ModelQueryBuilder<any>,
-  ): Promise<void> | void;
-
-  static afterFetch?(data: any[]): Promise<any[]> | any[];
-
   // #endregion Lifecycle hooks
 
   static getColumns(): ColumnType[] {

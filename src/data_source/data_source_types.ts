@@ -5,7 +5,6 @@ import type { LoggerConfig } from "../utils/logger";
  * @description Creates a datasource for the selected database type with the provided credentials
  */
 export type DataSourceType =
-  | "oracledb"
   | "cockroachdb"
   | "mysql"
   | "postgres"
@@ -16,15 +15,6 @@ export type DataSourceType =
 
 export interface MssqlDataSourceInput extends CommonDataSourceInput {
   readonly type: "mssql";
-  readonly host?: string;
-  readonly port?: number;
-  readonly username?: string;
-  readonly password?: string;
-  readonly database?: string;
-}
-
-export interface OracleDBDataSourceInput extends CommonDataSourceInput {
-  readonly type: "oracledb";
   readonly host?: string;
   readonly port?: number;
   readonly username?: string;
@@ -70,15 +60,6 @@ export interface NotNullableOracleMssqlDataSourceInput extends MssqlDataSourceIn
   readonly port?: number;
 }
 
-export interface NotNullableOracleDBDataSourceInput extends OracleDBDataSourceInput {
-  readonly type: "oracledb";
-  readonly host: string;
-  readonly username: string;
-  readonly password: string;
-  readonly database: string;
-  readonly port?: number;
-}
-
 export interface MysqlSqlDataSourceInput extends CommonDataSourceInput {
   readonly type?: "mysql" | "mariadb";
   readonly host?: string;
@@ -115,7 +96,6 @@ export interface NotNullableSqliteDataSourceInput extends SqliteDataSourceInput 
  * @description By default the connection details can be provided in the .env file, you can still override each prop with your actual connection details in the input
  */
 export type DataSourceInput =
-  | OracleDBDataSourceInput
   | MssqlDataSourceInput
   | MysqlSqlDataSourceInput
   | SqliteDataSourceInput

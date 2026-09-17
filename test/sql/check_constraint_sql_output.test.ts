@@ -21,7 +21,6 @@ describe("Check Constraint SQL Generation", () => {
     "mysql",
     "sqlite",
     "mssql",
-    "oracledb",
   ];
 
   testDatabases.forEach((dbType) => {
@@ -126,7 +125,6 @@ describe("Check Constraint SQL Generation", () => {
         switch (dbType) {
           case "postgres":
           case "sqlite":
-          case "oracledb":
             expect(result.sql).toContain('"status_check"');
             break;
           case "mysql":

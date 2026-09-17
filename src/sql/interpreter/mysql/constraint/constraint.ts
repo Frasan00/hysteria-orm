@@ -1,8 +1,10 @@
 import { AstParser } from "../../../ast/parser";
 import { ConstraintNode } from "../../../ast/query/node/constraint";
 import { RawNode } from "../../../ast/query/node/raw/raw_node";
+import { SqlFuncNode } from "../../../ast/query/node/sqlfunc/sqlfunc";
 import { QueryNode } from "../../../ast/query/query";
 import { Model } from "../../../models/model";
+import { SqlDataSourceType } from "../../../sql_data_source_types";
 import { getColumnValue } from "../../../resources/utils";
 import type { Interpreter } from "../../interpreter";
 import { InterpreterUtils } from "../../interpreter_utils";
@@ -53,6 +55,13 @@ class MysqlConstraintInterpreter implements Interpreter {
       const val = cNode.defaultValue;
       if (val instanceof RawNode) {
         return { sql: `default ${val.rawValue}`, bindings: [] };
+      }
+      if (val instanceof SqlFuncNode) {
+        const rendered = new AstParser(
+          this.model,
+          "mysql" as SqlDataSourceType,
+        ).parse([val], 1, true).sql;
+        return { sql: `default ${rendered}`, bindings: [] };
       }
       if (val === "NULL" || val === null) {
         return { sql: `default null`, bindings: [] };

@@ -949,6 +949,15 @@ export class SchemaDiff {
       if (isAutoIncrementColumn && isSequenceDefault) {
         return false;
       }
+      // uuid columns get an implicit per-dialect DDL default (gen_random_uuid(),
+      // (UUID()), NEWID(), lower(hex(randomblob(16)))) even without a model
+      // constraint, so a matching DB default must not be re-dropped on re-sync.
+      if (
+        columnData.modelColumn.type === "uuid" &&
+        this.isImplicitUuidDefault(dialect, columnData.dbColumns.defaultValue)
+      ) {
+        return false;
+      }
       return "drop";
     }
     if (modelHasDefault && dbHasDefault) {
@@ -968,6 +977,24 @@ export class SchemaDiff {
       return dbNorm !== modelNorm ? "set" : false;
     }
     return false;
+  }
+
+  private isImplicitUuidDefault(
+    dialect: ReturnType<SqlDataSource["getDbType"]>,
+    dbDefault: unknown,
+  ): boolean {
+    const v = String(dbDefault ?? "")
+      .replace(/[()\s]/g, "")
+      .toLowerCase();
+    const expected: Record<string, string[]> = {
+      postgres: ["gen_random_uuid"],
+      cockroachdb: ["gen_random_uuid"],
+      mysql: ["uuid"],
+      mariadb: ["uuid"],
+      mssql: ["newid"],
+      sqlite: ["lower(hex(randomblob(16)))"],
+    };
+    return (expected[dialect] ?? []).includes(v);
   }
 
   private normalizeDefaultValue(

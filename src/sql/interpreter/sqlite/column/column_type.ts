@@ -32,7 +32,13 @@ class SqliteColumnTypeInterpreter implements Interpreter {
     if (dt === "char" || dt === "varchar") {
       return { sql: `${columnName} text`, bindings: [] };
     } else if (dt === "uuid") {
-      return { sql: `${columnName} varchar(36)`, bindings: [] };
+      const defaultSql = colNode.isForeignKey
+        ? ""
+        : " default (lower(hex(randomblob(16))))";
+      return {
+        sql: `${columnName} varchar(36)${defaultSql}`,
+        bindings: [],
+      };
     } else if (dt === "ulid") {
       return { sql: `${columnName} varchar(26)`, bindings: [] };
     }

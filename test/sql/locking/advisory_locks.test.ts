@@ -292,24 +292,6 @@ describe(`[${env.DB_TYPE}] Advisory Locks - Database Specific`, () => {
       await sql.releaseLock(lockKey);
     });
   });
-
-  describe("OracleDB", () => {
-    test("should use DBMS_LOCK for OracleDB", async () => {
-      if (env.DB_TYPE !== "oracledb") {
-        return;
-      }
-
-      const lockKey = "oracle_lock_test";
-      const acquired = await sql.acquireLock(lockKey);
-
-      // Oracle lock acquisition
-      expect([true, false]).toContain(acquired);
-
-      if (acquired) {
-        await sql.releaseLock(lockKey);
-      }
-    });
-  });
 });
 
 describe(`[${env.DB_TYPE}] Advisory Locks - Edge Cases`, () => {

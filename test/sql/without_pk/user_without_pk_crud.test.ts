@@ -145,7 +145,7 @@ describe(`[${env.DB_TYPE}] Select`, () => {
       .select("u1.name")
       .table("users_without_pk as u1")
       .where("u1.name", "!=", "impossible_name")
-      .many({ ignoreHooks: ["beforeFetch"] });
+      .many();
 
     expect(users).toHaveLength(2);
   });
@@ -200,15 +200,10 @@ describe(`[${env.DB_TYPE}] Select`, () => {
     expect(userCount).toBe(10);
     expect(userCount2).toBe(10);
 
-    const userCountIgnoringHooks = await sql.from(UserWithoutPk).getCount("*", {
-      ignoreHooks: true,
-    });
-    const userCountIgnoringHooks2 = await sql
-      .from(UserWithoutPk)
-      .getCount("name", { ignoreHooks: true });
-
-    expect(userCountIgnoringHooks).toBe(11);
-    expect(userCountIgnoringHooks2).toBe(11);
+    // The soft-deleted row is always excluded: beforeFetch is the only hook and
+    // it filters `deleted_at IS NULL` on every fetch.
+    const softDeletedUserCount = await sql.from(UserWithoutPk).getCount("*");
+    expect(softDeletedUserCount).toBe(10);
 
     const userMaxAge = await sql
       .from(UserWithoutPk)
@@ -313,7 +308,7 @@ describe(`[${env.DB_TYPE}] Select`, () => {
       .select("users_cte.salary")
       .table("users_cte")
       .unionAll((qb) => qb.select("users_cte2.age").table("users_cte2"))
-      .many({ ignoreHooks: ["beforeFetch"] });
+      .many();
 
     expect(users.length).toBe(4);
   });

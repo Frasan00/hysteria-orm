@@ -33,6 +33,9 @@ class MysqlColumnTypeInterpreter implements Interpreter {
       const len = colNode.length ?? 255;
       typeSql = `${columnName} varchar(${len})`;
     } else if (dt === "uuid") {
+      // No DB-side default: MySQL can't ALTER-add a column with a volatile
+      // default under binlog (ERROR 1674), and MariaDB shares this interpreter.
+      // uuid on mysql/mariadb stays JS-generated (see InterpreterUtils.prepareColumns).
       typeSql = `${columnName} varchar(36)`;
     } else if (dt === "ulid") {
       typeSql = `${columnName} varchar(26)`;

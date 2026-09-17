@@ -154,8 +154,8 @@ export type DateColumnOptions = {
    * @warning This is a code wise implementation it does not generate a trigger in the database, works with bulk creations too
    * @default false
    */
-  autoCreate?: boolean | DateAutoHook;
-} & Omit<ColumnOptions, "serialize" | "prepare" | "autoUpdate">;
+  autoCreate?: boolean | DateAutoHook | "js";
+} & Omit<ColumnOptions, "serialize" | "prepare" | "autoUpdate" | "autoCreate">;
 
 /**
  * @description Options for @column.datetime and @column.timestamp decorators.
@@ -215,6 +215,15 @@ export type ColumnOptions = {
    */
   autoUpdate?: boolean;
   /**
+   * @description Whether the column value is generated automatically.
+   * `true` maps to a database-side default (e.g. `DEFAULT CURRENT_TIMESTAMP`,
+   * `DEFAULT (UUID())`) so the ORM omits the column from INSERT when absent.
+   * `"js"` keeps generation in JS via `prepare`. Inferred by `col.datetime()`
+   * etc. from the `autoCreate` option — `true` → DB default, function → "js".
+   * @internal Set by date/time/datetime/timestamp column factories.
+   */
+  autoCreate?: boolean | "js";
+  /**
    * @description The name of the column in the database, can be used to specify the column name in the database
    * @default The name of the property following the model case convention
    */
@@ -269,6 +278,8 @@ export type ColumnType = {
   serialize?: (value: any) => any | Promise<any>;
   prepare?: (value: any) => any | Promise<any>;
   autoUpdate?: boolean;
+  /** DB-side (`true`) or JS-side (`"js"`) automatic generation, see ColumnOptions.autoCreate */
+  autoCreate?: boolean | "js";
   isPrimary: boolean;
   openApi?: OpenApiModelPropertyType & { required?: boolean };
   /** Database specific data for migrations, must be provided or it'll be ignored for auto-generated migrations */

@@ -43,7 +43,11 @@ class MssqlColumnTypeInterpreter implements Interpreter {
     }
 
     if (dt === "uuid") {
-      return { sql: `${columnName} uniqueidentifier`, bindings: [] };
+      const defaultSql = colNode.isForeignKey ? "" : " default NEWID()";
+      return {
+        sql: `${columnName} uniqueidentifier${defaultSql}`,
+        bindings: [],
+      };
     }
 
     if (dt === "ulid") {

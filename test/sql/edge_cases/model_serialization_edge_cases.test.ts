@@ -23,52 +23,28 @@ afterEach(async () => {
 });
 
 describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
-  test("Should handle model hooks execution order and side effects", async () => {
+  test("Should run beforeFetch once per query", async () => {
     // Note: MSSQL has type conversion issues with binary columns and OUTPUT inserted.*
     if (env.DB_TYPE === "mssql") return;
-    // Edge case: Model hooks with various scenarios
-    const originalBeforeInsert = UserWithoutPk.beforeInsert;
-    const originalAfterFetch = UserWithoutPk.afterFetch;
+    // beforeFetch is the only remaining lifecycle hook; it runs once per fetch.
+    const originalBeforeFetch = UserWithoutPk.beforeFetch;
 
-    let hookCallOrder: string[] = [];
+    let fetchCount = 0;
 
     try {
-      // Mock hooks to track execution order
-      UserWithoutPk.beforeInsert = async (data: any) => {
-        hookCallOrder.push("beforeInsert");
-        data.name = data.name + "_processed";
-      };
-
-      UserWithoutPk.afterFetch = async (data: any) => {
-        hookCallOrder.push("afterFetch");
-        if (Array.isArray(data)) {
-          data.forEach((item) => (item.processed = true));
-        } else {
-          data.processed = true;
-        }
-        return data;
+      UserWithoutPk.beforeFetch = (queryBuilder: any) => {
+        fetchCount++;
+        queryBuilder.where("name", "!=", "never_exists");
       };
 
       const userData = UserFactory.getCommonUserData();
-      const user = await sql
-        .from(UserWithoutPk)
-        .insert(userData, { returning: ["*"] });
+      await sql.from(UserWithoutPk).insert(userData, { returning: ["*"] });
 
-      expect(hookCallOrder).toContain("beforeInsert");
-      expect(user.name).toContain("_processed");
-
-      hookCallOrder = []; // Reset for next test
-
-      const retrievedUser = await sql
-        .from(UserWithoutPk)
-        .where("name", "=", user.name)
-        .one();
-      expect(hookCallOrder).toContain("afterFetch");
-      expect((retrievedUser as any).processed).toBe(true);
+      const retrievedUsers = await sql.from(UserWithoutPk).many();
+      expect(retrievedUsers.length).toBe(1);
+      expect(fetchCount).toBe(1);
     } finally {
-      // Restore original hooks
-      UserWithoutPk.beforeInsert = originalBeforeInsert;
-      UserWithoutPk.afterFetch = originalAfterFetch;
+      UserWithoutPk.beforeFetch = originalBeforeFetch;
     }
   });
 
@@ -177,30 +153,6 @@ describe(`[${env.DB_TYPE}] Model Serialization Edge Cases`, () => {
       .many();
 
     expect(memoryTestQuery.length).toBe(10);
-  });
-
-  test("Should handle async hook operations", async () => {
-    // Note: MSSQL has type conversion issues with binary columns and OUTPUT inserted.*
-    if (env.DB_TYPE === "mssql") return;
-    // Edge case: Async hooks with delays and promises
-    const originalBeforeInsert = UserWithoutPk.beforeInsert;
-
-    try {
-      UserWithoutPk.beforeInsert = async (data: any) => {
-        // Simulate async operation
-        await new Promise((resolve) => setTimeout(resolve, 10));
-        data.name = data.name + "_async";
-      };
-
-      const userData = UserFactory.getCommonUserData();
-      const user = await sql
-        .from(UserWithoutPk)
-        .insert(userData, { returning: ["*"] });
-
-      expect(user.name).toContain("_async");
-    } finally {
-      UserWithoutPk.beforeInsert = originalBeforeInsert;
-    }
   });
 
   test("Should handle model serialization with database-specific data types", async () => {

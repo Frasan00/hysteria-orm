@@ -4,7 +4,6 @@ import { Driver } from "./driver";
 import { MongoDriver } from "./mongo_driver";
 import { MssqlDriver } from "./mssql_driver";
 import { MysqlDriver } from "./mysql_driver";
-import { OracleDBDriver } from "./oracledb_driver";
 import { PgDriver } from "./pg_driver";
 import { Sqlite3Driver } from "./sqlite3_driver";
 
@@ -13,7 +12,6 @@ export class DriverFactory {
   static pgDriver: Driver | null = null;
   static sqliteDriver: Driver | null = null;
   static mssqlDriver: Driver | null = null;
-  static oracledbDriver: Driver | null = null;
   static mongodbDriver: Driver | null = null;
 
   static async getDriver(client: DataSourceType | "redis"): Promise<Driver> {
@@ -40,9 +38,6 @@ export class DriverFactory {
       case "mssql":
         this.mssqlDriver = await MssqlDriver.createDriver();
         return this.mssqlDriver;
-      case "oracledb":
-        this.oracledbDriver = await OracleDBDriver.createDriver();
-        return this.oracledbDriver;
       default:
         throw new HysteriaError(
           `DriverFactory::getDriver Driver ${client} not supported`,
@@ -67,8 +62,6 @@ export class DriverFactory {
         return this.mongodbDriver;
       case "mssql":
         return this.mssqlDriver;
-      case "oracledb":
-        return this.oracledbDriver;
       default:
         return null;
     }

@@ -1,7 +1,6 @@
 import type { IResult } from "mssql";
 import type { QueryResult as MysqlResult } from "mysql2/promise";
 import { Readable } from "node:stream";
-import type { Result as OracleDBResult } from "oracledb";
 import type { QueryResult as PgResult } from "pg";
 import type { RunResult as SqliteResult } from "sqlite3";
 import { Model } from "../models/model";
@@ -25,9 +24,7 @@ export type RawQueryResponseType<D extends SqlDataSourceType> = D extends
       ? SqliteResult
       : D extends "mssql"
         ? IResult<any>
-        : D extends "oracledb"
-          ? OracleDBResult<any>
-          : any;
+        : any;
 
 export type SqlRunnerReturnType<
   T extends Returning,

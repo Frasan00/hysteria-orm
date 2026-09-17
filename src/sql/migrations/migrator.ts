@@ -63,14 +63,10 @@ export class Migrator {
 
   private async addMigrationToMigrationTable(migration: Migration) {
     const completeUtcTimestamp = new Date();
-    // Oracle requires Date object, not string format
-    const timestamp =
-      this.sql.getDbType() === "oracledb"
-        ? completeUtcTimestamp
-        : completeUtcTimestamp
-            .toISOString()
-            .replace("T", " ")
-            .replace(/\.\d{3}Z$/, "");
+    const timestamp = completeUtcTimestamp
+      .toISOString()
+      .replace("T", " ")
+      .replace(/\.\d{3}Z$/, "");
 
     await this.sql.from(this.migrationTable).insert({
       name: migration.migrationName,

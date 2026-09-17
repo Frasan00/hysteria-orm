@@ -1,5 +1,4 @@
 import crypto from "node:crypto";
-import { PassThrough } from "node:stream";
 import { HysteriaError } from "../../../errors/hysteria_error";
 import { convertCase } from "../../../utils/case_utils";
 import type { CaseConvention } from "../../../utils/case_utils";
@@ -17,6 +16,7 @@ import {
 } from "../../ast/query/node/where";
 import { WhereGroupNode } from "../../ast/query/node/where/where_group";
 import { WhereSubqueryNode } from "../../ast/query/node/where/where_subquery";
+import { SelectNode } from "../../ast/query/node/select/basic_select";
 import { InterpreterUtils } from "../../interpreter/interpreter_utils";
 import { Model } from "../../models/model";
 import { ModelManager } from "../../models/model_manager/model_manager";
@@ -48,7 +48,6 @@ import type { SubQueryable } from "../../query_builder/query_builder";
 import {
   Cursor,
   RelationRetrieveMethod,
-  SelectableColumn,
   SqlFunction,
   SqlFunctionReturnType,
   StreamOptions,
@@ -77,12 +76,9 @@ import { determineRelationStrategy } from "./relation_strategy";
 import type {
   ComposeBuildSelect,
   ComposeSelect,
-  FetchHooks,
   LoadOptions,
-  ManyOptions,
   ModelSelectableInput,
   ModelStream,
-  OneOptions,
   RelatedInstance,
   SelectedModel,
 } from "./model_query_builder_types";
@@ -124,6 +120,43 @@ export class ModelQueryBuilder<
   }
 
   /**
+   * @description Materializes SELECT columns as `dbColumn AS modelColumn` aliases so the
+   * database returns rows already cased to model property names and the serializer is a
+   * plain object copy. Idempotent (aliased nodes are left untouched).
+   * @internal
+   */
+  protected expandModelSelectColumns(): void {
+    const nodes = this.selectNodes;
+
+    // No explicit select: select every physical column with a model-name alias.
+    // Computed (expression) columns are excluded — they must stay absent, not null.
+    // Joins are excluded too: bare columns are ambiguous there, so keep SELECT * and
+    // let the serializer's wildcard rule drop joined columns (byte-identical to v11).
+    if (!nodes.length) {
+      if (this.joinNodes.length) {
+        return;
+      }
+      for (const [, col] of this.modelColumnsMap) {
+        if (col.expression) continue;
+        nodes.push(new SelectNode(col.databaseName, col.columnName));
+      }
+      return;
+    }
+
+    for (const node of nodes) {
+      if (node.isRawValue) continue;
+      if (node.alias !== undefined) continue;
+      if (typeof node.column !== "string") continue;
+      if (node.column.includes(".")) continue;
+      if (node.column === "*") continue;
+
+      const modelColumn = this.modelColumnsMap.get(node.column);
+      if (!modelColumn || modelColumn.expression) continue;
+      node.alias = modelColumn.columnName;
+    }
+  }
+
+  /**
    * @description Returns true if the query builder is a relation query builder, this changes the behavior of the query builder like limit, offset, etc.
    * @internal
    */
@@ -151,10 +184,8 @@ export class ModelQueryBuilder<
     );
   }
 
-  override async one(
-    options: OneOptions = {},
-  ): Promise<SelectedModel<T, S, R> | null> {
-    const result = await this.limit(1).many(options);
+  override async one(): Promise<SelectedModel<T, S, R> | null> {
+    const result = await this.limit(1).many();
     if (!result || !result.length) {
       return null;
     }
@@ -163,9 +194,9 @@ export class ModelQueryBuilder<
   }
 
   override async oneOrFail(options?: {
-    ignoreHooks?: OneOptions["ignoreHooks"] & { customError?: Error };
+    customError?: Error;
   }): Promise<SelectedModel<T, S, R>> {
-    const model = await this.one(options);
+    const model = await this.one();
     if (!model) {
       throw new HysteriaError(this.model.name + "::oneOrFail", "ROW_NOT_FOUND");
     }
@@ -173,21 +204,17 @@ export class ModelQueryBuilder<
     return model as SelectedModel<T, S, R>;
   }
 
-  override async many(
-    options: ManyOptions = {},
-  ): Promise<SelectedModel<T, S, R>[]> {
-    !(options.ignoreHooks as string[])?.includes("beforeFetch") &&
-      (await this.model.beforeFetch?.(this));
+  override async many(): Promise<SelectedModel<T, S, R>[]> {
+    await this.model.beforeFetch?.(this);
+    this.expandModelSelectColumns();
     const rows = await super.many();
-    const models = rows.map((row) => {
-      return this.addAdditionalColumnsToModel(row);
-    });
+    const models = rows as T[];
 
     if (!models.length) {
       return [];
     }
 
-    const serializedModels = await serializeModel(
+    const serializedModels = serializeModel(
       models as T[],
       this.model,
       this.modelSelectedColumns,
@@ -200,10 +227,6 @@ export class ModelQueryBuilder<
     const serializedModelsArray = Array.isArray(serializedModels)
       ? serializedModels
       : [serializedModels];
-
-    if (!(options.ignoreHooks as string[])?.includes("afterFetch")) {
-      await this.model.afterFetch?.(serializedModelsArray);
-    }
 
     if (this.relationQueryBuilders.length) {
       await this.processRelationsWithStrategy(serializedModelsArray);
@@ -242,12 +265,11 @@ export class ModelQueryBuilder<
 
   override async *chunk(
     chunkSize: number,
-    options: ManyOptions = {},
   ): AsyncGenerator<SelectedModel<T, S, R>[] | T[]> {
     let offset = 0;
 
     while (true) {
-      const models = await this.limit(chunkSize).offset(offset).many(options);
+      const models = await this.limit(chunkSize).offset(offset).many();
       if (!models.length) {
         break;
       }
@@ -259,28 +281,23 @@ export class ModelQueryBuilder<
 
   // @ts-expect-error - Override with more specific return type for type-safety
   override async stream(
-    options: ManyOptions & StreamOptions = {},
+    options: StreamOptions = {},
   ): Promise<ModelStream<SelectedModel<T, S, R> | T>> {
-    !(options.ignoreHooks as string[])?.includes("beforeFetch") &&
-      (await this.model.beforeFetch?.(this));
+    await this.model.beforeFetch?.(this);
+    this.expandModelSelectColumns();
 
     const { sql, bindings } = this.unWrap();
     const dataSource = await this.getSqlDataSource("read");
     const stream = await execSqlStreaming(sql, bindings, dataSource, options, {
       onData: async (passThrough, row) => {
-        const model = this.addAdditionalColumnsToModel(row);
-        const serializedModel = await serializeModel(
-          [model] as T[],
+        const serializedModel = serializeModel(
+          [row] as T[],
           this.model,
           this.modelSelectedColumns,
         );
 
         if (!serializedModel) {
           return;
-        }
-
-        if (!(options.ignoreHooks as string[])?.includes("afterFetch")) {
-          await this.model.afterFetch?.([serializedModel] as unknown as T[]);
         }
 
         if (this.relationQueryBuilders.length) {
@@ -311,11 +328,10 @@ export class ModelQueryBuilder<
     const Ret extends readonly (RawModelKey<T> | "*")[] = never[],
   >(
     modelData: Partial<ModelWithoutRelations<T>>,
-    options: { ignoreHooks?: boolean; returning?: Ret; trx?: Transaction } = {},
+    options: { returning?: Ret; trx?: Transaction } = {},
   ): WriteOperation<ReturningResult<T, Ret>> {
     const mm = this.getModelManager(options.trx);
     return mm.insert(modelData as object, {
-      ignoreHooks: options.ignoreHooks,
       returning: options.returning as any,
     }) as any;
   }
@@ -328,11 +344,10 @@ export class ModelQueryBuilder<
     const Ret extends readonly (RawModelKey<T> | "*")[] = never[],
   >(
     modelsData: Partial<ModelWithoutRelations<T>>[],
-    options: { ignoreHooks?: boolean; returning?: Ret; trx?: Transaction } = {},
+    options: { returning?: Ret; trx?: Transaction } = {},
   ): WriteOperation<ReturningResultMany<T, Ret>> {
     const mm = this.getModelManager(options.trx);
     return mm.insertMany(modelsData as object[], {
-      ignoreHooks: options.ignoreHooks,
       returning: options.returning as any,
     }) as any;
   }
@@ -572,7 +587,6 @@ export class ModelQueryBuilder<
     const mm = this.getModelManager(options?.trx);
     const existing = await mm.findOne({
       where: searchCriteria as object,
-      ignoreHooks: ["afterFetch", "beforeFetch"],
     });
 
     if (existing) {
@@ -702,10 +716,11 @@ export class ModelQueryBuilder<
       () => baseWriteOp.toSql(),
       () => baseWriteOp.toQuery(),
       async () => {
-        if (!options.ignoreBeforeUpdateHook) {
-          await this.model.beforeUpdate?.(this);
+        if (!returning) {
+          return baseWriteOp;
         }
-        return baseWriteOp;
+        const rows = await baseWriteOp;
+        return serializeModel(rows as T[], this.model, returning);
       },
     ) as any;
   }
@@ -714,16 +729,12 @@ export class ModelQueryBuilder<
     options: SoftDeleteOptions<T> = {},
   ): WriteOperation<number> {
     const baseWriteOp = super.softDelete(options);
-    const { ignoreBeforeUpdateHook = false } = options || {};
 
     return new WriteOperation(
       () => baseWriteOp.unWrap(),
       () => baseWriteOp.toSql(),
       () => baseWriteOp.toQuery(),
       async () => {
-        if (!ignoreBeforeUpdateHook) {
-          await this.model.beforeUpdate?.(this);
-        }
         return baseWriteOp;
       },
     );
@@ -749,24 +760,21 @@ export class ModelQueryBuilder<
       () => baseWriteOp.toSql(),
       () => baseWriteOp.toQuery(),
       async () => {
-        if (!options.ignoreBeforeDeleteHook) {
-          await this.model.beforeDelete?.(this);
+        if (!returning) {
+          return baseWriteOp;
         }
-        return baseWriteOp;
+        const rows = await baseWriteOp;
+        return serializeModel(rows as T[], this.model, returning);
       },
     ) as any;
   }
 
   override async getCount(
     column: (ModelKey<T> & string) | "*" | (string & {}) = "*",
-    options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<number> {
     this.buildCountQuery(column);
-    const ignoredHooks: string[] = options.ignoreHooks ? ["beforeFetch"] : [];
 
-    const result = (await this.one({
-      ignoreHooks: ignoredHooks as FetchHooks,
-    })) as { total: number } | null;
+    const result = (await this.one()) as { total: number } | null;
 
     if (!result) {
       return 0;
@@ -777,17 +785,11 @@ export class ModelQueryBuilder<
 
   override async getMax(
     column: (ModelKey<T> & string) | (string & {}),
-    options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<number> {
     this.clearForFunctions();
     this.selectRaw(`max(${column}) as total`);
-    const ignoredHooks: string[] = options.ignoreHooks
-      ? ["beforeFetch", "afterFetch"]
-      : [];
 
-    const result = (await this.one({
-      ignoreHooks: ignoredHooks as FetchHooks,
-    })) as { total: number } | null;
+    const result = (await this.one()) as { total: number } | null;
 
     if (!result) {
       return 0;
@@ -798,17 +800,11 @@ export class ModelQueryBuilder<
 
   override async getMin(
     column: (ModelKey<T> & string) | (string & {}),
-    options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<number> {
     this.clearForFunctions();
     this.selectRaw(`min(${column}) as total`);
-    const ignoredHooks: string[] = options.ignoreHooks
-      ? ["beforeFetch", "afterFetch"]
-      : [];
 
-    const result = (await this.one({
-      ignoreHooks: ignoredHooks as FetchHooks,
-    })) as { total: number } | null;
+    const result = (await this.one()) as { total: number } | null;
 
     if (!result) {
       return 0;
@@ -819,17 +815,11 @@ export class ModelQueryBuilder<
 
   override async getAvg(
     column: (ModelKey<T> & string) | (string & {}),
-    options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<number> {
     this.clearForFunctions();
     this.selectRaw(`avg(${column}) as total`);
-    const ignoredHooks: string[] = options.ignoreHooks
-      ? ["beforeFetch", "afterFetch"]
-      : [];
 
-    const result = (await this.one({
-      ignoreHooks: ignoredHooks as FetchHooks,
-    })) as { total: number } | null;
+    const result = (await this.one()) as { total: number } | null;
 
     if (!result) {
       return 0;
@@ -840,17 +830,11 @@ export class ModelQueryBuilder<
 
   override async getSum(
     column: (ModelKey<T> & string) | (string & {}),
-    options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<number> {
     this.clearForFunctions();
     this.selectRaw(`sum(${column}) as total`);
-    const ignoredHooks: string[] = options.ignoreHooks
-      ? ["beforeFetch", "afterFetch"]
-      : [];
 
-    const result = (await this.one({
-      ignoreHooks: ignoredHooks as FetchHooks,
-    })) as { total: number } | null;
+    const result = (await this.one()) as { total: number } | null;
 
     if (!result) {
       return 0;
@@ -862,16 +846,13 @@ export class ModelQueryBuilder<
   override async paginate(
     page: number,
     perPage: number,
-    options: { ignoreHooks: boolean } = { ignoreHooks: false },
   ): Promise<PaginatedData<T, S, R>> {
     const clonedQuery = this.clone();
     const paginatedQuery = this.limit(perPage).offset((page - 1) * perPage);
-    const hooksToIgnore: ["beforeFetch", "afterFetch"] | [] =
-      options.ignoreHooks ? ["beforeFetch", "afterFetch"] : [];
 
     const [models, total] = await this.executePaginateQueries(
-      () => paginatedQuery.many({ ignoreHooks: hooksToIgnore }),
-      () => clonedQuery.getCount("*", { ignoreHooks: options.ignoreHooks }),
+      () => paginatedQuery.many(),
+      () => clonedQuery.getCount("*"),
     );
 
     const paginationMetadata = getPaginationMetadata(page, perPage, total);
@@ -2173,11 +2154,10 @@ export class ModelQueryBuilder<
       separator,
     );
 
-    // Execute the JOIN query, skipping hooks since the parent's WHERE nodes
-    // already include hook-added conditions (e.g., beforeFetch soft-delete filters)
-    const joinedRows = await joinQb.many({
-      ignoreHooks: ["beforeFetch", "afterFetch"],
-    });
+    // Execute the JOIN query to fetch related rows. beforeFetch re-runs here;
+    // user-defined filters are cloned into this query's WHERE nodes above, so a
+    // beforeFetch adding the same condition yields a redundant but harmless AND.
+    const joinedRows = await joinQb.many();
 
     // Map the joined results back to parent models
     this.mapJoinedResultsToModels(
@@ -3026,26 +3006,5 @@ export class ModelQueryBuilder<
           "UNSUPPORTED_RELATION_TYPE",
         );
     }
-  }
-
-  protected addAdditionalColumnsToModel(row: any): Record<string, any> {
-    const model: Record<string, any> = {};
-
-    Object.entries(row).forEach(([key, value]) => {
-      const isModelColumn = this.modelColumnsDatabaseNames.get(key);
-
-      // If it's a model column, add with the original key (database format)
-      if (isModelColumn) {
-        model[key] = value;
-        return;
-      }
-
-      // For non-model columns (aliases, selectRaw, joined columns, etc.)
-      // Preserve the key exactly as returned from database (no case conversion)
-      // Aliases should remain exactly as the user specified them
-      model[key] = value;
-    });
-
-    return model;
   }
 }

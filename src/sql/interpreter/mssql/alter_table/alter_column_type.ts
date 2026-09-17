@@ -1,5 +1,6 @@
 import { AstParser } from "../../../ast/parser";
 import { AlterColumnTypeNode } from "../../../ast/query/node/alter_table/alter_column_type";
+import { ColumnTypeNode } from "../../../ast/query/node/column";
 import { QueryNode } from "../../../ast/query/query";
 import { Model } from "../../../models/model";
 import { SqlDataSourceType } from "../../../sql_data_source_types";
@@ -12,7 +13,13 @@ class MssqlAlterColumnTypeInterpreter implements Interpreter {
     const ast = new AstParser(this.model, "mssql" as SqlDataSourceType);
     const { sql } = ast.parse([a.newType]);
     const [, ...restTokens] = sql.trim().split(/\s+/);
-    const typeSql = restTokens.join(" ");
+    let typeSql = restTokens.join(" ");
+
+    // uuid columns carry an implicit DDL default that must not be re-emitted
+    // inside ALTER COLUMN TYPE — the diff layer manages defaults separately.
+    if ((a.newType as ColumnTypeNode).dataType === "uuid") {
+      typeSql = typeSql.replace(/\s+default\s+.+$/i, "").trim();
+    }
 
     let nullClause = "";
     if (a.options.nullable !== undefined) {

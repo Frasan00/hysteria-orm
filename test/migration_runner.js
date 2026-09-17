@@ -17,7 +17,6 @@ const ds = {
   ),
   sqlite: path.resolve(process.cwd(), "test/sql_data_sources/sqlite.ts"),
   mssql: path.resolve(process.cwd(), "test/sql_data_sources/mssql.ts"),
-  oracledb: path.resolve(process.cwd(), "test/sql_data_sources/oracledb.ts"),
 };
 
 const VALID_DB_TYPES = [
@@ -27,13 +26,9 @@ const VALID_DB_TYPES = [
   "cockroachdb",
   "sqlite",
   "mssql",
-  // "oracledb",
 ];
 
 const getMigrationFolder = (dbType, baseMigration) => {
-  if (dbType === "oracle" || dbType === "oracledb") {
-    return baseMigration.replace("migrations", "migrations_oracle");
-  }
   if (dbType === "mssql") {
     return baseMigration.replace("migrations", "migrations_mssql");
   }
@@ -50,7 +45,7 @@ const getForceFlag = (dbType) => {
 const runMigration = async (dbType, migration) => {
   const migrationFolder = getMigrationFolder(dbType, migration);
   const forceFlag = getForceFlag(dbType);
-  const dataSourcePath = ds[dbType === "oracledb" ? "oracledb" : dbType];
+  const dataSourcePath = ds[dbType];
 
   console.log(`  → Running migrations for ${dbType.toUpperCase()}...`);
 

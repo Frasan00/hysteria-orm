@@ -91,11 +91,6 @@ const RESERVED_MODEL_PROPERTIES = new Set([
   "getChecks",
   // Lifecycle hooks
   "beforeFetch",
-  "afterFetch",
-  "beforeInsert",
-  "beforeInsertMany",
-  "beforeUpdate",
-  "beforeDelete",
   // Query / mutation (hidden from type but present at runtime)
   "query",
   "all",
@@ -582,21 +577,6 @@ export function defineModel<
     if (hooks.beforeFetch) {
       DefinedModelClass.beforeFetch = hooks.beforeFetch;
     }
-    if (hooks.afterFetch) {
-      DefinedModelClass.afterFetch = hooks.afterFetch;
-    }
-    if (hooks.beforeInsert) {
-      DefinedModelClass.beforeInsert = hooks.beforeInsert;
-    }
-    if (hooks.beforeInsertMany) {
-      DefinedModelClass.beforeInsertMany = hooks.beforeInsertMany;
-    }
-    if (hooks.beforeUpdate) {
-      DefinedModelClass.beforeUpdate = hooks.beforeUpdate;
-    }
-    if (hooks.beforeDelete) {
-      DefinedModelClass.beforeDelete = hooks.beforeDelete;
-    }
   }
 
   applyToZodSchema(DefinedModelClass);
@@ -833,9 +813,6 @@ export function defineView<
   if (hooks) {
     if (hooks.beforeFetch) {
       DefinedViewClass.beforeFetch = hooks.beforeFetch;
-    }
-    if (hooks.afterFetch) {
-      DefinedViewClass.afterFetch = hooks.afterFetch;
     }
   }
 

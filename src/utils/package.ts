@@ -108,10 +108,6 @@ export const installBaseDependencies = async (
       driverDependency = `mssql@${deps.mssql}`;
       devDependencies.push(`@types/mssql@${deps["@types/mssql"]}`);
       break;
-    case "oracledb":
-      driverDependency = `oracledb@${deps.oracledb}`;
-      devDependencies.push(`@types/oracledb@${deps["@types/oracledb"]}`);
-      break;
     default:
       throw new Error(`Invalid database type: ${type}`);
   }

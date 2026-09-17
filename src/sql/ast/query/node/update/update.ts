@@ -1,11 +1,12 @@
 import { QueryNode } from "../../query";
 import { RawNode } from "../raw/raw_node";
+import { SqlFuncNode } from "../sqlfunc/sqlfunc";
 import { FromNode } from "../from";
 
 export class UpdateNode extends QueryNode {
   fromNode: FromNode;
   columns: string[];
-  values: (any | RawNode)[];
+  values: (any | RawNode | SqlFuncNode)[];
   returning?: string[];
   chainsWith = " ";
   canKeywordBeSeenMultipleTimes = false;
@@ -15,7 +16,7 @@ export class UpdateNode extends QueryNode {
   constructor(
     fromNode: FromNode,
     columns: string[] = [],
-    values: (any | RawNode)[] = [],
+    values: (any | RawNode | SqlFuncNode)[] = [],
     isRawValue: boolean = false,
     returning?: string[],
   ) {

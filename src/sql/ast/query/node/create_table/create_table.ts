@@ -42,15 +42,6 @@ export class CreateTableNode extends QueryNode {
   textImageOn?: string;
   dataCompression?: string;
 
-  // OracleDB options
-  oracleTablespace?: string;
-  oracleCompress?: boolean;
-  oracleStorage?: Record<string, any>;
-  oracleLogging?: boolean;
-  oracleCache?: boolean;
-  oracleInMemory?: boolean;
-  oracleCompressFor?: string;
-
   constructor(
     table: string,
     children: QueryNode[] = [],

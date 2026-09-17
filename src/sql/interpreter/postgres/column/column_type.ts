@@ -37,7 +37,10 @@ class PostgresColumnTypeInterpreter implements Interpreter {
     ) {
       return { sql: `${columnName} text`, bindings: [] };
     } else if (dt === "uuid") {
-      return { sql: `${columnName} uuid`, bindings: [] };
+      const defaultSql = colNode.isForeignKey
+        ? ""
+        : " default gen_random_uuid()";
+      return { sql: `${columnName} uuid${defaultSql}`, bindings: [] };
     } else if (dt === "ulid") {
       return { sql: `${columnName} varchar(26)`, bindings: [] };
     } else if (dt === "bigint") {

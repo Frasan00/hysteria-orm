@@ -1,14 +1,17 @@
 import { AstParser } from "../../../ast/parser";
 import { FromNode } from "../../../ast/query/node/from";
 import { RawNode } from "../../../ast/query/node/raw/raw_node";
+import { SqlFuncNode } from "../../../ast/query/node/sqlfunc/sqlfunc";
 import { UpdateNode } from "../../../ast/query/node/update";
 import { QueryNode } from "../../../ast/query/query";
 import { Model } from "../../../models/model";
+import { SqlDataSourceType } from "../../../sql_data_source_types";
 import { Interpreter } from "../../interpreter";
 import { InterpreterUtils } from "../../interpreter_utils";
 
 class MysqlUpdateInterpreter implements Interpreter {
   declare model: typeof Model;
+  declare dbType?: SqlDataSourceType;
 
   toSql(node: QueryNode): ReturnType<typeof AstParser.prototype.parse> {
     const updateNode = node as UpdateNode;
@@ -40,13 +43,30 @@ class MysqlUpdateInterpreter implements Interpreter {
           return `${interpreterUtils.formatStringColumn("mysql", column)} = ${value.rawValue}`;
         }
 
+        if (value instanceof SqlFuncNode) {
+          const rendered = new AstParser(
+            this.model,
+            "mysql" as SqlDataSourceType,
+          ).parse([value], 1, true).sql;
+          return `${interpreterUtils.formatStringColumn("mysql", column)} = ${rendered}`;
+        }
+
         finalBindings.push(value);
         return `${interpreterUtils.formatStringColumn("mysql", column)} = ?`;
       })
       .join(", ");
 
+    let sql = `${formattedTable} set ${setClause}`;
+    // MariaDB 10.5+ supports RETURNING; MySQL never had it
+    if (this.dbType === "mariadb" && updateNode.returning?.length) {
+      const returningCols = updateNode.returning
+        .map((column) => interpreterUtils.formatStringColumn("mariadb", column))
+        .join(", ");
+      sql += ` returning ${returningCols}`;
+    }
+
     return {
-      sql: `${formattedTable} set ${setClause}`,
+      sql,
       bindings: finalBindings,
     };
   }

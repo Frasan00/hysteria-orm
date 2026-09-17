@@ -1,5 +1,6 @@
 import { QueryNode } from "../../query";
 import { RawNode } from "../raw/raw_node";
+import { SqlFuncNode } from "../sqlfunc/sqlfunc";
 
 export type ConstraintType =
   | "primary_key"
@@ -17,7 +18,7 @@ export class ConstraintNode extends QueryNode {
   constraintName?: string;
   onDelete?: "cascade" | "restrict" | "set null" | "no action";
   onUpdate?: "cascade" | "restrict" | "set null" | "no action";
-  defaultValue?: string | RawNode | undefined;
+  defaultValue?: string | RawNode | SqlFuncNode | undefined;
   checkExpression?: string;
   chainsWith = " ";
   canKeywordBeSeenMultipleTimes = true;
@@ -32,7 +33,7 @@ export class ConstraintNode extends QueryNode {
       constraintName?: string;
       onDelete?: "cascade" | "restrict" | "set null" | "no action";
       onUpdate?: "cascade" | "restrict" | "set null" | "no action";
-      defaultValue?: string | RawNode | undefined;
+      defaultValue?: string | RawNode | SqlFuncNode | undefined;
       checkExpression?: string;
     } = {},
     isRawValue: boolean = false,

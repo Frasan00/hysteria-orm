@@ -1,6 +1,6 @@
 # Hysteria ORM
 
-Hysteria ORM is a TypeScript ORM library for Node.js applications, providing a unified API across SQL databases plus experimental MongoDB and Redis support. It ships as an npm package and CLI, targets Node.js 22+, and uses driver-specific connections for PostgreSQL, MySQL/MariaDB, SQLite, CockroachDB, MSSQL, Oracle, MongoDB, and Redis.
+Hysteria ORM is a TypeScript ORM library for Node.js applications, providing a unified API across SQL databases plus experimental MongoDB and Redis support. It ships as an npm package and CLI, targets Node.js 22+, and uses driver-specific connections for PostgreSQL, MySQL/MariaDB, SQLite, CockroachDB, MSSQL, MongoDB, and Redis.
 
 ## Features
 
@@ -43,6 +43,8 @@ Entry points: `src/openapi/openapi.ts`, `src/better_auth/better_auth_adapter.ts`
 ## Development
 
 Use Yarn 1 (`yarn@1.22.1`). Build with `yarn build`; run the test harness with `yarn test`; format TypeScript with `yarn format`.
+
+Per iteration, update `CHANGELOG.md` (root, versioned entries starting at 12.0.0) with the user-relevant changes made in that iteration.
 
 For tests requiring database services, always use `docker compose -f docker-compose.worktrees.yml`: it keeps service ports internal to the Compose network, avoiding host-port conflicts between worktrees. When testing is complete, always run `docker compose -f docker-compose.worktrees.yml down -v` to stop containers and remove volumes.
 

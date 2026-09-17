@@ -3,11 +3,13 @@ import { InsertNode } from "../../../ast/query/node/insert";
 import { RawNode } from "../../../ast/query/node/raw/raw_node";
 import { QueryNode } from "../../../ast/query/query";
 import { Model } from "../../../models/model";
+import { SqlDataSourceType } from "../../../sql_data_source_types";
 import { Interpreter } from "../../interpreter";
 import { InterpreterUtils } from "../../interpreter_utils";
 
 class MysqlInsertInterpreter implements Interpreter {
   declare model: typeof Model;
+  declare dbType?: SqlDataSourceType;
 
   toSql(node: QueryNode): ReturnType<typeof AstParser.prototype.parse> {
     const insertNode = node as InsertNode;
@@ -65,6 +67,24 @@ class MysqlInsertInterpreter implements Interpreter {
     }
 
     const sql = `${formattedTable} (${formattedColumns}) VALUES ${valuesClauses.join(", ")}`;
+    // MariaDB 10.5+ supports RETURNING; MySQL never had it
+    if (this.dbType === "mariadb" && !insertNode.disableReturning) {
+      if (insertNode.returning && insertNode.returning.length) {
+        const returningCols = insertNode.returning
+          .map((column) =>
+            interpreterUtils.formatStringColumn("mariadb", column),
+          )
+          .join(", ");
+        return {
+          sql: `${sql} returning ${returningCols}`,
+          bindings: allValues,
+        };
+      }
+      return {
+        sql: `${sql} returning *`,
+        bindings: allValues,
+      };
+    }
     return {
       sql,
       bindings: allValues,

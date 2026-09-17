@@ -81,17 +81,6 @@ services:
     ports:
       - "1433:1433"
 
-  oracle:
-    image: "container-registry.oracle.com/database/free:23.7.0.0-lite"
-    container_name: "hysteria-oracle"
-    ports:
-      - "1521:1521"
-    environment:
-      ORACLE_PWD: "oracle"
-      ORACLE_SID: "FREE"
-    volumes:
-      - ./scripts/oracle:/opt/oracle/scripts/startup:ro
-
   node:
     image: node:22
     container_name: "hysteria-node"
@@ -108,7 +97,6 @@ services:
       - mongo
       - cockroachdb
       - mssql
-      - oracle
 
 volumes:
   cockroach-data:

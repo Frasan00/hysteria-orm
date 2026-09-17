@@ -914,10 +914,11 @@ export class QueryBuilder<
       () => this.toQuery(),
       async () => {
         const { columns: preparedColumns, values: preparedValues } =
-          await this.interpreterUtils.prepareColumns(
+          this.interpreterUtils.prepareColumns(
             Object.keys(data),
             Object.values(data),
             "insert",
+            this.dbType,
           );
 
         const preparedInsertObject = Object.fromEntries(
@@ -964,7 +965,6 @@ export class QueryBuilder<
    * @description Insert multiple records into a table
    * @param returning - The columns to return from the query, only supported by postgres and cockroachdb - default is "*"
    * @returns WriteOperation that executes when awaited
-   * @oracledb may do multiple inserts with auto-generated identity columns
    */
   insertMany(
     data: Record<string, WriteQueryParam>[],
@@ -1004,10 +1004,11 @@ export class QueryBuilder<
         const models = await Promise.all(
           data.map(async (model) => {
             const { columns: preparedColumns, values: preparedValues } =
-              await this.interpreterUtils.prepareColumns(
+              this.interpreterUtils.prepareColumns(
                 Object.keys(model),
                 Object.values(model),
                 "insert",
+                this.dbType,
               );
 
             return Object.fromEntries(
@@ -1096,10 +1097,11 @@ export class QueryBuilder<
       () => this.toQuery(),
       async () => {
         const { columns: preparedColumns, values: preparedValues } =
-          await this.interpreterUtils.prepareColumns(
+          this.interpreterUtils.prepareColumns(
             Object.keys(data),
             Object.values(data),
             "insert",
+            this.dbType,
           );
 
         const insertObject = Object.fromEntries(
@@ -1206,10 +1208,11 @@ export class QueryBuilder<
         await Promise.all(
           data.map(async (record) => {
             const { columns: preparedColumns, values: preparedValues } =
-              await this.interpreterUtils.prepareColumns(
+              this.interpreterUtils.prepareColumns(
                 Object.keys(record),
                 Object.values(record),
                 "insert",
+                this.dbType,
               );
 
             const insertObject = Object.fromEntries(
@@ -1399,10 +1402,11 @@ export class QueryBuilder<
       () => this.toSql(),
       () => this.toQuery(),
       async () => {
-        const { columns, values } = await this.interpreterUtils.prepareColumns(
+        const { columns, values } = this.interpreterUtils.prepareColumns(
           rawColumns,
           rawValues,
           "update",
+          this.dbType,
         );
 
         this.updateNode = new UpdateNode(
@@ -1503,9 +1507,7 @@ export class QueryBuilder<
    * @default value - The current date and time in UTC timezone in the format "YYYY-MM-DD HH:mm:ss"
    * @returns WriteOperation that resolves to the number of affected rows
    */
-  softDelete(
-    options: Omit<SoftDeleteOptions<T>, "ignoreBeforeDeleteHook"> = {},
-  ): WriteOperation<number> {
+  softDelete(options: SoftDeleteOptions<T> = {}): WriteOperation<number> {
     const { column = "deletedAt", value = baseSoftDeleteDate() } =
       options || {};
 
@@ -1520,10 +1522,11 @@ export class QueryBuilder<
       () => this.toSql(),
       () => this.toQuery(),
       async () => {
-        const { columns, values } = await this.interpreterUtils.prepareColumns(
+        const { columns, values } = this.interpreterUtils.prepareColumns(
           [column as string],
           [value],
           "update",
+          this.dbType,
         );
 
         this.updateNode = new UpdateNode(this.fromNode, columns, values);

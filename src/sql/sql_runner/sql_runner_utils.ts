@@ -1,9 +1,4 @@
 import { PassThrough, Readable } from "node:stream";
-import { HysteriaError } from "../../errors/hysteria_error";
-import { AstParser } from "../ast/parser";
-import { FromNode } from "../ast/query/node/from";
-import { InsertNode } from "../ast/query/node/insert";
-import { InterpreterUtils } from "../interpreter/interpreter_utils";
 import { Model } from "../models/model";
 import { SqlDataSource } from "../sql_data_source";
 import { SqliteConnectionInstance } from "../sql_data_source_types";
@@ -173,134 +168,17 @@ export const promisifySqliteQuery = <T extends Model>(
     });
   }
 
-  const primaryKeyName = typeofModel.primaryKey as string;
-  const table = typeofModel.table;
   if (options.mode === "insertOne" || options.mode === "insertMany") {
-    if (options.mode === "insertOne") {
-      return new Promise<T[]>((resolve, reject) => {
-        sqliteDriver.run(query, params, function (this: any, err: any) {
-          if (err) {
-            return reject(err);
-          }
-
-          const inputModel =
-            options.models &&
-            Array.isArray(options.models) &&
-            options.models.length
-              ? options.models[0]
-              : null;
-
-          if (!primaryKeyName) {
-            resolve([inputModel] as T[]);
-            return;
-          }
-
-          const lastID = inputModel?.[primaryKeyName as keyof T] || this.lastID;
-
-          if (!lastID) {
-            return reject(
-              new HysteriaError(
-                "SqlRunnerUtils::promisifySqliteQuery",
-                "MODEL_HAS_NO_PRIMARY_KEY",
-              ),
-            );
-          }
-
-          const selectQuery = `SELECT * FROM ${table} WHERE ${primaryKeyName} = ?`;
-          sqliteDriver.get(selectQuery, [lastID], (err: any, row: T) => {
-            if (err) {
-              return reject(err);
-            }
-
-            resolve([row] as T[]);
-          });
-        });
+    // SQLite ≥3.35 supports RETURNING: a single statement returns every inserted
+    // row (including DB-generated defaults), so no per-row re-select is needed.
+    const returningQuery = `${query} returning *`;
+    return new Promise<T[]>((resolve, reject) => {
+      sqliteDriver.all(returningQuery, params, (err, rows) => {
+        if (err) {
+          return reject(err);
+        }
+        resolve((rows as T[]) || []);
       });
-    }
-
-    if (!Array.isArray(options.models)) {
-      throw new HysteriaError(
-        "SqlRunnerUtils::massiveInsert models should be an array, report to the maintainers.",
-        "DEVELOPMENT_ERROR",
-      );
-    }
-
-    const models = options.models as T[];
-
-    if (!primaryKeyName) {
-      return new Promise<T[]>((resolve, reject) => {
-        sqliteDriver.run(query, params, function (err: any) {
-          if (err) {
-            return reject(err);
-          }
-          resolve(models as T[]);
-        });
-      });
-    }
-
-    let finalResult: T[] = [];
-    return new Promise<T[]>(async (resolve, reject) => {
-      try {
-        const insertPromises = models.map(async (model) => {
-          const interpreterUtils = new InterpreterUtils(typeofModel);
-
-          const { columns: preparedColumns, values: preparedValues } =
-            await interpreterUtils.prepareColumns(
-              Object.keys(model),
-              Object.values(model),
-              "insert",
-            );
-
-          const preparedModel = Object.fromEntries(
-            preparedColumns.map((column, index) => [
-              column,
-              preparedValues[index],
-            ]),
-          );
-
-          const astParser = new AstParser(
-            typeofModel,
-            sqlDataSource.getDbType(),
-          );
-
-          const { sql: query, bindings: params } = astParser.parse([
-            new InsertNode(new FromNode(typeofModel.table), [preparedModel]),
-          ]);
-
-          return new Promise<T>((resolve, reject) => {
-            sqliteDriver.run(query, params, function (err: any) {
-              if (err) {
-                return reject(err);
-              }
-
-              const lastID = model[primaryKeyName as keyof T] || this.lastID;
-
-              if (!lastID) {
-                return reject(
-                  new HysteriaError(
-                    "SqlRunnerUtils::promisifySqliteQuery",
-                    "MODEL_HAS_NO_PRIMARY_KEY",
-                  ),
-                );
-              }
-
-              const selectQuery = `SELECT * FROM ${table} WHERE ${primaryKeyName} = ?`;
-              sqliteDriver.get(selectQuery, [lastID], (err: any, row: T) => {
-                if (err) {
-                  return reject(err);
-                }
-
-                resolve(row as T);
-              });
-            });
-          });
-        });
-
-        finalResult = await Promise.all(insertPromises);
-        resolve(finalResult);
-      } catch (err) {
-        reject(err);
-      }
     });
   }
 

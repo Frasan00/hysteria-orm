@@ -27,29 +27,8 @@ export const UserWithUuid = defineModel("users_with_uuid", {
     deletedAt: col.datetime(),
   },
   hooks: {
-    beforeUpdate: (queryBuilder) => {
-      queryBuilder.whereNull("users_with_uuid.deleted_at");
-    },
-    beforeDelete: (queryBuilder) => {
-      queryBuilder.whereNull("users_with_uuid.deleted_at");
-    },
     beforeFetch: (queryBuilder) => {
       queryBuilder.whereNull("users_with_uuid.deleted_at");
-    },
-    afterFetch: (data) => {
-      return data;
-    },
-    beforeInsert: (data) => {
-      const originalName = data.name;
-      data.name = originalName!.toUpperCase();
-      data.name = originalName;
-    },
-    beforeInsertMany: (data) => {
-      for (const item of data) {
-        const originalName = item.name;
-        item.name = originalName!.toUpperCase();
-        item.name = originalName;
-      }
     },
   },
 });

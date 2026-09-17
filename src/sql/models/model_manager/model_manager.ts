@@ -111,9 +111,7 @@ export class ModelManager<T extends Model> {
       query.groupBy(...(input.groupBy as string[]));
     }
 
-    return query.many({
-      ignoreHooks: input.ignoreHooks || [],
-    }) as unknown as Promise<FindReturnType<T, S, R>[]>;
+    return query.many() as unknown as Promise<FindReturnType<T, S, R>[]>;
   }
 
   /**
@@ -133,7 +131,6 @@ export class ModelManager<T extends Model> {
       relations: input.relations,
       select: input.select,
       where: input.where,
-      ignoreHooks: input.ignoreHooks,
       offset: input.offset,
       limit: 1,
     } as FindType<T, S, R>);
@@ -166,7 +163,6 @@ export class ModelManager<T extends Model> {
       relations: input.relations,
       select: input.select,
       where: input.where,
-      ignoreHooks: input.ignoreHooks,
       offset: input.offset,
     } as FindOneType<T, S, R>);
 
@@ -206,9 +202,7 @@ export class ModelManager<T extends Model> {
         this.model.primaryKey as ModelKey<T>,
         value as WhereColumnValue<T, ModelKey<T>>,
       )
-      .one({
-        ignoreHooks: ["afterFetch", "beforeFetch"],
-      }) as unknown as Promise<ModelWithoutRelations<T> | null>;
+      .one() as unknown as Promise<ModelWithoutRelations<T> | null>;
   }
 
   /**
@@ -267,15 +261,13 @@ export class ModelManager<T extends Model> {
         // ValidationError is thrown with details; propagate
         throw e;
       }
-      if (!options.ignoreHooks) {
-        await this.model.beforeInsert?.(model as T);
-      }
 
       const { columns: preparedColumns, values: preparedValues } =
-        await this.interpreterUtils.prepareColumns(
+        this.interpreterUtils.prepareColumns(
           Object.keys(model),
           Object.values(model),
           "insert",
+          this.sqlType,
         );
 
       const insertObject: Record<string, any> = {};
@@ -316,7 +308,7 @@ export class ModelManager<T extends Model> {
         return undefined as Awaited<ReturnType<typeof execSql>>;
       }
 
-      if (this.sqlType === "mysql" || this.sqlType === "mariadb") {
+      if (this.sqlType === "mysql") {
         return this.handleMysqlInsert(
           rows,
           [model as T],
@@ -330,12 +322,11 @@ export class ModelManager<T extends Model> {
         return model as T;
       }
 
-      await this.model.afterFetch?.([insertedModel]);
-      const result = (await serializeModel(
+      const result = serializeModel(
         [insertedModel],
         this.model,
         options.returning as string[],
-      )) as T;
+      ) as T;
       return result;
     });
   }
@@ -397,41 +388,25 @@ export class ModelManager<T extends Model> {
       } catch (e) {
         throw e;
       }
-      await this.model.beforeInsertMany?.(models as T[]);
 
-      // Oracle with identity columns doesn't support INSERT ALL properly
-      // Handle this case separately BEFORE attempting the batch insert
-      if (this.sqlType === "oracledb") {
-        const primaryKey = this.model.primaryKey;
-        const firstModelKeys = Object.keys(models[0] || {});
-        const hasMissingPrimaryKey =
-          primaryKey && !firstModelKeys.includes(primaryKey);
+      const insertObjects: Record<string, any>[] = models.map((model) => {
+        const { columns: preparedColumns, values: preparedValues } =
+          this.interpreterUtils.prepareColumns(
+            Object.keys(model),
+            Object.values(model),
+            "insert",
+            this.sqlType,
+          );
 
-        if (hasMissingPrimaryKey) {
-          return this.handleOracleIdentityInsert(models as T[], options);
-        }
-      }
+        const insertObject: Record<string, any> = {};
+        preparedColumns.forEach((column, i) => {
+          const value = preparedValues[i];
+          insertObject[column] = value;
+          model[column as keyof typeof model] ??= value;
+        });
 
-      const insertObjects: Record<string, any>[] = new Array(models.length);
-      await Promise.all(
-        models.map(async (model, index) => {
-          const { columns: preparedColumns, values: preparedValues } =
-            await this.interpreterUtils.prepareColumns(
-              Object.keys(model),
-              Object.values(model),
-              "insert",
-            );
-
-          const insertObject: Record<string, any> = {};
-          preparedColumns.forEach((column, i) => {
-            const value = preparedValues[i];
-            insertObject[column] = value;
-            model[column as keyof typeof model] ??= value;
-          });
-
-          insertObjects[index] = insertObject;
-        }),
-      );
+        return insertObject;
+      });
 
       const shouldDisableReturning =
         !options.returning || options.returning.length === 0;
@@ -464,7 +439,7 @@ export class ModelManager<T extends Model> {
         return [];
       }
 
-      if (this.sqlType === "mysql" || this.sqlType === "mariadb") {
+      if (this.sqlType === "mysql") {
         return (
           (await this.handleMysqlInsert(
             rows,
@@ -480,9 +455,7 @@ export class ModelManager<T extends Model> {
         return [];
       }
 
-      await this.model.afterFetch?.(insertedModels);
-
-      const results = await serializeModel(
+      const results = serializeModel(
         insertedModels,
         this.model,
         options.returning as string[],
@@ -554,27 +527,22 @@ export class ModelManager<T extends Model> {
     };
 
     return new WriteOperation(unWrapFn, toSqlFn, toQueryFn, async () => {
-      const insertObjects: Record<string, any>[] = [];
-      await this.model.beforeInsertMany?.(data as T[]);
-      await Promise.all(
-        data.map(async (model) => {
-          const { columns: preparedColumns, values: preparedValues } =
-            await this.interpreterUtils.prepareColumns(
-              Object.keys(model),
-              Object.values(model),
-              "insert",
-            );
-
-          const insertObject = Object.fromEntries(
-            preparedColumns.map((column, index) => [
-              column,
-              preparedValues[index],
-            ]),
+      const insertObjects: Record<string, any>[] = data.map((model) => {
+        const { columns: preparedColumns, values: preparedValues } =
+          this.interpreterUtils.prepareColumns(
+            Object.keys(model),
+            Object.values(model),
+            "insert",
+            this.sqlType,
           );
 
-          insertObjects.push(insertObject);
-        }),
-      );
+        return Object.fromEntries(
+          preparedColumns.map((column, index) => [
+            column,
+            preparedValues[index],
+          ]),
+        );
+      });
 
       // MSSQL requires MERGE statement for upsert operations
       if (this.sqlType === "mssql") {
@@ -654,8 +622,7 @@ export class ModelManager<T extends Model> {
         }
 
         const returnedModels = rows as T[];
-        await this.model.afterFetch?.(returnedModels);
-        const results = await serializeModel(
+        const results = serializeModel(
           returnedModels,
           this.model,
           options.returning as string[],
@@ -734,9 +701,17 @@ export class ModelManager<T extends Model> {
     const outputCols =
       options.returning && options.returning.length
         ? options.returning
-            .map((col) => `inserted.${formatCol(col as string)}`)
+            .map(
+              (col) =>
+                `inserted.${formatCol(col as string)}${this.interpreterUtils.resolveColumnAlias("mssql", col as string)}`,
+            )
             .join(", ")
-        : columns.map((col) => `inserted.${formatCol(col)}`).join(", ");
+        : columns
+            .map(
+              (col) =>
+                `inserted.${formatCol(col)}${this.interpreterUtils.resolveColumnAlias("mssql", col)}`,
+            )
+            .join(", ");
 
     // Construct MERGE statement
     const updateOnConflict = options.updateOnConflict ?? true;
@@ -802,7 +777,12 @@ export class ModelManager<T extends Model> {
     const values = keys.map((k) => data[k as keyof typeof data]);
 
     let { columns: preparedColumns, values: preparedValues } =
-      await this.interpreterUtils.prepareColumns(keys, values, "update");
+      this.interpreterUtils.prepareColumns(
+        keys,
+        values,
+        "update",
+        this.sqlType,
+      );
 
     const { primaryKey } = this.model;
     if (!primaryKey) {
@@ -919,15 +899,12 @@ export class ModelManager<T extends Model> {
           return null as O extends "one" ? T : T[] | null;
         }
 
-        return (await serializeModel(
-          [returnModel],
-          this.model,
-        )) as O extends "one" ? T : T[];
+        return serializeModel([returnModel], this.model) as O extends "one"
+          ? T
+          : T[];
       }
 
-      return (await serializeModel(models, this.model)) as O extends "one"
-        ? T
-        : T[];
+      return serializeModel(models, this.model) as O extends "one" ? T : T[];
     }
 
     // UUID and before fetch defined primary keys
@@ -970,94 +947,6 @@ export class ModelManager<T extends Model> {
     }
 
     return fetchedModels as unknown as O extends "one" ? T : T[];
-  }
-
-  /**
-   * @description Oracle with identity columns doesn't support INSERT ALL properly.
-   * This method inserts records one at a time to avoid duplicate ID issues.
-   * After each insert, it queries the row back using unique columns to get the generated ID.
-   */
-  private async handleOracleIdentityInsert(
-    models: T[],
-    options: InsertOptions<T>,
-  ): Promise<ModelWithoutRelations<T>[]> {
-    const results: T[] = [];
-    const primaryKey = this.model.primaryKey;
-
-    for (const model of models) {
-      // Prepare columns for the insert
-      const { columns: preparedColumns, values: preparedValues } =
-        await this.interpreterUtils.prepareColumns(
-          Object.keys(model),
-          Object.values(model),
-          "insert",
-        );
-
-      const insertObject: Record<string, any> = {};
-      preparedColumns.forEach((column, index) => {
-        const value = preparedValues[index];
-        insertObject[column] = value;
-        model[column as keyof typeof model] ??= value;
-      });
-
-      // Execute the insert
-      const { sql, bindings } = this.astParser.parse([
-        new InsertNode(
-          new FromNode(this.model.table),
-          [insertObject],
-          options.returning as string[],
-        ),
-      ]);
-
-      await execSql(
-        sql,
-        bindings,
-        this.sqlDataSource,
-        this.sqlType as SqlDataSourceType,
-        "rows",
-      );
-
-      // Query back the inserted row to get the generated ID
-      const queryBuilder = this.query().select(
-        ...(((options.returning as string[]) || ["*"]) as any[]),
-      );
-
-      for (const [column, value] of Object.entries(insertObject)) {
-        if (value !== null && value !== undefined && column !== primaryKey) {
-          queryBuilder.where(
-            column as ModelKey<T>,
-            "=",
-            value as WhereColumnValue<T, ModelKey<T>>,
-          );
-        }
-      }
-
-      // Order by ID desc to get the most recently inserted row
-      if (primaryKey) {
-        queryBuilder.orderBy(primaryKey, "desc");
-      }
-
-      const insertedRow = await queryBuilder.one({
-        ignoreHooks: ["beforeFetch"],
-      });
-
-      if (insertedRow) {
-        const typedRow = insertedRow as unknown as ModelWithoutRelations<T>;
-        if (
-          primaryKey &&
-          typedRow[primaryKey as keyof ModelWithoutRelations<T>]
-        ) {
-          (model as any)[primaryKey] =
-            typedRow[primaryKey as keyof ModelWithoutRelations<T>];
-        }
-        results.push(insertedRow as T);
-      } else {
-        results.push(model as T);
-      }
-    }
-
-    await this.model.afterFetch?.(results);
-    return results as ModelWithoutRelations<T>[];
   }
 
   private handleWhereCondition(

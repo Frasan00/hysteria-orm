@@ -27,12 +27,6 @@ export const UserWithBigint = defineModel("users_with_bigint", {
     deletedAt: col.datetime(),
   },
   hooks: {
-    beforeUpdate(queryBuilder) {
-      queryBuilder.whereNull("users_with_bigint.deleted_at");
-    },
-    beforeDelete(queryBuilder) {
-      queryBuilder.whereNull("users_with_bigint.deleted_at");
-    },
     beforeFetch(queryBuilder) {
       queryBuilder.whereNull("users_with_bigint.deleted_at");
     },

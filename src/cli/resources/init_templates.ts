@@ -102,8 +102,6 @@ export default db;`;
         return 27017;
       case "redis":
         return 6379;
-      case "oracledb":
-        return 1521;
       default:
         return 3306;
     }
